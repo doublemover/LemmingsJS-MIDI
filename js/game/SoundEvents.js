@@ -26,6 +26,8 @@ const SoundEventTypes = Object.freeze({
   LEMMING_EXPLODE: 'lemming-explode',
   LEMMING_SPLAT: 'lemming-splat',
   LEMMING_EXIT: 'lemming-exit',
+  LEMMING_SPAWN: 'lemming-spawn',
+  LEMMING_LAND: 'lemming-land',
   LEMMING_DROWN: 'lemming-drown',
   LEMMING_FIRE: 'lemming-fire',
   LEMMING_FELL_OFF: 'lemming-fell-off',
@@ -59,7 +61,9 @@ const SoundEffectIds = Object.freeze({
   BUILDER_STEP: 0x14,
   BASH: 0x15,
   DIG: 0x16,
-  MINE: 0x17
+  MINE: 0x17,
+  SPAWN: 0x18,
+  LAND: 0x19
 });
 
 class SoundEventBus {

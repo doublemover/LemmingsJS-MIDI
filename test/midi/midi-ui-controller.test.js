@@ -13,6 +13,11 @@ const registerSequencerDom = (doc) => {
     midiSequencerWorkspace: 'div',
     midiWorkspaceToggle: 'button',
     midiWorkspaceClose: 'button',
+    midiGamePresetSelect: 'select',
+    midiGamePresetApply: 'button',
+    midiGamePresetMode: 'select',
+    midiGamePresetModeDescription: 'p',
+    midiGamePresetDescription: 'p',
     midiProjectStatus: 'div',
     errorDisplay: 'div',
     midiEnabledToggle: 'input',
@@ -240,6 +245,63 @@ describe('midiUiController sequencer', function() {
     expect(controller.captureRecordMessage({ type: 0x80, note: 62, channel: 1, timestamp: 20 })).to.equal(false);
     expect(doc.getElementById('midiRecordCommitButton').disabled).to.equal(true);
     expect(win.localStorage.getItem(PROJECT_STORAGE_KEY)).to.equal(saved);
+  });
+
+  it('reuses derived runtime config until the project or factory config changes', function() {
+    const { controller, view } = createControllerHarness();
+    controller.bindMidiUi();
+    const first = controller.getMidiConfig();
+    expect(controller.getMidiConfig()).to.equal(first);
+    controller.dispatchProjectIntent({ type: 'source.mapping.update', sourceId: 'sfx-1', patch: { note: 75 } });
+    const edited = controller.getMidiConfig();
+    expect(edited).not.to.equal(first);
+    expect(edited.sfx['1'].note).to.equal(75);
+    expect(controller.getMidiConfig()).to.equal(edited);
+    const replacement = { ...view.getMidiBaseConfig(), input: { channel: 3 } };
+    view.getMidiBaseConfig = () => replacement;
+    expect(controller.getMidiConfig()).not.to.equal(edited);
+    expect(controller.getMidiConfig()).to.equal(controller.getMidiConfig());
+  });
+
+  it('applies an event palette while keeping MIDI visibility and enablement separate', function() {
+    const { controller, doc } = createControllerHarness();
+    controller.bindMidiUi();
+    const before = controller.getProject();
+    doc.getElementById('midiGamePresetSelect').value = 'game-minor';
+    doc.getElementById('midiGamePresetSelect').dispatchEvent({ type: 'change' });
+    expect(doc.getElementById('midiGamePresetDescription').textContent).not.to.equal('');
+    doc.getElementById('midiGamePresetApply').dispatchEvent({ type: 'click' });
+    const after = controller.getProject();
+    expect(after.enabled).to.equal(before.enabled);
+    expect(after.devices).to.deep.equal(before.devices);
+    expect(after.transport).to.deep.equal(before.transport);
+    expect(doc.getElementById('midiSequencerWorkspace').hidden).to.equal(true);
+    expect(doc.getElementById('midiProjectStatus').textContent).to.contain('notes follow game events');
+    const spawn = after.sources.find(source => source.kind === 'sfx' && Number(source.sourceKey) === SoundEffectIds.SPAWN);
+    expect(spawn.mapping.phrase?.enabled).to.equal(true);
+    doc.getElementById('midiGamePresetMode').value = 'steps';
+    doc.getElementById('midiGamePresetMode').dispatchEvent({ type: 'change' });
+    expect(doc.getElementById('midiGamePresetModeDescription').textContent).to.contain('Each spawn steps down');
+    doc.getElementById('midiGamePresetApply').dispatchEvent({ type: 'click' });
+    const stepped = controller.getProject().sources.find(source => source.kind === 'sfx' && Number(source.sourceKey) === SoundEffectIds.SPAWN);
+    expect(stepped.mapping.phrase?.enabled).not.to.equal(true);
+    expect(stepped.mapping.arp?.enabled).to.equal(true);
+
+  });
+
+  it('previews only the first phrase note instead of sounding the phrase as a chord', function() {
+    const sent = [];
+    const { controller, doc } = createControllerHarness({ lemmings: {
+      midiRouter: { scheduler: { sendNote(spec) { sent.push(spec); return true; } } }
+    } });
+    controller.bindMidiUi();
+    doc.getElementById('midiGamePresetApply').dispatchEvent({ type: 'click' });
+    expect(doc.getElementById('midiAuditionButton').textContent).to.equal('Preview first note');
+    expect(controller.audition()).to.equal(true);
+    expect(sent).to.have.length(1);
+    const selected = controller.getProject().sources.find(source => Number(source.sourceKey) === SoundEffectIds.SPAWN);
+    expect(sent[0].note).to.equal(Math.max(...selected.mapping.notes));
+    expect(doc.getElementById('midiOutputLog').textContent).to.contain('First-note preview');
   });
 
   it('loads a factory project, removes legacy storage, and exposes the project hook', function() {

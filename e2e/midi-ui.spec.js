@@ -390,6 +390,7 @@ test('MIDI project persists across reload', async ({ page }) => {
   await waitForHarnessReady(page);
   await expect(page.locator('#midiSequencerWorkspace')).toBeHidden();
   await page.locator('#midiWorkspaceToggle').click();
+  await page.locator('#midiAdvancedWorkspace > summary').click();
   await page.waitForSelector('#midiSourceList .midi-source-row');
   const note = await page.evaluate(() => (
     window.__E2E__.midiGetProject().sources.find(source => source.id === 'sfx-1').mapping.note
@@ -544,6 +545,7 @@ test('MIDI sequencer creates, edits, assigns, auditions, and persists a clip', a
   await waitForHarnessReady(page);
   await expect(page.locator('#midiSequencerWorkspace')).toBeHidden();
   await page.locator('#midiWorkspaceToggle').click();
+  await page.locator('#midiAdvancedWorkspace > summary').click();
   await page.waitForSelector('#midiClipList .midi-clip-row');
   const reloaded = await page.evaluate(() => window.__E2E__.midiGetProject());
   expect(reloaded.clips.find(entry => entry.name === 'Lead Clip').steps[0].note).toBe(66);
@@ -1012,6 +1014,8 @@ test('MIDI studio is opt-in, keeps saved audio state, and closes transient captu
   await expect(page.locator('#midiWorkspaceClose')).toBeFocused();
   await expect(page.locator('#midiTrackInspector')).not.toHaveAttribute('open');
   await expect(page.locator('#midiModulationInspector')).not.toHaveAttribute('open');
+  await expect(page.locator('#midiAdvancedWorkspace')).not.toHaveAttribute('open');
+  await page.locator('#midiAdvancedWorkspace > summary').click();
   await page.locator('#midiEnabledToggle').check();
   await page.locator('#midiMappingNote').fill('74');
   await page.locator('#midiMappingNote').press('Tab');
@@ -1037,6 +1041,7 @@ test('MIDI studio is opt-in, keeps saved audio state, and closes transient captu
   await expect(workspace).toBeHidden();
   expect(await page.evaluate(() => window.__E2E__.midiGetProject())).toEqual(saved);
   await toggle.click();
+  await page.locator('#midiAdvancedWorkspace > summary').click();
   await expect(page.locator('#midiEnabledToggle')).toBeChecked();
   await expect(page.locator('#midiMappingNote')).toHaveValue('74');
 });

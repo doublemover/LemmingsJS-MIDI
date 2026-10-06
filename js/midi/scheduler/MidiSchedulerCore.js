@@ -2,6 +2,7 @@ import { MIDI_BYTES_PER_SECOND } from './MidiSchedulerShared.js';
 import { midiSchedulerChannelMethods } from './MidiSchedulerChannelMethods.js';
 import { midiSchedulerRateMethods } from './MidiSchedulerRateMethods.js';
 import { midiSchedulerSendMethods } from './MidiSchedulerSendMethods.js';
+import { MidiGamePhraseQueue } from './MidiGamePhraseQueue.js';
 
 class MidiScheduler {
   constructor(config = {}) {
@@ -12,6 +13,7 @@ class MidiScheduler {
     this._activeNotes = new Map();
     this._usedOutputChannels = new Map();
     this._pendingNoteOns = new Map();
+    this.gamePhrases = new MidiGamePhraseQueue();
     this._maxActiveNotes = 32;
     this._memberChannels = [];
     this._noteOffs = [];

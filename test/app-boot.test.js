@@ -37,9 +37,15 @@ describe('app boot helpers', function () {
       }
     };
     const listeners = [];
+    const slot = { clientWidth: 1540, clientHeight: 704 };
+    let resizeObserverCallback;
 
     try {
       const windowStub = {
+        ResizeObserver: class {
+          constructor(callback) { resizeObserverCallback = callback; }
+          observe(target) { expect(target).to.equal(slot); }
+        },
         visualViewport: {
           width: 1600,
           height: 800,
@@ -69,6 +75,7 @@ describe('app boot helpers', function () {
         },
         querySelector(selector) {
           if (selector === '.game_container') return container;
+          if (selector === '.game-stage-slot') return slot;
           return null;
         },
         getElementById() {
@@ -96,13 +103,26 @@ describe('app boot helpers', function () {
       boot.bindResize();
 
       expect(containerClasses.has('small')).to.equal(false);
-      expect(container.style.width).to.equal('1333.3333333333335px');
-      expect(container.style.height).to.equal('800px');
-      expect(canvas.style.width).to.equal('1333.3333333333335px');
-      expect(canvas.style.height).to.equal('800px');
+      expect(container.style.width).to.equal(`${704 * (800 / 480)}px`);
+      expect(container.style.height).to.equal('704px');
+      expect(canvas.style.width).to.equal(`${704 * (800 / 480)}px`);
+      expect(canvas.style.height).to.equal('704px');
       expect(stageResizeCalls).to.equal(1);
       expect(classSet.has('portrait-small')).to.equal(false);
       expect(listeners.map((entry) => entry.type)).to.deep.equal(['resize', 'orientationchange', 'resize']);
+      for (const [width, height] of [[340, 640], [794, 286], [270, 370], [1540, 704]]) {
+        slot.clientWidth = width;
+        slot.clientHeight = height;
+        resizeObserverCallback();
+        const drawnWidth = parseFloat(canvas.style.width);
+        const drawnHeight = parseFloat(canvas.style.height);
+        expect(drawnWidth).to.be.at.most(width);
+        expect(drawnHeight).to.be.at.most(height);
+        expect(drawnWidth / drawnHeight).to.be.closeTo(800 / 480, 0.00001);
+        expect(container.style.marginTop).to.equal('');
+        expect(container.style.marginLeft).to.equal('');
+      }
+
     } finally {
       restore();
     }

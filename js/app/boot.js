@@ -432,28 +432,17 @@ function setSize() {
   const isPortrait = height > width;
   const isTablet = Math.max(width, height) >= 900;
   documentRef.body.classList.toggle('portrait-small', isPortrait && !isTablet);
-  let containerWidth, containerHeight;
-
-  if (width >= height * ratio) {
-    containerWidth = height * ratio;
-    containerHeight = height;
-    if (gameContainer) {
-      gameContainer.style.marginTop = '';
-      gameContainer.style.marginLeft = `${(width - containerWidth) / 2}px`;
-      gameContainer.classList.remove('small');
-    }
-  } else {
-    containerWidth = width;
-    containerHeight = width / ratio;
-    if (gameContainer) {
-      gameContainer.style.marginTop = `${(height - containerHeight) / 2}px`;
-      gameContainer.style.marginLeft = '';
-      gameContainer.classList.add('small');
-    }
+  const slot = documentRef.querySelector?.('.game-stage-slot');
+  const availableWidth = Math.max(1, slot?.clientWidth || width);
+  const availableHeight = Math.max(1, slot?.clientHeight || height);
+  const containerWidth = Math.min(availableWidth, availableHeight * ratio);
+  const containerHeight = Math.min(availableHeight, containerWidth / ratio);
+  if (gameContainer) {
+    gameContainer.style.marginTop = '';
+    gameContainer.style.marginLeft = '';
+    if (availableWidth < availableHeight * ratio) gameContainer.classList.add('small');
+    else gameContainer.classList.remove('small');
   }
-
-  if (containerWidth > width) containerWidth = width;
-  if (containerHeight > height) containerHeight = height;
 
   if (gameContainer) {
     gameContainer.style.width = `${containerWidth}px`;
@@ -488,6 +477,11 @@ function bindResize() {
   windowRef.addEventListener('resize', setSize);
   windowRef.addEventListener('orientationchange', setSize);
   windowRef.visualViewport?.addEventListener?.('resize', setSize);
+  const slot = getRuntimeDocument()?.querySelector?.('.game-stage-slot');
+  if (slot && typeof windowRef.ResizeObserver === 'function') {
+    const observer = new windowRef.ResizeObserver(setSize);
+    observer.observe(slot);
+  }
 }
 
 function start() {

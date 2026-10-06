@@ -157,6 +157,8 @@
     "20": { "name": "builder-step", "note": 67, "durationTicks": 4 },
     "21": { "name": "bash", "note": 57, "durationTicks": 4 },
     "22": { "name": "dig", "note": 59, "durationTicks": 4 },
-    "23": { "name": "mine", "note": 61, "durationTicks": 4 }
+    "23": { "name": "mine", "note": 61, "durationTicks": 4 },
+    "24": { "name": "spawn", "note": 72, "durationTicks": 4, "disabled": true },
+    "25": { "name": "land", "note": 48, "durationTicks": 3, "disabled": true }
   }
 }

@@ -15,6 +15,38 @@ template operations, track output/performance, and project-wide conditions and
 modulation use expandable sections. Direct note editing displays scientific
 pitch notation (MIDI 60 = C4); durations are labelled in game ticks.
 
+## Game layout and event palettes
+
+Game, difficulty, level, and saved-level controls live above the play surface.
+Previous/next level arrows occupy a dedicated right-hand rail with touch-sized
+targets. The canvas fits the remaining measured space at its native aspect
+ratio; toolbar wrapping and mobile viewport changes trigger a new fit.
+
+The studio opens to a small event-palette panel. Detailed source routing, clips,
+and mapping controls stay behind **Event wiring & detailed musical editing**.
+Choose **Quiet phrases per event** for a short falling run on each spawn and a
+rising run on exit, or **One note per event** to step those patterns once per
+spawn/exit. Landing has a separate plain note in both styles. Major, minor,
+and chromatic palettes give the other supported actions fitting voices.
+Applying a palette preserves enablement, devices, tracks, clips, automation,
+and transport, while replacing supported gameplay mappings and selecting its
+scale. Each individual lemming emits a distinct spawn event; hatch-opening
+remains separate. Only safe landings emit the landing event. Unmapped spawn
+and landing events are silent, preserving existing projects.
+
+Phrase notes follow game ticks, not a separate tempo grid. Rapid repeats replace
+only that event voice's unsounded tail; already-sounding notes finish cleanly.
+Pending work is bounded to 16 voices with at most 8 notes each. Pause freezes
+phrase progress, while reset, panic, output changes, and rewind clear pending
+forward tails. Reverse events retain a single-note accent. The selected phrase's
+**Preview first note** control auditions one pitch; hear the full phrase by
+letting the game run. A saved minimum-velocity limit can make a quiet palette
+louder; presets preserve that user limit.
+
+The simulation supplies event timing. Stored BPM/meter/quantize/swing fields do
+not quantize gameplay events in the current runtime. Musical key and scale
+arrangement remain independently editable.
+
 ## Setup
 
 - Enable: attaches or detaches MIDI routing.

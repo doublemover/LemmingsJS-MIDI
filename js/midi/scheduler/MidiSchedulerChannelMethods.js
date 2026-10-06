@@ -30,6 +30,14 @@ const toOutputList = (outputs) => {
 
 const midiSchedulerChannelMethods = {
   setConfig(config) {
+    const phraseConfigKey = JSON.stringify([
+      config?.enabled, config?.sfx, config?.triggers, config?.scale, config?.noteRange,
+      config?.velocityRange, config?.durationTicks, config?.density, config?.envelope,
+      config?.position, config?.mpe, config?.limits, config?.defaultChannel, config?.timing,
+      config?.repeat, config?.reverse
+    ]);
+    if (phraseConfigKey !== this._gamePhraseConfigKey) this.gamePhrases.clear();
+    this._gamePhraseConfigKey = phraseConfigKey;
     this.config = config || {};
     const maxActive = toPositiveInt(this.config.limits?.maxActiveNotes, 32);
     this._maxActiveNotes = clamp(maxActive, 1, 32);
@@ -45,14 +53,18 @@ const midiSchedulerChannelMethods = {
   },
 
   setOutput(output) {
+    if ((output || null) !== this.output) this.gamePhrases.clear();
     this.output = output || null;
     if (this.output) this._registerOutput(this.output);
     this._initMpe(this.output);
   },
 
   setOutputs(outputs) {
+    const nextOutputs = toOutputList(outputs);
+    const previousOutputs = [...this._outputsById.values()];
+    if (previousOutputs.some(output => !nextOutputs.includes(output))) this.gamePhrases.clear();
     this._outputsById.clear();
-    for (const output of toOutputList(outputs)) {
+    for (const output of nextOutputs) {
       this._registerOutput(output);
     }
     if (this.output) this._registerOutput(this.output);

@@ -41,8 +41,7 @@
   <script type="text/javascript" src="js/vendor/webmidi.js"></script>
   <script type="module" src="js/app/boot.js"></script>
 </head>
-<body oncontextmenu="return false;">
-  <button id="midiWorkspaceToggle" class="midi-workspace-toggle" type="button" aria-controls="midiSequencerWorkspace" aria-expanded="false">MIDI Studio</button>
+<body class="game-page" oncontextmenu="return false;">
   <div id="midiSequencerWorkspace" class="midi-sequencer" aria-label="MIDI sequencer workspace" hidden>
     <div id="midiTransportStrip" class="midi-transport">
       <div class="midi-transport__title">MIDI Studio</div>
@@ -65,9 +64,11 @@
         <select id="midiInputChannel"></select>
       </label>
       </div>
+      <details class="midi-musical-settings"><summary>Key &amp; project metadata</summary>
+      <p class="midi-help">Game events keep their simulation timing. BPM, meter, quantize, and swing are stored project metadata; they do not shift event onsets.</p>
       <div class="midi-control-group" role="group" aria-label="Musical timing">
       <label class="midi-field midi-field--compact">
-        <span>BPM</span>
+        <span>Stored BPM</span>
         <input type="number" id="midiBpmBase" min="40" max="240" step="1" />
       </label>
       <label class="midi-field midi-field--compact">
@@ -93,7 +94,7 @@
         <select id="midiScaleName"></select>
       </label>
       <label class="midi-field midi-field--compact">
-        <span>Quantize</span>
+        <span>Stored quantize</span>
         <select id="midiQuantize">
           <option value="off">Off</option>
           <option value="1/4">1/4</option>
@@ -107,6 +108,7 @@
         <input type="number" id="midiSwing" min="0" max="1" step="0.05" />
       </label>
       </div>
+      </details>
       <details class="midi-project-tools">
         <summary>Project &amp; templates</summary>
         <div class="midi-control-group">
@@ -129,6 +131,20 @@
       <div id="midiProjectStatus" class="midi-status" role="status">Project loading</div>
       <div id="errorDisplay" class="midi-error" role="status"></div>
     </div>
+    <section class="midi-preset-panel" aria-label="Game music presets">
+      <h2>Let the level play</h2>
+      <p>The game is the sequencer. Every spawn, exit, and action supplies its own timing.</p>
+      <div class="midi-preset-actions">
+        <label class="midi-field"><span>Palette</span><select id="midiGamePresetSelect"></select></label>
+        <label class="midi-field"><span>Play style</span><select id="midiGamePresetMode"><option value="phrase">Quiet phrases per event</option><option value="steps">One note per event</option></select></label>
+        <button id="midiGamePresetApply" type="button">Apply event palette</button>
+      </div>
+      <p id="midiGamePresetModeDescription" class="midi-help"></p>
+      <p id="midiGamePresetDescription" class="midi-help" role="status"></p>
+      <p class="midi-help">Applying a palette replaces gameplay-event mappings; it keeps your devices, tracks, and clips. The selected palette describes how each event plays.</p>
+    </section>
+    <details id="midiAdvancedWorkspace" class="midi-advanced-workspace">
+      <summary>Event wiring &amp; detailed musical editing</summary>
     <div class="midi-workspace-grid">
       <section id="midiSourceBrowser" class="midi-region midi-source-browser" aria-label="MIDI source browser">
         <div class="midi-region__header">
@@ -530,29 +546,39 @@
         <div id="midiOutputLog" class="midi-output-log" role="status" aria-live="polite">No output yet</div>
       </section>
     </div>
+    </details>
   </div>
-  <div id="etc" style="color:#fff; position: absolute; bottom:0; left: 0;">
-    <a style="color:#0f0;" href="https://github.com/doublemover/LemmingsJS-MIDI/">Github Repo</a>
-    <span style="color:#0f0; padding: 0 6px;">|</span>
-    <a style="color:#0f0;" href="editor.html">Editor</a>
-  </div>
-  <div class="game">
-    <div class="game_container">
-      <canvas height="480" width="800" id="gameCanvas" class="gameCanvas"></canvas>
+  <header id="gameChrome" class="game-chrome">
+    <div class="game-appbar">
+      <strong>Lemmings</strong>
+      <span id="levelName" class="level-title" role="status"></span>
+      <nav id="etc" class="game-links" aria-label="Game tools">
+        <a href="https://github.com/doublemover/LemmingsJS-MIDI/">GitHub</a>
+        <a href="editor.html">Editor</a>
+  <button id="midiWorkspaceToggle" class="midi-workspace-toggle" type="button" aria-controls="midiSequencerWorkspace" aria-expanded="false">MIDI Studio</button>
+      </nav>
+    </div>
       <div id="levelSelects" class="level_name">
-        <select id="gameTypeSelect"></select>
-        <select id="levelGroupSelect"></select>
-        <select id="levelIndexSelect"></select>
+        <select id="gameTypeSelect" aria-label="Game pack"></select>
+        <select id="levelGroupSelect" aria-label="Difficulty"></select>
+        <select id="levelIndexSelect" aria-label="Level"></select>
         <div class="saved-level-controls">
           <span class="saved-level-label">Saved</span>
-          <select id="savedLevelSelect"></select>
+          <select id="savedLevelSelect" aria-label="Saved level"></select>
           <button id="savedLevelSave" type="button">Save</button>
           <button id="savedLevelExport" type="button">Export</button>
           <button id="savedLevelImport" type="button">Import</button>
           <input id="savedLevelImportInput" type="file" accept=".nxlv" />
         </div>
       </div>
-      <span id="levelName" class="level_name"></span>
+  </header>
+  <main class="game" aria-label="Lemmings game">
+    <div class="game-stage-slot">
+      <div class="game_container">
+        <canvas height="480" width="800" id="gameCanvas" class="gameCanvas"></canvas>
+      </div>
+    </div>
+    <nav class="level-navigation" aria-label="Level navigation">
       <img
         id="levelPrevButton"
         class="arrow_l"
@@ -575,8 +601,8 @@
         tabindex="0"
         aria-label="Next level"
       />
-    </div>
-  </div>
+    </nav>
+  </main>
   <div id="shortcutOverlay" class="shortcut-overlay" aria-hidden="true">
     <div class="shortcut-overlay__panel" role="dialog" aria-modal="true" aria-labelledby="shortcutOverlayTitle">
       <div class="shortcut-overlay__header">

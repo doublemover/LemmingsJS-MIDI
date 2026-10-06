@@ -258,6 +258,17 @@ const lemmingManagerSpawningMethods = {
       this.spawnTotal += extraCount;
     }
     this._nearestGridDirty = true;
+    const soundBus = getRuntimeSoundEvents(this.runtime);
+    if (soundBus?.emitSfx) {
+      for (let i = startingLemLength; i < this.lemmings.length; i += 1) {
+        const spawned = this.lemmings[i];
+        soundBus.emitSfx(
+          SoundEventTypes.LEMMING_SPAWN,
+          SoundEffectIds.SPAWN,
+          { lemmingId: spawned.id, x: spawned.x, y: spawned.y }
+        );
+      }
+    }
   },
 
   addNewLemmings() {

@@ -28,6 +28,11 @@ const midiEventRouterLifecycleMethods = {
   },
 
   attach(soundBus, context = {}) {
+    this._phraseTimer?.onGameTick?.off?.(this._boundPhraseTick);
+    const nextTimer = context?.game?.getGameTimer?.() || soundBus?.gameTimer || null;
+    if (this._phraseTimer !== nextTimer || this.soundBus !== soundBus) this.scheduler.gamePhrases?.clear();
+    this._phraseTimer = nextTimer;
+    this._phraseTimer?.onGameTick?.on?.(this._boundPhraseTick);
     if (this.soundBus?.onEvent) {
       this.soundBus.onEvent.off(this._boundOnEvent);
     }
@@ -37,6 +42,9 @@ const midiEventRouterLifecycleMethods = {
   },
 
   detach() {
+    this._phraseTimer?.onGameTick?.off?.(this._boundPhraseTick);
+    this._phraseTimer = null;
+    this.scheduler.gamePhrases?.clear();
     if (this.soundBus?.onEvent) {
       this.soundBus.onEvent.off(this._boundOnEvent);
     }
@@ -81,8 +89,8 @@ const midiEventRouterLifecycleMethods = {
       this._lastAcceptedBySfx.clear();
       this._arpStateBySfx.clear();
       this._repeatHistoryByKey.clear();
-      this.scheduler?.allNotesOff?.();
-      this.scheduler?.clearQueue?.();
+      this.scheduler?.allNotesOff?.({ preserveGamePhrases: true });
+      this.scheduler?.clearQueue?.({ preserveGamePhrases: true });
     }
     if (this._clockBaseMs == null) {
       this._clockBaseMs = this._nowMs() - eventTimeMs;

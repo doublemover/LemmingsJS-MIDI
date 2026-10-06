@@ -1,4 +1,5 @@
 import { getAppContext, getRuntimeDependency } from '../core/dependencies.js';
+import { GAME_EVENT_MIDI_PRESETS, applyGameEventMidiPreset } from '../midi/project/GameEventMidiPresets.js';
 import {
   AUTOMATION_AXES,
   AUTOMATION_TARGETS,
@@ -264,6 +265,9 @@ const createMidiUiController = ({
   let refreshTimer = null;
   let lastStatus = 'Project loading';
   let factorySourceIndex = null;
+  let cachedRuntimeProject = null;
+  let cachedRuntimeFactory = null;
+  let cachedRuntimeConfig = null;
   const uiMetrics = {
     renderCount: 0,
     queuedRenderCount: 0,
@@ -345,7 +349,16 @@ const createMidiUiController = ({
     };
   };
 
-  const getProjectConfig = () => projectToMidiConfig(ensureProject(), getFactoryConfig() || {});
+  const getProjectConfig = () => {
+    const current = ensureProject();
+    const factory = getFactoryConfig();
+    if (cachedRuntimeProject !== current || cachedRuntimeFactory !== factory || !cachedRuntimeConfig) {
+      cachedRuntimeConfig = projectToMidiConfig(current, factory || {});
+      cachedRuntimeProject = current;
+      cachedRuntimeFactory = factory;
+    }
+    return cachedRuntimeConfig;
+  };
 
   const getConflictReport = () => detectMidiProjectConflicts(ensureProject(), {
     availableOutputIds: toDeviceList(getWebMidi()?.outputs)
@@ -1228,7 +1241,12 @@ const createMidiUiController = ({
 
   const resolveAuditionNotes = (mapping) => {
     if (Array.isArray(mapping?.notes) && mapping.notes.length) {
-      return mapping.notes.map(note => clamp(Math.round(note), 0, 127));
+      const notes = mapping.notes.map(note => clamp(Math.round(note), 0, 127));
+      if (mapping.phrase?.enabled) {
+        notes.sort((a, b) => a - b);
+        return [mapping.phrase.mode === 'down' ? notes.at(-1) : notes[0]];
+      }
+      return notes;
     }
     if (mapping?.chord && (Number.isFinite(mapping.degree) || !Number.isFinite(mapping.note))) {
       const current = ensureProject();
@@ -1296,7 +1314,8 @@ const createMidiUiController = ({
       }) || sent;
     }
     const label = clip?.name || source?.label || 'clip';
-    logOutput(sent ? `Audition ${label} -> ${track.name} ch ${track.channel} notes ${notes.join(',')}` : 'Audition skipped: no output');
+    const preview = mapping.phrase?.enabled ? 'First-note preview' : 'Audition';
+    logOutput(sent ? `${preview} ${label} -> ${track.name} ch ${track.channel} notes ${notes.join(',')}` : 'Audition skipped: no output');
     return !!sent;
   };
 
@@ -2006,6 +2025,10 @@ const createMidiUiController = ({
     const track = selectedTrack();
     const source = selectedSource();
     const clip = selectedClip();
+    const phrasePreview = source?.mode === 'direct' && source.mapping?.phrase?.enabled;
+    const auditionButton = document?.getElementById('midiAuditionButton');
+    setText(auditionButton, phrasePreview ? 'Preview first note' : 'Audition');
+    auditionButton?.setAttribute('aria-label', phrasePreview ? 'Preview first note of selected phrase' : 'Audition selected source');
     const report = getConflictReport();
     setInputValue(document?.getElementById('midiTrackName'), track?.name);
     setInputValue(document?.getElementById('midiTrackInstrument'), track?.instrumentLabel);
@@ -2296,6 +2319,30 @@ const createMidiUiController = ({
       setWorkspaceVisible(!!workspace?.hidden);
     });
     bindById('midiWorkspaceClose', 'click', () => setWorkspaceVisible(false));
+    const presetSelect = document?.getElementById('midiGamePresetSelect');
+    const presetMode = document?.getElementById('midiGamePresetMode');
+    if (presetMode) presetMode.value = 'phrase';
+    const describePreset = () => {
+      const preset = GAME_EVENT_MIDI_PRESETS.find(item => item.id === presetSelect?.value) || GAME_EVENT_MIDI_PRESETS[0];
+      setText(document?.getElementById('midiGamePresetDescription'), preset?.description || '');
+      setText(document?.getElementById('midiGamePresetModeDescription'), presetMode?.value === 'steps'
+        ? 'Each spawn steps down the pattern; each exit steps up. Landing plays a separate plain note.'
+        : 'Each spawn starts a quiet falling phrase; each exit rises. Fast repeats reshape only future notes. Landing plays a separate plain note.');
+    };
+    if (presetSelect) {
+      removeChildren(presetSelect);
+      for (const preset of GAME_EVENT_MIDI_PRESETS) appendOption(document, presetSelect, preset.id, preset.label);
+      presetSelect.value = GAME_EVENT_MIDI_PRESETS[0]?.id || '';
+      describePreset();
+    }
+    bindById('midiGamePresetSelect', 'change', describePreset);
+    bindById('midiGamePresetMode', 'change', describePreset);
+    bindById('midiGamePresetApply', 'click', () => {
+      const preset = GAME_EVENT_MIDI_PRESETS.find(item => item.id === presetSelect?.value);
+      if (!preset) return;
+      commitProject(applyGameEventMidiPreset(ensureProject(), preset.id, { mode: presetMode?.value === 'steps' ? 'steps' : 'phrase' }));
+      setStatus(`Applied ${preset.label}: notes follow game events`);
+    });
     bindById('midiEnabledToggle', 'change', async event => {
       const enabled = !!event.target.checked;
       dispatchProjectIntent({ type: 'enabled.set', enabled });

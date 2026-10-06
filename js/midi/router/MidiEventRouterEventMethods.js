@@ -2,6 +2,7 @@ import { MidiMapping } from '../MidiMapping.js';
 import { MidiScheduler } from '../MidiScheduler.js';
 import { isMidiFlagTriggerType } from '../MidiFlagTriggers.js';
 import { getAppContext } from '../../core/dependencies.js';
+import { SoundEffectIds } from '../../game/SoundEvents.js';
 import {
   canMeasurePerformance,
   recordPerformanceMeasure
@@ -23,6 +24,8 @@ const midiEventRouterEventMethods = {
     try {
       if (!event || event.sfxId == null) return;
       if (!this.mapping.config?.enabled) return;
+      if ((event.sfxId === SoundEffectIds.SPAWN || event.sfxId === SoundEffectIds.LAND) && !this.mapping.getSfxConfig(event.sfxId)) return;
+      if (event.reverse) this.scheduler.gamePhrases?.clear();
       if (typeof this.scheduler.hasAnyOutput === 'function') {
         if (!this.scheduler.hasAnyOutput()) return;
       } else if (!this.scheduler.output) {
@@ -89,6 +92,10 @@ const midiEventRouterEventMethods = {
       }
 
       const arp = spec.arp;
+      if (spec.phrase?.enabled) {
+        this._queueGameEventPhrase(event, spec, meta, noteList);
+        return;
+      }
       let activeNotes = noteList;
       if (arp?.enabled && noteList.length) {
         const sorted = this._arpNotesScratch;

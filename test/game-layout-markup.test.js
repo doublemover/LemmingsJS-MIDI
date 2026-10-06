@@ -1,0 +1,34 @@
+import { expect } from 'chai';
+import { readFileSync } from 'node:fs';
+import { load } from 'cheerio';
+
+const $ = load(readFileSync(new URL('../index.html', import.meta.url), 'utf8'));
+
+describe('game page layout contract', function() {
+  it('keeps tools and level selectors in top chrome rather than below the canvas', function() {
+    for (const id of ['etc', 'midiWorkspaceToggle', 'levelName', 'levelSelects', 'gameTypeSelect', 'levelGroupSelect', 'levelIndexSelect', 'savedLevelSelect', 'savedLevelSave', 'savedLevelImport', 'savedLevelExport']) {
+      expect($(`#${id}`).length, id).to.equal(1);
+      expect($(`#${id}`).closest('#gameChrome').length, id).to.equal(1);
+    }
+    expect($('.game_container').children().map((i, el) => el.attribs.id).get()).to.deep.equal(['gameCanvas']);
+  });
+
+  it('keeps accessible level arrows outside the measured canvas slot', function() {
+    for (const id of ['levelPrevButton', 'levelNextButton']) {
+      const arrow = $(`#${id}`);
+      expect(arrow.closest('.level-navigation').length).to.equal(1);
+      expect(arrow.closest('.game-stage-slot').length).to.equal(0);
+      expect(arrow.attr('role')).to.equal('button');
+      expect(arrow.attr('tabindex')).to.equal('0');
+      expect(arrow.attr('aria-label')).to.match(/level/);
+    }
+  });
+
+  it('starts with studio hidden and its detailed wiring collapsed', function() {
+    expect($('#midiSequencerWorkspace').is('[hidden]')).to.equal(true);
+    expect($('#midiAdvancedWorkspace').is('details')).to.equal(true);
+    expect($('#midiAdvancedWorkspace').attr('open')).to.equal(undefined);
+    expect($('#midiGamePresetApply').closest('#midiAdvancedWorkspace').length).to.equal(0);
+    expect($('#midiSourceList').closest('#midiAdvancedWorkspace').length).to.equal(1);
+  });
+});

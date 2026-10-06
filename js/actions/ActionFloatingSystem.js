@@ -1,6 +1,8 @@
 import { ActionBaseSystem } from './ActionBaseSystem.js';
 import { LemmingStateType } from '../lemmings/LemmingStateType.js';
 import { SpriteTypes } from '../lemmings/SpriteTypes.js';
+import { SoundEventTypes, SoundEffectIds } from '../game/SoundEvents.js';
+import { getRuntimeSoundEvents } from '../game/GameRuntime.js';
 
 const FLOAT_SPEED = [3, 3, 3, 3, -1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2];
 const FLOAT_FRAME = [0, 1, 3, 5, 5, 5, 5, 5, 5, 6, 7, 7, 6, 5, 4, 4];
@@ -33,6 +35,11 @@ class ActionFloatingSystem extends ActionBaseSystem {
       if (level.hasGroundAt(lem.x, lem.y + i)) {
         // landed
         lem.y += i;
+        getRuntimeSoundEvents(this.runtime)?.emitSfx?.(
+          SoundEventTypes.LEMMING_LAND,
+          SoundEffectIds.LAND,
+          { lemmingId: lem.id, x: lem.x, y: lem.y }
+        );
         return LemmingStateType.WALKING;
       }
     }

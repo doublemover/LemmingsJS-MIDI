@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Opt-in spawn/landing events and major/minor/chromatic gameplay-event palettes with event-stepped notes or bounded, adaptive game-clock phrases.
 - `NodeFileProvider` can load files from `.zip`, `.tar.gz`, `.tgz`, and `.rar` archives and exposes `clearCache()`.
 - Node tools export sprites and package levels.
 - Complete Mocha test suite with GitHub Actions workflows.
@@ -22,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `DisplayImage.drawDashedRect` now handles the RGB signature used by the editor overlay.
 
 ### Changed
+- Move game selectors and saved-level tools above the play surface, place level arrows in a right-side touch rail, and size the canvas to the remaining responsive space.
+- Start MIDI Studio with event palettes and collapse detailed routing by default; reuse unchanged derived MIDI configs instead of rebuilding them per input message.
 - MIDI Studio now starts hidden on every page load, with explicit open/close controls, grouped transport and advanced settings, and named note pitches. Saved MIDI routing remains independent of workspace visibility.
 - `patchSprites.js` can slice sprite sheets using `--sheet-orientation`.
 - `packLevels.js` creates DAT archives from 2048-byte level files.

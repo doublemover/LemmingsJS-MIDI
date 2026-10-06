@@ -3,6 +3,7 @@ import { MidiScheduler } from '../MidiScheduler.js';
 import { midiEventRouterLifecycleMethods } from './MidiEventRouterLifecycleMethods.js';
 import { midiEventRouterPlanningMethods } from './MidiEventRouterPlanningMethods.js';
 import { midiEventRouterEventMethods } from './MidiEventRouterEventMethods.js';
+import { midiEventRouterPhraseMethods } from './MidiEventRouterPhraseMethods.js';
 
 class MidiEventRouter {
   constructor(mapping = null) {
@@ -23,6 +24,8 @@ class MidiEventRouter {
     this._arpPatternScratch = [];
     this._lastRateReport = null;
     this._boundOnEvent = this._onEvent.bind(this);
+    this._boundPhraseTick = this._advanceGamePhrases.bind(this);
+    this._phraseTimer = null;
   }
 }
 
@@ -30,6 +33,7 @@ Object.assign(
   MidiEventRouter.prototype,
   midiEventRouterLifecycleMethods,
   midiEventRouterPlanningMethods,
+  midiEventRouterPhraseMethods,
   midiEventRouterEventMethods
 );
 

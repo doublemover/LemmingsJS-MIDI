@@ -109,7 +109,9 @@ const midiSchedulerSendMethods = {
         trackId,
         voiceBudget,
         outputId,
-        mpe: !!this.config.mpe?.enabled
+        mpe: !!this.config.mpe?.enabled,
+        phraseVoiceKey: spec.phraseVoiceKey ?? null,
+        offTimeMs
       });
       if (this.config.mpe?.enabled) {
         this._activeByChannel.set(this._activeChannelKey(channelNumber, outputId), {
@@ -223,7 +225,16 @@ const midiSchedulerSendMethods = {
     this._armNoteOffTimer();
   },
 
-  allNotesOff() {
+  isGamePhraseVoiceBusy(key) {
+    const now = this._nowMs();
+    for (const active of this._activeNotes.values()) {
+      if (active.phraseVoiceKey === key && active.offTimeMs > now) return true;
+    }
+    return false;
+  },
+
+  allNotesOff({ preserveGamePhrases = false } = {}) {
+    if (!preserveGamePhrases) this.gamePhrases.clear();
     const mpe = this.config.mpe;
     let channels;
     if (mpe?.enabled) {
@@ -290,8 +301,9 @@ const midiSchedulerSendMethods = {
     this._ratePlanned.length = 0;
   },
 
-  clearQueue() {
-    if (this._activeNotes.size || this._pendingNoteOns.size || this._noteOffs.length) this.allNotesOff();
+  clearQueue({ preserveGamePhrases = false } = {}) {
+    if (!preserveGamePhrases) this.gamePhrases.clear();
+    if (this._activeNotes.size || this._pendingNoteOns.size || this._noteOffs.length) this.allNotesOff({ preserveGamePhrases });
     this._rateSent.length = 0;
     this._ratePlanned.length = 0;
   },

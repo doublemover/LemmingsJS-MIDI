@@ -21,7 +21,8 @@ const DIRECT_MAPPING_KEYS = Object.freeze([
   'timbre',
   'pitchBend',
   'envelope',
-  'arp'
+  'arp',
+  'phrase'
 ]);
 
 const SOURCE_KINDS = Object.freeze(['sfx', 'trigger', 'midiFlag', 'system', 'procgen']);
@@ -148,7 +149,8 @@ const createEmptyDirectMapping = () => ({
   timbre: null,
   pitchBend: null,
   envelope: null,
-  arp: null
+  arp: null,
+  phrase: null
 });
 
 const createDefaultMidiStep = (index = 0, overrides = {}) => ({
@@ -275,6 +277,11 @@ const sanitizeDirectMapping = (mapping = {}) => {
   out.pitchBend = out.pitchBend == null ? null : clamp(toFiniteNumber(out.pitchBend, 0), -1, 1);
   out.envelope = sanitizeEnvelope(out.envelope);
   out.arp = sanitizeArpPayload(out.arp);
+  out.phrase = isPlainObject(out.phrase) ? {
+    enabled: out.phrase.enabled === true,
+    mode: out.phrase.mode === 'down' ? 'down' : 'up',
+    spacingTicks: clamp(toInteger(out.phrase.spacingTicks, 2), 1, 8)
+  } : null;
   return out;
 };
 

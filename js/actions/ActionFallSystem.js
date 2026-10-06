@@ -2,6 +2,8 @@ import { ActionBaseSystem } from './ActionBaseSystem.js';
 import { Lemming } from '../lemmings/Lemming.js';
 import { LemmingStateType } from '../lemmings/LemmingStateType.js';
 import { SpriteTypes } from '../lemmings/SpriteTypes.js';
+import { SoundEventTypes, SoundEffectIds } from '../game/SoundEvents.js';
+import { getRuntimeSoundEvents } from '../game/GameRuntime.js';
 
 class ActionFallSystem extends ActionBaseSystem {
   constructor(sprites) {
@@ -33,6 +35,13 @@ class ActionFallSystem extends ActionBaseSystem {
       // landed
       if (lem.state > Lemming.LEM_MAX_FALLING) {
         return LemmingStateType.SPLATTING;
+      }
+      if (lem.state > 0 || i > 0) {
+        getRuntimeSoundEvents(this.runtime)?.emitSfx?.(
+          SoundEventTypes.LEMMING_LAND,
+          SoundEffectIds.LAND,
+          { lemmingId: lem.id, x: lem.x, y: lem.y }
+        );
       }
       return LemmingStateType.WALKING;
     }

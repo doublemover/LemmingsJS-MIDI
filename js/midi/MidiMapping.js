@@ -304,7 +304,8 @@ class MidiMapping {
       voiceBudget: sfx.voiceBudget ?? null,
       outputId: sfx.outputId ?? null,
       trackId: sfx.trackId ?? null,
-      arp: sfx.arp ?? null
+      arp: sfx.arp ?? null,
+      phrase: sfx.phrase ?? null
     };
   }
 }

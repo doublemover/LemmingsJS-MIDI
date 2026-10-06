@@ -7,6 +7,64 @@ created from this file, then editable state is stored in
 
 For UI behavior and controls, see `docs/midi-ui.md`.
 
+## Game-event presets
+
+The built-in Bright steps (C major), Cavern steps (A minor), and Chromatic
+machinery presets use the simulation as their timing grid. Two playback modes
+are available:
+
+- **Phrase:** each spawn starts a quiet five-note descending phrase; each exit
+  starts a five-note ascending phrase. Notes advance every two simulation ticks.
+  Rapid arrivals replace the same voice's unsounded notes with the latest
+  phrase. Its already sounding note keeps its original note-off; the replacement
+  waits for it to finish. This merges crowded arrivals rather than layering an
+  unlimited number of phrases.
+- **Steps:** each actual spawn advances a descending arpeggio by one note; each
+  actual exit advances a separate ascending arpeggio. Each landing produces a
+  distinct plain note in both modes.
+
+Spawn rate, travel, and gameplay actions determine the rhythm. Stored transport
+quantize and swing fields do not shift these events. The phrase queue follows
+actual game ticks, with no wall-clock note-on timer or independently running
+beat grid. Pausing freezes pending phrase notes; already sounding notes finish.
+Changing game speed changes subsequent tick spacing. The runtime emits only
+due notes to WebMIDI, so future notes remain editable until they sound.
+
+Pending work is bounded to 16 source/track/output/channel voices and at most
+eight notes per voice (the built-in phrases use five). Every emitted note still
+uses the scheduler's event, byte, and active-voice limits. Panic, reset or changed
+mappings, output replacement/disconnection, and detaching a level cancel pending
+notes. Timeline jumps discard old tails. Reverse events cancel forward tails
+and play a single reversed-event accent; full reverse phrases are not generated.
+Without an attached game-tick source a phrase produces only its first note.
+
+Supported voices include builder steps and warnings, bashing, digging, mining,
+steel hits, skill selection/assignment, hatch opening, level start, bomber
+warnings/explosions, splats, drowning, falling off the level, safe landings, and
+trap/fire events. There are no separate walking, climbing, or floating step events.
+Timbre uses MIDI CC 74; these presets do not select a synthesizer program or
+guarantee an instrument patch on external hardware.
+
+The spawn source is SFX 24 (`lemming-spawn`), emitted once per newly added
+lemming, including extra lemmings. It is distinct from the one-time hatch-open
+event. It uses the existing sound-event history and reverse playback path.
+It is disabled in the factory template and silent in older projects without a
+spawn mapping; applying a game-event preset enables the mapping. Landing is SFX
+25 (`lemming-land`), emitted on successful falling/floating contact, not fatal
+splats. It is also opt-in for existing projects.
+
+Applying a preset replaces the supported SFX mappings and the exit/drown/fire
+trigger overrides, changes the global scale, and expands the note range only
+as needed. It preserves device choices, enabled state, track routing, clips,
+automation, transport settings, and safety limits. Existing custom trap and
+MIDI-flag trigger mappings remain available and can override their SFX voices.
+Steps mode uses note pools of at most four notes; phrase mode uses five-note
+spawn/exit pools. Spawn phrase velocity is 42 before existing track, envelope,
+density, and global velocity constraints. User limits are preserved, so a high
+minimum velocity can prevent the intended quieter result. Custom global
+duration/envelope settings also influence how long a sounding note takes to
+finish before its replacement proceeds.
+
 ## Input
 
 - Channel: `omni` (listen to all channels) or 1-16.

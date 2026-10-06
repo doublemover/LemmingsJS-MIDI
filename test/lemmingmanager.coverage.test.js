@@ -5,6 +5,7 @@ import { makeManager as makeLemmingManager } from './helpers/lemming-manager.js'
 import { Lemming } from '../js/lemmings/Lemming.js';
 import { LemmingStateType } from '../js/lemmings/LemmingStateType.js';
 import { SkillTypes } from '../js/game/SkillTypes.js';
+import { SoundEventTypes } from '../js/game/SoundEvents.js';
 import { TriggerTypes } from '../js/level/TriggerTypes.js';
 import { COUNTER_LIMIT } from '../js/core/constants.js';
 import '../js/LemmingsBootstrap.js';
@@ -145,15 +146,15 @@ describe('LemmingManager coverage', function() {
 
   it('spawns lemmings, opens entrances, and emits sound', function() {
     const { manager, gvc } = makeManager();
-    let called = 0;
+    const events = [];
     globalThis.lemmings.endless = true;
-    manager.runtime = { soundEvents: { emitSfx() { called++; } } };
+    manager.runtime = { soundEvents: { emitSfx(type) { events.push(type); } } };
     manager.releaseTickIndex = 4;
     manager.addNewLemmings();
     expect(manager.lemmings.length).to.equal(1);
     expect(gvc.getOutCount()).to.equal(1);
     expect(manager.level.entrances[0]._opened).to.equal(true);
-    expect(called).to.equal(1);
+    expect(events).to.deep.equal([SoundEventTypes.ENTRANCE_OPEN, SoundEventTypes.LEMMING_SPAWN]);
   });
 
   it('handles action application branches', function() {
