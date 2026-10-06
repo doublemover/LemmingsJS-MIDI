@@ -48,6 +48,8 @@ class MidiUiPage {
 
   async goto(path = '/') {
     await this.page.goto(path);
+    await this.page.locator('#midiWorkspaceToggle').click();
+    await this.page.locator('#midiSequencerWorkspace details').evaluateAll(elements => elements.forEach(element => { element.open = true; }));
     await this.page.waitForSelector(midiUiSelectors.enabledToggle);
   }
 

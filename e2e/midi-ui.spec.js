@@ -388,6 +388,8 @@ test('MIDI project persists across reload', async ({ page }) => {
 
   await page.reload();
   await waitForHarnessReady(page);
+  await expect(page.locator('#midiSequencerWorkspace')).toBeHidden();
+  await page.locator('#midiWorkspaceToggle').click();
   await page.waitForSelector('#midiSourceList .midi-source-row');
   const note = await page.evaluate(() => (
     window.__E2E__.midiGetProject().sources.find(source => source.id === 'sfx-1').mapping.note
@@ -540,6 +542,8 @@ test('MIDI sequencer creates, edits, assigns, auditions, and persists a clip', a
 
   await page.reload();
   await waitForHarnessReady(page);
+  await expect(page.locator('#midiSequencerWorkspace')).toBeHidden();
+  await page.locator('#midiWorkspaceToggle').click();
   await page.waitForSelector('#midiClipList .midi-clip-row');
   const reloaded = await page.evaluate(() => window.__E2E__.midiGetProject());
   expect(reloaded.clips.find(entry => entry.name === 'Lead Clip').steps[0].note).toBe(66);
@@ -993,4 +997,46 @@ test('MIDI sequencer layout avoids horizontal overflow at desktop, tablet, and p
     expect(stack.sequencer).toBeGreaterThan(stack.previous);
     expect(stack.sequencer).toBeGreaterThan(stack.next);
   }
+});
+
+test('MIDI studio is opt-in, keeps saved audio state, and closes transient captures', async ({ page }) => {
+  await installWebMidiStub(page);
+  await page.goto('/?e2e=1');
+  await waitForHarnessReady(page);
+  const workspace = page.locator('#midiSequencerWorkspace');
+  const toggle = page.locator('#midiWorkspaceToggle');
+  await expect(workspace).toBeHidden();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  await toggle.click();
+  await expect(workspace).toBeVisible();
+  await expect(page.locator('#midiWorkspaceClose')).toBeFocused();
+  await expect(page.locator('#midiTrackInspector')).not.toHaveAttribute('open');
+  await expect(page.locator('#midiModulationInspector')).not.toHaveAttribute('open');
+  await page.locator('#midiEnabledToggle').check();
+  await page.locator('#midiMappingNote').fill('74');
+  await page.locator('#midiMappingNote').press('Tab');
+  await expect(page.locator('#midiMappingNoteName')).toHaveText('D4');
+  await page.evaluate(() => window.__E2E__.midiDispatchProjectIntent({ type: 'clip.add' }));
+  const saved = await page.evaluate(() => window.__E2E__.midiGetProject());
+  for (let i = 0; i < 3; i += 1) {
+    await page.locator('#midiLearnButton').click();
+    await page.locator('#midiWorkspaceClose').click();
+    await expect(workspace).toBeHidden();
+    await expect(toggle).toBeFocused();
+    await toggle.click();
+    await expect(page.locator('#midiLearnStatus')).not.toContainText('Listening');
+    expect(await page.evaluate(() => window.__E2E__.midiConfirmLearn())).toBe(false);
+  }
+  expect(await page.evaluate(() => window.__E2E__.midiStartRecording())).toBe(true);
+  await page.locator('#midiWorkspaceClose').click();
+  await toggle.click();
+  await expect(page.locator('#midiRecordCommitButton')).toBeDisabled();
+  expect(await page.evaluate(() => window.__E2E__.midiGetProject())).toEqual(saved);
+  await page.reload();
+  await waitForHarnessReady(page);
+  await expect(workspace).toBeHidden();
+  expect(await page.evaluate(() => window.__E2E__.midiGetProject())).toEqual(saved);
+  await toggle.click();
+  await expect(page.locator('#midiEnabledToggle')).toBeChecked();
+  await expect(page.locator('#midiMappingNote')).toHaveValue('74');
 });

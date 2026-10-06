@@ -1,6 +1,19 @@
 # MIDI UI Guide
 
-The MIDI UI is an in-game sequencer workspace layered over `/`.
+The MIDI Studio is an opt-in sequencer workspace layered over `/`, including the
+GitHub Pages entry point. Choose **MIDI Studio** at the top right to open it.
+Every page load starts with the workspace hidden, even when a saved project has
+MIDI enabled. Opening or closing the studio does not change routing, audio,
+project settings, or the saved enabled state. Visibility is not persisted.
+
+**Close studio** returns focus to the opener and cancels uncommitted Learn or
+Record captures. Escape cancels a pending capture first; another Escape closes
+the studio. Use **Panic / stop notes** when you want to stop MIDI output notes.
+
+The transport separates device connections from musical timing. Project and
+template operations, track output/performance, and project-wide conditions and
+modulation use expandable sections. Direct note editing displays scientific
+pitch notation (MIDI 60 = C4); durations are labelled in game ticks.
 
 ## Setup
 

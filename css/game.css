@@ -949,3 +949,57 @@ body.midi-disabled .midi-region select {
     text-align: right;
     white-space: nowrap;
 }
+
+/* Keep the opt-in studio out of the game until explicitly opened. */
+.midi-sequencer[hidden] {
+    display: none;
+}
+
+.midi-workspace-toggle {
+    position: fixed;
+    top: 8px;
+    right: 8px;
+    z-index: 8;
+    padding: 8px 12px;
+    border: 1px solid #607d82;
+    border-radius: 6px;
+    background: #101a20;
+    color: #d7fff5;
+    font: 600 13px Arial, sans-serif;
+    cursor: pointer;
+}
+
+.midi-workspace-toggle:focus-visible {
+    outline: 2px solid #9df5d6;
+    outline-offset: 3px;
+}
+
+.midi-transport {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.midi-control-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 8px;
+    padding: 4px 8px;
+    border-left: 1px solid rgba(185, 207, 213, 0.22);
+    min-width: 0;
+}
+
+.midi-control-group select { max-width: 190px; }
+.midi-control-group .midi-field--compact input { width: 66px; }
+.midi-project-tools { flex-basis: 100%; order: 2; }
+.midi-project-tools[open] > .midi-control-group { margin-top: 8px; }
+.midi-sequencer summary { cursor: pointer; padding: 8px 0; color: #b9dfd8; font-size: 12px; font-weight: 700; }
+.midi-sequencer summary:focus-visible { outline: 2px solid #9df5d6; outline-offset: 2px; }
+.midi-help { color: #afbec5; font-size: 12px; line-height: 1.5; margin: 6px 0 10px; }
+#midiMappingNoteName { color: #9df5d6; font-variant-numeric: tabular-nums; }
+#midiWorkspaceClose { margin-left: auto; }
+@media (max-width: 820px) {
+    .midi-control-group { flex-basis: 100%; border-left: 0; padding: 4px 0; }
+}

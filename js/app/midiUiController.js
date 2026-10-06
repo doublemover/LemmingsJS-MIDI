@@ -2062,6 +2062,8 @@ const createMidiUiController = ({
       if (element) element.disabled = !envelopeEnabled;
     }
     setInputValue(document?.getElementById('midiMappingNote'), mapping.note);
+    setText(document?.getElementById('midiMappingNoteName'), Number.isInteger(mapping.note)
+      ? `${KEY_ROOT_LABELS[mapping.note % 12]}${Math.floor(mapping.note / 12) - 1}` : '');
     setInputValue(document?.getElementById('midiMappingDegree'), mapping.degree);
     setInputValue(document?.getElementById('midiMappingOctave'), mapping.octave);
     setInputValue(document?.getElementById('midiMappingVelocity'), mapping.velocity);
@@ -2271,10 +2273,29 @@ const createMidiUiController = ({
     });
   };
 
+  const setWorkspaceVisible = (visible, { focus = true } = {}) => {
+    const workspace = document?.getElementById('midiSequencerWorkspace');
+    const toggle = document?.getElementById('midiWorkspaceToggle');
+    if (!workspace) return;
+    if (!visible) cancelActiveCapture();
+    workspace.hidden = !visible;
+    toggle?.setAttribute('aria-expanded', String(visible));
+    if (focus) {
+      const target = visible ? document?.getElementById('midiWorkspaceClose') : toggle;
+      target?.focus?.();
+    }
+  };
+
   const bindMidiUi = () => {
     if (bound) return;
     ensureProject();
     cleanupLegacyMidiProjectStorage(storage);
+    setWorkspaceVisible(false, { focus: false });
+    bindById('midiWorkspaceToggle', 'click', () => {
+      const workspace = document?.getElementById('midiSequencerWorkspace');
+      setWorkspaceVisible(!!workspace?.hidden);
+    });
+    bindById('midiWorkspaceClose', 'click', () => setWorkspaceVisible(false));
     bindById('midiEnabledToggle', 'change', async event => {
       const enabled = !!event.target.checked;
       dispatchProjectIntent({ type: 'enabled.set', enabled });
@@ -2698,7 +2719,8 @@ const createMidiUiController = ({
     bindById('midiRecordCommitButton', 'click', () => commitRecording());
     bindById('midiRecordCancelButton', 'click', () => cancelRecording());
     bindById('midiSequencerWorkspace', 'keydown', event => {
-      if (event.key === 'Escape' && cancelActiveCapture()) {
+      if (event.key === 'Escape') {
+        if (!cancelActiveCapture()) setWorkspaceVisible(false);
         event.preventDefault?.();
         event.stopPropagation?.();
         return;

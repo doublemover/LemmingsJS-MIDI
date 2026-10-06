@@ -11,6 +11,8 @@ const registerSequencerDom = (doc) => {
   doc.body = doc.createElement('body');
   const ids = {
     midiSequencerWorkspace: 'div',
+    midiWorkspaceToggle: 'button',
+    midiWorkspaceClose: 'button',
     midiProjectStatus: 'div',
     errorDisplay: 'div',
     midiEnabledToggle: 'input',
@@ -189,6 +191,57 @@ const createControllerHarness = ({
 };
 
 describe('midiUiController sequencer', function() {
+  it('starts hidden and toggles repeatedly without changing saved MIDI state', function() {
+    const { controller, doc, win, view } = createControllerHarness();
+    controller.bindMidiUi();
+    controller.dispatchProjectIntent({ type: 'enabled.set', enabled: true });
+    const saved = win.localStorage.getItem(PROJECT_STORAGE_KEY);
+    const workspace = doc.getElementById('midiSequencerWorkspace');
+    const toggle = doc.getElementById('midiWorkspaceToggle');
+    const close = doc.getElementById('midiWorkspaceClose');
+    expect(workspace.hidden).to.equal(true);
+    for (let i = 0; i < 3; i += 1) {
+      toggle.dispatchEvent({ type: 'click' });
+      expect(workspace.hidden).to.equal(false);
+      expect(toggle.getAttribute('aria-expanded')).to.equal('true');
+      controller.bindMidiUi();
+      expect(workspace.hidden).to.equal(false);
+      close.dispatchEvent({ type: 'click' });
+      expect(workspace.hidden).to.equal(true);
+      expect(toggle.getAttribute('aria-expanded')).to.equal('false');
+    }
+    toggle.dispatchEvent({ type: 'click' });
+    workspace.dispatchEvent({ type: 'keydown', key: 'Escape', preventDefault() {}, stopPropagation() {} });
+    expect(workspace.hidden).to.equal(true);
+    expect(win.localStorage.getItem(PROJECT_STORAGE_KEY)).to.equal(saved);
+    expect(controller.getProject().enabled).to.equal(true);
+    toggle.dispatchEvent({ type: 'click' });
+    controller.dispose();
+    const reloaded = createMidiUiController({ window: win, document: doc, getLemmings: () => view });
+    reloaded.bindMidiUi();
+    expect(workspace.hidden).to.equal(true);
+    expect(reloaded.getProject().enabled).to.equal(true);
+    expect(win.localStorage.getItem(PROJECT_STORAGE_KEY)).to.equal(saved);
+  });
+
+  it('closing the studio discards pending learn and recording captures without committing them', function() {
+    const { controller, doc, win } = createControllerHarness();
+    controller.bindMidiUi();
+    controller.dispatchProjectIntent({ type: 'clip.add' });
+    const saved = win.localStorage.getItem(PROJECT_STORAGE_KEY);
+    const close = doc.getElementById('midiWorkspaceClose');
+    expect(controller.startLearn()).to.equal(true);
+    controller.captureLearnNote(88, 100, 2);
+    close.dispatchEvent({ type: 'click' });
+    expect(controller.confirmLearn()).to.equal(false);
+    expect(controller.startRecording()).to.equal(true);
+    controller.captureRecordMessage({ type: 0x90, note: 62, velocity: 90, channel: 1, timestamp: 10 });
+    close.dispatchEvent({ type: 'click' });
+    expect(controller.captureRecordMessage({ type: 0x80, note: 62, channel: 1, timestamp: 20 })).to.equal(false);
+    expect(doc.getElementById('midiRecordCommitButton').disabled).to.equal(true);
+    expect(win.localStorage.getItem(PROJECT_STORAGE_KEY)).to.equal(saved);
+  });
+
   it('loads a factory project, removes legacy storage, and exposes the project hook', function() {
     const { controller, win, view } = createControllerHarness();
     win.localStorage.setItem('lemmings.midi.overrides', '{"sfx":{"1":{"note":99}}}');
