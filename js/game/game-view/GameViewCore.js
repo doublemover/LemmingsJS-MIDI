@@ -1,3 +1,4 @@
+import { resolveMidiAvailability } from '../../app/midiAvailability.js';
 import {
   BaseLogger,
   DEFAULT_RUNTIME_PROFILE,
@@ -120,6 +121,7 @@ class GameView extends BaseLogger {
     this._midiBaseConfig = null;
     this._midiSchemaHash = null;
     this._midiStatusHandlers = { onEnabled: null, onError: null };
+    this.midiAvailable = resolveMidiAvailability({ windowRef: getRuntimeDependency('window', null), navigatorRef: getRuntimeDependency('navigator', null) || getRuntimeDependency('window', null)?.navigator });
     this.midiEnabled = false;
 
     this.includeSavedLevels = false;

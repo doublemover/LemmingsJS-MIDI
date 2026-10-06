@@ -183,6 +183,7 @@ function init({ windowRef, documentRef, embedMode }) {
 
   lemmings = new GameView();
   lemmings.applyProfileHistoryRetentionPolicy?.();
+  lemmings.midiAvailable = midiUi.available;
   lemmings.midiEnabled = midiUi.getStoredEnabled();
   lemmings.includeSavedLevels = true;
   lemmings.autoExitEditorOnSelect = true;
@@ -207,10 +208,10 @@ function init({ windowRef, documentRef, embedMode }) {
   });
   installE2EHarness({ view: lemmings, midiUi });
 
-  midiInputController = new MidiInputController(lemmings, {
+  midiInputController = midiUi.available ? new MidiInputController(lemmings, {
     getConfig: () => midiUi.getMidiConfig(),
     onConfigChange: patch => midiUi.applyRuntimePatch(patch)
-  });
+  }) : null;
   midiUi.setMidiInputController(midiInputController);
   const midiStatusHandlers = midiUi.getMidiStatusHandlers?.();
   lemmings.setMidiStatusHandlers?.({

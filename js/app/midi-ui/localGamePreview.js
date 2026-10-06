@@ -70,6 +70,7 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
   const start = async () => {
     if (disposed) return false;
     const view = getLemmings();
+    if (view?.midiAvailable === false) return false;
     if (status === 'live' && attachedView === view && audio.getState().enabled) {
       syncConfig();
       return true;

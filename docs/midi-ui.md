@@ -7,6 +7,25 @@ a bottom editor; short landscape screens switch to an editing view, and Close
 returns to the full game. Game controls stay above the play surface and level
 arrows stay in the right rail.
 
+## Mobile opt-in
+
+On phones and tablets the entire MIDI Studio, launcher, MIDI device initialization,
+and local note preview are unavailable by default. Saved MIDI projects are left
+untouched and cannot activate MIDI on these visits. Ordinary game audio is unchanged.
+
+To make MIDI Studio available on mobile, open
+[the mobile opt-in link](https://doublemover.github.io/LemmingsJS-MIDI/?midi=1).
+Use `&midi=1` when the URL already has query parameters. Exactly one `midi=1` is
+required: absent, empty, false, malformed, or duplicate values do not opt in.
+The flag exposes the normal controls; it does not grant device permission or
+unlock browser audio. Use the listening or device controls to do that.
+
+The gate uses mobile browser/device identity (including desktop-mode iPads),
+not the CSS width breakpoint. Rotating a phone does not expose MIDI, and making
+a desktop window narrow does not remove it. Change the URL and reload to opt in.
+Desktop behavior is unchanged. Mobile device detection is necessarily browser-reported;
+a browser that fully disguises itself as a desktop cannot be distinguished.
+
 ## Make one sound
 
 1. In **Sounds**, select a readable event such as Spawn, Land, Exit, Build or Dig.

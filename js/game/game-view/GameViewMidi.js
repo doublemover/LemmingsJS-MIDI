@@ -55,7 +55,7 @@ const gameViewMidiMethods = {
 
   setMidiPreviewRouter(router, onDispose = null) {
     this._detachMidiPreview();
-    this.midiPreviewRouter = this._midiPreviewDisposed ? null : (router || null);
+    this.midiPreviewRouter = this._midiPreviewDisposed || this.midiAvailable === false ? null : (router || null);
     this._midiPreviewOnDispose = this.midiPreviewRouter && typeof onDispose === 'function' ? onDispose : null;
     this._attachMidiPreview(this.game);
   },
@@ -122,6 +122,7 @@ const gameViewMidiMethods = {
   },
 
   async _ensureWebMidiEnabled() {
+    if (this.midiAvailable === false) return null;
     const webMidi = this._getWebMidi();
     if (!webMidi) {
       this._midiStatusHandlers?.onError?.('WebMIDI is not supported in this browser.');
@@ -157,6 +158,7 @@ const gameViewMidiMethods = {
   },
 
   async initMidiRouting() {
+    if (this.midiAvailable === false) this.midiEnabled = false;
     if (!this.midiEnabled) {
       this.midiRouter?.detach?.();
       this.midiRouter?.scheduler?.allNotesOff?.();
@@ -190,7 +192,7 @@ const gameViewMidiMethods = {
     if (enabled) this._localAudioStop?.();
     const request = (this._midiEnableGeneration || 0) + 1;
     this._midiEnableGeneration = request;
-    this.midiEnabled = !!enabled;
+    this.midiEnabled = this.midiAvailable !== false && !!enabled;
     if (!this.midiEnabled) {
       this.midiRouter?.detach?.();
       this.midiRouter?.scheduler?.allNotesOff?.();

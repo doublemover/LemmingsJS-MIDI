@@ -1,3 +1,4 @@
+import { resolveMidiAvailability, applyMidiAvailability } from './midiAvailability.js';
 import { getAppContext, getRuntimeDependency } from '../core/dependencies.js';
 import { resolveGameSoundSource, GAME_SOUND_EVENTS, getEventBehavior, createEventBehaviorPatch, transposeEventPitch, soundNoteName } from './midi-ui/midiSoundEditor.js';
 import { createBrowserNotePreview } from './midi-ui/browserNotePreview.js';
@@ -256,6 +257,23 @@ const createMidiUiController = ({
   readTextFile = readTextFileDefault,
   createPreviewAudio = createBrowserNotePreview
 } = {}) => {
+  const available = resolveMidiAvailability({ windowRef: window });
+  applyMidiAvailability(document, available);
+  if (!available) {
+    const noop = () => {};
+    return {
+      available: false,
+      bindMidiUi: noop,
+      scheduleMidiUiRefresh: noop,
+      refreshMidiUiFromConfig: noop,
+      getStoredEnabled: () => false,
+      getMidiConfig: () => ({ enabled: false }),
+      getMidiStatusHandlers: () => ({}),
+      setMidiInputController: noop,
+      applyRuntimePatch: noop,
+      dispose: noop
+    };
+  }
   const storage = window?.localStorage || getRuntimeDependency('localStorage', null);
   const domListeners = [];
   const outputLog = [];
@@ -3123,6 +3141,7 @@ const createMidiUiController = ({
   };
 
   return {
+    available: true,
     bindMidiUi,
     scheduleMidiUiRefresh: queueRender,
     refreshMidiUiFromConfig: render,

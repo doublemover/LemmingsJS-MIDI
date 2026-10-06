@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Mobile MIDI Studio opt-in via `?midi=1`; without it, MIDI and local note preview remain hidden and inactive while saved projects stay intact.
 - Browser-only game listening and per-sound preview with exclusive local/hardware destinations, bounded Web Audio voices, and cancellable user-gesture unlock.
 - Opt-in spawn/landing events and major/minor/chromatic gameplay-event palettes with event-stepped notes or bounded, adaptive game-clock phrases.
 - `NodeFileProvider` can load files from `.zip`, `.tar.gz`, `.tgz`, and `.rar` archives and exposes `clearCache()`.

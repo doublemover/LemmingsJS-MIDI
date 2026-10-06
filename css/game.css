@@ -1007,3 +1007,5 @@ body.game-page.studio-open { display: grid; grid-template-columns: minmax(0, 1fr
     .studio-open .game-chrome, .studio-open .game { display: none; }
     .studio-open .midi-sequencer { flex: 1 1 auto; margin: 4px; }
 }
+
+#midiWorkspaceToggle[hidden] { display: none !important; }

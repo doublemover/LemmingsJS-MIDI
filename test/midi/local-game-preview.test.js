@@ -87,6 +87,19 @@ const setup = (options = {}) => {
 };
 
 describe('local game note preview', function() {
+  it('refuses excluded mobile preview before initializing browser audio or routing', async function() {
+    const { view, audio, local } = setup();
+    view.midiAvailable = false;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      expect(await local.start()).to.equal(false);
+    }
+    expect(audio.enableCalls).to.equal(0);
+    expect(audio.calls).to.deep.equal([]);
+    expect(view.midiPreviewRouter).to.equal(null);
+    expect(local.getState().enabled).to.equal(false);
+    await local.dispose();
+  });
+
   it('attaches a separate local router while hardware stays disabled and the project stays unchanged', async function() {
     const { view, audio, local, source } = setup();
     const before = JSON.stringify(source);
