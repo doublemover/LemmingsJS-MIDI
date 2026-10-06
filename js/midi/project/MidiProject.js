@@ -130,6 +130,7 @@ const sanitizePositionConfig = (position = {}, fallback = DEFAULT_CONFIG.positio
   xNoteRange: sanitizeRange(position?.xNoteRange, fallback.xNoteRange ?? { min: -12, max: 12 }, -48, 48),
   timbreRange: sanitizeRange(position?.timbreRange, fallback.timbreRange ?? { min: 0, max: 127 }, 0, 127),
   viewPan: sanitizeBoolean(position?.viewPan, fallback.viewPan ?? false),
+  panMode: position?.panMode === 'level' ? 'level' : 'viewport',
   panRange: sanitizeRange(position?.panRange, fallback.panRange ?? { min: -127, max: 127 }, -127, 127),
   panDeadZonePct: clamp(toFiniteNumber(position?.panDeadZonePct, fallback.panDeadZonePct ?? 0.02), 0, 0.5),
   panOnscreenWeight: clamp(toFiniteNumber(position?.panOnscreenWeight, fallback.panOnscreenWeight ?? 0.8), 0, 1),

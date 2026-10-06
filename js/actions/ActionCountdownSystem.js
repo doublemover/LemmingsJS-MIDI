@@ -30,6 +30,12 @@ class ActionCountdownSystem extends ActionBaseSystem {
     if (lem.countdown <= 0) {
       return LemmingStateType.NO_STATE_TYPE;
     }
+    if (lem.countdown % 16 === 0) {
+      getRuntimeSoundEvents(this.runtime)?.emitSfx?.(
+        SoundEventTypes.BOMBER_COUNTDOWN, SoundEffectIds.COUNTDOWN,
+        { lemmingId: lem.id, x: lem.x, y: lem.y, countdownNumber: lem.countdown / 16 }
+      );
+    }
     lem.countdown--;
     if (lem.countdown === 0) {
       lem.setCountDown(null);

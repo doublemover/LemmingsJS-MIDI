@@ -10,7 +10,7 @@ class BrowserNotePreview {
   constructor({ createAudioContext, nowMs, onStateChange, maxVoices = 16, maxNoteSeconds = 8, volume = 0.15 } = {}) {
     const AudioContextType = globalThis.AudioContext || globalThis.webkitAudioContext;
     this._createContext = createAudioContext === undefined
-      ? (AudioContextType ? () => new AudioContextType() : null)
+      ? (AudioContextType ? () => new AudioContextType({ sampleRate: 48000 }) : null)
       : createAudioContext;
     this._nowMs = nowMs || (() => globalThis.performance?.now?.() ?? Date.now());
     this._listeners = new Set();
@@ -49,6 +49,7 @@ class BrowserNotePreview {
     this.output = Object.freeze({
       id: 'browser-note-preview',
       name: 'Browser audio preview',
+      supportsPerNotePan: true,
       channels: Object.freeze(channels),
       clear: () => this._clearVoices()
     });
@@ -193,9 +194,9 @@ class BrowserNotePreview {
       if (offset < 0 || offset > this._maxNoteSeconds * 1000) continue;
       const time = baseTime + offset;
       const length = clamp(finite(spec.durationMs, durationMs), 30, this._maxNoteSeconds * 1000);
-      if (Number.isFinite(spec.pan)) channel.sendControlChange(10, Math.round((clamp(spec.pan, -127, 127) + 127) / 2), { time });
       if (Number.isFinite(spec.pitchBend)) channel.sendPitchBend(spec.pitchBend, { time });
-      if (channel.sendNoteOn(spec.note, { rawAttack: finite(spec.velocity, 80), time })) {
+      if (channel.sendNoteOn(spec.note, { rawAttack: finite(spec.velocity, 80), time,
+        ...(Number.isFinite(spec.pan) ? { pan: clamp(spec.pan / 127, -1, 1) } : {}) })) {
         channel.sendNoteOff(spec.note, { time: time + length });
         played = true;
       }
@@ -272,7 +273,14 @@ class BrowserNotePreview {
       gain.gain.setValueAtTime(voice.peak, voice.end - RELEASE_SECONDS);
       gain.gain.linearRampToValueAtTime(0, voice.end);
       oscillator.connect(gain);
-      gain.connect(channel.gain);
+      if (Number.isFinite(options.pan) && context.createStereoPanner) {
+        voice.pan = context.createStereoPanner();
+        voice.pan.pan.setValueAtTime(clamp(options.pan, -1, 1), start);
+        gain.connect(voice.pan);
+        voice.pan.connect(channel.gain);
+      } else {
+        gain.connect(channel.gain);
+      }
       oscillator.onended = () => this._destroyVoice(voice);
       oscillator.start(start);
       oscillator.stop(voice.end);
@@ -326,6 +334,7 @@ class BrowserNotePreview {
     try { voice.oscillator.stop(); } catch { /* Already ended or failed to start. */ }
     voice.oscillator.disconnect();
     voice.gain.disconnect();
+    voice.pan?.disconnect();
     this._setStatus(this._status, this._message);
   }
 

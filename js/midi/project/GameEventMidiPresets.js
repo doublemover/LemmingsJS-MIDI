@@ -42,6 +42,9 @@ const createPresetMappings = (palette, mode) => {
     arp: { enabled: true, mode, length: offsets.length }
   });
   const mappings = new Map([
+    [SoundEffectIds.BLOCKER_TURN, note('Walker turn', 0, 2, 72, 55)],
+    [SoundEffectIds.BLOCKER_CONTACT, note('Blocker reply', fifth, 2, 72, 75)],
+    [SoundEffectIds.COUNTDOWN, note('Bomber countdown', 0, 2, 76, 80)],
     [SoundEffectIds.SPAWN, arp('Spawn · falling', run.map(offset => offset + 12), 'down', 3, 72, 90)],
     [SoundEffectIds.EXIT, arp('Exit · rising', run, 'up', 6, 96, 100)],
     [SoundEffectIds.LAND, note('Landing · plain low note', -12, 3, 72, 55)],

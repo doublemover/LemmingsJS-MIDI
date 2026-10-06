@@ -15,6 +15,7 @@ import {
 
 const midiEventRouterLifecycleMethods = {
   setMapping(mapping) {
+    this._arpStateBySfx.clear();
     this.mapping = mapping instanceof MidiMapping ? mapping : new MidiMapping(mapping || {});
     this.scheduler.setConfig(this.mapping.config);
   },
@@ -30,7 +31,11 @@ const midiEventRouterLifecycleMethods = {
   attach(soundBus, context = {}) {
     this._phraseTimer?.onGameTick?.off?.(this._boundPhraseTick);
     const nextTimer = context?.game?.getGameTimer?.() || soundBus?.gameTimer || null;
-    if (this._phraseTimer !== nextTimer || this.soundBus !== soundBus) this.scheduler.gamePhrases?.clear();
+    if (this._phraseTimer !== nextTimer || this.soundBus !== soundBus) {
+      this.scheduler.gamePhrases?.clear();
+      this._arpStateBySfx.clear();
+      this._lastTickBySfx.clear();
+    }
     this._phraseTimer = nextTimer;
     this._phraseTimer?.onGameTick?.on?.(this._boundPhraseTick);
     if (this.soundBus?.onEvent) {
@@ -42,6 +47,8 @@ const midiEventRouterLifecycleMethods = {
   },
 
   detach() {
+    this._arpStateBySfx.clear();
+    this._lastTickBySfx.clear();
     this._phraseTimer?.onGameTick?.off?.(this._boundPhraseTick);
     this._phraseTimer = null;
     this.scheduler.gamePhrases?.clear();

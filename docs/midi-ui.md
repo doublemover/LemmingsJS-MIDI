@@ -37,6 +37,10 @@ a browser that fully disguises itself as a desktop cannot be distinguished.
 
 Exit and Drown resolve their effective trigger overrides, so the simple editor
 changes the voice actually heard rather than an SFX alias hidden by precedence.
+Fire resolves the frying trigger voice. A walker turning at a blocker produces
+paired walker/blocker notes; bomber numbers produce five descending notes.
+Frequent fire events climb through eight pitches, then alternate the highest two;
+a quiet gap resets the run. These follow actual game ticks without quantization.
 Opening a custom chord, scale-degree or clip mapping never rewrites it. Its
 unsupported simple fields are disabled with an explicit Custom label; use
 **Edit detailed wiring** to retain and edit the full mapping.
@@ -48,6 +52,15 @@ source/track/clip/modulation editing. Stored BPM, meter, quantize and swing are
 expert metadata and do not shift gameplay event onsets.
 
 ## Local audio and MIDI safety
+
+**Position pan** in Sounds selects Off, Viewport, or Whole level. Whole level maps
+the level's left/right edges to full left/right and clamps off-level events.
+Viewport uses the camera position when each event happens, so camera movement
+affects new notes. Existing voices retain their pan. Local listening requests
+48 kHz and pans each voice separately, even on a shared channel. Spatial pan on
+external MIDI uses per-note MPE channels; it is suppressed on shared non-MPE
+channels to avoid moving unrelated sounding notes. Explicit static channel pan
+remains available in Expert.
 
 Local listening owns a separate Web Audio context and local-only output adapter.
 It never requests WebMIDI permission or falls back to a hardware output. Entering

@@ -62,7 +62,8 @@
     "yToVelocity": true,
     "yToTimbre": true,
     "timbreRange": { "min": 20, "max": 110 },
-    "viewPan": false,
+    "viewPan": true,
+    "panMode": "viewport",
     "panRange": { "min": -127, "max": 127 },
     "panDeadZonePct": 0.02,
     "panOnscreenWeight": 0.8,
@@ -159,6 +160,9 @@
     "22": { "name": "dig", "note": 59, "durationTicks": 4 },
     "23": { "name": "mine", "note": 61, "durationTicks": 4 },
     "24": { "name": "spawn", "note": 72, "durationTicks": 4, "disabled": true },
-    "25": { "name": "land", "note": 48, "durationTicks": 3, "disabled": true }
+    "25": { "name": "land", "note": 48, "durationTicks": 3, "disabled": true },
+    "26": { "name": "walker-turn", "note": 60, "durationTicks": 2, "velocity": 72 },
+    "27": { "name": "blocker-reply", "note": 67, "durationTicks": 2, "velocity": 72 },
+    "28": { "name": "bomber-countdown", "note": 60, "durationTicks": 2, "velocity": 76 }
   }
 }

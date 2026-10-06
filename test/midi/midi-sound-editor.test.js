@@ -28,5 +28,8 @@ describe('simple game sound editor', function() {
     const source={id:'exit',kind:'sfx',sourceKey:String(SoundEffectIds.EXIT)};
     const trigger={id:'actual-exit',kind:'trigger',sourceKey:String(TriggerTypes.EXIT_LEVEL)};
     expect(resolveGameSoundSource({sources:[source,trigger]},{id:SoundEffectIds.EXIT})).to.equal(trigger);
+    const fire={id:'fire',kind:'sfx',sourceKey:String(SoundEffectIds.TRAP_FIRE)};
+    const frying={id:'actual-fire',kind:'trigger',sourceKey:String(TriggerTypes.FRYING)};
+    expect(resolveGameSoundSource({sources:[fire,frying]},{id:SoundEffectIds.TRAP_FIRE})).to.equal(frying);
   });
 });

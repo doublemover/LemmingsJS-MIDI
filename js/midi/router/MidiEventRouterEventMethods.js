@@ -3,6 +3,7 @@ import { MidiScheduler } from '../MidiScheduler.js';
 import { isMidiFlagTriggerType } from '../MidiFlagTriggers.js';
 import { getAppContext } from '../../core/dependencies.js';
 import { SoundEffectIds } from '../../game/SoundEvents.js';
+import { quantizeToScale, resolveScale } from '../midi-mapping/MidiMappingDomain.js';
 import {
   canMeasurePerformance,
   recordPerformanceMeasure
@@ -25,7 +26,10 @@ const midiEventRouterEventMethods = {
       if (!event || event.sfxId == null) return;
       if (!this.mapping.config?.enabled) return;
       if ((event.sfxId === SoundEffectIds.SPAWN || event.sfxId === SoundEffectIds.LAND) && !this.mapping.getSfxConfig(event.sfxId)) return;
-      if (event.reverse) this.scheduler.gamePhrases?.clear();
+      if (event.reverse) {
+        this.scheduler.gamePhrases?.clear();
+        this._arpStateBySfx.clear();
+      }
       if (typeof this.scheduler.hasAnyOutput === 'function') {
         if (!this.scheduler.hasAnyOutput()) return;
       } else if (!this.scheduler.output) {
@@ -91,8 +95,25 @@ const midiEventRouterEventMethods = {
         noteList = this._singleNoteBuffer;
       }
 
-      const arp = spec.arp;
-      if (spec.phrase?.enabled) {
+      const fire = event.type === 'lemming-fire';
+      if (fire && !event.reverse) {
+        const key = `fire:${event.sfxId}`;
+        const previous = this._arpStateBySfx.get(key);
+        const delta = event.tick - (previous?.tick ?? -Infinity);
+        const window = Math.max(1, this.mapping.config?.density?.windowTicks ?? 24);
+        const index = previous && delta >= 0 && delta < window
+          ? (previous.index < 7 ? previous.index + 1 : 6) : 0;
+        const step = index < 6 ? index : 6 + index % 2;
+        const range = this.mapping.config.noteRange;
+        const scale = resolveScale(this.mapping.config.scale);
+        const top = Math.min(127, range.max);
+        const base = Math.max(range.min, Math.min(noteList[0], top - 21));
+        const pitch = Math.max(range.min, Math.min(top, quantizeToScale(base + step * 3, scale)));
+        noteList = [pitch];
+        this._storeArpState(key, { tick: event.tick, index });
+      }
+      const arp = fire ? null : spec.arp;
+      if (spec.phrase?.enabled && !fire && event.type !== 'bomber-countdown') {
         this._queueGameEventPhrase(event, spec, meta, noteList);
         return;
       }

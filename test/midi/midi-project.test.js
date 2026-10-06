@@ -36,7 +36,7 @@ describe('MidiProject', function() {
     expect(project.devices.inputChannel).to.equal('omni');
     expect(project.transport).to.include({ bpmBase: 120, quantize: '1/16', swing: 0 });
     expect(project.global.density).to.include({ velocityBoost: 0.4, durationScale: 0.5 });
-    expect(project.global.position).to.include({ viewPan: false });
+    expect(project.global.position).to.include({ viewPan: true, panMode: 'viewport' });
     expect(project.automation.map(lane => lane.target)).to.include.members(['velocity', 'timbre']);
     expect(project.tracks[0]).to.include({
       id: 'track-1',

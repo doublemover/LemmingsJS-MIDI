@@ -53,7 +53,8 @@ const midiSchedulerSendMethods = {
       if (spec.timbre != null && Number.isFinite(spec.timbre)) {
         channel.sendControlChange(timbreCc, clamp(spec.timbre, 0, 127), { time: sendTimeMs });
       }
-      if (spec.pan != null && Number.isFinite(spec.pan)) {
+      if (spec.pan != null && Number.isFinite(spec.pan) && !output.supportsPerNotePan &&
+          (!spec.spatialPan || this.config.mpe?.enabled)) {
         const panRange = this.config.position?.panRange;
         const signedPan = (panRange?.min ?? 0) < 0;
         let panValue = spec.pan;
@@ -86,7 +87,8 @@ const midiSchedulerSendMethods = {
         this._stealOldestNote();
       }
 
-      channel.sendNoteOn(spec.note, { rawAttack: attackVelocity, time: sendTimeMs });
+      channel.sendNoteOn(spec.note, { rawAttack: attackVelocity, time: sendTimeMs,
+        ...(output.supportsPerNotePan && Number.isFinite(spec.pan) ? { pan: spec.pan / 127 } : {}) });
       if (sendTimeMs > now) {
         this._pendingNoteOns.set(token, { output, channel: channelNumber, note: spec.note, timeMs: sendTimeMs });
       }

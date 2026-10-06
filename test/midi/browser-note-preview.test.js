@@ -315,7 +315,7 @@ describe('BrowserNotePreview', function() {
     expect(scheduler.sendNote({ note: 60, velocity: 80, pitchBend: 0.5, pan: 127, timbre: 100, durationTicks: 4, timeMs: 1100 })).to.equal(true);
     expect(context.oscillators).to.have.length(1);
     expect(context.oscillators[0].detune.events[0].value).to.equal(600);
-    expect(context.panners[1].pan.events.at(-1).value).to.equal(1);
+    expect([...preview._voices][0].pan.pan.events.at(-1).value).to.equal(1);
     scheduler.allNotesOff();
     expect(preview.getState().activeVoices).to.equal(0);
     expect(context.oscillators[0].disconnected).to.equal(true);
@@ -358,6 +358,17 @@ describe('BrowserNotePreview', function() {
     channel.sendControlChange(120, 0);
     expect(preview.getState().activeVoices).to.equal(0);
     await preview.dispose();
+  });
+
+  it('keeps simultaneous voices on the same channel at their own pan positions', async function() {
+    const { preview } = setup();
+    await preview.enable();
+    preview.output.channels[1].sendNoteOn(60, { pan: -1 });
+    preview.output.channels[1].sendNoteOn(67, { pan: 1 });
+    const voices = [...preview._voices];
+    expect(voices.map(voice => voice.pan.pan.events.at(-1).value)).to.deep.equal([-1, 1]);
+    preview.panic();
+    expect(voices.every(voice => voice.pan.disconnected)).to.equal(true);
   });
 
   it('tolerates unavailable panning and exceptions in status consumers', async function() {

@@ -77,6 +77,7 @@ const DEFAULT_CONFIG = Object.freeze({
       { axis: 'y', target: 'timbre', min: 110, max: 20, enabled: true }
     ],
     viewPan: false,
+    panMode: 'viewport',
     panRange: { min: -127, max: 127 },
     panDeadZonePct: 0.02,
     panOnscreenWeight: 0.8,

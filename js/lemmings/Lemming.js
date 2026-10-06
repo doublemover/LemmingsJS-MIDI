@@ -2,6 +2,7 @@ import { LemmingStateType } from './LemmingStateType.js';
 import { BaseLogger } from '../util/LogHandler.js';
 import { SoundEventTypes, SoundEffectIds } from '../game/SoundEvents.js';
 import { getRuntimeMiniMap, getRuntimeSoundEvents } from '../game/GameRuntime.js';
+import { TriggerTypes } from '../level/TriggerTypes.js';
 
 const addMiniMapDeath = (runtime, x, y) => {
   getRuntimeMiniMap(runtime)?.addDeath(x, y);
@@ -42,6 +43,17 @@ class Lemming extends BaseLogger {
 
   getDirection() {
     return this.lookRight ? 'right' : 'left';
+  }
+
+  onTrigger(_tick, walker, trigger) {
+    const turns = walker && (trigger.type === TriggerTypes.BLOCKER_LEFT && walker.lookRight ||
+      trigger.type === TriggerTypes.BLOCKER_RIGHT && !walker.lookRight);
+    if (!turns || walker === this) return;
+    const bus = getRuntimeSoundEvents(this.runtime);
+    bus?.emitSfx?.(SoundEventTypes.BLOCKER_TURN, SoundEffectIds.BLOCKER_TURN,
+      { lemmingId: walker.id, blockerId: this.id, x: walker.x, y: walker.y });
+    bus?.emitSfx?.(SoundEventTypes.BLOCKER_CONTACT, SoundEffectIds.BLOCKER_CONTACT,
+      { lemmingId: this.id, walkerId: walker.id, x: this.x, y: this.y });
   }
 
   getCountDownTime() {

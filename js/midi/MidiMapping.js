@@ -39,7 +39,12 @@ class MidiMapping {
 
   getSfxConfig(sfxId) {
     if (sfxId == null) return null;
-    return this.config.sfx?.[String(sfxId)] ?? null;
+    const configured = this.config.sfx?.[String(sfxId)];
+    if (configured != null) return configured;
+    if (sfxId === 26 || sfxId === 27 || sfxId === 28) {
+      return { note: sfxId === 27 ? 67 : 60, durationTicks: 2, velocity: 72 };
+    }
+    return null;
   }
 
   /**
@@ -56,6 +61,7 @@ class MidiMapping {
    *   releaseVelocity:number|null,
    *   timbre:number|null,
    *   pan:number|null,
+   *   spatialPan:boolean,
    *   pitchBend:number,
    *   frequencyHz:number,
    *   channel:number|null,
@@ -255,7 +261,7 @@ class MidiMapping {
       const pHigh = Math.max(pMin, pMax);
       pan = Math.round(clamp(panOverride, pLow, pHigh));
     } else if (pan == null && positionCfg.viewPan && Number.isFinite(event.x)) {
-      const viewRect = context.viewRect;
+      const viewRect = positionCfg.panMode === 'level' ? null : context.viewRect;
       const viewWidth = viewRect?.w ?? context.levelWidth ?? null;
       if (Number.isFinite(viewWidth) && viewWidth > 0) {
         const viewX = viewRect?.x ?? 0;
@@ -278,8 +284,9 @@ class MidiMapping {
           const onExtent = Math.max(halfW - deadZoneHalf, 0);
           const onNorm = onExtent > 0 ? Math.min((absDx - deadZoneHalf) / onExtent, 1) : 1;
           const offDist = Math.max(0, absDx - halfW);
-          const offNorm = Math.min(offDist / (viewWidth * offRange), 1);
-          const panPercent = Math.min((onScale * onNorm) + (offScale * offNorm), 1);
+          const offNorm = offRange > 0 ? Math.min(offDist / (viewWidth * offRange), 1) : (offDist > 0 ? 1 : 0);
+          const panPercent = positionCfg.panMode === 'level' ? Math.min(absDx / halfW, 1)
+            : Math.min((onScale * onNorm) + (offScale * offNorm), 1);
           const pMin = positionCfg.panRange?.min ?? -127;
           const pMax = positionCfg.panRange?.max ?? 127;
           const panMax = Math.max(Math.abs(pMin), Math.abs(pMax)) || 127;
@@ -288,6 +295,11 @@ class MidiMapping {
       }
     }
 
+    if (event.type === 'bomber-countdown' && Number.isInteger(event.countdownNumber)) {
+      note = clamp(quantizeToScale(note + (clamp(event.countdownNumber, 1, 5) - 1) * 3, scale),
+        Math.max(0, noteRange.min), Math.min(127, noteRange.max));
+      notes = null;
+    }
     const frequencyHz = sfx.frequencyHz ?? noteToFrequency(note);
 
     return {
@@ -298,6 +310,7 @@ class MidiMapping {
       releaseVelocity,
       timbre,
       pan,
+      spatialPan: pan != null && !Number.isFinite(sfx.pan),
       pitchBend,
       frequencyHz,
       channel: sfx.channel ?? null,

@@ -2002,6 +2002,7 @@ const createMidiUiController = ({
     setInputValue(document?.getElementById('midiGlobalDensityWindow'), current.global.density.windowTicks);
     setInputValue(document?.getElementById('midiGlobalDurationScale'), current.global.density.durationScale);
     setChecked(document?.getElementById('midiGlobalViewPan'), current.global.position.viewPan);
+    setInputValue(document?.getElementById('midiGlobalPanMode'), current.global.position.viewPan ? current.global.position.panMode : 'off');
     setInputValue(document?.getElementById('midiGlobalPanMin'), current.global.position.panRange.min);
     setInputValue(document?.getElementById('midiGlobalPanMax'), current.global.position.panRange.max);
     setInputValue(document?.getElementById('midiGlobalPanDeadZone'), current.global.position.panDeadZonePct);
@@ -2926,6 +2927,9 @@ const createMidiUiController = ({
     };
     bindById('midiGlobalViewPan', 'change', event => {
       updateGlobalPosition({ viewPan: !!event.target.checked });
+    });
+    bindById('midiGlobalPanMode', 'change', event => {
+      updateGlobalPosition({ viewPan: event.target.value !== 'off', panMode: event.target.value === 'level' ? 'level' : 'viewport' });
     });
     bindById('midiGlobalPanMin', 'change', event => {
       const current = ensureProject();

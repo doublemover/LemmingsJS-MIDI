@@ -2,6 +2,8 @@ import { SoundEffectIds } from '../../game/SoundEvents.js';
 import { TriggerTypes } from '../../level/TriggerTypes.js';
 
 const GAME_SOUND_EVENTS = Object.freeze([
+  [SoundEffectIds.BLOCKER_TURN, 'Walker turn'], [SoundEffectIds.BLOCKER_CONTACT, 'Blocker reply'],
+  [SoundEffectIds.COUNTDOWN, 'Bomber countdown'], [SoundEffectIds.TRAP_FIRE, 'Fire'],
   [SoundEffectIds.SPAWN, 'Spawn'], [SoundEffectIds.LAND, 'Land'], [SoundEffectIds.EXIT, 'Exit'],
   [SoundEffectIds.BUILDER_STEP, 'Build'], [SoundEffectIds.DIG, 'Dig'], [SoundEffectIds.BASH, 'Bash'],
   [SoundEffectIds.MINE, 'Mine'], [SoundEffectIds.STEEL_HIT, 'Hit steel'],
@@ -12,7 +14,8 @@ const GAME_SOUND_EVENTS = Object.freeze([
 
 const resolveGameSoundSource = (project, event) => {
   const trigger = event.id === SoundEffectIds.EXIT ? TriggerTypes.EXIT_LEVEL
-    : event.id === SoundEffectIds.DROWN ? TriggerTypes.DROWN : null;
+    : event.id === SoundEffectIds.DROWN ? TriggerTypes.DROWN
+      : event.id === SoundEffectIds.TRAP_FIRE ? TriggerTypes.FRYING : null;
   const override = trigger == null ? null : project.sources.find(source => source.kind === 'trigger' && Number(source.sourceKey) === trigger);
   return override || project.sources.find(source => source.kind === 'sfx' && Number(source.sourceKey) === event.id) || null;
 };
