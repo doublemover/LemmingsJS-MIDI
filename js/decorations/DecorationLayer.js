@@ -1,11 +1,17 @@
 import { decorationPlacements } from './ProcgenDecorationPacks.js';
 
+function* sampledIndices(first, last, stride) {
+  for (let index = first; index <= last; index += stride) yield index;
+  if (last >= first && (last - first) % stride) yield last;
+}
+
 class DecorationLayer {
   constructor(document, pack) {
     this.pack = pack; this.document = document;
     this.canvas = document.createElement('canvas'); this.context = this.canvas.getContext('2d');
     this.mask = document.createElement('canvas'); this.maskContext = this.mask.getContext('2d');
-    this.frames = new WeakMap(); this.key = ''; this.maskKey = '';
+    this.frames = new WeakMap(); this.dotColors = new WeakMap(); this.key = ''; this.maskKey = '';
+    this.lastPack = null; this.placementKey = ''; this.placements = []; this.trims = [];
   }
   bitmap(image, frame) {
     let bitmap = this.frames.get(frame);
@@ -17,13 +23,73 @@ class DecorationLayer {
     }
     return bitmap;
   }
+  dotColor(image, frame) {
+    if (this.dotColors.has(frame)) return this.dotColors.get(frame);
+    const counts = new Uint32Array(128); let total = 0, r = 0, g = 0, b = 0;
+    for (const index of frame) if (!(index & 128)) { counts[index]++; total++; }
+    for (let i = 0; i < counts.length; i++) if (counts[i]) {
+      const color = image.palette.getColor(i);
+      r += (color & 255) * counts[i]; g += ((color >>> 8) & 255) * counts[i]; b += ((color >>> 16) & 255) * counts[i];
+    }
+    const color = total ? `rgb(${Math.round(r / total)},${Math.round(g / total)},${Math.round(b / total)})` : null;
+    this.dotColors.set(frame, color); return color;
+  }
+  preparePlacements(renderer, key) {
+    if (key === this.placementKey) return;
+    const { world, buffer, rasterStep: step, originX, originY, viewWidth, viewHeight } = renderer;
+    this.placements.length = 0; this.trims.length = 0;
+    const bins = [new Map(), new Map()];
+    // Include sprites anchored outside the view, including tall upward-facing art.
+    const firstLane = Math.max(0, Math.floor((originY - this.maxHeight - 96) / 96));
+    const lastLane = Math.min(world.laneCount - 1, Math.floor((originY + viewHeight + this.maxHeight) / 96));
+    const firstChunk = Math.max(0, Math.floor((originX - this.maxWidth) / 128));
+    // Sampling density follows output pixels, rather than world size or lane count.
+    const laneStride = Math.max(1, Math.floor(step / 96)), chunkStride = Math.max(1, Math.floor(step / 128));
+    for (const lane of sampledIndices(firstLane, lastLane, laneStride)) {
+      const end = Math.min(originX + viewWidth + this.maxWidth, world.generatedThrough[lane]);
+      for (const chunk of sampledIndices(firstChunk, Math.ceil(end / 128) - 1, chunkStride)) {
+        for (const placement of decorationPlacements(this.pack, lane, chunk)) {
+          const image = placement.piece.image, scale = placement.scale ?? 1;
+          const width = image.width * scale / step, height = image.height * scale / step;
+          const px = (placement.x - originX) / step, py = (lane * 96 + placement.y - originY) / step;
+          if (width <= 0 || height <= 0 || px >= buffer.width || py >= buffer.height || px + width <= 0 || py + height <= 0) continue;
+          const trim = placement.piece.placement === 'trim', target = trim ? this.trims : this.placements;
+          const entry = { image, phase: placement.phase, px, py, width, height };
+          if (width <= 1 && height <= 1) {
+            entry.px = Math.max(0, Math.min(buffer.width - 1, Math.floor(px + width / 2)));
+            entry.py = Math.max(0, Math.min(buffer.height - 1, Math.floor(py + height / 2)));
+            entry.dot = true; bins[trim ? 1 : 0].set(entry.py * buffer.width + entry.px, entry);
+          } else target.push(entry);
+        }
+      }
+    }
+    for (const entry of bins[0].values()) this.placements.push(entry);
+    for (const entry of bins[1].values()) this.trims.push(entry);
+    this.placementKey = key;
+  }
+  drawPlacements(placements, phase) {
+    for (const { image, phase: offset, px, py, width, height, dot } of placements) {
+      const frame = image.frames[(phase + offset) % image.frames.length];
+      if (dot) {
+        const color = this.dotColor(image, frame);
+        if (color) { this.context.fillStyle = color; this.context.fillRect(px, py, 1, 1); }
+      } else this.context.drawImage(this.bitmap(image, frame), px, py, Math.max(1, width), Math.max(1, height));
+    }
+  }
   draw(renderer, reducedMotion = false) {
     const { world, buffer, rasterStep: step, originX, originY, viewWidth, viewHeight } = renderer;
-    // Tiny zooms cannot resolve the artwork; avoid multiplying scenery by lanes.
-    if (step >= 4) return;
-    const maskKey = `${renderer.lastTerrainKey}:${buffer.width}:${buffer.height}`;
+    if (this.pack !== this.lastPack) {
+      this.lastPack = this.pack; this.frames = new WeakMap(); this.dotColors = new WeakMap(); this.key = ''; this.placementKey = '';
+      this.maxWidth = 0; this.maxHeight = 0;
+      for (const { image } of this.pack.pieces) {
+        this.maxWidth = Math.max(this.maxWidth, image.width); this.maxHeight = Math.max(this.maxHeight, image.height);
+      }
+    }
+    const geometryKey = `${originX}:${originY}:${viewWidth}:${viewHeight}:${step}:${buffer.width}:${buffer.height}:${world.generation}:${world.laneCount}`;
+    const maskKey = `${renderer.lastTerrainKey}:${geometryKey}`;
     const phase = reducedMotion ? 0 : Math.floor(world.tickIndex / (this.pack.tickDivisor || 4));
-    const key = `${maskKey}:${phase}:${world.frontierRevision}`;
+    const placementKey = `${geometryKey}:${world.frontierRevision}`;
+    const key = `${maskKey}:${phase}:${!!reducedMotion}:${world.frontierRevision}`;
     if (key !== this.key) {
       if (this.canvas.width !== buffer.width || this.canvas.height !== buffer.height) {
         this.canvas.width = this.mask.width = buffer.width; this.canvas.height = this.mask.height = buffer.height; this.maskKey = '';
@@ -35,22 +101,10 @@ class DecorationLayer {
       }
       const context = this.context;
       context.clearRect(0, 0, buffer.width, buffer.height); context.imageSmoothingEnabled = false;
-      let count = 0; const trims = [];
-      const firstLane = Math.max(0, Math.floor(originY / 96)), lastLane = Math.min(world.laneCount - 1, Math.floor((originY + viewHeight) / 96));
-      for (let lane = firstLane; lane <= lastLane && count < 1024; lane++) {
-        const end = Math.min(originX + viewWidth, world.generatedThrough[lane]);
-        for (let chunk = Math.max(0, Math.floor(originX / 128)); chunk * 128 < end && count < 1024; chunk++) {
-          for (const placement of decorationPlacements(this.pack, lane, chunk)) {
-            const image = placement.piece.image, frame = image.frames[(phase + placement.phase) % image.frames.length];
-            if (placement.piece.placement === 'trim') { trims.push({ image, frame, x: placement.x, y: lane * 96 + placement.y }); count++; continue; }
-            context.drawImage(this.bitmap(image, frame), (placement.x - originX) / step, (lane * 96 + placement.y - originY) / step, image.width / step, image.height / step); count++;
-          }
-        }
-      }
+      this.preparePlacements(renderer, placementKey); this.drawPlacements(this.placements, phase);
       // Preserve the complete terrain silhouette and player route in front of art.
       context.globalCompositeOperation = 'destination-out'; context.drawImage(this.mask, 0, 0); context.globalCompositeOperation = 'source-over';
-      // Fascia stays below the highest possible walking surface (y=78).
-      for (const { image, frame, x, y } of trims) context.drawImage(this.bitmap(image, frame), (x - originX) / step, (y - originY) / step, image.width / step, image.height / step);
+      this.drawPlacements(this.trims, phase);
       this.key = key;
     }
     renderer.bufferContext.drawImage(this.canvas, 0, 0);
