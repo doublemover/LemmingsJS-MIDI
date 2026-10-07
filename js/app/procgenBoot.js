@@ -1,4 +1,5 @@
 import './bootstrap.js';
+import { ProcgenBitmapHud } from './procgen/ProcgenBitmapHud.js';
 import { createProcgenUiController } from './procgen/ProcgenUiController.js';
 import { ProcgenRecipeTerrain } from './procgen/ProcgenRecipeTerrain.js';
 import { loadTerrainRecipeBook, selectThemeRecipe } from './procgen/ProcgenTerrainRecipes.js';
@@ -352,12 +353,14 @@ const init = async () => {
       await assets.load();
       const book = await loadTerrainRecipeBook(view.gameFactory.fileProvider);
       const recipe = selectThemeRecipe(book, { packPath: config.path, groundSet: assets.groundSet });
-      const terrain = new ProcgenRecipeTerrain({ recipe, terrainPieces: assets.terrainPieces });
-      const palette = assets.groundPieces[0]?.image?.palette;
-      const [sprites, masks] = await Promise.all([resources.getLemmingsSprite(palette), resources.getMasks()]);
+      const objectPieces = (assets.assets?.gadgetImages || []).map((image, id) => ({ ...assets.assets.gadgets[id], id, image }));
+      const terrain = new ProcgenRecipeTerrain({ recipe, terrainPieces: assets.terrainPieces, objectPieces });
+      const palette = assets.assets?.gadgetImages?.find(image => image?.palette)?.palette || assets.groundPieces[0]?.image?.palette;
+      const [sprites, masks, hudSprites] = await Promise.all([resources.getLemmingsSprite(palette), resources.getMasks(), resources.getSkillPanelSprite(palette)]);
       if (activeProcgenRuntime !== runtime) { view.dispose(); return; }
       const lanes = createProcgenLaneRuntime({ canvas, resources, sprites, masks, assets, laneCount, seed: procgenSeed,
         speed: view.gameSpeedFactor, terrain, previousDistances: readProcgenDistances(), onMetrics: state => procgenUi?.syncMetrics(state), windowRef: window });
+      lanes.renderer.hud = new ProcgenBitmapHud({ canvas, sprites: hudSprites });
       view.dispose();
       runtime.lanes = lanes; runtime.world = lanes.world; runtime.view = lanes.view; runtime.game = lanes.game;
       runtime.stageAdapter = { updateStageSize: () => lanes.resize() };
