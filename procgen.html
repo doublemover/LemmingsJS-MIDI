@@ -7,9 +7,31 @@
   <meta name="lemmings-analytics-endpoint" content="" />
   <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=0.0, viewport-fit=cover"/>
   <link type="text/css" rel="stylesheet" href="css/procgen.css">
+  <link type="text/css" rel="stylesheet" href="css/character-controls.css">
+  <link type="text/css" rel="stylesheet" href="css/icons.css">
   <script type="module" src="js/app/procgenBoot.js"></script>
 </head>
 <body>
-  <canvas id="gameCanvas" class="gameCanvas"></canvas>
+  <canvas id="gameCanvas" class="gameCanvas" aria-label="Procedural Lemmings world"></canvas>
+  <section id="procgenDrawer" aria-label="Procgen controls" inert>
+    <div class="procgen-controls-row">
+      <label>Spawns per cohort / lanes <input id="procgenLanes" type="number" min="1" max="1024" step="1" value="1"></label>
+      <label>Speed <select id="procgenSpeed"></select></label>
+      <label>Pack <select id="procgenPack"></select></label>
+      <button id="procgenRestart" type="button">Restart</button>
+    </div>
+    <div id="procgenCharacters" class="character-control-content"></div>
+    <div class="procgen-controls-row">
+      <label>Action music <select id="procgenPreset"></select></label>
+      <label class="procgen-check"><input id="procgenPhrases" type="checkbox"> Short phrases</label>
+      <button id="procgenListen" type="button" aria-pressed="false">Listen locally</button>
+    </div>
+    <p id="procgenPresetDescription"></p>
+    <p id="procgenAudioStatus" role="status">Local sound is off. No hardware output.</p>
+    <p id="procgenMetrics" role="status"></p>
+    <p id="procgenStallStatus"></p>
+    <p id="procgenRunStatus" role="status">Loading…</p>
+  </section>
+  <button id="procgenTab" type="button" aria-controls="procgenDrawer" aria-expanded="false">Controls ▾</button>
 </body>
 </html>
