@@ -1,6 +1,8 @@
 import { expect } from 'chai';
 import fs from 'node:fs';
 import { classifyClassicHazard } from '../js/lemmings/CharacterHazardTypes.js';
+import { CharacterHazardPresentation } from '../js/lemmings/CharacterHazardPresentation.js';
+import { refineCharacterPresentation } from '../js/lemmings/CharacterPresentation.js';
 import { GroundReader } from '../js/level/GroundReader.js';
 import { NodeFileProvider } from '../tools/NodeFileProvider.js';
 import { FileContainer } from '../js/data/FileContainer.js';
@@ -119,6 +121,21 @@ describe('source-identified hazard presentation', function() {
     const classic = await enter(sprites, fixture);
     expect(sprites.getActorHazardKind(classic.actor)).to.equal(null);
     expect(sprites.getActorAnimation(SpriteTypes.DROWNING, true, classic.actor)).to.equal(base.getAnimation(SpriteTypes.DROWNING, true));
+  });
+
+  it('keeps both contact-frame directions independent when actors share a skin', function() {
+    const source = read(catalog.shapes[0].path), manifest = refineCharacterPresentation(source, source, catalog.shapes[0].id);
+    const template = new PixelSpriteSkin(manifest), hazards = new CharacterHazardPresentation();
+    const rightContact = { direction: 'right' }, leftContact = { direction: 'left' };
+    const skin = { colorPalette: template.colorPalette,
+      getAnimation: (_state, right) => ({ getFrame: () => right ? rightContact : leftContact }) };
+    const right = hazards.animation(skin, template, source, manifest, SpriteTypes.FRYING, true, 'fire');
+    const left = hazards.animation(skin, template, source, manifest, SpriteTypes.FRYING, false, 'fire');
+    expect(right).not.to.equal(left);
+    expect(right.getFrame(0)).to.equal(rightContact); expect(left.getFrame(0)).to.equal(leftContact);
+    expect(hazards.animation(skin, template, source, manifest, SpriteTypes.FRYING, true, 'fire')).to.equal(right);
+    expect(hazards.animation(skin, template, source, manifest, SpriteTypes.FRYING, false, 'fire')).to.equal(left);
+    expect(hazards.geometry.get(template).size).to.equal(1);
   });
 
   it('removes duplicate baked-in classic victims only for custom contacts while preserving the source trap', async function() {

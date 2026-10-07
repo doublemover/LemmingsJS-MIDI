@@ -56,19 +56,19 @@ class CharacterHazardPresentation {
 
   animation(skin, template, source, manifest, state, right, kind) {
     if (!DEATH_STATES.has(state) || !source || !manifest) return skin.getAnimation(state, right);
-    const key = `${state}:${kind}`;
+    const geometryKey = `${state}:${kind}`, key = `${geometryKey}:${right ? 1 : -1}`;
     let appearances = this.animations.get(skin);
     if (!appearances) { appearances = new Map(); this.animations.set(skin, appearances); }
     if (appearances.has(key)) return appearances.get(key);
     let geometries = this.geometry.get(template);
     if (!geometries) { geometries = new Map(); this.geometry.set(template, geometries); }
-    let geometry = geometries.get(key);
+    let geometry = geometries.get(geometryKey);
     if (!geometry) {
       const record = manifest.animations.find(entry => SpriteTypes[entry.state] === state);
       const neutral = source.animations.find(entry => entry.state === 'WALKING' && entry.direction === 1);
       const body = deathBody(neutral, record, manifest.presentation.scale, manifest.shapeId);
       geometry = { record, body, rows: new Array(record.frameCount) };
-      geometries.set(key, geometry);
+      geometries.set(geometryKey, geometry);
     }
     const { record, body, rows } = geometry, frames = new Array(record.frameCount);
     const original = skin.getAnimation(state, right);
