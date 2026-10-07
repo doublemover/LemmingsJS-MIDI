@@ -1,6 +1,7 @@
 import { GAME_SOUND_EVENTS, getEventBehavior, createEventBehaviorPatch } from './midiSoundEditor.js';
 import { cloneSafeObject } from '../../util/safeObject.js';
 import { createMidiInstrumentMenus } from './midiInstrumentMenus.js';
+import { GAME_SPEED_DETENTS, gameSpeedDetentIndex, gameSpeedFromDetent } from './gameSpeedDetents.js';
 
 const LAYOUTS = ['focus', 'split', 'overlay'];
 const LAYOUT_KEY = 'lemmings.midi.workbench.layout';
@@ -49,7 +50,13 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     const clock = gameClock(view?.game?.getGameTimer?.());
     if (lastTick != null && clock.tick < lastTick) { activity.clear(); lastEvent = null; }
     lastTick = clock.tick;
-    value('midiGameSpeed', clock.speed); value('midiGameSpeedValue', clock.speed);
+    const speedRange = byId('midiGameSpeed');
+    if (speedRange) {
+      speedRange.value = String(gameSpeedDetentIndex(clock.speed));
+      speedRange.setAttribute('aria-valuetext', `${clock.speed} times game speed`);
+      speedRange.setAttribute('title', `Effective game speed: ${clock.speed}×`);
+    }
+    value('midiGameSpeedValue', clock.speed);
     text('midiGamePlay', clock.running ? 'Pause game' : 'Play game');
     byId('midiGamePlay')?.setAttribute('aria-pressed', String(clock.running));
     byId('midiGamePlay')?.setAttribute('title', clock.running ? 'Pause game' : 'Play game');
@@ -144,7 +151,17 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
       const view = getLemmings(); view?.game?.getGameTimer?.()?.suspend?.(); view?.nextFrame?.(); refreshClock();
     });
     bind('midiGameStop', 'click', () => { getLemmings()?.game?.getGameTimer?.()?.suspend?.(); panic(); refreshClock(); });
-    paired('midiGameSpeed', 'midiGameSpeedValue', 0.1, 8, speed => { getLemmings()?.selectSpeedFactor?.(speed); refreshClock(); });
+    const speedRange = byId('midiGameSpeed');
+    if (speedRange) { speedRange.min = '0'; speedRange.max = String(GAME_SPEED_DETENTS.length - 1); speedRange.step = '1'; }
+    const applySpeed = speed => { getLemmings()?.selectSpeedFactor?.(speed); refreshClock(); };
+    bind('midiGameSpeed', 'input', event => applySpeed(gameSpeedFromDetent(event.target.value)));
+    bind('midiGameSpeedValue', 'change', event => {
+      const speed = finiteInput(event, GAME_SPEED_DETENTS[0], GAME_SPEED_DETENTS.at(-1));
+      if (speed != null) {
+        applySpeed(speed);
+        event.target.value = String(gameClock(getLemmings()?.game?.getGameTimer?.()).speed);
+      }
+    });
     paired('midiSoundPitchDial', null, 0, 127, note => {
       const m = getSource()?.mapping || {}, old = m.note ?? m.notes?.[0] ?? 60;
       updateMapping({ note, ...(m.notes?.length ? { notes: m.notes.map(n => clamp(n + note - old, 0, 127)) } : {}) });

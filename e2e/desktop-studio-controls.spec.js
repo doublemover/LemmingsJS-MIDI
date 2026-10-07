@@ -69,3 +69,19 @@ test('visual selectors support repeated mixed/single/accessory changes without c
   await expect(page.locator('#characterShapeChoices [data-value=rounded_triangle]')).toBeFocused();
   await expect(page.locator('#characterShapeChoices [data-value=rounded_triangle]')).toHaveAttribute('aria-checked', 'true');
 });
+
+test('focused speed range preserves global Help and speed keys while native arrows use game detents', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 }); await installExternalAssetStubs(page);
+  await page.goto('/?e2e=1'); await waitForHarnessReady(page);
+  await page.evaluate(() => { window.__E2E__.pause(); window.__E2E__.setSpeed(10); });
+  const range = page.locator('#midiGameSpeed'), number = page.locator('#midiGameSpeedValue');
+  await expect(number).toHaveValue('10'); await range.focus();
+  await page.keyboard.press('ArrowRight'); await expect(number).toHaveValue('20');
+  await page.keyboard.press('='); await expect(number).toHaveValue('21');
+  await page.keyboard.press('-'); await expect(number).toHaveValue('20');
+  await page.keyboard.press('F1'); await expect(page.locator('#shortcutOverlay')).toHaveAttribute('aria-hidden', 'false');
+  await page.keyboard.press('Escape'); await expect(range).toBeFocused();
+  await page.evaluate(() => window.__E2E__.setSpeed(0.4));
+  await expect(range).toHaveAttribute('aria-valuetext', '0.4 times game speed');
+  await expect(number).toHaveValue('0.4');
+});

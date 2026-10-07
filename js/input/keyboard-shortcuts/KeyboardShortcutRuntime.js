@@ -201,6 +201,9 @@ const keyboardShortcutRuntimeMethods = {
       }
       return true;
     }
+    if (tag === 'INPUT' && String(target.type || target.getAttribute?.('type')).toLowerCase() === 'range') {
+      return !actions.some(action => ['toggleShortcutOverlay', 'speedDown', 'speedDownFast', 'speedUp', 'speedUpFast'].includes(action));
+    }
     return tag === 'INPUT' || tag === 'TEXTAREA';
   },
 
