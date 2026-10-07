@@ -69,7 +69,11 @@
     "pack-pipeline": "node tools/packPipeline.js",
     "format": "eslint . --fix",
     "lint": "eslint .",
-    "depcheck": "knip --dependencies"
+    "depcheck": "knip --dependencies",
+    "bench-procgen-lanes": "node scripts/bench-procgen-lanes.js",
+    "bench-procgen-behavior": "node scripts/bench-procgen-behavior.js",
+    "procgen:mine-recipes": "node tools/mineTerrainRecipes.js",
+    "procgen:check-recipes": "node tools/mineTerrainRecipes.js --check"
   },
   "c8": {
     "check-coverage": true,

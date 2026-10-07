@@ -20,6 +20,7 @@ class ActionDrowningSystem extends ActionBaseSystem {
   process(level, lem) {
     lem.disable();
     if (lem.frameIndex === 0) {
+      this.characterParticles?.emitDeath(lem, 'drowning', this.spriteProvider);
       const triggerType = lem.lastTriggerType ?? null;
       const soundBus = getRuntimeSoundEvents(this.runtime);
       soundBus?.emitSfx?.(

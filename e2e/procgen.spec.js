@@ -1,108 +1,50 @@
 import { expect, test } from '@playwright/test';
-import { waitForHarnessReady } from './helpers/harness.js';
-
-const getRightmostX = (state) => {
-  const lems = Array.isArray(state?.game?.lemmings) ? state.game.lemmings : [];
-  let max = null;
-  for (const lem of lems) {
-    if (!lem || lem.removed || lem.disabled) continue;
-    if (max == null || lem.x > max) max = lem.x;
-  }
-  return max;
+const ready = async page => {
+  await page.waitForFunction(() => window.__PROCGEN_LANES__?.getState?.().terrainRecipe);
+  await page.evaluate(() => window.__PROCGEN_LANES__.pause());
 };
 
-test('procgen loads and spawns endlessly', async ({ page }) => {
-  await page.goto('/procgen.html?e2e=1');
-  await waitForHarnessReady(page);
-  await page.evaluate(() => window.__E2E__.pause());
-
-  const initial = await page.evaluate(() => window.__E2E__.getState());
-  const initialCount = initial.game.lemmings.length;
-  const initialRightmost = getRightmostX(initial) ?? 0;
-  const initialViewX = initial.stage.viewRect.x;
-
-  await page.evaluate(() => window.__E2E__.step(240));
-  const after = await page.evaluate(() => window.__E2E__.getState());
-  const afterCount = after.game.lemmings.length;
-  const afterRightmost = getRightmostX(after) ?? 0;
-
-  expect(afterCount).toBeGreaterThan(initialCount);
-  expect(afterRightmost).toBeGreaterThanOrEqual(initialRightmost);
-  expect(after.stage.viewRect.x).toBeGreaterThanOrEqual(initialViewX);
+test('procgen hides controls by default and generates a single shared real-art world', async ({ page }) => {
+  await page.goto('/procgen.html?e2e=1&seed=42&lanes=8'); await ready(page);
+  await expect(page.locator('#procgenTab')).toHaveAttribute('aria-expanded', 'false');
+  expect(await page.locator('#procgenDrawer').evaluate(el => el.inert)).toBe(true);
+  const initial = await page.evaluate(() => window.__PROCGEN_LANES__.getState());
+  await page.evaluate(() => window.__PROCGEN_LANES__.step(240));
+  const after = await page.evaluate(() => window.__PROCGEN_LANES__.getState());
+  expect(after.lanes).toBe(8); expect(after.spawnedTotal).toBeGreaterThan(initial.spawnedTotal);
+  expect(after.distance.max).toBeGreaterThan(initial.distance.max);
+  expect(after.terrainRecipe).toEqual(expect.any(String));
+  expect(after.recipeMemoryMB).toBeLessThan(4);
+  expect(await page.locator('canvas').count()).toBe(1);
 });
 
-test('procgen exposes debug state and records no-op assist decisions', async ({ page }) => {
-  await page.goto('/procgen.html?e2e=1&seed=debug-state&aiDebug=1');
-  await waitForHarnessReady(page);
-  await page.evaluate(() => window.__E2E__.pause());
-  await page.evaluate(() => window.__E2E__.step(180));
-
-  const state = await page.evaluate(() => window.__E2E__.getState());
-  const procgen = state.procgen;
-
-  expect(procgen.selectedTheme).toEqual(expect.any(String));
-  expect(procgen.seed).not.toBeNull();
-  expect(procgen.generatedEndX).toBeGreaterThan(0);
-  expect(procgen.frontier).toEqual(expect.objectContaining({
-    viableCount: expect.any(Number),
-    rightMovingCount: expect.any(Number)
-  }));
-  expect(procgen.recentChunks.length).toBeGreaterThan(0);
-  expect(procgen.recentPieces.length).toBeGreaterThan(0);
-  expect(procgen.recentPieces.every(piece => piece.theme === procgen.selectedTheme)).toBe(true);
-  expect(procgen.certificatePolicy).toEqual({
-    scope: 'local-tactical',
-    solvabilityClaim: 'none',
-    fullLevelSolvability: false
+test('drawer keyboard/repeated controls keep stable appearance and expose local presets only', async ({ page }) => {
+  await page.goto('/procgen.html?e2e=1&seed=42&lanes=4'); await ready(page);
+  await page.locator('#procgenTab').click();
+  await expect(page.locator('#procgenPreset option')).toHaveCount(15);
+  await expect(page.locator('#characterShapeChoices [role=radio]')).toHaveCount(14);
+  const getAppearance = () => page.evaluate(() => {
+    const api = window.__PROCGEN_LANES__, sprites = api.world.gameResources.characterSprites;
+    return api.world.actors.map(a => sprites.appearanceForActor(a));
   });
-  expect(procgen.trackingSizes.recentChunks).toBeLessThanOrEqual(64);
-  expect(procgen.trackingSizes.recentPieces).toBeLessThanOrEqual(128);
-  expect(procgen.trackingSizes.recentAssists).toBeLessThanOrEqual(32);
-
-  await expect.poll(async () => {
-    await page.evaluate(() => window.__E2E__.step(30));
-    return page.evaluate(() => {
-      const assists = window.__E2E__?.getState?.()?.procgen?.recentAssists || [];
-      return assists.some(assist => (
-        assist.type === 'noop' &&
-        (assist.reason === 'traversable' || assist.reason === 'safe-drop')
-      ));
-    });
-  }).toBe(true);
+  await page.evaluate(() => window.__PROCGEN_LANES__.step(20));
+  const original = await getAppearance();
+  await page.keyboard.press('Escape'); await page.locator('#procgenTab').click();
+  expect(await getAppearance()).toEqual(original);
+  await page.locator('#procgenPreset').selectOption('game-lydian-lanterns');
+  await expect(page.locator('#procgenPresetDescription')).not.toBeEmpty();
+  await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('#midiOutput, #midiInput, #midiStudio')).toHaveCount(0);
 });
 
-test('procgen exposes solver-verified gap certificates for fixed seeds', async ({ page }) => {
-  await page.goto('/procgen.html?e2e=1&seed=certificate-e2e&aiDebug=1&gapChance=1&gapMinWidth=5&gapMaxWidth=5&recentCertificateLimit=8');
-  await waitForHarnessReady(page);
-  await page.evaluate(() => window.__E2E__.pause());
-
-  await expect.poll(async () => {
-    await page.evaluate(() => window.__E2E__.step(120));
-    return page.evaluate(() => {
-      const certificates = window.__E2E__?.getState?.()?.procgen?.recentCertificates || [];
-      return certificates.some(entry => (
-        entry.challengeType === 'bridge-gap' &&
-        entry.decision === 'accept' &&
-        entry.resultType === 'solved'
-      ));
-    });
-  }, { timeout: 10000 }).toBe(true);
-
-  const procgen = await page.evaluate(() => window.__E2E__.getState().procgen);
-  const accepted = procgen.recentCertificates.find(entry => (
-    entry.challengeType === 'bridge-gap' &&
-    entry.decision === 'accept' &&
-    entry.resultType === 'solved'
-  ));
-
-  expect(accepted).toEqual(expect.objectContaining({
-    expectedSkill: 'builder',
-    width: 5
-  }));
-  expect(procgen.recentChunks.some(entry => (
-    entry.type === 'gap' &&
-    entry.certificateDecision === 'accept' &&
-    entry.certificateResultType === 'solved'
-  ))).toBe(true);
-  expect(procgen.trackingSizes.recentCertificates).toBeLessThanOrEqual(8);
+test('1024 lane count clamps and restarts without multiplying renderers', async ({ page }) => {
+  await page.goto('/procgen.html?e2e=1&seed=42&lanes=2'); await ready(page);
+  await page.locator('#procgenTab').click();
+  await page.locator('#procgenLanes').fill('2048'); await page.locator('#procgenLanes').dispatchEvent('change');
+  await page.waitForFunction(() => window.__PROCGEN_LANES__?.getState?.().lanes === 1024);
+  await page.evaluate(() => { window.__PROCGEN_LANES__.pause(); window.__PROCGEN_LANES__.step(12); });
+  const state = await page.evaluate(() => window.__PROCGEN_LANES__.getState());
+  expect(state.alive).toBeGreaterThanOrEqual(1024); expect(state.recipeMemoryMB).toBeLessThan(4);
+  expect(await page.locator('canvas').count()).toBe(1);
+  await expect(page.locator('#procgenLanes')).toHaveValue('1024');
 });

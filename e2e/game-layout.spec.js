@@ -5,7 +5,7 @@ import { waitForHarnessReady } from './helpers/harness.js';
 test.use({ hasTouch: true });
 
 for (const size of [{ width: 1366, height: 768 }, { width: 390, height: 844 }, { width: 844, height: 390 }, { width: 320, height: 568 }]) {
-  test(`game controls stay above the fold and arrows beside the canvas at ${size.width}x${size.height}`, async ({ page }) => {
+  test(`game controls stay above the fold and arrows beside the level selector at ${size.width}x${size.height}`, async ({ page }) => {
     await page.setViewportSize(size);
     await installExternalAssetStubs(page);
     await page.goto('/?e2e=1');
@@ -17,7 +17,7 @@ for (const size of [{ width: 1366, height: 768 }, { width: 390, height: 844 }, {
       };
       return {
         width: window.innerWidth, height: window.innerHeight, scrollWidth: document.documentElement.scrollWidth,
-        canvas: rect('#gameCanvas'), chrome: rect('#gameChrome'),
+        canvas: rect('#gameCanvas'), chrome: rect('#gameChrome'), level: rect('#levelIndexSelect'),
         controls: ['#gameTypeSelect', '#levelGroupSelect', '#levelIndexSelect', '#savedLevelSelect', '#savedLevelSave', '#savedLevelExport', '#savedLevelImport', '#midiWorkspaceToggle', '#levelPrevButton', '#levelNextButton'].map(rect),
         arrows: ['#levelPrevButton', '#levelNextButton'].map(rect)
       };
@@ -40,14 +40,16 @@ for (const size of [{ width: 1366, height: 768 }, { width: 390, height: 844 }, {
         expect(rect.bottom).toBeLessThanOrEqual(layout.height + 1);
       }
       for (const arrow of layout.arrows) {
-        expect(arrow.x).toBeGreaterThanOrEqual(layout.canvas.right);
-        expect(arrow.width).toBeGreaterThanOrEqual(44);
-        expect(arrow.height).toBeGreaterThanOrEqual(44);
+        expect(arrow.x).toBeGreaterThanOrEqual(layout.level.right);
+        expect(arrow.y).toBeGreaterThanOrEqual(layout.chrome.y);
+        expect(arrow.bottom).toBeLessThanOrEqual(layout.chrome.bottom + 1);
+        expect(arrow.width).toBeGreaterThanOrEqual(27);
+        expect(arrow.height).toBeGreaterThanOrEqual(27);
       }
     };
     await check();
     for (let i = 0; i < 2; i += 1) {
-      await page.locator('#midiWorkspaceToggle').click();
+      if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
       await expect(page.locator('#midiExpertView')).toBeHidden();
       await expect(page.locator('#midiSoundsView')).toBeVisible();
       await page.locator('#midiWorkspaceClose').click();

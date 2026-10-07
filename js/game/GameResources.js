@@ -49,8 +49,12 @@ class GameResources extends BaseLogger {
       this.characterSprites = sprites;
       return sprites;
     } catch (error) {
-      this.log.log('Character catalog unavailable; using pack sprites', error);
-      return base;
+      this.log.log('Character catalog unavailable', error);
+      const sprites = new CharacterSpriteSet(base, null, path => this.fileProvider.loadString(path));
+      sprites.catalogError = `Character catalog unavailable: ${error.message}`;
+      await sprites.prepare();
+      this.characterSprites = sprites;
+      return sprites;
     }
   }
   async _getBaseLemmingsSprite(colorPalette) {

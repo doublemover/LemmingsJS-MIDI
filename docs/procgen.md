@@ -1,140 +1,116 @@
-# Procgen Level-Piece Streaming Specification
+# Procedural shared-world mode
 
-This page describes the standalone `procgen.html` runtime: an endless,
-full-viewport Lemmings run with procedural terrain streaming, no HUD/minimap,
-and no MIDI UI.
+`procgen.html` is a full-viewport, left-to-right world. A small top tab pulls a
+compact drawer down; it is closed and inert by default. The drawer contains the
+shared visual character selector, 15 action-music presets, optional short phrases,
+explicit local listening, speed, pack, restart, and an integer 1–1024 cohort/lane
+stepper. It never connects or sends to a hardware MIDI port.
 
-## Scope
-- Pick exactly one compatible visual style/theme for a seeded run, then keep the
-  run visually coherent with that style's real terrain/decor pieces.
-- Run full-viewport canvas mode with hidden GUI/cursor and endless spawning.
-- Stream level pieces to the right while keeping camera follow smooth.
-- Track progression from the live rightmost viable lemming frontier, not from
-  lemming id or selected-lemming state.
-- Use minimal assists for generated local challenges without turning procgen
-  into constant AI control.
-- Keep long-run memory bounded for generated chunks, frontier tracking, and
-  assist decisions.
+## Shared terrain and simulation
 
-## Runtime constants
-- Game type: `OHNO`.
-- Level width: `65535`.
-- Level height: `DEFAULT_LEVEL_HEIGHT`.
-- Release rate: `50`, release count: `50`, save requirement: `0`.
-- Time limit: `INFINITE`.
-- Ground height: `4`.
-- Initial ground width: `280`.
-- Camera follow smoothing: frame-time-based interpolation.
-- Seeded randomness: `?seed=<value>` controls deterministic style selection,
-  terrain placement, lookahead variation, and assist decisions.
+All lanes occupy the same coordinate space and one visible-region renderer.
+Logical lanes are 96 pixels apart, with no collision wall at their boundaries.
+A cohort has one actor per lane. Births are distributed deterministically over
+12 integer game ticks; a fractional presentation phase is metadata only, never a
+fractional collision/physics step. Cohorts repeat every 54 ticks.
 
-## Bootstrap flow
-- Build an `EditorLevel`, set procgen headers, and place one entrance gadget.
-- Convert via `loadEditorLevel`, then load into `Game` through `GameFactory`.
-- Set `view.endless = true` so release never stops.
-- Pick one style compatible with the active pack path. The selected style is the
-  run's theme and is exposed in debug/E2E state.
-- Resolve a procgen seed from `?seed=...` (fallback: stored value or timestamp),
-  derive independent RNG streams for style and terrain/AI, and persist the
-  active seed for replayability.
+The sparse world calls the actual `Lemming` and Walk, Fall, Jump, Bash, Build,
+Climb, Hoist, Shrug, OHNO and Explosion systems with the pack's real MAIN.DAT masks.
+The headless harness uses these same systems, terrain and schedule. It does not
+use the simplified synthetic solver. Multiple actors modify shared terrain, so
+traffic can cause incidental interactions and casualties; routes are screened
+and tested independently without relying on neighboring lanes.
 
-## Theme and piece streaming
-- Terrain comes from the selected theme's actual asset catalog:
-  - ground-capable terrain pieces for the walkable route.
-  - sparse decorative terrain pieces away from the active route.
-  - simple obstacle shapes only when they are compatible with the route and the
-    current assist budget.
-- Piece placement maintains a stable baseline path with bounded rises, dips,
-  small gaps, small barriers, and safe landing surfaces.
-- Decoration must stay readable: avoid dense clusters around the active route,
-  overlapping decorative clutter, and pieces that obscure the next challenge.
-- Generated chunk tracking is bounded. Keep recent chunks/pieces for debugging,
-  but prune old entries once they are far behind the frontier.
+The generator uses [mined real-art assembly recipes](procgen-terrain-analysis.md).
+The source inventory distinguishes 324 configured aliases from 298 physical DAT
+parts, includes both available NXLV examples, and explicitly excludes four
+precomposed VGASPEC bitmaps from tile-assembly learning. Recipe alpha determines
+both color and collision. Ordered erasers, flips and overwrite masks are retained.
 
-## Frontier and lookahead
-- The frontier is the rightmost viable live lemming position.
-- A viable lemming is active, not removed/disabled/dead/exploded, has finite
-  coordinates, and is not stale-stuck behind the active route.
-- If the previous frontier dies, turns around, or gets stuck, recompute from the
-  current live set instead of following its id.
-- Selected lemming changes do not affect frontier calculation.
-- The generator extends terrain when the distance from frontier to generated end
-  drops below a safe threshold. Threshold variation is allowed, but it must stay
-  inside fixed min/max bounds and never allow lemmings to reach an ungenerated
-  edge.
+A run selects exactly one compatible pack/theme. Each seeded lane selects a
+source-derived repeating span; all lanes share an interned collection of these
+spans (roughly 0.5–1.6 MB across the available themes). Source-derived decoration
+stays below the route. Seeded gaps and real-art barriers are admitted only on
+sufficiently flat supporting spans. Basher assistance waits for an actual wall;
+small gaps get a builder, and natural steep seams can grant climbing. Repeating
+spans stay consistent along each lane, avoiding unverified arbitrary seam joins.
 
-## Minimal assist behavior
-- Assist decisions are local and budgeted.
-- Small gaps should prefer the minimum useful builder action.
-- Small barriers should prefer bash/dig/mine only when a local scan indicates a
-  real obstruction.
-- Safe drops should avoid spending a skill; intentional risky drops can assign a
-  floater before splat range.
-- Traversable terrain should produce a no-op decision and no skill spend.
-- Repeated failed attempts on the same lemming/challenge should be cooled down.
-- Generated local gaps emit bounded challenge certificates. The local tactical
-  solver verifies those certificates synchronously during generation; rejected
-  gaps are simplified or replaced with extended terrain according to the solver
-  fallback decision.
-- Dynamic non-gap assists also emit compact local challenge certificates for
-  barrier clearing and unsafe falls. These certificates record synchronous
-  accept/extend/replace/simplify decisions for debug and review, but they do
-  not mark a run solved; runtime replay remains the only full-route authority.
+Only sparse edited chunks are allocated per active terrain region. Old edits are
+pruned behind the leftmost live actor in each lane. There are no world-sized
+bitmaps or per-lane Game/renderer instances. Drawing is restricted to visible
+lanes and pixels, while all admitted actors still receive real fixed steps.
+Scroll/drag explores the shared world; Ctrl/Command-wheel zooms and double-click
+resumes forward camera following.
 
-## Production hardening notes
-- Hazard scans use a rebuilt hazard index instead of per-scan trigger-set
-  allocation.
-- Gap backlog pruning runs even with no active lemmings to avoid stale growth.
-- Terrain stamping reuses cached destination typed-array views per level buffer.
-- Asset-piece selection avoids temporary filtered arrays in hot paths.
-- Debug lists for recent chunks, generated pieces, assist decisions, and
-  per-lemming trackers are fixed-size rings or pruned arrays.
+## Distance and stall recovery
 
-## Debug and E2E state
+Each lane retains a rightward high-water mark, previous/best distance, and actual
+spawn count since its last advance. Visible lanes show numeric records and a
+vertical previous-distance marker. Records survive explicit restart/page reload
+through local storage; unavailable storage leaves the current session usable.
 
-`window.__E2E__.getState().procgen` is the stable procgen debug surface. It
-should remain compact and JSON-safe:
+Default policy data lives in `ProcgenStallPolicy.js`:
 
-- `selectedTheme`: style/theme selected for this run.
-- `seed`: normalized procgen seed.
-- `generatedEndX`: current generated terrain extent.
-- `frontier`: rightmost viable lemming summary with `x`, `y`, `id`, `reason`,
-  and `tick`.
-- `lookahead`: current lookahead distance, threshold, and distance to generated
-  end.
-- `recentChunks`: bounded list of recent generated route chunks.
-- `recentCertificates`: bounded list of recent local challenge certificate
-  decisions, including source, result type, fallback action, and assist reason
-  when applicable.
-- `certificatePolicy`: explicit certificate semantics. Its scope is
-  `local-tactical`, `fullLevelSolvability` is `false`, and procgen must not
-  claim a generated run or level is solved from these checks alone.
-- E2E/debug URLs can force deterministic certificate coverage with
-  `gapChance`, `gapMinWidth`, `gapMaxWidth`, `recentCertificateLimit`, and
-  `procgenCertificateVerification` query parameters.
-- `recentPieces`: bounded list of recent stamped pieces, including style/theme.
-- `recentAssists`: bounded list of recent assist decisions and no-op scans.
-- `trackingSizes`: sizes of cooldown, stuck, gap, chunk, piece, and assist
-  tracking structures.
+- 90 seconds without a new rightward high-water mark, measured in game ticks.
+- At least 12 actual new spawns since that advance, adding 4 per 1200 pixels
+  reached, capped at 64. Scheduled/skipped spawns do not count.
+- Every relevant lane must satisfy both conditions before a cohort-wide reset.
+  One trapped lane cannot kill another that is progressing.
+- OHNO starts one or two whole ticks apart in stable actor order, followed by
+  real explosions. New spawning stops during the cascade. Restart occurs once,
+  after every remaining actor is gone, retaining each lane's distance marker.
+- The next run derives a fresh deterministic terrain seed from run number.
 
-This state is for tests and local debugging. It is not a save format.
+A 16,384-actor soft admission limit prevents indefinite live-population growth.
+If progress stalls at that limit, bounded reserve births allow the required
+actual-spawn criterion to finish; they are never fictitious counter increments.
+Reserve capacity is at most 64 additional births per lane. The compact status
+explicitly reports paused ordinary admission. Large cohorts and long cascades
+have real costs; 1024-lane browser smoothness is not asserted from headless tests.
 
-## Validation
-- `e2e/procgen.spec.js` verifies readiness, endless spawn progression, and
-  camera advance. Productization coverage also verifies one selected theme,
-  frontier/generated-end debug state, and bounded tracking summaries.
-- Unit tests in `test/procgen-controller.test.js`,
-  `test/procgen-terrain-stamper.test.js`, and
-  `test/procgen-asset-manager.test.js` cover stability/perf-sensitive behavior.
-- `npm run capture:e2e:procgen` captures the procgen viewport, canvas/runtime
-  rects, the frontier area, and newest generated pieces into ignored
-  `temp/e2e-captures/` for visual inspection.
+## Character and audio stability
 
-## Productization status
+Actors use their lane index for a seeded cyclic appearance assignment. Each
+finite shape/color list is distributed within one count, including at 1024 lanes;
+palettes necessarily repeat. Closing/reopening controls or rendering does not
+reroll assignments. One accessory plus independent eyewear is preserved.
 
-This checkpoint productizes themed piece streaming, frontier-driven lookahead,
-minimal assists, and local certificate checks for generated gaps, non-gap
-barriers, and unsafe falls. The checks are bounded and local: terrain generation
-can simplify or replace local chunks, dynamic assists only record their local
-decision, and the runtime replay verifier remains authoritative for complete
-solutions.
+The shared world also uses the bounded character-particle pool. Terrain chips
+sample the sparse world’s actual RGB pixels before each cut and confirm removal
+afterward; explosion and unsafe-fall deaths eject the selected wearables. A
+single pool serves all lanes, advances only on fixed ticks, and is cleared on
+restart/disposal. The renderer culls offscreen particles and draws changing
+particle colors directly rather than caching a mutable one-pixel sprite. The
+headless scaling harness omits sprites and this cosmetic pool.
+
+Local music uses the same immutable preset catalog and router as the studio.
+Audio starts only on the Listen button, stops on explicit stop, blur, hidden
+page, explicit restart or disposal, and never auto-enables hardware MIDI. Polyphony/event
+limits still apply to dense cohorts; not every simultaneous event is audible.
+
+## Regression and measurement commands
+
+- `npm run procgen:mine-recipes`: rebuild the bounded all-pack analysis and book.
+- `npm run procgen:check-recipes`: verify exact checked-in reproduction.
+- `npm run bench-procgen-lanes -- --lanes=32 --ticks=3000 --seed=42`: real-art,
+  repeated-cohort headless run. Output includes actual throughput, survival,
+  stalls, failure reasons, distance, memory in MB and admission state.
+- Add `--cohorts=false` for an isolated first-cohort scaling probe or
+  `--analytic=true` for the original simple test-terrain comparator. Neither is
+  the default browser workload; report the selected mode with measurements.
+- `npm run bench-procgen-behavior`: compare the unchanged 059a4cab AI against the
+  revised legacy controller on real Level/LemmingManager blocker/pit fixtures.
+  The original policy is preserved only in a test fixture.
+
+The old controller no longer blocks at every downward pixel. It reassesses
+blockers after a safe-route check, makes legal skill transitions (removing owned
+blocker triggers), tracks high-water progress in pits, and waits until barriers
+are in reach instead of wasting repeated bashes and then digging into void.
+
+`window.__PROCGEN_LANES__` is installed only with `?e2e=1`; it exposes pause,
+resume, bounded step and compact state. `window.procgenDebugState()` reports the
+shared-world state. Tests cover real mask equivalence, deterministic replay,
+independent routes, all source recipes, stall growth/pause/cascade/reset,
+character balance, drawer interactions and local-only controls. Browser E2E and
+visual QA require a permitted browser environment; unit/headless results alone
+are not a live-rendering or listening pass.

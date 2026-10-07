@@ -7,7 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Compact seven-pixel character silhouettes, shape-specific walking and panic, sampled terrain debris, and intact accessory/eyewear ejection work in both classic levels and the sparse procgen world.
+- Procgen now has a hidden pull-down drawer, shared visual character choices, 1–1024 left-to-right lanes in one sparse world, staggered spawn cohorts, local-only listening and fifteen action-music presets.
+- Source-derived terrain recipes cover all available pack levels, with a reproducible corpus report and headless real-action scaling/behavior runners.
+- Per-lane distance records and generous simulation-time/spawn stall recovery preserve progress markers through a staggered OHNO cascade and restart.
+
 ### Fixed
+- Action changes clear only the owning character skin, preserving stable palette caches across 1,024 actors instead of scanning all cached skins and allocating replacement variants.
+- Character appearance changes preload and swap atomically, retaining the last ready look during delayed or failed loads. Stable seeded mixed shapes and random native colors survive redraw and rewind.
 - Clip inspectors now explain their actual event-driven playback and the current meaning of saved Hold, Tie and probability fields, without rewriting imported music.
 - Instrument menus now support arrow keys, label search, reliable dismissal and focus restoration, including actions that disable themselves after use.
 - Future MIDI onsets and releases stay cancellable until due; voice stealing, same-pitch retriggers and Panic cannot leave obsolete gates cutting off replacement notes. Default and explicit routes share one MPE allocation per device.
@@ -21,6 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Xmas 1991/1992 no longer offer a nonexistent fifth level.
 
 ### Added
+- A compact desktop studio with adjacent level arrows, left character/event library, centered game and right sound controls; secondary file tools, segmented layouts and accessible visual character selectors.
+- Local master volume beside game listening, shared with event audition without altering MIDI velocities or sound-edit history.
+- A small self-hosted Lucide SVG icon subset with upstream ISC/MIT notices.
 - All eight native accessories and five eyewear styles on all twelve alternate bodies. One accessory replaces the previous choice, eyewear is separate, and body/accessory/frame colors remain independent. Approved beret pixels remain unchanged.
 - Persistent single-map instrument layouts, game-clock headunit, precise event sound controls, scoped sound references, and musical undo/redo.
 - Stable-ID single/mixed selection for twelve bodies including a transparent-center donut, nine named native body colors and eleven hat colors. Reviewed per-shape beret crown fits lift into the canopy and reattach; cosmetic top padding preserves body/world anchors.

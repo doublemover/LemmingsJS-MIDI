@@ -1,4 +1,8 @@
 import './bootstrap.js';
+import { createProcgenUiController } from './procgen/ProcgenUiController.js';
+import { ProcgenRecipeTerrain } from './procgen/ProcgenRecipeTerrain.js';
+import { loadTerrainRecipeBook, selectThemeRecipe } from './procgen/ProcgenTerrainRecipes.js';
+import { createProcgenLaneRuntime } from './procgen/ProcgenLaneRuntime.js';
 import { GameView } from '../game/GameView.js';
 import { GameTypes } from '../game/GameTypes.js';
 import { EditorLevel } from '../editor/EditorLevel.js';
@@ -51,6 +55,17 @@ const PROCGEN_SKILLS = {
 
 let activeProcgenRuntime = null;
 let analytics = null;
+let procgenUi = null;
+const readProcgenDistances = () => {
+  try { const values = JSON.parse(window.localStorage?.getItem('procgen.laneDistances.v1') || '[]'); return Array.isArray(values) ? values.slice(0, 1024).map(n => Number.isFinite(n) ? Math.max(0, n) : 0) : []; }
+  catch { return []; }
+};
+const saveProcgenDistances = world => {
+  if (!world?.stall?.lanes) return;
+  const values = readProcgenDistances();
+  world.stall.lanes.forEach((lane, index) => { values[index] = Math.max(values[index] || 0, lane.bestDistance, lane.previousDistance, lane.maxX - 36); });
+  try { window.localStorage?.setItem('procgen.laneDistances.v1', JSON.stringify(values)); } catch { /* Session values remain available. */ }
+};
 let procgenBootListeners = [];
 
 const runFocusBlurCleanup = (runtime) => {
@@ -72,13 +87,17 @@ const disposeProcgenRuntime = () => {
   const runtime = activeProcgenRuntime;
   if (!runtime) return;
   activeProcgenRuntime = null;
+  saveProcgenDistances(runtime.world);
   runFocusBlurCleanup(runtime);
+  procgenUi?.local.stop();
+  runtime.lanes?.stop();
   runtime.controller?.stop?.();
   if (runtime.view && runtime.view.procgenController === runtime.controller) {
     runtime.view.procgenController = null;
   }
   if (typeof window !== 'undefined' && window.procgenDebugState) {
     window.procgenDebugState = null;
+    window.__PROCGEN_LANES__ = null;
   }
   runtime.stageAdapter?.dispose?.();
   runtime.game?.stop?.();
@@ -102,7 +121,12 @@ const installProcgenBootListeners = () => {
   disposeProcgenBootListeners();
   const boot = () => {
     resizeCanvas();
-    init();
+    if (!procgenUi && document.getElementById('procgenDrawer')) {
+      const params = new URLSearchParams(window.location.search);
+      procgenUi = createProcgenUiController({ document, window, getRuntime: () => activeProcgenRuntime, restart: init,
+        initial: { laneCount: params.get('lanes'), speed: params.get('speed'), pack: params.get('pack') } });
+    }
+    init().catch(error => { const status = document.getElementById('procgenRunStatus'); if (status) status.textContent = `Could not start: ${error.message}`; });
   };
   addProcgenBootListener(window, 'resize', resizeCanvas);
   addProcgenBootListener(window, 'beforeunload', disposeProcgenRuntime);
@@ -294,22 +318,23 @@ const init = async () => {
     const aiDebugOverlay = params.has('aiDebug');
     const view = new GameView();
     runtime.view = view;
-    view.gameType = PROCGEN_GAME_TYPE;
+    const gameType = procgenUi?.settings.pack || PROCGEN_GAME_TYPE;
+    view.gameType = gameType;
     view.levelGroupIndex = 0;
     view.levelIndex = 0;
     view.midiEnabled = false;
     view.includeSavedLevels = false;
     view.endless = true;
     view.gameCanvas = canvas;
-    view.gameSpeedFactor = 3;
+    view.gameSpeedFactor = procgenUi?.settings.speed || 3;
     if (view.stage) {
       view.stage.setGuiEnabled(false);
       view.stage.setCursorSprite(null);
       view.stage.hudMargin = 0;
     }
 
-    const config = await view.gameFactory.getConfig(PROCGEN_GAME_TYPE);
-    const resources = await view.gameFactory.getGameResources(PROCGEN_GAME_TYPE);
+    const config = await view.gameFactory.getConfig(gameType);
+    const resources = await view.gameFactory.getGameResources(gameType);
     view.gameResources = resources;
 
     const styleName = await pickProcgenStyle(
@@ -320,6 +345,28 @@ const init = async () => {
     const themeContract = buildProcgenThemeContract(styleName, config);
     window.procgenSelectedTheme = themeContract.selectedTheme;
     window.procgenThemeContract = themeContract;
+    if (activeProcgenRuntime !== runtime) { view.dispose(); return; }
+    const laneCount = procgenUi?.settings.laneCount || 1;
+    if (procgenUi) {
+      const assets = new ProcgenAssetManager({ styleName, config, fileProvider: view.gameFactory.fileProvider, random: terrainRng });
+      await assets.load();
+      const book = await loadTerrainRecipeBook(view.gameFactory.fileProvider);
+      const recipe = selectThemeRecipe(book, { packPath: config.path, groundSet: assets.groundSet });
+      const terrain = new ProcgenRecipeTerrain({ recipe, terrainPieces: assets.terrainPieces });
+      const palette = assets.groundPieces[0]?.image?.palette;
+      const [sprites, masks] = await Promise.all([resources.getLemmingsSprite(palette), resources.getMasks()]);
+      if (activeProcgenRuntime !== runtime) { view.dispose(); return; }
+      const lanes = createProcgenLaneRuntime({ canvas, resources, sprites, masks, assets, laneCount, seed: procgenSeed,
+        speed: view.gameSpeedFactor, terrain, previousDistances: readProcgenDistances(), onMetrics: state => procgenUi?.syncMetrics(state), windowRef: window });
+      view.dispose();
+      runtime.lanes = lanes; runtime.world = lanes.world; runtime.view = lanes.view; runtime.game = lanes.game;
+      runtime.stageAdapter = { updateStageSize: () => lanes.resize() };
+      window.procgenDebugState = () => lanes.getDebugState();
+      if (params.has('e2e')) window.__PROCGEN_LANES__ = { world: lanes.world, renderer: lanes.renderer, getState: lanes.getDebugState, pause: lanes.pause, resume: lanes.resume, step: lanes.step };
+      procgenUi?.sync();
+      registerServiceWorker({ profile: 'perf' });
+      return;
+    }
     const { level: editorLevel, entranceX, entranceY } = buildProcgenEditorLevel(styleName);
     const level = await loadEditorLevel(
       editorLevel,
@@ -331,14 +378,17 @@ const init = async () => {
         levelIndex: 0
       }
     );
+    if (activeProcgenRuntime !== runtime) { view.dispose(); return; }
     if (!level) {
       runtime.view?.dispose?.();
       return;
     }
 
-    const game = await view.gameFactory.getGame(PROCGEN_GAME_TYPE, resources);
+    const game = await view.gameFactory.getGame(gameType, resources);
+    if (activeProcgenRuntime !== runtime) { view.dispose(); return; }
     runtime.game = game;
     await game.loadCustomLevel(level, { levelGroupIndex: 0, levelIndex: 0 });
+    if (activeProcgenRuntime !== runtime) { game.stop(); view.dispose(); return; }
     game.setGameDisplay(view.stage.getGameDisplay());
     view.game = game;
     view.applyLevelViewport(level);
@@ -354,6 +404,7 @@ const init = async () => {
       random: terrainRng
     });
     await assetManager.load();
+    if (activeProcgenRuntime !== runtime) { game.stop(); view.dispose(); return; }
     const stamper = new ProcgenTerrainStamper(level);
 
     const controller = new ProcgenController({
@@ -389,9 +440,11 @@ const init = async () => {
     runtime.stageAdapter = stageAdapter;
     stageAdapter.updateStageSize();
 
+    procgenUi?.sync();
     installE2EHarness({ view, procgenController: controller });
     registerServiceWorker({ profile: 'perf' });
   } catch (err) {
+    runtime.lanes?.stop();
     analytics?.track?.(ANALYTICS_EVENT_TYPES.RUNTIME_BOOT_ERROR, {
       code: 'resource_error',
       surface: 'procgen',

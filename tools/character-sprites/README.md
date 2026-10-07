@@ -105,3 +105,45 @@ wall climbing, floating and return to walking. The source-comparison sheet must
 be retained alongside mask tests. These are actual `CharacterSpriteSet` and
 `PixelSpriteSkin` decoder proofs; browser gameplay and user visual acceptance
 are still separate. Only the existing twelve beret fits have prior user approval.
+
+## Runtime readability and motion
+
+`CharacterSpriteSet` applies `CharacterPresentation` after source validation and
+accessory composition. The original manifests and reviewed fit hashes are kept.
+Every shape uses one uniform (same x/y) scale about the original foot/world
+anchor, with a seven-pixel maximum neutral body extent. The nine-pixel digging
+channel therefore has visible space around a single actor. Tool timing, cells,
+collision masks, brick placement and wall contacts are unchanged. Tiny eyes and
+the donut's enclosed transparent aperture receive topology-aware pixel retention
+when nearest-neighbor sampling would lose them.
+
+Walking uses a stable neutral silhouette and a shape-specific restrained cadence;
+there is no inherited two-pixel hop/squash applied to every body. The panic strip
+holds a nervous beat, looks both ways, then does quick shivering hops with sweat.
+The beret's landing transition finishes on the new walking pose.
+
+`CharacterParticles` samples actual terrain RGB before a removal and emits only
+samples that were actually cleared. Four short-lived digging chips throw away
+from the channel edges; bashing/mining use six. Explosions, splats, drowning and
+fire have distinct small bursts. Actual recolored accessory/eyewear frames eject
+intact for three ticks, then fracture into up to three source-image pieces and
+fade. Terminal sprites do not keep duplicate attached wearables. Cosmetic state
+is outside simulation/replay snapshots and clears on rewind and disposal.
+
+One shared pool is capped at 384 live particles, 72 births per tick, 2,048 sample
+checks per tick and 8,192 rendered particle pixels per frame. Seeded cosmetic
+variation does not consume simulation randomness; paused repeated renders do
+not advance particles.
+
+Generate bounded, reproducible motion evidence with:
+
+```
+node tools/character-sprites/render-motion-proof.mjs
+python3 tools/character-sprites/render_motion_sheet.py
+```
+
+`temp/character-motion/` contains a one-digger-per-shape Fun 1 contact sheet,
+walking/panic and all four death animations for every shape, a bashing animation,
+and a wearable fracture sequence. These use real loaded `Just dig!` terrain,
+`CharacterSpriteSet`, action systems and `DisplayImage` blitting in Node. They are
+native-renderer evidence, not browser gameplay or a substitute for browser QA.

@@ -52,6 +52,7 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     value('midiGameSpeed', clock.speed); value('midiGameSpeedValue', clock.speed);
     text('midiGamePlay', clock.running ? 'Pause game' : 'Play game');
     byId('midiGamePlay')?.setAttribute('aria-pressed', String(clock.running));
+    byId('midiGamePlay')?.setAttribute('title', clock.running ? 'Pause game' : 'Play game');
     text('midiGameClock', `${clock.running ? 'RUN' : 'PAUSE'} · tick ${clock.tick} · ${clock.ticksPerSecond.toFixed(1)} ticks/s`);
     text('midiLastEvent', lastEvent ? `${GAME_SOUND_EVENTS.find(item => item.id === lastEvent.sfxId)?.label || 'Event'} · tick ${lastEvent.tick}` : 'Waiting for game events');
     for (const row of Array.from(byId('midiGameEventList')?.children || [])) {

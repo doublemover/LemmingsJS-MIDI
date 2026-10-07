@@ -232,6 +232,7 @@ const historyStoreApplyDeltaMethods = {
 
   _rebuildActiveLemmings(manager) {
     if (!manager) return;
+    manager.particles?.clear();
     const lems = manager.lemmings || [];
     const active = Array.isArray(manager.activeLemmings) ? manager.activeLemmings : [];
     active.length = 0;

@@ -65,9 +65,11 @@ class ActionBashSystem extends ActionBaseSystem {
           return LemmingStateType.SHRUG;
         }
       }
+      this.characterParticles?.sampleMask(level, subMask, lem.x, lem.y, lem);
       const removed = typeof level.clearGroundWithMaskCount === 'function'
         ? level.clearGroundWithMaskCount(subMask, lem.x, lem.y)
         : (level.clearGroundWithMask(subMask, lem.x, lem.y), 0);
+      this.characterParticles?.emitTerrain(lem, 'bashing');
       const intensity = scaleIntensity(removed, countClearable(subMask));
       if (removed > 0) {
         const soundBus = getRuntimeSoundEvents(this.runtime);
