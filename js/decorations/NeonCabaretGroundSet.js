@@ -3,6 +3,14 @@ import { createOldVegasPack } from './OldVegasPack.js';
 import { createNeonCabaretTheme } from './NeonCabaretTheme.js';
 import { createCabaretPiece, NEON_CABARET_PALETTE } from './NeonCabaretPack.js';
 import { TriggerTypes } from '../level/TriggerTypes.js';
+import { ColorPalette } from '../render/ColorPalette.js';
+
+// MAIN.DAT's classic HUD uses these fixed VGA slots, independently of scene art.
+const hudPalette = new ColorPalette();
+for (let i = 0; i < 16; i++) hudPalette.setColorInt(i, NEON_CABARET_PALETTE.getColor(i));
+[[0, 0, 0], [64, 64, 224], [0, 176, 0], [240, 208, 208], [240, 240, 0], [240, 32, 32], [128, 128, 128]]
+  .forEach(([r, g, b], i) => hudPalette.setColorRGB(i, r, g, b));
+const gamePalette = { ...NEON_CABARET_PALETTE, hudPalette };
 
 const NEON_CABARET_STYLE = {
   groundSet: 100,
@@ -33,7 +41,7 @@ function createNeonCabaretGroundSet() {
   // TRAP uses the normal one-shot animation and frame-count cooldown. Its final
   // frame is the idle raised press, ready for the next engine trigger.
   objectImages[3].frames[15] = objectImages[3].frames[0];
-  return { groundPalette: NEON_CABARET_PALETTE, colorPalette: NEON_CABARET_PALETTE,
+  return { groundPalette: NEON_CABARET_PALETTE, colorPalette: gamePalette,
     getTerrainImages: () => terrainImages, getObjectImages: () => objectImages };
 }
 export { NEON_CABARET_STYLE, createNeonCabaretGroundSet };

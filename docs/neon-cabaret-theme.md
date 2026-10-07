@@ -75,3 +75,11 @@ is deliberately opaque, with a charcoal grille and corner rivets. Hazards use
 red rims or yellow-black stripes in addition to color; the live arc always spans
 the central dangerous opening. Decorative transformer coils sit behind a guard
 rail and are visually distinct from the striped, exposed arc hazard.
+
+
+The classic skill/status panel uses an explicit HUD palette, independent of the
+Neon Cabaret scene palette. Its original green text and skill colors remain
+readable in editor playtest; terrain, object and actor palette values are unchanged.
+Unavailable skill icons are dimmed cached copies of the native panel, with black
+count wells rather than checkerboard overlays. Source-buffer tests cover all six
+classic packs; these tests do not replace a browser screenshot review.

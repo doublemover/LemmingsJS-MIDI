@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Per-lane distance records and generous simulation-time/spawn stall recovery preserve progress markers through a staggered OHNO cascade and restart.
 
 ### Fixed
+- Empty skill counts use black wells and unavailable skills retain dimmed source icons instead of a full checkerboard; custom-theme HUD colors remain classic without changing scene colors.
 - Contact-anchored hazard artwork remains visible at viewport edges when simulation coordinates drift; far-zoom scenery reuses indexed catalog groups.
 - Procgen avoids duplicate assisted walking scans and unchanged RAF composites, skips decorative collision work, and shares stateless actor loggers; MIDI rate warnings avoid unused breakdown maps and reservations prune once.
 - Procgen collision sampling, dirty-tile rendering and far-zoom working sets are bounded and cached; random palette skins remain canonical while live and lazily allocate frames.
