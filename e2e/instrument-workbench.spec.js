@@ -20,7 +20,7 @@ test('all layouts keep the identical live map canvas and musical undo keeps game
   await page.goto('/?e2e=1&midi=1');
   await waitForHarnessReady(page);
   await page.evaluate(() => { window.__E2E__.pause(); window.__originalGameCanvas = document.getElementById('gameCanvas'); });
-  await page.locator('#midiWorkspaceToggle').click();
+  if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
   await page.locator('[data-game-event-id="20"]').click();
   for (const layout of ['Focus', 'Split', 'Overlay', 'Split']) {
     await page.locator(`#midiLayout${layout}`).click();
@@ -47,25 +47,18 @@ test('instrument menus support keyboard navigation, dismissal and repeated openi
   await page.goto('/?e2e=1&midi=1');
   await waitForHarnessReady(page);
   await page.evaluate(() => window.__E2E__.pause());
-  await page.locator('#midiWorkspaceToggle').click();
+  if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
   const nav = page.locator('#midiInstrumentMenus');
-  const file = nav.locator('summary').filter({ hasText: /^File$/ });
-  const edit = nav.locator('summary').filter({ hasText: /^Edit$/ });
-  const view = nav.locator('summary').filter({ hasText: /^View$/ });
-  await file.focus(); await page.keyboard.press('ArrowDown');
+  const menu = nav.locator('summary');
+  await menu.focus(); await page.keyboard.press('ArrowDown');
   await expect(page.locator('#midiMenuImport')).toBeFocused();
-  await page.keyboard.press('ArrowRight'); await expect(edit).toBeFocused();
-  await page.keyboard.press('ArrowRight'); await expect(page.locator('#midiMenuFocus')).toBeFocused();
-  await page.keyboard.press('End'); await expect(page.locator('#midiMenuOverlay')).toBeFocused();
-  await page.keyboard.press('Enter'); await expect(view).toBeFocused();
+  await page.keyboard.press('End'); await expect(page.locator('#midiMenuPanic')).toBeFocused();
+  await page.keyboard.press('Escape'); await expect(menu).toBeFocused();
   await expect(nav.locator('details[open]')).toHaveCount(0);
-  await file.focus(); await page.keyboard.press('ArrowUp');
-  await expect(page.locator('#midiMenuProject')).toBeFocused();
-  await page.keyboard.press('Escape'); await expect(file).toBeFocused();
   await expect(page.locator('#midiSequencerWorkspace')).toBeVisible();
-  await file.click(); await page.locator('#midiGameClock').click();
+  await menu.click(); await page.locator('#midiGameClock').click();
   await expect(nav.locator('details[open]')).toHaveCount(0);
-  await file.click(); await page.locator('#midiWorkspaceClose').click();
+  await menu.click(); await page.locator('#midiWorkspaceClose').click();
   await page.locator('#midiWorkspaceToggle').click();
   await expect(nav.locator('details[open]')).toHaveCount(0);
   expect(await page.evaluate(() => window.__midiPermissionCalls)).toBe(0);
@@ -75,13 +68,12 @@ test('character choices replace one accessory while retaining separate eyewear',
   await page.goto('/?e2e=1&midi=1');
   await waitForHarnessReady(page);
   await page.evaluate(() => window.__E2E__.pause());
-  await page.locator('.character-controls > summary').click();
-  await page.locator('#characterShape').selectOption('donut');
+  await page.locator('#characterShapeChoices [data-value=donut]').click();
   const accessory = page.locator('#characterAccessory'), eyewear = page.locator('#characterEyewear');
   await expect(accessory).toBeEnabled();
-  await eyewear.selectOption('monocle');
+  await page.locator('#characterEyewearChoices [data-value=monocle]').click();
   for (const choice of ['headphones', 'bow', 'crown', 'none', 'beret']) {
-    await accessory.selectOption(choice);
+    await page.locator(`#characterAccessoryChoices [data-value=${choice}]`).click();
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('lemmings.character.appearance.v1')));
     expect(saved.accessory || 'beret').toBe(choice);
     expect(saved.eyewear).toBe('monocle');
@@ -90,7 +82,7 @@ test('character choices replace one accessory while retaining separate eyewear',
     await expect(eyewear).toHaveValue('monocle');
   }
   await page.screenshot({ path: testInfo.outputPath('characters-single-accessory.png'), fullPage: true });
-  await page.locator('#characterShape').selectOption('classic');
+  await page.locator('#characterShapeChoices [data-value=classic]').click();
   await expect(accessory).toBeDisabled(); await expect(eyewear).toBeDisabled();
   expect(await page.evaluate(() => window.__midiPermissionCalls)).toBe(0);
 });
@@ -105,7 +97,7 @@ test.describe('mobile workbench availability', () => {
     expect(await page.evaluate(() => window.__midiPermissionCalls)).toBe(0);
     await page.goto('/?e2e=1&midi=1'); await waitForHarnessReady(page);
     await expect(page.locator('#midiWorkspaceToggle')).toBeVisible();
-    await page.locator('#midiWorkspaceToggle').click();
+    if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
     await expect(page.locator('#midiSequencerWorkspace')).toBeVisible();
     await page.setViewportSize({ width: 844, height: 390 });
     await expect(page.locator('#gameCanvas')).toBeVisible();

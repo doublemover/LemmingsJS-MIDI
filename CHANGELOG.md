@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Character appearance changes preload and swap atomically, retaining the last ready look during delayed or failed loads. Stable seeded mixed shapes and random native colors survive redraw and rewind.
 - Clip inspectors now explain their actual event-driven playback and the current meaning of saved Hold, Tie and probability fields, without rewriting imported music.
 - Instrument menus now support arrow keys, label search, reliable dismissal and focus restoration, including actions that disable themselves after use.
 - Future MIDI onsets and releases stay cancellable until due; voice stealing, same-pitch retriggers and Panic cannot leave obsolete gates cutting off replacement notes. Default and explicit routes share one MPE allocation per device.
@@ -21,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Xmas 1991/1992 no longer offer a nonexistent fifth level.
 
 ### Added
+- A compact desktop studio with adjacent level arrows, left character/event library, centered game and right sound controls; secondary file tools, segmented layouts and accessible visual character selectors.
+- Local master volume beside game listening, shared with event audition without altering MIDI velocities or sound-edit history.
+- A small self-hosted Lucide SVG icon subset with upstream ISC/MIT notices.
 - All eight native accessories and five eyewear styles on all twelve alternate bodies. One accessory replaces the previous choice, eyewear is separate, and body/accessory/frame colors remain independent. Approved beret pixels remain unchanged.
 - Persistent single-map instrument layouts, game-clock headunit, precise event sound controls, scoped sound references, and musical undo/redo.
 - Stable-ID single/mixed selection for twelve bodies including a transparent-center donut, nine named native body colors and eleven hat colors. Reviewed per-shape beret crown fits lift into the canopy and reattach; cosmetic top padding preserves body/world anchors.

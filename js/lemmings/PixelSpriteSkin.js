@@ -92,18 +92,22 @@ function validateSkin(manifest) {
   return manifest;
 }
 
-function decodeFrame(rows, width, height, offsetX, offsetY, pixels) {
+function decodeFrame(rows, width, height, offsetX, offsetY, pixels, indexedFrames) {
   const frame = new Frame(width, height, offsetX, offsetY);
   const rgba = frame.getData();
+  const indices = new Uint8Array(width * height);
+  const symbols = [...pixels.keys()];
   let pixelIndex = 0;
   for (const row of rows) {
     for (const symbol of row) {
       const color = pixels.get(symbol);
       rgba.set(color, pixelIndex * 4);
+      indices[pixelIndex] = symbols.indexOf(symbol);
       frame.mask[pixelIndex++] = color[3] === 255 ? 1 : 0;
     }
   }
   frame.enableSpanCache();
+  indexedFrames.set(frame, indices);
   return frame;
 }
 
@@ -112,15 +116,54 @@ class PixelSpriteSkin {
   #palette;
   #landing = null;
   #transitions = new WeakMap();
+  #indexedFrames = new WeakMap();
+  #paletteSize = 0;
 
-  constructor(manifest) {
-    validateSkin(manifest);
+  constructor(manifest, source = null) {
+    if (!source) validateSkin(manifest);
+    this.#paletteSize = manifest.palette.length;
     this.#palette = new ColorPalette();
     manifest.palette.forEach(([r, g, b], i) => this.#palette.setColorRGB(i, r, g, b));
+    if (source) {
+      const colors = Uint32Array.from(manifest.palette, ([r, g, b, a]) => a ? ColorPalette.colorFromRGB(r, g, b) : 0);
+      const frames = new WeakMap();
+      const remap = original => {
+        if (frames.has(original)) return frames.get(original);
+        const frame = new Frame(original.width, original.height, original.offsetX, original.offsetY);
+        const indices = source.#indexedFrames.get(original);
+        for (let i = 0; i < indices.length; i++) frame.data[i] = colors[indices[i]];
+        frame.mask = original.mask;
+        const spans = original.getSpanCache();
+        frame._spanCacheEnabled = true; frame._spanRows = spans.rows; frame._spanBounds = spans.bounds;
+        this.#indexedFrames.set(frame, indices);
+        frames.set(original, frame);
+        return frame;
+      };
+      const lazyFrames = originals => {
+        const result = new Array(originals.length);
+        originals.forEach((original, i) => Object.defineProperty(result, i, { enumerable: true, get: () => remap(original) }));
+        return result;
+      };
+      const animations = new Map();
+      this.#animations = new Array(source.#animations.length);
+      source.#animations.forEach((original, index) => Object.defineProperty(this.#animations, index, {
+        enumerable: true,
+        get: () => {
+          if (!animations.has(original)) {
+            const animation = new Animation();
+            animation.frames = lazyFrames(original.frames);
+            animations.set(original, animation);
+          }
+          return animations.get(original);
+        }
+      }));
+      if (source.#landing) this.#landing = new Map([...source.#landing].map(([key, frames]) => [key, lazyFrames(frames)]));
+      return;
+    }
     const pixels = new Map([...manifest.symbols].map((symbol, i) => [symbol, manifest.palette[i]]));
     for (const record of manifest.animations) {
       const animation = new Animation();
-      animation.frames = record.frames.map(rows => decodeFrame(rows, record.width, record.height, record.offsetX, record.offsetY, pixels));
+      animation.frames = record.frames.map(rows => decodeFrame(rows, record.width, record.height, record.offsetX, record.offsetY, pixels, this.#indexedFrames));
       animation._lastFrame = animation.frames[animation.frames.length - 1];
       const state = SpriteTypes[record.state];
       if (record.direction >= 0) this.#animations[state * 2] = animation;
@@ -130,9 +173,17 @@ class PixelSpriteSkin {
     if (landing) {
       this.#landing = new Map(landing.variants.map(variant => [
         `${variant.direction}:${variant.startSway}`,
-        variant.frames.map(rows => decodeFrame(rows, landing.width, landing.height, landing.offsetX, landing.offsetY, pixels))
+        variant.frames.map(rows => decodeFrame(rows, landing.width, landing.height, landing.offsetX, landing.offsetY, pixels, this.#indexedFrames))
       ]));
     }
+  }
+
+  withPalette(palette) {
+    if (!Array.isArray(palette) || palette.length !== this.#paletteSize || palette.some((rgba, i) =>
+      !Array.isArray(rgba) || rgba.length !== 4 || rgba.some(value => !Number.isInteger(value) || value < 0 || value > 255) ||
+      rgba[3] !== (i === 0 ? 0 : 255))) throw new Error('Invalid sprite skin: variant palette');
+    // Decode geometry once; materialize each requested palette frame at most once.
+    return new PixelSpriteSkin({ palette }, this);
   }
 
   resetActor(lem) {

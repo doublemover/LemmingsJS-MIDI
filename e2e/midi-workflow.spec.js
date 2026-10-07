@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
   await installWebMidiStub(page);
   await page.goto('/?e2e=1');
   await waitForHarnessReady(page);
-  await page.locator('#midiWorkspaceToggle').click();
+  if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
 });
 
 test('sound editing is primary and device choices explain their disconnected state', async ({ page }) => {

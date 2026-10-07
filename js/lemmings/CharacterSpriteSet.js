@@ -1,16 +1,25 @@
 import { PixelSpriteSkin, validateSkin } from './PixelSpriteSkin.js';
+import { Frame } from '../render/Frame.js';
+import { CHARACTER_COLORS } from './characterColors.js';
 import { normalizeCharacterAccessories, characterAppearanceKey, hasCharacterAccessories, hasCustomHeadwear, validateAccessoryLayers, composeCharacterAccessories } from './CharacterAccessories.js';
 
 const CHARACTER_STORAGE_KEY = 'lemmings.character.appearance.v1';
-let preference = Object.freeze({ shape: 'classic', bodyColor: null, propColor: null });
-const validColor = color => /^#[0-9a-f]{6}$/i.test(color || '') ? color.toLowerCase() : null;
-
-const setCharacterPreference = next => {
-  preference = Object.freeze({
-    shape: typeof next?.shape === 'string' ? next.shape : 'classic',
-    bodyColor: validColor(next?.bodyColor), propColor: validColor(next?.propColor),
-    ...normalizeCharacterAccessories(next)
+const DEFAULT_CHARACTER_COLORS = Object.freeze({ bodyColor: '#4778ff', propColor: '#ff8066', eyewearColor: '#1f1f1f' });
+let preference = Object.freeze({ shape: 'mixed', seed: 0, ...DEFAULT_CHARACTER_COLORS });
+const validColor = (color, part) => color === 'random' ? color
+  : (CHARACTER_COLORS[part === 'body' ? 'body' : 'prop'].find(entry => entry.hex === String(color).toLowerCase())?.hex || null);
+const normalizePreference = (next, seed = 0) => {
+  const eyewearColor = validColor(next?.eyewearColor, 'eyewear');
+  return Object.freeze({
+    shape: typeof next?.shape === 'string' ? next.shape : 'mixed',
+    seed: Number.isSafeInteger(next?.seed) ? next.seed : seed,
+    bodyColor: validColor(next?.bodyColor, 'body'), propColor: validColor(next?.propColor, 'prop'),
+    ...normalizeCharacterAccessories({ ...next, eyewearColor: null }),
+    ...(eyewearColor ? { eyewearColor } : {})
   });
+};
+const setCharacterPreference = next => {
+  preference = normalizePreference(next, preference.seed);
   return preference;
 };
 const getCharacterPreference = () => preference;
@@ -41,6 +50,37 @@ const recolorManifest = (manifest, { bodyColor, propColor }) => {
   return { ...manifest, palette };
 };
 
+const blankFrame = new Frame(1, 1);
+blankFrame.getData().fill(0);
+blankFrame.enableSpanCache();
+const blankAnimation = Object.freeze({ getFrame: () => blankFrame, frames: [blankFrame], frameCount: 1 });
+const loadingSkin = Object.freeze({ getAnimation: () => blankAnimation });
+const hasRandomColors = settings => ['bodyColor', 'propColor', 'eyewearColor'].some(part => settings[part] === 'random');
+const seededId = (id, seed, part = '') => seed || part ? `${seed}:${part}:${id ?? 0}` : id;
+const appearanceIndex = (id, length, settings, part = '', index = null) => {
+  if (!Number.isSafeInteger(index) || index < 0) return stableCharacterIndex(seededId(id, settings.seed, part), length);
+  const offset = stableCharacterIndex(`${settings.seed}:${part}:offset`, length);
+  return (index % length + offset) % length;
+};
+const resolvedAppearance = (settings, shape, id, index = null) => {
+  const appearance = { ...settings, shape };
+  for (const part of ['body', 'prop', 'eyewear']) {
+    if (settings[`${part}Color`] !== 'random') continue;
+    const colors = CHARACTER_COLORS[part === 'body' ? 'body' : 'prop'];
+    appearance[`${part}Color`] = colors[appearanceIndex(id, colors.length, settings, part, index)].hex;
+  }
+  return appearance;
+};
+const paletteForAppearance = (manifest, appearance) => {
+  const palette = recolorManifest(manifest, appearance).palette;
+  if (palette.length === 16) {
+    for (const [slot, hex] of [[11, appearance.propColor], [12, appearance.propColor], [13, appearance.eyewearColor]]) {
+      if (hex) palette[slot] = [...[1, 3, 5].map(offset => parseInt(hex.slice(offset, offset + 2), 16)), 255];
+    }
+  }
+  return palette;
+};
+
 class CharacterSpriteSet {
   constructor(base, catalog, loadText, getPreference = getCharacterPreference) {
     this.base = base;
@@ -52,35 +92,55 @@ class CharacterSpriteSet {
     this.headwearLayers = new Map();
     this.skins = new Map();
     this.pending = new Map();
+    this.paletteSkins = new Map();
+    this.actorSkins = new WeakMap();
+    this.skinManifests = new WeakMap();
+    this.generation = 0;
     this.error = null;
     this.activePreference = null;
     this.activeSkins = [];
+    this.activeTemplates = [];
   }
 
-  getAnimation(state, right) { return this.base.getAnimation(state, right); }
+  getAnimation(state, right) { return this.skinForActor({ id: 0 }).getAnimation(state, right); }
   get colorPalette() { return this.base.colorPalette; }
   get lemmingAnimation() { return this.base.lemmingAnimation; }
 
-  appearanceForId(id) {
-    const settings = this.getPreference();
-    const selected = settings.shape === 'mixed' ? this.shapes[stableCharacterIndex(id, this.shapes.length)]
+  appearanceForId(id) { return this.appearanceForActor({ id }); }
+
+  appearanceForActor(actor) {
+    const settings = this.activePreference || normalizePreference(this.getPreference());
+    const selected = settings.shape === 'mixed' ? this.shapes[appearanceIndex(actor?.id, this.shapes.length, settings, '', actor?.appearanceIndex)]
       : this.shapes.find(shape => shape.id === settings.shape);
-    return selected ? { ...settings, shape: selected.id } : { shape: 'classic', bodyColor: null, propColor: null };
+    return resolvedAppearance(settings, selected?.id || settings.shape, actor?.id, actor?.appearanceIndex);
   }
 
   async prepare() {
-    const settings = this.getPreference();
+    const requested = this.getPreference();
+    const settings = normalizePreference(requested);
+    const generation = ++this.generation;
+    const current = () => generation === this.generation && this.getPreference() === requested;
     const shapes = settings.shape === 'mixed' ? this.shapes : this.shapes.filter(shape => shape.id === settings.shape);
     this.error = null;
     try {
+      if (settings.shape !== 'classic' && !shapes.length) throw new Error(this.catalogError || `Character art unavailable for ${settings.shape}`);
       await Promise.all(shapes.map(shape => this.load(shape)));
+      if (!current()) return true;
       if (hasCustomHeadwear(settings)) await Promise.all(shapes.map(shape => this.loadAccessories(shape, true)));
       else if (hasCharacterAccessories(settings)) await Promise.all(shapes.map(shape => this.loadAccessories(shape)));
-      // Decode the requested variants outside the render loop.
-      const decoded = shapes.map(shape => this.skinForAppearance({ ...settings, shape: shape.id }));
-      if (this.getPreference() === settings) { this.activePreference = settings; this.activeSkins = decoded; }
+      if (!current()) return true;
+      const templates = shapes.map(shape => this.templateForAppearance({ ...settings, shape: shape.id }));
+      const decoded = templates.map(template => hasRandomColors(settings) ? template : this.colorSkin(template, settings));
+      if (current()) {
+        this.activePreference = settings; this.activeTemplates = templates; this.activeSkins = decoded;
+        this.actorSkins = new WeakMap();
+        for (const [key, entry] of this.paletteSkins) if (!templates.includes(entry.template)) this.paletteSkins.delete(key);
+      }
       return true;
-    } catch (error) { this.error = error.message; return false; }
+    } catch (error) {
+      if (current()) this.error = error.message;
+      return false;
+    }
   }
 
   load(shape) {
@@ -92,6 +152,7 @@ class CharacterSpriteSet {
         const skin = new PixelSpriteSkin(manifest);
         this.manifests.set(shape.id, manifest);
         this.skins.set(characterAppearanceKey({ shape: shape.id }), skin);
+        this.skinManifests.set(skin, manifest);
         return manifest;
       }).finally(() => this.pending.delete(shape.id));
       this.pending.set(shape.id, pending);
@@ -123,30 +184,61 @@ class CharacterSpriteSet {
     return this.pending.get(key);
   }
 
-  skinForAppearance(appearance) {
-    if (appearance.shape === 'classic') return this.base;
-    const key = characterAppearanceKey(appearance);
+  templateForAppearance(appearance) {
+    const plain = { shape: appearance.shape, accessory: appearance.accessory, eyewear: appearance.eyewear };
+    const key = characterAppearanceKey(plain);
     if (this.skins.has(key)) return this.skins.get(key);
     const manifest = this.manifests.get(appearance.shape);
-    if (!manifest) return this.base;
-    const headwear = hasCustomHeadwear(appearance);
+    if (!manifest) throw new Error(`Character art unavailable for ${appearance.shape}`);
+    const headwear = hasCustomHeadwear(plain);
     const pack = (headwear ? this.headwearLayers : this.accessoryLayers).get(appearance.shape);
-    if ((hasCharacterAccessories(appearance) || headwear) && !pack) return this.base;
-    const colored = recolorManifest(headwear ? pack.bare : manifest, appearance);
-    const skin = new PixelSpriteSkin(composeCharacterAccessories(colored, pack, appearance));
-    // One active collection plus a small edit working set. Actor identities are never cached.
+    if ((hasCharacterAccessories(plain) || headwear) && !pack) throw new Error(`Accessory art unavailable for ${appearance.shape}`);
+    const composed = composeCharacterAccessories(headwear ? pack.bare : manifest, pack, plain);
+    const skin = new PixelSpriteSkin(composed);
     while (this.skins.size >= Math.max(32, this.shapes.length * 2)) this.skins.delete(this.skins.keys().next().value);
     this.skins.set(key, skin);
+    this.skinManifests.set(skin, composed);
     return skin;
   }
 
+  colorSkin(template, appearance) {
+    const colors = [appearance.bodyColor, appearance.propColor, appearance.eyewearColor];
+    if (!colors.some(Boolean)) return template;
+    const manifest = this.skinManifests.get(template);
+    const key = characterAppearanceKey({ ...appearance, shape: manifest.shapeId });
+    const cached = this.paletteSkins.get(key);
+    if (cached?.template === template) return cached.skin;
+    const skin = template.withPalette(paletteForAppearance(manifest, appearance));
+    while (this.paletteSkins.size >= 256) this.paletteSkins.delete(this.paletteSkins.keys().next().value);
+    this.paletteSkins.set(key, { template, skin });
+    return skin;
+  }
+
+  skinForAppearance(appearance) {
+    if (appearance.shape === 'classic') return this.base;
+    return this.colorSkin(this.templateForAppearance(appearance), appearance);
+  }
+
   skinForActor(lem) {
-    const settings = this.getPreference();
-    if (settings.shape === 'classic' || settings !== this.activePreference || !this.activeSkins.length) return this.base;
-    return this.activeSkins[settings.shape === 'mixed' ? stableCharacterIndex(lem?.id, this.activeSkins.length) : 0];
+    const settings = this.activePreference;
+    if (!settings) return this.getPreference()?.shape === 'classic' ? this.base : loadingSkin;
+    if (settings.shape === 'classic') return this.base;
+    const index = settings.shape === 'mixed' ? appearanceIndex(lem?.id, this.activeSkins.length, settings, '', lem?.appearanceIndex) : 0;
+    if (!hasRandomColors(settings)) return this.activeSkins[index];
+    const cached = this.actorSkins.get(lem);
+    if (cached && cached.id === lem.id && cached.index === lem.appearanceIndex) return cached.skin;
+    const skin = this.colorSkin(this.activeTemplates[index], this.appearanceForActor(lem));
+    if (lem && typeof lem === 'object') this.actorSkins.set(lem, { id: lem.id, index: lem.appearanceIndex, skin });
+    return skin;
   }
   getActorAnimation(state, right, lem) { return this.skinForActor(lem).getAnimation(state, right); }
-  resetActor(lem) { for (const skin of this.skins.values()) skin.resetActor?.(lem); this.base.resetActor?.(lem); }
+  resetActor(lem) {
+    this.actorSkins.get(lem)?.skin.resetActor?.(lem);
+    this.actorSkins.delete(lem);
+    const skins = new Set([...this.skins.values(), ...this.activeSkins, ...this.paletteSkins.values()].map(entry => entry.skin || entry));
+    for (const skin of skins) skin.resetActor?.(lem);
+    this.base.resetActor?.(lem);
+  }
   onActionChange(lem, previousAction, previousFrameIndex) {
     const skin = this.skinForActor(lem);
     if (skin === this.base) { skin.onActionChange?.(lem, previousAction, previousFrameIndex); return; }
@@ -157,4 +249,4 @@ class CharacterSpriteSet {
   drawCosmeticTransition(display, lem) { return this.skinForActor(lem).drawCosmeticTransition?.(display, lem) || false; }
 }
 
-export { CharacterSpriteSet, CHARACTER_STORAGE_KEY, getCharacterPreference, setCharacterPreference, stableCharacterIndex, recolorManifest };
+export { CharacterSpriteSet, CHARACTER_STORAGE_KEY, getCharacterPreference, setCharacterPreference, stableCharacterIndex, recolorManifest, DEFAULT_CHARACTER_COLORS };

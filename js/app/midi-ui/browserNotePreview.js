@@ -4,10 +4,11 @@ const ATTACK_SECONDS = 0.008;
 const RELEASE_SECONDS = 0.04;
 const MAX_SCHEDULED_VOICES = 64;
 const MAX_CONTROL_EVENTS = 128;
+const MASTER_VOLUME_RAMP_SECONDS = 0.015;
 
 /** A local tone monitor. It owns its audio context and never opens a MIDI device. */
 class BrowserNotePreview {
-  constructor({ createAudioContext, nowMs, onStateChange, maxVoices = 16, maxNoteSeconds = 8, volume = 0.15 } = {}) {
+  constructor({ createAudioContext, nowMs, onStateChange, maxVoices = 16, maxNoteSeconds = 8, volume = 0.15, masterVolume = 0.7 } = {}) {
     const AudioContextType = globalThis.AudioContext || globalThis.webkitAudioContext;
     this._createContext = createAudioContext === undefined
       ? (AudioContextType ? () => new AudioContextType({ sampleRate: 48000 }) : null)
@@ -18,6 +19,7 @@ class BrowserNotePreview {
     this._maxVoices = clamp(Math.trunc(finite(maxVoices, 16)), 1, 32);
     this._maxNoteSeconds = clamp(finite(maxNoteSeconds, 8), 0.1, 16);
     this._volume = clamp(finite(volume, 0.15), 0, 0.15) / Math.sqrt(this._maxVoices);
+    this._masterVolume = clamp(finite(masterVolume, 0.7), 0, 1);
     this._context = null;
     this._master = null;
     this._resumePromise = null;
@@ -60,8 +62,35 @@ class BrowserNotePreview {
       status: this._status,
       message: this._message,
       enabled: this._enabled && this._context?.state === 'running',
-      activeVoices: this._voices.size
+      activeVoices: this._voices.size,
+      masterVolume: this._masterVolume
     };
+  }
+
+  setMasterVolume(value) {
+    if (this._disposed) return this._masterVolume;
+    const next = clamp(finite(value, this._masterVolume), 0, 1);
+    if (next === this._masterVolume) return next;
+    this._masterVolume = next;
+    if (this._master && this._context) {
+      const gain = this._master.gain;
+      const now = this._context.currentTime;
+      const target = this._volume * next;
+      if (!this._ready()) {
+        gain.cancelScheduledValues(now);
+        gain.setValueAtTime(target, now);
+      } else if (typeof gain.cancelAndHoldAtTime === 'function') {
+        gain.cancelAndHoldAtTime(now);
+        gain.linearRampToValueAtTime(target, now + MASTER_VOLUME_RAMP_SECONDS);
+      } else {
+        const current = gain.value;
+        gain.cancelScheduledValues(now);
+        gain.setValueAtTime(current, now);
+        gain.linearRampToValueAtTime(target, now + MASTER_VOLUME_RAMP_SECONDS);
+      }
+    }
+    this._setStatus(this._status, this._message);
+    return next;
   }
 
   subscribe(listener) {
@@ -94,7 +123,7 @@ class BrowserNotePreview {
         try {
           context = this._createContext();
           master = context.createGain();
-          master.gain.value = this._volume;
+          master.gain.value = this._volume * this._masterVolume;
           master.connect(context.destination);
           context.addEventListener?.('statechange', this._onContextState);
           this._context = context;

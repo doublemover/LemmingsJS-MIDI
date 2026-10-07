@@ -15,12 +15,12 @@ test('pan mode persists, live local audio is 48 kHz and studio restores focus', 
   });
   await page.goto('/?e2e=1');
   await waitForHarnessReady(page);
-  await page.locator('#midiWorkspaceToggle').click();
+  if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
   await page.locator('#midiGlobalPanMode').selectOption('level');
   await expect.poll(() => page.evaluate(() => window.__E2E__.midiGetRuntimeConfig().position.panMode)).toBe('level');
   await page.reload();
   await waitForHarnessReady(page);
-  await page.locator('#midiWorkspaceToggle').click();
+  if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
   await expect(page.locator('#midiGlobalPanMode')).toHaveValue('level');
   await page.locator('#midiViewSounds').click();
   await page.locator('#midiLocalListenButton').click();
@@ -67,7 +67,7 @@ test('mobile MIDI stays hidden except for a single exact opt-in', async ({ brows
   await page.goto('http://127.0.0.1:8080/?e2e=1&midi=1');
   await waitForHarnessReady(page);
   await expect(page.locator('#midiWorkspaceToggle')).toBeVisible();
-  await page.locator('#midiWorkspaceToggle').click();
+  if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
   await expect(page.locator('#midiSoundsView')).toBeVisible();
   const dimensions = await page.evaluate(() => ({ width: window.innerWidth, scroll: document.documentElement.scrollWidth }));
   expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.width + 1);

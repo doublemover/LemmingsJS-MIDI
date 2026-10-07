@@ -97,11 +97,11 @@ describe('donut body and native named colors', function() {
     const sprites = { shapes: [{ id: 'donut', label: 'Donut' }], prepare: async () => true };
     const controller = createCharacterUiController({ document, window, getView: () => ({ game: { gameResources: { characterSprites: sprites }, render() {} } }) });
     controller.bind(); await controller.sync();
-    expect(document.getElementById('characterBodyPalette').children.length).to.equal(11);
-    expect(document.getElementById('characterPropPalette').children.length).to.equal(13);
+    expect(document.getElementById('characterBodyPalette').children.length).to.equal(10);
+    expect(document.getElementById('characterPropPalette').children.length).to.equal(12);
     const select = document.getElementById('characterBodyPalette'); select.value = '#04bb9f';
     select.dispatchEvent({ type: 'change', target: select });
-    expect(getCharacterPreference()).to.deep.equal({ shape: 'donut', bodyColor: '#04bb9f', propColor: '#8c4a2b' });
+    expect(getCharacterPreference()).to.deep.equal({ shape: 'donut', seed: 0, bodyColor: '#04bb9f', propColor: '#8c4a2b', eyewearColor: '#1f1f1f' });
     expect(JSON.parse(window.localStorage.getItem(CHARACTER_STORAGE_KEY))).to.deep.equal(getCharacterPreference());
     setCharacterPreference({ shape: 'classic' });
   });

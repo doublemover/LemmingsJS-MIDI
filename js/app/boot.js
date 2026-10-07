@@ -290,7 +290,7 @@ function init({ windowRef, documentRef, embedMode }) {
     const move = () => lemmings.moveToLevel(delta);
     element.addEventListener('click', move);
     element.addEventListener('keydown', (event) => {
-      if (event.key !== 'Enter' && event.key !== ' ') return;
+      if (element.tagName?.toLowerCase() === 'button' || (event.key !== 'Enter' && event.key !== ' ')) return;
       event.preventDefault?.();
       move();
     });
