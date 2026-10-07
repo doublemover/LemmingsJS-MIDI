@@ -97,6 +97,11 @@ describe('source-level procgen work removal', function() {
     changed(() => world.frontierRevision++);
     changed(() => { world.sprites.activePreference = {}; });
     changed(() => { renderer.hud.sprites = {}; });
+    let decorFrames = 0;
+    changed(() => { renderer.decorationLayer = { draw: () => decorFrames++ }; });
+    expect(decorFrames).to.equal(1);
+    changed(() => { renderer.reducedMotion = { matches: true }; });
+    expect(decorFrames).to.equal(2);
     changed(() => { renderer.hud = { sprites: {}, render: () => hud++ }; });
     changed(() => { renderer.cameraX += 10; });
     changed(() => { renderer.cameraY += 0.2; });

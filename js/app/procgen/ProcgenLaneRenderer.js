@@ -15,7 +15,7 @@ class ProcgenLaneRenderer {
     this.image = null; this.lastTerrainKey = ''; this.lastGeometryKey = ''; this.tileRevisions = new Map(); this.lastFrameMs = 0; this.renderedActors = 0;
     this.rasterStep = 1; this.viewWidth = 0; this.viewHeight = 0;
     this.terrainRebuilds = 0; this.terrainCacheHits = 0;
-    this.frameCacheHits = 0; this.lastFrameKey = null; this.lastAppearance = null; this.lastSprites = null; this.lastHud = null; this.lastHudSprites = null;
+    this.frameCacheHits = 0; this.lastFrameKey = null; this.lastAppearance = null; this.lastSprites = null; this.lastHud = null; this.lastHudSprites = null; this.lastDecorationLayer = null;
     this.camera = createProcgenCameraController(this);
     this.decorationLayer = assets.decorationPack ? new DecorationLayer(canvas.ownerDocument, assets.decorationPack) : null;
     this.reducedMotion = windowRef.matchMedia?.('(prefers-reduced-motion: reduce)');
@@ -188,8 +188,8 @@ class ProcgenLaneRenderer {
     this.originY = Math.floor(this.cameraY / this.rasterStep) * this.rasterStep;
     const world = this.world, sprites = world.sprites, appearance = sprites?.activePreference || sprites?.getPreference?.();
     const geometryKey = `${this.originX}:${this.originY}:${width}:${height}:${this.rasterStep}:${world.generation}`;
-    const frameKey = `${geometryKey}:${world.tickIndex}:${world.terrainRevision}:${world.frontierRevision}:${this.canvas.width}:${this.canvas.height}:${dpr}:${this.scale}:${this.cameraY}:${this.follow}`;
-    if (!force && frameKey === this.lastFrameKey && appearance === this.lastAppearance && sprites === this.lastSprites && this.hud === this.lastHud && this.hud?.sprites === this.lastHudSprites) {
+    const frameKey = `${geometryKey}:${world.tickIndex}:${world.terrainRevision}:${world.frontierRevision}:${this.canvas.width}:${this.canvas.height}:${dpr}:${this.scale}:${this.cameraY}:${this.follow}:${!!this.reducedMotion?.matches}`;
+    if (!force && frameKey === this.lastFrameKey && appearance === this.lastAppearance && sprites === this.lastSprites && this.hud === this.lastHud && this.hud?.sprites === this.lastHudSprites && this.decorationLayer === this.lastDecorationLayer) {
       this.frameCacheHits++; this.lastFrameMs = (this.window.performance?.now?.() ?? start) - start;
       return false;
     }
@@ -228,12 +228,12 @@ class ProcgenLaneRenderer {
     this.context.imageSmoothingEnabled = false;
     this.context.drawImage(this.buffer, 0, 0, this.canvas.width, this.canvas.height);
     this.hud?.render(this.context, this.world, this.camera, dpr);
-    this.lastFrameKey = frameKey; this.lastAppearance = appearance; this.lastSprites = sprites; this.lastHud = this.hud; this.lastHudSprites = this.hud?.sprites;
+    this.lastFrameKey = frameKey; this.lastAppearance = appearance; this.lastSprites = sprites; this.lastHud = this.hud; this.lastHudSprites = this.hud?.sprites; this.lastDecorationLayer = this.decorationLayer;
     this.lastFrameMs = (this.window.performance?.now?.() ?? start) - start;
     return true;
   }
   dispose() { this.camera.dispose(); this.decorationLayer = null; this.frames = new WeakMap(); this.objectFrames = new WeakMap();
     this.dotColors = new WeakMap(); this.actorDots = new Map(); this.objectDots = new Map(); this.image = null; this.pixels = null; this.lastFrameKey = null;
-    this.lastAppearance = this.lastSprites = this.lastHud = this.lastHudSprites = null; }
+    this.lastAppearance = this.lastSprites = this.lastHud = this.lastHudSprites = this.lastDecorationLayer = null; }
 }
 export { ProcgenLaneRenderer };

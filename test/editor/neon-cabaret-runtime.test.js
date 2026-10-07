@@ -10,6 +10,15 @@ import { ParticleTable } from '../../js/render/ParticleTable.js';
 import { TriggerTypes } from '../../js/level/TriggerTypes.js';
 import { lemmingManagerInteractionMethods } from '../../js/lemmings/lemming-manager/LemmingManagerInteraction.js';
 import { LemmingStateType } from '../../js/lemmings/LemmingStateType.js';
+import { CharacterSpriteSet } from '../../js/lemmings/CharacterSpriteSet.js';
+import { PixelSpriteSkin } from '../../js/lemmings/PixelSpriteSkin.js';
+import { CharacterParticles } from '../../js/lemmings/CharacterParticles.js';
+import { Lemming } from '../../js/lemmings/Lemming.js';
+import { TriggerManager } from '../../js/level/TriggerManager.js';
+import { ActionWalkSystem } from '../../js/actions/ActionWalkSystem.js';
+import { ActionDrowningSystem } from '../../js/actions/ActionDrowningSystem.js';
+import { ActionFryingSystem } from '../../js/actions/ActionFryingSystem.js';
+import { ActionSplatterSystem } from '../../js/actions/ActionSplatterSystem.js';
 const entry = (PIECE, X, Y) => ({ props: { PIECE, X, Y } });
 const provider = { loadBinary() { throw new Error('Custom theme must not fetch DAT files'); } };
 function levelData() { const l = new EditorLevel(); for (const [k,v] of Object.entries({ STYLE:'neon-cabaret', WIDTH:640, HEIGHT:160, LEMMINGS:10, SAVE_REQUIREMENT:5 })) l.setHeader(k,v); l.terrains=[entry(0,0,128),entry(1,64,128),entry(3,96,96)];l.gadgets=[entry(1,8,40),entry(0,500,80),entry(2,160,96),entry(3,280,80),entry(4,376,120),entry(5,0,0)];return l; }
@@ -47,4 +56,31 @@ describe('Neon Cabaret operational groundset', () => {
     assert.equal(demo.getGroundMaskLayer().hasGroundAt(410,128),false);
     const g=createNeonCabaretGroundSet();assert.deepEqual(g.getObjectImages()[3].frames[15],g.getObjectImages()[3].frames[0]);
   });
+  it('routes custom theme contacts through the shared cosmetic hazards without filtering original theme art', async () => {
+    const catalog = JSON.parse(fs.readFileSync('assets/characters/catalog.json', 'utf8'));
+    const base = new PixelSpriteSkin(JSON.parse(fs.readFileSync(catalog.shapes[0].path, 'utf8')));
+    const sprites = new CharacterSpriteSet(base, catalog, file => fs.readFileSync(file, 'utf8'), () => preference);
+    const preference = { shape: 'rounded_triangle', bodyColor: '#4778ff' };
+    assert.equal(await sprites.prepare(), true);
+    const level = await loadEditorLevel(levelData(), { path: 'lemmings' }, provider);
+    const manager = new TriggerManager({ getGameTicks: () => 100 }, level.width, level.height);
+    manager.addRange(level.triggers);
+    for (const [type, state, kind, Action] of [
+      [TriggerTypes.FRYING, LemmingStateType.FRYING, 'electric', ActionFryingSystem],
+      [TriggerTypes.TRAP, LemmingStateType.SPLATTING, 'crush', ActionSplatterSystem],
+      [TriggerTypes.DROWN, LemmingStateType.DROWNING, 'acid', ActionDrowningSystem]
+    ]) {
+      const trigger = level.triggers.find(t => t.type === type), pool = new CharacterParticles();
+      const actor = new Lemming(trigger.x1 + 1, trigger.y1 + 1, type), walk = new ActionWalkSystem(sprites);
+      walk.characterParticles = pool; actor.setAction(walk);
+      assert.equal(lemmingManagerInteractionMethods.runTrigger.call({ triggerManager: manager }, actor, 100), state);
+      const death = new Action(sprites); death.characterParticles = pool; actor.setAction(death);
+      assert.equal(sprites.getActorHazardKind(actor), kind);
+      assert.equal(trigger.owner.getFrame(1), trigger.owner.animation.getFrame(1));
+      const before = [actor.x, actor.y, actor.frameIndex, actor.state];
+      assert.ok(sprites.getActorAnimation(death.spriteType, true, actor).getFrame(1));
+      assert.deepEqual([actor.x, actor.y, actor.frameIndex, actor.state], before);
+    }
+  });
+
 });
