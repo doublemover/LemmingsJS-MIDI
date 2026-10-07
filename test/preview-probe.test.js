@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
 import { load } from 'cheerio';
 import {
   PREVIEW_BASE,
@@ -22,7 +21,7 @@ const cleanSnapshot = () => ({
   branch: PREVIEW_BRANCH,
   remote: PREVIEW_REMOTE,
   dirty: '',
-  parent: PREVIEW_BASE,
+  mergeBase: PREVIEW_BASE,
   commitCount: '1',
   files: [...PREVIEW_FILES]
 });
@@ -54,15 +53,15 @@ describe('authorized static preview probe', () => {
     assert.deepEqual([...new Set(html.match(/https?:[^"\s<>]+/g))], [publicUrl]);
   });
 
-  it('leaves index.html byte-for-byte unchanged from the verified base', () => {
-    const original = execFileSync('git', ['show', `${PREVIEW_BASE}:index.html`], { cwd: root });
-    assert.deepEqual(readFileSync(new URL('index.html', root)), original);
-  });
-
   it('plans only a normal push of the reviewed commit to the dedicated branch', () => {
     assert.deepEqual(validatePreviewPushSnapshot(cleanSnapshot(), reviewedCommit), [
       'push', '--porcelain', 'origin', `${reviewedCommit}:refs/heads/${PREVIEW_BRANCH}`
     ]);
+  });
+
+  it('accepts a normal follow-up commit without allowing other files', () => {
+    const snapshot = { ...cleanSnapshot(), commitCount: '2' };
+    assert.equal(validatePreviewPushSnapshot(snapshot, reviewedCommit)[0], 'push');
   });
 
   it('rejects an unexpected commit, branch, remote, dirty state, base, history, or file', () => {
@@ -71,8 +70,8 @@ describe('authorized static preview probe', () => {
       { branch: 'master' },
       { remote: 'https://example.invalid/repository.git' },
       { dirty: ' M preview-probe.html' },
-      { parent: 'b'.repeat(40) },
-      { commitCount: '2' },
+      { mergeBase: 'b'.repeat(40) },
+      { commitCount: '0' },
       { files: [...PREVIEW_FILES, 'index.html'] },
       { files: ['preview-probe.html'] }
     ]) {

@@ -18,8 +18,8 @@ export function validatePreviewPushSnapshot(snapshot, expectedCommit) {
   if (snapshot.branch !== PREVIEW_BRANCH || snapshot.remote !== PREVIEW_REMOTE) {
     throw new Error('Unexpected branch or origin; no push attempted.');
   }
-  if (snapshot.dirty || snapshot.parent !== PREVIEW_BASE || snapshot.commitCount !== '1') {
-    throw new Error('Expected one clean isolated commit directly on the verified base.');
+  if (snapshot.dirty || snapshot.mergeBase !== PREVIEW_BASE || !/^[1-9][0-9]*$/.test(snapshot.commitCount)) {
+    throw new Error('Expected clean isolated commits descended from the verified base.');
   }
   const files = [...snapshot.files].sort();
   if (JSON.stringify(files) !== JSON.stringify([...PREVIEW_FILES].sort())) {
@@ -34,7 +34,7 @@ export function preparePreviewPush(runGit, expectedCommit) {
     branch: runGit(['branch', '--show-current']),
     remote: runGit(['remote', 'get-url', '--push', 'origin']),
     dirty: runGit(['status', '--porcelain']),
-    parent: runGit(['rev-parse', 'HEAD^']),
+    mergeBase: runGit(['merge-base', PREVIEW_BASE, 'HEAD']),
     commitCount: runGit(['rev-list', '--count', `${PREVIEW_BASE}..HEAD`]),
     files: runGit(['diff', '--name-only', PREVIEW_BASE, 'HEAD']).split(/\r?\n/).filter(Boolean)
   }, expectedCommit);
