@@ -1,6 +1,6 @@
 import { createCabaretPainter } from './NeonCabaretPack.js';
 import { TriggerTypes } from '../level/TriggerTypes.js';
-const COLORS = ['#130e1a', '#300c1b', '#550e24', '#841731', '#b9223d', '#ec4661', '#fff5df', '#ffdf83', '#b2863c', '#ffffff', '#235be0', '#122d77', '#83c6ff', '#ff853b', '#f2d1b4', '#a78c94', '#706475', '#3f4451', '#cbd3df', '#e9ecf2', '#8d98aa', '#b6a779', '#fbc346', '#75561d', '#d1cad0', '#aaa4b1', '#827d8b', '#55505f', '#2cffdd', '#ff47bd', '#a543ed', '#d00d35'];
+const COLORS = ['#130e1a', '#300c1b', '#550e24', '#841731', '#b9223d', '#ec4661', '#fff5df', '#ffdf83', '#b2863c', '#ffffff', '#235be0', '#122d77', '#83c6ff', '#ff853b', '#f2d1b4', '#a78c94', '#706475', '#3f4451', '#cbd3df', '#e9ecf2', '#8d98aa', '#b6a779', '#fbc346', '#75561d', '#d1cad0', '#aaa4b1', '#827d8b', '#55505f', '#2cffdd', '#ff47bd', '#a543ed', '#d00d35', '#271426', '#562342', '#183a3b'];
 const palette = { getColor: i => { const n = parseInt((COLORS[i] || COLORS[0]).slice(1), 16); return (0xff000000 | (n & 255) << 16 | (n & 65280) | n >>> 16) >>> 0; } };
 const makePiece = (id, name, width, height, placement, paint, animated = true) => {
   const first = createCabaretPainter(width, height); paint(first, 0);
@@ -30,6 +30,161 @@ function velvet(p, w, h, phase = 0) {
     p.rect(x, 0, 1, h, shade); if (x % 23 === 0) p.rect(x, 0, 1, h, 1);
   }
 }
+function roundedTubePoints(vertices, closed = true) {
+  const points = [];
+  for (let i = 0; i < vertices.length; i++) {
+    const v = vertices[i], prev = vertices[(i + vertices.length - 1) % vertices.length], next = vertices[(i + 1) % vertices.length];
+    const inset = (other) => {
+      const length = Math.hypot(other[0] - v[0], other[1] - v[1]), distance = Math.min(2.5, length / 3);
+      return [v[0] + (other[0] - v[0]) * distance / length, v[1] + (other[1] - v[1]) * distance / length];
+    };
+    if (!closed && (i === 0 || i === vertices.length - 1)) { points.push(v); continue; }
+    const from = inset(prev), to = inset(next);
+    for (let step = 0; step <= 8; step++) {
+      const t = step / 8, u = 1 - t;
+      points.push([u * u * from[0] + 2 * u * t * v[0] + t * t * to[0], u * u * from[1] + 2 * u * t * v[1] + t * t * to[1]]);
+    }
+  }
+  if (closed) points.push(points[0]);
+  return points;
+}
+function neonTube(p, vertices, colors, closed = true) {
+  const points = roundedTubePoints(vertices, closed);
+  // Full-path passes keep the core continuous across bends and overlapping joints.
+  for (let layer = 0; layer < colors.length; layer++) {
+    const radius = colors.length - layer - 1;
+    for (let dy = -radius; dy <= radius; dy++) for (let dx = -radius; dx <= radius; dx++) {
+      if (dx * dx + dy * dy > radius * radius) continue;
+      for (let i = 1; i < points.length; i++) p.line(points[i - 1][0] + dx, points[i - 1][1] + dy, points[i][0] + dx, points[i][1] + dy, colors[layer]);
+    }
+  }
+}
+function neonCrown(p, phase) {
+  const pink = [32, 33, 29, 6], aqua = [0, 34, 28, 6];
+  for (const [x, y] of [[45, 51], [147, 51], [77, 34], [115, 34]]) {
+    p.rect(x - 1, y - 1, 3, 6, 17); p.dot(x, y + 3, 20);
+  }
+  neonTube(p, [[31, 29], [57, 41], [64, 17], [80, 37], [96, 7], [112, 37], [128, 17], [135, 41], [161, 29], [148, 69], [44, 69]], pink);
+  neonTube(p, [[45, 57], [147, 57]], aqua, false);
+  for (const x of [69, 96, 123]) {
+    p.line(x - 2, 63, x, 61, 7); p.line(x, 61, x + 2, 63, 7);
+    p.line(x + 2, 63, x, 65, 7); p.line(x, 65, x - 2, 63, 7); p.dot(x, 63, 6);
+  }
+  const rays = [[[8, 22], [19, 29]], [[5, 45], [18, 45]], [[10, 65], [23, 60]]];
+  for (let side = 0; side < 2; side++) for (let i = 0; i < rays.length; i++) {
+    const lit = (Math.floor(phase / 4) + i) % 4 !== 0;
+    neonTube(p, rays[i].map(([x, y]) => [side ? 192 - x : x, y]), [32, 23, lit ? 7 : 8, lit ? 6 : 7], false);
+  }
+}
+
+// Hand-clustered curls follow the classic snow blower's hooked, broken contours.
+// Four solid shades and open notches avoid smooth, concentric bubble shading.
+const SMOKE_CURLS = [
+  [
+    '           ..           ',
+    '      .. .:--:.         ',
+    '     .::.:-==-:.        ',
+    '   ..:-::-==---:..      ',
+    '  .:-=--==--.:-=-:.     ',
+    ' .:-===-=--:..:-=-.     ',
+    ' .:--====--:  .:-:.     ',
+    ' .::-==---:. .:--:.     ',
+    '   .:----:.  .:=-:.     ',
+    '  .:--::.   .:-=-:..    ',
+    ' .:-=-:.   .:--==-::.   ',
+    ' .:-=-:....:--=--:.     ',
+    '  .:--::::--=--::..     ',
+    '   .:--=----:::..       ',
+    '   .::----::.           ',
+    '     .::::..            ',
+    '    .:--:.              ',
+    '   .:-:.                ',
+    '  .::.                 ',
+    '   ..                  '
+  ],
+  [
+    '         ..             ',
+    '        .::. .          ',
+    '    ... .:--::..        ',
+    '   .:-:..:===-:.        ',
+    ' . .:=-::-====-:..      ',
+    '  .:-==--===--::-:.     ',
+    ' .:--==-==--:.:-=-.     ',
+    '.:-===-==-:.  .:-:.     ',
+    '.:-==-=-::..   .:.      ',
+    ' .:--==---:.   ..       ',
+    ' .::-=-:--=-..          ',
+    '  .:-:. .-==-:..        ',
+    '   ..  .:---=-:.        ',
+    '      .:--==-::..       ',
+    '      .:-=--:..         ',
+    '     .:---::.           ',
+    '    .:-:-..             ',
+    '    .::..               ',
+    '   .:..                 ',
+    '    .                   '
+  ],
+  [
+    '         ..             ',
+    '      ...::.            ',
+    '     .:-:--:.           ',
+    '   . .:-===::.          ',
+    '    .:-=-==-:.          ',
+    '   .:-==-:--:..         ',
+    ' . .:-=-:.:-=-:.        ',
+    '  .:--:.  .:==-:.       ',
+    ' .:-=:.   .:--::.       ',
+    '  .:-:.  .:--:..        ',
+    '   .:...::-=:.          ',
+    '    .::---=-:.          ',
+    '   .::--=-::.           ',
+    '  .:-=---:.             ',
+    '  .:--::..              ',
+    '   .:-:.                ',
+    '   .::.                 ',
+    '   ..                   ',
+    '                        ',
+    '                        '
+  ]
+];
+function smokeCurl(p, cx, cy, scale, flip, phase, seed) {
+  const template = SMOKE_CURLS[seed % SMOKE_CURLS.length];
+  const colors = { '.': 27, ':': 26, '-': 25, '=': 24 };
+  for (let sy = 0; sy < template.length; sy++) {
+    const sway = Math.round(Math.sin((phase + seed + sy / 4) * Math.PI / 8));
+    for (let sx = 0; sx < template[sy].length; sx++) {
+      const color = colors[template[sy][sx]];
+      if (color === undefined) continue;
+      const x = cx + (flip ? 23 - sx : sx) * scale + sway, y = cy + sy * scale;
+      p.rect(x, y, scale, scale, color);
+    }
+  }
+}
+function cigaretteSmoke(p, phase) {
+  // A connected rising trunk holds the lethal cloud while its curls roll upward.
+  for (let y = 22; y < 76; y++) {
+    const bend = Math.round(Math.sin(y / 8 + phase * Math.PI / 8) * 2), width = 6 + Math.floor((76 - y) / 5);
+    const x = 48 + Math.round(Math.sin(y / 13) * 7) + bend;
+    p.rect(x - width, y, width * 2, 1, 27);
+    p.rect(x - width + 4, y, width + 3, 1, 26);
+  }
+  const curls = [
+    [12, 12, 2, false, 0], [44, 9, 2, true, 4], [4, 32, 2, false, 10],
+    [40, 35, 2, true, 12], [25, 31, 2, false, 2], [24, 52, 1, true, 7], [41, 53, 1, false, 1]
+  ];
+  for (const [x, y, scale, flip, seed] of curls) {
+    const lift = Math.round(Math.sin((phase + seed) * Math.PI / 8) * 2);
+    smokeCurl(p, x, y + lift, scale, flip, phase, seed);
+  }
+  for (const [x, y, seed] of [[18, 12, 0], [74, 7, 4], [40, 4, 9], [86, 29, 13], [10, 55, 6]]) {
+    const lift = (phase + seed) % 16, shade = lift > 11 ? 27 : 26;
+    p.rect(x + Math.round(Math.sin((phase + seed) * Math.PI / 8) * 2), y + 5 - Math.floor(lift / 3), 2, 2, shade);
+  }
+  p.ellipse(48, 81, 28, 5, 17); p.ellipse(48, 79, 27, 4, 20); p.ellipse(48, 78, 23, 3, 0);
+  p.line(29, 79, 65, 79, 16); p.line(29, 77, 43, 77, 18); p.line(59, 77, 69, 77, 18);
+  p.line(34, 74, 58, 69, 6); p.line(34, 75, 58, 70, 18); p.line(52, 70, 58, 69, 13);
+  p.dot(34, 74, phase % 8 < 5 ? 31 : 13); p.dot(35, 74, 23);
+}
 let cached;
 function createCasinoArchitecture() {
   if (cached) return cached;
@@ -49,10 +204,7 @@ function createCasinoArchitecture() {
       gold(p, 0, 0, 256, 8); gold(p, 0, 8, 8, 152); gold(p, 248, 8, 8, 152);
       for (const x of [34, 222]) { p.ellipse(x, 94, 6, 8, 8); p.ellipse(x, 92, 4, 6, 7); p.line(x, 100, x + Math.sin(t * Math.PI / 8) * 2, 126, 7); }
     }),
-    makePiece('casino-neon-crown', 'Oversized neon crown and rays', 192, 80, 'ceiling', (p, t) => {
-      for (let pass = 0; pass < 3; pass++) { const c = pass === 0 ? 30 : pass === 1 ? 29 : 6, d = 2 - pass; const points = [[26,22],[53,43],[70,10],[96,36],[122,10],[139,43],[166,22],[155,64],[37,64],[26,22]]; for (let i = 1; i < points.length; i++) { const a = points[i-1], b = points[i]; for (let o = -d; o <= d; o++) p.line(a[0]+o,a[1],b[0]+o,b[1],c); } }
-      for (let i = 0; i < 9; i++) { const x = 32 + i * 16; p.ellipse(x, 72, 3, 2, (i+t)%5 < 2 ? 9 : 28); }
-    })
+    makePiece('casino-neon-crown', 'Oversized neon crown and rays', 192, 80, 'ceiling', neonCrown)
   ];
   cached = { id: 'casino-architecture', pieces, paletteColors: COLORS };
   return cached;
@@ -61,14 +213,7 @@ function createCasinoTerrainPieces(startId = 6) {
   return createCasinoArchitecture().pieces.filter(p => ['casino-marble-floor','casino-white-pillar','casino-black-pillar','casino-grand-stairs','casino-velvet-dais','casino-gold-cornice'].includes(p.id)).map((p, i) => ({ ...p, id: startId + i, isSteel: p.id === 'casino-gold-cornice', image: { ...p.image, frames: [p.image.frames[0]], frameCount: 1, isSteel: p.id === 'casino-gold-cornice' } }));
 }
 function createCasinoSmokeHazard() {
-  const piece = makePiece('casino-cigarette-smoke', 'Dense cigarette-smoke cloud', 96, 88, 'stage', (p, t) => {
-    p.ellipse(48, 80, 30, 6, 17); p.ellipse(48, 78, 27, 4, 20); p.ellipse(48, 77, 22, 3, 0);
-    p.line(34, 75, 58, 70, 6); p.line(34, 76, 58, 71, 18); p.line(52, 71, 58, 70, 13); p.dot(34, 75, 31);
-    for (let layer = 0; layer < 4; layer++) for (let puff = 0; puff < 6; puff++) {
-      const y = 65 - layer * 15 - (t + puff * 3) % 8, x = 48 + Math.sin((puff * 2 + layer + t / 5)) * (14 + layer * 5), r = 10 + layer * 2;
-      p.ellipse(x, y, r, r * 0.72, 27 - Math.min(3, layer)); p.ellipse(x - 3, y - 3, r * 0.7, r * 0.45, 26 - Math.min(2, layer));
-    }
-  });
+  const piece = makePiece('casino-cigarette-smoke', 'Dense cigarette-smoke cloud', 96, 88, 'stage', cigaretteSmoke);
   return { ...piece, triggerEffectId: TriggerTypes.FRYING, characterHazard: 'smoke', trigger: { x: 7, y: 12, width: 82, height: 66 }, hazardCue: 'Dense gray cigarette cloud rising from a lit ashtray', active: true };
 }
 export { createCasinoArchitecture, createCasinoTerrainPieces, createCasinoSmokeHazard };
