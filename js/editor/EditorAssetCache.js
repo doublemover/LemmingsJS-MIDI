@@ -1,3 +1,4 @@
+import { createNeonCabaretGroundSet } from '../decorations/NeonCabaretGroundSet.js';
 import { FileContainer } from '../data/FileContainer.js';
 import { GroundReader, loadSteelSprites } from '../level/GroundReader.js';
 import { TriggerTypes } from '../level/TriggerTypes.js';
@@ -52,11 +53,16 @@ class EditorAssetCache {
     const cached = this.cache.get(cacheKey);
     if (cached) return { ...cached, styleName: resolvedStyle };
 
-    await loadSteelSprites();
-    const vgagrFile = await fileProvider.loadBinary(config.path, `VGAGR${groundSet}.DAT`);
-    const groundFile = await fileProvider.loadBinary(config.path, `GROUND${groundSet}O.DAT`);
-    const container = new this.FileContainer(vgagrFile);
-    const groundReader = new this.GroundReader(groundFile, container.getPart(0), container.getPart(1));
+    let groundReader;
+    if (resolvedStyle === 'neon-cabaret') {
+      groundReader = createNeonCabaretGroundSet();
+    } else {
+      await loadSteelSprites();
+      const vgagrFile = await fileProvider.loadBinary(config.path, `VGAGR${groundSet}.DAT`);
+      const groundFile = await fileProvider.loadBinary(config.path, `GROUND${groundSet}O.DAT`);
+      const container = new this.FileContainer(vgagrFile);
+      groundReader = new this.GroundReader(groundFile, container.getPart(0), container.getPart(1));
+    }
 
     const terrainImages = groundReader.getTerrainImages() || [];
     const objectImages = groundReader.getObjectImages() || [];

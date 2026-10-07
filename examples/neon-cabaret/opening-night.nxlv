@@ -1,0 +1,147 @@
+TITLE Neon Cabaret - Opening Night
+AUTHOR hydro
+STYLE neon-cabaret
+WIDTH 640
+HEIGHT 160
+LEMMINGS 20
+SAVE_REQUIREMENT 5
+TIME_LIMIT INFINITE
+MAX_SPAWN_INTERVAL 20
+START_X 0
+START_Y 0
+$SKILLSET
+  SKILL CLIMBER 10
+  SKILL FLOATER 10
+  SKILL BOMBER 5
+  SKILL BLOCKER 5
+  SKILL BUILDER 20
+  SKILL BASHER 10
+  SKILL MINER 10
+  SKILL DIGGER 10
+$END
+$TERRAIN
+  STYLE neon-cabaret
+  PIECE 0
+  X 0
+  Y 128
+$END
+$TERRAIN
+  STYLE neon-cabaret
+  PIECE 0
+  X 64
+  Y 128
+$END
+$TERRAIN
+  STYLE neon-cabaret
+  PIECE 0
+  X 128
+  Y 128
+$END
+$TERRAIN
+  STYLE neon-cabaret
+  PIECE 0
+  X 192
+  Y 128
+$END
+$TERRAIN
+  STYLE neon-cabaret
+  PIECE 0
+  X 256
+  Y 128
+$END
+$TERRAIN
+  STYLE neon-cabaret
+  PIECE 0
+  X 320
+  Y 128
+$END
+$TERRAIN
+  STYLE neon-cabaret
+  PIECE 0
+  X 448
+  Y 128
+$END
+$TERRAIN
+  STYLE neon-cabaret
+  PIECE 0
+  X 512
+  Y 128
+$END
+$TERRAIN
+  STYLE neon-cabaret
+  PIECE 0
+  X 576
+  Y 128
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 1
+  X 12
+  Y 62
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 0
+  X 572
+  Y 82
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 2
+  X 160
+  Y 96
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 3
+  X 280
+  Y 80
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 4
+  X 376
+  Y 120
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 5
+  X 0
+  Y 8
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 5
+  X 128
+  Y 8
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 6
+  X 256
+  Y 8
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 5
+  X 384
+  Y 8
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 5
+  X 512
+  Y 8
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 7
+  X 88
+  Y 60
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 8
+  X 470
+  Y 72
+$END

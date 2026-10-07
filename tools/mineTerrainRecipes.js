@@ -282,6 +282,11 @@ export async function mineTerrainRecipes({ root = ROOT } = {}) {
       const text = await fs.readFile(path.join(root, filename), 'utf8'), parsed = NxlvParser.parse(text);
       if (parsed.terrainGroups.length) throw new Error('Grouped NXLV transforms require flattening; not silently approximated');
       const style = parsed.getHeader('STYLE') || parsed.terrains[0]?.props.STYLE;
+      if (String(style).toLowerCase() === 'neon-cabaret') {
+        entry.status = 'excluded';
+        entry.reason = 'Bundled original-art theme; deliberately outside the classic source-art recipe corpus';
+        continue;
+      }
       const groundSet = getStyle(style)?.groundSet;
       if (groundSet == null || groundSet > 4) throw new Error(`NXLV style ${style} has no unambiguous source-art binding`);
       const placements = parsed.terrains.map(entry => {
@@ -342,7 +347,7 @@ export function terrainRecipeReport(book) {
     '| --- | ---: | ---: | ---: | ---: | ---: |'];
   for (const p of i.packs) lines.push(`| ${p.path} | ${p.configuredAliases} | ${p.physicalLevels} | ${p.unconfiguredPhysicalLevels} | ${p.tileAssemblies} | ${p.specialBitmaps} |`);
   lines.push('', 'Nonclassic files are standalone authored examples, not a claim of coverage of all NeoLemmix packs:');
-  for (const entry of i.nonclassic) lines.push(`- \`${entry.source}\`: ${entry.status}${entry.error ? `; ${entry.error}` : `; ${entry.placements} terrain placements`}.`);
+  for (const entry of i.nonclassic) lines.push(`- \`${entry.source}\`: ${entry.status}${entry.error ? `; ${entry.error}` : entry.reason ? `; ${entry.reason}` : `; ${entry.placements} terrain placements`}.`);
   for (const failure of i.failures) lines.push(`- Failure: \`${failure.source}\`: ${failure.error}.`);
   lines.push('', '## Per-theme evidence', '', 'Decoded asset hashes deduplicate identical art across packs. Ground-set numbers are pack-local: OhNo set0 is brick, not original dirt. Source ordering and palette transparency are preserved.', '',
     '| Theme | Levels | Pieces | Joins | Overlaps | Erasers | Repeats | Gaps | Ledges | Safe repeat recipes |',

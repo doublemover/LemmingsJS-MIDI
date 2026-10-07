@@ -1,3 +1,4 @@
+import { createNeonCabaretGroundSet } from '../decorations/NeonCabaretGroundSet.js';
 import { FileContainer } from '../data/FileContainer.js';
 import { Level } from '../level/Level.js';
 import { LevelElement } from '../level/LevelElement.js';
@@ -279,8 +280,12 @@ const buildSkills = (skillset) => {
 const createClassicLevelData = (editorLevel, options = {}) => {
   if (!editorLevel) return null;
   const warnings = [];
-  const styleName = resolveStyleName(editorLevel, options);
+  const requestedStyle = resolveStyleName(editorLevel, options);
+  const styleName = getStyle(requestedStyle)?.name || requestedStyle;
   const groundSet = resolveGroundSet(styleName);
+  if (getStyle(styleName)?.customAssets && !options.runtimeTransforms) {
+    warnings.push(createExportWarning('classic_custom_style', 'Custom theme assets are not embedded in classic .lvl files. Save as .nxlv to preserve this playable theme.', { target: 'style', styleName }));
+  }
   const width = coerceNumber(editorLevel.getHeader('WIDTH'), DEFAULT_LEVEL_WIDTH);
   const height = coerceNumber(editorLevel.getHeader('HEIGHT'), DEFAULT_LEVEL_HEIGHT);
   const rawTitle = String(editorLevel.getHeader('TITLE') || 'Untitled');
@@ -462,14 +467,18 @@ const loadEditorLevel = async (editorLevel, config, fileProvider, options = {}) 
   level.timeLimit = props.timeLimit;
   level.skills = props.skills;
 
-  await loadSteelSpritesFn();
-  const groundSetId = groundSet | 0;
-  const vgagrFile = fileProvider.loadBinary(config.path, `VGAGR${groundSetId}.DAT`);
-  const groundFile = fileProvider.loadBinary(config.path, `GROUND${groundSetId}O.DAT`);
-  const [vgagrBuf, groundBuf] = await Promise.all([vgagrFile, groundFile]);
-
-  const vgaContainer = new FileContainerCtor(vgagrBuf);
-  const groundReader = new GroundReaderCtor(groundBuf, vgaContainer.getPart(0), vgaContainer.getPart(1));
+  let groundReader;
+  if (styleName === 'neon-cabaret') {
+    groundReader = createNeonCabaretGroundSet();
+  } else {
+    await loadSteelSpritesFn();
+    const groundSetId = groundSet | 0;
+    const vgagrFile = fileProvider.loadBinary(config.path, `VGAGR${groundSetId}.DAT`);
+    const groundFile = fileProvider.loadBinary(config.path, `GROUND${groundSetId}O.DAT`);
+    const [vgagrBuf, groundBuf] = await Promise.all([vgagrFile, groundFile]);
+    const vgaContainer = new FileContainerCtor(vgagrBuf);
+    groundReader = new GroundReaderCtor(groundBuf, vgaContainer.getPart(0), vgaContainer.getPart(1));
+  }
   const renderer = new GroundRendererCtor();
   renderer.createGroundMap(levelReader, groundReader.getTerrainImages());
 
@@ -480,7 +489,13 @@ const loadEditorLevel = async (editorLevel, config, fileProvider, options = {}) 
   level.setPalettes(groundReader.colorPalette, groundReader.groundPalette);
   level.midiFlags = extractMidiFlags(editorLevel.gadgets, styleName, objectImages);
 
-  if (Array.isArray(levelReader.steel) && levelReader.steel.length) {
+  if (styleName === 'neon-cabaret') {
+    for (const entry of levelReader.terrains) {
+      const image = groundReader.getTerrainImages()[entry.id];
+      if (image?.isSteel && !entry.drawProperties?.isErase) levelReader.steel.push({ x: entry.x, y: entry.y, width: image.width, height: image.height });
+    }
+  }
+  if ((Array.isArray(levelReader.steel) && levelReader.steel.length) || styleName === 'neon-cabaret') {
     level.setSteelAreas(levelReader.steel);
     if (typeof level.newSetSteelAreas === 'function') {
       level.newSetSteelAreas(levelReader, groundReader.getTerrainImages());

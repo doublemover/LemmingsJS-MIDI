@@ -1,9 +1,9 @@
 /** Original, deterministic indexed pixel art. Generated once, then renderer-cached. */
 const COLORS = ['#160f29', '#302044', '#58304f', '#912b68', '#d44983', '#ff77b6', '#ffe3eb', '#61436c', '#957292', '#e5bd8a', '#fff2b2', '#ffcc55', '#c97c36', '#257e91', '#47c4cf', '#b4fff0', '#e85357', '#f79457', '#452e39', '#1b485d'];
-const palette = Object.freeze({ getColor(index) {
+const palette = { getColor(index) {
   const hex = COLORS[index] || COLORS[0], n = parseInt(hex.slice(1), 16);
   return (0xff000000 | ((n & 255) << 16) | (n & 0xff00) | (n >>> 16)) >>> 0;
-} });
+}, getR(index) { return this.getColor(index) & 255; }, getG(index) { return (this.getColor(index) >>> 8) & 255; }, getB(index) { return (this.getColor(index) >>> 16) & 255; } };
 function painter(width, height) {
   const frame = new Uint8Array(width * height).fill(128);
   const dot = (x, y, color) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < width && y < height) frame[y * width + x] = color; };

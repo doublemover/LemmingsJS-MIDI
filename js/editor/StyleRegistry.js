@@ -1,3 +1,4 @@
+import { NEON_CABARET_STYLE } from '../decorations/NeonCabaretGroundSet.js';
 const DEFAULT_TERRAIN_COUNT = 64;
 const DEFAULT_GADGET_COUNT = 16;
 
@@ -66,6 +67,7 @@ function registerStyle(name, definition = {}) {
     name: String(name).trim(),
     key,
     groundSet,
+    customAssets: !!definition.customAssets,
     terrainPieces,
     gadgetPieces,
     terrainByName: terrainIndex.byName,
@@ -162,6 +164,7 @@ function registerClassicStyles() {
 }
 
 registerClassicStyles();
+registerStyle('neon-cabaret', NEON_CABARET_STYLE);
 
 export {
   DEFAULT_TERRAIN_COUNT,

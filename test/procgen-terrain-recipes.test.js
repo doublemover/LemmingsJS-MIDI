@@ -22,17 +22,18 @@ describe('mined terrain assembly recipes', function () {
   let book;
   before(async () => { await loadSteelSprites(); book = await loadTerrainRecipeBook(provider); });
 
-  it('covers physical classic parts, aliases, special bitmaps and both available nonclassic examples honestly', () => {
+  it('covers physical classic parts, aliases, special bitmaps and distinguishes original-art examples from mined source art', () => {
     assert.equal(book.inventory.configuredAliases, 324);
     assert.equal(book.inventory.physicalClassicLevels, 298);
     assert.equal(book.inventory.tileAssemblyLevels, 296);
     assert.equal(book.inventory.specialBitmaps.length, 4);
-    assert.equal(book.inventory.nonclassicLevels, 2);
+    assert.equal(book.inventory.nonclassicLevels, 3);
     assert.equal(book.inventory.failures.length, 0);
     assert.equal(book.corpus.length, 296);
     assert.equal(new Set(book.corpus.map(level => level.id)).size, 296);
     assert.equal(book.inventory.packs.filter(pack => pack.unconfiguredPhysicalLevels === 7).length, 2);
-    assert.equal(book.inventory.nonclassic.every(level => level.status === 'analyzed'), true);
+    assert.equal(book.inventory.nonclassic.filter(level => level.status === 'analyzed').length, 2);
+    assert.deepEqual(book.inventory.nonclassic.filter(level => level.status === 'excluded').map(level => level.source), ['examples/neon-cabaret/opening-night.nxlv']);
     assert.ok(book.themes.every(theme => theme.routes.length > 0 && theme.counts.erasers > 0));
     assert.ok(book.themes.some(theme => theme.routes.some(route => new Set(route.placements.map(p => p.id)).size > 1)));
     assert.ok(book.themes.every(theme => theme.motifs.repeatingGroups.length > 0));

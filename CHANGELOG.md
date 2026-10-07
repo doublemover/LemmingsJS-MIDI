@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Original Neon Cabaret editor theme includes animated scenery, walkable terrain, protected steel, entrance/exit, and operational electric, crush and coolant hazards with an Opening Night starter level.
 - Frontier-grown, phase-varying procgen chunks use the full selected-theme terrain/object vocabulary, including animated noncolliding scenery, climbable elevations, gaps, overhangs and protected steel.
 - Compact seven-pixel character silhouettes, shape-specific walking and panic, sampled terrain debris, and intact accessory/eyewear ejection work in both classic levels and the sparse procgen world.
 - Procgen now has a hidden pull-down drawer, shared visual character choices, 1–1024 left-to-right lanes in one sparse world, staggered spawn cohorts, local-only listening and fifteen action-music presets.
