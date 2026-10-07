@@ -812,3 +812,13 @@ fitted berets with lift/open/reattach cosmetics on every shape. Acceptance instr
   pixel/collision-mask rendering. Rotation, terrain resizing, one-way behavior,
   and gadget transforms remain disabled/preserved pending specified implementation. Do not treat this MIDI/appearance batch as those
   separate closures or as a global performance gain.
+
+
+## Long-running actor storage
+
+- Main-game endless/benchmark spawning still appends to the historical ID-indexed
+  `LemmingManager.lemmings` array and leaves null slots after removal. Object pooling
+  bounds reusable actor instances, not that array's lifetime slot count. Investigate
+  a monotonic ID plus bounded live lookup while preserving history, rewind and
+  `getLemming(id)` compatibility. Do not compact the array as a quick fix. The
+  procgen world's separately compacted actor array is unaffected.

@@ -33,6 +33,8 @@ class ProcgenLaneWorld {
     this.height = this.laneCount * LANE_HEIGHT;
     this.tickIndex = 0;
     this.assists = assists;
+    this.sprites = sprites;
+    this._assistedColumn = { valid: false, x: 0, y: 0, height: 0, revision: 0, value: 0 };
     this.terrain = terrain;
     terrain?.configure?.(this.laneCount, maxActors);
     this.terrainRevision = 0; this.frontierRevision = 0; this.terrainTileRevisions = new Map();
@@ -120,6 +122,7 @@ class ProcgenLaneWorld {
   }
   _restart(previousDistances) {
     this.characterParticles?.clear();
+    this._assistedColumn.valid = false;
     this.actors.length = 0; this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this.terrain?.reset?.();
     this._laneChunk.fill(null); this._laneChunkIndex.fill(-1); this._collisionSlots.fill(null); this._collisionIndices.fill(-1); this._laneEdits.fill(null); this._laneEditIndex.fill(-1); this._editCache.fill(null); this._editIndices.fill(-1); this.frontiers.fill(36);
     this.generatedThrough.fill(this.terrain?.chunkWidth || CHUNK_WIDTH); this.terrainRevision++; this.frontierRevision++; this.generation++; this.generationStartTick = this.tickIndex;
@@ -222,6 +225,11 @@ class ProcgenLaneWorld {
   }
   hasGroundAt(x, y) { this.stats.groundQueries++; return this.groundColorAt(x, y) > 0; }
   getColumnStepHeight(x, yTop, height) {
+    const cached = this._assistedColumn;
+    if (cached.valid) {
+      cached.valid = false;
+      if (cached.x === x && cached.y === yTop && cached.height === height && cached.revision === this.terrainRevision) return cached.value;
+    }
     const lane = Math.floor(yTop / LANE_HEIGHT);
     if (this.terrain && x >= 0 && x < this.width && lane >= 0 && yTop + height <= (lane + 1) * LANE_HEIGHT && lane < this.laneCount) {
       const solid = this._terrainChunk(lane, x).solid, edits = this._editsAt(lane, x), sx = x % this.terrain.chunkWidth, ex = x % EDIT_CHUNK_WIDTH;
@@ -315,7 +323,10 @@ class ProcgenLaneWorld {
     }
     if (actor.action !== this.actions[State.WALKING]) return;
     if (!actor.lookRight) { actor.lookRight = true; this.stats.turns++; }
-    if (this.getColumnStepHeight(x + 1, y - 7, 8) === 8) {
+    // Only the immediately following action may consume this unchanged column.
+    const column = this.getColumnStepHeight(x + 1, y - 7, 8), cached = this._assistedColumn;
+    cached.x = x + 1; cached.y = y - 7; cached.height = 8; cached.value = column; cached.revision = this.terrainRevision; cached.valid = true;
+    if (column === 8) {
       if (this.terrain && (this.hasSteelAt(x + 1, y - 4) || !gap.barrierWidth || x < gap.barrierX - 2 || x > gap.barrierX + gap.barrierWidth)) {
         if (!actor.canClimb) { actor.canClimb = true; actor.assists++; }
       } else { actor.setAction(this.actions[State.BASHING]); this.stats.bashes++; actor.assists++; }
@@ -337,8 +348,10 @@ class ProcgenLaneWorld {
       }
       if (!this.cohorts && this.tickIndex === 1) this.soundEvents.emitSfx(SoundEventTypes.LEMMING_SPAWN, SoundEffectIds.SPAWN,
         { lemmingId: actor.id, x: actor.x, y: actor.y, presentationPhase: actor.laneIndex / this.laneCount });
+      this._assistedColumn.valid = false;
       if (this.stall.phase === 'running') this._assist(actor);
       const next = actor.process(this);
+      this._assistedColumn.valid = false;
       if (next !== State.NO_STATE_TYPE && next !== State.JUMPING) {
         if (this.actions[next]) actor.setAction(this.actions[next]);
         else {

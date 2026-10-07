@@ -31,7 +31,7 @@ const midiSchedulerRateMethods = {
       for (let read = 0; read < this._ratePlanned.length; read += 1) {
         const entry = this._ratePlanned[read];
         if (entry.timeMs < now) {
-          this._rateSent.push(entry);
+          if (entry.timeMs >= cutoff) this._rateSent.push(entry);
         } else {
           this._ratePlanned[write] = entry;
           write += 1;
@@ -51,12 +51,12 @@ const midiSchedulerRateMethods = {
     }
   },
 
-  _sumRate(entries, startMs, endMs) {
+  _sumRate(entries, startMs, endMs, detailed = true) {
     let count = 0;
     let bytes = 0;
-    const bySfx = new Map();
-    const byTrack = new Map();
-    const byOutput = new Map();
+    const bySfx = detailed ? new Map() : null;
+    const byTrack = detailed ? new Map() : null;
+    const byOutput = detailed ? new Map() : null;
     const addShare = (map, key, entry) => {
       const curr = map.get(key) || { count: 0, bytes: 0, priority: entry.priority ?? 1 };
       curr.count += entry.count;
@@ -69,9 +69,11 @@ const midiSchedulerRateMethods = {
       if (entry.timeMs < startMs || entry.timeMs >= endMs) continue;
       count += entry.count;
       bytes += entry.bytes;
-      addShare(bySfx, entry.sfxId ?? 'unknown', entry);
-      addShare(byTrack, entry.trackId ?? 'project', entry);
-      addShare(byOutput, entry.outputId ?? 'project', entry);
+      if (detailed) {
+        addShare(bySfx, entry.sfxId ?? 'unknown', entry);
+        addShare(byTrack, entry.trackId ?? 'project', entry);
+        addShare(byOutput, entry.outputId ?? 'project', entry);
+      }
     }
     return { count, bytes, bySfx, byTrack, byOutput };
   },
@@ -161,14 +163,14 @@ const midiSchedulerRateMethods = {
       combined
     };
     if (!result.ok || options.reserve === false) return result;
-    return this.reserveEvaluation(result, plan, meta, now);
+    return this.reserveEvaluation(result, plan, meta, now, true);
   },
 
-  reserveEvaluation(evaluation, plan, meta = {}, now = this._nowMs()) {
+  reserveEvaluation(evaluation, plan, meta = {}, now = this._nowMs(), alreadyPruned = false) {
     if (!evaluation?.ok) return evaluation || { ok: false, reason: 'count-limit' };
     if (evaluation.reservationId) return evaluation;
     const reservationId = ++this._reservationSeq;
-    this._pruneRateEntries(now);
+    if (!alreadyPruned) this._pruneRateEntries(now);
     for (const entry of this._planEntries(plan)) {
       const count = Math.trunc(toFiniteNumber(entry.count, 0));
       if (count <= 0) continue;
@@ -186,7 +188,7 @@ const midiSchedulerRateMethods = {
         trackId: meta.trackId ?? null,
         outputId: meta.outputId ?? null,
         voiceBudget: meta.voiceBudget ?? null
-      }, now);
+      }, now, true);
     }
     return {
       ...evaluation,
@@ -202,10 +204,10 @@ const midiSchedulerRateMethods = {
     });
   },
 
-  getRateSnapshot(now = this._nowMs()) {
+  getRateSnapshot(now = this._nowMs(), detailed = true) {
     this._pruneRateEntries(now);
-    const past = this._sumRate(this._rateSent, now - this._rateWindowMs, now);
-    const next = this._sumRate(this._ratePlanned, now, now + this._rateWindowMs);
+    const past = this._sumRate(this._rateSent, now - this._rateWindowMs, now, detailed);
+    const next = this._sumRate(this._ratePlanned, now, now + this._rateWindowMs, detailed);
     return {
       now,
       past,
@@ -253,14 +255,15 @@ const midiSchedulerRateMethods = {
     return { messages, bytes: messages * MIDI_MESSAGE_BYTES };
   },
 
-  _recordPlanned(entry, now = this._nowMs()) {
+  _recordPlanned(entry, now = this._nowMs(), alreadyPruned = false) {
     if (!entry || !Number.isFinite(entry.timeMs)) return;
     const count = Math.trunc(toFiniteNumber(entry.count, 0));
     if (count <= 0) return;
     const bytes = Math.trunc(toFiniteNumber(entry.bytes, count * MIDI_MESSAGE_BYTES));
     if (bytes <= 0) return;
+    if (entry.timeMs < now - this._rateWindowMs) return;
     const normalized = { ...entry, count, bytes };
-    this._pruneRateEntries(now);
+    if (!alreadyPruned) this._pruneRateEntries(now);
     if (normalized.timeMs < now) {
       this._rateSent.push(normalized);
     } else {
@@ -294,7 +297,7 @@ const midiSchedulerRateMethods = {
   },
 
   _checkByteRate(now = this._nowMs()) {
-    const snapshot = this.getRateSnapshot(now);
+    const snapshot = this.getRateSnapshot(now, false);
     const pastCount = toFiniteNumber(snapshot.past?.count, 0);
     const nextCount = toFiniteNumber(snapshot.next?.count, 0);
     const pastBytes = toFiniteNumber(snapshot.past?.bytes, 0);

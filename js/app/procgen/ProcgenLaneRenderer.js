@@ -14,6 +14,7 @@ class ProcgenLaneRenderer {
     this.image = null; this.lastTerrainKey = ''; this.lastGeometryKey = ''; this.tileRevisions = new Map(); this.lastFrameMs = 0; this.renderedActors = 0;
     this.rasterStep = 1; this.viewWidth = 0; this.viewHeight = 0;
     this.terrainRebuilds = 0; this.terrainCacheHits = 0;
+    this.frameCacheHits = 0; this.lastFrameKey = null; this.lastAppearance = null; this.lastSprites = null; this.lastHud = null; this.lastHudSprites = null;
     this.camera = createProcgenCameraController(this);
   }
   resize() { this.lastTerrainKey = ''; this.lastGeometryKey = ''; this.render(); }
@@ -172,21 +173,28 @@ class ProcgenLaneRenderer {
     }
     this._flushDots(this.objectDots, context); this.bufferContext.drawImage(this.objectBuffer, 0, 0);
   }
-  render() {
+  // Explicit requests redraw; the RAF loop may reuse a fully unchanged frame.
+  render(force = true) {
     const start = this.window.performance?.now?.() ?? 0;
-    this.camera.update();
+    this.camera.update(false, !force);
     const dpr = Math.min(2, this.window.devicePixelRatio || 1), scale = this.scale * dpr;
     this.rasterStep = Math.max(1, 1 / scale);
     const width = Math.max(1, Math.ceil(this.canvas.width / Math.max(1, scale))), height = Math.max(1, Math.ceil(this.canvas.height / Math.max(1, scale)));
     this.viewWidth = width * this.rasterStep; this.viewHeight = height * this.rasterStep;
     this.originX = Math.floor(this.cameraX / this.rasterStep) * this.rasterStep;
     this.originY = Math.floor(this.cameraY / this.rasterStep) * this.rasterStep;
+    const world = this.world, sprites = world.sprites, appearance = sprites?.activePreference || sprites?.getPreference?.();
+    const geometryKey = `${this.originX}:${this.originY}:${width}:${height}:${this.rasterStep}:${world.generation}`;
+    const frameKey = `${geometryKey}:${world.tickIndex}:${world.terrainRevision}:${world.frontierRevision}:${this.canvas.width}:${this.canvas.height}:${dpr}:${this.scale}:${this.cameraY}:${this.follow}`;
+    if (!force && frameKey === this.lastFrameKey && appearance === this.lastAppearance && sprites === this.lastSprites && this.hud === this.lastHud && this.hud?.sprites === this.lastHudSprites) {
+      this.frameCacheHits++; this.lastFrameMs = (this.window.performance?.now?.() ?? start) - start;
+      return false;
+    }
     if (!this.image || this.buffer.width !== width || this.buffer.height !== height) {
       this.buffer.width = this.terrainBuffer.width = this.objectBuffer.width = width;
       this.buffer.height = this.terrainBuffer.height = this.objectBuffer.height = height; this.lastObjectKey = ''; this.lastPlacementKey = '';
       this.image = this.terrainContext.createImageData(width, height); this.pixels = new Uint32Array(this.image.data.buffer); this.lastTerrainKey = ''; this.lastGeometryKey = '';
     }
-    const geometryKey = `${this.originX}:${this.originY}:${width}:${height}:${this.rasterStep}:${this.world.generation}`;
     const key = `${geometryKey}:${this.world.terrainRevision}`;
     if (key !== this.lastTerrainKey) {
       this._terrainPixels(width, height, geometryKey !== this.lastGeometryKey);
@@ -216,9 +224,12 @@ class ProcgenLaneRenderer {
     this.context.imageSmoothingEnabled = false;
     this.context.drawImage(this.buffer, 0, 0, this.canvas.width, this.canvas.height);
     this.hud?.render(this.context, this.world, this.camera, dpr);
+    this.lastFrameKey = frameKey; this.lastAppearance = appearance; this.lastSprites = sprites; this.lastHud = this.hud; this.lastHudSprites = this.hud?.sprites;
     this.lastFrameMs = (this.window.performance?.now?.() ?? start) - start;
+    return true;
   }
   dispose() { this.camera.dispose(); this.frames = new WeakMap(); this.objectFrames = new WeakMap();
-    this.dotColors = new WeakMap(); this.actorDots = new Map(); this.objectDots = new Map(); this.image = null; this.pixels = null; }
+    this.dotColors = new WeakMap(); this.actorDots = new Map(); this.objectDots = new Map(); this.image = null; this.pixels = null; this.lastFrameKey = null;
+    this.lastAppearance = this.lastSprites = this.lastHud = this.lastHudSprites = null; }
 }
 export { ProcgenLaneRenderer };

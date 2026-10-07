@@ -39,7 +39,7 @@ const createProcgenLaneRuntime = ({ canvas, resources, sprites, masks, assets, l
       }
     }
     lastTime = time;
-    renderer.render();
+    renderer.render(false);
     if (lastMetrics == null) { lastMetrics = time; lastMetricTick = world.tickIndex; }
     if (time - lastMetrics >= 1000) {
       world.timer.achievedTicksPerSecond = (world.tickIndex - lastMetricTick) * 1000 / (time - lastMetrics);
@@ -54,7 +54,7 @@ const createProcgenLaneRuntime = ({ canvas, resources, sprites, masks, assets, l
   windowRef.document.addEventListener?.('visibilitychange', visibilityChanged);
   frame = windowRef.requestAnimationFrame(update);
   const getDebugState = () => ({ ...world.getDebugState(), selectedTheme: terrain?.recipe.family || assets.styleName,
-    renderer: { visibleActors: renderer.renderedActors, frameMs: renderer.lastFrameMs, cameraX: renderer.cameraX, cameraY: renderer.cameraY, scale: renderer.scale, rasterWidth: renderer.buffer.width, rasterHeight: renderer.buffer.height, terrainRebuilds: renderer.terrainRebuilds, terrainCacheHits: renderer.terrainCacheHits } });
+    renderer: { visibleActors: renderer.renderedActors, frameMs: renderer.lastFrameMs, cameraX: renderer.cameraX, cameraY: renderer.cameraY, scale: renderer.scale, rasterWidth: renderer.buffer.width, rasterHeight: renderer.buffer.height, terrainRebuilds: renderer.terrainRebuilds, terrainCacheHits: renderer.terrainCacheHits, frameCacheHits: renderer.frameCacheHits } });
   return { view, game: world, world, renderer, getDebugState,
     pause() { paused = true; previewRouter?.resetClock?.({ preserveGamePhrases: true }); },
     resume() { paused = false; lastTime = null; },

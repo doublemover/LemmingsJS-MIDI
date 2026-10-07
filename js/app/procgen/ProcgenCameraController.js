@@ -26,12 +26,17 @@ const createProcgenCameraController = renderer => {
     renderer.cameraY = pinnedY ? 0 : centerY - next.height / 2;
     renderer.follow = false; clamp(); renderer.render();
   };
+  let cachedLeader = null, leaderTick = -1, leaderGeneration = -1, leaderActors = null, leaderCount = -1;
   const followFrontier = () => { renderer.follow = true; update(true); renderer.render(); };
-  const update = (immediate = false) => {
+  const update = (immediate = false, reuseLeader = false) => {
     clamp();
     if (!renderer.follow) return;
-    let leader = null;
-    for (const actor of world.actors) if (!actor.failureReason && !actor.removed && Number.isFinite(actor.x) && (!leader || actor.x > leader.x)) leader = actor;
+    if (!reuseLeader || leaderTick !== world.tickIndex || leaderGeneration !== world.generation || leaderActors !== world.actors || leaderCount !== world.actors.length) {
+      cachedLeader = null;
+      for (const actor of world.actors) if (!actor.failureReason && !actor.removed && Number.isFinite(actor.x) && (!cachedLeader || actor.x > cachedLeader.x)) cachedLeader = actor;
+      leaderTick = world.tickIndex; leaderGeneration = world.generation; leaderActors = world.actors; leaderCount = world.actors.length;
+    }
+    const leader = cachedLeader;
     const view = viewport(), targetX = Math.max(0, (leader?.x || 36) - view.width * 0.4);
     renderer.cameraX += (targetX - renderer.cameraX) * (immediate ? 1 : 0.12);
     if (leader && (leader.y < renderer.cameraY + 16 || leader.y > renderer.cameraY + view.height - 16)) {
@@ -56,6 +61,7 @@ const createProcgenCameraController = renderer => {
     renderer.follow = state.follow !== false; clamp();
   };
   return { pan, setZoom, followFrontier, update, getState, applyState, viewport,
-    dispose() { for (const [event, handler, options] of listeners) canvas.removeEventListener(event, handler, options); } };
+    dispose() { for (const [event, handler, options] of listeners) canvas.removeEventListener(event, handler, options);
+      listeners.length = 0; cachedLeader = null; leaderActors = null; } };
 };
 export { createProcgenCameraController, PROCGEN_MIN_SCALE, PROCGEN_MAX_SCALE };

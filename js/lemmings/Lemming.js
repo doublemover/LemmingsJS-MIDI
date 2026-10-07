@@ -10,7 +10,7 @@ const addMiniMapDeath = (runtime, x, y) => {
 
 class Lemming extends BaseLogger {
   constructor(x = 0, y = 0, id, runtime = null) {
-    super();
+    super(undefined, true);
     this.runtime = runtime;
     this.reset(x, y, id);
   }

@@ -132,7 +132,7 @@ class ProcgenRecipeTerrain {
       solid[index >>> 5] &= ~(1 << (index & 31)); steel[index >>> 5] &= ~(1 << (index & 31));
       if (pixels) pixels[index] = 0;
     }
-    for (const placement of d.placements) if (placement.decor) stamp(placement);
+    if (pixels) for (const placement of d.placements) if (placement.decor) stamp(placement);
     for (let x = 0; x < width; x++) for (let y = 0; y < height; y++) {
       const index = y * width + x;
       if (solid[index >>> 5] & (1 << (index & 31))) { topProfile[x] = y; break; }

@@ -47,6 +47,22 @@ The raster/canvases never exceed the screen's pixel dimensions at far zoom.
 Subpixel actors and objects aggregate into representative screen-pixel colors,
 while every admitted actor still receives the same real simulation ticks.
 
+The RAF loop reuses the completed frame when simulation, terrain, raster origin,
+zoom, canvas size, appearance and HUD are unchanged. Follow-camera easing still
+runs each frame, with its live leader cached only for the current tick. Explicit
+render requests (including pan, zoom, resize and manual steps) always redraw.
+An assisted walking column can be consumed once by the immediately following
+action, provided its coordinates and terrain revision still match. Collision-only
+chunk generation skips the decorative pixel pass entirely. Default actor loggers
+are shared; injected log handlers remain independently constructed.
+
+MIDI send-rate warnings request totals without allocating per-sound, track and
+output breakdown maps. Detailed snapshots and priority shares retain their normal
+contract. A synchronous reservation prunes its rolling window once and discards
+already-expired entries; separate calls still prune at their own timestamps.
+These source-level cleanups have correctness/operation-count tests, not a new
+browser performance measurement.
+
 Wheel or Z/X zooms, including far-out views down to 1/256 scale. Zoom keeps the
 left edge and first-lane top edge pinned when the view is at the origin. Drag,
 arrows, or Shift-wheel pans; Shift-arrows pans faster. Manual changes suspend
