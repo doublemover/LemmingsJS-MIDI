@@ -14,7 +14,7 @@ heading = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 
 for fixture in receipt['fixtures']:
     kind = fixture['kind']
     frames = []
-    for index in range(32):
+    for index in range(56 if kind == 'water' else 32):
         canvas = Image.new('RGB', (1200, 822), '#141c2c')
         draw = ImageDraw.Draw(canvas)
         draw.text((14, 12), fixture['label']+' | all 12 custom shapes', font=heading, fill='#edf1fa')
@@ -28,7 +28,7 @@ for fixture in receipt['fixtures']:
         frames.append(canvas)
     frames[0].save(out/f'{kind}-12-shapes.gif',save_all=True,append_images=frames[1:],duration=60,loop=0,disposal=2)
 
-    ticks = [1, 4, 7, 10, 13, 16]
+    ticks = [1, 7, 13, 15, 24, 40] if kind == 'water' else [1, 4, 7, 10, 13, 16]
     canvas = Image.new('RGB',(1160,815),'#141c2c'); draw=ImageDraw.Draw(canvas)
     draw.text((14,12),fixture['label']+' | contact to removal',font=heading,fill='#edf1fa')
     draw.text((14,44),'Native hazard/action close-ups, 60 ms per tick. Original gameplay duration and movement.',font=small,fill='#bac8df')

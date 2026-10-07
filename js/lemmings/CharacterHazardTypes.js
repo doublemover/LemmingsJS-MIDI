@@ -14,7 +14,7 @@ const OHNO = Object.freeze({
 });
 const PACKS = Object.freeze({ lemmings: ORIGINAL, lemmings_ohno: OHNO,
   xmas91: { 0: OHNO[0] }, xmas92: {}, holiday93: { 1: OHNO[1] }, holiday94: { 1: OHNO[1] } });
-const CHARACTER_HAZARD_KINDS = Object.freeze(['water', 'acid', 'lava', 'fire', 'crush', 'slice', 'spikes', 'bite', 'tentacle', 'suction', 'electric', 'ice']);
+const CHARACTER_HAZARD_KINDS = Object.freeze(['water', 'acid', 'lava', 'fire', 'crush', 'slice', 'spikes', 'bite', 'tentacle', 'suction', 'electric', 'ice', 'smoke']);
 
 function classifyClassicHazard(folder, filename, objectId) {
   const pack = String(folder).replaceAll('\\', '/').replace(/\/$/, '').toLowerCase();

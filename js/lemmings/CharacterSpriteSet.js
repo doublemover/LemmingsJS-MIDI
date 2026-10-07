@@ -283,12 +283,13 @@ class CharacterSpriteSet {
     return this.hazards.animation(skin, template, this.manifests.get(manifest?.shapeId), manifest, state, right, kind);
   }
   hasCustomCharacters() { return (this.activePreference || this.getPreference())?.shape !== 'classic'; }
-  recordHazardContact(lem, kind) {
+  recordHazardContact(lem, kind, contact = null) {
     if (this.skinForActor(lem) === this.base) return false;
-    this.hazards.record(lem, kind);
+    this.hazards.record(lem, kind, contact);
     return true;
   }
   getActorHazardKind(lem) { return this.hazards.kind(lem); }
+  getActorDrawPosition(lem) { return this.hazards.origin(lem); }
   getActorParticleParts(lem) {
     const skin = this.skinForActor(lem);
     return skin === this.base ? null : skin.getParticleParts?.(lem.lookRight) || null;

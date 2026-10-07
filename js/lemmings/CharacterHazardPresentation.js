@@ -6,11 +6,13 @@ import { CHARACTER_HAZARD_KINDS } from './CharacterHazardTypes.js';
 const DEATH_STATES = new Set([SpriteTypes.DROWNING, SpriteTypes.FRYING, SpriteTypes.SPLATTING]);
 const DEATH_ACTIONS = new Set(['drowning', 'frying', 'splatter']);
 const EFFECT_COLORS = Object.freeze({
+  water: { 1: 0xff352110 },
   fire: { 1: 0xff292127, 9: 0xff2864ff, A: 0xffa8e8ff },
   lava: { 1: 0xff292127, 9: 0xff2864ff, A: 0xffa8e8ff },
   acid: { 9: 0xff38ca98, A: 0xff91ffe4 },
   electric: { 9: 0xffffecae, A: 0xffffffff },
-  ice: { 9: 0xffeed581, A: 0xfffffcea }
+  ice: { 9: 0xffeed581, A: 0xfffffcea },
+  smoke: { 9: 0xff898382, A: 0xffc5bfbd }
 });
 
 class CharacterHazardPresentation {
@@ -21,11 +23,12 @@ class CharacterHazardPresentation {
     this.animations = new WeakMap();
   }
 
-  record(lem, kind) {
+  record(lem, kind, contact = null) {
     if (!lem || !CHARACTER_HAZARD_KINDS.includes(kind)) return;
     const pool = lem.action?.characterParticles;
     this.pending.set(lem, { kind, id: lem.id, index: lem.appearanceIndex, previous: lem.action,
-      pool, epoch: pool?.epoch });
+      pool, epoch: pool?.epoch, x: lem.x, y: contact?.y ?? lem.y,
+      surfaceY: contact?.surfaceY ?? lem.y - 1, surfaceOwner: contact?.surfaceOwner, surfaceTick: contact?.surfaceTick });
   }
 
   reset(lem, clearPending = false) {
@@ -54,6 +57,10 @@ class CharacterHazardPresentation {
     return cause.kind;
   }
 
+  origin(lem) {
+    return this.kind(lem) ? this.actors.get(lem) : null;
+  }
+
   animation(skin, template, source, manifest, state, right, kind) {
     if (!DEATH_STATES.has(state) || !source || !manifest) return skin.getAnimation(state, right);
     const geometryKey = `${state}:${kind}`, key = `${geometryKey}:${right ? 1 : -1}`;
@@ -64,7 +71,8 @@ class CharacterHazardPresentation {
     if (!geometries) { geometries = new Map(); this.geometry.set(template, geometries); }
     let geometry = geometries.get(geometryKey);
     if (!geometry) {
-      const record = manifest.animations.find(entry => SpriteTypes[entry.state] === state);
+      const original = manifest.animations.find(entry => SpriteTypes[entry.state] === state);
+      const record = kind === 'water' ? { ...original, height: original.height + 12 } : original;
       const neutral = source.animations.find(entry => entry.state === 'WALKING' && entry.direction === 1);
       const body = deathBody(neutral, record, manifest.presentation.scale, manifest.shapeId);
       geometry = { record, body, rows: new Array(record.frameCount) };
@@ -85,7 +93,13 @@ class CharacterHazardPresentation {
           if (symbol === '0') return;
           const offset = y * record.width + x;
           frame.mask[offset] = 1;
-          frame.data[offset] = effects[symbol] ?? palette[parseInt(symbol, 16)];
+          let color = effects[symbol] ?? palette[parseInt(symbol, 16)];
+          if (kind === 'water' && '2345'.includes(symbol)) {
+            const light = 1 - 0.7 * (index / (record.frameCount - 1)) ** 2;
+            color = (0xff000000 | Math.round((color & 255) * light) |
+              Math.round(((color >>> 8) & 255) * light) << 8 | Math.round(((color >>> 16) & 255) * light) << 16) >>> 0;
+          }
+          frame.data[offset] = color;
         }));
         frame.enableSpanCache();
         return frames[index] = frame;

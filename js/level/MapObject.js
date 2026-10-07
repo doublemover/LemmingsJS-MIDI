@@ -8,6 +8,7 @@ class MapObject {
   /** WeakMap<objectImg, Frame[]> – shared across all MapObject instances. */
   static _frameCache = new WeakMap();
   static _characterFrameCache = new WeakMap();
+  static _characterSupportCache = new WeakMap();
   constructor (ob, objectImg, animation = new Animation(), triggerType = TriggerTypes.NO_TRIGGER, runtime = null) {
     this.ob              = ob;
     this.obID            = ob.id;
@@ -88,6 +89,41 @@ class MapObject {
     this.runtime = runtime;
   }
 
+  characterContact(lem, tick, kind) {
+    if (kind === 'crush' && this.animation.objectImg?.characterVictim) {
+      const info = this.animation.objectImg;
+      let support = MapObject._characterSupportCache.get(info);
+      if (support == null) {
+        support = -1;
+        const pixels = info.frames[1];
+        if (pixels && !(pixels instanceof Frame)) for (let i = 0; i < pixels.length; i++) {
+          if (pixels[i] === 1 || pixels[i] === 2) support = Math.max(support, Math.floor(i / info.width) + 2);
+        }
+        MapObject._characterSupportCache.set(info, support);
+      }
+      if (support >= 0) return { y: this.y + support, surfaceY: this.y + support - 1 };
+    }
+    if (!['water', 'acid', 'lava'].includes(kind)) return { y: lem.y, surfaceY: lem.y - 1 };
+    const surfaceY = this.liquidSurface(lem.x, tick + 1) ?? lem.y - 1;
+    return { y: surfaceY + 1, surfaceY, surfaceOwner: this, surfaceTick: tick + 1 };
+  }
+
+  liquidSurface(x, tick) {
+    const frame = this.animation.getFrame(tick), column = Math.round(x - this.x);
+    if (!frame || column < 0 || column >= frame.width) return null;
+    this._surfaceColumns ||= new WeakMap();
+    let columns = this._surfaceColumns.get(frame);
+    if (!columns) { columns = new Int16Array(frame.width).fill(-1); this._surfaceColumns.set(frame, columns); }
+    if (columns[column] >= 0) return this.y + columns[column];
+    for (let y = 0; y < frame.height; y++) {
+      const sourceY = this.drawProperties?.isUpsideDown ? frame.height - y - 1 : y;
+      if (!frame.mask[sourceY * frame.width + column]) continue;
+      columns[column] = y;
+      return this.y + y;
+    }
+    return null;
+  }
+
   getFrame(tick) {
     const original = this.animation.getFrame(tick), owner = this.characterVictimPresentation;
     if (!original || !owner || owner.epoch !== owner.pool?.epoch || !owner.provider.hasCustomCharacters?.()) return original;
@@ -142,7 +178,9 @@ class MapObject {
     const triggerType = trigger?.type ?? this.triggerType;
     if ([TriggerTypes.TRAP, TriggerTypes.DROWN, TriggerTypes.KILL, TriggerTypes.FRYING].includes(triggerType)) {
       const provider = lemming?.action?.spriteProvider;
-      const custom = provider?.recordHazardContact?.(lemming, this.animation?.objectImg?.characterHazard);
+      const kind = this.animation?.objectImg?.characterHazard;
+      const contact = lemming && provider?.recordHazardContact ? this.characterContact(lemming, globalTick, kind) : null;
+      const custom = provider?.recordHazardContact?.(lemming, kind, contact);
       const pool = lemming?.action?.characterParticles;
       this.characterVictimPresentation = custom && this.animation?.objectImg?.characterVictim ? { provider, pool, epoch: pool?.epoch } : null;
     }

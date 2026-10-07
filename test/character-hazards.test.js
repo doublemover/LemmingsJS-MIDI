@@ -138,6 +138,79 @@ describe('source-identified hazard presentation', function() {
     expect(hazards.geometry.get(template).size).to.equal(1);
   });
 
+  it('world-anchors liquid and fire art while the original simulation keeps its horizontal motion', async function() {
+    const base = new PixelSpriteSkin(read(catalog.shapes[0].path));
+    const preference = { shape: 'circle', accessory: 'crown', eyewear: 'classic_sunglasses' };
+    const sprites = new CharacterSpriteSet(base, catalog, file => fs.readFileSync(file, 'utf8'), () => preference);
+    await sprites.prepare();
+    for (const kind of ['water', 'acid', 'lava', 'fire']) {
+      const scene = await enter(sprites, fixtures.find(entry => entry.kind === kind));
+      const origin = sprites.getActorDrawPosition(scene.actor), startX = scene.actor.x;
+      expect(origin.x).to.equal(startX);
+      if (kind !== 'fire') expect(origin.y).to.equal(scene.level.objects[0].liquidSurface(startX, 1) + 1);
+      for (let tick = 0; tick < 12; tick++) {
+        scene.pool.tick(); scene.action.process(scene.level, scene.actor);
+        let drawn;
+        scene.action.draw({ drawFrame: (frame, x, y) => { drawn = { frame, x, y }; } }, scene.actor);
+        expect(drawn.x).to.equal(origin.x); expect(drawn.y).to.equal(origin.y);
+      }
+      expect(scene.actor.x).to.equal(startX + 12);
+      expect(sprites.getActorDrawPosition(scene.actor)).to.equal(origin);
+    }
+  });
+
+  it('draws a dark submerged silhouette and lets intact props settle on the actual animated surface', async function() {
+    const base = new PixelSpriteSkin(read(catalog.shapes[0].path));
+    const preference = { shape: 'circle', accessory: 'crown', eyewear: 'classic_sunglasses' };
+    const sprites = new CharacterSpriteSet(base, catalog, file => fs.readFileSync(file, 'utf8'), () => preference);
+    await sprites.prepare();
+    const scene = await enter(sprites, fixtures.find(entry => entry.kind === 'water'));
+    const origin = sprites.getActorDrawPosition(scene.actor);
+    for (let tick = 0; tick < 14; tick++) { scene.pool.tick(); scene.action.process(scene.level, scene.actor); }
+    const frame = sprites.getActorAnimation(SpriteTypes.DROWNING, true, scene.actor).getFrame(14);
+    const surfaceRow = origin.surfaceY - origin.y - frame.offsetY;
+    const submerged = [...frame.data].filter((color, index) => frame.mask[index] && Math.floor(index / frame.width) > surfaceRow);
+    expect(submerged.length).to.be.greaterThan(4);
+    expect(submerged.every(color => color === 0xff352110)).to.equal(true);
+    for (const particle of scene.pool.particles.filter(p => p.life)) {
+      expect(particle.mode).to.equal('leaf'); expect(particle.floating).to.equal(true);
+      const surface = origin.surfaceOwner.liquidSurface(particle.x, origin.surfaceTick + particle.age);
+      expect(particle.y + (particle.height - 1) / 2).to.equal(surface);
+    }
+    for (let tick = 0; tick < 16; tick++) scene.pool.tick();
+    expect(scene.pool.particles.filter(p => p.life).every(p => p.floating)).to.equal(true);
+  });
+
+  it('registers crushing against the source victim support plane without moving its actor', async function() {
+    const base = new PixelSpriteSkin(read(catalog.shapes[0].path)), preference = { shape: 'circle' };
+    const sprites = new CharacterSpriteSet(base, catalog, file => fs.readFileSync(file, 'utf8'), () => preference);
+    await sprites.prepare();
+    for (const [pack, ground, object] of [['lemmings', 0, 8], ['lemmings', 0, 10], ['lemmings', 2, 8], ['lemmings_ohNo', 0, 6], ['lemmings_ohNo', 0, 7]]) {
+      const scene = await enter(sprites, { pack, ground, object }), mapObject = scene.level.objects[0];
+      const info = mapObject.animation.objectImg;
+      let support = 0;
+      info.frames[1].forEach((symbol, index) => { if (symbol === 1 || symbol === 2) support = Math.max(support, Math.floor(index / info.width) + 2); });
+      expect(sprites.getActorDrawPosition(scene.actor).y).to.equal(mapObject.y + support);
+      expect(scene.actor.y).to.equal(80);
+    }
+  });
+
+  it('supports an explicit custom smoke hazard without fire colors or burst particles', async function() {
+    const base = new PixelSpriteSkin(read(catalog.shapes[0].path)), preference = { shape: 'circle', accessory: 'crown' };
+    const sprites = new CharacterSpriteSet(base, catalog, file => fs.readFileSync(file, 'utf8'), () => preference);
+    await sprites.prepare();
+    const scene = await enter(sprites, fixtures.find(entry => entry.kind === 'fire'));
+    sprites.recordHazardContact(scene.actor, 'smoke'); scene.actor.setAction(scene.action);
+    expect(sprites.getActorHazardKind(scene.actor)).to.equal('smoke');
+    scene.action.process(scene.level, scene.actor);
+    const particles = scene.pool.particles.filter(p => p.life);
+    expect(particles).to.have.length(1); expect(particles[0].mode).to.equal('swallow');
+    const animation = sprites.getActorAnimation(SpriteTypes.FRYING, true, scene.actor), frame = animation.getFrame(6);
+    expect([...frame.data]).to.include(0xff898382);
+    expect([...frame.data]).not.to.include(0xff2864ff);
+    expect(animation.frameCount).to.equal(14);
+  });
+
   it('removes duplicate baked-in classic victims only for custom contacts while preserving the source trap', async function() {
     let preference = { shape: 'circle' };
     const base = new PixelSpriteSkin(read(catalog.shapes[0].path));

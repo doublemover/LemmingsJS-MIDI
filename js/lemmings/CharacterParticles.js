@@ -20,7 +20,8 @@ class CharacterParticles {
     this.particles = Array.from({ length: PARTICLE_LIMITS.capacity }, (_, index) => ({
       index, life: 0, age: 0, source: null, x: 0, y: 0, vx: 0, vy: 0, gravity: 0,
       angle: 0, spin: 0, sx: 0, sy: 0, width: 1, height: 1, color: 0, kind: '', fracture: false,
-      seed: 0, born: 0, mode: '', fractureAt: 3, anchor: null, anchorId: null, dx: 0, dy: 0
+      seed: 0, born: 0, mode: '', fractureAt: 3, anchor: null, anchorId: null, dx: 0, dy: 0,
+      surfaceOwner: null, surfaceTick: 0, surfaceY: 0, floating: false
     }));
     this.free = new Uint16Array(PARTICLE_LIMITS.capacity);
     this.samples = Array.from({ length: PARTICLE_LIMITS.terrainPerEvent }, () => ({ x: 0, y: 0, color: 0 }));
@@ -36,6 +37,7 @@ class CharacterParticles {
       this.particles[i].life = 0;
       this.particles[i].source = null;
       this.particles[i].anchor = null;
+      this.particles[i].surfaceOwner = null;
       this.free[i] = i;
     }
     this.freeCount = this.free.length;
@@ -53,6 +55,7 @@ class CharacterParticles {
     const p = this.particles[this.free[--this.freeCount]];
     p.life = 18; p.age = 0; p.source = null; p.fracture = false;
     p.mode = ''; p.fractureAt = PARTICLE_LIMITS.fractureAge; p.anchor = null; p.anchorId = null; p.dx = p.dy = 0;
+    p.surfaceOwner = null; p.surfaceTick = p.surfaceY = 0; p.floating = false;
     p.x = p.y = p.vx = p.vy = p.sx = p.sy = p.angle = 0;
     p.width = p.height = 1; p.gravity = 0.16; p.color = 0xffffffff;
     p.spin = (noise(seed, 1) - 0.5) * 0.42;
@@ -65,6 +68,7 @@ class CharacterParticles {
     p.life = 0;
     p.source = null;
     p.anchor = null;
+    p.surfaceOwner = null;
     this.free[this.freeCount++] = p.index;
     this.activeCount--;
   }
@@ -77,14 +81,18 @@ class CharacterParticles {
       if (!p.life || p.born === this.frame) continue;
       p.age++;
       if (p.mode === 'leaf') {
-        p.x += Math.sin(p.age * 0.35 + noise(p.seed, 3) * 6) * 0.24;
-        p.y += p.vy; p.vy += p.gravity;
-        p.angle = Math.sin(p.age * 0.3 + noise(p.seed, 4) * 6) * 0.25;
+        p.x = p.dx + Math.sin(p.age * 0.25 + noise(p.seed, 3) * 6) * 0.7;
+        const surface = p.surfaceOwner?.liquidSurface(p.x, p.surfaceTick + p.age) ?? p.surfaceY;
+        const target = surface - (p.height - 1) / 2;
+        if (p.floating || p.y + p.vy >= target) {
+          p.floating = true; p.y = target; p.vy = 0;
+        } else { p.y += p.vy; p.vy += p.gravity; }
+        p.angle = Math.sin(p.age * 0.28 + noise(p.seed, 4) * 6) * (p.floating ? 0.08 : 0.18);
       } else if (p.anchor && p.anchor.id === p.anchorId && !p.anchor.removed) {
         p.x = p.anchor.x + p.dx; p.y = p.anchor.y + p.dy;
       } else {
         p.anchor = null;
-        p.x += p.vx; p.y += p.vy; p.vy += p.gravity; p.vx *= 0.985; p.angle += p.spin;
+        p.x += p.vx; p.y += p.vy; p.vy += p.gravity; p.vx *= p.mode === 'crush' ? 0.72 : 0.985; p.angle += p.spin;
       }
       if (p.fracture && p.age === p.fractureAt) {
         this._fracture(p);
@@ -184,28 +192,29 @@ class CharacterParticles {
     return maxX < 0 ? null : { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 };
   }
 
-  _eject(frame, lem, seed, kind, mode = '') {
+  _eject(frame, lem, seed, kind, mode = '', origin = null) {
     const bounds = this._bounds(frame);
     if (!bounds) return;
     const p = this._spawn(seed, kind);
     if (!p) return;
     p.source = frame; p.sx = bounds.x; p.sy = bounds.y; p.width = bounds.width; p.height = bounds.height;
-    p.x = lem.x + frame.offsetX + bounds.x + (bounds.width - 1) / 2;
-    p.y = lem.y + frame.offsetY + bounds.y + (bounds.height - 1) / 2;
+    p.x = (origin?.x ?? lem.x) + frame.offsetX + bounds.x + (bounds.width - 1) / 2;
+    p.y = (origin?.y ?? lem.y) + frame.offsetY + bounds.y + (bounds.height - 1) / 2;
     p.vx = (lem.lookRight ? 1 : -1) * (kind === 'eyewear' ? 1.25 : -0.8);
     p.vy = kind === 'eyewear' ? -2.8 : -3.4;
     p.fracture = true; p.life = PARTICLE_LIMITS.fractureAge + 1;
     p.mode = mode;
     if (mode === 'leaf') {
-      p.vx = 0; p.vy = 0.12; p.gravity = 0.01; p.spin = 0; p.fracture = false; p.life = 30;
+      p.vx = 0; p.vy = 0.35; p.gravity = 0.1; p.spin = 0; p.fracture = false; p.life = 48;
+      p.dx = p.x; p.surfaceY = origin?.surfaceY ?? lem.y - 1;
+      p.surfaceOwner = origin?.surfaceOwner || null; p.surfaceTick = origin?.surfaceTick || 0;
     } else if (['char', 'frost', 'dissolve', 'swallow'].includes(mode)) {
       p.vx = p.vy = p.gravity = p.spin = 0;
       p.fracture = mode === 'char' || mode === 'frost'; p.fractureAt = 8; p.life = p.fracture ? 9 : 15;
-      p.anchor = lem; p.anchorId = lem.id; p.dx = p.x - lem.x; p.dy = p.y - lem.y;
     } else if (mode === 'crush') {
-      p.vx = (kind === 'eyewear' ? 1 : -1) * (2.6 + noise(seed, 2));
-      p.vy = (noise(seed, 3) - 0.5) * 0.3; p.gravity = 0.055; p.spin = 0.05;
-      p.y = lem.y - 1;
+      p.vx = (kind === 'eyewear' ? 1 : -1) * (0.7 + noise(seed, 2) * 0.3);
+      p.vy = (noise(seed, 3) - 0.5) * 0.06; p.gravity = 0.025; p.spin = 0.02;
+      p.y = (origin?.y ?? lem.y) - 1;
     }
   }
 
@@ -232,8 +241,8 @@ class CharacterParticles {
         p.vx = (i - (count - 1) / 2) * 0.25; p.vy = 0.1 + i * 0.04; p.gravity = 0.07;
         p.spin = (noise(parent.seed, i) - 0.5) * 0.12;
       } else if (parent.mode === 'crush') {
-        p.mode = 'crush'; p.vx = Math.sign(parent.vx) * (2.4 + i * 0.4);
-        p.vy = parent.vy + (noise(parent.seed, i) - 0.5) * 0.15; p.gravity = 0.055;
+        p.mode = 'crush'; p.vx = Math.sign(parent.vx) * (0.35 + i * 0.1);
+        p.vy = (noise(parent.seed, i) - 0.5) * 0.04; p.gravity = 0.025; p.life = 8 + i;
       }
     }
   }
@@ -243,12 +252,13 @@ class CharacterParticles {
     const parts = provider?.getActorParticleParts?.(lem);
     if (!parts) return false;
     const hazard = provider?.getActorHazardKind?.(lem) || (kind === 'drowning' ? 'water' : kind === 'frying' ? 'fire' : null);
+    const origin = provider?.getActorDrawPosition?.(lem);
     const seed = hash(`${lem.id}:${lem.frameIndex}:${kind}`);
     const mode = hazard === 'water' ? 'leaf' : hazard === 'acid' ? 'dissolve'
       : ['fire', 'lava', 'electric'].includes(hazard) ? 'char' : hazard === 'ice' ? 'frost'
-        : hazard === 'crush' ? 'crush' : ['bite', 'tentacle', 'suction'].includes(hazard) ? 'swallow' : '';
-    this._eject(parts.eyewear, lem, hash(`${seed}:eyewear`), 'eyewear', mode);
-    this._eject(parts.accessory, lem, hash(`${seed}:accessory`), 'accessory', mode);
+        : hazard === 'crush' ? 'crush' : ['bite', 'tentacle', 'suction', 'smoke'].includes(hazard) ? 'swallow' : '';
+    this._eject(parts.eyewear, lem, hash(`${seed}:eyewear`), 'eyewear', mode, origin);
+    this._eject(parts.accessory, lem, hash(`${seed}:accessory`), 'accessory', mode, origin);
     if (hazard && hazard !== 'crush') return true;
     const body = parts.body;
     const count = kind === 'exploding' ? 12 : kind === 'splatter' ? 8 : 5;
@@ -272,9 +282,9 @@ class CharacterParticles {
         p.vy = -0.7 - noise(seed, i + 20) * (kind === 'splatter' ? 2 : 4);
         p.life = 16 + Math.floor(noise(seed, i + 40) * 8);
         if (hazard === 'crush') {
-          p.mode = 'crush'; p.y = lem.y - 1; p.height = 1;
-          p.vx = (i % 2 ? 1 : -1) * (2.6 + noise(seed, i) * 1.4);
-          p.vy = (noise(seed, i + 20) - 0.5) * 0.3; p.gravity = 0.055; p.spin = 0.03;
+          p.mode = 'crush'; p.y = (origin?.y ?? lem.y) - 1; p.height = 1;
+          p.vx = (i % 2 ? 1 : -1) * (0.75 + noise(seed, i) * 0.35);
+          p.vy = (noise(seed, i + 20) - 0.5) * 0.06; p.gravity = 0.025; p.spin = 0.01; p.life = 10 + i % 3;
         }
       }
     }
@@ -303,7 +313,7 @@ class CharacterParticles {
     for (const p of this.particles) {
       if (!p.life) continue;
       if (view && (p.x + p.width < view.x || p.y + p.height < view.y || p.x - p.width >= view.x + view.w || p.y - p.height >= view.y + view.h)) continue;
-      const alpha = p.mode === 'char' || p.mode === 'frost' ? 1 : Math.min(1, (p.life - p.age) / Math.max(1, p.life * 0.55));
+      const alpha = p.mode === 'char' || p.mode === 'frost' ? 1 : Math.min(1, (p.life - p.age) / (p.mode === 'leaf' ? 12 : Math.max(1, p.life * 0.55)));
       const cos = Math.cos(p.angle), sin = Math.sin(p.angle);
       const source = p.source?.getBuffer(), mask = p.source?.getMask();
       const halfW = (p.width - 1) / 2, halfH = (p.height - 1) / 2;

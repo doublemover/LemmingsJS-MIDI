@@ -162,9 +162,9 @@ describe('readable proportional character presentation', function() {
       const record = refined.animations.find(entry => entry.state === 'FRYING'), floor = -record.offsetY - 1;
       for (const [index, rows] of record.frames.entries()) {
         if (!index) continue;
-        expect(rows[floor].slice(3, 13)).not.to.equal('9999999999');
+        expect(rows[floor - 1].slice(12)).not.to.equal('9999');
         expect(rows.join('')).not.to.match(/[678BCDEF]/);
-        if (index < 6) expect(rows.join(''), `${shape.id}/${index}`).to.match(/[2345]/);
+        if (index < 3) expect(rows.join(''), `${shape.id}/${index}`).to.match(/[2345]/);
         if (index < 11) expect(rows.join(''), `${shape.id}/${index}`).to.match(/[9A]/);
       }
       expect(record.frames[10].join('')).to.include('1');

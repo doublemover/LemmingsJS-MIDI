@@ -51,7 +51,7 @@ for (const fixture of fixtures) {
     if (sprites.getActorHazardKind(actor) !== fixture.kind) throw new Error(`Wrong hazard: ${fixture.kind}`);
     const timeline = [];
     let alive = true;
-    for (let index = 0; index < 32; index++) {
+    for (let index = 0; index < (fixture.kind === 'water' ? 56 : 32); index++) {
       pool.tick();
       const result = alive ? action.process(level, actor) : LemmingStateType.OUT_OF_LEVEL;
       if (result === LemmingStateType.OUT_OF_LEVEL) alive = false;
@@ -67,7 +67,9 @@ for (const fixture of fixtures) {
       }
       fs.writeFileSync(path.join(out, `${fixture.kind}-${shape.id}-${index}.png`), PNG.sync.write(png));
       timeline.push({ tick: index + 1, frameIndex: actor.frameIndex, rendered: alive, state: result, x: actor.x, y: actor.y,
-        particles: pool.activeCount, particleKinds: [...new Set(pool.particles.filter(p => p.life).map(p => p.mode || p.kind))] });
+        drawX: sprites.getActorDrawPosition(actor)?.x ?? actor.x, drawY: sprites.getActorDrawPosition(actor)?.y ?? actor.y,
+        particles: pool.activeCount, particleKinds: [...new Set(pool.particles.filter(p => p.life).map(p => p.mode || p.kind))],
+        floatingProps: pool.particles.filter(p => p.life && p.floating).length });
     }
     receipt.scenes.push({ kind: fixture.kind, shape: shape.id, originalTrigger: info.trigger_effect_id,
       effectiveTrigger: level.triggers[0].type, actorAction: action.getActionName(), objectFrames: info.frameCount, timeline });

@@ -146,7 +146,7 @@ describe('bounded deterministic character particles', function() {
     expect(pool.freeCount).to.equal(PARTICLE_LIMITS.capacity);
   });
 
-  it('lets intact drowning wearables drift gently downward without body fragments or bursts', function() {
+  it('lets intact drowning wearables reach the surface and stay buoyant without bursts', function() {
     const pool = new CharacterParticles();
     pool.emitDeath(actor(4), 'drowning', provider);
     expect(live(pool)).to.have.length(2);
@@ -154,10 +154,14 @@ describe('bounded deterministic character particles', function() {
     expect(hat.mode).to.equal('leaf');
     expect(hat.fracture).to.equal(false);
     for (let i = 0; i < 16; i++) pool.tick();
-    expect(hat.y - y).to.be.within(2, 4);
+    expect(hat.y).to.be.greaterThan(y);
+    expect(hat.floating).to.equal(true);
+    expect(hat.y + (hat.height - 1) / 2).to.equal(29);
     expect(Math.abs(hat.x - x)).to.be.lessThan(2);
     expect(live(pool)).to.have.length(2);
     expect(live(pool).every(p => p.source && p.mode === 'leaf')).to.equal(true);
+    for (let i = 0; i < 16; i++) pool.tick();
+    expect(hat.y + (hat.height - 1) / 2).to.equal(29);
   });
 
   it('chars fire wearables in place before they crumble downward, without a burst', function() {
@@ -189,6 +193,10 @@ describe('bounded deterministic character particles', function() {
     expect(live(crush).some(p => p.vx < 0)).to.equal(true);
     expect(live(crush).some(p => p.vx > 0)).to.equal(true);
     expect(live(crush).some(p => p.kind === 'spark')).to.equal(false);
+    for (let i = 0; i < 12; i++) {
+      crush.tick();
+      expect(live(crush).every(p => Math.abs(p.x - lem.x) < 9)).to.equal(true);
+    }
   });
 
   it('fades by blending with world pixels and rendering never advances effects', function() {

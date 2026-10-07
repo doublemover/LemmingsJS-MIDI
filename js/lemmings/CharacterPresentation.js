@@ -125,13 +125,13 @@ function deathFrame(body, record, index, kind = record.state === 'DROWNING' ? 'w
   if (kind === 'water') {
     const sink = drowningSink(index, bounds.height + 2);
     body.forEach((row, y) => [...row].forEach((symbol, x) => {
-      if (symbol !== '0' && y + sink < floor) dot(x, y + sink, symbol);
+      if (symbol !== '0') dot(x, y + sink, y + sink >= floor ? '1' : symbol);
     }));
     // Tiny raised hands stay with the body and disappear beneath the same waterline.
     const handY = bounds.top + (index < 3 ? 2 - index : 0) + sink;
     for (const x of [bounds.left - 1, bounds.right + 1]) {
-      if (handY < floor) dot(x, handY, '4');
-      if (handY + 1 < floor) dot(x, handY + 1, '3');
+      dot(x, handY, handY >= floor ? '1' : '4');
+      dot(x, handY + 1, handY + 1 >= floor ? '1' : '3');
     }
     if (index < 14) {
       line(3 + index % 2, 6, floor, '9'); line(9, 12 - index % 2, floor, '9');
@@ -143,29 +143,31 @@ function deathFrame(body, record, index, kind = record.state === 'DROWNING' ? 'w
   } else if (kind === 'fire' || kind === 'lava') {
     const phase = Math.round(index * 13 / (record.frameCount - 1));
     const hop = [0, 1, 0, 2, 0, 1, 2, 0, 1, 0, 0, 0, 0, 0][phase];
-    const shift = phase < 10 ? [0, -1, 1, 0][phase % 4] : 0;
+    const shift = 0;
     const sink = kind === 'lava' ? drowningSink(index, bounds.height + 2) : 0;
     if (phase < 12) {
-      for (const x of [3, 6, 10, 12]) {
-        const height = 2 + Math.floor(phase / 2) + (phase + x) % 3;
+      for (let x = 3; x <= 12; x++) {
+        const height = Math.max(2, Math.round((phase < 3 ? 5 : 9) - Math.abs(x - 7.5) * 0.65 + [0, 2, -1, 1][(phase + x) % 4]));
         for (let dy = 0; dy < height; dy++) {
-          dot(x + (dy === height - 1 ? phase % 2 : 0), floor - dy, dy < height - 2 ? 'A' : '9');
-          if (dy < height - 2) dot(x + 1, floor - dy, '9');
+          const curl = Math.round(Math.sin(phase * 0.95 + dy * 0.7) * 0.8);
+          dot(x + curl, floor - dy, Math.abs(x - 7.5) < 2 && dy < height - 2 ? 'A' : '9');
         }
       }
     }
     if (phase < 11) {
       body.forEach((row, y) => [...row].forEach((symbol, x) => {
         if (symbol === '0') return;
-        const charred = phase >= 6 && ((x * 3 + y) % 5 < phase - 5);
-        const color = charred ? (symbol === '5' ? 'A' : '1') : symbol;
+        const charred = phase >= 5 && ((x * 3 + y) % 5 < phase - 4);
+        const color = charred ? (symbol === '5' ? 'A' : '1') : phase >= 3 && symbol !== '5' ? '9' : symbol;
         const py = y - hop + sink;
         if (kind !== 'lava' || py < floor) dot(x + shift, py, color);
       }));
-      const handY = bounds.top - hop + (phase % 2 ? 0 : 2) + sink;
+      if (phase < 9) for (const [x, y] of enclosedPixels(body)) dot(x, y - hop + sink, '0');
+      const handY = bounds.top - hop + (phase % 2 ? -1 : 1) + sink;
       for (const x of [bounds.left - 1 + shift, bounds.right + 1 + shift]) {
         if (handY < floor) dot(x, handY, phase >= 8 ? '1' : '4');
-        if (handY + 1 < floor) dot(x, handY + 1, phase >= 8 ? '1' : '3');
+        if (handY + 1 < floor) dot(x, handY + 1, phase >= 7 ? '1' : '3');
+        if (handY - 1 >= 0) dot(x + (x < 8 ? -1 : 1), handY - 1, phase >= 7 ? '1' : '4');
       }
       const mouthX = Math.round((bounds.left + bounds.right) / 2) + shift;
       const mouthY = bounds.bottom - 1 - hop + sink;
@@ -176,15 +178,20 @@ function deathFrame(body, record, index, kind = record.state === 'DROWNING' ? 'w
     }
   } else if (kind === 'acid') {
     const progress = index / (record.frameCount - 1), dissolve = progress * progress;
+    const meltingLine = floor - Math.round(bounds.height * progress);
     body.forEach((row, y) => [...row].forEach((symbol, x) => {
       if (symbol === '0' || ((x * 7 + y * 13) % 19) / 19 < dissolve) return;
       const py = Math.round(y + dissolve * (floor - y));
-      if (py < floor) dot(x, py, symbol);
+      if (py < floor) dot(x, py, y >= meltingLine && symbol !== '5' ? '9' : symbol);
     }));
     if (index < record.frameCount - 2) {
       line(4, 11, floor, '9');
       dot(3 + index % 3, floor - 1 - index % 3, 'A');
       dot(11 - index % 2, floor - 1 - (index + 1) % 3, '9');
+      if (index > 3 && index < 12) {
+        const x = index % 2 ? 3 : 12, y = floor - 2 - index % 3;
+        dot(x, y, 'A'); dot(x - 1, y + 1, '9'); dot(x + 1, y + 1, '9'); dot(x, y + 2, 'A');
+      }
     } else dot(7 + index % 2, floor - 2, 'A');
   } else {
     const progress = index / (record.frameCount - 1);
@@ -206,6 +213,11 @@ function deathFrame(body, record, index, kind = record.state === 'DROWNING' ? 'w
         } else if (kind === 'electric') {
           px += index % 2 ? -1 : 1;
           color = symbol === '5' ? '1' : index % 2 ? 'A' : index > 7 ? '1' : symbol;
+        } else if (kind === 'smoke') {
+          const crouch = Math.min(0.8, progress + (index % 3 === 0 ? 0.15 : 0));
+          py = floor - Math.round((floor - y) * (1 - crouch));
+          px += y < bounds.top + 2 ? index % 3 === 0 ? 1 : 0 : 0;
+          if (index > 7) color = symbol === '5' ? 'A' : '1';
         } else if (kind === 'ice') {
           color = symbol === '5' ? '5' : (x + y) % 3 ? '9' : 'A';
           if (index > 7) {
@@ -223,6 +235,9 @@ function deathFrame(body, record, index, kind = record.state === 'DROWNING' ? 'w
     }
     if (kind === 'electric' && index < 11) {
       for (let y = bounds.top; y < floor; y++) dot((index % 2 ? 2 : 13) + y % 2, y, y % 2 ? '9' : 'A');
+    }
+    if (kind === 'smoke' && index < record.frameCount - 1) {
+      for (const x of [4, 8, 12]) dot(x + index % 2, floor - 3 - (index + x) % 6, x === 8 ? 'A' : '9');
     }
     if (kind === 'crush' && index >= 3 && index < 13) line(4, 11, floor, '2');
     if (kind === 'ice' && index >= 12) for (const x of [4, 7, 11]) dot(x, floor, '9');

@@ -127,7 +127,7 @@ samples that were actually cleared. Four short-lived digging chips throw away
 from the channel edges; bashing/mining use six. Explosions, splats, drowning and
 fire have distinct small bursts. Explosions and unsafe-fall splats eject actual recolored accessory/eyewear frames
 intact for three ticks, then fracture into up to three source-image pieces and
-fade. Drowning wearables drift gently downward intact with leaf-like sway; fire
+fade. Drowning wearables fall intact onto the sampled animated water surface, then bob there; fire
 wearables char in place for eight ticks, then crumble softly downward. Acid
 wearables dissolve. Confirmed crushing traps compress body debris into narrow
 horizontal cones. These deaths do not emit a radial explosion or body burst.
@@ -157,8 +157,9 @@ using the exact `easeInExpo` function from https://easings.net/#easeInExpo:
 `x === 0 ? 0 : 2 ** (10 * x - 10)`. The sink runs from sprite frames 3 through
 14, with the final bubble at frame 15. Frying uses distressed hands-up flailing, sustained rising flames, progressive
 charring, and a smoke/ash finish, informed by the decoded official MAIN.DAT
-sprite poses. The earlier skillet treatment is superseded. Both use only the
-existing palette and frame cells. The 16-tick drowning and 14-tick frying action
+sprite poses. The earlier skillet treatment is superseded. Source sprite strips retain their original cell and palette contracts. The runtime
+water presentation adds twelve render-only pixels below the foot anchor so the
+body can be seen being pulled beneath the surface as a dark silhouette. The 16-tick drowning and 14-tick frying action
 systems, world movement, source assets, classic sprites, and particle budgets
 are unchanged.
 
@@ -210,3 +211,22 @@ objects, actual TriggerManager contacts and action systems, and DisplayImage.
 The GIFs play at 60 ms/tick; receipts record trigger/action IDs, exact removal,
 and particle modes. They are controlled native-renderer evidence, not browser
 level-play screenshots. `hazard-proof-fixtures.json` identifies every asset.
+
+
+Custom death drawings are now registered at their captured hazard-contact world
+position. Drowning/frying retain their original horizontal simulation movement,
+but it no longer slides the visible burning/dissolving body across the hazard.
+Liquid registration reads the actual animated object's alpha surface; floating
+wearables follow that surface independently until their bounded fade. Water body
+pixels progressively darken, with submerged pixels rendered as a blue-black
+silhouette. Crushing uses the audited source victim support plane and strongly
+damped, short sideways squeezing motion (under nine world pixels from the actor),
+rather than a long ballistic launch.
+
+The revised fire pose/continuous curling blaze takes general motion inspiration
+from the Metal Slug enemy-burning loop archived at
+https://www.vgmuseum.com/rips/neogeo/MetalSlug3.gif (linked by that site's Neo-Geo
+sprite reference index). The original Lemmings MAIN.DAT poses were also decoded
+for comparison. No Metal Slug sprite pixels or files are included in this project.
+Custom-theme `smoke` hazards have a separate gray-wisp coughing/collapse treatment
+and reuse the theme's selected original death action, without flames or a burst.
