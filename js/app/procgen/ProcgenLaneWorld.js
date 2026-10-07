@@ -1,3 +1,4 @@
+import { CharacterParticles } from '../../lemmings/CharacterParticles.js';
 import { Lemming } from '../../lemmings/Lemming.js';
 import { LemmingStateType as State } from '../../lemmings/LemmingStateType.js';
 import { ActionWalkSystem } from '../../actions/ActionWalkSystem.js';
@@ -52,6 +53,7 @@ class ProcgenLaneWorld {
     this.soundEvents._queueLimit = 0;
     const runtime = { soundEvents: this.soundEvents };
     this.runtime = runtime;
+    this.characterParticles = sprites ? new CharacterParticles() : null;
     this.actions = {
       [State.WALKING]: new ActionWalkSystem(sprites), [State.FALLING]: new ActionFallSystem(sprites),
       [State.JUMPING]: new ActionJumpSystem(sprites), [State.BUILDING]: new ActionBuildSystem(sprites),
@@ -60,7 +62,7 @@ class ProcgenLaneWorld {
       [State.OHNO]: new ActionOhNoSystem(sprites),
       [State.EXPLODING]: new ActionExplodingSystem(sprites, masks, { removeByOwner() {} }, particleTable)
     };
-    for (const action of Object.values(this.actions)) action.setRuntime(runtime);
+    for (const action of Object.values(this.actions)) { action.setRuntime(runtime); action.characterParticles = this.characterParticles; }
     this.actors = [];
     if (!cohorts) for (let lane = 0; lane < this.laneCount; lane++) this._spawn(lane, false);
     this.stats = { builds: 0, bashes: 0, turns: 0, failures: 0, groundQueries: 0, removedPixels: 0 };
@@ -98,6 +100,7 @@ class ProcgenLaneWorld {
     }
   }
   _restart(previousDistances) {
+    this.characterParticles?.clear();
     this.actors.length = 0; this.editChunks.clear(); this.challengeCache.clear(); this.generation++; this.generationStartTick = this.tickIndex;
     for (let lane = 0; lane < this.laneCount; lane++) this.laneSeeds[lane] = mix(this.seed ^ Math.imul(lane + 1, 0x9e3779b1) ^ Math.imul(this.generation - 1, 0x85ebca6b));
     this.stall = new ProcgenStallPolicy(this.laneCount, this.stall.settings, previousDistances);
@@ -214,6 +217,7 @@ class ProcgenLaneWorld {
   }
   step() {
     this.tickIndex++;
+    this.characterParticles?.tick();
     this._spawnCohort();
     for (const actor of this.actors) {
       if (actor.failureReason) continue;
@@ -223,7 +227,11 @@ class ProcgenLaneWorld {
       const next = actor.process(this);
       if (next !== State.NO_STATE_TYPE && next !== State.JUMPING) {
         if (this.actions[next]) actor.setAction(this.actions[next]);
-        else { actor.failureReason = next === State.SPLATTING ? 'unsafe-fall' : actor.action === this.actions[State.EXPLODING] ? 'cascade-complete' : 'out-of-world'; this.stats.failures++; this.failureReasons[actor.failureReason] = (this.failureReasons[actor.failureReason] || 0) + 1; }
+        else {
+          if (next === State.SPLATTING) this.characterParticles?.emitDeath(actor, 'splatter', actor.action?.spriteProvider);
+          actor.failureReason = next === State.SPLATTING ? 'unsafe-fall' : actor.action === this.actions[State.EXPLODING] ? 'cascade-complete' : 'out-of-world';
+          this.stats.failures++; this.failureReasons[actor.failureReason] = (this.failureReasons[actor.failureReason] || 0) + 1;
+        }
       } else if (next === State.JUMPING && actor.action !== this.actions[next]) actor.setAction(this.actions[next]);
       if (actor.y >= (actor.laneIndex + 1) * LANE_HEIGHT) actor.leftIndependentRoute = true;
       if (actor.x > actor.furthestX) { actor.furthestX = actor.x; actor.lastProgressTick = this.tickIndex; }
@@ -270,7 +278,7 @@ class ProcgenLaneWorld {
       cachedChallenges: this.challengeCache.size, terrainEdits: this.editChunks.size, terrainMemoryMB: this.editChunks.size * EDIT_CHUNK_WIDTH * LANE_HEIGHT / 1048576,
       ...this.stats };
   }
-  dispose() { this.timer.onGameTick.dispose(); this.soundEvents.onEvent.dispose(); this.editChunks.clear(); this.challengeCache.clear(); }
+  dispose() { this.characterParticles?.clear(); this.timer.onGameTick.dispose(); this.soundEvents.onEvent.dispose(); this.editChunks.clear(); this.challengeCache.clear(); }
 }
 
 export { ProcgenLaneWorld, MAX_PROCGEN_LANES, LANE_HEIGHT, CHUNK_WIDTH, normalizeLaneCount };

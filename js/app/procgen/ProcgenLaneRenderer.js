@@ -58,6 +58,16 @@ class ProcgenLaneRenderer {
     if (!frame) return;
     this.bufferContext.drawImage(this._frameCanvas(frame), Math.round(x + frame.offsetX - this.cameraX), Math.round(y + frame.offsetY - this.cameraY));
   }
+  getGameViewRect() { return { x: this.cameraX, y: this.cameraY, w: this.buffer.width, h: this.buffer.height }; }
+  drawParticlePixel(x, y, color, opacity) {
+    const px = Math.round(x - this.cameraX), py = Math.round(y - this.cameraY);
+    if (px < 0 || py < 0 || px >= this.buffer.width || py >= this.buffer.height) return;
+    const context = this.bufferContext, alpha = context.globalAlpha;
+    context.globalAlpha = opacity;
+    context.fillStyle = `rgb(${color & 255},${(color >>> 8) & 255},${(color >>> 16) & 255})`;
+    context.fillRect(px, py, 1, 1);
+    context.globalAlpha = alpha;
+  }
   render() {
     const start = this.window.performance?.now?.() ?? 0;
     const dpr = Math.min(2, this.window.devicePixelRatio || 1), scale = this.scale * dpr;
@@ -98,6 +108,7 @@ class ProcgenLaneRenderer {
       if (actor.y < this.cameraY - 32 || actor.y > this.cameraY + height + 32) continue;
       if (!actor.failureReason && actor.x >= this.cameraX - 32 && actor.x < this.cameraX + width + 32) { actor.render(this); this.renderedActors++; }
     }
+    this.world.characterParticles?.render(this);
     this.bufferContext.font = '8px monospace';
     this.bufferContext.fillStyle = '#d4c6af';
     this.bufferContext.strokeStyle = '#b99b66';

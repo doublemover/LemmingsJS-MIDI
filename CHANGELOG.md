@@ -8,11 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Compact seven-pixel character silhouettes, shape-specific walking and panic, sampled terrain debris, and intact accessory/eyewear ejection work in both classic levels and the sparse procgen world.
 - Procgen now has a hidden pull-down drawer, shared visual character choices, 1–1024 left-to-right lanes in one sparse world, staggered spawn cohorts, local-only listening and fifteen action-music presets.
 - Source-derived terrain recipes cover all available pack levels, with a reproducible corpus report and headless real-action scaling/behavior runners.
 - Per-lane distance records and generous simulation-time/spawn stall recovery preserve progress markers through a staggered OHNO cascade and restart.
 
 ### Fixed
+- Action changes clear only the owning character skin, preserving stable palette caches across 1,024 actors instead of scanning all cached skins and allocating replacement variants.
 - Character appearance changes preload and swap atomically, retaining the last ready look during delayed or failed loads. Stable seeded mixed shapes and random native colors survive redraw and rewind.
 - Clip inspectors now explain their actual event-driven playback and the current meaning of saved Hold, Tie and probability fields, without rewriting imported music.
 - Instrument menus now support arrow keys, label search, reliable dismissal and focus restoration, including actions that disable themselves after use.

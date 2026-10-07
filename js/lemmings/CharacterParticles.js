@@ -85,11 +85,18 @@ class CharacterParticles {
     const index = y * level.width + x;
     const ground = level.groundMask?.mask;
     const rgba = level.groundImage;
-    if (!ground?.[index] || !rgba || level.isSteelAt?.(x, y)) return;
-    const offset = index * 4;
+    if (level.isSteelAt?.(x, y)) return;
+    let color;
+    if (ground && rgba) {
+      if (!ground[index]) return;
+      const offset = index * 4;
+      color = color32(rgba[offset], rgba[offset + 1], rgba[offset + 2]);
+    } else {
+      color = level.groundPixelAt?.(x, y) >>> 0;
+      if (!(color >>> 24)) return;
+    }
     const sample = this.samples[this.sampleCount++];
-    sample.x = x; sample.y = y;
-    sample.color = color32(rgba[offset], rgba[offset + 1], rgba[offset + 2]);
+    sample.x = x; sample.y = y; sample.color = color;
   }
 
   sampleRow(level, x, y, width) {
@@ -126,7 +133,9 @@ class CharacterParticles {
     for (let i = 0; i < this.sampleCount; i++) {
       const sample = this.samples[i];
       // Confirm this exact sampled pixel was removed; protected terrain never produces debris.
-      if (!level?.groundMask?.mask?.[sample.y * level.width + sample.x]) this.sampleIndices[removed++] = i;
+      const remains = level?.groundMask?.mask ? level.groundMask.mask[sample.y * level.width + sample.x]
+        : level?.hasGroundAt?.(sample.x, sample.y);
+      if (remains === false || remains === 0) this.sampleIndices[removed++] = i;
     }
     const count = Math.min(removed, digging ? PARTICLE_LIMITS.digPerEvent : exploding ? PARTICLE_LIMITS.terrainPerEvent : PARTICLE_LIMITS.tunnelPerEvent);
     for (let i = 0; i < count; i++) {
@@ -246,7 +255,7 @@ class CharacterParticles {
   render(display) {
     if (!this.activeCount || !display) return;
     const dest = display.buffer32, width = display.imgData?.width, height = display.imgData?.height;
-    const view = display.stage?.getGameViewRect?.();
+    const view = display.stage?.getGameViewRect?.() || display.getGameViewRect?.();
     let budget = PARTICLE_LIMITS.pixelsPerRender;
     for (const p of this.particles) {
       if (!p.life) continue;
@@ -270,6 +279,8 @@ class CharacterParticles {
           dest[target] = color32(Math.round((color & 255) * opacity + (old & 255) * inverse),
             Math.round(((color >>> 8) & 255) * opacity + ((old >>> 8) & 255) * inverse),
             Math.round(((color >>> 16) & 255) * opacity + ((old >>> 16) & 255) * inverse));
+        } else if (display.drawParticlePixel) {
+          display.drawParticlePixel(x, y, color, opacity);
         } else if (display.drawFrame) {
           this.pixel.getBuffer()[0] = ((Math.round(opacity * 255) << 24) | (color & 0xffffff)) >>> 0;
           display.drawFrame(this.pixel, x, y);

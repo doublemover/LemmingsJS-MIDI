@@ -75,6 +75,14 @@ finite shape/color list is distributed within one count, including at 1024 lanes
 palettes necessarily repeat. Closing/reopening controls or rendering does not
 reroll assignments. One accessory plus independent eyewear is preserved.
 
+The shared world also uses the bounded character-particle pool. Terrain chips
+sample the sparse world’s actual RGB pixels before each cut and confirm removal
+afterward; explosion and unsafe-fall deaths eject the selected wearables. A
+single pool serves all lanes, advances only on fixed ticks, and is cleared on
+restart/disposal. The renderer culls offscreen particles and draws changing
+particle colors directly rather than caching a mutable one-pixel sprite. The
+headless scaling harness omits sprites and this cosmetic pool.
+
 Local music uses the same immutable preset catalog and router as the studio.
 Audio starts only on the Listen button, stops on explicit stop, blur, hidden
 page, explicit restart or disposal, and never auto-enables hardware MIDI. Polyphony/event

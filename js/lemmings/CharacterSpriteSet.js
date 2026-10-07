@@ -134,7 +134,6 @@ class CharacterSpriteSet {
       const decoded = templates.map(template => hasRandomColors(settings) ? template : this.colorSkin(template, settings));
       if (current()) {
         this.activePreference = settings; this.activeTemplates = templates; this.activeSkins = decoded;
-        this.actorSkins = new WeakMap();
         for (const [key, entry] of this.paletteSkins) if (!templates.includes(entry.template)) this.paletteSkins.delete(key);
       }
       return true;
@@ -225,14 +224,21 @@ class CharacterSpriteSet {
 
   skinForActor(lem) {
     const settings = this.activePreference;
-    if (!settings) return this.getPreference()?.shape === 'classic' ? this.base : loadingSkin;
-    if (settings.shape === 'classic') return this.base;
-    const index = settings.shape === 'mixed' ? appearanceIndex(lem?.id, this.activeSkins.length, settings, '', lem?.appearanceIndex) : 0;
-    if (!hasRandomColors(settings)) return this.activeSkins[index];
+    const selection = settings || this.getPreference();
     const cached = this.actorSkins.get(lem);
-    if (cached && cached.id === lem.id && cached.index === lem.appearanceIndex) return cached.skin;
-    const skin = this.colorSkin(this.activeTemplates[index], this.appearanceForActor(lem));
-    if (lem && typeof lem === 'object') this.actorSkins.set(lem, { id: lem.id, index: lem.appearanceIndex, skin });
+    if (cached && cached.preference === selection && cached.id === lem?.id && cached.index === lem?.appearanceIndex) return cached.skin;
+    let skin;
+    if (!settings) skin = selection?.shape === 'classic' ? this.base : loadingSkin;
+    else if (settings.shape === 'classic') skin = this.base;
+    else {
+      const index = settings.shape === 'mixed' ? appearanceIndex(lem?.id, this.activeSkins.length, settings, '', lem?.appearanceIndex) : 0;
+      skin = hasRandomColors(settings) ? this.colorSkin(this.activeTemplates[index], this.appearanceForActor(lem)) : this.activeSkins[index];
+    }
+    // A pooled actor or an atomic appearance commit relinquishes its old cosmetic state.
+    cached?.skin.resetActor?.(lem);
+    if (lem && typeof lem === 'object') this.actorSkins.set(lem, {
+      id: lem.id, index: lem.appearanceIndex, preference: selection, skin
+    });
     return skin;
   }
   getActorAnimation(state, right, lem) { return this.skinForActor(lem).getAnimation(state, right); }
@@ -241,11 +247,8 @@ class CharacterSpriteSet {
     return skin === this.base ? null : skin.getParticleParts?.(lem.lookRight) || null;
   }
   resetActor(lem) {
+    // Action changes clear only the actor's owned transition, retaining its stable palette.
     this.actorSkins.get(lem)?.skin.resetActor?.(lem);
-    this.actorSkins.delete(lem);
-    const skins = new Set([...this.skins.values(), ...this.activeSkins, ...this.paletteSkins.values()].map(entry => entry.skin || entry));
-    for (const skin of skins) skin.resetActor?.(lem);
-    this.base.resetActor?.(lem);
   }
   onActionChange(lem, previousAction, previousFrameIndex) {
     const skin = this.skinForActor(lem);
