@@ -134,3 +134,16 @@ Removes all `export_*` directories created by the other scripts.
 Exported assets now live under the `exports/` directory. The game can load levels
 directly from packed archives, so you may keep your level packs compressed while
 still running these tools.
+
+
+## All configured classic levels
+
+`npm run export-all-levels -- <new-directory>` exports all 324 configured classic
+levels as `lemmings-classic-json` records with stable pack/rank/index identities
+and a SHA-256 manifest. Each level is checked through the classic binary writer
+and reader, then the saved JSON is read back. An existing destination is refused.
+These are archival classic-level JSON records, not editor-import project bundles.
+
+Pack export resolves `config.json` through `fileURLToPath`, including paths with
+spaces and Windows file URLs. Missing or malformed configuration fails clearly
+instead of silently falling back to one pack.

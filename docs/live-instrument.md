@@ -93,3 +93,25 @@ Run a browser smoke on the final branch before merging:
   hidden/inactive without changing saved projects.
 
 Remaining larger work is tracked only in `docs/roadmap.md`.
+
+
+## Editor and MCP safety repairs
+
+The integrated branch also fixes several adjacent workflow defects:
+
+- `skill.apply` uses the skill shortcut's existing single-application contract.
+  It no longer presses Apply a second time after the last requested skill causes
+  automatic selection of the next available skill. Same-skill successful
+  applications are logged even when selection itself is unchanged.
+- Editor dry-run skips mutation operations, including tools, selection, brush,
+  palette, history, saved-level writes, UID assignment, auto-fix, and preview
+  refresh. Results mark writes as skipped. It reads/validates the existing level;
+  it does not simulate the proposed sequence or fully validate skipped arguments.
+- Entry creation retains supplied flags, dimensions, MIDI metadata, and other
+  properties with normalized names. NXLV round-trip preserves them.
+- API text/saved-level loads refresh the visible header fields.
+- Debug summary and selected-actor reads no longer mutate their source population.
+  Asynchronous editor results and errors are awaited before serialization.
+- Horizontal flip, rotation, and one-way inspector fields are disabled because
+  the current runtime ignores them. Imported fields remain preserved in NXLV,
+  with explicit runtime warnings. Steel resizing remains available.

@@ -1,14 +1,15 @@
 import { spawnSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'node:url';
 
 function loadConfig() {
   try {
-    const cfgPath = path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'config.json');
+    const cfgPath = fileURLToPath(new URL('../config.json', import.meta.url));
     const txt = fs.readFileSync(cfgPath, 'utf8');
     return JSON.parse(txt);
-  } catch {
-    return [];
+  } catch (error) {
+    throw new Error(`Unable to read configured packs: ${error.message}`);
   }
 }
 

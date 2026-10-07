@@ -696,6 +696,18 @@ const validateLevel = (level, assets = null, options = {}) => {
   ];
   const gadgetEntries = Array.isArray(level.gadgets) ? level.gadgets : [];
   const gadgetOnlyProps = ['SKILL', 'LEMMINGS', 'PAIRING'];
+  for (const [target, entries] of [['terrains', terrainEntries], ['gadgets', gadgetEntries]]) {
+    const ignored = new Set();
+    for (const entry of entries) {
+      const props = entry?.props || {};
+      for (const key of ['FLIP_HORIZONTAL', 'ROTATE', 'ONE_WAY', 'WIDTH', 'HEIGHT']) {
+        if (props[key] != null && props[key] !== false && props[key] !== 0) ignored.add(key);
+      }
+    }
+    if (ignored.size) issues.push(createIssue('warning',
+      `Current game preview ignores ${target} properties ${[...ignored].join(', ')}. They remain preserved in NXLV.`,
+      null, null, { code: 'runtime_unsupported_transform', target, props: [...ignored] }));
+  }
   const terrainClassicProps = new Set([
     'STYLE',
     'PIECE',
@@ -840,7 +852,7 @@ const validateLevel = (level, assets = null, options = {}) => {
   if (snapRotations.length) {
     issues.push(createIssue(
       'warning',
-      'Rotation must be 0/90/180/270 for classic preview.',
+      'Stored rotation must be 0/90/180/270; game preview does not apply it.',
       'Snap rotations',
       () => {
         for (const { entry, snapped } of snapRotations) {

@@ -599,12 +599,12 @@
   <header id="gameChrome" class="game-chrome">
     <section id="midiInstrumentHead" class="midi-instrument-head" aria-label="Live instrument transport" hidden>
       <nav id="midiInstrumentMenus" class="midi-instrument-menus" aria-label="Instrument menus">
-        <details><summary>File</summary><div><button id="midiMenuImport" type="button">Import project…</button><button id="midiMenuExport" type="button">Export project…</button><button id="midiMenuSave" type="button">Save template…</button><button id="midiMenuProject" type="button">Palettes &amp; project</button></div></details>
-        <details><summary>Edit</summary><div><button id="midiMenuUndo" type="button">Undo sound edit</button><button id="midiMenuRedo" type="button">Redo sound edit</button></div></details>
-        <details><summary>View</summary><div><button id="midiMenuFocus" type="button">Focus</button><button id="midiMenuSplit" type="button">Split</button><button id="midiMenuOverlay" type="button">Overlay</button></div></details>
-        <details><summary>MIDI</summary><div><button id="midiMenuDevices" type="button">Device connections…</button><button id="midiMenuPanic" type="button">Panic all notes</button></div></details>
+        <details name="instrument-menu"><summary>File</summary><div><button id="midiMenuImport" type="button">Import project…</button><button id="midiMenuExport" type="button">Export project…</button><button id="midiMenuSave" type="button">Save template…</button><button id="midiMenuProject" type="button">Palettes &amp; project</button></div></details>
+        <details name="instrument-menu"><summary>Edit</summary><div><button id="midiMenuUndo" type="button">Undo sound edit</button><button id="midiMenuRedo" type="button">Redo sound edit</button></div></details>
+        <details name="instrument-menu"><summary>View</summary><div><button id="midiMenuFocus" type="button">Focus</button><button id="midiMenuSplit" type="button">Split</button><button id="midiMenuOverlay" type="button">Overlay</button></div></details>
+        <details name="instrument-menu"><summary>MIDI</summary><div><button id="midiMenuDevices" type="button">Device connections…</button><button id="midiMenuPanic" type="button">Panic all notes</button></div></details>
       </nav>
-      <div class="midi-headunit-readout"><strong>LEVEL / INSTRUMENT</strong><output id="midiGameClock">PAUSE · tick 0</output><span id="midiLastEvent">Waiting for game events</span></div>
+      <div class="midi-headunit-readout"><strong>LEVEL / INSTRUMENT</strong><output id="midiGameClock" aria-live="off">PAUSE · tick 0</output><span id="midiLastEvent">Waiting for game events</span></div>
       <div class="midi-game-transport" role="group" aria-label="Game transport"><button id="midiGamePlay" type="button">Play game</button><button id="midiGameStep" type="button">+1 tick</button><button id="midiGameStop" type="button">Stop / Panic</button><button id="midiUndo" type="button">Undo</button><button id="midiRedo" type="button">Redo</button></div>
       <label class="midi-speed-control"><span>Game speed ×</span><input id="midiGameSpeed" type="range" min="0.1" max="8" step="0.1" aria-label="Game speed slider" /><input id="midiGameSpeedValue" type="number" min="0.1" max="8" step="0.1" aria-label="Exact game speed" /></label>
 <div class="midi-control-group"><label class="midi-field midi-field--compact">

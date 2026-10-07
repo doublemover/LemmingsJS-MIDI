@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- MCP skill application no longer applies twice or consumes the next available skill after the requested one runs out.
+- Successful same-skill assignments are recorded as commands even when selection itself did not change.
+- Editor dry-runs avoid tool/selection/history/storage/preview mutation, object placement retains supplied properties, and API level loads refresh visible headers.
+- Debug state summaries and selected-actor responses no longer erase their source population through shallow aliasing; asynchronous editor tool results are awaited.
+- Unsupported runtime transforms are read-only in the inspector and explicitly warned about while NXLV data remains preserved.
+- Xmas 1991/1992 no longer offer a nonexistent fifth level.
+
 ### Added
 - Persistent single-map instrument layouts, game-clock headunit, precise event sound controls, scoped sound references, and musical undo/redo.
 - Stable-ID single/mixed character selection for the eleven recovered bodies, with optional user-selected indexed body/prop colors.

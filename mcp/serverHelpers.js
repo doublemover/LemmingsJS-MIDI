@@ -31,13 +31,13 @@ const createServerHelpers = ({
   };
 
   const callE2E = async (session, method, ...args) => session.page.evaluate(
-    ({ method, args }) => {
+    async ({ method, args }) => {
       const api = window.__E2E__;
       if (!api || typeof api[method] !== 'function') {
         return { ok: false, error: 'harness_unavailable' };
       }
       try {
-        return { ok: true, value: api[method](...args) };
+        return { ok: true, value: await api[method](...args) };
       } catch (err) {
         return { ok: false, error: err ? String(err) : 'error' };
       }

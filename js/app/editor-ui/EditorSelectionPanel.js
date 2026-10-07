@@ -164,6 +164,7 @@ const editorSelectionPanelMethods = {
       setBatchCheckState(this.el.selNoOverwrite, capabilities.noOverwrite);
       setBatchCheckState(this.el.selErase, capabilities.erase);
       setBatchCheckState(this.el.selOneWay, capabilities.oneWay);
+      this._disableUnsupportedRuntimeTransforms();
       if (this.el.deleteSelection) this.el.deleteSelection.disabled = false;
       this._suppressInspector = false;
       return;
@@ -263,7 +264,16 @@ const editorSelectionPanelMethods = {
     }
     if (this.el.deleteSelection) this.el.deleteSelection.disabled = false;
 
+    this._disableUnsupportedRuntimeTransforms();
     this._suppressInspector = false;
+  },
+
+  _disableUnsupportedRuntimeTransforms() {
+    for (const input of [this.el.selFlipH, this.el.selRotate, this.el.selOneWay]) {
+      if (!input) continue;
+      input.disabled = true;
+      input.title = 'Preserved in NXLV files; not supported by the current game runtime.';
+    }
   },
 
   _toggleSelectionActions(visible) {

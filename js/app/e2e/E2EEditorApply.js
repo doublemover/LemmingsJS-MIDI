@@ -36,6 +36,15 @@ import {
   buildApplyError,
   buildEditorApplyState
 } from './E2EEditorApplyResult.js';
+const DRY_RUN_MUTATIONS = new Set([
+  'editor.ensure', 'level.new', 'level.loadText', 'level.loadSaved', 'level.save',
+  'level.importClassicLvl', 'level.patchHeader', 'level.patchSkillset',
+  'editor.setTool', 'editor.setBrushSettings', 'editor.setPaletteSelection',
+  'selection.clear', 'selection.set', 'selection.boxSelect', 'entry.add',
+  'entry.update', 'entry.remove', 'entry.duplicate', 'entry.reorder', 'tool.place',
+  'tool.stroke', 'tool.erase', 'tool.steelRect', 'history.undo', 'history.redo'
+]);
+
 const applyEditorOps = async (view, editorUi, ops = [], options = {}) => {
   const ctx = getEditorContext(view, editorUi);
   if (!ctx) {
@@ -48,10 +57,9 @@ const applyEditorOps = async (view, editorUi, ops = [], options = {}) => {
     };
   }
 
-  ensureLevelEntryUids(ctx.session.level);
-
   const atomic = options?.atomic === true;
   const dryRun = options?.dryRun === true;
+  if (!dryRun) ensureLevelEntryUids(ctx.session.level);
   const historyOptions = options?.history || {};
   const previewOptions = options?.preview || {};
   const validateOptions = options?.validate || {};
@@ -63,7 +71,7 @@ const applyEditorOps = async (view, editorUi, ops = [], options = {}) => {
   const resources = [];
   let changed = false;
   let usedHistoryOp = false;
-  const rollbackText = atomic && typeof view?.getEditorLevelText === 'function'
+  const rollbackText = atomic && !dryRun && typeof view?.getEditorLevelText === 'function'
     ? view.getEditorLevelText()
     : null;
 
@@ -77,6 +85,7 @@ const applyEditorOps = async (view, editorUi, ops = [], options = {}) => {
   const syncEditorUiSession = () => {
     if (!ctx.editorUi) return;
     ctx.editorUi.session = ctx.session;
+    ctx.editorUi._refreshHeaderFields?.(ctx.session.level);
     if (ctx.editorUi.controller) {
       ctx.editorUi.controller.session = ctx.session;
     }
@@ -102,7 +111,7 @@ const applyEditorOps = async (view, editorUi, ops = [], options = {}) => {
     const issues = validateLevel(getLevel(), ctx.assets, {
       solverAdvisorySource: view?.game?.level || null
     });
-    if (validateOptions.autoFix && validateOptions.autoFix !== 'none') {
+    if (!dryRun && validateOptions.autoFix && validateOptions.autoFix !== 'none') {
       let fixed = false;
       for (const issue of issues) {
         if (typeof issue.fix === 'function') {
@@ -121,6 +130,10 @@ const applyEditorOps = async (view, editorUi, ops = [], options = {}) => {
     const opId = op?.opId ?? null;
     const type = String(op?.type || '');
     const args = op?.args || {};
+    if (dryRun && DRY_RUN_MUTATIONS.has(type)) {
+      results.push({ opId, type, ok: true, value: { dryRun: true, skipped: true } });
+      continue;
+    }
     let value = null;
     let ok = true;
     let errorCode = 'invalid_op';
@@ -196,6 +209,7 @@ const applyEditorOps = async (view, editorUi, ops = [], options = {}) => {
         }
         ctx.session = view?.editorSession || ctx.session;
         ctx.controller.session = ctx.session;
+        syncEditorUiSession();
         ensureLevelEntryUids(ctx.session.level);
         if (args?.resetHistory) {
           ctx.controller.resetHistory('Load Saved');
@@ -461,6 +475,9 @@ const applyEditorOps = async (view, editorUi, ops = [], options = {}) => {
           errorCode = 'invalid_op';
           errorMessage = 'Failed to create entry.';
           break;
+        }
+        for (const [key, val] of Object.entries(args?.props || {})) {
+          setEntryProp(entry, key, val, { removeIfFalse: typeof val === 'boolean' });
         }
         const insert = args?.insert;
         if (insert && Number.isFinite(insert.index)) {
@@ -753,7 +770,7 @@ const applyEditorOps = async (view, editorUi, ops = [], options = {}) => {
     ctx.controller.history.pushSnapshot(getLevel(), historyLabel);
   }
 
-  if (previewOptions.refresh !== false && ctx.editorUi?._refreshPreview) {
+  if (!dryRun && previewOptions.refresh !== false && ctx.editorUi?._refreshPreview) {
     await ctx.editorUi._refreshPreview(previewLabel, {
       preserveView: previewOptions.preserveViewport !== false
     });
