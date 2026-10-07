@@ -21,7 +21,9 @@ supplies; it is an editable playable scene, not a flat card-game interface.
   cobalt-blue exposed bodies. Fitted chrome/obsidian futuristic stagewear keeps
   intimate areas covered, with cyan luminous seams, orange accents, gauntlets and
   small feathers. Distinct shimmy, Charleston and kickline
-  poses have procedural torso/hip bounce and delayed head/feather follow-through.
+  loops each have eight separately drawn articulated poses: changing foot
+  contacts, bent knees, arm gestures, shoulder/hip counter-motion and secondary
+  bounce. There is no runtime row warp or rubber-sheet deformation.
   These use actual image-generated pixels imported into the runtime indexed
   palette; they are not enlarged versions of the former primitive human face.
 
@@ -64,12 +66,22 @@ or steam jet. Scenery-only catalogs never activate this trigger.
 `OldVegasPack.js`, `CasinoArchitecture.js` and `HydroRevue.js` produce actual
 renderer-compatible indexed frames. Transparency is 128. Individual pieces may
 use their own palettes; the exported manifest records those palettes.
-`HydroRevuePixels.js` comes from the approved transparent source sheet at
-`assets/decorations/hydro-revue/source.png`. `tools/importHydroRevue.py` identifies
-its three original-alpha connected components, scales to 192 px cells and
-quantizes 127 colors. Animation is deterministic deformation of those pixels.
-The source was generated with OpenAI imagegen, not copied from a third-party
-character illustration. See the adjacent provenance file for the generation brief.
+`HydroRevuePixels.js` now comes from three approved transparent eight-frame
+sheets in `assets/decorations/hydro-revue/`: `source.png`,
+`source-charleston.png` and `source-kickline.png`. `tools/importHydroRevue.py`
+identifies the eight original-alpha figures on each sheet, uniformly scales and
+registers supporting feet to a stable baseline, then quantizes a shared 127-color
+palette. It never creates a pose by shifting individual rows or deforming a body.
+Each authored pose is held for two engine frames. At the classic 60 ms tick, the
+16-frame loop lasts 960 ms and each pose lasts 120 ms. The 24 unique 192 px buffers
+are RLE-packed on disk, decoded once and shared by held frames (864 KiB decoded).
+The native-rate preview GIF uses 60 ms frames; the complete 24-pose filmstrip is
+`docs/previews/hydro-articulated-keyframes.png`.
+
+The source sheets were generated with OpenAI imagegen, not copied from another
+artist's character illustration. They preserve the blue body, slim enamel head,
+winged eyeliner and tilted beret while changing the costume to polished chrome.
+See the adjacent provenance file for the generation brief and superseded passes.
 
 The decoration layer uses viewport-sized canvases, cached frames/placements and
 screen-space sampling; tiny sprites become representative-color bins at far
@@ -90,6 +102,16 @@ runtime sprites. The HTML gallery uses the same frames. PNG crops were visually
 reviewed. Live browser QA remains unavailable after the cloud browser blocked
 the local gallery; no browser-playtest screenshot is claimed.
 
-Final verification: 2,669 tests passed, including a real Grand Revue Level load
-and smoke-trigger contact. Lint, critical typecheck, undefined-call scan,
-dependency check and deterministic recipe regeneration check passed.
+Final verification is recorded with the accompanying correction commit.
+The articulated-frame regression confirms direct source-pose playback, eight
+different leg silhouettes per loop, stable feet, held-frame sharing and bounded
+memory. The Grand Revue loads as a real Level with live smoke-trigger contact.
+
+Neon and smoke were rebuilt against decoded classic object references; see
+`docs/casino-neon-smoke-art-review.md` for the source comparison and native-rate proof.
+
+Correction verification: 2,681 tests passed, as did lint, critical typecheck,
+undefined-call checks, dependency checks and deterministic recipe regeneration.
+The authored 24-pose filmstrip was visually inspected; the review GIF was
+verified to contain 16 frames of 60 ms each (960 ms loop). Browser playback was not
+claimed while the local browser route remained blocked.

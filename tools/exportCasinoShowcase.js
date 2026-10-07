@@ -23,7 +23,13 @@ for (let phase = 0; phase < (frameDirectory ? 16 : 1); phase++) {
   for (const p of scene.gadgets) draw(theme.getObjectImages()[p.id], p.x, p.y, phase);
   for (const p of scene.terrain) draw(theme.getTerrainImages()[p.id], p.x, p.y);
   if (!phase) fs.writeFileSync('docs/previews/casino-spectacle.png', PNG.sync.write(image));
-  if (frameDirectory) fs.writeFileSync(path.join(frameDirectory, `scene-${phase}.png`), PNG.sync.write(image));
+  if (frameDirectory) {
+    fs.writeFileSync(path.join(frameDirectory, `scene-${phase}.png`), PNG.sync.write(image));
+    const smoke = theme.getObjectImages()[11];
+    image = new PNG({ width: smoke.width, height: smoke.height });
+    draw(smoke, 0, 0, phase);
+    fs.writeFileSync(path.join(frameDirectory, `smoke-${phase}.png`), PNG.sync.write(image));
+  }
 }
 const header = 'TITLE hydro - Casino Grand Revue\nAUTHOR hydro\nSTYLE neon-cabaret\nWIDTH 1280\nHEIGHT 320\nLEMMINGS 20\nSAVE_REQUIREMENT 5\nTIME_LIMIT INFINITE\nMAX_SPAWN_INTERVAL 30\nSTART_X 0\nSTART_Y 0\n$SKILLSET\n  SKILL CLIMBER 20\n  SKILL FLOATER 20\n  SKILL BOMBER 5\n  SKILL BLOCKER 5\n  SKILL BUILDER 30\n  SKILL BASHER 20\n  SKILL MINER 20\n  SKILL DIGGER 20\n$END\n';
 const block = (kind, p) => `$${kind}\n  STYLE neon-cabaret\n  PIECE ${p.id}\n  X ${p.x}\n  Y ${p.y}\n$END\n`;

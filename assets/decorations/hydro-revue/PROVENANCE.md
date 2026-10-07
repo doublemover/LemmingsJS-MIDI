@@ -31,5 +31,27 @@ chrome/obsidian stage panels, luminous cyan/cobalt seams, orange light accents,
 small angular hip fins, gauntlets and futuristic stage heels.
 
 Edit reference: the preceding source PNG retained in Git history at commit
-43bf6733. Generation succeeded. The resulting pixels use the same 192×192,
+43 bf 6733. Generation succeeded. The resulting pixels use the same 192×192,
 127-color, binary-alpha import and 16-frame procedural pose animation pipeline.
+
+## Articulated polished-chrome correction
+
+The previous single-pose deformation loop is superseded. Three new transparent
+4×2 sheets provide 24 actual image-generated dance keyframes: hip-shimmy
+step-touch, Charleston and kickline. All exposed body stays cobalt blue; the
+slim enamel triangle head retains two winged-eyeliner eyes and the tilted orange
+beret. The outfit is polished silver chrome, including bodysuit panels, gloves,
+hip fins and stage heels; the former black base and colored luminous piping
+were removed. Intimate areas remain covered.
+
+Each sheet requested eight distinct articulated phases with bending knees,
+changing foot contacts, moving elbows and shoulder/hip counter-motion, including
+secondary body/feather follow-through. The last pose leads back to the first.
+No labels, background or overlapping/cropped figures were requested. Source
+reference was the preceding futuristic blue performer sheet in commit 38 a 80 f 8 f.
+All three generation calls succeeded. The complete source-pose silhouettes were
+visually inspected before import.
+
+The importer performs uniform scaling and foot-baseline registration only.
+Runtime playback decodes RLE 8 indexed poses, holds each for two 60 ms ticks, and
+never warps pixels. Pose buffers are shared rather than copied between holds.

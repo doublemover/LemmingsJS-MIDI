@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Replace hydro's pixel-warp wobble with 24 authored all-chrome articulated dance poses, fixed foot registration and native-rate previews; rebuild neon tubes and classic-style smoke curls.
 - Refine the casino hydro performer to a fully cobalt body, slim enamel triangle head, winged eyeliner and futuristic chrome/luminous stagewear while preserving the three dance loops.
 - Expand the casino into a playable Grand Revue with large marble/gold architecture, long festoon lights,192px image-generated triangle-headed hydro performers, modern chip inlays, and a dense smoke hazard using the shared action system.
 - Original Neon Cabaret editor theme includes animated scenery, walkable terrain, protected steel, entrance/exit, and operational electric, crush and coolant hazards with an Opening Night starter level.
