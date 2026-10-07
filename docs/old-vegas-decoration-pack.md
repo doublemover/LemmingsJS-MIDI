@@ -16,9 +16,11 @@ supplies; it is an editable playable scene, not a flat card-game interface.
 - 256 px black-marble promenade and gold cornice;128 px velvet/gold stairs
 - 160 px ivory/black fluted marble pillars;192 px velvet dais
 - 256 px double festoon ropes and velvet proscenium; oversized neon crown
--Three 192×192 adult humanoid hydro revue sprites with cobalt triangle heads,
-  dark oval eyes, orange berets, fitted garnet costumes, covered intimate areas,
-  stockings, gloves and small feathers. Distinct shimmy, Charleston and kickline
+- Three 192×192 adult humanoid hydro revue sprites with slim cobalt enamel
+  triangle heads, dark oval eyes, winged eyeliner, tilted orange berets and fully
+  cobalt-blue exposed bodies. Fitted chrome/obsidian futuristic stagewear keeps
+  intimate areas covered, with cyan luminous seams, orange accents, gauntlets and
+  small feathers. Distinct shimmy, Charleston and kickline
   poses have procedural torso/hip bounce and delayed head/feather follow-through.
   These use actual image-generated pixels imported into the runtime indexed
   palette; they are not enlarged versions of the former primitive human face.

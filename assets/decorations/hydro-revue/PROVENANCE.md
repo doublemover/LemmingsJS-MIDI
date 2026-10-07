@@ -18,3 +18,18 @@ background, no labels, environment or branded artwork.
 The approved pixels were reduced to 192×192 indexed runtime cells with 127 colors
 and binary alpha. Deterministic row deformation supplies 16-frame pose loops.
 Source PNG, conversion script and indexed module are all retained for recovery.
+
+## Futuristic cobalt correction
+
+The same transparent three-pose source was edited with OpenAI imagegen on
+7 October 2026 under the owner's explicit correction. Pose count, framing,
+image dimensions and baseline were preserved. All exposed body skin was changed
+to cobalt blue; the head was refined to a slim enamel triangle with winged
+eyeliner and the orange beret retained its asymmetric tilt. Vintage velvet,
+corset lacing, garters and tassels were replaced with covered fitted
+chrome/obsidian stage panels, luminous cyan/cobalt seams, orange light accents,
+small angular hip fins, gauntlets and futuristic stage heels.
+
+Edit reference: the preceding source PNG retained in Git history at commit
+43bf6733. Generation succeeded. The resulting pixels use the same 192×192,
+127-color, binary-alpha import and 16-frame procedural pose animation pipeline.
