@@ -9,6 +9,15 @@ describe('shared procgen lanes', function () {
   it('normalizes the exact 1–1024 integer range', () => {
     expect([undefined, 0, -8, '3', 1.8, 1024, 5000, 'oops'].map(normalizeLaneCount)).to.deep.equal([1, 1, 1, 3, 1, 1024, 1024, 1]);
   });
+  it('bounds and reuses deterministic terrain challenges without per-pixel allocation', () => {
+    const world = new ProcgenLaneWorld({ masks, laneCount: 2, seed: 42 });
+    const first = world.challengeAt(0, 100);
+    expect(world.challengeAt(0, 101)).to.equal(first);
+    for (let x = 0; x < 1000; x++) world.challengeAt(x % 2, x * 256);
+    expect(world.challengeCache.size).to.equal(world.challengeCacheLimit);
+    expect(world.challengeAt(0, 100)).to.deep.equal(first);
+    world.dispose(); expect(world.challengeCache.size).to.equal(0);
+  });
   it('matches the dense game mask column semantics', () => {
     const world = new ProcgenLaneWorld({ masks, laneCount: 2, seed: 42 });
     const dense = new SolidLayer(256, world.height);

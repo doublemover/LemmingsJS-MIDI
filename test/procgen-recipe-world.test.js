@@ -12,6 +12,21 @@ describe('source-art shared world routes', function () {
     expect(result.alive).to.equal(32); expect(result.stalled).to.equal(0);
     expect(result.distance.min).to.be.greaterThan(2000); expect(result.recipeMemoryMB).to.be.lessThan(4);
   });
+  it('traverses every one of the 96 admitted source recipes with real actions and no neighbouring lane', async () => {
+    let checked = 0;
+    for (const theme of book.themes) {
+      const source = theme.sources[0], terrain = await loadProcgenTerrain(source.pack, source.groundSet);
+      const patterns = terrain.patterns;
+      for (const pattern of patterns) {
+        terrain.patterns = [pattern];
+        const result = runLaneBenchmark({ masks, terrain, lanes: 1, ticks: 5000, seed: 42 });
+        expect(result.alive, pattern.routeId).to.equal(1);
+        expect(result.stalled, pattern.routeId).to.equal(0);
+        checked++;
+      }
+    }
+    expect(checked).to.equal(96);
+  });
   it('keeps source pixels and collision identical, including shared edits', async () => {
     const terrain = await loadProcgenTerrain(), world = new ProcgenLaneWorld({ masks, terrain, laneCount: 3, seed: 42 });
     for (let y = 0; y < world.height; y++) for (let x = 0; x < 256; x++) expect(!!world.groundPixelAt(x, y)).to.equal(world.hasGroundAt(x, y));

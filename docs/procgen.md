@@ -77,7 +77,7 @@ reroll assignments. One accessory plus independent eyewear is preserved.
 
 Local music uses the same immutable preset catalog and router as the studio.
 Audio starts only on the Listen button, stops on explicit stop, blur, hidden
-page, restart or disposal, and never auto-enables hardware MIDI. Polyphony/event
+page, explicit restart or disposal, and never auto-enables hardware MIDI. Polyphony/event
 limits still apply to dense cohorts; not every simultaneous event is audible.
 
 ## Regression and measurement commands

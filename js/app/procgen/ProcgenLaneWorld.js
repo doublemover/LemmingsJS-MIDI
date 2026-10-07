@@ -44,6 +44,8 @@ class ProcgenLaneWorld {
     this.stall = new ProcgenStallPolicy(this.laneCount, stallPolicy, previousDistances);
     this.failureReasons = {};
     this.editChunks = new Map();
+    this.challengeCache = new Map();
+    this.challengeCacheLimit = Math.max(128, this.laneCount * 8);
     this.laneSeeds = Uint32Array.from({ length: this.laneCount }, (_, lane) => mix(this.seed ^ Math.imul(lane + 1, 0x9e3779b1)));
     this.timer = { frameTime: 60, speedFactor: speed, onGameTick: new EventHandler(), getGameTicks: () => this.tickIndex };
     this.soundEvents = new SoundEventBus(this.timer);
@@ -96,7 +98,7 @@ class ProcgenLaneWorld {
     }
   }
   _restart(previousDistances) {
-    this.actors.length = 0; this.editChunks.clear(); this.generation++; this.generationStartTick = this.tickIndex;
+    this.actors.length = 0; this.editChunks.clear(); this.challengeCache.clear(); this.generation++; this.generationStartTick = this.tickIndex;
     for (let lane = 0; lane < this.laneCount; lane++) this.laneSeeds[lane] = mix(this.seed ^ Math.imul(lane + 1, 0x9e3779b1) ^ Math.imul(this.generation - 1, 0x85ebca6b));
     this.stall = new ProcgenStallPolicy(this.laneCount, this.stall.settings, previousDistances);
     for (const lane of this.stall.lanes) lane.lastProgressTick = this.tickIndex;
@@ -116,13 +118,18 @@ class ProcgenLaneWorld {
     return lane * LANE_HEIGHT + 72 - rise;
   }
   challengeAt(lane, x) {
-    const chunk = Math.floor(x / CHUNK_WIDTH), code = this.chunkCode(lane, chunk);
+    const chunk = Math.floor(x / CHUNK_WIDTH), key = lane * 0x400000 + chunk;
+    const cached = this.challengeCache.get(key);
+    if (cached) return cached;
+    const code = this.chunkCode(lane, chunk);
     const challenge = { barrierX: chunk * CHUNK_WIDTH + 142 + code % 9, barrierWidth: 8 + (code >>> 4) % 9,
       gapX: chunk * CHUNK_WIDTH + 210 + (code >>> 8) % 5, gapWidth: 4 + (code >>> 12) % 3 };
     if (this.terrain) {
       if (!this.terrain.isFlat(this.laneSeeds[lane], challenge.barrierX)) challenge.barrierWidth = 0;
       if (!this.terrain.isFlat(this.laneSeeds[lane], challenge.gapX)) challenge.gapWidth = 0;
     }
+    if (this.challengeCache.size >= this.challengeCacheLimit) this.challengeCache.delete(this.challengeCache.keys().next().value);
+    this.challengeCache.set(key, challenge);
     return challenge;
   }
   basePixelAt(x, y) {
@@ -223,8 +230,9 @@ class ProcgenLaneWorld {
     }
     if (this.cohorts) {
       this.stall.update(this.actors, this.tickIndex);
-      const due = new Set(this.stall.takeDue(this.tickIndex));
-      for (const actor of this.actors) if (due.has(actor.id) && !actor.failureReason) {
+      const dueIds = this.stall.takeDue(this.tickIndex);
+      const due = dueIds.length ? new Set(dueIds) : null;
+      if (due) for (const actor of this.actors) if (due.has(actor.id) && !actor.failureReason) {
         actor.setAction(this.actions[State.OHNO]);
         this.soundEvents.emitSfx(SoundEventTypes.LEMMING_OHNO, SoundEffectIds.OHNO, { lemmingId: actor.id, x: actor.x, y: actor.y });
       }
@@ -259,10 +267,10 @@ class ProcgenLaneWorld {
       stall: this.cohorts ? this.stall.snapshot(this.tickIndex) : null,
       distance: { min: Number.isFinite(minDistance) ? minDistance : 0, max: maxDistance, mean: distance / Math.max(1, this.actors.length) },
       terrainRecipe: this.terrain?.recipe.id || null, recipeMemoryMB: this.terrain?.memoryMB || 0,
-      terrainEdits: this.editChunks.size, terrainMemoryMB: this.editChunks.size * EDIT_CHUNK_WIDTH * LANE_HEIGHT / 1048576,
+      cachedChallenges: this.challengeCache.size, terrainEdits: this.editChunks.size, terrainMemoryMB: this.editChunks.size * EDIT_CHUNK_WIDTH * LANE_HEIGHT / 1048576,
       ...this.stats };
   }
-  dispose() { this.timer.onGameTick.dispose(); this.soundEvents.onEvent.dispose(); this.editChunks.clear(); }
+  dispose() { this.timer.onGameTick.dispose(); this.soundEvents.onEvent.dispose(); this.editChunks.clear(); this.challengeCache.clear(); }
 }
 
 export { ProcgenLaneWorld, MAX_PROCGEN_LANES, LANE_HEIGHT, CHUNK_WIDTH, normalizeLaneCount };
