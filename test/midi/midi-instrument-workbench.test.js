@@ -94,6 +94,22 @@ describe('live instrument workbench', function() {
     expect(doc.getElementById('midiInstrumentHead').hidden).to.equal(true);
   });
 
+  it('keeps the titlebar scoped to the active workspace without extra label copy', function() {
+    const doc = new TestDocument(); doc.body = doc.createElement('body'); const win = createTestWindow();
+    for (const id of ['midiEditScope', 'midiViewDevices', 'midiViewProject', 'midiViewExpert']) registerElement(doc, 'button', id);
+    const p = makeProject(), source = p.sources[0]; source.label = 'Spawn · falling';
+    const workbench = createMidiInstrumentWorkbench({ document: doc, window: win, getLemmings: () => null,
+      getProject: () => p, getSource: () => source, updateMapping() {}, updateSource() {}, commitProject() {}, chooseView() {}, bind() {}, panic() {}, history: createMidiEditHistory(), setStatus() {} });
+    workbench.setVisible(true); expect(doc.getElementById('midiEditScope').textContent).to.equal('Spawn · falling');
+    for (const [id, title] of [['midiViewDevices', 'Devices'], ['midiViewProject', 'Project'], ['midiViewExpert', 'Tracks & clips']]) {
+      doc.getElementById(id).setAttribute('aria-pressed', 'true'); workbench.refreshClock();
+      expect(doc.getElementById('midiEditScope').textContent).to.equal(title);
+      expect(doc.getElementById('midiEditScope').getAttribute('title')).to.equal(title);
+      doc.getElementById(id).setAttribute('aria-pressed', 'false');
+    }
+    workbench.dispose();
+  });
+
   it('preserves arp progress across unrelated mapping edits and wraps its next marker', function() {
     const config = { enabled: true, sfx: { 20: { note: 60, notes: [60, 64, 67], arp: { enabled: true, mode: 'up' } } } };
     const router = new MidiEventRouter(config);

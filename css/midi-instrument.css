@@ -160,3 +160,27 @@ body.game-page.studio-open[data-midi-layout=overlay] .midi-sequencer { grid-colu
 #midiModulationInspector .midi-automation-row > .midi-field--toggle > span { color: #1d3a27; }
 #midiModulationInspector .midi-automation-remove { grid-column: 2; grid-row: 1; align-self: stretch; min-height: 32px; padding: 4px 7px; border-color: #b77f6b; background: #f5ddd1; color: #613323; font-weight: 600; }
 #midiModulationInspector #midiAutomationAddButton { min-height: 28px; padding: 4px 9px; border-color: #48623b; background: #cfe5b5; color: #1d3a27; font-weight: 700; }
+
+/* Persistent safety and source context belong in the pane's compact titlebar. */
+#midiTransportStrip { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; flex-wrap: nowrap; gap: 6px; min-height: 40px; padding: 6px 8px; border-bottom: 1px solid #adb69f; background: #e0e5d4; }
+#midiEditScope { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #263a2d; font-size: 12px; line-height: 1.3; }
+#midiPanicButton { align-self: center; gap: 4px; min-height: 26px; height: 26px; padding: 3px 7px; border: 1px solid #963b2d; border-radius: 4px; background: #ad4434; color: #fff9f1; font-size: 11px; font-weight: 700; white-space: nowrap; }
+#midiPanicButton::before { width: 12px; height: 12px; }
+#midiPanicButton:hover { background: #933625; }
+#midiWorkspaceClose { align-self: center; margin-left: 0; width: 26px; height: 26px; min-height: 26px; padding: 4px !important; border-radius: 4px; }
+#midiWorkspaceClose::before { width: 14px; height: 14px; }
+.midi-view-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px; padding: 6px 8px; }
+.midi-view-tabs button { flex-direction: row; justify-content: flex-start; gap: 6px; min-height: 28px; padding: 4px 7px; font-size: 11px; }
+.midi-view-tabs button::before { width: 14px; height: 14px; }
+.midi-view-tabs .midi-view-tab--secondary { color: #536148; }
+.midi-view-tabs button[aria-pressed=true] { color: #fffbee; }
+.midi-editor-view { padding: 10px; }
+.midi-sound-heading { gap: 5px; margin-bottom: 6px; }
+.midi-sound-heading h2 { font-size: 14px; }
+.midi-sound-secondary { margin-top: 8px; padding-top: 7px; border-top: 1px solid #bbc3ad; }
+.midi-sound-secondary > summary { display: flex; align-items: center; gap: 6px; padding: 3px 0; color: #415641; font-size: 11px; cursor: pointer; }
+.midi-sound-secondary > .midi-button-row { gap: 4px; margin: 7px 0; }
+.midi-event-context { display: grid; gap: 5px; margin-top: 12px; padding: 8px; border: 1px solid #bbc3ad; border-radius: 5px; background: #e0e5d4; }
+.midi-event-context .midi-active-key { flex-wrap: wrap; margin: 0; gap: 4px; }
+.midi-event-context .midi-field { margin: 0; }
+.midi-instrument-menus details > div { min-width: 180px; padding: 4px; gap: 1px; }

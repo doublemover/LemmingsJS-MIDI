@@ -39,8 +39,15 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     lastEvent = event;
   };
   const detach = () => { soundBus?.onEvent?.off?.(onEvent); soundBus = null; };
+  const refreshScope = () => {
+    const title = byId('midiViewDevices')?.getAttribute('aria-pressed') === 'true' ? 'Devices'
+      : byId('midiViewProject')?.getAttribute('aria-pressed') === 'true' ? 'Project'
+        : byId('midiViewExpert')?.getAttribute('aria-pressed') === 'true' ? 'Tracks & clips' : getSource()?.label || 'Sound editor';
+    text('midiEditScope', title); byId('midiEditScope')?.setAttribute('title', title);
+  };
   const refreshClock = () => {
     if (!visible) return;
+    refreshScope();
     const view = getLemmings();
     const nextBus = view?.game?.soundEvents;
     if (nextBus !== soundBus) {
@@ -102,7 +109,7 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     const source = getSource(), p = getProject(), mapping = source?.mapping || {};
     const behavior = getEventBehavior(source), direct = !!source && source.mode === 'direct';
     text('midiSoundRoute', routeSummary());
-    text('midiEditScope', `${source?.label || 'Event'} · sound controls`);
+    refreshScope();
     for (const button of Array.from(byId('midiBehaviorChoices')?.children || [])) {
       button.setAttribute('aria-pressed', String(button.dataset.behavior === behavior));
       button.disabled = !source;
@@ -120,8 +127,8 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     const ref = references.get(source?.id);
     if (source && !ref) references.set(source.id, soundReference(source));
     const undoState = history.state();
-    for (const id of ['midiUndo', 'midiMenuUndo']) { const el = byId(id); if (el) el.disabled = !undoState.canUndo; }
-    for (const id of ['midiRedo', 'midiMenuRedo']) { const el = byId(id); if (el) el.disabled = !undoState.canRedo; }
+    for (const id of ['midiUndo']) { const el = byId(id); if (el) el.disabled = !undoState.canUndo; }
+    for (const id of ['midiRedo']) { const el = byId(id); if (el) el.disabled = !undoState.canRedo; }
     text('midiPatternAxis', mapping.arp?.enabled ? 'Event order · each trigger advances one note' : mapping.phrase?.enabled ? `Phrase · one note every ${mapping.phrase.spacingTicks} game ticks` : 'One note per event');
     refreshClock();
   };
@@ -145,7 +152,6 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     menus = createMidiInstrumentMenus({ root: byId('midiInstrumentMenus'), document, window });
     setLayout(layout);
     for (const name of LAYOUTS) bind(`midiLayout${name[0].toUpperCase() + name.slice(1)}`, 'click', () => setLayout(name));
-    for (const name of LAYOUTS) bind(`midiMenu${name[0].toUpperCase() + name.slice(1)}`, 'click', () => setLayout(name));
     bind('midiGamePlay', 'click', () => { getLemmings()?.game?.getGameTimer?.()?.toggle?.(); refreshClock(); });
     bind('midiGameStep', 'click', () => {
       const view = getLemmings(); view?.game?.getGameTimer?.()?.suspend?.(); view?.nextFrame?.(); refreshClock();
@@ -180,11 +186,9 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     });
     bind('midiSoundSnapshot', 'click', () => { const source = getSource(); if (source) references.set(source.id, soundReference(source)); setStatus('Sound reference saved for this session'); });
     bind('midiSoundRevert', 'click', () => { const source = getSource(), ref = references.get(source?.id); if (ref) updateSource(cloneSafeObject(ref)); });
-    for (const id of ['midiUndo', 'midiMenuUndo']) bind(id, 'click', () => { history.undo(getProject(), commitProject); render(); });
-    for (const id of ['midiRedo', 'midiMenuRedo']) bind(id, 'click', () => { history.redo(getProject(), commitProject); render(); });
-    for (const [id, target] of Object.entries({ midiMenuImport: 'midiProjectImportButton', midiMenuExport: 'midiProjectExportButton', midiMenuSave: 'midiTemplateSaveButton', midiMenuPanic: 'midiPanicButton' })) bind(id, 'click', () => byId(target)?.click?.());
-    bind('midiMenuProject', 'click', () => chooseView('project'));
-    bind('midiMenuDevices', 'click', () => chooseView('devices'));
+    for (const id of ['midiUndo']) bind(id, 'click', () => { history.undo(getProject(), commitProject); render(); });
+    for (const id of ['midiRedo']) bind(id, 'click', () => { history.redo(getProject(), commitProject); render(); });
+    for (const [id, target] of Object.entries({ midiMenuImport: 'midiProjectImportButton', midiMenuExport: 'midiProjectExportButton', midiMenuSave: 'midiTemplateSaveButton' })) bind(id, 'click', () => byId(target)?.click?.());
     bind('midiInspectTrack', 'click', () => {
       const p = getProject(), source = getSource();
       if (source?.trackId) commitProject({ ...p, ui: { ...p.ui, selectedTrackId: source.trackId, activeRegion: 'tracks' } });

@@ -2092,6 +2092,10 @@ describe('midiUiController sequencer', function() {
     expect(controller.panic()).to.equal(true);
     expect(allNotesOffCalls).to.equal(1);
     expect(clearQueueCalls).to.equal(1);
+    doc.getElementById('midiPanicButton').dispatchEvent({ type: 'click' });
+    doc.getElementById('midiPanicButton').dispatchEvent({ type: 'click' });
+    expect(allNotesOffCalls).to.equal(3);
+    expect(clearQueueCalls).to.equal(3);
     expect(doc.getElementById('midiOutputLog').textContent).to.contain('Panic sent');
   });
 

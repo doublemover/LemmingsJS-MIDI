@@ -47,28 +47,22 @@
 <body class="game-page" oncontextmenu="return false;">
   <section id="midiSequencerWorkspace" class="midi-sequencer" aria-label="Game sound editor" hidden>
     <header id="midiTransportStrip" class="midi-studio-header">
-      <strong id="midiEditScope">Event sound controls</strong>
+      <strong id="midiEditScope">Sound editor</strong>
+      <button id="midiPanicButton" data-icon="square" type="button" title="Stop all MIDI and local notes" aria-label="Panic all MIDI notes">Panic</button>
       <button id="midiWorkspaceClose" data-icon="x" class="icon-only" title="Close sound editor" type="button" aria-label="Close sound editor">Close</button>
 
     </header>
     <nav class="midi-view-tabs" aria-label="Sound workspaces">
       <button id="midiViewSounds" data-icon="audio-lines" type="button" aria-pressed="true">Events</button>
-      <button id="midiViewDevices" data-icon="usb" type="button" aria-pressed="false">Devices</button>
-      <button id="midiViewProject" data-icon="music" type="button" aria-pressed="false">Project</button>
       <button id="midiViewExpert" data-icon="list-music" type="button" aria-pressed="false">Tracks &amp; clips</button>
+      <button id="midiViewProject" class="midi-view-tab--secondary" data-icon="music" type="button" aria-pressed="false">Project</button>
+      <button id="midiViewDevices" class="midi-view-tab--secondary" data-icon="usb" type="button" aria-pressed="false">Devices</button>
     </nav>
     <section id="midiSoundsView" class="midi-editor-view" aria-label="Event sounds">
-      <label class="midi-field midi-field--compact">
-        <span>Position pan</span>
-        <select id="midiGlobalPanMode"><option value="off">Off</option><option value="viewport">Viewport</option><option value="level">Whole level</option></select>
-      </label>
-      <div class="midi-active-key"><span id="midiActiveKeySummary"></span><button id="midiEditProjectKey" data-icon="settings-2" type="button">Edit key / palette</button></div>
       <div id="midiEventSoundDock" class="midi-sounds-layout">
 
         <div id="midiPersistentSoundEditor" class="midi-sound-editor">
           <div class="midi-sound-heading"><h2 id="midiSoundTitle">Choose an event</h2><label><input id="midiSoundEnabled" type="checkbox" /> On</label></div>
-          <p id="midiSoundRoute" class="midi-route-summary"></p>
-          <button id="midiInspectTrack" data-icon="arrow-up-right" type="button">Inspect destination track</button>
           <div id="midiBehaviorChoices" class="midi-choice-row" role="group" aria-label="Event response">
             <button type="button" data-icon="music" data-behavior="note">One note</button>
             <button type="button" data-icon="list-music" data-behavior="steps">Event steps</button>
@@ -87,10 +81,21 @@
           </div>
           <label id="midiSoundOrderField" class="midi-field"><span>Event pattern order</span><select id="midiSoundOrder"><option value="up">Up</option><option value="down">Down</option><option value="updown">Up / down</option></select></label>
           <button id="midiSoundPreview" data-icon="play" type="button">Test event locally</button>
+          <details class="midi-sound-secondary"><summary data-icon="settings-2">Routing &amp; reference</summary>
+          <p id="midiSoundRoute" class="midi-route-summary"></p>
+          <button id="midiInspectTrack" data-icon="arrow-up-right" type="button">Inspect destination track</button>
           <div class="midi-button-row"><button id="midiSoundSnapshot" data-icon="save" type="button">Keep as reference</button><button id="midiSoundRevert" data-icon="undo-2" type="button">Revert to reference</button></div>
           <p id="midiSoundHint" class="midi-help"></p>
           <button id="midiSoundAdvanced" data-icon="sliders-horizontal" type="button">Edit detailed wiring</button>
+          </details>
         </div>
+      </div>
+      <div class="midi-event-context">
+      <label class="midi-field midi-field--compact">
+        <span>Position pan</span>
+        <select id="midiGlobalPanMode"><option value="off">Off</option><option value="viewport">Viewport</option><option value="level">Whole level</option></select>
+      </label>
+      <div class="midi-active-key"><span id="midiActiveKeySummary"></span><button id="midiEditProjectKey" data-icon="settings-2" type="button">Edit key / palette</button></div>
       </div>
     </section>
     <section id="midiDevicesView" class="midi-editor-view" aria-label="MIDI device routing" hidden>
@@ -114,7 +119,6 @@
       </label>
       </div>
       <div id="midiDeviceStatus" class="midi-status" role="status">No device connection</div>
-      <button id="midiPanicButton" type="button" aria-label="Panic all MIDI notes">Stop all notes</button>
       <div id="errorDisplay" class="midi-error" role="status"></div>
     </section>
     <section id="midiProjectView" class="midi-editor-view" aria-label="Musical project" hidden>
@@ -626,11 +630,10 @@
     </div>
     <section id="midiInstrumentHead" class="midi-instrument-head" aria-label="Live instrument transport" hidden>
       <nav id="midiInstrumentMenus" class="midi-instrument-menus" aria-label="Instrument menus">
-        <details name="instrument-menu"><summary class="icon-only" data-icon="ellipsis" title="Studio menu" aria-label="Studio menu">Studio menu</summary><div>
-          <button id="midiMenuImport" type="button" data-icon="file-up">Import project…</button><button id="midiMenuExport" type="button" data-icon="file-down">Export project…</button><button id="midiMenuSave" type="button" data-icon="save">Save template…</button><button id="midiMenuProject" type="button" data-icon="music">Palettes &amp; project</button>
-          <button id="midiMenuUndo" type="button" data-icon="undo-2">Undo sound edit</button><button id="midiMenuRedo" type="button" data-icon="redo-2">Redo sound edit</button>
-          <button id="midiMenuFocus" type="button" data-icon="panel-left">Focus</button><button id="midiMenuSplit" type="button" data-icon="columns-2">Split</button><button id="midiMenuOverlay" type="button" data-icon="layers">Overlay</button>
-          <button id="midiMenuDevices" type="button" data-icon="usb">Device connections…</button><button id="midiMenuPanic" type="button" data-icon="square">Panic all notes</button>
+        <details name="instrument-menu"><summary class="icon-only" data-icon="ellipsis" title="Project files" aria-label="Project files">Project files</summary><div>
+          <button id="midiMenuImport" type="button" data-icon="file-up">Import project…</button>
+          <button id="midiMenuExport" type="button" data-icon="file-down">Export project…</button>
+          <button id="midiMenuSave" type="button" data-icon="save">Save template…</button>
         </div></details>
       </nav>
       <div class="midi-game-transport segmented" role="group" aria-label="Game transport"><button id="midiGamePlay" class="icon-only" data-icon="play" title="Play game" type="button">Play game</button><button id="midiGameStep" class="icon-only" data-icon="step-forward" title="Advance one game tick" type="button">+1 tick</button><button id="midiGameStop" class="icon-only" data-icon="square" title="Stop game and all notes" type="button">Stop / Panic</button><button id="midiUndo" class="icon-only" data-icon="undo-2" title="Undo sound edit" type="button">Undo</button><button id="midiRedo" class="icon-only" data-icon="redo-2" title="Redo sound edit" type="button">Redo</button></div>
