@@ -3,7 +3,7 @@ import { installExternalAssetStubs } from './helpers/externalAssets.js';
 import { waitForHarnessReady } from './helpers/harness.js';
 
 test.use({ permissions: [] });
-for (const size of [{ width: 1366, height: 768 }, { width: 1440, height: 900 }, { width: 1909, height: 950 }]) {
+for (const size of [{ width: 1366, height: 768 }, { width: 1440, height: 900 }, { width: 1909, height: 950 }, { width: 2560, height: 720 }]) {
   test(`compact studio keeps both rails and a clear map at ${size.width}`, async ({ page }, testInfo) => {
     await page.setViewportSize(size); await installExternalAssetStubs(page);
     await page.goto('/?e2e=1'); await waitForHarnessReady(page);
@@ -34,6 +34,8 @@ for (const size of [{ width: 1366, height: 768 }, { width: 1440, height: 900 }, 
     expect(rectangles.volume.left).toBeGreaterThan(rectangles.listen.right);
     expect(rectangles.volume.left - rectangles.listen.right).toBeLessThan(20);
     expect(rectangles.game.left).toBeGreaterThanOrEqual(rectangles.left.right);
+    expect(rectangles.game.left - rectangles.left.right).toBeLessThanOrEqual(8);
+    expect(rectangles.editor.width).toBeLessThanOrEqual(360);
     expect(rectangles.game.right).toBeLessThanOrEqual(rectangles.editor.left);
     expect(rectangles.game.width / rectangles.game.height).toBeCloseTo(800 / 480, 2);
     await page.screenshot({ path: testInfo.outputPath(`desktop-studio-${size.width}.png`), fullPage: true });

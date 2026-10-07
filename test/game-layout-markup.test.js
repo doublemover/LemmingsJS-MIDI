@@ -43,4 +43,14 @@ describe('game page layout contract', function() {
     expect($('#midiGamePresetApply').closest('#midiAdvancedWorkspace').length).to.equal(0);
     expect($('#midiSourceList').closest('#midiAdvancedWorkspace').length).to.equal(1);
   });
+
+  it('anchors the desktop canvas beside the left rail and keeps the right editor bounded', function() {
+    const css = readFileSync(new URL('../css/midi-instrument.css', import.meta.url), 'utf8');
+    expect(css).to.match(/\.game-stage-slot, \.studio-open \.game-stage-slot \{[^}]*justify-content: flex-start;/);
+    expect(css).to.match(/\.game, \.studio-open \.game \{[^}]*padding: 6px;/);
+    expect(css).not.to.include('42%');
+    expect(css).to.include('grid-template-columns: 208px minmax(300px, 1fr) 328px;');
+    expect(css).to.include('grid-template-columns: 220px minmax(300px, 1fr) 360px;');
+    expect(css).to.include('.game-stage-slot, .studio-open .game-stage-slot { justify-content: center; }');
+  });
 });
