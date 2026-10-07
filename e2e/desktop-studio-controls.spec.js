@@ -85,3 +85,26 @@ test('focused speed range preserves global Help and speed keys while native arro
   await expect(range).toHaveAttribute('aria-valuetext', '0.4 times game speed');
   await expect(number).toHaveValue('0.4');
 });
+
+test('modulation labels sit inside high-contrast compact fields', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 }); await installExternalAssetStubs(page);
+  await page.goto('/?e2e=1'); await waitForHarnessReady(page);
+  await page.evaluate(() => window.__E2E__.pause());
+  await page.locator('#midiViewExpert').click();
+  await page.locator('#midiModulationInspector > summary').click();
+  await page.locator('#midiAutomationAddButton').click();
+  const result = await page.locator('#midiModulationInspector').evaluate(inspector => {
+    const field = inspector.querySelector('#midiGlobalIntensity').closest('label');
+    const span = field.querySelector('span'), input = field.querySelector('input');
+    const box = field.getBoundingClientRect(), label = span.getBoundingClientRect(), control = input.getBoundingClientRect();
+    const row = inspector.querySelector('.midi-automation-row');
+    return { fieldBackground: window.getComputedStyle(field).backgroundColor, labelColor: window.getComputedStyle(span).color,
+      inputBackground: window.getComputedStyle(input).backgroundColor, rowBackground: window.getComputedStyle(row).backgroundColor,
+      labelInside: label.left >= box.left && label.right <= box.right && label.top >= box.top && control.bottom <= box.bottom,
+      characterLabels: document.querySelector('.character-controls .character-control-content').innerText.trim() };
+  });
+  expect(result.fieldBackground).toBe('rgb(252, 251, 245)');
+  expect(result.labelColor).toBe('rgb(65, 86, 65)'); expect(result.inputBackground).toBe('rgba(0, 0, 0, 0)');
+  expect(result.rowBackground).toBe('rgb(38, 58, 45)'); expect(result.labelInside).toBe(true); expect(result.characterLabels).toBe('');
+  await page.locator('#midiModulationInspector').screenshot({ path: testInfo.outputPath('modulation-integrated-high-contrast.png') });
+});
