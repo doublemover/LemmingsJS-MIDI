@@ -93,7 +93,7 @@ const createCharacterUiController = ({ document, window, getView }) => {
     const ok = await sprites.prepare();
     if (request !== generation) return;
     if (status) status.textContent = ok ? p.shape === 'mixed' ? 'All shapes · stable character identities' : 'Appearance ready · gameplay unchanged'
-      : `Could not load this appearance. Keeping the previous look. ${sprites.error || ''}`;
+      : `${sprites.activePreference ? 'Could not load this appearance. Keeping the previous look.' : 'Character art unavailable. Choose an appearance to retry.'} ${sprites.error || ''}`;
     getView()?.game?.render?.();
   };
   const change = () => {

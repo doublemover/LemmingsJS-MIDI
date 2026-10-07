@@ -2286,6 +2286,7 @@ const createMidiUiController = ({
   };
 
   const selectGameSound = (event) => {
+    chooseSoundView('sounds');
     const current = ensureProject();
     const existing = resolveGameSoundSource(current, event);
     if (existing) dispatchProjectIntent({ type: 'source.select', sourceId: existing.id });
@@ -2590,7 +2591,7 @@ const createMidiUiController = ({
       updateMapping: updateSelectedMapping, updateSource: updateSelectedSource, commitProject, chooseView: chooseSoundView,
       bind: bindById, panic, history: editHistory, setStatus });
     workbench.initialize();
-    setWorkspaceVisible(false, { focus: false });
+    setWorkspaceVisible(window?.matchMedia?.('(min-width: 1000px)')?.matches === true, { focus: false });
     bindById('midiWorkspaceToggle', 'click', () => {
       const workspace = document?.getElementById('midiSequencerWorkspace');
       setWorkspaceVisible(!!workspace?.hidden);

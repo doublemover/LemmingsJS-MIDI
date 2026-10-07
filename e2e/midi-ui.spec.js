@@ -408,8 +408,7 @@ test('MIDI project persists across reload', async ({ page }) => {
 
   await page.reload();
   await waitForHarnessReady(page);
-  await expect(page.locator('#midiSequencerWorkspace')).toBeHidden();
-  await page.locator('#midiWorkspaceToggle').click();
+  await expect(page.locator('#midiSequencerWorkspace')).toBeVisible();
   await page.locator('#midiViewExpert').click();
   await page.waitForSelector('#midiSourceList .midi-source-row');
   const note = await page.evaluate(() => (
@@ -575,8 +574,7 @@ test('MIDI sequencer creates, edits, assigns, auditions, and persists a clip', a
 
   await page.reload();
   await waitForHarnessReady(page);
-  await expect(page.locator('#midiSequencerWorkspace')).toBeHidden();
-  await page.locator('#midiWorkspaceToggle').click();
+  await expect(page.locator('#midiSequencerWorkspace')).toBeVisible();
   await page.locator('#midiViewExpert').click();
   await page.waitForSelector('#midiClipList .midi-clip-row');
   const reloaded = await page.evaluate(() => window.__E2E__.midiGetProject());
@@ -1055,17 +1053,14 @@ test('MIDI sequencer layout avoids horizontal overflow at desktop, tablet, and p
   }
 });
 
-test('MIDI studio is opt-in, keeps saved audio state, and closes transient captures', async ({ page }) => {
+test('Desktop MIDI studio opens ready, keeps saved audio state, and closes transient captures', async ({ page }) => {
   await installWebMidiStub(page);
   await page.goto('/?e2e=1');
   await waitForHarnessReady(page);
   const workspace = page.locator('#midiSequencerWorkspace');
   const toggle = page.locator('#midiWorkspaceToggle');
-  await expect(workspace).toBeHidden();
-  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-  await toggle.click();
   await expect(workspace).toBeVisible();
-  await expect(page.locator('#midiWorkspaceClose')).toBeFocused();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
   await expect(page.locator('#midiTrackInspector')).not.toHaveAttribute('open');
   await expect(page.locator('#midiModulationInspector')).not.toHaveAttribute('open');
   await expect(page.locator('#midiExpertView')).toBeHidden();

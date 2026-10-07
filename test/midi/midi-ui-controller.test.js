@@ -422,6 +422,17 @@ describe('midiUiController sequencer', function() {
     controller.dispose();
   });
 
+  it('opens the desktop studio without starting audio or requesting hardware', function() {
+    const { controller, doc, win, view } = createControllerHarness();
+    win.matchMedia = query => ({ matches: query === '(min-width: 1000px)' });
+    controller.bindMidiUi();
+    expect(doc.getElementById('midiSequencerWorkspace').hidden).to.equal(false);
+    expect(doc.getElementById('midiWorkspaceToggle').getAttribute('aria-expanded')).to.equal('true');
+    expect(win.__LEMMINGS_MIDI_UI__.getLocalAudioState().monitor?.enabled).not.to.equal(true);
+    expect(view.midiEnabled).not.to.equal(true);
+    controller.dispose();
+  });
+
   it('starts hidden and toggles repeatedly without changing saved MIDI state', function() {
     const { controller, doc, win, view } = createControllerHarness();
     controller.bindMidiUi();

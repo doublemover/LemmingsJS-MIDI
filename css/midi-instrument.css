@@ -1,94 +1,140 @@
-/* One persistent game canvas; layout changes never remount gameplay. */
-.midi-instrument-head[hidden] { display: none !important; }
-.midi-instrument-head { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 8px 12px; background: #e8dfcb; color: #302d28; border-bottom: 2px solid #ab6f32; }
-.midi-instrument-head button, .midi-instrument-head input, .midi-instrument-head select, .midi-instrument-head summary { font: inherit; }
-.midi-instrument-head button, .midi-instrument-head select, .midi-instrument-head input[type=number] { background: #f7f0e2; color: #332f27; border: 1px solid #b9aa91; border-radius: 4px; padding: 6px 8px; min-height: 32px; }
-.midi-instrument-head button { cursor: pointer; }
-.midi-instrument-head button:disabled { opacity: .5; cursor: default; }
-.midi-instrument-menus { display: flex; align-self: stretch; gap: 2px; }
+/* Desktop studio: one persistent canvas framed by two independent work areas. */
+:root { --studio-bg: #111916; --studio-panel: #19221d; --studio-line: #344138; --studio-ink: #e6ece5; --studio-muted: #9faf9f; --studio-accent: #e4b670; }
+body.game-page { background: #0b110e; font-size: 12px; display: grid; grid-template-columns: 232px minmax(0, 1fr); grid-template-rows: 52px minmax(0, 1fr); gap: 0; }
+body.game-page.studio-open { grid-template-columns: 232px minmax(300px, 1fr) 364px; grid-template-rows: 52px minmax(0, 1fr); }
+body.game-page.studio-open[data-midi-layout=focus] { grid-template-columns: 212px minmax(280px, 1fr) minmax(430px, 42%); }
+.game-chrome { grid-column: 1 / -1; grid-row: 1; padding: 8px 10px; display: flex; align-items: center; gap: 12px; background: #1d2922; border-bottom: 1px solid #405044; z-index: 20; min-width: 0; }
+.game-chrome button, .game-chrome select, .game-chrome summary { box-sizing: border-box; font: inherit; color: var(--studio-ink); background: #253329; border: 1px solid #4a5b4c; border-radius: 5px; min-height: 32px; cursor: pointer; padding: 5px 8px; }
+.game-chrome button:hover, .game-chrome summary:hover { background: #344838; border-color: #75957a; }
+.game-chrome button:disabled { opacity: .35; cursor: default; }
+.game-chrome select { color-scheme: dark; }
+.game-chrome [hidden], .midi-instrument-head[hidden] { display: none !important; }
+#levelSelects { display: flex; flex-wrap: nowrap; gap: 6px; flex: none; min-width: 0; }
+#levelIndexSelect { width: clamp(148px, 13vw, 220px); max-width: 220px; flex: none; min-width: 0; border-color: #617963; color: #f0f5e9; background: #2b3c2c; }
+.level-navigation { display: flex; flex-direction: row; gap: 0; }
+#levelPrevButton, #levelNextButton { z-index: 0; }
+.level-tools { position: relative; }
+.level-tools > summary { list-style: none; }
+.level-tools-popover { position: absolute; top: calc(100% + 10px); left: 0; width: 284px; padding: 14px; border: 1px solid #52664f; border-radius: 8px; background: #1a271e; box-shadow: 0 14px 35px #0008; display: flex; flex-direction: column; gap: 14px; }
+.level-tools-popover label, .saved-level-controls { display: flex; flex-direction: column; align-items: stretch; gap: 6px; color: #b5c5b6; font-size: 11px; }
+#gameTypeSelect, #levelGroupSelect, #savedLevelSelect { max-width: none; width: 100%; }
+.secondary-actions { display: flex; gap: 5px; }
+.level-tools-popover .game-links { margin: 0; padding-top: 12px; border-top: 1px solid #354d38; gap: 18px; }
+.level-tools-popover a { display: inline-flex; align-items: center; gap: 5px; text-decoration: none; }
+.midi-instrument-head { display: flex; flex-wrap: nowrap; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.midi-instrument-menus { display: flex; flex: none; }
 .midi-instrument-menus details { position: relative; }
-.midi-instrument-menus summary { padding: 8px; cursor: pointer; list-style: none; }
-.midi-instrument-menus details[open] summary { background: #d4c5ab; }
-.midi-instrument-menus details > div { position: absolute; left: 0; top: 100%; display: flex; flex-direction: column; min-width: 190px; padding: 5px; z-index: 100; background: #f7f0e2; border: 1px solid #a39784; box-shadow: 0 6px 12px #0004; }
-.midi-instrument-menus button { text-align: left; border: none; }
-.midi-headunit-readout { display: flex; flex-direction: column; min-width: 240px; padding: 8px 12px; background: #211d14; border: 2px solid #53432b; border-radius: 5px; color: #ffc777; font: 12px ui-monospace, monospace; gap: 3px; box-shadow: inset 0 0 10px #000b; }
-.midi-headunit-readout strong { font-size: 10px; letter-spacing: .14em; color: #d6994c; }
-.midi-game-transport, .midi-layout-choices { display: flex; flex-wrap: wrap; gap: 4px; }
-.midi-speed-control { display: grid; grid-template-columns: auto 88px; align-items: center; gap: 4px 8px; font-size: 12px; }
-.midi-speed-control span { grid-column: 1 / -1; }
-.midi-speed-control input[type=range] { width: 116px; }
-.midi-instrument-head input[type=range], .midi-sequencer input[type=range] { accent-color: #b86822; cursor: ew-resize; }
-.midi-instrument-head .midi-control-group { border: none; padding: 0; gap: 6px; }
-.midi-instrument-head .midi-field { color: #332f27; font-size: 12px; }
-.midi-instrument-head .midi-field select { max-width: 150px; }
-.midi-instrument-head .midi-listen-row { width: auto; flex-direction: column; align-items: flex-start; gap: 3px; }
-.midi-instrument-head #midiLocalListenButton { background: #476543; color: #fff; min-height: 32px; }
-.midi-instrument-head #midiOutputSummary { color: #423b31; font-size: 11px; }
-.midi-layout-choices button[aria-pressed=true] { background: #b96d2f; color: #fff; border-color: #96501b; }
-body.game-page.studio-open { grid-template-columns: minmax(300px, 45%) minmax(500px, 1fr); }
-body.game-page.studio-open[data-midi-layout=focus] { grid-template-columns: minmax(280px, 30%) minmax(500px, 1fr); }
-body.game-page.studio-open[data-midi-layout=overlay] .game { grid-column: 1 / -1; grid-row: 2; }
-body.game-page.studio-open[data-midi-layout=overlay] .midi-sequencer { grid-column: 2; grid-row: 2; z-index: 5; margin: 12px; box-shadow: 0 6px 22px #0009; }
-.studio-open .game { align-self: stretch; justify-content: flex-start; }
-.studio-open .game-stage-slot { align-items: flex-start; justify-content: flex-start; }
-.studio-open .game_container { margin: 0; }
-@media (max-width: 900px) and (max-height: 500px) {
-  .studio-open .game-chrome, .studio-open .game { display: flex; }
-}
-.midi-sequencer { background: #eee6d5; color: #302d27; border-color: #b9aa91; }
-.midi-sequencer button, .midi-sequencer input:not([type=range]), .midi-sequencer select, .midi-sequencer textarea { background: #faf5e9; color: #302d27; border-color: #b9aa91; }
-.midi-sequencer button:hover { background: #e1d0af; }
-.midi-sequencer input[type=number] { min-width: 78px; width: 100%; box-sizing: border-box; font-variant-numeric: tabular-nums; }
-.midi-sequencer :is(h2, h3, .midi-studio-header strong, .midi-sound-heading h2) { color: #453727; }
-.midi-sequencer .midi-help, .midi-sequencer .midi-field, .midi-game-event span { color: #655a47; }
-.midi-studio-header { padding: 10px 12px; justify-content: space-between; }
-.midi-view-tabs { border-color: #c6b79d; }
-.midi-view-tabs button[aria-pressed=true], .midi-choice-row button[aria-pressed=true] { background: #b96d2f; color: #fff; border-color: #96501b; }
-.midi-sounds-layout { grid-template-columns: 142px minmax(0, 1fr); gap: 14px; }
-.midi-game-event-list { max-height: none; }
-.midi-game-event[aria-selected=true] { background: #ebd5b3; border-color: #a9652b; }
-.midi-game-event.is-playing { box-shadow: inset 4px 0 #b96d2f; }
-.midi-game-event .midi-event-count { font-size: 9px; font-variant-numeric: tabular-nums; }
-.midi-choice-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin: 12px 0 8px; }
-.midi-choice-row button { min-height: 36px; }
+.midi-instrument-menus summary { list-style: none; }
+.midi-instrument-menus details > div { position: absolute; left: 0; top: calc(100% + 10px); display: flex; flex-direction: column; min-width: 215px; padding: 6px; z-index: 100; background: #1a271e; border: 1px solid #52664f; border-radius: 7px; box-shadow: 0 12px 28px #0008; }
+.midi-instrument-menus button { text-align: left; border: none; display: flex; align-items: center; gap: 9px; }
+.midi-headunit-readout { display: flex; flex-direction: column; gap: 4px; min-width: 110px; width: 132px; padding: 4px 6px; border-radius: 4px; background: #0d1711; color: #d5cfa4; font: 9px ui-monospace, monospace; white-space: nowrap; }
+.midi-headunit-readout > * { overflow: hidden; text-overflow: ellipsis; }
+#midiLastEvent { color: #7f9c80; }
+.midi-game-transport, .midi-layout-choices { display: flex; flex-wrap: nowrap; gap: 0; flex: none; }
+.segmented { display: inline-flex; padding: 2px; background: #111b14; border: 1px solid #435544; border-radius: 7px; }
+.segmented > button { border: 0; background: transparent; border-radius: 4px; min-height: 27px; padding: 4px 7px; }
+.midi-layout-choices { margin-left: auto; }
+.midi-layout-choices > button { font-size: 11px; display: flex; align-items: center; gap: 4px; }
+.midi-layout-choices button[aria-pressed=true] { background: #d6b275; color: #222b20; box-shadow: 0 1px 3px #0004; }
+.midi-speed-control { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #a6b7a7; }
+.midi-speed-control input[type=range] { width: 45px; }
+.midi-speed-control input[type=number] { width: 44px; background: #142018; color: #c4d6c4; border: 1px solid #415044; min-height: 26px; border-radius: 4px; font-size: 11px; padding: 2px; }
+.midi-instrument-head .midi-control-group { border: 0; padding: 0; gap: 3px; flex-wrap: nowrap; }
+.midi-instrument-head .midi-field select { max-width: 92px; padding-left: 5px; padding-right: 3px; font-size: 11px; }
+.midi-key-controls { flex: none; }
+.midi-instrument-head .midi-listen-row { width: auto; flex-wrap: nowrap; gap: 6px; flex: none; }
+#midiLocalListenButton { background: #567148; border-color: #829864; color: #f5f8e9; min-height: 32px; display: inline-flex; align-items: center; gap: 5px; font-size: 11px; white-space: nowrap; }
+.midi-volume-control { display: flex; align-items: center; gap: 4px; }
+.midi-volume-control input { width: 60px; }
+.midi-volume-control output { font: 10px ui-monospace, monospace; color: #c5d2bc; min-width: 25px; }
+input[type=range] { accent-color: #d2aa67; }
+#midiWorkspaceToggle { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
+.studio-open #midiWorkspaceToggle { display: none; }
+.studio-library { grid-column: 1; grid-row: 2; min-height: 0; overflow-y: auto; padding: 0 12px 12px; background: var(--studio-panel); border-right: 1px solid var(--studio-line); scrollbar-width: thin; scrollbar-color: #4f6050 transparent; }
+.studio-events { display: none; }
+.studio-open .studio-events { display: block; }
+.studio-section-heading { display: flex; align-items: center; justify-content: space-between; padding: 13px 0 10px; border-top: 1px solid #3b493d; color: #c8d5c8; font-size: 12px; }
+.studio-section-heading > span:first-child { display: flex; align-items: center; gap: 6px; }
+.live-label { font: 8px ui-monospace, monospace; letter-spacing: .14em; color: #95b681; padding: 3px 4px; border: 1px solid #42573c; border-radius: 3px; }
+.studio-output-summary { color: #8da18c; font-size: 10px; line-height: 1.5; margin-top: 14px; border-top: 1px solid #344638; padding-top: 10px; }
+.game, .studio-open .game { grid-column: 2; grid-row: 2; display: flex; padding: 12px; align-items: center; min-width: 0; min-height: 0; background: radial-gradient(ellipse at center, #1f3022 0%, #0b130d 75%); }
+.game-stage-slot, .studio-open .game-stage-slot { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; }
+.game_container, .studio-open .game_container { margin: 0; outline: 1px solid #3b4e39; box-shadow: 0 8px 40px #0008; }
+.studio-open .midi-sequencer, .midi-sequencer, .midi-sequencer:has(> .midi-advanced-workspace:not([open])) { grid-column: 3; grid-row: 2; margin: 0; border: 0; border-left: 1px solid #53604b; border-radius: 0; background: #e9e5d7; color: #343b2d; gap: 0; }
+body.game-page.studio-open[data-midi-layout=overlay] { grid-template-columns: 232px minmax(300px, 1fr) 390px; }
+body.game-page.studio-open[data-midi-layout=overlay] .game { grid-column: 2 / -1; }
+body.game-page.studio-open[data-midi-layout=overlay] .midi-sequencer { grid-column: 3; grid-row: 2; margin: 12px; z-index: 5; border: 1px solid #b1b39c; border-radius: 10px; box-shadow: 0 10px 45px #0009; }
+.midi-studio-header { padding: 13px 14px; gap: 6px; min-height: 47px; box-sizing: border-box; }
+.midi-studio-header strong { color: #3b4736; font-size: 13px; line-height: 1.4; }
+.midi-sequencer button, .midi-sequencer input:not([type=range]), .midi-sequencer select, .midi-sequencer textarea { background: #f9f7ed; color: #39422f; border-color: #b8baa5; border-radius: 5px; }
+.midi-sequencer button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.midi-sequencer button:hover { background: #dbdfcb; border-color: #8b9b78; }
+.midi-sequencer :is(h2, h3, .midi-sound-heading h2) { color: #3b4736; }
+.midi-sequencer .midi-help, .midi-sequencer .midi-field { color: #656e58; }
+.midi-sequencer input[type=number] { min-width: 0; font-variant-numeric: tabular-nums; }
+.midi-view-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; padding: 0 10px 10px; border-color: #c4c7b1; }
+.midi-view-tabs button { display: flex; flex-direction: column; gap: 5px; font-size: 10px; min-height: 45px; padding: 5px 2px; border-color: transparent; background: transparent; }
+.midi-view-tabs button[aria-pressed=true], .midi-choice-row button[aria-pressed=true] { background: #536546; color: #fffbee; border-color: #475c3a; }
+.midi-editor-view { padding: 13px; scrollbar-width: thin; scrollbar-color: #adb59b transparent; }
+.midi-active-key { font-size: 10px; margin: 8px 0 16px; }
+.midi-active-key button { font-size: 10px; padding: 4px 5px; }
+.midi-sounds-layout { display: block; }
+.midi-game-event-list { display: flex; flex-direction: column; gap: 3px; max-height: none; overflow: visible; }
+.midi-game-event { position: relative; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 3px 8px; min-height: 46px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: #b8c7b6; text-align: left; padding: 7px 8px !important; cursor: pointer; }
+.midi-game-event strong { font-size: 11px; font-weight: 500; }
+.midi-game-event span { color: #7e927e; font-size: 9px; }
+.midi-game-event .midi-event-count { grid-column: 1 / -1; font: 9px ui-monospace, monospace; }
+.midi-game-event[aria-selected=true] { background: #34472f; border-color: #7c936a; color: #f1f4df; }
+.midi-game-event[aria-selected=true] span { color: #b7c89e; }
+.midi-game-event.is-playing { box-shadow: inset 3px 0 #e9bf78; }
+.midi-game-event:hover { background: #293c2c; }
+.midi-sound-heading { margin-bottom: 8px; }
+.midi-sound-heading h2 { font-size: 19px; font-weight: 600; }
+.midi-route-summary { overflow-wrap: anywhere; line-height: 1.5; font-size: 10px; color: #758164; margin: 0 0 8px; }
+#midiInspectTrack { font-size: 10px; min-height: 25px; padding: 3px 7px; }
+.midi-choice-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 3px; margin: 16px 0 10px; padding: 3px; border: 1px solid #b7bea5; border-radius: 7px; background: #d9deca; }
+.midi-choice-row button { min-height: 33px; font-size: 10px; padding: 5px; border-color: transparent; }
 .midi-behavior-select { margin-top: 8px; }
-.midi-route-summary { overflow-wrap: anywhere; line-height: 1.5; font-size: 12px; margin: 0 0 6px; }
-.midi-tactile-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.midi-tactile-controls > .midi-field { display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-width: 0; padding: 10px; background: #e3d7c0; border: 1px solid #c5b596; border-radius: 5px; }
-.midi-tactile-controls .midi-field span { font-size: 12px; }
-.midi-tactile-controls output { font-size: 11px; min-height: 1em; font-variant-numeric: tabular-nums; }
-.midi-tactile-controls input[type=range] { width: 100%; min-height: 28px; }
-.midi-sound-contour { border-color: #9c8563; height: 72px; }
-.midi-sound-contour span { background: #b77a3d; color: #fff; font-size: 11px; }
-.midi-sound-contour span.is-next { background: #4c6043; outline: 2px solid #293722; outline-offset: 2px; }
-#midiSoundPreview { background: #526b47; color: #fff; margin: 12px 0 8px; }
-.midi-editor-notice { border-color: #c6b79d; color: #453c2d; }
-.midi-sequencer :focus-visible, .midi-instrument-head :focus-visible { outline: 3px solid #275fa3; outline-offset: 2px; }
-#midiExpertView .midi-region { background: #e5d9c2; border-color: #bca98a; }
-#midiExpertView .midi-step-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-@media (max-width: 1050px) {
-  body.game-page.studio-open, body.game-page.studio-open[data-midi-layout=focus] { grid-template-columns: minmax(220px, 35%) minmax(420px, 1fr); }
-  .midi-instrument-head { gap: 6px 10px; }
-  .midi-sounds-layout { grid-template-columns: 112px minmax(0, 1fr); gap: 8px; }
-}
-@media (max-width: 760px) {
-  body.game-page.studio-open, body.game-page.studio-open[data-midi-layout=focus] { display: flex; }
-  .studio-open .game { min-height: 180px; flex: 0 0 28dvh; }
-  .studio-open .midi-sequencer { flex: 1 1 auto; min-height: 220px; margin: 4px; }
-  .midi-instrument-head .midi-headunit-readout { min-width: 210px; }
-  .midi-instrument-head .midi-game-transport button { min-height: 34px; }
-  .midi-instrument-head .midi-instrument-menus { width: 100%; }
-  .studio-open .game-chrome, .studio-open .game { display: flex; }
-}
-.midi-shared-sound-controls { border: 1px solid #bca98a; padding: 10px; margin-bottom: 12px; }
+.midi-tactile-controls { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+.midi-tactile-controls > .midi-field { display: flex; flex-direction: column; align-items: stretch; gap: 5px; min-width: 0; padding: 10px; background: #dce1ce; border: 1px solid #bac3a8; border-radius: 7px; }
+.midi-tactile-controls .midi-field span { font-size: 11px; }
+.midi-tactile-controls output { font-size: 10px; min-height: 1em; font-variant-numeric: tabular-nums; }
+.midi-tactile-controls input[type=range] { width: 100%; min-height: 22px; }
+.midi-sound-contour { border-color: #adb79a; height: 72px; }
+.midi-sound-contour span { background: #7b9267; color: #fff; font-size: 10px; }
+.midi-sound-contour span.is-next { background: #b28a4f; outline: 2px solid #806335; outline-offset: -2px; }
+#midiSoundPreview { background: #586e48; color: #fffdf0; margin: 14px 0 8px; }
+.midi-editor-notice { border-color: #c4cbb5; color: #697757; padding: 8px 13px; }
+.midi-shared-sound-controls { border: 1px solid #b8baa5; padding: 10px; margin-bottom: 12px; }
 .midi-shared-sound-controls > summary { cursor: pointer; margin-bottom: 8px; }
-#midiExpertSoundDock .midi-tactile-controls { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-@media (max-width: 1100px) { #midiExpertSoundDock .midi-tactile-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.character-controls { margin: 4px 0; font-size: 12px; }
-.character-controls summary { cursor: pointer; width: max-content; padding: 4px 8px; }
-.character-controls > div { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; }
-.character-controls label { display: flex; align-items: center; gap: 5px; }
-.character-controls input[type=color] { width: 40px; height: 28px; padding: 0; }
-.character-controls select { max-width: 240px; }
-.character-controls small { flex-basis: 100%; }
-#characterStatus { font-size: 11px; }
+#midiExpertView .midi-region { background: #dce1ce; border-color: #b8baa5; }
+#midiExpertView .midi-step-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+#midiProjectView .midi-preset-panel { background: #dce1ce; border-color: #b8baa5; color: #536148; }
+.midi-sequencer summary { color: #536148; }
+.game-chrome :focus-visible, .studio-library :focus-visible, .midi-sequencer :focus-visible { outline: 2px solid #bd8b35; outline-offset: 2px; }
+#midiGamePlay[aria-pressed=true] { --icon: url('../assets/icons/lucide/pause.svg'); background: #485d3f; color: #f4f4dc; }
+@media (min-width: 1600px) { body.game-page.studio-open { grid-template-columns: 248px minmax(300px, 1fr) 410px; } .midi-instrument-head { gap: 14px; } .midi-headunit-readout { width: 175px; font-size: 10px; } .midi-speed-control input[type=range] { width: 65px; } .midi-volume-control input { width: 80px; } }
+@media (max-width: 1390px) { .game-chrome { gap: 7px; padding: 8px; } .midi-instrument-head { gap: 6px; } .midi-headunit-readout { min-width: 104px; width: 104px; font-size: 8px; } .midi-speed-control > span, .midi-speed-control input[type=range] { display: none; } .midi-layout-choices button { padding: 4px 6px; font-size: 10px; } .midi-layout-choices button::before { width: 13px; height: 13px; } .midi-volume-control input { width: 45px; } #levelIndexSelect { width: 155px; } body.game-page.studio-open { grid-template-columns: 220px minmax(280px,1fr) 340px; } }
+@media (max-width: 1150px) { .midi-headunit-readout { display: none; } .midi-key-controls { display: none !important; } body.game-page.studio-open { grid-template-columns: 204px minmax(240px,1fr) 320px; } #levelIndexSelect { width: 135px; } }
+
+.game-chrome { box-sizing: border-box; min-height: 0; }
+#levelSelects .level-navigation button { min-height: 27px; }
+/* Retain a usable stacked fallback; the redesigned workspace targets desktop. */
+@media (max-width: 999px) {
+  body.game-page, body.game-page.studio-open, body.game-page.studio-open[data-midi-layout=focus], body.game-page.studio-open[data-midi-layout=overlay] { display: flex; flex-direction: column; }
+  .game-chrome, .studio-open .game-chrome { display: flex; flex-wrap: wrap; flex: 0 0 auto; height: auto; min-height: 48px; }
+  #levelSelects { display: flex; flex-wrap: nowrap; flex: 1 1 auto; }
+  #levelIndexSelect { width: auto; flex: 1 1 120px; max-width: 240px; }
+  .midi-instrument-head { flex-wrap: wrap; flex: 1 1 100%; gap: 6px; }
+  .midi-instrument-head .midi-headunit-readout { display: none; }
+  .midi-layout-choices { margin-left: 0; }
+  .studio-library { order: 1; flex: 0 0 auto; max-height: 180px; border-right: 0; border-bottom: 1px solid #344138; }
+  .studio-library .character-controls { max-width: 360px; }
+  .studio-open .studio-library { max-height: 110px; }
+  .studio-open .studio-events { display: none; }
+  .game, .studio-open .game { display: flex; order: 2; flex: 1 1 auto; min-height: 100px; padding: 5px; }
+  .studio-open .game { flex: 0 1 28dvh; }
+  .midi-sequencer, .studio-open .midi-sequencer, body.game-page.studio-open[data-midi-layout=overlay] .midi-sequencer { position: static; order: 3; flex: 1 1 45dvh; min-height: 150px; margin: 4px; width: auto; border: 1px solid #53604b; border-radius: 7px; }
+  .midi-view-tabs button { flex-direction: row; }
+}
+@media (max-width: 999px) and (max-height: 500px) { .studio-library { display: none; } .studio-open .midi-sequencer { min-height: 100px; } }

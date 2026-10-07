@@ -26,7 +26,9 @@
   <link rel="apple-touch-icon" sizes="180x180" href="img/touch-icon-180.png" />
   <link rel="manifest" href="site.webmanifest" />
   <link type="text/css" rel="stylesheet" href="css/game.css">
+  <link type="text/css" rel="stylesheet" href="css/icons.css">
   <link type="text/css" rel="stylesheet" href="css/midi-instrument.css">
+  <link type="text/css" rel="stylesheet" href="css/character-controls.css">
   <script>
     if (navigator.webdriver) {
       const originalError = console.error;
@@ -46,32 +48,32 @@
   <section id="midiSequencerWorkspace" class="midi-sequencer" aria-label="Game sound editor" hidden>
     <header id="midiTransportStrip" class="midi-studio-header">
       <strong id="midiEditScope">Event sound controls</strong>
-      <button id="midiWorkspaceClose" type="button" aria-label="Close sound editor">Close</button>
+      <button id="midiWorkspaceClose" data-icon="x" class="icon-only" title="Close sound editor" type="button" aria-label="Close sound editor">Close</button>
 
     </header>
     <nav class="midi-view-tabs" aria-label="Sound workspaces">
-      <button id="midiViewSounds" type="button" aria-pressed="true">Events</button>
-      <button id="midiViewDevices" type="button" aria-pressed="false">Devices</button>
-      <button id="midiViewProject" type="button" aria-pressed="false">Project</button>
-      <button id="midiViewExpert" type="button" aria-pressed="false">Tracks &amp; clips</button>
+      <button id="midiViewSounds" data-icon="audio-lines" type="button" aria-pressed="true">Events</button>
+      <button id="midiViewDevices" data-icon="usb" type="button" aria-pressed="false">Devices</button>
+      <button id="midiViewProject" data-icon="music" type="button" aria-pressed="false">Project</button>
+      <button id="midiViewExpert" data-icon="list-music" type="button" aria-pressed="false">Tracks &amp; clips</button>
     </nav>
     <section id="midiSoundsView" class="midi-editor-view" aria-label="Event sounds">
       <label class="midi-field midi-field--compact">
         <span>Position pan</span>
         <select id="midiGlobalPanMode"><option value="off">Off</option><option value="viewport">Viewport</option><option value="level">Whole level</option></select>
       </label>
-      <div class="midi-active-key"><span id="midiActiveKeySummary"></span><button id="midiEditProjectKey" type="button">Edit key / palette</button></div>
+      <div class="midi-active-key"><span id="midiActiveKeySummary"></span><button id="midiEditProjectKey" data-icon="settings-2" type="button">Edit key / palette</button></div>
       <div id="midiEventSoundDock" class="midi-sounds-layout">
-        <div id="midiGameEventList" class="midi-game-event-list" role="listbox" aria-label="Game events"></div>
+
         <div id="midiPersistentSoundEditor" class="midi-sound-editor">
           <div class="midi-sound-heading"><h2 id="midiSoundTitle">Choose an event</h2><label><input id="midiSoundEnabled" type="checkbox" /> On</label></div>
           <p id="midiSoundRoute" class="midi-route-summary"></p>
-          <button id="midiInspectTrack" type="button">Inspect destination track</button>
+          <button id="midiInspectTrack" data-icon="arrow-up-right" type="button">Inspect destination track</button>
           <div id="midiBehaviorChoices" class="midi-choice-row" role="group" aria-label="Event response">
-            <button type="button" data-behavior="note">One note</button>
-            <button type="button" data-behavior="steps">Event steps</button>
-            <button type="button" data-behavior="rising">Rising phrase</button>
-            <button type="button" data-behavior="falling">Falling phrase</button>
+            <button type="button" data-icon="music" data-behavior="note">One note</button>
+            <button type="button" data-icon="list-music" data-behavior="steps">Event steps</button>
+            <button type="button" data-icon="arrow-up-right" data-behavior="rising">Rising phrase</button>
+            <button type="button" data-icon="arrow-down-right" data-behavior="falling">Falling phrase</button>
           </div>
           <label class="midi-field midi-field--stacked midi-behavior-select"><span>When this happens</span><select id="midiSoundBehavior"><option value="note">Play one note</option><option value="falling">Start a falling phrase</option><option value="rising">Start a rising phrase</option><option value="steps">Advance one pattern note</option><option value="custom">Custom wiring</option></select></label>
           <p id="midiPatternAxis" class="midi-help"></p>
@@ -84,10 +86,10 @@
           <label class="midi-field"><span>Pan · left / right</span><input id="midiSoundPan" type="range" min="-127" max="127" step="1" aria-label="Sound pan slider" /><input id="midiSoundPanNumber" type="number" min="-127" max="127" step="1" aria-label="Exact sound pan" /></label>
           </div>
           <label id="midiSoundOrderField" class="midi-field"><span>Event pattern order</span><select id="midiSoundOrder"><option value="up">Up</option><option value="down">Down</option><option value="updown">Up / down</option></select></label>
-          <button id="midiSoundPreview" type="button">Test event locally</button>
-          <div class="midi-button-row"><button id="midiSoundSnapshot" type="button">Keep as reference</button><button id="midiSoundRevert" type="button">Revert to reference</button></div>
+          <button id="midiSoundPreview" data-icon="play" type="button">Test event locally</button>
+          <div class="midi-button-row"><button id="midiSoundSnapshot" data-icon="save" type="button">Keep as reference</button><button id="midiSoundRevert" data-icon="undo-2" type="button">Revert to reference</button></div>
           <p id="midiSoundHint" class="midi-help"></p>
-          <button id="midiSoundAdvanced" type="button">Edit detailed wiring</button>
+          <button id="midiSoundAdvanced" data-icon="sliders-horizontal" type="button">Edit detailed wiring</button>
         </div>
       </div>
     </section>
@@ -602,96 +604,64 @@
     <div id="midiProjectStatus" class="midi-status midi-editor-notice" role="status">Project loading</div>
   </section>
   <header id="gameChrome" class="game-chrome">
+    <div id="levelSelects" class="level_name">
+      <details class="level-tools"><summary title="Level packs and saved levels" aria-label="Level packs and saved levels" class="icon-only" data-icon="folder-open">Level tools</summary>
+        <div class="level-tools-popover">
+          <label>Game pack<select id="gameTypeSelect" aria-label="Game pack"></select></label>
+          <label>Difficulty<select id="levelGroupSelect" aria-label="Difficulty"></select></label>
+          <div class="saved-level-controls">
+            <label>Saved level<select id="savedLevelSelect" aria-label="Saved level"></select></label>
+            <div class="secondary-actions"><button id="savedLevelSave" type="button" data-icon="save">Save</button><button id="savedLevelExport" type="button" data-icon="file-down">Export</button><button id="savedLevelImport" type="button" data-icon="file-up">Import</button></div>
+            <input id="savedLevelImportInput" type="file" accept=".nxlv" />
+          </div>
+          <nav id="etc" class="game-links" aria-label="Game tools"><a href="https://github.com/doublemover/LemmingsJS-MIDI/" data-icon="external-link">Source</a><a href="editor.html" data-icon="pencil">Level editor</a></nav>
+        </div>
+      </details>
+      <select id="levelIndexSelect" aria-label="Level"></select>
+      <nav class="level-navigation segmented" aria-label="Level navigation">
+        <button id="levelPrevButton" type="button" class="icon-only" data-icon="chevron-left" title="Previous level" aria-label="Previous level">Previous level</button>
+        <button id="levelNextButton" type="button" class="icon-only" data-icon="chevron-right" title="Next level" aria-label="Next level">Next level</button>
+      </nav>
+      <span id="levelName" class="visually-hidden" role="status"></span>
+    </div>
     <section id="midiInstrumentHead" class="midi-instrument-head" aria-label="Live instrument transport" hidden>
       <nav id="midiInstrumentMenus" class="midi-instrument-menus" aria-label="Instrument menus">
-        <details name="instrument-menu"><summary>File</summary><div><button id="midiMenuImport" type="button">Import project…</button><button id="midiMenuExport" type="button">Export project…</button><button id="midiMenuSave" type="button">Save template…</button><button id="midiMenuProject" type="button">Palettes &amp; project</button></div></details>
-        <details name="instrument-menu"><summary>Edit</summary><div><button id="midiMenuUndo" type="button">Undo sound edit</button><button id="midiMenuRedo" type="button">Redo sound edit</button></div></details>
-        <details name="instrument-menu"><summary>View</summary><div><button id="midiMenuFocus" type="button">Focus</button><button id="midiMenuSplit" type="button">Split</button><button id="midiMenuOverlay" type="button">Overlay</button></div></details>
-        <details name="instrument-menu"><summary>MIDI</summary><div><button id="midiMenuDevices" type="button">Device connections…</button><button id="midiMenuPanic" type="button">Panic all notes</button></div></details>
+        <details name="instrument-menu"><summary class="icon-only" data-icon="ellipsis" title="Studio menu" aria-label="Studio menu">Studio menu</summary><div>
+          <button id="midiMenuImport" type="button" data-icon="file-up">Import project…</button><button id="midiMenuExport" type="button" data-icon="file-down">Export project…</button><button id="midiMenuSave" type="button" data-icon="save">Save template…</button><button id="midiMenuProject" type="button" data-icon="music">Palettes &amp; project</button>
+          <button id="midiMenuUndo" type="button" data-icon="undo-2">Undo sound edit</button><button id="midiMenuRedo" type="button" data-icon="redo-2">Redo sound edit</button>
+          <button id="midiMenuFocus" type="button" data-icon="panel-left">Focus</button><button id="midiMenuSplit" type="button" data-icon="columns-2">Split</button><button id="midiMenuOverlay" type="button" data-icon="layers">Overlay</button>
+          <button id="midiMenuDevices" type="button" data-icon="usb">Device connections…</button><button id="midiMenuPanic" type="button" data-icon="square">Panic all notes</button>
+        </div></details>
       </nav>
-      <div class="midi-headunit-readout"><strong>LEVEL / INSTRUMENT</strong><output id="midiGameClock" aria-live="off">PAUSE · tick 0</output><span id="midiLastEvent">Waiting for game events</span></div>
-      <div class="midi-game-transport" role="group" aria-label="Game transport"><button id="midiGamePlay" type="button">Play game</button><button id="midiGameStep" type="button">+1 tick</button><button id="midiGameStop" type="button">Stop / Panic</button><button id="midiUndo" type="button">Undo</button><button id="midiRedo" type="button">Redo</button></div>
-      <label class="midi-speed-control"><span>Game speed ×</span><input id="midiGameSpeed" type="range" min="0.1" max="8" step="0.1" aria-label="Game speed slider" /><input id="midiGameSpeedValue" type="number" min="0.1" max="8" step="0.1" aria-label="Exact game speed" /></label>
-<div class="midi-control-group"><label class="midi-field midi-field--compact">
-        <span>Key</span>
-        <select id="midiScaleRoot"></select>
-      </label><label class="midi-field midi-field--compact">
-        <span>Scale</span>
-        <select id="midiScaleName"></select>
-      </label></div>      <div class="midi-listen-row">
-        <button id="midiLocalListenButton" type="button">Listen to game</button>
-        <span id="midiOutputSummary" role="status">Local sound off · MIDI off</span>
-      </div>
-      <div class="midi-layout-choices" role="group" aria-label="Map layout"><button id="midiLayoutFocus" type="button" title="Compact map, larger sound controls">Focus</button><button id="midiLayoutSplit" type="button" title="Map and sound controls side by side">Split</button><button id="midiLayoutOverlay" type="button" title="Sound controls over the right side of the map">Overlay</button></div>
+      <div class="midi-game-transport segmented" role="group" aria-label="Game transport"><button id="midiGamePlay" class="icon-only" data-icon="play" title="Play game" type="button">Play game</button><button id="midiGameStep" class="icon-only" data-icon="step-forward" title="Advance one game tick" type="button">+1 tick</button><button id="midiGameStop" class="icon-only" data-icon="square" title="Stop game and all notes" type="button">Stop / Panic</button><button id="midiUndo" class="icon-only" data-icon="undo-2" title="Undo sound edit" type="button">Undo</button><button id="midiRedo" class="icon-only" data-icon="redo-2" title="Redo sound edit" type="button">Redo</button></div>
+      <div class="midi-headunit-readout"><output id="midiGameClock" aria-live="off">PAUSE · tick 0</output><span id="midiLastEvent">Waiting for game events</span></div>
+      <label class="midi-speed-control" title="Game speed multiplier"><span>Speed</span><input id="midiGameSpeed" type="range" min="0.1" max="8" step="0.1" aria-label="Game speed slider" /><input id="midiGameSpeedValue" type="number" min="0.1" max="8" step="0.1" aria-label="Exact game speed" /></label>
+      <div class="midi-control-group midi-key-controls"><label class="midi-field midi-field--compact"><span class="visually-hidden">Key</span><select id="midiScaleRoot" aria-label="Musical key" title="Musical key"></select></label><label class="midi-field midi-field--compact"><span class="visually-hidden">Scale</span><select id="midiScaleName" aria-label="Musical scale" title="Musical scale"></select></label></div>
+      <div class="midi-listen-row"><button id="midiLocalListenButton" type="button" data-icon="headphones">Listen to game</button><label class="midi-volume-control" title="Local master volume"><span class="visually-hidden">Master volume</span><input id="midiMasterVolume" type="range" min="0" max="100" value="70" step="1" aria-label="Master volume" /><output id="midiMasterVolumeValue">70%</output></label></div>
+      <div class="midi-layout-choices segmented" role="group" aria-label="Map layout"><button id="midiLayoutFocus" type="button" data-icon="panel-left" title="Compact map, larger sound controls">Focus</button><button id="midiLayoutSplit" type="button" data-icon="columns-2" title="Game between character and sound panels">Split</button><button id="midiLayoutOverlay" type="button" data-icon="layers" title="Sound controls over the right side of the map">Overlay</button></div>
     </section>
-
-    <details class="character-controls"><summary>Characters</summary><div>
-      <label>Body <select id="characterShape" disabled><option value="classic">Classic lemmings</option></select></label>
-      <label><input id="characterCustomColors" type="checkbox" /> Custom body / accessory palette</label>
-      <label>Body color <input id="characterBodyColor" type="color" value="#2b6ff6" /></label>
-      <label>Dot palette <select id="characterBodyPalette" aria-label="Named dot body colors"></select></label>
-      <label>Accessory <select id="characterAccessory" aria-label="Character accessory"></select></label>
-      <label>Accessory color <input id="characterPropColor" type="color" value="#ff813d" /></label>
-      <label>Accessory palette <select id="characterPropPalette" aria-label="Named accessory colors"></select></label>
-      <label>Eyewear <select id="characterEyewear" aria-label="Eyewear style"></select></label>
-      <label>Frame color <input id="characterEyewearColor" type="color" value="#1f1f1f" /></label>
-      <label>Frame palette <select id="characterEyewearPalette" aria-label="Eyewear frame palette"></select></label>
-      <small>Choose one accessory. Eyewear is separate; lens and ear-pad materials stay unchanged.</small>
-      <span id="characterStatus" role="status">Classic lemmings. Other bodies load on selection.</span>
-    </div></details>
-    <div class="game-appbar">
-      <strong>Lemmings</strong>
-      <span id="levelName" class="level-title" role="status"></span>
-      <nav id="etc" class="game-links" aria-label="Game tools">
-        <a href="https://github.com/doublemover/LemmingsJS-MIDI/">GitHub</a>
-        <a href="editor.html">Editor</a>
-  <button id="midiWorkspaceToggle" hidden class="midi-workspace-toggle" type="button" aria-controls="midiSequencerWorkspace" aria-expanded="false">MIDI Studio</button>
-      </nav>
-    </div>
-      <div id="levelSelects" class="level_name">
-        <select id="gameTypeSelect" aria-label="Game pack"></select>
-        <select id="levelGroupSelect" aria-label="Difficulty"></select>
-        <select id="levelIndexSelect" aria-label="Level"></select>
-        <div class="saved-level-controls">
-          <span class="saved-level-label">Saved</span>
-          <select id="savedLevelSelect" aria-label="Saved level"></select>
-          <button id="savedLevelSave" type="button">Save</button>
-          <button id="savedLevelExport" type="button">Export</button>
-          <button id="savedLevelImport" type="button">Import</button>
-          <input id="savedLevelImportInput" type="file" accept=".nxlv" />
-        </div>
-      </div>
+    <button id="midiWorkspaceToggle" hidden class="midi-workspace-toggle" type="button" data-icon="audio-lines" aria-controls="midiSequencerWorkspace" aria-expanded="false">MIDI Studio</button>
   </header>
+  <aside id="studioLibrary" class="studio-library" aria-label="Characters and game events">
+    <details class="character-controls" open><summary data-icon="shapes">Characters</summary><div class="character-control-content">
+      <div class="character-field"><span id="shapeLabel">Body shape</span><select id="characterShape" aria-label="Body shape" hidden disabled></select><div id="characterShapeChoices" class="character-segments shape-choices" role="radiogroup" aria-labelledby="shapeLabel"></div></div>
+      <div class="character-field"><span id="bodyPaletteLabel">Body color</span><select id="characterBodyPalette" hidden aria-label="Body color"></select><div id="characterBodyPaletteChoices" class="character-segments palette-choices body-palette" role="radiogroup" aria-labelledby="bodyPaletteLabel"></div></div>
+      <div class="character-field"><span id="accessoryLabel">Accessory</span><select id="characterAccessory" hidden aria-label="Character accessory"></select><div id="characterAccessoryChoices" class="character-segments accessory-choices" role="radiogroup" aria-labelledby="accessoryLabel"></div></div>
+      <div class="character-field compact-palette"><span id="propPaletteLabel">Accessory color</span><select id="characterPropPalette" hidden aria-label="Accessory color"></select><div id="characterPropPaletteChoices" class="character-segments palette-choices" role="radiogroup" aria-labelledby="propPaletteLabel"></div></div>
+      <div class="character-field"><span id="eyewearLabel">Eyewear</span><select id="characterEyewear" hidden aria-label="Eyewear style"></select><div id="characterEyewearChoices" class="character-segments eyewear-choices" role="radiogroup" aria-labelledby="eyewearLabel"></div></div>
+      <div class="character-field compact-palette"><span id="eyewearPaletteLabel">Frame color</span><select id="characterEyewearPalette" hidden aria-label="Eyewear frame color"></select><div id="characterEyewearPaletteChoices" class="character-segments palette-choices" role="radiogroup" aria-labelledby="eyewearPaletteLabel"></div></div>
+      <small>One accessory + eyewear. Colors stay with each character.</small><span id="characterStatus" role="status">Preparing mixed characters…</span>
+    </div></details>
+    <section class="studio-events" aria-label="Game event browser"><div class="studio-section-heading"><span data-icon="list-music">Game events</span><span class="live-label">LIVE</span></div><div id="midiGameEventList" class="midi-game-event-list" role="listbox" aria-label="Game events"></div></section>
+    <div id="midiOutputSummary" class="studio-output-summary" role="status">Local sound off · MIDI off</div>
+  </aside>
   <main class="game" aria-label="Lemmings game">
     <div class="game-stage-slot">
       <div class="game_container">
         <canvas height="480" width="800" id="gameCanvas" class="gameCanvas"></canvas>
       </div>
     </div>
-    <nav class="level-navigation" aria-label="Level navigation">
-      <img
-        id="levelPrevButton"
-        class="arrow_l"
-        src="img/arrow_l.png"
-        width="37"
-        height="58"
-        alt="Previous level"
-        role="button"
-        tabindex="0"
-        aria-label="Previous level"
-      />
-      <img
-        id="levelNextButton"
-        class="arrow_r"
-        src="img/arrow_r.png"
-        width="37"
-        height="58"
-        alt="Next level"
-        role="button"
-        tabindex="0"
-        aria-label="Next level"
-      />
-    </nav>
+
   </main>
   <div id="shortcutOverlay" class="shortcut-overlay" aria-hidden="true">
     <div class="shortcut-overlay__panel" role="dialog" aria-modal="true" aria-labelledby="shortcutOverlayTitle">

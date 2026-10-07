@@ -12,7 +12,7 @@ const fixture = (prepare = async () => true) => {
     registerElement(document, 'select', id); registerElement(document, 'div', `${id}Choices`);
   }
   registerElement(document, 'span', 'characterStatus');
-  const sprites = { shapes: catalog.shapes, prepare, error: 'Test missing asset' };
+  const sprites = { shapes: catalog.shapes, prepare, activePreference: { shape: 'mixed' }, error: 'Test missing asset' };
   const controller = createCharacterUiController({ document, window, getView: () => ({ game: { gameResources: { characterSprites: sprites }, render() {} } }) });
   const choices = id => document.getElementById(`${id}Choices`).children;
   const click = (id, value) => choices(id).find(button => button.dataset.value === value).dispatchEvent({ type: 'click' });
