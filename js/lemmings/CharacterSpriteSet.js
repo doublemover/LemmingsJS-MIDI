@@ -94,6 +94,11 @@ class CharacterSpriteSet {
     this.skins = new Map();
     this.pending = new Map();
     this.paletteSkins = new Map();
+    this.skinIdentities = new Map();
+    this.paletteIdentities = new WeakMap();
+    this.identityCleanup = new FinalizationRegistry(({ cache, key, reference }) => {
+      if (cache.get(key) === reference) cache.delete(key);
+    });
     this.actorSkins = new WeakMap();
     this.skinManifests = new WeakMap();
     this.generation = 0;
@@ -153,7 +158,7 @@ class CharacterSpriteSet {
         const refined = refineCharacterPresentation(manifest, manifest, shape.id);
         const skin = new PixelSpriteSkin(refined);
         this.manifests.set(shape.id, manifest);
-        this.skins.set(characterAppearanceKey({ shape: shape.id }), skin);
+        this.cacheTemplate(characterAppearanceKey({ shape: shape.id }), skin);
         this.skinManifests.set(skin, refined);
         return manifest;
       }).finally(() => this.pending.delete(shape.id));
@@ -186,10 +191,25 @@ class CharacterSpriteSet {
     return this.pending.get(key);
   }
 
+  cacheIdentity(cache, key, value) {
+    const reference = new WeakRef(value);
+    cache.set(key, reference);
+    this.identityCleanup.register(value, { cache, key, reference });
+  }
+
+  cacheTemplate(key, skin) {
+    this.skins.delete(key);
+    while (this.skins.size >= Math.max(32, this.shapes.length * 2)) this.skins.delete(this.skins.keys().next().value);
+    this.skins.set(key, skin);
+    if (this.skinIdentities.get(key)?.deref() !== skin) this.cacheIdentity(this.skinIdentities, key, skin);
+    return skin;
+  }
+
   templateForAppearance(appearance) {
     const plain = { shape: appearance.shape, accessory: appearance.accessory, eyewear: appearance.eyewear };
     const key = characterAppearanceKey(plain);
-    if (this.skins.has(key)) return this.skins.get(key);
+    const cached = this.skins.get(key) || this.skinIdentities.get(key)?.deref();
+    if (cached) return this.cacheTemplate(key, cached);
     const manifest = this.manifests.get(appearance.shape);
     if (!manifest) throw new Error(`Character art unavailable for ${appearance.shape}`);
     const headwear = hasCustomHeadwear(plain);
@@ -198,10 +218,8 @@ class CharacterSpriteSet {
     const composed = composeCharacterAccessories(headwear ? pack.bare : manifest, pack, plain);
     const refined = refineCharacterPresentation(composed, manifest, appearance.shape, pack, plain);
     const skin = new PixelSpriteSkin(refined);
-    while (this.skins.size >= Math.max(32, this.shapes.length * 2)) this.skins.delete(this.skins.keys().next().value);
-    this.skins.set(key, skin);
     this.skinManifests.set(skin, refined);
-    return skin;
+    return this.cacheTemplate(key, skin);
   }
 
   colorSkin(template, appearance) {
@@ -210,8 +228,18 @@ class CharacterSpriteSet {
     const manifest = this.skinManifests.get(template);
     const key = characterAppearanceKey({ ...appearance, shape: manifest.shapeId });
     const cached = this.paletteSkins.get(key);
-    if (cached?.template === template) return cached.skin;
-    const skin = template.withPalette(paletteForAppearance(manifest, appearance));
+    let identities = this.paletteIdentities.get(template);
+    if (!identities) {
+      identities = new Map();
+      this.paletteIdentities.set(template, identities);
+    }
+    let skin = cached?.template === template ? cached.skin : identities.get(key)?.deref();
+    if (!skin) {
+      skin = template.withPalette(paletteForAppearance(manifest, appearance));
+      this.cacheIdentity(identities, key, skin);
+    }
+    // Eviction releases idle ownership, never the identity of a still-live appearance.
+    this.paletteSkins.delete(key);
     while (this.paletteSkins.size >= 256) this.paletteSkins.delete(this.paletteSkins.keys().next().value);
     this.paletteSkins.set(key, { template, skin });
     return skin;

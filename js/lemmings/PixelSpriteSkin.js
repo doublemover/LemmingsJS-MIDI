@@ -124,14 +124,73 @@ function decodeFrame(rows, width, height, offsetX, offsetY, pixels, indexedFrame
   return frame;
 }
 
+class PaletteFrames {
+  constructor(indices, palette) {
+    this.indices = indices;
+    this.palette = palette;
+    this.frames = null;
+  }
+
+  get(original) {
+    if (!original) return original;
+    const cached = this.frames?.get(original);
+    if (cached) return cached;
+    const frame = new Frame(original.width, original.height, original.offsetX, original.offsetY);
+    const indices = this.indices.get(original), colors = this.palette.data;
+    for (let i = 0; i < indices.length; i++) frame.data[i] = indices[i] ? colors[indices[i]] : 0;
+    frame.mask = original.mask;
+    const spans = original.getSpanCache();
+    frame._spanCacheEnabled = true; frame._spanRows = spans.rows; frame._spanBounds = spans.bounds;
+    (this.frames ||= new Map()).set(original, frame);
+    return frame;
+  }
+}
+
+class PaletteAnimation {
+  constructor(original, palette) {
+    this.original = original;
+    this.palette = palette;
+    this._frames = null;
+    this._lastFrame = null;
+    this.loop = true;
+    this.firstFrameIndex = 0;
+    this.isFinished = false;
+    this.objectImg = null;
+  }
+
+  get frameCount() { return this.original.frames.length; }
+  get frames() { return this._frames ||= this.original.frames.map(frame => this.palette.get(frame)); }
+
+  restart(startTick = 0) {
+    this.firstFrameIndex = startTick;
+    this.isFinished = false;
+  }
+
+  getFrame(globalTick) {
+    const count = this.frameCount;
+    if (count === 0) return null;
+    if (this.isFinished && this._lastFrame) return this._lastFrame;
+    const local = globalTick - this.firstFrameIndex;
+    let index;
+    if (this.loop) index = ((local % count) + count) % count;
+    else if (local >= count - 1) {
+      this.isFinished = true;
+      return this._lastFrame ||= this.palette.get(this.original.frames[count - 1]);
+    } else index = Math.max(0, local);
+    return this.palette.get(this.original.frames[index]);
+  }
+}
+
 class PixelSpriteSkin {
   #animations = [];
   #palette;
   #landing = null;
-  #transitions = new WeakMap();
-  #indexedFrames = new WeakMap();
+  #transitions = null;
+  #indexedFrames = null;
+  #source = null;
+  #paletteFrames = null;
   #paletteSize = 0;
-  #particleParts = new Map();
+  #particleParts = null;
 
   constructor(manifest, source = null) {
     if (!source) validateSkin(manifest);
@@ -139,43 +198,13 @@ class PixelSpriteSkin {
     this.#palette = new ColorPalette();
     manifest.palette.forEach(([r, g, b], i) => this.#palette.setColorRGB(i, r, g, b));
     if (source) {
-      const colors = Uint32Array.from(manifest.palette, ([r, g, b, a]) => a ? ColorPalette.colorFromRGB(r, g, b) : 0);
-      const frames = new WeakMap();
-      const remap = original => {
-        if (frames.has(original)) return frames.get(original);
-        const frame = new Frame(original.width, original.height, original.offsetX, original.offsetY);
-        const indices = source.#indexedFrames.get(original);
-        for (let i = 0; i < indices.length; i++) frame.data[i] = colors[indices[i]];
-        frame.mask = original.mask;
-        const spans = original.getSpanCache();
-        frame._spanCacheEnabled = true; frame._spanRows = spans.rows; frame._spanBounds = spans.bounds;
-        this.#indexedFrames.set(frame, indices);
-        frames.set(original, frame);
-        return frame;
-      };
-      const lazyFrames = originals => {
-        const result = new Array(originals.length);
-        originals.forEach((original, i) => Object.defineProperty(result, i, { enumerable: true, get: () => remap(original) }));
-        return result;
-      };
-      const animations = new Map();
-      this.#animations = new Array(source.#animations.length);
-      source.#animations.forEach((original, index) => Object.defineProperty(this.#animations, index, {
-        enumerable: true,
-        get: () => {
-          if (!animations.has(original)) {
-            const animation = new Animation();
-            animation.frames = lazyFrames(original.frames);
-            animations.set(original, animation);
-          }
-          return animations.get(original);
-        }
-      }));
-      this.#particleParts = new Map([...source.#particleParts].map(([direction, parts]) => [direction,
-        Object.fromEntries(Object.entries(parts).map(([part, frame]) => [part, frame ? remap(frame) : null]))]));
-      if (source.#landing) this.#landing = new Map([...source.#landing].map(([key, frames]) => [key, lazyFrames(frames)]));
+      this.#source = source.#source || source;
+      this.#paletteFrames = new PaletteFrames(this.#source.#indexedFrames, this.#palette);
+      this.#landing = this.#source.#landing;
       return;
     }
+    this.#indexedFrames = new WeakMap();
+    this.#particleParts = new Map();
     const pixels = new Map([...manifest.symbols].map((symbol, i) => [symbol, manifest.palette[i]]));
     for (const record of manifest.animations) {
       const animation = new Animation();
@@ -207,7 +236,7 @@ class PixelSpriteSkin {
   }
 
   resetActor(lem) {
-    this.#transitions.delete(lem);
+    this.#transitions?.delete(lem);
   }
 
   onActionChange(lem, previousAction, previousFrameIndex) {
@@ -216,11 +245,11 @@ class PixelSpriteSkin {
         previousAction?.getActionName?.() !== 'floating' || lem.action?.getActionName?.() !== 'walk') return;
     const floatFrame = [0, 1, 3, 5, 5, 5, 5, 5, 5, 6, 7, 7, 6, 5, 4, 4][previousFrameIndex];
     const startSway = floatFrame === 4 ? -1 : floatFrame === 6 ? 1 : 0;
-    this.#transitions.set(lem, { startSway, lastFrameIndex: -1 });
+    (this.#transitions ||= new WeakMap()).set(lem, { startSway, lastFrameIndex: -1 });
   }
 
   drawCosmeticTransition(gameDisplay, lem) {
-    const transition = this.#transitions.get(lem);
+    const transition = this.#transitions?.get(lem);
     if (!transition) return false;
     const index = lem.frameIndex;
     if (lem.action?.getActionName?.() !== 'walk' || !Number.isInteger(index) ||
@@ -231,18 +260,38 @@ class PixelSpriteSkin {
     transition.lastFrameIndex = index;
     const direction = lem.getDirection() === 'right' ? 1 : -1;
     const frame = this.#landing.get(`${direction}:${transition.startSway}`)[index];
-    gameDisplay.drawFrame(frame, lem.x, lem.y);
+    gameDisplay.drawFrame(this.#paletteFrames ? this.#paletteFrames.get(frame) : frame, lem.x, lem.y);
     return true;
   }
 
-  getParticleParts(right = true) { return this.#particleParts.get(right ? 1 : -1) || null; }
+  getParticleParts(right = true) {
+    const direction = right ? 1 : -1;
+    if (!this.#source) return this.#particleParts.get(direction) || null;
+    if (!this.#particleParts) this.#particleParts = new Map();
+    if (!this.#particleParts.has(direction)) {
+      const source = this.#source.getParticleParts(right);
+      this.#particleParts.set(direction, source && Object.fromEntries(Object.entries(source)
+        .map(([part, frame]) => [part, frame ? this.#paletteFrames.get(frame) : null])));
+    }
+    return this.#particleParts.get(direction);
+  }
 
   getAnimation(state, right) {
-    return this.#animations[state * 2 + (right ? 0 : 1)];
+    const index = state * 2 + (right ? 0 : 1);
+    if (this.#animations[index] || !this.#source) return this.#animations[index];
+    const original = this.#source.#animations[index];
+    if (!original) return undefined;
+    const animation = new PaletteAnimation(original, this.#paletteFrames);
+    this.#animations[index] = animation;
+    if (this.#source.#animations[index ^ 1] === original) this.#animations[index ^ 1] = animation;
+    return animation;
   }
 
   get colorPalette() { return this.#palette; }
-  get lemmingAnimation() { return this.#animations.slice(); }
+  get lemmingAnimation() {
+    if (!this.#source) return this.#animations.slice();
+    return this.#source.#animations.map((_, index) => this.getAnimation(index >> 1, (index & 1) === 0));
+  }
 }
 
 export { PixelSpriteSkin, validateSkin };
