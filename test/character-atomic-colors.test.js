@@ -1,3 +1,4 @@
+import { refineCharacterPresentation } from '../js/lemmings/CharacterPresentation.js';
 import { expect } from 'chai';
 import fs from 'node:fs';
 import { CharacterSpriteSet, getCharacterPreference, setCharacterPreference, recolorManifest } from '../js/lemmings/CharacterSpriteSet.js';
@@ -190,7 +191,9 @@ describe('atomic character edits and stable named random palettes', function() {
     await sprites.prepare();
     const actor = { id: 80 }, appearance = sprites.appearanceForActor(actor);
     const pack = read(catalog.shapes.find(shape => shape.id === 'donut').headwearPath);
-    const expected = new PixelSpriteSkin(composeCharacterAccessories(recolorManifest(pack.bare, appearance), pack, appearance));
+    const source = read(catalog.shapes.find(shape => shape.id === 'donut').path);
+    const composed = composeCharacterAccessories(recolorManifest(pack.bare, appearance), pack, appearance);
+    const expected = new PixelSpriteSkin(refineCharacterPresentation(composed, source, 'donut', pack, appearance));
     const actual = sprites.skinForActor(actor);
     expect([...actual.colorPalette.data]).to.deep.equal([...expected.colorPalette.data]);
     for (const record of pack.bare.animations) {

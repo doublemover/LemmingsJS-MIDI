@@ -1,5 +1,6 @@
 import { PixelSpriteSkin, validateSkin } from './PixelSpriteSkin.js';
 import { Frame } from '../render/Frame.js';
+import { refineCharacterPresentation } from './CharacterPresentation.js';
 import { CHARACTER_COLORS } from './characterColors.js';
 import { normalizeCharacterAccessories, characterAppearanceKey, hasCharacterAccessories, hasCustomHeadwear, validateAccessoryLayers, composeCharacterAccessories } from './CharacterAccessories.js';
 
@@ -149,10 +150,12 @@ class CharacterSpriteSet {
       const pending = Promise.resolve().then(() => this.loadText(shape.path)).then(text => {
         const manifest = JSON.parse(text);
         // Validate before admitting it to the cache.
-        const skin = new PixelSpriteSkin(manifest);
+        validateSkin(manifest);
+        const refined = refineCharacterPresentation(manifest, manifest, shape.id);
+        const skin = new PixelSpriteSkin(refined);
         this.manifests.set(shape.id, manifest);
         this.skins.set(characterAppearanceKey({ shape: shape.id }), skin);
-        this.skinManifests.set(skin, manifest);
+        this.skinManifests.set(skin, refined);
         return manifest;
       }).finally(() => this.pending.delete(shape.id));
       this.pending.set(shape.id, pending);
@@ -194,10 +197,11 @@ class CharacterSpriteSet {
     const pack = (headwear ? this.headwearLayers : this.accessoryLayers).get(appearance.shape);
     if ((hasCharacterAccessories(plain) || headwear) && !pack) throw new Error(`Accessory art unavailable for ${appearance.shape}`);
     const composed = composeCharacterAccessories(headwear ? pack.bare : manifest, pack, plain);
-    const skin = new PixelSpriteSkin(composed);
+    const refined = refineCharacterPresentation(composed, manifest, appearance.shape, pack, plain);
+    const skin = new PixelSpriteSkin(refined);
     while (this.skins.size >= Math.max(32, this.shapes.length * 2)) this.skins.delete(this.skins.keys().next().value);
     this.skins.set(key, skin);
-    this.skinManifests.set(skin, composed);
+    this.skinManifests.set(skin, refined);
     return skin;
   }
 
@@ -232,6 +236,10 @@ class CharacterSpriteSet {
     return skin;
   }
   getActorAnimation(state, right, lem) { return this.skinForActor(lem).getAnimation(state, right); }
+  getActorParticleParts(lem) {
+    const skin = this.skinForActor(lem);
+    return skin === this.base ? null : skin.getParticleParts?.(lem.lookRight) || null;
+  }
   resetActor(lem) {
     this.actorSkins.get(lem)?.skin.resetActor?.(lem);
     this.actorSkins.delete(lem);

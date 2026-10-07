@@ -89,6 +89,19 @@ function validateSkin(manifest) {
       }
     }
   }
+  if (manifest.particleParts != null) {
+    if (!Array.isArray(manifest.particleParts) || manifest.particleParts.length !== 2) fail('particle parts');
+    const directions = new Set();
+    for (const parts of manifest.particleParts) {
+      if (!parts || ![-1, 1].includes(parts.direction) || directions.has(parts.direction)) fail('particle direction');
+      directions.add(parts.direction);
+      if (parts.width !== 16 || parts.height !== 10 + padding || parts.offsetX !== -8 || parts.offsetY !== -10 - padding) fail('particle geometry');
+      for (const part of ['body', 'accessory', 'eyewear']) {
+        if (!Array.isArray(parts[part]) || parts[part].length !== parts.height) fail('particle layer');
+        for (const row of parts[part]) if (typeof row !== 'string' || row.length !== parts.width || [...row].some(symbol => !manifest.symbols.includes(symbol))) fail('particle pixels');
+      }
+    }
+  }
   return manifest;
 }
 
@@ -118,6 +131,7 @@ class PixelSpriteSkin {
   #transitions = new WeakMap();
   #indexedFrames = new WeakMap();
   #paletteSize = 0;
+  #particleParts = new Map();
 
   constructor(manifest, source = null) {
     if (!source) validateSkin(manifest);
@@ -157,6 +171,8 @@ class PixelSpriteSkin {
           return animations.get(original);
         }
       }));
+      this.#particleParts = new Map([...source.#particleParts].map(([direction, parts]) => [direction,
+        Object.fromEntries(Object.entries(parts).map(([part, frame]) => [part, frame ? remap(frame) : null]))]));
       if (source.#landing) this.#landing = new Map([...source.#landing].map(([key, frames]) => [key, lazyFrames(frames)]));
       return;
     }
@@ -168,6 +184,10 @@ class PixelSpriteSkin {
       const state = SpriteTypes[record.state];
       if (record.direction >= 0) this.#animations[state * 2] = animation;
       if (record.direction <= 0) this.#animations[state * 2 + 1] = animation;
+    }
+    for (const parts of manifest.particleParts || []) {
+      this.#particleParts.set(parts.direction, Object.fromEntries(['body', 'accessory', 'eyewear'].map(part => [part,
+        parts[part].some(row => /[^0]/.test(row)) ? decodeFrame(parts[part], parts.width, parts.height, parts.offsetX, parts.offsetY, pixels, this.#indexedFrames) : null])));
     }
     const landing = manifest.cosmetics?.beretLanding;
     if (landing) {
@@ -214,6 +234,8 @@ class PixelSpriteSkin {
     gameDisplay.drawFrame(frame, lem.x, lem.y);
     return true;
   }
+
+  getParticleParts(right = true) { return this.#particleParts.get(right ? 1 : -1) || null; }
 
   getAnimation(state, right) {
     return this.#animations[state * 2 + (right ? 0 : 1)];
