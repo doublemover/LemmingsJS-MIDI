@@ -1,0 +1,52 @@
+[
+  {
+    "file": "levels/orchard-gate.nxlv",
+    "sha256": "75d4ad91fee043195f44db0297c3f7ab48e70bfd7f29fc68b36f3e3500330b07",
+    "title": "The Orchard Gate",
+    "survivorCount": 10,
+    "required": 10,
+    "finalState": 4,
+    "remainingSkills": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0
+    ],
+    "validation": {
+      "hasErrors": false,
+      "issues": []
+    },
+    "exactReloadExportEquality": true,
+    "pageErrors": []
+  },
+  {
+    "file": "levels/hydro-triangle.nxlv",
+    "sha256": "356aaaea395fda32c1524579f79bab627fc65b1e359758aa95a320333638d0ef",
+    "title": "HYDRO CHECK: TRIANGLE APPROVED",
+    "survivorCount": 10,
+    "required": 10,
+    "finalState": 4,
+    "remainingSkills": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "validation": {
+      "hasErrors": false,
+      "issues": []
+    },
+    "exactReloadExportEquality": true,
+    "pageErrors": []
+  }
+]

@@ -27,9 +27,10 @@ describe('MidiScheduler 1', function() {
       expect(ok).to.equal(true);
       expect(calls.some(c => c.type === 'cc' && c.cc === 10 && c.value === 0)).to.equal(true);
 
-      expect(calls.some(c => c.type === 'noteOff' && c.note === 60)).to.equal(true);
+      expect(calls.some(c => c.type === 'noteOff' && c.note === 60)).to.equal(false);
 
       clock.tick(25);
+      expect(calls.some(c => c.type === 'noteOff' && c.note === 60)).to.equal(true);
       expect(scheduler._activeNotes.size).to.equal(0);
     });
   });
@@ -55,9 +56,10 @@ describe('MidiScheduler 1', function() {
       expect(ok).to.equal(true);
       expect(projectCalls.some(call => call.type === 'noteOn')).to.equal(false);
       expect(trackCalls.some(call => call.type === 'noteOn' && call.note === 60)).to.equal(true);
-      expect(trackCalls.some(call => call.type === 'noteOff' && call.note === 60)).to.equal(true);
+      expect(trackCalls.some(call => call.type === 'noteOff' && call.note === 60)).to.equal(false);
 
       clock.tick(25);
+      expect(trackCalls.some(call => call.type === 'noteOff' && call.note === 60)).to.equal(true);
       expect(scheduler._activeNotes.size).to.equal(0);
 
       projectCalls.length = 0;
@@ -132,6 +134,8 @@ describe('MidiScheduler 1', function() {
 
     expect(ok).to.equal(true);
     const noteOn = calls.find(c => c.type === 'noteOn');
+    scheduler._nowMs = () => scheduler._noteOffs[0].timeMs;
+    scheduler._processNoteOffs();
     const noteOff = calls.find(c => c.type === 'noteOff');
     expect(noteOn.opts.rawAttack).to.equal(20);
     expect(noteOff.opts.rawRelease).to.equal(80);

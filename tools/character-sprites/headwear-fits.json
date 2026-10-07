@@ -1,0 +1,1738 @@
+{
+  "format": "hydro-headwear-fits-v1",
+  "shapes": {
+    "rounded_triangle": {
+      "beanie": {
+        "source": "native picker composition",
+        "recipe": "rounded_triangle/accessory/beanie/light",
+        "bodyLayerHash": "0d115fd122bd1cfd070473277a5ea04b1a49c47c46fdc0d2104db2409f82df0d",
+        "accessoryLayerHash": "bf72bba9b338beaff1b6759ed0028ab0763accd9ce02840a79a3d8d1215cf30e",
+        "nativeBounds": [
+          114,
+          82,
+          156,
+          82
+        ],
+        "nativeBodyBounds": [
+          86,
+          98,
+          212,
+          188
+        ],
+        "x": 2,
+        "y": 0,
+        "rows": [
+          ".YOOOO.",
+          "YoooooO",
+          "o.....o"
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "hat": {
+        "source": "native picker composition",
+        "recipe": "rounded_triangle/accessory/hat/light",
+        "bodyLayerHash": "0d115fd122bd1cfd070473277a5ea04b1a49c47c46fdc0d2104db2409f82df0d",
+        "accessoryLayerHash": "f1c9594ff51dfcdda3b124ac22fe152a1ff4c4b5e8f20f8a0a789c361c385526",
+        "nativeBounds": [
+          129,
+          37,
+          126,
+          91
+        ],
+        "nativeBodyBounds": [
+          86,
+          98,
+          212,
+          188
+        ],
+        "x": 3,
+        "y": -1,
+        "rows": [
+          ".YOO.",
+          ".YOO.",
+          "ooooo"
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "orb": {
+        "source": "native picker composition",
+        "recipe": "rounded_triangle/accessory/orb/light",
+        "bodyLayerHash": "0d115fd122bd1cfd070473277a5ea04b1a49c47c46fdc0d2104db2409f82df0d",
+        "accessoryLayerHash": "352ada6bf40c6d703a45cfcb503eded934f91d415ecf161ba9174157971ab822",
+        "nativeBounds": [
+          162,
+          40,
+          60,
+          59
+        ],
+        "nativeBodyBounds": [
+          86,
+          98,
+          212,
+          188
+        ],
+        "x": 4,
+        "y": -2,
+        "rows": [
+          ".Y.",
+          "oOo",
+          ".o."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "three_lobe": {
+        "source": "native picker composition",
+        "recipe": "rounded_triangle/accessory/three_lobe/light",
+        "bodyLayerHash": "0d115fd122bd1cfd070473277a5ea04b1a49c47c46fdc0d2104db2409f82df0d",
+        "accessoryLayerHash": "8c9500c25d5a8b955454db8f71b54bd0187202870871eb3498ea69de87228f98",
+        "nativeBounds": [
+          117,
+          81,
+          65,
+          71
+        ],
+        "nativeBodyBounds": [
+          86,
+          98,
+          212,
+          188
+        ],
+        "x": 2,
+        "y": -1,
+        "rows": [
+          "..OOo",
+          ".OOo.",
+          "OOo..",
+          "oo..."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "crown": {
+        "source": "native picker composition",
+        "recipe": "rounded_triangle/accessory/crown/light",
+        "bodyLayerHash": "0d115fd122bd1cfd070473277a5ea04b1a49c47c46fdc0d2104db2409f82df0d",
+        "accessoryLayerHash": "b133ba2f32519b06b015320606244000b3a0d0ffae4eb9fcbeef5fff301d93b0",
+        "nativeBounds": [
+          130,
+          45,
+          124,
+          87
+        ],
+        "nativeBodyBounds": [
+          86,
+          98,
+          212,
+          188
+        ],
+        "x": 3,
+        "y": -2,
+        "rows": [
+          "..Y..",
+          "Y.Y.Y",
+          "oOOOo",
+          ".ooo."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      }
+    },
+    "capsule": {
+      "beanie": {
+        "source": "native picker composition",
+        "recipe": "capsule/accessory/beanie/light",
+        "bodyLayerHash": "f6038153708ddfcc2643fde114a8569f22abfb79675a15a93c1763fc0bed24b4",
+        "accessoryLayerHash": "c8556196ca0fcdf73dc1ec6ee94fe7ec684a6458e5409d32a0cf4f0a19130330",
+        "nativeBounds": [
+          99,
+          63,
+          186,
+          86
+        ],
+        "nativeBodyBounds": [
+          86,
+          119,
+          212,
+          146
+        ],
+        "x": 1,
+        "y": -2,
+        "rows": [
+          "..YOOOO..",
+          ".YOOOOOO.",
+          "YOOOOOOOO",
+          "ooooooooo"
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "hat": {
+        "source": "native picker composition",
+        "recipe": "capsule/accessory/hat/light",
+        "bodyLayerHash": "f6038153708ddfcc2643fde114a8569f22abfb79675a15a93c1763fc0bed24b4",
+        "accessoryLayerHash": "baea6786501b1d61bd66c72b74ac074412637515166925f582bef0933e246a24",
+        "nativeBounds": [
+          78,
+          51,
+          145,
+          92
+        ],
+        "nativeBodyBounds": [
+          86,
+          119,
+          212,
+          146
+        ],
+        "x": 0,
+        "y": -2,
+        "rows": [
+          "..YOO..",
+          ".YOOOO.",
+          ".YOOOoo",
+          "ooooo.."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "orb": {
+        "source": "native picker composition",
+        "recipe": "capsule/accessory/orb/light",
+        "bodyLayerHash": "f6038153708ddfcc2643fde114a8569f22abfb79675a15a93c1763fc0bed24b4",
+        "accessoryLayerHash": "e5ce61c0c4eb254ac3d6dcb503b021b1d1d7448ba9cc964b11d76c95e78bcdfb",
+        "nativeBounds": [
+          162,
+          62,
+          60,
+          58
+        ],
+        "nativeBodyBounds": [
+          86,
+          119,
+          212,
+          146
+        ],
+        "x": 4,
+        "y": -2,
+        "rows": [
+          ".Y.",
+          "oOo",
+          ".o."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "three_lobe": {
+        "source": "native picker composition",
+        "recipe": "capsule/accessory/three_lobe/light",
+        "bodyLayerHash": "f6038153708ddfcc2643fde114a8569f22abfb79675a15a93c1763fc0bed24b4",
+        "accessoryLayerHash": "7c608e7006498c82f63ab5ede7863b2081e837b4cd88261936e14ec6fc7ed760",
+        "nativeBounds": [
+          137,
+          76,
+          110,
+          52
+        ],
+        "nativeBodyBounds": [
+          86,
+          119,
+          212,
+          146
+        ],
+        "x": 2,
+        "y": -3,
+        "rows": [
+          "..O..",
+          "OOOOO",
+          "OOOOO",
+          "ooooo"
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "crown": {
+        "source": "native picker composition",
+        "recipe": "capsule/accessory/crown/light",
+        "bodyLayerHash": "f6038153708ddfcc2643fde114a8569f22abfb79675a15a93c1763fc0bed24b4",
+        "accessoryLayerHash": "b1da3414b35e339968ad78eaf99361e25a7434be3951363362eef1a6f4cdafe6",
+        "nativeBounds": [
+          84,
+          56,
+          137,
+          83
+        ],
+        "nativeBodyBounds": [
+          86,
+          119,
+          212,
+          146
+        ],
+        "x": 0,
+        "y": -2,
+        "rows": [
+          "...Y..",
+          "Y..Y.Y",
+          "oOOOOo",
+          ".oooo."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      }
+    },
+    "circle": {
+      "beanie": {
+        "source": "native picker composition",
+        "recipe": "circle/accessory/beanie/light",
+        "bodyLayerHash": "fc10feb246d92e9f28437e021a69a40662b3120e58a3e6e3551bc62749ac4b1f",
+        "accessoryLayerHash": "472f7ee9a1751cc3ed1fc53486352bd62b8fe62b5eb49623183b340151fb5389",
+        "nativeBounds": [
+          108,
+          38,
+          168,
+          101
+        ],
+        "nativeBodyBounds": [
+          86,
+          86,
+          212,
+          212
+        ],
+        "x": 2,
+        "y": -2,
+        "rows": [
+          ".YOOO.",
+          "YOOOOO",
+          "YOOOOO",
+          "oooooo"
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "hat": {
+        "source": "native picker composition",
+        "recipe": "circle/accessory/hat/light",
+        "bodyLayerHash": "b1cef802e0f7df9b5310281a523b24a3056b934abcdfa7a466119178adac467f",
+        "accessoryLayerHash": "c91d048302af040fd8b82f51a96b64e4f9b8c1b01f03dccf7984d241494833ed",
+        "nativeBounds": [
+          117,
+          14,
+          150,
+          118
+        ],
+        "nativeBodyBounds": [
+          87,
+          87,
+          210,
+          210
+        ],
+        "x": 2,
+        "y": -2,
+        "rows": [
+          ".YOOO.",
+          ".YOOO.",
+          "YOOOOO",
+          "oooooo"
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "orb": {
+        "source": "native picker composition",
+        "recipe": "circle/accessory/orb/light",
+        "bodyLayerHash": "fc10feb246d92e9f28437e021a69a40662b3120e58a3e6e3551bc62749ac4b1f",
+        "accessoryLayerHash": "196e447594df4b8318b7b61c2e2d53d9e53c5db6b852107d5e710235a234f552",
+        "nativeBounds": [
+          162,
+          29,
+          60,
+          58
+        ],
+        "nativeBodyBounds": [
+          86,
+          86,
+          212,
+          212
+        ],
+        "x": 4,
+        "y": -3,
+        "rows": [
+          ".Y.",
+          "oOo",
+          ".o."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "three_lobe": {
+        "source": "native picker composition",
+        "recipe": "circle/accessory/three_lobe/light",
+        "bodyLayerHash": "fc10feb246d92e9f28437e021a69a40662b3120e58a3e6e3551bc62749ac4b1f",
+        "accessoryLayerHash": "87e86a44ef4a49b40a4dae366f5baef4fe174947979089f9a934aa3380c6d3ee",
+        "nativeBounds": [
+          93,
+          62,
+          91,
+          62
+        ],
+        "nativeBodyBounds": [
+          86,
+          86,
+          212,
+          212
+        ],
+        "x": 1,
+        "y": -3,
+        "rows": [
+          ".OOOO",
+          ".OOoo",
+          "OOo..",
+          "oo..."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "crown": {
+        "source": "native picker composition",
+        "recipe": "circle/accessory/crown/light",
+        "bodyLayerHash": "fc10feb246d92e9f28437e021a69a40662b3120e58a3e6e3551bc62749ac4b1f",
+        "accessoryLayerHash": "ddffaba5b3e39e2d97a0fca195634079153ed90ccfb77d19523ccd82958233d2",
+        "nativeBounds": [
+          127,
+          26,
+          130,
+          73
+        ],
+        "nativeBodyBounds": [
+          86,
+          86,
+          212,
+          212
+        ],
+        "x": 3,
+        "y": -4,
+        "rows": [
+          "..Y..",
+          "Y.Y.Y",
+          "oOOOo",
+          ".ooo."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      }
+    },
+    "circle_two_ears": {
+      "beanie": {
+        "source": "custom; native headwear recipe unavailable",
+        "x": 3,
+        "y": -1,
+        "rows": [
+          ".OOO.",
+          "YOOOO",
+          "ooooo"
+        ],
+        "foregroundPixels": [
+          [
+            4,
+            0
+          ],
+          [
+            6,
+            0
+          ]
+        ],
+        "reason": "Rest the band on the actual head crown between/around the ear bases; retain both ear tips in front. No floating ear-tip perch."
+      },
+      "hat": {
+        "source": "custom; native headwear recipe unavailable",
+        "x": 3,
+        "y": -2,
+        "rows": [
+          "..OO..",
+          ".YOOO.",
+          ".OOOO.",
+          "oooooo"
+        ],
+        "foregroundPixels": [
+          [
+            4,
+            0
+          ],
+          [
+            6,
+            0
+          ]
+        ],
+        "reason": "Rest the band on the actual head crown between/around the ear bases; retain both ear tips in front. No floating ear-tip perch."
+      },
+      "orb": {
+        "source": "custom; native headwear recipe unavailable",
+        "x": 4,
+        "y": -1,
+        "rows": [
+          ".Y.",
+          "YOO",
+          ".o."
+        ],
+        "foregroundPixels": [
+          [
+            4,
+            0
+          ],
+          [
+            6,
+            0
+          ]
+        ],
+        "reason": "Rest the band on the actual head crown between/around the ear bases; retain both ear tips in front. No floating ear-tip perch."
+      },
+      "three_lobe": {
+        "source": "custom; native headwear recipe unavailable",
+        "x": 3,
+        "y": -2,
+        "rows": [
+          "..OO.",
+          ".OOOO",
+          "OOOOO",
+          ".ooo."
+        ],
+        "foregroundPixels": [
+          [
+            4,
+            0
+          ],
+          [
+            6,
+            0
+          ]
+        ],
+        "reason": "Rest the band on the actual head crown between/around the ear bases; retain both ear tips in front. No floating ear-tip perch."
+      },
+      "crown": {
+        "source": "custom; native headwear recipe unavailable",
+        "x": 3,
+        "y": -2,
+        "rows": [
+          "..Y..",
+          "Y.O.O",
+          "OOOOO",
+          ".ooo."
+        ],
+        "foregroundPixels": [
+          [
+            4,
+            0
+          ],
+          [
+            6,
+            0
+          ]
+        ],
+        "reason": "Rest the band on the actual head crown between/around the ear bases; retain both ear tips in front. No floating ear-tip perch."
+      }
+    },
+    "four_lobed_butterfly": {
+      "beanie": {
+        "source": "native picker composition",
+        "recipe": "four_lobed_butterfly/accessory/beanie/light",
+        "bodyLayerHash": "2a7734a6fd31538d797a6349a706fdc1ddd60b49a0cf8c90d5c1b2aec275d4ab",
+        "accessoryLayerHash": "34d51e3ba65a58c13f68be3fd356b6d797aef4b24cb307bb6bf748e762a7b13a",
+        "nativeBounds": [
+          87,
+          81,
+          114,
+          65
+        ],
+        "nativeBodyBounds": [
+          86,
+          110,
+          212,
+          164
+        ],
+        "x": 0,
+        "y": -1,
+        "rows": [
+          ".YOO.",
+          "YOOOO",
+          "ooooo"
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "hat": {
+        "source": "native picker composition",
+        "recipe": "four_lobed_butterfly/accessory/hat/light",
+        "bodyLayerHash": "2a7734a6fd31538d797a6349a706fdc1ddd60b49a0cf8c90d5c1b2aec275d4ab",
+        "accessoryLayerHash": "c9e4c5cfaa595a22ebbbf9a7d12434df5f7ce36bbc62673997dbd76a084e3b0f",
+        "nativeBounds": [
+          92,
+          61,
+          102,
+          81
+        ],
+        "nativeBodyBounds": [
+          86,
+          110,
+          212,
+          164
+        ],
+        "x": 0,
+        "y": -2,
+        "rows": [
+          ".YOO.",
+          ".YOOO",
+          "YOOOO",
+          "ooooo"
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "orb": {
+        "source": "native picker composition",
+        "recipe": "four_lobed_butterfly/accessory/orb/light",
+        "bodyLayerHash": "2a7734a6fd31538d797a6349a706fdc1ddd60b49a0cf8c90d5c1b2aec275d4ab",
+        "accessoryLayerHash": "e4c43027a24d65214de50eaed323eb908924b502db8e8ab651ba8baa052f3ebc",
+        "nativeBounds": [
+          162,
+          71,
+          60,
+          61
+        ],
+        "nativeBodyBounds": [
+          86,
+          110,
+          212,
+          164
+        ],
+        "x": 4,
+        "y": -2,
+        "rows": [
+          ".Y.",
+          "oOo",
+          ".o."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "three_lobe": {
+        "source": "native picker composition",
+        "recipe": "four_lobed_butterfly/accessory/three_lobe/light",
+        "bodyLayerHash": "2a7734a6fd31538d797a6349a706fdc1ddd60b49a0cf8c90d5c1b2aec275d4ab",
+        "accessoryLayerHash": "e9f4558f34b341942f3ed4104a2f28c5093ff681e6824f76d5010fb5869727f0",
+        "nativeBounds": [
+          98,
+          84,
+          68,
+          41
+        ],
+        "nativeBodyBounds": [
+          86,
+          110,
+          212,
+          164
+        ],
+        "x": 1,
+        "y": -3,
+        "rows": [
+          "..OO.",
+          "OOOOO",
+          "OOOoo",
+          "ooo.."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "crown": {
+        "source": "native picker composition",
+        "recipe": "four_lobed_butterfly/accessory/crown/light",
+        "bodyLayerHash": "2a7734a6fd31538d797a6349a706fdc1ddd60b49a0cf8c90d5c1b2aec275d4ab",
+        "accessoryLayerHash": "49dbae7f9aba72cbad79a709343635c8eab59437cbb430ae734f399dc66bd5d8",
+        "nativeBounds": [
+          95,
+          75,
+          84,
+          50
+        ],
+        "nativeBodyBounds": [
+          86,
+          110,
+          212,
+          164
+        ],
+        "x": 0,
+        "y": -3,
+        "rows": [
+          "..Y..",
+          "Y.Y.Y",
+          "oOOOo",
+          ".ooo."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      }
+    },
+    "heart": {
+      "beanie": {
+        "source": "native picker composition",
+        "recipe": "heart/accessory/beanie/light",
+        "bodyLayerHash": "3f8b9e15dc8b8271edebd7238144f5df99fb0d1564870cc3a5c4c7570ea60c5a",
+        "accessoryLayerHash": "c00ac0c81e499382ed39ad1119940c0c4a6da7e24b319a5a34a6c7bdf6d99ae0",
+        "nativeBounds": [
+          185,
+          66,
+          108,
+          77
+        ],
+        "nativeBodyBounds": [
+          86,
+          94,
+          212,
+          195
+        ],
+        "x": 5,
+        "y": -1,
+        "rows": [
+          ".YOO.",
+          "YOOOo",
+          "oooo."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "hat": {
+        "source": "native picker composition",
+        "recipe": "heart/accessory/hat/light",
+        "bodyLayerHash": "3f8b9e15dc8b8271edebd7238144f5df99fb0d1564870cc3a5c4c7570ea60c5a",
+        "accessoryLayerHash": "77b57dc98c7156c39aaa743a1e27a2cf9b3deed69b93d7577b3e0973fd143938",
+        "nativeBounds": [
+          189,
+          47,
+          103,
+          89
+        ],
+        "nativeBodyBounds": [
+          86,
+          94,
+          212,
+          195
+        ],
+        "x": 5,
+        "y": -2,
+        "rows": [
+          ".YO.",
+          "YOOO",
+          "YOOO",
+          "oooo"
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "orb": {
+        "source": "native picker composition",
+        "recipe": "heart/accessory/orb/light",
+        "bodyLayerHash": "3f8b9e15dc8b8271edebd7238144f5df99fb0d1564870cc3a5c4c7570ea60c5a",
+        "accessoryLayerHash": "51b2d7ad585b5f156bf14a76c1332213b2f54978f0f34078c25a2179ab3727b4",
+        "nativeBounds": [
+          149,
+          52,
+          60,
+          61
+        ],
+        "nativeBodyBounds": [
+          86,
+          94,
+          212,
+          195
+        ],
+        "x": 4,
+        "y": -2,
+        "rows": [
+          ".Y.",
+          "oOo",
+          ".o."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "three_lobe": {
+        "source": "native picker composition",
+        "recipe": "heart/accessory/three_lobe/light",
+        "bodyLayerHash": "3f8b9e15dc8b8271edebd7238144f5df99fb0d1564870cc3a5c4c7570ea60c5a",
+        "accessoryLayerHash": "83967629abfe0cf0e66d22d113cb7be1286cae9a6563c7d5e3aefb273077ca5d",
+        "nativeBounds": [
+          91,
+          66,
+          76,
+          45
+        ],
+        "nativeBodyBounds": [
+          86,
+          94,
+          212,
+          195
+        ],
+        "x": 1,
+        "y": -3,
+        "rows": [
+          "..OO.",
+          "OOOOO",
+          "OOooo",
+          "oo..."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "crown": {
+        "source": "native picker composition",
+        "recipe": "heart/accessory/crown/light",
+        "bodyLayerHash": "3f8b9e15dc8b8271edebd7238144f5df99fb0d1564870cc3a5c4c7570ea60c5a",
+        "accessoryLayerHash": "0ad9ad6b8d0abea4df0fb2c27b2e3b350d8df7ad9c81d7048c50546b415c62b2",
+        "nativeBounds": [
+          90,
+          57,
+          83,
+          53
+        ],
+        "nativeBodyBounds": [
+          86,
+          94,
+          212,
+          195
+        ],
+        "x": 1,
+        "y": -3,
+        "rows": [
+          "..Y..",
+          "Y.Y.Y",
+          "oOOOo",
+          ".ooo."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      }
+    },
+    "rounded_cube": {
+      "beanie": {
+        "source": "native picker composition",
+        "recipe": "rounded_cube/accessory/beanie/light",
+        "bodyLayerHash": "f4078fac3c7c6bb57f1977b8865bd9f44ebf4a788d930ae158f242e456c1949c",
+        "accessoryLayerHash": "fb709a55e0a357378976700bdd6511ad84c113dcc6699ab7340bf2a2d1b847ee",
+        "nativeBounds": [
+          112,
+          54,
+          154,
+          63
+        ],
+        "nativeBodyBounds": [
+          91,
+          86,
+          202,
+          212
+        ],
+        "x": 2,
+        "y": -2,
+        "rows": [
+          ".YOOO.",
+          "YooooO",
+          "o....o"
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "hat": {
+        "source": "native picker composition",
+        "recipe": "rounded_cube/accessory/hat/light",
+        "bodyLayerHash": "f4078fac3c7c6bb57f1977b8865bd9f44ebf4a788d930ae158f242e456c1949c",
+        "accessoryLayerHash": "f6a0b5aabf1a9929c3113139960d219e5d1bc9cc7a20b071de6c131e1fe20c78",
+        "nativeBounds": [
+          77,
+          38,
+          125,
+          101
+        ],
+        "nativeBodyBounds": [
+          91,
+          86,
+          202,
+          212
+        ],
+        "x": 0,
+        "y": -2,
+        "rows": [
+          ".YOO.",
+          "YOOOo",
+          "YOOo.",
+          "ooo.."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "orb": {
+        "source": "native picker composition",
+        "recipe": "rounded_cube/accessory/orb/light",
+        "bodyLayerHash": "f4078fac3c7c6bb57f1977b8865bd9f44ebf4a788d930ae158f242e456c1949c",
+        "accessoryLayerHash": "4d4e9656759a195eb55e3b2f2b4de9a7a711b28895f341dffdd1652ce901b737",
+        "nativeBounds": [
+          160,
+          33,
+          56,
+          58
+        ],
+        "nativeBodyBounds": [
+          91,
+          86,
+          202,
+          212
+        ],
+        "x": 4,
+        "y": -3,
+        "rows": [
+          ".Y.",
+          "oOo",
+          ".o."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "three_lobe": {
+        "source": "native picker composition",
+        "recipe": "rounded_cube/accessory/three_lobe/light",
+        "bodyLayerHash": "f4078fac3c7c6bb57f1977b8865bd9f44ebf4a788d930ae158f242e456c1949c",
+        "accessoryLayerHash": "9adf21104baeaee0ba6df46d1fe3f2c082b1f603b97c680f5f61c31963d07361",
+        "nativeBounds": [
+          103,
+          47,
+          113,
+          68
+        ],
+        "nativeBodyBounds": [
+          91,
+          86,
+          202,
+          212
+        ],
+        "x": 1,
+        "y": -3,
+        "rows": [
+          "..OOO",
+          "OOOOO",
+          "OOOoo",
+          "ooo.."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "crown": {
+        "source": "native picker composition",
+        "recipe": "rounded_cube/accessory/crown/light",
+        "bodyLayerHash": "f4078fac3c7c6bb57f1977b8865bd9f44ebf4a788d930ae158f242e456c1949c",
+        "accessoryLayerHash": "8a0b8b9d23c2c7f1e025c11e9bd214a31087bb13d1e6e1d4245f5e26c5dd705c",
+        "nativeBounds": [
+          109,
+          29,
+          134,
+          78
+        ],
+        "nativeBodyBounds": [
+          91,
+          86,
+          202,
+          212
+        ],
+        "x": 2,
+        "y": -3,
+        "rows": [
+          "..Y..",
+          "Y.Y.Y",
+          "oOOOo",
+          ".ooo."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      }
+    },
+    "rounded_diamond": {
+      "beanie": {
+        "source": "native picker composition",
+        "recipe": "rounded_diamond/accessory/beanie/light",
+        "bodyLayerHash": "d49775775c7d1738599e9e7a00df80cf95ab2acefe7810cb169023d9b2f3bb27",
+        "accessoryLayerHash": "e3a2c6710ae2c88c2c116bbe66149a9800678e61977b8e0afc8960fd3d00ab87",
+        "nativeBounds": [
+          114,
+          61,
+          156,
+          79
+        ],
+        "nativeBodyBounds": [
+          86,
+          89,
+          212,
+          206
+        ],
+        "x": 2,
+        "y": -1,
+        "rows": [
+          ".YOOO.",
+          "YOooOO",
+          "oo..oo"
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "hat": {
+        "source": "native picker composition",
+        "recipe": "rounded_diamond/accessory/hat/light",
+        "bodyLayerHash": "d49775775c7d1738599e9e7a00df80cf95ab2acefe7810cb169023d9b2f3bb27",
+        "accessoryLayerHash": "1608a6f62a7c6d821eec763ff09fe1955efd5abc7dabad028e0303231a476c17",
+        "nativeBounds": [
+          129,
+          28,
+          126,
+          90
+        ],
+        "nativeBodyBounds": [
+          86,
+          89,
+          212,
+          206
+        ],
+        "x": 3,
+        "y": -2,
+        "rows": [
+          ".YOO.",
+          ".YOO.",
+          "ooooo"
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "orb": {
+        "source": "native picker composition",
+        "recipe": "rounded_diamond/accessory/orb/light",
+        "bodyLayerHash": "d49775775c7d1738599e9e7a00df80cf95ab2acefe7810cb169023d9b2f3bb27",
+        "accessoryLayerHash": "d7d64210ff1730ac9b8d79a0851d023f7209e6e0e0ad29433e5cac3c94c3dd67",
+        "nativeBounds": [
+          162,
+          31,
+          60,
+          59
+        ],
+        "nativeBodyBounds": [
+          86,
+          89,
+          212,
+          206
+        ],
+        "x": 4,
+        "y": -3,
+        "rows": [
+          ".Y.",
+          "oOo",
+          ".o."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "three_lobe": {
+        "source": "native picker composition",
+        "recipe": "rounded_diamond/accessory/three_lobe/light",
+        "bodyLayerHash": "d49775775c7d1738599e9e7a00df80cf95ab2acefe7810cb169023d9b2f3bb27",
+        "accessoryLayerHash": "435be052c1052f4e21becac7b1718c81558df70dd87d64c3f51a99f1dd0557f4",
+        "nativeBounds": [
+          113,
+          75,
+          70,
+          62
+        ],
+        "nativeBodyBounds": [
+          86,
+          89,
+          212,
+          206
+        ],
+        "x": 2,
+        "y": -2,
+        "rows": [
+          "..OOO",
+          ".OOoo",
+          "OOo..",
+          "oo..."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "crown": {
+        "source": "native picker composition",
+        "recipe": "rounded_diamond/accessory/crown/light",
+        "bodyLayerHash": "d49775775c7d1738599e9e7a00df80cf95ab2acefe7810cb169023d9b2f3bb27",
+        "accessoryLayerHash": "dab7713a5da4c9a13018749446933e95d9405840451d91a070623e2a7ec56d3a",
+        "nativeBounds": [
+          130,
+          47,
+          124,
+          71
+        ],
+        "nativeBodyBounds": [
+          86,
+          89,
+          212,
+          206
+        ],
+        "x": 3,
+        "y": -3,
+        "rows": [
+          "..Y..",
+          "Y.Y.Y",
+          "oOOOo",
+          ".ooo."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      }
+    },
+    "rounded_head_two_ears": {
+      "beanie": {
+        "source": "custom; native headwear recipe unavailable",
+        "x": 3,
+        "y": 0,
+        "rows": [
+          ".OOO.",
+          "YOOOO",
+          "ooooo"
+        ],
+        "foregroundPixels": [
+          [
+            2,
+            0
+          ],
+          [
+            3,
+            0
+          ],
+          [
+            7,
+            0
+          ],
+          [
+            8,
+            0
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            2,
+            1
+          ],
+          [
+            3,
+            1
+          ],
+          [
+            7,
+            1
+          ],
+          [
+            8,
+            1
+          ],
+          [
+            9,
+            1
+          ]
+        ],
+        "reason": "Rest the band on the actual head crown between/around the ear bases; retain both ear tips in front. No floating ear-tip perch."
+      },
+      "hat": {
+        "source": "custom; native headwear recipe unavailable",
+        "x": 3,
+        "y": -1,
+        "rows": [
+          "..OO..",
+          ".YOOO.",
+          ".OOOO.",
+          "oooooo"
+        ],
+        "foregroundPixels": [
+          [
+            2,
+            0
+          ],
+          [
+            3,
+            0
+          ],
+          [
+            7,
+            0
+          ],
+          [
+            8,
+            0
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            2,
+            1
+          ],
+          [
+            3,
+            1
+          ],
+          [
+            7,
+            1
+          ],
+          [
+            8,
+            1
+          ],
+          [
+            9,
+            1
+          ]
+        ],
+        "reason": "Rest the band on the actual head crown between/around the ear bases; retain both ear tips in front. No floating ear-tip perch."
+      },
+      "orb": {
+        "source": "custom; native headwear recipe unavailable",
+        "x": 4,
+        "y": 0,
+        "rows": [
+          ".Y.",
+          "YOO",
+          ".o."
+        ],
+        "foregroundPixels": [
+          [
+            2,
+            0
+          ],
+          [
+            3,
+            0
+          ],
+          [
+            7,
+            0
+          ],
+          [
+            8,
+            0
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            2,
+            1
+          ],
+          [
+            3,
+            1
+          ],
+          [
+            7,
+            1
+          ],
+          [
+            8,
+            1
+          ],
+          [
+            9,
+            1
+          ]
+        ],
+        "reason": "Rest the band on the actual head crown between/around the ear bases; retain both ear tips in front. No floating ear-tip perch."
+      },
+      "three_lobe": {
+        "source": "custom; native headwear recipe unavailable",
+        "x": 3,
+        "y": -1,
+        "rows": [
+          "..OO.",
+          ".OOOO",
+          "OOOOO",
+          ".ooo."
+        ],
+        "foregroundPixels": [
+          [
+            2,
+            0
+          ],
+          [
+            3,
+            0
+          ],
+          [
+            7,
+            0
+          ],
+          [
+            8,
+            0
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            2,
+            1
+          ],
+          [
+            3,
+            1
+          ],
+          [
+            7,
+            1
+          ],
+          [
+            8,
+            1
+          ],
+          [
+            9,
+            1
+          ]
+        ],
+        "reason": "Rest the band on the actual head crown between/around the ear bases; retain both ear tips in front. No floating ear-tip perch."
+      },
+      "crown": {
+        "source": "custom; native headwear recipe unavailable",
+        "x": 3,
+        "y": -1,
+        "rows": [
+          "..Y..",
+          "Y.O.O",
+          "OOOOO",
+          ".ooo."
+        ],
+        "foregroundPixels": [
+          [
+            2,
+            0
+          ],
+          [
+            3,
+            0
+          ],
+          [
+            7,
+            0
+          ],
+          [
+            8,
+            0
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            2,
+            1
+          ],
+          [
+            3,
+            1
+          ],
+          [
+            7,
+            1
+          ],
+          [
+            8,
+            1
+          ],
+          [
+            9,
+            1
+          ]
+        ],
+        "reason": "Rest the band on the actual head crown between/around the ear bases; retain both ear tips in front. No floating ear-tip perch."
+      }
+    },
+    "six_lobed_flower": {
+      "beanie": {
+        "source": "native picker composition",
+        "recipe": "six_lobed_flower/accessory/beanie/light",
+        "bodyLayerHash": "40c3be093e07c332fe4dce17bcbc66bab800ee4fed921fe0097397578703d52e",
+        "accessoryLayerHash": "8a36ab14c91493886e67be90a656d7730a3a0cfb244b46e5de9c1a4aa1c7eb93",
+        "nativeBounds": [
+          84,
+          60,
+          161,
+          88
+        ],
+        "nativeBodyBounds": [
+          86,
+          95,
+          212,
+          194
+        ],
+        "x": 0,
+        "y": -2,
+        "rows": [
+          "..YOOOO.",
+          ".YOOOOOO",
+          "YOOOOooo",
+          "ooooo..."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "hat": {
+        "source": "native picker composition",
+        "recipe": "six_lobed_flower/accessory/hat/light",
+        "bodyLayerHash": "40c3be093e07c332fe4dce17bcbc66bab800ee4fed921fe0097397578703d52e",
+        "accessoryLayerHash": "f58d1ebd0a1c25380d9236ddfa7ceef783da7a7c9526a4efb0f93e30836b6203",
+        "nativeBounds": [
+          103,
+          36,
+          124,
+          109
+        ],
+        "nativeBodyBounds": [
+          86,
+          95,
+          212,
+          194
+        ],
+        "x": 1,
+        "y": -2,
+        "rows": [
+          ".YOO..",
+          ".YOOOO",
+          "YOOOOo",
+          "ooooo."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "orb": {
+        "source": "native picker composition",
+        "recipe": "six_lobed_flower/accessory/orb/light",
+        "bodyLayerHash": "40c3be093e07c332fe4dce17bcbc66bab800ee4fed921fe0097397578703d52e",
+        "accessoryLayerHash": "7ff57eb92db95cc2159df5043e4aa81698c402b0e8811ca133737914a100b45a",
+        "nativeBounds": [
+          145,
+          38,
+          60,
+          58
+        ],
+        "nativeBodyBounds": [
+          86,
+          95,
+          212,
+          194
+        ],
+        "x": 3,
+        "y": -3,
+        "rows": [
+          ".Y.",
+          "oOo",
+          ".o."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "three_lobe": {
+        "source": "native picker composition",
+        "recipe": "six_lobed_flower/accessory/three_lobe/light",
+        "bodyLayerHash": "40c3be093e07c332fe4dce17bcbc66bab800ee4fed921fe0097397578703d52e",
+        "accessoryLayerHash": "90bb2d003b89b608e7e019cf5728403c7fc9303cba7be2a47de48d9f6fd3593c",
+        "nativeBounds": [
+          104,
+          74,
+          67,
+          63
+        ],
+        "nativeBodyBounds": [
+          86,
+          95,
+          212,
+          194
+        ],
+        "x": 1,
+        "y": -2,
+        "rows": [
+          "..OOO",
+          ".OOoo",
+          "OOo..",
+          "oo..."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "crown": {
+        "source": "native picker composition",
+        "recipe": "six_lobed_flower/accessory/crown/light",
+        "bodyLayerHash": "40c3be093e07c332fe4dce17bcbc66bab800ee4fed921fe0097397578703d52e",
+        "accessoryLayerHash": "a32377f5e78245dcc85f5a4a398e28c1e4280a9cf03ffb1f94b5047c74b03c3c",
+        "nativeBounds": [
+          129,
+          56,
+          83,
+          54
+        ],
+        "nativeBodyBounds": [
+          86,
+          95,
+          212,
+          194
+        ],
+        "x": 2,
+        "y": -3,
+        "rows": [
+          "..Y..",
+          "Y.Y.Y",
+          "oOOOo",
+          ".ooo."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      }
+    },
+    "twelve_scalloped_rosette": {
+      "beanie": {
+        "source": "native picker composition",
+        "recipe": "twelve_scalloped_rosette/accessory/beanie/light",
+        "bodyLayerHash": "5e6bb98e4903c1406606d1d05ccdb46045327a956e06e575197c3725ac02200e",
+        "accessoryLayerHash": "a947103c876e48c25fe338d531dc1b03ba571c66278db9ba88ec55bcef922df0",
+        "nativeBounds": [
+          105,
+          42,
+          162,
+          101
+        ],
+        "nativeBodyBounds": [
+          86,
+          88,
+          212,
+          208
+        ],
+        "x": 2,
+        "y": -2,
+        "rows": [
+          ".YOOO.",
+          "YOOOOO",
+          "YOOOOo",
+          "ooooo."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "hat": {
+        "source": "native picker composition",
+        "recipe": "twelve_scalloped_rosette/accessory/hat/light",
+        "bodyLayerHash": "5e6bb98e4903c1406606d1d05ccdb46045327a956e06e575197c3725ac02200e",
+        "accessoryLayerHash": "965fb0202d5def26ddf51ea503cc3ccca1e85e198241eb536a11db500006c470",
+        "nativeBounds": [
+          115,
+          22,
+          137,
+          113
+        ],
+        "nativeBodyBounds": [
+          86,
+          88,
+          212,
+          208
+        ],
+        "x": 2,
+        "y": -2,
+        "rows": [
+          ".YOO.",
+          ".YOOO",
+          "YOOOO",
+          "ooooo"
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "orb": {
+        "source": "native picker composition",
+        "recipe": "twelve_scalloped_rosette/accessory/orb/light",
+        "bodyLayerHash": "5e6bb98e4903c1406606d1d05ccdb46045327a956e06e575197c3725ac02200e",
+        "accessoryLayerHash": "2aa4255839df3d3b80a885a50d02930b68dcf09f969e6349a650d4cb5f37db8a",
+        "nativeBounds": [
+          162,
+          30,
+          60,
+          59
+        ],
+        "nativeBodyBounds": [
+          86,
+          88,
+          212,
+          208
+        ],
+        "x": 4,
+        "y": -3,
+        "rows": [
+          ".Y.",
+          "oOo",
+          ".o."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "three_lobe": {
+        "source": "native picker composition",
+        "recipe": "twelve_scalloped_rosette/accessory/three_lobe/light",
+        "bodyLayerHash": "5e6bb98e4903c1406606d1d05ccdb46045327a956e06e575197c3725ac02200e",
+        "accessoryLayerHash": "e4fd7e6437e02ad29a400d60bff1ae2fb07db5e36479e9774b772a1a2ce3b4bd",
+        "nativeBounds": [
+          101,
+          68,
+          78,
+          54
+        ],
+        "nativeBodyBounds": [
+          86,
+          88,
+          212,
+          208
+        ],
+        "x": 2,
+        "y": -3,
+        "rows": [
+          "..OOO",
+          "OOOOo",
+          "OOoo.",
+          "oo..."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "crown": {
+        "source": "native picker composition",
+        "recipe": "twelve_scalloped_rosette/accessory/crown/light",
+        "bodyLayerHash": "5e6bb98e4903c1406606d1d05ccdb46045327a956e06e575197c3725ac02200e",
+        "accessoryLayerHash": "6a97b1ca2c76ffb3ccdf15a89e2c5c88866b11dd011a15c1942121612ae96985",
+        "nativeBounds": [
+          120,
+          38,
+          107,
+          66
+        ],
+        "nativeBodyBounds": [
+          86,
+          88,
+          212,
+          208
+        ],
+        "x": 2,
+        "y": -3,
+        "rows": [
+          "..Y..",
+          "Y.Y.Y",
+          "oOOOo",
+          ".ooo."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      }
+    },
+    "donut": {
+      "beanie": {
+        "source": "custom ring adaptation of native circle",
+        "recipe": "circle/accessory/beanie/light",
+        "bodyLayerHash": "fc10feb246d92e9f28437e021a69a40662b3120e58a3e6e3551bc62749ac4b1f",
+        "accessoryLayerHash": "472f7ee9a1751cc3ed1fc53486352bd62b8fe62b5eb49623183b340151fb5389",
+        "nativeBounds": [
+          108,
+          38,
+          168,
+          101
+        ],
+        "nativeBodyBounds": [
+          86,
+          86,
+          212,
+          212
+        ],
+        "x": 2,
+        "y": -2,
+        "rows": [
+          ".YOOO.",
+          "YOOOOO",
+          "YOOOOO",
+          "oooooo"
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "hat": {
+        "source": "custom ring adaptation of native circle",
+        "recipe": "circle/accessory/hat/light",
+        "bodyLayerHash": "b1cef802e0f7df9b5310281a523b24a3056b934abcdfa7a466119178adac467f",
+        "accessoryLayerHash": "c91d048302af040fd8b82f51a96b64e4f9b8c1b01f03dccf7984d241494833ed",
+        "nativeBounds": [
+          117,
+          14,
+          150,
+          118
+        ],
+        "nativeBodyBounds": [
+          87,
+          87,
+          210,
+          210
+        ],
+        "x": 2,
+        "y": -2,
+        "rows": [
+          ".YOOO.",
+          ".YOOO.",
+          "YOOOOO",
+          "oooooo"
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "orb": {
+        "source": "custom ring adaptation of native circle",
+        "recipe": "circle/accessory/orb/light",
+        "bodyLayerHash": "fc10feb246d92e9f28437e021a69a40662b3120e58a3e6e3551bc62749ac4b1f",
+        "accessoryLayerHash": "196e447594df4b8318b7b61c2e2d53d9e53c5db6b852107d5e710235a234f552",
+        "nativeBounds": [
+          162,
+          29,
+          60,
+          58
+        ],
+        "nativeBodyBounds": [
+          86,
+          86,
+          212,
+          212
+        ],
+        "x": 4,
+        "y": -3,
+        "rows": [
+          ".Y.",
+          "oOo",
+          ".o."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "three_lobe": {
+        "source": "custom ring adaptation of native circle",
+        "recipe": "circle/accessory/three_lobe/light",
+        "bodyLayerHash": "fc10feb246d92e9f28437e021a69a40662b3120e58a3e6e3551bc62749ac4b1f",
+        "accessoryLayerHash": "87e86a44ef4a49b40a4dae366f5baef4fe174947979089f9a934aa3380c6d3ee",
+        "nativeBounds": [
+          93,
+          62,
+          91,
+          62
+        ],
+        "nativeBodyBounds": [
+          86,
+          86,
+          212,
+          212
+        ],
+        "x": 1,
+        "y": -3,
+        "rows": [
+          ".OOOO",
+          ".OOoo",
+          "OOo..",
+          "oo..."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      },
+      "crown": {
+        "source": "custom ring adaptation of native circle",
+        "recipe": "circle/accessory/crown/light",
+        "bodyLayerHash": "fc10feb246d92e9f28437e021a69a40662b3120e58a3e6e3551bc62749ac4b1f",
+        "accessoryLayerHash": "ddffaba5b3e39e2d97a0fca195634079153ed90ccfb77d19523ccd82958233d2",
+        "nativeBounds": [
+          127,
+          26,
+          130,
+          73
+        ],
+        "nativeBodyBounds": [
+          86,
+          86,
+          212,
+          212
+        ],
+        "x": 3,
+        "y": -4,
+        "rows": [
+          "..Y..",
+          "Y.Y.Y",
+          "oOOOo",
+          ".ooo."
+        ],
+        "reason": "Use this item\u2019s native crown/lobe and width; its lowest band contacts that contour. Pixel cleanup preserves the dome or three-lobe/three-prong identity."
+      }
+    }
+  }
+}

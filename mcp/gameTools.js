@@ -165,10 +165,7 @@ const createGameToolHandlers = ({
     if (!selectKey.ok) {
       return attachEvents(session, { ok: false, reason: 'missing_binding', skill, action });
     }
-    const applyKey = await pressAction(session, 'applySkillToSelected', 1);
-    if (!applyKey.ok) {
-      return attachEvents(session, { ok: false, reason: 'missing_binding', action: 'applySkillToSelected' });
-    }
+    // Skill hotkeys already select and apply once to the selected actor.
 
     const steps = Number.isFinite(postStep) ? Math.trunc(postStep) : 1;
     if (steps > 0) {

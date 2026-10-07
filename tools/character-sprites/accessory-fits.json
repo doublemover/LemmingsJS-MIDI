@@ -1,0 +1,2274 @@
+{
+  "format": "hydro-accessory-fits-v1",
+  "symbols": {
+    ".": "transparent",
+    "p": "palette",
+    "d": "dark hardware/lens",
+    "h": "lens highlight"
+  },
+  "shapes": {
+    "rounded_triangle": {
+      "headphones": {
+        "recipe": "rounded_triangle/accessory/headphones/light",
+        "bodyLayerHash": "0d115fd122bd1cfd070473277a5ea04b1a49c47c46fdc0d2104db2409f82df0d",
+        "accessoryLayerHash": "8fc8b04f18e87ed7a229c3fa9f08bb2c4328dbf0ced07c9aff46668734916427",
+        "nativeBounds": [
+          68,
+          82,
+          248,
+          147
+        ],
+        "nativeBodyBounds": [
+          86,
+          98,
+          212,
+          188
+        ],
+        "source": "native picker composition",
+        "x": 0,
+        "y": -1,
+        "rows": [
+          "....ppp....",
+          "...p...p...",
+          "..p.....p..",
+          ".pp.....pp.",
+          "dd.......dd",
+          "dd.......dd"
+        ],
+        "reason": "Native arch and side-pad fit; pad material stays dark and the band has its own palette."
+      },
+      "bow": {
+        "recipe": "rounded_triangle/accessory/bow/light",
+        "bodyLayerHash": "0d115fd122bd1cfd070473277a5ea04b1a49c47c46fdc0d2104db2409f82df0d",
+        "accessoryLayerHash": "e9353e4a6d1beaa709881ce5a6ce68634ee7b94b256981f39912e08020ff07a3",
+        "nativeBounds": [
+          139,
+          254,
+          106,
+          43
+        ],
+        "nativeBodyBounds": [
+          86,
+          98,
+          212,
+          188
+        ],
+        "source": "native picker composition",
+        "x": 3,
+        "y": 6,
+        "rows": [
+          "pp.pp",
+          "ppdpp"
+        ],
+        "reason": "Native neck slot; two cloth wings meet a shadowed one-pixel knot at the lower body contour."
+      },
+      "monocle": {
+        "recipe": "rounded_triangle/eyewear/monocle/light",
+        "bodyLayerHash": "0d115fd122bd1cfd070473277a5ea04b1a49c47c46fdc0d2104db2409f82df0d",
+        "accessoryLayerHash": "b56546f5e5d37104f66b5cfdc2778d10450cbd71c29c18294d2ae132573ebfb1",
+        "nativeBounds": [
+          186,
+          140,
+          98,
+          87
+        ],
+        "nativeBodyBounds": [
+          86,
+          98,
+          212,
+          188
+        ],
+        "source": "native picker composition",
+        "x": 7,
+        "y": 3,
+        "rows": [
+          ".p..",
+          "p.p.",
+          ".p..",
+          "..p."
+        ],
+        "reason": "Open lens centered on the actual near eye; native trailing cord follows the cheek."
+      },
+      "tall_oval_frames": {
+        "recipe": "rounded_triangle/eyewear/tall_oval_frames/light",
+        "bodyLayerHash": "0d115fd122bd1cfd070473277a5ea04b1a49c47c46fdc0d2104db2409f82df0d",
+        "accessoryLayerHash": "d9f33cd61bd2ad820c850354b1f83b3bf70913a30093e7b70155425eb37838e5",
+        "nativeBounds": [
+          123,
+          131,
+          137,
+          85
+        ],
+        "nativeBodyBounds": [
+          86,
+          98,
+          212,
+          188
+        ],
+        "source": "native picker composition",
+        "x": 5,
+        "y": 3,
+        "rows": [
+          ".p.p.",
+          "p.p.p",
+          "p.p.p",
+          ".p.p."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "separate_trapezoid_lenses": {
+        "recipe": "rounded_triangle/eyewear/separate_trapezoid_lenses/light",
+        "bodyLayerHash": "0d115fd122bd1cfd070473277a5ea04b1a49c47c46fdc0d2104db2409f82df0d",
+        "accessoryLayerHash": "72bc25aaee0b796fc30b2fec6e8fbcfc747cdce9c01b06851355a7ae319b8d63",
+        "nativeBounds": [
+          103,
+          142,
+          178,
+          62
+        ],
+        "nativeBodyBounds": [
+          86,
+          98,
+          212,
+          188
+        ],
+        "source": "native picker composition",
+        "x": 5,
+        "y": 3,
+        "rows": [
+          "pp.pp",
+          "dd.dd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "classic_sunglasses": {
+        "recipe": "rounded_triangle/eyewear/classic_sunglasses/light",
+        "bodyLayerHash": "0d115fd122bd1cfd070473277a5ea04b1a49c47c46fdc0d2104db2409f82df0d",
+        "accessoryLayerHash": "18a9610d742a5841181f06776f71198c4af08463d5382639689706e76ed83c4a",
+        "nativeBounds": [
+          103,
+          144,
+          178,
+          58
+        ],
+        "nativeBodyBounds": [
+          86,
+          98,
+          212,
+          188
+        ],
+        "source": "native picker composition",
+        "x": 5,
+        "y": 3,
+        "rows": [
+          "ppppp",
+          "dd.dd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "round_sunglasses": {
+        "recipe": "rounded_triangle/eyewear/round_sunglasses/light",
+        "bodyLayerHash": "0d115fd122bd1cfd070473277a5ea04b1a49c47c46fdc0d2104db2409f82df0d",
+        "accessoryLayerHash": "f14270aae8226d2cc6f9c013e3ce75f2f94eaedf8ace24ea03e69c02a26a104c",
+        "nativeBounds": [
+          103,
+          139,
+          178,
+          68
+        ],
+        "nativeBodyBounds": [
+          86,
+          98,
+          212,
+          188
+        ],
+        "source": "native picker composition",
+        "x": 5,
+        "y": 3,
+        "rows": [
+          ".h.h.",
+          "ddpdd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      }
+    },
+    "capsule": {
+      "headphones": {
+        "recipe": "capsule/accessory/headphones/light",
+        "bodyLayerHash": "f6038153708ddfcc2643fde114a8569f22abfb79675a15a93c1763fc0bed24b4",
+        "accessoryLayerHash": "e71c37b12f8f99ebdd2147f8f9c89b9cceb63b50e5dbd44a0d438f6030b2fab5",
+        "nativeBounds": [
+          65,
+          105,
+          254,
+          123
+        ],
+        "nativeBodyBounds": [
+          86,
+          119,
+          212,
+          146
+        ],
+        "source": "native picker composition",
+        "x": -1,
+        "y": 0,
+        "rows": [
+          "..pppppppp..",
+          ".pp......pp.",
+          "pp........pp",
+          "p..........p",
+          "dd........dd",
+          "dd........dd"
+        ],
+        "reason": "Native arch and side-pad fit; pad material stays dark and the band has its own palette."
+      },
+      "bow": {
+        "recipe": "capsule/accessory/bow/light",
+        "bodyLayerHash": "f6038153708ddfcc2643fde114a8569f22abfb79675a15a93c1763fc0bed24b4",
+        "accessoryLayerHash": "597a3b852a10ecbec8c8265ec5c8fd36740ae85e913b6ebeeb74ce3752e09643",
+        "nativeBounds": [
+          139,
+          232,
+          106,
+          43
+        ],
+        "nativeBodyBounds": [
+          86,
+          119,
+          212,
+          146
+        ],
+        "source": "native picker composition",
+        "x": 3,
+        "y": 6,
+        "rows": [
+          "pp.pp",
+          "ppdpp"
+        ],
+        "reason": "Native neck slot; two cloth wings meet a shadowed one-pixel knot at the lower body contour."
+      },
+      "monocle": {
+        "recipe": "capsule/eyewear/monocle/light",
+        "bodyLayerHash": "f6038153708ddfcc2643fde114a8569f22abfb79675a15a93c1763fc0bed24b4",
+        "accessoryLayerHash": "c23178907df6adbe27b995cf222ec4844430b6d024ea33aea4c236290af5891d",
+        "nativeBounds": [
+          191,
+          147,
+          93,
+          83
+        ],
+        "nativeBodyBounds": [
+          86,
+          119,
+          212,
+          146
+        ],
+        "source": "native picker composition",
+        "x": 7,
+        "y": 3,
+        "rows": [
+          ".p..",
+          "p.p.",
+          ".p..",
+          "..p."
+        ],
+        "reason": "Open lens centered on the actual near eye; native trailing cord follows the cheek."
+      },
+      "tall_oval_frames": {
+        "recipe": "capsule/eyewear/tall_oval_frames/light",
+        "bodyLayerHash": "f6038153708ddfcc2643fde114a8569f22abfb79675a15a93c1763fc0bed24b4",
+        "accessoryLayerHash": "4debbafc383cc19563f90e883c0e9cb0e0f07f6a52cee4cfce112f73813a001e",
+        "nativeBounds": [
+          129,
+          140,
+          126,
+          76
+        ],
+        "nativeBodyBounds": [
+          86,
+          119,
+          212,
+          146
+        ],
+        "source": "native picker composition",
+        "x": 5,
+        "y": 3,
+        "rows": [
+          ".p.p.",
+          "p.p.p",
+          "p.p.p",
+          ".p.p."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "separate_trapezoid_lenses": {
+        "recipe": "capsule/eyewear/separate_trapezoid_lenses/light",
+        "bodyLayerHash": "f6038153708ddfcc2643fde114a8569f22abfb79675a15a93c1763fc0bed24b4",
+        "accessoryLayerHash": "ae4689b81897b9153e0ba847707613725ac3e89602a9a47470e4deb4c8c8db4f",
+        "nativeBounds": [
+          104,
+          147,
+          176,
+          61
+        ],
+        "nativeBodyBounds": [
+          86,
+          119,
+          212,
+          146
+        ],
+        "source": "native picker composition",
+        "x": 5,
+        "y": 3,
+        "rows": [
+          "pp.pp",
+          "dd.dd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "classic_sunglasses": {
+        "recipe": "capsule/eyewear/classic_sunglasses/light",
+        "bodyLayerHash": "f6038153708ddfcc2643fde114a8569f22abfb79675a15a93c1763fc0bed24b4",
+        "accessoryLayerHash": "78c120408860bb11389c54afa450e477766152aa555e4090c77385808bffbc4b",
+        "nativeBounds": [
+          104,
+          148,
+          176,
+          59
+        ],
+        "nativeBodyBounds": [
+          86,
+          119,
+          212,
+          146
+        ],
+        "source": "native picker composition",
+        "x": 5,
+        "y": 3,
+        "rows": [
+          "ppppp",
+          "dd.dd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "round_sunglasses": {
+        "recipe": "capsule/eyewear/round_sunglasses/light",
+        "bodyLayerHash": "f6038153708ddfcc2643fde114a8569f22abfb79675a15a93c1763fc0bed24b4",
+        "accessoryLayerHash": "3bb48561fd2415f6bab80b16331b609a299fd6355128c232a56011cdd45b3272",
+        "nativeBounds": [
+          104,
+          144,
+          176,
+          67
+        ],
+        "nativeBodyBounds": [
+          86,
+          119,
+          212,
+          146
+        ],
+        "source": "native picker composition",
+        "x": 5,
+        "y": 3,
+        "rows": [
+          ".h.h.",
+          "ddpdd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      }
+    },
+    "circle": {
+      "headphones": {
+        "recipe": "circle/accessory/headphones/light",
+        "bodyLayerHash": "fc10feb246d92e9f28437e021a69a40662b3120e58a3e6e3551bc62749ac4b1f",
+        "accessoryLayerHash": "0937ec7cf61fb377663da549d35fc03261aea1410624b67b3cf7123b2a937612",
+        "nativeBounds": [
+          50,
+          70,
+          284,
+          179
+        ],
+        "nativeBodyBounds": [
+          86,
+          86,
+          212,
+          212
+        ],
+        "source": "native picker composition",
+        "x": 0,
+        "y": -1,
+        "rows": [
+          "...ppppp...",
+          "..p.....p..",
+          ".p.......p.",
+          "pp.......pp",
+          "pp.......pp",
+          "dd.......dd",
+          "dd.......dd"
+        ],
+        "reason": "Native arch and side-pad fit; pad material stays dark and the band has its own palette."
+      },
+      "bow": {
+        "recipe": "circle/accessory/bow/light",
+        "bodyLayerHash": "fc10feb246d92e9f28437e021a69a40662b3120e58a3e6e3551bc62749ac4b1f",
+        "accessoryLayerHash": "a98dbbe1c7970e32d45569eb89b9399b8533899132ecc24559ed59757d0ba6aa",
+        "nativeBounds": [
+          139,
+          265,
+          106,
+          44
+        ],
+        "nativeBodyBounds": [
+          86,
+          86,
+          212,
+          212
+        ],
+        "source": "native picker composition",
+        "x": 3,
+        "y": 6,
+        "rows": [
+          "pp.pp",
+          "ppdpp"
+        ],
+        "reason": "Native neck slot; two cloth wings meet a shadowed one-pixel knot at the lower body contour."
+      },
+      "monocle": {
+        "recipe": "circle/eyewear/monocle/light",
+        "bodyLayerHash": "fc10feb246d92e9f28437e021a69a40662b3120e58a3e6e3551bc62749ac4b1f",
+        "accessoryLayerHash": "4b37dd5cbee4021341b38338fdee4e7a33b46aa01253fae2a6d2579791e57fd3",
+        "nativeBounds": [
+          191,
+          139,
+          94,
+          85
+        ],
+        "nativeBodyBounds": [
+          86,
+          86,
+          212,
+          212
+        ],
+        "source": "native picker composition",
+        "x": 6,
+        "y": 3,
+        "rows": [
+          ".p..",
+          "p.p.",
+          ".p..",
+          "..p."
+        ],
+        "reason": "Open lens centered on the actual near eye; native trailing cord follows the cheek."
+      },
+      "tall_oval_frames": {
+        "recipe": "circle/eyewear/tall_oval_frames/light",
+        "bodyLayerHash": "fc10feb246d92e9f28437e021a69a40662b3120e58a3e6e3551bc62749ac4b1f",
+        "accessoryLayerHash": "f5cf44f7a5d53456508d4960dc4b48574590e077d0e18b310edc0b202c220b89",
+        "nativeBounds": [
+          128,
+          133,
+          127,
+          76
+        ],
+        "nativeBodyBounds": [
+          86,
+          86,
+          212,
+          212
+        ],
+        "source": "native picker composition",
+        "x": 4,
+        "y": 3,
+        "rows": [
+          ".p.p.",
+          "p.p.p",
+          "p.p.p",
+          ".p.p."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "separate_trapezoid_lenses": {
+        "recipe": "circle/eyewear/separate_trapezoid_lenses/light",
+        "bodyLayerHash": "fc10feb246d92e9f28437e021a69a40662b3120e58a3e6e3551bc62749ac4b1f",
+        "accessoryLayerHash": "706bb53caa6be620ffdec68c653ecbcc62126184e172beec2783c715f7a2b3ce",
+        "nativeBounds": [
+          104,
+          140,
+          176,
+          62
+        ],
+        "nativeBodyBounds": [
+          86,
+          86,
+          212,
+          212
+        ],
+        "source": "native picker composition",
+        "x": 4,
+        "y": 3,
+        "rows": [
+          "pp.pp",
+          "dd.dd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "classic_sunglasses": {
+        "recipe": "circle/eyewear/classic_sunglasses/light",
+        "bodyLayerHash": "fc10feb246d92e9f28437e021a69a40662b3120e58a3e6e3551bc62749ac4b1f",
+        "accessoryLayerHash": "28250d49d7cebf0e90d135c6cfa87b7b84a87ead0121b775c01e6236fca0a96b",
+        "nativeBounds": [
+          104,
+          142,
+          176,
+          58
+        ],
+        "nativeBodyBounds": [
+          86,
+          86,
+          212,
+          212
+        ],
+        "source": "native picker composition",
+        "x": 4,
+        "y": 3,
+        "rows": [
+          "ppppp",
+          "dd.dd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "round_sunglasses": {
+        "recipe": "circle/eyewear/round_sunglasses/light",
+        "bodyLayerHash": "fc10feb246d92e9f28437e021a69a40662b3120e58a3e6e3551bc62749ac4b1f",
+        "accessoryLayerHash": "ea6cb1adb5072c9a11cac5813c571e0f6e972ef65b2acdb951b0ca7b80b55e65",
+        "nativeBounds": [
+          104,
+          137,
+          176,
+          67
+        ],
+        "nativeBodyBounds": [
+          86,
+          86,
+          212,
+          212
+        ],
+        "source": "native picker composition",
+        "x": 4,
+        "y": 3,
+        "rows": [
+          ".h.h.",
+          "ddpdd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      }
+    },
+    "circle_two_ears": {
+      "headphones": {
+        "recipe": "circle_two_ears/accessory/headphones/light",
+        "bodyLayerHash": "475b2d959d681a4e5a71833023ba589888aa77d40b5a34c80f4e1b757cb4311d",
+        "accessoryLayerHash": "2104c1f0f6f39c8d743fc8fc5f8926afe9eb20277dc596e6bbfbad96cf6d90ed",
+        "nativeBounds": [
+          89,
+          114,
+          206,
+          145
+        ],
+        "nativeBodyBounds": [
+          112,
+          86,
+          160,
+          212
+        ],
+        "source": "native picker composition",
+        "x": 1,
+        "y": 1,
+        "rows": [
+          "..pppp..",
+          ".p....p.",
+          "p......p",
+          "d......d",
+          "d......d"
+        ],
+        "reason": "Native arch and side-pad fit; pad material stays dark and the band has its own palette."
+      },
+      "bow": {
+        "recipe": "circle_two_ears/accessory/bow/light",
+        "bodyLayerHash": "475b2d959d681a4e5a71833023ba589888aa77d40b5a34c80f4e1b757cb4311d",
+        "accessoryLayerHash": "5df05ff8a71813d037f28930d53fe4cb1fe39f3e23b6ef6cb8fccfae07cb6355",
+        "nativeBounds": [
+          152,
+          273,
+          80,
+          33
+        ],
+        "nativeBodyBounds": [
+          112,
+          86,
+          160,
+          212
+        ],
+        "source": "native picker composition",
+        "x": 3,
+        "y": 6,
+        "rows": [
+          "pp.pp",
+          "ppdpp"
+        ],
+        "reason": "Native neck slot; two cloth wings meet a shadowed one-pixel knot at the lower body contour."
+      },
+      "monocle": {
+        "recipe": "circle_two_ears/eyewear/monocle/light",
+        "bodyLayerHash": "475b2d959d681a4e5a71833023ba589888aa77d40b5a34c80f4e1b757cb4311d",
+        "accessoryLayerHash": "73bbcae7fb48c39fad5a4f8cc13a3274285a444361ad033cb8bb91fa1c5f6c26",
+        "nativeBounds": [
+          190,
+          196,
+          67,
+          60
+        ],
+        "nativeBodyBounds": [
+          112,
+          86,
+          160,
+          212
+        ],
+        "source": "native picker composition",
+        "x": 6,
+        "y": 3,
+        "rows": [
+          ".p..",
+          "p.p.",
+          ".p..",
+          "..p."
+        ],
+        "reason": "Open lens centered on the actual near eye; native trailing cord follows the cheek."
+      },
+      "tall_oval_frames": {
+        "recipe": "circle_two_ears/eyewear/tall_oval_frames/light",
+        "bodyLayerHash": "475b2d959d681a4e5a71833023ba589888aa77d40b5a34c80f4e1b757cb4311d",
+        "accessoryLayerHash": "1cad4bb4b20639ca0a562447fab35489d440e35166c0018510defab6a5672260",
+        "nativeBounds": [
+          141,
+          187,
+          101,
+          61
+        ],
+        "nativeBodyBounds": [
+          112,
+          86,
+          160,
+          212
+        ],
+        "source": "native picker composition",
+        "x": 4,
+        "y": 3,
+        "rows": [
+          ".p.p.",
+          "p.p.p",
+          "p.p.p",
+          ".p.p."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "separate_trapezoid_lenses": {
+        "recipe": "circle_two_ears/eyewear/separate_trapezoid_lenses/light",
+        "bodyLayerHash": "475b2d959d681a4e5a71833023ba589888aa77d40b5a34c80f4e1b757cb4311d",
+        "accessoryLayerHash": "bafd8fca0f4569d5293405efeb8587afd34b2ce3d5ac0df3df8e749ead082e6b",
+        "nativeBounds": [
+          116,
+          191,
+          152,
+          53
+        ],
+        "nativeBodyBounds": [
+          112,
+          86,
+          160,
+          212
+        ],
+        "source": "native picker composition",
+        "x": 4,
+        "y": 3,
+        "rows": [
+          "pp.pp",
+          "dd.dd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "classic_sunglasses": {
+        "recipe": "circle_two_ears/eyewear/classic_sunglasses/light",
+        "bodyLayerHash": "475b2d959d681a4e5a71833023ba589888aa77d40b5a34c80f4e1b757cb4311d",
+        "accessoryLayerHash": "21bf0e18a4c362b0dfc484e36f5398779ed707987f36d564230c56fda0c1ba9c",
+        "nativeBounds": [
+          116,
+          192,
+          152,
+          50
+        ],
+        "nativeBodyBounds": [
+          112,
+          86,
+          160,
+          212
+        ],
+        "source": "native picker composition",
+        "x": 4,
+        "y": 3,
+        "rows": [
+          "ppppp",
+          "dd.dd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "round_sunglasses": {
+        "recipe": "circle_two_ears/eyewear/round_sunglasses/light",
+        "bodyLayerHash": "475b2d959d681a4e5a71833023ba589888aa77d40b5a34c80f4e1b757cb4311d",
+        "accessoryLayerHash": "d4c9abbdb1e09f6295645b18ec55b2a1554b01cc88b2938c11ce006149433138",
+        "nativeBounds": [
+          116,
+          188,
+          152,
+          58
+        ],
+        "nativeBodyBounds": [
+          112,
+          86,
+          160,
+          212
+        ],
+        "source": "native picker composition",
+        "x": 4,
+        "y": 3,
+        "rows": [
+          ".h.h.",
+          "ddpdd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      }
+    },
+    "four_lobed_butterfly": {
+      "headphones": {
+        "recipe": "four_lobed_butterfly/accessory/headphones/light",
+        "bodyLayerHash": "2a7734a6fd31538d797a6349a706fdc1ddd60b49a0cf8c90d5c1b2aec275d4ab",
+        "accessoryLayerHash": "23393cbac93e7f2bc70b3e993bd616e7939596263dbfee32d40b2c6e5bb664c2",
+        "nativeBounds": [
+          72,
+          96,
+          240,
+          133
+        ],
+        "nativeBodyBounds": [
+          86,
+          110,
+          212,
+          164
+        ],
+        "source": "native picker composition",
+        "x": -1,
+        "y": -1,
+        "rows": [
+          "..ppppppp..",
+          ".p.......p.",
+          "p.........p",
+          "pp.......pp",
+          "dd.......dd",
+          "d.........d"
+        ],
+        "reason": "Native arch and side-pad fit; pad material stays dark and the band has its own palette."
+      },
+      "bow": {
+        "recipe": "four_lobed_butterfly/accessory/bow/light",
+        "bodyLayerHash": "2a7734a6fd31538d797a6349a706fdc1ddd60b49a0cf8c90d5c1b2aec275d4ab",
+        "accessoryLayerHash": "a6a97fb7b5b6a8e0f68cb3c61b75b061cf611c0dce9f410ce7bc59e2f3ec876c",
+        "nativeBounds": [
+          139,
+          228,
+          106,
+          42
+        ],
+        "nativeBodyBounds": [
+          86,
+          110,
+          212,
+          164
+        ],
+        "source": "native picker composition",
+        "x": 3,
+        "y": 6,
+        "rows": [
+          "pp.pp",
+          "ppdpp"
+        ],
+        "reason": "Native neck slot; two cloth wings meet a shadowed one-pixel knot at the lower body contour."
+      },
+      "monocle": {
+        "recipe": "four_lobed_butterfly/eyewear/monocle/light",
+        "bodyLayerHash": "2a7734a6fd31538d797a6349a706fdc1ddd60b49a0cf8c90d5c1b2aec275d4ab",
+        "accessoryLayerHash": "bb7c47ad608c2be10e2459daaadb364e730df23cdfb1d20f74aabad0a5355806",
+        "nativeBounds": [
+          188,
+          141,
+          100,
+          89
+        ],
+        "nativeBodyBounds": [
+          86,
+          110,
+          212,
+          164
+        ],
+        "source": "native picker composition",
+        "x": 7,
+        "y": 3,
+        "rows": [
+          ".p..",
+          "p.p.",
+          ".p..",
+          "..p."
+        ],
+        "reason": "Open lens centered on the actual near eye; native trailing cord follows the cheek."
+      },
+      "tall_oval_frames": {
+        "recipe": "four_lobed_butterfly/eyewear/tall_oval_frames/light",
+        "bodyLayerHash": "2a7734a6fd31538d797a6349a706fdc1ddd60b49a0cf8c90d5c1b2aec275d4ab",
+        "accessoryLayerHash": "d42b95f229ff36001024ee5e941cebc91c9f5a5d6f2f2477e47d604c36730de9",
+        "nativeBounds": [
+          128,
+          137,
+          127,
+          77
+        ],
+        "nativeBodyBounds": [
+          86,
+          110,
+          212,
+          164
+        ],
+        "source": "native picker composition",
+        "x": 5,
+        "y": 3,
+        "rows": [
+          ".p.p.",
+          "p.p.p",
+          "p.p.p",
+          ".p.p."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "separate_trapezoid_lenses": {
+        "recipe": "four_lobed_butterfly/eyewear/separate_trapezoid_lenses/light",
+        "bodyLayerHash": "2a7734a6fd31538d797a6349a706fdc1ddd60b49a0cf8c90d5c1b2aec275d4ab",
+        "accessoryLayerHash": "bd7beb5a4501097a447fb97c30acd2923b123a580f4753b00fa06de70a0c3cb2",
+        "nativeBounds": [
+          104,
+          145,
+          176,
+          62
+        ],
+        "nativeBodyBounds": [
+          86,
+          110,
+          212,
+          164
+        ],
+        "source": "native picker composition",
+        "x": 5,
+        "y": 3,
+        "rows": [
+          "pp.pp",
+          "dd.dd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "classic_sunglasses": {
+        "recipe": "four_lobed_butterfly/eyewear/classic_sunglasses/light",
+        "bodyLayerHash": "2a7734a6fd31538d797a6349a706fdc1ddd60b49a0cf8c90d5c1b2aec275d4ab",
+        "accessoryLayerHash": "bab7271430a02d8dfff42dce2e11d3bd9c1503ea5f829982ac440b2efca09f12",
+        "nativeBounds": [
+          104,
+          147,
+          176,
+          58
+        ],
+        "nativeBodyBounds": [
+          86,
+          110,
+          212,
+          164
+        ],
+        "source": "native picker composition",
+        "x": 5,
+        "y": 3,
+        "rows": [
+          "ppppp",
+          "dd.dd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "round_sunglasses": {
+        "recipe": "four_lobed_butterfly/eyewear/round_sunglasses/light",
+        "bodyLayerHash": "2a7734a6fd31538d797a6349a706fdc1ddd60b49a0cf8c90d5c1b2aec275d4ab",
+        "accessoryLayerHash": "63bc1a4c27a035f1358a18fa2a8e65d95cc4cd4d14d0fc4505c978dbeb108f42",
+        "nativeBounds": [
+          104,
+          142,
+          176,
+          67
+        ],
+        "nativeBodyBounds": [
+          86,
+          110,
+          212,
+          164
+        ],
+        "source": "native picker composition",
+        "x": 5,
+        "y": 3,
+        "rows": [
+          ".h.h.",
+          "ddpdd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      }
+    },
+    "heart": {
+      "headphones": {
+        "recipe": "heart/accessory/headphones/light",
+        "bodyLayerHash": "3f8b9e15dc8b8271edebd7238144f5df99fb0d1564870cc3a5c4c7570ea60c5a",
+        "accessoryLayerHash": "5cfaceeac4b7ff944d2b10873ee14f975cf4bbbc40dd6ebcc9d864f5b27e4830",
+        "nativeBounds": [
+          69,
+          79,
+          246,
+          142
+        ],
+        "nativeBodyBounds": [
+          86,
+          94,
+          212,
+          195
+        ],
+        "source": "native picker composition",
+        "x": 0,
+        "y": -1,
+        "rows": [
+          ".pppppppp.",
+          "p........p",
+          "p........p",
+          "p........p",
+          "dd......dd",
+          "dd......dd"
+        ],
+        "reason": "Native arch and side-pad fit; pad material stays dark and the band has its own palette."
+      },
+      "bow": {
+        "recipe": "heart/accessory/bow/light",
+        "bodyLayerHash": "3f8b9e15dc8b8271edebd7238144f5df99fb0d1564870cc3a5c4c7570ea60c5a",
+        "accessoryLayerHash": "89a9b318d7440cd8c7650e26ef4362bc187139bcaf4614ceee6d7f964a7d15a1",
+        "nativeBounds": [
+          139,
+          257,
+          106,
+          43
+        ],
+        "nativeBodyBounds": [
+          86,
+          94,
+          212,
+          195
+        ],
+        "source": "native picker composition",
+        "x": 3,
+        "y": 6,
+        "rows": [
+          "pp.pp",
+          "ppdpp"
+        ],
+        "reason": "Native neck slot; two cloth wings meet a shadowed one-pixel knot at the lower body contour."
+      },
+      "monocle": {
+        "recipe": "heart/eyewear/monocle/light",
+        "bodyLayerHash": "3f8b9e15dc8b8271edebd7238144f5df99fb0d1564870cc3a5c4c7570ea60c5a",
+        "accessoryLayerHash": "49f879e90d00abc4434ed7682ccb9c5b792035ce14d6f0b613fca0337db2ba6e",
+        "nativeBounds": [
+          189,
+          143,
+          90,
+          82
+        ],
+        "nativeBodyBounds": [
+          86,
+          94,
+          212,
+          195
+        ],
+        "source": "native picker composition",
+        "x": 6,
+        "y": 3,
+        "rows": [
+          ".p..",
+          "p.p.",
+          ".p..",
+          "..p."
+        ],
+        "reason": "Open lens centered on the actual near eye; native trailing cord follows the cheek."
+      },
+      "tall_oval_frames": {
+        "recipe": "heart/eyewear/tall_oval_frames/light",
+        "bodyLayerHash": "3f8b9e15dc8b8271edebd7238144f5df99fb0d1564870cc3a5c4c7570ea60c5a",
+        "accessoryLayerHash": "50c518ecc82ce4f75d92de25b9bbe26accaa4bef91e1994959d69a876fa691c2",
+        "nativeBounds": [
+          128,
+          133,
+          127,
+          79
+        ],
+        "nativeBodyBounds": [
+          86,
+          94,
+          212,
+          195
+        ],
+        "source": "native picker composition",
+        "x": 4,
+        "y": 3,
+        "rows": [
+          ".p.p.",
+          "p.p.p",
+          "p.p.p",
+          ".p.p."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "separate_trapezoid_lenses": {
+        "recipe": "heart/eyewear/separate_trapezoid_lenses/light",
+        "bodyLayerHash": "3f8b9e15dc8b8271edebd7238144f5df99fb0d1564870cc3a5c4c7570ea60c5a",
+        "accessoryLayerHash": "8545e6840cd2331d8a9bf66d21505d64935a258096dc0af66ec98c27a3d7a26e",
+        "nativeBounds": [
+          104,
+          142,
+          176,
+          61
+        ],
+        "nativeBodyBounds": [
+          86,
+          94,
+          212,
+          195
+        ],
+        "source": "native picker composition",
+        "x": 4,
+        "y": 3,
+        "rows": [
+          "pp.pp",
+          "dd.dd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "classic_sunglasses": {
+        "recipe": "heart/eyewear/classic_sunglasses/light",
+        "bodyLayerHash": "3f8b9e15dc8b8271edebd7238144f5df99fb0d1564870cc3a5c4c7570ea60c5a",
+        "accessoryLayerHash": "fa291203b81c40600b2a3a61b329b7add17375fb7e6359e85b5da8d09ba174fd",
+        "nativeBounds": [
+          104,
+          143,
+          176,
+          59
+        ],
+        "nativeBodyBounds": [
+          86,
+          94,
+          212,
+          195
+        ],
+        "source": "native picker composition",
+        "x": 4,
+        "y": 3,
+        "rows": [
+          "ppppp",
+          "dd.dd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "round_sunglasses": {
+        "recipe": "heart/eyewear/round_sunglasses/light",
+        "bodyLayerHash": "3f8b9e15dc8b8271edebd7238144f5df99fb0d1564870cc3a5c4c7570ea60c5a",
+        "accessoryLayerHash": "d9bff1faf0f4ee0f5af71ac50da345c2bf786e61305b55671ef64615e4c4fef3",
+        "nativeBounds": [
+          104,
+          139,
+          176,
+          67
+        ],
+        "nativeBodyBounds": [
+          86,
+          94,
+          212,
+          195
+        ],
+        "source": "native picker composition",
+        "x": 4,
+        "y": 3,
+        "rows": [
+          ".h.h.",
+          "ddpdd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      }
+    },
+    "rounded_cube": {
+      "headphones": {
+        "recipe": "rounded_cube/accessory/headphones/light",
+        "bodyLayerHash": "f4078fac3c7c6bb57f1977b8865bd9f44ebf4a788d930ae158f242e456c1949c",
+        "accessoryLayerHash": "fb755d8abc35de7691ca830f9ad4a4dfb4368aa511833adb1bdc5c4ca361419d",
+        "nativeBounds": [
+          64,
+          67,
+          256,
+          191
+        ],
+        "nativeBodyBounds": [
+          91,
+          86,
+          202,
+          212
+        ],
+        "source": "native picker composition",
+        "x": 0,
+        "y": -1,
+        "rows": [
+          "..pppppp..",
+          ".p......p.",
+          "pp.......p",
+          "dd.......p",
+          "dd.......p",
+          "........dd",
+          "........dd"
+        ],
+        "reason": "Native arch and side-pad fit; pad material stays dark and the band has its own palette."
+      },
+      "bow": {
+        "recipe": "rounded_cube/accessory/bow/light",
+        "bodyLayerHash": "f4078fac3c7c6bb57f1977b8865bd9f44ebf4a788d930ae158f242e456c1949c",
+        "accessoryLayerHash": "f901c67c400dbf18c9de8314cb1c2f874e3357e89c362dad11d10b3111630027",
+        "nativeBounds": [
+          141,
+          265,
+          102,
+          41
+        ],
+        "nativeBodyBounds": [
+          91,
+          86,
+          202,
+          212
+        ],
+        "source": "native picker composition",
+        "x": 3,
+        "y": 6,
+        "rows": [
+          "pp.pp",
+          "ppdpp"
+        ],
+        "reason": "Native neck slot; two cloth wings meet a shadowed one-pixel knot at the lower body contour."
+      },
+      "monocle": {
+        "recipe": "rounded_cube/eyewear/monocle/light",
+        "bodyLayerHash": "f4078fac3c7c6bb57f1977b8865bd9f44ebf4a788d930ae158f242e456c1949c",
+        "accessoryLayerHash": "b4775947f802ac9db9b441dcf6c9ec696ccd116b7815a388b6c901144912ff88",
+        "nativeBounds": [
+          189,
+          147,
+          86,
+          78
+        ],
+        "nativeBodyBounds": [
+          91,
+          86,
+          202,
+          212
+        ],
+        "source": "native picker composition",
+        "x": 6,
+        "y": 3,
+        "rows": [
+          ".p..",
+          "p.p.",
+          ".p..",
+          "..p."
+        ],
+        "reason": "Open lens centered on the actual near eye; native trailing cord follows the cheek."
+      },
+      "tall_oval_frames": {
+        "recipe": "rounded_cube/eyewear/tall_oval_frames/light",
+        "bodyLayerHash": "f4078fac3c7c6bb57f1977b8865bd9f44ebf4a788d930ae158f242e456c1949c",
+        "accessoryLayerHash": "b093107888fd52ccb8b5f9abe4c6ef5439cf767c5942d294d1c84713df0ee86a",
+        "nativeBounds": [
+          131,
+          139,
+          121,
+          73
+        ],
+        "nativeBodyBounds": [
+          91,
+          86,
+          202,
+          212
+        ],
+        "source": "native picker composition",
+        "x": 4,
+        "y": 3,
+        "rows": [
+          ".p.p.",
+          "p.p.p",
+          "p.p.p",
+          ".p.p."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "separate_trapezoid_lenses": {
+        "recipe": "rounded_cube/eyewear/separate_trapezoid_lenses/light",
+        "bodyLayerHash": "f4078fac3c7c6bb57f1977b8865bd9f44ebf4a788d930ae158f242e456c1949c",
+        "accessoryLayerHash": "c34fd391e2d04398038cebf6b47ebb2f57c30b7eb877052c6ec3b2e3e8ab120a",
+        "nativeBounds": [
+          103,
+          144,
+          177,
+          62
+        ],
+        "nativeBodyBounds": [
+          91,
+          86,
+          202,
+          212
+        ],
+        "source": "native picker composition",
+        "x": 4,
+        "y": 3,
+        "rows": [
+          "pp.pp",
+          "dd.dd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "classic_sunglasses": {
+        "recipe": "rounded_cube/eyewear/classic_sunglasses/light",
+        "bodyLayerHash": "f4078fac3c7c6bb57f1977b8865bd9f44ebf4a788d930ae158f242e456c1949c",
+        "accessoryLayerHash": "c749ab31f04c5ca875c44870a527a916fd161750405fff0a7766db2d8e8027d5",
+        "nativeBounds": [
+          103,
+          146,
+          177,
+          58
+        ],
+        "nativeBodyBounds": [
+          91,
+          86,
+          202,
+          212
+        ],
+        "source": "native picker composition",
+        "x": 4,
+        "y": 3,
+        "rows": [
+          "ppppp",
+          "dd.dd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "round_sunglasses": {
+        "recipe": "rounded_cube/eyewear/round_sunglasses/light",
+        "bodyLayerHash": "f4078fac3c7c6bb57f1977b8865bd9f44ebf4a788d930ae158f242e456c1949c",
+        "accessoryLayerHash": "84211f7ecfd70a623e2770467db53a293669a1be1632e6ca2002569ab0238e79",
+        "nativeBounds": [
+          104,
+          142,
+          176,
+          67
+        ],
+        "nativeBodyBounds": [
+          91,
+          86,
+          202,
+          212
+        ],
+        "source": "native picker composition",
+        "x": 4,
+        "y": 3,
+        "rows": [
+          ".h.h.",
+          "ddpdd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      }
+    },
+    "rounded_diamond": {
+      "headphones": {
+        "recipe": "rounded_diamond/accessory/headphones/light",
+        "bodyLayerHash": "d49775775c7d1738599e9e7a00df80cf95ab2acefe7810cb169023d9b2f3bb27",
+        "accessoryLayerHash": "3711bdde296b6e37953d4f3d3c5ca4002f2b7159518e78a4f645ddcd5a6aa739",
+        "nativeBounds": [
+          54,
+          73,
+          276,
+          174
+        ],
+        "nativeBodyBounds": [
+          86,
+          89,
+          212,
+          206
+        ],
+        "source": "native picker composition",
+        "x": 0,
+        "y": -1,
+        "rows": [
+          "...pppp...",
+          "..p....p..",
+          ".p......p.",
+          "pp......pp",
+          "pp......pp",
+          "dd......dd",
+          "dd......dd"
+        ],
+        "reason": "Native arch and side-pad fit; pad material stays dark and the band has its own palette."
+      },
+      "bow": {
+        "recipe": "rounded_diamond/accessory/bow/light",
+        "bodyLayerHash": "d49775775c7d1738599e9e7a00df80cf95ab2acefe7810cb169023d9b2f3bb27",
+        "accessoryLayerHash": "29b1747c341ed0e21ca6d8da4d715a6be0117f3460c72dad202366d5ab6028be",
+        "nativeBounds": [
+          139,
+          263,
+          106,
+          43
+        ],
+        "nativeBodyBounds": [
+          86,
+          89,
+          212,
+          206
+        ],
+        "source": "native picker composition",
+        "x": 3,
+        "y": 6,
+        "rows": [
+          "pp.pp",
+          "ppdpp"
+        ],
+        "reason": "Native neck slot; two cloth wings meet a shadowed one-pixel knot at the lower body contour."
+      },
+      "monocle": {
+        "recipe": "rounded_diamond/eyewear/monocle/light",
+        "bodyLayerHash": "d49775775c7d1738599e9e7a00df80cf95ab2acefe7810cb169023d9b2f3bb27",
+        "accessoryLayerHash": "489533fb2381ed6772ed494b71776abef0187c0678e133d7f72eddd9a88d6f6c",
+        "nativeBounds": [
+          188,
+          136,
+          101,
+          91
+        ],
+        "nativeBodyBounds": [
+          86,
+          89,
+          212,
+          206
+        ],
+        "source": "native picker composition",
+        "x": 6,
+        "y": 3,
+        "rows": [
+          ".p..",
+          "p.p.",
+          ".p..",
+          "..p."
+        ],
+        "reason": "Open lens centered on the actual near eye; native trailing cord follows the cheek."
+      },
+      "tall_oval_frames": {
+        "recipe": "rounded_diamond/eyewear/tall_oval_frames/light",
+        "bodyLayerHash": "d49775775c7d1738599e9e7a00df80cf95ab2acefe7810cb169023d9b2f3bb27",
+        "accessoryLayerHash": "e02c7743497cc0edc79354e9901ac61b32a274dece14f1e17c2be06fb23ab8bd",
+        "nativeBounds": [
+          127,
+          133,
+          129,
+          77
+        ],
+        "nativeBodyBounds": [
+          86,
+          89,
+          212,
+          206
+        ],
+        "source": "native picker composition",
+        "x": 4,
+        "y": 3,
+        "rows": [
+          ".p.p.",
+          "p.p.p",
+          "p.p.p",
+          ".p.p."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "separate_trapezoid_lenses": {
+        "recipe": "rounded_diamond/eyewear/separate_trapezoid_lenses/light",
+        "bodyLayerHash": "d49775775c7d1738599e9e7a00df80cf95ab2acefe7810cb169023d9b2f3bb27",
+        "accessoryLayerHash": "fc90235465b4e8e75a88284a64000aef085838d5ca4de65db71d4107c687813e",
+        "nativeBounds": [
+          103,
+          140,
+          178,
+          62
+        ],
+        "nativeBodyBounds": [
+          86,
+          89,
+          212,
+          206
+        ],
+        "source": "native picker composition",
+        "x": 4,
+        "y": 3,
+        "rows": [
+          "pp.pp",
+          "dd.dd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "classic_sunglasses": {
+        "recipe": "rounded_diamond/eyewear/classic_sunglasses/light",
+        "bodyLayerHash": "d49775775c7d1738599e9e7a00df80cf95ab2acefe7810cb169023d9b2f3bb27",
+        "accessoryLayerHash": "c5549dc1bcb0dcd494167b06c9ad581cf1fe79aa402a74a96beb69bea7190f35",
+        "nativeBounds": [
+          103,
+          142,
+          178,
+          59
+        ],
+        "nativeBodyBounds": [
+          86,
+          89,
+          212,
+          206
+        ],
+        "source": "native picker composition",
+        "x": 4,
+        "y": 3,
+        "rows": [
+          "ppppp",
+          "dd.dd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "round_sunglasses": {
+        "recipe": "rounded_diamond/eyewear/round_sunglasses/light",
+        "bodyLayerHash": "d49775775c7d1738599e9e7a00df80cf95ab2acefe7810cb169023d9b2f3bb27",
+        "accessoryLayerHash": "66413a21b6469f1499eced2affcb97e4710a7337e2dedc3f8a66c1cf68b51ec8",
+        "nativeBounds": [
+          104,
+          138,
+          176,
+          67
+        ],
+        "nativeBodyBounds": [
+          86,
+          89,
+          212,
+          206
+        ],
+        "source": "native picker composition",
+        "x": 4,
+        "y": 3,
+        "rows": [
+          ".h.h.",
+          "ddpdd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      }
+    },
+    "rounded_head_two_ears": {
+      "headphones": {
+        "recipe": "rounded_head_two_ears/accessory/headphones/light",
+        "bodyLayerHash": "d3a772a5ab7ea92d0f73e18bd8640308a9841ece0609eeca9670750088331da7",
+        "accessoryLayerHash": "1118540519be078952a0db136f539fdaa89764a05d7dde8ed178a8666a2bb7d5",
+        "nativeBounds": [
+          64,
+          82,
+          256,
+          156
+        ],
+        "nativeBodyBounds": [
+          86,
+          107,
+          212,
+          170
+        ],
+        "source": "native picker composition",
+        "x": -1,
+        "y": -1,
+        "rows": [
+          "...ppppppp...",
+          "..p.......p..",
+          ".p.........p.",
+          "p...........p",
+          "p...........p",
+          "dd.........dd",
+          "dd.........dd"
+        ],
+        "reason": "Native arch and side-pad fit; pad material stays dark and the band has its own palette."
+      },
+      "bow": {
+        "recipe": "rounded_head_two_ears/accessory/bow/light",
+        "bodyLayerHash": "d3a772a5ab7ea92d0f73e18bd8640308a9841ece0609eeca9670750088331da7",
+        "accessoryLayerHash": "d98f013f076e9c505961de93025d928c8b393fe4846e13b075f1895fa4edab1b",
+        "nativeBounds": [
+          139,
+          244,
+          106,
+          44
+        ],
+        "nativeBodyBounds": [
+          86,
+          107,
+          212,
+          170
+        ],
+        "source": "native picker composition",
+        "x": 3,
+        "y": 6,
+        "rows": [
+          "pp.pp",
+          "ppdpp"
+        ],
+        "reason": "Native neck slot; two cloth wings meet a shadowed one-pixel knot at the lower body contour."
+      },
+      "monocle": {
+        "recipe": "rounded_head_two_ears/eyewear/monocle/light",
+        "bodyLayerHash": "d3a772a5ab7ea92d0f73e18bd8640308a9841ece0609eeca9670750088331da7",
+        "accessoryLayerHash": "01c7c680ff3d71719ce019d9018a36d5885bebdaa33ed743c10a82b6b1729d9f",
+        "nativeBounds": [
+          215,
+          116,
+          84,
+          76
+        ],
+        "nativeBodyBounds": [
+          86,
+          107,
+          212,
+          170
+        ],
+        "source": "native picker composition",
+        "x": 7,
+        "y": 3,
+        "rows": [
+          ".p..",
+          "p.p.",
+          ".p..",
+          "..p."
+        ],
+        "reason": "Open lens centered on the actual near eye; native trailing cord follows the cheek."
+      },
+      "tall_oval_frames": {
+        "recipe": "rounded_head_two_ears/eyewear/tall_oval_frames/light",
+        "bodyLayerHash": "d3a772a5ab7ea92d0f73e18bd8640308a9841ece0609eeca9670750088331da7",
+        "accessoryLayerHash": "5281880fc53689f4b266da372e037d7a1485124890ced3167b5f73ce8b917441",
+        "nativeBounds": [
+          111,
+          106,
+          161,
+          71
+        ],
+        "nativeBodyBounds": [
+          86,
+          107,
+          212,
+          170
+        ],
+        "source": "native picker composition",
+        "x": 5,
+        "y": 3,
+        "rows": [
+          ".p.p.",
+          "p.p.p",
+          "p.p.p",
+          ".p.p."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "separate_trapezoid_lenses": {
+        "recipe": "rounded_head_two_ears/eyewear/separate_trapezoid_lenses/light",
+        "bodyLayerHash": "d3a772a5ab7ea92d0f73e18bd8640308a9841ece0609eeca9670750088331da7",
+        "accessoryLayerHash": "ed6318bb71fa0a6a7b7f2e911eee9fd0bb1368d6c27e5c8fde246536a7460a80",
+        "nativeBounds": [
+          103,
+          110,
+          178,
+          63
+        ],
+        "nativeBodyBounds": [
+          86,
+          107,
+          212,
+          170
+        ],
+        "source": "native picker composition",
+        "x": 5,
+        "y": 3,
+        "rows": [
+          "pp.pp",
+          "dd.dd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "classic_sunglasses": {
+        "recipe": "rounded_head_two_ears/eyewear/classic_sunglasses/light",
+        "bodyLayerHash": "d3a772a5ab7ea92d0f73e18bd8640308a9841ece0609eeca9670750088331da7",
+        "accessoryLayerHash": "1191bce4143510f82adeb0798a08710333a879b3321d7ea892e7d6d9e349ec46",
+        "nativeBounds": [
+          103,
+          112,
+          178,
+          59
+        ],
+        "nativeBodyBounds": [
+          86,
+          107,
+          212,
+          170
+        ],
+        "source": "native picker composition",
+        "x": 5,
+        "y": 3,
+        "rows": [
+          "ppppp",
+          "dd.dd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "round_sunglasses": {
+        "recipe": "rounded_head_two_ears/eyewear/round_sunglasses/light",
+        "bodyLayerHash": "d3a772a5ab7ea92d0f73e18bd8640308a9841ece0609eeca9670750088331da7",
+        "accessoryLayerHash": "9f099da1c019d3cee63ab646c45f803cd069ef0d65646cdbd92b2559cffeb04f",
+        "nativeBounds": [
+          103,
+          108,
+          178,
+          67
+        ],
+        "nativeBodyBounds": [
+          86,
+          107,
+          212,
+          170
+        ],
+        "source": "native picker composition",
+        "x": 5,
+        "y": 3,
+        "rows": [
+          ".h.h.",
+          "ddpdd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      }
+    },
+    "six_lobed_flower": {
+      "headphones": {
+        "recipe": "six_lobed_flower/accessory/headphones/light",
+        "bodyLayerHash": "40c3be093e07c332fe4dce17bcbc66bab800ee4fed921fe0097397578703d52e",
+        "accessoryLayerHash": "185d5703fa634118ec02b7388e2ce23f4aeb0ed2e821466e72b5be14d98bfcf1",
+        "nativeBounds": [
+          66,
+          77,
+          261,
+          189
+        ],
+        "nativeBodyBounds": [
+          86,
+          95,
+          212,
+          194
+        ],
+        "source": "native picker composition",
+        "x": -1,
+        "y": -1,
+        "rows": [
+          "...pppppp...",
+          "..p......p..",
+          ".p........p.",
+          "p.........pp",
+          "p.........dd",
+          "pp........dd",
+          "dd..........",
+          "dd.........."
+        ],
+        "reason": "Native arch and side-pad fit; pad material stays dark and the band has its own palette."
+      },
+      "bow": {
+        "recipe": "six_lobed_flower/accessory/bow/light",
+        "bodyLayerHash": "40c3be093e07c332fe4dce17bcbc66bab800ee4fed921fe0097397578703d52e",
+        "accessoryLayerHash": "7443e72e473777efad6ab62b4f9bd5e162cebea363e0c9f436e323b9dc8b0ff8",
+        "nativeBounds": [
+          139,
+          253,
+          106,
+          44
+        ],
+        "nativeBodyBounds": [
+          86,
+          95,
+          212,
+          194
+        ],
+        "source": "native picker composition",
+        "x": 3,
+        "y": 6,
+        "rows": [
+          "pp.pp",
+          "ppdpp"
+        ],
+        "reason": "Native neck slot; two cloth wings meet a shadowed one-pixel knot at the lower body contour."
+      },
+      "monocle": {
+        "recipe": "six_lobed_flower/eyewear/monocle/light",
+        "bodyLayerHash": "40c3be093e07c332fe4dce17bcbc66bab800ee4fed921fe0097397578703d52e",
+        "accessoryLayerHash": "3b1cec875a4f06f31b178327817a2f8b5ee685b0cef9f5d90a8a164407378bee",
+        "nativeBounds": [
+          190,
+          145,
+          88,
+          78
+        ],
+        "nativeBodyBounds": [
+          86,
+          95,
+          212,
+          194
+        ],
+        "source": "native picker composition",
+        "x": 6,
+        "y": 3,
+        "rows": [
+          ".p..",
+          "p.p.",
+          ".p..",
+          "..p."
+        ],
+        "reason": "Open lens centered on the actual near eye; native trailing cord follows the cheek."
+      },
+      "tall_oval_frames": {
+        "recipe": "six_lobed_flower/eyewear/tall_oval_frames/light",
+        "bodyLayerHash": "40c3be093e07c332fe4dce17bcbc66bab800ee4fed921fe0097397578703d52e",
+        "accessoryLayerHash": "0db888144e2563e8d917b62c5f64e6df6389f6a21ee0aedda7440ec661c88bfe",
+        "nativeBounds": [
+          129,
+          135,
+          125,
+          75
+        ],
+        "nativeBodyBounds": [
+          86,
+          95,
+          212,
+          194
+        ],
+        "source": "native picker composition",
+        "x": 4,
+        "y": 3,
+        "rows": [
+          ".p.p.",
+          "p.p.p",
+          "p.p.p",
+          ".p.p."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "separate_trapezoid_lenses": {
+        "recipe": "six_lobed_flower/eyewear/separate_trapezoid_lenses/light",
+        "bodyLayerHash": "40c3be093e07c332fe4dce17bcbc66bab800ee4fed921fe0097397578703d52e",
+        "accessoryLayerHash": "9f2dbf8ab81ae1c238b3b86c6ca8f49ed5b1d6a290eb75828dd32f67547081a1",
+        "nativeBounds": [
+          104,
+          142,
+          177,
+          61
+        ],
+        "nativeBodyBounds": [
+          86,
+          95,
+          212,
+          194
+        ],
+        "source": "native picker composition",
+        "x": 4,
+        "y": 3,
+        "rows": [
+          "pp.pp",
+          "dd.dd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "classic_sunglasses": {
+        "recipe": "six_lobed_flower/eyewear/classic_sunglasses/light",
+        "bodyLayerHash": "40c3be093e07c332fe4dce17bcbc66bab800ee4fed921fe0097397578703d52e",
+        "accessoryLayerHash": "41b0ccf78497ada84db762d82401281469a2db63f41d8f0f8f39321fb4c2e9d6",
+        "nativeBounds": [
+          104,
+          143,
+          177,
+          59
+        ],
+        "nativeBodyBounds": [
+          86,
+          95,
+          212,
+          194
+        ],
+        "source": "native picker composition",
+        "x": 4,
+        "y": 3,
+        "rows": [
+          "ppppp",
+          "dd.dd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "round_sunglasses": {
+        "recipe": "six_lobed_flower/eyewear/round_sunglasses/light",
+        "bodyLayerHash": "40c3be093e07c332fe4dce17bcbc66bab800ee4fed921fe0097397578703d52e",
+        "accessoryLayerHash": "fd55181a0a05617b55580610ce6c8c248fdde5175f4d081d995ddd352a2b8038",
+        "nativeBounds": [
+          104,
+          139,
+          177,
+          67
+        ],
+        "nativeBodyBounds": [
+          86,
+          95,
+          212,
+          194
+        ],
+        "source": "native picker composition",
+        "x": 4,
+        "y": 3,
+        "rows": [
+          ".h.h.",
+          "ddpdd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      }
+    },
+    "twelve_scalloped_rosette": {
+      "headphones": {
+        "recipe": "twelve_scalloped_rosette/accessory/headphones/light",
+        "bodyLayerHash": "5e6bb98e4903c1406606d1d05ccdb46045327a956e06e575197c3725ac02200e",
+        "accessoryLayerHash": "e22ef824d8f644b3460b576ab60469a99e63d2535b60adaed848cbc4b04e41f8",
+        "nativeBounds": [
+          53,
+          72,
+          278,
+          178
+        ],
+        "nativeBodyBounds": [
+          86,
+          88,
+          212,
+          208
+        ],
+        "source": "native picker composition",
+        "x": 0,
+        "y": -1,
+        "rows": [
+          "...pppp...",
+          ".pp....pp.",
+          ".p......p.",
+          "p........p",
+          "pp......pp",
+          "dd......dd",
+          "dd......dd"
+        ],
+        "reason": "Native arch and side-pad fit; pad material stays dark and the band has its own palette."
+      },
+      "bow": {
+        "recipe": "twelve_scalloped_rosette/accessory/bow/light",
+        "bodyLayerHash": "5e6bb98e4903c1406606d1d05ccdb46045327a956e06e575197c3725ac02200e",
+        "accessoryLayerHash": "88eba5ed9ce7588eebd6d9f935fd86320abcf51f3e54ef60dcff8f7040918d6b",
+        "nativeBounds": [
+          139,
+          264,
+          106,
+          43
+        ],
+        "nativeBodyBounds": [
+          86,
+          88,
+          212,
+          208
+        ],
+        "source": "native picker composition",
+        "x": 3,
+        "y": 6,
+        "rows": [
+          "pp.pp",
+          "ppdpp"
+        ],
+        "reason": "Native neck slot; two cloth wings meet a shadowed one-pixel knot at the lower body contour."
+      },
+      "monocle": {
+        "recipe": "twelve_scalloped_rosette/eyewear/monocle/light",
+        "bodyLayerHash": "5e6bb98e4903c1406606d1d05ccdb46045327a956e06e575197c3725ac02200e",
+        "accessoryLayerHash": "f50431f58b19840a84058fdea11e8e0024ce5c88ad946360773f28706a6b76ea",
+        "nativeBounds": [
+          190,
+          144,
+          87,
+          78
+        ],
+        "nativeBodyBounds": [
+          86,
+          88,
+          212,
+          208
+        ],
+        "source": "native picker composition",
+        "x": 6,
+        "y": 3,
+        "rows": [
+          ".p..",
+          "p.p.",
+          ".p..",
+          "..p."
+        ],
+        "reason": "Open lens centered on the actual near eye; native trailing cord follows the cheek."
+      },
+      "tall_oval_frames": {
+        "recipe": "twelve_scalloped_rosette/eyewear/tall_oval_frames/light",
+        "bodyLayerHash": "5e6bb98e4903c1406606d1d05ccdb46045327a956e06e575197c3725ac02200e",
+        "accessoryLayerHash": "4201bf0bb7db18731d76d350d3bf19a9a240b1e914101c05ea9fce93c8cdb1e3",
+        "nativeBounds": [
+          129,
+          133,
+          126,
+          76
+        ],
+        "nativeBodyBounds": [
+          86,
+          88,
+          212,
+          208
+        ],
+        "source": "native picker composition",
+        "x": 4,
+        "y": 3,
+        "rows": [
+          ".p.p.",
+          "p.p.p",
+          "p.p.p",
+          ".p.p."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "separate_trapezoid_lenses": {
+        "recipe": "twelve_scalloped_rosette/eyewear/separate_trapezoid_lenses/light",
+        "bodyLayerHash": "5e6bb98e4903c1406606d1d05ccdb46045327a956e06e575197c3725ac02200e",
+        "accessoryLayerHash": "90e44f9b3345da54d9613a88874dc024d54e3514758ee6a5c416405ceafd5dc3",
+        "nativeBounds": [
+          104,
+          140,
+          176,
+          62
+        ],
+        "nativeBodyBounds": [
+          86,
+          88,
+          212,
+          208
+        ],
+        "source": "native picker composition",
+        "x": 4,
+        "y": 3,
+        "rows": [
+          "pp.pp",
+          "dd.dd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "classic_sunglasses": {
+        "recipe": "twelve_scalloped_rosette/eyewear/classic_sunglasses/light",
+        "bodyLayerHash": "5e6bb98e4903c1406606d1d05ccdb46045327a956e06e575197c3725ac02200e",
+        "accessoryLayerHash": "43c738a2c9478580100ade6b240aff2d8323d14fce6bed00c7963c7b17f0a41e",
+        "nativeBounds": [
+          104,
+          142,
+          176,
+          58
+        ],
+        "nativeBodyBounds": [
+          86,
+          88,
+          212,
+          208
+        ],
+        "source": "native picker composition",
+        "x": 4,
+        "y": 3,
+        "rows": [
+          "ppppp",
+          "dd.dd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      },
+      "round_sunglasses": {
+        "recipe": "twelve_scalloped_rosette/eyewear/round_sunglasses/light",
+        "bodyLayerHash": "5e6bb98e4903c1406606d1d05ccdb46045327a956e06e575197c3725ac02200e",
+        "accessoryLayerHash": "742e4c269205c620017bf90454a583e234c3d6f4a9c3e7cebca2fcc63f8573ba",
+        "nativeBounds": [
+          104,
+          138,
+          176,
+          67
+        ],
+        "nativeBodyBounds": [
+          86,
+          88,
+          212,
+          208
+        ],
+        "source": "native picker composition",
+        "x": 4,
+        "y": 3,
+        "rows": [
+          ".h.h.",
+          "ddpdd",
+          ".d.d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials."
+      }
+    },
+    "donut": {
+      "headphones": {
+        "recipe": "circle/accessory/headphones/light",
+        "bodyLayerHash": "fc10feb246d92e9f28437e021a69a40662b3120e58a3e6e3551bc62749ac4b1f",
+        "accessoryLayerHash": "0937ec7cf61fb377663da549d35fc03261aea1410624b67b3cf7123b2a937612",
+        "nativeBounds": [
+          50,
+          70,
+          284,
+          179
+        ],
+        "nativeBodyBounds": [
+          86,
+          86,
+          212,
+          212
+        ],
+        "source": "custom donut adaptation of native circle",
+        "x": 0,
+        "y": -1,
+        "rows": [
+          "...ppppp...",
+          "..p.....p..",
+          ".p.......p.",
+          "pp.......pp",
+          "pp.......pp",
+          "dd.......dd",
+          "dd.......dd"
+        ],
+        "reason": "Native arch and side-pad fit; pad material stays dark and the band has its own palette."
+      },
+      "bow": {
+        "recipe": "circle/accessory/bow/light",
+        "bodyLayerHash": "fc10feb246d92e9f28437e021a69a40662b3120e58a3e6e3551bc62749ac4b1f",
+        "accessoryLayerHash": "a98dbbe1c7970e32d45569eb89b9399b8533899132ecc24559ed59757d0ba6aa",
+        "nativeBounds": [
+          139,
+          265,
+          106,
+          44
+        ],
+        "nativeBodyBounds": [
+          86,
+          86,
+          212,
+          212
+        ],
+        "source": "custom donut adaptation of native circle",
+        "x": 3,
+        "y": 6,
+        "rows": [
+          "pp.pp",
+          "ppdpp"
+        ],
+        "reason": "Native neck slot; two cloth wings meet a shadowed one-pixel knot at the lower body contour."
+      },
+      "monocle": {
+        "recipe": "circle/eyewear/monocle/light",
+        "bodyLayerHash": "fc10feb246d92e9f28437e021a69a40662b3120e58a3e6e3551bc62749ac4b1f",
+        "accessoryLayerHash": "4b37dd5cbee4021341b38338fdee4e7a33b46aa01253fae2a6d2579791e57fd3",
+        "nativeBounds": [
+          191,
+          139,
+          94,
+          85
+        ],
+        "nativeBodyBounds": [
+          86,
+          86,
+          212,
+          212
+        ],
+        "source": "custom donut adaptation of native circle",
+        "x": 6,
+        "y": 2,
+        "rows": [
+          ".p..",
+          "p.p.",
+          ".p..",
+          "..p."
+        ],
+        "reason": "Open lens centered on the actual near eye; native trailing cord follows the cheek. Custom ring fit keeps its central aperture transparent."
+      },
+      "tall_oval_frames": {
+        "recipe": "circle/eyewear/tall_oval_frames/light",
+        "bodyLayerHash": "fc10feb246d92e9f28437e021a69a40662b3120e58a3e6e3551bc62749ac4b1f",
+        "accessoryLayerHash": "f5cf44f7a5d53456508d4960dc4b48574590e077d0e18b310edc0b202c220b89",
+        "nativeBounds": [
+          128,
+          133,
+          127,
+          76
+        ],
+        "nativeBodyBounds": [
+          86,
+          86,
+          212,
+          212
+        ],
+        "source": "custom donut adaptation of native circle",
+        "x": 1,
+        "y": 2,
+        "rows": [
+          ".p....p.",
+          "p.p..p.p",
+          "p.p..p.p",
+          ".p....p."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials. Custom ring fit keeps its central aperture transparent."
+      },
+      "separate_trapezoid_lenses": {
+        "recipe": "circle/eyewear/separate_trapezoid_lenses/light",
+        "bodyLayerHash": "fc10feb246d92e9f28437e021a69a40662b3120e58a3e6e3551bc62749ac4b1f",
+        "accessoryLayerHash": "706bb53caa6be620ffdec68c653ecbcc62126184e172beec2783c715f7a2b3ce",
+        "nativeBounds": [
+          104,
+          140,
+          176,
+          62
+        ],
+        "nativeBodyBounds": [
+          86,
+          86,
+          212,
+          212
+        ],
+        "source": "custom donut adaptation of native circle",
+        "x": 1,
+        "y": 2,
+        "rows": [
+          "pp....pp",
+          "dd....dd",
+          ".d....d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials. Custom ring fit keeps its central aperture transparent."
+      },
+      "classic_sunglasses": {
+        "recipe": "circle/eyewear/classic_sunglasses/light",
+        "bodyLayerHash": "fc10feb246d92e9f28437e021a69a40662b3120e58a3e6e3551bc62749ac4b1f",
+        "accessoryLayerHash": "28250d49d7cebf0e90d135c6cfa87b7b84a87ead0121b775c01e6236fca0a96b",
+        "nativeBounds": [
+          104,
+          142,
+          176,
+          58
+        ],
+        "nativeBodyBounds": [
+          86,
+          86,
+          212,
+          212
+        ],
+        "source": "custom donut adaptation of native circle",
+        "x": 1,
+        "y": 2,
+        "rows": [
+          "pppppppp",
+          "dd....dd",
+          ".d....d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials. Custom ring fit keeps its central aperture transparent."
+      },
+      "round_sunglasses": {
+        "recipe": "circle/eyewear/round_sunglasses/light",
+        "bodyLayerHash": "fc10feb246d92e9f28437e021a69a40662b3120e58a3e6e3551bc62749ac4b1f",
+        "accessoryLayerHash": "ea6cb1adb5072c9a11cac5813c571e0f6e972ef65b2acdb951b0ca7b80b55e65",
+        "nativeBounds": [
+          104,
+          137,
+          176,
+          67
+        ],
+        "nativeBodyBounds": [
+          86,
+          86,
+          212,
+          212
+        ],
+        "source": "custom donut adaptation of native circle",
+        "x": 1,
+        "y": 2,
+        "rows": [
+          ".hpppph.",
+          "dd....dd",
+          ".d....d."
+        ],
+        "reason": "Native lens/rim type fitted to the actual eye columns; lenses and highlights retain separate materials. Custom ring fit keeps its central aperture transparent."
+      }
+    }
+  }
+}

@@ -1,3 +1,7 @@
+import { createSoundAuditionPlan } from './midi-ui/midiSoundAudition.js';
+import { createMidiEditHistory } from './midi-ui/midiEditHistory.js';
+import { createMidiInstrumentWorkbench } from './midi-ui/midiInstrumentWorkbench.js';
+import { getPlayableMidiClipSteps, describeMidiClipPlayback } from '../midi/project/MidiClipPlayback.js';
 import { resolveMidiAvailability, applyMidiAvailability } from './midiAvailability.js';
 import { getAppContext, getRuntimeDependency } from '../core/dependencies.js';
 import { resolveGameSoundSource, GAME_SOUND_EVENTS, getEventBehavior, createEventBehaviorPatch, transposeEventPitch, soundNoteName } from './midi-ui/midiSoundEditor.js';
@@ -291,14 +295,19 @@ const createMidiUiController = ({
   let cachedRuntimeProject = null;
   let cachedRuntimeFactory = null;
   let cachedRuntimeConfig = null;
+  let cachedRuntimeConfigKey = null;
   let midiEnablePromise = null;
   let midiEnableRequest = 0;
   let midiConnectionPending = false;
   let disposed = false;
   let soundView = 'sounds';
   let localAudio = null;
+  let auditionAudio = null;
+  const auditionSteps = new Map();
   let localGamePreview = null;
   let localInteraction = 0;
+  const editHistory = createMidiEditHistory();
+  let workbench = null;
   const uiMetrics = {
     renderCount: 0,
     queuedRenderCount: 0,
@@ -384,7 +393,9 @@ const createMidiUiController = ({
     const current = ensureProject();
     const factory = getFactoryConfig();
     if (cachedRuntimeProject !== current || cachedRuntimeFactory !== factory || !cachedRuntimeConfig) {
-      cachedRuntimeConfig = projectToMidiConfig(current, factory || {});
+      const nextConfig = projectToMidiConfig(current, factory || {});
+      const key = JSON.stringify(nextConfig);
+      if (key !== cachedRuntimeConfigKey) { cachedRuntimeConfig = nextConfig; cachedRuntimeConfigKey = key; }
       cachedRuntimeProject = current;
       cachedRuntimeFactory = factory;
     }
@@ -583,7 +594,9 @@ const createMidiUiController = ({
   };
 
   const commitProject = (nextProject, { persist = true, apply = true, renderUi = true } = {}) => {
-    project = sanitizeMidiProject(nextProject);
+    const next = sanitizeMidiProject(nextProject);
+    editHistory.record(project, next);
+    project = next;
     if (persist) project = saveMidiProject(storage, project);
     if (apply && !renderUi) applyProjectToRuntime();
     if (renderUi) render();
@@ -1250,11 +1263,7 @@ const createMidiUiController = ({
 
   const clipToMapping = (clip) => {
     const current = ensureProject();
-    const steps = Array.isArray(clip?.steps)
-      ? clip.steps
-        .filter(step => Number.isFinite(step?.note) && (step.probability ?? 1) > 0 && !step.tie)
-        .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
-      : [];
+    const steps = getPlayableMidiClipSteps(clip);
     const first = steps[0] || null;
     if (!first) return null;
     const notes = steps.map(step => clamp(Math.round(step.note), 0, 127));
@@ -1347,6 +1356,7 @@ const createMidiUiController = ({
         pitchBend: mapping.pitchBend ?? null,
         trackId: track.id,
         voiceBudget: track.voiceBudget,
+        ...(track.program != null ? { program: track.program } : {}),
         outputId: track.outputId ?? null,
         timeMs
       }, {
@@ -1357,6 +1367,7 @@ const createMidiUiController = ({
         sourceId: source?.id ?? null,
         trackId: track.id,
         voiceBudget: track.voiceBudget,
+        ...(track.program != null ? { program: track.program } : {}),
         outputId: track.outputId ?? null,
         clipId: clip?.id ?? null
       }) || sent;
@@ -1740,6 +1751,7 @@ const createMidiUiController = ({
       velocity.step = '1';
       velocity.value = step.velocity == null ? '' : String(step.velocity);
       velocity.setAttribute('aria-label', `${stepLabel} velocity`);
+      velocity.setAttribute('aria-describedby', 'midiClipPlaybackSummary');
       velocity.addEventListener('change', event => updateSelectedClipStep(index, { velocity: toNumberOrNull(event.target.value) }));
       velocityLabel.appendChild(velocity);
       const durationLabel = document.createElement('label');
@@ -1753,6 +1765,7 @@ const createMidiUiController = ({
       duration.step = '1';
       duration.value = step.durationTicks == null ? '' : String(step.durationTicks);
       duration.setAttribute('aria-label', `${stepLabel} duration`);
+      duration.setAttribute('aria-describedby', 'midiClipPlaybackSummary');
       duration.addEventListener('change', event => updateSelectedClipStep(index, { durationTicks: toNumberOrNull(event.target.value) }));
       durationLabel.appendChild(duration);
       const probabilityLabel = document.createElement('label');
@@ -1766,6 +1779,8 @@ const createMidiUiController = ({
       probability.step = '0.05';
       probability.value = step.probability == null ? '1' : String(step.probability);
       probability.setAttribute('aria-label', `${stepLabel} probability`);
+      probability.setAttribute('aria-describedby', 'midiClipPlaybackSummary');
+      probability.title = '0 omits this note. Positive values enable it; random chance playback is not implemented.';
       probability.addEventListener('change', event => updateSelectedClipStep(index, { probability: toNumberOrNull(event.target.value) ?? 1 }));
       probabilityLabel.appendChild(probability);
       const holdLabel = document.createElement('label');
@@ -1776,6 +1791,8 @@ const createMidiUiController = ({
       hold.type = 'checkbox';
       hold.checked = !!step.hold;
       hold.setAttribute('aria-label', `${stepLabel} hold`);
+      hold.setAttribute('aria-describedby', 'midiClipPlaybackSummary');
+      hold.title = 'Saved with the project; currently has no effect on playback.';
       hold.addEventListener('change', event => updateSelectedClipStep(index, { hold: !!event.target.checked }));
       holdLabel.appendChild(hold);
       const tieLabel = document.createElement('label');
@@ -1786,6 +1803,8 @@ const createMidiUiController = ({
       tie.type = 'checkbox';
       tie.checked = !!step.tie;
       tie.setAttribute('aria-label', `${stepLabel} tie`);
+      tie.setAttribute('aria-describedby', 'midiClipPlaybackSummary');
+      tie.title = 'Currently omits this note; it does not extend the previous note.';
       tie.addEventListener('change', event => updateSelectedClipStep(index, { tie: !!event.target.checked }));
       tieLabel.appendChild(tie);
       const rest = document.createElement('button');
@@ -1812,6 +1831,7 @@ const createMidiUiController = ({
 
   const renderClipInspector = () => {
     const clip = selectedClip();
+    setText(document?.getElementById('midiClipPlaybackSummary'), describeMidiClipPlayback(clip));
     const arpMode = document?.getElementById('midiClipArpMode');
     const arpModeField = document?.getElementById('midiClipArpModeField');
     const arpPattern = document?.getElementById('midiClipArpPattern');
@@ -1949,14 +1969,15 @@ const createMidiUiController = ({
       const pointBeatLabel = document.createElement('label');
       pointBeatLabel.className = 'midi-field midi-field--compact';
       const pointBeatText = document.createElement('span');
-      pointBeatText.textContent = 'Beat';
+      pointBeatText.textContent = 'Position 0–1';
       const pointBeat = document.createElement('input');
       pointBeat.className = 'midi-automation-point-beat';
       pointBeat.type = 'number';
       pointBeat.min = '0';
-      pointBeat.step = '0.25';
+      pointBeat.max = '1';
+      pointBeat.step = '0.05';
       pointBeat.value = String(point.beat);
-      pointBeat.setAttribute('aria-label', `${lane.name} point beat`);
+      pointBeat.setAttribute('aria-label', `${lane.name} normalized position`);
       pointBeat.addEventListener('change', event => dispatchProjectIntent({
         type: 'automation.point.update',
         automationId: lane.id,
@@ -2083,6 +2104,7 @@ const createMidiUiController = ({
     setInputValue(document?.getElementById('midiTrackInstrument'), track?.instrumentLabel);
     renderTrackOutputOptions(document?.getElementById('midiTrackOutputSelect'), track?.outputId);
     setInputValue(document?.getElementById('midiTrackChannel'), track?.channel);
+    setInputValue(document?.getElementById('midiTrackProgram'), track?.program ?? '');
     setInputValue(document?.getElementById('midiTrackPriority'), track?.priority);
     setInputValue(document?.getElementById('midiTrackVoiceBudget'), track?.voiceBudget);
     setInputValue(document?.getElementById('midiTrackVelocityScale'), track?.velocityScale);
@@ -2180,10 +2202,10 @@ const createMidiUiController = ({
 
   const renderLocalSummary = () => {
     const localState = localGamePreview?.getState?.();
-    const audioState = localAudio?.getState?.();
+    const audioState = auditionAudio?.getState?.();
     const hardwareOn = !!getLemmings()?.midiEnabled && !!getWebMidi()?.enabled && !!getLemmings()?.midiOut;
     const label = localState?.status === 'starting' ? 'Starting local audio'
-      : localState?.enabled ? 'Listening to game locally'
+      : localState?.enabled ? `Listening to game locally${audioState?.activeVoices ? ' + test event' : ''}`
         : audioState?.activeVoices ? 'Previewing this sound locally' : 'Local sound off';
     setText(document?.getElementById('midiOutputSummary'), `${label} · MIDI ${hardwareOn ? 'on' : 'off'}`);
     setText(document?.getElementById('midiLocalListenButton'), localState?.enabled || localState?.status === 'starting' || audioState?.activeVoices ? 'Stop listening' : 'Listen to game');
@@ -2202,11 +2224,36 @@ const createMidiUiController = ({
     localInteraction += 1;
     localGamePreview?.stop?.();
     localAudio?.stop?.();
+    auditionAudio?.stop?.();
     renderLocalSummary();
+  };
+
+  const testSelectedSound = async () => {
+    const source = selectedSource();
+    if (!source) return false;
+    if (!auditionAudio) auditionAudio = createPreviewAudio({ onStateChange: renderLocalSummary });
+    const key = JSON.stringify(source.mapping);
+    const previous = auditionSteps.get(source.id);
+    const index = previous?.key === key ? previous.index : 0;
+    const tickMs = Math.max(1, Number(getLemmings()?.game?.getGameTimer?.()?.frameTime) || 60);
+    const plan = createSoundAuditionPlan(source, ensureProject(), tickMs, index);
+    if (!plan.notes.length) { setStatus(plan.reason); return false; }
+    const interaction = ++localInteraction;
+    const ok = await auditionAudio.preview(plan.notes, { replace: true });
+    if (interaction !== localInteraction || disposed) return false;
+    if (ok) {
+      auditionSteps.set(source.id, { key, index: index + 1 });
+      setStatus(`Tested ${source.label} locally · game and external MIDI unchanged`);
+    } else setStatus(auditionAudio.getState().message || 'Local audio could not start');
+    renderLocalSummary();
+    return ok;
   };
 
   const chooseSoundView = (name) => {
     soundView = ['sounds', 'devices', 'project', 'expert'].includes(name) ? name : 'sounds';
+    const editor = document?.getElementById('midiPersistentSoundEditor');
+    const dock = document?.getElementById(soundView === 'expert' ? 'midiExpertSoundDock' : 'midiEventSoundDock');
+    if (editor && dock && editor.parentNode !== dock) dock.appendChild(editor);
     for (const view of ['sounds', 'devices', 'project', 'expert']) {
       const suffix = view[0].toUpperCase() + view.slice(1);
       const section = document?.getElementById(`midi${suffix}View`);
@@ -2248,7 +2295,8 @@ const createMidiUiController = ({
         const summary = document.createElement('span');
         const kind = getEventBehavior(item);
         summary.textContent = !item?.enabled ? 'Off' : ({note:'One note',falling:'Falling phrase',rising:'Rising phrase',steps:'One note / event',custom:'Custom'})[kind];
-        row.append(label, summary);
+        const count = document.createElement('span'); count.className = 'midi-event-count'; count.textContent = 'No events yet';
+        row.append(label, summary, count);
         row.addEventListener('click', () => selectGameSound(event));
         list.appendChild(row);
         if (focused === String(event.id)) row.focus?.();
@@ -2271,7 +2319,7 @@ const createMidiUiController = ({
     if (spacing) spacing.hidden = !['falling', 'rising'].includes(behavior);
     for (const id of ['midiSoundPitch', 'midiSoundSpacing', 'midiSoundLevel', 'midiSoundEnabled', 'midiSoundPreview', 'midiSoundBehavior']) {
       const control = document?.getElementById(id);
-      if (control) control.disabled = !source || (behavior === 'custom' && ['midiSoundPitch', 'midiSoundSpacing', 'midiSoundPreview'].includes(id));
+      if (control) control.disabled = !source || (behavior === 'custom' && ['midiSoundPitch', 'midiSoundSpacing'].includes(id));
     }
     const notes = (Array.isArray(mapping.notes) && mapping.notes.length ? [...mapping.notes] : [mapping.note ?? 60])
       .map(note => clampNoteToRange(note, current.global.noteRange));
@@ -2299,6 +2347,7 @@ const createMidiUiController = ({
           : 'One plain note at the exact game event. Listen here uses browser audio only.');
     chooseSoundView(soundView);
     renderLocalSummary();
+    workbench?.render();
   };
 
   const renderConnectionControls = () => {
@@ -2499,6 +2548,7 @@ const createMidiUiController = ({
     workspace.hidden = !visible;
     document?.body?.classList?.toggle('studio-open', visible);
     toggle?.setAttribute('aria-expanded', String(visible));
+    workbench?.setVisible(visible);
     if (focus) {
       const target = visible ? document?.getElementById('midiWorkspaceClose') : toggle;
       target?.focus?.();
@@ -2510,6 +2560,10 @@ const createMidiUiController = ({
     disposed = false;
     ensureProject();
     cleanupLegacyMidiProjectStorage(storage);
+    workbench = createMidiInstrumentWorkbench({ document, window, getLemmings, getProject: ensureProject, getSource: selectedSource,
+      updateMapping: updateSelectedMapping, updateSource: updateSelectedSource, commitProject, chooseView: chooseSoundView,
+      bind: bindById, panic, history: editHistory, setStatus });
+    workbench.initialize();
     setWorkspaceVisible(false, { focus: false });
     bindById('midiWorkspaceToggle', 'click', () => {
       const workspace = document?.getElementById('midiSequencerWorkspace');
@@ -2541,7 +2595,7 @@ const createMidiUiController = ({
     });
     bindById('midiSoundPitch', 'change', event => updateSelectedMapping(transposeEventPitch(selectedSource()?.mapping, event.target.value)));
     bindById('midiSoundSpacing', 'change', event => updateSelectedMapping({ phrase: { ...selectedSource()?.mapping?.phrase, spacingTicks: Number(event.target.value) } }));
-    bindById('midiSoundLevel', 'change', event => updateSelectedMapping({ velocity: Number(event.target.value) }));
+
     bindById('midiLocalListenButton', 'click', async () => {
       const preview = ensureLocalPreview();
       if (preview.getState().enabled || preview.getState().status === 'starting' || localAudio?.getState()?.activeVoices) { stopLocalPreview(); return; }
@@ -2555,31 +2609,7 @@ const createMidiUiController = ({
       if (!startedOk) setStatus(preview.getState().message || 'Local audio could not start');
       renderLocalSummary();
     });
-    bindById('midiSoundPreview', 'click', async () => {
-      const source = selectedSource();
-      if (!source || getEventBehavior(source) === 'custom') return;
-      ensureLocalPreview();
-      midiEnableRequest += 1;
-      midiConnectionPending = false;
-      stopLocalPreview();
-      const interaction = ++localInteraction;
-      const view = getLemmings();
-      if (view?.midiEnabled) view.setMidiEnabled?.(false);
-      if (ensureProject().enabled) dispatchProjectIntent({ type: 'enabled.set', enabled: false });
-      const mapping = source.mapping;
-      const notes = [...(mapping.notes?.length ? mapping.notes : [mapping.note ?? 60])];
-      if (mapping.phrase?.enabled || mapping.arp?.enabled) notes.sort((a,b) => a-b);
-      if ((mapping.phrase?.mode || mapping.arp?.mode) === 'down') notes.reverse();
-      const tickMs = Math.max(1, Number(view?.game?.getGameTimer?.()?.frameTime) || 60);
-      const sounding = mapping.phrase?.enabled ? notes.slice(0, 8) : [notes[0]];
-      const range = ensureProject().global.velocityRange;
-      const track = ensureProject().tracks.find(item => item.id === source.trackId);
-      const velocity = clamp(Math.round((mapping.velocity ?? range.default) * (track?.velocityScale ?? 1)), range.min, range.max);
-      const ok = await localAudio.preview(sounding.map((note,index) => ({ note: clampNoteToRange(note, ensureProject().global.noteRange), velocity, pan: mapping.pan, pitchBend: mapping.pitchBend, durationMs: (mapping.durationTicks || 2) * tickMs, offsetMs: index * (mapping.phrase?.spacingTicks || 2) * tickMs })), { replace: true });
-      if (interaction !== localInteraction || disposed) return;
-      if (!ok) setStatus(localAudio.getState().message || 'Local audio could not start');
-      renderLocalSummary();
-    });
+    bindById('midiSoundPreview', 'click', () => testSelectedSound());
     const presetSelect = document?.getElementById('midiGamePresetSelect');
     const presetMode = document?.getElementById('midiGamePresetMode');
     if (presetMode) presetMode.value = 'phrase';
@@ -2809,6 +2839,7 @@ const createMidiUiController = ({
       updateSelectedTrack({ outputId: event.target.value || null });
     });
     bindById('midiTrackChannel', 'change', event => updateSelectedTrack({ channel: Number(event.target.value) || 1 }));
+    bindById('midiTrackProgram', 'change', event => updateSelectedTrack({ program: event.target.value.trim() === '' ? null : Number(event.target.value) }));
     bindById('midiTrackPriority', 'change', event => updateSelectedTrack({ priority: Number(event.target.value) || 0 }));
     bindById('midiTrackVoiceBudget', 'change', event => updateSelectedTrack({ voiceBudget: Number(event.target.value) || 1 }));
     bindById('midiTrackVelocityScale', 'change', event => updateSelectedTrack({ velocityScale: Number(event.target.value) }));
@@ -3133,14 +3164,22 @@ const createMidiUiController = ({
       cancelRecording,
       captureRecordMessage: handleRecordMessage,
       audition,
-      panic
+      panic,
+      getWorkbenchState: () => workbench?.getState(),
+      testSelectedSound,
+      getLocalAudioState: () => ({ monitor: localGamePreview?.getState(), audition: auditionAudio?.getState() }),
+      undo: () => editHistory.undo(ensureProject(), commitProject),
+      redo: () => editHistory.redo(ensureProject(), commitProject)
     };
   };
 
   const dispose = () => {
     disposed = true;
+    workbench?.dispose();
     localInteraction += 1;
     getLemmings()?.setLocalAudioStopHandler?.(null);
+    auditionAudio?.dispose?.();
+    auditionSteps.clear();
     localGamePreview?.dispose?.();
     if (!localGamePreview) localAudio?.dispose?.();
     if (refreshTimer != null && typeof window?.clearTimeout === 'function') {
@@ -3194,6 +3233,7 @@ const createMidiUiController = ({
     captureRecordMessage: handleRecordMessage,
     audition,
     panic,
+    testSelectedSound,
     applyRuntimePatch,
     getMidiConfig: getProjectConfig,
     getStoredEnabled() {

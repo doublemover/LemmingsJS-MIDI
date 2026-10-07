@@ -1,4 +1,5 @@
 import { DEFAULT_CONFIG, mergeConfig } from '../midi-mapping/MidiMappingDomain.js';
+import { getPlayableMidiClipSteps as activeClipSteps } from './MidiClipPlayback.js';
 import { cloneSafeObject, isPlainObject, safeObjectEntries } from '../../util/safeObject.js';
 
 const MIDI_PROJECT_VERSION = 1;
@@ -370,6 +371,7 @@ const createDefaultMidiTrack = (overrides = {}) => ({
   name: overrides.name || 'Track 1',
   outputId: overrides.outputId ?? null,
   channel: overrides.channel ?? 1,
+  program: overrides.program ?? null,
   instrumentLabel: overrides.instrumentLabel || 'General MIDI',
   mute: overrides.mute ?? overrides.muted ?? false,
   solo: overrides.solo ?? false,
@@ -390,6 +392,7 @@ const sanitizeTrack = (track, fallbackIndex, usedIds) => {
     name: sanitizeId(track?.name, fallback.name),
     outputId: track?.outputId == null ? null : String(track.outputId),
     channel: sanitizeChannel(track?.channel, fallback.channel),
+    program: track?.program == null || track.program === '' ? null : clamp(toInteger(track.program, 0), 0, 127),
     instrumentLabel: sanitizeId(track?.instrumentLabel, fallback.instrumentLabel),
     mute: sanitizeBoolean(track?.mute ?? track?.muted, false),
     solo: sanitizeBoolean(track?.solo, false),
@@ -679,6 +682,7 @@ const createMidiProjectTemplate = (project = {}, options = {}) => {
     name,
     templateId: id,
     enabled: false,
+    tracks: clean.tracks.map(track => ({ ...track, outputId: null })),
     devices: {
       inputId: null,
       outputId: null,
@@ -726,6 +730,8 @@ const importMidiProjectPayload = (payload) => {
   if (!isPlainObject(parsed)) {
     throw new Error('MIDI project import did not contain a project.');
   }
+  if (parsed.kind != null && ![MIDI_PROJECT_EXPORT_KIND, MIDI_TEMPLATE_EXPORT_KIND].includes(parsed.kind)) throw new Error('Unrecognized MIDI project kind.');
+  if (parsed.version != null && parsed.version !== MIDI_PROJECT_VERSION) throw new Error('Unsupported MIDI project version.');
   let projectPayload = null;
   let templateId = null;
   if (parsed.kind === MIDI_TEMPLATE_EXPORT_KIND) {
@@ -741,6 +747,19 @@ const importMidiProjectPayload = (payload) => {
   }
   if (!isPlainObject(projectPayload)) {
     throw new Error('MIDI project import did not contain a project.');
+  }
+  if (projectPayload.version != null && projectPayload.version !== MIDI_PROJECT_VERSION) throw new Error('Unsupported MIDI project version.');
+  if (!Array.isArray(projectPayload.tracks) || !Array.isArray(projectPayload.sources) || !Array.isArray(projectPayload.clips)) throw new Error('MIDI project must contain tracks, sources and clips arrays.');
+  const trackIds = new Set();
+  for (const track of projectPayload.tracks) {
+    if (!isPlainObject(track) || typeof track.id !== 'string' || !track.id.trim() || trackIds.has(track.id)) throw new Error('MIDI project contains invalid or duplicate track IDs.');
+    if (track.outputId != null && typeof track.outputId !== 'string') throw new Error('MIDI track output ID must be a string or null.');
+    trackIds.add(track.id);
+  }
+  const clipIds = new Set(projectPayload.clips.map(clip => clip?.id));
+  for (const source of projectPayload.sources) {
+    if (!isPlainObject(source) || !trackIds.has(source.trackId)) throw new Error('MIDI source refers to a missing track.');
+    if (source.mode === 'clip' && !clipIds.has(source.clipId)) throw new Error('MIDI source refers to a missing clip.');
   }
   return sanitizeMidiProject({
     ...projectPayload,
@@ -1039,6 +1058,7 @@ const buildRuntimeMapping = (source, track, hiddenByTrack, globalVelocityDefault
   }
   out.name = source.label;
   out.channel = track.channel;
+  if (track.program != null) out.program = track.program;
   out.priority = track.priority;
   out.voiceBudget = track.voiceBudget;
   out.trackId = track.id;
@@ -1050,14 +1070,6 @@ const buildRuntimeMapping = (source, track, hiddenByTrack, globalVelocityDefault
   if (!source.enabled || hiddenByTrack) out.disabled = true;
   return out;
 };
-
-const activeClipSteps = (clip) => (
-  Array.isArray(clip?.steps)
-    ? clip.steps
-      .filter(step => Number.isFinite(step?.note) && (step.probability ?? 1) > 0 && !step.tie)
-      .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
-    : []
-);
 
 const automationToPositionMappings = (automation = []) => automation
   .filter(lane => lane.enabled && lane.scope === 'global')
@@ -1410,6 +1422,7 @@ const buildRuntimeClipMapping = (source, track, clip, hiddenByTrack, globalVeloc
   const out = {
     name: source.label,
     channel: track.channel,
+    ...(track.program != null ? { program: track.program } : {}),
     priority: track.priority,
     voiceBudget: track.voiceBudget,
     trackId: track.id,

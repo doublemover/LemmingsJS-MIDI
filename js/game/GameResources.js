@@ -4,6 +4,8 @@ import { FileContainer } from '../data/FileContainer.js';
 import { Frame } from '../render/Frame.js';
 import { getDependency } from '../core/dependencies.js';
 import { LemmingsSprite } from '../lemmings/LemmingsSprite.js';
+import { CharacterSpriteSet } from '../lemmings/CharacterSpriteSet.js';
+import { PixelSpriteSkin } from '../lemmings/PixelSpriteSkin.js';
 import { LevelLoader } from '../level/LevelLoader.js';
 import { MaskProvider } from '../render/MaskProvider.js';
 import { PaletteImage } from '../render/PaletteImage.js';
@@ -38,6 +40,36 @@ class GameResources extends BaseLogger {
     }
   }
   async getLemmingsSprite(colorPalette) {
+    const base = await this._getBaseLemmingsSprite(colorPalette);
+    if (!this.config.characterCatalog) return base;
+    try {
+      const text = await this.fileProvider.loadString(this.config.characterCatalog);
+      const sprites = new CharacterSpriteSet(base, JSON.parse(text), path => this.fileProvider.loadString(path));
+      await sprites.prepare();
+      this.characterSprites = sprites;
+      return sprites;
+    } catch (error) {
+      this.log.log('Character catalog unavailable; using pack sprites', error);
+      return base;
+    }
+  }
+  async _getBaseLemmingsSprite(colorPalette) {
+    const skinPath = this.config.spriteSkin;
+    if (skinPath) {
+      if (typeof skinPath !== 'string') throw new Error('spriteSkin must be a manifest path');
+      if (!this._spriteSkinPromise || this._spriteSkinPath !== skinPath) {
+        this._spriteSkinPath = skinPath;
+        const pending = Promise.resolve()
+          .then(() => this.fileProvider.loadString(skinPath))
+          .then(text => new PixelSpriteSkin(JSON.parse(text)))
+          .catch(error => {
+            if (this._spriteSkinPromise === pending) this._spriteSkinPromise = null;
+            throw new Error(`Unable to load sprite skin ${skinPath}: ${error.message}`);
+          });
+        this._spriteSkinPromise = pending;
+      }
+      return this._spriteSkinPromise;
+    }
     const container = await this.getMainDat();
     const Sprite = getDependency('LemmingsSprite', LemmingsSprite);
     return new Sprite(container.getPart(0), colorPalette);

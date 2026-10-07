@@ -23,6 +23,7 @@ class Lemming extends BaseLogger {
    * Reinitialize this instance so managers can reuse pooled objects.
    */
   reset(x = 0, y = 0, id) {
+    this.action?.spriteProvider?.resetActor?.(this);
     this.lookRight = true;
     this.frameIndex = 0;
     this.canClimb = false;
@@ -61,9 +62,13 @@ class Lemming extends BaseLogger {
   }
 
   setAction(action) {
+    const previousAction = this.action;
+    const previousFrameIndex = this.frameIndex;
+    previousAction?.spriteProvider?.resetActor?.(this);
     this.action = action;
     this.frameIndex = 0;
     this.state = 0;
+    action?.spriteProvider?.onActionChange?.(this, previousAction, previousFrameIndex);
   }
 
   setCountDown(action) {
@@ -91,7 +96,9 @@ class Lemming extends BaseLogger {
     if (this.countdownAction !== null && this.countdownAction !== undefined) {
       this.countdownAction.draw(gameDisplay, this);
     }
-    this.action.draw(gameDisplay, this);
+    if (!this.action.spriteProvider?.drawCosmeticTransition?.(gameDisplay, this)) {
+      this.action.draw(gameDisplay, this);
+    }
   }
 
   renderDebug(gameDisplay) {
@@ -142,6 +149,7 @@ class Lemming extends BaseLogger {
   }
 
   remove() {
+    this.action?.spriteProvider?.resetActor?.(this);
     this.action = null;
     this.countdownAction = null;
     this.removed = true;

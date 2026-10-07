@@ -65,10 +65,11 @@ describe('bounded game-clock MIDI phrases', function() {
       advance();
       spawn({ intensity: 1.5 });
       expect(notes()).to.have.length(1);
-      expect(calls.filter(call => call.type === 'noteOff')).to.have.length(1);
-      expect(calls.find(call => call.type === 'noteOff').opts.time).to.be.closeTo(120, 0.001);
+      expect(calls.filter(call => call.type === 'noteOff')).to.have.length(0);
+      expect(router.scheduler._noteOffs[0].timeMs).to.be.closeTo(120, 0.001);
       expect(router.scheduler.gamePhrases.voices.size).to.equal(1);
       advance(9);
+      expect(calls.find(call => call.type === 'noteOff').opts.time).to.be.closeTo(120, 0.001);
       expect(notes().map(call => call.note)).to.deep.equal([76, 76, 72, 67, 64, 60]);
       expect(notes().map(call => call.opts.rawAttack)).to.deep.equal([42, 63, 63, 63, 63, 63]);
       expect(notes()[1].opts.time).to.equal(120);

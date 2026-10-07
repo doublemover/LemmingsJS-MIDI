@@ -253,7 +253,7 @@ describe('EditorValidator', () => {
 
     const issues = validateLevel(level, { entranceId: 1, exitId: 2 });
     const clearIssue = issues.find(issue => issue.message.includes('Rotation values'));
-    const snapIssue = issues.find(issue => issue.message.includes('Rotation must be'));
+    const snapIssue = issues.find(issue => issue.message.includes('Stored rotation must be'));
     expect(clearIssue).to.exist;
     expect(snapIssue).to.exist;
     clearIssue.fix();

@@ -26,7 +26,7 @@ High-performance JavaScript port of Lemmings with WebMIDI sequencing support.
 You can [Play](https://doublemover.github.io/LemmingsJS-MIDI/) and [Edit](https://doublemover.github.io/LemmingsJS-MIDI/editor.html) in your browser right now!
 
 For a private, local copy: 
-- Install [Node.js 20+](https://nodejs.org)
+- Install [Node.js 20.19+ (20.x) or 22.12+](https://nodejs.org)
 - Clone: `git clone https://github.com/doublemover/LemmingsJS-MIDI`
 - Install and run:
   - `npm install`

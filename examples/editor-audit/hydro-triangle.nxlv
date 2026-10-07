@@ -1,0 +1,477 @@
+TITLE HYDRO CHECK: TRIANGLE APPROVED
+AUTHOR Editor audit
+STYLE dirt
+WIDTH 640
+HEIGHT 160
+LEMMINGS 10
+SAVE_REQUIREMENT 10
+TIME_LIMIT 5
+MAX_SPAWN_INTERVAL 10
+START_X 0
+START_Y 0
+$SKILLSET
+  SKILL CLIMBER 0
+  SKILL FLOATER 0
+  SKILL BOMBER 0
+  SKILL BLOCKER 0
+  SKILL BUILDER 0
+  SKILL BASHER 0
+  SKILL MINER 0
+  SKILL DIGGER 0
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 0
+  Y 112
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 24
+  Y 112
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 48
+  Y 112
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 72
+  Y 112
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 96
+  Y 112
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 120
+  Y 112
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 144
+  Y 112
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 168
+  Y 112
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 192
+  Y 112
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 216
+  Y 112
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 240
+  Y 112
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 264
+  Y 112
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 288
+  Y 112
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 312
+  Y 112
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 336
+  Y 112
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 360
+  Y 112
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 384
+  Y 112
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 408
+  Y 112
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 432
+  Y 112
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 456
+  Y 112
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 480
+  Y 112
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 504
+  Y 112
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 528
+  Y 112
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 552
+  Y 112
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 576
+  Y 112
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 600
+  Y 112
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 624
+  Y 112
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 176
+  Y 112
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 184
+  Y 110
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 192
+  Y 108
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 200
+  Y 106
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 208
+  Y 104
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 216
+  Y 102
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 224
+  Y 100
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 232
+  Y 98
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 240
+  Y 96
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 248
+  Y 94
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 256
+  Y 92
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 264
+  Y 90
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 272
+  Y 88
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 280
+  Y 86
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 288
+  Y 84
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 296
+  Y 82
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 304
+  Y 80
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 312
+  Y 78
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 320
+  Y 76
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 328
+  Y 78
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 336
+  Y 80
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 344
+  Y 82
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 352
+  Y 84
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 360
+  Y 86
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 368
+  Y 88
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 376
+  Y 90
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 384
+  Y 92
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 392
+  Y 94
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 400
+  Y 96
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 408
+  Y 98
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 416
+  Y 100
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 424
+  Y 102
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 432
+  Y 104
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 440
+  Y 106
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 448
+  Y 108
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 456
+  Y 110
+$END
+$TERRAIN
+  STYLE dirt
+  PIECE 9
+  X 464
+  Y 112
+$END
+$GADGET
+  STYLE dirt
+  PIECE 1
+  X 24
+  Y 52
+$END
+$GADGET
+  STYLE dirt
+  PIECE 0
+  X 560
+  Y 95
+$END
+$GADGET
+  STYLE dirt
+  PIECE 5
+  X 0
+  Y 144
+$END
+$GADGET
+  STYLE dirt
+  PIECE 5
+  X 64
+  Y 144
+$END
+$GADGET
+  STYLE dirt
+  PIECE 5
+  X 128
+  Y 144
+$END
+$GADGET
+  STYLE dirt
+  PIECE 5
+  X 192
+  Y 144
+$END
+$GADGET
+  STYLE dirt
+  PIECE 5
+  X 256
+  Y 144
+$END
+$GADGET
+  STYLE dirt
+  PIECE 5
+  X 320
+  Y 144
+$END
+$GADGET
+  STYLE dirt
+  PIECE 5
+  X 384
+  Y 144
+$END
+$GADGET
+  STYLE dirt
+  PIECE 5
+  X 448
+  Y 144
+$END
+$GADGET
+  STYLE dirt
+  PIECE 5
+  X 512
+  Y 144
+$END
+$GADGET
+  STYLE dirt
+  PIECE 5
+  X 576
+  Y 144
+$END

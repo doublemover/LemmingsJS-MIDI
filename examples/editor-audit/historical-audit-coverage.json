@@ -1,0 +1,101 @@
+{
+  "date": "2026-10-06",
+  "repository": "https://github.com/doublemover/LemmingsJS-MIDI",
+  "baseCommit": "a7dd33e2facbb8d043301464b3a734d203fc6444",
+  "branch": "editor-audit",
+  "checks": {
+    "browser": {
+      "startTime": "2026-10-06T18:21:57.334Z",
+      "duration": 86796.81599999999,
+      "expected": 47,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "fullMocha": 2330,
+    "editorUnit": 250,
+    "newRegressions": 2,
+    "lint": "pass excluding downloaded browser dependencies",
+    "checkUndefined": "pass",
+    "depcheck": "pass"
+  },
+  "coverage": [
+    [
+      "Create/load/save/reload",
+      "PASS",
+      "Blank levels, built-in classic levels, saved-list ordering, local persistence, and both delivered NXLV files."
+    ],
+    [
+      "Terrain/objects/brush/eraser/steel",
+      "PASS",
+      "Placement, centered coordinates, grid snapping, brush strokes, erasure, steel rectangles and resizing."
+    ],
+    [
+      "Selection/transforms/layers",
+      "PASS WITH LIMITS",
+      "Multi-select, nudge, delete, copy/paste/duplicate, layer buttons, alignment/distribution, replacement/randomization/scaling, and stored flip/rotate/one-way flags. Runtime support for every transformed NeoLemmix property is not implied."
+    ],
+    [
+      "Palette",
+      "PASS",
+      "Pack switching, tabs, list/grid/recent selection, filter entry, and selection overlays across assets. Zero-size placeholder entries remain listed."
+    ],
+    [
+      "History",
+      "PASS",
+      "Undo/redo, history state, clipboard workflows and API mutation history. No long-session stress campaign."
+    ],
+    [
+      "Metadata/skills",
+      "PASS WITH GAP",
+      "Visible metadata fields tested; console level.new/patchSkillset supports skills. There is no visible level skillset panel in editor.html. Both delivered levels have explicit skillsets."
+    ],
+    [
+      "Entrances/exits/triggers",
+      "PASS",
+      "Classic limits, trigger placement, runtime lowering and MIDI-flag seek/reverse persistence. No hardware MIDI configured."
+    ],
+    [
+      "Import/export/packages",
+      "PASS WITH ISSUE",
+      "NXLV semantic roundtrip, classic LVL import/export, project CRUD/bundle export, archive install, malformed archive recovery and validation report download. Custom project-level alias changes to the NXLV TITLE on active-level export."
+    ],
+    [
+      "Validation/error recovery",
+      "PASS",
+      "Validation panel/fix buttons, bounded advisory solver, empty import retains current level, unsupported fields preserved with warnings, bad archive retains project; storage failure handling covered by units."
+    ],
+    [
+      "Keyboard/mouse/responsive",
+      "PASS WITH LIMITS",
+      "All 10 tool shortcuts, clipboard/nudge/history, mouse canvas operations and zoom. Desktop plus 768/390 CSS viewport checks; physical touch, pen, screen reader and non-Chromium browsers unrun."
+    ],
+    [
+      "MCP/console",
+      "PASS AFTER FIX",
+      "Real local stdio MCP session, editor_apply, objects_list, state_get and export resource readback. Bridge previously returned {} for async editor calls; fixed and regression-tested. Other registered MCP tools not individually end-to-end exercised."
+    ],
+    [
+      "All base-pack JSON export",
+      "PASS",
+      "324 identities, SHA-256 manifest, JSON readback and classic semantic roundtrip; refuses existing destination. Counts 120 / 100 / 4 / 4 / 32 / 64."
+    ],
+    [
+      "Custom level playability",
+      "PASS",
+      "The Orchard Gate: 10/10, one basher consumed out of two. Hydro triangle: 10/10, no skills. Save/reload/export and zero validation errors recorded."
+    ]
+  ],
+  "findings": [
+    "FIXED: MCP callE2E nested an unresolved Promise inside its result. Awaiting the method now preserves async editor results/resources and catches async rejection.",
+    "FIXED: Xmas 1991 and Xmas 1992 each referenced a nonexistent fifth archive part. Both DAT files have four 2048-byte parts; menus now contain four entries.",
+    "ADDED: export-all-levels is a separate non-overwriting archival JSON exporter. Existing export-all-packs exports sprites only; MCP level.export supports current-level NXLV/LVL, not all-pack JSON.",
+    "REMAINING: Console-driven level.loadText/loadSaved updates the model and preview but may leave visible metadata fields showing the prior level. UI file import updates the fields correctly. See console captures versus final UI-import overviews.",
+    "REMAINING: Exporting the active project level re-derives its display title from the NXLV header and loses a separately assigned project label. NXLV contents remain intact. A product decision is needed about alias versus header ownership.",
+    "ASSETS: No custom bitmap/style import control or asset editing UI exists. Offline PNG/DAT tools provide sprite export and patching. Editor project archives contain text files and do not bundle the required base DAT art. A pack archive is application-specific JSON, not a ZIP or universally portable NeoLemmix pack.",
+    "ASSETS: Generic palette names and zero-dimension placeholder entries reduce discoverability. Classic LVL export is lossy for extended editor data; special graphics references are retained in the new classic JSON but editor conversion has narrower support.",
+    "SOURCE REVIEW: exportAllPacks.js uses URL.pathname for its default config path and catches failures by falling back to lemmings. On Windows this path handling can hide other configured packs. Not changed or counted as a live export test.",
+    "ENVIRONMENT: Node 26 stalled during official Chromium extraction and Playwright cleanup. Official Node 22 plus Windows archive extraction completed the same browser tests cleanly. Initial interrupted run is not counted as a clean pass.",
+    "UNRUN: Cross-browser/physical touch/accessibility audit, external archive formats with arbitrary third-party packs, real hardware MIDI, deployment and performance soak tests. The advisory solver is not a proof of solvability."
+  ]
+}

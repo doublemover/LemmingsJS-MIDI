@@ -75,7 +75,7 @@ class GroundRenderer {
     const destX = cfg.x | 0;
     const destY = cfg.y | 0;
 
-    const { isUpsideDown, noOverwrite, isErase, onlyOverwrite } = cfg.drawProperties;
+    const { isUpsideDown, isFlippedHorizontally, noOverwrite, isErase, onlyOverwrite } = cfg.drawProperties;
     const img = this.img;
     const sample = (x, y) => (y * srcWidth) + x;
 
@@ -85,7 +85,7 @@ class GroundRenderer {
         const srcY = (h - 1 - y) * srcScaleY;
         const dy = y + destY;
         for (let x = 0; x < w; ++x) {
-          const idx = sample(x * srcScaleX, srcY);
+          const idx = sample((isFlippedHorizontally ? w - 1 - x : x) * srcScaleX, srcY);
           if (!isOpaque(idx)) continue;
           if (isErase) {
             img.clearPixel(x + destX, dy);
@@ -99,7 +99,7 @@ class GroundRenderer {
         const srcY = y * srcScaleY;
         const dy = y + destY;
         for (let x = 0; x < w; ++x) {
-          const idx = sample(x * srcScaleX, srcY);
+          const idx = sample((isFlippedHorizontally ? w - 1 - x : x) * srcScaleX, srcY);
           if (!isOpaque(idx)) continue;
           if (isErase) {
             img.clearPixel(x + destX, dy);

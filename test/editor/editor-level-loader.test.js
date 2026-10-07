@@ -616,6 +616,20 @@ describe('EditorLevelLoader', () => {
     expect(runtime.newSetSteelAreasArgs).to.equal(null);
   });
 
+  it('passes preserved horizontal terrain flags through the real runtime loader', async () => {
+    resetStyleRegistry(); registerStyle('preview', { groundSet: 1 });
+    const level = buildLevel(); level.terrains[0].props.FLIP_HORIZONTAL = true;
+    const { deps, fileProvider } = createFakeDeps();
+    let received;
+    class CaptureRenderer extends deps.GroundRenderer {
+      createGroundMap(reader, images) { received = reader; super.createGroundMap(reader, images); }
+    }
+    await loadEditorLevel(level, { gametype: 1, path: 'game' }, fileProvider, { ...deps, GroundRenderer: CaptureRenderer });
+    expect(received.terrains[0].drawProperties.isFlippedHorizontally).to.equal(true);
+    expect(received.terrains[0].drawProperties.isUpsideDown).to.equal(true);
+    expect(level.terrains[0].props.FLIP_HORIZONTAL).to.equal(true);
+  });
+
   it('returns null when loadEditorLevel inputs are missing', async () => {
     const level = buildLevel();
     const { deps } = createFakeDeps();

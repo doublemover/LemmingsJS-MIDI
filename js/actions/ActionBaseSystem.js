@@ -15,6 +15,8 @@ class ActionBaseSystem {
      */
   constructor({sprites=null, spriteType=null, singleSprite=false, masks=null, maskTypes=null, actionName=null, runtime=null} = {}) {
     this.sprites = null;
+    this.spriteProvider = sprites;
+    this.spriteType = spriteType;
     this.masks   = null;
     this.actionName = actionName || '';
     this.runtime = runtime;
@@ -83,7 +85,7 @@ class ActionBaseSystem {
   draw(gameDisplay, lem) {
     if (!this.sprites) return;
     const key = this.sprites.has('both') ? 'both' : lem.getDirection();
-    const ani = this.sprites.get(key);
+    const ani = this.spriteProvider?.getActorAnimation?.(this.spriteType, lem.lookRight, lem) || this.sprites.get(key);
     const frame = ani.getFrame(lem.frameIndex);
     gameDisplay.drawFrame(frame, lem.x, lem.y);
   }

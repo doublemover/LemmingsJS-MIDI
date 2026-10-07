@@ -1,6 +1,7 @@
 import './bootstrap.js';
 import { GameView } from '../game/GameView.js';
 import { MidiInputController } from '../midi/input/MidiInputController.js';
+import { createCharacterUiController } from './characterUiController.js';
 import { createMidiUiController } from './midiUiController.js';
 import { registerServiceWorker } from './registerServiceWorker.js';
 import { installE2EHarness } from './e2eHarness.js';
@@ -140,6 +141,7 @@ const appendBootFailureMessage = (documentRef, error, embedMode) => {
 };
 
 let midiUi = null;
+let characterUi = null;
 let midiInputController = null;
 let lemmings;
 let resizeBound = false;
@@ -245,6 +247,7 @@ function init({ windowRef, documentRef, embedMode }) {
         await lemmings.loadEditorLevelFromSelection();
       }
       midiUi?.refreshMidiUiFromConfig?.();
+      characterUi?.sync();
     }).catch(() => {});
   }
   // use GameView.strToNum to parse dropdown values
@@ -496,6 +499,9 @@ function start() {
       profile: lemmings?.startupProfile || DEFAULT_RUNTIME_PROFILE,
       embedMode: embedMode === true
     });
+    characterUi = createCharacterUiController({ document: documentRef, window: windowRef, getView: () => lemmings });
+    characterUi.bind();
+    characterUi.sync();
     midiUi?.bindMidiUi();
     midiUi?.scheduleMidiUiRefresh();
     registerServiceWorker({

@@ -27,7 +27,7 @@ class ActionExplodingSystem extends ActionBaseSystem {
 
   draw(gameDisplay, lem) {
     if (lem.frameIndex === 0) {
-      const ani = this.sprites.get('both');
+      const ani = this.spriteProvider?.getActorAnimation?.(this.spriteType, lem.lookRight, lem) || this.sprites.get('both');
       const frame = ani.getFrame(lem.frameIndex);
       gameDisplay.drawFrame(frame, lem.x-10, lem.y-8);
     } else {

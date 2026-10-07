@@ -5,7 +5,8 @@ const createFixture = ({
   currentTick = 0,
   deltas = [],
   state = null,
-  resourcePut = () => null
+  resourcePut = () => null,
+  summarize = () => ({})
 } = {}) => {
   const session = {
     id: 's1',
@@ -58,9 +59,7 @@ const createFixture = ({
       buildLemmingPrunePolicy() {
         return null;
       },
-      buildLemmingSummary() {
-        return {};
-      },
+      buildLemmingSummary: summarize,
       buildLemmingSummaryCompact() {
         return {};
       },
@@ -81,6 +80,20 @@ const createFixture = ({
 };
 
 describe('state tools', function () {
+  it('keeps the raw debug population intact while deriving summaries and selected actors', async function() {
+    const actors = [{ id: 81, x: 4 }, { id: 92, x: 8 }];
+    const state = { version: 1, mode: 'game', ready: true, game: { timer: { tickIndex: 2 }, lemmings: actors,
+      lemmingManager: { selectedIndex: 1 } } };
+    const fixture = createFixture({ state, summarize: raw => ({ count: raw.game.lemmings.length }) });
+    const before = JSON.stringify(state);
+    const summary = await fixture.handlers.getStateTool({ preset: 'debug', lemmings: { mode: 'summary' } });
+    expect(summary.snapshot.game.lemmingsSummary.count).to.equal(2);
+    const selected = await fixture.handlers.getStateTool({ preset: 'debug', lemmings: { mode: 'selected' } });
+    expect(selected.snapshot.game.selectedLemmingId).to.equal(92);
+    expect(state.game.lemmings).to.equal(actors);
+    expect(JSON.stringify(state)).to.equal(before);
+  });
+
   it('clamps toTick to the current tick before requesting deltas', async function () {
     const fixture = createFixture({ currentTick: 12, deltas: [] });
 
