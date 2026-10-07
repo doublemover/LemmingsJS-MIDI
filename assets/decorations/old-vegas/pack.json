@@ -22,7 +22,55 @@
     "#3e66ee",
     "#193697",
     "#70b6ff",
-    "#ff873e"
+    "#ff873e",
+    "#ffd2ad",
+    "#cc8c78",
+    "#704250",
+    "#2e9b68",
+    "#9a5ccb",
+    "#f3dc84"
+  ],
+  "denominations": [
+    {
+      "value": 1,
+      "label": "1",
+      "color": 6
+    },
+    {
+      "value": 5,
+      "label": "5",
+      "color": 4
+    },
+    {
+      "value": 25,
+      "label": "25",
+      "color": 17
+    },
+    {
+      "value": 100,
+      "label": "100",
+      "color": 0
+    },
+    {
+      "value": 500,
+      "label": "500",
+      "color": 18
+    },
+    {
+      "value": 1000,
+      "label": "1K",
+      "color": 19
+    },
+    {
+      "value": 5000,
+      "label": "5K",
+      "color": 13
+    },
+    {
+      "value": 25000,
+      "label": "25K",
+      "color": 10
+    }
   ],
   "pieces": [
     {
@@ -162,7 +210,7 @@
     },
     {
       "id": "slot-reels",
-      "name": "Triple seven slot reels",
+      "name": "Continuously rolling slot reels",
       "width": 64,
       "height": 28,
       "placement": "ceiling",
@@ -180,11 +228,245 @@
     },
     {
       "id": "hydro-showgirl",
-      "name": "hydro feather revue",
+      "name": "hydro revue · hip shimmy",
       "width": 96,
       "height": 64,
       "placement": "stage",
       "atlasRow": 17,
+      "interactive": false
+    },
+    {
+      "id": "hydro-showgirl-charleston",
+      "name": "hydro revue · Charleston",
+      "width": 96,
+      "height": 64,
+      "placement": "stage",
+      "atlasRow": 18,
+      "interactive": false
+    },
+    {
+      "id": "hydro-showgirl-kickline",
+      "name": "hydro revue · kickline",
+      "width": 96,
+      "height": 64,
+      "placement": "stage",
+      "atlasRow": 19,
+      "interactive": false
+    },
+    {
+      "id": "chips-side-1",
+      "name": "1 chips · stacked side view",
+      "width": 56,
+      "height": 36,
+      "placement": "stage",
+      "atlasRow": 20,
+      "interactive": false
+    },
+    {
+      "id": "chips-face-1",
+      "name": "1 chip · face-on",
+      "width": 48,
+      "height": 48,
+      "placement": "stage",
+      "atlasRow": 21,
+      "interactive": false
+    },
+    {
+      "id": "chips-side-5",
+      "name": "5 chips · stacked side view",
+      "width": 56,
+      "height": 36,
+      "placement": "stage",
+      "atlasRow": 22,
+      "interactive": false
+    },
+    {
+      "id": "chips-face-5",
+      "name": "5 chip · face-on",
+      "width": 48,
+      "height": 48,
+      "placement": "stage",
+      "atlasRow": 23,
+      "interactive": false
+    },
+    {
+      "id": "chips-side-25",
+      "name": "25 chips · stacked side view",
+      "width": 56,
+      "height": 36,
+      "placement": "stage",
+      "atlasRow": 24,
+      "interactive": false
+    },
+    {
+      "id": "chips-face-25",
+      "name": "25 chip · face-on",
+      "width": 48,
+      "height": 48,
+      "placement": "stage",
+      "atlasRow": 25,
+      "interactive": false
+    },
+    {
+      "id": "chips-side-100",
+      "name": "100 chips · stacked side view",
+      "width": 56,
+      "height": 36,
+      "placement": "stage",
+      "atlasRow": 26,
+      "interactive": false
+    },
+    {
+      "id": "chips-face-100",
+      "name": "100 chip · face-on",
+      "width": 48,
+      "height": 48,
+      "placement": "stage",
+      "atlasRow": 27,
+      "interactive": false
+    },
+    {
+      "id": "chips-side-500",
+      "name": "500 chips · stacked side view",
+      "width": 56,
+      "height": 36,
+      "placement": "stage",
+      "atlasRow": 28,
+      "interactive": false
+    },
+    {
+      "id": "chips-face-500",
+      "name": "500 chip · face-on",
+      "width": 48,
+      "height": 48,
+      "placement": "stage",
+      "atlasRow": 29,
+      "interactive": false
+    },
+    {
+      "id": "chips-side-1000",
+      "name": "1K chips · stacked side view",
+      "width": 56,
+      "height": 36,
+      "placement": "stage",
+      "atlasRow": 30,
+      "interactive": false
+    },
+    {
+      "id": "chips-face-1000",
+      "name": "1K chip · face-on",
+      "width": 48,
+      "height": 48,
+      "placement": "stage",
+      "atlasRow": 31,
+      "interactive": false
+    },
+    {
+      "id": "chips-side-5000",
+      "name": "5K chips · stacked side view",
+      "width": 56,
+      "height": 36,
+      "placement": "stage",
+      "atlasRow": 32,
+      "interactive": false
+    },
+    {
+      "id": "chips-face-5000",
+      "name": "5K chip · face-on",
+      "width": 48,
+      "height": 48,
+      "placement": "stage",
+      "atlasRow": 33,
+      "interactive": false
+    },
+    {
+      "id": "chips-side-25000",
+      "name": "25K chips · stacked side view",
+      "width": 56,
+      "height": 36,
+      "placement": "stage",
+      "atlasRow": 34,
+      "interactive": false
+    },
+    {
+      "id": "chips-face-25000",
+      "name": "25K chip · face-on",
+      "width": 48,
+      "height": 48,
+      "placement": "stage",
+      "atlasRow": 35,
+      "interactive": false
+    },
+    {
+      "id": "card-A-heart",
+      "name": "A of hearts · full card",
+      "width": 38,
+      "height": 50,
+      "placement": "stage",
+      "atlasRow": 36,
+      "interactive": false
+    },
+    {
+      "id": "card-10-heart",
+      "name": "10 of hearts · full card",
+      "width": 38,
+      "height": 50,
+      "placement": "stage",
+      "atlasRow": 37,
+      "interactive": false
+    },
+    {
+      "id": "card-A-club",
+      "name": "A of clubs · full card",
+      "width": 38,
+      "height": 50,
+      "placement": "stage",
+      "atlasRow": 38,
+      "interactive": false
+    },
+    {
+      "id": "card-10-club",
+      "name": "10 of clubs · full card",
+      "width": 38,
+      "height": 50,
+      "placement": "stage",
+      "atlasRow": 39,
+      "interactive": false
+    },
+    {
+      "id": "card-A-spade",
+      "name": "A of spades · full card",
+      "width": 38,
+      "height": 50,
+      "placement": "stage",
+      "atlasRow": 40,
+      "interactive": false
+    },
+    {
+      "id": "card-10-spade",
+      "name": "10 of spades · full card",
+      "width": 38,
+      "height": 50,
+      "placement": "stage",
+      "atlasRow": 41,
+      "interactive": false
+    },
+    {
+      "id": "card-A-diamond",
+      "name": "A of diamonds · full card",
+      "width": 38,
+      "height": 50,
+      "placement": "stage",
+      "atlasRow": 42,
+      "interactive": false
+    },
+    {
+      "id": "card-10-diamond",
+      "name": "10 of diamonds · full card",
+      "width": 38,
+      "height": 50,
+      "placement": "stage",
+      "atlasRow": 43,
       "interactive": false
     }
   ]

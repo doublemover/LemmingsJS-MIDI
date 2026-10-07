@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Original Neon Cabaret editor theme includes animated scenery, walkable terrain, protected steel, entrance/exit, and operational electric, crush and coolant hazards with an Opening Night starter level.
+- Refine Old Vegas with continuously rolling reels, crisp card suits, eight labeled chip denominations in both views, full 50-pixel cards, and three adult humanoid cabaret dance loops.
 - Add selectable Old Vegas and Neon Cabaret animated procedural scenery with collision-free cached rendering, reduced-motion support, shared URLs, and reusable pixel-art catalogs.
 - Frontier-grown, phase-varying procgen chunks use the full selected-theme terrain/object vocabulary, including animated noncolliding scenery, climbable elevations, gaps, overhangs and protected steel.
 - Compact seven-pixel character silhouettes, shape-specific walking and panic, sampled terrain debris, and intact accessory/eyewear ejection work in both classic levels and the sparse procgen world.

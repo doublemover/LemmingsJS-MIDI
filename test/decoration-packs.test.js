@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { createOldVegasPack } from '../js/decorations/OldVegasPack.js';
+import { createOldVegasPack, CHIP_DENOMINATIONS, SUITS } from '../js/decorations/OldVegasPack.js';
 import { getDecorationPack, decorationPlacements } from '../js/decorations/ProcgenDecorationPacks.js';
 import { DecorationLayer } from '../js/decorations/DecorationLayer.js';
 import { readProcgenUrlConfig, createProcgenShareUrl } from '../js/app/procgen/ProcgenUrlConfig.js';
@@ -7,7 +7,7 @@ import { readProcgenUrlConfig, createProcgenShareUrl } from '../js/app/procgen/P
 describe('Old Vegas runtime decoration pack', () => {
   it('shares a bounded indexed catalog with unique IDs and genuine animation', () => {
     const pack = createOldVegasPack(); expect(createOldVegasPack()).to.equal(pack);
-    expect(pack.pieces.length).to.equal(18); expect(new Set(pack.pieces.map(p => p.id)).size).to.equal(18);
+    expect(pack.pieces.length).to.equal(44); expect(new Set(pack.pieces.map(p => p.id)).size).to.equal(44);
     let bytes = 0;
     for (const piece of pack.pieces) {
       expect(piece.interactive).to.equal(false); expect(piece.image.frames.length).to.equal(16);
@@ -19,7 +19,25 @@ describe('Old Vegas runtime decoration pack', () => {
       }
       expect(hashes.size, piece.id).to.be.greaterThan(1);
     }
-    expect(bytes).to.be.lessThan(1024 * 1024);
+    expect(bytes).to.be.lessThan(2 * 1024 * 1024);
+  });
+  it('uses clear symmetric suit stencils and a documented eight-denomination chip set in both views', () => {
+    const pack = createOldVegasPack();
+    for (const rows of Object.values(SUITS)) for (const row of rows) expect(row).to.equal([...row].reverse().join(''));
+    expect(CHIP_DENOMINATIONS.map(d => d.value)).to.deep.equal([1, 5, 25, 100, 500, 1000, 5000, 25000]);
+    for (const d of CHIP_DENOMINATIONS) for (const view of ['side', 'face']) expect(pack.pieces.some(p => p.id === `chips-${view}-${d.value}`)).to.equal(true);
+    const cards = pack.pieces.filter(p => p.id.startsWith('card-'));
+    expect(cards.length).to.equal(8); expect(cards.every(p => p.height === 50)).to.equal(true);
+  });
+  it('scrolls symbols vertically through clipped slot windows instead of switching icons', () => {
+    const frames = createOldVegasPack().pieces.find(p => p.id === 'slot-reels').image.frames;
+    for (let reel = 0; reel < 3; reel++) for (let y = 7; y < 18; y++) for (let x = 12 + reel * 14; x < 22 + reel * 14; x++) expect(frames[1][y * 64 + x]).to.equal(frames[0][(y + 3) * 64 + x]);
+  });
+  it('provides three distinct humanoid dance loops with fitted costume and skin palette', () => {
+    const dancers = createOldVegasPack().pieces.filter(p => p.id.startsWith('hydro-showgirl'));
+    expect(dancers.length).to.equal(3);
+    expect(new Set(dancers.map(p => Buffer.concat(p.image.frames.map(f => Buffer.from(f))).toString('base64'))).size).to.equal(3);
+    for (const p of dancers) expect(p.image.frames.every(frame => frame.includes(14) && frame.includes(16) && frame.includes(4))).to.equal(true);
   });
   it('keeps placement deterministic, collision-free, bounded and lane-varied', () => {
     const pack = getDecorationPack('old-vegas');
