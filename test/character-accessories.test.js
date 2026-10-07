@@ -162,7 +162,7 @@ describe('native character accessory layers', function() {
     const color = document.getElementById('characterEyewearPalette');
     color.value = '#fa70ab'; color.dispatchEvent({ type: 'change', target: color });
     expect(getCharacterPreference().eyewearColor).to.equal('#fa70ab');
-    expect(getCharacterPreference().bodyColor).to.equal(null);
+    expect(getCharacterPreference().bodyColor).to.equal('#4778ff');
     const shape = document.getElementById('characterShape'); shape.value = 'classic'; shape.dispatchEvent({ type: 'change', target: shape });
     await controller.sync(); expect(eyewear.disabled).to.equal(true);
     expect(getCharacterPreference().accessory).to.equal('bow');

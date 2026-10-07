@@ -3,7 +3,7 @@
   "shapes": [
     {
       "id": "rounded_triangle",
-      "label": "Hydro triangle",
+      "label": "Triangle",
       "path": "assets/hydro/hydro-skin.json",
       "accessoriesPath": "assets/characters/accessories/rounded_triangle.json",
       "headwearPath": "assets/characters/headwear/rounded_triangle.json"

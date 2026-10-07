@@ -1,0 +1,53 @@
+/* Vendored Lucide SVGs; license and source in assets/icons/lucide. */
+.visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important; border: 0 !important; }
+[data-icon]::before { content: ''; display: inline-block; flex: none; width: 16px; height: 16px; background: currentColor; mask: var(--icon) center / contain no-repeat; vertical-align: middle; pointer-events: none; }
+.icon-only { font-size: 0 !important; width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; flex: none; padding: 5px !important; }
+.icon-only::before { width: 16px; height: 16px; }
+[data-icon="arrow-down-right"] { --icon: url('../assets/icons/lucide/arrow-down-right.svg'); }
+[data-icon="arrow-up-right"] { --icon: url('../assets/icons/lucide/arrow-up-right.svg'); }
+[data-icon="audio-lines"] { --icon: url('../assets/icons/lucide/audio-lines.svg'); }
+[data-icon="chevron-left"] { --icon: url('../assets/icons/lucide/chevron-left.svg'); }
+[data-icon="chevron-right"] { --icon: url('../assets/icons/lucide/chevron-right.svg'); }
+[data-icon="circle-off"] { --icon: url('../assets/icons/lucide/circle-off.svg'); }
+[data-icon="circle"] { --icon: url('../assets/icons/lucide/circle.svg'); }
+[data-icon="columns-2"] { --icon: url('../assets/icons/lucide/columns-2.svg'); }
+[data-icon="crown"] { --icon: url('../assets/icons/lucide/crown.svg'); }
+[data-icon="diamond"] { --icon: url('../assets/icons/lucide/diamond.svg'); }
+[data-icon="dice-5"] { --icon: url('../assets/icons/lucide/dice-5.svg'); }
+[data-icon="donut"] { --icon: url('../assets/icons/lucide/donut.svg'); }
+[data-icon="ellipsis"] { --icon: url('../assets/icons/lucide/ellipsis.svg'); }
+[data-icon="external-link"] { --icon: url('../assets/icons/lucide/external-link.svg'); }
+[data-icon="file-down"] { --icon: url('../assets/icons/lucide/file-down.svg'); }
+[data-icon="file-up"] { --icon: url('../assets/icons/lucide/file-up.svg'); }
+[data-icon="flower-2"] { --icon: url('../assets/icons/lucide/flower-2.svg'); }
+[data-icon="flower"] { --icon: url('../assets/icons/lucide/flower.svg'); }
+[data-icon="folder-open"] { --icon: url('../assets/icons/lucide/folder-open.svg'); }
+[data-icon="glasses"] { --icon: url('../assets/icons/lucide/glasses.svg'); }
+[data-icon="hat-glasses"] { --icon: url('../assets/icons/lucide/hat-glasses.svg'); }
+[data-icon="headphones"] { --icon: url('../assets/icons/lucide/headphones.svg'); }
+[data-icon="heart"] { --icon: url('../assets/icons/lucide/heart.svg'); }
+[data-icon="keyboard"] { --icon: url('../assets/icons/lucide/keyboard.svg'); }
+[data-icon="layers"] { --icon: url('../assets/icons/lucide/layers.svg'); }
+[data-icon="lightbulb"] { --icon: url('../assets/icons/lucide/lightbulb.svg'); }
+[data-icon="list-music"] { --icon: url('../assets/icons/lucide/list-music.svg'); }
+[data-icon="music"] { --icon: url('../assets/icons/lucide/music.svg'); }
+[data-icon="panel-left"] { --icon: url('../assets/icons/lucide/panel-left.svg'); }
+[data-icon="panels-top-left"] { --icon: url('../assets/icons/lucide/panels-top-left.svg'); }
+[data-icon="pause"] { --icon: url('../assets/icons/lucide/pause.svg'); }
+[data-icon="pencil"] { --icon: url('../assets/icons/lucide/pencil.svg'); }
+[data-icon="plane"] { --icon: url('../assets/icons/lucide/plane.svg'); }
+[data-icon="play"] { --icon: url('../assets/icons/lucide/play.svg'); }
+[data-icon="plus"] { --icon: url('../assets/icons/lucide/plus.svg'); }
+[data-icon="redo-2"] { --icon: url('../assets/icons/lucide/redo-2.svg'); }
+[data-icon="save"] { --icon: url('../assets/icons/lucide/save.svg'); }
+[data-icon="settings-2"] { --icon: url('../assets/icons/lucide/settings-2.svg'); }
+[data-icon="shapes"] { --icon: url('../assets/icons/lucide/shapes.svg'); }
+[data-icon="sliders-horizontal"] { --icon: url('../assets/icons/lucide/sliders-horizontal.svg'); }
+[data-icon="square-round-corner"] { --icon: url('../assets/icons/lucide/square-round-corner.svg'); }
+[data-icon="square"] { --icon: url('../assets/icons/lucide/square.svg'); }
+[data-icon="step-forward"] { --icon: url('../assets/icons/lucide/step-forward.svg'); }
+[data-icon="triangle"] { --icon: url('../assets/icons/lucide/triangle.svg'); }
+[data-icon="undo-2"] { --icon: url('../assets/icons/lucide/undo-2.svg'); }
+[data-icon="usb"] { --icon: url('../assets/icons/lucide/usb.svg'); }
+[data-icon="volume-2"] { --icon: url('../assets/icons/lucide/volume-2.svg'); }
+[data-icon="x"] { --icon: url('../assets/icons/lucide/x.svg'); }
