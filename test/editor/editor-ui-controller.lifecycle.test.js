@@ -289,7 +289,10 @@ describe('EditorUiController lifecycle', function() {
     expect(ui.el.selX.disabled).to.equal(false);
     expect(ui.el.selX.placeholder).to.equal('batch');
     expect(ui.el.selWidth.disabled).to.equal(true);
-    expect(ui.el.selOneWay.disabled).to.equal(false);
+    expect(ui.el.selFlipH.disabled).to.equal(false);
+    expect(ui.el.selFlipH.title).to.contain('collision');
+    expect(ui.el.selOneWay.disabled).to.equal(true);
+    expect(ui.el.selOneWay.title).to.contain('not supported');
     expect(ui.el.selOneWay.indeterminate).to.equal(true);
     expect(ui.el.selSkill.disabled).to.equal(true);
 

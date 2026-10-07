@@ -106,7 +106,8 @@ const createStateToolHandlers = ({
 
     let snapshot;
     if (effectivePreset === 'debug') {
-      snapshot = filterStateSnapshot(raw, includeFlags);
+      const filtered = filterStateSnapshot(raw, includeFlags);
+      snapshot = { ...filtered, ...(filtered?.game ? { game: { ...filtered.game } } : {}) };
       if (snapshot.game && skillInfo) {
         snapshot.game.skillsInfo = skillInfo;
       }

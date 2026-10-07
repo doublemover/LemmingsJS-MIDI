@@ -1,0 +1,332 @@
+{
+  "capsule": {
+    "source": "native picker composition",
+    "recipe": "capsule/accessory/beret/light",
+    "bodyLayer": {
+      "hash": "f6038153708ddfcc2643fde114a8569f22abfb79675a15a93c1763fc0bed24b4",
+      "x": 84,
+      "y": 117,
+      "width": 216,
+      "height": 150
+    },
+    "hatLayer": {
+      "hash": "bfcf6eae44e84f1e6ffb5a9cffcca1314cad1d73aef85b0138bcab3ea3c1e0db",
+      "x": 65,
+      "y": 85,
+      "width": 236,
+      "height": 102
+    },
+    "nativeHatBounds": [
+      67,
+      87,
+      232,
+      97
+    ],
+    "x": -1,
+    "y": -1,
+    "rows": [
+      ".....YOOO..",
+      "..YOOOOOOOO",
+      ".OOoooooooo",
+      "OOo........",
+      "oo........."
+    ],
+    "reason": "Rest on the native upper-left crown/lobe; preserve the source slope and exposed right-hand contour."
+  },
+  "circle": {
+    "source": "native picker composition",
+    "recipe": "circle/accessory/beret/light",
+    "bodyLayer": {
+      "hash": "fc10feb246d92e9f28437e021a69a40662b3120e58a3e6e3551bc62749ac4b1f",
+      "x": 84,
+      "y": 84,
+      "width": 216,
+      "height": 216
+    },
+    "hatLayer": {
+      "hash": "65a7a9b8f5d3112255bc786d0288fff6b6ed2c56484f5c1e0284952c9ce04898",
+      "x": 74,
+      "y": 48,
+      "width": 186,
+      "height": 89
+    },
+    "nativeHatBounds": [
+      76,
+      50,
+      182,
+      85
+    ],
+    "x": 1,
+    "y": -1,
+    "rows": [
+      "...YOO.",
+      ".Yooooo",
+      "oo....."
+    ],
+    "reason": "Rest on the native upper-left crown/lobe; preserve the source slope and exposed right-hand contour."
+  },
+  "four_lobed_butterfly": {
+    "source": "native picker composition",
+    "recipe": "four_lobed_butterfly/accessory/beret/light",
+    "bodyLayer": {
+      "hash": "2a7734a6fd31538d797a6349a706fdc1ddd60b49a0cf8c90d5c1b2aec275d4ab",
+      "x": 84,
+      "y": 108,
+      "width": 216,
+      "height": 168
+    },
+    "hatLayer": {
+      "hash": "4b8d2348e902322b0117c08070963b19a418311e167d1ca2cd436bd95fa7f908",
+      "x": 75,
+      "y": 88,
+      "width": 129,
+      "height": 61
+    },
+    "nativeHatBounds": [
+      77,
+      90,
+      125,
+      56
+    ],
+    "x": 0,
+    "y": -1,
+    "rows": [
+      "...YO.",
+      ".Yoooo",
+      "oo...."
+    ],
+    "reason": "Rest on the native upper-left crown/lobe; preserve the source slope and exposed right-hand contour."
+  },
+  "heart": {
+    "source": "native picker composition",
+    "recipe": "heart/accessory/beret/light",
+    "bodyLayer": {
+      "hash": "3f8b9e15dc8b8271edebd7238144f5df99fb0d1564870cc3a5c4c7570ea60c5a",
+      "x": 84,
+      "y": 92,
+      "width": 216,
+      "height": 199
+    },
+    "hatLayer": {
+      "hash": "2112e7cca53149039d5a664de714bedfc49073594bcaeecd45f2e0dbf210cfe7",
+      "x": 65,
+      "y": 72,
+      "width": 140,
+      "height": 84
+    },
+    "nativeHatBounds": [
+      67,
+      74,
+      135,
+      79
+    ],
+    "x": 0,
+    "y": -1,
+    "rows": [
+      "..YOO.",
+      ".Yoooo",
+      "oo...."
+    ],
+    "reason": "Rest on the native upper-left crown/lobe; preserve the source slope and exposed right-hand contour."
+  },
+  "rounded_cube": {
+    "source": "native picker composition",
+    "recipe": "rounded_cube/accessory/beret/light",
+    "bodyLayer": {
+      "hash": "f4078fac3c7c6bb57f1977b8865bd9f44ebf4a788d930ae158f242e456c1949c",
+      "x": 89,
+      "y": 84,
+      "width": 206,
+      "height": 216
+    },
+    "hatLayer": {
+      "hash": "a734536f9a1604ee49c6b68780ed5f9c8b25ebc03c9e628db7e2cb89c0c72a82",
+      "x": 78,
+      "y": 52,
+      "width": 171,
+      "height": 92
+    },
+    "nativeHatBounds": [
+      81,
+      55,
+      166,
+      86
+    ],
+    "x": 1,
+    "y": -1,
+    "rows": [
+      "...YOO.",
+      ".Yooooo",
+      "oo....."
+    ],
+    "reason": "Rest on the native upper-left crown/lobe; preserve the source slope and exposed right-hand contour."
+  },
+  "rounded_diamond": {
+    "source": "native picker composition",
+    "recipe": "rounded_diamond/accessory/beret/light",
+    "bodyLayer": {
+      "hash": "d49775775c7d1738599e9e7a00df80cf95ab2acefe7810cb169023d9b2f3bb27",
+      "x": 84,
+      "y": 87,
+      "width": 216,
+      "height": 210
+    },
+    "hatLayer": {
+      "hash": "a552863b1ce8de0b3b52c5e673f4c35f4af2d5f3ee455fe66f14c96042eeec77",
+      "x": 81,
+      "y": 66,
+      "width": 174,
+      "height": 101
+    },
+    "nativeHatBounds": [
+      83,
+      69,
+      169,
+      96
+    ],
+    "x": 1,
+    "y": -1,
+    "rows": [
+      "...YO.",
+      ".YOOoo",
+      "OOoo..",
+      "oo...."
+    ],
+    "reason": "Rest on the native upper-left crown/lobe; preserve the source slope and exposed right-hand contour."
+  },
+  "six_lobed_flower": {
+    "source": "native picker composition",
+    "recipe": "six_lobed_flower/accessory/beret/light",
+    "bodyLayer": {
+      "hash": "40c3be093e07c332fe4dce17bcbc66bab800ee4fed921fe0097397578703d52e",
+      "x": 84,
+      "y": 93,
+      "width": 216,
+      "height": 198
+    },
+    "hatLayer": {
+      "hash": "899481e008d9e25360a36de39b35849dc4d28ba0ad9c8af2dff8956686454a64",
+      "x": 84,
+      "y": 54,
+      "width": 162,
+      "height": 97
+    },
+    "nativeHatBounds": [
+      86,
+      56,
+      157,
+      92
+    ],
+    "x": 0,
+    "y": -2,
+    "rows": [
+      "...YO..",
+      ".YOOOOO",
+      "OOooooo",
+      "oo....."
+    ],
+    "reason": "Rest on the native upper-left crown/lobe; preserve the source slope and exposed right-hand contour."
+  },
+  "twelve_scalloped_rosette": {
+    "source": "native picker composition",
+    "recipe": "twelve_scalloped_rosette/accessory/beret/light",
+    "bodyLayer": {
+      "hash": "5e6bb98e4903c1406606d1d05ccdb46045327a956e06e575197c3725ac02200e",
+      "x": 84,
+      "y": 86,
+      "width": 216,
+      "height": 212
+    },
+    "hatLayer": {
+      "hash": "3a0d7029abfb1fe63cbf849602a4052a2e6de5388e90158d031100002d25b1bc",
+      "x": 87,
+      "y": 58,
+      "width": 154,
+      "height": 81
+    },
+    "nativeHatBounds": [
+      89,
+      60,
+      150,
+      77
+    ],
+    "x": 1,
+    "y": -1,
+    "rows": [
+      "...YO.",
+      ".ooooo",
+      "o....."
+    ],
+    "reason": "Rest on the native upper-left crown/lobe; preserve the source slope and exposed right-hand contour."
+  },
+  "circle_two_ears": {
+    "source": "custom; native recipe unavailable",
+    "x": 2,
+    "y": -1,
+    "rows": [
+      "...O.",
+      ".OOOO",
+      "oOOOo",
+      "o...."
+    ],
+    "reason": "Cap brim contacts the actual three-pixel head crown below the ear tips; both ear tips draw in front through the cap edge.",
+    "foregroundPixels": [
+      [
+        4,
+        0
+      ],
+      [
+        6,
+        0
+      ]
+    ]
+  },
+  "rounded_head_two_ears": {
+    "source": "custom; native recipe unavailable",
+    "x": 0,
+    "y": -2,
+    "rows": [
+      "...O..",
+      ".OOOOO",
+      "oOOOOo",
+      "oo...."
+    ],
+    "reason": "Perch over the left crown lobe; leave the tall right lobe exposed rather than bridging both ears."
+  },
+  "donut": {
+    "source": "custom ring adaptation of native circle fit",
+    "recipe": "circle/accessory/beret/light",
+    "bodyLayer": {
+      "hash": "fc10feb246d92e9f28437e021a69a40662b3120e58a3e6e3551bc62749ac4b1f",
+      "x": 84,
+      "y": 84,
+      "width": 216,
+      "height": 216
+    },
+    "hatLayer": {
+      "hash": "65a7a9b8f5d3112255bc786d0288fff6b6ed2c56484f5c1e0284952c9ce04898",
+      "x": 74,
+      "y": 48,
+      "width": 186,
+      "height": 89
+    },
+    "nativeHatBounds": [
+      76,
+      50,
+      182,
+      85
+    ],
+    "x": 1,
+    "y": -1,
+    "rows": [
+      "...YOO.",
+      ".Yooooo",
+      "oo....."
+    ],
+    "reason": "Rest above the ring upper-left outer crown. Keep the entire central aperture clear; do not use it as a forehead."
+  },
+  "rounded_triangle": {
+    "source": "reviewed original Hydro manifest retained",
+    "reason": "Preserve the established original silhouette and beret; no regenerated replacement."
+  }
+}

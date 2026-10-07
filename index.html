@@ -26,6 +26,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="img/touch-icon-180.png" />
   <link rel="manifest" href="site.webmanifest" />
   <link type="text/css" rel="stylesheet" href="css/game.css">
+  <link type="text/css" rel="stylesheet" href="css/midi-instrument.css">
   <script>
     if (navigator.webdriver) {
       const originalError = console.error;
@@ -44,18 +45,15 @@
 <body class="game-page" oncontextmenu="return false;">
   <section id="midiSequencerWorkspace" class="midi-sequencer" aria-label="Game sound editor" hidden>
     <header id="midiTransportStrip" class="midi-studio-header">
-      <strong>Game sounds</strong>
+      <strong id="midiEditScope">Event sound controls</strong>
       <button id="midiWorkspaceClose" type="button" aria-label="Close sound editor">Close</button>
-      <div class="midi-listen-row">
-        <button id="midiLocalListenButton" type="button">Listen to game</button>
-        <span id="midiOutputSummary" role="status">Local sound off · MIDI off</span>
-      </div>
+
     </header>
     <nav class="midi-view-tabs" aria-label="Sound workspaces">
-      <button id="midiViewSounds" type="button" aria-pressed="true">Sounds</button>
+      <button id="midiViewSounds" type="button" aria-pressed="true">Events</button>
       <button id="midiViewDevices" type="button" aria-pressed="false">Devices</button>
       <button id="midiViewProject" type="button" aria-pressed="false">Project</button>
-      <button id="midiViewExpert" type="button" aria-pressed="false">Expert</button>
+      <button id="midiViewExpert" type="button" aria-pressed="false">Tracks &amp; clips</button>
     </nav>
     <section id="midiSoundsView" class="midi-editor-view" aria-label="Event sounds">
       <label class="midi-field midi-field--compact">
@@ -63,16 +61,31 @@
         <select id="midiGlobalPanMode"><option value="off">Off</option><option value="viewport">Viewport</option><option value="level">Whole level</option></select>
       </label>
       <div class="midi-active-key"><span id="midiActiveKeySummary"></span><button id="midiEditProjectKey" type="button">Edit key / palette</button></div>
-      <div class="midi-sounds-layout">
+      <div id="midiEventSoundDock" class="midi-sounds-layout">
         <div id="midiGameEventList" class="midi-game-event-list" role="listbox" aria-label="Game events"></div>
-        <div class="midi-sound-editor">
+        <div id="midiPersistentSoundEditor" class="midi-sound-editor">
           <div class="midi-sound-heading"><h2 id="midiSoundTitle">Choose an event</h2><label><input id="midiSoundEnabled" type="checkbox" /> On</label></div>
-          <label class="midi-field midi-field--stacked"><span>When this happens</span><select id="midiSoundBehavior"><option value="note">Play one note</option><option value="falling">Start a falling phrase</option><option value="rising">Start a rising phrase</option><option value="steps">Advance one pattern note</option><option value="custom">Custom wiring</option></select></label>
+          <p id="midiSoundRoute" class="midi-route-summary"></p>
+          <button id="midiInspectTrack" type="button">Inspect destination track</button>
+          <div id="midiBehaviorChoices" class="midi-choice-row" role="group" aria-label="Event response">
+            <button type="button" data-behavior="note">One note</button>
+            <button type="button" data-behavior="steps">Event steps</button>
+            <button type="button" data-behavior="rising">Rising phrase</button>
+            <button type="button" data-behavior="falling">Falling phrase</button>
+          </div>
+          <label class="midi-field midi-field--stacked midi-behavior-select"><span>When this happens</span><select id="midiSoundBehavior"><option value="note">Play one note</option><option value="falling">Start a falling phrase</option><option value="rising">Start a rising phrase</option><option value="steps">Advance one pattern note</option><option value="custom">Custom wiring</option></select></label>
+          <p id="midiPatternAxis" class="midi-help"></p>
           <div id="midiSoundContour" class="midi-sound-contour" aria-label="Note pattern"></div>
-          <label class="midi-field"><span>Base pitch <output id="midiSoundPitchName"></output></span><input id="midiSoundPitch" type="number" min="0" max="127" step="1" /></label>
+          <div class="midi-tactile-controls">
+          <label class="midi-field"><span>Base pitch <output id="midiSoundPitchName"></output></span><input id="midiSoundPitchDial" type="range" min="0" max="127" step="1" aria-label="Base pitch slider" /><input id="midiSoundPitch" type="number" min="0" max="127" step="1" aria-label="Base pitch MIDI note" /></label>
           <label id="midiSoundSpacingField" class="midi-field"><span>Note spacing (game ticks)</span><input id="midiSoundSpacing" type="number" min="1" max="8" step="1" /></label>
-          <label class="midi-field"><span>Level</span><input id="midiSoundLevel" type="range" min="1" max="127" step="1" /><output id="midiSoundLevelValue"></output></label>
-          <button id="midiSoundPreview" type="button">Listen here</button>
+          <label class="midi-field"><span>Level</span><input id="midiSoundLevel" type="range" min="1" max="127" step="1" /><output id="midiSoundLevelValue"></output><input id="midiSoundLevelNumber" type="number" min="1" max="127" step="1" aria-label="Exact sound level" /></label>
+          <label class="midi-field"><span>Note length</span><input id="midiSoundDuration" type="range" min="1" max="96" step="1" aria-label="Note length slider" /><input id="midiSoundDurationNumber" type="number" min="1" max="96" step="1" aria-label="Note length in game ticks" /><output id="midiSoundDurationEffective"></output></label>
+          <label class="midi-field"><span>Pan · left / right</span><input id="midiSoundPan" type="range" min="-127" max="127" step="1" aria-label="Sound pan slider" /><input id="midiSoundPanNumber" type="number" min="-127" max="127" step="1" aria-label="Exact sound pan" /></label>
+          </div>
+          <label id="midiSoundOrderField" class="midi-field"><span>Event pattern order</span><select id="midiSoundOrder"><option value="up">Up</option><option value="down">Down</option><option value="updown">Up / down</option></select></label>
+          <button id="midiSoundPreview" type="button">Test event locally</button>
+          <div class="midi-button-row"><button id="midiSoundSnapshot" type="button">Keep as reference</button><button id="midiSoundRevert" type="button">Revert to reference</button></div>
           <p id="midiSoundHint" class="midi-help"></p>
           <button id="midiSoundAdvanced" type="button">Edit detailed wiring</button>
         </div>
@@ -116,13 +129,7 @@
       <p id="midiGamePresetDescription" class="midi-help" role="status"></p>
       <p class="midi-help">Applying a palette replaces gameplay-event mappings; it keeps your devices, tracks, and clips. The selected palette describes how each event plays.</p>
     </section>
-      <section class="midi-project-key"><h3>Current key &amp; scale</h3><div class="midi-control-group"><label class="midi-field midi-field--compact">
-        <span>Key</span>
-        <select id="midiScaleRoot"></select>
-      </label><label class="midi-field midi-field--compact">
-        <span>Scale</span>
-        <select id="midiScaleName"></select>
-      </label></div></section>
+      <p class="midi-help">Key and scale stay available in the headunit above. Fixed pitches remain fixed; key-relative mappings follow the selected scale.</p>
       <details class="midi-project-tools">
         <summary>Project &amp; templates</summary>
         <div class="midi-control-group">
@@ -142,7 +149,8 @@
         </div>
       </details>
     </section>
-    <section id="midiExpertView" class="midi-editor-view" aria-label="Expert MIDI editor" hidden>
+    <section id="midiExpertView" class="midi-editor-view" aria-label="Tracks, clips and detailed wiring" hidden>
+      <details open class="midi-shared-sound-controls"><summary>Selected event sound controls</summary><div id="midiExpertSoundDock"></div></details>
       <details class="midi-musical-settings"><summary>Stored timing metadata</summary>
       <p class="midi-help">Game events keep their simulation timing. BPM, meter, quantize, and swing are stored project metadata; they do not shift event onsets.</p>
       <div class="midi-control-group" role="group" aria-label="Musical timing">
@@ -264,6 +272,9 @@
             <label class="midi-field midi-field--compact">
               <span>Channel</span>
               <input id="midiTrackChannel" type="number" min="1" max="16" step="1" />
+            </label>
+            <label class="midi-field">Device program (0–127, blank leaves unchanged)
+              <input id="midiTrackProgram" type="number" min="0" max="127" step="1" aria-label="MIDI device program, zero based" />
             </label>
             <label class="midi-field midi-field--compact">
               <span>Priority</span>
@@ -412,6 +423,7 @@
         </div>
         <div id="midiClipInspector" class="midi-inspector-group">
             <h3>Clip</h3>
+          <p id="midiClipPlaybackSummary" class="midi-help" role="status">Select a clip to inspect its playback.</p>
           <div class="midi-inline-fields">
             <label class="midi-field midi-field--compact">
               <span>Name</span>
@@ -448,6 +460,7 @@
             </label>
           </div>
           <div id="midiRecordPanel" class="midi-learn-panel" aria-live="polite">
+            <p class="midi-help">Capture saves note pitches, velocities and approximate lengths into cells. Timing gaps and overlaps are not replayed.</p>
             <div id="midiRecordStatus" class="midi-learn-status" role="status">Record writes captured notes into clip steps.</div>
             <div class="midi-button-row">
               <button id="midiRecordButton" type="button" aria-label="Start MIDI recording">Record</button>
@@ -589,6 +602,43 @@
     <div id="midiProjectStatus" class="midi-status midi-editor-notice" role="status">Project loading</div>
   </section>
   <header id="gameChrome" class="game-chrome">
+    <section id="midiInstrumentHead" class="midi-instrument-head" aria-label="Live instrument transport" hidden>
+      <nav id="midiInstrumentMenus" class="midi-instrument-menus" aria-label="Instrument menus">
+        <details name="instrument-menu"><summary>File</summary><div><button id="midiMenuImport" type="button">Import project…</button><button id="midiMenuExport" type="button">Export project…</button><button id="midiMenuSave" type="button">Save template…</button><button id="midiMenuProject" type="button">Palettes &amp; project</button></div></details>
+        <details name="instrument-menu"><summary>Edit</summary><div><button id="midiMenuUndo" type="button">Undo sound edit</button><button id="midiMenuRedo" type="button">Redo sound edit</button></div></details>
+        <details name="instrument-menu"><summary>View</summary><div><button id="midiMenuFocus" type="button">Focus</button><button id="midiMenuSplit" type="button">Split</button><button id="midiMenuOverlay" type="button">Overlay</button></div></details>
+        <details name="instrument-menu"><summary>MIDI</summary><div><button id="midiMenuDevices" type="button">Device connections…</button><button id="midiMenuPanic" type="button">Panic all notes</button></div></details>
+      </nav>
+      <div class="midi-headunit-readout"><strong>LEVEL / INSTRUMENT</strong><output id="midiGameClock" aria-live="off">PAUSE · tick 0</output><span id="midiLastEvent">Waiting for game events</span></div>
+      <div class="midi-game-transport" role="group" aria-label="Game transport"><button id="midiGamePlay" type="button">Play game</button><button id="midiGameStep" type="button">+1 tick</button><button id="midiGameStop" type="button">Stop / Panic</button><button id="midiUndo" type="button">Undo</button><button id="midiRedo" type="button">Redo</button></div>
+      <label class="midi-speed-control"><span>Game speed ×</span><input id="midiGameSpeed" type="range" min="0.1" max="8" step="0.1" aria-label="Game speed slider" /><input id="midiGameSpeedValue" type="number" min="0.1" max="8" step="0.1" aria-label="Exact game speed" /></label>
+<div class="midi-control-group"><label class="midi-field midi-field--compact">
+        <span>Key</span>
+        <select id="midiScaleRoot"></select>
+      </label><label class="midi-field midi-field--compact">
+        <span>Scale</span>
+        <select id="midiScaleName"></select>
+      </label></div>      <div class="midi-listen-row">
+        <button id="midiLocalListenButton" type="button">Listen to game</button>
+        <span id="midiOutputSummary" role="status">Local sound off · MIDI off</span>
+      </div>
+      <div class="midi-layout-choices" role="group" aria-label="Map layout"><button id="midiLayoutFocus" type="button" title="Compact map, larger sound controls">Focus</button><button id="midiLayoutSplit" type="button" title="Map and sound controls side by side">Split</button><button id="midiLayoutOverlay" type="button" title="Sound controls over the right side of the map">Overlay</button></div>
+    </section>
+
+    <details class="character-controls"><summary>Characters</summary><div>
+      <label>Body <select id="characterShape" disabled><option value="classic">Classic lemmings</option></select></label>
+      <label><input id="characterCustomColors" type="checkbox" /> Custom body / accessory palette</label>
+      <label>Body color <input id="characterBodyColor" type="color" value="#2b6ff6" /></label>
+      <label>Dot palette <select id="characterBodyPalette" aria-label="Named dot body colors"></select></label>
+      <label>Accessory <select id="characterAccessory" aria-label="Character accessory"></select></label>
+      <label>Accessory color <input id="characterPropColor" type="color" value="#ff813d" /></label>
+      <label>Accessory palette <select id="characterPropPalette" aria-label="Named accessory colors"></select></label>
+      <label>Eyewear <select id="characterEyewear" aria-label="Eyewear style"></select></label>
+      <label>Frame color <input id="characterEyewearColor" type="color" value="#1f1f1f" /></label>
+      <label>Frame palette <select id="characterEyewearPalette" aria-label="Eyewear frame palette"></select></label>
+      <small>Choose one accessory. Eyewear is separate; lens and ear-pad materials stay unchanged.</small>
+      <span id="characterStatus" role="status">Classic lemmings. Other bodies load on selection.</span>
+    </div></details>
     <div class="game-appbar">
       <strong>Lemmings</strong>
       <span id="levelName" class="level-title" role="status"></span>

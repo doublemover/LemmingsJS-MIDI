@@ -102,7 +102,7 @@ describe('local game note preview', function() {
     state.source = { ...state.source, sfx: { [SoundEffectIds.SPAWN]: { note: 73 } } };
     expect(state.local.syncConfig()).to.equal(true);
     expect(updates).to.equal(1);
-    expect(router._arpStateBySfx.size).to.equal(0);
+    expect(router._arpStateBySfx.get('test')).to.deep.equal({ index: 2 });
     state.local.stop();
     expect(await state.local.start()).to.equal(true);
     expect(state.view.midiPreviewRouter).not.to.equal(router);

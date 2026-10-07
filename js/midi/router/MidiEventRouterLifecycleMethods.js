@@ -14,8 +14,14 @@ import {
 } from './MidiEventRouterShared.js';
 
 const midiEventRouterLifecycleMethods = {
+  getEventPlaybackState(event) {
+    const mapping = this.mapping.config?.sfx?.[event?.sfxId];
+    const key = this._resolveArpKey(event, mapping);
+    const state = this._arpStateBySfx.get(key);
+    return { nextIndex: state ? state.index % Math.max(1, state.length) : 0, direction: state?.dir ?? 1 };
+  },
+
   setMapping(mapping) {
-    this._arpStateBySfx.clear();
     this.mapping = mapping instanceof MidiMapping ? mapping : new MidiMapping(mapping || {});
     this.scheduler.setConfig(this.mapping.config);
   },

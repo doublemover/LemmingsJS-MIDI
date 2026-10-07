@@ -1,0 +1,94 @@
+/* One persistent game canvas; layout changes never remount gameplay. */
+.midi-instrument-head[hidden] { display: none !important; }
+.midi-instrument-head { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 8px 12px; background: #e8dfcb; color: #302d28; border-bottom: 2px solid #ab6f32; }
+.midi-instrument-head button, .midi-instrument-head input, .midi-instrument-head select, .midi-instrument-head summary { font: inherit; }
+.midi-instrument-head button, .midi-instrument-head select, .midi-instrument-head input[type=number] { background: #f7f0e2; color: #332f27; border: 1px solid #b9aa91; border-radius: 4px; padding: 6px 8px; min-height: 32px; }
+.midi-instrument-head button { cursor: pointer; }
+.midi-instrument-head button:disabled { opacity: .5; cursor: default; }
+.midi-instrument-menus { display: flex; align-self: stretch; gap: 2px; }
+.midi-instrument-menus details { position: relative; }
+.midi-instrument-menus summary { padding: 8px; cursor: pointer; list-style: none; }
+.midi-instrument-menus details[open] summary { background: #d4c5ab; }
+.midi-instrument-menus details > div { position: absolute; left: 0; top: 100%; display: flex; flex-direction: column; min-width: 190px; padding: 5px; z-index: 100; background: #f7f0e2; border: 1px solid #a39784; box-shadow: 0 6px 12px #0004; }
+.midi-instrument-menus button { text-align: left; border: none; }
+.midi-headunit-readout { display: flex; flex-direction: column; min-width: 240px; padding: 8px 12px; background: #211d14; border: 2px solid #53432b; border-radius: 5px; color: #ffc777; font: 12px ui-monospace, monospace; gap: 3px; box-shadow: inset 0 0 10px #000b; }
+.midi-headunit-readout strong { font-size: 10px; letter-spacing: .14em; color: #d6994c; }
+.midi-game-transport, .midi-layout-choices { display: flex; flex-wrap: wrap; gap: 4px; }
+.midi-speed-control { display: grid; grid-template-columns: auto 88px; align-items: center; gap: 4px 8px; font-size: 12px; }
+.midi-speed-control span { grid-column: 1 / -1; }
+.midi-speed-control input[type=range] { width: 116px; }
+.midi-instrument-head input[type=range], .midi-sequencer input[type=range] { accent-color: #b86822; cursor: ew-resize; }
+.midi-instrument-head .midi-control-group { border: none; padding: 0; gap: 6px; }
+.midi-instrument-head .midi-field { color: #332f27; font-size: 12px; }
+.midi-instrument-head .midi-field select { max-width: 150px; }
+.midi-instrument-head .midi-listen-row { width: auto; flex-direction: column; align-items: flex-start; gap: 3px; }
+.midi-instrument-head #midiLocalListenButton { background: #476543; color: #fff; min-height: 32px; }
+.midi-instrument-head #midiOutputSummary { color: #423b31; font-size: 11px; }
+.midi-layout-choices button[aria-pressed=true] { background: #b96d2f; color: #fff; border-color: #96501b; }
+body.game-page.studio-open { grid-template-columns: minmax(300px, 45%) minmax(500px, 1fr); }
+body.game-page.studio-open[data-midi-layout=focus] { grid-template-columns: minmax(280px, 30%) minmax(500px, 1fr); }
+body.game-page.studio-open[data-midi-layout=overlay] .game { grid-column: 1 / -1; grid-row: 2; }
+body.game-page.studio-open[data-midi-layout=overlay] .midi-sequencer { grid-column: 2; grid-row: 2; z-index: 5; margin: 12px; box-shadow: 0 6px 22px #0009; }
+.studio-open .game { align-self: stretch; justify-content: flex-start; }
+.studio-open .game-stage-slot { align-items: flex-start; justify-content: flex-start; }
+.studio-open .game_container { margin: 0; }
+@media (max-width: 900px) and (max-height: 500px) {
+  .studio-open .game-chrome, .studio-open .game { display: flex; }
+}
+.midi-sequencer { background: #eee6d5; color: #302d27; border-color: #b9aa91; }
+.midi-sequencer button, .midi-sequencer input:not([type=range]), .midi-sequencer select, .midi-sequencer textarea { background: #faf5e9; color: #302d27; border-color: #b9aa91; }
+.midi-sequencer button:hover { background: #e1d0af; }
+.midi-sequencer input[type=number] { min-width: 78px; width: 100%; box-sizing: border-box; font-variant-numeric: tabular-nums; }
+.midi-sequencer :is(h2, h3, .midi-studio-header strong, .midi-sound-heading h2) { color: #453727; }
+.midi-sequencer .midi-help, .midi-sequencer .midi-field, .midi-game-event span { color: #655a47; }
+.midi-studio-header { padding: 10px 12px; justify-content: space-between; }
+.midi-view-tabs { border-color: #c6b79d; }
+.midi-view-tabs button[aria-pressed=true], .midi-choice-row button[aria-pressed=true] { background: #b96d2f; color: #fff; border-color: #96501b; }
+.midi-sounds-layout { grid-template-columns: 142px minmax(0, 1fr); gap: 14px; }
+.midi-game-event-list { max-height: none; }
+.midi-game-event[aria-selected=true] { background: #ebd5b3; border-color: #a9652b; }
+.midi-game-event.is-playing { box-shadow: inset 4px 0 #b96d2f; }
+.midi-game-event .midi-event-count { font-size: 9px; font-variant-numeric: tabular-nums; }
+.midi-choice-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin: 12px 0 8px; }
+.midi-choice-row button { min-height: 36px; }
+.midi-behavior-select { margin-top: 8px; }
+.midi-route-summary { overflow-wrap: anywhere; line-height: 1.5; font-size: 12px; margin: 0 0 6px; }
+.midi-tactile-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.midi-tactile-controls > .midi-field { display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-width: 0; padding: 10px; background: #e3d7c0; border: 1px solid #c5b596; border-radius: 5px; }
+.midi-tactile-controls .midi-field span { font-size: 12px; }
+.midi-tactile-controls output { font-size: 11px; min-height: 1em; font-variant-numeric: tabular-nums; }
+.midi-tactile-controls input[type=range] { width: 100%; min-height: 28px; }
+.midi-sound-contour { border-color: #9c8563; height: 72px; }
+.midi-sound-contour span { background: #b77a3d; color: #fff; font-size: 11px; }
+.midi-sound-contour span.is-next { background: #4c6043; outline: 2px solid #293722; outline-offset: 2px; }
+#midiSoundPreview { background: #526b47; color: #fff; margin: 12px 0 8px; }
+.midi-editor-notice { border-color: #c6b79d; color: #453c2d; }
+.midi-sequencer :focus-visible, .midi-instrument-head :focus-visible { outline: 3px solid #275fa3; outline-offset: 2px; }
+#midiExpertView .midi-region { background: #e5d9c2; border-color: #bca98a; }
+#midiExpertView .midi-step-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 1050px) {
+  body.game-page.studio-open, body.game-page.studio-open[data-midi-layout=focus] { grid-template-columns: minmax(220px, 35%) minmax(420px, 1fr); }
+  .midi-instrument-head { gap: 6px 10px; }
+  .midi-sounds-layout { grid-template-columns: 112px minmax(0, 1fr); gap: 8px; }
+}
+@media (max-width: 760px) {
+  body.game-page.studio-open, body.game-page.studio-open[data-midi-layout=focus] { display: flex; }
+  .studio-open .game { min-height: 180px; flex: 0 0 28dvh; }
+  .studio-open .midi-sequencer { flex: 1 1 auto; min-height: 220px; margin: 4px; }
+  .midi-instrument-head .midi-headunit-readout { min-width: 210px; }
+  .midi-instrument-head .midi-game-transport button { min-height: 34px; }
+  .midi-instrument-head .midi-instrument-menus { width: 100%; }
+  .studio-open .game-chrome, .studio-open .game { display: flex; }
+}
+.midi-shared-sound-controls { border: 1px solid #bca98a; padding: 10px; margin-bottom: 12px; }
+.midi-shared-sound-controls > summary { cursor: pointer; margin-bottom: 8px; }
+#midiExpertSoundDock .midi-tactile-controls { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 1100px) { #midiExpertSoundDock .midi-tactile-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.character-controls { margin: 4px 0; font-size: 12px; }
+.character-controls summary { cursor: pointer; width: max-content; padding: 4px 8px; }
+.character-controls > div { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; }
+.character-controls label { display: flex; align-items: center; gap: 5px; }
+.character-controls input[type=color] { width: 40px; height: 28px; padding: 0; }
+.character-controls select { max-width: 240px; }
+.character-controls small { flex-basis: 100%; }
+#characterStatus { font-size: 11px; }

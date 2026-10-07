@@ -779,3 +779,36 @@ second roadmap, gallery, or committed manifest.
 - Remove completed detail when it stops being useful; git preserves history.
 - Prefer observable deliverables over vague intentions.
 - Record hard-cut decisions directly in the relevant milestone.
+
+
+## Live-instrument follow-through
+
+The live-instrument branch adds a single persistent game canvas, Focus/Split/Overlay,
+game-clock transport, event controls, musical undo, isolated local audition, and
+stable-ID selection for twelve bodies, including donut, native named colors, and
+fitted berets with lift/open/reattach cosmetics on every shape. Acceptance instructions are in
+`docs/live-instrument.md`; blocked cloud browser execution is not a UI/audio pass.
+
+- Run the final-tree browser, listening, keyboard/screen-reader, and physical-MIDI
+  acceptance. Preserve zero hardware sends from local event tests.
+- Historical sequencer/dependency checkpoints are reconciled by behavior in
+  `docs/branch-reconciliation.md`. New routing, shared-MPE, program and owned-gate
+  regressions supersede known defects; unknown original source differences remain
+  unrecoverable. Do not inherit historical acceptance counts.
+- Give temporal clips and recording explicit onset/overlap/retrigger semantics.
+  The legacy step editor still lowers notes as a chord or event arp; its per-step
+  probability, Hold/Tie, and recording-gap model need the deeper engine contract.
+- Visually accept the complete eight-accessory/five-eyewear pack on all twelve
+  bodies, including the explicit custom ear/donut crown fits and final in-game
+  appearance. Native source comparisons and decoder sheets are available; source
+  tests do not substitute for visual acceptance. Exactly one accessory is selected;
+  eyewear is separate, matching the native validator and preset evidence. The
+  previously reviewed berets remain immutable. No further native catalog items
+  remain to extract or implement in this batch.
+- Finish broader editor interoperability and retain the verified clean dependency graph.
+  GitHub CI for 97128aff reported 0 registry vulnerabilities. The concrete dry-run, object-property, debug-state,
+  async bridge, stale-header and double-skill defects now have regression tests.
+  Terrain horizontal flip is implemented and tested through runtime lowering and
+  pixel/collision-mask rendering. Rotation, terrain resizing, one-way behavior,
+  and gadget transforms remain disabled/preserved pending specified implementation. Do not treat this MIDI/appearance batch as those
+  separate closures or as a global performance gain.

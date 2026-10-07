@@ -1,0 +1,66 @@
+{
+  "reviewedAt": "2026-10-07",
+  "scope": "Sprite fit only; not runtime or browser acceptance. Eleven native-informed fits and corrected Circle Two Ears crown were explicitly accepted.",
+  "assets": [
+    {
+      "id": "rounded_triangle",
+      "sha256": "3bdba5e8332277d3969204c01ef67aeda4970cd8d61b8dedc03f203783835cc4",
+      "path": "assets/hydro/hydro-skin.json"
+    },
+    {
+      "id": "capsule",
+      "sha256": "2bcc504e0aca25d33eedb743cf52f2a12b24641417145b079e814a55c4ef77f0",
+      "path": "assets/characters/capsule.json"
+    },
+    {
+      "id": "circle",
+      "sha256": "3fffba143cdba22c45638081fdb029453717df29a7179a0aa812e4bd85655424",
+      "path": "assets/characters/circle.json"
+    },
+    {
+      "id": "circle_two_ears",
+      "sha256": "491cb7475675c135d21a67d8c3b0cd1454e27d65dfaef44a34efd045c19cd6b2",
+      "path": "assets/characters/circle_two_ears.json"
+    },
+    {
+      "id": "four_lobed_butterfly",
+      "sha256": "8d3398c8558f17774969000559ff80ea7a4b1ec16415b5364323134db0d23535",
+      "path": "assets/characters/four_lobed_butterfly.json"
+    },
+    {
+      "id": "heart",
+      "sha256": "704bdfd64943d269934fe209edbec008017ebdcccdc0b7b017d6e7ea808431a1",
+      "path": "assets/characters/heart.json"
+    },
+    {
+      "id": "rounded_cube",
+      "sha256": "8594f67284431194e2208ae33142b9d32f52b4f4d527d8b883473a60a592adb9",
+      "path": "assets/characters/rounded_cube.json"
+    },
+    {
+      "id": "rounded_diamond",
+      "sha256": "c115d75d8ff5e93f7b0cd5e6defc53baa41ca068069ec5782600e7b4d200d73f",
+      "path": "assets/characters/rounded_diamond.json"
+    },
+    {
+      "id": "rounded_head_two_ears",
+      "sha256": "1dbe3cd249a6057b8722cca2f99cdc507f1bd1ff6b3ca7d086c3fc362bbe0152",
+      "path": "assets/characters/rounded_head_two_ears.json"
+    },
+    {
+      "id": "six_lobed_flower",
+      "sha256": "69d75d30ccc0b7face801b0462b44b065f67561e2bbbf844183149512235845d",
+      "path": "assets/characters/six_lobed_flower.json"
+    },
+    {
+      "id": "twelve_scalloped_rosette",
+      "sha256": "c3704e8af7603ec490fe185720de0ef7efdcf3ca48b4f3749a1a398daf295325",
+      "path": "assets/characters/twelve_scalloped_rosette.json"
+    },
+    {
+      "id": "donut",
+      "sha256": "7248a269d9edd09d0073847d9578e125b637479888d912ab1128edb18567767a",
+      "path": "assets/characters/donut.json"
+    }
+  ]
+}

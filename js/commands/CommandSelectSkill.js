@@ -22,11 +22,13 @@ class CommandSelectSkill extends BaseLogger {
         { skillType: this.skill }
       );
     }
+    let applied = false;
     if (this.apply) {
       const lem = lemmingManager?.getSelectedLemming?.();
       if (lem && gameSkills.canReuseSkill(this.skill) &&
           lemmingManager.doLemmingAction?.(lem, this.skill)) {
         if (gameSkills.reuseSkill(this.skill)) {
+          applied = true;
           const soundBus = game.soundEvents ?? game.runtime?.soundEvents ?? null;
           soundBus?.emitSfx?.(
             SoundEventTypes.SKILL_ASSIGN,
@@ -41,7 +43,7 @@ class CommandSelectSkill extends BaseLogger {
         }
       }
     }
-    return changed;
+    return changed || applied;
   }
 
   load(values) {

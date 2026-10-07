@@ -1,0 +1,175 @@
+import { Animation } from '../render/Animation.js';
+import { Frame } from '../render/Frame.js';
+import { ColorPalette } from '../render/ColorPalette.js';
+import { SpriteTypes } from './SpriteTypes.js';
+
+const CONTRACT = [
+  ['WALKING', 1, 16, 10, -8, -10, 8],
+  ['JUMPING', 1, 16, 10, -8, -10, 1],
+  ['WALKING', -1, 16, 10, -8, -10, 8],
+  ['JUMPING', -1, 16, 10, -8, -10, 1],
+  ['DIGGING', 0, 16, 14, -8, -12, 16],
+  ['CLIMBING', 1, 16, 12, -8, -12, 8],
+  ['CLIMBING', -1, 16, 12, -8, -12, 8],
+  ['DROWNING', 0, 16, 10, -8, -10, 16],
+  ['POSTCLIMBING', 1, 16, 12, -8, -12, 8],
+  ['POSTCLIMBING', -1, 16, 12, -8, -12, 8],
+  ['BUILDING', 1, 16, 13, -8, -13, 16],
+  ['BUILDING', -1, 16, 13, -8, -13, 16],
+  ['BASHING', 1, 16, 10, -8, -10, 32],
+  ['BASHING', -1, 16, 10, -8, -10, 32],
+  ['MINING', 1, 16, 13, -8, -12, 24],
+  ['MINING', -1, 16, 13, -8, -12, 24],
+  ['FALLING', 1, 16, 10, -8, -10, 4],
+  ['FALLING', -1, 16, 10, -8, -10, 4],
+  ['UMBRELLA', 1, 16, 16, -8, -16, 8],
+  ['UMBRELLA', -1, 16, 16, -8, -16, 8],
+  ['SPLATTING', 0, 16, 10, -8, -10, 16],
+  ['EXITING', 0, 16, 13, -8, -13, 8],
+  ['FRYING', 0, 16, 14, -8, -10, 14],
+  ['BLOCKING', 0, 16, 10, -8, -10, 16],
+  ['SHRUGGING', 1, 16, 10, -8, -10, 8],
+  ['SHRUGGING', -1, 16, 10, -8, -10, 8],
+  ['OHNO', 0, 16, 10, -8, -10, 16],
+  ['EXPLODING', 0, 32, 32, -8, -10, 1]
+];
+
+function validateSkin(manifest) {
+  const fail = message => { throw new Error(`Invalid sprite skin: ${message}`); };
+  if (!manifest || manifest.format !== 'hydro-lemmings-skin-v1' || manifest.pixelFormat !== 'indexed-rows-rgba') fail('unsupported format');
+  if (!Array.isArray(manifest.palette) || manifest.palette.length < 2 || manifest.palette.length > 16) fail('palette size');
+  if (manifest.transparentIndex !== 0) fail('transparent index must be zero');
+  if (typeof manifest.symbols !== 'string' || manifest.symbols.length !== manifest.palette.length || new Set(manifest.symbols).size !== manifest.symbols.length) fail('palette symbols');
+  manifest.palette.forEach((rgba, index) => {
+    if (!Array.isArray(rgba) || rgba.length !== 4 || rgba.some(v => !Number.isInteger(v) || v < 0 || v > 255)) fail(`palette ${index}`);
+    if (rgba[3] !== (index === 0 ? 0 : 255)) fail('alpha must be binary with only index zero transparent');
+  });
+  if (!Array.isArray(manifest.animations) || manifest.animations.length !== CONTRACT.length) fail('all 28 strips are required');
+  const padding = manifest.renderPaddingTop ?? 0;
+  if (!Number.isInteger(padding) || padding < 0 || padding > 8) fail('cosmetic padding');
+  const required = new Map(CONTRACT.map(c => [`${c[0]}:${c[1]}`, c]));
+  const seen = new Set();
+  for (const record of manifest.animations) {
+    if (!record || typeof record !== 'object') fail('invalid strip');
+    const key = `${record.state}:${record.direction}`;
+    const original = required.get(key);
+    const contract = original && [...original];
+    if (contract) { contract[3] += padding; contract[5] -= padding; }
+    if (!contract || seen.has(key)) fail(`unknown or duplicate strip ${key}`);
+    seen.add(key);
+    const actual = [record.state, record.direction, record.width, record.height, record.offsetX, record.offsetY, record.frameCount];
+    if (actual.some((v, i) => v !== contract[i])) fail(`geometry or timing differs for ${key}`);
+    if (!Array.isArray(record.frames) || record.frames.length !== record.frameCount) fail(`frame count for ${key}`);
+    for (const rows of record.frames) {
+      if (!Array.isArray(rows) || rows.length !== record.height) fail(`frame height for ${key}`);
+      for (const row of rows) {
+        if (typeof row !== 'string' || row.length !== record.width || [...row].some(c => !manifest.symbols.includes(c))) fail(`pixel row for ${key}`);
+      }
+    }
+  }
+  const landing = manifest.cosmetics?.beretLanding;
+  if (manifest.cosmetics != null && !landing) fail('missing beret landing cosmetic');
+  if (landing) {
+    for (const [key, value] of Object.entries({ width: 16, height: 16 + padding, offsetX: -8, offsetY: -16 - padding, frameCount: 7 })) {
+      if (landing[key] !== value) fail(`landing ${key}`);
+    }
+    if (!Array.isArray(landing.variants) || landing.variants.length !== 6) fail('landing variants');
+    const variants = new Set();
+    for (const variant of landing.variants) {
+      if (!variant || ![-1, 1].includes(variant.direction) || ![-1, 0, 1].includes(variant.startSway)) fail('landing direction or sway');
+      const key = `${variant.direction}:${variant.startSway}`;
+      if (variants.has(key)) fail('duplicate landing variant');
+      variants.add(key);
+      if (!Array.isArray(variant.frames) || variant.frames.length !== 7) fail('landing frame count');
+      for (const rows of variant.frames) {
+        if (!Array.isArray(rows) || rows.length !== 16 + padding) fail('landing frame height');
+        for (const row of rows) {
+          if (typeof row !== 'string' || row.length !== 16 || [...row].some(c => !manifest.symbols.includes(c))) fail('landing pixel row');
+        }
+      }
+    }
+  }
+  return manifest;
+}
+
+function decodeFrame(rows, width, height, offsetX, offsetY, pixels) {
+  const frame = new Frame(width, height, offsetX, offsetY);
+  const rgba = frame.getData();
+  let pixelIndex = 0;
+  for (const row of rows) {
+    for (const symbol of row) {
+      const color = pixels.get(symbol);
+      rgba.set(color, pixelIndex * 4);
+      frame.mask[pixelIndex++] = color[3] === 255 ? 1 : 0;
+    }
+  }
+  frame.enableSpanCache();
+  return frame;
+}
+
+class PixelSpriteSkin {
+  #animations = [];
+  #palette;
+  #landing = null;
+  #transitions = new WeakMap();
+
+  constructor(manifest) {
+    validateSkin(manifest);
+    this.#palette = new ColorPalette();
+    manifest.palette.forEach(([r, g, b], i) => this.#palette.setColorRGB(i, r, g, b));
+    const pixels = new Map([...manifest.symbols].map((symbol, i) => [symbol, manifest.palette[i]]));
+    for (const record of manifest.animations) {
+      const animation = new Animation();
+      animation.frames = record.frames.map(rows => decodeFrame(rows, record.width, record.height, record.offsetX, record.offsetY, pixels));
+      animation._lastFrame = animation.frames[animation.frames.length - 1];
+      const state = SpriteTypes[record.state];
+      if (record.direction >= 0) this.#animations[state * 2] = animation;
+      if (record.direction <= 0) this.#animations[state * 2 + 1] = animation;
+    }
+    const landing = manifest.cosmetics?.beretLanding;
+    if (landing) {
+      this.#landing = new Map(landing.variants.map(variant => [
+        `${variant.direction}:${variant.startSway}`,
+        variant.frames.map(rows => decodeFrame(rows, landing.width, landing.height, landing.offsetX, landing.offsetY, pixels))
+      ]));
+    }
+  }
+
+  resetActor(lem) {
+    this.#transitions.delete(lem);
+  }
+
+  onActionChange(lem, previousAction, previousFrameIndex) {
+    this.resetActor(lem);
+    if (!this.#landing || previousAction?.spriteProvider !== this ||
+        previousAction?.getActionName?.() !== 'floating' || lem.action?.getActionName?.() !== 'walk') return;
+    const floatFrame = [0, 1, 3, 5, 5, 5, 5, 5, 5, 6, 7, 7, 6, 5, 4, 4][previousFrameIndex];
+    const startSway = floatFrame === 4 ? -1 : floatFrame === 6 ? 1 : 0;
+    this.#transitions.set(lem, { startSway, lastFrameIndex: -1 });
+  }
+
+  drawCosmeticTransition(gameDisplay, lem) {
+    const transition = this.#transitions.get(lem);
+    if (!transition) return false;
+    const index = lem.frameIndex;
+    if (lem.action?.getActionName?.() !== 'walk' || !Number.isInteger(index) ||
+        index < 0 || index >= 7 || index < transition.lastFrameIndex) {
+      this.resetActor(lem);
+      return false;
+    }
+    transition.lastFrameIndex = index;
+    const direction = lem.getDirection() === 'right' ? 1 : -1;
+    const frame = this.#landing.get(`${direction}:${transition.startSway}`)[index];
+    gameDisplay.drawFrame(frame, lem.x, lem.y);
+    return true;
+  }
+
+  getAnimation(state, right) {
+    return this.#animations[state * 2 + (right ? 0 : 1)];
+  }
+
+  get colorPalette() { return this.#palette; }
+  get lemmingAnimation() { return this.#animations.slice(); }
+}
+
+export { PixelSpriteSkin, validateSkin };

@@ -2,6 +2,7 @@
   {
     "name" : "lemmings",
     "path" : "lemmings",
+    "characterCatalog" : "assets/characters/catalog.json",
     "gametype" : "LEMMINGS",
     "mechanics" : {},
     "level.filePrefix"         : "LEVEL",
@@ -17,6 +18,7 @@
   {
     "name" : "Oh No",
     "path" : "lemmings_ohNo",
+    "characterCatalog" : "assets/characters/catalog.json",
     "gametype" : "OHNO",
     "mechanics" : {},
     "level.filePrefix"         : "DLVEL",
@@ -33,30 +35,33 @@
   {
     "name" : "Xmas Lemmings 1991",
     "path" : "xmas91",
+    "characterCatalog" : "assets/characters/catalog.json",
     "gametype" : "XMAS91",
     "mechanics" : {},
     "level.filePrefix"         : "LEVEL",
     "level.groups"             : ["xmas"],
     "level.useOddTable"        : false,
     "level.order":  [
-      [0,1,2,3,4]
+      [0,1,2,3]
     ]
   },
   {
     "name" : "Xmas Lemmings 1992",
     "path" : "xmas92",
+    "characterCatalog" : "assets/characters/catalog.json",
     "gametype" : "XMAS92",
     "mechanics" : {},
     "level.filePrefix"         : "LEVEL",
     "level.groups"             : ["xmas"],
     "level.useOddTable"        : false,
     "level.order":  [
-      [0,1,2,3,4]
+      [0,1,2,3]
     ]
   },
   {
     "name" : "Holiday Lemmings 1993",
     "path" : "holiday93",
+    "characterCatalog" : "assets/characters/catalog.json",
     "gametype" : "HOLIDAY93",
     "mechanics" : {},
     "level.filePrefix"         : "LEVEL",
@@ -70,6 +75,7 @@
   {
     "name" : "Holiday Lemmings 1994",
     "path" : "holiday94",
+    "characterCatalog" : "assets/characters/catalog.json",
     "gametype" : "HOLIDAY94",
     "mechanics" : {},
     "level.filePrefix"         : "LEVEL",

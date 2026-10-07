@@ -536,6 +536,20 @@ describe('MidiProject', function() {
     expect(detectMidiProjectConflicts(project).issues.map(issue => issue.code)).to.not.include('missing_automation_track');
   });
 
+  it('rejects unrelated or future project payloads instead of replacing music with defaults', function() {
+    for (const input of [{}, { kind: 'other', tracks: [], sources: [], clips: [] }, { version: 99, tracks: [], sources: [], clips: [] }, { tracks: {}, sources: [], clips: [] }]) {
+      expect(() => importMidiProjectPayload(input)).to.throw();
+    }
+  });
+
+  it('strips per-track hardware routes from portable templates', function() {
+    const project = createMidiProjectFromMidiConfig({ sfx: { 1: { note: 60 } } });
+    project.tracks[0].outputId = 'private-device';
+    const template = createMidiProjectTemplate(project);
+    expect(template.project.tracks[0].outputId).to.equal(null);
+    expect(project.tracks[0].outputId).to.equal('private-device');
+  });
+
   it('exports, imports, and templates sanitized MIDI projects', function() {
     let project = createMidiProjectFromMidiConfig({
       enabled: true,

@@ -22,6 +22,7 @@ const midiSchedulerSendMethods = {
     const perfStart = perfEnabled ? performance.now() : 0;
     try {
       if (!spec || !Number.isFinite(spec.note)) return false;
+      spec = { ...spec };
       const outputId = this._resolveOutputId?.(spec.outputId) ?? null;
       const output = this._resolveOutput ? this._resolveOutput(outputId) : this.output;
       if (!output) return false;
@@ -42,32 +43,14 @@ const midiSchedulerSendMethods = {
       const attackVelocity = reverse ? baseRelease : baseVelocity;
       const releaseVelocity = reverse ? baseVelocity : baseRelease;
       const timbreCc = this.config.mpe?.timbreCc ?? 74;
+      const mpeEnabled = !!this.config.mpe?.enabled;
+      const signedPan = (this.config.position?.panRange?.min ?? 0) < 0;
       const trackId = this._normalizeTrackId?.(spec.trackId) ?? null;
       const voiceBudget = trackId && spec.voiceBudget != null
         ? clamp(toPositiveInt(spec.voiceBudget, this._maxActiveNotes), 1, this._maxActiveNotes)
         : null;
 
-      if (this.config.mpe?.enabled || Number.isFinite(spec.pitchBend)) {
-        channel.sendPitchBend(clamp(spec.pitchBend ?? 0, -1, 1), { time: sendTimeMs });
-      }
-      if (spec.timbre != null && Number.isFinite(spec.timbre)) {
-        channel.sendControlChange(timbreCc, clamp(spec.timbre, 0, 127), { time: sendTimeMs });
-      }
-      if (spec.pan != null && Number.isFinite(spec.pan) && !output.supportsPerNotePan &&
-          (!spec.spatialPan || this.config.mpe?.enabled)) {
-        const panRange = this.config.position?.panRange;
-        const signedPan = (panRange?.min ?? 0) < 0;
-        let panValue = spec.pan;
-        if (signedPan) {
-          panValue = Math.round((clamp(panValue, -127, 127) + 127) / 2);
-        }
-        channel.sendControlChange(10, clamp(panValue, 0, 127), { time: sendTimeMs });
-      }
-
       const now = this._nowMs();
-      for (const [token, pending] of this._pendingNoteOns) {
-        if (pending.timeMs <= now) this._pendingNoteOns.delete(token);
-      }
       let usedChannels = this._usedOutputChannels.get(output);
       if (!usedChannels) {
         usedChannels = new Set();
@@ -87,22 +70,6 @@ const midiSchedulerSendMethods = {
         this._stealOldestNote();
       }
 
-      channel.sendNoteOn(spec.note, { rawAttack: attackVelocity, time: sendTimeMs,
-        ...(output.supportsPerNotePan && Number.isFinite(spec.pan) ? { pan: spec.pan / 127 } : {}) });
-      if (sendTimeMs > now) {
-        this._pendingNoteOns.set(token, { output, channel: channelNumber, note: spec.note, timeMs: sendTimeMs });
-      }
-      if (typeof window !== 'undefined') {
-        window.lastMidiOutputMessage = {
-          type: 'noteOn',
-          note: spec.note,
-          velocity: attackVelocity,
-          channel: channelNumber,
-          outputId,
-          timeMs: sendTimeMs
-        };
-      }
-
       this._activeNotes.set(token, {
         channel: channelNumber,
         note: spec.note,
@@ -113,7 +80,9 @@ const midiSchedulerSendMethods = {
         outputId,
         mpe: !!this.config.mpe?.enabled,
         phraseVoiceKey: spec.phraseVoiceKey ?? null,
-        offTimeMs
+        offTimeMs,
+        hasStarted: false,
+        output
       });
       if (this.config.mpe?.enabled) {
         this._activeByChannel.set(this._activeChannelKey(channelNumber, outputId), {
@@ -124,19 +93,63 @@ const midiSchedulerSendMethods = {
           token
         });
       }
-      if (durationMs > 0) {
-        channel.sendNoteOff(spec.note, { rawRelease: releaseVelocity, time: offTimeMs });
-        if (this.config.mpe?.enabled) {
-          channel.sendPitchBend(0, { time: offTimeMs });
+      let dispatchFailed = false;
+      const dispatchStart = () => {
+        this._pendingNoteOns.delete(token);
+        const active = this._activeNotes.get(token);
+        if (!active) return;
+        if (durationMs > 0 && this._nowMs() >= offTimeMs) {
+          this._stopActiveNoteToken(token);
+          return;
         }
-        this._scheduleNoteOff({
-          timeMs: offTimeMs,
-          channel: channelNumber,
-          note: spec.note,
-          outputId,
-          token,
-          mpe: !!this.config.mpe?.enabled
-        });
+        if (!active.mpe) {
+          // MIDI 1.0 has one gate per output/channel/pitch. Retrigger owns that gate.
+          for (const [previousToken, previous] of [...this._activeNotes]) {
+            if (previousToken !== token && previous.hasStarted && previous.output === output &&
+                previous.channel === channelNumber && previous.note === spec.note) {
+              this._stopActiveNoteToken(previousToken);
+            }
+          }
+        }
+        try {
+          if (Number.isInteger(spec.program) && spec.program >= 0 && spec.program <= 127) {
+            channel.sendProgramChange?.(spec.program, { time: sendTimeMs });
+          }
+          if (mpeEnabled || Number.isFinite(spec.pitchBend)) {
+            channel.sendPitchBend(clamp(spec.pitchBend ?? 0, -1, 1), { time: sendTimeMs });
+          }
+          if (spec.timbre != null && Number.isFinite(spec.timbre)) {
+            channel.sendControlChange(timbreCc, clamp(spec.timbre, 0, 127), { time: sendTimeMs });
+          }
+          if (spec.pan != null && Number.isFinite(spec.pan) && !output.supportsPerNotePan &&
+          (!spec.spatialPan || mpeEnabled)) {
+            let panValue = spec.pan;
+            if (signedPan) {
+              panValue = Math.round((clamp(panValue, -127, 127) + 127) / 2);
+            }
+            channel.sendControlChange(10, clamp(panValue, 0, 127), { time: sendTimeMs });
+          }
+
+          channel.sendNoteOn(spec.note, { rawAttack: attackVelocity, time: sendTimeMs,
+            ...(output.supportsPerNotePan && Number.isFinite(spec.pan) ? { pan: spec.pan / 127 } : {}) });
+          active.hasStarted = true;
+          if (typeof window !== 'undefined') window.lastMidiOutputMessage = {
+            type: 'noteOn', note: spec.note, velocity: attackVelocity, channel: channelNumber, outputId, timeMs: sendTimeMs
+          };
+        } catch (error) {
+          dispatchFailed = true;
+          this.lastOutputError = error?.message || String(error);
+          this._stopActiveNoteToken(token);
+          this.allNotesOff();
+        }
+      };
+      if (sendTimeMs > now) {
+        const timerId = setTimeout(dispatchStart, Math.max(0, sendTimeMs - now));
+        this._pendingNoteOns.set(token, { output, channel: channelNumber, note: spec.note, timeMs: sendTimeMs, timerId });
+      } else dispatchStart();
+      if (durationMs > 0) {
+        this._scheduleNoteOff({ timeMs: offTimeMs, channel: channelNumber, note: spec.note,
+          outputId, token, mpe: !!this.config.mpe?.enabled, releaseVelocity });
       }
       const { messages, bytes } = this.estimateMessages(spec);
       if (messages > 0 && meta.rateReserved !== true) {
@@ -173,7 +186,7 @@ const midiSchedulerSendMethods = {
         }
       }
       this._checkByteRate(sendTimeMs);
-      return true;
+      return !dispatchFailed;
     } finally {
       if (perfEnabled) {
         recordPerformanceMeasure('MidiScheduler sendNote', {
@@ -212,13 +225,27 @@ const midiSchedulerSendMethods = {
     if (!this.hasAnyOutput() || !this._noteOffs.length) return;
     const now = this._nowMs();
     let idx = 0;
-    while (idx < this._noteOffs.length && this._noteOffs[idx].timeMs <= now + 1) {
+    while (idx < this._noteOffs.length && this._noteOffs[idx].timeMs <= now) {
       const entry = this._noteOffs[idx];
       const active = this._activeNotes.get(entry.token);
-      if (active && entry.mpe) {
-        this._activeByChannel.delete(this._activeChannelKey(entry.channel, active.outputId ?? entry.outputId));
+      if (active) {
+        const pending = this._pendingNoteOns.get(entry.token);
+        if (pending?.timerId != null) clearTimeout(pending.timerId);
+        this._pendingNoteOns.delete(entry.token);
+        if (active.hasStarted !== false) {
+          const output = active.output || this._resolveOutput(active.outputId ?? entry.outputId);
+          const channel = output?.channels?.[entry.channel];
+          try {
+            channel?.sendNoteOff?.(entry.note, { rawRelease: entry.releaseVelocity, time: entry.timeMs });
+            if (entry.mpe) channel?.sendPitchBend?.(0, { time: entry.timeMs });
+          } catch (error) { this.lastOutputError = error?.message || String(error); }
+        }
+        if (entry.mpe) {
+          const key = this._activeChannelKey(entry.channel, active.outputId ?? entry.outputId);
+          if (this._activeByChannel.get(key)?.token === entry.token) this._activeByChannel.delete(key);
+        }
+        this._activeNotes.delete(entry.token);
       }
-      if (active) this._activeNotes.delete(entry.token);
       idx++;
     }
     if (idx > 0) {
@@ -237,6 +264,7 @@ const midiSchedulerSendMethods = {
 
   allNotesOff({ preserveGamePhrases = false } = {}) {
     if (!preserveGamePhrases) this.gamePhrases.clear();
+    for (const pending of this._pendingNoteOns.values()) if (pending.timerId != null) clearTimeout(pending.timerId);
     const mpe = this.config.mpe;
     let channels;
     if (mpe?.enabled) {
@@ -279,7 +307,7 @@ const midiSchedulerSendMethods = {
       }
       if (!cleared) {
         for (const pending of this._pendingNoteOns.values()) {
-          if (pending.output !== output || pending.timeMs <= now) continue;
+          if (pending.timerId != null || pending.output !== output || pending.timeMs <= now) continue;
           const channel = output.channels?.[pending.channel];
           try {
             channel?.sendNoteOff?.(pending.note, { time: pending.timeMs + 1 });

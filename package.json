@@ -3,7 +3,6 @@
   "version": "0.0.4",
   "description": "Lemmings (JavaScript)",
   "private": true,
-  "main": "index.js",
   "directories": {
     "lib": "lib"
   },
@@ -55,13 +54,14 @@
     "release-readiness": "node scripts/check-release-readiness.js",
     "coverage": "cross-env C8_FORK=1 c8 mocha --recursive",
     "coverage-editor": "cross-env C8_FORK=1 c8 --include=js/editor/** --check-coverage --lines 100 --statements 100 --functions 100 --branches 100 mocha \"test/editor/*.test.js\"",
-    "coverage-report": "npx c8 report --reporter=html",
+    "coverage-report": "c8 report --reporter=html",
     "count-lines": "node scripts/count-lines.js",
     "export-panel-sprite": "node tools/exportPanelSprite.js",
     "export-lemmings-sprites": "node tools/exportLemmingsSprites.js",
     "export-ground-images": "node tools/exportGroundImages.js",
     "export-all-sprites": "node tools/exportAllSprites.js",
     "export-all-packs": "node tools/exportAllPacks.js",
+    "export-all-levels": "node tools/exportAllLevels.js",
     "clean-exports": "node tools/cleanExports.js",
     "list-sprites": "node tools/listSprites.js",
     "patch-sprites": "node tools/patchSprites.js",
@@ -69,7 +69,7 @@
     "pack-pipeline": "node tools/packPipeline.js",
     "format": "eslint . --fix",
     "lint": "eslint .",
-    "depcheck": "depcheck"
+    "depcheck": "knip --dependencies"
   },
   "c8": {
     "check-coverage": true,
@@ -95,18 +95,17 @@
   "homepage": "https://github.com/doublemover/LemmingsJS-MIDI#readme",
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": "^20.19.0 || >=22.12.0"
   },
   "devDependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "@playwright/test": "^1.49.1",
     "@sinonjs/fake-timers": "^14.0.0",
-    "adm-zip": "^0.5.16",
+    "adm-zip": "^0.6.1",
     "c8": "^10.1.3",
     "chai": "^5.2.0",
     "cheerio": "^1.0.0",
     "cross-env": "^7.0.3",
-    "depcheck": "^1.4.7",
     "eslint": "^9.28.0",
     "http-server": "^14.1.1",
     "mocha": "^11.5.0",
@@ -115,14 +114,15 @@
     "tar": "^7.4.3",
     "typescript": "^5.9.3",
     "ws": "^8.18.1",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "knip": "^6.40.0"
   },
   "dependencies": {
     "js-yaml": "^4.1.0"
   },
   "overrides": {
     "diff": "8.0.3",
-    "ip-address": "10.2.0",
+    "ip-address": "10.7.3",
     "serialize-javascript": "7.0.5"
   }
 }

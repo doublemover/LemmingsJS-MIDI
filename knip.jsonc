@@ -1,0 +1,19 @@
+{
+  // c8 report is a c8 subcommand; Knip 6.40 treats its positional argument as an executable.
+  "ignoreBinaries": ["report"],
+  "entry": [
+    "js/**/*.js",
+    "mcp/**/*.js",
+    "tools/**/*.{js,mjs}",
+    "scripts/**/*.{js,cjs,mjs}",
+    "test/**/*.js",
+    "e2e/**/*.js",
+    "*.config.js"
+  ],
+  "project": [
+    "**/*.{js,mjs,cjs}",
+    "!js/vendor/**",
+    "!temp/**",
+    "!node_modules/**"
+  ]
+}

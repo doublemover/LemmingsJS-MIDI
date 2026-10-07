@@ -238,6 +238,7 @@ const midiSchedulerRateMethods = {
   estimateMessages(spec) {
     if (!spec || !Number.isFinite(spec.note)) return { messages: 0, bytes: 0 };
     let messages = 1;
+    if (Number.isInteger(spec.program) && spec.program >= 0 && spec.program <= 127) messages += 1;
     if (this.config.mpe?.enabled) {
       messages += 1;
     } else if (Number.isFinite(spec.pitchBend)) {

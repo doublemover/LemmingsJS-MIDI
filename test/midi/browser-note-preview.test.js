@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import { readFileSync } from 'node:fs';
 import { BrowserNotePreview, createBrowserNotePreview } from '../../js/app/midi-ui/browserNotePreview.js';
 import { MidiScheduler } from '../../js/midi/MidiScheduler.js';
+import { withFakeClockAndPerformance } from '../support/timers.js';
 
 const deferred = () => {
   let resolve;
@@ -303,25 +304,28 @@ describe('BrowserNotePreview', function() {
   });
 
   it('implements the scheduler surface including MPE, timestamped releases, pan and panic', async function() {
-    const { preview, context } = setup();
-    await preview.enable();
-    const scheduler = new MidiScheduler({
-      mpe: { enabled: true, masterChannel: 1, memberChannels: [2, 3], pitchBendRange: { semitones: 12, cents: 0 } },
-      defaultChannel: 1
-    });
-    scheduler._nowMs = () => 1000;
-    scheduler.setOutput(preview.output);
-    scheduler.setTickMs(60);
-    expect(scheduler.sendNote({ note: 60, velocity: 80, pitchBend: 0.5, pan: 127, timbre: 100, durationTicks: 4, timeMs: 1100 })).to.equal(true);
-    expect(context.oscillators).to.have.length(1);
-    expect(context.oscillators[0].detune.events[0].value).to.equal(600);
-    expect([...preview._voices][0].pan.pan.events.at(-1).value).to.equal(1);
-    scheduler.allNotesOff();
-    expect(preview.getState().activeVoices).to.equal(0);
-    expect(context.oscillators[0].disconnected).to.equal(true);
-    expect(scheduler._noteOffTimerId).to.equal(0);
-    scheduler.dispose();
-    await preview.dispose();
+    await withFakeClockAndPerformance(async clock => {
+      const { preview, context } = setup();
+      await preview.enable();
+      const scheduler = new MidiScheduler({
+        mpe: { enabled: true, masterChannel: 1, memberChannels: [2, 3], pitchBendRange: { semitones: 12, cents: 0 } },
+        defaultChannel: 1
+      });
+      scheduler.setOutput(preview.output);
+      scheduler.setTickMs(60);
+      expect(scheduler.sendNote({ note: 60, velocity: 80, pitchBend: 0.5, pan: 127, timbre: 100, durationTicks: 4, timeMs: 1100 })).to.equal(true);
+      expect(context.oscillators).to.have.length(0);
+      clock.tick(100);
+      expect(context.oscillators).to.have.length(1);
+      expect(context.oscillators[0].detune.events[0].value).to.equal(600);
+      expect([...preview._voices][0].pan.pan.events.at(-1).value).to.equal(1);
+      scheduler.allNotesOff();
+      expect(preview.getState().activeVoices).to.equal(0);
+      expect(context.oscillators[0].disconnected).to.equal(true);
+      expect(scheduler._noteOffTimerId).to.equal(0);
+      scheduler.dispose();
+      await preview.dispose();
+    }, { now: 1000 });
   });
 
   it('pairs consecutive scheduled same-pitch notes independently', async function() {
