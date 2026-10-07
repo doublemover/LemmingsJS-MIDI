@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>hydro · Old Vegas revue</title>
+<style>body{margin:0;background:#120b12;color:#fff4df;font:16px system-ui}main{max-width:1200px;margin:auto;padding:40px}h1{font-size:52px;letter-spacing:-2px;margin:10px 0}small{letter-spacing:4px;color:#f4c66b}a,button{color:#fff4df;background:#ad1635;border:1px solid #f4c66b;border-radius:4px;padding:10px 15px;text-decoration:none;font:inherit}nav{display:flex;gap:12px;margin:24px 0}#pieces{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}article{border:1px solid #6d102c;background:linear-gradient(#250e1c,#120b12);padding:16px;border-radius:8px}canvas{width:100%;image-rendering:pixelated;aspect-ratio:128/72}h2{font-size:16px;margin:0;color:#f4c66b}p{line-height:1.6;max-width:800px}footer{padding:24px 0;color:#bca997}</style></head>
+<body><main><small>THE HYDRO REVUE / PIXEL SCENERY COLLECTION</small><h1>Old Vegas. All the lights.</h1><p>Ruby velvet, pearl chases, playing-card jewels and a feathered cabaret turn. These are the actual runtime sprites: 18 pieces, 288 hand-built animation frames, one shared palette.</p><nav><a href="../procgen.html?decoration=old-vegas&lanes=1&shape=rounded_triangle&zoom=4&follow=0">Play with this scenery</a><button id="motion">Pause animation</button></nav><section id="pieces"></section><footer>Scenery has no collision or triggers. Gameplay terrain and actors stay in front. Reduced-motion preferences are respected.</footer></main>
+<script type="module">
+import { createOldVegasPack } from '../js/decorations/OldVegasPack.js';
+const pack = createOldVegasPack(), host = document.querySelector('#pieces'), reduced = matchMedia('(prefers-reduced-motion: reduce)');
+let paused = reduced.matches;
+const items = pack.pieces.map(piece => {
+  const article = document.createElement('article'), canvas = document.createElement('canvas'), title = document.createElement('h2');
+  canvas.width = 128; canvas.height = 72; title.textContent = piece.name; article.append(canvas, title); host.append(article);
+  const frames = piece.image.frames.map(frame => { const image = new ImageData(piece.width, piece.height), pixels = new Uint32Array(image.data.buffer); for(let i=0;i<frame.length;i++) if(!(frame[i]&128)) pixels[i]=piece.image.palette.getColor(frame[i]); const bitmap=document.createElement('canvas');bitmap.width=piece.width;bitmap.height=piece.height;bitmap.getContext('2d').putImageData(image,0,0);return bitmap; });
+  return { canvas, frames, piece };
+});
+const button = document.querySelector('#motion'); const label = () => button.textContent = paused ? 'Play animation' : 'Pause animation'; label();button.onclick=()=>{paused=!paused;label();};
+let current=0,last=0;function render(time){if(!paused && time-last>120){current=(current+1)%16;last=time;}for(const {canvas,frames,piece} of items){const ctx=canvas.getContext('2d');ctx.clearRect(0,0,128,72);ctx.drawImage(frames[current],(128-piece.width)/2,(72-piece.height)/2);}requestAnimationFrame(render);}requestAnimationFrame(render);
+</script></body></html>

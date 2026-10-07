@@ -1,3 +1,4 @@
+import { DECORATION_CHOICES } from '../../decorations/ProcgenDecorationPacks.js';
 import { normalizeSeed } from '../../core/seededRandom.js';
 import { CHARACTER_COLORS } from '../../lemmings/characterColors.js';
 import { CHARACTER_ACCESSORY_CHOICES, CHARACTER_ACCESSORIES } from '../../lemmings/CharacterAccessories.js';
@@ -18,6 +19,8 @@ const numberValue = (params, keys, min, max = Infinity) => {
 const readProcgenUrlConfig = search => {
   const params = search instanceof URLSearchParams ? search : new URLSearchParams(search || '');
   const settings = {}, appearance = {}, camera = {};
+  const decoration = enumValue(params, ['decoration'], DECORATION_CHOICES.map(choice => choice.id));
+  if (decoration) settings.decoration = decoration;
   const lanes = numberValue(params, ['lanes'], 1), speed = numberValue(params, ['speed'], 0.1), pack = numberValue(params, ['pack'], 1, 6);
   if (lanes !== undefined) settings.laneCount = normalizeLaneCount(lanes);
   if (speed !== undefined) settings.speed = speed;
@@ -46,7 +49,7 @@ const readProcgenUrlConfig = search => {
 const createProcgenShareUrl = ({ url, seed, settings, appearance, camera }) => {
   const result = new URL(url), params = result.searchParams;
   for (const alias of ['appearance', 'body', 'accessoryColor', 'frameColor', 'musicPreset', 'phrases', 'x', 'y', 'scale']) params.delete(alias);
-  for (const [key, value] of Object.entries({ seed: normalizeSeed(seed), lanes: settings.laneCount, pack: settings.pack, speed: settings.speed,
+  for (const [key, value] of Object.entries({ seed: normalizeSeed(seed), lanes: settings.laneCount, pack: settings.pack, speed: settings.speed, decoration: settings.decoration,
     shape: appearance.shape, bodyColor: appearance.bodyColor || 'random', propColor: appearance.propColor || '#ff8066', eyewearColor: appearance.eyewearColor || '#1f1f1f',
     accessory: appearance.accessory || 'beret', eyewear: appearance.eyewear || 'none', appearanceSeed: appearance.seed || 0,
     preset: settings.preset, musicMode: settings.mode, cameraX: camera.cameraX, cameraY: camera.cameraY, zoom: camera.scale, follow: camera.follow ? '1' : '0' })) {

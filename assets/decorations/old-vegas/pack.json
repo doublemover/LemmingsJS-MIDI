@@ -1,0 +1,191 @@
+{
+  "id": "old-vegas",
+  "label": "Old Vegas · velvet & bulbs",
+  "source": "js/decorations/OldVegasPack.js",
+  "format": "indexed-animation-catalog-v1",
+  "transparency": 128,
+  "frameCount": 16,
+  "atlas": "atlas.png",
+  "cellWidth": 128,
+  "cellHeight": 72,
+  "palette": [
+    "#120b12",
+    "#370b21",
+    "#6d102c",
+    "#ad1635",
+    "#ed2949",
+    "#ff6b68",
+    "#fff4df",
+    "#f4c66b",
+    "#9f6636",
+    "#ffffff",
+    "#3e66ee",
+    "#193697",
+    "#70b6ff",
+    "#ff873e"
+  ],
+  "pieces": [
+    {
+      "id": "marquee-0",
+      "name": "OLD VEGAS chasing marquee",
+      "width": 112,
+      "height": 28,
+      "placement": "ceiling",
+      "atlasRow": 0,
+      "interactive": false
+    },
+    {
+      "id": "marquee-1",
+      "name": "JACKPOT chasing marquee",
+      "width": 112,
+      "height": 28,
+      "placement": "ceiling",
+      "atlasRow": 1,
+      "interactive": false
+    },
+    {
+      "id": "marquee-2",
+      "name": "CABARET chasing marquee",
+      "width": 112,
+      "height": 28,
+      "placement": "ceiling",
+      "atlasRow": 2,
+      "interactive": false
+    },
+    {
+      "id": "marquee-3",
+      "name": "HYDRO chasing marquee",
+      "width": 112,
+      "height": 28,
+      "placement": "ceiling",
+      "atlasRow": 3,
+      "interactive": false
+    },
+    {
+      "id": "marquee-4",
+      "name": "LUCKY 7 chasing marquee",
+      "width": 112,
+      "height": 28,
+      "placement": "ceiling",
+      "atlasRow": 4,
+      "interactive": false
+    },
+    {
+      "id": "marquee-5",
+      "name": "SHOWTIME chasing marquee",
+      "width": 112,
+      "height": 28,
+      "placement": "ceiling",
+      "atlasRow": 5,
+      "interactive": false
+    },
+    {
+      "id": "suit-heart",
+      "name": "heart illuminated medallion",
+      "width": 40,
+      "height": 28,
+      "placement": "ceiling",
+      "atlasRow": 6,
+      "interactive": false
+    },
+    {
+      "id": "suit-club",
+      "name": "club illuminated medallion",
+      "width": 40,
+      "height": 28,
+      "placement": "ceiling",
+      "atlasRow": 7,
+      "interactive": false
+    },
+    {
+      "id": "suit-spade",
+      "name": "spade illuminated medallion",
+      "width": 40,
+      "height": 28,
+      "placement": "ceiling",
+      "atlasRow": 8,
+      "interactive": false
+    },
+    {
+      "id": "suit-diamond",
+      "name": "diamond illuminated medallion",
+      "width": 40,
+      "height": 28,
+      "placement": "ceiling",
+      "atlasRow": 9,
+      "interactive": false
+    },
+    {
+      "id": "bulbs-0",
+      "name": "Pearl runway chase",
+      "width": 128,
+      "height": 12,
+      "placement": "trim",
+      "atlasRow": 10,
+      "interactive": false
+    },
+    {
+      "id": "bulbs-1",
+      "name": "Ruby square chase",
+      "width": 128,
+      "height": 12,
+      "placement": "trim",
+      "atlasRow": 11,
+      "interactive": false
+    },
+    {
+      "id": "bulbs-2",
+      "name": "Diamond star chase",
+      "width": 128,
+      "height": 12,
+      "placement": "trim",
+      "atlasRow": 12,
+      "interactive": false
+    },
+    {
+      "id": "velvet-swag",
+      "name": "Garnet velvet with gold tassels",
+      "width": 128,
+      "height": 28,
+      "placement": "ceiling",
+      "atlasRow": 13,
+      "interactive": false
+    },
+    {
+      "id": "roulette",
+      "name": "Roulette rosette",
+      "width": 40,
+      "height": 28,
+      "placement": "ceiling",
+      "atlasRow": 14,
+      "interactive": false
+    },
+    {
+      "id": "slot-reels",
+      "name": "Triple seven slot reels",
+      "width": 64,
+      "height": 28,
+      "placement": "ceiling",
+      "atlasRow": 15,
+      "interactive": false
+    },
+    {
+      "id": "fan-lights",
+      "name": "Art deco fan light",
+      "width": 64,
+      "height": 28,
+      "placement": "ceiling",
+      "atlasRow": 16,
+      "interactive": false
+    },
+    {
+      "id": "hydro-showgirl",
+      "name": "hydro feather revue",
+      "width": 96,
+      "height": 64,
+      "placement": "stage",
+      "atlasRow": 17,
+      "interactive": false
+    }
+  ]
+}

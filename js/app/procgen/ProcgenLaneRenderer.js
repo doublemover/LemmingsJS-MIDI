@@ -1,3 +1,4 @@
+import { DecorationLayer } from '../../decorations/DecorationLayer.js';
 import { LANE_HEIGHT } from './ProcgenLaneWorld.js';
 import { createProcgenCameraController } from './ProcgenCameraController.js';
 
@@ -16,6 +17,8 @@ class ProcgenLaneRenderer {
     this.terrainRebuilds = 0; this.terrainCacheHits = 0;
     this.frameCacheHits = 0; this.lastFrameKey = null; this.lastAppearance = null; this.lastSprites = null; this.lastHud = null; this.lastHudSprites = null;
     this.camera = createProcgenCameraController(this);
+    this.decorationLayer = assets.decorationPack ? new DecorationLayer(canvas.ownerDocument, assets.decorationPack) : null;
+    this.reducedMotion = windowRef.matchMedia?.('(prefers-reduced-motion: reduce)');
   }
   resize() { this.lastTerrainKey = ''; this.lastGeometryKey = ''; this.render(); }
   _frameCanvas(frame) {
@@ -203,6 +206,7 @@ class ProcgenLaneRenderer {
     else this.terrainCacheHits++;
     this.bufferContext.imageSmoothingEnabled = false;
     this.bufferContext.drawImage(this.terrainBuffer, 0, 0);
+    this.decorationLayer?.draw(this, !!this.reducedMotion?.matches);
     this._drawObjects();
     this.renderedActors = 0; this.actorDots.clear();
     for (const actor of this.world.actors) {
@@ -228,7 +232,7 @@ class ProcgenLaneRenderer {
     this.lastFrameMs = (this.window.performance?.now?.() ?? start) - start;
     return true;
   }
-  dispose() { this.camera.dispose(); this.frames = new WeakMap(); this.objectFrames = new WeakMap();
+  dispose() { this.camera.dispose(); this.decorationLayer = null; this.frames = new WeakMap(); this.objectFrames = new WeakMap();
     this.dotColors = new WeakMap(); this.actorDots = new Map(); this.objectDots = new Map(); this.image = null; this.pixels = null; this.lastFrameKey = null;
     this.lastAppearance = this.lastSprites = this.lastHud = this.lastHudSprites = null; }
 }

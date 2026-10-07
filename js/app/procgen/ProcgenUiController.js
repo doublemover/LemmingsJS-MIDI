@@ -1,3 +1,4 @@
+import { DECORATION_CHOICES } from '../../decorations/ProcgenDecorationPacks.js';
 import { createCharacterUiController, mountCharacterControls } from '../characterUiController.js';
 import { createLocalGamePreview } from '../midi-ui/localGamePreview.js';
 import { createMidiProjectFromMidiConfig, projectToMidiConfig } from '../../midi/project/MidiProject.js';
@@ -14,7 +15,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   const listen = (target, event, handler) => { target?.addEventListener(event, handler); listeners.push([target, event, handler]); };
   const urlConfig = readProcgenUrlConfig(window?.location?.search);
   const settings = { laneCount: normalizeLaneCount(initial.laneCount || 1), speed: normalizeProcgenSpeed(initial.speed), pack: [1, 2, 3, 4, 5, 6].includes(Number(initial.pack)) ? Number(initial.pack) : 2,
-    preset: GAME_EVENT_MIDI_PRESETS[0].id, mode: 'steps', ...urlConfig.settings };
+    preset: GAME_EVENT_MIDI_PRESETS[0].id, mode: 'steps', decoration: 'none', ...urlConfig.settings };
   let project = applyGameEventMidiPreset(createMidiProjectFromMidiConfig({ enabled: false, sfx: {}, triggers: {} }), settings.preset);
   let config = projectToMidiConfig(project), disposed = false;
   const local = createLocalGamePreview({ getLemmings: () => getRuntime()?.view, getConfig: () => config, immutableConfig: true,
@@ -46,6 +47,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     for (const [value, label] of choices) { const option = document.createElement('option'); option.value = value; option.textContent = label; select.appendChild(option); }
     select.value = String(value);
   };
+  fill('procgenDecoration', DECORATION_CHOICES.map(choice => [choice.id, choice.label]), settings.decoration);
   fill('procgenPreset', GAME_EVENT_MIDI_PRESETS.map(preset => [preset.id, preset.label]), settings.preset);
   fill('procgenPack', [[1, 'Lemmings'], [2, 'Oh No! More Lemmings'], [3, 'Xmas 1991'], [4, 'Xmas 1992'], [5, 'Holiday 1993'], [6, 'Holiday 1994']], settings.pack);
   if (byId('procgenSpeed')) byId('procgenSpeed').value = settings.speed;
@@ -65,6 +67,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   };
   listen(byId('procgenRestart'), 'click', doRestart);
   listen(byId('procgenLanes'), 'change', () => { settings.laneCount = normalizeLaneCount(byId('procgenLanes').value); byId('procgenLanes').value = settings.laneCount; doRestart(); });
+  listen(byId('procgenDecoration'), 'change', () => { settings.decoration = byId('procgenDecoration').value; doRestart(); });
   listen(byId('procgenPack'), 'change', () => { settings.pack = Number(byId('procgenPack').value); doRestart(); });
   const camera = () => getRuntime()?.lanes?.renderer?.camera;
   const panelSprites = () => getRuntime()?.lanes?.renderer?.hud?.sprites;

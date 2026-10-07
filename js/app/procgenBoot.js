@@ -1,3 +1,4 @@
+import { getDecorationPack } from '../decorations/ProcgenDecorationPacks.js';
 import './bootstrap.js';
 import { ProcgenBitmapHud } from './procgen/ProcgenBitmapHud.js';
 import { createProcgenUiController } from './procgen/ProcgenUiController.js';
@@ -351,6 +352,7 @@ const init = async () => {
     if (procgenUi) {
       const assets = new ProcgenAssetManager({ styleName, config, fileProvider: view.gameFactory.fileProvider, random: terrainRng });
       await assets.load();
+      assets.decorationPack = getDecorationPack(procgenUi.settings.decoration);
       const book = await loadTerrainRecipeBook(view.gameFactory.fileProvider);
       const recipe = selectThemeRecipe(book, { packPath: config.path, groundSet: assets.groundSet });
       const objectPieces = (assets.assets?.gadgetImages || []).map((image, id) => ({ ...assets.assets.gadgets[id], id, image }));
