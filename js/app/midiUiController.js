@@ -106,6 +106,8 @@ const STEP_FIELD_COUNT = 32;
 const STEP_GRID_COLUMNS = 4;
 const STEP_GRID_TABLET_MAX_WIDTH = 900;
 const STEP_GRID_PHONE_MAX_WIDTH = 520;
+const MASTER_VOLUME_STORAGE_KEY = 'lemmings.midi.masterVolume';
+const DEFAULT_MASTER_VOLUME = 0.7;
 const STEP_GRID_FIELD_CLASSES = Object.freeze([
   'midi-step-note',
   'midi-step-velocity',
@@ -303,6 +305,7 @@ const createMidiUiController = ({
   let soundView = 'sounds';
   let localAudio = null;
   let auditionAudio = null;
+  let masterVolume = DEFAULT_MASTER_VOLUME;
   const auditionSteps = new Map();
   let localGamePreview = null;
   let localInteraction = 0;
@@ -2200,7 +2203,27 @@ const createMidiUiController = ({
       : 'midi-mapping';
   };
 
+  const renderMasterVolume = () => {
+    const percent = Math.round(masterVolume * 100);
+    const input = document?.getElementById('midiMasterVolume');
+    setInputValue(input, percent);
+    input?.setAttribute('aria-valuetext', percent === 0 ? 'Muted' : `${percent}%`);
+    setText(document?.getElementById('midiMasterVolumeValue'), `${percent}%`);
+  };
+
+  const setMasterVolume = (value, { persist = true } = {}) => {
+    const number = toNumberOrNull(value);
+    masterVolume = number == null ? DEFAULT_MASTER_VOLUME : clamp(number, 0, 1);
+    localAudio?.setMasterVolume?.(masterVolume);
+    auditionAudio?.setMasterVolume?.(masterVolume);
+    if (persist) {
+      try { storage?.setItem(MASTER_VOLUME_STORAGE_KEY, String(masterVolume)); } catch { /* Local audio still works when preferences cannot be saved. */ }
+    }
+    renderMasterVolume();
+  };
+
   const renderLocalSummary = () => {
+    renderMasterVolume();
     const localState = localGamePreview?.getState?.();
     const audioState = auditionAudio?.getState?.();
     const hardwareOn = !!getLemmings()?.midiEnabled && !!getWebMidi()?.enabled && !!getLemmings()?.midiOut;
@@ -2213,7 +2236,7 @@ const createMidiUiController = ({
 
   const ensureLocalPreview = () => {
     getLemmings()?.setLocalAudioStopHandler?.(stopLocalPreview);
-    if (!localAudio) localAudio = createPreviewAudio({ onStateChange: renderLocalSummary });
+    if (!localAudio) localAudio = createPreviewAudio({ masterVolume, onStateChange: renderLocalSummary });
     if (!localGamePreview) localGamePreview = createLocalGamePreview({
       getLemmings, getConfig: getProjectConfig, immutableConfig: true, audio: localAudio, onStateChange: renderLocalSummary
     });
@@ -2231,7 +2254,7 @@ const createMidiUiController = ({
   const testSelectedSound = async () => {
     const source = selectedSource();
     if (!source) return false;
-    if (!auditionAudio) auditionAudio = createPreviewAudio({ onStateChange: renderLocalSummary });
+    if (!auditionAudio) auditionAudio = createPreviewAudio({ masterVolume, onStateChange: renderLocalSummary });
     const key = JSON.stringify(source.mapping);
     const previous = auditionSteps.get(source.id);
     const index = previous?.key === key ? previous.index : 0;
@@ -2558,6 +2581,9 @@ const createMidiUiController = ({
   const bindMidiUi = () => {
     if (bound) return;
     disposed = false;
+    let storedMasterVolume = null;
+    try { storedMasterVolume = storage?.getItem(MASTER_VOLUME_STORAGE_KEY); } catch { /* Use the default when local preferences are unavailable. */ }
+    setMasterVolume(storedMasterVolume, { persist: false });
     ensureProject();
     cleanupLegacyMidiProjectStorage(storage);
     workbench = createMidiInstrumentWorkbench({ document, window, getLemmings, getProject: ensureProject, getSource: selectedSource,
@@ -2596,6 +2622,9 @@ const createMidiUiController = ({
     bindById('midiSoundPitch', 'change', event => updateSelectedMapping(transposeEventPitch(selectedSource()?.mapping, event.target.value)));
     bindById('midiSoundSpacing', 'change', event => updateSelectedMapping({ phrase: { ...selectedSource()?.mapping?.phrase, spacingTicks: Number(event.target.value) } }));
 
+    const updateMasterVolume = event => setMasterVolume(Number(event.target.value) / 100);
+    bindById('midiMasterVolume', 'input', updateMasterVolume);
+    bindById('midiMasterVolume', 'change', updateMasterVolume);
     bindById('midiLocalListenButton', 'click', async () => {
       const preview = ensureLocalPreview();
       if (preview.getState().enabled || preview.getState().status === 'starting' || localAudio?.getState()?.activeVoices) { stopLocalPreview(); return; }
@@ -3167,7 +3196,7 @@ const createMidiUiController = ({
       panic,
       getWorkbenchState: () => workbench?.getState(),
       testSelectedSound,
-      getLocalAudioState: () => ({ monitor: localGamePreview?.getState(), audition: auditionAudio?.getState() }),
+      getLocalAudioState: () => ({ masterVolume, monitor: localGamePreview?.getState(), audition: auditionAudio?.getState() }),
       undo: () => editHistory.undo(ensureProject(), commitProject),
       redo: () => editHistory.redo(ensureProject(), commitProject)
     };

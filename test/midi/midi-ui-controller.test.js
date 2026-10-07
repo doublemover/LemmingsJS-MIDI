@@ -24,6 +24,8 @@ const registerSequencerDom = (doc) => {
     midiDeviceStatus: 'div',
     midiOutputSummary: 'div',
     midiLocalListenButton: 'button',
+    midiMasterVolume: 'input',
+    midiMasterVolumeValue: 'output',
     midiSoundsView: 'section',
     midiDevicesView: 'section',
     midiProjectView: 'section',
@@ -230,6 +232,95 @@ const createControllerHarness = ({
 };
 
 describe('midiUiController sequencer', function() {
+  it('updates both local audio paths with a persisted master level without editing the project or hardware', async function() {
+    const created = [];
+    let hardwareChanges = 0;
+    const { controller, doc, win, view } = createControllerHarness({
+      createPreviewAudio(options) {
+        let enabled = false;
+        const audio = {
+          masterVolume: options.masterVolume,
+          setMasterVolume(value) { this.masterVolume = value; },
+          getState: () => ({ enabled, activeVoices: 0 }),
+          output: makeOutput([1], [], 'local'),
+          subscribe: () => () => {},
+          async enable() { enabled = true; return true; },
+          async preview() { enabled = true; return true; },
+          stop() { enabled = false; },
+          dispose() {}
+        };
+        created.push(audio);
+        return audio;
+      },
+      lemmings: {
+        setMidiEnabled() { hardwareChanges += 1; },
+        setMidiPreviewRouter(router) { this.midiPreviewRouter = router; }
+      }
+    });
+    controller.bindMidiUi();
+    expect(created).to.have.length(0);
+    const volume = doc.getElementById('midiMasterVolume');
+    expect(volume.value).to.equal('70');
+    expect(doc.getElementById('midiMasterVolumeValue').textContent).to.equal('70%');
+    await doc.getElementById('midiLocalListenButton').listeners.get('click')[0]();
+    await controller.testSelectedSound();
+    expect(created.map(audio => audio.masterVolume)).to.deep.equal([0.7, 0.7]);
+    controller.dispatchProjectIntent({ type: 'source.mapping.update', sourceId: 'sfx-1', patch: { note: 75 } });
+    const project = controller.getProject();
+    const config = controller.getMidiConfig();
+    const storedProject = win.localStorage.getItem(PROJECT_STORAGE_KEY);
+    const runtimeWrites = view.projectConfigs.length;
+    volume.value = '0';
+    volume.dispatchEvent({ type: 'input', target: volume });
+    expect(created.map(audio => audio.masterVolume)).to.deep.equal([0, 0]);
+    expect(doc.getElementById('midiMasterVolumeValue').textContent).to.equal('0%');
+    expect(volume.getAttribute('aria-valuetext')).to.equal('Muted');
+    volume.value = '42';
+    volume.dispatchEvent({ type: 'change', target: volume });
+    expect(created.map(audio => audio.masterVolume)).to.deep.equal([0.42, 0.42]);
+    expect(win.localStorage.getItem('lemmings.midi.masterVolume')).to.equal('0.42');
+    expect(win.__LEMMINGS_MIDI_UI__.getLocalAudioState().masterVolume).to.equal(0.42);
+    expect(controller.getProject()).to.deep.equal(project);
+    expect(controller.getMidiConfig()).to.equal(config);
+    expect(win.localStorage.getItem(PROJECT_STORAGE_KEY)).to.equal(storedProject);
+    expect(view.projectConfigs.length).to.equal(runtimeWrites);
+    expect(hardwareChanges).to.equal(0);
+    expect(win.__LEMMINGS_MIDI_UI__.undo()).to.equal(true);
+    expect(controller.getProject().sources.find(source => source.id === 'sfx-1').mapping.note).to.equal(60);
+    expect(volume.value).to.equal('42');
+    controller.dispose();
+  });
+
+  it('restores local master level before lazily creating audio, including a saved mute', async function() {
+    for (const [stored, expected] of [['0', 0], ['0.35', 0.35], ['broken', 0.7], ['2', 1], ['-1', 0]]) {
+      const levels = [];
+      const { controller, doc, win } = createControllerHarness({ createPreviewAudio: options => {
+        levels.push(options.masterVolume);
+        return { preview: async () => true, getState: () => ({}), dispose() {} };
+      } });
+      win.localStorage.setItem('lemmings.midi.masterVolume', stored);
+      controller.bindMidiUi();
+      expect(doc.getElementById('midiMasterVolume').value).to.equal(String(Math.round(expected * 100)));
+      expect(levels).to.deep.equal([]);
+      await controller.testSelectedSound();
+      expect(levels).to.deep.equal([expected]);
+      controller.dispose();
+    }
+  });
+
+  it('keeps the master volume usable when preference storage is blocked', function() {
+    const { controller, doc, win } = createControllerHarness();
+    win.localStorage.getItem = () => { throw new Error('Blocked storage'); };
+    win.localStorage.setItem = () => { throw new Error('Blocked storage'); };
+    controller.bindMidiUi();
+    const volume = doc.getElementById('midiMasterVolume');
+    expect(volume.value).to.equal('70');
+    volume.value = '15';
+    expect(() => volume.dispatchEvent({ type: 'input', target: volume })).not.to.throw();
+    expect(win.__LEMMINGS_MIDI_UI__.getLocalAudioState().masterVolume).to.equal(0.15);
+    controller.dispose();
+  });
+
   it('keeps local test notes off the enabled hardware path while live gameplay still sends', async function() {
     const hardware = [], previews = [];
     const output = makeOutput([1], hardware, 'device');

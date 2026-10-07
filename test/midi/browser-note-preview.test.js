@@ -93,6 +93,86 @@ const setup = (options = {}, context = new FakeContext()) => {
 };
 
 describe('BrowserNotePreview', function() {
+  it('keeps master volume changes inert until enabled and applies the 70% default below the safe gain cap', async function() {
+    const { preview, context, creations } = setup();
+    expect(preview.getState().masterVolume).to.equal(0.7);
+    expect(preview.setMasterVolume(0.4)).to.equal(0.4);
+    expect(creations()).to.equal(0);
+    expect(await preview.enable()).to.equal(true);
+    expect(context.gains[0].gain.value).to.be.closeTo(0.15 / Math.sqrt(16) * 0.4, 0.000001);
+    await preview.dispose();
+    const defaults = setup();
+    await defaults.preview.enable();
+    expect(defaults.context.gains[0].gain.value).to.be.closeTo(0.15 / Math.sqrt(16) * 0.7, 0.000001);
+    await defaults.preview.dispose();
+  });
+
+  it('ramps live master gain to exact mute and back without changing note velocity, channel volume or active voices', async function() {
+    const { preview, context } = setup();
+    await preview.enable();
+    const channel = preview.output.channels[1];
+    channel.sendControlChange(7, 80);
+    channel.sendNoteOn(60, { rawAttack: 100 });
+    const voice = [...preview._voices][0];
+    const envelope = [...voice.gain.gain.events];
+    const channelGain = [...preview._channels.get(1).gain.gain.events];
+    const master = context.gains[0].gain;
+    expect(preview.setMasterVolume(0)).to.equal(0);
+    expect(master.events.at(-1)).to.deep.equal({ type: 'ramp', value: 0, time: context.currentTime + 0.015 });
+    expect(preview.getState()).to.include({ enabled: true, masterVolume: 0, activeVoices: 1 });
+    expect(preview.setMasterVolume(1)).to.equal(1);
+    expect(master.events.filter(event => event.type === 'ramp')).to.have.length(1);
+    expect(master.events.at(-1).value).to.equal(0.15 / Math.sqrt(16));
+    expect(voice.gain.gain.events).to.deep.equal(envelope);
+    expect(preview._channels.get(1).gain.gain.events).to.deep.equal(channelGain);
+    expect(preview.getState().activeVoices).to.equal(1);
+    await preview.dispose();
+  });
+
+  it('holds an in-progress master ramp when the browser supports cancelAndHoldAtTime', async function() {
+    const { preview, context } = setup();
+    await preview.enable();
+    const master = context.gains[0].gain;
+    const held = [];
+    master.cancelAndHoldAtTime = time => held.push(time);
+    preview.setMasterVolume(0.2);
+    preview.setMasterVolume(0.8);
+    expect(held).to.deep.equal([context.currentTime, context.currentTime]);
+    expect(master.events.at(-1).value).to.equal(0.15 / Math.sqrt(16) * 0.8);
+    await preview.dispose();
+  });
+
+  it('applies mute before a pending unlock completes and preserves it across stop and restart', async function() {
+    const context = new FakeContext('suspended');
+    const pending = deferred();
+    context.resumeResult = pending.promise;
+    const { preview } = setup({}, context);
+    const enabling = preview.enable();
+    preview.setMasterVolume(0);
+    expect(context.gains[0].gain.events.at(-1)).to.deep.equal({ type: 'set', value: 0, time: context.currentTime });
+    context.state = 'running';
+    pending.resolve();
+    expect(await enabling).to.equal(true);
+    preview.stop();
+    expect(await preview.enable()).to.equal(true);
+    expect(preview.getState().masterVolume).to.equal(0);
+    await preview.dispose();
+  });
+
+  it('clamps master volume, ignores invalid values and leaves disposed audio untouched', async function() {
+    const { preview, context, creations } = setup({ masterVolume: Infinity });
+    expect(preview.getState().masterVolume).to.equal(0.7);
+    expect(preview.setMasterVolume(-1)).to.equal(0);
+    expect(preview.setMasterVolume(2)).to.equal(1);
+    expect(preview.setMasterVolume(NaN)).to.equal(1);
+    expect(preview.setMasterVolume('0.5')).to.equal(1);
+    expect(creations()).to.equal(0);
+    await preview.enable();
+    await preview.dispose();
+    expect(preview.setMasterVolume(0)).to.equal(1);
+    expect(context.gains[0].gain.events).to.deep.equal([]);
+  });
+
   it('is completely inert until a user-triggered enable and never depends on MIDI access', async function() {
     const { preview, context, creations } = setup();
     expect(preview).to.be.instanceOf(BrowserNotePreview);
