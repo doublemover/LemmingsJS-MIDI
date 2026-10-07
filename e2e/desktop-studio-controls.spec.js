@@ -9,7 +9,7 @@ for (const size of [{ width: 1366, height: 768 }, { width: 1440, height: 900 }, 
     await page.goto('/?e2e=1'); await waitForHarnessReady(page);
     await page.evaluate(() => { window.__E2E__.pause(); window.__studioCanvas = document.querySelector('#gameCanvas'); });
     await expect(page.locator('#midiSequencerWorkspace')).toBeVisible();
-    await expect(page.locator('#characterStatus')).toContainText('All shapes');
+    await expect(page.locator('#characterStatus')).toBeEmpty();
     await expect(page.locator('#characterShapeChoices [data-value=mixed]')).toHaveAttribute('aria-checked', 'true');
     await expect(page.locator('input[type=color]')).toHaveCount(0);
     await expect(page.locator('#savedLevelSave')).toBeHidden();

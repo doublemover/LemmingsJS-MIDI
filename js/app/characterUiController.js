@@ -12,15 +12,18 @@ const CHARACTER_FIELDS = [
   ['characterEyewearPalette', 'Frame color', 'palette-choices']
 ];
 const mountCharacterControls = (document, container) => {
-  for (const [id, label, classes] of CHARACTER_FIELDS) {
-    const field = document.createElement('div'); field.className = 'character-field';
-    const caption = document.createElement('span'); caption.id = `${id}Label`; caption.textContent = label;
-    const select = document.createElement('select'); select.id = id; select.hidden = true; select.setAttribute('aria-label', label);
-    const choices = document.createElement('div'); choices.id = `${id}Choices`; choices.className = `character-segments ${classes}`;
-    choices.setAttribute('role', 'radiogroup'); choices.setAttribute('aria-labelledby', caption.id);
-    field.append(caption, select, choices); container.appendChild(field);
+  for (let index = 0; index < CHARACTER_FIELDS.length; index += 2) {
+    const composite = document.createElement('div'); composite.className = 'character-composite';
+    for (const [id, label, classes] of CHARACTER_FIELDS.slice(index, index + 2)) {
+      const field = document.createElement('div'); field.className = 'character-field';
+      const select = document.createElement('select'); select.id = id; select.hidden = true; select.setAttribute('aria-label', label);
+      const choices = document.createElement('div'); choices.id = `${id}Choices`; choices.className = `character-segments ${classes}`;
+      choices.setAttribute('role', 'radiogroup'); choices.setAttribute('aria-label', label);
+      field.append(select, choices); composite.appendChild(field);
+    }
+    container.appendChild(composite);
   }
-  const status = document.createElement('span'); status.id = 'characterStatus'; status.setAttribute('role', 'status'); container.appendChild(status);
+  const status = document.createElement('span'); status.id = 'characterStatus'; status.className = 'visually-hidden'; status.setAttribute('role', 'status'); container.appendChild(status);
 };
 const createCharacterUiController = ({ document, window, getView, defaults = {}, initial = {}, onChange, randomShapeImage = 'assets/characters/ui/random-shapes-32.png' }) => {
   const byId = id => document?.getElementById(id);
@@ -95,7 +98,7 @@ const createCharacterUiController = ({ document, window, getView, defaults = {},
     if (status) status.textContent = 'Preparing appearance…';
     const ok = await sprites.prepare();
     if (request !== generation) return;
-    if (status) status.textContent = ok ? p.shape === 'mixed' ? 'All shapes · stable character identities' : 'Appearance ready · gameplay unchanged'
+    if (status) status.textContent = ok ? ''
       : `${sprites.activePreference ? 'Could not load this appearance. Keeping the previous look.' : 'Character art unavailable. Choose an appearance to retry.'} ${sprites.error || ''}`;
     getView()?.game?.render?.();
     try { await updateCharacterPreviews({ document, sprites, preference: p, isCurrent: () => request === generation }); }

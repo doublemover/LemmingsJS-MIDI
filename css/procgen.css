@@ -85,7 +85,7 @@ body {
 @media (prefers-reduced-motion: reduce) { #procgenDrawer { transition: none; } }
 #procgenDrawer .character-control-content { gap: 7px; padding-bottom: 4px; }
 #procgenDrawer .character-segments button { min-height: 0; padding: 0; }
-#procgenDrawer .character-field { gap: 3px; }
+#procgenDrawer .character-field { gap: 0; }
 .procgen-speed-control { display: grid; grid-template-columns: auto auto; gap: 4px; align-items: end; }
 .procgen-speed-control > span { grid-column: 1 / -1; }
 .procgen-speed-segments { display: flex; align-items: center; height: 26px; background: #000; border: 1px solid #7d6950; border-radius: 3px; }
@@ -98,3 +98,7 @@ body {
 #procgenShareUrl { width: min(600px, 100%); color: #eee5d4; background: #191610; border: 1px solid #7d6950; padding: 5px; }
 #procgenDrawer .character-segments button[aria-checked=true] { background: #34483e; border-color: #a6c4ac; color: #f0fff4; }
 #procgenDrawer .character-segments button:hover { background: #293b32; }
+
+#procgenDrawer .character-composite .palette-choices button { min-height: 0; height: 14px; padding: 0; border: 0; border-radius: 0; background: transparent; }
+#procgenDrawer .character-composite .palette-choices button:first-child { border-radius: 0 0 0 6px; }
+#procgenDrawer .character-composite .palette-choices button:last-child { border-radius: 0 0 6px 0; }

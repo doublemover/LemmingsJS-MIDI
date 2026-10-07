@@ -1,9 +1,8 @@
 .character-controls { font-size: 12px; }
-.character-controls > summary { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 12px 0; font-size: 13px; font-weight: 650; color: #e3ece7; list-style: none; }
+.character-controls > summary { display: flex; align-items: center; gap: 0; cursor: pointer; padding: 6px 0; font-size: 13px; font-weight: 650; color: #e3ece7; list-style: none; }
 .character-controls > summary::marker { content: ''; }
 .character-control-content { display: flex; flex-direction: column; gap: 11px; padding-bottom: 14px; }
-.character-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-.character-field > span { color: #95a79e; font-size: 10px; letter-spacing: .04em; }
+.character-field { display: flex; flex-direction: column; gap: 0; min-width: 0; }
 .character-field [hidden] { display: none !important; }
 .character-segments { display: grid; gap: 2px; padding: 3px; background: #111a18; border: 1px solid #34433d; border-radius: 7px; min-width: 0; }
 .character-segments button { display: flex; align-items: center; justify-content: center; min-width: 0; height: 30px; padding: 0; color: #b7c6bc; background: transparent; border: 1px solid transparent; border-radius: 4px; cursor: pointer; }
@@ -16,8 +15,6 @@
 .palette-choices button { height: 22px; border-radius: 3px; }
 .palette-choices button::before { width: 13px; height: 13px; }
 .character-swatch { width: 11px; height: 14px; border-radius: 2px; box-shadow: inset 0 0 0 1px #ffffff24; }
-.character-controls small, #characterStatus { display: block; font-size: 10px; line-height: 1.5; color: #81948a; }
-#characterStatus { min-height: 1.5em; color: #b6c4bb; }
 
 /* Keep choices sprite-sized in both the studio and full-width procgen drawer. */
 .character-segments { display: flex; flex-wrap: wrap; align-self: flex-start; width: fit-content; max-width: 100%; }
@@ -26,3 +23,15 @@
 .character-segments img[src*="random-shapes"] { width: 24px; height: 24px; image-rendering: auto; }
 .palette-choices button { flex-basis: 19px; width: 19px; height: 22px; }
 .character-swatch--random { background: linear-gradient(135deg, #ff72b1 0 25%, #4778ff 25% 50%, #04bb9f 50% 75%, #ffd447 75%); }
+
+.character-composite { display: flex; flex-direction: column; align-self: flex-start; width: fit-content; max-width: 100%; border: 1px solid #34433d; border-radius: 7px; overflow: hidden; }
+.character-composite .character-segments { align-self: stretch; width: auto; border: 0; border-radius: 0; }
+.character-composite .palette-choices { display: flex; flex-wrap: nowrap; gap: 0; padding: 0; border-top: 1px solid #34433d; }
+.character-composite .palette-choices button { flex: 1 1 0; width: auto; height: 14px; min-width: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.character-composite .palette-choices button:first-child { border-radius: 0 0 0 6px; }
+.character-composite .palette-choices button:last-child { border-radius: 0 0 6px 0; }
+.character-composite .palette-choices .character-swatch { display: block; width: 100%; height: 100%; border-radius: inherit; box-shadow: none; pointer-events: none; }
+.character-composite .palette-choices button[aria-checked=true] { box-shadow: inset 0 0 0 2px #fff; }
+.character-composite .palette-choices button[aria-checked=true] .character-swatch { box-shadow: inset 0 0 0 2px #fff; }
+.character-composite .palette-choices button:hover .character-swatch { filter: brightness(1.15); }
+.character-composite .palette-choices button:focus-visible { outline-offset: -2px; }

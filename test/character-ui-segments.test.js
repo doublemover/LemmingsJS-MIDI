@@ -36,7 +36,7 @@ describe('visual character segments', function() {
       if (img) expect(fs.existsSync(img.src), img.src).to.equal(true);
     }
     expect(f.choices('characterShape').filter(button => button.tabIndex === 0)).to.have.length(1);
-    expect(f.document.getElementById('characterStatus').textContent).to.include('All shapes');
+    expect(f.document.getElementById('characterStatus').textContent).to.equal('');
   });
   it('persists independent random palettes, accessory and eyewear without rerolling the seed', async function() {
     setCharacterPreference({ shape: 'mixed', seed: 42 });

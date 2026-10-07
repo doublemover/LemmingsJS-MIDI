@@ -643,14 +643,20 @@
     <button id="midiWorkspaceToggle" hidden class="midi-workspace-toggle" type="button" data-icon="audio-lines" aria-controls="midiSequencerWorkspace" aria-expanded="false">MIDI Studio</button>
   </header>
   <aside id="studioLibrary" class="studio-library" aria-label="Characters and game events">
-    <details class="character-controls" open><summary data-icon="shapes">Characters</summary><div class="character-control-content">
-      <div class="character-field"><span id="shapeLabel">Body shape</span><select id="characterShape" aria-label="Body shape" hidden disabled></select><div id="characterShapeChoices" class="character-segments shape-choices" role="radiogroup" aria-labelledby="shapeLabel"></div></div>
-      <div class="character-field"><span id="bodyPaletteLabel">Body color</span><select id="characterBodyPalette" hidden aria-label="Body color"></select><div id="characterBodyPaletteChoices" class="character-segments palette-choices body-palette" role="radiogroup" aria-labelledby="bodyPaletteLabel"></div></div>
-      <div class="character-field"><span id="accessoryLabel">Accessory</span><select id="characterAccessory" hidden aria-label="Character accessory"></select><div id="characterAccessoryChoices" class="character-segments accessory-choices" role="radiogroup" aria-labelledby="accessoryLabel"></div></div>
-      <div class="character-field compact-palette"><span id="propPaletteLabel">Accessory color</span><select id="characterPropPalette" hidden aria-label="Accessory color"></select><div id="characterPropPaletteChoices" class="character-segments palette-choices" role="radiogroup" aria-labelledby="propPaletteLabel"></div></div>
-      <div class="character-field"><span id="eyewearLabel">Eyewear</span><select id="characterEyewear" hidden aria-label="Eyewear style"></select><div id="characterEyewearChoices" class="character-segments eyewear-choices" role="radiogroup" aria-labelledby="eyewearLabel"></div></div>
-      <div class="character-field compact-palette"><span id="eyewearPaletteLabel">Frame color</span><select id="characterEyewearPalette" hidden aria-label="Eyewear frame color"></select><div id="characterEyewearPaletteChoices" class="character-segments palette-choices" role="radiogroup" aria-labelledby="eyewearPaletteLabel"></div></div>
-      <small>One accessory + eyewear. Colors stay with each character.</small><span id="characterStatus" role="status">Preparing mixed characters…</span>
+    <details class="character-controls" open><summary data-icon="shapes" aria-label="Character appearance controls" title="Character appearance controls"></summary><div class="character-control-content">
+      <div class="character-composite">
+        <div class="character-field"><select id="characterShape" aria-label="Body shape" hidden disabled></select><div id="characterShapeChoices" class="character-segments shape-choices" role="radiogroup" aria-label="Body shape"></div></div>
+        <div class="character-field"><select id="characterBodyPalette" hidden aria-label="Body color"></select><div id="characterBodyPaletteChoices" class="character-segments palette-choices body-palette" role="radiogroup" aria-label="Body color"></div></div>
+      </div>
+      <div class="character-composite">
+        <div class="character-field"><select id="characterAccessory" hidden aria-label="Character accessory"></select><div id="characterAccessoryChoices" class="character-segments accessory-choices" role="radiogroup" aria-label="Accessory"></div></div>
+        <div class="character-field"><select id="characterPropPalette" hidden aria-label="Accessory color"></select><div id="characterPropPaletteChoices" class="character-segments palette-choices" role="radiogroup" aria-label="Accessory color"></div></div>
+      </div>
+      <div class="character-composite">
+        <div class="character-field"><select id="characterEyewear" hidden aria-label="Eyewear style"></select><div id="characterEyewearChoices" class="character-segments eyewear-choices" role="radiogroup" aria-label="Eyewear"></div></div>
+        <div class="character-field"><select id="characterEyewearPalette" hidden aria-label="Eyewear frame color"></select><div id="characterEyewearPaletteChoices" class="character-segments palette-choices" role="radiogroup" aria-label="Frame color"></div></div>
+      </div>
+      <span id="characterStatus" class="visually-hidden" role="status"></span>
     </div></details>
     <section class="studio-events" aria-label="Game event browser"><div class="studio-section-heading"><span data-icon="list-music">Game events</span><span class="live-label">LIVE</span></div><div id="midiGameEventList" class="midi-game-event-list" role="listbox" aria-label="Game events"></div></section>
     <div id="midiOutputSummary" class="studio-output-summary" role="status">Local sound off · MIDI off</div>
