@@ -19,6 +19,7 @@ class ActionFryingSystem extends ActionBaseSystem {
   process(level, lem) {
     lem.disable();
     if (lem.frameIndex === 0) {
+      this.characterParticles?.emitDeath(lem, 'frying', this.spriteProvider);
       lem.lastTriggerType = null;
     }
     lem.frameIndex++;

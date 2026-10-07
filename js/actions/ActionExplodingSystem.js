@@ -26,11 +26,12 @@ class ActionExplodingSystem extends ActionBaseSystem {
   }
 
   draw(gameDisplay, lem) {
+    const customParticles = this.characterParticles && this.spriteProvider?.getActorParticleParts?.(lem);
     if (lem.frameIndex === 0) {
       const ani = this.spriteProvider?.getActorAnimation?.(this.spriteType, lem.lookRight, lem) || this.sprites.get('both');
       const frame = ani.getFrame(lem.frameIndex);
-      gameDisplay.drawFrame(frame, lem.x-10, lem.y-8);
-    } else {
+      gameDisplay.drawFrame(frame, lem.x - 10, lem.y - 8);
+    } else if (!customParticles) {
       this.particleTable.draw(gameDisplay, lem.frameIndex - 1, lem.x, lem.y);
     }
   }
@@ -38,6 +39,7 @@ class ActionExplodingSystem extends ActionBaseSystem {
   process(level, lem) {
     lem.disable();
     if (lem.frameIndex === 0) {
+      this.characterParticles?.emitDeath(lem, 'exploding', this.spriteProvider);
       const soundBus = getRuntimeSoundEvents(this.runtime);
       soundBus?.emitSfx?.(
         SoundEventTypes.LEMMING_EXPLODE,
@@ -49,7 +51,9 @@ class ActionExplodingSystem extends ActionBaseSystem {
     if (lem.frameIndex === 1) {
       this.triggerManager.removeByOwner(lem);
       const mask = this.masks.get('both').GetMask(0);
+      this.characterParticles?.sampleMask(level, mask, lem.x, lem.y, lem);
       const changed = level.clearGroundWithMask(mask, lem.x, lem.y, { revealSteel: true });
+      this.characterParticles?.emitTerrain(lem, 'exploding');
       const miniMap = getRuntimeMiniMap(this.runtime);
       if (changed && miniMap) {
         miniMap.invalidateRegion(

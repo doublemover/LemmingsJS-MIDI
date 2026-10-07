@@ -188,6 +188,7 @@ const lemmingManagerSpawningMethods = {
         canMeasurePerformance();
     const perfStart = perfEnabled ? performance.now() : 0;
     try {
+      this.particles?.tick();
       this.addNewLemmings();
       const lems = this.activeLemmings;
       const count = lems.length;

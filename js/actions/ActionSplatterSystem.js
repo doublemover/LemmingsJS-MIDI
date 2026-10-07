@@ -21,6 +21,7 @@ class ActionSplatterSystem extends ActionBaseSystem {
   process(level, lem) {
     lem.disable();
     if (lem.frameIndex === 0) {
+      this.characterParticles?.emitDeath(lem, 'splatter', this.spriteProvider);
       const triggerType = lem.lastTriggerType;
       const isTrapDeath =
             triggerType === TriggerTypes.TRAP ||

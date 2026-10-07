@@ -47,8 +47,10 @@ class ActionDiggSystem extends ActionBaseSystem {
     return LemmingStateType.NO_STATE_TYPE;
   }
   digRow(level, lem, y) {
+    this.characterParticles?.sampleRow(level, lem.x - 4, y, 9);
     if (typeof level.clearGroundRow === 'function') {
       const removed = level.clearGroundRow(lem.x - 4, y, 9);
+      this.characterParticles?.emitTerrain(lem, 'digging');
       const intensity = scaleIntensity(removed, 9);
       if (removed > 0) {
         const soundBus = getRuntimeSoundEvents(this.runtime);
@@ -73,6 +75,7 @@ class ActionDiggSystem extends ActionBaseSystem {
         removeCount++;
       }
     }
+    this.characterParticles?.emitTerrain(lem, 'digging');
     const intensity = scaleIntensity(removeCount, 9);
     if (removeCount > 0) {
       const soundBus = getRuntimeSoundEvents(this.runtime);

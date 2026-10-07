@@ -37,6 +37,7 @@ import {
   isBenchMode,
   recordPerformanceMeasure
 } from './LemmingManagerShared.js';
+import { CharacterParticles } from '../CharacterParticles.js';
 import { lemmingManagerSpawningMethods } from './LemmingManagerSpawning.js';
 import { lemmingManagerInteractionMethods } from './LemmingManagerInteraction.js';
 class LemmingManager extends BaseLogger {
@@ -80,6 +81,7 @@ class LemmingManager extends BaseLogger {
       this.triggerManager = triggerManager;
       this.gameVictoryCondition = gameVictoryCondition;
       this.actions = [];
+      this.particles = new CharacterParticles();
       this.skillActions = [];
       this.logging = LemmingManager.log;
       this.miniMap = null;
@@ -144,6 +146,7 @@ class LemmingManager extends BaseLogger {
       this.countdownAction = this.skillActions[SkillTypes.BOMBER];
       for (const action of this.actions) {
         action?.setRuntime?.(runtime);
+        if (action) action.characterParticles = this.particles;
       }
       this.countdownAction?.setRuntime?.(runtime);
 
@@ -219,6 +222,9 @@ class LemmingManager extends BaseLogger {
     this._minimapDotBuffer = null;
     this._mmVisited = null;
     this._mmVisitStamp = null;
+    this.particles?.clear();
+    this.particles = null;
+    for (const action of this.actions) if (action) action.characterParticles = null;
     this.level = null;
     this.runtime = null;
     this.triggerManager = null;

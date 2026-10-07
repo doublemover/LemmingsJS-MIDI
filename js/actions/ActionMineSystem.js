@@ -53,9 +53,11 @@ class ActionMineSystem extends ActionBaseSystem {
       if (level.hasArrowUnderMask(subMask, lem.x, lem.y, lem.lookRight)) {
         return LemmingStateType.SHRUG;
       }
+      this.characterParticles?.sampleMask(level, subMask, lem.x, lem.y, lem);
       const removed = typeof level.clearGroundWithMaskCount === 'function'
         ? level.clearGroundWithMaskCount(subMask, lem.x, lem.y)
         : (level.clearGroundWithMask(subMask, lem.x, lem.y), 0);
+      this.characterParticles?.emitTerrain(lem, 'mining');
       const intensity = scaleIntensity(removed, countClearable(subMask));
       if (removed > 0) {
         const soundBus = getRuntimeSoundEvents(this.runtime);

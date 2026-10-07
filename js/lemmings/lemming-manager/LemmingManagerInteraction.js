@@ -104,6 +104,7 @@ const lemmingManagerInteractionMethods = {
         if (lem.x < minX || lem.x > maxX || lem.y < minY || lem.y > maxY) continue;
         lem.render(gameDisplay);
       }
+      this.particles?.render(gameDisplay);
     } finally {
       if (perfEnabled) {
         recordPerformanceMeasure('render', {
