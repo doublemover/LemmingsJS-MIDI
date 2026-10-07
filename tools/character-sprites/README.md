@@ -147,3 +147,18 @@ walking/panic and all four death animations for every shape, a bashing animation
 and a wearable fracture sequence. These use real loaded `Just dig!` terrain,
 `CharacterSpriteSet`, action systems and `DisplayImage` blitting in Node. They are
 native-renderer evidence, not browser gameplay or a substitute for browser QA.
+
+Drowning now raises little hands at contact, then sinks behind a fixed waterline
+using the exact `easeInExpo` function from https://easings.net/#easeInExpo:
+`x === 0 ? 0 : 2 ** (10 * x - 10)`. The sink runs from sprite frames 3 through
+14, with the final bubble at frame 15. Frying adds a small sizzling skillet,
+hot-foot hops, an overdone silhouette, and a smoke/ash finish. Both use only the
+existing palette and frame cells. The 16-tick drowning and 14-tick frying action
+systems, world movement, source assets, classic sprites, and particle budgets
+are unchanged.
+
+The drowning/frying GIFs play at the engine's normal 60 ms per tick. Their
+`*-12-shapes-timeline.png` sheets label exact ticks and follow each actor's
+unchanged horizontal drift. The proof receipt records action-returned removal
+and stops drawing the actor immediately, preventing a looping animation from
+reappearing on its terminal tick. Wearable particles continue their normal fade.

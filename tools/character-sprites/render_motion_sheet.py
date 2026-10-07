@@ -31,11 +31,32 @@ for kind, title, count, scale in [
     ('bash', 'Bashing | chips sampled from the removed Fun 1 terrain', 16, 4),
     ('exploding', 'Explosion | intact crowns + glasses, then fading fragments', 22, 3),
     ('splatter', 'Landing death | body scatter + intact wearable ejection', 22, 3),
-    ('drowning', 'Drowning | splash + intact wearable ejection', 22, 3),
-    ('frying', 'Fire death | sparks + intact wearable ejection', 22, 3)]:
+    ('drowning', 'Drowning | hands up, then accelerating easeInExpo sink', 22, 3),
+    ('frying', 'Fire death | sizzling skillet, hot hops, overdone smoke', 22, 3)]:
     frames=[sheet(kind, i, title, scale) for i in range(count)]
     frames[0].save(OUT/f'{kind}-12-shapes.png')
-    frames[0].save(OUT/f'{kind}-12-shapes.gif', save_all=True, append_images=frames[1:], duration=95, loop=0, disposal=2)
+    duration = receipt['tickMilliseconds'] if kind in ('drowning', 'frying') else 95
+    frames[0].save(OUT/f'{kind}-12-shapes.gif', save_all=True, append_images=frames[1:], duration=duration, loop=0, disposal=2)
+
+for kind, ticks, title in [
+    ('drowning', [1, 3, 10, 12, 14, 16], 'Drowning | contact, hands up, slow start, accelerating sink'),
+    ('frying', [1, 3, 6, 8, 11, 14], 'Cooking gag | sizzle, hot hops, overdone, smoke and ash')]:
+    cell_width, cell_height = 174, 141
+    out = Image.new('RGB', (6*cell_width+185, 12*cell_height+97), '#141c2c')
+    draw = ImageDraw.Draw(out)
+    draw.text((14, 12), title, font=heading, fill='#edf1fa')
+    draw.text((14, 45), 'Native action/DisplayImage frames. 60 ms per tick; crop follows actor. Removed actors stay removed.', font=small, fill='#bac8df')
+    for column, tick in enumerate(ticks):
+        draw.text((190+column*cell_width, 76), f'Tick {tick} / {tick*60} ms', font=small, fill='#bac8df')
+    for row, shape in enumerate(shapes):
+        y = 100 + row*cell_height
+        draw.text((12, y+38), shape['label'].replace('Hydro ', '').replace(' ', '\n'), font=small, fill='#edf1fa')
+        timeline = next(item['timeline'] for item in receipt['deaths'] if item['shape'] == shape['id'] and item['kind'] == kind)
+        for column, tick in enumerate(ticks):
+            x = timeline[tick-1]['x'] - 702
+            im = Image.open(ROOT/f'{shape["id"]}-{kind}-{tick-1}.png').convert('RGB').crop((x-14, 36, x+14, 59))
+            out.paste(im.resize((168,138), Image.Resampling.NEAREST), (185+column*cell_width,y))
+    out.save(OUT/f'{kind}-12-shapes-timeline.png')
 
 frames=[]
 for index in range(16):

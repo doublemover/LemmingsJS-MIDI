@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import fs from 'node:fs';
 import { CharacterSpriteSet } from '../js/lemmings/CharacterSpriteSet.js';
 import { PixelSpriteSkin, validateSkin } from '../js/lemmings/PixelSpriteSkin.js';
-import { refineCharacterPresentation, bodyBounds, GAITS } from '../js/lemmings/CharacterPresentation.js';
+import { refineCharacterPresentation, bodyBounds, GAITS, easeInExpo, drowningSink } from '../js/lemmings/CharacterPresentation.js';
 import { SpriteTypes } from '../js/lemmings/SpriteTypes.js';
 import { composeCharacterAccessories } from '../js/lemmings/CharacterAccessories.js';
 
@@ -122,6 +122,54 @@ describe('readable proportional character presentation', function() {
           for (const index of [7, 11, 12, 13, 14, 15]) expect(colors.has(skin.colorPalette.data[index]), `${state}/${index}`).to.equal(false);
         }
       }
+    }
+  });
+
+  it('uses the official easeInExpo curve after the hands-up contact beat', function() {
+    expect(easeInExpo(0)).to.equal(0);
+    expect(easeInExpo(0.25)).to.equal(2 ** -7.5);
+    expect(easeInExpo(0.5)).to.equal(1 / 32);
+    expect(easeInExpo(0.75)).to.equal(2 ** -2.5);
+    expect(easeInExpo(1)).to.equal(1);
+    const offsets = Array.from({ length: 16 }, (_, index) => drowningSink(index, 9));
+    expect(offsets).to.deep.equal([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 3, 5, 9, 9]);
+  });
+
+  it('raises little hands and clips every sinking shape at one fixed waterline', function() {
+    for (const shape of catalog.shapes) {
+      const source = read(shape.path), refined = refineCharacterPresentation(source, source, shape.id);
+      const record = refined.animations.find(entry => entry.state === 'DROWNING');
+      const walk = refined.animations.find(entry => entry.state === 'WALKING' && entry.direction === 1);
+      const bounds = bodyBounds(walk.frames[0]), floor = -record.offsetY - 1;
+      for (const index of [1, 2, 3]) {
+        const y = bounds.top + (index < 3 ? 2 - index : 0);
+        for (const x of [bounds.left - 1, bounds.right + 1]) expect(record.frames[index][y][x], `${shape.id}/${index}`).to.equal('4');
+      }
+      for (let index = 3; index < 14; index++) {
+        const sink = drowningSink(index, bounds.height + 2);
+        for (let y = bounds.top; y < floor; y++) for (let x = bounds.left; x <= bounds.right; x++) {
+          expect(record.frames[index][y][x], `${shape.id}/${index}/${x}/${y}`).to.equal(record.frames[3][y - sink]?.[x] || '0');
+        }
+        expect(record.frames[index][floor]).not.to.match(/[2345]/);
+      }
+      for (const rows of record.frames.slice(14)) expect(rows.join('')).not.to.match(/[2345]/);
+    }
+  });
+
+  it('cooks each recognizable body above a fixed skillet before the smoke-and-ash finish', function() {
+    for (const shape of catalog.shapes) {
+      const source = read(shape.path), refined = refineCharacterPresentation(source, source, shape.id);
+      const record = refined.animations.find(entry => entry.state === 'FRYING'), floor = -record.offsetY - 1;
+      for (const [index, rows] of record.frames.entries()) {
+        if (!index) continue;
+        expect(rows[floor].slice(3, 13)).to.equal('9999999999');
+        expect(rows[floor - 1].slice(12)).to.equal('9999');
+        expect(rows.join('')).not.to.match(/[678BCDEF]/);
+        if (index < 8) expect(rows.join(''), `${shape.id}/${index}`).to.match(/[2345]/);
+        else expect(rows.join(''), `${shape.id}/${index}`).not.to.match(/[2345]/);
+      }
+      expect(record.frames[8].join('')).to.include('A');
+      expect(record.frames[13][floor - 1].slice(4, 11)).to.equal('0909009');
     }
   });
 });

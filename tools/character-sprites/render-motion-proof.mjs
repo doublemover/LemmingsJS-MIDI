@@ -8,6 +8,7 @@ import { ConfigReader } from '../../js/data/ConfigReader.js';
 import { GameTypes } from '../../js/game/GameTypes.js';
 import { GameResources } from '../../js/game/GameResources.js';
 import { Lemming } from '../../js/lemmings/Lemming.js';
+import { LemmingStateType } from '../../js/lemmings/LemmingStateType.js';
 import { ActionDiggSystem } from '../../js/actions/ActionDiggSystem.js';
 import { ActionWalkSystem } from '../../js/actions/ActionWalkSystem.js';
 import { ActionOhNoSystem } from '../../js/actions/ActionOhNoSystem.js';
@@ -33,7 +34,7 @@ const stage = { createImage: (_, width, height) => ({ width, height, data: new U
 const display = new DisplayImage(stage);
 display.initSize(1600, 160);
 const receipt = { evidence: 'Native Node capture using real CharacterSpriteSet, action systems, Fun 1 LevelLoader terrain and DisplayImage blitter. Not browser gameplay.',
-  level: 'Fun 1: Just dig!', oneActorPerScene: true, shapes: [], frames: [] };
+  level: 'Fun 1: Just dig!', tickMilliseconds: 60, oneActorPerScene: true, shapes: [], frames: [], deaths: [] };
 function drawGround(level) {
   display.clear(0xff15100e);
   const ground = new Uint32Array(level.groundImage.buffer, level.groundImage.byteOffset, level.width * level.height);
@@ -76,14 +77,19 @@ for (const shape of catalog.shapes) {
     const actor = new Lemming(744, 72, 7);
     const action = kind === 'exploding' ? new Action(sprites, masks, { removeByOwner() {} }, { draw() {} }) : new Action(sprites);
     action.characterParticles = pool; actor.setAction(action);
+    const timeline = [];
+    let alive = true;
     for (let index = 0; index < 22; index++) {
       pool.tick();
-      if (index < (kind === 'frying' ? 14 : kind === 'drowning' || kind === 'splatter' ? 16 : 22)) action.process(level, actor);
+      const state = alive ? action.process(level, actor) : LemmingStateType.OUT_OF_LEVEL;
+      if (state === LemmingStateType.OUT_OF_LEVEL) alive = false;
       drawGround(level);
-      if (index < (kind === 'frying' ? 14 : kind === 'drowning' || kind === 'splatter' ? 16 : 22)) actor.render(display);
+      if (alive) actor.render(display);
       pool.render(display);
       save(`${shape.id}-${kind}-${index}.png`, 702, 18, 84, 76);
+      timeline.push({ tick: index + 1, frameIndex: actor.frameIndex, rendered: alive, state, x: actor.x, y: actor.y });
     }
+    receipt.deaths.push({ shape: shape.id, kind, timeline });
   }
   const bashPool = new CharacterParticles(), bashLevel = await resources.getLevel(0, 0);
   const basher = new Lemming(744, 91, 7), bashing = new ActionBashSystem(sprites, masks);
