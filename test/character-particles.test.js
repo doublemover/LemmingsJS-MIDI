@@ -51,12 +51,35 @@ describe('bounded deterministic character particles', function() {
     pool.sampleRow(level, 26, 30, 9);
     level.clearGroundRow(26, 30, 9);
     pool.emitTerrain(lem, 'digging');
-    expect(pool.activeCount).to.equal(8);
+    expect(pool.activeCount).to.equal(4);
     expect(live(pool).every(p => p.color === rgb(123, 78, 45))).to.equal(true);
     expect(live(pool).some(p => p.x === 27)).to.equal(false);
     expect(level.groundMask.mask[30 * 64 + 27]).to.equal(1);
     expect(live(pool).some(p => p.vx > 0)).to.equal(true);
     expect(live(pool).some(p => p.vx < 0)).to.equal(true);
+  });
+
+  it('keeps dig bursts sparse, evenly samples the cut and throws outside the central body', function() {
+    const pool = new CharacterParticles(), level = terrain(), lem = actor(7);
+    for (let x = 26; x <= 34; x++) level.groundImage[(30 * 64 + x) * 4] = x;
+    pool.sampleRow(level, 26, 30, 9); level.clearGroundRow(26, 30, 9); pool.emitTerrain(lem, 'digging');
+    const chips = live(pool);
+    expect(chips).to.have.length(4);
+    expect(chips.map(p => p.color & 255).sort((a, b) => a - b)).to.deep.equal([26, 29, 31, 34]);
+    expect(chips.filter(p => p.vx < 0)).to.have.length(2);
+    expect(chips.filter(p => p.vx > 0)).to.have.length(2);
+    expect(chips.every(p => Math.abs(p.x - lem.x) >= 4 && Math.abs(p.vx) >= 1.65 && p.height === 1)).to.equal(true);
+    for (let i = 0; i < 14; i++) pool.tick();
+    expect(pool.activeCount).to.equal(0);
+  });
+
+  it('caps tunnel bursts at six chips while keeping explosions rich', function() {
+    for (const [kind, expected] of [['bashing', 6], ['mining', 6], ['exploding', 10]]) {
+      const pool = new CharacterParticles(), level = terrain(), lem = actor(7);
+      pool.sampleMask(level, subMask, lem.x, lem.y, lem);
+      level.clearGroundWithMask(subMask, lem.x, lem.y); pool.emitTerrain(lem, kind);
+      expect(pool.activeCount, kind).to.equal(expected);
+    }
   });
 
   it('respects mask holes and skips protected terrain in explosion sampling', function() {
@@ -127,7 +150,7 @@ describe('bounded deterministic character particles', function() {
     const pool = new CharacterParticles(), level = terrain(), lem = actor(1);
     pool.sampleRow(level, 30, 30, 1); level.clearGroundRow(30, 30, 1); pool.emitTerrain(lem, 'digging');
     const p = live(pool)[0];
-    p.width = p.height = 1; p.age = p.life - 1;
+    p.x = p.y = 30; p.width = p.height = 1; p.age = p.life - 1;
     const before = snapshot(pool), target = display();
     pool.render(target); pool.render(display());
     expect(snapshot(pool)).to.deep.equal(before);

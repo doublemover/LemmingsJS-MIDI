@@ -1,6 +1,6 @@
 import { Frame } from '../render/Frame.js';
 
-const PARTICLE_LIMITS = Object.freeze({ capacity: 384, spawnsPerTick: 72, samplesPerTick: 2048, pixelsPerRender: 8192, terrainPerEvent: 10, fractureAge: 3 });
+const PARTICLE_LIMITS = Object.freeze({ capacity: 384, spawnsPerTick: 72, samplesPerTick: 2048, pixelsPerRender: 8192, terrainPerEvent: 10, digPerEvent: 4, tunnelPerEvent: 6, fractureAge: 3 });
 const hash = value => {
   let seed = 2166136261;
   for (const ch of String(value)) seed = Math.imul(seed ^ ch.charCodeAt(0), 16777619);
@@ -24,6 +24,7 @@ class CharacterParticles {
     }));
     this.free = new Uint16Array(PARTICLE_LIMITS.capacity);
     this.samples = Array.from({ length: PARTICLE_LIMITS.terrainPerEvent }, () => ({ x: 0, y: 0, color: 0 }));
+    this.sampleIndices = new Uint8Array(PARTICLE_LIMITS.terrainPerEvent);
     this.pixel = new Frame(1, 1);
     this.pixel.getMask()[0] = 1;
     this.clear();
@@ -120,20 +121,30 @@ class CharacterParticles {
     const level = this.sampleLevel;
     const seed = hash(`${lem.id}:${lem.frameIndex}:${kind}:${lem.x}:${lem.y}`);
     const direction = lem.lookRight ? 1 : -1;
+    const digging = kind === 'digging', exploding = kind === 'exploding';
+    let removed = 0;
     for (let i = 0; i < this.sampleCount; i++) {
       const sample = this.samples[i];
       // Confirm this exact sampled pixel was removed; protected terrain never produces debris.
-      if (level?.groundMask?.mask?.[sample.y * level.width + sample.x]) continue;
+      if (!level?.groundMask?.mask?.[sample.y * level.width + sample.x]) this.sampleIndices[removed++] = i;
+    }
+    const count = Math.min(removed, digging ? PARTICLE_LIMITS.digPerEvent : exploding ? PARTICLE_LIMITS.terrainPerEvent : PARTICLE_LIMITS.tunnelPerEvent);
+    for (let i = 0; i < count; i++) {
+      const index = count === 1 ? 0 : Math.round(i * (removed - 1) / (count - 1));
+      const sample = this.samples[this.sampleIndices[index]];
       const p = this._spawn(hash(`${seed}:${i}`), 'terrain');
       if (!p) break;
       p.x = sample.x; p.y = sample.y; p.color = sample.color;
-      p.width = noise(seed, i + 10) > 0.45 ? 2 : 1;
-      p.height = noise(seed, i + 20) > 0.7 ? 2 : 1;
-      p.life = 13 + Math.floor(noise(seed, i + 30) * 9);
-      p.vx = kind === 'digging' ? (i % 2 ? 1 : -1) * (0.65 + noise(seed, i) * 1.4)
-        : kind === 'exploding' ? (sample.x - lem.x) * 0.2 + (noise(seed, i) - 0.5) * 2
-          : direction * (0.6 + noise(seed, i) * 1.7);
-      p.vy = -1.2 - noise(seed, i + 40) * (kind === 'exploding' ? 2.6 : 1.5);
+      p.width = exploding ? (noise(seed, i + 10) > 0.45 ? 2 : 1) : (i % 3 === 0 ? 2 : 1);
+      p.height = exploding && noise(seed, i + 20) > 0.7 ? 2 : 1;
+      p.life = exploding ? 13 + Math.floor(noise(seed, i + 30) * 9) : 9 + Math.floor(noise(seed, i + 30) * 5);
+      if (digging) {
+        const side = i < count / 2 ? -1 : 1;
+        p.x = lem.x + side * Math.max(4, Math.abs(sample.x - lem.x));
+        p.vx = side * (1.65 + noise(seed, i) * 1.25);
+      } else p.vx = exploding ? (sample.x - lem.x) * 0.2 + (noise(seed, i) - 0.5) * 2
+        : direction * (1.1 + noise(seed, i) * 1.5);
+      p.vy = -1.2 - noise(seed, i + 40) * (exploding ? 2.6 : 1.1);
     }
     this.sampleCount = 0; this.sampleLevel = null;
   }
