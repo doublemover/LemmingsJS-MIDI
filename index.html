@@ -423,6 +423,7 @@
         </div>
         <div id="midiClipInspector" class="midi-inspector-group">
             <h3>Clip</h3>
+          <p id="midiClipPlaybackSummary" class="midi-help" role="status">Select a clip to inspect its playback.</p>
           <div class="midi-inline-fields">
             <label class="midi-field midi-field--compact">
               <span>Name</span>
@@ -459,6 +460,7 @@
             </label>
           </div>
           <div id="midiRecordPanel" class="midi-learn-panel" aria-live="polite">
+            <p class="midi-help">Capture saves note pitches, velocities and approximate lengths into cells. Timing gaps and overlaps are not replayed.</p>
             <div id="midiRecordStatus" class="midi-learn-status" role="status">Record writes captured notes into clip steps.</div>
             <div class="midi-button-row">
               <button id="midiRecordButton" type="button" aria-label="Start MIDI recording">Record</button>

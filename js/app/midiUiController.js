@@ -1,6 +1,7 @@
 import { createSoundAuditionPlan } from './midi-ui/midiSoundAudition.js';
 import { createMidiEditHistory } from './midi-ui/midiEditHistory.js';
 import { createMidiInstrumentWorkbench } from './midi-ui/midiInstrumentWorkbench.js';
+import { getPlayableMidiClipSteps, describeMidiClipPlayback } from '../midi/project/MidiClipPlayback.js';
 import { resolveMidiAvailability, applyMidiAvailability } from './midiAvailability.js';
 import { getAppContext, getRuntimeDependency } from '../core/dependencies.js';
 import { resolveGameSoundSource, GAME_SOUND_EVENTS, getEventBehavior, createEventBehaviorPatch, transposeEventPitch, soundNoteName } from './midi-ui/midiSoundEditor.js';
@@ -1262,11 +1263,7 @@ const createMidiUiController = ({
 
   const clipToMapping = (clip) => {
     const current = ensureProject();
-    const steps = Array.isArray(clip?.steps)
-      ? clip.steps
-        .filter(step => Number.isFinite(step?.note) && (step.probability ?? 1) > 0 && !step.tie)
-        .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
-      : [];
+    const steps = getPlayableMidiClipSteps(clip);
     const first = steps[0] || null;
     if (!first) return null;
     const notes = steps.map(step => clamp(Math.round(step.note), 0, 127));
@@ -1754,6 +1751,7 @@ const createMidiUiController = ({
       velocity.step = '1';
       velocity.value = step.velocity == null ? '' : String(step.velocity);
       velocity.setAttribute('aria-label', `${stepLabel} velocity`);
+      velocity.setAttribute('aria-describedby', 'midiClipPlaybackSummary');
       velocity.addEventListener('change', event => updateSelectedClipStep(index, { velocity: toNumberOrNull(event.target.value) }));
       velocityLabel.appendChild(velocity);
       const durationLabel = document.createElement('label');
@@ -1767,6 +1765,7 @@ const createMidiUiController = ({
       duration.step = '1';
       duration.value = step.durationTicks == null ? '' : String(step.durationTicks);
       duration.setAttribute('aria-label', `${stepLabel} duration`);
+      duration.setAttribute('aria-describedby', 'midiClipPlaybackSummary');
       duration.addEventListener('change', event => updateSelectedClipStep(index, { durationTicks: toNumberOrNull(event.target.value) }));
       durationLabel.appendChild(duration);
       const probabilityLabel = document.createElement('label');
@@ -1780,6 +1779,8 @@ const createMidiUiController = ({
       probability.step = '0.05';
       probability.value = step.probability == null ? '1' : String(step.probability);
       probability.setAttribute('aria-label', `${stepLabel} probability`);
+      probability.setAttribute('aria-describedby', 'midiClipPlaybackSummary');
+      probability.title = '0 omits this note. Positive values enable it; random chance playback is not implemented.';
       probability.addEventListener('change', event => updateSelectedClipStep(index, { probability: toNumberOrNull(event.target.value) ?? 1 }));
       probabilityLabel.appendChild(probability);
       const holdLabel = document.createElement('label');
@@ -1790,6 +1791,8 @@ const createMidiUiController = ({
       hold.type = 'checkbox';
       hold.checked = !!step.hold;
       hold.setAttribute('aria-label', `${stepLabel} hold`);
+      hold.setAttribute('aria-describedby', 'midiClipPlaybackSummary');
+      hold.title = 'Saved with the project; currently has no effect on playback.';
       hold.addEventListener('change', event => updateSelectedClipStep(index, { hold: !!event.target.checked }));
       holdLabel.appendChild(hold);
       const tieLabel = document.createElement('label');
@@ -1800,6 +1803,8 @@ const createMidiUiController = ({
       tie.type = 'checkbox';
       tie.checked = !!step.tie;
       tie.setAttribute('aria-label', `${stepLabel} tie`);
+      tie.setAttribute('aria-describedby', 'midiClipPlaybackSummary');
+      tie.title = 'Currently omits this note; it does not extend the previous note.';
       tie.addEventListener('change', event => updateSelectedClipStep(index, { tie: !!event.target.checked }));
       tieLabel.appendChild(tie);
       const rest = document.createElement('button');
@@ -1826,6 +1831,7 @@ const createMidiUiController = ({
 
   const renderClipInspector = () => {
     const clip = selectedClip();
+    setText(document?.getElementById('midiClipPlaybackSummary'), describeMidiClipPlayback(clip));
     const arpMode = document?.getElementById('midiClipArpMode');
     const arpModeField = document?.getElementById('midiClipArpModeField');
     const arpPattern = document?.getElementById('midiClipArpPattern');

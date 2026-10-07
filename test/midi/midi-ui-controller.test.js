@@ -125,6 +125,7 @@ const registerSequencerDom = (doc) => {
     midiEnvSustain: 'input',
     midiEnvRelease: 'input',
     midiClipName: 'input',
+    midiClipPlaybackSummary: 'p',
     midiClipType: 'select',
     midiClipArpModeField: 'label',
     midiClipArpMode: 'select',
@@ -1621,6 +1622,33 @@ describe('midiUiController sequencer', function() {
     expect(runtimeMapping).to.include({ note: 72, velocity: 85, durationTicks: 6, clipId: 'filtered' });
     expect(runtimeMapping.notes).to.deep.equal([72, 76]);
     expect(runtimeMapping.disabled).to.equal(undefined);
+  });
+
+  it('describes actual clip playback without changing imported Hold, Tie or probability values', function() {
+    const { controller, doc, view } = createControllerHarness();
+    controller.bindMidiUi();
+    controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'stored', name: 'Stored fields', lengthSteps: 4, steps: [
+      { index: 0, note: 60, velocity: 72, durationTicks: 4, probability: 0.25, hold: true },
+      { index: 1, note: 64, velocity: 99, durationTicks: 12 },
+      { index: 2, note: 67, tie: true }
+    ] } });
+    controller.dispatchProjectIntent({ type: 'source.clip.assign', sourceId: 'sfx-1', clipId: 'stored' });
+    const before = controller.getProject(), applications = view.projectConfigs.length;
+    controller.refreshMidiUiFromConfig();
+    expect(controller.getProject()).to.deep.equal(before);
+    expect(view.projectConfigs.length).to.equal(applications);
+    const summary = doc.getElementById('midiClipPlaybackSummary');
+    expect(summary.textContent).to.include('2 notes together').and.include('Step 1 supplies base velocity and duration');
+    const grid = doc.getElementById('midiStepPatternGrid');
+    expect(grid.querySelectorAll('.midi-step-hold')[0].checked).to.equal(true);
+    expect(grid.querySelectorAll('.midi-step-probability')[0].value).to.equal('0.25');
+    expect(grid.querySelectorAll('.midi-step-tie')[2].checked).to.equal(true);
+    for (const field of ['hold', 'tie', 'probability', 'velocity', 'duration']) {
+      expect(grid.querySelectorAll(`.midi-step-${field}`)[0].getAttribute('aria-describedby')).to.equal('midiClipPlaybackSummary');
+    }
+    controller.dispatchProjectIntent({ type: 'clip.update', clipId: 'stored', patch: { type: 'arp' } });
+    expect(summary.textContent).to.include('advances one of 2 playable notes');
+    controller.dispose();
   });
 
   it('renders source conflict badges, conflict filters, and inspector warnings', function() {

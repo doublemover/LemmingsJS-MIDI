@@ -1,4 +1,5 @@
 import { DEFAULT_CONFIG, mergeConfig } from '../midi-mapping/MidiMappingDomain.js';
+import { getPlayableMidiClipSteps as activeClipSteps } from './MidiClipPlayback.js';
 import { cloneSafeObject, isPlainObject, safeObjectEntries } from '../../util/safeObject.js';
 
 const MIDI_PROJECT_VERSION = 1;
@@ -1069,14 +1070,6 @@ const buildRuntimeMapping = (source, track, hiddenByTrack, globalVelocityDefault
   if (!source.enabled || hiddenByTrack) out.disabled = true;
   return out;
 };
-
-const activeClipSteps = (clip) => (
-  Array.isArray(clip?.steps)
-    ? clip.steps
-      .filter(step => Number.isFinite(step?.note) && (step.probability ?? 1) > 0 && !step.tie)
-      .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
-    : []
-);
 
 const automationToPositionMappings = (automation = []) => automation
   .filter(lane => lane.enabled && lane.scope === 'global')

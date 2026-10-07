@@ -107,6 +107,16 @@ before merging:
 
 Remaining larger work is tracked only in `docs/roadmap.md`.
 
+The Expert clip inspector explains the current note-list playback: Steps and
+Chord supply simultaneous notes, while Arp advances on game events. Empty cells
+do not create delays. The first playable step supplies the shared base velocity
+and duration. Hold is retained in project data without a playback effect;
+positive probability enables a note and zero omits it; Tie omits its step rather
+than extending a previous gate. The controls and exports preserve those values.
+Recording captures note data into cells without replaying timing gaps or
+overlapping voices. This clarification does not implement the pending temporal
+clip/recording contract.
+
 
 ## Editor and MCP safety repairs
 
