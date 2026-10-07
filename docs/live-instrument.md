@@ -51,6 +51,13 @@ and device setup. A project import replaces the project; a palette replaces only
 event mappings. Malformed/unrelated and future-version project files are rejected.
 Portable templates strip both project and per-track hardware output identifiers.
 
+The instrument menus retain native disclosure semantics. Arrow Up/Down opens a
+menu and moves through available actions; Left/Right switches menus, Home/End
+selects an endpoint, and a letter selects an action by its label. Escape returns
+focus to that menu's heading. Outside pointer actions, focus departure, window
+blur, and closing Studio dismiss open menus. An action that opens/focuses another
+view keeps that destination; other actions return focus from the closed popup.
+
 Position modulation uses normalized spatial positions from 0 to 1, not beats.
 Curve points interpolate between the configured min/max endpoints. Note offsets
 add in lane order; other destinations use the last enabled mapping, and explicit

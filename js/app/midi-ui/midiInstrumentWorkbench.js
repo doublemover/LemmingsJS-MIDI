@@ -1,5 +1,6 @@
 import { GAME_SOUND_EVENTS, getEventBehavior, createEventBehaviorPatch } from './midiSoundEditor.js';
 import { cloneSafeObject } from '../../util/safeObject.js';
+import { createMidiInstrumentMenus } from './midiInstrumentMenus.js';
 
 const LAYOUTS = ['focus', 'split', 'overlay'];
 const LAYOUT_KEY = 'lemmings.midi.workbench.layout';
@@ -17,7 +18,7 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
   const byId = id => document?.getElementById(id);
   const text = (id, value) => { const el = byId(id); if (el && el.textContent !== String(value)) el.textContent = value; };
   const value = (id, next) => { const el = byId(id); if (el && el !== document?.activeElement && el.value !== String(next)) el.value = String(next); };
-  let layout = 'split', visible = false, timerId = null, soundBus = null;
+  let layout = 'split', visible = false, timerId = null, soundBus = null, menus = null;
   const activity = new Map(), references = new Map();
   let lastEvent = null, lastTick = null;
   try { const stored = window?.localStorage?.getItem(LAYOUT_KEY); if (LAYOUTS.includes(stored)) layout = stored; } catch { /* Layout is optional storage. */ }
@@ -80,7 +81,7 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     if (timerId != null) window?.clearInterval?.(timerId);
     timerId = null;
     if (visible) { refreshClock(); timerId = window?.setInterval?.(refreshClock, 100) ?? null; }
-    else detach();
+    else { menus?.close(); detach(); }
   };
   const routeSummary = () => {
     const p = getProject(), source = getSource();
@@ -132,6 +133,8 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     if (number) bind(number, 'change', event => { const n = finiteInput(event, min, max); if (n != null) apply(n); });
   };
   const initialize = () => {
+    menus?.dispose();
+    menus = createMidiInstrumentMenus({ root: byId('midiInstrumentMenus'), document, window });
     setLayout(layout);
     for (const name of LAYOUTS) bind(`midiLayout${name[0].toUpperCase() + name.slice(1)}`, 'click', () => setLayout(name));
     for (const name of LAYOUTS) bind(`midiMenu${name[0].toUpperCase() + name.slice(1)}`, 'click', () => setLayout(name));
@@ -178,21 +181,10 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
       event.preventDefault?.(); event.stopPropagation?.();
       (event.shiftKey ? history.redo : history.undo)(getProject(), commitProject); render();
     });
-    bind('midiInstrumentMenus', 'click', event => {
-      if (event.target?.tagName?.toLowerCase() !== 'button') return;
-      for (const menu of Array.from(byId('midiInstrumentMenus')?.querySelectorAll?.('details') || [])) menu.open = false;
-    });
-    bind('midiInstrumentMenus', 'keydown', event => {
-      if (event.key !== 'Escape') return;
-      for (const menu of Array.from(byId('midiInstrumentMenus')?.querySelectorAll?.('details') || [])) {
-        if (menu.open) { menu.open = false; menu.querySelector?.('summary')?.focus?.(); }
-      }
-      event.preventDefault?.(); event.stopPropagation?.();
-    });
   };
   return { initialize, render, setVisible, setLayout, refreshClock,
     getState: () => ({ layout, visible, clock: gameClock(getLemmings()?.game?.getGameTimer?.()), lastEvent: lastEvent && { sfxId: lastEvent.sfxId, tick: lastEvent.tick } }),
-    dispose: () => { setVisible(false); references.clear(); activity.clear(); } };
+    dispose: () => { setVisible(false); menus?.dispose(); menus = null; references.clear(); activity.clear(); } };
 };
 
 export { createMidiInstrumentWorkbench, gameClock, LAYOUTS };

@@ -43,6 +43,34 @@ test('all layouts keep the identical live map canvas and musical undo keeps game
   expect(await page.evaluate(() => window.__midiPermissionCalls)).toBe(0);
 });
 
+test('instrument menus support keyboard navigation, dismissal and repeated opening', async ({ page }) => {
+  await page.goto('/?e2e=1&midi=1');
+  await waitForHarnessReady(page);
+  await page.evaluate(() => window.__E2E__.pause());
+  await page.locator('#midiWorkspaceToggle').click();
+  const nav = page.locator('#midiInstrumentMenus');
+  const file = nav.locator('summary').filter({ hasText: /^File$/ });
+  const edit = nav.locator('summary').filter({ hasText: /^Edit$/ });
+  const view = nav.locator('summary').filter({ hasText: /^View$/ });
+  await file.focus(); await page.keyboard.press('ArrowDown');
+  await expect(page.locator('#midiMenuImport')).toBeFocused();
+  await page.keyboard.press('ArrowRight'); await expect(edit).toBeFocused();
+  await page.keyboard.press('ArrowRight'); await expect(page.locator('#midiMenuFocus')).toBeFocused();
+  await page.keyboard.press('End'); await expect(page.locator('#midiMenuOverlay')).toBeFocused();
+  await page.keyboard.press('Enter'); await expect(view).toBeFocused();
+  await expect(nav.locator('details[open]')).toHaveCount(0);
+  await file.focus(); await page.keyboard.press('ArrowUp');
+  await expect(page.locator('#midiMenuProject')).toBeFocused();
+  await page.keyboard.press('Escape'); await expect(file).toBeFocused();
+  await expect(page.locator('#midiSequencerWorkspace')).toBeVisible();
+  await file.click(); await page.locator('#midiGameClock').click();
+  await expect(nav.locator('details[open]')).toHaveCount(0);
+  await file.click(); await page.locator('#midiWorkspaceClose').click();
+  await page.locator('#midiWorkspaceToggle').click();
+  await expect(nav.locator('details[open]')).toHaveCount(0);
+  expect(await page.evaluate(() => window.__midiPermissionCalls)).toBe(0);
+});
+
 test.describe('mobile workbench availability', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true,
     userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1' });

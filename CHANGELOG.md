@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Instrument menus now support arrow keys, label search, reliable dismissal and focus restoration, including actions that disable themselves after use.
 - Future MIDI onsets and releases stay cancellable until due; voice stealing, same-pitch retriggers and Panic cannot leave obsolete gates cutting off replacement notes. Default and explicit routes share one MPE allocation per device.
 - Horizontal terrain flips now reach runtime rendering and collision masks, including vertical-flip combinations, clipping and overwrite rules. Classic LVL export still warns that this flag cannot be stored.
 - Updated the vulnerable dependency graph, replaced depcheck with Knip, and aligned the declared Node engine with current tooling requirements.
