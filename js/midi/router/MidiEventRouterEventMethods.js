@@ -43,6 +43,7 @@ const midiEventRouterEventMethods = {
       }
       const limits = this.mapping.config?.limits || {};
       const maxPerTick = Math.min(Math.max(limits.maxEventsPerTick ?? MAX_EVENTS_PER_TICK, 1), MAX_EVENTS_PER_TICK);
+      if (tick != null && this._tickCounter.count >= maxPerTick) return;
       const tickMs = this._tickMsFromEvent(event);
       this.scheduler.setTickMs(tickMs);
       const density = this._densityForEvent(event);
@@ -66,7 +67,6 @@ const midiEventRouterEventMethods = {
         return;
       }
       spec.reverse = !!event.reverse;
-      if (tick != null && this._tickCounter.count >= maxPerTick) return;
       if (tick != null) {
         this._tickCounter.count += 1;
       }

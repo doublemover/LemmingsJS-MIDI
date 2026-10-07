@@ -21,24 +21,32 @@ use the simplified synthetic solver. Multiple actors modify shared terrain, so
 traffic can cause incidental interactions and casualties; routes are screened
 and tested independently without relying on neighboring lanes.
 
-The generator uses [mined real-art assembly recipes](procgen-terrain-analysis.md).
-The source inventory distinguishes 324 configured aliases from 298 physical DAT
-parts, includes both available NXLV examples, and explicitly excludes four
-precomposed VGASPEC bitmaps from tile-assembly learning. Recipe alpha determines
-both color and collision. Ordered erasers, flips and overwrite masks are retained.
+The generator retains [mined real-art assembly recipes](procgen-terrain-analysis.md)
+as small source ingredients, then composes deterministic 128-pixel chunks at each
+lane's frontier. It does not prepare a finite route or repeat one whole-lane span.
+The permitted frontier margin is 64–191 pixels. Panning or zooming into the future
+does not generate distant terrain. Chunk seeds include lane, run and position;
+a seeded phase changes the piece pool, spacing, density and arrangements every
+four chunks. Every nonempty terrain and object entry in the selected theme is
+eligible, including pieces the former width/solidity filters excluded.
 
-A run selects exactly one compatible pack/theme. Each seeded lane selects a
-source-derived repeating span; all lanes share an interned collection of these
-spans (roughly 0.5–1.6 MB across the available themes). Source-derived decoration
-stays below the route. Seeded gaps and real-art barriers are admitted only on
-sufficiently flat supporting spans. Basher assistance waits for an actual wall;
-small gaps get a builder, and natural steep seams can grant climbing. Repeating
-spans stay consistent along each lane, avoiding unverified arbitrary seam joins.
+Source-colored connected foundations form shelves, slopes, abrupt climbs and
+drops; stamped pieces add overhangs and steel, while gaps require bridges.
+Background terrain decorations and animated object artwork are noncolliding.
+Objects in this endless composition are scenery, not operational exits, entrances
+or traps. Different groundsets are not mixed within one run. Real steel pixels
+are protected from bashing/explosions. Assistance uses ordinary classic walking,
+building, climbing and bashing; awkward steel lips can trigger a walk-back and
+builder approach without teleporting an actor or changing action timing.
 
-Only sparse edited chunks are allocated per active terrain region. Old edits are
-pruned behind the leftmost live actor in each lane. There are no world-sized
-bitmaps or per-lane Game/renderer instances. Drawing is restricted to visible
-lanes and pixels, while all admitted actors still receive real fixed steps.
+Physics uses bounded bit-packed collision chunks and direct-mapped per-lane
+working sets. Color rasters are a separate bounded cache. Sparse shared edits
+invalidate only affected display tiles; edits outside the viewport do not force
+terrain redraws. Static terrain and unchanged object-animation frames are reused.
+The raster/canvases never exceed the screen's pixel dimensions at far zoom.
+Subpixel actors and objects aggregate into representative screen-pixel colors,
+while every admitted actor still receives the same real simulation ticks.
+
 Wheel or Z/X zooms, including far-out views down to 1/256 scale. Zoom keeps the
 left edge and first-lane top edge pinned when the view is at the origin. Drag,
 arrows, or Shift-wheel pans; Shift-arrows pans faster. Manual changes suspend
@@ -48,7 +56,9 @@ restarts, and +/- changes speed (Shift applies five steps). Existing overrides i
 keybindings.json apply to these actions. Editing a control never triggers game
 shortcuts. The speed buttons use the main-game bitmap glyphs and step sizes;
 procgen has no upper speed dropdown cap. The runtime still reports actual achieved
-throughput separately from the requested multiplier.
+throughput separately from the requested multiplier. Frame work is limited by an
+eight-millisecond CPU budget, rather than a fixed 32-tick ceiling; an expensive
+tick always completes atomically and overload is visible in achieved throughput.
 
 ## Distance and stall recovery
 
@@ -62,11 +72,15 @@ through local storage; unavailable storage leaves the current session usable.
 
 Default policy data lives in `ProcgenStallPolicy.js`:
 
-- 90 seconds without a new rightward high-water mark, measured in game ticks.
+- A base 90 simulated seconds without progress, plus spawn-to-frontier transit
+  time. The estimate uses observed action delays and at least two ticks per pixel,
+  multiplied by a 1.75 safety margin. The first fresh probe after progress receives
+  that full window; continuous spawning cannot reset the deadline forever.
 - At least 12 actual new spawns since that advance, adding 4 per 1200 pixels
   reached, capped at 64. Scheduled/skipped spawns do not count.
 - Every relevant lane must satisfy both conditions before a cohort-wide reset.
-  One trapped lane cannot kill another that is progressing.
+  One trapped lane cannot kill another that is progressing. An early unsuccessful
+  first cohort does not immediately restart the generation.
 - OHNO starts one or two whole ticks apart in stable actor order, followed by
   real explosions. New spawning stops during the cascade. Restart occurs once,
   after every remaining actor is gone, retaining each lane's distance marker.
@@ -84,7 +98,10 @@ have real costs; 1024-lane browser smoothness is not asserted from headless test
 Actors use their lane index for a seeded cyclic appearance assignment. Each
 finite shape/color list is distributed within one count, including at 1024 lanes;
 palettes necessarily repeat. Closing/reopening controls or rendering does not
-reroll assignments. One accessory plus independent eyewear is preserved.
+reroll assignments. One accessory plus independent eyewear is preserved. Live
+appearances share canonical palette skins even after eviction from the bounded
+256-entry strong working set. Weak ownership releases retired actors/history and
+preferences; recolored animation and particle frames materialize only on demand.
 
 The shared world also uses the bounded character-particle pool. Terrain chips
 sample the sparse world’s actual RGB pixels before each cut and confirm removal
@@ -98,9 +115,18 @@ Local music uses the same immutable preset catalog and router as the studio.
 Audio starts only on the Listen button, stops on explicit stop, blur, hidden
 page, explicit restart or disposal, and never auto-enables hardware MIDI. Polyphony/event
 limits still apply to dense cohorts; not every simultaneous event is audible.
+Procgen events use the RAF wall timestamp and the speed-adjusted nominal tick
+duration, avoiding future-time drift. Pause/visibility changes silence notes while
+preserving tick-based phrase tails; restart clears the old clock and phrases.
+Manual stepping uses the current wall time rather than scheduling far-future audio.
 
 ## Regression and measurement commands
 
+- `npm run bench-procgen-optimization`: reproducible simulation/render/cache matrix;
+  mocked Canvas calls are explicitly not browser FPS.
+- `npm run bench-procgen-midi-clock`: actual accepted/planned/dispatched note and
+  cancellation counters with fake timers and a stub MIDI output.
+- `npm run bench-character-palettes`: live identity, allocation and GC lifecycle.
 - `npm run procgen:mine-recipes`: rebuild the bounded all-pack analysis and book.
 - `npm run procgen:check-recipes`: verify exact checked-in reproduction.
 - `npm run bench-procgen-lanes -- --lanes=32 --ticks=3000 --seed=42`: real-art,

@@ -34,10 +34,18 @@ const midiEventRouterLifecycleMethods = {
     this.scheduler.setOutputs?.(outputs);
   },
 
+  resetClock({ preserveGamePhrases = false } = {}) {
+    this._clockBaseMs = null; this._clockFrameMs = null; this._clockSpeedFactor = null;
+    this._lastAcceptedBySfx.clear(); this._repeatHistoryByKey.clear();
+    this.scheduler?.allNotesOff?.({ preserveGamePhrases });
+    this.scheduler?.clearQueue?.({ preserveGamePhrases });
+  },
+
   attach(soundBus, context = {}) {
     this._phraseTimer?.onGameTick?.off?.(this._boundPhraseTick);
     const nextTimer = context?.game?.getGameTimer?.() || soundBus?.gameTimer || null;
     if (this._phraseTimer !== nextTimer || this.soundBus !== soundBus) {
+      this.resetClock();
       this.scheduler.gamePhrases?.clear();
       this._arpStateBySfx.clear();
       this._lastTickBySfx.clear();

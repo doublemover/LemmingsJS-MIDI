@@ -17,12 +17,13 @@ const loadProcgenTerrain = async (packPath = 'lemmings_ohNo', groundSet = 0) => 
   await loadSteelSprites();
   const ground = await provider.loadBinary(packPath, `GROUND${groundSet}O.DAT`);
   const vga = new FileContainer(await provider.loadBinary(packPath, `VGAGR${groundSet}.DAT`));
-  const terrainPieces = new GroundReader(ground, vga.getPart(0), vga.getPart(1)).getTerrainImages().map((image, id) => ({
+  const reader = new GroundReader(ground, vga.getPart(0), vga.getPart(1));
+  const terrainPieces = reader.getTerrainImages().map((image, id) => ({
     id, image, width: image.width, height: image.height, frame: image.frames[0], isSteel: !!image.isSteel,
     solidRatio: image.frames[0].filter(ci => !(ci & 128)).length / (image.width * image.height)
   }));
   const recipe = selectThemeRecipe(await loadTerrainRecipeBook(provider), { packPath, groundSet });
-  return new ProcgenRecipeTerrain({ recipe, terrainPieces });
+  return new ProcgenRecipeTerrain({ recipe, terrainPieces, objectPieces: reader.getObjectImages().map((image, id) => ({ id, image })) });
 };
 const runLaneBenchmark = ({ masks, lanes = 32, ticks = 3000, seed = 42, assists = true, terrain = null, cohorts = false, spawnSpreadTicks = 0 } = {}) => {
   const world = new ProcgenLaneWorld({ masks, laneCount: lanes, seed, assists, terrain, cohorts, spawnSpreadTicks });

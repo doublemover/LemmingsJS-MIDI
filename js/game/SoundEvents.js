@@ -108,7 +108,7 @@ class SoundEventBus {
       const payload = {
         id: this._sequence + 1,
         tick,
-        timeMs: tick * frameMs,
+        timeMs: timer?.getEventTimeMs?.() ?? tick * frameMs,
         frameMs,
         speedFactor: timer?.speedFactor ?? 1,
         tps: timer?.tps ?? null

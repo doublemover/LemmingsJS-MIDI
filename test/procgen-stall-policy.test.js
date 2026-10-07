@@ -29,13 +29,35 @@ describe('procgen cohort stall policy', () => {
     const p = new ProcgenStallPolicy(1, settings), a = [actor(0, 0, 250), actor(1, 0, 250), actor(2, 0, 250)];
     p.update(a, 1); expect(p.allowance(p.lanes[0])).to.equal(7);
     for (let i = 0; i < 7; i++) p.spawn(0);
-    p.update(a, 101);
-    expect(p.takeDue(101)).to.deep.equal([0]); expect(p.takeDue(102)).to.deep.equal([1]); expect(p.takeDue(103)).to.deep.equal([]); expect(p.takeDue(104)).to.deep.equal([2]);
+    const deadline = 1 + p.graceTicks(p.lanes[0]);
+    p.update(a, deadline);
+    expect(p.takeDue(deadline)).to.deep.equal([0]); expect(p.takeDue(deadline + 1)).to.deep.equal([1]); expect(p.takeDue(deadline + 2)).to.deep.equal([]); expect(p.takeDue(deadline + 3)).to.deep.equal([2]);
+  });
+  it('gives fresh probes the measured spawn-to-frontier transit time at 7168 pixels and beyond', () => {
+    for (const distance of [7168, 15000, 50000]) {
+      const p = new ProcgenStallPolicy(1), a = [actor(0, 0, distance + 36)];
+      a[0].spawnTick = 0;
+      p.update(a, distance * 3);
+      const lastProgress = distance * 3;
+      for (let i = 0; i < p.allowance(p.lanes[0]); i++) p.spawn(0, lastProgress + 1 + i * 54);
+      p.update(a, lastProgress + 1500);
+      expect(p.phase).to.equal('running');
+      const snapshot = p.snapshot(lastProgress + 1500).lanes[0];
+      expect(snapshot.estimatedTransitTicks).to.be.at.least(distance * 3 * 1.75);
+      p.update(a, snapshot.probeDeadlineTick - 1); expect(p.phase).to.equal('running');
+      p.update(a, snapshot.probeDeadlineTick); expect(p.phase).to.equal('cascade');
+    }
+  });
+  it('does not immediately restart a lane after its first unsuccessful cohort', () => {
+    const p = new ProcgenStallPolicy(1), a = [{ ...actor(0, 0), failureReason: 'unsafe-fall' }];
+    p.spawn(0, 1); p.update(a, 20); expect(p.phase).to.equal('running');
+    for (let i = 1; i < p.allowance(p.lanes[0]); i++) p.spawn(0, 1 + i * 54);
+    p.update(a, p.graceTicks(p.lanes[0]) + 1); expect(p.phase).to.equal('finished');
   });
   it('restarts only after every actor dies, once, retaining previous distance', () => {
     const p = new ProcgenStallPolicy(1, settings, [300]), a = [actor(0, 0, 420)];
-    p.update(a, 1); for (let i = 0; i < p.allowance(p.lanes[0]); i++) p.spawn(0); p.update(a, 200);
-    expect(p.consumeRestart()).to.equal(null); a[0].removed = true; p.update(a, 201);
+    p.update(a, 1); for (let i = 0; i < p.allowance(p.lanes[0]); i++) p.spawn(0); const deadline = 1 + p.graceTicks(p.lanes[0]); p.update(a, deadline);
+    expect(p.consumeRestart()).to.equal(null); a[0].removed = true; p.update(a, deadline + 1);
     expect(p.consumeRestart()).to.deep.equal([384]); expect(p.consumeRestart()).to.equal(null);
   });
 });

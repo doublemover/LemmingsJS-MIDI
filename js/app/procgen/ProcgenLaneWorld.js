@@ -34,6 +34,21 @@ class ProcgenLaneWorld {
     this.tickIndex = 0;
     this.assists = assists;
     this.terrain = terrain;
+    terrain?.configure?.(this.laneCount, maxActors);
+    this.terrainRevision = 0; this.frontierRevision = 0; this.terrainTileRevisions = new Map();
+    this.frontiers = new Float64Array(this.laneCount); this.frontiers.fill(36);
+    this.generatedThrough = new Float64Array(this.laneCount); this.generatedThrough.fill(terrain?.chunkWidth || CHUNK_WIDTH);
+    this._laneChunk = new Array(this.laneCount);
+    this._chunkSlots = 1;
+    while (this._chunkSlots < Math.min(1024, Math.ceil(maxActors / this.laneCount / 2) + 4)) this._chunkSlots *= 2;
+    this._collisionSlots = new Array(this.laneCount * this._chunkSlots);
+    this._collisionIndices = new Int32Array(this._collisionSlots.length); this._collisionIndices.fill(-1);
+    this._editSlots = this._chunkSlots * 4;
+    this._editCache = new Array(this.laneCount * this._editSlots);
+    this._editIndices = new Int32Array(this._editCache.length); this._editIndices.fill(-1);
+    this._laneEdits = new Array(this.laneCount);
+    this._laneEditIndex = new Int32Array(this.laneCount); this._laneEditIndex.fill(-1);
+    this._laneChunkIndex = new Int32Array(this.laneCount); this._laneChunkIndex.fill(-1);
     this.cohorts = cohorts;
     this.spawnSpreadTicks = Math.max(0, Math.min(53, Math.trunc(spawnSpreadTicks)));
     this.maxActors = Math.max(this.laneCount, maxActors);
@@ -48,7 +63,10 @@ class ProcgenLaneWorld {
     this.challengeCache = new Map();
     this.challengeCacheLimit = Math.max(128, this.laneCount * 8);
     this.laneSeeds = Uint32Array.from({ length: this.laneCount }, (_, lane) => mix(this.seed ^ Math.imul(lane + 1, 0x9e3779b1)));
-    this.timer = { frameTime: 60, speedFactor: speed, onGameTick: new EventHandler(), getGameTicks: () => this.tickIndex };
+    this.eventTimeMs = 0;
+    this.timer = { speedFactor: speed, onGameTick: new EventHandler(), getGameTicks: () => this.tickIndex,
+      get frameTime() { return 60 / Math.max(0.001, this.speedFactor); },
+      get tps() { return 1000 / this.frameTime; }, getEventTimeMs: () => this.eventTimeMs };
     this.soundEvents = new SoundEventBus(this.timer);
     this.soundEvents._queueLimit = 0;
     const runtime = { soundEvents: this.soundEvents };
@@ -73,13 +91,14 @@ class ProcgenLaneWorld {
     const actor = new Lemming(36, lane * LANE_HEIGHT + 42, this.nextActorId++, this.runtime);
     actor.appearanceIndex = lane;
     actor.laneIndex = lane;
+    actor.spawnTick = this.tickIndex;
     actor.lastProgressTick = this.tickIndex;
     actor.furthestX = actor.x;
     actor.assists = 0;
     actor.failureReason = null;
     actor.setAction(this.actions[State.FALLING]);
     this.actors.push(actor);
-    this.stall.spawn(lane); this.spawnedTotal++;
+    this.stall.spawn(lane, this.tickIndex); this.spawnedTotal++;
     if (emit) this.soundEvents.emitSfx(SoundEventTypes.LEMMING_SPAWN, SoundEffectIds.SPAWN,
       { lemmingId: actor.id, x: actor.x, y: actor.y, presentationPhase: lane / this.laneCount });
     return actor;
@@ -101,10 +120,13 @@ class ProcgenLaneWorld {
   }
   _restart(previousDistances) {
     this.characterParticles?.clear();
-    this.actors.length = 0; this.editChunks.clear(); this.challengeCache.clear(); this.generation++; this.generationStartTick = this.tickIndex;
+    this.actors.length = 0; this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this.terrain?.reset?.();
+    this._laneChunk.fill(null); this._laneChunkIndex.fill(-1); this._collisionSlots.fill(null); this._collisionIndices.fill(-1); this._laneEdits.fill(null); this._laneEditIndex.fill(-1); this._editCache.fill(null); this._editIndices.fill(-1); this.frontiers.fill(36);
+    this.generatedThrough.fill(this.terrain?.chunkWidth || CHUNK_WIDTH); this.terrainRevision++; this.frontierRevision++; this.generation++; this.generationStartTick = this.tickIndex;
     for (let lane = 0; lane < this.laneCount; lane++) this.laneSeeds[lane] = mix(this.seed ^ Math.imul(lane + 1, 0x9e3779b1) ^ Math.imul(this.generation - 1, 0x85ebca6b));
     this.stall = new ProcgenStallPolicy(this.laneCount, this.stall.settings, previousDistances);
     for (const lane of this.stall.lanes) lane.lastProgressTick = this.tickIndex;
+    this.onRestart?.();
   }
 
   getGameTimer() { return this.timer; }
@@ -121,6 +143,7 @@ class ProcgenLaneWorld {
     return lane * LANE_HEIGHT + 72 - rise;
   }
   challengeAt(lane, x) {
+    if (this.terrain) return this._terrainChunk(lane, x);
     const chunk = Math.floor(x / CHUNK_WIDTH), key = lane * 0x400000 + chunk;
     const cached = this.challengeCache.get(key);
     if (cached) return cached;
@@ -135,17 +158,31 @@ class ProcgenLaneWorld {
     this.challengeCache.set(key, challenge);
     return challenge;
   }
+  _terrainChunk(lane, x) {
+    const width = this.terrain.chunkWidth, index = Math.floor(x / width);
+    if (this._laneChunkIndex[lane] !== index) {
+      const slot = lane * this._chunkSlots + (index & (this._chunkSlots - 1));
+      if (this._collisionIndices[slot] !== index) {
+        this._collisionIndices[slot] = index;
+        this._collisionSlots[slot] = this.terrain.getChunk(this.laneSeeds[lane], index);
+      }
+      this._laneChunkIndex[lane] = index;
+      this._laneChunk[lane] = this._collisionSlots[slot];
+    }
+    return this._laneChunk[lane];
+  }
   basePixelAt(x, y) {
     const lane = Math.floor(y / LANE_HEIGHT);
     if (!this.terrain || lane < 0 || lane >= this.laneCount || x < 0) return 0;
-    const challenge = this.challengeAt(lane, x);
-    if (x >= challenge.gapX && x < challenge.gapX + challenge.gapWidth) return 0;
-    const localY = y % LANE_HEIGHT, seed = this.laneSeeds[lane];
-    const wall = challenge.barrierWidth ? this.terrain.barrier(seed, x, localY, challenge.barrierX, this.terrain.surface(seed, challenge.barrierX)) : 0;
-    return wall || this.terrain.sample(seed, x, localY);
+    return this.terrain.sample(this.laneSeeds[lane], x, y % LANE_HEIGHT);
   }
   baseGroundAt(x, y) {
-    if (this.terrain) return this.basePixelAt(x, y) ? 1 : 0;
+    if (this.terrain) {
+      const lane = Math.floor(y / LANE_HEIGHT);
+      if (lane < 0 || lane >= this.laneCount || x < 0) return 0;
+      const p = this._terrainChunk(lane, x), index = (y % LANE_HEIGHT) * this.terrain.chunkWidth + x % this.terrain.chunkWidth;
+      return p.solid[index >>> 5] & (1 << (index & 31)) ? 1 : 0;
+    }
     const lane = Math.floor(y / LANE_HEIGHT);
     if (lane < 0 || lane >= this.laneCount || x < 0) return 0;
     const p = x % CHUNK_WIDTH, code = this.chunkCode(lane, Math.floor(x / CHUNK_WIDTH));
@@ -157,11 +194,27 @@ class ProcgenLaneWorld {
     return p >= barrierX && p < barrierX + 8 + (code >>> 4) % 9 && y >= surface - 13 && y < surface ? 2 : 0;
   }
   _editKey(x, y) { return Math.floor(y / LANE_HEIGHT) * 0x2000000 + Math.floor(x / EDIT_CHUNK_WIDTH); }
+  _editsAt(lane, x) {
+    const index = Math.floor(x / EDIT_CHUNK_WIDTH);
+    if (this._laneEditIndex[lane] !== index) {
+      const slot = lane * this._editSlots + (index & (this._editSlots - 1));
+      if (this._editIndices[slot] !== index) {
+        this._editIndices[slot] = index;
+        this._editCache[slot] = this.editChunks.get(lane * 0x2000000 + index);
+      }
+      this._laneEditIndex[lane] = index;
+      this._laneEdits[lane] = this._editCache[slot];
+    }
+    return this._laneEdits[lane];
+  }
   groundColorAt(x, y) {
     if (x < 0 || x >= this.width || y < 0 || y >= this.height) return 0;
-    const edits = this.editChunks.get(this._editKey(x, y));
-    const index = (y % LANE_HEIGHT) * EDIT_CHUNK_WIDTH + x % EDIT_CHUNK_WIDTH;
-    return edits && edits[index] ? Math.max(0, edits[index] - 1) : this.baseGroundAt(x, y);
+    const lane = Math.floor(y / LANE_HEIGHT), localY = y - lane * LANE_HEIGHT;
+    const edits = this._editsAt(lane, x), edit = edits?.[localY * EDIT_CHUNK_WIDTH + x % EDIT_CHUNK_WIDTH] || 0;
+    if (edit) return edit - 1;
+    if (!this.terrain) return this.baseGroundAt(x, y);
+    const p = this._terrainChunk(lane, x), index = localY * this.terrain.chunkWidth + x % this.terrain.chunkWidth;
+    return p.solid[index >>> 5] & (1 << (index & 31)) ? 1 : 0;
   }
   groundPixelAt(x, y) {
     const color = this.groundColorAt(x, y);
@@ -169,10 +222,30 @@ class ProcgenLaneWorld {
   }
   hasGroundAt(x, y) { this.stats.groundQueries++; return this.groundColorAt(x, y) > 0; }
   getColumnStepHeight(x, yTop, height) {
+    const lane = Math.floor(yTop / LANE_HEIGHT);
+    if (this.terrain && x >= 0 && x < this.width && lane >= 0 && yTop + height <= (lane + 1) * LANE_HEIGHT && lane < this.laneCount) {
+      const solid = this._terrainChunk(lane, x).solid, edits = this._editsAt(lane, x), sx = x % this.terrain.chunkWidth, ex = x % EDIT_CHUNK_WIDTH;
+      for (let i = 0, y = yTop + height - 1 - lane * LANE_HEIGHT; i < height; i++, y--) {
+        this.stats.groundQueries++;
+        const edit = edits?.[y * EDIT_CHUNK_WIDTH + ex] || 0, index = y * this.terrain.chunkWidth + sx;
+        if (edit ? edit === 1 : !(solid[index >>> 5] & (1 << (index & 31)))) return i;
+      }
+      return height;
+    }
     for (let i = 0; i < height; i++) if (!this.hasGroundAt(x, yTop + height - 1 - i)) return i;
     return height;
   }
   getColumnGapDepth(x, yTop, height) {
+    const lane = Math.floor(yTop / LANE_HEIGHT);
+    if (this.terrain && x >= 0 && x < this.width && lane >= 0 && yTop + height <= (lane + 1) * LANE_HEIGHT && lane < this.laneCount) {
+      const solid = this._terrainChunk(lane, x).solid, edits = this._editsAt(lane, x), sx = x % this.terrain.chunkWidth, ex = x % EDIT_CHUNK_WIDTH;
+      for (let i = 0, y = yTop - lane * LANE_HEIGHT; i < height; i++, y++) {
+        this.stats.groundQueries++;
+        const edit = edits?.[y * EDIT_CHUNK_WIDTH + ex] || 0, index = y * this.terrain.chunkWidth + sx;
+        if (edit ? edit > 1 : solid[index >>> 5] & (1 << (index & 31))) return i + 1;
+      }
+      return height + 1;
+    }
     for (let i = 0; i < height; i++) if (this.hasGroundAt(x, yTop + i)) return i + 1;
     return height + 1;
   }
@@ -180,18 +253,40 @@ class ProcgenLaneWorld {
     if (x < 0 || x >= this.width || y < 0 || y >= this.height) return;
     const key = this._editKey(x, y);
     let chunk = this.editChunks.get(key);
-    if (!chunk) { chunk = new Uint8Array(EDIT_CHUNK_WIDTH * LANE_HEIGHT); this.editChunks.set(key, chunk); }
-    chunk[(y % LANE_HEIGHT) * EDIT_CHUNK_WIDTH + x % EDIT_CHUNK_WIDTH] = color + 1;
+    if (!chunk) {
+      chunk = new Uint8Array(EDIT_CHUNK_WIDTH * LANE_HEIGHT); this.editChunks.set(key, chunk);
+      const lane = Math.floor(y / LANE_HEIGHT);
+      const editIndex = Math.floor(x / EDIT_CHUNK_WIDTH), slot = lane * this._editSlots + (editIndex & (this._editSlots - 1));
+      if (this._laneEditIndex[lane] === editIndex) this._laneEdits[lane] = chunk;
+      if (this._editIndices[slot] === editIndex) this._editCache[slot] = chunk;
+    }
+    const index = (y % LANE_HEIGHT) * EDIT_CHUNK_WIDTH + x % EDIT_CHUNK_WIDTH;
+    if (chunk[index] !== color + 1) {
+      chunk[index] = color + 1; this.terrainRevision++;
+      const width = this.terrain?.chunkWidth || CHUNK_WIDTH;
+      this.terrainTileRevisions.set(Math.floor(y / LANE_HEIGHT) * 0x800000 + Math.floor(x / width), this.terrainRevision);
+    }
   }
   setGroundAt(x, y) { this._setPixel(x, y, 3); }
   isArrowAt() { return false; }
-  hasSteelUnderMask() { return false; }
+  hasSteelAt(x, y) {
+    const lane = Math.floor(y / LANE_HEIGHT);
+    if (!this.terrain || lane < 0 || lane >= this.laneCount || x < 0) return false;
+    const p = this._terrainChunk(lane, x), index = (y % LANE_HEIGHT) * this.terrain.chunkWidth + x % this.terrain.chunkWidth;
+    return !!(p.steel[index >>> 5] & (1 << (index & 31)));
+  }
+  hasSteelUnderMask(mask, x, y) {
+    for (let dy = 0; dy < mask.height; dy++) for (let dx = 0; dx < mask.width; dx++) {
+      if (!mask.at(dx, dy) && this.hasSteelAt(x + mask.offsetX + dx, y + mask.offsetY + dy)) return true;
+    }
+    return false;
+  }
   hasArrowUnderMask() { return false; }
   clearGroundWithMaskCount(mask, x, y) {
     let removed = 0;
     for (let dy = 0; dy < mask.height; dy++) for (let dx = 0; dx < mask.width; dx++) {
       const px = x + mask.offsetX + dx, py = y + mask.offsetY + dy;
-      if (!mask.at(dx, dy) && this.hasGroundAt(px, py)) { this._setPixel(px, py, 0); removed++; }
+      if (!mask.at(dx, dy) && this.hasGroundAt(px, py) && !this.hasSteelAt(px, py)) { this._setPixel(px, py, 0); removed++; }
     }
     this.stats.removedPixels += removed;
     return removed;
@@ -201,6 +296,17 @@ class ProcgenLaneWorld {
   _assist(actor) {
     if (!this.assists || (actor.action !== this.actions[State.WALKING] && actor.action !== this.actions[State.BASHING])) return;
     const x = actor.x, y = actor.y;
+    if (actor.assistRetreatX != null && actor.action === this.actions[State.WALKING]) {
+      if (x > actor.assistRetreatX) { actor.lookRight = false; return; }
+      actor.assistRetreatX = null; actor.lookRight = true;
+      actor.setAction(this.actions[State.BUILDING]); this.stats.builds++; actor.assists++;
+      return;
+    }
+    if (this.terrain && actor.action === this.actions[State.WALKING] && this.tickIndex - actor.lastProgressTick > 240 &&
+        this.tickIndex - (actor.lastDetourTick || 0) > 360 && this.hasSteelAt(x + 1, y - 4)) {
+      actor.assistRetreatX = Math.max(36, x - 16); actor.lastDetourTick = this.tickIndex; actor.lookRight = false;
+      return;
+    }
     const gap = this.challengeAt(actor.laneIndex, x);
     if (gap.gapWidth > 0 && x >= gap.gapX - 5 && x < gap.gapX && y >= this.surfaceAt(actor.laneIndex, x) - 2 && !this.hasGroundAt(x + 5, y + 1)) {
       actor.lookRight = true;
@@ -210,17 +316,25 @@ class ProcgenLaneWorld {
     if (actor.action !== this.actions[State.WALKING]) return;
     if (!actor.lookRight) { actor.lookRight = true; this.stats.turns++; }
     if (this.getColumnStepHeight(x + 1, y - 7, 8) === 8) {
-      if (this.terrain && (!gap.barrierWidth || x < gap.barrierX - 2 || x > gap.barrierX + 32)) {
+      if (this.terrain && (this.hasSteelAt(x + 1, y - 4) || !gap.barrierWidth || x < gap.barrierX - 2 || x > gap.barrierX + gap.barrierWidth)) {
         if (!actor.canClimb) { actor.canClimb = true; actor.assists++; }
       } else { actor.setAction(this.actions[State.BASHING]); this.stats.bashes++; actor.assists++; }
     }
   }
-  step() {
+  step(eventTimeMs = null) {
     this.tickIndex++;
+    this.eventTimeMs = Number.isFinite(eventTimeMs) ? eventTimeMs : this.eventTimeMs + this.timer.frameTime;
     this.characterParticles?.tick();
     this._spawnCohort();
     for (const actor of this.actors) {
       if (actor.failureReason) continue;
+      if (actor.y >= (actor.laneIndex + 1) * LANE_HEIGHT + 6) {
+        actor.leftIndependentRoute = true; actor.failureReason = 'out-of-lane'; this.stats.failures++;
+        this.failureReasons['out-of-lane'] = (this.failureReasons['out-of-lane'] || 0) + 1;
+        this.soundEvents.emitSfx(SoundEventTypes.LEMMING_FELL_OFF, SoundEffectIds.FELL_OFF,
+          { lemmingId: actor.id, x: actor.x, y: (actor.laneIndex + 1) * LANE_HEIGHT - 6 });
+        continue;
+      }
       if (!this.cohorts && this.tickIndex === 1) this.soundEvents.emitSfx(SoundEventTypes.LEMMING_SPAWN, SoundEffectIds.SPAWN,
         { lemmingId: actor.id, x: actor.x, y: actor.y, presentationPhase: actor.laneIndex / this.laneCount });
       if (this.stall.phase === 'running') this._assist(actor);
@@ -233,7 +347,13 @@ class ProcgenLaneWorld {
           this.stats.failures++; this.failureReasons[actor.failureReason] = (this.failureReasons[actor.failureReason] || 0) + 1;
         }
       } else if (next === State.JUMPING && actor.action !== this.actions[next]) actor.setAction(this.actions[next]);
-      if (actor.y >= (actor.laneIndex + 1) * LANE_HEIGHT) actor.leftIndependentRoute = true;
+
+      if (actor.x > this.frontiers[actor.laneIndex]) {
+        this.frontiers[actor.laneIndex] = actor.x;
+        const width = this.terrain?.chunkWidth || CHUNK_WIDTH;
+        const through = Math.ceil((actor.x + 64) / width) * width;
+        if (through > this.generatedThrough[actor.laneIndex]) { this.generatedThrough[actor.laneIndex] = through; this.terrainRevision++; this.frontierRevision++; }
+      }
       if (actor.x > actor.furthestX) { actor.furthestX = actor.x; actor.lastProgressTick = this.tickIndex; }
     }
     if (this.cohorts) {
@@ -256,7 +376,17 @@ class ProcgenLaneWorld {
     for (const actor of this.actors) if (!actor.failureReason) minimums[actor.laneIndex] = Math.min(minimums[actor.laneIndex], actor.x);
     for (const key of this.editChunks.keys()) {
       const lane = Math.floor(key / 0x2000000), chunkX = (key % 0x2000000) * EDIT_CHUNK_WIDTH;
-      if (chunkX + EDIT_CHUNK_WIDTH < minimums[lane] - 128) this.editChunks.delete(key);
+      if (chunkX + EDIT_CHUNK_WIDTH < minimums[lane] - 128) {
+        this.editChunks.delete(key); this.terrainRevision++;
+        const editIndex = Math.floor(chunkX / EDIT_CHUNK_WIDTH), slot = lane * this._editSlots + (editIndex & (this._editSlots - 1));
+        if (this._laneEditIndex[lane] === editIndex) this._laneEdits[lane] = null;
+        if (this._editIndices[slot] === editIndex) this._editCache[slot] = null;
+        const width = this.terrain?.chunkWidth || CHUNK_WIDTH, tile = Math.floor(chunkX / width), tileKey = lane * 0x800000 + tile;
+        let retained = false;
+        for (let dx = 0; dx < width / EDIT_CHUNK_WIDTH; dx++) if (this.editChunks.has(lane * 0x2000000 + tile * width / EDIT_CHUNK_WIDTH + dx)) retained = true;
+        if (retained) this.terrainTileRevisions.set(tileKey, this.terrainRevision);
+        else this.terrainTileRevisions.delete(tileKey);
+      }
     }
   }
   getDebugState() {
@@ -269,16 +399,25 @@ class ProcgenLaneWorld {
       else failureReasons[actor.failureReason] = (failureReasons[actor.failureReason] || 0) + 1;
       if (!actor.failureReason && this.tickIndex - actor.lastProgressTick > 240) stalled++;
     }
+    let residentCollisionBytes = 0;
+    if (this.terrain) {
+      const retained = new Set(this._collisionSlots);
+      for (const chunk of this.terrain.collision.values()) retained.add(chunk);
+      for (const chunk of retained) if (chunk) residentCollisionBytes += chunk.solid.byteLength + chunk.steel.byteLength + chunk.topProfile.byteLength;
+    }
     return { mode: 'shared-lanes', seed: this.seed, lanes: this.laneCount, tick: this.tickIndex,
+      requestedTicksPerSecond: this.timer.tps, achievedTicksPerSecond: this.timer.achievedTicksPerSecond ?? null,
       alive, survival: alive / Math.max(1, this.spawnedTotal), stalled, failureReasons: this.cohorts ? { ...this.failureReasons } : failureReasons,
       generation: this.generation, spawnedTotal: this.spawnedTotal, admissionPaused: this.admissionPaused, maxActors: this.maxActors,
       stall: this.cohorts ? this.stall.snapshot(this.tickIndex) : null,
       distance: { min: Number.isFinite(minDistance) ? minDistance : 0, max: maxDistance, mean: distance / Math.max(1, this.actors.length) },
+      terrainGeneration: this.terrain?.getDebugState?.() || null, collisionResidentSlots: this._collisionSlots.length, residentCollisionMB: residentCollisionBytes / 1048576,
+      frontierMargins: Array.from(this.generatedThrough, (x, lane) => x - this.frontiers[lane]),
       terrainRecipe: this.terrain?.recipe.id || null, recipeMemoryMB: this.terrain?.memoryMB || 0,
       cachedChallenges: this.challengeCache.size, terrainEdits: this.editChunks.size, terrainMemoryMB: this.editChunks.size * EDIT_CHUNK_WIDTH * LANE_HEIGHT / 1048576,
       ...this.stats };
   }
-  dispose() { this.characterParticles?.clear(); this.timer.onGameTick.dispose(); this.soundEvents.onEvent.dispose(); this.editChunks.clear(); this.challengeCache.clear(); }
+  dispose() { this.onRestart = null; this.characterParticles?.clear(); this.timer.onGameTick.dispose(); this.soundEvents.onEvent.dispose(); this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this._laneChunk.fill(null); this._collisionSlots.fill(null); this._laneEdits.fill(null); this._editCache.fill(null); this.terrain?.reset?.(); }
 }
 
 export { ProcgenLaneWorld, MAX_PROCGEN_LANES, LANE_HEIGHT, CHUNK_WIDTH, normalizeLaneCount };

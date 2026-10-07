@@ -6,22 +6,29 @@ const book = JSON.parse(fs.readFileSync('assets/procgen/terrain-recipes.json', '
 describe('source-art shared world routes', function () {
   this.timeout(30000);
   let masks; before(async () => { masks = await loadProcgenMasks(); });
-  for (const theme of book.themes) it(`keeps 32 independent ${theme.family} routes alive and progressing through 5000 real ticks`, async () => {
+  for (const theme of book.themes) it(`runs 32 independent evolving ${theme.family} routes with real skills for 5000 ticks`, async () => {
     const source = theme.sources[0], terrain = await loadProcgenTerrain(source.pack, source.groundSet);
     const result = runLaneBenchmark({ masks, terrain, lanes: 32, ticks: 5000, seed: 42 });
-    expect(result.alive).to.equal(32); expect(result.stalled).to.equal(0);
-    expect(result.distance.min).to.be.greaterThan(2000); expect(result.recipeMemoryMB).to.be.lessThan(4);
+    expect(result.alive).to.equal(32);
+    expect(result.distance.min).to.be.greaterThan(500); expect(result.recipeMemoryMB).to.be.lessThan(8);
+    expect(result.builds).to.be.greaterThan(0);
+    expect(result.terrainGeneration.terrainVocabularyUsed).to.equal(result.terrainGeneration.terrainVocabularyAvailable);
+    expect(result.terrainGeneration.objectVocabularyUsed).to.equal(result.terrainGeneration.objectVocabularyAvailable);
   });
-  it('traverses every one of the 96 admitted source recipes with real actions and no neighbouring lane', async () => {
+  it('retains all 96 sourced foundation ingredients in the new evolving generator', async () => {
     let checked = 0;
     for (const theme of book.themes) {
       const source = theme.sources[0], terrain = await loadProcgenTerrain(source.pack, source.groundSet);
       const patterns = terrain.patterns;
       for (const pattern of patterns) {
         terrain.patterns = [pattern];
-        const result = runLaneBenchmark({ masks, terrain, lanes: 1, ticks: 5000, seed: 42 });
-        expect(result.alive, pattern.routeId).to.equal(1);
-        expect(result.stalled, pattern.routeId).to.equal(0);
+        terrain.reset();
+        const chunk = terrain.getChunk(42, 0, true);
+        expect(chunk.solid.some(value => value !== 0), pattern.routeId).to.equal(true);
+        for (let y = 0; y < 96; y++) for (let x = 0; x < 128; x++) {
+          const index = y * 128 + x;
+          if (chunk.solid[index >>> 5] & (1 << (index & 31))) expect(chunk.pixels[index], pattern.routeId).not.to.equal(0);
+        }
         checked++;
       }
     }

@@ -73,7 +73,10 @@
     "bench-procgen-lanes": "node scripts/bench-procgen-lanes.js",
     "bench-procgen-behavior": "node scripts/bench-procgen-behavior.js",
     "procgen:mine-recipes": "node tools/mineTerrainRecipes.js",
-    "procgen:check-recipes": "node tools/mineTerrainRecipes.js --check"
+    "procgen:check-recipes": "node tools/mineTerrainRecipes.js --check",
+    "bench-procgen-optimization": "node --expose-gc scripts/bench-procgen-optimization.mjs",
+    "bench-procgen-midi-clock": "node scripts/profile-procgen-midi-clock.mjs",
+    "bench-character-palettes": "node --expose-gc scripts/bench-character-palettes.js"
   },
   "c8": {
     "check-coverage": true,
