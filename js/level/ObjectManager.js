@@ -144,7 +144,7 @@ class ObjectManager {
             continue;
           }
         }
-        const frame = animation.getFrame(tick + 1);
+        const frame = obj.getFrame?.(tick + 1) || animation.getFrame(tick + 1);
         if (!frame) continue;
         if (!Number.isFinite(fw) || !Number.isFinite(fh)) {
           fw = frame.width ?? 0;

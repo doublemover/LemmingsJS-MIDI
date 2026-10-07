@@ -5,6 +5,7 @@ import { PaletteImage } from '../render/PaletteImage.js';
 import { TerrainImageInfo } from '../render/TerrainImageInfo.js';
 import { DEFAULT_STEEL_SPRITES } from '../steelSpritesData.js';
 import { getRuntimeDependency } from '../core/dependencies.js';
+import { classifyClassicHazard } from '../lemmings/CharacterHazardTypes.js';
 let steelSprites = null;
 
 const cloneSteelSprites = (source) => {
@@ -179,6 +180,8 @@ class GroundReader extends BaseLogger {
       img.unknown              = fr.readWordBE();
       img.trap_sound_effect_id = fr.readByte();
       img.palette              = palette;
+      img.characterHazard      = classifyClassicHazard(fr.foldername, fr.filename, i);
+      img.characterVictim      = ['crush', 'slice', 'bite', 'tentacle', 'suction', 'electric'].includes(img.characterHazard);
 
       if (img.unknown1 !== img.maskLoc)
         this.log.log(`OBJ ${i}: unknown1 diverges from maskLoc (expected ${img.maskLoc}, got ${img.unknown1})`);

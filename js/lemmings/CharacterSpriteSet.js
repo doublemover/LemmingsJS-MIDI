@@ -2,6 +2,8 @@ import { PixelSpriteSkin, validateSkin } from './PixelSpriteSkin.js';
 import { Frame } from '../render/Frame.js';
 import { refineCharacterPresentation } from './CharacterPresentation.js';
 import { CHARACTER_COLORS } from './characterColors.js';
+import { CharacterHazardPresentation } from './CharacterHazardPresentation.js';
+import { SpriteTypes } from './SpriteTypes.js';
 import { normalizeCharacterAccessories, characterAppearanceKey, hasCharacterAccessories, hasCustomHeadwear, validateAccessoryLayers, composeCharacterAccessories } from './CharacterAccessories.js';
 
 const CHARACTER_STORAGE_KEY = 'lemmings.character.appearance.v1';
@@ -101,6 +103,8 @@ class CharacterSpriteSet {
     });
     this.actorSkins = new WeakMap();
     this.skinManifests = new WeakMap();
+    this.skinTemplates = new WeakMap();
+    this.hazards = new CharacterHazardPresentation();
     this.generation = 0;
     this.error = null;
     this.activePreference = null;
@@ -236,6 +240,7 @@ class CharacterSpriteSet {
     let skin = cached?.template === template ? cached.skin : identities.get(key)?.deref();
     if (!skin) {
       skin = template.withPalette(paletteForAppearance(manifest, appearance));
+      this.skinTemplates.set(skin, template);
       this.cacheIdentity(identities, key, skin);
     }
     // Eviction releases idle ownership, never the identity of a still-live appearance.
@@ -264,12 +269,26 @@ class CharacterSpriteSet {
     }
     // A pooled actor or an atomic appearance commit relinquishes its old cosmetic state.
     cached?.skin.resetActor?.(lem);
+    this.hazards.reset(lem, true);
     if (lem && typeof lem === 'object') this.actorSkins.set(lem, {
       id: lem.id, index: lem.appearanceIndex, preference: selection, skin
     });
     return skin;
   }
-  getActorAnimation(state, right, lem) { return this.skinForActor(lem).getAnimation(state, right); }
+  getActorAnimation(state, right, lem) {
+    const skin = this.skinForActor(lem);
+    const kind = this.hazards.kind(lem) || (state === SpriteTypes.FRYING ? 'fire' : null);
+    if (skin === this.base || !kind) return skin.getAnimation(state, right);
+    const template = this.skinTemplates.get(skin) || skin, manifest = this.skinManifests.get(template);
+    return this.hazards.animation(skin, template, this.manifests.get(manifest?.shapeId), manifest, state, right, kind);
+  }
+  hasCustomCharacters() { return (this.activePreference || this.getPreference())?.shape !== 'classic'; }
+  recordHazardContact(lem, kind) {
+    if (this.skinForActor(lem) === this.base) return false;
+    this.hazards.record(lem, kind);
+    return true;
+  }
+  getActorHazardKind(lem) { return this.hazards.kind(lem); }
   getActorParticleParts(lem) {
     const skin = this.skinForActor(lem);
     return skin === this.base ? null : skin.getParticleParts?.(lem.lookRight) || null;
@@ -277,9 +296,11 @@ class CharacterSpriteSet {
   resetActor(lem) {
     // Action changes clear only the actor's owned transition, retaining its stable palette.
     this.actorSkins.get(lem)?.skin.resetActor?.(lem);
+    this.hazards.reset(lem);
   }
   onActionChange(lem, previousAction, previousFrameIndex) {
     const skin = this.skinForActor(lem);
+    this.hazards.change(lem, previousAction);
     if (skin === this.base) { skin.onActionChange?.(lem, previousAction, previousFrameIndex); return; }
     const previous = previousAction && { spriteProvider: previousAction.spriteProvider === this ? skin : previousAction.spriteProvider,
       getActionName: () => previousAction.getActionName?.() };

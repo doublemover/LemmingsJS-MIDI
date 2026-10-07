@@ -31,8 +31,8 @@ for kind, title, count, scale in [
     ('bash', 'Bashing | chips sampled from the removed Fun 1 terrain', 16, 4),
     ('exploding', 'Explosion | intact crowns + glasses, then fading fragments', 22, 3),
     ('splatter', 'Landing death | body scatter + intact wearable ejection', 22, 3),
-    ('drowning', 'Drowning | hands up, then accelerating easeInExpo sink', 22, 3),
-    ('frying', 'Fire death | sizzling skillet, hot hops, overdone smoke', 22, 3)]:
+    ('drowning', 'Drowning | hands up, fast sink, gently drifting wearables', 22, 3),
+    ('frying', 'Fire death | frantic burning, charred wearables, falling ash', 22, 3)]:
     frames=[sheet(kind, i, title, scale) for i in range(count)]
     frames[0].save(OUT/f'{kind}-12-shapes.png')
     duration = receipt['tickMilliseconds'] if kind in ('drowning', 'frying') else 95
@@ -40,7 +40,7 @@ for kind, title, count, scale in [
 
 for kind, ticks, title in [
     ('drowning', [1, 3, 10, 12, 14, 16], 'Drowning | contact, hands up, slow start, accelerating sink'),
-    ('frying', [1, 3, 6, 8, 11, 14], 'Cooking gag | sizzle, hot hops, overdone, smoke and ash')]:
+    ('frying', [1, 3, 6, 8, 11, 14], 'Fire | panic, sustained flames, charring, falling ash')]:
     cell_width, cell_height = 174, 141
     out = Image.new('RGB', (6*cell_width+185, 12*cell_height+97), '#141c2c')
     draw = ImageDraw.Draw(out)

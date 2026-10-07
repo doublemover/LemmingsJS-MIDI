@@ -156,20 +156,19 @@ describe('readable proportional character presentation', function() {
     }
   });
 
-  it('cooks each recognizable body above a fixed skillet before the smoke-and-ash finish', function() {
+  it('uses sustained distressed burn poses, flames and charring without a skillet', function() {
     for (const shape of catalog.shapes) {
       const source = read(shape.path), refined = refineCharacterPresentation(source, source, shape.id);
       const record = refined.animations.find(entry => entry.state === 'FRYING'), floor = -record.offsetY - 1;
       for (const [index, rows] of record.frames.entries()) {
         if (!index) continue;
-        expect(rows[floor].slice(3, 13)).to.equal('9999999999');
-        expect(rows[floor - 1].slice(12)).to.equal('9999');
+        expect(rows[floor].slice(3, 13)).not.to.equal('9999999999');
         expect(rows.join('')).not.to.match(/[678BCDEF]/);
-        if (index < 8) expect(rows.join(''), `${shape.id}/${index}`).to.match(/[2345]/);
-        else expect(rows.join(''), `${shape.id}/${index}`).not.to.match(/[2345]/);
+        if (index < 6) expect(rows.join(''), `${shape.id}/${index}`).to.match(/[2345]/);
+        if (index < 11) expect(rows.join(''), `${shape.id}/${index}`).to.match(/[9A]/);
       }
-      expect(record.frames[8].join('')).to.include('A');
-      expect(record.frames[13][floor - 1].slice(4, 11)).to.equal('0909009');
+      expect(record.frames[10].join('')).to.include('1');
+      expect(record.frames[13][floor].slice(5, 11)).to.equal('111111');
     }
   });
 });

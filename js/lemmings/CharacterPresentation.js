@@ -117,12 +117,12 @@ function deathBody(neutral, record, scale, shapeId) {
   return result;
 }
 
-function deathFrame(body, record, index) {
+function deathFrame(body, record, index, kind = record.state === 'DROWNING' ? 'water' : 'fire') {
   const pixels = Array.from({ length: record.height }, () => Array(record.width).fill('0'));
   const bounds = bodyBounds(body), floor = -record.offsetY - 1;
   const dot = (x, y, color) => { if (pixels[y]?.[x] != null) pixels[y][x] = color; };
   const line = (x1, x2, y, color) => { for (let x = x1; x <= x2; x++) dot(x, y, color); };
-  if (record.state === 'DROWNING') {
+  if (kind === 'water') {
     const sink = drowningSink(index, bounds.height + 2);
     body.forEach((row, y) => [...row].forEach((symbol, x) => {
       if (symbol !== '0' && y + sink < floor) dot(x, y + sink, symbol);
@@ -140,31 +140,92 @@ function deathFrame(body, record, index) {
       dot(7, floor - (index - 13), '9'); dot(8, floor - (index - 13) - 1, 'A');
       if (index === 14) { dot(5, floor, '9'); dot(10, floor, '9'); }
     }
-  } else {
-    const hop = [0, 1, 0, 1, 2, 3, 2, 1, 0][index] || 0;
-    const shift = [0, -1, 0, 1, 0, -1, 0, 1, 0][index] || 0;
-    if (index < 9) {
+  } else if (kind === 'fire' || kind === 'lava') {
+    const phase = Math.round(index * 13 / (record.frameCount - 1));
+    const hop = [0, 1, 0, 2, 0, 1, 2, 0, 1, 0, 0, 0, 0, 0][phase];
+    const shift = phase < 10 ? [0, -1, 1, 0][phase % 4] : 0;
+    const sink = kind === 'lava' ? drowningSink(index, bounds.height + 2) : 0;
+    if (phase < 12) {
+      for (const x of [3, 6, 10, 12]) {
+        const height = 2 + Math.floor(phase / 2) + (phase + x) % 3;
+        for (let dy = 0; dy < height; dy++) {
+          dot(x + (dy === height - 1 ? phase % 2 : 0), floor - dy, dy < height - 2 ? 'A' : '9');
+          if (dy < height - 2) dot(x + 1, floor - dy, '9');
+        }
+      }
+    }
+    if (phase < 11) {
       body.forEach((row, y) => [...row].forEach((symbol, x) => {
-        if (symbol !== '0') dot(x + shift, y - hop, index === 8 ? (symbol === '5' ? 'A' : '1') : symbol);
+        if (symbol === '0') return;
+        const charred = phase >= 6 && ((x * 3 + y) % 5 < phase - 5);
+        const color = charred ? (symbol === '5' ? 'A' : '1') : symbol;
+        const py = y - hop + sink;
+        if (kind !== 'lava' || py < floor) dot(x + shift, py, color);
       }));
-    } else if (index < 12) {
-      line(5, 10, floor - 1, '1'); line(6, 9, floor - 2, '1');
-      if (index < 11) { dot(6, floor - 2, 'A'); dot(9, floor - 2, 'A'); }
+      const handY = bounds.top - hop + (phase % 2 ? 0 : 2) + sink;
+      for (const x of [bounds.left - 1 + shift, bounds.right + 1 + shift]) {
+        if (handY < floor) dot(x, handY, phase >= 8 ? '1' : '4');
+        if (handY + 1 < floor) dot(x, handY + 1, phase >= 8 ? '1' : '3');
+      }
+      const mouthX = Math.round((bounds.left + bounds.right) / 2) + shift;
+      const mouthY = bounds.bottom - 1 - hop + sink;
+      if ('234'.includes(pixels[mouthY]?.[mouthX] || '-')) dot(mouthX, mouthY, '5');
     } else {
-      for (const x of [5, 7, 10]) dot(x, floor - 1, '9');
+      line(5, 10, floor, '1');
+      for (const x of [5, 8, 10]) dot(x, floor - 2 - (phase + x) % 4, '9');
     }
-    // A little skillet, hot-foot sizzle, then a comically overdone puff of smoke.
-    line(3, 12, floor, '9'); line(4, 11, floor + 1, '1');
-    line(12, 15, floor - 1, '9'); dot(15, floor, '1');
-    if (index < 9) {
-      dot(index % 2 ? 2 : 3, floor - 2 - index % 3, 'A');
-      dot(index % 2 ? 12 : 13, floor - 3 + index % 2, 'A');
+  } else if (kind === 'acid') {
+    const progress = index / (record.frameCount - 1), dissolve = progress * progress;
+    body.forEach((row, y) => [...row].forEach((symbol, x) => {
+      if (symbol === '0' || ((x * 7 + y * 13) % 19) / 19 < dissolve) return;
+      const py = Math.round(y + dissolve * (floor - y));
+      if (py < floor) dot(x, py, symbol);
+    }));
+    if (index < record.frameCount - 2) {
+      line(4, 11, floor, '9');
+      dot(3 + index % 3, floor - 1 - index % 3, 'A');
+      dot(11 - index % 2, floor - 1 - (index + 1) % 3, '9');
+    } else dot(7 + index % 2, floor - 2, 'A');
+  } else {
+    const progress = index / (record.frameCount - 1);
+    if (index < record.frameCount - 3) {
+      body.forEach((row, y) => [...row].forEach((symbol, x) => {
+        if (symbol === '0') return;
+        let px = x, py = y, color = symbol;
+        const middle = (bounds.left + bounds.right) / 2;
+        if (kind === 'crush') {
+          py = floor - Math.round((floor - y) * Math.max(0.12, 1 - index / 3));
+          px = Math.round(middle + (x - middle) * Math.min(1.4, 1 + index / 8));
+        } else if (kind === 'suction') {
+          px = Math.round(middle + (x - middle) * (1 - progress * 0.8));
+          py = y - Math.round(progress * (record.height + 3));
+        } else if (kind === 'tentacle' || kind === 'bite') {
+          const shrink = Math.max(0.05, 1 - progress * 1.3);
+          px = Math.round(middle + (x - middle) * shrink);
+          py = floor - Math.round((floor - y) * shrink);
+        } else if (kind === 'electric') {
+          px += index % 2 ? -1 : 1;
+          color = symbol === '5' ? '1' : index % 2 ? 'A' : index > 7 ? '1' : symbol;
+        } else if (kind === 'ice') {
+          color = symbol === '5' ? '5' : (x + y) % 3 ? '9' : 'A';
+          if (index > 7) {
+            if ((x + y) % 3 === index % 3) return;
+            py += Math.round((index - 7) * (0.2 + x % 3 * 0.15));
+          }
+        } else if (kind === 'slice' || kind === 'spikes') {
+          if (index > 3) {
+            px += y < (bounds.top + bounds.bottom) / 2 ? -Math.min(2, index - 3) : Math.min(2, index - 3);
+            py += Math.floor((index - 3) / 3);
+          }
+        }
+        dot(px, py, color);
+      }));
     }
-    if (index >= 4) {
-      const smokeY = floor - 5 - (index - 4) % 4;
-      dot(4 + index % 2, smokeY, '9'); dot(11 - index % 2, smokeY - 1, '9');
-      if (index >= 9) dot(7 + index % 2, smokeY - 2, 'A');
+    if (kind === 'electric' && index < 11) {
+      for (let y = bounds.top; y < floor; y++) dot((index % 2 ? 2 : 13) + y % 2, y, y % 2 ? '9' : 'A');
     }
+    if (kind === 'crush' && index >= 3 && index < 13) line(4, 11, floor, '2');
+    if (kind === 'ice' && index >= 12) for (const x of [4, 7, 11]) dot(x, floor, '9');
   }
   return pixels.map(row => row.join(''));
 }
@@ -253,4 +314,4 @@ function refineCharacterPresentation(manifest, source, shapeId, pack = null, app
   };
 }
 
-export { refineCharacterPresentation, transformRows, bodyBounds, GAITS, easeInExpo, drowningSink };
+export { refineCharacterPresentation, transformRows, bodyBounds, GAITS, easeInExpo, drowningSink, deathBody, deathFrame };

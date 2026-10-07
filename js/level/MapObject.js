@@ -7,6 +7,7 @@ import { getRuntimeHistory, getRuntimeSoundEvents } from '../game/GameRuntime.js
 class MapObject {
   /** WeakMap<objectImg, Frame[]> – shared across all MapObject instances. */
   static _frameCache = new WeakMap();
+  static _characterFrameCache = new WeakMap();
   constructor (ob, objectImg, animation = new Animation(), triggerType = TriggerTypes.NO_TRIGGER, runtime = null) {
     this.ob              = ob;
     this.obID            = ob.id;
@@ -87,6 +88,36 @@ class MapObject {
     this.runtime = runtime;
   }
 
+  getFrame(tick) {
+    const original = this.animation.getFrame(tick), owner = this.characterVictimPresentation;
+    if (!original || !owner || owner.epoch !== owner.pool?.epoch || !owner.provider.hasCustomCharacters?.()) return original;
+    const info = this.animation.objectImg;
+    let cache = MapObject._characterFrameCache.get(info);
+    if (!cache) { cache = new WeakMap(); MapObject._characterFrameCache.set(info, cache); }
+    if (cache.has(original)) return cache.get(original);
+    const index = this.animation.frames.indexOf(original), pixels = info.frames[index], neutral = info.frames[0];
+    if (!pixels || pixels instanceof Frame || info.sourceScaleX > 1 || info.sourceScaleY > 1) return original;
+    const victim = new Set(), queue = [], width = original.width, height = original.height;
+    const visit = offset => {
+      if (victim.has(offset) || offset < 0 || offset >= pixels.length || ![1, 2, 3].includes(pixels[offset]) || pixels[offset] === neutral[offset]) return;
+      victim.add(offset); queue.push(offset);
+    };
+    // Only connected changed actor-color pixels; static lettering and trap art stay intact.
+    for (let i = 0; i < pixels.length; i++) if (pixels[i] === 1 || pixels[i] === 2) visit(i);
+    for (let i = 0; i < queue.length; i++) {
+      const x = queue[i] % width, y = Math.floor(queue[i] / width);
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        if (x + dx >= 0 && x + dx < width && y + dy >= 0 && y + dy < height) visit((y + dy) * width + x + dx);
+      }
+    }
+    if (!victim.size) { cache.set(original, original); return original; }
+    const frame = new Frame(width, height, original.offsetX, original.offsetY);
+    frame.data.set(original.data); frame.mask.set(original.mask);
+    for (const offset of victim) { frame.data[offset] = 0; frame.mask[offset] = 0; }
+    frame.enableSpanCache(); cache.set(original, frame);
+    return frame;
+  }
+
   /** Called when a lemming collides with this object's trigger zone. */
   onTrigger (globalTick, lemming = null, trigger = null, x = null, y = null) {
     // 1. restart visual cue
@@ -109,6 +140,12 @@ class MapObject {
     }
     // 2. play sound, spawn particles
     const triggerType = trigger?.type ?? this.triggerType;
+    if ([TriggerTypes.TRAP, TriggerTypes.DROWN, TriggerTypes.KILL, TriggerTypes.FRYING].includes(triggerType)) {
+      const provider = lemming?.action?.spriteProvider;
+      const custom = provider?.recordHazardContact?.(lemming, this.animation?.objectImg?.characterHazard);
+      const pool = lemming?.action?.characterParticles;
+      this.characterVictimPresentation = custom && this.animation?.objectImg?.characterVictim ? { provider, pool, epoch: pool?.epoch } : null;
+    }
     let sfxId = null;
     let eventType = null;
 

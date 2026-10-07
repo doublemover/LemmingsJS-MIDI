@@ -1,0 +1,14 @@
+[
+  {"kind":"water","pack":"lemmings","ground":0,"object":5,"label":"Blue water"},
+  {"kind":"acid","pack":"lemmings","ground":2,"object":5,"label":"Green liquid / acid"},
+  {"kind":"lava","pack":"lemmings","ground":1,"object":5,"label":"Red lava"},
+  {"kind":"fire","pack":"lemmings","ground":1,"object":7,"label":"Fire pit"},
+  {"kind":"crush","pack":"lemmings","ground":0,"object":10,"label":"Ten-ton crushing weight"},
+  {"kind":"slice","pack":"lemmings","ground":3,"object":8,"label":"Spinning rope slicer"},
+  {"kind":"spikes","pack":"lemmings","ground":3,"object":9,"label":"Wall spikes"},
+  {"kind":"bite","pack":"lemmings","ground":0,"object":6,"label":"Bear trap"},
+  {"kind":"tentacle","pack":"lemmings_ohNo","ground":1,"object":6,"label":"Tentacle grab"},
+  {"kind":"suction","pack":"lemmings_ohNo","ground":3,"object":9,"label":"Overhead sucker"},
+  {"kind":"electric","pack":"lemmings","ground":4,"object":9,"label":"Electrodes"},
+  {"kind":"ice","pack":"lemmings_ohNo","ground":2,"object":9,"label":"Ice blast"}
+]
