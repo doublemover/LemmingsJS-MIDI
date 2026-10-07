@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Updated the vulnerable dependency graph, replaced depcheck with Knip, and aligned the declared Node engine with current tooling requirements.
 - MCP skill application no longer applies twice or consumes the next available skill after the requested one runs out.
 - Successful same-skill assignments are recorded as commands even when selection itself did not change.
 - Editor dry-runs avoid tool/selection/history/storage/preview mutation, object placement retains supplied properties, and API level loads refresh visible headers.

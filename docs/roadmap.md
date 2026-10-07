@@ -798,7 +798,7 @@ stable-ID selection for eleven recovered bodies. Acceptance instructions are in
 - Complete donut and native accessory/eyewear adaptations across every body,
   inspect their native pixels, and test combinations. The current catalog includes
   eleven verified bodies and the existing Hydro beret, not an all-prop art pack.
-- Finish broader editor interoperability and dependency remediation against
+- Finish broader editor interoperability and verify the final registry audit of the upgraded dependency lockfile against
   the integrated final tree. The concrete dry-run, object-property, debug-state,
   async bridge, stale-header and double-skill defects now have regression tests.
   Runtime transforms are explicitly disabled/preserved pending implementation. Do not treat this MIDI/appearance batch as those

@@ -1,4 +1,4 @@
-import { chromium } from 'playwright';
+import { chromium } from '@playwright/test';
 import fs from 'node:fs/promises';
 
 const output = 'temp/live-instrument';
