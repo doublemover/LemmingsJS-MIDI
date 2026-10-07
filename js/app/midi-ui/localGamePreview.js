@@ -22,6 +22,7 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
   let generation = 0;
   let configKey = null;
   let sourceConfig = null;
+  let audibilityKey = null;
   let status = 'off';
   let message = 'Browser preview is off.';
   let disposed = false;
@@ -61,7 +62,11 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
     const nextKey = JSON.stringify(config);
     sourceConfig = source;
     if (nextKey === configKey) return false;
-    router.scheduler.allNotesOff();
+    const nextAudibility = JSON.stringify({ enabled: config.enabled, mpe: config.mpe,
+      sfx: Object.entries(config.sfx || {}).map(([id, m]) => [id, m.disabled, m.channel, m.outputId]),
+      triggers: Object.entries(config.triggers || {}).map(([id, m]) => [id, m.disabled, m.channel, m.outputId]) });
+    if (audibilityKey != null && audibilityKey !== nextAudibility) router.scheduler.allNotesOff();
+    audibilityKey = nextAudibility;
     router.setMapping(config);
     configKey = nextKey;
     return true;

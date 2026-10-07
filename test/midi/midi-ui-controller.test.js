@@ -1,5 +1,8 @@
 import { expect } from 'chai';
 import { createMidiUiController } from '../../js/app/midiUiController.js';
+import { MidiEventRouter } from '../../js/midi/MidiEventRouter.js';
+import { SoundEventBus } from '../../js/game/SoundEvents.js';
+import { makeOutput } from '../support/midi-output.js';
 import { SoundEffectIds } from '../../js/game/SoundEvents.js';
 import { TriggerTypes } from '../../js/level/TriggerTypes.js';
 import { toMidiFlagTriggerType } from '../../js/midi/MidiFlagTriggers.js';
@@ -226,6 +229,84 @@ const createControllerHarness = ({
 };
 
 describe('midiUiController sequencer', function() {
+  it('keeps local test notes off the enabled hardware path while live gameplay still sends', async function() {
+    const hardware = [], previews = [];
+    const output = makeOutput([1], hardware, 'device');
+    const config = { enabled: true, mpe: { enabled: false }, noteRange: { min: 0, max: 127 },
+      position: { mappings: [] }, sfx: { 1: { note: 60, durationTicks: 2 } }, triggers: {} };
+    const router = new MidiEventRouter(config);
+    router.setOutput(output);
+    const timer = { frameTime: 60, speedFactor: 1, getGameTicks: () => 10 };
+    const bus = new SoundEventBus(timer);
+    router.attach(bus);
+    const { controller } = createControllerHarness({ factoryConfig: config,
+      webMidi: { enabled: true, inputs: [], outputs: [output] },
+      createPreviewAudio: () => ({ getState: () => ({ enabled: true }), preview: async notes => { previews.push(notes); return true; }, dispose() {} }),
+      lemmings: { midiEnabled: true, midiRouter: router, midiOut: output,
+        game: { getGameTimer: () => timer, soundEvents: bus },
+        setMidiProjectConfig(next) { router.setMapping(next); this._midiConfig = next; }
+      }
+    });
+    controller.bindMidiUi();
+    hardware.length = 0;
+    expect(await controller.testSelectedSound()).to.equal(true);
+    expect(previews).to.have.length(1);
+    expect(hardware).to.have.length(0);
+    bus.emitSfx('skill-select', 1);
+    expect(hardware.filter(call => call.type === 'noteOn').map(call => call.note)).to.deep.equal([60]);
+    controller.dispose(); router.dispose(); bus.dispose();
+  });
+
+  it('does not reapply runtime music when selection or UI state changes', function() {
+    const { controller, view } = createControllerHarness();
+    controller.bindMidiUi();
+    const initial = view.projectConfigs.length;
+    const config = controller.getMidiConfig();
+    controller.dispatchProjectIntent({ type: 'source.select', sourceId: 'sfx-1' });
+    controller.dispatchProjectIntent({ type: 'track.select', trackId: 'track-1' });
+    controller.dispatchProjectIntent({ type: 'ui.set', ui: { activeRegion: 'clips' } });
+    expect(controller.getMidiConfig()).to.equal(config);
+    expect(view.projectConfigs.length).to.equal(initial);
+    controller.dispose();
+  });
+
+  it('undoes sound edits without changing transport ticks, routing enablement or current selection', function() {
+    const timer = { tickIndex: 91, speedFactor: 2 };
+    const { controller, win } = createControllerHarness({ lemmings: { game: { getGameTimer: () => timer } } });
+    controller.bindMidiUi();
+    controller.dispatchProjectIntent({ type: 'source.mapping.update', sourceId: 'sfx-1', patch: { note: 75 } });
+    controller.dispatchProjectIntent({ type: 'enabled.set', enabled: true });
+    controller.dispatchProjectIntent({ type: 'ui.set', ui: { activeRegion: 'clips' } });
+    expect(win.__LEMMINGS_MIDI_UI__.undo()).to.equal(true);
+    const project = controller.getProject();
+    expect(project.sources.find(source => source.id === 'sfx-1').mapping.note).to.equal(60);
+    expect(project.enabled).to.equal(true);
+    expect(project.ui.activeRegion).to.equal('clips');
+    expect(timer).to.deep.equal({ tickIndex: 91, speedFactor: 2 });
+    expect(win.__LEMMINGS_MIDI_UI__.redo()).to.equal(true);
+    expect(controller.getProject().sources.find(source => source.id === 'sfx-1').mapping.note).to.equal(75);
+    controller.dispose();
+  });
+
+  it('tests successive local events without pausing the game or disabling external output', async function() {
+    const notes = [];
+    let hardwareChanges = 0;
+    const audio = { getState: () => ({ enabled: true }), preview: async plan => { notes.push(plan); return true; }, dispose() {} };
+    const { controller, view } = createControllerHarness({
+      createPreviewAudio: () => audio,
+      factoryConfig: { enabled: true, sfx: { 1: { note: 60, notes: [60, 64, 67], arp: { enabled: true, mode: 'up' } } } },
+      lemmings: { midiEnabled: true, setMidiEnabled() { hardwareChanges += 1; }, game: { getGameTimer: () => ({ tickIndex: 9, frameTime: 30, speedFactor: 2 }) } }
+    });
+    controller.bindMidiUi();
+    expect(await controller.testSelectedSound()).to.equal(true);
+    expect(await controller.testSelectedSound()).to.equal(true);
+    expect(notes.map(plan => plan[0].note)).to.deep.equal([60, 64]);
+    expect(controller.getProject().enabled).to.equal(true);
+    expect(view.midiEnabled).to.equal(true);
+    expect(hardwareChanges).to.equal(0);
+    controller.dispose();
+  });
+
   it('skips unchanged runtime mapping applications and preserves every invalidation boundary', function() {
     const { controller, view, setView } = createControllerHarness();
     controller.bindMidiUi();
@@ -312,8 +393,10 @@ describe('midiUiController sequencer', function() {
     expect(controller.getMidiConfig()).to.equal(edited);
     const replacement = { ...view.getMidiBaseConfig(), input: { channel: 3 } };
     view.getMidiBaseConfig = () => replacement;
+    // The project owns the input channel; an equivalent factory replacement is inert.
+    expect(controller.getMidiConfig()).to.equal(edited);
+    view.getMidiBaseConfig = () => ({ ...replacement, timing: { scheduleAheadMs: 17 } });
     expect(controller.getMidiConfig()).not.to.equal(edited);
-    expect(controller.getMidiConfig()).to.equal(controller.getMidiConfig());
   });
 
   it('applies an event palette while keeping MIDI visibility and enablement separate', function() {

@@ -20,7 +20,7 @@ class ActionFloatingSystem extends ActionBaseSystem {
   }
   /** render Lemming to gamedisplay */
   draw(gameDisplay, lem) {
-    const ani = this.sprites.get(lem.getDirection());
+    const ani = this.spriteProvider?.getActorAnimation?.(this.spriteType, lem.lookRight, lem) || this.sprites.get(lem.getDirection());
     const frame = ani.getFrame(FLOAT_FRAME[lem.frameIndex]);
     gameDisplay.drawFrame(frame, lem.x, lem.y);
   }

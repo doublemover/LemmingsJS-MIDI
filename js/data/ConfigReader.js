@@ -44,6 +44,16 @@ class ConfigReader extends BaseLogger {
       let configData = config[c];
       newConfig.name = configData.name;
       newConfig.path = configData.path;
+      if (configData.spriteSkin != null) {
+        if (typeof configData.spriteSkin !== 'string') {
+          throw new Error('spriteSkin must be a manifest path');
+        }
+        newConfig.spriteSkin = configData.spriteSkin;
+      }
+      if (configData.characterCatalog != null) {
+        if (typeof configData.characterCatalog !== 'string') throw new Error('characterCatalog must be a path');
+        newConfig.characterCatalog = configData.characterCatalog;
+      }
       newConfig.gametype = GameTypes[configData.gametype];
       /// read level config
       const oddFlag = configData['level.useOddTable'];

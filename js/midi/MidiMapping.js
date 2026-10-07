@@ -1,3 +1,4 @@
+import { positionCurveValue } from './midi-mapping/PositionCurve.js';
 import { cloneSafeObject, isPlainObject } from '../util/safeObject.js';
 import {
   CHORD_TYPES,
@@ -113,37 +114,37 @@ class MidiMapping {
       switch (target) {
       case 'note':
         range = resolveRange(entry, positionCfg.xNoteRange?.min ?? 0, positionCfg.xNoteRange?.max ?? 0);
-        noteOffset = (noteOffset ?? 0) + lerp(range.min, range.max, axisValue);
+        noteOffset = (noteOffset ?? 0) + positionCurveValue(entry, axisValue, range.min, range.max);
         return;
       case 'velocity':
         range = resolveRange(entry, velMin, velMax);
-        velocityOverride = lerp(range.min, range.max, axisValue);
+        velocityOverride = positionCurveValue(entry, axisValue, range.min, range.max);
         return;
       case 'timbre':
         range = resolveRange(entry, tMin, tMax);
-        timbreOverride = lerp(range.min, range.max, axisValue);
+        timbreOverride = positionCurveValue(entry, axisValue, range.min, range.max);
         return;
       case 'pan':
         range = resolveRange(entry, pMin, pMax);
-        panOverride = lerp(range.min, range.max, axisValue);
+        panOverride = positionCurveValue(entry, axisValue, range.min, range.max);
         return;
       case 'duration':
         range = resolveRange(entry, durationCfg.min ?? 1, durationCfg.max ?? 24);
-        durationOverride = lerp(range.min, range.max, axisValue);
+        durationOverride = positionCurveValue(entry, axisValue, range.min, range.max);
         return;
       case 'pitchBend':
         range = resolveRange(entry, -1, 1);
-        pitchBendOverride = lerp(range.min, range.max, axisValue);
+        pitchBendOverride = positionCurveValue(entry, axisValue, range.min, range.max);
         return;
       case 'attack':
       case 'decay':
       case 'release':
         range = resolveRange(entry, 0, 2);
-        envelopeOverrides[target] = lerp(range.min, range.max, axisValue);
+        envelopeOverrides[target] = positionCurveValue(entry, axisValue, range.min, range.max);
         return;
       case 'sustain':
         range = resolveRange(entry, 0.25, 2);
-        envelopeOverrides[target] = lerp(range.min, range.max, axisValue);
+        envelopeOverrides[target] = positionCurveValue(entry, axisValue, range.min, range.max);
         return;
       default:
         return;

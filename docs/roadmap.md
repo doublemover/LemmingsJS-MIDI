@@ -779,3 +779,25 @@ second roadmap, gallery, or committed manifest.
 - Remove completed detail when it stops being useful; git preserves history.
 - Prefer observable deliverables over vague intentions.
 - Record hard-cut decisions directly in the relevant milestone.
+
+
+## Live-instrument follow-through
+
+The live-instrument branch adds a single persistent game canvas, Focus/Split/Overlay,
+game-clock transport, event controls, musical undo, isolated local audition, and
+stable-ID selection for eleven recovered bodies. Acceptance instructions are in
+`docs/live-instrument.md`; blocked cloud browser execution is not a UI/audio pass.
+
+- Run the final-tree browser, listening, keyboard/screen-reader, and physical-MIDI
+  acceptance. Preserve zero hardware sends from local event tests.
+- Reconcile the unrecovered historical sequencer/dependency checkpoints. Fresh
+  source fixes do not inherit their historical acceptance counts.
+- Give temporal clips and recording explicit onset/overlap/retrigger semantics.
+  The legacy step editor still lowers notes as a chord or event arp; its per-step
+  probability, Hold/Tie, and recording-gap model need the deeper engine contract.
+- Complete donut and native accessory/eyewear adaptations across every body,
+  inspect their native pixels, and test combinations. The current catalog includes
+  eleven verified bodies and the existing Hydro beret, not an all-prop art pack.
+- Finish the remaining editor repair findings and dependency remediation against
+  the integrated final tree. Do not treat this MIDI/appearance batch as those
+  separate closures or as a global performance gain.

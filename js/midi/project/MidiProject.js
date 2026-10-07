@@ -679,6 +679,7 @@ const createMidiProjectTemplate = (project = {}, options = {}) => {
     name,
     templateId: id,
     enabled: false,
+    tracks: clean.tracks.map(track => ({ ...track, outputId: null })),
     devices: {
       inputId: null,
       outputId: null,
@@ -726,6 +727,8 @@ const importMidiProjectPayload = (payload) => {
   if (!isPlainObject(parsed)) {
     throw new Error('MIDI project import did not contain a project.');
   }
+  if (parsed.kind != null && ![MIDI_PROJECT_EXPORT_KIND, MIDI_TEMPLATE_EXPORT_KIND].includes(parsed.kind)) throw new Error('Unrecognized MIDI project kind.');
+  if (parsed.version != null && parsed.version !== MIDI_PROJECT_VERSION) throw new Error('Unsupported MIDI project version.');
   let projectPayload = null;
   let templateId = null;
   if (parsed.kind === MIDI_TEMPLATE_EXPORT_KIND) {
@@ -742,6 +745,8 @@ const importMidiProjectPayload = (payload) => {
   if (!isPlainObject(projectPayload)) {
     throw new Error('MIDI project import did not contain a project.');
   }
+  if (projectPayload.version != null && projectPayload.version !== MIDI_PROJECT_VERSION) throw new Error('Unsupported MIDI project version.');
+  if (!Array.isArray(projectPayload.tracks) || !Array.isArray(projectPayload.sources) || !Array.isArray(projectPayload.clips)) throw new Error('MIDI project must contain tracks, sources and clips arrays.');
   return sanitizeMidiProject({
     ...projectPayload,
     templateId: templateId ?? projectPayload.templateId ?? null
