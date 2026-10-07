@@ -1,3 +1,5 @@
+import { createCasinoTerrainPieces, createCasinoSmokeHazard } from './CasinoArchitecture.js';
+import { createOldVegasPack } from './OldVegasPack.js';
 import { createNeonCabaretPack, createCabaretPainter, createCabaretPiece, NEON_CABARET_PALETTE } from './NeonCabaretPack.js';
 import { TriggerTypes } from '../level/TriggerTypes.js';
 
@@ -35,6 +37,8 @@ function createNeonCabaretTheme() {
       p.rect(0, 21, 80, 3, 9); for (let x = 2; x < 80; x += 10) p.line(x, 23, x + 3, 21, 0);
     }, { triggerEffectId: TriggerTypes.DROWN, trigger: { x: 4, y: 7, width: 72, height: 13 }, hazardCue: 'Rose liquid, red rim and striped containment basin', active: true })
   ];
-  return { ...createNeonCabaretPack(), terrainPieces, hazards, version: 1, background: '#160f29', description: 'A neon cabaret housed in a velvet-and-brass power station.' };
+  terrainPieces.push(...createCasinoTerrainPieces(terrainPieces.length));
+  const casino = createOldVegasPack();
+  return { ...createNeonCabaretPack(), casinoScenery: [...casino.pieces], smokeHazard: createCasinoSmokeHazard(), terrainPieces, hazards, version: 2, background: '#160f29', description: 'A neon cabaret housed in a velvet-and-brass power station.' };
 }
 export { createNeonCabaretTheme };

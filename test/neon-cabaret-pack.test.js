@@ -21,13 +21,13 @@ describe('Neon Cabaret indexed asset contract', () => {
     for (const h of theme.hazards) { const r = h.trigger; assert.ok(r.x >= 0 && r.y >= 0 && r.width > 0 && r.height > 0); assert.ok(r.x + r.width <= h.width && r.y + r.height <= h.height); assert.ok(!theme.pieces.some(p => p.id === h.id)); }
     assert.ok(theme.pieces.every(p => p.triggerEffectId === undefined));
   });
-  it('includes six original terrain pieces, one steel piece and masked arch geometry', () => {
-    const theme = createNeonCabaretTheme(); assert.equal(theme.terrainPieces.length, 6);
-    assert.equal(theme.terrainPieces.filter(p => p.isSteel).length, 1);
+  it('preserves six original pieces and adds six architectural pieces with two steel pieces and masked arch geometry', () => {
+    const theme = createNeonCabaretTheme(); assert.equal(theme.terrainPieces.length, 12);
+    assert.equal(theme.terrainPieces.filter(p => p.isSteel).length, 2);
     const arch = theme.terrainPieces[5]; assert.equal(arch.image.frames[0][18 * arch.width + 28], 128);
     for (const p of theme.terrainPieces) assert.equal(p.image.frames[0].length, p.width * p.height);
   });
-  it('bounds raw indexed storage below 512 KiB', () => {
-    const t = createNeonCabaretTheme(); const bytes = [...t.pieces, ...t.terrainPieces, ...t.hazards].reduce((n, p) => n + p.image.frames.reduce((s, f) => s + f.byteLength, 0), 0); assert.ok(bytes < 512 * 1024, `${bytes} bytes`);
+  it('bounds raw indexed storage below 1 MiB excluding separately bounded scenery', () => {
+    const t = createNeonCabaretTheme(); const bytes = [...t.pieces, ...t.terrainPieces, ...t.hazards].reduce((n, p) => n + p.image.frames.reduce((s, f) => s + f.byteLength, 0), 0); assert.ok(bytes < 1024 * 1024, `${bytes} bytes`);
   });
 });

@@ -1,3 +1,5 @@
+import { createCasinoTerrainPieces } from './CasinoArchitecture.js';
+import { createOldVegasPack } from './OldVegasPack.js';
 import { createNeonCabaretTheme } from './NeonCabaretTheme.js';
 import { createCabaretPiece, NEON_CABARET_PALETTE } from './NeonCabaretPack.js';
 import { TriggerTypes } from '../level/TriggerTypes.js';
@@ -5,8 +7,8 @@ import { TriggerTypes } from '../level/TriggerTypes.js';
 const NEON_CABARET_STYLE = {
   groundSet: 100,
   customAssets: true,
-  terrainPieces: ['Velvet riveted foundation', 'Glass catwalk slab', 'Brass staircase', 'Steel amplifier block', 'Brass connector column', 'Heart marquee arch'].map((name, id) => ({ id, name })),
-  gadgetPieces: ['Encore exit', 'Stage entrance', 'Live arc gap', 'Velvet curtain press', 'Rose coolant bath', 'Encore bulb garland', 'Dancing spotlight rail', 'Heart of the show transformer', 'Velvet dynamo', 'Turquoise glass catwalk fascia', 'Footlight encore chase'].map((name, id) => ({ id, name }))
+  terrainPieces: ['Velvet riveted foundation', 'Glass catwalk slab', 'Brass staircase', 'Steel amplifier block', 'Brass connector column', 'Heart marquee arch'].map((name, id) => ({ id, name })).concat(createCasinoTerrainPieces().map(p => ({ id: p.id, name: p.name }))),
+  gadgetPieces: ['Encore exit', 'Stage entrance', 'Live arc gap', 'Velvet curtain press', 'Rose coolant bath', 'Encore bulb garland', 'Dancing spotlight rail', 'Heart of the show transformer', 'Velvet dynamo', 'Turquoise glass catwalk fascia', 'Footlight encore chase'].map((name, id) => ({ id, name })).concat([{ id: 11, name: 'Dense cigarette-smoke cloud' }], createOldVegasPack().pieces.map((p, i) => ({ id: i + 12, name: p.name })))
 };
 function createNeonCabaretGroundSet() {
   const theme = createNeonCabaretTheme();
@@ -22,11 +24,11 @@ function createNeonCabaretGroundSet() {
     p.line(7, 24, 40, 24, 9); for (let x = 7; x < 43; x += 8) p.ellipse(x, 3, 2, 2, 10);
   });
   const terrainImages = theme.terrainPieces.map(p => ({ ...p.image, steelWidth: p.isSteel ? p.width : 0, steelHeight: p.isSteel ? p.height : 0 }));
-  const objectImages = [exit, entrance, ...theme.hazards, ...theme.pieces].map((p, id) => ({ ...p.image,
+  const objectImages = [exit, entrance, ...theme.hazards, ...theme.pieces, theme.smokeHazard, ...theme.casinoScenery].map((p, id) => ({ ...p.image,
     animationLoop: id !== 1 && p.triggerEffectId !== TriggerTypes.TRAP, firstFrameIndex: 0,
     trigger_left: p.trigger?.x || 0, trigger_top: p.trigger?.y || 0,
     trigger_width: p.trigger?.width || 0, trigger_height: p.trigger?.height || 0,
-    characterHazard: ({ 2: 'electric', 3: 'crush', 4: 'acid' })[id] || null,
+    characterHazard: p.characterHazard || ({ 2: 'electric', 3: 'crush', 4: 'acid' })[id] || null,
     trigger_effect_id: p.triggerEffectId || 0, preview_image_index: 0, trap_sound_effect_id: -1 }));
   // TRAP uses the normal one-shot animation and frame-count cooldown. Its final
   // frame is the idle raised press, ready for the next engine trigger.

@@ -1,75 +1,93 @@
-# Old Vegas decoration pack
+# Old Vegas / Casino Grand Revue
 
-Select **Scenery → Old Vegas · velvet & bulbs** in procedural controls, or open
-`procgen.html?decoration=old-vegas&lanes=1&shape=rounded_triangle&zoom=4&follow=0`.
-The source terrain pack remains independently selectable. Shared links retain the
-scenery choice. **Original scenery** restores the existing presentation.
+Select **Scenery → Old Vegas · Grand Revue** in procedural controls, or open
+`procgen.html?decoration=old-vegas`. The terrain pack stays independently
+selectable; shared links retain the scenery choice.
 
-## Contents
+For the full-size architectural spectacle, import
+`examples/neon-cabaret/grand-revue.nxlv` in the editor. It uses the real
+**neon-cabaret** custom groundset, 1280×320 level dimensions, twelve selectable
+terrain pieces and 65 gadgets. The original Opening Night level and gadget
+IDs 0–10 are preserved. The Grand Revue includes gameplay hazards and skill
+supplies; it is an editable playable scene, not a flat card-game interface.
 
-44 original code-native indexed pixel-art pieces, each with 16 frames:
+## Architecture and identity
 
-- Six chasing marquees: Old Vegas, Jackpot, Cabaret, hydro, Lucky 7, Showtime
-- Symmetric, hand-authored heart, club, spade and diamond medallions
-- Pearl, ruby-square and diamond-star bulb chases
-- Garnet velvet swag with delayed tassel sway
-- Roulette rosette, continuously rolling slot reels and Art Deco fan lights
-- Three clearly adult humanoid hydro revue dancers: hip shimmy, Charleston and
-  kickline. Fitted red stage bodices and shorts, small cobalt feather bustle,
-  orange hair, long stockings, gloves, heels, hip sway, torso bounce and delayed
-  tassel follow-through. Intimate areas remain covered; these are non-explicit
-  stylized cabaret sprites. The earlier triangle performer is preserved in Git
-  history, not used as the revised showgirl's body.
-- Eight chosen chip denominations, each as labeled side-view stacks and a
-  face-on chip: **1, 5, 25, 100, 500, 1,000, 5,000 and 25,000**. Labels abbreviate
-  thousands as 1K/5K/25K. Colors are cream, red, green, black, purple, pale gold,
-  orange and cobalt respectively. This is the pack's complete authored set,
-  **not a claim of universal casino denominations or standardized colors**.
-- Eight full 50-native-pixel playing cards: ace and ten of each suit, red
-  hearts/diamonds and black clubs/spades, with inverted lower corner indices.
-  At a typical 200-pixel native viewport this is around one quarter-screen high;
-  camera zoom and viewport size naturally change the fraction.
+- 256 px black-marble promenade and gold cornice;128 px velvet/gold stairs
+- 160 px ivory/black fluted marble pillars;192 px velvet dais
+- 256 px double festoon ropes and velvet proscenium; oversized neon crown
+-Three 192×192 adult humanoid hydro revue sprites with cobalt triangle heads,
+  dark oval eyes, orange berets, fitted garnet costumes, covered intimate areas,
+  stockings, gloves and small feathers. Distinct shimmy, Charleston and kickline
+  poses have procedural torso/hip bounce and delayed head/feather follow-through.
+  These use actual image-generated pixels imported into the runtime indexed
+  palette; they are not enlarged versions of the former primitive human face.
 
-Slot symbols travel vertically by three native pixels per frame through separate
-clipped 12×16 reel windows. Adjacent symbols are visible at the window edges;
-this is rolling strip animation rather than instantaneous icon replacement.
+There are 53 scenery pieces, each exposing 16 frame slots. Static architecture
+reuses its frame buffer. The six new architectural terrain entries are IDs 6–11;
+scenery versions remain noncolliding. At 192 px, the performer is three times the
+height of the earlier 64 px version in editor/world coordinates. Procedural lanes
+are 96 px high, so tall stage sprites explicitly fit within 68 px there; full-size
+presentation belongs to the supplied 320 px-high level.
 
-The actual renderer-compatible source is `js/decorations/OldVegasPack.js`.
-`assets/decorations/old-vegas/pack.json` describes the exported atlas;
-`atlas.png` contains every frame, and `contact-sheet.png` is a 3× pixel preview.
-Regenerate these with `node tools/exportDecorationPack.js`, then optionally
-`python tools/exportDecorationAnimation.py` (Pillow) for the animated contact sheet.
-`examples/old-vegas-gallery.html` animates the same runtime sprites and links to play.
-No generated-image placeholder or external asset download is needed at runtime.
+## Current chip references and original design
 
-## Rendering contract
+First-party product references were checked on 7 October 2026:
 
-`getDecorationPack(id)` returns a cached catalog. Each piece contains a stable ID,
-name, placement (`ceiling`, `stage`, `trim`) and indexed `image` with fixed width,
-height, frame arrays and palette `getColor(index)` returning packed ABGR. Index
-128 is transparent. The same adapter also registers **Neon Cabaret Power Station**.
-Neon hazard artwork in this scenery layer is idle, never operational collision or
-triggers. The separate playable Neon editor theme supplies real hazard behavior.
+- [Poker Foundry, The Foundry ceramic chips](https://pokerfoundry.net/products/the-foundry/),
+  including its current denomination and close-up image links. Its direct-print
+  faces and edge patterns informed distinct center inlays and contrasting spots.
+- [Poker Merchant, Skyline cash-game chips](https://pokermerchant.com/products/poker-chips-set-skyline-cash-game-500),
+  including the product image showing face values and aligned colored edges.
 
-The decoration layer never queries, composes, evicts or changes collision chunks.
-Ceiling/stage art is masked behind the existing terrain raster, and actors render
-last. Fascia begins at local y=80, below the generated walking surface's maximum
-of 78. It decorates lower foundations; it is not traversable new terrain.
-At raster steps ≥4, decoration is omitted. Otherwise only visible lanes/chunks
-are visited, with a 1,024-placement ceiling. Frame bitmaps, terrain occlusion and
-composited frames are cached. Animation advances once per four simulation ticks,
-pauses with simulation, and freezes for `prefers-reduced-motion: reduce`.
+No vendor logo, skyline artwork or proprietary chip face is copied. This pack
+uses original HYDRO/VEGAS inlays, small suit marks, denomination-specific split
+edge groups, concentric rings and matching side-stack edge colors. The complete
+chosen values remain **1, 5, 25, 100, 500, 1, 000, 5, 000 and 25, 000**, abbreviated 1 K/5 K/25 K
+where appropriate. These are authored values and colors, not a universal casino
+standard. Eight full 50 px playing cards and genuinely rolling clipped slot reels
+remain available as supporting props rather than the whole visual setting.
 
-## Verification
+## Smoke hazard
 
-`test/decoration-packs.test.js` checks palette/alpha integrity, unique IDs, frame
-changes, catalog memory below 2 MiB, symmetric suit stencils, explicit chip values
-and both views, complete 50px cards, actual slot-window translation, three distinct
-human dance loops, deterministic noninteractive placement, share URLs, occlusion
-reuse and reduced-motion caching. The frame payload is approximately 1.57 MiB.
+Stable gadget 11 is a 96×88 dense gray cigarette-smoke cloud rising from an
+ashtray. It uses the existing FRYING trigger timing with explicit
+`characterHazard: 'smoke'`; the shared character-effects integration supplies
+its coughing/collapse presentation. The fixed local contact rectangle is
+x 7,y 12,width 82,height 66. The object cloud is dense and continuous, not a flame
+or steam jet. Scenery-only catalogs never activate this trigger.
 
-The final refinement suite passed 2,627 tests; lint, critical typecheck,
-undefined-call checks and dependency checks also passed. PNG sprite crops were visually inspected. Live Chromium
-QA was attempted but its download returned invalid/truncated ZIPs, and the cloud
-GUI browser blocked the local gallery with `net::ERR_BLOCKED_BY_CLIENT`. No live
-browser screenshot is claimed.
+## Runtime and provenance
+
+`OldVegasPack.js`, `CasinoArchitecture.js` and `HydroRevue.js` produce actual
+renderer-compatible indexed frames. Transparency is 128. Individual pieces may
+use their own palettes; the exported manifest records those palettes.
+`HydroRevuePixels.js` comes from the approved transparent source sheet at
+`assets/decorations/hydro-revue/source.png`. `tools/importHydroRevue.py` identifies
+its three original-alpha connected components, scales to 192 px cells and
+quantizes 127 colors. Animation is deterministic deformation of those pixels.
+The source was generated with OpenAI imagegen, not copied from a third-party
+character illustration. See the adjacent provenance file for the generation brief.
+
+The decoration layer uses viewport-sized canvases, cached frames/placements and
+screen-space sampling; tiny sprites become representative-color bins at far
+zoom instead of disappearing. Pack identity and reduced-motion settings
+invalidate its caches. Terrain masks stay in front of background art, actors
+stay readable, and architecture/scenery does not mutate collision. Actual
+terrain and hazard entries are supplied separately through the existing editor
+and game contracts.
+
+## Reproduce proofs
+
+1. `node tools/exportDecorationPack.js`
+2. `node tools/exportCasinoShowcase.js <temporary-frame-directory>`
+3. `python tools/exportCasinoProof.py <temporary-frame-directory>`
+
+The PNG and GIF proofs combine an actual level-asset render with full-size
+runtime sprites. The HTML gallery uses the same frames. PNG crops were visually
+reviewed. Live browser QA remains unavailable after the cloud browser blocked
+the local gallery; no browser-playtest screenshot is claimed.
+
+Final verification: 2,669 tests passed, including a real Grand Revue Level load
+and smoke-trigger contact. Lint, critical typecheck, undefined-call scan,
+dependency check and deterministic recipe regeneration check passed.

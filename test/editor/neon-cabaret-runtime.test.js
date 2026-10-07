@@ -26,7 +26,7 @@ describe('Neon Cabaret operational groundset', () => {
   beforeEach(() => registerStyle('neon-cabaret', NEON_CABARET_STYLE));
   it('loads editor palette and all named terrain, scenery and triggers without DAT files', async () => {
     const a = await new EditorAssetCache().loadStyleAssets('NEON-CABARET', {path:'lemmings'}, provider);
-    assert.equal(a.styleName,'neon-cabaret');assert.equal(a.terrain.length,6);assert.equal(a.gadgets.length,11);assert.equal(a.entranceId,1);assert.equal(a.exitId,0);assert.equal(a.triggers.length,4);assert.equal(getStyle('neon-cabaret').customAssets,true);
+    assert.equal(a.styleName,'neon-cabaret');assert.equal(a.terrain.length,12);assert.equal(a.gadgets.length,65);assert.equal(a.entranceId,1);assert.equal(a.exitId,0);assert.equal(a.triggers.length,5);assert.equal(getStyle('neon-cabaret').customAssets,true);
     assert.doesNotThrow(()=>new ParticleTable(a.terrainImages[0].palette));
   });
   it('builds a real Level with walkable colored terrain, steel, entrance, exit and operational hazards', async () => {
@@ -55,6 +55,15 @@ describe('Neon Cabaret operational groundset', () => {
     assert.equal(demo.entrances.length,1);assert.equal(demo.triggers.length,4);assert.equal(demo.needCount,5);
     assert.equal(demo.getGroundMaskLayer().hasGroundAt(410,128),false);
     const g=createNeonCabaretGroundSet();assert.deepEqual(g.getObjectImages()[3].frames[15],g.getObjectImages()[3].frames[0]);
+  });
+  it('loads the full-size Grand Revue with real architecture and the appended smoke trigger', async () => {
+    const source = fs.readFileSync(new URL('../../examples/neon-cabaret/grand-revue.nxlv', import.meta.url), 'utf8');
+    const level = await loadEditorLevel(NxlvParser.parse(source), { path: 'lemmings' }, provider);
+    assert.equal(level.width, 1280); assert.equal(level.height, 320); assert.equal(level.entrances.length, 1);
+    assert.ok(level.getGroundMaskLayer().hasGroundAt(12, 274));
+    const smoke = level.triggers.find(t => t.owner?.animation?.objectImg?.characterHazard === 'smoke');
+    assert.ok(smoke); assert.equal(smoke.trigger(925, 272, 100), TriggerTypes.FRYING);
+    assert.ok(level.objects.some(o => o.animation.objectImg.width === 192 && o.animation.objectImg.height === 192));
   });
   it('routes custom theme contacts through the shared cosmetic hazards without filtering original theme art', async () => {
     const catalog = JSON.parse(fs.readFileSync('assets/characters/catalog.json', 'utf8'));
