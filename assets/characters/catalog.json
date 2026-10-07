@@ -4,62 +4,74 @@
     {
       "id": "rounded_triangle",
       "label": "Hydro triangle",
-      "path": "assets/hydro/hydro-skin.json"
+      "path": "assets/hydro/hydro-skin.json",
+      "accessoriesPath": "assets/characters/accessories/rounded_triangle.json"
     },
     {
       "id": "capsule",
       "label": "Capsule",
-      "path": "assets/characters/capsule.json"
+      "path": "assets/characters/capsule.json",
+      "accessoriesPath": "assets/characters/accessories/capsule.json"
     },
     {
       "id": "circle",
       "label": "Circle",
-      "path": "assets/characters/circle.json"
+      "path": "assets/characters/circle.json",
+      "accessoriesPath": "assets/characters/accessories/circle.json"
     },
     {
       "id": "circle_two_ears",
       "label": "Circle Two Ears",
-      "path": "assets/characters/circle_two_ears.json"
+      "path": "assets/characters/circle_two_ears.json",
+      "accessoriesPath": "assets/characters/accessories/circle_two_ears.json"
     },
     {
       "id": "four_lobed_butterfly",
       "label": "Four Lobed Butterfly",
-      "path": "assets/characters/four_lobed_butterfly.json"
+      "path": "assets/characters/four_lobed_butterfly.json",
+      "accessoriesPath": "assets/characters/accessories/four_lobed_butterfly.json"
     },
     {
       "id": "heart",
       "label": "Heart",
-      "path": "assets/characters/heart.json"
+      "path": "assets/characters/heart.json",
+      "accessoriesPath": "assets/characters/accessories/heart.json"
     },
     {
       "id": "rounded_cube",
       "label": "Rounded Cube",
-      "path": "assets/characters/rounded_cube.json"
+      "path": "assets/characters/rounded_cube.json",
+      "accessoriesPath": "assets/characters/accessories/rounded_cube.json"
     },
     {
       "id": "rounded_diamond",
       "label": "Rounded Diamond",
-      "path": "assets/characters/rounded_diamond.json"
+      "path": "assets/characters/rounded_diamond.json",
+      "accessoriesPath": "assets/characters/accessories/rounded_diamond.json"
     },
     {
       "id": "rounded_head_two_ears",
       "label": "Rounded Head Two Ears",
-      "path": "assets/characters/rounded_head_two_ears.json"
+      "path": "assets/characters/rounded_head_two_ears.json",
+      "accessoriesPath": "assets/characters/accessories/rounded_head_two_ears.json"
     },
     {
       "id": "six_lobed_flower",
       "label": "Six Lobed Flower",
-      "path": "assets/characters/six_lobed_flower.json"
+      "path": "assets/characters/six_lobed_flower.json",
+      "accessoriesPath": "assets/characters/accessories/six_lobed_flower.json"
     },
     {
       "id": "twelve_scalloped_rosette",
       "label": "Twelve Scalloped Rosette",
-      "path": "assets/characters/twelve_scalloped_rosette.json"
+      "path": "assets/characters/twelve_scalloped_rosette.json",
+      "accessoriesPath": "assets/characters/accessories/twelve_scalloped_rosette.json"
     },
     {
       "id": "donut",
       "label": "Donut",
-      "path": "assets/characters/donut.json"
+      "path": "assets/characters/donut.json",
+      "accessoriesPath": "assets/characters/accessories/donut.json"
     }
   ]
 }

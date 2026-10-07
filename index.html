@@ -627,11 +627,27 @@
 
     <details class="character-controls"><summary>Characters</summary><div>
       <label>Body <select id="characterShape" disabled><option value="classic">Classic lemmings</option></select></label>
-      <label><input id="characterCustomColors" type="checkbox" /> Custom palette</label>
+      <label><input id="characterCustomColors" type="checkbox" /> Custom body / hat palette</label>
       <label>Body color <input id="characterBodyColor" type="color" value="#2b6ff6" /></label>
       <label>Dot palette <select id="characterBodyPalette" aria-label="Named dot body colors"></select></label>
       <label>Hat / prop color <input id="characterPropColor" type="color" value="#ff813d" /></label>
       <label>Hat palette <select id="characterPropPalette" aria-label="Named hat and prop colors"></select></label>
+      <fieldset><legend>Ears</legend>
+        <label>Accessory <select id="characterAccessory-ears" aria-label="Ear accessory"></select></label>
+        <label>Band color <input id="characterAccessory-earsColor" type="color" value="#ff813d" /></label>
+        <label>Palette <select id="characterAccessory-earsPalette" aria-label="Ear accessory palette"></select></label>
+      </fieldset>
+      <fieldset><legend>Neck</legend>
+        <label>Accessory <select id="characterAccessory-neck" aria-label="Neck accessory"></select></label>
+        <label>Cloth color <input id="characterAccessory-neckColor" type="color" value="#ff813d" /></label>
+        <label>Palette <select id="characterAccessory-neckPalette" aria-label="Neck accessory palette"></select></label>
+      </fieldset>
+      <fieldset><legend>Eyewear</legend>
+        <label>Style <select id="characterAccessory-eyewear" aria-label="Eyewear style"></select></label>
+        <label>Frame color <input id="characterAccessory-eyewearColor" type="color" value="#ff813d" /></label>
+        <label>Palette <select id="characterAccessory-eyewearPalette" aria-label="Eyewear frame palette"></select></label>
+      </fieldset>
+      <small>One item per slot. Headphones, a bow and eyewear can be worn together; lenses and ear pads keep their own material.</small>
       <span id="characterStatus" role="status">Classic lemmings. Other bodies load on selection.</span>
     </div></details>
     <div class="game-appbar">

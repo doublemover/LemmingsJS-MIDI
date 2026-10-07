@@ -77,6 +77,18 @@ alongside the original Hydro palette and custom inputs. Body/prop colors remap i
 slots while retaining alpha, eyes, outlines, tool colors, native dimensions, and
 animation timing. No additional palette has been labeled user-approved.
 
+Alternate bodies also support headphones (ears), bow tie (neck), and five eyewear
+styles: monocle, tall oval frames, separate trapezoid lenses, classic sunglasses,
+and round sunglasses. Each slot has its own named/custom color. Selecting an item
+replaces only that slot; the three slots can stack with the approved beret. Lens
+and ear-pad material remains separate from the color controls. The extra packs
+load only when selected, and they are disabled for Classic without erasing saved
+choices. Accessories follow the current body pose and survive actor recreation
+through the same stable appearance selection; they add no simulation fields.
+Their decoder proofs include every body and named color plus turn, climb, float
+and landing. In-game visual acceptance is still required. Beanie, hat, bulb, tuft
+and crown are not yet implemented.
+
 ## Acceptance still needed
 
 The cloud's browser launch is blocked by socket restrictions. DOM/core tests and

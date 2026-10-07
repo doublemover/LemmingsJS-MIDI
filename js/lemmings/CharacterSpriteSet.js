@@ -1,4 +1,5 @@
 import { PixelSpriteSkin } from './PixelSpriteSkin.js';
+import { normalizeCharacterAccessories, characterAppearanceKey, hasCharacterAccessories, validateAccessoryLayers, composeCharacterAccessories } from './CharacterAccessories.js';
 
 const CHARACTER_STORAGE_KEY = 'lemmings.character.appearance.v1';
 let preference = Object.freeze({ shape: 'classic', bodyColor: null, propColor: null });
@@ -7,7 +8,8 @@ const validColor = color => /^#[0-9a-f]{6}$/i.test(color || '') ? color.toLowerC
 const setCharacterPreference = next => {
   preference = Object.freeze({
     shape: typeof next?.shape === 'string' ? next.shape : 'classic',
-    bodyColor: validColor(next?.bodyColor), propColor: validColor(next?.propColor)
+    bodyColor: validColor(next?.bodyColor), propColor: validColor(next?.propColor),
+    ...normalizeCharacterAccessories(next)
   });
   return preference;
 };
@@ -46,6 +48,7 @@ class CharacterSpriteSet {
     this.loadText = loadText;
     this.getPreference = getPreference;
     this.manifests = new Map();
+    this.accessoryLayers = new Map();
     this.skins = new Map();
     this.pending = new Map();
     this.error = null;
@@ -70,6 +73,7 @@ class CharacterSpriteSet {
     this.error = null;
     try {
       await Promise.all(shapes.map(shape => this.load(shape)));
+      if (hasCharacterAccessories(settings)) await Promise.all(shapes.map(shape => this.loadAccessories(shape)));
       // Decode the requested variants outside the render loop.
       const decoded = shapes.map(shape => this.skinForAppearance({ ...settings, shape: shape.id }));
       if (this.getPreference() === settings) { this.activePreference = settings; this.activeSkins = decoded; }
@@ -85,7 +89,7 @@ class CharacterSpriteSet {
         // Validate before admitting it to the cache.
         const skin = new PixelSpriteSkin(manifest);
         this.manifests.set(shape.id, manifest);
-        this.skins.set(JSON.stringify([shape.id, null, null]), skin);
+        this.skins.set(characterAppearanceKey({ shape: shape.id }), skin);
         return manifest;
       }).finally(() => this.pending.delete(shape.id));
       this.pending.set(shape.id, pending);
@@ -93,13 +97,33 @@ class CharacterSpriteSet {
     return this.pending.get(shape.id);
   }
 
+  loadAccessories(shape) {
+    if (this.accessoryLayers.has(shape.id)) return Promise.resolve(this.accessoryLayers.get(shape.id));
+    const key = `accessories:${shape.id}`;
+    if (!this.pending.has(key)) {
+      const pending = Promise.resolve().then(() => {
+        if (!shape.accessoriesPath) throw new Error(`Accessory art unavailable for ${shape.id}`);
+        return this.loadText(shape.accessoriesPath);
+      }).then(text => {
+        const pack = validateAccessoryLayers(JSON.parse(text), this.manifests.get(shape.id), shape.id);
+        this.accessoryLayers.set(shape.id, pack);
+        return pack;
+      }).finally(() => this.pending.delete(key));
+      this.pending.set(key, pending);
+    }
+    return this.pending.get(key);
+  }
+
   skinForAppearance(appearance) {
     if (appearance.shape === 'classic') return this.base;
-    const key = JSON.stringify([appearance.shape, appearance.bodyColor, appearance.propColor]);
+    const key = characterAppearanceKey(appearance);
     if (this.skins.has(key)) return this.skins.get(key);
     const manifest = this.manifests.get(appearance.shape);
     if (!manifest) return this.base;
-    const skin = new PixelSpriteSkin(recolorManifest(manifest, appearance));
+    const pack = this.accessoryLayers.get(appearance.shape);
+    if (hasCharacterAccessories(appearance) && !pack) return this.base;
+    const colored = recolorManifest(manifest, appearance);
+    const skin = new PixelSpriteSkin(composeCharacterAccessories(colored, pack, appearance));
     // One active collection plus a small edit working set. Actor identities are never cached.
     while (this.skins.size >= Math.max(32, this.shapes.length * 2)) this.skins.delete(this.skins.keys().next().value);
     this.skins.set(key, skin);

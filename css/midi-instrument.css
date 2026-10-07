@@ -90,4 +90,7 @@ body.game-page.studio-open[data-midi-layout=overlay] .midi-sequencer { grid-colu
 .character-controls label { display: flex; align-items: center; gap: 5px; }
 .character-controls input[type=color] { width: 40px; height: 28px; padding: 0; }
 .character-controls select { max-width: 240px; }
+.character-controls fieldset { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; margin: 0; padding: 8px; border: 1px solid #bca98a; }
+.character-controls legend { padding: 0 4px; }
+.character-controls small { flex-basis: 100%; }
 #characterStatus { font-size: 11px; }

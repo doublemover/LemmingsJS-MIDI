@@ -1,5 +1,6 @@
 import { CHARACTER_STORAGE_KEY, getCharacterPreference, setCharacterPreference } from '../lemmings/CharacterSpriteSet.js';
 import { CHARACTER_COLORS } from '../lemmings/characterColors.js';
+import { CHARACTER_ACCESSORIES, ACCESSORY_SLOTS } from '../lemmings/CharacterAccessories.js';
 
 const createCharacterUiController = ({ document, window, getView }) => {
   const byId = id => document?.getElementById(id);
@@ -20,6 +21,12 @@ const createCharacterUiController = ({ document, window, getView }) => {
     const preference = getCharacterPreference();
     select.value = options.some(([value]) => value === preference.shape) ? preference.shape : 'classic';
     select.disabled = false;
+    for (const slot of ACCESSORY_SLOTS) {
+      for (const suffix of ['', 'Color', 'Palette']) {
+        const control = byId(`characterAccessory-${slot}${suffix}`);
+        if (control) control.disabled = select.value === 'classic';
+      }
+    }
     const ok = await sprites.prepare();
     if (request !== generation) return;
     const status = byId('characterStatus');
@@ -27,14 +34,46 @@ const createCharacterUiController = ({ document, window, getView }) => {
     getView()?.game?.render?.();
   };
   const change = () => {
+    const current = getCharacterPreference();
+    const accessories = { ...current.accessories }, accessoryColors = { ...current.accessoryColors };
+    for (const slot of ACCESSORY_SLOTS) {
+      const select = byId(`characterAccessory-${slot}`), color = byId(`characterAccessory-${slot}Color`);
+      if (select) accessories[slot] = select.value;
+      if (color) accessoryColors[slot] = color.value;
+    }
     const next = setCharacterPreference({ shape: byId('characterShape')?.value,
       bodyColor: byId('characterCustomColors')?.checked ? byId('characterBodyColor')?.value : null,
-      propColor: byId('characterCustomColors')?.checked ? byId('characterPropColor')?.value : null });
+      propColor: byId('characterCustomColors')?.checked ? byId('characterPropColor')?.value : null,
+      accessories, accessoryColors });
     try { window?.localStorage?.setItem(CHARACTER_STORAGE_KEY, JSON.stringify(next)); } catch { /* Apply for this session even if storage is full. */ }
     sync();
   };
   const bind = () => {
     const p = getCharacterPreference();
+    for (const slot of ACCESSORY_SLOTS) {
+      const select = byId(`characterAccessory-${slot}`);
+      const input = byId(`characterAccessory-${slot}Color`);
+      const palette = byId(`characterAccessory-${slot}Palette`);
+      if (!select || !input || !palette) continue;
+      select.replaceChildren();
+      for (const item of [{ id: 'none', label: 'None' }, ...CHARACTER_ACCESSORIES[slot]]) {
+        const option = document.createElement('option'); option.value = item.id; option.textContent = item.label; select.appendChild(option);
+      }
+      select.value = p.accessories?.[slot] || 'none';
+      input.value = p.accessoryColors?.[slot] || '#ff813d';
+      palette.replaceChildren();
+      for (const [value, label] of [['#ff813d', 'Original Hydro'], ['custom', 'Custom color'], ...CHARACTER_COLORS.prop.map(color => [color.hex, color.label])]) {
+        const option = document.createElement('option'); option.value = value; option.textContent = label; palette.appendChild(option);
+      }
+      const syncPalette = () => { palette.value = input.value === '#ff813d' || CHARACTER_COLORS.prop.some(color => color.hex === input.value) ? input.value : 'custom'; };
+      syncPalette();
+      select.addEventListener('change', change);
+      input.addEventListener('change', () => { syncPalette(); change(); });
+      palette.addEventListener('change', () => {
+        if (palette.value === 'custom') { input.focus(); return; }
+        input.value = palette.value; change();
+      });
+    }
     if (byId('characterCustomColors')) byId('characterCustomColors').checked = !!(p.bodyColor || p.propColor);
     if (byId('characterBodyColor')) byId('characterBodyColor').value = p.bodyColor || '#2b6ff6';
     if (byId('characterPropColor')) byId('characterPropColor').value = p.propColor || '#ff813d';
