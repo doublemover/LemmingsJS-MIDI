@@ -18,6 +18,18 @@ describe('preserved editor-audit examples', function() {
     }
   });
 
+  it('preserves all 324 unique classic-level identities in the historical manifest', function() {
+    const manifest = JSON.parse(fs.readFileSync('examples/editor-audit/historical-base-level-manifest.json', 'utf8'));
+    expect(manifest.format).to.equal('lemmings-classic-json');
+    expect(manifest.levels).to.have.lengthOf(324);
+    expect(new Set(manifest.levels.map(level => level.id)).size).to.equal(324);
+    expect(manifest.packs.map(pack => pack.count)).to.deep.equal([120, 100, 4, 4, 32, 64]);
+    for (const level of manifest.levels) {
+      expect(level.classicRoundtrip).to.equal(true);
+      expect(level.sha256).to.match(/^[a-f0-9]{64}$/);
+    }
+  });
+
   it('imports the complete two-level pack with both original level identities', function() {
     const result = createEditorProjectFromPackArchive(fs.readFileSync('examples/editor-audit/audit-level-pack.json', 'utf8'));
     expect(result.ok).to.equal(true);
