@@ -1,0 +1,584 @@
+[
+  {
+    "tag": "select",
+    "id": "editorGameTypeSelect",
+    "tool": null,
+    "title": "Choose the level pack to edit."
+  },
+  {
+    "tag": "select",
+    "id": "editorLevelGroupSelect",
+    "tool": null,
+    "title": "Choose the level group within the selected pack."
+  },
+  {
+    "tag": "select",
+    "id": "editorLevelIndexSelect",
+    "tool": null,
+    "title": "Choose the level index within the selected group."
+  },
+  {
+    "tag": "select",
+    "id": "editorSavedSelect",
+    "tool": null,
+    "title": "Choose a saved editor level from local storage."
+  },
+  {
+    "tag": "select",
+    "id": "editorProjectSelect",
+    "tool": null,
+    "title": "Choose an editor project from local storage."
+  },
+  {
+    "tag": "select",
+    "id": "editorProjectLevelSelect",
+    "tool": null,
+    "title": "Choose a level within the active editor project."
+  },
+  {
+    "tag": "button",
+    "id": "editorProjectNew",
+    "tool": null,
+    "title": "Create a new project from the current level."
+  },
+  {
+    "tag": "button",
+    "id": "editorProjectSaveLevel",
+    "tool": null,
+    "title": "Save the current level into the active project."
+  },
+  {
+    "tag": "button",
+    "id": "editorProjectAddLevel",
+    "tool": null,
+    "title": "Add the current level as a new project level."
+  },
+  {
+    "tag": "button",
+    "id": "editorProjectDuplicateLevel",
+    "tool": null,
+    "title": "Duplicate the active project level."
+  },
+  {
+    "tag": "button",
+    "id": "editorProjectRenameLevel",
+    "tool": null,
+    "title": "Rename the active project level."
+  },
+  {
+    "tag": "button",
+    "id": "editorProjectDeleteLevel",
+    "tool": null,
+    "title": "Delete the active project level."
+  },
+  {
+    "tag": "button",
+    "id": "editorProjectExportPack",
+    "tool": null,
+    "title": "Export the active project as a pack bundle JSON with nxmi text and validation summaries."
+  },
+  {
+    "tag": "button",
+    "id": "editorProjectExportArchive",
+    "tool": null,
+    "title": "Export the active project as an installable editor pack archive JSON."
+  },
+  {
+    "tag": "button",
+    "id": "editorProjectInstallPack",
+    "tool": null,
+    "title": "Install an editor pack archive into local project storage."
+  },
+  {
+    "tag": "input",
+    "id": "editorProjectInstallPackInput",
+    "tool": null,
+    "title": null
+  },
+  {
+    "tag": "button",
+    "id": "editorNewLevel",
+    "tool": null,
+    "title": "Create a new blank level."
+  },
+  {
+    "tag": "button",
+    "id": "editorSavedSave",
+    "tool": null,
+    "title": "Save the current level to local storage."
+  },
+  {
+    "tag": "button",
+    "id": "editorUndo",
+    "tool": null,
+    "title": "Undo the last change."
+  },
+  {
+    "tag": "button",
+    "id": "editorRedo",
+    "tool": null,
+    "title": "Redo the last undone change."
+  },
+  {
+    "tag": "button",
+    "id": "editorSavedExport",
+    "tool": null,
+    "title": "Export the current level in editor format (.nxlv)."
+  },
+  {
+    "tag": "button",
+    "id": "editorSavedExportClassic",
+    "tool": null,
+    "title": "Export a lossy classic LVL file; use NXLV to preserve editor and NeoLemmix data."
+  },
+  {
+    "tag": "button",
+    "id": "editorSavedImport",
+    "tool": null,
+    "title": "Import a saved editor level (.nxlv)."
+  },
+  {
+    "tag": "button",
+    "id": "editorSavedImportClassic",
+    "tool": null,
+    "title": "Import a classic LVL file into the editor."
+  },
+  {
+    "tag": "button",
+    "id": "editorPlaytestToggle",
+    "tool": null,
+    "title": "Toggle playtest mode to run the level."
+  },
+  {
+    "tag": "input",
+    "id": "editorSavedImportInput",
+    "tool": null,
+    "title": "Choose an editor level file (.nxlv) to import."
+  },
+  {
+    "tag": "input",
+    "id": "editorSavedImportClassicInput",
+    "tool": null,
+    "title": "Choose a classic LVL file to import."
+  },
+  {
+    "tag": "button",
+    "id": null,
+    "tool": "select",
+    "title": null
+  },
+  {
+    "tag": "button",
+    "id": null,
+    "tool": "terrain",
+    "title": null
+  },
+  {
+    "tag": "button",
+    "id": null,
+    "tool": "gadget",
+    "title": null
+  },
+  {
+    "tag": "button",
+    "id": null,
+    "tool": "trigger",
+    "title": null
+  },
+  {
+    "tag": "button",
+    "id": null,
+    "tool": "midi-flag",
+    "title": null
+  },
+  {
+    "tag": "button",
+    "id": null,
+    "tool": "entrance",
+    "title": null
+  },
+  {
+    "tag": "button",
+    "id": null,
+    "tool": "exit",
+    "title": null
+  },
+  {
+    "tag": "button",
+    "id": null,
+    "tool": "steel",
+    "title": null
+  },
+  {
+    "tag": "button",
+    "id": null,
+    "tool": "brush",
+    "title": null
+  },
+  {
+    "tag": "button",
+    "id": null,
+    "tool": "eraser",
+    "title": null
+  },
+  {
+    "tag": "input",
+    "id": "editorSnapToggle",
+    "tool": null,
+    "title": "Snap placements to the current grid size."
+  },
+  {
+    "tag": "input",
+    "id": "editorGridSize",
+    "tool": null,
+    "title": "Set the grid size for snapping and nudge steps."
+  },
+  {
+    "tag": "input",
+    "id": "editorBrushSize",
+    "tool": null,
+    "title": "Set the brush size for painting terrain."
+  },
+  {
+    "tag": "input",
+    "id": "editorEraseGadgets",
+    "tool": null,
+    "title": "Allow the eraser tool to remove gadgets as well as terrain."
+  },
+  {
+    "tag": "button",
+    "id": null,
+    "tool": null,
+    "title": "Show terrain palette."
+  },
+  {
+    "tag": "button",
+    "id": null,
+    "tool": null,
+    "title": "Show object palette."
+  },
+  {
+    "tag": "button",
+    "id": null,
+    "tool": null,
+    "title": "Show trigger palette."
+  },
+  {
+    "tag": "input",
+    "id": "editorPaletteSearch",
+    "tool": null,
+    "title": "Filter palette entries by name or id."
+  },
+  {
+    "tag": "button",
+    "id": "editorPaletteViewList",
+    "tool": null,
+    "title": "List view"
+  },
+  {
+    "tag": "button",
+    "id": "editorPaletteViewGrid",
+    "tool": null,
+    "title": "Grid view"
+  },
+  {
+    "tag": "input",
+    "id": "editorHeaderTitle",
+    "tool": null,
+    "title": "Set the level title shown in menus."
+  },
+  {
+    "tag": "select",
+    "id": "editorHeaderStyle",
+    "tool": null,
+    "title": "Choose the style/tileset used for terrain and objects."
+  },
+  {
+    "tag": "input",
+    "id": "editorHeaderWidth",
+    "tool": null,
+    "title": "Set the level width in pixels."
+  },
+  {
+    "tag": "input",
+    "id": "editorHeaderHeight",
+    "tool": null,
+    "title": "Set the level height in pixels."
+  },
+  {
+    "tag": "input",
+    "id": "editorHeaderLemmings",
+    "tool": null,
+    "title": "Total lemmings released for this level."
+  },
+  {
+    "tag": "input",
+    "id": "editorHeaderSaveRequirement",
+    "tool": null,
+    "title": "How many lemmings must be saved to win."
+  },
+  {
+    "tag": "input",
+    "id": "editorHeaderTimeLimit",
+    "tool": null,
+    "title": "Time limit in minutes. Use INFINITE for no limit."
+  },
+  {
+    "tag": "input",
+    "id": "editorHeaderSpawnInterval",
+    "tool": null,
+    "title": "Spawn interval (release rate) in ticks."
+  },
+  {
+    "tag": "input",
+    "id": "editorHeaderStartX",
+    "tool": null,
+    "title": "Initial camera X position in pixels."
+  },
+  {
+    "tag": "input",
+    "id": "editorHeaderStartY",
+    "tool": null,
+    "title": "Initial camera Y position in pixels."
+  },
+  {
+    "tag": "input",
+    "id": "editorSelX",
+    "tool": null,
+    "title": "Selection X position in pixels."
+  },
+  {
+    "tag": "input",
+    "id": "editorSelY",
+    "tool": null,
+    "title": "Selection Y position in pixels."
+  },
+  {
+    "tag": "input",
+    "id": "editorSelWidth",
+    "tool": null,
+    "title": "Selection width in pixels."
+  },
+  {
+    "tag": "input",
+    "id": "editorSelHeight",
+    "tool": null,
+    "title": "Selection height in pixels."
+  },
+  {
+    "tag": "input",
+    "id": "editorSelRotate",
+    "tool": null,
+    "title": "Rotation in degrees."
+  },
+  {
+    "tag": "input",
+    "id": "editorSelSkill",
+    "tool": null,
+    "title": "Skill for gadget triggers (if applicable)."
+  },
+  {
+    "tag": "input",
+    "id": "editorSelLemmings",
+    "tool": null,
+    "title": "Lemmings emitted by entrance gadgets."
+  },
+  {
+    "tag": "input",
+    "id": "editorSelPairing",
+    "tool": null,
+    "title": "Pairing value for linked gadgets."
+  },
+  {
+    "tag": "input",
+    "id": "editorSelMidiFlag",
+    "tool": null,
+    "title": "Emit a dedicated MIDI trigger event for this gadget trigger area."
+  },
+  {
+    "tag": "input",
+    "id": "editorSelMidiFlagId",
+    "tool": null,
+    "title": "MIDI flag id used for trigger mapping in the MIDI sequencer."
+  },
+  {
+    "tag": "input",
+    "id": "editorSelFlipH",
+    "tool": null,
+    "title": "Flip the selection horizontally."
+  },
+  {
+    "tag": "input",
+    "id": "editorSelFlipV",
+    "tool": null,
+    "title": "Flip the selection vertically."
+  },
+  {
+    "tag": "input",
+    "id": "editorSelNoOverwrite",
+    "tool": null,
+    "title": "Prevent placing terrain over existing terrain."
+  },
+  {
+    "tag": "input",
+    "id": "editorSelErase",
+    "tool": null,
+    "title": "Erase terrain where this piece is placed."
+  },
+  {
+    "tag": "input",
+    "id": "editorSelOneWay",
+    "tool": null,
+    "title": "Only allow lemmings to move in one direction."
+  },
+  {
+    "tag": "button",
+    "id": "editorSelectionBringFront",
+    "tool": null,
+    "title": "Bring selection to front (top layer)."
+  },
+  {
+    "tag": "button",
+    "id": "editorSelectionMoveForward",
+    "tool": null,
+    "title": "Move selection forward by one layer."
+  },
+  {
+    "tag": "button",
+    "id": "editorSelectionMoveBackward",
+    "tool": null,
+    "title": "Move selection backward by one layer."
+  },
+  {
+    "tag": "button",
+    "id": "editorSelectionSendBack",
+    "tool": null,
+    "title": "Send selection to back (bottom layer)."
+  },
+  {
+    "tag": "button",
+    "id": "editorSelectionAlignLeft",
+    "tool": null,
+    "title": "Align selected items to the left edge."
+  },
+  {
+    "tag": "button",
+    "id": "editorSelectionAlignCenter",
+    "tool": null,
+    "title": "Align selected items to the horizontal center."
+  },
+  {
+    "tag": "button",
+    "id": "editorSelectionAlignRight",
+    "tool": null,
+    "title": "Align selected items to the right edge."
+  },
+  {
+    "tag": "button",
+    "id": "editorSelectionDistributeX",
+    "tool": null,
+    "title": "Distribute selected items evenly across X."
+  },
+  {
+    "tag": "button",
+    "id": "editorSelectionAlignTop",
+    "tool": null,
+    "title": "Align selected items to the top edge."
+  },
+  {
+    "tag": "button",
+    "id": "editorSelectionAlignMiddle",
+    "tool": null,
+    "title": "Align selected items to the vertical center."
+  },
+  {
+    "tag": "button",
+    "id": "editorSelectionAlignBottom",
+    "tool": null,
+    "title": "Align selected items to the bottom edge."
+  },
+  {
+    "tag": "button",
+    "id": "editorSelectionDistributeY",
+    "tool": null,
+    "title": "Distribute selected items evenly across Y."
+  },
+  {
+    "tag": "input",
+    "id": "editorSelectionReplacePiece",
+    "tool": null,
+    "title": "Piece id to apply to the current selection."
+  },
+  {
+    "tag": "button",
+    "id": "editorSelectionReplaceApply",
+    "tool": null,
+    "title": "Apply replacement piece id to selected terrain/object entries."
+  },
+  {
+    "tag": "input",
+    "id": "editorSelectionRandomPieces",
+    "tool": null,
+    "title": "Comma-separated piece ids to randomize from."
+  },
+  {
+    "tag": "input",
+    "id": "editorSelectionRandomSeed",
+    "tool": null,
+    "title": "Optional seed for deterministic randomization."
+  },
+  {
+    "tag": "input",
+    "id": "editorSelectionRandomSameSize",
+    "tool": null,
+    "title": null
+  },
+  {
+    "tag": "button",
+    "id": "editorSelectionRandomApply",
+    "tool": null,
+    "title": "Randomize selected terrain/object pieces using these ids."
+  },
+  {
+    "tag": "input",
+    "id": "editorSelectionScaleX",
+    "tool": null,
+    "title": "Horizontal scale factor."
+  },
+  {
+    "tag": "input",
+    "id": "editorSelectionScaleY",
+    "tool": null,
+    "title": "Vertical scale factor."
+  },
+  {
+    "tag": "button",
+    "id": "editorSelectionTransformApply",
+    "tool": null,
+    "title": "Scale the current selection group around its center."
+  },
+  {
+    "tag": "button",
+    "id": "editorDeleteSelection",
+    "tool": null,
+    "title": "Delete the current selection."
+  },
+  {
+    "tag": "button",
+    "id": "editorSolvabilityCheck",
+    "tool": null,
+    "title": "Run a bounded advisory solvability check."
+  },
+  {
+    "tag": "button",
+    "id": "editorValidationReportExport",
+    "tool": null,
+    "title": "Export current validation issues and pack consistency checks as JSON."
+  },
+  {
+    "tag": "button",
+    "id": null,
+    "tool": null,
+    "title": "Close the shortcut overlay."
+  }
+]

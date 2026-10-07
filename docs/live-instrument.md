@@ -58,13 +58,15 @@ per-event values take precedence. Old out-of-range curve positions are ignored.
 
 ## Characters
 
-Characters offers Classic, one selected body, or a stable random mix of the eleven
-verified bodies. Mixed choice is a pure function of stable actor ID. Pool reuse,
+Characters offers Classic, one selected body, or a stable random mix of the twelve
+verified bodies (including the literal transparent-center donut). Mixed choice is a pure function of stable actor ID. Pool reuse,
 redraw, and replay object reconstruction do not consume RNG or write appearance
 fields into simulation state. Frames are shared across actors; classic mode does
-not load alternate manifests. The reviewed Hydro beret/landing art is preserved.
+not load alternate manifests. The reviewed Hydro beret/landing art is preserved and fitted to every body. All
+normal donut poses and landing frames retain an enclosed transparent aperture.
 
-Custom palette is opt-in and user-chosen. Body/prop colors remap named indexed
+Nine named native body colors and eleven named hat/prop colors are available,
+alongside the original Hydro palette and custom inputs. Body/prop colors remap indexed
 slots while retaining alpha, eyes, outlines, tool colors, native dimensions, and
 animation timing. No additional palette has been labeled user-approved.
 
@@ -72,7 +74,11 @@ animation timing. No additional palette has been labeled user-approved.
 
 The cloud's browser launch is blocked by socket restrictions. DOM/core tests and
 recorded source checks are not a visual playthrough or listening acceptance.
-Run a browser smoke on the final branch before merging:
+The existing GitHub CI on 97128aff passed its smoke, coverage, and registry audit
+(0 vulnerabilities). It did not run the new workbench visual acceptance.
+`e2e/instrument-workbench.spec.js` adds focused layout/undo/mobile checks to the
+source harness without expanding CI jobs. Run a browser smoke on the final branch
+before merging:
 
 - At 1600×1000 and 1024×768, open each layout repeatedly. Confirm one live canvas,
   visible top-left game area, readable values, no cropped controls, and unchanged
@@ -112,6 +118,30 @@ The integrated branch also fixes several adjacent workflow defects:
 - API text/saved-level loads refresh the visible header fields.
 - Debug summary and selected-actor reads no longer mutate their source population.
   Asynchronous editor results and errors are awaited before serialization.
-- Horizontal flip, rotation, and one-way inspector fields are disabled because
-  the current runtime ignores them. Imported fields remain preserved in NXLV,
+- Terrain horizontal flip now mirrors both rendered pixels and collision masks.
+  Gadget horizontal flip, rotation, and one-way inspector fields remain disabled
+  because the current runtime ignores them. Imported fields remain preserved in NXLV,
   with explicit runtime warnings. Steel resizing remains available.
+
+
+## Voice ownership and device programs
+
+Track inspectors accept an optional device program **0–127**. Blank keeps the
+current device patch. Programs are channel-wide device choices, so tracks sharing
+one channel must intentionally agree on the patch. Local triangle-wave preview
+has no program bank and never sends program changes to hardware.
+
+Future MIDI onsets/releases remain in the scheduler's cancellable host queue
+until due. Panic, voice stealing and same-pitch retriggering invalidate obsolete
+gates before they reach the device. A MIDI 1.0 retrigger closes the old gate for
+that output/channel/pitch and the newest note owns its release. This repairs
+stale note-offs and MPE bend resets; it does not claim measured hardware latency.
+Browser timer jitter and physical playback still need acceptance.
+
+The revised berets use native per-shape picker masks and placement recipes.
+Eleven additional bodies use four pixels of cosmetic top padding with a matching
+negative drawing offset. Original body/world anchors, action frame counts and
+collision simulation remain unchanged. Hydro triangle keeps its original art.
+The twelve accepted fits are pinned by SHA-256 in the source asset tools. Native
+recipes do not provide berets for the two ear bodies; their reviewed custom fits
+and the donut's ring-specific placement are identified explicitly.

@@ -785,21 +785,27 @@ second roadmap, gallery, or committed manifest.
 
 The live-instrument branch adds a single persistent game canvas, Focus/Split/Overlay,
 game-clock transport, event controls, musical undo, isolated local audition, and
-stable-ID selection for eleven recovered bodies. Acceptance instructions are in
+stable-ID selection for twelve bodies, including donut, native named colors, and
+fitted berets with lift/open/reattach cosmetics on every shape. Acceptance instructions are in
 `docs/live-instrument.md`; blocked cloud browser execution is not a UI/audio pass.
 
 - Run the final-tree browser, listening, keyboard/screen-reader, and physical-MIDI
   acceptance. Preserve zero hardware sends from local event tests.
-- Reconcile the unrecovered historical sequencer/dependency checkpoints. Fresh
-  source fixes do not inherit their historical acceptance counts.
+- Historical sequencer/dependency checkpoints are reconciled by behavior in
+  `docs/branch-reconciliation.md`. New routing, shared-MPE, program and owned-gate
+  regressions supersede known defects; unknown original source differences remain
+  unrecoverable. Do not inherit historical acceptance counts.
 - Give temporal clips and recording explicit onset/overlap/retrigger semantics.
   The legacy step editor still lowers notes as a chord or event arp; its per-step
   probability, Hold/Tie, and recording-gap model need the deeper engine contract.
-- Complete donut and native accessory/eyewear adaptations across every body,
-  inspect their native pixels, and test combinations. The current catalog includes
-  eleven verified bodies and the existing Hydro beret, not an all-prop art pack.
-- Finish broader editor interoperability and verify the final registry audit of the upgraded dependency lockfile against
-  the integrated final tree. The concrete dry-run, object-property, debug-state,
+- Complete the seven remaining native accessories and five eyewear adaptations
+  across every body, inspect native pixels, and test stacking/slot conflicts.
+  Donut and the beret on all twelve bodies are implemented; this is not yet an
+  all-prop art pack.
+- Finish broader editor interoperability and retain the verified clean dependency graph.
+  GitHub CI for 97128aff reported 0 registry vulnerabilities. The concrete dry-run, object-property, debug-state,
   async bridge, stale-header and double-skill defects now have regression tests.
-  Runtime transforms are explicitly disabled/preserved pending implementation. Do not treat this MIDI/appearance batch as those
+  Terrain horizontal flip is implemented and tested through runtime lowering and
+  pixel/collision-mask rendering. Rotation, terrain resizing, one-way behavior,
+  and gadget transforms remain disabled/preserved pending specified implementation. Do not treat this MIDI/appearance batch as those
   separate closures or as a global performance gain.

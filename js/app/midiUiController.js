@@ -1359,6 +1359,7 @@ const createMidiUiController = ({
         pitchBend: mapping.pitchBend ?? null,
         trackId: track.id,
         voiceBudget: track.voiceBudget,
+        ...(track.program != null ? { program: track.program } : {}),
         outputId: track.outputId ?? null,
         timeMs
       }, {
@@ -1369,6 +1370,7 @@ const createMidiUiController = ({
         sourceId: source?.id ?? null,
         trackId: track.id,
         voiceBudget: track.voiceBudget,
+        ...(track.program != null ? { program: track.program } : {}),
         outputId: track.outputId ?? null,
         clipId: clip?.id ?? null
       }) || sent;
@@ -2096,6 +2098,7 @@ const createMidiUiController = ({
     setInputValue(document?.getElementById('midiTrackInstrument'), track?.instrumentLabel);
     renderTrackOutputOptions(document?.getElementById('midiTrackOutputSelect'), track?.outputId);
     setInputValue(document?.getElementById('midiTrackChannel'), track?.channel);
+    setInputValue(document?.getElementById('midiTrackProgram'), track?.program ?? '');
     setInputValue(document?.getElementById('midiTrackPriority'), track?.priority);
     setInputValue(document?.getElementById('midiTrackVoiceBudget'), track?.voiceBudget);
     setInputValue(document?.getElementById('midiTrackVelocityScale'), track?.velocityScale);
@@ -2830,6 +2833,7 @@ const createMidiUiController = ({
       updateSelectedTrack({ outputId: event.target.value || null });
     });
     bindById('midiTrackChannel', 'change', event => updateSelectedTrack({ channel: Number(event.target.value) || 1 }));
+    bindById('midiTrackProgram', 'change', event => updateSelectedTrack({ program: event.target.value.trim() === '' ? null : Number(event.target.value) }));
     bindById('midiTrackPriority', 'change', event => updateSelectedTrack({ priority: Number(event.target.value) || 0 }));
     bindById('midiTrackVoiceBudget', 'change', event => updateSelectedTrack({ voiceBudget: Number(event.target.value) || 1 }));
     bindById('midiTrackVelocityScale', 'change', event => updateSelectedTrack({ velocityScale: Number(event.target.value) }));

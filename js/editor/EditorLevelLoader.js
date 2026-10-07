@@ -74,7 +74,7 @@ const createDrawProperties = (props) => {
   );
 };
 
-const createLevelElements = (entries, styleName, resolver) => {
+const createLevelElements = (entries, styleName, resolver, horizontalFlip = false) => {
   if (!Array.isArray(entries)) return [];
   return entries.map(entry => {
     const props = entry?.props || {};
@@ -83,6 +83,9 @@ const createLevelElements = (entries, styleName, resolver) => {
     element.x = coerceNumber(props.X, 0);
     element.y = coerceNumber(props.Y, 0);
     element.drawProperties = createDrawProperties(props);
+    if (horizontalFlip && normalizeBoolean(props.FLIP_HORIZONTAL)) {
+      element.drawProperties = { ...element.drawProperties, isFlippedHorizontally: true };
+    }
     return element;
   });
 };
@@ -373,7 +376,7 @@ const createClassicLevelData = (editorLevel, options = {}) => {
   };
 
   const terrains = capClassicList(
-    createLevelElements(editorLevel.terrains, styleName, resolveTerrainId),
+    createLevelElements(editorLevel.terrains, styleName, resolveTerrainId, options.runtimeTransforms === true),
     LEVEL_TERRAIN_COUNT,
     'terrains',
     'terrain pieces',
@@ -424,7 +427,8 @@ const loadEditorLevel = async (editorLevel, config, fileProvider, options = {}) 
   if (!editorLevel || !config || !fileProvider) return null;
   const { levelReader, groundSet, styleName } = createClassicLevelData(editorLevel, {
     styleName: options.styleName,
-    steelRanges: options.steelRanges
+    steelRanges: options.steelRanges,
+    runtimeTransforms: true
   });
   const deps = {
     Level,

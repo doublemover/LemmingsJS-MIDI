@@ -1,4 +1,5 @@
 import { CHARACTER_STORAGE_KEY, getCharacterPreference, setCharacterPreference } from '../lemmings/CharacterSpriteSet.js';
+import { CHARACTER_COLORS } from '../lemmings/characterColors.js';
 
 const createCharacterUiController = ({ document, window, getView }) => {
   const byId = id => document?.getElementById(id);
@@ -37,6 +38,26 @@ const createCharacterUiController = ({ document, window, getView }) => {
     if (byId('characterCustomColors')) byId('characterCustomColors').checked = !!(p.bodyColor || p.propColor);
     if (byId('characterBodyColor')) byId('characterBodyColor').value = p.bodyColor || '#2b6ff6';
     if (byId('characterPropColor')) byId('characterPropColor').value = p.propColor || '#ff813d';
+    for (const [part, colors] of Object.entries(CHARACTER_COLORS)) {
+      const prefix = `character${part === 'body' ? 'Body' : 'Prop'}`;
+      const select = byId(`${prefix}Palette`);
+      const input = byId(`${prefix}Color`);
+      if (!select || !input) continue;
+      select.replaceChildren();
+      const original = part === 'body' ? '#2b6ff6' : '#ff813d';
+      for (const [value, label] of [['original', 'Original Hydro'], ['custom', 'Custom color'], ...colors.map(color => [color.hex, color.label])]) {
+        const option = document.createElement('option'); option.value = value; option.textContent = label; select.appendChild(option);
+      }
+      const syncPalette = () => { select.value = colors.some(color => color.hex === input.value) ? input.value : input.value === original ? 'original' : 'custom'; };
+      syncPalette();
+      select.addEventListener('change', () => {
+        if (select.value === 'custom') { input.focus(); return; }
+        input.value = select.value === 'original' ? original : select.value;
+        byId('characterCustomColors').checked = true;
+        change();
+      });
+      input.addEventListener('change', syncPalette);
+    }
     for (const id of ['characterShape', 'characterCustomColors', 'characterBodyColor', 'characterPropColor']) byId(id)?.addEventListener('change', change);
   };
   return { bind, sync };

@@ -55,6 +55,11 @@
       "id": "twelve_scalloped_rosette",
       "label": "Twelve Scalloped Rosette",
       "path": "assets/characters/twelve_scalloped_rosette.json"
+    },
+    {
+      "id": "donut",
+      "label": "Donut",
+      "path": "assets/characters/donut.json"
     }
   ]
 }

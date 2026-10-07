@@ -8,17 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Future MIDI onsets and releases stay cancellable until due; voice stealing, same-pitch retriggers and Panic cannot leave obsolete gates cutting off replacement notes. Default and explicit routes share one MPE allocation per device.
+- Horizontal terrain flips now reach runtime rendering and collision masks, including vertical-flip combinations, clipping and overwrite rules. Classic LVL export still warns that this flag cannot be stored.
 - Updated the vulnerable dependency graph, replaced depcheck with Knip, and aligned the declared Node engine with current tooling requirements.
 - MCP skill application no longer applies twice or consumes the next available skill after the requested one runs out.
 - Successful same-skill assignments are recorded as commands even when selection itself did not change.
 - Editor dry-runs avoid tool/selection/history/storage/preview mutation, object placement retains supplied properties, and API level loads refresh visible headers.
 - Debug state summaries and selected-actor responses no longer erase their source population through shallow aliasing; asynchronous editor tool results are awaited.
-- Unsupported runtime transforms are read-only in the inspector and explicitly warned about while NXLV data remains preserved.
+- Other unsupported runtime transforms are read-only in the inspector and explicitly warned about while NXLV data remains preserved.
 - Xmas 1991/1992 no longer offer a nonexistent fifth level.
 
 ### Added
 - Persistent single-map instrument layouts, game-clock headunit, precise event sound controls, scoped sound references, and musical undo/redo.
-- Stable-ID single/mixed character selection for the eleven recovered bodies, with optional user-selected indexed body/prop colors.
+- Stable-ID single/mixed selection for twelve bodies including a transparent-center donut, nine named native body colors and eleven hat colors. Reviewed per-shape beret crown fits lift into the canopy and reattach; cosmetic top padding preserves body/world anchors.
+- Optional zero-based device program selection per track, preserved through import/export and dispatched at note onset. Broken imported routing references are rejected.
 - Independent local event testing that leaves running gameplay and configured external MIDI unchanged.
 - Mobile MIDI Studio opt-in via `?midi=1`; without it, MIDI and local note preview remain hidden and inactive while saved projects stay intact.
 - Browser-only game listening and per-sound preview with exclusive local/hardware destinations, bounded Web Audio voices, and cancellable user-gesture unlock. Per-sound local tests are independent of the live monitor destination.

@@ -32,6 +32,9 @@ body.game-page.studio-open[data-midi-layout=overlay] .midi-sequencer { grid-colu
 .studio-open .game { align-self: stretch; justify-content: flex-start; }
 .studio-open .game-stage-slot { align-items: flex-start; justify-content: flex-start; }
 .studio-open .game_container { margin: 0; }
+@media (max-width: 900px) and (max-height: 500px) {
+  .studio-open .game-chrome, .studio-open .game { display: flex; }
+}
 .midi-sequencer { background: #eee6d5; color: #302d27; border-color: #b9aa91; }
 .midi-sequencer button, .midi-sequencer input:not([type=range]), .midi-sequencer select, .midi-sequencer textarea { background: #faf5e9; color: #302d27; border-color: #b9aa91; }
 .midi-sequencer button:hover { background: #e1d0af; }

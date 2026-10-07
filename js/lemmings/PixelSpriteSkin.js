@@ -45,12 +45,16 @@ function validateSkin(manifest) {
     if (rgba[3] !== (index === 0 ? 0 : 255)) fail('alpha must be binary with only index zero transparent');
   });
   if (!Array.isArray(manifest.animations) || manifest.animations.length !== CONTRACT.length) fail('all 28 strips are required');
+  const padding = manifest.renderPaddingTop ?? 0;
+  if (!Number.isInteger(padding) || padding < 0 || padding > 8) fail('cosmetic padding');
   const required = new Map(CONTRACT.map(c => [`${c[0]}:${c[1]}`, c]));
   const seen = new Set();
   for (const record of manifest.animations) {
     if (!record || typeof record !== 'object') fail('invalid strip');
     const key = `${record.state}:${record.direction}`;
-    const contract = required.get(key);
+    const original = required.get(key);
+    const contract = original && [...original];
+    if (contract) { contract[3] += padding; contract[5] -= padding; }
     if (!contract || seen.has(key)) fail(`unknown or duplicate strip ${key}`);
     seen.add(key);
     const actual = [record.state, record.direction, record.width, record.height, record.offsetX, record.offsetY, record.frameCount];
@@ -66,7 +70,7 @@ function validateSkin(manifest) {
   const landing = manifest.cosmetics?.beretLanding;
   if (manifest.cosmetics != null && !landing) fail('missing beret landing cosmetic');
   if (landing) {
-    for (const [key, value] of Object.entries({ width: 16, height: 16, offsetX: -8, offsetY: -16, frameCount: 7 })) {
+    for (const [key, value] of Object.entries({ width: 16, height: 16 + padding, offsetX: -8, offsetY: -16 - padding, frameCount: 7 })) {
       if (landing[key] !== value) fail(`landing ${key}`);
     }
     if (!Array.isArray(landing.variants) || landing.variants.length !== 6) fail('landing variants');
@@ -78,7 +82,7 @@ function validateSkin(manifest) {
       variants.add(key);
       if (!Array.isArray(variant.frames) || variant.frames.length !== 7) fail('landing frame count');
       for (const rows of variant.frames) {
-        if (!Array.isArray(rows) || rows.length !== 16) fail('landing frame height');
+        if (!Array.isArray(rows) || rows.length !== 16 + padding) fail('landing frame height');
         for (const row of rows) {
           if (typeof row !== 'string' || row.length !== 16 || [...row].some(c => !manifest.symbols.includes(c))) fail('landing pixel row');
         }
@@ -126,7 +130,7 @@ class PixelSpriteSkin {
     if (landing) {
       this.#landing = new Map(landing.variants.map(variant => [
         `${variant.direction}:${variant.startSway}`,
-        variant.frames.map(rows => decodeFrame(rows, 16, 16, -8, -16, pixels))
+        variant.frames.map(rows => decodeFrame(rows, landing.width, landing.height, landing.offsetX, landing.offsetY, pixels))
       ]));
     }
   }

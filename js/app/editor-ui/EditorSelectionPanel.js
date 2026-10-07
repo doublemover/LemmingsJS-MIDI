@@ -63,7 +63,7 @@ const getMultiSelectionCapabilities = (entries = []) => {
     pairing: isGadget,
     midiFlag: isGadget,
     midiFlagId: isGadget,
-    flipH: isTerrain || isGadget,
+    flipH: isTerrain,
     flipV: isTerrain || isGadget,
     noOverwrite: isTerrain,
     erase: isTerrain,
@@ -164,7 +164,7 @@ const editorSelectionPanelMethods = {
       setBatchCheckState(this.el.selNoOverwrite, capabilities.noOverwrite);
       setBatchCheckState(this.el.selErase, capabilities.erase);
       setBatchCheckState(this.el.selOneWay, capabilities.oneWay);
-      this._disableUnsupportedRuntimeTransforms();
+      this._disableUnsupportedRuntimeTransforms(capabilities.type);
       if (this.el.deleteSelection) this.el.deleteSelection.disabled = false;
       this._suppressInspector = false;
       return;
@@ -264,12 +264,16 @@ const editorSelectionPanelMethods = {
     }
     if (this.el.deleteSelection) this.el.deleteSelection.disabled = false;
 
-    this._disableUnsupportedRuntimeTransforms();
+    this._disableUnsupportedRuntimeTransforms(data.type);
     this._suppressInspector = false;
   },
 
-  _disableUnsupportedRuntimeTransforms() {
-    for (const input of [this.el.selFlipH, this.el.selRotate, this.el.selOneWay]) {
+  _disableUnsupportedRuntimeTransforms(type) {
+    if (this.el.selFlipH) {
+      this.el.selFlipH.disabled = type !== 'terrain';
+      this.el.selFlipH.title = type === 'terrain' ? 'Mirror terrain pixels and collision mask horizontally.' : 'Gadget horizontal flip is stored but inactive in the current runtime.';
+    }
+    for (const input of [this.el.selRotate, this.el.selOneWay]) {
       if (!input) continue;
       input.disabled = true;
       input.title = 'Preserved in NXLV files; not supported by the current game runtime.';

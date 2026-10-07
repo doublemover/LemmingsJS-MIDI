@@ -30,6 +30,8 @@ const toOutputList = (outputs) => {
 
 const midiSchedulerChannelMethods = {
   setConfig(config) {
+    const mpeChanged = JSON.stringify(this.config?.mpe) !== JSON.stringify(config?.mpe) ||
+      (this.config?.enabled === false && config?.enabled !== false);
     const phraseConfigKey = JSON.stringify([
       config?.enabled, config?.sfx, config?.triggers, config?.scale, config?.noteRange,
       config?.velocityRange, config?.durationTicks, config?.density, config?.envelope,
@@ -49,7 +51,7 @@ const midiSchedulerChannelMethods = {
     this._memberChannels = members
       .map((channel) => normalizeChannelNumber(channel))
       .filter((channel, index, list) => list.indexOf(channel) === index);
-    if (this.hasAnyOutput()) this._initMpe();
+    if (this.hasAnyOutput() && mpeChanged) this._initMpe();
   },
 
   setOutput(output) {
@@ -85,7 +87,7 @@ const midiSchedulerChannelMethods = {
   },
 
   _resolveOutputId(outputId = null) {
-    return normalizeOutputId(outputId);
+    return normalizeOutputId(outputId) ?? normalizeOutputId(this.output?.id);
   },
 
   _resolveOutput(outputId = null) {
@@ -165,6 +167,10 @@ const midiSchedulerChannelMethods = {
   _stopActiveChannel(channelNumber, outputId = null) {
     const activeKey = this._activeChannelKey(channelNumber, outputId);
     const active = this._activeByChannel.get(activeKey);
+    if (active?.token != null && this._activeNotes.has(active.token)) {
+      this._stopActiveNoteToken(active.token);
+      return;
+    }
     const resolvedOutputId = active?.outputId ?? outputId;
     const output = this._resolveOutput(resolvedOutputId);
     if (!active || !output) return;
@@ -229,30 +235,36 @@ const midiSchedulerChannelMethods = {
   },
 
   _stopActiveNoteToken(oldestToken) {
-    if (oldestToken == null || !this.hasAnyOutput()) return;
+    if (oldestToken == null) return;
     if (typeof this._activeNotes?.get !== 'function') return;
     const info = this._activeNotes.get(oldestToken);
     if (!info) return;
-    const output = this._resolveOutput(info.outputId);
-    if (!output) return;
-    const channel = output.channels?.[info.channel];
+    const pending = this._pendingNoteOns.get(oldestToken);
+    if (pending?.timerId != null) clearTimeout(pending.timerId);
+    this._pendingNoteOns.delete(oldestToken);
+    const output = info.output || this._resolveOutput(info.outputId);
+    const channel = output?.channels?.[info.channel];
     let sentMessages = 0;
-    if (channel) {
-      channel.sendNoteOff(info.note);
-      sentMessages += 1;
-      if (info.mpe) {
-        channel.sendPitchBend(0);
+    try {
+      if (channel && info.hasStarted !== false) {
+        channel.sendNoteOff(info.note);
         sentMessages += 1;
+        if (info.mpe) {
+          channel.sendPitchBend(0);
+          sentMessages += 1;
+        }
       }
-    }
+    } catch (error) { this.lastOutputError = error?.message || String(error); }
     if (typeof this._activeNotes.delete === 'function') {
       this._activeNotes.delete(oldestToken);
     }
     if (info.mpe) {
-      this._activeByChannel.delete(this._activeChannelKey(info.channel, info.outputId));
+      const key = this._activeChannelKey(info.channel, info.outputId);
+      if (this._activeByChannel.get(key)?.token === oldestToken) this._activeByChannel.delete(key);
     }
     this._removeScheduledNoteOff(oldestToken);
     this._removePlannedRateEntries(oldestToken, 'off');
+    if (info.hasStarted === false) this._removePlannedRateEntries(oldestToken, 'on');
     if (sentMessages > 0) {
       this._recordSent({
         timeMs: this._nowMs(),

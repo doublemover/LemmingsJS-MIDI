@@ -154,8 +154,9 @@ describe('MIDI foundations regressions', function() {
           expect(fixture.calls.some(call => call.type === 'clear')).to.equal(true);
           expect(fixture.calls.filter(call => call.type === 'off' && call.time > 0)).to.deep.equal([]);
         } else {
-          expect(fixture.calls.filter(call => call.type === 'off' && call.time > 0).map(call => call.time)).to.deep.equal([1001, 1101]);
+          expect(fixture.calls.filter(call => call.type === 'off' && call.time > 0)).to.deep.equal([]);
         }
+        expect(fixture.calls.filter(call => call.type === 'on')).to.deep.equal([]);
       });
     });
   }

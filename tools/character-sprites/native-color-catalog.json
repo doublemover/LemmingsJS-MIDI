@@ -1,0 +1,602 @@
+{
+  "colors": [
+    {
+      "id": "pink",
+      "title": "Pink",
+      "thumbnail": "",
+      "slot": "",
+      "red": 0.9803921580314636,
+      "green": 0.43921568989753723,
+      "blue": 0.6705882549285889
+    },
+    {
+      "id": "orchid",
+      "title": "Orchid",
+      "thumbnail": "",
+      "slot": "",
+      "red": 0.8666666746139526,
+      "green": 0.4156862795352936,
+      "blue": 0.8627451062202454
+    },
+    {
+      "id": "violet",
+      "title": "Violet",
+      "thumbnail": "",
+      "slot": "",
+      "red": 0.6352941393852234,
+      "green": 0.35686275362968445,
+      "blue": 1
+    },
+    {
+      "id": "blue",
+      "title": "Blue",
+      "thumbnail": "",
+      "slot": "",
+      "red": 0.27843138575553894,
+      "green": 0.47058823704719543,
+      "blue": 1
+    },
+    {
+      "id": "cyan",
+      "title": "Cyan",
+      "thumbnail": "",
+      "slot": "",
+      "red": 0,
+      "green": 0.6941176652908325,
+      "blue": 1
+    },
+    {
+      "id": "teal",
+      "title": "Teal",
+      "thumbnail": "",
+      "slot": "",
+      "red": 0.01568627543747425,
+      "green": 0.7333333492279053,
+      "blue": 0.6235294342041016
+    },
+    {
+      "id": "lime",
+      "title": "Lime",
+      "thumbnail": "",
+      "slot": "",
+      "red": 0.7137255072593689,
+      "green": 0.8470588326454163,
+      "blue": 0.04313725605607033
+    },
+    {
+      "id": "yellow",
+      "title": "Yellow",
+      "thumbnail": "",
+      "slot": "",
+      "red": 1,
+      "green": 0.800000011920929,
+      "blue": 0.21960784494876862
+    },
+    {
+      "id": "coral",
+      "title": "Coral",
+      "thumbnail": "",
+      "slot": "",
+      "red": 1,
+      "green": 0.501960813999176,
+      "blue": 0.4000000059604645
+    }
+  ],
+  "shapes": [
+    {
+      "id": "circle",
+      "title": "Circle",
+      "thumbnail": "renders/studio/shapes/circle@3x.png",
+      "slot": "",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "rounded_triangle",
+      "title": "Rounded triangle",
+      "thumbnail": "renders/studio/shapes/rounded_triangle@3x.png",
+      "slot": "",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "capsule",
+      "title": "Capsule",
+      "thumbnail": "renders/studio/shapes/capsule@3x.png",
+      "slot": "",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "rounded_head_two_ears",
+      "title": "Rounded head with two ears",
+      "thumbnail": "renders/studio/shapes/rounded_head_two_ears@3x.png",
+      "slot": "",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "six_lobed_flower",
+      "title": "Six lobed flower",
+      "thumbnail": "renders/studio/shapes/six_lobed_flower@3x.png",
+      "slot": "",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "heart",
+      "title": "Heart",
+      "thumbnail": "renders/studio/shapes/heart@3x.png",
+      "slot": "",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "four_lobed_butterfly",
+      "title": "Four lobed butterfly",
+      "thumbnail": "renders/studio/shapes/four_lobed_butterfly@3x.png",
+      "slot": "",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "circle_two_ears",
+      "title": "Circle with two ears",
+      "thumbnail": "renders/studio/shapes/circle_two_ears@3x.png",
+      "slot": "",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "twelve_scalloped_rosette",
+      "title": "Twelve scalloped rosette",
+      "thumbnail": "renders/studio/shapes/twelve_scalloped_rosette@3x.png",
+      "slot": "",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "rounded_cube",
+      "title": "Hexagon",
+      "thumbnail": "renders/studio/shapes/rounded_cube@3x.png",
+      "slot": "",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "rounded_diamond",
+      "title": "Rounded diamond",
+      "thumbnail": "renders/studio/shapes/rounded_diamond@3x.png",
+      "slot": "",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    }
+  ],
+  "accessories": [
+    {
+      "id": "headphones",
+      "title": "Headphones",
+      "thumbnail": "renders/studio/accessories/headphones@3x.png",
+      "slot": "ears",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "bow",
+      "title": "Bow tie",
+      "thumbnail": "renders/studio/accessories/bow@3x.png",
+      "slot": "neck",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "beanie",
+      "title": "Beanie",
+      "thumbnail": "renders/studio/accessories/beanie@3x.png",
+      "slot": "headwear",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "hat",
+      "title": "Hat",
+      "thumbnail": "renders/studio/accessories/hat@3x.png",
+      "slot": "headwear",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "beret",
+      "title": "Beret",
+      "thumbnail": "renders/studio/accessories/beret@3x.png",
+      "slot": "headwear",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "orb",
+      "title": "Bulb",
+      "thumbnail": "renders/studio/accessories/orb@3x.png",
+      "slot": "headwear",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "three_lobe",
+      "title": "Tuft",
+      "thumbnail": "renders/studio/accessories/three_lobe@3x.png",
+      "slot": "headwear",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "crown",
+      "title": "Crown",
+      "thumbnail": "renders/studio/accessories/crown@3x.png",
+      "slot": "headwear",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    }
+  ],
+  "accessoryColors": [
+    {
+      "id": "pink",
+      "title": "Pink",
+      "thumbnail": "",
+      "slot": "accessory_color",
+      "red": 0.9803921580314636,
+      "green": 0.43921568989753723,
+      "blue": 0.6705882549285889
+    },
+    {
+      "id": "orchid",
+      "title": "Orchid",
+      "thumbnail": "",
+      "slot": "accessory_color",
+      "red": 0.8666666746139526,
+      "green": 0.4156862795352936,
+      "blue": 0.8627451062202454
+    },
+    {
+      "id": "violet",
+      "title": "Violet",
+      "thumbnail": "",
+      "slot": "accessory_color",
+      "red": 0.6352941393852234,
+      "green": 0.35686275362968445,
+      "blue": 1
+    },
+    {
+      "id": "blue",
+      "title": "Blue",
+      "thumbnail": "",
+      "slot": "accessory_color",
+      "red": 0.27843138575553894,
+      "green": 0.47058823704719543,
+      "blue": 1
+    },
+    {
+      "id": "cyan",
+      "title": "Cyan",
+      "thumbnail": "",
+      "slot": "accessory_color",
+      "red": 0,
+      "green": 0.6941176652908325,
+      "blue": 1
+    },
+    {
+      "id": "teal",
+      "title": "Teal",
+      "thumbnail": "",
+      "slot": "accessory_color",
+      "red": 0.01568627543747425,
+      "green": 0.7333333492279053,
+      "blue": 0.6235294342041016
+    },
+    {
+      "id": "lime",
+      "title": "Lime",
+      "thumbnail": "",
+      "slot": "accessory_color",
+      "red": 0.7137255072593689,
+      "green": 0.8470588326454163,
+      "blue": 0.04313725605607033
+    },
+    {
+      "id": "yellow",
+      "title": "Yellow",
+      "thumbnail": "",
+      "slot": "accessory_color",
+      "red": 1,
+      "green": 0.800000011920929,
+      "blue": 0.21960784494876862
+    },
+    {
+      "id": "coral",
+      "title": "Coral",
+      "thumbnail": "",
+      "slot": "accessory_color",
+      "red": 1,
+      "green": 0.501960813999176,
+      "blue": 0.4000000059604645
+    },
+    {
+      "id": "charcoal",
+      "title": "Charcoal",
+      "thumbnail": "",
+      "slot": "accessory_color",
+      "red": 0.11999999731779099,
+      "green": 0.11999999731779099,
+      "blue": 0.11999999731779099
+    },
+    {
+      "id": "brown",
+      "title": "Brown",
+      "thumbnail": "",
+      "slot": "accessory_color",
+      "red": 0.550000011920929,
+      "green": 0.28999999165534973,
+      "blue": 0.17000000178813934
+    }
+  ],
+  "eyewear": [
+    {
+      "id": "none",
+      "title": "None",
+      "thumbnail": "renders/studio/eyewear/none@3x.png",
+      "slot": "eyewear",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "monocle",
+      "title": "Monocle",
+      "thumbnail": "renders/studio/eyewear/monocle@3x.png",
+      "slot": "eyewear",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "tall_oval_frames",
+      "title": "Tall oval frames",
+      "thumbnail": "renders/studio/eyewear/tall_oval_frames@3x.png",
+      "slot": "eyewear",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "separate_trapezoid_lenses",
+      "title": "Separate trapezoid lenses",
+      "thumbnail": "renders/studio/eyewear/separate_trapezoid_lenses@3x.png",
+      "slot": "eyewear",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "classic_sunglasses",
+      "title": "Classic sunglasses",
+      "thumbnail": "renders/studio/eyewear/classic_sunglasses@3x.png",
+      "slot": "eyewear",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "round_sunglasses",
+      "title": "Round sunglasses",
+      "thumbnail": "renders/studio/eyewear/round_sunglasses@3x.png",
+      "slot": "eyewear",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    }
+  ],
+  "eyes": [
+    {
+      "id": "swept_lids",
+      "title": "Swept lids",
+      "thumbnail": "renders/studio/eyes/swept_lids@3x.png",
+      "slot": "",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "oval",
+      "title": "Oval",
+      "thumbnail": "renders/studio/eyes/oval@3x.png",
+      "slot": "",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "sparkle_capsules",
+      "title": "Sparkle capsules",
+      "thumbnail": "renders/studio/eyes/sparkle_capsules@3x.png",
+      "slot": "",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "highlight_capsules",
+      "title": "Highlight capsules",
+      "thumbnail": "renders/studio/eyes/highlight_capsules@3x.png",
+      "slot": "",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "dots",
+      "title": "Dots",
+      "thumbnail": "renders/studio/eyes/dots@3x.png",
+      "slot": "",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "double_highlights",
+      "title": "Round highlights",
+      "thumbnail": "renders/studio/eyes/double_highlights@3x.png",
+      "slot": "",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "round_inset",
+      "title": "Round inset",
+      "thumbnail": "renders/studio/eyes/round_inset@3x.png",
+      "slot": "",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "crescent_inset",
+      "title": "Crescent inset",
+      "thumbnail": "renders/studio/eyes/crescent_inset@3x.png",
+      "slot": "",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "id": "sleepy_lids",
+      "title": "Sleepy lids",
+      "thumbnail": "renders/studio/eyes/sleepy_lids@3x.png",
+      "slot": "",
+      "red": 0,
+      "green": 0,
+      "blue": 0
+    }
+  ],
+  "beretColors": [
+    {
+      "id": "pink",
+      "title": "Pink",
+      "thumbnail": "",
+      "slot": "accessory_color",
+      "red": 0.9803921580314636,
+      "green": 0.43921568989753723,
+      "blue": 0.6705882549285889
+    },
+    {
+      "id": "orchid",
+      "title": "Orchid",
+      "thumbnail": "",
+      "slot": "accessory_color",
+      "red": 0.8666666746139526,
+      "green": 0.4156862795352936,
+      "blue": 0.8627451062202454
+    },
+    {
+      "id": "violet",
+      "title": "Violet",
+      "thumbnail": "",
+      "slot": "accessory_color",
+      "red": 0.6352941393852234,
+      "green": 0.35686275362968445,
+      "blue": 1
+    },
+    {
+      "id": "blue",
+      "title": "Blue",
+      "thumbnail": "",
+      "slot": "accessory_color",
+      "red": 0.27843138575553894,
+      "green": 0.47058823704719543,
+      "blue": 1
+    },
+    {
+      "id": "cyan",
+      "title": "Cyan",
+      "thumbnail": "",
+      "slot": "accessory_color",
+      "red": 0,
+      "green": 0.6941176652908325,
+      "blue": 1
+    },
+    {
+      "id": "teal",
+      "title": "Teal",
+      "thumbnail": "",
+      "slot": "accessory_color",
+      "red": 0.01568627543747425,
+      "green": 0.7333333492279053,
+      "blue": 0.6235294342041016
+    },
+    {
+      "id": "lime",
+      "title": "Lime",
+      "thumbnail": "",
+      "slot": "accessory_color",
+      "red": 0.7137255072593689,
+      "green": 0.8470588326454163,
+      "blue": 0.04313725605607033
+    },
+    {
+      "id": "yellow",
+      "title": "Yellow",
+      "thumbnail": "",
+      "slot": "accessory_color",
+      "red": 1,
+      "green": 0.800000011920929,
+      "blue": 0.21960784494876862
+    },
+    {
+      "id": "coral",
+      "title": "Coral",
+      "thumbnail": "",
+      "slot": "accessory_color",
+      "red": 1,
+      "green": 0.501960813999176,
+      "blue": 0.4000000059604645
+    },
+    {
+      "id": "charcoal",
+      "title": "Charcoal",
+      "thumbnail": "",
+      "slot": "accessory_color",
+      "red": 0.11999999731779099,
+      "green": 0.11999999731779099,
+      "blue": 0.11999999731779099
+    },
+    {
+      "id": "brown",
+      "title": "Brown",
+      "thumbnail": "",
+      "slot": "accessory_color",
+      "red": 0.550000011920929,
+      "green": 0.28999999165534973,
+      "blue": 0.17000000178813934
+    }
+  ],
+  "retiredColors": []
+}

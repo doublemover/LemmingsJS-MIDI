@@ -315,6 +315,7 @@ class MidiMapping {
       pitchBend,
       frequencyHz,
       channel: sfx.channel ?? null,
+      ...(Number.isInteger(sfx.program) ? { program: sfx.program } : {}),
       voiceBudget: sfx.voiceBudget ?? null,
       outputId: sfx.outputId ?? null,
       trackId: sfx.trackId ?? null,

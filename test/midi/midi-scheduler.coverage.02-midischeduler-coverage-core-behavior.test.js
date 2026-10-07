@@ -218,28 +218,35 @@ describe('MidiScheduler coverage: core behavior', function() {
   });
 
   it('sends notes with pan conversion and rate logging', function() {
-    const calls = [];
-    const output = makeOutput([1, 2], calls);
-    const scheduler = new MidiScheduler({
-      mpe: { enabled: true, masterChannel: 1, memberChannels: [2], timbreCc: 74 },
-      position: { panRange: { min: -127, max: 127 } }
+    withFakeClockAndPerformance(clock => {
+      const calls = [];
+      const output = makeOutput([1, 2], calls);
+      const scheduler = new MidiScheduler({
+        mpe: { enabled: true, masterChannel: 1, memberChannels: [2], timbreCc: 74 },
+        position: { panRange: { min: -127, max: 127 } }
+      });
+      scheduler.setOutput(output);
+      scheduler._maxBytesPerSecond = 1;
+      scheduler._rateSent = [{ timeMs: 1999, count: 1, bytes: 3 }];
+      const errors = [];
+      const restoreConsole = withConsoleStub({ error: msg => errors.push(msg) });
+      scheduler.sendNote({
+        note: 60,
+        velocity: 64,
+        durationTicks: 1,
+        pitchBend: 0,
+        timbre: 30,
+        pan: 20,
+        timeMs: 2000
+      }, { sfxId: 1 });
+      restoreConsole();
+      expect(calls.some(call => call.type === 'noteOff')).to.equal(false);
+      clock.tick(2000);
+      expect(calls.some(call => call.type === 'noteOn')).to.equal(true);
+      clock.tick(60);
+      expect(calls.some(call => call.type === 'noteOff')).to.equal(true);
+      scheduler.dispose();
     });
-    scheduler.setOutput(output);
-    scheduler._maxBytesPerSecond = 1;
-    scheduler._rateSent = [{ timeMs: 1999, count: 1, bytes: 3 }];
-    const errors = [];
-    const restoreConsole = withConsoleStub({ error: msg => errors.push(msg) });
-    scheduler.sendNote({
-      note: 60,
-      velocity: 64,
-      durationTicks: 1,
-      pitchBend: 0,
-      timbre: 30,
-      pan: 20,
-      timeMs: 2000
-    }, { sfxId: 1 });
-    restoreConsole();
-    expect(calls.some(call => call.type === 'noteOff')).to.equal(true);
   });
 
   it('sends notes without signed pan conversion when disabled', function() {
@@ -331,21 +338,21 @@ describe('MidiScheduler coverage: core behavior', function() {
     }
   });
 
-  it('stopActiveChannel exits when output is missing', function() {
+  it('stopActiveChannel releases internal ownership after an output disappears', function() {
     const scheduler = new MidiScheduler({ mpe: { enabled: true } });
     scheduler._activeByChannel.set(2, { note: 60, token: 1 });
     scheduler._activeNotes.set(1, { note: 60, channel: 2, mpe: true });
     scheduler.output = null;
     scheduler._stopActiveChannel(2);
-    expect(scheduler._activeByChannel.has(2)).to.equal(true);
+    expect(scheduler._activeByChannel.has(2)).to.equal(false);
   });
 
-  it('stealOldestNote exits when output is missing or no oldest token', function() {
+  it('stealOldestNote cleans a disappeared output and tolerates no oldest token', function() {
     const scheduler = new MidiScheduler({ mpe: { enabled: true } });
     scheduler._activeNotes.set(1, { note: 60, channel: 2, mpe: true, startedAt: 0 });
     scheduler.output = null;
     scheduler._stealOldestNote();
-    expect(scheduler._activeNotes.size).to.equal(1);
+    expect(scheduler._activeNotes.size).to.equal(0);
 
     const calls = [];
     scheduler.output = makeOutput([2], calls);

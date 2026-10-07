@@ -370,6 +370,7 @@ const createDefaultMidiTrack = (overrides = {}) => ({
   name: overrides.name || 'Track 1',
   outputId: overrides.outputId ?? null,
   channel: overrides.channel ?? 1,
+  program: overrides.program ?? null,
   instrumentLabel: overrides.instrumentLabel || 'General MIDI',
   mute: overrides.mute ?? overrides.muted ?? false,
   solo: overrides.solo ?? false,
@@ -390,6 +391,7 @@ const sanitizeTrack = (track, fallbackIndex, usedIds) => {
     name: sanitizeId(track?.name, fallback.name),
     outputId: track?.outputId == null ? null : String(track.outputId),
     channel: sanitizeChannel(track?.channel, fallback.channel),
+    program: track?.program == null || track.program === '' ? null : clamp(toInteger(track.program, 0), 0, 127),
     instrumentLabel: sanitizeId(track?.instrumentLabel, fallback.instrumentLabel),
     mute: sanitizeBoolean(track?.mute ?? track?.muted, false),
     solo: sanitizeBoolean(track?.solo, false),
@@ -747,6 +749,17 @@ const importMidiProjectPayload = (payload) => {
   }
   if (projectPayload.version != null && projectPayload.version !== MIDI_PROJECT_VERSION) throw new Error('Unsupported MIDI project version.');
   if (!Array.isArray(projectPayload.tracks) || !Array.isArray(projectPayload.sources) || !Array.isArray(projectPayload.clips)) throw new Error('MIDI project must contain tracks, sources and clips arrays.');
+  const trackIds = new Set();
+  for (const track of projectPayload.tracks) {
+    if (!isPlainObject(track) || typeof track.id !== 'string' || !track.id.trim() || trackIds.has(track.id)) throw new Error('MIDI project contains invalid or duplicate track IDs.');
+    if (track.outputId != null && typeof track.outputId !== 'string') throw new Error('MIDI track output ID must be a string or null.');
+    trackIds.add(track.id);
+  }
+  const clipIds = new Set(projectPayload.clips.map(clip => clip?.id));
+  for (const source of projectPayload.sources) {
+    if (!isPlainObject(source) || !trackIds.has(source.trackId)) throw new Error('MIDI source refers to a missing track.');
+    if (source.mode === 'clip' && !clipIds.has(source.clipId)) throw new Error('MIDI source refers to a missing clip.');
+  }
   return sanitizeMidiProject({
     ...projectPayload,
     templateId: templateId ?? projectPayload.templateId ?? null
@@ -1044,6 +1057,7 @@ const buildRuntimeMapping = (source, track, hiddenByTrack, globalVelocityDefault
   }
   out.name = source.label;
   out.channel = track.channel;
+  if (track.program != null) out.program = track.program;
   out.priority = track.priority;
   out.voiceBudget = track.voiceBudget;
   out.trackId = track.id;
@@ -1415,6 +1429,7 @@ const buildRuntimeClipMapping = (source, track, clip, hiddenByTrack, globalVeloc
   const out = {
     name: source.label,
     channel: track.channel,
+    ...(track.program != null ? { program: track.program } : {}),
     priority: track.priority,
     voiceBudget: track.voiceBudget,
     trackId: track.id,

@@ -1,0 +1,250 @@
+{
+  "schema": 1,
+  "shapes": [
+    {
+      "id": "capsule",
+      "displayName": "Capsule",
+      "sourceSilhouette": "source/native-silhouettes/capsule@3x.png",
+      "sourceSha256": "25422c07ecfdd1182fc51224eb5178103201d5ba12fb61ad8896ebaaa2ed03a2",
+      "mask": [
+        "...........",
+        "..######...",
+        ".########..",
+        "##########.",
+        "##########.",
+        "##########.",
+        ".########..",
+        "..######..."
+      ],
+      "eyeColumns": [
+        6,
+        8
+      ],
+      "eyeRow": 4,
+      "designNote": "Native alpha silhouette downsampled to an 11x8 logical canvas, with literal-pixel cleanup to retain identifying lobes, ears, notches and angular edges. Twelve scallops necessarily simplify at this resolution."
+    },
+    {
+      "id": "circle",
+      "displayName": "Circle",
+      "sourceSilhouette": "source/native-silhouettes/circle@3x.png",
+      "sourceSha256": "94c5632dd833c3850519108792c405d2f44ecb82a2d30127fc7d7f21330f6129",
+      "mask": [
+        "...####....",
+        "..######...",
+        ".########..",
+        ".########..",
+        ".########..",
+        ".########..",
+        "..######...",
+        "...####...."
+      ],
+      "eyeColumns": [
+        5,
+        7
+      ],
+      "eyeRow": 4,
+      "designNote": "Native alpha silhouette downsampled to an 11x8 logical canvas, with literal-pixel cleanup to retain identifying lobes, ears, notches and angular edges. Twelve scallops necessarily simplify at this resolution."
+    },
+    {
+      "id": "circle_two_ears",
+      "displayName": "Circle Two Ears",
+      "sourceSilhouette": "source/native-silhouettes/circle_two_ears@3x.png",
+      "sourceSha256": "2904ef130ddd93d7691e25865d741db944306bcff46a8248d8e69fb704373302",
+      "mask": [
+        "....#.#....",
+        "....###....",
+        "...####....",
+        "..######...",
+        "..######...",
+        "..######...",
+        "..######...",
+        "...####...."
+      ],
+      "eyeColumns": [
+        5,
+        7
+      ],
+      "eyeRow": 4,
+      "designNote": "Native narrow body and off-center upper lobes retained. One literal-pixel top notch separates the two lobes at 8px height; the ears are not widened into symmetric rabbit ears."
+    },
+    {
+      "id": "four_lobed_butterfly",
+      "displayName": "Four Lobed Butterfly",
+      "sourceSilhouette": "source/native-silhouettes/four_lobed_butterfly@3x.png",
+      "sourceSha256": "076f65e97c25980d0003c0be774991ff782a117ae4dcbeab7bf3ff8d54a64fe5",
+      "mask": [
+        ".###..###..",
+        "##########.",
+        "##########.",
+        ".########..",
+        ".########..",
+        "##########.",
+        "##########.",
+        ".###..###.."
+      ],
+      "eyeColumns": [
+        6,
+        8
+      ],
+      "eyeRow": 4,
+      "designNote": "Native alpha silhouette downsampled to an 11x8 logical canvas, with literal-pixel cleanup to retain identifying lobes, ears, notches and angular edges. Twelve scallops necessarily simplify at this resolution."
+    },
+    {
+      "id": "heart",
+      "displayName": "Heart",
+      "sourceSilhouette": "source/native-silhouettes/heart@3x.png",
+      "sourceSha256": "0aa2235f8fe2f20640d213b722b00d61f326c68c63cbd8c24ec12481b041514e",
+      "mask": [
+        "..###.###..",
+        ".#########.",
+        ".#########.",
+        ".#########.",
+        "..#######..",
+        "...#####...",
+        "...#####...",
+        "....###...."
+      ],
+      "eyeColumns": [
+        5,
+        7
+      ],
+      "eyeRow": 4,
+      "designNote": "Native alpha silhouette downsampled to an 11x8 logical canvas, with literal-pixel cleanup to retain identifying lobes, ears, notches and angular edges. Twelve scallops necessarily simplify at this resolution."
+    },
+    {
+      "id": "rounded_cube",
+      "displayName": "Rounded Cube",
+      "sourceSilhouette": "source/native-silhouettes/rounded_cube@3x.png",
+      "sourceSha256": "4a5b4d93ce3c2e09641a553fd9653e0ea8208382393cdea6d3326e9197f6e179",
+      "mask": [
+        "....###....",
+        "..######...",
+        ".########..",
+        ".########..",
+        ".########..",
+        ".#######...",
+        "..######...",
+        "...###....."
+      ],
+      "eyeColumns": [
+        5,
+        7
+      ],
+      "eyeRow": 4,
+      "designNote": "Native alpha silhouette downsampled to an 11x8 logical canvas, with literal-pixel cleanup to retain identifying lobes, ears, notches and angular edges. Twelve scallops necessarily simplify at this resolution."
+    },
+    {
+      "id": "rounded_diamond",
+      "displayName": "Rounded Diamond",
+      "sourceSilhouette": "source/native-silhouettes/rounded_diamond@3x.png",
+      "sourceSha256": "db61e875e83a9acc5ad1d636e70e41c852a5e0cc501be2a04cfe227eec15946e",
+      "mask": [
+        "....##.....",
+        "...####....",
+        "..######...",
+        ".########..",
+        ".########..",
+        "..######...",
+        "...####....",
+        "....##....."
+      ],
+      "eyeColumns": [
+        5,
+        7
+      ],
+      "eyeRow": 4,
+      "designNote": "Native alpha silhouette downsampled to an 11x8 logical canvas, with literal-pixel cleanup to retain identifying lobes, ears, notches and angular edges. Twelve scallops necessarily simplify at this resolution."
+    },
+    {
+      "id": "rounded_head_two_ears",
+      "displayName": "Rounded Head Two Ears",
+      "sourceSilhouette": "source/native-silhouettes/rounded_head_two_ears@3x.png",
+      "sourceSha256": "c14e9114879d0c47f339a8cc1e0889faa1ac29e425642a12675c75d8eadeed5b",
+      "mask": [
+        "..##...##..",
+        ".####.####.",
+        ".#########.",
+        "###########",
+        "###########",
+        ".#########.",
+        "..#######..",
+        "...#####..."
+      ],
+      "eyeColumns": [
+        6,
+        8
+      ],
+      "eyeRow": 4,
+      "designNote": "Native alpha silhouette downsampled to an 11x8 logical canvas, with literal-pixel cleanup to retain identifying lobes, ears, notches and angular edges. Twelve scallops necessarily simplify at this resolution."
+    },
+    {
+      "id": "six_lobed_flower",
+      "displayName": "Six Lobed Flower",
+      "sourceSilhouette": "source/native-silhouettes/six_lobed_flower@3x.png",
+      "sourceSha256": "cd6880fd2847d4355e6f68004d711dd5cc16c2b7c52d30f996b617e367536380",
+      "mask": [
+        "...###.....",
+        "...#####...",
+        ".#######...",
+        "#########..",
+        ".#########.",
+        "..#######..",
+        "..#####....",
+        "....###...."
+      ],
+      "eyeColumns": [
+        5,
+        7
+      ],
+      "eyeRow": 4,
+      "designNote": "Native alpha silhouette downsampled to an 11x8 logical canvas, with literal-pixel cleanup to retain identifying lobes, ears, notches and angular edges. Twelve scallops necessarily simplify at this resolution."
+    },
+    {
+      "id": "twelve_scalloped_rosette",
+      "displayName": "Twelve Scalloped Rosette",
+      "sourceSilhouette": "source/native-silhouettes/twelve_scalloped_rosette@3x.png",
+      "sourceSha256": "67ce929589e9357816af109443e099beb67c258ab85389ccb98def1ba59694a7",
+      "mask": [
+        "...#.##....",
+        "..######...",
+        ".########..",
+        "..#######..",
+        ".########..",
+        ".#######...",
+        "..######...",
+        "...##.#...."
+      ],
+      "eyeColumns": [
+        5,
+        7
+      ],
+      "eyeRow": 4,
+      "designNote": "Native round rosette interpreted with restrained one-pixel edge notches. The 12 individual scallops cannot all be represented at the locked 8px body height; do not claim a literal 12-lobe pixel silhouette."
+    },
+    {
+      "id": "donut",
+      "displayName": "Donut",
+      "mask": [
+        "...####....",
+        "..######...",
+        ".########..",
+        ".##....##..",
+        ".##....##..",
+        ".########..",
+        "..######...",
+        "...####...."
+      ],
+      "eyeColumns": [
+        2,
+        7
+      ],
+      "eyeRow": 3,
+      "designNote": "User-requested circle with literal transparent center. Rim eyes leave the aperture clear."
+    }
+  ],
+  "aliases": {
+    "crested_rounded_cube": "rounded_cube",
+    "jojo_heart": "heart",
+    "round_head_small_lobes": "circle_two_ears"
+  }
+}

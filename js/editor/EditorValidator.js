@@ -700,7 +700,8 @@ const validateLevel = (level, assets = null, options = {}) => {
     const ignored = new Set();
     for (const entry of entries) {
       const props = entry?.props || {};
-      for (const key of ['FLIP_HORIZONTAL', 'ROTATE', 'ONE_WAY', 'WIDTH', 'HEIGHT']) {
+      const unsupported = target === 'terrains' ? ['ROTATE', 'ONE_WAY', 'WIDTH', 'HEIGHT'] : ['FLIP_HORIZONTAL', 'ROTATE', 'ONE_WAY', 'WIDTH', 'HEIGHT'];
+      for (const key of unsupported) {
         if (props[key] != null && props[key] !== false && props[key] !== 0) ignored.add(key);
       }
     }

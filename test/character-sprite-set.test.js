@@ -19,7 +19,7 @@ const setup = (shape = 'mixed') => {
 
 describe('stable-ID character appearance', function() {
   it('validates every recovered 337-frame body against the unchanged sprite contract', function() {
-    expect(catalog.shapes).to.have.length(11);
+    expect(catalog.shapes).to.have.length(12);
     for (const shape of catalog.shapes) {
       const data = read(shape.path);
       expect(validateSkin(data)).to.equal(data);
@@ -57,7 +57,7 @@ describe('stable-ID character appearance', function() {
       expect(set.getActorAnimation(SpriteTypes.WALKING, true, actor)).to.equal(first);
       expect(JSON.stringify(actor)).to.equal(before);
     }
-    expect(choices.size).to.equal(11);
+    expect(choices.size).to.equal(12);
     expect(stableCharacterIndex(4294967297, 11)).to.be.within(0, 10);
   });
 

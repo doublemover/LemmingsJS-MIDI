@@ -1,0 +1,282 @@
+[
+  {
+    "state": "WALKING",
+    "dir": 1,
+    "bpp": 2,
+    "width": 16,
+    "height": 10,
+    "offsetX": -8,
+    "offsetY": -10,
+    "frames": 8
+  },
+  {
+    "state": "JUMPING",
+    "dir": 1,
+    "bpp": 2,
+    "width": 16,
+    "height": 10,
+    "offsetX": -8,
+    "offsetY": -10,
+    "frames": 1
+  },
+  {
+    "state": "WALKING",
+    "dir": -1,
+    "bpp": 2,
+    "width": 16,
+    "height": 10,
+    "offsetX": -8,
+    "offsetY": -10,
+    "frames": 8
+  },
+  {
+    "state": "JUMPING",
+    "dir": -1,
+    "bpp": 2,
+    "width": 16,
+    "height": 10,
+    "offsetX": -8,
+    "offsetY": -10,
+    "frames": 1
+  },
+  {
+    "state": "DIGGING",
+    "dir": 0,
+    "bpp": 3,
+    "width": 16,
+    "height": 14,
+    "offsetX": -8,
+    "offsetY": -12,
+    "frames": 16
+  },
+  {
+    "state": "CLIMBING",
+    "dir": 1,
+    "bpp": 2,
+    "width": 16,
+    "height": 12,
+    "offsetX": -8,
+    "offsetY": -12,
+    "frames": 8
+  },
+  {
+    "state": "CLIMBING",
+    "dir": -1,
+    "bpp": 2,
+    "width": 16,
+    "height": 12,
+    "offsetX": -8,
+    "offsetY": -12,
+    "frames": 8
+  },
+  {
+    "state": "DROWNING",
+    "dir": 0,
+    "bpp": 2,
+    "width": 16,
+    "height": 10,
+    "offsetX": -8,
+    "offsetY": -10,
+    "frames": 16
+  },
+  {
+    "state": "POSTCLIMBING",
+    "dir": 1,
+    "bpp": 2,
+    "width": 16,
+    "height": 12,
+    "offsetX": -8,
+    "offsetY": -12,
+    "frames": 8
+  },
+  {
+    "state": "POSTCLIMBING",
+    "dir": -1,
+    "bpp": 2,
+    "width": 16,
+    "height": 12,
+    "offsetX": -8,
+    "offsetY": -12,
+    "frames": 8
+  },
+  {
+    "state": "BUILDING",
+    "dir": 1,
+    "bpp": 3,
+    "width": 16,
+    "height": 13,
+    "offsetX": -8,
+    "offsetY": -13,
+    "frames": 16
+  },
+  {
+    "state": "BUILDING",
+    "dir": -1,
+    "bpp": 3,
+    "width": 16,
+    "height": 13,
+    "offsetX": -8,
+    "offsetY": -13,
+    "frames": 16
+  },
+  {
+    "state": "BASHING",
+    "dir": 1,
+    "bpp": 3,
+    "width": 16,
+    "height": 10,
+    "offsetX": -8,
+    "offsetY": -10,
+    "frames": 32
+  },
+  {
+    "state": "BASHING",
+    "dir": -1,
+    "bpp": 3,
+    "width": 16,
+    "height": 10,
+    "offsetX": -8,
+    "offsetY": -10,
+    "frames": 32
+  },
+  {
+    "state": "MINING",
+    "dir": 1,
+    "bpp": 3,
+    "width": 16,
+    "height": 13,
+    "offsetX": -8,
+    "offsetY": -12,
+    "frames": 24
+  },
+  {
+    "state": "MINING",
+    "dir": -1,
+    "bpp": 3,
+    "width": 16,
+    "height": 13,
+    "offsetX": -8,
+    "offsetY": -12,
+    "frames": 24
+  },
+  {
+    "state": "FALLING",
+    "dir": 1,
+    "bpp": 2,
+    "width": 16,
+    "height": 10,
+    "offsetX": -8,
+    "offsetY": -10,
+    "frames": 4
+  },
+  {
+    "state": "FALLING",
+    "dir": -1,
+    "bpp": 2,
+    "width": 16,
+    "height": 10,
+    "offsetX": -8,
+    "offsetY": -10,
+    "frames": 4
+  },
+  {
+    "state": "UMBRELLA",
+    "dir": 1,
+    "bpp": 3,
+    "width": 16,
+    "height": 16,
+    "offsetX": -8,
+    "offsetY": -16,
+    "frames": 8
+  },
+  {
+    "state": "UMBRELLA",
+    "dir": -1,
+    "bpp": 3,
+    "width": 16,
+    "height": 16,
+    "offsetX": -8,
+    "offsetY": -16,
+    "frames": 8
+  },
+  {
+    "state": "SPLATTING",
+    "dir": 0,
+    "bpp": 2,
+    "width": 16,
+    "height": 10,
+    "offsetX": -8,
+    "offsetY": -10,
+    "frames": 16
+  },
+  {
+    "state": "EXITING",
+    "dir": 0,
+    "bpp": 2,
+    "width": 16,
+    "height": 13,
+    "offsetX": -8,
+    "offsetY": -13,
+    "frames": 8
+  },
+  {
+    "state": "FRYING",
+    "dir": 0,
+    "bpp": 4,
+    "width": 16,
+    "height": 14,
+    "offsetX": -8,
+    "offsetY": -10,
+    "frames": 14
+  },
+  {
+    "state": "BLOCKING",
+    "dir": 0,
+    "bpp": 2,
+    "width": 16,
+    "height": 10,
+    "offsetX": -8,
+    "offsetY": -10,
+    "frames": 16
+  },
+  {
+    "state": "SHRUGGING",
+    "dir": 1,
+    "bpp": 2,
+    "width": 16,
+    "height": 10,
+    "offsetX": -8,
+    "offsetY": -10,
+    "frames": 8
+  },
+  {
+    "state": "SHRUGGING",
+    "dir": 0,
+    "bpp": 2,
+    "width": 16,
+    "height": 10,
+    "offsetX": -8,
+    "offsetY": -10,
+    "frames": 8
+  },
+  {
+    "state": "OHNO",
+    "dir": 0,
+    "bpp": 2,
+    "width": 16,
+    "height": 10,
+    "offsetX": -8,
+    "offsetY": -10,
+    "frames": 16
+  },
+  {
+    "state": "EXPLODING",
+    "dir": 0,
+    "bpp": 3,
+    "width": 32,
+    "height": 32,
+    "offsetX": -8,
+    "offsetY": -10,
+    "frames": 1
+  }
+]

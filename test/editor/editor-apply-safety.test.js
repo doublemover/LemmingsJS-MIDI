@@ -81,7 +81,8 @@ describe('editor apply read-only and property contracts', function() {
     const before = JSON.stringify(f.session.level.terrains);
     const issues = validateLevel(f.session.level, null, { solverAdvisory: false });
     const warning = issues.find(issue => issue.code === 'runtime_unsupported_transform');
-    expect(warning.props).to.include.members(['FLIP_HORIZONTAL', 'ROTATE', 'WIDTH', 'HEIGHT', 'ONE_WAY']);
+    expect(warning.props).to.include.members(['ROTATE', 'WIDTH', 'HEIGHT', 'ONE_WAY']);
+    expect(warning.props).not.to.include('FLIP_HORIZONTAL');
     expect(warning.fix).to.equal(null); expect(JSON.stringify(f.session.level.terrains)).to.equal(before);
   });
 });
