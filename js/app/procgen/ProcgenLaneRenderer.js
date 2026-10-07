@@ -210,8 +210,12 @@ class ProcgenLaneRenderer {
     this._drawObjects();
     this.renderedActors = 0; this.actorDots.clear();
     for (const actor of this.world.actors) {
-      if (actor.y < this.originY - 32 || actor.y > this.originY + this.viewHeight + 32) continue;
-      if (!actor.failureReason && actor.x >= this.originX - 32 && actor.x < this.originX + this.viewWidth + 32) { actor.render(this); this.renderedActors++; }
+      if (actor.failureReason) continue;
+      if (actor.y < this.originY - 32 || actor.y > this.originY + this.viewHeight + 32 || actor.x < this.originX - 32 || actor.x >= this.originX + this.viewWidth + 32) {
+        const bounds = actor.action?.spriteProvider?.getActorDrawBounds?.(actor);
+        if (!bounds || bounds.x >= this.originX + this.viewWidth || bounds.y >= this.originY + this.viewHeight || bounds.x + bounds.width <= this.originX || bounds.y + bounds.height <= this.originY) continue;
+      }
+      actor.render(this); this.renderedActors++;
     }
     this._flushDots(this.actorDots);
     this.bufferContext.strokeStyle = '#b99b66';

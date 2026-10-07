@@ -101,7 +101,10 @@ const lemmingManagerInteractionMethods = {
       for (let i = 0; i < lems.length; i += 1) {
         const lem = lems[i];
         if (lem.removed) continue;
-        if (lem.x < minX || lem.x > maxX || lem.y < minY || lem.y > maxY) continue;
+        if (lem.x < minX || lem.x > maxX || lem.y < minY || lem.y > maxY) {
+          const bounds = lem.action?.spriteProvider?.getActorDrawBounds?.(lem);
+          if (!bounds || bounds.x >= view.x + view.w || bounds.y >= view.y + view.h || bounds.x + bounds.width <= view.x || bounds.y + bounds.height <= view.y) continue;
+        }
         lem.render(gameDisplay);
       }
       this.particles?.render(gameDisplay);

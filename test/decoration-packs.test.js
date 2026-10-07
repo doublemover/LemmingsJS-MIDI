@@ -56,4 +56,18 @@ describe('Old Vegas runtime decoration pack', () => {
     const url = createProcgenShareUrl({ url: 'https://example.test/procgen.html', seed: 4, settings: config.settings, appearance: {}, camera: {} });
     expect(new URL(url).searchParams.get('decoration')).to.equal('old-vegas');
   });
+  it('indexes catalog placement groups once and refreshes replaced or extended catalogs', () => {
+    let scans = 0;
+    const pieces = createOldVegasPack().pieces.slice();
+    pieces[Symbol.iterator] = function* () { scans++; for (let i = 0; i < this.length; i++) yield this[i]; };
+    const pack = { pieces };
+    const expected = decorationPlacements(createOldVegasPack(), 2, 4);
+    for (let i = 0; i < 100; i++) expect(decorationPlacements(pack, 2, 4)).to.deep.equal(expected);
+    expect(scans).to.equal(1);
+    pieces.push({ id: 'extra-stage', placement: 'stage', image: { width: 1, height: 1 } });
+    decorationPlacements(pack, 2, 4); expect(scans).to.equal(2);
+    pack.pieces = [{ id: 'replacement', placement: 'stage', image: { width: 1, height: 1 } }];
+    expect(decorationPlacements(pack, 0, 0).map(entry => entry.piece.id)).to.deep.equal(['replacement']);
+  });
+
 });

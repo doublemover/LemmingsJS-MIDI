@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Per-lane distance records and generous simulation-time/spawn stall recovery preserve progress markers through a staggered OHNO cascade and restart.
 
 ### Fixed
+- Contact-anchored hazard artwork remains visible at viewport edges when simulation coordinates drift; far-zoom scenery reuses indexed catalog groups.
 - Procgen avoids duplicate assisted walking scans and unchanged RAF composites, skips decorative collision work, and shares stateless actor loggers; MIDI rate warnings avoid unused breakdown maps and reservations prune once.
 - Procgen collision sampling, dirty-tile rendering and far-zoom working sets are bounded and cached; random palette skins remain canonical while live and lazily allocate frames.
 - Procgen MIDI clocks follow wall time across speeds, pause and stepping, and stall recovery budgets actual spawn-to-frontier travel before declaring a lane exhausted.

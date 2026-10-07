@@ -211,6 +211,29 @@ describe('source-identified hazard presentation', function() {
     expect(animation.frameCount).to.equal(14);
   });
 
+  it('keeps an anchored water frame visible when physics has drifted beyond the camera cull margin', async function() {
+    const base = new PixelSpriteSkin(read(catalog.shapes[0].path));
+    let preference = { shape: 'circle' };
+    const sprites = new CharacterSpriteSet(base, catalog, file => fs.readFileSync(file, 'utf8'), () => preference);
+    await sprites.prepare();
+    const scene = await enter(sprites, fixtures.find(entry => entry.kind === 'water'));
+    for (let tick = 0; tick < 14; tick++) scene.action.process({ hasGroundAt: () => false }, scene.actor);
+    expect(scene.actor.x).to.equal(94);
+    const frame = sprites.getActorAnimation(SpriteTypes.DROWNING, true, scene.actor).getFrame(14);
+    const origin = sprites.getActorDrawPosition(scene.actor), view = { x: 0, y: 0, w: 77, h: 160 };
+    expect([...frame.mask].some((pixel, index) => pixel && origin.x + frame.offsetX + index % frame.width < view.w)).to.equal(true);
+    let drawn = 0;
+    const display = { stage: { getGameViewRect: () => view }, drawFrame() { drawn++; } };
+    const manager = { activeLemmings: [scene.actor] };
+    const before = fields(scene.actor);
+    lemmingManagerInteractionMethods.render.call(manager, display);
+    expect(drawn).to.equal(1); expect(fields(scene.actor)).to.deep.equal(before);
+    preference = { shape: 'classic' }; await sprites.prepare();
+    expect(sprites.getActorDrawBounds(scene.actor)).to.equal(null);
+    lemmingManagerInteractionMethods.render.call(manager, display);
+    expect(drawn).to.equal(1);
+  });
+
   it('removes duplicate baked-in classic victims only for custom contacts while preserving the source trap', async function() {
     let preference = { shape: 'circle' };
     const base = new PixelSpriteSkin(read(catalog.shapes[0].path));

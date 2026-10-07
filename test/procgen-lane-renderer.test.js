@@ -45,4 +45,17 @@ describe('bounded shared-lane renderer', () => {
     expect(world.characterParticles.frame).to.equal(0);
     renderer.dispose(); world.dispose();
   });
+  it('retains visible cosmetic bounds outside the cheap simulation-position gate', async () => {
+    const world = new ProcgenLaneWorld({ masks: await loadProcgenMasks() }), canvas = canvasFixture();
+    const renderer = new ProcgenLaneRenderer({ canvas, world, assets: { groundPieces: [] }, windowRef: { devicePixelRatio: 1, performance } });
+    renderer.follow = false;
+    const actor = world.actors[0]; actor.x = 10000;
+    let bounds = { x: 10, y: 10, width: 16, height: 22 }, draws = 0;
+    actor.action = { spriteProvider: { getActorDrawBounds: () => bounds } }; actor.render = () => draws++;
+    renderer.render(); expect(draws).to.equal(1);
+    bounds = { x: 20000, y: 10, width: 16, height: 22 }; renderer.render(); expect(draws).to.equal(1);
+    bounds = null; renderer.render(); expect(draws).to.equal(1);
+    renderer.dispose(); world.dispose();
+  });
+
 });

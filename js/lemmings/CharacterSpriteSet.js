@@ -290,6 +290,13 @@ class CharacterSpriteSet {
   }
   getActorHazardKind(lem) { return this.hazards.kind(lem); }
   getActorDrawPosition(lem) { return this.hazards.origin(lem); }
+  getActorDrawBounds(lem) {
+    if (!this.hazards.origin(lem)) return null;
+    const frame = this.getActorAnimation(lem.action.spriteType, lem.lookRight, lem).getFrame(lem.frameIndex);
+    const origin = this.hazards.origin(lem);
+    // An atomic appearance commit may have cleared the prior contact above.
+    return origin ? { x: origin.x + frame.offsetX, y: origin.y + frame.offsetY, width: frame.width, height: frame.height } : null;
+  }
   getActorParticleParts(lem) {
     const skin = this.skinForActor(lem);
     return skin === this.base ? null : skin.getParticleParts?.(lem.lookRight) || null;
