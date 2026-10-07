@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "timezone": "America/Detroit",
+  "suites": [
+    {
+      "id": "full",
+      "workflow": "maintenance-full.yml",
+      "monthlyDay": 11,
+      "cron": "19 7 * * 3",
+      "paths": [
+        "**"
+      ],
+      "ignorePaths": [
+        "README.md",
+        "CHANGELOG.md",
+        "LICENSE",
+        "docs/**/*.md"
+      ],
+      "protectedPaths": [
+        ".github/**",
+        "docs/contracts/**",
+        "docs/support/**",
+        "docs/specs/**",
+        "docs/fixtures/**"
+      ],
+      "expectedJobs": [
+        {
+          "name": "test"
+        }
+      ]
+    }
+  ],
+  "sourceRef": "master"
+}
