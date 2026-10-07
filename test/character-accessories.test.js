@@ -12,7 +12,7 @@ import { registerElement } from './support/dom-fixtures.js';
 const read = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const catalog = read('assets/characters/catalog.json');
 const hydro = read('assets/hydro/hydro-skin.json');
-const selected = { ears: 'headphones', neck: 'bow', eyewear: 'monocle' };
+const selected = { eyewear: 'monocle' };
 const largestBodyInterior = rows => {
   const visited = new Set(), components = [];
   const width = rows[0].length, height = rows.length;
@@ -39,8 +39,8 @@ describe('native character accessory layers', function() {
       const manifest = read(shape.path), pack = read(shape.accessoriesPath);
       expect(pack.baseSha256).to.equal(createHash('sha256').update(fs.readFileSync(shape.path)).digest('hex'));
       expect(validateAccessoryLayers(pack, manifest, shape.id)).to.equal(pack);
-      for (const [slot, items] of Object.entries(CHARACTER_ACCESSORIES)) for (const item of items) {
-        const decorated = composeCharacterAccessories(manifest, pack, { accessories: { [slot]: item.id } });
+      for (const item of CHARACTER_ACCESSORIES.eyewear) {
+        const decorated = composeCharacterAccessories(manifest, pack, { eyewear: item.id });
         expect(validateSkin(decorated)).to.equal(decorated);
         expect(decorated.animations.reduce((sum, record) => sum + record.frameCount, 0)).to.equal(337);
         expect(decorated.cosmetics.beretLanding.variants).to.have.length(6);
@@ -53,7 +53,7 @@ describe('native character accessory layers', function() {
   it('keeps the beret, tools, water, alpha aperture, and original source rows intact', function() {
     for (const shape of catalog.shapes) {
       const manifest = read(shape.path), before = JSON.stringify(manifest), pack = read(shape.accessoriesPath);
-      const decorated = composeCharacterAccessories(manifest, pack, { accessories: selected });
+      const decorated = composeCharacterAccessories(manifest, pack, selected);
       for (const [index, record] of manifest.animations.entries()) {
         expect(decorated.animations[index].offsetX).to.equal(record.offsetX);
         expect(decorated.animations[index].offsetY).to.equal(record.offsetY);
@@ -75,15 +75,15 @@ describe('native character accessory layers', function() {
     }
   });
 
-  it('colors each slot independently while keeping lens and ear-pad material fixed', function() {
+  it('colors the one accessory and separate eyewear while keeping lens and ear-pad material fixed', function() {
     const shape = catalog.shapes.find(shape => shape.id === 'circle');
-    const manifest = read(shape.path), pack = read(shape.accessoriesPath);
-    const result = composeCharacterAccessories(manifest, pack, { accessories: selected,
-      accessoryColors: { ears: '#04bb9f', neck: '#fa70ab', eyewear: '#ffcc38' } });
+    const pack = read(shape.headwearPath), manifest = pack.bare;
+    const result = composeCharacterAccessories(manifest, pack, { accessory: 'headphones', eyewear: 'monocle', propColor: '#04bb9f', eyewearColor: '#ffcc38' });
     expect(result.palette.slice(0, 11)).to.deep.equal(manifest.palette);
-    expect(result.palette.slice(11)).to.deep.equal([[4,187,159,255], [250,112,171,255], [255,204,56,255], [32,34,40,255], [177,197,211,255]]);
+    expect(result.palette.slice(11)).to.deep.equal([[4,187,159,255], [4,187,159,255], [255,204,56,255], [32,34,40,255], [177,197,211,255]]);
     expect(result.symbols).to.equal('0123456789ABCDEF');
-    expect(result.animations[0].frames.join('')).to.match(/B/).and.match(/C/).and.match(/D/).and.match(/E/);
+    expect(result.animations[0].frames.join('')).to.match(/B/).and.match(/D/).and.match(/E/);
+    expect(result.animations[0].frames.join('')).not.to.match(/[C678]/);
   });
 
   it('loads no extra pack for an undecorated beret, shares requests, and retries an unavailable pack', async function() {
@@ -96,7 +96,7 @@ describe('native character accessory layers', function() {
     }, () => preference);
     expect(await sprites.prepare()).to.equal(true);
     expect(loads).to.have.length(1);
-    preference = { shape: 'circle', accessories: selected }; fail = true;
+    preference = { shape: 'circle', ...selected }; fail = true;
     expect(await sprites.prepare()).to.equal(false);
     expect(sprites.skinForActor({ id: 3 })).to.equal(base);
     fail = false;
@@ -109,12 +109,12 @@ describe('native character accessory layers', function() {
   });
 
   it('keeps mixed-body identity stable and bounds independently colored accessory variants', async function() {
-    let preference = { shape: 'mixed', accessories: selected };
+    let preference = { shape: 'mixed', ...selected };
     const sprites = new CharacterSpriteSet(new PixelSpriteSkin(hydro), catalog, file => fs.readFileSync(file, 'utf8'), () => preference);
     expect(await sprites.prepare()).to.equal(true);
     const identities = Array.from({ length: 64 }, (_, id) => sprites.appearanceForId(id).shape);
     for (let i = 0; i < 4; i++) {
-      preference = { shape: 'mixed', accessories: { ...selected, eyewear: i % 2 ? 'round_sunglasses' : 'monocle' }, accessoryColors: { ears: `#${i}1ff22` } };
+      preference = { shape: 'mixed', eyewear: i % 2 ? 'round_sunglasses' : 'monocle', eyewearColor: `#${i}1ff22` };
       expect(await sprites.prepare()).to.equal(true);
       expect(identities).to.deep.equal(identities.map((_, id) => sprites.appearanceForId(id).shape));
     }
@@ -136,7 +136,7 @@ describe('native character accessory layers', function() {
     }
   });
 
-  it('uses exclusive slots, persists independent colors, and disables custom art choices in classic mode', async function() {
+  it('replaces the single accessory, preserves separate eyewear, and disables custom art choices in classic mode', async function() {
     const document = new TestDocument(), window = createTestWindow(document);
     const add = (tag, id) => {
       const element = registerElement(document, tag, id);
@@ -146,24 +146,27 @@ describe('native character accessory layers', function() {
     for (const id of ['characterShape','characterBodyPalette','characterPropPalette']) add('select', id);
     for (const id of ['characterCustomColors','characterBodyColor','characterPropColor']) add('input', id);
     add('span', 'characterStatus');
-    for (const slot of Object.keys(CHARACTER_ACCESSORIES)) {
-      add('select', `characterAccessory-${slot}`); add('select', `characterAccessory-${slot}Palette`); add('input', `characterAccessory-${slot}Color`);
-    }
-    setCharacterPreference({ shape: 'circle', accessories: selected });
+    add('select', 'characterAccessory'); add('select', 'characterEyewear'); add('select', 'characterEyewearPalette'); add('input', 'characterEyewearColor');
+    setCharacterPreference({ shape: 'circle', accessory: 'headphones', ...selected });
     const controller = createCharacterUiController({ document, window,
       getView: () => ({ game: { gameResources: { characterSprites: { shapes: catalog.shapes, prepare: async () => true } }, render() {} } }) });
     controller.bind(); await controller.sync();
-    const eyewear = document.getElementById('characterAccessory-eyewear');
+    const eyewear = document.getElementById('characterEyewear');
     eyewear.value = 'round_sunglasses'; eyewear.dispatchEvent({ type: 'change', target: eyewear });
-    expect(getCharacterPreference().accessories).to.deep.equal({ ...selected, eyewear: 'round_sunglasses' });
-    const color = document.getElementById('characterAccessory-neckPalette');
+    expect(getCharacterPreference().accessory).to.equal('headphones');
+    expect(getCharacterPreference().eyewear).to.equal('round_sunglasses');
+    const accessory = document.getElementById('characterAccessory'); accessory.value = 'bow'; accessory.dispatchEvent({ type: 'change', target: accessory });
+    expect(getCharacterPreference().accessory).to.equal('bow');
+    expect(getCharacterPreference().accessories).to.equal(undefined);
+    const color = document.getElementById('characterEyewearPalette');
     color.value = '#fa70ab'; color.dispatchEvent({ type: 'change', target: color });
-    expect(getCharacterPreference().accessoryColors.neck).to.equal('#fa70ab');
+    expect(getCharacterPreference().eyewearColor).to.equal('#fa70ab');
     expect(getCharacterPreference().bodyColor).to.equal(null);
     const shape = document.getElementById('characterShape'); shape.value = 'classic'; shape.dispatchEvent({ type: 'change', target: shape });
     await controller.sync(); expect(eyewear.disabled).to.equal(true);
-    expect(getCharacterPreference().accessories.ears).to.equal('headphones');
-    setCharacterPreference({ shape: 'classic', accessories: { ears: 'bow', eyewear: 'crown' }, accessoryColors: { ears: 'invalid' } });
+    expect(getCharacterPreference().accessory).to.equal('bow');
+    setCharacterPreference({ shape: 'classic', accessory: ['bow','hat'], accessories: { ears: 'bow', eyewear: 'crown' }, accessoryColors: { ears: 'invalid' } });
     expect(getCharacterPreference().accessories).to.equal(undefined);
+    expect(getCharacterPreference().accessory).to.equal(undefined);
   });
 });

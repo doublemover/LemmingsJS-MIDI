@@ -71,6 +71,30 @@ test('instrument menus support keyboard navigation, dismissal and repeated openi
   expect(await page.evaluate(() => window.__midiPermissionCalls)).toBe(0);
 });
 
+test('character choices replace one accessory while retaining separate eyewear', async ({ page }, testInfo) => {
+  await page.goto('/?e2e=1&midi=1');
+  await waitForHarnessReady(page);
+  await page.evaluate(() => window.__E2E__.pause());
+  await page.locator('.character-controls > summary').click();
+  await page.locator('#characterShape').selectOption('donut');
+  const accessory = page.locator('#characterAccessory'), eyewear = page.locator('#characterEyewear');
+  await expect(accessory).toBeEnabled();
+  await eyewear.selectOption('monocle');
+  for (const choice of ['headphones', 'bow', 'crown', 'none', 'beret']) {
+    await accessory.selectOption(choice);
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('lemmings.character.appearance.v1')));
+    expect(saved.accessory || 'beret').toBe(choice);
+    expect(saved.eyewear).toBe('monocle');
+    expect(saved.accessories).toBeUndefined();
+    expect(saved.headwear).toBeUndefined();
+    await expect(eyewear).toHaveValue('monocle');
+  }
+  await page.screenshot({ path: testInfo.outputPath('characters-single-accessory.png'), fullPage: true });
+  await page.locator('#characterShape').selectOption('classic');
+  await expect(accessory).toBeDisabled(); await expect(eyewear).toBeDisabled();
+  expect(await page.evaluate(() => window.__midiPermissionCalls)).toBe(0);
+});
+
 test.describe('mobile workbench availability', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true,
     userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1' });

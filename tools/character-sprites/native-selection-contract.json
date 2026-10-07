@@ -1,0 +1,75 @@
+{
+  "source": "User-supplied native Orbit renderer recovery; metadata-only WASM execution and native API declarations; no browser/GPU render",
+  "wasmSha256": "811db0b85828bafd8da1801f6ea3aa129e77cd0d564c62d369870f1aa192c5d3",
+  "validationDiagnostic": "Select at most one accessory",
+  "diagnosticEvidence": "Exact printable diagnostic extracted from the supplied WASM; attempted preset mutation reaches named-preset override validation first, so that probe is not a direct cardinality test.",
+  "categories": {
+    "Accessory": 4,
+    "Eyewear": 3
+  },
+  "presetCount": 108,
+  "accessoryCountHistogram": {
+    "0": 41,
+    "1": 67
+  },
+  "presetsWithAccessoryAndEyewear": 33,
+  "examples": [
+    {
+      "id": "alfred",
+      "accessories": [
+        "bow"
+      ],
+      "eyewear": "tall_oval_frames"
+    },
+    {
+      "id": "gus",
+      "accessories": [
+        "orb"
+      ],
+      "eyewear": "classic_sunglasses"
+    },
+    {
+      "id": "blue_spectacles",
+      "accessories": [
+        "three_lobe"
+      ],
+      "eyewear": "tall_oval_frames"
+    },
+    {
+      "id": "matisse",
+      "accessories": [
+        "beret"
+      ],
+      "eyewear": "monocle"
+    },
+    {
+      "id": "zadie",
+      "accessories": [
+        "bow"
+      ],
+      "eyewear": "tall_oval_frames"
+    },
+    {
+      "id": "otto",
+      "accessories": [
+        "beanie"
+      ],
+      "eyewear": "monocle"
+    },
+    {
+      "id": "claude",
+      "accessories": [
+        "beret"
+      ],
+      "eyewear": "monocle"
+    },
+    {
+      "id": "jett",
+      "accessories": [
+        "beanie"
+      ],
+      "eyewear": "classic_sunglasses"
+    }
+  ],
+  "productContract": "One accessory selection, with independent eyewear. Ear/neck/headwear labels describe attachment locations, not simultaneous user selections."
+}

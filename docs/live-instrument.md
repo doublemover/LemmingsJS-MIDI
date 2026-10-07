@@ -77,17 +77,23 @@ alongside the original Hydro palette and custom inputs. Body/prop colors remap i
 slots while retaining alpha, eyes, outlines, tool colors, native dimensions, and
 animation timing. No additional palette has been labeled user-approved.
 
-Alternate bodies also support headphones (ears), bow tie (neck), and five eyewear
-styles: monocle, tall oval frames, separate trapezoid lenses, classic sunglasses,
-and round sunglasses. Each slot has its own named/custom color. Selecting an item
-replaces only that slot; the three slots can stack with the approved beret. Lens
-and ear-pad material remains separate from the color controls. The extra packs
-load only when selected, and they are disabled for Classic without erasing saved
-choices. Accessories follow the current body pose and survive actor recreation
-through the same stable appearance selection; they add no simulation fields.
-Their decoder proofs include every body and named color plus turn, climb, float
-and landing. In-game visual acceptance is still required. Beanie, hat, bulb, tuft
-and crown are not yet implemented.
+Alternate bodies support all eight native accessories: headphones, bow tie,
+beanie, hat, beret, bulb, tuft and crown. Choose exactly one (or None); selecting
+headphones or a bow removes the beret. Eyewear is separate: monocle, tall oval
+frames, separate trapezoid lenses, classic sunglasses or round sunglasses.
+This follows the native “Select at most one accessory” contract. The supplied
+108 presets contain at most one accessory, and 33 explicitly pair it with eyewear.
+Body, accessory and eyewear frame colors are independent. Lens and ear-pad
+material stays separate from color controls. Extra packs load only when selected,
+and Classic disables the choices without erasing saved selections.
+
+Accessories follow the current body pose and stable actor appearance; they add
+no simulation fields. The approved beret still lifts/opens/reattaches. Other
+accessories remain attached while the separate floating canopy opens, then follow
+the normal walking pose. Ear/donut crown adaptations are explicitly custom where
+native recipes do not exist. Current decoder proofs include every body and named
+color plus turn, climb and float. New accessory fits and in-game appearance still
+need user visual acceptance.
 
 ## Acceptance still needed
 

@@ -798,13 +798,13 @@ fitted berets with lift/open/reattach cosmetics on every shape. Acceptance instr
 - Give temporal clips and recording explicit onset/overlap/retrigger semantics.
   The legacy step editor still lowers notes as a chord or event arp; its per-step
   probability, Hold/Tie, and recording-gap model need the deeper engine contract.
-- Complete the five remaining crown accessories (beanie, hat, bulb, tuft, crown)
-  across every body, using their native crown/lobe fits and explicit custom ear/donut fits.
-  Headphones, bow tie, monocle, tall oval frames, separate trapezoid lenses,
-  classic sunglasses and round sunglasses now have selectable, independently colored
-  layers on all twelve bodies, with slot/stacking and pose regressions. Review their
-  actual decoder sheets and final in-game appearance. Donut and the reviewed berets
-  are retained; this is not yet an all-prop art pack.
+- Visually accept the complete eight-accessory/five-eyewear pack on all twelve
+  bodies, including the explicit custom ear/donut crown fits and final in-game
+  appearance. Native source comparisons and decoder sheets are available; source
+  tests do not substitute for visual acceptance. Exactly one accessory is selected;
+  eyewear is separate, matching the native validator and preset evidence. The
+  previously reviewed berets remain immutable. No further native catalog items
+  remain to extract or implement in this batch.
 - Finish broader editor interoperability and retain the verified clean dependency graph.
   GitHub CI for 97128aff reported 0 registry vulnerabilities. The concrete dry-run, object-property, debug-state,
   async bridge, stale-header and double-skill defects now have regression tests.

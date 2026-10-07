@@ -1,5 +1,5 @@
-import { PixelSpriteSkin } from './PixelSpriteSkin.js';
-import { normalizeCharacterAccessories, characterAppearanceKey, hasCharacterAccessories, validateAccessoryLayers, composeCharacterAccessories } from './CharacterAccessories.js';
+import { PixelSpriteSkin, validateSkin } from './PixelSpriteSkin.js';
+import { normalizeCharacterAccessories, characterAppearanceKey, hasCharacterAccessories, hasCustomHeadwear, validateAccessoryLayers, composeCharacterAccessories } from './CharacterAccessories.js';
 
 const CHARACTER_STORAGE_KEY = 'lemmings.character.appearance.v1';
 let preference = Object.freeze({ shape: 'classic', bodyColor: null, propColor: null });
@@ -49,6 +49,7 @@ class CharacterSpriteSet {
     this.getPreference = getPreference;
     this.manifests = new Map();
     this.accessoryLayers = new Map();
+    this.headwearLayers = new Map();
     this.skins = new Map();
     this.pending = new Map();
     this.error = null;
@@ -73,7 +74,8 @@ class CharacterSpriteSet {
     this.error = null;
     try {
       await Promise.all(shapes.map(shape => this.load(shape)));
-      if (hasCharacterAccessories(settings)) await Promise.all(shapes.map(shape => this.loadAccessories(shape)));
+      if (hasCustomHeadwear(settings)) await Promise.all(shapes.map(shape => this.loadAccessories(shape, true)));
+      else if (hasCharacterAccessories(settings)) await Promise.all(shapes.map(shape => this.loadAccessories(shape)));
       // Decode the requested variants outside the render loop.
       const decoded = shapes.map(shape => this.skinForAppearance({ ...settings, shape: shape.id }));
       if (this.getPreference() === settings) { this.activePreference = settings; this.activeSkins = decoded; }
@@ -97,16 +99,23 @@ class CharacterSpriteSet {
     return this.pending.get(shape.id);
   }
 
-  loadAccessories(shape) {
-    if (this.accessoryLayers.has(shape.id)) return Promise.resolve(this.accessoryLayers.get(shape.id));
-    const key = `accessories:${shape.id}`;
+  loadAccessories(shape, headwear = false) {
+    const cache = headwear ? this.headwearLayers : this.accessoryLayers;
+    if (cache.has(shape.id)) return Promise.resolve(cache.get(shape.id));
+    const key = `${headwear ? 'headwear' : 'accessories'}:${shape.id}`;
     if (!this.pending.has(key)) {
       const pending = Promise.resolve().then(() => {
-        if (!shape.accessoriesPath) throw new Error(`Accessory art unavailable for ${shape.id}`);
-        return this.loadText(shape.accessoriesPath);
+        const path = headwear ? shape.headwearPath : shape.accessoriesPath;
+        if (!path) throw new Error(`Accessory art unavailable for ${shape.id}`);
+        return this.loadText(path);
       }).then(text => {
-        const pack = validateAccessoryLayers(JSON.parse(text), this.manifests.get(shape.id), shape.id);
-        this.accessoryLayers.set(shape.id, pack);
+        const pack = JSON.parse(text);
+        if (headwear) {
+          validateSkin(pack.bare);
+          if (pack.bare.shapeId !== shape.id) throw new Error('Invalid character accessories: bare body identity');
+        }
+        validateAccessoryLayers(pack, headwear ? pack.bare : this.manifests.get(shape.id), shape.id, headwear);
+        cache.set(shape.id, pack);
         return pack;
       }).finally(() => this.pending.delete(key));
       this.pending.set(key, pending);
@@ -120,9 +129,10 @@ class CharacterSpriteSet {
     if (this.skins.has(key)) return this.skins.get(key);
     const manifest = this.manifests.get(appearance.shape);
     if (!manifest) return this.base;
-    const pack = this.accessoryLayers.get(appearance.shape);
-    if (hasCharacterAccessories(appearance) && !pack) return this.base;
-    const colored = recolorManifest(manifest, appearance);
+    const headwear = hasCustomHeadwear(appearance);
+    const pack = (headwear ? this.headwearLayers : this.accessoryLayers).get(appearance.shape);
+    if ((hasCharacterAccessories(appearance) || headwear) && !pack) return this.base;
+    const colored = recolorManifest(headwear ? pack.bare : manifest, appearance);
     const skin = new PixelSpriteSkin(composeCharacterAccessories(colored, pack, appearance));
     // One active collection plus a small edit working set. Actor identities are never cached.
     while (this.skins.size >= Math.max(32, this.shapes.length * 2)) this.skins.delete(this.skins.keys().next().value);

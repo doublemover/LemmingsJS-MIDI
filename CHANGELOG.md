@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Xmas 1991/1992 no longer offer a nonexistent fifth level.
 
 ### Added
-- Native-informed headphones, bow tie and five eyewear styles on all twelve alternate bodies, with independent slot/color selection, composable materials and pose-following layers. Approved beret pixels remain unchanged.
+- All eight native accessories and five eyewear styles on all twelve alternate bodies. One accessory replaces the previous choice, eyewear is separate, and body/accessory/frame colors remain independent. Approved beret pixels remain unchanged.
 - Persistent single-map instrument layouts, game-clock headunit, precise event sound controls, scoped sound references, and musical undo/redo.
 - Stable-ID single/mixed selection for twelve bodies including a transparent-center donut, nine named native body colors and eleven hat colors. Reviewed per-shape beret crown fits lift into the canopy and reattach; cosmetic top padding preserves body/world anchors.
 - Optional zero-based device program selection per track, preserved through import/export and dispatched at note onset. Broken imported routing references are rejected.

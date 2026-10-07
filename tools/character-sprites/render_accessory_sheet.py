@@ -16,10 +16,10 @@ def cell(sheet, image, x, y, scale=6, height=84):
     sheet.paste(expanded, (x,y+height-expanded.height), expanded)
     sheet.paste(image, (x+(image.width*scale-image.width)//2,y+height+3), image)
 
-items = DATA['items']+[{'id':'stack','label':'Stacked slots'}]
+items = DATA['items']
 sheet = Image.new('RGB', (170+len(items)*122,72+len(DATA['shapes'])*106), '#172234')
 draw = ImageDraw.Draw(sheet)
-draw.text((12,8), 'Actual decoder pixels · enlarged 6× and native 1× · approved beret retained', font=FONT, fill='white')
+draw.text((12,8), 'Actual decoder pixels · enlarged 6× and native 1× · one accessory at a time', font=FONT, fill='white')
 for j,item in enumerate(items):
     label=item['label'].replace('Separate trapezoid lenses','Trapezoid lenses')
     draw.text((173+j*122,35), label, font=SMALL, fill='white')
@@ -43,25 +43,30 @@ poses=[('WALKING',True,3),('WALKING',False,6),('CLIMBING',True,4),('CLIMBING',Fa
 for item in items:
     sheet=Image.new('RGB',(170+len(poses)*115,70+len(DATA['shapes'])*155),'#172234');draw=ImageDraw.Draw(sheet)
     draw.text((12,8),item['label']+' · current walk, turn, wall, float and reattachment pixels',font=FONT,fill='white')
-    for j,(state,right,frame) in enumerate(poses):draw.text((174+j*115,35),state.lower()+(' R' if right else ' L'),font=SMALL,fill='white')
+    for j,(state,right,frame) in enumerate(poses):draw.text((174+j*115,35),('return walk' if state=='LANDING' else state.lower())+(' R' if right else ' L'),font=SMALL,fill='white')
     for i,shape in enumerate(DATA['shapes']):
         draw.text((8,120+i*155),shape['label'].replace('Rounded','Rnd'),font=SMALL,fill='white')
         for j,(state,right,frame) in enumerate(poses):
-            image=Image.open(OUT/f'{shape["id"]}-{item["id"]}-{state}-{"right" if right else "left"}-{frame}.png')
+            file=OUT/f'{shape["id"]}-{item["id"]}-{state}-{"right" if right else "left"}-{frame}.png'
+            if not file.exists():file=OUT/f'{shape["id"]}-{item["id"]}-WALKING-{"right" if right else "left"}-{frame}.png'
+            image=Image.open(file)
             cell(sheet,image,174+j*115,55+i*155,height=120)
     sheet.save(OUT/f'Accessory-Poses-{item["id"]}.png')
 
 motion=[]
 sequence=[('WALKING',True,i) for i in range(8)]+[('WALKING',False,i) for i in range(8)]+[('UMBRELLA',False,i) for i in range(8)]+[('LANDING',False,i) for i in range(7)]
-for state,right,index in sequence:
+for step,(state,right,index) in enumerate(sequence):
+    item=items[(step//5)%len(items)]
     sheet=Image.new('RGB',(800,680),'#172234');draw=ImageDraw.Draw(sheet)
-    draw.text((16,10),'Stacked slots: teal headphones + pink bow + yellow monocle',font=FONT,fill='white')
+    draw.text((16,10),'One accessory at a time · '+item['label'],font=FONT,fill='white')
     draw.text((16,30),f'{state.lower()} · {"right" if right else "left"} · frame {index}',font=FONT,fill='white')
     for i,shape in enumerate(DATA['shapes']):
         x=18+(i%4)*196;y=58+(i//4)*205
-        image=Image.open(OUT/f'{shape["id"]}-stack-{state}-{"right" if right else "left"}-{index}.png')
+        file=OUT/f'{shape["id"]}-{item["id"]}-{state}-{"right" if right else "left"}-{index}.png'
+        if not file.exists():file=OUT/f'{shape["id"]}-{item["id"]}-WALKING-{"right" if right else "left"}-{index}.png'
+        image=Image.open(file)
         cell(sheet,image,x+34,y,scale=8,height=160)
         draw.text((x+2,y+182),shape['label'].replace('Rounded','Rnd'),font=SMALL,fill='white')
     motion.append(sheet)
-motion[0].save(OUT/'Accessory-Stack-Motion.gif',save_all=True,append_images=motion[1:],duration=130,loop=0,disposal=2)
-print('Saved all-body, all-color, eight pose sheets, and a stack/turn/float/landing GIF.')
+motion[0].save(OUT/'Accessory-Individual-Motion.gif',save_all=True,append_images=motion[1:],duration=130,loop=0,disposal=2)
+print('Saved all-body, all-color, individual pose sheets and a turn/float motion GIF.')

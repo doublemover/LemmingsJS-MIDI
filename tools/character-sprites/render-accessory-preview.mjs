@@ -22,10 +22,10 @@ const save = (frame, filename) => {
   return filename;
 };
 for (const shape of catalog.shapes) {
-  for (const item of [...receipt.items, { id: 'stack', slot: 'ears' }]) {
+  for (const item of receipt.items) {
     preference = { shape: shape.id, bodyColor: '#4778ff', propColor: '#ff813d',
-      accessories: item.id === 'stack' ? { ears: 'headphones', neck: 'bow', eyewear: 'monocle' } : { [item.slot]: item.id },
-      accessoryColors: { ears: '#04bb9f', neck: '#fa70ab', eyewear: '#ffcc38' } };
+      accessory: item.slot === 'eyewear' ? 'none' : item.id,
+      eyewear: item.slot === 'eyewear' ? item.id : 'none', eyewearColor: '#1f1f1f' };
     if (!await sprites.prepare()) throw new Error(sprites.error);
     const skin = sprites.skinForActor({ id: 1 });
     const motion = [];
@@ -40,8 +40,11 @@ for (const shape of catalog.shapes) {
       skin.onActionChange(actor, { spriteProvider: skin, getActionName: () => 'floating' }, 10);
       for (let index = 0; index < 7; index++) {
         actor.frameIndex = index;
-        skin.drawCosmeticTransition({ drawFrame: frame => motion.push({ state: 'LANDING', right, index,
-          filename: save(frame, `${shape.id}-${item.id}-LANDING-${right ? 'right' : 'left'}-${index}.png`) }) }, actor);
+        const filename = `${shape.id}-${item.id}-LANDING-${right ? 'right' : 'left'}-${index}.png`;
+        const drew = skin.drawCosmeticTransition({ drawFrame: frame => motion.push({ state: 'LANDING', right, index,
+          filename: save(frame, filename) }) }, actor);
+        if (!drew) motion.push({ state: 'RETURN_TO_WALK', right, index,
+          filename: save(skin.getAnimation(SpriteTypes.WALKING, right).getFrame(index), filename) });
       }
     }
     receipt.frames.push({ shape: shape.id, item: item.id, motion });
@@ -49,7 +52,8 @@ for (const shape of catalog.shapes) {
 }
 for (const item of receipt.items) {
   for (const color of CHARACTER_COLORS.prop) {
-    preference = { shape: 'donut', accessories: { [item.slot]: item.id }, accessoryColors: { [item.slot]: color.hex } };
+    preference = { shape: 'donut', accessory: item.slot === 'eyewear' ? 'none' : item.id,
+      eyewear: item.slot === 'eyewear' ? item.id : 'none', propColor: color.hex, eyewearColor: color.hex };
     if (!await sprites.prepare()) throw new Error(sprites.error);
     save(sprites.skinForActor({ id: 1 }).getAnimation(SpriteTypes.WALKING, true).getFrame(3), `color-${item.id}-${color.id}.png`);
   }

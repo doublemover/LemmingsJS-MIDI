@@ -45,42 +45,63 @@ The second script needs Pillow and DejaVu Sans. Output is under
 donut's 18 action states and a walking GIF. Checkerboards expose actual alpha
 holes. These are sprite decoder captures, not browser gameplay screenshots.
 
-## Wearable layers
+## Accessories and eyewear
 
-The seven implemented additions are headphones, bow tie, monocle, tall oval
-frames, separate trapezoid lenses, classic sunglasses and round sunglasses.
-They have independent ears/neck/eyewear slots and colors. Dark ear pads, knots
-and lenses retain their material, and clear rims reveal the underlying face.
-Only one item occupies each slot; all three slots can stack with the beret.
-Classic lemmings load no alternate assets. Accessory packs are lazy-loaded only
-when an accessory is selected on an alternate body.
+All eight native accessories are implemented: headphones, bow tie, beanie, hat,
+beret, bulb, tuft and crown. Exactly one accessory is selected; a new choice
+replaces the previous one. Eyewear is separate: monocle, tall oval frames,
+separate trapezoid lenses, classic sunglasses and round sunglasses. Body,
+accessory and eyewear-frame colors are independent. Dark pads, knots and lenses
+retain their material. Classic lemmings load no alternate assets.
 
-`derive_accessory_fits.py /path/to/runtime/orbit-thumbnails` reads the verified
-native composition recipes and alpha pixels, then records their hashes and
-literal game-pixel adaptations in `accessory-fits.json`. All eleven native
-bodies have recipes for these seven items. Donut is an explicit custom circle
-adaptation whose center remains transparent. Eye frames are cleaned around each
-body's actual eye columns. At this resolution the native curves necessarily
-simplify; they are not newly rendered 3D meshes.
+`native-selection-contract.json` records the exact native validator diagnostic
+“Select at most one accessory”, API categories, and decoded preset evidence.
+The 108 native ORBAST1 appearances contain zero (41) or one (67) accessory;
+33 pair an accessory with separate eyewear. Catalog ears/neck/headwear values
+are attachment locations, not simultaneous user-facing slots. The earlier
+stacked-slot prototype and its previews are superseded and must not be published.
 
-`python3 tools/character-sprites/build_accessory_layers.py` writes deduplicated
-sparse layers under `assets/characters/accessories/`, leaving all approved base
-manifests unchanged. The generator checks its underlying action frames against
-the approved manifests, follows the original body sampling lattice, and keeps
-the cap, tools, canopy and foreground effects in front. Original Hydro's 9×7
-floating face has its own exact eye anchors. Layers cover all 337 action frames
-plus 42 cosmetic landing frames, disappear with the body, and finish landing at
-the corresponding walking pose. No actor, collision, RNG or replay fields are
-added. The palette stays within the existing 16-color indexed contract.
+`derive_accessory_fits.py /path/to/runtime/orbit-thumbnails` and
+`derive_headwear_fits.py /path/to/runtime/orbit-thumbnails` read the verified
+native composition recipes and alpha pixels. They retain hashes and explicit
+literal-pixel adaptations in `accessory-fits.json` and `headwear-fits.json`.
+All eleven native bodies have source recipes for headphones, bow and eyewear.
+Native crown recipes are absent for the two ear bodies, and all native recipes
+are absent for donut; those custom adaptations are labeled. Each crown item uses
+its own native width, slope and perch, including the heart's different left/right
+lobe choices. The tuft uses its rounded asymmetric source mask, not crown prongs.
+At this scale native curves simplify; these are not newly rendered 3D meshes.
 
-Run `node tools/character-sprites/render-accessory-preview.mjs`, then
-`python3 tools/character-sprites/render_accessory_sheet.py` for actual runtime
-decoder images: all bodies, all eleven named accessory colors, both directions,
-wall climbing, floating, landing and a stacked-slot animation. Output is in
-`temp/live-instrument/accessory-review/`. These require the existing Node
-dependencies plus Python/Pillow. The images are decoder proofs; browser gameplay
-and user visual acceptance remain separate.
+`build_accessory_layers.py` generates sparse layers for the approved beret plus
+optional eyewear. `build_headwear_layers.py` supplies bare bodies and alternate
+accessories, so choosing headphones or a bow actually removes the beret. Both
+leave the twelve approved base manifests unchanged. Hydro's uncovered crown is
+reconstructed exactly as its reviewed landing animation already does. Four
+pixels of cosmetic top space preserve the body/world anchor, including Hydro
+when wearing alternative accessories. Action timing, body pixels, collision,
+RNG and replay state remain unchanged; palettes stay within 16 indexed colors.
 
-Still to adapt: beanie, hat, bulb, tuft and crown. Native headwear recipes are
-absent for both ear bodies, and all native recipes are absent for donut. Their
-custom fits must be reviewed without changing the accepted beret placements.
+Attachments sample on the body's exact pixel lattice. Hydro's original 9×7
+floating face has its own eye anchors. Tools, canopy and foreground effects
+remain in front. The beret retains its lift/open/reattach animation. Other
+accessories stay attached while the separate gameplay canopy opens, with natural
+occlusion during opening, and return to the normal walking pose. Accessories
+vanish with the destroyed body instead of leaving obsolete beret debris.
+
+Run the following from the repository root (Node dependencies + Python/Pillow):
+
+```
+python3 tools/character-sprites/build_accessory_layers.py
+python3 tools/character-sprites/build_headwear_layers.py
+node tools/character-sprites/render-accessory-preview.mjs
+node tools/character-sprites/render-headwear-preview.mjs
+python3 tools/character-sprites/render_accessory_sheet.py
+python3 tools/character-sprites/render_headwear_sheet.py /path/to/runtime/orbit-thumbnails
+```
+
+Output is under `temp/live-instrument/accessory-review/` and `headwear-review/`:
+individual accessories on every body, all eleven native colors, both directions,
+wall climbing, floating and return to walking. The source-comparison sheet must
+be retained alongside mask tests. These are actual `CharacterSpriteSet` and
+`PixelSpriteSkin` decoder proofs; browser gameplay and user visual acceptance
+are still separate. Only the existing twelve beret fits have prior user approval.
