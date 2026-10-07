@@ -72,12 +72,13 @@ describe('stable-ID character appearance', function() {
     expect(set.skins.size).to.be.at.most(32);
   });
 
-  it('retries a missing manifest while preserving classic fallback', async function() {
+  it('retries a missing initial manifest without flashing classic art', async function() {
     const { set, base } = setup('heart'); const load = set.loadText; let failures = 1;
     set.loadText = path => { if (failures--) throw new Error('Missing art'); return load(path); };
     expect(await set.prepare()).to.equal(false);
     expect(set.error).to.equal('Missing art');
-    expect(set.skinForActor({ id: 1 })).to.equal(base);
+    expect(set.skinForActor({ id: 1 })).not.to.equal(base);
+    expect([...set.getActorAnimation(SpriteTypes.WALKING, true, { id: 1 }).getFrame(0).mask]).to.deep.equal([0]);
     expect(await set.prepare()).to.equal(true);
     expect(set.skinForActor({ id: 1 })).not.to.equal(base);
   });

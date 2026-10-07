@@ -74,6 +74,28 @@ describe('PixelSpriteSkin hydro actor replacement', function () {
     }
   });
 
+  it('remaps palette variants without decoding source rows again and shares immutable geometry', function () {
+    const manifest = read();
+    const skin = new PixelSpriteSkin(manifest);
+    const palette = manifest.palette.map(color => [...color]); palette[3] = [250, 112, 171, 255];
+    const expected = new PixelSpriteSkin({ ...manifest, palette });
+    manifest.animations = null;
+    const variant = skin.withPalette(palette);
+    const source = skin.getAnimation(SpriteTypes.WALKING, true).getFrame(0);
+    const animation = variant.getAnimation(SpriteTypes.WALKING, true);
+    const frame = animation.getFrame(0);
+    expect(frame).not.to.equal(source);
+    expect(frame.mask).to.equal(source.mask);
+    expect(frame.getSpanCache().rows).to.equal(source.getSpanCache().rows);
+    expect([...frame.data]).to.deep.equal([...expected.getAnimation(SpriteTypes.WALKING, true).getFrame(0).data]);
+    for (let i = 0; i < 200; i++) expect(animation.getFrame(0)).to.equal(frame);
+    expect(variant.getAnimation(SpriteTypes.DIGGING, true)).to.equal(variant.getAnimation(SpriteTypes.DIGGING, false));
+    expect(source.getData()).not.to.deep.equal(frame.getData());
+    expect(() => skin.withPalette(palette.slice(1))).to.throw('variant palette');
+    palette[0][3] = 255;
+    expect(() => skin.withPalette(palette)).to.throw('variant palette');
+  });
+
   it('retains the opt-in setting through the real configuration reader', async function () {
     const json = JSON.stringify([{ name: 'hydro', path: 'lemmings', gametype: 'LEMMINGS', spriteSkin: manifestPath, 'level.filePrefix': 'LEVEL', 'level.order': [[91]], 'level.groups': ['Fun'] }]);
     const config = await new ConfigReader(Promise.resolve(json)).getConfig(GameTypes.LEMMINGS);

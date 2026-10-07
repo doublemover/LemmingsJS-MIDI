@@ -96,9 +96,10 @@ describe('native character accessory layers', function() {
     }, () => preference);
     expect(await sprites.prepare()).to.equal(true);
     expect(loads).to.have.length(1);
+    const ready = sprites.skinForActor({ id: 3 });
     preference = { shape: 'circle', ...selected }; fail = true;
     expect(await sprites.prepare()).to.equal(false);
-    expect(sprites.skinForActor({ id: 3 })).to.equal(base);
+    expect(sprites.skinForActor({ id: 3 })).to.equal(ready);
     fail = false;
     expect(await Promise.all([sprites.prepare(), sprites.prepare()])).to.deep.equal([true, true]);
     expect(loads.filter(file => file.includes('/accessories/'))).to.have.length(2);
