@@ -39,14 +39,25 @@ Only sparse edited chunks are allocated per active terrain region. Old edits are
 pruned behind the leftmost live actor in each lane. There are no world-sized
 bitmaps or per-lane Game/renderer instances. Drawing is restricted to visible
 lanes and pixels, while all admitted actors still receive real fixed steps.
-Scroll/drag explores the shared world; Ctrl/Command-wheel zooms and double-click
-resumes forward camera following.
+Wheel or Z/X zooms, including far-out views down to 1/256 scale. Zoom keeps the
+left edge and first-lane top edge pinned when the view is at the origin. Drag,
+arrows, or Shift-wheel pans; Shift-arrows pans faster. Manual changes suspend
+following. F or double-click resumes on the furthest-ahead living actor, including
+its current lane. V resets the zoom, Space pauses, ] steps while paused, Backspace
+restarts, and +/- changes speed (Shift applies five steps). Existing overrides in
+keybindings.json apply to these actions. Editing a control never triggers game
+shortcuts. The speed buttons use the main-game bitmap glyphs and step sizes;
+procgen has no upper speed dropdown cap. The runtime still reports actual achieved
+throughput separately from the requested multiplier.
 
 ## Distance and stall recovery
 
 Each lane retains a rightward high-water mark, previous/best distance, and actual
-spawn count since its last advance. Visible lanes show numeric records and a
-vertical previous-distance marker. Records survive explicit restart/page reload
+spawn count since its last advance. The fixed top score and visible lane distances use the exact main-game
+bitmap HUD glyphs. Labels use supported A-Z, digits, space and hyphen; punctuation
+not present in MAIN.DAT is not substituted with a browser font. Visible lanes also
+retain a vertical previous-distance marker. Individual lane labels are suppressed
+in far-out views to avoid overlap, while the top score remains readable. Records survive explicit restart/page reload
 through local storage; unavailable storage leaves the current session usable.
 
 Default policy data lives in `ProcgenStallPolicy.js`:
@@ -114,3 +125,35 @@ independent routes, all source recipes, stall growth/pause/cascade/reset,
 character balance, drawer interactions and local-only controls. Browser E2E and
 visual QA require a permitted browser environment; unit/headless results alone
 are not a live-rendering or listening pass.
+
+## Shareable configuration
+
+Share run reveals a URL for the current configuration. Explicit, validated URL
+values override stored appearance preferences. Missing or invalid values retain
+the normal defaults/preferences. Body color defaults to stable random for a new
+procgen session; each actor keeps its color identity. The generated random-shape
+icon and actual original lemming are included in the compact selector. Every body,
+accessory and eyewear preview is drawn from runtime sprites using the selected
+colors, including stable per-preview random colors.
+
+Supported parameters:
+
+- seed: existing integer, hexadecimal, or free-form deterministic seed semantics
+- lanes: integer 1-1024 (larger valid values clamp to 1024)
+- pack: existing numeric pack ID 1-6
+- speed: finite multiplier >=0.1, without a procgen-specific maximum
+- shape: mixed, classic, or a body ID from assets/characters/catalog.json
+- bodyColor, propColor, eyewearColor: random or a native palette hex value
+- accessory and eyewear: native catalog IDs (none is explicit)
+- appearanceSeed: seed for stable appearance/color identities
+- preset: a shared game-event music preset ID
+- musicMode: steps or phrase
+- cameraX, cameraY: finite nonnegative world coordinates
+- zoom: scale from 1/256 to 6; follow: 0/1 or false/true
+
+Compatibility aliases include appearance, body, accessoryColor, frameColor,
+musicPreset, phrases, x, y and scale. Supplying camera coordinates/zoom without
+follow starts a manual view. Explicit follow=1 starts tracking instead. Share links
+preserve the selected preset, but never enable or request audio automatically.
+The recipient still starts local listening with an explicit click. Links describe
+configuration, not live simulation state or another user's saved distance records.

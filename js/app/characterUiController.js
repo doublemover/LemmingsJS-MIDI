@@ -1,6 +1,7 @@
 import { CHARACTER_STORAGE_KEY, getCharacterPreference, setCharacterPreference } from '../lemmings/CharacterSpriteSet.js';
 import { CHARACTER_COLORS } from '../lemmings/characterColors.js';
 import { CHARACTER_ACCESSORIES, CHARACTER_ACCESSORY_CHOICES } from '../lemmings/CharacterAccessories.js';
+import { updateCharacterPreviews } from './characterPreviews.js';
 
 const CHARACTER_FIELDS = [
   ['characterShape', 'Body shape', 'shape-choices'],
@@ -21,13 +22,14 @@ const mountCharacterControls = (document, container) => {
   }
   const status = document.createElement('span'); status.id = 'characterStatus'; status.setAttribute('role', 'status'); container.appendChild(status);
 };
-const createCharacterUiController = ({ document, window, getView }) => {
+const createCharacterUiController = ({ document, window, getView, defaults = {}, initial = {}, onChange, randomShapeImage = 'assets/characters/ui/random-shapes-32.png' }) => {
   const byId = id => document?.getElementById(id);
   let generation = 0;
+  let saved = null;
   try {
-    const saved = JSON.parse(window?.localStorage?.getItem(CHARACTER_STORAGE_KEY) || 'null');
-    if (saved) setCharacterPreference(saved);
+    saved = JSON.parse(window?.localStorage?.getItem(CHARACTER_STORAGE_KEY) || 'null');
   } catch { /* Invalid stored appearance uses the ready default. */ }
+  setCharacterPreference({ ...getCharacterPreference(), ...defaults, ...saved, ...initial });
   const persist = preference => {
     try { window?.localStorage?.setItem(CHARACTER_STORAGE_KEY, JSON.stringify(preference)); } catch { /* Session choices still apply. */ }
   };
@@ -57,7 +59,8 @@ const createCharacterUiController = ({ document, window, getView }) => {
       } else if (item.image) {
         const image = document.createElement('img'); image.src = item.image; image.alt = ''; image.width = 32; image.height = 32; button.appendChild(image);
       } else {
-        button.dataset.icon = item.id === 'classic' ? 'shapes' : 'dice-5';
+        const swatch = document.createElement('span'); swatch.className = 'character-swatch character-swatch--random';
+        swatch.setAttribute('aria-hidden', 'true'); button.appendChild(swatch);
         const label = document.createElement('span'); label.className = 'visually-hidden'; label.textContent = item.label; button.appendChild(label);
       }
       button.addEventListener('click', () => { select.value = item.id; change(); });
@@ -78,7 +81,7 @@ const createCharacterUiController = ({ document, window, getView }) => {
     const sprites = getView()?.game?.gameResources?.characterSprites;
     if (!byId('characterShape') || !sprites) return;
     fillChoices('characterShape', [
-      { id: 'mixed', label: 'Stable mix of all shapes' },
+      { id: 'mixed', label: 'Stable mix of all shapes', image: randomShapeImage },
       ...sprites.shapes.map(shape => ({ id: shape.id, label: shape.label.replace(/^Hydro\s+/i, ''), image: `assets/characters/previews/body-${shape.id}.svg` })),
       { id: 'classic', label: 'Original lemmings' }
     ]);
@@ -95,6 +98,8 @@ const createCharacterUiController = ({ document, window, getView }) => {
     if (status) status.textContent = ok ? p.shape === 'mixed' ? 'All shapes · stable character identities' : 'Appearance ready · gameplay unchanged'
       : `${sprites.activePreference ? 'Could not load this appearance. Keeping the previous look.' : 'Character art unavailable. Choose an appearance to retry.'} ${sprites.error || ''}`;
     getView()?.game?.render?.();
+    try { await updateCharacterPreviews({ document, sprites, preference: p, isCurrent: () => request === generation }); }
+    catch { /* Gameplay art remains ready even when a preview cannot load. */ }
   };
   const change = () => {
     const current = getCharacterPreference();
@@ -104,7 +109,7 @@ const createCharacterUiController = ({ document, window, getView }) => {
       bodyColor: byId('characterBodyPalette')?.value || current.bodyColor,
       propColor: byId('characterPropPalette')?.value || current.propColor,
       eyewearColor: byId('characterEyewearPalette')?.value || current.eyewearColor });
-    persist(next); sync();
+    persist(next); onChange?.(next); sync();
   };
   const bind = () => {
     const current = getCharacterPreference();

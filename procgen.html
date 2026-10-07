@@ -16,9 +16,17 @@
   <section id="procgenDrawer" aria-label="Procgen controls" inert>
     <div class="procgen-controls-row">
       <label>Spawns per cohort / lanes <input id="procgenLanes" type="number" min="1" max="1024" step="1" value="1"></label>
-      <label>Speed <select id="procgenSpeed"></select></label>
+      <div class="procgen-speed-control" role="group" aria-label="Game speed">
+        <span>Speed</span><div class="procgen-speed-segments">
+          <button id="procgenSpeedDown" type="button" aria-label="Decrease game speed" title="Decrease speed (-); Shift for five steps"><span class="visually-hidden">Decrease</span></button>
+          <output id="procgenSpeedReadout" aria-hidden="true"></output>
+          <button id="procgenSpeedUp" type="button" aria-label="Increase game speed" title="Increase speed (+); Shift for five steps"><span class="visually-hidden">Increase</span></button>
+        </div><input id="procgenSpeed" type="number" min="0.1" step="0.1" value="3" aria-label="Exact game speed" title="Game speed multiplier">
+      </div>
       <label>Pack <select id="procgenPack"></select></label>
       <button id="procgenRestart" type="button">Restart</button>
+      <button id="procgenShare" type="button">Share run</button>
+      <input id="procgenShareUrl" type="text" readonly hidden aria-label="Shareable run URL">
     </div>
     <div id="procgenCharacters" class="character-control-content"></div>
     <div class="procgen-controls-row">
