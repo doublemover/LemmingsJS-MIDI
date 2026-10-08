@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { ProcgenPackTerrain, procgenThemeOrder, loadProcgenPackTerrain } from '../js/app/procgen/ProcgenPackTerrain.js';
-import { ProcgenAssetManager } from '../js/app/ProcgenAssetManager.js';
+import { ProcgenAssetManager } from '../js/app/procgenAssetManager.js';
 import { loadTerrainRecipeBook } from '../js/app/procgen/ProcgenTerrainRecipes.js';
 import { NodeFileProvider } from '../tools/NodeFileProvider.js';
 import { fileURLToPath } from 'node:url';

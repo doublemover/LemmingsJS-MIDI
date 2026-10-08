@@ -1,4 +1,4 @@
-import { ProcgenAssetManager } from '../ProcgenAssetManager.js';
+import { ProcgenAssetManager } from '../procgenAssetManager.js';
 import { ProcgenRecipeTerrain } from './ProcgenRecipeTerrain.js';
 import { fingerprintTerrainImages, getPackTerrainWidthLimit, selectTerrainDescriptor } from './ProcgenTerrainDescriptors.js';
 import { selectThemeRecipe } from './ProcgenTerrainRecipes.js';

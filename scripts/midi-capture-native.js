@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises';
-import { chromium } from 'playwright';
+import { chromium } from '@playwright/test';
 import { installWebMidiStub } from '../e2e/helpers/webmidiStub.js';
 import { installExternalAssetStubs } from '../e2e/helpers/externalAssets.js';
 import { writeMidiCaptureArtifacts } from './midi-capture-fixture.js';
