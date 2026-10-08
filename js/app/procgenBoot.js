@@ -2,8 +2,8 @@ import { getDecorationPack } from '../decorations/ProcgenDecorationPacks.js';
 import './bootstrap.js';
 import { ProcgenBitmapHud } from './procgen/ProcgenBitmapHud.js';
 import { createProcgenUiController } from './procgen/ProcgenUiController.js';
-import { ProcgenRecipeTerrain } from './procgen/ProcgenRecipeTerrain.js';
-import { loadTerrainRecipeBook, selectThemeRecipe } from './procgen/ProcgenTerrainRecipes.js';
+import { loadProcgenPackTerrain } from './procgen/ProcgenPackTerrain.js';
+import { loadTerrainRecipeBook } from './procgen/ProcgenTerrainRecipes.js';
 import { createProcgenLaneRuntime } from './procgen/ProcgenLaneRuntime.js';
 import { GameView } from '../game/GameView.js';
 import { GameTypes } from '../game/GameTypes.js';
@@ -359,9 +359,8 @@ const init = async () => {
       await assets.load();
       assets.decorationPack = getDecorationPack(procgenUi.settings.decoration);
       const book = await loadTerrainRecipeBook(view.gameFactory.fileProvider);
-      const recipe = selectThemeRecipe(book, { packPath: config.path, groundSet: assets.groundSet });
-      const objectPieces = (assets.assets?.gadgetImages || []).map((image, id) => ({ ...assets.assets.gadgets[id], id, image }));
-      const terrain = new ProcgenRecipeTerrain({ recipe, terrainPieces: assets.terrainPieces, objectPieces });
+      const terrain = await loadProcgenPackTerrain({ styleNames: getCompatibleProcgenStyleNames(config), config, fileProvider: view.gameFactory.fileProvider, book, initialAssets: assets, random: terrainRng });
+      if (activeProcgenRuntime !== runtime) { view.dispose(); return; }
       const palette = assets.assets?.gadgetImages?.find(image => image?.palette)?.palette || assets.groundPieces[0]?.image?.palette;
       const [sprites, masks, hudSprites] = await Promise.all([resources.getLemmingsSprite(palette), resources.getMasks(), resources.getSkillPanelSprite(palette)]);
       if (activeProcgenRuntime !== runtime) { view.dispose(); return; }

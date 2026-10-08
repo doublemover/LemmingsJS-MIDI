@@ -851,3 +851,6 @@ fitted berets with lift/open/reattach cosmetics on every shape. Acceptance instr
 - Make deterministic terrain growth finer and prioritize reachable frontiers with bounded shared work and matching collision/display. Derive per-pack zone themes from canonical normal-level co-occurrence with their maximum authored width as the zone cap.
 - Add ranked live overview CCTV with bounded rendering. Its Library reference was unavailable after the supported transfer and one retry; use explicit owner requirements and actual app evidence.
 - Ramp constructible challenge motifs with distance. Deep mining/switchback routes require real mining/digging and turning policy in the lane world before claiming playable escalation.
+
+- Tunnel-corner wall-column transition is reproduced and fixed using real shared action systems; non-climber turnaround and natural hoisting are covered.
+- Starting lane themes now use a deterministic balanced permutation of available selected-pack groundsets; later co-occurrence zones remain queued.

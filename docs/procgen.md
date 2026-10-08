@@ -34,8 +34,8 @@ Source-colored connected foundations form shelves, slopes, abrupt climbs and
 drops; stamped pieces add overhangs and steel, while gaps require bridges.
 Background terrain decorations and animated object artwork are noncolliding.
 Objects in this endless composition are scenery, not operational exits, entrances
-or traps. Different groundsets are not mixed within one run. Real steel pixels
-are protected from bashing/explosions. Assistance uses ordinary classic walking,
+or traps. Each lane keeps one available groundset from the selected pack. A seeded permutation spreads starting themes evenly across lanes; a new generation rotates this order. Assets from other packs are never borrowed. Unavailable themes are omitted rather than substituted. Real steel pixels
+are protected from bashing/explosions. Climbers enter the actual wall column before climbing; tunnel ceilings make them turn and fall instead of hoisting through the underside. Non-climbers retain their normal turnaround. Assistance uses ordinary classic walking,
 building, climbing and bashing; awkward steel lips can trigger a walk-back and
 builder approach without teleporting an actor or changing action timing.
 

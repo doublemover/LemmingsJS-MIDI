@@ -65,6 +65,7 @@ class ProcgenLaneWorld {
     this.challengeCache = new Map();
     this.challengeCacheLimit = Math.max(128, this.laneCount * 8);
     this.laneSeeds = Uint32Array.from({ length: this.laneCount }, (_, lane) => mix(this.seed ^ Math.imul(lane + 1, 0x9e3779b1)));
+    terrain?.registerLanes?.(this.laneSeeds, this.seed, this.generation);
     this.eventTimeMs = 0;
     this.timer = { speedFactor: speed, onGameTick: new EventHandler(), getGameTicks: () => this.tickIndex,
       get frameTime() { return 60 / Math.max(0.001, this.speedFactor); },
@@ -130,6 +131,7 @@ class ProcgenLaneWorld {
     this._laneChunk.fill(null); this._laneChunkIndex.fill(-1); this._collisionSlots.fill(null); this._collisionIndices.fill(-1); this._laneEdits.fill(null); this._laneEditIndex.fill(-1); this._editCache.fill(null); this._editIndices.fill(-1); this.frontiers.fill(36);
     this.generatedThrough.fill(this.terrain?.chunkWidth || CHUNK_WIDTH); this.terrainRevision++; this.frontierRevision++; this.generation++; this.generationStartTick = this.tickIndex;
     for (let lane = 0; lane < this.laneCount; lane++) this.laneSeeds[lane] = mix(this.seed ^ Math.imul(lane + 1, 0x9e3779b1) ^ Math.imul(this.generation - 1, 0x85ebca6b));
+    this.terrain?.registerLanes?.(this.laneSeeds, this.seed, this.generation);
     this.stall = new ProcgenStallPolicy(this.laneCount, this.stall.settings, previousDistances);
     for (const lane of this.stall.lanes) lane.lastProgressTick = this.tickIndex;
     this.onRestart?.();
@@ -431,6 +433,7 @@ class ProcgenLaneWorld {
       distance: { min: Number.isFinite(minDistance) ? minDistance : 0, max: maxDistance, mean: distance / Math.max(1, this.actors.length) },
       terrainGeneration: this.terrain?.getDebugState?.() || null, collisionResidentSlots: this._collisionSlots.length, residentCollisionMB: residentCollisionBytes / 1048576,
       frontierMargins: Array.from(this.generatedThrough, (x, lane) => x - this.frontiers[lane]),
+      laneThemes: this.terrain?.laneThemes || null,
       terrainRecipe: this.terrain?.recipe.id || null, recipeMemoryMB: this.terrain?.memoryMB || 0,
       cachedChallenges: this.challengeCache.size, terrainEdits: this.editChunks.size, terrainMemoryMB: this.editChunks.size * EDIT_CHUNK_WIDTH * LANE_HEIGHT / 1048576,
       ...this.stats };
