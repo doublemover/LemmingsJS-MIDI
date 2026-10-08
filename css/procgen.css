@@ -126,3 +126,6 @@ body { flex-direction: column; }
 #procgenDrawer { top: var(--procgen-bar-height, 42px); max-height: min(calc(100dvh - var(--procgen-bar-height, 42px)), 660px); padding-top: 10px; }
 #procgenTopbar :focus-visible { outline: 2px solid #ffcc38; outline-offset: 2px; }
 @media (max-width: 600px) { #procgenTopbar { gap: 4px; padding: 4px; } #procgenTopbar #procgenPack { max-width: 110px; } #procgenTopbar #procgenSeed { width: 88px; } }
+
+#procgenOutputPressure { color: #ead093; font: 9px ui-monospace,monospace; white-space: nowrap; }
+#procgenOutputPressure[hidden] { display: none; }

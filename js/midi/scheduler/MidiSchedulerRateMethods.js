@@ -51,12 +51,13 @@ const midiSchedulerRateMethods = {
     }
   },
 
-  _sumRate(entries, startMs, endMs, detailed = true) {
+  _sumRate(entries, startMs, endMs, detailed = true, includePendingOns = false) {
     let count = 0;
     let bytes = 0;
     const bySfx = detailed ? new Map() : null;
     const byTrack = detailed ? new Map() : null;
     const byOutput = detailed ? new Map() : null;
+    const byLane = detailed ? new Map() : null;
     const addShare = (map, key, entry) => {
       const curr = map.get(key) || { count: 0, bytes: 0, priority: entry.priority ?? 1 };
       curr.count += entry.count;
@@ -66,16 +67,17 @@ const midiSchedulerRateMethods = {
       map.set(key, curr);
     };
     for (const entry of entries) {
-      if (entry.timeMs < startMs || entry.timeMs >= endMs) continue;
+      if (entry.timeMs < startMs || (entry.timeMs >= endMs && (!includePendingOns || entry.phase !== 'on'))) continue;
       count += entry.count;
       bytes += entry.bytes;
       if (detailed) {
         addShare(bySfx, entry.sfxId ?? 'unknown', entry);
         addShare(byTrack, entry.trackId ?? 'project', entry);
         addShare(byOutput, entry.outputId ?? 'project', entry);
+        addShare(byLane, entry.laneIndex ?? 0, entry);
       }
     }
-    return { count, bytes, bySfx, byTrack, byOutput };
+    return { count, bytes, bySfx, byTrack, byOutput, byLane };
   },
 
   _planEntries(plan) {
@@ -94,7 +96,7 @@ const midiSchedulerRateMethods = {
     const endMs = now + this._rateWindowMs;
     for (const entry of this._planEntries(plan)) {
       if (!Number.isFinite(entry?.timeMs)) continue;
-      if (entry.timeMs < startMs || entry.timeMs >= endMs) continue;
+      if (entry.timeMs < startMs || (entry.timeMs >= endMs && entry.phase === 'off')) continue;
       const entryCount = Math.trunc(toFiniteNumber(entry.count, 0));
       if (entryCount <= 0) continue;
       const entryBytes = Math.trunc(toFiniteNumber(entry.bytes, entryCount * MIDI_MESSAGE_BYTES));
@@ -139,7 +141,7 @@ const midiSchedulerRateMethods = {
     const snapshot = {
       now,
       past: this._sumRate(this._rateSent, now - this._rateWindowMs, now),
-      next: this._sumRate(this._ratePlanned, now, now + this._rateWindowMs),
+      next: this._sumRate(this._ratePlanned, now, now + this._rateWindowMs, true, true),
       maxMessagesPerSecond: this._maxMessagesPerSecond,
       maxBytesPerSecond: this._maxBytesPerSecond
     };
@@ -148,13 +150,15 @@ const midiSchedulerRateMethods = {
       count: snapshot.past.count + snapshot.next.count + proposed.count,
       bytes: snapshot.past.bytes + snapshot.next.bytes + proposed.bytes
     };
+    const lane = this._evaluateLaneShare(meta, now, snapshot, proposed, softMaxMessages, maxBytes);
     const overMessages = combined.count > maxMessages;
     const overBytes = combined.bytes > maxBytes;
     const softOverMessages = combined.count > softMaxMessages;
     const result = {
-      ok: !overMessages && !overBytes,
-      softOk: !softOverMessages && !overBytes,
-      reason: overBytes ? 'byte-limit' : (overMessages ? 'count-limit' : null),
+      ok: !overMessages && !overBytes && lane.ok,
+      softOk: !softOverMessages && !overBytes && lane.ok,
+      reason: overBytes ? 'byte-limit' : (overMessages ? 'count-limit' : lane.reason),
+      lane,
       maxMessagesPerSecond: maxMessages,
       softMaxMessagesPerSecond: softMaxMessages,
       maxBytesPerSecond: maxBytes,
@@ -170,6 +174,7 @@ const midiSchedulerRateMethods = {
     if (!evaluation?.ok) return evaluation || { ok: false, reason: 'count-limit' };
     if (evaluation.reservationId) return evaluation;
     const reservationId = ++this._reservationSeq;
+    if ((meta.laneCount ?? 1) > 1) this._rateLaneLastServed.set(meta.laneIndex ?? 0, now);
     if (!alreadyPruned) this._pruneRateEntries(now);
     for (const entry of this._planEntries(plan)) {
       const count = Math.trunc(toFiniteNumber(entry.count, 0));
@@ -187,7 +192,9 @@ const midiSchedulerRateMethods = {
         triggerType: meta.triggerType ?? null,
         trackId: meta.trackId ?? null,
         outputId: meta.outputId ?? null,
-        voiceBudget: meta.voiceBudget ?? null
+        voiceBudget: meta.voiceBudget ?? null,
+        laneIndex: meta.laneIndex ?? 0,
+        laneCount: meta.laneCount ?? 1
       }, now, true);
     }
     return {
@@ -204,10 +211,65 @@ const midiSchedulerRateMethods = {
     });
   },
 
+  _evaluateLaneShare(meta, now, snapshot, proposed, maxMessages, maxBytes) {
+    const laneCount = clamp(toPositiveInt(meta.laneCount, 1), 1, 1024);
+    const laneIndex = clamp(Math.trunc(toFiniteNumber(meta.laneIndex, 0)), 0, laneCount - 1);
+    if (laneCount <= 1) {
+      this._rateLaneCount = 1;
+      this._rateLaneStartMs = null;
+      this._rateLaneActivity.clear();
+      this._rateLaneLastServed.clear();
+      return { ok: true, reason: null, laneIndex, laneCount, activeLanes: 1 };
+    }
+    if (this._rateLaneCount !== laneCount || this._rateLaneStartMs == null) {
+      this._rateLaneCount = laneCount;
+      this._rateLaneStartMs = now;
+      this._rateLaneActivity.clear();
+      this._rateLaneLastServed.clear();
+    }
+    this._rateLaneActivity.set(laneIndex, now);
+    for (const [index, seenAt] of this._rateLaneActivity) {
+      if (now - seenAt > this._rateWindowMs * 2) this._rateLaneActivity.delete(index);
+    }
+    // Protect every lane during the first burst; quiet lanes lend their share afterwards.
+    const activeLanes = now - this._rateLaneStartMs < 120 ? laneCount : Math.max(1, this._rateLaneActivity.size);
+    const used = [snapshot.past.byLane?.get(laneIndex), snapshot.next.byLane?.get(laneIndex)];
+    const count = used.reduce((total, entry) => total + (entry?.count || 0), 0);
+    const bytes = used.reduce((total, entry) => total + (entry?.bytes || 0), 0);
+    const countShare = Math.max(proposed.count, maxMessages / activeLanes);
+    const byteShare = Math.max(proposed.bytes, maxBytes / activeLanes);
+    let leastServed = Infinity;
+    const oversized = proposed.count > maxMessages / activeLanes || proposed.bytes > maxBytes / activeLanes;
+    if (oversized) {
+      if (activeLanes > this._rateLaneActivity.size) leastServed = -Infinity;
+      for (const index of this._rateLaneActivity.keys()) {
+        leastServed = Math.min(leastServed, this._rateLaneLastServed.get(index) ?? -Infinity);
+      }
+    }
+    const inTurn = !oversized || (this._rateLaneLastServed.get(laneIndex) ?? -Infinity) <= leastServed;
+    const ok = inTurn && count + proposed.count <= countShare && bytes + proposed.bytes <= byteShare;
+    return { ok, reason: ok ? null : 'lane-share', laneIndex, laneCount, activeLanes, countShare, byteShare };
+  },
+
+  recordThrottle(reason, now = this._nowMs()) {
+    this._throttleState.dropped += 1;
+    this._throttleState.lastDropMs = now;
+    this._throttleState.reason = reason;
+  },
+
+  getOutputPressure(now = this._nowMs()) {
+    const snapshot = this.getRateSnapshot(now, false);
+    return { throttled: now - this._throttleState.lastDropMs < 1000,
+      dropped: this._throttleState.dropped, reason: this._throttleState.reason,
+      messages: snapshot.past.count + snapshot.next.count,
+      maxMessages: this._maxMessagesPerSecond, laneCount: this._rateLaneCount,
+      pendingNotes: this._pendingNoteOns.size };
+  },
+
   getRateSnapshot(now = this._nowMs(), detailed = true) {
     this._pruneRateEntries(now);
     const past = this._sumRate(this._rateSent, now - this._rateWindowMs, now, detailed);
-    const next = this._sumRate(this._ratePlanned, now, now + this._rateWindowMs, detailed);
+    const next = this._sumRate(this._ratePlanned, now, now + this._rateWindowMs, detailed, true);
     return {
       now,
       past,
@@ -307,10 +369,7 @@ const midiSchedulerRateMethods = {
     if (overMessageRate || overByteRate) {
       if (now - this._lastRateErrorMs > 1000) {
         this._lastRateErrorMs = now;
-        const limits = [];
-        if (overMessageRate) limits.push(`${this._maxMessagesPerSecond.toFixed(0)} messages/sec`);
-        if (overByteRate) limits.push(`${this._maxBytesPerSecond.toFixed(0)} bytes/sec`);
-        console.error(`MIDI throughput exceeded ${limits.join(' and ')}`);
+        this.recordThrottle(overByteRate ? 'byte-limit' : 'count-limit', now);
       }
     }
   },

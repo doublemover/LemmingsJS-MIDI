@@ -74,6 +74,24 @@ const midiEventRouterLifecycleMethods = {
     this.soundBus = null;
   },
 
+  _hasTickBudget(tick, laneIndex = 0, laneCount = 1, consume = false) {
+    if (tick == null) return true;
+    if (this._tickCounter.tick !== tick) {
+      this._tickCounter = { tick, count: 0 };
+      this._tickLaneCounts.clear();
+    }
+    const maximum = Math.min(Math.max(this.mapping.config?.limits?.maxEventsPerTick ?? MAX_EVENTS_PER_TICK, 1), MAX_EVENTS_PER_TICK);
+    const lanes = Math.max(1, Math.min(1024, Math.trunc(Number(laneCount) || 1)));
+    const lane = Math.max(0, Math.min(lanes - 1, Math.trunc(Number(laneIndex) || 0)));
+    const share = Math.ceil(maximum / lanes);
+    const available = this._tickCounter.count < maximum && (this._tickLaneCounts.get(lane) || 0) < share;
+    if (available && consume) {
+      this._tickCounter.count += 1;
+      this._tickLaneCounts.set(lane, (this._tickLaneCounts.get(lane) || 0) + 1);
+    }
+    return available;
+  },
+
   _tickMsFromEvent(event) {
     if (Number.isFinite(event?.tps) && event.tps > 0) return 1000 / event.tps;
     if (Number.isFinite(event?.frameMs) && event.frameMs > 0) return event.frameMs;
@@ -112,8 +130,8 @@ const midiEventRouterLifecycleMethods = {
       this._lastAcceptedBySfx.clear();
       for (const [key, state] of this._arpStateBySfx) if (state.completedPasses == null) this._arpStateBySfx.delete(key);
       this._repeatHistoryByKey.clear();
-      this.scheduler?.allNotesOff?.({ preserveGamePhrases: true });
-      this.scheduler?.clearQueue?.({ preserveGamePhrases: true });
+      this.scheduler?.allNotesOff?.({ preserveGamePhrases: true, preserveRateHistory: true });
+      this.scheduler?.clearQueue?.({ preserveGamePhrases: true, preserveRateHistory: true });
     }
     if (this._clockBaseMs == null) {
       this._clockBaseMs = this._nowMs() - eventTimeMs;

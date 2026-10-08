@@ -109,6 +109,13 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     if (document?.activeElement?.hidden && document.activeElement?.dataset?.gameEventId) selectedRow?.focus?.();
     const source = getSource();
     const runtime = view?.midiPreviewRouter || view?.midiRouter;
+    const pressure = runtime?.getOutputPressure?.();
+    const outputPressure = byId('midiOutputPressure');
+    if (outputPressure) {
+      outputPressure.hidden = !pressure?.throttled;
+      text('midiOutputPressure', pressure?.throttled ? 'Thinned ' + pressure.dropped : '');
+      outputPressure.title = pressure?.throttled ? 'Shared sound budget: ' + pressure.reason + '; ' + pressure.messages + ' reserved/sent messages; ' + pressure.pendingNotes + ' pending notes' : '';
+    }
     const eventOwner = GAME_SOUND_EVENTS.find(event => resolveGameSoundSource(getProject(), event)?.id === source?.id);
     const state = runtime?.getEventPlaybackState?.({ sfxId: eventOwner?.id ?? Number(source?.sourceKey), ...(source?.kind === 'trigger' ? { triggerType: Number(source.sourceKey) } : {}) });
     text('midiEventClipCounters', source?.mode === 'clip' ? 'Live counters: ' + (state?.eventCount || 0) + ' events / last pass ' + (state?.passCount || 1) + ' / last trigger bar ' + (state?.triggerBar || 1) + ' / ' + (state?.completedPasses || 0) + ' completed phrases' : '');

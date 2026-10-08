@@ -149,6 +149,9 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   listen(document, 'visibilitychange', () => { if (document.hidden) local.stop(); });
   return { settings, local, getShareUrl,
     syncMetrics(state) {
+      const pressure = getRuntime()?.view?.midiPreviewRouter?.getOutputPressure?.();
+      const outputPressure = byId('procgenOutputPressure');
+      if (outputPressure) { outputPressure.hidden = !pressure?.throttled; outputPressure.textContent = pressure?.throttled ? 'Thinned ' + pressure.dropped : ''; outputPressure.title = pressure?.throttled ? 'Shared sound budget: ' + pressure.reason : ''; }
       const label = byId('procgenMetrics');
       if (label) label.textContent = `${state.alive.toLocaleString()} alive · ${state.spawnedTotal.toLocaleString()} spawned · ${Math.round(state.distance.max).toLocaleString()} px forward · run ${state.generation}${state.admissionPaused ? ' · spawn admission paused at actor cap' : ''}`;
       const policy = byId('procgenStallStatus');

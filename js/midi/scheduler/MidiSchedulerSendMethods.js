@@ -26,11 +26,6 @@ const midiSchedulerSendMethods = {
       const outputId = this._resolveOutputId?.(spec.outputId) ?? null;
       const output = this._resolveOutput ? this._resolveOutput(outputId) : this.output;
       if (!output) return false;
-      const channelNumber = this.config.mpe?.enabled
-        ? this._allocateChannel(outputId)
-        : normalizeChannelNumber(spec.channel ?? this.config.defaultChannel, 1);
-      const channel = output.channels?.[channelNumber];
-      if (!channel) return false;
 
       const sendTimeMs = Number.isFinite(spec.timeMs) ? spec.timeMs : this._nowMs();
       const durationMs = Number.isFinite(spec.durationTicks)
@@ -51,6 +46,20 @@ const midiSchedulerSendMethods = {
         : null;
 
       const now = this._nowMs();
+      if (meta.rateReserved !== true) {
+        const estimate = this.estimateMessages(spec);
+        const offMessages = durationMs > 0 ? (mpeEnabled ? 2 : 1) : 0;
+        const plan = { on: { timeMs: sendTimeMs, count: estimate.messages - offMessages, bytes: estimate.bytes - offMessages * MIDI_MESSAGE_BYTES },
+          off: { timeMs: offTimeMs, count: offMessages, bytes: offMessages * MIDI_MESSAGE_BYTES } };
+        const reservation = this.evaluateAndReserve(plan, { ...meta, trackId, outputId, voiceBudget }, now);
+        if (!reservation.ok) { this.recordThrottle(reservation.reason, now); return false; }
+        meta = { ...meta, rateReserved: true, reservationId: reservation.reservationId };
+      }
+      const channelNumber = this.config.mpe?.enabled
+        ? this._allocateChannel(outputId)
+        : normalizeChannelNumber(spec.channel ?? this.config.defaultChannel, 1);
+      const channel = output.channels?.[channelNumber];
+      if (!channel) return false;
       let usedChannels = this._usedOutputChannels.get(output);
       if (!usedChannels) {
         usedChannels = new Set();
@@ -98,7 +107,8 @@ const midiSchedulerSendMethods = {
         this._pendingNoteOns.delete(token);
         const active = this._activeNotes.get(token);
         if (!active) return;
-        if (durationMs > 0 && this._nowMs() >= offTimeMs) {
+        if (this._nowMs() > sendTimeMs + 120 || (durationMs > 0 && this._nowMs() >= offTimeMs)) {
+          this.recordThrottle('expired-note');
           this._stopActiveNoteToken(token);
           return;
         }
@@ -168,7 +178,9 @@ const midiSchedulerSendMethods = {
           triggerType: meta.triggerType ?? null,
           trackId,
           outputId,
-          voiceBudget
+          voiceBudget,
+          laneIndex: meta.laneIndex ?? 0,
+          laneCount: meta.laneCount ?? 1
         });
         if (durationMs > 0) {
           this._recordPlanned({
@@ -182,11 +194,13 @@ const midiSchedulerSendMethods = {
             triggerType: meta.triggerType ?? null,
             trackId,
             outputId,
-            voiceBudget
+            voiceBudget,
+            laneIndex: meta.laneIndex ?? 0,
+            laneCount: meta.laneCount ?? 1
           });
         }
       }
-      this._checkByteRate(sendTimeMs);
+      this._checkByteRate(now);
       return !dispatchFailed;
     } finally {
       if (perfEnabled) {
@@ -263,7 +277,8 @@ const midiSchedulerSendMethods = {
     return false;
   },
 
-  allNotesOff({ preserveGamePhrases = false } = {}) {
+  allNotesOff({ preserveGamePhrases = false, preserveRateHistory = false } = {}) {
+    if (preserveRateHistory) this._pruneRateEntries(this._nowMs());
     if (!preserveGamePhrases) this.gamePhrases.clear();
     for (const pending of this._pendingNoteOns.values()) if (pending.timerId != null) clearTimeout(pending.timerId);
     const mpe = this.config.mpe;
@@ -328,15 +343,15 @@ const midiSchedulerSendMethods = {
     this._activeByChannel.clear();
     this._activeNotes.clear();
     this._noteOffs.length = 0;
-    this._rateSent.length = 0;
-    this._ratePlanned.length = 0;
+    if (!preserveRateHistory) this._rateSent.length = 0;
+    if (!preserveRateHistory) this._ratePlanned.length = 0;
   },
 
-  clearQueue({ preserveGamePhrases = false } = {}) {
+  clearQueue({ preserveGamePhrases = false, preserveRateHistory = false } = {}) {
     if (!preserveGamePhrases) this.gamePhrases.clear();
-    if (this._activeNotes.size || this._pendingNoteOns.size || this._noteOffs.length) this.allNotesOff({ preserveGamePhrases });
-    this._rateSent.length = 0;
-    this._ratePlanned.length = 0;
+    if (this._activeNotes.size || this._pendingNoteOns.size || this._noteOffs.length) this.allNotesOff({ preserveGamePhrases, preserveRateHistory });
+    if (!preserveRateHistory) this._rateSent.length = 0;
+    if (!preserveRateHistory) this._ratePlanned.length = 0;
   },
 
   dispose() {

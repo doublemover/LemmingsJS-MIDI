@@ -844,9 +844,9 @@ fitted berets with lift/open/reattach cosmetics on every shape. Acceptance instr
 - Keep skill cards mounted beneath the game HUD and shared audio controls visible with Studio closed: implemented; native desktop/narrow checks captured in ignored temp/review-followup.
 - Generated hazard support, water basins, terrain-only arrows and idle activation correction: implemented and checked with normal sourced assets; operational generated triggers remain a separate policy.
 - Persistent procgen seed/generation/playtest and shared local audio controls: implemented; native desktop/narrow 64-lane workflows checked.
-- Generate seeded readable words from letter glyphs with an explicit no-slur pool and adjacency checks.
+- Generate seeded readable words from letter glyphs with an explicit no-slur pool and adjacency checks; implementation and native sourced-glyph review are ready to checkpoint.
 - Camera zoom now preserves follow; deliberate pan releases it and the visible Follow/F control restores it. Lane-stack fit, jitter, no-live-leader, DPR and resize checks pass; overview CCTV integration follows.
-- Extend existing palettes/routing with editable complementary ensemble roles and one fair wall-time output budget.
+- Shared MIDI output budgeting now retains wall-time history across speed changes, gives active lanes fair shares, expires stale notes and reports thinning beside the existing audio controls. Editable complementary ensemble roles are next.
 - Verified prior-run distance markers keep the same metric and positions; screen-space black/white dashes pause with game ticks and respect reduced motion.
 - Make deterministic terrain growth finer and prioritize reachable frontiers with bounded shared work and matching collision/display. Derive per-pack zone themes from canonical normal-level co-occurrence with their maximum authored width as the zone cap.
 - Add ranked live overview CCTV with bounded rendering. Its Library reference was unavailable after the supported transfer and one retry; use explicit owner requirements and actual app evidence.

@@ -23,6 +23,11 @@ class MidiScheduler {
     this._rateSent = [];
     this._ratePlanned = [];
     this._reservationSeq = 0;
+    this._rateLaneActivity = new Map();
+    this._rateLaneLastServed = new Map();
+    this._rateLaneStartMs = null;
+    this._rateLaneCount = 1;
+    this._throttleState = { dropped: 0, lastDropMs: -Infinity, reason: null };
     this._maxMessagesPerSecond = 1000;
     this._maxBytesPerSecond = MIDI_BYTES_PER_SECOND;
     this._lastRateErrorMs = 0;

@@ -237,3 +237,6 @@ body.game-page.studio-open[data-midi-layout=overlay] .midi-sequencer { grid-colu
 .midi-skill-event-dock.is-compact .midi-game-event strong { font-size: 10px; }
 
 @media (max-width: 999px) { .studio-open .studio-events { display: block; } .studio-open .studio-library { max-height: 180px; } }
+
+.midi-output-pressure { position: absolute; top: 100%; background: #413622; color: #ead093; padding: 2px 5px; border-radius: 3px; font: 9px ui-monospace,monospace; }
+#midiAudioControls { position: relative; }

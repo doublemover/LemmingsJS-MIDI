@@ -13,6 +13,7 @@ class MidiEventRouter {
     this.context = {};
     this._lastTickBySfx = new Map();
     this._tickCounter = { tick: null, count: 0 };
+    this._tickLaneCounts = new Map();
     this._clockBaseMs = null;
     this._clockFrameMs = null;
     this._clockSpeedFactor = null;

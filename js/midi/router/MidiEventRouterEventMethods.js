@@ -38,13 +38,13 @@ const midiEventRouterEventMethods = {
       }
       const now = this._nowMs();
       const tick = event.tick;
-      if (tick != null && this._tickCounter.tick !== tick) {
-        this._tickCounter.tick = tick;
-        this._tickCounter.count = 0;
-      }
+
       const limits = this.mapping.config?.limits || {};
       const maxPerTick = Math.min(Math.max(limits.maxEventsPerTick ?? MAX_EVENTS_PER_TICK, 1), MAX_EVENTS_PER_TICK);
-      if (tick != null && this._tickCounter.count >= maxPerTick) return;
+      if (!this._hasTickBudget(tick, event.laneIndex, event.laneCount)) {
+        this.scheduler.recordThrottle?.('tick-limit', now);
+        return;
+      }
       const tickMs = this._tickMsFromEvent(event);
       this.scheduler.setTickMs(tickMs);
       const density = this._densityForEvent(event);
@@ -68,9 +68,6 @@ const midiEventRouterEventMethods = {
         return;
       }
       spec.reverse = !!event.reverse;
-      if (tick != null) {
-        this._tickCounter.count += 1;
-      }
       if (event.tick != null) {
         this._lastTickBySfx.set(event.sfxId, event.tick);
       }
@@ -82,7 +79,10 @@ const midiEventRouterEventMethods = {
         triggerType: event.triggerType ?? null,
         trackId: spec.trackId ?? null,
         voiceBudget: spec.voiceBudget ?? null,
-        outputId: spec.outputId ?? null
+        outputId: spec.outputId ?? null,
+        laneIndex: event.laneIndex ?? 0,
+        laneCount: event.laneCount ?? 1,
+        lemmingId: event.lemmingId ?? null
       };
       const scheduleAhead = this.mapping.config?.timing?.scheduleAheadMs ?? 0;
       const base = this._resolveScheduleBase(event.timeMs, event.frameMs, event.speedFactor);
@@ -260,8 +260,10 @@ const midiEventRouterEventMethods = {
       }
       const plan = this._planEntries(specWithTime, sendTimeMs, activeNotes.length);
       if (!this._shouldSend(meta, specWithTime, plan, now)) {
+        this.scheduler.recordThrottle?.(this._lastRateReport?.reason || 'count-limit', now);
         return;
       }
+      this._hasTickBudget(tick, event.laneIndex, event.laneCount, true);
       for (const note of activeNotes) {
         specWithTime.note = note;
         this.scheduler.sendNote(specWithTime, meta);

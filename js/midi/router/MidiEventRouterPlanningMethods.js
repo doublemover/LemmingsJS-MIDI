@@ -167,6 +167,10 @@ const midiEventRouterPlanningMethods = {
         maxBytesPerSecond: maxBytes
       });
     const snapshot = evaluation.snapshot;
+    if (evaluation.reason === 'lane-share') {
+      this._lastRateReport = { timeMs: now, reason: 'lane-share', lane: evaluation.lane, snapshot: [] };
+      return false;
+    }
     let shareReport = null;
     const combinedBySfx = () => {
       const bySfx = new Map();
@@ -319,6 +323,10 @@ const midiEventRouterPlanningMethods = {
     meta.rateReserved = true;
     meta.reservationId = reservation.reservationId;
     return true;
+  },
+
+  getOutputPressure() {
+    return this.scheduler.getOutputPressure?.() || null;
   },
 
   getRateReport() {
