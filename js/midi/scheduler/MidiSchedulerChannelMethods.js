@@ -36,7 +36,7 @@ const midiSchedulerChannelMethods = {
       config?.enabled, config?.sfx, config?.triggers, config?.scale, config?.noteRange,
       config?.velocityRange, config?.durationTicks, config?.density, config?.envelope,
       config?.position, config?.mpe, config?.limits, config?.defaultChannel, config?.timing,
-      config?.repeat, config?.reverse
+      config?.repeat, config?.reverse, config?.automationSpans
     ]);
     if (phraseConfigKey !== this._gamePhraseConfigKey) this.gamePhrases.clear();
     this._gamePhraseConfigKey = phraseConfigKey;
@@ -139,9 +139,17 @@ const midiSchedulerChannelMethods = {
   _expressionPlan(spec, output, channelNumber, estimating = false) {
     const state = output ? this._expressionState(output, channelNumber) : {};
     const channel = output?.channels?.[channelNumber];
-    const uncertain = estimating && (this._isMpeNote(spec) || [...this._pendingNoteOns.values()].some(pending =>
-      pending.output === output && pending.channel === channelNumber));
+    let hasPending = false, pendingSpanPan = false, pendingSpanTimbre = false;
+    if (estimating) for (const pending of this._pendingNoteOns.values()) if (pending.output === output && pending.channel === channelNumber) {
+      hasPending = true; pendingSpanPan ||= pending.spanPan; pendingSpanTimbre ||= pending.spanTimbre;
+    }
+    const uncertain = estimating && (this._isMpeNote(spec) || hasPending);
     const controls = [];
+    const signed = (this.config.position?.panRange?.min ?? 0) < 0;
+    const panValue = pan => signed ? Math.round((clamp(pan, -127, 127) + 127) / 2) : clamp(pan, 0, 127);
+    const spanState = { spanPan: spec.spanPan === true && !output?.supportsPerNotePan, spanTimbre: spec.spanTimbre === true,
+      spanBasePan: Number.isFinite(spec.spanBasePan) ? panValue(spec.spanBasePan) : state.spanPan ? state.spanBasePan : state.pan ?? panValue(0),
+      spanBaseTimbre: Number.isFinite(spec.spanBaseTimbre) ? spec.spanBaseTimbre : state.spanTimbre ? state.spanBaseTimbre : state.timbre ?? 64 };
     let coalesced = 0;
     const add = (key, value, type, cc = null, bytes = MIDI_MESSAGE_BYTES) => {
       if (uncertain || state[key] !== value) controls.push({ key, value, type, cc, bytes });
@@ -151,12 +159,11 @@ const midiSchedulerChannelMethods = {
       (!output || typeof channel?.sendProgramChange === 'function')) add('program', spec.program, 'program', null, 2);
     if (this._isMpeNote(spec) || Number.isFinite(spec.pitchBend)) add('bend', clamp(spec.pitchBend ?? 0, -1, 1), 'bend');
     if (Number.isFinite(spec.timbre)) add('timbre', clamp(spec.timbre, 0, 127), 'cc', this.config.mpe?.timbreCc ?? 74);
+    else if (state.spanTimbre || pendingSpanTimbre) add('timbre', state.spanBaseTimbre ?? 64, 'cc', this.config.mpe?.timbreCc ?? 74);
     if (Number.isFinite(spec.pan) && !output?.supportsPerNotePan && (!spec.spatialPan || this._isMpeNote(spec))) {
-      const signed = (this.config.position?.panRange?.min ?? 0) < 0;
-      const value = signed ? Math.round((clamp(spec.pan, -127, 127) + 127) / 2) : clamp(spec.pan, 0, 127);
-      add('pan', value, 'cc', 10);
-    }
-    return { state, controls, coalesced, messages: controls.length, bytes: controls.reduce((sum, control) => sum + control.bytes, 0) };
+      add('pan', panValue(spec.pan), 'cc', 10);
+    } else if (!output?.supportsPerNotePan && (state.spanPan || pendingSpanPan)) add('pan', state.spanBasePan ?? panValue(0), 'cc', 10);
+    return { state, spanState, controls, coalesced, messages: controls.length, bytes: controls.reduce((sum, control) => sum + control.bytes, 0) };
   },
 
   _activeChannelKey(channelNumber, outputId = null) {

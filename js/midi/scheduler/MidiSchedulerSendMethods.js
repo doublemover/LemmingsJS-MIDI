@@ -99,6 +99,7 @@ const midiSchedulerSendMethods = {
         offTimeMs,
         hasStarted: false,
         captureMeta,
+        automationSpanned: !!meta.automationSpanIds?.length,
         output
       });
       if (mpeEnabled) {
@@ -146,6 +147,7 @@ const midiSchedulerSendMethods = {
             else this._sendOutput(output, channelNumber, 'sendControlChange', [control.cc, control.value, { time: sendTimeMs }], captureMeta);
             expression.state[control.key] = control.value;
           }
+          Object.assign(expression.state, expression.spanState);
 
           this._sendOutput(output, channelNumber, 'sendNoteOn', [spec.note, { rawAttack: attackVelocity, time: sendTimeMs,
             ...(output.supportsPlaybackMetadata ? { playback: { sfxId: meta.sfxId, triggerType: meta.triggerType, durationMs, stepIndex: spec.stepIndex, stepCount: spec.stepCount, lemmingId: meta.lemmingId, laneIndex: meta.laneIndex, ensembleRole: spec.ensembleRole, program: spec.program, channel: channelNumber } } : {}),
@@ -164,7 +166,8 @@ const midiSchedulerSendMethods = {
       };
       if (sendTimeMs > now) {
         const timerId = setTimeout(dispatchStart, Math.max(0, sendTimeMs - now));
-        this._pendingNoteOns.set(token, { output, channel: channelNumber, note: spec.note, timeMs: sendTimeMs, timerId });
+        this._pendingNoteOns.set(token, { output, channel: channelNumber, note: spec.note, timeMs: sendTimeMs, timerId,
+          spanPan: spec.spanPan === true, spanTimbre: spec.spanTimbre === true });
       } else dispatchStart();
       if (durationMs > 0) {
         this._scheduleNoteOff({ timeMs: offTimeMs, channel: channelNumber, note: spec.note,

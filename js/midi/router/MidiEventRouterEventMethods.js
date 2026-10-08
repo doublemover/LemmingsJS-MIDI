@@ -29,6 +29,7 @@ const midiEventRouterEventMethods = {
       if ((event.sfxId === SoundEffectIds.SPAWN || event.sfxId === SoundEffectIds.LAND) && !this.mapping.getSfxConfig(event.sfxId)) return;
       if (event.reverse || (Number.isInteger(event.tick) && this._tickCounter.tick != null && event.tick < this._tickCounter.tick)) {
         this.musicTension.reset(); this._releaseTensionVoices();
+        this._resetAutomationSpans();
         this.scheduler.gamePhrases?.clear();
         this._arpStateBySfx.clear();
       }
@@ -37,6 +38,7 @@ const midiEventRouterEventMethods = {
       } else if (!this.scheduler.output) {
         return;
       }
+      const automationOrigin = this._observeAutomationEvent(event);
       const now = this._nowMs();
       const tick = event.tick;
       const capturing = this.scheduler._captureEnabled?.();
@@ -95,7 +97,8 @@ const midiEventRouterEventMethods = {
         outputId: spec.outputId ?? null,
         laneIndex: event.laneIndex ?? 0,
         laneCount: event.laneCount ?? 1,
-        lemmingId: event.lemmingId ?? null
+        lemmingId: event.lemmingId ?? null,
+        ...(automationOrigin ?? {})
       };
       const scheduleAhead = this.mapping.config?.timing?.scheduleAheadMs ?? 0;
       const base = this._resolveScheduleBase(event.timeMs, event.frameMs, event.speedFactor);
@@ -273,6 +276,11 @@ const midiEventRouterEventMethods = {
         const adjusted = this._applyRepeatTarget(specWithTime, activeNotes, repeatCfg, repeatFactor);
         specWithTime = adjusted.spec;
         activeNotes = adjusted.activeNotes;
+      }
+      if (this.automationSpans.entries.length) {
+        specWithTime = this._applyAutomationSpans({ ...specWithTime, notes: activeNotes }, meta, tick);
+        if (!specWithTime) return;
+        activeNotes = specWithTime.notes || [specWithTime.note];
       }
       specWithTime = this._applyMusicTension(specWithTime, meta, tick);
       if (!specWithTime) return;

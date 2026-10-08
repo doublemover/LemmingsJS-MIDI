@@ -19,6 +19,8 @@ const midiEventRouterPhraseMethods = {
     const currentMeta = { ...meta };
     delete currentMeta.rateReserved;
     delete currentMeta.reservationId;
+    ready = this._applyAutomationSpans(ready, currentMeta, tick, true);
+    if (!ready) return false;
     ready = this._applyMusicTension(ready, currentMeta, tick);
     if (!ready) return false;
     if (!this._shouldSend(currentMeta, ready, this._planEntries(ready, now, 1), now)) {
@@ -74,13 +76,14 @@ const midiEventRouterPhraseMethods = {
     const queue = this.scheduler.gamePhrases;
     if (!timer || !queue) return;
     if (!this.mapping.config?.enabled || this.context?.game?.timeTravel?.isReversing) {
-      if (this.context?.game?.timeTravel?.isReversing) { this.musicTension.reset(); this._releaseTensionVoices(); }
+      if (this.context?.game?.timeTravel?.isReversing) { this.musicTension.reset(); this._releaseTensionVoices(); this._resetAutomationSpans(); }
       queue.clear();
       return;
     }
     this.scheduler.setTickMs(this._tickMsFromEvent({ tps: timer.tps, frameMs: timer.frameTime }));
     const tick = timer.getGameTicks?.();
     this._updateMusicTension(tick);
+    this._syncAutomationSpans(tick);
     if (Number.isInteger(tick) && queue.tick != null && tick < queue.tick) {
       this._arpStateBySfx.clear(); this._lastTickBySfx.clear();
     }

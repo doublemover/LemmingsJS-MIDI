@@ -1,3 +1,4 @@
+import { sanitizeMidiAutomationSpan, clampMidiAutomationSpanValue, MAX_MIDI_AUTOMATION_SPANS } from './MidiAutomationSpan.js';
 import { sanitizeMidiEnsemble, buildMidiEnsembleConfig } from './MidiEnsemble.js';
 import { DEFAULT_CONFIG, mergeConfig } from '../midi-mapping/MidiMappingDomain.js';
 import { getPlayableMidiClipSteps as activeClipSteps } from './MidiClipPlayback.js';
@@ -215,7 +216,8 @@ const createDefaultMidiAutomation = (overrides = {}) => {
     axisOp: AUTOMATION_AXIS_OPS.includes(overrides.axisOp) ? overrides.axisOp : 'add',
     min: overrides.min ?? defaults.min,
     max: overrides.max ?? defaults.max,
-    points: Array.isArray(overrides.points) ? overrides.points : []
+    points: Array.isArray(overrides.points) ? overrides.points : [],
+    ...(sanitizeMidiAutomationSpan(overrides.span) ? { span: sanitizeMidiAutomationSpan(overrides.span) } : {})
   };
 };
 
@@ -508,8 +510,9 @@ const sanitizeAutomation = (automation, fallbackIndex, usedIds, trackIds) => {
   if (!isPlainObject(automation)) return null;
   const target = AUTOMATION_TARGETS.includes(automation.target) ? automation.target : 'velocity';
   const defaults = automationDefaultsForTarget(target);
-  const min = toFiniteNumber(automation.min, defaults.min);
-  const max = toFiniteNumber(automation.max, defaults.max);
+  const span = sanitizeMidiAutomationSpan(automation.span);
+  const min = span ? clampMidiAutomationSpanValue(target, automation.min, defaults.min) : toFiniteNumber(automation.min, defaults.min);
+  const max = span ? clampMidiAutomationSpanValue(target, automation.max, defaults.max) : toFiniteNumber(automation.max, defaults.max);
   const scope = AUTOMATION_SCOPES.includes(automation.scope) ? automation.scope : 'global';
   const trackId = scope === 'track' && trackIds.has(automation.trackId) ? automation.trackId : null;
   const points = cloneArray(automation.points)
@@ -526,7 +529,8 @@ const sanitizeAutomation = (automation, fallbackIndex, usedIds, trackIds) => {
     axisOp: AUTOMATION_AXIS_OPS.includes(automation.axisOp) ? automation.axisOp : 'add',
     min,
     max,
-    points
+    points,
+    ...(span ? { span } : {})
   };
 };
 
@@ -939,6 +943,8 @@ const updateAutomationLane = (automation, automationId, patch, tracks) => {
       }
     }
     if (cleanPatch.scope === 'global') cleanPatch.trackId = null;
+    if (isPlainObject(cleanPatch.span)) cleanPatch.span = { ...lane.span, ...cleanPatch.span,
+      condition: { ...lane.span?.condition, ...cleanPatch.span.condition } };
     return { ...lane, ...cleanPatch };
   });
 };
@@ -1106,7 +1112,7 @@ const buildRuntimeMapping = (source, track, hiddenByTrack, globalVelocityDefault
 };
 
 const automationToPositionMappings = (automation = []) => automation
-  .filter(lane => lane.enabled && lane.scope === 'global')
+  .filter(lane => lane.enabled && lane.scope === 'global' && !lane.span)
   .map(lane => {
     const mapping = {
       axis: lane.axis,
@@ -1496,6 +1502,7 @@ function projectToMidiConfig(project, factoryConfig = {}) {
   const positionMappings = automationToPositionMappings(clean.automation);
   const config = mergeConfig(base, {
     enabled: clean.enabled,
+    automationSpans: clean.automation.filter(lane => lane.enabled && lane.span).slice(0, MAX_MIDI_AUTOMATION_SPANS),
     timing: {
       bpmBase: clean.transport.bpmBase,
       timeSignature: clean.transport.timeSignature,

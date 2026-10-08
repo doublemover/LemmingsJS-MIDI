@@ -1,3 +1,5 @@
+import { MidiAutomationSpans } from './MidiAutomationSpans.js';
+import { midiEventRouterAutomationMethods } from './MidiEventRouterAutomationMethods.js';
 import { MidiLaneMusicTension } from './MidiLaneMusicTension.js';
 import { midiEventRouterTensionMethods } from './MidiEventRouterTensionMethods.js';
 import { MidiMapping } from '../MidiMapping.js';
@@ -13,6 +15,8 @@ class MidiEventRouter {
     this.scheduler = new MidiScheduler(this.mapping.config);
     this.musicTension = new MidiLaneMusicTension(this.mapping.config?.ensemble?.tension);
     this._musicTensionWorld = null;
+    this.automationSpans = new MidiAutomationSpans(this.mapping.config?.automationSpans);
+    this._automationWorld = null; this._automationEventSerial = 0;
     this.soundBus = null;
     this.context = {};
     this._lastTickBySfx = new Map();
@@ -38,6 +42,7 @@ Object.assign(
   MidiEventRouter.prototype,
   midiEventRouterLifecycleMethods,
   midiEventRouterTensionMethods,
+  midiEventRouterAutomationMethods,
   midiEventRouterPlanningMethods,
   midiEventRouterPhraseMethods,
   midiEventRouterEventMethods

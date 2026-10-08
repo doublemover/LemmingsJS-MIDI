@@ -29,6 +29,7 @@ const midiEventRouterLifecycleMethods = {
     this.mapping = mapping instanceof MidiMapping ? mapping : new MidiMapping(mapping || {});
     this.scheduler.setConfig(this.mapping.config);
     this.musicTension.configure(this.mapping.config?.ensemble?.tension);
+    this.automationSpans.configure(this.mapping.config?.automationSpans);
   },
 
   setOutput(output) {
@@ -52,6 +53,7 @@ const midiEventRouterLifecycleMethods = {
     if (this._phraseTimer !== nextTimer || this.soundBus !== soundBus) {
       this.resetClock();
       this.musicTension.reset();
+      this.automationSpans.reset(); this._automationEventSerial = 0;
       this.scheduler.gamePhrases?.clear();
       this._arpStateBySfx.clear();
       this._lastTickBySfx.clear();
@@ -68,6 +70,7 @@ const midiEventRouterLifecycleMethods = {
 
   detach() {
     this.musicTension.reset();
+    this.automationSpans.reset(); this._automationEventSerial = 0;
     this._arpStateBySfx.clear();
     this._lastTickBySfx.clear();
     this._phraseTimer?.onGameTick?.off?.(this._boundPhraseTick);

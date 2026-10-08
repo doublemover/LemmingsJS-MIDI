@@ -1,3 +1,4 @@
+import { applyMidiAutomationSpanValues } from './midi-mapping/MidiAutomationSpanValues.js';
 import { applyMidiEnsembleToSpec } from './project/MidiEnsemble.js';
 import { positionCurveValue } from './midi-mapping/PositionCurve.js';
 import { cloneSafeObject, isPlainObject } from '../util/safeObject.js';
@@ -38,6 +39,8 @@ class MidiMapping {
   static mergeConfigs(base, override) {
     return mergeConfig(base || DEFAULT_CONFIG, override || {});
   }
+
+  applySpanValues(spec, values) { return applyMidiAutomationSpanValues(spec, values, this.config); }
 
   getSfxConfig(sfxId) {
     if (sfxId == null) return null;
