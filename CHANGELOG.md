@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Keep Increase/Decrease labels clear of OUT and preview the actual minimap click destination with a lighter, cached marching-ants outline.
+
 - Dock existing skill-event cards beneath action selectors, fit the canvas/footer together and retain cross-region keyboard focus and immediate cheat restoration.
 
 - Add reusable per-event 8/16-cell note editing with drag/undo, explicit event or game-tick progression, silent rests and per-cell dynamics/chance/conditions.

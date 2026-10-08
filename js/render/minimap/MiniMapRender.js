@@ -86,6 +86,13 @@ const miniMapRenderMethods = {
       frameData.set(this.terrainColors);
       this._paintObjectMarkers(frameData);
 
+      const hover = this._hoverTarget;
+      if (hover) {
+        const x = Math.max(0, Math.min(W - 1, (hover.x * this.scaleX) | 0));
+        const y = Math.max(0, Math.min(H - 1, (hover.y * this.scaleY) | 0));
+        frame.drawMarchingAntRect(x, y, Math.max(0, Math.min(W - x - 1, (hover.w * this.scaleX) | 0)),
+          Math.max(0, Math.min(H - y - 1, (hover.h * this.scaleY) | 0)), 2, this.viewportDashOffset, 0xFFB1C7A3, 0xFF516A48);
+      }
       let vpXW = vpX + vpW;
       // dumb fix to keep right edge of viewport rect visible
       if (vpXW === this.width) {
@@ -151,6 +158,8 @@ const miniMapRenderMethods = {
   },
 
   dispose() {
+    this._hoverPointerCleanup?.(); this._hoverPointerCleanup = null;
+    this.onHoverChanged = null; this._hoverTarget = null;
     if (this.guiDisplay && this._displayListeners) {
       for (const [event, handler] of this._displayListeners) {
         this.guiDisplay[event].off(handler);

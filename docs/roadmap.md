@@ -41,7 +41,7 @@ When a milestone replaces an old path, remove the old path in the same phase.
 - [x] Expose direct Panic, join level navigation, remove redundant picker labels, rename Source to GitHub and make color swatches contiguous with outer rounded ends.
 - [x] Preserve live playback and focus across compositor-only Focus/Split/Overlay transitions.
 - [x] Dock existing skill-specific cards beneath action selectors, preserving canvas controls, keyboard focus and synchronous availability/cheat updates.
-- [ ] Finish release-rate hover text spacing and a lighter minimap destination preview using the existing marching-ants renderer.
+- [x] Leave a glyph of space before OUT while retaining complete Increase/Decrease labels; show a lighter minimap click-destination preview with existing marching ants.
 
 ## Milestone 1: DAW-Like Multichannel MIDI Sequencer UI
 

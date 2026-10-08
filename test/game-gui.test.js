@@ -32,6 +32,26 @@ function makeGui() {
 }
 
 describe('GameGui utilities', function() {
+  it('invalidates the existing paused GUI once for minimap hover and detaches an old minimap owner', function() {
+    const previous = globalThis.window, callbacks = []; let redraws = 0;
+    globalThis.window = { requestAnimationFrame: handler => { callbacks.push(handler); return callbacks.length; } };
+    try {
+      const gui = makeGui(), first = { setHoverInvalidationHandler(handler) { this.handler = handler; } }, second = { ...first };
+      gui.display = { redraw() { redraws += 1; } }; gui.render = () => {};
+      gui.setMiniMap(first); first.handler(); first.handler(); expect(callbacks).to.have.length(1);
+      callbacks[0](); expect(redraws).to.equal(1);
+      gui.setMiniMap(second); expect(first.handler).to.equal(null); second.handler(); expect(callbacks).to.have.length(2);
+    } finally { if (previous === undefined) delete globalThis.window; else globalThis.window = previous; }
+  });
+  it('keeps complete Increase/Decrease labels one glyph clear of the OUT field at long tick counts', function() {
+    const gui = makeGui();
+    for (const label of ['Increase', 'Decrease']) {
+      const text = gui._composeStatusText('T123456789>', label), positions = [];
+      expect(text.endsWith(label)).to.equal(true); expect(text.length).to.be.at.most(13);
+      gui.drawGreenString({ drawFrameCovered: (frame, x) => positions.push(x) }, text, 0, 0);
+      expect(Math.max(...positions) + 8).to.be.at.most(104);
+    }
+  });
   it('draws numbers and caches digits', function() {
     const gui = makeGui();
     const display = {
