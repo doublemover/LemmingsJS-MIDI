@@ -1,5 +1,6 @@
 import { composeRecipeChunk } from './ProcgenTerrainRecipes.js';
 import { TriggerTypes } from '../../level/TriggerTypes.js';
+import { createProcgenWordPlanner } from './ProcgenWords.js';
 
 const TERRAIN_CHUNK_WIDTH = 128;
 const TERRAIN_HEIGHT = 96;
@@ -15,6 +16,8 @@ class ProcgenRecipeTerrain {
     if (!recipe?.routes?.length) throw new Error('The selected theme has no sourced terrain recipes');
     this.recipe = recipe;
     this.pieces = terrainPieces.filter(p => p?.frame?.length && p.width && p.height);
+    this.wordPlanner = createProcgenWordPlanner(recipe, this.pieces);
+    this.ingredients = this.wordPlanner ? this.pieces.filter(piece => !this.wordPlanner.ids.has(piece.id)) : this.pieces;
     this.objects = objectPieces.filter(p => p?.image?.frames?.[0]?.length && p.image.width && p.image.height);
     this.patterns = recipe.routes.map((route, index) => composeRecipeChunk({ recipe: { ...recipe, routes: [route] }, terrainPieces,
       seed: index + 1, width: route.period * Math.ceil(TERRAIN_CHUNK_WIDTH / route.period), height: TERRAIN_HEIGHT, surfaceY: 72, decoration: false }));
@@ -59,7 +62,7 @@ class ProcgenRecipeTerrain {
     for (let i = 0; i < count; i++) {
       // Every source piece is eligible. A rotating phase window changes the pool
       // without the old size/solidity filters silently excluding pack artwork.
-      const piece = this.pieces[(phaseCode % this.pieces.length + (chunk % PHASE_CHUNKS) * count + i) % this.pieces.length];
+      const piece = this.ingredients[(phaseCode % this.ingredients.length + (chunk % PHASE_CHUNKS) * count + i) % this.ingredients.length];
       const h = mix(code ^ Math.imul(i + 1, 0x9e3779b1));
       const decor = i !== 0 || chunk === 0;
       placements.push({ piece, x: 8 + h % Math.max(1, TERRAIN_CHUNK_WIDTH - Math.min(piece.width, 100) - 8),
@@ -69,6 +72,17 @@ class ProcgenRecipeTerrain {
       left: this._elevation(seed, chunk), right: this._elevation(seed, chunk + 1), middle: 28 + (phaseCode >>> 9) % 47,
       gapX: origin + 88 + (code >>> 5) % 8, gapWidth: gap ? 5 + (code >>> 10) % 8 : 0,
       barrierX: origin + (placements[0]?.x || 0), barrierWidth: chunk ? (placements[0]?.piece.width || 0) : 0 };
+    descriptor.word = this.wordPlanner?.plan(seed, chunk, TERRAIN_CHUNK_WIDTH, x => {
+      if (x + origin >= descriptor.gapX && x + origin < descriptor.gapX + descriptor.gapWidth) return 0;
+      let surface = this._surface(seed, chunk, x, descriptor);
+      for (const placement of placements) if (!placement.decor && x >= placement.x && x < placement.x + placement.piece.width) surface = Math.min(surface, placement.y);
+      return surface;
+    }) || null;
+    if (descriptor.word) {
+      const word = descriptor.word;
+      descriptor.placements = placements.filter(p => !p.decor || p.x + p.piece.width <= word.x - 2 || p.x >= word.x + word.width + 2 || p.y + p.piece.height <= word.y - 2 || p.y >= word.baseline + 2);
+      descriptor.placements.push(...word.placements);
+    }
     descriptor.objects = this._placeObjects(seed, chunk, descriptor);
     return descriptor;
   }
@@ -98,6 +112,8 @@ class ProcgenRecipeTerrain {
         role === 'liquid' ? Math.min(TERRAIN_HEIGHT - image.height - 2, floor - 4) :
           role === 'ambient' ? 2 + (code >>> 12) % 18 : floor - image.height;
       if (y < 0) continue;
+      const word = descriptor.word;
+      if (word && x + image.width > origin + word.x - 2 && x < origin + word.x + word.width + 2 && y + image.height > word.y - 2 && y < word.baseline + 2) continue;
       objects.push({ piece, x, y, role, phase: code % image.frames.length, interactive: false,
         animation: trigger === TriggerTypes.TRAP || image.animationLoop === false ? 'idle' : 'loop',
         clipToTerrain: role === 'terrain-overlay', supportY: role === 'ambient' || role === 'terrain-overlay' ? null : y + image.height });
@@ -257,6 +273,7 @@ class ProcgenRecipeTerrain {
     return { ...this.stats, chunkMs: { p50: percentile(0.5), p95: percentile(0.95), p99: percentile(0.99) }, cachedCollisionChunks: this.collision.size, cachedRasterChunks: this.rasters.size,
       collisionLimit: this.collisionLimit, rasterLimit: this.rasterLimit, memoryMB: this.memoryMB,
       terrainVocabularyUsed: this.selectedTerrainIds.size, terrainVocabularyAvailable: this.pieces.length,
+      wordGlyphsAvailable: this.wordPlanner?.glyphs.size || 0, wordChoicesAvailable: this.wordPlanner?.choices.length || 0,
       objectVocabularyUsed: this.selectedObjectIds.size, objectVocabularyAvailable: this.objects.length, phaseChunks: PHASE_CHUNKS }; }
 }
 export { ProcgenRecipeTerrain, TERRAIN_CHUNK_WIDTH, TERRAIN_HEIGHT };
