@@ -4,6 +4,7 @@ import { LemmingStateType as State } from '../../lemmings/LemmingStateType.js';
 import { ActionWalkSystem } from '../../actions/ActionWalkSystem.js';
 import { ActionFallSystem } from '../../actions/ActionFallSystem.js';
 import { ActionFloatingSystem } from '../../actions/ActionFloatingSystem.js';
+import { ProcgenTerrainGrowth } from './ProcgenTerrainGrowth.js';
 import { ProcgenPopulationPolicy } from './ProcgenPopulationPolicy.js';
 import { ActionJumpSystem } from '../../actions/ActionJumpSystem.js';
 import { ActionBuildSystem } from '../../actions/ActionBuildSystem.js';
@@ -65,7 +66,8 @@ class ProcgenLaneWorld {
     this.population = new ProcgenPopulationPolicy(this.laneCount, stallPolicy.releaseIntervalTicks ?? DEFAULT_STALL_POLICY.releaseIntervalTicks, populationPolicy, Object.hasOwn(stallPolicy, 'releaseIntervalTicks'));
     this.terrainActivityTicks = new Float64Array(this.laneCount); this.terrainActivityTicks.fill(-Infinity);
     this.pendingTerrainWork = new Uint32Array(this.laneCount);
-    this._stallWork = { terrainActivityTicks: this.terrainActivityTicks, pendingTerrainWork: this.pendingTerrainWork };
+    this._effectiveTerrainWork = new Uint32Array(this.laneCount);
+    this._stallWork = { terrainActivityTicks: this.terrainActivityTicks, pendingTerrainWork: this._effectiveTerrainWork };
     this.stall = new ProcgenStallPolicy(this.laneCount, stallPolicy, previousDistances);
     this.failureReasons = {};
     this.editChunks = new Map();
@@ -73,6 +75,10 @@ class ProcgenLaneWorld {
     this.challengeCacheLimit = Math.max(128, this.laneCount * 8);
     this.laneSeeds = Uint32Array.from({ length: this.laneCount }, (_, lane) => mix(this.seed ^ Math.imul(lane + 1, 0x9e3779b1)));
     terrain?.registerLanes?.(this.laneSeeds, this.seed, this.generation);
+    this.terrainGrowth = terrain?.supportsFineGrowth ? new ProcgenTerrainGrowth(this.laneCount, terrain.chunkWidth) : null;
+    this.terrainGrowth?.reset(this.generatedThrough, this.frontiers);
+    this._prepareGrowthChunk = (lane, chunk) => this._terrainChunk(lane, chunk * this.terrain.chunkWidth);
+    this._revealGrowth = () => { this.terrainRevision++; this.frontierRevision++; };
     this.eventTimeMs = 0;
     this.timer = { speedFactor: speed, onGameTick: new EventHandler(), getGameTicks: () => this.tickIndex,
       get frameTime() { return 60 / Math.max(0.001, this.speedFactor); },
@@ -143,7 +149,7 @@ class ProcgenLaneWorld {
     this.generatedThrough.fill(this.terrain?.chunkWidth || CHUNK_WIDTH); this.terrainRevision++; this.frontierRevision++; this.generation++; this.generationStartTick = this.tickIndex;
     for (let lane = 0; lane < this.laneCount; lane++) this.laneSeeds[lane] = mix(this.seed ^ Math.imul(lane + 1, 0x9e3779b1) ^ Math.imul(this.generation - 1, 0x85ebca6b));
     this.terrain?.registerLanes?.(this.laneSeeds, this.seed, this.generation);
-    this.population.reset(this.generationStartTick); this.terrainActivityTicks.fill(-Infinity); this.pendingTerrainWork.fill(0);
+    this.population.reset(this.generationStartTick); this.terrainActivityTicks.fill(-Infinity); this.pendingTerrainWork.fill(0); this._effectiveTerrainWork.fill(0); this.terrainGrowth?.reset(this.generatedThrough, this.frontiers);
     this.stall = new ProcgenStallPolicy(this.laneCount, this.stall.settings, previousDistances);
     for (const lane of this.stall.lanes) lane.lastProgressTick = this.tickIndex;
     this.onRestart?.();
@@ -199,13 +205,13 @@ class ProcgenLaneWorld {
   }
   basePixelAt(x, y) {
     const lane = Math.floor(y / LANE_HEIGHT);
-    if (!this.terrain || lane < 0 || lane >= this.laneCount || x < 0) return 0;
+    if (!this.terrain || lane < 0 || lane >= this.laneCount || x < 0 || this.terrainGrowth && x >= this.generatedThrough[lane]) return 0;
     return this.terrain.sample(this.laneSeeds[lane], x, y % LANE_HEIGHT);
   }
   baseGroundAt(x, y) {
     if (this.terrain) {
       const lane = Math.floor(y / LANE_HEIGHT);
-      if (lane < 0 || lane >= this.laneCount || x < 0) return 0;
+      if (lane < 0 || lane >= this.laneCount || x < 0 || this.terrainGrowth && x >= this.generatedThrough[lane]) return 0;
       const p = this._terrainChunk(lane, x), index = (y % LANE_HEIGHT) * this.terrain.chunkWidth + x % this.terrain.chunkWidth;
       return p.solid[index >>> 5] & (1 << (index & 31)) ? 1 : 0;
     }
@@ -239,6 +245,7 @@ class ProcgenLaneWorld {
     const edits = this._editsAt(lane, x), edit = edits?.[localY * EDIT_CHUNK_WIDTH + x % EDIT_CHUNK_WIDTH] || 0;
     if (edit) return edit - 1;
     if (!this.terrain) return this.baseGroundAt(x, y);
+    if (this.terrainGrowth && x >= this.generatedThrough[lane]) return 0;
     const p = this._terrainChunk(lane, x), index = localY * this.terrain.chunkWidth + x % this.terrain.chunkWidth;
     return p.solid[index >>> 5] & (1 << (index & 31)) ? 1 : 0;
   }
@@ -254,7 +261,7 @@ class ProcgenLaneWorld {
       if (cached.x === x && cached.y === yTop && cached.height === height && cached.revision === this.terrainRevision) return cached.value;
     }
     const lane = Math.floor(yTop / LANE_HEIGHT);
-    if (this.terrain && x >= 0 && x < this.width && lane >= 0 && yTop + height <= (lane + 1) * LANE_HEIGHT && lane < this.laneCount) {
+    if (this.terrain && x >= 0 && x < this.width && lane >= 0 && yTop + height <= (lane + 1) * LANE_HEIGHT && lane < this.laneCount && (!this.terrainGrowth || x < this.generatedThrough[lane])) {
       const solid = this._terrainChunk(lane, x).solid, edits = this._editsAt(lane, x), sx = x % this.terrain.chunkWidth, ex = x % EDIT_CHUNK_WIDTH;
       for (let i = 0, y = yTop + height - 1 - lane * LANE_HEIGHT; i < height; i++, y--) {
         this.stats.groundQueries++;
@@ -268,7 +275,7 @@ class ProcgenLaneWorld {
   }
   getColumnGapDepth(x, yTop, height) {
     const lane = Math.floor(yTop / LANE_HEIGHT);
-    if (this.terrain && x >= 0 && x < this.width && lane >= 0 && yTop + height <= (lane + 1) * LANE_HEIGHT && lane < this.laneCount) {
+    if (this.terrain && x >= 0 && x < this.width && lane >= 0 && yTop + height <= (lane + 1) * LANE_HEIGHT && lane < this.laneCount && (!this.terrainGrowth || x < this.generatedThrough[lane])) {
       const solid = this._terrainChunk(lane, x).solid, edits = this._editsAt(lane, x), sx = x % this.terrain.chunkWidth, ex = x % EDIT_CHUNK_WIDTH;
       for (let i = 0, y = yTop - lane * LANE_HEIGHT; i < height; i++, y++) {
         this.stats.groundQueries++;
@@ -303,7 +310,7 @@ class ProcgenLaneWorld {
   isArrowAt() { return false; }
   hasSteelAt(x, y) {
     const lane = Math.floor(y / LANE_HEIGHT);
-    if (!this.terrain || lane < 0 || lane >= this.laneCount || x < 0) return false;
+    if (!this.terrain || lane < 0 || lane >= this.laneCount || x < 0 || this.terrainGrowth && x >= this.generatedThrough[lane]) return false;
     const p = this._terrainChunk(lane, x), index = (y % LANE_HEIGHT) * this.terrain.chunkWidth + x % this.terrain.chunkWidth;
     return !!(p.steel[index >>> 5] & (1 << (index & 31)));
   }
@@ -413,7 +420,9 @@ class ProcgenLaneWorld {
         { lemmingId: actor.id, laneIndex: actor.laneIndex, laneCount: this.laneCount, x: actor.x, y: actor.y, presentationPhase: actor.laneIndex / this.laneCount });
       this._assistedColumn.valid = false;
       if (this.stall.phase === 'running') this._assist(actor);
+      const previousX = actor.x;
       const next = actor.process(this);
+      this.terrainGrowth?.observe(actor.laneIndex, actor.x - previousX);
       this._assistedColumn.valid = false;
       if (next !== State.NO_STATE_TYPE && next !== State.JUMPING) {
         if (this.actions[next]) actor.setAction(this.actions[next]);
@@ -435,15 +444,17 @@ class ProcgenLaneWorld {
       if (actor.x > this.frontiers[actor.laneIndex]) {
         this.frontiers[actor.laneIndex] = actor.x;
         const width = this.terrain?.chunkWidth || CHUNK_WIDTH;
-        const through = Math.ceil((actor.x + 64) / width) * width;
+        const through = this.terrainGrowth ? this.generatedThrough[actor.laneIndex] : Math.ceil((actor.x + 64) / width) * width;
         if (through > this.generatedThrough[actor.laneIndex]) { this.generatedThrough[actor.laneIndex] = through; this.terrainRevision++; this.frontierRevision++; }
       }
       if (actor.x > actor.furthestX) { actor.furthestX = actor.x; actor.lastProgressTick = this.tickIndex; }
     }
     this.activeCount = activeCount;
+    this.terrainGrowth?.update({ through: this.generatedThrough, frontiers: this.frontiers, lanes: this.stall.lanes, prepare: this._prepareGrowthChunk, reveal: this._revealGrowth });
     for (let laneIndex = 0; laneIndex < this.laneCount; laneIndex++) {
       const lane = this.stall.lanes[laneIndex]; lane.peakAlive = Math.max(lane.peakAlive, lane.alive);
-      lane.lastTerrainActivityTick = this.terrainActivityTicks[laneIndex]; lane.pendingTerrainWork = this.pendingTerrainWork[laneIndex];
+      this._effectiveTerrainWork[laneIndex] = Math.min(65535, this.pendingTerrainWork[laneIndex] + (this.terrainGrowth?.pending[laneIndex] || 0));
+      lane.lastTerrainActivityTick = this.terrainActivityTicks[laneIndex]; lane.pendingTerrainWork = this._effectiveTerrainWork[laneIndex];
       if (!this.cohorts && this.frontiers[laneIndex] > lane.maxX) { lane.maxX = this.frontiers[laneIndex]; lane.lastProgressTick = this.tickIndex; }
     }
     if (this.cohorts) {
@@ -502,6 +513,7 @@ class ProcgenLaneWorld {
       population: this.population.snapshot(),
       stall: this.cohorts ? this.stall.snapshot(this.tickIndex) : null,
       distance: { min: Number.isFinite(minDistance) ? minDistance : 0, max: maxDistance, mean: distance / Math.max(1, this.actors.length) },
+      terrainGrowth: this.terrainGrowth?.snapshot() || null,
       terrainGeneration: this.terrain?.getDebugState?.() || null, collisionResidentSlots: this._collisionSlots.length, residentCollisionMB: residentCollisionBytes / 1048576,
       frontierMargins: Array.from(this.generatedThrough, (x, lane) => x - this.frontiers[lane]),
       laneThemes: this.terrain?.laneThemes || null,

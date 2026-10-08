@@ -1,4 +1,6 @@
 import { composeRecipeChunk } from './ProcgenTerrainRecipes.js';
+import { ProcgenTerrainZonePlanner } from './ProcgenTerrainZones.js';
+import { createSourceGroupLibrary, placeSourceGroups } from './ProcgenTerrainGroups.js';
 import { TriggerTypes } from '../../level/TriggerTypes.js';
 import { createProcgenWordPlanner } from './ProcgenWords.js';
 
@@ -12,12 +14,17 @@ const opaque = value => (value | 0xff000000) >>> 0;
 // Source motifs are ingredients, not an endless repeating track. Only requested
 // frontier chunks are composed; collision and display have separate bounded caches.
 class ProcgenRecipeTerrain {
-  constructor({ recipe, terrainPieces, objectPieces = [] }) {
+  constructor({ recipe, terrainPieces, objectPieces = [], sourceDescriptor = null, packWidthLimit = sourceDescriptor?.widths.max }) {
     if (!recipe?.routes?.length) throw new Error('The selected theme has no sourced terrain recipes');
     this.recipe = recipe;
     this.pieces = terrainPieces.filter(p => p?.frame?.length && p.width && p.height);
     this.wordPlanner = createProcgenWordPlanner(recipe, this.pieces);
     this.ingredients = this.wordPlanner ? this.pieces.filter(piece => !this.wordPlanner.ids.has(piece.id)) : this.pieces;
+    this.sourceDescriptor = sourceDescriptor?.assetSha256 === recipe.assetSha256 && recipe.sources?.some(source => source.pack === sourceDescriptor.pack && source.groundSet === sourceDescriptor.groundSet) ? sourceDescriptor : null;
+    this.supportsFineGrowth = !!this.sourceDescriptor;
+    this.zonePlanner = this.sourceDescriptor ? new ProcgenTerrainZonePlanner({ descriptor: this.sourceDescriptor, availableIds: this.pieces.map(piece => piece.id), excludedIds: this.wordPlanner?.ids, packWidthLimit }) : null;
+    this.sourceGroups = createSourceGroupLibrary(this.sourceDescriptor, this.pieces, this.wordPlanner?.ids);
+    this.descriptions = new Map(); this.descriptionLimit = 256;
     this.objects = objectPieces.filter(p => p?.image?.frames?.[0]?.length && p.image.width && p.image.height);
     this.patterns = recipe.routes.map((route, index) => composeRecipeChunk({ recipe: { ...recipe, routes: [route] }, terrainPieces,
       seed: index + 1, width: route.period * Math.ceil(TERRAIN_CHUNK_WIDTH / route.period), height: TERRAIN_HEIGHT, surfaceY: 72, decoration: false }));
@@ -38,22 +45,24 @@ class ProcgenRecipeTerrain {
     this.rasters = new Map();
     this.collisionLimit = 256;
     this.rasterLimit = 96;
-    this.stats = { generated: 0, rasterized: 0, evicted: 0, generationMs: 0, maxGenerationMs: 0, groundPlacements: 0, decorPlacements: 0, objectPlacements: 0 };
+    this.stats = { generated: 0, rasterized: 0, evicted: 0, generationMs: 0, maxGenerationMs: 0, groundPlacements: 0, decorPlacements: 0, objectPlacements: 0, canonicalGroups: 0, canonicalSourcePlacements: 0 };
     this.generationSamples = new Float32Array(1024); this.generationSampleCount = 0;
     this.selectedTerrainIds = new Set();
     this.selectedObjectIds = new Set();
     this._lastKey = null; this._lastChunk = null;
   }
   configure(laneCount, maxActors = 16384) { this.collisionLimit = Math.max(256, Math.min(32768, maxActors + laneCount * 2)); }
-  reset() { this.collision.clear(); this.rasters.clear(); this._lastKey = null; this._lastChunk = null; }
+  reset() { this.descriptions.clear(); this.zonePlanner?.reset(); this.collision.clear(); this.rasters.clear(); this._lastKey = null; this._lastChunk = null; }
   get memoryMB() {
-    let bytes = this.patterns.reduce((n, p) => n + p.pixels.byteLength + p.mask.byteLength + p.topProfile.byteLength + p.columnColors.byteLength, 0);
+    let bytes = [...this.sourceGroups.values()].reduce((n, group) => n + group.piece.rgba.byteLength + group.piece.frame.byteLength + group.columnTop.byteLength + group.columnBottom.byteLength, 0);
+    bytes += this.patterns.reduce((n, p) => n + p.pixels.byteLength + p.mask.byteLength + p.topProfile.byteLength + p.columnColors.byteLength, 0);
     for (const p of this.collision.values()) bytes += p.solid.byteLength + p.steel.byteLength + p.topProfile.byteLength;
     for (const p of this.rasters.values()) bytes += p.byteLength;
     return bytes / 1048576;
   }
   _code(seed, chunk) { return mix(seed ^ Math.imul(chunk + 1, 0x85ebca6b)); }
   describe(seed, chunk) {
+    const cacheKey = keyFor(seed, chunk), cached = this.descriptions.get(cacheKey); if (cached) return cached;
     const code = this._code(seed, chunk), phase = Math.floor(chunk / PHASE_CHUNKS), phaseCode = this._code(seed ^ 0x51ed270b, phase);
     const origin = chunk * TERRAIN_CHUNK_WIDTH;
     const gap = chunk > 0 && (code & 3) === 0;
@@ -72,6 +81,12 @@ class ProcgenRecipeTerrain {
       left: this._elevation(seed, chunk), right: this._elevation(seed, chunk + 1), middle: 28 + (phaseCode >>> 9) % 47,
       gapX: origin + 88 + (code >>> 5) % 8, gapWidth: gap ? 5 + (code >>> 10) % 8 : 0,
       barrierX: origin + (placements[0]?.x || 0), barrierWidth: chunk ? (placements[0]?.piece.width || 0) : 0 };
+    descriptor.objects = [];
+    descriptor.zone = this.zonePlanner?.zoneAt(seed, origin) || null;
+    const pattern = this.patterns[mix(phaseCode ^ code) % this.patterns.length];
+    const baseSurface = x => pattern.topProfile[(x + origin) % pattern.width] < 0 ? -1 : this._surface(seed, chunk, x, descriptor);
+    descriptor.placements.push(...placeSourceGroups({ zone: descriptor.zone, library: this.sourceGroups, code, chunk, baseSurface,
+      baseSolid: (x, y) => this.solidSample(seed, chunk, x, y, descriptor), occupied: placements, gapX: descriptor.gapX - origin, gapWidth: descriptor.gapWidth }));
     descriptor.word = this.wordPlanner?.plan(seed, chunk, TERRAIN_CHUNK_WIDTH, x => {
       if (x + origin >= descriptor.gapX && x + origin < descriptor.gapX + descriptor.gapWidth) return 0;
       let surface = this._surface(seed, chunk, x, descriptor);
@@ -84,6 +99,9 @@ class ProcgenRecipeTerrain {
       descriptor.placements.push(...word.placements);
     }
     descriptor.objects = this._placeObjects(seed, chunk, descriptor);
+    descriptor.placements = descriptor.placements.filter(p => !p.canonicalGroup || !descriptor.objects.some(object => p.x + p.piece.width > object.x - origin - 2 && p.x < object.x - origin + object.piece.image.width + 2 && p.y + p.piece.height > object.y - 2 && p.y < object.y + object.piece.image.height + 2));
+    if (this.descriptions.size >= this.descriptionLimit) this.descriptions.delete(this.descriptions.keys().next().value);
+    this.descriptions.set(cacheKey, descriptor);
     return descriptor;
   }
   objectsAt(seed, chunk) { return this.describe(seed, chunk).objects; }
@@ -161,11 +179,11 @@ class ProcgenRecipeTerrain {
         const ci = source[y * sw + (flip ? sw - 1 - x : x)];
         if (ci & 128) continue;
         const index = (y + oy) * width + x + ox, bit = 1 << (index & 31), at = index >>> 5;
-        if (decor) { if (pixels && !(solid[at] & bit)) pixels[index] = opaque(image.palette.getColor(ci)); }
+        if (decor) { if (pixels && !(solid[at] & bit)) pixels[index] = piece.rgba?.[y * sw + (flip ? sw - 1 - x : x)] || opaque(image.palette.getColor(ci)); }
         else {
           solid[at] |= bit;
           if (piece.isSteel) steel[at] |= bit;
-          if (pixels) pixels[index] = opaque(image.palette.getColor(ci));
+          if (pixels) pixels[index] = piece.rgba?.[y * sw + (flip ? sw - 1 - x : x)] || opaque(image.palette.getColor(ci));
         }
       }
     };
@@ -215,7 +233,7 @@ class ProcgenRecipeTerrain {
       const piece = placement.piece, dx = x - placement.x, dy = y - placement.y;
       if (dx < 0 || dx >= piece.width || dy < 0 || dy >= piece.height) return 0;
       const ci = piece.frame[dy * piece.width + (placement.flip ? piece.width - 1 - dx : dx)];
-      return ci & 128 ? 0 : opaque(piece.image.palette.getColor(ci));
+      return ci & 128 ? 0 : piece.rgba?.[dy * piece.width + (placement.flip ? piece.width - 1 - dx : dx)] || opaque(piece.image.palette.getColor(ci));
     };
     for (const placement of descriptor.placements) if (!placement.decor) {
       const stamped = pieceColor(placement); if (stamped) { color = stamped; solid = true; }
@@ -241,7 +259,11 @@ class ProcgenRecipeTerrain {
         result = composed; result.pixels = null;
         while (this.collision.size >= this.collisionLimit) { this.collision.delete(this.collision.keys().next().value); this.stats.evicted++; }
         this.collision.set(key, result); this.stats.generated++;
-        for (const p of result.placements) { this.selectedTerrainIds.add(p.piece.id); this.stats[p.decor ? 'decorPlacements' : 'groundPlacements']++; }
+        for (const p of result.placements) {
+          if (p.canonicalGroup) { this.stats.canonicalGroups++; this.stats.canonicalSourcePlacements += p.canonicalGroup.placements.length; for (const source of p.canonicalGroup.placements) this.selectedTerrainIds.add(source.id); }
+          else this.selectedTerrainIds.add(p.piece.id);
+          this.stats[p.decor ? 'decorPlacements' : 'groundPlacements']++;
+        }
         for (const p of result.objects) { this.selectedObjectIds.add(p.piece.id); this.stats.objectPlacements++; }
       }
       if (raster) {
@@ -274,6 +296,7 @@ class ProcgenRecipeTerrain {
       collisionLimit: this.collisionLimit, rasterLimit: this.rasterLimit, memoryMB: this.memoryMB,
       terrainVocabularyUsed: this.selectedTerrainIds.size, terrainVocabularyAvailable: this.pieces.length,
       wordGlyphsAvailable: this.wordPlanner?.glyphs.size || 0, wordChoicesAvailable: this.wordPlanner?.choices.length || 0,
+      canonicalDescriptor: this.sourceDescriptor?.id || null, canonicalGroupsAvailable: this.sourceGroups.size, cachedDescriptions: this.descriptions.size, cachedZones: this.zonePlanner?.cache.size || 0,
       objectVocabularyUsed: this.selectedObjectIds.size, objectVocabularyAvailable: this.objects.length, phaseChunks: PHASE_CHUNKS }; }
 }
 export { ProcgenRecipeTerrain, TERRAIN_CHUNK_WIDTH, TERRAIN_HEIGHT };

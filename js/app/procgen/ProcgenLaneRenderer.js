@@ -78,11 +78,12 @@ class ProcgenLaneRenderer {
         if (py0 >= py1) continue;
         const through = Math.min(x0 + this.viewWidth, world.generatedThrough[lane]);
         for (let cx = Math.floor(x0 / chunkWidth); cx * chunkWidth < through; cx++) {
-          const px0 = Math.max(0, Math.ceil((cx * chunkWidth - x0) / step)), px1 = Math.min(width, Math.ceil(((cx + 1) * chunkWidth - x0) / step));
+          const px0 = Math.max(0, Math.ceil((cx * chunkWidth - x0) / step)), px1 = Math.min(width, Math.ceil((Math.min((cx + 1) * chunkWidth, through) - x0) / step));
           if (px0 >= px1) continue;
           const tileKey = lane * 0x800000 + cx, revision = world.terrainTileRevisions?.get(tileKey) || 0;
-          if (!reset && this.tileRevisions.get(tileKey) === revision) continue;
-          this.tileRevisions.set(tileKey, revision); dirty.push([px0, py0, px1 - px0, py1 - py0]);
+          const tileRevision = revision + ':' + Math.min(chunkWidth, through - cx * chunkWidth);
+          if (!reset && this.tileRevisions.get(tileKey) === tileRevision) continue;
+          this.tileRevisions.set(tileKey, tileRevision); dirty.push([px0, py0, px1 - px0, py1 - py0]);
           const seed = world.laneSeeds[lane], descriptor = step >= 8 ? terrain.describe(seed, cx) : null;
           const tile = descriptor ? null : terrain.getChunk(seed, cx, true).pixels;
           for (let py = py0; py < py1; py++) {
@@ -142,6 +143,7 @@ class ProcgenLaneRenderer {
           return !edits?.[y * 32 + x % 32] && terrain.solidSample(seed, cx, x - cx * width, y, descriptor);
         };
         for (const object of descriptor.objects) {
+          if (object.x + object.piece.image.width + (object.role === 'liquid' ? 1 : 0) > world.generatedThrough[lane]) continue;
           if (object.supportY != null) {
             let supported = true;
             for (let dx = 0; dx < object.piece.image.width; dx++) if (!matchesTerrain(object.x + dx, object.supportY)) { supported = false; break; }

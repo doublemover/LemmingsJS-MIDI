@@ -52,4 +52,14 @@ const getPackTerrainWidthLimit = (book, packPath) => {
   return (book?.descriptors || []).reduce((width, descriptor) => descriptor.pack === pack ? Math.max(width, descriptor.widths.max) : width, 0);
 };
 
-export { getPackTerrainWidthLimit, selectTerrainDescriptor, validateTerrainDescriptors };
+const fingerprintTerrainImages = async images => {
+  if (!globalThis.crypto?.subtle) return null;
+  const chunks = [];
+  for (const image of images) chunks.push(Uint8Array.of(image.width, image.height), Uint8Array.from(image.frames[0]), new Uint8Array(image.palette.data.buffer));
+  const bytes = new Uint8Array(chunks.reduce((size, chunk) => size + chunk.length, 0)); let at = 0;
+  for (const chunk of chunks) { bytes.set(chunk, at); at += chunk.length; }
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest), value => value.toString(16).padStart(2, '0')).join('');
+};
+
+export { fingerprintTerrainImages, getPackTerrainWidthLimit, selectTerrainDescriptor, validateTerrainDescriptors };
