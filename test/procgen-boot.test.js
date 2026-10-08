@@ -266,6 +266,14 @@ describe('procgenBoot helpers', function () {
     expect(adapterResizeCalls).to.equal(1);
   });
 
+  it('reserves the persistent topbar height and caps backing pixel density', function () {
+    const canvas = { width: 0, height: 0, style: {} };
+    globalThis.window = { devicePixelRatio: 3, innerWidth: 390, innerHeight: 800 };
+    globalThis.document = { getElementById: id => id === 'gameCanvas' ? canvas : id === 'procgenTopbar' ? { getBoundingClientRect: () => ({ height: 120 }) } : null };
+    procgenBoot.resizeCanvas(); expect(canvas.width).to.equal(780); expect(canvas.height).to.equal(1360);
+    expect(canvas.style.height).to.equal('680px');
+  });
+
   it('falls back to finite canvas dimensions when viewport metrics are invalid', function () {
     const canvas = {
       width: 0,

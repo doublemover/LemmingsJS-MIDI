@@ -102,3 +102,27 @@ body {
 #procgenDrawer .character-composite .palette-choices button { min-height: 0; height: 14px; padding: 0; border: 0; border-radius: 0; background: transparent; }
 #procgenDrawer .character-composite .palette-choices button:first-child { border-radius: 0 0 0 6px; }
 #procgenDrawer .character-composite .palette-choices button:last-child { border-radius: 0 0 6px 0; }
+
+/* Persistent common controls; detailed choices keep their original drawer. */
+body { flex-direction: column; }
+#procgenTopbar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 8px; box-sizing: border-box; z-index: 21; background: #1d2922; color: #e6ece5; border-bottom: 1px solid #405044; font: 11px system-ui,sans-serif; }
+#procgenTopbar label { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+#procgenTopbar button, #procgenTopbar select, #procgenTopbar input:not([type=range]) { min-height: 28px; box-sizing: border-box; border: 1px solid #4a5b4c; border-radius: 4px; padding: 4px 6px; background: #253329; color: inherit; font: inherit; }
+#procgenTopbar button { cursor: pointer; white-space: nowrap; }
+#procgenTopbar button:hover { background: #344838; border-color: #75957a; }
+#procgenTopbar input[type=number] { width: 56px; }
+#procgenTopbar #procgenSeed { width: 94px; }
+#procgenTopbar #procgenPack { max-width: 146px; }
+#procgenTopbar .procgen-speed-control { display: flex; align-items: center; gap: 4px; }
+#procgenTopbar .procgen-speed-segments button { width: 22px; height: 24px; min-height: 0; padding: 0; border: 0; border-radius: 0; background: #000; }
+#procgenTopbar #procgenSpeed { width: 50px; min-height: 26px; }
+.procgen-button-group, .procgen-audio-controls { display: flex; align-items: center; gap: 3px; }
+#procgenTopbar #procgenListen { background: #567148; }
+#procgenTopbar #procgenPanic { background: #ad4434; border-color: #963b2d; }
+#procgenMasterVolume { width: 58px; accent-color: #d2aa67; }
+#procgenMasterVolumeValue { min-width: 30px; font: 10px ui-monospace,monospace; }
+#procgenTopbar #procgenTab { position: static; transform: none; margin-left: auto; border: 1px solid #71614c; border-radius: 4px; padding: 4px 8px; font: inherit; }
+#gameCanvas { flex: 1 1 auto; min-height: 0; }
+#procgenDrawer { top: var(--procgen-bar-height, 42px); max-height: min(calc(100dvh - var(--procgen-bar-height, 42px)), 660px); padding-top: 10px; }
+#procgenTopbar :focus-visible { outline: 2px solid #ffcc38; outline-offset: 2px; }
+@media (max-width: 600px) { #procgenTopbar { gap: 4px; padding: 4px; } #procgenTopbar #procgenPack { max-width: 110px; } #procgenTopbar #procgenSeed { width: 88px; } }

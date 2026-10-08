@@ -1,5 +1,7 @@
 import { expect } from 'chai';
 import fs from 'node:fs';
+import * as cheerio from 'cheerio';
+import { normalizeSeed } from '../js/core/seededRandom.js';
 import { createProcgenUiController } from '../js/app/procgen/ProcgenUiController.js';
 import { TestDocument, createTestWindow } from './helpers/test-dom.js';
 import { registerElement } from './support/dom-fixtures.js';
@@ -12,9 +14,9 @@ const fixture = (search = '') => {
     target.removeEventListener = (name, callback) => events.get(name)?.delete(callback);
     target.dispatchEvent = event => { for (const callback of events.get(event.type) || []) callback(event); };
   }
-  for (const [tag, ids] of [['div', ['procgenDrawer']], ['button', ['procgenTab', 'procgenRestart', 'procgenListen', 'procgenSpeedDown', 'procgenSpeedUp', 'procgenShare']],
-    ['select', ['procgenPreset', 'procgenPack', 'procgenSpeed']], ['input', ['procgenLanes', 'procgenPhrases']],
-    ['p', ['procgenPresetDescription', 'procgenAudioStatus', 'procgenRunStatus', 'procgenMetrics', 'procgenStallStatus']]]) {
+  for (const [tag, ids] of [['div', ['procgenDrawer']], ['button', ['procgenTab', 'procgenRestart', 'procgenListen', 'procgenSpeedDown', 'procgenSpeedUp', 'procgenShare', 'procgenNewSeed', 'procgenPause', 'procgenStep', 'procgenFollow', 'procgenZoomIn', 'procgenZoomOut', 'procgenPanic']],
+    ['select', ['procgenPreset', 'procgenPack', 'procgenSpeed']], ['input', ['procgenLanes', 'procgenPhrases', 'procgenSeed', 'procgenMasterVolume']],
+    ['p', ['procgenMasterVolumeValue', 'procgenPresetDescription', 'procgenAudioStatus', 'procgenRunStatus', 'procgenMetrics', 'procgenStallStatus']]]) {
     for (const id of ids) { const el = registerElement(document, tag, id); el.removeEventListener = (event, callback) => el.listeners.set(event, (el.listeners.get(event) || []).filter(fn => fn !== callback)); }
   }
   let restarts = 0;
@@ -65,6 +67,27 @@ describe('compact procgen drawer', () => {
     expect(called.slice(-3)).to.deep.equal([['pause'], ['step'], ['resume']]);
     press('Backspace', { target: { tagName: 'INPUT' } }); expect(f.restarts).to.equal(0);
     press('Backspace'); expect(f.restarts).to.equal(1); f.ui.dispose();
+  });
+  it('mounts one set of common controls outside the inert drawer', () => {
+    const $ = cheerio.load(fs.readFileSync('procgen.html', 'utf8'));
+    for (const id of ['procgenRestart', 'procgenSeed', 'procgenLanes', 'procgenPack', 'procgenSpeed', 'procgenPause', 'procgenStep', 'procgenFollow', 'procgenListen', 'procgenMasterVolume', 'procgenPanic', 'procgenTab']) {
+      expect($('#' + id).length, id).to.equal(1); expect($('#' + id).closest('#procgenTopbar').length, id).to.equal(1);
+      expect($('#' + id).closest('#procgenDrawer').length, id).to.equal(0);
+    }
+    expect($('#procgenCharacters').closest('#procgenDrawer').length).to.equal(1);
+  });
+  it('regenerates the chosen seed and reuses pause, step, follow, gain and Panic owners', () => {
+    const f = fixture('?seed=42'), calls = [];
+    f.runtime.lanes = { pause: () => calls.push('pause'), resume: () => calls.push('resume'), step: () => calls.push('step'), renderer: { camera: { followFrontier: () => calls.push('follow') } } };
+    f.el('procgenSeed').value = 'forest'; f.el('procgenRestart').dispatchEvent({ type: 'click' });
+    expect(f.ui.settings.seed).to.equal(normalizeSeed('forest')); expect(f.restarts).to.equal(1);
+    f.el('procgenPause').dispatchEvent({ type: 'click' }); expect(f.el('procgenPause').textContent).to.equal('Play');
+    f.el('procgenStep').dispatchEvent({ type: 'click' }); f.el('procgenFollow').dispatchEvent({ type: 'click' });
+    expect(calls).to.deep.equal(['pause', 'pause', 'step', 'follow']);
+    f.el('procgenMasterVolume').value = '180'; f.el('procgenMasterVolume').dispatchEvent({ type: 'input', target: f.el('procgenMasterVolume') });
+    expect(f.ui.local.audio.getState().masterVolume).to.equal(1.8); expect(f.el('procgenMasterVolumeValue').textContent).to.equal('180%');
+    f.ui.local.panic = () => calls.push('panic'); f.el('procgenPanic').dispatchEvent({ type: 'click' }); expect(calls.at(-1)).to.equal('panic');
+    f.ui.dispose();
   });
   it('uses validated query appearance and music over stored/default selections without starting audio', () => {
     const f = fixture('?shape=classic&bodyColor=%23ffd447&accessory=crown&eyewear=monocle&speed=150&preset=game-lydian-lanterns&musicMode=phrase');

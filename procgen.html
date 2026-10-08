@@ -12,10 +12,11 @@
   <script type="module" src="js/app/procgenBoot.js"></script>
 </head>
 <body>
-  <canvas id="gameCanvas" class="gameCanvas" aria-label="Procedural Lemmings world"></canvas>
-  <section id="procgenDrawer" aria-label="Procgen controls" inert>
-    <div class="procgen-controls-row">
-      <label>Spawns per cohort / lanes <input id="procgenLanes" type="number" min="1" max="1024" step="1" value="1"></label>
+  <header id="procgenTopbar" aria-label="Run controls">
+    <label class="procgen-seed-field">Seed <input id="procgenSeed" type="text" value="" aria-label="Generation seed" title="Numbers or words; regenerate repeats this seed"></label>
+    <div class="procgen-button-group"><button id="procgenRestart" type="button" title="Regenerate the same seed (Backspace)">Regenerate</button><button id="procgenNewSeed" type="button" title="Choose a new seed and generate">New seed</button></div>
+    <label>Lanes <input id="procgenLanes" type="number" min="1" max="1024" step="1" value="1"></label>
+    <label>Pack <select id="procgenPack"></select></label>
       <div class="procgen-speed-control" role="group" aria-label="Game speed">
         <span>Speed</span><div class="procgen-speed-segments">
           <button id="procgenSpeedDown" type="button" aria-label="Decrease game speed" title="Decrease speed (-); Shift for five steps"><span class="visually-hidden">Decrease</span></button>
@@ -23,9 +24,15 @@
           <button id="procgenSpeedUp" type="button" aria-label="Increase game speed" title="Increase speed (+); Shift for five steps"><span class="visually-hidden">Increase</span></button>
         </div><input id="procgenSpeed" type="number" min="0.1" step="0.1" value="3" aria-label="Exact game speed" title="Game speed multiplier">
       </div>
-      <label>Pack <select id="procgenPack"></select></label>
+    <div class="procgen-button-group"><button id="procgenPause" type="button" aria-pressed="false" title="Pause or play (Space)">Pause</button><button id="procgenStep" type="button" title="Pause and advance one tick (])">Step</button></div>
+    <div class="procgen-button-group"><button id="procgenZoomOut" type="button" aria-label="Zoom out" title="Zoom out (Z)">−</button><button id="procgenFollow" type="button" title="Follow the leading living lemming (F)">Follow</button><button id="procgenZoomIn" type="button" aria-label="Zoom in" title="Zoom in (X)">+</button></div>
+    <div id="procgenAudioControls" class="procgen-audio-controls"><button id="procgenListen" type="button" aria-pressed="false">Listen locally</button><label title="Local master volume; above 100% boosts browser listening"><span class="visually-hidden">Master volume</span><input id="procgenMasterVolume" type="range" min="0" max="400" step="1" value="70" aria-label="Master volume"><output id="procgenMasterVolumeValue">70%</output></label><button id="procgenPanic" type="button" title="Stop all local notes">Panic</button></div>
+    <button id="procgenTab" type="button" aria-controls="procgenDrawer" aria-expanded="false">Details</button>
+  </header>
+  <canvas id="gameCanvas" class="gameCanvas" aria-label="Procedural Lemmings world" tabindex="0"></canvas>
+  <section id="procgenDrawer" aria-label="Procgen details" inert>
+    <div class="procgen-controls-row">
       <label>Scenery <select id="procgenDecoration"></select></label>
-      <button id="procgenRestart" type="button">Restart</button>
       <button id="procgenShare" type="button">Share run</button>
       <input id="procgenShareUrl" type="text" readonly hidden aria-label="Shareable run URL">
     </div>
@@ -33,7 +40,6 @@
     <div class="procgen-controls-row">
       <label>Action music <select id="procgenPreset"></select></label>
       <label class="procgen-check"><input id="procgenPhrases" type="checkbox"> Short phrases</label>
-      <button id="procgenListen" type="button" aria-pressed="false">Listen locally</button>
     </div>
     <p id="procgenPresetDescription"></p>
     <p id="procgenAudioStatus" role="status">Local sound is off. No hardware output.</p>
@@ -41,6 +47,5 @@
     <p id="procgenStallStatus"></p>
     <p id="procgenRunStatus" role="status">Loading…</p>
   </section>
-  <button id="procgenTab" type="button" aria-controls="procgenDrawer" aria-expanded="false">Controls ▾</button>
 </body>
 </html>

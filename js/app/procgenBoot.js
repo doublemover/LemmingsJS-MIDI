@@ -69,6 +69,7 @@ const saveProcgenDistances = world => {
   try { window.localStorage?.setItem('procgen.laneDistances.v1', JSON.stringify(values)); } catch { /* Session values remain available. */ }
 };
 let procgenBootListeners = [];
+let procgenBarObserver = null;
 
 const runFocusBlurCleanup = (runtime) => {
   const cleanup = runtime?.focusBlurCleanup;
@@ -113,6 +114,7 @@ const addProcgenBootListener = (target, eventName, handler, options) => {
 };
 
 const disposeProcgenBootListeners = () => {
+  procgenBarObserver?.disconnect(); procgenBarObserver = null;
   while (procgenBootListeners.length) {
     const { target, eventName, handler, options } = procgenBootListeners.pop();
     target?.removeEventListener?.(eventName, handler, options);
@@ -128,10 +130,13 @@ const installProcgenBootListeners = () => {
       procgenUi = createProcgenUiController({ document, window, getRuntime: () => activeProcgenRuntime, restart: init,
         initial: { laneCount: params.get('lanes'), speed: params.get('speed'), pack: params.get('pack') } });
     }
+    const bar = document.getElementById('procgenTopbar');
+    if (bar && typeof window.ResizeObserver === 'function') { procgenBarObserver = new window.ResizeObserver(() => resizeCanvas()); procgenBarObserver.observe(bar); }
     init().catch(error => { const status = document.getElementById('procgenRunStatus'); if (status) status.textContent = `Could not start: ${error.message}`; });
   };
-  addProcgenBootListener(window, 'resize', resizeCanvas);
+  addProcgenBootListener(window, 'resize', () => resizeCanvas());
   addProcgenBootListener(window, 'beforeunload', disposeProcgenRuntime);
+  addProcgenBootListener(window, 'orientationchange', () => resizeCanvas());
 
   if (document.readyState === 'loading') {
     addProcgenBootListener(document, 'DOMContentLoaded', boot, { once: true });
@@ -308,7 +313,7 @@ const init = async () => {
   activeProcgenRuntime = runtime;
   try {
     const params = new URLSearchParams(window.location.search);
-    const procgenSeed = resolveProcgenSeed(params);
+    const procgenSeed = procgenUi?.settings.seed ?? resolveProcgenSeed(params);
     const styleRng = createSeededRandom(deriveSeed(procgenSeed, 'style'));
     const terrainRng = createSeededRandom(deriveSeed(procgenSeed, 'terrain'));
     window.procgenSeed = procgenSeed;
@@ -475,7 +480,7 @@ const resizeCanvas = (runtime = activeProcgenRuntime) => {
   const canvas = document.getElementById('gameCanvas');
   if (!canvas) return;
   const dprValue = Number(window?.devicePixelRatio);
-  const dpr = Number.isFinite(dprValue) && dprValue > 0 ? dprValue : 1;
+  const dpr = Number.isFinite(dprValue) && dprValue > 0 ? Math.min(2, dprValue) : 1;
   const widthValue = Number(window?.innerWidth);
   const heightValue = Number(window?.innerHeight);
   const fallbackWidth = Number(canvas?.clientWidth);
@@ -483,11 +488,13 @@ const resizeCanvas = (runtime = activeProcgenRuntime) => {
   const width = Number.isFinite(widthValue) && widthValue > 0
     ? widthValue
     : (Number.isFinite(fallbackWidth) && fallbackWidth > 0 ? fallbackWidth : 1);
+  const barHeight = document.getElementById('procgenTopbar')?.getBoundingClientRect?.().height || 0;
   const height = Number.isFinite(heightValue) && heightValue > 0
-    ? heightValue
+    ? Math.max(1, heightValue - barHeight)
     : (Number.isFinite(fallbackHeight) && fallbackHeight > 0 ? fallbackHeight : 1);
   canvas.width = Math.floor(width * dpr);
   canvas.height = Math.floor(height * dpr);
+  document.body?.style?.setProperty?.('--procgen-bar-height', `${barHeight}px`);
   canvas.style.width = `${width}px`;
   canvas.style.height = `${height}px`;
   if (runtime?.stageAdapter?.updateStageSize) {

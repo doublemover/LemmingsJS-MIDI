@@ -7,6 +7,7 @@ import { normalizeLaneCount } from './ProcgenLaneWorld.js';
 import { getCharacterPreference } from '../../lemmings/CharacterSpriteSet.js';
 import { KeybindingRegistry, DEFAULT_KEYBINDINGS } from '../../input/KeybindingRegistry.js';
 import { normalizeProcgenSpeed, changeProcgenSpeed, renderProcgenSpeedControl } from './ProcgenSpeedControl.js';
+import { normalizeSeed } from '../../core/seededRandom.js';
 import { readProcgenUrlConfig, createProcgenShareUrl } from './ProcgenUrlConfig.js';
 
 const createProcgenUiController = ({ document, window, getRuntime, restart, initial = {} }) => {
@@ -15,7 +16,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   const listen = (target, event, handler) => { target?.addEventListener(event, handler); listeners.push([target, event, handler]); };
   const urlConfig = readProcgenUrlConfig(window?.location?.search);
   const settings = { laneCount: normalizeLaneCount(initial.laneCount || 1), speed: normalizeProcgenSpeed(initial.speed), pack: [1, 2, 3, 4, 5, 6].includes(Number(initial.pack)) ? Number(initial.pack) : 2,
-    preset: GAME_EVENT_MIDI_PRESETS[0].id, mode: 'steps', decoration: 'none', ...urlConfig.settings };
+    preset: GAME_EVENT_MIDI_PRESETS[0].id, mode: 'steps', decoration: 'none', ...urlConfig.settings, ...(urlConfig.seed != null ? { seed: urlConfig.seed } : {}) };
   let project = applyGameEventMidiPreset(createMidiProjectFromMidiConfig({ enabled: false, sfx: {}, triggers: {} }), settings.preset);
   let config = projectToMidiConfig(project), disposed = false;
   const local = createLocalGamePreview({ getLemmings: () => getRuntime()?.view, getConfig: () => config, immutableConfig: true,
@@ -28,7 +29,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   const setOpen = open => {
     if (!panel || !tab) return;
     panel.classList.toggle('is-open', open); panel.inert = !open;
-    tab.setAttribute('aria-expanded', String(open)); tab.textContent = open ? 'Controls ▴' : 'Controls ▾';
+    tab.setAttribute('aria-expanded', String(open)); tab.textContent = open ? 'Close details' : 'Details';
     if (!open && panel.contains(document.activeElement)) tab.focus();
   };
   let dragStart = null, pulledOpen = false;
@@ -61,11 +62,31 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   listen(byId('procgenPreset'), 'change', refreshPreset); listen(byId('procgenPhrases'), 'change', refreshPreset); refreshPreset();
   listen(byId('procgenListen'), 'click', () => { if (local.getState().enabled || local.getState().status === 'starting') local.stop(); else local.start(); });
   const doRestart = async () => {
+    const seed = byId('procgenSeed')?.value?.trim();
+    if (seed) settings.seed = normalizeSeed(seed);
     local.stop();
     if (byId('procgenRunStatus')) byId('procgenRunStatus').textContent = 'Loading…';
     try { await restart(); } catch (error) { if (!disposed && byId('procgenRunStatus')) byId('procgenRunStatus').textContent = `Could not start: ${error.message}`; }
   };
   listen(byId('procgenRestart'), 'click', doRestart);
+  listen(byId('procgenNewSeed'), 'click', () => {
+    const bytes = new Uint32Array(1); window.crypto?.getRandomValues?.(bytes);
+    settings.seed = normalizeSeed(bytes[0] || Date.now());
+    if (byId('procgenSeed')) byId('procgenSeed').value = String(settings.seed);
+    doRestart();
+  });
+  listen(byId('procgenSeed'), 'keydown', event => { if (event.key === 'Enter') { event.preventDefault?.(); doRestart(); } });
+  const volumeKey = 'lemmings.midi.masterVolume';
+  let storedVolume; try { storedVolume = JSON.parse(window.localStorage?.getItem(volumeKey) || 'null'); } catch { /* Use the quiet default. */ }
+  const setVolume = (value, persist = true) => {
+    const master = local.audio.setMasterVolume(value);
+    if (byId('procgenMasterVolume')) byId('procgenMasterVolume').value = String(Math.round(master * 100));
+    if (byId('procgenMasterVolumeValue')) byId('procgenMasterVolumeValue').textContent = Math.round(master * 100) + '%';
+    if (persist) try { window.localStorage?.setItem(volumeKey, JSON.stringify({ version: 2, value: master })); } catch { /* Keep session gain. */ }
+  };
+  setVolume(typeof storedVolume === 'number' ? Math.max(0, Math.min(1, storedVolume)) : storedVolume?.version === 2 ? storedVolume.value : 0.7, false);
+  listen(byId('procgenMasterVolume'), 'input', event => setVolume(Number(event.target.value) / 100));
+  listen(byId('procgenPanic'), 'click', () => local.panic());
   listen(byId('procgenLanes'), 'change', () => { settings.laneCount = normalizeLaneCount(byId('procgenLanes').value); byId('procgenLanes').value = settings.laneCount; doRestart(); });
   listen(byId('procgenDecoration'), 'change', () => { settings.decoration = byId('procgenDecoration').value; doRestart(); });
   listen(byId('procgenPack'), 'change', () => { settings.pack = Number(byId('procgenPack').value); doRestart(); });
@@ -90,6 +111,14 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     if (config && !disposed) keybindings.setConfig(keyConfig(config));
   }).catch(() => {});
   let paused = false;
+  const setPaused = next => {
+    paused = !!next; getRuntime()?.lanes?.[paused ? 'pause' : 'resume']();
+    if (byId('procgenPause')) { byId('procgenPause').textContent = paused ? 'Play' : 'Pause'; byId('procgenPause').setAttribute('aria-pressed', String(paused)); }
+  };
+  listen(byId('procgenPause'), 'click', () => setPaused(!paused));
+  listen(byId('procgenStep'), 'click', () => { setPaused(true); getRuntime()?.lanes?.step(); });
+  listen(byId('procgenFollow'), 'click', () => { camera()?.followFrontier(); byId('gameCanvas')?.focus?.(); });
+  for (const [id, factor] of [['procgenZoomOut', 1 / 1.1], ['procgenZoomIn', 1.1]]) listen(byId(id), 'click', () => camera()?.setZoom(camera().getState().scale * factor));
   const handleKey = event => {
     if (event.defaultPrevented || event.target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(event.target?.tagName)) return;
     let handled = false;
@@ -103,7 +132,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
       } else if (action === 'zoomReset') { camera()?.setZoom(3); handled = true; }
       else if (action === 'followFrontier') { camera()?.followFrontier(); handled = true; }
       else if (action.startsWith('speed')) { setSpeed(changeProcgenSpeed(settings.speed, action.startsWith('speedUp') ? 1 : -1, { fast: action.endsWith('Fast') })); handled = true; }
-      else if (action === 'togglePause' && !event.repeat) { paused = !paused; getRuntime()?.lanes?.[paused ? 'pause' : 'resume'](); handled = true; }
+      else if (action === 'togglePause' && !event.repeat) { setPaused(!paused); handled = true; }
       else if (action === 'stepForward') { if (paused) getRuntime()?.lanes?.step(); handled = true; }
       else if (action === 'restartLevel' && !event.repeat) { doRestart(); handled = true; }
     }
@@ -128,6 +157,8 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     sync() {
       characters.sync();
       paused = false;
+      if (byId('procgenPause')) { byId('procgenPause').textContent = 'Pause'; byId('procgenPause').setAttribute('aria-pressed', 'false'); }
+      if (byId('procgenSeed')) byId('procgenSeed').value = String(settings.seed ?? window.procgenSeed ?? '');
       camera()?.applyState(urlConfig.camera);
       setSpeed(settings.speed);
       const runtime = getRuntime();
