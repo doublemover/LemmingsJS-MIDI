@@ -17,7 +17,7 @@ const createEventClipProject = (project, source) => {
   if (!source) return project;
   const mapping = source.mapping || {}, notes = mapping.notes?.length ? mapping.notes : [mapping.note ?? 60];
   const withClip = reduceMidiProject(project, { type: 'clip.add', clip: { name: source.label + ' cells', lengthSteps: notes.length > 8 ? 16 : 8,
-    playback: { advance: mapping.phrase?.enabled ? 'game-tick' : 'event', spacingTicks: mapping.phrase?.spacingTicks || 2 },
+    playback: { advance: mapping.phrase?.enabled ? 'game-tick' : 'event', spacingTicks: mapping.phrase?.spacingTicks || 2, passCounter: 'completed' },
     steps: Array.from({ length: notes.length > 8 ? 16 : 8 }, (_, index) => ({ index, note: notes[index] ?? null,
       velocity: mapping.velocity ?? null, durationTicks: mapping.durationTicks ?? null, probability: 1, hold: false, tie: false })) } });
   return reduceMidiProject(withClip, { type: 'source.clip.assign', sourceId: source.id, clipId: withClip.ui.selectedClipId });
@@ -62,22 +62,28 @@ const createMidiEventClipEditor = ({ document, bind, getProject, getSource, comm
     input('midiEventClipNote', step.note == null ? 'rest' : soundNoteName(step.note));
     input('midiEventClipVelocity', step.velocity); input('midiEventClipDuration', step.durationTicks);
     input('midiEventClipProbability', (step.probability ?? 1) * 100);
+    input('midiEventClipPassCounter', current.playback?.passCounter || 'started'); byId('midiClipPassField').hidden = current.playback?.advance !== 'game-tick';
+    input('midiEventClipPhase', step.condition?.phase || 0); byId('midiEventClipPhase').max = String((step.condition?.every || 1) - 1);
+    for (const [id, field, fallback] of [['Transpose', 'transpose', 0], ['Octave', 'octave', 0], ['Interval', 'interval', 0], ['Span', 'span', 1], ['TransformUnit', 'unit', 'event']]) input('midiEventClip' + id, step.transforms?.[field] ?? fallback);
+    for (const id of ['Probability', 'Condition', 'Every', 'Phase', 'Transpose', 'Octave', 'Interval', 'Span', 'TransformUnit']) byId('midiEventClip' + id).disabled = !current.playback;
     input('midiEventClipCondition', step.condition?.unit || 'event'); input('midiEventClipEvery', step.condition?.every || 1);
-    byId('midiEventClipHint').textContent = current.name + ' · ' + describeMidiClipPlayback(current) + (current.lengthSteps > 16 ? ' Showing the first 16 cells; use detailed wiring for later cells.' : '') + ' Click to paint/erase. Drag vertically to change pitch; drag across to paint. Notes accept C4, F#4, 60 or rest.';
+    byId('midiEventClipHint').textContent = current.name + ' · ' + describeMidiClipPlayback(current) + (current.lengthSteps > 16 ? ' Showing the first 16 cells; use detailed wiring for later cells.' : '') + ' Open Counter timing for event/pass/bar and phase semantics. Click to paint/erase. Drag vertically to change pitch; drag across to paint. Notes accept C4, F#4, 60 or rest.';
   };
   const finish = () => { if (gesture) { history.endGesture(); gesture = null; } };
   const initialize = () => {
     bind('midiClipCreate', 'click', () => commitProject(createEventClipProject(getProject(), getSource())));
     bind('midiEventClipLength', 'change', event => { const current = clip(); if (current) dispatch({ type: 'clip.update', clipId: current.id, patch: { lengthSteps: Number(event.target.value) } }); });
-    const timing = () => { const current = clip(); if (current) dispatch({ type: 'clip.update', clipId: current.id, patch: { playback: byId('midiEventClipAdvance').value === 'legacy' ? null : { advance: byId('midiEventClipAdvance').value, spacingTicks: Number(byId('midiEventClipSpacing').value) } } }); };
-    bind('midiEventClipAdvance', 'change', timing); bind('midiEventClipSpacing', 'change', timing);
+    const timing = () => { const current = clip(); if (current) dispatch({ type: 'clip.update', clipId: current.id, patch: { playback: byId('midiEventClipAdvance').value === 'legacy' ? null : { advance: byId('midiEventClipAdvance').value, spacingTicks: Number(byId('midiEventClipSpacing').value), passCounter: byId('midiEventClipPassCounter').value } } }); };
+    bind('midiEventClipAdvance', 'change', timing); bind('midiEventClipSpacing', 'change', timing); bind('midiEventClipPassCounter', 'change', timing);
     bind('midiEventClipNote', 'change', event => { const note = parseClipNote(event.target.value); if (note === undefined) { setStatus('Use a note name such as C4, a MIDI number 0–127, or rest.'); render(); return; } if (note != null) brush = note; update({ note }); });
     for (const [id, field, max] of [['midiEventClipVelocity', 'velocity', 127], ['midiEventClipDuration', 'durationTicks', 960], ['midiEventClipProbability', 'probability', 100]]) {
       bind(id, 'change', event => { const raw = event.target.value.trim(), number = Number(raw); if (!Number.isFinite(number)) return;
         update({ [field]: !raw && field !== 'probability' ? null : Math.max(field === 'probability' ? 0 : 1, Math.min(max, number)) / (field === 'probability' ? 100 : 1) }); });
     }
-    const condition = () => update({ condition: { unit: byId('midiEventClipCondition').value, every: Number(byId('midiEventClipEvery').value) } });
-    bind('midiEventClipCondition', 'change', condition); bind('midiEventClipEvery', 'change', condition);
+    const condition = () => update({ condition: { unit: byId('midiEventClipCondition').value, every: Number(byId('midiEventClipEvery').value), phase: Number(byId('midiEventClipPhase').value) } });
+    bind('midiEventClipCondition', 'change', condition); bind('midiEventClipEvery', 'change', condition); bind('midiEventClipPhase', 'change', condition);
+    const transforms = () => update({ transforms: { transpose: Number(byId('midiEventClipTranspose').value), octave: Number(byId('midiEventClipOctave').value), interval: Number(byId('midiEventClipInterval').value), span: Number(byId('midiEventClipSpan').value), unit: byId('midiEventClipTransformUnit').value } });
+    for (const id of ['Transpose', 'Octave', 'Interval', 'Span', 'TransformUnit']) bind('midiEventClip' + id, 'change', transforms);
     bind('midiEventClipGrid', 'pointerdown', event => {
       const target = event.target.closest?.('[data-cell-index]'), current = clip(); if (!target || !current || event.button !== 0) return;
       selected = Number(target.dataset.cellIndex); const root = byId('midiEventClipGrid');

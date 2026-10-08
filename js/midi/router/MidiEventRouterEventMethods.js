@@ -1,4 +1,4 @@
-import { clipCellEnabled, buildMidiClipPhrase } from '../project/MidiClipPlayback.js';
+import { clipCellEnabled, buildMidiClipPhrase, applyMidiClipTransforms, getMidiTransportBar } from '../project/MidiClipPlayback.js';
 import { MidiMapping } from '../MidiMapping.js';
 import { MidiScheduler } from '../MidiScheduler.js';
 import { isMidiFlagTriggerType } from '../MidiFlagTriggers.js';
@@ -27,7 +27,7 @@ const midiEventRouterEventMethods = {
       if (!event || event.sfxId == null) return;
       if (!this.mapping.config?.enabled) return;
       if ((event.sfxId === SoundEffectIds.SPAWN || event.sfxId === SoundEffectIds.LAND) && !this.mapping.getSfxConfig(event.sfxId)) return;
-      if (event.reverse) {
+      if (event.reverse || (Number.isInteger(event.tick) && this._tickCounter.tick != null && event.tick < this._tickCounter.tick)) {
         this.scheduler.gamePhrases?.clear();
         this._arpStateBySfx.clear();
       }
@@ -100,17 +100,24 @@ const midiEventRouterEventMethods = {
         const sequence = sfx.clipSequence, length = sequence.steps.length;
         const key = this._resolveArpKey(event, sfx), previous = this._arpStateBySfx.get(key);
         const count = previous?.seqKey === sequence.id ? previous.index : 0;
-        this._storeArpState(key, { index: count + 1, dir: 1, length, seqKey: sequence.id });
+        const completedPasses = previous?.seqKey === sequence.id ? previous.completedPasses || 0 : 0;
+        const pass = sequence.advance === 'event' ? Math.floor(count / length) + 1 : sequence.passCounter === 'completed' ? completedPasses + 1 : count + 1;
+        const timer = this._phraseTimer || this.context?.game?.getGameTimer?.();
+        const bar = getMidiTransportBar(this.mapping.config?.timing, event.tick ?? timer?.getGameTicks?.(), timer?.TIME_PER_FRAME_MS || 60);
+        this._storeArpState(key, { index: count + 1, dir: 1, length, seqKey: sequence.id, completedPasses, pass, bar, advance: sequence.advance });
         const mapStep = step => this.mapping.mapEvent(event, context, density, { ...sfx, note: step.note, notes: null,
           velocity: step.velocity, durationTicks: step.durationTicks, arp: null, phrase: null });
         if (sequence.advance === 'game-tick') {
-          const cells = buildMidiClipPhrase(sequence, count + 1, count + 1, mapStep);
-          this._queueGameEventClip(event, spec, meta, cells, sequence.spacingTicks);
+          const cells = buildMidiClipPhrase(sequence, count + 1, pass, mapStep, bar);
+          this._queueGameEventClip(event, spec, meta, cells, sequence.spacingTicks, () => {
+            const state = this._arpStateBySfx.get(key);
+            if (state?.seqKey === sequence.id && state.advance === 'game-tick') state.completedPasses += 1;
+          });
           return;
         }
         const index = count % length, step = sequence.steps[index];
-        if (!clipCellEnabled(sequence, step, count + 1, Math.floor(count / length) + 1)) return;
-        spec = { ...mapStep(step), reverse: !!event.reverse, stepIndex: index, stepCount: length };
+        if (!clipCellEnabled(sequence, step, count + 1, pass, bar)) return;
+        spec = { ...mapStep(applyMidiClipTransforms(step, count + 1, pass, bar)), reverse: !!event.reverse, stepIndex: index, stepCount: length };
         noteList = [spec.note];
       }
 

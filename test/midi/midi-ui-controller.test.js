@@ -1,6 +1,7 @@
 import { GameSkills } from '../../js/game/GameSkills.js';
 import { SkillTypes } from '../../js/game/SkillTypes.js';
 import { expect } from 'chai';
+import { withFakeClockAndPerformance } from '../support/timers.js';
 import { createMidiUiController } from '../../js/app/midiUiController.js';
 import { MidiEventRouter } from '../../js/midi/MidiEventRouter.js';
 import { SoundEventBus } from '../../js/game/SoundEvents.js';
@@ -1455,6 +1456,56 @@ describe('midiUiController sequencer', function() {
     expect(clip.steps[0]).to.include({ note: 64, velocity: 90, durationTicks: 2 });
     expect(clip.steps[1]).to.include({ note: 67, velocity: 88 });
     expect(messageCaptureCalls.at(-1)).to.equal(null);
+  });
+
+  it('commits explicit onset gaps in one project edit and preserves compact recording as the default', function() {
+    const { controller, doc, win } = createControllerHarness();
+    registerElement(doc, 'select', 'midiRecordPlacement').value = 'onsets';
+    controller.bindMidiUi();
+    controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'onsets', name: 'Onsets', lengthSteps: 8, steps: [{ note: 99, transforms: { transpose: 12 } }] } });
+    expect(controller.startRecording()).to.equal(true);
+    controller.captureRecordMessage({ type: 0x90, note: 60, velocity: 90, channel: 1, timestamp: 100 });
+    controller.captureRecordMessage({ type: 0x90, note: 67, velocity: 88, channel: 1, timestamp: 460 });
+    controller.captureRecordMessage({ type: 0x80, note: 67, channel: 1, timestamp: 580 });
+    controller.captureRecordMessage({ type: 0x80, note: 60, channel: 1, timestamp: 700 });
+    expect(controller.commitRecording()).to.equal(true);
+    const stored = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY)), clip = stored.clips.find(c => c.id === 'onsets');
+    expect(clip.steps.map(s => s.note)).to.deep.equal([60, null, null, 67, null, null, null, null]);
+    expect(clip.steps[0].durationTicks).to.equal(10); expect(clip.steps[0]).not.to.have.property('transforms');
+    expect(clip.playback).to.deep.equal({ advance: 'game-tick', spacingTicks: 2, passCounter: 'completed' });
+    expect(doc.getElementById('midiProjectStatus').textContent).to.contain('0 same-cell notes replaced, 0 beyond the clip omitted');
+  });
+
+  it('keeps independent local completed-pass counts through silent phrases, retriggering and Panic', async function() {
+    await withFakeClockAndPerformance(async clock => {
+      const heard = [];
+      const { controller, doc } = createControllerHarness({ createPreviewAudio: () => ({
+        async preview(notes) { heard.push(notes.map(n => n.note)); return true; },
+        stop() {}, getState: () => ({ enabled: true })
+      }) });
+      controller.bindMidiUi();
+      controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'local-passes', name: 'Local passes', lengthSteps: 2,
+        playback: { advance: 'game-tick', spacingTicks: 2, passCounter: 'completed' },
+        steps: [{ note: 60, velocity: 80, durationTicks: 2, condition: { unit: 'pass', every: 2 }, transforms: { unit: 'pass', interval: 2, span: 4 } }, { note: null }] } });
+      controller.dispatchProjectIntent({ type: 'source.clip.assign', sourceId: 'sfx-1', clipId: 'local-passes' });
+      expect(await controller.testSelectedSound()).to.equal(false); clock.tick(60);
+      expect(await controller.testSelectedSound()).to.equal(false); clock.tick(120);
+      expect(await controller.testSelectedSound()).to.equal(true);
+      expect(await controller.testSelectedSound()).to.equal(true);
+      doc.getElementById('midiPanicButton').dispatchEvent({ type: 'click' }); clock.tick(120);
+      expect(await controller.testSelectedSound()).to.equal(true); clock.tick(120);
+      expect(await controller.testSelectedSound()).to.equal(false);
+      expect(heard).to.deep.equal([[62], [62], [62]]);
+    });
+  });
+
+  it('closes held onset notes using elapsed capture time rather than mixing epoch and input timestamps', function() {
+    withFakeClockAndPerformance(clock => {
+      const { controller, doc } = createControllerHarness(); registerElement(doc, 'select', 'midiRecordPlacement').value = 'onsets';
+      controller.bindMidiUi(); controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'held', lengthSteps: 8 } });
+      controller.startRecording(); controller.captureRecordMessage({ type: 0x90, note: 60, velocity: 90, channel: 1, timestamp: 9000 }); clock.tick(240);
+      controller.commitRecording(); expect(controller.getProject().clips.find(c => c.id === 'held').steps[0].durationTicks).to.equal(4);
+    });
   });
 
   it('records only notes that fit in the selected clip', function() {

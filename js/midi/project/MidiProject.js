@@ -177,7 +177,8 @@ const sanitizeArpPayload = (arp) => {
 
 const sanitizeClipPlayback = playback => ['event', 'game-tick'].includes(playback?.advance) ? {
   advance: playback.advance,
-  spacingTicks: clamp(toInteger(playback.spacingTicks, 2), 1, 8)
+  spacingTicks: clamp(toInteger(playback.spacingTicks, 2), 1, 8),
+  ...(['started', 'completed'].includes(playback.passCounter) ? { passCounter: playback.passCounter } : {})
 } : null;
 
 const createDefaultMidiClip = (overrides = {}) => {
@@ -462,7 +463,12 @@ const sanitizeStep = (step, fallbackIndex) => {
     tie: sanitizeBoolean(step.tie, false),
     hold: sanitizeBoolean(step.hold, false),
     probability: clamp(toFiniteNumber(step.probability, 1), 0, 1),
-    ...(step.condition ? { condition: { unit: step.condition.unit === 'pass' ? 'pass' : 'event', every: clamp(toInteger(step.condition.every, 1), 1, 64) } } : {})
+    ...(step.condition ? { condition: { unit: ['event', 'pass', 'bar'].includes(step.condition.unit) ? step.condition.unit : 'event', every: clamp(toInteger(step.condition.every, 1), 1, 64), phase: clamp(toInteger(step.condition.phase, 0), 0, clamp(toInteger(step.condition.every, 1), 1, 64) - 1) } } : {}),
+    ...(isPlainObject(step.transforms) ? { transforms: {
+      transpose: clamp(toInteger(step.transforms.transpose, 0), -48, 48), octave: clamp(toInteger(step.transforms.octave, 0), -4, 4),
+      interval: clamp(toInteger(step.transforms.interval, 0), -12, 12), span: clamp(toInteger(step.transforms.span, 1), 1, 16),
+      unit: ['event', 'pass', 'bar'].includes(step.transforms.unit) ? step.transforms.unit : 'event'
+    } } : {})
   };
 };
 

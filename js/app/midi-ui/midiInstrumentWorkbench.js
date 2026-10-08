@@ -2,7 +2,7 @@ import { createMidiSkillEventDock } from './midiSkillEventDock.js';
 import { createMidiEventPlayback } from './midiEventPlayback.js';
 import { resolveUnavailableSkillSfxIds } from './midiUiDomain.js';
 import { GAME_SPEED_DETENTS, gameSpeedDetentIndex } from '../../game/GameSpeed.js';
-import { GAME_SOUND_EVENTS, getEventBehavior, createEventBehaviorPatch } from './midiSoundEditor.js';
+import { GAME_SOUND_EVENTS, resolveGameSoundSource, getEventBehavior, createEventBehaviorPatch } from './midiSoundEditor.js';
 import { cloneSafeObject } from '../../util/safeObject.js';
 import { createMidiInstrumentMenus } from './midiInstrumentMenus.js';
 
@@ -96,7 +96,9 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     if (document?.activeElement?.hidden && document.activeElement?.dataset?.gameEventId) selectedRow?.focus?.();
     const source = getSource();
     const runtime = view?.midiPreviewRouter || view?.midiRouter;
-    const state = runtime?.getEventPlaybackState?.({ sfxId: Number(source?.sourceKey) });
+    const eventOwner = GAME_SOUND_EVENTS.find(event => resolveGameSoundSource(getProject(), event)?.id === source?.id);
+    const state = runtime?.getEventPlaybackState?.({ sfxId: eventOwner?.id ?? Number(source?.sourceKey), ...(source?.kind === 'trigger' ? { triggerType: Number(source.sourceKey) } : {}) });
+    text('midiEventClipCounters', source?.mode === 'clip' ? 'Live counters: ' + (state?.eventCount || 0) + ' events / last pass ' + (state?.passCount || 1) + ' / last trigger bar ' + (state?.triggerBar || 1) + ' / ' + (state?.completedPasses || 0) + ' completed phrases' : '');
     const marker = state?.nextIndex;
     Array.from(byId('midiSoundContour')?.children || []).forEach((bar, index) => {
       const next = getEventBehavior(source) === 'steps' && index === marker;

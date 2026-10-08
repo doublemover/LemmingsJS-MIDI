@@ -1,8 +1,8 @@
-import { clipCellEnabled, buildMidiClipPhrase } from '../../midi/project/MidiClipPlayback.js';
+import { clipCellEnabled, buildMidiClipPhrase, applyMidiClipTransforms, getMidiTransportBar } from '../../midi/project/MidiClipPlayback.js';
 import { MidiMapping } from '../../midi/MidiMapping.js';
 import { projectToMidiConfig } from '../../midi/project/MidiProject.js';
 
-const createSoundAuditionPlan = (source, project, frameMs = 60, eventIndex = 0) => {
+const createSoundAuditionPlan = (source, project, frameMs = 60, eventIndex = 0, counters = {}) => {
   const track = project.tracks.find(item => item.id === source?.trackId);
   if (!source?.enabled) return { notes: [], reason: 'This event is off.' };
   if (track?.mute) return { notes: [], reason: `${track.name} is muted.` };
@@ -16,10 +16,12 @@ const createSoundAuditionPlan = (source, project, frameMs = 60, eventIndex = 0) 
   if (m.clipSequence) {
     const sequence = m.clipSequence, length = sequence.steps.length;
     const mapStep = step => new MidiMapping(config).mapEvent({ sfxId: Number(source.sourceKey) }, {}, 0, { ...m, note: step.note, notes: null, velocity: step.velocity, durationTicks: step.durationTicks, arp: null, phrase: null });
-    const count = eventIndex + 1, pass = Math.floor(eventIndex / length) + 1;
-    const cells = sequence.advance === 'game-tick' ? buildMidiClipPhrase(sequence, count, count, mapStep)
-      : [clipCellEnabled(sequence, sequence.steps[eventIndex % length], count, pass) ? { ...mapStep(sequence.steps[eventIndex % length]), stepIndex: eventIndex % length } : { note: null }];
-    return { advance: true, notes: cells.flatMap((cell, index) => Number.isFinite(cell.note) ? [{ note: cell.note, velocity: cell.velocity,
+    const count = eventIndex + 1, pass = sequence.advance === 'event' ? Math.floor(eventIndex / length) + 1
+      : sequence.passCounter === 'completed' ? (counters.completedPasses || 0) + 1 : count;
+    const bar = getMidiTransportBar(config.timing, counters.tick, counters.tickMs || 60);
+    const cells = sequence.advance === 'game-tick' ? buildMidiClipPhrase(sequence, count, pass, mapStep, bar)
+      : [clipCellEnabled(sequence, sequence.steps[eventIndex % length], count, pass, bar) ? { ...mapStep(applyMidiClipTransforms(sequence.steps[eventIndex % length], count, pass, bar)), stepIndex: eventIndex % length } : { note: null }];
+    return { advance: true, completionMs: sequence.advance === 'game-tick' ? (length - 1) * sequence.spacingTicks * frameMs : null, notes: cells.flatMap((cell, index) => Number.isFinite(cell.note) ? [{ note: cell.note, velocity: cell.velocity,
       pan: cell.pan, pitchBend: cell.pitchBend, durationMs: cell.durationTicks * frameMs,
       offsetMs: sequence.advance === 'game-tick' ? index * sequence.spacingTicks * frameMs : 0,
       playback: { sfxId: Number(source.sourceKey), durationMs: cell.durationTicks * frameMs, stepIndex: cell.stepIndex, stepCount: length } }] : []),

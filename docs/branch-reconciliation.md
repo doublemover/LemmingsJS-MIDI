@@ -6,6 +6,8 @@ Verified master: `7366e5f97bb20df73ff0c575768d1c5f8d46def0`. Inventoried all **1
 
 GitHub was rechecked on October 8: [draft PR #964](https://github.com/doublemover/LemmingsJS-MIDI/pull/964) remains open, with head `optimize/procgen-runtime-20261007` at `c8e4f375b4242554cdbc5a7a9e786d9ef48a35f6` and base `master` at `5ebaadd53dbae3b3685bcf7a53e38dc96f34619b`. The isolated MIDI branch `codex/midi-backlog-20261008` starts from `d163d2a2862bd51e6592794e7d2bcea09c41e756`, verified as an ancestor of that PR head. Reconcile its non-casino patches with the PR head and obtain parent approval of the exact destination before publication, merging or retargeting; do not default to master. No such action has occurred. The older inventory below remains historical.
 
+Read-only ancestry comparison before the October 8 conditional-clip batch: the target head has 31 unique commits and the local MIDI branch has seven, sharing `d163d2a2862bd51e6592794e7d2bcea09c41e756`. Target changes overlap MIDI workbench/CSS and speed-control ownership, plus router lifecycle/event and scheduler-rate owners (six relevant files, 127 additions/40 deletions). Selective reconciliation must preserve both sets of behavior; this comparison does not authorize modifying PR 964.
+
 ## Current publication
 
 - [#960](https://github.com/doublemover/LemmingsJS-MIDI/pull/960): consolidated workbench, editor fixes, recovered character art and dependency refresh; draft. Head `97128aff` passed existing Node CI, coverage and dependency review. Its registry audit found **0 vulnerabilities**. Newer art/terrain source changes still need their final consolidated pass.

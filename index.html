@@ -84,6 +84,7 @@
               <div class="midi-clip-controls">
                 <label>Length<select id="midiEventClipLength"><option value="8">8 cells</option><option value="16">16 cells</option></select></label>
                 <label>Advance<select id="midiEventClipAdvance"><option value="legacy">Saved clip behavior</option><option value="event">One cell per game event</option><option value="game-tick">Phrase on game ticks</option></select></label>
+                <label id="midiClipPassField">Phrase passes<select id="midiEventClipPassCounter"><option value="started">Started phrases (saved behavior)</option><option value="completed">Completed phrases</option></select></label>
                 <label id="midiClipSpacingField">Ticks / cell<input id="midiEventClipSpacing" type="number" min="1" max="8" value="2" /></label>
               </div>
               <div id="midiEventClipGrid" class="midi-event-clip-grid" role="group" aria-label="Note cells: click to paint or erase; drag across cells or vertically to change pitch"></div>
@@ -92,9 +93,19 @@
                 <label>Velocity<input id="midiEventClipVelocity" type="number" min="1" max="127" placeholder="Project" /></label>
                 <label>Length in ticks<input id="midiEventClipDuration" type="number" min="1" max="960" placeholder="Project" /></label>
                 <label>Chance %<input id="midiEventClipProbability" type="number" min="0" max="100" value="100" /></label>
-                <label>Condition<select id="midiEventClipCondition"><option value="event">Every N events</option><option value="pass">Every N passes</option></select></label>
+                <label>Condition<select id="midiEventClipCondition"><option value="event">Every N events</option><option value="pass">Every N passes</option><option value="bar">Every N trigger bars</option></select></label>
                 <label>N<input id="midiEventClipEvery" type="number" min="1" max="64" value="1" /></label>
+                <label>Phase (0 = Nth)<input id="midiEventClipPhase" type="number" min="0" max="0" value="0" /></label>
               </div>
+              <details><summary>Pitch layers for this cell</summary><div class="midi-clip-controls">
+                <label>Transpose<input id="midiEventClipTranspose" type="number" min="-48" max="48" value="0" /></label>
+                <label>Octaves<input id="midiEventClipOctave" type="number" min="-4" max="4" value="0" /></label>
+                <label>Ramp interval<input id="midiEventClipInterval" type="number" min="-12" max="12" value="0" /></label>
+                <label>Ramp span<input id="midiEventClipSpan" type="number" min="1" max="16" value="1" /></label>
+                <label>Ramp counter<select id="midiEventClipTransformUnit"><option value="event">Game events</option><option value="pass">Pattern passes</option><option value="bar">Trigger bars</option></select></label>
+              </div><p class="midi-help">Layers add transpose + 12 x octaves + interval x ((counter - 1) modulo span), then project scale/range apply. The grid shows entered notes; moving row notes show dispatched pitches.</p></details>
+              <details><summary>Counter timing</summary><p class="midi-help">Counters start at 1. Phase 0 selects N, 2N; phase 1 selects 1, N+1. An event pass is one grid traversal. Phrase passes count started or fully consumed phrases, as selected. Trigger bars use level ticks at the project BPM and time signature, sampled once at the trigger. Pause freezes the bar; speed changes its wall-time rate. Changing BPM/signature recomputes position. Local tests use independent event/pass counters and the same level bar.</p></details>
+              <p id="midiEventClipCounters" class="midi-help"></p>
             </div>
             <p id="midiEventClipHint" class="midi-help">Create a reusable clip to enter notes directly. Undo restores the prior wiring.</p>
           </section>
@@ -470,7 +481,8 @@
             </label>
           </div>
           <div id="midiRecordPanel" class="midi-learn-panel" aria-live="polite">
-            <p class="midi-help">Capture saves note pitches, velocities and approximate lengths into cells. Timing gaps and overlaps are not replayed.</p>
+            <p class="midi-help">Compact capture keeps the saved note-off order. Keep gaps quantizes note-on times from the first note to the nearest cell, replaces all cells, and keeps overlapping lengths; the last onset wins each cell. Leading silence is omitted. The current game tick length is frozen for capture; playback follows game ticks.</p>
+            <label>Placement<select id="midiRecordPlacement"><option value="compact">Compact notes (saved behavior)</option><option value="onsets">Keep gaps: last note per cell</option></select></label>
             <div id="midiRecordStatus" class="midi-learn-status" role="status">Record writes captured notes into clip steps.</div>
             <div class="midi-button-row">
               <button id="midiRecordButton" type="button" aria-label="Start MIDI recording">Record</button>

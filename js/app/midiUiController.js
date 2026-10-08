@@ -1,4 +1,5 @@
 import { createMidiEventClipEditor } from './midi-ui/midiEventClipEditor.js';
+import { buildMidiClipRecording } from '../midi/project/MidiClipRecording.js';
 import { createSoundAuditionPlan } from './midi-ui/midiSoundAudition.js';
 import { createMidiEditHistory } from './midi-ui/midiEditHistory.js';
 import { createMidiInstrumentWorkbench } from './midi-ui/midiInstrumentWorkbench.js';
@@ -333,6 +334,7 @@ const createMidiUiController = ({
     clipId: null,
     trackId: null,
     notes: [],
+    placement: 'compact', tickMs: 60, spacingTicks: 2, order: 0,
     activeNotes: new Map()
   };
   const sourceFilters = {
@@ -994,6 +996,7 @@ const createMidiUiController = ({
     const clip = selectedClip();
     panel.classList.toggle('is-active', recordState.active || recordState.notes.length > 0);
     if (start) start.disabled = !clip || recordState.active;
+    const placement = document?.getElementById('midiRecordPlacement'); if (placement) placement.disabled = recordState.active;
     if (commit) commit.disabled = !recordState.notes.length && !recordState.activeNotes.size;
     if (cancel) cancel.disabled = !recordState.active && !recordState.notes.length;
     if (!status) return;
@@ -1002,7 +1005,7 @@ const createMidiUiController = ({
       return;
     }
     if (recordState.active) {
-      status.textContent = `Recording into ${clip.name}: ${recordState.notes.length} notes captured.`;
+      status.textContent = `Recording into ${clip.name}: ${recordState.notes.length} notes captured.${recordState.placement === 'onsets' ? ' Keep gaps: ' + recordState.tickMs.toFixed(1) + ' ms/tick, ' + recordState.spacingTicks + ' ticks/cell.' : ''}`;
       return;
     }
     status.textContent = recordState.notes.length
@@ -1029,6 +1032,7 @@ const createMidiUiController = ({
       note: clamp(Math.round(started.note), 0, 127),
       velocity: clamp(Math.round(started.velocity), 1, 127),
       channel: clamp(Math.round(started.channel), 1, 16),
+      onsetMs: started.timestamp, order: started.order, durationMs: Math.max(0, (endTime ?? started.timestamp) - started.timestamp),
       durationTicks: durationMsToTicks((endTime ?? started.timestamp) - started.timestamp)
     });
   };
@@ -1039,12 +1043,12 @@ const createMidiUiController = ({
     const note = Number(event?.note);
     const velocity = Number(event?.velocity ?? 0);
     if ((type !== 0x90 && type !== 0x80) || !Number.isFinite(note)) return false;
-    const timestamp = Number.isFinite(event.timestamp) ? event.timestamp : Date.now();
+    const timestamp = Number.isFinite(event.timestamp) ? event.timestamp : nowMs();
     const normalized = {
       note: clamp(Math.round(note), 0, 127),
       velocity: clamp(Math.round(velocity), 0, 127),
       channel: clamp(Math.round(event.channel), 1, 16),
-      timestamp
+      timestamp, receiptMs: nowMs(), order: recordState.order++
     };
     if (type === 0x90 && normalized.velocity > 0) {
       finishRecordNote(normalized, timestamp);
@@ -1062,8 +1066,13 @@ const createMidiUiController = ({
       renderRecordPanel();
       return false;
     }
+    const placement = document?.getElementById('midiRecordPlacement')?.value === 'onsets' ? 'onsets' : 'compact';
+    if (placement === 'onsets' && clip.lengthSteps > 16) { setStatus('Keep gaps supports 8/16-cell clips. Reduce the clip explicitly or use compact capture.'); return false; }
     cancelLearn();
     resetRecordState();
+    recordState.placement = placement; recordState.order = 0;
+    recordState.tickMs = Math.max(1, Number(getLemmings()?.game?.getGameTimer?.()?.frameTime) || 60);
+    recordState.spacingTicks = clip.playback?.spacingTicks || 2;
     recordState.active = true;
     recordState.clipId = clip.id;
     recordState.trackId = selectedTrack()?.id ?? null;
@@ -1090,9 +1099,10 @@ const createMidiUiController = ({
   };
 
   const commitRecording = () => {
-    const now = Date.now();
+    const now = nowMs();
     for (const started of recordState.activeNotes.values()) {
-      finishRecordNote({ ...started, timestamp: now }, now);
+      const end = started.timestamp + Math.max(0, now - started.receiptMs);
+      finishRecordNote({ ...started, timestamp: end }, end);
     }
     recordState.activeNotes.clear();
     clearRecordCapture();
@@ -1105,6 +1115,12 @@ const createMidiUiController = ({
       return false;
     }
     let next = current;
+    if (recordState.placement === 'onsets') {
+      const capture = buildMidiClipRecording(recordState.notes, { length: clip.lengthSteps, tickMs: recordState.tickMs, spacingTicks: recordState.spacingTicks, minDuration: current.global.durationTicks.min, maxDuration: current.global.durationTicks.max });
+      next = reduceMidiProject(next, { type: 'clip.update', clipId: clip.id, patch: { steps: capture.steps, playback: { advance: 'game-tick', spacingTicks: recordState.spacingTicks, passCounter: clip.playback?.passCounter || 'completed' } } });
+      const message = 'Recorded ' + capture.retained + ' notes with gaps into ' + clip.name + '; ' + capture.collisions + ' same-cell notes replaced, ' + capture.outside + ' beyond the clip omitted';
+      resetRecordState(); commitProject(next); setStatus(message); logOutput(message); return true;
+    }
     recordState.notes.slice(0, clip.lengthSteps).forEach((note, index) => {
       next = reduceMidiProject(next, {
         type: 'clip.step.update',
@@ -2247,11 +2263,20 @@ const createMidiUiController = ({
     return localGamePreview;
   };
 
+  const settleAuditionPasses = (cancel = false) => {
+    const now = nowMs();
+    for (const state of auditionSteps.values()) {
+      if (state.completionAt != null && now >= state.completionAt) { state.completedPasses = (state.completedPasses || 0) + 1; state.completionAt = null; }
+      if (cancel) state.completionAt = null;
+    }
+  };
+
   const stopLocalPreview = () => {
     localInteraction += 1;
     localGamePreview?.stop?.();
     localAudio?.stop?.();
     auditionAudio?.stop?.();
+    settleAuditionPasses(true);
     renderLocalSummary();
   };
 
@@ -2259,17 +2284,22 @@ const createMidiUiController = ({
     const source = selectedSource();
     if (!source) return false;
     if (!auditionAudio) auditionAudio = createPreviewAudio({ masterVolume, onStateChange: renderLocalSummary, onPlayback: event => workbench?.onPlayback({ ...event, owner: 'audition' }) });
-    const key = JSON.stringify([source.mapping, source.clipId, ensureProject().clips.find(clip => clip.id === source.clipId)?.playback?.advance]);
+    const key = JSON.stringify([source.mapping, source.clipId, ensureProject().clips.find(clip => clip.id === source.clipId)?.playback]);
+    settleAuditionPasses();
     const previous = auditionSteps.get(source.id);
     const index = previous?.key === key ? previous.index : 0;
     const tickMs = Math.max(1, Number(getLemmings()?.game?.getGameTimer?.()?.frameTime) || 60);
-    const plan = createSoundAuditionPlan(source, ensureProject(), tickMs, index);
-    if (!plan.notes.length) { if (plan.advance) auditionSteps.set(source.id, { key, index: index + 1 }); setStatus(plan.reason); return false; }
+    const timer = getLemmings()?.game?.getGameTimer?.();
+    const completedPasses = previous?.key === key ? (previous.completedPasses || 0) : 0;
+    const plan = createSoundAuditionPlan(source, ensureProject(), tickMs, index, { completedPasses, tick: timer?.getGameTicks?.() ?? timer?.tickIndex, tickMs: timer?.TIME_PER_FRAME_MS || 60 });
+    const advance = () => auditionSteps.set(source.id, { key, index: index + 1, completedPasses, completionAt: plan.completionMs == null ? null : nowMs() + plan.completionMs });
+    if (plan.advance || plan.notes.length) settleAuditionPasses(true);
+    if (!plan.notes.length) { if (plan.advance) { localInteraction += 1; auditionAudio.stop?.(); advance(); } setStatus(plan.reason); return false; }
     const interaction = ++localInteraction;
     const ok = await auditionAudio.preview(plan.notes, { replace: true });
     if (interaction !== localInteraction || disposed) return false;
     if (ok) {
-      auditionSteps.set(source.id, { key, index: index + 1 });
+      advance();
       setStatus('');
     } else setStatus(auditionAudio.getState().message || 'Local audio could not start');
     renderLocalSummary();

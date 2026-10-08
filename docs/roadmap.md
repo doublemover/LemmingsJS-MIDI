@@ -813,7 +813,7 @@ fitted berets with lift/open/reattach cosmetics on every shape. Acceptance instr
 - Give temporal clips and recording explicit onset/overlap/retrigger semantics.
   Legacy clips retain chord/event-arp lowering. Explicit temporal clips now honor cell
   rests, probability and event/pass conditions; phrase-mode Hold/Tie have bounded gates.
-  Recorded gap/overlap preservation and bar-based conditions still need specified semantics.
+  Explicit onset capture now keeps gaps/overlapping lengths with a documented last-note-per-cell rule. Trigger-bar conditions, phases, completed/started phrase counters and composable pitch layers are implemented. Next: polyphonic capture/overdubbing and layered repeat transforms without duplicate clocks; final-tree listening/interaction acceptance remains open.
 - Visually accept the complete eight-accessory/five-eyewear pack on all twelve
   bodies, including the explicit custom ear/donut crown fits and final in-game
   appearance. Native source comparisons and decoder sheets are available; source

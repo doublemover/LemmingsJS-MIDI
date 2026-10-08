@@ -15,10 +15,12 @@ import {
 
 const midiEventRouterLifecycleMethods = {
   getEventPlaybackState(event) {
-    const mapping = this.mapping.config?.sfx?.[event?.sfxId];
+    const base = this.mapping.config?.sfx?.[event?.sfxId];
+    const mapping = event?.triggerType != null ? { ...base, ...this.mapping.config?.triggers?.[event.triggerType] } : base;
     const key = this._resolveArpKey(event, mapping);
     const state = this._arpStateBySfx.get(key);
-    return { nextIndex: state ? state.index % Math.max(1, state.length) : 0, direction: state?.dir ?? 1 };
+    return { nextIndex: state ? state.index % Math.max(1, state.length) : 0, direction: state?.dir ?? 1,
+      ...(mapping?.clipSequence ? { eventCount: state?.index || 0, passCount: state?.pass || 1, completedPasses: state?.completedPasses || 0, triggerBar: state?.bar || 1 } : {}) };
   },
 
   setMapping(mapping) {
@@ -100,7 +102,7 @@ const midiEventRouterLifecycleMethods = {
     if (frameChanged || speedChanged) {
       this._clockBaseMs = null;
       this._lastAcceptedBySfx.clear();
-      this._arpStateBySfx.clear();
+      for (const [key, state] of this._arpStateBySfx) if (state.completedPasses == null) this._arpStateBySfx.delete(key);
       this._repeatHistoryByKey.clear();
       this.scheduler?.allNotesOff?.({ preserveGamePhrases: true });
       this.scheduler?.clearQueue?.({ preserveGamePhrases: true });

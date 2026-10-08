@@ -26,16 +26,16 @@ class MidiGamePhraseQueue {
         if (Number.isFinite(note?.note)) send({ ...note, phraseVoiceKey: key }, voice.meta, tick);
       } else send({ ...voice.spec, note, phraseVoiceKey: key }, voice.meta, tick);
       if (voice.notes.length) voice.dueTick = tick + voice.spacingTicks;
-      else this.voices.delete(key);
+      else { this.voices.delete(key); voice.onComplete?.(); }
     }
   }
 
-  replaceSteps(key, cells, meta, tick, spacingTicks) {
+  replaceSteps(key, cells, meta, tick, spacingTicks, onComplete = null) {
     if (!key || !Number.isInteger(tick) || tick < 0 || !cells?.length) return false;
     if (this.tick != null && (tick < this.tick || tick > this.tick + 1)) this.clear();
     this.tick = tick; this.voices.delete(key);
     while (this.voices.size >= MAX_GAME_PHRASE_VOICES) this.voices.delete(this.voices.keys().next().value);
-    this.voices.set(key, { notes: cells.slice(0, 16).map(cell => ({ ...cell })), cells: true, meta: { ...meta }, dueTick: tick,
+    this.voices.set(key, { notes: cells.slice(0, 16).map(cell => ({ ...cell })), cells: true, onComplete, meta: { ...meta }, dueTick: tick,
       spacingTicks: Math.max(1, Math.min(8, Math.round(Number(spacingTicks) || 2))) });
     return true;
   }
