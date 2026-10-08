@@ -62,6 +62,24 @@
       <label>Action music <select id="procgenPreset"></select></label>
       <label class="procgen-check"><input id="procgenPhrases" type="checkbox"> Short phrases</label>
     </div>
+    <details id="procgenTensionFields" hidden><summary>Musical tension</summary>
+              <label><input id="procgenTensionEnabled" type="checkbox"> Thin layers when an established crew declines</label>
+              <div class="procgen-controls-row">
+                <label>Thinning %<input id="procgenTensionAmount" type="number" min="0" max="100" step="5"></label>
+                <label>Healthy crew<input id="procgenTensionHealthy" type="number" min="2" max="256" step="1"></label>
+                <label>Fade, game seconds<input id="procgenTensionFade" type="number" min="0.06" max="216" step="0.06"></label>
+              </div>
+              <details><summary>Thresholds</summary><div class="procgen-controls-row">
+                <label>Establish, game seconds<input id="procgenTensionEstablish" type="number" min="0" max="216" step="0.06"></label>
+                <label>Collapse %<input id="procgenTensionCollapse" type="number" min="5" max="80" step="5"></label>
+                <label>Recover %<input id="procgenTensionRecovery" type="number" min="10" max="100" step="5"></label>
+                <label>Breakthrough pixels<input id="procgenTensionBreakthrough" type="number" min="8" max="4096" step="8"></label>
+                <label>Breakthrough hold, game seconds<input id="procgenTensionHold" type="number" min="0.06" max="216" step="0.06"></label>
+              </div></details>
+              <label>Status lane <input id="procgenTensionLane" type="number" min="1" value="1" step="1"></label>
+              <p id="procgenTensionStatus" role="status" aria-live="off"></p>
+              <p>Uses completed procgen crew observations and automatic ensemble roles. Existing notes and instruments stay assigned. Game seconds advance with the simulation.</p>
+            </details>
     <details class="midi-output-capture"><summary>Output capture</summary>
       <div class="midi-capture-buttons" role="group" aria-label="Bounded output capture">
         <button id="procgenCaptureStart" type="button">Capture 2 minutes</button><button id="procgenCaptureStop" type="button" disabled>Stop capture</button>

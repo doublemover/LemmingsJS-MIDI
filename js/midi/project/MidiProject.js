@@ -966,6 +966,9 @@ function reduceMidiProject(project, intent = {}) {
   case 'ensemble.update':
     next = { ...current, ensemble: { ...current.ensemble, ...cloneObject(intent.patch) } };
     break;
+  case 'ensemble.tension.update':
+    next = { ...current, ensemble: { ...current.ensemble, tension: { ...current.ensemble?.tension, ...cloneObject(intent.patch) } } };
+    break;
   case 'ensemble.role.update':
     next = { ...current, ensemble: { ...current.ensemble, roles: current.ensemble?.roles.map(role =>
       role.trackId === intent.trackId ? { ...role, ...cloneObject(intent.patch) } : role) } };

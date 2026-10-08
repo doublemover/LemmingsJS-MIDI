@@ -853,7 +853,7 @@ fitted berets with lift/open/reattach cosmetics on every shape. Acceptance instr
 - Ramp constructible challenge motifs with distance. Deep mining/switchback routes require real mining/digging and turning policy in the lane world before claiming playable escalation.
 
 - Tunnel-corner wall-column transition is reproduced and fixed using real shared action systems; non-climber turnaround and natural hoisting are covered.
-- Starting lane themes now use a deterministic balanced permutation of available selected-pack groundsets; canonical co-occurrence plans are now derived, while runtime application remains queued.
+- Starting lane themes now use a deterministic balanced permutation of available selected-pack groundsets; canonical co-occurrence plans and screened additive runtime groups are implemented for verified normal themes.
 
 - Population-aware cohort easing, delayed sparse scout abilities and sustained pile detection are implemented with focused checks and a 65-lane native run. New-session random shapes/body colors already preserve saved controls and stable lane rainbow assignments.
 
@@ -862,6 +862,6 @@ fitted berets with lift/open/reattach cosmetics on every shape. Acceptance instr
 - CCTV director is implemented: actual cached construction/survival/lead-change signals, up to four user pins, stable dwell/ties, explicit reasons, fair rotation and the Eight leaders override pass focused and native desktop checks.
 - Bounded output capture is implemented in Expert and procgen Details: finite ring, actual request/API/synth lifecycle evidence, explicit clocks and context, demand-only waveform inspection, JSONL/CSV/HTML exports and objective summaries. Seeded native local output and a full 16-cell audition/cancellation are the acceptance fixtures; physical MIDI receipt is unverified.
 - Owner review correction: ordinary wall bounces, unclassified source-shelf access, uninterrupted shared construction tasks and taller uniformly scaled CCTV are implemented as a separate checkpoint before musical work; focused shared-action and native desktop checks pass.
-- Musical tension: actual established-population collapse/recovery and breakthrough signals thin or restore layers smoothly, preserving instruments, notes, scale, saved edits, channel safety and the shared output budget.
+- Musical tension is implemented with saved amount/threshold/fade controls and procgen lane status. Actual completed-tick population collapse, recovery and breakthrough signals thin or restore layers smoothly; instruments, notes, scale, saved edits, channel safety and the shared output budget remain intact. Focused checks and muted desktop collapse/recovery plus main/procgen persistence checks pass. Authored main levels do not yet provide these observations.
 - Musical automation spans: transparent colored rectangles describe lane/group, supported target, explicit musical time domain, start/duration/loop, constant/ramped values, conditions and optional actual event triggers. Draw/drag/edit/bypass, accessible phase and overlap semantics, cheap overview and focused editing reuse the existing sequencer/routing owners.
 - Ghosts, named construction landmarks and replay capture are shelved. Literal weather visuals are outside the approved span concept.

@@ -1,3 +1,4 @@
+import { createMidiTensionControls } from './midi-ui/midiTensionControls.js';
 import { createMidiOutputCapture } from '../midi/capture/MidiOutputCapture.js';
 import { createMidiCaptureControls } from './midi-ui/midiCaptureControls.js';
 import { createMidiEventClipEditor } from './midi-ui/midiEventClipEditor.js';
@@ -316,6 +317,7 @@ const createMidiUiController = ({
   let localGamePreview = null;
   const outputCapture = createMidiOutputCapture();
   let captureControls = null;
+  let tensionControls = null;
   const captureContext = () => { const current = ensureProject(), scale = current.global.scale; return {
     scaleName: scale.name, scaleRoot: scale.root, scaleDegrees: scale.degrees, tempoBpm: current.transport.bpmBase,
     seed: getLemmings()?.game?.seed ?? null, generation: getLemmings()?.game?.generation ?? null, projectId: current.id, projectUpdatedAt: current.updatedAt
@@ -2167,6 +2169,7 @@ const createMidiUiController = ({
     const ensembleFields = document?.getElementById('midiEnsembleFields');
     if (ensembleFields) ensembleFields.hidden = !current.ensemble;
     setChecked(document?.getElementById('midiEnsembleEnabled'), current.ensemble?.enabled);
+    tensionControls?.sync();
     setInputValue(document?.getElementById('midiRolePan'), role?.pan);
     setInputValue(document?.getElementById('midiRoleLow'), role?.register.min);
     setInputValue(document?.getElementById('midiRoleHigh'), role?.register.max);
@@ -2280,7 +2283,7 @@ const createMidiUiController = ({
   };
 
   const renderLocalSummary = () => {
-    renderMasterVolume();
+    renderMasterVolume(); tensionControls?.syncStatus();
     const localState = localGamePreview?.getState?.();
     const audioState = auditionAudio?.getState?.();
     workbench?.setAudioActive(ensureProject().enabled || getLemmings()?.midiEnabled || localState?.enabled || localState?.status === 'starting' || audioState?.activeVoices);
@@ -2672,6 +2675,9 @@ const createMidiUiController = ({
   const bindMidiUi = () => {
     if (bound) return;
     disposed = false;
+    tensionControls ??= createMidiTensionControls({ document, prefix: 'midiTension', getProject: ensureProject,
+      update: patch => dispatchProjectIntent({ type: 'ensemble.tension.update', patch }),
+      getRouter: () => getLemmings()?.midiPreviewRouter || getLemmings()?.midiRouter });
     let storedMasterVolume = null;
     try {
       const stored = JSON.parse(storage?.getItem(MASTER_VOLUME_STORAGE_KEY) || 'null');
@@ -3336,6 +3342,7 @@ const createMidiUiController = ({
     localGamePreview?.dispose?.();
     if (!localGamePreview) localAudio?.dispose?.();
     captureControls?.dispose(); captureControls = null;
+    tensionControls?.dispose(); tensionControls = null;
     if (refreshTimer != null && typeof window?.clearTimeout === 'function') {
       window.clearTimeout(refreshTimer);
     }

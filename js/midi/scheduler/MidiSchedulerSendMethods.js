@@ -95,7 +95,7 @@ const midiSchedulerSendMethods = {
         outputId,
         mpe: mpeEnabled,
         phraseVoiceKey: spec.phraseVoiceKey ?? null,
-        laneIndex: meta.laneIndex ?? 0, laneCount: meta.laneCount ?? 1, sfxId: meta.sfxId, priority: meta.priority,
+        laneIndex: meta.laneIndex ?? 0, laneCount: meta.laneCount ?? 1, lemmingId: meta.lemmingId ?? null, ensembleRole: spec.ensembleRole ?? null, sfxId: meta.sfxId, priority: meta.priority,
         offTimeMs,
         hasStarted: false,
         captureMeta,

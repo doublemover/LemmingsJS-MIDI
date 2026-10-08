@@ -1,3 +1,4 @@
+import { DEFAULT_MIDI_ENSEMBLE_TENSION, sanitizeMidiEnsembleTension } from './MidiEnsembleTension.js';
 import { isPlainObject } from '../../util/safeObject.js';
 import { quantizeToScale, resolveScale } from '../midi-mapping/MidiMappingDomain.js';
 
@@ -25,7 +26,7 @@ const sanitizeMidiEnsemble = (value, trackIds = null) => {
     Number.isInteger(entry?.lemmingId) && entry.lemmingId >= 0 && validTrack(entry.trackId)).map(entry => ({
     lemmingId: entry.lemmingId, laneIndex: clamp(Math.trunc(number(entry.laneIndex, 0)), 0, 1023), trackId: entry.trackId
   }));
-  return { enabled: value.enabled !== false, sourceTrackId: value.sourceTrackId, roles, assignments };
+  return { enabled: value.enabled !== false, sourceTrackId: value.sourceTrackId, roles, assignments, tension: sanitizeMidiEnsembleTension(value.tension) };
 };
 
 const createDefaultMidiEnsemble = (sourceTrackId, tracks = []) => {
@@ -35,7 +36,7 @@ const createDefaultMidiEnsemble = (sourceTrackId, tracks = []) => {
     velocityScale: role.velocityScale, voiceBudget: role.voiceBudget, priority: 1, outputId: null }));
   const roles = MIDI_ENSEMBLE_ROLES.map(role => ({ id: role.id, trackId: 'ensemble-' + role.id,
     register: { ...role.register }, pan: role.pan, durationScale: role.durationScale, percussion: !!role.percussion }));
-  return { tracks: [...existing, ...roleTracks], ensemble: { enabled: true, sourceTrackId, roles, assignments: [] } };
+  return { tracks: [...existing, ...roleTracks], ensemble: { enabled: true, sourceTrackId, roles, assignments: [], tension: { ...DEFAULT_MIDI_ENSEMBLE_TENSION } } };
 };
 
 const buildMidiEnsembleConfig = (ensemble, tracks, hasSolo = false) => ensemble ? {

@@ -28,6 +28,7 @@ const midiEventRouterEventMethods = {
       if (!this.mapping.config?.enabled) return;
       if ((event.sfxId === SoundEffectIds.SPAWN || event.sfxId === SoundEffectIds.LAND) && !this.mapping.getSfxConfig(event.sfxId)) return;
       if (event.reverse || (Number.isInteger(event.tick) && this._tickCounter.tick != null && event.tick < this._tickCounter.tick)) {
+        this.musicTension.reset(); this._releaseTensionVoices();
         this.scheduler.gamePhrases?.clear();
         this._arpStateBySfx.clear();
       }
@@ -273,6 +274,8 @@ const midiEventRouterEventMethods = {
         specWithTime = adjusted.spec;
         activeNotes = adjusted.activeNotes;
       }
+      specWithTime = this._applyMusicTension(specWithTime, meta, tick);
+      if (!specWithTime) return;
       const plan = this._planEntries(specWithTime, sendTimeMs, activeNotes.length);
       if (!this._shouldSend(meta, specWithTime, plan, now)) {
         this.scheduler.recordThrottle?.(this._lastRateReport?.reason || 'count-limit', now, meta);

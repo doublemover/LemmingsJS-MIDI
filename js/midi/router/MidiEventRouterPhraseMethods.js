@@ -11,7 +11,7 @@ const midiEventRouterPhraseMethods = {
       return false;
     }
     const now = this._nowMs();
-    const ready = {
+    let ready = {
       ...spec,
       timeMs: now,
       durationTicks: Math.max(1, Math.min(960, Math.round(Number(spec.durationTicks) || 1)))
@@ -19,6 +19,8 @@ const midiEventRouterPhraseMethods = {
     const currentMeta = { ...meta };
     delete currentMeta.rateReserved;
     delete currentMeta.reservationId;
+    ready = this._applyMusicTension(ready, currentMeta, tick);
+    if (!ready) return false;
     if (!this._shouldSend(currentMeta, ready, this._planEntries(ready, now, 1), now)) {
       this.scheduler.recordThrottle?.(this._lastRateReport?.reason || 'count-limit', now, currentMeta);
       return false;
@@ -72,11 +74,13 @@ const midiEventRouterPhraseMethods = {
     const queue = this.scheduler.gamePhrases;
     if (!timer || !queue) return;
     if (!this.mapping.config?.enabled || this.context?.game?.timeTravel?.isReversing) {
+      if (this.context?.game?.timeTravel?.isReversing) { this.musicTension.reset(); this._releaseTensionVoices(); }
       queue.clear();
       return;
     }
     this.scheduler.setTickMs(this._tickMsFromEvent({ tps: timer.tps, frameMs: timer.frameTime }));
     const tick = timer.getGameTicks?.();
+    this._updateMusicTension(tick);
     if (Number.isInteger(tick) && queue.tick != null && tick < queue.tick) {
       this._arpStateBySfx.clear(); this._lastTickBySfx.clear();
     }
