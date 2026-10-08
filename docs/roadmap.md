@@ -842,10 +842,12 @@ fitted berets with lift/open/reattach cosmetics on every shape. Acceptance instr
 ## Owner review queue (October 8)
 
 - Keep skill cards mounted beneath the game HUD and shared audio controls visible with Studio closed: implemented; native desktop/narrow checks captured in ignored temp/review-followup.
-- Anchor generated hazards to valid support; bound terrain-only arrows and stop idle activation loops.
+- Generated hazard support, water basins, terrain-only arrows and idle activation correction: implemented and checked with normal sourced assets; operational generated triggers remain a separate policy.
 - Keep common generation/seed/playtest controls in the persistent procgen topbar.
 - Generate seeded readable words from letter glyphs with an explicit no-slur pool and adjacency checks.
 - Preserve camera follow during zoom; deliberate pan releases it, a visible shortcut restores it; fit the actual lane stack.
 - Extend existing palettes/routing with editable complementary ensemble roles and one fair wall-time output budget.
 - Verify record-marker meaning before improving contrast/motion.
-- Make deterministic terrain growth finer and prioritize reachable frontiers with bounded shared work and matching collision/display.
+- Make deterministic terrain growth finer and prioritize reachable frontiers with bounded shared work and matching collision/display. Derive per-pack zone themes from canonical normal-level co-occurrence with their maximum authored width as the zone cap.
+- Add ranked live overview CCTV with bounded rendering. Its Library reference was unavailable after the supported transfer and one retry; use explicit owner requirements and actual app evidence.
+- Ramp constructible challenge motifs with distance. Deep mining/switchback routes require real mining/digging and turning policy in the lane world before claiming playable escalation.

@@ -123,7 +123,7 @@ class ProcgenLaneRenderer {
   }
   _prepareObjectPlacements() {
     const world = this.world, terrain = world.terrain, width = terrain.chunkWidth, step = this.rasterStep;
-    const key = `${this.lastGeometryKey}:${world.frontierRevision}`;
+    const key = `${this.lastGeometryKey}:${world.frontierRevision}:${world.terrainRevision}`;
     if (key === this.lastPlacementKey) return;
     this.lastPlacementKey = key; this.objectPlacements.length = 0;
     const bins = new Map();
@@ -133,9 +133,27 @@ class ProcgenLaneRenderer {
       const end = Math.min(this.originX + this.viewWidth, world.generatedThrough[lane]);
       for (let cx = Math.floor(this.originX / width); cx * width < end; cx += chunkStride) {
         // Decorative placement must never compose or evict collision chunks.
-        for (const object of terrain.objectsAt(world.laneSeeds[lane], cx)) {
+        const seed = world.laneSeeds[lane], descriptor = terrain.describe(seed, cx);
+        const matchesTerrain = (x, y) => {
+          const edits = world.editChunks.get(world._editKey(x, lane * LANE_HEIGHT + y));
+          return !edits?.[y * 32 + x % 32] && terrain.solidSample(seed, cx, x - cx * width, y, descriptor);
+        };
+        for (const object of descriptor.objects) {
+          if (object.supportY != null) {
+            let supported = true;
+            for (let dx = 0; dx < object.piece.image.width; dx++) if (!matchesTerrain(object.x + dx, object.supportY)) { supported = false; break; }
+            if (!supported) continue;
+          }
           const image = object.piece.image, px = (object.x - this.originX) / step, py = (lane * LANE_HEIGHT + object.y - this.originY) / step;
-          const placement = { image, px, py, phase: object.phase };
+          const placement = { image, px, py, phase: object.phase, animation: object.animation, clip: null, clippedFrames: null };
+          if (object.clipToTerrain) {
+            placement.clip = new Uint8Array(image.width * image.height); placement.clippedFrames = new WeakMap();
+            let visible = false;
+            for (let dy = 0; dy < image.height; dy++) for (let dx = 0; dx < image.width; dx++) if (matchesTerrain(object.x + dx, object.y + dy)) {
+              placement.clip[dy * image.width + dx] = 1; visible = true;
+            }
+            if (!visible) continue;
+          }
           if (image.width < step && image.height < step) {
             const x = Math.floor(px), y = Math.floor(py);
             if (x >= 0 && y >= 0 && x < this.buffer.width && y < this.buffer.height) bins.set(y * this.buffer.width + x, placement);
@@ -148,29 +166,30 @@ class ProcgenLaneRenderer {
   _drawObjects() {
     const world = this.world, terrain = world.terrain;
     if (!terrain?.objects.length) return;
-    const key = `${this.lastGeometryKey}:${Math.floor(world.tickIndex / 4)}:${world.frontierRevision}`;
+    const key = `${this.lastGeometryKey}:${Math.floor(world.tickIndex / 4)}:${world.frontierRevision}:${world.terrainRevision}`;
     if (key === this.lastObjectKey) { this.bufferContext.drawImage(this.objectBuffer, 0, 0); return; }
     this.lastObjectKey = key; this._prepareObjectPlacements();
     const context = this.objectContext, step = this.rasterStep;
     context.clearRect?.(0, 0, this.objectBuffer.width, this.objectBuffer.height); context.imageSmoothingEnabled = false;
     this.objectDots.clear();
     for (const placement of this.objectPlacements) {
-      const { image, phase, px, py, dot } = placement, frame = image.frames[(Math.floor(world.tickIndex / 4) + phase) % image.frames.length];
+      const { image, phase, px, py, dot, clip } = placement, frame = image.frames[placement.animation === 'idle' ? 0 : (Math.floor(world.tickIndex / 4) + phase) % image.frames.length];
       if (dot != null) {
-        let color = this.dotColors.get(frame);
+        let color = clip ? null : this.dotColors.get(frame);
         if (color == null) {
-          const ci = frame.find(value => !(value & 128)); color = ci == null ? 0 : image.palette.getColor(ci) | 0xff000000;
-          this.dotColors.set(frame, color);
+          const ci = frame.find((value, index) => !(value & 128) && (!clip || clip[index])); color = ci == null ? 0 : image.palette.getColor(ci) | 0xff000000;
+          if (!clip) this.dotColors.set(frame, color);
         }
         if (color) this.objectDots.set(dot, color);
         continue;
       }
-      let bitmap = this.objectFrames.get(frame);
+      const frameCache = placement.clippedFrames || this.objectFrames;
+      let bitmap = frameCache.get(frame);
       if (!bitmap) {
         bitmap = this.canvas.ownerDocument.createElement('canvas'); bitmap.width = image.width; bitmap.height = image.height;
         const ctx = bitmap.getContext('2d'), data = ctx.createImageData(image.width, image.height), rgba = new Uint32Array(data.data.buffer);
-        for (let i = 0; i < frame.length; i++) if (!(frame[i] & 128)) rgba[i] = image.palette.getColor(frame[i]) | 0xff000000;
-        ctx.putImageData(data, 0, 0); this.objectFrames.set(frame, bitmap);
+        for (let i = 0; i < frame.length; i++) if (!(frame[i] & 128) && (!clip || clip[i])) rgba[i] = image.palette.getColor(frame[i]) | 0xff000000;
+        ctx.putImageData(data, 0, 0); frameCache.set(frame, bitmap);
       }
       context.drawImage(bitmap, px, py, image.width / step, image.height / step);
     }

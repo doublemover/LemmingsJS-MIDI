@@ -1,4 +1,5 @@
 import { composeRecipeChunk } from './ProcgenTerrainRecipes.js';
+import { TriggerTypes } from '../../level/TriggerTypes.js';
 
 const TERRAIN_CHUNK_WIDTH = 128;
 const TERRAIN_HEIGHT = 96;
@@ -64,22 +65,60 @@ class ProcgenRecipeTerrain {
       placements.push({ piece, x: 8 + h % Math.max(1, TERRAIN_CHUNK_WIDTH - Math.min(piece.width, 100) - 8),
         y: decor ? 3 + (h >>> 8) % 72 : 44 + (h >>> 8) % 22, flip: !!(h & 0x8000), decor });
     }
-    const objects = this.objectsAt(seed, chunk, code, phaseCode);
-    return { code, phase, phaseCode, origin, placements, objects,
+    const descriptor = { code, phase, phaseCode, origin, placements,
       left: this._elevation(seed, chunk), right: this._elevation(seed, chunk + 1), middle: 28 + (phaseCode >>> 9) % 47,
       gapX: origin + 88 + (code >>> 5) % 8, gapWidth: gap ? 5 + (code >>> 10) % 8 : 0,
       barrierX: origin + (placements[0]?.x || 0), barrierWidth: chunk ? (placements[0]?.piece.width || 0) : 0 };
+    descriptor.objects = this._placeObjects(seed, chunk, descriptor);
+    return descriptor;
   }
-  objectsAt(seed, chunk, code = this._code(seed, chunk), phaseCode = this._code(seed ^ 0x51ed270b, Math.floor(chunk / PHASE_CHUNKS))) {
-    const origin = chunk * TERRAIN_CHUNK_WIDTH;
-    const objects = [];
+  objectsAt(seed, chunk) { return this.describe(seed, chunk).objects; }
+  _placeObjects(seed, chunk, descriptor) {
+    const { origin, code, phaseCode } = descriptor, objects = [];
     const objectCount = this.objects.length ? 1 + (phaseCode >>> 8) % 2 : 0;
     for (let i = 0; i < objectCount; i++) {
-      const piece = this.objects[(chunk * 2 + i + seed % this.objects.length) % this.objects.length];
-      objects.push({ piece, x: origin + 8 + ((code >>> (i * 3)) % Math.max(1, TERRAIN_CHUNK_WIDTH - piece.image.width - 8)),
-        y: 2 + (code >>> 12) % 18, phase: code % piece.image.frames.length, interactive: false });
+      const piece = this.objects[(chunk * 2 + i + seed % this.objects.length) % this.objects.length], image = piece.image;
+      if (image.width > TERRAIN_CHUNK_WIDTH - 16 || image.height > TERRAIN_HEIGHT - 2) continue;
+      const x = origin + 8 + ((code >>> (i * 3)) % Math.max(1, TERRAIN_CHUNK_WIDTH - image.width - 8));
+      const trigger = image.trigger_effect_id;
+      const role = trigger === TriggerTypes.ONEWAY_LEFT || trigger === TriggerTypes.ONEWAY_RIGHT ? 'terrain-overlay' :
+        trigger === TriggerTypes.DROWN ? 'liquid' : trigger === TriggerTypes.TRAP ? 'trap' :
+          trigger === TriggerTypes.KILL || trigger === TriggerTypes.FRYING ? 'hazard' :
+            trigger === TriggerTypes.EXIT_LEVEL || image.animationLoop === false ? 'structure' : 'ambient';
+      let floor = 0, supported = true;
+      if (role !== 'ambient') for (let dx = -1; dx <= image.width; dx++) {
+        const localX = x - origin + dx;
+        if (localX + origin >= descriptor.gapX && localX + origin < descriptor.gapX + descriptor.gapWidth) { supported = false; break; }
+        const pattern = this.patterns[mix(phaseCode ^ code) % this.patterns.length];
+        if (pattern.topProfile[(localX + origin) % pattern.width] < 0) { supported = false; break; }
+        floor = Math.max(floor, this._surface(seed, chunk, localX, descriptor));
+      }
+      if (!supported) continue;
+      const y = role === 'terrain-overlay' ? Math.min(TERRAIN_HEIGHT - image.height, floor + 4) :
+        role === 'liquid' ? Math.min(TERRAIN_HEIGHT - image.height - 2, floor - 4) :
+          role === 'ambient' ? 2 + (code >>> 12) % 18 : floor - image.height;
+      if (y < 0) continue;
+      objects.push({ piece, x, y, role, phase: code % image.frames.length, interactive: false,
+        animation: trigger === TriggerTypes.TRAP || image.animationLoop === false ? 'idle' : 'loop',
+        clipToTerrain: role === 'terrain-overlay', supportY: role === 'ambient' || role === 'terrain-overlay' ? null : y + image.height });
     }
     return objects;
+  }
+  solidSample(seed, chunk, x, y, descriptor = this.describe(seed, chunk)) {
+    if (x < 0 || x >= TERRAIN_CHUNK_WIDTH || y < 0 || y >= TERRAIN_HEIGHT) return false;
+    const pattern = this.patterns[mix(descriptor.phaseCode ^ descriptor.code) % this.patterns.length];
+    let solid = pattern.topProfile[(x + descriptor.origin) % pattern.width] >= 0 && y >= this._surface(seed, chunk, x, descriptor);
+    for (const placement of descriptor.placements) if (!placement.decor) {
+      const { piece } = placement, dx = x - placement.x, dy = y - placement.y;
+      if (dx >= 0 && dx < piece.width && dy >= 0 && dy < piece.height && !(piece.frame[dy * piece.width + (placement.flip ? piece.width - 1 - dx : dx)] & 128)) solid = true;
+    }
+    if (x + descriptor.origin >= descriptor.gapX && x + descriptor.origin < descriptor.gapX + descriptor.gapWidth) solid = false;
+    for (const object of descriptor.objects) if (object.role === 'liquid') {
+      const dx = x + descriptor.origin - object.x, bottom = object.y + object.piece.image.height;
+      if (dx >= 0 && dx < object.piece.image.width && y >= object.y) solid = y >= bottom;
+      else if ((dx === -1 || dx === object.piece.image.width) && y >= object.y) solid = true;
+    }
+    return solid;
   }
   _elevation(seed, node) { return node === 0 ? 72 : 40 + this._code(seed ^ 0xc2b2ae35, node) % 39; }
   _surface(seed, chunk, x, descriptor) {
@@ -132,6 +171,14 @@ class ProcgenRecipeTerrain {
       solid[index >>> 5] &= ~(1 << (index & 31)); steel[index >>> 5] &= ~(1 << (index & 31));
       if (pixels) pixels[index] = 0;
     }
+    for (const object of d.objects) if (object.role === 'liquid') {
+      const left = object.x - d.origin, right = left + object.piece.image.width, bottom = object.y + object.piece.image.height;
+      for (let x = left - 1; x <= right; x++) for (let y = object.y; y < height; y++) {
+        const index = y * width + x, bit = 1 << (index & 31), at = index >>> 5;
+        if (x >= left && x < right && y < bottom) { solid[at] &= ~bit; steel[at] &= ~bit; if (pixels) pixels[index] = 0; }
+        else { solid[at] |= bit; if (pixels) pixels[index] = pattern.columnColors[((x + d.origin) % pattern.width) * height + Math.max(0, y - this._surface(seed, chunk, x, d))]; }
+      }
+    }
     if (pixels) for (const placement of d.placements) if (placement.decor) stamp(placement);
     for (let x = 0; x < width; x++) for (let y = 0; y < height; y++) {
       const index = y * width + x;
@@ -158,6 +205,13 @@ class ProcgenRecipeTerrain {
       const stamped = pieceColor(placement); if (stamped) { color = stamped; solid = true; }
     }
     if (x + descriptor.origin >= descriptor.gapX && x + descriptor.origin < descriptor.gapX + descriptor.gapWidth) { color = 0; solid = false; }
+    for (const object of descriptor.objects) if (object.role === 'liquid') {
+      const dx = x + descriptor.origin - object.x, bottom = object.y + object.piece.image.height;
+      if (y >= object.y && dx >= -1 && dx <= object.piece.image.width) {
+        solid = dx < 0 || dx === object.piece.image.width || y >= bottom;
+        color = solid ? pattern.columnColors[px * TERRAIN_HEIGHT + Math.max(0, y - surface)] : 0;
+      }
+    }
     if (!solid) for (const placement of descriptor.placements) if (placement.decor) color = pieceColor(placement) || color;
     return color;
   }

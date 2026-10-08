@@ -199,3 +199,5 @@ follow starts a manual view. Explicit follow=1 starts tracking instead. Share li
 preserve the selected preset, but never enable or request audio automatically.
 The recipient still starts local listening with an explicit click. Links describe
 configuration, not live simulation state or another user's saved distance records.
+
+Generated gadget presentation now respects source roles: triggered traps and nonlooping structures stay on their idle frame, continuous hazards keep their authored loop, and ground objects require full supporting terrain. Water occupies a bounded open cavity with side walls and a floor. One-way artwork is clipped to the original terrain and disappears from pixels removed or replaced by construction. These generated objects remain scenery; this change does not add drowning, trap activation or one-way collision rules to the shared lane world. Authored levels continue to use their existing object/trigger owners.

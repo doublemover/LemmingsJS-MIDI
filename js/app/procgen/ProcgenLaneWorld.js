@@ -71,6 +71,8 @@ class ProcgenLaneWorld {
       get tps() { return 1000 / this.frameTime; }, getEventTimeMs: () => this.eventTimeMs };
     this.soundEvents = new SoundEventBus(this.timer);
     this.soundEvents._queueLimit = 0;
+    this.soundEvents.laneCount = this.laneCount;
+    this.soundEvents.laneIndex = 0;
     const runtime = { soundEvents: this.soundEvents };
     this.runtime = runtime;
     this.characterParticles = sprites ? new CharacterParticles() : null;
@@ -90,6 +92,7 @@ class ProcgenLaneWorld {
 
 
   _spawn(lane, emit = true) {
+    this.soundEvents.laneIndex = lane;
     const actor = new Lemming(36, lane * LANE_HEIGHT + 42, this.nextActorId++, this.runtime);
     actor.appearanceIndex = lane;
     actor.laneIndex = lane;
@@ -102,7 +105,7 @@ class ProcgenLaneWorld {
     this.actors.push(actor);
     this.stall.spawn(lane, this.tickIndex); this.spawnedTotal++;
     if (emit) this.soundEvents.emitSfx(SoundEventTypes.LEMMING_SPAWN, SoundEffectIds.SPAWN,
-      { lemmingId: actor.id, x: actor.x, y: actor.y, presentationPhase: lane / this.laneCount });
+      { lemmingId: actor.id, laneIndex: lane, laneCount: this.laneCount, x: actor.x, y: actor.y, presentationPhase: lane / this.laneCount });
     return actor;
   }
   _spawnCohort() {
@@ -339,15 +342,16 @@ class ProcgenLaneWorld {
     this._spawnCohort();
     for (const actor of this.actors) {
       if (actor.failureReason) continue;
+      this.soundEvents.laneIndex = actor.laneIndex;
       if (actor.y >= (actor.laneIndex + 1) * LANE_HEIGHT + 6) {
         actor.leftIndependentRoute = true; actor.failureReason = 'out-of-lane'; this.stats.failures++;
         this.failureReasons['out-of-lane'] = (this.failureReasons['out-of-lane'] || 0) + 1;
         this.soundEvents.emitSfx(SoundEventTypes.LEMMING_FELL_OFF, SoundEffectIds.FELL_OFF,
-          { lemmingId: actor.id, x: actor.x, y: (actor.laneIndex + 1) * LANE_HEIGHT - 6 });
+          { lemmingId: actor.id, laneIndex: actor.laneIndex, laneCount: this.laneCount, x: actor.x, y: (actor.laneIndex + 1) * LANE_HEIGHT - 6 });
         continue;
       }
       if (!this.cohorts && this.tickIndex === 1) this.soundEvents.emitSfx(SoundEventTypes.LEMMING_SPAWN, SoundEffectIds.SPAWN,
-        { lemmingId: actor.id, x: actor.x, y: actor.y, presentationPhase: actor.laneIndex / this.laneCount });
+        { lemmingId: actor.id, laneIndex: actor.laneIndex, laneCount: this.laneCount, x: actor.x, y: actor.y, presentationPhase: actor.laneIndex / this.laneCount });
       this._assistedColumn.valid = false;
       if (this.stall.phase === 'running') this._assist(actor);
       const next = actor.process(this);
@@ -375,13 +379,14 @@ class ProcgenLaneWorld {
       const due = dueIds.length ? new Set(dueIds) : null;
       if (due) for (const actor of this.actors) if (due.has(actor.id) && !actor.failureReason) {
         actor.setAction(this.actions[State.OHNO]);
-        this.soundEvents.emitSfx(SoundEventTypes.LEMMING_OHNO, SoundEffectIds.OHNO, { lemmingId: actor.id, x: actor.x, y: actor.y });
+        this.soundEvents.emitSfx(SoundEventTypes.LEMMING_OHNO, SoundEffectIds.OHNO, { lemmingId: actor.id, laneIndex: actor.laneIndex, laneCount: this.laneCount, x: actor.x, y: actor.y });
       }
       const previous = this.stall.consumeRestart();
       if (previous) this._restart(previous);
       else if (this.tickIndex % 54 === 0) this.actors = this.actors.filter(actor => !actor.failureReason);
     }
     if (this.tickIndex % 128 === 0) this._pruneEdits();
+    this.soundEvents.laneIndex = 0;
     this.timer.onGameTick.trigger(this.tickIndex);
   }
   _pruneEdits() {
