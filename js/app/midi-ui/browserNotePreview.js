@@ -5,10 +5,36 @@ const RELEASE_SECONDS = 0.04;
 const MAX_SCHEDULED_VOICES = 64;
 const MAX_CONTROL_EVENTS = 128;
 const MASTER_VOLUME_RAMP_SECONDS = 0.015;
+const MAX_MASTER_VOLUME = 4;
+let captureScopeSequence = 0;
+const instrumentProfile = (program, percussion, note, enabled = true) => {
+  if (!enabled) return { waveform: 'triangle', attack: ATTACK_SECONDS, decay: 0, sustain: 1, release: RELEASE_SECONDS, gain: 1 };
+  if (percussion) {
+    if (note === 36) return { waveform: 'sine', attack: 0.002, decay: 0.16, sustain: 0, release: 0.025, gain: 0.9, seconds: 0.22, frequency: 120, endFrequency: 45 };
+    return { waveform: 'square', noise: true, attack: 0.001, decay: note === 42 ? 0.055 : 0.12,
+      sustain: 0, release: 0.015, gain: note === 42 ? 0.3 : 0.6, seconds: note === 42 ? 0.09 : 0.18, frequency: note === 42 ? 2500 : 180 };
+  }
+  if (program === 38 || (program >= 32 && program <= 39)) return { waveform: 'sine', attack: 0.006, decay: 0.05, sustain: 0.82, release: 0.06, gain: 0.9 };
+  if (program === 29 || (program >= 24 && program <= 31)) return { waveform: 'square', attack: 0.004, decay: 0.09, sustain: 0.4, release: 0.04, gain: 0.48 };
+  if (program === 81 || (program >= 80 && program <= 87)) return { waveform: 'sawtooth', attack: 0.012, decay: 0.08, sustain: 0.65, release: 0.055, gain: 0.45 };
+  return { waveform: 'triangle', attack: ATTACK_SECONDS, decay: 0, sustain: 1, release: RELEASE_SECONDS, gain: 1 };
+};
+const createOutputCeiling = context => {
+  const limiter = context.createWaveShaper();
+  const curve = new Float32Array(4097);
+  for (let index = 0; index < curve.length; index += 1) {
+    const sample = index * 2 / (curve.length - 1) - 1;
+    const magnitude = Math.abs(sample);
+    curve[index] = magnitude <= 0.7 ? sample : Math.sign(sample) * (0.7 + 0.2 * (1 - Math.exp(-(magnitude - 0.7) / 0.2)));
+  }
+  limiter.curve = curve;
+  limiter.connect(context.destination);
+  return limiter;
+};
 
 /** A local tone monitor. It owns its audio context and never opens a MIDI device. */
 class BrowserNotePreview {
-  constructor({ createAudioContext, nowMs, onStateChange, maxVoices = 16, maxNoteSeconds = 8, volume = 0.15, masterVolume = 0.7 } = {}) {
+  constructor({ createAudioContext, nowMs, onStateChange, onPlayback, maxVoices = 16, maxNoteSeconds = 8, volume = 0.15, masterVolume = 0.7 } = {}) {
     const AudioContextType = globalThis.AudioContext || globalThis.webkitAudioContext;
     this._createContext = createAudioContext === undefined
       ? (AudioContextType ? () => new AudioContextType({ sampleRate: 48000 }) : null)
@@ -19,9 +45,10 @@ class BrowserNotePreview {
     this._maxVoices = clamp(Math.trunc(finite(maxVoices, 16)), 1, 32);
     this._maxNoteSeconds = clamp(finite(maxNoteSeconds, 8), 0.1, 16);
     this._volume = clamp(finite(volume, 0.15), 0, 0.15) / Math.sqrt(this._maxVoices);
-    this._masterVolume = clamp(finite(masterVolume, 0.7), 0, 1);
+    this._masterVolume = clamp(finite(masterVolume, 0.7), 0, MAX_MASTER_VOLUME);
     this._context = null;
     this._master = null;
+    this._limiter = null;
     this._resumePromise = null;
     this._pendingEnables = new Set();
     this._disposePromise = null;
@@ -31,7 +58,17 @@ class BrowserNotePreview {
     this._status = this._createContext ? 'idle' : 'unsupported';
     this._message = this._createContext ? 'Browser preview is off.' : 'Browser audio is not supported.';
     this._voices = new Set();
+    this._previewPending = [];
+    this._previewTimer = null;
+    this._voiceSequence = 0;
+    this._onPlayback = onPlayback;
+    this.capture = null;
+    this._captureScope = 'audio-' + (++captureScopeSequence);
+    this._captureContext = null;
+    this._captureAnalyser = null;
+    this._captureSamples = null;
     this._channels = new Map();
+    this._noiseBuffer = null;
     this._onContextState = () => {
       if (this._disposed || !this._enabled || this._context?.state === 'running') return;
       this.stop();
@@ -41,6 +78,7 @@ class BrowserNotePreview {
     for (let number = 1; number <= 16; number += 1) {
       channels[number] = Object.freeze({
         sendNoteOn: (note, options) => this._noteOn(number, note, options),
+        sendProgramChange: (program, options) => this._safeSend(() => this._program(number, program, options)),
         sendNoteOff: (note, options) => this._noteOff(number, note, options),
         sendControlChange: (control, value, options) => this._safeSend(() => this._control(number, control, value, options)),
         sendPitchBend: (value, options) => this._safeSend(() => this._pitchBend(number, value, options)),
@@ -50,8 +88,11 @@ class BrowserNotePreview {
     }
     this.output = Object.freeze({
       id: 'browser-note-preview',
+      captureScope: this._captureScope,
       name: 'Browser audio preview',
       supportsPerNotePan: true,
+      supportsPerNoteInstrument: true,
+      supportsPlaybackMetadata: true,
       channels: Object.freeze(channels),
       clear: () => this._clearVoices()
     });
@@ -63,13 +104,14 @@ class BrowserNotePreview {
       message: this._message,
       enabled: this._enabled && this._context?.state === 'running',
       activeVoices: this._voices.size,
+      pendingNotes: this._previewPending.length,
       masterVolume: this._masterVolume
     };
   }
 
   setMasterVolume(value) {
     if (this._disposed) return this._masterVolume;
-    const next = clamp(finite(value, this._masterVolume), 0, 1);
+    const next = clamp(finite(value, this._masterVolume), 0, MAX_MASTER_VOLUME);
     if (next === this._masterVolume) return next;
     this._masterVolume = next;
     if (this._master && this._context) {
@@ -120,16 +162,20 @@ class BrowserNotePreview {
       if (!this._context) {
         let context;
         let master;
+        let limiter;
         try {
           context = this._createContext();
           master = context.createGain();
           master.gain.value = this._volume * this._masterVolume;
-          master.connect(context.destination);
+          limiter = createOutputCeiling(context);
+          master.connect(limiter);
           context.addEventListener?.('statechange', this._onContextState);
           this._context = context;
           this._master = master;
+          this._limiter = limiter;
         } catch (error) {
           master?.disconnect();
+          limiter?.disconnect();
           try { Promise.resolve(context?.close?.()).catch(() => {}); } catch { /* Failed audio initialization. */ }
           throw error;
         }
@@ -190,7 +236,13 @@ class BrowserNotePreview {
       channel.pan?.disconnect();
     }
     this._channels.clear();
+    this._noiseBuffer = null;
     this._master?.disconnect();
+    this._limiter?.disconnect();
+    this._captureAnalyser?.disconnect();
+    this._captureAnalyser = null;
+    this._captureSamples = null;
+    this._limiter = null;
     this._master = null;
     this._context = null;
     this._setStatus('disposed', 'Browser preview is closed.');
@@ -201,6 +253,51 @@ class BrowserNotePreview {
       this._disposePromise = Promise.resolve();
     }
     return this._disposePromise;
+  }
+
+  inspectRender() {
+    if (!this._ready() || !this._context?.createAnalyser || !this._limiter) return null;
+    try {
+      if (!this._captureAnalyser) {
+        this._captureAnalyser = this._context.createAnalyser();
+        this._captureAnalyser.fftSize = 2048;
+        this._captureSamples = new Float32Array(2048);
+        // A nonaudible measurement tap; the existing destination connection remains unchanged.
+        this._limiter.connect(this._captureAnalyser);
+      }
+      this._captureAnalyser.getFloatTimeDomainData(this._captureSamples);
+      let sum = 0, peak = 0;
+      for (const value of this._captureSamples) { sum += value * value; peak = Math.max(peak, Math.abs(value)); }
+      const sample = { type: 'waveform', rms: Math.sqrt(sum / this._captureSamples.length), peak,
+        localMasterGain: this._masterVolume, audioTime: this._context.currentTime, sampleRate: this._context.sampleRate, frames: this._captureSamples.length,
+        reason: 'demand-inspection', acousticReceipt: false };
+      this._observe('synth-render-sample', sample);
+      return sample;
+    } catch { return null; }
+  }
+
+  setCapture(capture = null, context = undefined) {
+    this.capture = typeof capture?.record === 'function' ? capture : null;
+    if (context !== undefined) this._captureContext = context;
+  }
+
+  _captureEnabled() {
+    try { return !!this.capture && (typeof this.capture.isActive !== 'function' || this.capture.isActive()); } catch { return false; }
+  }
+
+  _captureContextFields() {
+    if (!this._captureEnabled()) return null;
+    try {
+      const context = typeof this._captureContext === 'function' ? this._captureContext() : this._captureContext;
+      return context ? { ...context, ...(Array.isArray(context.scaleDegrees) ? { scaleDegrees: context.scaleDegrees.slice(0, 32) } : {}) } : null;
+    } catch { return null; }
+  }
+
+  _observe(stage, fields) {
+    if (!this._captureEnabled()) return null;
+    try {
+      const context = this._captureContextFields();
+      return this.capture?.record(stage, { captureScope: this._captureScope, ...context, ...fields, backend: 'local-synth', outputId: this.output.id, outputScope: this._captureScope }) ?? null; } catch { return null; }
   }
 
   /** Notes use {note, velocity, durationMs, offsetMs, channel}; numbers are also accepted. */
@@ -214,21 +311,44 @@ class BrowserNotePreview {
         : { ...entry });
     if (!specs.some(spec => this._validNote(spec.note))) return false;
     if (!await this.enable() || generation !== this._generation) return false;
-    const baseTime = this._nowMs();
-    let played = false;
+    const baseTime = this._nowMs(), captureContext = this._captureContextFields();
     for (const spec of specs) {
       if (!this._validNote(spec.note)) continue;
-      const channel = this.output.channels[clamp(Math.trunc(finite(spec.channel, 1)), 1, 16)];
       const offset = finite(spec.offsetMs, 0);
-      if (offset < 0 || offset > this._maxNoteSeconds * 1000) continue;
-      const time = baseTime + offset;
+      if (offset < 0 || !Number.isFinite(baseTime + offset)) continue;
+      const requestId = this._observe('request', { ...spec.playback, type: 'audition', note: spec.note,
+        channel: spec.channel ?? 1, program: spec.program, intendedMs: baseTime + offset, eventType: 'audition' });
+      this._previewPending.push({ spec: { ...spec, capture: { ...captureContext, ...spec.playback, requestId, captureScope: this._captureScope, eventType: 'audition',
+        note: spec.note, channel: spec.channel ?? 1, program: spec.program, ensembleRole: spec.ensembleRole,
+        percussion: spec.percussion, intendedMs: baseTime + offset } }, time: baseTime + offset, durationMs });
+    }
+    this._previewPending.sort((a, b) => a.time - b.time);
+    if (this._previewPending.length > MAX_SCHEDULED_VOICES) this._previewPending.splice(0, this._previewPending.length - MAX_SCHEDULED_VOICES);
+    const played = this._drainPreviewQueue(generation);
+    return played || this._previewPending.length > 0;
+  }
+
+  _drainPreviewQueue(generation = this._generation) {
+    if (this._previewTimer != null) clearTimeout(this._previewTimer);
+    this._previewTimer = null;
+    if (generation !== this._generation || !this._ready()) return false;
+    const now = this._nowMs(), horizon = this._maxNoteSeconds * 500;
+    let played = false;
+    while (this._previewPending.length && this._previewPending[0].time <= now + horizon) {
+      const { spec, time, durationMs } = this._previewPending.shift();
+      const channel = this.output.channels[clamp(Math.trunc(finite(spec.channel, 1)), 1, 16)];
       const length = clamp(finite(spec.durationMs, durationMs), 30, this._maxNoteSeconds * 1000);
+      if (time + length <= now) { this._observe('drop', { ...spec.capture, type: 'noteOn', reason: 'expired-audition' }); continue; }
       if (Number.isFinite(spec.pitchBend)) channel.sendPitchBend(spec.pitchBend, { time });
-      if (channel.sendNoteOn(spec.note, { rawAttack: finite(spec.velocity, 80), time,
+      if (channel.sendNoteOn(spec.note, { rawAttack: finite(spec.velocity, 80), time, capture: spec.capture, playback: spec.playback, instrument: { program: spec.program, percussion: spec.percussion, role: spec.ensembleRole, legacy: !spec.ensembleRole && spec.percussion !== true },
         ...(Number.isFinite(spec.pan) ? { pan: clamp(spec.pan / 127, -1, 1) } : {}) })) {
-        channel.sendNoteOff(spec.note, { time: time + length });
+        channel.sendNoteOff(spec.note, { time: time + length, capture: spec.capture });
         played = true;
       }
+    }
+    if (this._previewPending.length) {
+      const delay = Math.max(1, Math.min(0x7fffffff, this._previewPending[0].time - now - horizon));
+      this._previewTimer = setTimeout(() => this._drainPreviewQueue(generation), delay);
     }
     return played;
   }
@@ -258,9 +378,31 @@ class BrowserNotePreview {
       pan?.disconnect();
       throw error;
     }
-    channel = { gain, pan, bendRange: 2, bends: [], volume: 1, expression: 1 };
+    channel = { gain, pan, bendRange: 2, bends: [], volume: 1, expression: 1, program: null };
     this._channels.set(number, channel);
     return channel;
+  }
+
+  _program(number, value) {
+    if (!this._ready() || !Number.isInteger(value) || value < 0 || value > 127) return false;
+    this._channel(number).program = value;
+    return true;
+  }
+
+  _percussionNoise() {
+    if (this._noiseBuffer) return this._noiseBuffer;
+    const context = this._context;
+    if (!context.createBuffer || !context.createBufferSource) return null;
+    const length = Math.ceil((context.sampleRate || 48000) * 0.2);
+    const buffer = context.createBuffer(1, length, context.sampleRate || 48000);
+    const samples = buffer.getChannelData(0);
+    let seed = 0x45b9;
+    for (let index = 0; index < length; index += 1) {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      samples[index] = seed / 2147483648 - 1;
+    }
+    this._noiseBuffer = buffer;
+    return buffer;
   }
 
   _noteOn(number, note, options = {}) {
@@ -273,23 +415,31 @@ class BrowserNotePreview {
     if (simultaneous.length >= this._maxVoices) {
       const oldest = simultaneous[0];
       if (start - context.currentTime <= RELEASE_SECONDS || start - oldest.start <= RELEASE_SECONDS) {
-        this._destroyVoice(oldest);
+        this._destroyVoice(oldest, 'voice-budget');
       } else {
         this._release(oldest, start - RELEASE_SECONDS, true);
       }
     }
-    while (this._voices.size >= MAX_SCHEDULED_VOICES) this._destroyVoice(this._voices.values().next().value);
+    while (this._voices.size >= MAX_SCHEDULED_VOICES) this._destroyVoice(this._voices.values().next().value, 'scheduled-voice-cap');
     let voice;
     let oscillator;
     let gain;
     try {
       const channel = this._channel(number);
-      oscillator = context.createOscillator();
+      const profile = instrumentProfile(options.instrument?.program ?? channel.program, options.instrument?.percussion === true || number === 10, note, options.instrument?.legacy !== true);
+      const noise = profile.noise && this._percussionNoise();
+      oscillator = noise ? context.createBufferSource() : context.createOscillator();
+      if (noise) { oscillator.buffer = noise; oscillator.loop = true; }
       gain = context.createGain();
-      voice = { oscillator, gain, number, note, start, end: start + this._maxNoteSeconds, released: false, peak: clamp(finite(options?.rawAttack, 80), 1, 127) / 127 };
+      voice = { oscillator, gain, number, note, start, id: ++this._voiceSequence, playback: options.playback, startMs: this._nowMs() + (start - context.currentTime) * 1000, end: start + Math.min(this._maxNoteSeconds, profile.seconds || this._maxNoteSeconds), released: false, captureMeta: options.capture || null,
+        peak: clamp(finite(options?.rawAttack, 80), 1, 127) / 127 * profile.gain, attack: profile.attack, decay: profile.decay,
+        sustain: profile.sustain, release: profile.release, instrument: options.instrument, velocity: clamp(finite(options?.rawAttack, 80), 1, 127) };
       this._voices.add(voice);
-      oscillator.type = 'triangle';
-      oscillator.frequency.setValueAtTime(440 * (2 ** ((note - 69) / 12)), start);
+      if (!noise) {
+        oscillator.type = profile.waveform;
+        oscillator.frequency.setValueAtTime(profile.frequency || 440 * (2 ** ((note - 69) / 12)), start);
+        if (profile.endFrequency) oscillator.frequency.linearRampToValueAtTime(profile.endFrequency, start + profile.decay);
+      }
       this._pruneBends(channel);
       let initialBend = 0;
       for (const bend of channel.bends) if (bend.time <= start) initialBend = bend.value;
@@ -298,8 +448,10 @@ class BrowserNotePreview {
         if (bend.time > start) oscillator.detune.setValueAtTime(bend.value * channel.bendRange * 100, bend.time);
       }
       gain.gain.setValueAtTime(0, start);
-      gain.gain.linearRampToValueAtTime(voice.peak, start + ATTACK_SECONDS);
-      gain.gain.setValueAtTime(voice.peak, voice.end - RELEASE_SECONDS);
+      gain.gain.linearRampToValueAtTime(voice.peak, start + voice.attack);
+      const sustainAt = Math.min(voice.end - voice.release, start + voice.attack + voice.decay);
+      if (voice.decay > 0) gain.gain.linearRampToValueAtTime(voice.peak * voice.sustain, sustainAt);
+      gain.gain.setValueAtTime(voice.peak * voice.sustain, voice.end - voice.release);
       gain.gain.linearRampToValueAtTime(0, voice.end);
       oscillator.connect(gain);
       if (Number.isFinite(options.pan) && context.createStereoPanner) {
@@ -313,6 +465,13 @@ class BrowserNotePreview {
       oscillator.onended = () => this._destroyVoice(voice);
       oscillator.start(start);
       oscillator.stop(voice.end);
+      this._observe('synth-scheduled', { ...voice.captureMeta, type: 'noteOn', voiceId: voice.id, channel: number,
+        note, velocity: voice.velocity, program: options.instrument?.program, ensembleRole: options.instrument?.role,
+        percussion: options.instrument?.percussion, scheduledMs: voice.startMs, audioTime: start,
+        endAudioTime: voice.end, durationMs: (voice.end - start) * 1000, waveform: noise ? 'noise' : oscillator.type });
+      if (this._captureEnabled() && !options.capture?.observedByScheduler) this._observe('api-dispatch', { ...voice.captureMeta, type: 'noteOn',
+        voiceId: voice.id, channel: number, note, velocity: voice.velocity, scheduledMs: voice.startMs, accepted: true });
+      this._emitPlayback(voice, 'start');
       this._setStatus(this._status, this._message);
       return true;
     } catch {
@@ -329,17 +488,25 @@ class BrowserNotePreview {
 
   _release(voice, time, force = false) {
     if (!this._voices.has(voice) || (!force && voice.released)) return;
-    const releaseAt = Math.max(voice.start, Math.min(time, voice.end - RELEASE_SECONDS));
-    const end = Math.min(voice.end, releaseAt + RELEASE_SECONDS);
+    const releaseAt = Math.max(voice.start, Math.min(time, voice.end - voice.release));
+    const end = Math.min(voice.end, releaseAt + voice.release);
     const param = voice.gain.gain;
     param.cancelScheduledValues(releaseAt);
-    const attackLevel = voice.peak * clamp((releaseAt - voice.start) / ATTACK_SECONDS, 0, 1);
+    const elapsed = releaseAt - voice.start;
+    const level = elapsed < voice.attack ? clamp(elapsed / voice.attack, 0, 1)
+      : voice.decay > 0 && elapsed < voice.attack + voice.decay
+        ? 1 - (1 - voice.sustain) * (elapsed - voice.attack) / voice.decay : voice.sustain;
+    const attackLevel = voice.peak * level;
     param.setValueAtTime(attackLevel, releaseAt);
     param.linearRampToValueAtTime(0, end);
     voice.oscillator.stop(end);
     voice.end = end;
     voice.released = true;
     if (force) voice.stolen = true;
+    this._observe('synth-release', { ...voice.captureMeta, type: 'noteOff', voiceId: voice.id, channel: voice.number,
+      note: voice.note, scheduledMs: voice.startMs + (releaseAt - voice.start) * 1000, audioTime: releaseAt,
+      endAudioTime: end, reason: force ? 'voice-budget' : 'note-off' });
+    this._emitPlayback(voice, 'release', releaseAt);
   }
 
   _noteOff(number, note, options = {}) {
@@ -354,11 +521,18 @@ class BrowserNotePreview {
         if (voice.number === number && voice.note === note) this._destroyVoice(voice);
       }
     }
+    if (this._captureEnabled() && !options.capture?.observedByScheduler && candidates.length) this._observe('api-dispatch', {
+      ...(options.capture || candidates[0].captureMeta), type: 'noteOff', voiceId: candidates[0].id, channel: number,
+      note, scheduledMs: finite(options.time, this._nowMs()), accepted: true });
     return candidates.length > 0;
   }
 
-  _destroyVoice(voice) {
+  _destroyVoice(voice, reason = 'source-ended') {
     if (!voice || !this._voices.delete(voice)) return;
+    this._observe('synth-end', { ...voice.captureMeta, type: 'noteEnd', voiceId: voice.id, channel: voice.number,
+      note: voice.note, audioTime: this._context?.currentTime, scheduledMs: voice.startMs + (voice.end - voice.start) * 1000,
+      matchedDurationMs: Math.max(0, ((this._context?.currentTime ?? voice.start) - voice.start) * 1000), reason });
+    this._emitPlayback(voice, 'end');
     voice.oscillator.onended = null;
     try { voice.oscillator.stop(); } catch { /* Already ended or failed to start. */ }
     voice.oscillator.disconnect();
@@ -367,9 +541,28 @@ class BrowserNotePreview {
     this._setStatus(this._status, this._message);
   }
 
+  _emitPlayback(voice, phase, releaseAt = voice.end - voice.release) {
+    if (!voice.playback || typeof this._onPlayback !== 'function') return;
+    try {
+      this._onPlayback({ ...voice.playback, id: voice.id, phase, note: voice.note, velocity: Math.round(voice.velocity),
+        startMs: voice.startMs, releaseMs: voice.startMs + (releaseAt - voice.start) * 1000,
+        endMs: voice.startMs + (voice.end - voice.start) * 1000,
+        attackMs: voice.attack * 1000, decayMs: voice.decay * 1000, sustain: voice.sustain });
+    } catch { /* Display observers must never interrupt audio. */ }
+  }
+
   _clearVoices(number = null) {
+    if (this._previewTimer != null) clearTimeout(this._previewTimer);
+    this._previewTimer = null;
+    for (const entry of this._previewPending) {
+      if (number == null || clamp(Math.trunc(finite(entry.spec.channel, 1)), 1, 16) === number) {
+        this._observe('cancelled', { ...entry.spec.capture, type: 'noteOn', reason: 'audition-stop' });
+      }
+    }
+    this._previewPending = number == null ? [] : this._previewPending.filter(entry => clamp(Math.trunc(finite(entry.spec.channel, 1)), 1, 16) !== number);
+    if (this._previewPending.length && this._ready()) this._drainPreviewQueue();
     for (const voice of this._voices) {
-      if (number == null || voice.number === number) this._destroyVoice(voice);
+      if (number == null || voice.number === number) this._destroyVoice(voice, 'panic-or-stop');
     }
     for (const [key, channel] of this._channels) {
       if (number != null && key !== number) continue;

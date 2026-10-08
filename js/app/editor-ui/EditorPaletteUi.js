@@ -391,6 +391,7 @@ const editorPaletteUiMethods = {
     const available = [];
     for (const name of styleNames) {
       const style = getStyle(name);
+      if (style?.customAssets) { available.push(style.name); continue; }
       const groundSet = Number.isFinite(style?.groundSet) ? style.groundSet | 0 : null;
       if (groundSet == null) continue;
       try {

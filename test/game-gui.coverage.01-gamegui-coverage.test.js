@@ -264,7 +264,7 @@ describe('GameGui coverage', function() {
     });
   });
 
-  it('does not redraw zero-skill stipples when counts are unchanged', function() {
+  it('does not add checkerboards when zero-skill counts are unchanged', function() {
     const display = makeDisplay();
     const { gui } = makeGui({ running: true });
     gui.setGuiDisplay(display);

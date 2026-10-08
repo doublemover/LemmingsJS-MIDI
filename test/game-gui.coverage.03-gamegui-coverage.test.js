@@ -203,7 +203,8 @@ describe('GameGui coverage', function() {
   it('formats status text and panel names', function() {
     const { gui } = makeGui();
     const text = gui._composeStatusText('123456789012345', 'OK');
-    expect(text.length).to.equal(14);
+    expect(text.length).to.equal(13);
+    expect(text.endsWith('OK')).to.equal(true);
     expect(gui._getPanelName(2)).to.equal('Climber');
     expect(gui._getPanelName(99)).to.equal('');
   });

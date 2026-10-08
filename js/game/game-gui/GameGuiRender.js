@@ -154,13 +154,11 @@ const gameGuiRenderMethods = {
       for (let s = 1; s < SKILL_COUNT; ++s) {
         const panel = this.getPanelIndexBySkill(s);
         const count = this.skills.getSkill(s);
-        this.drawPanelNumber(d, count, panel);
-      }
-      for (let s = 1; s < SKILL_COUNT; ++s) {
-        if (this.skills.getSkill(s) <= 0) {
-          const panel = this.getPanelIndexBySkill(s);
-          d.drawStippleRect(panel * 16, 16, 16, 23, 160, 160, 160);
+        if (count <= 0) {
+          const disabled = this.skillPanelSprites.getDisabledButton?.(panel);
+          if (disabled) d.drawFrame(disabled, panel * 16, 16);
         }
+        this.drawPanelNumber(d, count, panel);
       }
     }
     if (this.skillSelectionChanged) {
@@ -295,9 +293,11 @@ const gameGuiRenderMethods = {
     const left = primary || '';
     const right = secondary || '';
     if (!left && !right) return '';
-    const combined = right ? `${left} ${right}` : left;
-    const maxChars = 14;
-    return combined.length > maxChars ? combined.slice(0, maxChars) : combined;
+    const maxChars = 13; // OUT starts at x=112; leave one 8-pixel glyph of separation.
+    if (!right) return left.slice(0, maxChars);
+    const label = right.slice(0, maxChars), budget = Math.max(0, maxChars - label.length - 1);
+    const prefix = left.length > budget && budget > 1 ? left.slice(0, budget - 1) + '-' : left.slice(0, budget);
+    return (prefix + ' ' + label).trim();
   },
 
   _pad(v, len) { const s = String(v); return s.length >= len ? s : ' '.repeat(len - s.length) + s; },

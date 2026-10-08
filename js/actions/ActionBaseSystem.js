@@ -87,7 +87,8 @@ class ActionBaseSystem {
     const key = this.sprites.has('both') ? 'both' : lem.getDirection();
     const ani = this.spriteProvider?.getActorAnimation?.(this.spriteType, lem.lookRight, lem) || this.sprites.get(key);
     const frame = ani.getFrame(lem.frameIndex);
-    gameDisplay.drawFrame(frame, lem.x, lem.y);
+    const position = this.spriteProvider?.getActorDrawPosition?.(lem);
+    gameDisplay.drawFrame(frame, position?.x ?? lem.x, position?.y ?? lem.y);
   }
 }
 export { ActionBaseSystem };

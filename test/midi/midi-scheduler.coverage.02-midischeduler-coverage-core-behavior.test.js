@@ -217,7 +217,7 @@ describe('MidiScheduler coverage: core behavior', function() {
     expect(estimate.messages).to.equal(5);
   });
 
-  it('sends notes with pan conversion and rate logging', function() {
+  it('sends scheduled notes with pan conversion and no rate logging', function() {
     withFakeClockAndPerformance(clock => {
       const calls = [];
       const output = makeOutput([1, 2], calls);
@@ -226,8 +226,7 @@ describe('MidiScheduler coverage: core behavior', function() {
         position: { panRange: { min: -127, max: 127 } }
       });
       scheduler.setOutput(output);
-      scheduler._maxBytesPerSecond = 1;
-      scheduler._rateSent = [{ timeMs: 1999, count: 1, bytes: 3 }];
+      scheduler._maxBytesPerSecond = 1000;
       const errors = [];
       const restoreConsole = withConsoleStub({ error: msg => errors.push(msg) });
       scheduler.sendNote({
@@ -262,7 +261,7 @@ describe('MidiScheduler coverage: core behavior', function() {
     scheduler._activeNotes.set(1, { note: 60, channel: 1, startedAt: 0 });
     let stolen = false;
     scheduler._stealOldestNote = () => { stolen = true; };
-    scheduler.sendNote({ note: 62, velocity: 64, durationTicks: 0, pan: 80, timeMs: 0 });
+    scheduler.sendNote({ note: 62, velocity: 64, durationTicks: 0, pan: 80, timeMs: scheduler._nowMs() });
     expect(stolen).to.equal(true);
     expect(calls.some(call => call.type === 'cc')).to.equal(true);
   });
@@ -395,7 +394,7 @@ describe('MidiScheduler coverage: core behavior', function() {
     expect(estimate.messages).to.equal(2);
   });
 
-  it('checkByteRate logs when over the throughput limit', function() {
+  it('checkByteRate reports over-limit pressure without logging', function() {
     const scheduler = new MidiScheduler({ mpe: { enabled: false } });
     scheduler._maxBytesPerSecond = 1;
     scheduler._rateSent = [{ timeMs: 1999, count: 1, bytes: 3 }];
@@ -406,6 +405,7 @@ describe('MidiScheduler coverage: core behavior', function() {
     } finally {
       restoreConsole();
     }
-    expect(errors.length).to.equal(1);
+    expect(errors.length).to.equal(0);
+    expect(scheduler._throttleState.reason).to.equal('byte-limit');
   });
 });

@@ -28,6 +28,7 @@
   <link type="text/css" rel="stylesheet" href="css/icons.css">
   <link type="text/css" rel="stylesheet" href="css/midi-instrument.css">
   <link type="text/css" rel="stylesheet" href="css/character-controls.css">
+  <link type="text/css" rel="stylesheet" href="css/midi-spans.css">
   <script>
     if (navigator.webdriver) {
       const originalError = console.error;
@@ -46,28 +47,21 @@
 <body class="game-page" oncontextmenu="return false;">
   <section id="midiSequencerWorkspace" class="midi-sequencer" aria-label="Game sound editor" hidden>
     <header id="midiTransportStrip" class="midi-studio-header">
-      <strong id="midiEditScope">Event sound controls</strong>
+      <strong id="midiEditScope">Sound editor</strong>
       <button id="midiWorkspaceClose" data-icon="x" class="icon-only" title="Close sound editor" type="button" aria-label="Close sound editor">Close</button>
 
     </header>
     <nav class="midi-view-tabs" aria-label="Sound workspaces">
       <button id="midiViewSounds" data-icon="audio-lines" type="button" aria-pressed="true">Events</button>
-      <button id="midiViewDevices" data-icon="usb" type="button" aria-pressed="false">Devices</button>
-      <button id="midiViewProject" data-icon="music" type="button" aria-pressed="false">Project</button>
       <button id="midiViewExpert" data-icon="list-music" type="button" aria-pressed="false">Tracks &amp; clips</button>
+      <button id="midiViewProject" class="midi-view-tab--secondary" data-icon="music" type="button" aria-pressed="false">Project</button>
+      <button id="midiViewDevices" class="midi-view-tab--secondary" data-icon="usb" type="button" aria-pressed="false">Devices</button>
     </nav>
     <section id="midiSoundsView" class="midi-editor-view" aria-label="Event sounds">
-      <label class="midi-field midi-field--compact">
-        <span>Position pan</span>
-        <select id="midiGlobalPanMode"><option value="off">Off</option><option value="viewport">Viewport</option><option value="level">Whole level</option></select>
-      </label>
-      <div class="midi-active-key"><span id="midiActiveKeySummary"></span><button id="midiEditProjectKey" data-icon="settings-2" type="button">Edit key / palette</button></div>
       <div id="midiEventSoundDock" class="midi-sounds-layout">
 
         <div id="midiPersistentSoundEditor" class="midi-sound-editor">
           <div class="midi-sound-heading"><h2 id="midiSoundTitle">Choose an event</h2><label><input id="midiSoundEnabled" type="checkbox" /> On</label></div>
-          <p id="midiSoundRoute" class="midi-route-summary"></p>
-          <button id="midiInspectTrack" data-icon="arrow-up-right" type="button">Inspect destination track</button>
           <div id="midiBehaviorChoices" class="midi-choice-row" role="group" aria-label="Event response">
             <button type="button" data-icon="music" data-behavior="note">One note</button>
             <button type="button" data-icon="list-music" data-behavior="steps">Event steps</button>
@@ -77,7 +71,38 @@
           <label class="midi-field midi-field--stacked midi-behavior-select"><span>When this happens</span><select id="midiSoundBehavior"><option value="note">Play one note</option><option value="falling">Start a falling phrase</option><option value="rising">Start a rising phrase</option><option value="steps">Advance one pattern note</option><option value="custom">Custom wiring</option></select></label>
           <p id="midiPatternAxis" class="midi-help"></p>
           <div id="midiSoundContour" class="midi-sound-contour" aria-label="Note pattern"></div>
-          <div class="midi-tactile-controls">
+          <section id="midiEventClipEditor" class="midi-event-clip-editor" aria-label="Event note cells">
+            <button id="midiClipCreate" type="button">Create 8-cell clip for this event</button>
+            <div id="midiClipControls" hidden>
+              <div class="midi-clip-controls">
+                <label>Length<select id="midiEventClipLength"><option value="8">8 cells</option><option value="16">16 cells</option></select></label>
+                <label>Advance<select id="midiEventClipAdvance"><option value="legacy">Saved clip behavior</option><option value="event">One cell per game event</option><option value="game-tick">Phrase on game ticks</option></select></label>
+                <label id="midiClipPassField">Phrase passes<select id="midiEventClipPassCounter"><option value="started">Started phrases (saved behavior)</option><option value="completed">Completed phrases</option></select></label>
+                <label id="midiClipSpacingField">Ticks / cell<input id="midiEventClipSpacing" type="number" min="1" max="8" value="2" /></label>
+              </div>
+              <div id="midiEventClipGrid" class="midi-event-clip-grid" role="group" aria-label="Note cells: click to paint or erase; drag across cells or vertically to change pitch"></div>
+              <div class="midi-clip-controls">
+                <label>Note / brush<input id="midiEventClipNote" type="text" value="C4" aria-label="Cell note name or MIDI number; rest for silence" /></label>
+                <label>Velocity<input id="midiEventClipVelocity" type="number" min="1" max="127" placeholder="Project" /></label>
+                <label>Length in ticks<input id="midiEventClipDuration" type="number" min="1" max="960" placeholder="Project" /></label>
+                <label>Chance %<input id="midiEventClipProbability" type="number" min="0" max="100" value="100" /></label>
+                <label>Condition<select id="midiEventClipCondition"><option value="event">Every N events</option><option value="pass">Every N passes</option><option value="bar">Every N trigger bars</option></select></label>
+                <label>N<input id="midiEventClipEvery" type="number" min="1" max="64" value="1" /></label>
+                <label>Phase (0 = Nth)<input id="midiEventClipPhase" type="number" min="0" max="0" value="0" /></label>
+              </div>
+              <details><summary>Pitch layers for this cell</summary><div class="midi-clip-controls">
+                <label>Transpose<input id="midiEventClipTranspose" type="number" min="-48" max="48" value="0" /></label>
+                <label>Octaves<input id="midiEventClipOctave" type="number" min="-4" max="4" value="0" /></label>
+                <label>Ramp interval<input id="midiEventClipInterval" type="number" min="-12" max="12" value="0" /></label>
+                <label>Ramp span<input id="midiEventClipSpan" type="number" min="1" max="16" value="1" /></label>
+                <label>Ramp counter<select id="midiEventClipTransformUnit"><option value="event">Game events</option><option value="pass">Pattern passes</option><option value="bar">Trigger bars</option></select></label>
+              </div><p class="midi-help">Layers add transpose + 12 x octaves + interval x ((counter - 1) modulo span), then project scale/range apply. The grid shows entered notes; moving row notes show dispatched pitches.</p></details>
+              <details><summary>Counter timing</summary><p class="midi-help">Counters start at 1. Phase 0 selects N, 2N; phase 1 selects 1, N+1. An event pass is one grid traversal. Phrase passes count started or fully consumed phrases, as selected. Trigger bars use level ticks at the project BPM and time signature, sampled once at the trigger. Pause freezes the bar; speed changes its wall-time rate. Changing BPM/signature recomputes position. Local tests use independent event/pass counters and the same level bar.</p></details>
+              <p id="midiEventClipCounters" class="midi-help"></p>
+            </div>
+            <p id="midiEventClipHint" class="midi-help">Create a reusable clip to enter notes directly. Undo restores the prior wiring.</p>
+          </section>
+          <div id="midiDirectSoundControls" class="midi-tactile-controls">
           <label class="midi-field"><span>Base pitch <output id="midiSoundPitchName"></output></span><input id="midiSoundPitchDial" type="range" min="0" max="127" step="1" aria-label="Base pitch slider" /><input id="midiSoundPitch" type="number" min="0" max="127" step="1" aria-label="Base pitch MIDI note" /></label>
           <label id="midiSoundSpacingField" class="midi-field"><span>Note spacing (game ticks)</span><input id="midiSoundSpacing" type="number" min="1" max="8" step="1" /></label>
           <label class="midi-field"><span>Level</span><input id="midiSoundLevel" type="range" min="1" max="127" step="1" /><output id="midiSoundLevelValue"></output><input id="midiSoundLevelNumber" type="number" min="1" max="127" step="1" aria-label="Exact sound level" /></label>
@@ -86,10 +111,21 @@
           </div>
           <label id="midiSoundOrderField" class="midi-field"><span>Event pattern order</span><select id="midiSoundOrder"><option value="up">Up</option><option value="down">Down</option><option value="updown">Up / down</option></select></label>
           <button id="midiSoundPreview" data-icon="play" type="button">Test event locally</button>
+          <details class="midi-sound-secondary"><summary data-icon="settings-2">Routing &amp; reference</summary>
+          <p id="midiSoundRoute" class="midi-route-summary"></p>
+          <button id="midiInspectTrack" data-icon="arrow-up-right" type="button">Inspect destination track</button>
           <div class="midi-button-row"><button id="midiSoundSnapshot" data-icon="save" type="button">Keep as reference</button><button id="midiSoundRevert" data-icon="undo-2" type="button">Revert to reference</button></div>
           <p id="midiSoundHint" class="midi-help"></p>
           <button id="midiSoundAdvanced" data-icon="sliders-horizontal" type="button">Edit detailed wiring</button>
+          </details>
         </div>
+      </div>
+      <div class="midi-event-context">
+      <label class="midi-field midi-field--compact">
+        <span>Position pan</span>
+        <select id="midiGlobalPanMode"><option value="off">Off</option><option value="viewport">Viewport</option><option value="level">Whole level</option></select>
+      </label>
+      <div class="midi-active-key"><span id="midiActiveKeySummary"></span><button id="midiEditProjectKey" data-icon="settings-2" type="button">Edit key / palette</button></div>
       </div>
     </section>
     <section id="midiDevicesView" class="midi-editor-view" aria-label="MIDI device routing" hidden>
@@ -113,23 +149,11 @@
       </label>
       </div>
       <div id="midiDeviceStatus" class="midi-status" role="status">No device connection</div>
-      <button id="midiPanicButton" type="button" aria-label="Panic all MIDI notes">Stop all notes</button>
       <div id="errorDisplay" class="midi-error" role="status"></div>
     </section>
     <section id="midiProjectView" class="midi-editor-view" aria-label="Musical project" hidden>
-      <h2>Musical project</h2><p class="midi-help">Choose a starting palette, then apply it. Current sound settings are shown in Sounds.</p>
-    <section class="midi-preset-panel" aria-label="Game music presets">
-      <h2>Starting palettes</h2>
-      <p>Choose a starting sound, then apply it. Game events always supply the timing.</p>
-      <div class="midi-preset-actions">
-        <label class="midi-field"><span>Starting palette</span><select id="midiGamePresetSelect"></select></label>
-        <label class="midi-field"><span>Play style</span><select id="midiGamePresetMode"><option value="phrase">Quiet phrases per event</option><option value="steps">One note per event</option></select></label>
-        <button id="midiGamePresetApply" type="button">Apply event palette</button>
-      </div>
-      <p id="midiGamePresetModeDescription" class="midi-help"></p>
-      <p id="midiGamePresetDescription" class="midi-help" role="status"></p>
-      <p class="midi-help">Applying a palette replaces gameplay-event mappings; it keeps your devices, tracks, and clips. The selected palette describes how each event plays.</p>
-    </section>
+      <h2>Musical project</h2><p class="midi-help">Starting palettes stay beside Listen to game. Current sound settings are shown in Sounds.</p>
+
       <p class="midi-help">Key and scale stay available in the headunit above. Fixed pitches remain fixed; key-relative mappings follow the selected scale.</p>
       <details class="midi-project-tools">
         <summary>Project &amp; templates</summary>
@@ -152,6 +176,16 @@
     </section>
     <section id="midiExpertView" class="midi-editor-view" aria-label="Tracks, clips and detailed wiring" hidden>
       <details open class="midi-shared-sound-controls"><summary>Selected event sound controls</summary><div id="midiExpertSoundDock"></div></details>
+      <details class="midi-output-capture"><summary>Output capture</summary>
+      <div class="midi-capture-buttons" role="group" aria-label="Bounded output capture">
+        <button id="midiCaptureStart" type="button">Capture 2 minutes</button><button id="midiCaptureStop" type="button" disabled>Stop capture</button>
+        <button id="midiCaptureReport" type="button" disabled>Inspect</button><button id="midiCaptureJSONL" type="button" disabled>JSONL</button><button id="midiCaptureCSV" type="button" disabled>CSV</button><button id="midiCaptureHTML" type="button" disabled>Report file</button>
+      </div>
+      <p id="midiCaptureStatus" role="status" aria-live="off"></p>
+      <p>Records existing output only; start listening or select MIDI separately. At most 4,096 records are retained. Stop capture keeps playback running.</p>
+      <iframe id="midiCaptureRoll" title="Captured note schedules piano roll" sandbox="" hidden></iframe>
+      <pre id="midiCaptureSummary" hidden></pre>
+      </details>
       <details class="midi-musical-settings"><summary>Stored timing metadata</summary>
       <p class="midi-help">Game events keep their simulation timing. BPM, meter, quantize, and swing are stored project metadata; they do not shift event onsets.</p>
       <div class="midi-control-group" role="group" aria-label="Musical timing">
@@ -294,6 +328,39 @@
             <label><input id="midiTrackMute" type="checkbox" /> Mute</label>
             <label><input id="midiTrackSolo" type="checkbox" /> Solo</label>
             <label><input id="midiTrackArm" type="checkbox" /> Arm</label>
+          </div>
+          <div id="midiEnsembleFields" hidden><label><input id="midiEnsembleEnabled" type="checkbox" /> Automatic ensemble roles</label></div>
+            <details id="midiTensionFields" hidden><summary>Musical tension</summary>
+              <label><input id="midiTensionEnabled" type="checkbox"> Thin layers when an established crew declines</label>
+              <div class="midi-inline-fields">
+                <label class="midi-field">Thinning %<input id="midiTensionAmount" type="number" min="0" max="100" step="5"></label>
+                <label class="midi-field">Healthy crew<input id="midiTensionHealthy" type="number" min="2" max="256" step="1"></label>
+                <label class="midi-field">Fade, game seconds<input id="midiTensionFade" type="number" min="0.06" max="216" step="0.06"></label>
+              </div>
+              <details><summary>Thresholds</summary><div class="midi-inline-fields">
+                <label class="midi-field">Establish, game seconds<input id="midiTensionEstablish" type="number" min="0" max="216" step="0.06"></label>
+                <label class="midi-field">Collapse %<input id="midiTensionCollapse" type="number" min="5" max="80" step="5"></label>
+                <label class="midi-field">Recover %<input id="midiTensionRecovery" type="number" min="10" max="100" step="5"></label>
+                <label class="midi-field">Breakthrough pixels<input id="midiTensionBreakthrough" type="number" min="8" max="4096" step="8"></label>
+                <label class="midi-field">Breakthrough hold, game seconds<input id="midiTensionHold" type="number" min="0.06" max="216" step="0.06"></label>
+              </div></details>
+
+              <p id="midiTensionStatus" role="status" aria-live="off"></p>
+              <p class="midi-help">Uses completed procgen crew observations and automatic ensemble roles. Existing notes and instruments stay assigned. Game seconds advance with the simulation.</p>
+            </details>
+          <div id="midiEnsembleRoleFields" hidden>
+            <div class="midi-inline-fields">
+              <label class="midi-field">Role pan<input id="midiRolePan" type="number" min="-127" max="127" step="1" /></label>
+              <label class="midi-field">Lowest note<input id="midiRoleLow" type="number" min="0" max="127" step="1" /></label>
+              <label class="midi-field">Highest note<input id="midiRoleHigh" type="number" min="0" max="127" step="1" /></label>
+              <label class="midi-field">Duration scale<input id="midiRoleDuration" type="number" min="0.1" max="4" step="0.1" /></label>
+            </div>
+            <p class="midi-help">IDs and lanes choose stable roles. An explicit event track takes priority.</p>
+            <div class="midi-inline-fields">
+              <label class="midi-field">Lemming ID<input id="midiRoleLemmingId" type="number" min="0" step="1" /></label>
+              <label class="midi-field">Lane (zero based)<input id="midiRoleLane" type="number" min="0" max="1023" step="1" value="0" /></label>
+              <button id="midiRoleAssign" type="button">Assign this role</button><button id="midiRoleAutomatic" type="button">Use automatic role</button>
+            </div>
           </div>
         </details>
         <div id="midiSourceInspector" class="midi-inspector-group">
@@ -461,7 +528,8 @@
             </label>
           </div>
           <div id="midiRecordPanel" class="midi-learn-panel" aria-live="polite">
-            <p class="midi-help">Capture saves note pitches, velocities and approximate lengths into cells. Timing gaps and overlaps are not replayed.</p>
+            <p class="midi-help">Compact capture keeps the saved note-off order. Keep gaps quantizes note-on times from the first note to the nearest cell, replaces all cells, and keeps overlapping lengths; the last onset wins each cell. Leading silence is omitted. The current game tick length is frozen for capture; playback follows game ticks.</p>
+            <label>Placement<select id="midiRecordPlacement"><option value="compact">Compact notes (saved behavior)</option><option value="onsets">Keep gaps: last note per cell</option></select></label>
             <div id="midiRecordStatus" class="midi-learn-status" role="status">Record writes captured notes into clip steps.</div>
             <div class="midi-button-row">
               <button id="midiRecordButton" type="button" aria-label="Start MIDI recording">Record</button>
@@ -473,7 +541,7 @@
         </div>
         <details id="midiModulationInspector" class="midi-inspector-group">
           <summary>Conditions &amp; modulation</summary>
-          <p class="midi-help">Project-wide musical ranges and position-driven automation lanes.</p>
+          <p class="midi-help">Project-wide musical ranges, position curves and musical beat/distance spans. Up to 64 enabled spans run.</p>
           <div class="midi-region__header midi-region__header--compact">
             <h3>Modulation</h3>
             <button id="midiAutomationAddButton" type="button" aria-label="Add modulation lane">Add Mod</button>
@@ -590,7 +658,7 @@
               <input id="midiGlobalEnvRelease" type="number" min="0" max="2" step="0.05" />
             </label>
           </div>
-          <div id="midiAutomationList" class="midi-automation-list" aria-label="Position modulation lanes"></div>
+          <div id="midiAutomationList" class="midi-automation-list" aria-label="Modulation lanes and musical spans"></div>
         </details>
       </section>
       <section id="midiOutputStatus" class="midi-region midi-output-status" aria-label="MIDI output status">
@@ -606,14 +674,14 @@
     <div id="levelSelects" class="level_name">
       <details class="level-tools"><summary title="Level packs and saved levels" aria-label="Level packs and saved levels" class="icon-only" data-icon="folder-open">Level tools</summary>
         <div class="level-tools-popover">
-          <label>Game pack<select id="gameTypeSelect" aria-label="Game pack"></select></label>
-          <label>Difficulty<select id="levelGroupSelect" aria-label="Difficulty"></select></label>
+          <label><span class="visually-hidden">Game pack</span><select id="gameTypeSelect" aria-label="Game pack"></select></label>
+          <label><span class="visually-hidden">Difficulty</span><select id="levelGroupSelect" aria-label="Difficulty"></select></label>
           <div class="saved-level-controls">
-            <label>Saved level<select id="savedLevelSelect" aria-label="Saved level"></select></label>
+            <label><span class="visually-hidden">Saved level</span><select id="savedLevelSelect" aria-label="Saved level"></select></label>
             <div class="secondary-actions"><button id="savedLevelSave" type="button" data-icon="save">Save</button><button id="savedLevelExport" type="button" data-icon="file-down">Export</button><button id="savedLevelImport" type="button" data-icon="file-up">Import</button></div>
             <input id="savedLevelImportInput" type="file" accept=".nxlv" />
           </div>
-          <nav id="etc" class="game-links" aria-label="Game tools"><a href="https://github.com/doublemover/LemmingsJS-MIDI/" data-icon="external-link">Source</a><a href="editor.html" data-icon="pencil">Level editor</a></nav>
+          <nav id="etc" class="game-links" aria-label="Game tools"><a href="https://github.com/doublemover/LemmingsJS-MIDI/" data-icon="external-link">GitHub</a><a href="editor.html" data-icon="pencil">Level editor</a></nav>
         </div>
       </details>
       <select id="levelIndexSelect" aria-label="Level"></select>
@@ -625,31 +693,46 @@
     </div>
     <section id="midiInstrumentHead" class="midi-instrument-head" aria-label="Live instrument transport" hidden>
       <nav id="midiInstrumentMenus" class="midi-instrument-menus" aria-label="Instrument menus">
-        <details name="instrument-menu"><summary class="icon-only" data-icon="ellipsis" title="Studio menu" aria-label="Studio menu">Studio menu</summary><div>
-          <button id="midiMenuImport" type="button" data-icon="file-up">Import project…</button><button id="midiMenuExport" type="button" data-icon="file-down">Export project…</button><button id="midiMenuSave" type="button" data-icon="save">Save template…</button><button id="midiMenuProject" type="button" data-icon="music">Palettes &amp; project</button>
-          <button id="midiMenuUndo" type="button" data-icon="undo-2">Undo sound edit</button><button id="midiMenuRedo" type="button" data-icon="redo-2">Redo sound edit</button>
-          <button id="midiMenuFocus" type="button" data-icon="panel-left">Focus</button><button id="midiMenuSplit" type="button" data-icon="columns-2">Split</button><button id="midiMenuOverlay" type="button" data-icon="layers">Overlay</button>
-          <button id="midiMenuDevices" type="button" data-icon="usb">Device connections…</button><button id="midiMenuPanic" type="button" data-icon="square">Panic all notes</button>
+        <details name="instrument-menu"><summary class="icon-only" data-icon="ellipsis" title="Project files" aria-label="Project files">Project files</summary><div>
+          <button id="midiMenuImport" type="button" data-icon="file-up">Import project…</button>
+          <button id="midiMenuExport" type="button" data-icon="file-down">Export project…</button>
+          <button id="midiMenuSave" type="button" data-icon="save">Save template…</button>
         </div></details>
       </nav>
       <div class="midi-game-transport segmented" role="group" aria-label="Game transport"><button id="midiGamePlay" class="icon-only" data-icon="play" title="Play game" type="button">Play game</button><button id="midiGameStep" class="icon-only" data-icon="step-forward" title="Advance one game tick" type="button">+1 tick</button><button id="midiGameStop" class="icon-only" data-icon="square" title="Stop game and all notes" type="button">Stop / Panic</button><button id="midiUndo" class="icon-only" data-icon="undo-2" title="Undo sound edit" type="button">Undo</button><button id="midiRedo" class="icon-only" data-icon="redo-2" title="Redo sound edit" type="button">Redo</button></div>
       <div class="midi-headunit-readout"><output id="midiGameClock" aria-live="off">PAUSE · tick 0</output><span id="midiLastEvent">Waiting for game events</span></div>
-      <label class="midi-speed-control" title="Game speed multiplier"><span>Speed</span><input id="midiGameSpeed" type="range" min="0.1" max="8" step="0.1" aria-label="Game speed slider" /><input id="midiGameSpeedValue" type="number" min="0.1" max="8" step="0.1" aria-label="Exact game speed" /></label>
+      <label class="midi-speed-control" title="Game speed multiplier"><span>Speed</span><input id="midiGameSpeed" type="range" min="0" max="29" step="1" aria-label="Game speed slider" /><input id="midiGameSpeedValue" type="number" min="0.1" max="120" step="any" aria-label="Exact game speed" /></label>
       <div class="midi-control-group midi-key-controls"><label class="midi-field midi-field--compact"><span class="visually-hidden">Key</span><select id="midiScaleRoot" aria-label="Musical key" title="Musical key"></select></label><label class="midi-field midi-field--compact"><span class="visually-hidden">Scale</span><select id="midiScaleName" aria-label="Musical scale" title="Musical scale"></select></label></div>
-      <div class="midi-listen-row"><button id="midiLocalListenButton" type="button" data-icon="headphones">Listen to game</button><label class="midi-volume-control" title="Local master volume"><span class="visually-hidden">Master volume</span><input id="midiMasterVolume" type="range" min="0" max="100" value="70" step="1" aria-label="Master volume" /><output id="midiMasterVolumeValue">70%</output></label></div>
+      <div id="midiAudioControls" class="midi-listen-row"><span id="midiOutputPressure" class="midi-output-pressure" role="status" aria-live="off" hidden></span><button id="midiPanicButton" data-icon="square" type="button" title="Stop all MIDI and local notes" aria-label="Panic all MIDI notes">Panic</button><button id="midiLocalListenButton" type="button" data-icon="headphones">Listen to game</button><label class="midi-volume-control" title="Local master volume; above 100% boosts browser listening"><span class="visually-hidden">Master volume</span><input id="midiMasterVolume" type="range" min="0" max="400" value="70" step="1" aria-label="Master volume" /><output id="midiMasterVolumeValue">70%</output></label>    <details id="midiStartingPalettes" class="midi-preset-panel midi-starting-palettes"><summary data-icon="music" title="Starting palettes" aria-label="Starting palettes">Palette</summary><div class="midi-preset-popover">
+      <p>Choose a starting sound, then apply it. Game events always supply the timing.</p>
+      <div class="midi-preset-actions">
+        <label class="midi-field"><span>Starting palette</span><select id="midiGamePresetSelect"></select></label>
+        <label class="midi-field"><span>Play style</span><select id="midiGamePresetMode"><option value="phrase">Phrases per event</option><option value="steps">One note per event</option></select></label>
+        <button id="midiGamePresetApply" type="button">Apply event palette</button>
+      </div>
+      <p id="midiGamePresetModeDescription" class="midi-help"></p>
+      <p id="midiGamePresetDescription" class="midi-help" role="status"></p>
+      <p class="midi-help">Applying a palette replaces gameplay-event mappings; it keeps your devices, tracks, and clips. The selected palette describes how each event plays.</p>
+    </div></details></div>
       <div class="midi-layout-choices segmented" role="group" aria-label="Map layout"><button id="midiLayoutFocus" type="button" data-icon="panel-left" title="Compact map, larger sound controls">Focus</button><button id="midiLayoutSplit" type="button" data-icon="columns-2" title="Game between character and sound panels">Split</button><button id="midiLayoutOverlay" type="button" data-icon="layers" title="Sound controls over the right side of the map">Overlay</button></div>
     </section>
     <button id="midiWorkspaceToggle" hidden class="midi-workspace-toggle" type="button" data-icon="audio-lines" aria-controls="midiSequencerWorkspace" aria-expanded="false">MIDI Studio</button>
   </header>
   <aside id="studioLibrary" class="studio-library" aria-label="Characters and game events">
-    <details class="character-controls" open><summary data-icon="shapes">Characters</summary><div class="character-control-content">
-      <div class="character-field"><span id="shapeLabel">Body shape</span><select id="characterShape" aria-label="Body shape" hidden disabled></select><div id="characterShapeChoices" class="character-segments shape-choices" role="radiogroup" aria-labelledby="shapeLabel"></div></div>
-      <div class="character-field"><span id="bodyPaletteLabel">Body color</span><select id="characterBodyPalette" hidden aria-label="Body color"></select><div id="characterBodyPaletteChoices" class="character-segments palette-choices body-palette" role="radiogroup" aria-labelledby="bodyPaletteLabel"></div></div>
-      <div class="character-field"><span id="accessoryLabel">Accessory</span><select id="characterAccessory" hidden aria-label="Character accessory"></select><div id="characterAccessoryChoices" class="character-segments accessory-choices" role="radiogroup" aria-labelledby="accessoryLabel"></div></div>
-      <div class="character-field compact-palette"><span id="propPaletteLabel">Accessory color</span><select id="characterPropPalette" hidden aria-label="Accessory color"></select><div id="characterPropPaletteChoices" class="character-segments palette-choices" role="radiogroup" aria-labelledby="propPaletteLabel"></div></div>
-      <div class="character-field"><span id="eyewearLabel">Eyewear</span><select id="characterEyewear" hidden aria-label="Eyewear style"></select><div id="characterEyewearChoices" class="character-segments eyewear-choices" role="radiogroup" aria-labelledby="eyewearLabel"></div></div>
-      <div class="character-field compact-palette"><span id="eyewearPaletteLabel">Frame color</span><select id="characterEyewearPalette" hidden aria-label="Eyewear frame color"></select><div id="characterEyewearPaletteChoices" class="character-segments palette-choices" role="radiogroup" aria-labelledby="eyewearPaletteLabel"></div></div>
-      <small>One accessory + eyewear. Colors stay with each character.</small><span id="characterStatus" role="status">Preparing mixed characters…</span>
+    <details class="character-controls" open><summary data-icon="shapes" aria-label="Character appearance controls" title="Character appearance controls"></summary><div class="character-control-content">
+      <div class="character-composite">
+        <div class="character-field"><select id="characterShape" aria-label="Body shape" hidden disabled></select><div id="characterShapeChoices" class="character-segments shape-choices" role="radiogroup" aria-label="Body shape"></div></div>
+        <div class="character-field"><select id="characterBodyPalette" hidden aria-label="Body color"></select><div id="characterBodyPaletteChoices" class="character-segments palette-choices body-palette" role="radiogroup" aria-label="Body color"></div></div>
+      </div>
+      <div class="character-composite">
+        <div class="character-field"><select id="characterAccessory" hidden aria-label="Character accessory"></select><div id="characterAccessoryChoices" class="character-segments accessory-choices" role="radiogroup" aria-label="Accessory"></div></div>
+        <div class="character-field"><select id="characterPropPalette" hidden aria-label="Accessory color"></select><div id="characterPropPaletteChoices" class="character-segments palette-choices" role="radiogroup" aria-label="Accessory color"></div></div>
+      </div>
+      <div class="character-composite">
+        <div class="character-field"><select id="characterEyewear" hidden aria-label="Eyewear style"></select><div id="characterEyewearChoices" class="character-segments eyewear-choices" role="radiogroup" aria-label="Eyewear"></div></div>
+        <div class="character-field"><select id="characterEyewearPalette" hidden aria-label="Eyewear frame color"></select><div id="characterEyewearPaletteChoices" class="character-segments palette-choices" role="radiogroup" aria-label="Frame color"></div></div>
+      </div>
+      <span id="characterStatus" class="visually-hidden" role="status"></span>
     </div></details>
     <section class="studio-events" aria-label="Game event browser"><div class="studio-section-heading"><span data-icon="list-music">Game events</span><span class="live-label">LIVE</span></div><div id="midiGameEventList" class="midi-game-event-list" role="listbox" aria-label="Game events"></div></section>
     <div id="midiOutputSummary" class="studio-output-summary" role="status">Local sound off · MIDI off</div>
@@ -658,6 +741,7 @@
     <div class="game-stage-slot">
       <div class="game_container">
         <canvas height="480" width="800" id="gameCanvas" class="gameCanvas"></canvas>
+        <div id="midiSkillEventDock" class="midi-skill-event-dock" role="listbox" aria-label="Skill sounds beneath action selectors" hidden></div>
       </div>
     </div>
 

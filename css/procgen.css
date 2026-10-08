@@ -83,3 +83,64 @@ body {
 #procgenDrawer #procgenCharacters { margin: 14px 0; }
 #procgenDrawer :focus-visible, #procgenTab:focus-visible { outline: 2px solid #ffcc38; outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) { #procgenDrawer { transition: none; } }
+#procgenDrawer .character-control-content { gap: 7px; padding-bottom: 4px; }
+#procgenDrawer .character-segments button { min-height: 0; padding: 0; }
+#procgenDrawer .character-field { gap: 0; }
+.procgen-speed-control { display: grid; grid-template-columns: auto auto; gap: 4px; align-items: end; }
+.procgen-speed-control > span { grid-column: 1 / -1; }
+.procgen-speed-segments { display: flex; align-items: center; height: 26px; background: #000; border: 1px solid #7d6950; border-radius: 3px; }
+#procgenDrawer .procgen-speed-segments button { width: 22px; height: 24px; min-height: 0; padding: 0; border: 0; border-radius: 0; background: #000; display: flex; align-items: center; justify-content: center; }
+.procgen-speed-segments button:hover { outline: 1px solid #00a600; outline-offset: -2px; }
+.procgen-speed-segments canvas { image-rendering: pixelated; }
+#procgenSpeedReadout { display: flex; min-width: 24px; padding: 0 3px; justify-content: center; }
+#procgenSpeedReadout canvas { height: 16px; }
+#procgenDrawer #procgenSpeed { width: 66px; min-height: 26px; height: 26px; padding: 1px 3px; font-size: 11px; }
+#procgenShareUrl { width: min(600px, 100%); color: #eee5d4; background: #191610; border: 1px solid #7d6950; padding: 5px; }
+#procgenDrawer .character-segments button[aria-checked=true] { background: #34483e; border-color: #a6c4ac; color: #f0fff4; }
+#procgenDrawer .character-segments button:hover { background: #293b32; }
+
+#procgenDrawer .character-composite .palette-choices button { min-height: 0; height: 14px; padding: 0; border: 0; border-radius: 0; background: transparent; }
+#procgenDrawer .character-composite .palette-choices button:first-child { border-radius: 0 0 0 6px; }
+#procgenDrawer .character-composite .palette-choices button:last-child { border-radius: 0 0 6px 0; }
+
+/* Persistent common controls; detailed choices keep their original drawer. */
+body { flex-direction: column; }
+#procgenTopbar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 8px; box-sizing: border-box; z-index: 21; background: #1d2922; color: #e6ece5; border-bottom: 1px solid #405044; font: 11px system-ui,sans-serif; }
+#procgenTopbar label { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+#procgenTopbar button, #procgenTopbar select, #procgenTopbar input:not([type=range]) { min-height: 28px; box-sizing: border-box; border: 1px solid #4a5b4c; border-radius: 4px; padding: 4px 6px; background: #253329; color: inherit; font: inherit; }
+#procgenTopbar button { cursor: pointer; white-space: nowrap; }
+#procgenTopbar button:hover { background: #344838; border-color: #75957a; }
+#procgenTopbar input[type=number] { width: 56px; }
+#procgenTopbar #procgenSeed { width: 94px; }
+#procgenTopbar #procgenPack { max-width: 146px; }
+#procgenTopbar .procgen-speed-control { display: flex; align-items: center; gap: 4px; }
+#procgenTopbar .procgen-speed-segments button { width: 22px; height: 24px; min-height: 0; padding: 0; border: 0; border-radius: 0; background: #000; }
+#procgenTopbar #procgenSpeed { width: 50px; min-height: 26px; }
+.procgen-button-group, .procgen-audio-controls { display: flex; align-items: center; gap: 3px; }
+#procgenTopbar #procgenListen { background: #567148; }
+#procgenTopbar #procgenPanic { background: #ad4434; border-color: #963b2d; }
+#procgenMasterVolume { width: 58px; accent-color: #d2aa67; }
+#procgenMasterVolumeValue { min-width: 30px; font: 10px ui-monospace,monospace; }
+#procgenTopbar #procgenTab { position: static; transform: none; margin-left: auto; border: 1px solid #71614c; border-radius: 4px; padding: 4px 8px; font: inherit; }
+#gameCanvas { flex: 1 1 auto; min-height: 0; }
+#procgenDrawer { top: var(--procgen-bar-height, 42px); max-height: min(calc(100dvh - var(--procgen-bar-height, 42px)), 660px); padding-top: 10px; }
+#procgenTopbar :focus-visible { outline: 2px solid #ffcc38; outline-offset: 2px; }
+@media (max-width: 600px) { #procgenTopbar { gap: 4px; padding: 4px; } #procgenTopbar #procgenPack { max-width: 110px; } #procgenTopbar #procgenSeed { width: 88px; } }
+
+#procgenOutputPressure { color: #ead093; font: 9px ui-monospace,monospace; white-space: nowrap; }
+#procgenOutputPressure[hidden] { display: none; }
+
+#procgenAliveCount { position: fixed; right: 8px; top: calc(var(--procgen-bar-height, 42px) + 6px); z-index: 20; padding: 3px 6px; background: #10151c; color: #e6ece5; font: 12px monospace; pointer-events: none; border-radius: 3px; }
+
+.procgen-cctv-controls { border: 1px solid #526455; border-radius: 5px; margin: 10px 0; padding: 6px 10px; }
+#procgenCctvViews { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; margin: 8px 0; }
+#procgenCctvViews button { min-width: 0; font-size: 11px; text-align: left; }
+#procgenCctvViews button[aria-pressed=true] { border-color: #ffcc38; background: #46452b; }
+#procgenCctvViews button[hidden] { display: none; }
+#procgenDrawer button:hover:not(:disabled) { background: #46533c; }
+@media (max-width: 600px) { #procgenCctvViews { grid-template-columns: 1fr; } }
+
+.midi-capture-buttons { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+.midi-output-capture iframe { width: 100%; height: 330px; box-sizing: border-box; border: 1px solid #536252; background: #f5f7f8; }
+.midi-output-capture pre { white-space: pre-wrap; max-height: 220px; overflow: auto; font: 11px/1.4 ui-monospace, monospace; }
+.midi-output-capture [hidden] { display: none; }

@@ -14,6 +14,7 @@ class GameSkills {
     this.onCountChanged = new EventHandler();
     this.onSelectionChanged = new EventHandler();
     this.skills = level.skills;
+    this.initialSkills = Object.freeze([...level.skills]);
     this.cheatMode = false;
     // automatically select a valid skill when a level loads
     this.selectFirstAvailable();

@@ -151,13 +151,13 @@ describe('game-event MIDI presets', function() {
     }
   });
 
-  it('offers quiet five-note phrases and a plain distinct landing note without changing velocity limits', function() {
+  it('offers louder five-note phrases and a plain distinct landing note without changing saved velocity limits', function() {
     const project = createMidiProject({ global: { velocityRange: { min: 60, max: 100, default: 80 } } });
     const phrase = applyGameEventMidiPreset(project, 'game-major', { mode: 'phrase' });
     const config = projectToMidiConfig(phrase);
     expect(config.sfx[SoundEffectIds.SPAWN].phrase).to.deep.equal({ enabled: true, mode: 'down', spacingTicks: 2 });
     expect(config.sfx[SoundEffectIds.SPAWN].notes).to.have.length(5);
-    expect(config.sfx[SoundEffectIds.SPAWN].velocity).to.equal(42);
+    expect(config.sfx[SoundEffectIds.SPAWN].velocity).to.equal(96);
     expect(config.sfx[SoundEffectIds.SPAWN].arp).to.equal(undefined);
     expect(config.sfx[SoundEffectIds.LAND].note).to.equal(48);
     expect(config.sfx[SoundEffectIds.LAND]).to.not.have.property('arp');

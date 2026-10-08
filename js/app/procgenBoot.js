@@ -1,7 +1,9 @@
+import { getDecorationPack } from '../decorations/ProcgenDecorationPacks.js';
 import './bootstrap.js';
+import { ProcgenBitmapHud } from './procgen/ProcgenBitmapHud.js';
 import { createProcgenUiController } from './procgen/ProcgenUiController.js';
-import { ProcgenRecipeTerrain } from './procgen/ProcgenRecipeTerrain.js';
-import { loadTerrainRecipeBook, selectThemeRecipe } from './procgen/ProcgenTerrainRecipes.js';
+import { loadProcgenPackTerrain } from './procgen/ProcgenPackTerrain.js';
+import { loadTerrainRecipeBook } from './procgen/ProcgenTerrainRecipes.js';
 import { createProcgenLaneRuntime } from './procgen/ProcgenLaneRuntime.js';
 import { GameView } from '../game/GameView.js';
 import { GameTypes } from '../game/GameTypes.js';
@@ -67,6 +69,7 @@ const saveProcgenDistances = world => {
   try { window.localStorage?.setItem('procgen.laneDistances.v1', JSON.stringify(values)); } catch { /* Session values remain available. */ }
 };
 let procgenBootListeners = [];
+let procgenBarObserver = null;
 
 const runFocusBlurCleanup = (runtime) => {
   const cleanup = runtime?.focusBlurCleanup;
@@ -111,6 +114,7 @@ const addProcgenBootListener = (target, eventName, handler, options) => {
 };
 
 const disposeProcgenBootListeners = () => {
+  procgenBarObserver?.disconnect(); procgenBarObserver = null;
   while (procgenBootListeners.length) {
     const { target, eventName, handler, options } = procgenBootListeners.pop();
     target?.removeEventListener?.(eventName, handler, options);
@@ -126,10 +130,13 @@ const installProcgenBootListeners = () => {
       procgenUi = createProcgenUiController({ document, window, getRuntime: () => activeProcgenRuntime, restart: init,
         initial: { laneCount: params.get('lanes'), speed: params.get('speed'), pack: params.get('pack') } });
     }
+    const bar = document.getElementById('procgenTopbar');
+    if (bar && typeof window.ResizeObserver === 'function') { procgenBarObserver = new window.ResizeObserver(() => resizeCanvas()); procgenBarObserver.observe(bar); }
     init().catch(error => { const status = document.getElementById('procgenRunStatus'); if (status) status.textContent = `Could not start: ${error.message}`; });
   };
-  addProcgenBootListener(window, 'resize', resizeCanvas);
+  addProcgenBootListener(window, 'resize', () => resizeCanvas());
   addProcgenBootListener(window, 'beforeunload', disposeProcgenRuntime);
+  addProcgenBootListener(window, 'orientationchange', () => resizeCanvas());
 
   if (document.readyState === 'loading') {
     addProcgenBootListener(document, 'DOMContentLoaded', boot, { once: true });
@@ -306,7 +313,7 @@ const init = async () => {
   activeProcgenRuntime = runtime;
   try {
     const params = new URLSearchParams(window.location.search);
-    const procgenSeed = resolveProcgenSeed(params);
+    const procgenSeed = procgenUi?.settings.seed ?? resolveProcgenSeed(params);
     const styleRng = createSeededRandom(deriveSeed(procgenSeed, 'style'));
     const terrainRng = createSeededRandom(deriveSeed(procgenSeed, 'terrain'));
     window.procgenSeed = procgenSeed;
@@ -350,14 +357,16 @@ const init = async () => {
     if (procgenUi) {
       const assets = new ProcgenAssetManager({ styleName, config, fileProvider: view.gameFactory.fileProvider, random: terrainRng });
       await assets.load();
+      assets.decorationPack = getDecorationPack(procgenUi.settings.decoration);
       const book = await loadTerrainRecipeBook(view.gameFactory.fileProvider);
-      const recipe = selectThemeRecipe(book, { packPath: config.path, groundSet: assets.groundSet });
-      const terrain = new ProcgenRecipeTerrain({ recipe, terrainPieces: assets.terrainPieces });
-      const palette = assets.groundPieces[0]?.image?.palette;
-      const [sprites, masks] = await Promise.all([resources.getLemmingsSprite(palette), resources.getMasks()]);
+      const terrain = await loadProcgenPackTerrain({ styleNames: getCompatibleProcgenStyleNames(config), config, fileProvider: view.gameFactory.fileProvider, book, initialAssets: assets, random: terrainRng });
+      if (activeProcgenRuntime !== runtime) { view.dispose(); return; }
+      const palette = assets.assets?.gadgetImages?.find(image => image?.palette)?.palette || assets.groundPieces[0]?.image?.palette;
+      const [sprites, masks, hudSprites] = await Promise.all([resources.getLemmingsSprite(palette), resources.getMasks(), resources.getSkillPanelSprite(palette)]);
       if (activeProcgenRuntime !== runtime) { view.dispose(); return; }
       const lanes = createProcgenLaneRuntime({ canvas, resources, sprites, masks, assets, laneCount, seed: procgenSeed,
-        speed: view.gameSpeedFactor, terrain, previousDistances: readProcgenDistances(), onMetrics: state => procgenUi?.syncMetrics(state), windowRef: window });
+        speed: view.gameSpeedFactor, terrain, previousDistances: readProcgenDistances(), workerLimits: procgenUi?.settings.workerLimits, onMetrics: state => procgenUi?.syncMetrics(state), onActiveCount: count => procgenUi?.syncActiveCount(count), windowRef: window });
+      lanes.renderer.hud = new ProcgenBitmapHud({ canvas, sprites: hudSprites });
       view.dispose();
       runtime.lanes = lanes; runtime.world = lanes.world; runtime.view = lanes.view; runtime.game = lanes.game;
       runtime.stageAdapter = { updateStageSize: () => lanes.resize() };
@@ -470,7 +479,7 @@ const resizeCanvas = (runtime = activeProcgenRuntime) => {
   const canvas = document.getElementById('gameCanvas');
   if (!canvas) return;
   const dprValue = Number(window?.devicePixelRatio);
-  const dpr = Number.isFinite(dprValue) && dprValue > 0 ? dprValue : 1;
+  const dpr = Number.isFinite(dprValue) && dprValue > 0 ? Math.min(2, dprValue) : 1;
   const widthValue = Number(window?.innerWidth);
   const heightValue = Number(window?.innerHeight);
   const fallbackWidth = Number(canvas?.clientWidth);
@@ -478,11 +487,13 @@ const resizeCanvas = (runtime = activeProcgenRuntime) => {
   const width = Number.isFinite(widthValue) && widthValue > 0
     ? widthValue
     : (Number.isFinite(fallbackWidth) && fallbackWidth > 0 ? fallbackWidth : 1);
+  const barHeight = document.getElementById('procgenTopbar')?.getBoundingClientRect?.().height || 0;
   const height = Number.isFinite(heightValue) && heightValue > 0
-    ? heightValue
+    ? Math.max(1, heightValue - barHeight)
     : (Number.isFinite(fallbackHeight) && fallbackHeight > 0 ? fallbackHeight : 1);
   canvas.width = Math.floor(width * dpr);
   canvas.height = Math.floor(height * dpr);
+  document.body?.style?.setProperty?.('--procgen-bar-height', `${barHeight}px`);
   canvas.style.width = `${width}px`;
   canvas.style.height = `${height}px`;
   if (runtime?.stageAdapter?.updateStageSize) {

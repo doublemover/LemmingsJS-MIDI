@@ -17,7 +17,7 @@ const localConfig = (source) => {
 };
 
 const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({}), immutableConfig = false, onStateChange, audio = createBrowserNotePreview() } = {}) => {
-  let router = null;
+  let router = null, capture = null;
   let attachedView = null;
   let generation = 0;
   let configKey = null;
@@ -109,6 +109,7 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
       const source = getConfig();
       const config = localConfig(source);
       router = new MidiEventRouter(config);
+      router.setCapture(capture);
       router.setOutput(audio.output);
       router.setOutputs([audio.output]);
       configKey = JSON.stringify(config);
@@ -135,7 +136,8 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
     disposePromise = Promise.resolve(audio.dispose());
     return disposePromise;
   };
-  return { start, stop, panic: stop, dispose, syncConfig, getState, audio };
+  const setCapture = observer => { capture = observer; router?.setCapture(capture); audio.setCapture?.(capture); };
+  return { start, stop, panic: stop, dispose, syncConfig, getState, setCapture, audio };
 };
 
 export { createLocalGamePreview };

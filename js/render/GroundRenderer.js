@@ -7,7 +7,7 @@ function getPaletteLookup(palette) {
   let lookup = paletteLookupCache.get(palette);
   if (!lookup) {
     lookup = new Uint32Array(128);
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < 128; i++) {
       lookup[i] = palette.getColor(i);
     }
     paletteLookupCache.set(palette, lookup);

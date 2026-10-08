@@ -1,6 +1,10 @@
 import { expect } from 'chai';
 import { readFileSync } from 'node:fs';
 import { BrowserNotePreview, createBrowserNotePreview } from '../../js/app/midi-ui/browserNotePreview.js';
+import { applyGameEventMidiPreset } from '../../js/midi/project/GameEventMidiPresets.js';
+import { createMidiProject, projectToMidiConfig } from '../../js/midi/project/MidiProject.js';
+import { MidiEventRouter } from '../../js/midi/MidiEventRouter.js';
+import { SoundEffectIds } from '../../js/game/SoundEvents.js';
 import { MidiScheduler } from '../../js/midi/MidiScheduler.js';
 import { withFakeClockAndPerformance } from '../support/timers.js';
 
@@ -48,6 +52,7 @@ class FakeContext {
     this.oscillators = [];
     this.gains = [];
     this.panners = [];
+    this.limiters = [];
     this.listeners = new Set();
     this.resumeCalls = 0;
     this.closeCalls = 0;
@@ -57,6 +62,11 @@ class FakeContext {
     const node = new FakeNode();
     node.gain = new FakeParam();
     this.gains.push(node);
+    return node;
+  }
+  createWaveShaper() {
+    const node = new FakeNode();
+    this.limiters.push(node);
     return node;
   }
   createStereoPanner() {
@@ -93,6 +103,168 @@ const setup = (options = {}, context = new FakeContext()) => {
 };
 
 describe('BrowserNotePreview', function() {
+  it('emits every cell of a 14.4-second audition incrementally at its original timestamp', async () => {
+    await withFakeClockAndPerformance(async clock => {
+      const { preview, context } = setup({ nowMs: () => clock.now });
+      Object.defineProperty(context, 'currentTime', { get: () => 2 + clock.now / 1000 });
+      const notes = Array.from({ length: 16 }, (_, index) => ({ note: 48 + index, offsetMs: index * 960, durationMs: 120 }));
+      const calls = [], original = preview.output;
+      preview.output = { ...original, channels: Object.fromEntries(Object.entries(original.channels).map(([id, channel]) => [id, { ...channel,
+        sendNoteOn(note, options) { const accepted = channel.sendNoteOn(note, options); calls.push({ note, time: options.time, dispatch: clock.now, accepted }); return accepted; }
+      }])) };
+      expect(await preview.preview(notes)).to.equal(true); expect(calls).to.have.length(5); expect(preview.getState().pendingNotes).to.equal(11);
+      await clock.tickAsync(16000); expect(calls).to.have.length(16); expect(calls.every(call => call.accepted)).to.equal(true);
+      expect(calls.map(call => call.time)).to.deep.equal(notes.map(note => note.offsetMs));
+      expect(calls.at(-1).time).to.equal(14400); expect(calls.at(-1).dispatch).to.equal(10400);
+      context.oscillators.forEach((node, index) => expect(node.starts[0]).to.be.closeTo(2 + notes[index].offsetMs / 1000, 1e-9));
+      expect(preview.getState().pendingNotes).to.equal(0); await preview.dispose();
+    });
+  });
+  it('accepts a phrase whose only playable cell is beyond the current horizon and cancels it on Panic or replacement', async () => {
+    await withFakeClockAndPerformance(async clock => {
+      const { preview, context } = setup({ nowMs: () => clock.now });
+      expect(await preview.preview([{ note: 72, offsetMs: 14400 }])).to.equal(true); expect(context.oscillators).to.have.length(0);
+      preview.panic(); await clock.tickAsync(16000); expect(context.oscillators).to.have.length(0); expect(preview.getState().pendingNotes).to.equal(0);
+      await preview.preview([{ note: 72, offsetMs: 14400 }]); await preview.preview([60]); await clock.tickAsync(16000);
+      expect(context.oscillators).to.have.length(1); expect(preview.getState().pendingNotes).to.equal(0); await preview.dispose();
+    });
+  });
+  it('drops fully elapsed queued notes after a delayed timer instead of bursting them at resume', async () => {
+    await withFakeClockAndPerformance(async clock => {
+      const { preview, context } = setup({ nowMs: () => clock.now });
+      await preview.preview([{ note: 60, offsetMs: 6000, durationMs: 100 }]);
+      clock.setSystemTime(10000);
+      await clock.tickAsync(2001);
+      expect(context.oscillators).to.have.length(0);
+      expect(preview.getState().pendingNotes).to.equal(0);
+      await preview.dispose();
+    });
+  });
+  it('routes real ensemble game events into distinct local instruments and independent pan', async function() {
+    await withFakeClockAndPerformance(async clock => {
+      const { preview, context } = setup({ nowMs: () => clock.now });
+      await preview.enable();
+      const project = applyGameEventMidiPreset(createMidiProject(), 'game-iron-ensemble');
+      const router = new MidiEventRouter(projectToMidiConfig({ ...project, enabled: true }));
+      router.setOutput(preview.output);
+      for (let lemmingId = 0; lemmingId < 4; lemmingId += 1) router._onEvent({
+        type: 'builder-step', sfxId: SoundEffectIds.BUILDER_STEP, tick: 0, lemmingId, laneIndex: 0, laneCount: 1
+      });
+      expect(context.oscillators.slice(0, 3).map(oscillator => oscillator.type)).to.deep.equal(['sine', 'square', 'sawtooth']);
+      expect([...preview._voices].map(voice => voice.instrument.role)).to.deep.equal(['bass', 'rhythm', 'melody', 'percussion']);
+      expect([...preview._voices].every(voice => !!voice.pan)).to.equal(true);
+      clock.tick(400);
+      router.dispose();
+      expect(preview._voices.size).to.equal(0);
+      await preview.dispose();
+    });
+  });
+
+  it('preserves triangle preview for older palettes with saved program and channel edits', async function() {
+    await withFakeClockAndPerformance(async clock => {
+      const { preview, context } = setup({ nowMs: () => clock.now });
+      await preview.enable();
+      const router = new MidiEventRouter({ enabled: true, defaultChannel: 10, mpe: { enabled: false },
+        sfx: { [SoundEffectIds.BUILDER_STEP]: { enabled: true, note: 69, channel: 10, program: 81 } } });
+      router.setOutput(preview.output);
+      router._onEvent({ type: 'builder-step', sfxId: SoundEffectIds.BUILDER_STEP, tick: 0, lemmingId: 0 });
+      expect(context.oscillators).to.have.length(1);
+      expect(context.oscillators[0].type).to.equal('triangle');
+      router.dispose();
+      await preview.dispose();
+    });
+  });
+
+  it('plays distinct bounded ensemble timbres and keeps existing voice programs independent', async function() {
+    const { preview, context } = setup();
+    await preview.enable();
+    preview.output.channels[2].sendProgramChange(38);
+    preview.output.channels[2].sendNoteOn(45, { rawAttack: 100, instrument: { program: 38 } });
+    preview.output.channels[3].sendNoteOn(57, { rawAttack: 100, instrument: { program: 29 } });
+    preview.output.channels[4].sendNoteOn(69, { rawAttack: 100, instrument: { program: 81 } });
+    preview.output.channels[10].sendNoteOn(36, { rawAttack: 100, instrument: { percussion: true } });
+    expect(context.oscillators.map(oscillator => oscillator.type)).to.deep.equal(['sine', 'square', 'sawtooth', 'sine']);
+    expect(context.oscillators[3].frequency.events).to.deep.include({ type: 'ramp', value: 45, time: 2.16 });
+    preview.output.channels[2].sendProgramChange(29);
+    expect(context.oscillators[0].type).to.equal('sine');
+    expect(preview.getState().masterVolume).to.equal(0.7);
+    expect(preview._voices.size).to.equal(4);
+    expect([...preview._voices].every(voice => voice.peak <= 1 && voice.end <= voice.start + 8)).to.equal(true);
+    preview.stop();
+    expect(preview._voices.size).to.equal(0);
+    await preview.dispose();
+  });
+
+  it('uses one cached bounded deterministic noise buffer for local percussion', async function() {
+    const context = new FakeContext();
+    context.sampleRate = 48000;
+    const buffers = [], sources = [];
+    context.createBuffer = (channels, length, sampleRate) => {
+      const data = new Float32Array(length), buffer = { channels, length, sampleRate, getChannelData: () => data };
+      buffers.push(buffer); return buffer;
+    };
+    context.createBufferSource = () => { const source = new FakeOscillator(); sources.push(source); return source; };
+    const { preview } = setup({}, context);
+    await preview.enable();
+    for (let index = 0; index < 4; index += 1) preview.output.channels[10].sendNoteOn(42, { instrument: { percussion: true } });
+    expect(buffers).to.have.length(1);
+    expect(buffers[0].length).to.equal(9600);
+    expect(sources).to.have.length(4);
+    expect(sources.every(source => source.buffer === buffers[0] && source.loop)).to.equal(true);
+    expect([...preview._voices].every(voice => voice.end - voice.start < 0.1)).to.equal(true);
+    preview.stop();
+    expect(sources.every(source => source.disconnected)).to.equal(true);
+    await preview.dispose();
+    expect(preview._noiseBuffer).to.equal(null);
+  });
+
+  it('reports successful local onset, scheduled release and panic, while rejecting invalid notes quietly', async function() {
+    const events = [];
+    const { preview, context } = setup({ onPlayback: event => events.push(event) });
+    const metadata = { sfxId: 20, durationMs: 120 };
+    expect(preview.output.channels[1].sendNoteOn(60, { playback: metadata })).to.equal(false);
+    await preview.enable();
+    expect(preview.output.channels[1].sendNoteOn(128, { playback: metadata })).to.equal(false);
+    expect(events).to.have.length(0);
+    preview.output.channels[1].sendNoteOn(60, { rawAttack: 127, time: 1100, playback: metadata });
+    expect(events[0]).to.include({ phase: 'start', note: 60, sfxId: 20, startMs: 1100, attackMs: 8, decayMs: 0, sustain: 1 });
+    preview.output.channels[1].sendNoteOff(60, { time: 1220 });
+    expect(events[1].releaseMs).to.be.closeTo(1220, 0.0001);
+    expect(events[1].endMs).to.be.closeTo(1260, 0.0001);
+    expect(context.oscillators[0].stops.at(-1)).to.be.closeTo(2.26, 0.0001);
+    preview.stop(); expect(events.at(-1).phase).to.equal('end');
+    await preview.dispose();
+  });
+
+  it('emits playback only at scheduler dispatch and cancels a future note before it sounds', async function() {
+    await withFakeClockAndPerformance(async clock => {
+      const events = []; const { preview } = setup({ nowMs: () => clock.now, onPlayback: event => events.push(event) });
+      await preview.enable();
+      const scheduler = new MidiScheduler({ enabled: true, mpe: { enabled: false } });
+      scheduler.setOutput(preview.output); scheduler.setTickMs(60);
+      scheduler.sendNote({ note: 60, durationTicks: 4, timeMs: 100 }, { sfxId: 20 });
+      expect(events).to.have.length(0); clock.tick(100);
+      expect(events[0]).to.include({ phase: 'start', sfxId: 20, durationMs: 240 });
+      scheduler.sendNote({ note: 72, durationTicks: 4, timeMs: 200 }, { sfxId: 24 });
+      scheduler.allNotesOff(); clock.tick(500);
+      expect(events.filter(event => event.phase === 'start')).to.have.length(1);
+      scheduler.dispose(); await preview.dispose();
+    });
+  });
+  it('offers an explicit 12 dB local boost through a bounded output ceiling without changing MIDI attack', async function() {
+    const { preview, context } = setup({ masterVolume: 4 });
+    await preview.enable();
+    expect(context.gains[0].gain.value).to.equal(0.15);
+    const limiter = context.limiters[0];
+    expect(context.gains[0].connections).to.deep.equal([limiter]);
+    expect(limiter.connections).to.deep.equal([context.destination]);
+    expect(Math.max(...limiter.curve.map(Math.abs))).to.be.lessThan(0.9);
+    expect(limiter.curve[2048 + 512]).to.equal(0.25);
+    preview.output.channels[1].sendNoteOn(60, { rawAttack: 127 });
+    expect([...preview._voices][0].peak).to.equal(1);
+    await preview.dispose();
+    expect(limiter.disconnected).to.equal(true);
+  });
   it('keeps master volume changes inert until enabled and applies the 70% default below the safe gain cap', async function() {
     const { preview, context, creations } = setup();
     expect(preview.getState().masterVolume).to.equal(0.7);
@@ -163,13 +335,13 @@ describe('BrowserNotePreview', function() {
     const { preview, context, creations } = setup({ masterVolume: Infinity });
     expect(preview.getState().masterVolume).to.equal(0.7);
     expect(preview.setMasterVolume(-1)).to.equal(0);
-    expect(preview.setMasterVolume(2)).to.equal(1);
-    expect(preview.setMasterVolume(NaN)).to.equal(1);
-    expect(preview.setMasterVolume('0.5')).to.equal(1);
+    expect(preview.setMasterVolume(5)).to.equal(4);
+    expect(preview.setMasterVolume(NaN)).to.equal(4);
+    expect(preview.setMasterVolume('0.5')).to.equal(4);
     expect(creations()).to.equal(0);
     await preview.enable();
     await preview.dispose();
-    expect(preview.setMasterVolume(0)).to.equal(1);
+    expect(preview.setMasterVolume(0)).to.equal(4);
     expect(context.gains[0].gain.events).to.deep.equal([]);
   });
 

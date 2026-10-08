@@ -2,6 +2,16 @@
 
 Verified master: `7366e5f97bb20df73ff0c575768d1c5f8d46def0`. Inventoried all **159** remote heads and **891** owner-authored PRs plus the open Dependabot PR #959. Historical patch equivalence is checked independently of commit IDs; several old remote heads have rewritten ancestry but identical trees to merged PR heads.
 
+## October 8 MIDI integration
+
+The owner approved reconciliation and a normal push to [draft PR #964](https://github.com/doublemover/LemmingsJS-MIDI/pull/964)'s source branch, `optimize/procgen-runtime-20261007`. The fetched target was `c8e4f375b4242554cdbc5a7a9e786d9ef48a35f6`; the MIDI tip was `7d9aef99f2791fb1025aa589b8d18774ed2a1e63`. Their shared base is `d163d2a2862bd51e6592794e7d2bcea09c41e756`, with 31 target-only and eight MIDI-only commits. Integration uses an isolated worktree and a two-parent merge, retaining both histories. The PR base remains master; no main merge or retarget is authorized.
+
+Five textual conflicts were resolved deliberately: markup, character/MIDI styles, the MIDI workbench and changelog. The result keeps the incoming compact titlebar, one direct Panic, three file-menu operations, composite color drawers and runtime clock/rate work, together with the MIDI loudness, clips, conditions/layers, gap recording, skill footer and compositor note/layout display. Game range, keyboard and HUD controls share one speed-detent owner; the older UI module remains a compatible re-export. Native range navigation and text editing stay local while game shortcuts still route. Existing casino/art content was not changed by the integration.
+
+Local validation covers the actual overlapping surfaces: 292 focused regression tests, 45 scheduler/rate tests, four wall-clock MIDI continuity tests and 46 HUD/minimap/palette regressions; formatting, lint, critical types and undefined-call checks passed. Native Edge desktop/mobile fixture interaction checks cover clip dragging/Undo, layered actual WebAudio dispatch, gap recording/Undo, persistent layouts, skill cards, titlebar/menu and horizontal overflow. A real classic level also boots with no page errors, Help/speed work from a focused range, canvas clicks release range focus and Panic works. This is not physical-device, listening or final owner visual acceptance. The repository serves browser modules directly and has no separate application build command.
+
+The owner's historical stash remains `8083a3027fee27fb7a1cbac778e254626feafdfd`, and the original MIDI worktree remains intact. The older branch/PR inventory below is historical evidence, not the destination for this integration.
+
 ## Current publication
 
 - [#960](https://github.com/doublemover/LemmingsJS-MIDI/pull/960): consolidated workbench, editor fixes, recovered character art and dependency refresh; draft. Head `97128aff` passed existing Node CI, coverage and dependency review. Its registry audit found **0 vulnerabilities**. Newer art/terrain source changes still need their final consolidated pass.

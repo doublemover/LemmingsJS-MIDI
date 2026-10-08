@@ -2,6 +2,8 @@ import { PixelSpriteSkin, validateSkin } from './PixelSpriteSkin.js';
 import { Frame } from '../render/Frame.js';
 import { refineCharacterPresentation } from './CharacterPresentation.js';
 import { CHARACTER_COLORS } from './characterColors.js';
+import { CharacterHazardPresentation } from './CharacterHazardPresentation.js';
+import { SpriteTypes } from './SpriteTypes.js';
 import { normalizeCharacterAccessories, characterAppearanceKey, hasCharacterAccessories, hasCustomHeadwear, validateAccessoryLayers, composeCharacterAccessories } from './CharacterAccessories.js';
 
 const CHARACTER_STORAGE_KEY = 'lemmings.character.appearance.v1';
@@ -94,8 +96,15 @@ class CharacterSpriteSet {
     this.skins = new Map();
     this.pending = new Map();
     this.paletteSkins = new Map();
+    this.skinIdentities = new Map();
+    this.paletteIdentities = new WeakMap();
+    this.identityCleanup = new FinalizationRegistry(({ cache, key, reference }) => {
+      if (cache.get(key) === reference) cache.delete(key);
+    });
     this.actorSkins = new WeakMap();
     this.skinManifests = new WeakMap();
+    this.skinTemplates = new WeakMap();
+    this.hazards = new CharacterHazardPresentation();
     this.generation = 0;
     this.error = null;
     this.activePreference = null;
@@ -153,7 +162,7 @@ class CharacterSpriteSet {
         const refined = refineCharacterPresentation(manifest, manifest, shape.id);
         const skin = new PixelSpriteSkin(refined);
         this.manifests.set(shape.id, manifest);
-        this.skins.set(characterAppearanceKey({ shape: shape.id }), skin);
+        this.cacheTemplate(characterAppearanceKey({ shape: shape.id }), skin);
         this.skinManifests.set(skin, refined);
         return manifest;
       }).finally(() => this.pending.delete(shape.id));
@@ -186,10 +195,25 @@ class CharacterSpriteSet {
     return this.pending.get(key);
   }
 
+  cacheIdentity(cache, key, value) {
+    const reference = new WeakRef(value);
+    cache.set(key, reference);
+    this.identityCleanup.register(value, { cache, key, reference });
+  }
+
+  cacheTemplate(key, skin) {
+    this.skins.delete(key);
+    while (this.skins.size >= Math.max(32, this.shapes.length * 2)) this.skins.delete(this.skins.keys().next().value);
+    this.skins.set(key, skin);
+    if (this.skinIdentities.get(key)?.deref() !== skin) this.cacheIdentity(this.skinIdentities, key, skin);
+    return skin;
+  }
+
   templateForAppearance(appearance) {
     const plain = { shape: appearance.shape, accessory: appearance.accessory, eyewear: appearance.eyewear };
     const key = characterAppearanceKey(plain);
-    if (this.skins.has(key)) return this.skins.get(key);
+    const cached = this.skins.get(key) || this.skinIdentities.get(key)?.deref();
+    if (cached) return this.cacheTemplate(key, cached);
     const manifest = this.manifests.get(appearance.shape);
     if (!manifest) throw new Error(`Character art unavailable for ${appearance.shape}`);
     const headwear = hasCustomHeadwear(plain);
@@ -198,10 +222,8 @@ class CharacterSpriteSet {
     const composed = composeCharacterAccessories(headwear ? pack.bare : manifest, pack, plain);
     const refined = refineCharacterPresentation(composed, manifest, appearance.shape, pack, plain);
     const skin = new PixelSpriteSkin(refined);
-    while (this.skins.size >= Math.max(32, this.shapes.length * 2)) this.skins.delete(this.skins.keys().next().value);
-    this.skins.set(key, skin);
     this.skinManifests.set(skin, refined);
-    return skin;
+    return this.cacheTemplate(key, skin);
   }
 
   colorSkin(template, appearance) {
@@ -210,8 +232,19 @@ class CharacterSpriteSet {
     const manifest = this.skinManifests.get(template);
     const key = characterAppearanceKey({ ...appearance, shape: manifest.shapeId });
     const cached = this.paletteSkins.get(key);
-    if (cached?.template === template) return cached.skin;
-    const skin = template.withPalette(paletteForAppearance(manifest, appearance));
+    let identities = this.paletteIdentities.get(template);
+    if (!identities) {
+      identities = new Map();
+      this.paletteIdentities.set(template, identities);
+    }
+    let skin = cached?.template === template ? cached.skin : identities.get(key)?.deref();
+    if (!skin) {
+      skin = template.withPalette(paletteForAppearance(manifest, appearance));
+      this.skinTemplates.set(skin, template);
+      this.cacheIdentity(identities, key, skin);
+    }
+    // Eviction releases idle ownership, never the identity of a still-live appearance.
+    this.paletteSkins.delete(key);
     while (this.paletteSkins.size >= 256) this.paletteSkins.delete(this.paletteSkins.keys().next().value);
     this.paletteSkins.set(key, { template, skin });
     return skin;
@@ -236,12 +269,34 @@ class CharacterSpriteSet {
     }
     // A pooled actor or an atomic appearance commit relinquishes its old cosmetic state.
     cached?.skin.resetActor?.(lem);
+    this.hazards.reset(lem, true);
     if (lem && typeof lem === 'object') this.actorSkins.set(lem, {
       id: lem.id, index: lem.appearanceIndex, preference: selection, skin
     });
     return skin;
   }
-  getActorAnimation(state, right, lem) { return this.skinForActor(lem).getAnimation(state, right); }
+  getActorAnimation(state, right, lem) {
+    const skin = this.skinForActor(lem);
+    const kind = this.hazards.kind(lem) || (state === SpriteTypes.FRYING ? 'fire' : null);
+    if (skin === this.base || !kind) return skin.getAnimation(state, right);
+    const template = this.skinTemplates.get(skin) || skin, manifest = this.skinManifests.get(template);
+    return this.hazards.animation(skin, template, this.manifests.get(manifest?.shapeId), manifest, state, right, kind);
+  }
+  hasCustomCharacters() { return (this.activePreference || this.getPreference())?.shape !== 'classic'; }
+  recordHazardContact(lem, kind, contact = null) {
+    if (this.skinForActor(lem) === this.base) return false;
+    this.hazards.record(lem, kind, contact);
+    return true;
+  }
+  getActorHazardKind(lem) { return this.hazards.kind(lem); }
+  getActorDrawPosition(lem) { return this.hazards.origin(lem); }
+  getActorDrawBounds(lem) {
+    if (!this.hazards.origin(lem)) return null;
+    const frame = this.getActorAnimation(lem.action.spriteType, lem.lookRight, lem).getFrame(lem.frameIndex);
+    const origin = this.hazards.origin(lem);
+    // An atomic appearance commit may have cleared the prior contact above.
+    return origin ? { x: origin.x + frame.offsetX, y: origin.y + frame.offsetY, width: frame.width, height: frame.height } : null;
+  }
   getActorParticleParts(lem) {
     const skin = this.skinForActor(lem);
     return skin === this.base ? null : skin.getParticleParts?.(lem.lookRight) || null;
@@ -249,9 +304,11 @@ class CharacterSpriteSet {
   resetActor(lem) {
     // Action changes clear only the actor's owned transition, retaining its stable palette.
     this.actorSkins.get(lem)?.skin.resetActor?.(lem);
+    this.hazards.reset(lem);
   }
   onActionChange(lem, previousAction, previousFrameIndex) {
     const skin = this.skinForActor(lem);
+    this.hazards.change(lem, previousAction);
     if (skin === this.base) { skin.onActionChange?.(lem, previousAction, previousFrameIndex); return; }
     const previous = previousAction && { spriteProvider: previousAction.spriteProvider === this ? skin : previousAction.spriteProvider,
       getActionName: () => previousAction.getActionName?.() };

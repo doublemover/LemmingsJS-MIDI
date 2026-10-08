@@ -47,8 +47,9 @@ Opening a custom chord, scale-degree or clip mapping never rewrites it. Its
 unsupported simple fields are disabled with an explicit Custom label; use
 **Edit detailed wiring** to retain and edit the full mapping.
 
-**Project** contains the active key/scale, candidate starting palettes, and
-save/import/export tools. Choosing a candidate is not applying it. **Devices**
+The **Palette** drawer beside **Listen to game** and local master volume contains
+candidate starting palettes and the explicit Apply action. Choosing a candidate
+is not applying it. **Project** retains save/import/export and template tools. **Devices**
 contains optional hardware connection and routing; **Expert** retains detailed
 source/track/clip/modulation editing. Stored BPM, meter, quantize and swing are
 expert metadata and do not shift gameplay event onsets.
@@ -77,24 +78,71 @@ level changes and disposal are handled without leaving sounding notes behind.
 Stop listening cancels both live and one-shot local audio. Closing the editor
 keeps live listening running; reopen it to stop.
 
-The local instrument is a quiet triangle-tone preview with pitch, note length,
+The local instrument is a triangle-tone preview with pitch, note length,
 velocity, pan and pitch bend. It is not a recreation of an external synthesizer's
 programs or timbre. Voices and queued notes are bounded, with a maximum note
 lifetime as a safety cutoff. Existing game-clock phrase replacement, pause,
 rewind and panic contracts remain in effect for live listening.
 
+Local cell auditions retain their original spacing beyond the audio scheduling horizon. A bounded queue schedules the next notes incrementally; Stop, Panic, replacement and disposal cancel the remaining tail. Fully elapsed notes after a delayed timer are discarded instead of sounding together on resume.
+
+The existing local master control ranges from mute to 400%. Values through 100%
+retain their previous gain, including the 70% default and saved preferences.
+Choosing 400% adds up to 12 dB relative to 100%; a local output ceiling controls
+dense polyphony. This boost never changes external MIDI velocities or CC values.
+Legacy saved levels retain their previous effective gain.
+
+Expert **Output capture** records an existing output session for at most two minutes
+and retains the latest 4,096 records. It does not enable listening or request a
+MIDI device. Stop capture leaves playback running. Inspect builds a piano roll
+and objective summary on demand; JSONL, CSV and the standalone HTML report can
+be saved locally. The observer is detached while capture is off.
+
+Evidence separates event requests, accepted API calls, intended/scheduled host
+times, local synth scheduling and actual end callbacks. Beat positions use level
+simulation ticks and stored base BPM, independently of wall-clock speed. Each
+note retains its actual origin, route, pitch, velocity, selected scale and owned
+lifecycle where available. Bounded settings references and changed-context
+markers identify seed, generation, backend, tempo, local master gain and routing context. Ring
+truncation and incomplete lifecycles are explicit.
+
+Inspect can sample the existing local output waveform on demand; RMS and peak
+are rendered signal measurements. They do not verify speakers, external MIDI
+receipt or acoustic playback. The summary reports density, scheduled polyphony,
+register, scale membership, intervals, repetition, API dispatch timing, lane
+admission, controller coalescing and open gates; it does not score musical quality
+or change notes. A deterministic fake-output fixture is available with
+`node scripts/midi-capture-fixture.js`; `--input=PATH` inspects a saved JSONL file.
+See [the capture specification](midi-output-capture.md) for the record schema and bounds.
+The bounded muted native check in `scripts/midi-capture-native.js` uses an existing
+local server and installed Edge, with a 16-cell audition and cancellation check.
+
 Expert **Send MIDI test** controls are explicitly hardware tests, distinct from
 local **Listen here**. MIDI device selectors show a disabled connection prompt
 until access is available instead of rendering empty dropdowns.
 
+The game speed slider and +/- shortcuts use tenths below 1x, integers from 1x
+through 10x, and tens above 10x through 120x. The slider follows the effective
+game timer speed, including benchmark slowdown. Its arrows remain range controls;
+Help and game shortcuts continue working while it is focused. The adjacent number
+field retains ordinary text editing and permits an exact multiplier. Clicking the
+canvas releases focused range controls.
+
 ## Event palettes
 
-Major, minor and chromatic palettes support quiet five-note spawn descents and
+Major, minor and chromatic palettes support five-note spawn descents and
 exit ascents, or one arpeggio note per event. Land is a separate plain note.
 Rapid events replace only the matching voice's unsounded tail; sounding notes
 retain their note-offs. Pending phrases are bounded to 16 voices with at most
-8 notes each. The simulation remains the timing authority. Explicit saved
-velocity limits can make a quiet palette louder and are preserved.
+8 notes each. The simulation remains the timing authority. Applying a starting palette uses stronger note and phrase velocities, while
+saved project velocity limits and track scales remain unchanged. Opening an
+existing project does not reapply a palette or change its notes or levels.
+
+Event cards show stored direct pitches and hide only skill events known to be
+impossible from the level inventory. Consuming the last skill does not remove
+rows for actions already underway. Cheats restore these rows immediately, and
+hiding a card never changes its saved mapping. Nuke warning/explosion and unrelated
+events remain visible. Unknown inventory leaves skill rows available.
 
 ## Setup
 
@@ -228,3 +276,36 @@ factory projects.
   learn capture, short recording, modulation controls, track and clip removal,
   clip duplication, audition, persistence, filters, conflict warnings, E2E
   helper metrics, and responsive overflow checks.
+
+Audible row notes follow successfully dispatched local triangle voices, showing actual pitches moving left to right through their attack, held level and release fade. Cancelled future notes create no marker; Panic removes active markers. The local triangle has an 8 ms attack, no separate decay and a 40 ms release. Project envelope controls still scale MIDI velocity/duration; they do not imply synth ADSR timing. Focus/Split/Overlay move the same editor with compositor transforms, retaining focus and playback without resizing the canvas every animation frame.
+
+Event note cells extend reusable clips. Create a clip explicitly from an event, then enter C4/F#4, MIDI numbers or rest, or paint and drag the 8/16-cell grid. One drag is one Undo. Per-cell velocity/duration are parameter locks; chance is deterministic for the same event/pass order. Event advance consumes one cell on each trigger, including rests, and loops after the last cell. A pass is a complete traversal. Game-tick phrase advance starts the cells on each trigger and retains silent-cell spacing. Saved clips default to started-phrase passes. New event clips use completed-phrase passes; the selector makes this explicit. Completion means the final cell was consumed, including silent cells, while sounding notes may still release. Retriggering an unfinished phrase discards its tail without completing a pass. Pause freezes unsounded cells; speed changes affect subsequent spacing. Retriggers replace the unsounded tail and Panic/rewind clear it. Overlapping pitches use the scheduler's existing owned-gate rules.
+
+Existing clips retain their saved chord/event-arp behavior until a temporal mode is explicitly selected. Event mode leaves Hold stored and treats Tie as a rest; phrase mode holds until the next played cell or the bounded phrase end, and ties extend the preceding note. New temporal playback is bounded to 16 cells; longer legacy clips remain stored and editable in detailed wiring. Reduce the length explicitly before selecting temporal playback. Events, pattern passes and trigger bars are distinct. Bar position is one-based level simulation time at the project BPM/time signature (60 ms per base game tick), sampled once when an event advances a cell or starts a phrase. Pause freezes it; speed/benchmark slowdown changes its wall-time rate. Editing BPM/signature recomputes position, and level rewind/restart resets clip counters. Conditions select counter modulo N = phase; phase 0 means N, 2N, and phase 1 means 1, N+1. Chance and conditions also gate Tie extensions. A pitch layer adds transpose, octave and a cyclic interval ramp selected by event/pass/trigger-bar counter before the existing project scale/range mapping. Entered grid notes stay editable; moving playback notes show the dispatched result. Local tests have independent event/pass counters and sample the same level bar; an interrupted local test does not complete a pass. No independent transport or MIDI 2.0 implementation was introduced.
+
+Skill-specific Blocker/Builder/Basher/Miner/Digger cards use the same event buttons in a footer beneath their real canvas selector slots. Stage scale and GUI offsets determine placement; narrow canvases use five readable groups. The game still owns selection/assignment inside the original 800×480 canvas. Canvas fitting reserves the footer and shares the HUD's bottom margin on resize, without per-frame layout changes. Unavailable rows remain mapped, and cheats restore them synchronously. Shared nuke/explosion, generic assignment/selection and non-skill events remain in the event browser, also reachable on narrow layouts. Arrow navigation starts from the focused card and crosses both regions.
+
+The game HUD reserves one glyph before OUT and keeps Increase/Decrease labels complete at long tick counts. Minimap hover uses the existing click/drag destination calculation, draws a lighter marching-ants outline without moving the camera, reuses unchanged frames, and clears on leaving the GUI/canvas. Hover changes request the existing GUI redraw so preview cleanup also works while paused.
+
+Record placement is explicit. Compact notes preserves legacy note-off ordering and approximate 120 ms duration conversion. Keep gaps supports the bounded 8/16-cell grid, snapshots the effective game tick duration and clip spacing at Record, and rounds note-on offsets from the first onset to the nearest cell. It replaces the entire grid with notes/rests and clears prior cell modifiers; no leading silence is stored. The latest onset wins each monophonic cell (last received note-on breaks simultaneous ties), even when note-offs arrive in a different order. Duration uses the snapshot, so overlapping lengths remain; held notes close on Commit in the same timestamp domain. Playback uses game-tick phrase mode at the current game speed. Commit reports replaced same-cell notes and omitted notes beyond the clip. Cancel leaves the project unchanged. Full polyphonic/chord capture and overdubbing remain future work.
+
+The existing scheduler owns one shared physical output budget. Lane reservations include expanded notes and controller/off-message cost, so simulation speed does not create a fresh allowance. Busy lanes receive fair shares; idle shares can be borrowed, and oversized atomic phrases rotate through the least-served lanes. Late note starts are discarded rather than forming a delayed burst. Note-off, sustain release and Panic retain their safety paths. A compact Thinned indicator appears while the budget is dropping sound output; simulation and visual events continue.
+
+Fresh main-game projects and new procgen sessions offer Iron ensemble in D dorian: stable bass, rhythm, melody and percussion roles use ordinary channels 2/3/4/10. Existing stored projects are retained, and switching MIDI on never reapplies a palette. Palette explicitly applies or resets the ensemble. The existing track inspector edits program, channel and voice budget plus role register, pan and duration, with optional per-lemming/lane assignments. Explicit event-track choices override automatic roles. The local preview uses bounded bass/guitar/lead/drum profiles under the existing master ceiling; earlier unspecified previews retain triangle timbre. External MIDI uses the selected device's ordinary programs and channels.
+
+## Musical tension
+
+Iron ensemble offers a saved Musical tension policy in the existing track inspector; procgen Details edits the same policy and displays the selected lane's observed state. New Iron palettes enable it, while older saved ensembles without a policy retain bypass. Thinning amount, healthy crew, fade, establishment, collapse/recovery thresholds and breakthrough distance/hold are editable. Times use base game seconds (60 ms per tick), so pause freezes them and effective game speed changes their wall-time rate.
+
+Only procgen currently supplies completed-tick population and frontier observations. Authored main levels remain unfiltered; the main inspector saves the reusable policy. A crew must first establish a healthy baseline. Sustained decline then smoothly thins supporting notes and lowers their velocities toward the lowest surviving actor's existing voice. Real recovery or a new frontier/personal-best breakthrough restores the layers. The policy adds no notes, instruments or independent transport. Existing scale/range mapping, explicit assignments, owned gates, MPE/channel safeguards and shared output budgeting remain in force. Fully thinned held layers are cleaned once at the transition; pause, rewind, empty lanes and reset clear stale observations.
+
+
+## Musical automation spans
+
+Conditions / modulation can turn an existing automation entry into a musical span. The same editor appears in procgen Details, where Add span or Draw on lanes creates an interval for one lane, a lane group or all lanes. Start, length, repeat, constant/ramp shape, track, priority and optional SFX/trigger filters are explicit. Start value and End value use the existing velocity, pitch-offset, pan, duration and timbre targets. The interval strip supports move/resize/draw with one project change on pointer release; canceled drags leave the saved project intact. Procgen span edits persist through regeneration and reload without enabling listening.
+
+Beat spans use generation-relative base game ticks and the project BPM, with a 16-beat screen timeline in procgen. Distance spans use event world X; queued phrase cells use the actor's latest completed-tick position when available, otherwise the status labels the event-origin fallback. These domains remain distinct. Pause freezes their simulation position. Matching events, one-based project bars and repeated span passes are separate condition counters. Phase 0 means every Nth count. Phrase tails retain their origin event count, while each dispatched cell samples the current beat/distance. Editing values, intervals or cadence keeps matching-event history; changing the matched source resets that span's history. Restart/rewind clears it.
+
+At each actual note dispatch, the highest-priority active span wins per target; later entries win equal priorities. Outside the interval or on bypass, normal mapping resumes. Scale/register clamps, owned notes, channel safeguards and the existing shared output budget still apply. Pan/timbre changes use the existing coalesced controller path on actual notes. No timer, independent transport, autonomous controller stream or MIDI 2.0 implementation is added. Panic cancels pending phrase cells and span-owned voices without advancing counters.
+
+The editor status observes the last evaluated event/cell and never advances playback when polled. Procgen beat rectangles show the shared musical cursor; this cursor alone is not evidence of a dispatched note. Distance playheads reflect evaluated actor/event positions. Up to 64 active spans and 2,048 inspection states are retained; drawing uses bounded rectangles in the existing renderer. Dense loops show one dashed repeated area labeled with the interval length; the editor strip retains exact interval sizing. Draw on lanes explicitly claims the main scene's pointer input, leaving CCTV controls available. Turning it off, hiding rectangles or pressing Escape restores camera input.

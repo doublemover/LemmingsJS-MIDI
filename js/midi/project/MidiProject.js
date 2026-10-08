@@ -1,3 +1,5 @@
+import { sanitizeMidiAutomationSpan, clampMidiAutomationSpanValue, MAX_MIDI_AUTOMATION_SPANS } from './MidiAutomationSpan.js';
+import { sanitizeMidiEnsemble, buildMidiEnsembleConfig } from './MidiEnsemble.js';
 import { DEFAULT_CONFIG, mergeConfig } from '../midi-mapping/MidiMappingDomain.js';
 import { getPlayableMidiClipSteps as activeClipSteps } from './MidiClipPlayback.js';
 import { cloneSafeObject, isPlainObject, safeObjectEntries } from '../../util/safeObject.js';
@@ -175,6 +177,12 @@ const sanitizeArpPayload = (arp) => {
   };
 };
 
+const sanitizeClipPlayback = playback => ['event', 'game-tick'].includes(playback?.advance) ? {
+  advance: playback.advance,
+  spacingTicks: clamp(toInteger(playback.spacingTicks, 2), 1, 8),
+  ...(['started', 'completed'].includes(playback.passCounter) ? { passCounter: playback.passCounter } : {})
+} : null;
+
 const createDefaultMidiClip = (overrides = {}) => {
   const lengthSteps = clamp(toInteger(overrides.lengthSteps, 16), 1, 256);
   const steps = Array.isArray(overrides.steps) && overrides.steps.length
@@ -186,7 +194,8 @@ const createDefaultMidiClip = (overrides = {}) => {
     type: CLIP_TYPES.includes(overrides.type) ? overrides.type : 'stepPattern',
     lengthSteps,
     steps,
-    arp: sanitizeArpPayload(overrides.arp)
+    arp: sanitizeArpPayload(overrides.arp),
+    ...(sanitizeClipPlayback(overrides.playback) ? { playback: sanitizeClipPlayback(overrides.playback) } : {})
   };
 };
 
@@ -207,7 +216,8 @@ const createDefaultMidiAutomation = (overrides = {}) => {
     axisOp: AUTOMATION_AXIS_OPS.includes(overrides.axisOp) ? overrides.axisOp : 'add',
     min: overrides.min ?? defaults.min,
     max: overrides.max ?? defaults.max,
-    points: Array.isArray(overrides.points) ? overrides.points : []
+    points: Array.isArray(overrides.points) ? overrides.points : [],
+    ...(sanitizeMidiAutomationSpan(overrides.span) ? { span: sanitizeMidiAutomationSpan(overrides.span) } : {})
   };
 };
 
@@ -455,7 +465,13 @@ const sanitizeStep = (step, fallbackIndex) => {
     durationTicks: step.durationTicks == null ? null : sanitizeDurationTicks(step.durationTicks),
     tie: sanitizeBoolean(step.tie, false),
     hold: sanitizeBoolean(step.hold, false),
-    probability: clamp(toFiniteNumber(step.probability, 1), 0, 1)
+    probability: clamp(toFiniteNumber(step.probability, 1), 0, 1),
+    ...(step.condition ? { condition: { unit: ['event', 'pass', 'bar'].includes(step.condition.unit) ? step.condition.unit : 'event', every: clamp(toInteger(step.condition.every, 1), 1, 64), phase: clamp(toInteger(step.condition.phase, 0), 0, clamp(toInteger(step.condition.every, 1), 1, 64) - 1) } } : {}),
+    ...(isPlainObject(step.transforms) ? { transforms: {
+      transpose: clamp(toInteger(step.transforms.transpose, 0), -48, 48), octave: clamp(toInteger(step.transforms.octave, 0), -4, 4),
+      interval: clamp(toInteger(step.transforms.interval, 0), -12, 12), span: clamp(toInteger(step.transforms.span, 1), 1, 16),
+      unit: ['event', 'pass', 'bar'].includes(step.transforms.unit) ? step.transforms.unit : 'event'
+    } } : {})
   };
 };
 
@@ -475,7 +491,8 @@ const sanitizeClip = (clip, fallbackIndex, usedIds) => {
     type,
     lengthSteps,
     steps,
-    arp: sanitizeArpPayload(clip.arp)
+    arp: sanitizeArpPayload(clip.arp),
+    ...(sanitizeClipPlayback(clip.playback) ? { playback: sanitizeClipPlayback(clip.playback) } : {})
   };
 };
 
@@ -493,8 +510,9 @@ const sanitizeAutomation = (automation, fallbackIndex, usedIds, trackIds) => {
   if (!isPlainObject(automation)) return null;
   const target = AUTOMATION_TARGETS.includes(automation.target) ? automation.target : 'velocity';
   const defaults = automationDefaultsForTarget(target);
-  const min = toFiniteNumber(automation.min, defaults.min);
-  const max = toFiniteNumber(automation.max, defaults.max);
+  const span = sanitizeMidiAutomationSpan(automation.span);
+  const min = span ? clampMidiAutomationSpanValue(target, automation.min, defaults.min) : toFiniteNumber(automation.min, defaults.min);
+  const max = span ? clampMidiAutomationSpanValue(target, automation.max, defaults.max) : toFiniteNumber(automation.max, defaults.max);
   const scope = AUTOMATION_SCOPES.includes(automation.scope) ? automation.scope : 'global';
   const trackId = scope === 'track' && trackIds.has(automation.trackId) ? automation.trackId : null;
   const points = cloneArray(automation.points)
@@ -511,7 +529,8 @@ const sanitizeAutomation = (automation, fallbackIndex, usedIds, trackIds) => {
     axisOp: AUTOMATION_AXIS_OPS.includes(automation.axisOp) ? automation.axisOp : 'add',
     min,
     max,
-    points
+    points,
+    ...(span ? { span } : {})
   };
 };
 
@@ -532,6 +551,7 @@ const buildProjectBase = (overrides = {}) => {
     },
     transport: sanitizeTransport(overrides.transport),
     global: sanitizeGlobal(overrides.global),
+    ...(overrides.ensemble ? { ensemble: overrides.ensemble } : {}),
     tracks: Array.isArray(overrides.tracks) && overrides.tracks.length
       ? overrides.tracks
       : [createDefaultMidiTrack()],
@@ -644,6 +664,7 @@ function sanitizeMidiProject(project = {}) {
     },
     transport: sanitizeTransport(source.transport),
     global: sanitizeGlobal(source.global),
+    ...(sanitizeMidiEnsemble(source.ensemble, trackIds) ? { ensemble: sanitizeMidiEnsemble(source.ensemble, trackIds) } : {}),
     tracks,
     sources,
     clips,
@@ -922,6 +943,8 @@ const updateAutomationLane = (automation, automationId, patch, tracks) => {
       }
     }
     if (cleanPatch.scope === 'global') cleanPatch.trackId = null;
+    if (isPlainObject(cleanPatch.span)) cleanPatch.span = { ...lane.span, ...cleanPatch.span,
+      condition: { ...lane.span?.condition, ...cleanPatch.span.condition } };
     return { ...lane, ...cleanPatch };
   });
 };
@@ -946,6 +969,23 @@ function reduceMidiProject(project, intent = {}) {
   case 'global.update':
     next = { ...current, global: { ...current.global, ...cloneObject(intent.patch ?? intent.global) } };
     break;
+  case 'ensemble.update':
+    next = { ...current, ensemble: { ...current.ensemble, ...cloneObject(intent.patch) } };
+    break;
+  case 'ensemble.tension.update':
+    next = { ...current, ensemble: { ...current.ensemble, tension: { ...current.ensemble?.tension, ...cloneObject(intent.patch) } } };
+    break;
+  case 'ensemble.role.update':
+    next = { ...current, ensemble: { ...current.ensemble, roles: current.ensemble?.roles.map(role =>
+      role.trackId === intent.trackId ? { ...role, ...cloneObject(intent.patch) } : role) } };
+    break;
+  case 'ensemble.assignment.set': {
+    const assignments = (current.ensemble?.assignments || []).filter(entry =>
+      entry.lemmingId !== intent.lemmingId || entry.laneIndex !== (intent.laneIndex ?? 0));
+    if (intent.trackId != null) assignments.push({ lemmingId: intent.lemmingId, laneIndex: intent.laneIndex ?? 0, trackId: intent.trackId });
+    next = { ...current, ensemble: { ...current.ensemble, assignments } };
+    break;
+  }
   case 'track.add':
     next = addTrack(current, intent.track);
     break;
@@ -1072,7 +1112,7 @@ const buildRuntimeMapping = (source, track, hiddenByTrack, globalVelocityDefault
 };
 
 const automationToPositionMappings = (automation = []) => automation
-  .filter(lane => lane.enabled && lane.scope === 'global')
+  .filter(lane => lane.enabled && lane.scope === 'global' && !lane.span)
   .map(lane => {
     const mapping = {
       axis: lane.axis,
@@ -1434,7 +1474,13 @@ const buildRuntimeClipMapping = (source, track, clip, hiddenByTrack, globalVeloc
     durationTicks: first?.durationTicks ?? globalDurationDefault
   };
   if (notes.length > 1) out.notes = notes;
-  if (clip?.type === 'arp' && notes.length) {
+  if (clip?.playback) {
+    out.clipSequence = { id: clip.id, ...clip.playback, steps: clip.steps.slice(0, 16).map(step => ({ ...step,
+      velocity: sanitizeVelocity(Math.round((step.velocity ?? globalVelocityDefault) * track.velocityScale)),
+      durationTicks: step.durationTicks ?? globalDurationDefault
+    })) };
+  }
+  if (!clip?.playback && clip?.type === 'arp' && notes.length) {
     out.arp = {
       enabled: true,
       mode: clip.arp?.mode || 'up',
@@ -1446,7 +1492,7 @@ const buildRuntimeClipMapping = (source, track, clip, hiddenByTrack, globalVeloc
     const velocity = Number.isFinite(out.velocity) ? out.velocity : globalVelocityDefault;
     out.velocity = sanitizeVelocity(Math.round(velocity * track.velocityScale));
   }
-  if (!source.enabled || hiddenByTrack || !notes.length) out.disabled = true;
+  if (!source.enabled || hiddenByTrack || (!clip?.playback && !notes.length)) out.disabled = true;
   return out;
 };
 
@@ -1456,6 +1502,7 @@ function projectToMidiConfig(project, factoryConfig = {}) {
   const positionMappings = automationToPositionMappings(clean.automation);
   const config = mergeConfig(base, {
     enabled: clean.enabled,
+    automationSpans: clean.automation.filter(lane => lane.enabled && lane.span).slice(0, MAX_MIDI_AUTOMATION_SPANS),
     timing: {
       bpmBase: clean.transport.bpmBase,
       timeSignature: clean.transport.timeSignature,
@@ -1488,11 +1535,13 @@ function projectToMidiConfig(project, factoryConfig = {}) {
   const tracksById = new Map(clean.tracks.map(track => [track.id, track]));
   const clipsById = new Map(clean.clips.map(clip => [clip.id, clip]));
   const hasSolo = clean.tracks.some(track => track.solo && !track.mute);
+  if (clean.ensemble) config.ensemble = buildMidiEnsembleConfig(clean.ensemble, clean.tracks, hasSolo);
   const defaultVelocity = clean.global.velocityRange.default ?? DEFAULT_CONFIG.velocityRange.default;
   const defaultDuration = clean.global.durationTicks.default ?? DEFAULT_CONFIG.durationTicks.default;
   for (const source of clean.sources) {
     const track = tracksById.get(source.trackId) || clean.tracks[0];
-    const hiddenByTrack = !isTrackAudible(track, hasSolo);
+    const automaticEnsemble = clean.ensemble?.enabled && track.id === clean.ensemble.sourceTrackId && !track.mute;
+    const hiddenByTrack = !isTrackAudible(track, hasSolo) && !automaticEnsemble;
     const mapping = source.mode === 'clip'
       ? buildRuntimeClipMapping(source, track, clipsById.get(source.clipId), hiddenByTrack, defaultVelocity, defaultDuration)
       : buildRuntimeMapping(source, track, hiddenByTrack, defaultVelocity);

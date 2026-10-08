@@ -2,6 +2,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
+import { createTerrainDescriptorMiner } from './TerrainDescriptorMiner.js';
+import { validateTerrainDescriptors } from '../js/app/procgen/ProcgenTerrainDescriptors.js';
 import { NodeFileProvider } from './NodeFileProvider.js';
 import { FileContainer } from '../js/data/FileContainer.js';
 import { LevelReader } from '../js/level/LevelReader.js';
@@ -54,7 +56,7 @@ function makeTheme(id, family, hash, images) {
   _gaps: new Map(), _ledges: new Map(), _routes: new Map(), _decor: new Map(), _erasers: new Map(), _usage: new Map() };
 }
 
-function routeCandidate(theme, a, dx, source, observedCount, group = [a]) {
+function routeCandidate(theme, a, dx, source, observedCount, group = [a], descriptor = null) {
   const image = theme._pieces.get(a.id);
   if (!image || group.some(p => theme._pieces.get(p.id).isSteel || (p.f & ERASE)) || dx < 2 || dx > 256) return;
   const minX = Math.min(...group.map(p => p.x)), minY = Math.min(...group.map(p => p.y));
@@ -62,7 +64,7 @@ function routeCandidate(theme, a, dx, source, observedCount, group = [a]) {
   const extent = Math.max(...unit.map(p => p.x + theme._pieces.get(p.id).width));
   if (dx > extent) return;
   const key = `${dx}/${JSON.stringify(unit)}`;
-  if (theme._routes.has(key)) { theme._routes.get(key).count += observedCount; return; }
+  if (theme._routes.has(key)) { descriptor?.record('route', group, source, { period: dx }); theme._routes.get(key).count += observedCount; return; }
   const width = dx * 3, height = Math.max(...unit.map(p => p.y + theme._pieces.get(p.id).height));
   const placements = [];
   for (let repeat = Math.floor(-extent / dx); repeat <= Math.ceil((width + extent) / dx); repeat++) {
@@ -80,13 +82,15 @@ function routeCandidate(theme, a, dx, source, observedCount, group = [a]) {
   }
   const low = Math.min(...profile), high = Math.max(...profile);
   if (high - low > 10 || maxStep > 5 || minThickness < 3) return;
+  descriptor?.record('route', group, source, { period: dx });
   theme._routes.set(key, { id: `${theme.id}/repeat-${a.id}-${a.f}-${dx}${unit.length > 1 ? `-${sha(JSON.stringify(unit)).slice(0, 6)}` : ''}`, period: dx, topOffset: high,
     profileRange: [low - high, 0], maxStep, minThickness, placements: unit,
     formula: `repeat ordered ${unit.length}-piece group at (n * ${dx}, baseline - ${high}), preserving offsets, alpha and flags`,
     source, count: observedCount });
 }
 
-function mineLevel(theme, level) {
+function mineLevel(theme, level, descriptorMiner) {
+  const descriptor = descriptorMiner.beginLevel(level, theme);
   const placements = level.placements;
   if (placements.length > LIMITS.terrainPerLevel || level.width * level.height > LIMITS.pixelsPerLevel) throw new Error('Level exceeds bounded scan limits');
   theme.counts.physicalLevels++;
@@ -112,6 +116,7 @@ function mineLevel(theme, level) {
       const countKey = kind === 'joins' ? 'bboxJoins' : 'bboxOverlaps';
       theme.counts[countKey]++;
       const value = { a: b.id, b: a.id, dx: a.x - b.x, dy: a.y - b.y, flags: [b.f, a.f], overlap: [Math.max(0, overlapX), Math.max(0, overlapY)], source: sourceRef(level, [b.index, a.index]) };
+      descriptor?.record(kind === 'joins' ? 'join' : 'overlap', [b, a], value.source);
       add(kind === 'joins' ? theme._joins : theme._overlaps, `${value.a}/${value.b}/${value.dx}/${value.dy}/${b.f}/${a.f}`, value);
       if (a.f & ERASE) eraserContext.push(b);
     }
@@ -119,6 +124,7 @@ function mineLevel(theme, level) {
       const group = [...eraserContext.slice(-7), a];
       const x = Math.min(...group.map(p => p.x)), y = Math.min(...group.map(p => p.y));
       const value = { placements: group.map(p => ({ id: p.id, x: p.x - x, y: p.y - y, f: p.f })), source: sourceRef(level, group.map(p => p.index)) };
+      descriptor?.record('erase', group, value.source);
       add(theme._erasers, `${a.id}/${a.f}/${group.map(p => p.id).join(',')}`, value);
     }
   }
@@ -147,7 +153,7 @@ function mineLevel(theme, level) {
       add(theme._repeats, key, { pieceId: a.id, flags: a.f, step: [dx, dy], repetitions,
         formula: `[x,y] + n * [${dx},${dy}]`, source });
       if (dy === 0 && dx > 0) {
-        routeCandidate(theme, a, dx, source, repetitions);
+        routeCandidate(theme, a, dx, source, repetitions, [a], descriptor);
         const companions = positioned.filter(p => p !== a && p.x >= a.x && p.x < a.x + dx && Math.abs(p.y - a.y) <= 32
           && positionIndex.has(`${p.id}/${p.f}/${p.x + dx}/${p.y}`) && positionIndex.has(`${p.id}/${p.f}/${p.x + 2 * dx}/${p.y}`)).slice(0, 5);
         if (companions.length) {
@@ -157,9 +163,10 @@ function mineLevel(theme, level) {
           const source = sourceRef(level, unit.map(p => p.index));
           const value = { period: dx, placements: normalized, repetitions: 3, source,
             formula: `repeat the ordered group at [x + n * ${dx}, y]` };
+          descriptor?.record('repeat', unit, source, { period: dx });
           add(theme._groups, `${dx}/${JSON.stringify(normalized)}`, value);
           theme.counts.repeatedGroups++;
-          routeCandidate(theme, a, dx, source, 3, unit);
+          routeCandidate(theme, a, dx, source, 3, unit, descriptor);
         }
       }
     }
@@ -193,12 +200,14 @@ function mineLevel(theme, level) {
     const value = { width: maxX - minX, height: maxY - minY,
       placements: group.map(p => ({ id: p.id, x: p.x - minX, y: p.y - minY, f: p.f })),
       interpretation: 'low-fill terrain cluster; decoration role is inferred, not an authored label', source: sourceRef(level, group.map(p => p.index)) };
+    descriptor?.record('decoration', group, value.source);
     add(theme._decor, JSON.stringify(value.placements), value);
   }
 }
 
 export async function mineTerrainRecipes({ root = ROOT } = {}) {
   const files = await discover(root), configs = JSON.parse(await fs.readFile(path.join(root, 'config.json'), 'utf8'));
+  const descriptorMiner = createTerrainDescriptorMiner(configs);
   const provider = new NodeFileProvider(root), assetCache = new Map(), themesByHash = new Map(), levels = [], failures = [], special = [];
   const aliases = new Map();
   let configuredAliases = 0;
@@ -268,7 +277,7 @@ export async function mineTerrainRecipes({ root = ROOT } = {}) {
             packRecord.specialBitmaps++; continue;
           }
           const theme = await loadAssets(pack, parsed.graphicSet1);
-          mineLevel(theme, level); level.theme = theme.id; levels.push(level); packRecord.tileAssemblies++;
+          mineLevel(theme, level, descriptorMiner); level.theme = theme.id; levels.push(level); packRecord.tileAssemblies++;
           if (levels.length > LIMITS.levels) throw new Error('Level count exceeds bounded scan limit');
         } catch (error) { failures.push({ source: id, error: error.message }); }
       }
@@ -282,6 +291,11 @@ export async function mineTerrainRecipes({ root = ROOT } = {}) {
       const text = await fs.readFile(path.join(root, filename), 'utf8'), parsed = NxlvParser.parse(text);
       if (parsed.terrainGroups.length) throw new Error('Grouped NXLV transforms require flattening; not silently approximated');
       const style = parsed.getHeader('STYLE') || parsed.terrains[0]?.props.STYLE;
+      if (String(style).toLowerCase() === 'neon-cabaret') {
+        entry.status = 'excluded';
+        entry.reason = 'Bundled original-art theme; deliberately outside the classic source-art recipe corpus';
+        continue;
+      }
       const groundSet = getStyle(style)?.groundSet;
       if (groundSet == null || groundSet > 4) throw new Error(`NXLV style ${style} has no unambiguous source-art binding`);
       const placements = parsed.terrains.map(entry => {
@@ -294,7 +308,7 @@ export async function mineTerrainRecipes({ root = ROOT } = {}) {
       const level = { id: filename, format: 'nxlv', title: parsed.getHeader('TITLE'), pack: 'lemmings', groundSet, aliases: [],
         width: parsed.getHeader('WIDTH'), height: parsed.getHeader('HEIGHT'), placements, sha256: sha(text) };
       const theme = await loadAssets('lemmings', groundSet);
-      mineLevel(theme, level); level.theme = theme.id; levels.push(level);
+      mineLevel(theme, level, descriptorMiner); level.theme = theme.id; levels.push(level);
       entry.status = 'analyzed'; entry.theme = theme.id; entry.placements = placements.length;
     } catch (error) { entry.status = 'failed'; entry.error = error.message; failures.push({ source: filename, error: error.message }); }
   }
@@ -325,8 +339,9 @@ export async function mineTerrainRecipes({ root = ROOT } = {}) {
     inventory: { scope: 'Repository source tree, excluding symlinks and generated/cache directories', configuredAliases,
       physicalClassicLevels: packs.reduce((sum, p) => sum + p.physicalLevels, 0), tileAssemblyLevels: levels.length,
       nonclassicLevels: nonclassic.length, packs, nonclassic, specialBitmaps: special, failures,
-      sourceDigest: sha(JSON.stringify(corpus)), sourceFilesScanned: files.filter(file => /(?:config\.json|\.DAT|\.nxlv|\.lvl)$/i.test(file)).length, archiveFiles: archives }, themes, corpus };
+      sourceDigest: sha(JSON.stringify(corpus)), sourceFilesScanned: files.filter(file => /(?:config\.json|\.DAT|\.nxlv|\.lvl)$/i.test(file)).length, archiveFiles: archives }, themes, corpus, descriptors: descriptorMiner.finish() };
   validateTerrainRecipeBook(book);
+  validateTerrainDescriptors(book.descriptors);
   return book;
 }
 
@@ -342,7 +357,7 @@ export function terrainRecipeReport(book) {
     '| --- | ---: | ---: | ---: | ---: | ---: |'];
   for (const p of i.packs) lines.push(`| ${p.path} | ${p.configuredAliases} | ${p.physicalLevels} | ${p.unconfiguredPhysicalLevels} | ${p.tileAssemblies} | ${p.specialBitmaps} |`);
   lines.push('', 'Nonclassic files are standalone authored examples, not a claim of coverage of all NeoLemmix packs:');
-  for (const entry of i.nonclassic) lines.push(`- \`${entry.source}\`: ${entry.status}${entry.error ? `; ${entry.error}` : `; ${entry.placements} terrain placements`}.`);
+  for (const entry of i.nonclassic) lines.push(`- \`${entry.source}\`: ${entry.status}${entry.error ? `; ${entry.error}` : entry.reason ? `; ${entry.reason}` : `; ${entry.placements} terrain placements`}.`);
   for (const failure of i.failures) lines.push(`- Failure: \`${failure.source}\`: ${failure.error}.`);
   lines.push('', '## Per-theme evidence', '', 'Decoded asset hashes deduplicate identical art across packs. Ground-set numbers are pack-local: OhNo set0 is brick, not original dirt. Source ordering and palette transparency are preserved.', '',
     '| Theme | Levels | Pieces | Joins | Overlaps | Erasers | Repeats | Gaps | Ledges | Safe repeat recipes |',
@@ -355,6 +370,18 @@ export function terrainRecipeReport(book) {
     '- Gap widths and ledge heights come from final composited alpha. These describe visual structure, not reachable routes or complete-level solvability; overhead terrain can affect the topmost-column measurement.',
     '- Decoration clusters are inferred from low-fill terrain and nearby pieces. They are not assumed noncolliding. Runtime decoration is placed below the route with a clearance of 10px.',
     '- Special VGASPEC levels use precomposed pictures rather than ordinary terrain recipes; learning fabricated tile joins from them would be misleading.', '',
+    '## Canonical normal-level descriptors', '',
+    'Configured classic tile-assembly levels supply width histograms, per-level asset/pair co-occurrence and bounded ordered motif groups. Unconfigured DAT parts, VGASPEC pictures, standalone NXLV/LVL and generated/cache content do not contribute. Each descriptor is scoped to an exact pack/ground set, decoded asset hash and source/config revision. Motif roles describe measured geometry or existing inferred decoration; they are not authored semantic labels. Counts deduplicate level aliases and repeated identical groups within a level.', '',
+    '| Pack / ground set | Normal physical levels | Width min / median / max | Observed groups | Maximum-width source |',
+    '| --- | ---: | --- | ---: | --- |');
+  for (const descriptor of book.descriptors || []) lines.push(`| ${descriptor.pack} / ${descriptor.groundSet} | ${descriptor.normalLevelCount} | ${descriptor.widths.min} / ${descriptor.widths.median} / ${descriptor.widths.max} | ${descriptor.groups.length} | ${descriptor.widths.maxSources[0].level} (${descriptor.widths.max} px) |`);
+  lines.push('',
+    'Descriptors retain canonical source-level IDs, width histograms and at most four explicit maximum-width source examples, plus two groups per role, eight placements per group and 24 asset/pair representatives. The classic reader supplies a fixed 1600-pixel authored canvas width; generated endless tracks never enter this measurement. At most 2048 unique observed group candidates per descriptor are retained before ranking; omitted candidates are counted. Runtime consumers select/cache descriptors only when the pack/art/revision changes, recombine source-observed groups, and keep existing alpha/collision screening.', '',
+    '## Pure canonical zone plans', '',
+    '`ProcgenTerrainZonePlanner` compiles available source IDs and word-owned glyph exclusions once per selected descriptor revision. A seed chooses a fixed chunk-aligned zone width for the lane; each successive zone chooses an observed asset pair and at most four ordered role groups (eight placements each), preserving flags, offsets and source-level provenance. The width cannot exceed either the selected pack cap or the descriptor normal-level maximum; the current classic cap is 1600px, so 128px chunks yield zones up to 1536px.', '',
+    'The default cache retains 128 plans per source revision, with a hard configurable limit of 256. Eviction or reset recomputes identical seeded plans. A changed source revision requires a new planner. Source mining stays offline; no per-frame learning or complete-level copying occurs.', '',
+    'The selected-pack adapter fingerprints loaded decoded art once and selects an exact canonical descriptor before applying plans. It compiles only additive route/decoration groups with source flips and alpha, excluding conditional overwrite/erase roles, steel, unavailable art and word-owned glyphs. At most two small groups are placed in a chunk; the source-themed foundation and existing scenery remain the baseline. Route columns require continuous actual support and rise at most two pixels into the walking corridor. Decoration components require terrain contact and stay noncolliding. The spawn chunk, eight-pixel boundary insets, gap margins, words and gadget footprints are protected. Other measured roles remain unapplied; co-occurrence is not a constructibility proof.', '',
+    'Verified canonical pack worlds reveal source collision and display together in eight-column increments. The bounded queue prepares immutable source chunks ahead of real frontiers and prioritizes their time to reach, including the two-pixel maximum forward action step and conservative service rounds. At 64 lanes, each simulation tick permits four preparations and sixteen reveal jobs, targets a 104-pixel reveal lead and retains a 64-pixel safety reserve. Pending source work joins the existing stall protection and clears after completion or reset; pause creates no work. Source gadgets wait for their full footprint to be revealed. This batch does not add generated trap/drowning physics or mining/digging/turning strategies.', '',
     '## Runtime consumption', '',
     '`ProcgenTerrainRecipes.js` loads and validates the artifact, selects an exact pack-local asset family and composes bounded chunks from real decoded art. It returns color pixels, solid mask, top profile and placed-piece provenance. Keep seed/variant stable for a lane and pass worldX so repeated assemblies join across chunk boundaries. A caller may select another variant at an explicitly checked seam.', '',
     'There is no generic-color geometry fallback. Missing art or a missing supported recipe fails clearly. Colors and collision come from the same source-alpha stamp. Gameplay challenge cuts and builder/destructive edits remain the runtime’s responsibility; recipe screening is not a gameplay solver.', '',

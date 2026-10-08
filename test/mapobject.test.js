@@ -36,6 +36,16 @@ const withSoundEvents = (events, fn) => {
 useGlobalLemmings({ game: { showDebug: false } });
 
 describe('MapObject', function () {
+  it('anchors liquid contact inside its trigger region, ignoring animated bubbles and rims above it', () => {
+    const first = new Frame(6, 10), second = new Frame(6, 10);
+    for (const frame of [first, second]) { for (let x = 1; x < 5; x++) for (let y = 6; y < 10; y++) frame.setPixel(x, y, 0xff00ff00); frame.setPixel(2, 3, 0xffffffff); }
+    first.setPixel(2, 1, 0xffffffff); second.setPixel(2, 2, 0xffffffff);
+    const image = { width: 6, height: 10, frames: [first, second], animationLoop: true, firstFrameIndex: 0, trigger_left: 1, trigger_top: 5, trigger_width: 4, trigger_height: 5 };
+    const object = new MapObject({ id: 0, x: 20, y: 30, drawProperties: {} }, image, new Animation(), TriggerTypes.DROWN);
+    expect(object.liquidSurface(22, 0)).to.equal(36); expect(object.liquidSurface(22, 1)).to.equal(36);
+    expect(object.liquidSurface(20, 0)).to.equal(null); expect(object.liquidSurface(25, 0)).to.equal(null);
+    expect(object.characterContact({ x: 22, y: 90 }, 0, 'water')).to.include({ y: 37, surfaceY: 36 });
+  });
   it('caches frames in WeakMap per object image', function () {
     MapObject._frameCache = new WeakMap();
     const img = makeObjectImage();

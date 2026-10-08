@@ -5,18 +5,20 @@ import { PaletteImage } from './PaletteImage.js';
 class SkillPanelSprites {
   constructor(fr2, fr6, colorPalette) {
     this.letterSprite = {};
+    this.disabledButtonSprites = [];
+    const hudPalette = colorPalette?.hudPalette || colorPalette;
     this.numberSpriteLeft = [];
     this.numberSpriteRight = [];
     /// read skill panel
     let paletteImg = new PaletteImage(320, 40);
     paletteImg.processImage(fr6, 4);
-    this.panelSprite = paletteImg.createFrame(colorPalette);
+    this.panelSprite = paletteImg.createFrame(hudPalette);
     /// read green panel letters
     let letters = ['%', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
     for (let l = 0; l < letters.length; l++) {
       let paletteImg = new PaletteImage(8, 16);
       paletteImg.processImage(fr6, 3);
-      this.letterSprite[letters[l]] = paletteImg.createFrame(colorPalette);
+      this.letterSprite[letters[l]] = paletteImg.createFrame(hudPalette);
     }
     /// add space
     let emptyFrame = new Frame(8, 16);
@@ -37,8 +39,8 @@ class SkillPanelSprites {
       this.numberSpriteLeft.push(paletteImgLeft.createFrame(blackAndWithPalette));
     }
     /// add space
-    this.emptyNumberSprite = new Frame(9, 8);
-    this.emptyNumberSprite.fill(255, 255, 255);
+    this.emptyNumberSprite = new Frame(8, 8);
+    this.emptyNumberSprite.fill(0, 0, 0);
   }
   /** return the sprite for the skill panel */
   getPanelSprite() {
@@ -90,6 +92,20 @@ class SkillPanelSprites {
       }
     }
     return out;
+  }
+
+  /** Keep unavailable skills recognizable without painting over their artwork. */
+  getDisabledButton(panelIndex) {
+    if (!Number.isInteger(panelIndex) || panelIndex < 0 || panelIndex >= 12) return null;
+    if (!this.disabledButtonSprites[panelIndex]) {
+      const frame = this.getBackgroundPatch(panelIndex * 16, 16, 16, 24);
+      for (let i = 0; i < frame.data.length; i++) {
+        const color = frame.data[i];
+        frame.data[i] = ColorPalette.colorFromRGB(Math.round((color & 255) * 0.5), Math.round(((color >>> 8) & 255) * 0.5), Math.round(((color >>> 16) & 255) * 0.5));
+      }
+      this.disabledButtonSprites[panelIndex] = frame;
+    }
+    return this.disabledButtonSprites[panelIndex];
   }
 
   /** return a brightened copy of the specified button region */

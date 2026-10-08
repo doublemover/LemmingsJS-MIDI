@@ -44,13 +44,13 @@ const withPhrases = (run, overrides = {}) => withFakeClockAndPerformance(clock =
 });
 
 describe('bounded game-clock MIDI phrases', function() {
-  it('plays five quiet falling notes on game ticks and rising exit notes', function() {
+  it('plays five falling notes on game ticks and rising exit notes', function() {
     withPhrases(({ spawn, advance, notes, bus, router }) => {
       spawn();
       advance(8);
       expect(notes().map(call => call.note)).to.deep.equal([76, 72, 67, 64, 60]);
       expect(notes().map(call => call.opts.time)).to.deep.equal([0, 120, 240, 360, 480]);
-      expect(notes().map(call => call.opts.rawAttack)).to.deep.equal([42, 42, 42, 42, 42]);
+      expect(notes().map(call => call.opts.rawAttack)).to.deep.equal([96, 96, 96, 96, 96]);
       advance(2);
       bus.emitSfx(SoundEventTypes.LEMMING_EXIT, SoundEffectIds.EXIT, { triggerType: TriggerTypes.EXIT_LEVEL });
       advance(8);
@@ -71,7 +71,7 @@ describe('bounded game-clock MIDI phrases', function() {
       advance(9);
       expect(calls.find(call => call.type === 'noteOff').opts.time).to.be.closeTo(120, 0.001);
       expect(notes().map(call => call.note)).to.deep.equal([76, 76, 72, 67, 64, 60]);
-      expect(notes().map(call => call.opts.rawAttack)).to.deep.equal([42, 63, 63, 63, 63, 63]);
+      expect(notes().map(call => call.opts.rawAttack)).to.deep.equal([96, 110, 110, 110, 110, 110]);
       expect(notes()[1].opts.time).to.equal(120);
       advance(2);
       expect(router.scheduler._activeNotes.size).to.equal(0);
@@ -97,9 +97,9 @@ describe('bounded game-clock MIDI phrases', function() {
   it('keeps a high user velocity minimum intact, even when it prevents a soft phrase', function() {
     withPhrases(({ spawn, notes, config }) => {
       spawn();
-      expect(notes()[0].opts.rawAttack).to.equal(70);
-      expect(config.velocityRange.min).to.equal(70);
-    }, { velocityRange: { min: 70, max: 110, default: 80 } });
+      expect(notes()[0].opts.rawAttack).to.equal(105);
+      expect(config.velocityRange.min).to.equal(105);
+    }, { velocityRange: { min: 105, max: 110, default: 105 } });
   });
 
   it('merges same-tick arrivals and supersedes a due tail after simulation work runs', function() {
@@ -114,7 +114,7 @@ describe('bounded game-clock MIDI phrases', function() {
       expect(notes()).to.have.length(1);
       advance(2);
       expect(notes().map(call => call.note)).to.deep.equal([76, 76]);
-      expect(notes()[1].opts).to.include({ rawAttack: 63, time: 120 });
+      expect(notes()[1].opts).to.include({ rawAttack: 110, time: 120 });
       expect(router.scheduler.gamePhrases.voices.size).to.equal(1);
       advance(8);
       expect(notes().slice(1).map(call => call.note)).to.deep.equal([76, 72, 67, 64, 60]);
@@ -132,7 +132,7 @@ describe('bounded game-clock MIDI phrases', function() {
       advance(2);
       expect(notes()).to.have.length(2);
       expect(notes()[1].note).to.equal(72);
-      expect(notes()[1].opts.rawAttack).to.equal(82);
+      expect(notes()[1].opts.rawAttack).to.equal(110);
       advance(6);
       expect(notes()).to.have.length(5);
     }, { limits: { maxEventsPerTick: 1 } });

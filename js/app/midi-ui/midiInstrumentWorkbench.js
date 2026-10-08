@@ -1,4 +1,8 @@
-import { GAME_SOUND_EVENTS, getEventBehavior, createEventBehaviorPatch } from './midiSoundEditor.js';
+import { createMidiSkillEventDock } from './midiSkillEventDock.js';
+import { createMidiEventPlayback } from './midiEventPlayback.js';
+import { resolveUnavailableSkillSfxIds } from './midiUiDomain.js';
+import { GAME_SPEED_DETENTS, gameSpeedDetentIndex, gameSpeedFromDetent } from '../../game/GameSpeed.js';
+import { GAME_SOUND_EVENTS, resolveGameSoundSource, getEventBehavior, createEventBehaviorPatch } from './midiSoundEditor.js';
 import { cloneSafeObject } from '../../util/safeObject.js';
 import { createMidiInstrumentMenus } from './midiInstrumentMenus.js';
 
@@ -14,21 +18,35 @@ const gameClock = timer => {
 };
 
 const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProject, getSource,
-  updateMapping, updateSource, commitProject, chooseView, bind, panic, history, setStatus }) => {
+  updateMapping, updateSource, commitProject, chooseView, bind, panic, history, setStatus, getEventRows }) => {
   const byId = id => document?.getElementById(id);
   const text = (id, value) => { const el = byId(id); if (el && el.textContent !== String(value)) el.textContent = value; };
-  const value = (id, next) => { const el = byId(id); if (el && el !== document?.activeElement && el.value !== String(next)) el.value = String(next); };
-  let layout = 'split', visible = false, timerId = null, soundBus = null, menus = null;
+  const value = (id, next) => { const el = byId(id); if (el && (el.type === 'range' || el !== document?.activeElement) && el.value !== String(next)) el.value = String(next); };
+  let layout = 'split', visible = false, audioActive = false, disposed = false, timerId = null, soundBus = null, skills = null, menus = null, palettes = null;
   const activity = new Map(), references = new Map();
+  const getRows = getEventRows || (() => Array.from(byId('midiGameEventList')?.children || []));
+  const skillDock = createMidiSkillEventDock({ document, window, getLemmings, getRows });
+  const playback = createMidiEventPlayback({ document, window, getRows });
+  let layoutAnimation = null;
   let lastEvent = null, lastTick = null;
   try { const stored = window?.localStorage?.getItem(LAYOUT_KEY); if (LAYOUTS.includes(stored)) layout = stored; } catch { /* Layout is optional storage. */ }
   const setLayout = next => {
     if (!LAYOUTS.includes(next)) return;
+    const panel = byId('midiSequencerWorkspace');
+    const previous = visible && layout !== next ? panel?.getBoundingClientRect?.() : null;
+    layoutAnimation?.cancel?.();
     layout = next;
     if (document?.body?.dataset) document.body.dataset.midiLayout = next;
     for (const name of LAYOUTS) byId(`midiLayout${name[0].toUpperCase() + name.slice(1)}`)?.setAttribute('aria-pressed', String(name === next));
     try { window?.localStorage?.setItem(LAYOUT_KEY, next); } catch { /* Keep the current session usable. */ }
     window?.dispatchEvent?.(new window.Event('resize'));
+    const target = previous && panel?.getBoundingClientRect?.();
+    if (target?.width && target.height && panel.animate && !window?.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      layoutAnimation = panel.animate([
+        { transformOrigin: 'top left', transform: 'translate(' + (previous.x - target.x) + 'px,' + (previous.y - target.y) + 'px) scale(' + previous.width / target.width + ',' + previous.height / target.height + ')' },
+        { transformOrigin: 'top left', transform: 'none' }
+      ], { duration: 180, easing: 'ease-out' });
+    }
   };
   const onEvent = event => {
     if (!Number.isFinite(event?.sfxId)) return;
@@ -37,34 +55,70 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     activity.set(event.sfxId, item);
     lastEvent = event;
   };
-  const detach = () => { soundBus?.onEvent?.off?.(onEvent); soundBus = null; };
+  const detach = () => { soundBus?.onEvent?.off?.(onEvent); soundBus = null; skills?.onCountChanged?.off?.(refreshClock); skills = null; };
+  const refreshScope = () => {
+    const title = byId('midiViewDevices')?.getAttribute('aria-pressed') === 'true' ? 'Devices'
+      : byId('midiViewProject')?.getAttribute('aria-pressed') === 'true' ? 'Project'
+        : byId('midiViewExpert')?.getAttribute('aria-pressed') === 'true' ? 'Tracks & clips' : getSource()?.label || 'Sound editor';
+    text('midiEditScope', title); byId('midiEditScope')?.setAttribute('title', title);
+  };
   const refreshClock = () => {
-    if (!visible) return;
+    if (disposed) return;
+    refreshScope();
     const view = getLemmings();
     const nextBus = view?.game?.soundEvents;
     if (nextBus !== soundBus) {
       detach(); soundBus = nextBus; activity.clear(); lastEvent = null; lastTick = null;
       soundBus?.onEvent?.on?.(onEvent);
     }
+    const nextSkills = view?.game?.getGameSkills?.() || view?.game?.skills || view?.skills;
+    if (nextSkills !== skills) {
+      skills?.onCountChanged?.off?.(refreshClock); skills = nextSkills;
+      skills?.onCountChanged?.on?.(refreshClock);
+    }
+    const unavailableSkills = resolveUnavailableSkillSfxIds(view?.game?.level || view?.level, skills);
     const clock = gameClock(view?.game?.getGameTimer?.());
     if (lastTick != null && clock.tick < lastTick) { activity.clear(); lastEvent = null; }
     lastTick = clock.tick;
-    value('midiGameSpeed', clock.speed); value('midiGameSpeedValue', clock.speed);
+    const speedRange = byId('midiGameSpeed');
+    if (speedRange) {
+      speedRange.value = String(gameSpeedDetentIndex(clock.speed));
+      speedRange.setAttribute('aria-valuetext', `${clock.speed} times game speed`);
+      speedRange.setAttribute('title', `Effective game speed: ${clock.speed}×`);
+    }
+    value('midiGameSpeedValue', clock.speed);
     text('midiGamePlay', clock.running ? 'Pause game' : 'Play game');
     byId('midiGamePlay')?.setAttribute('aria-pressed', String(clock.running));
     byId('midiGamePlay')?.setAttribute('title', clock.running ? 'Pause game' : 'Play game');
     text('midiGameClock', `${clock.running ? 'RUN' : 'PAUSE'} · tick ${clock.tick} · ${clock.ticksPerSecond.toFixed(1)} ticks/s`);
     text('midiLastEvent', lastEvent ? `${GAME_SOUND_EVENTS.find(item => item.id === lastEvent.sfxId)?.label || 'Event'} · tick ${lastEvent.tick}` : 'Waiting for game events');
-    for (const row of Array.from(byId('midiGameEventList')?.children || [])) {
+    for (const row of getRows()) {
+      const hidden = unavailableSkills.has(Number(row.dataset.gameEventId));
+      if (row.hidden !== hidden) row.hidden = hidden;
       const item = activity.get(Number(row.dataset.gameEventId));
       row.dataset.activityCount = String(item?.count || 0);
-      row.classList.toggle('is-playing', !!item && clock.tick - item.tick >= 0 && clock.tick - item.tick < 4);
+
       const count = row.querySelector?.('.midi-event-count');
-      if (count) count.textContent = item ? `${item.count}× · tick ${item.tick}` : 'No events yet';
+      if (count) { count.hidden = !item; count.textContent = item ? `${item.count}× · tick ${item.tick}` : ''; }
     }
+    skillDock.sync(true);
+    const dock = byId('midiSkillEventDock');
+    const visibleRows = getRows().filter(row => !row.hidden && (visible || dock?.contains(row)));
+    const selectedRow = visibleRows.find(row => row.getAttribute('aria-selected') === 'true') || visibleRows[0];
+    for (const row of visibleRows) row.tabIndex = row === selectedRow ? 0 : -1;
+    if (document?.activeElement?.hidden && document.activeElement?.dataset?.gameEventId) selectedRow?.focus?.();
     const source = getSource();
     const runtime = view?.midiPreviewRouter || view?.midiRouter;
-    const state = runtime?.getEventPlaybackState?.({ sfxId: Number(source?.sourceKey) });
+    const pressure = runtime?.getOutputPressure?.();
+    const outputPressure = byId('midiOutputPressure');
+    if (outputPressure) {
+      outputPressure.hidden = !pressure?.throttled;
+      text('midiOutputPressure', pressure?.throttled ? 'Thinned ' + pressure.dropped : '');
+      outputPressure.title = pressure?.throttled ? 'Shared sound budget: ' + pressure.reason + '; ' + pressure.messages + ' reserved/sent messages; ' + pressure.pendingNotes + ' pending notes' : '';
+    }
+    const eventOwner = GAME_SOUND_EVENTS.find(event => resolveGameSoundSource(getProject(), event)?.id === source?.id);
+    const state = runtime?.getEventPlaybackState?.({ sfxId: eventOwner?.id ?? Number(source?.sourceKey), ...(source?.kind === 'trigger' ? { triggerType: Number(source.sourceKey) } : {}) });
+    text('midiEventClipCounters', source?.mode === 'clip' ? 'Live counters: ' + (state?.eventCount || 0) + ' events / last pass ' + (state?.passCount || 1) + ' / last trigger bar ' + (state?.triggerBar || 1) + ' / ' + (state?.completedPasses || 0) + ' completed phrases' : '');
     const marker = state?.nextIndex;
     Array.from(byId('midiSoundContour')?.children || []).forEach((bar, index) => {
       const next = getEventBehavior(source) === 'steps' && index === marker;
@@ -76,13 +130,22 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     const length = clamp(requested, durations.min, durations.max);
     text('midiSoundDurationEffective', `${length} ticks · ${(length * clock.frameMs).toFixed(0)} ms${requested !== length ? ' · project range limit' : ''}`);
   };
+  const refreshChrome = () => {
+    const head = byId('midiInstrumentHead');
+    if (!head) return;
+    head.hidden = disposed || (!visible && !audioActive);
+    head.classList.toggle('is-studio-closed', !visible);
+    for (const child of Array.from(head.children || [])) child.hidden = !visible && child.id !== 'midiAudioControls';
+    if (head.hidden && head.contains(document?.activeElement)) byId('midiWorkspaceToggle')?.focus?.();
+  };
+  const setAudioActive = next => { audioActive = !!next; refreshChrome(); };
   const setVisible = next => {
-    visible = !!next;
-    const head = byId('midiInstrumentHead'); if (head) head.hidden = !visible;
-    if (timerId != null) window?.clearInterval?.(timerId);
-    timerId = null;
-    if (visible) { refreshClock(); timerId = window?.setInterval?.(refreshClock, 100) ?? null; }
-    else { menus?.close(); detach(); }
+    if (disposed) return;
+    visible = !!next; refreshChrome();
+    refreshClock();
+    // The game HUD and skill availability outlive the editor. One bounded refresh owns both.
+    if (timerId == null) timerId = window?.setInterval?.(refreshClock, 100) ?? null;
+    if (!visible) { menus?.close(); palettes?.close(); }
   };
   const routeSummary = () => {
     const p = getProject(), source = getSource();
@@ -95,7 +158,7 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     const source = getSource(), p = getProject(), mapping = source?.mapping || {};
     const behavior = getEventBehavior(source), direct = !!source && source.mode === 'direct';
     text('midiSoundRoute', routeSummary());
-    text('midiEditScope', `${source?.label || 'Event'} · sound controls`);
+    refreshScope();
     for (const button of Array.from(byId('midiBehaviorChoices')?.children || [])) {
       button.setAttribute('aria-pressed', String(button.dataset.behavior === behavior));
       button.disabled = !source;
@@ -113,10 +176,10 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     const ref = references.get(source?.id);
     if (source && !ref) references.set(source.id, soundReference(source));
     const undoState = history.state();
-    for (const id of ['midiUndo', 'midiMenuUndo']) { const el = byId(id); if (el) el.disabled = !undoState.canUndo; }
-    for (const id of ['midiRedo', 'midiMenuRedo']) { const el = byId(id); if (el) el.disabled = !undoState.canRedo; }
+    for (const id of ['midiUndo']) { const el = byId(id); if (el) el.disabled = !undoState.canUndo; }
+    for (const id of ['midiRedo']) { const el = byId(id); if (el) el.disabled = !undoState.canRedo; }
     text('midiPatternAxis', mapping.arp?.enabled ? 'Event order · each trigger advances one note' : mapping.phrase?.enabled ? `Phrase · one note every ${mapping.phrase.spacingTicks} game ticks` : 'One note per event');
-    refreshClock();
+    refreshClock(); playback.render();
   };
   const finiteInput = (event, min, max) => {
     if (String(event.target.value).trim() === '') { render(); return null; }
@@ -134,17 +197,27 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     if (number) bind(number, 'change', event => { const n = finiteInput(event, min, max); if (n != null) apply(n); });
   };
   const initialize = () => {
-    menus?.dispose();
+    menus?.dispose(); palettes?.dispose();
+    palettes = createMidiInstrumentMenus({ root: byId('midiStartingPalettes'), document, window });
     menus = createMidiInstrumentMenus({ root: byId('midiInstrumentMenus'), document, window });
     setLayout(layout);
     for (const name of LAYOUTS) bind(`midiLayout${name[0].toUpperCase() + name.slice(1)}`, 'click', () => setLayout(name));
-    for (const name of LAYOUTS) bind(`midiMenu${name[0].toUpperCase() + name.slice(1)}`, 'click', () => setLayout(name));
     bind('midiGamePlay', 'click', () => { getLemmings()?.game?.getGameTimer?.()?.toggle?.(); refreshClock(); });
     bind('midiGameStep', 'click', () => {
       const view = getLemmings(); view?.game?.getGameTimer?.()?.suspend?.(); view?.nextFrame?.(); refreshClock();
     });
     bind('midiGameStop', 'click', () => { getLemmings()?.game?.getGameTimer?.()?.suspend?.(); panic(); refreshClock(); });
-    paired('midiGameSpeed', 'midiGameSpeedValue', 0.1, 8, speed => { getLemmings()?.selectSpeedFactor?.(speed); refreshClock(); });
+    const speedRange = byId('midiGameSpeed');
+    if (speedRange) { speedRange.min = '0'; speedRange.max = String(GAME_SPEED_DETENTS.length - 1); speedRange.step = '1'; }
+    const applySpeed = speed => { getLemmings()?.selectSpeedFactor?.(speed); refreshClock(); };
+    bind('midiGameSpeed', 'input', event => applySpeed(gameSpeedFromDetent(event.target.value)));
+    bind('midiGameSpeedValue', 'change', event => {
+      const speed = finiteInput(event, GAME_SPEED_DETENTS[0], GAME_SPEED_DETENTS.at(-1));
+      if (speed != null) {
+        applySpeed(speed);
+        event.target.value = String(gameClock(getLemmings()?.game?.getGameTimer?.()).speed);
+      }
+    });
     paired('midiSoundPitchDial', null, 0, 127, note => {
       const m = getSource()?.mapping || {}, old = m.note ?? m.notes?.[0] ?? 60;
       updateMapping({ note, ...(m.notes?.length ? { notes: m.notes.map(n => clamp(n + note - old, 0, 127)) } : {}) });
@@ -163,11 +236,9 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     });
     bind('midiSoundSnapshot', 'click', () => { const source = getSource(); if (source) references.set(source.id, soundReference(source)); setStatus('Sound reference saved for this session'); });
     bind('midiSoundRevert', 'click', () => { const source = getSource(), ref = references.get(source?.id); if (ref) updateSource(cloneSafeObject(ref)); });
-    for (const id of ['midiUndo', 'midiMenuUndo']) bind(id, 'click', () => { history.undo(getProject(), commitProject); render(); });
-    for (const id of ['midiRedo', 'midiMenuRedo']) bind(id, 'click', () => { history.redo(getProject(), commitProject); render(); });
-    for (const [id, target] of Object.entries({ midiMenuImport: 'midiProjectImportButton', midiMenuExport: 'midiProjectExportButton', midiMenuSave: 'midiTemplateSaveButton', midiMenuPanic: 'midiPanicButton' })) bind(id, 'click', () => byId(target)?.click?.());
-    bind('midiMenuProject', 'click', () => chooseView('project'));
-    bind('midiMenuDevices', 'click', () => chooseView('devices'));
+    for (const id of ['midiUndo']) bind(id, 'click', () => { history.undo(getProject(), commitProject); render(); });
+    for (const id of ['midiRedo']) bind(id, 'click', () => { history.redo(getProject(), commitProject); render(); });
+    for (const [id, target] of Object.entries({ midiMenuImport: 'midiProjectImportButton', midiMenuExport: 'midiProjectExportButton', midiMenuSave: 'midiTemplateSaveButton' })) bind(id, 'click', () => byId(target)?.click?.());
     bind('midiInspectTrack', 'click', () => {
       const p = getProject(), source = getSource();
       if (source?.trackId) commitProject({ ...p, ui: { ...p.ui, selectedTrackId: source.trackId, activeRegion: 'tracks' } });
@@ -183,9 +254,9 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
       (event.shiftKey ? history.redo : history.undo)(getProject(), commitProject); render();
     });
   };
-  return { initialize, render, setVisible, setLayout, refreshClock,
+  return { initialize, render, setVisible, setAudioActive, setLayout, refreshClock, onPlayback: playback.onPlayback,
     getState: () => ({ layout, visible, clock: gameClock(getLemmings()?.game?.getGameTimer?.()), lastEvent: lastEvent && { sfxId: lastEvent.sfxId, tick: lastEvent.tick } }),
-    dispose: () => { setVisible(false); menus?.dispose(); menus = null; references.clear(); activity.clear(); } };
+    dispose: () => { disposed = true; visible = false; refreshChrome(); if (timerId != null) window?.clearInterval?.(timerId); timerId = null; detach(); skillDock.dispose(); playback.dispose(); layoutAnimation?.cancel?.(); menus?.dispose(); menus = null; palettes?.dispose(); palettes = null; references.clear(); activity.clear(); } };
 };
 
 export { createMidiInstrumentWorkbench, gameClock, LAYOUTS };

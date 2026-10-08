@@ -1,0 +1,207 @@
+TITLE hydro - Casino Grand Revue
+AUTHOR hydro
+STYLE neon-cabaret
+WIDTH 1280
+HEIGHT 320
+LEMMINGS 20
+SAVE_REQUIREMENT 5
+TIME_LIMIT INFINITE
+MAX_SPAWN_INTERVAL 30
+START_X 0
+START_Y 0
+$SKILLSET
+  SKILL CLIMBER 20
+  SKILL FLOATER 20
+  SKILL BOMBER 5
+  SKILL BLOCKER 5
+  SKILL BUILDER 30
+  SKILL BASHER 20
+  SKILL MINER 20
+  SKILL DIGGER 20
+$END
+$TERRAIN
+  STYLE neon-cabaret
+  PIECE 6
+  X 0
+  Y 272
+$END
+$TERRAIN
+  STYLE neon-cabaret
+  PIECE 6
+  X 256
+  Y 272
+$END
+$TERRAIN
+  STYLE neon-cabaret
+  PIECE 6
+  X 512
+  Y 272
+$END
+$TERRAIN
+  STYLE neon-cabaret
+  PIECE 6
+  X 768
+  Y 272
+$END
+$TERRAIN
+  STYLE neon-cabaret
+  PIECE 6
+  X 1024
+  Y 272
+$END
+$TERRAIN
+  STYLE neon-cabaret
+  PIECE 9
+  X 736
+  Y 176
+$END
+$TERRAIN
+  STYLE neon-cabaret
+  PIECE 6
+  X 856
+  Y 176
+$END
+$TERRAIN
+  STYLE neon-cabaret
+  PIECE 11
+  X 280
+  Y 264
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 1
+  X 18
+  Y 216
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 0
+  X 1190
+  Y 226
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 62
+  X 0
+  Y 0
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 62
+  X 256
+  Y 0
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 62
+  X 512
+  Y 0
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 62
+  X 768
+  Y 0
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 62
+  X 1024
+  Y 0
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 57
+  X 20
+  Y 104
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 58
+  X 260
+  Y 104
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 57
+  X 560
+  Y 104
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 58
+  X 900
+  Y 104
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 57
+  X 1190
+  Y 104
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 63
+  X 296
+  Y 75
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 64
+  X 328
+  Y 20
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 29
+  X 328
+  Y 76
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 30
+  X 80
+  Y 84
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 31
+  X 1090
+  Y 84
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 41
+  X 605
+  Y 191
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 46
+  X 663
+  Y 213
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 27
+  X 812
+  Y 116
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 14
+  X 52
+  Y 59
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 15
+  X 1120
+  Y 59
+$END
+$GADGET
+  STYLE neon-cabaret
+  PIECE 11
+  X 910
+  Y 197
+$END

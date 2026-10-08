@@ -115,7 +115,7 @@ describe('MidiScheduler 2', function() {
     });
   });
 
-  it('logs when byte rate limits are exceeded', function() {
+  it('reports byte pressure without noisy logging', function() {
     const scheduler = new MidiScheduler({ limits: { maxBytesPerSecond: 1 } });
     const logs = [];
     const restoreConsole = withConsoleStub({ error: msg => logs.push(msg) });
@@ -126,10 +126,11 @@ describe('MidiScheduler 2', function() {
     scheduler._lastRateErrorMs = -2000;
     scheduler._checkByteRate(0);
     restoreConsole();
-    expect(logs.length).to.equal(1);
+    expect(logs.length).to.equal(0);
+    expect(scheduler._throttleState.dropped).to.equal(1);
   });
 
-  it('logs when message rate limits are exceeded', function() {
+  it('reports message pressure without noisy logging', function() {
     const scheduler = new MidiScheduler({
       limits: {
         maxEventsPerSecond: 1,
@@ -145,8 +146,9 @@ describe('MidiScheduler 2', function() {
     scheduler._lastRateErrorMs = -2000;
     scheduler._checkByteRate(0);
     restoreConsole();
-    expect(logs.length).to.equal(1);
-    expect(logs[0]).to.match(/messages\/sec/i);
+    expect(logs.length).to.equal(0);
+    expect(scheduler._throttleState.dropped).to.equal(1);
+    expect(scheduler._throttleState.reason).to.equal('count-limit');
   });
 
   it('swallows performance measurement errors', function() {

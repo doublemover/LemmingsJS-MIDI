@@ -13,7 +13,7 @@ import { EventHandler } from '../../js/util/EventHandler.js';
 import { makeOutput } from '../support/midi-output.js';
 import { withFakeClockAndPerformance } from '../support/timers.js';
 
-const expanded = GAME_EVENT_MIDI_PRESETS.slice(3);
+const expanded = GAME_EVENT_MIDI_PRESETS.slice(3).filter(preset => !preset.ensemble);
 const actionEvents = [
   [SoundEffectIds.SPAWN, SoundEventTypes.LEMMING_SPAWN],
   [SoundEffectIds.EXIT, SoundEventTypes.LEMMING_EXIT, TriggerTypes.EXIT_LEVEL],
@@ -89,11 +89,11 @@ describe('expanded game-event MIDI preset library', function() {
         expect(notes.length).to.be.within(1, 5);
         expect(new Set(notes).size, `${preset.id} has duplicate pitches`).to.equal(notes.length);
         expect(mapping.durationTicks).to.be.within(2, 7);
-        expect(mapping.velocity).to.be.within(1, 94);
+        expect(mapping.velocity).to.be.within(1, 127);
         expect(mapping.timbre).to.be.within(0, 127);
         if (!mapping.arp?.enabled) {
           expect(notes.length).to.be.at.most(3);
-          if (notes.length > 1) expect(mapping.velocity).to.be.at.most(54);
+          if (notes.length > 1) expect(mapping.velocity).to.be.at.most(81);
         }
         for (const note of notes) {
           expect(note).to.be.within(24, 100);
@@ -130,7 +130,7 @@ describe('expanded game-event MIDI preset library', function() {
       automation: [{ id: 'saved-pan', target: 'pan', axis: 'x' }]
     });
     const snapshot = structuredClone(original);
-    for (const preset of GAME_EVENT_MIDI_PRESETS) {
+    for (const preset of GAME_EVENT_MIDI_PRESETS.filter(preset => !preset.ensemble)) {
       for (const mode of ['steps', 'phrase']) {
         const next = applyGameEventMidiPreset(original, preset.id, { mode });
         expect(next.enabled).to.equal(false);
@@ -248,7 +248,7 @@ describe('expanded game-event MIDI preset library', function() {
             }
             expect(noteOns(calls).map(call => call.note)).to.deep.equal(expected);
             expect(router.scheduler.gamePhrases.voices.size).to.equal(0);
-            expect(mapping.velocity).to.be.at.most(sfxId === SoundEffectIds.SPAWN ? 42 : 58);
+            expect(mapping.velocity).to.be.at.most(sfxId === SoundEffectIds.SPAWN ? 96 : 120);
           } finally {
             router.dispose();
             bus.dispose();

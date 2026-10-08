@@ -55,10 +55,16 @@ class Logger {
   }
 }
 
+const sharedDefaultLoggers = new Map();
+
 class BaseLogger {
-  constructor(name) {
+  constructor(name, shareDefault = false) {
     const Handler = getDependency('LogHandler', Logger);
-    this.log = new Handler(name || this.constructor.name);
+    const moduleName = name || this.constructor.name;
+    if (shareDefault && Handler === Logger) {
+      if (!sharedDefaultLoggers.has(moduleName)) sharedDefaultLoggers.set(moduleName, new Logger(moduleName));
+      this.log = sharedDefaultLoggers.get(moduleName);
+    } else this.log = new Handler(moduleName);
   }
 
   /**

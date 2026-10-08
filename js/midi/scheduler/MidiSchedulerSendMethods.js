@@ -23,14 +23,11 @@ const midiSchedulerSendMethods = {
     try {
       if (!spec || !Number.isFinite(spec.note)) return false;
       spec = { ...spec };
+      if (!meta.requestId && this._captureEnabled()) meta = { ...meta, requestId: this._observe('request', { ...meta,
+        type: 'note', note: spec.note, channel: spec.channel, program: spec.program, intendedMs: spec.timeMs }) };
       const outputId = this._resolveOutputId?.(spec.outputId) ?? null;
       const output = this._resolveOutput ? this._resolveOutput(outputId) : this.output;
       if (!output) return false;
-      const channelNumber = this.config.mpe?.enabled
-        ? this._allocateChannel(outputId)
-        : normalizeChannelNumber(spec.channel ?? this.config.defaultChannel, 1);
-      const channel = output.channels?.[channelNumber];
-      if (!channel) return false;
 
       const sendTimeMs = Number.isFinite(spec.timeMs) ? spec.timeMs : this._nowMs();
       const durationMs = Number.isFinite(spec.durationTicks)
@@ -43,7 +40,7 @@ const midiSchedulerSendMethods = {
       const attackVelocity = reverse ? baseRelease : baseVelocity;
       const releaseVelocity = reverse ? baseVelocity : baseRelease;
       const timbreCc = this.config.mpe?.timbreCc ?? 74;
-      const mpeEnabled = !!this.config.mpe?.enabled;
+      const mpeEnabled = this._isMpeNote(spec);
       const signedPan = (this.config.position?.panRange?.min ?? 0) < 0;
       const trackId = this._normalizeTrackId?.(spec.trackId) ?? null;
       const voiceBudget = trackId && spec.voiceBudget != null
@@ -51,6 +48,20 @@ const midiSchedulerSendMethods = {
         : null;
 
       const now = this._nowMs();
+      if (meta.rateReserved !== true) {
+        const estimate = this.estimateMessages(spec);
+        const offMessages = durationMs > 0 ? (mpeEnabled ? 2 : 1) : 0;
+        const plan = { on: { timeMs: sendTimeMs, count: estimate.messages - offMessages, bytes: estimate.bytes - offMessages * MIDI_MESSAGE_BYTES },
+          off: { timeMs: offTimeMs, count: offMessages, bytes: offMessages * MIDI_MESSAGE_BYTES } };
+        const reservation = this.evaluateAndReserve(plan, { ...meta, trackId, outputId, voiceBudget }, now);
+        if (!reservation.ok) { this.recordThrottle(reservation.reason, now, { ...meta, note: spec.note }); return false; }
+        meta = { ...meta, rateReserved: true, reservationId: reservation.reservationId };
+      }
+      const channelNumber = mpeEnabled
+        ? this._allocateChannel(outputId)
+        : normalizeChannelNumber(spec.channel ?? this.config.defaultChannel, 1);
+      const channel = output.channels?.[channelNumber];
+      if (!channel) return false;
       let usedChannels = this._usedOutputChannels.get(output);
       if (!usedChannels) {
         usedChannels = new Set();
@@ -59,6 +70,10 @@ const midiSchedulerSendMethods = {
       usedChannels.add(channelNumber);
       const startedAt = sendTimeMs;
       const token = ++this._noteOffSeq;
+      const captureMeta = this._captureEnabled() ? { ...this._captureScaleFields(), ...meta, captureScope: this._captureScope, token, note: spec.note, channel: channelNumber, program: spec.program,
+        trackId, ensembleRole: spec.ensembleRole, percussion: spec.percussion, velocity: attackVelocity,
+        scheduledMs: sendTimeMs, durationMs, held: durationMs === 0 } : null;
+      this._observe('scheduled', { ...captureMeta, type: 'noteOn', offScheduledMs: durationMs > 0 ? offTimeMs : null });
       if (
         trackId &&
           voiceBudget != null &&
@@ -78,13 +93,16 @@ const midiSchedulerSendMethods = {
         trackId,
         voiceBudget,
         outputId,
-        mpe: !!this.config.mpe?.enabled,
+        mpe: mpeEnabled,
         phraseVoiceKey: spec.phraseVoiceKey ?? null,
+        laneIndex: meta.laneIndex ?? 0, laneCount: meta.laneCount ?? 1, lemmingId: meta.lemmingId ?? null, ensembleRole: spec.ensembleRole ?? null, sfxId: meta.sfxId, priority: meta.priority,
         offTimeMs,
         hasStarted: false,
+        captureMeta,
+        automationSpanned: !!meta.automationSpanIds?.length,
         output
       });
-      if (this.config.mpe?.enabled) {
+      if (mpeEnabled) {
         this._activeByChannel.set(this._activeChannelKey(channelNumber, outputId), {
           channel: channelNumber,
           note: spec.note,
@@ -98,7 +116,8 @@ const midiSchedulerSendMethods = {
         this._pendingNoteOns.delete(token);
         const active = this._activeNotes.get(token);
         if (!active) return;
-        if (durationMs > 0 && this._nowMs() >= offTimeMs) {
+        if (this._nowMs() > sendTimeMs + 120 || (durationMs > 0 && this._nowMs() >= offTimeMs)) {
+          this.recordThrottle('expired-note', this._nowMs(), captureMeta);
           this._stopActiveNoteToken(token);
           return;
         }
@@ -112,29 +131,31 @@ const midiSchedulerSendMethods = {
           }
         }
         try {
-          if (Number.isInteger(spec.program) && spec.program >= 0 && spec.program <= 127) {
-            channel.sendProgramChange?.(spec.program, { time: sendTimeMs });
-          }
-          if (mpeEnabled || Number.isFinite(spec.pitchBend)) {
-            channel.sendPitchBend(clamp(spec.pitchBend ?? 0, -1, 1), { time: sendTimeMs });
-          }
-          if (spec.timbre != null && Number.isFinite(spec.timbre)) {
-            channel.sendControlChange(timbreCc, clamp(spec.timbre, 0, 127), { time: sendTimeMs });
-          }
-          if (spec.pan != null && Number.isFinite(spec.pan) && !output.supportsPerNotePan &&
-          (!spec.spatialPan || mpeEnabled)) {
-            let panValue = spec.pan;
-            if (signedPan) {
-              panValue = Math.round((clamp(panValue, -127, 127) + 127) / 2);
+          const expression = this._expressionPlan(spec, output, channelNumber);
+          if (!mpeEnabled && !output.supportsPerNoteInstrument && expression.controls.length) {
+            for (const [previousToken, previous] of [...this._activeNotes]) {
+              if (previousToken !== token && previous.hasStarted && previous.output === output && previous.channel === channelNumber) {
+                this._stopActiveNoteToken(previousToken);
+              }
             }
-            channel.sendControlChange(10, clamp(panValue, 0, 127), { time: sendTimeMs });
           }
+          if (expression.coalesced) this._observe('coalesced', { ...captureMeta, type: 'controllers',
+            count: expression.coalesced, reason: 'unchanged-controllers' });
+          for (const control of expression.controls) {
+            if (control.type === 'program') this._sendOutput(output, channelNumber, 'sendProgramChange', [control.value, { time: sendTimeMs }], captureMeta);
+            else if (control.type === 'bend') this._sendOutput(output, channelNumber, 'sendPitchBend', [control.value, { time: sendTimeMs }], captureMeta);
+            else this._sendOutput(output, channelNumber, 'sendControlChange', [control.cc, control.value, { time: sendTimeMs }], captureMeta);
+            expression.state[control.key] = control.value;
+          }
+          Object.assign(expression.state, expression.spanState);
 
-          channel.sendNoteOn(spec.note, { rawAttack: attackVelocity, time: sendTimeMs,
-            ...(output.supportsPerNotePan && Number.isFinite(spec.pan) ? { pan: spec.pan / 127 } : {}) });
+          this._sendOutput(output, channelNumber, 'sendNoteOn', [spec.note, { rawAttack: attackVelocity, time: sendTimeMs,
+            ...(output.supportsPlaybackMetadata ? { playback: { sfxId: meta.sfxId, triggerType: meta.triggerType, durationMs, stepIndex: spec.stepIndex, stepCount: spec.stepCount, lemmingId: meta.lemmingId, laneIndex: meta.laneIndex, ensembleRole: spec.ensembleRole, program: spec.program, channel: channelNumber } } : {}),
+            ...(output.supportsPerNoteInstrument ? { instrument: { program: spec.program, percussion: spec.percussion, role: spec.ensembleRole, legacy: !spec.ensembleRole && spec.percussion !== true } } : {}),
+            ...(output.supportsPerNotePan && Number.isFinite(spec.pan) ? { pan: spec.pan / 127 } : {}) }], captureMeta);
           active.hasStarted = true;
           if (typeof window !== 'undefined') window.lastMidiOutputMessage = {
-            type: 'noteOn', note: spec.note, velocity: attackVelocity, channel: channelNumber, outputId, timeMs: sendTimeMs
+            type: 'noteOn', note: spec.note, velocity: attackVelocity, channel: channelNumber, outputId, timeMs: sendTimeMs, program: spec.program, ensembleRole: spec.ensembleRole, laneIndex: meta.laneIndex, lemmingId: meta.lemmingId
           };
         } catch (error) {
           dispatchFailed = true;
@@ -145,15 +166,16 @@ const midiSchedulerSendMethods = {
       };
       if (sendTimeMs > now) {
         const timerId = setTimeout(dispatchStart, Math.max(0, sendTimeMs - now));
-        this._pendingNoteOns.set(token, { output, channel: channelNumber, note: spec.note, timeMs: sendTimeMs, timerId });
+        this._pendingNoteOns.set(token, { output, channel: channelNumber, note: spec.note, timeMs: sendTimeMs, timerId,
+          spanPan: spec.spanPan === true, spanTimbre: spec.spanTimbre === true });
       } else dispatchStart();
       if (durationMs > 0) {
         this._scheduleNoteOff({ timeMs: offTimeMs, channel: channelNumber, note: spec.note,
-          outputId, token, mpe: !!this.config.mpe?.enabled, releaseVelocity });
+          outputId, token, mpe: mpeEnabled, releaseVelocity });
       }
       const { messages, bytes } = this.estimateMessages(spec);
       if (messages > 0 && meta.rateReserved !== true) {
-        const offMessages = durationMs > 0 ? (1 + (this.config.mpe?.enabled ? 1 : 0)) : 0;
+        const offMessages = durationMs > 0 ? (1 + (mpeEnabled ? 1 : 0)) : 0;
         const immediateMessages = messages - offMessages;
         const immediateBytes = bytes - (offMessages * MIDI_MESSAGE_BYTES);
         this._recordPlanned({
@@ -167,7 +189,9 @@ const midiSchedulerSendMethods = {
           triggerType: meta.triggerType ?? null,
           trackId,
           outputId,
-          voiceBudget
+          voiceBudget,
+          laneIndex: meta.laneIndex ?? 0,
+          laneCount: meta.laneCount ?? 1
         });
         if (durationMs > 0) {
           this._recordPlanned({
@@ -181,11 +205,13 @@ const midiSchedulerSendMethods = {
             triggerType: meta.triggerType ?? null,
             trackId,
             outputId,
-            voiceBudget
+            voiceBudget,
+            laneIndex: meta.laneIndex ?? 0,
+            laneCount: meta.laneCount ?? 1
           });
         }
       }
-      this._checkByteRate(sendTimeMs);
+      this._checkByteRate(now);
       return !dispatchFailed;
     } finally {
       if (perfEnabled) {
@@ -236,8 +262,11 @@ const midiSchedulerSendMethods = {
           const output = active.output || this._resolveOutput(active.outputId ?? entry.outputId);
           const channel = output?.channels?.[entry.channel];
           try {
-            channel?.sendNoteOff?.(entry.note, { rawRelease: entry.releaseVelocity, time: entry.timeMs });
-            if (entry.mpe) channel?.sendPitchBend?.(0, { time: entry.timeMs });
+            this._sendOutput(output, entry.channel, 'sendNoteOff', [entry.note, { rawRelease: entry.releaseVelocity, time: entry.timeMs }], active.captureMeta);
+            if (entry.mpe) {
+              this._sendOutput(output, entry.channel, 'sendPitchBend', [0, { time: entry.timeMs }], active.captureMeta);
+              this._expressionState(output, entry.channel).bend = 0;
+            }
           } catch (error) { this.lastOutputError = error?.message || String(error); }
         }
         if (entry.mpe) {
@@ -262,7 +291,9 @@ const midiSchedulerSendMethods = {
     return false;
   },
 
-  allNotesOff({ preserveGamePhrases = false } = {}) {
+  allNotesOff({ preserveGamePhrases = false, preserveRateHistory = false } = {}) {
+    this._observe('panic', { type: 'allNotesOff', preserveRateHistory, reason: 'panic-or-lifecycle' });
+    if (preserveRateHistory) this._pruneRateEntries(this._nowMs());
     if (!preserveGamePhrases) this.gamePhrases.clear();
     for (const pending of this._pendingNoteOns.values()) if (pending.timerId != null) clearTimeout(pending.timerId);
     const mpe = this.config.mpe;
@@ -283,7 +314,7 @@ const midiSchedulerSendMethods = {
       try {
         // WebMidi's clear wrapper can silently do nothing when native clear is unavailable.
         if (typeof output.clear === 'function' && (!output._midiOutput || typeof output._midiOutput.clear === 'function')) {
-          output.clear();
+          this._sendOutput(output, null, 'clear');
           cleared = true;
         }
       } catch (error) {
@@ -297,10 +328,10 @@ const midiSchedulerSendMethods = {
         const channel = output.channels?.[ch];
         if (!channel) continue;
         try {
-          channel.sendControlChange?.(64, 0);
-          channel.sendControlChange?.(120, 0);
-          channel.sendAllNotesOff?.();
-          channel.sendPitchBend?.(0);
+          this._sendOutput(output, ch, 'sendControlChange', [64, 0], { reason: 'panic' });
+          this._sendOutput(output, ch, 'sendControlChange', [120, 0], { reason: 'panic' });
+          this._sendOutput(output, ch, 'sendAllNotesOff', [], { reason: 'panic' });
+          this._sendOutput(output, ch, 'sendPitchBend', [0], { reason: 'panic' });
         } catch (error) {
           // A disconnected output must not prevent Panic reaching the other channels.
         }
@@ -310,14 +341,15 @@ const midiSchedulerSendMethods = {
           if (pending.timerId != null || pending.output !== output || pending.timeMs <= now) continue;
           const channel = output.channels?.[pending.channel];
           try {
-            channel?.sendNoteOff?.(pending.note, { time: pending.timeMs + 1 });
-            channel?.sendPitchBend?.(0, { time: pending.timeMs + 1 });
+            this._sendOutput(output, pending.channel, 'sendNoteOff', [pending.note, { time: pending.timeMs + 1 }], { reason: 'panic-future-release' });
+            this._sendOutput(output, pending.channel, 'sendPitchBend', [0, { time: pending.timeMs + 1 }], { reason: 'panic-future-release' });
           } catch (error) {
             // Continue silencing other queued notes when an output has disconnected.
           }
         }
       }
     }
+    this._expressionByOutput.clear();
     this._pendingNoteOns.clear();
     this._noteOffs.length = 0;
     if (this._noteOffTimerId) {
@@ -327,15 +359,15 @@ const midiSchedulerSendMethods = {
     this._activeByChannel.clear();
     this._activeNotes.clear();
     this._noteOffs.length = 0;
-    this._rateSent.length = 0;
-    this._ratePlanned.length = 0;
+    if (!preserveRateHistory) this._rateSent.length = 0;
+    if (!preserveRateHistory) this._ratePlanned.length = 0;
   },
 
-  clearQueue({ preserveGamePhrases = false } = {}) {
+  clearQueue({ preserveGamePhrases = false, preserveRateHistory = false } = {}) {
     if (!preserveGamePhrases) this.gamePhrases.clear();
-    if (this._activeNotes.size || this._pendingNoteOns.size || this._noteOffs.length) this.allNotesOff({ preserveGamePhrases });
-    this._rateSent.length = 0;
-    this._ratePlanned.length = 0;
+    if (this._activeNotes.size || this._pendingNoteOns.size || this._noteOffs.length) this.allNotesOff({ preserveGamePhrases, preserveRateHistory });
+    if (!preserveRateHistory) this._rateSent.length = 0;
+    if (!preserveRateHistory) this._ratePlanned.length = 0;
   },
 
   dispose() {

@@ -177,6 +177,7 @@ function init({ windowRef, documentRef, embedMode }) {
     throw new Error('Runtime boot requires both window and document references.');
   }
   midiUi = createMidiUiController({
+    freshProjectPresetId: 'game-iron-ensemble',
     window: windowRef,
     document: documentRef,
     getLemmings: () => lemmings,
@@ -439,12 +440,17 @@ function setSize() {
   const slot = documentRef.querySelector?.('.game-stage-slot');
   const availableWidth = Math.max(1, slot?.clientWidth || width);
   const availableHeight = Math.max(1, slot?.clientHeight || height);
-  const containerWidth = Math.min(availableWidth, availableHeight * ratio);
-  const containerHeight = Math.min(availableHeight, containerWidth / ratio);
+  const skillDock = optionalElement(documentRef, 'midiSkillEventDock');
+  const footerHeight = skillDock && !skillDock.hidden ? skillDock.offsetHeight || 0 : 0;
+  const footerOverlap = footerHeight ? Math.max(0, Math.min(baseH - 1, lemmings?.stage?.hudMargin || 0)) : 0;
+  const visibleCanvasRatio = baseW / (baseH - footerOverlap);
+  const containerWidth = Math.min(availableWidth, Math.max(1, availableHeight - footerHeight) * visibleCanvasRatio);
+  const canvasHeight = footerHeight ? containerWidth / ratio : Math.min(availableHeight, containerWidth / ratio);
+  const containerHeight = Math.min(availableHeight, canvasHeight + footerHeight - footerOverlap * containerWidth / baseW);
   if (gameContainer) {
     gameContainer.style.marginTop = '';
     gameContainer.style.marginLeft = '';
-    if (availableWidth < availableHeight * ratio) gameContainer.classList.add('small');
+    if (availableWidth < Math.max(1, availableHeight - footerHeight) * visibleCanvasRatio) gameContainer.classList.add('small');
     else gameContainer.classList.remove('small');
   }
 
@@ -465,7 +471,7 @@ function setSize() {
       canvas.height = baseH;
     }
     canvas.style.width = containerWidth + 'px';
-    canvas.style.height = containerHeight + 'px';
+    canvas.style.height = canvasHeight + 'px';
   }
 
   if (lemmings?.stage) {

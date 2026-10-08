@@ -102,6 +102,149 @@ function copyBrick(rows, original, record) {
   }
 }
 
+// https://easings.net/#easeInExpo: hold near the surface, then accelerate down.
+const easeInExpo = progress => progress === 0 ? 0 : 2 ** (10 * progress - 10);
+const drowningSink = (index, distance) => Math.round(distance * easeInExpo(Math.min(1, Math.max(0, (index - 3) / 11))));
+
+function deathBody(neutral, record, scale, shapeId) {
+  const rows = Array.from({ length: record.height }, (_, y) => Array.from({ length: record.width }, (_, x) => {
+    const symbol = neutral.frames[0][y + record.offsetY - neutral.offsetY]?.[x + record.offsetX - neutral.offsetX];
+    return BODY.includes(symbol || '-') ? symbol : '0';
+  }).join(''));
+  const result = transformRows(rows, record, scale);
+  preserveEyes(rows, result, record, scale, {});
+  if (shapeId === 'donut') preserveAperture(rows, result, record, scale, {});
+  return result;
+}
+
+function deathFrame(body, record, index, kind = record.state === 'DROWNING' ? 'water' : 'fire') {
+  const pixels = Array.from({ length: record.height }, () => Array(record.width).fill('0'));
+  const bounds = bodyBounds(body), floor = -record.offsetY - 1;
+  const dot = (x, y, color) => { if (pixels[y]?.[x] != null) pixels[y][x] = color; };
+  const line = (x1, x2, y, color) => { for (let x = x1; x <= x2; x++) dot(x, y, color); };
+  if (kind === 'water') {
+    const sink = drowningSink(index, bounds.height + 2);
+    body.forEach((row, y) => [...row].forEach((symbol, x) => {
+      if (symbol !== '0') dot(x, y + sink, y + sink >= floor ? '1' : symbol);
+    }));
+    // Tiny raised hands stay with the body and disappear beneath the same waterline.
+    const handY = bounds.top + (index < 3 ? 2 - index : 0) + sink;
+    for (const x of [bounds.left - 1, bounds.right + 1]) {
+      dot(x, handY, handY >= floor ? '1' : '4');
+      dot(x, handY + 1, handY + 1 >= floor ? '1' : '3');
+    }
+    if (index < 14) {
+      line(3 + index % 2, 6, floor, '9'); line(9, 12 - index % 2, floor, '9');
+      if (index < 4) { dot(2, floor - 2 - index % 2, 'A'); dot(13, floor - 1 - index % 2, '9'); }
+    } else {
+      dot(7, floor - (index - 13), '9'); dot(8, floor - (index - 13) - 1, 'A');
+      if (index === 14) { dot(5, floor, '9'); dot(10, floor, '9'); }
+    }
+  } else if (kind === 'fire' || kind === 'lava') {
+    const phase = Math.round(index * 13 / (record.frameCount - 1));
+    const hop = [0, 1, 0, 2, 0, 1, 2, 0, 1, 0, 0, 0, 0, 0][phase];
+    const shift = 0;
+    const sink = kind === 'lava' ? drowningSink(index, bounds.height + 2) : 0;
+    if (phase < 12) {
+      for (let x = 3; x <= 12; x++) {
+        const height = Math.max(2, Math.round((phase < 3 ? 5 : 9) - Math.abs(x - 7.5) * 0.65 + [0, 2, -1, 1][(phase + x) % 4]));
+        for (let dy = 0; dy < height; dy++) {
+          const curl = Math.round(Math.sin(phase * 0.95 + dy * 0.7) * 0.8);
+          dot(x + curl, floor - dy, Math.abs(x - 7.5) < 2 && dy < height - 2 ? 'A' : '9');
+        }
+      }
+    }
+    if (phase < 11) {
+      body.forEach((row, y) => [...row].forEach((symbol, x) => {
+        if (symbol === '0') return;
+        const charred = phase >= 5 && ((x * 3 + y) % 5 < phase - 4);
+        const color = charred ? (symbol === '5' ? 'A' : '1') : phase >= 3 && symbol !== '5' ? '9' : symbol;
+        const py = y - hop + sink;
+        if (kind !== 'lava' || py < floor) dot(x + shift, py, color);
+      }));
+      if (phase < 9) for (const [x, y] of enclosedPixels(body)) dot(x, y - hop + sink, '0');
+      const handY = bounds.top - hop + (phase % 2 ? -1 : 1) + sink;
+      for (const x of [bounds.left - 1 + shift, bounds.right + 1 + shift]) {
+        if (handY < floor) dot(x, handY, phase >= 8 ? '1' : '4');
+        if (handY + 1 < floor) dot(x, handY + 1, phase >= 7 ? '1' : '3');
+        if (handY - 1 >= 0) dot(x + (x < 8 ? -1 : 1), handY - 1, phase >= 7 ? '1' : '4');
+      }
+      const mouthX = Math.round((bounds.left + bounds.right) / 2) + shift;
+      const mouthY = bounds.bottom - 1 - hop + sink;
+      if ('234'.includes(pixels[mouthY]?.[mouthX] || '-')) dot(mouthX, mouthY, '5');
+    } else {
+      line(5, 10, floor, '1');
+      for (const x of [5, 8, 10]) dot(x, floor - 2 - (phase + x) % 4, '9');
+    }
+  } else if (kind === 'acid') {
+    const progress = index / (record.frameCount - 1), dissolve = progress * progress;
+    const meltingLine = floor - Math.round(bounds.height * progress);
+    body.forEach((row, y) => [...row].forEach((symbol, x) => {
+      if (symbol === '0' || ((x * 7 + y * 13) % 19) / 19 < dissolve) return;
+      const py = Math.round(y + dissolve * (floor - y));
+      if (py < floor) dot(x, py, y >= meltingLine && symbol !== '5' ? '9' : symbol);
+    }));
+    if (index < record.frameCount - 2) {
+      line(4, 11, floor, '9');
+      dot(3 + index % 3, floor - 1 - index % 3, 'A');
+      dot(11 - index % 2, floor - 1 - (index + 1) % 3, '9');
+      if (index > 3 && index < 12) {
+        const x = index % 2 ? 3 : 12, y = floor - 2 - index % 3;
+        dot(x, y, 'A'); dot(x - 1, y + 1, '9'); dot(x + 1, y + 1, '9'); dot(x, y + 2, 'A');
+      }
+    } else dot(7 + index % 2, floor - 2, 'A');
+  } else {
+    const progress = index / (record.frameCount - 1);
+    if (index < record.frameCount - 3) {
+      body.forEach((row, y) => [...row].forEach((symbol, x) => {
+        if (symbol === '0') return;
+        let px = x, py = y, color = symbol;
+        const middle = (bounds.left + bounds.right) / 2;
+        if (kind === 'crush') {
+          py = floor - Math.round((floor - y) * Math.max(0.12, 1 - index / 3));
+          px = Math.round(middle + (x - middle) * Math.min(1.4, 1 + index / 8));
+        } else if (kind === 'suction') {
+          px = Math.round(middle + (x - middle) * (1 - progress * 0.8));
+          py = y - Math.round(progress * (record.height + 3));
+        } else if (kind === 'tentacle' || kind === 'bite') {
+          const shrink = Math.max(0.05, 1 - progress * 1.3);
+          px = Math.round(middle + (x - middle) * shrink);
+          py = floor - Math.round((floor - y) * shrink);
+        } else if (kind === 'electric') {
+          px += index % 2 ? -1 : 1;
+          color = symbol === '5' ? '1' : index % 2 ? 'A' : index > 7 ? '1' : symbol;
+        } else if (kind === 'smoke') {
+          const crouch = Math.min(0.8, progress + (index % 3 === 0 ? 0.15 : 0));
+          py = floor - Math.round((floor - y) * (1 - crouch));
+          px += y < bounds.top + 2 ? index % 3 === 0 ? 1 : 0 : 0;
+          if (index > 7) color = symbol === '5' ? 'A' : '1';
+        } else if (kind === 'ice') {
+          color = symbol === '5' ? '5' : (x + y) % 3 ? '9' : 'A';
+          if (index > 7) {
+            if ((x + y) % 3 === index % 3) return;
+            py += Math.round((index - 7) * (0.2 + x % 3 * 0.15));
+          }
+        } else if (kind === 'slice' || kind === 'spikes') {
+          if (index > 3) {
+            px += y < (bounds.top + bounds.bottom) / 2 ? -Math.min(2, index - 3) : Math.min(2, index - 3);
+            py += Math.floor((index - 3) / 3);
+          }
+        }
+        dot(px, py, color);
+      }));
+    }
+    if (kind === 'electric' && index < 11) {
+      for (let y = bounds.top; y < floor; y++) dot((index % 2 ? 2 : 13) + y % 2, y, y % 2 ? '9' : 'A');
+    }
+    if (kind === 'smoke' && index < record.frameCount - 1) {
+      for (const x of [4, 8, 12]) dot(x + index % 2, floor - 3 - (index + x) % 6, x === 8 ? 'A' : '9');
+    }
+    if (kind === 'crush' && index >= 3 && index < 13) line(4, 11, floor, '2');
+    if (kind === 'ice' && index >= 12) for (const x of [4, 7, 11]) dot(x, floor, '9');
+  }
+  return pixels.map(row => row.join(''));
+}
+
 function particleLayers(manifest, pack, appearance, scale) {
   return [-1, 1].map(direction => {
     const record = manifest.animations.find(entry => entry.state === 'WALKING' && entry.direction === direction);
@@ -131,14 +274,14 @@ function refineCharacterPresentation(manifest, source, shapeId, pack = null, app
   const scale = Math.min(1, 7 / Math.max(bounds.width, bounds.height));
   const gait = GAITS[shapeId] || GAITS.circle;
   const animations = manifest.animations.map(record => {
+    const terminalBody = ['DROWNING', 'FRYING'].includes(record.state) ? deathBody(neutral, record, scale, shapeId) : null;
     const frames = record.frames.map((rows, index) => {
       if (record.state === 'EXPLODING') return rows;
-      if (index > 0 && ['DROWNING', 'SPLATTING', 'FRYING'].includes(record.state)) {
+      if (index > 0 && terminalBody) return deathFrame(terminalBody, record, index);
+      if (index > 0 && record.state === 'SPLATTING') {
         const bare = source.animations.find(entry => entry.state === record.state && entry.direction === record.direction);
         rows = rows.map((row, y) => [...row].map((_, x) => {
-          const symbol = record.state === 'FRYING' && index < 9
-            ? neutral.frames[0][y + record.offsetY - neutral.offsetY]?.[x + (index % 2)] || '0'
-            : bare.frames[index][y + record.offsetY - bare.offsetY]?.[x] || '0';
+          const symbol = bare.frames[index][y + record.offsetY - bare.offsetY]?.[x] || '0';
           return '23459A'.includes(symbol) ? symbol : '0';
         }).join(''));
       }
@@ -186,4 +329,4 @@ function refineCharacterPresentation(manifest, source, shapeId, pack = null, app
   };
 }
 
-export { refineCharacterPresentation, transformRows, bodyBounds, GAITS };
+export { refineCharacterPresentation, transformRows, bodyBounds, GAITS, easeInExpo, drowningSink, deathBody, deathFrame };

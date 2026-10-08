@@ -1,3 +1,4 @@
+import { clipCellEnabled, buildMidiClipPhrase, applyMidiClipTransforms, getMidiTransportBar } from '../project/MidiClipPlayback.js';
 import { MidiMapping } from '../MidiMapping.js';
 import { MidiScheduler } from '../MidiScheduler.js';
 import { isMidiFlagTriggerType } from '../MidiFlagTriggers.js';
@@ -26,7 +27,9 @@ const midiEventRouterEventMethods = {
       if (!event || event.sfxId == null) return;
       if (!this.mapping.config?.enabled) return;
       if ((event.sfxId === SoundEffectIds.SPAWN || event.sfxId === SoundEffectIds.LAND) && !this.mapping.getSfxConfig(event.sfxId)) return;
-      if (event.reverse) {
+      if (event.reverse || (Number.isInteger(event.tick) && this._tickCounter.tick != null && event.tick < this._tickCounter.tick)) {
+        this.musicTension.reset(); this._releaseTensionVoices();
+        this._resetAutomationSpans();
         this.scheduler.gamePhrases?.clear();
         this._arpStateBySfx.clear();
       }
@@ -35,14 +38,27 @@ const midiEventRouterEventMethods = {
       } else if (!this.scheduler.output) {
         return;
       }
+      const automationOrigin = this._observeAutomationEvent(event);
       const now = this._nowMs();
       const tick = event.tick;
-      if (tick != null && this._tickCounter.tick !== tick) {
-        this._tickCounter.tick = tick;
-        this._tickCounter.count = 0;
-      }
+      const capturing = this.scheduler._captureEnabled?.();
+      const game = capturing ? this.context?.game : null;
+      const origin = capturing ? { origin: event.origin ?? (game?.laneCount ? 'procgen' : 'level'),
+        seed: event.seed ?? game?.seed, generation: event.generation ?? game?.generation,
+        generationStartTick: game?.generationStartTick, laneSeed: game?.laneSeeds?.[event.laneIndex ?? 0],
+        themeId: game?.terrain?.laneThemes?.[event.laneIndex ?? 0], originId: game?.terrain?.recipe?.id,
+        levelId: event.levelId ?? game?.level?.id ?? game?.level?.name ?? null } : null;
+      const requestId = capturing ? this.scheduler._observe?.('request', { ...origin, type: 'event', sfxId: event.sfxId,
+        eventType: event.type, tick, gameTimeMs: event.timeMs, speed: event.speedFactor, frameMs: event.frameMs,
+        laneIndex: event.laneIndex ?? 0, laneCount: event.laneCount ?? 1, lemmingId: event.lemmingId,
+        ...this._captureBeatFields(tick) }) : null;
+
       const limits = this.mapping.config?.limits || {};
       const maxPerTick = Math.min(Math.max(limits.maxEventsPerTick ?? MAX_EVENTS_PER_TICK, 1), MAX_EVENTS_PER_TICK);
+      if (!this._hasTickBudget(tick, event.laneIndex, event.laneCount)) {
+        this.scheduler.recordThrottle?.('tick-limit', now, { requestId, tick, laneIndex: event.laneIndex ?? 0, laneCount: event.laneCount ?? 1, lemmingId: event.lemmingId });
+        return;
+      }
       const tickMs = this._tickMsFromEvent(event);
       this.scheduler.setTickMs(tickMs);
       const density = this._densityForEvent(event);
@@ -60,33 +76,35 @@ const midiEventRouterEventMethods = {
         return;
       }
       const sfx = triggerCfg ? { ...baseSfx, ...triggerCfg } : baseSfx;
-      const spec = this.mapping.mapEvent(event, context, density, sfx);
-      if (!spec) return;
+      let spec = this.mapping.mapEvent(event, context, density, sfx);
+      if (!spec) { this.scheduler._observe?.('drop', { requestId, type: 'event', reason: 'mapping-filtered', tick, laneIndex: event.laneIndex ?? 0 }); return; }
       if (typeof this.scheduler.hasOutput === 'function' && !this.scheduler.hasOutput(spec.outputId ?? null)) {
         return;
       }
       spec.reverse = !!event.reverse;
-      if (tick != null && this._tickCounter.count >= maxPerTick) return;
-      if (tick != null) {
-        this._tickCounter.count += 1;
-      }
       if (event.tick != null) {
         this._lastTickBySfx.set(event.sfxId, event.tick);
       }
-      const priority = this._getEventPriority(event, sfx);
+      const priority = spec.priority ?? this._getEventPriority(event, sfx);
       const meta = {
+        ...origin, requestId, tick, speed: event.speedFactor, frameMs: event.frameMs, ...this._captureBeatFields(tick),
         sfxId: event.sfxId,
         eventType: event.type,
         priority,
         triggerType: event.triggerType ?? null,
         trackId: spec.trackId ?? null,
         voiceBudget: spec.voiceBudget ?? null,
-        outputId: spec.outputId ?? null
+        outputId: spec.outputId ?? null,
+        laneIndex: event.laneIndex ?? 0,
+        laneCount: event.laneCount ?? 1,
+        lemmingId: event.lemmingId ?? null,
+        ...(automationOrigin ?? {})
       };
       const scheduleAhead = this.mapping.config?.timing?.scheduleAheadMs ?? 0;
       const base = this._resolveScheduleBase(event.timeMs, event.frameMs, event.speedFactor);
       const rawTime = Number.isFinite(event.timeMs) && base != null ? base + event.timeMs : now;
       const sendTimeMs = Math.max(rawTime, now + scheduleAhead);
+      if (capturing) meta.intendedMs = rawTime;
       let noteList;
       if (Array.isArray(spec.notes) && spec.notes.length) {
         noteList = spec.notes;
@@ -95,7 +113,32 @@ const midiEventRouterEventMethods = {
         noteList = this._singleNoteBuffer;
       }
 
-      const fire = event.type === 'lemming-fire';
+      if (sfx.clipSequence?.steps?.length) {
+        const sequence = sfx.clipSequence, length = sequence.steps.length;
+        const key = this._resolveArpKey(event, sfx), previous = this._arpStateBySfx.get(key);
+        const count = previous?.seqKey === sequence.id ? previous.index : 0;
+        const completedPasses = previous?.seqKey === sequence.id ? previous.completedPasses || 0 : 0;
+        const pass = sequence.advance === 'event' ? Math.floor(count / length) + 1 : sequence.passCounter === 'completed' ? completedPasses + 1 : count + 1;
+        const timer = this._phraseTimer || this.context?.game?.getGameTimer?.();
+        const bar = getMidiTransportBar(this.mapping.config?.timing, event.tick ?? timer?.getGameTicks?.(), timer?.TIME_PER_FRAME_MS || 60);
+        this._storeArpState(key, { index: count + 1, dir: 1, length, seqKey: sequence.id, completedPasses, pass, bar, advance: sequence.advance });
+        const mapStep = step => this.mapping.mapEvent(event, context, density, { ...sfx, note: step.note, notes: null,
+          velocity: step.velocity, durationTicks: step.durationTicks, arp: null, phrase: null });
+        if (sequence.advance === 'game-tick') {
+          const cells = buildMidiClipPhrase(sequence, count + 1, pass, mapStep, bar);
+          this._queueGameEventClip(event, spec, meta, cells, sequence.spacingTicks, () => {
+            const state = this._arpStateBySfx.get(key);
+            if (state?.seqKey === sequence.id && state.advance === 'game-tick') state.completedPasses += 1;
+          });
+          return;
+        }
+        const index = count % length, step = sequence.steps[index];
+        if (!clipCellEnabled(sequence, step, count + 1, pass, bar)) return;
+        spec = { ...mapStep(applyMidiClipTransforms(step, count + 1, pass, bar)), reverse: !!event.reverse, stepIndex: index, stepCount: length };
+        noteList = [spec.note];
+      }
+
+      const fire = !sfx.clipSequence && event.type === 'lemming-fire';
       if (fire && !event.reverse) {
         const key = `fire:${event.sfxId}`;
         const previous = this._arpStateBySfx.get(key);
@@ -104,7 +147,9 @@ const midiEventRouterEventMethods = {
         const index = previous && delta >= 0 && delta < window
           ? (previous.index < 7 ? previous.index + 1 : 6) : 0;
         const step = index < 6 ? index : 6 + index % 2;
-        const range = this.mapping.config.noteRange;
+        const globalRange = this.mapping.config.noteRange;
+        const roleRange = this.mapping.config.ensemble?.roles.find(role => role.id === spec.ensembleRole)?.register;
+        const range = { min: Math.max(globalRange.min, roleRange?.min ?? globalRange.min), max: Math.min(globalRange.max, roleRange?.max ?? globalRange.max) };
         const scale = resolveScale(this.mapping.config.scale);
         const top = Math.min(127, range.max);
         const base = Math.max(range.min, Math.min(noteList[0], top - 21));
@@ -232,10 +277,19 @@ const midiEventRouterEventMethods = {
         specWithTime = adjusted.spec;
         activeNotes = adjusted.activeNotes;
       }
+      if (this.automationSpans.entries.length) {
+        specWithTime = this._applyAutomationSpans({ ...specWithTime, notes: activeNotes }, meta, tick);
+        if (!specWithTime) return;
+        activeNotes = specWithTime.notes || [specWithTime.note];
+      }
+      specWithTime = this._applyMusicTension(specWithTime, meta, tick);
+      if (!specWithTime) return;
       const plan = this._planEntries(specWithTime, sendTimeMs, activeNotes.length);
       if (!this._shouldSend(meta, specWithTime, plan, now)) {
+        this.scheduler.recordThrottle?.(this._lastRateReport?.reason || 'count-limit', now, meta);
         return;
       }
+      this._hasTickBudget(tick, event.laneIndex, event.laneCount, true);
       for (const note of activeNotes) {
         specWithTime.note = note;
         this.scheduler.sendNote(specWithTime, meta);

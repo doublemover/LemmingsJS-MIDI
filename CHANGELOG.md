@@ -7,13 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Keep Increase/Decrease labels clear of OUT and preview the actual minimap click destination with a lighter, cached marching-ants outline.
+
+- Dock existing skill-event cards beneath action selectors, fit the canvas/footer together and retain cross-region keyboard focus and immediate cheat restoration.
+
+- Add reusable per-event 8/16-cell note editing with drag/undo, explicit event or game-tick progression, silent rests and per-cell dynamics/chance/conditions.
+
+- Animate actual local note pitches and releases across event rows; move the persistent editor smoothly between layouts without per-frame canvas resizing.
+
 ### Added
+- Replace hydro's pixel-warp wobble with 24 authored all-chrome articulated dance poses, fixed foot registration and native-rate previews; rebuild neon tubes and classic-style smoke curls.
+- Refine the casino hydro performer to a fully cobalt body, slim enamel triangle head, winged eyeliner and futuristic chrome/luminous stagewear while preserving the three dance loops.
+- Expand the casino into a playable Grand Revue with large marble/gold architecture, long festoon lights,192px image-generated triangle-headed hydro performers, modern chip inlays, and a dense smoke hazard using the shared action system.
+- Original Neon Cabaret editor theme includes animated scenery, walkable terrain, protected steel, entrance/exit, and operational electric, crush and coolant hazards with an Opening Night starter level.
+- Refine Old Vegas with continuously rolling reels, crisp card suits, eight labeled chip denominations in both views, full 50-pixel cards, and three adult humanoid cabaret dance loops.
+- Add selectable Old Vegas and Neon Cabaret animated procedural scenery with collision-free cached rendering, reduced-motion support, shared URLs, and reusable pixel-art catalogs.
+- Frontier-grown, phase-varying procgen chunks use the full selected-theme terrain/object vocabulary, including animated noncolliding scenery, climbable elevations, gaps, overhangs and protected steel.
 - Compact seven-pixel character silhouettes, shape-specific walking and panic, sampled terrain debris, and intact accessory/eyewear ejection work in both classic levels and the sparse procgen world.
 - Procgen now has a hidden pull-down drawer, shared visual character choices, 1–1024 left-to-right lanes in one sparse world, staggered spawn cohorts, local-only listening and fifteen action-music presets.
 - Source-derived terrain recipes cover all available pack levels, with a reproducible corpus report and headless real-action scaling/behavior runners.
 - Per-lane distance records and generous simulation-time/spawn stall recovery preserve progress markers through a staggered OHNO cascade and restart.
 
 ### Fixed
+- Empty skill counts use black wells and unavailable skills retain dimmed source icons instead of a full checkerboard; custom-theme HUD colors remain classic without changing scene colors.
+- Contact-anchored hazard artwork remains visible at viewport edges when simulation coordinates drift; far-zoom scenery reuses indexed catalog groups.
+- Procgen avoids duplicate assisted walking scans and unchanged RAF composites, skips decorative collision work, and shares stateless actor loggers; MIDI rate warnings avoid unused breakdown maps and reservations prune once.
+- Procgen collision sampling, dirty-tile rendering and far-zoom working sets are bounded and cached; random palette skins remain canonical while live and lazily allocate frames.
+- Procgen MIDI clocks follow wall time across speeds, pause and stepping, and stall recovery budgets actual spawn-to-frontier travel before declaring a lane exhausted.
+- Temporal event clips expose distinct event/pass/trigger-bar conditions, layered pitches and gap-preserving onset recording, retaining reusable clip assignments and local-only auditions.
+- Starting palettes sit beside local listening; compact event cards show pitches, preserve hidden mappings and restore skill rows immediately with cheats. Successful audition footers are quiet, and direct Panic and joined level controls stay accessible.
+- Focused speed ranges retain Help and game shortcuts while arrows keep native range navigation; canvas clicks release range focus, and shared speed detents follow effective slowdown.
+- Local listening offers an explicit boost through the existing master control with a bounded output ceiling, preserves saved gain, and applies stronger starting-palette velocities without changing project limits or external MIDI values.
 - Action changes clear only the owning character skin, preserving stable palette caches across 1,024 actors instead of scanning all cached skins and allocating replacement variants.
 - Character appearance changes preload and swap atomically, retaining the last ready look during delayed or failed loads. Stable seeded mixed shapes and random native colors survive redraw and rewind.
 - Clip inspectors now explain their actual event-driven playback and the current meaning of saved Hold, Tie and probability fields, without rewriting imported music.

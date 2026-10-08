@@ -1,0 +1,75 @@
+import { expect } from 'chai';
+import { TestDocument } from '../helpers/test-dom.js';
+import { createMidiAutomationSpanEditor, createMidiSpan } from '../../js/app/midi-ui/midiAutomationSpanEditor.js';
+import { createProcgenMidiSpanControls } from '../../js/app/procgen/ProcgenMidiSpanControls.js';
+import { createMidiProjectFromMidiConfig, reduceMidiProject } from '../../js/midi/project/MidiProject.js';
+import { getMidiSpanRectangles, createProcgenMidiSpanOverlay } from '../../js/app/procgen/ProcgenMidiSpanOverlay.js';
+const find = (element, test) => test(element) ? element : element.children.map(child => find(child, test)).find(Boolean);
+const editorFixture = () => {
+  const document = new TestDocument(), updates = []; let state = null;
+  const lane = { id: 'one', name: 'Velocity', target: 'velocity', min: 48, max: 110, span: createMidiSpan() };
+  const editor = createMidiAutomationSpanEditor({ document, lane, onUpdate: patch => updates.push(patch), getState: () => state });
+  const timeline = find(editor, el => el.className === 'midi-span-timeline'), bar = find(editor, el => el.className.startsWith('midi-span-rectangle'));
+  timeline.getBoundingClientRect = () => ({ left: 0, width: 160 });
+  const pointer = (type, x, target = bar) => timeline.dispatchEvent({ type, clientX: x, target, pointerId: 1, preventDefault() {} });
+  return { editor, updates, pointer, bar, timeline, setState: value => { state = value; } };
+};
+describe('musical span editing and lane rectangles', () => {
+  it('commits one moved interval after a drag and discards canceled resize edits', () => {
+    const f = editorFixture(); f.pointer('pointerdown', 20); f.pointer('pointermove', 40); expect(f.updates).to.have.length(0);
+    f.pointer('pointerup', 40); expect(f.updates).to.have.length(1); expect(f.updates[0].span).to.include({ start: 2, duration: 4 });
+    const handle = find(f.editor, el => el.className === 'midi-span-resize'); f.pointer('pointerdown', 40, handle); f.pointer('pointermove', 70, handle); f.pointer('pointercancel', 70); expect(f.updates).to.have.length(1);
+  });
+  it('draws a new interval in the strip and accepts blank optional event conditions', () => {
+    const f = editorFixture(); f.pointer('pointerdown', 80, f.timeline); f.pointer('pointermove', 120, f.timeline); f.pointer('pointerup', 120, f.timeline);
+    expect(f.updates[0].span).to.include({ start: 8, duration: 4 });
+    const input = find(f.editor, el => el.dataset.spanField === 'sfxId'); input.value = ''; input.dispatchEvent({ type: 'change', target: input });
+    expect(f.updates).to.have.length(2); expect(f.updates[1].span.condition.sfxId).to.equal(null);
+  });
+  it('updates sampled phase/status without recreating or overwriting an edited input', () => {
+    const f = editorFixture(), input = find(f.editor, el => el.dataset.spanField === 'duration'); input.value = '7';
+    f.setState({ active: true, phase: 0.5, eventCount: 4, bar: 2, spanPass: 3 }); f.editor.syncStatus();
+    expect(input.value).to.equal('7'); expect(find(f.editor, el => el.className === 'midi-span-playhead').style.left).to.equal('50%');
+    expect(find(f.editor, el => el.className === 'midi-span-status').textContent).to.include('event 4 · bar 2 · span pass 3');
+  });
+  it('distinguishes beat-screen and distance-world coordinates while clipping lane groups at DPR two', () => {
+    const renderer = { canvas: { width: 2880, height: 1800 }, window: { devicePixelRatio: 2 }, world: { laneCount: 8, tickIndex: 10, generationStartTick: 0 }, originX: 128, originY: 96, viewWidth: 480, viewHeight: 300, scale: 3 };
+    const beat = { id: 'beat', target: 'velocity', span: { ...createMidiSpan(), loop: false, laneScope: 'group', laneStart: 2, laneEnd: 4 } }, distance = { id: 'world', target: 'note', span: { ...createMidiSpan('distance'), start: 128, loop: false } };
+    const project = { transport: { bpmBase: 120 }, automation: [beat, distance] }, rectangles = getMidiSpanRectangles(renderer, project);
+    expect(rectangles).to.have.length(2); expect(rectangles[0]).to.include({ x: 0, y: 288, w: 360, h: 612 }); expect(rectangles[1]).to.include({ x: 0, y: 0, w: 384, h: 900 });
+    expect(beat.span.laneEnd).to.equal(4);
+  });
+  it('represents the whole dense repeat area with one bounded rectangle', () => {
+    const renderer = { canvas: { width: 1440, height: 900 }, window: { devicePixelRatio: 1 }, world: { laneCount: 8, tickIndex: 0 }, originX: 0, originY: 0, viewWidth: 480, viewHeight: 300 };
+    const entry = { id: 'dense', target: 'velocity', span: { ...createMidiSpan(), duration: 0.25 } };
+    const rectangles = getMidiSpanRectangles(renderer, { transport: { bpmBase: 120 }, automation: [entry] });
+    expect(rectangles).to.have.length(1); expect(rectangles[0]).to.include({ x: 0, w: 1440, start: 0, end: 16, repeating: true });
+  });
+  it('creates usable envelope ramps through the actual project sanitation path', () => {
+    const document = new TestDocument(); let project = createMidiProjectFromMidiConfig({ sfx: {}, triggers: {} });
+    const controls = createProcgenMidiSpanControls({ document, getProject: () => project, getLaneCount: () => 8, getRouter: () => null, onIntent: intent => { project = reduceMidiProject(project, intent); } });
+    for (const target of ['attack', 'decay', 'sustain', 'release']) controls.addSpan(createMidiSpan(), target);
+    expect(project.automation.filter(entry => entry.span).map(entry => [entry.target, entry.min, entry.max])).to.deep.equal([['attack', 0.5, 1.5], ['decay', 0.5, 1.5], ['sustain', 0.5, 1.5], ['release', 0.5, 1.5]]); controls.dispose();
+  });
+  it('survives a native change event during removal of a focused editor row', () => {
+    const document = new TestDocument(), list = document.createElement('div'); document.registerElement('procgenSpanList', list);
+    let project = createMidiProjectFromMidiConfig({ sfx: {}, triggers: {} });
+    const controls = createProcgenMidiSpanControls({ document, getProject: () => project, getLaneCount: () => 8, getRouter: () => null, onIntent: intent => { project = reduceMidiProject(project, intent); } });
+    controls.addSpan(createMidiSpan(), 'note'); let changed = false; const remove = list.removeChild.bind(list);
+    list.removeChild = child => { if (!changed) { changed = true; controls.render(); } if (!list.children.includes(child)) throw new Error('Focused row removed twice'); return remove(child); };
+    expect(() => controls.render()).not.to.throw(); expect(list.children).to.have.length(1); controls.dispose();
+  });
+  it('keeps pointer input available to game/camera controls until drawing is explicitly enabled', () => {
+    const document = new TestDocument(), canvas = document.createElement('canvas'); canvas.id = 'gameCanvas'; document.registerElement('gameCanvas', canvas);
+    canvas.width = 1440; canvas.height = 900; canvas.getBoundingClientRect = () => ({ left: 0, top: 0 });
+    const renderer = { canvas, window: { devicePixelRatio: 1 }, world: { laneCount: 8, tickIndex: 0 }, originX: 0, originY: 0, viewWidth: 480, viewHeight: 300, scale: 3, render() {} };
+    const added = [], project = { transport: { bpmBase: 120 }, automation: [] };
+    const overlay = createProcgenMidiSpanOverlay({ document, getRuntime: () => ({ lanes: { renderer } }), getProject: () => project, getDomain: () => 'distance', getTarget: () => 'velocity', onUpdate() {}, onSelect() {}, onAdd: span => added.push(span) }); overlay.sync();
+    let claimed = 0; const pointer = (type, x, y) => canvas.dispatchEvent({ type, clientX: x, clientY: y, preventDefault: () => claimed++, stopImmediatePropagation() {} });
+    pointer('pointerdown', 100, 200); pointer('pointermove', 500, 450); pointer('pointerup', 500, 450); expect(claimed).to.equal(0);
+    overlay.setEditing(true); pointer('pointerdown', 100, 200); pointer('pointermove', 500, 450); pointer('pointerup', 500, 450);
+    expect(added).to.have.length(1); expect(added[0]).to.include({ domain: 'distance', laneScope: 'group', laneStart: 0, laneEnd: 1, start: 33, duration: 133 });
+    overlay.setVisible(false); const previousClaims = claimed; pointer('pointerdown', 100, 200); pointer('pointermove', 500, 450); pointer('pointerup', 500, 450);
+    expect(claimed).to.equal(previousClaims); expect(overlay.snapshot()).to.include({ editing: false, visible: false }); overlay.dispose();
+  });
+});

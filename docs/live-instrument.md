@@ -46,8 +46,9 @@ game time, commands, terrain, or replay. **Keep as reference** and **Revert to
 reference** are scoped to that event's sound and enabled state, not its output
 track. References last for the session; Save Template or Export preserves music.
 
-File, Edit, View, and MIDI menus expose project operations, undo/redo, layouts,
-and device setup. A project import replaces the project; a palette replaces only
+The compact file menu contains Import, Export and Save Template. Undo/Redo and
+Focus/Split/Overlay stay in the transport strip; Project and Devices have direct
+workspace tabs. Panic stays beside Close in the sound-editor titlebar. A project import replaces the project; a palette replaces only
 event mappings. Malformed/unrelated and future-version project files are rejected.
 Portable templates strip both project and per-track hardware output identifiers.
 
@@ -125,15 +126,7 @@ before merging:
 
 Remaining larger work is tracked only in `docs/roadmap.md`.
 
-The Expert clip inspector explains the current note-list playback: Steps and
-Chord supply simultaneous notes, while Arp advances on game events. Empty cells
-do not create delays. The first playable step supplies the shared base velocity
-and duration. Hold is retained in project data without a playback effect;
-positive probability enables a note and zero omits it; Tie omits its step rather
-than extending a previous gate. The controls and exports preserve those values.
-Recording captures note data into cells without replaying timing gaps or
-overlapping voices. This clarification does not implement the pending temporal
-clip/recording contract.
+Saved clips keep their original note-list behavior until an explicit temporal mode is selected. The same event editor now offers 8/16 note cells, per-cell dynamics/chance, event/pass/trigger-bar conditions, layered pitches and separate local auditions. Record placement explicitly chooses legacy compact notes or gap-preserving onset cells with overlapping durations and a last-note-per-cell collision rule. See [MIDI UI semantics](midi-ui.md) for counter, Hold/Tie, recording and retrigger details.
 
 
 ## Editor and MCP safety repairs
@@ -180,3 +173,5 @@ collision simulation remain unchanged. Hydro triangle keeps its original art.
 The twelve accepted fits are pinned by SHA-256 in the source asset tools. Native
 recipes do not provide berets for the two ear bodies; their reviewed custom fits
 and the donut's ring-specific placement are identified explicitly.
+
+Applicable skill event cards remain beneath the game selectors when Studio is closed. Clicking one opens its sound editor. Unavailable skill cards stay hidden without deleting their mappings; enabling cheats restores them immediately. MIDI or local listening keeps the shared gain, Panic and palette controls in the game topbar. Closing Studio does not stop audio.

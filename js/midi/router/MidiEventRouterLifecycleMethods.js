@@ -14,16 +14,22 @@ import {
 } from './MidiEventRouterShared.js';
 
 const midiEventRouterLifecycleMethods = {
+  setCapture(capture = null) { this.scheduler.setCapture?.(capture); },
+
   getEventPlaybackState(event) {
-    const mapping = this.mapping.config?.sfx?.[event?.sfxId];
+    const base = this.mapping.config?.sfx?.[event?.sfxId];
+    const mapping = event?.triggerType != null ? { ...base, ...this.mapping.config?.triggers?.[event.triggerType] } : base;
     const key = this._resolveArpKey(event, mapping);
     const state = this._arpStateBySfx.get(key);
-    return { nextIndex: state ? state.index % Math.max(1, state.length) : 0, direction: state?.dir ?? 1 };
+    return { nextIndex: state ? state.index % Math.max(1, state.length) : 0, direction: state?.dir ?? 1,
+      ...(mapping?.clipSequence ? { eventCount: state?.index || 0, passCount: state?.pass || 1, completedPasses: state?.completedPasses || 0, triggerBar: state?.bar || 1 } : {}) };
   },
 
   setMapping(mapping) {
     this.mapping = mapping instanceof MidiMapping ? mapping : new MidiMapping(mapping || {});
     this.scheduler.setConfig(this.mapping.config);
+    this.musicTension.configure(this.mapping.config?.ensemble?.tension);
+    this.automationSpans.configure(this.mapping.config?.automationSpans);
   },
 
   setOutput(output) {
@@ -34,10 +40,20 @@ const midiEventRouterLifecycleMethods = {
     this.scheduler.setOutputs?.(outputs);
   },
 
+  resetClock({ preserveGamePhrases = false } = {}) {
+    this._clockBaseMs = null; this._clockFrameMs = null; this._clockSpeedFactor = null;
+    this._lastAcceptedBySfx.clear(); this._repeatHistoryByKey.clear();
+    this.scheduler?.allNotesOff?.({ preserveGamePhrases });
+    this.scheduler?.clearQueue?.({ preserveGamePhrases });
+  },
+
   attach(soundBus, context = {}) {
     this._phraseTimer?.onGameTick?.off?.(this._boundPhraseTick);
     const nextTimer = context?.game?.getGameTimer?.() || soundBus?.gameTimer || null;
     if (this._phraseTimer !== nextTimer || this.soundBus !== soundBus) {
+      this.resetClock();
+      this.musicTension.reset();
+      this.automationSpans.reset(); this._automationEventSerial = 0;
       this.scheduler.gamePhrases?.clear();
       this._arpStateBySfx.clear();
       this._lastTickBySfx.clear();
@@ -53,6 +69,8 @@ const midiEventRouterLifecycleMethods = {
   },
 
   detach() {
+    this.musicTension.reset();
+    this.automationSpans.reset(); this._automationEventSerial = 0;
     this._arpStateBySfx.clear();
     this._lastTickBySfx.clear();
     this._phraseTimer?.onGameTick?.off?.(this._boundPhraseTick);
@@ -62,6 +80,24 @@ const midiEventRouterLifecycleMethods = {
       this.soundBus.onEvent.off(this._boundOnEvent);
     }
     this.soundBus = null;
+  },
+
+  _hasTickBudget(tick, laneIndex = 0, laneCount = 1, consume = false) {
+    if (tick == null) return true;
+    if (this._tickCounter.tick !== tick) {
+      this._tickCounter = { tick, count: 0 };
+      this._tickLaneCounts.clear();
+    }
+    const maximum = Math.min(Math.max(this.mapping.config?.limits?.maxEventsPerTick ?? MAX_EVENTS_PER_TICK, 1), MAX_EVENTS_PER_TICK);
+    const lanes = Math.max(1, Math.min(1024, Math.trunc(Number(laneCount) || 1)));
+    const lane = Math.max(0, Math.min(lanes - 1, Math.trunc(Number(laneIndex) || 0)));
+    const share = Math.ceil(maximum / lanes);
+    const available = this._tickCounter.count < maximum && (this._tickLaneCounts.get(lane) || 0) < share;
+    if (available && consume) {
+      this._tickCounter.count += 1;
+      this._tickLaneCounts.set(lane, (this._tickLaneCounts.get(lane) || 0) + 1);
+    }
+    return available;
   },
 
   _tickMsFromEvent(event) {
@@ -100,10 +136,10 @@ const midiEventRouterLifecycleMethods = {
     if (frameChanged || speedChanged) {
       this._clockBaseMs = null;
       this._lastAcceptedBySfx.clear();
-      this._arpStateBySfx.clear();
+      for (const [key, state] of this._arpStateBySfx) if (state.completedPasses == null) this._arpStateBySfx.delete(key);
       this._repeatHistoryByKey.clear();
-      this.scheduler?.allNotesOff?.({ preserveGamePhrases: true });
-      this.scheduler?.clearQueue?.({ preserveGamePhrases: true });
+      this.scheduler?.allNotesOff?.({ preserveGamePhrases: true, preserveRateHistory: true });
+      this.scheduler?.clearQueue?.({ preserveGamePhrases: true, preserveRateHistory: true });
     }
     if (this._clockBaseMs == null) {
       this._clockBaseMs = this._nowMs() - eventTimeMs;
@@ -120,6 +156,16 @@ const midiEventRouterLifecycleMethods = {
     return 1;
   },
 
+  _captureBeatFields(tick) {
+    if (!this.scheduler._captureEnabled?.()) return {};
+    const base = this.mapping.config?.timing?.bpmBase;
+    const tempoBpm = Math.max(20, Number.isFinite(base) ? base : 120);
+    const frame = this._phraseTimer?.TIME_PER_FRAME_MS ?? this.context?.game?.getGameTimer?.()?.TIME_PER_FRAME_MS;
+    const baseTickMs = Number.isFinite(frame) && frame > 0 ? frame : 60;
+    const beat = Number.isFinite(tick) ? Math.max(0, tick) * baseTickMs / 60000 * tempoBpm : null;
+    return { tick, tempoBpm, baseTickMs, beat: Number.isFinite(beat) ? beat : null, beatClock: 'simulation-base-ticks' };
+  },
+
   _getBpm() {
     const base = this.mapping.config?.timing?.bpmBase ?? 120;
     const speed = this.context?.game?.getGameTimer?.()?.speedFactor ?? 1;
@@ -127,6 +173,7 @@ const midiEventRouterLifecycleMethods = {
   },
 
   _resolveArpKey(event, sfx) {
+    if (sfx?.clipSequence && event?.triggerType != null) return `clip:${event.triggerType}:${event.sfxId}`;
     if (event?.triggerType != null && sfx?.arp?.independent) {
       const objectId = Number.isFinite(event.objectId) ? event.objectId : null;
       if (objectId != null) {

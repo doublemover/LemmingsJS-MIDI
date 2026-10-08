@@ -3,13 +3,13 @@ import { installExternalAssetStubs } from './helpers/externalAssets.js';
 import { waitForHarnessReady } from './helpers/harness.js';
 
 test.use({ permissions: [] });
-for (const size of [{ width: 1366, height: 768 }, { width: 1440, height: 900 }, { width: 1909, height: 950 }]) {
+for (const size of [{ width: 1366, height: 768 }, { width: 1440, height: 900 }, { width: 1909, height: 950 }, { width: 2560, height: 720 }]) {
   test(`compact studio keeps both rails and a clear map at ${size.width}`, async ({ page }, testInfo) => {
     await page.setViewportSize(size); await installExternalAssetStubs(page);
     await page.goto('/?e2e=1'); await waitForHarnessReady(page);
     await page.evaluate(() => { window.__E2E__.pause(); window.__studioCanvas = document.querySelector('#gameCanvas'); });
     await expect(page.locator('#midiSequencerWorkspace')).toBeVisible();
-    await expect(page.locator('#characterStatus')).toContainText('All shapes');
+    await expect(page.locator('#characterStatus')).toBeEmpty();
     await expect(page.locator('#characterShapeChoices [data-value=mixed]')).toHaveAttribute('aria-checked', 'true');
     await expect(page.locator('input[type=color]')).toHaveCount(0);
     await expect(page.locator('#savedLevelSave')).toBeHidden();
@@ -34,6 +34,8 @@ for (const size of [{ width: 1366, height: 768 }, { width: 1440, height: 900 }, 
     expect(rectangles.volume.left).toBeGreaterThan(rectangles.listen.right);
     expect(rectangles.volume.left - rectangles.listen.right).toBeLessThan(20);
     expect(rectangles.game.left).toBeGreaterThanOrEqual(rectangles.left.right);
+    expect(rectangles.game.left - rectangles.left.right).toBeLessThanOrEqual(8);
+    expect(rectangles.editor.width).toBeLessThanOrEqual(360);
     expect(rectangles.game.right).toBeLessThanOrEqual(rectangles.editor.left);
     expect(rectangles.game.width / rectangles.game.height).toBeCloseTo(800 / 480, 2);
     await page.screenshot({ path: testInfo.outputPath(`desktop-studio-${size.width}.png`), fullPage: true });
@@ -66,4 +68,43 @@ test('visual selectors support repeated mixed/single/accessory changes without c
   await page.keyboard.press('ArrowRight');
   await expect(page.locator('#characterShapeChoices [data-value=rounded_triangle]')).toBeFocused();
   await expect(page.locator('#characterShapeChoices [data-value=rounded_triangle]')).toHaveAttribute('aria-checked', 'true');
+});
+
+test('focused speed range preserves global Help and speed keys while native arrows use game detents', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 }); await installExternalAssetStubs(page);
+  await page.goto('/?e2e=1'); await waitForHarnessReady(page);
+  await page.evaluate(() => { window.__E2E__.pause(); window.__E2E__.setSpeed(10); });
+  const range = page.locator('#midiGameSpeed'), number = page.locator('#midiGameSpeedValue');
+  await expect(number).toHaveValue('10'); await range.focus();
+  await page.keyboard.press('ArrowRight'); await expect(number).toHaveValue('20');
+  await page.keyboard.press('='); await expect(number).toHaveValue('21');
+  await page.keyboard.press('-'); await expect(number).toHaveValue('20');
+  await page.keyboard.press('F1'); await expect(page.locator('#shortcutOverlay')).toHaveAttribute('aria-hidden', 'false');
+  await page.keyboard.press('Escape'); await expect(range).toBeFocused();
+  await page.evaluate(() => window.__E2E__.setSpeed(0.4));
+  await expect(range).toHaveAttribute('aria-valuetext', '0.4 times game speed');
+  await expect(number).toHaveValue('0.4');
+});
+
+test('modulation labels sit inside high-contrast compact fields', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 }); await installExternalAssetStubs(page);
+  await page.goto('/?e2e=1'); await waitForHarnessReady(page);
+  await page.evaluate(() => window.__E2E__.pause());
+  await page.locator('#midiViewExpert').click();
+  await page.locator('#midiModulationInspector > summary').click();
+  await page.locator('#midiAutomationAddButton').click();
+  const result = await page.locator('#midiModulationInspector').evaluate(inspector => {
+    const field = inspector.querySelector('#midiGlobalIntensity').closest('label');
+    const span = field.querySelector('span'), input = field.querySelector('input');
+    const box = field.getBoundingClientRect(), label = span.getBoundingClientRect(), control = input.getBoundingClientRect();
+    const row = inspector.querySelector('.midi-automation-row');
+    return { fieldBackground: window.getComputedStyle(field).backgroundColor, labelColor: window.getComputedStyle(span).color,
+      inputBackground: window.getComputedStyle(input).backgroundColor, rowBackground: window.getComputedStyle(row).backgroundColor,
+      labelInside: label.left >= box.left && label.right <= box.right && label.top >= box.top && control.bottom <= box.bottom,
+      characterLabels: document.querySelector('.character-controls .character-control-content').innerText.trim() };
+  });
+  expect(result.fieldBackground).toBe('rgb(252, 251, 245)');
+  expect(result.labelColor).toBe('rgb(65, 86, 65)'); expect(result.inputBackground).toBe('rgba(0, 0, 0, 0)');
+  expect(result.rowBackground).toBe('rgb(38, 58, 45)'); expect(result.labelInside).toBe(true); expect(result.characterLabels).toBe('');
+  await page.locator('#midiModulationInspector').screenshot({ path: testInfo.outputPath('modulation-integrated-high-contrast.png') });
 });

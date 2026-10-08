@@ -146,6 +146,59 @@ describe('bounded deterministic character particles', function() {
     expect(pool.freeCount).to.equal(PARTICLE_LIMITS.capacity);
   });
 
+  it('lets intact drowning wearables reach the surface and stay buoyant without bursts', function() {
+    const pool = new CharacterParticles();
+    pool.emitDeath(actor(4), 'drowning', provider);
+    expect(live(pool)).to.have.length(2);
+    const hat = live(pool).find(p => p.kind === 'accessory'), x = hat.x, y = hat.y;
+    expect(hat.mode).to.equal('leaf');
+    expect(hat.fracture).to.equal(false);
+    for (let i = 0; i < 16; i++) pool.tick();
+    expect(hat.y).to.be.greaterThan(y);
+    expect(hat.floating).to.equal(true);
+    expect(hat.y + (hat.height - 1) / 2).to.equal(29);
+    expect(Math.abs(hat.x - x)).to.be.lessThan(2);
+    expect(live(pool)).to.have.length(2);
+    expect(live(pool).every(p => p.source && p.mode === 'leaf')).to.equal(true);
+    for (let i = 0; i < 16; i++) pool.tick();
+    expect(hat.y + (hat.height - 1) / 2).to.equal(29);
+  });
+
+  it('chars fire wearables in place before they crumble downward, without a burst', function() {
+    const pool = new CharacterParticles(), lem = actor(4);
+    pool.emitDeath(lem, 'frying', provider);
+    expect(live(pool)).to.have.length(2);
+    const hat = live(pool).find(p => p.kind === 'accessory'), y = hat.y;
+    for (let i = 0; i < 7; i++) pool.tick();
+    expect(hat.y).to.equal(y);
+    expect(hat.mode).to.equal('char');
+    expect(live(pool)).to.have.length(2);
+    const target = display(); pool.render(target);
+    expect(target.buffer32.includes(rgb(36, 31, 38))).to.equal(true);
+    pool.tick();
+    expect(live(pool)).to.have.length(6);
+    expect(live(pool).every(p => p.mode === 'charred' && p.vy > 0 && Math.abs(p.vx) <= 0.25)).to.equal(true);
+    expect(live(pool).every(p => p.anchor === null)).to.equal(true);
+  });
+
+  it('dissolves acid wearables without ejection and compresses crushing debris horizontally', function() {
+    const acid = new CharacterParticles();
+    acid.emitDeath(actor(4), 'drowning', { ...provider, getActorHazardKind: () => 'acid' });
+    expect(live(acid)).to.have.length(2);
+    expect(live(acid).every(p => p.mode === 'dissolve' && !p.fracture && p.vx === 0 && p.vy === 0)).to.equal(true);
+    const crush = new CharacterParticles(), lem = actor(4);
+    crush.emitDeath(lem, 'splatter', { ...provider, getActorHazardKind: () => 'crush' });
+    expect(live(crush)).to.have.length(10);
+    expect(live(crush).every(p => p.mode === 'crush' && p.y === lem.y - 1 && Math.abs(p.vy / p.vx) < 0.06)).to.equal(true);
+    expect(live(crush).some(p => p.vx < 0)).to.equal(true);
+    expect(live(crush).some(p => p.vx > 0)).to.equal(true);
+    expect(live(crush).some(p => p.kind === 'spark')).to.equal(false);
+    for (let i = 0; i < 12; i++) {
+      crush.tick();
+      expect(live(crush).every(p => Math.abs(p.x - lem.x) < 9)).to.equal(true);
+    }
+  });
+
   it('fades by blending with world pixels and rendering never advances effects', function() {
     const pool = new CharacterParticles(), level = terrain(), lem = actor(1);
     pool.sampleRow(level, 30, 30, 1); level.clearGroundRow(30, 30, 1); pool.emitTerrain(lem, 'digging');

@@ -1,4 +1,7 @@
+import { GameSkills } from '../../js/game/GameSkills.js';
+import { SkillTypes } from '../../js/game/SkillTypes.js';
 import { expect } from 'chai';
+import { withFakeClockAndPerformance } from '../support/timers.js';
 import { createMidiUiController } from '../../js/app/midiUiController.js';
 import { MidiEventRouter } from '../../js/midi/MidiEventRouter.js';
 import { SoundEventBus } from '../../js/game/SoundEvents.js';
@@ -98,6 +101,17 @@ const registerSequencerDom = (doc) => {
     midiTrackMute: 'input',
     midiTrackSolo: 'input',
     midiTrackArm: 'input',
+    midiEnsembleFields: 'div',
+    midiEnsembleRoleFields: 'div',
+    midiEnsembleEnabled: 'input',
+    midiRolePan: 'input',
+    midiRoleLow: 'input',
+    midiRoleHigh: 'input',
+    midiRoleDuration: 'input',
+    midiRoleLemmingId: 'input',
+    midiRoleLane: 'input',
+    midiRoleAssign: 'button',
+    midiRoleAutomatic: 'button',
     midiSourceRevertButton: 'button',
     midiSourceEnabled: 'input',
     midiSourceTrackSelect: 'select',
@@ -195,7 +209,8 @@ const createControllerHarness = ({
   },
   webMidi = { enabled: false, inputs: [], outputs: [] },
   lemmings = {},
-  createPreviewAudio
+  createPreviewAudio,
+  freshProjectPresetId
 } = {}) => {
   const doc = new TestDocument();
   registerSequencerDom(doc);
@@ -219,6 +234,7 @@ const createControllerHarness = ({
     document: doc,
     getLemmings: () => currentView,
     getWebMidi: () => webMidi,
+    freshProjectPresetId,
     ...(createPreviewAudio ? { createPreviewAudio } : {}),
     downloadTextFile(document, text, filename, mimeType) {
       view.downloads = view.downloads || [];
@@ -232,6 +248,25 @@ const createControllerHarness = ({
 };
 
 describe('midiUiController sequencer', function() {
+  it('installs the fresh ensemble once and preserves edited saved roles on reload and re-enable', () => {
+    const { controller, doc, win, view } = createControllerHarness({ freshProjectPresetId: 'game-iron-ensemble' });
+    controller.bindMidiUi();
+    expect(controller.getProject().enabled).to.equal(false);
+    expect(controller.getProject().ensemble.roles).to.have.length(4);
+    controller.dispatchProjectIntent({ type: 'track.select', trackId: 'ensemble-bass' });
+    controller.refreshMidiUiFromConfig();
+    expect(doc.getElementById('midiEnsembleRoleFields').hidden).to.equal(false);
+    doc.getElementById('midiRolePan').value = '-70';
+    doc.getElementById('midiRolePan').dispatchEvent({ type: 'change', target: doc.getElementById('midiRolePan') });
+    controller.dispatchProjectIntent({ type: 'track.update', trackId: 'ensemble-bass', patch: { program: 35 } });
+    controller.dispatchProjectIntent({ type: 'enabled.set', enabled: true });
+    controller.dispatchProjectIntent({ type: 'enabled.set', enabled: false });
+    controller.dispose();
+    const reloaded = createMidiUiController({ window: win, document: doc, getLemmings: () => view, freshProjectPresetId: 'game-iron-ensemble' });
+    reloaded.bindMidiUi(); expect(reloaded.getProject().ensemble.roles[0].pan).to.equal(-70);
+    expect(reloaded.getProject().tracks.find(track => track.id === 'ensemble-bass').program).to.equal(35);
+    reloaded.dispose();
+  });
   it('updates both local audio paths with a persisted master level without editing the project or hardware', async function() {
     const created = [];
     let hardwareChanges = 0;
@@ -278,7 +313,7 @@ describe('midiUiController sequencer', function() {
     volume.value = '42';
     volume.dispatchEvent({ type: 'change', target: volume });
     expect(created.map(audio => audio.masterVolume)).to.deep.equal([0.42, 0.42]);
-    expect(win.localStorage.getItem('lemmings.midi.masterVolume')).to.equal('0.42');
+    expect(win.localStorage.getItem('lemmings.midi.masterVolume')).to.equal(JSON.stringify({ version: 2, value: 0.42 }));
     expect(win.__LEMMINGS_MIDI_UI__.getLocalAudioState().masterVolume).to.equal(0.42);
     expect(controller.getProject()).to.deep.equal(project);
     expect(controller.getMidiConfig()).to.equal(config);
@@ -292,7 +327,7 @@ describe('midiUiController sequencer', function() {
   });
 
   it('restores local master level before lazily creating audio, including a saved mute', async function() {
-    for (const [stored, expected] of [['0', 0], ['0.35', 0.35], ['broken', 0.7], ['2', 1], ['-1', 0]]) {
+    for (const [stored, expected] of [['0', 0], ['0.35', 0.35], ['broken', 0.7], ['2', 1], ['-1', 0], ['1', 1], [JSON.stringify({ version: 2, value: 2 }), 2]]) {
       const levels = [];
       const { controller, doc, win } = createControllerHarness({ createPreviewAudio: options => {
         levels.push(options.masterVolume);
@@ -377,6 +412,43 @@ describe('midiUiController sequencer', function() {
     expect(timer).to.deep.equal({ tickIndex: 91, speedFactor: 2 });
     expect(win.__LEMMINGS_MIDI_UI__.redo()).to.equal(true);
     expect(controller.getProject().sources.find(source => source.id === 'sfx-1').mapping.note).to.equal(75);
+    controller.dispose();
+  });
+
+  it('keeps compact note labels, hides impossible skills and restores cheats without editing mappings', function() {
+    const level = { skills: Array(9).fill(0) }; level.skills[SkillTypes.BUILDER] = 1;
+    const skills = new GameSkills(level);
+    const { controller, doc } = createControllerHarness({
+      factoryConfig: { sfx: { [SoundEffectIds.SPAWN]: { note: 60 }, [SoundEffectIds.DIG]: { note: 66 } } },
+      lemmings: { game: { level, getGameSkills: () => skills, getGameTimer: () => ({ frameTime: 60 }) } }
+    });
+    controller.bindMidiUi(); doc.getElementById('midiWorkspaceToggle').dispatchEvent({ type: 'click' });
+    const rows = doc.getElementById('midiGameEventList').children;
+    const row = id => rows.find(item => Number(item.dataset.gameEventId) === id);
+    expect(row(SoundEffectIds.DIG).hidden).to.equal(true);
+    expect(row(SoundEffectIds.BUILDER_STEP).hidden).to.equal(false);
+    expect(row(SoundEffectIds.EXPLOSION).hidden).to.equal(false);
+    expect(row(SoundEffectIds.OHNO).hidden).to.equal(false);
+    expect(row(SoundEffectIds.SPAWN).children[1].textContent).to.contain('C4');
+    expect(row(SoundEffectIds.SPAWN).children[2].textContent).to.equal('');
+    const before = controller.getProject();
+    skills.reuseSkill(SkillTypes.BUILDER);
+    expect(row(SoundEffectIds.BUILDER_STEP).hidden).to.equal(false);
+    skills.cheat(); expect(row(SoundEffectIds.DIG).hidden).to.equal(false);
+    expect(controller.getProject()).to.deep.equal(before);
+    expect(skills.onCountChanged.handlers.size).to.equal(1);
+    controller.dispose(); expect(skills.onCountChanged.handlers.size).to.equal(0);
+  });
+
+  it('clears successful audition footers and retains actionable audio errors', async function() {
+    let ok = true;
+    const { controller, doc } = createControllerHarness({ createPreviewAudio: () => ({
+      preview: async () => ok, getState: () => ({ message: 'Enable browser audio again' }), dispose() {}
+    }) });
+    controller.bindMidiUi(); expect(await controller.testSelectedSound()).to.equal(true);
+    expect(doc.getElementById('midiProjectStatus').textContent).to.equal('');
+    ok = false; expect(await controller.testSelectedSound()).to.equal(false);
+    expect(doc.getElementById('midiProjectStatus').textContent).to.equal('Enable browser audio again');
     controller.dispose();
   });
 
@@ -1418,6 +1490,56 @@ describe('midiUiController sequencer', function() {
     expect(messageCaptureCalls.at(-1)).to.equal(null);
   });
 
+  it('commits explicit onset gaps in one project edit and preserves compact recording as the default', function() {
+    const { controller, doc, win } = createControllerHarness();
+    registerElement(doc, 'select', 'midiRecordPlacement').value = 'onsets';
+    controller.bindMidiUi();
+    controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'onsets', name: 'Onsets', lengthSteps: 8, steps: [{ note: 99, transforms: { transpose: 12 } }] } });
+    expect(controller.startRecording()).to.equal(true);
+    controller.captureRecordMessage({ type: 0x90, note: 60, velocity: 90, channel: 1, timestamp: 100 });
+    controller.captureRecordMessage({ type: 0x90, note: 67, velocity: 88, channel: 1, timestamp: 460 });
+    controller.captureRecordMessage({ type: 0x80, note: 67, channel: 1, timestamp: 580 });
+    controller.captureRecordMessage({ type: 0x80, note: 60, channel: 1, timestamp: 700 });
+    expect(controller.commitRecording()).to.equal(true);
+    const stored = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY)), clip = stored.clips.find(c => c.id === 'onsets');
+    expect(clip.steps.map(s => s.note)).to.deep.equal([60, null, null, 67, null, null, null, null]);
+    expect(clip.steps[0].durationTicks).to.equal(10); expect(clip.steps[0]).not.to.have.property('transforms');
+    expect(clip.playback).to.deep.equal({ advance: 'game-tick', spacingTicks: 2, passCounter: 'completed' });
+    expect(doc.getElementById('midiProjectStatus').textContent).to.contain('0 same-cell notes replaced, 0 beyond the clip omitted');
+  });
+
+  it('keeps independent local completed-pass counts through silent phrases, retriggering and Panic', async function() {
+    await withFakeClockAndPerformance(async clock => {
+      const heard = [];
+      const { controller, doc } = createControllerHarness({ createPreviewAudio: () => ({
+        async preview(notes) { heard.push(notes.map(n => n.note)); return true; },
+        stop() {}, getState: () => ({ enabled: true })
+      }) });
+      controller.bindMidiUi();
+      controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'local-passes', name: 'Local passes', lengthSteps: 2,
+        playback: { advance: 'game-tick', spacingTicks: 2, passCounter: 'completed' },
+        steps: [{ note: 60, velocity: 80, durationTicks: 2, condition: { unit: 'pass', every: 2 }, transforms: { unit: 'pass', interval: 2, span: 4 } }, { note: null }] } });
+      controller.dispatchProjectIntent({ type: 'source.clip.assign', sourceId: 'sfx-1', clipId: 'local-passes' });
+      expect(await controller.testSelectedSound()).to.equal(false); clock.tick(60);
+      expect(await controller.testSelectedSound()).to.equal(false); clock.tick(120);
+      expect(await controller.testSelectedSound()).to.equal(true);
+      expect(await controller.testSelectedSound()).to.equal(true);
+      doc.getElementById('midiPanicButton').dispatchEvent({ type: 'click' }); clock.tick(120);
+      expect(await controller.testSelectedSound()).to.equal(true); clock.tick(120);
+      expect(await controller.testSelectedSound()).to.equal(false);
+      expect(heard).to.deep.equal([[62], [62], [62]]);
+    });
+  });
+
+  it('closes held onset notes using elapsed capture time rather than mixing epoch and input timestamps', function() {
+    withFakeClockAndPerformance(clock => {
+      const { controller, doc } = createControllerHarness(); registerElement(doc, 'select', 'midiRecordPlacement').value = 'onsets';
+      controller.bindMidiUi(); controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'held', lengthSteps: 8 } });
+      controller.startRecording(); controller.captureRecordMessage({ type: 0x90, note: 60, velocity: 90, channel: 1, timestamp: 9000 }); clock.tick(240);
+      controller.commitRecording(); expect(controller.getProject().clips.find(c => c.id === 'held').steps[0].durationTicks).to.equal(4);
+    });
+  });
+
   it('records only notes that fit in the selected clip', function() {
     const fakeInputController = {
       setNoteCapture() {},
@@ -2092,6 +2214,10 @@ describe('midiUiController sequencer', function() {
     expect(controller.panic()).to.equal(true);
     expect(allNotesOffCalls).to.equal(1);
     expect(clearQueueCalls).to.equal(1);
+    doc.getElementById('midiPanicButton').dispatchEvent({ type: 'click' });
+    doc.getElementById('midiPanicButton').dispatchEvent({ type: 'click' });
+    expect(allNotesOffCalls).to.equal(3);
+    expect(clearQueueCalls).to.equal(3);
     expect(doc.getElementById('midiOutputLog').textContent).to.contain('Panic sent');
   });
 

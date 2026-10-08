@@ -28,6 +28,21 @@ When a milestone replaces an old path, remove the old path in the same phase.
 4. MIDI sequencer follow-up polish only when captures, tests, or real workflow
    use expose a concrete gap.
 
+## Current MIDI and game UI backlog (October 8, 2026)
+
+- [x] Diagnose local preview attenuation; offer explicit local gain/headroom while preserving saved levels and external MIDI values.
+- [x] Strengthen explicitly applied starting palettes without rewriting saved projects or their velocity limits.
+- [x] Restore game shortcuts while a speed range is focused; use tenths below 1x, integers through 10x, then tens, following effective slowdown.
+- [x] Move starting palettes beside Listen to game; tighten event cards, remove repeated empty labels and successful audition footers.
+- [x] Show locally dispatched pitches moving left to right through event rows, matching actual triangle attack/hold/release and clearing on Panic.
+- [x] Hide only unavailable skill events, preserve mappings and restore rows immediately for cheats.
+- [x] Extend reusable clips with per-event 8/16-cell note/drag entry, per-cell velocity/duration/chance, event/pass conditions and explicit event/game-tick advance.
+- [ ] Add bar-defined conditions and layered pitch/repeat transformations without introducing another clock or conflating event/bar/pass counters.
+- [x] Expose direct Panic, join level navigation, remove redundant picker labels, rename Source to GitHub and make color swatches contiguous with outer rounded ends.
+- [x] Preserve live playback and focus across compositor-only Focus/Split/Overlay transitions.
+- [x] Dock existing skill-specific cards beneath action selectors, preserving canvas controls, keyboard focus and synchronous availability/cheat updates.
+- [x] Leave a glyph of space before OUT while retaining complete Increase/Decrease labels; show a lighter minimap click-destination preview with existing marching ants.
+
 ## Milestone 1: DAW-Like Multichannel MIDI Sequencer UI
 
 **Outcome:** The MIDI surface is a DAW-like multichannel sequencer for gameplay
@@ -796,8 +811,9 @@ fitted berets with lift/open/reattach cosmetics on every shape. Acceptance instr
   regressions supersede known defects; unknown original source differences remain
   unrecoverable. Do not inherit historical acceptance counts.
 - Give temporal clips and recording explicit onset/overlap/retrigger semantics.
-  The legacy step editor still lowers notes as a chord or event arp; its per-step
-  probability, Hold/Tie, and recording-gap model need the deeper engine contract.
+  Legacy clips retain chord/event-arp lowering. Explicit temporal clips now honor cell
+  rests, probability and event/pass conditions; phrase-mode Hold/Tie have bounded gates.
+  Explicit onset capture now keeps gaps/overlapping lengths with a documented last-note-per-cell rule. Trigger-bar conditions, phases, completed/started phrase counters and composable pitch layers are implemented. Next: polyphonic capture/overdubbing and layered repeat transforms without duplicate clocks; final-tree listening/interaction acceptance remains open.
 - Visually accept the complete eight-accessory/five-eyewear pack on all twelve
   bodies, including the explicit custom ear/donut crown fits and final in-game
   appearance. Native source comparisons and decoder sheets are available; source
@@ -812,3 +828,42 @@ fitted berets with lift/open/reattach cosmetics on every shape. Acceptance instr
   pixel/collision-mask rendering. Rotation, terrain resizing, one-way behavior,
   and gadget transforms remain disabled/preserved pending specified implementation. Do not treat this MIDI/appearance batch as those
   separate closures or as a global performance gain.
+
+
+## Long-running actor storage
+
+- Main-game endless/benchmark spawning still appends to the historical ID-indexed
+  `LemmingManager.lemmings` array and leaves null slots after removal. Object pooling
+  bounds reusable actor instances, not that array's lifetime slot count. Investigate
+  a monotonic ID plus bounded live lookup while preserving history, rewind and
+  `getLemming(id)` compatibility. Do not compact the array as a quick fix. The
+  procgen world's separately compacted actor array is unaffected.
+
+## Owner review queue (October 8)
+
+- Keep skill cards mounted beneath the game HUD and shared audio controls visible with Studio closed: implemented; native desktop/narrow checks captured in ignored temp/review-followup.
+- Generated hazard support, water basins, terrain-only arrows and idle activation correction: implemented and checked with normal sourced assets; operational sourced TRAP/DROWN/KILL/FRYING contacts now use bounded shared Trigger/MapObject owners and existing death actions.
+- Persistent procgen seed/generation/playtest and shared local audio controls: implemented; native desktop/narrow 64-lane workflows checked.
+- Seeded readable words use verified normal fire glyphs, a finite curated no-slur pool, terrain clearance and actual baseline/spacing checks. Native source-art review captured readable GO/YES; other packs require verified glyph sets.
+- Camera zoom now preserves follow; deliberate pan releases it and the visible Follow/F control restores it. Lane-stack fit, jitter, no-live-leader, DPR and resize checks pass; bounded CCTV integration is implemented and native-reviewed.
+- Shared MIDI output budgeting now retains wall-time history across speed changes, gives active lanes fair shares, expires stale notes and reports thinning beside the existing audio controls. Editable complementary ensemble roles are implemented through existing palettes and track controls; saved-setting and channel-safety checks pass.
+- Verified prior-run distance markers keep the same metric and positions; screen-space black/white dashes pause with game ticks and respect reduced motion.
+- Make deterministic terrain growth finer and prioritize reachable frontiers with bounded shared work and matching collision/display. Canonical normal-level descriptors and pure revision-cached zone plans are implemented with authored-width caps and exact selected-pack provenance; screened additive groups and shared eight-column collision/display reveal are implemented. Conditional/destructive roles retain the sourced baseline; real generated trap/drowning/fire/lethal contacts are implemented and checked with sourced footprints, cooldowns and terminal action timing.
+- Ranked live overview CCTV and the persistent active count are implemented; focused/native desktop and narrow checks pass. The Library reference was unavailable after the supported transfer and one retry, so explicit owner requirements and actual app evidence guided the layout.
+- Ramp constructible challenge motifs with distance. Deep mining/switchback routes require real mining/digging and turning policy in the lane world before claiming playable escalation.
+
+- Tunnel-corner wall-column transition is reproduced and fixed using real shared action systems; non-climber turnaround and natural hoisting are covered.
+- Starting lane themes now use a deterministic balanced permutation of available selected-pack groundsets; canonical co-occurrence plans and screened additive runtime groups are implemented for verified normal themes.
+
+- Population-aware cohort easing, delayed sparse scout abilities and sustained pile detection are implemented with focused checks and a 65-lane native run. New-session random shapes/body colors already preserve saved controls and stable lane rainbow assignments.
+
+## Approved followups after the current October 8 fixes
+
+- CCTV director is implemented: actual cached construction/survival/lead-change signals, up to four user pins, stable dwell/ties, explicit reasons, fair rotation and the Eight leaders override pass focused and native desktop checks.
+- Bounded output capture is implemented in Expert and procgen Details: finite ring, actual request/API/synth lifecycle evidence, explicit clocks and context, demand-only waveform inspection, JSONL/CSV/HTML exports and objective summaries. Seeded native local output and a full 16-cell audition/cancellation are the acceptance fixtures; physical MIDI receipt is unverified.
+- Owner review correction: ordinary wall bounces, unclassified source-shelf access, uninterrupted shared construction tasks and taller uniformly scaled CCTV are implemented as a separate checkpoint before musical work; focused shared-action and native desktop checks pass.
+- Musical tension is implemented with saved amount/threshold/fade controls and procgen lane status. Actual completed-tick population collapse, recovery and breakthrough signals thin or restore layers smoothly; instruments, notes, scale, saved edits, channel safety and the shared output budget remain intact. Focused checks and muted desktop collapse/recovery plus main/procgen persistence checks pass. Authored main levels do not yet provide these observations.
+- Musical automation spans are implemented through the existing project/router: explicit beat or actor-distance intervals, lane/group/global scope, constant/ramped values, source conditions and priority. Main/procgen editors support draw/drag/resize/bypass and persistence; live compatible edits preserve event ordinals and queued phrases. Bounded rectangles and cached phase reuse the existing renderer. Focused and native combined validation cover actual local note dispatch and Panic.
+- Ghosts, named construction landmarks and replay capture are shelved. Literal weather visuals are outside the approved span concept.
+
+- Owner edge/crew correction is implemented: a visible baseline edge, actor-owned shared blocker contacts and saved concurrent bash/dig/build limits. Exact admission/death accounting replaces obsolete all-survive assumptions. Long bashers reaching a gap before their action ends remain an explicit routing limitation; advanced switchback/mining policy remains open.

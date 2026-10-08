@@ -8,30 +8,111 @@
   <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=0.0, viewport-fit=cover"/>
   <link type="text/css" rel="stylesheet" href="css/procgen.css">
   <link type="text/css" rel="stylesheet" href="css/character-controls.css">
+  <link type="text/css" rel="stylesheet" href="css/midi-spans.css">
   <link type="text/css" rel="stylesheet" href="css/icons.css">
   <script type="module" src="js/app/procgenBoot.js"></script>
 </head>
 <body>
-  <canvas id="gameCanvas" class="gameCanvas" aria-label="Procedural Lemmings world"></canvas>
-  <section id="procgenDrawer" aria-label="Procgen controls" inert>
+  <header id="procgenTopbar" aria-label="Run controls">
+    <label class="procgen-seed-field">Seed <input id="procgenSeed" type="text" value="" aria-label="Generation seed" title="Numbers or words; regenerate repeats this seed"></label>
+    <div class="procgen-button-group"><button id="procgenRestart" type="button" title="Regenerate the same seed (Backspace)">Regenerate</button><button id="procgenNewSeed" type="button" title="Choose a new seed and generate">New seed</button></div>
+    <label>Lanes <input id="procgenLanes" type="number" min="1" max="1024" step="1" value="1"></label>
+    <label>Pack <select id="procgenPack"></select></label>
+      <div class="procgen-speed-control" role="group" aria-label="Game speed">
+        <span>Speed</span><div class="procgen-speed-segments">
+          <button id="procgenSpeedDown" type="button" aria-label="Decrease game speed" title="Decrease speed (-); Shift for five steps"><span class="visually-hidden">Decrease</span></button>
+          <output id="procgenSpeedReadout" aria-hidden="true"></output>
+          <button id="procgenSpeedUp" type="button" aria-label="Increase game speed" title="Increase speed (+); Shift for five steps"><span class="visually-hidden">Increase</span></button>
+        </div><input id="procgenSpeed" type="number" min="0.1" step="0.1" value="3" aria-label="Exact game speed" title="Game speed multiplier">
+      </div>
+    <div class="procgen-button-group"><button id="procgenPause" type="button" aria-pressed="false" title="Pause or play (Space)">Pause</button><button id="procgenStep" type="button" title="Pause and advance one tick (])">Step</button></div>
+    <div class="procgen-button-group"><button id="procgenZoomOut" type="button" aria-label="Zoom out" title="Zoom out (Z)">−</button><button id="procgenFollow" type="button" title="Follow the leading living lemming (F)">Follow</button><button id="procgenZoomIn" type="button" aria-label="Zoom in" title="Zoom in (X)">+</button></div>
+    <div id="procgenAudioControls" class="procgen-audio-controls"><span id="procgenOutputPressure" role="status" aria-live="off" hidden></span><button id="procgenListen" type="button" aria-pressed="false">Listen locally</button><label title="Local master volume; above 100% boosts browser listening"><span class="visually-hidden">Master volume</span><input id="procgenMasterVolume" type="range" min="0" max="400" step="1" value="70" aria-label="Master volume"><output id="procgenMasterVolumeValue">70%</output></label><button id="procgenPanic" type="button" title="Stop all local notes">Panic</button></div>
+    <button id="procgenTab" type="button" aria-controls="procgenDrawer" aria-expanded="false">Details</button>
+  </header>
+  <canvas id="gameCanvas" class="gameCanvas" aria-label="Procedural Lemmings world" tabindex="0"></canvas>
+  <output id="procgenAliveCount" aria-label="Current active lemmings across all lanes" title="Active actors across all lanes; failed actors are excluded and each new generation resets the count">Loading</output>
+  <section id="procgenDrawer" aria-label="Procgen details" inert>
     <div class="procgen-controls-row">
-      <label>Spawns per cohort / lanes <input id="procgenLanes" type="number" min="1" max="1024" step="1" value="1"></label>
-      <label>Speed <select id="procgenSpeed"></select></label>
-      <label>Pack <select id="procgenPack"></select></label>
-      <button id="procgenRestart" type="button">Restart</button>
+      <label>Scenery <select id="procgenDecoration"></select></label>
+      <button id="procgenShare" type="button">Share run</button>
+      <input id="procgenShareUrl" type="text" readonly hidden aria-label="Shareable run URL">
     </div>
+    <fieldset class="procgen-cctv-controls">
+      <legend>Overview CCTV</legend>
+      <div class="procgen-controls-row">
+        <label>View <select id="procgenCctvMode"><option value="leaders">Eight leaders</option><option value="director">Director</option></select></label>
+        <label>Lane <input id="procgenCctvLane" type="number" min="1" max="1024" step="1" value="1" aria-label="Lane to pin"></label>
+        <button id="procgenCctvPin" type="button">Pin / unpin</button><button id="procgenCctvClear" type="button">Clear pins</button>
+      </div>
+      <p>Zoom all the way out to see the live views. Director highlights observed activity and keeps up to four pinned lanes.</p>
+      <div id="procgenCctvViews" role="group" aria-label="CCTV views and lane pins">
+        <button id="procgenCctvSlot0" type="button" aria-pressed="false" hidden></button>
+        <button id="procgenCctvSlot1" type="button" aria-pressed="false" hidden></button>
+        <button id="procgenCctvSlot2" type="button" aria-pressed="false" hidden></button>
+        <button id="procgenCctvSlot3" type="button" aria-pressed="false" hidden></button>
+        <button id="procgenCctvSlot4" type="button" aria-pressed="false" hidden></button>
+        <button id="procgenCctvSlot5" type="button" aria-pressed="false" hidden></button>
+        <button id="procgenCctvSlot6" type="button" aria-pressed="false" hidden></button>
+        <button id="procgenCctvSlot7" type="button" aria-pressed="false" hidden></button>
+      </div>
+      <p id="procgenCctvStatus" role="status" aria-live="polite"></p>
+    </fieldset>
     <div id="procgenCharacters" class="character-control-content"></div>
     <div class="procgen-controls-row">
       <label>Action music <select id="procgenPreset"></select></label>
       <label class="procgen-check"><input id="procgenPhrases" type="checkbox"> Short phrases</label>
-      <button id="procgenListen" type="button" aria-pressed="false">Listen locally</button>
     </div>
+    <details id="procgenWorkerFields"><summary>Construction crews</summary>
+      <div class="procgen-drawer-row">
+        <label>Concurrent bashers per lane <input id="procgenWorkerBashers" type="number" min="0" max="16" step="1" value="2"></label>
+        <label>Concurrent diggers per lane <input id="procgenWorkerDiggers" type="number" min="0" max="16" step="1" value="2"></label>
+        <label>Concurrent builders per lane <input id="procgenWorkerBuilders" type="number" min="0" max="16" step="1" value="2"></label>
+      </div><p>Independent work can run together. Overlapping work keeps one owner; lowering a limit lets existing jobs finish.</p>
+    </details>
+    <details id="procgenTensionFields" hidden><summary>Musical tension</summary>
+              <label><input id="procgenTensionEnabled" type="checkbox"> Thin layers when an established crew declines</label>
+              <div class="procgen-controls-row">
+                <label>Thinning %<input id="procgenTensionAmount" type="number" min="0" max="100" step="5"></label>
+                <label>Healthy crew<input id="procgenTensionHealthy" type="number" min="2" max="256" step="1"></label>
+                <label>Fade, game seconds<input id="procgenTensionFade" type="number" min="0.06" max="216" step="0.06"></label>
+              </div>
+              <details><summary>Thresholds</summary><div class="procgen-controls-row">
+                <label>Establish, game seconds<input id="procgenTensionEstablish" type="number" min="0" max="216" step="0.06"></label>
+                <label>Collapse %<input id="procgenTensionCollapse" type="number" min="5" max="80" step="5"></label>
+                <label>Recover %<input id="procgenTensionRecovery" type="number" min="10" max="100" step="5"></label>
+                <label>Breakthrough pixels<input id="procgenTensionBreakthrough" type="number" min="8" max="4096" step="8"></label>
+                <label>Breakthrough hold, game seconds<input id="procgenTensionHold" type="number" min="0.06" max="216" step="0.06"></label>
+              </div></details>
+              <label>Status lane <input id="procgenTensionLane" type="number" min="1" value="1" step="1"></label>
+              <p id="procgenTensionStatus" role="status" aria-live="off"></p>
+              <p>Uses completed procgen crew observations and automatic ensemble roles. Existing notes and instruments stay assigned. Game seconds advance with the simulation.</p>
+            </details>
+    <details id="procgenSpanFields"><summary>Musical spans</summary>
+      <div class="procgen-drawer-row">
+        <label>Domain <select id="procgenSpanDomain"><option value="beats">Musical beats</option><option value="distance">Actor world distance</option></select></label>
+        <label>Target <select id="procgenSpanTarget"><option value="velocity">Velocity</option><option value="note">Pitch offset</option><option value="pan">Pan</option><option value="duration">Duration</option><option value="timbre">Timbre</option></select></label>
+        <button id="procgenSpanAdd" type="button">Add span</button>
+        <label><input id="procgenSpanVisible" type="checkbox" checked> Show rectangles</label>
+        <label><input id="procgenSpanEdit" type="checkbox"> Draw on lanes</label>
+      </div><p>Beat rectangles use a musical timeline across the screen; distance rectangles follow world X. Enable Draw on lanes to select, move, resize or draw a lane group. Camera dragging resumes when drawing is off.</p>
+      <div id="procgenSpanList" class="midi-span-list"></div>
+    </details>
+    <details class="midi-output-capture"><summary>Output capture</summary>
+      <div class="midi-capture-buttons" role="group" aria-label="Bounded output capture">
+        <button id="procgenCaptureStart" type="button">Capture 2 minutes</button><button id="procgenCaptureStop" type="button" disabled>Stop capture</button>
+        <button id="procgenCaptureReport" type="button" disabled>Inspect</button><button id="procgenCaptureJSONL" type="button" disabled>JSONL</button><button id="procgenCaptureCSV" type="button" disabled>CSV</button><button id="procgenCaptureHTML" type="button" disabled>Report file</button>
+      </div>
+      <p id="procgenCaptureStatus" role="status" aria-live="off"></p>
+      <p>Records existing output only; start local listening separately. At most 4,096 records are retained. Stop capture keeps playback running.</p>
+      <iframe id="procgenCaptureRoll" title="Captured note schedules piano roll" sandbox="" hidden></iframe>
+      <pre id="procgenCaptureSummary" hidden></pre>
+    </details>
     <p id="procgenPresetDescription"></p>
     <p id="procgenAudioStatus" role="status">Local sound is off. No hardware output.</p>
     <p id="procgenMetrics" role="status"></p>
     <p id="procgenStallStatus"></p>
     <p id="procgenRunStatus" role="status">Loading…</p>
   </section>
-  <button id="procgenTab" type="button" aria-controls="procgenDrawer" aria-expanded="false">Controls ▾</button>
 </body>
 </html>

@@ -1,3 +1,5 @@
+import { applyMidiAutomationSpanValues } from './midi-mapping/MidiAutomationSpanValues.js';
+import { applyMidiEnsembleToSpec } from './project/MidiEnsemble.js';
 import { positionCurveValue } from './midi-mapping/PositionCurve.js';
 import { cloneSafeObject, isPlainObject } from '../util/safeObject.js';
 import {
@@ -37,6 +39,8 @@ class MidiMapping {
   static mergeConfigs(base, override) {
     return mergeConfig(base || DEFAULT_CONFIG, override || {});
   }
+
+  applySpanValues(spec, values) { return applyMidiAutomationSpanValues(spec, values, this.config); }
 
   getSfxConfig(sfxId) {
     if (sfxId == null) return null;
@@ -303,7 +307,7 @@ class MidiMapping {
     }
     const frequencyHz = sfx.frequencyHz ?? noteToFrequency(note);
 
-    return {
+    return applyMidiEnsembleToSpec({
       note,
       notes,
       velocity,
@@ -321,7 +325,7 @@ class MidiMapping {
       trackId: sfx.trackId ?? null,
       arp: sfx.arp ?? null,
       phrase: sfx.phrase ?? null
-    };
+    }, event, cfg, sfx);
   }
 }
 
