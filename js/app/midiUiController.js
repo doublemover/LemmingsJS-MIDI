@@ -313,6 +313,8 @@ const createMidiUiController = ({
   let localInteraction = 0;
   const editHistory = createMidiEditHistory();
   let workbench = null, eventClipEditor = null;
+  const gameEventRows = new Map();
+  const getGameEventRows = () => Array.from(gameEventRows.values());
   const uiMetrics = {
     renderCount: 0,
     queuedRenderCount: 0,
@@ -2314,20 +2316,28 @@ const createMidiUiController = ({
       const hasActiveEvent = visibleEvents.some(event => resolveGameSoundSource(current, event)?.id === source?.id);
       for (const event of GAME_SOUND_EVENTS) {
         const item = resolveGameSoundSource(current, event);
-        const row = document.createElement('button');
+        let row = gameEventRows.get(event.id);
+        if (!row) {
+          row = document.createElement('button'); gameEventRows.set(event.id, row);
+          row.addEventListener('click', () => selectGameSound(event));
+        }
+        row.replaceChildren?.();
+        if (!row.replaceChildren) removeChildren(row);
         row.type = 'button'; row.className = 'midi-game-event'; row.dataset.gameEventId = String(event.id); row.hidden = unavailableSkills.has(event.id);
         row.setAttribute('role', 'option');
         row.setAttribute('aria-selected', String(item?.id === source?.id));
         row.tabIndex = item?.id === source?.id || (!hasActiveEvent && event === visibleEvents[0]) ? 0 : -1;
         const label = document.createElement('strong'); label.textContent = event.label;
-        const summary = document.createElement('span');
+        const summary = document.createElement('span'); summary.className = 'midi-event-summary';
         const kind = getEventBehavior(item);
         const pitches = item?.mode === 'clip' ? (current.clips.find(clip => clip.id === item.clipId)?.steps || []).map(step => step.note).filter(Number.isFinite) : item?.mapping?.degree != null || item?.mapping?.chord ? [] : (item?.mapping?.notes || [item?.mapping?.note]).filter(Number.isFinite);
         const names = pitches.slice(0, 16).map(soundNoteName).join(' ');
         summary.textContent = !item?.enabled ? 'Off' : [({note:'One note',falling:'Falling phrase',rising:'Rising phrase',steps:'One note / event',custom:'Custom'})[kind], names].filter(Boolean).join(' \u00b7 ');
+        row.dataset.eventLabel = event.label; row.dataset.fullSummary = summary.textContent;
+        row.dataset.noteLabels = pitches.slice(0, 3).map(soundNoteName).join(' '); row.dataset.soundEnabled = String(!!item?.enabled);
+        row.title = event.label + ': ' + summary.textContent; row.setAttribute('aria-label', row.title);
         const count = document.createElement('span'); count.className = 'midi-event-count'; count.textContent = ''; count.hidden = true;
         row.append(label, summary, count);
-        row.addEventListener('click', () => selectGameSound(event));
         list.appendChild(row);
         if (focused === String(event.id)) row.focus?.();
       }
@@ -2598,7 +2608,7 @@ const createMidiUiController = ({
     cleanupLegacyMidiProjectStorage(storage);
     workbench = createMidiInstrumentWorkbench({ document, window, getLemmings, getProject: ensureProject, getSource: selectedSource,
       updateMapping: updateSelectedMapping, updateSource: updateSelectedSource, commitProject, chooseView: chooseSoundView,
-      bind: bindById, panic, history: editHistory, setStatus });
+      bind: bindById, panic, history: editHistory, setStatus, getEventRows: getGameEventRows });
     workbench.initialize();
     eventClipEditor = createMidiEventClipEditor({ document, bind: bindById, getProject: ensureProject, getSource: selectedSource,
       commitProject, dispatch: dispatchProjectIntent, history: editHistory, setStatus });
@@ -2612,20 +2622,22 @@ const createMidiUiController = ({
     for (const name of ['sounds', 'devices', 'project', 'expert']) {
       bindById(`midiView${name[0].toUpperCase() + name.slice(1)}`, 'click', () => chooseSoundView(name));
     }
-    bindById('midiGameEventList', 'keydown', event => {
+    const navigateGameEvents = event => {
       if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
       const current = ensureProject();
-      const list = document?.getElementById('midiGameEventList');
-      const visible = new Set(Array.from(list?.children || []).filter(row => !row.hidden).map(row => Number(row.dataset.gameEventId)));
+      const visible = new Set(getGameEventRows().filter(row => !row.hidden).map(row => Number(row.dataset.gameEventId)));
       const events = GAME_SOUND_EVENTS.filter(item => visible.has(item.id));
       if (!events.length) return;
-      const index = Math.max(0, events.findIndex(item => resolveGameSoundSource(current, item)?.id === selectedSource()?.id));
+      const focusedId = Number(event.target?.dataset?.gameEventId);
+      const index = Math.max(0, events.findIndex(item => Number.isFinite(focusedId) ? item.id === focusedId : resolveGameSoundSource(current, item)?.id === selectedSource()?.id));
       const next = event.key === 'Home' ? 0 : event.key === 'End' ? events.length - 1
         : clamp(index + (event.key === 'ArrowDown' ? 1 : -1), 0, events.length - 1);
       event.preventDefault?.(); event.stopPropagation?.();
       selectGameSound(events[next]);
-      Array.from(list?.children || []).find(row => row.dataset.gameEventId === String(events[next].id))?.focus?.();
-    });
+      getGameEventRows().find(row => row.dataset.gameEventId === String(events[next].id))?.focus?.();
+    };
+    bindById('midiGameEventList', 'keydown', navigateGameEvents);
+    bindById('midiSkillEventDock', 'keydown', navigateGameEvents);
     bindById('midiEditProjectKey', 'click', () => chooseSoundView('project'));
     bindById('midiSoundAdvanced', 'click', () => chooseSoundView('expert'));
     bindById('midiSoundEnabled', 'change', event => updateSelectedSource({ enabled: !!event.target.checked }));
@@ -3220,7 +3232,7 @@ const createMidiUiController = ({
 
   const dispose = () => {
     disposed = true;
-    workbench?.dispose(); eventClipEditor?.dispose();
+    workbench?.dispose(); eventClipEditor?.dispose(); gameEventRows.clear();
     localInteraction += 1;
     getLemmings()?.setLocalAudioStopHandler?.(null);
     auditionAudio?.dispose?.();

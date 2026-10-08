@@ -40,7 +40,8 @@ When a milestone replaces an old path, remove the old path in the same phase.
 - [ ] Add bar-defined conditions and layered pitch/repeat transformations without introducing another clock or conflating event/bar/pass counters.
 - [x] Expose direct Panic, join level navigation, remove redundant picker labels, rename Source to GitHub and make color swatches contiguous with outer rounded ends.
 - [x] Preserve live playback and focus across compositor-only Focus/Split/Overlay transitions.
-- [ ] Integrate applicable cards with the skill strip and finish adjacent selector/drawer/minimap polish.
+- [x] Dock existing skill-specific cards beneath action selectors, preserving canvas controls, keyboard focus and synchronous availability/cheat updates.
+- [ ] Finish release-rate hover text spacing and a lighter minimap destination preview using the existing marching-ants renderer.
 
 ## Milestone 1: DAW-Like Multichannel MIDI Sequencer UI
 

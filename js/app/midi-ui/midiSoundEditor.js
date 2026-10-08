@@ -5,7 +5,7 @@ const GAME_SOUND_EVENTS = Object.freeze([
   [SoundEffectIds.BLOCKER_TURN, 'Walker turn'], [SoundEffectIds.BLOCKER_CONTACT, 'Blocker reply'],
   [SoundEffectIds.COUNTDOWN, 'Bomber countdown'], [SoundEffectIds.TRAP_FIRE, 'Fire'],
   [SoundEffectIds.SPAWN, 'Spawn'], [SoundEffectIds.LAND, 'Land'], [SoundEffectIds.EXIT, 'Exit'],
-  [SoundEffectIds.BUILDER_STEP, 'Build'], [SoundEffectIds.DIG, 'Dig'], [SoundEffectIds.BASH, 'Bash'],
+  [SoundEffectIds.BUILDER_STEP, 'Build'], [SoundEffectIds.BUILDER_WARNING, 'Builder warning'], [SoundEffectIds.DIG, 'Dig'], [SoundEffectIds.BASH, 'Bash'],
   [SoundEffectIds.MINE, 'Mine'], [SoundEffectIds.STEEL_HIT, 'Hit steel'],
   [SoundEffectIds.SKILL_ASSIGN, 'Assign skill'], [SoundEffectIds.SKILL_SELECT, 'Select skill'],
   [SoundEffectIds.ENTRANCE_OPEN, 'Open hatch'], [SoundEffectIds.OHNO, 'Bomber warning'],

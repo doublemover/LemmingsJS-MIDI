@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Dock existing skill-event cards beneath action selectors, fit the canvas/footer together and retain cross-region keyboard focus and immediate cheat restoration.
+
 - Add reusable per-event 8/16-cell note editing with drag/undo, explicit event or game-tick progression, silent rests and per-cell dynamics/chance/conditions.
 
 - Animate actual local note pitches and releases across event rows; move the persistent editor smoothly between layouts without per-frame canvas resizing.

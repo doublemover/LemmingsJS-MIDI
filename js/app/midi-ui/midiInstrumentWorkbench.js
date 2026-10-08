@@ -1,3 +1,4 @@
+import { createMidiSkillEventDock } from './midiSkillEventDock.js';
 import { createMidiEventPlayback } from './midiEventPlayback.js';
 import { resolveUnavailableSkillSfxIds } from './midiUiDomain.js';
 import { GAME_SPEED_DETENTS, gameSpeedDetentIndex } from '../../game/GameSpeed.js';
@@ -17,13 +18,14 @@ const gameClock = timer => {
 };
 
 const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProject, getSource,
-  updateMapping, updateSource, commitProject, chooseView, bind, panic, history, setStatus }) => {
+  updateMapping, updateSource, commitProject, chooseView, bind, panic, history, setStatus, getEventRows }) => {
   const byId = id => document?.getElementById(id);
   const text = (id, value) => { const el = byId(id); if (el && el.textContent !== String(value)) el.textContent = value; };
   const value = (id, next) => { const el = byId(id); if (el && (el.type === 'range' || el !== document?.activeElement) && el.value !== String(next)) el.value = String(next); };
   let layout = 'split', visible = false, timerId = null, soundBus = null, skills = null, menus = null, palettes = null;
   const activity = new Map(), references = new Map();
-  const getRows = () => Array.from(byId('midiGameEventList')?.children || []);
+  const getRows = getEventRows || (() => Array.from(byId('midiGameEventList')?.children || []));
+  const skillDock = createMidiSkillEventDock({ document, window, getLemmings, getRows });
   const playback = createMidiEventPlayback({ document, window, getRows });
   let layoutAnimation = null;
   let lastEvent = null, lastTick = null;
@@ -78,7 +80,7 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     byId('midiGamePlay')?.setAttribute('title', clock.running ? 'Pause game' : 'Play game');
     text('midiGameClock', `${clock.running ? 'RUN' : 'PAUSE'} · tick ${clock.tick} · ${clock.ticksPerSecond.toFixed(1)} ticks/s`);
     text('midiLastEvent', lastEvent ? `${GAME_SOUND_EVENTS.find(item => item.id === lastEvent.sfxId)?.label || 'Event'} · tick ${lastEvent.tick}` : 'Waiting for game events');
-    for (const row of Array.from(byId('midiGameEventList')?.children || [])) {
+    for (const row of getRows()) {
       const hidden = unavailableSkills.has(Number(row.dataset.gameEventId));
       if (row.hidden !== hidden) row.hidden = hidden;
       const item = activity.get(Number(row.dataset.gameEventId));
@@ -87,7 +89,8 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
       const count = row.querySelector?.('.midi-event-count');
       if (count) { count.hidden = !item; count.textContent = item ? `${item.count}× · tick ${item.tick}` : ''; }
     }
-    const visibleRows = Array.from(byId('midiGameEventList')?.children || []).filter(row => !row.hidden);
+    skillDock.sync(visible);
+    const visibleRows = getRows().filter(row => !row.hidden);
     const selectedRow = visibleRows.find(row => row.getAttribute('aria-selected') === 'true') || visibleRows[0];
     for (const row of visibleRows) row.tabIndex = row === selectedRow ? 0 : -1;
     if (document?.activeElement?.hidden && document.activeElement?.dataset?.gameEventId) selectedRow?.focus?.();
@@ -111,7 +114,7 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     if (timerId != null) window?.clearInterval?.(timerId);
     timerId = null;
     if (visible) { refreshClock(); timerId = window?.setInterval?.(refreshClock, 100) ?? null; }
-    else { menus?.close(); palettes?.close(); detach(); }
+    else { menus?.close(); palettes?.close(); detach(); skillDock.sync(false); }
   };
   const routeSummary = () => {
     const p = getProject(), source = getSource();
@@ -221,7 +224,7 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
   };
   return { initialize, render, setVisible, setLayout, refreshClock, onPlayback: playback.onPlayback,
     getState: () => ({ layout, visible, clock: gameClock(getLemmings()?.game?.getGameTimer?.()), lastEvent: lastEvent && { sfxId: lastEvent.sfxId, tick: lastEvent.tick } }),
-    dispose: () => { playback.dispose(); layoutAnimation?.cancel?.(); setVisible(false); menus?.dispose(); menus = null; palettes?.dispose(); palettes = null; references.clear(); activity.clear(); } };
+    dispose: () => { skillDock.dispose(); playback.dispose(); layoutAnimation?.cancel?.(); setVisible(false); menus?.dispose(); menus = null; palettes?.dispose(); palettes = null; references.clear(); activity.clear(); } };
 };
 
 export { createMidiInstrumentWorkbench, gameClock, LAYOUTS };

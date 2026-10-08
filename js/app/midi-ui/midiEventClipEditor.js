@@ -3,7 +3,7 @@ import { describeMidiClipPlayback } from '../../midi/project/MidiClipPlayback.js
 import { soundNoteName } from './midiSoundEditor.js';
 
 const parseClipNote = raw => {
-  const text = String(raw).trim();
+  const text = String(raw).trim().replace(/\u266f/g, '#').replace(/\u266d/g, 'b');
   if (/^(rest|-)$/i.test(text) || !text) return null;
   if (/^\d+$/.test(text)) { const number = Number(text); return number <= 127 ? number : undefined; }
   const match = /^([a-g])([#b]?)(-?\d)$/i.exec(text);

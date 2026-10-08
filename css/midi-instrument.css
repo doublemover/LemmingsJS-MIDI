@@ -160,7 +160,7 @@ body.game-page.studio-open[data-midi-layout=overlay] .midi-sequencer { grid-colu
 .game, .studio-open .game { padding-left: 4px; }
 
 .midi-layout-choices > button { font-size: 10px; gap: 3px; padding: 4px 5px; }
-@media (min-width: 1000px) and (max-width: 1599px) { .midi-instrument-head { gap: 8px; } .midi-headunit-readout { box-sizing: border-box; width: 110px; min-width: 90px; } }
+@media (min-width: 1000px) and (max-width: 1599px) { .midi-instrument-head { gap: 7px; } .midi-headunit-readout { box-sizing: border-box; width: 110px; min-width: 90px; } }
 
 .game-chrome:has(.midi-starting-palettes[open], .level-tools[open], .midi-instrument-menus details[open]) { z-index: 60; }
 
@@ -179,3 +179,15 @@ body.game-page.studio-open[data-midi-layout=overlay] .midi-sequencer { grid-colu
 .midi-event-clip-cell[aria-pressed=true] { background: #d0dab8; outline: 1px solid #5a7350; }
 .midi-event-clip-cell small { position: absolute; bottom: 1px; left: 0; width: 100%; font: 8px ui-monospace,monospace; }
 .midi-clip-note-bar { position: absolute; left: 0; right: 0; height: 12px; border-radius: 2px; background: #536e45; color: #fffceb; font: 8px ui-monospace,monospace; line-height: 12px; }
+
+.midi-skill-event-dock { position: relative; height: 82px; background: #152118; border-bottom: 1px solid #3c533c; }
+.midi-skill-event-dock[hidden] { display: none; }
+.midi-skill-event-groups { position: absolute; top: 0; display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 1px; }
+.midi-skill-event-slot { display: flex; flex-direction: column; gap: 2px; min-width: 0; border-inline-start: 1px solid #3b4c38; }
+.midi-skill-event-dock .midi-game-event { grid-template-columns: minmax(0,1fr); gap: 0; padding: 3px 1px !important; min-height: 36px; border-radius: 3px; text-align: center; }
+.midi-skill-event-dock .midi-game-event strong { font-size: 9px; line-height: 13px; }
+.midi-skill-event-dock .midi-event-summary { font-size: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.midi-skill-event-dock .midi-event-count { display: none; }
+.midi-skill-event-dock.is-compact .midi-game-event strong { font-size: 10px; }
+
+@media (max-width: 999px) { .studio-open .studio-events { display: block; } .studio-open .studio-library { max-height: 180px; } }
