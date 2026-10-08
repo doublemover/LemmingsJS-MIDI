@@ -22,7 +22,7 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
   const byId = id => document?.getElementById(id);
   const text = (id, value) => { const el = byId(id); if (el && el.textContent !== String(value)) el.textContent = value; };
   const value = (id, next) => { const el = byId(id); if (el && (el.type === 'range' || el !== document?.activeElement) && el.value !== String(next)) el.value = String(next); };
-  let layout = 'split', visible = false, timerId = null, soundBus = null, skills = null, menus = null, palettes = null;
+  let layout = 'split', visible = false, audioActive = false, disposed = false, timerId = null, soundBus = null, skills = null, menus = null, palettes = null;
   const activity = new Map(), references = new Map();
   const getRows = getEventRows || (() => Array.from(byId('midiGameEventList')?.children || []));
   const skillDock = createMidiSkillEventDock({ document, window, getLemmings, getRows });
@@ -63,7 +63,7 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     text('midiEditScope', title); byId('midiEditScope')?.setAttribute('title', title);
   };
   const refreshClock = () => {
-    if (!visible) return;
+    if (disposed) return;
     refreshScope();
     const view = getLemmings();
     const nextBus = view?.game?.soundEvents;
@@ -101,8 +101,9 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
       const count = row.querySelector?.('.midi-event-count');
       if (count) { count.hidden = !item; count.textContent = item ? `${item.count}× · tick ${item.tick}` : ''; }
     }
-    skillDock.sync(visible);
-    const visibleRows = getRows().filter(row => !row.hidden);
+    skillDock.sync(true);
+    const dock = byId('midiSkillEventDock');
+    const visibleRows = getRows().filter(row => !row.hidden && (visible || dock?.contains(row)));
     const selectedRow = visibleRows.find(row => row.getAttribute('aria-selected') === 'true') || visibleRows[0];
     for (const row of visibleRows) row.tabIndex = row === selectedRow ? 0 : -1;
     if (document?.activeElement?.hidden && document.activeElement?.dataset?.gameEventId) selectedRow?.focus?.();
@@ -122,13 +123,22 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     const length = clamp(requested, durations.min, durations.max);
     text('midiSoundDurationEffective', `${length} ticks · ${(length * clock.frameMs).toFixed(0)} ms${requested !== length ? ' · project range limit' : ''}`);
   };
+  const refreshChrome = () => {
+    const head = byId('midiInstrumentHead');
+    if (!head) return;
+    head.hidden = disposed || (!visible && !audioActive);
+    head.classList.toggle('is-studio-closed', !visible);
+    for (const child of Array.from(head.children || [])) child.hidden = !visible && child.id !== 'midiAudioControls';
+    if (head.hidden && head.contains(document?.activeElement)) byId('midiWorkspaceToggle')?.focus?.();
+  };
+  const setAudioActive = next => { audioActive = !!next; refreshChrome(); };
   const setVisible = next => {
-    visible = !!next;
-    const head = byId('midiInstrumentHead'); if (head) head.hidden = !visible;
-    if (timerId != null) window?.clearInterval?.(timerId);
-    timerId = null;
-    if (visible) { refreshClock(); timerId = window?.setInterval?.(refreshClock, 100) ?? null; }
-    else { menus?.close(); palettes?.close(); detach(); skillDock.sync(false); }
+    if (disposed) return;
+    visible = !!next; refreshChrome();
+    refreshClock();
+    // The game HUD and skill availability outlive the editor. One bounded refresh owns both.
+    if (timerId == null) timerId = window?.setInterval?.(refreshClock, 100) ?? null;
+    if (!visible) { menus?.close(); palettes?.close(); }
   };
   const routeSummary = () => {
     const p = getProject(), source = getSource();
@@ -237,9 +247,9 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
       (event.shiftKey ? history.redo : history.undo)(getProject(), commitProject); render();
     });
   };
-  return { initialize, render, setVisible, setLayout, refreshClock, onPlayback: playback.onPlayback,
+  return { initialize, render, setVisible, setAudioActive, setLayout, refreshClock, onPlayback: playback.onPlayback,
     getState: () => ({ layout, visible, clock: gameClock(getLemmings()?.game?.getGameTimer?.()), lastEvent: lastEvent && { sfxId: lastEvent.sfxId, tick: lastEvent.tick } }),
-    dispose: () => { skillDock.dispose(); playback.dispose(); layoutAnimation?.cancel?.(); setVisible(false); menus?.dispose(); menus = null; palettes?.dispose(); palettes = null; references.clear(); activity.clear(); } };
+    dispose: () => { disposed = true; visible = false; refreshChrome(); if (timerId != null) window?.clearInterval?.(timerId); timerId = null; detach(); skillDock.dispose(); playback.dispose(); layoutAnimation?.cancel?.(); menus?.dispose(); menus = null; palettes?.dispose(); palettes = null; references.clear(); activity.clear(); } };
 };
 
 export { createMidiInstrumentWorkbench, gameClock, LAYOUTS };

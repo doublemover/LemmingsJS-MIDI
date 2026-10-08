@@ -19,7 +19,7 @@ describe('game page layout contract', function() {
     expect($('#midiLocalListenButton').next().find('#midiMasterVolume').length).to.equal(1);
     expect($('#midiGamePresetSelect').closest('.midi-listen-row').length).to.equal(1);
     expect($('#midiGamePresetApply').closest('#midiProjectView').length).to.equal(0);
-    expect($('#midiPanicButton').closest('#midiTransportStrip').length).to.equal(1);
+    expect($('#midiPanicButton').closest('#midiAudioControls').length).to.equal(1);
     expect($('#gameChrome strong').length).to.equal(0);
     expect($('input[type=color]').length).to.equal(0);
     expect($('.character-segments[role=radiogroup]').length).to.equal(6);

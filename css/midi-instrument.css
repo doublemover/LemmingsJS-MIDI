@@ -42,6 +42,7 @@ body.game-page.studio-open[data-midi-layout=focus] { grid-template-columns: 200p
 .midi-instrument-head .midi-control-group { border: 0; padding: 0; gap: 3px; flex-wrap: nowrap; }
 .midi-instrument-head .midi-field select { max-width: 92px; padding-left: 5px; padding-right: 3px; font-size: 11px; }
 .midi-key-controls { flex: none; }
+.midi-instrument-head.is-studio-closed { flex: none; margin-left: auto; }
 .midi-instrument-head .midi-listen-row { width: auto; flex-wrap: nowrap; gap: 6px; flex: none; }
 #midiLocalListenButton { background: #567148; border-color: #829864; color: #f5f8e9; min-height: 32px; display: inline-flex; align-items: center; gap: 5px; font-size: 11px; white-space: nowrap; }
 .midi-volume-control { display: flex; align-items: center; gap: 4px; }
@@ -113,7 +114,7 @@ body.game-page.studio-open[data-midi-layout=overlay] .midi-sequencer { grid-colu
 .game-chrome :focus-visible, .studio-library :focus-visible, .midi-sequencer :focus-visible { outline: 2px solid #bd8b35; outline-offset: 2px; }
 #midiGamePlay[aria-pressed=true] { --icon: url('../assets/icons/lucide/pause.svg'); background: #485d3f; color: #f4f4dc; }
 @media (min-width: 1600px) { body.game-page.studio-open { grid-template-columns: 220px minmax(300px, 1fr) 360px; } .midi-instrument-head { gap: 14px; } .midi-headunit-readout { width: 175px; font-size: 10px; } .midi-speed-control input[type=range] { width: 65px; } .midi-volume-control input { width: 80px; } }
-@media (max-width: 1390px) { .game-chrome { gap: 7px; padding: 8px; } .midi-instrument-head { gap: 6px; } .midi-headunit-readout { min-width: 104px; width: 104px; font-size: 8px; } .midi-speed-control > span, .midi-speed-control input[type=range] { display: none; } .midi-layout-choices button { padding: 4px 6px; font-size: 10px; } .midi-layout-choices button::before { width: 13px; height: 13px; } .midi-volume-control input { width: 45px; } #levelIndexSelect { width: 155px; } body.game-page.studio-open { grid-template-columns: 200px minmax(280px,1fr) 316px; } }
+@media (max-width: 1500px) { .game-chrome { gap: 7px; padding: 8px; } .midi-instrument-head { gap: 6px; } .midi-headunit-readout { min-width: 104px; width: 104px; font-size: 8px; } .midi-speed-control > span, .midi-speed-control input[type=range] { display: none; } .midi-layout-choices button { padding: 4px 6px; font-size: 10px; } .midi-layout-choices button::before { width: 13px; height: 13px; } .midi-volume-control input { width: 45px; } #levelIndexSelect { width: 155px; } body.game-page.studio-open { grid-template-columns: 200px minmax(280px,1fr) 316px; } }
 @media (max-width: 1150px) { .midi-headunit-readout { display: none; } .midi-key-controls { display: none !important; } body.game-page.studio-open { grid-template-columns: 192px minmax(240px,1fr) 300px; } #levelIndexSelect { width: 135px; } }
 
 .game-chrome { box-sizing: border-box; min-height: 0; }
@@ -161,7 +162,7 @@ body.game-page.studio-open[data-midi-layout=overlay] .midi-sequencer { grid-colu
 #midiModulationInspector #midiAutomationAddButton { min-height: 28px; padding: 4px 9px; border-color: #48623b; background: #cfe5b5; color: #1d3a27; font-weight: 700; }
 
 /* Persistent safety and source context belong in the pane's compact titlebar. */
-#midiTransportStrip { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; flex-wrap: nowrap; gap: 6px; min-height: 40px; padding: 6px 8px; border-bottom: 1px solid #adb69f; background: #e0e5d4; }
+#midiTransportStrip { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; flex-wrap: nowrap; gap: 6px; min-height: 40px; padding: 6px 8px; border-bottom: 1px solid #adb69f; background: #e0e5d4; }
 #midiEditScope { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #263a2d; font-size: 12px; line-height: 1.3; }
 #midiPanicButton { align-self: center; gap: 4px; min-height: 26px; height: 26px; padding: 3px 7px; border: 1px solid #963b2d; border-radius: 4px; background: #ad4434; color: #fff9f1; font-size: 11px; font-weight: 700; white-space: nowrap; }
 #midiPanicButton::before { width: 12px; height: 12px; }
@@ -198,7 +199,7 @@ body.game-page.studio-open[data-midi-layout=overlay] .midi-sequencer { grid-colu
 .level-tools[open] .level-tools-popover, .midi-starting-palettes[open] .midi-preset-popover { animation: drawer-down 140ms ease-out; }
 @keyframes drawer-down { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { .level-tools[open] .level-tools-popover, .midi-starting-palettes[open] .midi-preset-popover { animation: none; } }
-@media (max-width: 1390px) { .midi-starting-palettes > summary { font-size: 0; gap: 0; padding: 5px; } }
+@media (max-width: 1500px) { .midi-starting-palettes > summary { font-size: 0; gap: 0; padding: 5px; } }
 
 #levelSelects .level-navigation > button { border-radius: 0; }
 #levelSelects .level-navigation > button:last-child { border-radius: 0 4px 4px 0; }

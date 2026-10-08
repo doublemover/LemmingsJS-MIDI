@@ -838,3 +838,14 @@ fitted berets with lift/open/reattach cosmetics on every shape. Acceptance instr
   a monotonic ID plus bounded live lookup while preserving history, rewind and
   `getLemming(id)` compatibility. Do not compact the array as a quick fix. The
   procgen world's separately compacted actor array is unaffected.
+
+## Owner review queue (October 8)
+
+- Keep skill cards mounted beneath the game HUD and shared audio controls visible with Studio closed: implemented; native desktop/narrow checks captured in ignored temp/review-followup.
+- Anchor generated hazards to valid support; bound terrain-only arrows and stop idle activation loops.
+- Keep common generation/seed/playtest controls in the persistent procgen topbar.
+- Generate seeded readable words from letter glyphs with an explicit no-slur pool and adjacency checks.
+- Preserve camera follow during zoom; deliberate pan releases it, a visible shortcut restores it; fit the actual lane stack.
+- Extend existing palettes/routing with editable complementary ensemble roles and one fair wall-time output budget.
+- Verify record-marker meaning before improving contrast/motion.
+- Make deterministic terrain growth finer and prioritize reachable frontiers with bounded shared work and matching collision/display.

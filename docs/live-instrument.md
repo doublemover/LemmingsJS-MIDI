@@ -173,3 +173,5 @@ collision simulation remain unchanged. Hydro triangle keeps its original art.
 The twelve accepted fits are pinned by SHA-256 in the source asset tools. Native
 recipes do not provide berets for the two ear bodies; their reviewed custom fits
 and the donut's ring-specific placement are identified explicitly.
+
+Applicable skill event cards remain beneath the game selectors when Studio is closed. Clicking one opens its sound editor. Unavailable skill cards stay hidden without deleting their mappings; enabling cheats restores them immediately. MIDI or local listening keeps the shared gain, Panic and palette controls in the game topbar. Closing Studio does not stop audio.

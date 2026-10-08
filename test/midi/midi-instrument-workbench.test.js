@@ -94,6 +94,31 @@ describe('live instrument workbench', function() {
     expect(doc.getElementById('midiInstrumentHead').hidden).to.equal(true);
   });
 
+  it('keeps shared audio controls and skill subscriptions alive when Studio closes', function() {
+    const doc = new TestDocument(); doc.body = doc.createElement('body'); const win = createTestWindow();
+    const head = registerElement(doc, 'div', 'midiInstrumentHead');
+    const audio = registerElement(doc, 'div', 'midiAudioControls');
+    const editor = registerElement(doc, 'div', 'midiGameTransport'); head.append(audio, editor);
+    const gain = registerElement(doc, 'input', 'midiMasterVolume'); audio.append(gain);
+    const toggle = registerElement(doc, 'button', 'midiWorkspaceToggle');
+    const row = doc.createElement('button'); row.dataset.gameEventId = '22';
+    const skills = { initialSkills: [0, 0, 0, 0, 0, 0, 0, 0, 10], cheatMode: false, onCountChanged: new EventHandler() };
+    const bus = { onEvent: new EventHandler() }; const p = makeProject();
+    const workbench = createMidiInstrumentWorkbench({ document: doc, window: win,
+      getLemmings: () => ({ game: { soundEvents: bus, skills, level: { skills: skills.initialSkills } } }),
+      getProject: () => p, getSource: () => p.sources[0], getEventRows: () => [row],
+      updateMapping() {}, updateSource() {}, commitProject() {}, chooseView() {}, bind() {}, panic() {}, history: createMidiEditHistory(), setStatus() {} });
+    workbench.setVisible(true); workbench.setAudioActive(true);
+    for (let i = 0; i < 3; i++) { workbench.setVisible(false); workbench.setVisible(true); }
+    workbench.setVisible(false);
+    expect(head.hidden).to.equal(false); expect(audio.hidden).to.equal(false); expect(editor.hidden).to.equal(true);
+    expect(skills.onCountChanged.handlers.size).to.equal(1); expect(bus.onEvent.handlers.size).to.equal(1);
+    row.dataset.gameEventId = '20'; skills.onCountChanged.trigger(); expect(row.hidden).to.equal(true);
+    skills.cheatMode = true; skills.onCountChanged.trigger(); expect(row.hidden).to.equal(false);
+    gain.focus(); workbench.setAudioActive(false); expect(head.hidden).to.equal(true); expect(doc.activeElement).to.equal(toggle);
+    workbench.dispose(); expect(skills.onCountChanged.handlers.size).to.equal(0); expect(bus.onEvent.handlers.size).to.equal(0);
+  });
+
   it('keeps the titlebar scoped to the active workspace without extra label copy', function() {
     const doc = new TestDocument(); doc.body = doc.createElement('body'); const win = createTestWindow();
     for (const id of ['midiEditScope', 'midiViewDevices', 'midiViewProject', 'midiViewExpert']) registerElement(doc, 'button', id);

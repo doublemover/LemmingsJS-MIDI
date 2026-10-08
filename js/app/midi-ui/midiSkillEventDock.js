@@ -19,7 +19,7 @@ const resolveSkillDockGeometry = (stage, canvasWidth) => {
 /** Move the existing cards; the canvas continues to own skill selection and assignment. */
 const createMidiSkillEventDock = ({ document, window, getLemmings, getRows }) => {
   const root = document?.getElementById('midiSkillEventDock'), list = document?.getElementById('midiGameEventList');
-  const slots = new Map(); let groups = null, geometryKey = null;
+  const slots = new Map(); let groups = null, geometryKey = null, enabled = false;
   if (root) {
     groups = document.createElement('div'); groups.className = 'midi-skill-event-groups'; root.appendChild(groups);
     for (const group of SKILL_EVENT_GROUPS) {
@@ -29,6 +29,7 @@ const createMidiSkillEventDock = ({ document, window, getLemmings, getRows }) =>
     }
   }
   const sync = visible => {
+    enabled = !!visible;
     if (!root || !list) return;
     const view = getLemmings(), canvas = document.getElementById('gameCanvas');
     const rows = getRows(), stage = view?.stage;
@@ -59,7 +60,10 @@ const createMidiSkillEventDock = ({ document, window, getLemmings, getRows }) =>
       window?.dispatchEvent?.(new window.Event('resize'));
     }
   };
-  return { sync, dispose: () => { sync(false); root?.replaceChildren?.(); } };
+  // CSS canvas size changes when Studio moves or closes, even with fixed backing pixels.
+  const observer = typeof window?.ResizeObserver === 'function' ? new window.ResizeObserver(() => sync(enabled)) : null;
+  const canvas = document?.getElementById('gameCanvas'); if (canvas) observer?.observe(canvas);
+  return { sync, dispose: () => { observer?.disconnect(); sync(false); root?.replaceChildren?.(); } };
 };
 
 export { SKILL_EVENT_GROUPS, resolveSkillDockGeometry, createMidiSkillEventDock };

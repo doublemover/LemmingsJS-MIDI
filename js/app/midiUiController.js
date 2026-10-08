@@ -2246,6 +2246,7 @@ const createMidiUiController = ({
     renderMasterVolume();
     const localState = localGamePreview?.getState?.();
     const audioState = auditionAudio?.getState?.();
+    workbench?.setAudioActive(ensureProject().enabled || getLemmings()?.midiEnabled || localState?.enabled || localState?.status === 'starting' || audioState?.activeVoices);
     const hardwareOn = !!getLemmings()?.midiEnabled && !!getWebMidi()?.enabled && !!getLemmings()?.midiOut;
     const label = localState?.status === 'starting' ? 'Starting local audio'
       : localState?.enabled ? `Listening to game locally${audioState?.activeVoices ? ' + test event' : ''}`
@@ -2349,7 +2350,10 @@ const createMidiUiController = ({
         let row = gameEventRows.get(event.id);
         if (!row) {
           row = document.createElement('button'); gameEventRows.set(event.id, row);
-          row.addEventListener('click', () => selectGameSound(event));
+          row.addEventListener('click', () => {
+            if (document?.getElementById('midiSequencerWorkspace')?.hidden) setWorkspaceVisible(true, { focus: false });
+            selectGameSound(event);
+          });
         }
         row.replaceChildren?.();
         if (!row.replaceChildren) removeChildren(row);
@@ -2655,7 +2659,9 @@ const createMidiUiController = ({
     const navigateGameEvents = event => {
       if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
       const current = ensureProject();
-      const visible = new Set(getGameEventRows().filter(row => !row.hidden).map(row => Number(row.dataset.gameEventId)));
+      const closed = document?.getElementById('midiSequencerWorkspace')?.hidden;
+      const dock = document?.getElementById('midiSkillEventDock');
+      const visible = new Set(getGameEventRows().filter(row => !row.hidden && (!closed || dock?.contains(row))).map(row => Number(row.dataset.gameEventId)));
       const events = GAME_SOUND_EVENTS.filter(item => visible.has(item.id));
       if (!events.length) return;
       const focusedId = Number(event.target?.dataset?.gameEventId);

@@ -47,7 +47,6 @@
   <section id="midiSequencerWorkspace" class="midi-sequencer" aria-label="Game sound editor" hidden>
     <header id="midiTransportStrip" class="midi-studio-header">
       <strong id="midiEditScope">Sound editor</strong>
-      <button id="midiPanicButton" data-icon="square" type="button" title="Stop all MIDI and local notes" aria-label="Panic all MIDI notes">Panic</button>
       <button id="midiWorkspaceClose" data-icon="x" class="icon-only" title="Close sound editor" type="button" aria-label="Close sound editor">Close</button>
 
     </header>
@@ -660,7 +659,7 @@
       <div class="midi-headunit-readout"><output id="midiGameClock" aria-live="off">PAUSE · tick 0</output><span id="midiLastEvent">Waiting for game events</span></div>
       <label class="midi-speed-control" title="Game speed multiplier"><span>Speed</span><input id="midiGameSpeed" type="range" min="0" max="29" step="1" aria-label="Game speed slider" /><input id="midiGameSpeedValue" type="number" min="0.1" max="120" step="any" aria-label="Exact game speed" /></label>
       <div class="midi-control-group midi-key-controls"><label class="midi-field midi-field--compact"><span class="visually-hidden">Key</span><select id="midiScaleRoot" aria-label="Musical key" title="Musical key"></select></label><label class="midi-field midi-field--compact"><span class="visually-hidden">Scale</span><select id="midiScaleName" aria-label="Musical scale" title="Musical scale"></select></label></div>
-      <div class="midi-listen-row"><button id="midiLocalListenButton" type="button" data-icon="headphones">Listen to game</button><label class="midi-volume-control" title="Local master volume; above 100% boosts browser listening"><span class="visually-hidden">Master volume</span><input id="midiMasterVolume" type="range" min="0" max="400" value="70" step="1" aria-label="Master volume" /><output id="midiMasterVolumeValue">70%</output></label>    <details id="midiStartingPalettes" class="midi-preset-panel midi-starting-palettes"><summary data-icon="music" title="Starting palettes" aria-label="Starting palettes">Palette</summary><div class="midi-preset-popover">
+      <div id="midiAudioControls" class="midi-listen-row"><button id="midiPanicButton" data-icon="square" type="button" title="Stop all MIDI and local notes" aria-label="Panic all MIDI notes">Panic</button><button id="midiLocalListenButton" type="button" data-icon="headphones">Listen to game</button><label class="midi-volume-control" title="Local master volume; above 100% boosts browser listening"><span class="visually-hidden">Master volume</span><input id="midiMasterVolume" type="range" min="0" max="400" value="70" step="1" aria-label="Master volume" /><output id="midiMasterVolumeValue">70%</output></label>    <details id="midiStartingPalettes" class="midi-preset-panel midi-starting-palettes"><summary data-icon="music" title="Starting palettes" aria-label="Starting palettes">Palette</summary><div class="midi-preset-popover">
       <p>Choose a starting sound, then apply it. Game events always supply the timing.</p>
       <div class="midi-preset-actions">
         <label class="midi-field"><span>Starting palette</span><select id="midiGamePresetSelect"></select></label>
