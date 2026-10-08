@@ -228,6 +228,10 @@ CCTV uses taller preferred 2:1 scene boxes and reserves at most 52% of the canva
 
 Verified canonical pack loading fingerprints decoded source art once and applies up to two supported small observed route/decor groups per chunk, retaining exact source provenance and the existing foundation/scenery baseline. Glyphs, destructive/conditional roles, steel, gaps, words, gadget footprints and eight-pixel seams are screened. Verified worlds share an eight-column source collision/display boundary; proactive immutable chunk preparation and reveal use bounded time-to-reach queues. At 64 lanes the per-tick limits are four preparations and sixteen reveal jobs, with a 104px target lead and 64px safety reserve. Completed, paused and reset work does not linger in stall protection. Missing or unverified descriptors retain the prior sourced baseline. Generated trap/drowning gameplay and advanced mining/digging/turning remain pending.
 
+## Generated hazard contacts
+
+Generated traps, water and lethal/fire gadgets now use the shared Trigger and MapObject owners, including source cooldowns, exact contact bounds and existing terminal actions. The complete source footprint and support must be revealed before activation; terrain edits can disable unsupported gadgets. Rendering only observes created owners and their real activation frames. The live lane/chunk cache is bounded and resets with the run. Exits, hatches and unrelated scenery remain presentation-only; ordinary unsafe-fall timing is retained.
+
 ## Editable musical tension
 
 Details exposes Musical tension for the existing Iron ensemble and a lane status selector. The compact controls set thinning amount, healthy crew and fade; Thresholds also exposes establishment, collapse/recovery ratios and breakthrough distance/hold. Completed game ticks supply cached real population and frontier signals. An established crew's collapse gradually leaves its surviving lead voice, while actual recovery or progress restores the supporting layers. Small developing crews do not count as a collapse.

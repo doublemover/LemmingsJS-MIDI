@@ -127,7 +127,7 @@ class ProcgenLaneRenderer {
   }
   _prepareObjectPlacements() {
     const world = this.world, terrain = world.terrain, width = terrain.chunkWidth, step = this.rasterStep;
-    const key = `${this.lastGeometryKey}:${world.frontierRevision}:${world.terrainRevision}`;
+    const key = `${this.lastGeometryKey}:${world.frontierRevision}:${world.terrainRevision}:${world.hazards?.revision || 0}`;
     if (key === this.lastPlacementKey) return;
     this.lastPlacementKey = key; this.objectPlacements.length = 0;
     const bins = new Map();
@@ -142,15 +142,19 @@ class ProcgenLaneRenderer {
           const edits = world.editChunks.get(world._editKey(x, lane * LANE_HEIGHT + y));
           return !edits?.[y * 32 + x % 32] && terrain.solidSample(seed, cx, x - cx * width, y, descriptor);
         };
-        for (const object of descriptor.objects) {
+        for (let objectIndex = 0; objectIndex < descriptor.objects.length; objectIndex++) {
+          const object = descriptor.objects[objectIndex];
           if (object.x + object.piece.image.width + (object.role === 'liquid' ? 1 : 0) > world.generatedThrough[lane]) continue;
-          if (object.supportY != null) {
+          const hazardEntry = world.hazards?.peek(lane, cx, objectIndex);
+          const hazard = ['trap', 'liquid', 'hazard'].includes(object.role);
+          if (hazard && world.hazards && !world.hazards.placementReady(lane, cx, object, descriptor)) continue;
+          if (object.supportY != null && !hazard) {
             let supported = true;
             for (let dx = 0; dx < object.piece.image.width; dx++) if (!matchesTerrain(object.x + dx, object.supportY)) { supported = false; break; }
             if (!supported) continue;
           }
           const image = object.piece.image, px = (object.x - this.originX) / step, py = (lane * LANE_HEIGHT + object.y - this.originY) / step;
-          const placement = { image, px, py, phase: object.phase, animation: object.animation, clip: null, clippedFrames: null };
+          const placement = { image, px, py, hazardEntry, phase: object.phase, animation: object.animation, clip: null, clippedFrames: null };
           if (object.clipToTerrain) {
             placement.clip = new Uint8Array(image.width * image.height); placement.clippedFrames = new WeakMap();
             let visible = false;
@@ -171,23 +175,27 @@ class ProcgenLaneRenderer {
   _drawObjects() {
     const world = this.world, terrain = world.terrain;
     if (!terrain?.objects.length) return;
-    const key = `${this.lastGeometryKey}:${Math.floor(world.tickIndex / 4)}:${world.frontierRevision}:${world.terrainRevision}`;
+    const key = `${this.lastGeometryKey}:${world.hazards?.ownerCount ? world.tickIndex : Math.floor(world.tickIndex / 4)}:${world.frontierRevision}:${world.terrainRevision}:${world.hazards?.revision || 0}`;
     if (key === this.lastObjectKey) { this.bufferContext.drawImage(this.objectBuffer, 0, 0); return; }
     this.lastObjectKey = key; this._prepareObjectPlacements();
     const context = this.objectContext, step = this.rasterStep;
     context.clearRect?.(0, 0, this.objectBuffer.width, this.objectBuffer.height); context.imageSmoothingEnabled = false;
     this.objectDots.clear();
     for (const placement of this.objectPlacements) {
-      const { image, phase, px, py, dot, clip } = placement, frame = image.frames[placement.animation === 'idle' ? 0 : (Math.floor(world.tickIndex / 4) + phase) % image.frames.length];
+      const { image, phase, px, py, dot, clip, hazardEntry } = placement;
+      const frame = hazardEntry ? world.hazards.getFrame(hazardEntry, world.tickIndex) : image.frames[placement.animation === 'idle' ? 0 : (Math.floor(world.tickIndex / 4) + phase) % image.frames.length];
+      const ownedFrame = !!frame.getMask;
       if (dot != null) {
         let color = clip ? null : this.dotColors.get(frame);
         if (color == null) {
-          const ci = frame.find((value, index) => !(value & 128) && (!clip || clip[index])); color = ci == null ? 0 : image.palette.getColor(ci) | 0xff000000;
+          if (ownedFrame) { const index = frame.getMask().findIndex(Boolean); color = index < 0 ? 0 : frame.getBuffer()[index]; }
+          else { const ci = frame.find((value, index) => !(value & 128) && (!clip || clip[index])); color = ci == null ? 0 : image.palette.getColor(ci) | 0xff000000; }
           if (!clip) this.dotColors.set(frame, color);
         }
         if (color) this.objectDots.set(dot, color);
         continue;
       }
+      if (ownedFrame) { context.drawImage(this._frameCanvas(frame), px, py, image.width / step, image.height / step); continue; }
       const frameCache = placement.clippedFrames || this.objectFrames;
       let bitmap = frameCache.get(frame);
       if (!bitmap) {
@@ -235,7 +243,7 @@ class ProcgenLaneRenderer {
     this.originY = Math.floor(this.cameraY / this.rasterStep) * this.rasterStep;
     const world = this.world, sprites = world.sprites, appearance = sprites?.activePreference || sprites?.getPreference?.();
     const geometryKey = `${this.originX}:${this.originY}:${width}:${height}:${this.rasterStep}:${world.generation}`;
-    const frameKey = `${geometryKey}:${world.tickIndex}:${world.terrainRevision}:${world.frontierRevision}:${this.canvas.width}:${this.canvas.height}:${dpr}:${this.scale}:${this.cameraY}:${this.follow}:${!!this.reducedMotion?.matches}:${this.cctv.renderKey}:${!!this.overviewActive}`;
+    const frameKey = `${geometryKey}:${world.tickIndex}:${world.terrainRevision}:${world.frontierRevision}:${world.hazards?.revision || 0}:${this.canvas.width}:${this.canvas.height}:${dpr}:${this.scale}:${this.cameraY}:${this.follow}:${!!this.reducedMotion?.matches}:${this.cctv.renderKey}:${!!this.overviewActive}`;
     if (!force && frameKey === this.lastFrameKey && appearance === this.lastAppearance && sprites === this.lastSprites && this.hud === this.lastHud && this.hud?.sprites === this.lastHudSprites && this.decorationLayer === this.lastDecorationLayer) {
       this.frameCacheHits++; this.lastFrameMs = (this.window.performance?.now?.() ?? start) - start;
       return false;
@@ -275,7 +283,7 @@ class ProcgenLaneRenderer {
     this.lastFrameMs = (this.window.performance?.now?.() ?? start) - start;
     return true;
   }
-  dispose() { this.camera.dispose(); this.cctv.dispose(); this.decorationLayer = null; this.frames = new WeakMap(); this.objectFrames = new WeakMap();
+  dispose() { this.objectPlacements.length = 0; this.camera.dispose(); this.cctv.dispose(); this.decorationLayer = null; this.frames = new WeakMap(); this.objectFrames = new WeakMap();
     this.dotColors = new WeakMap(); this.actorDots = new Map(); this.objectDots = new Map(); this.image = null; this.pixels = null; this.lastFrameKey = null;
     this.lastAppearance = this.lastSprites = this.lastHud = this.lastHudSprites = this.lastDecorationLayer = null; }
 }

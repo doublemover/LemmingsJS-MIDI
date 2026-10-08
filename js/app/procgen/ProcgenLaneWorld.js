@@ -4,6 +4,12 @@ import { LemmingStateType as State } from '../../lemmings/LemmingStateType.js';
 import { ActionWalkSystem } from '../../actions/ActionWalkSystem.js';
 import { ActionFallSystem } from '../../actions/ActionFallSystem.js';
 import { ActionFloatingSystem } from '../../actions/ActionFloatingSystem.js';
+import { ActionDrowningSystem } from '../../actions/ActionDrowningSystem.js';
+import { ActionFryingSystem } from '../../actions/ActionFryingSystem.js';
+import { ActionSplatterSystem } from '../../actions/ActionSplatterSystem.js';
+import { lemmingManagerInteractionMethods } from '../../lemmings/lemming-manager/LemmingManagerInteraction.js';
+import { TriggerTypes } from '../../level/TriggerTypes.js';
+import { ProcgenHazards } from './ProcgenHazards.js';
 import { ProcgenTerrainGrowth } from './ProcgenTerrainGrowth.js';
 import { ProcgenPopulationPolicy } from './ProcgenPopulationPolicy.js';
 import { ActionJumpSystem } from '../../actions/ActionJumpSystem.js';
@@ -93,6 +99,8 @@ class ProcgenLaneWorld {
     this.actions = {
       [State.WALKING]: new ActionWalkSystem(sprites), [State.FALLING]: new ActionFallSystem(sprites),
       [State.FLOATING]: new ActionFloatingSystem(sprites),
+      [State.DROWNING]: new ActionDrowningSystem(sprites), [State.FRYING]: new ActionFryingSystem(sprites),
+      [State.SPLATTING]: new ActionSplatterSystem(sprites),
       [State.JUMPING]: new ActionJumpSystem(sprites), [State.BUILDING]: new ActionBuildSystem(sprites),
       [State.BASHING]: new ActionBashSystem(sprites, masks), [State.SHRUG]: new ActionShrugSystem(sprites),
       [State.CLIMBING]: new ActionClimbSystem(sprites), [State.HOISTING]: new ActionHoistSystem(sprites),
@@ -100,6 +108,7 @@ class ProcgenLaneWorld {
       [State.EXPLODING]: new ActionExplodingSystem(sprites, masks, { removeByOwner() {} }, particleTable)
     };
     for (const action of Object.values(this.actions)) { action.setRuntime(runtime); action.characterParticles = this.characterParticles; }
+    this.hazards = new ProcgenHazards(this); this.triggerManager = this.hazards;
     this.actors = [];
     if (!cohorts) for (let lane = 0; lane < this.laneCount; lane++) this._spawn(lane, false);
     this.stats = { builds: 0, bashes: 0, turns: 0, failures: 0, groundQueries: 0, removedPixels: 0 };
@@ -142,7 +151,7 @@ class ProcgenLaneWorld {
     }
   }
   _restart(previousDistances) {
-    this.characterParticles?.clear();
+    this.characterParticles?.clear(); this.hazards.reset();
     this._assistedColumn.valid = false; this.accessTasks.fill(null);
     this.actors.length = 0; this.activeCount = 0; this.admissionPaused = false; this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this.terrain?.reset?.();
     this._laneChunk.fill(null); this._laneChunkIndex.fill(-1); this._collisionSlots.fill(null); this._collisionIndices.fill(-1); this._laneEdits.fill(null); this._laneEditIndex.fill(-1); this._editCache.fill(null); this._editIndices.fill(-1); this.frontiers.fill(36);
@@ -425,13 +434,24 @@ class ProcgenLaneWorld {
       this.terrainGrowth?.observe(actor.laneIndex, actor.x - previousX);
       this._assistedColumn.valid = false;
       if (next !== State.NO_STATE_TYPE && next !== State.JUMPING) {
-        if (this.actions[next]) actor.setAction(this.actions[next]);
+        // Keep ordinary unsafe-fall failure timing; generated source contacts
+        // enter the shared terminal actions below and finish their lifecycle.
+        if (this.actions[next] && next !== State.SPLATTING) actor.setAction(this.actions[next]);
         else {
           if (next === State.SPLATTING) this.characterParticles?.emitDeath(actor, 'splatter', actor.action?.spriteProvider);
-          actor.failureReason = next === State.SPLATTING ? 'unsafe-fall' : actor.action === this.actions[State.EXPLODING] ? 'cascade-complete' : 'out-of-world';
+          actor.failureReason = next === State.SPLATTING ? 'unsafe-fall' : actor.terminalReason || (actor.action === this.actions[State.EXPLODING] ? 'cascade-complete' : 'out-of-world');
           this.stats.failures++; this.failureReasons[actor.failureReason] = (this.failureReasons[actor.failureReason] || 0) + 1;
         }
       } else if (next === State.JUMPING && actor.action !== this.actions[next]) actor.setAction(this.actions[next]);
+
+      if (!actor.failureReason && !actor.removed) {
+        const contact = lemmingManagerInteractionMethods.runTrigger.call(this, actor, this.tickIndex);
+        if (contact !== State.NO_STATE_TYPE) {
+          actor.countdown = 0; actor.countdownAction = null;
+          actor.terminalReason = contact === State.DROWNING ? 'drowned' : contact === State.FRYING ? 'fried' : actor.lastTriggerType === TriggerTypes.TRAP ? 'trapped' : 'killed';
+          actor.setAction(this.actions[contact]);
+        }
+      }
 
       if (!actor.failureReason && !actor.removed) {
         activeCount++;
@@ -461,7 +481,7 @@ class ProcgenLaneWorld {
       this.stall.update(this.actors, this.tickIndex, this._stallWork);
       const dueIds = this.stall.takeDue(this.tickIndex);
       const due = dueIds.length ? new Set(dueIds) : null;
-      if (due) for (const actor of this.actors) if (due.has(actor.id) && !actor.failureReason) {
+      if (due) for (const actor of this.actors) if (due.has(actor.id) && !actor.failureReason && !actor.terminalReason) {
         actor.setAction(this.actions[State.OHNO]);
         this.soundEvents.emitSfx(SoundEventTypes.LEMMING_OHNO, SoundEffectIds.OHNO, { lemmingId: actor.id, laneIndex: actor.laneIndex, laneCount: this.laneCount, x: actor.x, y: actor.y });
       }
@@ -469,6 +489,7 @@ class ProcgenLaneWorld {
       if (previous) this._restart(previous);
       else if (this.tickIndex % 54 === 0) this.actors = this.actors.filter(actor => !actor.failureReason && !actor.removed);
     }
+    if (this.tickIndex % 32 === 0) this.hazards.prune(this.tickIndex);
     if (this.tickIndex % 128 === 0) this._pruneEdits();
     this.soundEvents.laneIndex = 0;
     this.timer.onGameTick.trigger(this.tickIndex);
@@ -513,7 +534,7 @@ class ProcgenLaneWorld {
       population: this.population.snapshot(),
       stall: this.cohorts ? this.stall.snapshot(this.tickIndex) : null,
       distance: { min: Number.isFinite(minDistance) ? minDistance : 0, max: maxDistance, mean: distance / Math.max(1, this.actors.length) },
-      terrainGrowth: this.terrainGrowth?.snapshot() || null,
+      terrainGrowth: this.terrainGrowth?.snapshot() || null, generatedHazards: this.hazards.snapshot(),
       terrainGeneration: this.terrain?.getDebugState?.() || null, collisionResidentSlots: this._collisionSlots.length, residentCollisionMB: residentCollisionBytes / 1048576,
       frontierMargins: Array.from(this.generatedThrough, (x, lane) => x - this.frontiers[lane]),
       laneThemes: this.terrain?.laneThemes || null,
@@ -521,7 +542,7 @@ class ProcgenLaneWorld {
       cachedChallenges: this.challengeCache.size, terrainEdits: this.editChunks.size, terrainMemoryMB: this.editChunks.size * EDIT_CHUNK_WIDTH * LANE_HEIGHT / 1048576,
       ...this.stats };
   }
-  dispose() { this.accessTasks.fill(null); this.onRestart = null; this.characterParticles?.clear(); this.timer.onGameTick.dispose(); this.soundEvents.onEvent.dispose(); this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this._laneChunk.fill(null); this._collisionSlots.fill(null); this._laneEdits.fill(null); this._editCache.fill(null); this.terrain?.reset?.(); }
+  dispose() { this.hazards.dispose(); this.accessTasks.fill(null); this.onRestart = null; this.characterParticles?.clear(); this.timer.onGameTick.dispose(); this.soundEvents.onEvent.dispose(); this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this._laneChunk.fill(null); this._collisionSlots.fill(null); this._laneEdits.fill(null); this._editCache.fill(null); this.terrain?.reset?.(); }
 }
 
 export { ProcgenLaneWorld, MAX_PROCGEN_LANES, LANE_HEIGHT, CHUNK_WIDTH, normalizeLaneCount };
