@@ -92,6 +92,32 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   listen(byId('procgenPack'), 'change', () => { settings.pack = Number(byId('procgenPack').value); doRestart(); });
   const camera = () => getRuntime()?.lanes?.renderer?.camera;
   const panelSprites = () => getRuntime()?.lanes?.renderer?.hud?.sprites;
+  const cctv = () => getRuntime()?.lanes?.renderer?.cctv;
+  settings.cctvMode = 'leaders'; settings.cctvPins = [];
+  const syncCctv = state => {
+    if (!state) return;
+    settings.cctvMode = state.mode; settings.cctvPins = state.pins;
+    if (byId('procgenCctvMode')) byId('procgenCctvMode').value = state.mode;
+    for (let index = 0; index < 8; index++) {
+      const button = byId('procgenCctvSlot' + index), slot = state.slots[index]; if (!button) continue;
+      button.hidden = !slot; if (!slot) continue;
+      button.dataset.lane = slot.lane; button.disabled = state.mode !== 'director'; button.setAttribute('aria-pressed', String(slot.pinned));
+      button.textContent = 'Lane ' + (slot.lane + 1) + ' / #' + slot.rank + ' / ' + slot.reason;
+      button.title = slot.pinned ? 'Unpin this lane' : 'Pin this lane in Director mode';
+    }
+    const message = state.mode === 'director' ? state.pins.length + '/4 pinned; other views follow actual activity, with one fair rotation slot.'
+      : 'Eight distance leaders. Pins are retained for Director mode.';
+    if (byId('procgenCctvStatus') && byId('procgenCctvStatus').textContent !== message) byId('procgenCctvStatus').textContent = message;
+  };
+  listen(byId('procgenCctvMode'), 'change', () => { cctv()?.setMode(byId('procgenCctvMode').value); syncCctv(cctv()?.getState()); });
+  const toggleCctvPin = lane => {
+    if (!cctv()?.togglePin(lane)) { if (byId('procgenCctvStatus')) byId('procgenCctvStatus').textContent = 'Choose a valid lane; unpin a lane before adding a fifth pin.'; return; }
+    syncCctv(cctv().getState());
+  };
+  listen(byId('procgenCctvPin'), 'click', () => toggleCctvPin(Number(byId('procgenCctvLane')?.value) - 1));
+  listen(byId('procgenCctvClear'), 'click', () => { cctv()?.setPins([]); syncCctv(cctv()?.getState()); });
+  for (let index = 0; index < 8; index++) listen(byId('procgenCctvSlot' + index), 'click', event => toggleCctvPin(Number(event.currentTarget?.dataset.lane ?? byId('procgenCctvSlot' + index)?.dataset.lane)));
+
   const setSpeed = value => {
     settings.speed = normalizeProcgenSpeed(value, settings.speed);
     if (byId('procgenSpeed')) byId('procgenSpeed').value = settings.speed;
@@ -157,7 +183,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
       const label = byId('procgenMetrics');
       if (label) label.textContent = `${state.alive.toLocaleString()} alive · ${state.spawnedTotal.toLocaleString()} spawned · ${Math.round(state.distance.max).toLocaleString()} px forward · run ${state.generation}${state.admissionPaused ? ' · spawn admission paused at actor cap' : ''}`;
       const policy = byId('procgenStallStatus');
-      if (policy) policy.textContent = state.stall?.phase === 'cascade' ? 'Stalled cohort: staggered OHNO; restart follows the last actor.' : 'Reset only when every lane stalls: 90 simulated seconds plus 12 new spawns, with a larger allowance farther out.';
+      if (policy) policy.textContent = state.stall?.phase === 'cascade' ? 'Stalled cohort: staggered OHNO; restart follows the last actor.' : 'Progressing and working lanes stay protected. Reset follows all-lane probe/transit grace or a sustained growing pile.';
     },
     sync() {
       characters.sync();
@@ -165,6 +191,8 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
       if (byId('procgenPause')) { byId('procgenPause').textContent = 'Pause'; byId('procgenPause').setAttribute('aria-pressed', 'false'); }
       if (byId('procgenSeed')) byId('procgenSeed').value = String(settings.seed ?? window.procgenSeed ?? '');
       camera()?.applyState(urlConfig.camera);
+      const overview = cctv();
+      if (overview) { const mode = settings.cctvMode, pins = [...settings.cctvPins]; overview.onChange = syncCctv; overview.setMode(mode); overview.setPins(pins); syncCctv(overview.getState()); }
       setSpeed(settings.speed);
       const runtime = getRuntime();
       if (byId('procgenAliveCount') && runtime?.world) byId('procgenAliveCount').textContent = runtime.world.actors.reduce((count, actor) => count + (actor.failureReason ? 0 : 1), 0).toLocaleString() + ' alive';

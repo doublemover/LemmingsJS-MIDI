@@ -15,9 +15,9 @@ const fixture = (search = '') => {
     target.removeEventListener = (name, callback) => events.get(name)?.delete(callback);
     target.dispatchEvent = event => { for (const callback of events.get(event.type) || []) callback(event); };
   }
-  for (const [tag, ids] of [['div', ['procgenDrawer']], ['button', ['procgenTab', 'procgenRestart', 'procgenListen', 'procgenSpeedDown', 'procgenSpeedUp', 'procgenShare', 'procgenNewSeed', 'procgenPause', 'procgenStep', 'procgenFollow', 'procgenZoomIn', 'procgenZoomOut', 'procgenPanic']],
-    ['select', ['procgenPreset', 'procgenPack', 'procgenSpeed']], ['input', ['procgenLanes', 'procgenPhrases', 'procgenSeed', 'procgenMasterVolume']],
-    ['p', ['procgenMasterVolumeValue', 'procgenPresetDescription', 'procgenAudioStatus', 'procgenRunStatus', 'procgenMetrics', 'procgenStallStatus', 'procgenAliveCount']]]) {
+  for (const [tag, ids] of [['div', ['procgenDrawer']], ['button', ['procgenTab', 'procgenRestart', 'procgenListen', 'procgenSpeedDown', 'procgenSpeedUp', 'procgenShare', 'procgenNewSeed', 'procgenPause', 'procgenStep', 'procgenFollow', 'procgenZoomIn', 'procgenZoomOut', 'procgenPanic', 'procgenCctvPin', 'procgenCctvClear']],
+    ['select', ['procgenPreset', 'procgenPack', 'procgenSpeed', 'procgenCctvMode']], ['input', ['procgenLanes', 'procgenPhrases', 'procgenSeed', 'procgenMasterVolume', 'procgenCctvLane']],
+    ['p', ['procgenMasterVolumeValue', 'procgenPresetDescription', 'procgenAudioStatus', 'procgenRunStatus', 'procgenMetrics', 'procgenStallStatus', 'procgenAliveCount', 'procgenCctvStatus']]]) {
     for (const id of ids) { const el = registerElement(document, tag, id); el.removeEventListener = (event, callback) => el.listeners.set(event, (el.listeners.get(event) || []).filter(fn => fn !== callback)); }
   }
   let restarts = 0;
@@ -43,6 +43,22 @@ describe('compact procgen drawer', () => {
     expect(f.ui.settings.laneCount).to.equal(1024); expect(f.restarts).to.equal(1);
     f.el('procgenSpeed').value = '8'; f.el('procgenSpeed').dispatchEvent({ type: 'change' });
     expect(f.timer.speedFactor).to.equal(8); expect(f.restarts).to.equal(1); f.ui.dispose();
+  });
+  it('retains Director mode and pins when a replacement renderer reports its initial empty state', () => {
+    const f = fixture();
+    const createCctv = () => ({ mode: 'leaders', pins: [],
+      getState() { return { mode: this.mode, pins: [...this.pins], slots: [] }; },
+      setMode(mode) { this.mode = mode; this.onChange?.(this.getState()); },
+      setPins(pins) { this.pins = [...pins]; this.onChange?.(this.getState()); },
+      togglePin(lane) { this.pins = this.pins.includes(lane) ? this.pins.filter(value => value !== lane) : [...this.pins, lane]; this.onChange?.(this.getState()); return true; }
+    });
+    f.runtime.lanes = { renderer: { cctv: createCctv() } }; f.ui.sync();
+    f.el('procgenCctvMode').value = 'director'; f.el('procgenCctvMode').dispatchEvent({ type: 'change' });
+    f.el('procgenCctvLane').value = '9'; f.el('procgenCctvPin').dispatchEvent({ type: 'click' });
+    expect(f.ui.settings.cctvPins).to.deep.equal([8]);
+    f.runtime.lanes.renderer.cctv = createCctv(); f.ui.sync();
+    expect(f.runtime.lanes.renderer.cctv.mode).to.equal('director'); expect(f.runtime.lanes.renderer.cctv.pins).to.deep.equal([8]);
+    f.el('procgenCctvClear').dispatchEvent({ type: 'click' }); expect(f.ui.settings.cctvPins).to.deep.equal([]); f.ui.dispose();
   });
   it('offers the shared catalog and never mounts hardware routing/studio controls', () => {
     const f = fixture(); expect(f.el('procgenPreset').children.length).to.equal(GAME_EVENT_MIDI_PRESETS.length);

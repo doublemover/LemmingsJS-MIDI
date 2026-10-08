@@ -37,6 +37,26 @@
       <button id="procgenShare" type="button">Share run</button>
       <input id="procgenShareUrl" type="text" readonly hidden aria-label="Shareable run URL">
     </div>
+    <fieldset class="procgen-cctv-controls">
+      <legend>Overview CCTV</legend>
+      <div class="procgen-controls-row">
+        <label>View <select id="procgenCctvMode"><option value="leaders">Eight leaders</option><option value="director">Director</option></select></label>
+        <label>Lane <input id="procgenCctvLane" type="number" min="1" max="1024" step="1" value="1" aria-label="Lane to pin"></label>
+        <button id="procgenCctvPin" type="button">Pin / unpin</button><button id="procgenCctvClear" type="button">Clear pins</button>
+      </div>
+      <p>Zoom all the way out to see the live views. Director highlights observed activity and keeps up to four pinned lanes.</p>
+      <div id="procgenCctvViews" role="group" aria-label="CCTV views and lane pins">
+        <button id="procgenCctvSlot0" type="button" aria-pressed="false" hidden></button>
+        <button id="procgenCctvSlot1" type="button" aria-pressed="false" hidden></button>
+        <button id="procgenCctvSlot2" type="button" aria-pressed="false" hidden></button>
+        <button id="procgenCctvSlot3" type="button" aria-pressed="false" hidden></button>
+        <button id="procgenCctvSlot4" type="button" aria-pressed="false" hidden></button>
+        <button id="procgenCctvSlot5" type="button" aria-pressed="false" hidden></button>
+        <button id="procgenCctvSlot6" type="button" aria-pressed="false" hidden></button>
+        <button id="procgenCctvSlot7" type="button" aria-pressed="false" hidden></button>
+      </div>
+      <p id="procgenCctvStatus" role="status" aria-live="polite"></p>
+    </fieldset>
     <div id="procgenCharacters" class="character-control-content"></div>
     <div class="procgen-controls-row">
       <label>Action music <select id="procgenPreset"></select></label>

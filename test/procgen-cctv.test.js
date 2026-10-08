@@ -40,6 +40,14 @@ describe('bounded live procgen CCTV', () => {
     world.generation++; advance(100); renderer.render(false); expect(renderer.cctv.generation).to.equal(2);
     renderer.dispose(); expect(renderer.cctv.views.size).to.equal(0);
   });
+  it('provides a true eight-leader override and keeps Director pins across the mode change', () => {
+    const { renderer } = fixture(); renderer.camera.setZoom(0);
+    renderer.cctv.setMode('director'); renderer.cctv.togglePin(0);
+    expect(renderer.cctv.slots).to.include(0);
+    renderer.cctv.setMode('leaders'); expect(renderer.cctv.slots).to.deep.equal([63, 62, 61, 60, 59, 58, 57, 56]);
+    expect(renderer.cctv.getState().pins).to.deep.equal([0]);
+    renderer.cctv.setMode('director'); expect(renderer.cctv.slots).to.include(0); renderer.dispose();
+  });
   it('fits responsive tiles within the reserved area', () => {
     for (const width of [390, 900]) for (const count of [1, 3, 8]) {
       const layout = cctvLayout(width, 600, count); expect(layout.bandHeight).to.be.at.most(228);

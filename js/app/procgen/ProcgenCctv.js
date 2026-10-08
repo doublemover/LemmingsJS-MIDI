@@ -1,3 +1,4 @@
+import { ProcgenCctvDirector } from './ProcgenCctvDirector.js';
 import { LANE_HEIGHT } from './ProcgenLaneWorld.js';
 
 const CCTV_INTERVAL_MS = 100;
@@ -30,8 +31,15 @@ class ProcgenCctv {
   constructor(renderer) {
     this.renderer = renderer; this.slots = []; this.views = new Map(); this.layout = null;
     this.lastUpdateMs = -Infinity; this.lastStateKey = ''; this.renderKey = ''; this.refreshes = 0;
-    this.generation = -1; this.actorScans = 0;
+    this.generation = -1; this.actorScans = 0; this.director = new ProcgenCctvDirector(); this.onChange = null; this.lastSelectionKey = '';
   }
+  getState() {
+    return { mode: this.director.mode, pins: [...this.director.pins], slots: this.slots.map(lane => ({ lane, rank: this.views.get(lane)?.rank,
+      reason: this.director.mode === 'director' ? this.director.reasons.get(lane) || 'Distance leader' : 'Distance leader', pinned: this.director.pins.has(lane) })) };
+  }
+  setMode(mode) { if (this.director.setMode(mode)) { if (mode === 'leaders') this.slots = []; this.lastStateKey = ''; this.renderer.render(); } }
+  setPins(lanes) { if (this.director.setPins(lanes, this.renderer.world.laneCount)) { this.lastStateKey = ''; this.renderer.render(); } }
+  togglePin(lane) { const changed = this.director.togglePin(lane, this.renderer.world.laneCount); if (changed) { this.lastStateKey = ''; this.renderer.render(); } return changed; }
   prepare() {
     const r = this.renderer, dpr = Math.min(2, r.window.devicePixelRatio || 1);
     const width = r.canvas.width / dpr, height = r.canvas.height / dpr;
@@ -42,11 +50,13 @@ class ProcgenCctv {
     r.overviewBandHeight = r.overviewActive ? this.layout.bandHeight : 0;
     if (!r.overviewActive) return;
     const now = r.window.performance?.now?.() || 0, world = r.world;
-    const key = [world.generation, world.tickIndex, world.terrainRevision, world.frontierRevision, width, height, world.sprites?.activePreference].join(':');
+    const key = [world.generation, world.tickIndex, world.terrainRevision, world.frontierRevision, width, height, world.sprites?.activePreference, this.director.revision].join(':');
     const resized = this.width !== width || this.height !== height || this.lastAppearance !== world.sprites?.activePreference || this.lastSprites !== world.sprites;
-    if (!resized && key === this.lastStateKey || !resized && now - this.lastUpdateMs < CCTV_INTERVAL_MS) return;
+    const controlsChanged = this.lastDirectorRevision !== this.director.revision;
+    if (!controlsChanged && (!resized && key === this.lastStateKey || !resized && now - this.lastUpdateMs < CCTV_INTERVAL_MS)) return;
     if (this.generation !== world.generation) { this.slots = []; this.views.clear(); this.generation = world.generation; }
-    this.slots = selectCctvLanes(world, this.slots);
+    const ranked = rankCctvLanes(world);
+    this.slots = this.director.mode === 'director' ? this.director.select(world, ranked, this.slots, now) : selectCctvLanes(world, this.slots);
     const selected = new Set(this.slots), leaders = new Map(), actorsByLane = new Map();
     for (const actor of world.actors) {
       this.actorScans++;
@@ -58,11 +68,13 @@ class ProcgenCctv {
       if (!actors) { actors = []; actorsByLane.set(lane, actors); }
       actors.push(actor);
     }
-    const ranks = new Map(rankCctvLanes(world).map((lane, index) => [lane, index + 1]));
+    const ranks = new Map(ranked.map((lane, index) => [lane, index + 1]));
     for (const lane of this.slots) this.refresh(lane, leaders.get(lane), actorsByLane.get(lane) || [], ranks.get(lane));
     for (const lane of this.views.keys()) if (!selected.has(lane)) this.views.delete(lane);
     this.width = width; this.height = height; this.lastAppearance = world.sprites?.activePreference; this.lastSprites = world.sprites; this.lastUpdateMs = now; this.lastStateKey = key;
-    this.renderKey = key; this.refreshes++;
+    this.renderKey = key; this.refreshes++; this.lastDirectorRevision = this.director.revision;
+    const state = this.getState(), selectionKey = JSON.stringify(state);
+    if (selectionKey !== this.lastSelectionKey) { this.lastSelectionKey = selectionKey; try { this.onChange?.(state); } catch { /* Controls cannot interrupt rendering. */ } }
   }
   createView() {
     const r = this.renderer, document = r.canvas.ownerDocument, view = Object.create(r);
@@ -103,15 +115,19 @@ class ProcgenCctv {
     context.save?.(); context.imageSmoothingEnabled = false;
     context.fillStyle = '#10151c'; context.fillRect(0, top * dpr, r.canvas.width, bandHeight * dpr);
     context.font = 11 * dpr + 'px monospace'; context.textBaseline = 'top'; context.fillStyle = '#c7d3df';
-    context.fillText?.('LEMMINGS CCTV', 8 * dpr, (top + 5) * dpr);
+    context.fillText?.('LEMMINGS CCTV  ' + (this.director.mode === 'director' ? 'DIRECTOR' : 'EIGHT LEADERS'), 8 * dpr, (top + 5) * dpr);
     for (let i = 0; i < this.slots.length; i++) {
       const lane = this.slots[i], view = this.views.get(lane); if (!view) continue;
       const x = i % columns * tileWidth + 4, y = top + 24 + Math.floor(i / columns) * tileHeight;
-      context.fillStyle = '#758496'; context.fillText?.('LANE ' + (lane + 1) + '  #' + view.rank + '  ' + view.distance + (view.leaderId == null ? '  NO LIVE ACTOR' : '  ' + view.actionLabel), x * dpr, y * dpr);
-      context.drawImage(view.buffer, x * dpr, (y + 15) * dpr, Math.max(1, tileWidth - 8) * dpr, Math.max(1, tileHeight - 20) * dpr);
+      context.save?.(); context.beginPath?.(); context.rect?.(x * dpr, y * dpr, (tileWidth - 8) * dpr, tileHeight * dpr); context.clip?.();
+      context.fillStyle = this.director.pins.has(lane) ? '#ffcc38' : '#aab7c5';
+      context.fillText?.('LANE ' + (lane + 1) + '  #' + view.rank + '  ' + view.distance + (view.leaderId == null ? '  NO LIVE ACTOR' : '  ' + view.actionLabel), x * dpr, y * dpr);
+      const reason = this.director.mode === 'director' ? this.director.reasons.get(lane) : 'Distance leader';
+      context.font = 9 * dpr + 'px monospace'; context.fillText?.((this.director.pins.has(lane) ? '[PIN] ' : '') + reason, x * dpr, (y + 13) * dpr); context.font = 11 * dpr + 'px monospace';
+      context.drawImage(view.buffer, x * dpr, (y + 25) * dpr, Math.max(1, tileWidth - 8) * dpr, Math.max(1, tileHeight - 30) * dpr); context.restore?.();
     }
     context.restore?.();
   }
-  dispose() { this.views.clear(); this.slots = []; }
+  dispose() { this.onChange = null; this.views.clear(); this.slots = []; this.director.reset(); }
 }
 export { ProcgenCctv, rankCctvLanes, selectCctvLanes, cctvLayout, CCTV_INTERVAL_MS, CCTV_MAX_WINDOWS };

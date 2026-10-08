@@ -131,3 +131,11 @@ body { flex-direction: column; }
 #procgenOutputPressure[hidden] { display: none; }
 
 #procgenAliveCount { position: fixed; right: 8px; top: calc(var(--procgen-bar-height, 42px) + 6px); z-index: 20; padding: 3px 6px; background: #10151c; color: #e6ece5; font: 12px monospace; pointer-events: none; border-radius: 3px; }
+
+.procgen-cctv-controls { border: 1px solid #526455; border-radius: 5px; margin: 10px 0; padding: 6px 10px; }
+#procgenCctvViews { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; margin: 8px 0; }
+#procgenCctvViews button { min-width: 0; font-size: 11px; text-align: left; }
+#procgenCctvViews button[aria-pressed=true] { border-color: #ffcc38; background: #46452b; }
+#procgenCctvViews button[hidden] { display: none; }
+#procgenDrawer button:hover:not(:disabled) { background: #46533c; }
+@media (max-width: 600px) { #procgenCctvViews { grid-template-columns: 1fr; } }
