@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Per-lane distance records and generous simulation-time/spawn stall recovery preserve progress markers through a staggered OHNO cascade and restart.
 
 ### Fixed
+- Focused speed ranges retain Help and game shortcuts while arrows keep native range navigation; canvas clicks release range focus, and shared speed detents follow effective slowdown.
 - Local listening offers an explicit boost through the existing master control with a bounded output ceiling, preserves saved gain, and applies stronger starting-palette velocities without changing project limits or external MIDI values.
 - Action changes clear only the owning character skin, preserving stable palette caches across 1,024 actors instead of scanning all cached skins and allocating replacement variants.
 - Character appearance changes preload and swap atomically, retaining the last ready look during delayed or failed loads. Stable seeded mixed shapes and random native colors survive redraw and rewind.

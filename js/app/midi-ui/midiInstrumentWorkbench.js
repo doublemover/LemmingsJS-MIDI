@@ -1,3 +1,4 @@
+import { GAME_SPEED_DETENTS, gameSpeedDetentIndex } from '../../game/GameSpeed.js';
 import { GAME_SOUND_EVENTS, getEventBehavior, createEventBehaviorPatch } from './midiSoundEditor.js';
 import { cloneSafeObject } from '../../util/safeObject.js';
 import { createMidiInstrumentMenus } from './midiInstrumentMenus.js';
@@ -17,7 +18,7 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
   updateMapping, updateSource, commitProject, chooseView, bind, panic, history, setStatus }) => {
   const byId = id => document?.getElementById(id);
   const text = (id, value) => { const el = byId(id); if (el && el.textContent !== String(value)) el.textContent = value; };
-  const value = (id, next) => { const el = byId(id); if (el && el !== document?.activeElement && el.value !== String(next)) el.value = String(next); };
+  const value = (id, next) => { const el = byId(id); if (el && (el.type === 'range' || el !== document?.activeElement) && el.value !== String(next)) el.value = String(next); };
   let layout = 'split', visible = false, timerId = null, soundBus = null, menus = null;
   const activity = new Map(), references = new Map();
   let lastEvent = null, lastTick = null;
@@ -49,7 +50,8 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     const clock = gameClock(view?.game?.getGameTimer?.());
     if (lastTick != null && clock.tick < lastTick) { activity.clear(); lastEvent = null; }
     lastTick = clock.tick;
-    value('midiGameSpeed', clock.speed); value('midiGameSpeedValue', clock.speed);
+    value('midiGameSpeed', gameSpeedDetentIndex(clock.speed)); value('midiGameSpeedValue', clock.speed);
+    byId('midiGameSpeed')?.setAttribute('aria-valuetext', String(clock.speed) + 'x');
     text('midiGamePlay', clock.running ? 'Pause game' : 'Play game');
     byId('midiGamePlay')?.setAttribute('aria-pressed', String(clock.running));
     byId('midiGamePlay')?.setAttribute('title', clock.running ? 'Pause game' : 'Play game');
@@ -144,7 +146,13 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
       const view = getLemmings(); view?.game?.getGameTimer?.()?.suspend?.(); view?.nextFrame?.(); refreshClock();
     });
     bind('midiGameStop', 'click', () => { getLemmings()?.game?.getGameTimer?.()?.suspend?.(); panic(); refreshClock(); });
-    paired('midiGameSpeed', 'midiGameSpeedValue', 0.1, 8, speed => { getLemmings()?.selectSpeedFactor?.(speed); refreshClock(); });
+    paired('midiGameSpeed', null, 0, GAME_SPEED_DETENTS.length - 1, index => {
+      getLemmings()?.selectSpeedFactor?.(GAME_SPEED_DETENTS[Math.round(index)]); refreshClock();
+    });
+    bind('midiGameSpeedValue', 'change', event => {
+      const speed = finiteInput(event, 0.1, GAME_SPEED_DETENTS.at(-1));
+      if (speed != null) { getLemmings()?.selectSpeedFactor?.(speed); refreshClock(); }
+    });
     paired('midiSoundPitchDial', null, 0, 127, note => {
       const m = getSource()?.mapping || {}, old = m.note ?? m.notes?.[0] ?? 60;
       updateMapping({ note, ...(m.notes?.length ? { notes: m.notes.map(n => clamp(n + note - old, 0, 127)) } : {}) });

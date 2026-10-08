@@ -32,7 +32,7 @@ When a milestone replaces an old path, remove the old path in the same phase.
 
 - [x] Diagnose local preview attenuation; offer explicit local gain/headroom while preserving saved levels and external MIDI values.
 - [x] Strengthen explicitly applied starting palettes without rewriting saved projects or their velocity limits.
-- [ ] Restore game shortcuts while a speed range is focused; use tenths below 1x, integers through 10x, then tens, following effective slowdown.
+- [x] Restore game shortcuts while a speed range is focused; use tenths below 1x, integers through 10x, then tens, following effective slowdown.
 - [ ] Move starting palettes beside Listen to game; tighten event cards, remove repeated empty labels and successful audition footers.
 - [ ] Show dispatched pitches/rhythm moving left to right through event rows with actual envelope phases.
 - [ ] Hide only unavailable skill events, preserve mappings and restore rows immediately for cheats.

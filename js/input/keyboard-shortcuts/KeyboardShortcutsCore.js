@@ -21,6 +21,11 @@ class KeyboardShortcuts {
     this._down = this._onKeyDown.bind(this);
     this._up = this._onKeyUp.bind(this);
     this.window = options.window ?? view?.runtime?.window ?? getRuntimeDependency('window', null);
+    this.document = options.document ?? view?.runtime?.document ?? this.window?.document ?? getRuntimeDependency('document', null);
+    this._pointerDown = event => {
+      const active = this.document?.activeElement;
+      if (event.target?.tagName?.toUpperCase() === 'CANVAS' && active?.tagName?.toUpperCase() === 'INPUT' && active.type === 'range') active.blur?.();
+    };
     this.performance = options.performance ?? view?.runtime?.performance ?? getRuntimeDependency('performance', null);
     this.requestAnimationFrame = options.requestAnimationFrame ??
         view?.runtime?.requestAnimationFrame ??
@@ -32,6 +37,7 @@ class KeyboardShortcuts {
         null;
     this.window?.addEventListener?.('keydown', this._down);
     this.window?.addEventListener?.('keyup', this._up);
+    this.window?.addEventListener?.('pointerdown', this._pointerDown);
     this.mod = { shift:false };
     this.pan = { left:false,right:false,up:false,down:false,vx:0,vy:0,changed:false };
     this.zoom = { dir:0,v:0,reset:null };

@@ -93,6 +93,13 @@ Expert **Send MIDI test** controls are explicitly hardware tests, distinct from
 local **Listen here**. MIDI device selectors show a disabled connection prompt
 until access is available instead of rendering empty dropdowns.
 
+The game speed slider and +/- shortcuts use tenths below 1x, integers from 1x
+through 10x, and tens above 10x through 120x. The slider follows the effective
+game timer speed, including benchmark slowdown. Its arrows remain range controls;
+Help and game shortcuts continue working while it is focused. The adjacent number
+field retains ordinary text editing and permits an exact multiplier. Clicking the
+canvas releases focused range controls.
+
 ## Event palettes
 
 Major, minor and chromatic palettes support five-note spawn descents and
