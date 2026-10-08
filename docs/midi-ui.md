@@ -77,11 +77,17 @@ level changes and disposal are handled without leaving sounding notes behind.
 Stop listening cancels both live and one-shot local audio. Closing the editor
 keeps live listening running; reopen it to stop.
 
-The local instrument is a quiet triangle-tone preview with pitch, note length,
+The local instrument is a triangle-tone preview with pitch, note length,
 velocity, pan and pitch bend. It is not a recreation of an external synthesizer's
 programs or timbre. Voices and queued notes are bounded, with a maximum note
 lifetime as a safety cutoff. Existing game-clock phrase replacement, pause,
 rewind and panic contracts remain in effect for live listening.
+
+The existing local master control ranges from mute to 400%. Values through 100%
+retain their previous gain, including the 70% default and saved preferences.
+Choosing 400% adds up to 12 dB relative to 100%; a local output ceiling controls
+dense polyphony. This boost never changes external MIDI velocities or CC values.
+Legacy saved levels retain their previous effective gain.
 
 Expert **Send MIDI test** controls are explicitly hardware tests, distinct from
 local **Listen here**. MIDI device selectors show a disabled connection prompt
@@ -89,12 +95,13 @@ until access is available instead of rendering empty dropdowns.
 
 ## Event palettes
 
-Major, minor and chromatic palettes support quiet five-note spawn descents and
+Major, minor and chromatic palettes support five-note spawn descents and
 exit ascents, or one arpeggio note per event. Land is a separate plain note.
 Rapid events replace only the matching voice's unsounded tail; sounding notes
 retain their note-offs. Pending phrases are bounded to 16 voices with at most
-8 notes each. The simulation remains the timing authority. Explicit saved
-velocity limits can make a quiet palette louder and are preserved.
+8 notes each. The simulation remains the timing authority. Applying a starting palette uses stronger note and phrase velocities, while
+saved project velocity limits and track scales remain unchanged. Opening an
+existing project does not reapply a palette or change its notes or levels.
 
 ## Setup
 

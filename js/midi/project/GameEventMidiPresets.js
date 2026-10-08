@@ -289,13 +289,13 @@ const createClassicMappings = (palette, mode) => {
       [SoundEffectIds.EXIT, 'up', 0]
     ]) {
       const mapping = mappings.get(id);
-      mapping.name = id === SoundEffectIds.SPAWN ? 'Spawn · quiet falling phrase' : 'Exit · rising phrase';
+      mapping.name = id === SoundEffectIds.SPAWN ? 'Spawn · falling phrase' : 'Exit · rising phrase';
       mapping.notes = phraseRun.map(offset => base + offset + octave);
       mapping.note = mapping.notes[0];
       mapping.arp = null;
       mapping.phrase = { enabled: true, mode: direction, spacingTicks: 2 };
       mapping.durationTicks = 2;
-      mapping.velocity = id === SoundEffectIds.SPAWN ? 42 : 58;
+      mapping.velocity = id === SoundEffectIds.SPAWN ? 64 : 80;
     }
   }
   return mappings;
@@ -360,7 +360,7 @@ const createScaleMappings = (preset, mode) => {
       mapping.arp = null;
       mapping.phrase = { enabled: true, mode: action === 'SPAWN' ? 'down' : 'up', spacingTicks: preset.phrase.spacingTicks };
       mapping.durationTicks = preset.phrase.durationTicks;
-      mapping.velocity = Math.min(mapping.velocity, action === 'SPAWN' ? 42 : 58);
+      mapping.velocity = Math.min(mapping.velocity, action === 'SPAWN' ? 64 : 80);
     }
     mappings.set(SoundEffectIds[action], mapping);
   }
@@ -373,6 +373,7 @@ const applyGameEventMidiPreset = (project, presetId, { mode = 'steps' } = {}) =>
   if (mode !== 'phrase' && mode !== 'steps') throw new Error(`Unknown game-event playback mode: ${mode}`);
   const clean = sanitizeMidiProject(project);
   const mappings = preset.actions ? createScaleMappings(preset, mode) : createClassicMappings(PALETTES[preset.id], mode);
+  for (const mapping of mappings.values()) mapping.velocity = Math.min(127, Math.round(mapping.velocity * 1.5));
   const replacements = new Map();
   for (const [id, mapping] of mappings) replacements.set(`sfx:${id}`, mapping);
   // These real events carry trigger metadata, which takes precedence over SFX mappings.

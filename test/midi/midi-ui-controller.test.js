@@ -278,7 +278,7 @@ describe('midiUiController sequencer', function() {
     volume.value = '42';
     volume.dispatchEvent({ type: 'change', target: volume });
     expect(created.map(audio => audio.masterVolume)).to.deep.equal([0.42, 0.42]);
-    expect(win.localStorage.getItem('lemmings.midi.masterVolume')).to.equal('0.42');
+    expect(win.localStorage.getItem('lemmings.midi.masterVolume')).to.equal(JSON.stringify({ version: 2, value: 0.42 }));
     expect(win.__LEMMINGS_MIDI_UI__.getLocalAudioState().masterVolume).to.equal(0.42);
     expect(controller.getProject()).to.deep.equal(project);
     expect(controller.getMidiConfig()).to.equal(config);
@@ -292,7 +292,7 @@ describe('midiUiController sequencer', function() {
   });
 
   it('restores local master level before lazily creating audio, including a saved mute', async function() {
-    for (const [stored, expected] of [['0', 0], ['0.35', 0.35], ['broken', 0.7], ['2', 1], ['-1', 0]]) {
+    for (const [stored, expected] of [['0', 0], ['0.35', 0.35], ['broken', 0.7], ['2', 1], ['-1', 0], ['1', 1], [JSON.stringify({ version: 2, value: 2 }), 2]]) {
       const levels = [];
       const { controller, doc, win } = createControllerHarness({ createPreviewAudio: options => {
         levels.push(options.masterVolume);

@@ -2213,11 +2213,11 @@ const createMidiUiController = ({
 
   const setMasterVolume = (value, { persist = true } = {}) => {
     const number = toNumberOrNull(value);
-    masterVolume = number == null ? DEFAULT_MASTER_VOLUME : clamp(number, 0, 1);
+    masterVolume = number == null ? DEFAULT_MASTER_VOLUME : clamp(number, 0, 4);
     localAudio?.setMasterVolume?.(masterVolume);
     auditionAudio?.setMasterVolume?.(masterVolume);
     if (persist) {
-      try { storage?.setItem(MASTER_VOLUME_STORAGE_KEY, String(masterVolume)); } catch { /* Local audio still works when preferences cannot be saved. */ }
+      try { storage?.setItem(MASTER_VOLUME_STORAGE_KEY, JSON.stringify({ version: 2, value: masterVolume })); } catch { /* Local audio still works when preferences cannot be saved. */ }
     }
     renderMasterVolume();
   };
@@ -2583,7 +2583,10 @@ const createMidiUiController = ({
     if (bound) return;
     disposed = false;
     let storedMasterVolume = null;
-    try { storedMasterVolume = storage?.getItem(MASTER_VOLUME_STORAGE_KEY); } catch { /* Use the default when local preferences are unavailable. */ }
+    try {
+      const stored = JSON.parse(storage?.getItem(MASTER_VOLUME_STORAGE_KEY) || 'null');
+      storedMasterVolume = typeof stored === 'number' ? clamp(stored, 0, 1) : stored?.version === 2 ? stored.value : null;
+    } catch { /* Use the default when local preferences are unavailable. */ }
     setMasterVolume(storedMasterVolume, { persist: false });
     ensureProject();
     cleanupLegacyMidiProjectStorage(storage);

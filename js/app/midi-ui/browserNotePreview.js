@@ -5,6 +5,19 @@ const RELEASE_SECONDS = 0.04;
 const MAX_SCHEDULED_VOICES = 64;
 const MAX_CONTROL_EVENTS = 128;
 const MASTER_VOLUME_RAMP_SECONDS = 0.015;
+const MAX_MASTER_VOLUME = 4;
+const createOutputCeiling = context => {
+  const limiter = context.createWaveShaper();
+  const curve = new Float32Array(4097);
+  for (let index = 0; index < curve.length; index += 1) {
+    const sample = index * 2 / (curve.length - 1) - 1;
+    const magnitude = Math.abs(sample);
+    curve[index] = magnitude <= 0.7 ? sample : Math.sign(sample) * (0.7 + 0.2 * (1 - Math.exp(-(magnitude - 0.7) / 0.2)));
+  }
+  limiter.curve = curve;
+  limiter.connect(context.destination);
+  return limiter;
+};
 
 /** A local tone monitor. It owns its audio context and never opens a MIDI device. */
 class BrowserNotePreview {
@@ -19,9 +32,10 @@ class BrowserNotePreview {
     this._maxVoices = clamp(Math.trunc(finite(maxVoices, 16)), 1, 32);
     this._maxNoteSeconds = clamp(finite(maxNoteSeconds, 8), 0.1, 16);
     this._volume = clamp(finite(volume, 0.15), 0, 0.15) / Math.sqrt(this._maxVoices);
-    this._masterVolume = clamp(finite(masterVolume, 0.7), 0, 1);
+    this._masterVolume = clamp(finite(masterVolume, 0.7), 0, MAX_MASTER_VOLUME);
     this._context = null;
     this._master = null;
+    this._limiter = null;
     this._resumePromise = null;
     this._pendingEnables = new Set();
     this._disposePromise = null;
@@ -69,7 +83,7 @@ class BrowserNotePreview {
 
   setMasterVolume(value) {
     if (this._disposed) return this._masterVolume;
-    const next = clamp(finite(value, this._masterVolume), 0, 1);
+    const next = clamp(finite(value, this._masterVolume), 0, MAX_MASTER_VOLUME);
     if (next === this._masterVolume) return next;
     this._masterVolume = next;
     if (this._master && this._context) {
@@ -120,16 +134,20 @@ class BrowserNotePreview {
       if (!this._context) {
         let context;
         let master;
+        let limiter;
         try {
           context = this._createContext();
           master = context.createGain();
           master.gain.value = this._volume * this._masterVolume;
-          master.connect(context.destination);
+          limiter = createOutputCeiling(context);
+          master.connect(limiter);
           context.addEventListener?.('statechange', this._onContextState);
           this._context = context;
           this._master = master;
+          this._limiter = limiter;
         } catch (error) {
           master?.disconnect();
+          limiter?.disconnect();
           try { Promise.resolve(context?.close?.()).catch(() => {}); } catch { /* Failed audio initialization. */ }
           throw error;
         }
@@ -191,6 +209,8 @@ class BrowserNotePreview {
     }
     this._channels.clear();
     this._master?.disconnect();
+    this._limiter?.disconnect();
+    this._limiter = null;
     this._master = null;
     this._context = null;
     this._setStatus('disposed', 'Browser preview is closed.');
