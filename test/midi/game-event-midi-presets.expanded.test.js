@@ -13,7 +13,7 @@ import { EventHandler } from '../../js/util/EventHandler.js';
 import { makeOutput } from '../support/midi-output.js';
 import { withFakeClockAndPerformance } from '../support/timers.js';
 
-const expanded = GAME_EVENT_MIDI_PRESETS.slice(3);
+const expanded = GAME_EVENT_MIDI_PRESETS.slice(3).filter(preset => !preset.ensemble);
 const actionEvents = [
   [SoundEffectIds.SPAWN, SoundEventTypes.LEMMING_SPAWN],
   [SoundEffectIds.EXIT, SoundEventTypes.LEMMING_EXIT, TriggerTypes.EXIT_LEVEL],
@@ -130,7 +130,7 @@ describe('expanded game-event MIDI preset library', function() {
       automation: [{ id: 'saved-pan', target: 'pan', axis: 'x' }]
     });
     const snapshot = structuredClone(original);
-    for (const preset of GAME_EVENT_MIDI_PRESETS) {
+    for (const preset of GAME_EVENT_MIDI_PRESETS.filter(preset => !preset.ensemble)) {
       for (const mode of ['steps', 'phrase']) {
         const next = applyGameEventMidiPreset(original, preset.id, { mode });
         expect(next.enabled).to.equal(false);

@@ -1,3 +1,4 @@
+import { applyMidiEnsembleToSpec } from './project/MidiEnsemble.js';
 import { positionCurveValue } from './midi-mapping/PositionCurve.js';
 import { cloneSafeObject, isPlainObject } from '../util/safeObject.js';
 import {
@@ -303,7 +304,7 @@ class MidiMapping {
     }
     const frequencyHz = sfx.frequencyHz ?? noteToFrequency(note);
 
-    return {
+    return applyMidiEnsembleToSpec({
       note,
       notes,
       velocity,
@@ -321,7 +322,7 @@ class MidiMapping {
       trackId: sfx.trackId ?? null,
       arp: sfx.arp ?? null,
       phrase: sfx.phrase ?? null
-    };
+    }, event, cfg, sfx);
   }
 }
 

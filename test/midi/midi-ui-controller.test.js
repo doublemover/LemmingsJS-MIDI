@@ -101,6 +101,17 @@ const registerSequencerDom = (doc) => {
     midiTrackMute: 'input',
     midiTrackSolo: 'input',
     midiTrackArm: 'input',
+    midiEnsembleFields: 'div',
+    midiEnsembleRoleFields: 'div',
+    midiEnsembleEnabled: 'input',
+    midiRolePan: 'input',
+    midiRoleLow: 'input',
+    midiRoleHigh: 'input',
+    midiRoleDuration: 'input',
+    midiRoleLemmingId: 'input',
+    midiRoleLane: 'input',
+    midiRoleAssign: 'button',
+    midiRoleAutomatic: 'button',
     midiSourceRevertButton: 'button',
     midiSourceEnabled: 'input',
     midiSourceTrackSelect: 'select',
@@ -198,7 +209,8 @@ const createControllerHarness = ({
   },
   webMidi = { enabled: false, inputs: [], outputs: [] },
   lemmings = {},
-  createPreviewAudio
+  createPreviewAudio,
+  freshProjectPresetId
 } = {}) => {
   const doc = new TestDocument();
   registerSequencerDom(doc);
@@ -222,6 +234,7 @@ const createControllerHarness = ({
     document: doc,
     getLemmings: () => currentView,
     getWebMidi: () => webMidi,
+    freshProjectPresetId,
     ...(createPreviewAudio ? { createPreviewAudio } : {}),
     downloadTextFile(document, text, filename, mimeType) {
       view.downloads = view.downloads || [];
@@ -235,6 +248,25 @@ const createControllerHarness = ({
 };
 
 describe('midiUiController sequencer', function() {
+  it('installs the fresh ensemble once and preserves edited saved roles on reload and re-enable', () => {
+    const { controller, doc, win, view } = createControllerHarness({ freshProjectPresetId: 'game-iron-ensemble' });
+    controller.bindMidiUi();
+    expect(controller.getProject().enabled).to.equal(false);
+    expect(controller.getProject().ensemble.roles).to.have.length(4);
+    controller.dispatchProjectIntent({ type: 'track.select', trackId: 'ensemble-bass' });
+    controller.refreshMidiUiFromConfig();
+    expect(doc.getElementById('midiEnsembleRoleFields').hidden).to.equal(false);
+    doc.getElementById('midiRolePan').value = '-70';
+    doc.getElementById('midiRolePan').dispatchEvent({ type: 'change', target: doc.getElementById('midiRolePan') });
+    controller.dispatchProjectIntent({ type: 'track.update', trackId: 'ensemble-bass', patch: { program: 35 } });
+    controller.dispatchProjectIntent({ type: 'enabled.set', enabled: true });
+    controller.dispatchProjectIntent({ type: 'enabled.set', enabled: false });
+    controller.dispose();
+    const reloaded = createMidiUiController({ window: win, document: doc, getLemmings: () => view, freshProjectPresetId: 'game-iron-ensemble' });
+    reloaded.bindMidiUi(); expect(reloaded.getProject().ensemble.roles[0].pan).to.equal(-70);
+    expect(reloaded.getProject().tracks.find(track => track.id === 'ensemble-bass').program).to.equal(35);
+    reloaded.dispose();
+  });
   it('updates both local audio paths with a persisted master level without editing the project or hardware', async function() {
     const created = [];
     let hardwareChanges = 0;

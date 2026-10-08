@@ -16,7 +16,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   const listen = (target, event, handler) => { target?.addEventListener(event, handler); listeners.push([target, event, handler]); };
   const urlConfig = readProcgenUrlConfig(window?.location?.search);
   const settings = { laneCount: normalizeLaneCount(initial.laneCount || 1), speed: normalizeProcgenSpeed(initial.speed), pack: [1, 2, 3, 4, 5, 6].includes(Number(initial.pack)) ? Number(initial.pack) : 2,
-    preset: GAME_EVENT_MIDI_PRESETS[0].id, mode: 'steps', decoration: 'none', ...urlConfig.settings, ...(urlConfig.seed != null ? { seed: urlConfig.seed } : {}) };
+    preset: 'game-iron-ensemble', mode: 'steps', decoration: 'none', ...urlConfig.settings, ...(urlConfig.seed != null ? { seed: urlConfig.seed } : {}) };
   let project = applyGameEventMidiPreset(createMidiProjectFromMidiConfig({ enabled: false, sfx: {}, triggers: {} }), settings.preset);
   let config = projectToMidiConfig(project), disposed = false;
   const local = createLocalGamePreview({ getLemmings: () => getRuntime()?.view, getConfig: () => config, immutableConfig: true,
@@ -147,8 +147,10 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   });
   listen(window, 'blur', () => local.stop());
   listen(document, 'visibilitychange', () => { if (document.hidden) local.stop(); });
-  return { settings, local, getShareUrl,
+  const syncActiveCount = count => { if (byId('procgenAliveCount')) byId('procgenAliveCount').textContent = Math.max(0, count).toLocaleString() + ' alive'; };
+  return { settings, local, getShareUrl, syncActiveCount,
     syncMetrics(state) {
+      syncActiveCount(state.alive);
       const pressure = getRuntime()?.view?.midiPreviewRouter?.getOutputPressure?.();
       const outputPressure = byId('procgenOutputPressure');
       if (outputPressure) { outputPressure.hidden = !pressure?.throttled; outputPressure.textContent = pressure?.throttled ? 'Thinned ' + pressure.dropped : ''; outputPressure.title = pressure?.throttled ? 'Shared sound budget: ' + pressure.reason : ''; }
@@ -165,6 +167,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
       camera()?.applyState(urlConfig.camera);
       setSpeed(settings.speed);
       const runtime = getRuntime();
+      if (byId('procgenAliveCount') && runtime?.world) byId('procgenAliveCount').textContent = runtime.world.actors.reduce((count, actor) => count + (actor.failureReason ? 0 : 1), 0).toLocaleString() + ' alive';
       if (byId('procgenRunStatus')) byId('procgenRunStatus').textContent = `${settings.laneCount.toLocaleString()} ${settings.laneCount === 1 ? 'lane' : 'lanes'} · ${runtime?.world ? 'Wheel or Z/X zoom; arrows or drag pan; F follows the leader.' : 'Left-to-right generation'}`;
     },
     dispose() { disposed = true; local.dispose(); characters.dispose?.(); for (const [target, event, handler] of listeners) target?.removeEventListener(event, handler); }

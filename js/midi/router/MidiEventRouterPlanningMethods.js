@@ -114,13 +114,17 @@ const midiEventRouterPlanningMethods = {
   _planEntries(spec, sendTimeMs, noteCount = 1) {
     const durationMs = Number.isFinite(spec.durationTicks) ? Math.max(0, spec.durationTicks * this.scheduler.tickMs) : 0;
     const offTimeMs = sendTimeMs + durationMs;
-    const offMessages = durationMs > 0 ? (1 + (this.mapping.config?.mpe?.enabled ? 1 : 0)) : 0;
+    const mpeEnabled = !!this.mapping.config?.mpe?.enabled && !spec.ensembleRole;
+    const offMessages = durationMs > 0 ? (1 + (mpeEnabled ? 1 : 0)) : 0;
     const estimate = this.scheduler.estimateMessages(spec);
     const onMessages = Math.max(estimate.messages - offMessages, 0);
-    const onBytes = onMessages * 3;
     const offBytes = offMessages * 3;
+    const onBytes = Math.max(0, estimate.bytes - offBytes);
+    const sharedControllers = !mpeEnabled;
+    const count = sharedControllers ? noteCount + Math.max(0, onMessages - 1) : onMessages * noteCount;
+    const bytes = sharedControllers ? noteCount * 3 + Math.max(0, onBytes - 3) : onBytes * noteCount;
     return {
-      on: { timeMs: sendTimeMs, count: onMessages * noteCount, bytes: onBytes * noteCount },
+      on: { timeMs: sendTimeMs, count, bytes },
       off: { timeMs: offTimeMs, count: offMessages * noteCount, bytes: offBytes * noteCount }
     };
   },

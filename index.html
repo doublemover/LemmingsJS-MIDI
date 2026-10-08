@@ -318,6 +318,21 @@
             <label><input id="midiTrackSolo" type="checkbox" /> Solo</label>
             <label><input id="midiTrackArm" type="checkbox" /> Arm</label>
           </div>
+          <div id="midiEnsembleFields" hidden><label><input id="midiEnsembleEnabled" type="checkbox" /> Automatic ensemble roles</label></div>
+          <div id="midiEnsembleRoleFields" hidden>
+            <div class="midi-inline-fields">
+              <label class="midi-field">Role pan<input id="midiRolePan" type="number" min="-127" max="127" step="1" /></label>
+              <label class="midi-field">Lowest note<input id="midiRoleLow" type="number" min="0" max="127" step="1" /></label>
+              <label class="midi-field">Highest note<input id="midiRoleHigh" type="number" min="0" max="127" step="1" /></label>
+              <label class="midi-field">Duration scale<input id="midiRoleDuration" type="number" min="0.1" max="4" step="0.1" /></label>
+            </div>
+            <p class="midi-help">IDs and lanes choose stable roles. An explicit event track takes priority.</p>
+            <div class="midi-inline-fields">
+              <label class="midi-field">Lemming ID<input id="midiRoleLemmingId" type="number" min="0" step="1" /></label>
+              <label class="midi-field">Lane (zero based)<input id="midiRoleLane" type="number" min="0" max="1023" step="1" value="0" /></label>
+              <button id="midiRoleAssign" type="button">Assign this role</button><button id="midiRoleAutomatic" type="button">Use automatic role</button>
+            </div>
+          </div>
         </details>
         <div id="midiSourceInspector" class="midi-inspector-group">
           <h3>Event action</h3>

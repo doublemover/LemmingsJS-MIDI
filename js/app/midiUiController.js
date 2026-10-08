@@ -262,6 +262,7 @@ const createMidiUiController = ({
   getLemmings = () => getAppContext(),
   getWebMidi = () => getRuntimeDependency('webMidi', null),
   getMidiConfig = null,
+  freshProjectPresetId = null,
   downloadTextFile = downloadTextFileDefault,
   readTextFile = readTextFileDefault,
   createPreviewAudio = createBrowserNotePreview
@@ -433,10 +434,11 @@ const createMidiUiController = ({
     }
     if (factoryProject) {
       projectNeedsFactory = false;
-      return saveMidiProject(storage, factoryProject);
+      return saveMidiProject(storage, freshProjectPresetId ? applyGameEventMidiPreset(factoryProject, freshProjectPresetId) : factoryProject);
     }
     projectNeedsFactory = true;
-    return createMidiProjectFromMidiConfig({ enabled: false, sfx: {}, triggers: {} });
+    const fresh = createMidiProjectFromMidiConfig({ enabled: false, sfx: {}, triggers: {} });
+    return freshProjectPresetId ? applyGameEventMidiPreset(fresh, freshProjectPresetId) : fresh;
   };
 
   const ensureProject = () => {
@@ -446,7 +448,8 @@ const createMidiUiController = ({
     if (projectNeedsFactory) {
       const factory = getFactoryConfig();
       if (factory) {
-        project = saveMidiProject(storage, captureFactoryProject(factory));
+        const fresh = captureFactoryProject(factory);
+        project = saveMidiProject(storage, freshProjectPresetId ? applyGameEventMidiPreset(fresh, freshProjectPresetId) : fresh);
         projectNeedsFactory = false;
       }
     }
@@ -2134,6 +2137,16 @@ const createMidiUiController = ({
     setChecked(document?.getElementById('midiTrackMute'), track?.mute);
     setChecked(document?.getElementById('midiTrackSolo'), track?.solo);
     setChecked(document?.getElementById('midiTrackArm'), track?.arm);
+    const role = current.ensemble?.roles.find(item => item.trackId === track?.id);
+    const roleFields = document?.getElementById('midiEnsembleRoleFields');
+    if (roleFields) roleFields.hidden = !role;
+    const ensembleFields = document?.getElementById('midiEnsembleFields');
+    if (ensembleFields) ensembleFields.hidden = !current.ensemble;
+    setChecked(document?.getElementById('midiEnsembleEnabled'), current.ensemble?.enabled);
+    setInputValue(document?.getElementById('midiRolePan'), role?.pan);
+    setInputValue(document?.getElementById('midiRoleLow'), role?.register.min);
+    setInputValue(document?.getElementById('midiRoleHigh'), role?.register.max);
+    setInputValue(document?.getElementById('midiRoleDuration'), role?.durationScale);
 
     const revertButton = document?.getElementById('midiSourceRevertButton');
     if (revertButton) {
@@ -2939,6 +2952,23 @@ const createMidiUiController = ({
     bindById('midiTrackMute', 'change', event => updateSelectedTrack({ mute: !!event.target.checked }));
     bindById('midiTrackSolo', 'change', event => updateSelectedTrack({ solo: !!event.target.checked }));
     bindById('midiTrackArm', 'change', event => updateSelectedTrack({ arm: !!event.target.checked }));
+    bindById('midiEnsembleEnabled', 'change', event => dispatchProjectIntent({ type: 'ensemble.update', patch: { enabled: !!event.target.checked } }));
+    const updateRole = patch => {
+      const track = selectedTrack(); if (track) dispatchProjectIntent({ type: 'ensemble.role.update', trackId: track.id, patch });
+    };
+    bindById('midiRolePan', 'change', event => updateRole({ pan: Number(event.target.value) }));
+    for (const [id, part] of [['midiRoleLow', 'min'], ['midiRoleHigh', 'max']]) bindById(id, 'change', event => {
+      const role = ensureProject().ensemble?.roles.find(item => item.trackId === selectedTrack()?.id);
+      if (role) updateRole({ register: { ...role.register, [part]: Number(event.target.value) } });
+    });
+    bindById('midiRoleDuration', 'change', event => updateRole({ durationScale: Number(event.target.value) }));
+    const assignRole = automatic => {
+      const id = document?.getElementById('midiRoleLemmingId')?.value, lane = document?.getElementById('midiRoleLane')?.value;
+      if (!id?.trim() || !Number.isInteger(Number(id)) || Number(id) < 0) return;
+      dispatchProjectIntent({ type: 'ensemble.assignment.set', lemmingId: Number(id), laneIndex: Number(lane) || 0, trackId: automatic ? null : selectedTrack()?.id });
+    };
+    bindById('midiRoleAssign', 'click', () => assignRole(false));
+    bindById('midiRoleAutomatic', 'click', () => assignRole(true));
     bindById('midiSourceRevertButton', 'click', () => revertSelectedSource());
     bindById('midiSourceEnabled', 'change', event => updateSelectedSource({ enabled: !!event.target.checked }));
     bindById('midiSourceTrackSelect', 'change', event => {

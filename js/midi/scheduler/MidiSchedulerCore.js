@@ -12,6 +12,7 @@ class MidiScheduler {
     this._activeByChannel = new Map();
     this._activeNotes = new Map();
     this._usedOutputChannels = new Map();
+    this._expressionByOutput = new Map();
     this._pendingNoteOns = new Map();
     this.gamePhrases = new MidiGamePhraseQueue();
     this._maxActiveNotes = 32;

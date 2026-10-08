@@ -6,6 +6,18 @@ const MAX_SCHEDULED_VOICES = 64;
 const MAX_CONTROL_EVENTS = 128;
 const MASTER_VOLUME_RAMP_SECONDS = 0.015;
 const MAX_MASTER_VOLUME = 4;
+const instrumentProfile = (program, percussion, note, enabled = true) => {
+  if (!enabled) return { waveform: 'triangle', attack: ATTACK_SECONDS, decay: 0, sustain: 1, release: RELEASE_SECONDS, gain: 1 };
+  if (percussion) {
+    if (note === 36) return { waveform: 'sine', attack: 0.002, decay: 0.16, sustain: 0, release: 0.025, gain: 0.9, seconds: 0.22, frequency: 120, endFrequency: 45 };
+    return { waveform: 'square', noise: true, attack: 0.001, decay: note === 42 ? 0.055 : 0.12,
+      sustain: 0, release: 0.015, gain: note === 42 ? 0.3 : 0.6, seconds: note === 42 ? 0.09 : 0.18, frequency: note === 42 ? 2500 : 180 };
+  }
+  if (program === 38 || (program >= 32 && program <= 39)) return { waveform: 'sine', attack: 0.006, decay: 0.05, sustain: 0.82, release: 0.06, gain: 0.9 };
+  if (program === 29 || (program >= 24 && program <= 31)) return { waveform: 'square', attack: 0.004, decay: 0.09, sustain: 0.4, release: 0.04, gain: 0.48 };
+  if (program === 81 || (program >= 80 && program <= 87)) return { waveform: 'sawtooth', attack: 0.012, decay: 0.08, sustain: 0.65, release: 0.055, gain: 0.45 };
+  return { waveform: 'triangle', attack: ATTACK_SECONDS, decay: 0, sustain: 1, release: RELEASE_SECONDS, gain: 1 };
+};
 const createOutputCeiling = context => {
   const limiter = context.createWaveShaper();
   const curve = new Float32Array(4097);
@@ -48,6 +60,7 @@ class BrowserNotePreview {
     this._voiceSequence = 0;
     this._onPlayback = onPlayback;
     this._channels = new Map();
+    this._noiseBuffer = null;
     this._onContextState = () => {
       if (this._disposed || !this._enabled || this._context?.state === 'running') return;
       this.stop();
@@ -57,6 +70,7 @@ class BrowserNotePreview {
     for (let number = 1; number <= 16; number += 1) {
       channels[number] = Object.freeze({
         sendNoteOn: (note, options) => this._noteOn(number, note, options),
+        sendProgramChange: (program, options) => this._safeSend(() => this._program(number, program, options)),
         sendNoteOff: (note, options) => this._noteOff(number, note, options),
         sendControlChange: (control, value, options) => this._safeSend(() => this._control(number, control, value, options)),
         sendPitchBend: (value, options) => this._safeSend(() => this._pitchBend(number, value, options)),
@@ -68,6 +82,7 @@ class BrowserNotePreview {
       id: 'browser-note-preview',
       name: 'Browser audio preview',
       supportsPerNotePan: true,
+      supportsPerNoteInstrument: true,
       supportsPlaybackMetadata: true,
       channels: Object.freeze(channels),
       clear: () => this._clearVoices()
@@ -211,6 +226,7 @@ class BrowserNotePreview {
       channel.pan?.disconnect();
     }
     this._channels.clear();
+    this._noiseBuffer = null;
     this._master?.disconnect();
     this._limiter?.disconnect();
     this._limiter = null;
@@ -247,7 +263,7 @@ class BrowserNotePreview {
       const time = baseTime + offset;
       const length = clamp(finite(spec.durationMs, durationMs), 30, this._maxNoteSeconds * 1000);
       if (Number.isFinite(spec.pitchBend)) channel.sendPitchBend(spec.pitchBend, { time });
-      if (channel.sendNoteOn(spec.note, { rawAttack: finite(spec.velocity, 80), time, playback: spec.playback,
+      if (channel.sendNoteOn(spec.note, { rawAttack: finite(spec.velocity, 80), time, playback: spec.playback, instrument: { program: spec.program, percussion: spec.percussion, role: spec.ensembleRole, legacy: !spec.ensembleRole && spec.percussion !== true },
         ...(Number.isFinite(spec.pan) ? { pan: clamp(spec.pan / 127, -1, 1) } : {}) })) {
         channel.sendNoteOff(spec.note, { time: time + length });
         played = true;
@@ -281,9 +297,31 @@ class BrowserNotePreview {
       pan?.disconnect();
       throw error;
     }
-    channel = { gain, pan, bendRange: 2, bends: [], volume: 1, expression: 1 };
+    channel = { gain, pan, bendRange: 2, bends: [], volume: 1, expression: 1, program: null };
     this._channels.set(number, channel);
     return channel;
+  }
+
+  _program(number, value) {
+    if (!this._ready() || !Number.isInteger(value) || value < 0 || value > 127) return false;
+    this._channel(number).program = value;
+    return true;
+  }
+
+  _percussionNoise() {
+    if (this._noiseBuffer) return this._noiseBuffer;
+    const context = this._context;
+    if (!context.createBuffer || !context.createBufferSource) return null;
+    const length = Math.ceil((context.sampleRate || 48000) * 0.2);
+    const buffer = context.createBuffer(1, length, context.sampleRate || 48000);
+    const samples = buffer.getChannelData(0);
+    let seed = 0x45b9;
+    for (let index = 0; index < length; index += 1) {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      samples[index] = seed / 2147483648 - 1;
+    }
+    this._noiseBuffer = buffer;
+    return buffer;
   }
 
   _noteOn(number, note, options = {}) {
@@ -307,12 +345,20 @@ class BrowserNotePreview {
     let gain;
     try {
       const channel = this._channel(number);
-      oscillator = context.createOscillator();
+      const profile = instrumentProfile(options.instrument?.program ?? channel.program, options.instrument?.percussion === true || number === 10, note, options.instrument?.legacy !== true);
+      const noise = profile.noise && this._percussionNoise();
+      oscillator = noise ? context.createBufferSource() : context.createOscillator();
+      if (noise) { oscillator.buffer = noise; oscillator.loop = true; }
       gain = context.createGain();
-      voice = { oscillator, gain, number, note, start, id: ++this._voiceSequence, playback: options.playback, startMs: this._nowMs() + (start - context.currentTime) * 1000, end: start + this._maxNoteSeconds, released: false, peak: clamp(finite(options?.rawAttack, 80), 1, 127) / 127 };
+      voice = { oscillator, gain, number, note, start, id: ++this._voiceSequence, playback: options.playback, startMs: this._nowMs() + (start - context.currentTime) * 1000, end: start + Math.min(this._maxNoteSeconds, profile.seconds || this._maxNoteSeconds), released: false,
+        peak: clamp(finite(options?.rawAttack, 80), 1, 127) / 127 * profile.gain, attack: profile.attack, decay: profile.decay,
+        sustain: profile.sustain, release: profile.release, instrument: options.instrument, velocity: clamp(finite(options?.rawAttack, 80), 1, 127) };
       this._voices.add(voice);
-      oscillator.type = 'triangle';
-      oscillator.frequency.setValueAtTime(440 * (2 ** ((note - 69) / 12)), start);
+      if (!noise) {
+        oscillator.type = profile.waveform;
+        oscillator.frequency.setValueAtTime(profile.frequency || 440 * (2 ** ((note - 69) / 12)), start);
+        if (profile.endFrequency) oscillator.frequency.linearRampToValueAtTime(profile.endFrequency, start + profile.decay);
+      }
       this._pruneBends(channel);
       let initialBend = 0;
       for (const bend of channel.bends) if (bend.time <= start) initialBend = bend.value;
@@ -321,8 +367,10 @@ class BrowserNotePreview {
         if (bend.time > start) oscillator.detune.setValueAtTime(bend.value * channel.bendRange * 100, bend.time);
       }
       gain.gain.setValueAtTime(0, start);
-      gain.gain.linearRampToValueAtTime(voice.peak, start + ATTACK_SECONDS);
-      gain.gain.setValueAtTime(voice.peak, voice.end - RELEASE_SECONDS);
+      gain.gain.linearRampToValueAtTime(voice.peak, start + voice.attack);
+      const sustainAt = Math.min(voice.end - voice.release, start + voice.attack + voice.decay);
+      if (voice.decay > 0) gain.gain.linearRampToValueAtTime(voice.peak * voice.sustain, sustainAt);
+      gain.gain.setValueAtTime(voice.peak * voice.sustain, voice.end - voice.release);
       gain.gain.linearRampToValueAtTime(0, voice.end);
       oscillator.connect(gain);
       if (Number.isFinite(options.pan) && context.createStereoPanner) {
@@ -353,11 +401,15 @@ class BrowserNotePreview {
 
   _release(voice, time, force = false) {
     if (!this._voices.has(voice) || (!force && voice.released)) return;
-    const releaseAt = Math.max(voice.start, Math.min(time, voice.end - RELEASE_SECONDS));
-    const end = Math.min(voice.end, releaseAt + RELEASE_SECONDS);
+    const releaseAt = Math.max(voice.start, Math.min(time, voice.end - voice.release));
+    const end = Math.min(voice.end, releaseAt + voice.release);
     const param = voice.gain.gain;
     param.cancelScheduledValues(releaseAt);
-    const attackLevel = voice.peak * clamp((releaseAt - voice.start) / ATTACK_SECONDS, 0, 1);
+    const elapsed = releaseAt - voice.start;
+    const level = elapsed < voice.attack ? clamp(elapsed / voice.attack, 0, 1)
+      : voice.decay > 0 && elapsed < voice.attack + voice.decay
+        ? 1 - (1 - voice.sustain) * (elapsed - voice.attack) / voice.decay : voice.sustain;
+    const attackLevel = voice.peak * level;
     param.setValueAtTime(attackLevel, releaseAt);
     param.linearRampToValueAtTime(0, end);
     voice.oscillator.stop(end);
@@ -393,13 +445,13 @@ class BrowserNotePreview {
     this._setStatus(this._status, this._message);
   }
 
-  _emitPlayback(voice, phase, releaseAt = voice.end - RELEASE_SECONDS) {
+  _emitPlayback(voice, phase, releaseAt = voice.end - voice.release) {
     if (!voice.playback || typeof this._onPlayback !== 'function') return;
     try {
-      this._onPlayback({ ...voice.playback, id: voice.id, phase, note: voice.note, velocity: Math.round(voice.peak * 127),
+      this._onPlayback({ ...voice.playback, id: voice.id, phase, note: voice.note, velocity: Math.round(voice.velocity),
         startMs: voice.startMs, releaseMs: voice.startMs + (releaseAt - voice.start) * 1000,
         endMs: voice.startMs + (voice.end - voice.start) * 1000,
-        attackMs: ATTACK_SECONDS * 1000, decayMs: 0, sustain: 1 });
+        attackMs: voice.attack * 1000, decayMs: voice.decay * 1000, sustain: voice.sustain });
     } catch { /* Display observers must never interrupt audio. */ }
   }
 

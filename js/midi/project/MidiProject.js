@@ -1,3 +1,4 @@
+import { sanitizeMidiEnsemble, buildMidiEnsembleConfig } from './MidiEnsemble.js';
 import { DEFAULT_CONFIG, mergeConfig } from '../midi-mapping/MidiMappingDomain.js';
 import { getPlayableMidiClipSteps as activeClipSteps } from './MidiClipPlayback.js';
 import { cloneSafeObject, isPlainObject, safeObjectEntries } from '../../util/safeObject.js';
@@ -546,6 +547,7 @@ const buildProjectBase = (overrides = {}) => {
     },
     transport: sanitizeTransport(overrides.transport),
     global: sanitizeGlobal(overrides.global),
+    ...(overrides.ensemble ? { ensemble: overrides.ensemble } : {}),
     tracks: Array.isArray(overrides.tracks) && overrides.tracks.length
       ? overrides.tracks
       : [createDefaultMidiTrack()],
@@ -658,6 +660,7 @@ function sanitizeMidiProject(project = {}) {
     },
     transport: sanitizeTransport(source.transport),
     global: sanitizeGlobal(source.global),
+    ...(sanitizeMidiEnsemble(source.ensemble, trackIds) ? { ensemble: sanitizeMidiEnsemble(source.ensemble, trackIds) } : {}),
     tracks,
     sources,
     clips,
@@ -960,6 +963,20 @@ function reduceMidiProject(project, intent = {}) {
   case 'global.update':
     next = { ...current, global: { ...current.global, ...cloneObject(intent.patch ?? intent.global) } };
     break;
+  case 'ensemble.update':
+    next = { ...current, ensemble: { ...current.ensemble, ...cloneObject(intent.patch) } };
+    break;
+  case 'ensemble.role.update':
+    next = { ...current, ensemble: { ...current.ensemble, roles: current.ensemble?.roles.map(role =>
+      role.trackId === intent.trackId ? { ...role, ...cloneObject(intent.patch) } : role) } };
+    break;
+  case 'ensemble.assignment.set': {
+    const assignments = (current.ensemble?.assignments || []).filter(entry =>
+      entry.lemmingId !== intent.lemmingId || entry.laneIndex !== (intent.laneIndex ?? 0));
+    if (intent.trackId != null) assignments.push({ lemmingId: intent.lemmingId, laneIndex: intent.laneIndex ?? 0, trackId: intent.trackId });
+    next = { ...current, ensemble: { ...current.ensemble, assignments } };
+    break;
+  }
   case 'track.add':
     next = addTrack(current, intent.track);
     break;
@@ -1508,11 +1525,13 @@ function projectToMidiConfig(project, factoryConfig = {}) {
   const tracksById = new Map(clean.tracks.map(track => [track.id, track]));
   const clipsById = new Map(clean.clips.map(clip => [clip.id, clip]));
   const hasSolo = clean.tracks.some(track => track.solo && !track.mute);
+  if (clean.ensemble) config.ensemble = buildMidiEnsembleConfig(clean.ensemble, clean.tracks, hasSolo);
   const defaultVelocity = clean.global.velocityRange.default ?? DEFAULT_CONFIG.velocityRange.default;
   const defaultDuration = clean.global.durationTicks.default ?? DEFAULT_CONFIG.durationTicks.default;
   for (const source of clean.sources) {
     const track = tracksById.get(source.trackId) || clean.tracks[0];
-    const hiddenByTrack = !isTrackAudible(track, hasSolo);
+    const automaticEnsemble = clean.ensemble?.enabled && track.id === clean.ensemble.sourceTrackId && !track.mute;
+    const hiddenByTrack = !isTrackAudible(track, hasSolo) && !automaticEnsemble;
     const mapping = source.mode === 'clip'
       ? buildRuntimeClipMapping(source, track, clipsById.get(source.clipId), hiddenByTrack, defaultVelocity, defaultDuration)
       : buildRuntimeMapping(source, track, hiddenByTrack, defaultVelocity);

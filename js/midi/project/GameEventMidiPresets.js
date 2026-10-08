@@ -1,5 +1,6 @@
 import { SoundEffectIds } from '../../game/SoundEvents.js';
 import { TriggerTypes } from '../../level/TriggerTypes.js';
+import { createDefaultMidiEnsemble } from './MidiEnsemble.js';
 import { DEFAULT_SCALES } from '../midi-mapping/MidiMappingDomain.js';
 import { createMidiSourceFromMapping, sanitizeMidiProject } from './MidiProject.js';
 
@@ -228,7 +229,22 @@ const PRESET_DEFINITIONS = freezeDefinition([
       LAND: strike(0, { octave: -1, velocity: 42, durationTicks: 4 })
     },
     phrase: { spacingTicks: 6, durationTicks: 4 }
-  }
+  },
+  {
+    id: 'game-iron-ensemble', ensemble: true, label: 'Iron ensemble · D dorian',
+    description: 'Stable lemming bass, guitar, lead and drum roles in D dorian, driven by real game events.',
+    family: 'Ensemble', register: 'Bass / rhythm / lead / drums', contour: 'Modal builds and low replies',
+    rhythm: 'Game-event grooves', voicing: 'Complementary lemming roles', scale: musicalScale('dorian', 2), baseNote: 62,
+    actions: {
+      SPAWN: steps([0, 2, 4, 5], 'down', { velocity: 64, durationTicks: 2 }),
+      EXIT: steps([0, 2, 4, 7], 'up', { velocity: 80, durationTicks: 4 }),
+      BUILDER_STEP: steps([0, 2, 4, 5], 'up', { velocity: 72, durationTicks: 2 }),
+      BASH: steps([0, 4], 'updown', { octave: -1, velocity: 72, durationTicks: 2 }),
+      DIG: steps([0, 2, 4], 'down', { octave: -1, velocity: 68, durationTicks: 2 }),
+      MINE: steps([0, 3, 4], 'down', { octave: -1, velocity: 70, durationTicks: 2 })
+    },
+    phrase: { spacingTicks: 2, durationTicks: 2 }
+  },
 ]);
 
 const GAME_EVENT_MIDI_PRESETS = Object.freeze(PRESET_DEFINITIONS.map(({ actions, phrase, ...metadata }) => Object.freeze(metadata)));
@@ -396,6 +412,7 @@ const applyGameEventMidiPreset = (project, presetId, { mode = 'steps' } = {}) =>
       enabled: true,
       mode: 'direct',
       clipId: null,
+      ...(preset.id === 'game-iron-ensemble' ? { trackId: clean.tracks[0].id } : {}),
       mapping
     };
   });
@@ -405,12 +422,17 @@ const applyGameEventMidiPreset = (project, presetId, { mode = 'steps' } = {}) =>
   }
   const presetNotes = [...mappings.values()].flatMap(mapping => mapping.notes || [mapping.note]);
   const spawn = sources.find(source => source.kind === 'sfx' && source.sourceKey === String(SoundEffectIds.SPAWN));
+  const ensemble = preset.id === 'game-iron-ensemble' ? createDefaultMidiEnsemble(clean.tracks[0].id, clean.tracks) : null;
   return sanitizeMidiProject({
     ...clean,
+    ...(ensemble || { ensemble: null }),
     updatedAt: Date.now(),
     global: {
       ...clean.global,
       scale: { ...preset.scale, degrees: [...preset.scale.degrees] },
+      ...(ensemble ? { mpe: { ...clean.global.mpe, enabled: false },
+        position: { ...clean.global.position, viewPan: false },
+        density: { ...clean.global.density, velocityBoost: 0.15, durationScale: 0.25 } } : {}),
       noteRange: {
         min: Math.min(clean.global.noteRange.min, ...presetNotes),
         max: Math.max(clean.global.noteRange.max, ...presetNotes)

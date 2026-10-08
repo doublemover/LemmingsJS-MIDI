@@ -38,7 +38,7 @@ const midiSchedulerSendMethods = {
       const attackVelocity = reverse ? baseRelease : baseVelocity;
       const releaseVelocity = reverse ? baseVelocity : baseRelease;
       const timbreCc = this.config.mpe?.timbreCc ?? 74;
-      const mpeEnabled = !!this.config.mpe?.enabled;
+      const mpeEnabled = this._isMpeNote(spec);
       const signedPan = (this.config.position?.panRange?.min ?? 0) < 0;
       const trackId = this._normalizeTrackId?.(spec.trackId) ?? null;
       const voiceBudget = trackId && spec.voiceBudget != null
@@ -55,7 +55,7 @@ const midiSchedulerSendMethods = {
         if (!reservation.ok) { this.recordThrottle(reservation.reason, now); return false; }
         meta = { ...meta, rateReserved: true, reservationId: reservation.reservationId };
       }
-      const channelNumber = this.config.mpe?.enabled
+      const channelNumber = mpeEnabled
         ? this._allocateChannel(outputId)
         : normalizeChannelNumber(spec.channel ?? this.config.defaultChannel, 1);
       const channel = output.channels?.[channelNumber];
@@ -87,13 +87,14 @@ const midiSchedulerSendMethods = {
         trackId,
         voiceBudget,
         outputId,
-        mpe: !!this.config.mpe?.enabled,
+        mpe: mpeEnabled,
         phraseVoiceKey: spec.phraseVoiceKey ?? null,
+        laneIndex: meta.laneIndex ?? 0, laneCount: meta.laneCount ?? 1, sfxId: meta.sfxId, priority: meta.priority,
         offTimeMs,
         hasStarted: false,
         output
       });
-      if (this.config.mpe?.enabled) {
+      if (mpeEnabled) {
         this._activeByChannel.set(this._activeChannelKey(channelNumber, outputId), {
           channel: channelNumber,
           note: spec.note,
@@ -122,30 +123,28 @@ const midiSchedulerSendMethods = {
           }
         }
         try {
-          if (Number.isInteger(spec.program) && spec.program >= 0 && spec.program <= 127) {
-            channel.sendProgramChange?.(spec.program, { time: sendTimeMs });
-          }
-          if (mpeEnabled || Number.isFinite(spec.pitchBend)) {
-            channel.sendPitchBend(clamp(spec.pitchBend ?? 0, -1, 1), { time: sendTimeMs });
-          }
-          if (spec.timbre != null && Number.isFinite(spec.timbre)) {
-            channel.sendControlChange(timbreCc, clamp(spec.timbre, 0, 127), { time: sendTimeMs });
-          }
-          if (spec.pan != null && Number.isFinite(spec.pan) && !output.supportsPerNotePan &&
-          (!spec.spatialPan || mpeEnabled)) {
-            let panValue = spec.pan;
-            if (signedPan) {
-              panValue = Math.round((clamp(panValue, -127, 127) + 127) / 2);
+          const expression = this._expressionPlan(spec, output, channelNumber);
+          if (!mpeEnabled && !output.supportsPerNoteInstrument && expression.controls.length) {
+            for (const [previousToken, previous] of [...this._activeNotes]) {
+              if (previousToken !== token && previous.hasStarted && previous.output === output && previous.channel === channelNumber) {
+                this._stopActiveNoteToken(previousToken);
+              }
             }
-            channel.sendControlChange(10, clamp(panValue, 0, 127), { time: sendTimeMs });
+          }
+          for (const control of expression.controls) {
+            if (control.type === 'program') channel.sendProgramChange?.(control.value, { time: sendTimeMs });
+            else if (control.type === 'bend') channel.sendPitchBend(control.value, { time: sendTimeMs });
+            else channel.sendControlChange(control.cc, control.value, { time: sendTimeMs });
+            expression.state[control.key] = control.value;
           }
 
           channel.sendNoteOn(spec.note, { rawAttack: attackVelocity, time: sendTimeMs,
-            ...(output.supportsPlaybackMetadata ? { playback: { sfxId: meta.sfxId, triggerType: meta.triggerType, durationMs, stepIndex: spec.stepIndex, stepCount: spec.stepCount } } : {}),
+            ...(output.supportsPlaybackMetadata ? { playback: { sfxId: meta.sfxId, triggerType: meta.triggerType, durationMs, stepIndex: spec.stepIndex, stepCount: spec.stepCount, lemmingId: meta.lemmingId, laneIndex: meta.laneIndex, ensembleRole: spec.ensembleRole, program: spec.program, channel: channelNumber } } : {}),
+            ...(output.supportsPerNoteInstrument ? { instrument: { program: spec.program, percussion: spec.percussion, role: spec.ensembleRole, legacy: !spec.ensembleRole && spec.percussion !== true } } : {}),
             ...(output.supportsPerNotePan && Number.isFinite(spec.pan) ? { pan: spec.pan / 127 } : {}) });
           active.hasStarted = true;
           if (typeof window !== 'undefined') window.lastMidiOutputMessage = {
-            type: 'noteOn', note: spec.note, velocity: attackVelocity, channel: channelNumber, outputId, timeMs: sendTimeMs
+            type: 'noteOn', note: spec.note, velocity: attackVelocity, channel: channelNumber, outputId, timeMs: sendTimeMs, program: spec.program, ensembleRole: spec.ensembleRole, laneIndex: meta.laneIndex, lemmingId: meta.lemmingId
           };
         } catch (error) {
           dispatchFailed = true;
@@ -160,11 +159,11 @@ const midiSchedulerSendMethods = {
       } else dispatchStart();
       if (durationMs > 0) {
         this._scheduleNoteOff({ timeMs: offTimeMs, channel: channelNumber, note: spec.note,
-          outputId, token, mpe: !!this.config.mpe?.enabled, releaseVelocity });
+          outputId, token, mpe: mpeEnabled, releaseVelocity });
       }
       const { messages, bytes } = this.estimateMessages(spec);
       if (messages > 0 && meta.rateReserved !== true) {
-        const offMessages = durationMs > 0 ? (1 + (this.config.mpe?.enabled ? 1 : 0)) : 0;
+        const offMessages = durationMs > 0 ? (1 + (mpeEnabled ? 1 : 0)) : 0;
         const immediateMessages = messages - offMessages;
         const immediateBytes = bytes - (offMessages * MIDI_MESSAGE_BYTES);
         this._recordPlanned({
@@ -252,7 +251,10 @@ const midiSchedulerSendMethods = {
           const channel = output?.channels?.[entry.channel];
           try {
             channel?.sendNoteOff?.(entry.note, { rawRelease: entry.releaseVelocity, time: entry.timeMs });
-            if (entry.mpe) channel?.sendPitchBend?.(0, { time: entry.timeMs });
+            if (entry.mpe) {
+              channel?.sendPitchBend?.(0, { time: entry.timeMs });
+              this._expressionState(output, entry.channel).bend = 0;
+            }
           } catch (error) { this.lastOutputError = error?.message || String(error); }
         }
         if (entry.mpe) {
@@ -334,6 +336,7 @@ const midiSchedulerSendMethods = {
         }
       }
     }
+    this._expressionByOutput.clear();
     this._pendingNoteOns.clear();
     this._noteOffs.length = 0;
     if (this._noteOffTimerId) {

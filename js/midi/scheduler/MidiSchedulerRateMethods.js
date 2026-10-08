@@ -301,20 +301,12 @@ const midiSchedulerRateMethods = {
 
   estimateMessages(spec) {
     if (!spec || !Number.isFinite(spec.note)) return { messages: 0, bytes: 0 };
-    let messages = 1;
-    if (Number.isInteger(spec.program) && spec.program >= 0 && spec.program <= 127) messages += 1;
-    if (this.config.mpe?.enabled) {
-      messages += 1;
-    } else if (Number.isFinite(spec.pitchBend)) {
-      messages += 1;
-    }
-    if (spec.timbre != null && Number.isFinite(spec.timbre)) messages += 1;
-    if (spec.pan != null && Number.isFinite(spec.pan)) messages += 1;
-    if (spec.durationTicks && spec.durationTicks > 0) {
-      messages += 1;
-      if (this.config.mpe?.enabled) messages += 1;
-    }
-    return { messages, bytes: messages * MIDI_MESSAGE_BYTES };
+    const output = this._resolveOutput(spec.outputId);
+    const channel = normalizeChannelNumber(spec.channel ?? this.config.defaultChannel, 1);
+    const expression = this._expressionPlan(spec, output, channel, true);
+    const offMessages = spec.durationTicks > 0 ? (this._isMpeNote(spec) ? 2 : 1) : 0;
+    const messages = 1 + expression.messages + offMessages;
+    return { messages, bytes: (1 + offMessages) * MIDI_MESSAGE_BYTES + expression.bytes };
   },
 
   _recordPlanned(entry, now = this._nowMs(), alreadyPruned = false) {

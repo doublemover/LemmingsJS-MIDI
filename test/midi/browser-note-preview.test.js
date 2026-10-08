@@ -1,6 +1,10 @@
 import { expect } from 'chai';
 import { readFileSync } from 'node:fs';
 import { BrowserNotePreview, createBrowserNotePreview } from '../../js/app/midi-ui/browserNotePreview.js';
+import { applyGameEventMidiPreset } from '../../js/midi/project/GameEventMidiPresets.js';
+import { createMidiProject, projectToMidiConfig } from '../../js/midi/project/MidiProject.js';
+import { MidiEventRouter } from '../../js/midi/MidiEventRouter.js';
+import { SoundEffectIds } from '../../js/game/SoundEvents.js';
 import { MidiScheduler } from '../../js/midi/MidiScheduler.js';
 import { withFakeClockAndPerformance } from '../support/timers.js';
 
@@ -99,6 +103,84 @@ const setup = (options = {}, context = new FakeContext()) => {
 };
 
 describe('BrowserNotePreview', function() {
+  it('routes real ensemble game events into distinct local instruments and independent pan', async function() {
+    await withFakeClockAndPerformance(async clock => {
+      const { preview, context } = setup({ nowMs: () => clock.now });
+      await preview.enable();
+      const project = applyGameEventMidiPreset(createMidiProject(), 'game-iron-ensemble');
+      const router = new MidiEventRouter(projectToMidiConfig({ ...project, enabled: true }));
+      router.setOutput(preview.output);
+      for (let lemmingId = 0; lemmingId < 4; lemmingId += 1) router._onEvent({
+        type: 'builder-step', sfxId: SoundEffectIds.BUILDER_STEP, tick: 0, lemmingId, laneIndex: 0, laneCount: 1
+      });
+      expect(context.oscillators.slice(0, 3).map(oscillator => oscillator.type)).to.deep.equal(['sine', 'square', 'sawtooth']);
+      expect([...preview._voices].map(voice => voice.instrument.role)).to.deep.equal(['bass', 'rhythm', 'melody', 'percussion']);
+      expect([...preview._voices].every(voice => !!voice.pan)).to.equal(true);
+      clock.tick(400);
+      router.dispose();
+      expect(preview._voices.size).to.equal(0);
+      await preview.dispose();
+    });
+  });
+
+  it('preserves triangle preview for older palettes with saved program and channel edits', async function() {
+    await withFakeClockAndPerformance(async clock => {
+      const { preview, context } = setup({ nowMs: () => clock.now });
+      await preview.enable();
+      const router = new MidiEventRouter({ enabled: true, defaultChannel: 10, mpe: { enabled: false },
+        sfx: { [SoundEffectIds.BUILDER_STEP]: { enabled: true, note: 69, channel: 10, program: 81 } } });
+      router.setOutput(preview.output);
+      router._onEvent({ type: 'builder-step', sfxId: SoundEffectIds.BUILDER_STEP, tick: 0, lemmingId: 0 });
+      expect(context.oscillators).to.have.length(1);
+      expect(context.oscillators[0].type).to.equal('triangle');
+      router.dispose();
+      await preview.dispose();
+    });
+  });
+
+  it('plays distinct bounded ensemble timbres and keeps existing voice programs independent', async function() {
+    const { preview, context } = setup();
+    await preview.enable();
+    preview.output.channels[2].sendProgramChange(38);
+    preview.output.channels[2].sendNoteOn(45, { rawAttack: 100, instrument: { program: 38 } });
+    preview.output.channels[3].sendNoteOn(57, { rawAttack: 100, instrument: { program: 29 } });
+    preview.output.channels[4].sendNoteOn(69, { rawAttack: 100, instrument: { program: 81 } });
+    preview.output.channels[10].sendNoteOn(36, { rawAttack: 100, instrument: { percussion: true } });
+    expect(context.oscillators.map(oscillator => oscillator.type)).to.deep.equal(['sine', 'square', 'sawtooth', 'sine']);
+    expect(context.oscillators[3].frequency.events).to.deep.include({ type: 'ramp', value: 45, time: 2.16 });
+    preview.output.channels[2].sendProgramChange(29);
+    expect(context.oscillators[0].type).to.equal('sine');
+    expect(preview.getState().masterVolume).to.equal(0.7);
+    expect(preview._voices.size).to.equal(4);
+    expect([...preview._voices].every(voice => voice.peak <= 1 && voice.end <= voice.start + 8)).to.equal(true);
+    preview.stop();
+    expect(preview._voices.size).to.equal(0);
+    await preview.dispose();
+  });
+
+  it('uses one cached bounded deterministic noise buffer for local percussion', async function() {
+    const context = new FakeContext();
+    context.sampleRate = 48000;
+    const buffers = [], sources = [];
+    context.createBuffer = (channels, length, sampleRate) => {
+      const data = new Float32Array(length), buffer = { channels, length, sampleRate, getChannelData: () => data };
+      buffers.push(buffer); return buffer;
+    };
+    context.createBufferSource = () => { const source = new FakeOscillator(); sources.push(source); return source; };
+    const { preview } = setup({}, context);
+    await preview.enable();
+    for (let index = 0; index < 4; index += 1) preview.output.channels[10].sendNoteOn(42, { instrument: { percussion: true } });
+    expect(buffers).to.have.length(1);
+    expect(buffers[0].length).to.equal(9600);
+    expect(sources).to.have.length(4);
+    expect(sources.every(source => source.buffer === buffers[0] && source.loop)).to.equal(true);
+    expect([...preview._voices].every(voice => voice.end - voice.start < 0.1)).to.equal(true);
+    preview.stop();
+    expect(sources.every(source => source.disconnected)).to.equal(true);
+    await preview.dispose();
+    expect(preview._noiseBuffer).to.equal(null);
+  });
+
   it('reports successful local onset, scheduled release and panic, while rejecting invalid notes quietly', async function() {
     const events = [];
     const { preview, context } = setup({ onPlayback: event => events.push(event) });

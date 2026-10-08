@@ -177,6 +177,7 @@ function init({ windowRef, documentRef, embedMode }) {
     throw new Error('Runtime boot requires both window and document references.');
   }
   midiUi = createMidiUiController({
+    freshProjectPresetId: 'game-iron-ensemble',
     window: windowRef,
     document: documentRef,
     getLemmings: () => lemmings,

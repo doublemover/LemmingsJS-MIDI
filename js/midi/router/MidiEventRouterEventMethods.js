@@ -71,7 +71,7 @@ const midiEventRouterEventMethods = {
       if (event.tick != null) {
         this._lastTickBySfx.set(event.sfxId, event.tick);
       }
-      const priority = this._getEventPriority(event, sfx);
+      const priority = spec.priority ?? this._getEventPriority(event, sfx);
       const meta = {
         sfxId: event.sfxId,
         eventType: event.type,
@@ -130,7 +130,9 @@ const midiEventRouterEventMethods = {
         const index = previous && delta >= 0 && delta < window
           ? (previous.index < 7 ? previous.index + 1 : 6) : 0;
         const step = index < 6 ? index : 6 + index % 2;
-        const range = this.mapping.config.noteRange;
+        const globalRange = this.mapping.config.noteRange;
+        const roleRange = this.mapping.config.ensemble?.roles.find(role => role.id === spec.ensembleRole)?.register;
+        const range = { min: Math.max(globalRange.min, roleRange?.min ?? globalRange.min), max: Math.min(globalRange.max, roleRange?.max ?? globalRange.max) };
         const scale = resolveScale(this.mapping.config.scale);
         const top = Math.min(127, range.max);
         const base = Math.max(range.min, Math.min(noteList[0], top - 21));

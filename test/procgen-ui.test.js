@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import fs from 'node:fs';
 import * as cheerio from 'cheerio';
+import { GAME_EVENT_MIDI_PRESETS } from '../js/midi/project/GameEventMidiPresets.js';
 import { normalizeSeed } from '../js/core/seededRandom.js';
 import { createProcgenUiController } from '../js/app/procgen/ProcgenUiController.js';
 import { TestDocument, createTestWindow } from './helpers/test-dom.js';
@@ -16,7 +17,7 @@ const fixture = (search = '') => {
   }
   for (const [tag, ids] of [['div', ['procgenDrawer']], ['button', ['procgenTab', 'procgenRestart', 'procgenListen', 'procgenSpeedDown', 'procgenSpeedUp', 'procgenShare', 'procgenNewSeed', 'procgenPause', 'procgenStep', 'procgenFollow', 'procgenZoomIn', 'procgenZoomOut', 'procgenPanic']],
     ['select', ['procgenPreset', 'procgenPack', 'procgenSpeed']], ['input', ['procgenLanes', 'procgenPhrases', 'procgenSeed', 'procgenMasterVolume']],
-    ['p', ['procgenMasterVolumeValue', 'procgenPresetDescription', 'procgenAudioStatus', 'procgenRunStatus', 'procgenMetrics', 'procgenStallStatus']]]) {
+    ['p', ['procgenMasterVolumeValue', 'procgenPresetDescription', 'procgenAudioStatus', 'procgenRunStatus', 'procgenMetrics', 'procgenStallStatus', 'procgenAliveCount']]]) {
     for (const id of ids) { const el = registerElement(document, tag, id); el.removeEventListener = (event, callback) => el.listeners.set(event, (el.listeners.get(event) || []).filter(fn => fn !== callback)); }
   }
   let restarts = 0;
@@ -44,13 +45,14 @@ describe('compact procgen drawer', () => {
     expect(f.timer.speedFactor).to.equal(8); expect(f.restarts).to.equal(1); f.ui.dispose();
   });
   it('offers the shared catalog and never mounts hardware routing/studio controls', () => {
-    const f = fixture(); expect(f.el('procgenPreset').children.length).to.equal(15);
+    const f = fixture(); expect(f.el('procgenPreset').children.length).to.equal(GAME_EVENT_MIDI_PRESETS.length);
     expect(f.ui.local.getState().enabled).to.equal(false);
     const html = fs.readFileSync('procgen.html', 'utf8'); expect(html).not.to.match(/midiOutput|midiInput|midiStudio|requestMIDIAccess/);
     expect(html).to.include('max="1024"'); f.ui.dispose();
   });
   it('updates compact metrics and removes its handlers on disposal', () => {
     const f = fixture(); f.ui.syncMetrics({ alive: 1024, spawnedTotal: 2048, distance: { max: 3400 }, generation: 2, admissionPaused: true });
+    expect(f.el('procgenAliveCount').textContent).to.equal('1,024 alive');
     expect(f.el('procgenMetrics').textContent).to.include('1,024 alive'); expect(f.el('procgenMetrics').textContent).to.include('admission paused');
     f.ui.dispose(); f.el('procgenRestart').dispatchEvent({ type: 'click' }); expect(f.restarts).to.equal(0);
   });
