@@ -365,7 +365,7 @@ const init = async () => {
       const [sprites, masks, hudSprites] = await Promise.all([resources.getLemmingsSprite(palette), resources.getMasks(), resources.getSkillPanelSprite(palette)]);
       if (activeProcgenRuntime !== runtime) { view.dispose(); return; }
       const lanes = createProcgenLaneRuntime({ canvas, resources, sprites, masks, assets, laneCount, seed: procgenSeed,
-        speed: view.gameSpeedFactor, terrain, previousDistances: readProcgenDistances(), onMetrics: state => procgenUi?.syncMetrics(state), windowRef: window });
+        speed: view.gameSpeedFactor, terrain, previousDistances: readProcgenDistances(), onMetrics: state => procgenUi?.syncMetrics(state), onActiveCount: count => procgenUi?.syncActiveCount(count), windowRef: window });
       lanes.renderer.hud = new ProcgenBitmapHud({ canvas, sprites: hudSprites });
       view.dispose();
       runtime.lanes = lanes; runtime.world = lanes.world; runtime.view = lanes.view; runtime.game = lanes.game;

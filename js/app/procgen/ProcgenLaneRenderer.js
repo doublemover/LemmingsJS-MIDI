@@ -1,3 +1,4 @@
+import { ProcgenCctv } from './ProcgenCctv.js';
 import { DecorationLayer } from '../../decorations/DecorationLayer.js';
 import { LANE_HEIGHT } from './ProcgenLaneWorld.js';
 import { createProcgenCameraController } from './ProcgenCameraController.js';
@@ -20,6 +21,7 @@ class ProcgenLaneRenderer {
     this.decorationLayer = assets.decorationPack ? new DecorationLayer(canvas.ownerDocument, assets.decorationPack) : null;
     this.reducedMotion = windowRef.matchMedia?.('(prefers-reduced-motion: reduce)');
     this.markerDash = [4, 4]; this.markerSolidDash = [];
+    this.cctv = new ProcgenCctv(this);
   }
   resize() { this.lastTerrainKey = ''; this.lastGeometryKey = ''; this.render(); }
   _frameCanvas(frame) {
@@ -221,16 +223,17 @@ class ProcgenLaneRenderer {
   // Explicit requests redraw; the RAF loop may reuse a fully unchanged frame.
   render(force = true) {
     const start = this.window.performance?.now?.() ?? 0;
-    this.camera.update(false, !force);
+    this.cctv.prepare(); this.camera.update(false, !force);
     const dpr = Math.min(2, this.window.devicePixelRatio || 1), scale = this.scale * dpr;
     this.rasterStep = Math.max(1, 1 / scale);
-    const width = Math.max(1, Math.ceil(this.canvas.width / Math.max(1, scale))), height = Math.max(1, Math.ceil(this.canvas.height / Math.max(1, scale)));
+    const mainHeight = Math.max(1, this.canvas.height - (this.overviewBandHeight || 0) * dpr);
+    const width = Math.max(1, Math.ceil(this.canvas.width / Math.max(1, scale))), height = Math.max(1, Math.ceil(mainHeight / Math.max(1, scale)));
     this.viewWidth = width * this.rasterStep; this.viewHeight = height * this.rasterStep;
     this.originX = Math.floor(this.cameraX / this.rasterStep) * this.rasterStep;
     this.originY = Math.floor(this.cameraY / this.rasterStep) * this.rasterStep;
     const world = this.world, sprites = world.sprites, appearance = sprites?.activePreference || sprites?.getPreference?.();
     const geometryKey = `${this.originX}:${this.originY}:${width}:${height}:${this.rasterStep}:${world.generation}`;
-    const frameKey = `${geometryKey}:${world.tickIndex}:${world.terrainRevision}:${world.frontierRevision}:${this.canvas.width}:${this.canvas.height}:${dpr}:${this.scale}:${this.cameraY}:${this.follow}:${!!this.reducedMotion?.matches}`;
+    const frameKey = `${geometryKey}:${world.tickIndex}:${world.terrainRevision}:${world.frontierRevision}:${this.canvas.width}:${this.canvas.height}:${dpr}:${this.scale}:${this.cameraY}:${this.follow}:${!!this.reducedMotion?.matches}:${this.cctv.renderKey}:${!!this.overviewActive}`;
     if (!force && frameKey === this.lastFrameKey && appearance === this.lastAppearance && sprites === this.lastSprites && this.hud === this.lastHud && this.hud?.sprites === this.lastHudSprites && this.decorationLayer === this.lastDecorationLayer) {
       this.frameCacheHits++; this.lastFrameMs = (this.window.performance?.now?.() ?? start) - start;
       return false;
@@ -262,14 +265,15 @@ class ProcgenLaneRenderer {
     this._flushDots(this.actorDots);
     this.world.characterParticles?.render(this);
     this.context.imageSmoothingEnabled = false;
-    this.context.drawImage(this.buffer, 0, 0, this.canvas.width, this.canvas.height);
+    this.context.drawImage(this.buffer, 0, 0, this.canvas.width, mainHeight);
     this._drawPreviousDistances(dpr);
     this.hud?.render(this.context, this.world, this.camera, dpr);
+    this.cctv.draw(this.context, dpr);
     this.lastFrameKey = frameKey; this.lastAppearance = appearance; this.lastSprites = sprites; this.lastHud = this.hud; this.lastHudSprites = this.hud?.sprites; this.lastDecorationLayer = this.decorationLayer;
     this.lastFrameMs = (this.window.performance?.now?.() ?? start) - start;
     return true;
   }
-  dispose() { this.camera.dispose(); this.decorationLayer = null; this.frames = new WeakMap(); this.objectFrames = new WeakMap();
+  dispose() { this.camera.dispose(); this.cctv.dispose(); this.decorationLayer = null; this.frames = new WeakMap(); this.objectFrames = new WeakMap();
     this.dotColors = new WeakMap(); this.actorDots = new Map(); this.objectDots = new Map(); this.image = null; this.pixels = null; this.lastFrameKey = null;
     this.lastAppearance = this.lastSprites = this.lastHud = this.lastHudSprites = this.lastDecorationLayer = null; }
 }

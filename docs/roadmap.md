@@ -845,12 +845,14 @@ fitted berets with lift/open/reattach cosmetics on every shape. Acceptance instr
 - Generated hazard support, water basins, terrain-only arrows and idle activation correction: implemented and checked with normal sourced assets; operational generated triggers remain a separate policy.
 - Persistent procgen seed/generation/playtest and shared local audio controls: implemented; native desktop/narrow 64-lane workflows checked.
 - Seeded readable words use verified normal fire glyphs, a finite curated no-slur pool, terrain clearance and actual baseline/spacing checks. Native source-art review captured readable GO/YES; other packs require verified glyph sets.
-- Camera zoom now preserves follow; deliberate pan releases it and the visible Follow/F control restores it. Lane-stack fit, jitter, no-live-leader, DPR and resize checks pass; overview CCTV integration follows.
-- Shared MIDI output budgeting now retains wall-time history across speed changes, gives active lanes fair shares, expires stale notes and reports thinning beside the existing audio controls. Editable complementary ensemble roles are next.
+- Camera zoom now preserves follow; deliberate pan releases it and the visible Follow/F control restores it. Lane-stack fit, jitter, no-live-leader, DPR and resize checks pass; bounded CCTV integration is implemented and native-reviewed.
+- Shared MIDI output budgeting now retains wall-time history across speed changes, gives active lanes fair shares, expires stale notes and reports thinning beside the existing audio controls. Editable complementary ensemble roles are implemented through existing palettes and track controls; saved-setting and channel-safety checks pass.
 - Verified prior-run distance markers keep the same metric and positions; screen-space black/white dashes pause with game ticks and respect reduced motion.
 - Make deterministic terrain growth finer and prioritize reachable frontiers with bounded shared work and matching collision/display. Derive per-pack zone themes from canonical normal-level co-occurrence with their maximum authored width as the zone cap.
-- Add ranked live overview CCTV with bounded rendering. Its Library reference was unavailable after the supported transfer and one retry; use explicit owner requirements and actual app evidence.
+- Ranked live overview CCTV and the persistent active count are implemented; focused/native desktop and narrow checks pass. The Library reference was unavailable after the supported transfer and one retry, so explicit owner requirements and actual app evidence guided the layout.
 - Ramp constructible challenge motifs with distance. Deep mining/switchback routes require real mining/digging and turning policy in the lane world before claiming playable escalation.
 
 - Tunnel-corner wall-column transition is reproduced and fixed using real shared action systems; non-climber turnaround and natural hoisting are covered.
 - Starting lane themes now use a deterministic balanced permutation of available selected-pack groundsets; later co-occurrence zones remain queued.
+
+- Population-aware cohort easing, delayed sparse scout abilities and sustained pile detection are in progress. New-session random shapes/body colors already preserve saved controls and stable lane rainbow assignments.

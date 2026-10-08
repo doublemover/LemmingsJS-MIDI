@@ -129,3 +129,5 @@ body { flex-direction: column; }
 
 #procgenOutputPressure { color: #ead093; font: 9px ui-monospace,monospace; white-space: nowrap; }
 #procgenOutputPressure[hidden] { display: none; }
+
+#procgenAliveCount { position: fixed; right: 8px; top: calc(var(--procgen-bar-height, 42px) + 6px); z-index: 20; padding: 3px 6px; background: #10151c; color: #e6ece5; font: 12px monospace; pointer-events: none; border-radius: 3px; }

@@ -47,6 +47,10 @@ The raster/canvases never exceed the screen's pixel dimensions at far zoom.
 Subpixel actors and objects aggregate into representative screen-pixel colors,
 while every admitted actor still receives the same real simulation ticks.
 
+At maximum zoom-out, the lane stack fits above a reserved Lemmings CCTV band. Up to eight small live views reuse terrain, sprite and object caches from the running world; they add no simulation, sound dispatch or independent timers. Close-ups refresh at most ten times per second, with 128-by-at-most-64 buffers and at most 64 actors drawn per window. Slots retain their lane until a challenger leads by more than 24 pixels; labels show current actual rank, distance and action. Fewer lanes, empty lanes, pause, resize, appearance changes and new generations retain their normal lifecycle. Zooming in exits the overview.
+
+The persistent upper-right count reports current active actors across all lanes, excluding failed actors. Its callback updates only when the cached population changes; metrics remain on the existing one-second cadence.
+
 The RAF loop reuses the completed frame when simulation, terrain, raster origin,
 zoom, canvas size, appearance and HUD are unchanged. Follow-camera easing still
 runs each frame, with its live leader cached only for the current tick. Explicit

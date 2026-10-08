@@ -2,13 +2,18 @@ import { ParticleTable } from '../../render/ParticleTable.js';
 import { ProcgenLaneWorld } from './ProcgenLaneWorld.js';
 import { ProcgenLaneRenderer } from './ProcgenLaneRenderer.js';
 
-const createProcgenLaneRuntime = ({ canvas, resources, sprites, masks, assets, laneCount, seed, terrain, previousDistances = [], onMetrics, speed = 3, windowRef = window }) => {
+const createProcgenLaneRuntime = ({ canvas, resources, sprites, masks, assets, laneCount, seed, terrain, previousDistances = [], onMetrics, onActiveCount, speed = 3, windowRef = window }) => {
   const world = new ProcgenLaneWorld({ laneCount, seed, sprites, masks, speed, cohorts: true, spawnSpreadTicks: 12,
     terrain, previousDistances,
     particleTable: new ParticleTable(assets.groundPieces[0].image.palette) });
   const renderer = new ProcgenLaneRenderer({ canvas, world, assets, windowRef });
   let paused = false;
   let running = true, frame = null, lastTime = null, elapsed = 0, previewRouter = null, lastMetrics = null, lastMetricTick = 0, previousSpeed = speed;
+  let displayedActiveCount = -1;
+  const reportActiveCount = () => {
+    const count = world.activeCount ?? world.stall.lanes.reduce((sum, lane) => sum + lane.alive, 0);
+    if (count !== displayedActiveCount) { displayedActiveCount = count; onActiveCount?.(count); }
+  };
   world.onRestart = () => previewRouter?.resetClock?.();
   const view = {
     game: world, gameResources: resources, midiEnabled: false, midiAvailable: true,
@@ -39,7 +44,7 @@ const createProcgenLaneRuntime = ({ canvas, resources, sprites, masks, assets, l
       }
     }
     lastTime = time;
-    renderer.render(false);
+    renderer.render(false); reportActiveCount();
     if (lastMetrics == null) { lastMetrics = time; lastMetricTick = world.tickIndex; }
     if (time - lastMetrics >= 1000) {
       world.timer.achievedTicksPerSecond = (world.tickIndex - lastMetricTick) * 1000 / (time - lastMetrics);
@@ -61,7 +66,7 @@ const createProcgenLaneRuntime = ({ canvas, resources, sprites, masks, assets, l
     step(count = 1) {
       const now = windowRef.performance?.now?.() ?? world.eventTimeMs;
       for (let i = 0; i < Math.max(1, Math.min(10000, Math.trunc(count))); i++) world.step(now);
-      renderer.render();
+      renderer.render(); reportActiveCount();
     },
     stop() { running = false; windowRef.document.removeEventListener?.('visibilitychange', visibilityChanged); if (frame != null) windowRef.cancelAnimationFrame(frame); view.setMidiPreviewRouter(null); world.dispose(); renderer.dispose(); },
     resize() { renderer.resize(); } };
