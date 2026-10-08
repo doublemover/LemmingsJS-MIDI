@@ -39,7 +39,7 @@ class ProcgenHazards {
     if (liquid && (bounds.x1 < object.x || bounds.x2 > object.x + image.width || bounds.y1 < top + object.y || bounds.y2 > top + object.supportY)) return false;
     const solid = (x, y) => {
       const edits = world.editChunks.get(world._editKey(x, top + y)), edit = edits?.[y * 32 + x % 32] || 0;
-      return edit ? edit > 1 : terrain.solidSample(world.laneSeeds[lane], chunk, x - origin, y, descriptor);
+      return edit ? edit > 1 : x >= world.leftEdgeX && terrain.solidSample(world.laneSeeds[lane], chunk, x - origin, y, descriptor);
     };
     for (let dx = 0; dx < image.width; dx++) if (!solid(object.x + dx, object.supportY)) return false;
     if (liquid) for (let y = object.y; y <= object.supportY; y++) {

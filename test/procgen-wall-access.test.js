@@ -28,23 +28,24 @@ const atWall = (world, actor) => {
 describe('procgen real wall access and ordinary bounce', function() {
   let masks;
   before(async () => { masks = await loadProcgenMasks(); });
-  it('retains a follower wall bounce while one ordinary basher opens an unclassified source shelf', () => {
+  it('retains a follower wall bounce while two configured ordinary bashers open an unclassified source shelf', () => {
     const world = new ProcgenLaneWorld({ masks, terrain: wallTerrain(), seed: 42, populationPolicy: { scoutsEvery: 8, scoutDelayTicks: 180 } });
     for (let i = 1; i < 8; i++) world._spawn(0);
     world.actors.forEach(actor => atWall(world, actor));
+    for (let index = 3; index < world.actors.length; index++) world.actors[index].x -= 2 * (index - 2);
     world.step();
     const worker = world.actors.find(actor => actor.action === world.actions[State.BASHING]);
-    const follower = world.actors.find(actor => actor !== worker && !actor.scout);
-    expect(worker).not.to.equal(undefined); expect(world.stats.bashes).to.equal(1);
+    const follower = world.actors.find(actor => actor.action === world.actions[State.WALKING] && !actor.scout);
+    expect(worker).not.to.equal(undefined); expect(world.stats.bashes).to.equal(2);
     expect(follower.x).to.equal(64); expect(follower.lookRight).to.equal(false);
     world.step(); expect(follower.x).to.equal(63); expect(follower.lookRight).to.equal(false);
     expect(world.actors.every(actor => !actor.canClimb)).to.equal(true);
     for (let tick = 0; tick < 600; tick++) world.step();
     expect(world.actors.filter(actor => !actor.scout && actor.x > 90)).to.have.length.at.least(6);
-    expect(world.stats.removedPixels).to.be.greaterThan(0); expect(world.stats.bashes).to.equal(1);
+    expect(world.stats.removedPixels).to.be.greaterThan(0); expect(world.stats.bashes).to.equal(2);
     expect(world.generation).to.equal(1); expect(world.stats.failures).to.equal(0);
     expect(worker.action).to.equal(world.actions[State.WALKING]);
-    world._accessTask(0); expect(world.accessTasks[0].owner).to.equal(null);
+    world._accessTask(0); expect(world.accessTasks[0].every(task => task.owner === null)).to.equal(true);
     world._restart([]); expect(world.accessTasks[0]).to.equal(null); world.dispose();
   });
   it('keeps sparse delayed scouts and real steel bounce without granting the ordinary crowd climbing', () => {

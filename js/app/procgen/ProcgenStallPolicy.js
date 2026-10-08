@@ -11,7 +11,7 @@ class ProcgenStallPolicy {
     this.lanes = Array.from({ length: laneCount }, (_, lane) => ({ maxX: 36, bestDistance: previousDistances[lane] || 0,
       previousDistance: previousDistances[lane] || 0, lastProgressTick: 0, spawnsSinceProgress: 0, spawned: 0, alive: 0,
       transitTicksPerPixel: this.settings.initialTicksPerPixel, probeSpawnTick: null, reason: null,
-      peakAlive: 0, lowestSurvivingActorId: null, buildingCount: 0, bashingCount: 0, floatingCount: 0,
+      peakAlive: 0, lowestSurvivingActorId: null, buildingCount: 0, bashingCount: 0, floatingCount: 0, diggingCount: 0, blockingCount: 0,
       busyActors: 0, workStartedTick: null, lastTerrainActivityTick: -Infinity, pendingTerrainWork: 0, activeWork: false,
       pileCount: 0, pileStartTick: null, pileInitialCount: 0, pilePeakCount: 0, pileGrowing: false,
       pileMinX: null, pileMaxX: null, pileMinY: null, pileMaxY: null }));

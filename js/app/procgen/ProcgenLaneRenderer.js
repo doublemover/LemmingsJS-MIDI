@@ -90,7 +90,7 @@ class ProcgenLaneRenderer {
             const y = Math.floor(y0 + py * step), localY = y - lane * LANE_HEIGHT, row = localY * chunkWidth;
             const output = py * width;
             for (let px = px0; px < px1; px++) {
-              const x = Math.floor(x0 + px * step), color = descriptor ? terrain.rasterSample(seed, cx, x - cx * chunkWidth, localY, descriptor) : tile[row + x - cx * chunkWidth];
+              const x = Math.floor(x0 + px * step), color = x < world.leftEdgeX ? 0 : descriptor ? terrain.rasterSample(seed, cx, x - cx * chunkWidth, localY, descriptor) : tile[row + x - cx * chunkWidth];
               const edits = world.editChunks.get(world._editKey(x, y));
               const edit = edits?.[localY * 32 + x % 32] || 0;
               pixels[output + px] = 0xff0e0807;
@@ -140,7 +140,7 @@ class ProcgenLaneRenderer {
         const seed = world.laneSeeds[lane], descriptor = terrain.describe(seed, cx);
         const matchesTerrain = (x, y) => {
           const edits = world.editChunks.get(world._editKey(x, lane * LANE_HEIGHT + y));
-          return !edits?.[y * 32 + x % 32] && terrain.solidSample(seed, cx, x - cx * width, y, descriptor);
+          return x >= world.leftEdgeX && !edits?.[y * 32 + x % 32] && terrain.solidSample(seed, cx, x - cx * width, y, descriptor);
         };
         for (let objectIndex = 0; objectIndex < descriptor.objects.length; objectIndex++) {
           const object = descriptor.objects[objectIndex];
@@ -243,7 +243,7 @@ class ProcgenLaneRenderer {
     this.originY = Math.floor(this.cameraY / this.rasterStep) * this.rasterStep;
     const world = this.world, sprites = world.sprites, appearance = sprites?.activePreference || sprites?.getPreference?.();
     const geometryKey = `${this.originX}:${this.originY}:${width}:${height}:${this.rasterStep}:${world.generation}`;
-    const frameKey = `${geometryKey}:${world.tickIndex}:${world.terrainRevision}:${world.frontierRevision}:${world.hazards?.revision || 0}:${this.canvas.width}:${this.canvas.height}:${dpr}:${this.scale}:${this.cameraY}:${this.follow}:${!!this.reducedMotion?.matches}:${this.cctv.renderKey}:${!!this.overviewActive}`;
+    const frameKey = `${geometryKey}:${world.tickIndex}:${world.terrainRevision}:${world.frontierRevision}:${world.hazards?.revision || 0}:${this.canvas.width}:${this.canvas.height}:${dpr}:${this.scale}:${this.cameraY}:${this.follow}:${!!this.reducedMotion?.matches}:${this.cctv.renderKey}:${!!this.overviewActive}:${this.midiSpanOverlay?.revision || 0}`;
     if (!force && frameKey === this.lastFrameKey && appearance === this.lastAppearance && sprites === this.lastSprites && this.hud === this.lastHud && this.hud?.sprites === this.lastHudSprites && this.decorationLayer === this.lastDecorationLayer) {
       this.frameCacheHits++; this.lastFrameMs = (this.window.performance?.now?.() ?? start) - start;
       return false;
@@ -277,13 +277,14 @@ class ProcgenLaneRenderer {
     this.context.imageSmoothingEnabled = false;
     this.context.drawImage(this.buffer, 0, 0, this.canvas.width, mainHeight);
     this._drawPreviousDistances(dpr);
+    this.midiSpanOverlay?.draw(this.context, this, dpr);
     this.hud?.render(this.context, this.world, this.camera, dpr);
     this.cctv.draw(this.context, dpr);
     this.lastFrameKey = frameKey; this.lastAppearance = appearance; this.lastSprites = sprites; this.lastHud = this.hud; this.lastHudSprites = this.hud?.sprites; this.lastDecorationLayer = this.decorationLayer;
     this.lastFrameMs = (this.window.performance?.now?.() ?? start) - start;
     return true;
   }
-  dispose() { this.objectPlacements.length = 0; this.camera.dispose(); this.cctv.dispose(); this.decorationLayer = null; this.frames = new WeakMap(); this.objectFrames = new WeakMap();
+  dispose() { this.objectPlacements.length = 0; this.camera.dispose(); this.cctv.dispose(); this.decorationLayer = null; this.midiSpanOverlay = null; this.frames = new WeakMap(); this.objectFrames = new WeakMap();
     this.dotColors = new WeakMap(); this.actorDots = new Map(); this.objectDots = new Map(); this.image = null; this.pixels = null; this.lastFrameKey = null;
     this.lastAppearance = this.lastSprites = this.lastHud = this.lastHudSprites = this.lastDecorationLayer = null; }
 }
