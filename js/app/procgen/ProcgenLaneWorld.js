@@ -69,7 +69,7 @@ class ProcgenLaneWorld {
     this.eventTimeMs = 0;
     this.timer = { speedFactor: speed, onGameTick: new EventHandler(), getGameTicks: () => this.tickIndex,
       get frameTime() { return 60 / Math.max(0.001, this.speedFactor); },
-      get tps() { return 1000 / this.frameTime; }, getEventTimeMs: () => this.eventTimeMs };
+      get tps() { return Math.min(Number.MAX_VALUE, 1000 / this.frameTime); }, getEventTimeMs: () => this.eventTimeMs };
     this.soundEvents = new SoundEventBus(this.timer);
     this.soundEvents._queueLimit = 0;
     this.soundEvents.laneCount = this.laneCount;

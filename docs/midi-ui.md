@@ -84,6 +84,8 @@ programs or timbre. Voices and queued notes are bounded, with a maximum note
 lifetime as a safety cutoff. Existing game-clock phrase replacement, pause,
 rewind and panic contracts remain in effect for live listening.
 
+Local cell auditions retain their original spacing beyond the audio scheduling horizon. A bounded queue schedules the next notes incrementally; Stop, Panic, replacement and disposal cancel the remaining tail. Fully elapsed notes after a delayed timer are discarded instead of sounding together on resume.
+
 The existing local master control ranges from mute to 400%. Values through 100%
 retain their previous gain, including the 70% default and saved preferences.
 Choosing 400% adds up to 12 dB relative to 100%; a local output ceiling controls

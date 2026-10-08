@@ -111,16 +111,24 @@ class MapObject {
   liquidSurface(x, tick) {
     const frame = this.animation.getFrame(tick), column = Math.round(x - this.x);
     if (!frame || column < 0 || column >= frame.width) return null;
+    const info = this.animation.objectImg;
+    const hasRegion = Number.isFinite(info?.trigger_width) && info.trigger_width > 0 && Number.isFinite(info.trigger_height) && info.trigger_height > 0;
+    const left = hasRegion ? Math.max(0, Math.floor(info.trigger_left || 0)) : 0;
+    const right = hasRegion ? Math.min(frame.width, Math.ceil((info.trigger_left || 0) + info.trigger_width)) : frame.width;
+    const top = hasRegion ? Math.max(0, Math.floor(info.trigger_top || 0)) : 0;
+    const bottom = hasRegion ? Math.min(frame.height, Math.ceil((info.trigger_top || 0) + info.trigger_height)) : frame.height;
+    if (column < left || column >= right || top >= bottom) return null;
     this._surfaceColumns ||= new WeakMap();
     let columns = this._surfaceColumns.get(frame);
-    if (!columns) { columns = new Int16Array(frame.width).fill(-1); this._surfaceColumns.set(frame, columns); }
-    if (columns[column] >= 0) return this.y + columns[column];
-    for (let y = 0; y < frame.height; y++) {
+    if (!columns) { columns = new Int16Array(frame.width).fill(-2); this._surfaceColumns.set(frame, columns); }
+    if (columns[column] >= -1) return columns[column] < 0 ? null : this.y + columns[column];
+    for (let y = top; y < bottom; y++) {
       const sourceY = this.drawProperties?.isUpsideDown ? frame.height - y - 1 : y;
       if (!frame.mask[sourceY * frame.width + column]) continue;
       columns[column] = y;
       return this.y + y;
     }
+    columns[column] = -1;
     return null;
   }
 

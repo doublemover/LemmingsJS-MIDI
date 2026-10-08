@@ -2,13 +2,27 @@ import { ParticleTable } from '../../render/ParticleTable.js';
 import { ProcgenLaneWorld } from './ProcgenLaneWorld.js';
 import { ProcgenLaneRenderer } from './ProcgenLaneRenderer.js';
 
+// Accumulate real time rather than speed-scaled time: even extreme finite
+// multipliers cannot poison the backlog, and slow ticks can span many frames.
+const advanceProcgenClock = (elapsed, deltaMs, speed, step, now) => {
+  const tickDuration = 60 / speed;
+  elapsed = Math.min(Math.max(250, tickDuration), elapsed + Math.min(250, Math.max(0, deltaMs)));
+  const started = now();
+  while (elapsed >= tickDuration) {
+    step(); elapsed -= tickDuration;
+    // Bound main-thread occupancy without capping the requested multiplier.
+    if (now() - started >= 8) break;
+  }
+  return elapsed;
+};
+
 const createProcgenLaneRuntime = ({ canvas, resources, sprites, masks, assets, laneCount, seed, terrain, previousDistances = [], onMetrics, onActiveCount, speed = 3, windowRef = window }) => {
   const world = new ProcgenLaneWorld({ laneCount, seed, sprites, masks, speed, cohorts: true, spawnSpreadTicks: 12,
     terrain, previousDistances,
     particleTable: new ParticleTable(assets.groundPieces[0].image.palette) });
   const renderer = new ProcgenLaneRenderer({ canvas, world, assets, windowRef });
   let paused = false;
-  let running = true, frame = null, lastTime = null, elapsed = 0, previewRouter = null, lastMetrics = null, lastMetricTick = 0, previousSpeed = speed;
+  let running = true, frame = null, lastTime = null, elapsed = 0, previewRouter = null, lastMetrics = null, lastMetricTick = 0;
   let displayedActiveCount = -1;
   const reportActiveCount = () => {
     const count = world.activeCount ?? world.stall.lanes.reduce((sum, lane) => sum + lane.alive, 0);
@@ -29,19 +43,8 @@ const createProcgenLaneRuntime = ({ canvas, resources, sprites, masks, assets, l
   const update = time => {
     if (!running) return;
     if (lastTime != null && !paused && !windowRef.document.hidden) {
-      const speedFactor = world.timer.speedFactor;
-      if (speedFactor !== previousSpeed) {
-        elapsed = Math.min(250, elapsed / Math.max(0.001, previousSpeed)) * speedFactor;
-        previousSpeed = speedFactor;
-      }
-      elapsed = Math.min(250 * speedFactor, elapsed + Math.min(250, Math.max(0, time - lastTime)) * speedFactor);
-      const now = () => windowRef.performance?.now?.() ?? Date.now(), started = now();
-      while (elapsed >= 60) {
-        world.step(time); elapsed -= 60;
-        // Bound main-thread occupancy, not the user's speed multiplier or a
-        // fixed tick count. A costly tick is never partially simulated.
-        if (now() - started >= 8) break;
-      }
+      elapsed = advanceProcgenClock(elapsed, time - lastTime, world.timer.speedFactor,
+        () => world.step(time), () => windowRef.performance?.now?.() ?? Date.now());
     }
     lastTime = time;
     renderer.render(false); reportActiveCount();
@@ -71,4 +74,4 @@ const createProcgenLaneRuntime = ({ canvas, resources, sprites, masks, assets, l
     stop() { running = false; windowRef.document.removeEventListener?.('visibilitychange', visibilityChanged); if (frame != null) windowRef.cancelAnimationFrame(frame); view.setMidiPreviewRouter(null); world.dispose(); renderer.dispose(); },
     resize() { renderer.resize(); } };
 };
-export { createProcgenLaneRuntime };
+export { createProcgenLaneRuntime, advanceProcgenClock };

@@ -61,7 +61,7 @@ const miniMapInputMethods = {
     const target = this._viewportTargetFromPointer(event);
     if (!target) return;
     this.level.screenPositionX = target.x;
-    this.guiDisplay.setScreenPosition?.(target.x, 0, { preserveScale: true });
+    this.guiDisplay.setScreenPosition?.(target.x, target.y, { preserveScale: true });
   },
 
   _handleMouseDown(event){

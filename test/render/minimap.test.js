@@ -35,16 +35,17 @@ describe('MiniMap', function() {
     const gui = makeGuiDisplay(), miniMap = new MiniMap({}, level, gui);
     const event = { x: gui.worldDataSize.width - 1, y: gui.worldDataSize.height - 2 };
     const ants = []; miniMap.frame.drawMarchingAntRect = (...args) => ants.push(args);
-    withGlobalLemmings({ stage: { getGameViewRect: () => ({ x: 0, y: 0, w: 120, h: 25 }) } }, () => {
+    withGlobalLemmings({ stage: { getGameViewRect: () => ({ x: 0, y: 12, w: 120, h: 25 }) } }, () => {
       gui.onMouseMove.trigger(event);
       expect(level.screenPositionX).to.equal(0); expect(gui.setScreenPositionCalls).to.have.length(0);
-      const target = miniMap._hoverTarget.x; expect(target).to.equal(380);
+      const target = miniMap._hoverTarget.x; expect(target).to.equal(380); expect(miniMap._hoverTarget.y).to.equal(12);
       miniMap.render(); expect(ants).to.have.length(2);
       expect(ants[0][0]).to.equal((target * miniMap.scaleX) | 0);
       expect(ants[0][6]).to.equal(0xFFB1C7A3); expect(ants[1][6]).to.equal(0xFF00FF00);
       const count = miniMap.getRenderDiagnostics().composes;
       gui.onMouseMove.trigger(event); miniMap.render(); expect(miniMap.getRenderDiagnostics().composes).to.equal(count);
       gui.onMouseDown.trigger(event); expect(level.screenPositionX).to.equal(target);
+      expect(gui.setScreenPositionCalls.at(-1).y).to.equal(12);
       gui.onMouseUp.trigger(event); gui.onMouseMove.trigger({ x: 0, y: 0 });
       expect(miniMap._hoverTarget).to.equal(null); miniMap.render();
     });

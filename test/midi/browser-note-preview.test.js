@@ -103,6 +103,43 @@ const setup = (options = {}, context = new FakeContext()) => {
 };
 
 describe('BrowserNotePreview', function() {
+  it('emits every cell of a 14.4-second audition incrementally at its original timestamp', async () => {
+    await withFakeClockAndPerformance(async clock => {
+      const { preview, context } = setup({ nowMs: () => clock.now });
+      Object.defineProperty(context, 'currentTime', { get: () => 2 + clock.now / 1000 });
+      const notes = Array.from({ length: 16 }, (_, index) => ({ note: 48 + index, offsetMs: index * 960, durationMs: 120 }));
+      const calls = [], original = preview.output;
+      preview.output = { ...original, channels: Object.fromEntries(Object.entries(original.channels).map(([id, channel]) => [id, { ...channel,
+        sendNoteOn(note, options) { const accepted = channel.sendNoteOn(note, options); calls.push({ note, time: options.time, dispatch: clock.now, accepted }); return accepted; }
+      }])) };
+      expect(await preview.preview(notes)).to.equal(true); expect(calls).to.have.length(5); expect(preview.getState().pendingNotes).to.equal(11);
+      await clock.tickAsync(16000); expect(calls).to.have.length(16); expect(calls.every(call => call.accepted)).to.equal(true);
+      expect(calls.map(call => call.time)).to.deep.equal(notes.map(note => note.offsetMs));
+      expect(calls.at(-1).time).to.equal(14400); expect(calls.at(-1).dispatch).to.equal(10400);
+      context.oscillators.forEach((node, index) => expect(node.starts[0]).to.be.closeTo(2 + notes[index].offsetMs / 1000, 1e-9));
+      expect(preview.getState().pendingNotes).to.equal(0); await preview.dispose();
+    });
+  });
+  it('accepts a phrase whose only playable cell is beyond the current horizon and cancels it on Panic or replacement', async () => {
+    await withFakeClockAndPerformance(async clock => {
+      const { preview, context } = setup({ nowMs: () => clock.now });
+      expect(await preview.preview([{ note: 72, offsetMs: 14400 }])).to.equal(true); expect(context.oscillators).to.have.length(0);
+      preview.panic(); await clock.tickAsync(16000); expect(context.oscillators).to.have.length(0); expect(preview.getState().pendingNotes).to.equal(0);
+      await preview.preview([{ note: 72, offsetMs: 14400 }]); await preview.preview([60]); await clock.tickAsync(16000);
+      expect(context.oscillators).to.have.length(1); expect(preview.getState().pendingNotes).to.equal(0); await preview.dispose();
+    });
+  });
+  it('drops fully elapsed queued notes after a delayed timer instead of bursting them at resume', async () => {
+    await withFakeClockAndPerformance(async clock => {
+      const { preview, context } = setup({ nowMs: () => clock.now });
+      await preview.preview([{ note: 60, offsetMs: 6000, durationMs: 100 }]);
+      clock.setSystemTime(10000);
+      await clock.tickAsync(2001);
+      expect(context.oscillators).to.have.length(0);
+      expect(preview.getState().pendingNotes).to.equal(0);
+      await preview.dispose();
+    });
+  });
   it('routes real ensemble game events into distinct local instruments and independent pan', async function() {
     await withFakeClockAndPerformance(async clock => {
       const { preview, context } = setup({ nowMs: () => clock.now });

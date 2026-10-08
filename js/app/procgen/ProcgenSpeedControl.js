@@ -3,7 +3,8 @@ const changeProcgenSpeed = (value, direction, { fast = false, panel = false } = 
   let speed = normalizeProcgenSpeed(value);
   for (let i = 0; i < (fast ? 5 : 1); i++) {
     const step = speed < 1 || (direction < 0 && speed <= 1) ? 0.1 : panel && (direction > 0 ? speed >= 10 : speed > 10) ? 10 : 1;
-    speed = Math.max(0.1, Math.round((speed + direction * step) * 100) / 100);
+    const next = speed + direction * step;
+    speed = Math.max(0.1, Math.abs(next) <= Number.MAX_VALUE / 100 ? Math.round(next * 100) / 100 : next);
   }
   return speed;
 };

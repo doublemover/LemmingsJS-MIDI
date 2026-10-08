@@ -57,6 +57,8 @@ class BrowserNotePreview {
     this._status = this._createContext ? 'idle' : 'unsupported';
     this._message = this._createContext ? 'Browser preview is off.' : 'Browser audio is not supported.';
     this._voices = new Set();
+    this._previewPending = [];
+    this._previewTimer = null;
     this._voiceSequence = 0;
     this._onPlayback = onPlayback;
     this._channels = new Map();
@@ -95,6 +97,7 @@ class BrowserNotePreview {
       message: this._message,
       enabled: this._enabled && this._context?.state === 'running',
       activeVoices: this._voices.size,
+      pendingNotes: this._previewPending.length,
       masterVolume: this._masterVolume
     };
   }
@@ -254,20 +257,39 @@ class BrowserNotePreview {
     if (!specs.some(spec => this._validNote(spec.note))) return false;
     if (!await this.enable() || generation !== this._generation) return false;
     const baseTime = this._nowMs();
-    let played = false;
     for (const spec of specs) {
       if (!this._validNote(spec.note)) continue;
-      const channel = this.output.channels[clamp(Math.trunc(finite(spec.channel, 1)), 1, 16)];
       const offset = finite(spec.offsetMs, 0);
-      if (offset < 0 || offset > this._maxNoteSeconds * 1000) continue;
-      const time = baseTime + offset;
+      if (offset < 0 || !Number.isFinite(baseTime + offset)) continue;
+      this._previewPending.push({ spec, time: baseTime + offset, durationMs });
+    }
+    this._previewPending.sort((a, b) => a.time - b.time);
+    if (this._previewPending.length > MAX_SCHEDULED_VOICES) this._previewPending.splice(0, this._previewPending.length - MAX_SCHEDULED_VOICES);
+    const played = this._drainPreviewQueue(generation);
+    return played || this._previewPending.length > 0;
+  }
+
+  _drainPreviewQueue(generation = this._generation) {
+    if (this._previewTimer != null) clearTimeout(this._previewTimer);
+    this._previewTimer = null;
+    if (generation !== this._generation || !this._ready()) return false;
+    const now = this._nowMs(), horizon = this._maxNoteSeconds * 500;
+    let played = false;
+    while (this._previewPending.length && this._previewPending[0].time <= now + horizon) {
+      const { spec, time, durationMs } = this._previewPending.shift();
+      const channel = this.output.channels[clamp(Math.trunc(finite(spec.channel, 1)), 1, 16)];
       const length = clamp(finite(spec.durationMs, durationMs), 30, this._maxNoteSeconds * 1000);
+      if (time + length <= now) continue;
       if (Number.isFinite(spec.pitchBend)) channel.sendPitchBend(spec.pitchBend, { time });
       if (channel.sendNoteOn(spec.note, { rawAttack: finite(spec.velocity, 80), time, playback: spec.playback, instrument: { program: spec.program, percussion: spec.percussion, role: spec.ensembleRole, legacy: !spec.ensembleRole && spec.percussion !== true },
         ...(Number.isFinite(spec.pan) ? { pan: clamp(spec.pan / 127, -1, 1) } : {}) })) {
         channel.sendNoteOff(spec.note, { time: time + length });
         played = true;
       }
+    }
+    if (this._previewPending.length) {
+      const delay = Math.max(1, Math.min(0x7fffffff, this._previewPending[0].time - now - horizon));
+      this._previewTimer = setTimeout(() => this._drainPreviewQueue(generation), delay);
     }
     return played;
   }
@@ -456,6 +478,10 @@ class BrowserNotePreview {
   }
 
   _clearVoices(number = null) {
+    if (this._previewTimer != null) clearTimeout(this._previewTimer);
+    this._previewTimer = null;
+    this._previewPending = number == null ? [] : this._previewPending.filter(entry => clamp(Math.trunc(finite(entry.spec.channel, 1)), 1, 16) !== number);
+    if (this._previewPending.length && this._ready()) this._drainPreviewQueue();
     for (const voice of this._voices) {
       if (number == null || voice.number === number) this._destroyVoice(voice);
     }
