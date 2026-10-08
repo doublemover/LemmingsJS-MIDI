@@ -82,3 +82,62 @@ describe('real-action stall cascade', () => {
     world.step(); expect(world.generation).to.equal(2);
   });
 });
+
+
+const pileSettings = { secondsWithoutProgress: 1000, ticksPerSecond: 10, baseSpawnAllowance: 3,
+  initialTicksPerPixel: 1, transitSafetyFactor: 1, pileMinimumNonProgressSeconds: 1, pileSecondsWithoutProgress: 3, pileSecondsPerGrowth: 1 };
+const pileActors = count => Array.from({ length: count }, (_, id) => ({ id, laneIndex: 0, x: 40 + id % 2, y: 72, spawnTick: 0, lastProgressTick: 1 }));
+const preparePile = () => {
+  const policy = new ProcgenStallPolicy(1, pileSettings), actors = pileActors(4);
+  policy.update(actors, 1); for (let spawn = 0; spawn < 6; spawn++) policy.spawn(0, 2);
+  policy.update(actors, 20); actors.push(...pileActors(6).slice(4)); policy.update(actors, 21);
+  return { policy, actors };
+};
+describe('bounded spatial pile and useful-work stall signals', () => {
+  it('detects an observed growing oscillation only after its difficulty and transit grace', () => {
+    const { policy, actors } = preparePile(), lane = policy.lanes[0];
+    expect(lane.pileCount).to.equal(6); expect(lane.pileGrowing).to.equal(true);
+    expect(lane.pileMaxX - lane.pileMinX).to.equal(48); expect(lane.pileMaxY - lane.pileMinY).to.be.at.most(48);
+    policy.update(actors, 49); expect(policy.phase).to.equal('running');
+    for (const actor of actors) actor.x = actor.x === 40 ? 41 : 40;
+    policy.update(actors, 50); expect(policy.phase).to.equal('cascade'); expect(lane.reason).to.equal('sustained-growing-pile');
+    expect(policy.pileGraceTicks({ maxX: 50000 })).to.be.at.most(policy.settings.pileMaxSeconds * 10);
+  });
+  it('protects pending terrain/mining work and actual edits, then permits a stale failed action to expire', () => {
+    const { policy, actors } = preparePile();
+    const work = { terrainActivityTicks: new Float64Array([-Infinity]), pendingTerrainWork: new Uint32Array([1]) };
+    actors[0].action = { actionName: 'mining' };
+    policy.update(actors, 50, work); expect(policy.phase).to.equal('running'); expect(policy.lanes[0].activeWork).to.equal(true);
+    policy.update(actors, 500, work); expect(policy.phase).to.equal('running');
+    work.pendingTerrainWork[0] = 0; work.terrainActivityTicks[0] = 500;
+    policy.update(actors, 500, work); expect(policy.phase).to.equal('running');
+    policy.update(actors, 601, work); expect(policy.phase).to.equal('cascade');
+  });
+  it('allows a newly started construction action time to begin without shielding it indefinitely', () => {
+    const { policy, actors } = preparePile(); actors[0].action = { actionName: 'building' };
+    policy.update(actors, 50); expect(policy.phase).to.equal('running'); expect(policy.lanes[0].busyActors).to.equal(1);
+    policy.update(actors, 151); expect(policy.phase).to.equal('cascade');
+  });
+  it('clears observations on population loss or actual escape, and fixed paused ticks do not age a pile', () => {
+    const { policy, actors } = preparePile();
+    for (let repeat = 0; repeat < 100; repeat++) policy.update(actors, 21);
+    expect(policy.phase).to.equal('running'); expect(policy.lanes[0].pileStartTick).to.equal(20);
+    for (const actor of actors.slice(2)) actor.failureReason = 'fixture';
+    policy.update(actors, 22); expect(policy.lanes[0].pileStartTick).to.equal(null); expect(policy.lanes[0].alive).to.equal(2);
+    for (const actor of actors) actor.failureReason = null;
+    policy.update(actors, 23); actors[0].x = 50; policy.update(actors, 24);
+    expect(policy.lanes[0].pileCount).to.equal(0); expect(policy.lanes[0].spawnsSinceProgress).to.equal(0);
+  });
+  it('keeps summaries bounded and does not mistake a static initial crowd or a distant probe for growth', () => {
+    const policy = new ProcgenStallPolicy(64, pileSettings), actors = pileActors(10);
+    policy.update(actors, 1); for (let spawn = 0; spawn < 12; spawn++) policy.spawn(0, 2);
+    const counts = policy._pileCounts, cells = policy._pileCells;
+    policy.update(actors, 20); policy.update(actors, 1000);
+    expect(policy.lanes[0].pileGrowing).to.equal(false); expect(policy.lanes[0].reason).to.equal(null);
+    expect(policy._pileCounts).to.equal(counts); expect(policy._pileCells).to.equal(cells); expect(counts.length).to.equal(64 * 64);
+    const far = new ProcgenStallPolicy(1, pileSettings), probes = pileActors(4).map(actor => ({ ...actor, x: 5036 }));
+    far.update(probes, 1); for (let spawn = 0; spawn < far.allowance(far.lanes[0]); spawn++) far.spawn(0, 2);
+    far.update(probes, 20); probes.push(...probes.slice(0, 2).map(actor => ({ ...actor, id: actor.id + 4 })));
+    far.update(probes, 21); far.update(probes, 3000); expect(far.phase).to.equal('running');
+  });
+});

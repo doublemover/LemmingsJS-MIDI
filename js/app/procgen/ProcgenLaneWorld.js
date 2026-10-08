@@ -3,6 +3,8 @@ import { Lemming } from '../../lemmings/Lemming.js';
 import { LemmingStateType as State } from '../../lemmings/LemmingStateType.js';
 import { ActionWalkSystem } from '../../actions/ActionWalkSystem.js';
 import { ActionFallSystem } from '../../actions/ActionFallSystem.js';
+import { ActionFloatingSystem } from '../../actions/ActionFloatingSystem.js';
+import { ProcgenPopulationPolicy } from './ProcgenPopulationPolicy.js';
 import { ActionJumpSystem } from '../../actions/ActionJumpSystem.js';
 import { ActionBuildSystem } from '../../actions/ActionBuildSystem.js';
 import { ActionBashSystem } from '../../actions/ActionBashSystem.js';
@@ -26,7 +28,7 @@ const mix = value => { let n = Math.imul(value ^ (value >>> 16), 0x45d9f3b); n =
 // Terrain is queried in one shared coordinate system. No world-sized bitmap,
 // per-lane Game, or rendering dependency is needed by the real action systems.
 class ProcgenLaneWorld {
-  constructor({ laneCount = 1, seed = 1, sprites = null, masks, assists = true, speed = 3, cohorts = false, spawnSpreadTicks = 0, maxActors = 16384, stallPolicy = {}, previousDistances = [], particleTable = null, terrain = null } = {}) {
+  constructor({ laneCount = 1, seed = 1, sprites = null, masks, assists = true, speed = 3, cohorts = false, spawnSpreadTicks = 0, maxActors = 16384, stallPolicy = {}, populationPolicy = {}, previousDistances = [], particleTable = null, terrain = null } = {}) {
     this.laneCount = normalizeLaneCount(laneCount);
     this.seed = normalizeSeed(seed);
     this.width = 0x3fffffff;
@@ -58,7 +60,11 @@ class ProcgenLaneWorld {
     this.nextActorId = 0;
     this.generation = 1;
     this.generationStartTick = 0;
-    this.spawnedTotal = 0;
+    this.spawnedTotal = 0; this.activeCount = 0;
+    this.population = new ProcgenPopulationPolicy(this.laneCount, stallPolicy.releaseIntervalTicks ?? DEFAULT_STALL_POLICY.releaseIntervalTicks, populationPolicy, Object.hasOwn(stallPolicy, 'releaseIntervalTicks'));
+    this.terrainActivityTicks = new Float64Array(this.laneCount); this.terrainActivityTicks.fill(-Infinity);
+    this.pendingTerrainWork = new Uint32Array(this.laneCount);
+    this._stallWork = { terrainActivityTicks: this.terrainActivityTicks, pendingTerrainWork: this.pendingTerrainWork };
     this.stall = new ProcgenStallPolicy(this.laneCount, stallPolicy, previousDistances);
     this.failureReasons = {};
     this.editChunks = new Map();
@@ -79,6 +85,7 @@ class ProcgenLaneWorld {
     this.characterParticles = sprites ? new CharacterParticles() : null;
     this.actions = {
       [State.WALKING]: new ActionWalkSystem(sprites), [State.FALLING]: new ActionFallSystem(sprites),
+      [State.FLOATING]: new ActionFloatingSystem(sprites),
       [State.JUMPING]: new ActionJumpSystem(sprites), [State.BUILDING]: new ActionBuildSystem(sprites),
       [State.BASHING]: new ActionBashSystem(sprites, masks), [State.SHRUG]: new ActionShrugSystem(sprites),
       [State.CLIMBING]: new ActionClimbSystem(sprites), [State.HOISTING]: new ActionHoistSystem(sprites),
@@ -98,44 +105,54 @@ class ProcgenLaneWorld {
     actor.appearanceIndex = lane;
     actor.laneIndex = lane;
     actor.spawnTick = this.tickIndex;
+    actor.spawnOrdinal = this.stall.lanes[lane].spawned;
+    actor.scout = this.population.isScout(this.laneSeeds[lane], actor.spawnOrdinal);
     actor.lastProgressTick = this.tickIndex;
     actor.furthestX = actor.x;
     actor.assists = 0;
     actor.failureReason = null;
     actor.setAction(this.actions[State.FALLING]);
-    this.actors.push(actor);
+    this.actors.push(actor); this.activeCount++;
     this.stall.spawn(lane, this.tickIndex); this.spawnedTotal++;
+    const signal = this.stall.lanes[lane]; signal.alive++; signal.peakAlive = Math.max(signal.peakAlive, signal.alive);
+    signal.lowestSurvivingActorId ??= actor.id;
     if (emit) this.soundEvents.emitSfx(SoundEventTypes.LEMMING_SPAWN, SoundEffectIds.SPAWN,
       { lemmingId: actor.id, laneIndex: lane, laneCount: this.laneCount, x: actor.x, y: actor.y, presentationPhase: lane / this.laneCount });
     return actor;
   }
   _spawnCohort() {
     if (!this.cohorts || this.stall.phase !== 'running') return;
-    const age = this.tickIndex - this.generationStartTick - 1;
-    const interval = this.stall.settings.releaseIntervalTicks || DEFAULT_STALL_POLICY.releaseIntervalTicks;
-    const phase = age % interval;
-    this.admissionPaused = this.actors.length >= this.maxActors;
+    const phase = this.population.phaseAt(this.tickIndex, this.activeCount);
+    const spread = Math.min(this.spawnSpreadTicks, this.population.intervalTicks);
+    this.admissionPaused = this.activeCount >= this.maxActors;
     for (let lane = 0; lane < this.laneCount; lane++) {
-      if (Math.floor(lane * this.spawnSpreadTicks / this.laneCount) !== phase) continue;
+      if (Math.floor(lane * spread / this.laneCount) !== phase) continue;
       const state = this.stall.lanes[lane];
       const stalledLongEnough = this.tickIndex - state.lastProgressTick >= this.stall.settings.secondsWithoutProgress * this.stall.settings.ticksPerSecond;
       const reservedProbe = stalledLongEnough && state.spawnsSinceProgress < this.stall.allowance(state);
-      if (this.actors.length >= this.maxActors && !reservedProbe) { this.admissionPaused = true; continue; }
+      if (this.activeCount >= this.maxActors && !reservedProbe) { this.admissionPaused = true; continue; }
       this._spawn(lane);
     }
   }
   _restart(previousDistances) {
     this.characterParticles?.clear();
     this._assistedColumn.valid = false;
-    this.actors.length = 0; this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this.terrain?.reset?.();
+    this.actors.length = 0; this.activeCount = 0; this.admissionPaused = false; this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this.terrain?.reset?.();
     this._laneChunk.fill(null); this._laneChunkIndex.fill(-1); this._collisionSlots.fill(null); this._collisionIndices.fill(-1); this._laneEdits.fill(null); this._laneEditIndex.fill(-1); this._editCache.fill(null); this._editIndices.fill(-1); this.frontiers.fill(36);
     this.generatedThrough.fill(this.terrain?.chunkWidth || CHUNK_WIDTH); this.terrainRevision++; this.frontierRevision++; this.generation++; this.generationStartTick = this.tickIndex;
     for (let lane = 0; lane < this.laneCount; lane++) this.laneSeeds[lane] = mix(this.seed ^ Math.imul(lane + 1, 0x9e3779b1) ^ Math.imul(this.generation - 1, 0x85ebca6b));
     this.terrain?.registerLanes?.(this.laneSeeds, this.seed, this.generation);
+    this.population.reset(this.generationStartTick); this.terrainActivityTicks.fill(-Infinity); this.pendingTerrainWork.fill(0);
     this.stall = new ProcgenStallPolicy(this.laneCount, this.stall.settings, previousDistances);
     for (const lane of this.stall.lanes) lane.lastProgressTick = this.tickIndex;
     this.onRestart?.();
   }
+
+  setPendingTerrainWork(lane, count = 0) {
+    if (Number.isInteger(lane) && lane >= 0 && lane < this.laneCount) this.pendingTerrainWork[lane] = Math.max(0, Math.min(65535, Math.trunc(count) || 0));
+  }
+
+  getLaneMusicSignals(lane) { return this.stall.lanes[lane] || null; }
 
   getGameTimer() { return this.timer; }
   getGroundMaskLayer() { return this; }
@@ -276,6 +293,7 @@ class ProcgenLaneWorld {
     const index = (y % LANE_HEIGHT) * EDIT_CHUNK_WIDTH + x % EDIT_CHUNK_WIDTH;
     if (chunk[index] !== color + 1) {
       chunk[index] = color + 1; this.terrainRevision++;
+      this.terrainActivityTicks[Math.floor(y / LANE_HEIGHT)] = this.tickIndex;
       const width = this.terrain?.chunkWidth || CHUNK_WIDTH;
       this.terrainTileRevisions.set(Math.floor(y / LANE_HEIGHT) * 0x800000 + Math.floor(x / width), this.terrainRevision);
     }
@@ -307,7 +325,11 @@ class ProcgenLaneWorld {
   clearGroundWithMask(mask, x, y) { this.clearGroundWithMaskCount(mask, x, y); }
 
   _assist(actor) {
-    if (!this.assists || (actor.action !== this.actions[State.WALKING] && actor.action !== this.actions[State.BASHING])) return;
+    if (!this.assists) return;
+    const scoutReady = this.population.scoutReady(actor, this.tickIndex);
+    if (scoutReady && actor.action === this.actions[State.FALLING] && actor.state > 16 &&
+        this.actions[State.FLOATING].triggerLemAction(actor)) actor.assists++;
+    if (actor.action !== this.actions[State.WALKING] && actor.action !== this.actions[State.BASHING]) return;
     const x = actor.x, y = actor.y;
     if (actor.assistRetreatX != null && actor.action === this.actions[State.WALKING]) {
       if (x > actor.assistRetreatX) { actor.lookRight = false; return; }
@@ -333,7 +355,7 @@ class ProcgenLaneWorld {
     cached.x = x + 1; cached.y = y - 7; cached.height = 8; cached.value = column; cached.revision = this.terrainRevision; cached.valid = true;
     if (column === 8) {
       if (this.terrain && (this.hasSteelAt(x + 1, y - 4) || !gap.barrierWidth || x < gap.barrierX - 2 || x > gap.barrierX + gap.barrierWidth)) {
-        if (!actor.canClimb) { actor.canClimb = true; actor.assists++; }
+        if (scoutReady && this.actions[State.CLIMBING].triggerLemAction(actor)) actor.assists++;
       } else { actor.setAction(this.actions[State.BASHING]); this.stats.bashes++; actor.assists++; }
     }
   }
@@ -342,8 +364,10 @@ class ProcgenLaneWorld {
     this.eventTimeMs = Number.isFinite(eventTimeMs) ? eventTimeMs : this.eventTimeMs + this.timer.frameTime;
     this.characterParticles?.tick();
     this._spawnCohort();
+    let activeCount = 0;
+    for (const lane of this.stall.lanes) { lane.alive = 0; lane.lowestSurvivingActorId = null; lane.buildingCount = 0; lane.bashingCount = 0; lane.floatingCount = 0; }
     for (const actor of this.actors) {
-      if (actor.failureReason) continue;
+      if (actor.failureReason || actor.removed) continue;
       this.soundEvents.laneIndex = actor.laneIndex;
       if (actor.y >= (actor.laneIndex + 1) * LANE_HEIGHT + 6) {
         actor.leftIndependentRoute = true; actor.failureReason = 'out-of-lane'; this.stats.failures++;
@@ -367,6 +391,14 @@ class ProcgenLaneWorld {
         }
       } else if (next === State.JUMPING && actor.action !== this.actions[next]) actor.setAction(this.actions[next]);
 
+      if (!actor.failureReason && !actor.removed) {
+        activeCount++;
+        const lane = this.stall.lanes[actor.laneIndex]; lane.alive++;
+        lane.lowestSurvivingActorId = lane.lowestSurvivingActorId == null ? actor.id : Math.min(lane.lowestSurvivingActorId, actor.id);
+        if (actor.action === this.actions[State.BUILDING]) lane.buildingCount++;
+        if (actor.action === this.actions[State.BASHING]) lane.bashingCount++;
+        if (actor.action === this.actions[State.FLOATING]) lane.floatingCount++;
+      }
       if (actor.x > this.frontiers[actor.laneIndex]) {
         this.frontiers[actor.laneIndex] = actor.x;
         const width = this.terrain?.chunkWidth || CHUNK_WIDTH;
@@ -375,8 +407,14 @@ class ProcgenLaneWorld {
       }
       if (actor.x > actor.furthestX) { actor.furthestX = actor.x; actor.lastProgressTick = this.tickIndex; }
     }
+    this.activeCount = activeCount;
+    for (let laneIndex = 0; laneIndex < this.laneCount; laneIndex++) {
+      const lane = this.stall.lanes[laneIndex]; lane.peakAlive = Math.max(lane.peakAlive, lane.alive);
+      lane.lastTerrainActivityTick = this.terrainActivityTicks[laneIndex]; lane.pendingTerrainWork = this.pendingTerrainWork[laneIndex];
+      if (!this.cohorts && this.frontiers[laneIndex] > lane.maxX) { lane.maxX = this.frontiers[laneIndex]; lane.lastProgressTick = this.tickIndex; }
+    }
     if (this.cohorts) {
-      this.stall.update(this.actors, this.tickIndex);
+      this.stall.update(this.actors, this.tickIndex, this._stallWork);
       const dueIds = this.stall.takeDue(this.tickIndex);
       const due = dueIds.length ? new Set(dueIds) : null;
       if (due) for (const actor of this.actors) if (due.has(actor.id) && !actor.failureReason) {
@@ -385,7 +423,7 @@ class ProcgenLaneWorld {
       }
       const previous = this.stall.consumeRestart();
       if (previous) this._restart(previous);
-      else if (this.tickIndex % 54 === 0) this.actors = this.actors.filter(actor => !actor.failureReason);
+      else if (this.tickIndex % 54 === 0) this.actors = this.actors.filter(actor => !actor.failureReason && !actor.removed);
     }
     if (this.tickIndex % 128 === 0) this._pruneEdits();
     this.soundEvents.laneIndex = 0;
@@ -410,13 +448,12 @@ class ProcgenLaneWorld {
     }
   }
   getDebugState() {
-    let minDistance = Infinity, maxDistance = 0, distance = 0, stalled = 0, alive = 0;
+    let minDistance = Infinity, maxDistance = 0, distance = 0, stalled = 0;
     const failureReasons = {};
     for (const actor of this.actors) {
       const d = Math.max(0, actor.furthestX - 36);
       minDistance = Math.min(minDistance, d); maxDistance = Math.max(maxDistance, d); distance += d;
-      if (!actor.failureReason) alive++;
-      else failureReasons[actor.failureReason] = (failureReasons[actor.failureReason] || 0) + 1;
+      if (actor.failureReason) failureReasons[actor.failureReason] = (failureReasons[actor.failureReason] || 0) + 1;
       if (!actor.failureReason && this.tickIndex - actor.lastProgressTick > 240) stalled++;
     }
     let residentCollisionBytes = 0;
@@ -427,8 +464,9 @@ class ProcgenLaneWorld {
     }
     return { mode: 'shared-lanes', seed: this.seed, lanes: this.laneCount, tick: this.tickIndex,
       requestedTicksPerSecond: this.timer.tps, achievedTicksPerSecond: this.timer.achievedTicksPerSecond ?? null,
-      alive, survival: alive / Math.max(1, this.spawnedTotal), stalled, failureReasons: this.cohorts ? { ...this.failureReasons } : failureReasons,
+      alive: this.activeCount, activeCount: this.activeCount, survival: this.activeCount / Math.max(1, this.spawnedTotal), stalled, failureReasons: this.cohorts ? { ...this.failureReasons } : failureReasons,
       generation: this.generation, spawnedTotal: this.spawnedTotal, admissionPaused: this.admissionPaused, maxActors: this.maxActors,
+      population: this.population.snapshot(),
       stall: this.cohorts ? this.stall.snapshot(this.tickIndex) : null,
       distance: { min: Number.isFinite(minDistance) ? minDistance : 0, max: maxDistance, mean: distance / Math.max(1, this.actors.length) },
       terrainGeneration: this.terrain?.getDebugState?.() || null, collisionResidentSlots: this._collisionSlots.length, residentCollisionMB: residentCollisionBytes / 1048576,
