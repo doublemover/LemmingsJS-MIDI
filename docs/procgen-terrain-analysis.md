@@ -51,6 +51,39 @@ Decoded asset hashes deduplicate identical art across packs. Ground-set numbers 
 - Decoration clusters are inferred from low-fill terrain and nearby pieces. They are not assumed noncolliding. Runtime decoration is placed below the route with a clearance of 10px.
 - Special VGASPEC levels use precomposed pictures rather than ordinary terrain recipes; learning fabricated tile joins from them would be misleading.
 
+## Canonical normal-level descriptors
+
+Configured classic tile-assembly levels supply width histograms, per-level asset/pair co-occurrence and bounded ordered motif groups. Unconfigured DAT parts, VGASPEC pictures, standalone NXLV/LVL and generated/cache content do not contribute. Each descriptor is scoped to an exact pack/ground set, decoded asset hash and source/config revision. Motif roles describe measured geometry or existing inferred decoration; they are not authored semantic labels. Counts deduplicate level aliases and repeated identical groups within a level.
+
+| Pack / ground set | Normal physical levels | Width min / median / max | Observed groups | Maximum-width source |
+| --- | ---: | --- | ---: | --- |
+| holiday93 / 1 | 1 | 1600 / 1600 / 1600 | 6 | holiday93/LEVEL000.DAT#7 (1600 px) |
+| holiday93 / 2 | 31 | 1600 / 1600 / 1600 | 12 | holiday93/LEVEL000.DAT#0 (1600 px) |
+| holiday94 / 1 | 1 | 1600 / 1600 / 1600 | 6 | holiday94/LEVEL004.DAT#7 (1600 px) |
+| holiday94 / 2 | 63 | 1600 / 1600 / 1600 | 12 | holiday94/LEVEL000.DAT#0 (1600 px) |
+| lemmings / 0 | 15 | 1600 / 1600 / 1600 | 8 | lemmings/LEVEL000.DAT#0 (1600 px) |
+| lemmings / 1 | 21 | 1600 / 1600 / 1600 | 12 | lemmings/LEVEL000.DAT#3 (1600 px) |
+| lemmings / 2 | 19 | 1600 / 1600 / 1600 | 12 | lemmings/LEVEL001.DAT#0 (1600 px) |
+| lemmings / 3 | 15 | 1600 / 1600 / 1600 | 12 | lemmings/LEVEL000.DAT#6 (1600 px) |
+| lemmings / 4 | 6 | 1600 / 1600 / 1600 | 10 | lemmings/LEVEL003.DAT#1 (1600 px) |
+| lemmings_ohNo / 0 | 45 | 1600 / 1600 / 1600 | 12 | lemmings_ohNo/DLVEL000.DAT#0 (1600 px) |
+| lemmings_ohNo / 1 | 19 | 1600 / 1600 / 1600 | 10 | lemmings_ohNo/DLVEL000.DAT#2 (1600 px) |
+| lemmings_ohNo / 2 | 20 | 1600 / 1600 / 1600 | 11 | lemmings_ohNo/DLVEL000.DAT#5 (1600 px) |
+| lemmings_ohNo / 3 | 16 | 1600 / 1600 / 1600 | 12 | lemmings_ohNo/DLVEL000.DAT#3 (1600 px) |
+| xmas91 / 0 | 2 | 1600 / 1600 / 1600 | 12 | xmas91/LEVEL000.DAT#2 (1600 px) |
+| xmas91 / 2 | 2 | 1600 / 1600 / 1600 | 9 | xmas91/LEVEL000.DAT#0 (1600 px) |
+| xmas92 / 2 | 4 | 1600 / 1600 / 1600 | 12 | xmas92/LEVEL000.DAT#0 (1600 px) |
+
+Descriptors retain canonical source-level IDs, width histograms and at most four explicit maximum-width source examples, plus two groups per role, eight placements per group and 24 asset/pair representatives. The classic reader supplies a fixed 1600-pixel authored canvas width; generated endless tracks never enter this measurement. At most 2048 unique observed group candidates per descriptor are retained before ranking; omitted candidates are counted. Runtime consumers select/cache descriptors only when the pack/art/revision changes, recombine source-observed groups, and keep existing alpha/collision screening.
+
+## Pure canonical zone plans
+
+`ProcgenTerrainZonePlanner` compiles available source IDs and word-owned glyph exclusions once per selected descriptor revision. A seed chooses a fixed chunk-aligned zone width for the lane; each successive zone chooses an observed asset pair and at most four ordered role groups (eight placements each), preserving flags, offsets and source-level provenance. The width cannot exceed either the selected pack cap or the descriptor normal-level maximum; the current classic cap is 1600px, so 128px chunks yield zones up to 1536px.
+
+The default cache retains 128 plans per source revision, with a hard configurable limit of 256. Eviction or reset recomputes identical seeded plans. A changed source revision requires a new planner. Source mining stays offline; no per-frame learning or complete-level copying occurs.
+
+The pure planner is not applied to live terrain geometry yet. Normal collision, display, world frontiers and pending-work accounting remain unchanged by these plans. Applying a measured role requires source-alpha, clearance, hazard/word support and seam screening; role names and co-occurrence counts do not prove a route is constructible.
+
 ## Runtime consumption
 
 `ProcgenTerrainRecipes.js` loads and validates the artifact, selects an exact pack-local asset family and composes bounded chunks from real decoded art. It returns color pixels, solid mask, top profile and placed-piece provenance. Keep seed/variant stable for a lane and pass worldX so repeated assemblies join across chunk boundaries. A caller may select another variant at an explicitly checked seam.

@@ -108,6 +108,6 @@ describe('mined terrain assembly recipes', function () {
     assert.throws(() => composeRecipeChunk({ recipe: book.themes[0], terrainPieces: [] }), /missing/);
     assert.throws(() => composeRecipeChunk({ recipe: { routes: [] } }), /No mined/);
     const json = await fs.readFile(new URL('../assets/procgen/terrain-recipes.json', import.meta.url), 'utf8');
-    assert.ok(Buffer.byteLength(json) < 300000);
+    assert.ok(Buffer.byteLength(json) < 450000);
   });
 });

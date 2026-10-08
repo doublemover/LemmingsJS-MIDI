@@ -1,3 +1,5 @@
+import { validateTerrainDescriptors } from './ProcgenTerrainDescriptors.js';
+
 const RECIPE_SCHEMA_VERSION = 1;
 const ERASE = 1, FLIP_Y = 2, NO_OVERWRITE = 4, FLIP_X = 8, ONLY_OVERWRITE = 16;
 const mix = value => { let n = Math.imul(value ^ (value >>> 16), 0x45d9f3b); n = Math.imul(n ^ (n >>> 16), 0x45d9f3b); return (n ^ (n >>> 16)) >>> 0; };
@@ -14,6 +16,7 @@ const validateTerrainRecipeBook = book => {
       }
     }
   }
+  if (book.descriptors != null) validateTerrainDescriptors(book.descriptors);
   return book;
 };
 
