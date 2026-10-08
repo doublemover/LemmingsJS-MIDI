@@ -1,3 +1,5 @@
+import { createMidiEventClipEditor } from './midi-ui/midiEventClipEditor.js';
+import { buildMidiClipRecording } from '../midi/project/MidiClipRecording.js';
 import { createSoundAuditionPlan } from './midi-ui/midiSoundAudition.js';
 import { createMidiEditHistory } from './midi-ui/midiEditHistory.js';
 import { createMidiInstrumentWorkbench } from './midi-ui/midiInstrumentWorkbench.js';
@@ -49,7 +51,8 @@ import {
   createArpPatternFromPreset,
   deriveArpModeFromPattern,
   POSITION_AXIS_OPERATORS,
-  resolveAvailableSfxIds
+  resolveAvailableSfxIds,
+  resolveUnavailableSkillSfxIds
 } from './midi-ui/midiUiDomain.js';
 import { isMidiFlagTriggerType, toMidiFlagTriggerType } from '../midi/MidiFlagTriggers.js';
 import {
@@ -310,7 +313,9 @@ const createMidiUiController = ({
   let localGamePreview = null;
   let localInteraction = 0;
   const editHistory = createMidiEditHistory();
-  let workbench = null;
+  let workbench = null, eventClipEditor = null;
+  const gameEventRows = new Map();
+  const getGameEventRows = () => Array.from(gameEventRows.values());
   const uiMetrics = {
     renderCount: 0,
     queuedRenderCount: 0,
@@ -329,6 +334,7 @@ const createMidiUiController = ({
     clipId: null,
     trackId: null,
     notes: [],
+    placement: 'compact', tickMs: 60, spacingTicks: 2, order: 0,
     activeNotes: new Map()
   };
   const sourceFilters = {
@@ -990,6 +996,7 @@ const createMidiUiController = ({
     const clip = selectedClip();
     panel.classList.toggle('is-active', recordState.active || recordState.notes.length > 0);
     if (start) start.disabled = !clip || recordState.active;
+    const placement = document?.getElementById('midiRecordPlacement'); if (placement) placement.disabled = recordState.active;
     if (commit) commit.disabled = !recordState.notes.length && !recordState.activeNotes.size;
     if (cancel) cancel.disabled = !recordState.active && !recordState.notes.length;
     if (!status) return;
@@ -998,7 +1005,7 @@ const createMidiUiController = ({
       return;
     }
     if (recordState.active) {
-      status.textContent = `Recording into ${clip.name}: ${recordState.notes.length} notes captured.`;
+      status.textContent = `Recording into ${clip.name}: ${recordState.notes.length} notes captured.${recordState.placement === 'onsets' ? ' Keep gaps: ' + recordState.tickMs.toFixed(1) + ' ms/tick, ' + recordState.spacingTicks + ' ticks/cell.' : ''}`;
       return;
     }
     status.textContent = recordState.notes.length
@@ -1025,6 +1032,7 @@ const createMidiUiController = ({
       note: clamp(Math.round(started.note), 0, 127),
       velocity: clamp(Math.round(started.velocity), 1, 127),
       channel: clamp(Math.round(started.channel), 1, 16),
+      onsetMs: started.timestamp, order: started.order, durationMs: Math.max(0, (endTime ?? started.timestamp) - started.timestamp),
       durationTicks: durationMsToTicks((endTime ?? started.timestamp) - started.timestamp)
     });
   };
@@ -1035,12 +1043,12 @@ const createMidiUiController = ({
     const note = Number(event?.note);
     const velocity = Number(event?.velocity ?? 0);
     if ((type !== 0x90 && type !== 0x80) || !Number.isFinite(note)) return false;
-    const timestamp = Number.isFinite(event.timestamp) ? event.timestamp : Date.now();
+    const timestamp = Number.isFinite(event.timestamp) ? event.timestamp : nowMs();
     const normalized = {
       note: clamp(Math.round(note), 0, 127),
       velocity: clamp(Math.round(velocity), 0, 127),
       channel: clamp(Math.round(event.channel), 1, 16),
-      timestamp
+      timestamp, receiptMs: nowMs(), order: recordState.order++
     };
     if (type === 0x90 && normalized.velocity > 0) {
       finishRecordNote(normalized, timestamp);
@@ -1058,8 +1066,13 @@ const createMidiUiController = ({
       renderRecordPanel();
       return false;
     }
+    const placement = document?.getElementById('midiRecordPlacement')?.value === 'onsets' ? 'onsets' : 'compact';
+    if (placement === 'onsets' && clip.lengthSteps > 16) { setStatus('Keep gaps supports 8/16-cell clips. Reduce the clip explicitly or use compact capture.'); return false; }
     cancelLearn();
     resetRecordState();
+    recordState.placement = placement; recordState.order = 0;
+    recordState.tickMs = Math.max(1, Number(getLemmings()?.game?.getGameTimer?.()?.frameTime) || 60);
+    recordState.spacingTicks = clip.playback?.spacingTicks || 2;
     recordState.active = true;
     recordState.clipId = clip.id;
     recordState.trackId = selectedTrack()?.id ?? null;
@@ -1086,9 +1099,10 @@ const createMidiUiController = ({
   };
 
   const commitRecording = () => {
-    const now = Date.now();
+    const now = nowMs();
     for (const started of recordState.activeNotes.values()) {
-      finishRecordNote({ ...started, timestamp: now }, now);
+      const end = started.timestamp + Math.max(0, now - started.receiptMs);
+      finishRecordNote({ ...started, timestamp: end }, end);
     }
     recordState.activeNotes.clear();
     clearRecordCapture();
@@ -1101,6 +1115,12 @@ const createMidiUiController = ({
       return false;
     }
     let next = current;
+    if (recordState.placement === 'onsets') {
+      const capture = buildMidiClipRecording(recordState.notes, { length: clip.lengthSteps, tickMs: recordState.tickMs, spacingTicks: recordState.spacingTicks, minDuration: current.global.durationTicks.min, maxDuration: current.global.durationTicks.max });
+      next = reduceMidiProject(next, { type: 'clip.update', clipId: clip.id, patch: { steps: capture.steps, playback: { advance: 'game-tick', spacingTicks: recordState.spacingTicks, passCounter: clip.playback?.passCounter || 'completed' } } });
+      const message = 'Recorded ' + capture.retained + ' notes with gaps into ' + clip.name + '; ' + capture.collisions + ' same-cell notes replaced, ' + capture.outside + ' beyond the clip omitted';
+      resetRecordState(); commitProject(next); setStatus(message); logOutput(message); return true;
+    }
     recordState.notes.slice(0, clip.lengthSteps).forEach((note, index) => {
       next = reduceMidiProject(next, {
         type: 'clip.step.update',
@@ -2213,11 +2233,11 @@ const createMidiUiController = ({
 
   const setMasterVolume = (value, { persist = true } = {}) => {
     const number = toNumberOrNull(value);
-    masterVolume = number == null ? DEFAULT_MASTER_VOLUME : clamp(number, 0, 1);
+    masterVolume = number == null ? DEFAULT_MASTER_VOLUME : clamp(number, 0, 4);
     localAudio?.setMasterVolume?.(masterVolume);
     auditionAudio?.setMasterVolume?.(masterVolume);
     if (persist) {
-      try { storage?.setItem(MASTER_VOLUME_STORAGE_KEY, String(masterVolume)); } catch { /* Local audio still works when preferences cannot be saved. */ }
+      try { storage?.setItem(MASTER_VOLUME_STORAGE_KEY, JSON.stringify({ version: 2, value: masterVolume })); } catch { /* Local audio still works when preferences cannot be saved. */ }
     }
     renderMasterVolume();
   };
@@ -2236,11 +2256,19 @@ const createMidiUiController = ({
 
   const ensureLocalPreview = () => {
     getLemmings()?.setLocalAudioStopHandler?.(stopLocalPreview);
-    if (!localAudio) localAudio = createPreviewAudio({ masterVolume, onStateChange: renderLocalSummary });
+    if (!localAudio) localAudio = createPreviewAudio({ masterVolume, onStateChange: renderLocalSummary, onPlayback: event => workbench?.onPlayback({ ...event, owner: 'game' }) });
     if (!localGamePreview) localGamePreview = createLocalGamePreview({
       getLemmings, getConfig: getProjectConfig, immutableConfig: true, audio: localAudio, onStateChange: renderLocalSummary
     });
     return localGamePreview;
+  };
+
+  const settleAuditionPasses = (cancel = false) => {
+    const now = nowMs();
+    for (const state of auditionSteps.values()) {
+      if (state.completionAt != null && now >= state.completionAt) { state.completedPasses = (state.completedPasses || 0) + 1; state.completionAt = null; }
+      if (cancel) state.completionAt = null;
+    }
   };
 
   const stopLocalPreview = () => {
@@ -2248,25 +2276,31 @@ const createMidiUiController = ({
     localGamePreview?.stop?.();
     localAudio?.stop?.();
     auditionAudio?.stop?.();
+    settleAuditionPasses(true);
     renderLocalSummary();
   };
 
   const testSelectedSound = async () => {
     const source = selectedSource();
     if (!source) return false;
-    if (!auditionAudio) auditionAudio = createPreviewAudio({ masterVolume, onStateChange: renderLocalSummary });
-    const key = JSON.stringify(source.mapping);
+    if (!auditionAudio) auditionAudio = createPreviewAudio({ masterVolume, onStateChange: renderLocalSummary, onPlayback: event => workbench?.onPlayback({ ...event, owner: 'audition' }) });
+    const key = JSON.stringify([source.mapping, source.clipId, ensureProject().clips.find(clip => clip.id === source.clipId)?.playback]);
+    settleAuditionPasses();
     const previous = auditionSteps.get(source.id);
     const index = previous?.key === key ? previous.index : 0;
     const tickMs = Math.max(1, Number(getLemmings()?.game?.getGameTimer?.()?.frameTime) || 60);
-    const plan = createSoundAuditionPlan(source, ensureProject(), tickMs, index);
-    if (!plan.notes.length) { setStatus(plan.reason); return false; }
+    const timer = getLemmings()?.game?.getGameTimer?.();
+    const completedPasses = previous?.key === key ? (previous.completedPasses || 0) : 0;
+    const plan = createSoundAuditionPlan(source, ensureProject(), tickMs, index, { completedPasses, tick: timer?.getGameTicks?.() ?? timer?.tickIndex, tickMs: timer?.TIME_PER_FRAME_MS || 60 });
+    const advance = () => auditionSteps.set(source.id, { key, index: index + 1, completedPasses, completionAt: plan.completionMs == null ? null : nowMs() + plan.completionMs });
+    if (plan.advance || plan.notes.length) settleAuditionPasses(true);
+    if (!plan.notes.length) { if (plan.advance) { localInteraction += 1; auditionAudio.stop?.(); advance(); } setStatus(plan.reason); return false; }
     const interaction = ++localInteraction;
     const ok = await auditionAudio.preview(plan.notes, { replace: true });
     if (interaction !== localInteraction || disposed) return false;
     if (ok) {
-      auditionSteps.set(source.id, { key, index: index + 1 });
-      setStatus(`Tested ${source.label} locally · game and external MIDI unchanged`);
+      advance();
+      setStatus('');
     } else setStatus(auditionAudio.getState().message || 'Local audio could not start');
     renderLocalSummary();
     return ok;
@@ -2305,23 +2339,35 @@ const createMidiUiController = ({
     const eventLabel = GAME_SOUND_EVENTS.find(event => resolveGameSoundSource(current, event)?.id === source?.id)?.label || source?.label || 'Choose an event';
     const list = document?.getElementById('midiGameEventList');
     const focused = document?.activeElement?.dataset?.gameEventId;
+    const unavailableSkills = resolveUnavailableSkillSfxIds(getRuntimeLevel(), getRuntimeSkills());
     if (list) {
       removeChildren(list);
-      const hasActiveEvent = GAME_SOUND_EVENTS.some(event => resolveGameSoundSource(current, event)?.id === source?.id);
-      for (const [index, event] of GAME_SOUND_EVENTS.entries()) {
+      const visibleEvents = GAME_SOUND_EVENTS.filter(event => !unavailableSkills.has(event.id));
+      const hasActiveEvent = visibleEvents.some(event => resolveGameSoundSource(current, event)?.id === source?.id);
+      for (const event of GAME_SOUND_EVENTS) {
         const item = resolveGameSoundSource(current, event);
-        const row = document.createElement('button');
-        row.type = 'button'; row.className = 'midi-game-event'; row.dataset.gameEventId = String(event.id);
+        let row = gameEventRows.get(event.id);
+        if (!row) {
+          row = document.createElement('button'); gameEventRows.set(event.id, row);
+          row.addEventListener('click', () => selectGameSound(event));
+        }
+        row.replaceChildren?.();
+        if (!row.replaceChildren) removeChildren(row);
+        row.type = 'button'; row.className = 'midi-game-event'; row.dataset.gameEventId = String(event.id); row.hidden = unavailableSkills.has(event.id);
         row.setAttribute('role', 'option');
         row.setAttribute('aria-selected', String(item?.id === source?.id));
-        row.tabIndex = item?.id === source?.id || (!hasActiveEvent && index === 0) ? 0 : -1;
+        row.tabIndex = item?.id === source?.id || (!hasActiveEvent && event === visibleEvents[0]) ? 0 : -1;
         const label = document.createElement('strong'); label.textContent = event.label;
-        const summary = document.createElement('span');
+        const summary = document.createElement('span'); summary.className = 'midi-event-summary';
         const kind = getEventBehavior(item);
-        summary.textContent = !item?.enabled ? 'Off' : ({note:'One note',falling:'Falling phrase',rising:'Rising phrase',steps:'One note / event',custom:'Custom'})[kind];
-        const count = document.createElement('span'); count.className = 'midi-event-count'; count.textContent = 'No events yet';
+        const pitches = item?.mode === 'clip' ? (current.clips.find(clip => clip.id === item.clipId)?.steps || []).map(step => step.note).filter(Number.isFinite) : item?.mapping?.degree != null || item?.mapping?.chord ? [] : (item?.mapping?.notes || [item?.mapping?.note]).filter(Number.isFinite);
+        const names = pitches.slice(0, 16).map(soundNoteName).join(' ');
+        summary.textContent = !item?.enabled ? 'Off' : [({note:'One note',falling:'Falling phrase',rising:'Rising phrase',steps:'One note / event',custom:'Custom'})[kind], names].filter(Boolean).join(' \u00b7 ');
+        row.dataset.eventLabel = event.label; row.dataset.fullSummary = summary.textContent;
+        row.dataset.noteLabels = pitches.slice(0, 3).map(soundNoteName).join(' '); row.dataset.soundEnabled = String(!!item?.enabled);
+        row.title = event.label + ': ' + summary.textContent; row.setAttribute('aria-label', row.title);
+        const count = document.createElement('span'); count.className = 'midi-event-count'; count.textContent = ''; count.hidden = true;
         row.append(label, summary, count);
-        row.addEventListener('click', () => selectGameSound(event));
         list.appendChild(row);
         if (focused === String(event.id)) row.focus?.();
       }
@@ -2371,7 +2417,7 @@ const createMidiUiController = ({
           : 'One plain note at the exact game event. Listen here uses browser audio only.');
     chooseSoundView(soundView);
     renderLocalSummary();
-    workbench?.render();
+    workbench?.render(); eventClipEditor?.render();
   };
 
   const renderConnectionControls = () => {
@@ -2583,14 +2629,20 @@ const createMidiUiController = ({
     if (bound) return;
     disposed = false;
     let storedMasterVolume = null;
-    try { storedMasterVolume = storage?.getItem(MASTER_VOLUME_STORAGE_KEY); } catch { /* Use the default when local preferences are unavailable. */ }
+    try {
+      const stored = JSON.parse(storage?.getItem(MASTER_VOLUME_STORAGE_KEY) || 'null');
+      storedMasterVolume = typeof stored === 'number' ? clamp(stored, 0, 1) : stored?.version === 2 ? stored.value : null;
+    } catch { /* Use the default when local preferences are unavailable. */ }
     setMasterVolume(storedMasterVolume, { persist: false });
     ensureProject();
     cleanupLegacyMidiProjectStorage(storage);
     workbench = createMidiInstrumentWorkbench({ document, window, getLemmings, getProject: ensureProject, getSource: selectedSource,
       updateMapping: updateSelectedMapping, updateSource: updateSelectedSource, commitProject, chooseView: chooseSoundView,
-      bind: bindById, panic, history: editHistory, setStatus });
+      bind: bindById, panic, history: editHistory, setStatus, getEventRows: getGameEventRows });
     workbench.initialize();
+    eventClipEditor = createMidiEventClipEditor({ document, bind: bindById, getProject: ensureProject, getSource: selectedSource,
+      commitProject, dispatch: dispatchProjectIntent, history: editHistory, setStatus });
+    eventClipEditor.initialize();
     setWorkspaceVisible(window?.matchMedia?.('(min-width: 1000px)')?.matches === true, { focus: false });
     bindById('midiWorkspaceToggle', 'click', () => {
       const workspace = document?.getElementById('midiSequencerWorkspace');
@@ -2600,17 +2652,22 @@ const createMidiUiController = ({
     for (const name of ['sounds', 'devices', 'project', 'expert']) {
       bindById(`midiView${name[0].toUpperCase() + name.slice(1)}`, 'click', () => chooseSoundView(name));
     }
-    bindById('midiGameEventList', 'keydown', event => {
+    const navigateGameEvents = event => {
       if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
       const current = ensureProject();
-      const index = Math.max(0, GAME_SOUND_EVENTS.findIndex(item => resolveGameSoundSource(current, item)?.id === selectedSource()?.id));
-      const next = event.key === 'Home' ? 0 : event.key === 'End' ? GAME_SOUND_EVENTS.length - 1
-        : clamp(index + (event.key === 'ArrowDown' ? 1 : -1), 0, GAME_SOUND_EVENTS.length - 1);
+      const visible = new Set(getGameEventRows().filter(row => !row.hidden).map(row => Number(row.dataset.gameEventId)));
+      const events = GAME_SOUND_EVENTS.filter(item => visible.has(item.id));
+      if (!events.length) return;
+      const focusedId = Number(event.target?.dataset?.gameEventId);
+      const index = Math.max(0, events.findIndex(item => Number.isFinite(focusedId) ? item.id === focusedId : resolveGameSoundSource(current, item)?.id === selectedSource()?.id));
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? events.length - 1
+        : clamp(index + (event.key === 'ArrowDown' ? 1 : -1), 0, events.length - 1);
       event.preventDefault?.(); event.stopPropagation?.();
-      selectGameSound(GAME_SOUND_EVENTS[next]);
-      const list = document?.getElementById('midiGameEventList');
-      Array.from(list?.children || []).find(row => row.dataset.gameEventId === String(GAME_SOUND_EVENTS[next].id))?.focus?.();
-    });
+      selectGameSound(events[next]);
+      getGameEventRows().find(row => row.dataset.gameEventId === String(events[next].id))?.focus?.();
+    };
+    bindById('midiGameEventList', 'keydown', navigateGameEvents);
+    bindById('midiSkillEventDock', 'keydown', navigateGameEvents);
     bindById('midiEditProjectKey', 'click', () => chooseSoundView('project'));
     bindById('midiSoundAdvanced', 'click', () => chooseSoundView('expert'));
     bindById('midiSoundEnabled', 'change', event => updateSelectedSource({ enabled: !!event.target.checked }));
@@ -2648,7 +2705,7 @@ const createMidiUiController = ({
       setText(document?.getElementById('midiGamePresetDescription'), preset?.description || '');
       setText(document?.getElementById('midiGamePresetModeDescription'), presetMode?.value === 'steps'
         ? 'Each spawn steps down the pattern; each exit steps up. Landing plays a separate plain note.'
-        : 'Each spawn starts a quiet falling phrase; each exit rises. Fast repeats reshape only future notes. Landing plays a separate plain note.');
+        : 'Each spawn starts a falling phrase; each exit rises. Fast repeats reshape only future notes. Landing plays a separate plain note.');
     };
     if (presetSelect) {
       removeChildren(presetSelect);
@@ -3205,7 +3262,7 @@ const createMidiUiController = ({
 
   const dispose = () => {
     disposed = true;
-    workbench?.dispose();
+    workbench?.dispose(); eventClipEditor?.dispose(); gameEventRows.clear();
     localInteraction += 1;
     getLemmings()?.setLocalAudioStopHandler?.(null);
     auditionAudio?.dispose?.();

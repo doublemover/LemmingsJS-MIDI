@@ -179,7 +179,7 @@ describe('midiUiDomain', function() {
     expect(available.size).to.equal(1);
   });
 
-  it('resolveAvailableSfxIds handles missing skill sources', function() {
+  it('resolveAvailableSfxIds keeps skill rows available when inventory is unknown', function() {
     const config = {
       sfx: {
         [SoundEffectIds.BUILDER_WARNING]: { name: 'builder-warning' },
@@ -191,7 +191,7 @@ describe('midiUiDomain', function() {
 
     const available = resolveAvailableSfxIds(config, level, skills);
 
-    expect(available.has(SoundEffectIds.BUILDER_WARNING)).to.equal(false);
+    expect(available.has(SoundEffectIds.BUILDER_WARNING)).to.equal(true);
     expect(available.has(SoundEffectIds.EXIT)).to.equal(true);
   });
 

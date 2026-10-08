@@ -3,9 +3,9 @@ import { KeyboardShortcuts } from '../../js/input/KeyboardShortcuts.js';
 import fs from 'node:fs';
 
 const fixture = () => {
-  const timer = { speedFactor: 3 }, window = { addEventListener() {}, removeEventListener() {} };
+  const timer = { speedFactor: 3, pauses: 0, toggle() { this.pauses++; } }, window = { addEventListener() {}, removeEventListener() {} };
   let helps = 0;
-  const view = { game: { getGameTimer: () => timer }, shortcutOverlay: { toggle() { helps++; } } };
+  const view = { game: { getGameTimer: () => timer, gameGui: {} }, shortcutOverlay: { toggle() { helps++; } } };
   const shortcuts = new KeyboardShortcuts(view, { window, navigator: { getGamepads: () => [] }, storage: null });
   shortcuts.keybindings.setConfig(JSON.parse(fs.readFileSync('keybindings.json', 'utf8')));
   const press = (code, target, modifiers = {}) => {
@@ -26,7 +26,7 @@ describe('global shortcuts while a range is focused', () => {
     expect(f.press('Equal', range, { shiftKey: true })).to.equal(true); expect(f.timer.speedFactor).to.equal(8);
     expect(f.press('Equal', range, { altKey: true })).to.equal(true); expect(f.timer.speedFactor).to.equal(7);
     expect(f.press('ArrowRight', range)).to.equal(false); expect(f.shortcuts.pan.right).to.equal(false);
-    expect(f.press('Space', range)).to.equal(false);
+    expect(f.press('Space', range)).to.equal(true); expect(f.timer.pauses).to.equal(1);
     f.shortcuts.dispose();
   });
   it('preserves text, number, select and contenteditable input semantics', () => {

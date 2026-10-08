@@ -80,13 +80,12 @@ body.game-page.studio-open[data-midi-layout=overlay] .midi-sequencer { grid-colu
 .midi-active-key button { font-size: 10px; padding: 4px 5px; }
 .midi-sounds-layout { display: block; }
 .midi-game-event-list { display: flex; flex-direction: column; gap: 3px; max-height: none; overflow: visible; }
-.midi-game-event { position: relative; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 3px 8px; min-height: 46px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: #b8c7b6; text-align: left; padding: 7px 8px !important; cursor: pointer; }
+.midi-game-event { position: relative; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 3px 8px; min-height: 32px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: #b8c7b6; text-align: left; padding: 3px 8px !important; cursor: pointer; }
 .midi-game-event strong { font-size: 11px; font-weight: 500; }
 .midi-game-event span { color: #7e927e; font-size: 9px; }
 .midi-game-event .midi-event-count { grid-column: 1 / -1; font: 9px ui-monospace, monospace; }
 .midi-game-event[aria-selected=true] { background: #34472f; border-color: #7c936a; color: #f1f4df; }
 .midi-game-event[aria-selected=true] span { color: #b7c89e; }
-.midi-game-event.is-playing { box-shadow: inset 3px 0 #e9bf78; }
 .midi-game-event:hover { background: #293c2c; }
 .midi-sound-heading { margin-bottom: 8px; }
 .midi-sound-heading h2 { font-size: 19px; font-weight: 600; }
@@ -184,3 +183,56 @@ body.game-page.studio-open[data-midi-layout=overlay] .midi-sequencer { grid-colu
 .midi-event-context .midi-active-key { flex-wrap: wrap; margin: 0; gap: 4px; }
 .midi-event-context .midi-field { margin: 0; }
 .midi-instrument-menus details > div { min-width: 180px; padding: 4px; gap: 1px; }
+.midi-game-event[hidden], .midi-event-count[hidden] { display: none; }
+.midi-game-event span { overflow-wrap: anywhere; }
+.midi-starting-palettes { position: relative; border: 0; padding: 0; margin: 0; }
+.midi-starting-palettes > summary { display: inline-flex; align-items: center; gap: 4px; list-style: none; white-space: nowrap; }
+.midi-preset-popover { position: absolute; right: 0; top: calc(100% + 8px); z-index: 100; width: 310px; max-width: calc(100vw - 24px); max-height: 65vh; overflow-y: auto; padding: 12px; background: #1a271e; color: #c5d2bc; border: 1px solid #52664f; border-radius: 7px; box-shadow: 0 12px 28px #0008; }
+.midi-preset-popover .midi-preset-actions { display: grid; grid-template-columns: minmax(0, 1fr); }
+.midi-instrument-head .midi-preset-popover .midi-field select { max-width: none; width: 100%; }
+.midi-preset-popover p { margin: 0 0 8px; font-size: 11px; }
+.midi-preset-popover .midi-help { color: #a6b7a7; }
+#levelIndexSelect { border-radius: 5px 0 0 5px; margin-right: -6px; }
+#levelSelects .level-navigation { border-radius: 0 5px 5px 0; border-left: 0; padding: 0; }
+.midi-instrument-menus { border-left: 1px solid #52664f; padding-left: 8px; }
+.level-tools[open] .level-tools-popover, .midi-starting-palettes[open] .midi-preset-popover { animation: drawer-down 140ms ease-out; }
+@keyframes drawer-down { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .level-tools[open] .level-tools-popover, .midi-starting-palettes[open] .midi-preset-popover { animation: none; } }
+@media (max-width: 1390px) { .midi-starting-palettes > summary { font-size: 0; gap: 0; padding: 5px; } }
+
+#levelSelects .level-navigation > button { border-radius: 0; }
+#levelSelects .level-navigation > button:last-child { border-radius: 0 4px 4px 0; }
+.game, .studio-open .game { padding-left: 4px; }
+
+.midi-layout-choices > button { font-size: 10px; gap: 3px; padding: 4px 5px; }
+@media (min-width: 1000px) and (max-width: 1599px) { .midi-instrument-head { gap: 7px; } .midi-headunit-readout { box-sizing: border-box; width: 110px; min-width: 90px; } }
+
+.game-chrome:has(.midi-starting-palettes[open], .level-tools[open], .midi-instrument-menus details[open]) { z-index: 60; }
+
+@media (max-width: 999px) { .midi-preset-popover { position: fixed; left: 12px; right: 12px; top: auto; width: auto; max-width: none; } }
+
+.midi-game-event { overflow: hidden; isolation: isolate; }
+.midi-game-event .midi-audible-note { position: absolute; left: 0; pointer-events: none; background: #e9bf78; color: #1a281e; border-radius: 2px; padding: 0 2px; font: 8px ui-monospace, monospace; line-height: 10px; z-index: -1; }
+
+.midi-event-clip-editor { margin: 10px 0; border-block: 1px solid #b9c1a8; padding-block: 9px; }
+.midi-event-clip-editor [hidden] { display: none !important; }
+.midi-clip-controls { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; margin-block: 8px; }
+.midi-clip-controls label { display: flex; flex-direction: column; gap: 4px; font-size: 10px; min-width: 0; }
+.midi-clip-controls :is(input,select) { width: 100%; min-width: 0; box-sizing: border-box; font-size: 10px; padding: 4px 2px; }
+.midi-event-clip-grid { display: grid; grid-template-columns: repeat(var(--clip-cells,8),minmax(0,1fr)); height: 105px; gap: 1px; touch-action: none; user-select: none; background: repeating-linear-gradient(to top,#bdc6ac 0 1px,transparent 1px 12px); }
+.midi-event-clip-grid .midi-event-clip-cell { position: relative; display: block; padding: 0; min-width: 0; border-radius: 2px; background: #f8f6e780; border-color: #a6b597; overflow: hidden; }
+.midi-event-clip-cell[aria-pressed=true] { background: #d0dab8; outline: 1px solid #5a7350; }
+.midi-event-clip-cell small { position: absolute; bottom: 1px; left: 0; width: 100%; font: 8px ui-monospace,monospace; }
+.midi-clip-note-bar { position: absolute; left: 0; right: 0; height: 12px; border-radius: 2px; background: #536e45; color: #fffceb; font: 8px ui-monospace,monospace; line-height: 12px; }
+
+.midi-skill-event-dock { position: relative; height: 82px; background: #152118; border-bottom: 1px solid #3c533c; }
+.midi-skill-event-dock[hidden] { display: none; }
+.midi-skill-event-groups { position: absolute; top: 0; display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 1px; }
+.midi-skill-event-slot { display: flex; flex-direction: column; gap: 2px; min-width: 0; border-inline-start: 1px solid #3b4c38; }
+.midi-skill-event-dock .midi-game-event { grid-template-columns: minmax(0,1fr); gap: 0; padding: 3px 1px !important; min-height: 36px; border-radius: 3px; text-align: center; }
+.midi-skill-event-dock .midi-game-event strong { font-size: 9px; line-height: 13px; }
+.midi-skill-event-dock .midi-event-summary { font-size: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.midi-skill-event-dock .midi-event-count { display: none; }
+.midi-skill-event-dock.is-compact .midi-game-event strong { font-size: 10px; }
+
+@media (max-width: 999px) { .studio-open .studio-events { display: block; } .studio-open .studio-library { max-height: 180px; } }

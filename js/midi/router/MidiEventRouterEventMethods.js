@@ -1,3 +1,4 @@
+import { clipCellEnabled, buildMidiClipPhrase, applyMidiClipTransforms, getMidiTransportBar } from '../project/MidiClipPlayback.js';
 import { MidiMapping } from '../MidiMapping.js';
 import { MidiScheduler } from '../MidiScheduler.js';
 import { isMidiFlagTriggerType } from '../MidiFlagTriggers.js';
@@ -26,7 +27,7 @@ const midiEventRouterEventMethods = {
       if (!event || event.sfxId == null) return;
       if (!this.mapping.config?.enabled) return;
       if ((event.sfxId === SoundEffectIds.SPAWN || event.sfxId === SoundEffectIds.LAND) && !this.mapping.getSfxConfig(event.sfxId)) return;
-      if (event.reverse) {
+      if (event.reverse || (Number.isInteger(event.tick) && this._tickCounter.tick != null && event.tick < this._tickCounter.tick)) {
         this.scheduler.gamePhrases?.clear();
         this._arpStateBySfx.clear();
       }
@@ -61,7 +62,7 @@ const midiEventRouterEventMethods = {
         return;
       }
       const sfx = triggerCfg ? { ...baseSfx, ...triggerCfg } : baseSfx;
-      const spec = this.mapping.mapEvent(event, context, density, sfx);
+      let spec = this.mapping.mapEvent(event, context, density, sfx);
       if (!spec) return;
       if (typeof this.scheduler.hasOutput === 'function' && !this.scheduler.hasOutput(spec.outputId ?? null)) {
         return;
@@ -95,7 +96,32 @@ const midiEventRouterEventMethods = {
         noteList = this._singleNoteBuffer;
       }
 
-      const fire = event.type === 'lemming-fire';
+      if (sfx.clipSequence?.steps?.length) {
+        const sequence = sfx.clipSequence, length = sequence.steps.length;
+        const key = this._resolveArpKey(event, sfx), previous = this._arpStateBySfx.get(key);
+        const count = previous?.seqKey === sequence.id ? previous.index : 0;
+        const completedPasses = previous?.seqKey === sequence.id ? previous.completedPasses || 0 : 0;
+        const pass = sequence.advance === 'event' ? Math.floor(count / length) + 1 : sequence.passCounter === 'completed' ? completedPasses + 1 : count + 1;
+        const timer = this._phraseTimer || this.context?.game?.getGameTimer?.();
+        const bar = getMidiTransportBar(this.mapping.config?.timing, event.tick ?? timer?.getGameTicks?.(), timer?.TIME_PER_FRAME_MS || 60);
+        this._storeArpState(key, { index: count + 1, dir: 1, length, seqKey: sequence.id, completedPasses, pass, bar, advance: sequence.advance });
+        const mapStep = step => this.mapping.mapEvent(event, context, density, { ...sfx, note: step.note, notes: null,
+          velocity: step.velocity, durationTicks: step.durationTicks, arp: null, phrase: null });
+        if (sequence.advance === 'game-tick') {
+          const cells = buildMidiClipPhrase(sequence, count + 1, pass, mapStep, bar);
+          this._queueGameEventClip(event, spec, meta, cells, sequence.spacingTicks, () => {
+            const state = this._arpStateBySfx.get(key);
+            if (state?.seqKey === sequence.id && state.advance === 'game-tick') state.completedPasses += 1;
+          });
+          return;
+        }
+        const index = count % length, step = sequence.steps[index];
+        if (!clipCellEnabled(sequence, step, count + 1, pass, bar)) return;
+        spec = { ...mapStep(applyMidiClipTransforms(step, count + 1, pass, bar)), reverse: !!event.reverse, stepIndex: index, stepCount: length };
+        noteList = [spec.note];
+      }
+
+      const fire = !sfx.clipSequence && event.type === 'lemming-fire';
       if (fire && !event.reverse) {
         const key = `fire:${event.sfxId}`;
         const previous = this._arpStateBySfx.get(key);

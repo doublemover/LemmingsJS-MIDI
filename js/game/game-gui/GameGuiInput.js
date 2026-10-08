@@ -19,7 +19,9 @@ import {
 } from './GameGuiShared.js';
 const gameGuiInputMethods = {
   setMiniMap(miniMap) {
+    this.miniMap?.setHoverInvalidationHandler?.(null);
     this.miniMap = miniMap;
+    miniMap?.setHoverInvalidationHandler?.(() => this._requestGuiRender());
     this.game?.lemmingManager?.setMiniMap?.(miniMap);
   },
 

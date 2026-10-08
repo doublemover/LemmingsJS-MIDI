@@ -48,6 +48,7 @@ class FakeContext {
     this.oscillators = [];
     this.gains = [];
     this.panners = [];
+    this.limiters = [];
     this.listeners = new Set();
     this.resumeCalls = 0;
     this.closeCalls = 0;
@@ -57,6 +58,11 @@ class FakeContext {
     const node = new FakeNode();
     node.gain = new FakeParam();
     this.gains.push(node);
+    return node;
+  }
+  createWaveShaper() {
+    const node = new FakeNode();
+    this.limiters.push(node);
     return node;
   }
   createStereoPanner() {
@@ -93,6 +99,53 @@ const setup = (options = {}, context = new FakeContext()) => {
 };
 
 describe('BrowserNotePreview', function() {
+  it('reports successful local onset, scheduled release and panic, while rejecting invalid notes quietly', async function() {
+    const events = [];
+    const { preview, context } = setup({ onPlayback: event => events.push(event) });
+    const metadata = { sfxId: 20, durationMs: 120 };
+    expect(preview.output.channels[1].sendNoteOn(60, { playback: metadata })).to.equal(false);
+    await preview.enable();
+    expect(preview.output.channels[1].sendNoteOn(128, { playback: metadata })).to.equal(false);
+    expect(events).to.have.length(0);
+    preview.output.channels[1].sendNoteOn(60, { rawAttack: 127, time: 1100, playback: metadata });
+    expect(events[0]).to.include({ phase: 'start', note: 60, sfxId: 20, startMs: 1100, attackMs: 8, decayMs: 0, sustain: 1 });
+    preview.output.channels[1].sendNoteOff(60, { time: 1220 });
+    expect(events[1].releaseMs).to.be.closeTo(1220, 0.0001);
+    expect(events[1].endMs).to.be.closeTo(1260, 0.0001);
+    expect(context.oscillators[0].stops.at(-1)).to.be.closeTo(2.26, 0.0001);
+    preview.stop(); expect(events.at(-1).phase).to.equal('end');
+    await preview.dispose();
+  });
+
+  it('emits playback only at scheduler dispatch and cancels a future note before it sounds', async function() {
+    await withFakeClockAndPerformance(async clock => {
+      const events = []; const { preview } = setup({ nowMs: () => clock.now, onPlayback: event => events.push(event) });
+      await preview.enable();
+      const scheduler = new MidiScheduler({ enabled: true, mpe: { enabled: false } });
+      scheduler.setOutput(preview.output); scheduler.setTickMs(60);
+      scheduler.sendNote({ note: 60, durationTicks: 4, timeMs: 100 }, { sfxId: 20 });
+      expect(events).to.have.length(0); clock.tick(100);
+      expect(events[0]).to.include({ phase: 'start', sfxId: 20, durationMs: 240 });
+      scheduler.sendNote({ note: 72, durationTicks: 4, timeMs: 200 }, { sfxId: 24 });
+      scheduler.allNotesOff(); clock.tick(500);
+      expect(events.filter(event => event.phase === 'start')).to.have.length(1);
+      scheduler.dispose(); await preview.dispose();
+    });
+  });
+  it('offers an explicit 12 dB local boost through a bounded output ceiling without changing MIDI attack', async function() {
+    const { preview, context } = setup({ masterVolume: 4 });
+    await preview.enable();
+    expect(context.gains[0].gain.value).to.equal(0.15);
+    const limiter = context.limiters[0];
+    expect(context.gains[0].connections).to.deep.equal([limiter]);
+    expect(limiter.connections).to.deep.equal([context.destination]);
+    expect(Math.max(...limiter.curve.map(Math.abs))).to.be.lessThan(0.9);
+    expect(limiter.curve[2048 + 512]).to.equal(0.25);
+    preview.output.channels[1].sendNoteOn(60, { rawAttack: 127 });
+    expect([...preview._voices][0].peak).to.equal(1);
+    await preview.dispose();
+    expect(limiter.disconnected).to.equal(true);
+  });
   it('keeps master volume changes inert until enabled and applies the 70% default below the safe gain cap', async function() {
     const { preview, context, creations } = setup();
     expect(preview.getState().masterVolume).to.equal(0.7);
@@ -163,13 +216,13 @@ describe('BrowserNotePreview', function() {
     const { preview, context, creations } = setup({ masterVolume: Infinity });
     expect(preview.getState().masterVolume).to.equal(0.7);
     expect(preview.setMasterVolume(-1)).to.equal(0);
-    expect(preview.setMasterVolume(2)).to.equal(1);
-    expect(preview.setMasterVolume(NaN)).to.equal(1);
-    expect(preview.setMasterVolume('0.5')).to.equal(1);
+    expect(preview.setMasterVolume(5)).to.equal(4);
+    expect(preview.setMasterVolume(NaN)).to.equal(4);
+    expect(preview.setMasterVolume('0.5')).to.equal(4);
     expect(creations()).to.equal(0);
     await preview.enable();
     await preview.dispose();
-    expect(preview.setMasterVolume(0)).to.equal(1);
+    expect(preview.setMasterVolume(0)).to.equal(4);
     expect(context.gains[0].gain.events).to.deep.equal([]);
   });
 

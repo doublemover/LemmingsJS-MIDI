@@ -71,6 +71,9 @@ class MiniMap {
 
     this._displayListeners = null;
     this._mouseDown = false;
+    this._hoverTarget = null;
+    this._hoverPointerCleanup = null;
+    this.onHoverChanged = null;
     this.viewportDashOffset = 0;
     this._viewportCounter = 0;
     this.viewportDashDelay = 100;

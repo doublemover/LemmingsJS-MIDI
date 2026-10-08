@@ -81,8 +81,8 @@ const SKILL_SFX_MAP = new Map([
   [SoundEffectIds.BASH, SkillTypes.BASHER],
   [SoundEffectIds.DIG, SkillTypes.DIGGER],
   [SoundEffectIds.MINE, SkillTypes.MINER],
-  [SoundEffectIds.OHNO, SkillTypes.BOMBER],
-  [SoundEffectIds.EXPLOSION, SkillTypes.BOMBER]
+  [SoundEffectIds.BLOCKER_TURN, SkillTypes.BLOCKER],
+  [SoundEffectIds.BLOCKER_CONTACT, SkillTypes.BLOCKER]
 ]);
 
 const ANY_SKILL_SFX = new Set([
@@ -215,18 +215,26 @@ const resolveSkillAvailability = (level, skills) => {
     ALL_SKILLS.forEach(skill => available.add(skill));
     return { cheat: true, available, hasAny: true };
   }
+  const inventory = skills?.initialSkills || level?.skills;
+  if (!Array.isArray(inventory) && typeof skills?.getSkill !== 'function') {
+    ALL_SKILLS.forEach(skill => available.add(skill));
+    return { cheat: false, available, hasAny: true };
+  }
   for (const skill of ALL_SKILLS) {
-    let count = null;
-    if (skills?.getSkill) {
-      count = skills.getSkill(skill);
-    } else if (Array.isArray(level?.skills)) {
-      count = level.skills[skill] ?? 0;
-    }
+    const count = Array.isArray(inventory) ? inventory[skill] ?? 0 : skills.getSkill(skill);
     if (Number.isFinite(count) && count > 0) {
       available.add(skill);
     }
   }
   return { cheat: false, available, hasAny: available.size > 0 };
+};
+
+const resolveUnavailableSkillSfxIds = (level, skills) => {
+  const info = resolveSkillAvailability(level, skills);
+  const unavailable = new Set();
+  for (const [id, skill] of SKILL_SFX_MAP) if (!info.available.has(skill)) unavailable.add(id);
+  if (!info.hasAny) for (const id of ANY_SKILL_SFX) unavailable.add(id);
+  return unavailable;
 };
 
 const levelHasSteel = (level) => {
@@ -332,34 +340,22 @@ const resolveAvailableSfxIds = (config, level, skills) => {
     ids.forEach(id => available.add(id));
     return available;
   }
-  const skillInfo = resolveSkillAvailability(level, skills);
+  const unavailableSkills = resolveUnavailableSkillSfxIds(level, skills);
   const trapSfx = collectTrapSfxIds(level);
   const triggerTypes = collectTriggerTypes(level);
   const hasSteel = levelHasSteel(level);
   for (const id of ids) {
-    if (SKILL_SFX_MAP.has(id)) {
-      const skill = SKILL_SFX_MAP.get(id);
-      if (skillInfo.cheat || skillInfo.available.has(skill)) {
-        available.add(id);
-      }
-      continue;
-    }
-    if (ANY_SKILL_SFX.has(id)) {
-      if (skillInfo.cheat || skillInfo.hasAny) {
-        available.add(id);
-      }
-      continue;
-    }
+    if (unavailableSkills.has(id)) continue;
     if (id === SoundEffectIds.STEEL_HIT) {
-      if (hasSteel) available.add(id);
+      if (!level || hasSteel) available.add(id);
       continue;
     }
     if (id === SoundEffectIds.DROWN) {
-      if (triggerTypes.has(TriggerTypes.DROWN)) available.add(id);
+      if (!level || triggerTypes.has(TriggerTypes.DROWN)) available.add(id);
       continue;
     }
     if (TRAP_SFX_IDS.has(id)) {
-      if (trapSfx.has(id)) available.add(id);
+      if (!level || trapSfx.has(id)) available.add(id);
       continue;
     }
     available.add(id);
@@ -423,5 +419,6 @@ export {
   SFX_NAME_BY_ID,
   collectTriggerTypes,
   resolveAvailableSfxIds,
+  resolveUnavailableSkillSfxIds,
   resolvePositionMappings
 };

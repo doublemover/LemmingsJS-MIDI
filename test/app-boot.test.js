@@ -38,6 +38,7 @@ describe('app boot helpers', function () {
     };
     const listeners = [];
     const slot = { clientWidth: 1540, clientHeight: 704 };
+    const dock = { hidden: true, offsetHeight: 82 };
     let resizeObserverCallback;
 
     try {
@@ -78,8 +79,8 @@ describe('app boot helpers', function () {
           if (selector === '.game-stage-slot') return slot;
           return null;
         },
-        getElementById() {
-          return null;
+        getElementById(id) {
+          return id === 'midiSkillEventDock' ? dock : null;
         }
       };
 
@@ -93,6 +94,7 @@ describe('app boot helpers', function () {
       boot.setLemmingsForTest({
         gameCanvas: canvas,
         stage: {
+          hudMargin: 20,
           scheduleUpdateStageSize() {
             stageResizeCalls += 1;
           }
@@ -121,6 +123,15 @@ describe('app boot helpers', function () {
         expect(drawnWidth / drawnHeight).to.be.closeTo(800 / 480, 0.00001);
         expect(container.style.marginTop).to.equal('');
         expect(container.style.marginLeft).to.equal('');
+      }
+      dock.hidden = false;
+      for (const [width, height] of [[340, 640], [794, 286]]) {
+        slot.clientWidth = width; slot.clientHeight = height; boot.setSize();
+        const drawnWidth = parseFloat(canvas.style.width), drawnHeight = parseFloat(canvas.style.height);
+        expect(drawnWidth / drawnHeight).to.be.closeTo(800 / 480, 0.00001);
+        expect(parseFloat(container.style.height)).to.be.at.most(height);
+        expect(parseFloat(container.style.height) - drawnHeight).to.be.closeTo(82 - 20 * drawnWidth / 800, 0.00001);
+        expect(canvas.width).to.equal(800); expect(canvas.height).to.equal(480);
       }
 
     } finally {

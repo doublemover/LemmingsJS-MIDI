@@ -30,6 +30,41 @@ const makeLevel = (counter) => ({
 });
 
 describe('MiniMap', function() {
+  it('previews the actual click destination without moving the viewport and reuses unchanged hover frames', function() {
+    const level = makeLevel({ value: 1 }); level.width = 500;
+    const gui = makeGuiDisplay(), miniMap = new MiniMap({}, level, gui);
+    const event = { x: gui.worldDataSize.width - 1, y: gui.worldDataSize.height - 2 };
+    const ants = []; miniMap.frame.drawMarchingAntRect = (...args) => ants.push(args);
+    withGlobalLemmings({ stage: { getGameViewRect: () => ({ x: 0, y: 0, w: 120, h: 25 }) } }, () => {
+      gui.onMouseMove.trigger(event);
+      expect(level.screenPositionX).to.equal(0); expect(gui.setScreenPositionCalls).to.have.length(0);
+      const target = miniMap._hoverTarget.x; expect(target).to.equal(380);
+      miniMap.render(); expect(ants).to.have.length(2);
+      expect(ants[0][0]).to.equal((target * miniMap.scaleX) | 0);
+      expect(ants[0][6]).to.equal(0xFFB1C7A3); expect(ants[1][6]).to.equal(0xFF00FF00);
+      const count = miniMap.getRenderDiagnostics().composes;
+      gui.onMouseMove.trigger(event); miniMap.render(); expect(miniMap.getRenderDiagnostics().composes).to.equal(count);
+      gui.onMouseDown.trigger(event); expect(level.screenPositionX).to.equal(target);
+      gui.onMouseUp.trigger(event); gui.onMouseMove.trigger({ x: 0, y: 0 });
+      expect(miniMap._hoverTarget).to.equal(null); miniMap.render();
+    });
+    miniMap.dispose();
+  });
+
+  it('clears hover on leaving the GUI or canvas, requests paused GUI redraw and cleans owned listeners', function() {
+    const gui = makeGuiDisplay(), moves = new EventHandler(), listeners = new Map();
+    gui.stage = { controller: { onMouseMove: moves }, getStageImageAt: () => null,
+      stageCav: { addEventListener: (name, handler) => listeners.set(name, handler), removeEventListener: name => listeners.delete(name) } };
+    const miniMap = new MiniMap({}, makeLevel({ value: 1 }), gui);
+    let invalidations = 0; miniMap.setHoverInvalidationHandler(() => { invalidations += 1; });
+    const event = { x: gui.worldDataSize.width - 1, y: gui.worldDataSize.height - 1 };
+    gui.onMouseMove.trigger(event); expect(miniMap._hoverTarget).not.to.equal(null);
+    moves.trigger({ x: 0, y: 0 }); expect(miniMap._hoverTarget).to.equal(null);
+    gui.onMouseMove.trigger(event); listeners.get('pointerleave')(); expect(miniMap._hoverTarget).to.equal(null);
+    expect(invalidations).to.equal(4); miniMap.dispose();
+    expect(listeners.size).to.equal(0); expect(moves.handlers.size).to.equal(0);
+    expect(gui.onMouseMove.handlers.size).to.equal(0);
+  });
   useGlobalLemmings({});
 
   it('builds terrain and responds to updates', function() {
