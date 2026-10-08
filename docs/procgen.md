@@ -63,10 +63,10 @@ already-expired entries; separate calls still prune at their own timestamps.
 These source-level cleanups have correctness/operation-count tests, not a new
 browser performance measurement.
 
-Wheel or Z/X zooms, including far-out views down to 1/256 scale. Zoom keeps the
+Wheel or Z/X zooms down to the fit of the actual lane stack and usable canvas height. Zoom keeps the
 left edge and first-lane top edge pinned when the view is at the origin. Drag,
-arrows, or Shift-wheel pans; Shift-arrows pans faster. Manual changes suspend
-following. F or double-click resumes on the furthest-ahead living actor, including
+arrows, or Shift-wheel pans; Shift-arrows pans faster. Deliberate panning suspends
+following; zoom and pointer jitter keep following. F or double-click resumes on the furthest-ahead living actor, including
 its current lane. V resets the zoom, Space pauses, ] steps while paused, Backspace
 restarts, and +/- changes speed (Shift applies five steps). Existing overrides in
 keybindings.json apply to these actions. Editing a control never triggers game
@@ -82,7 +82,7 @@ Each lane retains a rightward high-water mark, previous/best distance, and actua
 spawn count since its last advance. The fixed top score and visible lane distances use the exact main-game
 bitmap HUD glyphs. Labels use supported A-Z, digits, space and hyphen; punctuation
 not present in MAIN.DAT is not substituted with a browser font. Visible lanes also
-retain a vertical previous-distance marker. Individual lane labels are suppressed
+retain a vertical previous-distance marker at the saved distance plus the 36-pixel spawn origin. Its black/white dashes use screen-space sizing; phase advances with game ticks and is fixed while paused or under reduced motion. Individual lane labels are suppressed
 in far-out views to avoid overlap, while the top score remains readable. Records survive explicit restart/page reload
 through local storage; unavailable storage leaves the current session usable.
 

@@ -19,6 +19,7 @@ class ProcgenLaneRenderer {
     this.camera = createProcgenCameraController(this);
     this.decorationLayer = assets.decorationPack ? new DecorationLayer(canvas.ownerDocument, assets.decorationPack) : null;
     this.reducedMotion = windowRef.matchMedia?.('(prefers-reduced-motion: reduce)');
+    this.markerDash = [4, 4]; this.markerSolidDash = [];
   }
   resize() { this.lastTerrainKey = ''; this.lastGeometryKey = ''; this.render(); }
   _frameCanvas(frame) {
@@ -195,6 +196,28 @@ class ProcgenLaneRenderer {
     }
     this._flushDots(this.objectDots, context); this.bufferContext.drawImage(this.objectBuffer, 0, 0);
   }
+  _drawPreviousDistances(dpr) {
+    const context = this.context, sx = this.canvas.width / this.viewWidth;
+    const screenHeight = this.canvas.height - (Number(this.overviewBandHeight) || 0) * dpr;
+    const sy = screenHeight / this.viewHeight;
+    const first = Math.max(0, Math.floor(this.originY / LANE_HEIGHT));
+    const last = Math.min(this.world.laneCount - 1, Math.floor((this.originY + this.viewHeight) / LANE_HEIGHT));
+    this.markerDash[0] = this.markerDash[1] = 4 * dpr;
+    context.save?.(); context.lineCap = 'butt';
+    for (let lane = first; lane <= last; lane++) {
+      const previous = this.world.stall.lanes[lane].previousDistance;
+      const x = (previous + 36 - this.originX) * sx;
+      if (previous <= 0 || x < 0 || x >= this.canvas.width) continue;
+      const y0 = Math.max(0, (lane * LANE_HEIGHT - this.originY) * sy);
+      const y1 = Math.min(screenHeight, ((lane + 1) * LANE_HEIGHT - this.originY) * sy);
+      context.beginPath(); context.moveTo(Math.round(x), y0); context.lineTo(Math.round(x), y1);
+      context.strokeStyle = '#000'; context.lineWidth = 2 * dpr; context.setLineDash?.(this.markerSolidDash); context.stroke();
+      context.strokeStyle = '#fff'; context.lineWidth = dpr; context.setLineDash?.(this.markerDash);
+      context.lineDashOffset = this.reducedMotion?.matches ? 0 : -(this.world.tickIndex % 32) * dpr / 2;
+      context.stroke();
+    }
+    context.restore?.();
+  }
   // Explicit requests redraw; the RAF loop may reuse a fully unchanged frame.
   render(force = true) {
     const start = this.window.performance?.now?.() ?? 0;
@@ -237,19 +260,10 @@ class ProcgenLaneRenderer {
       actor.render(this); this.renderedActors++;
     }
     this._flushDots(this.actorDots);
-    this.bufferContext.strokeStyle = '#b99b66';
-    const firstLane = Math.max(0, Math.floor(this.originY / LANE_HEIGHT));
-    const lastLane = Math.min(this.world.laneCount - 1, Math.floor((this.originY + this.viewHeight) / LANE_HEIGHT));
-    for (let lane = firstLane; lane <= lastLane; lane++) {
-      const previous = this.world.stall.lanes[lane].previousDistance;
-      const x = (previous + 36 - this.originX) / this.rasterStep;
-      if (previous <= 0 || x < 0 || x >= width) continue;
-      this.bufferContext.beginPath(); this.bufferContext.moveTo(x, (lane * LANE_HEIGHT - this.originY) / this.rasterStep);
-      this.bufferContext.lineTo(x, ((lane + 1) * LANE_HEIGHT - this.originY) / this.rasterStep); this.bufferContext.stroke();
-    }
     this.world.characterParticles?.render(this);
     this.context.imageSmoothingEnabled = false;
     this.context.drawImage(this.buffer, 0, 0, this.canvas.width, this.canvas.height);
+    this._drawPreviousDistances(dpr);
     this.hud?.render(this.context, this.world, this.camera, dpr);
     this.lastFrameKey = frameKey; this.lastAppearance = appearance; this.lastSprites = sprites; this.lastHud = this.hud; this.lastHudSprites = this.hud?.sprites; this.lastDecorationLayer = this.decorationLayer;
     this.lastFrameMs = (this.window.performance?.now?.() ?? start) - start;

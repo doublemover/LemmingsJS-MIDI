@@ -58,4 +58,26 @@ describe('bounded shared-lane renderer', () => {
     renderer.dispose(); world.dispose();
   });
 
+  it('draws prior-run distance as screen-space black/white ants with paused and reduced-motion stability', async () => {
+    const world = new ProcgenLaneWorld({ masks: await loadProcgenMasks(), laneCount: 2, previousDistances: [100, 0] });
+    const canvas = canvasFixture(), context = canvas.getContext('2d'), strokes = [], paths = [];
+    context.save = () => {}; context.restore = () => {};
+    context.moveTo = (x, y) => paths.push(['start', x, y]); context.lineTo = (x, y) => paths.push(['end', x, y]);
+    context.setLineDash = dash => { context.dash = dash.slice(); };
+    context.stroke = () => strokes.push({ color: context.strokeStyle, width: context.lineWidth, dash: context.dash, offset: context.lineDashOffset || 0 });
+    const renderer = new ProcgenLaneRenderer({ canvas, world, assets: {}, windowRef: { devicePixelRatio: 1, performance } });
+    renderer.viewWidth = 300; renderer.viewHeight = 150; renderer.originX = renderer.originY = 0;
+    world.tickIndex = 4; const dash = renderer.markerDash;
+    renderer._drawPreviousDistances(1);
+    expect(paths).to.deep.equal([['start', 408, 0], ['end', 408, 288]]);
+    expect(strokes[0]).to.include({ color: '#000', width: 2 }); expect(strokes[0].dash).to.deep.equal([]);
+    expect(strokes[1]).to.include({ color: '#fff', width: 1, offset: -2 }); expect(strokes[1].dash).to.deep.equal([4, 4]);
+    renderer._drawPreviousDistances(1); expect(strokes[3].offset).to.equal(-2);
+    world.tickIndex = 6; renderer._drawPreviousDistances(1); expect(strokes[5].offset).to.equal(-3);
+    renderer.reducedMotion = { matches: true }; renderer._drawPreviousDistances(2);
+    expect(strokes[7]).to.include({ width: 2, offset: 0 }); expect(strokes[7].dash).to.deep.equal([8, 8]);
+    expect(renderer.markerDash).to.equal(dash); expect(world.stall.lanes[0].previousDistance).to.equal(100);
+    renderer.dispose(); world.dispose();
+  });
+
 });
