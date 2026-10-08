@@ -249,3 +249,5 @@ factory projects.
   learn capture, short recording, modulation controls, track and clip removal,
   clip duplication, audition, persistence, filters, conflict warnings, E2E
   helper metrics, and responsive overflow checks.
+
+Audible row notes follow successfully dispatched local triangle voices, showing actual pitches moving left to right through their attack, held level and release fade. Cancelled future notes create no marker; Panic removes active markers. The local triangle has an 8 ms attack, no separate decay and a 40 ms release. Project envelope controls still scale MIDI velocity/duration; they do not imply synth ADSR timing. Focus/Split/Overlay move the same editor with compositor transforms, retaining focus and playback without resizing the canvas every animation frame.

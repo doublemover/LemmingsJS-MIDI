@@ -131,6 +131,7 @@ const midiSchedulerSendMethods = {
           }
 
           channel.sendNoteOn(spec.note, { rawAttack: attackVelocity, time: sendTimeMs,
+            ...(output.supportsPlaybackMetadata ? { playback: { sfxId: meta.sfxId, triggerType: meta.triggerType, durationMs, stepIndex: spec.stepIndex, stepCount: spec.stepCount } } : {}),
             ...(output.supportsPerNotePan && Number.isFinite(spec.pan) ? { pan: spec.pan / 127 } : {}) });
           active.hasStarted = true;
           if (typeof window !== 'undefined') window.lastMidiOutputMessage = {

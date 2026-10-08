@@ -2237,7 +2237,7 @@ const createMidiUiController = ({
 
   const ensureLocalPreview = () => {
     getLemmings()?.setLocalAudioStopHandler?.(stopLocalPreview);
-    if (!localAudio) localAudio = createPreviewAudio({ masterVolume, onStateChange: renderLocalSummary });
+    if (!localAudio) localAudio = createPreviewAudio({ masterVolume, onStateChange: renderLocalSummary, onPlayback: event => workbench?.onPlayback({ ...event, owner: 'game' }) });
     if (!localGamePreview) localGamePreview = createLocalGamePreview({
       getLemmings, getConfig: getProjectConfig, immutableConfig: true, audio: localAudio, onStateChange: renderLocalSummary
     });
@@ -2255,7 +2255,7 @@ const createMidiUiController = ({
   const testSelectedSound = async () => {
     const source = selectedSource();
     if (!source) return false;
-    if (!auditionAudio) auditionAudio = createPreviewAudio({ masterVolume, onStateChange: renderLocalSummary });
+    if (!auditionAudio) auditionAudio = createPreviewAudio({ masterVolume, onStateChange: renderLocalSummary, onPlayback: event => workbench?.onPlayback({ ...event, owner: 'audition' }) });
     const key = JSON.stringify(source.mapping);
     const previous = auditionSteps.get(source.id);
     const index = previous?.key === key ? previous.index : 0;

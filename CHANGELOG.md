@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Animate actual local note pitches and releases across event rows; move the persistent editor smoothly between layouts without per-frame canvas resizing.
+
 ### Added
 - Compact seven-pixel character silhouettes, shape-specific walking and panic, sampled terrain debris, and intact accessory/eyewear ejection work in both classic levels and the sparse procgen world.
 - Procgen now has a hidden pull-down drawer, shared visual character choices, 1–1024 left-to-right lanes in one sparse world, staggered spawn cohorts, local-only listening and fifteen action-music presets.

@@ -22,6 +22,7 @@ const createSoundAuditionPlan = (source, project, frameMs = 60, eventIndex = 0) 
   }
   return { notes: notes.slice(0, 8).map((note, index) => ({
     note, velocity: spec.velocity,
+    playback: { sfxId: Number(source.sourceKey), durationMs: spec.durationTicks * frameMs },
     pan: spec.pan, pitchBend: spec.pitchBend,
     durationMs: spec.durationTicks * frameMs,
     offsetMs: m.phrase?.enabled ? index * (m.phrase.spacingTicks || 2) * frameMs : 0

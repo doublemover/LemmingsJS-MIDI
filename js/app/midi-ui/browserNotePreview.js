@@ -21,7 +21,7 @@ const createOutputCeiling = context => {
 
 /** A local tone monitor. It owns its audio context and never opens a MIDI device. */
 class BrowserNotePreview {
-  constructor({ createAudioContext, nowMs, onStateChange, maxVoices = 16, maxNoteSeconds = 8, volume = 0.15, masterVolume = 0.7 } = {}) {
+  constructor({ createAudioContext, nowMs, onStateChange, onPlayback, maxVoices = 16, maxNoteSeconds = 8, volume = 0.15, masterVolume = 0.7 } = {}) {
     const AudioContextType = globalThis.AudioContext || globalThis.webkitAudioContext;
     this._createContext = createAudioContext === undefined
       ? (AudioContextType ? () => new AudioContextType({ sampleRate: 48000 }) : null)
@@ -45,6 +45,8 @@ class BrowserNotePreview {
     this._status = this._createContext ? 'idle' : 'unsupported';
     this._message = this._createContext ? 'Browser preview is off.' : 'Browser audio is not supported.';
     this._voices = new Set();
+    this._voiceSequence = 0;
+    this._onPlayback = onPlayback;
     this._channels = new Map();
     this._onContextState = () => {
       if (this._disposed || !this._enabled || this._context?.state === 'running') return;
@@ -66,6 +68,7 @@ class BrowserNotePreview {
       id: 'browser-note-preview',
       name: 'Browser audio preview',
       supportsPerNotePan: true,
+      supportsPlaybackMetadata: true,
       channels: Object.freeze(channels),
       clear: () => this._clearVoices()
     });
@@ -244,7 +247,7 @@ class BrowserNotePreview {
       const time = baseTime + offset;
       const length = clamp(finite(spec.durationMs, durationMs), 30, this._maxNoteSeconds * 1000);
       if (Number.isFinite(spec.pitchBend)) channel.sendPitchBend(spec.pitchBend, { time });
-      if (channel.sendNoteOn(spec.note, { rawAttack: finite(spec.velocity, 80), time,
+      if (channel.sendNoteOn(spec.note, { rawAttack: finite(spec.velocity, 80), time, playback: spec.playback,
         ...(Number.isFinite(spec.pan) ? { pan: clamp(spec.pan / 127, -1, 1) } : {}) })) {
         channel.sendNoteOff(spec.note, { time: time + length });
         played = true;
@@ -306,7 +309,7 @@ class BrowserNotePreview {
       const channel = this._channel(number);
       oscillator = context.createOscillator();
       gain = context.createGain();
-      voice = { oscillator, gain, number, note, start, end: start + this._maxNoteSeconds, released: false, peak: clamp(finite(options?.rawAttack, 80), 1, 127) / 127 };
+      voice = { oscillator, gain, number, note, start, id: ++this._voiceSequence, playback: options.playback, startMs: this._nowMs() + (start - context.currentTime) * 1000, end: start + this._maxNoteSeconds, released: false, peak: clamp(finite(options?.rawAttack, 80), 1, 127) / 127 };
       this._voices.add(voice);
       oscillator.type = 'triangle';
       oscillator.frequency.setValueAtTime(440 * (2 ** ((note - 69) / 12)), start);
@@ -333,6 +336,7 @@ class BrowserNotePreview {
       oscillator.onended = () => this._destroyVoice(voice);
       oscillator.start(start);
       oscillator.stop(voice.end);
+      this._emitPlayback(voice, 'start');
       this._setStatus(this._status, this._message);
       return true;
     } catch {
@@ -360,6 +364,7 @@ class BrowserNotePreview {
     voice.end = end;
     voice.released = true;
     if (force) voice.stolen = true;
+    this._emitPlayback(voice, 'release', releaseAt);
   }
 
   _noteOff(number, note, options = {}) {
@@ -379,12 +384,23 @@ class BrowserNotePreview {
 
   _destroyVoice(voice) {
     if (!voice || !this._voices.delete(voice)) return;
+    this._emitPlayback(voice, 'end');
     voice.oscillator.onended = null;
     try { voice.oscillator.stop(); } catch { /* Already ended or failed to start. */ }
     voice.oscillator.disconnect();
     voice.gain.disconnect();
     voice.pan?.disconnect();
     this._setStatus(this._status, this._message);
+  }
+
+  _emitPlayback(voice, phase, releaseAt = voice.end - RELEASE_SECONDS) {
+    if (!voice.playback || typeof this._onPlayback !== 'function') return;
+    try {
+      this._onPlayback({ ...voice.playback, id: voice.id, phase, note: voice.note, velocity: Math.round(voice.peak * 127),
+        startMs: voice.startMs, releaseMs: voice.startMs + (releaseAt - voice.start) * 1000,
+        endMs: voice.startMs + (voice.end - voice.start) * 1000,
+        attackMs: ATTACK_SECONDS * 1000, decayMs: 0, sustain: 1 });
+    } catch { /* Display observers must never interrupt audio. */ }
   }
 
   _clearVoices(number = null) {

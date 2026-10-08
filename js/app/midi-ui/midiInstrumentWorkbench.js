@@ -1,3 +1,4 @@
+import { createMidiEventPlayback } from './midiEventPlayback.js';
 import { resolveUnavailableSkillSfxIds } from './midiUiDomain.js';
 import { GAME_SPEED_DETENTS, gameSpeedDetentIndex } from '../../game/GameSpeed.js';
 import { GAME_SOUND_EVENTS, getEventBehavior, createEventBehaviorPatch } from './midiSoundEditor.js';
@@ -22,15 +23,28 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
   const value = (id, next) => { const el = byId(id); if (el && (el.type === 'range' || el !== document?.activeElement) && el.value !== String(next)) el.value = String(next); };
   let layout = 'split', visible = false, timerId = null, soundBus = null, skills = null, menus = null, palettes = null;
   const activity = new Map(), references = new Map();
+  const getRows = () => Array.from(byId('midiGameEventList')?.children || []);
+  const playback = createMidiEventPlayback({ document, window, getRows });
+  let layoutAnimation = null;
   let lastEvent = null, lastTick = null;
   try { const stored = window?.localStorage?.getItem(LAYOUT_KEY); if (LAYOUTS.includes(stored)) layout = stored; } catch { /* Layout is optional storage. */ }
   const setLayout = next => {
     if (!LAYOUTS.includes(next)) return;
+    const panel = byId('midiSequencerWorkspace');
+    const previous = visible && layout !== next ? panel?.getBoundingClientRect?.() : null;
+    layoutAnimation?.cancel?.();
     layout = next;
     if (document?.body?.dataset) document.body.dataset.midiLayout = next;
     for (const name of LAYOUTS) byId(`midiLayout${name[0].toUpperCase() + name.slice(1)}`)?.setAttribute('aria-pressed', String(name === next));
     try { window?.localStorage?.setItem(LAYOUT_KEY, next); } catch { /* Keep the current session usable. */ }
     window?.dispatchEvent?.(new window.Event('resize'));
+    const target = previous && panel?.getBoundingClientRect?.();
+    if (target?.width && target.height && panel.animate && !window?.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      layoutAnimation = panel.animate([
+        { transformOrigin: 'top left', transform: 'translate(' + (previous.x - target.x) + 'px,' + (previous.y - target.y) + 'px) scale(' + previous.width / target.width + ',' + previous.height / target.height + ')' },
+        { transformOrigin: 'top left', transform: 'none' }
+      ], { duration: 180, easing: 'ease-out' });
+    }
   };
   const onEvent = event => {
     if (!Number.isFinite(event?.sfxId)) return;
@@ -69,7 +83,7 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
       if (row.hidden !== hidden) row.hidden = hidden;
       const item = activity.get(Number(row.dataset.gameEventId));
       row.dataset.activityCount = String(item?.count || 0);
-      row.classList.toggle('is-playing', !!item && clock.tick - item.tick >= 0 && clock.tick - item.tick < 4);
+
       const count = row.querySelector?.('.midi-event-count');
       if (count) { count.hidden = !item; count.textContent = item ? `${item.count}× · tick ${item.tick}` : ''; }
     }
@@ -131,7 +145,7 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     for (const id of ['midiUndo', 'midiMenuUndo']) { const el = byId(id); if (el) el.disabled = !undoState.canUndo; }
     for (const id of ['midiRedo', 'midiMenuRedo']) { const el = byId(id); if (el) el.disabled = !undoState.canRedo; }
     text('midiPatternAxis', mapping.arp?.enabled ? 'Event order · each trigger advances one note' : mapping.phrase?.enabled ? `Phrase · one note every ${mapping.phrase.spacingTicks} game ticks` : 'One note per event');
-    refreshClock();
+    refreshClock(); playback.render();
   };
   const finiteInput = (event, min, max) => {
     if (String(event.target.value).trim() === '') { render(); return null; }
@@ -205,9 +219,9 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
       (event.shiftKey ? history.redo : history.undo)(getProject(), commitProject); render();
     });
   };
-  return { initialize, render, setVisible, setLayout, refreshClock,
+  return { initialize, render, setVisible, setLayout, refreshClock, onPlayback: playback.onPlayback,
     getState: () => ({ layout, visible, clock: gameClock(getLemmings()?.game?.getGameTimer?.()), lastEvent: lastEvent && { sfxId: lastEvent.sfxId, tick: lastEvent.tick } }),
-    dispose: () => { setVisible(false); menus?.dispose(); menus = null; palettes?.dispose(); palettes = null; references.clear(); activity.clear(); } };
+    dispose: () => { playback.dispose(); layoutAnimation?.cancel?.(); setVisible(false); menus?.dispose(); menus = null; palettes?.dispose(); palettes = null; references.clear(); activity.clear(); } };
 };
 
 export { createMidiInstrumentWorkbench, gameClock, LAYOUTS };

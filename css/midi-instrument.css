@@ -86,7 +86,6 @@ body.game-page.studio-open[data-midi-layout=overlay] .midi-sequencer { grid-colu
 .midi-game-event .midi-event-count { grid-column: 1 / -1; font: 9px ui-monospace, monospace; }
 .midi-game-event[aria-selected=true] { background: #34472f; border-color: #7c936a; color: #f1f4df; }
 .midi-game-event[aria-selected=true] span { color: #b7c89e; }
-.midi-game-event.is-playing { box-shadow: inset 3px 0 #e9bf78; }
 .midi-game-event:hover { background: #293c2c; }
 .midi-sound-heading { margin-bottom: 8px; }
 .midi-sound-heading h2 { font-size: 19px; font-weight: 600; }
@@ -166,3 +165,6 @@ body.game-page.studio-open[data-midi-layout=overlay] .midi-sequencer { grid-colu
 .game-chrome:has(.midi-starting-palettes[open], .level-tools[open], .midi-instrument-menus details[open]) { z-index: 60; }
 
 @media (max-width: 999px) { .midi-preset-popover { position: fixed; left: 12px; right: 12px; top: auto; width: auto; max-width: none; } }
+
+.midi-game-event { overflow: hidden; isolation: isolate; }
+.midi-game-event .midi-audible-note { position: absolute; left: 0; pointer-events: none; background: #e9bf78; color: #1a281e; border-radius: 2px; padding: 0 2px; font: 8px ui-monospace, monospace; line-height: 10px; z-index: -1; }

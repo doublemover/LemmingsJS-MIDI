@@ -34,11 +34,12 @@ When a milestone replaces an old path, remove the old path in the same phase.
 - [x] Strengthen explicitly applied starting palettes without rewriting saved projects or their velocity limits.
 - [x] Restore game shortcuts while a speed range is focused; use tenths below 1x, integers through 10x, then tens, following effective slowdown.
 - [x] Move starting palettes beside Listen to game; tighten event cards, remove repeated empty labels and successful audition footers.
-- [ ] Show dispatched pitches/rhythm moving left to right through event rows with actual envelope phases.
+- [x] Show locally dispatched pitches moving left to right through event rows, matching actual triangle attack/hold/release and clearing on Panic.
 - [x] Hide only unavailable skill events, preserve mappings and restore rows immediately for cheats.
 - [ ] Extend existing clips into per-event 8/16-cell note entry, conditions and parameter locks with explicit event/clock advance and distinct event/bar/pass counters.
 - [x] Expose direct Panic, join level navigation, remove redundant picker labels, rename Source to GitHub and make color swatches contiguous with outer rounded ends.
-- [ ] Integrate applicable cards with the skill strip, preserve live playback/focus across layout transitions and finish adjacent selector/drawer/minimap polish.
+- [x] Preserve live playback and focus across compositor-only Focus/Split/Overlay transitions.
+- [ ] Integrate applicable cards with the skill strip and finish adjacent selector/drawer/minimap polish.
 
 ## Milestone 1: DAW-Like Multichannel MIDI Sequencer UI
 
