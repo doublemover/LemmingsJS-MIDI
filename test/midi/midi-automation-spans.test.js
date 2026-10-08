@@ -219,4 +219,48 @@ describe('bounded musical automation spans', function() {
     }, {}, false);
   });
 
+  it('preserves matching counters across value/cadence/interval edits and unrelated insertion/removal/reordering', function() {
+    const a = entry('a', { min: 20, span: span({ condition: { sfxId: 1, every: 3 } }) });
+    const b = entry('b', { target: 'pan', min: 40, span: span({ condition: { sfxId: 1, every: 2 } }) });
+    const other = entry('other', { target: 'duration', span: span({ condition: { sfxId: 2 } }) });
+    const model = new MidiAutomationSpans([a, b]); model.synchronize(1, 2);
+    const meta = { laneIndex: 0, sfxId: 1 };
+    model.observeOrigin({ ...meta, automationEventId: 1 }, position(2));
+    const second = model.observeOrigin({ ...meta, automationEventId: 2 }, position(2));
+    const edited = { ...a, min: 60, max: 80, span: span({ ...a.span, start: 1, duration: 8, loop: true, priority: 3, condition: { sfxId: 1, every: 2 } }) };
+    model.configure([other, b, edited]);
+    expect(model.snapshot('a')).to.include({ eventCount: 2, originEventCount: 2, generation: 1, active: true });
+    expect(model.snapshot('b').eventCount).to.equal(2);
+    expect(model.values({ ...meta, automationEventCounts: second }, position(2)).get('velocity').value).to.equal(60);
+    model.configure([edited, other]); expect(model.snapshot('a').eventCount).to.equal(2); expect(model.snapshot('b')).to.equal(null);
+    model.observeOrigin({ ...meta, automationEventId: 2 }, position(2)); expect(model.snapshot('a').eventCount).to.equal(2);
+    model.observeOrigin({ ...meta, automationEventId: 3 }, position(2)); expect(model.snapshot('a')).to.include({ eventCount: 3, active: false });
+    model.configure([other, edited]);
+    expect(model.values({ ...meta, automationEventCounts: second }, position(2)).get('velocity').value).to.equal(60);
+    expect(model.snapshot('a')).to.include({ eventCount: 3, originEventCount: 2 });
+    model.configure([{ ...edited, span: span({ ...edited.span, condition: { sfxId: 2, every: 2 } }) }, other]);
+    expect(model.snapshot('a')).to.equal(null);
+    expect(model.values({ ...meta, sfxId: 2, automationEventCounts: second }, position(2)).has('velocity')).to.equal(false);
+    model.observeOrigin({ ...meta, sfxId: 2, automationEventId: 4 }, position(2)); expect(model.snapshot('a').eventCount).to.equal(1);
+  });
+  it('keeps unchanged queued tails and their original ID-owned every-N ordinal through live span edits', function() {
+    const a = entry('a', { span: span({ condition: { every: 2 } }) });
+    const b = entry('b', { target: 'pan', span: span({ condition: { sfxId: 9 } }) });
+    const inserted = entry('inserted', { target: 'duration', span: span({ condition: { sfxId: 9 } }) });
+    withRouter([a, b], ({ router, event, advance, ons }) => {
+      event({ lemmingId: 0 }); event({ lemmingId: 1 });
+      expect(router.scheduler.gamePhrases.voices.size).to.equal(2);
+      const updated = { ...a, min: 40, span: span({ ...a.span, duration: 8, loop: true }) };
+      const alreadySent = ons().length;
+      router.setMapping({ ...router.mapping.config, automationSpans: [inserted, updated, b] });
+      expect(ons()).to.have.length(alreadySent);
+      expect(router.scheduler.gamePhrases.voices.size).to.equal(2); advance(2);
+      router.setMapping({ ...router.mapping.config, automationSpans: [{ ...updated, min: 50 }, inserted] });
+      expect(router.scheduler.gamePhrases.voices.size).to.equal(2); advance(2);
+      expect(ons().map(call => call.opts.rawAttack)).to.deep.equal([80, 20, 80, 40, 80, 50]);
+      expect(router.getAutomationSpanState('a')).to.include({ eventCount: 2, originEventCount: 2 });
+      expect(router.scheduler.gamePhrases.voices.size).to.equal(0);
+    }, { sfx: { '1': { notes: [60, 64, 67], durationTicks: 1, velocity: 80, phrase: { enabled: true, mode: 'up', spacingTicks: 2 } } } });
+  });
+
 });

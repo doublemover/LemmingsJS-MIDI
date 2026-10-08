@@ -9,6 +9,9 @@ const sourceMatches = (entry, meta) => {
   if (condition.triggerType != null && condition.triggerType !== meta.triggerType) return false;
   return true;
 };
+const matchingKey = entry => JSON.stringify([entry.scope, entry.scope === 'track' ? entry.trackId : null,
+  entry.span.laneScope === 'global' ? 0 : entry.span.laneStart, entry.span.laneScope === 'global' ? 1023 : entry.span.laneEnd,
+  entry.span.condition.sfxId, entry.span.condition.triggerType]);
 /** Bounded counters and span evaluation. No timers, actor scans or autonomous output. */
 class MidiAutomationSpans {
   constructor(entries) { this.states = new Map(); this.configure(entries); this.reset(); }
@@ -22,11 +25,32 @@ class MidiAutomationSpans {
         scope: entry.scope === 'track' ? 'track' : 'global', trackId: typeof entry.trackId === 'string' ? entry.trackId.slice(0, 128) : null,
         min: clampMidiAutomationSpanValue(entry.target, entry.min), max: clampMidiAutomationSpanValue(entry.target, entry.max), span });
     }
+    for (const entry of compiled) entry.matchingKey = matchingKey(entry);
     const key = JSON.stringify(compiled);
-    if (key !== this.key) { this.entries = compiled; this.key = key;
-      this.counts = new Float64Array(compiled.length * 1024); this.lastEvents = new Float64Array(compiled.length * 1024); this.reset(); }
+    if (key === this.key) return;
+    const previous = new Map((this.entries || []).map(entry => [entry.id, entry]));
+    const counts = new Float64Array(compiled.length * 1024), lastEvents = new Float64Array(compiled.length * 1024), retained = new Map();
+    for (const entry of compiled) {
+      const old = previous.get(entry.id);
+      if (old?.matchingKey === entry.matchingKey) {
+        entry.owner = old.owner; retained.set(entry.id, entry);
+        const start = old.index * 1024, destination = entry.index * 1024;
+        counts.set(this.counts.subarray(start, start + 1024), destination);
+        lastEvents.set(this.lastEvents.subarray(start, start + 1024), destination);
+      } else { this._ownerSequence = (this._ownerSequence || 0) + 1; entry.owner = this._ownerSequence; }
+    }
+    this.entries = compiled; this.key = key; this.counts = counts; this.lastEvents = lastEvents;
+    const states = new Map();
+    for (const [stateKey, state] of this.states) {
+      const entry = retained.get(state.id);
+      if (!entry) continue;
+      const copy = { ...state, entryIndex: entry.index };
+      this._evaluate(entry, copy, { beat: state.beat, bar: state.bar, distance: state.distance, distanceSource: state.distanceSource, tick: state.tick }, state.originEventCount);
+      states.set(stateKey, copy);
+    }
+    this.states = states;
   }
-  reset() { this.states.clear(); this.counts?.fill(0); this.lastEvents?.fill(0); this.generation = null; this.tick = null; }
+  reset() { this.epoch = (this.epoch || 0) + 1; this.states.clear(); this.counts?.fill(0); this.lastEvents?.fill(0); this.generation = null; this.tick = null; }
   synchronize(generation, tick) {
     const changed = this.generation != null && (this.generation !== generation || Number.isFinite(tick) && tick < this.tick);
     if (changed) this.reset();
@@ -45,7 +69,7 @@ class MidiAutomationSpans {
     return state;
   }
   observeOrigin(meta, position) {
-    const counts = new Array(this.entries.length).fill(null);
+    const counts = [];
     for (const entry of this.entries) {
       if (!sourceMatches(entry, meta)) continue;
       const state = this._state(entry, meta.laneIndex ?? 0);
@@ -53,8 +77,8 @@ class MidiAutomationSpans {
       if (Number.isFinite(meta.automationEventId) && meta.automationEventId > this.lastEvents[slot]) {
         this.lastEvents[slot] = meta.automationEventId; this.counts[slot] = Math.min(Number.MAX_SAFE_INTEGER, this.counts[slot] + 1);
       }
-      counts[entry.index] = this.counts[slot];
-      this._evaluate(entry, state, position, counts[entry.index]);
+      counts.push(Object.freeze({ id: entry.id, owner: entry.owner, epoch: this.epoch, count: this.counts[slot] }));
+      this._evaluate(entry, state, position, this.counts[slot]);
     }
     return Object.freeze(counts);
   }
@@ -66,15 +90,18 @@ class MidiAutomationSpans {
     const count = condition.unit === 'bar' ? position.bar : condition.unit === 'pass' ? preview?.spanPass || 0 : state.originEventCount;
     state.beat = position.beat; state.bar = position.bar; state.distance = position.distance; state.distanceSource = position.distanceSource; state.tick = position.tick;
     state.phase = preview?.phase ?? 0; state.spanPass = preview?.spanPass ?? 0; state.value = preview?.value ?? null;
-    state.conditionMatched = count > 0 && count % condition.every === condition.phase;
+    state.conditionMatched = condition.every === 1 || count > 0 && count % condition.every === condition.phase;
     state.active = !!preview?.active && state.conditionMatched;
     return state;
   }
   values(meta, position) {
     const winners = new Map();
+    const origins = Array.isArray(meta.automationEventCounts) ? new Map(meta.automationEventCounts.map(origin => [origin.id, origin])) : null;
     for (const entry of this.entries) {
       if (!sourceMatches(entry, meta)) continue;
-      const state = this._evaluate(entry, this._state(entry, meta.laneIndex ?? 0), position, meta.automationEventCounts?.[entry.index]);
+      const origin = origins?.get(entry.id);
+      const ordinal = origins ? origin?.owner === entry.owner && origin.epoch === this.epoch ? origin.count : 0 : null;
+      const state = this._evaluate(entry, this._state(entry, meta.laneIndex ?? 0), position, ordinal);
       if (!state.active) continue;
       const previous = winners.get(entry.target);
       if (!previous || entry.span.priority >= previous.priority) winners.set(entry.target, { id: entry.id, value: state.value,

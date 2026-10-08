@@ -36,7 +36,7 @@ const midiSchedulerChannelMethods = {
       config?.enabled, config?.sfx, config?.triggers, config?.scale, config?.noteRange,
       config?.velocityRange, config?.durationTicks, config?.density, config?.envelope,
       config?.position, config?.mpe, config?.limits, config?.defaultChannel, config?.timing,
-      config?.repeat, config?.reverse, config?.automationSpans
+      config?.repeat, config?.reverse
     ]);
     if (phraseConfigKey !== this._gamePhraseConfigKey) this.gamePhrases.clear();
     this._gamePhraseConfigKey = phraseConfigKey;
