@@ -1,5 +1,5 @@
 const createMidiInstrumentMenus = ({ root, document, window }) => {
-  const entries = Array.from(root?.children || []).filter(element => element.tagName?.toLowerCase() === 'details')
+  const entries = (root?.tagName?.toLowerCase() === 'details' ? [root] : Array.from(root?.children || [])).filter(element => element.tagName?.toLowerCase() === 'details')
     .map(menu => ({ menu, summary: menu.querySelector('summary') }));
   const listeners = [];
   const listen = (target, type, handler) => {
@@ -37,6 +37,7 @@ const createMidiInstrumentMenus = ({ root, document, window }) => {
     if (event.altKey || event.ctrlKey || event.metaKey) return;
     const entry = containing(event.target);
     if (!entry) return;
+    if (event.key !== 'Escape' && (['input', 'select', 'textarea'].includes(event.target?.tagName?.toLowerCase()) || event.target?.isContentEditable)) return;
     const atSummary = entry.summary?.contains(event.target);
     const buttons = enabledButtons(entry);
     const index = buttons.findIndex(button => button.contains(event.target));

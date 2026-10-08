@@ -1,3 +1,5 @@
+import { GameSkills } from '../../js/game/GameSkills.js';
+import { SkillTypes } from '../../js/game/SkillTypes.js';
 import { expect } from 'chai';
 import { createMidiUiController } from '../../js/app/midiUiController.js';
 import { MidiEventRouter } from '../../js/midi/MidiEventRouter.js';
@@ -377,6 +379,43 @@ describe('midiUiController sequencer', function() {
     expect(timer).to.deep.equal({ tickIndex: 91, speedFactor: 2 });
     expect(win.__LEMMINGS_MIDI_UI__.redo()).to.equal(true);
     expect(controller.getProject().sources.find(source => source.id === 'sfx-1').mapping.note).to.equal(75);
+    controller.dispose();
+  });
+
+  it('keeps compact note labels, hides impossible skills and restores cheats without editing mappings', function() {
+    const level = { skills: Array(9).fill(0) }; level.skills[SkillTypes.BUILDER] = 1;
+    const skills = new GameSkills(level);
+    const { controller, doc } = createControllerHarness({
+      factoryConfig: { sfx: { [SoundEffectIds.SPAWN]: { note: 60 }, [SoundEffectIds.DIG]: { note: 66 } } },
+      lemmings: { game: { level, getGameSkills: () => skills, getGameTimer: () => ({ frameTime: 60 }) } }
+    });
+    controller.bindMidiUi(); doc.getElementById('midiWorkspaceToggle').dispatchEvent({ type: 'click' });
+    const rows = doc.getElementById('midiGameEventList').children;
+    const row = id => rows.find(item => Number(item.dataset.gameEventId) === id);
+    expect(row(SoundEffectIds.DIG).hidden).to.equal(true);
+    expect(row(SoundEffectIds.BUILDER_STEP).hidden).to.equal(false);
+    expect(row(SoundEffectIds.EXPLOSION).hidden).to.equal(false);
+    expect(row(SoundEffectIds.OHNO).hidden).to.equal(false);
+    expect(row(SoundEffectIds.SPAWN).children[1].textContent).to.contain('C4');
+    expect(row(SoundEffectIds.SPAWN).children[2].textContent).to.equal('');
+    const before = controller.getProject();
+    skills.reuseSkill(SkillTypes.BUILDER);
+    expect(row(SoundEffectIds.BUILDER_STEP).hidden).to.equal(false);
+    skills.cheat(); expect(row(SoundEffectIds.DIG).hidden).to.equal(false);
+    expect(controller.getProject()).to.deep.equal(before);
+    expect(skills.onCountChanged.handlers.size).to.equal(1);
+    controller.dispose(); expect(skills.onCountChanged.handlers.size).to.equal(0);
+  });
+
+  it('clears successful audition footers and retains actionable audio errors', async function() {
+    let ok = true;
+    const { controller, doc } = createControllerHarness({ createPreviewAudio: () => ({
+      preview: async () => ok, getState: () => ({ message: 'Enable browser audio again' }), dispose() {}
+    }) });
+    controller.bindMidiUi(); expect(await controller.testSelectedSound()).to.equal(true);
+    expect(doc.getElementById('midiProjectStatus').textContent).to.equal('');
+    ok = false; expect(await controller.testSelectedSound()).to.equal(false);
+    expect(doc.getElementById('midiProjectStatus').textContent).to.equal('Enable browser audio again');
     controller.dispose();
   });
 

@@ -47,8 +47,9 @@ Opening a custom chord, scale-degree or clip mapping never rewrites it. Its
 unsupported simple fields are disabled with an explicit Custom label; use
 **Edit detailed wiring** to retain and edit the full mapping.
 
-**Project** contains the active key/scale, candidate starting palettes, and
-save/import/export tools. Choosing a candidate is not applying it. **Devices**
+The **Palette** drawer beside **Listen to game** and local master volume contains
+candidate starting palettes and the explicit Apply action. Choosing a candidate
+is not applying it. **Project** retains save/import/export and template tools. **Devices**
 contains optional hardware connection and routing; **Expert** retains detailed
 source/track/clip/modulation editing. Stored BPM, meter, quantize and swing are
 expert metadata and do not shift gameplay event onsets.
@@ -109,6 +110,12 @@ retain their note-offs. Pending phrases are bounded to 16 voices with at most
 8 notes each. The simulation remains the timing authority. Applying a starting palette uses stronger note and phrase velocities, while
 saved project velocity limits and track scales remain unchanged. Opening an
 existing project does not reapply a palette or change its notes or levels.
+
+Event cards show stored direct pitches and hide only skill events known to be
+impossible from the level inventory. Consuming the last skill does not remove
+rows for actions already underway. Cheats restore these rows immediately, and
+hiding a card never changes its saved mapping. Nuke warning/explosion and unrelated
+events remain visible. Unknown inventory leaves skill rows available.
 
 ## Setup
 

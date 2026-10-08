@@ -49,7 +49,8 @@ import {
   createArpPatternFromPreset,
   deriveArpModeFromPattern,
   POSITION_AXIS_OPERATORS,
-  resolveAvailableSfxIds
+  resolveAvailableSfxIds,
+  resolveUnavailableSkillSfxIds
 } from './midi-ui/midiUiDomain.js';
 import { isMidiFlagTriggerType, toMidiFlagTriggerType } from '../midi/MidiFlagTriggers.js';
 import {
@@ -2266,7 +2267,7 @@ const createMidiUiController = ({
     if (interaction !== localInteraction || disposed) return false;
     if (ok) {
       auditionSteps.set(source.id, { key, index: index + 1 });
-      setStatus(`Tested ${source.label} locally · game and external MIDI unchanged`);
+      setStatus('');
     } else setStatus(auditionAudio.getState().message || 'Local audio could not start');
     renderLocalSummary();
     return ok;
@@ -2305,21 +2306,25 @@ const createMidiUiController = ({
     const eventLabel = GAME_SOUND_EVENTS.find(event => resolveGameSoundSource(current, event)?.id === source?.id)?.label || source?.label || 'Choose an event';
     const list = document?.getElementById('midiGameEventList');
     const focused = document?.activeElement?.dataset?.gameEventId;
+    const unavailableSkills = resolveUnavailableSkillSfxIds(getRuntimeLevel(), getRuntimeSkills());
     if (list) {
       removeChildren(list);
-      const hasActiveEvent = GAME_SOUND_EVENTS.some(event => resolveGameSoundSource(current, event)?.id === source?.id);
-      for (const [index, event] of GAME_SOUND_EVENTS.entries()) {
+      const visibleEvents = GAME_SOUND_EVENTS.filter(event => !unavailableSkills.has(event.id));
+      const hasActiveEvent = visibleEvents.some(event => resolveGameSoundSource(current, event)?.id === source?.id);
+      for (const event of GAME_SOUND_EVENTS) {
         const item = resolveGameSoundSource(current, event);
         const row = document.createElement('button');
-        row.type = 'button'; row.className = 'midi-game-event'; row.dataset.gameEventId = String(event.id);
+        row.type = 'button'; row.className = 'midi-game-event'; row.dataset.gameEventId = String(event.id); row.hidden = unavailableSkills.has(event.id);
         row.setAttribute('role', 'option');
         row.setAttribute('aria-selected', String(item?.id === source?.id));
-        row.tabIndex = item?.id === source?.id || (!hasActiveEvent && index === 0) ? 0 : -1;
+        row.tabIndex = item?.id === source?.id || (!hasActiveEvent && event === visibleEvents[0]) ? 0 : -1;
         const label = document.createElement('strong'); label.textContent = event.label;
         const summary = document.createElement('span');
         const kind = getEventBehavior(item);
-        summary.textContent = !item?.enabled ? 'Off' : ({note:'One note',falling:'Falling phrase',rising:'Rising phrase',steps:'One note / event',custom:'Custom'})[kind];
-        const count = document.createElement('span'); count.className = 'midi-event-count'; count.textContent = 'No events yet';
+        const pitches = item?.mode === 'clip' || item?.mapping?.degree != null || item?.mapping?.chord ? [] : (item?.mapping?.notes || [item?.mapping?.note]).filter(Number.isFinite);
+        const names = pitches.slice(0, 16).map(soundNoteName).join(' ');
+        summary.textContent = !item?.enabled ? 'Off' : [({note:'One note',falling:'Falling phrase',rising:'Rising phrase',steps:'One note / event',custom:'Custom'})[kind], names].filter(Boolean).join(' \u00b7 ');
+        const count = document.createElement('span'); count.className = 'midi-event-count'; count.textContent = ''; count.hidden = true;
         row.append(label, summary, count);
         row.addEventListener('click', () => selectGameSound(event));
         list.appendChild(row);
@@ -2606,13 +2611,16 @@ const createMidiUiController = ({
     bindById('midiGameEventList', 'keydown', event => {
       if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
       const current = ensureProject();
-      const index = Math.max(0, GAME_SOUND_EVENTS.findIndex(item => resolveGameSoundSource(current, item)?.id === selectedSource()?.id));
-      const next = event.key === 'Home' ? 0 : event.key === 'End' ? GAME_SOUND_EVENTS.length - 1
-        : clamp(index + (event.key === 'ArrowDown' ? 1 : -1), 0, GAME_SOUND_EVENTS.length - 1);
-      event.preventDefault?.(); event.stopPropagation?.();
-      selectGameSound(GAME_SOUND_EVENTS[next]);
       const list = document?.getElementById('midiGameEventList');
-      Array.from(list?.children || []).find(row => row.dataset.gameEventId === String(GAME_SOUND_EVENTS[next].id))?.focus?.();
+      const visible = new Set(Array.from(list?.children || []).filter(row => !row.hidden).map(row => Number(row.dataset.gameEventId)));
+      const events = GAME_SOUND_EVENTS.filter(item => visible.has(item.id));
+      if (!events.length) return;
+      const index = Math.max(0, events.findIndex(item => resolveGameSoundSource(current, item)?.id === selectedSource()?.id));
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? events.length - 1
+        : clamp(index + (event.key === 'ArrowDown' ? 1 : -1), 0, events.length - 1);
+      event.preventDefault?.(); event.stopPropagation?.();
+      selectGameSound(events[next]);
+      Array.from(list?.children || []).find(row => row.dataset.gameEventId === String(events[next].id))?.focus?.();
     });
     bindById('midiEditProjectKey', 'click', () => chooseSoundView('project'));
     bindById('midiSoundAdvanced', 'click', () => chooseSoundView('expert'));
@@ -2651,7 +2659,7 @@ const createMidiUiController = ({
       setText(document?.getElementById('midiGamePresetDescription'), preset?.description || '');
       setText(document?.getElementById('midiGamePresetModeDescription'), presetMode?.value === 'steps'
         ? 'Each spawn steps down the pattern; each exit steps up. Landing plays a separate plain note.'
-        : 'Each spawn starts a quiet falling phrase; each exit rises. Fast repeats reshape only future notes. Landing plays a separate plain note.');
+        : 'Each spawn starts a falling phrase; each exit rises. Fast repeats reshape only future notes. Landing plays a separate plain note.');
     };
     if (presetSelect) {
       removeChildren(presetSelect);

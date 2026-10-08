@@ -22,3 +22,11 @@
 .character-swatch { width: 11px; height: 14px; border-radius: 2px; box-shadow: inset 0 0 0 1px #ffffff24; }
 .character-controls small, #characterStatus { display: block; font-size: 10px; line-height: 1.5; color: #81948a; }
 #characterStatus { min-height: 1.5em; color: #b6c4bb; }
+
+.palette-choices { gap: 0; padding: 0; overflow: hidden; }
+.palette-choices button { border: 0; border-radius: 0; }
+.palette-choices button:first-child { border-radius: 6px 0 0 6px; }
+.palette-choices button:last-child { border-radius: 0 6px 6px 0; }
+.palette-choices .character-swatch { width: 100%; height: 100%; border-radius: inherit; box-shadow: none; }
+.palette-choices button[aria-checked=true] { box-shadow: inset 0 0 0 2px #f0fff4; }
+.palette-choices button[aria-checked=true] .character-swatch { box-shadow: inset 0 0 0 2px #f0fff4; }
