@@ -36,7 +36,8 @@ When a milestone replaces an old path, remove the old path in the same phase.
 - [x] Move starting palettes beside Listen to game; tighten event cards, remove repeated empty labels and successful audition footers.
 - [x] Show locally dispatched pitches moving left to right through event rows, matching actual triangle attack/hold/release and clearing on Panic.
 - [x] Hide only unavailable skill events, preserve mappings and restore rows immediately for cheats.
-- [ ] Extend existing clips into per-event 8/16-cell note entry, conditions and parameter locks with explicit event/clock advance and distinct event/bar/pass counters.
+- [x] Extend reusable clips with per-event 8/16-cell note/drag entry, per-cell velocity/duration/chance, event/pass conditions and explicit event/game-tick advance.
+- [ ] Add bar-defined conditions and layered pitch/repeat transformations without introducing another clock or conflating event/bar/pass counters.
 - [x] Expose direct Panic, join level navigation, remove redundant picker labels, rename Source to GitHub and make color swatches contiguous with outer rounded ends.
 - [x] Preserve live playback and focus across compositor-only Focus/Split/Overlay transitions.
 - [ ] Integrate applicable cards with the skill strip and finish adjacent selector/drawer/minimap polish.
@@ -809,8 +810,9 @@ fitted berets with lift/open/reattach cosmetics on every shape. Acceptance instr
   regressions supersede known defects; unknown original source differences remain
   unrecoverable. Do not inherit historical acceptance counts.
 - Give temporal clips and recording explicit onset/overlap/retrigger semantics.
-  The legacy step editor still lowers notes as a chord or event arp; its per-step
-  probability, Hold/Tie, and recording-gap model need the deeper engine contract.
+  Legacy clips retain chord/event-arp lowering. Explicit temporal clips now honor cell
+  rests, probability and event/pass conditions; phrase-mode Hold/Tie have bounded gates.
+  Recorded gap/overlap preservation and bar-based conditions still need specified semantics.
 - Visually accept the complete eight-accessory/five-eyewear pack on all twelve
   bodies, including the explicit custom ear/donut crown fits and final in-game
   appearance. Native source comparisons and decoder sheets are available; source

@@ -78,7 +78,27 @@
           <label class="midi-field midi-field--stacked midi-behavior-select"><span>When this happens</span><select id="midiSoundBehavior"><option value="note">Play one note</option><option value="falling">Start a falling phrase</option><option value="rising">Start a rising phrase</option><option value="steps">Advance one pattern note</option><option value="custom">Custom wiring</option></select></label>
           <p id="midiPatternAxis" class="midi-help"></p>
           <div id="midiSoundContour" class="midi-sound-contour" aria-label="Note pattern"></div>
-          <div class="midi-tactile-controls">
+          <section id="midiEventClipEditor" class="midi-event-clip-editor" aria-label="Event note cells">
+            <button id="midiClipCreate" type="button">Create 8-cell clip for this event</button>
+            <div id="midiClipControls" hidden>
+              <div class="midi-clip-controls">
+                <label>Length<select id="midiEventClipLength"><option value="8">8 cells</option><option value="16">16 cells</option></select></label>
+                <label>Advance<select id="midiEventClipAdvance"><option value="legacy">Saved clip behavior</option><option value="event">One cell per game event</option><option value="game-tick">Phrase on game ticks</option></select></label>
+                <label id="midiClipSpacingField">Ticks / cell<input id="midiEventClipSpacing" type="number" min="1" max="8" value="2" /></label>
+              </div>
+              <div id="midiEventClipGrid" class="midi-event-clip-grid" role="group" aria-label="Note cells: click to paint or erase; drag across cells or vertically to change pitch"></div>
+              <div class="midi-clip-controls">
+                <label>Note / brush<input id="midiEventClipNote" type="text" value="C4" aria-label="Cell note name or MIDI number; rest for silence" /></label>
+                <label>Velocity<input id="midiEventClipVelocity" type="number" min="1" max="127" placeholder="Project" /></label>
+                <label>Length in ticks<input id="midiEventClipDuration" type="number" min="1" max="960" placeholder="Project" /></label>
+                <label>Chance %<input id="midiEventClipProbability" type="number" min="0" max="100" value="100" /></label>
+                <label>Condition<select id="midiEventClipCondition"><option value="event">Every N events</option><option value="pass">Every N passes</option></select></label>
+                <label>N<input id="midiEventClipEvery" type="number" min="1" max="64" value="1" /></label>
+              </div>
+            </div>
+            <p id="midiEventClipHint" class="midi-help">Create a reusable clip to enter notes directly. Undo restores the prior wiring.</p>
+          </section>
+          <div id="midiDirectSoundControls" class="midi-tactile-controls">
           <label class="midi-field"><span>Base pitch <output id="midiSoundPitchName"></output></span><input id="midiSoundPitchDial" type="range" min="0" max="127" step="1" aria-label="Base pitch slider" /><input id="midiSoundPitch" type="number" min="0" max="127" step="1" aria-label="Base pitch MIDI note" /></label>
           <label id="midiSoundSpacingField" class="midi-field"><span>Note spacing (game ticks)</span><input id="midiSoundSpacing" type="number" min="1" max="8" step="1" /></label>
           <label class="midi-field"><span>Level</span><input id="midiSoundLevel" type="range" min="1" max="127" step="1" /><output id="midiSoundLevelValue"></output><input id="midiSoundLevelNumber" type="number" min="1" max="127" step="1" aria-label="Exact sound level" /></label>

@@ -1,3 +1,4 @@
+import { clipCellEnabled, buildMidiClipPhrase } from '../project/MidiClipPlayback.js';
 import { MidiMapping } from '../MidiMapping.js';
 import { MidiScheduler } from '../MidiScheduler.js';
 import { isMidiFlagTriggerType } from '../MidiFlagTriggers.js';
@@ -60,7 +61,7 @@ const midiEventRouterEventMethods = {
         return;
       }
       const sfx = triggerCfg ? { ...baseSfx, ...triggerCfg } : baseSfx;
-      const spec = this.mapping.mapEvent(event, context, density, sfx);
+      let spec = this.mapping.mapEvent(event, context, density, sfx);
       if (!spec) return;
       if (typeof this.scheduler.hasOutput === 'function' && !this.scheduler.hasOutput(spec.outputId ?? null)) {
         return;
@@ -95,7 +96,25 @@ const midiEventRouterEventMethods = {
         noteList = this._singleNoteBuffer;
       }
 
-      const fire = event.type === 'lemming-fire';
+      if (sfx.clipSequence?.steps?.length) {
+        const sequence = sfx.clipSequence, length = sequence.steps.length;
+        const key = this._resolveArpKey(event, sfx), previous = this._arpStateBySfx.get(key);
+        const count = previous?.seqKey === sequence.id ? previous.index : 0;
+        this._storeArpState(key, { index: count + 1, dir: 1, length, seqKey: sequence.id });
+        const mapStep = step => this.mapping.mapEvent(event, context, density, { ...sfx, note: step.note, notes: null,
+          velocity: step.velocity, durationTicks: step.durationTicks, arp: null, phrase: null });
+        if (sequence.advance === 'game-tick') {
+          const cells = buildMidiClipPhrase(sequence, count + 1, count + 1, mapStep);
+          this._queueGameEventClip(event, spec, meta, cells, sequence.spacingTicks);
+          return;
+        }
+        const index = count % length, step = sequence.steps[index];
+        if (!clipCellEnabled(sequence, step, count + 1, Math.floor(count / length) + 1)) return;
+        spec = { ...mapStep(step), reverse: !!event.reverse, stepIndex: index, stepCount: length };
+        noteList = [spec.note];
+      }
+
+      const fire = !sfx.clipSequence && event.type === 'lemming-fire';
       if (fire && !event.reverse) {
         const key = `fire:${event.sfxId}`;
         const previous = this._arpStateBySfx.get(key);

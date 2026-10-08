@@ -127,6 +127,7 @@ const midiEventRouterLifecycleMethods = {
   },
 
   _resolveArpKey(event, sfx) {
+    if (sfx?.clipSequence && event?.triggerType != null) return `clip:${event.triggerType}:${event.sfxId}`;
     if (event?.triggerType != null && sfx?.arp?.independent) {
       const objectId = Number.isFinite(event.objectId) ? event.objectId : null;
       if (objectId != null) {

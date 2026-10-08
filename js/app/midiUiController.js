@@ -1,3 +1,4 @@
+import { createMidiEventClipEditor } from './midi-ui/midiEventClipEditor.js';
 import { createSoundAuditionPlan } from './midi-ui/midiSoundAudition.js';
 import { createMidiEditHistory } from './midi-ui/midiEditHistory.js';
 import { createMidiInstrumentWorkbench } from './midi-ui/midiInstrumentWorkbench.js';
@@ -311,7 +312,7 @@ const createMidiUiController = ({
   let localGamePreview = null;
   let localInteraction = 0;
   const editHistory = createMidiEditHistory();
-  let workbench = null;
+  let workbench = null, eventClipEditor = null;
   const uiMetrics = {
     renderCount: 0,
     queuedRenderCount: 0,
@@ -2256,12 +2257,12 @@ const createMidiUiController = ({
     const source = selectedSource();
     if (!source) return false;
     if (!auditionAudio) auditionAudio = createPreviewAudio({ masterVolume, onStateChange: renderLocalSummary, onPlayback: event => workbench?.onPlayback({ ...event, owner: 'audition' }) });
-    const key = JSON.stringify(source.mapping);
+    const key = JSON.stringify([source.mapping, source.clipId, ensureProject().clips.find(clip => clip.id === source.clipId)?.playback?.advance]);
     const previous = auditionSteps.get(source.id);
     const index = previous?.key === key ? previous.index : 0;
     const tickMs = Math.max(1, Number(getLemmings()?.game?.getGameTimer?.()?.frameTime) || 60);
     const plan = createSoundAuditionPlan(source, ensureProject(), tickMs, index);
-    if (!plan.notes.length) { setStatus(plan.reason); return false; }
+    if (!plan.notes.length) { if (plan.advance) auditionSteps.set(source.id, { key, index: index + 1 }); setStatus(plan.reason); return false; }
     const interaction = ++localInteraction;
     const ok = await auditionAudio.preview(plan.notes, { replace: true });
     if (interaction !== localInteraction || disposed) return false;
@@ -2321,7 +2322,7 @@ const createMidiUiController = ({
         const label = document.createElement('strong'); label.textContent = event.label;
         const summary = document.createElement('span');
         const kind = getEventBehavior(item);
-        const pitches = item?.mode === 'clip' || item?.mapping?.degree != null || item?.mapping?.chord ? [] : (item?.mapping?.notes || [item?.mapping?.note]).filter(Number.isFinite);
+        const pitches = item?.mode === 'clip' ? (current.clips.find(clip => clip.id === item.clipId)?.steps || []).map(step => step.note).filter(Number.isFinite) : item?.mapping?.degree != null || item?.mapping?.chord ? [] : (item?.mapping?.notes || [item?.mapping?.note]).filter(Number.isFinite);
         const names = pitches.slice(0, 16).map(soundNoteName).join(' ');
         summary.textContent = !item?.enabled ? 'Off' : [({note:'One note',falling:'Falling phrase',rising:'Rising phrase',steps:'One note / event',custom:'Custom'})[kind], names].filter(Boolean).join(' \u00b7 ');
         const count = document.createElement('span'); count.className = 'midi-event-count'; count.textContent = ''; count.hidden = true;
@@ -2376,7 +2377,7 @@ const createMidiUiController = ({
           : 'One plain note at the exact game event. Listen here uses browser audio only.');
     chooseSoundView(soundView);
     renderLocalSummary();
-    workbench?.render();
+    workbench?.render(); eventClipEditor?.render();
   };
 
   const renderConnectionControls = () => {
@@ -2599,6 +2600,9 @@ const createMidiUiController = ({
       updateMapping: updateSelectedMapping, updateSource: updateSelectedSource, commitProject, chooseView: chooseSoundView,
       bind: bindById, panic, history: editHistory, setStatus });
     workbench.initialize();
+    eventClipEditor = createMidiEventClipEditor({ document, bind: bindById, getProject: ensureProject, getSource: selectedSource,
+      commitProject, dispatch: dispatchProjectIntent, history: editHistory, setStatus });
+    eventClipEditor.initialize();
     setWorkspaceVisible(window?.matchMedia?.('(min-width: 1000px)')?.matches === true, { focus: false });
     bindById('midiWorkspaceToggle', 'click', () => {
       const workspace = document?.getElementById('midiSequencerWorkspace');
@@ -3216,7 +3220,7 @@ const createMidiUiController = ({
 
   const dispose = () => {
     disposed = true;
-    workbench?.dispose();
+    workbench?.dispose(); eventClipEditor?.dispose();
     localInteraction += 1;
     getLemmings()?.setLocalAudioStopHandler?.(null);
     auditionAudio?.dispose?.();

@@ -49,6 +49,19 @@ const midiEventRouterPhraseMethods = {
       voice => this.scheduler.isGamePhraseVoiceBusy(voice), key);
   },
 
+  _queueGameEventClip(event, spec, meta, cells, spacingTicks) {
+    const tick = Number.isInteger(event.tick) ? event.tick : this._phraseTimer?.getGameTicks?.();
+    if (event.reverse || !this._phraseTimer?.onGameTick || !Number.isInteger(tick)) {
+      this.scheduler.gamePhrases?.clear();
+      if (Number.isFinite(cells[0]?.note)) this._sendGamePhraseNote(cells[0], meta, tick, true);
+      return;
+    }
+    const key = JSON.stringify([event.sfxId, event.triggerType ?? null, spec.trackId ?? null, spec.outputId ?? null, spec.channel ?? null]);
+    const queue = this.scheduler.gamePhrases;
+    if (!queue?.replaceSteps(key, cells, meta, tick, spacingTicks)) return;
+    queue.advance(tick, (ready, details, atTick) => this._sendGamePhraseNote(ready, details, atTick, true), () => false, key);
+  },
+
   _advanceGamePhrases() {
     const timer = this._phraseTimer;
     const queue = this.scheduler.gamePhrases;

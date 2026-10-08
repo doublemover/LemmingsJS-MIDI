@@ -175,6 +175,11 @@ const sanitizeArpPayload = (arp) => {
   };
 };
 
+const sanitizeClipPlayback = playback => ['event', 'game-tick'].includes(playback?.advance) ? {
+  advance: playback.advance,
+  spacingTicks: clamp(toInteger(playback.spacingTicks, 2), 1, 8)
+} : null;
+
 const createDefaultMidiClip = (overrides = {}) => {
   const lengthSteps = clamp(toInteger(overrides.lengthSteps, 16), 1, 256);
   const steps = Array.isArray(overrides.steps) && overrides.steps.length
@@ -186,7 +191,8 @@ const createDefaultMidiClip = (overrides = {}) => {
     type: CLIP_TYPES.includes(overrides.type) ? overrides.type : 'stepPattern',
     lengthSteps,
     steps,
-    arp: sanitizeArpPayload(overrides.arp)
+    arp: sanitizeArpPayload(overrides.arp),
+    ...(sanitizeClipPlayback(overrides.playback) ? { playback: sanitizeClipPlayback(overrides.playback) } : {})
   };
 };
 
@@ -455,7 +461,8 @@ const sanitizeStep = (step, fallbackIndex) => {
     durationTicks: step.durationTicks == null ? null : sanitizeDurationTicks(step.durationTicks),
     tie: sanitizeBoolean(step.tie, false),
     hold: sanitizeBoolean(step.hold, false),
-    probability: clamp(toFiniteNumber(step.probability, 1), 0, 1)
+    probability: clamp(toFiniteNumber(step.probability, 1), 0, 1),
+    ...(step.condition ? { condition: { unit: step.condition.unit === 'pass' ? 'pass' : 'event', every: clamp(toInteger(step.condition.every, 1), 1, 64) } } : {})
   };
 };
 
@@ -475,7 +482,8 @@ const sanitizeClip = (clip, fallbackIndex, usedIds) => {
     type,
     lengthSteps,
     steps,
-    arp: sanitizeArpPayload(clip.arp)
+    arp: sanitizeArpPayload(clip.arp),
+    ...(sanitizeClipPlayback(clip.playback) ? { playback: sanitizeClipPlayback(clip.playback) } : {})
   };
 };
 
@@ -1434,7 +1442,13 @@ const buildRuntimeClipMapping = (source, track, clip, hiddenByTrack, globalVeloc
     durationTicks: first?.durationTicks ?? globalDurationDefault
   };
   if (notes.length > 1) out.notes = notes;
-  if (clip?.type === 'arp' && notes.length) {
+  if (clip?.playback) {
+    out.clipSequence = { id: clip.id, ...clip.playback, steps: clip.steps.slice(0, 16).map(step => ({ ...step,
+      velocity: sanitizeVelocity(Math.round((step.velocity ?? globalVelocityDefault) * track.velocityScale)),
+      durationTicks: step.durationTicks ?? globalDurationDefault
+    })) };
+  }
+  if (!clip?.playback && clip?.type === 'arp' && notes.length) {
     out.arp = {
       enabled: true,
       mode: clip.arp?.mode || 'up',
@@ -1446,7 +1460,7 @@ const buildRuntimeClipMapping = (source, track, clip, hiddenByTrack, globalVeloc
     const velocity = Number.isFinite(out.velocity) ? out.velocity : globalVelocityDefault;
     out.velocity = sanitizeVelocity(Math.round(velocity * track.velocityScale));
   }
-  if (!source.enabled || hiddenByTrack || !notes.length) out.disabled = true;
+  if (!source.enabled || hiddenByTrack || (!clip?.playback && !notes.length)) out.disabled = true;
   return out;
 };
 

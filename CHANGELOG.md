@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Add reusable per-event 8/16-cell note editing with drag/undo, explicit event or game-tick progression, silent rests and per-cell dynamics/chance/conditions.
+
 - Animate actual local note pitches and releases across event rows; move the persistent editor smoothly between layouts without per-frame canvas resizing.
 
 ### Added
