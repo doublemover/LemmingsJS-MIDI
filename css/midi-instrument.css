@@ -240,3 +240,8 @@ body.game-page.studio-open[data-midi-layout=overlay] .midi-sequencer { grid-colu
 
 .midi-output-pressure { position: absolute; top: 100%; background: #413622; color: #ead093; padding: 2px 5px; border-radius: 3px; font: 9px ui-monospace,monospace; }
 #midiAudioControls { position: relative; }
+
+.midi-capture-buttons { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+.midi-output-capture iframe { width: 100%; height: 330px; box-sizing: border-box; border: 1px solid #536252; background: #f5f7f8; }
+.midi-output-capture pre { white-space: pre-wrap; max-height: 220px; overflow: auto; font: 11px/1.4 ui-monospace, monospace; }
+.midi-output-capture [hidden] { display: none; }

@@ -62,6 +62,16 @@
       <label>Action music <select id="procgenPreset"></select></label>
       <label class="procgen-check"><input id="procgenPhrases" type="checkbox"> Short phrases</label>
     </div>
+    <details class="midi-output-capture"><summary>Output capture</summary>
+      <div class="midi-capture-buttons" role="group" aria-label="Bounded output capture">
+        <button id="procgenCaptureStart" type="button">Capture 2 minutes</button><button id="procgenCaptureStop" type="button" disabled>Stop capture</button>
+        <button id="procgenCaptureReport" type="button" disabled>Inspect</button><button id="procgenCaptureJSONL" type="button" disabled>JSONL</button><button id="procgenCaptureCSV" type="button" disabled>CSV</button><button id="procgenCaptureHTML" type="button" disabled>Report file</button>
+      </div>
+      <p id="procgenCaptureStatus" role="status" aria-live="off"></p>
+      <p>Records existing output only; start local listening separately. At most 4,096 records are retained. Stop capture keeps playback running.</p>
+      <iframe id="procgenCaptureRoll" title="Captured note schedules piano roll" sandbox="" hidden></iframe>
+      <pre id="procgenCaptureSummary" hidden></pre>
+    </details>
     <p id="procgenPresetDescription"></p>
     <p id="procgenAudioStatus" role="status">Local sound is off. No hardware output.</p>
     <p id="procgenMetrics" role="status"></p>

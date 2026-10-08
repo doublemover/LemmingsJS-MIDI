@@ -251,7 +251,8 @@ const midiSchedulerRateMethods = {
     return { ok, reason: ok ? null : 'lane-share', laneIndex, laneCount, activeLanes, countShare, byteShare };
   },
 
-  recordThrottle(reason, now = this._nowMs()) {
+  recordThrottle(reason, now = this._nowMs(), meta = {}) {
+    this._observe('drop', { ...meta, type: 'output', reason });
     this._throttleState.dropped += 1;
     this._throttleState.lastDropMs = now;
     this._throttleState.reason = reason;

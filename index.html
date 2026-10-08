@@ -175,6 +175,16 @@
     </section>
     <section id="midiExpertView" class="midi-editor-view" aria-label="Tracks, clips and detailed wiring" hidden>
       <details open class="midi-shared-sound-controls"><summary>Selected event sound controls</summary><div id="midiExpertSoundDock"></div></details>
+      <details class="midi-output-capture"><summary>Output capture</summary>
+      <div class="midi-capture-buttons" role="group" aria-label="Bounded output capture">
+        <button id="midiCaptureStart" type="button">Capture 2 minutes</button><button id="midiCaptureStop" type="button" disabled>Stop capture</button>
+        <button id="midiCaptureReport" type="button" disabled>Inspect</button><button id="midiCaptureJSONL" type="button" disabled>JSONL</button><button id="midiCaptureCSV" type="button" disabled>CSV</button><button id="midiCaptureHTML" type="button" disabled>Report file</button>
+      </div>
+      <p id="midiCaptureStatus" role="status" aria-live="off"></p>
+      <p>Records existing output only; start listening or select MIDI separately. At most 4,096 records are retained. Stop capture keeps playback running.</p>
+      <iframe id="midiCaptureRoll" title="Captured note schedules piano roll" sandbox="" hidden></iframe>
+      <pre id="midiCaptureSummary" hidden></pre>
+      </details>
       <details class="midi-musical-settings"><summary>Stored timing metadata</summary>
       <p class="midi-help">Game events keep their simulation timing. BPM, meter, quantize, and swing are stored project metadata; they do not shift event onsets.</p>
       <div class="midi-control-group" role="group" aria-label="Musical timing">

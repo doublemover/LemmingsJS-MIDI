@@ -38,11 +38,22 @@ const midiEventRouterEventMethods = {
       }
       const now = this._nowMs();
       const tick = event.tick;
+      const capturing = this.scheduler._captureEnabled?.();
+      const game = capturing ? this.context?.game : null;
+      const origin = capturing ? { origin: event.origin ?? (game?.laneCount ? 'procgen' : 'level'),
+        seed: event.seed ?? game?.seed, generation: event.generation ?? game?.generation,
+        generationStartTick: game?.generationStartTick, laneSeed: game?.laneSeeds?.[event.laneIndex ?? 0],
+        themeId: game?.terrain?.laneThemes?.[event.laneIndex ?? 0], originId: game?.terrain?.recipe?.id,
+        levelId: event.levelId ?? game?.level?.id ?? game?.level?.name ?? null } : null;
+      const requestId = capturing ? this.scheduler._observe?.('request', { ...origin, type: 'event', sfxId: event.sfxId,
+        eventType: event.type, tick, gameTimeMs: event.timeMs, speed: event.speedFactor, frameMs: event.frameMs,
+        laneIndex: event.laneIndex ?? 0, laneCount: event.laneCount ?? 1, lemmingId: event.lemmingId,
+        ...this._captureBeatFields(tick) }) : null;
 
       const limits = this.mapping.config?.limits || {};
       const maxPerTick = Math.min(Math.max(limits.maxEventsPerTick ?? MAX_EVENTS_PER_TICK, 1), MAX_EVENTS_PER_TICK);
       if (!this._hasTickBudget(tick, event.laneIndex, event.laneCount)) {
-        this.scheduler.recordThrottle?.('tick-limit', now);
+        this.scheduler.recordThrottle?.('tick-limit', now, { requestId, tick, laneIndex: event.laneIndex ?? 0, laneCount: event.laneCount ?? 1, lemmingId: event.lemmingId });
         return;
       }
       const tickMs = this._tickMsFromEvent(event);
@@ -63,7 +74,7 @@ const midiEventRouterEventMethods = {
       }
       const sfx = triggerCfg ? { ...baseSfx, ...triggerCfg } : baseSfx;
       let spec = this.mapping.mapEvent(event, context, density, sfx);
-      if (!spec) return;
+      if (!spec) { this.scheduler._observe?.('drop', { requestId, type: 'event', reason: 'mapping-filtered', tick, laneIndex: event.laneIndex ?? 0 }); return; }
       if (typeof this.scheduler.hasOutput === 'function' && !this.scheduler.hasOutput(spec.outputId ?? null)) {
         return;
       }
@@ -73,6 +84,7 @@ const midiEventRouterEventMethods = {
       }
       const priority = spec.priority ?? this._getEventPriority(event, sfx);
       const meta = {
+        ...origin, requestId, tick, speed: event.speedFactor, frameMs: event.frameMs, ...this._captureBeatFields(tick),
         sfxId: event.sfxId,
         eventType: event.type,
         priority,
@@ -88,6 +100,7 @@ const midiEventRouterEventMethods = {
       const base = this._resolveScheduleBase(event.timeMs, event.frameMs, event.speedFactor);
       const rawTime = Number.isFinite(event.timeMs) && base != null ? base + event.timeMs : now;
       const sendTimeMs = Math.max(rawTime, now + scheduleAhead);
+      if (capturing) meta.intendedMs = rawTime;
       let noteList;
       if (Array.isArray(spec.notes) && spec.notes.length) {
         noteList = spec.notes;
@@ -262,7 +275,7 @@ const midiEventRouterEventMethods = {
       }
       const plan = this._planEntries(specWithTime, sendTimeMs, activeNotes.length);
       if (!this._shouldSend(meta, specWithTime, plan, now)) {
-        this.scheduler.recordThrottle?.(this._lastRateReport?.reason || 'count-limit', now);
+        this.scheduler.recordThrottle?.(this._lastRateReport?.reason || 'count-limit', now, meta);
         return;
       }
       this._hasTickBudget(tick, event.laneIndex, event.laneCount, true);

@@ -142,8 +142,10 @@ const midiSchedulerChannelMethods = {
     const uncertain = estimating && (this._isMpeNote(spec) || [...this._pendingNoteOns.values()].some(pending =>
       pending.output === output && pending.channel === channelNumber));
     const controls = [];
+    let coalesced = 0;
     const add = (key, value, type, cc = null, bytes = MIDI_MESSAGE_BYTES) => {
       if (uncertain || state[key] !== value) controls.push({ key, value, type, cc, bytes });
+      else coalesced += 1;
     };
     if (!output?.supportsPerNoteInstrument && Number.isInteger(spec.program) && spec.program >= 0 && spec.program <= 127 &&
       (!output || typeof channel?.sendProgramChange === 'function')) add('program', spec.program, 'program', null, 2);
@@ -154,7 +156,7 @@ const midiSchedulerChannelMethods = {
       const value = signed ? Math.round((clamp(spec.pan, -127, 127) + 127) / 2) : clamp(spec.pan, 0, 127);
       add('pan', value, 'cc', 10);
     }
-    return { state, controls, messages: controls.length, bytes: controls.reduce((sum, control) => sum + control.bytes, 0) };
+    return { state, controls, coalesced, messages: controls.length, bytes: controls.reduce((sum, control) => sum + control.bytes, 0) };
   },
 
   _activeChannelKey(channelNumber, outputId = null) {
@@ -197,8 +199,8 @@ const midiSchedulerChannelMethods = {
       for (const ch of channels) {
         const channel = targetOutput.channels?.[ch];
         if (!channel) continue;
-        channel.sendPitchBendRange(bend.semitones, bend.cents);
-        channel.sendPitchBend(0);
+        this._sendOutput(targetOutput, ch, 'sendPitchBendRange', [bend.semitones, bend.cents], { reason: 'mpe-init' });
+        this._sendOutput(targetOutput, ch, 'sendPitchBend', [0], { reason: 'mpe-init' });
         this._expressionState(targetOutput, ch).bend = 0;
       }
     }
@@ -217,8 +219,8 @@ const midiSchedulerChannelMethods = {
     if (!active || !output) return;
     const channel = output.channels?.[channelNumber];
     if (channel) {
-      channel.sendNoteOff(active.note);
-      channel.sendPitchBend(0);
+      this._sendOutput(output, channelNumber, 'sendNoteOff', [active.note], active.captureMeta);
+      this._sendOutput(output, channelNumber, 'sendPitchBend', [0], active.captureMeta);
       this._expressionState(output, channelNumber).bend = 0;
     }
     this._activeByChannel.delete(activeKey);
@@ -284,15 +286,16 @@ const midiSchedulerChannelMethods = {
     const pending = this._pendingNoteOns.get(oldestToken);
     if (pending?.timerId != null) clearTimeout(pending.timerId);
     this._pendingNoteOns.delete(oldestToken);
+    if (info.hasStarted === false) this._observe('cancelled', { ...info.captureMeta, type: 'noteOn', reason: 'pending-note-cancelled' });
     const output = info.output || this._resolveOutput(info.outputId);
     const channel = output?.channels?.[info.channel];
     let sentMessages = 0;
     try {
       if (channel && info.hasStarted !== false) {
-        channel.sendNoteOff(info.note);
+        this._sendOutput(output, info.channel, 'sendNoteOff', [info.note], { ...info.captureMeta, scheduledMs: this._nowMs(), reason: 'ownership-release' });
         sentMessages += 1;
         if (info.mpe) {
-          channel.sendPitchBend(0);
+          this._sendOutput(output, info.channel, 'sendPitchBend', [0], info.captureMeta);
           this._expressionState(output, info.channel).bend = 0;
           sentMessages += 1;
         }

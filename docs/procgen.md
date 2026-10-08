@@ -213,3 +213,11 @@ The frame loop accumulates real elapsed milliseconds, including fractional-speed
 Overview CCTV retains an explicit Eight leaders mode. Director mode uses the same eight render views and actual cached lane activity: builders/bashers, established sparse surviving crews, observed forward progress and changes in distance lead. Views keep at least three seconds of dwell plus score hysteresis; one unpinned slot rotates through less-seen lanes every six seconds while the simulation advances. Up to four pins remain fixed and persist across Regenerate in the current session; the drawer supports exact lane numbers and accessible per-view pin buttons. Labels state the observed reason and rank. Pause keeps selection static; restart/rewind clears transient director history. No second simulation, predictor, audio subscriber or per-frame DOM layout is added.
 
 Population easing uses a run high-water mark and a bounded four-times-base interval; it does not accelerate during a run or depend on render speed. Seeded sparse scouts gain climbing/floating only after 180 simulation ticks and when the real action needs it. Cached lane summaries expose actual live/peak counts, surviving identity, action counts and terrain work to CCTV/music without extra actor scans. Sustained piles require at least four old nonprogressing actors, observed growth, conservative difficulty/transit/probe grace and no actual recent work. They reuse the existing single all-lane OHNO/explosion/reset lifecycle; pending terrain work has an explicit bounded completion hook. Assistance can still retry an impossible tunnel route before that recovery: advanced mining/digging/turning remains future work.
+
+The collapsed Output capture section in Details shares the main MIDI observer and
+report controls. Capture remains separate from Listen locally, retaining a finite
+ring of actual lane event requests, accepted note calls, synth schedules, releases
+and thinning reasons. Its initial context includes seed/generation, selected
+pack/preset, tempo, scale, speed and bounded ensemble/track references. Inspect
+and local exports are demand-only; capture adds no simulation or playback clock.
+See `docs/midi-ui.md` for timing domains and evidence limits.

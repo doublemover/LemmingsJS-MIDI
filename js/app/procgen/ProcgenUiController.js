@@ -1,3 +1,5 @@
+import { createMidiOutputCapture } from '../../midi/capture/MidiOutputCapture.js';
+import { createMidiCaptureControls } from '../midi-ui/midiCaptureControls.js';
 import { DECORATION_CHOICES } from '../../decorations/ProcgenDecorationPacks.js';
 import { createCharacterUiController, mountCharacterControls } from '../characterUiController.js';
 import { createLocalGamePreview } from '../midi-ui/localGamePreview.js';
@@ -24,6 +26,17 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
       const button = byId('procgenListen');
       if (button) { button.textContent = state.enabled || state.status === 'starting' ? 'Stop listening' : 'Listen locally'; button.setAttribute('aria-pressed', String(state.enabled)); }
       if (byId('procgenAudioStatus')) byId('procgenAudioStatus').textContent = state.message;
+    } });
+  const outputCapture = createMidiOutputCapture();
+  const captureControls = createMidiCaptureControls({ document, window, capture: outputCapture, prefix: 'procgenCapture', inspect: () => local.audio.inspectRender?.(),
+    attach: capture => local.setCapture(capture),
+    getMetadata: () => {
+      const runtime = getRuntime(), timer = runtime?.game?.getGameTimer?.();
+      return { backend: local.getState().enabled ? 'local-browser-audio' : 'no-active-output', seed: runtime?.world?.seed ?? settings.seed, generation: runtime?.world?.generation,
+        tempoBpm: project.transport.bpmBase, speed: timer?.speedFactor, frameMs: timer?.frameTime, scale: project.global.scale,
+        settingsReference: { localMasterGain: local.audio.getState().masterVolume, preset: settings.preset, mode: settings.mode, laneCount: settings.laneCount, pack: settings.pack,
+          tracks: project.tracks.slice(0, 16).map(track => ({ id: track.id, channel: track.channel, program: track.program })), ensemble: project.ensemble },
+        limits: { capacity: outputCapture.capacity, maxDurationMs: outputCapture.maxDurationMs } };
     } });
   const panel = byId('procgenDrawer'), tab = byId('procgenTab');
   const setOpen = open => {
@@ -174,7 +187,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   listen(window, 'blur', () => local.stop());
   listen(document, 'visibilitychange', () => { if (document.hidden) local.stop(); });
   const syncActiveCount = count => { if (byId('procgenAliveCount')) byId('procgenAliveCount').textContent = Math.max(0, count).toLocaleString() + ' alive'; };
-  return { settings, local, getShareUrl, syncActiveCount,
+  return { settings, local, outputCapture, captureControls, getShareUrl, syncActiveCount,
     syncMetrics(state) {
       syncActiveCount(state.alive);
       const pressure = getRuntime()?.view?.midiPreviewRouter?.getOutputPressure?.();
@@ -198,7 +211,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
       if (byId('procgenAliveCount') && runtime?.world) byId('procgenAliveCount').textContent = runtime.world.actors.reduce((count, actor) => count + (actor.failureReason ? 0 : 1), 0).toLocaleString() + ' alive';
       if (byId('procgenRunStatus')) byId('procgenRunStatus').textContent = `${settings.laneCount.toLocaleString()} ${settings.laneCount === 1 ? 'lane' : 'lanes'} · ${runtime?.world ? 'Wheel or Z/X zoom; arrows or drag pan; F follows the leader.' : 'Left-to-right generation'}`;
     },
-    dispose() { disposed = true; local.dispose(); characters.dispose?.(); for (const [target, event, handler] of listeners) target?.removeEventListener(event, handler); }
+    dispose() { disposed = true; local.dispose(); captureControls.dispose(); characters.dispose?.(); for (const [target, event, handler] of listeners) target?.removeEventListener(event, handler); }
   };
 };
 export { createProcgenUiController };

@@ -1,3 +1,5 @@
+import { createMidiOutputCapture } from '../midi/capture/MidiOutputCapture.js';
+import { createMidiCaptureControls } from './midi-ui/midiCaptureControls.js';
 import { createMidiEventClipEditor } from './midi-ui/midiEventClipEditor.js';
 import { buildMidiClipRecording } from '../midi/project/MidiClipRecording.js';
 import { createSoundAuditionPlan } from './midi-ui/midiSoundAudition.js';
@@ -312,6 +314,12 @@ const createMidiUiController = ({
   let masterVolume = DEFAULT_MASTER_VOLUME;
   const auditionSteps = new Map();
   let localGamePreview = null;
+  const outputCapture = createMidiOutputCapture();
+  let captureControls = null;
+  const captureContext = () => { const current = ensureProject(), scale = current.global.scale; return {
+    scaleName: scale.name, scaleRoot: scale.root, scaleDegrees: scale.degrees, tempoBpm: current.transport.bpmBase,
+    seed: getLemmings()?.game?.seed ?? null, generation: getLemmings()?.game?.generation ?? null, projectId: current.id, projectUpdatedAt: current.updatedAt
+  }; };
   let localInteraction = 0;
   const editHistory = createMidiEditHistory();
   let workbench = null, eventClipEditor = null;
@@ -425,6 +433,21 @@ const createMidiUiController = ({
 
   const readOrCreateProject = () => {
     cleanupLegacyMidiProjectStorage(storage);
+    captureControls = createMidiCaptureControls({ document, window, capture: outputCapture, prefix: 'midiCapture', download: downloadTextFile,
+      inspect: () => { localAudio?.inspectRender?.(); auditionAudio?.inspectRender?.(); },
+      attach: capture => { getLemmings()?.midiRouter?.setCapture?.(capture); localGamePreview?.setCapture(capture); localAudio?.setCapture?.(capture, captureContext); auditionAudio?.setCapture?.(capture, captureContext); },
+      getMetadata: () => {
+        const current = ensureProject(), timer = getLemmings()?.game?.getGameTimer?.();
+        const backends = [];
+        if (localGamePreview?.getState().enabled) backends.push('local-browser-audio');
+        if (auditionAudio?.getState().enabled) backends.push('local-audition-audio');
+        if (getLemmings()?.midiEnabled) backends.push('midi-route-enabled');
+        return { backend: backends.join('+') || 'no-active-output',
+          seed: getLemmings()?.game?.seed ?? null, generation: getLemmings()?.game?.generation ?? null, tempoBpm: current.transport.bpmBase, speed: timer?.speedFactor, frameMs: timer?.frameTime,
+          scale: current.global.scale, settingsReference: { projectId: current.id, updatedAt: current.updatedAt, localMasterGain: masterVolume, tracks: current.tracks.slice(0, 16).map(track => ({ id: track.id, channel: track.channel, program: track.program })),
+            clipIds: current.clips.slice(0, 16).map(clip => clip.id), ensemble: current.ensemble }, limits: { capacity: outputCapture.capacity, maxDurationMs: outputCapture.maxDurationMs } };
+      } });
+
     const factory = getFactoryConfig();
     const factoryProject = factory ? captureFactoryProject(factory) : null;
     const stored = readStoredMidiProject(storage);
@@ -572,6 +595,7 @@ const createMidiUiController = ({
       appliedRuntimeRouter = lemmings.midiRouter;
     }
     lemmings.midiEnabled = !!project?.enabled;
+    lemmings.midiRouter?.setCapture?.(outputCapture.getState().active ? outputCapture : null);
   };
 
   const queueRender = () => {
@@ -2274,6 +2298,8 @@ const createMidiUiController = ({
     if (!localGamePreview) localGamePreview = createLocalGamePreview({
       getLemmings, getConfig: getProjectConfig, immutableConfig: true, audio: localAudio, onStateChange: renderLocalSummary
     });
+    localGamePreview.setCapture(outputCapture.getState().active ? outputCapture : null);
+    localAudio.setCapture?.(outputCapture.getState().active ? outputCapture : null, captureContext);
     return localGamePreview;
   };
 
@@ -2298,6 +2324,7 @@ const createMidiUiController = ({
     const source = selectedSource();
     if (!source) return false;
     if (!auditionAudio) auditionAudio = createPreviewAudio({ masterVolume, onStateChange: renderLocalSummary, onPlayback: event => workbench?.onPlayback({ ...event, owner: 'audition' }) });
+    auditionAudio.setCapture?.(outputCapture.getState().active ? outputCapture : null, captureContext);
     const key = JSON.stringify([source.mapping, source.clipId, ensureProject().clips.find(clip => clip.id === source.clipId)?.playback]);
     settleAuditionPasses();
     const previous = auditionSteps.get(source.id);
@@ -3290,6 +3317,9 @@ const createMidiUiController = ({
       panic,
       getWorkbenchState: () => workbench?.getState(),
       testSelectedSound,
+      getOutputCapture: () => outputCapture,
+      startOutputCapture: () => captureControls?.start(),
+      stopOutputCapture: () => captureControls?.stop(),
       getLocalAudioState: () => ({ masterVolume, monitor: localGamePreview?.getState(), audition: auditionAudio?.getState() }),
       undo: () => editHistory.undo(ensureProject(), commitProject),
       redo: () => editHistory.redo(ensureProject(), commitProject)
@@ -3305,6 +3335,7 @@ const createMidiUiController = ({
     auditionSteps.clear();
     localGamePreview?.dispose?.();
     if (!localGamePreview) localAudio?.dispose?.();
+    captureControls?.dispose(); captureControls = null;
     if (refreshTimer != null && typeof window?.clearTimeout === 'function') {
       window.clearTimeout(refreshTimer);
     }

@@ -92,6 +92,31 @@ Choosing 400% adds up to 12 dB relative to 100%; a local output ceiling controls
 dense polyphony. This boost never changes external MIDI velocities or CC values.
 Legacy saved levels retain their previous effective gain.
 
+Expert **Output capture** records an existing output session for at most two minutes
+and retains the latest 4,096 records. It does not enable listening or request a
+MIDI device. Stop capture leaves playback running. Inspect builds a piano roll
+and objective summary on demand; JSONL, CSV and the standalone HTML report can
+be saved locally. The observer is detached while capture is off.
+
+Evidence separates event requests, accepted API calls, intended/scheduled host
+times, local synth scheduling and actual end callbacks. Beat positions use level
+simulation ticks and stored base BPM, independently of wall-clock speed. Each
+note retains its actual origin, route, pitch, velocity, selected scale and owned
+lifecycle where available. Bounded settings references and changed-context
+markers identify seed, generation, backend, tempo, local master gain and routing context. Ring
+truncation and incomplete lifecycles are explicit.
+
+Inspect can sample the existing local output waveform on demand; RMS and peak
+are rendered signal measurements. They do not verify speakers, external MIDI
+receipt or acoustic playback. The summary reports density, scheduled polyphony,
+register, scale membership, intervals, repetition, API dispatch timing, lane
+admission, controller coalescing and open gates; it does not score musical quality
+or change notes. A deterministic fake-output fixture is available with
+`node scripts/midi-capture-fixture.js`; `--input=PATH` inspects a saved JSONL file.
+See [the capture specification](midi-output-capture.md) for the record schema and bounds.
+The bounded muted native check in `scripts/midi-capture-native.js` uses an existing
+local server and installed Edge, with a 16-cell audition and cancellation check.
+
 Expert **Send MIDI test** controls are explicitly hardware tests, distinct from
 local **Listen here**. MIDI device selectors show a disabled connection prompt
 until access is available instead of rendering empty dropdowns.

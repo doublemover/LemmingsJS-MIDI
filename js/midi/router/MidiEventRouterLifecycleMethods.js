@@ -14,6 +14,8 @@ import {
 } from './MidiEventRouterShared.js';
 
 const midiEventRouterLifecycleMethods = {
+  setCapture(capture = null) { this.scheduler.setCapture?.(capture); },
+
   getEventPlaybackState(event) {
     const base = this.mapping.config?.sfx?.[event?.sfxId];
     const mapping = event?.triggerType != null ? { ...base, ...this.mapping.config?.triggers?.[event.triggerType] } : base;
@@ -146,6 +148,16 @@ const midiEventRouterLifecycleMethods = {
     const priorityList = this.mapping.config?.limits?.prioritySfx || [];
     if (priorityList.includes(event?.sfxId)) return 2;
     return 1;
+  },
+
+  _captureBeatFields(tick) {
+    if (!this.scheduler._captureEnabled?.()) return {};
+    const base = this.mapping.config?.timing?.bpmBase;
+    const tempoBpm = Math.max(20, Number.isFinite(base) ? base : 120);
+    const frame = this._phraseTimer?.TIME_PER_FRAME_MS ?? this.context?.game?.getGameTimer?.()?.TIME_PER_FRAME_MS;
+    const baseTickMs = Number.isFinite(frame) && frame > 0 ? frame : 60;
+    const beat = Number.isFinite(tick) ? Math.max(0, tick) * baseTickMs / 60000 * tempoBpm : null;
+    return { tick, tempoBpm, baseTickMs, beat: Number.isFinite(beat) ? beat : null, beatClock: 'simulation-base-ticks' };
   },
 
   _getBpm() {

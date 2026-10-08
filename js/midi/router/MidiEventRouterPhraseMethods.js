@@ -5,8 +5,9 @@ const midiEventRouterPhraseMethods = {
   _sendGamePhraseNote(spec, meta, tick, counted = false) {
     if (!this.mapping.config?.enabled) return false;
     if (!this.scheduler.hasOutput?.(spec.outputId ?? null)) return false;
+    meta = { ...meta, ...this._captureBeatFields(tick) };
     if (!this._hasTickBudget(tick, meta.laneIndex, meta.laneCount)) {
-      this.scheduler.recordThrottle?.('tick-limit');
+      this.scheduler.recordThrottle?.('tick-limit', this._nowMs(), meta);
       return false;
     }
     const now = this._nowMs();
@@ -19,7 +20,7 @@ const midiEventRouterPhraseMethods = {
     delete currentMeta.rateReserved;
     delete currentMeta.reservationId;
     if (!this._shouldSend(currentMeta, ready, this._planEntries(ready, now, 1), now)) {
-      this.scheduler.recordThrottle?.(this._lastRateReport?.reason || 'count-limit', now);
+      this.scheduler.recordThrottle?.(this._lastRateReport?.reason || 'count-limit', now, currentMeta);
       return false;
     }
     this._hasTickBudget(tick, meta.laneIndex, meta.laneCount, true);

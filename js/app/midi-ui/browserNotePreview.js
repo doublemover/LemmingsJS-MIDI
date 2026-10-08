@@ -6,6 +6,7 @@ const MAX_SCHEDULED_VOICES = 64;
 const MAX_CONTROL_EVENTS = 128;
 const MASTER_VOLUME_RAMP_SECONDS = 0.015;
 const MAX_MASTER_VOLUME = 4;
+let captureScopeSequence = 0;
 const instrumentProfile = (program, percussion, note, enabled = true) => {
   if (!enabled) return { waveform: 'triangle', attack: ATTACK_SECONDS, decay: 0, sustain: 1, release: RELEASE_SECONDS, gain: 1 };
   if (percussion) {
@@ -61,6 +62,11 @@ class BrowserNotePreview {
     this._previewTimer = null;
     this._voiceSequence = 0;
     this._onPlayback = onPlayback;
+    this.capture = null;
+    this._captureScope = 'audio-' + (++captureScopeSequence);
+    this._captureContext = null;
+    this._captureAnalyser = null;
+    this._captureSamples = null;
     this._channels = new Map();
     this._noiseBuffer = null;
     this._onContextState = () => {
@@ -82,6 +88,7 @@ class BrowserNotePreview {
     }
     this.output = Object.freeze({
       id: 'browser-note-preview',
+      captureScope: this._captureScope,
       name: 'Browser audio preview',
       supportsPerNotePan: true,
       supportsPerNoteInstrument: true,
@@ -232,6 +239,9 @@ class BrowserNotePreview {
     this._noiseBuffer = null;
     this._master?.disconnect();
     this._limiter?.disconnect();
+    this._captureAnalyser?.disconnect();
+    this._captureAnalyser = null;
+    this._captureSamples = null;
     this._limiter = null;
     this._master = null;
     this._context = null;
@@ -245,6 +255,51 @@ class BrowserNotePreview {
     return this._disposePromise;
   }
 
+  inspectRender() {
+    if (!this._ready() || !this._context?.createAnalyser || !this._limiter) return null;
+    try {
+      if (!this._captureAnalyser) {
+        this._captureAnalyser = this._context.createAnalyser();
+        this._captureAnalyser.fftSize = 2048;
+        this._captureSamples = new Float32Array(2048);
+        // A nonaudible measurement tap; the existing destination connection remains unchanged.
+        this._limiter.connect(this._captureAnalyser);
+      }
+      this._captureAnalyser.getFloatTimeDomainData(this._captureSamples);
+      let sum = 0, peak = 0;
+      for (const value of this._captureSamples) { sum += value * value; peak = Math.max(peak, Math.abs(value)); }
+      const sample = { type: 'waveform', rms: Math.sqrt(sum / this._captureSamples.length), peak,
+        localMasterGain: this._masterVolume, audioTime: this._context.currentTime, sampleRate: this._context.sampleRate, frames: this._captureSamples.length,
+        reason: 'demand-inspection', acousticReceipt: false };
+      this._observe('synth-render-sample', sample);
+      return sample;
+    } catch { return null; }
+  }
+
+  setCapture(capture = null, context = undefined) {
+    this.capture = typeof capture?.record === 'function' ? capture : null;
+    if (context !== undefined) this._captureContext = context;
+  }
+
+  _captureEnabled() {
+    try { return !!this.capture && (typeof this.capture.isActive !== 'function' || this.capture.isActive()); } catch { return false; }
+  }
+
+  _captureContextFields() {
+    if (!this._captureEnabled()) return null;
+    try {
+      const context = typeof this._captureContext === 'function' ? this._captureContext() : this._captureContext;
+      return context ? { ...context, ...(Array.isArray(context.scaleDegrees) ? { scaleDegrees: context.scaleDegrees.slice(0, 32) } : {}) } : null;
+    } catch { return null; }
+  }
+
+  _observe(stage, fields) {
+    if (!this._captureEnabled()) return null;
+    try {
+      const context = this._captureContextFields();
+      return this.capture?.record(stage, { captureScope: this._captureScope, ...context, ...fields, backend: 'local-synth', outputId: this.output.id, outputScope: this._captureScope }) ?? null; } catch { return null; }
+  }
+
   /** Notes use {note, velocity, durationMs, offsetMs, channel}; numbers are also accepted. */
   async preview(notes, { replace = true, durationMs = 220, stepMs = 160 } = {}) {
     if (this._disposed) return false;
@@ -256,12 +311,16 @@ class BrowserNotePreview {
         : { ...entry });
     if (!specs.some(spec => this._validNote(spec.note))) return false;
     if (!await this.enable() || generation !== this._generation) return false;
-    const baseTime = this._nowMs();
+    const baseTime = this._nowMs(), captureContext = this._captureContextFields();
     for (const spec of specs) {
       if (!this._validNote(spec.note)) continue;
       const offset = finite(spec.offsetMs, 0);
       if (offset < 0 || !Number.isFinite(baseTime + offset)) continue;
-      this._previewPending.push({ spec, time: baseTime + offset, durationMs });
+      const requestId = this._observe('request', { ...spec.playback, type: 'audition', note: spec.note,
+        channel: spec.channel ?? 1, program: spec.program, intendedMs: baseTime + offset, eventType: 'audition' });
+      this._previewPending.push({ spec: { ...spec, capture: { ...captureContext, ...spec.playback, requestId, captureScope: this._captureScope, eventType: 'audition',
+        note: spec.note, channel: spec.channel ?? 1, program: spec.program, ensembleRole: spec.ensembleRole,
+        percussion: spec.percussion, intendedMs: baseTime + offset } }, time: baseTime + offset, durationMs });
     }
     this._previewPending.sort((a, b) => a.time - b.time);
     if (this._previewPending.length > MAX_SCHEDULED_VOICES) this._previewPending.splice(0, this._previewPending.length - MAX_SCHEDULED_VOICES);
@@ -279,11 +338,11 @@ class BrowserNotePreview {
       const { spec, time, durationMs } = this._previewPending.shift();
       const channel = this.output.channels[clamp(Math.trunc(finite(spec.channel, 1)), 1, 16)];
       const length = clamp(finite(spec.durationMs, durationMs), 30, this._maxNoteSeconds * 1000);
-      if (time + length <= now) continue;
+      if (time + length <= now) { this._observe('drop', { ...spec.capture, type: 'noteOn', reason: 'expired-audition' }); continue; }
       if (Number.isFinite(spec.pitchBend)) channel.sendPitchBend(spec.pitchBend, { time });
-      if (channel.sendNoteOn(spec.note, { rawAttack: finite(spec.velocity, 80), time, playback: spec.playback, instrument: { program: spec.program, percussion: spec.percussion, role: spec.ensembleRole, legacy: !spec.ensembleRole && spec.percussion !== true },
+      if (channel.sendNoteOn(spec.note, { rawAttack: finite(spec.velocity, 80), time, capture: spec.capture, playback: spec.playback, instrument: { program: spec.program, percussion: spec.percussion, role: spec.ensembleRole, legacy: !spec.ensembleRole && spec.percussion !== true },
         ...(Number.isFinite(spec.pan) ? { pan: clamp(spec.pan / 127, -1, 1) } : {}) })) {
-        channel.sendNoteOff(spec.note, { time: time + length });
+        channel.sendNoteOff(spec.note, { time: time + length, capture: spec.capture });
         played = true;
       }
     }
@@ -356,12 +415,12 @@ class BrowserNotePreview {
     if (simultaneous.length >= this._maxVoices) {
       const oldest = simultaneous[0];
       if (start - context.currentTime <= RELEASE_SECONDS || start - oldest.start <= RELEASE_SECONDS) {
-        this._destroyVoice(oldest);
+        this._destroyVoice(oldest, 'voice-budget');
       } else {
         this._release(oldest, start - RELEASE_SECONDS, true);
       }
     }
-    while (this._voices.size >= MAX_SCHEDULED_VOICES) this._destroyVoice(this._voices.values().next().value);
+    while (this._voices.size >= MAX_SCHEDULED_VOICES) this._destroyVoice(this._voices.values().next().value, 'scheduled-voice-cap');
     let voice;
     let oscillator;
     let gain;
@@ -372,7 +431,7 @@ class BrowserNotePreview {
       oscillator = noise ? context.createBufferSource() : context.createOscillator();
       if (noise) { oscillator.buffer = noise; oscillator.loop = true; }
       gain = context.createGain();
-      voice = { oscillator, gain, number, note, start, id: ++this._voiceSequence, playback: options.playback, startMs: this._nowMs() + (start - context.currentTime) * 1000, end: start + Math.min(this._maxNoteSeconds, profile.seconds || this._maxNoteSeconds), released: false,
+      voice = { oscillator, gain, number, note, start, id: ++this._voiceSequence, playback: options.playback, startMs: this._nowMs() + (start - context.currentTime) * 1000, end: start + Math.min(this._maxNoteSeconds, profile.seconds || this._maxNoteSeconds), released: false, captureMeta: options.capture || null,
         peak: clamp(finite(options?.rawAttack, 80), 1, 127) / 127 * profile.gain, attack: profile.attack, decay: profile.decay,
         sustain: profile.sustain, release: profile.release, instrument: options.instrument, velocity: clamp(finite(options?.rawAttack, 80), 1, 127) };
       this._voices.add(voice);
@@ -406,6 +465,12 @@ class BrowserNotePreview {
       oscillator.onended = () => this._destroyVoice(voice);
       oscillator.start(start);
       oscillator.stop(voice.end);
+      this._observe('synth-scheduled', { ...voice.captureMeta, type: 'noteOn', voiceId: voice.id, channel: number,
+        note, velocity: voice.velocity, program: options.instrument?.program, ensembleRole: options.instrument?.role,
+        percussion: options.instrument?.percussion, scheduledMs: voice.startMs, audioTime: start,
+        endAudioTime: voice.end, durationMs: (voice.end - start) * 1000, waveform: noise ? 'noise' : oscillator.type });
+      if (this._captureEnabled() && !options.capture?.observedByScheduler) this._observe('api-dispatch', { ...voice.captureMeta, type: 'noteOn',
+        voiceId: voice.id, channel: number, note, velocity: voice.velocity, scheduledMs: voice.startMs, accepted: true });
       this._emitPlayback(voice, 'start');
       this._setStatus(this._status, this._message);
       return true;
@@ -438,6 +503,9 @@ class BrowserNotePreview {
     voice.end = end;
     voice.released = true;
     if (force) voice.stolen = true;
+    this._observe('synth-release', { ...voice.captureMeta, type: 'noteOff', voiceId: voice.id, channel: voice.number,
+      note: voice.note, scheduledMs: voice.startMs + (releaseAt - voice.start) * 1000, audioTime: releaseAt,
+      endAudioTime: end, reason: force ? 'voice-budget' : 'note-off' });
     this._emitPlayback(voice, 'release', releaseAt);
   }
 
@@ -453,11 +521,17 @@ class BrowserNotePreview {
         if (voice.number === number && voice.note === note) this._destroyVoice(voice);
       }
     }
+    if (this._captureEnabled() && !options.capture?.observedByScheduler && candidates.length) this._observe('api-dispatch', {
+      ...(options.capture || candidates[0].captureMeta), type: 'noteOff', voiceId: candidates[0].id, channel: number,
+      note, scheduledMs: finite(options.time, this._nowMs()), accepted: true });
     return candidates.length > 0;
   }
 
-  _destroyVoice(voice) {
+  _destroyVoice(voice, reason = 'source-ended') {
     if (!voice || !this._voices.delete(voice)) return;
+    this._observe('synth-end', { ...voice.captureMeta, type: 'noteEnd', voiceId: voice.id, channel: voice.number,
+      note: voice.note, audioTime: this._context?.currentTime, scheduledMs: voice.startMs + (voice.end - voice.start) * 1000,
+      matchedDurationMs: Math.max(0, ((this._context?.currentTime ?? voice.start) - voice.start) * 1000), reason });
     this._emitPlayback(voice, 'end');
     voice.oscillator.onended = null;
     try { voice.oscillator.stop(); } catch { /* Already ended or failed to start. */ }
@@ -480,10 +554,15 @@ class BrowserNotePreview {
   _clearVoices(number = null) {
     if (this._previewTimer != null) clearTimeout(this._previewTimer);
     this._previewTimer = null;
+    for (const entry of this._previewPending) {
+      if (number == null || clamp(Math.trunc(finite(entry.spec.channel, 1)), 1, 16) === number) {
+        this._observe('cancelled', { ...entry.spec.capture, type: 'noteOn', reason: 'audition-stop' });
+      }
+    }
     this._previewPending = number == null ? [] : this._previewPending.filter(entry => clamp(Math.trunc(finite(entry.spec.channel, 1)), 1, 16) !== number);
     if (this._previewPending.length && this._ready()) this._drainPreviewQueue();
     for (const voice of this._voices) {
-      if (number == null || voice.number === number) this._destroyVoice(voice);
+      if (number == null || voice.number === number) this._destroyVoice(voice, 'panic-or-stop');
     }
     for (const [key, channel] of this._channels) {
       if (number != null && key !== number) continue;

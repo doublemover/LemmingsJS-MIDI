@@ -848,18 +848,19 @@ fitted berets with lift/open/reattach cosmetics on every shape. Acceptance instr
 - Camera zoom now preserves follow; deliberate pan releases it and the visible Follow/F control restores it. Lane-stack fit, jitter, no-live-leader, DPR and resize checks pass; bounded CCTV integration is implemented and native-reviewed.
 - Shared MIDI output budgeting now retains wall-time history across speed changes, gives active lanes fair shares, expires stale notes and reports thinning beside the existing audio controls. Editable complementary ensemble roles are implemented through existing palettes and track controls; saved-setting and channel-safety checks pass.
 - Verified prior-run distance markers keep the same metric and positions; screen-space black/white dashes pause with game ticks and respect reduced motion.
-- Make deterministic terrain growth finer and prioritize reachable frontiers with bounded shared work and matching collision/display. Derive per-pack zone themes from canonical normal-level co-occurrence with their maximum authored width as the zone cap.
+- Make deterministic terrain growth finer and prioritize reachable frontiers with bounded shared work and matching collision/display. Canonical normal-level descriptors and pure revision-cached zone plans are implemented with authored-width caps and exact selected-pack provenance; applying screened groups and incremental collision/display reveal remains next.
 - Ranked live overview CCTV and the persistent active count are implemented; focused/native desktop and narrow checks pass. The Library reference was unavailable after the supported transfer and one retry, so explicit owner requirements and actual app evidence guided the layout.
 - Ramp constructible challenge motifs with distance. Deep mining/switchback routes require real mining/digging and turning policy in the lane world before claiming playable escalation.
 
 - Tunnel-corner wall-column transition is reproduced and fixed using real shared action systems; non-climber turnaround and natural hoisting are covered.
-- Starting lane themes now use a deterministic balanced permutation of available selected-pack groundsets; later co-occurrence zones remain queued.
+- Starting lane themes now use a deterministic balanced permutation of available selected-pack groundsets; canonical co-occurrence plans are now derived, while runtime application remains queued.
 
-- Population-aware cohort easing, delayed sparse scout abilities and sustained pile detection are in progress. New-session random shapes/body colors already preserve saved controls and stable lane rainbow assignments.
+- Population-aware cohort easing, delayed sparse scout abilities and sustained pile detection are implemented with focused checks and a 65-lane native run. New-session random shapes/body colors already preserve saved controls and stable lane rainbow assignments.
 
 ## Approved followups after the current October 8 fixes
 
-- CCTV director: actual bounded construction/survival/lead-change signals, user pins, dwell and stable ties, clear selection reasons, fair rotation and an explicit eight-leader mode.
+- CCTV director is implemented: actual cached construction/survival/lead-change signals, up to four user pins, stable dwell/ties, explicit reasons, fair rotation and the Eight leaders override pass focused and native desktop checks.
+- Bounded output capture is implemented in Expert and procgen Details: finite ring, actual request/API/synth lifecycle evidence, explicit clocks and context, demand-only waveform inspection, JSONL/CSV/HTML exports and objective summaries. Seeded native local output and a full 16-cell audition/cancellation are the acceptance fixtures; physical MIDI receipt is unverified.
 - Musical tension: actual established-population collapse/recovery and breakthrough signals thin or restore layers smoothly, preserving instruments, notes, scale, saved edits, channel safety and the shared output budget.
 - Musical automation spans: transparent colored rectangles describe lane/group, supported target, explicit musical time domain, start/duration/loop, constant/ramped values, conditions and optional actual event triggers. Draw/drag/edit/bypass, accessible phase and overlap semantics, cheap overview and focused editing reuse the existing sequencer/routing owners.
 - Ghosts, named construction landmarks and replay capture are shelved. Literal weather visuals are outside the approved span concept.

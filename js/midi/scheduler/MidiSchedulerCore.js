@@ -1,3 +1,4 @@
+import { midiOutputObserverMethods } from './MidiOutputObserverMethods.js';
 import { MIDI_BYTES_PER_SECOND } from './MidiSchedulerShared.js';
 import { midiSchedulerChannelMethods } from './MidiSchedulerChannelMethods.js';
 import { midiSchedulerRateMethods } from './MidiSchedulerRateMethods.js';
@@ -6,6 +7,7 @@ import { MidiGamePhraseQueue } from './MidiGamePhraseQueue.js';
 
 class MidiScheduler {
   constructor(config = {}) {
+    this.capture = null;
     this.output = null;
     this._outputsById = new Map();
     this.tickMs = 60;
@@ -38,6 +40,7 @@ class MidiScheduler {
 
 Object.assign(
   MidiScheduler.prototype,
+  midiOutputObserverMethods,
   midiSchedulerChannelMethods,
   midiSchedulerRateMethods,
   midiSchedulerSendMethods
