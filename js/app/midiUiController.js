@@ -1,3 +1,4 @@
+import { createMidiAutomationSpanEditor } from './midi-ui/midiAutomationSpanEditor.js';
 import { createMidiTensionControls } from './midi-ui/midiTensionControls.js';
 import { createMidiOutputCapture } from '../midi/capture/MidiOutputCapture.js';
 import { createMidiCaptureControls } from './midi-ui/midiCaptureControls.js';
@@ -1910,6 +1911,7 @@ const createMidiUiController = ({
     const current = ensureProject();
     const list = document?.getElementById('midiAutomationList');
     if (!list) return;
+    const openSpans = new Map(Array.from(list.querySelectorAll?.('.midi-span-editor') || []).map(editor => [editor.dataset.automationSpanId, editor.open]));
     removeChildren(list);
     for (const lane of current.automation) {
       const row = document.createElement('div');
@@ -2067,6 +2069,10 @@ const createMidiUiController = ({
       }));
 
       row.append(enabledLabel, targetLabel, axisLabel, opLabel, minLabel, maxLabel, pointBeatLabel, pointValueLabel, remove);
+      if (lane.span) { axisLabel.hidden = opLabel.hidden = pointBeatLabel.hidden = pointValueLabel.hidden = true; minText.textContent = 'Start value'; maxText.textContent = 'End value'; }
+      row.append(createMidiAutomationSpanEditor({ document, lane, tracks: current.tracks, open: openSpans.get(lane.id) || false, canAddSpan: current.automation.filter(entry => entry.enabled && entry.span).length < 64,
+        getState: () => (getLemmings()?.midiRouter || getLemmings()?.midiPreviewRouter)?.getAutomationSpanState?.(lane.id, 0),
+        onUpdate: patch => dispatchProjectIntent({ type: 'automation.update', automationId: lane.id, patch }) }));
       list.appendChild(row);
     }
     if (!current.automation.length) {
@@ -2283,6 +2289,7 @@ const createMidiUiController = ({
   };
 
   const renderLocalSummary = () => {
+    for (const editor of document?.getElementById('midiAutomationList')?.querySelectorAll?.('.midi-span-editor') || []) editor.syncStatus?.();
     renderMasterVolume(); tensionControls?.syncStatus();
     const localState = localGamePreview?.getState?.();
     const audioState = auditionAudio?.getState?.();

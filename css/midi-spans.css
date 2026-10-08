@@ -1,0 +1,22 @@
+.midi-span-editor { flex: 1 0 100%; min-width: 0; border-top: 1px solid #6c806d; margin-top: 6px; padding-top: 6px; }
+.midi-span-editor summary { cursor: pointer; }
+.midi-span-fields { display: grid; grid-template-columns: repeat(auto-fit,minmax(102px,1fr)); gap: 7px; margin: 8px 0; }
+.midi-span-fields label { display: flex; flex-direction: column; min-width: 0; gap: 3px; font-size: 11px; }
+.midi-span-fields input, .midi-span-fields select { min-width: 0; width: 100%; box-sizing: border-box; }
+.midi-span-timeline { position: relative; height: 46px; margin: 9px 0; background: repeating-linear-gradient(90deg,#33463b 0,#33463b 1px,#15251b 1px,#15251b 6.25%); border: 1px solid #728d77; border-radius: 4px; touch-action: none; overflow: hidden; }
+.midi-span-rectangle { position: absolute; top: 5px; height: 34px; box-sizing: border-box; background: color-mix(in srgb,var(--span-color) 32%,transparent); border: 2px solid var(--span-color); color: #fff; font: 11px/30px system-ui,sans-serif; white-space: nowrap; padding-left: 4px; cursor: grab; }
+.midi-span-rectangle.ramp { background: repeating-linear-gradient(135deg,color-mix(in srgb,var(--span-color) 35%,transparent) 0,color-mix(in srgb,var(--span-color) 35%,transparent) 5px,transparent 5px,transparent 10px); }
+.midi-span-resize { position: absolute; right: 0; top: 0; width: 16px; height: 100%; background: #15251bd9; cursor: ew-resize; text-align: center; }
+.midi-span-playhead { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; pointer-events: none; }
+.midi-span-status, .midi-span-help { margin: 5px 0; font-size: 11px; line-height: 1.4; }
+.midi-span-help { opacity: .8; }
+.midi-span-list { display: grid; gap: 7px; margin: 8px 0; }
+.midi-span-row { padding: 8px; border: 1px solid #6c806d; border-radius: 5px; }
+.midi-span-row-header { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
+.midi-span-row-header input[type=number] { width: 72px; }
+.midi-span-row-header label { display: flex; align-items: center; gap: 4px; }
+
+.midi-automation-row > .midi-span-editor { grid-column: 1 / -1; }
+.midi-automation-row > [hidden] { display: none !important; }
+
+.midi-span-fields > [hidden] { display: none !important; }

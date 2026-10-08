@@ -71,7 +71,7 @@ const createProcgenCameraController = renderer => {
     else if (event.deltaY) setZoom(renderer.scale * (event.deltaY > 0 ? 1 / 1.1 : 1.1));
   }, { passive: false });
   let drag = null;
-  listen('pointerdown', event => { if (event.button && event.button !== 1) return; drag = { x: event.clientX, y: event.clientY, startX: event.clientX, startY: event.clientY, moved: false }; canvas.setPointerCapture?.(event.pointerId); });
+  listen('pointerdown', event => { if (event.button && event.button !== 1) return; canvas.focus?.(); drag = { x: event.clientX, y: event.clientY, startX: event.clientX, startY: event.clientY, moved: false }; canvas.setPointerCapture?.(event.pointerId); });
   listen('pointermove', event => {
     if (!drag || !drag.moved && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 4) return;
     if (pan(drag.x - event.clientX, drag.y - event.clientY)) { drag.x = event.clientX; drag.y = event.clientY; drag.moved = true; }

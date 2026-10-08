@@ -8,6 +8,7 @@
   <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=0.0, viewport-fit=cover"/>
   <link type="text/css" rel="stylesheet" href="css/procgen.css">
   <link type="text/css" rel="stylesheet" href="css/character-controls.css">
+  <link type="text/css" rel="stylesheet" href="css/midi-spans.css">
   <link type="text/css" rel="stylesheet" href="css/icons.css">
   <script type="module" src="js/app/procgenBoot.js"></script>
 </head>
@@ -62,6 +63,13 @@
       <label>Action music <select id="procgenPreset"></select></label>
       <label class="procgen-check"><input id="procgenPhrases" type="checkbox"> Short phrases</label>
     </div>
+    <details id="procgenWorkerFields"><summary>Construction crews</summary>
+      <div class="procgen-drawer-row">
+        <label>Concurrent bashers per lane <input id="procgenWorkerBashers" type="number" min="0" max="16" step="1" value="2"></label>
+        <label>Concurrent diggers per lane <input id="procgenWorkerDiggers" type="number" min="0" max="16" step="1" value="2"></label>
+        <label>Concurrent builders per lane <input id="procgenWorkerBuilders" type="number" min="0" max="16" step="1" value="2"></label>
+      </div><p>Independent work can run together. Overlapping work keeps one owner; lowering a limit lets existing jobs finish.</p>
+    </details>
     <details id="procgenTensionFields" hidden><summary>Musical tension</summary>
               <label><input id="procgenTensionEnabled" type="checkbox"> Thin layers when an established crew declines</label>
               <div class="procgen-controls-row">
@@ -80,6 +88,16 @@
               <p id="procgenTensionStatus" role="status" aria-live="off"></p>
               <p>Uses completed procgen crew observations and automatic ensemble roles. Existing notes and instruments stay assigned. Game seconds advance with the simulation.</p>
             </details>
+    <details id="procgenSpanFields"><summary>Musical spans</summary>
+      <div class="procgen-drawer-row">
+        <label>Domain <select id="procgenSpanDomain"><option value="beats">Musical beats</option><option value="distance">Actor world distance</option></select></label>
+        <label>Target <select id="procgenSpanTarget"><option value="velocity">Velocity</option><option value="note">Pitch offset</option><option value="pan">Pan</option><option value="duration">Duration</option><option value="timbre">Timbre</option></select></label>
+        <button id="procgenSpanAdd" type="button">Add span</button>
+        <label><input id="procgenSpanVisible" type="checkbox" checked> Show rectangles</label>
+        <label><input id="procgenSpanEdit" type="checkbox"> Draw on lanes</label>
+      </div><p>Beat rectangles use a musical timeline across the screen; distance rectangles follow world X. Enable Draw on lanes to select, move, resize or draw a lane group. Camera dragging resumes when drawing is off.</p>
+      <div id="procgenSpanList" class="midi-span-list"></div>
+    </details>
     <details class="midi-output-capture"><summary>Output capture</summary>
       <div class="midi-capture-buttons" role="group" aria-label="Bounded output capture">
         <button id="procgenCaptureStart" type="button">Capture 2 minutes</button><button id="procgenCaptureStop" type="button" disabled>Stop capture</button>

@@ -1,10 +1,12 @@
+import { createProcgenMidiSpanOverlay } from './ProcgenMidiSpanOverlay.js';
+import { createProcgenMidiSpanControls } from './ProcgenMidiSpanControls.js';
 import { createMidiTensionControls } from '../midi-ui/midiTensionControls.js';
 import { createMidiOutputCapture } from '../../midi/capture/MidiOutputCapture.js';
 import { createMidiCaptureControls } from '../midi-ui/midiCaptureControls.js';
 import { DECORATION_CHOICES } from '../../decorations/ProcgenDecorationPacks.js';
 import { createCharacterUiController, mountCharacterControls } from '../characterUiController.js';
 import { createLocalGamePreview } from '../midi-ui/localGamePreview.js';
-import { createMidiProjectFromMidiConfig, projectToMidiConfig, reduceMidiProject } from '../../midi/project/MidiProject.js';
+import { createMidiProjectFromMidiConfig, projectToMidiConfig, reduceMidiProject, sanitizeMidiProject } from '../../midi/project/MidiProject.js';
 import { GAME_EVENT_MIDI_PRESETS, applyGameEventMidiPreset } from '../../midi/project/GameEventMidiPresets.js';
 import { normalizeLaneCount } from './ProcgenLaneWorld.js';
 import { getCharacterPreference } from '../../lemmings/CharacterSpriteSet.js';
@@ -24,6 +26,11 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   let tensionPreferences = null;
   try { const stored = JSON.parse(window.localStorage?.getItem(tensionStorageKey) || 'null'); if (stored?.version === 1 && stored.value && typeof stored.value === 'object') tensionPreferences = stored.value; } catch { /* Keep the preset defaults. */ }
   let project = applyGameEventMidiPreset(createMidiProjectFromMidiConfig({ enabled: false, sfx: {}, triggers: {} }), settings.preset);
+  const spanStorageKey = 'lemmings.procgen.automationSpans.v1', workerStorageKey = 'lemmings.procgen.workerLimits.v1';
+  const normalizeWorkerLimits = value => Object.fromEntries(['bashers', 'diggers', 'builders'].map(key => [key, Number.isFinite(Number(value?.[key])) ? Math.max(0, Math.min(16, Math.trunc(Number(value[key])))) : 2]));
+  settings.workerLimits = normalizeWorkerLimits(null);
+  try { const stored = JSON.parse(window.localStorage?.getItem(spanStorageKey) || 'null'); if (stored?.version === 1 && Array.isArray(stored.value)) project = sanitizeMidiProject({ ...project, automation: [...project.automation, ...stored.value.filter(entry => entry?.span).slice(0, 64)] }); } catch { /* Keep session defaults. */ }
+  try { const stored = JSON.parse(window.localStorage?.getItem(workerStorageKey) || 'null'); if (stored?.version === 1) settings.workerLimits = normalizeWorkerLimits(stored.value); } catch { /* Keep session defaults. */ }
   let config = projectToMidiConfig(project), disposed = false;
   const local = createLocalGamePreview({ getLemmings: () => getRuntime()?.view, getConfig: () => config, immutableConfig: true,
     onStateChange: state => {
@@ -49,6 +56,28 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
       tensionPreferences = project.ensemble?.tension; config = projectToMidiConfig(project); local.syncConfig();
       try { window.localStorage?.setItem(tensionStorageKey, JSON.stringify({ version: 1, value: tensionPreferences })); } catch { /* Keep the session choice. */ }
     } });
+  const spanControls = createProcgenMidiSpanControls({ document, getProject: () => project, getLaneCount: () => settings.laneCount,
+    getRouter: () => getRuntime()?.view?.midiPreviewRouter,
+    onSelect: id => spanOverlay.select(id),
+    onIntent: intent => { project = reduceMidiProject(project, intent); config = projectToMidiConfig(project); local.syncConfig(); spanControls.render(); spanOverlay.changed();
+      try { window.localStorage?.setItem(spanStorageKey, JSON.stringify({ version: 1, value: project.automation.filter(entry => entry.span) })); } catch { /* Keep the session edits. */ }
+    } });
+  const spanOverlay = createProcgenMidiSpanOverlay({ document, getRuntime, getProject: () => project,
+    getDomain: () => byId('procgenSpanDomain')?.value || 'beats', getTarget: () => byId('procgenSpanTarget')?.value || 'velocity',
+    onUpdate: (automationId, patch) => { project = reduceMidiProject(project, { type: 'automation.update', automationId, patch }); config = projectToMidiConfig(project); local.syncConfig(); spanControls.render();
+      try { window.localStorage?.setItem(spanStorageKey, JSON.stringify({ version: 1, value: project.automation.filter(entry => entry.span) })); } catch { /* Keep session edits. */ }
+    }, onAdd: (span, target) => spanControls.addSpan(span, target), onSelect: id => { spanControls.select(id); setOpen(true); } });
+  listen(byId('procgenSpanEdit'), 'change', event => { spanOverlay.setEditing(event.target.checked); if (event.target.checked && byId('procgenSpanVisible')) byId('procgenSpanVisible').checked = true; });
+  listen(byId('procgenSpanVisible'), 'change', event => { spanOverlay.setVisible(event.target.checked); if (!event.target.checked && byId('procgenSpanEdit')) byId('procgenSpanEdit').checked = false; });
+  const syncWorkerLimits = () => {
+    getRuntime()?.world?.setWorkerLimits?.(settings.workerLimits);
+    for (const [key, suffix] of [['bashers', 'Bashers'], ['diggers', 'Diggers'], ['builders', 'Builders']]) if (byId('procgenWorker' + suffix)) byId('procgenWorker' + suffix).value = String(settings.workerLimits[key]);
+  };
+  for (const [key, suffix] of [['bashers', 'Bashers'], ['diggers', 'Diggers'], ['builders', 'Builders']]) listen(byId('procgenWorker' + suffix), 'change', event => {
+    if (!String(event.target.value).trim() || !Number.isFinite(Number(event.target.value))) { syncWorkerLimits(); return; }
+    settings.workerLimits = normalizeWorkerLimits({ ...settings.workerLimits, [key]: event.target.value }); syncWorkerLimits();
+    try { window.localStorage?.setItem(workerStorageKey, JSON.stringify({ version: 1, value: settings.workerLimits })); } catch { /* Keep the session choice. */ }
+  });
   const panel = byId('procgenDrawer'), tab = byId('procgenTab');
   const setOpen = open => {
     if (!panel || !tab) return;
@@ -60,7 +89,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   listen(tab, 'pointerdown', event => { dragStart = event.clientY; });
   listen(tab, 'pointerup', event => { if (dragStart != null && event.clientY - dragStart > 15) { setOpen(true); pulledOpen = true; } dragStart = null; });
   listen(tab, 'click', () => { if (pulledOpen) { pulledOpen = false; return; } setOpen(tab.getAttribute('aria-expanded') !== 'true'); });
-  listen(document, 'keydown', event => { if (event.key === 'Escape') setOpen(false); });
+  listen(document, 'keydown', event => { if (event.key === 'Escape') { setOpen(false); spanOverlay.setEditing(false); if (byId('procgenSpanEdit')) byId('procgenSpanEdit').checked = false; } });
   setOpen(false);
   const charactersHost = byId('procgenCharacters');
   if (charactersHost) mountCharacterControls(document, charactersHost);
@@ -82,7 +111,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     settings.preset = byId('procgenPreset').value; settings.mode = byId('procgenPhrases')?.checked ? 'phrase' : 'steps';
     project = applyGameEventMidiPreset(project, settings.preset, { mode: settings.mode });
     if (project.ensemble && tensionPreferences) project = reduceMidiProject(project, { type: 'ensemble.tension.update', patch: tensionPreferences });
-    config = projectToMidiConfig(project); local.syncConfig(); tensionControls.sync();
+    config = projectToMidiConfig(project); local.syncConfig(); tensionControls.sync(); spanControls.render();
     if (byId('procgenPresetDescription')) byId('procgenPresetDescription').textContent = GAME_EVENT_MIDI_PRESETS.find(p => p.id === settings.preset).description;
   };
   listen(byId('procgenPreset'), 'change', refreshPreset); listen(byId('procgenPhrases'), 'change', refreshPreset); refreshPreset();
@@ -202,7 +231,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   const syncActiveCount = count => { if (byId('procgenAliveCount')) byId('procgenAliveCount').textContent = Math.max(0, count).toLocaleString() + ' alive'; };
   return { settings, local, outputCapture, captureControls, getShareUrl, syncActiveCount,
     syncMetrics(state) {
-      syncActiveCount(state.alive); tensionControls.syncStatus();
+      syncActiveCount(state.alive); tensionControls.syncStatus(); spanControls.syncStatus();
       const pressure = getRuntime()?.view?.midiPreviewRouter?.getOutputPressure?.();
       const outputPressure = byId('procgenOutputPressure');
       if (outputPressure) { outputPressure.hidden = !pressure?.throttled; outputPressure.textContent = pressure?.throttled ? 'Thinned ' + pressure.dropped : ''; outputPressure.title = pressure?.throttled ? 'Shared sound budget: ' + pressure.reason : ''; }
@@ -212,7 +241,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
       if (policy) policy.textContent = state.stall?.phase === 'cascade' ? 'Stalled cohort: staggered OHNO; restart follows the last actor.' : 'Progressing and working lanes stay protected. Reset follows all-lane probe/transit grace or a sustained growing pile.';
     },
     sync() {
-      characters.sync(); tensionControls.sync();
+      characters.sync(); tensionControls.sync(); spanControls.render(); spanOverlay.sync(); syncWorkerLimits();
       paused = false;
       if (byId('procgenPause')) { byId('procgenPause').textContent = 'Pause'; byId('procgenPause').setAttribute('aria-pressed', 'false'); }
       if (byId('procgenSeed')) byId('procgenSeed').value = String(settings.seed ?? window.procgenSeed ?? '');
@@ -224,7 +253,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
       if (byId('procgenAliveCount') && runtime?.world) byId('procgenAliveCount').textContent = runtime.world.actors.reduce((count, actor) => count + (actor.failureReason ? 0 : 1), 0).toLocaleString() + ' alive';
       if (byId('procgenRunStatus')) byId('procgenRunStatus').textContent = `${settings.laneCount.toLocaleString()} ${settings.laneCount === 1 ? 'lane' : 'lanes'} · ${runtime?.world ? 'Wheel or Z/X zoom; arrows or drag pan; F follows the leader.' : 'Left-to-right generation'}`;
     },
-    dispose() { disposed = true; local.dispose(); captureControls.dispose(); tensionControls.dispose(); characters.dispose?.(); for (const [target, event, handler] of listeners) target?.removeEventListener(event, handler); }
+    dispose() { disposed = true; local.dispose(); captureControls.dispose(); tensionControls.dispose(); spanControls.dispose(); spanOverlay.dispose(); characters.dispose?.(); for (const [target, event, handler] of listeners) target?.removeEventListener(event, handler); }
   };
 };
 export { createProcgenUiController };

@@ -16,7 +16,7 @@ const fixture = (search = '') => {
     target.dispatchEvent = event => { for (const callback of events.get(event.type) || []) callback(event); };
   }
   for (const [tag, ids] of [['div', ['procgenDrawer']], ['button', ['procgenTab', 'procgenRestart', 'procgenListen', 'procgenSpeedDown', 'procgenSpeedUp', 'procgenShare', 'procgenNewSeed', 'procgenPause', 'procgenStep', 'procgenFollow', 'procgenZoomIn', 'procgenZoomOut', 'procgenPanic', 'procgenCctvPin', 'procgenCctvClear']],
-    ['select', ['procgenPreset', 'procgenPack', 'procgenSpeed', 'procgenCctvMode']], ['input', ['procgenLanes', 'procgenPhrases', 'procgenSeed', 'procgenMasterVolume', 'procgenCctvLane']],
+    ['select', ['procgenPreset', 'procgenPack', 'procgenSpeed', 'procgenCctvMode']], ['input', ['procgenLanes', 'procgenPhrases', 'procgenSeed', 'procgenMasterVolume', 'procgenCctvLane', 'procgenWorkerBashers', 'procgenWorkerDiggers', 'procgenWorkerBuilders']],
     ['p', ['procgenMasterVolumeValue', 'procgenPresetDescription', 'procgenAudioStatus', 'procgenRunStatus', 'procgenMetrics', 'procgenStallStatus', 'procgenAliveCount', 'procgenCctvStatus']]]) {
     for (const id of ids) { const el = registerElement(document, tag, id); el.removeEventListener = (event, callback) => el.listeners.set(event, (el.listeners.get(event) || []).filter(fn => fn !== callback)); }
   }
@@ -59,6 +59,16 @@ describe('compact procgen drawer', () => {
     f.runtime.lanes.renderer.cctv = createCctv(); f.ui.sync();
     expect(f.runtime.lanes.renderer.cctv.mode).to.equal('director'); expect(f.runtime.lanes.renderer.cctv.pins).to.deep.equal([8]);
     f.el('procgenCctvClear').dispatchEvent({ type: 'click' }); expect(f.ui.settings.cctvPins).to.deep.equal([]); f.ui.dispose();
+  });
+  it('applies and saves bounded crew limits in place and preserves the last choice on invalid edits', () => {
+    const f = fixture(), calls = [], stored = new Map();
+    f.window.localStorage = { getItem: key => stored.get(key) || null, setItem: (key, value) => stored.set(key, value) };
+    f.runtime.world = { actors: [], setWorkerLimits: limits => calls.push({ ...limits }) }; f.ui.sync();
+    f.el('procgenWorkerBashers').value = '4'; f.el('procgenWorkerBashers').dispatchEvent({ type: 'change', target: f.el('procgenWorkerBashers') });
+    f.el('procgenWorkerDiggers').value = '19'; f.el('procgenWorkerDiggers').dispatchEvent({ type: 'change', target: f.el('procgenWorkerDiggers') });
+    expect(calls.at(-1)).to.deep.equal({ bashers: 4, diggers: 16, builders: 2 }); expect(f.restarts).to.equal(0);
+    f.el('procgenWorkerBashers').value = ''; f.el('procgenWorkerBashers').dispatchEvent({ type: 'change', target: f.el('procgenWorkerBashers') });
+    expect(f.el('procgenWorkerBashers').value).to.equal('4'); expect(JSON.parse(stored.get('lemmings.procgen.workerLimits.v1')).value.bashers).to.equal(4); f.ui.dispose();
   });
   it('offers the shared catalog and never mounts hardware routing/studio controls', () => {
     const f = fixture(); expect(f.el('procgenPreset').children.length).to.equal(GAME_EVENT_MIDI_PRESETS.length);

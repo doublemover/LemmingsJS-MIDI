@@ -28,6 +28,7 @@
   <link type="text/css" rel="stylesheet" href="css/icons.css">
   <link type="text/css" rel="stylesheet" href="css/midi-instrument.css">
   <link type="text/css" rel="stylesheet" href="css/character-controls.css">
+  <link type="text/css" rel="stylesheet" href="css/midi-spans.css">
   <script>
     if (navigator.webdriver) {
       const originalError = console.error;
@@ -540,7 +541,7 @@
         </div>
         <details id="midiModulationInspector" class="midi-inspector-group">
           <summary>Conditions &amp; modulation</summary>
-          <p class="midi-help">Project-wide musical ranges and position-driven automation lanes.</p>
+          <p class="midi-help">Project-wide musical ranges, position curves and musical beat/distance spans. Up to 64 enabled spans run.</p>
           <div class="midi-region__header midi-region__header--compact">
             <h3>Modulation</h3>
             <button id="midiAutomationAddButton" type="button" aria-label="Add modulation lane">Add Mod</button>
@@ -657,7 +658,7 @@
               <input id="midiGlobalEnvRelease" type="number" min="0" max="2" step="0.05" />
             </label>
           </div>
-          <div id="midiAutomationList" class="midi-automation-list" aria-label="Position modulation lanes"></div>
+          <div id="midiAutomationList" class="midi-automation-list" aria-label="Modulation lanes and musical spans"></div>
         </details>
       </section>
       <section id="midiOutputStatus" class="midi-region midi-output-status" aria-label="MIDI output status">

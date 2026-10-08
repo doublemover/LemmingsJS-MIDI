@@ -16,9 +16,9 @@ const advanceProcgenClock = (elapsed, deltaMs, speed, step, now) => {
   return elapsed;
 };
 
-const createProcgenLaneRuntime = ({ canvas, resources, sprites, masks, assets, laneCount, seed, terrain, previousDistances = [], onMetrics, onActiveCount, speed = 3, windowRef = window }) => {
+const createProcgenLaneRuntime = ({ canvas, resources, sprites, masks, assets, laneCount, seed, terrain, previousDistances = [], workerLimits, onMetrics, onActiveCount, speed = 3, windowRef = window }) => {
   const world = new ProcgenLaneWorld({ laneCount, seed, sprites, masks, speed, cohorts: true, spawnSpreadTicks: 12,
-    terrain, previousDistances,
+    terrain, previousDistances, workerLimits,
     particleTable: new ParticleTable(assets.groundPieces[0].image.palette) });
   const renderer = new ProcgenLaneRenderer({ canvas, world, assets, windowRef });
   let paused = false;
