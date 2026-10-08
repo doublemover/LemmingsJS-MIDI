@@ -106,11 +106,11 @@ const enclosedTunnel = () => {
   };
 };
 describe('real assisted tunnel oscillation and pile recovery', () => {
-  it('detects the remaining AI retry loop without hoisting through a ceiling, then explodes each actor once and resets', async () => {
+  it('opens crowd access with a real basher while a sparse scout preserves the tunnel-ceiling turn', async () => {
     const world = new ProcgenLaneWorld({ masks: await loadProcgenMasks(), terrain: enclosedTunnel(), cohorts: true, maxActors: 8,
-      populationPolicy: { scoutsEvery: 1, scoutDelayTicks: 0 }, stallPolicy: { ...pilePolicySettings, releaseIntervalTicks: 10 } });
+      populationPolicy: { scoutsEvery: 8, scoutDelayTicks: 0 }, stallPolicy: { ...pilePolicySettings, releaseIntervalTicks: 10 } });
     const spawn = world._spawn.bind(world);
-    world._spawn = (...args) => { const actor = spawn(...args); Object.assign(actor, { x: 64, y: 72, furthestX: 64 }); actor.setAction(world.actions[State.WALKING]); return actor; };
+    world._spawn = (...args) => { const actor = spawn(...args); Object.assign(actor, { x: 64, y: 72, furthestX: 64, scout: actor.spawnOrdinal === 0 }); actor.setAction(world.actions[State.WALKING]); return actor; };
     const events = []; world.soundEvents.onEvent.on(event => events.push(event));
     let climbEntries = 0, previousAction = null, hoisted = false, sawGrowingPile = false;
     for (let tick = 0; tick < 400 && world.generation === 1; tick++) {
@@ -119,11 +119,13 @@ describe('real assisted tunnel oscillation and pile recovery', () => {
       if (actor?.action === world.actions[State.HOISTING]) hoisted = true;
       previousAction = actor?.action; sawGrowingPile ||= world.stall.lanes[0].pileGrowing;
     }
-    expect(hoisted).to.equal(false); expect(climbEntries).to.be.greaterThan(1); expect(sawGrowingPile).to.equal(true);
-    expect(world.generation).to.equal(2); expect(world.activeCount).to.equal(0);
+    expect(hoisted).to.equal(false); expect(climbEntries).to.be.at.least(1); expect(sawGrowingPile).to.equal(false);
+    expect(world.generation).to.equal(1); expect(world.activeCount).to.equal(8);
+    expect(world.stats.bashes).to.be.greaterThan(0);
+    expect(world.actors.filter(actor => !actor.scout && actor.x > 90)).to.have.length.at.least(5);
     const ohno = events.filter(event => event.type === 'lemming-ohno'), blasts = events.filter(event => event.type === 'lemming-explode');
-    expect(ohno).to.have.length(8); expect(new Set(ohno.map(event => event.lemmingId)).size).to.equal(8); expect(blasts).to.have.length(8);
-    expect(world.stall.lanes[0].pileStartTick).to.equal(null); world.step(); expect(world.generation).to.equal(2); world.dispose();
+    expect(ohno).to.have.length(0); expect(blasts).to.have.length(0);
+    expect(world.stall.lanes[0].pileStartTick).to.equal(null); world.step(); expect(world.generation).to.equal(1); world.dispose();
   });
 });
 const pilePolicySettings = { secondsWithoutProgress: 1000, ticksPerSecond: 10, baseSpawnAllowance: 7, initialTicksPerPixel: 1,

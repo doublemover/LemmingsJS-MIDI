@@ -35,6 +35,7 @@ class ProcgenLaneWorld {
     this.height = this.laneCount * LANE_HEIGHT;
     this.tickIndex = 0;
     this.assists = assists;
+    this.accessTasks = new Array(this.laneCount).fill(null);
     this.sprites = sprites;
     this._assistedColumn = { valid: false, x: 0, y: 0, height: 0, revision: 0, value: 0 };
     this.terrain = terrain;
@@ -136,7 +137,7 @@ class ProcgenLaneWorld {
   }
   _restart(previousDistances) {
     this.characterParticles?.clear();
-    this._assistedColumn.valid = false;
+    this._assistedColumn.valid = false; this.accessTasks.fill(null);
     this.actors.length = 0; this.activeCount = 0; this.admissionPaused = false; this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this.terrain?.reset?.();
     this._laneChunk.fill(null); this._laneChunkIndex.fill(-1); this._collisionSlots.fill(null); this._collisionIndices.fill(-1); this._laneEdits.fill(null); this._laneEditIndex.fill(-1); this._editCache.fill(null); this._editIndices.fill(-1); this.frontiers.fill(36);
     this.generatedThrough.fill(this.terrain?.chunkWidth || CHUNK_WIDTH); this.terrainRevision++; this.frontierRevision++; this.generation++; this.generationStartTick = this.tickIndex;
@@ -324,39 +325,71 @@ class ProcgenLaneWorld {
   }
   clearGroundWithMask(mask, x, y) { this.clearGroundWithMaskCount(mask, x, y); }
 
+  _accessTask(lane) {
+    const task = this.accessTasks[lane];
+    if (!task) return null;
+    const owner = task.owner;
+    if (!owner) return task;
+    if (!owner.removed && !owner.failureReason && (owner.assistRetreatX != null || owner.action === task.action)) return task;
+    // Let real action completion release crew ownership. Failed attempts wait
+    // before retrying this footprint; a different obstacle may be worked now.
+    task.owner = null;
+    task.retryAt ??= this.tickIndex + 90;
+    return task;
+  }
+  _claimAccess(actor, action, targetX) {
+    const task = this._accessTask(actor.laneIndex);
+    if (task?.owner || task && task.action === action && Math.abs(task.targetX - targetX) < 12 && this.tickIndex < task.retryAt) return false;
+    this.accessTasks[actor.laneIndex] = { owner: actor, action, targetX, startTick: this.tickIndex };
+    return true;
+  }
   _assist(actor) {
     if (!this.assists) return;
     const scoutReady = this.population.scoutReady(actor, this.tickIndex);
     if (scoutReady && actor.action === this.actions[State.FALLING] && actor.state > 16 &&
         this.actions[State.FLOATING].triggerLemAction(actor)) actor.assists++;
-    if (actor.action !== this.actions[State.WALKING] && actor.action !== this.actions[State.BASHING]) return;
+    // A shared skill owns its full action lifecycle, including its last mask or
+    // brick. Route assistance must not replace a working basher at a gap.
+    if (actor.action !== this.actions[State.WALKING]) return;
     const x = actor.x, y = actor.y;
-    if (actor.assistRetreatX != null && actor.action === this.actions[State.WALKING]) {
+    if (actor.assistRetreatX != null) {
       if (x > actor.assistRetreatX) { actor.lookRight = false; return; }
       actor.assistRetreatX = null; actor.lookRight = true;
       actor.setAction(this.actions[State.BUILDING]); this.stats.builds++; actor.assists++;
       return;
     }
-    if (this.terrain && actor.action === this.actions[State.WALKING] && this.tickIndex - actor.lastProgressTick > 240 &&
-        this.tickIndex - (actor.lastDetourTick || 0) > 360 && this.hasSteelAt(x + 1, y - 4)) {
+    // The spawn apron is an explicit return point. Everywhere beyond it, retain
+    // the real walk/climb/build direction and allow an ordinary wall bounce.
+    if (!actor.lookRight) {
+      if (x > 36) return;
+      actor.lookRight = true; this.stats.turns++;
+    }
+    if (this.terrain && this.tickIndex - actor.lastProgressTick > 240 &&
+        this.tickIndex - (actor.lastDetourTick || 0) > 360 && this.hasSteelAt(x + 1, y - 4) &&
+        this._claimAccess(actor, this.actions[State.BUILDING], x + 1)) {
       actor.assistRetreatX = Math.max(36, x - 16); actor.lastDetourTick = this.tickIndex; actor.lookRight = false;
       return;
     }
     const gap = this.challengeAt(actor.laneIndex, x);
-    if (gap.gapWidth > 0 && x >= gap.gapX - 5 && x < gap.gapX && y >= this.surfaceAt(actor.laneIndex, x) - 2 && !this.hasGroundAt(x + 5, y + 1)) {
-      actor.lookRight = true;
+    if (gap.gapWidth > 0 && x >= gap.gapX - 5 && x < gap.gapX && y >= this.surfaceAt(actor.laneIndex, x) - 2 && !this.hasGroundAt(x + 5, y + 1) &&
+        this._claimAccess(actor, this.actions[State.BUILDING], gap.gapX)) {
       actor.setAction(this.actions[State.BUILDING]); this.stats.builds++; actor.assists++;
       return;
     }
-    if (actor.action !== this.actions[State.WALKING]) return;
-    if (!actor.lookRight) { actor.lookRight = true; this.stats.turns++; }
-    // Only the immediately following action may consume this unchanged column.
+    // Only the immediately following walk action may consume this column.
     const column = this.getColumnStepHeight(x + 1, y - 7, 8), cached = this._assistedColumn;
     cached.x = x + 1; cached.y = y - 7; cached.height = 8; cached.value = column; cached.revision = this.terrainRevision; cached.valid = true;
-    if (column === 8) {
-      if (this.terrain && (this.hasSteelAt(x + 1, y - 4) || !gap.barrierWidth || x < gap.barrierX - 2 || x > gap.barrierX + gap.barrierWidth)) {
-        if (scoutReady && this.actions[State.CLIMBING].triggerLemAction(actor)) actor.assists++;
-      } else { actor.setAction(this.actions[State.BASHING]); this.stats.bashes++; actor.assists++; }
+    if (column !== 8) return;
+    if (actor.canClimb || scoutReady) {
+      if (scoutReady && this.actions[State.CLIMBING].triggerLemAction(actor)) actor.assists++;
+      return;
+    }
+    const bash = this.actions[State.BASHING], mask = bash.masks?.get(actor.getDirection())?.GetMask(1);
+    // Actual source shelves and partial tunnels need access too; descriptor
+    // barrier bounds describe placement, not eligibility for the shared skill.
+    if (mask && !this.hasSteelUnderMask(mask, x, y) && !this.hasArrowUnderMask(mask, x, y, true) &&
+        this._claimAccess(actor, bash, x + 1)) {
+      bash.triggerLemAction(actor); this.stats.bashes++; actor.assists++;
     }
   }
   step(eventTimeMs = null) {
@@ -476,7 +509,7 @@ class ProcgenLaneWorld {
       cachedChallenges: this.challengeCache.size, terrainEdits: this.editChunks.size, terrainMemoryMB: this.editChunks.size * EDIT_CHUNK_WIDTH * LANE_HEIGHT / 1048576,
       ...this.stats };
   }
-  dispose() { this.onRestart = null; this.characterParticles?.clear(); this.timer.onGameTick.dispose(); this.soundEvents.onEvent.dispose(); this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this._laneChunk.fill(null); this._collisionSlots.fill(null); this._laneEdits.fill(null); this._editCache.fill(null); this.terrain?.reset?.(); }
+  dispose() { this.accessTasks.fill(null); this.onRestart = null; this.characterParticles?.clear(); this.timer.onGameTick.dispose(); this.soundEvents.onEvent.dispose(); this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this._laneChunk.fill(null); this._collisionSlots.fill(null); this._laneEdits.fill(null); this._editCache.fill(null); this.terrain?.reset?.(); }
 }
 
 export { ProcgenLaneWorld, MAX_PROCGEN_LANES, LANE_HEIGHT, CHUNK_WIDTH, normalizeLaneCount };

@@ -29,4 +29,29 @@ describe('ActionWalkSystem wall collision', function() {
     expect(lem.lookRight).to.equal(false);
     expect(result).to.equal(Lemmings.LemmingStateType.NO_STATE_TYPE);
   });
+  it('preserves authored left and right bounces and moves away on the next tick', () => {
+    for (const right of [true, false]) {
+      const action = new ActionWalkSystem(null), level = new Level(24, 24);
+      for (let x = 0; x < 24; x++) level.groundMask.setGroundAt(x, 16);
+      for (let y = 9; y <= 16; y++) level.groundMask.setGroundAt(12, y);
+      const actor = new Lemmings.Lemming(right ? 11 : 13, 16); actor.lookRight = right;
+      action.process(level, actor); expect(actor.x).to.equal(right ? 11 : 13); expect(actor.lookRight).to.equal(!right);
+      action.process(level, actor); expect(actor.x).to.equal(right ? 10 : 14); expect(actor.lookRight).to.equal(!right);
+    }
+  });
+  it('walks a shallow corner and enters a partially dug tunnel using the authored mask', () => {
+    for (const right of [true, false]) {
+      for (const tunnel of [true, false]) {
+        const action = new ActionWalkSystem(null), level = new Level(24, 24);
+        for (let x = 0; x < 24; x++) level.groundMask.setGroundAt(x, 16);
+        if (tunnel) for (let y = 6; y <= 8; y++) level.groundMask.setGroundAt(12, y);
+        else for (let y = 14; y <= 16; y++) level.groundMask.setGroundAt(12, y);
+        const actor = new Lemmings.Lemming(right ? 11 : 13, 16); actor.lookRight = right;
+        const result = action.process(level, actor);
+        expect(actor.x).to.equal(12); expect(actor.lookRight).to.equal(right); expect(actor.y).to.equal(tunnel ? 16 : 14);
+        expect(result).to.equal(Lemmings.LemmingStateType.NO_STATE_TYPE);
+      }
+    }
+  });
+
 });

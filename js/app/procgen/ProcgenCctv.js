@@ -21,8 +21,11 @@ const selectCctvLanes = (world, previous = []) => {
 };
 const cctvLayout = (width, height, count) => {
   const columns = Math.min(count, width >= 700 ? 4 : 2), rows = Math.ceil(count / Math.max(1, columns));
-  const bandHeight = count ? Math.min(height * 0.38, 28 + rows * 104) : 0;
-  return { columns, rows, bandHeight, tileWidth: width / Math.max(1, columns), tileHeight: (bandHeight - 24) / Math.max(1, rows) };
+  const tileWidth = width / Math.max(1, columns);
+  // A 2:1 image box makes individual actors readable without dominating the main view.
+  const preferredTileHeight = 30 + Math.max(1, tileWidth - 8) / 2;
+  const bandHeight = count ? Math.min(height * 0.52, 24 + rows * preferredTileHeight) : 0;
+  return { columns, rows, bandHeight, tileWidth, tileHeight: count ? Math.max(0, bandHeight - 24) / Math.max(1, rows) : 0 };
 };
 
 // Eight small views share the existing world, sprites and raster methods. No
@@ -90,7 +93,8 @@ class ProcgenCctv {
     const r = this.renderer, world = r.world;
     let view = this.views.get(lane);
     if (!view) { view = this.createView(); this.views.set(lane, view); }
-    const width = 128, height = Math.max(32, Math.min(64, Math.round(width * (this.layout.tileHeight - 18) / this.layout.tileWidth)));
+    const width = 128, imageWidth = Math.max(1, this.layout.tileWidth - 8), imageHeight = Math.max(1, this.layout.tileHeight - 30);
+    const height = Math.max(32, Math.min(64, Math.round(width * imageHeight / imageWidth)));
     if (!view.image || view.buffer.width !== width || view.buffer.height !== height) {
       view.buffer.width = view.terrainBuffer.width = view.objectBuffer.width = width;
       view.buffer.height = view.terrainBuffer.height = view.objectBuffer.height = height;
@@ -124,7 +128,12 @@ class ProcgenCctv {
       context.fillText?.('LANE ' + (lane + 1) + '  #' + view.rank + '  ' + view.distance + (view.leaderId == null ? '  NO LIVE ACTOR' : '  ' + view.actionLabel), x * dpr, y * dpr);
       const reason = this.director.mode === 'director' ? this.director.reasons.get(lane) : 'Distance leader';
       context.font = 9 * dpr + 'px monospace'; context.fillText?.((this.director.pins.has(lane) ? '[PIN] ' : '') + reason, x * dpr, (y + 13) * dpr); context.font = 11 * dpr + 'px monospace';
-      context.drawImage(view.buffer, x * dpr, (y + 25) * dpr, Math.max(1, tileWidth - 8) * dpr, Math.max(1, tileHeight - 30) * dpr); context.restore?.();
+      const imageWidth = Math.max(1, tileWidth - 8), imageHeight = Math.max(1, tileHeight - 30);
+      // The integer raster may round or hit its cap. Fit it uniformly instead of stretching either axis.
+      const scale = Math.min(imageWidth / view.buffer.width, imageHeight / view.buffer.height);
+      const drawWidth = view.buffer.width * scale, drawHeight = view.buffer.height * scale;
+      const drawX = x + (imageWidth - drawWidth) / 2, drawY = y + 25 + (imageHeight - drawHeight) / 2;
+      context.drawImage(view.buffer, drawX * dpr, drawY * dpr, drawWidth * dpr, drawHeight * dpr); context.restore?.();
     }
     context.restore?.();
   }

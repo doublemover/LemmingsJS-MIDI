@@ -221,3 +221,7 @@ and thinning reasons. Its initial context includes seed/generation, selected
 pack/preset, tempo, scale, speed and bounded ensemble/track references. Inspect
 and local exports are demand-only; capture adds no simulation or playback clock.
 See `docs/midi-ui.md` for timing domains and evidence limits.
+
+Ordinary walkers retain the shared walk action’s wall bounce and move away on the following tick. Route assistance turns a returning crew only at the spawn apron, and chooses a single per-lane bash/build owner using actual mask and steel checks. Foundation shelves and partially cut tunnels do not require a challenge descriptor to be worked. Other walkers keep normal collisions; a basher or builder completes its real action before another task is assigned. Sparse scouts retain their delay and never grant climbing to the rest of the crowd. Failed task footprints have a bounded simulation-tick retry delay; reset and disposal release task references.
+
+CCTV uses taller preferred 2:1 scene boxes and reserves at most 52% of the canvas height. The bounded raster is fitted with one uniform scale, including any integer rounding or size cap; it is never stretched between axes. Main-camera maximum zoom and following remain separate from the overview views.
