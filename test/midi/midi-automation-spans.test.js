@@ -291,4 +291,59 @@ describe('bounded musical automation spans', function() {
     }, { sfx: { '1': { notes: [60, 64, 67], durationTicks: 1, velocity: 80, phrase: { enabled: true, mode: 'up', spacingTicks: 2 } } } });
   });
 
+  it('retains immutable note-resolution winners independently of origin previews and invalidates compiled edits', () => {
+    const low = entry('low', { span: span({ duration: 8, loop: true, shape: 'ramp' }) });
+    const high = entry('high', { min: 80, span: span({ duration: 8, loop: true, priority: 4, condition: { sfxId: 1, every: 2 } }) });
+    const later = entry('later', { min: 90, span: high.span });
+    const pan = entry('pan', { target: 'pan', min: -20 });
+    const model = new MidiAutomationSpans([low, high, later, pan]); model.synchronize(3, 1);
+    const meta = { laneIndex: 2, sfxId: 1, trackId: 'lead' };
+    const first = model.observeOrigin({ ...meta, automationEventId: 1 }, position(1, 42));
+    expect(model.snapshot('low', 2).resolution).to.equal(null);
+    expect(model.values({ ...meta, automationEventCounts: first }, position(1, 42)).get('velocity').id).to.equal('low');
+    const before = model.snapshot('low', 2).resolution;
+    expect(before).to.include({ evaluation: 1, target: 'velocity', laneIndex: 2, beat: 1, distance: 42, phase: 0.125, value: 30, won: true, winnerId: 'low' });
+    expect(model.snapshot('high', 2).resolution).to.include({ won: false, conditionMatched: false, winnerId: 'low', winnerValue: 30 });
+    const second = model.observeOrigin({ ...meta, automationEventId: 2 }, position(2, 48));
+    expect(model.snapshot('low', 2).resolution).to.deep.equal(before);
+    const values = model.values({ ...meta, automationEventCounts: second }, position(2, 48));
+    expect(values.get('velocity')).to.include({ id: 'later', value: 90 });
+    expect(model.snapshot('low', 2).resolution).to.include({ evaluation: 2, won: false, active: true, winnerId: 'later', winnerValue: 90, phase: 0.25 });
+    expect(model.snapshot('high', 2).resolution).to.include({ won: false, winnerId: 'later' });
+    expect(model.snapshot('later', 2).resolution).to.include({ won: true, winnerId: 'later' });
+    expect(model.snapshot('pan', 2).resolution).to.include({ won: true, target: 'pan', winnerId: 'pan' });
+    expect(Object.isFrozen(before)).to.equal(true); expect(() => { before.value = 127; }).to.throw(TypeError);
+    model.configure([low, { ...high, min: 70 }, later, pan]);
+    expect(model.snapshot('low', 2)).to.include({ eventCount: 2 }); expect(model.snapshot('low', 2).resolution).to.equal(null);
+    model.values({ ...meta, automationEventCounts: second }, position(3, 60));
+    expect(model.snapshot('later', 2).resolution).to.include({ won: true, beat: 3 });
+    model.reset(); expect(model.snapshot('later', 2)).to.equal(null); expect(model.evaluation).to.equal(0);
+  });
+  it('clears actual router note-resolution evidence on output Stop, bypass and generation changes without output from polling', () => {
+    withRouter([entry('resolved', { span: span({ loop: true, shape: 'ramp' }) })], ({ router, event, advance, world, bus, ons }) => {
+      event(); const first = router.getAutomationSpanState('resolved');
+      expect(first.resolution).to.include({ won: true, winnerId: 'resolved', beat: 0 });
+      advance(2); expect(router.getAutomationSpanState('resolved').resolution).to.deep.equal(first.resolution);
+      const sent = ons().length; for (let index = 0; index < 5; index++) router.getAutomationSpanState('resolved'); expect(ons()).to.have.length(sent);
+      router.detach(); expect(router.getAutomationSpanState('resolved')).to.equal(null); router.attach(bus, { game: world });
+      event(); expect(router.getAutomationSpanState('resolved').resolution).to.include({ won: true, beat: 0.24 });
+      router.setMapping({ ...router.mapping.config, automationSpans: [] }); expect(router.getAutomationSpanState('resolved')).to.equal(null);
+      router.setMapping({ ...router.mapping.config, automationSpans: [entry('resolved')] });
+      world.generation++; event(); expect(router.getAutomationSpanState('resolved')).to.include({ generation: 2 });
+      expect(router.getAutomationSpanState('resolved').resolution.evaluation).to.equal(1);
+    });
+  });
+
+  it('keeps resolution bookkeeping safe when a later matching state evicts an earlier state at the inspection cap', () => {
+    const model = new MidiAutomationSpans([entry('all'), entry('filtered', { min: 90, span: span({ priority: 5, condition: { sfxId: 2 } }) }), entry('pan', { target: 'pan', span: span({ condition: { sfxId: 3 } }) })]);
+    for (let laneIndex = 0; laneIndex < 1024; laneIndex++) model.observeOrigin({ laneIndex, sfxId: 1, automationEventId: laneIndex + 1 }, position());
+    for (let laneIndex = 1; laneIndex < 1024; laneIndex++) model.observeOrigin({ laneIndex, sfxId: 2, automationEventId: laneIndex + 1025 }, position());
+    model.observeOrigin({ laneIndex: 1023, sfxId: 3, automationEventId: 2050 }, position());
+    expect(model.states.size).to.equal(MAX_MIDI_AUTOMATION_SPAN_STATES);
+    expect(model.snapshot('all', 0)).not.to.equal(null); expect(model.snapshot('filtered', 0)).to.equal(null);
+    expect(model.values({ laneIndex: 0, sfxId: 2 }, position()).get('velocity')).to.include({ id: 'filtered', value: 90 });
+    expect(model.snapshot('filtered', 0).resolution).to.include({ won: true, winnerId: 'filtered' });
+    expect(model.states.size).to.equal(MAX_MIDI_AUTOMATION_SPAN_STATES); expect(model._resolutionStates.every(state => state === null)).to.equal(true);
+  });
+
 });

@@ -1,3 +1,5 @@
+import { MidiAutomationSpans } from '../../js/midi/router/MidiAutomationSpans.js';
+import { projectMidiAutomationSpan, selectMidiSpanDisplayEntries } from '../../js/app/midi-ui/midiAutomationSpanProjection.js';
 import { expect } from 'chai';
 import { SoundEffectIds } from '../../js/game/SoundEvents.js';
 import { TriggerTypes } from '../../js/level/TriggerTypes.js';
@@ -168,9 +170,10 @@ describe('musical span editing and lane rectangles', () => {
   });
   it('updates sampled phase/status without recreating or overwriting an edited input', () => {
     const f = editorFixture(), input = find(f.editor, el => el.dataset.spanField === 'duration'); input.value = '7';
-    f.setState({ active: true, phase: 0.5, eventCount: 4, bar: 2, spanPass: 3 }); f.editor.syncStatus();
+    input.focus(); f.setState({ active: true, phase: 0.9, eventCount: 4, bar: 4, spanPass: 5, resolution: { won: true, active: true, conditionMatched: true, phase: 0.5, value: 79, beat: 2, tick: 17, target: 'velocity', bar: 2, spanPass: 3 } }); f.editor.syncStatus();
     expect(input.value).to.equal('7'); expect(find(f.editor, el => el.className === 'midi-span-playhead').style.left).to.equal('50%');
-    expect(find(f.editor, el => el.className === 'midi-span-status').textContent).to.include('event 4 · bar 2 · span pass 3');
+    expect(find(f.editor, el => el.className === 'midi-span-status').textContent).to.include('Last resolved velocity 79').and.include('matching event 4 | resolved bar 2 | span pass 3');
+    expect(f.editor.ownerDocument.activeElement).to.equal(input);
   });
   it('distinguishes beat-screen and distance-world coordinates while clipping lane groups at DPR two', () => {
     const renderer = { canvas: { width: 2880, height: 1800 }, window: { devicePixelRatio: 2 }, world: { laneCount: 8, tickIndex: 10, generationStartTick: 0 }, originX: 128, originY: 96, viewWidth: 480, viewHeight: 300, scale: 3 };
@@ -249,4 +252,78 @@ describe('musical span editing and lane rectangles', () => {
     overlay.setVisible(false); const previousClaims = claimed; pointer('pointerdown', 100, 200); pointer('pointermove', 500, 450); pointer('pointerup', 500, 450);
     expect(claimed).to.equal(previousClaims); expect(overlay.snapshot()).to.include({ editing: false, visible: false }); overlay.dispose();
   });
+  it('projects only resolved note winners and holds their phase/value while the transport and origin observations advance', () => {
+    const low = { id: 'low', enabled: true, target: 'velocity', min: 20, max: 100, span: { ...createMidiSpan(), duration: 8 } };
+    const high = { ...low, id: 'high', min: 80, span: { ...low.span, shape: 'constant', priority: 5 } };
+    const model = new MidiAutomationSpans([low, high]); model.synchronize(1, 10);
+    const meta = { laneIndex: 0, sfxId: 1, automationEventId: 1 }, at = { beat: 1.2, bar: 1, tick: 10, distance: 100, distanceSource: 'event-origin' };
+    model.observeOrigin(meta, at); expect(projectMidiAutomationSpan(low, model.snapshot('low')).status).to.equal('waiting');
+    model.values(meta, at);
+    const loser = projectMidiAutomationSpan(low, model.snapshot('low'), { previewPosition: 2.4, generation: 1 });
+    expect(loser).to.include({ status: 'suppressed', winning: false, value: 80, candidateValue: 32, position: 1.2, winnerId: 'high', previewPosition: 2.4 });
+    expect(loser.text).to.include('Superseded by high: 80');
+    model.observeOrigin({ ...meta, automationEventId: 2 }, { ...at, beat: 2.4, tick: 20 });
+    const winner = projectMidiAutomationSpan(high, model.snapshot('high'), { previewPosition: 2.4, generation: 1 });
+    expect(winner).to.include({ status: 'winner', phase: 0.15, value: 80, position: 1.2 });
+    expect(winner.previewText).to.equal('Transport preview 2.4 beats'); expect(winner.text).to.include('lane 1');
+    expect(projectMidiAutomationSpan(high, model.snapshot('high'), { generation: 2 }).resolved).to.equal(false);
+    expect(projectMidiAutomationSpan({ ...high, enabled: false }, model.snapshot('high')).status).to.equal('bypassed');
+    expect(projectMidiAutomationSpan(high, model.snapshot('high'), { draft: true }).status).to.equal('draft');
+    expect(projectMidiAutomationSpan(high, { resolution: { ...model.snapshot('high').resolution, conditionMatched: false } }).status).to.equal('gated');
+    expect(projectMidiAutomationSpan(high, { resolution: { ...model.snapshot('high').resolution, active: false } }).status).to.equal('outside');
+    const distance = { ...high, span: { ...high.span, domain: 'distance' } };
+    expect(projectMidiAutomationSpan(distance, model.snapshot('high')).text).to.include('event origin');
+    expect(projectMidiAutomationSpan(distance, { resolution: { ...model.snapshot('high').resolution, distanceSource: 'completed-actor' } }).text).to.include('completed actor');
+  });
+  it('draws a held winner cursor separately from beat preview and preserves camera, hidden and disabled states', () => {
+    const document = new TestDocument(), canvas = document.createElement('canvas'); document.registerElement('gameCanvas', canvas); canvas.width = 320; canvas.height = 288;
+    const calls = [], context = { save() {}, restore() {}, scale() {}, strokeRect() {}, setLineDash() {}, fillText(text) { calls.push({ text }); },
+      fillRect(x, y, width, height) { calls.push({ x, y, width, height, color: this.fillStyle, alpha: this.globalAlpha }); } };
+    const low = { id: 'low', name: 'Low', enabled: true, target: 'velocity', min: 20, max: 100, span: { ...createMidiSpan(), duration: 16 } };
+    const high = { ...low, id: 'high', name: 'High', min: 80, span: { ...low.span, priority: 5, shape: 'constant' } };
+    const distance = { ...low, id: 'distance', name: 'Distance', target: 'pan', span: { ...createMidiSpan('distance'), start: 64, duration: 128, loop: false } };
+    const disabled = { ...low, id: 'bypassed', enabled: false };
+    const project = { transport: { bpmBase: 120 }, automation: [low, high, distance, disabled] }, model = new MidiAutomationSpans(project.automation);
+    model.synchronize(1, 10); const meta = { laneIndex: 0, sfxId: 1, automationEventId: 1 }, at = { beat: 1.2, bar: 1, tick: 10, distance: 100, distanceSource: 'completed-actor' };
+    model.observeOrigin(meta, at); model.values(meta, at);
+    const renderer = { canvas, window: { devicePixelRatio: 1 }, world: { laneCount: 2, laneHeight: 144, tickIndex: 20, generation: 1 }, originX: 64, originY: 0, viewWidth: 256, viewHeight: 288,
+      render() { overlay.draw(context, this, 1); } };
+    const runtime = { lanes: { renderer }, view: { midiPreviewRouter: { getAutomationSpanState: (id, lane) => model.snapshot(id, lane) } } };
+    const overlay = createProcgenMidiSpanOverlay({ document, getRuntime: () => runtime, getProject: () => project, getDomain: () => 'beats', getTarget: () => 'velocity', onUpdate() {}, onAdd() {}, onSelect() {} });
+    try {
+      overlay.sync(); renderer.render();
+      expect(calls.filter(call => call.color === '#fff' && call.width === 2).map(call => [call.x, call.height])).to.deep.equal([[45, 144], [24, 144]]);
+      expect(calls.filter(call => call.width === 1 && call.alpha === 0.2).every(call => call.x === 48)).to.equal(true);
+      const states = overlay.snapshot().rectangles.map(rect => [rect.id, rect.resolution.status]);
+      expect(states).to.deep.equal([['low', 'suppressed'], ['distance', 'winner'], ['bypassed', 'bypassed'], ['high', 'winner']]);
+      expect(calls.some(call => call.text?.includes('Transport preview'))).to.equal(true);
+      renderer.originX = 80; renderer.viewWidth = 128; calls.length = 0; renderer.render();
+      expect(calls.filter(call => call.color === '#fff' && call.width === 2).map(call => call.x)).to.deep.equal([50, 24]);
+      expect(model.snapshot('high').resolution).to.include({ beat: 1.2, value: 80 });
+      overlay.setVisible(false); expect(overlay.snapshot().rectangles).to.have.length(0); calls.length = 0; renderer.render(); expect(calls).to.have.length(0);
+      overlay.setVisible(true); model.reset(); renderer.render(); expect(overlay.snapshot().rectangles.every(rect => !rect.resolution.resolved)).to.equal(true);
+      expect(project.automation).to.deep.equal([low, high, distance, disabled]);
+    } finally { overlay.dispose(); }
+  });
+
+  it('projects an enabled winner beyond64 saved bypassed rows and reveals selected overflow geometry without deleting paged data', () => {
+    const bypassed = Array.from({ length: 64 }, (_, index) => ({ id: 'saved-' + index, target: 'velocity', enabled: false, span: createMidiSpan() }));
+    const winner = { id: 'winner', target: 'velocity', enabled: true, min: 70, max: 90, span: createMidiSpan() };
+    const entries = [...bypassed, winner], before = JSON.stringify(entries);
+    const model = new MidiAutomationSpans(entries); const at = { beat: 1, bar: 1, tick: 10, distance: 100 };
+    model.values({ laneIndex: 0 }, at); expect(model.snapshot('winner').resolution).to.include({ won: true });
+    const display = selectMidiSpanDisplayEntries(entries); expect(display).to.have.length(64); expect(display[0]).to.equal(winner);
+    expect(display.slice(1).map(entry => entry.id)).to.deep.equal(bypassed.slice(0, 63).map(entry => entry.id));
+    const selected = selectMidiSpanDisplayEntries(entries, ['saved-63']); expect(selected[0]).to.equal(bypassed[63]); expect(selected[1]).to.equal(winner); expect(selected).to.have.length(64);
+    const renderer = { canvas: { width: 320, height: 288 }, window: { devicePixelRatio: 1 }, world: { laneCount: 2, tickIndex: 10 }, originY: 0, viewHeight: 288 };
+    const rectangles = getMidiSpanRectangles(renderer, { automation: entries, transport: { bpmBase: 120 } }, entries, null, ['saved-63']);
+    expect(rectangles.some(rect => rect.entry === winner)).to.equal(true); expect(rectangles.some(rect => rect.entry === bypassed[63])).to.equal(true);
+    expect(JSON.stringify(entries)).to.equal(before); expect(entries).to.have.length(65);
+    const allEnabled = Array.from({ length: 65 }, (_, index) => ({ ...winner, id: 'enabled-' + index }));
+    const enabledModel = new MidiAutomationSpans(allEnabled); enabledModel.values({ laneIndex: 0 }, at);
+    expect(enabledModel.snapshot('enabled-64')).to.equal(null);
+    expect(selectMidiSpanDisplayEntries(allEnabled, ['enabled-64'])[0].id).to.equal('enabled-64');
+    expect(enabledModel.snapshot('enabled-63').resolution).to.include({ won: true, winnerId: 'enabled-63' });
+  });
+
 });

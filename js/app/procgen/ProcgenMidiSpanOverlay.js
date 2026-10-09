@@ -1,5 +1,5 @@
 import { createMidiSpan, SPAN_COLORS } from '../midi-ui/midiAutomationSpanEditor.js';
-import { previewMidiAutomationSpan } from '../../midi/project/MidiAutomationSpan.js';
+import { projectMidiAutomationSpan, selectMidiSpanDisplayEntries } from '../midi-ui/midiAutomationSpanProjection.js';
 const getLaneHeight = renderer => renderer.world.laneHeight || 96;
 const getSpanAxis = (renderer, domain, project) => {
   const width = renderer.canvas.width / Math.min(2, renderer.window.devicePixelRatio || 1);
@@ -8,11 +8,11 @@ const getSpanAxis = (renderer, domain, project) => {
   const beat = Math.max(0, tick) * 0.06 * project.transport.bpmBase / 60;
   return { start: Math.floor(beat / 16) * 16, length: 16, width, beat };
 };
-const getMidiSpanRectangles = (renderer, project, entries = project.automation, projection = null) => {
+const getMidiSpanRectangles = (renderer, project, entries = project.automation, projection = null, selectedIds = []) => {
   const dpr = Math.min(2, renderer.window.devicePixelRatio || 1), height = projection?.height ?? renderer.canvas.height / dpr - (renderer.overviewBandHeight || 0);
   const originY = projection?.originY ?? renderer.originY, viewHeight = projection?.viewHeight ?? renderer.viewHeight;
   const result = [], laneHeight = projection?.laneHeight ?? getLaneHeight(renderer);
-  const spans = entries.filter(entry => entry.span).slice(0, 64).sort((a, b) => a.span.priority - b.span.priority);
+  const spans = selectMidiSpanDisplayEntries(entries, selectedIds).sort((a, b) => a.span.priority - b.span.priority);
   for (const entry of spans) {
     const span = entry.span, axis = projection?.axis || getSpanAxis(renderer, span.domain, project);
     const first = span.laneScope === 'global' ? 0 : span.laneStart, last = span.laneScope === 'global' ? (projection?.laneCount ?? renderer.world.laneCount) - 1 : span.laneScope === 'lane' ? first : span.laneEnd;
@@ -136,28 +136,47 @@ const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDom
     setVisible(value) { visible = value === true; if (!visible) { editing = false; cancelDrag(); rectangles = []; } changed(); },
     draw(context, current, dpr) {
       if (!visible) { rectangles = []; return; }
-      const project = getProject(), draftIds = drafts ? new Set(drafts.map(entry => entry.id)) : null, entries = drafts ? project.automation.filter(entry => !draftIds.has(entry.id)) : project.automation;
-      rectangles = getMidiSpanRectangles(current, project, entries);
-      if (drafts) rectangles.push(...getMidiSpanRectangles(current, project, drafts, drag.transform));
+      const project = getProject(), draftIds = drafts ? new Set(drafts.map(entry => entry.id)) : null;
+      const entries = drafts ? [...project.automation.filter(entry => !draftIds.has(entry.id)), ...drafts] : project.automation;
+      const displayed = selectMidiSpanDisplayEntries(entries, drafts ? new Set([...selectedIds, ...draftIds]) : selectedIds);
+      rectangles = getMidiSpanRectangles(current, project, drafts ? displayed.filter(entry => !draftIds.has(entry.id)) : displayed);
+      if (drafts) rectangles.push(...getMidiSpanRectangles(current, project, displayed.filter(entry => draftIds.has(entry.id)), drag.transform));
+      const router = getRuntime()?.view?.midiPreviewRouter;
       context.save(); context.scale(dpr, dpr);
       for (const rect of rectangles) {
         const { entry } = rect, color = SPAN_COLORS[entry.target] || '#dfb75d';
+        const state = router?.getAutomationSpanState?.(entry.id, entry.span.laneStart);
+        const projection = rect.projection = projectMidiAutomationSpan(entry, state, { previewPosition: rect.axis.beat, generation: current.world.generation, draft: !!draftIds?.has(entry.id) });
         context.globalAlpha = entry.enabled ? 0.14 : 0.04; context.fillStyle = color; context.fillRect(rect.x, rect.y, rect.w, rect.h);
         context.globalAlpha = entry.enabled ? 0.85 : 0.35; context.strokeStyle = color; context.lineWidth = selectedIds.has(entry.id) ? 2 : 1;
         context.setLineDash(rect.repeating ? [2, 3] : entry.span.shape === 'ramp' ? [6, 3] : entry.enabled ? [] : [2, 4]); context.strokeRect(rect.x, rect.y, rect.w, rect.h);
         const labelY = Math.max(rect.y, current.hud?.sprites ? 16 * Math.max(1, Math.floor(Math.min(3, rect.axis.width / 540))) + 2 : 0), labelX = rect.x + Math.max(0, rect.w - 280);
         if (labelY + 18 <= rect.y + rect.h && rect.w >= 34) {
           context.globalAlpha = 1; context.fillStyle = '#07140fe6'; context.fillRect(labelX, labelY, Math.min(rect.w, 280), 17);
-          context.fillStyle = color; context.font = '11px system-ui'; context.fillText(entry.name + ' · ' + entry.span.domain + (rect.repeating ? ' repeats every ' + entry.span.duration : entry.span.loop ? ' loop' : '') + ' · P' + entry.span.priority, labelX + 4, labelY + 12, Math.min(rect.w, 280) - 8);
+          context.fillStyle = color; context.font = '11px system-ui'; context.fillText(entry.name + ' · ' + entry.span.domain + (rect.repeating ? ' repeats every ' + entry.span.duration : entry.span.loop ? ' loop' : '') + ' · P' + entry.span.priority + (rect.axis.beat != null ? ' · Transport preview' : ''), labelX + 4, labelY + 12, Math.min(rect.w, 280) - 8);
           if (editing && !rect.repeating && selectedId === entry.id) context.fillText('↔', rect.x + rect.w - 15, labelY + 12);
         }
-        const state = entry.span.domain === 'beats' ? previewMidiAutomationSpan(entry, rect.axis.beat) : getRuntime()?.view?.midiPreviewRouter?.getAutomationSpanState?.(entry.id, entry.span.laneStart);
-        const currentPosition = entry.span.domain === 'beats' ? rect.axis.beat : state?.distance;
-        if (entry.enabled && state?.active && currentPosition >= rect.start && currentPosition < rect.end) { context.globalAlpha = 0.9; context.fillStyle = '#fff'; context.fillRect((currentPosition - rect.axis.start) / rect.axis.length * rect.axis.width, rect.y, 1, rect.h); }
+        if (labelY + 34 <= rect.y + rect.h && rect.w >= 34) {
+          context.globalAlpha = 1; context.fillStyle = '#07140fe6'; context.fillRect(labelX, labelY + 17, Math.min(rect.w, 280), 17);
+          context.fillStyle = projection.winning ? '#fff' : color;
+          context.fillText(projection.text, labelX + 4, labelY + 29, Math.min(rect.w, 280) - 8);
+        }
+        if (projection.previewActive && projection.previewPosition >= rect.start && projection.previewPosition < rect.end) {
+          context.globalAlpha = 0.2; context.fillStyle = color;
+          context.fillRect((projection.previewPosition - rect.axis.start) / rect.axis.length * rect.axis.width, rect.y, 1, rect.h);
+        }
+        if (projection.winning && projection.position >= rect.start && projection.position < rect.end) {
+          context.globalAlpha = 0.9; context.fillStyle = '#fff';
+          const laneHeight = getLaneHeight(current), height = current.canvas.height / dpr - (current.overviewBandHeight || 0);
+          const laneTop = Number.isInteger(projection.laneIndex) ? (projection.laneIndex * laneHeight - current.originY) * height / current.viewHeight : rect.y;
+          const laneBottom = Number.isInteger(projection.laneIndex) ? ((projection.laneIndex + 1) * laneHeight - current.originY) * height / current.viewHeight : rect.y + rect.h;
+          const top = Math.max(rect.y, laneTop), bottom = Math.min(rect.y + rect.h, laneBottom);
+          if (bottom > top) context.fillRect((projection.position - rect.axis.start) / rect.axis.length * rect.axis.width, top, 2, bottom - top);
+        }
       }
       context.restore();
     },
-    snapshot: () => ({ editing, visible, selectedId, revision, dragging: !!drag, rectangles: rectangles.map(rect => ({ id: rect.entry.id, domain: rect.entry.span.domain, x: rect.x, y: rect.y, width: rect.w, height: rect.h })) }),
+    snapshot: () => ({ editing, visible, selectedId, revision, dragging: !!drag, rectangles: rectangles.map(rect => ({ id: rect.entry.id, domain: rect.entry.span.domain, x: rect.x, y: rect.y, width: rect.w, height: rect.h, resolution: rect.projection })) }),
     dispose() { cancelDrag(); for (const [name, handler] of listeners) canvas?.removeEventListener?.(name, handler, { capture: true }); if (renderer?.midiSpanOverlay === api) renderer.midiSpanOverlay = null; renderer = null; rectangles = []; drafts = drag = null; }
   };
   return api;
