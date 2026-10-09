@@ -86,7 +86,7 @@ class ProcgenLaneRenderer {
         for (let cx = Math.floor(x0 / chunkWidth); cx * chunkWidth < through; cx++) {
           const px0 = Math.max(0, Math.ceil((cx * chunkWidth - x0) / step)), px1 = Math.min(width, Math.ceil((Math.min((cx + 1) * chunkWidth, through) - x0) / step));
           if (px0 >= px1) continue;
-          const tileKey = lane * 0x800000 + cx, revision = world.terrainTileRevisions?.get(tileKey) || 0;
+          const tileKey = lane * 0x800000 + cx, revision = world.getTerrainTileRevision?.(tileKey) ?? world.terrainTileRevisions?.get(tileKey) ?? 0;
           const materialization = world.terrainGrowth?.stateFor?.(lane, cx), hidden = unprepared(materialization);
           const tileRevision = revision + ':' + Math.min(chunkWidth, through - cx * chunkWidth) + ':' + (hidden ? 'unprepared' : materialization?.revision || 0);
           if (!reset && this.tileRevisions.get(tileKey) === tileRevision) continue;

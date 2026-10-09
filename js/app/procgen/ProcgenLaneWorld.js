@@ -1,3 +1,4 @@
+import { ProcgenTerrainEdits, ProcgenTerrainRevisions } from './ProcgenTerrainRetention.js';
 import { ProcgenLanePolicy } from './ProcgenLanePolicy.js';
 import { DEFAULT_LANE_HEIGHT, MAX_LANE_HEIGHT, normalizeLaneHeight } from './ProcgenLaneGeometry.js';
 import { CharacterParticles } from '../../lemmings/CharacterParticles.js';
@@ -61,7 +62,7 @@ class ProcgenLaneWorld {
     this._assistedColumn = { valid: false, x: 0, y: 0, height: 0, revision: 0, value: 0 };
     this.terrain = terrain;
     terrain?.configure?.(this.laneCount, maxActors, { laneHeight: this.laneHeight });
-    this.terrainRevision = 0; this.frontierRevision = 0; this.terrainTileRevisions = new Map();
+    this.terrainRevision = 0; this.frontierRevision = 0; this.terrainTileRevisions = new ProcgenTerrainRevisions(this.laneCount, Math.max(128, this.laneCount * 16));
     this.frontiers = new Float64Array(this.laneCount); this.frontiers.fill(36);
     this.generatedThrough = new Float64Array(this.laneCount); this.generatedThrough.fill(terrain?.chunkWidth || CHUNK_WIDTH);
     this._laneChunk = new Array(this.laneCount);
@@ -91,7 +92,7 @@ class ProcgenLaneWorld {
     this._stallWork = { terrainActivityTicks: this.terrainActivityTicks, pendingTerrainWork: this._effectiveTerrainWork };
     this.stall = new ProcgenStallPolicy(this.laneCount, stallPolicy, previousDistances, { laneHeight: this.laneHeight });
     this.failureReasons = {};
-    this.editChunks = new Map();
+    this.editChunks = new ProcgenTerrainEdits(EDIT_CHUNK_WIDTH * this.laneHeight, Math.max(64, this.laneCount * 8), key => this._invalidateEditChunk(key));
     this.challengeCache = new Map();
     this.challengeCacheLimit = Math.max(128, this.laneCount * 8);
     this.laneSeeds = Uint32Array.from({ length: this.laneCount }, (_, lane) => mix(this.seed ^ Math.imul(lane + 1, 0x9e3779b1)));
@@ -323,6 +324,12 @@ class ProcgenLaneWorld {
     return p >= barrierX && p < barrierX + 8 + (code >>> 4) % 9 && y >= surface - 13 && y < surface ? 2 : 0;
   }
   _editKey(x, y) { return Math.floor(y / this.laneHeight) * 0x2000000 + Math.floor(x / EDIT_CHUNK_WIDTH); }
+  getTerrainTileRevision(key) { return this.terrainTileRevisions.read(key); }
+  _invalidateEditChunk(key) {
+    const lane = Math.floor(key / 0x2000000), index = key % 0x2000000, slot = lane * this._editSlots + (index & (this._editSlots - 1));
+    if (this._laneEditIndex[lane] === index) { this._laneEditIndex[lane] = -1; this._laneEdits[lane] = null; }
+    if (this._editIndices[slot] === index) { this._editIndices[slot] = -1; this._editCache[slot] = null; }
+  }
   _editsAt(lane, x) {
     const index = Math.floor(x / EDIT_CHUNK_WIDTH);
     if (this._laneEditIndex[lane] !== index) {
@@ -556,7 +563,7 @@ class ProcgenLaneWorld {
   }
   _rearEdgeWall(actor) {
     const lane = actor.laneIndex, y = actor.y, revision = this._edgeWallRevisions[lane];
-    const tileRevision = this.terrainTileRevisions.get(lane * 0x800000) || 0;
+    const tileRevision = this.getTerrainTileRevision(lane * 0x800000);
     let cached = this._edgeWallCache[lane], hazardKey = cached?.hazardKey || '';
     if (!cached || cached.tileRevision !== tileRevision || cached.y !== y || cached.revision !== revision) {
       this.hazards.nearby(lane, this.leftEdgeX + 12, { ahead: 0, behind: 12 }, this._edgeWallHazards);
@@ -804,27 +811,30 @@ class ProcgenLaneWorld {
     this.timer.onGameTick.trigger(this.tickIndex);
   }
   _pruneEdits() {
-    const minimums = new Float64Array(this.laneCount); minimums.fill(Infinity);
+    const edits = new Set(), tiles = new Set(), width = this.terrain?.chunkWidth || CHUNK_WIDTH;
+    const interest = (lane, x1, x2) => {
+      x1 = Math.max(0, Math.floor(x1)); x2 = Math.min(this.width - 1, Math.ceil(x2));
+      for (let chunk = Math.floor(x1 / EDIT_CHUNK_WIDTH); chunk <= Math.floor(x2 / EDIT_CHUNK_WIDTH); chunk++) edits.add(lane * 0x2000000 + chunk);
+      for (let chunk = Math.floor(x1 / width); chunk <= Math.floor(x2 / width); chunk++) tiles.add(lane * 0x800000 + chunk);
+    };
     for (const actor of this.actors) if (!actor.failureReason && !actor.removed) {
       const first = Math.max(0, Math.floor((actor.y - 16) / this.laneHeight));
       const last = Math.min(this.laneCount - 1, Math.floor((actor.y + 6) / this.laneHeight));
-      for (let lane = first; lane <= last; lane++) minimums[lane] = Math.min(minimums[lane], actor.x);
+      // A stationary blocker needs its real contact/support band, not every
+      // edited chunk between it and the advancing crew. Other return corridors
+      // remain losslessly reconstructible even outside these dense interests.
+      const radius = actor.action === this.actions[State.BLOCKING] ? 16 : 128;
+      for (let lane = first; lane <= last; lane++) interest(lane, actor.x - radius, actor.x + radius);
     }
-    for (const key of this.editChunks.keys()) {
-      const lane = Math.floor(key / 0x2000000), chunkX = (key % 0x2000000) * EDIT_CHUNK_WIDTH;
-      if (chunkX + EDIT_CHUNK_WIDTH < minimums[lane] - 128) {
-        this.editChunks.delete(key); this.terrainRevision++;
-        if (chunkX === 0) this._edgeWallRevisions[lane]++;
-        const editIndex = Math.floor(chunkX / EDIT_CHUNK_WIDTH), slot = lane * this._editSlots + (editIndex & (this._editSlots - 1));
-        if (this._laneEditIndex[lane] === editIndex) this._laneEdits[lane] = null;
-        if (this._editIndices[slot] === editIndex) this._editCache[slot] = null;
-        const width = this.terrain?.chunkWidth || CHUNK_WIDTH, tile = Math.floor(chunkX / width), tileKey = lane * 0x800000 + tile;
-        let retained = false;
-        for (let dx = 0; dx < width / EDIT_CHUNK_WIDTH; dx++) if (this.editChunks.has(lane * 0x2000000 + tile * width / EDIT_CHUNK_WIDTH + dx)) retained = true;
-        if (retained) this.terrainTileRevisions.set(tileKey, this.terrainRevision);
-        else this.terrainTileRevisions.delete(tileKey);
-      }
+    for (const tasks of this.accessTasks) for (const task of tasks || []) {
+      const owner = task.owner, footprint = task.footprint;
+      if (!owner || owner.failureReason || owner.removed || owner.terminalReason || owner.action !== task.action || !footprint) continue;
+      for (let lane = Math.max(0, Math.floor(footprint.y1 / this.laneHeight)); lane <= Math.min(this.laneCount - 1, Math.floor((footprint.y2 - 1) / this.laneHeight)); lane++) interest(lane, footprint.x1 - 16, footprint.x2 + 16);
     }
+    for (const state of this.terrainGrowth?.states?.values() || []) tiles.add(state.lane * 0x800000 + state.chunk);
+    for (const record of this.hazards.chunks.values()) tiles.add(record.lane * 0x800000 + record.chunk);
+    this.editChunks.compactExcept(edits, Math.max(64, edits.size + this.laneCount * 8));
+    this.terrainTileRevisions.retain(tiles);
   }
   getDebugState() {
     let minDistance = Infinity, maxDistance = 0, distance = 0, stalled = 0;
@@ -853,7 +863,9 @@ class ProcgenLaneWorld {
       frontierMargins: Array.from(this.generatedThrough, (x, lane) => x - this.frontiers[lane]),
       laneThemes: this.terrain?.laneThemes || null,
       terrainRecipe: this.terrain?.recipe.id || null, recipeMemoryMB: this.terrain?.memoryMB || 0,
-      laneHeight: this.laneHeight, cachedChallenges: this.challengeCache.size, terrainEdits: this.editChunks.size, terrainMemoryMB: this.editChunks.size * EDIT_CHUNK_WIDTH * this.laneHeight / 1048576,
+      laneHeight: this.laneHeight, cachedChallenges: this.challengeCache.size, terrainEdits: this.editChunks.size,
+      terrainEditStorage: this.editChunks.snapshot(), terrainRevisionStorage: this.terrainTileRevisions.snapshot(),
+      terrainMemoryMB: this.editChunks.snapshot().totalBytes / 1048576,
       ...this.stats };
   }
   dispose() { this._manualNukeLanes.fill(0); for (const actor of this.actors) this._clearConstructionCrew(actor); this._musicActorPositions.clear(); this.triggerManager.dispose(); this.hazardPlanner.dispose(); this.lanePolicy.dispose(); this.terrainGrowth?.dispose(); this.edgeBlockers.fill(null); this.accessTasks.fill(null); this._edgeWallCache.fill(null); this._edgeWallHazards.length = 0; this.onRestart = null; this.onLaneTransfer = null; this.characterParticles?.clear(); this.timer.onGameTick.dispose(); this.soundEvents.onEvent.dispose(); this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this._laneChunk.fill(null); this._collisionSlots.fill(null); this._laneEdits.fill(null); this._editCache.fill(null); this.terrain?.reset?.(); }

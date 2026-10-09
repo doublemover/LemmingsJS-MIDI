@@ -1,3 +1,4 @@
+import { procgenTileRevision } from './ProcgenTerrainRetention.js';
 import { Lemming } from '../../lemmings/Lemming.js';
 import { LemmingStateType as State } from '../../lemmings/LemmingStateType.js';
 import { ActionDiggSystem } from '../../actions/ActionDiggSystem.js';
@@ -47,7 +48,7 @@ class ProcgenSupportedDescent {
     let key = world.generation + ':' + startX + ':' + startY + ':' + preferredKind + ':' + modePreference;
     for (let lane = firstLane; lane <= lastLane; lane++) {
       key += ':' + Math.min(world.generatedThrough[lane], right + 1);
-      for (let chunk = firstChunk; chunk <= lastChunk; chunk++) key += ':' + (world.terrainTileRevisions.get(lane * 0x800000 + chunk) || 0);
+      for (let chunk = firstChunk; chunk <= lastChunk; chunk++) key += ':' + (procgenTileRevision(world, lane * 0x800000 + chunk));
     }
     const cached = this.cache[actor.laneIndex];
     if (cached?.key === key && (cached.failure !== 'budget' || cached.maxProbes >= maxProbes)) {

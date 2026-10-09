@@ -1,3 +1,4 @@
+import { procgenTileRevision } from './ProcgenTerrainRetention.js';
 import { Animation } from '../../render/Animation.js';
 import { MapObject } from '../../level/MapObject.js';
 import { Trigger } from '../../level/Trigger.js';
@@ -51,7 +52,7 @@ class ProcgenHazards {
     return true;
   }
   _refresh(record, create) {
-    const world = this.world, key = this._key(record.lane, record.chunk), revision = world.terrainTileRevisions.get(key) || 0;
+    const world = this.world, key = this._key(record.lane, record.chunk), revision = procgenTileRevision(world, key);
     const through = Math.min(world.generatedThrough[record.lane], (record.chunk + 1) * world.terrain.chunkWidth);
     if (record.revision === revision && record.through === through && (!create || record.complete)) return;
     record.revision = revision; record.through = through; record.complete = create;

@@ -1,3 +1,4 @@
+import { procgenTileRevision } from './ProcgenTerrainRetention.js';
 import { TriggerTypes as Types } from '../../level/TriggerTypes.js';
 
 const readiness = new WeakMap(), footCache = new WeakMap();
@@ -116,7 +117,7 @@ const assemblyPlacementReady = (world, lane, object, descriptor) => {
   if (!assembly || lane < 0 || lane >= world.laneCount) return false;
   const objectIndex = descriptor.objects?.indexOf(object);
   if (Number.isInteger(objectIndex) && objectIndex >= 0 && world.terrainGrowth && !world.terrainGrowth.objectReady(lane, assembly.chunk, objectIndex)) return false;
-  const revision = world.terrainTileRevisions?.get(lane * 0x800000 + assembly.chunk) || 0, through = world.generatedThrough[lane], cached = readiness.get(assembly);
+  const revision = procgenTileRevision(world, lane * 0x800000 + assembly.chunk), through = world.generatedThrough[lane], cached = readiness.get(assembly);
   if (cached?.world === world && cached.lane === lane && cached.generation === world.generation && cached.revision === revision && cached.through === through) return cached.ready;
   const height = world.laneHeight, top = lane * height, bounds = assembly.bounds, chunkWidth = world.terrain.chunkWidth;
   const state = world.terrainGrowth?.stateFor(lane, assembly.chunk);

@@ -1,3 +1,4 @@
+import { procgenTileRevision } from './ProcgenTerrainRetention.js';
 import { LemmingStateType as State } from '../../lemmings/LemmingStateType.js';
 const MAX_LANE_KNOWLEDGE = 8;
 const KINDS = ['builders', 'bashers', 'diggers', 'miners'];
@@ -18,11 +19,11 @@ class ProcgenLanePolicy {
     const world = this.world, width = world.terrain?.chunkWidth || 256, result = [];
     for (let lane = Math.max(0, Math.floor((y - 12) / world.laneHeight)); lane <= Math.min(world.laneCount - 1, Math.floor((y + 12) / world.laneHeight)); lane++)
       for (let chunk = Math.max(0, Math.floor((x - 16) / width)); chunk <= Math.floor((x + 16) / width); chunk++) {
-        const key = lane * 0x800000 + chunk; result.push([key, world.terrainTileRevisions.get(key) || 0]);
+        const key = lane * 0x800000 + chunk; result.push([key, procgenTileRevision(world, key)]);
       }
     return result;
   }
-  _valid(record) { return record.tiles.every(([key, revision]) => (this.world.terrainTileRevisions.get(key) || 0) === revision); }
+  _valid(record) { return record.tiles.every(([key, revision]) => procgenTileRevision(this.world, key) === revision); }
   remember(actor, kind, type = null) {
     const lane = this.lanes[actor.laneIndex]; if (!lane) return;
     const cell = Math.floor(actor.x / 32), band = Math.floor(actor.y / 24);

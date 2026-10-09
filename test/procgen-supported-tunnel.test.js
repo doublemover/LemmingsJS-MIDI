@@ -84,7 +84,7 @@ describe('bounded observed long tunnels with ordinary whole crews', function() {
     const hazard = crewFor(masks, 1, { objects: [object] }); hazard.crew[0].x = 20;
     expect(hazard.world._rearEdgeWall(hazard.crew[0])).to.equal(false); expect(hazard.world.hazards.stats.contacts).to.equal(0); hazard.world.dispose();
   });
-  it('refreshes lane-local hazard observations after local edits are pruned back to the source', () => {
+  it('preserves lane-local hazard observations and authoritative edits across retention', () => {
     const { world, crew } = crewFor(masks, 1, {}, { laneCount: 2 }), actor = crew[0]; actor.x = 20;
     world.hazards.nearby = (lane, _x, _options, out) => {
       out.length = 0; if (lane === 0) out.push({ x1: 15, x2: 18, y1: 66, y2: 73 }); return out;
@@ -92,7 +92,7 @@ describe('bounded observed long tunnels with ordinary whole crews', function() {
     expect(world._rearEdgeWall(actor)).to.equal(false);
     expect(world._rearEdgeWall({ laneIndex: 1, x: 20, y: 168 })).to.equal(true);
     world.setGroundAt(12, 65); actor.x = 200; world._pruneEdits(); actor.x = 20;
-    expect(world.terrainTileRevisions.get(0)).to.equal(undefined); expect(world._rearEdgeWall(actor)).to.equal(false); world.dispose();
+    expect(world.hasGroundAt(12, 65)).to.equal(true); expect(world._rearEdgeWall(actor)).to.equal(false); world.dispose();
   });
   it('rejects partial materialization even when a raw descriptor contains final solid art', () => {
     const { world, crew } = crewFor(masks, 1); let partial = true;

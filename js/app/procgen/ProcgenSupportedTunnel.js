@@ -1,3 +1,4 @@
+import { procgenTileRevision } from './ProcgenTerrainRetention.js';
 import { ActionBashSystem } from '../../actions/ActionBashSystem.js';
 import { ActionWalkSystem } from '../../actions/ActionWalkSystem.js';
 import { LemmingStateType as State } from '../../lemmings/LemmingStateType.js';
@@ -33,7 +34,7 @@ class ProcgenSupportedTunnel {
     let key = `${world.generation}:${actor.x}:${actor.y}`;
     for (let lane = firstLane; lane <= lastLane; lane++) {
       key += `:${Math.min(world.generatedThrough[lane], actor.x + MAX_SUPPORTED_TUNNEL_DISTANCE + 1)}`;
-      for (let chunk = firstChunk; chunk <= lastChunk; chunk++) key += `:${world.terrainTileRevisions.get(lane * 0x800000 + chunk) || 0}`;
+      for (let chunk = firstChunk; chunk <= lastChunk; chunk++) key += `:${procgenTileRevision(world, lane * 0x800000 + chunk)}`;
     }
     const cached = this.cache[actor.laneIndex];
     if (cached?.key === key && (cached.failure !== 'budget' || cached.maxProbes >= maxProbes)) { this.stats.cacheHits++; return { proposal: cached.proposal && !this._busy(cached.proposal.footprint) ? cached.proposal : null, probes: 0 }; }
