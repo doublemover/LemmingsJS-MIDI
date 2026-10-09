@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Add an opt-in paired procgen survey with isolated real worlds, bounded workers, complete crew accounting, immutable replay evidence and a muted comparison dashboard.
+
 - Add opt-in Scene replies through the existing ensemble and phrase queue, with shared simulation musical boundaries and persistent compact status controls.
 - Retire notes on their original MIDI output and fence reentrant Panic/queue replacement, with scoped phrase cancellation that leaves unrelated voices intact.
 - Admit a real ordinary walker at its observed tunnel entrance from a retained full guarded proof, rechecking identity, route, contact, claims and the original deadline.
