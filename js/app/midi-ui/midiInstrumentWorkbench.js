@@ -5,6 +5,8 @@ import { GAME_SPEED_DETENTS, gameSpeedDetentIndex, gameSpeedFromDetent } from '.
 import { GAME_SOUND_EVENTS, resolveGameSoundSource, getEventBehavior, createEventBehaviorPatch } from './midiSoundEditor.js';
 import { cloneSafeObject } from '../../util/safeObject.js';
 import { createMidiInstrumentMenus } from './midiInstrumentMenus.js';
+import { createMidiMusicDirectionControls } from './midiMusicDirectionControls.js';
+import { reduceMidiProject } from '../../midi/project/MidiProject.js';
 
 const LAYOUTS = ['focus', 'split', 'overlay'];
 const LAYOUT_KEY = 'lemmings.midi.workbench.layout';
@@ -32,7 +34,7 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     const matches = event.sourceId != null ? source.id === event.sourceId : source.kind === event.sourceKind && source.sourceKey === String(event.sourceKey);
     return matches ? root.children[event.stepIndex] || null : null;
   } });
-  let layoutAnimation = null;
+  let layoutAnimation = null, musicDirection = null;
   let lastEvent = null, lastTick = null;
   try { const stored = window?.localStorage?.getItem(LAYOUT_KEY); if (LAYOUTS.includes(stored)) layout = stored; } catch { /* Layout is optional storage. */ }
   const setLayout = next => {
@@ -69,7 +71,7 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
   };
   const refreshClock = () => {
     if (disposed) return;
-    refreshScope();
+    refreshScope(); musicDirection?.syncStatus();
     const view = getLemmings();
     const nextBus = view?.game?.soundEvents;
     if (nextBus !== soundBus) {
@@ -184,7 +186,7 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     for (const id of ['midiUndo']) { const el = byId(id); if (el) el.disabled = !undoState.canUndo; }
     for (const id of ['midiRedo']) { const el = byId(id); if (el) el.disabled = !undoState.canRedo; }
     text('midiPatternAxis', mapping.arp?.enabled ? 'Event order · each trigger advances one note' : mapping.phrase?.enabled ? `Phrase · one note every ${mapping.phrase.spacingTicks} game ticks` : 'One note per event');
-    refreshClock(); playback.render();
+    musicDirection?.sync(); refreshClock(); playback.render();
   };
   const finiteInput = (event, min, max) => {
     if (String(event.target.value).trim() === '') { render(); return null; }
@@ -202,7 +204,10 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     if (number) bind(number, 'change', event => { const n = finiteInput(event, min, max); if (n != null) apply(n); });
   };
   const initialize = () => {
-    menus?.dispose(); palettes?.dispose();
+    menus?.dispose(); palettes?.dispose(); musicDirection?.dispose();
+    musicDirection = createMidiMusicDirectionControls({ document, prefix: 'midiMusic', getProject,
+      getRouter: () => getRouter ? getRouter() : getLemmings()?.midiPreviewRouter || getLemmings()?.midiRouter,
+      update: musicDirector => commitProject(reduceMidiProject(getProject(), { type: 'global.update', patch: { musicDirector } })) });
     palettes = createMidiInstrumentMenus({ root: byId('midiStartingPalettes'), document, window });
     menus = createMidiInstrumentMenus({ root: byId('midiInstrumentMenus'), document, window });
     setLayout(layout);
@@ -261,7 +266,7 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
   };
   return { initialize, render, setVisible, setAudioActive, setLayout, refreshClock, onPlayback: playback.onPlayback, clearPlayback: playback.clear,
     getState: () => ({ layout, visible, clock: gameClock(getLemmings()?.game?.getGameTimer?.()), lastEvent: lastEvent && { sfxId: lastEvent.sfxId, tick: lastEvent.tick } }),
-    dispose: () => { disposed = true; visible = false; refreshChrome(); if (timerId != null) window?.clearInterval?.(timerId); timerId = null; detach(); skillDock.dispose(); playback.dispose(); layoutAnimation?.cancel?.(); menus?.dispose(); menus = null; palettes?.dispose(); palettes = null; references.clear(); activity.clear(); } };
+    dispose: () => { disposed = true; visible = false; refreshChrome(); if (timerId != null) window?.clearInterval?.(timerId); timerId = null; detach(); skillDock.dispose(); playback.dispose(); layoutAnimation?.cancel?.(); menus?.dispose(); menus = null; palettes?.dispose(); palettes = null; musicDirection?.dispose(); references.clear(); activity.clear(); } };
 };
 
 export { createMidiInstrumentWorkbench, gameClock, LAYOUTS };

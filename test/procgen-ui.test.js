@@ -20,8 +20,8 @@ const fixture = (search = '', storedLanes = null, preferences = {}, restartResul
     target.dispatchEvent = event => { for (const callback of events.get(event.type) || []) callback(event); };
   }
   for (const [tag, ids] of [['div', ['procgenDrawer', 'procgenPanel', 'procgenSpanList']], ['details', ['procgenHelpFields']], ['canvas', ['gameCanvas']], ['button', ['procgenTab', 'procgenHelp', 'procgenRestart', 'procgenListen', 'procgenSpeedDown', 'procgenSpeedUp', 'procgenShare', 'procgenNewSeed', 'procgenPause', 'procgenStep', 'procgenFollow', 'procgenZoomIn', 'procgenZoomOut', 'procgenPanic', 'procgenCctvPin', 'procgenCctvClear', 'procgenSpanAdd', 'procgenSpanPresetApply', 'procgenSpanUndo', 'procgenSpanRedo']],
-    ['select', ['procgenPreset', 'procgenPack', 'procgenSpeed', 'procgenCctvMode', 'procgenSpanDomain', 'procgenSpanTarget', 'procgenSpanPreset']], ['input', ['procgenLanes', 'procgenPhrases', 'procgenSeed', 'procgenMasterVolume', 'procgenCctvLane', 'procgenWorkerBashers', 'procgenWorkerDiggers', 'procgenWorkerBuilders', 'procgenLaneHeight', 'procgenCctvEnabled', 'procgenScoutsEvery', 'procgenScoutDelay', 'procgenSpawnSpread', 'procgenSpawnPriority', 'procgenSpanEdit', 'procgenSpanVisible']],
-    ['p', ['procgenMasterVolumeValue', 'procgenPresetDescription', 'procgenAudioStatus', 'procgenRunStatus', 'procgenMetrics', 'procgenStallStatus', 'procgenAliveCount', 'procgenDistance', 'procgenBest', 'procgenCctvStatus', 'procgenNukeStatus', 'procgenOutputPressure', 'procgenSpanPresetStatus', 'procgenSpanHistoryStatus']]]) {
+    ['select', ['procgenMusicRecipe', 'procgenPreset', 'procgenPack', 'procgenSpeed', 'procgenCctvMode', 'procgenSpanDomain', 'procgenSpanTarget', 'procgenSpanPreset']], ['input', ['procgenLanes', 'procgenPhrases', 'procgenSeed', 'procgenMasterVolume', 'procgenCctvLane', 'procgenWorkerBashers', 'procgenWorkerDiggers', 'procgenWorkerBuilders', 'procgenLaneHeight', 'procgenCctvEnabled', 'procgenScoutsEvery', 'procgenScoutDelay', 'procgenSpawnSpread', 'procgenSpawnPriority', 'procgenSpanEdit', 'procgenSpanVisible']],
+    ['p', ['procgenMusicStatus', 'procgenMasterVolumeValue', 'procgenPresetDescription', 'procgenAudioStatus', 'procgenRunStatus', 'procgenMetrics', 'procgenStallStatus', 'procgenAliveCount', 'procgenDistance', 'procgenBest', 'procgenCctvStatus', 'procgenNukeStatus', 'procgenOutputPressure', 'procgenSpanPresetStatus', 'procgenSpanHistoryStatus']]]) {
     for (const id of ids) { const el = registerElement(document, tag, id); el.removeEventListener = (event, callback) => el.listeners.set(event, (el.listeners.get(event) || []).filter(fn => fn !== callback)); }
   }
   let restarts = 0;
@@ -30,6 +30,27 @@ const fixture = (search = '', storedLanes = null, preferences = {}, restartResul
   return { document, window, ui, timer, runtime, get restarts() { return restarts; }, el: id => document.getElementById(id) };
 };
 describe('compact procgen drawer', () => {
+  it('persists the opt-in recipe through the existing musical transaction and Undo without starting output', () => {
+    const f = fixture(); expect(f.el('procgenMusicRecipe').value).to.equal('events'); expect(f.el('procgenMusicStatus').textContent).to.equal('Event music');
+    f.el('procgenMusicRecipe').value = 'scenes'; f.el('procgenMusicRecipe').dispatchEvent({ type: 'change', target: f.el('procgenMusicRecipe') });
+    const saved = () => JSON.parse(f.window.localStorage.getItem('lemmings.procgen.automation.v2'));
+    expect(saved().musicDirector).to.deep.equal({ recipe: 'scenes' }); expect(f.ui.local.getState().enabled).to.equal(false); expect(f.restarts).to.equal(0);
+    const palette = f.ui.settings.preset; f.el('procgenSpanUndo').dispatchEvent({ type: 'click' }); expect(f.el('procgenMusicRecipe').value).to.equal('events'); expect(saved().musicDirector.recipe).to.equal('events');
+    f.el('procgenSpanRedo').dispatchEvent({ type: 'click' }); expect(f.el('procgenMusicRecipe').value).to.equal('scenes'); expect(f.ui.settings.preset).to.equal(palette);
+    const data = saved(); f.ui.dispose(); const restored = fixture('', null, { 'lemmings.procgen.automation.v2': data }); expect(restored.el('procgenMusicRecipe').value).to.equal('scenes'); expect(restored.ui.local.getState().enabled).to.equal(false); restored.ui.dispose();
+  });
+  it('retains a saved recipe across presets and status refresh without changing focus or controls', () => {
+    const f = fixture('', null, { 'lemmings.procgen.automation.v2': { version: 2, value: [], musicDirector: { recipe: 'scenes' } } });
+    f.el('procgenPreset').value = 'game-lydian-lanterns'; f.el('procgenPreset').dispatchEvent({ type: 'change', target: f.el('procgenPreset') });
+    const select = f.el('procgenMusicRecipe'), listen = f.el('procgenListen'); f.document.activeElement = select;
+    f.runtime.view.midiPreviewRouter = { getMusicDirection: () => ({ enabled: true, current: 'exploration', pending: 'construction', nextBar: 3, cue: 'idle' }) };
+    f.ui.syncMetrics({ alive: 0, spawnedTotal: 0, distance: { max: 0 }, generation: 1 }); expect(f.el('procgenMusicStatus').textContent).to.equal('Exploring · Building next bar 3'); expect(f.document.activeElement).to.equal(select); expect(f.el('procgenListen')).to.equal(listen);
+    expect(select.value).to.equal('scenes'); expect(f.ui.settings.preset).to.equal('game-lydian-lanterns'); f.ui.dispose();
+  });
+  it('loads old musical span storage without enabling scene replies', () => {
+    const f = fixture('', null, { 'lemmings.procgen.automation.v2': { version: 2, value: [] } }); expect(f.el('procgenMusicRecipe').value).to.equal('events'); expect(f.ui.local.getState().enabled).to.equal(false); f.ui.dispose();
+  });
+
   it('is hidden and inert initially, opens downward, and Escape closes', () => {
     const f = fixture(); expect(f.el('procgenDrawer').inert).to.equal(true);
     expect(f.el('procgenTab').getAttribute('aria-expanded')).to.equal('false');

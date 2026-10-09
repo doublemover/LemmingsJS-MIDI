@@ -165,3 +165,7 @@ body { flex-direction: column; }
 #procgenAdvanced { margin: 10px 0; }
 #procgenDrawer details > summary { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) { #procgenPanel { transition: none; } }
+
+.midi-music-direction { display: flex; flex-direction: column; flex: 0 0 150px; width: 150px; gap: 0; min-width: 0; }
+.midi-music-direction select { box-sizing: border-box; width: 100%; min-height: 24px; height: 24px; padding: 2px 4px; font-size: 11px; }
+.midi-music-direction-status { display: block; height: 12px; line-height: 12px; font-size: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

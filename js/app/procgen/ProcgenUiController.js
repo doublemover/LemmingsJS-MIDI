@@ -3,6 +3,7 @@ import { createProcgenMidiSpanControls } from './ProcgenMidiSpanControls.js';
 import { createMidiEditHistory } from '../midi-ui/midiEditHistory.js';
 import { loadProcgenAutomation, saveProcgenAutomation } from './ProcgenAutomationStorage.js';
 import { createMidiTensionControls } from '../midi-ui/midiTensionControls.js';
+import { createMidiMusicDirectionControls } from '../midi-ui/midiMusicDirectionControls.js';
 import { createMidiOutputCapture } from '../../midi/capture/MidiOutputCapture.js';
 import { createMidiCaptureControls } from '../midi-ui/midiCaptureControls.js';
 import { DECORATION_CHOICES } from '../../decorations/ProcgenDecorationPacks.js';
@@ -97,7 +98,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
       try { window.localStorage?.setItem(tensionStorageKey, JSON.stringify({ version: 1, value: tensionPreferences })); } catch { /* Keep the session choice. */ }
     } });
   const automationHistory = createMidiEditHistory();
-  let automationStatus = '';
+  let automationStatus = '', musicDirection = null;
   const syncAutomationHistory = () => {
     const state = automationHistory.state();
     if (byId('procgenSpanUndo')) byId('procgenSpanUndo').disabled = !state.canUndo;
@@ -105,10 +106,10 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     if (byId('procgenSpanHistoryStatus')) byId('procgenSpanHistoryStatus').textContent = automationStatus;
   };
   const commitAutomation = (next, record = true) => {
-    next = sanitizeMidiProject({ ...project, automation: next.automation });
+    next = sanitizeMidiProject({ ...project, automation: next.automation, global: { ...project.global, musicDirector: next.global.musicDirector } });
     if (record) automationHistory.record(project, next);
-    project = next; config = projectToMidiConfig(project); local.syncConfig(); spanControls.render(); spanOverlay.changed();
-    automationStatus = saveProcgenAutomation(automationStorage(), project) ? '' : 'Automation kept for this session; browser storage is unavailable.';
+    project = next; config = projectToMidiConfig(project); local.syncConfig(); spanControls.render(); spanOverlay.changed(); musicDirection?.sync();
+    automationStatus = saveProcgenAutomation(automationStorage(), project) ? '' : 'Music edits kept for this session; browser storage is unavailable.';
     syncAutomationHistory();
   };
   const dispatchAutomation = intent => commitAutomation(reduceMidiProject(project, intent));
@@ -128,6 +129,9 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   };
   listen(byId('procgenSpanUndo'), 'click', () => restoreAutomation('undo'));
   listen(byId('procgenSpanRedo'), 'click', () => restoreAutomation('redo')); syncAutomationHistory();
+  musicDirection = createMidiMusicDirectionControls({ document, prefix: 'procgenMusic', getProject: () => project,
+    getRouter: () => getRuntime()?.view?.midiPreviewRouter,
+    update: musicDirector => dispatchAutomation({ type: 'global.update', patch: { musicDirector } }) });
   syncTargetHelp = () => spanControls.syncTargetHelp();
   const setSpanEditing = enabled => {
     if (enabled) setNukeArmed(false);
@@ -382,7 +386,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   return { settings, local, outputCapture, captureControls, getShareUrl, syncActiveCount,
     syncMetrics(state) {
       local.syncStatus?.();
-      syncActiveCount(state.alive); syncProgress(state); tensionControls.syncStatus(); spanControls.syncStatus();
+      syncActiveCount(state.alive); syncProgress(state); tensionControls.syncStatus(); spanControls.syncStatus(); musicDirection.syncStatus();
       const pressure = getRuntime()?.view?.midiPreviewRouter?.getOutputPressure?.();
       const outputPressure = byId('procgenOutputPressure');
       if (outputPressure) { outputPressure.hidden = false; outputPressure.textContent = pressure?.throttled ? 'Thinned ' + pressure.dropped : '';  outputPressure.title = pressure?.throttled ? 'Shared sound budget: ' + pressure.reason : ''; }
@@ -393,7 +397,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
       if (policy) policy.textContent = state.stall?.phase === 'cascade' ? 'Stalled cohort: staggered OHNO; restart follows the last actor.' : 'Progressing and working lanes stay protected. Reset follows all-lane probe/transit grace or a sustained growing pile.';
     },
     sync() {
-      characters.sync(); syncProgress(); tensionControls.sync(); spanControls.render(); spanOverlay.sync(); syncWorkerLimits(); syncPopulation();
+      characters.sync(); syncProgress(); musicDirection.sync(); tensionControls.sync(); spanControls.render(); spanOverlay.sync(); syncWorkerLimits(); syncPopulation();
       paused = false; setNukeArmed(false);
       if (byId('procgenPause')) { byId('procgenPause').textContent = 'Pause'; byId('procgenPause').setAttribute('aria-pressed', 'false'); }
       if (byId('procgenSeed')) byId('procgenSeed').value = String(settings.seed ?? window.procgenSeed ?? '');
@@ -405,7 +409,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
       if (byId('procgenAliveCount') && runtime?.world) byId('procgenAliveCount').textContent = runtime.world.actors.reduce((count, actor) => count + (actor.failureReason ? 0 : 1), 0).toLocaleString() + ' alive';
       if (byId('procgenRunStatus')) byId('procgenRunStatus').textContent = `${settings.laneCount.toLocaleString()} ${settings.laneCount === 1 ? 'lane' : 'lanes'} · ${runtime?.world ? 'Wheel or Z/X zoom; arrows or drag pan; F follows the leader.' : 'Left-to-right generation'}`;
     },
-    dispose() { disposed = true; local.dispose(); captureControls.dispose(); tensionControls.dispose(); spanControls.dispose(); spanOverlay.dispose(); characters.dispose?.(); for (const [target, event, handler, options] of listeners) target?.removeEventListener(event, handler, options); }
+    dispose() { disposed = true; local.dispose(); captureControls.dispose(); musicDirection.dispose(); tensionControls.dispose(); spanControls.dispose(); spanOverlay.dispose(); characters.dispose?.(); for (const [target, event, handler, options] of listeners) target?.removeEventListener(event, handler, options); }
   };
 };
 export { createProcgenUiController };

@@ -252,3 +252,7 @@ body.game-page.studio-open[data-midi-layout=overlay] .midi-sequencer { grid-colu
 .midi-output-pressure[hidden] { display: none; }
 
 .midi-event-clip-cell .midi-dispatched-cell-note { position: absolute; left: 2px; right: 2px; z-index: 1; pointer-events: none; border-radius: 2px; background: #e9bf78; color: #1a281e; font: 8px ui-monospace, monospace; line-height: 10px; text-align: left; padding: 0 2px; }
+
+.midi-music-direction { display: flex; flex-direction: column; flex: 0 0 150px; width: 150px; gap: 0; min-width: 0; }
+.midi-music-direction select { box-sizing: border-box; width: 100%; min-height: 24px; height: 24px; padding: 2px 4px; font-size: 11px; }
+.midi-music-direction-status { display: block; height: 12px; line-height: 12px; font-size: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

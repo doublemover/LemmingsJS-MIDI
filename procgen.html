@@ -49,6 +49,7 @@
     <div id="procgenCharacters" class="character-control-content"></div>
     <div class="procgen-controls-row">
       <label>Action music <select id="procgenPreset"></select></label>
+      <div class="midi-music-direction"><select id="procgenMusicRecipe" aria-label="Music recipe" title="Scene replies follow completed game activity and wait for musical boundaries"><option value="events">Event music</option><option value="scenes">Scene replies</option></select><output id="procgenMusicStatus" class="midi-music-direction-status" role="status" aria-live="off">Event music</output></div>
       <label class="procgen-check"><input id="procgenPhrases" type="checkbox"> Short phrases</label>
     </div>
     <details id="procgenTensionFields" hidden><summary>Musical tension</summary>
@@ -77,7 +78,7 @@
         <button id="procgenSpanAdd" type="button">Add span</button>
         <label><input id="procgenSpanVisible" type="checkbox" checked> Show rectangles</label>
         <label><input id="procgenSpanEdit" type="checkbox"> Draw on lanes</label>
-        <button id="procgenSpanUndo" type="button" disabled>Undo</button><button id="procgenSpanRedo" type="button" disabled>Redo</button>
+        <button id="procgenSpanUndo" type="button" title="Undo music edit" disabled>Undo</button><button id="procgenSpanRedo" type="button" title="Redo music edit" disabled>Redo</button>
       </div><p>Beat rectangles use a musical timeline across the screen; distance rectangles follow world X. Enable Draw on lanes to select, move, resize or draw a lane group. Camera dragging resumes when drawing is off.</p>
       <p id="procgenSpanTargetHelp"></p>
       <p id="procgenSpanPresetStatus" role="status" aria-live="polite"></p>
