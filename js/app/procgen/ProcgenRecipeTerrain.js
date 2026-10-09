@@ -9,7 +9,7 @@ import { TriggerTypes } from '../../level/TriggerTypes.js';
 import { createProcgenWordPlanner } from './ProcgenWords.js';
 import { PROCGEN_INTRO_SAFE_END, PROCGEN_RECOVERY_GAP_END, progressionAt, introAssemblyEligible } from './ProcgenTerrainProgression.js';
 import { compileAuthoredAssemblies } from './ProcgenAuthoredAssemblies.js';
-import { placeAuthoredAssemblies } from './ProcgenAssemblyPlacement.js';
+import { placeAuthoredAssemblies, isProcgenAssemblyEligible } from './ProcgenAssemblyPlacement.js';
 import { createTerrainGrowthPlan } from './ProcgenTerrainMaterialization.js';
 
 const TERRAIN_CHUNK_WIDTH = 128;
@@ -48,13 +48,13 @@ class ProcgenRecipeTerrain {
     this.descriptions = new Map(); this.growthPlans = new Map(); this.descriptionLimit = 256;
     this.objects = objectPieces.filter(p => p?.image?.frames?.[0]?.length && p.image.width && p.image.height);
     this.compiledAssemblies = compileAuthoredAssemblies(this.assemblyCatalog, this.pieces, this.objects);
-    this.assemblySources = new Map(this.compiledAssemblies.map(group => [group.entry.id, group]));
+    this.assemblySources = new Map(this.compiledAssemblies.filter(isProcgenAssemblyEligible).map(group => [group.entry.id, group]));
     this.eligibleObjectIds = new Set(this.objects.filter(p => this._standaloneObjectEligible(p)).map(p => p.id));
-    for (const group of this.compiledAssemblies) for (const member of group.objects) if (![TriggerTypes.ONEWAY_LEFT, TriggerTypes.ONEWAY_RIGHT, TriggerTypes.DROWN].includes(member.image.trigger_effect_id)) this.eligibleObjectIds.add(member.id);
+    for (const group of this.assemblySources.values()) for (const member of group.objects) this.eligibleObjectIds.add(member.id);
     this.eligibleTerrainIds = new Set(routeIds);
     for (const group of this.sourceGroups.keys()) for (const member of group.placements) this.eligibleTerrainIds.add(member.id);
     for (const word of this.wordPlanner?.choices || []) for (const glyph of word.letters) this.eligibleTerrainIds.add(glyph.piece.id);
-    for (const group of this.compiledAssemblies) { for (const member of group.terrain) this.eligibleTerrainIds.add(member.id); for (const support of group.supportAnchors) if (support.anchor.kind === 'terrain') this.eligibleTerrainIds.add(support.anchor.id); }
+    for (const group of this.assemblySources.values()) { for (const member of group.terrain) this.eligibleTerrainIds.add(member.id); for (const support of group.supportAnchors) if (support.anchor.kind === 'terrain') this.eligibleTerrainIds.add(support.anchor.id); }
     this.patterns = this.routes.map((route, index) => composeRecipeChunk({ recipe: { ...recipe, routes: [route] }, terrainPieces,
       seed: index + 1, width: route.period * Math.ceil(TERRAIN_CHUNK_WIDTH / route.period), height: TERRAIN_HEIGHT, surfaceY: 72, decoration: false }));
     for (const pattern of this.patterns) {
@@ -185,7 +185,7 @@ class ProcgenRecipeTerrain {
   _activePlan(seed, chunk, state) { return state && !state.complete ? state.plan || this.growthPlan(seed, chunk) : null; }
   objectsAt(seed, chunk) { return this.describe(seed, chunk).objects; }
   _standaloneObjectEligible(piece) {
-    return !this.associatedObjectIds.has(piece.id) && [TriggerTypes.TRAP, TriggerTypes.DROWN, TriggerTypes.KILL, TriggerTypes.FRYING].includes(piece.image.trigger_effect_id);
+    return piece.id !== 1 && !this.associatedObjectIds.has(piece.id) && [TriggerTypes.TRAP, TriggerTypes.DROWN, TriggerTypes.KILL, TriggerTypes.FRYING].includes(piece.image.trigger_effect_id);
   }
   _placeObjects(seed, chunk, descriptor) {
     const { origin, code, phaseCode } = descriptor, objects = [];
@@ -421,6 +421,6 @@ class ProcgenRecipeTerrain {
       terrainVocabularyUsed: this.selectedTerrainIds.size, terrainVocabularyAvailable: this.eligibleTerrainIds.size, terrainCatalogAvailable: this.pieces.length,
       wordGlyphsAvailable: this.wordPlanner?.glyphs.size || 0, wordChoicesAvailable: this.wordPlanner?.choices.length || 0,
       canonicalDescriptor: this.sourceDescriptor?.id || null, canonicalGroupsAvailable: this.sourceGroups.size, proposedRouteContracts: this.routeContracts.length, cachedDescriptions: this.descriptions.size, cachedZones: this.zonePlanner?.cache.size || 0,
-      objectVocabularyUsed: this.selectedObjectIds.size, objectVocabularyAvailable: this.eligibleObjectIds.size, assemblyCatalogRevision: this.assemblyCatalog?.sourceRevision || null, assembliesAvailable: this.compiledAssemblies.length, associatedTerrainIds: [...this.associatedTerrainIds], associatedObjectIds: [...this.associatedObjectIds], objectCatalogAvailable: this.objects.length, phaseChunks: PHASE_CHUNKS }; }
+      objectVocabularyUsed: this.selectedObjectIds.size, objectVocabularyAvailable: this.eligibleObjectIds.size, assemblyCatalogRevision: this.assemblyCatalog?.sourceRevision || null, assembliesAvailable: this.assemblySources.size, associatedTerrainIds: [...this.associatedTerrainIds], associatedObjectIds: [...this.associatedObjectIds], objectCatalogAvailable: this.objects.length, phaseChunks: PHASE_CHUNKS }; }
 }
 export { ProcgenRecipeTerrain, TERRAIN_CHUNK_WIDTH, TERRAIN_HEIGHT };

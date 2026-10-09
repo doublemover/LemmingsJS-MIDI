@@ -1,12 +1,13 @@
 import { ProcgenSolverAdapter, replayProcgenGoal } from './ProcgenSolverAdapter.js';
 import { LemmingStateType as State } from '../lemmings/LemmingStateType.js';
 import { createSolverResult } from './SolverTypes.js';
+import { TriggerTypes as Types } from '../level/TriggerTypes.js';
 
 const bounded = (value, fallback, minimum, maximum) => Number.isSafeInteger(value) ? Math.max(minimum, Math.min(maximum, value)) : fallback;
 const fingerprint = snapshot => {
   let hash = 2166136261;
   for (const bytes of [snapshot.groundMask, snapshot.steelMask]) for (const byte of bytes) { hash ^= byte; hash = Math.imul(hash, 16777619); }
-  return (hash >>> 0).toString(16) + ':' + JSON.stringify([snapshot.sourceOffset, snapshot.width, snapshot.height, snapshot.lemmings, snapshot.exits, snapshot.skills, snapshot.hazards, snapshot.source, snapshot.workerLimits]);
+  return (hash >>> 0).toString(16) + ':' + JSON.stringify([snapshot.sourceOffset, snapshot.width, snapshot.height, snapshot.lemmings, snapshot.exits, snapshot.skills, snapshot.hazards, snapshot.environmentalBlockers, snapshot.source, snapshot.workerLimits]);
 };
 
 /** Bounded fresh-world action search. No proposed route, catalogue action script or assistant planner is an input. */
@@ -38,7 +39,7 @@ const searchProcgenGoal = (factory, options = {}) => {
         if (next < script.length && adapter.tick === script[next].tick) {
           actionsUsed++; if (!adapter.applyAction(script[next++]).ok) { rejected = true; break; }
         }
-        if (adapter.getSavedCount() === adapter.crewCount) {
+        if (!adapter.environmentalBlockersChanged && adapter.getSavedCount() === adapter.crewCount) {
           if (ticks + adapter.tick > limits.maxSimulatedTicks) { timedOut = true; break; }
           const replay = replayProcgenGoal(fresh, script, { maxTicks: limits.maxTicks, maxNodes: limits.maxTicks, maxActions: limits.maxActions });
           return { ...replay, summary: 'Independent real-actor search ' + replay.resultType + ' the whole-crew physical goal',
@@ -50,6 +51,9 @@ const searchProcgenGoal = (factory, options = {}) => {
           const actor = adapter.selectLemming('frontier'), world = adapter.world, bounds = adapter.bounds;
           if (actor?.action === world.actions[State.WALKING] && actor.x >= bounds.x + 4 && actor.x + 10 < bounds.x + bounds.width && actor.y >= bounds.y + 12 && actor.y + 4 < bounds.y + bounds.height && world.hasGroundAt(actor.x, actor.y)) {
             const ahead = actor.x + (actor.lookRight ? 1 : -1), obstacle = world.getColumnStepHeight(ahead, actor.y - 7, 8) >= 7 || world.getColumnGapDepth(ahead, actor.y + 1, 3) > 3;
+            const directionalType = actor.lookRight ? Types.BLOCKER_LEFT : Types.BLOCKER_RIGHT;
+            const blocker = adapter.getEnvironmentalBlockerRects().some(rect => rect.type === directionalType && actor.y >= rect.y1 && actor.y < rect.y2 &&
+              (actor.lookRight ? rect.x1 > actor.x && rect.x1 - actor.x <= 40 : rect.x2 <= actor.x && actor.x - rect.x2 <= 40));
             let descent = false;
             // Candidate discovery reads actual bounded geometry; it does not use
             // the assistant planner or a proposed route/action sequence.
@@ -67,7 +71,7 @@ const searchProcgenGoal = (factory, options = {}) => {
                 }
               }
             }
-            if (obstacle || descent) for (const skillType of obstacle ? ['builder', 'basher', 'digger', 'miner'] : ['digger', 'miner']) {
+            if (obstacle || descent || blocker) for (const skillType of obstacle ? ['builder', 'basher', 'digger', 'miner'] : blocker ? ['builder'] : ['digger', 'miner']) {
               if (!adapter.getSkillCount(skillType) || queue.length + nodes >= limits.maxNodes) continue;
               const candidate = [...script, { tick: adapter.tick, target: actor.id, skillType }], key = JSON.stringify(candidate);
               if (!seen.has(key)) { seen.add(key); queue.push(candidate); }

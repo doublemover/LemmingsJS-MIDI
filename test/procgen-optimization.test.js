@@ -115,6 +115,19 @@ describe('frontier procgen optimization contracts', function() {
     expect(renderer.objectPlacements.length).to.be.at.most(1280 * 720);
     renderer.dispose(); world.dispose();
   });
+  it('skips unprepared source descriptors while retaining shared edits and later completed geometry', async () => {
+    const terrain = await loadProcgenTerrain(), world = new ProcgenLaneWorld({ masks, terrain }), describe = terrain.describe;
+    world.terrainGrowth.completed[0] = [];
+    terrain.describe = () => { throw new Error('Unprepared source geometry must stay cold'); };
+    const renderer = new ProcgenLaneRenderer({ canvas: canvasFixture(120, 96), world, assets: { groundPieces: terrain.pieces }, windowRef: { devicePixelRatio: 1, performance } });
+    renderer.follow = false; renderer.scale = 1;
+    try {
+      renderer.render(); expect(renderer.pixels.every(color => color === 0xff0e0807)).to.equal(true); expect(renderer.objectPlacements).to.have.length(0);
+      world.setGroundAt(40, 80); renderer.render(); expect(renderer.pixels[80 * 120 + 40]).to.equal(0xff86cbea);
+      terrain.describe = describe; world.terrainGrowth.completed[0] = [[0, world.generatedThrough[0]]]; world.terrainRevision++; world.frontierRevision++;
+      renderer.render(); expect(renderer.pixels[80 * 120 + 39]).not.to.equal(0xff0e0807); expect(renderer.pixels[80 * 120 + 40]).to.equal(0xff86cbea);
+    } finally { terrain.describe = describe; renderer.dispose(); world.dispose(); }
+  });
   it('invalidates erased analytic fallback pixels with a stationary camera', () => {
     const world = new ProcgenLaneWorld({ masks });
     const renderer = new ProcgenLaneRenderer({ canvas: canvasFixture(), world, assets: { groundPieces: [] }, windowRef: { devicePixelRatio: 1, performance } });

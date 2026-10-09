@@ -1,6 +1,8 @@
 import { TriggerTypes as Types } from '../../level/TriggerTypes.js';
 
 const readiness = new WeakMap(), footCache = new WeakMap();
+const excludedTriggers = new Set([Types.EXIT_LEVEL, Types.ONEWAY_LEFT, Types.ONEWAY_RIGHT, Types.DROWN]);
+const isProcgenAssemblyEligible = group => group.objects.every(member => member.id !== 1 && !excludedTriggers.has(member.image.trigger_effect_id));
 const lethal = role => ['trap', 'hazard', 'liquid'].includes(role);
 const roleFor = image => image.trigger_effect_id === Types.TRAP ? 'trap' : image.trigger_effect_id === Types.DROWN ? 'liquid' :
   [Types.KILL, Types.FRYING].includes(image.trigger_effect_id) ? 'hazard' : image.trigger_effect_id === Types.EXIT_LEVEL || image.animationLoop === false ? 'structure' : 'ambient';
@@ -27,10 +29,14 @@ const placeAuthoredAssemblies = ({ compiled = [], chunk, origin = chunk * 128, c
   occupied = [], existingObjects = [], chunkWidth = 128, height = 96, introSafeEnd = 256, gapX = -1, gapWidth = 0 } = {}) => {
   const terrainPlacements = [], objects = [], assemblies = [];
   if (!compiled.length || !baseSolid || !baseSurface || origin < introSafeEnd) return { terrainPlacements, objects, assemblies };
-  const count = Math.min(4, compiled.length);
-  for (let attempt = 0; attempt < count && assemblies.length < 2; attempt++) {
+  const count = Math.min(4, compiled.length); let excludedSlots = 0;
+  for (let attempt = 0; attempt < count && assemblies.length + excludedSlots < 2; attempt++) {
     const group = compiled[((code >>> 0) + chunk + attempt) % compiled.length], entry = group.entry;
-    if (group.objects.some(member => [Types.ONEWAY_LEFT, Types.ONEWAY_RIGHT, Types.DROWN].includes(member.image.trigger_effect_id))) continue;
+    if (!isProcgenAssemblyEligible(group)) {
+      // Removing an entrance/exit leaves its deterministic placement slot empty.
+      if (group.objects.some(member => member.id === 1 || member.image.trigger_effect_id === Types.EXIT_LEVEL)) excludedSlots++;
+      continue;
+    }
     for (const support of group.supportAnchors.filter(anchor => anchor.confidence >= 0.8 && anchor.anchor.kind === 'terrain' && anchor.anchor.piece && !anchor.anchor.piece.isSteel).slice(0, 4)) {
       const anchor = support.anchor, anchorMember = { ...anchor, image: anchor.image || anchor.piece.image, pixels: anchor.pixels || anchor.piece.frame,
         orientation: anchor.orientation || { flipX: !!(anchor.f & 8), flipY: !!(anchor.f & 2) } };
@@ -124,4 +130,4 @@ const assemblyPlacementReady = (world, lane, object, descriptor) => {
     [...assembly.contacts, ...assembly.foundationSupports].every(solid);
   readiness.set(assembly, { world, lane, generation: world.generation, revision, through, ready }); return ready;
 };
-export { placeAuthoredAssemblies, assemblyPlacementReady };
+export { placeAuthoredAssemblies, assemblyPlacementReady, isProcgenAssemblyEligible };

@@ -5,6 +5,8 @@ import { procgenObjectImage } from './ProcgenObjectPresentation.js';
 import { DecorationLayer } from '../../decorations/DecorationLayer.js';
 import { createProcgenCameraController } from './ProcgenCameraController.js';
 
+const unprepared = state => state?.complete === false && state.active?.length === 0 && !state.plan;
+
 class ProcgenLaneRenderer {
   constructor({ canvas, world, assets, windowRef = window }) {
     this.actorVisibility = new ProcgenActorVisibility(world);
@@ -85,17 +87,17 @@ class ProcgenLaneRenderer {
           const px0 = Math.max(0, Math.ceil((cx * chunkWidth - x0) / step)), px1 = Math.min(width, Math.ceil((Math.min((cx + 1) * chunkWidth, through) - x0) / step));
           if (px0 >= px1) continue;
           const tileKey = lane * 0x800000 + cx, revision = world.terrainTileRevisions?.get(tileKey) || 0;
-          const materialization = world.terrainGrowth?.stateFor?.(lane, cx);
-          const tileRevision = revision + ':' + Math.min(chunkWidth, through - cx * chunkWidth) + ':' + (materialization?.revision || 0);
+          const materialization = world.terrainGrowth?.stateFor?.(lane, cx), hidden = unprepared(materialization);
+          const tileRevision = revision + ':' + Math.min(chunkWidth, through - cx * chunkWidth) + ':' + (hidden ? 'unprepared' : materialization?.revision || 0);
           if (!reset && this.tileRevisions.get(tileKey) === tileRevision) continue;
           this.tileRevisions.set(tileKey, tileRevision); dirty.push([px0, py0, px1 - px0, py1 - py0]);
-          const seed = world.laneSeeds[lane], descriptor = step >= 8 || materialization ? materialization?.plan?.descriptor || terrain.describe(seed, cx) : null;
-          const tile = descriptor ? null : terrain.getChunk(seed, cx, true).pixels;
+          const seed = world.laneSeeds[lane], descriptor = hidden ? null : step >= 8 || materialization ? materialization?.plan?.descriptor || terrain.describe(seed, cx) : null;
+          const tile = hidden || descriptor ? null : terrain.getChunk(seed, cx, true).pixels;
           for (let py = py0; py < py1; py++) {
             const y = Math.floor(y0 + py * step), localY = y - lane * this.laneHeight, row = localY * chunkWidth;
             const output = py * width;
             for (let px = px0; px < px1; px++) {
-              const x = Math.floor(x0 + px * step), color = x < world.leftEdgeX ? 0 : descriptor ? terrain.rasterSample(seed, cx, x - cx * chunkWidth, localY, descriptor, materialization) : tile[row + x - cx * chunkWidth];
+              const x = Math.floor(x0 + px * step), color = hidden || x < world.leftEdgeX ? 0 : descriptor ? terrain.rasterSample(seed, cx, x - cx * chunkWidth, localY, descriptor, materialization) : tile[row + x - cx * chunkWidth];
               const edits = world.editChunks.get(world._editKey(x, y));
               const edit = edits?.[localY * 32 + x % 32] || 0;
               pixels[output + px] = 0xff0e0807;
@@ -142,7 +144,9 @@ class ProcgenLaneRenderer {
       const end = Math.min(this.originX + this.viewWidth, world.generatedThrough[lane]);
       for (let cx = Math.floor(this.originX / width); cx * width < end; cx += chunkStride) {
         // Decorative placement must never compose or evict collision chunks.
-        const seed = world.laneSeeds[lane], descriptor = terrain.describe(seed, cx), materialization = world.terrainGrowth?.stateFor?.(lane, cx);
+        const materialization = world.terrainGrowth?.stateFor?.(lane, cx);
+        if (unprepared(materialization)) continue;
+        const seed = world.laneSeeds[lane], descriptor = terrain.describe(seed, cx);
         const matchesTerrain = (x, y) => {
           const edits = world.editChunks.get(world._editKey(x, lane * this.laneHeight + y));
           return x >= world.leftEdgeX && !edits?.[y * 32 + x % 32] && terrain.solidSample(seed, cx, x - cx * width, y, descriptor, materialization);

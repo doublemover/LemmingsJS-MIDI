@@ -4,6 +4,7 @@ import { ProcgenRecipeTerrain } from '../js/app/procgen/ProcgenRecipeTerrain.js'
 import { ProcgenLaneWorld } from '../js/app/procgen/ProcgenLaneWorld.js';
 import { ProcgenLaneRenderer } from '../js/app/procgen/ProcgenLaneRenderer.js';
 import { assemblyPlacementReady } from '../js/app/procgen/ProcgenAssemblyPlacement.js';
+import { compileAuthoredAssemblies } from '../js/app/procgen/ProcgenAuthoredAssemblies.js';
 import { procgenObjectImage } from '../js/app/procgen/ProcgenObjectPresentation.js';
 import { TriggerTypes as Types } from '../js/level/TriggerTypes.js';
 
@@ -19,6 +20,27 @@ describe('complete supported procgen source assemblies', function() {
   this.timeout(30000);
   let masks;
   before(async () => { masks = await loadProcgenMasks(); });
+  it('retains all nine source catalogs while excluding complete entrance and exit groups from generation', async () => {
+    let exits = 0, entrances = 0;
+    for (const [pack, count] of [['lemmings', 5], ['lemmings_ohNo', 4]]) for (let set = 0; set < count; set++) {
+      const terrain = await loadProcgenTerrain(pack, set), source = JSON.stringify(terrain.assemblyCatalog);
+      const original = compileAuthoredAssemblies(terrain.assemblyCatalog, terrain.pieces, terrain.objects);
+      const excluded = new Set(original.filter(group => group.objects.some(member => member.id === 1 || member.image.trigger_effect_id === Types.EXIT_LEVEL)).map(group => group.entry.id));
+      exits += original.filter(group => group.objects.some(member => member.image.trigger_effect_id === Types.EXIT_LEVEL)).length;
+      entrances += original.filter(group => group.objects.some(member => member.id === 1)).length;
+      expect(terrain.compiledAssemblies.map(group => group.entry.id)).to.deep.equal(original.map(group => group.entry.id));
+      expect([...terrain.assemblySources.keys()].every(id => !excluded.has(id))).to.equal(true);
+      expect(terrain.eligibleObjectIds.has(1)).to.equal(false);
+      expect(terrain.objects.filter(piece => piece.image.trigger_effect_id === Types.EXIT_LEVEL).every(piece => !terrain.eligibleObjectIds.has(piece.id))).to.equal(true);
+      for (let chunk = 2; chunk < 34; chunk++) {
+        const descriptor = terrain.describe(42, chunk);
+        expect(descriptor.objects.every(object => object.piece.id !== 1 && object.piece.image.trigger_effect_id !== Types.EXIT_LEVEL && !excluded.has(object.assembly?.id))).to.equal(true);
+        expect(descriptor.placements.every(placement => !excluded.has(placement.assembly?.id))).to.equal(true);
+      }
+      expect(JSON.stringify(terrain.assemblyCatalog)).to.equal(source);
+    }
+    expect(exits).to.be.greaterThan(0); expect(entrances).to.be.greaterThan(0);
+  });
   it('replays the actual bubble head/body transform together and suppresses standalone components', async () => {
     const terrain = await loadProcgenTerrain('lemmings_ohNo', 3);
     expect([...terrain.associatedObjectIds]).to.deep.equal([8, 10]);

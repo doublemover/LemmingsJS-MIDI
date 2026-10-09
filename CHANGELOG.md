@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Give procgen configurable physical lane height, default original pack, supported source liquid geometry, independent scouts and larger locally guarded construction crews.
 - Add bounded revision-scoped scout learning, supported physical word/column motifs, whole-crew blocker bypass and earlier per-lane stall recovery.
 - Reuse cosmetic-aware visibility buckets during paused high-lane panning and show requested versus achieved game speed.
+- Exclude complete entrance/exit assemblies from random procgen placement while preserving source catalogs and empty placement slots; independently verify finite whole-crew blocker bypasses with real stationary trigger owners.
+- Keep unprepared future source chunks cold during rendering while retaining shared construction edits and prepared/partial materialization.
 
 - Keep Increase/Decrease labels clear of OUT and preview the actual minimap click destination with a lighter, cached marching-ants outline.
 
