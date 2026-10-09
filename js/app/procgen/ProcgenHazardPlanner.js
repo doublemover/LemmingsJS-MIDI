@@ -1,5 +1,6 @@
 import { LemmingStateType as State } from '../../lemmings/LemmingStateType.js';
 import { ProcgenSupportedTunnel } from './ProcgenSupportedTunnel.js';
+import { ProcgenSupportedDescent } from './ProcgenSupportedDescent.js';
 
 const MAX_LOCAL_ROUTE_DISTANCE = 40;
 const MAX_ROUTE_PROBES = 1024;
@@ -8,7 +9,7 @@ const intersects = (hazard, x, y) => x + 2 > hazard.x1 && x - 2 < hazard.x2 && y
 
 class ProcgenHazardPlanner {
   constructor(world) {
-    this.tunnels = new ProcgenSupportedTunnel(world);
+    this.tunnels = new ProcgenSupportedTunnel(world); this.descents = new ProcgenSupportedDescent(world);
     this.world = world; this.observations = []; this.adjacentObservations = []; this.cache = new Array(world.laneCount);
     this.stats = { plans: 0, deferred: 0, probes: 0, budgetExhausted: 0 };
   }
@@ -215,14 +216,21 @@ class ProcgenHazardPlanner {
       if (!observedLong) bash = this._basher(actor, cliff);
       if (build && (!bash || build.score > bash.score)) proposal = { ...build, reason: threat ? 'supported-hazard-bypass' : cliff ? 'short-stair-to-ledge' : 'supported-local-gap' };
       else if (!proposal && bash && bash.startX === actor.x) proposal = { ...bash, reason: 'supported-local-tunnel' };
-      if (!proposal) proposal = this._digDescent(actor) || this._mineDescent(actor);
+      if (!proposal && world.workerLimits?.diggers && this.probes < MAX_ROUTE_PROBES) {
+        const result = this.descents.prove(actor, MAX_ROUTE_PROBES - this.probes);
+        this.probes += result.probes; this.stats.probes += result.probes;
+        proposal = result.proposal;
+        if (result.failure === 'budget') this.exhausted = true;
+        if (result.failure === 'unrevealed') this.unrevealed = true;
+      }
+      if (!proposal && this.probes < MAX_ROUTE_PROBES) proposal = this._digDescent(actor) || this._mineDescent(actor);
     }
     if (this.unrevealed) proposal = null;
     if (this.exhausted) { proposal = null; this.stats.budgetExhausted++; }
     this.cache[lane] = { tick: world.tickIndex, key, proposal }; this.stats.plans++;
     return proposal;
   }
-  reset() { this.tunnels.reset(); this.cache.fill(null); this.observations.length = 0; this.adjacentObservations.length = 0; }
-  dispose() { this.reset(); this.tunnels.dispose(); this.world = null; }
+  reset() { this.tunnels.reset(); this.descents.reset(); this.cache.fill(null); this.observations.length = 0; this.adjacentObservations.length = 0; }
+  dispose() { this.reset(); this.tunnels.dispose(); this.descents.dispose(); this.world = null; }
 }
 export { ProcgenHazardPlanner, MAX_LOCAL_ROUTE_DISTANCE, MAX_ROUTE_PROBES, ROUTE_LANES_PER_TICK };

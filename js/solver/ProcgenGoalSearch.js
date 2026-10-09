@@ -50,7 +50,24 @@ const searchProcgenGoal = (factory, options = {}) => {
           const actor = adapter.selectLemming('frontier'), world = adapter.world, bounds = adapter.bounds;
           if (actor?.action === world.actions[State.WALKING] && actor.x >= bounds.x + 4 && actor.x + 10 < bounds.x + bounds.width && actor.y >= bounds.y + 12 && actor.y + 4 < bounds.y + bounds.height && world.hasGroundAt(actor.x, actor.y)) {
             const ahead = actor.x + (actor.lookRight ? 1 : -1), obstacle = world.getColumnStepHeight(ahead, actor.y - 7, 8) >= 7 || world.getColumnGapDepth(ahead, actor.y + 1, 3) > 3;
-            if (obstacle) for (const skillType of ['builder', 'basher', 'digger', 'miner']) {
+            let descent = false;
+            // Candidate discovery reads actual bounded geometry; it does not use
+            // the assistant planner or a proposed route/action sequence.
+            if (!obstacle && actor.y + 32 < bounds.y + bounds.height) {
+              let air = false;
+              for (let drop = 1; drop <= 32; drop++) {
+                if (!world.hasGroundAt(actor.x, actor.y + drop)) air = true;
+                else if (air) {
+                  if (drop > 20) for (let dx = 2; dx <= 16; dx += 2) {
+                    const x = actor.x + (actor.lookRight ? dx : -dx);
+                    if (x < bounds.x || x >= bounds.x + bounds.width) break;
+                    if (world.getColumnStepHeight(x, actor.y - 7, 8) >= 7) { descent = true; break; }
+                  }
+                  break;
+                }
+              }
+            }
+            if (obstacle || descent) for (const skillType of obstacle ? ['builder', 'basher', 'digger', 'miner'] : ['digger', 'miner']) {
               if (!adapter.getSkillCount(skillType) || queue.length + nodes >= limits.maxNodes) continue;
               const candidate = [...script, { tick: adapter.tick, target: actor.id, skillType }], key = JSON.stringify(candidate);
               if (!seen.has(key)) { seen.add(key); queue.push(candidate); }
@@ -59,7 +76,7 @@ const searchProcgenGoal = (factory, options = {}) => {
         }
         adapter._advanceWithoutSummary(); ticks++;
       }
-      lastSummary = adapter.getFinalStateSummary();
+      lastSummary = { ...adapter.getFinalStateSummary(), protectedTerrainUnchanged: adapter.protectedTerrainUnchanged() };
       if (!rejected && !budgetAvailable()) timedOut = true;
     } finally { adapter.dispose(); }
   }
