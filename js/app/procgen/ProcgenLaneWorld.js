@@ -780,7 +780,8 @@ class ProcgenLaneWorld {
       lane.populationPeak = Math.max(lane.populationPeak || 0, lane.alive);
       lane.admitted = Math.max(0, lane.spawned + (lane.transferredIn || 0) - (lane.transferredOut || 0));
       this._effectiveTerrainWork[laneIndex] = Math.min(65535, this.pendingTerrainWork[laneIndex] + (this.terrainGrowth?.pending[laneIndex] || 0));
-      lane.lastTerrainActivityTick = this.terrainActivityTicks[laneIndex]; lane.pendingTerrainWork = this._effectiveTerrainWork[laneIndex];
+      lane.lastTerrainActivityTick = this.terrainActivityTicks[laneIndex];
+      if (!this.cohorts) lane.pendingTerrainWork = this._effectiveTerrainWork[laneIndex];
       if (!this.cohorts && this.frontiers[laneIndex] > lane.maxX) { lane.maxX = this.frontiers[laneIndex]; lane.lastProgressTick = this.tickIndex; }
     }
     this._applyManualNukes();
