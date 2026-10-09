@@ -19,7 +19,7 @@ const withDirection = (run, { recipe = 'scenes', output = true, edit = p => p } 
   device.supportsPerNoteInstrument = true; device.supportsPerNotePan = true;
   const timer = { tick: 0, TIME_PER_FRAME_MS: 60, frameTime: 60, speedFactor: 1, tps: 1000 / 60,
     getGameTicks() { return this.tick; }, onGameTick: new EventHandler() };
-  const scene = { id: 'scene', phase: 'complete', generation: 1, tiles: [] };
+  const scene = { id: 'scene', phase: 'complete', generation: 1, ownerId: 0, tiles: [[1, 0]] };
   const world = { generation: 1, generationStartTick: 0, laneCount: 1, signalReads: 0, working: false,
     lanePolicy: { projects: { lanes: [{ projects: [scene] }] } }, getTerrainTileRevision: () => 0,
     getGameTimer: () => timer, getLaneMusicSignals() { this.signalReads++; return { buildingCount: Number(this.working) }; } };
@@ -104,6 +104,12 @@ describe('scene music uses the existing router and phrase queue', function() {
       expect(router.musicDirector).to.equal(director); advance(9); expect(notes()).to.have.length(1);
     });
   });
+  it('keeps a real completed tuple proof after ordinary admission prunes its active project list', function() {
+    withDirection(({ router, world, notes, advance }) => {
+      router._onEvent(event()); world.lanePolicy.projects.lanes[0].projects = [];
+      advance(9); expect(notes()).to.have.length(1); advance(60); expect(notes()).to.have.length(6);
+    });
+  });
   it('preserves paused pending music and musical position while future dispatch follows speed', function() {
     withDirection(({ router, notes, advance, clock, timer }) => {
       router._onEvent(event()); router.resetClock({ preserveGamePhrases: true }); clock.tick(3000); expect(notes()).to.have.length(0);
@@ -119,7 +125,7 @@ describe('scene music uses the existing router and phrase queue', function() {
     });
   });
   it('rechecks completed route revisions and manual lane shutdown before a reply', function() {
-    for (const change of [({ scene }) => { scene.tiles = [{ key: 1, revision: 2 }]; },
+    for (const change of [({ world }) => { world.getTerrainTileRevision = () => 2; },
       ({ world }) => { world._manualNukeLanes = [true]; }, ({ scene }) => { scene.phase = 'failed'; }]) withDirection(state => {
       state.router._onEvent(event()); state.advance(25); expect(state.notes()).to.have.length(4); change(state); state.advance(60);
       expect(state.notes()).to.have.length(4);

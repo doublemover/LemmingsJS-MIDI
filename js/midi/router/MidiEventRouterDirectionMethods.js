@@ -36,15 +36,23 @@ const midiEventRouterDirectionMethods = {
   _queueMusicDirectionEvent(event, spec, meta) {
     if (event.sfxId !== SoundEffectIds.PROCGEN_ROUTE_COMPLETE || this.mapping.config?.musicDirector?.recipe !== 'scenes') return false;
     const director = this._syncMusicDirection(event.tick);
-    if (director) director.request(event, spec, meta, this._directionPosition(event.tick));
+    if (director) {
+      const project = this.context.game?.lanePolicy?.projects?.lanes?.[event.laneIndex ?? 0]?.projects?.find(project => project.id === event.crewProjectId);
+      if (project?.phase === 'complete' && project.generation === event.generation && project.ownerId === event.lemmingId &&
+          Array.isArray(project.tiles) && project.tiles.length <= 8 && director.request(event, spec, meta, this._directionPosition(event.tick))) {
+        // Completed projects leave active admission lists; this bounded completion
+        // reference retains the real proof through its short musical lifetime.
+        director.cues.get(event.laneIndex ?? 0).routeProject = project;
+      }
+    }
     return true;
   },
   _musicCueRelevant(cue) {
     const world = this.context.game;
     if (!world || world.generation !== cue.generation || world.timeTravel?.isReversing || world._manualNukeLanes?.[cue.lane] || world.stall && world.stall.phase !== 'running') return false;
-    const project = world.lanePolicy?.projects?.lanes?.[cue.lane]?.projects?.find(project => project.id === cue.id);
-    return project?.phase === 'complete' && project.generation === cue.generation && Array.isArray(project.tiles) && project.tiles.length <= 4 &&
-      project.tiles.every(tile => world.getTerrainTileRevision(tile.key) === tile.revision);
+    const project = cue.routeProject;
+    return project?.phase === 'complete' && project.generation === cue.generation && Array.isArray(project.tiles) && project.tiles.length <= 8 &&
+      project.tiles.every(([key, revision]) => world.getTerrainTileRevision(key) === revision);
   },
   _musicDirectionCells(cue, phase, position) {
     const config = this.mapping.config, source = this.mapping.getSfxConfig(cue.event.sfxId);
