@@ -1,3 +1,4 @@
+import { ProcgenDescriptorResidency } from './ProcgenDescriptorResidency.js';
 import { placeTerrainSpan, SHARED_TERRAIN_MINIMUM_X } from './ProcgenTerrainSpans.js';
 import { createSourceColumnLibrary, placeSourceColumn } from './ProcgenTerrainColumns.js';
 import { normalizeLaneHeight } from './ProcgenLaneGeometry.js';
@@ -51,6 +52,7 @@ class ProcgenRecipeTerrain {
     this.zonePlanner = this.sourceDescriptor ? new ProcgenTerrainZonePlanner({ descriptor: this.sourceDescriptor, availableIds: this.pieces.map(piece => piece.id), excludedIds: this.excludedTerrainIds, eligibleGroups: new Set(this.sourceGroups.keys()), packWidthLimit }) : null;
     this._sampleScratch = { solid: false, steel: false, color: 0 };
     this.descriptions = new Map(); this.growthPlans = new Map(); this.descriptionLimit = 256;
+    this.descriptorResidency = new ProcgenDescriptorResidency(this.descriptions, this.growthPlans);
     this.objects = objectPieces.filter(p => p?.image?.frames?.[0]?.length && p.image.width && p.image.height);
     this.compiledAssemblies = compileAuthoredAssemblies(this.assemblyCatalog, this.pieces, this.objects);
     this.assemblySources = new Map(this.compiledAssemblies.filter(isProcgenAssemblyEligible).map(group => [group.entry.id, group]));
@@ -97,7 +99,8 @@ class ProcgenRecipeTerrain {
     if (height !== this.height || capacity !== this.sharedSpanBudget) { this.height = height; this.sharedSpanBudget = capacity; this.reset(); }
     this.collisionLimit = Math.max(256, Math.min(32768, maxActors + laneCount * 2));
   }
-  reset() { this.descriptions.clear(); this.growthPlans.clear(); this.zonePlanner?.reset(); this.wideZonePlanner?.reset(); this.collision.clear(); this.rasters.clear(); this._lastKey = null; this._lastChunk = null; }
+  retainDescriptors(interests) { this.descriptionLimit = this.descriptorResidency.retain(interests); this.descriptorResidency.trim(this.descriptionLimit); }
+  reset() { this.descriptorResidency.clear(); this.descriptionLimit = 256; this.descriptions.clear(); this.growthPlans.clear(); this.zonePlanner?.reset(); this.wideZonePlanner?.reset(); this.collision.clear(); this.rasters.clear(); this._lastKey = null; this._lastChunk = null; }
   get memoryMB() {
     let bytes = [...this.sourceGroups.values(), ...this.wideSourceGroups.values()].reduce((n, group) => n + group.piece.composite.colors.byteLength + group.piece.composite.operations.byteLength + group.piece.composite.impact.byteLength + group.piece.frame.byteLength + group.columnTop.byteLength + group.columnBottom.byteLength, 0);
     bytes += this.patterns.reduce((n, p) => n + p.pixels.byteLength + p.mask.byteLength + p.topProfile.byteLength + p.columnColors.byteLength + p.introColumns.byteLength, 0);
@@ -107,7 +110,7 @@ class ProcgenRecipeTerrain {
   }
   _code(seed, chunk) { return mix(seed ^ Math.imul(chunk + 1, 0x85ebca6b)); }
   describe(seed, chunk) {
-    const cached = this.descriptions.get(keyFor(seed, chunk)); if (cached) return cached;
+    const cached = this.descriptorResidency.read(keyFor(seed, chunk)); if (cached) return cached;
     const first = chunk - chunk % 2, code = this._code(seed ^ 0x713d02ab, first);
     let pair = null;
     if (this.sharedSpanBudget >= 2 && first * TERRAIN_CHUNK_WIDTH >= SHARED_TERRAIN_MINIMUM_X && (code & 6) === 0 && (this.wideSourceGroups.size || this.wordPlanner?.wideChoices.length)) {
@@ -127,11 +130,7 @@ class ProcgenRecipeTerrain {
     pair ||= [this._describeSingle(seed, first), this._describeSingle(seed, first + 1)];
     // Evict aligned units together; rebuilding one half never replaces a cached
     // sibling with geometry chosen through a different descriptor request order.
-    while (this.descriptions.size + 2 > this.descriptionLimit) {
-      const oldest = this.descriptions.keys().next().value, at = Number(oldest.slice(oldest.lastIndexOf(':') + 1));
-      const prefix = oldest.slice(0, oldest.lastIndexOf(':') + 1), even = at - at % 2;
-      this.descriptions.delete(prefix + even); this.descriptions.delete(prefix + (even + 1));
-    }
+    this.descriptorResidency.trim(this.descriptionLimit, 2);
     this.descriptions.set(keyFor(seed, first), pair[0]); this.descriptions.set(keyFor(seed, first + 1), pair[1]);
     return pair[chunk % 2];
   }
@@ -208,11 +207,12 @@ class ProcgenRecipeTerrain {
   }
   growthPlan(seed, chunk, { maxSharedSpanTiles = this.sharedSpanBudget } = {}) {
     if (maxSharedSpanTiles < this.sharedSpanBudget) throw new RangeError('Configure source shared-span capacity before preparing terrain');
-    const key = keyFor(seed, chunk), cached = this.growthPlans.get(key); if (cached) return cached;
+    const key = keyFor(seed, chunk), cached = this.growthPlans.get(key);
+    if (cached) { this.descriptorResidency.stats.growthPlanHits++; this.descriptorResidency.read(key); return cached; }
+    this.descriptorResidency.stats.growthPlanMisses++;
     const descriptor = this.describe(seed, chunk), pattern = this.patterns[mix(descriptor.phaseCode ^ descriptor.code) % this.patterns.length];
     const route = this.routes.find(route => route.id === pattern.routeId), pieces = new Map(this.pieces.map(piece => [piece.id, piece]));
     const plan = createTerrainGrowthPlan({ descriptor, pattern, route, pieces, height: this.height, assemblies: this.assemblySources, sourceRevision: this.sourceDescriptor?.sourceRevision || this.recipe.assetSha256 });
-    if (this.growthPlans.size >= this.descriptionLimit) this.growthPlans.delete(this.growthPlans.keys().next().value);
     this.growthPlans.set(key, plan); return plan;
   }
   _activePlan(seed, chunk, state) { return state && !state.complete ? state.plan || this.growthPlan(seed, chunk) : null; }
@@ -449,7 +449,7 @@ class ProcgenRecipeTerrain {
   getDebugState() {
     const samples = this.generationSamples.slice(0, Math.min(this.generationSampleCount, this.generationSamples.length)).sort();
     const percentile = fraction => samples[Math.min(samples.length - 1, Math.floor(samples.length * fraction))] || 0;
-    return { ...this.stats, chunkMs: { p50: percentile(0.5), p95: percentile(0.95), p99: percentile(0.99) }, cachedCollisionChunks: this.collision.size, cachedRasterChunks: this.rasters.size,
+    return { ...this.stats, ...this.descriptorResidency.snapshot(), descriptionLimit: this.descriptionLimit, chunkMs: { p50: percentile(0.5), p95: percentile(0.95), p99: percentile(0.99) }, cachedCollisionChunks: this.collision.size, cachedRasterChunks: this.rasters.size,
       collisionLimit: this.collisionLimit, rasterLimit: this.rasterLimit, memoryMB: this.memoryMB,
       terrainVocabularyUsed: this.selectedTerrainIds.size, terrainVocabularyAvailable: this.eligibleTerrainIds.size, terrainCatalogAvailable: this.pieces.length,
       wordGlyphsAvailable: this.wordPlanner?.glyphs.size || 0, wordChoicesAvailable: this.wordPlanner?.choices.length || 0, wideWordChoicesAvailable: this.wordPlanner?.wideChoices.length || 0, sharedSpanBudget: this.sharedSpanBudget, wideCanonicalGroupsAvailable: this.wideSourceGroups.size,

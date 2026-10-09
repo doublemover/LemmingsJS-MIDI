@@ -397,10 +397,10 @@ larger compatibility phase is deliberately started.
 
 ## Milestone 3: Procedural Level-Piece Streaming
 
-**Outcome:** Procgen is an endless left-to-right mode that picks one visual
-theme, then efficiently and tastefully adds level pieces ahead of the lemmings
-as they progress. It should feel like a coherent generated Lemmings level, not
-random pixels or a stress-test mode with hazards sprinkled around.
+**Outcome:** Procgen is a shared endless world with coherent source artwork per
+lane and mixed themes from the selected pack. Bounded regions compose readable
+scenes ahead: a scout discovers trouble, a crew prepares and contains a route,
+ordinary followers cross, and actual progress resolves the musical phrase.
 
 Current status: checkpointed on May 7, 2026. The procgen debug state exposes
 theme, seed, generated end, lead frontier, recent chunks, assists, and explicit
@@ -410,7 +410,8 @@ soak evidence are available under ignored `temp/` artifacts.
 
 **Core Behavior**
 
-- Pick one theme/style for the run and stay visually coherent.
+- Keep each lane visually coherent within the selected pack; preserve the
+  implemented deterministic mixed-theme assignments.
 - Build the world out of real level pieces from that theme:
   - terrain pieces.
   - decorative pieces.
@@ -428,8 +429,8 @@ soak evidence are available under ignored `temp/` artifacts.
   - prune old tracking state.
   - track only recent/near-future generated chunks.
   - avoid unnecessary allocations in per-tick logic.
-- Use minimal automatic skill assists only where basic generated challenges
-  require them:
+- Use purposeful autonomous crew projects with physical containment and
+  recovery obligations, building on the existing bounded local action owners:
   - build over smaller gaps.
   - dig or mine through smaller barriers.
   - bash through simple horizontal obstructions.
@@ -474,7 +475,8 @@ soak evidence are available under ignored `temp/` artifacts.
 
 **Workflow Coverage**
 
-- Start procgen and verify it chooses exactly one theme for the run.
+- Start procgen and verify source provenance and deterministic per-lane theme
+  assignments from the selected pack.
 - Verify generated pieces come from the selected theme.
 - Step through fixed seeds and assert generated end stays safely ahead of the
   rightmost viable lemming.
@@ -985,3 +987,52 @@ Main Studio span continuation: all 108 affected controller/polyphony/span UI che
 Boundary job repair: CI launched its MCP/performance HTTPS server before Playwright, whose CI configuration refused to reuse the occupied port. Browser boundaries now own an OS-assigned loopback server and run before the separate HTTPS smoke server. The latter starts the actual Node server directly and verifies its recorded command before cleanup. Direct Playwright managed servers honor their configured port/protocol and refuse implicit listener reuse; explicit external mode remains available for a deliberately provisioned server. Mobile contexts follow the configured origin. Overlapping game step/seek and invariant restoration share one page boot; editor schema checks now share the real save/reload journey. Fourteen explicit @boundary tags replace broad title matching. Six successful boundary screenshots are removed while rendered contrast/geometry and actual file, focus, canvas, pointer-capture, permission and persistence transitions remain asserted.
 
 Boundary repair acceptance: the published c4437e5e [Node.js CI run 37936016415](https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/37936016415) confirms failure before any tests ran because the job had already started its port8080 HTTPS server. The corrected actual npm job passes all fourteen tagged native Edge journeys in 51.2 seconds with CI=1 while a controlled independent listener occupies8080. It receives zero requests from the job, remains alive afterward, and the owned OS-assigned port is confirmed closed; the fixture then cleans up only its own listener. Thirteen focused configuration/workflow/real-server checks pass, including concurrent distinct leases, callback failure cleanup and an actual nonzero Playwright startup exit. Both final Ubuntu server lifecycle blocks pass Bash syntax checks. A separate native direct Playwright run starts the configured HTTP port43821, passes the shared harness journey and closes that port. Required formatting and patch whitespace checks pass. Receipts are ignored temp/boundary-job-native-final.log, temp/boundary-server-focused-final.log, temp/boundary-direct-native.log and temp/boundary-remote-failure.log. No whole-suite rerun was used. This repair remains local with the newer Studio/stair commits; remote PR966 still points to approved c4437e5e, so this is local job acceptance rather than a new hosted CI result.
+
+
+## Restarted audit implementation queue (October 9)
+
+Accepted design is pinned to fe73f80 in the [independent audit](https://chatgpt.com/space/page_67ee173f128c8191bb2aa83346210c79), [terrain/crew design](https://chatgpt.com/space/page_107a474a65cc8191828ac7a3dd8bffab) and [music/interaction design](https://chatgpt.com/space/page_50e7cfca60408191892809c1cca9ad4a). All three full Pages are accessible. Their Node timings, cache endpoint parity and catalogue counts are source evidence; native interaction, sound and visible-scene acceptance remain separate. The approved four-commit continuation through fe73f80 is published to existing PR966, whose base remains master.
+
+- [ ] Compose one naturally selected source-backed basin region with explicit
+  shores, public route ports and protected void/support envelopes. Reuse exact
+  source alpha/order/steel and complete assembly ownership across storage tiles.
+- [ ] Connect scout discovery, proactive bridge, containment, ordinary crowd
+  passage and release/recovery through existing physical action owners; emit
+  musical resolution only from actual completed-tick progress. Qualify the exact
+  scene with ordinary crews and inspect it at the default native camera.
+- [ ] Reward useful ordinary passage and preserved route options, penalize
+  repeated/unnecessary excavation, and decay learned preferences toward seeded
+  lane personality. Preserve worker/probe limits; no cosmetic builder quota.
+- [x] Retain active descriptor/growth pairs fairly across actor, worksite and
+  materialization interests; release cold history, preserve aligned source
+  groups and expose bounded hit/miss/rebuild/payload counters. Compare identical
+  finite trajectories and another theme before attributing performance.
+- [ ] Fix procgen conversion losing its editing surface, nuke/draw gesture
+  ownership, frozen drag coordinates and backend-truthful Timbre/Release labels.
+  Extend shared group canvas edits with one Undo; preserve saved settings.
+- [ ] Anchor births to the actual absolute beat grid, including regeneration
+  and live policy changes, using the existing simulation clock.
+- [ ] Expand complete source assemblies through stratified support-bearing
+  selection, explicit rejection/incidence evidence and bounded 2D productions.
+  Further arches, return corridors and branching routes require concrete source
+  and whole-crew evidence; catalogue eligibility alone is insufficient.
+
+Parallel owners: Ari integrates retention/roadmap/native receipts; procgen owns
+crew policy/projects; source_grammar owns source regions/assembly admission;
+ensemble owns shared span gestures, targets and birth scheduling. Granular local
+commits follow focused meaningful checks. Further publication requires approval
+of the exact head/destination; no new PR, merge, retarget or excluded content.
+
+Active-region retention receipt: nineteen focused cache/span/cold-edit/pack checks
+pass. Descriptor and growth owners evict together in aligned pairs; the live
+interest window includes forward materialization, rear actors and owned worksite
+footprints, with round-robin seed residence and a hard 4,096-pair pin bound per
+theme plus 128 cold pairs. The finite seed42 Dirt comparison at128lanes/700ticks
+reduces misses1,506 to592 with2,322 descriptor calls in both variants; every-tick
+actor/action/frontier/world-stat hashes match. A second32lane/400tick Fire run
+retains identical hashes and96 misses in both variants. These uncontrolled Node
+observations are not browser timing, universal survival or release speed claims.
+Dirt retains107,840 typed-payload bytes and2,400,576 estimated metadata bytes;
+immutable source art is excluded from these per-run estimates. Rebuild counters
+refer only to the bounded most recent128 eviction records. Receipts remain in
+ignored temp/restart-cache-focused.log and temp/restart-cache-parity.log.

@@ -139,6 +139,7 @@ class ProcgenLaneWorld {
     this.actors = [];
     this._musicActorPositions = new Map(); this._musicCompletedSlot = 0; this._musicCompletedTick = this.tickIndex;
     if (!cohorts) for (let lane = 0; lane < this.laneCount; lane++) this._spawn(lane, false);
+    this._retainTerrainDescriptors();
     this.stats = { builds: 0, bashes: 0, digs: 0, mines: 0, blockers: 0, turns: 0, failures: 0, groundQueries: 0, removedPixels: 0, laneTransfers: 0 };
   }
 
@@ -211,6 +212,7 @@ class ProcgenLaneWorld {
     this.population.reset(this.generationStartTick); this._resetSpawnPhases(); this.lanePolicy.reset(); this.terrainActivityTicks.fill(-Infinity); this.pendingTerrainWork.fill(0); this._effectiveTerrainWork.fill(0); this.terrainGrowth?.reset(this.generatedThrough, this.frontiers);
     this.stall = new ProcgenStallPolicy(this.laneCount, this.stall.settings, previousDistances, { laneHeight: this.laneHeight });
     for (const lane of this.stall.lanes) lane.lastProgressTick = this.tickIndex;
+    this._retainTerrainDescriptors();
     this.onRestart?.();
   }
 
@@ -805,10 +807,36 @@ class ProcgenLaneWorld {
       else if (this.tickIndex % 54 === 0) this.actors = this.actors.filter(actor => !actor.failureReason && !actor.removed);
     }
     if (this.tickIndex % 32 === 0) this.hazards.prune(this.tickIndex);
+    if (this.tickIndex % 32 === 0) this._retainTerrainDescriptors();
     if (this.tickIndex % 128 === 0) this._pruneEdits();
     this._musicCompletedSlot = nextMusicSlot; this._musicCompletedTick = this.tickIndex;
     this.soundEvents.laneIndex = 0;
     this.timer.onGameTick.trigger(this.tickIndex);
+  }
+  _retainTerrainDescriptors() {
+    if (!this.terrain?.retainDescriptors) return;
+    const width = this.terrain.chunkWidth, interests = new Map();
+    const add = (lane, x1, x2) => {
+      const seed = this.laneSeeds[lane]; let chunks = interests.get(seed);
+      if (!chunks) { chunks = new Set(); interests.set(seed, chunks); }
+      const first = Math.max(0, Math.floor(x1 / width)), last = Math.max(first, Math.floor(x2 / width));
+      for (let chunk = first; chunk <= last; chunk++) chunks.add(chunk);
+    };
+    for (let lane = 0; lane < this.laneCount; lane++) {
+      const front = this.frontiers[lane];
+      add(lane, front - width, front + (this.terrainGrowth?.preparationLead || width * 2));
+    }
+    for (const actor of this.actors) if (!actor.removed && !actor.failureReason) {
+      const first = Math.max(0, Math.floor((actor.y - 16) / this.laneHeight)), last = Math.min(this.laneCount - 1, Math.floor((actor.y + 6) / this.laneHeight));
+      for (let lane = first; lane <= last; lane++) add(lane, actor.x - 128, actor.x + 128);
+    }
+    for (const tasks of this.accessTasks) for (const task of tasks || []) {
+      const owner = task.owner, box = task.footprint;
+      if (!box || !owner || owner.removed || owner.failureReason || owner.action !== task.action) continue;
+      for (let lane = Math.max(0, Math.floor(box.y1 / this.laneHeight)); lane <= Math.min(this.laneCount - 1, Math.floor((box.y2 - 1) / this.laneHeight)); lane++) add(lane, box.x1 - 16, box.x2 + 16);
+    }
+    for (const state of this.terrainGrowth?.states.values() || []) add(state.lane, state.chunk * width, state.chunk * width);
+    this.terrain.retainDescriptors(interests);
   }
   _pruneEdits() {
     const edits = new Set(), tiles = new Set(), width = this.terrain?.chunkWidth || CHUNK_WIDTH;

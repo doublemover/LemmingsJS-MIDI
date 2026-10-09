@@ -35,6 +35,11 @@ class ProcgenPackTerrain {
   forSeed(seed) { return this.themes[this.assignments.get(seed) ?? mix(seed) % this.themes.length].terrain; }
   configure(lanes, maxActors = 16384, options = {}) { for (const theme of this.themes) theme.terrain.configure(lanes, Math.ceil(maxActors / this.themes.length), options); this.height = this.themes[0].terrain.height; }
   reset() { for (const theme of this.themes) theme.terrain.reset(); this.assignments.clear(); }
+  retainDescriptors(interests) {
+    const grouped = new Map(this.themes.map(theme => [theme.terrain, new Map()]));
+    for (const [seed, chunks] of interests) grouped.get(this.forSeed(seed)).set(seed, chunks);
+    for (const [terrain, regions] of grouped) terrain.retainDescriptors(regions);
+  }
   growthPlan(seed, chunk, options) { return this.forSeed(seed).growthPlan(seed, chunk, options); }
   describe(seed, chunk) { const terrain = this.forSeed(seed); return { ...terrain.describe(seed, chunk), themeId: terrain.recipe.id }; }
   objectsAt(seed, chunk) { return this.forSeed(seed).objectsAt(seed, chunk); }
@@ -50,7 +55,7 @@ class ProcgenPackTerrain {
   getDebugState() {
     const sources = this.themes.map(theme => ({ styleName: theme.styleName, ...theme.terrain.getDebugState() }));
     const totals = {};
-    for (const key of ['generated', 'rasterized', 'evicted', 'generationMs', 'groundPlacements', 'decorPlacements', 'objectPlacements', 'canonicalGroups', 'canonicalSourcePlacements', 'cachedCollisionChunks', 'cachedRasterChunks', 'collisionLimit', 'rasterLimit', 'terrainVocabularyUsed', 'terrainVocabularyAvailable', 'objectVocabularyUsed', 'objectVocabularyAvailable']) totals[key] = sources.reduce((sum, theme) => sum + (theme[key] || 0), 0);
+    for (const key of ['descriptorCalls', 'descriptorHits', 'descriptorMisses', 'descriptorRebuilds', 'descriptorEvictions', 'growthPlanHits', 'growthPlanMisses', 'pinnedDescriptorPairs', 'descriptionLimit', 'cachedDescriptions', 'cachedGrowthPlans', 'descriptorTypedPayloadBytes', 'descriptorEstimatedMetadataBytes', 'generated', 'rasterized', 'evicted', 'generationMs', 'groundPlacements', 'decorPlacements', 'objectPlacements', 'canonicalGroups', 'canonicalSourcePlacements', 'cachedCollisionChunks', 'cachedRasterChunks', 'collisionLimit', 'rasterLimit', 'terrainVocabularyUsed', 'terrainVocabularyAvailable', 'objectVocabularyUsed', 'objectVocabularyAvailable']) totals[key] = sources.reduce((sum, theme) => sum + (theme[key] || 0), 0);
     return { ...totals, maxGenerationMs: Math.max(...sources.map(theme => theme.maxGenerationMs)), memoryMB: this.memoryMB,
       availableThemes: this.themes.map(theme => theme.styleName), laneThemes: this.laneThemes.slice(), themes: sources };
   }
