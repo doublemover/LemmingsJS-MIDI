@@ -1240,8 +1240,14 @@ Next ready work:
   natural planner, retaining the original probe, worker and deadline limits.
 - [x] Retain a scout-built basin for one observed bank cohort, excluding future
   births and preserving the original lifetime and physical recovery checks.
-- [ ] Safely retire a stale guarded proposal before any project begins, then
-  prove unaided basin passage and its actual musical cue on the integrated tree.
+- [x] Recover an unstarted stale guard through its actual supported exit.
+- [x] Retire a fulfilled generic owner-only project without a cue or reward.
+- [x] Prevent new worker claims from cutting through active promised passages.
+- [x] Retire the measured unstarted guard through an actual exit before its deadline.
+- [ ] Retain a bounded full admission for an actual impending wall arrival, with
+  actor, local revision, guard, hazard, claim and deadline checks; a future guard
+  request alone still misses the worker's one-tick pose between service turns.
+- [ ] Prove unaided basin passage and its actual musical cue on the integrated tree.
 - [ ] Qualify safe release for the real forward ledge blocker. Its current legal
   containment catches arrivals, but completed stairs make basher recovery unsafe.
 - [ ] Use actual alternate-route and unnecessary-intervention outcomes to address
@@ -1374,6 +1380,7 @@ a forty-pixel forward route or exact tick-2733 admission. The draft rejects a
 miner footprint at x=1743..1760/y=63..83, outside the actual recovery path.
 The original OHNO retirement remains unchanged in this receipt; no live passage
 is claimed. Receipt: temp/current-stale-guard-empty-return.json.
+
 Commit 685f7856 adds bounded recovery only for a stale guarded proposal that has
 no started worker, task, project or promised recipients. Exact current ordinary
 guard identity, direction, two owned blocker rectangles and all four empty masks
@@ -1389,6 +1396,7 @@ branches remain useful focused targets. The affected procgen category passes
 521 checks in 73.14 seconds, along with required formatting, critical types,
 undefined calls and dependency checks. Receipts: temp/final-guard-procgen.log
 and temp/guard-recovery-coverage/coverage-summary.json.
+
 One unaided 4,500-tick replay against committed 685f7856 confirms real recovery:
 guard 100 starts at 2739, charges 97 combined work, and reaches supported ordinary
 WALK at x=1806/y=96 on tick 2752. Scout 84 first reaches the bank vicinity at
@@ -1399,6 +1407,167 @@ as such and do not qualify basin output. Maximum charged work is 1,024 with eigh
 serviced lanes. Receipt: temp/natural-safe-guard-arrival.json, including source
 hashes and the real recovery endpoint. The remaining natural bank launch and
 later retirement need exact causal evidence; the native basin fixture stays held.
+
+The bounded current-tree causal trace confirms supported scout WALK at the bank
+from tick 2858. Existing basin calls at 2861 and 2865 receive the full 1,024 work
+budget and the enabled source water, but return crew-capacity. The first capacity
+snapshot has twenty-two live records, two nearby recipients and four projects.
+Owner-only builder 1:9:24 connected at 2578; its sole owner 228 has physically
+crossed, remains ordinary WALK at x=1294/y=114 beyond goal x=1012/y=120, and has
+unchanged route revisions. It cannot produce a follower cue with that membership.
+The other three projects have real promised passive members and cannot be evicted.
+This is a measured owner-only retirement gap, not a missed launch or service slot.
+Receipts: temp/natural-bank-retirement-cause.json and
+temp/natural-bank-capacity-cause.json.
+
+The later tick-3343 edit is materially different from the recovered unstarted
+guard. The scene, started at 2897, is connected with guard 132 and worker 164 at
+its x=1881/y=87 exit. Only that worker has crossed; five recorded release members
+are still promised. Member/miner 180 clears x=1875/y=79 in the actual route bounds.
+Once the worker becomes WALK, its access-task owner is released, so a new job can
+claim that footprint despite the remaining project. Preserve genuine edit/loss
+retirement, and prevent admitting the conflicting excavation in the first place.
+No extra action, deadline, capacity or source geometry change is justified by
+these receipts.
+
+Commit d99a462a retires a generic owner-only connected project only after the
+completed actor pass observes its live owner in WALK beyond the exit, within the
+current thirty-two-pixel vertical band, with its recorded crossing and unchanged
+route revisions. Held blockers, source scenes, waiting arrivals and every passive
+promise keep their original lifetime. Retirement is diagnostic only and does not
+emit completion, score or music. Twenty-eight focused checks pass, including the
+exact four-slot situation and current +/-32 versus +/-33 boundary. CrewProjects
+coverage is 98.18% lines, 94.55% branches and all functions; old containment
+insertion remains a useful focused target. All 525 procgen category checks pass
+in 72.60 seconds, with required formatting and critical types. Receipts:
+temp/owner-only-procgen.log and temp/owner-only-retirement-coverage.
+
+Commit 3ae8e113 protects both the supplied footprint and the actual initial
+BUILD/DIG/BASH/MINE mask bounds before a new worker claim mutates skills, tasks or
+counters. Being a promised member or the former worker grants no exception.
+Existing basin sections and empty-mask service recovery use short-lived manager
+contexts with exact scene, project, actor, pose, trigger, revision and lifetime
+checks; contexts clear even if assignment throws, and stale reuse is refused.
+Active four-project/sixty-four-member limits and real foreign-edit failure remain
+unchanged. The exact later miner pose x=1876/y=90 is refused before its first cut
+at x=1875/y=79. Four new causal tests and fifty-seven focused route checks pass.
+Changed Basin/Crew/Tunnel owners have all lines covered; LaneWorld has 87.26%
+lines, with 92.51% lines and 87.15% branches across those four owners. Uncommon
+world input/action/resource branches remain useful focused targets. All 529
+procgen category checks pass in 82.88 seconds, with required formatting, critical
+types, undefined calls and dependency checks. Receipts:
+temp/final-project-claims-procgen.log and temp/project-claims-coverage.
+
+One ordinary-spawn 4,500-tick replay against committed 3ae8e113 now physically
+admits scout 84's first basin BUILD section at tick 3183, x=1938/y=124. The
+supported launch and project capacity have therefore advanced beyond the prior
+negative receipt. An older tunnel guard reaches its original retirement at 3234
+and cancels the lane while that first section is still building. No ordinary
+supported bank arrival, connected basin or basin completion cue qualifies.
+Unrelated route completions remain separate; owner-only retirement earns no
+music. Maximum charged work remains 1,024 with eight serviced lanes. The exact
+old guard state needs a bounded causal receipt before further recovery changes;
+the native basin cue fixture remains held. Receipt:
+temp/natural-promised-passage-arrival.json, with held source hashes.
+
+The single bounded expiry trace identifies a distinct unstarted guard: the
+proposal starts at 2233, ordinary actor 164 becomes BLOCK at x=1407/y=109 on 2259,
+and retains its exact two triggers through the original deadline at 3233. It has
+no worker, task, project, release membership, crossing or changed-route failure.
+Expiry at 3234 nukes the lane and cancels the distant new basin builder. The
+current active promised project overlaps the old proposed tunnel envelope at
+x=1486..1496; its remaining member has not crossed. This trace does not retain a
+historical worker-refusal call, so claim starvation is not established. A narrow
+predeadline empty-mask recovery needs current shared-action and actual-exit
+qualification, with the original deadline and active promised routes preserved.
+Receipt: temp/natural-unstarted-expiry-cause.json.
+
+Commit 55a4c325 checks stored future worker bounds and the
+real initial BASH mask rectangles against active promised projects at request,
+then again before a pending request creates BLOCK. Members and previous owners
+receive no exemption; only that conflicting pending request clears. Touching,
+unrelated and terminal projects retain normal admission. A genuinely unstarted
+guard can enter its final sixty-four-tick retirement window, where guard()/begin
+are fenced and the existing current-state empty-mask proof must fit the remaining
+original lifetime. Real supported exit still has to occur by the original
+deadline. Working/connected scene promises retain their existing failure policy.
+Sixty-four focused route checks pass, along with scoped lint and whitespace.
+Controlled source x=1407/y=109 reaches supported x=1415/y=109 after thirteen real
+actions without excavation, contact, loss or cue. Exactly thirteen remaining
+ticks succeeds; twelve is refused before BASH. Parity, busy ledger and zero
+resource waits retain the original deadline. The controller has all lines and
+functions covered, with 92.4% branches over twenty focused checks; unusual
+identity/trigger/recovery-state combinations remain useful scoped targets.
+Receipt: temp/unstarted-deadline-coverage/coverage-summary.json. A transient
+execution transport reset interrupted the formatting/category check launch;
+the completed focused receipts and source changes remained intact. The first
+category attempt reports 530 passing checks and four timeouts, without a failed
+behavior assertion. A temporary committed-controller loader also times out three
+of the selected checks; its inherited child-loader startup makes that diagnostic
+unsuitable as a causal performance comparison. The same six selected checks on
+the current implementation then pass in 23 seconds under the original limits,
+including the 1,024-actor replay. The subsequent full retry reports 535 passing
+checks and one remaining
+15-second timeout in the 1,024-actor case, which passed alone in 7.8 seconds.
+That existing benchmark now uses a fresh Node process with identical masks,
+seed 42, 3,000 ticks, 1,024 actors and all original assertions. Its child and
+Mocha deadline both remain fifteen seconds; no workload or threshold is reduced.
+Commit d3eacf9f isolates the measured simulation from preceding fixtures' heap.
+The final procgen category passes all 536 checks in 70.15 seconds against the
+unchanged 180-second process budget. Required formatting, critical types,
+undefined-call and dependency checks pass. Receipt:
+temp/final-guard-isolation-procgen.log. Earlier diagnostic receipts:
+temp/final-unstarted-guard-procgen-retry.log, temp/final-unstarted-guard-procgen.log,
+temp/guard-timeouts-baseline.log and temp/guard-timeouts-current.log.
+
+One ordinary-spawn replay against committed 55a4c325 now completes the actual
+four-section bridge without a staged actor, terrain preparation, extra abilities,
+cap change or deadline extension. Scout 84 starts BUILD at 3069, finishes the
+fourth section at 3868 and reaches the supported far bank at 3887. The finite
+arrival cohort remains open: no ordinary actor reaches the supported left bank
+before the original 1,200-tick scene expires at 4270. The failure label is
+scene-owner from the original lifetime check, not an observed prior owner loss.
+Retirement then cascades all thirty-two recorded original/current lane-9 actors
+at 4338. Global accounting separately retains 164 failures of 528 births; this
+is not a whole-run survival claim. The ordinary crowd remains upstream, with
+actor 52 near x=1421/y=103. There are two successful tunnel guard recoveries and
+zero tunnel failures, so the previous unstarted-guard retirement is resolved.
+No basin completion or music cue qualifies; eleven unrelated route completions
+remain distinct. Maximum charged work is 1,024 with eight serviced lanes. The
+4,500-tick primary run required no active-scene continuation; such a continuation
+would only finish one already-active scene within its original deadline, never
+start a replacement. Receipt: temp/natural-deadline-guard-arrival.json, including
+held source hashes, exact scene phases and bounded origin/current-lane casualties.
+The following bounded causal receipt concerns the ordinary crowd's upstream
+turnaround; the native basin fixture remains held.
+
+The single observational ordinary-crowd trace against 55a4c325 stops at 4269.
+Actor 52, born at 183 without scout abilities, reaches WALK x=1422/y=101 and
+turns at 1608, then again at 2657 and 3531. The real next column is solid through
+y=93..101; no blocker contact causes those turns. Its first imminent wall pose
+falls on a non-service tick; later turns follow another actor consuming lane
+service. Latest selected approaches at x=1399..1419 do run the unchanged WALK
+proof, observe a turn, and reject descent before scalar fallbacks spend
+996..1024 probes. No private BUILD or tunnel proof is retained for those
+approaches. Detailed first-launch helper history fell outside the bounded rings,
+so its exact historical refusal is not established. The existing controlled
+x=1422/y=101 port proves a real guard at 1408/109 and ordinary 8/16 passage;
+that does not establish current natural admission under active promises.
+The proposed next batch would retain an exact impending terrain-turn pose from
+the existing shared WALK/JUMP copy, then use the existing full guarded proof with
+remaining work before descent consumes it. Real worker arrival, current claims,
+original deadlines and all exits still govern assignment. Request-only lookahead
+does not solve the same worker reaching its exact one-tick WALK entrance on a
+non-service tick. A retained full approval would additionally need exact actor
+identity, current local tile revisions, actual guard/trigger and hazard state,
+current claims, exact arrival pose and original lifetime checks. That lifecycle
+is not implemented in this batch; production remains held at 55a4c325.
+Trace maxima remain 1,024 probes/eight lanes. There are no observed origin/current lane-9 casualties
+before 4269; global accounting separately reports 125 failures of 512 births.
+No ordinary basin arrival or cue qualifies. Receipt:
+temp/natural-ordinary52-arrest-cause.json, with held source hashes and copied
+calls, guards, claims, source placements and bounded production-observed cells.
+
 Automation spans now expose the actual resolved evaluation: held phase/value,
 winning priority and gated or suppressed rules. The geometric transport preview
 has a separate dim lane. Bounded resolution records reuse the existing cached
