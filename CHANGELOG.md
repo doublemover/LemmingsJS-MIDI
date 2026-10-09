@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Keep procgen Draw/Nuke gestures exclusive, freeze span drag coordinates, retain main spatial conversion and reject stale restart errors.
+- Retain aligned source descriptor/growth owners fairly around active actors, worksites and materialization, with bounded cold history and cache counters.
+
 - Reuse multi-span selection, naming and atomic common edits in main Studio; preserve field focus through span edits and transform reordering.
 
 - Keep Studio automation/voice/layer edit focus and expose mode-correct compact Hold/Tie controls.

@@ -8,14 +8,15 @@ const getSpanAxis = (renderer, domain, project) => {
   const beat = Math.max(0, tick) * 0.06 * project.transport.bpmBase / 60;
   return { start: Math.floor(beat / 16) * 16, length: 16, width, beat };
 };
-const getMidiSpanRectangles = (renderer, project, entries = project.automation) => {
-  const dpr = Math.min(2, renderer.window.devicePixelRatio || 1), height = renderer.canvas.height / dpr - (renderer.overviewBandHeight || 0);
-  const result = [], laneHeight = getLaneHeight(renderer);
+const getMidiSpanRectangles = (renderer, project, entries = project.automation, projection = null) => {
+  const dpr = Math.min(2, renderer.window.devicePixelRatio || 1), height = projection?.height ?? renderer.canvas.height / dpr - (renderer.overviewBandHeight || 0);
+  const originY = projection?.originY ?? renderer.originY, viewHeight = projection?.viewHeight ?? renderer.viewHeight;
+  const result = [], laneHeight = projection?.laneHeight ?? getLaneHeight(renderer);
   const spans = entries.filter(entry => entry.span).slice(0, 64).sort((a, b) => a.span.priority - b.span.priority);
   for (const entry of spans) {
-    const span = entry.span, axis = getSpanAxis(renderer, span.domain, project);
-    const first = span.laneScope === 'global' ? 0 : span.laneStart, last = span.laneScope === 'global' ? renderer.world.laneCount - 1 : span.laneScope === 'lane' ? first : span.laneEnd;
-    const top = (first * laneHeight - renderer.originY) * height / renderer.viewHeight, bottom = ((last + 1) * laneHeight - renderer.originY) * height / renderer.viewHeight;
+    const span = entry.span, axis = projection?.axis || getSpanAxis(renderer, span.domain, project);
+    const first = span.laneScope === 'global' ? 0 : span.laneStart, last = span.laneScope === 'global' ? (projection?.laneCount ?? renderer.world.laneCount) - 1 : span.laneScope === 'lane' ? first : span.laneEnd;
+    const top = (first * laneHeight - originY) * height / viewHeight, bottom = ((last + 1) * laneHeight - originY) * height / viewHeight;
     if (bottom <= 0 || top >= height) continue;
     if (span.loop && (axis.start + axis.length - Math.max(axis.start, span.start)) / span.duration > 4) {
       const start = Math.max(axis.start, span.start), x = (start - axis.start) / axis.length * axis.width;
@@ -36,31 +37,39 @@ const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDom
   let selectedIds = new Set();
   let renderer = null, selectedId = null, editing = false, visible = true, drag = null, draft = null, rectangles = [], revision = 0;
   const listen = (name, handler) => { canvas?.addEventListener(name, handler, { capture: true }); listeners.push([name, handler]); };
-  const changed = () => { revision++; renderer?.render(); };
+  const changed = () => { revision++; renderer?.render?.(); };
   const cancelDrag = () => {
     if (drag?.pointerId != null && canvas.hasPointerCapture?.(drag.pointerId)) canvas.releasePointerCapture?.(drag.pointerId);
     draft = drag = null;
   };
-  const position = (event, domain) => {
-    const box = canvas.getBoundingClientRect(), x = event.clientX - box.left, y = event.clientY - box.top, axis = getSpanAxis(renderer, domain, getProject());
-    return { x, y, value: Math.max(0, axis.start + x / axis.width * axis.length), lane: Math.max(0, Math.min(renderer.world.laneCount - 1, Math.floor((renderer.originY + y * renderer.viewHeight / (canvas.height / Math.min(2, renderer.window.devicePixelRatio || 1) - (renderer.overviewBandHeight || 0))) / getLaneHeight(renderer)))) };
+  const captureTransform = domain => {
+    const box = canvas.getBoundingClientRect();
+    return { left: box.left, top: box.top, axis: { ...getSpanAxis(renderer, domain, getProject()) },
+      originY: renderer.originY, viewHeight: renderer.viewHeight, laneHeight: getLaneHeight(renderer), laneCount: renderer.world.laneCount,
+      height: canvas.height / Math.min(2, renderer.window.devicePixelRatio || 1) - (renderer.overviewBandHeight || 0), generation: renderer.world.generation };
+  };
+  const position = (event, domain, transform = captureTransform(domain)) => {
+    const x = event.clientX - transform.left, y = event.clientY - transform.top, axis = transform.axis;
+    return { x, y, value: Math.max(0, axis.start + x / axis.width * axis.length), lane: Math.max(0, Math.min(transform.laneCount - 1,
+      Math.floor((transform.originY + y * transform.viewHeight / transform.height) / transform.laneHeight))) };
   };
   const stop = event => { event.preventDefault(); event.stopImmediatePropagation?.(); };
   listen('pointerdown', event => {
     api.sync();
     if (!editing || !visible || !renderer || event.button) return;
     const point = position(event, getDomain()), dpr = Math.min(2, renderer.window.devicePixelRatio || 1);
-    if (point.y >= canvas.height / dpr - (renderer.overviewBandHeight || 0)) return;
+    if (point.y < 0 || point.y >= canvas.height / dpr - (renderer.overviewBandHeight || 0)) return;
     stop(event); canvas.focus?.(); canvas.setPointerCapture?.(event.pointerId);
     const hit = [...rectangles].reverse().find(rect => point.x >= rect.x && point.x <= rect.x + rect.w && point.y >= rect.y && point.y <= rect.y + rect.h);
-    const entry = hit?.entry, domain = entry?.span.domain || getDomain(), source = position(event, domain);
+    const entry = hit?.entry ? { ...hit.entry, span: { ...hit.entry.span, condition: { ...hit.entry.span.condition } } } : null;
+    const domain = entry?.span.domain || getDomain(), transform = captureTransform(domain), source = position(event, domain, transform);
     if (entry) { selectedId = entry.id; onSelect(entry.id); }
-    drag = { entry, domain, point: source, pointerId: event.pointerId, mode: hit ? !hit.repeating && point.x >= hit.x + hit.w - 8 ? 'resize' : 'move' : 'draw' };
+    drag = { entry, domain, transform, point: source, pointerId: event.pointerId, mode: hit ? !hit.repeating && point.x >= hit.x + hit.w - 8 ? 'resize' : 'move' : 'draw' };
   });
   listen('pointermove', event => {
     api.sync();
     if (!drag) return; stop(event);
-    const next = position(event, drag.domain), quantum = drag.domain === 'distance' ? 1 : 0.25, snap = value => Math.round(value / quantum) * quantum;
+    const next = position(event, drag.domain, drag.transform), quantum = drag.domain === 'distance' ? 1 : 0.25, snap = value => Math.round(value / quantum) * quantum;
     const original = drag.entry?.span || createMidiSpan(drag.domain), delta = snap(next.value - drag.point.value);
     const start = drag.mode === 'draw' ? snap(Math.min(next.value, drag.point.value)) : drag.mode === 'move' ? Math.max(0, original.start + delta) : original.start;
     const duration = drag.mode === 'draw' ? Math.max(quantum, snap(Math.abs(next.value - drag.point.value))) : drag.mode === 'resize' ? Math.max(quantum, original.duration + delta) : original.duration;
@@ -79,14 +88,15 @@ const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDom
   listen('dblclick', event => { if (editing) stop(event); });
   const api = {
     get revision() { return revision; },
-    sync() { const next = getRuntime()?.lanes?.renderer; if (next !== renderer) { cancelDrag(); rectangles = []; if (renderer?.midiSpanOverlay === api) renderer.midiSpanOverlay = null; renderer = next; if (renderer) renderer.midiSpanOverlay = api; } },
+    sync() { const next = getRuntime()?.lanes?.renderer; if (drag && next === renderer && drag.transform.generation !== renderer?.world?.generation) { cancelDrag(); rectangles = []; } if (next !== renderer) { cancelDrag(); rectangles = []; if (renderer?.midiSpanOverlay === api) renderer.midiSpanOverlay = null; renderer = next; if (renderer) renderer.midiSpanOverlay = api; } },
     changed, cancelDraft() { cancelDrag(); changed(); }, select(id, ids = [id]) { selectedId = id; selectedIds = new Set(ids); changed(); },
     setEditing(value) { editing = value === true; if (editing) visible = true; else cancelDrag(); changed(); },
     setVisible(value) { visible = value === true; if (!visible) { editing = false; cancelDrag(); rectangles = []; } changed(); },
     draw(context, current, dpr) {
       if (!visible) { rectangles = []; return; }
-      const project = getProject(), entries = draft ? [...project.automation.filter(entry => entry.id !== draft.id), draft] : project.automation;
+      const project = getProject(), entries = draft ? project.automation.filter(entry => entry.id !== draft.id) : project.automation;
       rectangles = getMidiSpanRectangles(current, project, entries);
+      if (draft) rectangles.push(...getMidiSpanRectangles(current, project, [draft], drag.transform));
       context.save(); context.scale(dpr, dpr);
       for (const rect of rectangles) {
         const { entry } = rect, color = SPAN_COLORS[entry.target] || '#dfb75d';
@@ -105,7 +115,7 @@ const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDom
       }
       context.restore();
     },
-    snapshot: () => ({ editing, visible, selectedId, revision, rectangles: rectangles.map(rect => ({ id: rect.entry.id, domain: rect.entry.span.domain, x: rect.x, y: rect.y, width: rect.w, height: rect.h })) }),
+    snapshot: () => ({ editing, visible, selectedId, revision, dragging: !!drag, rectangles: rectangles.map(rect => ({ id: rect.entry.id, domain: rect.entry.span.domain, x: rect.x, y: rect.y, width: rect.w, height: rect.h })) }),
     dispose() { cancelDrag(); for (const [name, handler] of listeners) canvas?.removeEventListener?.(name, handler, { capture: true }); if (renderer?.midiSpanOverlay === api) renderer.midiSpanOverlay = null; renderer = null; rectangles = []; draft = drag = null; }
   };
   return api;

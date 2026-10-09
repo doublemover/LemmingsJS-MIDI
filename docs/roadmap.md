@@ -1036,3 +1036,22 @@ Dirt retains107,840 typed-payload bytes and2,400,576 estimated metadata bytes;
 immutable source art is excluded from these per-run estimates. Rebuild counters
 refer only to the bounded most recent128 eviction records. Receipts remain in
 ignored temp/restart-cache-focused.log and temp/restart-cache-parity.log.
+
+Span gesture receipt: the first interaction batch prevents unsupported procgen
+Return-to-spatial conversion while main Studio retains it, makes Draw/Nuke
+exclusive, freezes pointerdown projection through beat/camera/size changes, and
+rejects stale restart errors. All129 affected controller/span checks pass. The
+muted native Edge journey crosses ticks133 to135 (beat15.96 to16.20), moves the
+selected span exactly0.5beat and preserves the other entries; a real nuke click
+queues only lane5, with no span edit. Escape releases capture and both modes.
+There are no page errors, output activation or MIDI permission requests.
+Historical v1 conversions already omitted from storage cannot be recovered;
+present non-span entries will be preserved by the next canonical history batch.
+Receipts are ignored temp/ui-music-native/receipt.json and desktop-draft.png.
+
+Separate native watch/listen receipt: one fresh1440px headless Edge session
+records65 actual local synth note admissions, preserves listening through speed
+1-to3 and8-to16lane regeneration, then stops cleanly with no page errors. Its119
+short scheduling samples have p50 4.2ms, p95 4.3ms and maximum12.5ms. These are
+muted headless browser observations, not display FPS, acoustics or physical MIDI
+acceptance. Capture and receipt are ignored temp/restart-watch-listen-native.*.

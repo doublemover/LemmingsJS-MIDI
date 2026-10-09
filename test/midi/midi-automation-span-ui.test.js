@@ -69,6 +69,61 @@ describe('musical span editing and lane rectangles', () => {
     expect(reduceMidiProject(project, { type: 'automation.batch.update', updates: [{ automationId: first, patch: { name: 'Partial' } }, { automationId: 'missing', patch: {} }] })).to.deep.equal(prior);
     expect(reduceMidiProject(project, { type: 'automation.batch.update', updates: [null] })).to.deep.equal(prior);
   });
+  it('keeps procgen spans editable and durable instead of offering an unsupported spatial conversion', () => {
+    const document = new TestDocument(); document.registerElement('procgenSpanList', document.createElement('div'));
+    let project = createMidiProjectFromMidiConfig({ sfx: {}, triggers: {} }); const intents = [];
+    const controls = createProcgenMidiSpanControls({ document, getProject: () => project, getLaneCount: () => 8, getRouter: () => null,
+      onIntent: intent => { intents.push(intent); project = reduceMidiProject(project, intent); controls?.render(); } });
+    try {
+      const id = controls.addSpan(createMidiSpan(), 'pan'), original = project.automation.find(entry => entry.id === id);
+      expect(find(document.getElementById('procgenSpanList'), element => element.textContent === 'Return to spatial curve')).to.equal(undefined);
+      const name = find(document.getElementById('procgenSpanList'), element => element.dataset.spanProperty === 'name'); name.value = 'Visible pan'; name.dispatchEvent({ type: 'change', target: name });
+      expect(project.automation.find(entry => entry.id === id)).to.deep.equal({ ...original, name: 'Visible pan' });
+      expect(intents.some(intent => intent.patch?.span === null)).to.equal(false);
+      const main = createMidiAutomationSpanEditor({ document, lane: original, onUpdate() {} });
+      expect(find(main, element => element.textContent === 'Return to spatial curve')).not.to.equal(undefined);
+    } finally { controls.dispose(); }
+  });
+
+  it('freezes a beat draft across rollover without pausing or jumping its interval', () => {
+    const document = new TestDocument(), canvas = document.createElement('canvas'); document.registerElement('gameCanvas', canvas);
+    canvas.width = 160; canvas.height = 192; canvas.getBoundingClientRect = () => ({ left: 0, top: 0 });
+    const context = { save() {}, restore() {}, scale() {}, fillRect() {}, strokeRect() {}, setLineDash() {}, fillText() {} };
+    const renderer = { canvas, window: { devicePixelRatio: 1 }, world: { laneCount: 2, laneHeight: 96, tickIndex: 132, generation: 1 }, originX: 0, originY: 0, viewWidth: 160, viewHeight: 192,
+      render() { this.midiSpanOverlay?.draw(context, this, 1); } };
+    const added = [], project = { transport: { bpmBase: 120 }, automation: [] };
+    const overlay = createProcgenMidiSpanOverlay({ document, getRuntime: () => ({ lanes: { renderer } }), getProject: () => project, getDomain: () => 'beats', getTarget: () => 'pan', onUpdate() {}, onSelect() {}, onAdd: span => added.push(span) });
+    const pointer = (type, x) => canvas.dispatchEvent({ type, clientX: x, clientY: 40, pointerId: 7, preventDefault() {}, stopImmediatePropagation() {} });
+    try {
+      overlay.sync(); overlay.setEditing(true); pointer('pointerdown', 40);
+      renderer.world.tickIndex = 134; pointer('pointermove', 60);
+      // Dense looping previews cover the remaining frozen beat window.
+      expect(overlay.snapshot().rectangles[0]).to.include({ x: 40, width: 120 });
+      pointer('pointerup', 60); expect(added).to.have.length(1); expect(added[0]).to.include({ start: 4, duration: 2, laneStart: 0 });
+      expect(renderer.world.tickIndex).to.equal(134);
+    } finally { overlay.dispose(); }
+  });
+
+  it('keeps original world and lane coordinates through camera follow, zoom and canvas relocation, canceling on generation reset', () => {
+    const document = new TestDocument(), canvas = document.createElement('canvas'); document.registerElement('gameCanvas', canvas);
+    canvas.width = 160; canvas.height = 192; let box = { left: 10, top: 20 }, captured = null; canvas.getBoundingClientRect = () => box;
+    canvas.setPointerCapture = id => { captured = id; }; canvas.hasPointerCapture = id => captured === id; canvas.releasePointerCapture = () => { captured = null; };
+    const context = { save() {}, restore() {}, scale() {}, fillRect() {}, strokeRect() {}, setLineDash() {}, fillText() {} };
+    const renderer = { canvas, window: { devicePixelRatio: 1 }, world: { laneCount: 4, laneHeight: 96, tickIndex: 0, generation: 1 }, originX: 100, originY: 96, viewWidth: 160, viewHeight: 192,
+      render() { this.midiSpanOverlay?.draw(context, this, 1); } };
+    const added = [], project = { transport: { bpmBase: 120 }, automation: [] };
+    const overlay = createProcgenMidiSpanOverlay({ document, getRuntime: () => ({ lanes: { renderer } }), getProject: () => project, getDomain: () => 'distance', getTarget: () => 'velocity', onUpdate() {}, onSelect() {}, onAdd: span => added.push(span) });
+    const pointer = (type, x, y) => canvas.dispatchEvent({ type, clientX: x, clientY: y, pointerId: 7, preventDefault() {}, stopImmediatePropagation() {} });
+    try {
+      overlay.sync(); overlay.setEditing(true); pointer('pointerdown', 30, 50);
+      renderer.originX = 700; renderer.originY = 192; renderer.viewWidth = 80; renderer.viewHeight = 96; renderer.window.devicePixelRatio = 2; canvas.width = 320; canvas.height = 384; box = { left: 100, top: 100 };
+      pointer('pointermove', 70, 150); expect(overlay.snapshot().rectangles[0]).to.include({ x: 20, width: 40, y: 0, height: 192 });
+      pointer('pointerup', 70, 150); expect(added).to.have.length(1); expect(added[0]).to.include({ start: 120, duration: 40, laneScope: 'group', laneStart: 1, laneEnd: 2 }); expect(captured).to.equal(null);
+      pointer('pointerdown', 120, 120); pointer('pointermove', 140, 140); expect(captured).to.equal(7);
+      renderer.world.generation++; overlay.sync(); pointer('pointerup', 140, 140); expect(captured).to.equal(null); expect(added).to.have.length(1);
+    } finally { overlay.dispose(); }
+  });
+
   it('aligns distance span geometry and drawing with actual144pixel lanes', () => {
     const document = new TestDocument(), canvas = document.createElement('canvas'); document.registerElement('gameCanvas', canvas);
     canvas.width = 720; canvas.height = 432; canvas.getBoundingClientRect = () => ({ left: 0, top: 0 });

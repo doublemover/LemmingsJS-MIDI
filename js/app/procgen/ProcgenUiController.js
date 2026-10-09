@@ -102,7 +102,13 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     onUpdate: (automationId, patch) => { project = reduceMidiProject(project, { type: 'automation.update', automationId, patch }); config = projectToMidiConfig(project); local.syncConfig(); spanControls.render();
       try { window.localStorage?.setItem(spanStorageKey, JSON.stringify({ version: 1, value: project.automation.filter(entry => entry.span) })); } catch { /* Keep session edits. */ }
     }, onAdd: (span, target) => spanControls.addSpan(span, target), onSelect: id => { spanControls.select(id); setOpen(true); } });
-  listen(byId('procgenSpanEdit'), 'change', event => { spanOverlay.setEditing(event.target.checked); if (event.target.checked && byId('procgenSpanVisible')) byId('procgenSpanVisible').checked = true; });
+  const setSpanEditing = enabled => {
+    if (enabled) setNukeArmed(false);
+    spanOverlay.setEditing(enabled);
+    if (byId('procgenSpanEdit')) byId('procgenSpanEdit').checked = enabled;
+    if (enabled && byId('procgenSpanVisible')) byId('procgenSpanVisible').checked = true;
+  };
+  listen(byId('procgenSpanEdit'), 'change', event => setSpanEditing(event.target.checked));
   listen(byId('procgenSpanVisible'), 'change', event => { spanOverlay.setVisible(event.target.checked); if (!event.target.checked && byId('procgenSpanEdit')) byId('procgenSpanEdit').checked = false; });
   const syncWorkerLimits = () => {
     getRuntime()?.world?.setWorkerLimits?.(settings.workerLimits);
@@ -142,7 +148,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   listen(tab, 'pointerup', event => { if (dragStart != null && event.clientY - dragStart > 15) { setOpen(true); pulledOpen = true; } dragStart = null; });
   listen(tab, 'click', () => { if (pulledOpen) { pulledOpen = false; return; } setOpen(tab.getAttribute('aria-expanded') !== 'true'); });
   const isEditing = event => event.target?.isContentEditable || ['TEXTAREA', 'SELECT'].includes(event.target?.tagName) || (event.target?.tagName === 'INPUT' && !['range', 'checkbox', 'radio', 'button', 'submit'].includes(event.target.type || 'text'));
-  listen(document, 'keydown', event => { if (event.key === 'Escape' && !isEditing(event)) { setOpen(false); spanOverlay.setEditing(false); if (byId('procgenSpanEdit')) byId('procgenSpanEdit').checked = false; } });
+  listen(document, 'keydown', event => { if (event.key === 'Escape' && !isEditing(event)) { setOpen(false); setSpanEditing(false); setNukeArmed(false); } });
   setOpen(false);
   const showHelp = () => {
     setOpen(true); const help = byId('procgenHelpFields');
@@ -185,7 +191,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     settings.camera = camera()?.getState?.();
     const listening = local.suspendGame();
     if (byId('procgenRunStatus')) byId('procgenRunStatus').textContent = 'Loading…';
-    try { await restart(); if (listening && !disposed && id === restartId) await local.resumeGame(); } catch (error) { if (!disposed && byId('procgenRunStatus')) byId('procgenRunStatus').textContent = `Could not start: ${error.message}`; }
+    try { await restart(); if (listening && !disposed && id === restartId) await local.resumeGame(); } catch (error) { if (!disposed && id === restartId && byId('procgenRunStatus')) byId('procgenRunStatus').textContent = `Could not start: ${error.message}`; }
   };
   listen(byId('procgenRestart'), 'click', doRestart);
   listen(byId('procgenNewSeed'), 'click', () => {
@@ -284,6 +290,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   for (const [id, factor] of [['procgenZoomOut', 1 / 1.1], ['procgenZoomIn', 1.1]]) listen(byId(id), 'click', () => camera()?.setZoom(camera().getState().scale * factor));
   let nukeArmed = false;
   const setNukeArmed = armed => {
+    if (armed) setSpanEditing(false);
     nukeArmed = armed; byId('gameCanvas')?.classList.toggle('nuke-armed', armed);
     if (byId('procgenNukeStatus')) byId('procgenNukeStatus').textContent = armed ? 'Click a lane to start its nuke; Escape cancels.' : '';
   };
@@ -300,10 +307,10 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   const handleKey = event => {
     if (event.defaultPrevented || isEditing(event)) return;
     if (!event.ctrlKey && !event.altKey && !event.metaKey && (event.code === 'KeyT' || event.key?.toLowerCase() === 't')) {
-      if (!event.repeat) { if (event.shiftKey) { getRuntime()?.world?.nukeAll?.(); setNukeArmed(false); } else setNukeArmed(!nukeArmed); }
+      if (!event.repeat) { if (event.shiftKey) { setSpanEditing(false); getRuntime()?.world?.nukeAll?.(); setNukeArmed(false); } else setNukeArmed(!nukeArmed); }
       event.preventDefault?.(); return;
     }
-    if (event.key === 'Escape') { setNukeArmed(false); return; }
+    if (event.key === 'Escape') { setNukeArmed(false); setSpanEditing(false); return; }
     if (event.repeat) return;
     if (event.target?.type === 'range' && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(event.key)) return;
     const activationKey = [' ', 'Enter'].includes(event.key) || ['Space', 'Enter', 'NumpadEnter'].includes(event.code);

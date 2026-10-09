@@ -2,7 +2,7 @@ import { MIDI_AUTOMATION_SPAN_PRESETS, createMidiAutomationSpanBundle } from '..
 import { createMidiAutomationSpanEditor, createMidiSpan } from './midiAutomationSpanEditor.js';
 import { AUTOMATION_TARGETS } from '../../midi/project/MidiProject.js';
 const find = (host, matches) => matches(host) ? host : Array.from(host.children || []).map(child => find(child, matches)).find(Boolean);
-const createMidiAutomationSpanControls = ({ document, getProject, onIntent, getRouter, getLaneCount, onSelect = () => {}, onReturnToSpatial = () => {}, ids = {} }) => {
+const createMidiAutomationSpanControls = ({ document, getProject, onIntent, getRouter, getLaneCount, onSelect = () => {}, onReturnToSpatial = () => {}, allowSpatialConversion = true, ids = {} }) => {
   const names = { list: 'midiMainSpanList', preset: 'midiSpanPreset', presetApply: 'midiSpanPresetApply', domain: 'midiSpanPresetDomain', presetStatus: 'midiSpanPresetStatus', ...ids };
   const element = key => names[key] ? document.getElementById(names[key]) : null;
   const list = element('list'), add = element('add');
@@ -116,7 +116,7 @@ const createMidiAutomationSpanControls = ({ document, getProject, onIntent, getR
             input.value = String(lane[key]); input.setAttribute('aria-label', lane.name + ' ' + label); input.addEventListener('change', () => { const value = choices || key === 'name' ? input.value : Number(input.value); if (choices || key === 'name' || Number.isFinite(value)) onIntent({ type: 'automation.update', automationId: lane.id, patch: { [key]: value } }); }); wrapper.append(input); fields.append(wrapper);
           };
           field('Name', 'name'); field('Target', 'target', AUTOMATION_TARGETS); field('Start value', 'min'); field('End value', 'max'); row.append(fields);
-          const editor = createMidiAutomationSpanEditor({ document, lane, tracks: project.tracks, laneCount: getLaneCount(), open: true,
+          const editor = createMidiAutomationSpanEditor({ document, lane, tracks: project.tracks, laneCount: getLaneCount(), open: true, canReturnToSpatial: allowSpatialConversion,
             getState: () => getRouter()?.getAutomationSpanState?.(lane.id, Math.min(getLaneCount() - 1, lane.span.laneStart)),
             onUpdate: patch => { const returnFocus = patch.span === null && row.contains(document.activeElement); onIntent({ type: 'automation.update', automationId: lane.id, patch }); if (returnFocus) onReturnToSpatial(lane.id); } });
           editor.addEventListener('toggle', () => { if (!list.contains(editor)) return; if (!editor.open) expanded.delete(lane.id); else expanded.add(lane.id); }); editors.set(lane.id, editor); row.append(editor);

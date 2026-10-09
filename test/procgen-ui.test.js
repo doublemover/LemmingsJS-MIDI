@@ -6,7 +6,7 @@ import { normalizeSeed } from '../js/core/seededRandom.js';
 import { createProcgenUiController } from '../js/app/procgen/ProcgenUiController.js';
 import { TestDocument, createTestWindow } from './helpers/test-dom.js';
 import { registerElement } from './support/dom-fixtures.js';
-const fixture = (search = '', storedLanes = null, preferences = {}) => {
+const fixture = (search = '', storedLanes = null, preferences = {}, restartResult = null) => {
   const document = new TestDocument(), window = createTestWindow(document);
   if (storedLanes != null) window.localStorage.setItem('lemmings.procgen.lanes.v1', JSON.stringify(storedLanes));
   for (const [key, value] of Object.entries(preferences)) window.localStorage.setItem(key, JSON.stringify(value));
@@ -17,14 +17,14 @@ const fixture = (search = '', storedLanes = null, preferences = {}) => {
     target.removeEventListener = (name, callback) => events.get(name)?.delete(callback);
     target.dispatchEvent = event => { for (const callback of events.get(event.type) || []) callback(event); };
   }
-  for (const [tag, ids] of [['div', ['procgenDrawer', 'procgenPanel']], ['details', ['procgenHelpFields']], ['canvas', ['gameCanvas']], ['button', ['procgenTab', 'procgenHelp', 'procgenRestart', 'procgenListen', 'procgenSpeedDown', 'procgenSpeedUp', 'procgenShare', 'procgenNewSeed', 'procgenPause', 'procgenStep', 'procgenFollow', 'procgenZoomIn', 'procgenZoomOut', 'procgenPanic', 'procgenCctvPin', 'procgenCctvClear']],
-    ['select', ['procgenPreset', 'procgenPack', 'procgenSpeed', 'procgenCctvMode']], ['input', ['procgenLanes', 'procgenPhrases', 'procgenSeed', 'procgenMasterVolume', 'procgenCctvLane', 'procgenWorkerBashers', 'procgenWorkerDiggers', 'procgenWorkerBuilders', 'procgenLaneHeight', 'procgenCctvEnabled', 'procgenScoutsEvery', 'procgenScoutDelay', 'procgenSpawnSpread', 'procgenSpawnPriority']],
-    ['p', ['procgenMasterVolumeValue', 'procgenPresetDescription', 'procgenAudioStatus', 'procgenRunStatus', 'procgenMetrics', 'procgenStallStatus', 'procgenAliveCount', 'procgenDistance', 'procgenBest', 'procgenCctvStatus', 'procgenNukeStatus', 'procgenOutputPressure']]]) {
+  for (const [tag, ids] of [['div', ['procgenDrawer', 'procgenPanel', 'procgenSpanList']], ['details', ['procgenHelpFields']], ['canvas', ['gameCanvas']], ['button', ['procgenTab', 'procgenHelp', 'procgenRestart', 'procgenListen', 'procgenSpeedDown', 'procgenSpeedUp', 'procgenShare', 'procgenNewSeed', 'procgenPause', 'procgenStep', 'procgenFollow', 'procgenZoomIn', 'procgenZoomOut', 'procgenPanic', 'procgenCctvPin', 'procgenCctvClear', 'procgenSpanAdd', 'procgenSpanPresetApply']],
+    ['select', ['procgenPreset', 'procgenPack', 'procgenSpeed', 'procgenCctvMode', 'procgenSpanDomain', 'procgenSpanTarget', 'procgenSpanPreset']], ['input', ['procgenLanes', 'procgenPhrases', 'procgenSeed', 'procgenMasterVolume', 'procgenCctvLane', 'procgenWorkerBashers', 'procgenWorkerDiggers', 'procgenWorkerBuilders', 'procgenLaneHeight', 'procgenCctvEnabled', 'procgenScoutsEvery', 'procgenScoutDelay', 'procgenSpawnSpread', 'procgenSpawnPriority', 'procgenSpanEdit', 'procgenSpanVisible']],
+    ['p', ['procgenMasterVolumeValue', 'procgenPresetDescription', 'procgenAudioStatus', 'procgenRunStatus', 'procgenMetrics', 'procgenStallStatus', 'procgenAliveCount', 'procgenDistance', 'procgenBest', 'procgenCctvStatus', 'procgenNukeStatus', 'procgenOutputPressure', 'procgenSpanPresetStatus']]]) {
     for (const id of ids) { const el = registerElement(document, tag, id); el.removeEventListener = (event, callback) => el.listeners.set(event, (el.listeners.get(event) || []).filter(fn => fn !== callback)); }
   }
   let restarts = 0;
   const timer = { speedFactor: 3 }, runtime = { view: {}, game: { getGameTimer: () => timer } };
-  const ui = createProcgenUiController({ document, window, getRuntime: () => runtime, restart: async () => { restarts++; } });
+  const ui = createProcgenUiController({ document, window, getRuntime: () => runtime, restart: async () => { restarts++; if (restartResult) return restartResult(); } });
   return { document, window, ui, timer, runtime, get restarts() { return restarts; }, el: id => document.getElementById(id) };
 };
 describe('compact procgen drawer', () => {
@@ -130,6 +130,17 @@ describe('compact procgen drawer', () => {
     f.el('procgenRestart').dispatchEvent({ type: 'click' }); await Promise.resolve();
     expect(calls).to.deep.equal(['suspend', 'resume']); expect(f.restarts).to.equal(1); f.ui.dispose();
   });
+  it('retains the newer run status and listening owner when an earlier restart fails late', async () => {
+    const pending = [], f = fixture('', null, {}, () => new Promise((resolve, reject) => pending.push({ resolve, reject }))), resumed = [];
+    f.ui.local.suspendGame = () => true; f.ui.local.resumeGame = async () => resumed.push('current');
+    try {
+      f.el('procgenRestart').dispatchEvent({ type: 'click' }); f.el('procgenRestart').dispatchEvent({ type: 'click' }); expect(pending).to.have.length(2);
+      pending[1].resolve(); await new Promise(resolve => setImmediate(resolve)); f.ui.sync(); const currentStatus = f.el('procgenRunStatus').textContent;
+      expect(resumed).to.deep.equal(['current']); pending[0].reject(new Error('obsolete restart A')); await new Promise(resolve => setImmediate(resolve));
+      expect(f.el('procgenRunStatus').textContent).to.equal(currentStatus); expect(resumed).to.deep.equal(['current']); expect(f.restarts).to.equal(2);
+    } finally { f.ui.dispose(); }
+  });
+
   it('cancels a captured musical draft before asynchronous regeneration resumes', async () => {
     const f = fixture(), canvas = f.el('gameCanvas'); let captured = null;
     canvas.width = 240; canvas.height = 192; canvas.getBoundingClientRect = () => ({ left: 0, top: 0 });
@@ -153,6 +164,30 @@ describe('compact procgen drawer', () => {
     f.el('procgenSpeed').dispatchEvent({ type: 'contextmenu', preventDefault: () => prevented++ });
     expect(f.ui.local.audio.getState().masterVolume).to.equal(1); expect(f.timer.speedFactor).to.equal(1); expect(prevented).to.equal(2); f.ui.dispose();
   });
+  it('gives nuke and span drawing exclusive gestures, releasing drafts and both indicators on Escape', () => {
+    const f = fixture(), canvas = f.el('gameCanvas'), calls = []; let captured = null;
+    canvas.width = 240; canvas.height = 192; canvas.getBoundingClientRect = () => ({ left: 0, top: 0 });
+    canvas.setPointerCapture = id => { captured = id; }; canvas.hasPointerCapture = id => captured === id; canvas.releasePointerCapture = () => { captured = null; };
+    const context = { save() {}, restore() {}, scale() {}, fillRect() {}, strokeRect() {}, setLineDash() {}, fillText() {} };
+    const world = { actors: [], laneCount: 2, laneHeight: 96, generation: 1, tickIndex: 0, nukeLane: lane => { calls.push(lane); return true; } };
+    const renderer = { canvas, world, window: { devicePixelRatio: 1 }, originX: 0, originY: 0, viewWidth: 240, viewHeight: 192, cameraY: 0, scale: 1, camera: { viewport: () => ({ height: 192 }), applyState() {}, getState: () => ({ scale: 1 }) },
+      render() { this.midiSpanOverlay?.draw(context, this, 1); } };
+    f.runtime.world = world; f.runtime.lanes = { renderer }; f.ui.sync();
+    const press = extra => f.window.dispatchEvent({ type: 'keydown', key: 't', code: 'KeyT', preventDefault() {}, ...extra });
+    const pointer = (type, x, y = 40) => canvas.dispatchEvent({ type, button: 0, clientX: x, clientY: y, pointerId: 7, preventDefault() {}, stopImmediatePropagation() {} });
+    const draw = () => { f.el('procgenSpanEdit').checked = true; f.el('procgenSpanEdit').dispatchEvent({ type: 'change', target: f.el('procgenSpanEdit') }); };
+    try {
+      draw(); pointer('pointerdown', 20); pointer('pointermove', 40); expect(captured).to.equal(7);
+      press(); expect(captured).to.equal(null); expect(renderer.midiSpanOverlay.snapshot().editing).to.equal(false); expect(f.el('procgenSpanEdit').checked).to.equal(false); expect(canvas.classList.contains('nuke-armed')).to.equal(true);
+      pointer('pointerdown', 40, 130); expect(calls).to.deep.equal([1]); expect(f.window.localStorage.getItem('lemmings.procgen.automationSpans.v1')).to.equal(null);
+      press(); draw(); expect(canvas.classList.contains('nuke-armed')).to.equal(false); expect(renderer.midiSpanOverlay.snapshot().editing).to.equal(true);
+      pointer('pointerdown', 20); pointer('pointermove', 40); expect(captured).to.equal(7);
+      f.window.dispatchEvent({ type: 'keydown', key: 'Escape' }); pointer('pointerup', 40);
+      expect(captured).to.equal(null); expect(f.el('procgenSpanEdit').checked).to.equal(false); expect(canvas.classList.contains('nuke-armed')).to.equal(false); expect(f.el('procgenNukeStatus').textContent).to.equal('');
+      expect(f.window.localStorage.getItem('lemmings.procgen.automationSpans.v1')).to.equal(null); press({ repeat: true }); expect(calls).to.deep.equal([1]);
+    } finally { f.ui.dispose(); }
+  });
+
   it('arms a lane nuke, ignores repeats/forms and cancels or nukes all explicitly', () => {
     const f = fixture(), calls = [], canvas = f.el('gameCanvas'); canvas.getBoundingClientRect = () => ({ top: 40 });
     f.runtime.world = { laneHeight: 144, nukeLane: lane => { calls.push(lane); return true; }, nukeAll: () => calls.push('all') };
