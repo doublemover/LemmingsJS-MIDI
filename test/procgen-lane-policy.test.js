@@ -59,4 +59,30 @@ describe('bounded seeded lane route outcome and scout knowledge', () => {
     scout.terminalReason = 'drowned'; for (let repeat = 0; repeat < 8; repeat++) policy.observe(scout, scout.action, 80);
     expect(policy.lanes[0].knowledge.filter(entry => entry.kind === 'hazard-contact')).to.have.length(1); expect(scout.canClimb).to.equal(undefined);
   });
+  it('retires numeric builder outcomes on actual deadline, loss, disability, removal, turn, replacement or changed local evidence without late success', () => {
+    // Controlled transition/owner negatives; full shared BUILD/SHRUG/FALL/WALK
+    // is separately replayed against the sourced Crystal geometry.
+    for (const mode of ['deadline', 'loss', 'disabled', 'removed', 'turn', 'replacement', 'revision', 'foreign', 'generation']) {
+      const { world, policy } = model(), actor = { id: 7, laneIndex: 0, x: 40, y: 120, lookRight: true, action: world.actions[State.BUILDING] };
+      const task = { owner: actor, footprint: { x1: 40, x2: 68, y1: 108, y2: 121 } }; world.accessTasks[0] = [task];
+      policy.begin(actor, { kind: 'builders', routeEvidence: { kind: 'shared-full-build', exitX: 72, exitY: 120, observedBounds: { x1: 39, x2: 81, y1: 88, y2: 153 } } });
+      const attempt = actor._laneRouteAttempt;
+      world.terrainTileRevisions.set(0, 1); policy.edit(50, 119, actor.id); policy.observe(actor, actor.action, actor.x);
+      expect(actor._laneRouteAttempt, 'own brick remains valid').to.equal(attempt);
+      world.terrainTileRevisions.set(0, 2); policy.edit(100, 119, 99); policy.observe(actor, actor.action, actor.x);
+      expect(actor._laneRouteAttempt, 'distant same-tile edit remains valid').to.equal(attempt);
+      if (mode === 'deadline') { world.tickIndex = attempt.buildDeadlineTick + 1; actor.x = 72; actor.action = world.actions[State.WALKING]; }
+      if (mode === 'loss') actor.failureReason = 'unsafe-fall';
+      if (mode === 'disabled') { actor.disabled = true; actor.x = 72; actor.action = world.actions[State.WALKING]; }
+      if (mode === 'removed') actor.removed = true;
+      if (mode === 'turn') actor.lookRight = false;
+      if (mode === 'replacement') actor.action = world.actions[State.MINING];
+      if (mode === 'revision') world.terrainTileRevisions.set(0, 3);
+      if (mode === 'foreign') { world.terrainTileRevisions.set(0, 3); policy.edit(55, 112, 99); }
+      if (mode === 'generation') world.generation = 2;
+      policy.observe(actor, world.actions[State.BUILDING], 40);
+      expect(actor._laneRouteAttempt, mode).to.equal(null); expect(task.buildAttempt, mode).to.equal(null);
+      expect(policy.lanes[0], mode).to.include({ successes: 0, failures: 1 });
+    }
+  });
 });

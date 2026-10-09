@@ -9,7 +9,7 @@ class ProcgenTunnelCrewRoutes {
     const world = this.world;
     if (!evidence || !Number.isFinite(evidence.guardY) || this.scenes[actor.laneIndex] || !world.workerLimits.bashers || !world.lanePolicy.projects.canBegin(actor)) return false;
     this.scenes[actor.laneIndex] = { lane: actor.laneIndex, generation: world.generation, startTick: world.tickIndex, startX: actor.x, startY: actor.y,
-      bounds: { x1: actor.x - 16, x2: evidence.exitX + 1, y1: actor.y - 16, y2: actor.y + 33 }, port: { ...evidence }, phase: 'pending', guard: null, task: null, worker: null };
+      bounds: evidence.observedBounds ? { ...evidence.observedBounds } : { x1: actor.x - 16, x2: evidence.exitX + 1, y1: actor.y - 16, y2: actor.y + 33 }, port: { ...evidence }, phase: 'pending', guard: null, task: null, worker: null };
     this.stats.requested++; return true;
   }
   guard(actor) {
@@ -47,6 +47,9 @@ class ProcgenTunnelCrewRoutes {
       }
       return actor.action === world.actions[State.BLOCKING];
     }
+    // Preserve the privately observed natural worker continuation to its exit;
+    // this leaves shared movement running and admits no replacement skill.
+    if (actor === scene.worker && scene.phase === 'working') return true;
     if (scene.phase !== 'pending' || actor.action !== world.actions[State.WALKING] || !actor.lookRight || actor.scout || actor.canClimb || actor.hasParachute || actor.failureReason || actor.terminalReason || actor.removed ||
         actor.x < scene.port.guardX - 2 || actor.x > scene.port.guardX + 2 || Math.abs(actor.y - scene.port.guardY) > 2) return false;
     const stride = Math.max(1, Math.ceil(world.laneCount / 8)); if (actor.laneIndex % stride !== world.tickIndex % stride) return false;
@@ -66,6 +69,7 @@ class ProcgenTunnelCrewRoutes {
     if (project) {
       project.exitX = scene.exitX - 8;
       const live = this.world.lanePolicy.projects.lanes[actor.laneIndex].live;
+      scene.releaseOrdinary = new Set([...project.members.values()].filter(member => member.ordinary).map(member => member.id));
       scene.releaseMembers = [...project.members.keys()].filter(id => id !== scene.guard.id && live.get(id)?.x >= scene.guard.x + 7);
       if (!scene.releaseMembers.includes(actor.id)) scene.releaseMembers.push(actor.id);
     }
@@ -101,7 +105,7 @@ class ProcgenTunnelCrewRoutes {
       const live = world.lanePolicy.projects.lanes[lane].live;
       scene.releaseReady = scene.releaseMembers?.every(id => {
         const actor = live.get(id);
-        return actor?.tick === world.tickIndex && scene.crossed.has(id);
+        return actor?.tick === world.tickIndex && actor.walking && actor.x >= scene.exitX && (!scene.releaseOrdinary.has(id) || actor.ordinary) && scene.crossed.has(id);
       }) || false;
     }
     if (scene.phase === 'released' && scene.guard.action === world.actions[State.WALKING]) this._clear(scene);

@@ -1,4 +1,5 @@
 import { ProcgenCrewProjects } from './ProcgenCrewProjects.js';
+import { BUILD_ACTION_STEPS } from './ProcgenSupportedBuild.js';
 import { procgenTileRevision } from './ProcgenTerrainRetention.js';
 import { LemmingStateType as State } from '../../lemmings/LemmingStateType.js';
 const MAX_LANE_KNOWLEDGE = 8;
@@ -76,7 +77,22 @@ class ProcgenLanePolicy {
     if (proposal.basinScene) { this.world.basinRoutes.begin(actor, proposal, task); return; }
     this.projects.begin(actor, proposal.kind, task);
     this.world.tunnelRoutes?.begin(actor, proposal, task);
-    actor._laneRouteAttempt = { lane: actor.laneIndex, kind: proposal.kind, task, action: actor.action, x: actor.x, y: actor.y, falling: false };
+    actor._laneRouteAttempt = { id: actor.id, generation: this.world.generation, lane: actor.laneIndex, kind: proposal.kind, task, action: actor.action, x: actor.x, y: actor.y, falling: false, buildDeadlineTick: this.world.tickIndex + BUILD_ACTION_STEPS, buildExit: proposal.routeEvidence?.kind === 'shared-full-build' ? { x: proposal.routeEvidence.exitX, y: proposal.routeEvidence.exitY } : null };
+    const attempt = actor._laneRouteAttempt;
+    if (attempt.buildExit) {
+      attempt.bounds = { ...proposal.routeEvidence.observedBounds }; attempt.tiles = this._tiles(actor.x, actor.y);
+      for (const tile of this._tiles(attempt.buildExit.x, attempt.buildExit.y)) if (!attempt.tiles.some(([key]) => key === tile[0])) attempt.tiles.push(tile);
+      task.buildAttempt = attempt;
+    }
+  }
+  edit(x, y, ownerId) {
+    const lane = Math.floor(y / this.world.laneHeight), width = this.world.terrain?.chunkWidth || 256, key = lane * 0x800000 + Math.floor(x / width);
+    // Existing retained task lists are capped; no actor scan or new history.
+    for (let index = Math.max(0, lane - 1); index <= Math.min(this.world.laneCount - 1, lane + 1); index++) for (const task of this.world.accessTasks[index] || []) {
+      const attempt = task.buildAttempt, bounds = attempt?.bounds; if (!bounds) continue;
+      if (x >= bounds.x1 && x < bounds.x2 && y >= bounds.y1 && y < bounds.y2 && ownerId !== attempt.id) attempt.changed = true;
+      for (const tile of attempt.tiles) if (tile[0] === key) tile[1] = procgenTileRevision(this.world, key);
+    }
   }
   observe(actor, previousAction, previousX) {
     const world = this.world, lane = this.lanes[actor.laneIndex]; if (!lane) return;
@@ -86,12 +102,20 @@ class ProcgenLanePolicy {
       actor._scoutFailureRemembered = true; this.remember(actor, actor.terminalReason ? 'hazard-contact' : 'unsafe-approach', actor.lastTriggerType || null);
     }
     const attempt = actor._laneRouteAttempt;
-    if (attempt && (actor.action !== attempt.action || actor.failureReason || actor.terminalReason || actor.removed)) {
+    const scene = attempt?.task.tunnelScene, aliveAttempt = !actor.disabled && !actor.failureReason && !actor.terminalReason && !actor.removed;
+    const waitingScene = scene?.phase === 'working' && aliveAttempt;
+    const buildExit = attempt?.buildExit;
+    const buildExpired = buildExit && world.tickIndex > attempt.buildDeadlineTick;
+    const buildChanged = buildExit && (attempt.generation !== world.generation || attempt.changed || !this._valid(attempt));
+    const atBuildExit = buildExit && !buildExpired && !buildChanged && actor.action === world.actions[State.WALKING] && actor.lookRight && actor.x >= buildExit.x && Math.abs(actor.y - buildExit.y) <= 3;
+    const buildAction = [world.actions[State.BUILDING], world.actions[State.SHRUG], world.actions[State.WALKING], world.actions[State.JUMPING], world.actions[State.FALLING]].includes(actor.action);
+    const waitingBuild = buildExit && aliveAttempt && actor.lookRight && buildAction && !atBuildExit && !buildChanged && !buildExpired;
+    if (attempt && !waitingScene && !waitingBuild && (actor.action !== attempt.action || actor.disabled || actor.failureReason || actor.terminalReason || actor.removed || scene?.phase === 'connected' || atBuildExit || buildExpired || buildChanged || buildExit && !actor.lookRight)) {
       const state = State;
-      if (!actor.failureReason && !actor.terminalReason && !actor.removed && [world.actions[state.FALLING], world.actions[state.JUMPING]].includes(actor.action) && ['diggers', 'miners'].includes(attempt.kind)) attempt.falling = true;
+      if (!actor.disabled && !actor.failureReason && !actor.terminalReason && !actor.removed && [world.actions[state.FALLING], world.actions[state.JUMPING]].includes(actor.action) && ['diggers', 'miners'].includes(attempt.kind)) attempt.falling = true;
       else {
-        const owner = this.lanes[attempt.lane], alive = !actor.failureReason && !actor.terminalReason && !actor.removed;
-        const connected = attempt.kind === 'builders' ? world._constructionPassage(attempt.task) === true :
+        const owner = this.lanes[attempt.lane], alive = !actor.disabled && !actor.failureReason && !actor.terminalReason && !actor.removed;
+        const connected = scene ? scene.phase === 'connected' && actor.action === world.actions[state.WALKING] && actor.x >= scene.exitX && Math.abs(actor.y - scene.exitY) <= 3 : attempt.kind === 'builders' ? buildExit ? atBuildExit : world._constructionPassage(attempt.task) === true :
           ['diggers', 'miners'].includes(attempt.kind) ? attempt.falling && actor.action === world.actions[state.WALKING] && actor.y > attempt.y && actor.y - attempt.y <= 32 : actor.x - attempt.x >= 8;
         const success = alive && connected;
         owner[success ? 'successes' : 'failures']++; this._decay(owner);
@@ -106,10 +130,14 @@ class ProcgenLanePolicy {
               record.startX = attempt.x; record.startY = attempt.y;
               for (const tile of this._tiles(attempt.x, attempt.y)) if (!record.tiles.some(([key]) => key === tile[0])) record.tiles.push(tile);
             }
-            this.projects.connect(attempt.lane, attempt.task.crewProjectId, actor.x, actor.y, record.tiles);
+            if (buildExit) {
+              const project = this.projects.lanes[attempt.lane].projects.find(entry => entry.id === attempt.task.crewProjectId);
+              if (project) project.exitX = buildExit.x - 8;
+            }
+            this.projects.connect(attempt.lane, attempt.task.crewProjectId, scene ? scene.exitX - 8 : buildExit ? buildExit.x - 8 : actor.x, actor.y, record.tiles);
           }
         }
-        actor._laneRouteAttempt = null;
+        attempt.task.buildAttempt = null; actor._laneRouteAttempt = null;
       }
     }
     // A crossing is a physical ordinary actor moving past an observed trouble

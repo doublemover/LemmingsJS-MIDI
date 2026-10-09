@@ -21,7 +21,7 @@ class ProcgenGuardedTunnel {
     const world = this.world, left = actor.x - 16, right = actor.x + GUARDED_TUNNEL_DISTANCE, top = actor.y - 16, bottom = actor.y + 32;
     const generation = world.generation, revision = world.terrainRevision, frontier = world.frontierRevision;
     const cells = new Map(), removed = new Set(), triggers = [], key = (x, y) => (y - top) * 129 + x - left;
-    let failure = null, steps = 0, bashTicks = 0, endX = null, rearX = guard?.x ?? actor.x - 14, rearY = guard?.y ?? null;
+    let failure = null, steps = 0, bashTicks = 0, terminationTick = null, walkingTick = null, endX = null, rearX = guard?.x ?? actor.x - 14, rearY = guard?.y ?? null;
     maxWork = Math.max(0, Math.min(1024, Math.trunc(maxWork) || 0)); this.stats.proofs++;
     const read = (x, y) => {
       if (x < left || x > right || y < top || y > bottom || y < 0 || y >= world.height) { failure ||= 'bounds'; return 0; }
@@ -96,7 +96,8 @@ class ProcgenGuardedTunnel {
     for (; bashTicks < 384 && !failure; bashTicks++) {
       step(worker);
       if (!worker.lookRight) { failure ||= 'turn'; break; }
-      if (endX == null && worker.action !== this.actions[State.BASHING]) endX = worker.x;
+      if (endX == null && worker.action !== this.actions[State.BASHING]) { endX = worker.x; terminationTick = bashTicks + 1; }
+      if (endX != null && worker.action === this.actions[State.WALKING]) walkingTick ??= bashTicks + 1;
       if (endX != null && worker.action === this.actions[State.WALKING] && worker.x >= endX + 8 && read(worker.x, worker.y)) break;
     }
     if (endX == null || endX - actor.x <= 24 || worker.action !== this.actions[State.WALKING] || worker.x < endX + 8) failure ||= 'termination';
@@ -106,9 +107,9 @@ class ProcgenGuardedTunnel {
     if (world.generation !== generation || world.terrainRevision !== revision || world.frontierRevision !== frontier) failure ||= 'changed-terrain';
     const bounds = { x1: rearX, x2: worker.x + 1, y1: top, y2: bottom + 1 }, cost = cells.size;
     this.stats.maxWork = Math.max(this.stats.maxWork, cost); this.stats.maxActions = Math.max(this.stats.maxActions, steps);
-    const evidence = { rearBlockerId: guard?.id, guardX: rearX, guardY: rearY, exitX: worker.x, exitY: worker.y, naturalWalkingTick: bashTicks + 1, startX: actor.x, startY: actor.y, actionSteps: steps, observations: cells.size, independentQualification: false };
+    const evidence = { rearBlockerId: guard?.id, guardX: rearX, guardY: rearY, exitX: worker.x, exitY: worker.y, terminationTick, naturalWalkingTick: walkingTick, exitTicks: bashTicks + 1, startX: actor.x, startY: actor.y, actionSteps: steps, observations: cells.size, independentQualification: false };
     if (!failure) this.stats.accepted++;
-    return { proposal: failure || !guard ? null : { kind: 'bashers', targetX: actor.x + 1, startX: actor.x, footprint: bounds, continuationY: worker.y, reason: 'observed-guarded-tunnel', estimatedTicks: bashTicks + 1, materialCost: 0, routeEvidence: evidence },
+    return { proposal: failure || !guard ? null : { kind: 'bashers', targetX: actor.x + 1, startX: actor.x, footprint: bounds, continuationY: worker.y, reason: 'observed-guarded-tunnel', estimatedTicks: walkingTick, materialCost: 0, routeEvidence: evidence },
       guardCandidate: !failure && !guard ? evidence : null, probes: cost, failure, actionSteps: steps };
   }
   dispose() { this.hazards.length = 0; this.nearby.length = 0; this.world = null; }

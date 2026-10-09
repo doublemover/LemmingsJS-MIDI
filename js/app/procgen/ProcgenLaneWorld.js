@@ -422,7 +422,7 @@ class ProcgenLaneWorld {
       this.terrainActivityTicks[Math.floor(y / this.laneHeight)] = this.tickIndex;
       const width = this.terrain?.chunkWidth || CHUNK_WIDTH;
       this.terrainTileRevisions.set(Math.floor(y / this.laneHeight) * 0x800000 + Math.floor(x / width), this.terrainRevision);
-      this.basinRoutes?.edit(x, y, this._processingActorId); this.tunnelRoutes?.edit(x, y, this._processingActorId);
+      this.basinRoutes?.edit(x, y, this._processingActorId); this.tunnelRoutes?.edit(x, y, this._processingActorId); this.lanePolicy?.edit(x, y, this._processingActorId);
     }
   }
   setGroundAt(x, y) { this._setPixel(x, y, 3); }
@@ -664,6 +664,8 @@ class ProcgenLaneWorld {
   _assist(actor) {
     if (!this.assists) return;
     if (this.tunnelRoutes.assist(actor) || this.basinRoutes.assist(actor) || this._assistConstructionCrew(actor)) return;
+    const route = actor._laneRouteAttempt;
+    if (route?.buildExit && actor.lookRight && this.tickIndex <= route.buildDeadlineTick) return;
     const scoutReady = this.population.scoutReady(actor, this.tickIndex);
     const climbReady = scoutReady && !!(actor.scoutAbilities & 1), floatReady = scoutReady && !!(actor.scoutAbilities & 2);
     if (floatReady && actor.action === this.actions[State.FALLING] && actor.state > 16 &&

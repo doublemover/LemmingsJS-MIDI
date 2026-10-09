@@ -28,7 +28,7 @@ describe('actual sourced shoulder with temporary crew containment', function() {
     const before = [leader.x, leader.y, leader.action, leader.state, world.stats.removedPixels, world.terrainRevision, world.triggerManager.byOwner.size];
     const result = proof.prove(leader, 1024);
     expect(result.failure).to.equal(null); expect(result.proposal).to.equal(null);
-    expect(result.guardCandidate).to.include({ guardX: 1408, guardY: 109, exitX: 1495, exitY: 99, independentQualification: false });
+    expect(result.guardCandidate).to.include({ guardX: 1408, guardY: 109, exitX: 1495, exitY: 99, terminationTick: 213, naturalWalkingTick: 213, exitTicks: 221, independentQualification: false });
     expect(result.probes).to.equal(834); expect(result.actionSteps).to.equal(311); expect(result.actionSteps).to.be.at.most(GUARDED_TUNNEL_STEPS);
     expect([leader.x, leader.y, leader.action, leader.state, world.stats.removedPixels, world.terrainRevision, world.triggerManager.byOwner.size]).to.deep.equal(before);
     expect(events).to.have.length(0); proof.dispose(); world.dispose();
@@ -41,7 +41,7 @@ describe('actual sourced shoulder with temporary crew containment', function() {
       for (const actor of crew.slice(0, count)) if (actor.x >= 1495 && actor.action === world.actions[State.WALKING] && !actor.failureReason) arrivals.add(actor.id);
       if (world.tunnelRoutes.stats.released && !scene) break;
     }
-    expect(arrivals.size).to.equal(count); expect(world.tickIndex).to.equal(346);
+    expect(arrivals.size).to.equal(count); expect(world.tickIndex).to.equal(347);
     expect(scenes).to.include.members(['pending', 'guarded', 'working', 'connected', 'released']);
     expect(world.tunnelRoutes.snapshot()).to.include({ guards: 1, connected: 1, released: 1, failed: 0, active: 0 });
     expect(world.stats).to.include({ bashes: 2, builds: 0, digs: 0, mines: 0, failures: 0, removedPixels: 624, laneTransfers: 0 });
@@ -81,6 +81,23 @@ describe('actual sourced shoulder with temporary crew containment', function() {
     expect(world.tunnelRoutes.scenes[0]).to.equal(null); expect(guard._tunnelScene).to.equal(null); expect(guard.assistConstructionTask).to.equal(null);
     expect(world.triggerManager.byOwner.has(guard)).to.equal(false); expect(other.failureReason || null).to.equal(null); expect(other.terminalReason || null).to.equal(null);
     expect(crew.some(actor => actor.action === world.actions[State.OHNO])).to.equal(true); world.dispose();
+  });
+  it('requires current ordinary WALK beyond the exit after a real crossing, while allowing later elevations outside the scene', async () => {
+    const { world } = await fixture(8);
+    while (world.tickIndex < 230 && world.tunnelRoutes.scenes[0]?.phase !== 'connected') world.step();
+    const scene = world.tunnelRoutes.scenes[0], live = world.lanePolicy.projects.lanes[0].live;
+    expect(scene.phase).to.equal('connected');
+    // Controlled completed-tick observation negatives, distinct from the live
+    // 8/16 shared-action traversal above. No actor or trigger is moved here.
+    for (const id of scene.releaseMembers) {
+      scene.crossed.add(id); const record = live.get(id);
+      Object.assign(record, { x: scene.exitX + 40, y: scene.exitY - 35, ordinary: true, walking: true, tick: world.tickIndex });
+    }
+    const record = live.get(scene.releaseMembers[0]);
+    record.x = scene.exitX - 1; world.tunnelRoutes.finish(0); expect(scene.releaseReady).to.equal(false);
+    record.x = scene.exitX + 1; record.walking = false; world.tunnelRoutes.finish(0); expect(scene.releaseReady).to.equal(false);
+    record.walking = true; record.ordinary = false; world.tunnelRoutes.finish(0); expect(scene.releaseReady).to.equal(false);
+    record.ordinary = true; world.tunnelRoutes.finish(0); expect(scene.releaseReady).to.equal(true); world.dispose();
   });
   it('rejects changed live blocker rectangles, position and action without silently replacing the owner', async () => {
     for (const mode of ['rectangle', 'position', 'action']) {

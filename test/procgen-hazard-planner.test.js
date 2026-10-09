@@ -32,10 +32,14 @@ describe('bounded procgen physical route proposals', function() {
   it('chooses a viable short staircase to a continuing ledge and executes the unchanged twelve-brick lifecycle', () => {
     const world = make((x, y) => y >= (x >= 80 ? 64 : 72)), actor = at(world, 64), planner = new ProcgenHazardPlanner(world);
     const proposal = planner.plan(actor);
-    expect(proposal).to.include({ kind: 'builders', reason: 'short-stair-to-ledge', materialCost: 12, estimatedTicks: 192, continuationY: 64 });
+    expect(proposal).to.include({ kind: 'builders', reason: 'short-stair-to-ledge', materialCost: 12, estimatedTicks: 209, continuationY: 64 });
     expect(proposal.footprint).to.deep.equal({ x1: 64, x2: 92, y1: 60, y2: 73 });
     expect(world.assignWorker(actor, proposal.kind, proposal.targetX)).to.equal(true);
-    for (let tick = 0; tick < 230; tick++) world.step();
+    for (let tick = 0; tick < proposal.estimatedTicks; tick++) world.step();
+    expect(actor).to.include({ x: 96, y: 64, lookRight: true });
+    expect(actor.action).to.equal(world.actions[State.WALKING]);
+    expect(proposal.routeEvidence).to.include({ kind: 'shared-full-build', exitX: 96, exitY: 64, exitTicks: 209 });
+    for (let tick = proposal.estimatedTicks; tick < 230; tick++) world.step();
     expect(actor.x).to.be.greaterThan(90); expect(actor.y).to.equal(64); expect(actor.failureReason).to.equal(null);
     expect(world.stats.builds).to.equal(1); expect(world.stats.bashes).to.equal(0); expect(world.stats.removedPixels).to.equal(0);
     planner.dispose(); world.dispose();

@@ -23,8 +23,8 @@ class ProcgenSupportedBuild {
     for (const action of Object.values(this.actions)) action.setRuntime(this.runtime);
     this.stats = { proofs: 0, accepted: 0, actionSteps: 0, maxWork: 0 };
   }
-  prove(actor, ground, hazards, maxWork) {
-    const world = this.world, left = actor.x - 1, right = actor.x + 40, top = actor.y - 32, bottom = actor.y + 12;
+  prove(actor, ground, hazards, maxWork, requireOpening = false) {
+    const world = this.world, left = actor.x - 1, right = actor.x + 40, top = actor.y - 32, bottom = actor.y + 32;
     const footprint = { x1: actor.x, x2: actor.x + 28, y1: actor.y - 12, y2: actor.y + 1 };
     const observedBounds = { x1: left, x2: right + 1, y1: top, y2: bottom + 1 };
     const cells = new Map(), patch = new Set(), triggers = [], generation = world.generation, revision = world.terrainRevision, frontier = world.frontierRevision;
@@ -62,6 +62,30 @@ class ProcgenSupportedBuild {
     } } };
     const safe = (x, y) => !hazards.some(h => contact(h, x, y));
     if (!read(actor.x, actor.y) || !safe(actor.x, actor.y)) failure ||= 'launch';
+    if (requireOpening && !failure) {
+      // This exception is for an actual imminent FALL into an observed deep
+      // opening, not every flat floor below the hypothetical brick endpoint.
+      const passive = new Lemming(actor.x, actor.y, actor.id, this.runtime); passive.setAction(this.actions[State.WALKING]);
+      let opening = false;
+      for (let tick = 0; tick < 16 && !failure && passive.x < actor.x + 4; tick++) {
+        if (cells.size + steps >= maxWork) { failure ||= 'budget'; break; }
+        steps++; const next = passive.process(level);
+        if (next !== State.NO_STATE_TYPE && !(next === State.JUMPING && passive.action === this.actions[State.JUMPING])) {
+          if (!this.actions[next]) { failure ||= 'opening-continuation'; break; }
+          passive.setAction(this.actions[next]);
+        }
+        lemmingManagerInteractionMethods.runTrigger.call(interaction, passive, world.tickIndex + steps);
+        if (!passive.lookRight) failure ||= 'turn';
+        if (!safe(passive.x, passive.y)) failure ||= 'hazard';
+        if (passive.action === this.actions[State.FALLING]) {
+          opening = true;
+          for (let y = passive.y; y <= bottom && opening && !failure; y++) if (read(passive.x, y)) opening = false;
+          break;
+        }
+      }
+      if (!opening) failure ||= 'no-deep-opening';
+    }
+    const openingSteps = steps;
     const worker = new Lemming(actor.x, actor.y, actor.id, this.runtime); worker.setAction(this.actions[State.BUILDING]);
     this.stats.proofs++;
     for (; steps < BUILD_ACTION_STEPS && !failure;) {
@@ -80,7 +104,7 @@ class ProcgenSupportedBuild {
     if (built !== 72 || !shrugged || worker.x < actor.x + 24 + BUILD_EXIT_DISTANCE || worker.action !== this.actions[State.WALKING]) failure ||= 'continuation';
     if (world.generation !== generation || world.terrainRevision !== revision || world.frontierRevision !== frontier) failure ||= 'changed-terrain';
     this.stats.actionSteps += steps; this.stats.maxWork = Math.max(this.stats.maxWork, cells.size + steps); if (!failure) this.stats.accepted++;
-    return { safe: !failure, failure, actionSteps: steps, probes: cells.size, built, fell, x: worker.x, y: worker.y, footprint };
+    return { safe: !failure, failure, actionSteps: steps, exitTicks: steps - openingSteps, probes: cells.size, built, fell, x: worker.x, y: worker.y, footprint };
   }
   reset() {}
   dispose() { this.world = null; }
