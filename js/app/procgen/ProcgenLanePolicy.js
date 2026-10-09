@@ -75,6 +75,7 @@ class ProcgenLanePolicy {
     this._decay(lane); lane.attempts++;
     if (proposal.basinScene) { this.world.basinRoutes.begin(actor, proposal, task); return; }
     this.projects.begin(actor, proposal.kind, task);
+    this.world.tunnelRoutes?.begin(actor, proposal, task);
     actor._laneRouteAttempt = { lane: actor.laneIndex, kind: proposal.kind, task, action: actor.action, x: actor.x, y: actor.y, falling: false };
   }
   observe(actor, previousAction, previousX) {

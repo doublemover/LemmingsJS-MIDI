@@ -1,0 +1,118 @@
+import { LemmingStateType as State } from '../../lemmings/LemmingStateType.js';
+
+const TUNNEL_GUARD_TICKS = 1000;
+// One current local port per physical lane. A positive shared-action copy proof
+// precedes the request, and an arriving supported actor owns the real BLOCK.
+class ProcgenTunnelCrewRoutes {
+  constructor(world) { this.world = world; this.scenes = new Array(world.laneCount).fill(null); this.nearby = []; this.stats = { requested: 0, guards: 0, connected: 0, released: 0, failed: 0 }; }
+  request(actor, evidence) {
+    const world = this.world;
+    if (!evidence || !Number.isFinite(evidence.guardY) || this.scenes[actor.laneIndex] || !world.workerLimits.bashers || !world.lanePolicy.projects.canBegin(actor)) return false;
+    this.scenes[actor.laneIndex] = { lane: actor.laneIndex, generation: world.generation, startTick: world.tickIndex, startX: actor.x, startY: actor.y,
+      bounds: { x1: actor.x - 16, x2: evidence.exitX + 1, y1: actor.y - 16, y2: actor.y + 33 }, port: { ...evidence }, phase: 'pending', guard: null, task: null, worker: null };
+    this.stats.requested++; return true;
+  }
+  guard(actor) {
+    const scene = this.scenes[actor.laneIndex];
+    return scene?.phase === 'guarded' && Math.abs(actor.x - scene.startX) <= 3 && Math.abs(actor.y - scene.startY) <= 3 ? scene.guard : null;
+  }
+  reserved(actor) {
+    const scene = this.scenes[actor.laneIndex];
+    return scene?.guard && ['guarded', 'working', 'connected'].includes(scene.phase) && actor !== scene.guard && actor !== scene.worker &&
+      actor.x >= scene.guard.x - 8 && actor.x < scene.startX && Math.abs(actor.y - scene.guard.y) <= 12;
+  }
+  _guardProof(actor, maxWork) {
+    const world = this.world, cells = new Map(); let failure = null;
+    const read = (x, y) => {
+      const lane = Math.floor(y / world.laneHeight), chunk = Math.floor(x / world.terrain.chunkWidth), key = `${x}:${y}`;
+      if (x < world.leftEdgeX || y < 0 || y >= world.height || x >= world.generatedThrough[lane] || world.terrainGrowth?.stateFor(lane, chunk) && !world.terrainGrowth.columnReady?.(lane, x)) { failure ||= 'unrevealed'; return false; }
+      if (!cells.has(key)) { if (cells.size >= maxWork) { failure ||= 'budget'; return false; } cells.set(key, world.hasGroundAt(x, y)); }
+      return cells.get(key);
+    };
+    if (!read(actor.x, actor.y) || !read(actor.x, actor.y + 1)) failure ||= 'support';
+    const masks = world.actions[State.BASHING].masks?.get(actor.getDirection());
+    for (let index = 0; index < 4 && !failure; index++) {
+      const mask = masks?.GetMask(index); if (!mask) { failure = 'masks'; break; }
+      for (let dy = 0; dy < mask.height; dy++) for (let dx = 0; dx < mask.width; dx++) if (!mask.at(dx, dy) && read(actor.x + mask.offsetX + dx, actor.y + mask.offsetY + dy)) failure ||= 'blocked-recovery';
+    }
+    world.hazards.nearby(actor.laneIndex, actor.x, { ahead: 16, behind: 4 }, this.nearby);
+    if (this.nearby.some(h => actor.x + 2 > h.x1 && actor.x - 2 < h.x2 && actor.y + 1 > h.y1 && actor.y - 10 < h.y2)) failure ||= 'hazard';
+    return { safe: !failure, probes: cells.size };
+  }
+  assist(actor) {
+    const world = this.world, scene = this.scenes[actor.laneIndex]; if (!scene) return false;
+    if (actor === scene.guard) {
+      if (scene.phase === 'connected' && scene.releaseReady && actor.action === world.actions[State.BLOCKING] && world._emptyBashMasks(actor) && world.assignWorker(actor, 'bashers')) {
+        scene.phase = 'released'; this.stats.released++;
+      }
+      return actor.action === world.actions[State.BLOCKING];
+    }
+    if (scene.phase !== 'pending' || actor.action !== world.actions[State.WALKING] || !actor.lookRight || actor.scout || actor.canClimb || actor.hasParachute || actor.failureReason || actor.terminalReason || actor.removed ||
+        actor.x < scene.port.guardX - 2 || actor.x > scene.port.guardX + 2 || Math.abs(actor.y - scene.port.guardY) > 2) return false;
+    const stride = Math.max(1, Math.ceil(world.laneCount / 8)); if (actor.laneIndex % stride !== world.tickIndex % stride) return false;
+    const ledger = world.hazardPlanner.admission.begin(actor.laneIndex); if (ledger.consumed || ledger.probes >= 1024 || !world.lanePolicy.projects.canBegin(actor)) return false;
+    const proof = this._guardProof(actor, 1024 - ledger.probes); ledger.probes += proof.probes;
+    if (!proof.safe) return false;
+    actor.setAction(world.actions[State.BLOCKING]); actor._tunnelScene = scene; scene.guard = actor; scene.guardX = actor.x; scene.guardY = actor.y; scene.phase = 'guarded'; world.stats.blockers++; actor.assists++; this.stats.guards++;
+    return true;
+  }
+  begin(actor, proposal, task) {
+    const scene = this.scenes[actor.laneIndex];
+    if (!scene?.guard || proposal.routeEvidence?.rearBlockerId !== scene.guard.id) return;
+    scene.worker = actor; scene.task = task; scene.phase = 'working'; scene.exitX = proposal.routeEvidence.exitX; scene.exitY = proposal.continuationY;
+    scene.crossed = new Set();
+    scene.guard.assistConstructionTask = task; task.blocker = scene.guard; task.tunnelScene = scene;
+    const project = this.world.lanePolicy.projects.lanes[actor.laneIndex].projects.find(entry => entry.id === task.crewProjectId);
+    if (project) {
+      project.exitX = scene.exitX - 8;
+      const live = this.world.lanePolicy.projects.lanes[actor.laneIndex].live;
+      scene.releaseMembers = [...project.members.keys()].filter(id => id !== scene.guard.id && live.get(id)?.x >= scene.guard.x + 7);
+      if (!scene.releaseMembers.includes(actor.id)) scene.releaseMembers.push(actor.id);
+    }
+  }
+  observe(actor) {
+    const scene = this.scenes[actor.laneIndex];
+    if (scene?.releaseMembers?.includes(actor.id) && actor.action === this.world.actions[State.WALKING] && actor.x >= scene.exitX && Math.abs(actor.y - scene.exitY) <= 12 && !actor.failureReason && !actor.terminalReason) scene.crossed.add(actor.id);
+    if (scene?.worker === actor && scene.phase === 'working' && actor.action === this.world.actions[State.WALKING] &&
+        actor.x >= scene.exitX && Math.abs(actor.y - scene.exitY) <= 3 && !actor.failureReason && !actor.terminalReason && actor.lookRight) {
+      scene.phase = 'connected'; this.stats.connected++;
+    }
+  }
+  edit(x, y, ownerId) {
+    const scene = this.scenes[Math.floor(y / this.world.laneHeight)], bounds = scene?.task?.footprint || scene?.bounds;
+    if (bounds && x >= bounds.x1 && x < bounds.x2 && y >= bounds.y1 && y < bounds.y2 && ownerId !== scene.worker?.id) scene.failure = 'changed-route';
+  }
+  finish(lane) {
+    const world = this.world, scene = this.scenes[lane]; if (!scene) return;
+    if (scene.guard && scene.phase !== 'released') {
+      const triggers = world.triggerManager.byOwner.get(scene.guard) || [];
+      const key = triggers.map(trigger => `${trigger.type}:${trigger.x1}:${trigger.x2}:${trigger.y1}:${trigger.y2}`).join(',');
+      if (scene.guard.action !== world.actions[State.BLOCKING] || scene.guard.x !== scene.guardX || scene.guard.y !== scene.guardY || triggers.length !== 2 || scene.triggerKey != null && scene.triggerKey !== key) scene.failure ||= 'changed-guard';
+      scene.triggerKey ??= key;
+    }
+    if (scene.generation !== world.generation || world.tickIndex < scene.startTick || world.tickIndex - scene.startTick > TUNNEL_GUARD_TICKS || scene.failure ||
+        world._manualNukeLanes[lane] || world.stall.phase !== 'running' ||
+        scene.guard && (scene.guard.removed || scene.guard.failureReason || scene.guard.terminalReason || scene.guard.disabled || scene.guard.laneIndex !== lane) ||
+        scene.phase === 'working' && scene.worker && (scene.worker.removed || scene.worker.failureReason || scene.worker.terminalReason || scene.worker.disabled || scene.worker.laneIndex !== lane)) {
+      if (!scene.guard) { this.scenes[lane] = null; return; }
+      world.nukeLane(lane); this.stats.failed++; this.stats.lastFailure = { lane, tick: world.tickIndex, reason: scene.failure || 'tunnel-guard-retirement' }; this._clear(scene); return;
+    }
+    if (scene.phase === 'connected') {
+      const live = world.lanePolicy.projects.lanes[lane].live;
+      scene.releaseReady = scene.releaseMembers?.every(id => {
+        const actor = live.get(id);
+        return actor?.tick === world.tickIndex && scene.crossed.has(id);
+      }) || false;
+    }
+    if (scene.phase === 'released' && scene.guard.action === world.actions[State.WALKING]) this._clear(scene);
+  }
+  _clear(scene) {
+    if (scene.guard) { scene.guard._tunnelScene = null; this.world._clearConstructionCrew(scene.guard); }
+    if (scene.task) scene.task.tunnelScene = null;
+    this.scenes[scene.lane] = null;
+  }
+  reset() { for (const scene of this.scenes) if (scene) this._clear(scene); this.nearby.length = 0; }
+  snapshot() { return { ...this.stats, active: this.scenes.reduce((n, scene) => n + !!scene, 0) }; }
+  dispose() { this.reset(); this.world = null; }
+}
+export { ProcgenTunnelCrewRoutes, TUNNEL_GUARD_TICKS };
