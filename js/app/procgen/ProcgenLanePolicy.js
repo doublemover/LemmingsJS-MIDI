@@ -45,6 +45,11 @@ class ProcgenLanePolicy {
     return (lane.initialBias[proposal.kind] || 0) + (lane.learned[proposal.kind] || 0) + (KINDS[explore] === proposal.kind ? 1 : 0) +
       (observedTrouble && proposal.kind === 'builders' ? 4 : 0);
   }
+  connectedConstruction(actor) {
+    const lane = this.lanes[actor.laneIndex];
+    return lane?.knowledge.some(record => record.kind === 'connected-route' && record.type === 'builders' && Number.isFinite(record.startX) && Number.isFinite(record.startY) && this._valid(record) &&
+      actor.x >= record.startX - 2 && actor.x <= record.x + 8 && Math.abs(actor.y - record.y) <= 16) || false;
+  }
   descentPreference(actor) {
     return this.score(actor, { kind: 'miners' }) > this.score(actor, { kind: 'diggers' }) ? 'miners' : 'diggers';
   }
@@ -75,7 +80,13 @@ class ProcgenLanePolicy {
         else {
           this.remember(actor, 'connected-route', attempt.kind);
           const record = lane.knowledge.find(entry => entry.kind === 'connected-route' && entry.cell === Math.floor(actor.x / 32) && entry.band === Math.floor(actor.y / 24));
-          if (record) { record.ownerId = actor.id; record.rewarded = false; }
+          if (record) {
+            record.ownerId = actor.id; record.rewarded = false;
+            if (attempt.kind === 'builders') {
+              record.startX = attempt.x; record.startY = attempt.y;
+              for (const tile of this._tiles(attempt.x, attempt.y)) if (!record.tiles.some(([key]) => key === tile[0])) record.tiles.push(tile);
+            }
+          }
         }
         actor._laneRouteAttempt = null;
       }

@@ -3,6 +3,7 @@ import { ProcgenBlockerBypass } from './ProcgenBlockerBypass.js';
 import { LemmingStateType as State } from '../../lemmings/LemmingStateType.js';
 import { ProcgenSupportedTunnel } from './ProcgenSupportedTunnel.js';
 import { ProcgenSupportedDescent } from './ProcgenSupportedDescent.js';
+import { ProcgenWalkContinuation } from './ProcgenWalkContinuation.js';
 
 const MAX_LOCAL_ROUTE_DISTANCE = 40;
 const MAX_ROUTE_PROBES = 1024;
@@ -12,6 +13,7 @@ const intersects = (hazard, x, y) => x + 2 > hazard.x1 && x - 2 < hazard.x2 && y
 class ProcgenHazardPlanner {
   constructor(world) {
     this.bypasses = new ProcgenBlockerBypass(world); this.tunnels = new ProcgenSupportedTunnel(world); this.descents = new ProcgenSupportedDescent(world);
+    this.walking = new ProcgenWalkContinuation(world);
     this.world = world; this.observations = []; this.adjacentObservations = []; this.cache = new Array(world.laneCount);
     this.admission = new ProcgenRouteAdmission(world);
     this.stats = { plans: 0, deferred: 0, probes: 0, budgetExhausted: 0, admission: this.admission.stats };
@@ -214,6 +216,14 @@ class ProcgenHazardPlanner {
     if (!proposal && (threat || cliff || gap)) {
       const build = this._builder(actor);
       if (build) build.score += world.lanePolicy?.score(actor, build) || 0;
+      // A coarse gap under existing bricks is not a reason to excavate their
+      // safe passive exit. Retain proactive building unless completed nearby
+      // construction and an actual ordinary shared-action replay justify WALK.
+      if (!bypass.failure && (!build || world.lanePolicy?.connectedConstruction(actor))) {
+        const walking = this.walking.prove(actor, (x, y) => this._ground(x, y), this.observations, MAX_ROUTE_PROBES - this.probes);
+        if (walking.failure === 'unrevealed') this.unrevealed = true;
+        if (walking.safe && !this.exhausted && !this.unrevealed) { this.admission.screened(actor, this.probes); return null; }
+      }
       let bash = null, observedLong = false;
       if (!build && cliff && world.workerLimits?.bashers && this._ground(actor.x + 30, actor.y - 6)) {
         let up = 0; while (up < 8 && this._ground(actor.x + 1, actor.y - up)) up++;
@@ -243,7 +253,7 @@ class ProcgenHazardPlanner {
     this.cache[lane] = { tick: world.tickIndex, key, proposal }; this.stats.plans++;
     return proposal;
   }
-  reset() { this.admission.reset(); this.bypasses.reset(); this.tunnels.reset(); this.descents.reset(); this.cache.fill(null); this.observations.length = 0; this.adjacentObservations.length = 0; }
-  dispose() { this.reset(); this.admission.dispose(); this.bypasses.dispose(); this.tunnels.dispose(); this.descents.dispose(); this.world = null; }
+  reset() { this.admission.reset(); this.bypasses.reset(); this.tunnels.reset(); this.descents.reset(); this.walking.reset(); this.cache.fill(null); this.observations.length = 0; this.adjacentObservations.length = 0; }
+  dispose() { this.reset(); this.admission.dispose(); this.bypasses.dispose(); this.tunnels.dispose(); this.descents.dispose(); this.walking.dispose(); this.world = null; }
 }
 export { ProcgenHazardPlanner, MAX_LOCAL_ROUTE_DISTANCE, MAX_ROUTE_PROBES, ROUTE_LANES_PER_TICK };

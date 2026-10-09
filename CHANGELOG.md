@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Preserve safe completed stair exits through bounded real passive actions instead of unnecessary excavation, while keeping proactive builder proposals.
+
 - Share genuine ceiling-rejected scout climb failures through the existing revision-scoped lane knowledge.
 
 - Preserve complete wide source motifs and HYDRO/SNEAKY glyph words across two tiles with atomic, budgeted collision and display.
