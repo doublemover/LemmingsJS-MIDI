@@ -725,7 +725,9 @@ class BrowserNotePreview {
       callback({ ...voice.playback, id: voice.id, phase, note: voice.note, velocity: Math.round(voice.velocity),
         startMs: voice.startMs, releaseMs: voice.startMs + (releaseAt - voice.start) * 1000,
         endMs: voice.startMs + (voice.end - voice.start) * 1000,
-        attackMs: voice.attack * 1000, decayMs: voice.decay * 1000, sustain: voice.sustain });
+        attackMs: voice.attack * 1000, decayMs: voice.decay * 1000, sustain: voice.sustain,
+        releaseDurationMs: voice.release * 1000, ...(voice.released ? { releaseLevel: voice.releaseLevel / voice.peak } : {}),
+        mixLatencyMs: this._compressor ? MIX_LOOKAHEAD_SECONDS * 1000 : 0 });
     } catch { /* Display observers must never interrupt audio. */ }
   }
 

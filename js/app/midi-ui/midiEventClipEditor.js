@@ -38,9 +38,9 @@ const getMidiClipCellHelp = clip => {
 
 const createMidiEventClipEditor = ({ document, bind, getProject, getSource, commitProject, dispatch, history, setStatus }) => {
   const byId = id => document?.getElementById(id);
-  let selected = 0, selectedClip = null, brush = 60, gesture = null;
+  let selected = 0, selectedClip = null, selectedSource = null, brush = 60, gesture = null, replaceFieldValues = false, updatingGesture = false;
   const clip = () => getSource()?.mode === 'clip' ? getProject().clips.find(item => item.id === getSource()?.clipId) : null;
-  const input = (id, value) => { const element = byId(id); if (element && (element.tagName === 'SELECT' || element !== document.activeElement)) element.value = String(value ?? ''); };
+  const input = (id, value) => { const element = byId(id); if (element && (replaceFieldValues || element.tagName === 'SELECT' || element !== document.activeElement)) element.value = String(value ?? ''); };
   const update = patch => { const current = clip(); if (current) dispatch({ type: 'clip.step.update', clipId: current.id, stepIndex: selected, patch }); };
   const retainFieldFocus = root => {
     const active = document.activeElement;
@@ -128,13 +128,25 @@ const createMidiEventClipEditor = ({ document, bind, getProject, getSource, comm
     });
     const add = byId('midiEventClipLayerAdd'); if (add) add.disabled = !clip()?.playback || layers.length >= MAX_CLIP_TRANSFORM_LAYERS; restoreFocus();
   };
+  const finish = event => {
+    if (!gesture || event?.pointerId != null && gesture.pointerId != null && event.pointerId !== gesture.pointerId) return;
+    const pointerId = gesture.pointerId; gesture = null; history.endGesture();
+    const root = byId('midiEventClipGrid'); if (root?.hasPointerCapture?.(pointerId)) root.releasePointerCapture?.(pointerId);
+  };
+  const ownsGesture = current => current?.id === gesture?.clipId && getSource()?.id === gesture?.sourceId && (updatingGesture || getProject() === gesture.project);
+  const updateGesture = patch => {
+    updatingGesture = true;
+    try { update(patch); } finally { updatingGesture = false; if (gesture) gesture.project = getProject(); }
+  };
   const render = () => {
     const current = clip(), source = getSource(), root = byId('midiEventClipGrid');
     if (!root) return;
+    const replacedGesture = gesture && !ownsGesture(current); if (replacedGesture) finish();
     byId('midiClipCreate').hidden = !!current; byId('midiClipCreate').disabled = !source;
     byId('midiClipControls').hidden = !current;
     if (byId('midiDirectSoundControls')) byId('midiDirectSoundControls').hidden = !!current;
-    if (!current) { selectedClip = null; return; }
+    if (!current) { selectedClip = selectedSource = null; return; }
+    replaceFieldValues = replacedGesture || current.id !== selectedClip || source?.id !== selectedSource; selectedSource = source?.id;
     if (current.id !== selectedClip) { selectedClip = current.id; selected = 0; brush = current.steps[0]?.note ?? 60; }
     selected = Math.min(selected, Math.min(15, current.lengthSteps - 1));
     const focused = document.activeElement?.dataset?.cellIndex;
@@ -178,7 +190,7 @@ const createMidiEventClipEditor = ({ document, bind, getProject, getSource, comm
     input('midiEventClipCondition', step.condition?.unit || 'event'); input('midiEventClipEvery', step.condition?.every || 1);
     byId('midiEventClipHint').textContent = current.name + ' · ' + describeMidiClipPlayback(current) + (current.lengthSteps > 16 ? ' Showing the first 16 cells; use detailed wiring for later cells.' : '') + ' Open Counter timing for event/pass/bar and phase semantics. Click to paint/erase. Drag vertically to change pitch; drag across to paint. Notes accept C4, F#4, 60 or rest.';
   };
-  const finish = () => { if (gesture) { history.endGesture(); gesture = null; } };
+
   const initialize = () => {
     bind('midiEventClipVoiceAdd', 'click', () => { const current = clip(); if (!current?.playback) return;
       const voices = getMidiClipVoices(current.steps[selected]).map(voice => ({ ...voice }));
@@ -201,17 +213,21 @@ const createMidiEventClipEditor = ({ document, bind, getProject, getSource, comm
     const transforms = () => update({ transforms: { transpose: Number(byId('midiEventClipTranspose').value), octave: Number(byId('midiEventClipOctave').value), interval: Number(byId('midiEventClipInterval').value), span: Number(byId('midiEventClipSpan').value), unit: byId('midiEventClipTransformUnit').value } });
     for (const id of ['Transpose', 'Octave', 'Interval', 'Span', 'TransformUnit']) bind('midiEventClip' + id, 'change', transforms);
     bind('midiEventClipGrid', 'pointerdown', event => {
-      const target = event.target.closest?.('[data-cell-index]'), current = clip(); if (!target || !current || event.button !== 0) return;
+      const target = event.target.closest?.('[data-cell-index]'), original = clip(), sourceId = getSource()?.id; if (!target || !original || event.button !== 0) return;
+      finish(); target.focus?.({ preventScroll: true });
+      const current = clip(); if (current?.id !== original.id || getSource()?.id !== sourceId) return;
       selected = Number(target.dataset.cellIndex); const root = byId('midiEventClipGrid');
-      gesture = { rect: root.getBoundingClientRect(), startY: event.clientY, note: current.steps[selected].note === brush ? null : brush, last: '' };
+      gesture = { project: getProject(), clipId: current.id, sourceId: getSource()?.id, pointerId: event.pointerId, rect: root.getBoundingClientRect(), startY: event.clientY, note: current.steps[selected].note === brush ? null : brush, last: '' };
       history.beginGesture(); root.setPointerCapture?.(event.pointerId); event.preventDefault();
-      update({ note: gesture.note });
+      updateGesture({ note: gesture.note });
     });
     bind('midiEventClipGrid', 'pointermove', event => {
-      if (!gesture) return; const current = clip(); if (!current) { finish(); return; }
+      if (!gesture || event.pointerId != null && gesture.pointerId != null && event.pointerId !== gesture.pointerId) return;
+      const current = clip(); if (!ownsGesture(current)) { finish(); return; }
       selected = Math.max(0, Math.min(Math.min(16, current.lengthSteps) - 1, Math.floor((event.clientX - gesture.rect.left) / gesture.rect.width * Math.min(16, current.lengthSteps))));
       const note = gesture.note == null ? null : Math.max(0, Math.min(127, gesture.note + Math.round((gesture.startY - event.clientY) / 6)));
-      const key = selected + ':' + note; if (gesture.last === key) return; gesture.last = key; update({ note });
+      const key = selected + ':' + note; if (gesture.last === key) return; gesture.last = key;
+      byId('midiEventClipGrid').children[selected]?.focus?.({ preventScroll: true }); updateGesture({ note });
     });
     for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) bind('midiEventClipGrid', event, finish);
     bind('midiEventClipGrid', 'click', event => { if (event.detail !== 0) return; const cell = event.target.closest?.('[data-cell-index]'); if (!cell) return;

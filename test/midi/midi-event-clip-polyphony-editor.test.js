@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { TestDocument } from '../helpers/test-dom.js';
 import { registerElement } from '../support/dom-fixtures.js';
+import { createMidiEditHistory } from '../../js/app/midi-ui/midiEditHistory.js';
 import { createMidiEventClipEditor } from '../../js/app/midi-ui/midiEventClipEditor.js';
 import { MidiEventRouter } from '../../js/midi/MidiEventRouter.js';
 import { EventHandler } from '../../js/util/EventHandler.js';
@@ -8,7 +9,7 @@ import { withFakeClockAndPerformance } from '../support/timers.js';
 import { makeOutput } from '../support/midi-output.js';
 import { createMidiProjectFromMidiConfig, reduceMidiProject, sanitizeMidiProject, projectToMidiConfig } from '../../js/midi/project/MidiProject.js';
 
-const createEditorFixture = (clip = {}) => {
+const createEditorFixture = (clip = {}, history = { beginGesture() {}, endGesture() {} }) => {
   const doc = new TestDocument(), create = doc.createElement.bind(doc);
   doc.createElement = tag => { const el = create(tag); el.replaceChildren = (...children) => { while (el.firstChild) el.removeChild(el.firstChild); el.append(...children); }; el.style.setProperty = () => {}; el.setSelectionRange = (start, end, direction) => { el.selectionStart = start; el.selectionEnd = end; el.selectionDirection = direction; }; return el; };
   for (const id of ['midiClipCreate', 'midiClipControls', 'midiEventClipGrid', 'midiEventClipLength', 'midiEventClipAdvance', 'midiEventClipSpacing', 'midiClipSpacingField',
@@ -21,13 +22,64 @@ const createEditorFixture = (clip = {}) => {
   project = reduceMidiProject(project, { type: 'source.clip.assign', sourceId: project.sources[0].id, clipId: 'poly' });
   let editor; const step = () => project.clips.find(clip => clip.id === 'poly').steps[0];
   editor = createMidiEventClipEditor({ document: doc, bind: (id, type, action) => doc.getElementById(id)?.addEventListener(type, action),
-    getProject: () => project, getSource: () => project.sources[0], commitProject: next => { project = next; }, history: { beginGesture() {}, endGesture() {} }, setStatus() {},
-    dispatch: intent => { project = reduceMidiProject(project, intent); editor.render(); } });
+    getProject: () => project, getSource: () => project.sources[0], commitProject: next => { project = next; }, history, setStatus() {},
+    dispatch: intent => { const next = reduceMidiProject(project, intent); history.record?.(project, next); project = next; editor.render(); } });
   editor.initialize(); editor.render();
-  return { doc, editor, step, getProject: () => project, dispatch: intent => { project = reduceMidiProject(project, intent); editor.render(); } };
+  return { doc, editor, step, getProject: () => project, undo: () => history.undo(project, next => { project = next; editor.render(); }), dispatch: intent => { project = reduceMidiProject(project, intent); editor.render(); } };
 };
 
 describe('existing cell inspector independent voices and ordered layers', function() {
+  it('commits a dirty old note field to its original cell before beginning the new painted stroke', function() {
+    const f = createEditorFixture({}, createMidiEditHistory()), grid = f.doc.getElementById('midiEventClipGrid'), input = f.doc.getElementById('midiEventClipNote');
+    grid.getBoundingClientRect = () => ({ left: 0, width: 800 });
+    const target = grid.children[1], focus = target.focus.bind(target);
+    target.focus = () => { input.dispatchEvent({ type: 'change', target: input }); focus(); };
+    input.focus(); input.value = 'F#4';
+    grid.dispatchEvent({ type: 'pointerdown', target: { closest: () => target }, pointerId: 1, button: 0, clientX: 150, clientY: 50, preventDefault() {} });
+    expect(f.getProject().clips[0].steps[0].note).to.equal(66); expect(f.getProject().clips[0].steps[1].note).to.equal(66);
+    grid.dispatchEvent({ type: 'pointermove', pointerId: 1, clientX: 450, clientY: 44 });
+    grid.dispatchEvent({ type: 'pointerup', pointerId: 1 });
+    expect(f.getProject().clips[0].steps[4].note).to.equal(67); expect(input.value).to.equal('G4');
+    expect(f.undo()).to.equal(true); expect(f.getProject().clips[0].steps[0].note).to.equal(66);
+    expect(f.getProject().clips[0].steps[1].note).to.equal(null); expect(f.getProject().clips[0].steps[4].note).to.equal(null);
+    expect(f.undo()).to.equal(true); expect(f.getProject().clips[0].steps[0].note).to.equal(60); f.editor.dispose();
+  });
+
+  it('focuses the painted cell, groups a captured stroke into one Undo, and cancels stale clip ownership', function() {
+    const history = createMidiEditHistory(), f = createEditorFixture({}, history);
+    const grid = f.doc.getElementById('midiEventClipGrid'), input = f.doc.getElementById('midiEventClipNote');
+    const captured = new Set();
+    grid.getBoundingClientRect = () => ({ left: 0, top: 0, width: 800, height: 100 });
+    grid.setPointerCapture = id => captured.add(id); grid.hasPointerCapture = id => captured.has(id); grid.releasePointerCapture = id => captured.delete(id);
+    const pointer = (type, index, extra = {}) => {
+      const cell = grid.children[index];
+      grid.dispatchEvent({ type, target: { closest: () => cell }, button: 0, pointerId: 1, clientX: index * 100 + 50, clientY: 50, preventDefault() {}, ...extra });
+    };
+    const before = f.getProject().clips[0]; input.focus(); input.value = 'F#7';
+    pointer('pointerdown', 1);
+    expect(f.doc.activeElement).to.equal(grid.children[1]); expect(input.value).to.equal('C4'); expect(captured.has(1)).to.equal(true);
+    pointer('pointermove', 4, { pointerId: 2, clientY: 44 }); expect(f.getProject().clips[0].steps[4].note).to.equal(null);
+    pointer('pointermove', 4, { clientY: 44 });
+    expect(f.doc.activeElement).to.equal(grid.children[4]); expect(input.value).to.equal('C\u266f4');
+    expect(f.getProject().clips[0].steps[1].note).to.equal(60); expect(f.getProject().clips[0].steps[4].note).to.equal(61);
+    expect(f.getProject().clips[0].steps[0]).to.deep.equal(before.steps[0]);
+    pointer('pointerup', 4); expect(captured.size).to.equal(0);
+    expect(f.undo()).to.equal(true); expect(f.getProject().clips[0]).to.deep.equal(before); expect(f.undo()).to.equal(false);
+    pointer('pointerdown', 2); input.focus(); input.value = 'F#7';
+    f.dispatch({ type: 'clip.step.update', clipId: 'poly', stepIndex: 0, patch: { note: 72 } });
+    const sameIdReplacement = f.getProject().clips[0];
+    expect(captured.size).to.equal(0); expect(input.value).to.equal('C4');
+    pointer('pointermove', 6, { clientY: 20 }); expect(f.getProject().clips[0]).to.deep.equal(sameIdReplacement);
+    pointer('pointerdown', 3); input.focus(); input.value = 'F#7';
+    f.dispatch({ type: 'clip.add', clip: { id: 'replacement', lengthSteps: 8, playback: { advance: 'event' }, steps: [{ note: 72 }] } });
+    f.dispatch({ type: 'source.clip.assign', sourceId: f.getProject().sources[0].id, clipId: 'replacement' });
+    const replacement = f.getProject().clips.find(clip => clip.id === 'replacement');
+    expect(captured.size).to.equal(0); expect(input.value).to.equal('C5');
+    pointer('pointermove', 6, { clientY: 20 }); pointer('pointerup', 6);
+    expect(f.getProject().clips.find(clip => clip.id === 'replacement')).to.deep.equal(replacement);
+    expect(f.getProject().enabled).to.equal(false); f.editor.dispose();
+  });
+
   it('shows every pitch/dynamic, edits the current model, and adds/removes/reorders bounded layers without changing playback clocks', function() {
     const { doc, editor, step, dispatch, getProject } = createEditorFixture();
     const change = (element, value) => { element.value = String(value); element.dispatchEvent({ type: 'change', target: element }); };

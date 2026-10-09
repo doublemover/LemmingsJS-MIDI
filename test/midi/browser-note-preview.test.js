@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { EventHandler } from '../../js/util/EventHandler.js';
-import { createMidiEventPlayback } from '../../js/app/midi-ui/midiEventPlayback.js';
+import { createMidiEventPlayback, getMidiEventPlaybackEnvelope } from '../../js/app/midi-ui/midiEventPlayback.js';
 import { TestDocument } from '../helpers/test-dom.js';
 import { readFileSync } from 'node:fs';
 import { BrowserNotePreview, createBrowserNotePreview } from '../../js/app/midi-ui/browserNotePreview.js';
@@ -370,6 +370,25 @@ describe('BrowserNotePreview', function() {
     await preview.dispose();
   });
 
+  it('publishes profile envelope and early-release amplitude only from actual admitted local voices', async function() {
+    const events = [], { preview } = setup({ onPlayback: event => events.push(event) });
+    try {
+      await preview.enable();
+      const options = { rawAttack: 100, time: 1100, voiceToken: 1, instrument: { program: 38, legacy: false }, playback: { sfxId: 20, durationMs: 120, stepIndex: 1, stepCount: 3 } };
+      expect(preview.output.channels[1].sendNoteOn(48, options)).to.equal(true);
+      const voice = [...preview._voices][0], onset = events[0];
+      expect(onset).to.include({ phase: 'start', note: 48, attackMs: 6, decayMs: 50, sustain: 0.82, releaseDurationMs: 60, mixLatencyMs: 6, stepIndex: 1, stepCount: 3 });
+      const gain = voice.gain.gain.events;
+      expect(gain.find(event => event.type === 'ramp' && event.value === voice.peak).time - voice.start).to.be.closeTo(onset.attackMs / 1000, 0.000001);
+      expect(gain.find(event => event.type === 'ramp' && event.value === voice.peak * onset.sustain).time - voice.start).to.be.closeTo((onset.attackMs + onset.decayMs) / 1000, 0.000001);
+      expect(getMidiEventPlaybackEnvelope(onset).endMs).to.be.closeTo(1286, 0.000001);
+      preview.output.channels[1].sendNoteOff(48, { time: 1104, voiceToken: 1 });
+      const release = events[1]; expect(release.releaseLevel).to.be.closeTo(2 / 3, 0.000001);
+      expect(getMidiEventPlaybackEnvelope(release).points[1].level).to.be.closeTo(voice.releaseLevel / voice.peak, 0.000001);
+      expect(getMidiEventPlaybackEnvelope(release).endMs).to.be.closeTo(1170, 0.000001);
+      preview.stop(); expect(events.at(-1).phase).to.equal('end');
+    } finally { await preview.dispose(); }
+  });
   it('emits playback only at scheduler dispatch and cancels a future note before it sounds', async function() {
     await withFakeClockAndPerformance(async clock => {
       const events = []; const { preview } = setup({ nowMs: () => clock.now, onPlayback: event => events.push(event) });
