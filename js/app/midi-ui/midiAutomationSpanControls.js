@@ -2,7 +2,7 @@ import { MIDI_AUTOMATION_SPAN_PRESETS, createMidiAutomationSpanBundle } from '..
 import { createMidiAutomationSpanEditor, createMidiSpan } from './midiAutomationSpanEditor.js';
 import { AUTOMATION_TARGETS } from '../../midi/project/MidiProject.js';
 const find = (host, matches) => matches(host) ? host : Array.from(host.children || []).map(child => find(child, matches)).find(Boolean);
-const createMidiAutomationSpanControls = ({ document, getProject, onIntent, getRouter, getLaneCount, onSelect = () => {}, onReturnToSpatial = () => {}, allowSpatialConversion = true, ids = {} }) => {
+const createMidiAutomationSpanControls = ({ document, getProject, onIntent, getRouter, getLaneCount, onSelect = () => {}, onReturnToSpatial = () => {}, allowSpatialConversion = true, includeSpatial = false, ids = {} }) => {
   const names = { list: 'midiMainSpanList', preset: 'midiSpanPreset', presetApply: 'midiSpanPresetApply', domain: 'midiSpanPresetDomain', presetStatus: 'midiSpanPresetStatus', ...ids };
   const element = key => names[key] ? document.getElementById(names[key]) : null;
   const list = element('list'), add = element('add');
@@ -12,6 +12,7 @@ const createMidiAutomationSpanControls = ({ document, getProject, onIntent, getR
   let selectedId = null, sequence = 0, rendering = false, initialized = false, page = 0;
   const pageSize = 64;
   const selected = new Set(), expanded = new Set(), editors = new Map();
+  const entriesForList = () => getProject().automation.filter(entry => entry.span).concat(includeSpatial ? getProject().automation.filter(entry => !entry.span) : []);
   const announce = () => onSelect(selectedId, [...selected]);
   const nextId = () => {
     let id;
@@ -19,11 +20,11 @@ const createMidiAutomationSpanControls = ({ document, getProject, onIntent, getR
     return id;
   };
   const select = (id, { additive = false, focus = false } = {}) => {
-    const index = getProject().automation.filter(entry => entry.span).findIndex(entry => entry.id === id);
+    const entries = entriesForList(), index = entries.findIndex(entry => entry.id === id);
     if (index < 0 || additive && selected.size >= pageSize && !selected.has(id)) return;
     if (!additive) selected.clear();
     page = Math.floor(index / pageSize);
-    selected.add(id); expanded.add(id); selectedId = id; render(); announce();
+    if (entries[index].span) selected.add(id); expanded.add(id); selectedId = id; render(); announce();
     if (focus && list) { const row = find(list, element => element.dataset?.spanId === id); if (row) find(row, element => element.dataset?.spanProperty === 'name')?.focus?.({ preventScroll: true }); }
   };
   const updateSelected = (patch, spanPatch = null) => {
@@ -59,21 +60,21 @@ const createMidiAutomationSpanControls = ({ document, getProject, onIntent, getR
     const selection = active?.type === 'text' ? [active.selectionStart, active.selectionEnd, active.selectionDirection] : null;
     try {
       while (list.firstChild) list.removeChild(list.firstChild);
-      const project = getProject(), allSpans = project.automation.filter(entry => entry.span), ids = new Set(allSpans.map(entry => entry.id));
-      page = Math.max(0, Math.min(page, Math.ceil(allSpans.length / pageSize) - 1));
-      const spans = allSpans.slice(page * pageSize, (page + 1) * pageSize);
-      for (const id of selected) if (!ids.has(id)) selected.delete(id);
+      const project = getProject(), allSpans = project.automation.filter(entry => entry.span), allEntries = entriesForList(), ids = new Set(allEntries.map(entry => entry.id));
+      page = Math.max(0, Math.min(page, Math.ceil(allEntries.length / pageSize) - 1));
+      const spans = allEntries.slice(page * pageSize, (page + 1) * pageSize);
+      for (const id of selected) if (!allSpans.some(entry => entry.id === id)) selected.delete(id);
       const visibleIds = new Set(spans.map(entry => entry.id));
       for (const id of expanded) if (!visibleIds.has(id)) expanded.delete(id);
-      if (!initialized && spans[0]) { selected.add(spans[0].id); expanded.add(spans[0].id); selectedId = spans[0].id; }
+      if (!initialized && spans[0]) { if (spans[0].span) selected.add(spans[0].id); expanded.add(spans[0].id); selectedId = spans[0].id; }
       initialized = spans.length > 0;
       if (!ids.has(selectedId)) selectedId = selected.values().next().value || null;
       editors.clear();
-      if (allSpans.length > pageSize) {
+      if (allEntries.length > pageSize) {
         const navigation = document.createElement('div'); navigation.className = 'midi-span-batch'; navigation.setAttribute('role', 'group'); navigation.setAttribute('aria-label', 'Musical span pages');
-        const status = document.createElement('span'); status.textContent = 'Spans ' + (page * pageSize + 1) + '-' + Math.min(allSpans.length, (page + 1) * pageSize) + ' of ' + allSpans.length + '; up to 64 selected for common edits.'; navigation.append(status);
+        const status = document.createElement('span'); status.textContent = (includeSpatial ? 'Automation ' : 'Spans ') + (page * pageSize + 1) + '-' + Math.min(allEntries.length, (page + 1) * pageSize) + ' of ' + allEntries.length + '; up to 64 selected for common edits.'; navigation.append(status);
         for (const [label, delta, key] of [['Previous spans', -1, 'pagePrevious'], ['Next spans', 1, 'pageNext']]) {
-          const button = document.createElement('button'); button.type = 'button'; button.textContent = label; button.dataset.bulkSpanField = key; button.disabled = delta < 0 ? page === 0 : (page + 1) * pageSize >= allSpans.length;
+          const button = document.createElement('button'); button.type = 'button'; button.textContent = label; button.dataset.bulkSpanField = key; button.disabled = delta < 0 ? page === 0 : (page + 1) * pageSize >= allEntries.length;
           button.addEventListener('click', () => { page += delta; render(); }); navigation.append(button);
         }
         list.append(navigation);
@@ -98,14 +99,16 @@ const createMidiAutomationSpanControls = ({ document, getProject, onIntent, getR
         list.append(toolbar);
       }
       for (const lane of spans) {
-        const row = document.createElement('div'); row.className = 'midi-span-row'; row.dataset.spanId = lane.id;
+        const row = document.createElement('div'); row.className = lane.span ? 'midi-span-row' : 'midi-span-row midi-spatial-row'; row.dataset.spanId = lane.id;
         const header = document.createElement('div'); header.className = 'midi-span-row-header';
-        const selectedLabel = document.createElement('label'); const check = document.createElement('input'); check.type = 'checkbox'; check.checked = selected.has(lane.id); check.dataset.spanProperty = 'selected'; check.setAttribute('aria-label', 'Select ' + lane.name);
-        check.disabled = !check.checked && selected.size >= pageSize; check.title = check.disabled ? 'Deselect another span before selecting more than 64.' : 'Include this span in common edits';
-        check.addEventListener('change', () => { if (check.checked && selected.size >= pageSize && !selected.has(lane.id)) { check.checked = false; return; } if (check.checked) { selected.add(lane.id); expanded.add(lane.id); selectedId = lane.id; } else { selected.delete(lane.id); if (selectedId === lane.id) selectedId = selected.values().next().value || null; } render(); announce(); }); selectedLabel.append(check); header.append(selectedLabel);
+        if (lane.span) {
+          const selectedLabel = document.createElement('label'); const check = document.createElement('input'); check.type = 'checkbox'; check.checked = selected.has(lane.id); check.dataset.spanProperty = 'selected'; check.setAttribute('aria-label', 'Select ' + lane.name);
+          check.disabled = !check.checked && selected.size >= pageSize; check.title = check.disabled ? 'Deselect another span before selecting more than 64.' : 'Include this span in common edits';
+          check.addEventListener('change', () => { if (check.checked && selected.size >= pageSize && !selected.has(lane.id)) { check.checked = false; return; } if (check.checked) { selected.add(lane.id); expanded.add(lane.id); selectedId = lane.id; } else { selected.delete(lane.id); if (selectedId === lane.id) selectedId = selected.values().next().value || null; } render(); announce(); }); selectedLabel.append(check); header.append(selectedLabel);
+        }
         const button = document.createElement('button'); button.type = 'button'; button.textContent = lane.name; button.dataset.spanProperty = 'open'; button.setAttribute('aria-pressed', String(selected.has(lane.id))); button.setAttribute('aria-expanded', String(expanded.has(lane.id))); button.addEventListener('click', event => select(lane.id, { additive: event.ctrlKey || event.metaKey || event.shiftKey })); header.append(button);
         const enabledLabel = document.createElement('label'); enabledLabel.textContent = 'On'; const enabled = document.createElement('input'); enabled.type = 'checkbox'; enabled.checked = lane.enabled; enabled.dataset.spanProperty = 'enabled'; enabled.setAttribute('aria-label', lane.name + ' enabled'); enabled.addEventListener('change', () => onIntent({ type: 'automation.update', automationId: lane.id, patch: { enabled: enabled.checked } })); enabledLabel.append(enabled); header.append(enabledLabel);
-        const summary = document.createElement('span'); summary.textContent = lane.span.domain + ' · ' + lane.span.shape + ' · priority ' + lane.span.priority; header.append(summary);
+        const summary = document.createElement('span'); summary.textContent = lane.span ? lane.span.domain + ' · ' + lane.span.shape + ' · priority ' + lane.span.priority : 'Saved spatial curve - ' + lane.axis + ' / ' + lane.points.length + ' control points'; header.append(summary);
         const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Remove'; remove.dataset.spanProperty = 'remove'; remove.addEventListener('click', () => onIntent({ type: 'automation.remove', automationId: lane.id })); header.append(remove); row.append(header);
         if (expanded.has(lane.id)) {
           const fields = document.createElement('div'); fields.className = 'midi-span-fields';
@@ -116,10 +119,12 @@ const createMidiAutomationSpanControls = ({ document, getProject, onIntent, getR
             input.value = String(lane[key]); input.setAttribute('aria-label', lane.name + ' ' + label); input.addEventListener('change', () => { const value = choices || key === 'name' ? input.value : Number(input.value); if (choices || key === 'name' || Number.isFinite(value)) onIntent({ type: 'automation.update', automationId: lane.id, patch: { [key]: value } }); }); wrapper.append(input); fields.append(wrapper);
           };
           field('Name', 'name'); field('Target', 'target', AUTOMATION_TARGETS); field('Start value', 'min'); field('End value', 'max'); row.append(fields);
-          const editor = createMidiAutomationSpanEditor({ document, lane, tracks: project.tracks, laneCount: getLaneCount(), open: true, canReturnToSpatial: allowSpatialConversion,
-            getState: () => getRouter()?.getAutomationSpanState?.(lane.id, Math.min(getLaneCount() - 1, lane.span.laneStart)),
-            onUpdate: patch => { const returnFocus = patch.span === null && row.contains(document.activeElement); onIntent({ type: 'automation.update', automationId: lane.id, patch }); if (returnFocus) onReturnToSpatial(lane.id); } });
-          editor.addEventListener('toggle', () => { if (!list.contains(editor)) return; if (!editor.open) expanded.delete(lane.id); else expanded.add(lane.id); }); editors.set(lane.id, editor); row.append(editor);
+          if (lane.span) {
+            const editor = createMidiAutomationSpanEditor({ document, lane, tracks: project.tracks, laneCount: getLaneCount(), open: true, canReturnToSpatial: allowSpatialConversion,
+              getState: () => getRouter()?.getAutomationSpanState?.(lane.id, Math.min(getLaneCount() - 1, lane.span.laneStart)),
+              onUpdate: patch => { const returnFocus = patch.span === null && row.contains(document.activeElement); onIntent({ type: 'automation.update', automationId: lane.id, patch }); if (returnFocus) onReturnToSpatial(lane.id); } });
+            editor.addEventListener('toggle', () => { if (!list.contains(editor)) return; if (!editor.open) expanded.delete(lane.id); else expanded.add(lane.id); }); editors.set(lane.id, editor); row.append(editor);
+          }
         }
         list.append(row);
       }

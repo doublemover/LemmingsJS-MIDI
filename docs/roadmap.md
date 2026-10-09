@@ -1000,9 +1000,11 @@ Accepted design is pinned to fe73f80 in the [independent audit](https://chatgpt.
   passage and release/recovery through existing physical action owners; emit
   musical resolution only from actual completed-tick progress. Qualify the exact
   scene with ordinary crews and inspect it at the default native camera.
-- [x] Reward useful ordinary passage and preserved route options, penalize
-  repeated/unnecessary excavation, and decay learned preferences toward seeded
-  lane personality. Preserve worker/probe limits; no cosmetic builder quota.
+- [x] Reward useful ordinary passage, complete admitted crews and recovered
+  containment; decay learned preferences toward seeded lane personality.
+  Preserve worker/probe limits; no cosmetic builder quota.
+- [ ] Add scene-level preserved-option and unnecessary-intervention scoring once
+  real alternate routes and staged construction outcomes supply evidence.
 - [x] Retain active descriptor/growth pairs fairly across actor, worksite and
   materialization interests; release cold history, preserve aligned source
   groups and expose bounded hit/miss/rebuild/payload counters. Compare identical
@@ -1102,3 +1104,19 @@ and Panic cleanup. Projects cover97.88%lines/92.63%branches; Policy all lines an
 The earlier exposed64px Crystal candidate is largely roofed and is not an
 accepted bridge scene. Open-bank source admission and staged construction remain
 the next feature slice. Receipts are ignored temp/crew-project-coverage.
+
+Canonical automation and group editing: procgen now stores every present
+sanitized automation entry in v2, including converted spatial curves. Legacy v1
+entries migrate without truncating overflow pages; data already discarded by an
+older v1 save remains unrecoverable. The list renders 64 rows per page and retains
+later pages. A same-domain group move or resize creates one batch edit and one
+Undo step; Undo/Redo restores automation while preserving current preset,
+priority, tension, device, gain and listening settings. Mixed-domain moves report
+an explicit refusal, and stale spans or regenerated worlds cancel the draft.
+
+All 132 affected controller/shared-span checks pass. A muted native Edge journey
+at 1440 by 960 moves two selected spans by exactly 0.5 beat, writes only on
+pointer release, undoes/redoes both together, and preserves a named, disabled
+spatial curve and its points across reload. No output activation, MIDI permission
+request or page error occurs. Existing runtime limits remain unchanged. The
+ignored receipt is temp/procgen-group-native/receipt.json.

@@ -215,7 +215,8 @@ describe('musical span editing and lane rectangles', () => {
     const controls = createProcgenMidiSpanControls({ document, getProject: () => project, getLaneCount: () => 8, getRouter: () => null, onIntent: intent => { project = reduceMidiProject(project, intent); } });
     controls.addSpan(createMidiSpan(), 'note'); let changed = false; const remove = list.removeChild.bind(list);
     list.removeChild = child => { if (!changed) { changed = true; controls.render(); } if (!list.children.includes(child)) throw new Error('Focused row removed twice'); return remove(child); };
-    expect(() => controls.render()).not.to.throw(); expect(list.children).to.have.length(1); controls.dispose();
+    expect(() => controls.render()).not.to.throw(); expect(list.children.filter(row => project.automation.find(entry => entry.id === row.dataset.spanId)?.span)).to.have.length(1);
+    expect(list.children).to.have.length(project.automation.length); controls.dispose();
   });
   it('keeps pointer input available to game/camera controls until drawing is explicitly enabled', () => {
     const document = new TestDocument(), canvas = document.createElement('canvas'); canvas.id = 'gameCanvas'; document.registerElement('gameCanvas', canvas);

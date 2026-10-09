@@ -1,5 +1,7 @@
 import { createProcgenMidiSpanOverlay } from './ProcgenMidiSpanOverlay.js';
 import { createProcgenMidiSpanControls } from './ProcgenMidiSpanControls.js';
+import { createMidiEditHistory } from '../midi-ui/midiEditHistory.js';
+import { loadProcgenAutomation, saveProcgenAutomation } from './ProcgenAutomationStorage.js';
 import { createMidiTensionControls } from '../midi-ui/midiTensionControls.js';
 import { createMidiOutputCapture } from '../../midi/capture/MidiOutputCapture.js';
 import { createMidiCaptureControls } from '../midi-ui/midiCaptureControls.js';
@@ -41,7 +43,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   let tensionPreferences = null;
   try { const stored = JSON.parse(window.localStorage?.getItem(tensionStorageKey) || 'null'); if (stored?.version === 1 && stored.value && typeof stored.value === 'object') tensionPreferences = stored.value; } catch { /* Keep the preset defaults. */ }
   let project = applyProcgenGameEventMidiPreset(createMidiProjectFromMidiConfig({ enabled: false, sfx: {}, triggers: {} }), settings.preset);
-  const spanStorageKey = 'lemmings.procgen.automationSpans.v1', workerStorageKey = 'lemmings.procgen.workerLimits.v1';
+  const workerStorageKey = 'lemmings.procgen.workerLimits.v1';
   settings.workerLimits = normalizeWorkerLimits();
   const populationKey = 'lemmings.procgen.population.v1', priorityKey = 'lemmings.procgen.spawnPriority.v1';
   settings.populationPolicy = normalizePopulationPolicy();
@@ -49,7 +51,8 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   try { const stored = JSON.parse(window.localStorage?.getItem(populationKey) || 'null'); if (stored?.version === 1) settings.populationPolicy = normalizePopulationPolicy(stored.value); } catch { /* Keep defaults. */ }
   try { const stored = JSON.parse(window.localStorage?.getItem(priorityKey) || 'null'); if (stored?.version === 1 && Number.isFinite(stored.value)) savedPriority = stored.value; } catch { /* Keep defaults. */ }
   if (savedPriority !== undefined) project = setProcgenSpawnPriority(project, savedPriority);
-  try { const stored = JSON.parse(window.localStorage?.getItem(spanStorageKey) || 'null'); if (stored?.version === 1 && Array.isArray(stored.value)) project = sanitizeMidiProject({ ...project, automation: [...project.automation, ...stored.value.filter(entry => entry?.span).slice(0, 64)] }); } catch { /* Keep session defaults. */ }
+  const automationStorage = () => { try { return window.localStorage; } catch { return null; } };
+  project = loadProcgenAutomation(automationStorage(), project);
   try { const stored = JSON.parse(window.localStorage?.getItem(workerStorageKey) || 'null'); if (stored?.version === 1) settings.workerLimits = normalizeWorkerLimits(stored.value); } catch { /* Keep session defaults. */ }
   let config = projectToMidiConfig(project), disposed = false;
   const renderOutput = state => {
@@ -91,17 +94,37 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
       tensionPreferences = project.ensemble?.tension; config = projectToMidiConfig(project); local.syncConfig();
       try { window.localStorage?.setItem(tensionStorageKey, JSON.stringify({ version: 1, value: tensionPreferences })); } catch { /* Keep the session choice. */ }
     } });
+  const automationHistory = createMidiEditHistory();
+  let automationStatus = '';
+  const syncAutomationHistory = () => {
+    const state = automationHistory.state();
+    if (byId('procgenSpanUndo')) byId('procgenSpanUndo').disabled = !state.canUndo;
+    if (byId('procgenSpanRedo')) byId('procgenSpanRedo').disabled = !state.canRedo;
+    if (byId('procgenSpanHistoryStatus')) byId('procgenSpanHistoryStatus').textContent = automationStatus;
+  };
+  const commitAutomation = (next, record = true) => {
+    next = sanitizeMidiProject({ ...project, automation: next.automation });
+    if (record) automationHistory.record(project, next);
+    project = next; config = projectToMidiConfig(project); local.syncConfig(); spanControls.render(); spanOverlay.changed();
+    automationStatus = saveProcgenAutomation(automationStorage(), project) ? '' : 'Automation kept for this session; browser storage is unavailable.';
+    syncAutomationHistory();
+  };
+  const dispatchAutomation = intent => commitAutomation(reduceMidiProject(project, intent));
   const spanControls = createProcgenMidiSpanControls({ document, getProject: () => project, getLaneCount: () => settings.laneCount,
     getRouter: () => getRuntime()?.view?.midiPreviewRouter,
-    onSelect: (id, ids) => spanOverlay.select(id, ids),
-    onIntent: intent => { project = reduceMidiProject(project, intent); config = projectToMidiConfig(project); local.syncConfig(); spanControls.render(); spanOverlay.changed();
-      try { window.localStorage?.setItem(spanStorageKey, JSON.stringify({ version: 1, value: project.automation.filter(entry => entry.span) })); } catch { /* Keep the session edits. */ }
-    } });
+    onSelect: (id, ids) => spanOverlay.select(id, ids), onIntent: dispatchAutomation });
   const spanOverlay = createProcgenMidiSpanOverlay({ document, getRuntime, getProject: () => project,
     getDomain: () => byId('procgenSpanDomain')?.value || 'beats', getTarget: () => byId('procgenSpanTarget')?.value || 'velocity',
-    onUpdate: (automationId, patch) => { project = reduceMidiProject(project, { type: 'automation.update', automationId, patch }); config = projectToMidiConfig(project); local.syncConfig(); spanControls.render();
-      try { window.localStorage?.setItem(spanStorageKey, JSON.stringify({ version: 1, value: project.automation.filter(entry => entry.span) })); } catch { /* Keep session edits. */ }
-    }, onAdd: (span, target) => spanControls.addSpan(span, target), onSelect: id => { spanControls.select(id); setOpen(true); } });
+    onUpdate: (automationId, patch) => dispatchAutomation({ type: 'automation.update', automationId, patch }),
+    onBatchUpdate: updates => dispatchAutomation({ type: 'automation.batch.update', updates }),
+    onStatus: message => { automationStatus = message; syncAutomationHistory(); },
+    onAdd: (span, target) => spanControls.addSpan(span, target), onSelect: (id, options) => { spanControls.select(id, options); setOpen(true); } });
+  const restoreAutomation = action => {
+    spanOverlay.cancelDraft();
+    automationHistory[action](project, next => commitAutomation(next, false)); syncAutomationHistory();
+  };
+  listen(byId('procgenSpanUndo'), 'click', () => restoreAutomation('undo'));
+  listen(byId('procgenSpanRedo'), 'click', () => restoreAutomation('redo')); syncAutomationHistory();
   const setSpanEditing = enabled => {
     if (enabled) setNukeArmed(false);
     spanOverlay.setEditing(enabled);

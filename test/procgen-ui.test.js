@@ -2,6 +2,8 @@ import { expect } from 'chai';
 import fs from 'node:fs';
 import * as cheerio from 'cheerio';
 import { PROCGEN_GAME_EVENT_MIDI_PRESETS } from '../js/midi/project/ProcgenMidiDefaults.js';
+import { createMidiProjectFromMidiConfig, sanitizeMidiProject, projectToMidiConfig } from '../js/midi/project/MidiProject.js';
+import { createMidiSpan } from '../js/app/midi-ui/midiAutomationSpanEditor.js';
 import { normalizeSeed } from '../js/core/seededRandom.js';
 import { createProcgenUiController } from '../js/app/procgen/ProcgenUiController.js';
 import { TestDocument, createTestWindow } from './helpers/test-dom.js';
@@ -17,9 +19,9 @@ const fixture = (search = '', storedLanes = null, preferences = {}, restartResul
     target.removeEventListener = (name, callback) => events.get(name)?.delete(callback);
     target.dispatchEvent = event => { for (const callback of events.get(event.type) || []) callback(event); };
   }
-  for (const [tag, ids] of [['div', ['procgenDrawer', 'procgenPanel', 'procgenSpanList']], ['details', ['procgenHelpFields']], ['canvas', ['gameCanvas']], ['button', ['procgenTab', 'procgenHelp', 'procgenRestart', 'procgenListen', 'procgenSpeedDown', 'procgenSpeedUp', 'procgenShare', 'procgenNewSeed', 'procgenPause', 'procgenStep', 'procgenFollow', 'procgenZoomIn', 'procgenZoomOut', 'procgenPanic', 'procgenCctvPin', 'procgenCctvClear', 'procgenSpanAdd', 'procgenSpanPresetApply']],
+  for (const [tag, ids] of [['div', ['procgenDrawer', 'procgenPanel', 'procgenSpanList']], ['details', ['procgenHelpFields']], ['canvas', ['gameCanvas']], ['button', ['procgenTab', 'procgenHelp', 'procgenRestart', 'procgenListen', 'procgenSpeedDown', 'procgenSpeedUp', 'procgenShare', 'procgenNewSeed', 'procgenPause', 'procgenStep', 'procgenFollow', 'procgenZoomIn', 'procgenZoomOut', 'procgenPanic', 'procgenCctvPin', 'procgenCctvClear', 'procgenSpanAdd', 'procgenSpanPresetApply', 'procgenSpanUndo', 'procgenSpanRedo']],
     ['select', ['procgenPreset', 'procgenPack', 'procgenSpeed', 'procgenCctvMode', 'procgenSpanDomain', 'procgenSpanTarget', 'procgenSpanPreset']], ['input', ['procgenLanes', 'procgenPhrases', 'procgenSeed', 'procgenMasterVolume', 'procgenCctvLane', 'procgenWorkerBashers', 'procgenWorkerDiggers', 'procgenWorkerBuilders', 'procgenLaneHeight', 'procgenCctvEnabled', 'procgenScoutsEvery', 'procgenScoutDelay', 'procgenSpawnSpread', 'procgenSpawnPriority', 'procgenSpanEdit', 'procgenSpanVisible']],
-    ['p', ['procgenMasterVolumeValue', 'procgenPresetDescription', 'procgenAudioStatus', 'procgenRunStatus', 'procgenMetrics', 'procgenStallStatus', 'procgenAliveCount', 'procgenDistance', 'procgenBest', 'procgenCctvStatus', 'procgenNukeStatus', 'procgenOutputPressure', 'procgenSpanPresetStatus']]]) {
+    ['p', ['procgenMasterVolumeValue', 'procgenPresetDescription', 'procgenAudioStatus', 'procgenRunStatus', 'procgenMetrics', 'procgenStallStatus', 'procgenAliveCount', 'procgenDistance', 'procgenBest', 'procgenCctvStatus', 'procgenNukeStatus', 'procgenOutputPressure', 'procgenSpanPresetStatus', 'procgenSpanHistoryStatus']]]) {
     for (const id of ids) { const el = registerElement(document, tag, id); el.removeEventListener = (event, callback) => el.listeners.set(event, (el.listeners.get(event) || []).filter(fn => fn !== callback)); }
   }
   let restarts = 0;
@@ -158,6 +160,84 @@ describe('compact procgen drawer', () => {
       expect(f.window.localStorage.getItem('lemmings.procgen.automationSpans.v1')).to.equal(null); expect(f.restarts).to.equal(1);
     } finally { f.ui.dispose(); }
   });
+  it('migrates present legacy spatial curves into canonical v2, exposes bypass/removal and reloads Undo edits', () => {
+    const legacy = { id: 'converted', name: 'Saved spatial brightness', target: 'timbre', axis: 'x', min: 20, max: 91, points: [{ beat: 0, value: 20 }, { beat: 1, value: 91 }] };
+    const f = fixture('', null, { 'lemmings.procgen.automationSpans.v1': { version: 1, value: [legacy] } });
+    const saved = () => JSON.parse(f.window.localStorage.getItem('lemmings.procgen.automation.v2'));
+    const row = () => f.el('procgenSpanList').children.find(entry => entry.dataset.spanId === legacy.id);
+    const find = (host, key) => host.dataset?.spanProperty === key ? host : host.children.map(child => find(child, key)).find(Boolean);
+    try {
+      const before = saved(); expect(before.version).to.equal(2); expect(before.value.find(entry => entry.id === legacy.id)).to.include({ name: legacy.name, enabled: true });
+      expect(projectToMidiConfig(sanitizeMidiProject({ automation: before.value })).position.mappings.some(mapping => mapping.target === 'timbre')).to.equal(true);
+      expect(row()).to.exist; find(row(), 'open').dispatchEvent({ type: 'click' });
+      const name = find(row(), 'name'); name.value = 'Kept spatial curve'; name.dispatchEvent({ type: 'change', target: name });
+      const edited = saved(); expect(edited.value.filter(entry => entry.id !== legacy.id)).to.deep.equal(before.value.filter(entry => entry.id !== legacy.id));
+      expect(edited.value.find(entry => entry.id === legacy.id).points).to.deep.equal(legacy.points);
+      const enabled = find(row(), 'enabled'); enabled.checked = false; enabled.dispatchEvent({ type: 'change', target: enabled });
+      expect(saved().value.find(entry => entry.id === legacy.id).enabled).to.equal(false);
+      f.el('procgenSpanUndo').dispatchEvent({ type: 'click' }); expect(saved().value.find(entry => entry.id === legacy.id).enabled).to.equal(true);
+      f.el('procgenSpanRedo').dispatchEvent({ type: 'click' }); expect(saved().value.find(entry => entry.id === legacy.id).enabled).to.equal(false);
+      const reloaded = fixture('', null, { 'lemmings.procgen.automation.v2': saved(), 'lemmings.procgen.automationSpans.v1': before });
+      try { expect(reloaded.el('procgenSpanList').children.some(entry => entry.dataset.spanId === legacy.id)).to.equal(true); } finally { reloaded.ui.dispose(); }
+      find(row(), 'remove').dispatchEvent({ type: 'click' }); expect(saved().value.some(entry => entry.id === legacy.id)).to.equal(false);
+      expect(f.ui.local.getState().enabled).to.equal(false); expect(f.restarts).to.equal(0);
+    } finally { f.ui.dispose(); }
+  });
+
+  it('retains saved overflow automation with at most64 visible rows and edits the later page without dropping curves', () => {
+    const spans = Array.from({ length: 65 }, (_, index) => ({ id: 'saved-' + index, name: 'Saved ' + index, enabled: false, target: 'pan', min: -20, max: 20, span: createMidiSpan() }));
+    const spatial = { id: 'curve', name: 'Legacy curve', target: 'pan', axis: 'x', min: -35, max: 35, points: [{ beat: 0, value: -35 }, { beat: 1, value: 35 }] };
+    const f = fixture('', null, { 'lemmings.procgen.automationSpans.v1': { version: 1, value: [...spans, spatial] } });
+    const read = () => JSON.parse(f.window.localStorage.getItem('lemmings.procgen.automation.v2')).value;
+    const find = (host, test) => test(host) ? host : host.children.map(child => find(child, test)).find(Boolean);
+    try {
+      const before = read(), list = f.el('procgenSpanList'); expect(before.filter(entry => entry.span)).to.have.length(65);
+      expect(list.children.filter(row => row.dataset.spanId)).to.have.length(64);
+      find(list, element => element.textContent === 'Next spans').dispatchEvent({ type: 'click' });
+      const row = list.children.find(entry => entry.dataset.spanId === 'saved-64'); expect(row).to.exist;
+      find(row, element => element.dataset.spanProperty === 'open').dispatchEvent({ type: 'click' });
+      const name = find(row, element => element.dataset.spanProperty === 'name') || find(list, element => element.dataset.spanProperty === 'name');
+      name.value = 'Accessible later span'; name.dispatchEvent({ type: 'change', target: name });
+      expect(read().find(entry => entry.id === 'saved-64').name).to.equal('Accessible later span');
+      expect(read().filter(entry => entry.id !== 'saved-64')).to.deep.equal(before.filter(entry => entry.id !== 'saved-64'));
+      expect(read().find(entry => entry.id === 'curve').points).to.deep.equal(spatial.points);
+    } finally { f.ui.dispose(); }
+  });
+
+  it('moves and resizes selected same-domain spans in one Undo while preserving curves, unrelated music and listening state', () => {
+    const base = createMidiProjectFromMidiConfig({ sfx: {}, triggers: {} });
+    const entries = sanitizeMidiProject({ ...base, automation: [...base.automation,
+      { id: 'a', name: 'First', target: 'velocity', min: 40, max: 80, span: { ...createMidiSpan(), start: 2, duration: 2, loop: false, laneScope: 'lane', laneStart: 1, laneEnd: 1 } },
+      { id: 'b', name: 'Second', target: 'pan', min: -20, max: 20, span: { ...createMidiSpan(), start: 6, duration: 3, loop: false, laneScope: 'group', laneStart: 2, laneEnd: 3 } },
+      { id: 'other', name: 'Distance', target: 'duration', span: { ...createMidiSpan('distance'), start: 200, duration: 60, loop: false, laneScope: 'lane', laneStart: 0, laneEnd: 0 } }
+    ] }).automation;
+    const f = fixture('', null, { 'lemmings.procgen.automation.v2': { version: 2, value: entries } }), canvas = f.el('gameCanvas');
+    canvas.width = 160; canvas.height = 576; canvas.getBoundingClientRect = () => ({ left: 0, top: 0 });
+    const context = { save() {}, restore() {}, scale() {}, fillRect() {}, strokeRect() {}, setLineDash() {}, fillText() {} };
+    const renderer = { canvas, world: { laneCount: 6, laneHeight: 96, generation: 1, tickIndex: 0 }, window: { devicePixelRatio: 1 }, originX: 0, originY: 0, viewWidth: 160, viewHeight: 576,
+      render() { this.midiSpanOverlay?.draw(context, this, 1); } };
+    f.runtime.lanes = { renderer }; f.ui.sync();
+    const pointer = (type, x, y = 130, extra = {}) => canvas.dispatchEvent({ type, button: 0, clientX: x, clientY: y, pointerId: 7, preventDefault() {}, stopImmediatePropagation() {}, ...extra });
+    const read = () => JSON.parse(f.window.localStorage.getItem('lemmings.procgen.automation.v2')).value;
+    const header = id => f.el('procgenSpanList').children.find(row => row.dataset.spanId === id).children[0].children.find(control => control.dataset.spanProperty === 'open');
+    try {
+      header('a').dispatchEvent({ type: 'click' }); header('b').dispatchEvent({ type: 'click', ctrlKey: true }); renderer.midiSpanOverlay.setEditing(true); renderer.render();
+      pointer('pointerdown', 27); pointer('pointermove', 47, 226); expect(read()).to.deep.equal(entries); pointer('pointerup', 47, 226);
+      const moved = read(); expect(moved.find(entry => entry.id === 'a').span).to.include({ start: 4, laneStart: 2, laneEnd: 2 });
+      expect(moved.find(entry => entry.id === 'b').span).to.include({ start: 8, laneStart: 3, laneEnd: 4 });
+      expect(moved.filter(entry => !['a', 'b'].includes(entry.id))).to.deep.equal(entries.filter(entry => !['a', 'b'].includes(entry.id)));
+      f.el('procgenSpawnPriority').value = '7'; f.el('procgenSpawnPriority').dispatchEvent({ type: 'change', target: f.el('procgenSpawnPriority') });
+      f.el('procgenSpanUndo').dispatchEvent({ type: 'click' }); expect(read()).to.deep.equal(entries); expect(f.el('procgenSpawnPriority').value).to.equal(7);
+      f.el('procgenSpanRedo').dispatchEvent({ type: 'click' }); expect(read()).to.deep.equal(moved);
+      pointer('pointerdown', 59, 226); pointer('pointermove', 79, 226); pointer('pointerup', 79, 226);
+      expect(read().find(entry => entry.id === 'a').span.duration).to.equal(4); expect(read().find(entry => entry.id === 'b').span.duration).to.equal(5);
+      f.el('procgenSpanUndo').dispatchEvent({ type: 'click' }); expect(read()).to.deep.equal(moved);
+      header('other').dispatchEvent({ type: 'click', ctrlKey: true }); pointer('pointerdown', 47, 226); pointer('pointermove', 67, 226); pointer('pointerup', 67, 226);
+      expect(read()).to.deep.equal(moved); expect(f.el('procgenSpanHistoryStatus').textContent).to.include('one domain');
+      expect(f.ui.local.getState().enabled).to.equal(false); expect(f.restarts).to.equal(0);
+    } finally { f.ui.dispose(); }
+  });
+
   it('resets volume and speed through their existing owners on right click', () => {
     const f = fixture(); let prevented = 0;
     f.el('procgenMasterVolume').dispatchEvent({ type: 'contextmenu', preventDefault: () => prevented++ });

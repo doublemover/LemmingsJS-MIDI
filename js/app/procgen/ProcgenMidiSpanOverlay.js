@@ -32,15 +32,15 @@ const getMidiSpanRectangles = (renderer, project, entries = project.automation, 
   }
   return result;
 };
-const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDomain, getTarget, onUpdate, onAdd, onSelect }) => {
+const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDomain, getTarget, onUpdate, onBatchUpdate, onAdd, onSelect, onStatus = () => {} }) => {
   const canvas = document.getElementById('gameCanvas'), listeners = [];
   let selectedIds = new Set();
-  let renderer = null, selectedId = null, editing = false, visible = true, drag = null, draft = null, rectangles = [], revision = 0;
+  let renderer = null, selectedId = null, editing = false, visible = true, drag = null, drafts = null, rectangles = [], revision = 0;
   const listen = (name, handler) => { canvas?.addEventListener(name, handler, { capture: true }); listeners.push([name, handler]); };
   const changed = () => { revision++; renderer?.render?.(); };
   const cancelDrag = () => {
     if (drag?.pointerId != null && canvas.hasPointerCapture?.(drag.pointerId)) canvas.releasePointerCapture?.(drag.pointerId);
-    draft = drag = null;
+    drafts = drag = null;
   };
   const captureTransform = domain => {
     const box = canvas.getBoundingClientRect();
@@ -63,25 +63,67 @@ const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDom
     const hit = [...rectangles].reverse().find(rect => point.x >= rect.x && point.x <= rect.x + rect.w && point.y >= rect.y && point.y <= rect.y + rect.h);
     const entry = hit?.entry ? { ...hit.entry, span: { ...hit.entry.span, condition: { ...hit.entry.span.condition } } } : null;
     const domain = entry?.span.domain || getDomain(), transform = captureTransform(domain), source = position(event, domain, transform);
-    if (entry) { selectedId = entry.id; onSelect(entry.id); }
-    drag = { entry, domain, transform, point: source, pointerId: event.pointerId, mode: hit ? !hit.repeating && point.x >= hit.x + hit.w - 8 ? 'resize' : 'move' : 'draw' };
+    let entries = [];
+    if (entry) {
+      const additive = event.ctrlKey || event.metaKey || event.shiftKey || selectedIds.has(entry.id);
+      if (additive && selectedIds.size >= 64 && !selectedIds.has(entry.id)) {
+        if (canvas.hasPointerCapture?.(event.pointerId)) canvas.releasePointerCapture?.(event.pointerId);
+        onStatus('Deselect a span before selecting more than 64.'); return;
+      }
+      selectedId = entry.id; onSelect(entry.id, { additive });
+      if (!additive) selectedIds.clear(); selectedIds.add(entry.id);
+      entries = getProject().automation.filter(candidate => candidate.span && selectedIds.has(candidate.id)).slice(0, 64)
+        .map(candidate => ({ ...candidate, span: { ...candidate.span, condition: { ...candidate.span.condition } } }));
+      if (entries.some(candidate => candidate.span.domain !== domain)) {
+        if (canvas.hasPointerCapture?.(event.pointerId)) canvas.releasePointerCapture?.(event.pointerId);
+        onStatus('Select spans with one domain before moving or resizing together.'); changed(); return;
+      }
+      if (entries.length > 1 && !onBatchUpdate) {
+        if (canvas.hasPointerCapture?.(event.pointerId)) canvas.releasePointerCapture?.(event.pointerId);
+        onStatus('Grouped canvas editing is unavailable in this host.'); changed(); return;
+      }
+    }
+    onStatus('');
+    drag = { entry, entries, domain, transform, point: source, pointerId: event.pointerId, mode: hit ? !hit.repeating && point.x >= hit.x + hit.w - 8 ? 'resize' : 'move' : 'draw' };
   });
   listen('pointermove', event => {
     api.sync();
     if (!drag) return; stop(event);
     const next = position(event, drag.domain, drag.transform), quantum = drag.domain === 'distance' ? 1 : 0.25, snap = value => Math.round(value / quantum) * quantum;
-    const original = drag.entry?.span || createMidiSpan(drag.domain), delta = snap(next.value - drag.point.value);
-    const start = drag.mode === 'draw' ? snap(Math.min(next.value, drag.point.value)) : drag.mode === 'move' ? Math.max(0, original.start + delta) : original.start;
-    const duration = drag.mode === 'draw' ? Math.max(quantum, snap(Math.abs(next.value - drag.point.value))) : drag.mode === 'resize' ? Math.max(quantum, original.duration + delta) : original.duration;
-    const first = Math.min(drag.point.lane, next.lane), last = Math.max(drag.point.lane, next.lane);
-    const span = { ...original, start, duration, ...(drag.mode === 'draw' ? { laneScope: first === last ? 'lane' : 'group', laneStart: first, laneEnd: last } : {}) };
-    draft = { ...(drag.entry || { id: 'draft', name: getTarget() + ' span', target: getTarget(), min: 48, max: 110, enabled: true }), span }; changed();
+    const entries = drag.entries.length ? drag.entries : [{ id: 'draft', name: getTarget() + ' span', target: getTarget(), min: 48, max: 110, enabled: true, span: createMidiSpan(drag.domain) }];
+    const delta = snap(next.value - drag.point.value);
+    let applied = delta, laneDelta = next.lane - drag.point.lane;
+    if (drag.mode === 'move') {
+      applied = Math.min(1e9 - Math.max(...entries.map(entry => entry.span.start)), Math.max(delta, -Math.min(...entries.map(entry => entry.span.start))));
+      const scoped = entries.filter(entry => entry.span.laneScope !== 'global');
+      if (scoped.length) laneDelta = Math.max(-Math.min(...scoped.map(entry => entry.span.laneStart)), Math.min(laneDelta,
+        drag.transform.laneCount - 1 - Math.max(...scoped.map(entry => entry.span.laneScope === 'lane' ? entry.span.laneStart : entry.span.laneEnd))));
+    } else if (drag.mode === 'resize') applied = Math.min(1e6 - Math.max(...entries.map(entry => entry.span.duration)), Math.max(delta, quantum - Math.min(...entries.map(entry => entry.span.duration))));
+    drafts = entries.map(entry => {
+      const original = entry.span;
+      const start = drag.mode === 'draw' ? snap(Math.min(next.value, drag.point.value)) : drag.mode === 'move' ? original.start + applied : original.start;
+      const duration = drag.mode === 'draw' ? Math.max(quantum, snap(Math.abs(next.value - drag.point.value))) : drag.mode === 'resize' ? original.duration + applied : original.duration;
+      const first = Math.min(drag.point.lane, next.lane), last = Math.max(drag.point.lane, next.lane);
+      const lanes = drag.mode === 'draw' ? { laneScope: first === last ? 'lane' : 'group', laneStart: first, laneEnd: last } :
+        drag.mode === 'move' && original.laneScope !== 'global' ? { laneStart: original.laneStart + laneDelta, laneEnd: original.laneEnd + laneDelta } : {};
+      return { ...entry, span: { ...original, start, duration, ...lanes } };
+    }); changed();
   });
   listen('pointerup', event => {
     api.sync();
     if (!drag) return; stop(event);
-    const ready = draft, entry = drag.entry; cancelDrag();
-    if (ready) { if (entry) onUpdate(entry.id, { span: ready.span }); else onAdd(ready.span, ready.target); }
+    const ready = drafts, entries = drag.entries, entry = drag.entry;
+    const current = getProject().automation;
+    const stale = entries.some(original => JSON.stringify(current.find(candidate => candidate.id === original.id)?.span) !== JSON.stringify(original.span));
+    cancelDrag();
+    if (ready && !stale) {
+      if (!entry) onAdd(ready[0].span, ready[0].target);
+      else {
+        const updates = ready.filter(candidate => JSON.stringify(candidate.span) !== JSON.stringify(entries.find(original => original.id === candidate.id)?.span))
+          .map(candidate => ({ automationId: candidate.id, patch: { span: candidate.span } }));
+        if (updates.length > 1) onBatchUpdate(updates); else if (updates.length) onUpdate(updates[0].automationId, updates[0].patch);
+      }
+    } else if (stale) onStatus('The selected spans changed during this gesture; the draft was canceled.');
     changed();
   });
   listen('pointercancel', event => { if (drag) { stop(event); cancelDrag(); changed(); } });
@@ -89,14 +131,14 @@ const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDom
   const api = {
     get revision() { return revision; },
     sync() { const next = getRuntime()?.lanes?.renderer; if (drag && next === renderer && drag.transform.generation !== renderer?.world?.generation) { cancelDrag(); rectangles = []; } if (next !== renderer) { cancelDrag(); rectangles = []; if (renderer?.midiSpanOverlay === api) renderer.midiSpanOverlay = null; renderer = next; if (renderer) renderer.midiSpanOverlay = api; } },
-    changed, cancelDraft() { cancelDrag(); changed(); }, select(id, ids = [id]) { selectedId = id; selectedIds = new Set(ids); changed(); },
+    changed, cancelDraft() { cancelDrag(); changed(); }, select(id, ids = [id]) { selectedId = id; selectedIds = new Set(ids.slice(0, 64)); changed(); },
     setEditing(value) { editing = value === true; if (editing) visible = true; else cancelDrag(); changed(); },
     setVisible(value) { visible = value === true; if (!visible) { editing = false; cancelDrag(); rectangles = []; } changed(); },
     draw(context, current, dpr) {
       if (!visible) { rectangles = []; return; }
-      const project = getProject(), entries = draft ? project.automation.filter(entry => entry.id !== draft.id) : project.automation;
+      const project = getProject(), draftIds = drafts ? new Set(drafts.map(entry => entry.id)) : null, entries = drafts ? project.automation.filter(entry => !draftIds.has(entry.id)) : project.automation;
       rectangles = getMidiSpanRectangles(current, project, entries);
-      if (draft) rectangles.push(...getMidiSpanRectangles(current, project, [draft], drag.transform));
+      if (drafts) rectangles.push(...getMidiSpanRectangles(current, project, drafts, drag.transform));
       context.save(); context.scale(dpr, dpr);
       for (const rect of rectangles) {
         const { entry } = rect, color = SPAN_COLORS[entry.target] || '#dfb75d';
@@ -116,7 +158,7 @@ const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDom
       context.restore();
     },
     snapshot: () => ({ editing, visible, selectedId, revision, dragging: !!drag, rectangles: rectangles.map(rect => ({ id: rect.entry.id, domain: rect.entry.span.domain, x: rect.x, y: rect.y, width: rect.w, height: rect.h })) }),
-    dispose() { cancelDrag(); for (const [name, handler] of listeners) canvas?.removeEventListener?.(name, handler, { capture: true }); if (renderer?.midiSpanOverlay === api) renderer.midiSpanOverlay = null; renderer = null; rectangles = []; draft = drag = null; }
+    dispose() { cancelDrag(); for (const [name, handler] of listeners) canvas?.removeEventListener?.(name, handler, { capture: true }); if (renderer?.midiSpanOverlay === api) renderer.midiSpanOverlay = null; renderer = null; rectangles = []; drafts = drag = null; }
   };
   return api;
 };
