@@ -45,15 +45,17 @@ describe('screened exact-source canonical terrain groups', function() {
     expect(place(library, [decoration], { baseSolid: () => false })).to.have.length(0);
     art.frame[4] = 128; expect(createSourceGroupLibrary({ groups: [group()] }, [art]).size).to.equal(0);
   });
-  it('applies bounded real normal-pack groups with exact analytic color/collision, provenance and unchanged seams', async () => {
+  it('applies bounded real normal-pack groups with exact analytic color/collision, provenance and group-free seams', async () => {
     const p = provider(), book = await loadTerrainRecipeBook(p);
     const pack = await loadProcgenPackTerrain({ styleNames: ['pillar', 'squasher'], config: { path: 'lemmings' }, fileProvider: p, book });
     let applied = 0;
     for (const { terrain } of pack.themes) {
       expect(terrain.sourceDescriptor.pack).to.equal('lemmings'); expect(terrain.supportsFineGrowth).to.equal(true);
-      const baseline = new ProcgenRecipeTerrain({ recipe: terrain.recipe, terrainPieces: terrain.pieces, objectPieces: terrain.objects });
       for (const cx of [1, 3, 20, 100]) {
-        const d = terrain.describe(42, cx), raster = terrain.getChunk(42, cx, true), before = baseline.getChunk(42, cx, true);
+        const d = terrain.describe(42, cx), raster = terrain.getChunk(42, cx, true);
+        // Complete shared source atoms may own seam pixels. Compare canonical
+        // groups against the same descriptor with only those groups removed.
+        const withoutGroups = { ...d, placements: d.placements.filter(placement => !placement.canonicalGroup) };
         for (const p of d.placements.filter(p => p.canonicalGroup)) {
           applied++; expect(terrain.sourceDescriptor.sourceLevelIds).to.include(p.canonicalGroup.source.level);
           expect(p.sourceRevision).to.equal(terrain.sourceDescriptor.sourceRevision); expect(p.canonicalGroup.placements.length).to.be.at.most(8);
@@ -64,7 +66,7 @@ describe('screened exact-source canonical terrain groups', function() {
           const at = y * 128 + x, bit = 1 << (at & 31);
           assert.equal(terrain.rasterSample(42, cx, x, y, d), raster.pixels[at]);
           assert.equal(terrain.solidSample(42, cx, x, y, d), !!(raster.solid[at >>> 5] & bit));
-          if (x < 8 || x >= 120) { assert.equal(raster.pixels[at], before.pixels[at]); assert.equal(raster.solid[at >>> 5] & bit, before.solid[at >>> 5] & bit); }
+          if (x < 8 || x >= 120) { assert.equal(raster.pixels[at], terrain.rasterSample(42, cx, x, y, withoutGroups)); assert.equal(!!(raster.solid[at >>> 5] & bit), terrain.solidSample(42, cx, x, y, withoutGroups)); }
         }
       }
       const first = terrain.getChunk(42, 3, true); terrain.reset(); expect(terrain.getChunk(42, 3, true).pixels).to.deep.equal(first.pixels);

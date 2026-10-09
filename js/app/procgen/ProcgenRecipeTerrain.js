@@ -116,7 +116,7 @@ class ProcgenRecipeTerrain {
   describe(seed, chunk) {
     const cached = this.descriptorResidency.read(keyFor(seed, chunk)); if (cached) return cached;
     const first = chunk - chunk % 2, code = this._code(seed ^ 0x713d02ab, first);
-    let pair = null;
+    let pair = null, regionAdmission = null;
     if (this.sharedSpanBudget >= 2 && first * TERRAIN_CHUNK_WIDTH >= SHARED_TERRAIN_MINIMUM_X && (code & 6) === 0 && (this.wideSourceGroups.size || this.wordPlanner?.wideChoices.length || this.sourceRegions.length)) {
       pair = [this._describeSingle(seed, first, true), this._describeSingle(seed, first + 1, true)];
       const descriptorAt = x => pair[Math.floor(x / TERRAIN_CHUNK_WIDTH)], localX = x => x % TERRAIN_CHUNK_WIDTH;
@@ -129,9 +129,11 @@ class ProcgenRecipeTerrain {
       if (!placeTerrainSpan({ seed, firstChunk: first, code, descriptors: pair, height: this.height, wordPlanner: this.wordPlanner,
         groupLibrary: this.wideSourceGroups, regionLibrary: this.sourceRegions, zone: this.wideZonePlanner?.zoneAt(seed, first * TERRAIN_CHUNK_WIDTH), surface,
         solid: (x, y) => sample('solidSample', x, y), steel: (x, y) => sample('steelSample', x, y), color: (x, y) => sample('rasterSample', x, y),
-        sourceRevision: this.sourceDescriptor?.sourceRevision || this.recipe.assetSha256 })) pair = null;
+        sourceRevision: this.sourceDescriptor?.sourceRevision || this.recipe.assetSha256,
+        onRegionAdmission: receipt => { regionAdmission = receipt; } })) pair = null;
     }
     pair ||= [this._describeSingle(seed, first), this._describeSingle(seed, first + 1)];
+    if (regionAdmission) for (const descriptor of pair) descriptor.sourceRegionAdmission = regionAdmission;
     // Evict aligned units together; rebuilding one half never replaces a cached
     // sibling with geometry chosen through a different descriptor request order.
     this.descriptorResidency.trim(this.descriptionLimit, 2);

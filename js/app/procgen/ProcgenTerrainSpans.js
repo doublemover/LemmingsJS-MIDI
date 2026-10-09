@@ -4,7 +4,7 @@ import { placeSourceRegion } from './ProcgenSourceRegions.js';
 const SHARED_TERRAIN_WIDTH = 256, SHARED_TERRAIN_MINIMUM_X = 1024;
 // Cold, complete source geometry only. Neither sibling descriptor construction
 // nor mutable materialization flags participate in this bounded admission.
-const placeTerrainSpan = ({ seed, firstChunk, code, descriptors, height, wordPlanner, groupLibrary, regionLibrary = [], zone, surface, solid, steel, color, sourceRevision }) => {
+const placeTerrainSpan = ({ seed, firstChunk, code, descriptors, height, wordPlanner, groupLibrary, regionLibrary = [], zone, surface, solid, steel, color, sourceRevision, onRegionAdmission }) => {
   if (descriptors.some(d => d.gapWidth)) return null;
   const occupied = descriptors.flatMap((d, part) => [
     ...d.placements.map(p => ({ ...p, x: p.x + part * 128 })),
@@ -32,7 +32,7 @@ const placeTerrainSpan = ({ seed, firstChunk, code, descriptors, height, wordPla
   }
   const tryRegion = () => {
     if (regionTried) return; regionTried = true;
-    const result = placeSourceRegion({ library: regionLibrary, seed, firstChunk, code, height, occupied, surface, solid, steel });
+    const result = placeSourceRegion({ library: regionLibrary, seed, firstChunk, code, height, occupied, surface, solid, steel, onAdmission: onRegionAdmission });
     if (result) { placements = [result.placement]; region = result.region; }
   };
   if (!placements.length && code & 16) tryRegion();
