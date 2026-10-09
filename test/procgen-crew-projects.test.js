@@ -93,6 +93,97 @@ describe('bounded admitted crew project passage and completion', () => {
   });
 });
 
+const ownerOnly = () => {
+  const fixture = model(), { projects, world, actors } = fixture;
+  projects.reset(); world.terrain = { chunkWidth: 128 }; world.laneHeight = 144;
+  const owner = actors[0]; Object.assign(owner, { x: 1000, y: 120 }); projects.observe(owner);
+  const task = { footprint: { x1: 992, x2: 1004, y1: 108, y2: 132 } };
+  const id = projects.begin(owner, 'builders', task), project = projects.lanes[0].projects.find(p => p.id === id);
+  projects.connect(0, id, 1004, 120, []); world.tickIndex++;
+  Object.assign(owner, { x: 1294, y: 114 }); projects.observe(owner);
+  return { ...fixture, owner, task, project };
+};
+
+describe('fulfilled generic owner-only project retirement', () => {
+  it('frees exactly the observed owner-only slot while retaining three real promises and the four-project cap', () => {
+    const { projects, world, owner, project, events, credits } = ownerOnly();
+    const scout = { id: 10, laneIndex: 0, x: 1600, y: 120, scout: true, action: world.actions[State.WALKING] };
+    const recipients = Array.from({ length: 3 }, (_, index) => ({ ...scout, id: 11 + index, x: 1590 - index, scout: false }));
+    for (const actor of [scout, ...recipients]) projects.observe(actor);
+    const connected = projects.begin(scout, 'miners', {}); projects.connect(0, connected, 1640, 120, []);
+    const retained = [projects.lanes[0].projects.find(p => p.id === connected)];
+    for (const [id, x] of [[20, 2000], [30, 2400]]) {
+      const actor = { ...owner, id, x }; projects.observe(actor);
+      const started = projects.begin(actor, 'miners', {}); retained.push(projects.lanes[0].projects.find(p => p.id === started));
+    }
+    const bankActor = { ...owner, id: 84, x: 1926, scout: true }; projects.observe(bankActor);
+    expect(projects.signals(0).active).to.equal(MAX_CREW_PROJECTS); expect(projects.canBegin(bankActor)).to.equal(false);
+    expect(project.members.size).to.equal(1); expect(project.members.get(owner.id).crossed).to.equal(true);
+    expect(project.goalX).to.equal(1012); expect(project.phase).to.equal('connected');
+    projects.finish(0);
+    expect(project.phase).to.equal('retired'); expect(project.retirement).to.equal('fulfilled-owner-only');
+    expect(projects.signals(0)).to.include({ active: 3, completed: 0, failed: 0, retiredOwnerOnly: 1 });
+    expect(projects.canBegin(bankActor)).to.equal(true); expect(projects.lanes[0].projects).to.deep.equal(retained);
+    expect(retained[0].members.size).to.equal(4); expect(retained.map(p => p.phase)).to.deep.equal(['connected', 'working', 'working']);
+    expect(projects.begin(bankActor, 'builders', {})).to.be.a('string'); expect(projects.signals(0).active).to.equal(MAX_CREW_PROJECTS);
+    expect(projects.canBegin(bankActor)).to.equal(false); expect(events).to.have.length(0); expect(credits).to.have.length(0);
+    for (let repeat = 0; repeat < 3; repeat++) projects.finish(0);
+    expect(projects.signals(0).retiredOwnerOnly).to.equal(1);
+    projects.reset(); expect(projects.signals(0).retiredOwnerOnly).to.equal(0);
+  });
+  it('keeps every passive promise, held blocker and source scene even after its owner has crossed', () => {
+    for (const mode of ['passive', 'arrival', 'scene', 'held', 'blocker', 'working']) {
+      const { projects, world, owner, project, events, credits } = ownerOnly();
+      if (mode === 'passive') {
+        const actor = { ...owner, id: 99, x: 1000 }; projects.observe(actor);
+        project.members.set(actor.id, { id: actor.id, ordinary: true, crossed: false, blocker: false, lastSeenTick: world.tickIndex });
+      }
+      if (mode === 'arrival') project.basinArrival = { phase: 'open' };
+      if (mode === 'scene') project.scene = { crewSceneId: 'real-scene' };
+      if (mode === 'held') { owner.assistConstructionTask = { crewProjectId: project.id }; projects.observe(owner); }
+      if (mode === 'blocker') project.members.get(owner.id).blocker = true;
+      if (mode === 'working') project.phase = 'working';
+      projects.finish(0);
+      expect(projects.signals(0), mode).to.include({ active: 1, retiredOwnerOnly: 0 });
+      expect(events, mode).to.have.length(0); expect(credits, mode).to.have.length(0);
+    }
+  });
+  it('retains a formerly crossed owner currently WALK outside the exit band, until a current in-band observation', () => {
+    for (const direction of [-1, 1]) {
+      const { projects, owner, project, events, credits } = ownerOnly();
+      owner.y = project.goalY + direction * 33; projects.observe(owner);
+      expect(project.members.get(owner.id).crossed).to.equal(true);
+      projects.finish(0);
+      expect(project.phase).to.equal('connected'); expect(projects.signals(0)).to.include({ active: 1, retiredOwnerOnly: 0 });
+      expect(events).to.have.length(0); expect(credits).to.have.length(0);
+      owner.y = project.goalY + direction * 32; projects.observe(owner); projects.finish(0);
+      expect(project.phase).to.equal('retired'); expect(projects.signals(0)).to.include({ active: 0, retiredOwnerOnly: 1 });
+      expect(events).to.have.length(0); expect(credits).to.have.length(0);
+    }
+  });
+  it('requires a current crossing observation and refuses changed, stale, non-WALK or lost ownership', () => {
+    for (const mode of ['stale', 'crossing', 'returned', 'non-walk', 'generation', 'lane', 'revision', 'disabled', 'lost', 'removed', 'deadline', 'nuke']) {
+      const { projects, world, owner, project, events, credits } = ownerOnly();
+      if (mode === 'stale') world.tickIndex++;
+      if (mode === 'crossing') project.members.get(owner.id).crossed = false;
+      if (mode === 'returned') { owner.x = 1011; projects.observe(owner); }
+      if (mode === 'non-walk') { owner.action = {}; projects.observe(owner); }
+      if (mode === 'generation') world.generation++;
+      if (mode === 'lane') { owner.laneIndex = 1; projects.observe(owner); }
+      if (mode === 'revision') world.terrainTileRevisions.set(project.tiles[0][0], 1);
+      if (mode === 'disabled') { owner.disabled = true; projects.observe(owner); }
+      if (mode === 'lost') { owner.terminalReason = 'drowned'; projects.observe(owner); }
+      if (mode === 'removed') { owner.removed = true; projects.retire(owner); }
+      if (mode === 'deadline') world.tickIndex = project.startTick + PROJECT_LIFETIME_TICKS + 1;
+      if (mode === 'nuke') world._manualNukeLanes = [1];
+      projects.finish(0);
+      expect(projects.signals(0).retiredOwnerOnly, mode).to.equal(0);
+      expect(project.phase, mode).to.not.equal('retired');
+      expect(events, mode).to.have.length(0); expect(credits, mode).to.have.length(0);
+    }
+  });
+});
+
 const finiteTerrain = () => {
   const chunks = new Map(), solidAt = (x, y) => (x === 12 || x === 243) && y >= 72 || y >= (x >= 80 && x < 86 ? 288 : 120);
   return { chunkWidth: 128, configure() {}, describe: () => ({ objects: [] }),

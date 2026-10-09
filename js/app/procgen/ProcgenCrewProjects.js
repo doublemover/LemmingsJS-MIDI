@@ -9,13 +9,13 @@ const MAX_CREW_PROJECTS = 4, MAX_PROJECT_CREW = 64, PROJECT_LIFETIME_TICKS = 160
 class ProcgenCrewProjects {
   constructor(world, credit) { this.world = world; this.credit = credit; this.reset(); }
   reset() {
-    this.lanes = Array.from({ length: this.world.laneCount }, () => ({ live: new Map(), projects: [], completed: 0, failed: 0, deferred: 0, nextId: 0, overflowTick: -Infinity, lastTick: this.world.tickIndex }));
+    this.lanes = Array.from({ length: this.world.laneCount }, () => ({ live: new Map(), projects: [], completed: 0, failed: 0, deferred: 0, retiredOwnerOnly: 0, nextId: 0, overflowTick: -Infinity, lastTick: this.world.tickIndex }));
   }
   _alive(actor) { return !actor.failureReason && !actor.terminalReason && !actor.removed && !actor.disabled; }
   _ordinary(actor) { return !actor.scout && !actor.canClimb && !actor.hasParachute; }
   _valid(project) { return project.tiles.every(([key, revision]) => procgenTileRevision(this.world, key) === revision); }
   _fail(project, reason) {
-    if (project.phase === 'complete' || project.phase === 'failed') return;
+    if (project.phase === 'complete' || project.phase === 'failed' || project.phase === 'retired') return;
     project.phase = 'failed'; project.failure = reason; this.lanes[project.lane].failed++;
     if (reason === 'crew-loss' && project.passageRewarded) this.credit(project.lane, project.kind, 'crew-failure');
   }
@@ -28,7 +28,7 @@ class ProcgenCrewProjects {
       else if (project.phase === 'connected' && !this._valid(project)) this._fail(project, 'changed-route');
       else if ([...project.members.keys()].some(id => !state.live.has(id) && project.members.get(id).lastSeenTick < tick - 1)) this._fail(project, 'missing-crew');
     }
-    state.projects = state.projects.filter(project => project.phase !== 'complete' && project.phase !== 'failed');
+    state.projects = state.projects.filter(project => project.phase !== 'complete' && project.phase !== 'failed' && project.phase !== 'retired');
     return state;
   }
   canBegin(actor) {
@@ -121,6 +121,16 @@ class ProcgenCrewProjects {
     }
     if (state.lastTick !== this.world.tickIndex) { state.lastTick = this.world.tickIndex; this._refresh(lane); }
   }
+  _retireOwnerOnly(project, state) {
+    // This owner has fulfilled its only promise. A scene or passive recipient
+    // keeps its original lifetime and can never be evicted for a new project.
+    if (project.phase !== 'connected' || project.members.size !== 1 || project.scene || project.basinArrival || !this._valid(project)) return false;
+    const member = project.members.get(project.ownerId), live = state.live.get(project.ownerId);
+    if (!member?.crossed || member.blocker || !live || live.tick !== this.world.tickIndex || live.generation !== project.generation || live.lane !== project.lane ||
+        !live.walking || live.blocking || live.heldProjectId != null || project.direction * (live.x - project.goalX) <= 0 || Math.abs(live.y - project.goalY) > 32) return false;
+    project.phase = 'retired'; project.retirement = 'fulfilled-owner-only'; state.retiredOwnerOnly++;
+    return true;
+  }
   finish(lane) {
     const state = this._refresh(lane);
     if (this.world._manualNukeLanes?.[lane] || this.world.stall && this.world.stall.phase !== 'running') {
@@ -128,6 +138,7 @@ class ProcgenCrewProjects {
       return;
     }
     for (const project of state.projects) {
+      if (this._retireOwnerOnly(project, state)) continue;
       if (project.phase !== 'connected' || !project.ordinaryCrossings || !this._valid(project)) continue;
       let arrived = true, blockers = 0;
       for (const member of project.members.values()) {
@@ -147,7 +158,7 @@ class ProcgenCrewProjects {
   signals(lane) {
     const state = this.lanes[lane];
     return state ? { active: state.projects.filter(project => project.phase === 'working' || project.phase === 'connected').length,
-      completed: state.completed, failed: state.failed, deferred: state.deferred, observedCrew: state.live.size } : null;
+      completed: state.completed, failed: state.failed, deferred: state.deferred, retiredOwnerOnly: state.retiredOwnerOnly, observedCrew: state.live.size } : null;
   }
   dispose() { this.lanes.length = 0; this.world = null; this.credit = null; }
 }
