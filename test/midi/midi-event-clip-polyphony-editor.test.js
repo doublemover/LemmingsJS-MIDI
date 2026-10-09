@@ -69,6 +69,15 @@ describe('existing cell inspector independent voices and ordered layers', functi
     expect(f.getProject().clips[0].steps[1].note).to.equal(72); expect(f.getProject().enabled).to.equal(false);
     f.editor.dispose();
   });
+  it('keeps repeated keyboard Earlier/Later activation on the moved layer without saved layer IDs', function() {
+    const f = createEditorFixture({ steps: [{ note: 60, transformLayers: [{ type: 'pitch', transpose: 1 }, { type: 'repeat', count: 3 }, { type: 'pitch', transpose: 7 }] }, { note: 72 }] });
+    const root = f.doc.getElementById('midiEventClipLayers'), button = (index, text) => root.children[index].children.find(element => element.textContent === text && element.tagName === 'BUTTON');
+    button(2, 'Earlier').focus(); f.doc.activeElement.dispatchEvent({ type: 'click', detail: 0 });
+    expect(f.step().transformLayers[1].transpose).to.equal(7); expect(f.doc.activeElement).to.equal(button(1, 'Earlier'));
+    f.doc.activeElement.dispatchEvent({ type: 'click', detail: 0 }); expect(f.step().transformLayers[0].transpose).to.equal(7); expect(f.doc.activeElement).to.equal(button(0, 'Later'));
+    for (const index of [1, 2]) { f.doc.activeElement.dispatchEvent({ type: 'click', detail: 0 }); expect(f.step().transformLayers[index].transpose).to.equal(7); expect(f.doc.activeElement).to.equal(button(index, index === 2 ? 'Earlier' : 'Later')); }
+    expect(f.step().transformLayers.every(layer => !('id' in layer))).to.equal(true); expect(f.getProject().clips[0].steps[1].note).to.equal(72); f.editor.dispose();
+  });
   it('edits stored compact Hold/Tie with truthful modes and dispatches bounded independent gates through the existing router', function() {
     withFakeClockAndPerformance(clock => {
       const f = createEditorFixture({ lengthSteps: 4, playback: { advance: 'game-tick', spacingTicks: 2 },

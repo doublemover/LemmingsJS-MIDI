@@ -154,6 +154,16 @@ test('Studio cell edits preserve focus and saved Hold/Tie', async ({ page }) => 
   await page.locator('#midiEventClipLayers select[aria-label="Layer 1"]').selectOption('repeat');
   const repeat = page.locator('#midiEventClipLayers input[aria-label="Repeat count"]');
   await repeat.fill('3'); await repeat.dispatchEvent('change'); await expect(repeat).toBeFocused();
+  await page.locator('#midiEventClipLayerAdd').click(); await page.locator('#midiEventClipLayerAdd').click();
+  const layerRows = page.locator('#midiEventClipLayers > .midi-clip-controls');
+  const transpose = layerRows.nth(2).locator('.midi-clip-layer-transpose');
+  await transpose.fill('7'); await transpose.dispatchEvent('change');
+  await layerRows.nth(2).getByRole('button', { name: 'Earlier', exact: true }).focus();
+  for (const [row, label] of [[1, 'Earlier'], [0, 'Later'], [1, 'Later'], [2, 'Earlier']]) {
+    await page.keyboard.press('Enter');
+    await expect(layerRows.nth(row).getByRole('button', { name: label, exact: true })).toBeFocused();
+  }
+
   await page.locator('#midiEventClipHold').check();
   await expect(page.locator('#midiEventClipHold')).toHaveAttribute('title', /next played|phrase end/i);
   await page.locator('#midiEventClipGrid [data-cell-index="0"]').focus(); await page.keyboard.press('ArrowRight');
@@ -165,11 +175,107 @@ test('Studio cell edits preserve focus and saved Hold/Tie', async ({ page }) => 
   const edited = await page.evaluate(id => window.__E2E__.midiGetProject().clips.find(clip => clip.id === id), clipId);
   expect(edited.steps[0].voices[0].note).toBe(firstNote); expect(edited.steps[0].voices[1].note).toBe(66);
   expect(edited.steps[0].transformLayers[0]).toMatchObject({ type: 'repeat', count: 3 });
+  expect(edited.steps[0].transformLayers[2]).toMatchObject({ type: 'pitch', transpose: 7 });
   expect(edited.steps[0].hold).toBe(true); expect(edited.steps[1].tie).toBe(true);
   await expect(page.locator('#midiGameClock')).toHaveText(clock);
   await page.locator('#midiViewProject').click(); await page.locator('.midi-project-tools > summary').click(); await page.locator('#midiTemplateSaveButton').click();
   await expect(page.locator('#midiProjectStatus')).toContainText('Saved');
   await page.reload(); await waitForHarnessReady(page);
   expect(await page.evaluate(id => window.__E2E__.midiGetProject().clips.find(clip => clip.id === id), clipId)).toEqual(edited);
+  expect(await page.evaluate(() => window.__midiPermissionCalls)).toBe(0);
+});
+
+
+test('Studio span bundles keep selection, atomic Undo and saved edits', async ({ page }) => {
+  await page.goto('/?e2e=1&midi=1'); await waitForHarnessReady(page);
+  await page.evaluate(() => window.__E2E__.pause());
+  if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
+  await page.locator('#midiViewExpert').click();
+  await page.locator('#midiModulationInspector > summary').click();
+  await page.locator('#midiAutomationAddButton').click();
+  const spatial = await page.evaluate(() => window.__E2E__.midiGetProject().automation.filter(entry => !entry.span));
+  expect(spatial.length).toBeGreaterThan(0);
+  const clock = await page.locator('#midiGameClock').textContent();
+  await page.locator('#midiSpanPresetApply').click();
+  const list = page.locator('#midiMainSpanList');
+  const rows = list.locator('.midi-span-row');
+  await expect(rows).toHaveCount(3);
+  await expect(rows.locator('details[open]')).toHaveCount(3);
+  await expect(list.locator('.midi-span-batch strong')).toHaveText('3 selected');
+  const length = list.getByRole('spinbutton', { name: 'Selected spans Length', exact: true });
+  const original = await page.evaluate(() => window.__E2E__.midiGetProject());
+  await length.fill('11.5'); await length.dispatchEvent('change');
+  await expect(length).toBeFocused();
+  expect(await page.evaluate(() => window.__E2E__.midiGetProject().automation.filter(entry => entry.span).map(entry => entry.span.duration))).toEqual([11.5, 11.5, 11.5]);
+  await page.locator('#midiUndo').click();
+  const undone = await page.evaluate(() => window.__E2E__.midiGetProject());
+  expect({ ...undone, updatedAt: original.updatedAt }).toEqual(original);
+  expect(undone.updatedAt).toBeGreaterThanOrEqual(original.updatedAt);
+  await page.locator('#midiRedo').click();
+  await expect(length).toHaveValue('11.5');
+  const name = rows.first().locator('input[data-span-property=name]');
+  await name.fill('Studio rise');
+  await name.evaluate(input => { input.setSelectionRange(2, 6, 'backward'); input.dispatchEvent(new Event('change', { bubbles: true })); });
+  await expect(name).toBeFocused();
+  expect(await name.evaluate(input => [input.selectionStart, input.selectionEnd, input.selectionDirection])).toEqual([2, 6, 'backward']);
+  await list.getByRole('combobox', { name: 'Selected spans Target', exact: true }).selectOption('pan');
+  await list.getByRole('spinbutton', { name: 'Selected spans Start value', exact: true }).fill('-24');
+  await list.getByRole('spinbutton', { name: 'Selected spans Start value', exact: true }).dispatchEvent('change');
+  await list.getByRole('spinbutton', { name: 'Selected spans End value', exact: true }).fill('24');
+  await list.getByRole('spinbutton', { name: 'Selected spans End value', exact: true }).dispatchEvent('change');
+  await list.getByRole('button', { name: 'Bypass selected', exact: true }).click();
+  await expect(rows.locator('details[open]')).toHaveCount(3);
+  const edited = await page.evaluate(() => window.__E2E__.midiGetProject());
+  expect(edited.automation.filter(entry => !entry.span)).toEqual(spatial);
+  expect(edited.automation.filter(entry => entry.span).every(entry => entry.span.duration === 11.5 && entry.target === 'pan' && entry.min === -24 && entry.max === 24 && !entry.enabled)).toBe(true);
+  expect(edited.automation.find(entry => entry.span).name).toBe('Studio rise');
+  await expect(page.locator('#midiGameClock')).toHaveText(clock);
+  await page.locator('#midiViewProject').click(); await page.locator('.midi-project-tools > summary').click(); await page.locator('#midiTemplateSaveButton').click();
+  await expect(page.locator('#midiProjectStatus')).toContainText('Saved');
+  await page.reload(); await waitForHarnessReady(page);
+  expect((await page.evaluate(() => window.__E2E__.midiGetProject())).automation).toEqual(edited.automation);
+  if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
+  await page.locator('#midiViewExpert').click(); await page.locator('#midiModulationInspector > summary').click();
+  const spatialRow = page.locator('#midiAutomationList [data-automation-id="' + spatial[0].id + '"]');
+  await spatialRow.locator('.midi-span-editor > summary').click();
+  await spatialRow.getByRole('button', { name: 'Create looping beat span', exact: true }).focus(); await page.keyboard.press('Enter');
+  const converted = list.locator('[data-span-id="' + spatial[0].id + '"]');
+  await expect(converted.locator('input[data-span-property=name]')).toBeFocused();
+  await converted.getByRole('button', { name: 'Return to spatial curve', exact: true }).focus(); await page.keyboard.press('Enter');
+  await expect(spatialRow.locator('select[data-automation-field=target]')).toBeFocused();
+  expect((await page.evaluate(() => window.__E2E__.midiGetProject())).automation).toEqual(edited.automation);
+  expect(await page.evaluate(() => window.__midiPermissionCalls)).toBe(0);
+});
+
+
+test('Studio saved span pages retain overflow entries and keyboard focus', async ({ page }) => {
+  await page.goto('/?e2e=1&midi=1'); await waitForHarnessReady(page);
+  await page.evaluate(() => window.__E2E__.pause());
+  if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
+  await page.locator('#midiViewExpert').click(); await page.locator('#midiModulationInspector > summary').click();
+  await page.locator('#midiSpanPresetApply').click();
+  const before = await page.evaluate(() => {
+    const payload = window.__E2E__.midiExportProject({ download: false });
+    const base = payload.project.automation.find(entry => entry.span);
+    payload.project.automation = Array.from({ length: 65 }, (_, index) => ({ ...base, id: 'saved-span-' + index, name: 'Saved ' + (index + 1), enabled: false }));
+    return window.__E2E__.midiImportProject(payload).automation;
+  });
+  const list = page.locator('#midiMainSpanList'), rows = list.locator('.midi-span-row');
+  await expect(rows).toHaveCount(64);
+  const next = list.getByRole('button', { name: 'Next spans', exact: true });
+  await next.focus(); await page.keyboard.press('Enter');
+  await expect(rows).toHaveCount(1);
+  await expect(list.getByRole('button', { name: 'Previous spans', exact: true })).toBeFocused();
+  await rows.first().getByRole('button', { name: 'Saved 65', exact: true }).click();
+  const name = rows.first().locator('input[data-span-property=name]');
+  await name.fill('Saved overflow'); await name.dispatchEvent('change'); await expect(name).toBeFocused();
+  const edited = await page.evaluate(() => window.__E2E__.midiGetProject().automation);
+  expect(edited).toHaveLength(65); expect(edited.slice(0, 64)).toEqual(before.slice(0, 64));
+  expect(edited[64]).toEqual({ ...before[64], name: 'Saved overflow' });
+  expect(await page.evaluate(() => window.__E2E__.midiGetRuntimeConfig().automationSpans)).toHaveLength(0);
+  await page.locator('#midiViewProject').click(); await page.locator('.midi-project-tools > summary').click(); await page.locator('#midiTemplateSaveButton').click();
+  await expect(page.locator('#midiProjectStatus')).toContainText('Saved');
+  await page.reload(); await waitForHarnessReady(page);
+  expect((await page.evaluate(() => window.__E2E__.midiGetProject())).automation).toEqual(edited);
   expect(await page.evaluate(() => window.__midiPermissionCalls)).toBe(0);
 });

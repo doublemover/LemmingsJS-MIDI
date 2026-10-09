@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Reuse multi-span selection, naming and atomic common edits in main Studio; preserve field focus through span edits and transform reordering.
+
 - Keep Studio automation/voice/layer edit focus and expose mode-correct compact Hold/Tie controls.
 
 - Preserve safe completed stair exits through bounded real passive actions instead of unnecessary excavation, while keeping proactive builder proposals.

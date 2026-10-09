@@ -667,7 +667,9 @@
             </label>
           </div>
           <div class="midi-inline-fields"><label>Span bundle <select id="midiSpanPreset"></select></label><label>Domain <select id="midiSpanPresetDomain"><option value="beats">Musical beats</option><option value="distance">Actor world distance</option></select></label><button id="midiSpanPresetApply" type="button">Add bundle</button></div>
-          <div id="midiAutomationList" class="midi-automation-list" aria-label="Modulation lanes and musical spans"></div>
+          <p id="midiSpanPresetStatus" class="midi-span-status" role="status" aria-live="polite"></p>
+          <div id="midiMainSpanList" class="midi-span-list" aria-label="Musical spans"></div>
+          <div id="midiAutomationList" class="midi-automation-list" aria-label="Spatial modulation lanes"></div>
         </details>
       </section>
       <section id="midiOutputStatus" class="midi-region midi-output-status" aria-label="MIDI output status">

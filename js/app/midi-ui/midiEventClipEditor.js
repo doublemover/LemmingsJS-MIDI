@@ -51,7 +51,9 @@ const createMidiEventClipEditor = ({ document, bind, getProject, getSource, comm
     const selection = Number.isInteger(active.selectionStart) ? [active.selectionStart, active.selectionEnd, active.selectionDirection] : null;
     return () => {
       const nextRow = Array.from(root.children).find(value => value.dataset.clipRow === rowIndex && value.dataset.clipCell === cell);
-      const control = nextRow && Array.from(nextRow.children).flatMap(value => [value, ...Array.from(value.children)]).find(value => value.dataset.clipField === key);
+      const controls = nextRow ? Array.from(nextRow.children).flatMap(value => [value, ...Array.from(value.children)]) : [];
+      let control = controls.find(value => value.dataset.clipField === key);
+      if (control?.disabled) control = controls.find(value => ['Earlier', 'Later'].includes(value.dataset.clipField) && !value.disabled);
       control?.focus?.({ preventScroll: true });
       if (selection && control?.setSelectionRange) control.setSelectionRange(...selection);
     };
@@ -100,6 +102,11 @@ const createMidiEventClipEditor = ({ document, bind, getProject, getSource, comm
       else if (operation === 'up' && index > 0) [next[index - 1], next[index]] = [next[index], next[index - 1]];
       else if (operation === 'down' && index + 1 < next.length) [next[index + 1], next[index]] = [next[index], next[index + 1]];
       else next[index] = { ...next[index], ...patch, ...(patch.condition ? { condition: { ...next[index].condition, ...patch.condition } } : {}) };
+      if (operation === 'up' || operation === 'down') {
+        let row = document.activeElement;
+        while (row && row !== root && row.dataset?.clipRow == null) row = row.parentElement || row.parent;
+        if (root.contains(row) && row.dataset.clipCell === current.id + ':' + selected && row.dataset.clipRow === String(index)) row.dataset.clipRow = String(operation === 'up' ? Math.max(0, index - 1) : Math.min(next.length - 1, index + 1));
+      }
       update({ transformLayers: next });
     };
     layers.forEach((layer, index) => {

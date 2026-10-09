@@ -1,4 +1,4 @@
-import { MIDI_AUTOMATION_SPAN_PRESETS, createMidiAutomationSpanBundle } from '../midi/project/MidiAutomationSpanPresets.js';
+import { createMidiAutomationSpanControls } from './midi-ui/midiAutomationSpanControls.js';
 import { createMidiAutomationSpanEditor } from './midi-ui/midiAutomationSpanEditor.js';
 import { createMidiTensionControls } from './midi-ui/midiTensionControls.js';
 import { createMidiOutputCapture } from '../midi/capture/MidiOutputCapture.js';
@@ -325,7 +325,7 @@ const createMidiUiController = ({
   let localGamePreview = null;
   const outputCapture = createMidiOutputCapture();
   let captureControls = null;
-  let tensionControls = null;
+  let tensionControls = null, spanControls = null;
   const captureContext = () => { const current = ensureProject(), scale = current.global.scale; return {
     scaleName: scale.name, scaleRoot: scale.root, scaleDegrees: scale.degrees, tempoBpm: current.transport.bpmBase,
     seed: getLemmings()?.game?.seed ?? null, generation: getLemmings()?.game?.generation ?? null, projectId: current.id, projectUpdatedAt: current.updatedAt
@@ -1989,7 +1989,8 @@ const createMidiUiController = ({
     const selection = Number.isInteger(active?.selectionStart) ? [active.selectionStart, active.selectionEnd, active.selectionDirection] : null;
     const openSpans = new Map(Array.from(list.querySelectorAll?.('.midi-span-editor') || []).map(editor => [editor.dataset.automationSpanId, editor.open]));
     removeChildren(list);
-    for (const lane of current.automation) {
+    list.hidden = current.automation.length > 0 && current.automation.every(lane => lane.span);
+    for (const lane of current.automation.filter(entry => !entry.span)) {
       const row = document.createElement('div');
       row.className = 'midi-automation-row';
       row.dataset.automationId = lane.id;
@@ -2154,10 +2155,13 @@ const createMidiUiController = ({
       }));
 
       row.append(enabledLabel, targetLabel, axisLabel, opLabel, minLabel, maxLabel, pointBeatLabel, pointValueLabel, remove);
-      if (lane.span) { axisLabel.hidden = opLabel.hidden = pointBeatLabel.hidden = pointValueLabel.hidden = true; minText.textContent = 'Start value'; maxText.textContent = 'End value'; }
-      row.append(createMidiAutomationSpanEditor({ document, lane, tracks: current.tracks, open: openSpans.get(lane.id) || false, canAddSpan: current.automation.filter(entry => entry.enabled && entry.span).length < 64,
+      row.append(createMidiAutomationSpanEditor({ document, lane, tracks: current.tracks, open: openSpans.get(lane.id) || false, canAddSpan: current.automation.filter(entry => entry.span).length < 64,
         getState: () => getActiveRouter()?.getAutomationSpanState?.(lane.id, 0),
-        onUpdate: patch => dispatchProjectIntent({ type: 'automation.update', automationId: lane.id, patch }) }));
+        onUpdate: patch => {
+          if (patch.span && ensureProject().automation.filter(entry => entry.span).length >= 64) return;
+          const focus = row.contains(document.activeElement); dispatchProjectIntent({ type: 'automation.update', automationId: lane.id, patch });
+          if (patch.span) spanControls?.select(lane.id, { focus });
+        } }));
       list.appendChild(row);
       if (lane.id === focusId && focusKey) {
         const find = element => (element.dataset?.spanField || element.dataset?.automationField) === focusKey ? element : Array.from(element.children).map(find).find(Boolean);
@@ -2171,6 +2175,7 @@ const createMidiUiController = ({
       empty.textContent = 'No modulation lanes';
       list.appendChild(empty);
     }
+    spanControls?.render();
   };
 
   const renderModulation = () => {
@@ -2386,7 +2391,7 @@ const createMidiUiController = ({
 
   const renderLocalSummary = () => {
     for (const editor of document?.getElementById('midiAutomationList')?.querySelectorAll?.('.midi-span-editor') || []) editor.syncStatus?.();
-    renderMasterVolume(); tensionControls?.syncStatus();
+    renderMasterVolume(); tensionControls?.syncStatus(); spanControls?.syncStatus();
     const { live: localState, auditionActive, stopping } = localOwnershipState();
     workbench?.setAudioActive(ensureProject().enabled || getLemmings()?.midiEnabled || localState?.enabled || localState?.status === 'starting' || auditionActive);
     const hardwareOn = !!getLemmings()?.midiEnabled && !!getWebMidi()?.enabled && !!getLemmings()?.midiOut;
@@ -2822,6 +2827,12 @@ const createMidiUiController = ({
     eventClipEditor = createMidiEventClipEditor({ document, bind: bindById, getProject: ensureProject, getSource: selectedSource,
       commitProject, dispatch: dispatchProjectIntent, history: editHistory, setStatus });
     eventClipEditor.initialize();
+    spanControls = createMidiAutomationSpanControls({ document, getProject: ensureProject, onIntent: dispatchProjectIntent, getRouter: getActiveRouter, getLaneCount: () => Math.max(1, getLemmings()?.game?.laneCount || 1),
+      onReturnToSpatial: id => {
+        const list = document.getElementById('midiAutomationList'), row = Array.from(list?.children || []).find(entry => entry.dataset.automationId === id);
+        const find = element => element.dataset?.automationField === 'target' ? element : Array.from(element.children).map(find).find(Boolean);
+        if (row) find(row)?.focus?.({ preventScroll: true });
+      } });
     setWorkspaceVisible(window?.matchMedia?.('(min-width: 1000px)')?.matches === true, { focus: false });
     bindById('midiWorkspaceToggle', 'click', () => {
       const workspace = document?.getElementById('midiSequencerWorkspace');
@@ -3356,17 +3367,6 @@ const createMidiUiController = ({
     for (const id of ['midiGlobalEnvAttack', 'midiGlobalEnvDecay', 'midiGlobalEnvSustain', 'midiGlobalEnvRelease']) {
       bindById(id, 'change', updateGlobalEnvelope);
     }
-    const spanPreset = document?.getElementById('midiSpanPreset');
-    if (spanPreset && !spanPreset.children.length) for (const preset of MIDI_AUTOMATION_SPAN_PRESETS) appendOption(document, spanPreset, preset.id, preset.label);
-    if (spanPreset && !spanPreset.value) spanPreset.value = MIDI_AUTOMATION_SPAN_PRESETS[0].id;
-    bindById('midiSpanPresetApply', 'click', () => {
-      const bundle = createMidiAutomationSpanBundle(spanPreset?.value, { domain: document?.getElementById('midiSpanPresetDomain')?.value });
-      const status = document?.getElementById('midiSpanPresetStatus');
-      if (!bundle.length) return;
-      if (ensureProject().automation.filter(entry => entry.span).length + bundle.length > 64) { if (status) status.textContent = 'Remove three spans before adding this combination.'; return; }
-      dispatchProjectIntent({ type: 'automation.bundle.add', automation: bundle });
-      if (status) status.textContent = MIDI_AUTOMATION_SPAN_PRESETS.find(preset => preset.id === spanPreset.value).description;
-    });
     bindById('midiAutomationAddButton', 'click', () => {
       const current = ensureProject();
       const targets = ['note', 'velocity', 'pan', 'duration'];
@@ -3487,6 +3487,7 @@ const createMidiUiController = ({
     localAudioGraph?.dispose?.();
     captureControls?.dispose(); captureControls = null;
     tensionControls?.dispose(); tensionControls = null;
+    spanControls?.dispose(); spanControls = null;
     if (refreshTimer != null && typeof window?.clearTimeout === 'function') {
       window.clearTimeout(refreshTimer);
     }

@@ -189,11 +189,13 @@ const registerSequencerDom = (doc) => {
     midiSpanPresetStatus: 'p',
     midiAutomationAddButton: 'button',
     midiAutomationList: 'div',
+    midiMainSpanList: 'div',
     midiSchedulerPressure: 'div',
     midiOutputLog: 'div'
   };
   for (const [id, tag] of Object.entries(ids)) {
-    registerElement(doc, tag, id);
+    const element = registerElement(doc, tag, id);
+    element.removeEventListener = (type, listener) => element.listeners.set(type, (element.listeners.get(type) || []).filter(value => value !== listener));
   }
   doc.getElementById('midiSourceKindFilter').value = 'all';
   doc.getElementById('midiSourceAssignFilter').value = 'all';
@@ -409,7 +411,7 @@ describe('midiUiController sequencer', function() {
     view.midiPreviewRouter.getAutomationSpanState = () => { localReads++; return { active: true, phase: 0.5, eventCount: 7, bar: 3, spanPass: 2 }; };
     controller.dispatchProjectIntent({ type: 'automation.add', automation: { id: 'live-span', target: 'pan', span: { domain: 'beats', start: 0, duration: 8 } } });
     expect(controller.getMidiSetupState().scheduler.reason).to.equal('local-budget');
-    expect(doc.getElementById('midiAutomationList').querySelectorAll('.midi-span-status')[0].textContent).to.include('event 7');
+    expect(doc.getElementById('midiMainSpanList').querySelectorAll('.midi-span-status')[0].textContent).to.include('event 7');
     expect(localReads).to.be.greaterThan(0); expect(hardwareReads).to.equal(0);
     await click(); expect(controller.getMidiSetupState().scheduler.reason).to.equal(null); expect(hardwareReads).to.equal(0); controller.dispose();
   });
@@ -428,6 +430,116 @@ describe('midiUiController sequencer', function() {
     expect(JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY)).automation).to.deep.equal(project.automation);
     expect(doc.getElementById('midiSpanPresetStatus').textContent).to.include('scale-safe'); controller.dispose();
   });
+  it('selects and renames main preset spans, applies common edits with one Undo, and preserves spatial curves, active gates and reload', function() {
+    withFakeClockAndPerformance(() => {
+      const config = { enabled: true, mpe: { enabled: false }, scale: { name: 'chromatic', root: 0 }, sfx: { 1: { note: 60, channel: 1, durationTicks: 8 } }, triggers: {} };
+      const router = new MidiEventRouter(config), calls = []; router.setOutput(makeOutput([1], calls));
+      const { controller, doc, win, view, webMidi } = createControllerHarness({ factoryConfig: config, webMidi: { enabled: true, inputs: [], outputs: [] },
+        lemmings: { midiRouter: router, setMidiProjectConfig(value) { this._midiConfig = value; this.projectConfigs.push(value); router.setMapping(value); } } });
+      const create = doc.createElement.bind(doc); doc.createElement = tag => { const element = create(tag); element.setSelectionRange = (start, end, direction) => { element.selectionStart = start; element.selectionEnd = end; element.selectionDirection = direction; }; return element; };
+      const find = (root, key, dataset = 'spanProperty') => root.dataset[dataset] === key ? root : root.children.map(child => find(child, key, dataset)).find(Boolean);
+      let reloaded;
+      try {
+        controller.bindMidiUi(); controller.dispatchProjectIntent({ type: 'automation.add', automation: { id: 'kept-spatial', target: 'pan', axis: 'x', min: -22, max: 22 } });
+        const spatial = controller.getProject().automation.filter(entry => !entry.span);
+        doc.getElementById('midiSpanPreset').value = 'span-open-air'; doc.getElementById('midiSpanPresetDomain').value = 'beats';
+        doc.getElementById('midiSpanPresetApply').dispatchEvent({ type: 'click' });
+        const list = doc.getElementById('midiMainSpanList'), spans = () => controller.getProject().automation.filter(entry => entry.span), row = id => list.children.find(entry => entry.dataset.spanId === id);
+        const ids = spans().map(entry => entry.id); expect(new Set(ids).size).to.equal(3);
+        expect(list.children.filter(entry => entry.dataset.spanId).map(entry => entry.dataset.spanId)).to.deep.equal(ids);
+        expect(ids.every(id => find(row(id), 'selected').checked)).to.equal(true);
+        const name = find(row(ids[0]), 'name'); name.focus(); name.value = 'Main scale lift'; name.setSelectionRange(1, 3, 'backward'); name.dispatchEvent({ type: 'change', target: name });
+        expect(doc.activeElement).to.equal(find(row(ids[0]), 'name')); expect([doc.activeElement.selectionStart, doc.activeElement.selectionEnd, doc.activeElement.selectionDirection]).to.deep.equal([1, 3, 'backward']);
+        expect(spans()[0].name).to.equal('Main scale lift');
+        const beforeHeaderSelection = controller.getProject();
+        for (const [id, additive] of [[ids[0], false], [ids[1], true], [ids[0], true]]) {
+          const open = find(row(id), 'open'); open.focus(); open.dispatchEvent({ type: 'click', ctrlKey: additive, detail: 0 });
+          expect(doc.activeElement).to.equal(find(row(id), 'open'));
+          expect(controller.getProject()).to.deep.equal(beforeHeaderSelection);
+        }
+        expect(ids.slice(0, 2).every(id => find(row(id), 'selected').checked)).to.equal(true); expect(find(row(ids[2]), 'selected').checked).to.equal(false);
+        const beforeSelect = controller.getProject(), check = find(row(ids[2]), 'selected'); check.focus(); check.checked = false; check.dispatchEvent({ type: 'change', target: check });
+        expect(controller.getProject()).to.deep.equal(beforeSelect); expect(doc.activeElement).to.equal(find(row(ids[2]), 'selected'));
+        expect(ids.slice(0, 2).every(id => find(row(id), 'selected').checked)).to.equal(true);
+        router._onEvent({ sfxId: 1, tick: 0, frameMs: 60 }); expect(router.scheduler._activeNotes.size).to.equal(1); const gates = [...router.scheduler._activeNotes.keys()];
+        const before = spans(), target = find(list, 'target', 'bulkSpanField'); target.focus(); target.value = 'pan'; target.dispatchEvent({ type: 'change', target });
+        expect(doc.activeElement).to.equal(find(list, 'target', 'bulkSpanField')); expect(spans().map(entry => entry.target)).to.deep.equal(['pan', 'pan', 'release']);
+        expect(win.__LEMMINGS_MIDI_UI__.undo()).to.equal(true); expect(spans()).to.deep.equal(before);
+        expect(win.__LEMMINGS_MIDI_UI__.redo()).to.equal(true); expect(spans().map(entry => entry.target)).to.deep.equal(['pan', 'pan', 'release']);
+        for (const [key, value] of [['min', -32], ['max', 32], ['start', 4], ['duration', 8]]) {
+          const field = find(list, key, 'bulkSpanField'); field.focus(); field.value = String(value); field.dispatchEvent({ type: 'change', target: field });
+          expect(doc.activeElement).to.equal(find(list, key, 'bulkSpanField'));
+        }
+        const bypass = find(list, 'bypass', 'bulkSpanField'); bypass.focus(); bypass.dispatchEvent({ type: 'click', detail: 0 });
+        expect(spans().slice(0, 2).every(entry => !entry.enabled && entry.min === -32 && entry.max === 32 && entry.span.start === 4 && entry.span.duration === 8)).to.equal(true);
+        expect(spans()[2]).to.deep.equal(before[2]); expect(controller.getProject().automation.filter(entry => !entry.span)).to.deep.equal(spatial);
+        expect([...router.scheduler._activeNotes.keys()]).to.deep.equal(gates); expect(calls.filter(call => call.type === 'noteOn')).to.have.length(1); expect(calls.filter(call => call.type === 'noteOff')).to.have.length(0);
+        const saved = controller.getProject(); expect(JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY)).automation).to.deep.equal(saved.automation);
+        controller.dispose(); reloaded = createMidiUiController({ window: win, document: doc, getLemmings: () => view, getWebMidi: () => webMidi }); reloaded.bindMidiUi();
+        expect(reloaded.getProject().automation).to.deep.equal(saved.automation); expect(reloaded.getProject().enabled).to.equal(saved.enabled);
+      } finally { reloaded?.dispose(); controller.dispose(); router.dispose(); }
+    });
+  });
+
+  it('keeps keyboard focus on the same source when converting a spatial curve to a span and back', () => {
+    const { controller, doc } = createControllerHarness(); controller.bindMidiUi();
+    const find = (root, predicate) => predicate(root) ? root : root.children.map(child => find(child, predicate)).find(Boolean);
+    try {
+      controller.dispatchProjectIntent({ type: 'automation.add', automation: { id: 'convert', name: 'Spatial pan', target: 'pan', axis: 'x', min: -22, max: 22, points: [{ beat: 0, value: -10 }, { beat: 1, value: 10 }] } });
+      const original = controller.getProject().automation.find(entry => entry.id === 'convert');
+      const spatial = doc.getElementById('midiAutomationList'), spans = doc.getElementById('midiMainSpanList');
+      const spatialRow = spatial.children.find(element => element.dataset.automationId === 'convert');
+      const create = find(spatialRow, element => element.textContent === 'Create looping beat span'); create.focus(); create.dispatchEvent({ type: 'click', detail: 0 });
+      expect(controller.getProject().automation.find(entry => entry.id === 'convert').span.domain).to.equal('beats');
+      const row = () => spans.children.find(element => element.dataset.spanId === 'convert');
+      expect(doc.activeElement).to.equal(find(row(), element => element.dataset.spanProperty === 'name'));
+      const back = find(row(), element => element.textContent === 'Return to spatial curve'); back.focus(); back.dispatchEvent({ type: 'click', detail: 0 });
+      expect(controller.getProject().automation.find(entry => entry.id === 'convert')).to.deep.equal(original);
+      const restored = spatial.children.find(element => element.dataset.automationId === 'convert');
+      expect(doc.activeElement).to.equal(find(restored, element => element.dataset.automationField === 'target'));
+    } finally { controller.dispose(); }
+  });
+
+  it('refuses spatial conversion at 64 authored spans even when every span is bypassed', () => {
+    const { controller, doc } = createControllerHarness();
+    const span = { domain: 'beats', start: 0, duration: 4 };
+    controller.setProject({ ...controller.getProject(), automation: [...Array.from({ length: 64 }, (_, index) => ({ id: 'bypassed-' + index, enabled: false, target: 'pan', span })), { id: 'remaining-spatial', target: 'pan', axis: 'x' }] });
+    controller.bindMidiUi();
+    const find = (root, predicate) => predicate(root) ? root : root.children.map(child => find(child, predicate)).find(Boolean);
+    try {
+      const project = controller.getProject(), create = find(doc.getElementById('midiAutomationList'), element => element.textContent === 'Create looping beat span');
+      expect(create.disabled).to.equal(true); expect(doc.getElementById('midiSpanPresetApply').disabled).to.equal(true);
+      // The callback guard also rejects a stale/programmatic activation of the disabled control.
+      create.dispatchEvent({ type: 'click' }); expect(controller.getProject()).to.deep.equal(project);
+      expect(doc.getElementById('midiMainSpanList').children.filter(row => row.dataset.spanId)).to.have.length(64);
+    } finally { controller.dispose(); }
+  });
+
+  it('pages saved overflow spans without hiding later edits, deleting entries or exceeding the selection batch limit', () => {
+    const { controller, doc, win, view } = createControllerHarness();
+    const find = (root, key, dataset = 'spanProperty') => root.dataset[dataset] === key ? root : root.children.map(child => find(child, key, dataset)).find(Boolean);
+    controller.setProject({ ...controller.getProject(), automation: Array.from({ length: 66 }, (_, index) => ({ id: 'saved-' + index, name: 'Saved span ' + index, enabled: false, target: 'pan', min: -22, max: 22, span: { domain: 'beats', start: index, duration: 4 } })) });
+    controller.dispose();
+    const reloaded = createMidiUiController({ window: win, document: doc, getLemmings: () => view }); reloaded.bindMidiUi();
+    const list = doc.getElementById('midiMainSpanList'), original = reloaded.getProject();
+    try {
+      expect(original.automation).to.have.length(66); expect(list.children.filter(row => row.dataset.spanId)).to.have.length(64);
+      expect(doc.getElementById('midiSpanPresetApply').disabled).to.equal(true);
+      for (const row of list.children.filter(row => row.dataset.spanId)) { const check = find(row, 'selected'); check.checked = true; check.dispatchEvent({ type: 'change', target: check }); }
+      const next = find(list, 'pageNext', 'bulkSpanField'); next.focus(); next.dispatchEvent({ type: 'click', detail: 0 });
+      expect(list.children.filter(row => row.dataset.spanId).map(row => row.dataset.spanId)).to.deep.equal(['saved-64', 'saved-65']);
+      expect(doc.activeElement).to.equal(find(list, 'pagePrevious', 'bulkSpanField'));
+      const later = () => list.children.find(row => row.dataset.spanId === 'saved-65'); expect(find(later(), 'selected').disabled).to.equal(true);
+      const open = find(later(), 'open'); open.focus(); open.dispatchEvent({ type: 'click' });
+      const name = find(later(), 'name'); name.focus(); name.value = 'Later saved span'; name.dispatchEvent({ type: 'change', target: name });
+      expect(doc.activeElement).to.equal(find(later(), 'name'));
+      expect(reloaded.getProject().automation.slice(0, 65)).to.deep.equal(original.automation.slice(0, 65));
+      expect(reloaded.getProject().automation[65]).to.deep.equal({ ...original.automation[65], name: 'Later saved span' });
+      expect(JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY)).automation).to.deep.equal(reloaded.getProject().automation);
+      expect(reloaded.getProject().enabled).to.equal(false);
+    } finally { reloaded.dispose(); }
+  });
+
   it('installs the fresh ensemble once and preserves edited saved roles on reload and re-enable', () => {
     const { controller, doc, win, view } = createControllerHarness({ freshProjectPresetId: 'game-iron-ensemble' });
     controller.bindMidiUi();
@@ -1191,15 +1303,15 @@ describe('midiUiController sequencer', function() {
       const router = new MidiEventRouter(config), calls = []; router.setOutput(makeOutput([1], calls));
       const { controller, doc, win } = createControllerHarness({ factoryConfig: config, webMidi: { enabled: true, inputs: [], outputs: [] },
         lemmings: { midiRouter: router, setMidiProjectConfig(value) { this._midiConfig = value; this.projectConfigs.push(value); router.setMapping(value); } } });
-      const find = (root, key) => (root.dataset.spanField || root.dataset.automationField) === key ? root : root.children.map(child => find(child, key)).find(Boolean);
+      const find = (root, key) => (root.dataset.spanField || root.dataset.spanProperty || root.dataset.automationField) === key ? root : root.children.map(child => find(child, key)).find(Boolean);
       try {
         controller.bindMidiUi();
         controller.dispatchProjectIntent({ type: 'automation.add', automation: { id: 'first', target: 'pan', min: -12, max: 12, span: { domain: 'beats', start: 0, duration: 4 } } });
         controller.dispatchProjectIntent({ type: 'automation.add', automation: { id: 'other', target: 'velocity', min: 70, max: 90, span: { domain: 'beats', start: 8, duration: 4 } } });
         const before = controller.getProject().automation.find(lane => lane.id === 'other');
         router._onEvent({ sfxId: 1, tick: 0, frameMs: 60 }); expect(router.scheduler._activeNotes.size).to.equal(1);
-        const gate = [...router.scheduler._activeNotes.keys()][0], list = doc.getElementById('midiAutomationList');
-        const row = () => list.children.find(entry => entry.dataset.automationId === 'first');
+        const gate = [...router.scheduler._activeNotes.keys()][0], list = doc.getElementById('midiMainSpanList');
+        const row = () => list.children.find(entry => entry.dataset.spanId === 'first');
         const duration = find(row(), 'duration'); duration.focus(); duration.value = '6'; duration.dispatchEvent({ type: 'change', target: duration });
         expect(doc.activeElement).to.equal(find(row(), 'duration')); expect(doc.activeElement.value).to.equal('6');
         const min = find(row(), 'min'); min.focus(); min.value = '-20'; min.dispatchEvent({ type: 'change', target: min });
