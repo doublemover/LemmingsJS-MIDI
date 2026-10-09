@@ -655,7 +655,7 @@ class ProcgenLaneWorld {
       const owner = task.owner;
       if (task.blocker || !owner || owner.removed || owner.failureReason || owner.terminalReason || owner.action !== this.actions[State.BUILDING] ||
           !task.direction || task.startLane !== actor.laneIndex || actor.x < task.startX - (task.basinSceneId ? 8 : 16) || actor.x > task.startX - 8 ||
-          Math.abs(actor.y - task.startY) > 3 || !this.hasGroundAt(actor.x, actor.y + 1) || this._constructionPassage(task) !== false || !this._emptyBashMasks(actor)) continue;
+          Math.abs(actor.y - task.startY) > 3 || !this.hasGroundAt(actor.x, actor.y + 1) || this._constructionPassage(task) !== false || !this._emptyBashMasks(actor) || !this.basinRoutes.canContain(actor, task)) continue;
       actor.setAction(this.actions[State.BLOCKING]); actor.assistConstructionTask = task; task.blocker = actor;
       this.stats.blockers++; actor.assists++; return true;
     }
@@ -747,6 +747,7 @@ class ProcgenLaneWorld {
       if (!this.cohorts && this.tickIndex === 1) this.soundEvents.emitSfx(SoundEventTypes.LEMMING_SPAWN, SoundEffectIds.SPAWN,
         { lemmingId: actor.id, laneIndex: actor.laneIndex, laneCount: this.laneCount, x: actor.x, y: actor.y, spawnTick: actor.spawnTick, spawnPhaseTicks: actor.spawnPhaseTicks, presentationPhase: actor.laneIndex / this.laneCount });
       this._assistedColumn.valid = false;
+      this.basinRoutes.observeApproach(actor);
       if (this.stall.phase === 'running') this._assist(actor);
       const previousX = actor.x, previousAction = actor.action; this._processingLane = actor.laneIndex; this._processingActorId = actor.id;
       const next = actor.process(this);

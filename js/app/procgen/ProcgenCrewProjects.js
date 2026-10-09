@@ -88,7 +88,7 @@ class ProcgenCrewProjects {
     const held = actor.assistConstructionTask;
     if (held?.crewProjectId != null) {
       const project = state.projects.find(entry => entry.id === held.crewProjectId);
-      if (project && !project.members.has(actor.id)) {
+      if (project && !project.basinArrival && !project.members.has(actor.id)) {
         if (project.members.size >= MAX_PROJECT_CREW) this._fail(project, 'containment-capacity');
         else project.members.set(actor.id, { id: actor.id, ordinary: this._ordinary(actor), crossed: false, blocker: true, lastSeenTick: this.world.tickIndex });
       }
@@ -98,11 +98,12 @@ class ProcgenCrewProjects {
     if (!observation && state.live.size < MAX_PROJECT_CREW) { observation = { id: actor.id }; state.live.set(actor.id, observation); }
     if (observation) {
       observation.x = actor.x; observation.y = actor.y; observation.tick = this.world.tickIndex;
+      observation.generation = this.world.generation; observation.lane = lane; observation.spawnTick = actor.spawnTick; observation.heldProjectId = held?.crewProjectId ?? null;
       observation.walking = actor.action === this.world.actions[State.WALKING];
       observation.ordinary = this._ordinary(actor); observation.blocking = actor.action === this.world.actions[State.BLOCKING];
     } else state.overflowTick = this.world.tickIndex;
     for (const project of state.projects) {
-      if (project.phase === 'working' && project.startTick === this.world.tickIndex && !project.members.has(actor.id) && this._ordinary(actor) &&
+      if (!project.basinArrival && project.phase === 'working' && project.startTick === this.world.tickIndex && !project.members.has(actor.id) && this._ordinary(actor) &&
           actor.action !== this.world.actions[State.BLOCKING] && actor.x >= project.startX - 128 && actor.x <= project.startX + 40 && Math.abs(actor.y - project.startY) <= 32) {
         if (project.members.size >= MAX_PROJECT_CREW) this._fail(project, 'admission-capacity');
         else project.members.set(actor.id, { id: actor.id, ordinary: true, crossed: false, blocker: false, lastSeenTick: this.world.tickIndex });

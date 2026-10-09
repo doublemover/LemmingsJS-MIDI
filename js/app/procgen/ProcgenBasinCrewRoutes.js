@@ -7,6 +7,7 @@ import { ActionFallSystem } from '../../actions/ActionFallSystem.js';
 import { ActionJumpSystem } from '../../actions/ActionJumpSystem.js';
 import { MAX_LOCAL_ROUTE_DISTANCE as DISTANCE, MAX_ROUTE_PROBES as WORK, ROUTE_LANES_PER_TICK as LANES } from './ProcgenHazardPlanner.js';
 import { procgenTileRevision } from './ProcgenTerrainRetention.js';
+import { MAX_PROJECT_CREW } from './ProcgenCrewProjects.js';
 
 const MAX_BASIN_SECTIONS = 4, BASIN_PROJECT_TICKS = 1200;
 const signature = basin => basin && [basin.id, basin.sourceRevision, basin.object.id, basin.object.x, basin.object.y, basin.object.width, basin.object.height,
@@ -131,6 +132,12 @@ class ProcgenBasinCrewRoutes {
     if (!scene.projectId) { this.stats.lastFailure = { lane: scene.lane, reason: 'crew-admission-changed', tick: world.tickIndex }; world.nukeLane(scene.lane); return false; }
     const project = world.lanePolicy.projects.lanes[scene.lane].projects.find(p => p.id === scene.projectId);
     project.exitX = scene.basin.shores[1].x1; scene.project = project;
+    // Only an initially scout-only scene waits for one actual bank cohort.
+    // Prepared ordinary crews keep their existing admission and release rules.
+    if (actor.scout && ![...project.members.values()].some(member => member.id !== actor.id && member.ordinary)) {
+      scene.arrival = { phase: 'open', observationTick: -1, approaches: new Map(), cohortTick: null, cohort: [] };
+      project.basinArrival = scene.arrival;
+    }
     project.scene = { crewSceneId: scene.id, sceneSourceRevision: scene.basin.sourceRevision, sceneProduction: scene.basin.production, constructionSections: scene.sections };
     scene.bounds = project.bounds; scene.guardTiles = [];
     const width = world.terrain.chunkWidth;
@@ -140,7 +147,51 @@ class ProcgenBasinCrewRoutes {
     task.crewProjectId = scene.projectId; task.basinSceneId = scene.id; this.scenes[actor.laneIndex] = scene;
     actor._basinSceneId = scene.id; this.stats.sections++; return true;
   }
-  canRelease(task) { const scene = this.scenes[task.startLane]; return !task.basinSceneId || scene?.id === task.basinSceneId && scene.phase === 'connected'; }
+  _bankApproach(actor, scene) {
+    const world = this.world, shore = scene.basin.shores[0];
+    return scene.generation === world.generation && actor.laneIndex === scene.lane && Number.isFinite(actor.spawnTick) && actor.spawnTick <= scene.startTick &&
+      !actor.removed && !actor.disabled && !actor.failureReason && !actor.terminalReason && !actor.scout && !actor.canClimb && !actor.hasParachute &&
+      actor.action === world.actions[State.WALKING] && actor.x >= shore.x1 && actor.x < shore.x2 && actor.y === scene.startY && world.hasGroundAt(actor.x, actor.y + 1);
+  }
+  observeApproach(actor) {
+    const scene = this.scenes[actor.laneIndex], arrival = scene?.arrival;
+    if (!arrival || arrival.phase !== 'open' || scene.phase === 'failed') return;
+    const tick = this.world.tickIndex;
+    if (arrival.observationTick !== tick) { arrival.observationTick = tick; arrival.approaches.clear(); }
+    if (!this._bankApproach(actor, scene)) return;
+    if (!arrival.approaches.has(actor.id) && arrival.approaches.size >= MAX_PROJECT_CREW) { arrival.overflowTick = tick; return; }
+    arrival.approaches.set(actor.id, { id: actor.id, tick, generation: scene.generation, lane: scene.lane, spawnTick: actor.spawnTick, x: actor.x, y: actor.y });
+  }
+  canContain(actor, task) {
+    const scene = this.scenes[task.startLane];
+    if (!task.basinSceneId || scene?.id !== task.basinSceneId || !scene.arrival) return !task.basinSceneId || scene?.id === task.basinSceneId;
+    if (scene.arrival.phase === 'closed') return scene.project.members.has(actor.id);
+    return this._bankApproach(actor, scene);
+  }
+  _freezeArrival(scene, state) {
+    const world = this.world, arrival = scene.arrival;
+    if (!arrival || arrival.phase !== 'open' || arrival.observationTick !== world.tickIndex) return;
+    const candidates = [...arrival.approaches.values()].filter(record => {
+      const live = state.live.get(record.id);
+      return live?.tick === world.tickIndex && live.generation === scene.generation && live.lane === scene.lane && live.spawnTick === record.spawnTick && live.ordinary &&
+        (live.walking || live.blocking && live.heldProjectId === scene.projectId);
+    });
+    if (!candidates.length) return;
+    const newMembers = candidates.filter(record => !scene.project.members.has(record.id));
+    if (arrival.overflowTick === world.tickIndex || state.overflowTick >= world.tickIndex - 1 || scene.project.members.size + newMembers.length > MAX_PROJECT_CREW) {
+      this._fail(scene, 'arrival-capacity'); return;
+    }
+    for (const record of newMembers) {
+      const live = state.live.get(record.id);
+      scene.project.members.set(record.id, { id: record.id, ordinary: true, crossed: false, blocker: live.blocking, lastSeenTick: world.tickIndex });
+    }
+    arrival.phase = 'closed'; arrival.cohortTick = world.tickIndex; arrival.cohort = candidates.map(record => ({ ...record })); arrival.approaches.clear();
+    scene.project.scene.arrivalTick = world.tickIndex; scene.project.scene.arrivalCrewIds = arrival.cohort.map(record => record.id);
+  }
+  canRelease(task) {
+    const scene = this.scenes[task.startLane];
+    return !task.basinSceneId || scene?.id === task.basinSceneId && scene.phase === 'connected' && scene.arrival?.phase !== 'open';
+  }
   _fail(scene, reason) {
     if (scene.phase === 'failed') return;
     scene.phase = 'failed'; scene.failure = reason; this.stats.failed++;
@@ -180,6 +231,7 @@ class ProcgenBasinCrewRoutes {
   observe(actor, previousAction) {
     const world = this.world, scene = this.scenes[actor.laneIndex];
     if (!scene) { actor._basinSceneId = null; return; }
+    this.observeApproach(actor);
     if (actor._basinSceneId !== scene.id || scene.ownerId !== actor.id) return;
     if (actor.failureReason || actor.terminalReason || actor.removed || actor.disabled || !actor.lookRight) { this._fail(scene, 'worker-loss'); return; }
     if (scene.phase === 'building' && previousAction === world.actions[State.SHRUG] && actor.action === world.actions[State.WALKING]) {
@@ -203,9 +255,10 @@ class ProcgenBasinCrewRoutes {
     const world = this.world, state = world.lanePolicy.projects.lanes[lane], project = scene.project;
     if (scene.generation !== world.generation || world._manualNukeLanes[lane] || world.stall.phase !== 'running' || world.tickIndex - scene.startTick > BASIN_PROJECT_TICKS) this._fail(scene, 'scene-cancelled');
     if (project.phase === 'failed') this._fail(scene, project.failure || 'crew-loss');
+    if (scene.phase !== 'failed') this._freezeArrival(scene, state);
     if (scene.phase === 'connected') {
       if (scene.tiles.some(([key, revision]) => procgenTileRevision(world, key) !== revision)) this._fail(scene, 'changed-route');
-      else if (project) scene.release = [...project.members.values()].every(member => member.id === scene.ownerId || (() => {
+      else if (project) scene.release = scene.arrival?.phase !== 'open' && [...project.members.values()].every(member => member.id === scene.ownerId || (() => {
         const live = state.live.get(member.id); return live?.tick === world.tickIndex && live.walking && live.x > project.goalX && Math.abs(live.y - project.goalY) <= 32;
       })());
     }

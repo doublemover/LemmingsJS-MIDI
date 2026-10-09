@@ -182,6 +182,116 @@ describe('actual source open-bank staged ordinary crew route', function() {
       expect(scene.events[0]).to.include({ admittedCrew: 9, ordinaryCrossings: 8 }); expect(scene.limits().maxLedger).to.be.at.most(1024);
     } finally { scene.world.dispose(); }
   });
+  const waitingScene = async () => {
+    const scene = await makeScene(masks, 8, { scout: true });
+    // Controlled delayed-arrival fixture; unaided birth-to-bank evidence is a
+    // separate fixed public-run receipt. Preserve real birth metadata here.
+    scene.waiting = scene.actors.filter(actor => actor !== scene.owner);
+    scene.world.actors = [scene.owner]; scene.world.lanePolicy.projects.reset();
+    scene.world.lanePolicy.projects.observe(scene.owner); scene.step();
+    expect(scene.world.basinRoutes.scenes[0].arrival.phase).to.equal('open');
+    return scene;
+  };
+  const admitAtBank = (scene, actors) => {
+    for (const actor of actors) {
+      actor.x = 1923; actor.y = 124; actor.lookRight = true; actor.setAction(scene.world.actions[State.WALKING]);
+      if (!scene.world.actors.includes(actor)) scene.world.actors.push(actor);
+    }
+  };
+  it('holds a scout-only final owner, freezes one actual supported bank tick and resolves only that delayed ordinary cohort', async () => {
+    const scene = await waitingScene(), { world, owner } = scene;
+    try {
+      until(scene, () => world.basinRoutes.scenes[0]?.phase === 'connected');
+      const active = world.basinRoutes.scenes[0], originalStart = active.startTick;
+      for (let i = 0; i < 3; i++) scene.step();
+      expect(owner.action).to.equal(world.actions[State.BLOCKING]); expect(active.release).to.equal(false); expect(scene.events).to.have.length(0);
+      const first = scene.waiting.slice(0, 2); admitAtBank(scene, first); scene.step();
+      const frozen = active.arrival.cohortTick;
+      expect(active.arrival.cohort.map(record => record.id)).to.have.members(first.map(actor => actor.id));
+      expect(active.project.members.size).to.equal(3); expect(active.startTick).to.equal(originalStart);
+      for (let i = 0; i < 3; i++) world.lanePolicy.projects.observe(first[0]);
+      admitAtBank(scene, [scene.waiting[2]]); scene.step();
+      expect(active.arrival.cohortTick).to.equal(frozen); expect(active.project.members.has(scene.waiting[2].id)).to.equal(false);
+      until(scene, () => scene.events.length === 1);
+      expect(scene.events[0]).to.include({ admittedCrew: 3, ordinaryCrossings: 2, recoveredBlockers: 1, arrivalTick: frozen });
+      expect(scene.events[0].arrivalCrewIds).to.have.members(first.map(actor => actor.id));
+      expect(world.stats).to.include({ failures: 0, removedPixels: 0, builds: 4, bashes: 1 });
+      expect(world.hazards.stats.contacts).to.equal(0); expect(world.triggerManager.byOwner.size).to.equal(0);
+      expect(first.every(actor => actor.action === world.actions[State.WALKING] && actor.x > scene.events[0].x && !actor.canClimb && !actor.hasParachute)).to.equal(true);
+    } finally { world.dispose(); }
+  });
+  it('admits a real pre-assist supported WALK converted to containment, while gating future births and every later held insertion', async () => {
+    const scene = await waitingScene(), { world } = scene;
+    try {
+      const active = world.basinRoutes.scenes[0], eligible = scene.waiting[0], future = scene.waiting[1];
+      eligible.spawnTick = active.startTick; eligible.x = 1931; future.x = 1931; future.spawnTick = active.startTick + 1;
+      world.actors.push(eligible, future); scene.step();
+      expect(eligible.action).to.equal(world.actions[State.BLOCKING]); expect(eligible.assistConstructionTask).not.to.equal(undefined);
+      expect(active.project.members.get(eligible.id)).to.include({ ordinary: true, blocker: true });
+      expect(active.arrival.cohort.map(record => record.id)).to.deep.equal([eligible.id]);
+      expect(future.action).not.to.equal(world.actions[State.BLOCKING]); expect(future.assistConstructionTask).to.equal(undefined);
+      future.assistConstructionTask = active.originalTask; world.lanePolicy.projects.observe(future);
+      expect(active.project.members.has(future.id)).to.equal(false);
+      expect(world.basinRoutes.canContain(scene.waiting[2], active.originalTask)).to.equal(false);
+    } finally { world.dispose(); }
+  });
+  it('requires genuine landing and a living completed observation, not FALL geography or a later same-tick loss', async () => {
+    const scene = await waitingScene(), { world } = scene;
+    try {
+      const active = world.basinRoutes.scenes[0], actor = scene.waiting[0];
+      actor.x = 1923; actor.y = 116; actor.setAction(world.actions[State.FALLING]); world.actors.push(actor); scene.step();
+      expect(active.arrival.phase).to.equal('open');
+      let supportedTick = null;
+      while (world.tickIndex < 20 && !supportedTick) { scene.step(); if (actor.action === world.actions[State.WALKING] && actor.y === 124) supportedTick = world.tickIndex; }
+      expect(supportedTick).not.to.equal(null); expect(active.arrival.cohortTick).to.equal(supportedTick);
+      const losing = await waitingScene();
+      try {
+        const gone = losing.waiting[0], pending = losing.world.basinRoutes.scenes[0];
+        admitAtBank(losing, [gone]); losing.world.basinRoutes.observeApproach(gone); losing.world.lanePolicy.projects.observe(gone);
+        gone.removed = true; losing.world.lanePolicy.projects.retire(gone); losing.world.basinRoutes.finish(0);
+        expect(pending.arrival.phase).to.equal('open'); expect(pending.project.members.size).to.equal(1); expect(losing.events).to.have.length(0);
+      } finally { losing.world.dispose(); }
+    } finally { world.dispose(); }
+  });
+  it('accepts all 63 eligible current bank records plus their scout owner at the exact 64-member capacity without a cue', async () => {
+    // Capacity evidence uses real supported bank coordinates but deliberately
+    // controlled observations; it is not a 64-person passage qualification.
+    const scene = await waitingScene(), { world } = scene;
+    try {
+      const active = world.basinRoutes.scenes[0];
+      for (let id = 100; id < 163; id++) {
+        const actor = { id, laneIndex: 0, spawnTick: active.startTick, x: 1923, y: 124, action: world.actions[State.WALKING] };
+        world.basinRoutes.observeApproach(actor); world.lanePolicy.projects.observe(actor);
+      }
+      world.basinRoutes.finish(0);
+      expect(active.arrival.phase).to.equal('closed'); expect(active.arrival.cohort).to.have.length(63);
+      expect(active.project.members.size).to.equal(64); expect(active.project.members.has(scene.owner.id)).to.equal(true);
+      expect(active.project.phase).to.equal('working'); expect(scene.events).to.have.length(0); expect(world._manualNukeLanes[0]).to.equal(0);
+    } finally { world.dispose(); }
+  });
+  it('rejects whole snapshot overflow instead of truncating and retires an owner-only wait at its original deadline', async () => {
+    for (const liveOverflow of [false, true]) {
+      const scene = await waitingScene(), { world } = scene;
+      try {
+        const active = world.basinRoutes.scenes[0], state = world.lanePolicy.projects.lanes[0];
+        for (let id = 100; id < (liveOverflow ? 101 : 164); id++) {
+          const actor = { id, laneIndex: 0, spawnTick: active.startTick, x: 1923, y: 124, action: world.actions[State.WALKING] };
+          world.basinRoutes.observeApproach(actor); world.lanePolicy.projects.observe(actor);
+        }
+        if (liveOverflow) state.overflowTick = world.tickIndex;
+        world.basinRoutes.finish(0);
+        expect(active.failure).to.equal('arrival-capacity'); expect(active.project.members.size).to.equal(1); expect(scene.events).to.have.length(0);
+        expect(world._manualNukeLanes[0]).to.equal(1);
+      } finally { world.dispose(); }
+    }
+    const scene = await waitingScene(), { world } = scene;
+    try {
+      until(scene, () => world.basinRoutes.scenes[0]?.phase === 'connected'); const active = world.basinRoutes.scenes[0];
+      world.tickIndex = active.startTick + BASIN_PROJECT_TICKS; scene.step();
+      expect(world.basinRoutes.scenes[0]).to.equal(null); expect(scene.events).to.have.length(0); expect(world.triggerManager.byOwner.size).to.equal(0);
+      expect(scene.owner._basinSceneId).to.equal(null); expect(world.basinRoutes.stats.failed).to.equal(1);
+    } finally { world.dispose(); }
+  });
   it('maps actual completed source crew to four default queued musical cells, frozen while paused and released by owned offs/Panic', async () => {
     const scene = await makeScene(masks, 8, { scout: true }), { world } = scene;
     try {
