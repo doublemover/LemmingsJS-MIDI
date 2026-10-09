@@ -1,4 +1,6 @@
 import { expect } from 'chai';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { loadProcgenMasks, runLaneBenchmark } from '../scripts/bench-procgen-lanes.js';
 import { ProcgenLaneWorld, normalizeLaneCount, LANE_HEIGHT } from '../js/app/procgen/ProcgenLaneWorld.js';
 import { SolidLayer } from '../js/render/SolidLayer.js';
@@ -68,7 +70,13 @@ describe('shared procgen lanes', function () {
   });
   it('runs 1024 real actors with bounded sparse edits and no render dependency', function () {
     this.timeout(15000);
-    const result = runLaneBenchmark({ masks, lanes: 1024, ticks: 3000, seed: 42 });
+    // Measure the same simulation in a fresh heap, independently of preceding
+    // source/catalog fixtures. Both the child and test retain the 15s limit.
+    const source = 'import { loadProcgenMasks, runLaneBenchmark } from \'./scripts/bench-procgen-lanes.js\';' +
+      'const masks = await loadProcgenMasks(); console.log(JSON.stringify(runLaneBenchmark({ masks, lanes: 1024, ticks: 3000, seed: 42 })));';
+    const result = JSON.parse(execFileSync(process.execPath, ['--input-type=module', '--eval', source], {
+      cwd: fileURLToPath(new URL('..', import.meta.url)), encoding: 'utf8', timeout: 15000
+    }));
     expect(result.rendered).to.equal(false);
     expect(result.alive).to.equal(1024);
     expect(result.stalled).to.equal(0);
