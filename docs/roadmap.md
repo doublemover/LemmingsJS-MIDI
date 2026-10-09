@@ -1009,10 +1009,10 @@ Accepted design is pinned to fe73f80 in the [independent audit](https://chatgpt.
   materialization interests; release cold history, preserve aligned source
   groups and expose bounded hit/miss/rebuild/payload counters. Compare identical
   finite trajectories and another theme before attributing performance.
-- [ ] Fix procgen conversion losing its editing surface, nuke/draw gesture
+- [x] Fix procgen conversion losing its editing surface, nuke/draw gesture
   ownership, frozen drag coordinates and backend-truthful Timbre/Release labels.
   Extend shared group canvas edits with one Undo; preserve saved settings.
-- [ ] Anchor births to the actual absolute beat grid, including regeneration
+- [x] Anchor births to the actual absolute beat grid, including regeneration
   and live policy changes, using the existing simulation clock.
 - [ ] Expand complete source assemblies through stratified support-bearing
   selection, explicit rejection/incidence evidence and bounded 2D productions.
@@ -1154,3 +1154,20 @@ The canonical storage owner additionally covers all lines/functions and 84.21%
 branches through the existing focused controller suite. Unavailable storage and
 fallback/error alternatives remain useful branch targets; its ignored report is
 temp/restart-automation-storage-coverage.log.
+
+Absolute birth checkpoint: cohort admission now uses the same generation-relative
+beat zero as the existing musical transport. It quantizes actual birth ticks,
+including fractional quarter beats, instead of merely rounding lane offsets.
+An admitted cohort freezes its spread and beat settings; changes apply to the
+next cohort, or to the pending first cohort before admission. Long beat periods
+use bounded future-grid deferral, exposed beside the unchanged nominal adaptive
+interval. Beat-disabled schedules and capacity/reserved-probe rules retain their
+existing behavior; pause and wall-clock speed do not move the musical grid.
+
+Nineteen affected population, spawn-role and beat checks pass. Muted native Edge
+records 32 births before regeneration and 20 afterward with exact rounded-grid
+and phase labels, an inert pause, and unchanged beat duration through 1x to 22x.
+The restart observer began after four initial births; later full cohorts each
+contain all eight lanes. There are no permission requests, output activation or
+page errors. Receipt: temp/procgen-beat-birth-native/receipt.json. The earlier
+truthful-target batch passes 140 affected controller/span/preset checks.

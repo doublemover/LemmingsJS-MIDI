@@ -20,7 +20,7 @@ import { ActionBlockerSystem } from '../../actions/ActionBlockerSystem.js';
 import { ActionDiggSystem } from '../../actions/ActionDiggSystem.js';
 import { ActionMineSystem } from '../../actions/ActionMineSystem.js';
 import { ProcgenTerrainGrowth } from './ProcgenTerrainGrowth.js';
-import { ProcgenPopulationPolicy, DEFAULT_PROCGEN_POPULATION, normalizePopulationPolicy } from './ProcgenPopulationPolicy.js';
+import { ProcgenPopulationPolicy, DEFAULT_PROCGEN_POPULATION, normalizePopulationPolicy, quantizeProcgenSpawnTick } from './ProcgenPopulationPolicy.js';
 import { ActionJumpSystem } from '../../actions/ActionJumpSystem.js';
 import { ActionBuildSystem } from '../../actions/ActionBuildSystem.js';
 import { ActionBashSystem } from '../../actions/ActionBashSystem.js';
@@ -170,13 +170,17 @@ class ProcgenLaneWorld {
     const order = Array.from({ length: this.laneCount }, (_, lane) => lane); let state = mix(this.seed ^ this.generation);
     for (let at = order.length - 1; at > 0; at--) { state = mix(state ^ at); const other = state % (at + 1); [order[at], order[other]] = [order[other], order[at]]; }
     for (let rank = 0; rank < order.length; rank++) this._spawnPhaseRanks[order[rank]] = rank;
+    this.population.cohortSpreadTicks = this.spawnSpreadTicks;
     this._laneAdmissionCohorts.fill(-Infinity); this._spawnPhaseCohortTick = -Infinity; this._computeSpawnPhases();
   }
   _computeSpawnPhases() {
-    const spread = Math.min(this.spawnSpreadTicks, this.population.intervalTicks - 1), quarterBeat = this.population.settings.spawnBeatTicks / 4;
+    const spread = Math.min(this.population.cohortSpreadTicks, this.population.intervalTicks - 1);
+    const start = this.population.cohortStartTick, beatTicks = this.population.cohortBeatTicks;
     for (let lane = 0; lane < this.laneCount; lane++) {
       const offset = this._spawnPhaseRanks[lane] * spread / this.laneCount;
-      this._spawnPhases[lane] = quarterBeat > 0 ? Math.min(spread, Math.round(Math.round(offset / quarterBeat) * quarterBeat)) : Math.floor(offset);
+      this._spawnPhases[lane] = beatTicks > 0
+        ? quantizeProcgenSpawnTick(start + offset, this.generationStartTick, beatTicks, start, start + spread) - start
+        : Math.floor(offset);
     }
   }
   _spawnPhaseForLane(lane) { return this._spawnPhases[lane]; }
@@ -188,8 +192,9 @@ class ProcgenLaneWorld {
   _spawnCohort() {
     if (!this.cohorts || this.stall.phase !== 'running') return;
     const phase = this.population.phaseAt(this.tickIndex, this.activeCount);
-    if (this._spawnPhaseCohortTick !== this.population.cohortStartTick) { this._computeSpawnPhases(); this._spawnPhaseCohortTick = this.population.cohortStartTick; }
     this.admissionPaused = this.activeCount >= this.maxActors;
+    if (phase < 0) return;
+    if (this._spawnPhaseCohortTick !== this.population.cohortStartTick) { this._computeSpawnPhases(); this._spawnPhaseCohortTick = this.population.cohortStartTick; }
     for (let lane = 0; lane < this.laneCount; lane++) {
       if (this._spawnPhaseForLane(lane) !== phase || this._laneAdmissionCohorts[lane] === this.population.cohortStartTick) continue;
       const state = this.stall.lanes[lane];

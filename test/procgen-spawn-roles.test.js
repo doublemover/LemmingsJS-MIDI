@@ -40,16 +40,15 @@ describe('seeded tick admission and independent scout roles', () => {
     const world = new ProcgenLaneWorld({ masks, laneCount: 8, laneHeight: 144, cohorts: true, assists: false,
       populationPolicy: { spawnBeatTicks: 60000 / 120 / 60 } });
     expect(world.timer.TIME_PER_FRAME_MS).to.equal(60);
-    world.step(); const firstPhases = [...world._spawnPhases];
+    while (!world.activeCount) world.step(); const firstPhases = [...world._spawnPhases], firstStart = world.population.cohortStartTick;
     world.setPopulationPolicy({ spawnSpreadTicks: 0, spawnBeatTicks: 60000 / 80 / 60 });
     for (let tick = 0; tick < 12; tick++) world.step();
     expect(world.actors).to.have.length(8); expect(new Set(world.actors.map(actor => actor.laneIndex)).size).to.equal(8);
     expect([...world._spawnPhases]).to.deep.equal(firstPhases);
     const quarter = (60000 / 120 / 60) / 4;
-    for (let lane = 0; lane < 8; lane++) {
-      const raw = world._spawnPhaseRanks[lane] * 12 / 8;
-      expect(firstPhases[lane]).to.equal(Math.min(12, Math.round(Math.round(raw / quarter) * quarter)));
-    }
+    const grid = new Set(Array.from({ length: 16 }, (_, index) => Math.round(index * quarter)));
+    expect(firstPhases.every(phase => grid.has(firstStart + phase) && phase >= 0 && phase <= 12)).to.equal(true);
+    expect(world.actors.every(actor => grid.has(actor.spawnTick) && actor.spawnTick === firstStart + actor.spawnPhaseTicks)).to.equal(true);
     const next = world.population.nextCohortTick;
     while (world.tickIndex < next) world.step();
     expect(world.spawnedTotal).to.equal(16); expect([...world._spawnPhases].every(phase => phase === 0)).to.equal(true);
