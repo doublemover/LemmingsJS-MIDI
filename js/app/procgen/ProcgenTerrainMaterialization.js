@@ -93,7 +93,7 @@ const createTerrainGrowthPlan = ({ descriptor, pattern, route, pieces, assemblie
     const placements = members.map(at => descriptor.placements[at]);
     const x1 = Math.min(...placements.map(p => p.x)), x2 = Math.max(...placements.map(p => p.x + p.piece.width));
     const y1 = Math.min(...placements.map(p => p.y)), y2 = Math.max(...placements.map(p => p.y + p.piece.height));
-    const ids = placements.flatMap(p => p.canonicalGroup ? p.canonicalGroup.placements.map(member => member.id) : [p.piece.id]);
+    const ids = placements.flatMap(p => p.sourceRegion ? p.sourceRegion.sourcePlacements.map(member => member.id) : p.canonicalGroup ? p.canonicalGroup.placements.map(member => member.id) : [p.piece.id]);
     const index = add('terrain', { x1, x2, y1, y2 }, jobs.map(job => job.index), ids,
       { placementIndices: Object.freeze(members), sharedSpan: descriptor.sharedSpan, orderedSource: true });
     for (const at of members) placementJobs[at] = index;

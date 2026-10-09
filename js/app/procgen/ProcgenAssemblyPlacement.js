@@ -97,7 +97,8 @@ const placeAuthoredAssemblies = ({ compiled = [], chunk, origin = chunk * 128, c
       ]);
       contacts.push({ x: origin + ox + support.anchorX, y: oy + support.anchorY });
       const assembly = { id: entry.id, sourceRevision: group.sourceRevision, chunk, bounds: { ...box, x1: origin + box.x1, x2: origin + box.x2 },
-        contacts, foundationSupports: supports, supportMember: support.member, memberCount: all.length };
+        contacts, foundationSupports: supports, supportMember: support.member, memberCount: all.length,
+        sourceSupport: { member: support.member, anchor: { kind: anchor.kind, id: anchor.id, x: anchor.x, y: anchor.y, f: anchor.f }, source: { ...support.source } } };
       for (const member of all) if (member.kind === 'terrain' && (member !== anchorMember || !match)) terrainPlacements.push({ piece: member.piece,
         x: ox + member.x, y: oy + member.y, flip: member.orientation.flipX, flipY: member.orientation.flipY, decor: false,
         assembly, assemblyMemberIds: [member.id], sourceRevision: group.sourceRevision });

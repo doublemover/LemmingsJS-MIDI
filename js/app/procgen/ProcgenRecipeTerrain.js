@@ -1,3 +1,4 @@
+import { createSourceRegionLibrary, sourceRegionPayloadBytes } from './ProcgenSourceRegions.js';
 import { ProcgenDescriptorResidency } from './ProcgenDescriptorResidency.js';
 import { placeTerrainSpan, SHARED_TERRAIN_MINIMUM_X } from './ProcgenTerrainSpans.js';
 import { createSourceColumnLibrary, placeSourceColumn } from './ProcgenTerrainColumns.js';
@@ -55,6 +56,7 @@ class ProcgenRecipeTerrain {
     this.descriptorResidency = new ProcgenDescriptorResidency(this.descriptions, this.growthPlans);
     this.objects = objectPieces.filter(p => p?.image?.frames?.[0]?.length && p.image.width && p.image.height);
     this.compiledAssemblies = compileAuthoredAssemblies(this.assemblyCatalog, this.pieces, this.objects);
+    this.sourceRegions = createSourceRegionLibrary(this.assemblyCatalog, this.pieces, this.objects, this.wordPlanner?.ids);
     this.assemblySources = new Map(this.compiledAssemblies.filter(isProcgenAssemblyEligible).map(group => [group.entry.id, group]));
     this.eligibleObjectIds = new Set(this.objects.filter(p => this._standaloneObjectEligible(p)).map(p => p.id));
     for (const group of this.assemblySources.values()) for (const member of group.objects) this.eligibleObjectIds.add(member.id);
@@ -103,6 +105,7 @@ class ProcgenRecipeTerrain {
   reset() { this.descriptorResidency.clear(); this.descriptionLimit = 256; this.descriptions.clear(); this.growthPlans.clear(); this.zonePlanner?.reset(); this.wideZonePlanner?.reset(); this.collision.clear(); this.rasters.clear(); this._lastKey = null; this._lastChunk = null; }
   get memoryMB() {
     let bytes = [...this.sourceGroups.values(), ...this.wideSourceGroups.values()].reduce((n, group) => n + group.piece.composite.colors.byteLength + group.piece.composite.operations.byteLength + group.piece.composite.impact.byteLength + group.piece.frame.byteLength + group.columnTop.byteLength + group.columnBottom.byteLength, 0);
+    bytes += sourceRegionPayloadBytes(this.sourceRegions, this.descriptions);
     bytes += this.patterns.reduce((n, p) => n + p.pixels.byteLength + p.mask.byteLength + p.topProfile.byteLength + p.columnColors.byteLength + p.introColumns.byteLength, 0);
     for (const p of this.collision.values()) bytes += p.solid.byteLength + p.steel.byteLength + p.topProfile.byteLength;
     for (const p of this.rasters.values()) bytes += p.byteLength;
@@ -113,7 +116,7 @@ class ProcgenRecipeTerrain {
     const cached = this.descriptorResidency.read(keyFor(seed, chunk)); if (cached) return cached;
     const first = chunk - chunk % 2, code = this._code(seed ^ 0x713d02ab, first);
     let pair = null;
-    if (this.sharedSpanBudget >= 2 && first * TERRAIN_CHUNK_WIDTH >= SHARED_TERRAIN_MINIMUM_X && (code & 6) === 0 && (this.wideSourceGroups.size || this.wordPlanner?.wideChoices.length)) {
+    if (this.sharedSpanBudget >= 2 && first * TERRAIN_CHUNK_WIDTH >= SHARED_TERRAIN_MINIMUM_X && (code & 6) === 0 && (this.wideSourceGroups.size || this.wordPlanner?.wideChoices.length || this.sourceRegions.length)) {
       pair = [this._describeSingle(seed, first, true), this._describeSingle(seed, first + 1, true)];
       const descriptorAt = x => pair[Math.floor(x / TERRAIN_CHUNK_WIDTH)], localX = x => x % TERRAIN_CHUNK_WIDTH;
       const sample = (kind, x, y) => x >= 0 && x < 256 ? this[kind](seed, first + Math.floor(x / TERRAIN_CHUNK_WIDTH), localX(x), y, descriptorAt(x)) : 0;
@@ -123,7 +126,7 @@ class ProcgenRecipeTerrain {
         return pattern.topProfile[this._foundationColumn(pattern, x + first * TERRAIN_CHUNK_WIDTH, d)] < 0 ? -1 : this._surface(seed, first + Math.floor(x / TERRAIN_CHUNK_WIDTH), localX(x), d);
       };
       if (!placeTerrainSpan({ seed, firstChunk: first, code, descriptors: pair, height: this.height, wordPlanner: this.wordPlanner,
-        groupLibrary: this.wideSourceGroups, zone: this.wideZonePlanner?.zoneAt(seed, first * TERRAIN_CHUNK_WIDTH), surface,
+        groupLibrary: this.wideSourceGroups, regionLibrary: this.sourceRegions, zone: this.wideZonePlanner?.zoneAt(seed, first * TERRAIN_CHUNK_WIDTH), surface,
         solid: (x, y) => sample('solidSample', x, y), steel: (x, y) => sample('steelSample', x, y), color: (x, y) => sample('rasterSample', x, y),
         sourceRevision: this.sourceDescriptor?.sourceRevision || this.recipe.assetSha256 })) pair = null;
     }

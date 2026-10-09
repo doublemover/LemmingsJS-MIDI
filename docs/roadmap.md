@@ -1055,3 +1055,18 @@ records65 actual local synth note admissions, preserves listening through speed
 short scheduling samples have p50 4.2ms, p95 4.3ms and maximum12.5ms. These are
 muted headless browser observations, not display FPS, acoustics or physical MIDI
 acceptance. Capture and receipt are ignored temp/restart-watch-listen-native.*.
+
+Complete source-region receipt: natural original Marble lane seed90, chunks12/13,
+admits the whole144x90 LEVEL005.DAT#7 atom (indices51/52/53) and its measured
+source support. Exact authored order/native alpha replaces327 extruded pixels
+with genuine open geometry. Every opaque support column is checked, with at most
+eight protected voids and sixteen explicitly unqualified standing ports.
+Materialization reuses the existing atomic two-tile transaction and records all
+source IDs; cold rebuilds preserve geometry/request-order identity. Fourteen
+affected checks pass; the new source owner covers all lines/functions and92.3%
+branches. The composite cache is fixed at16 and admission tries at most4atoms.
+This fixture retains155,520 region typed-payload bytes initially and304,512 with
+128 pinned pairs; total typed terrain is1.4574/1.5995MiB for this exact fixture.
+Dirt's unsupported atoms remain suppressed. Joint object regions, broader
+stratified mining and physical traversal of these ports remain unqualified.
+The exact pixel/steel/support/activation test is test/procgen-source-regions.test.js.

@@ -1,9 +1,10 @@
 import { placeSourceGroups } from './ProcgenTerrainGroups.js';
+import { placeSourceRegion } from './ProcgenSourceRegions.js';
 
 const SHARED_TERRAIN_WIDTH = 256, SHARED_TERRAIN_MINIMUM_X = 1024;
 // Cold, complete source geometry only. Neither sibling descriptor construction
 // nor mutable materialization flags participate in this bounded admission.
-const placeTerrainSpan = ({ seed, firstChunk, code, descriptors, height, wordPlanner, groupLibrary, zone, surface, solid, steel, color, sourceRevision }) => {
+const placeTerrainSpan = ({ seed, firstChunk, code, descriptors, height, wordPlanner, groupLibrary, regionLibrary = [], zone, surface, solid, steel, color, sourceRevision }) => {
   if (descriptors.some(d => d.gapWidth)) return null;
   const occupied = descriptors.flatMap((d, part) => [
     ...d.placements.map(p => ({ ...p, x: p.x + part * 128 })),
@@ -24,23 +25,31 @@ const placeTerrainSpan = ({ seed, firstChunk, code, descriptors, height, wordPla
   // Objects retain their full artwork/contact envelope, including external triggers.
   const wordClear = word => !objectEnvelopes.some(o => word.x + word.width > o.x1 - 2 && word.x < o.x2 + 2 &&
     word.baseline > o.y1 - 2 && word.y < o.y2 + 2);
-  let word = null, placements = [];
+  let word = null, placements = [], region = null, regionTried = false;
   if (code & 1) {
     word = wordPlanner?.planWide(code, SHARED_TERRAIN_WIDTH, surface, solid, null, wordClear) || null;
     if (word) placements = word.placements;
   }
+  const tryRegion = () => {
+    if (regionTried) return; regionTried = true;
+    const result = placeSourceRegion({ library: regionLibrary, seed, firstChunk, code, height, occupied, surface, solid, steel });
+    if (result) { placements = [result.placement]; region = result.region; }
+  };
+  if (!placements.length && code & 16) tryRegion();
   if (!placements.length) placements = placeSourceGroups({ zone, library: groupLibrary, code, chunk: firstChunk, width: SHARED_TERRAIN_WIDTH,
     maxGroups: 1, centered: true, allowVerticalSeparation: true, height, baseSurface: surface, baseSolid: solid, baseSteel: steel, baseColor: color,
     occupied, gapX: 0, gapWidth: 0 });
+  if (!placements.length) tryRegion();
   if (!placements.length) return null;
   const x1 = Math.min(...placements.map(p => p.x)), x2 = Math.max(...placements.map(p => p.x + p.piece.width));
   if (x1 >= 128 || x2 <= 128 || x1 < 8 || x2 > SHARED_TERRAIN_WIDTH - 8) return null;
-  const shared = Object.freeze({ id: `${sourceRevision}:${seed}:${firstChunk}:${word?.text || `${placements[0].canonicalGroup.role}:${placements[0].canonicalGroup.source.level}:${placements[0].canonicalGroup.source.terrainIndices.join(',')}`}`,
-    firstChunk, lastChunk: firstChunk + 1, cost: 2, sourceRevision, x1, x2, word: word?.text || null });
+  const shared = Object.freeze({ id: `${sourceRevision}:${seed}:${firstChunk}:${region?.sourceAtom || word?.text || `${placements[0].canonicalGroup.role}:${placements[0].canonicalGroup.source.level}:${placements[0].canonicalGroup.source.terrainIndices.join(',')}`}`,
+    firstChunk, lastChunk: firstChunk + 1, cost: 2, sourceRevision: region?.sourceRevision || sourceRevision, x1, x2, word: word?.text || null, ...(region ? { region } : {}) });
   for (let part = 0; part < 2; part++) {
     const descriptor = descriptors[part], local = placements.filter(p => p.x < (part + 1) * 128 && p.x + p.piece.width > part * 128)
       .map(p => ({ ...p, x: p.x - part * 128, sharedSpan: shared }));
     descriptor.sharedSpan = shared; descriptor.placements.push(...local);
+    if (region) descriptor.region = region;
     if (word) descriptor.word = { ...word, x: word.x - part * 128, placements: local,
       readable: word.readable.map(g => ({ ...g, x: g.x - part * 128, right: g.right - part * 128 })), sharedSpan: shared };
   }
