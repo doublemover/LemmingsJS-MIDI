@@ -54,6 +54,27 @@ describe('bounded procgen physical route proposals', function() {
     const world = make((x, y) => y >= 72 || x >= 60 && x < 115 && y >= 54 && y <= 58 || x >= 76 && x < 84 && y >= 58 && y < 72);
     expect(new ProcgenHazardPlanner(world).plan(at(world, 68))).to.include({ kind: 'bashers' }); world.dispose();
   });
+  it('uses consecutive shared walking columns beneath an overhang, and rejects an intervening narrow wall', () => {
+    const ground = (x, y) => y >= 72 || x >= 76 && x < 84 && y >= 58 || x >= 84 && x < 116 && y >= 60 && y <= 65;
+    const world = make(ground), actor = at(world, 68), planner = new ProcgenHazardPlanner(world);
+    // A single floor-7 pixel is occupied, but the next column has a gap below
+    // that roof. Shared WALK legally continues without a head-pixel heuristic.
+    expect(world.hasGroundAt(89, 65)).to.equal(true); expect(world.getColumnStepHeight(89, 65, 8)).to.equal(1);
+    const proposal = planner.plan(actor); expect(proposal).to.include({ kind: 'bashers', reason: 'supported-local-tunnel' });
+    expect(world.assignWorker(actor, proposal.kind, proposal.targetX, proposal.footprint)).to.equal(true);
+    for (let tick = 0; tick < 120; tick++) world.step();
+    expect(actor.x).to.be.greaterThan(120); expect(actor.action).to.equal(world.actions[State.WALKING]); expect(actor.failureReason).to.equal(null); world.dispose();
+    const thinRoof = make((x, y) => y >= 72 || x >= 76 && x < 84 && y >= 58 || x >= 84 && x < 116 && y >= 69 && y <= 70);
+    expect(thinRoof.getColumnStepHeight(89, 65, 8)).to.equal(1);
+    expect(new ProcgenHazardPlanner(thinRoof).plan(at(thinRoof, 68))).to.include({ kind: 'bashers', continuationY: 72 }); thinRoof.dispose();
+    const blocked = make((x, y) => ground(x, y) || x === 93 && y >= 64);
+    expect(new ProcgenHazardPlanner(blocked).plan(at(blocked, 68))).to.equal(null); blocked.dispose();
+    const descent = make((x, y) => y >= (x >= 90 ? 84 : 72) || x >= 76 && x < 84 && y >= 58);
+    descent.hazards.nearby = (_lane, _x, _options, out) => { out.length = 0; out.push({ x1: 90, x2: 92, y1: 73, y2: 75 }); return out; };
+    // This thin envelope misses both grounded endpoints but intersects the
+    // actual fall between them. Foot clearance must retain contact safety.
+    expect(new ProcgenHazardPlanner(descent).plan(at(descent, 68))).to.equal(null); descent.dispose();
+  });
   it('steps over an actual nearby sourced trap, without triggering its owner or granting permanent abilities', () => {
     const object = { piece: trap, x: 60, y: 72 - trap.image.height, supportY: 72, role: 'trap', animation: 'idle' };
     const world = make((x, y) => y >= 72, [object]), actor = at(world, 54), planner = new ProcgenHazardPlanner(world);

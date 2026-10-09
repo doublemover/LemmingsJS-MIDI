@@ -25,13 +25,26 @@ class ProcgenHazardPlanner {
   }
   _safe(x, y) { return !this.observations.some(hazard => intersects(hazard, x, y)); }
   _continuation(x, y) {
-    let last = y, span = 0;
-    for (let dx = 0; dx <= 8; dx += 2) {
-      const floor = this._floor(x + dx, last, 2, 12);
-      if (floor == null || Math.abs(floor - last) > 12 || !this._safe(x + dx, floor) || this._ground(x + dx, floor - 9)) return null;
-      last = floor; span += 2;
+    let last = this._ground(x, y) ? y : this._floor(x, y + 1, 0, 11);
+    if (last == null) return null;
+    for (let at = Math.min(y, last); at <= Math.max(y, last); at++) if (!this._safe(x, at)) return null;
+    // Follow the shared walker's consecutive eight-pixel feet/up column. A
+    // separated overhead roof does not turn walkers; a full column does. Query
+    // every intervening x, including narrow supports and ordinary safe falls.
+    for (let dx = 1; dx <= 8; dx++) {
+      let up = 0;
+      while (up < 8 && this._ground(x + dx, last - up)) up++;
+      if (up === 8) return null;
+      if (up) last -= up - 1;
+      else {
+        const floor = this._floor(x + dx, last + 1, 0, 11);
+        if (floor == null) return null;
+        for (let at = last + 1; at <= floor; at++) if (!this._safe(x + dx, at)) return null;
+        last = floor;
+      }
+      if (!this._safe(x + dx, last)) return null;
     }
-    return { y: last, span };
+    return { y: last, span: 8 };
   }
   _constructionOverlap(bounds) {
     const first = Math.max(0, Math.floor(bounds.y1 / 96)), last = Math.min(this.world.laneCount - 1, Math.floor((bounds.y2 - 1) / 96));

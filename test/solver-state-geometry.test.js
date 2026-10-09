@@ -6,6 +6,7 @@ import {
   createSyntheticSolverFixture
 } from '../js/solver/SolverFixtures.js';
 import {
+  MAX_SOLVER_SNAPSHOT_PIXELS,
   extractSolverState,
   stableHash
 } from '../js/solver/SolverState.js';
@@ -23,6 +24,27 @@ const setGroundRow = (level, y, x1, x2) => {
 };
 
 describe('solver state and geometry foundations', function() {
+  it('rejects unbounded procgen dimensions before reading a ground layer or sampler', function() {
+    let reads = 0;
+    const world = { width: 0x3fffffff, height: 96,
+      getGroundMaskLayer() { reads++; throw new Error('must not read an unbounded layer'); },
+      hasGroundAt() { reads++; return true; }
+    };
+    expect(() => extractSolverState(world)).to.throw(RangeError, 'pixel budget').with.property('code', 'solver-snapshot-budget-exceeded');
+    expect(() => extractSolverState({ ...world, width: Number.MAX_SAFE_INTEGER, height: 2 })).to.throw(RangeError, 'pixel budget');
+    expect(() => extractSolverState({ ...world, width: MAX_SOLVER_SNAPSHOT_PIXELS + 1, height: 1 },
+      { maxSnapshotPixels: MAX_SOLVER_SNAPSHOT_PIXELS * 2 })).to.throw(RangeError, 'pixel budget');
+    expect(reads).to.equal(0);
+  });
+
+  it('honors a smaller snapshot pixel budget while preserving an exact finite source', function() {
+    const fixture = createSyntheticSolverFixture({ width: 10, height: 10, ground: [{ x: 0, y: 8, width: 10, height: 2 }] });
+    expect(() => extractSolverState(fixture, { maxSnapshotPixels: 99 })).to.throw(RangeError, '99-pixel budget');
+    const bounded = extractSolverState(fixture, { maxSnapshotPixels: 100 });
+    expect(bounded.terrain.mask).to.have.length(100); expect(bounded.terrain.solidCount).to.equal(20);
+    expect(bounded.snapshotHash).to.equal(extractSolverState(fixture).snapshotHash);
+  });
+
   it('extracts deterministic snapshots and stable hashes from synthetic fixtures', function() {
     const first = extractSolverState(createFlatWalkFixture());
     const second = extractSolverState(createFlatWalkFixture());
