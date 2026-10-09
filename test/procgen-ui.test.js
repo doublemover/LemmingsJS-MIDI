@@ -6,8 +6,9 @@ import { normalizeSeed } from '../js/core/seededRandom.js';
 import { createProcgenUiController } from '../js/app/procgen/ProcgenUiController.js';
 import { TestDocument, createTestWindow } from './helpers/test-dom.js';
 import { registerElement } from './support/dom-fixtures.js';
-const fixture = (search = '') => {
+const fixture = (search = '', storedLanes = null) => {
   const document = new TestDocument(), window = createTestWindow(document);
+  if (storedLanes != null) window.localStorage.setItem('lemmings.procgen.lanes.v1', JSON.stringify(storedLanes));
   window.location = { search, href: `https://example.test/procgen.html${search}` };
   for (const target of [document, window]) {
     const events = new Map();
@@ -17,7 +18,7 @@ const fixture = (search = '') => {
   }
   for (const [tag, ids] of [['div', ['procgenDrawer']], ['button', ['procgenTab', 'procgenRestart', 'procgenListen', 'procgenSpeedDown', 'procgenSpeedUp', 'procgenShare', 'procgenNewSeed', 'procgenPause', 'procgenStep', 'procgenFollow', 'procgenZoomIn', 'procgenZoomOut', 'procgenPanic', 'procgenCctvPin', 'procgenCctvClear']],
     ['select', ['procgenPreset', 'procgenPack', 'procgenSpeed', 'procgenCctvMode']], ['input', ['procgenLanes', 'procgenPhrases', 'procgenSeed', 'procgenMasterVolume', 'procgenCctvLane', 'procgenWorkerBashers', 'procgenWorkerDiggers', 'procgenWorkerBuilders']],
-    ['p', ['procgenMasterVolumeValue', 'procgenPresetDescription', 'procgenAudioStatus', 'procgenRunStatus', 'procgenMetrics', 'procgenStallStatus', 'procgenAliveCount', 'procgenCctvStatus']]]) {
+    ['p', ['procgenMasterVolumeValue', 'procgenPresetDescription', 'procgenAudioStatus', 'procgenRunStatus', 'procgenMetrics', 'procgenStallStatus', 'procgenAliveCount', 'procgenDistance', 'procgenBest', 'procgenCctvStatus']]]) {
     for (const id of ids) { const el = registerElement(document, tag, id); el.removeEventListener = (event, callback) => el.listeners.set(event, (el.listeners.get(event) || []).filter(fn => fn !== callback)); }
   }
   let restarts = 0;
@@ -37,6 +38,15 @@ describe('compact procgen drawer', () => {
     const f = fixture(); f.el('procgenTab').dispatchEvent({ type: 'pointerdown', clientY: 1 });
     f.el('procgenTab').dispatchEvent({ type: 'pointerup', clientY: 40 }); f.el('procgenTab').dispatchEvent({ type: 'click' });
     expect(f.el('procgenDrawer').inert).to.equal(false); f.ui.dispose();
+  });
+  it('starts eight lanes and preserves explicit saved and URL choices', () => {
+    for (const [search, stored, expected] of [['', null, 8], ['', { version: 1, value: 24 }, 24], ['?lanes=3', { version: 1, value: 24 }, 3], ['', { version: 1, value: -5 }, 8]]) {
+      const f = fixture(search, stored); expect(f.ui.settings.laneCount).to.equal(expected); f.ui.dispose();
+    }
+    const f = fixture(); f.el('procgenLanes').value = '12'; f.el('procgenLanes').dispatchEvent({ type: 'change' });
+    expect(JSON.parse(f.window.localStorage.getItem('lemmings.procgen.lanes.v1')).value).to.equal(12);
+    f.el('procgenLanes').value = ''; f.el('procgenLanes').dispatchEvent({ type: 'change' });
+    expect(f.ui.settings.laneCount).to.equal(12); expect(f.restarts).to.equal(1); f.ui.dispose();
   });
   it('normalizes counts and restarts, while speed changes in place', () => {
     const f = fixture(); f.el('procgenLanes').value = '2048'; f.el('procgenLanes').dispatchEvent({ type: 'change' });
@@ -79,6 +89,7 @@ describe('compact procgen drawer', () => {
   it('updates compact metrics and removes its handlers on disposal', () => {
     const f = fixture(); f.ui.syncMetrics({ alive: 1024, spawnedTotal: 2048, distance: { max: 3400 }, generation: 2, admissionPaused: true });
     expect(f.el('procgenAliveCount').textContent).to.equal('1,024 alive');
+    expect(f.el('procgenDistance').textContent).to.equal('3,400 px');
     expect(f.el('procgenMetrics').textContent).to.include('1,024 alive'); expect(f.el('procgenMetrics').textContent).to.include('admission paused');
     f.ui.dispose(); f.el('procgenRestart').dispatchEvent({ type: 'click' }); expect(f.restarts).to.equal(0);
   });
@@ -98,10 +109,16 @@ describe('compact procgen drawer', () => {
   });
   it('mounts one set of common controls outside the inert drawer', () => {
     const $ = cheerio.load(fs.readFileSync('procgen.html', 'utf8'));
-    for (const id of ['procgenRestart', 'procgenSeed', 'procgenLanes', 'procgenPack', 'procgenSpeed', 'procgenPause', 'procgenStep', 'procgenFollow', 'procgenListen', 'procgenMasterVolume', 'procgenPanic', 'procgenTab']) {
+    for (const id of ['procgenRestart', 'procgenSeed', 'procgenLanes', 'procgenPack', 'procgenSpeed', 'procgenPause', 'procgenStep', 'procgenFollow', 'procgenListen', 'procgenMasterVolume', 'procgenPanic']) {
       expect($('#' + id).length, id).to.equal(1); expect($('#' + id).closest('#procgenTopbar').length, id).to.equal(1);
       expect($('#' + id).closest('#procgenDrawer').length, id).to.equal(0);
     }
+    expect($('#procgenSeedControls').attr('open')).to.equal(undefined);
+    expect($('#procgenSeed').closest('#procgenSeedControls').length).to.equal(1);
+    expect($('#procgenAliveCount').closest('#procgenTopbar').length).to.equal(1);
+    expect($('#procgenDistance').closest('#procgenTopbar').length).to.equal(1);
+    expect($('#procgenTab').closest('#procgenTopbar').length).to.equal(0);
+    expect($('#procgenTab').attr('aria-label')).to.equal('Show details');
     expect($('#procgenCharacters').closest('#procgenDrawer').length).to.equal(1);
   });
   it('regenerates the chosen seed and reuses pause, step, follow, gain and Panic owners', () => {

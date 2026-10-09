@@ -36,20 +36,27 @@ describe('generated source hazard physics owners', function() {
   });
   const fixture = async (ground, id, options = {}) => {
     const terrain = await loadProcgenTerrain('lemmings', ground);
-    terrain.objects = [terrain.objects.find(piece => piece.id === id)];
+    terrain.objects = [terrain.objects.find(piece => piece.id === id)]; terrain.compiledAssemblies = []; terrain.compiledAssemblies = [];
+    // This fixture isolates a fully prepared source hazard from growth scheduling.
+    terrain.supportsFineGrowth = false;
     const world = new ProcgenLaneWorld({ masks, terrain, seed: 42, assists: false, ...options }), events = [];
     world.soundEvents.onEvent.on(event => events.push(event));
-    const object = terrain.objectsAt(world.laneSeeds[0], 0)[0];
+    let object, chunk;
+    for (let candidate = 2; candidate < 48 && !object; candidate++) {
+      world.generatedThrough[0] = (candidate + 1) * 128;
+      const descriptor = terrain.describe(world.laneSeeds[0], candidate), placed = descriptor.objects[0];
+      if (placed && world.hazards.placementReady(0, candidate, placed, descriptor)) { object = placed; chunk = candidate; }
+    }
     expect(object).to.exist;
-    return { world, terrain, object, actor: world.actors[0], events };
+    return { world, terrain, object, chunk, actor: world.actors[0], events };
   };
 
   it('reuses actual source bounds, trap sound, MapObject and frame-count cooldown for two walkers', async () => {
-    const { world, object, actor, events } = await fixture(0, 6);
+    const { world, object, chunk, actor, events } = await fixture(0, 6);
     const follower = world._spawn(0); trapWalker(world, actor, object); trapWalker(world, follower, object);
     actor.setCountDown({ process: () => State.NO_STATE_TYPE });
     world.step();
-    const entry = world.hazards.peek(0, 0, 0), image = object.piece.image;
+    const entry = world.hazards.peek(0, chunk, 0), image = object.piece.image;
     expect(entry.owner).to.be.instanceOf(MapObject); expect(entry.trigger).to.be.instanceOf(Trigger);
     const level = new Level(128, 96), images = []; images[object.piece.id] = image;
     level.setMapObjects([{ id: object.piece.id, x: object.x, y: object.y, drawProperties: 0 }], images);
@@ -64,7 +71,7 @@ describe('generated source hazard physics owners', function() {
     expect(world.hazards.getFrame(entry, 2)).to.equal(entry.owner.animation.frames[1]);
     while (world.tickIndex < image.frameCount) world.step();
     const replacement = world._spawn(0); trapWalker(world, replacement, object); world.step();
-    expect(world.hazards.peek(0, 0, 0).owner).to.equal(entry.owner);
+    expect(world.hazards.peek(0, chunk, 0).owner).to.equal(entry.owner);
     expect(replacement.action).to.equal(world.actions[State.SPLATTING]);
     expect(entry.trigger.disabledUntilTick).to.equal(world.tickIndex + image.frameCount);
     const contacts = events.filter(event => event.type === 'trap-trigger');
@@ -77,10 +84,11 @@ describe('generated source hazard physics owners', function() {
   });
 
   it('enters source water naturally, anchors the custom body to its real surface, and finishes one 16-tick death', async () => {
-    const { world, actor, events } = await fixture(3, 5, { sprites, laneCount: 2 });
+    const { world, object, chunk, actor, events } = await fixture(3, 5, { sprites, laneCount: 2 });
+    Object.assign(actor, { x: object.x - 1, y: object.y, lookRight: true }); actor.setAction(world.actions[State.WALKING]);
     while (actor.action !== world.actions[State.DROWNING] && world.tickIndex < 40) world.step();
     expect(actor.action).to.equal(world.actions[State.DROWNING]);
-    const entry = world.hazards.peek(0, 0, 0), contactTick = world.tickIndex, x = actor.x;
+    const entry = world.hazards.peek(0, chunk, 0), contactTick = world.tickIndex, x = actor.x;
     expect(entry.owner.triggerType).to.equal(Types.DROWN); expect(entry.trigger.disableTicksCount).to.equal(0);
     expect(sprites.getActorHazardKind(actor)).to.equal('water');
     const origin = sprites.getActorDrawPosition(actor);
@@ -97,9 +105,10 @@ describe('generated source hazard physics owners', function() {
   });
 
   it('preserves authored fire remapping and the actual 14-tick frying action without duplicate splat audio', async () => {
-    const { world, actor, events } = await fixture(1, 7, { sprites });
+    const { world, object, chunk, actor, events } = await fixture(1, 7, { sprites });
+    Object.assign(actor, { x: object.x + object.piece.image.trigger_left, y: object.y + object.piece.image.trigger_top }); actor.setAction(world.actions[State.FALLING]);
     while (actor.action !== world.actions[State.FRYING] && world.tickIndex < 40) world.step();
-    const entry = world.hazards.peek(0, 0, 0);
+    const entry = world.hazards.peek(0, chunk, 0);
     expect(actor.action).to.equal(world.actions[State.FRYING]); expect(entry.trigger.type).to.equal(Types.FRYING);
     expect(entry.owner.animation.loop).to.equal(true); expect(sprites.getActorHazardKind(actor)).to.equal('fire');
     for (let step = 0; step < 14; step++) world.step();
@@ -110,10 +119,10 @@ describe('generated source hazard physics owners', function() {
   });
 
   it('retains non-fire KILL identity and shared terminal contact presentation', async () => {
-    const { world, actor, object, events } = await fixture(2, 9, { sprites });
+    const { world, actor, object, chunk, events } = await fixture(2, 9, { sprites });
     Object.assign(actor, { x: object.x + object.piece.image.trigger_left, y: object.y + object.piece.image.trigger_top });
     actor.setAction(world.actions[State.FALLING]); world.step();
-    expect(world.hazards.peek(0, 0, 0).trigger.type).to.equal(Types.KILL);
+    expect(world.hazards.peek(0, chunk, 0).trigger.type).to.equal(Types.KILL);
     expect(actor.action).to.equal(world.actions[State.SPLATTING]); expect(sprites.getActorHazardKind(actor)).to.equal('slice');
     for (let step = 0; step < 16; step++) world.step();
     expect(actor.failureReason).to.equal('killed'); expect(events.filter(event => event.type === 'lemming-fire')).to.have.length(1);
@@ -121,32 +130,32 @@ describe('generated source hazard physics owners', function() {
   });
 
   it('gates complete image/trigger/basin footprints and invalidates owners when a floor or side is removed', async () => {
-    const { world, terrain, object, actor } = await fixture(3, 5);
-    const descriptor = terrain.describe(world.laneSeeds[0], 0), end = object.x + object.piece.image.width + 1;
+    const { world, terrain, object, chunk, actor } = await fixture(3, 5);
+    const descriptor = terrain.describe(world.laneSeeds[0], chunk), end = object.x + object.piece.image.width + 1;
     world.generatedThrough[0] = end - 1;
-    expect(world.hazards.placementReady(0, 0, object, descriptor)).to.equal(false);
+    expect(world.hazards.placementReady(0, chunk, object, descriptor)).to.equal(false);
     expect(world.hazards.trigger(object.x + 4, object.y + 5, actor)).to.equal(Types.NO_TRIGGER);
-    expect(world.hazards.peek(0, 0, 0)).to.equal(null); expect(world.hazards.stats.created).to.equal(0);
+    expect(world.hazards.peek(0, chunk, 0)).to.equal(null); expect(world.hazards.stats.created).to.equal(0);
     world.generatedThrough[0] = end;
     world.hazards.trigger(object.x + 4, object.y + 5, actor);
-    const owner = world.hazards.peek(0, 0, 0).owner;
+    const owner = world.hazards.peek(0, chunk, 0).owner;
     world._setPixel(object.x, object.supportY, 0);
-    expect(world.hazards.peek(0, 0, 0)).to.equal(null);
+    expect(world.hazards.peek(0, chunk, 0)).to.equal(null);
     expect(world.hazards.trigger(object.x + 4, object.y + 5, actor)).to.equal(Types.NO_TRIGGER);
     world._setPixel(object.x, object.supportY, 3);
-    expect(world.hazards.peek(0, 0, 0).owner).to.equal(owner);
+    expect(world.hazards.peek(0, chunk, 0).owner).to.equal(owner);
     world._setPixel(object.x - 1, object.y + 2, 0);
-    expect(world.hazards.peek(0, 0, 0)).to.equal(null);
+    expect(world.hazards.peek(0, chunk, 0)).to.equal(null);
     const renderer = rendererFor(world); renderer.follow = false; renderer.render();
     expect(renderer.objectPlacements.some(placement => placement.image === object.piece.image)).to.equal(false);
     renderer.dispose(); world.dispose();
   });
 
   it('uses actual owner frames in the renderer while camera pans and paused draws cannot create owners or advance traps', async () => {
-    const { world, object, actor, terrain } = await fixture(0, 6, { laneCount: 64 }), renderer = rendererFor(world);
-    renderer.follow = false; renderer.render(); expect(world.hazards.chunks.size).to.equal(0);
+    const { world, object, chunk, actor, terrain } = await fixture(0, 6, { laneCount: 64 }), renderer = rendererFor(world);
+    renderer.follow = false; renderer.cameraX = object.x - 24; renderer.render(); expect(world.hazards.chunks.size).to.equal(0);
     trapWalker(world, actor, object); world.step(); renderer.render();
-    const entry = world.hazards.peek(0, 0, 0), first = world.hazards.getFrame(entry, world.tickIndex);
+    const entry = world.hazards.peek(0, chunk, 0), first = world.hazards.getFrame(entry, world.tickIndex);
     expect(renderer.frames.has(first)).to.equal(true);
     world.step(); renderer.render();
     const second = world.hazards.getFrame(entry, world.tickIndex), disabledUntil = entry.trigger.disabledUntilTick;
@@ -161,17 +170,17 @@ describe('generated source hazard physics owners', function() {
   });
 
   it('bounds actor-query chunk records, preserves active trap cooldown across pruning, and clears on reset/dispose', async () => {
-    const { world, object, actor } = await fixture(0, 6);
+    const { world, object, chunk, actor } = await fixture(0, 6);
     world.hazards.maxChunks = 2; world.generatedThrough[0] = 8192;
-    trapWalker(world, actor, object); world.step(); const entry = world.hazards.peek(0, 0, 0);
-    world.hazards.prune(2, true); expect(world.hazards.peek(0, 0, 0)).to.equal(entry);
+    trapWalker(world, actor, object); world.step(); const entry = world.hazards.peek(0, chunk, 0);
+    world.hazards.prune(2, true); expect(world.hazards.peek(0, chunk, 0)).to.equal(entry);
     for (let chunk = 1; chunk < 40; chunk++) {
       world.hazards.trigger(chunk * 128 + 2, 20, actor, chunk + 40);
       expect(world.hazards.chunks.size).to.be.at.most(2);
     }
     expect(world.hazards.stats.evicted).to.be.greaterThan(0);
     world._restart([]); expect(world.hazards.chunks.size).to.equal(0); expect(world.hazards.stats.contacts).to.equal(0);
-    expect(world.generatedThrough[0]).to.equal(128); expect(world.accessTasks[0]).to.equal(null);
+    expect(world.generatedThrough[0]).to.equal(world.terrainGrowth ? 104 : 128); expect(world.accessTasks[0]).to.equal(null);
     world._spawn(0); world.hazards.trigger(36, 42, world.actors[0]); expect(world.hazards.chunks.size).to.equal(1);
     world.dispose(); expect(world.hazards.chunks.size).to.equal(0); expect(world.hazards.world).to.equal(null);
   });

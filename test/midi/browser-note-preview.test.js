@@ -53,6 +53,7 @@ class FakeContext {
     this.gains = [];
     this.panners = [];
     this.limiters = [];
+    this.compressors = [];
     this.listeners = new Set();
     this.resumeCalls = 0;
     this.closeCalls = 0;
@@ -68,6 +69,11 @@ class FakeContext {
     const node = new FakeNode();
     this.limiters.push(node);
     return node;
+  }
+  createDynamicsCompressor() {
+    const node = new FakeNode();
+    for (const key of ['threshold', 'knee', 'ratio', 'attack', 'release']) node[key] = new FakeParam();
+    node.reduction = 0; this.compressors.push(node); return node;
   }
   createStereoPanner() {
     const node = new FakeNode();
@@ -254,9 +260,16 @@ describe('BrowserNotePreview', function() {
   it('offers an explicit 12 dB local boost through a bounded output ceiling without changing MIDI attack', async function() {
     const { preview, context } = setup({ masterVolume: 4 });
     await preview.enable();
-    expect(context.gains[0].gain.value).to.equal(0.15);
+    expect(context.gains[0].gain.value).to.equal(0.6);
     const limiter = context.limiters[0];
-    expect(context.gains[0].connections).to.deep.equal([limiter]);
+    expect(context.gains[0].connections).to.deep.equal([context.compressors[0]]);
+    expect(context.compressors[0].connections).to.deep.equal([context.gains[1]]);
+    expect(context.gains[1].gain.value).to.equal(0.647);
+    expect(context.gains[1].connections).to.deep.equal([limiter]);
+    expect(context.compressors[0].threshold.value).to.equal(-9);
+    expect(context.compressors[0].ratio.value).to.equal(12);
+    expect(context.compressors[0].attack.value).to.equal(0.001);
+    expect(context.compressors[0].release.value).to.equal(0.08);
     expect(limiter.connections).to.deep.equal([context.destination]);
     expect(Math.max(...limiter.curve.map(Math.abs))).to.be.lessThan(0.9);
     expect(limiter.curve[2048 + 512]).to.equal(0.25);
@@ -264,18 +277,40 @@ describe('BrowserNotePreview', function() {
     expect([...preview._voices][0].peak).to.equal(1);
     await preview.dispose();
     expect(limiter.disconnected).to.equal(true);
+    expect(context.compressors[0].disconnected).to.equal(true);
+    expect(context.gains[1].disconnected).to.equal(true);
   });
+  it('mutes the compressor lookahead on Panic and reopens only after its bounded delay', async () => {
+    const { preview, context } = setup(); await preview.enable();
+    const fixed = context.gains[1].gain;
+    preview.output.channels[1].sendNoteOn(60, { voiceToken: 1 });
+    context.currentTime = 2.1; preview.panic();
+    expect(fixed.events.at(-1)).to.deep.equal({ type: 'set', value: 0, time: 2.1 });
+    expect(preview._voices.size).to.equal(0);
+    expect(preview.getState()).to.include({ masterVolume: 0.7, mixLatencyMs: 6 });
+    await preview.enable();
+    expect(fixed.events.at(-1)).to.deep.equal({ type: 'set', value: 0.647, time: 2.106 });
+    await preview.dispose();
+  });
+
+  it('retains the output ceiling on a backend without mix compression capability', async () => {
+    const context = new FakeContext(); context.createDynamicsCompressor = undefined;
+    const { preview } = setup({}, context); expect(await preview.enable()).to.equal(true);
+    expect(context.gains[0].connections).to.deep.equal([context.limiters[0]]);
+    expect(preview.getState().mixCompression).to.equal(false); await preview.dispose();
+  });
+
   it('keeps master volume changes inert until enabled and applies the 70% default below the safe gain cap', async function() {
     const { preview, context, creations } = setup();
     expect(preview.getState().masterVolume).to.equal(0.7);
     expect(preview.setMasterVolume(0.4)).to.equal(0.4);
     expect(creations()).to.equal(0);
     expect(await preview.enable()).to.equal(true);
-    expect(context.gains[0].gain.value).to.be.closeTo(0.15 / Math.sqrt(16) * 0.4, 0.000001);
+    expect(context.gains[0].gain.value).to.be.closeTo(0.15 * 0.4, 0.000001);
     await preview.dispose();
     const defaults = setup();
     await defaults.preview.enable();
-    expect(defaults.context.gains[0].gain.value).to.be.closeTo(0.15 / Math.sqrt(16) * 0.7, 0.000001);
+    expect(defaults.context.gains[0].gain.value).to.be.closeTo(0.15 * 0.7, 0.000001);
     await defaults.preview.dispose();
   });
 
@@ -294,7 +329,7 @@ describe('BrowserNotePreview', function() {
     expect(preview.getState()).to.include({ enabled: true, masterVolume: 0, activeVoices: 1 });
     expect(preview.setMasterVolume(1)).to.equal(1);
     expect(master.events.filter(event => event.type === 'ramp')).to.have.length(1);
-    expect(master.events.at(-1).value).to.equal(0.15 / Math.sqrt(16));
+    expect(master.events.at(-1).value).to.equal(0.15);
     expect(voice.gain.gain.events).to.deep.equal(envelope);
     expect(preview._channels.get(1).gain.gain.events).to.deep.equal(channelGain);
     expect(preview.getState().activeVoices).to.equal(1);
@@ -310,7 +345,7 @@ describe('BrowserNotePreview', function() {
     preview.setMasterVolume(0.2);
     preview.setMasterVolume(0.8);
     expect(held).to.deep.equal([context.currentTime, context.currentTime]);
-    expect(master.events.at(-1).value).to.equal(0.15 / Math.sqrt(16) * 0.8);
+    expect(master.events.at(-1).value).to.equal(0.15 * 0.8);
     await preview.dispose();
   });
 
@@ -353,7 +388,7 @@ describe('BrowserNotePreview', function() {
     expect(preview.output.channels[1].sendNoteOn(60)).to.equal(false);
     expect(creations()).to.equal(0);
     const source = readFileSync(new URL('../../js/app/midi-ui/browserNotePreview.js', import.meta.url), 'utf8');
-    expect(source).not.to.match(/requestMIDIAccess|WebMidi|MidiScheduler|MidiEventRouter|^import /m);
+    expect(source).not.to.match(/requestMIDIAccess|WebMidi|MidiScheduler|MidiEventRouter/m);
     expect(await preview.enable()).to.equal(true);
     expect(creations()).to.equal(1);
     expect(context.oscillators).to.have.length(0);
@@ -506,6 +541,173 @@ describe('BrowserNotePreview', function() {
     await preview.dispose();
   });
 
+  it('preserves independent local same-pitch gates until each scheduler token releases', async () => {
+    await withFakeClockAndPerformance(async clock => {
+      const { preview, context } = setup({ nowMs: () => clock.now });
+      Object.defineProperty(context, 'currentTime', { get: () => 2 + clock.now / 1000 });
+      await preview.enable();
+      const scheduler = new MidiScheduler({ enabled: true, mpe: { enabled: false } });
+      scheduler.setOutput(preview.output); scheduler.setTickMs(60);
+      scheduler.sendNote({ note: 60, channel: 1, durationTicks: 8 });
+      clock.tick(60);
+      scheduler.sendNote({ note: 60, channel: 1, durationTicks: 4 });
+      const [first, second] = [...preview._voices];
+      expect(first.token).not.to.equal(second.token);
+      expect(context.oscillators.every(node => !node.disconnected)).to.equal(true);
+      expect(scheduler._activeNotes.size).to.equal(2);
+      clock.tick(240);
+      expect(second.released).to.equal(true); expect(first.released).to.equal(false);
+      expect(scheduler._activeNotes.size).to.equal(1);
+      clock.tick(180);
+      expect(first.released).to.equal(true); expect(scheduler._activeNotes.size).to.equal(0);
+      scheduler.allNotesOff(); expect(preview._voices.size).to.equal(0);
+      expect(context.oscillators.every(node => node.disconnected)).to.equal(true);
+      scheduler.dispose(); await preview.dispose();
+    });
+  });
+
+  it('retains the hardware single-pitch retrigger policy when independent gates are absent', async () => {
+    await withFakeClockAndPerformance(async clock => {
+      const { preview, context } = setup({ nowMs: () => clock.now }); await preview.enable();
+      const scheduler = new MidiScheduler({ enabled: true, mpe: { enabled: false } });
+      scheduler.setOutput({ ...preview.output, supportsIndependentNoteGates: false });
+      scheduler.sendNote({ note: 60, channel: 1, durationTicks: 8 });
+      scheduler.sendNote({ note: 60, channel: 1, durationTicks: 8 });
+      expect(context.oscillators[0].disconnected).to.equal(true);
+      expect(scheduler._activeNotes.size).to.equal(1);
+      scheduler.dispose(); await preview.dispose();
+    });
+  });
+
+  it('lets an owned immediate release replace an already scheduled future release', async () => {
+    const { preview, context } = setup(); await preview.enable();
+    preview.output.channels[1].sendNoteOn(60, { voiceToken: 1 });
+    preview.output.channels[1].sendNoteOff(60, { time: 2000, voiceToken: 1 });
+    const voice = [...preview._voices][0]; expect(voice.releaseAt).to.equal(3);
+    context.currentTime = 2.1;
+    expect(preview.output.channels[1].sendNoteOff(60, { voiceToken: 1, reason: 'local-voice-budget' })).to.equal(true);
+    expect(voice.end).to.be.closeTo(2.14, 1e-9); expect(voice.oscillator.disconnected).to.equal(false);
+    await preview.dispose();
+  });
+
+  it('protects higher-priority local gates from spawn overflow and balances equal-priority lanes', async () => {
+    await withFakeClockAndPerformance(async clock => {
+      const { preview, context } = setup({ nowMs: () => clock.now });
+      Object.defineProperty(context, 'currentTime', { get: () => 2 + clock.now / 1000 });
+      await preview.enable();
+      const scheduler = new MidiScheduler({ enabled: true, mpe: { enabled: false }, limits: { maxActiveNotes: 8 } });
+      scheduler.setOutput(preview.output);
+      for (let index = 0; index < 8; index++) expect(scheduler.sendNote({ note: 48 + index, durationTicks: 0 }, { priority: 4, laneIndex: 0 })).to.equal(true);
+      const originalTokens = [...scheduler._activeNotes.keys()];
+      clock.tick(80);
+      expect(scheduler.sendNote({ note: 72, durationTicks: 3 }, { priority: 0, laneIndex: 1 })).to.equal(false);
+      expect([...scheduler._activeNotes.keys()]).to.deep.equal(originalTokens);
+      expect(scheduler.getOutputPressure().reason).to.equal('local-voice-priority');
+      expect(scheduler._noteOffs).to.have.length(0);
+      for (let index = 0; index < 8; index++) scheduler.sendNote({ note: 60 + index, durationTicks: 0 }, { priority: 4, laneIndex: 1 });
+      const lanes = [...scheduler._activeNotes.values()].map(voice => voice.laneIndex);
+      expect(lanes.filter(lane => lane === 0)).to.have.length(4);
+      expect(lanes.filter(lane => lane === 1)).to.have.length(4);
+      expect(context.oscillators.slice(0, 4).every(node => !node.disconnected && node.stops.at(-1) > context.currentTime)).to.equal(true);
+      expect(preview.getState().voiceSteals).to.equal(8);
+      scheduler.allNotesOff(); expect(preview._voicesByToken.size).to.equal(0);
+      scheduler.dispose(); await preview.dispose();
+    });
+  });
+
+  it('rejects source-cap overflow before evicting an existing scheduler gate', async () => {
+    await withFakeClockAndPerformance(async clock => {
+      const { preview } = setup({ nowMs: () => clock.now }); await preview.enable();
+      let available = true;
+      const output = { ...preview.output, canAllocateVoice: () => available };
+      const scheduler = new MidiScheduler({ enabled: true, mpe: { enabled: false }, limits: { maxActiveNotes: 1 } }); scheduler.setOutput(output);
+      expect(scheduler.sendNote({ note: 60, durationTicks: 0 }, { priority: 0 })).to.equal(true);
+      const existing = [...scheduler._activeNotes.keys()]; available = false;
+      expect(scheduler.sendNote({ note: 72, durationTicks: 0 }, { priority: 4 })).to.equal(false);
+      expect([...scheduler._activeNotes.keys()]).to.deep.equal(existing);
+      expect([...preview._voices][0].released).to.equal(false);
+      expect(scheduler.getOutputPressure().reason).to.equal('local-source-cap');
+      scheduler.dispose(); await preview.dispose();
+    }, { now: 60000 });
+  });
+
+  it('retains a decaying percussion note whose zero-level release is scheduled in the future', async () => {
+    const { preview, context } = setup(); await preview.enable();
+    preview.output.channels[1].sendNoteOn(36, { voiceToken: 1, instrument: { percussion: true } });
+    preview.output.channels[1].sendNoteOff(36, { time: 2000, voiceToken: 1 });
+    const percussion = [...preview._voices][0];
+    expect(percussion.releaseLevel).to.equal(0); expect(percussion.releaseAt).to.be.greaterThan(context.currentTime);
+    preview.output.channels[1].sendNoteOn(60, { voiceToken: 2 });
+    expect(preview._voices.has(percussion)).to.equal(true); expect(percussion.oscillator.disconnected).to.equal(false);
+    await preview.dispose();
+  });
+
+  it('reclaims finished or inaudible percussion gates without cutting a live high-priority note', async () => {
+    await withFakeClockAndPerformance(async clock => {
+      const { preview, context } = setup({ nowMs: () => clock.now });
+      Object.defineProperty(context, 'currentTime', { get: () => 2 + clock.now / 1000 });
+      await preview.enable();
+      const scheduler = new MidiScheduler({ enabled: true, mpe: { enabled: false }, limits: { maxActiveNotes: 2 } });
+      scheduler.setOutput(preview.output);
+      scheduler.sendNote({ note: 60, durationTicks: 0 }, { priority: 4 });
+      scheduler.sendNote({ note: 42, durationTicks: 0, percussion: true }, { priority: 4 });
+      const melody = [...scheduler._activeNotes.keys()][0];
+      clock.tick(70);
+      expect(scheduler.sendNote({ note: 65, durationTicks: 0 }, { priority: 0 })).to.equal(true);
+      expect(scheduler._activeNotes.has(melody)).to.equal(true);
+      expect(scheduler._activeNotes.size).to.equal(2);
+      expect(preview._voices.size).to.equal(2);
+      scheduler.dispose(); await preview.dispose();
+    });
+  });
+
+  it('bounds explicitly configured local sources at64 and scheduled sources plus tails at96', async () => {
+    const { preview, context } = setup({ maxVoices: 1000 }); await preview.enable();
+    for (let index = 0; index < 64; index++) preview.output.channels[1].sendNoteOn(48 + index % 24, { voiceToken: index + 1 });
+    expect(preview.getState()).to.include({ maxVoices: 64, maxScheduledVoices: 96, activeVoices: 64 });
+    context.currentTime = 2.1;
+    for (let index = 0; index < 128; index++) preview.output.channels[1].sendNoteOn(60, { voiceToken: 100 + index });
+    expect(preview._voices.size).to.be.at.most(96);
+    expect([...preview._voices].filter(voice => !voice.stolen)).to.have.length.at.most(64);
+    expect(preview.getState().voiceDrops).to.be.greaterThan(0);
+    preview.panic(); expect(preview._voicesByToken.size).to.equal(0); await preview.dispose();
+  });
+
+  it('removes a rejected render gate without scheduling a phantom note-off or panicking other notes', async () => {
+    await withFakeClockAndPerformance(async clock => {
+      const { preview } = setup({ nowMs: () => clock.now }); await preview.enable();
+      const original = preview.output;
+      const output = { ...original, channels: { ...original.channels, 1: { ...original.channels[1], sendNoteOn: () => false } } };
+      const scheduler = new MidiScheduler({ enabled: true, mpe: { enabled: false } }); scheduler.setOutput(output);
+      expect(scheduler.sendNote({ note: 60, durationTicks: 4 })).to.equal(false);
+      expect(scheduler._activeNotes.size).to.equal(0); expect(scheduler._noteOffs).to.have.length(0);
+      expect(scheduler.getOutputPressure().reason).to.equal('local-render-rejected');
+      scheduler.dispose(); await preview.dispose();
+    });
+  });
+
+  it('permits all32 scheduler voices and fades only the overflow voice with bounded release tails', async () => {
+    const { preview, context } = setup(); await preview.enable();
+    for (let index = 0; index < 32; index++) preview.output.channels[1].sendNoteOn(48 + index);
+    expect(preview._voices.size).to.equal(32);
+    expect([...preview._voices].every(voice => !voice.stolen && !voice.released)).to.equal(true);
+    const oldest = [...preview._voices][0]; context.currentTime = 2.1;
+    preview.output.channels[1].sendNoteOn(84);
+    expect(oldest.stolen).to.equal(true); expect(oldest.oscillator.disconnected).to.equal(false);
+    expect(oldest.end).to.be.closeTo(2.14, 1e-9);
+    expect([...preview._voices].filter(voice => !voice.stolen)).to.have.length(32);
+    preview.panic(); expect(preview._voices.size).to.equal(0); await preview.dispose();
+  });
+
+  it('keeps nominal headroom independent of the configured voice capacity', async () => {
+    const small = setup({ maxVoices: 2, masterVolume: 1 }), full = setup({ maxVoices: 32, masterVolume: 1 });
+    await small.preview.enable(); await full.preview.enable();
+    expect(small.context.gains[0].gain.value).to.equal(0.15);
+    expect(full.context.gains[0].gain.value).to.equal(0.15);
+    expect(Math.max(...full.context.limiters[0].curve.map(Math.abs))).to.be.lessThan(0.9);
+    await small.preview.dispose(); await full.preview.dispose();
+  });
+
   it('retains earlier non-overlapping notes while bounding polyphony and total queued voices', async function() {
     const { preview, context } = setup({ maxVoices: 2 });
     await preview.preview(Array.from({ length: 8 }, (_, index) => ({ note: 60 + index, offsetMs: index * 150, durationMs: 50 })));
@@ -610,7 +812,7 @@ describe('BrowserNotePreview', function() {
     expect(context.oscillators[0].detune.events.at(-1)).to.eql({ type: 'set', value: -350, time: 2.3 });
     channel.sendControlChange(7, 100);
     channel.sendControlChange(11, 64);
-    expect(context.gains[1].gain.events.at(-1).value).to.be.closeTo(100 * 64 / (127 * 127), 0.00001);
+    expect(preview._channels.get(3).gain.gain.events.at(-1).value).to.be.closeTo(100 * 64 / (127 * 127), 0.00001);
     channel.sendControlChange(120, 0);
     expect(preview.getState().activeVoices).to.equal(0);
     await preview.dispose();

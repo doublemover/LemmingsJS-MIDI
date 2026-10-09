@@ -7,7 +7,8 @@ import { DECORATION_CHOICES } from '../../decorations/ProcgenDecorationPacks.js'
 import { createCharacterUiController, mountCharacterControls } from '../characterUiController.js';
 import { createLocalGamePreview } from '../midi-ui/localGamePreview.js';
 import { createMidiProjectFromMidiConfig, projectToMidiConfig, reduceMidiProject, sanitizeMidiProject } from '../../midi/project/MidiProject.js';
-import { GAME_EVENT_MIDI_PRESETS, applyGameEventMidiPreset } from '../../midi/project/GameEventMidiPresets.js';
+import { GAME_EVENT_MIDI_PRESETS } from '../../midi/project/GameEventMidiPresets.js';
+import { applyProcgenGameEventMidiPreset } from '../../midi/project/ProcgenMidiDefaults.js';
 import { normalizeLaneCount } from './ProcgenLaneWorld.js';
 import { getCharacterPreference } from '../../lemmings/CharacterSpriteSet.js';
 import { KeybindingRegistry, DEFAULT_KEYBINDINGS } from '../../input/KeybindingRegistry.js';
@@ -20,12 +21,19 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   const listeners = [];
   const listen = (target, event, handler) => { target?.addEventListener(event, handler); listeners.push([target, event, handler]); };
   const urlConfig = readProcgenUrlConfig(window?.location?.search);
-  const settings = { laneCount: normalizeLaneCount(initial.laneCount || 1), speed: normalizeProcgenSpeed(initial.speed), pack: [1, 2, 3, 4, 5, 6].includes(Number(initial.pack)) ? Number(initial.pack) : 2,
+  const laneStorageKey = 'lemmings.procgen.lanes.v1';
+  let preferredLanes = 8;
+  try {
+    const stored = JSON.parse(window.localStorage?.getItem(laneStorageKey) || 'null');
+    if (stored?.version === 1 && Number.isInteger(stored.value) && stored.value >= 1 && stored.value <= 1024) preferredLanes = stored.value;
+  } catch { /* Start with eight lanes. */ }
+  const initialLanes = String(initial.laneCount ?? '').trim();
+  const settings = { laneCount: initialLanes && Number.isFinite(Number(initialLanes)) ? normalizeLaneCount(initialLanes) : preferredLanes, speed: normalizeProcgenSpeed(initial.speed), pack: [1, 2, 3, 4, 5, 6].includes(Number(initial.pack)) ? Number(initial.pack) : 2,
     preset: 'game-iron-ensemble', mode: 'steps', decoration: 'none', ...urlConfig.settings, ...(urlConfig.seed != null ? { seed: urlConfig.seed } : {}) };
   const tensionStorageKey = 'lemmings.procgen.ensembleTension.v1';
   let tensionPreferences = null;
   try { const stored = JSON.parse(window.localStorage?.getItem(tensionStorageKey) || 'null'); if (stored?.version === 1 && stored.value && typeof stored.value === 'object') tensionPreferences = stored.value; } catch { /* Keep the preset defaults. */ }
-  let project = applyGameEventMidiPreset(createMidiProjectFromMidiConfig({ enabled: false, sfx: {}, triggers: {} }), settings.preset);
+  let project = applyProcgenGameEventMidiPreset(createMidiProjectFromMidiConfig({ enabled: false, sfx: {}, triggers: {} }), settings.preset);
   const spanStorageKey = 'lemmings.procgen.automationSpans.v1', workerStorageKey = 'lemmings.procgen.workerLimits.v1';
   const normalizeWorkerLimits = value => Object.fromEntries(['bashers', 'diggers', 'builders'].map(key => [key, Number.isFinite(Number(value?.[key])) ? Math.max(0, Math.min(16, Math.trunc(Number(value[key])))) : 2]));
   settings.workerLimits = normalizeWorkerLimits(null);
@@ -82,7 +90,8 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   const setOpen = open => {
     if (!panel || !tab) return;
     panel.classList.toggle('is-open', open); panel.inert = !open;
-    tab.setAttribute('aria-expanded', String(open)); tab.textContent = open ? 'Close details' : 'Details';
+    tab.setAttribute('aria-expanded', String(open)); tab.textContent = open ? '▴' : '▾';
+    tab.setAttribute('aria-label', open ? 'Hide details' : 'Show details'); tab.title = open ? 'Hide details' : 'Show details';
     if (!open && panel.contains(document.activeElement)) tab.focus();
   };
   let dragStart = null, pulledOpen = false;
@@ -109,7 +118,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   if (byId('procgenLanes')) byId('procgenLanes').value = settings.laneCount;
   const refreshPreset = () => {
     settings.preset = byId('procgenPreset').value; settings.mode = byId('procgenPhrases')?.checked ? 'phrase' : 'steps';
-    project = applyGameEventMidiPreset(project, settings.preset, { mode: settings.mode });
+    project = applyProcgenGameEventMidiPreset(project, settings.preset, { mode: settings.mode });
     if (project.ensemble && tensionPreferences) project = reduceMidiProject(project, { type: 'ensemble.tension.update', patch: tensionPreferences });
     config = projectToMidiConfig(project); local.syncConfig(); tensionControls.sync(); spanControls.render();
     if (byId('procgenPresetDescription')) byId('procgenPresetDescription').textContent = GAME_EVENT_MIDI_PRESETS.find(p => p.id === settings.preset).description;
@@ -142,7 +151,13 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   setVolume(typeof storedVolume === 'number' ? Math.max(0, Math.min(1, storedVolume)) : storedVolume?.version === 2 ? storedVolume.value : 0.7, false);
   listen(byId('procgenMasterVolume'), 'input', event => setVolume(Number(event.target.value) / 100));
   listen(byId('procgenPanic'), 'click', () => local.panic());
-  listen(byId('procgenLanes'), 'change', () => { settings.laneCount = normalizeLaneCount(byId('procgenLanes').value); byId('procgenLanes').value = settings.laneCount; doRestart(); });
+  listen(byId('procgenLanes'), 'change', () => {
+    const input = byId('procgenLanes'), value = String(input.value).trim();
+    if (!value || !Number.isFinite(Number(value))) { input.value = settings.laneCount; return; }
+    settings.laneCount = normalizeLaneCount(value); input.value = settings.laneCount;
+    try { window.localStorage?.setItem(laneStorageKey, JSON.stringify({ version: 1, value: settings.laneCount })); } catch { /* Keep the session choice. */ }
+    doRestart();
+  });
   listen(byId('procgenDecoration'), 'change', () => { settings.decoration = byId('procgenDecoration').value; doRestart(); });
   listen(byId('procgenPack'), 'change', () => { settings.pack = Number(byId('procgenPack').value); doRestart(); });
   const camera = () => getRuntime()?.lanes?.renderer?.camera;
@@ -201,7 +216,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   listen(byId('procgenFollow'), 'click', () => { camera()?.followFrontier(); byId('gameCanvas')?.focus?.(); });
   for (const [id, factor] of [['procgenZoomOut', 1 / 1.1], ['procgenZoomIn', 1.1]]) listen(byId(id), 'click', () => camera()?.setZoom(camera().getState().scale * factor));
   const handleKey = event => {
-    if (event.defaultPrevented || event.target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(event.target?.tagName)) return;
+    if (event.defaultPrevented || event.target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'SUMMARY'].includes(event.target?.tagName)) return;
     let handled = false;
     for (const action of keybindings.getActionsForEvent(event)) {
       if (action.startsWith('pan') && action !== 'panBoost') {
@@ -228,10 +243,17 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   });
   listen(window, 'blur', () => local.stop());
   listen(document, 'visibilitychange', () => { if (document.hidden) local.stop(); });
+  const syncProgress = state => {
+    const lanes = getRuntime()?.world?.stall?.lanes;
+    const distance = lanes ? lanes.reduce((max, lane) => Math.max(max, lane.maxX - 36), 0) : state?.distance?.max || 0;
+    const best = lanes ? lanes.reduce((max, lane) => Math.max(max, lane.previousDistance || 0), 0) : 0;
+    if (byId('procgenDistance')) byId('procgenDistance').textContent = Math.max(0, Math.round(distance)).toLocaleString() + ' px';
+    if (byId('procgenBest')) byId('procgenBest').textContent = 'Best ' + Math.max(0, Math.round(best)).toLocaleString();
+  };
   const syncActiveCount = count => { if (byId('procgenAliveCount')) byId('procgenAliveCount').textContent = Math.max(0, count).toLocaleString() + ' alive'; };
   return { settings, local, outputCapture, captureControls, getShareUrl, syncActiveCount,
     syncMetrics(state) {
-      syncActiveCount(state.alive); tensionControls.syncStatus(); spanControls.syncStatus();
+      syncActiveCount(state.alive); syncProgress(state); tensionControls.syncStatus(); spanControls.syncStatus();
       const pressure = getRuntime()?.view?.midiPreviewRouter?.getOutputPressure?.();
       const outputPressure = byId('procgenOutputPressure');
       if (outputPressure) { outputPressure.hidden = !pressure?.throttled; outputPressure.textContent = pressure?.throttled ? 'Thinned ' + pressure.dropped : ''; outputPressure.title = pressure?.throttled ? 'Shared sound budget: ' + pressure.reason : ''; }
@@ -241,7 +263,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
       if (policy) policy.textContent = state.stall?.phase === 'cascade' ? 'Stalled cohort: staggered OHNO; restart follows the last actor.' : 'Progressing and working lanes stay protected. Reset follows all-lane probe/transit grace or a sustained growing pile.';
     },
     sync() {
-      characters.sync(); tensionControls.sync(); spanControls.render(); spanOverlay.sync(); syncWorkerLimits();
+      characters.sync(); syncProgress(); tensionControls.sync(); spanControls.render(); spanOverlay.sync(); syncWorkerLimits();
       paused = false;
       if (byId('procgenPause')) { byId('procgenPause').textContent = 'Pause'; byId('procgenPause').setAttribute('aria-pressed', 'false'); }
       if (byId('procgenSeed')) byId('procgenSeed').value = String(settings.seed ?? window.procgenSeed ?? '');

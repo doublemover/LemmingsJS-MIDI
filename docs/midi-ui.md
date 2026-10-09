@@ -86,11 +86,37 @@ rewind and panic contracts remain in effect for live listening.
 
 Local cell auditions retain their original spacing beyond the audio scheduling horizon. A bounded queue schedules the next notes incrementally; Stop, Panic, replacement and disposal cancel the remaining tail. Fully elapsed notes after a delayed timer are discarded instead of sounding together on resume.
 
-The existing local master control ranges from mute to 400%. Values through 100%
-retain their previous gain, including the 70% default and saved preferences.
-Choosing 400% adds up to 12 dB relative to 100%; a local output ceiling controls
-dense polyphony. This boost never changes external MIDI velocities or CC values.
-Legacy saved levels retain their previous effective gain.
+The existing local master control ranges from mute to 400%; the 70% default and
+explicit saved control values remain unchanged. Local output no longer divides
+every note by the square root of the configured voice capacity. Compared with
+the previous 16-voice preview default, this removes 12 dB of attenuation that
+also affected solo notes; the current gate budget is 32.
+Choosing 400% still adds 12 dB relative to 100%. These gains affect only local
+Web Audio; external MIDI velocities and CC values stay within their existing limits.
+
+One shared signal-driven compressor precedes the existing output ceiling. It uses
+a -9 dB threshold, 6 dB knee, ratio 12, 1 ms attack and 80 ms release. A fixed 0.647
+output compensation cancels measured low-level compressor makeup independently of
+voice capacity. Unsupported compressor contexts retain the ceiling-only fallback.
+The Web Audio compressor has [6 ms lookahead](https://www.w3.org/TR/webaudio-1.1/#dynamicscompressor-processing);
+source/API timestamps remain distinct from audible output onset.
+
+Local gates are independently owned, including repeated pitches; hardware MIDI
+retains its channel/note ownership rules. The default simultaneous local budget
+is 32, matching the existing scheduler/project policy. It is not a Web Audio or
+MIDI-channel limit. Explicit preview configurations allow at most 64 simultaneous
+voices and 96 scheduled sources including release tails; defaults remain 32/64.
+Each note uses one oscillator or shared-buffer noise source. Priority and lane
+occupancy choose overflow victims; quiet spawn events cannot steal a full set of
+higher-priority performance gates. Panic clears voices, gates and queued notes.
+
+Run `node scripts/measure-local-audio.js --url=http://127.0.0.1:8096/procgen.html?e2e=1 --label=review`
+against a local review server for 19 bounded compressed/bypass comparisons. Muted
+Edge OfflineAudioContext renders measured coherent 32-voice maximum-velocity output
+below 0.7 before the ceiling and exact silence after mid-sustain Panic. This is
+digital PCM evidence; render cost includes measurement taps and JavaScript callbacks,
+and does not establish real-time performance, acoustic quality or physical MIDI receipt.
+Compressor behavior may vary across browser engines.
 
 Expert **Output capture** records an existing output session for at most two minutes
 and retains the latest 4,096 records. It does not enable listening or request a
@@ -297,14 +323,14 @@ Fresh main-game projects and new procgen sessions offer Iron ensemble in D doria
 
 Iron ensemble offers a saved Musical tension policy in the existing track inspector; procgen Details edits the same policy and displays the selected lane's observed state. New Iron palettes enable it, while older saved ensembles without a policy retain bypass. Thinning amount, healthy crew, fade, establishment, collapse/recovery thresholds and breakthrough distance/hold are editable. Times use base game seconds (60 ms per tick), so pause freezes them and effective game speed changes their wall-time rate.
 
-Only procgen currently supplies completed-tick population and frontier observations. Authored main levels remain unfiltered; the main inspector saves the reusable policy. A crew must first establish a healthy baseline. Sustained decline then smoothly thins supporting notes and lowers their velocities toward the lowest surviving actor's existing voice. Real recovery or a new frontier/personal-best breakthrough restores the layers. The policy adds no notes, instruments or independent transport. Existing scale/range mapping, explicit assignments, owned gates, MPE/channel safeguards and shared output budgeting remain in force. Fully thinned held layers are cleaned once at the transition; pause, rewind, empty lanes and reset clear stale observations.
+Procgen and authored main levels supply completed-tick population and frontier observations. The main game publishes one lane after its existing simulation work, using actual spawned, active, saved, exiting and failed actors. Successful exits reduce the established baseline separately from deaths, including the exit animation before the rescue tally updates. A crew must first establish a healthy baseline. Sustained decline then smoothly thins supporting notes and lowers their velocities toward the lowest surviving actor's existing voice. Real recovery or a new frontier/personal-best breakthrough restores the layers. The policy adds no notes, instruments or independent transport. Existing scale/range mapping, explicit assignments, owned gates, MPE/channel safeguards and shared output budgeting remain in force. Fully thinned held layers are cleaned once at the transition. Pause preserves completed observations; level/timer changes and history restores invalidate them until fresh simulation work completes.
 
 
 ## Musical automation spans
 
 Conditions / modulation can turn an existing automation entry into a musical span. The same editor appears in procgen Details, where Add span or Draw on lanes creates an interval for one lane, a lane group or all lanes. Start, length, repeat, constant/ramp shape, track, priority and optional SFX/trigger filters are explicit. Start value and End value use the existing velocity, pitch-offset, pan, duration and timbre targets. The interval strip supports move/resize/draw with one project change on pointer release; canceled drags leave the saved project intact. Procgen span edits persist through regeneration and reload without enabling listening.
 
-Beat spans use generation-relative base game ticks and the project BPM, with a 16-beat screen timeline in procgen. Distance spans use event world X; queued phrase cells use the actor's latest completed-tick position when available, otherwise the status labels the event-origin fallback. These domains remain distinct. Pause freezes their simulation position. Matching events, one-based project bars and repeated span passes are separate condition counters. Phase 0 means every Nth count. Phrase tails retain their origin event count, while each dispatched cell samples the current beat/distance. Editing values, intervals or cadence keeps matching-event history; changing the matched source resets that span's history. Restart/rewind clears it.
+Beat spans use generation-relative base game ticks and the project BPM, with a 16-beat screen timeline in procgen. Distance spans use event world X; queued phrase cells in both main and procgen games use the actor's latest completed-tick position when available, otherwise the status labels the event-origin fallback. Main-game position lookups are constant time and reuse up to 4,096 live-actor records; removed, dying, exiting or uncached actors retain the labeled fallback. Population observations still count the complete active crew. These domains remain distinct. Pause freezes their simulation position. Matching events, one-based project bars and repeated span passes are separate condition counters. Phase 0 means every Nth count. Phrase tails retain their origin event count, while each dispatched cell samples the current beat/distance. Editing values, intervals or cadence keeps matching-event history; changing the matched source resets that span's history. Restart/rewind clears it.
 
 At each actual note dispatch, the highest-priority active span wins per target; later entries win equal priorities. Outside the interval or on bypass, normal mapping resumes. Scale/register clamps, owned notes, channel safeguards and the existing shared output budget still apply. Pan/timbre changes use the existing coalesced controller path on actual notes. No timer, independent transport, autonomous controller stream or MIDI 2.0 implementation is added. Panic cancels pending phrase cells and span-owned voices without advancing counters.
 

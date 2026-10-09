@@ -29,6 +29,7 @@ const createProcgenLaneRuntime = ({ canvas, resources, sprites, masks, assets, l
     if (count !== displayedActiveCount) { displayedActiveCount = count; onActiveCount?.(count); }
   };
   world.onRestart = () => previewRouter?.resetClock?.();
+  world.onLaneTransfer = (id, from, to, count) => previewRouter?.transferActorLane?.(id, from, to, count);
   const view = {
     game: world, gameResources: resources, midiEnabled: false, midiAvailable: true,
     midiPreviewRouter: null,

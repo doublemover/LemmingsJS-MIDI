@@ -1,6 +1,8 @@
 import { SkillTypes } from '../game/SkillTypes.js';
 import { TriggerTypes } from '../level/TriggerTypes.js';
 
+const MAX_SOLVER_SNAPSHOT_PIXELS = 4 * 1024 * 1024;
+
 const HASH_OFFSET_A = 0x811c9dc5;
 const HASH_OFFSET_B = 0x9e3779b9;
 const HASH_PRIME = 0x01000193;
@@ -48,6 +50,15 @@ const toInteger = (value, fallback = 0) => {
 };
 
 const toNonNegativeInteger = (value, fallback = 0) => Math.max(0, toInteger(value, fallback));
+
+const assertSolverSnapshotSize = (width, height, options = {}) => {
+  const maxPixels = Math.min(MAX_SOLVER_SNAPSHOT_PIXELS, Math.max(1, toInteger(options.maxSnapshotPixels, MAX_SOLVER_SNAPSHOT_PIXELS)));
+  const pixels = width * height;
+  if (!Number.isSafeInteger(pixels) || pixels > maxPixels) {
+    throw Object.assign(new RangeError(`Solver snapshot ${width}x${height} exceeds the ${maxPixels}-pixel budget; provide a bounded level source.`),
+      { code: 'solver-snapshot-budget-exceeded' });
+  }
+};
 
 const hasOwn = (source, key) => Object.prototype.hasOwnProperty.call(source, key);
 
@@ -560,6 +571,7 @@ const extractSolverState = (input, options = {}) => {
   }
   const width = Math.max(1, toInteger(options.width ?? source.width, 1));
   const height = Math.max(1, toInteger(options.height ?? source.height, 1));
+  assertSolverSnapshotSize(width, height, options);
   const groundLayer = readGroundLayer(source);
   const groundMask = normalizeMask(source, width, height, {
     layer: groundLayer,
@@ -645,7 +657,9 @@ const extractSolverState = (input, options = {}) => {
 const isSolverState = value => value?.kind === 'solver-state' && value?.terrain?.mask;
 
 export {
+  MAX_SOLVER_SNAPSHOT_PIXELS,
   SKILL_NAMES_BY_TYPE,
+  assertSolverSnapshotSize,
   extractSolverState,
   hashMask,
   isSolverState,

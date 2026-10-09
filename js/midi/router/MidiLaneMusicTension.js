@@ -24,11 +24,21 @@ class MidiLaneMusicTension {
     if (!this.config.enabled || !this.config.amount || !Number.isInteger(laneIndex) || laneIndex < 0 || laneIndex >= 1024 || !signal || !Number.isFinite(tick)) return null;
     let state = this.lanes[laneIndex];
     if (!state) state = this.lanes[laneIndex] = { tick, strength: 0, baseline: 0, established: false, healthyStart: null,
-      recoveryUntil: -Infinity, collapseX: null, passedPreviousBest: false, reason: 'startup', alive: 0, soloActorId: null, survival: 1, lastDistance: finite(signal.bestDistance) };
+      recoveryUntil: -Infinity, collapseX: null, passedPreviousBest: false, reason: 'startup', alive: 0, soloActorId: null, survival: 1, lastNetTransfer: finite(signal.transferredIn) - finite(signal.transferredOut), lastDistance: finite(signal.bestDistance) };
     const settings = this.config, delta = Math.max(0, tick - state.tick);
     state.tick = tick; state.alive = Math.max(0, Math.trunc(finite(signal.alive)));
     state.soloActorId = Number.isInteger(signal.lowestSurvivingActorId) && signal.lowestSurvivingActorId >= 0 ? signal.lowestSurvivingActorId : null;
-    state.survival = state.alive / Math.max(1, finite(signal.spawned, state.alive));
+    const netTransfer = Math.max(0, finite(signal.transferredIn)) - Math.max(0, finite(signal.transferredOut));
+    if (state.established) state.baseline = Math.max(0, state.baseline + netTransfer - state.lastNetTransfer);
+    state.lastNetTransfer = netTransfer;
+    const hasSuccessfulDepartures = Number.isFinite(signal.successfulDepartures);
+    if (hasSuccessfulDepartures) {
+      const departures = Math.max(0, signal.successfulDepartures);
+      if (state.established) state.baseline = Math.max(0, state.baseline - departures + (state.lastSuccessfulDepartures ?? departures));
+      state.lastSuccessfulDepartures = departures;
+    }
+    const admitted = finite(signal.admitted, finite(signal.spawned, state.alive));
+    state.survival = hasSuccessfulDepartures && admitted <= 0 ? 1 : clamp(state.alive / Math.max(1, admitted), 0, 1);
     if (!state.established) {
       if (state.alive >= settings.healthyPopulation) {
         state.healthyStart ??= tick;
@@ -38,7 +48,7 @@ class MidiLaneMusicTension {
     let target = 0;
     if (state.established) {
       state.baseline = Math.max(state.baseline, state.alive);
-      const ratio = state.alive / Math.max(1, state.baseline), x = finite(signal.maxX);
+      const ratio = hasSuccessfulDepartures && state.baseline <= 0 ? 1 : state.alive / Math.max(1, state.baseline), x = finite(signal.maxX);
       target = clamp((settings.recoveryRatio - ratio) / (settings.recoveryRatio - settings.collapseRatio), 0, 1);
       if (target > 0 && state.collapseX == null) state.collapseX = x;
       const previousBest = finite(signal.previousDistance);

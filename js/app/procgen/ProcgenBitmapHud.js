@@ -23,12 +23,7 @@ class ProcgenBitmapHud {
   }
   render(context, world, camera, dpr = 1) {
     if (!this.sprites) return;
-    const scale = Math.max(1, Math.floor(Math.min(3, this.canvas.width / dpr / 540))) * dpr;
-    const distance = world.stall.lanes.reduce((max, lane) => Math.max(max, Math.max(0, Math.round(lane.maxX - 36))), 0);
-    const best = world.stall.lanes.reduce((max, lane) => Math.max(max, Math.round(lane.previousDistance || 0)), 0);
-    const score = `SCORE ${distance}  BEST ${best}`;
     context.imageSmoothingEnabled = false;
-    this.drawString(context, score, 0, 0, scale);
     const state = camera.getState();
     const first = Math.max(0, Math.floor(state.cameraY / LANE_HEIGHT));
     const last = Math.min(world.laneCount - 1, Math.floor((state.cameraY + camera.viewport().height) / LANE_HEIGHT));
@@ -36,7 +31,7 @@ class ProcgenBitmapHud {
     for (let lane = first; lane <= last; lane++) {
       const progress = world.stall.lanes[lane];
       const y = Math.round((lane * LANE_HEIGHT - state.cameraY) * state.scale * dpr);
-      if (y < 16 * scale || y > this.canvas.height - 16 * dpr) continue;
+      if (y < 16 * dpr || y > this.canvas.height - 16 * dpr) continue;
       const label = `LANE ${lane + 1}  DIST ${Math.max(0, Math.round(progress.maxX - 36))}  BEST ${Math.round(progress.previousDistance || 0)}`;
       this.drawString(context, label, 0, y, dpr);
     }

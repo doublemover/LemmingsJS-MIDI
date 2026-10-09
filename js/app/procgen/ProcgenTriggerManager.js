@@ -13,26 +13,39 @@ class ProcgenTriggerManager {
     let owned = this.byOwner.get(owner);
     if (!owned) { owned = []; this.byOwner.set(owner, owned); }
     if (owned.includes(trigger)) return;
+    owned.lane = lane; owned.x = owner.x; owned.y = owner.y;
     trigger.runtime = this.world.runtime; owned.push(trigger);
     (this.byLane[lane] ||= []).push(trigger);
   }
   removeByOwner(owner) {
-    if (!this.byOwner.delete(owner)) return;
-    const lane = owner.laneIndex;
-    this.byLane[lane] = this.byLane[lane].filter(trigger => trigger.owner !== owner);
+    const owned = this.byOwner.get(owner);
+    if (!owned) return;
+    this.byOwner.delete(owner);
+    this.byLane[owned.lane] = this.byLane[owned.lane]?.filter(trigger => trigger.owner !== owner);
   }
   synchronize(owner) {
-    if (this.byOwner.has(owner) && (owner.removed || owner.failureReason || owner.disabled || owner.terminalReason || owner.action?.actionName !== 'blocking')) this.removeByOwner(owner);
+    const owned = this.byOwner.get(owner);
+    if (!owned) return;
+    if (owner.removed || owner.failureReason || owner.disabled || owner.terminalReason || owner.action?.actionName !== 'blocking') { this.removeByOwner(owner); return; }
+    if (owned.lane !== owner.laneIndex) {
+      this.byLane[owned.lane] = this.byLane[owned.lane]?.filter(trigger => trigger.owner !== owner);
+      (this.byLane[owner.laneIndex] ||= []).push(...owned); owned.lane = owner.laneIndex;
+    }
+    const dx = owner.x - owned.x, dy = owner.y - owned.y;
+    if (dx || dy) for (const trigger of owned) { trigger.x1 += dx; trigger.x2 += dx; trigger.y1 += dy; trigger.y2 += dy; }
+    owned.x = owner.x; owned.y = owner.y;
   }
   trigger(x, y, actor, tick) {
     const hazard = this.hazards.trigger(x, y, actor, tick);
     if (hazard !== Types.NO_TRIGGER) return hazard;
-    const bucket = this.byLane[actor.laneIndex];
-    if (bucket) for (const trigger of bucket) {
-      const owner = trigger.owner;
-      if (owner === actor || owner.removed || owner.disabled || owner.failureReason || owner.terminalReason || owner.action?.actionName !== 'blocking' ||
+    for (let lane = Math.max(0, Math.floor(y / 96) - 1); lane <= Math.min(this.byLane.length - 1, Math.floor(y / 96) + 1); lane++) {
+      const bucket = this.byLane[lane];
+      if (bucket) for (const trigger of bucket) {
+        const owner = trigger.owner;
+        if (owner === actor || owner.removed || owner.disabled || owner.failureReason || owner.terminalReason || owner.action?.actionName !== 'blocking' ||
           x < trigger.x1 || x >= trigger.x2 || y < trigger.y1 || y >= trigger.y2) continue;
-      return trigger.trigger(x, y, tick, actor);
+        return trigger.trigger(x, y, tick, actor);
+      }
     }
     return Types.NO_TRIGGER;
   }

@@ -19,6 +19,7 @@ const DIRECT_MAPPING_KEYS = Object.freeze([
   'notes',
   'chord',
   'velocity',
+  'priority',
   'durationTicks',
   'pan',
   'timbre',
@@ -148,6 +149,7 @@ const createEmptyDirectMapping = () => ({
   notes: null,
   chord: null,
   velocity: null,
+  priority: null,
   durationTicks: null,
   pan: null,
   timbre: null,
@@ -283,6 +285,7 @@ const sanitizeDirectMapping = (mapping = {}) => {
     }
     : null;
   out.velocity = out.velocity == null ? null : sanitizeVelocity(out.velocity);
+  out.priority = out.priority == null ? null : clamp(toInteger(out.priority, 1), 0, 100);
   out.durationTicks = out.durationTicks == null ? null : sanitizeDurationTicks(out.durationTicks);
   out.pan = out.pan == null ? null : clamp(toInteger(out.pan, 0), -127, 127);
   out.timbre = out.timbre == null ? null : clamp(toInteger(out.timbre, 0), 0, 127);
@@ -1099,7 +1102,8 @@ const buildRuntimeMapping = (source, track, hiddenByTrack, globalVelocityDefault
   out.name = source.label;
   out.channel = track.channel;
   if (track.program != null) out.program = track.program;
-  out.priority = track.priority;
+  out.priority = mapping.priority ?? track.priority;
+  if (mapping.priority != null) out.eventPriority = mapping.priority;
   out.voiceBudget = track.voiceBudget;
   out.trackId = track.id;
   out.outputId = track.outputId;

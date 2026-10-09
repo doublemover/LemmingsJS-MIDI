@@ -63,6 +63,39 @@ describe('population musical tension', function() {
     model.updateLane(0, signal(7), 23); expect(model.snapshot(0)).to.include({ strength: 0, reason: 'population-recovery' });
     expect(model.decision(note, meta(1), 23).spec).to.equal(note);
   });
+  it('adjusts the healthy baseline for actual transfers while retaining real death and recovery response', function() {
+    const model = new MidiLaneMusicTension(settings); healthy(model);
+    model.updateLane(0, signal(2, { transferredIn: 0, transferredOut: 8, admitted: 2 }), 3);
+    expect(model.snapshot(0)).to.include({ baseline: 2, strength: 0, survival: 1, established: true });
+    model.updateLane(0, signal(2, { transferredIn: 0, transferredOut: 8, admitted: 2 }), 13);
+    expect(model.snapshot(0)).to.include({ baseline: 2, strength: 0 });
+    model.updateLane(1, signal(8, { spawned: 0, transferredIn: 8, transferredOut: 0, admitted: 8 }), 13);
+    expect(model.snapshot(1).survival).to.equal(1);
+    model.updateLane(0, signal(0, { transferredIn: 0, transferredOut: 8, admitted: 2, lowestSurvivingActorId: null }), 23);
+    expect(model.snapshot(0)).to.include({ baseline: 2, strength: 1, survival: 0, reason: 'population-decline' });
+    model.updateLane(0, signal(8, { transferredIn: 8, transferredOut: 8, admitted: 10 }), 33);
+    expect(model.snapshot(0)).to.include({ baseline: 10, strength: 0, survival: 0.8, reason: 'population-recovery' });
+    model.synchronize(2, 0);
+    expect(model.snapshot(0)).to.equal(null);
+    model.updateLane(0, signal(1, { transferredIn: 20, transferredOut: 19, admitted: 1 }), 0);
+    expect(model.snapshot(0)).to.include({ established: false, strength: 0, survival: 1 });
+  });
+  it('removes successful departures from the established baseline while retaining genuine losses and recovery', function() {
+    const model = new MidiLaneMusicTension(settings);
+    for (const tick of [0, 2]) model.updateLane(0, signal(10, { successfulDepartures: 0, admitted: 10 }), tick);
+    model.updateLane(0, signal(2, { successfulDepartures: 8, admitted: 2 }), 12);
+    expect(model.snapshot()).to.include({ baseline: 2, strength: 0, survival: 1 });
+    model.updateLane(0, signal(1, { successfulDepartures: 8, admitted: 2 }), 22);
+    expect(model.snapshot()).to.include({ baseline: 2, reason: 'population-decline', survival: 0.5 });
+    expect(model.snapshot().strength).to.be.closeTo((0.6 - 0.5) / (0.6 - 0.25), 1e-12);
+    model.updateLane(0, signal(3, { spawned: 12, successfulDepartures: 8, admitted: 4 }), 32);
+    expect(model.snapshot()).to.include({ baseline: 3, strength: 0, reason: 'population-recovery', survival: 0.75 });
+    model.updateLane(0, signal(0, { spawned: 12, successfulDepartures: 11, admitted: 1, lowestSurvivingActorId: null }), 42);
+    expect(model.snapshot()).to.include({ baseline: 0, strength: 0 });
+    const legacy = new MidiLaneMusicTension(settings); healthy(legacy);
+    expect(legacy.snapshot()).not.to.have.property('lastSuccessfulDepartures');
+    legacy.updateLane(0, signal(2), 12); expect(legacy.snapshot()).to.include({ baseline: 10, strength: 1, survival: 0.2 });
+  });
   it('restores progress or a newly crossed previous best but ignores planned terrain work', function() {
     const model = new MidiLaneMusicTension(settings); healthy(model);
     model.updateLane(0, signal(2), 13);

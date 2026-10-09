@@ -4,6 +4,7 @@ import { GameDisplay } from './GameDisplay.js';
 import { GameGui } from './GameGui.js';
 import { GameResult } from './GameResult.js';
 import { GameSkills } from './GameSkills.js';
+import { GameMusicObservations } from './GameMusicObservations.js';
 import { GameStateTypes } from './GameStateTypes.js';
 import { GameTimer } from './GameTimer.js';
 import { GameVictoryCondition } from './GameVictoryCondition.js';
@@ -69,6 +70,7 @@ class Game extends BaseLogger {
     this.timeTravel           = null;
     this.runtime              = null;
     this.inputEnabled         = true;
+    this.musicObservations = new GameMusicObservations();
 
     this.onGameEnd      = new EventHandler();
     this.finalGameState = GameStateTypes.UNKNOWN;
@@ -93,6 +95,7 @@ class Game extends BaseLogger {
   }
 
   _disposeCurrentLevel () {
+    this.musicObservations.reset();
     if (this.gameTimer)            { this.gameTimer.stop(); this.gameTimer = null; }
     if (this.commandManager?.dispose)    this.commandManager.dispose();
     if (this.objectManager?.dispose)     this.objectManager.dispose();
@@ -220,10 +223,12 @@ class Game extends BaseLogger {
     if (this.display) this.gameDisplay.setGuiDisplay(this.display);
     if (this.guiDisplay) this.gameGui.setGuiDisplay(this.guiDisplay);
 
+    this.musicObservations.bind(this);
     this.history?.start?.();
   }
 
   start () {
+    this.musicObservations.bind(this);
     if (this.soundEvents) {
       this.soundEvents.emitSfx(
         SoundEventTypes.LEVEL_START,
@@ -243,6 +248,12 @@ class Game extends BaseLogger {
     this.onGameEnd?.dispose();
     this.onGameEnd = null;
   }
+
+  get generation() { return this.musicObservations.generation; }
+  get generationStartTick() { return this.musicObservations.generationStartTick; }
+  getLaneMusicSignals(lane = 0) { return this.musicObservations.getSignals(this, lane); }
+  getLaneMusicActorPosition(id, lane = 0) { return this.musicObservations.getActorPosition(this, id, lane); }
+  invalidateMusicObservations() { this.musicObservations.reset(this); }
 
   getGameTimer        () { return this.gameTimer; }
   getGameSkills       () { return this.skills; }
@@ -278,6 +289,7 @@ class Game extends BaseLogger {
         return;
       }
       this.lemmingManager.tick();
+      this.musicObservations.update(this);
     } finally {
       if (perfEnabled) {
         recordPerformanceMeasure('Game runGameLogic', {

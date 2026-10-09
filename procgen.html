@@ -14,9 +14,11 @@
 </head>
 <body>
   <header id="procgenTopbar" aria-label="Run controls">
+    <details id="procgenSeedControls" class="procgen-advanced"><summary title="Generation seed and restart options">Seed</summary><div class="procgen-seed-controls">
     <label class="procgen-seed-field">Seed <input id="procgenSeed" type="text" value="" aria-label="Generation seed" title="Numbers or words; regenerate repeats this seed"></label>
     <div class="procgen-button-group"><button id="procgenRestart" type="button" title="Regenerate the same seed (Backspace)">Regenerate</button><button id="procgenNewSeed" type="button" title="Choose a new seed and generate">New seed</button></div>
-    <label>Lanes <input id="procgenLanes" type="number" min="1" max="1024" step="1" value="1"></label>
+    </div></details>
+    <label>Lanes <input id="procgenLanes" type="number" min="1" max="1024" step="1" value="8"></label>
     <label>Pack <select id="procgenPack"></select></label>
       <div class="procgen-speed-control" role="group" aria-label="Game speed">
         <span>Speed</span><div class="procgen-speed-segments">
@@ -28,10 +30,13 @@
     <div class="procgen-button-group"><button id="procgenPause" type="button" aria-pressed="false" title="Pause or play (Space)">Pause</button><button id="procgenStep" type="button" title="Pause and advance one tick (])">Step</button></div>
     <div class="procgen-button-group"><button id="procgenZoomOut" type="button" aria-label="Zoom out" title="Zoom out (Z)">−</button><button id="procgenFollow" type="button" title="Follow the leading living lemming (F)">Follow</button><button id="procgenZoomIn" type="button" aria-label="Zoom in" title="Zoom in (X)">+</button></div>
     <div id="procgenAudioControls" class="procgen-audio-controls"><span id="procgenOutputPressure" role="status" aria-live="off" hidden></span><button id="procgenListen" type="button" aria-pressed="false">Listen locally</button><label title="Local master volume; above 100% boosts browser listening"><span class="visually-hidden">Master volume</span><input id="procgenMasterVolume" type="range" min="0" max="400" step="1" value="70" aria-label="Master volume"><output id="procgenMasterVolumeValue">70%</output></label><button id="procgenPanic" type="button" title="Stop all local notes">Panic</button></div>
-    <button id="procgenTab" type="button" aria-controls="procgenDrawer" aria-expanded="false">Details</button>
+    <div class="procgen-run-progress"><output id="procgenDistance" aria-label="Current run distance">0 px</output><output id="procgenBest" aria-label="Previous best distance">Best 0</output>
+<output id="procgenAliveCount" aria-label="Current active lemmings across all lanes" title="Active actors across all lanes; failed actors are excluded and each new generation resets the count">Loading</output>
+    </div>
   </header>
+  <button id="procgenTab" type="button" aria-controls="procgenDrawer" aria-expanded="false" aria-label="Show details" title="Show details">&#9662;</button>
   <canvas id="gameCanvas" class="gameCanvas" aria-label="Procedural Lemmings world" tabindex="0"></canvas>
-  <output id="procgenAliveCount" aria-label="Current active lemmings across all lanes" title="Active actors across all lanes; failed actors are excluded and each new generation resets the count">Loading</output>
+
   <section id="procgenDrawer" aria-label="Procgen details" inert>
     <div class="procgen-controls-row">
       <label>Scenery <select id="procgenDecoration"></select></label>
@@ -66,7 +71,7 @@
     <details id="procgenWorkerFields"><summary>Construction crews</summary>
       <div class="procgen-drawer-row">
         <label>Concurrent bashers per lane <input id="procgenWorkerBashers" type="number" min="0" max="16" step="1" value="2"></label>
-        <label>Concurrent diggers per lane <input id="procgenWorkerDiggers" type="number" min="0" max="16" step="1" value="2"></label>
+        <label>Concurrent digging/mining per lane <input id="procgenWorkerDiggers" type="number" min="0" max="16" step="1" value="2"></label>
         <label>Concurrent builders per lane <input id="procgenWorkerBuilders" type="number" min="0" max="16" step="1" value="2"></label>
       </div><p>Independent work can run together. Overlapping work keeps one owner; lowering a limit lets existing jobs finish.</p>
     </details>

@@ -18,7 +18,7 @@ describe('sourced procgen words', function() {
     expect(PROCGEN_WORD_POOL).to.include.members(['FUCK', 'SHIT', 'FUN']);
   });
   it('aligns deterministic words by visible alpha bounds and a common baseline above actual terrain', async () => {
-    const terrain = await loadProcgenTerrain('lemmings', 1), chunks = [3, 6, 9, 13];
+    const terrain = await loadProcgenTerrain('lemmings', 1), chunks = [3, 6, 9, 20];
     for (const chunk of chunks) {
       const descriptor = terrain.describe(42, chunk), word = descriptor.word;
       expect(word).to.exist; expect(PROCGEN_WORD_POOL).to.include(word.text);

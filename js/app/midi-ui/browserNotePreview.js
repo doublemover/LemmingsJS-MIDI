@@ -1,11 +1,17 @@
+import { selectLocalAudioVoice } from '../../midi/scheduler/LocalAudioVoiceBudget.js';
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const finite = (value, fallback) => Number.isFinite(value) ? value : fallback;
 const ATTACK_SECONDS = 0.008;
 const RELEASE_SECONDS = 0.04;
 const MAX_SCHEDULED_VOICES = 64;
 const MAX_CONTROL_EVENTS = 128;
+const MAX_RENDER_VOICES = 64;
+const MAX_RELEASE_TAILS = 32;
 const MASTER_VOLUME_RAMP_SECONDS = 0.015;
 const MAX_MASTER_VOLUME = 4;
+// Unity correction for this profile's measured fixed Web Audio makeup gain, independent of voice count.
+const MIX_MAKEUP_COMPENSATION = 0.647;
+const MIX_LOOKAHEAD_SECONDS = 0.006;
 let captureScopeSequence = 0;
 const instrumentProfile = (program, percussion, note, enabled = true) => {
   if (!enabled) return { waveform: 'triangle', attack: ATTACK_SECONDS, decay: 0, sustain: 1, release: RELEASE_SECONDS, gain: 1 };
@@ -32,9 +38,20 @@ const createOutputCeiling = context => {
   return limiter;
 };
 
+const createMixCompressor = context => {
+  if (typeof context.createDynamicsCompressor !== 'function') return null;
+  const compressor = context.createDynamicsCompressor();
+  compressor.threshold.value = -9;
+  compressor.knee.value = 6;
+  compressor.ratio.value = 12;
+  compressor.attack.value = 0.001;
+  compressor.release.value = 0.08;
+  return compressor;
+};
+
 /** A local tone monitor. It owns its audio context and never opens a MIDI device. */
 class BrowserNotePreview {
-  constructor({ createAudioContext, nowMs, onStateChange, onPlayback, maxVoices = 16, maxNoteSeconds = 8, volume = 0.15, masterVolume = 0.7 } = {}) {
+  constructor({ createAudioContext, nowMs, onStateChange, onPlayback, maxVoices = 32, maxNoteSeconds = 8, volume = 0.15, masterVolume = 0.7 } = {}) {
     const AudioContextType = globalThis.AudioContext || globalThis.webkitAudioContext;
     this._createContext = createAudioContext === undefined
       ? (AudioContextType ? () => new AudioContextType({ sampleRate: 48000 }) : null)
@@ -42,13 +59,18 @@ class BrowserNotePreview {
     this._nowMs = nowMs || (() => globalThis.performance?.now?.() ?? Date.now());
     this._listeners = new Set();
     if (typeof onStateChange === 'function') this._listeners.add(onStateChange);
-    this._maxVoices = clamp(Math.trunc(finite(maxVoices, 16)), 1, 32);
+    this._maxVoices = clamp(Math.trunc(finite(maxVoices, 32)), 1, MAX_RENDER_VOICES);
+    this._maxScheduledVoices = Math.max(MAX_SCHEDULED_VOICES, this._maxVoices + MAX_RELEASE_TAILS);
+    this._voiceSteals = 0;
+    this._voiceDrops = 0;
     this._maxNoteSeconds = clamp(finite(maxNoteSeconds, 8), 0.1, 16);
-    this._volume = clamp(finite(volume, 0.15), 0, 0.15) / Math.sqrt(this._maxVoices);
+    this._volume = clamp(finite(volume, 0.15), 0, 0.15);
     this._masterVolume = clamp(finite(masterVolume, 0.7), 0, MAX_MASTER_VOLUME);
     this._context = null;
     this._master = null;
     this._limiter = null;
+    this._compressor = null;
+    this._compressorOutput = null;
     this._resumePromise = null;
     this._pendingEnables = new Set();
     this._disposePromise = null;
@@ -58,6 +80,7 @@ class BrowserNotePreview {
     this._status = this._createContext ? 'idle' : 'unsupported';
     this._message = this._createContext ? 'Browser preview is off.' : 'Browser audio is not supported.';
     this._voices = new Set();
+    this._voicesByToken = new Map();
     this._previewPending = [];
     this._previewTimer = null;
     this._voiceSequence = 0;
@@ -92,6 +115,9 @@ class BrowserNotePreview {
       name: 'Browser audio preview',
       supportsPerNotePan: true,
       supportsPerNoteInstrument: true,
+      supportsIndependentNoteGates: true,
+      isVoiceActive: token => this._isVoiceActive(token),
+      canAllocateVoice: () => this._voices.size < this._maxScheduledVoices || [...this._voices].some(voice => this._voiceFinished(voice)),
       supportsPlaybackMetadata: true,
       channels: Object.freeze(channels),
       clear: () => this._clearVoices()
@@ -104,6 +130,9 @@ class BrowserNotePreview {
       message: this._message,
       enabled: this._enabled && this._context?.state === 'running',
       activeVoices: this._voices.size,
+      maxVoices: this._maxVoices, maxScheduledVoices: this._maxScheduledVoices,
+      voiceSteals: this._voiceSteals, voiceDrops: this._voiceDrops,
+      mixCompression: !!this._compressor, mixLatencyMs: this._compressor ? MIX_LOOKAHEAD_SECONDS * 1000 : 0, mixMakeupCompensation: this._compressor ? MIX_MAKEUP_COMPENSATION : 1, mixReductionDb: finite(this._compressor?.reduction, 0),
       pendingNotes: this._previewPending.length,
       masterVolume: this._masterVolume
     };
@@ -163,19 +192,32 @@ class BrowserNotePreview {
         let context;
         let master;
         let limiter;
+        let compressor;
+        let compressorOutput;
         try {
           context = this._createContext();
           master = context.createGain();
           master.gain.value = this._volume * this._masterVolume;
           limiter = createOutputCeiling(context);
-          master.connect(limiter);
+          compressor = createMixCompressor(context);
+          master.connect(compressor || limiter);
+          if (compressor) {
+            compressorOutput = context.createGain();
+            compressorOutput.gain.value = MIX_MAKEUP_COMPENSATION;
+            compressor.connect(compressorOutput);
+            compressorOutput.connect(limiter);
+          }
           context.addEventListener?.('statechange', this._onContextState);
           this._context = context;
           this._master = master;
           this._limiter = limiter;
+          this._compressor = compressor;
+          this._compressorOutput = compressorOutput;
         } catch (error) {
           master?.disconnect();
           limiter?.disconnect();
+          compressor?.disconnect();
+          compressorOutput?.disconnect();
           try { Promise.resolve(context?.close?.()).catch(() => {}); } catch { /* Failed audio initialization. */ }
           throw error;
         }
@@ -198,6 +240,7 @@ class BrowserNotePreview {
       }
       if (this._disposed || generation !== this._generation) return false;
       if (context.state !== 'running') throw new Error('Audio context is not running.');
+      this._setMixEnabled(true);
       this._enabled = true;
       this._setStatus('ready', 'Browser preview is on. No MIDI is sent.');
       return true;
@@ -212,9 +255,19 @@ class BrowserNotePreview {
     }
   }
 
+  _setMixEnabled(enabled) {
+    if (!this._compressorOutput || !this._context) return;
+    const now = this._context.currentTime, gain = this._compressorOutput.gain;
+    gain.cancelScheduledValues(now);
+    gain.setValueAtTime(0, now);
+    // Suppress the old lookahead buffer on stop/re-enable, using the existing audio clock.
+    if (enabled) gain.setValueAtTime(MIX_MAKEUP_COMPENSATION, now + MIX_LOOKAHEAD_SECONDS);
+  }
+
   stop() {
     this._generation += 1;
     this._enabled = false;
+    this._setMixEnabled(false);
     for (const cancel of this._pendingEnables) cancel();
     this._pendingEnables.clear();
     this._resumePromise = null;
@@ -239,10 +292,14 @@ class BrowserNotePreview {
     this._noiseBuffer = null;
     this._master?.disconnect();
     this._limiter?.disconnect();
+    this._compressor?.disconnect();
+    this._compressorOutput?.disconnect();
     this._captureAnalyser?.disconnect();
     this._captureAnalyser = null;
     this._captureSamples = null;
     this._limiter = null;
+    this._compressor = null;
+    this._compressorOutput = null;
     this._master = null;
     this._context = null;
     this._setStatus('disposed', 'Browser preview is closed.');
@@ -269,7 +326,7 @@ class BrowserNotePreview {
       let sum = 0, peak = 0;
       for (const value of this._captureSamples) { sum += value * value; peak = Math.max(peak, Math.abs(value)); }
       const sample = { type: 'waveform', rms: Math.sqrt(sum / this._captureSamples.length), peak,
-        localMasterGain: this._masterVolume, audioTime: this._context.currentTime, sampleRate: this._context.sampleRate, frames: this._captureSamples.length,
+        localMasterGain: this._masterVolume, mixLatencyMs: this._compressor ? MIX_LOOKAHEAD_SECONDS * 1000 : 0, mixMakeupCompensation: this._compressor ? MIX_MAKEUP_COMPENSATION : 1, mixReductionDb: finite(this._compressor?.reduction, 0), audioTime: this._context.currentTime, sampleRate: this._context.sampleRate, frames: this._captureSamples.length,
         reason: 'demand-inspection', acousticReceipt: false };
       this._observe('synth-render-sample', sample);
       return sample;
@@ -405,22 +462,40 @@ class BrowserNotePreview {
     return buffer;
   }
 
+  _voiceFinished(voice) {
+    const now = this._context?.currentTime ?? 0;
+    return voice.end <= now || (voice.released && voice.releaseLevel === 0 && voice.releaseAt <= now) || (voice.sustain === 0 && now >= voice.start + voice.attack + voice.decay);
+  }
+
+  _isVoiceActive(token) {
+    const voice = this._voicesByToken.get(token), now = this._context?.currentTime ?? 0;
+    return !!voice && !voice.stolen && voice.releaseAt > now &&
+      (voice.sustain > 0 || now < voice.start + voice.attack + voice.decay);
+  }
+
   _noteOn(number, note, options = {}) {
     if (!this._ready() || !this._validNote(note)) return false;
     if (options?.rawAttack === 0) return this._noteOff(number, note, options);
     const context = this._context;
     const start = this._audioTime(options);
     if (start - context.currentTime > this._maxNoteSeconds) return false;
-    const simultaneous = [...this._voices].filter(voice => !voice.stolen && voice.start <= start && voice.end > start);
-    if (simultaneous.length >= this._maxVoices) {
-      const oldest = simultaneous[0];
-      if (start - context.currentTime <= RELEASE_SECONDS || start - oldest.start <= RELEASE_SECONDS) {
-        this._destroyVoice(oldest, 'voice-budget');
-      } else {
-        this._release(oldest, start - RELEASE_SECONDS, true);
-      }
+    for (const voice of this._voices) {
+      if (this._voiceFinished(voice)) this._destroyVoice(voice, 'inaudible-voice-reuse');
     }
-    while (this._voices.size >= MAX_SCHEDULED_VOICES) this._destroyVoice(this._voices.values().next().value, 'scheduled-voice-cap');
+    const incoming = { priority: finite(options.priority, 1), laneIndex: options.laneIndex ?? options.playback?.laneIndex ?? 0 };
+    const drop = reason => {
+      this._voiceDrops += 1;
+      this._observe('drop', { ...options.capture, type: 'noteOn', note, channel: number, ...incoming, reason });
+      return false;
+    };
+    if (this._voices.size >= this._maxScheduledVoices) return drop('scheduled-voice-cap');
+    const simultaneous = [...this._voices].filter(voice => !voice.stolen && voice.start <= start && voice.releaseAt > start);
+    if (simultaneous.length >= this._maxVoices) {
+      const victim = selectLocalAudioVoice(simultaneous, incoming);
+      if (!victim) return drop('local-voice-priority');
+      this._voiceSteals += 1;
+      this._release(victim, Math.max(context.currentTime, start - RELEASE_SECONDS), true);
+    }
     let voice;
     let oscillator;
     let gain;
@@ -432,9 +507,13 @@ class BrowserNotePreview {
       if (noise) { oscillator.buffer = noise; oscillator.loop = true; }
       gain = context.createGain();
       voice = { oscillator, gain, number, note, start, id: ++this._voiceSequence, playback: options.playback, startMs: this._nowMs() + (start - context.currentTime) * 1000, end: start + Math.min(this._maxNoteSeconds, profile.seconds || this._maxNoteSeconds), released: false, captureMeta: options.capture || null,
+        ...incoming, startedAt: start,
+        token: Number.isInteger(options.voiceToken) && options.voiceToken > 0 ? options.voiceToken : null,
         peak: clamp(finite(options?.rawAttack, 80), 1, 127) / 127 * profile.gain, attack: profile.attack, decay: profile.decay,
         sustain: profile.sustain, release: profile.release, instrument: options.instrument, velocity: clamp(finite(options?.rawAttack, 80), 1, 127) };
+      voice.releaseAt = voice.end - voice.release;
       this._voices.add(voice);
+      if (voice.token != null) this._voicesByToken.set(voice.token, voice);
       if (!noise) {
         oscillator.type = profile.waveform;
         oscillator.frequency.setValueAtTime(profile.frequency || 440 * (2 ** ((note - 69) / 12)), start);
@@ -468,7 +547,7 @@ class BrowserNotePreview {
       this._observe('synth-scheduled', { ...voice.captureMeta, type: 'noteOn', voiceId: voice.id, channel: number,
         note, velocity: voice.velocity, program: options.instrument?.program, ensembleRole: options.instrument?.role,
         percussion: options.instrument?.percussion, scheduledMs: voice.startMs, audioTime: start,
-        endAudioTime: voice.end, durationMs: (voice.end - start) * 1000, waveform: noise ? 'noise' : oscillator.type });
+        endAudioTime: voice.end, mixLatencyMs: this._compressor ? MIX_LOOKAHEAD_SECONDS * 1000 : 0, durationMs: (voice.end - start) * 1000, waveform: noise ? 'noise' : oscillator.type });
       if (this._captureEnabled() && !options.capture?.observedByScheduler) this._observe('api-dispatch', { ...voice.captureMeta, type: 'noteOn',
         voiceId: voice.id, channel: number, note, velocity: voice.velocity, scheduledMs: voice.startMs, accepted: true });
       this._emitPlayback(voice, 'start');
@@ -486,8 +565,8 @@ class BrowserNotePreview {
     }
   }
 
-  _release(voice, time, force = false) {
-    if (!this._voices.has(voice) || (!force && voice.released)) return;
+  _release(voice, time, force = false, reason = 'note-off') {
+    if (!this._voices.has(voice) || (!force && voice.released && time >= voice.releaseAt)) return;
     const releaseAt = Math.max(voice.start, Math.min(time, voice.end - voice.release));
     const end = Math.min(voice.end, releaseAt + voice.release);
     const param = voice.gain.gain;
@@ -497,28 +576,35 @@ class BrowserNotePreview {
       : voice.decay > 0 && elapsed < voice.attack + voice.decay
         ? 1 - (1 - voice.sustain) * (elapsed - voice.attack) / voice.decay : voice.sustain;
     const attackLevel = voice.peak * level;
+    voice.releaseLevel = attackLevel;
     param.setValueAtTime(attackLevel, releaseAt);
     param.linearRampToValueAtTime(0, end);
     voice.oscillator.stop(end);
     voice.end = end;
+    voice.releaseAt = releaseAt;
     voice.released = true;
     if (force) voice.stolen = true;
     this._observe('synth-release', { ...voice.captureMeta, type: 'noteOff', voiceId: voice.id, channel: voice.number,
       note: voice.note, scheduledMs: voice.startMs + (releaseAt - voice.start) * 1000, audioTime: releaseAt,
-      endAudioTime: end, reason: force ? 'voice-budget' : 'note-off' });
+      endAudioTime: end, reason: force ? 'voice-budget' : reason });
     this._emitPlayback(voice, 'release', releaseAt);
+    if (force && attackLevel === 0) this._destroyVoice(voice, 'inaudible-voice-reuse');
   }
 
   _noteOff(number, note, options = {}) {
     if (!this._ready() || !this._validNote(note)) return false;
     const time = this._audioTime(options);
-    const candidates = [...this._voices].filter(voice => voice.number === number && voice.note === note && !voice.released && voice.start <= time + 0.001);
+    const candidates = [...this._voices].filter(voice => voice.number === number && voice.note === note && (!voice.released || (options.voiceToken != null && time < voice.releaseAt)) && voice.start <= time + 0.001 &&
+      (options.voiceToken == null || voice.token === options.voiceToken));
     // A scheduled release belongs to one note-on, including repeated same-pitch phrases.
-    if (Number.isFinite(options?.time)) {
-      if (candidates.length) this._release(candidates[0], time);
+    if (Number.isFinite(options?.time) || options.voiceToken != null) {
+      if (candidates.length) {
+        if (options.reason === 'local-voice-budget') this._voiceSteals += 1;
+        this._release(candidates[0], time, false, options.reason);
+      }
     } else {
       for (const voice of this._voices) {
-        if (voice.number === number && voice.note === note) this._destroyVoice(voice);
+        if (voice.number === number && voice.note === note) this._destroyVoice(voice, 'immediate-note-off');
       }
     }
     if (this._captureEnabled() && !options.capture?.observedByScheduler && candidates.length) this._observe('api-dispatch', {
@@ -529,6 +615,7 @@ class BrowserNotePreview {
 
   _destroyVoice(voice, reason = 'source-ended') {
     if (!voice || !this._voices.delete(voice)) return;
+    if (voice.token != null && this._voicesByToken.get(voice.token) === voice) this._voicesByToken.delete(voice.token);
     this._observe('synth-end', { ...voice.captureMeta, type: 'noteEnd', voiceId: voice.id, channel: voice.number,
       note: voice.note, audioTime: this._context?.currentTime, scheduledMs: voice.startMs + (voice.end - voice.start) * 1000,
       matchedDurationMs: Math.max(0, ((this._context?.currentTime ?? voice.start) - voice.start) * 1000), reason });

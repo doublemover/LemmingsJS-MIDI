@@ -47,6 +47,14 @@ All entrypoints normalize and enforce:
 - `maxActions`
 - `maxWallTimeMs`
 
+Terrain snapshots and synthetic replay mask copies have a hard limit of
+4,194,304 pixels, checked before terrain sampling or mask cloning. The optional
+`maxSnapshotPixels` setting can lower this limit but cannot raise it. The full
+endless procgen world requires a bounded finite source; explicit actor and goal
+qualification for such an adapter remains open. Over-limit replay sources return
+`unsupported` with `budget-exhausted` before stepping; direct constructors and
+snapshot extraction throw a budget `RangeError`.
+
 Budget exhaustion returns `timeout` with `budget-exhausted`; unsupported
 source types or mechanics return `unsupported`. Search exhaustion inside a
 supported scope returns `unknown`, not `timeout`.
@@ -61,6 +69,15 @@ deterministic replay without a browser.
 Only replay output with verifier `runtime-replay` sets `replayVerified`.
 Non-synthetic adapters must be authoritative before a replay can become
 `solved`; otherwise the result is `unknown` with `missing-runtime-adapter`.
+Unmarked adapters are non-authoritative, including direct replay entrypoints.
+A caller can explicitly assert authority with adapter
+`isRuntimeAuthoritative: true` or source `authoritative: true`; an explicit
+`false` vetoes either assertion. These declarations are caller assertions, not
+independent runtime qualification. An initialized `Game` using the real
+`GameTimer`, `LemmingManager` and `GameVictoryCondition` is recognized without
+those declarations. Synthetic runner instances retain their separate model
+authority; a facade's `kind: "synthetic"` label alone does not establish it.
+
 Local tactical checks and procgen certificates may verify bounded local
 challenges, but their authority is not full-level solvability.
 

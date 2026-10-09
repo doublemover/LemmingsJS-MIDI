@@ -5,9 +5,13 @@ import {
   normalizeActionScriptAction,
   normalizeSolverOptions
 } from './SolverTypes.js';
+import { Game } from '../game/Game.js';
+import { GameTimer } from '../game/GameTimer.js';
+import { GameVictoryCondition } from '../game/GameVictoryCondition.js';
+import { LemmingManager } from '../lemmings/LemmingManager.js';
 import { GameStateTypes } from '../game/GameStateTypes.js';
 import { SkillTypes } from '../game/SkillTypes.js';
-import { extractSolverState, stableHash } from './SolverState.js';
+import { assertSolverSnapshotSize, extractSolverState, stableHash } from './SolverState.js';
 
 const SYNTHETIC_RUNNER_KIND = 'synthetic';
 
@@ -57,7 +61,7 @@ const createUnsupportedRunnerResult = (sourceKind, detail = 'Solver runner sourc
 
 const cloneMask = (mask, width, height) => {
   const size = Math.max(0, width * height);
-  if (mask instanceof Uint8Array) return new Uint8Array(mask);
+  if (mask instanceof Uint8Array) return new Uint8Array(mask.subarray(0, size));
   if (Array.isArray(mask)) return Uint8Array.from(mask.slice(0, size));
   return new Uint8Array(size);
 };
@@ -106,6 +110,24 @@ const hasRunnerAdapterShape = value => (
   typeof value.getFinalStateSummary === 'function'
 );
 
+const isInitializedGame = runtime => runtime instanceof Game &&
+  runtime.level != null && runtime.gameTimer instanceof GameTimer &&
+  runtime.lemmingManager instanceof LemmingManager && runtime.gameVictoryCondition instanceof GameVictoryCondition;
+
+const assertGameSnapshotSize = (runtime, options = {}) => {
+  if (!isInitializedGame(runtime)) return;
+  assertSolverSnapshotSize(Math.max(1, toInteger(runtime.level.width, 1)), Math.max(1, toInteger(runtime.level.height, 1)), options);
+};
+
+const hasRuntimeAuthority = (runtime, source = {}) => {
+  if (source.authoritative === false || runtime?.isRuntimeAuthoritative === false || runtime instanceof SyntheticSolverRunner) return false;
+  return source.authoritative === true || runtime?.isRuntimeAuthoritative === true || isInitializedGame(runtime);
+};
+
+const getReplayAuthority = runner => runner instanceof SyntheticSolverRunner
+  ? 'synthetic-runtime'
+  : (hasRuntimeAuthority(runner) ? 'real-runtime' : 'non-authoritative-adapter');
+
 const normalizeSkillTypeForRuntime = skillType => {
   if (Number.isInteger(skillType)) return skillType;
   const key = String(skillType || '').trim().toLowerCase();
@@ -122,6 +144,7 @@ class SyntheticSolverRunner {
   constructor(fixture = {}, options = {}) {
     const width = Math.max(1, toInteger(fixture.width, 1));
     const height = Math.max(1, toInteger(fixture.height, 1));
+    assertSolverSnapshotSize(width, height, options);
     this.kind = SYNTHETIC_RUNNER_KIND;
     this.id = String(fixture.id || SYNTHETIC_RUNNER_KIND);
     this.width = width;
@@ -425,8 +448,7 @@ class DelegatingRuntimeSolverRunner {
     this.kind = sourceKind;
     this.runner = runner;
     this.id = String(source.id ?? runner.id ?? sourceKind);
-    this.isRuntimeAuthoritative = source.authoritative !== false &&
-      runner.isRuntimeAuthoritative !== false;
+    this.isRuntimeAuthoritative = hasRuntimeAuthority(runner, source);
   }
 
   get tick() {
@@ -511,8 +533,9 @@ class RuntimeGameSolverRunner {
     this.runtime = source.game ?? source.runtime ?? source.adapter ?? source;
     this.id = String(source.id ?? this.runtime?.id ?? this.runtime?.level?.id ?? sourceKind);
     this.options = normalizeSolverOptions(options);
-    this.isRuntimeAuthoritative = source.authoritative !== false &&
-      this.runtime?.isRuntimeAuthoritative !== false;
+    this.maxSnapshotPixels = options.maxSnapshotPixels;
+    assertGameSnapshotSize(this.runtime, options);
+    this.isRuntimeAuthoritative = hasRuntimeAuthority(this.runtime, source);
   }
 
   get tick() {
@@ -683,7 +706,8 @@ class RuntimeGameSolverRunner {
     try {
       snapshot = extractSolverState(this.runtime, {
         sourceKind: this.kind,
-        id: this.id
+        id: this.id,
+        maxSnapshotPixels: this.maxSnapshotPixels
       });
     } catch {
       snapshot = null;
@@ -949,16 +973,14 @@ const createReplayResult = ({
   explanations = [],
   budgetUsage,
   runner,
-  appliedActions,
-  sourceKind = null
+  appliedActions
 }) => {
+  const authority = getReplayAuthority(runner);
   const replaySummary = {
     ...runner.getFinalStateSummary(),
     verifier: 'runtime-replay',
-    verified: resultType === SOLVER_RESULT_TYPES.SOLVED,
-    authority: sourceKind === SYNTHETIC_RUNNER_KIND
-      ? 'synthetic-runtime'
-      : (runner.isRuntimeAuthoritative === false ? 'non-authoritative-adapter' : 'real-runtime'),
+    verified: resultType === SOLVER_RESULT_TYPES.SOLVED && authority !== 'non-authoritative-adapter',
+    authority,
     appliedActions: appliedActions.map(item => ({ ...item }))
   };
   return createSolverResult({
@@ -993,7 +1015,20 @@ const createReplayFailure = ({
 
 const verifyActionReplay = (runnerOrSource, actions = [], options = {}) => {
   const normalizedOptions = normalizeSolverOptions(options);
-  const created = resolveRunner(runnerOrSource, normalizedOptions);
+  let created;
+  try {
+    created = resolveRunner(runnerOrSource, { ...normalizedOptions, maxSnapshotPixels: options.maxSnapshotPixels });
+    if (created.runner instanceof SyntheticSolverRunner) assertSolverSnapshotSize(created.runner.width, created.runner.height, options);
+    if (created.runner instanceof RuntimeGameSolverRunner) assertGameSnapshotSize(created.runner.runtime, options);
+  } catch (error) {
+    if (error?.code !== 'solver-snapshot-budget-exceeded') throw error;
+    return createSolverResult({
+      resultType: SOLVER_RESULT_TYPES.UNSUPPORTED,
+      summary: 'Replay source exceeds the solver snapshot pixel budget',
+      actions,
+      explanations: [{ code: SOLVER_EXPLANATION_CODES.BUDGET_EXHAUSTED, detail: error.message }]
+    });
+  }
   if (created.result) return created.result;
 
   const runner = created.runner;
@@ -1099,7 +1134,7 @@ const verifyActionReplay = (runnerOrSource, actions = [], options = {}) => {
     if (runner.getSavedCount() >= targetSaveCount) {
       const postconditionFailure = checkFinalPostconditions();
       if (postconditionFailure) return postconditionFailure;
-      if (created.sourceKind !== SYNTHETIC_RUNNER_KIND && runner.isRuntimeAuthoritative === false) {
+      if (getReplayAuthority(runner) === 'non-authoritative-adapter') {
         return createReplayResult({
           resultType: SOLVER_RESULT_TYPES.UNKNOWN,
           summary: `${created.sourceKind} replay reached the save target without an authoritative runtime adapter`,
