@@ -18,10 +18,15 @@ class MidiGamePhraseQueue {
   constructor() {
     this.voices = new Map();
     this.tick = null;
+    this._advancing = false; this._epoch = 0;
+    this._ordinaryDue = []; this._ordinaryVoices = []; this._rollingVoices = [];
     this._rollingDue = []; this._rollingCursor = 0; this._rollingPasses = new Uint32Array(MAX_ROLLING_PHRASE_LANES);
   }
 
+  get epoch() { return this._epoch; }
+
   clear() {
+    this._epoch++;
     this.voices.clear();
     this.tick = null;
     this._rollingDue.length = 0; this._rollingCursor = 0; this._rollingPasses.fill(0);
@@ -43,44 +48,63 @@ class MidiGamePhraseQueue {
   }
 
   advance(tick, send, isBusy = () => false, onlyKey = null) {
-    if (!Number.isInteger(tick) || tick < 0) return;
-    if (this.tick != null && (tick < this.tick || tick > this.tick + 1)) {
-      this.clear();
-    }
+    if (this._advancing || !Number.isInteger(tick) || tick < 0) return;
+    if (this.tick != null && (tick < this.tick || tick > this.tick + 1)) this.clear();
     this.tick = tick;
-    this._rollingDue.length = 0;
-    for (const [key, voice] of this.voices) {
-      if (voice.rolling) { if (voice.dueTick <= tick && (onlyKey == null || onlyKey === key)) this._rollingDue.push(key); continue; }
-      if (onlyKey != null && key !== onlyKey) continue;
-      if (voice.dueTick > tick || (!voice.cells && isBusy(key))) continue;
-      if (voice.cells) {
-        while (voice.notes.length && voice.dueTick <= tick) {
-          const note = voice.notes.shift();
-          if (Number.isFinite(note?.note)) send({ ...note, phraseVoiceKey: key }, voice.meta, tick);
-          voice.dueTick = voice.originTick + (voice.notes[0]?.offsetTicks ?? 0);
+    const epoch = this._epoch;
+    this._advancing = true;
+    const ordinary = this._ordinaryDue, ordinaryVoices = this._ordinaryVoices;
+    const due = this._rollingDue, rollingVoices = this._rollingVoices;
+    ordinary.length = 0; ordinaryVoices.length = 0; due.length = 0; rollingVoices.length = 0;
+    const owns = (key, voice) => epoch === this._epoch && this.voices.get(key) === voice;
+    try {
+      // Freeze this dispatch phase; callbacks may replace, cancel or enqueue voices.
+      for (const [key, voice] of this.voices) {
+        if (onlyKey != null && key !== onlyKey || voice.dueTick > tick) continue;
+        if (voice.rolling) { due.push(key); rollingVoices.push(voice); }
+        else { ordinary.push(key); ordinaryVoices.push(voice); }
+      }
+      for (let index = 0; index < ordinary.length; index++) {
+        const key = ordinary[index], voice = ordinaryVoices[index];
+        if (!owns(key, voice) || !voice.cells && isBusy(key)) continue;
+        if (!owns(key, voice)) continue;
+        if (voice.cells) {
+          while (owns(key, voice) && voice.notes.length && voice.dueTick <= tick) {
+            const note = voice.notes.shift();
+            if (Number.isFinite(note?.note)) send({ ...note, phraseVoiceKey: key }, voice.meta, tick);
+            if (owns(key, voice)) voice.dueTick = voice.originTick + (voice.notes[0]?.offsetTicks ?? 0);
+          }
+        } else {
+          const note = voice.notes.shift(); send({ ...voice.spec, note, phraseVoiceKey: key }, voice.meta, tick);
+          if (owns(key, voice)) voice.dueTick = tick + voice.spacingTicks;
         }
-      } else {
-        const note = voice.notes.shift(); send({ ...voice.spec, note, phraseVoiceKey: key }, voice.meta, tick);
-        voice.dueTick = tick + voice.spacingTicks;
+        if (owns(key, voice) && !voice.notes.length) { this.voices.delete(key); voice.onComplete?.(); }
+        if (epoch !== this._epoch) return;
       }
-      if (!voice.notes.length) { this.voices.delete(key); voice.onComplete?.(); }
+      const start = this._rollingCursor % Math.max(1, due.length), count = Math.min(MAX_ROLLING_PHRASE_DISPATCHES, due.length);
+      for (let index = 0; index < count; index++) {
+        const slot = (start + index) % due.length, key = due[slot], voice = rollingVoices[slot];
+        if (!owns(key, voice)) continue;
+        // Drop expired cells instead of replaying a delayed burst after a crowded tick.
+        while (owns(key, voice) && voice.notes.length && voice.originTick + voice.notes[0].offsetTicks < tick - voice.lateTicks) {
+          voice.notes.shift(); voice.onDrop?.('rolling-phrase-expired', voice.meta);
+        }
+        if (!owns(key, voice)) { if (epoch !== this._epoch) return; continue; }
+        const cell = voice.notes[0];
+        if (cell && voice.originTick + cell.offsetTicks <= tick) {
+          voice.notes.shift(); send({ ...cell, phraseVoiceKey: key }, voice.meta, tick);
+        }
+        if (owns(key, voice)) {
+          if (!voice.notes.length) { this.voices.delete(key); voice.onComplete?.(); }
+          else voice.dueTick = voice.originTick + voice.notes[0].offsetTicks;
+        }
+        if (epoch !== this._epoch) return;
+      }
+      if (onlyKey == null) this._rollingCursor = due.length ? (start + count) % due.length : this._rollingCursor;
+    } finally {
+      this._advancing = false;
+      ordinary.length = 0; ordinaryVoices.length = 0; due.length = 0; rollingVoices.length = 0;
     }
-    const due = this._rollingDue, start = this._rollingCursor % Math.max(1, due.length), count = Math.min(MAX_ROLLING_PHRASE_DISPATCHES, due.length);
-    for (let index = 0; index < count; index++) {
-      const key = due[(start + index) % due.length], voice = this.voices.get(key);
-      if (!voice) continue;
-      // Drop expired cells instead of replaying a delayed burst after a crowded tick.
-      while (voice.notes.length && voice.originTick + voice.notes[0].offsetTicks < tick - voice.lateTicks) {
-        voice.notes.shift(); voice.onDrop?.('rolling-phrase-expired', voice.meta);
-      }
-      const cell = voice.notes[0];
-      if (cell && voice.originTick + cell.offsetTicks <= tick) {
-        voice.notes.shift(); send({ ...cell, phraseVoiceKey: key }, voice.meta, tick);
-      }
-      if (!voice.notes.length) { this.voices.delete(key); voice.onComplete?.(); }
-      else voice.dueTick = voice.originTick + voice.notes[0].offsetTicks;
-    }
-    if (onlyKey == null) this._rollingCursor = due.length ? (start + count) % due.length : this._rollingCursor;
   }
 
   _makeRoom(key, rolling) {
