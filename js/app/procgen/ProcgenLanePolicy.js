@@ -56,7 +56,7 @@ class ProcgenLanePolicy {
   }
   observe(actor, previousAction, previousX) {
     const world = this.world, lane = this.lanes[actor.laneIndex]; if (!lane) return;
-    if (actor.scout && previousAction === world.actions[State.CLIMBING] && actor.action === world.actions[State.WALKING] && !actor.lookRight)
+    if (actor.scout && previousAction === world.actions[State.CLIMBING] && actor.action === world.actions[State.FALLING] && Math.abs(actor.x - previousX) === 2)
       this.remember(actor, 'failed-climb');
     if (actor.scout && (actor.terminalReason || actor.failureReason) && !actor._scoutFailureRemembered) {
       actor._scoutFailureRemembered = true; this.remember(actor, actor.terminalReason ? 'hazard-contact' : 'unsafe-approach', actor.lastTriggerType || null);

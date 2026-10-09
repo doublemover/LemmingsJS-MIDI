@@ -40,8 +40,8 @@ describe('bounded seeded lane route outcome and scout knowledge', () => {
     actor.action = world.actions[State.WALKING]; actor.y = 140; policy.observe(actor, world.actions[State.FALLING], 40); expect(policy.lanes[0].successes).to.equal(1);
     policy.remember({ laneIndex: 0, x: 40, y: 140 }, 'failed-climb'); actor.x = 49; policy.observe(actor, actor.action, 48); expect(policy.lanes[0].ordinaryCrossings).to.equal(1);
   });
-  it('observes an actual scout climb turn and terminal contact only once without granting ordinary abilities', () => {
-    const { world, policy } = model(), scout = { laneIndex: 0, x: 80, y: 120, scout: true, lookRight: false, action: world.actions[State.WALKING] };
+  it('records supplied scout failure transitions and terminal contact once without granting ordinary abilities', () => {
+    const { world, policy } = model(), scout = { laneIndex: 0, x: 78, y: 120, scout: true, lookRight: false, action: world.actions[State.FALLING] };
     policy.observe(scout, world.actions[State.CLIMBING], 80); expect(policy.lanes[0].knowledge[0].kind).to.equal('failed-climb');
     scout.terminalReason = 'drowned'; for (let repeat = 0; repeat < 8; repeat++) policy.observe(scout, scout.action, 80);
     expect(policy.lanes[0].knowledge.filter(entry => entry.kind === 'hazard-contact')).to.have.length(1); expect(scout.canClimb).to.equal(undefined);

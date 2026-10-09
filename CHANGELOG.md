@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Share genuine ceiling-rejected scout climb failures through the existing revision-scoped lane knowledge.
+
+- Preserve complete wide source motifs and HYDRO/SNEAKY glyph words across two tiles with atomic, budgeted collision and display.
+
+- Cancel captured musical span drafts before regeneration; retain true local output identity in note-cancellation capture.
+
 - Share one bounded browser mix across game listening and instrument-faithful audition while preserving independent Stop and global Panic.
 - Preserve lossless cold procgen edits and bounded interest-based revisions; deduplicate and account for forced terrain growth.
 - Keep multiple musical span editors open with atomic common edits; send selected procgen MIDI output to the explicitly connected device.
