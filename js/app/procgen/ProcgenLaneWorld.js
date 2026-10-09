@@ -726,7 +726,7 @@ class ProcgenLaneWorld {
     let activeCount = 0;
     for (const lane of this.stall.lanes) { lane.alive = 0; lane.lowestSurvivingActorId = null; lane.buildingCount = 0; lane.bashingCount = 0; lane.floatingCount = 0; lane.diggingCount = 0; lane.miningCount = 0; lane.blockingCount = 0; }
     for (const actor of this.actors) {
-      if (actor.failureReason || actor.removed) { this._musicActorPositions.delete(actor._musicPositionId); this._syncTriggerOwner(actor); continue; }
+      if (actor.failureReason || actor.removed) { this.lanePolicy.projects.retire(actor); this._musicActorPositions.delete(actor._musicPositionId); this._syncTriggerOwner(actor); continue; }
       this.soundEvents.laneIndex = actor.laneIndex;
       this._synchronizeLane(actor);
       this.soundEvents.laneIndex = actor.laneIndex;
@@ -787,6 +787,7 @@ class ProcgenLaneWorld {
     for (let laneIndex = 0; laneIndex < this.laneCount; laneIndex++) {
       const lane = this.stall.lanes[laneIndex]; lane.peakAlive = Math.max(lane.peakAlive, lane.alive);
       lane.populationPeak = Math.max(lane.populationPeak || 0, lane.alive);
+      this.lanePolicy.projects.finish(laneIndex);
       lane.admitted = Math.max(0, lane.spawned + (lane.transferredIn || 0) - (lane.transferredOut || 0));
       this._effectiveTerrainWork[laneIndex] = Math.min(65535, this.pendingTerrainWork[laneIndex] + (this.terrainGrowth?.pending[laneIndex] || 0));
       lane.lastTerrainActivityTick = this.terrainActivityTicks[laneIndex];

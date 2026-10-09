@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { ProcgenLanePolicy, MAX_LANE_KNOWLEDGE } from '../js/app/procgen/ProcgenLanePolicy.js';
+import { ProcgenLanePolicy, MAX_LANE_KNOWLEDGE, PREFERENCE_DECAY_TICKS } from '../js/app/procgen/ProcgenLanePolicy.js';
 import { LemmingStateType as State } from '../js/lemmings/LemmingStateType.js';
 const model = () => {
   const actions = Object.fromEntries([State.BUILDING, State.BASHING, State.DIGGING, State.MINING, State.FALLING, State.WALKING, State.JUMPING, State.CLIMBING].map(state => [state, { state }]));
@@ -16,6 +16,19 @@ describe('bounded seeded lane route outcome and scout knowledge', () => {
     expect(policy.score(actor, { kind: 'builders' })).to.equal(new ProcgenLanePolicy(world).score(actor, { kind: 'builders' }));
     policy.lanes[0].learned.builders = 3; policy.lanes[0].attempts = 8; policy.reset(); expect(policy.lanes.map(lane => lane.initialBias)).to.deep.equal(initial); expect(policy.lanes[0].learned.builders).to.equal(0);
   });
+  it('decays learned preferences toward seeded bias only on simulation ticks, including rewind/reset', () => {
+    const { world, policy } = model(), actor = { laneIndex: 0, x: 40, y: 120 }, initial = { ...policy.lanes[0].initialBias };
+    policy.lanes[0].learned.miners = 3; policy.lanes[0].learned.builders = -2;
+    for (let sample = 0; sample < 20; sample++) policy.score(actor, { kind: 'miners' });
+    expect(policy.lanes[0].learned.miners).to.equal(3);
+    world.tickIndex += PREFERENCE_DECAY_TICKS; policy.score(actor, { kind: 'miners' });
+    expect(policy.lanes[0].learned).to.include({ miners: 2, builders: -1 });
+    world.tickIndex += PREFERENCE_DECAY_TICKS * 4;
+    expect(Object.values(policy.signals(0).learned).every(value => value === 0)).to.equal(true);
+    expect(policy.lanes[0].initialBias).to.deep.equal(initial);
+    policy.lanes[0].learned.miners = 3; world.tickIndex = 0; policy.score(actor, { kind: 'miners' });
+    expect(policy.lanes[0].learned.miners).to.equal(0);
+  });
   it('shares only bounded local failed approaches, invalidated by their actual terrain tiles rather than distant edits', () => {
     const { world, policy } = model(), scout = { laneIndex: 0, x: 130, y: 120, scout: true };
     policy.remember(scout, 'failed-climb'); const record = policy.lanes[0].knowledge[0], baseline = policy.score(scout, { kind: 'builders' });
@@ -24,13 +37,13 @@ describe('bounded seeded lane route outcome and scout knowledge', () => {
     for (let index = 0; index < 100; index++) policy.remember({ ...scout, x: index * 32 }, 'failed-route'); expect(policy.lanes[0].knowledge).to.have.length(MAX_LANE_KNOWLEDGE);
     expect(policy.lanes[0].knowledge.every(entry => entry.tiles.length <= 4 && !('actor' in entry))).to.equal(true);
   });
-  it('learns bounded connected and failed outcomes, including a terminal worker whose action did not change', () => {
+  it('retains connected knowledge without rewarding worker-only completion and penalizes terminal failure', () => {
     const { world, policy } = model(), actor = { laneIndex: 0, x: 40, y: 120, action: world.actions[State.BUILDING] }, task = { owner: actor };
     world.accessTasks[0] = [task]; world.actors.push(actor);
     for (let repeat = 0; repeat < 8; repeat++) { actor.action = world.actions[State.BUILDING]; policy.begin(actor, { kind: 'builders' }); actor.action = world.actions[State.WALKING]; policy.observe(actor, world.actions[State.BUILDING], 40); }
-    expect(policy.signals(0)).to.include({ successes: 8, attempts: 8 }); expect(policy.signals(0).learned.builders).to.equal(3);
+    expect(policy.signals(0)).to.include({ successes: 8, attempts: 8 }); expect(policy.signals(0).learned.builders).to.equal(0);
     actor.action = world.actions[State.BUILDING]; policy.begin(actor, { kind: 'builders' }); actor.terminalReason = 'trapped'; policy.observe(actor, actor.action, 40);
-    expect(policy.signals(0).failures).to.equal(1); expect(policy.signals(0).learned.builders).to.equal(2); expect(actor._laneRouteAttempt).to.equal(null);
+    expect(policy.signals(0).failures).to.equal(1); expect(policy.signals(0).learned.builders).to.equal(-1); expect(actor._laneRouteAttempt).to.equal(null);
     actor.terminalReason = null; actor.action = world.actions[State.BUILDING]; policy.begin(actor, { kind: 'builders' }); policy.dispose(); expect(actor._laneRouteAttempt).to.equal(null);
   });
   it('requires a genuine natural fall before a descent can count as successful and counts actual ordinary forward crossings', () => {

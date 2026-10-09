@@ -1,19 +1,34 @@
+import { ProcgenCrewProjects } from './ProcgenCrewProjects.js';
 import { procgenTileRevision } from './ProcgenTerrainRetention.js';
 import { LemmingStateType as State } from '../../lemmings/LemmingStateType.js';
 const MAX_LANE_KNOWLEDGE = 8;
+const PREFERENCE_DECAY_TICKS = 256;
 const KINDS = ['builders', 'bashers', 'diggers', 'miners'];
 const mix = value => { let n = Math.imul(value ^ (value >>> 16), 0x45d9f3b); n = Math.imul(n ^ (n >>> 16), 0x45d9f3b); return (n ^ (n >>> 16)) >>> 0; };
 
 // Preferences are bounded tie-breakers for independently screened physical
 // proposals. Observed failures never certify geometry or grant an ability.
 class ProcgenLanePolicy {
-  constructor(world) { this.world = world; this.reset(); }
+  constructor(world) { this.world = world; this.projects = new ProcgenCrewProjects(world, (lane, kind, stage) => this._credit(lane, kind, stage)); this.reset(); }
   reset() {
     this.lanes = Array.from(this.world.laneSeeds, seed => {
       const initialBias = Object.fromEntries(KINDS.map((kind, index) => [kind, (mix(seed ^ Math.imul(index + 1, 0x9e3779b1)) % 7) - 3 + (kind === 'builders' ? 2 : kind === 'miners' ? -4 : 0)]));
       return { initialBias, learned: { builders: 0, bashers: 0, diggers: 0, miners: 0 }, attempts: 0, successes: 0, failures: 0,
-        ordinaryCrossings: 0, knowledge: [], nextKnowledge: 0 };
+        ordinaryCrossings: 0, lastDecayTick: this.world.tickIndex, knowledge: [], nextKnowledge: 0 };
     });
+    this.projects.reset();
+  }
+  _decay(lane) {
+    const elapsed = this.world.tickIndex - lane.lastDecayTick;
+    if (elapsed < 0) { for (const kind of KINDS) lane.learned[kind] = 0; lane.lastDecayTick = this.world.tickIndex; return; }
+    const steps = Math.floor(elapsed / PREFERENCE_DECAY_TICKS);
+    if (!steps) return;
+    for (const kind of KINDS) lane.learned[kind] = Math.sign(lane.learned[kind]) * Math.max(0, Math.abs(lane.learned[kind]) - steps);
+    lane.lastDecayTick += steps * PREFERENCE_DECAY_TICKS;
+  }
+  _credit(index, kind, stage) {
+    const lane = this.lanes[index]; if (!lane || !KINDS.includes(kind)) return;
+    this._decay(lane); lane.learned[kind] = Math.max(-3, Math.min(3, lane.learned[kind] + (stage === 'crew-failure' ? -1 : 1)));
   }
   _tiles(x, y) {
     const world = this.world, width = world.terrain?.chunkWidth || 256, result = [];
@@ -35,6 +50,7 @@ class ProcgenLanePolicy {
   }
   score(actor, proposal) {
     const lane = this.lanes[actor.laneIndex]; if (!lane || !proposal) return 0;
+    this._decay(lane);
     let observedTrouble = false;
     for (let index = lane.knowledge.length - 1; index >= 0; index--) {
       const record = lane.knowledge[index];
@@ -56,7 +72,8 @@ class ProcgenLanePolicy {
   begin(actor, proposal) {
     const lane = this.lanes[actor.laneIndex], task = this.world.accessTasks[actor.laneIndex]?.find(entry => entry.owner === actor);
     if (!lane || !task) return;
-    lane.attempts++;
+    this._decay(lane); lane.attempts++;
+    this.projects.begin(actor, proposal.kind, task);
     actor._laneRouteAttempt = { lane: actor.laneIndex, kind: proposal.kind, task, action: actor.action, x: actor.x, y: actor.y, falling: false };
   }
   observe(actor, previousAction, previousX) {
@@ -75,17 +92,19 @@ class ProcgenLanePolicy {
         const connected = attempt.kind === 'builders' ? world._constructionPassage(attempt.task) === true :
           ['diggers', 'miners'].includes(attempt.kind) ? attempt.falling && actor.action === world.actions[state.WALKING] && actor.y > attempt.y && actor.y - attempt.y <= 32 : actor.x - attempt.x >= 8;
         const success = alive && connected;
-        owner[success ? 'successes' : 'failures']++; owner.learned[attempt.kind] = Math.max(-3, Math.min(3, owner.learned[attempt.kind] + (success ? 1 : -1)));
+        owner[success ? 'successes' : 'failures']++; this._decay(owner);
+        if (!success) { owner.learned[attempt.kind] = Math.max(-3, owner.learned[attempt.kind] - 1); this.projects.fail(attempt.lane, attempt.task.crewProjectId); }
         if (!success) this.remember(actor, 'failed-route');
         else {
           this.remember(actor, 'connected-route', attempt.kind);
           const record = lane.knowledge.find(entry => entry.kind === 'connected-route' && entry.cell === Math.floor(actor.x / 32) && entry.band === Math.floor(actor.y / 24));
           if (record) {
-            record.ownerId = actor.id; record.rewarded = false;
+            record.ownerId = actor.id;
             if (attempt.kind === 'builders') {
               record.startX = attempt.x; record.startY = attempt.y;
               for (const tile of this._tiles(attempt.x, attempt.y)) if (!record.tiles.some(([key]) => key === tile[0])) record.tiles.push(tile);
             }
+            this.projects.connect(attempt.lane, attempt.task.crewProjectId, actor.x, actor.y, record.tiles);
           }
         }
         actor._laneRouteAttempt = null;
@@ -97,14 +116,12 @@ class ProcgenLanePolicy {
       let crossed = false;
       for (const record of lane.knowledge) if (this._valid(record) && previousX <= record.x + 8 && actor.x > record.x + 8 && Math.abs(actor.y - record.y) <= 32) {
         crossed = true;
-        if (record.kind === 'connected-route' && record.ownerId !== actor.id && !record.rewarded && KINDS.includes(record.type)) {
-          lane.learned[record.type] = Math.min(3, lane.learned[record.type] + 1); record.rewarded = true;
-        }
       }
       if (crossed) lane.ordinaryCrossings++;
     }
+    this.projects.observe(actor);
   }
-  signals(lane) { return this.lanes[lane] || null; }
-  dispose() { for (const actor of this.world.actors || []) actor._laneRouteAttempt = null; this.lanes.length = 0; this.world = null; }
+  signals(lane) { const state = this.lanes[lane]; if (!state) return null; this._decay(state); state.crewProjects = this.projects.signals(lane); return state; }
+  dispose() { for (const actor of this.world.actors || []) { actor._laneRouteAttempt = null; actor._crewObservedLane = null; } this.projects.dispose(); this.lanes.length = 0; this.world = null; }
 }
-export { ProcgenLanePolicy, MAX_LANE_KNOWLEDGE };
+export { ProcgenLanePolicy, MAX_LANE_KNOWLEDGE, PREFERENCE_DECAY_TICKS };

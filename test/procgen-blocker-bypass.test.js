@@ -34,13 +34,13 @@ const replay = (masks, count, height) => {
   expect([blocker.x, blocker.y, blocker.state]).to.deep.equal([before.x, before.y, before.state]); expect(world.triggerManager.byOwner.get(blocker)).to.equal(before.triggers);
   expect(world.stats.builds).to.equal(0); expect(world.editChunks.size).to.equal(0); expect(events).to.have.length(0);
   world.assists = true; let sawFall = false;
-  for (let tick = 0; tick < 600 && arrivals.size < count; tick++) {
+  for (let tick = 0; tick < 600 && (arrivals.size < count || !world.getLanePolicySignals(0).crewProjects.completed); tick++) {
     world.step(); sawFall ||= crew[0].action === world.actions[State.FALLING];
     for (const actor of crew) if (actor.x >= 58 && actor.action === world.actions[State.WALKING] && !actor.failureReason) arrivals.add(actor.id);
   }
   expect(arrivals.size, JSON.stringify({ tick: world.tickIndex, builds: world.stats.builds, crew: crew.map(a => [a.x,a.y,a.action.actionName,a.failureReason,a.lookRight]) })).to.equal(count); expect(world.stats.failures).to.equal(0); expect(world.stats.builds).to.equal(1); expect(world.stats.bashes + world.stats.digs + world.stats.mines).to.equal(0);
   expect(sawFall).to.equal(true); expect(world.getLanePolicySignals(0).successes).to.equal(1);
-  expect(world.getLanePolicySignals(0).ordinaryCrossings).to.be.greaterThan(0); expect(world.getLanePolicySignals(0).learned.builders).to.be.at.least(2); expect(crew.every(actor => !actor.canClimb && !actor.hasParachute)).to.equal(true);
+  expect(world.getLanePolicySignals(0).ordinaryCrossings).to.be.greaterThan(0); expect(world.getLanePolicySignals(0).learned.builders).to.be.within(1, 3); expect(events.filter(event => event.type === 'procgen-route-complete')).to.have.length(1); expect(events.find(event => event.type === 'procgen-route-complete').admittedCrew).to.equal(count); expect(crew.every(actor => !actor.canClimb && !actor.hasParachute)).to.equal(true);
   expect(events.some(event => event.type === 'blocker-turn' && event.blockerId === blocker.id)).to.equal(true);
   expect(blocker.action).to.equal(world.actions[State.BLOCKING]); expect([blocker.x, blocker.y]).to.deep.equal([50, floor]);
   const receipt = { tick: world.tickIndex, builds: world.stats.builds, pixels: [...world.editChunks.values()].reduce((count, chunk) => { for (const pixel of chunk) if (pixel > 1) count++; return count; }, 0), actors: crew.map(actor => [actor.x, actor.y, actor.lookRight]), events: events.map(event => [event.type, event.tick, event.lemmingId]) };

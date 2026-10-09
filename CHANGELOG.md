@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Reward actual ordinary crew passage and recovered containment, decay learned lane preferences toward seeded personalities, and publish completion only after the completed tick.
+
 - Add an editable procgen crew-passage resolution phrase, preserving saved source edits and silence for projects without that source.
 
 - Admit complete supported source regions across two terrain tiles, preserving native order, open underpasses, source provenance and atomic materialization.

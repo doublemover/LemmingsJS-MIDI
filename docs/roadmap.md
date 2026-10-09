@@ -1000,7 +1000,7 @@ Accepted design is pinned to fe73f80 in the [independent audit](https://chatgpt.
   passage and release/recovery through existing physical action owners; emit
   musical resolution only from actual completed-tick progress. Qualify the exact
   scene with ordinary crews and inspect it at the default native camera.
-- [ ] Reward useful ordinary passage and preserved route options, penalize
+- [x] Reward useful ordinary passage and preserved route options, penalize
   repeated/unnecessary excavation, and decay learned preferences toward seeded
   lane personality. Preserve worker/probe limits; no cosmetic builder quota.
 - [x] Retain active descriptor/growth pairs fairly across actor, worksite and
@@ -1079,3 +1079,26 @@ edits survive preset changes; projects without this source stay silent. The
 and four corresponding gate releases. Physical/acoustic acceptance remains
 separate. Live crew emission is the next policy checkpoint; a source default by
 itself is not an actual scene resolution.
+
+Passage reward checkpoint: bounded local projects admit only actual observed
+crew through their admission tick, then require current completed-tick ordinary
+passage and recovered temporary containment. Worker-only completion earns no
+positive preference; real crew loss reverses passage credit. Seeded personalities
+remain unchanged and learned offsets decay every256simulationticks. Projects
+retain at most4/lane,64numeric members,8revision tiles and a1,600tickdeadline;
+missing/changed crew, stripe transfer, support changes and future births cannot
+certify the admitted cohort. No worker,40px proposal,1,024 observation or eight
+evaluated-lane caps are increased.
+
+Thirty-five affected policy/crew/scout/stair checks pass. Fresh controlled8/16
+ordinary crews each connect at192 and resolve at249 with one real builder, one
+empty-mask basher, one recovered blocker, zero losses/hazards/removed pixels and
+retained steel. Additional planner proposals are explicitly disabled in this
+outcome-owner fixture; it does not prove natural open-basin incidence. The true
+completion event owns lemmingId and crewProjectId, and the existing default router
+admits four rising cells at249/252/255/258 with four gate releases, pause retention
+and Panic cleanup. Projects cover97.88%lines/92.63%branches; Policy all lines and
+90.16%branches. Late containment-capacity remains a meaningful coverage target.
+The earlier exposed64px Crystal candidate is largely roofed and is not an
+accepted bridge scene. Open-bank source admission and staged construction remain
+the next feature slice. Receipts are ignored temp/crew-project-coverage.
