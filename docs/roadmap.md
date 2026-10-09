@@ -1211,3 +1211,40 @@ explicitly unqualified until they have their own physical evidence.
 The birth owner additionally passes all 20 affected population/spawn checks,
 with all PopulationPolicy lines/functions and 91.22% branches covered. Nonfinite
 policy and exact quantization boundary alternatives remain useful branch targets.
+
+Final integration at implementation head 4c8ef7ad: 49 focused crew/scout/blocker/
+stair/open-bank checks and 38 source/cache/birth integration checks pass. Critical
+types, undefined-call and dependency guards pass; required formatting and diff
+checks pass. These are scoped checks, not a full-suite or release qualification.
+
+One finite current-tree diagnostic runs original mixed terrain at 144-pixel lane
+height for 4,500 ticks with the existing 120 BPM Crowd relay preset and real
+original masks. Seeds 42 and 12345, each with eight lanes, record builders/miners
+72/101 and 84/138. Learned miner saturation is 0/8 and 1/8 at the final tick, while
+excavation remains the more frequent action. This is not a pinned old/new audit
+comparison; source geometry and absolute births have changed. Each run respects
+at most 1,024 charged work per lane and eight evaluated lanes per tick.
+
+The one known public-seed run, 4274680063 with 16 lanes, verifies Crystal lane 9
+has source seed 8. It reaches x=1693 in the first generation but never reaches the
+basin's left bank at x=1923 during these 4,500 ticks, so no staged scene is
+admitted. The saved lane observations include a real failed climb near x=1691;
+they do not by themselves identify a certified upstream solution. The new
+controlled scene is reviewable, but natural arrival remains an explicit gap.
+Receipt: temp/restart-mixed-policy-diagnostic.json; scripts and logs remain in
+the ignored project-owned temp folder. Node durations are not browser FPS or
+acoustic evidence.
+
+Next ready work:
+- [ ] Qualify ordinary upstream passage for the known Crystal route around
+  x=1691, then prove unaided arrival and the complete basin sequence under the
+  same public seed, with bounded source/action evidence rather than a seed sweep.
+- [ ] Use actual alternate-route and unnecessary-intervention outcomes to address
+  remaining excavation dominance; do not change worker/probe caps or force a
+  cosmetic builder quota. General source-port and high-lane scene qualification
+  remain separate future checks.
+
+Publication receipt: existing PR 966 remains open against master at fe73f80;
+this restarted audit implementation is local only. The owner checkout remains
+at d3b9ce9 and its saved stash at 8083a30, with prior metrics/index/archive changes
+preserved. No excluded content, vendor code or binary assets were modified.
