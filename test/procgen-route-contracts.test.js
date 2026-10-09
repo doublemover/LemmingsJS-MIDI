@@ -7,7 +7,7 @@ import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
 
 const wallContract = () => ({ schemaVersion: 1, id: 'contained-wide-wall', version: 1,
   source: { kind: 'repo-fixture', reference: 'test/support/procgen-route-fixtures.js', engine: 'LemmingsJS-MIDI', port: 'shared-classic-actions' },
-  geometry: { bounds: { x: 8, y: 0, width: 248, height: 96 }, entry: { x: 24, y: 70, width: 40, height: 4 }, exit: { x: 180, y: 64, width: 32, height: 16 }, containment: [{ x: 12, y: 48, width: 1, height: 25 }] },
+  geometry: { bounds: { x: 8, y: 0, width: 248, height: 96 }, entry: { x: 24, y: 70, width: 40, height: 4 }, exit: { x: 180, y: 64, width: 32, height: 16 }, containment: [{ x: 12, y: 48, width: 1, height: 25 }, { x: 243, y: 48, width: 1, height: 25 }] },
   inventory: { builder: 0, basher: 1, digger: 0, miner: 0 }, crew: { min: 8, max: 16, direction: 1 },
   guards: ['ordinary-whole-crew', 'zero-loss', 'protected-terrain', 'revealed-geometry', 'solid-containment', 'no-hazard-contacts'],
   actionRules: [{ skill: 'basher', window: [0, 8], reason: 'Assign against the actual grounded wall before turning.' }],

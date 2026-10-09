@@ -19,7 +19,7 @@
 ### Terrain and gadget entries
 - Each entry is `{ props, order, unknownLines }`.
 - Common props: `STYLE`, `PIECE`, `X`, `Y`, `ROTATE`, `FLIP_HORIZONTAL`, `FLIP_VERTICAL`, `WIDTH`, `HEIGHT`.
-- Editor UI snaps `ROTATE` to 0/90/180/270 for classic preview.
+- The editor stores degree-based `ROTATE` values and the validator can snap them to 0/90/180/270; runtime rotation remains disabled. Supplied terrain rotation metadata survives entry creation and NXLV text round trips.
 - Terrain flags: `NO_OVERWRITE`, `ERASE`, `ONE_WAY`.
 - Gadgets can define `SKILL`, `LEMMINGS`, `PAIRING`.
 

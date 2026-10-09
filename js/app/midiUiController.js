@@ -3,7 +3,8 @@ import { createMidiTensionControls } from './midi-ui/midiTensionControls.js';
 import { createMidiOutputCapture } from '../midi/capture/MidiOutputCapture.js';
 import { createMidiCaptureControls } from './midi-ui/midiCaptureControls.js';
 import { createMidiEventClipEditor } from './midi-ui/midiEventClipEditor.js';
-import { buildMidiClipRecording } from '../midi/project/MidiClipRecording.js';
+import { getMidiClipVoices } from '../midi/project/MidiClipTransforms.js';
+import { buildMidiClipRecording, MAX_MIDI_CLIP_CAPTURE_NOTES } from '../midi/project/MidiClipRecording.js';
 import { createSoundAuditionPlan } from './midi-ui/midiSoundAudition.js';
 import { createMidiEditHistory } from './midi-ui/midiEditHistory.js';
 import { createMidiInstrumentWorkbench } from './midi-ui/midiInstrumentWorkbench.js';
@@ -346,7 +347,7 @@ const createMidiUiController = ({
     clipId: null,
     trackId: null,
     notes: [],
-    placement: 'compact', tickMs: 60, spacingTicks: 2, order: 0,
+    placement: 'compact', polyphonic: false, mode: 'replace', admitted: 0, overflow: 0, tickMs: 60, spacingTicks: 2, order: 0,
     activeNotes: new Map()
   };
   const sourceFilters = {
@@ -1013,6 +1014,7 @@ const createMidiUiController = ({
     recordState.clipId = null;
     recordState.trackId = null;
     recordState.notes = [];
+    recordState.admitted = 0; recordState.overflow = 0;
     recordState.activeNotes.clear();
   };
 
@@ -1026,7 +1028,8 @@ const createMidiUiController = ({
     const clip = selectedClip();
     panel.classList.toggle('is-active', recordState.active || recordState.notes.length > 0);
     if (start) start.disabled = !clip || recordState.active;
-    const placement = document?.getElementById('midiRecordPlacement'); if (placement) placement.disabled = recordState.active;
+    const placement = document?.getElementById('midiRecordPlacement'); if (placement) placement.disabled = recordState.active || document?.getElementById('midiRecordVoices')?.value === 'poly';
+    for (const id of ['midiRecordVoices', 'midiRecordMode']) { const field = document?.getElementById(id); if (field) field.disabled = recordState.active; }
     if (commit) commit.disabled = !recordState.notes.length && !recordState.activeNotes.size;
     if (cancel) cancel.disabled = !recordState.active && !recordState.notes.length;
     if (!status) return;
@@ -1035,7 +1038,7 @@ const createMidiUiController = ({
       return;
     }
     if (recordState.active) {
-      status.textContent = `Recording into ${clip.name}: ${recordState.notes.length} notes captured.${recordState.placement === 'onsets' ? ' Keep gaps: ' + recordState.tickMs.toFixed(1) + ' ms/tick, ' + recordState.spacingTicks + ' ticks/cell.' : ''}`;
+      status.textContent = `Recording into ${clip.name}: ${recordState.notes.length} notes captured (${recordState.polyphonic ? 'Poly' : 'Mono'}, ${recordState.mode}).${recordState.overflow ? ' Capture limit reached; ' + recordState.overflow + ' note admissions omitted. Commit or Cancel before recording more.' : ''}${recordState.placement === 'onsets' ? ' Keep gaps: ' + recordState.tickMs.toFixed(1) + ' ms/tick, ' + recordState.spacingTicks + ' ticks/cell.' : ''}`;
       return;
     }
     status.textContent = recordState.notes.length
@@ -1082,6 +1085,8 @@ const createMidiUiController = ({
     };
     if (type === 0x90 && normalized.velocity > 0) {
       finishRecordNote(normalized, timestamp);
+      if (recordState.admitted >= MAX_MIDI_CLIP_CAPTURE_NOTES) { recordState.overflow++; renderRecordPanel(); return true; }
+      recordState.admitted++;
       recordState.activeNotes.set(noteKey(normalized), normalized);
     } else {
       finishRecordNote(normalized, timestamp);
@@ -1096,11 +1101,13 @@ const createMidiUiController = ({
       renderRecordPanel();
       return false;
     }
-    const placement = document?.getElementById('midiRecordPlacement')?.value === 'onsets' ? 'onsets' : 'compact';
-    if (placement === 'onsets' && clip.lengthSteps > 16) { setStatus('Keep gaps supports 8/16-cell clips. Reduce the clip explicitly or use compact capture.'); return false; }
+    const polyphonic = document?.getElementById('midiRecordVoices')?.value === 'poly';
+    const mode = document?.getElementById('midiRecordMode')?.value === 'overdub' ? 'overdub' : 'replace';
+    const placement = polyphonic || document?.getElementById('midiRecordPlacement')?.value === 'onsets' ? 'onsets' : 'compact';
+    if ((placement === 'onsets' || mode === 'overdub') && clip.lengthSteps > 16) { setStatus('Onset/Overdub capture supports up to 16-cell clips. Reduce the clip explicitly or use Mono compact Replace.'); return false; }
     cancelLearn();
     resetRecordState();
-    recordState.placement = placement; recordState.order = 0;
+    recordState.placement = placement; recordState.polyphonic = polyphonic; recordState.mode = mode; recordState.order = 0;
     recordState.tickMs = Math.max(1, Number(getLemmings()?.game?.getGameTimer?.()?.frameTime) || 60);
     recordState.spacingTicks = clip.playback?.spacingTicks || 2;
     recordState.active = true;
@@ -1146,9 +1153,17 @@ const createMidiUiController = ({
     }
     let next = current;
     if (recordState.placement === 'onsets') {
-      const capture = buildMidiClipRecording(recordState.notes, { length: clip.lengthSteps, tickMs: recordState.tickMs, spacingTicks: recordState.spacingTicks, minDuration: current.global.durationTicks.min, maxDuration: current.global.durationTicks.max });
+      const capture = buildMidiClipRecording(recordState.notes, { length: clip.lengthSteps, tickMs: recordState.tickMs, spacingTicks: recordState.spacingTicks, polyphonic: recordState.polyphonic, mode: recordState.mode, existingSteps: clip.steps, minDuration: current.global.durationTicks.min, maxDuration: current.global.durationTicks.max });
       next = reduceMidiProject(next, { type: 'clip.update', clipId: clip.id, patch: { steps: capture.steps, playback: { advance: 'game-tick', spacingTicks: recordState.spacingTicks, passCounter: clip.playback?.passCounter || 'completed' } } });
-      const message = 'Recorded ' + capture.retained + ' notes with gaps into ' + clip.name + '; ' + capture.collisions + ' same-cell notes replaced, ' + capture.outside + ' beyond the clip omitted';
+      const message = (recordState.mode === 'overdub' ? 'Overdubbed ' + (capture.added + capture.updated) + ' captured pitches (' + capture.updated + ' existing pitches updated)' : 'Recorded ' + capture.retained + ' notes with gaps') + ' into ' + clip.name + '; ' + capture.collisions + ' same-cell notes replaced, ' + capture.outside + ' beyond the clip omitted' + ((capture.overflow + recordState.overflow) ? '; ' + (capture.overflow + recordState.overflow) + ' over the capture/8-voice cell limit omitted. Shorten the take or use another cell.' : '');
+      resetRecordState(); commitProject(next); setStatus(message); logOutput(message); return true;
+    }
+    if (recordState.mode === 'overdub') {
+      const capture = buildMidiClipRecording(recordState.notes.map((note, index) => ({ ...note, onsetMs: index * recordState.tickMs * recordState.spacingTicks })),
+        { length: Math.min(16, clip.lengthSteps), tickMs: recordState.tickMs, spacingTicks: recordState.spacingTicks, mode: 'overdub', existingSteps: clip.steps,
+          minDuration: current.global.durationTicks.min, maxDuration: current.global.durationTicks.max });
+      capture.steps.forEach((step, index) => { next = reduceMidiProject(next, { type: 'clip.step.update', clipId: clip.id, stepIndex: index, patch: step }); });
+      const message = 'Compact Overdub: ' + capture.cells + ' cells into ' + clip.name + (capture.outside ? '; ' + capture.outside + ' beyond the clip omitted. Use another cell or a shorter take.' : '') + (capture.overflow || recordState.overflow ? '; voice/capture limit omitted ' + (capture.overflow + recordState.overflow) + ' notes. Use another cell or a shorter take.' : '');
       resetRecordState(); commitProject(next); setStatus(message); logOutput(message); return true;
     }
     recordState.notes.slice(0, clip.lengthSteps).forEach((note, index) => {
@@ -1158,6 +1173,7 @@ const createMidiUiController = ({
         stepIndex: index,
         patch: {
           note: note.note,
+          voices: undefined,
           velocity: note.velocity,
           durationTicks: note.durationTicks,
           probability: 1,
@@ -1166,10 +1182,10 @@ const createMidiUiController = ({
         }
       });
     });
-    const noteCount = Math.min(recordState.notes.length, clip.lengthSteps);
+    const noteCount = Math.min(recordState.notes.length, clip.lengthSteps), captureOverflow = recordState.overflow, outsideClip = Math.max(0, recordState.notes.length - clip.lengthSteps);
     resetRecordState();
     commitProject(next);
-    const message = `Recorded ${noteCount} ${noteCount === 1 ? 'note' : 'notes'} into ${clip.name}`;
+    const message = `Recorded ${noteCount} ${noteCount === 1 ? 'note' : 'notes'} into ${clip.name}` + (outsideClip ? '; ' + outsideClip + ' beyond the clip omitted. Use more cells or a shorter take.' : '') + (captureOverflow ? '; capture limit reached. Use a shorter take.' : '');
     setStatus(message);
     logOutput(message);
     return true;
@@ -1779,7 +1795,7 @@ const createMidiUiController = ({
       cell.setAttribute('aria-label', stepLabel);
       const label = document.createElement('div');
       label.className = 'midi-step-cell__index';
-      label.textContent = stepLabel;
+      label.textContent = stepLabel + (step.voices ? ': ' + getMidiClipVoices(step).map(voice => soundNoteName(voice.note) + ' (vel ' + (voice.velocity ?? 'default') + ', ' + (voice.durationTicks ?? 'default') + ' ticks)').join(', ') : '');
       const noteLabel = document.createElement('label');
       noteLabel.textContent = 'Note';
       const note = document.createElement('input');
@@ -2351,7 +2367,7 @@ const createMidiUiController = ({
     if (interaction !== localInteraction || disposed) return false;
     if (ok) {
       advance();
-      setStatus('');
+      setStatus(plan.omitted ? plan.omitted + ' notes omitted by the local audition/expansion cap. Shorten repeats or test fewer cells.' : '');
     } else setStatus(auditionAudio.getState().message || 'Local audio could not start');
     renderLocalSummary();
     return ok;
@@ -2414,12 +2430,15 @@ const createMidiUiController = ({
         const label = document.createElement('strong'); label.textContent = event.label;
         const summary = document.createElement('span'); summary.className = 'midi-event-summary';
         const kind = getEventBehavior(item);
-        const pitches = item?.mode === 'clip' ? (current.clips.find(clip => clip.id === item.clipId)?.steps || []).map(step => step.note).filter(Number.isFinite) : item?.mapping?.degree != null || item?.mapping?.chord ? [] : (item?.mapping?.notes || [item?.mapping?.note]).filter(Number.isFinite);
+        const clip = item?.mode === 'clip' ? current.clips.find(clip => clip.id === item.clipId) : null;
+        const cells = clip?.playback ? clip.steps.slice(0, 16).map(step => getMidiClipVoices(step).map(voice => voice.note).filter(Number.isFinite)) : null;
+        const pitches = item?.mode === 'clip' ? (cells ? cells.flat() : (clip?.steps || []).map(step => step.note).filter(Number.isFinite)) : item?.mapping?.degree != null || item?.mapping?.chord ? [] : (item?.mapping?.notes || [item?.mapping?.note]).filter(Number.isFinite);
         const names = pitches.slice(0, 16).map(soundNoteName).join(' ');
         summary.textContent = !item?.enabled ? 'Off' : [({note:'One note',falling:'Falling phrase',rising:'Rising phrase',steps:'One note / event',custom:'Custom'})[kind], names].filter(Boolean).join(' \u00b7 ');
         row.dataset.eventLabel = event.label; row.dataset.fullSummary = summary.textContent;
         row.dataset.noteLabels = pitches.slice(0, 3).map(soundNoteName).join(' '); row.dataset.soundEnabled = String(!!item?.enabled);
-        row.title = event.label + ': ' + summary.textContent; row.setAttribute('aria-label', row.title);
+        const storedCells = cells ? ' | Stored cells: ' + cells.map((notes, index) => 'Cell ' + (index + 1) + ': ' + (notes.length ? notes.map(soundNoteName).join(' ') : 'rest')).join('; ') : '';
+        row.title = event.label + ': ' + summary.textContent + storedCells; row.setAttribute('aria-label', row.title);
         const count = document.createElement('span'); count.className = 'midi-event-count'; count.textContent = ''; count.hidden = true;
         row.append(label, summary, count);
         list.appendChild(row);
@@ -3259,6 +3278,7 @@ const createMidiUiController = ({
       updateSelectedClip({ arp: { ...(clip?.arp || {}), mode, pattern } });
     });
     bindById('midiClipLengthSteps', 'change', event => updateSelectedClip({ lengthSteps: Number(event.target.value) || 16 }));
+    bindById('midiRecordVoices', 'change', () => { if (document?.getElementById('midiRecordVoices')?.value === 'poly') { const placement = document?.getElementById('midiRecordPlacement'); if (placement) placement.value = 'onsets'; } renderRecordPanel(); });
     bindById('midiRecordButton', 'click', () => startRecording());
     bindById('midiRecordCommitButton', 'click', () => commitRecording());
     bindById('midiRecordCancelButton', 'click', () => cancelRecording());

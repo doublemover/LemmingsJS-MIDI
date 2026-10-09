@@ -47,6 +47,7 @@ const buildTerrainEntries = (terrains, styleName) => {
       Y: coerceNumber(entry?.y, 0)
     };
     applyDrawProperties(entry?.drawProperties, props);
+    if (entry?.drawProperties?.isFlippedHorizontally) props.FLIP_HORIZONTAL = true;
     return createEntry(props);
   });
 };

@@ -1,4 +1,5 @@
 import { reduceMidiProject } from '../../midi/project/MidiProject.js';
+import { getMidiClipVoices, MAX_CLIP_CELL_VOICES, MAX_CLIP_TRANSFORM_LAYERS } from '../../midi/project/MidiClipTransforms.js';
 import { describeMidiClipPlayback } from '../../midi/project/MidiClipPlayback.js';
 import { soundNoteName } from './midiSoundEditor.js';
 
@@ -29,6 +30,71 @@ const createMidiEventClipEditor = ({ document, bind, getProject, getSource, comm
   const clip = () => getSource()?.mode === 'clip' ? getProject().clips.find(item => item.id === getSource()?.clipId) : null;
   const input = (id, value) => { const element = byId(id); if (element && (element.tagName === 'SELECT' || element !== document.activeElement)) element.value = String(value ?? ''); };
   const update = patch => { const current = clip(); if (current) dispatch({ type: 'clip.step.update', clipId: current.id, stepIndex: selected, patch }); };
+  const field = (row, text, value, change, options = {}) => {
+    const label = document.createElement('label'); label.textContent = text;
+    const control = document.createElement(options.choices ? 'select' : 'input');
+    control.className = options.className || ''; control.setAttribute('aria-label', text);
+    if (options.choices) for (const [key, name] of options.choices) { const option = document.createElement('option'); option.value = key; option.textContent = name; control.appendChild(option); }
+    else { control.type = options.type || 'number'; control.min = String(options.min ?? 0); control.max = String(options.max ?? 127); control.placeholder = 'Default'; }
+    control.value = String(value ?? ''); control.disabled = !clip()?.playback;
+    control.addEventListener('change', event => change(event.target.value)); label.appendChild(control); row.appendChild(label); return control;
+  };
+  const button = (row, text, action, disabled = false) => {
+    const control = document.createElement('button'); control.type = 'button'; control.textContent = text;
+    control.disabled = disabled || !clip()?.playback; control.addEventListener('click', action); row.appendChild(control);
+  };
+  const renderVoices = step => {
+    const root = byId('midiEventClipVoices'); if (!root) return; root.replaceChildren();
+    const voices = getMidiClipVoices(step);
+    const changeVoice = (index, patch, remove = false) => {
+      const current = clip(); if (!current) return;
+      const next = getMidiClipVoices(current.steps[selected]).map(voice => ({ ...voice }));
+      if (!next[index]) return; if (remove) next.splice(index, 1); else Object.assign(next[index], patch); update({ voices: next });
+    };
+    voices.forEach((voice, index) => {
+      const row = document.createElement('div'); row.className = 'midi-clip-controls';
+      field(row, 'Voice ' + (index + 1) + ' pitch', soundNoteName(voice.note), raw => {
+        const note = parseClipNote(raw); if (note === undefined || note === null) { setStatus('Use a note name or MIDI pitch; Remove deletes a voice.'); render(); return; } changeVoice(index, { note });
+      }, { type: 'text', className: 'midi-clip-voice-note' });
+      for (const [name, key, max] of [['velocity', 'velocity', 127], ['ticks', 'durationTicks', 960]]) field(row, 'Voice ' + (index + 1) + ' ' + name, voice[key], raw => {
+        if (raw.trim() && !Number.isFinite(Number(raw))) return; changeVoice(index, { [key]: raw.trim() ? Number(raw) : null });
+      }, { min: 1, max, className: 'midi-clip-voice-' + key });
+      button(row, 'Remove voice ' + (index + 1), () => changeVoice(index, {}, true)); root.appendChild(row);
+    });
+    const add = byId('midiEventClipVoiceAdd'); if (add) add.disabled = !clip()?.playback || voices.length >= MAX_CLIP_CELL_VOICES;
+  };
+  const renderLayers = step => {
+    const root = byId('midiEventClipLayers'); if (!root) return; root.replaceChildren();
+    const layers = step.transformLayers || [];
+    const changeLayer = (index, patch, operation = null) => {
+      const current = clip(); if (!current) return;
+      const next = (current.steps[selected].transformLayers || []).map(layer => ({ ...layer, condition: { ...layer.condition } }));
+      if (!next[index]) return;
+      if (operation === 'remove') next.splice(index, 1);
+      else if (operation === 'up' && index > 0) [next[index - 1], next[index]] = [next[index], next[index - 1]];
+      else if (operation === 'down' && index + 1 < next.length) [next[index + 1], next[index]] = [next[index], next[index + 1]];
+      else next[index] = { ...next[index], ...patch, ...(patch.condition ? { condition: { ...next[index].condition, ...patch.condition } } : {}) };
+      update({ transformLayers: next });
+    };
+    layers.forEach((layer, index) => {
+      const row = document.createElement('div'); row.className = 'midi-clip-controls';
+      field(row, 'Layer ' + (index + 1), layer.type, type => changeLayer(index, { type }), { choices: [['pitch', 'Pitch'], ['repeat', 'Repeat']], className: 'midi-clip-layer-type' });
+      field(row, 'Layer ' + (index + 1) + ' enabled', layer.enabled ? 'on' : 'off', value => changeLayer(index, { enabled: value === 'on' }), { choices: [['on', 'On'], ['off', 'Bypass']] });
+      const spec = layer.type === 'repeat' ? [['count', 1, 8, 2], ['spacingTicks', 1, 8, 1], ['transpose', -24, 24, 0]]
+        : [['transpose', -48, 48, 0], ['octave', -4, 4, 0], ['interval', -12, 12, 0], ['span', 1, 16, 1]];
+      const names = { count: 'Repeat count', spacingTicks: 'Repeat spacing (ticks)', transpose: 'Transpose (semitones)', octave: 'Octaves', interval: 'Ramp interval', span: 'Ramp span' };
+      for (const [key, min, max, fallback] of spec) field(row, names[key], layer[key] ?? fallback,
+        raw => { if (Number.isFinite(Number(raw))) changeLayer(index, { [key]: Number(raw) }); }, { min, max, className: 'midi-clip-layer-' + key });
+      if (layer.type === 'pitch') field(row, 'Ramp counter', layer.unit || 'event', unit => changeLayer(index, { unit }), { choices: [['event', 'Events'], ['pass', 'Passes'], ['bar', 'Trigger bars']] });
+      field(row, 'Layer condition', layer.condition?.unit || 'event', unit => changeLayer(index, { condition: { unit } }), { choices: [['event', 'Events'], ['pass', 'Passes'], ['bar', 'Trigger bars']] });
+      for (const [key, min, max, fallback] of [['every', 1, 64, 1], ['phase', 0, (layer.condition?.every || 1) - 1, 0]]) field(row, key === 'every' ? 'Every N' : 'Phase (0 = Nth)', layer.condition?.[key] ?? fallback,
+        raw => { if (Number.isFinite(Number(raw))) changeLayer(index, { condition: { [key]: Number(raw) } }); }, { min, max });
+      button(row, 'Earlier', () => changeLayer(index, {}, 'up'), index === 0);
+      button(row, 'Later', () => changeLayer(index, {}, 'down'), index + 1 === layers.length);
+      button(row, 'Remove layer', () => changeLayer(index, {}, 'remove')); root.appendChild(row);
+    });
+    const add = byId('midiEventClipLayerAdd'); if (add) add.disabled = !clip()?.playback || layers.length >= MAX_CLIP_TRANSFORM_LAYERS;
+  };
   const render = () => {
     const current = clip(), source = getSource(), root = byId('midiEventClipGrid');
     if (!root) return;
@@ -44,15 +110,19 @@ const createMidiEventClipEditor = ({ document, bind, getProject, getSource, comm
     current.steps.slice(0, 16).forEach((step, index) => {
       const cell = document.createElement('button'); cell.type = 'button'; cell.dataset.cellIndex = String(index); cell.className = 'midi-event-clip-cell';
       cell.setAttribute('aria-pressed', String(index === selected)); cell.tabIndex = index === selected ? 0 : -1;
-      cell.setAttribute('aria-label', 'Cell ' + (index + 1) + ': ' + (step.note == null ? 'rest' : soundNoteName(step.note)));
-      const bar = document.createElement('span'); bar.className = 'midi-clip-note-bar';
-      bar.style.bottom = (step.note == null ? 0 : 12 + Math.max(0, Math.min(1, (step.note - low) / Math.max(1, high - low))) * 65) + '%';
-      bar.hidden = step.note == null; bar.textContent = step.note == null ? '' : soundNoteName(step.note);
+      const voices = getMidiClipVoices(step);
+      cell.setAttribute('aria-label', 'Cell ' + (index + 1) + ': ' + (voices.length ? voices.map(voice => soundNoteName(voice.note)).join(', ') : 'rest'));
+      cell.title = voices.map(voice => soundNoteName(voice.note) + ': velocity ' + (voice.velocity ?? 'default') + ', ' + (voice.durationTicks ?? 'default') + ' ticks').join(' | ');
+      for (const voice of voices) {
+        const bar = document.createElement('span'); bar.className = 'midi-clip-note-bar';
+        bar.style.bottom = (voice.note == null ? 0 : 12 + Math.max(0, Math.min(1, (voice.note - low) / Math.max(1, high - low))) * 65) + '%';
+        bar.textContent = soundNoteName(voice.note); bar.style.left = (5 + voices.indexOf(voice) * 90 / Math.max(1, voices.length)) + '%'; bar.style.width = (90 / Math.max(1, voices.length)) + '%'; cell.appendChild(bar); }
       const label = document.createElement('small'); label.textContent = String(index + 1);
-      cell.append(bar, label); root.appendChild(cell);
+      cell.appendChild(label); root.appendChild(cell);
       if (focused === String(index)) cell.focus();
     });
     const step = current.steps[selected];
+    renderVoices(step); renderLayers(step);
     const lengthSelect = byId('midiEventClipLength');
     lengthSelect.replaceChildren();
     for (const length of [...new Set([8, 16, current.lengthSteps])]) { const option = document.createElement('option'); option.value = String(length); option.textContent = length + ' cells' + (length > 16 ? ' (saved)' : ''); lengthSelect.appendChild(option); }
@@ -71,6 +141,12 @@ const createMidiEventClipEditor = ({ document, bind, getProject, getSource, comm
   };
   const finish = () => { if (gesture) { history.endGesture(); gesture = null; } };
   const initialize = () => {
+    bind('midiEventClipVoiceAdd', 'click', () => { const current = clip(); if (!current?.playback) return;
+      const voices = getMidiClipVoices(current.steps[selected]).map(voice => ({ ...voice }));
+      if (voices.length < MAX_CLIP_CELL_VOICES) update({ voices: [...voices, { note: Math.min(127, (voices[0]?.note ?? brush) + (voices.length ? 7 : 0)), velocity: null, durationTicks: null }] }); });
+    bind('midiEventClipLayerAdd', 'click', () => { const current = clip(); if (!current?.playback) return;
+      const layers = current.steps[selected].transformLayers || [];
+      if (layers.length < MAX_CLIP_TRANSFORM_LAYERS) update({ transformLayers: [...layers, { type: 'pitch', enabled: true }] }); });
     bind('midiClipCreate', 'click', () => commitProject(createEventClipProject(getProject(), getSource())));
     bind('midiEventClipLength', 'change', event => { const current = clip(); if (current) dispatch({ type: 'clip.update', clipId: current.id, patch: { lengthSteps: Number(event.target.value) } }); });
     const timing = () => { const current = clip(); if (current) dispatch({ type: 'clip.update', clipId: current.id, patch: { playback: byId('midiEventClipAdvance').value === 'legacy' ? null : { advance: byId('midiEventClipAdvance').value, spacingTicks: Number(byId('midiEventClipSpacing').value), passCounter: byId('midiEventClipPassCounter').value } } }); };

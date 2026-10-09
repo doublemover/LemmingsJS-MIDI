@@ -1,3 +1,4 @@
+import { flattenMidiClipPhrase } from '../project/MidiClipPlayback.js';
 import { MAX_GAME_PHRASE_NOTES } from '../scheduler/MidiGamePhraseQueue.js';
 import { MAX_EVENTS_PER_TICK } from './MidiEventRouterShared.js';
 
@@ -13,7 +14,7 @@ const midiEventRouterPhraseMethods = {
     const now = this._nowMs();
     let ready = {
       ...spec,
-      timeMs: now,
+      timeMs: Number.isFinite(spec.clipScheduleAheadMs) ? now + spec.clipScheduleAheadMs : now,
       durationTicks: Math.max(1, Math.min(960, Math.round(Number(spec.durationTicks) || 1)))
     };
     const currentMeta = { ...meta };
@@ -23,7 +24,7 @@ const midiEventRouterPhraseMethods = {
     if (!ready) return false;
     ready = this._applyMusicTension(ready, currentMeta, tick);
     if (!ready) return false;
-    if (!this._shouldSend(currentMeta, ready, this._planEntries(ready, now, 1), now)) {
+    if (!this._shouldSend(currentMeta, ready, this._planEntries(ready, ready.timeMs, 1), now)) {
       this.scheduler.recordThrottle?.(this._lastRateReport?.reason || 'count-limit', now, currentMeta);
       return false;
     }
@@ -62,12 +63,15 @@ const midiEventRouterPhraseMethods = {
     const tick = Number.isInteger(event.tick) ? event.tick : this._phraseTimer?.getGameTicks?.();
     if (event.reverse || !this._phraseTimer?.onGameTick || !Number.isInteger(tick)) {
       this.scheduler.gamePhrases?.clear();
-      if (Number.isFinite(cells[0]?.note)) this._sendGamePhraseNote(cells[0], meta, tick, true);
+      const expanded = flattenMidiClipPhrase(cells, spacingTicks);
+      for (const cell of expanded.entries) if (cell.offsetTicks === 0 && Number.isFinite(cell.note)) this._sendGamePhraseNote(cell, meta, tick, true);
+      if (expanded.entries.some(cell => cell.offsetTicks > 0 && Number.isFinite(cell.note))) this.scheduler.recordThrottle?.('clip-game-clock-unavailable', this._nowMs(), meta);
       return;
     }
     const key = JSON.stringify([event.sfxId, event.triggerType ?? null, spec.trackId ?? null, spec.outputId ?? null, spec.channel ?? null]);
     const queue = this.scheduler.gamePhrases;
     if (!queue?.replaceSteps(key, cells, meta, tick, spacingTicks, onComplete)) return;
+    if (queue.voices.get(key)?.expansionTruncated) this.scheduler.recordThrottle?.('clip-expansion-cap', this._nowMs(), meta);
     queue.advance(tick, (ready, details, atTick) => this._sendGamePhraseNote(ready, details, atTick, true), () => false, key);
   },
 

@@ -1,4 +1,4 @@
-import { clipCellEnabled, buildMidiClipPhrase, applyMidiClipTransforms, getMidiTransportBar } from '../../midi/project/MidiClipPlayback.js';
+import { buildMidiClipCell, buildMidiClipPhrase, flattenMidiClipPhrase, getMidiTransportBar } from '../../midi/project/MidiClipPlayback.js';
 import { MidiMapping } from '../../midi/MidiMapping.js';
 import { projectToMidiConfig } from '../../midi/project/MidiProject.js';
 
@@ -20,12 +20,14 @@ const createSoundAuditionPlan = (source, project, frameMs = 60, eventIndex = 0, 
       : sequence.passCounter === 'completed' ? (counters.completedPasses || 0) + 1 : count;
     const bar = getMidiTransportBar(config.timing, counters.tick, counters.tickMs || 60);
     const cells = sequence.advance === 'game-tick' ? buildMidiClipPhrase(sequence, count, pass, mapStep, bar)
-      : [clipCellEnabled(sequence, sequence.steps[eventIndex % length], count, pass, bar) ? { ...mapStep(applyMidiClipTransforms(sequence.steps[eventIndex % length], count, pass, bar)), stepIndex: eventIndex % length } : { note: null }];
-    return { advance: true, completionMs: sequence.advance === 'game-tick' ? (length - 1) * sequence.spacingTicks * frameMs : null, notes: cells.flatMap((cell, index) => Number.isFinite(cell.note) ? [{ note: cell.note, velocity: cell.velocity,
-      pan: cell.pan, pitchBend: cell.pitchBend, durationMs: cell.durationTicks * frameMs,
-      offsetMs: sequence.advance === 'game-tick' ? index * sequence.spacingTicks * frameMs : 0,
-      playback: { sfxId: Number(source.sourceKey), durationMs: cell.durationTicks * frameMs, stepIndex: cell.stepIndex, stepCount: length } }] : []),
-    reason: 'This cell is a rest or its condition skipped it. The next test advances another cell.' };
+      : [{ ...buildMidiClipCell(sequence, sequence.steps[eventIndex % length], count, pass, mapStep, bar), stepIndex: eventIndex % length, stepCount: length }];
+    const expanded = flattenMidiClipPhrase(cells, sequence.spacingTicks);
+    return { advance: true, completionMs: sequence.advance === 'game-tick' ? expanded.completionTicks * frameMs : null,
+      notes: expanded.entries.filter(cell => Number.isFinite(cell.note)).slice(0, 64).map(cell => ({ note: cell.note, velocity: cell.velocity,
+        pan: cell.pan, pitchBend: cell.pitchBend, durationMs: cell.durationTicks * frameMs, offsetMs: cell.offsetTicks * frameMs,
+        playback: { sfxId: Number(source.sourceKey), durationMs: cell.durationTicks * frameMs, stepIndex: cell.stepIndex, stepCount: length } })),
+      omitted: expanded.truncated + Math.max(0, expanded.entries.filter(cell => Number.isFinite(cell.note)).length - 64),
+      reason: 'This cell is a rest or its condition skipped it. The next test advances another cell.' };
   }
   const original = spec.notes?.length ? [...spec.notes] : [spec.note];
   let notes = original;

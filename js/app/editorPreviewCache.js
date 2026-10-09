@@ -1,7 +1,9 @@
+import { Frame } from '../render/Frame.js';
+import { getSourceImageGeometry } from '../render/SourceImageGeometry.js';
 import { getRuntimeDependency } from '../core/dependencies.js';
 
 const CACHE_PREFIX = 'lemmings.editor.preview';
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2;
 const DEFAULT_MAX_MEMORY_ENTRIES = 512;
 
 const hashStep = (hash, value) => (((hash ^ value) >>> 0) * 16777619) >>> 0;
@@ -32,6 +34,11 @@ const hashPalette = (hash, palette) => {
 
 const hashFrame = (hash, frame) => {
   if (!frame) return hash;
+  if (frame instanceof Frame) {
+    for (const color of frame.getBuffer()) hash = hashStep(hash, color);
+    for (const bit of frame.getMask()) hash = hashStep(hash, bit);
+    return hash;
+  }
   for (let i = 0; i < frame.length; i++) {
     hash = hashStep(hash, frame[i]);
   }
@@ -39,7 +46,7 @@ const hashFrame = (hash, frame) => {
 };
 
 const resolveVersion = (value) => {
-  const version = value?._previewHashVersion ?? value?.previewVersion ?? value?.version;
+  const version = value?._previewHashVersion ?? value?.previewVersion ?? value?.version ?? (value instanceof Frame ? value._version : null);
   return Number.isFinite(version) ? version : null;
 };
 
@@ -56,36 +63,23 @@ const getPreviewIndex = (image) => {
 };
 
 const buildPreviewDataUrl = (image, palette, document) => {
-  if (!image || !palette || !document) return null;
-  const width = Math.max(0, image.width || 0);
-  const height = Math.max(0, image.height || 0);
-  const frame = pickFrame(image);
-  if (!frame || width === 0 || height === 0) return null;
-
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d', { alpha: true, willReadFrequently: true });
-  if (!ctx) return null;
-  const imageData = ctx.createImageData(width, height);
-  const data = imageData.data;
-  for (let i = 0; i < frame.length; i++) {
-    const idx = frame[i];
-    const out = i * 4;
-    if (idx & 0x80) {
-      data[out + 3] = 0;
-      continue;
-    }
-    const color = palette.getColor(idx & 0x7f) >>> 0;
-    data[out] = color & 0xff;
-    data[out + 1] = (color >> 8) & 0xff;
-    data[out + 2] = (color >> 16) & 0xff;
-    data[out + 3] = (color >> 24) & 0xff;
+  const frame = pickFrame(image), rgba = frame instanceof Frame;
+  if (!image || !document || !frame || !rgba && !palette) return null;
+  const { width, height, sourceWidth, scaleX, scaleY } = getSourceImageGeometry(image, frame);
+  if (!width || !height) return null;
+  const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
+  const ctx = canvas.getContext('2d', { alpha: true, willReadFrequently: true }); if (!ctx) return null;
+  const imageData = ctx.createImageData(width, height), data = imageData.data;
+  const colors = rgba ? frame.getBuffer() : null, mask = rgba ? frame.getMask() : null;
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    const at = y * scaleY * sourceWidth + x * scaleX, out = (y * width + x) * 4;
+    if (rgba ? !mask[at] : frame[at] & 0x80) continue;
+    const color = rgba ? colors[at] : palette.getColor(frame[at] & 0x7f) >>> 0;
+    data[out] = color & 0xff; data[out + 1] = (color >> 8) & 0xff;
+    data[out + 2] = (color >> 16) & 0xff; data[out + 3] = (color >> 24) & 0xff;
   }
-  ctx.putImageData(imageData, 0, 0);
-  return canvas.toDataURL('image/png');
+  ctx.putImageData(imageData, 0, 0); return canvas.toDataURL('image/png');
 };
-
 const keyPrefixForType = (version, type) => `${CACHE_PREFIX}:v${version}:${type}:`;
 
 const getEntryIdFromKey = (key) => {
@@ -161,8 +155,8 @@ class EditorPreviewCache {
 
   _getImageSignature(image, palette, frame) {
     const previewIndex = getPreviewIndex(image);
-    const width = image?.width || 0;
-    const height = image?.height || 0;
+    const geometry = getSourceImageGeometry(image, frame), width = geometry.width;
+    const height = geometry.height, frameLength = frame instanceof Frame ? frame.getMask().length : frame.length;
     const frameVersion = resolveVersion(frame) ?? resolveVersion(image);
     const paletteVersion = resolveVersion(palette);
     let paletteHash = null;
@@ -173,11 +167,11 @@ class EditorPreviewCache {
     const cached = image && this._hashCache.get(image);
     const frameStable = cached
       && cached.frame === frame
-      && cached.frameLength === frame.length
+      && cached.frameLength === frameLength
       && cached.frameVersion === frameVersion
       && cached.width === width
-      && cached.height === height
-      && cached.previewIndex === previewIndex;
+      && cached.height === height && cached.sourceWidth === geometry.sourceWidth && cached.sourceHeight === geometry.sourceHeight
+      && cached.previewIndex === previewIndex && cached.scaleX === geometry.scaleX && cached.scaleY === geometry.scaleY;
     if (
       frameStable
       && cached.palette === palette
@@ -193,8 +187,10 @@ class EditorPreviewCache {
     let hash = 2166136261;
     hash = hashStep(hash, width);
     hash = hashStep(hash, height);
+    hash = hashStep(hash, geometry.sourceWidth); hash = hashStep(hash, geometry.sourceHeight);
     hash = hashStep(hash, previewIndex);
-    hash = hashStep(hash, frame.length);
+    hash = hashStep(hash, geometry.scaleX); hash = hashStep(hash, geometry.scaleY);
+    hash = hashStep(hash, frameLength);
     for (let i = 0; i < frameHash.length; i += 1) {
       hash = hashStep(hash, frameHash.charCodeAt(i));
     }
@@ -206,11 +202,11 @@ class EditorPreviewCache {
     if (image) {
       this._hashCache.set(image, {
         frame,
-        frameLength: frame.length,
+        frameLength,
         frameVersion,
         width,
-        height,
-        previewIndex,
+        height, sourceWidth: geometry.sourceWidth, sourceHeight: geometry.sourceHeight,
+        previewIndex, scaleX: geometry.scaleX, scaleY: geometry.scaleY,
         palette,
         paletteVersion,
         paletteHash,
@@ -239,7 +235,7 @@ class EditorPreviewCache {
     if (!type || !image) return null;
     const palette = image.palette || null;
     const frame = pickFrame(image);
-    if (!frame || !palette) return null;
+    if (!frame || !(frame instanceof Frame) && !palette) return null;
 
     const signature = this._getImageSignature(image, palette, frame);
     const key = `${CACHE_PREFIX}:v${this.version}:${type}:${id}:${signature}`;

@@ -6,6 +6,7 @@ import { createSolverResult } from './SolverTypes.js';
 
 const SKILLS = Object.freeze({ builder: 'builders', basher: 'bashers', digger: 'diggers', miner: 'miners' });
 const live = actor => !!actor && !actor.removed && !actor.failureReason && !actor.terminalReason && !actor.disabled;
+const inside = (actor, rect) => Number.isFinite(actor.x) && Number.isFinite(actor.y) && actor.x >= rect.x && actor.x < rect.x + rect.width && actor.y >= rect.y && actor.y < rect.y + rect.height;
 const rectangle = (value, name) => {
   if (!value || !['x', 'y', 'width', 'height'].every(key => Number.isInteger(value[key])) || value.x < 0 || value.y < 0 || value.width < 1 || value.height < 1) throw new TypeError('Invalid ' + name);
   return Object.freeze({ x: value.x, y: value.y, width: value.width, height: value.height });
@@ -23,8 +24,9 @@ class ProcgenSolverAdapter {
     this.initialActors = this.world.actors.filter(live);
     if (!this.initialActors.length || this.initialActors.length > 64 || this.initialActors.some(actor => actor.canClimb || actor.hasParachute || (!Number.isSafeInteger(actor.id) || actor.id < 0) || ![this.world.actions[State.WALKING], this.world.actions[State.FALLING]].includes(actor.action))) { this.world.dispose(); throw new RangeError('Procgen replay requires 1..64 ordinary actors with stable IDs'); }
     this.actorById = new Map(this.initialActors.map(actor => [actor.id, actor]));
-    if (this.actorById.size !== this.initialActors.length || this.bounds.y + this.bounds.height > this.world.height || this.bounds.x + this.bounds.width > this.world.width) { this.world.dispose(); throw new RangeError('Invalid procgen replay actor identities or bounds'); }
-    this.crewCount = this.initialActors.length; this.world.cohorts = false; this.world.admissionPaused = true; this.generation = this.world.generation; this.arrivals = new Set();
+    if (this.actorById.size !== this.initialActors.length || this.bounds.y + this.bounds.height > this.world.height || this.bounds.x + this.bounds.width > this.world.width || this.initialActors.some(actor => !inside(actor, this.bounds))) { this.world.dispose(); throw new RangeError('Invalid procgen replay actor identities or bounds'); }
+    this.crewCount = this.initialActors.length; this.world.cohorts = false; this.world.admissionPaused = true; this.generation = this.world.generation; this.arrivals = new Set(); this.routeBoundsExceeded = false;
+    this.goalDirection = this.goal.x + this.goal.width / 2 < this.initialActors.reduce((sum, actor) => sum + actor.x, 0) / this.crewCount ? -1 : 1;
     this.skills = Object.fromEntries(Object.keys(SKILLS).map(skill => [skill, 0]));
     for (const [skill, amount] of Object.entries(skills)) {
       if (!Object.hasOwn(SKILLS, skill) || !Number.isInteger(amount) || amount < 0 || amount > 64) { this.world.dispose(); throw new TypeError('Invalid joint procgen skill inventory'); }
@@ -35,13 +37,16 @@ class ProcgenSolverAdapter {
   get tick() { return this.world.tickIndex; }
   _observeGoal() {
     const goal = this.goal;
-    for (const actor of this.initialActors) if (live(actor) && actor.x >= goal.x && actor.x < goal.x + goal.width && actor.y >= goal.y && actor.y < goal.y + goal.height) this.arrivals.add(actor.id);
+    for (const actor of this.initialActors) if (live(actor)) {
+      if (!inside(actor, this.bounds)) this.routeBoundsExceeded = true;
+      if (inside(actor, goal)) this.arrivals.add(actor.id);
+    }
   }
   getActiveLemmings() { return this.initialActors.filter(live); }
   getSkillCount(skill) { return this.skills[skill] || 0; }
   selectLemming(target) {
     if (target && typeof target === 'object') target = target.id ?? target.role;
-    if (target == null || ['first', 'lead', 'frontier'].includes(target)) return this.getActiveLemmings().sort((a, b) => b.x - a.x || a.id - b.id)[0] || null;
+    if (target == null || ['first', 'lead', 'frontier'].includes(target)) return this.getActiveLemmings().sort((a, b) => this.goalDirection * (b.x - a.x) || a.id - b.id)[0] || null;
     const actor = this.actorById.get(Number(target)); return live(actor) ? actor : null;
   }
   applyAction(action = {}) {
@@ -57,7 +62,7 @@ class ProcgenSolverAdapter {
     for (let step = 0; step < count; step++) { this.world.step(); this._observeGoal(); }
   }
   step(count = 1) { this._advanceWithoutSummary(count); return this.getFinalStateSummary(); }
-  isTerminal() { return this.getActiveLemmings().length < this.crewCount || this.getSavedCount() === this.crewCount; }
+  isTerminal() { return this.routeBoundsExceeded || this.getActiveLemmings().length < this.crewCount || this.getSavedCount() === this.crewCount; }
   getSavedCount() { return this.initialActors.filter(actor => live(actor) && this.arrivals.has(actor.id)).length; }
   getFinalStateSummary() {
     const savedCount = this.getSavedCount(), active = this.getActiveLemmings();
@@ -67,7 +72,7 @@ class ProcgenSolverAdapter {
       lemmings: this.initialActors.map(actor => ({ id: actor.id, x: actor.x, y: actor.y, lookRight: actor.lookRight,
         action: Object.keys(this.world.actions).find(key => this.world.actions[key] === actor.action) ?? null,
         dead: !live(actor), saved: live(actor) && this.arrivals.has(actor.id), removed: actor.removed, disabled: actor.disabled })),
-      terrainRevision: this.world.terrainRevision, laneTransfers: this.world.stats.laneTransfers, hazardContacts: this.world.hazards.stats.contacts };
+      routeBoundsExceeded: this.routeBoundsExceeded, terrainRevision: this.world.terrainRevision, laneTransfers: this.world.stats.laneTransfers, hazardContacts: this.world.hazards.stats.contacts };
   }
   snapshot() {
     const { x, y, width, height } = this.bounds, groundMask = new Uint8Array(width * height), steelMask = new Uint8Array(width * height);
@@ -117,10 +122,10 @@ const replayProcgenGoal = (factory, actions = [], options = {}) => {
   try {
     adapter.snapshot();
     const replay = verifyActionReplay({ kind: 'procgen', adapter }, actions, { ...options, targetSaveCount: adapter.crewCount });
-    const protectedTerrainUnchanged = adapter.protectedTerrainUnchanged();
-    return createSolverResult({ ...replay, resultType: protectedTerrainUnchanged ? replay.resultType : 'failed',
-      summary: protectedTerrainUnchanged ? replay.summary : 'Replay altered protected terrain',
-      replaySummary: { ...replay.replaySummary, protectedTerrainUnchanged, verified: protectedTerrainUnchanged && replay.replaySummary.verified } });
+    const protectedTerrainUnchanged = adapter.protectedTerrainUnchanged(), guardsPassed = protectedTerrainUnchanged && !adapter.routeBoundsExceeded;
+    return createSolverResult({ ...replay, resultType: guardsPassed ? replay.resultType : 'failed',
+      summary: guardsPassed ? replay.summary : !protectedTerrainUnchanged ? 'Replay altered protected terrain' : 'Replay left declared route geometry',
+      replaySummary: { ...replay.replaySummary, protectedTerrainUnchanged, verified: guardsPassed && replay.replaySummary.verified } });
   }
   finally { adapter.dispose(); }
 };

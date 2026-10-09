@@ -1490,6 +1490,70 @@ describe('midiUiController sequencer', function() {
     expect(messageCaptureCalls.at(-1)).to.equal(null);
   });
 
+  it('summarizes every stored temporal voice in cards and accessible cells while retaining compact dock and legacy pitches', function() {
+    const { controller, doc } = createControllerHarness({ factoryConfig: { sfx: { [SoundEffectIds.SPAWN]: { note: 60 } } } });
+    controller.bindMidiUi();
+    const source = controller.getProject().sources.find(item => item.kind === 'sfx' && item.sourceKey === String(SoundEffectIds.SPAWN));
+    controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'card-poly', lengthSteps: 8, playback: { advance: 'game-tick', spacingTicks: 2 },
+      steps: [{ voices: [{ note: 60, velocity: 80, durationTicks: 6 }, { note: 64, velocity: 95, durationTicks: 4 }, { note: 67, velocity: 90, durationTicks: 2 }] },
+        { note: null }, { note: 72, velocity: 66, durationTicks: 7, hold: true }] } });
+    controller.dispatchProjectIntent({ type: 'source.clip.assign', sourceId: source.id, clipId: 'card-poly' });
+    const before = controller.getProject();
+    const row = () => doc.getElementById('midiGameEventList').children.find(item => Number(item.dataset.gameEventId) === SoundEffectIds.SPAWN);
+    expect(row().children[1].textContent).to.contain('C4 E4 G4 C5'); expect(row().dataset.noteLabels).to.equal('C4 E4 G4');
+    expect(row().title).to.contain('Cell 1: C4 E4 G4; Cell 2: rest; Cell 3: C5');
+    expect(row().getAttribute('aria-label')).to.equal(row().title); expect(controller.getProject()).to.deep.equal(before);
+    controller.dispatchProjectIntent({ type: 'clip.update', clipId: 'card-poly', patch: { playback: null } });
+    expect(row().children[1].textContent).to.contain('C4 C5').and.not.contain('E4');
+    expect(row().dataset.noteLabels).to.equal('C4 C5'); expect(row().title).not.to.contain('Stored cells');
+    expect(controller.getProject().clips.find(clip => clip.id === 'card-poly').steps[2]).to.include({ note: 72, velocity: 66, durationTicks: 7, hold: true });
+  });
+
+  it('records Poly onset overdubs through explicit controls without losing other voices or untouched cell modifiers', function() {
+    const { controller, doc, win } = createControllerHarness();
+    registerElement(doc, 'select', 'midiRecordVoices').value = 'poly'; registerElement(doc, 'select', 'midiRecordMode').value = 'overdub';
+    registerElement(doc, 'select', 'midiRecordPlacement').value = 'compact'; controller.bindMidiUi();
+    controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'overdub', name: 'Overdub', lengthSteps: 8,
+      playback: { advance: 'game-tick', spacingTicks: 2 }, steps: [{ note: 60, voices: [{ note: 60, velocity: 30, durationTicks: 2 }, { note: 67, velocity: 40, durationTicks: 8 }],
+        transforms: { transpose: 2 }, condition: { unit: 'bar', every: 2 }, probability: 0.8 }, { note: 72, velocity: 66, durationTicks: 7, hold: true, transformLayers: [{ type: 'pitch', transpose: 3 }] }] } });
+    const untouched = controller.getProject().clips.find(clip => clip.id === 'overdub').steps[1];
+    expect(controller.startRecording()).to.equal(true); expect(doc.getElementById('midiRecordVoices').disabled).to.equal(true);
+    controller.captureRecordMessage({ type: 0x90, note: 60, velocity: 90, channel: 1, timestamp: 100 });
+    controller.captureRecordMessage({ type: 0x90, note: 64, velocity: 95, channel: 1, timestamp: 105 });
+    controller.captureRecordMessage({ type: 0x80, note: 64, channel: 1, timestamp: 345 });
+    controller.captureRecordMessage({ type: 0x80, note: 60, channel: 1, timestamp: 700 });
+    expect(controller.commitRecording()).to.equal(true);
+    const clip = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY)).clips.find(clip => clip.id === 'overdub');
+    expect(clip.steps[0].voices).to.deep.equal([{ note: 60, velocity: 90, durationTicks: 10 }, { note: 67, velocity: 40, durationTicks: 8 }, { note: 64, velocity: 95, durationTicks: 4 }]);
+    expect(clip.steps[0].transforms.transpose).to.equal(2); expect(clip.steps[0].condition.unit).to.equal('bar');
+    expect(clip.steps[1]).to.deep.equal(untouched); expect(doc.getElementById('midiRecordVoices').disabled).to.equal(false);
+  });
+
+  it('bounds live recording admissions and reports truncation without enabling audio or MIDI routes', function() {
+    const { controller, doc } = createControllerHarness(); registerElement(doc, 'select', 'midiRecordVoices').value = 'poly';
+    controller.bindMidiUi(); controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'cap', name: 'Cap', lengthSteps: 8 } });
+    expect(controller.startRecording()).to.equal(true);
+    for (let index = 0; index < 1040; index++) {
+      controller.captureRecordMessage({ type: 0x90, note: 40 + index % 20, velocity: 80, channel: 1, timestamp: index });
+      controller.captureRecordMessage({ type: 0x80, note: 40 + index % 20, channel: 1, timestamp: index + 100 });
+    }
+    expect(doc.getElementById('midiRecordStatus').textContent).to.contain('1024 notes captured').and.contain('Commit or Cancel');
+    controller.commitRecording(); const project = controller.getProject(), clip = project.clips.find(clip => clip.id === 'cap');
+    expect(clip.steps.every(step => !step.voices || step.voices.length <= 8)).to.equal(true);
+    expect(doc.getElementById('midiProjectStatus').textContent).to.contain('limit omitted'); expect(project.enabled).to.equal(false);
+  });
+
+  it('reports bounded local audition omissions while preserving recorded polyphonic voices and route enable state', async function() {
+    const heard = [];
+    const { controller, doc } = createControllerHarness({ createPreviewAudio: () => ({ async preview(notes) { heard.push(notes); return true; }, stop() {}, getState: () => ({ enabled: true }) }) });
+    controller.bindMidiUi(); controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'dense', lengthSteps: 16,
+      playback: { advance: 'game-tick', spacingTicks: 2 }, steps: Array.from({ length: 16 }, () => ({ voices: Array.from({ length: 8 }, (_, index) => ({ note: 50 + index, velocity: 80, durationTicks: 5 })), transformLayers: [{ type: 'repeat', count: 8 }] })) } });
+    controller.dispatchProjectIntent({ type: 'source.clip.assign', sourceId: 'sfx-1', clipId: 'dense' });
+    const before = JSON.stringify(controller.getProject()); expect(await controller.testSelectedSound()).to.equal(true);
+    expect(heard[0]).to.have.length(64); expect(doc.getElementById('midiProjectStatus').textContent).to.contain('notes omitted');
+    expect(JSON.stringify(controller.getProject())).to.equal(before); expect(controller.getProject().enabled).to.equal(false);
+  });
+
   it('commits explicit onset gaps in one project edit and preserves compact recording as the default', function() {
     const { controller, doc, win } = createControllerHarness();
     registerElement(doc, 'select', 'midiRecordPlacement').value = 'onsets';

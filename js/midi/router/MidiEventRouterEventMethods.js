@@ -1,4 +1,4 @@
-import { clipCellEnabled, buildMidiClipPhrase, applyMidiClipTransforms, getMidiTransportBar } from '../project/MidiClipPlayback.js';
+import { buildMidiClipCell, buildMidiClipPhrase, getMidiTransportBar } from '../project/MidiClipPlayback.js';
 import { MidiMapping } from '../MidiMapping.js';
 import { MidiScheduler } from '../MidiScheduler.js';
 import { isMidiFlagTriggerType } from '../MidiFlagTriggers.js';
@@ -133,9 +133,14 @@ const midiEventRouterEventMethods = {
           return;
         }
         const index = count % length, step = sequence.steps[index];
-        if (!clipCellEnabled(sequence, step, count + 1, pass, bar)) return;
-        spec = { ...mapStep(applyMidiClipTransforms(step, count + 1, pass, bar)), reverse: !!event.reverse, stepIndex: index, stepCount: length };
-        noteList = [spec.note];
+        const cell = { ...buildMidiClipCell(sequence, step, count + 1, pass, mapStep, bar), reverse: !!event.reverse, stepIndex: index, stepCount: length };
+        if (step.voices || step.transformLayers) {
+          for (const voice of cell.voices || [cell]) voice.clipScheduleAheadMs = Math.max(0, sendTimeMs - now);
+          this._queueGameEventClip(event, spec, meta, [cell], sequence.spacingTicks);
+          return;
+        }
+        if (!Number.isFinite(cell.note)) return;
+        spec = cell; noteList = [cell.note];
       }
 
       const fire = !sfx.clipSequence && event.type === 'lemming-fire';

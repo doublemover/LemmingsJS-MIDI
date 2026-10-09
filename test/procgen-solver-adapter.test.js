@@ -44,7 +44,8 @@ describe('independent procgen real actor physical goals', function() {
     const result = searchProcgenGoal(factory, { maxTicks: 600, maxNodes: 8, maxActions: 1 });
     expect(sourceAssembly.sourceRevision).to.equal(source.assemblyCatalog.sourceRevision);
     expect(result.resultType).to.equal('solved'); expect(result.replaySummary).to.include({ goalReachedCount: 8, deadCount: 0, hazardContacts: 0, protectedTerrainUnchanged: true });
-  });  it('does not qualify wall-only walking or a rejected protected-terrain assignment', () => {
+  });
+  it('does not qualify wall-only walking or a rejected protected-terrain assignment', () => {
     const walking = replayProcgenGoal(factoryFor(masks, { wall: true }), [], { maxTicks: 450, maxNodes: 450 });
     expect(walking.resultType).not.to.equal('solved');
     const protectedWall = replayProcgenGoal(factoryFor(masks, { wall: true, steelWall: true }), [{ tick: 0, target: 0, skillType: 'basher' }]);
@@ -67,5 +68,18 @@ describe('independent procgen real actor physical goals', function() {
     adapter.world.assists = true; expect(() => adapter.step()).to.throw('assistance'); adapter.world.assists = false;
     adapter.world.cohorts = true; expect(() => adapter.step()).to.throw('admissions'); adapter.world.cohorts = false;
     adapter.world._spawn(0, false); expect(() => adapter.step()).to.throw('admissions'); adapter.dispose();
+  });
+  it('rejects a route window that cannot contain every actual follower and leader until arrival', () => {
+    const factory = factoryFor(masks, { wall: true, crewCount: 16, bounds: { x: 8, y: 0, width: 204, height: 96 }, goal: { x: 180, y: 64, width: 16, height: 16 } });
+    const replay = replayProcgenGoal(factory, [{ tick: 0, target: 0, skillType: 'basher' }], { maxTicks: 1200, maxNodes: 1200, maxActions: 1 });
+    expect(replay.resultType).to.equal('failed'); expect(replay.replaySummary.verified).to.equal(false);
+    expect(replay.replaySummary).to.include({ routeBoundsExceeded: true, deadCount: 0, protectedTerrainUnchanged: true });
+    expect(replay.replaySummary.goalReachedCount).to.be.lessThan(16);
+  });
+  it('finds and freshly replays a left-facing finite whole-crew route without a route hint', () => {
+    const result = searchProcgenGoal(factoryFor(masks, { reverse: true, wall: true, crewCount: 8 }), { maxTicks: 800, maxNodes: 8, maxActions: 1 });
+    expect(result.resultType).to.equal('solved'); expect(result.search.intendedRouteHint).to.equal(false);
+    expect(result.replaySummary).to.include({ goalReachedCount: 8, deadCount: 0, routeBoundsExceeded: false, protectedTerrainUnchanged: true });
+    expect(result.actions).to.have.length(1); expect(result.actions[0]).to.include({ skillType: 'basher', target: 0 });
   });
 });

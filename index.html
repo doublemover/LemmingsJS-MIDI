@@ -90,13 +90,15 @@
                 <label>N<input id="midiEventClipEvery" type="number" min="1" max="64" value="1" /></label>
                 <label>Phase (0 = Nth)<input id="midiEventClipPhase" type="number" min="0" max="0" value="0" /></label>
               </div>
-              <details><summary>Pitch layers for this cell</summary><div class="midi-clip-controls">
+              <details><summary>Independent voices in this cell</summary><div id="midiEventClipVoices"></div><button id="midiEventClipVoiceAdd" type="button">Add voice</button><p class="midi-help">Up to 8 pitches, each with its own velocity and duration. Blank dynamics use cell/project defaults. Scalar controls edit the first voice; Rest erases the whole cell. Poly voices require event or game-tick playback.</p></details>
+              <details><summary>Base pitch transform (saved behavior)</summary><div class="midi-clip-controls">
                 <label>Transpose<input id="midiEventClipTranspose" type="number" min="-48" max="48" value="0" /></label>
                 <label>Octaves<input id="midiEventClipOctave" type="number" min="-4" max="4" value="0" /></label>
                 <label>Ramp interval<input id="midiEventClipInterval" type="number" min="-12" max="12" value="0" /></label>
                 <label>Ramp span<input id="midiEventClipSpan" type="number" min="1" max="16" value="1" /></label>
                 <label>Ramp counter<select id="midiEventClipTransformUnit"><option value="event">Game events</option><option value="pass">Pattern passes</option><option value="bar">Trigger bars</option></select></label>
               </div><p class="midi-help">Layers add transpose + 12 x octaves + interval x ((counter - 1) modulo span), then project scale/range apply. The grid shows entered notes; moving row notes show dispatched pitches.</p></details>
+              <details><summary>Ordered transform layers</summary><div id="midiEventClipLayers"></div><button id="midiEventClipLayerAdd" type="button">Add pitch/repeat layer</button><p class="midi-help">Up to 4 layers run in order after the base transform. Repeat count includes the original; spacing uses game ticks. Conditions use event/pass/trigger-bar counters. At most 16 outputs per cell and 256 per phrase; local tests retain 64. Limits appear in status/output pressure.</p></details>
               <details><summary>Counter timing</summary><p class="midi-help">Counters start at 1. Phase 0 selects N, 2N; phase 1 selects 1, N+1. An event pass is one grid traversal. Phrase passes count started or fully consumed phrases, as selected. Trigger bars use level ticks at the project BPM and time signature, sampled once at the trigger. Pause freezes the bar; speed changes its wall-time rate. Changing BPM/signature recomputes position. Local tests use independent event/pass counters and the same level bar.</p></details>
               <p id="midiEventClipCounters" class="midi-help"></p>
             </div>
@@ -528,8 +530,10 @@
             </label>
           </div>
           <div id="midiRecordPanel" class="midi-learn-panel" aria-live="polite">
-            <p class="midi-help">Compact capture keeps the saved note-off order. Keep gaps quantizes note-on times from the first note to the nearest cell, replaces all cells, and keeps overlapping lengths; the last onset wins each cell. Leading silence is omitted. The current game tick length is frozen for capture; playback follows game ticks.</p>
-            <label>Placement<select id="midiRecordPlacement"><option value="compact">Compact notes (saved behavior)</option><option value="onsets">Keep gaps: last note per cell</option></select></label>
+            <p class="midi-help">Compact capture keeps the saved note-off order. Keep gaps quantizes note-on times from the first note to the nearest cell, keeps overlapping lengths. Mono keeps the last onset in each cell; Poly retains up to 8 independent voices. Onset Replace rebuilds the entire grid including rests; Overdub preserves untouched cells and existing modifiers. Compact Overdub places captured notes in saved note-off order into successive cells. Leading silence is omitted. The current game tick length is frozen for capture; playback follows game ticks. Capture stops admitting notes at 1024; Commit or Cancel closes held notes.</p>
+            <label>Placement<select id="midiRecordPlacement"><option value="compact">Compact notes (saved behavior)</option><option value="onsets">Keep gaps: onset cells</option></select></label>
+            <label>Voices<select id="midiRecordVoices"><option value="mono">Mono (saved behavior)</option><option value="poly">Poly (onset cells, up to 8 voices)</option></select></label>
+            <label>Write<select id="midiRecordMode"><option value="replace">Replace (saved behavior)</option><option value="overdub">Overdub existing cells</option></select></label>
             <div id="midiRecordStatus" class="midi-learn-status" role="status">Record writes captured notes into clip steps.</div>
             <div class="midi-button-row">
               <button id="midiRecordButton" type="button" aria-label="Start MIDI recording">Record</button>

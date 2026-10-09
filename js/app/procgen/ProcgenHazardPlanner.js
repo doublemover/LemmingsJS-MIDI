@@ -1,4 +1,5 @@
 import { LemmingStateType as State } from '../../lemmings/LemmingStateType.js';
+import { ProcgenSupportedTunnel } from './ProcgenSupportedTunnel.js';
 
 const MAX_LOCAL_ROUTE_DISTANCE = 40;
 const MAX_ROUTE_PROBES = 1024;
@@ -7,6 +8,7 @@ const intersects = (hazard, x, y) => x + 2 > hazard.x1 && x - 2 < hazard.x2 && y
 
 class ProcgenHazardPlanner {
   constructor(world) {
+    this.tunnels = new ProcgenSupportedTunnel(world);
     this.world = world; this.observations = []; this.adjacentObservations = []; this.cache = new Array(world.laneCount);
     this.stats = { plans: 0, deferred: 0, probes: 0, budgetExhausted: 0 };
   }
@@ -179,7 +181,7 @@ class ProcgenHazardPlanner {
     const cached = this.cache[lane], key = `${world.generation}:${actor.x}:${actor.y}:${world.terrainRevision}:${world.frontierRevision}:${world.workerLimits?.builders}:${world.workerLimits?.bashers}:${world.workerLimits?.diggers}`;
     if (cached?.tick === world.tickIndex) {
       const proposal = cached.proposal;
-      if (cached.key !== key || proposal && proposal.kind !== 'builders' && this._constructionOverlap(proposal.footprint)) return null;
+      if (cached.key !== key || proposal && proposal.kind !== 'builders' && (this._constructionOverlap(proposal.footprint) || proposal.routeEvidence && this.tunnels._busy(proposal.footprint))) return null;
       return proposal;
     }
     this.top = lane * 96; this.through = world.generatedThrough[lane]; this.probes = 0; this.exhausted = false; this.unrevealed = false;
@@ -199,9 +201,20 @@ class ProcgenHazardPlanner {
     const threat = this.observations.find(hazard => hazard.x2 > actor.x && hazard.x1 < actor.x + 28 && actor.y + 1 > hazard.y1 && actor.y - 9 < hazard.y2);
     let proposal = null;
     if (threat || cliff || gap) {
-      const build = this._builder(actor), bash = this._basher(actor, cliff);
+      const build = this._builder(actor);
+      let bash = null, observedLong = false;
+      if (!build && cliff && world.workerLimits?.bashers && this._ground(actor.x + 30, actor.y - 6)) {
+        let up = 0; while (up < 8 && this._ground(actor.x + 1, actor.y - up)) up++;
+        if (up === 8) {
+          observedLong = true;
+          const result = this.tunnels.prove(actor, Math.max(0, MAX_ROUTE_PROBES - this.probes));
+          this.probes += result.probes; this.stats.probes += result.probes;
+          if (result.proposal) proposal = result.proposal;
+        }
+      }
+      if (!observedLong) bash = this._basher(actor, cliff);
       if (build && (!bash || build.score > bash.score)) proposal = { ...build, reason: threat ? 'supported-hazard-bypass' : cliff ? 'short-stair-to-ledge' : 'supported-local-gap' };
-      else if (bash && bash.startX === actor.x) proposal = { ...bash, reason: 'supported-local-tunnel' };
+      else if (!proposal && bash && bash.startX === actor.x) proposal = { ...bash, reason: 'supported-local-tunnel' };
       if (!proposal) proposal = this._digDescent(actor) || this._mineDescent(actor);
     }
     if (this.unrevealed) proposal = null;
@@ -209,7 +222,7 @@ class ProcgenHazardPlanner {
     this.cache[lane] = { tick: world.tickIndex, key, proposal }; this.stats.plans++;
     return proposal;
   }
-  reset() { this.cache.fill(null); this.observations.length = 0; this.adjacentObservations.length = 0; }
-  dispose() { this.reset(); this.world = null; }
+  reset() { this.tunnels.reset(); this.cache.fill(null); this.observations.length = 0; this.adjacentObservations.length = 0; }
+  dispose() { this.reset(); this.tunnels.dispose(); this.world = null; }
 }
 export { ProcgenHazardPlanner, MAX_LOCAL_ROUTE_DISTANCE, MAX_ROUTE_PROBES, ROUTE_LANES_PER_TICK };

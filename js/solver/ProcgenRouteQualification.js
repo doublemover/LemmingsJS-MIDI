@@ -26,7 +26,7 @@ const qualifyProcgenRouteContract = (record, createAdapter, options = {}) => {
     const timingMatches = actualActions.length === contract.actionRules.length && actualActions.every((action, index) => {
       const rule = contract.actionRules[index]; return action.skillType === rule.skill && action.tick >= rule.window[0] && action.tick <= rule.window[1];
     });
-    if (verificationResult.resultType === 'solved' && (!timingMatches || !summary?.protectedTerrainUnchanged || summary.deadCount !== 0 || summary.goalReachedCount !== summary.releaseCount || contract.guards.includes('no-hazard-contacts') && summary.hazardContacts !== 0)) {
+    if (verificationResult.resultType === 'solved' && (!timingMatches || !summary?.protectedTerrainUnchanged || summary.routeBoundsExceeded || summary.deadCount !== 0 || summary.goalReachedCount !== summary.releaseCount || contract.guards.includes('no-hazard-contacts') && summary.hazardContacts !== 0)) {
       verificationResult = createSolverResult({ ...verificationResult, resultType: 'failed', summary: 'Actual whole-crew route guards failed', replaySummary: { ...summary, verified: false } });
     }
   } catch (error) {

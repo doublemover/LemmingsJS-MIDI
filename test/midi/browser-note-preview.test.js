@@ -1,4 +1,7 @@
 import { expect } from 'chai';
+import { EventHandler } from '../../js/util/EventHandler.js';
+import { createMidiEventPlayback } from '../../js/app/midi-ui/midiEventPlayback.js';
+import { TestDocument } from '../helpers/test-dom.js';
 import { readFileSync } from 'node:fs';
 import { BrowserNotePreview, createBrowserNotePreview } from '../../js/app/midi-ui/browserNotePreview.js';
 import { applyGameEventMidiPreset } from '../../js/midi/project/GameEventMidiPresets.js';
@@ -950,5 +953,39 @@ describe('inactive hardware boundary', function() {
     scheduler.output = null;
     scheduler._outputsById.clear();
     scheduler.dispose();
+  });
+});
+
+
+describe('polyphonic clip dispatch to existing event-card playback feedback', function() {
+  it('creates separate actual-pitch gate spans for voices/repeats and cleans all spans on Panic without a frame layout loop', async function() {
+    await withFakeClockAndPerformance(async clock => {
+      const context = new FakeContext(); context.currentTime = 0;
+      const document = new TestDocument(), row = document.createElement('button'); row.dataset.gameEventId = '20';
+      let reads = 0; row.getBoundingClientRect = () => { reads++; return { width: 240 }; };
+      const create = document.createElement.bind(document), animations = [], emitted = [];
+      document.createElement = tag => { const node = create(tag); node.isConnected = true; node.remove = () => row.removeChild(node);
+        node.animate = (frames, options) => { const animation = { frames, options, cancel() {} }; animations.push(animation); return animation; }; return node; };
+      const feedback = createMidiEventPlayback({ document, window: { performance: { now: () => clock.now } }, getRows: () => [row] });
+      const preview = new BrowserNotePreview({ createAudioContext: () => context, nowMs: () => clock.now,
+        onPlayback: event => { emitted.push(event); feedback.onPlayback({ ...event, owner: 'game' }); } }); await preview.enable();
+      const router = new MidiEventRouter({ enabled: true, mpe: { enabled: false }, density: { velocityBoost: 0, durationScale: 0 },
+        scale: { name: 'chromatic', root: 0 }, noteRange: { min: 0, max: 127 }, velocityRange: { min: 1, max: 127, default: 80 },
+        durationTicks: { min: 1, max: 960, default: 4 }, sfx: { 20: { note: 60, channel: 1, clipSequence: { id: 'poly', advance: 'game-tick', spacingTicks: 2,
+          steps: [{ voices: [{ note: 60, velocity: 45, durationTicks: 5 }, { note: 64, velocity: 95, durationTicks: 2 }], transformLayers: [{ type: 'repeat', count: 2, spacingTicks: 2, transpose: 7 }] }] } } } });
+      const timer = { tick: 0, frameTime: 60, onGameTick: new EventHandler(), getGameTicks() { return this.tick; }, get tps() { return 1000 / this.frameTime; } };
+      router.setOutput(preview.output); router.attach({ onEvent: new EventHandler(), gameTimer: timer });
+      try {
+        router._onEvent({ sfxId: 20, tick: 0, frameMs: 60 });
+        for (let index = 0; index < 2; index++) { context.currentTime += 0.06; clock.tick(60); timer.tick++; timer.onGameTick.trigger(); }
+        const starts = emitted.filter(event => event.phase === 'start');
+        expect(starts.map(event => [event.note, event.velocity])).to.deep.equal([[60, 45], [64, 95], [67, 45], [71, 95]]);
+        starts.forEach((event, index) => expect(event.durationMs).to.be.closeTo(index % 2 ? 120 : 300, 0.000001));
+        expect(new Set(starts.map(event => event.id)).size).to.equal(4); expect(row.children.map(node => node.textContent)).to.include.members(['C4', 'E4', 'G4', 'B4']);
+        const before = reads; for (let index = 0; index < 5; index++) feedback.render(); expect(reads).to.equal(before);
+        expect(animations.every(animation => animation.options.duration > 0 && animation.frames.at(-1).opacity === 0)).to.equal(true);
+        router.scheduler.allNotesOff(); expect(row.children).to.have.length(0); expect(preview._voices.size).to.equal(0);
+      } finally { router.dispose(); preview.dispose(); feedback.dispose(); }
+    });
   });
 });

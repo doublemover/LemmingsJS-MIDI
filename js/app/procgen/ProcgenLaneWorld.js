@@ -52,6 +52,7 @@ class ProcgenLaneWorld {
     this.assists = assists;
     this.accessTasks = new Array(this.laneCount).fill(null);
     this.workerLimits = normalizeWorkerLimits(workerLimits); this.edgeBlockers = new Array(this.laneCount).fill(null);
+    this._edgeWallCache = new Array(this.laneCount); this._edgeWallRevisions = new Float64Array(this.laneCount); this._edgeWallHazards = [];
     this.leftEdgeX = PROCGEN_LEFT_EDGE; this._processingLane = null;
     this.sprites = sprites;
     this._assistedColumn = { valid: false, x: 0, y: 0, height: 0, revision: 0, value: 0 };
@@ -97,6 +98,7 @@ class ProcgenLaneWorld {
     this._revealGrowth = (lane, previous, next, chunk) => {
       this.terrainRevision++; this.frontierRevision++;
       this.terrainTileRevisions.set(lane * 0x800000 + chunk, this.terrainRevision);
+      if (chunk === 0) this._edgeWallRevisions[lane]++;
     };
     this.eventTimeMs = 0;
     this.timer = { speedFactor: speed, onGameTick: new EventHandler(), getGameTicks: () => this.tickIndex,
@@ -168,7 +170,7 @@ class ProcgenLaneWorld {
   }
   _restart(previousDistances) {
     this.characterParticles?.clear(); this.triggerManager.reset(); this.hazardPlanner.reset(); this.edgeBlockers.fill(null); this._processingLane = null;
-    this._assistedColumn.valid = false; this.accessTasks.fill(null);
+    this._assistedColumn.valid = false; this.accessTasks.fill(null); this._edgeWallCache.fill(null); this._edgeWallRevisions.fill(0); this._edgeWallHazards.length = 0;
     this._musicActorPositions.clear(); this._musicCompletedSlot = 0; this._musicCompletedTick = this.tickIndex;
     for (const actor of this.actors) this._clearConstructionCrew(actor);
     this.actors.length = 0; this.activeCount = 0; this.admissionPaused = false; this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this.terrain?.reset?.();
@@ -350,6 +352,7 @@ class ProcgenLaneWorld {
     const index = (y % LANE_HEIGHT) * EDIT_CHUNK_WIDTH + x % EDIT_CHUNK_WIDTH;
     if (chunk[index] !== color + 1) {
       chunk[index] = color + 1; this.terrainRevision++;
+      if (x >= this.leftEdgeX && x <= this.leftEdgeX + 12) this._edgeWallRevisions[Math.floor(y / LANE_HEIGHT)]++;
       this.terrainActivityTicks[Math.floor(y / LANE_HEIGHT)] = this.tickIndex;
       const width = this.terrain?.chunkWidth || CHUNK_WIDTH;
       this.terrainTileRevisions.set(Math.floor(y / LANE_HEIGHT) * 0x800000 + Math.floor(x / width), this.terrainRevision);
@@ -415,7 +418,9 @@ class ProcgenLaneWorld {
       if (task.owner && this._workerKind(task.action) === kind) active++;
       const sameFootprint = task.action === action && Math.abs(task.targetX - targetX) < 12 && Math.abs(task.targetY - actor.y) < 8;
       if (sameFootprint && !task.owner && this.tickIndex < task.retryAt) return false;
-      if (kind === 'builders' && task.owner && task.footprint && footprint.x1 < task.footprint.x2 && footprint.x2 > task.footprint.x1 && footprint.y1 < task.footprint.y2 && footprint.y2 > task.footprint.y1) return false;
+      // Concurrent independent jobs remain legal; claimed physical footprints
+      // cannot be excavated twice or cut through another active construction.
+      if (task.owner && footprint && task.footprint && footprint.x1 < task.footprint.x2 && footprint.x2 > task.footprint.x1 && footprint.y1 < task.footprint.y2 && footprint.y2 > task.footprint.y1) return false;
     }
     if (active >= this.workerLimits[kind]) return false;
     tasks.push({ owner: actor, action, targetX, targetY: actor.y, footprint, direction: actor.lookRight, startX: actor.x, startY: actor.y, startLane: actor.laneIndex, startTick: this.tickIndex });
@@ -500,6 +505,29 @@ class ProcgenLaneWorld {
     if (owner && !owner.failureReason && !owner.removed && !owner.disabled && !owner.terminalReason && owner.action === this.actions[State.BLOCKING]) return owner;
     this.edgeBlockers[lane] = null; return null;
   }
+  _rearEdgeWall(actor) {
+    const lane = actor.laneIndex, y = actor.y, revision = this._edgeWallRevisions[lane];
+    const tileRevision = this.terrainTileRevisions.get(lane * 0x800000) || 0;
+    let cached = this._edgeWallCache[lane], hazardKey = cached?.hazardKey || '';
+    if (!cached || cached.tileRevision !== tileRevision || cached.y !== y || cached.revision !== revision) {
+      this.hazards.nearby(lane, this.leftEdgeX + 12, { ahead: 0, behind: 12 }, this._edgeWallHazards);
+      hazardKey = this._edgeWallHazards.map(hazard => `${hazard.x1}:${hazard.y1}:${hazard.x2}:${hazard.y2}`).join(',');
+    }
+    if (!cached || cached.revision !== revision || cached.y !== y || cached.hazardKey !== hazardKey) {
+      let wallX = null;
+      for (let x = this.leftEdgeX + 12; x >= this.leftEdgeX; x--) {
+        if (this._edgeWallHazards.some(hazard => x + 2 > hazard.x1 && x - 2 < hazard.x2 && y + 1 > hazard.y1 && y - 10 < hazard.y2)) break;
+        const up = this.getColumnStepHeight(x, y - 7, 8);
+        if (up === 8) { wallX = x; break; }
+        // Only local edge edits, source activation or changed hazard envelopes
+        // invalidate this actual flat return corridor; distant work does not.
+        if (up !== 1) break;
+      }
+      this._edgeWallCache[lane] = cached = { revision, y, wallX, hazardKey, tileRevision };
+    }
+    cached.tileRevision = tileRevision;
+    return cached.wallX != null && actor.x > cached.wallX;
+  }
   _clearConstructionCrew(actor) {
     const task = actor.assistConstructionTask;
     if (!task) return;
@@ -573,9 +601,16 @@ class ProcgenLaneWorld {
       return;
     }
     if (!actor.lookRight) {
-      if (x <= this.leftEdgeX + 12 && this.hasGroundAt(x, y + 1) && !this.hasGroundAt(x - 13, y + 1) && !this._edgeBlocker(actor.laneIndex)) {
-        actor.setAction(this.actions[State.BLOCKING]); this.edgeBlockers[actor.laneIndex] = actor;
-        this.stats.blockers++; actor.assists++;
+      if (x <= this.leftEdgeX + 12 && this.hasGroundAt(x, y + 1) && !this.hasGroundAt(x - 13, y + 1) && !this._rearEdgeWall(actor)) {
+        const owner = this._edgeBlocker(actor.laneIndex);
+        const contact = owner && this.triggerManager.byOwner.get(owner)?.find(trigger => trigger.type === TriggerTypes.BLOCKER_RIGHT);
+        // A coincident follower can already be behind a newly admitted owner's
+        // real contact. It may legally contain itself, never turn invisibly.
+        const behindContact = contact && x < contact.x1 && y >= contact.y1 && y < contact.y2;
+        if (!owner || behindContact) {
+          actor.setAction(this.actions[State.BLOCKING]); if (!owner) this.edgeBlockers[actor.laneIndex] = actor;
+          this.stats.blockers++; actor.assists++;
+        }
       }
       return;
     }
@@ -717,6 +752,7 @@ class ProcgenLaneWorld {
       const lane = Math.floor(key / 0x2000000), chunkX = (key % 0x2000000) * EDIT_CHUNK_WIDTH;
       if (chunkX + EDIT_CHUNK_WIDTH < minimums[lane] - 128) {
         this.editChunks.delete(key); this.terrainRevision++;
+        if (chunkX === 0) this._edgeWallRevisions[lane]++;
         const editIndex = Math.floor(chunkX / EDIT_CHUNK_WIDTH), slot = lane * this._editSlots + (editIndex & (this._editSlots - 1));
         if (this._laneEditIndex[lane] === editIndex) this._laneEdits[lane] = null;
         if (this._editIndices[slot] === editIndex) this._editCache[slot] = null;
@@ -750,7 +786,7 @@ class ProcgenLaneWorld {
       population: this.population.snapshot(), workerLimits: { ...this.workerLimits }, musicActorPositions: this._musicActorPositions.size, leftEdgeX: this.leftEdgeX, actorTriggers: this.triggerManager.snapshot(),
       stall: this.cohorts ? this.stall.snapshot(this.tickIndex) : null,
       distance: { min: Number.isFinite(minDistance) ? minDistance : 0, max: maxDistance, mean: distance / Math.max(1, this.actors.length) },
-      terrainGrowth: this.terrainGrowth?.snapshot() || null, generatedHazards: this.hazards.snapshot(), routePlanner: { ...this.hazardPlanner.stats },
+      terrainGrowth: this.terrainGrowth?.snapshot() || null, generatedHazards: this.hazards.snapshot(), routePlanner: { ...this.hazardPlanner.stats, tunnels: { ...this.hazardPlanner.tunnels.stats } },
       terrainGeneration: this.terrain?.getDebugState?.() || null, collisionResidentSlots: this._collisionSlots.length, residentCollisionMB: residentCollisionBytes / 1048576,
       frontierMargins: Array.from(this.generatedThrough, (x, lane) => x - this.frontiers[lane]),
       laneThemes: this.terrain?.laneThemes || null,
@@ -758,7 +794,7 @@ class ProcgenLaneWorld {
       cachedChallenges: this.challengeCache.size, terrainEdits: this.editChunks.size, terrainMemoryMB: this.editChunks.size * EDIT_CHUNK_WIDTH * LANE_HEIGHT / 1048576,
       ...this.stats };
   }
-  dispose() { for (const actor of this.actors) this._clearConstructionCrew(actor); this._musicActorPositions.clear(); this.triggerManager.dispose(); this.hazardPlanner.dispose(); this.terrainGrowth?.dispose(); this.edgeBlockers.fill(null); this.accessTasks.fill(null); this.onRestart = null; this.onLaneTransfer = null; this.characterParticles?.clear(); this.timer.onGameTick.dispose(); this.soundEvents.onEvent.dispose(); this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this._laneChunk.fill(null); this._collisionSlots.fill(null); this._laneEdits.fill(null); this._editCache.fill(null); this.terrain?.reset?.(); }
+  dispose() { for (const actor of this.actors) this._clearConstructionCrew(actor); this._musicActorPositions.clear(); this.triggerManager.dispose(); this.hazardPlanner.dispose(); this.terrainGrowth?.dispose(); this.edgeBlockers.fill(null); this.accessTasks.fill(null); this._edgeWallCache.fill(null); this._edgeWallHazards.length = 0; this.onRestart = null; this.onLaneTransfer = null; this.characterParticles?.clear(); this.timer.onGameTick.dispose(); this.soundEvents.onEvent.dispose(); this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this._laneChunk.fill(null); this._collisionSlots.fill(null); this._laneEdits.fill(null); this._editCache.fill(null); this.terrain?.reset?.(); }
 }
 
 export { ProcgenLaneWorld, MAX_PROCGEN_LANES, LANE_HEIGHT, CHUNK_WIDTH, PROCGEN_LEFT_EDGE, normalizeLaneCount };

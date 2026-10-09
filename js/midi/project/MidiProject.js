@@ -1,3 +1,4 @@
+import { sanitizeClipVoices, sanitizeClipTransformLayers } from './MidiClipTransforms.js';
 import { sanitizeMidiAutomationSpan, clampMidiAutomationSpanValue, MAX_MIDI_AUTOMATION_SPANS } from './MidiAutomationSpan.js';
 import { sanitizeMidiEnsemble, buildMidiEnsembleConfig } from './MidiEnsemble.js';
 import { DEFAULT_CONFIG, mergeConfig } from '../midi-mapping/MidiMappingDomain.js';
@@ -460,10 +461,13 @@ const sanitizeStep = (step, fallbackIndex) => {
   if (!isPlainObject(step)) {
     return createDefaultMidiStep(fallbackIndex, { note: null });
   }
+  const voices = sanitizeClipVoices(step.voices), layers = sanitizeClipTransformLayers(step.transformLayers);
   return {
     ...cloneObject(step),
+    ...(step.voices != null ? { voices: voices || [] } : {}),
+    ...(step.transformLayers != null ? { transformLayers: layers || [] } : {}),
     index: Math.max(0, toInteger(step.index, fallbackIndex)),
-    note: step.note == null ? null : sanitizeNote(step.note),
+    note: voices ? voices[0]?.note ?? null : step.note == null ? null : sanitizeNote(step.note),
     velocity: step.velocity == null ? null : sanitizeVelocity(step.velocity),
     durationTicks: step.durationTicks == null ? null : sanitizeDurationTicks(step.durationTicks),
     tie: sanitizeBoolean(step.tie, false),
@@ -912,10 +916,22 @@ const updateClipStep = (clips, clipId, stepIndex, patch) => clips.map(clip => {
   while (steps.length < clip.lengthSteps) {
     steps.push(createDefaultMidiStep(steps.length, { note: null }));
   }
+  const previous = steps[index], cleanPatch = cloneObject(patch);
+  if (previous?.voices && !Object.prototype.hasOwnProperty.call(cleanPatch, 'voices')) {
+    if (cleanPatch.note === null) cleanPatch.voices = [];
+    else {
+      const voices = previous.voices.map(voice => ({ ...voice }));
+      for (const key of ['note', 'velocity', 'durationTicks']) if (Object.prototype.hasOwnProperty.call(cleanPatch, key)) {
+        if (!voices.length && cleanPatch.note != null) voices.push({ note: cleanPatch.note });
+        if (voices[0]) voices[0][key] = cleanPatch[key];
+      }
+      cleanPatch.voices = voices;
+    }
+  }
   steps[index] = {
     ...createDefaultMidiStep(index, { note: null }),
     ...steps[index],
-    ...cloneObject(patch),
+    ...cleanPatch,
     index
   };
   return { ...clip, steps };
@@ -1480,6 +1496,9 @@ const buildRuntimeClipMapping = (source, track, clip, hiddenByTrack, globalVeloc
   if (notes.length > 1) out.notes = notes;
   if (clip?.playback) {
     out.clipSequence = { id: clip.id, ...clip.playback, steps: clip.steps.slice(0, 16).map(step => ({ ...step,
+      ...(step.voices ? { voices: step.voices.map(voice => ({ ...voice,
+        velocity: sanitizeVelocity(Math.round((voice.velocity ?? step.velocity ?? globalVelocityDefault) * track.velocityScale)),
+        durationTicks: voice.durationTicks ?? step.durationTicks ?? globalDurationDefault })) } : {}),
       velocity: sanitizeVelocity(Math.round((step.velocity ?? globalVelocityDefault) * track.velocityScale)),
       durationTicks: step.durationTicks ?? globalDurationDefault
     })) };
