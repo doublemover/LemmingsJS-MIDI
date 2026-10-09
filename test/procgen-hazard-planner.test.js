@@ -163,6 +163,25 @@ describe('bounded procgen physical route proposals', function() {
       expect(world.hazardPlanner.plan(actor), mode).to.equal(null); expect(world.stats.removedPixels).to.equal(0); world.dispose();
     }
   });
+  it('preserves active construction instead of excavating an unfinished shared stair, and releases protection after completion', () => {
+    const ground = (x, y) => y >= 84 || y >= 72 && y <= 74 || x >= 80 && x < 90 && y >= 44;
+    for (const direction of ['diggers', 'miners']) {
+      const world = make(ground), actor = at(world, 64), builder = world._spawn(0, false);
+      world.hasSteelAt = (x, y) => direction === 'miners' && x === 64 && y === 73 || x >= 80 && x < 90 && y < 75;
+      expect(world.hazardPlanner.plan(actor)).to.include({ kind: direction });
+      Object.assign(builder, { x: 60, y: 72, lookRight: true }); builder.setAction(world.actions[State.WALKING]);
+      expect(world.assignWorker(builder, 'builders', 84, { x1: 60, x2: 88, y1: 60, y2: 73 })).to.equal(true);
+      // The same-position cached proposal must see a new claim in this tick.
+      expect(world.hazardPlanner.plan(actor)).to.equal(null); expect(world.stats.removedPixels).to.equal(0);
+      builder.setAction(world.actions[State.WALKING]); world.tickIndex++;
+      expect(world.hazardPlanner.plan(actor)).to.include({ kind: direction }); world.dispose();
+    }
+    const world = make((x, y) => y >= 72 || x >= 76 && x < 90 && y >= 44), actor = at(world, 68), builder = world._spawn(0, false);
+    expect(world.hazardPlanner.plan(actor)).to.include({ kind: 'bashers' });
+    Object.assign(builder, { x: 90, y: 80, lookRight: false }); builder.setAction(world.actions[State.WALKING]);
+    expect(world.assignWorker(builder, 'builders', 70, { x1: 70, x2: 92, y1: 68, y2: 81 })).to.equal(true);
+    expect(world.hazardPlanner.plan(actor)).to.equal(null); world.dispose();
+  });
   it('bounds shared work, caches same-tick proposals, rotates lanes and clears reset/dispose references', () => {
     const world = make((x, y) => y >= (x >= 80 ? 64 : 72), [], { laneCount: 64 }), planner = new ProcgenHazardPlanner(world);
     world.actors.forEach((actor, lane) => at(world, 64, lane * 96 + 72, lane));

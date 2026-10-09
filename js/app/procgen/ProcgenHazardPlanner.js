@@ -33,6 +33,18 @@ class ProcgenHazardPlanner {
     }
     return { y: last, span };
   }
+  _constructionOverlap(bounds) {
+    const first = Math.max(0, Math.floor(bounds.y1 / 96)), last = Math.min(this.world.laneCount - 1, Math.floor((bounds.y2 - 1) / 96));
+    for (let lane = first; lane <= last; lane++) {
+      const tasks = this.world.accessTasks[lane]; if (!tasks) continue;
+      for (const task of tasks) {
+        const owner = task.owner, footprint = task.footprint;
+        if (!footprint || !owner || owner.removed || owner.disabled || owner.failureReason || owner.terminalReason || owner.action !== this.world.actions[State.BUILDING]) continue;
+        if (bounds.x1 < footprint.x2 && bounds.x2 > footprint.x1 && bounds.y1 < footprint.y2 && bounds.y2 > footprint.y1) return true;
+      }
+    }
+    return false;
+  }
   _builder(actor) {
     if (!this.world.workerLimits?.builders || !this._ground(actor.x, actor.y) || !this._safe(actor.x, actor.y)) return null;
     let x = actor.x, y = actor.y;
@@ -69,15 +81,17 @@ class ProcgenHazardPlanner {
       if (x >= cliff.x && clear >= 4) { end = x; break; }
     }
     if (end == null) return null;
+    const footprint = { x1: startX - 1, x2: end + 9, y1: actor.y - 9, y2: actor.y + 2 };
     const continuation = this._continuation(end + 1, actor.y);
-    if (!continuation) return null;
+    if (!continuation || this._constructionOverlap(footprint)) return null;
     const depth = Math.max(0, actor.y - cliff.y), ticks = (startX - actor.x) + 16 * Math.ceil((end - startX) / 5);
     const crew = this.world.getLaneMusicSignals?.(actor.laneIndex);
-    return { kind: 'bashers', targetX: cliff.x, startX, footprint: null, continuationY: continuation.y, estimatedTicks: ticks, materialCost: 0,
+    return { kind: 'bashers', targetX: cliff.x, startX, footprint, continuationY: continuation.y, estimatedTicks: ticks, materialCost: 0,
       score: 100 - ticks / 8 - excavated / 24 - depth * 4 + continuation.span + Math.min(8, crew?.alive || 1) - (crew?.bashingCount || 0) * 4 };
   }
   _digDescent(actor) {
-    if (!this.world.workerLimits?.diggers || !this._ground(actor.x, actor.y) || !this._safe(actor.x, actor.y)) return null;
+    if (!this.world.workerLimits?.diggers || !this._ground(actor.x, actor.y) || !this._safe(actor.x, actor.y) ||
+        this._constructionOverlap({ x1: actor.x - 4, x2: actor.x + 5, y1: actor.y - 2, y2: actor.y + 21 })) return null;
     // Prefer an already opened nearby descent. Ordinary followers can walk
     // into the real shaft and fall to its supported floor without another job.
     for (let dx = 1; dx <= 24; dx++) if (!this._ground(actor.x + dx, actor.y)) {
@@ -111,7 +125,8 @@ class ProcgenHazardPlanner {
   }
   _mineDescent(actor) {
     const action = this.world.actions[State.MINING], masks = action?.masks?.get('right');
-    if (!masks || !this.world.workerLimits?.diggers || !this._ground(actor.x, actor.y) || !this._safe(actor.x, actor.y)) return null;
+    if (!masks || !this.world.workerLimits?.diggers || !this._ground(actor.x, actor.y) || !this._safe(actor.x, actor.y) ||
+        this._constructionOverlap({ x1: actor.x - 1, x2: actor.x + 8, y1: actor.y - 12, y2: actor.y + 1 })) return null;
     let x = actor.x, y = actor.y, elapsed = 0, exit = null;
     // Both shared mining masks cut at the current feet row or above. The lower
     // support tested at frame3/15 is unchanged by those cuts, so a nearby natural
@@ -137,9 +152,10 @@ class ProcgenHazardPlanner {
     if (!exit) return null;
     const landing = this._floor(exit.x, exit.y + 1, 0, 12);
     if (landing == null || !this._safe(exit.x, landing) || this._ground(exit.x, landing - 9)) return null;
-    const continuation = this._continuation(exit.x, landing); if (!continuation) return null;
+    const footprint = { x1: actor.x - 1, x2: exit.x + 8, y1: actor.y - 12, y2: landing + 1 };
+    const continuation = this._continuation(exit.x, landing); if (!continuation || this._constructionOverlap(footprint)) return null;
     const ticks = elapsed + Math.ceil((landing - exit.y) / 3) + 8;
-    return { kind: 'miners', targetX: exit.x, footprint: { x1: actor.x - 1, x2: exit.x + 8, y1: actor.y - 12, y2: landing + 1 },
+    return { kind: 'miners', targetX: exit.x, footprint,
       continuationY: continuation.y, estimatedTicks: ticks, materialCost: 0, reason: 'known-safe-mine-descent', score: 72 - ticks / 8 - (landing - actor.y) + continuation.span };
   }
   plan(actor) {
@@ -148,7 +164,11 @@ class ProcgenHazardPlanner {
     const lane = actor.laneIndex, stride = Math.max(1, Math.ceil(world.laneCount / ROUTE_LANES_PER_TICK));
     if (lane % stride !== world.tickIndex % stride) { this.stats.deferred++; return null; }
     const cached = this.cache[lane], key = `${world.generation}:${actor.x}:${actor.y}:${world.terrainRevision}:${world.frontierRevision}:${world.workerLimits?.builders}:${world.workerLimits?.bashers}:${world.workerLimits?.diggers}`;
-    if (cached?.tick === world.tickIndex) return cached.key === key ? cached.proposal : null;
+    if (cached?.tick === world.tickIndex) {
+      const proposal = cached.proposal;
+      if (cached.key !== key || proposal && proposal.kind !== 'builders' && this._constructionOverlap(proposal.footprint)) return null;
+      return proposal;
+    }
     this.top = lane * 96; this.through = world.generatedThrough[lane]; this.probes = 0; this.exhausted = false; this.unrevealed = false;
     world.hazards.nearby(lane, actor.x, { ahead: MAX_LOCAL_ROUTE_DISTANCE, behind: 4 }, this.observations);
     for (const adjacent of [Math.floor((actor.y - 24) / 96), Math.floor((actor.y + 12) / 96)]) if (adjacent !== lane && adjacent >= 0 && adjacent < world.laneCount) {

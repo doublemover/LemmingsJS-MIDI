@@ -99,6 +99,10 @@ class ProcgenRecipeTerrain {
     const descriptor = { code, phase, phaseCode, origin, placements, progression, left, right, middle,
       gapX: origin + 88 + (code >>> 5) % 8, gapWidth: gap ? 3 + (code >>> 10) % (progression.gapMaximum - 2) : 0,
       barrierX: origin + (placements[0]?.x || 0), barrierWidth: progression.safeIntro ? 0 : (placements[0]?.piece.width || 0) };
+    // Early narrow gaps retain a real source-foundation recovery floor. Their
+    // upper opening and optional bridge remain; later gaps keep full depth.
+    descriptor.gapFloor = descriptor.gapWidth && progression.gapDepth != null ? Math.min(TERRAIN_HEIGHT - 2,
+      Math.max(this._surface(seed, chunk, descriptor.gapX - origin - 1, descriptor), this._surface(seed, chunk, descriptor.gapX - origin + descriptor.gapWidth, descriptor)) + progression.gapDepth) : null;
     descriptor.objects = [];
     descriptor.zone = this.zonePlanner?.zoneAt(seed, origin) || null;
     const pattern = this.patterns[mix(phaseCode ^ code) % this.patterns.length];
@@ -188,13 +192,13 @@ class ProcgenRecipeTerrain {
     if (x < 0 || x >= TERRAIN_CHUNK_WIDTH || y < 0 || y >= TERRAIN_HEIGHT) return false;
     const pattern = this.patterns[mix(descriptor.phaseCode ^ descriptor.code) % this.patterns.length];
     const active = this._activePlan(seed, chunk, state);
-    let solid = (!active || !!state.active[active.foundationByColumn[x]]) && pattern.topProfile[this._patternColumn(pattern, x + descriptor.origin)] >= 0 && y >= this._surface(seed, chunk, x, descriptor);
+    let solid = (!active || !!state.active[active.foundationByColumn[x]]) && pattern.topProfile[this._foundationColumn(pattern, x + descriptor.origin, descriptor)] >= 0 && y >= this._surface(seed, chunk, x, descriptor);
     for (let index = 0; index < descriptor.placements.length; index++) {
       const placement = descriptor.placements[index]; if (placement.decor || active && !state.active[active.placementJobs[index]]) continue;
       const { piece } = placement, dx = x - placement.x, dy = y - placement.y;
       if (dx >= 0 && dx < piece.width && dy >= 0 && dy < piece.height && !(piece.frame[(placement.flipY ? piece.height - 1 - dy : dy) * piece.width + (placement.flip ? piece.width - 1 - dx : dx)] & 128)) solid = true;
     }
-    if (x + descriptor.origin >= descriptor.gapX && x + descriptor.origin < descriptor.gapX + descriptor.gapWidth) solid = false;
+    if (this._gapVoid(descriptor, x + descriptor.origin, y)) solid = false;
     for (let index = 0; index < descriptor.objects.length; index++) {
       const object = descriptor.objects[index]; if (object.role !== 'liquid' || active && !state.active[active.objectJobs[index]]) continue;
       const dx = x + descriptor.origin - object.x, bottom = object.y + object.piece.image.height;
@@ -206,6 +210,13 @@ class ProcgenRecipeTerrain {
   _patternColumn(pattern, worldX) {
     const x = worldX % pattern.width;
     return worldX < PROCGEN_INTRO_SAFE_END ? pattern.introColumns[x] : x;
+  }
+  _foundationColumn(pattern, worldX, descriptor) {
+    const column = this._patternColumn(pattern, worldX);
+    return descriptor.gapFloor != null && worldX >= descriptor.gapX && worldX < descriptor.gapX + descriptor.gapWidth && pattern.topProfile[column] < 0 ? pattern.introColumns[column] : column;
+  }
+  _gapVoid(descriptor, worldX, y) {
+    return worldX >= descriptor.gapX && worldX < descriptor.gapX + descriptor.gapWidth && (descriptor.gapFloor == null || y < descriptor.gapFloor);
   }
   _elevation(seed, node) {
     const progression = progressionAt(node * TERRAIN_CHUNK_WIDTH), code = this._code(seed ^ 0xc2b2ae35, node);
@@ -246,7 +257,7 @@ class ProcgenRecipeTerrain {
     // Column-shift an independently selected source motif onto this chunk's
     // elevation profile, extending its opaque columns into connected foundations.
     for (let x = 0; x < width; x++) {
-      const px = this._patternColumn(pattern, x + d.origin), top = pattern.topProfile[px];
+      const px = this._foundationColumn(pattern, x + d.origin, d), top = pattern.topProfile[px];
       if (top < 0) continue;
       const surface = this._surface(seed, chunk, x, d);
       for (let y = surface; y < height; y++) {
@@ -256,7 +267,7 @@ class ProcgenRecipeTerrain {
       }
     }
     for (const placement of d.placements) if (!placement.decor) stamp(placement);
-    if (d.gapWidth) for (let x = d.gapX - d.origin; x < d.gapX - d.origin + d.gapWidth; x++) for (let y = 0; y < height; y++) {
+    if (d.gapWidth) for (let x = d.gapX - d.origin; x < d.gapX - d.origin + d.gapWidth; x++) for (let y = 0; y < (d.gapFloor ?? height); y++) {
       const index = y * width + x;
       solid[index >>> 5] &= ~(1 << (index & 31)); steel[index >>> 5] &= ~(1 << (index & 31));
       if (pixels) pixels[index] = 0;
@@ -283,7 +294,7 @@ class ProcgenRecipeTerrain {
   rasterSample(seed, chunk, x, y, descriptor = this.describe(seed, chunk), state = null) {
     if (x < 0 || x >= TERRAIN_CHUNK_WIDTH || y < 0 || y >= TERRAIN_HEIGHT) return 0;
     const pattern = this.patterns[mix(descriptor.phaseCode ^ descriptor.code) % this.patterns.length];
-    const px = this._patternColumn(pattern, x + descriptor.origin), surface = this._surface(seed, chunk, x, descriptor);
+    const px = this._foundationColumn(pattern, x + descriptor.origin, descriptor), surface = this._surface(seed, chunk, x, descriptor);
     const active = this._activePlan(seed, chunk, state);
     let solid = (!active || !!state.active[active.foundationByColumn[x]]) && pattern.topProfile[px] >= 0 && y >= surface;
     let color = solid ? pattern.columnColors[px * TERRAIN_HEIGHT + y - surface] : 0;
@@ -297,7 +308,7 @@ class ProcgenRecipeTerrain {
       const placement = descriptor.placements[index]; if (placement.decor || active && !state.active[active.placementJobs[index]]) continue;
       const stamped = pieceColor(placement); if (stamped) { color = stamped; solid = true; }
     }
-    if (x + descriptor.origin >= descriptor.gapX && x + descriptor.origin < descriptor.gapX + descriptor.gapWidth) { color = 0; solid = false; }
+    if (this._gapVoid(descriptor, x + descriptor.origin, y)) { color = 0; solid = false; }
     for (let index = 0; index < descriptor.objects.length; index++) {
       const object = descriptor.objects[index]; if (object.role !== 'liquid' || active && !state.active[active.objectJobs[index]]) continue;
       const dx = x + descriptor.origin - object.x, bottom = object.y + object.piece.image.height;
@@ -312,7 +323,7 @@ class ProcgenRecipeTerrain {
     return color;
   }
   steelSample(seed, chunk, x, y, descriptor = this.describe(seed, chunk), state = null) {
-    if (x < 0 || x >= TERRAIN_CHUNK_WIDTH || y < 0 || y >= TERRAIN_HEIGHT || x + descriptor.origin >= descriptor.gapX && x + descriptor.origin < descriptor.gapX + descriptor.gapWidth) return false;
+    if (x < 0 || x >= TERRAIN_CHUNK_WIDTH || y < 0 || y >= TERRAIN_HEIGHT || this._gapVoid(descriptor, x + descriptor.origin, y)) return false;
     const active = this._activePlan(seed, chunk, state);
     let steel = false;
     for (let index = 0; index < descriptor.placements.length; index++) {

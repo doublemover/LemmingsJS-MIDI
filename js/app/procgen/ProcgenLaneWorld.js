@@ -170,6 +170,7 @@ class ProcgenLaneWorld {
     this.characterParticles?.clear(); this.triggerManager.reset(); this.hazardPlanner.reset(); this.edgeBlockers.fill(null); this._processingLane = null;
     this._assistedColumn.valid = false; this.accessTasks.fill(null);
     this._musicActorPositions.clear(); this._musicCompletedSlot = 0; this._musicCompletedTick = this.tickIndex;
+    for (const actor of this.actors) this._clearConstructionCrew(actor);
     this.actors.length = 0; this.activeCount = 0; this.admissionPaused = false; this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this.terrain?.reset?.();
     this._laneChunk.fill(null); this._laneChunkIndex.fill(-1); this._collisionSlots.fill(null); this._collisionIndices.fill(-1); this._laneEdits.fill(null); this._laneEditIndex.fill(-1); this._editCache.fill(null); this._editIndices.fill(-1); this.frontiers.fill(36);
     this.generatedThrough.fill(this.terrain?.chunkWidth || CHUNK_WIDTH); this.terrainRevision++; this.frontierRevision++; this.generation++; this.generationStartTick = this.tickIndex;
@@ -417,7 +418,7 @@ class ProcgenLaneWorld {
       if (kind === 'builders' && task.owner && task.footprint && footprint.x1 < task.footprint.x2 && footprint.x2 > task.footprint.x1 && footprint.y1 < task.footprint.y2 && footprint.y2 > task.footprint.y1) return false;
     }
     if (active >= this.workerLimits[kind]) return false;
-    tasks.push({ owner: actor, action, targetX, targetY: actor.y, footprint, direction: actor.lookRight, startTick: this.tickIndex });
+    tasks.push({ owner: actor, action, targetX, targetY: actor.y, footprint, direction: actor.lookRight, startX: actor.x, startY: actor.y, startLane: actor.laneIndex, startTick: this.tickIndex });
     while (tasks.length > MAX_PROCGEN_WORKERS * 3 + 8) {
       const index = tasks.findIndex(task => !task.owner);
       if (index < 0) break;
@@ -473,7 +474,7 @@ class ProcgenLaneWorld {
     if (!Number.isFinite(actor.y) || actor.y < 0 || actor.y >= this.height + 6) return;
     const lane = Math.min(this.laneCount - 1, Math.floor(actor.y / LANE_HEIGHT)), previous = actor.laneIndex;
     if (lane === previous) return;
-    actor.laneIndex = lane; this.stats.laneTransfers++;
+    actor.laneIndex = lane; this._clearConstructionCrew(actor); this.stats.laneTransfers++;
     const departed = this.stall.lanes[previous], arrived = this.stall.lanes[lane];
     departed.transferredOut = (departed.transferredOut || 0) + 1; arrived.transferredIn = (arrived.transferredIn || 0) + 1;
     departed.populationPeak = Math.max(0, (departed.populationPeak ?? departed.peakAlive) - 1);
@@ -491,6 +492,7 @@ class ProcgenLaneWorld {
   }
   _syncTriggerOwner(actor) {
     this.triggerManager.synchronize(actor);
+    if (actor.assistConstructionTask && (actor.removed || actor.failureReason || actor.disabled || actor.terminalReason || actor.action !== this.actions[State.BLOCKING] || actor.laneIndex !== actor.assistConstructionTask.startLane)) this._clearConstructionCrew(actor);
     if (this.edgeBlockers[actor.laneIndex] === actor && (actor.removed || actor.failureReason || actor.disabled || actor.terminalReason || actor.action !== this.actions[State.BLOCKING])) this.edgeBlockers[actor.laneIndex] = null;
   }
   _edgeBlocker(lane) {
@@ -498,8 +500,65 @@ class ProcgenLaneWorld {
     if (owner && !owner.failureReason && !owner.removed && !owner.disabled && !owner.terminalReason && owner.action === this.actions[State.BLOCKING]) return owner;
     this.edgeBlockers[lane] = null; return null;
   }
+  _clearConstructionCrew(actor) {
+    const task = actor.assistConstructionTask;
+    if (!task) return;
+    if (task.blocker === actor) task.blocker = null;
+    actor.assistConstructionTask = null;
+  }
+  _constructionPassage(task) {
+    if (task.passageRevision === this.terrainRevision) return task.passage;
+    task.passageRevision = this.terrainRevision; task.passage = false;
+    if (!task.direction || !task.footprint || !Number.isFinite(task.startX) || !Number.isFinite(task.startY) || !Number.isFinite(task.footprint.x2) ||
+        task.footprint.x2 < task.startX || task.footprint.x2 - task.startX > 40) return false;
+    let y = task.startY;
+    for (let x = task.startX; x <= task.footprint.x2; x++) {
+      const up = this.getColumnStepHeight(x, y - 7, 8);
+      // A solid wall already turns ordinary walkers. Only an open drop needs
+      // temporary crowd containment while the shared builder lays its route.
+      if (up === 8) return task.passage = null;
+      if (up) y -= up - 1;
+      else {
+        const down = this.getColumnGapDepth(x, y + 1, 12);
+        if (down === 13) return false;
+        y += down;
+      }
+      if (y < 0 || y >= this.height) return false;
+    }
+    return task.passage = true;
+  }
+  _emptyBashMasks(actor) {
+    const masks = this.actions[State.BASHING].masks?.get(actor.getDirection());
+    for (let index = 0; index < 4; index++) {
+      const mask = masks?.GetMask(index); if (!mask) return false;
+      for (let dy = 0; dy < mask.height; dy++) for (let dx = 0; dx < mask.width; dx++) {
+        if (!mask.at(dx, dy) && this.hasGroundAt(actor.x + mask.offsetX + dx, actor.y + mask.offsetY + dy)) return false;
+      }
+    }
+    return true;
+  }
+  _assistConstructionCrew(actor) {
+    const held = actor.assistConstructionTask;
+    if (held && actor.action === this.actions[State.BLOCKING]) {
+      if (this._constructionPassage(held) !== false && this._emptyBashMasks(actor)) this.assignWorker(actor, 'bashers');
+      return true;
+    }
+    if (actor.action !== this.actions[State.WALKING] || !actor.lookRight || actor.scout || actor.canClimb || actor.hasParachute || !this.workerLimits.bashers) return false;
+    const tasks = this.accessTasks[actor.laneIndex];
+    if (!tasks) return false;
+    for (const task of tasks) {
+      const owner = task.owner;
+      if (task.blocker || !owner || owner.removed || owner.failureReason || owner.terminalReason || owner.action !== this.actions[State.BUILDING] ||
+          !task.direction || task.startLane !== actor.laneIndex || actor.x < task.startX - 16 || actor.x > task.startX - 8 ||
+          Math.abs(actor.y - task.startY) > 3 || !this.hasGroundAt(actor.x, actor.y + 1) || this._constructionPassage(task) !== false || !this._emptyBashMasks(actor)) continue;
+      actor.setAction(this.actions[State.BLOCKING]); actor.assistConstructionTask = task; task.blocker = actor;
+      this.stats.blockers++; actor.assists++; return true;
+    }
+    return false;
+  }
   _assist(actor) {
     if (!this.assists) return;
+    if (this._assistConstructionCrew(actor)) return;
     const scoutReady = this.population.scoutReady(actor, this.tickIndex);
     if (scoutReady && actor.action === this.actions[State.FALLING] && actor.state > 16 &&
         this.actions[State.FLOATING].triggerLemAction(actor)) actor.assists++;
@@ -699,7 +758,7 @@ class ProcgenLaneWorld {
       cachedChallenges: this.challengeCache.size, terrainEdits: this.editChunks.size, terrainMemoryMB: this.editChunks.size * EDIT_CHUNK_WIDTH * LANE_HEIGHT / 1048576,
       ...this.stats };
   }
-  dispose() { this._musicActorPositions.clear(); this.triggerManager.dispose(); this.hazardPlanner.dispose(); this.terrainGrowth?.dispose(); this.edgeBlockers.fill(null); this.accessTasks.fill(null); this.onRestart = null; this.onLaneTransfer = null; this.characterParticles?.clear(); this.timer.onGameTick.dispose(); this.soundEvents.onEvent.dispose(); this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this._laneChunk.fill(null); this._collisionSlots.fill(null); this._laneEdits.fill(null); this._editCache.fill(null); this.terrain?.reset?.(); }
+  dispose() { for (const actor of this.actors) this._clearConstructionCrew(actor); this._musicActorPositions.clear(); this.triggerManager.dispose(); this.hazardPlanner.dispose(); this.terrainGrowth?.dispose(); this.edgeBlockers.fill(null); this.accessTasks.fill(null); this.onRestart = null; this.onLaneTransfer = null; this.characterParticles?.clear(); this.timer.onGameTick.dispose(); this.soundEvents.onEvent.dispose(); this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this._laneChunk.fill(null); this._collisionSlots.fill(null); this._laneEdits.fill(null); this._editCache.fill(null); this.terrain?.reset?.(); }
 }
 
 export { ProcgenLaneWorld, MAX_PROCGEN_LANES, LANE_HEIGHT, CHUNK_WIDTH, PROCGEN_LEFT_EDGE, normalizeLaneCount };

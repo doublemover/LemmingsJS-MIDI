@@ -1,7 +1,8 @@
 import { expect } from 'chai';
 import { ProcgenLaneWorld } from '../js/app/procgen/ProcgenLaneWorld.js';
+import { LemmingStateType as State } from '../js/lemmings/LemmingStateType.js';
 import { TriggerTypes as Types } from '../js/level/TriggerTypes.js';
-import { PROCGEN_INTRO_SAFE_END, PROCGEN_HAZARD_RAMP_END, progressionAt } from '../js/app/procgen/ProcgenTerrainProgression.js';
+import { PROCGEN_INTRO_SAFE_END, PROCGEN_HAZARD_RAMP_END, PROCGEN_RECOVERY_GAP_END, progressionAt } from '../js/app/procgen/ProcgenTerrainProgression.js';
 import { loadProcgenMasks, loadProcgenTerrain } from '../scripts/bench-procgen-lanes.js';
 
 const lethal = new Set([Types.TRAP, Types.DROWN, Types.KILL, Types.FRYING]);
@@ -43,6 +44,41 @@ describe('source hazard introduction and bounded observations', function() {
     }
     expect(hazards).to.be.greaterThan(0);
     const first = terrain.getChunk(42, 20, true); terrain.reset(); expect(terrain.getChunk(42, 20, true).pixels).to.deep.equal(first.pixels);
+  });
+  it('keeps the first sourced Brick gap open above a real materialized recovery floor, and ordinary crews traverse it', async () => {
+    const terrain = await loadProcgenTerrain('lemmings_ohNo', 0), world = new ProcgenLaneWorld({ masks, terrain, seed: 42, assists: false });
+    const seed = world.laneSeeds[0], descriptor = terrain.describe(seed, 2), x = descriptor.gapX - descriptor.origin;
+    expect(descriptor).to.include({ gapWidth: 3, gapFloor: 75 });
+    const plan = terrain.growthPlan(seed, 2), state = { plan, active: new Uint8Array(plan.jobs.length), complete: false, revision: 0 };
+    expect(terrain.solidSample(seed, 2, x, descriptor.gapFloor, descriptor, state)).to.equal(false);
+    expect(terrain.rasterSample(seed, 2, x, descriptor.gapFloor, descriptor, state)).to.equal(0);
+    for (let index = 0; index <= plan.foundationByColumn[x]; index++) state.active[index] = 1;
+    expect(terrain.solidSample(seed, 2, x, descriptor.gapFloor - 1, descriptor, state)).to.equal(false);
+    expect(terrain.solidSample(seed, 2, x, descriptor.gapFloor, descriptor, state)).to.equal(true);
+    expect(terrain.rasterSample(seed, 2, x, descriptor.gapFloor, descriptor, state)).to.be.greaterThan(0);
+    state.active.fill(1); const full = terrain.getChunk(seed, 2, true);
+    for (let y = 0; y < 96; y++) for (let atX = 0; atX < 128; atX++) {
+      const at = y * 128 + atX;
+      expect(terrain.solidSample(seed, 2, atX, y, descriptor, state)).to.equal(!!(full.solid[at >>> 5] & (1 << (at & 31))));
+      expect(terrain.rasterSample(seed, 2, atX, y, descriptor, state)).to.equal(full.pixels[at]);
+      expect(terrain.steelSample(seed, 2, atX, y, descriptor, state)).to.equal(!!(full.steel[at >>> 5] & (1 << (at & 31))));
+    }
+    const leader = world.actors[0];
+    Object.assign(leader, { x: descriptor.gapX - 3, y: descriptor.right, lookRight: true }); leader.setAction(world.actions[State.WALKING]); world.step();
+    expect(world.hazardPlanner.plan(leader)).to.include({ kind: 'builders', reason: 'supported-local-gap' });
+    for (let ordinal = 0; ordinal < 8; ordinal++) {
+      const actor = ordinal ? world._spawn(0, false) : world.actors[0];
+      Object.assign(actor, { x: descriptor.gapX - 15 - ordinal % 4, y: 72, lookRight: true }); actor.setAction(world.actions[State.WALKING]);
+    }
+    for (let tick = 0; tick < 48; tick++) world.step();
+    expect(world.spawnedTotal).to.equal(8); expect(world.activeCount).to.equal(8); expect(world.stats.failures).to.equal(0);
+    expect(world.actors.every(actor => actor.x > descriptor.gapX + descriptor.gapWidth + 16 && !actor.failureReason && !actor.canClimb && !actor.hasParachute)).to.equal(true);
+    expect(world.stats.builds + world.stats.bashes + world.stats.digs + world.stats.mines).to.equal(0); world.dispose();
+    expect(progressionAt(PROCGEN_RECOVERY_GAP_END - 128).gapDepth).to.equal(6);
+    expect(progressionAt(PROCGEN_RECOVERY_GAP_END).gapDepth).to.equal(null);
+    const later = terrain.describe(seed, 16);
+    expect(later.gapWidth).to.equal(7); expect(later.origin).to.be.at.least(PROCGEN_RECOVERY_GAP_END); expect(later.gapFloor).to.equal(null);
+    expect(terrain.solidSample(seed, later.origin / 128, later.gapX - later.origin, 95, later)).to.equal(false);
   });
   it('exposes only bounded actual revealed/supported hazard owners and cooldown without contact or animation changes', async () => {
     const terrain = await loadProcgenTerrain('lemmings', 0); terrain.supportsFineGrowth = false;
