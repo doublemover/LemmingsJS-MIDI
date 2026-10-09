@@ -96,6 +96,7 @@ class TimeTravelController {
       }
       this.history.applyDeltaBackward(this.game, delta);
       timer.tickIndex = targetTick;
+      this.game.invalidateMusicObservations?.();
       this._emitReverseEvents(delta);
       if (this.game.gameGui) {
         this.game.gameGui.gameTimeChanged = true;
@@ -126,6 +127,7 @@ class TimeTravelController {
       cursor += 1;
       timer.tickIndex = cursor;
     }
+    this.game.invalidateMusicObservations?.();
     if (this.game.gameGui) {
       this.game.gameGui.gameTimeChanged = true;
     }
