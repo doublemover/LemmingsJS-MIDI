@@ -75,6 +75,7 @@ describe('MidiEventRouter 4', function() {
     expect(plan.off.count).to.equal(4);
     const zero = router._planEntries({ note: 60, durationTicks: 0 }, 100, 1);
     expect(zero.off.count).to.equal(0);
+    expect(router._planEntries({ note: 60, durationTicks: NaN }, 100, 1).off.count).to.equal(0);
   });
 
   it('drops events when hard count limits are exceeded', function() {

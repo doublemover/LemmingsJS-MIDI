@@ -367,7 +367,8 @@ const runMocha = (
   } = {}
 ) => {
   const mochaStart = Date.now();
-  const res = spawn(process.execPath, [mochaBin, ...args], { stdio: 'inherit' });
+  const options = { stdio: 'inherit', ...(enforceBudget ? { timeout: Math.max(1, budgetMs - preRunElapsedMs) } : {}) };
+  const res = spawn(process.execPath, [mochaBin, ...args], options);
   const mochaElapsedMs = Math.max(0, Date.now() - mochaStart);
   const totalElapsedMs = preRunElapsedMs + mochaElapsedMs;
   if (res.error) {

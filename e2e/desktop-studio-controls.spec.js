@@ -105,10 +105,24 @@ test('modulation labels sit inside high-contrast compact fields', async ({ page 
     return { fieldBackground: window.getComputedStyle(field).backgroundColor, labelColor: window.getComputedStyle(span).color,
       inputBackground: window.getComputedStyle(input).backgroundColor, rowBackground: window.getComputedStyle(row).backgroundColor,
       labelInside: label.left >= box.left && label.right <= box.right && label.top >= box.top && control.bottom <= box.bottom,
-      characterLabels: document.querySelector('.character-controls .character-control-content').innerText.trim() };
+      hiddenLabels: [...document.querySelectorAll('.character-controls .visually-hidden')].map(element => { const rect = element.getBoundingClientRect(); return { width: rect.width, clipped: window.getComputedStyle(element).clip.match(/-?[\d.]+/g)?.every(value => Number(value) === 0) }; }),
+      swatches: [...document.querySelectorAll('.character-composite .palette-choices')].map(group => [...group.querySelectorAll('button')].map(button => { const rect = button.getBoundingClientRect(), style = window.getComputedStyle(button); return { left: rect.left, right: rect.right, width: rect.width, leftRadius: style.borderBottomLeftRadius, rightRadius: style.borderBottomRightRadius }; }).filter(rect => rect.width > 0)) };
   });
-  expect(result.fieldBackground).toBe('rgb(252, 251, 245)');
-  expect(result.labelColor).toBe('rgb(65, 86, 65)'); expect(result.inputBackground).toBe('rgba(0, 0, 0, 0)');
-  expect(result.rowBackground).toBe('rgb(38, 58, 45)'); expect(result.labelInside).toBe(true); expect(result.characterLabels).toBe('');
+  const luminance = color => {
+    const values = color.match(/[\d.]+/g).slice(0, 3).map(Number).map(value => { const channel = value / 255; return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4; });
+    return values[0] * 0.2126 + values[1] * 0.7152 + values[2] * 0.0722;
+  };
+  const background = luminance(result.fieldBackground), text = luminance(result.labelColor);
+  expect((Math.max(background, text) + 0.05) / (Math.min(background, text) + 0.05)).toBeGreaterThanOrEqual(4.5);
+  expect(result.labelInside).toBe(true);
+  for (const label of result.hiddenLabels) { expect(label.width).toBeLessThanOrEqual(1); expect(label.clipped).toBe(true); }
+  expect(result.swatches.length).toBe(3);
+  for (const row of result.swatches) {
+    expect(row.length).toBeGreaterThan(1);
+    for (let index = 1; index < row.length; index++) {
+      expect(Math.abs(row[index].left - row[index - 1].right)).toBeLessThan(1);
+      expect(row[index].leftRadius).toBe('0px'); expect(row[index - 1].rightRadius).toBe('0px');
+    }
+  }
   await page.locator('#midiModulationInspector').screenshot({ path: testInfo.outputPath('modulation-integrated-high-contrast.png') });
 });

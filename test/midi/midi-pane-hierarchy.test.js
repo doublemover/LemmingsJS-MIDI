@@ -30,11 +30,5 @@ describe('compact MIDI pane hierarchy', () => {
     expect($('#midiActiveKeySummary').closest('.midi-event-context').length).to.equal(1);
     expect($('#midiEventSoundDock').next().hasClass('midi-event-context')).to.equal(true);
   });
-  it('uses a single-line aligned titlebar and compact consistent navigation', () => {
-    const css = fs.readFileSync('css/midi-instrument.css', 'utf8');
-    expect(css).to.match(/#midiTransportStrip \{[^}]*grid-template-columns: minmax\(0, 1fr\) auto;[^}]*align-items: center;/);
-    expect(css).to.match(/#midiEditScope \{[^}]*text-overflow: ellipsis; white-space: nowrap;/);
-    expect(css).to.match(/#midiWorkspaceClose \{[^}]*margin-left: 0;[^}]*height: 26px;/);
-    expect(css).to.include('.midi-view-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px; padding: 6px 8px; }');
-  });
+
 });

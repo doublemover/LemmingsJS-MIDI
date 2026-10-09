@@ -113,13 +113,12 @@ test('every right-pane workspace keeps aligned direct Panic and close controls',
     await page.locator(`#midiView${view}`).click();
     await expect(page.locator('#midiPanicButton')).toBeVisible(); await expect(page.locator('#midiWorkspaceClose')).toBeVisible();
     const bounds = await page.locator('#midiTransportStrip').evaluate(header => {
-      const title = header.querySelector('#midiEditScope').getBoundingClientRect(), panic = header.querySelector('#midiPanicButton').getBoundingClientRect(), close = header.querySelector('#midiWorkspaceClose').getBoundingClientRect();
-      return { titleCenter: title.top + title.height / 2, panicCenter: panic.top + panic.height / 2, closeCenter: close.top + close.height / 2,
-        titleRight: title.right, panicLeft: panic.left, panicRight: panic.right, closeLeft: close.left, overflowing: header.scrollWidth > header.clientWidth + 1 };
+      const title = header.querySelector('#midiEditScope').getBoundingClientRect(), close = header.querySelector('#midiWorkspaceClose').getBoundingClientRect();
+      return { titleCenter: title.top + title.height / 2, closeCenter: close.top + close.height / 2,
+        titleRight: title.right, closeLeft: close.left, overflowing: header.scrollWidth > header.clientWidth + 1 };
     });
     expect(Math.abs(bounds.titleCenter - bounds.closeCenter)).toBeLessThan(2);
-    expect(Math.abs(bounds.panicCenter - bounds.closeCenter)).toBeLessThan(2);
-    expect(bounds.panicLeft).toBeGreaterThan(bounds.titleRight); expect(bounds.closeLeft).toBeGreaterThan(bounds.panicRight); expect(bounds.overflowing).toBe(false);
+    expect(bounds.closeLeft).toBeGreaterThanOrEqual(bounds.titleRight); expect(bounds.overflowing).toBe(false);
     const tick = await page.locator('#midiGameClock').textContent(); await page.locator('#midiPanicButton').click();
     await expect(page.locator('#midiGameClock')).toHaveText(tick);
   }

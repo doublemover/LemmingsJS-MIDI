@@ -145,7 +145,7 @@ blank-line issues without a custom baseline.
 `npm test` now reports total runtime and supports optional guardrails for local
 suite budgets:
 
-- `LEMMINGS_TEST_ENFORCE_BUDGET=true`: fail when runtime budget is exceeded.
+- `LEMMINGS_TEST_ENFORCE_BUDGET=true`: terminate the Mocha child at the remaining process budget and fail when total runtime exceeds it.
 - `LEMMINGS_TEST_BUDGET_MS=<ms>`: override the default 180000ms budget.
 - `npm run test:budget`: convenience wrapper with enforcement enabled.
 
@@ -183,6 +183,7 @@ when invoking the capture CLI directly:
 ```bash
 npm run capture:e2e:midi
 npm run capture:e2e:editor
+npm run capture:e2e:editor-assets # Explicit all-asset screenshot gallery
 npm run capture:e2e:procgen
 npm run capture:e2e:game-hud
 ```

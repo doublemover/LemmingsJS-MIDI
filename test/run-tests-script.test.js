@@ -406,8 +406,8 @@ describe('scripts/runTests', function () {
     process.env.LEMMINGS_TEST_BUDGET_MS = '1';
     try {
       main([], {
-        spawn: () => {
-          spawned.push(true);
+        spawn: (command, args, options) => {
+          spawned.push(options);
           return { status: 0 };
         },
         log: {
@@ -425,6 +425,7 @@ describe('scripts/runTests', function () {
       else process.env.LEMMINGS_TEST_BUDGET_MS = originalBudget;
     }
     expect(spawned).to.have.lengthOf(3);
+    expect(spawned[2].timeout).to.equal(1);
     expect(exits).to.deep.equal([1]);
   });
 });

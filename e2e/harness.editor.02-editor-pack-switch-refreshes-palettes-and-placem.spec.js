@@ -240,7 +240,7 @@ test('Editor pack switch refreshes palettes and placement', async ({ page }) => 
   expect(placed.props.PIECE).toBe(firstTerrain.id);
 });
 
-test('Editor selection overlays render for every asset', async ({ page }) => {
+(process.env.LEMMINGS_CAPTURE_ALL_EDITOR_ASSETS === '1' ? test : test.skip)('Editor selection overlays render for every asset', async ({ page }) => {
   test.slow();
   await page.fill('#editorPaletteSearch', '');
   await page.click('#editorPaletteTabs button[data-tab="terrain"]');

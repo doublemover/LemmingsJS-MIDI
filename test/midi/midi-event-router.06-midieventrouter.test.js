@@ -33,14 +33,7 @@ describe('MidiEventRouter 6', function() {
     expect(unchanged.spec).to.equal(baseSpec);
   });
 
-  it('planEntries accounts for duration and MPE off messages', function() {
-    const { router } = makeRouter({ mpe: { enabled: true } });
-    router.scheduler.tickMs = 10;
-    const plan = router._planEntries({ note: 60, durationTicks: 2 }, 1000, 2);
-    expect(plan.off.count).to.equal(4);
-    const zero = router._planEntries({ note: 60, durationTicks: NaN }, 1000, 1);
-    expect(zero.off.count).to.equal(0);
-  });
+
 
   it('shouldSend rejects when count exceeds the hard max', function() {
     const snapshot = makeRateSnapshot({ count: 6, bytes: 0 }, {}, 1000);
@@ -217,16 +210,5 @@ describe('MidiEventRouter 6', function() {
     expect(ok).to.equal(true);
   });
 
-  it('shouldSend rejects when hard max is exceeded', function() {
-    const bySfx = new Map();
-    const snapshot = makeRateSnapshot({ count: 2, bytes: 0, bySfx }, {}, 1000);
-    const { router } = makeRateRouter(
-      { limits: { maxEventsPerSecond: 1, hardMaxEventsPerSecond: 1, maxBytesPerSecond: 1000 } },
-      snapshot
-    );
-    const plan = makePlan();
-    const ok = router._shouldSend({ sfxId: 1, priority: 1 }, { timeMs: 0 }, plan, 0);
-    expect(ok).to.equal(false);
-    expect(router.getRateReport().reason).to.equal('count-limit');
-  });
+
 });

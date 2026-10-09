@@ -42,13 +42,5 @@ describe('label-free connected character controls', () => {
     }
     expect(host.children.at(-1).className).to.equal('visually-hidden');
   });
-  it('joins swatches edge-to-edge with square interiors and rounded outer ends', () => {
-    const css = fs.readFileSync('css/character-controls.css', 'utf8');
-    expect(css).to.match(/\.character-composite \.palette-choices \{[^}]*flex-wrap: nowrap;[^}]*gap: 0;[^}]*padding: 0;/);
-    expect(css).to.match(/\.character-composite \.palette-choices button \{[^}]*border: 0;[^}]*border-radius: 0;/);
-    expect(css).to.include('button:first-child { border-radius: 0 0 0 6px; }');
-    expect(css).to.include('button:last-child { border-radius: 0 0 6px 0; }');
-    expect(css).to.match(/\.character-composite \.palette-choices \.character-swatch \{[^}]*width: 100%; height: 100%;/);
-    expect(fs.readFileSync('css/procgen.css', 'utf8')).to.include('#procgenDrawer .character-field { gap: 0; }');
-  });
+
 });
