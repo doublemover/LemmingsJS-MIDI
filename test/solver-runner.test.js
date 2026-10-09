@@ -23,12 +23,31 @@ import { CommandManager } from '../js/commands/CommandManager.js';
 import { GameTimer } from '../js/game/GameTimer.js';
 import { GameVictoryCondition } from '../js/game/GameVictoryCondition.js';
 import { LemmingManager } from '../js/lemmings/LemmingManager.js';
+import * as actualLemmingDependencies from '../js/lemmings/lemming-manager/LemmingManagerShared.js';
+import { clearDependency, getDependency, setDependency } from '../js/core/dependencies.js';
+import { LemmingStateType } from '../js/lemmings/LemmingStateType.js';
 import { Level } from '../js/level/Level.js';
 import { Trigger } from '../js/level/Trigger.js';
 import { TriggerManager } from '../js/level/TriggerManager.js';
 import { TriggerTypes } from '../js/level/TriggerTypes.js';
 import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
 import { MAX_SOLVER_SNAPSHOT_PIXELS } from '../js/solver/SolverState.js';
+
+// Other test files install root-level action stubs; this fixture needs genuine runtime constructors.
+const pinActualLemmingDependencies = () => {
+  const absent = Symbol('absent dependency'), previous = new Map();
+  for (const [key, value] of Object.entries(actualLemmingDependencies)) {
+    if (key !== 'Lemming' && !(key.startsWith('Action') && key.endsWith('System'))) continue;
+    previous.set(key, getDependency(key, absent));
+    setDependency(key, value);
+  }
+  return () => {
+    for (const [key, value] of previous) {
+      if (value === absent) clearDependency(key);
+      else setDependency(key, value);
+    }
+  };
+};
 
 const makeReportedReplay = (marker) => {
   let tick = 0;
@@ -324,10 +343,16 @@ describe('SolverRunner', function () {
     game.commandManager = new CommandManager(game, game.gameTimer);
     game.triggerManager = new TriggerManager(game.gameTimer, level.width, level.height);
     game.triggerManager.add(new Trigger(TriggerTypes.EXIT_LEVEL, 20, 36, 24, 52));
-    game.lemmingManager = new LemmingManager(level, null, game.triggerManager, game.gameVictoryCondition, await loadProcgenMasks(), null);
-    game.gameVictoryCondition.releaseOne(); game.lemmingManager.addLemming(12, 48);
-    game.gameTimer.onGameTick.on(game._boundTick);
+    const restoreDependencies = pinActualLemmingDependencies();
     try {
+      game.lemmingManager = new LemmingManager(level, null, game.triggerManager, game.gameVictoryCondition, await loadProcgenMasks(), null);
+      for (const state of [LemmingStateType.FALLING, LemmingStateType.WALKING, LemmingStateType.EXITING]) {
+        const action = game.lemmingManager.actions[state];
+        expect(action).to.be.instanceof(actualLemmingDependencies[action.constructor.name]);
+      }
+      game.gameVictoryCondition.releaseOne(); game.lemmingManager.addLemming(12, 48);
+      expect(game.lemmingManager.getLemming(0)).to.be.instanceof(actualLemmingDependencies.Lemming);
+      game.gameTimer.onGameTick.on(game._boundTick);
       const created = createBuiltInLevelRunner({ game });
       expect(created.runner.isRuntimeAuthoritative).to.equal(true);
       const smallBudget = { maxSnapshotPixels: level.width * level.height - 1 };
@@ -344,7 +369,9 @@ describe('SolverRunner', function () {
       expect(result.budgetUsage.ticks).to.be.greaterThan(8); expect(result.budgetUsage.ticks).to.be.at.most(40);
       expect(game.gameVictoryCondition.getSurvivorsCount()).to.equal(1);
       expect(createBuiltInLevelRunner({ game, authoritative: false }).runner.isRuntimeAuthoritative).to.equal(false);
-    } finally { game.stop(); }
+    } finally {
+      try { game.stop(); } finally { restoreDependencies(); }
+    }
   });
 
   it('requires authoritative runtime replay before non-synthetic solved results', function () {
