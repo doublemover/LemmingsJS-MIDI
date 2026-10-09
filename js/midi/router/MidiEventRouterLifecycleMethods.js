@@ -30,13 +30,16 @@ const midiEventRouterLifecycleMethods = {
   },
 
   setMapping(mapping) {
-    this.mapping = mapping instanceof MidiMapping ? mapping : new MidiMapping(mapping || {});
+    const next = mapping instanceof MidiMapping ? mapping : new MidiMapping(mapping || {});
+    if (this.musicDirector && JSON.stringify(next.config) !== JSON.stringify(this.mapping.config)) this._releaseMusicDirection();
+    this.mapping = next;
     this.scheduler.setConfig(this.mapping.config);
     this.musicTension.configure(this.mapping.config?.ensemble?.tension);
     this.automationSpans.configure(this.mapping.config?.automationSpans);
   },
 
   setOutput(output) {
+    if (output !== this.scheduler.output) this._releaseMusicDirection();
     this.scheduler.setOutput(output);
   },
 
@@ -45,6 +48,7 @@ const midiEventRouterLifecycleMethods = {
   },
 
   resetClock({ preserveGamePhrases = false } = {}) {
+    if (!preserveGamePhrases) this._releaseMusicDirection();
     this._clockBaseMs = null; this._clockFrameMs = null; this._clockSpeedFactor = null;
     this._lastAcceptedBySfx.clear(); this._repeatHistoryByKey.clear();
     this.scheduler?.allNotesOff?.({ preserveGamePhrases });
@@ -73,6 +77,7 @@ const midiEventRouterLifecycleMethods = {
   },
 
   detach() {
+    this._releaseMusicDirection();
     this.musicTension.reset();
     this.automationSpans.reset(); this._automationEventSerial = 0;
     this._arpStateBySfx.clear();
@@ -162,12 +167,13 @@ const midiEventRouterLifecycleMethods = {
 
   _captureBeatFields(tick) {
     if (!this.scheduler._captureEnabled?.()) return {};
-    const base = this.mapping.config?.timing?.bpmBase;
-    const tempoBpm = Math.max(20, Number.isFinite(base) ? base : 120);
-    const frame = this._phraseTimer?.TIME_PER_FRAME_MS ?? this.context?.game?.getGameTimer?.()?.TIME_PER_FRAME_MS;
+    const timer = this._phraseTimer || this.context?.game?.getGameTimer?.();
+    const frame = timer?.TIME_PER_FRAME_MS;
     const baseTickMs = Number.isFinite(frame) && frame > 0 ? frame : 60;
-    const beat = Number.isFinite(tick) ? Math.max(0, tick) * baseTickMs / 60000 * tempoBpm : null;
-    return { tick, tempoBpm, baseTickMs, beat: Number.isFinite(beat) ? beat : null, beatClock: 'simulation-base-ticks' };
+    const position = this._directionPosition(tick);
+    const tempo = this.mapping.config?.timing?.bpmBase;
+    const tempoBpm = Math.max(20, Math.min(320, Number.isFinite(tempo) ? tempo : 120));
+    return { tick, tempoBpm, baseTickMs, beat: Number.isFinite(tick) ? position.beat : null, beatClock: 'simulation-base-ticks' };
   },
 
   _getBpm() {

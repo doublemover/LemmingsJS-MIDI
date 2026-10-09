@@ -1,3 +1,4 @@
+import { getNextMidiBoundaryTick } from '../project/MidiMusicalPosition.js';
 import { quantizeToScale, resolveScale } from '../midi-mapping/MidiMappingDomain.js';
 import { flattenMidiClipPhrase } from '../project/MidiClipPlayback.js';
 import { MAX_GAME_PHRASE_NOTES } from '../scheduler/MidiGamePhraseQueue.js';
@@ -33,6 +34,8 @@ const midiEventRouterPhraseMethods = {
     const currentMeta = { ...meta };
     delete currentMeta.rateReserved;
     delete currentMeta.reservationId;
+    ready = this._applyMusicDirection(ready, tick);
+    if (!ready) return false;
     ready = this._applyAutomationSpans(ready, currentMeta, tick, true);
     if (!ready) return false;
     ready = this._applyMusicTension(ready, currentMeta, tick);
@@ -49,7 +52,10 @@ const midiEventRouterPhraseMethods = {
       this.scheduler.gamePhrases?.clear();
       this.scheduler.allNotesOff();
     }
-    if (sent) this._lastAcceptedBySfx.set(meta.sfxId, now);
+    if (sent) {
+      this._lastAcceptedBySfx.set(meta.sfxId, now);
+      this.musicDirector?.admitted(ready.phraseVoiceKey, this._directionPosition(tick));
+    }
     return sent;
   },
 
@@ -81,12 +87,11 @@ const midiEventRouterPhraseMethods = {
       return note;
     }).filter(Number.isFinite);
     const timer = this._phraseTimer, timing = this.mapping.config.timing, baseMs = timer.TIME_PER_FRAME_MS || 60;
-    const ticksPerBeat = 60000 / Math.max(20, timing.bpmBase || 120) / baseMs;
-    const beatsPerBar = Math.max(1, timing.timeSignature?.beats || 4) * 4 / Math.max(1, timing.timeSignature?.unit || 4);
-    const origin = this.context?.game?.generationStartTick || 0, beat = (tick - origin) / ticksPerBeat;
-    const startOffsetTicks = Math.max(1, Math.ceil((Math.floor(beat) + 1) * ticksPerBeat + origin - tick));
+    const position = this._directionPosition(tick), origin = this.context?.game?.generationStartTick || 0;
+    const boundary = getNextMidiBoundaryTick(timing, tick, baseMs, origin);
+    const startOffsetTicks = boundary.tick - tick;
     queue.replaceRolling(key, phrase, { ...spec, notes: null, arp: null, phrase: null }, meta, tick, {
-      startOffsetTicks, spacingTicks: ticksPerBeat * beatsPerBar * rolling.bars / 8,
+      startOffsetTicks, spacingTicks: position.ticksPerQuarter * position.quartersPerBar * rolling.bars / 8,
       onDrop: (reason, details) => this.scheduler.recordThrottle?.(reason, this._nowMs(), details)
     });
   },
@@ -132,6 +137,7 @@ const midiEventRouterPhraseMethods = {
     if (!timer || !queue) return;
     if (!this.mapping.config?.enabled || this.context?.game?.timeTravel?.isReversing) {
       if (this.context?.game?.timeTravel?.isReversing) { this.musicTension.reset(); this._releaseTensionVoices(); this._resetAutomationSpans(); }
+      this._releaseMusicDirection();
       queue.clear();
       return;
     }
@@ -143,6 +149,7 @@ const midiEventRouterPhraseMethods = {
     if (Number.isInteger(tick) && queue.tick != null && tick < queue.tick) {
       this._arpStateBySfx.clear(); this._lastTickBySfx.clear();
     }
+    this._advanceMusicDirection(tick);
     queue.advance(tick,
       (spec, meta, tick) => this._sendGamePhraseNote(spec, meta, tick),
       key => this.scheduler.isGamePhraseVoiceBusy(key));

@@ -12,6 +12,7 @@ const DEFAULT_SCALES = Object.freeze({
 
 const DEFAULT_CONFIG = Object.freeze({
   enabled: true,
+  musicDirector: { recipe: 'events' },
   mpe: {
     enabled: true,
     masterChannel: 1,

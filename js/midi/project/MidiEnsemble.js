@@ -57,6 +57,10 @@ const applyMidiEnsembleToSpec = (spec, event, config, mapping = {}) => {
   if (!spec || !ensemble?.enabled || spec.trackId !== ensemble.sourceTrackId) return spec;
   const role = getMidiEnsembleRole(ensemble, event);
   if (!role) return spec;
+  return applyMidiEnsembleRoleToSpec(spec, role, config, mapping, event);
+};
+
+const applyMidiEnsembleRoleToSpec = (spec, role, config, mapping = {}, event = {}) => {
   if (role.disabled || !role.track) return null;
   const track = role.track, scale = resolveScale(config.scale);
   const low = Math.max(config.noteRange?.min ?? 0, role.register.min);
@@ -91,4 +95,4 @@ const applyMidiEnsembleToSpec = (spec, event, config, mapping = {}) => {
 };
 
 export { MIDI_ENSEMBLE_ROLES, sanitizeMidiEnsemble, createDefaultMidiEnsemble, buildMidiEnsembleConfig,
-  getMidiEnsembleRole, applyMidiEnsembleToSpec };
+  getMidiEnsembleRole, applyMidiEnsembleToSpec, applyMidiEnsembleRoleToSpec };

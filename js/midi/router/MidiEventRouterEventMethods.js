@@ -83,6 +83,7 @@ const midiEventRouterEventMethods = {
         return;
       }
       spec.reverse = !!event.reverse;
+      this._syncMusicDirection(event.tick);
       if (event.tick != null) {
         this._lastTickBySfx.set(event.sfxId, event.tick);
       }
@@ -116,6 +117,7 @@ const midiEventRouterEventMethods = {
         noteList = this._singleNoteBuffer;
       }
 
+      if (this._queueMusicDirectionEvent(event, spec, meta)) return;
       if (sfx.clipSequence?.steps?.length) {
         const sequence = sfx.clipSequence, length = sequence.steps.length;
         const key = this._resolveArpKey(event, sfx), previous = this._arpStateBySfx.get(key);
@@ -123,7 +125,7 @@ const midiEventRouterEventMethods = {
         const completedPasses = previous?.seqKey === sequence.id ? previous.completedPasses || 0 : 0;
         const pass = sequence.advance === 'event' ? Math.floor(count / length) + 1 : sequence.passCounter === 'completed' ? completedPasses + 1 : count + 1;
         const timer = this._phraseTimer || this.context?.game?.getGameTimer?.();
-        const bar = getMidiTransportBar(this.mapping.config?.timing, event.tick ?? timer?.getGameTicks?.(), timer?.TIME_PER_FRAME_MS || 60);
+        const bar = getMidiTransportBar(this.mapping.config?.timing, event.tick ?? timer?.getGameTicks?.(), timer?.TIME_PER_FRAME_MS || 60, this.context?.game?.generationStartTick || 0);
         this._storeArpState(key, { index: count + 1, dir: 1, length, seqKey: sequence.id, completedPasses, pass, bar, advance: sequence.advance });
         const mapStep = step => this.mapping.mapEvent(event, context, density, { ...sfx, note: step.note, notes: null,
           velocity: step.velocity, durationTicks: step.durationTicks, arp: null, phrase: null });
@@ -290,6 +292,8 @@ const midiEventRouterEventMethods = {
         specWithTime = adjusted.spec;
         activeNotes = adjusted.activeNotes;
       }
+      specWithTime = this._applyMusicDirection(specWithTime, tick);
+      if (!specWithTime) return;
       if (this.automationSpans.entries.length) {
         specWithTime = this._applyAutomationSpans({ ...specWithTime, notes: activeNotes }, meta, tick);
         if (!specWithTime) return;

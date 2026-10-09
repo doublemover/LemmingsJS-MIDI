@@ -1,3 +1,4 @@
+import { getMidiMusicalPosition } from './MidiMusicalPosition.js';
 import { getMidiClipVoices, expandMidiClipCell, clipConditionMatches, applyMidiClipTransforms, MAX_CLIP_PHRASE_OUTPUTS } from './MidiClipTransforms.js';
 const getPlayableMidiClipSteps = clip => (
   Array.isArray(clip?.steps)
@@ -24,12 +25,7 @@ const describeMidiClipPlayback = clip => {
 export { getPlayableMidiClipSteps, describeMidiClipPlayback };
 
 // Bars follow level simulation time; wall-clock pauses and effective speed do not change position.
-const getMidiTransportBar = (timing, tick, tickMs = 60) => {
-  const beats = Math.max(1, timing?.timeSignature?.beats || 4);
-  const unit = Math.max(1, timing?.timeSignature?.unit || 4);
-  const bpm = Math.max(20, timing?.bpmBase || 120);
-  return Math.floor(Math.max(0, Number(tick) || 0) * tickMs * bpm / 60000 / (beats * 4 / unit)) + 1;
-};
+const getMidiTransportBar = (timing, tick, tickMs = 60, origin = 0) => getMidiMusicalPosition(timing, tick, tickMs, origin).bar;
 const clipStepEnabled = (sequence, step, eventCount, passCount, barCount = 1) => {
   if (!step || (step.probability ?? 1) <= 0) return false;
   if (!clipConditionMatches(step.condition, eventCount, passCount, barCount)) return false;

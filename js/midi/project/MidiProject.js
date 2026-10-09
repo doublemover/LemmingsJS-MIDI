@@ -350,6 +350,9 @@ const sanitizeTransport = (transport = {}) => {
   };
 };
 
+// Persist only the recipe; live musical direction belongs to the router.
+const sanitizeMusicDirector = value => ({ recipe: value?.recipe === 'scenes' ? 'scenes' : 'events' });
+
 const buildGlobalFromConfig = (config = {}) => {
   const merged = mergeConfig(DEFAULT_CONFIG, config || {});
   return {
@@ -362,7 +365,8 @@ const buildGlobalFromConfig = (config = {}) => {
     position: sanitizePositionConfig(merged.position),
     mpe: cloneObject(merged.mpe),
     limits: cloneObject(merged.limits),
-    reverse: cloneObject(merged.reverse)
+    reverse: cloneObject(merged.reverse),
+    musicDirector: sanitizeMusicDirector(merged.musicDirector)
   };
 };
 
@@ -378,7 +382,8 @@ const sanitizeGlobal = (global = {}) => {
     position: sanitizePositionConfig(global.position, defaults.position),
     mpe: cloneObject(global.mpe, defaults.mpe),
     limits: cloneObject(global.limits, defaults.limits),
-    reverse: cloneObject(global.reverse, defaults.reverse)
+    reverse: cloneObject(global.reverse, defaults.reverse),
+    musicDirector: sanitizeMusicDirector(global.musicDirector)
   };
 };
 
@@ -1565,6 +1570,7 @@ function projectToMidiConfig(project, factoryConfig = {}) {
     mpe: clean.global.mpe,
     limits: clean.global.limits,
     reverse: clean.global.reverse,
+    musicDirector: clean.global.musicDirector,
     input: {
       ...(base.input || {}),
       channel: clean.devices.inputChannel,
