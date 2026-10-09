@@ -4,16 +4,19 @@ import { LemmingStateType as State } from '../../lemmings/LemmingStateType.js';
 import { ProcgenSupportedTunnel } from './ProcgenSupportedTunnel.js';
 import { ProcgenSupportedDescent } from './ProcgenSupportedDescent.js';
 import { ProcgenWalkContinuation } from './ProcgenWalkContinuation.js';
+import { ProcgenSupportedBuild } from './ProcgenSupportedBuild.js';
 
 const MAX_LOCAL_ROUTE_DISTANCE = 40;
 const MAX_ROUTE_PROBES = 1024;
 const ROUTE_LANES_PER_TICK = 8;
+// A rejected builder must leave shared lane work for independent alternatives.
+const BUILD_CANDIDATE_WORK = MAX_ROUTE_PROBES / 2;
 const intersects = (hazard, x, y) => x + 2 > hazard.x1 && x - 2 < hazard.x2 && y + 1 > hazard.y1 && y - 9 < hazard.y2;
 
 class ProcgenHazardPlanner {
   constructor(world) {
     this.bypasses = new ProcgenBlockerBypass(world); this.tunnels = new ProcgenSupportedTunnel(world); this.descents = new ProcgenSupportedDescent(world);
-    this.walking = new ProcgenWalkContinuation(world);
+    this.walking = new ProcgenWalkContinuation(world); this.building = new ProcgenSupportedBuild(world);
     this.world = world; this.observations = []; this.adjacentObservations = []; this.cache = new Array(world.laneCount);
     this.admission = new ProcgenRouteAdmission(world);
     this.stats = { plans: 0, deferred: 0, probes: 0, budgetExhausted: 0, admission: this.admission.stats };
@@ -68,18 +71,22 @@ class ProcgenHazardPlanner {
   }
   _builder(actor) {
     if (!this.world.workerLimits?.builders || !this._ground(actor.x, actor.y) || !this._safe(actor.x, actor.y)) return null;
-    let x = actor.x, y = actor.y;
+    let endpointX = actor.x, endpointY = actor.y;
     for (let step = 0; step < 12; step++) {
-      if (!this._revealed(x + 5, y - 1) || !this._safe(x, y)) return null;
-      y--;
+      if (!this._revealed(endpointX + 5, endpointY - 1) || !this._safe(endpointX, endpointY)) return null;
+      endpointY--;
       for (let advance = 0; advance < 2; advance++) {
-        x++;
-        if (this._ground(x, y - 1) || this.world.isArrowAt?.(x, y - 1, true) || !this._safe(x, y)) return null;
+        endpointX++;
+        if (this._ground(endpointX, endpointY - 1) || this.world.isArrowAt?.(endpointX, endpointY - 1, true) || !this._safe(endpointX, endpointY)) return null;
       }
-      if (step < 11 && (this._ground(x + 2, y - 9) || this.world.isArrowAt?.(x + 2, y - 9, true))) return null;
+      if (step < 11 && (this._ground(endpointX + 2, endpointY - 9) || this.world.isArrowAt?.(endpointX + 2, endpointY - 9, true))) return null;
     }
-    const continuation = this._continuation(x, y);
-    if (!continuation) return null;
+    if (!this._continuation(endpointX, endpointY)) return null;
+    const result = this.building.prove(actor, (x, y) => this._ground(x, y), this.observations, Math.min(BUILD_CANDIDATE_WORK, MAX_ROUTE_PROBES - this.probes));
+    this.probes += result.actionSteps; this.stats.probes += result.actionSteps;
+    if (result.failure === 'unrevealed') this.unrevealed = true;
+    if (!result.safe) return null;
+    const x = actor.x + 24, continuation = { y: result.y, span: 8 };
     const gain = actor.y - continuation.y, crew = this.world.getLaneMusicSignals?.(actor.laneIndex);
     return { kind: 'builders', targetX: x, footprint: { x1: actor.x, x2: actor.x + 28, y1: actor.y - 12, y2: actor.y + 1 },
       continuationY: continuation.y, estimatedTicks: 192, materialCost: 12,
@@ -260,7 +267,7 @@ class ProcgenHazardPlanner {
     this.cache[lane] = { tick: world.tickIndex, key, proposal }; this.stats.plans++;
     return proposal;
   }
-  reset() { this.admission.reset(); this.bypasses.reset(); this.tunnels.reset(); this.descents.reset(); this.walking.reset(); this.cache.fill(null); this.observations.length = 0; this.adjacentObservations.length = 0; }
-  dispose() { this.reset(); this.admission.dispose(); this.bypasses.dispose(); this.tunnels.dispose(); this.descents.dispose(); this.walking.dispose(); this.world = null; }
+  reset() { this.admission.reset(); this.bypasses.reset(); this.tunnels.reset(); this.descents.reset(); this.walking.reset(); this.building.reset(); this.cache.fill(null); this.observations.length = 0; this.adjacentObservations.length = 0; }
+  dispose() { this.reset(); this.admission.dispose(); this.bypasses.dispose(); this.tunnels.dispose(); this.descents.dispose(); this.walking.dispose(); this.building.dispose(); this.world = null; }
 }
 export { ProcgenHazardPlanner, MAX_LOCAL_ROUTE_DISTANCE, MAX_ROUTE_PROBES, ROUTE_LANES_PER_TICK };
