@@ -49,7 +49,7 @@ const mix = value => { let n = Math.imul(value ^ (value >>> 16), 0x45d9f3b); n =
 // Terrain is queried in one shared coordinate system. No world-sized bitmap,
 // per-lane Game, or rendering dependency is needed by the real action systems.
 class ProcgenLaneWorld {
-  constructor({ laneCount = 1, laneHeight = 96, seed = 1, sprites = null, masks, assists = true, speed = 3, cohorts = false, spawnSpreadTicks = null, maxActors = 16384, stallPolicy = {}, populationPolicy = {}, previousDistances = [], workerLimits = {}, particleTable = null, terrain = null } = {}) {
+  constructor({ laneCount = 1, laneHeight = 96, seed = 1, sprites = null, masks, assists = true, speed = 3, cohorts = false, spawnSpreadTicks = null, maxActors = 16384, stallPolicy = {}, populationPolicy = {}, previousDistances = [], workerLimits = {}, policyConfig = {}, particleTable = null, terrain = null } = {}) {
     this.laneCount = normalizeLaneCount(laneCount);
     this.laneHeight = normalizeLaneHeight(laneHeight);
     this.seed = normalizeSeed(seed);
@@ -125,7 +125,7 @@ class ProcgenLaneWorld {
     this.characterParticles = sprites ? new CharacterParticles() : null;
     this.hazards = new ProcgenHazards(this); this.triggerManager = new ProcgenTriggerManager(this, this.hazards);
     this.hazardPlanner = new ProcgenHazardPlanner(this);
-    this.lanePolicy = new ProcgenLanePolicy(this);
+    this.lanePolicy = new ProcgenLanePolicy(this, policyConfig);
     this.actions = {
       [State.WALKING]: new ActionWalkSystem(sprites), [State.FALLING]: new ActionFallSystem(sprites),
       [State.FLOATING]: new ActionFloatingSystem(sprites),

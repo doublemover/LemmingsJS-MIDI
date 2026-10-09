@@ -2,6 +2,8 @@ import { ProcgenCrewProjects } from './ProcgenCrewProjects.js';
 import { BUILD_ACTION_STEPS } from './ProcgenSupportedBuild.js';
 import { procgenTileRevision } from './ProcgenTerrainRetention.js';
 import { LemmingStateType as State } from '../../lemmings/LemmingStateType.js';
+import { normalizeProcgenPolicyConfig } from './ProcgenPolicyConfig.js';
+import { semanticSurveyRandom } from './survey/ProcgenSurveyCanonical.js';
 const MAX_LANE_KNOWLEDGE = 8;
 const PREFERENCE_DECAY_TICKS = 256;
 const KINDS = ['builders', 'bashers', 'diggers', 'miners'];
@@ -10,10 +12,10 @@ const mix = value => { let n = Math.imul(value ^ (value >>> 16), 0x45d9f3b); n =
 // Preferences are bounded tie-breakers for independently screened physical
 // proposals. Observed failures never certify geometry or grant an ability.
 class ProcgenLanePolicy {
-  constructor(world) { this.world = world; this.projects = new ProcgenCrewProjects(world, (lane, kind, stage) => this._credit(lane, kind, stage)); this.reset(); }
+  constructor(world, config = {}) { this.world = world; this.config = normalizeProcgenPolicyConfig(config); this.projects = new ProcgenCrewProjects(world, (lane, kind, stage) => this._credit(lane, kind, stage)); this.reset(); }
   reset() {
     this.lanes = Array.from(this.world.laneSeeds, seed => {
-      const initialBias = Object.fromEntries(KINDS.map((kind, index) => [kind, (mix(seed ^ Math.imul(index + 1, 0x9e3779b1)) % 7) - 3 + (kind === 'builders' ? 2 : kind === 'miners' ? -4 : 0)]));
+      const initialBias = Object.fromEntries(KINDS.map((kind, index) => [kind, (mix(seed ^ Math.imul(index + 1, 0x9e3779b1)) % 7) - 3 + (kind === 'builders' ? this.config.builderBias : kind === 'miners' ? this.config.minerBias : 0)]));
       return { initialBias, learned: { builders: 0, bashers: 0, diggers: 0, miners: 0 }, attempts: 0, successes: 0, failures: 0,
         ordinaryCrossings: 0, lastDecayTick: this.world.tickIndex, knowledge: [], nextKnowledge: 0 };
     });
@@ -22,14 +24,19 @@ class ProcgenLanePolicy {
   _decay(lane) {
     const elapsed = this.world.tickIndex - lane.lastDecayTick;
     if (elapsed < 0) { for (const kind of KINDS) lane.learned[kind] = 0; lane.lastDecayTick = this.world.tickIndex; return; }
-    const steps = Math.floor(elapsed / PREFERENCE_DECAY_TICKS);
+    const steps = Math.floor(elapsed / this.config.decayTicks);
     if (!steps) return;
     for (const kind of KINDS) lane.learned[kind] = Math.sign(lane.learned[kind]) * Math.max(0, Math.abs(lane.learned[kind]) - steps);
-    lane.lastDecayTick += steps * PREFERENCE_DECAY_TICKS;
+    lane.lastDecayTick += steps * this.config.decayTicks;
   }
   _credit(index, kind, stage) {
     const lane = this.lanes[index]; if (!lane || !KINDS.includes(kind)) return;
-    this._decay(lane); lane.learned[kind] = Math.max(-3, Math.min(3, lane.learned[kind] + (stage === 'crew-failure' ? -1 : 1)));
+    this._decay(lane); this._learn(lane, kind, stage === 'crew-failure' ? -1 : 1);
+  }
+  _learn(lane, kind, direction) {
+    if (!this.config.learningEnabled) return;
+    const bound = this.config.preferenceBound;
+    lane.learned[kind] = Math.max(-bound, Math.min(bound, lane.learned[kind] + direction * this.config.learningRate));
   }
   _tiles(x, y) {
     const world = this.world, width = world.terrain?.chunkWidth || 256, result = [];
@@ -58,9 +65,12 @@ class ProcgenLanePolicy {
       if (!this._valid(record)) { lane.knowledge.splice(index, 1); continue; }
       if (record.kind !== 'connected-route' && record.x >= actor.x - 4 && record.x <= actor.x + 40 && Math.abs(record.y - actor.y) <= 32) observedTrouble = true;
     }
-    const explore = (mix(this.world.laneSeeds[actor.laneIndex] ^ Math.imul(lane.attempts + 1, 0x85ebca6b)) % 4);
-    return (lane.initialBias[proposal.kind] || 0) + (lane.learned[proposal.kind] || 0) + (KINDS[explore] === proposal.kind ? 1 : 0) +
-      (observedTrouble && proposal.kind === 'builders' ? 4 : 0);
+    const explore = this.config.randomMode === 'semantic'
+      ? Math.floor(semanticSurveyRandom(this.config.policySeed, 'policy-explore', actor.spawnLaneIndex ?? actor.laneIndex, actor.spawnOrdinal ?? actor.id,
+        actor.spawnTick ?? 0, this.world.generation ?? 1, Math.floor(actor.x / 32), Math.floor(actor.y / 24), this.world.tickIndex) * KINDS.length)
+      : mix(this.world.laneSeeds[actor.laneIndex] ^ Math.imul(lane.attempts + 1, 0x85ebca6b)) % 4;
+    return (lane.initialBias[proposal.kind] || 0) + (this.config.learningEnabled ? lane.learned[proposal.kind] || 0 : 0) + (KINDS[explore] === proposal.kind ? this.config.explorationStrength : 0) +
+      (observedTrouble && proposal.kind === 'builders' ? this.config.troubleBuilderBonus : 0);
   }
   connectedConstruction(actor) {
     const lane = this.lanes[actor.laneIndex];
@@ -119,7 +129,7 @@ class ProcgenLanePolicy {
           ['diggers', 'miners'].includes(attempt.kind) ? attempt.falling && actor.action === world.actions[state.WALKING] && actor.y > attempt.y && actor.y - attempt.y <= 32 : actor.x - attempt.x >= 8;
         const success = alive && connected;
         owner[success ? 'successes' : 'failures']++; this._decay(owner);
-        if (!success) { owner.learned[attempt.kind] = Math.max(-3, owner.learned[attempt.kind] - 1); this.projects.fail(attempt.lane, attempt.task.crewProjectId); }
+        if (!success) { this._learn(owner, attempt.kind, -1); this.projects.fail(attempt.lane, attempt.task.crewProjectId); }
         if (!success) this.remember(actor, 'failed-route');
         else {
           this.remember(actor, 'connected-route', attempt.kind);
@@ -151,7 +161,12 @@ class ProcgenLanePolicy {
     }
     this.projects.observe(actor);
   }
-  signals(lane) { const state = this.lanes[lane]; if (!state) return null; this._decay(state); state.crewProjects = this.projects.signals(lane); return state; }
+  signals(lane) {
+    const state = this.lanes[lane]; if (!state) return null;
+    const elapsed = this.world.tickIndex - state.lastDecayTick, steps = Math.floor(Math.max(0, elapsed) / this.config.decayTicks);
+    const learned = Object.fromEntries(KINDS.map(kind => [kind, elapsed < 0 || !this.config.learningEnabled ? 0 : Math.sign(state.learned[kind]) * Math.max(0, Math.abs(state.learned[kind]) - steps)]));
+    return { ...state, initialBias: { ...state.initialBias }, learned, knowledge: state.knowledge.map(record => ({ ...record, tiles: record.tiles.map(tile => [...tile]) })), crewProjects: this.projects.signals(lane) };
+  }
   dispose() { for (const actor of this.world.actors || []) { actor._laneRouteAttempt = null; actor._crewObservedLane = null; } this.projects.dispose(); this.lanes.length = 0; this.world = null; }
 }
 export { ProcgenLanePolicy, MAX_LANE_KNOWLEDGE, PREFERENCE_DECAY_TICKS };
