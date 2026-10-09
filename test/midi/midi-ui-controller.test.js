@@ -1182,6 +1182,8 @@ describe('midiUiController sequencer', function() {
     const { controller, doc, view } = createControllerHarness();
     controller.bindMidiUi();
 
+    expect(doc.getElementById('midiMappingTimbre').title).to.include('Browser synth ignores the default CC74');
+    expect(doc.getElementById('midiEnvRelease').title).to.include('not envelope release time');
     const pan = doc.getElementById('midiMappingPan');
     pan.value = '-32';
     pan.dispatchEvent({ type: 'change', target: pan });

@@ -1,4 +1,5 @@
 import { createMidiAutomationSpanControls } from './midi-ui/midiAutomationSpanControls.js';
+import { getMidiAutomationTargetInfo, updateMidiAutomationTargetSelect } from './midi-ui/midiAutomationTargetHelp.js';
 import { createMidiAutomationSpanEditor } from './midi-ui/midiAutomationSpanEditor.js';
 import { createMidiTensionControls } from './midi-ui/midiTensionControls.js';
 import { createMidiOutputCapture } from '../midi/capture/MidiOutputCapture.js';
@@ -98,18 +99,6 @@ const SCALE_LABELS = Object.freeze({
   pentatonic: 'Pentatonic',
   chromatic: 'Chromatic',
   'chromatic-minor': 'Chromatic minor'
-});
-
-const AUTOMATION_TARGET_LABELS = Object.freeze({
-  note: 'Note',
-  velocity: 'Velocity',
-  pan: 'Pan',
-  duration: 'Duration',
-  timbre: 'Timbre',
-  attack: 'Attack',
-  decay: 'Decay',
-  sustain: 'Sustain',
-  release: 'Release'
 });
 
 const STEP_FIELD_COUNT = 32;
@@ -628,6 +617,29 @@ const createMidiUiController = ({
     const view = getLemmings();
     if (localGamePreview?.getState().enabled && view?.midiPreviewRouter) return view.midiPreviewRouter;
     return ensureProject().enabled && getWebMidi()?.enabled ? view?.midiRouter : null;
+  };
+
+  const getAutomationBackend = () => {
+    const view = getLemmings(), local = !!localGamePreview?.getState().enabled || auditionPending || !!auditionAudio?.getState()?.activeVoices || !!auditionAudio?.getState()?.pendingNotes;
+    const hardware = !!view?.midiEnabled && !!getWebMidi()?.enabled && !!view?.midiOut;
+    return local && hardware ? 'both' : local ? 'synth' : hardware ? 'midi' : 'none';
+  };
+  let automationTargetHelpKey = null;
+  const syncAutomationTargetHelp = (force = false) => {
+    const backend = getAutomationBackend(), cc = ensureProject().global.mpe.timbreCc, key = backend + ':' + cc;
+    if (!force && key === automationTargetHelpKey) return;
+    automationTargetHelpKey = key;
+    const list = document?.getElementById('midiAutomationList');
+    for (const select of list?.querySelectorAll?.('select') || []) if (select.dataset.automationField === 'target') updateMidiAutomationTargetSelect(select, backend, cc);
+    for (const [id, target, suffix] of [['midiMappingTimbre', 'timbre', ''], ['midiGlobalTimbreMin', 'timbre', ' min'], ['midiGlobalTimbreMax', 'timbre', ' max'],
+      ['midiEnvAttack', 'attack', ''], ['midiEnvDecay', 'decay', ''], ['midiEnvSustain', 'sustain', ''], ['midiEnvRelease', 'release', ''],
+      ['midiGlobalEnvAttack', 'attack', ''], ['midiGlobalEnvDecay', 'decay', ''], ['midiGlobalEnvSustain', 'sustain', ''], ['midiGlobalEnvRelease', 'release', '']]) {
+      const input = document?.getElementById(id); if (!input) continue;
+      const info = getMidiAutomationTargetInfo(target, backend, cc); input.title = info.help;
+      const parent = input.parentElement || input.parent;
+      if (parent?.tagName === 'LABEL') { const label = Array.from(parent.children).find(child => child.tagName === 'SPAN'); if (label) label.textContent = info.label + suffix; }
+    }
+    spanControls?.syncTargetHelp(force);
   };
 
   const getSchedulerPressure = () => {
@@ -2019,9 +2031,10 @@ const createMidiUiController = ({
       targetText.textContent = 'Target';
       const target = document.createElement('select');
       for (const value of AUTOMATION_TARGETS) {
-        appendOption(document, target, value, AUTOMATION_TARGET_LABELS[value] || value);
+        appendOption(document, target, value, getMidiAutomationTargetInfo(value, getAutomationBackend(), current.global.mpe.timbreCc).label);
       }
       target.value = lane.target;
+      updateMidiAutomationTargetSelect(target, getAutomationBackend(), current.global.mpe.timbreCc);
       target.dataset.automationField = 'target';
       target.setAttribute('aria-label', `${lane.name} target`);
       target.addEventListener('change', event => dispatchProjectIntent({
@@ -2390,6 +2403,7 @@ const createMidiUiController = ({
   };
 
   const renderLocalSummary = () => {
+    syncAutomationTargetHelp();
     for (const editor of document?.getElementById('midiAutomationList')?.querySelectorAll?.('.midi-span-editor') || []) editor.syncStatus?.();
     renderMasterVolume(); tensionControls?.syncStatus(); spanControls?.syncStatus();
     const { live: localState, auditionActive, stopping } = localOwnershipState();
@@ -2659,6 +2673,7 @@ const createMidiUiController = ({
       renderClipInspector();
       renderOutputStatus();
       renderSoundEditor();
+      syncAutomationTargetHelp(true);
       localGamePreview?.syncConfig?.();
       if (getWebMidi()?.enabled) refreshDeviceLists({ preserveSelection: true });
     } finally {
@@ -2827,7 +2842,7 @@ const createMidiUiController = ({
     eventClipEditor = createMidiEventClipEditor({ document, bind: bindById, getProject: ensureProject, getSource: selectedSource,
       commitProject, dispatch: dispatchProjectIntent, history: editHistory, setStatus });
     eventClipEditor.initialize();
-    spanControls = createMidiAutomationSpanControls({ document, getProject: ensureProject, onIntent: dispatchProjectIntent, getRouter: getActiveRouter, getLaneCount: () => Math.max(1, getLemmings()?.game?.laneCount || 1),
+    spanControls = createMidiAutomationSpanControls({ document, getProject: ensureProject, onIntent: dispatchProjectIntent, getRouter: getActiveRouter, getBackend: getAutomationBackend, getLaneCount: () => Math.max(1, getLemmings()?.game?.laneCount || 1),
       onReturnToSpatial: id => {
         const list = document.getElementById('midiAutomationList'), row = Array.from(list?.children || []).find(entry => entry.dataset.automationId === id);
         const find = element => element.dataset?.automationField === 'target' ? element : Array.from(element.children).map(find).find(Boolean);

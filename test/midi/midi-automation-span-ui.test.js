@@ -45,6 +45,24 @@ describe('musical span editing and lane rectangles', () => {
     expect(project.enabled).to.equal(false); expect(document.getElementById('procgenSpanPresetStatus').textContent).to.include('scale-safe');
     controls.dispose(); button.dispatchEvent({ type: 'click', target: button }); expect(intents).to.have.length(1);
   });
+  it('updates current backend target help without rebuilding focused controls or changing saved targets', () => {
+    const document = new TestDocument(); document.registerElement('procgenSpanList', document.createElement('div'));
+    let project = createMidiProjectFromMidiConfig({ sfx: {}, triggers: {} }), backend = 'synth';
+    const controls = createProcgenMidiSpanControls({ document, getProject: () => project, getBackend: () => backend, getLaneCount: () => 8, getRouter: () => null,
+      onIntent: intent => { project = reduceMidiProject(project, intent); } });
+    try {
+      const timbre = controls.addSpan(createMidiSpan(), 'timbre'), release = controls.addSpan(createMidiSpan(), 'release');
+      const list = document.getElementById('procgenSpanList'), row = id => find(list, element => element.dataset.spanId === id);
+      const target = id => find(row(id), element => element.dataset.spanProperty === 'target');
+      const name = find(row(release), element => element.dataset.spanProperty === 'name'); name.focus(); Object.assign(name, { selectionStart: 2, selectionEnd: 5, selectionDirection: 'backward' });
+      expect(target(timbre).children.find(option => option.value === 'timbre').textContent).to.include('ignored by synth');
+      expect(target(release).title).to.include('ignores note-off velocity'); const before = JSON.stringify(project);
+      backend = 'midi'; controls.syncTargetHelp(); expect(target(timbre).children.find(option => option.value === 'timbre').textContent).to.include('device-dependent');
+      expect(target(release).title).to.include('may respond'); expect(document.activeElement).to.equal(name); expect(name.selectionDirection).to.equal('backward');
+      expect([name.selectionStart, name.selectionEnd]).to.deep.equal([2, 5]); expect(JSON.stringify(project)).to.equal(before);
+    } finally { controls.dispose(); }
+  });
+
   it('keeps multiple span editors open, applies one common transaction and retains field focus and names', () => {
     const document = new TestDocument(); document.registerElement('procgenSpanList', document.createElement('div'));
     let project = createMidiProjectFromMidiConfig({ sfx: {}, triggers: {} }); const intents = [];

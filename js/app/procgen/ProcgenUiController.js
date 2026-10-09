@@ -55,7 +55,9 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   project = loadProcgenAutomation(automationStorage(), project);
   try { const stored = JSON.parse(window.localStorage?.getItem(workerStorageKey) || 'null'); if (stored?.version === 1) settings.workerLimits = normalizeWorkerLimits(stored.value); } catch { /* Keep session defaults. */ }
   let config = projectToMidiConfig(project), disposed = false;
+  let syncTargetHelp = () => {};
   const renderOutput = state => {
+    syncTargetHelp();
     const button = byId('procgenListen'), midi = state.selectedBackend === 'midi';
     if (button) { button.textContent = state.enabled || state.status === 'starting' ? 'Stop output' : midi ? 'Connect MIDI' : 'Listen locally'; button.setAttribute('aria-pressed', String(state.enabled)); }
     if (byId('procgenAudioStatus')) byId('procgenAudioStatus').textContent = state.message + (!midi && settings.soundFont ? ' Requested sample bank is unavailable; using the browser synth.' : '');
@@ -112,6 +114,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   const dispatchAutomation = intent => commitAutomation(reduceMidiProject(project, intent));
   const spanControls = createProcgenMidiSpanControls({ document, getProject: () => project, getLaneCount: () => settings.laneCount,
     getRouter: () => getRuntime()?.view?.midiPreviewRouter,
+    getBackend: () => local.getState().selectedBackend === 'midi' ? 'midi' : 'synth',
     onSelect: (id, ids) => spanOverlay.select(id, ids), onIntent: dispatchAutomation });
   const spanOverlay = createProcgenMidiSpanOverlay({ document, getRuntime, getProject: () => project,
     getDomain: () => byId('procgenSpanDomain')?.value || 'beats', getTarget: () => byId('procgenSpanTarget')?.value || 'velocity',
@@ -125,6 +128,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   };
   listen(byId('procgenSpanUndo'), 'click', () => restoreAutomation('undo'));
   listen(byId('procgenSpanRedo'), 'click', () => restoreAutomation('redo')); syncAutomationHistory();
+  syncTargetHelp = () => spanControls.syncTargetHelp();
   const setSpanEditing = enabled => {
     if (enabled) setNukeArmed(false);
     spanOverlay.setEditing(enabled);

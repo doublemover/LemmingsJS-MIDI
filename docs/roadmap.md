@@ -1140,3 +1140,17 @@ hazard; explicit bounded source preparation reveals both intact shores, floor,
 open sky and original liquid with no page errors. This source inspection does
 not certify ordinary traffic. Ignored receipts are temp/source-open-bank-native.json
 and temp/source-open-bank-inspection-native.png.
+
+Automation target labels now describe the existing lowering contract in both
+Studio and procgen: default Timbre CC74 is ignored by the browser synth and
+external MIDI response depends on the device; supported channel controllers
+remain identified. Release scales note-off velocity rather than envelope time.
+Legacy attack, decay and sustain targets describe strength, reduction and gate
+multipliers. Saved target keys, DSP and mapping values are unchanged; backend/CC
+help updates preserve the editor node and text selection. Open-air and airy
+factory descriptions now match their existing gates and note-off behavior.
+
+The canonical storage owner additionally covers all lines/functions and 84.21%
+branches through the existing focused controller suite. Unavailable storage and
+fallback/error alternatives remain useful branch targets; its ignored report is
+temp/restart-automation-storage-coverage.log.

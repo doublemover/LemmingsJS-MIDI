@@ -1,8 +1,9 @@
 import { MIDI_AUTOMATION_SPAN_PRESETS, createMidiAutomationSpanBundle } from '../../midi/project/MidiAutomationSpanPresets.js';
 import { createMidiAutomationSpanEditor, createMidiSpan } from './midiAutomationSpanEditor.js';
+import { updateMidiAutomationTargetSelect } from './midiAutomationTargetHelp.js';
 import { AUTOMATION_TARGETS } from '../../midi/project/MidiProject.js';
 const find = (host, matches) => matches(host) ? host : Array.from(host.children || []).map(child => find(child, matches)).find(Boolean);
-const createMidiAutomationSpanControls = ({ document, getProject, onIntent, getRouter, getLaneCount, onSelect = () => {}, onReturnToSpatial = () => {}, allowSpatialConversion = true, includeSpatial = false, ids = {} }) => {
+const createMidiAutomationSpanControls = ({ document, getProject, onIntent, getRouter, getLaneCount, getBackend = () => 'none', onSelect = () => {}, onReturnToSpatial = () => {}, allowSpatialConversion = true, includeSpatial = false, ids = {} }) => {
   const names = { list: 'midiMainSpanList', preset: 'midiSpanPreset', presetApply: 'midiSpanPresetApply', domain: 'midiSpanPresetDomain', presetStatus: 'midiSpanPresetStatus', ...ids };
   const element = key => names[key] ? document.getElementById(names[key]) : null;
   const list = element('list'), add = element('add');
@@ -13,6 +14,22 @@ const createMidiAutomationSpanControls = ({ document, getProject, onIntent, getR
   const pageSize = 64;
   const selected = new Set(), expanded = new Set(), editors = new Map();
   const entriesForList = () => getProject().automation.filter(entry => entry.span).concat(includeSpatial ? getProject().automation.filter(entry => !entry.span) : []);
+  let targetHelpKey = null;
+  const syncTargetHelp = (force = false) => {
+    const backend = getBackend(), cc = getProject().global.mpe.timbreCc, key = backend + ':' + cc;
+    if (!force && key === targetHelpKey) return;
+    targetHelpKey = key;
+    const visit = host => {
+      if (host.tagName === 'SELECT' && (host.dataset.spanProperty === 'target' || host.dataset.bulkSpanField === 'target')) {
+        const help = updateMidiAutomationTargetSelect(host, backend, cc), parent = host.parentElement || host.parent;
+        const hint = parent.children.find ? parent.children.find(child => child.dataset?.spanTargetHelp) : Array.from(parent.children).find(child => child.dataset?.spanTargetHelp);
+        if (hint) hint.textContent = help;
+      }
+      for (const child of host.children || []) visit(child);
+    };
+    if (list) visit(list);
+    const target = element('target'); if (target) { const help = updateMidiAutomationTargetSelect(target, backend, cc); if (element('targetHelp')) element('targetHelp').textContent = help; }
+  };
   const announce = () => onSelect(selectedId, [...selected]);
   const nextId = () => {
     let id;
@@ -91,7 +108,7 @@ const createMidiAutomationSpanControls = ({ document, getProject, onIntent, getR
           else { input.type = 'number'; input.step = '0.25'; input.placeholder = 'Mixed'; }
           input.value = String(common(entry => spanField ? entry.span[key] : entry[key])); input.setAttribute('aria-label', 'Selected spans ' + label);
           input.addEventListener('change', () => { if (!input.value.trim()) return; const value = choices ? input.value : Number(input.value); if (choices || Number.isFinite(value)) updateSelected(spanField ? {} : { [key]: value }, spanField ? { [key]: value } : null); });
-          wrapper.append(input); toolbar.append(wrapper);
+          wrapper.append(input); if (key === 'target') { const hint = document.createElement('small'); hint.dataset.spanTargetHelp = 'true'; wrapper.append(hint); } toolbar.append(wrapper);
         };
         bulk('Target', 'target', AUTOMATION_TARGETS); bulk('Start value', 'min'); bulk('End value', 'max');
         if (common(entry => entry.span.domain)) { bulk('Start', 'start', null, true); bulk('Length', 'duration', null, true); }
@@ -116,7 +133,7 @@ const createMidiAutomationSpanControls = ({ document, getProject, onIntent, getR
             const wrapper = document.createElement('label'); wrapper.textContent = label; const input = document.createElement(choices ? 'select' : 'input'); input.dataset.spanProperty = key;
             if (choices) for (const value of choices) { const option = document.createElement('option'); option.value = value; option.textContent = value; input.append(option); }
             else { input.type = key === 'name' ? 'text' : 'number'; input.step = '0.1'; }
-            input.value = String(lane[key]); input.setAttribute('aria-label', lane.name + ' ' + label); input.addEventListener('change', () => { const value = choices || key === 'name' ? input.value : Number(input.value); if (choices || key === 'name' || Number.isFinite(value)) onIntent({ type: 'automation.update', automationId: lane.id, patch: { [key]: value } }); }); wrapper.append(input); fields.append(wrapper);
+            input.value = String(lane[key]); input.setAttribute('aria-label', lane.name + ' ' + label); input.addEventListener('change', () => { const value = choices || key === 'name' ? input.value : Number(input.value); if (choices || key === 'name' || Number.isFinite(value)) onIntent({ type: 'automation.update', automationId: lane.id, patch: { [key]: value } }); }); wrapper.append(input); if (key === 'target') { const hint = document.createElement('small'); hint.dataset.spanTargetHelp = 'true'; wrapper.append(hint); } fields.append(wrapper);
           };
           field('Name', 'name'); field('Target', 'target', AUTOMATION_TARGETS); field('Start value', 'min'); field('End value', 'max'); row.append(fields);
           if (lane.span) {
@@ -130,6 +147,7 @@ const createMidiAutomationSpanControls = ({ document, getProject, onIntent, getR
       }
       if (add) add.disabled = allSpans.length >= pageSize;
       if (presetButton) presetButton.disabled = allSpans.length + 3 > pageSize;
+      syncTargetHelp(true);
       if (wasFocused) {
         const host = bulkKey ? list : find(list, element => element.dataset?.spanId === focusId);
         let control = host && find(host, element => bulkKey ? element.dataset?.bulkSpanField === bulkKey : (element.dataset?.spanField || element.dataset?.spanProperty) === focusKey);
@@ -140,6 +158,6 @@ const createMidiAutomationSpanControls = ({ document, getProject, onIntent, getR
   };
   const addClicked = () => addSpan(), presetClicked = () => applyPreset(presetPicker?.value); add?.addEventListener('click', addClicked); presetButton?.addEventListener('click', presetClicked);
   render();
-  return { render, select, addSpan, applyPreset, updateSelected, getSelectedId: () => selectedId, getSelectedIds: () => [...selected], syncStatus: () => { for (const editor of editors.values()) editor.syncStatus?.(); }, dispose: () => { add?.removeEventListener?.('click', addClicked); presetButton?.removeEventListener?.('click', presetClicked); selected.clear(); expanded.clear(); editors.clear(); } };
+  return { render, select, addSpan, applyPreset, updateSelected, getSelectedId: () => selectedId, getSelectedIds: () => [...selected], syncTargetHelp, syncStatus: () => { for (const editor of editors.values()) editor.syncStatus?.(); }, dispose: () => { add?.removeEventListener?.('click', addClicked); presetButton?.removeEventListener?.('click', presetClicked); selected.clear(); expanded.clear(); editors.clear(); } };
 };
 export { createMidiAutomationSpanControls };

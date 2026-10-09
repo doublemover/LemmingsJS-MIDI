@@ -6,7 +6,7 @@ import { quantizeToScale, resolveScale } from '../midi-mapping/MidiMappingDomain
 const PROCGEN_SPAWN_MIDI_DEFAULTS = Object.freeze({ velocity: 24, priority: 0 });
 const PROCGEN_PRESETS = Object.freeze([
   { id: 'procgen-bass-relay', label: 'Crowd relay - Dorian bass', basePresetId: 'game-dorian-bass-pulse', family: 'Procgen', description: 'Dry bass answers, quiet descending landings and two-bar evolving crowd replies.', bars: 2, evolve: 2, landingTicks: 2 },
-  { id: 'procgen-airy-arrivals', label: 'Airy arrivals - Lydian', basePresetId: 'game-lydian-lanterns', family: 'Procgen', description: 'High descending arrivals and sparse four-bar crowd arches with long releases.', bars: 4, evolve: 4, landingTicks: 5 },
+  { id: 'procgen-airy-arrivals', label: 'Airy arrivals - Lydian', basePresetId: 'game-lydian-lanterns', family: 'Procgen', description: 'High descending arrivals and sparse four-bar crowd arches with long note gates.', bars: 4, evolve: 4, landingTicks: 5 },
   { id: 'procgen-clockwork-crowd', label: 'Clockwork crowd - harmonic minor', basePresetId: 'game-harmonic-minor-clockwork', family: 'Procgen', description: 'Angular construction and three-bar crowd phrases with short quiet arrivals.', bars: 3, evolve: -2, landingTicks: 3 }
 ]);
 const PROCGEN_GAME_EVENT_MIDI_PRESETS = Object.freeze([...GAME_EVENT_MIDI_PRESETS, ...PROCGEN_PRESETS]);
