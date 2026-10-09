@@ -1,3 +1,4 @@
+import { classifySourceRegionPassages } from './ProcgenSourceRegionPassages.js';
 import { compileAuthoredAssemblies } from './ProcgenAuthoredAssemblies.js';
 import { placeAuthoredAssemblies } from './ProcgenAssemblyPlacement.js';
 import { CLEAR_TERRAIN, PAINT_TERRAIN, compileTerrainGroup, terrainStampAt } from './ProcgenTerrainCompositing.js';
@@ -157,6 +158,9 @@ const placeSourceRegion = ({ library = [], seed, firstChunk, code, height, occup
         }
       }
     }
+    const passages = classifySourceRegionPassages({ ports, protectedVoids: voids, height,
+      solid: (px, py) => sample(px - firstChunk * 128, py),
+      sourceSolid: (px, py) => (terrainStampAt(placement, px - firstChunk * 128, py, solid(px - firstChunk * 128, py)) & 3) >= PAINT_TERRAIN });
     const region = Object.freeze({ id: group.sourceRevision + ':' + seed + ':' + firstChunk + ':' + group.entry.id,
       production: voids.length ? 'source-overhang' : 'source-assembly', sourceAtom: group.entry.id, sourceRevision: group.sourceRevision,
       sourceShape: support.sourceShape, sourceStrata: group.sourceStrata,
@@ -164,7 +168,7 @@ const placeSourceRegion = ({ library = [], seed, firstChunk, code, height, occup
       bounds: Object.freeze({ ...assembly.bounds }), touchedTiles: Object.freeze([firstChunk, firstChunk + 1]),
       sourcePlacements: Object.freeze(piece.sourcePlacements.map(member => Object.freeze({ ...member }))),
       supportContacts: Object.freeze(supportContacts),
-      protectedVoids: Object.freeze(voids), ports: Object.freeze(ports), rejectedAlternatives: Object.freeze(rejected), crewStatus: 'unqualified' });
+      protectedVoids: Object.freeze(voids), ports: Object.freeze(ports), passages, rejectedAlternatives: Object.freeze(rejected), crewStatus: 'unqualified' });
     attempts.push(Object.freeze({ id: group.entry.id, status: 'admitted', strata: Object.freeze((group.sourceStrata || []).slice()), shape: support.sourceShape }));
     return { placement: { ...placement, sourceRegion: region }, region, admission: finish('admitted', group.entry.id) };
   }
