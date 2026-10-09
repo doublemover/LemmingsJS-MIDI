@@ -3,7 +3,7 @@ import { createMidiAutomationSpanEditor } from './midi-ui/midiAutomationSpanEdit
 import { createMidiTensionControls } from './midi-ui/midiTensionControls.js';
 import { createMidiOutputCapture } from '../midi/capture/MidiOutputCapture.js';
 import { createMidiCaptureControls } from './midi-ui/midiCaptureControls.js';
-import { createMidiEventClipEditor } from './midi-ui/midiEventClipEditor.js';
+import { createMidiEventClipEditor, getMidiClipCellHelp } from './midi-ui/midiEventClipEditor.js';
 import { getMidiClipVoices } from '../midi/project/MidiClipTransforms.js';
 import { buildMidiClipRecording, MAX_MIDI_CLIP_CAPTURE_NOTES } from '../midi/project/MidiClipRecording.js';
 import { createSoundAuditionPlan } from './midi-ui/midiSoundAudition.js';
@@ -1834,6 +1834,7 @@ const createMidiUiController = ({
       grid.appendChild(empty);
       return;
     }
+    const cellHelp = getMidiClipCellHelp(clip);
     const count = Math.min(clip.lengthSteps || 0, STEP_FIELD_COUNT);
     grid.setAttribute('aria-rowcount', String(Math.ceil(count / columnCount)));
     grid.setAttribute('aria-colcount', String(columnCount));
@@ -1903,7 +1904,7 @@ const createMidiUiController = ({
       probability.value = step.probability == null ? '1' : String(step.probability);
       probability.setAttribute('aria-label', `${stepLabel} probability`);
       probability.setAttribute('aria-describedby', 'midiClipPlaybackSummary');
-      probability.title = '0 omits this note. Positive values enable it; random chance playback is not implemented.';
+      probability.title = cellHelp.probability;
       probability.addEventListener('change', event => updateSelectedClipStep(index, { probability: toNumberOrNull(event.target.value) ?? 1 }));
       probabilityLabel.appendChild(probability);
       const holdLabel = document.createElement('label');
@@ -1915,7 +1916,7 @@ const createMidiUiController = ({
       hold.checked = !!step.hold;
       hold.setAttribute('aria-label', `${stepLabel} hold`);
       hold.setAttribute('aria-describedby', 'midiClipPlaybackSummary');
-      hold.title = 'Saved with the project; currently has no effect on playback.';
+      hold.title = cellHelp.hold;
       hold.addEventListener('change', event => updateSelectedClipStep(index, { hold: !!event.target.checked }));
       holdLabel.appendChild(hold);
       const tieLabel = document.createElement('label');
@@ -1927,7 +1928,7 @@ const createMidiUiController = ({
       tie.checked = !!step.tie;
       tie.setAttribute('aria-label', `${stepLabel} tie`);
       tie.setAttribute('aria-describedby', 'midiClipPlaybackSummary');
-      tie.title = 'Currently omits this note; it does not extend the previous note.';
+      tie.title = cellHelp.tie;
       tie.addEventListener('change', event => updateSelectedClipStep(index, { tie: !!event.target.checked }));
       tieLabel.appendChild(tie);
       const rest = document.createElement('button');
@@ -1981,6 +1982,11 @@ const createMidiUiController = ({
     const current = ensureProject();
     const list = document?.getElementById('midiAutomationList');
     if (!list) return;
+    const active = document.activeElement;
+    let activeRow = list.contains(active) ? active : null;
+    while (activeRow && activeRow !== list && !activeRow.dataset?.automationId) activeRow = activeRow.parentElement || activeRow.parent;
+    const focusId = activeRow?.dataset?.automationId, focusKey = active?.dataset?.spanField || active?.dataset?.automationField;
+    const selection = Number.isInteger(active?.selectionStart) ? [active.selectionStart, active.selectionEnd, active.selectionDirection] : null;
     const openSpans = new Map(Array.from(list.querySelectorAll?.('.midi-span-editor') || []).map(editor => [editor.dataset.automationSpanId, editor.open]));
     removeChildren(list);
     for (const lane of current.automation) {
@@ -1994,6 +2000,7 @@ const createMidiUiController = ({
       enabledLabel.className = 'midi-field midi-field--toggle';
       const enabled = document.createElement('input');
       enabled.type = 'checkbox';
+      enabled.dataset.automationField = 'enabled';
       enabled.checked = !!lane.enabled;
       enabled.setAttribute('aria-label', `Enable modulation lane ${lane.name}`);
       enabled.addEventListener('change', event => dispatchProjectIntent({
@@ -2014,6 +2021,7 @@ const createMidiUiController = ({
         appendOption(document, target, value, AUTOMATION_TARGET_LABELS[value] || value);
       }
       target.value = lane.target;
+      target.dataset.automationField = 'target';
       target.setAttribute('aria-label', `${lane.name} target`);
       target.addEventListener('change', event => dispatchProjectIntent({
         type: 'automation.update',
@@ -2031,6 +2039,7 @@ const createMidiUiController = ({
         appendOption(document, axis, value, value.toUpperCase());
       }
       axis.value = lane.axis;
+      axis.dataset.automationField = 'axis';
       axis.setAttribute('aria-label', `${lane.name} axis`);
       axis.addEventListener('change', event => dispatchProjectIntent({
         type: 'automation.update',
@@ -2045,6 +2054,7 @@ const createMidiUiController = ({
       opText.textContent = 'Op';
       const op = document.createElement('select');
       op.className = 'midi-automation-axis-op';
+      op.dataset.automationField = 'axisOp';
       for (const entry of POSITION_AXIS_OPERATORS) {
         appendOption(document, op, entry.value, entry.label);
       }
@@ -2065,6 +2075,7 @@ const createMidiUiController = ({
       min.type = 'number';
       min.step = '0.05';
       min.value = String(lane.min);
+      min.dataset.automationField = 'min';
       min.setAttribute('aria-label', `${lane.name} minimum`);
       min.addEventListener('change', event => dispatchProjectIntent({
         type: 'automation.update',
@@ -2081,6 +2092,7 @@ const createMidiUiController = ({
       max.type = 'number';
       max.step = '0.05';
       max.value = String(lane.max);
+      max.dataset.automationField = 'max';
       max.setAttribute('aria-label', `${lane.name} maximum`);
       max.addEventListener('change', event => dispatchProjectIntent({
         type: 'automation.update',
@@ -2096,6 +2108,7 @@ const createMidiUiController = ({
       pointBeatText.textContent = 'Position 0–1';
       const pointBeat = document.createElement('input');
       pointBeat.className = 'midi-automation-point-beat';
+      pointBeat.dataset.automationField = 'pointBeat';
       pointBeat.type = 'number';
       pointBeat.min = '0';
       pointBeat.max = '1';
@@ -2116,6 +2129,7 @@ const createMidiUiController = ({
       pointValueText.textContent = 'Value';
       const pointValue = document.createElement('input');
       pointValue.className = 'midi-automation-point-value';
+      pointValue.dataset.automationField = 'pointValue';
       pointValue.type = 'number';
       pointValue.step = '0.05';
       pointValue.value = String(point.value);
@@ -2131,6 +2145,7 @@ const createMidiUiController = ({
       const remove = document.createElement('button');
       remove.type = 'button';
       remove.className = 'midi-automation-remove';
+      remove.dataset.automationField = 'remove';
       remove.textContent = 'Remove';
       remove.setAttribute('aria-label', `Remove modulation lane ${lane.name}`);
       remove.addEventListener('click', () => dispatchProjectIntent({
@@ -2144,6 +2159,11 @@ const createMidiUiController = ({
         getState: () => getActiveRouter()?.getAutomationSpanState?.(lane.id, 0),
         onUpdate: patch => dispatchProjectIntent({ type: 'automation.update', automationId: lane.id, patch }) }));
       list.appendChild(row);
+      if (lane.id === focusId && focusKey) {
+        const find = element => (element.dataset?.spanField || element.dataset?.automationField) === focusKey ? element : Array.from(element.children).map(find).find(Boolean);
+        const control = find(row); control?.focus?.({ preventScroll: true });
+        if (selection && control?.setSelectionRange) control.setSelectionRange(...selection);
+      }
     }
     if (!current.automation.length) {
       const empty = document.createElement('div');

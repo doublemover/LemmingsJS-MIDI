@@ -1185,6 +1185,44 @@ describe('midiUiController sequencer', function() {
     expect(doc.activeElement).to.equal(clipType);
   });
 
+  it('retains main automation field identity while actual active gates and unrelated spans survive value edits', function() {
+    withFakeClockAndPerformance(() => {
+      const config = { enabled: true, mpe: { enabled: false }, scale: { name: 'chromatic', root: 0 }, sfx: { 1: { note: 60, channel: 1, durationTicks: 8 } }, triggers: {} };
+      const router = new MidiEventRouter(config), calls = []; router.setOutput(makeOutput([1], calls));
+      const { controller, doc, win } = createControllerHarness({ factoryConfig: config, webMidi: { enabled: true, inputs: [], outputs: [] },
+        lemmings: { midiRouter: router, setMidiProjectConfig(value) { this._midiConfig = value; this.projectConfigs.push(value); router.setMapping(value); } } });
+      const find = (root, key) => (root.dataset.spanField || root.dataset.automationField) === key ? root : root.children.map(child => find(child, key)).find(Boolean);
+      try {
+        controller.bindMidiUi();
+        controller.dispatchProjectIntent({ type: 'automation.add', automation: { id: 'first', target: 'pan', min: -12, max: 12, span: { domain: 'beats', start: 0, duration: 4 } } });
+        controller.dispatchProjectIntent({ type: 'automation.add', automation: { id: 'other', target: 'velocity', min: 70, max: 90, span: { domain: 'beats', start: 8, duration: 4 } } });
+        const before = controller.getProject().automation.find(lane => lane.id === 'other');
+        router._onEvent({ sfxId: 1, tick: 0, frameMs: 60 }); expect(router.scheduler._activeNotes.size).to.equal(1);
+        const gate = [...router.scheduler._activeNotes.keys()][0], list = doc.getElementById('midiAutomationList');
+        const row = () => list.children.find(entry => entry.dataset.automationId === 'first');
+        const duration = find(row(), 'duration'); duration.focus(); duration.value = '6'; duration.dispatchEvent({ type: 'change', target: duration });
+        expect(doc.activeElement).to.equal(find(row(), 'duration')); expect(doc.activeElement.value).to.equal('6');
+        const min = find(row(), 'min'); min.focus(); min.value = '-20'; min.dispatchEvent({ type: 'change', target: min });
+        expect(doc.activeElement).to.equal(find(row(), 'min')); expect(controller.getProject().automation.find(lane => lane.id === 'other')).to.deep.equal(before);
+        expect([...router.scheduler._activeNotes.keys()]).to.deep.equal([gate]); expect(calls.filter(call => call.type === 'noteOff')).to.have.length(0);
+        expect(JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY)).automation.find(lane => lane.id === 'first')).to.include({ min: -20 });
+      } finally { controller.dispose(); router.dispose(); }
+    });
+  });
+  it('explains Expert Hold, Tie and probability effects for phrase, event and legacy clips', function() {
+    const { controller, doc } = createControllerHarness();
+    try {
+      controller.bindMidiUi(); controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'help', lengthSteps: 2, playback: { advance: 'game-tick', spacingTicks: 2 }, steps: [{ note: 60, hold: true }, { note: 60, tie: true }] } });
+      const title = field => doc.getElementById('midiStepPatternGrid').querySelectorAll('.midi-step-' + field)[0].title;
+      expect(title('hold')).to.include('next played cell'); expect(title('tie')).to.include('preceding played voices'); expect(title('probability')).to.include('Deterministic chance');
+      controller.dispatchProjectIntent({ type: 'clip.update', clipId: 'help', patch: { playback: { advance: 'event', spacingTicks: 2 } } });
+      expect(title('hold')).to.include('does not extend'); expect(title('tie')).to.include('Skips this event cell');
+      controller.dispatchProjectIntent({ type: 'clip.update', clipId: 'help', patch: { playback: null } });
+      expect(title('hold')).to.include('legacy'); expect(title('tie')).to.include('does not extend'); expect(title('probability')).to.include('Every positive value');
+      const cells = controller.getProject().clips.find(clip => clip.id === 'help').steps; expect(cells[0].hold).to.equal(true); expect(cells[1].tie).to.equal(true);
+    } finally { controller.dispose(); }
+  });
+
   it('edits modulation controls and exports runtime automation config', function() {
     const { controller, doc, win, view } = createControllerHarness({
       factoryConfig: {

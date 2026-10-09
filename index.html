@@ -89,6 +89,8 @@
                 <label>Condition<select id="midiEventClipCondition"><option value="event">Every N events</option><option value="pass">Every N passes</option><option value="bar">Every N trigger bars</option></select></label>
                 <label>N<input id="midiEventClipEvery" type="number" min="1" max="64" value="1" /></label>
                 <label>Phase (0 = Nth)<input id="midiEventClipPhase" type="number" min="0" max="0" value="0" /></label>
+                <label class="midi-clip-flag">Hold<input id="midiEventClipHold" type="checkbox" /></label>
+                <label class="midi-clip-flag">Tie<input id="midiEventClipTie" type="checkbox" /></label>
               </div>
               <details><summary>Independent voices in this cell</summary><div id="midiEventClipVoices"></div><button id="midiEventClipVoiceAdd" type="button">Add voice</button><p class="midi-help">Up to 8 pitches, each with its own velocity and duration. Blank dynamics use cell/project defaults. Scalar controls edit the first voice; Rest erases the whole cell. Poly voices require event or game-tick playback.</p></details>
               <details><summary>Base pitch transform (saved behavior)</summary><div class="midi-clip-controls">

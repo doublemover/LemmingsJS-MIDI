@@ -129,3 +129,47 @@ test('every right-pane workspace keeps aligned direct Panic and close controls',
   await page.screenshot({ path: testInfo.outputPath('midi-pane-titlebar-hierarchy.png'), fullPage: true });
   expect(await page.evaluate(() => window.__midiPermissionCalls)).toBe(0);
 });
+
+
+test('Studio cell edits preserve focus and saved Hold/Tie', async ({ page }) => {
+  await page.goto('/?e2e=1&midi=1'); await waitForHarnessReady(page);
+  await page.evaluate(() => window.__E2E__.pause());
+  if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
+  await page.locator('[data-game-event-id="1"]').click();
+  await page.locator('#midiClipCreate').click();
+  await page.locator('#midiEventClipAdvance').selectOption('game-tick');
+  const before = await page.evaluate(() => window.__E2E__.midiGetProject());
+  const clipId = before.sources.find(source => source.id === 'sfx-1').clipId;
+  const firstNote = before.clips.find(clip => clip.id === clipId).steps[0].note;
+  const clock = await page.locator('#midiGameClock').textContent();
+  await page.locator('#midiEventClipVoices').locator('..').locator('summary').click();
+  await page.locator('#midiEventClipVoiceAdd').click();
+  const voice = page.locator('#midiEventClipVoices input[aria-label="Voice 2 pitch"]');
+  await voice.fill('F#4');
+  await voice.evaluate(input => { input.setSelectionRange(1, 2); input.dispatchEvent(new Event('change', { bubbles: true })); });
+  await expect(voice).toBeFocused();
+  expect(await voice.evaluate(input => [input.selectionStart, input.selectionEnd])).toEqual([1, 2]);
+  await page.locator('#midiEventClipLayers').locator('..').locator('summary').click();
+  await page.locator('#midiEventClipLayerAdd').click();
+  await page.locator('#midiEventClipLayers select[aria-label="Layer 1"]').selectOption('repeat');
+  const repeat = page.locator('#midiEventClipLayers input[aria-label="Repeat count"]');
+  await repeat.fill('3'); await repeat.dispatchEvent('change'); await expect(repeat).toBeFocused();
+  await page.locator('#midiEventClipHold').check();
+  await expect(page.locator('#midiEventClipHold')).toHaveAttribute('title', /next played|phrase end/i);
+  await page.locator('#midiEventClipGrid [data-cell-index="0"]').focus(); await page.keyboard.press('ArrowRight');
+  await page.locator('#midiEventClipTie').check();
+  await expect(page.locator('#midiEventClipTie')).toHaveAttribute('title', /extend/i);
+  await page.locator('#midiEventClipAdvance').selectOption('event');
+  await expect(page.locator('#midiEventClipTie')).toHaveAttribute('title', /omit|skip/i);
+  await page.locator('#midiEventClipAdvance').selectOption('game-tick');
+  const edited = await page.evaluate(id => window.__E2E__.midiGetProject().clips.find(clip => clip.id === id), clipId);
+  expect(edited.steps[0].voices[0].note).toBe(firstNote); expect(edited.steps[0].voices[1].note).toBe(66);
+  expect(edited.steps[0].transformLayers[0]).toMatchObject({ type: 'repeat', count: 3 });
+  expect(edited.steps[0].hold).toBe(true); expect(edited.steps[1].tie).toBe(true);
+  await expect(page.locator('#midiGameClock')).toHaveText(clock);
+  await page.locator('#midiViewProject').click(); await page.locator('.midi-project-tools > summary').click(); await page.locator('#midiTemplateSaveButton').click();
+  await expect(page.locator('#midiProjectStatus')).toContainText('Saved');
+  await page.reload(); await waitForHarnessReady(page);
+  expect(await page.evaluate(id => window.__E2E__.midiGetProject().clips.find(clip => clip.id === id), clipId)).toEqual(edited);
+  expect(await page.evaluate(() => window.__midiPermissionCalls)).toBe(0);
+});

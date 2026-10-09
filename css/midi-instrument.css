@@ -220,6 +220,8 @@ body.game-page.studio-open[data-midi-layout=overlay] .midi-sequencer { grid-colu
 .midi-clip-controls { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; margin-block: 8px; }
 .midi-clip-controls label { display: flex; flex-direction: column; gap: 4px; font-size: 10px; min-width: 0; }
 .midi-clip-controls :is(input,select) { width: 100%; min-width: 0; box-sizing: border-box; font-size: 10px; padding: 4px 2px; }
+.midi-clip-controls .midi-clip-flag { flex-direction: row; align-items: center; align-self: end; gap: 6px; min-height: 24px; }
+.midi-clip-controls .midi-clip-flag input { width: auto; flex: 0 0 auto; padding: 0; }
 .midi-event-clip-grid { display: grid; grid-template-columns: repeat(var(--clip-cells,8),minmax(0,1fr)); height: 105px; gap: 1px; touch-action: none; user-select: none; background: repeating-linear-gradient(to top,#bdc6ac 0 1px,transparent 1px 12px); }
 .midi-event-clip-grid .midi-event-clip-cell { position: relative; display: block; padding: 0; min-width: 0; border-radius: 2px; background: #f8f6e780; border-color: #a6b597; overflow: hidden; }
 .midi-event-clip-cell[aria-pressed=true] { background: #d0dab8; outline: 1px solid #5a7350; }
