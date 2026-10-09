@@ -72,6 +72,71 @@ describe('actual sourced shoulder with temporary crew containment', function() {
     expect(world.tunnelRoutes.request(leader, evidence)).to.equal(false); expect(world.tunnelRoutes.stats.requested).to.equal(0);
     expect(world.tunnelRoutes.scenes[0]).to.equal(null); expect(world.stats.bashes + world.stats.blockers).to.equal(0); world.dispose();
   });
+  it('rejects an overlapping future tunnel claim before requesting a guard, including members and original owners', async () => {
+    for (const mode of ['member', 'old-owner', 'underdeclared']) {
+      const { world, leader, guard } = await fixture(1);
+      try {
+        const evidence = world.hazardPlanner.guardedTunnels.prove(leader, 1024).guardCandidate;
+        expect(evidence).to.be.an('object');
+        const owner = mode === 'member' ? guard : leader;
+        world.lanePolicy.projects.observe(leader); world.lanePolicy.projects.observe(guard);
+        const initial = world._workerClaimBounds(leader, world.actions[State.BASHING]);
+        const bounds = mode === 'underdeclared' ? { x1: initial.x1, x2: initial.x1 + 1, y1: initial.y1, y2: initial.y1 + 1 } : { x1: 1486, x2: 1497, y1: 75, y2: 90 };
+        const task = { footprint: bounds, targetX: bounds.x2 }, id = world.lanePolicy.projects.begin(owner, 'bashers', task);
+        const project = world.lanePolicy.projects.lanes[0].projects.find(p => p.id === id);
+        expect(project.members.has(leader.id)).to.equal(true);
+        if (mode === 'old-owner') world.lanePolicy.projects.connect(0, id, bounds.x2, owner.y, []);
+        if (mode === 'underdeclared') evidence.observedBounds = { x1: 1500, x2: 1502, y1: 90, y2: 92 };
+        const before = [leader.action, leader.state, guard.action, guard.state, world.stats.blockers, world.stats.bashes, world.stats.removedPixels, world.terrainRevision];
+        expect(world.tunnelRoutes.request(leader, evidence), mode).to.equal(false);
+        expect([leader.action, leader.state, guard.action, guard.state, world.stats.blockers, world.stats.bashes, world.stats.removedPixels, world.terrainRevision]).to.deep.equal(before);
+        expect(world.tunnelRoutes.scenes[0]).to.equal(null); expect(world.tunnelRoutes.stats.requested).to.equal(0); expect(world._manualNukeLanes[0]).to.equal(0);
+        expect(project.members.has(leader.id)).to.equal(true); expect(project.phase).to.equal(mode === 'old-owner' ? 'connected' : 'working');
+      } finally { world.dispose(); }
+    }
+  });
+  it('cancels only the pending request if a real promise appears before supported blocker activation', async () => {
+    for (const mode of ['observed-bounds', 'future-masks']) {
+      const { world, leader, guard } = await fixture(1), events = [];
+      try {
+        world.soundEvents.onEvent.on(event => events.push(event));
+        const evidence = world.hazardPlanner.guardedTunnels.prove(leader, 1024).guardCandidate;
+        const initial = world._workerClaimBounds(leader, world.actions[State.BASHING]);
+        if (mode === 'future-masks') evidence.observedBounds = { x1: 1500, x2: 1502, y1: 90, y2: 92 };
+        expect(world.tunnelRoutes.request(leader, evidence)).to.equal(true);
+        const scene = world.tunnelRoutes.scenes[0]; expect(scene.phase).to.equal('pending');
+        world.lanePolicy.projects.observe(leader); world.lanePolicy.projects.observe(guard);
+        const bounds = mode === 'future-masks' ? { x1: initial.x2 - 1, x2: initial.x2, y1: initial.y1, y2: initial.y1 + 1 } : { x1: 1486, x2: 1497, y1: 75, y2: 90 };
+        const task = { footprint: bounds, targetX: bounds.x2 };
+        const id = world.lanePolicy.projects.begin(leader, 'bashers', task), project = world.lanePolicy.projects.lanes[0].projects.find(p => p.id === id);
+        world.lanePolicy.projects.connect(0, id, bounds.x2, leader.y, []);
+        const before = [guard.x, guard.y, guard.action, guard.state, world.stats.blockers, world.stats.bashes, world.terrainRevision];
+        expect(world.tunnelRoutes.assist(guard), mode).to.equal(false);
+        expect([guard.x, guard.y, guard.action, guard.state, world.stats.blockers, world.stats.bashes, world.terrainRevision]).to.deep.equal(before);
+        expect(world.tunnelRoutes.scenes[0]).to.equal(null); expect(scene.guard).to.equal(null); expect(project.phase).to.equal('connected');
+        expect(world.tunnelRoutes.stats).to.include({ requested: 1, guards: 0, failed: 0 }); expect(world.triggerManager.byOwner.has(guard)).to.equal(false);
+        expect(world._manualNukeLanes[0]).to.equal(0); expect(events).to.have.length(0);
+      } finally { world.dispose(); }
+    }
+  });
+  it('admits touching or unrelated claims and terminal promises without clipping source bounds', async () => {
+    for (const mode of ['touching', 'unrelated', 'failed', 'complete', 'retired']) {
+      const { world, leader, guard } = await fixture(1);
+      try {
+        const evidence = world.hazardPlanner.guardedTunnels.prove(leader, 1024).guardCandidate;
+        world.lanePolicy.projects.observe(leader); world.lanePolicy.projects.observe(guard);
+        const x1 = mode === 'touching' ? evidence.exitX + 1 : mode === 'unrelated' ? 1510 : 1486;
+        const task = { footprint: { x1, x2: x1 + 1, y1: 85, y2: 100 }, targetX: x1 + 1 };
+        const id = world.lanePolicy.projects.begin(leader, 'bashers', task), project = world.lanePolicy.projects.lanes[0].projects.find(p => p.id === id);
+        if (['failed', 'complete', 'retired'].includes(mode)) project.phase = mode;
+        expect(world.tunnelRoutes.request(leader, evidence), mode).to.equal(true);
+        const scene = world.tunnelRoutes.scenes[0]; expect(scene.bounds.x2).to.equal(evidence.exitX + 1);
+        expect(world.tunnelRoutes.assist(guard), mode).to.equal(true); expect(scene.phase).to.equal('guarded'); expect(scene.guard).to.equal(guard);
+        expect(guard.action).to.equal(world.actions[State.BLOCKING]); expect(world.stats.blockers).to.equal(1); expect(world.stats.bashes).to.equal(0);
+        expect(world._manualNukeLanes[0]).to.equal(0);
+      } finally { world.dispose(); }
+    }
+  });
   it('retires a failed relevant edit once through the lane-local queue and clears real guard ownership', async () => {
     const { world, crew, guard } = await fixture(8, 2), other = world.actors.find(actor => actor.laneIndex === 1);
     while (world.tickIndex < 40 && world.tunnelRoutes.scenes[0]?.phase !== 'working') world.step();

@@ -9,28 +9,110 @@ import { loadProcgenMasks, loadProcgenTerrain } from '../scripts/bench-procgen-l
 describe('current physical recovery of an unstarted stale tunnel guard', function() {
   this.timeout(30000); let masks;
   before(async () => { masks = await loadProcgenMasks(); });
-  const fixture = async (laneCount = 1) => {
+  const fixture = async (laneCount = 1, stale = true) => {
     const world = new ProcgenLaneWorld({ terrain: await loadProcgenTerrain('lemmings', 4), masks, seed: 1322764708, laneHeight: 144,
       laneCount, workerLimits: { builders: 0, diggers: 0, bashers: 4 }, populationPolicy: { scoutsEvery: 0 } });
     world.admissionPaused = true; world.cohorts = false; world.hazardPlanner.plan = () => null;
-    for (const x of [1760, 1820, 1870]) world.terrainGrowth.ensureLocal(0, x, { through: world.generatedThrough, frontiers: world.frontiers, prepare: world._prepareGrowthChunk, reveal: world._revealGrowth });
-    const guard = world.actors[0]; Object.assign(guard, { x: 1798, y: 96, scout: false, canClimb: false, hasParachute: false, lookRight: true });
+    for (const x of stale ? [1760, 1820, 1870] : [1380, 1470]) world.terrainGrowth.ensureLocal(0, x, { through: world.generatedThrough, frontiers: world.frontiers, prepare: world._prepareGrowthChunk, reveal: world._revealGrowth });
+    const guard = world.actors[0]; Object.assign(guard, { x: stale ? 1798 : 1407, y: stale ? 96 : 109, scout: false, canClimb: false, hasParachute: false, lookRight: true });
     guard.setAction(world.actions[State.BLOCKING]); expect(guard.process(world)).to.equal(State.NO_STATE_TYPE); world._syncTriggerOwner(guard);
-    const scene = { lane: 0, generation: world.generation, startTick: world.tickIndex, startX: 1813, startY: 90, phase: 'guarded', guard, guardX: guard.x, guardY: guard.y,
-      worker: null, task: null, port: { guardX: 1799, guardY: 96, exitX: 1881, exitY: 87 }, bounds: { x1: 1797, x2: 1882, y1: 74, y2: 123 } };
+    const scene = { lane: 0, generation: world.generation, startTick: world.tickIndex, startX: stale ? 1813 : 1422, startY: stale ? 90 : 101, phase: 'guarded', guard, guardX: guard.x, guardY: guard.y,
+      worker: null, task: null, port: stale ? { guardX: 1799, guardY: 96, exitX: 1881, exitY: 87 } : { guardX: 1408, guardY: 109, exitX: 1495, exitY: 99 },
+      bounds: stale ? { x1: 1797, x2: 1882, y1: 74, y2: 123 } : { x1: 1406, x2: 1496, y1: 85, y2: 134 } };
     scene.triggerKey = world.triggerManager.byOwner.get(guard).map(t => `${t.type}:${t.x1}:${t.x2}:${t.y1}:${t.y2}`).join(',');
     guard._tunnelScene = scene; world.tunnelRoutes.scenes[0] = scene;
     const other = world._spawn(0); other.x = 36; other.y = world.surfaceAt(0, 36); other.setAction(world.actions[State.WALKING]);
-    expect(world.tunnelRoutes.guard({ laneIndex: 0, x: 1813, y: 90 })).to.equal(guard);
+    expect(world.tunnelRoutes.guard({ laneIndex: 0, x: scene.startX, y: scene.startY })).to.equal(guard);
     const edit = { x: 1860, y: 80, ownerId: other.id };
-    world._processingActorId = other.id; world.setGroundAt(edit.x, edit.y); world._processingActorId = null;
-    expect(scene.failure).to.equal('changed-route');
-    expect(world.tunnelRoutes.guard({ laneIndex: 0, x: 1813, y: 90 })).to.equal(null);
-    const staleTask = {}; world.tunnelRoutes.begin({ laneIndex: 0 }, { routeEvidence: { rearBlockerId: guard.id } }, staleTask);
-    expect(scene.phase).to.equal('guarded'); expect(staleTask.tunnelScene).to.equal(undefined);
+    if (stale) { world._processingActorId = other.id; world.setGroundAt(edit.x, edit.y); world._processingActorId = null; }
+    if (stale) {
+      expect(scene.failure).to.equal('changed-route');
+      expect(world.tunnelRoutes.guard({ laneIndex: 0, x: scene.startX, y: scene.startY })).to.equal(null);
+      const staleTask = {}; world.tunnelRoutes.begin({ laneIndex: 0 }, { routeEvidence: { rearBlockerId: guard.id } }, staleTask);
+      expect(scene.phase).to.equal('guarded'); expect(staleTask.tunnelScene).to.equal(undefined);
+    }
     const events = []; world.soundEvents.onEvent.on(e => events.push(e));
     return { world, guard, scene, other, edit, events };
   };
+  it('retires the actual unstarted shoulder guard within its original deadline through empty BASH and supported WALK', async () => {
+    const { world, guard, scene, other, events } = await fixture(1, false);
+    try {
+      world.tickIndex = TUNNEL_GUARD_TICKS - GUARD_RECOVERY_STEPS - 1;
+      world.tunnelRoutes.finish(0); expect(scene.retirement).to.equal(undefined); expect(world.stats.bashes).to.equal(0);
+      world.tickIndex++; const deadline = scene.startTick + TUNNEL_GUARD_TICKS;
+      const before = [guard.x, guard.y, guard.action, world.terrainRevision, world.stats.removedPixels];
+      const proof = world.tunnelRoutes.recovery.prove(scene, 1024);
+      expect(proof).to.include({ safe: true, actionSteps: 13, bashTick: 5, x: 1415, y: 109, lookRight: true });
+      expect([guard.x, guard.y, guard.action, world.terrainRevision, world.stats.removedPixels]).to.deep.equal(before); expect(events).to.have.length(0);
+      world.tunnelRoutes.finish(0); expect(scene.retirement).to.equal('unstarted-deadline'); expect(scene.phase).to.equal('recovering');
+      expect(world.tunnelRoutes.guard({ laneIndex: 0, x: scene.startX, y: scene.startY })).to.equal(null);
+      while (world.tunnelRoutes.scenes[0] && world.tickIndex < deadline + 1) world.step();
+      expect(world.tickIndex).to.equal(TUNNEL_GUARD_TICKS - GUARD_RECOVERY_STEPS + proof.actionSteps);
+      expect(world.tunnelRoutes.snapshot()).to.include({ recoveryStarted: 1, recovered: 1, failed: 0, connected: 0, active: 0 });
+      expect(scene.startTick).to.equal(0); expect(guard).to.include({ x: 1415, y: 109, failureReason: null }); expect(guard.action).to.equal(world.actions[State.WALKING]);
+      expect(guard._tunnelScene).to.equal(null); expect(world.triggerManager.byOwner.has(guard)).to.equal(false);
+      expect(world.stats).to.include({ bashes: 1, removedPixels: 0, failures: 0 }); expect(other.failureReason).to.equal(null);
+      expect(world.hazards.stats.contacts).to.equal(0); expect(world._manualNukeLanes[0]).to.equal(0);
+      expect(world.lanePolicy.projects.signals(0)).to.include({ active: 0, completed: 0 });
+      expect(world.hazardPlanner.admission.lanes[0].probes).to.be.at.most(1024); expect(events.some(e => e.type === 'procgen-route-complete')).to.equal(false);
+    } finally { world.dispose(); }
+  });
+  it('admits an exact-deadline physical exit and refuses a proof arriving one tick late before assigning any action', async () => {
+    for (const remaining of [13, 12]) {
+      const { world, guard, scene, events } = await fixture(1, false);
+      try {
+        world.tickIndex = TUNNEL_GUARD_TICKS - remaining; world.tunnelRoutes.finish(0);
+        if (remaining === 13) {
+          expect(scene.phase).to.equal('recovering');
+          while (world.tunnelRoutes.scenes[0] && world.tickIndex <= TUNNEL_GUARD_TICKS) world.step();
+          expect(world.tickIndex).to.equal(TUNNEL_GUARD_TICKS); expect(world.tunnelRoutes.stats.recovered).to.equal(1); expect(world._manualNukeLanes[0]).to.equal(0);
+        } else {
+          expect(scene.failure).to.equal('recovery-deadline'); expect(world.tunnelRoutes.scenes[0]).to.equal(null);
+          expect(guard.action).to.equal(world.actions[State.BLOCKING]); expect(world.stats.bashes).to.equal(0); expect(world._manualNukeLanes[0]).to.equal(1);
+        }
+        expect(scene.startTick).to.equal(0); expect(events.some(e => e.type === 'procgen-route-complete')).to.equal(false);
+      } finally { world.dispose(); }
+    }
+  });
+  it('fences retiring proposals during parity, busy-ledger and resource waits without extending lifetime', async () => {
+    for (const mode of ['parity', 'busy', 'cap']) {
+      const { world, guard, scene } = await fixture(16, false);
+      try {
+        world.tickIndex = TUNNEL_GUARD_TICKS - GUARD_RECOVERY_STEPS + (mode === 'parity' ? 1 : 0);
+        if (mode === 'busy') world.hazardPlanner.admission.begin(0).consumed = true;
+        if (mode === 'cap') world.setWorkerLimits({ bashers: 0 });
+        world.tunnelRoutes.finish(0); expect(scene.retirement).to.equal('unstarted-deadline'); expect(scene.phase).to.equal('guarded');
+        expect(world.stats.bashes).to.equal(0); expect(guard.action).to.equal(world.actions[State.BLOCKING]);
+        expect(world.tunnelRoutes.guard({ laneIndex: 0, x: scene.startX, y: scene.startY })).to.equal(null);
+        const task = {}; world.tunnelRoutes.begin({ laneIndex: 0 }, { routeEvidence: { rearBlockerId: guard.id } }, task);
+        expect(scene.worker).to.equal(null); expect(task.tunnelScene).to.equal(undefined);
+        if (mode === 'parity') { world.tickIndex++; world.tunnelRoutes.finish(0); expect(scene.phase).to.equal('recovering'); }
+        else {
+          world.tickIndex = TUNNEL_GUARD_TICKS + 1; world.tunnelRoutes.finish(0);
+          expect(world._manualNukeLanes[0]).to.equal(1); expect(world.tunnelRoutes.scenes[0]).to.equal(null);
+        }
+        expect(scene.startTick).to.equal(0);
+      } finally { world.dispose(); }
+    }
+  });
+  it('keeps real working or connected promises on their existing deadline rather than recovering their service guard', async () => {
+    for (const phase of ['working', 'connected']) {
+      const { world, scene, other, guard } = await fixture(1, false);
+      try {
+        other.x = scene.startX; other.y = scene.startY; world.lanePolicy.projects.observe(other);
+        const task = { footprint: { ...scene.bounds }, targetX: scene.port.exitX };
+        const id = world.lanePolicy.projects.begin(other, 'bashers', task);
+        expect(id).to.be.a('string'); const project = world.lanePolicy.projects.lanes[0].projects.find(p => p.id === id);
+        Object.assign(scene, { worker: other, task, project, phase, releaseMembers: [other.id], crossed: new Set() });
+        if (phase === 'connected') { project.phase = 'connected'; project.goalX = scene.port.exitX; project.goalY = scene.port.exitY; }
+        world.tickIndex = TUNNEL_GUARD_TICKS - GUARD_RECOVERY_STEPS; world.tunnelRoutes.finish(0);
+        expect(scene.retirement).to.equal(undefined); expect(scene.phase).to.equal(phase); expect(project.members.has(other.id)).to.equal(true);
+        expect(world.stats.bashes).to.equal(0); expect(guard.action).to.equal(world.actions[State.BLOCKING]);
+        world.tickIndex = TUNNEL_GUARD_TICKS + 1; world.tunnelRoutes.finish(0);
+        expect(world._manualNukeLanes[0]).to.equal(1); expect(world.tunnelRoutes.scenes[0]).to.equal(null); expect(world.stats.bashes).to.equal(0);
+      } finally { world.dispose(); }
+    }
+  });
   it('reproves current same-source pixels after an attributed foreign edit, then physically recovers without excavation, reward, cue or live proof effects', async () => {
     const { world, guard, scene, edit, events } = await fixture();
     try {

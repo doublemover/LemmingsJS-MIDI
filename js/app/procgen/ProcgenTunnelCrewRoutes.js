@@ -10,13 +10,16 @@ class ProcgenTunnelCrewRoutes {
   request(actor, evidence) {
     const world = this.world;
     if (!evidence || !Number.isFinite(evidence.guardY) || this.scenes[actor.laneIndex] || !world.workerLimits.bashers || !world.lanePolicy.projects.canBegin(actor)) return false;
+    const bounds = evidence.observedBounds ? { ...evidence.observedBounds } : { x1: actor.x - 16, x2: evidence.exitX + 1, y1: actor.y - 16, y2: actor.y + 33 };
+    const initialClaim = world._workerClaimBounds(actor, world.actions[State.BASHING]);
+    if (world.lanePolicy.projects.claimConflict(actor, world.actions[State.BASHING], initialClaim) || world.lanePolicy.projects.claimConflict(actor, world.actions[State.BASHING], bounds)) return false;
     this.scenes[actor.laneIndex] = { lane: actor.laneIndex, generation: world.generation, startTick: world.tickIndex, startX: actor.x, startY: actor.y,
-      bounds: evidence.observedBounds ? { ...evidence.observedBounds } : { x1: actor.x - 16, x2: evidence.exitX + 1, y1: actor.y - 16, y2: actor.y + 33 }, port: { ...evidence }, phase: 'pending', guard: null, task: null, worker: null };
+      bounds, port: { ...evidence }, phase: 'pending', guard: null, task: null, worker: null };
     this.stats.requested++; return true;
   }
   guard(actor) {
     const scene = this.scenes[actor.laneIndex];
-    return scene?.phase === 'guarded' && !scene.failure && Math.abs(actor.x - scene.startX) <= 3 && Math.abs(actor.y - scene.startY) <= 3 ? scene.guard : null;
+    return scene?.phase === 'guarded' && !scene.failure && !scene.retirement && Math.abs(actor.x - scene.startX) <= 3 && Math.abs(actor.y - scene.startY) <= 3 ? scene.guard : null;
   }
   reserved(actor) {
     const scene = this.scenes[actor.laneIndex];
@@ -71,6 +74,11 @@ class ProcgenTunnelCrewRoutes {
     if (actor === scene.worker && scene.phase === 'working') return true;
     if (scene.phase !== 'pending' || actor.action !== world.actions[State.WALKING] || !actor.lookRight || actor.scout || actor.canClimb || actor.hasParachute || actor.failureReason || actor.terminalReason || actor.removed ||
         actor.x < scene.port.guardX - 2 || actor.x > scene.port.guardX + 2 || Math.abs(actor.y - scene.port.guardY) > 2) return false;
+    // Request capacity cannot authorize a later job over another still-promised
+    // route. Recheck the planned worker's real masks before creating any BLOCK.
+    const future = { x: scene.startX, y: scene.startY, getDirection: () => 'right' };
+    const initialClaim = world._workerClaimBounds(future, world.actions[State.BASHING]);
+    if (world.lanePolicy.projects.claimConflict(actor, world.actions[State.BASHING], initialClaim) || world.lanePolicy.projects.claimConflict(actor, world.actions[State.BASHING], scene.bounds)) { this.scenes[scene.lane] = null; return false; }
     const stride = Math.max(1, Math.ceil(world.laneCount / 8)); if (actor.laneIndex % stride !== world.tickIndex % stride) return false;
     const ledger = world.hazardPlanner.admission.begin(actor.laneIndex); if (ledger.consumed || ledger.probes >= 1024 || !world.lanePolicy.projects.canBegin(actor)) return false;
     const proof = this._guardProof(actor, 1024 - ledger.probes); ledger.probes += proof.probes;
@@ -80,7 +88,7 @@ class ProcgenTunnelCrewRoutes {
   }
   begin(actor, proposal, task) {
     const scene = this.scenes[actor.laneIndex];
-    if (scene?.phase !== 'guarded' || scene.failure || !scene.guard || proposal.routeEvidence?.rearBlockerId !== scene.guard.id) return;
+    if (scene?.phase !== 'guarded' || scene.failure || scene.retirement || !scene.guard || proposal.routeEvidence?.rearBlockerId !== scene.guard.id) return;
     scene.worker = actor; scene.task = task; scene.phase = 'working'; scene.exitX = proposal.routeEvidence.exitX; scene.exitY = proposal.continuationY;
     scene.crossed = new Set();
     scene.guard.assistConstructionTask = task; task.blocker = scene.guard; task.tunnelScene = scene;
@@ -121,7 +129,8 @@ class ProcgenTunnelCrewRoutes {
   }
   _recover(scene) {
     const world = this.world, actor = scene.guard, stride = Math.max(1, Math.ceil(world.laneCount / 8));
-    if (!this.recovery.validOwner(scene) || !world.workerLimits.bashers) return false;
+    if (!this.recovery.validOwner(scene)) return false;
+    if (!world.workerLimits.bashers) return !!scene.retirement;
     if (scene.lane % stride !== world.tickIndex % stride) return true;
     const ledger = world.hazardPlanner.admission.begin(scene.lane);
     if (ledger.consumed || ledger.probes >= 1024) return true;
@@ -129,6 +138,7 @@ class ProcgenTunnelCrewRoutes {
     world.hazardPlanner.admission.served(actor, ledger.probes + proof.probes);
     if (proof.failure === 'budget' || proof.failure === 'unrevealed') return true;
     if (!proof.safe) { scene.failure = `recovery-${proof.failure}`; return false; }
+    if (proof.actionSteps > scene.startTick + TUNNEL_GUARD_TICKS - world.tickIndex) { scene.failure = 'recovery-deadline'; return false; }
     if (!world.assignWorker(actor, 'bashers', actor.x, proof.bounds)) return true;
     scene.phase = 'recovering'; scene.recoveryExit = proof; scene.recoverySteps = 0; scene.failure = null;
     this.stats.recoveryStarted = (this.stats.recoveryStarted || 0) + 1; return true;
@@ -145,7 +155,11 @@ class ProcgenTunnelCrewRoutes {
         scene.guard.scout || scene.guard.canClimb || scene.guard.hasParachute || ![world.actions[State.BASHING], world.actions[State.WALKING], world.actions[State.JUMPING], world.actions[State.FALLING]].includes(scene.guard.action))) scene.failure ||= 'changed-recovery';
     const cancelled = scene.generation !== world.generation || world.tickIndex < scene.startTick || world.tickIndex - scene.startTick > TUNNEL_GUARD_TICKS ||
       world._manualNukeLanes[lane] || world.stall.phase !== 'running';
-    if (!cancelled && scene.failure === 'changed-route' && scene.phase === 'guarded' && !scene.worker && !scene.task && !scene.project && this._recover(scene)) return;
+    // A never-started guard can retire through its current physical recovery,
+    // without certifying the abandoned port or extending its original lifetime.
+    const unstarted = scene.phase === 'guarded' && !scene.worker && !scene.task && !scene.project && !scene.releaseMembers?.length && !scene.crossed?.size;
+    if (!cancelled && unstarted && !scene.failure && world.tickIndex >= scene.startTick + TUNNEL_GUARD_TICKS - GUARD_RECOVERY_STEPS) scene.retirement = 'unstarted-deadline';
+    if (!cancelled && unstarted && (scene.failure === 'changed-route' || scene.retirement) && this._recover(scene)) return;
     if (scene.generation !== world.generation || world.tickIndex < scene.startTick || world.tickIndex - scene.startTick > TUNNEL_GUARD_TICKS || scene.failure ||
         world._manualNukeLanes[lane] || world.stall.phase !== 'running' ||
         scene.guard && (scene.guard.removed || scene.guard.failureReason || scene.guard.terminalReason || scene.guard.disabled || scene.guard.laneIndex !== lane) ||
