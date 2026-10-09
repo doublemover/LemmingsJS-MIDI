@@ -3,7 +3,7 @@ import { ProcgenTerrainZonePlanner } from './ProcgenTerrainZones.js';
 import { createSourceGroupLibrary, placeSourceGroups } from './ProcgenTerrainGroups.js';
 import { TriggerTypes } from '../../level/TriggerTypes.js';
 import { createProcgenWordPlanner } from './ProcgenWords.js';
-import { PROCGEN_INTRO_SAFE_END, progressionAt } from './ProcgenTerrainProgression.js';
+import { PROCGEN_INTRO_SAFE_END, PROCGEN_RECOVERY_GAP_END, progressionAt, introAssemblyEligible } from './ProcgenTerrainProgression.js';
 import { compileAuthoredAssemblies } from './ProcgenAuthoredAssemblies.js';
 import { placeAuthoredAssemblies } from './ProcgenAssemblyPlacement.js';
 import { createTerrainGrowthPlan } from './ProcgenTerrainMaterialization.js';
@@ -121,8 +121,18 @@ class ProcgenRecipeTerrain {
     const assembled = placeAuthoredAssemblies({ compiled: this.compiledAssemblies, seed, chunk, origin, code, progression,
       baseSolid: (x, y) => this.solidSample(seed, chunk, x, y, descriptor), baseSurface, occupied: descriptor.placements,
       gapX: descriptor.gapX - origin, gapWidth: descriptor.gapWidth });
-    descriptor.placements.push(...assembled.terrainPlacements); descriptor.objects = assembled.objects; descriptor.assemblies = assembled.assemblies;
-    const occupied = [...descriptor.placements, ...assembled.assemblies.map(assembly => ({ x: assembly.bounds.x1 - origin,
+    // Filter complete final groups before any member enters growth/collision.
+    // Later source eligibility and every exact member transform stay intact.
+    const admitted = new Set(); descriptor.deferredAssemblies = [];
+    for (const assembly of assembled.assemblies) {
+      const members = assembled.terrainPlacements.filter(p => p.assembly === assembly);
+      if (this._introAssemblyEligible(seed, chunk, descriptor, assembly, members, baseSurface)) {
+        admitted.add(assembly); descriptor.placements.push(...members);
+      } else descriptor.deferredAssemblies.push({ id: assembly.id, sourceRevision: assembly.sourceRevision, reason: 'early-local-route-envelope' });
+    }
+    descriptor.objects = assembled.objects.filter(object => admitted.has(object.assembly));
+    descriptor.assemblies = assembled.assemblies.filter(assembly => admitted.has(assembly));
+    const occupied = [...descriptor.placements, ...descriptor.assemblies.map(assembly => ({ x: assembly.bounds.x1 - origin,
       y: assembly.bounds.y1, piece: { width: assembly.bounds.x2 - assembly.bounds.x1, height: assembly.bounds.y2 - assembly.bounds.y1 }, decor: false }))];
     descriptor.placements.push(...placeSourceGroups({ zone: descriptor.zone, library: this.sourceGroups, code, chunk, baseSurface,
       baseSolid: (x, y) => this.solidSample(seed, chunk, x, y, descriptor), occupied, gapX: descriptor.gapX - origin, gapWidth: descriptor.gapWidth }));
@@ -131,6 +141,22 @@ class ProcgenRecipeTerrain {
     if (this.descriptions.size >= this.descriptionLimit) this.descriptions.delete(this.descriptions.keys().next().value);
     this.descriptions.set(cacheKey, descriptor);
     return descriptor;
+  }
+  _introAssemblyEligible(seed, chunk, descriptor, assembly, members, surface) {
+    const left = assembly.bounds.x1 - descriptor.origin, right = assembly.bounds.x2 - descriptor.origin;
+    if (descriptor.origin + left >= PROCGEN_RECOVERY_GAP_END) return true;
+    const candidate = { ...descriptor, placements: [...descriptor.placements, ...members] };
+    // Descriptor creation is bounded and cached; no partial-growth state or
+    // runtime actor queries participate in this full source-alpha admission.
+    const samples = new Uint8Array(TERRAIN_CHUNK_WIDTH * TERRAIN_HEIGHT);
+    const solid = (x, y) => {
+      if (x < 0 || x >= TERRAIN_CHUNK_WIDTH || y < 0 || y >= TERRAIN_HEIGHT) return false;
+      const at = y * TERRAIN_CHUNK_WIDTH + x;
+      if (!samples[at]) samples[at] = this.solidSample(seed, chunk, x, y, candidate) ? 2 : 1;
+      return samples[at] === 2;
+    };
+    return introAssemblyEligible({ origin: descriptor.origin, left, right, surface, solid,
+      steel: (x, y) => this.steelSample(seed, chunk, x, y, candidate) });
   }
   growthPlan(seed, chunk) {
     const key = keyFor(seed, chunk), cached = this.growthPlans.get(key); if (cached) return cached;
