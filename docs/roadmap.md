@@ -1236,15 +1236,184 @@ the ignored project-owned temp folder. Node durations are not browser FPS or
 acoustic evidence.
 
 Next ready work:
-- [ ] Qualify ordinary upstream passage for the known Crystal route around
-  x=1691, then prove unaided arrival and the complete basin sequence under the
-  same public seed, with bounded source/action evidence rather than a seed sweep.
+- [x] Admit the measured relief and full builder continuation through the
+  natural planner, retaining the original probe, worker and deadline limits.
+- [x] Retain a scout-built basin for one observed bank cohort, excluding future
+  births and preserving the original lifetime and physical recovery checks.
+- [ ] Safely retire a stale guarded proposal before any project begins, then
+  prove unaided basin passage and its actual musical cue on the integrated tree.
+- [ ] Qualify safe release for the real forward ledge blocker. Its current legal
+  containment catches arrivals, but completed stairs make basher recovery unsafe.
 - [ ] Use actual alternate-route and unnecessary-intervention outcomes to address
-  remaining excavation dominance; do not change worker/probe caps or force a
-  cosmetic builder quota. General source-port and high-lane scene qualification
-  remain separate future checks.
+  remaining excavation dominance; do not force a cosmetic builder quota.
+  General source ports and high-lane scene qualification remain separate checks.
 
-Publication receipt: existing PR 966 remains open against master at fe73f80;
+Resumed continuation checkpoint: private route owners now recognize complete
+columns inside partially materialized tiles. Descent decisions observe live
+blocker and hazard geometry before cache reuse. Builder qualification executes
+all twelve real bricks, SHRUG, JUMP and a supported passive exit; it rejects the
+Crystal shoulder whose old instantaneous column model predicted a useful stair
+but whose real builder turns at tick 203. No worker or observation cap increased.
+
+Complete source regions now carry frozen measurements of their actual ordered
+alpha, roof clearance and supporting columns. Bounded alternatives diversify
+substantial support shapes after the unchanged first seeded choice. All sixteen
+prefix chunks of the known Crystal source remain byte-identical. Frozen passage
+classifications expose walls, openings and unsupported lips without qualifying
+or changing them. Eight ordinary actors return through one controlled alternate
+Marble atom on its unchanged generated foundation by tick 101; its full original
+native level is a closed-body negative. This is not natural generated admission.
+
+Actual local voices now paint event rows and the selected source/clip grid cells
+with their final transformed pitches and real attack/decay/sustain/release.
+One bounded 64-voice observer preserves rerender focus and clears on project
+replacement and Panic. Skipped/rest cells stay blank; shared clips do not inherit
+another source's voices. Native muted Edge records D#4/G4/A#4/D5 in the dispatched
+cell, with no output permission request or page error. Acoustic and physical MIDI
+receipt remain unverified. Dirty note edits commit to their original cell before
+painting; stale project replacement cancels a gesture.
+
+The known intact Crystal shoulder now has a supported real arriving rear guard,
+one shared-action basher and ordinary entry/return replay. Controlled 8/16 crews
+cross its exit by tick 341; empty-mask blocker recovery adds no excavation.
+Exactly 624 source pixels are removed, with no losses through recovery tick 346.
+A fixed unpositioned 16-lane run now reaches the next ordinary fatal fall at
+x=1652 instead of stalling at x=1422. At that intermediate checkpoint the scout
+still stopped near x=1693; the later natural receipt below supersedes that
+arrival limit. Maximum charged lane work remains 1,024 and at most eight lanes
+are evaluated per tick.
+
+The independent relief proof compares an actual unchanged fatal FALL (63 pixels)
+with one short real BASH removing 35 pixels, natural FALL/WALK, ordinary patched
+entry and a supported real rear blocker at x=1580. Its recovery masks are empty;
+x=1584 is explicitly rejected as blocked recovery. The proof reaches x=1652/y=114
+within the existing 40-pixel forward window, charging at most 893 combined cell
+observations/actions and 318 of 384 private action steps. Controlled 8/16 ordinary
+actors cross with no losses or abilities. Natural planner admission is now
+integrated in e259593f; unpositioned basin crew qualification follows below. Passive-safe or unresolved
+original walks do not justify excavation. Five causal relief checks pass; the
+helper covers all lines, 92.77% branches and 90% functions. Alternate invalid
+launch/lifecycle exits remain useful focused coverage targets.
+
+The reachable Crystal port is now a concrete construction opportunity. Unchanged
+shared WALK reaches x=1649/y=47, x=1650/y=46 and x=1651/y=46 on the original source.
+A full BUILD produces 72 pixels, naturally SHRUGs and falls onto the supported
+roof, reaching its passive exit in 217 actions within 395 charged planner work.
+Controlled ordinary followers cross the intact assembly after construction with
+no removed native pixels. This is distinct from live construction: in actual
+arriving 8/16 crews, 6/8 and 14/16 pass while two followers fall during BUILD.
+A supported forward BLOCK catches arrivals without interrupting all twelve
+bricks, but leaves fifteen of sixteen actors pending. Completed stairs occupy its
+basher masks [3,0,2,15]; recovery removes eighteen stair pixels then splats.
+The native BUILD recovery first respects the existing retry fence at tick 2286.
+A legal brick attempt then turns left after sixteen actions, with no added or
+removed pixels and normal trigger cleanup. Sixty-four further shared actions end
+at x=1590/y=53, falling left and alive, without rejoining rightward travel.
+This is a finite return negative, not a completed BUILD or a fatality proof.
+Neither containment alone nor the post-construction fixture proves safe live
+crew completion. Receipts: temp/natural-crystal-crew-summary.json and
+temp/natural-crystal-forward-build-return.json.
+
+An earlier pre-e259 working draft runs public seed 4274680063 for 4,500 ticks,
+with sixteen lanes and Crystal lane seed 8. In that draft it reaches the bank: scout 84 arrives at tick 3135,
+starts four sections at 3157 and connects at 3979. Ordinary actor 36, born at
+119 with no abilities, first reaches the bank at 4136. The original scene retires
+worker-only at 3984 before that arrival; it records zero crew completions.
+Narrow builder admission retains the imminent actual opening test, avoiding the
+broad experiment that created excessive stairs. Maximum lane charge remains
+1,024 with eight serviced lanes. This superseded draft is neither final-tree
+arrival evidence nor whole-crew basin qualification; the integrated negative is
+recorded below. Receipts:
+temp/natural-narrow-build-diagnostic.json and temp/natural-basin-membership.json.
+
+The integrated route lifecycle preserves the private action proof through the
+actual declared exit. It does not replace a basher after its natural FALL or
+reward a builder at SHRUG. Numeric builder evidence expires at 264 actions and
+rejects loss, disabled or removed owners, turnaround, replacement, generation
+changes and relevant foreign edits; self-owned bricks and unrelated edits remain
+valid. Guard release requires current ordinary WALK beyond its recorded crossing.
+Required formatting and all 512 procgen category checks pass at e259593f. The old
+192-tick fixture now observes its true supported WALK exit at 209. Focused
+coverage receipts and useful remaining rejection branches are retained in
+temp/narrow-route-coverage and temp/final-route-procgen.log.
+
+The controlled late-arrival policy is committed in 6a62c180. Only a scout-owned
+scene initially lacking ordinary recipients waits for one completed bank tick.
+Real pre-assist WALK becoming its supported blocker is retained; geographic FALL
+entry does not qualify. Every insertion excludes future births, and one frozen
+cohort never expands. Sixty-three ordinary recipients plus the owner fit the
+64-member cap; overflow rejects the whole admission. The final service blocker
+holds during the wait, and the original 1,200-tick lifetime is unchanged. Twenty-
+four focused basin/crew checks pass, including exact capacity, late loss and
+deadline cleanup. Basin lines are fully covered with 85.8% branches; CrewProjects
+has 98.05% lines and 92.69% branches. Alternate lifecycle/rejection branches remain
+useful targets. Receipt: temp/basin-arrival-coverage/coverage-summary.json.
+
+The exact integrated 4,500-tick run does not reach the basin or emit its cue.
+A bounded first-retirement trace identifies a newer guarded proposal requested
+at 2613 and held by ordinary actor 100 at x=1798/y=96 from 2713. A foreign edit
+invalidates its observed bounds at 2733, before any worker, task or project exists.
+The manager nukes the lane, ending scout 84 at x=1875 and ordinary 52 at x=1807.
+The original shoulder guard correctly released at 1852 and cleared at 1856;
+this failure is distinct from that established recovery or a lost promised crew.
+Safe local recovery of the unstarted guard is the next narrowly scoped proof.
+The first two ordinary ledge casualties remain explicit. Maximum charged work
+is still 1,024 with eight serviced lanes. Receipts:
+temp/natural-scout-arrival-diagnostic.json and temp/natural-first-retirement-trace.json.
+The earlier draft's arrival timing is superseded, and the prepared native basin
+cue fixture remains unrun until current physical arrival qualifies.
+
+An independent private recovery receipt identifies scout/miner 84 clearing
+x=1874/y=77 and y=78 at tick 2733. The loaded recovery draft delayed retirement,
+so its snapshot is at 2739, six ticks after the edit. The unchanged guard's four
+BASH masks are empty; shared BASH becomes WALK after five calls and reaches the
+supported x=1806/y=96 exit, eight pixels forward, after thirteen. Zero pixels are
+removed, and all other blocker/hazard contacts remain in the proof. A 64-call
+extension naturally returns left to supported x=1771/y=96. It does not establish
+a forty-pixel forward route or exact tick-2733 admission. The draft rejects a
+miner footprint at x=1743..1760/y=63..83, outside the actual recovery path.
+The original OHNO retirement remains unchanged in this receipt; no live passage
+is claimed. Receipt: temp/current-stale-guard-empty-return.json.
+Commit 685f7856 adds bounded recovery only for a stale guarded proposal that has
+no started worker, task, project or promised recipients. Exact current ordinary
+guard identity, direction, two owned blocker rectangles and all four empty masks
+must qualify. Shared BASH/WALK/JUMP/FALL runs privately within sixty-four actions,
+forty horizontal pixels and the existing 1,024 combined work/eight-lane service
+budget. Construction overlap checks use the actual read and body bounds. The
+real guard then has to reach the proved supported exit; original lifetime,
+active-project failures and relevant foreign-edit rejection remain unchanged.
+Recovery earns no project, score or route cue. Sixteen causal checks pass;
+both changed production files have all lines covered, with 91.12% aggregate
+branches. Alternate invalid-mask, terminal action and current-copy geometry
+branches remain useful focused targets. The affected procgen category passes
+521 checks in 73.14 seconds, along with required formatting, critical types,
+undefined calls and dependency checks. Receipts: temp/final-guard-procgen.log
+and temp/guard-recovery-coverage/coverage-summary.json.
+One unaided 4,500-tick replay against committed 685f7856 confirms real recovery:
+guard 100 starts at 2739, charges 97 combined work, and reaches supported ordinary
+WALK at x=1806/y=96 on tick 2752. Scout 84 first reaches the bank vicinity at
+2853, x=1923/y=113, while FALLING. It drowns at 2881, x=1947/y=128; there is no
+basin proof, scene, ordinary supported arrival or basin cue. A distinct route
+edit retires the lane at 3343. Earlier unrelated route-complete events are kept
+as such and do not qualify basin output. Maximum charged work is 1,024 with eight
+serviced lanes. Receipt: temp/natural-safe-guard-arrival.json, including source
+hashes and the real recovery endpoint. The remaining natural bank launch and
+later retirement need exact causal evidence; the native basin fixture stays held.
+Automation spans now expose the actual resolved evaluation: held phase/value,
+winning priority and gated or suppressed rules. The geometric transport preview
+has a separate dim lane. Bounded resolution records reuse the existing cached
+runtime state, with sixty-four displayed entries and all authored data retained.
+Counters, clock and output bytes are unchanged; Panic and project replacement
+clear the display. Native muted Edge records thirty-five accepted local calls,
+eight priority-88 notes, stable editor focus and no permission or page errors.
+The MIDI category passes 890 checks. Receipt:
+temp/music-span-resolution-review/native.json.
+
+Evidence remains in ignored project-owned temp: continuation-route-grid-check,
+music-envelope-grid-review, music-grid-admissions-review,
+source-return-generated-ordinary, natural-guarded-port-diagnostic and
+relief-proof-coverage. Local commits only; no new checkout or publication.
+Last inspected publication checkpoint: PR 966 was open against master at fe73f80;
 this restarted audit implementation is local only. The owner checkout remains
 at d3b9ce9 and its saved stash at 8083a30, with prior metrics/index/archive changes
 preserved. No excluded content, vendor code or binary assets were modified.
