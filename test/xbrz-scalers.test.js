@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { useGlobalLemmings } from './helpers/lemmings.js';
 import { scaleImage } from '../js/xbrz/xbrz.js';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 function color32(r, g, b) {
   return (0xFF000000 | (b & 0xFF) << 16 | (g & 0xFF) << 8 | (r & 0xFF)) >>> 0;
@@ -43,6 +43,8 @@ const EXPECTED_4X = [
 ];
 
 describe('xbrz scaleImage', function() {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   [2, 3, 4].forEach(function(scale) {
     it(`scales ${scale}x correctly`, function() {
       const dest = new Uint32Array(scale * 2 * scale * 2);

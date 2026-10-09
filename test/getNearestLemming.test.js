@@ -8,22 +8,22 @@ import '../js/lemmings/Lemming.js';
 import '../js/game/SkillTypes.js';
 import '../js/LemmingsBootstrap.js';
 
-// enable debug logging for Logger
-beforeEach(function() {
-  this.restoreLemmings = setGlobalLemmings({
-    bench: false,
-    extraLemmings: 0,
-    game: { showDebug: false }
-  });
-  this.restoreActions = withActionStubs();
-});
-
-afterEach(function() {
-  this.restoreActions();
-  this.restoreLemmings();
-});
-
 describe('LemmingManager.getNearestLemming', function() {
+  // enable debug logging for Logger
+  beforeEach(function() {
+    this.restoreLemmings = setGlobalLemmings({
+      bench: false,
+      extraLemmings: 0,
+      game: { showDebug: false }
+    });
+    this.restoreActions = withActionStubs();
+  });
+
+  afterEach(function() {
+    this.restoreActions();
+    this.restoreLemmings();
+  });
+
   it('returns the closest lemming or null', function() {
     const { manager } = makeManager({ width: 100, height: 100 });
 

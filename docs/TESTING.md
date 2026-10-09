@@ -28,10 +28,14 @@ npm run test-mcp-smoke  # MCP stdio smoke test (requires start-https)
 npm run typecheck:critical # targeted checkJs guard for runtime-critical modules
 npm run release-readiness # release checklist gate (strict by default)
 ```
-Categories map to the glob patterns defined in `scripts/runTests.js`.
+Categories map to the ownership groups in `scripts/runTests.js`: `game` includes
+shared action, lemming, terrain, command, history and input checks; `midi` and
+`procgen` cover their complete domain suites. Unknown/shared source changes
+retain the full-suite backstop. These subsets do not claim complete dependency coverage.
 `npm run test:changed` resolves its comparison base in this order: explicit
-`--base=<ref>`, current branch upstream, `origin/HEAD`, then known default
-branch names. Add `--print-selection` (or `--dry-run`) to print the resolved
+`--base=<ref>`, the verified PR target (`GITHUB_BASE_REF`) when present, then
+verified `origin/HEAD` and known default branch names. A same-feature upstream
+is never the default comparison base. Missing PR targets fall back to the full suite. Add `--print-selection` (or `--dry-run`) to print the resolved
 base ref, changed files, inferred categories, and Mocha args without running
 guards or tests.
 The maintained subset scripts (`test-core`, `test-bench-unit`,
@@ -222,3 +226,17 @@ pair captures with a deterministic unit, harness, or E2E check where available.
 Keep capture output disposable: do not create committed galleries or manifests.
 Use `npm run release-readiness` only when the release checklist or release gate
 scripts change; it is not the issue closeout checklist.
+
+CI runs one complete Mocha suite under coverage. Static checks run once, followed
+by distinct bounded browser journeys (`test-e2e:boundaries`), actual MCP transport
+and performance smoke checks. `npm run format` remains the local pre-commit fix.
+Screenshots and longer simulations are explicit diagnostics, not duplicate unit gates.
+
+`npm run test-procgen-long` retains the original ten source-theme 5,000-tick
+simulations, 128-chunk sampling and source-pixel corpus assertions. Ordinary
+checks use bounded admission/accounting and static source fixtures; independently
+qualified whole-crew routes remain ordinary regressions.
+`node scripts/bench-procgen-behavior.js`
+compares the preserved old policy explicitly; ordinary regressions require the
+current policy to reach the real goal. Set `LEMMINGS_E2E_EXECUTABLE` to an installed
+Chromium-compatible browser path for local journeys; CI uses Playwright Chromium.

@@ -6,7 +6,7 @@ import { BitWriter } from '../js/data/BitWriter.js';
 import { PackFilePart } from '../js/data/PackFilePart.js';
 import { UnpackFilePart } from '../js/data/UnpackFilePart.js';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 class MockLogHandler {
   constructor() { this.logged = []; this.debugged = []; }
@@ -24,6 +24,8 @@ const withMockLogHandler = (fn) => {
 };
 
 describe('UnpackFilePart', function () {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   function roundTrip(data) {
     const packed = PackFilePart.pack(data);
     const br = new BinaryReader(packed.byteArray);

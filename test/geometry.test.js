@@ -1,12 +1,12 @@
 import { expect } from 'chai';
-import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import { Range } from '../js/util/Range.js';
 import { Rectangle } from '../js/util/Rectangle.js';
 import { Position2D } from '../js/util/Position2D.js';
 
-useGlobalLemmings(Lemmings);
+
 
 describe('Geometry classes', function() {
+
   it('constructs Range with default values', function() {
     const r = new Range();
     expect(r.x).to.equal(0);

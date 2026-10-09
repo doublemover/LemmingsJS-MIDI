@@ -4,9 +4,11 @@ import '../js/util/EventHandler.js';
 import '../js/game/SkillTypes.js';
 import '../js/commands/CommandSelectSkill.js';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('CommandSelectSkill', function() {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   function createGame(skillReturn = true, actionReturn = true) {
     let selected;
     let reused = false;

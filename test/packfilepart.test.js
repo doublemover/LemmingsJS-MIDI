@@ -10,9 +10,11 @@ import { UnpackFilePart } from '../js/data/UnpackFilePart.js';
 import { FileContainer } from '../js/data/FileContainer.js';
 import { randomFillSync } from 'crypto';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('PackFilePart', function () {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   function roundTrip(data) {
     const packed = PackFilePart.pack(data);
     const br = new BinaryReader(packed.byteArray);

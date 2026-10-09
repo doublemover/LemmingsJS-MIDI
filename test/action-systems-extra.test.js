@@ -7,7 +7,7 @@ import '../js/lemmings/LemmingStateType.js';
 import '../js/lemmings/SpriteTypes.js';
 
 // minimal globals
-useGlobalLemmings({ game: { showDebug: false, lemmingManager: { miniMap: { addDeath() {} } } } });
+
 
 const stubSprites = { getAnimation: () => ({ getFrame() { return {}; } }) };
 
@@ -26,6 +26,8 @@ class StubLevel { hasGroundAt() { return false; } }
 class StubGVC { constructor(){ this.count=0; } addSurvivor(){ this.count++; } }
 
 describe('extra action system coverage', function() {
+  useGlobalLemmings({ game: { showDebug: false, lemmingManager: { miniMap: { addDeath() {} } } } });
+
   it('ActionExitingSystem triggers, draws and exits', function() {
     const gvc = new StubGVC();
     const sys = new ActionExitingSystem(stubSprites, gvc);

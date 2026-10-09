@@ -10,9 +10,11 @@ import { LevelReader } from '../js/level/LevelReader.js';
 import { BinaryReader } from '../js/data/BinaryReader.js';
 
 // Disable verbose debug output
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('LevelReader.readLevelObjects', function() {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('parses objects and skips empty entries', function() {
     const props = new Lemmings.LevelProperties();
     const objects = [

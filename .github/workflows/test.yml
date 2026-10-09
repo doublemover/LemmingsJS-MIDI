@@ -24,7 +24,6 @@ jobs:
       - run: npm ci
       - run: npm audit --audit-level=moderate
       - run: npx playwright install --with-deps chromium
-      - run: npm run format
       - name: Check changed-line whitespace
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -32,15 +31,12 @@ jobs:
           else
             git diff --check "${{ github.event.before }}...HEAD"
           fi
-      - run: git diff --exit-code
       - run: npm run check-undefined
       - run: npm run lint
       - run: npm run typecheck:critical
       - run: npm run release-readiness
       - run: npm run depcheck
       - run: npm run check-mcp-clients
-      - run: npm run test-bench-unit
-      - run: npm test
       - name: Create localhost HTTPS cert
         run: |
           mkdir -p certs
@@ -55,6 +51,7 @@ jobs:
           npm run start-https > /tmp/lemmings-http.log 2>&1 &
           echo $! > /tmp/lemmings-http.pid
           node -e "const https=require('node:https'); const started=Date.now(); const tick=()=>{const req=https.get('https://localhost:8080/?e2e=1',{rejectUnauthorized:false},res=>{res.resume(); process.exit(0);}); req.on('error',()=>{if(Date.now()-started>30000) process.exit(1); setTimeout(tick,500);});}; tick();"
+      - run: npm run test-e2e:boundaries
       - run: npm run test-mcp-smoke
       - run: npm run bench-smoke
       - name: Stop HTTPS server

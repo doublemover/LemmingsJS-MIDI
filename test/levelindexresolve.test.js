@@ -3,9 +3,11 @@ import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import { LevelIndexResolve } from '../js/level/LevelIndexResolve.js';
 import '../js/level/LevelIndexType.js';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('LevelIndexResolve and LevelIndexType', function () {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   const config = {
     level: {
       order: [

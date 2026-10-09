@@ -3,7 +3,7 @@ import { useGlobalLemmings } from './helpers/lemmings.js';
 import { Mask } from '../js/render/Mask.js';
 import { MaskList } from '../js/render/MaskList.js';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 class StubReader {
   constructor(bytes) {
@@ -16,6 +16,8 @@ class StubReader {
 }
 
 describe('Mask', function() {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('reports solid pixels correctly via at()', function() {
     const reader = new StubReader(Uint8Array.from([0x69]));
     const mask = new Mask(reader, 4, 2);

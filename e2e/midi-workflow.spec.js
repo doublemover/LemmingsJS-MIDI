@@ -6,7 +6,7 @@ import { waitForHarnessReady } from './helpers/harness.js';
 test.beforeEach(async ({ page }) => {
   await installExternalAssetStubs(page);
   await installWebMidiStub(page);
-  await page.goto('/?e2e=1');
+  await page.goto('/?e2e=1&midi=1');
   await waitForHarnessReady(page);
   if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
 });

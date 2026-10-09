@@ -11,7 +11,7 @@ import '../js/render/Frame.js';
 import '../js/render/ColorPalette.js';
 import { VGASpecReader } from '../js/data/VGASpecReader.js';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 class MockLogHandler {
   constructor() { this.logged = []; }
@@ -30,6 +30,8 @@ const withMockLogHandler = (fn) => {
 };
 
 describe('VGASpecReader', function() {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('decodes image and palettes', function() {
     const part = new Uint8Array(24 + 16 + 3);
     for (let i = 0; i < 8; i++) {

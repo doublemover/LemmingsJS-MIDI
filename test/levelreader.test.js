@@ -14,9 +14,11 @@ import '../js/level/LevelElement.js';
 import '../js/util/Range.js';
 import '../js/data/UnpackFilePart.js';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('LevelReader', function () {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('parses LEVEL000.DAT', function () {
     const buf = readFileSync(new URL('../lemmings/LEVEL000.DAT', import.meta.url));
     const br = new BinaryReader(new Uint8Array(buf));

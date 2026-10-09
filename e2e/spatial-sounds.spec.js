@@ -13,7 +13,7 @@ test('pan mode persists, live local audio is 48 kHz and studio restores focus', 
       constructor(options) { super(options); window.__audioContexts.push(this); }
     };
   });
-  await page.goto('/?e2e=1');
+  await page.goto('/?e2e=1&midi=1');
   await waitForHarnessReady(page);
   if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
   await page.locator('#midiGlobalPanMode').selectOption('level');

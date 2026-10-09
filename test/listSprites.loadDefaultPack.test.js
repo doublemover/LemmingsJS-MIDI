@@ -2,23 +2,7 @@ import { expect } from 'chai';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { fileURLToPath, pathToFileURL } from 'url';
-
-function patchModule() {
-  const origPath = new URL('../tools/listSprites.js', import.meta.url);
-  let code = fs.readFileSync(fileURLToPath(origPath), 'utf8');
-  code = code.replace(
-    'function loadDefaultPack() {',
-    'export function loadDefaultPack(cfgPath) {'
-  );
-  code = code.replace(
-    'const cfgPath = path.join(path.dirname(new URL(import.meta.url).pathname), \'..\', \'config.json\');',
-    'cfgPath = cfgPath || path.join(path.dirname(new URL(import.meta.url).pathname), \'..\', \'config.json\');'
-  );
-  const tmp = path.join(path.dirname(fileURLToPath(origPath)), 'listSprites.patched.js');
-  fs.writeFileSync(tmp, code);
-  return tmp;
-}
+import { loadDefaultPack } from '../tools/listSprites.js';
 
 const withTempDir = (fn) => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cfg-'));
@@ -28,20 +12,6 @@ const withTempDir = (fn) => {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 };
-
-let modulePath;
-let loadDefaultPack;
-
-before(async function () {
-  modulePath = patchModule();
-  ({ loadDefaultPack } = await import(pathToFileURL(modulePath).href + `?t=${Date.now()}`));
-});
-
-after(function () {
-  if (modulePath) {
-    fs.rmSync(modulePath, { force: true });
-  }
-});
 
 describe('loadDefaultPack', function () {
   it('reads path from config file', function () {

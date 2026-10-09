@@ -43,11 +43,18 @@ const RUNTIME_GUARD_TARGETS = Object.freeze([
 
 const CATEGORY_PATTERNS = Object.freeze({
   core: ['--recursive'],
-  game: ['test/*game*.test.js'],
+  game: [
+    'test/*game*.test.js', 'test/action-*.test.js', 'test/lemming*.test.js',
+    'test/level*.test.js', 'test/*ground*.test.js', 'test/*solidlayer*.test.js',
+    'test/trigger*.test.js', 'test/command*.test.js', 'test/history-*.test.js',
+    'test/time-travel*.test.js', 'test/input/*.test.js', 'test/walk-wall-collision.test.js'
+  ],
+  midi: ['test/midi/**/*.test.js'],
+  procgen: ['test/procgen-*.test.js'],
   bench: ['test/*bench*.test.js'],
   release: ['test/release-readiness.test.js'],
   workflow: ['test/*workflow*.test.js'],
-  tools: ['test/tools/*.test.js'],
+  tools: ['test/tools/*.test.js', 'test/listSprites*.test.js'],
   'offline-tools': ['test/offline-tools/*.test.js'],
   editor: [
     'test/editor/*.test.js',
@@ -59,6 +66,8 @@ const CATEGORY_PATTERNS = Object.freeze({
 const CATEGORY_ORDER = Object.freeze([
   'core',
   'game',
+  'midi',
+  'procgen',
   'editor',
   'tools',
   'offline-tools',
@@ -67,6 +76,8 @@ const CATEGORY_ORDER = Object.freeze([
   'workflow'
 ]);
 const CHANGED_FILE_CATEGORY_RULES = Object.freeze([
+  { category: 'midi', matches: normalized => normalized.startsWith('js/midi/') || normalized.startsWith('js/app/midi') || normalized.startsWith('test/midi/') },
+  { category: 'procgen', matches: normalized => normalized.startsWith('js/app/procgen/') || /^test\/procgen-.*\.test\.js$/.test(normalized) },
   {
     category: 'release',
     matches: normalized => (
@@ -244,7 +255,7 @@ const gitRefExists = (ref, runGitCommand = defaultRunGitCommand) => {
   return readGitScalar(['rev-parse', '--verify', '--quiet', ref], runGitCommand) != null;
 };
 
-const resolveBaseRef = ({ baseRef = null, runGitCommand = defaultRunGitCommand } = {}) => {
+const resolveBaseRef = ({ baseRef = null, runGitCommand = defaultRunGitCommand, env = process.env } = {}) => {
   if (baseRef) {
     return {
       ref: baseRef,
@@ -252,22 +263,16 @@ const resolveBaseRef = ({ baseRef = null, runGitCommand = defaultRunGitCommand }
     };
   }
 
-  const upstream = readGitScalar(
-    ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}'],
-    runGitCommand
-  );
-  if (upstream) {
-    return {
-      ref: upstream,
-      source: 'upstream'
-    };
+  if (env.GITHUB_BASE_REF) {
+    const target = 'refs/remotes/origin/' + env.GITHUB_BASE_REF;
+    return gitRefExists(target, runGitCommand) ? { ref: target, source: 'pull-request-base' } : null;
   }
 
   const remoteHead = readGitScalar(
     ['symbolic-ref', '--quiet', '--short', 'refs/remotes/origin/HEAD'],
     runGitCommand
   );
-  if (remoteHead) {
+  if (remoteHead && gitRefExists(remoteHead, runGitCommand)) {
     return {
       ref: remoteHead,
       source: 'origin-head'

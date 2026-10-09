@@ -1,12 +1,12 @@
 import { expect } from 'chai';
-import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import '../js/util/LogHandler.js';
 import { BaseImageInfo } from '../js/render/BaseImageInfo.js';
 import { TerrainImageInfo } from '../js/render/TerrainImageInfo.js';
 
-useGlobalLemmings(Lemmings);
+
 
 describe('BaseImageInfo', function() {
+
   it('uses default values in constructor', function() {
     const info = new BaseImageInfo();
     expect(info.width).to.equal(0);

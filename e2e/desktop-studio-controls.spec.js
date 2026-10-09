@@ -6,7 +6,8 @@ test.use({ permissions: [] });
 for (const size of [{ width: 1366, height: 768 }, { width: 1440, height: 900 }, { width: 1909, height: 950 }, { width: 2560, height: 720 }]) {
   test(`compact studio keeps both rails and a clear map at ${size.width}`, async ({ page }, testInfo) => {
     await page.setViewportSize(size); await installExternalAssetStubs(page);
-    await page.goto('/?e2e=1'); await waitForHarnessReady(page);
+    await page.goto('/?e2e=1&midi=1'); await waitForHarnessReady(page);
+    if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
     await page.evaluate(() => { window.__E2E__.pause(); window.__studioCanvas = document.querySelector('#gameCanvas'); });
     await expect(page.locator('#midiSequencerWorkspace')).toBeVisible();
     await expect(page.locator('#characterStatus')).toBeEmpty();
@@ -52,7 +53,8 @@ for (const size of [{ width: 1366, height: 768 }, { width: 1440, height: 900 }, 
 
 test('visual selectors support repeated mixed/single/accessory changes without changing actor state', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 }); await installExternalAssetStubs(page);
-  await page.goto('/?e2e=1'); await waitForHarnessReady(page);
+  await page.goto('/?e2e=1&midi=1'); await waitForHarnessReady(page);
+  if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
   await page.evaluate(() => window.__E2E__.pause());
   const tick = await page.locator('#midiGameClock').textContent();
   for (const shape of ['donut', 'circle', 'rounded_triangle', 'mixed']) {
@@ -72,7 +74,8 @@ test('visual selectors support repeated mixed/single/accessory changes without c
 
 test('focused speed range preserves global Help and speed keys while native arrows use game detents', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 }); await installExternalAssetStubs(page);
-  await page.goto('/?e2e=1'); await waitForHarnessReady(page);
+  await page.goto('/?e2e=1&midi=1'); await waitForHarnessReady(page);
+  if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
   await page.evaluate(() => { window.__E2E__.pause(); window.__E2E__.setSpeed(10); });
   const range = page.locator('#midiGameSpeed'), number = page.locator('#midiGameSpeedValue');
   await expect(number).toHaveValue('10'); await range.focus();
@@ -88,7 +91,8 @@ test('focused speed range preserves global Help and speed keys while native arro
 
 test('modulation labels sit inside high-contrast compact fields', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 }); await installExternalAssetStubs(page);
-  await page.goto('/?e2e=1'); await waitForHarnessReady(page);
+  await page.goto('/?e2e=1&midi=1'); await waitForHarnessReady(page);
+  if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
   await page.evaluate(() => window.__E2E__.pause());
   await page.locator('#midiViewExpert').click();
   await page.locator('#midiModulationInspector > summary').click();

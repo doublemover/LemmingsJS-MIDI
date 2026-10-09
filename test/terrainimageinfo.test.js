@@ -4,7 +4,7 @@ import { TerrainImageInfo } from '../js/render/TerrainImageInfo.js';
 import { BaseImageInfo } from '../js/render/BaseImageInfo.js';
 import { ColorPalette } from '../js/render/ColorPalette.js';
 import { Frame } from '../js/render/Frame.js';
-useGlobalLemmings(Lemmings);
+
 
 // Simple helper replicates GroundReader steel cropping
 function computeSteelSize(info) {
@@ -30,6 +30,8 @@ function computeSteelSize(info) {
 }
 
 describe('TerrainImageInfo', function() {
+  useGlobalLemmings(Lemmings);
+
   it('calculates steel cropping dimensions', function() {
     const info = new TerrainImageInfo();
     info.width = 4;

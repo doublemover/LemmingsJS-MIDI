@@ -215,10 +215,6 @@ class GameDisplay {
       }
     }
   }
-  #drawCorner(x, y, r, g, b) {
-    this.display.drawRect(x, y, 2, 2, r, g, b, true);
-  }
-
   #drawSelection(lem, target = this.display) {
     const x = lem.x - 5;
     const y = lem.y - 11; // sits a bit higher
@@ -258,12 +254,6 @@ class GameDisplay {
       (color >> 16) & 0xff
     );
   }
-
-  static __test__ = {
-    drawCorner(instance, x, y, r, g, b) {
-      instance.#drawCorner(x, y, r, g, b);
-    }
-  };
 
   _getGameOverlayDisplay() {
     return this.display?.stage?.getGameOverlayDisplay?.() || null;

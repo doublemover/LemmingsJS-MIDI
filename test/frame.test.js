@@ -3,9 +3,11 @@ import { useGlobalLemmings } from './helpers/lemmings.js';
 import { Frame } from '../js/render/Frame.js';
 import { ColorPalette } from '../js/render/ColorPalette.js';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('Frame', function () {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('fills entire frame with a color', function () {
     const frame = new Frame(2, 2);
     frame.fill(1, 2, 3);

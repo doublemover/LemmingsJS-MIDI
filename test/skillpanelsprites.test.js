@@ -48,9 +48,11 @@ const expectMaskPair = (sys, leftType, rightType) => {
     .to.equal(`mask-${rightType}`);
 };
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('Skill panel action sprites', function () {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('retrieves animations and masks for each SkillType', function () {
     const sprites = new FakeSprites();
     const masks = new FakeMasks();

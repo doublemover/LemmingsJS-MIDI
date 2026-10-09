@@ -37,6 +37,7 @@ export default defineConfig({
     ignoreHTTPSErrors: true,
     permissions: ['midi'],
     launchOptions: {
+      executablePath: process.env.LEMMINGS_E2E_EXECUTABLE || undefined,
       args: ['--allow-insecure-localhost', '--ignore-certificate-errors']
     },
     trace: 'retain-on-failure',

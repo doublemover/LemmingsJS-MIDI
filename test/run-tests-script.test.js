@@ -99,7 +99,7 @@ describe('scripts/runTests', function () {
 
   it('builds focused args for game category', function () {
     const args = buildMochaArgsForCategories(['game']);
-    expect(args).to.deep.equal(['test/*game*.test.js']);
+    expect(args).to.include.members(['test/*game*.test.js', 'test/action-*.test.js', 'test/lemming*.test.js', 'test/history-*.test.js']);
   });
 
   it('uses an explicit base ref without consulting git', function () {
@@ -111,18 +111,15 @@ describe('scripts/runTests', function () {
     });
   });
 
-  it('prefers the current branch upstream when resolving the default base ref', function () {
+  it('uses the verified PR target instead of a same-branch upstream', function () {
     const runGitCommand = createRunGitStub({
-      'rev-parse --abbrev-ref --symbolic-full-name @{upstream}': {
-        status: 0,
-        stdout: 'origin/feature-branch\n'
-      }
+      'rev-parse --verify --quiet refs/remotes/origin/master': { status: 0, stdout: 'abc123' },
+      'rev-parse --abbrev-ref --symbolic-full-name @{upstream}': { status: 0, stdout: 'origin/feature-branch' }
     });
-    const resolved = resolveBaseRef({ runGitCommand });
-    expect(resolved).to.deep.equal({
-      ref: 'origin/feature-branch',
-      source: 'upstream'
+    expect(resolveBaseRef({ runGitCommand, env: { GITHUB_BASE_REF: 'master' } })).to.deep.equal({
+      ref: 'refs/remotes/origin/master', source: 'pull-request-base'
     });
+    expect(resolveBaseRef({ runGitCommand: createRunGitStub({}), env: { GITHUB_BASE_REF: 'missing' } })).to.equal(null);
   });
 
   it('falls back to origin HEAD when no upstream is configured', function () {
@@ -130,9 +127,10 @@ describe('scripts/runTests', function () {
       'symbolic-ref --quiet --short refs/remotes/origin/HEAD': {
         status: 0,
         stdout: 'origin/master\n'
-      }
+      },
+      'rev-parse --verify --quiet origin/master': { status: 0, stdout: 'abc123' }
     });
-    const resolved = resolveBaseRef({ runGitCommand });
+    const resolved = resolveBaseRef({ runGitCommand, env: {} });
     expect(resolved).to.deep.equal({
       ref: 'origin/master',
       source: 'origin-head'
@@ -146,7 +144,7 @@ describe('scripts/runTests', function () {
         stdout: 'abc123\n'
       }
     });
-    const resolved = resolveBaseRef({ runGitCommand });
+    const resolved = resolveBaseRef({ runGitCommand, env: {} });
     expect(resolved).to.deep.equal({
       ref: 'origin/master',
       source: 'fallback'
@@ -155,7 +153,7 @@ describe('scripts/runTests', function () {
 
   it('returns null when no safe default base ref can be resolved', function () {
     const runGitCommand = createRunGitStub({});
-    const resolved = resolveBaseRef({ runGitCommand });
+    const resolved = resolveBaseRef({ runGitCommand, env: {} });
     expect(resolved).to.equal(null);
   });
 
@@ -249,11 +247,8 @@ describe('scripts/runTests', function () {
     const spawned = [];
     const exits = [];
     const runGitCommand = createRunGitStub({
-      'rev-parse --abbrev-ref --symbolic-full-name @{upstream}': {
-        status: 0,
-        stdout: 'origin/feature-branch\n'
-      },
-      'diff --name-only --diff-filter=ACMRD origin/feature-branch...HEAD': {
+      'rev-parse --verify --quiet origin/master': { status: 0, stdout: 'abc123' },
+      'diff --name-only --diff-filter=ACMRD origin/master...HEAD': {
         status: 1,
         stdout: ''
       }
@@ -271,7 +266,7 @@ describe('scripts/runTests', function () {
       },
       exit: (code) => exits.push(code)
     });
-    expect(logs.warn[0]).to.contain('origin/feature-branch');
+    expect(logs.warn[0]).to.contain('origin/master');
     expect(spawned[2].args).to.include('--recursive');
     expect(exits).to.deep.equal([0]);
   });

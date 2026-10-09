@@ -3,7 +3,7 @@ import { Lemmings, setDependency, useGlobalLemmings } from './helpers/lemmings.j
 import { BitWriter } from '../js/data/BitWriter.js';
 import { BinaryReader } from '../js/data/BinaryReader.js';
 // minimal global environment for logging
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 class MockLogHandler {
   constructor() { this.logged = []; }
@@ -31,6 +31,8 @@ class StubReader {
 }
 
 describe('BitWriter', function () {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('writes raw and referenced data', function () {
     const stub = new StubReader([0x01, 0x02, 0x03, 0x04, 1]);
     const writer = new BitWriter(stub, 6);

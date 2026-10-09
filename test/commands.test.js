@@ -7,7 +7,7 @@ import '../js/commands/CommandLemmingsAction.js';
 import '../js/commands/CommandSelectSkill.js';
 
 // minimal global for logging
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 const withSoundEvents = (soundEvents, fn) => {
   const game = globalThis.lemmings.game;
@@ -26,6 +26,8 @@ const withSoundEvents = (soundEvents, fn) => {
 };
 
 describe('Commands', function() {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('CommandNuke triggers doNukeAllLemmings and doNuke once', function() {
     let nukedAll = 0;
     let nuked = 0;

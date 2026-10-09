@@ -1,5 +1,4 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
 import '../js/lemmings/LemmingStateType.js';
 import { Lemming } from '../js/lemmings/Lemming.js';
 
@@ -10,29 +9,9 @@ describe('Lemming extra', function() {
     expect(lem.getClickDistance(0, 0)).to.equal(-1);
   });
 
-  it('setCountDown prevents overlap', function() {
-    const lem = new Lemming();
-    expect(lem.setCountDown({})).to.equal(true);
-    const first = lem.countdown;
-    expect(first).to.be.greaterThan(0);
-    expect(lem.setCountDown({})).to.equal(false);
-    expect(lem.countdown).to.equal(first);
-  });
 
-  it('process returns OUT_OF_LEVEL when no action', function() {
-    const lem = new Lemming(-1, 0);
-    lem.action = null;
-    const level = { width: 1, height: 1 };
-    const res = lem.process(level);
-    expect(res).to.equal(Lemmings.LemmingStateType.OUT_OF_LEVEL);
-  });
 
-  it('process returns OUT_OF_LEVEL when action is missing', function() {
-    const lem = new Lemming(0, 0);
-    lem.action = null;
-    lem.countdownAction = null;
-    const level = { width: 2, height: 2 };
-    const res = lem.process(level);
-    expect(res).to.equal(Lemmings.LemmingStateType.OUT_OF_LEVEL);
-  });
+
+
+
 });

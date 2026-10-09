@@ -2,9 +2,11 @@ import { expect } from 'chai';
 import { useGlobalLemmings } from './helpers/lemmings.js';
 import { ObjectManager } from '../js/level/ObjectManager.js';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('ObjectManager.render', function () {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('draws current frame of each object based on tick', function () {
     const timer = { getGameTicks() { return 5; } };
     const manager = new ObjectManager(timer);

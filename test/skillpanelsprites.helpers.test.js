@@ -6,7 +6,7 @@ import { SkillPanelSprites } from '../js/render/SkillPanelSprites.js';
 import '../js/util/LogHandler.js';
 import '../js/render/PaletteImage.js';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 class FakeReader {
   setOffset() {}
@@ -14,6 +14,8 @@ class FakeReader {
 }
 
 describe('SkillPanelSprites helper methods', function () {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('extracts a background patch', function () {
     const pal = new ColorPalette();
     pal.setColorRGB(0, 0, 0, 0);
@@ -69,7 +71,7 @@ describe('SkillPanelSprites helper methods', function () {
   it('brightens a button region', function () {
     const pal = new ColorPalette();
     pal.setColorRGB(0, 10, 20, 30);
-    const sp = new SkillPanelSprites(new FakeReader(), new FakeReader(), pal);  
+    const sp = new SkillPanelSprites(new FakeReader(), new FakeReader(), pal);
     const panel = new Frame(16, 40);
     const base = ColorPalette.colorFromRGB(10, 20, 30) >>> 0;
     panel.data.fill(base);

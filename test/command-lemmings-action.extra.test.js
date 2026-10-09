@@ -3,9 +3,11 @@ import { useGlobalLemmings } from './helpers/lemmings.js';
 import { CommandLemmingsAction } from '../js/commands/CommandLemmingsAction.js';
 
 // minimal global
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('CommandLemmingsAction extras', function() {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('serializes and deserializes correctly', function() {
     const cmd = new CommandLemmingsAction(5);
     const saved = cmd.save();

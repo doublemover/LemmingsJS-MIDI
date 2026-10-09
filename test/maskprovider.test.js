@@ -6,9 +6,11 @@ import '../js/render/MaskTypes.js';
 import '../js/render/MaskList.js';
 
 // Minimal environment for LogHandler
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('ActionBaseSystem mask caching', function() {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   beforeEach(function() {
     ActionBaseSystem.maskCache = new WeakMap();
   });

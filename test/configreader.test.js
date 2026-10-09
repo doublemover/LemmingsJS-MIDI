@@ -8,9 +8,11 @@ import '../js/game/GameTypes.js';
 import { ConfigReader } from '../js/data/ConfigReader.js';
 import { packMechanics } from '../js/level/packMechanics.js';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('ConfigReader', function () {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('returns configs containing mechanics', async function () {
     const json = `[
       { "name": "t", "path": "p", "gametype": "LEMMINGS",

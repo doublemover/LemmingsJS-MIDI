@@ -21,13 +21,13 @@ test('all layouts keep the identical live map canvas and musical undo keeps game
   await waitForHarnessReady(page);
   await page.evaluate(() => { window.__E2E__.pause(); window.__originalGameCanvas = document.getElementById('gameCanvas'); });
   if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
-  await page.locator('[data-game-event-id="20"]').click();
+  await page.locator('[data-game-event-id="1"]').click();
   for (const layout of ['Focus', 'Split', 'Overlay', 'Split']) {
     await page.locator(`#midiLayout${layout}`).click();
     await expect(page.locator(`#midiLayout${layout}`)).toHaveAttribute('aria-pressed', 'true');
     await expect(page.locator('#gameCanvas')).toBeVisible();
     expect(await page.evaluate(() => document.getElementById('gameCanvas') === window.__originalGameCanvas)).toBe(true);
-    await expect(page.locator('canvas')).toHaveCount(1);
+    await expect(page.locator('#gameCanvas')).toHaveCount(1);
     await page.screenshot({ path: testInfo.outputPath(`workbench-${layout.toLowerCase()}.png`), fullPage: true });
   }
   const duration = page.locator('#midiSoundDurationNumber');

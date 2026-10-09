@@ -7,9 +7,11 @@ import { GameVictoryCondition } from '../js/game/GameVictoryCondition.js';
 import '../js/game/GameResult.js';
 
 // minimal environment
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('Game victory condition', function () {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   function makeGame(release, needPct, time = 60) {
     const level = {
       releaseCount: release,

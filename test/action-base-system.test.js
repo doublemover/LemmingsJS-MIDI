@@ -5,7 +5,7 @@ import '../js/lemmings/SpriteTypes.js';
 import '../js/render/MaskTypes.js';
 
 // minimal global environment for logging
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 class StubAnimation {
   constructor(label) { this.label = label; }
@@ -42,6 +42,8 @@ class StubDisplay {
 }
 
 describe('ActionBaseSystem', function() {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   beforeEach(function() {
     ActionBaseSystem.spriteCache = new WeakMap();
     ActionBaseSystem.maskCache = new WeakMap();

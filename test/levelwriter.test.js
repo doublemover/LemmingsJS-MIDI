@@ -28,9 +28,11 @@ import '../js/render/DrawProperties.js';
 import '../js/util/Range.js';
 import '../js/game/SkillTypes.js';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('LevelWriter', function() {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('round-trips a level without changes', function() {
     const buf = readFileSync(new URL('../lemmings/LEVEL000.DAT', import.meta.url));
     const br = new BinaryReader(new Uint8Array(buf));

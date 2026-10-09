@@ -7,7 +7,7 @@ import '../js/lemmings/LemmingStateType.js';
 import '../js/lemmings/Lemming.js';
 import '../js/LemmingsBootstrap.js';
 
-useGlobalLemmings({ bench: false, extraLemmings: 0, game: { showDebug: true } });
+
 
 function makeManagerWithActions(options){
   const { manager, gvc } = makeManager(options);
@@ -17,6 +17,8 @@ function makeManagerWithActions(options){
 }
 
 describe('LemmingManager spawning and removal', function(){
+  useGlobalLemmings({ bench: false, extraLemmings: 0, game: { showDebug: true } });
+
   it('adds extra lemmings when extraLemmings is set', function(){
     const { manager } = makeManagerWithActions({ width: 20, height: 20 });
     lemmings.extraLemmings = 2;

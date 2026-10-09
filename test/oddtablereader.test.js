@@ -4,9 +4,11 @@ import { BinaryReader } from '../js/data/BinaryReader.js';
 import '../js/game/SkillTypes.js';
 import { OddTableReader } from '../js/data/OddTableReader.js';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('OddTableReader', function() {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('returns null for out-of-range levels', function() {
     const buf = new Uint8Array(56);
     const br = new BinaryReader(buf);

@@ -24,30 +24,34 @@ class BlockAction extends DummyAction {}
 class DigAction extends DummyAction {}
 class MineAction extends DummyAction {}
 
-useGlobalLemmings({ bench: false, extraLemmings: 0, game: { showDebug: true } });
 
-beforeEach(function() {
-  this._winW = global.winW;
-  this._winH = global.winH;
-  this._worldW = global.worldW;
-  this._worldH = global.worldH;
-  global.winW = 1600;
-  global.winH = 1200;
-  global.worldW = 1600;
-  global.worldH = 1200;
-  this._restoreActions = withActionStubs({
-    ActionBashSystem: BashAction,
-    ActionBlockerSystem: BlockAction,
-    ActionDiggSystem: DigAction,
-    ActionMineSystem: MineAction
+
+const useManagerFixtures = () => {
+  beforeEach(function() {
+    this._dimensions = Object.fromEntries(['winW', 'winH', 'worldW', 'worldH'].map(key => [key, {
+      present: Object.hasOwn(globalThis, key), value: globalThis[key]
+    }]));
+    Object.assign(globalThis, { winW: 1600, winH: 1200, worldW: 1600, worldH: 1200 });
+    this._restoreActions = withActionStubs({
+      ActionBashSystem: BashAction,
+      ActionBlockerSystem: BlockAction,
+      ActionDiggSystem: DigAction,
+      ActionMineSystem: MineAction
+    });
   });
-});
-
-afterEach(function() {
-  this._restoreActions();
-});
+  afterEach(function() {
+    this._restoreActions();
+    for (const [key, saved] of Object.entries(this._dimensions)) {
+      if (saved.present) globalThis[key] = saved.value;
+      else delete globalThis[key];
+    }
+  });
+};
 
 describe('LemmingManager core behavior', function() {
+  useManagerFixtures();
+  useGlobalLemmings({ bench: false, extraLemmings: 0, game: { showDebug: true } });
+
   it('addLemming and addNewLemmings use release counts', function() {
     const { manager, gvc } = makeManager({ width: 100, height: 50, releaseCount: 2 });
 
@@ -282,6 +286,9 @@ describe('LemmingManager core behavior', function() {
 });
 
 describe('LemmingManager additional', function() {
+  useManagerFixtures();
+  useGlobalLemmings({ bench: false, extraLemmings: 0, game: { showDebug: true } });
+
 
   it('setLemmingState clears countdown on lethal state', function() {
     const { manager } = makeManager();
@@ -315,6 +322,9 @@ describe('LemmingManager additional', function() {
 });
 
 describe('LemmingManager triggers and nuking', function() {
+  useManagerFixtures();
+  useGlobalLemmings({ bench: false, extraLemmings: 0, game: { showDebug: true } });
+
   it('runTrigger maps triggers and flips blockers', function() {
     const { manager } = makeManager();
     manager.addLemming(5, 5);

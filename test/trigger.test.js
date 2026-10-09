@@ -3,9 +3,11 @@ import { useGlobalLemmings } from './helpers/lemmings.js';
 import { Trigger } from '../js/level/Trigger.js';
 import { TriggerTypes } from '../js/level/TriggerTypes.js';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('Trigger', function() {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('handles disable delay correctly', function() {
     const trig = new Trigger(TriggerTypes.EXIT_LEVEL, 0, 0, 10, 10, 2);
     let res = trig.trigger(5, 5, 0);

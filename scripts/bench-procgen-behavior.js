@@ -61,7 +61,8 @@ const runBehaviorFixture = options => {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const masks = await loadProcgenMasks();
   const results = [];
-  for (const fixture of ['retired-blocker', 'shallow-step', 'pit']) for (const policy of ['baseline', 'current']) results.push(runBehaviorFixture({ masks, fixture, policy }));
+  const policies = process.argv.includes('--policy=current') ? ['current'] : ['baseline', 'current'];
+  for (const fixture of ['retired-blocker', 'shallow-step', 'pit']) for (const policy of policies) results.push(runBehaviorFixture({ masks, fixture, policy }));
   console.log(JSON.stringify({ baselineCommit: '059a4cab7cbe9c6bc3adda17036590d19d1a5248', physics: 'real Level + LemmingManager + original action systems', results }, null, 2));
 }
 export { runBehaviorFixture };

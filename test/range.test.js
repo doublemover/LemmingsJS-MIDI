@@ -1,10 +1,10 @@
 import { expect } from 'chai';
-import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import { Range } from '../js/util/Range.js';
 
-useGlobalLemmings(Lemmings);
+
 
 describe('Range', function() {
+
   it('initializes fields to zero', function() {
     const r = new Range();
     expect(r.x).to.equal(0);
