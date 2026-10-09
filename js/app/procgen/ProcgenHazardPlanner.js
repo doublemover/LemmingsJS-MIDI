@@ -256,6 +256,18 @@ class ProcgenHazardPlanner {
         const walking = this.walking.prove(actor, (x, y) => this._ground(x, y), this.observations, MAX_ROUTE_PROBES - this.probes);
         if (walking.failure === 'unrevealed') this.unrevealed = true;
         if (walking.safe && !this.exhausted && !this.unrevealed) { this.admission.screened(actor, this.probes); return null; }
+        // Discover a real imminent WALK entrance before scalar excavation scans
+        // spend its service. The live actor keeps following its shared actions.
+        if (!build && walking.terrainTurn?.steps > 0 && !actor.scout && !actor.canClimb && !actor.hasParachute && world.workerLimits?.bashers &&
+            !this.exhausted && !this.unrevealed && !world.tunnelRoutes.scenes[lane] && world.lanePolicy.projects.canBegin(actor)) {
+          const pose = Object.assign(Object.create(actor), { x: walking.terrainTurn.x, y: walking.terrainTurn.y });
+          const guarded = this.guardedTunnels.prove(pose, MAX_ROUTE_PROBES - this.probes);
+          this.probes += guarded.probes; this.stats.probes += guarded.probes;
+          if (guarded.guardCandidate && world.tunnelRoutes.request(actor, guarded.guardCandidate, walking.terrainTurn)) {
+            this.admission.served(actor, Math.min(MAX_ROUTE_PROBES, this.probes));
+            this.cache[lane] = { tick: world.tickIndex, key, proposal: null }; this.stats.plans++; return null;
+          }
+        }
       }
       let bash = null, observedLong = false, guardedPending = false;
       if (!build && cliff && world.workerLimits?.bashers && this._ground(actor.x + 30, actor.y - 6)) {

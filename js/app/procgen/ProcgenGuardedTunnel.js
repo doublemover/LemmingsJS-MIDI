@@ -1,3 +1,4 @@
+import { procgenTileRevision } from './ProcgenTerrainRetention.js';
 import { Lemming } from '../../lemmings/Lemming.js';
 import { LemmingStateType as State } from '../../lemmings/LemmingStateType.js';
 import { TriggerTypes } from '../../level/TriggerTypes.js';
@@ -20,7 +21,7 @@ class ProcgenGuardedTunnel {
   prove(actor, maxWork, guard = null) {
     const world = this.world, left = actor.x - 16, right = actor.x + GUARDED_TUNNEL_DISTANCE, top = actor.y - 16, bottom = actor.y + 32;
     const generation = world.generation, revision = world.terrainRevision, frontier = world.frontierRevision;
-    const cells = new Map(), removed = new Set(), triggers = [], key = (x, y) => (y - top) * 129 + x - left;
+    const tiles = new Map(), cells = new Map(), removed = new Set(), triggers = [], key = (x, y) => (y - top) * 129 + x - left;
     let failure = null, steps = 0, bashTicks = 0, terminationTick = null, walkingTick = null, endX = null, rearX = guard?.x ?? actor.x - 14, rearY = guard?.y ?? null;
     maxWork = Math.max(0, Math.min(1024, Math.trunc(maxWork) || 0)); this.stats.proofs++;
     const read = (x, y) => {
@@ -31,6 +32,7 @@ class ProcgenGuardedTunnel {
       if (!cells.has(at)) {
         if (cells.size >= maxWork) { failure ||= 'budget'; return 0; }
         cells.set(at, world.hasGroundAt(x, y) ? 1 | (world.hasSteelAt(x, y) ? 2 : 0) : 0);
+        const tile = lane * 0x800000 + chunk; if (!tiles.has(tile)) tiles.set(tile, procgenTileRevision(world, tile));
       }
       return removed.has(at) ? 0 : cells.get(at);
     };
@@ -110,7 +112,7 @@ class ProcgenGuardedTunnel {
     const evidence = { rearBlockerId: guard?.id, guardX: rearX, guardY: rearY, exitX: worker.x, exitY: worker.y, terminationTick, naturalWalkingTick: walkingTick, exitTicks: bashTicks + 1, startX: actor.x, startY: actor.y, actionSteps: steps, observations: cells.size, independentQualification: false };
     if (!failure) this.stats.accepted++;
     return { proposal: failure || !guard ? null : { kind: 'bashers', targetX: actor.x + 1, startX: actor.x, footprint: bounds, continuationY: worker.y, reason: 'observed-guarded-tunnel', estimatedTicks: walkingTick, materialCost: 0, routeEvidence: evidence },
-      guardCandidate: !failure && !guard ? evidence : null, probes: cost, failure, actionSteps: steps };
+      guardCandidate: !failure && !guard ? evidence : null, probes: cost, failure, actionSteps: steps, tiles: !failure ? [...tiles] : null };
   }
   dispose() { this.hazards.length = 0; this.nearby.length = 0; this.world = null; }
 }

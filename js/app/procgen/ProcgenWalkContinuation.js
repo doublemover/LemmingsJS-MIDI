@@ -1,3 +1,4 @@
+import { procgenTileRevision } from './ProcgenTerrainRetention.js';
 import { Lemming } from '../../lemmings/Lemming.js';
 import { LemmingStateType as State } from '../../lemmings/LemmingStateType.js';
 import { TriggerTypes as Types } from '../../level/TriggerTypes.js';
@@ -37,26 +38,28 @@ class ProcgenWalkContinuation {
     const cells = new Map(), revision = world.terrainRevision, frontier = world.frontierRevision, generation = world.generation;
     maxWork = Math.max(0, Math.trunc(maxWork) || 0);
     const maxSteps = Math.min(WALK_CONTINUATION_STEPS, maxWork);
-    let failure = null, steps = 0, fell = false;
+    let failure = null, steps = 0, fell = false, terrainTurn = null, fullWalkColumn = false, touchedTrigger = false, invalidTurn = false;
+    const tiles = new Map();
     const read = (x, y) => {
-      if (x < left || x > right || y < top || y > bottom || y < 0 || y >= world.height) { failure ||= 'bounds'; return false; }
+      if (x < left || x > right || y < top || y > bottom || y < 0 || y >= world.height) { invalidTurn = true; failure ||= 'bounds'; return false; }
       const lane = Math.floor(y / world.laneHeight), chunk = Math.floor(x / world.terrain.chunkWidth);
-      if (x >= world.generatedThrough[lane] || (world.terrainGrowth?.stateFor(lane, chunk) && !world.terrainGrowth.columnReady?.(lane, x))) { failure ||= 'unrevealed'; return false; }
+      if (x >= world.generatedThrough[lane] || (world.terrainGrowth?.stateFor(lane, chunk) && !world.terrainGrowth.columnReady?.(lane, x))) { invalidTurn = true; failure ||= 'unrevealed'; return false; }
       const key = (y - top) * (WALK_CONTINUATION_DISTANCE + 1) + x - left;
       if (!cells.has(key)) {
-        if (cells.size >= maxWork) { failure ||= 'budget'; return false; }
+        if (cells.size >= maxWork) { invalidTurn = true; failure ||= 'budget'; return false; }
         cells.set(key, ground(x, y));
+        const tile = lane * 0x800000 + chunk; if (!tiles.has(tile)) tiles.set(tile, procgenTileRevision(world, tile));
       }
       return cells.get(key);
     };
     const level = { width: world.width, height: world.height, getGroundMaskLayer: () => level, hasGroundAt: read,
-      getColumnStepHeight(x, y, height) { for (let i = 0; i < height; i++) if (!read(x, y + height - i - 1)) return i; return height; },
+      getColumnStepHeight(x, y, height) { for (let i = 0; i < height; i++) if (!read(x, y + height - i - 1)) return i; fullWalkColumn = height === 8; return height; },
       getColumnGapDepth(x, y, height) { for (let i = 0; i < height; i++) if (read(x, y + i)) return i + 1; return height + 1; } };
     const interaction = { triggerManager: { trigger(x, y) {
       for (const trigger of triggers) {
         const owner = trigger.owner;
         if (owner && owner !== actor && !owner.removed && !owner.disabled && !owner.failureReason && !owner.terminalReason && owner.action === world.actions[State.BLOCKING] &&
-            x >= trigger.x1 && x < trigger.x2 && y >= trigger.y1 && y < trigger.y2) return trigger.type;
+            x >= trigger.x1 && x < trigger.x2 && y >= trigger.y1 && y < trigger.y2) { touchedTrigger = true; return trigger.type; }
       }
       return Types.NO_TRIGGER;
     } } };
@@ -64,7 +67,7 @@ class ProcgenWalkContinuation {
     const copy = new Lemming(actor.x, actor.y, actor.id); copy.setAction(this.actions[State.WALKING]);
     this.stats.proofs++;
     for (; steps < maxSteps && !failure;) {
-      const x = copy.x, y = copy.y;
+      const x = copy.x, y = copy.y, walking = copy.action === this.actions[State.WALKING]; fullWalkColumn = false;
       if (!safe(x, y)) { failure = 'hazard'; break; }
       steps++;
       const next = copy.process(level), distance = Math.max(Math.abs(copy.x - x), Math.abs(copy.y - y), 1);
@@ -73,6 +76,7 @@ class ProcgenWalkContinuation {
         if (!this.actions[next]) { failure ||= 'termination'; break; }
         copy.setAction(this.actions[next]);
       }
+      if (!failure && walking && fullWalkColumn && !copy.lookRight && copy.x === x && next === State.NO_STATE_TYPE) terrainTurn = { x, y, steps: steps - 1 };
       fell ||= copy.action === this.actions[State.FALLING];
       lemmingManagerInteractionMethods.runTrigger.call(interaction, copy, world.tickIndex + steps);
       if (!copy.lookRight) failure ||= 'turn';
@@ -82,7 +86,8 @@ class ProcgenWalkContinuation {
     if (copy.x !== right || copy.action !== this.actions[State.WALKING] || !read(copy.x, copy.y)) failure ||= steps >= maxSteps ? 'budget' : 'continuation';
     this.stats.actionSteps += steps;
     if (!failure) this.stats.accepted++;
-    return { safe: !failure, failure, actionSteps: steps, fell, x: copy.x, y: copy.y };
+    if (failure !== 'turn' || touchedTrigger || invalidTurn || world.terrainRevision !== revision || world.frontierRevision !== frontier || world.generation !== generation || [...tiles].some(([tile, at]) => procgenTileRevision(world, tile) !== at)) terrainTurn = null;
+    return { safe: !failure, failure, actionSteps: steps, fell, x: copy.x, y: copy.y, terrainTurn: terrainTurn && { ...terrainTurn, generation, tiles: [...tiles] } };
   }
   reset() { this.stats.proofs = 0; this.stats.accepted = 0; this.stats.actionSteps = 0; }
   dispose() { this.world = null; }
