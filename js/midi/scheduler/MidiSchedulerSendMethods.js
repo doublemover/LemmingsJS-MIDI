@@ -1,3 +1,4 @@
+import { transferGamePhraseVoiceKey } from './MidiGamePhraseQueue.js';
 import { getAppContext } from '../../core/dependencies.js';
 import {
   canMeasurePerformance,
@@ -68,6 +69,7 @@ const midiSchedulerSendMethods = {
         this._usedOutputChannels.set(output, usedChannels);
       }
       usedChannels.add(channelNumber);
+      if (output.supportsIndependentNoteGates && !this._admitLocalNote(output, meta, trackId, voiceBudget)) return false;
       const startedAt = sendTimeMs;
       const token = ++this._noteOffSeq;
       const captureMeta = this._captureEnabled() ? { ...this._captureScaleFields(), ...meta, captureScope: this._captureScope, token, note: spec.note, channel: channelNumber, program: spec.program,
@@ -75,13 +77,13 @@ const midiSchedulerSendMethods = {
         scheduledMs: sendTimeMs, durationMs, held: durationMs === 0 } : null;
       this._observe('scheduled', { ...captureMeta, type: 'noteOn', offScheduledMs: durationMs > 0 ? offTimeMs : null });
       if (
-        trackId &&
+        !output.supportsIndependentNoteGates && trackId &&
           voiceBudget != null &&
           this._countActiveNotesForTrack?.(trackId) >= voiceBudget
       ) {
         this._stealOldestNoteForTrack(trackId);
       }
-      if (this._activeNotes.size >= this._maxActiveNotes) {
+      if (!output.supportsIndependentNoteGates && this._activeNotes.size >= this._maxActiveNotes) {
         this._stealOldestNote();
       }
 
@@ -99,6 +101,7 @@ const midiSchedulerSendMethods = {
         offTimeMs,
         hasStarted: false,
         captureMeta,
+        actorMeta: meta,
         automationSpanned: !!meta.automationSpanIds?.length,
         output
       });
@@ -121,7 +124,7 @@ const midiSchedulerSendMethods = {
           this._stopActiveNoteToken(token);
           return;
         }
-        if (!active.mpe) {
+        if (!active.mpe && !output.supportsIndependentNoteGates) {
           // MIDI 1.0 has one gate per output/channel/pitch. Retrigger owns that gate.
           for (const [previousToken, previous] of [...this._activeNotes]) {
             if (previousToken !== token && previous.hasStarted && previous.output === output &&
@@ -149,10 +152,17 @@ const midiSchedulerSendMethods = {
           }
           Object.assign(expression.state, expression.spanState);
 
-          this._sendOutput(output, channelNumber, 'sendNoteOn', [spec.note, { rawAttack: attackVelocity, time: sendTimeMs,
+          const accepted = this._sendOutput(output, channelNumber, 'sendNoteOn', [spec.note, { rawAttack: attackVelocity, time: sendTimeMs,
+            ...(output.supportsIndependentNoteGates ? { voiceToken: token, priority: meta.priority ?? 1, laneIndex: meta.laneIndex ?? 0 } : {}),
             ...(output.supportsPlaybackMetadata ? { playback: { sfxId: meta.sfxId, triggerType: meta.triggerType, durationMs, stepIndex: spec.stepIndex, stepCount: spec.stepCount, lemmingId: meta.lemmingId, laneIndex: meta.laneIndex, ensembleRole: spec.ensembleRole, program: spec.program, channel: channelNumber } } : {}),
             ...(output.supportsPerNoteInstrument ? { instrument: { program: spec.program, percussion: spec.percussion, role: spec.ensembleRole, legacy: !spec.ensembleRole && spec.percussion !== true } } : {}),
             ...(output.supportsPerNotePan && Number.isFinite(spec.pan) ? { pan: spec.pan / 127 } : {}) }], captureMeta);
+          if (accepted === false) {
+            dispatchFailed = true;
+            this.recordThrottle('local-render-rejected', this._nowMs(), captureMeta);
+            this._stopActiveNoteToken(token);
+            return;
+          }
           active.hasStarted = true;
           if (typeof window !== 'undefined') window.lastMidiOutputMessage = {
             type: 'noteOn', note: spec.note, velocity: attackVelocity, channel: channelNumber, outputId, timeMs: sendTimeMs, program: spec.program, ensembleRole: spec.ensembleRole, laneIndex: meta.laneIndex, lemmingId: meta.lemmingId
@@ -169,7 +179,7 @@ const midiSchedulerSendMethods = {
         this._pendingNoteOns.set(token, { output, channel: channelNumber, note: spec.note, timeMs: sendTimeMs, timerId,
           spanPan: spec.spanPan === true, spanTimbre: spec.spanTimbre === true });
       } else dispatchStart();
-      if (durationMs > 0) {
+      if (durationMs > 0 && this._activeNotes.has(token)) {
         this._scheduleNoteOff({ timeMs: offTimeMs, channel: channelNumber, note: spec.note,
           outputId, token, mpe: mpeEnabled, releaseVelocity });
       }
@@ -262,7 +272,8 @@ const midiSchedulerSendMethods = {
           const output = active.output || this._resolveOutput(active.outputId ?? entry.outputId);
           const channel = output?.channels?.[entry.channel];
           try {
-            this._sendOutput(output, entry.channel, 'sendNoteOff', [entry.note, { rawRelease: entry.releaseVelocity, time: entry.timeMs }], active.captureMeta);
+            this._sendOutput(output, entry.channel, 'sendNoteOff', [entry.note, { rawRelease: entry.releaseVelocity, time: entry.timeMs,
+              ...(output.supportsIndependentNoteGates ? { voiceToken: entry.token } : {}) }], active.captureMeta);
             if (entry.mpe) {
               this._sendOutput(output, entry.channel, 'sendPitchBend', [0, { time: entry.timeMs }], active.captureMeta);
               this._expressionState(output, entry.channel).bend = 0;
@@ -281,6 +292,22 @@ const midiSchedulerSendMethods = {
       this._noteOffs.splice(0, idx);
     }
     this._armNoteOffTimer();
+  },
+
+  transferActorLane(id, from, to, laneCount) {
+    if (!Number.isInteger(id) || id < 0 || !Number.isInteger(laneCount) || laneCount < 1 || laneCount > 1024 ||
+      !Number.isInteger(from) || !Number.isInteger(to) || from < 0 || to < 0 || from >= laneCount || to >= laneCount || from === to) return false;
+    const changedKeys = this.gamePhrases.transferActorLane(id, from, to, laneCount);
+    for (const voice of this._activeNotes.values()) {
+      if (voice.lemmingId !== id || voice.laneIndex !== from) continue;
+      voice.laneIndex = to; voice.laneCount = laneCount;
+      if (voice.actorMeta) Object.assign(voice.actorMeta, {
+        originLaneIndex: voice.actorMeta.originLaneIndex ?? from, laneIndex: to, laneCount });
+      if (voice.captureMeta) Object.assign(voice.captureMeta, {
+        originLaneIndex: voice.captureMeta.originLaneIndex ?? from, laneIndex: to, laneCount });
+      voice.phraseVoiceKey = changedKeys.get(voice.phraseVoiceKey) ?? transferGamePhraseVoiceKey(voice.phraseVoiceKey, id, from, to);
+    }
+    return true;
   },
 
   isGamePhraseVoiceBusy(key) {

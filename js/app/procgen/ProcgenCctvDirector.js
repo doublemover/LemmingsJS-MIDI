@@ -47,7 +47,8 @@ class ProcgenCctvDirector {
       if (state.alive > 0 && tick - movedTick <= 30) { score = 40; reason = 'Advancing'; }
       if (state.buildingCount > 0) { score = 70; reason = 'Building'; }
       else if (state.bashingCount > 0) { score = 65; reason = 'Bashing'; }
-      if (state.peakAlive >= 6 && state.alive > 0 && state.alive <= 3 && state.alive < state.peakAlive / 2) {
+      const populationPeak = state.populationPeak ?? state.peakAlive;
+      if (populationPeak >= 6 && state.alive > 0 && state.alive <= 3 && state.alive < populationPeak / 2) {
         score = state.buildingCount > 0 || state.bashingCount > 0 ? 95 : 75;
         reason = state.buildingCount > 0 ? 'Small crew building' : state.bashingCount > 0 ? 'Small crew bashing' : 'Small surviving crew';
       }

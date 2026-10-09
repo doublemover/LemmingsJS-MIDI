@@ -1,3 +1,5 @@
+import { createAuthoredAssemblyMiner } from './AuthoredAssemblyMiner.js';
+import { validateAuthoredAssemblyCatalogs } from '../js/app/procgen/ProcgenAuthoredAssemblies.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,7 +13,7 @@ import { LevelIndexResolve } from '../js/level/LevelIndexResolve.js';
 import { GroundReader, loadSteelSprites } from '../js/level/GroundReader.js';
 import { NxlvParser } from '../js/editor/NxlvParser.js';
 import { getStyle, resolveTerrainId } from '../js/editor/StyleRegistry.js';
-import { ERASE, FLIP_Y, NO_OVERWRITE, FLIP_X, stampRecipePlacements, getRecipeTopProfile, validateTerrainRecipeBook } from '../js/app/procgen/ProcgenTerrainRecipes.js';
+import { ERASE, FLIP_Y, NO_OVERWRITE, FLIP_X, ONLY_OVERWRITE, stampRecipePlacements, getRecipeTopProfile, validateTerrainRecipeBook } from '../js/app/procgen/ProcgenTerrainRecipes.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const LIMITS = { files: 20000, levels: 4096, terrainPerLevel: 4096, pixelsPerLevel: 4000000, representatives: 8 };
@@ -21,7 +23,7 @@ const round = n => Math.round(n * 1000) / 1000;
 const add = (map, key, value, amount = 1) => { const entry = map.get(key); if (entry) entry.count += amount; else map.set(key, { ...value, count: amount }); };
 const top = (map, count = 8) => [...map.values()].sort((a, b) => b.count - a.count || JSON.stringify(a).localeCompare(JSON.stringify(b))).slice(0, count);
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
-const flags = p => (p.isErase ? ERASE : 0) | (p.isUpsideDown ? FLIP_Y : 0) | (p.noOverwrite ? NO_OVERWRITE : 0) | (p.isFlippedHorizontally ? FLIP_X : 0);
+const flags = p => (p.isErase ? ERASE : 0) | (p.isUpsideDown ? FLIP_Y : 0) | (p.noOverwrite ? NO_OVERWRITE : 0) | (p.isFlippedHorizontally ? FLIP_X : 0) | (p.onlyOverwrite ? ONLY_OVERWRITE : 0);
 const placement = t => ({ id: t.id, x: t.x, y: t.y, f: flags(t.drawProperties || {}) });
 
 async function discover(root) {
@@ -207,7 +209,7 @@ function mineLevel(theme, level, descriptorMiner) {
 
 export async function mineTerrainRecipes({ root = ROOT } = {}) {
   const files = await discover(root), configs = JSON.parse(await fs.readFile(path.join(root, 'config.json'), 'utf8'));
-  const descriptorMiner = createTerrainDescriptorMiner(configs);
+  const descriptorMiner = createTerrainDescriptorMiner(configs), assemblyMiner = createAuthoredAssemblyMiner(configs), assemblyAssets = new Map();
   const provider = new NodeFileProvider(root), assetCache = new Map(), themesByHash = new Map(), levels = [], failures = [], special = [];
   const aliases = new Map();
   let configuredAliases = 0;
@@ -243,6 +245,14 @@ export async function mineTerrainRecipes({ root = ROOT } = {}) {
     const fingerprint = createHash('sha256');
     for (const image of images) { fingerprint.update(Buffer.from([image.width, image.height])); fingerprint.update(Buffer.from(image.frames[0])); fingerprint.update(Buffer.from(image.palette.data.buffer)); }
     const digest = fingerprint.digest('hex');
+    const objects = reader.getObjectImages(), objectFingerprint = createHash('sha256');
+    for (const object of objects) {
+      objectFingerprint.update(JSON.stringify([object.width, object.height, object.trigger_effect_id, object.trigger_left, object.trigger_top,
+        object.trigger_width, object.trigger_height, object.preview_image_index]));
+      for (const frame of object.frames || []) objectFingerprint.update(Buffer.from(frame));
+      objectFingerprint.update(Buffer.from(object.palette.data.buffer));
+    }
+    assemblyAssets.set(key, { terrain: images, objects, objectSha256: objectFingerprint.digest('hex'), assetSha256: digest });
     let theme = themesByHash.get(digest);
     if (!theme) {
       const family = names[pack]?.[groundSet] || (groundSet === 2 ? 'holiday-snow' : `${pack}-${groundSet}`);
@@ -268,7 +278,7 @@ export async function mineTerrainRecipes({ root = ROOT } = {}) {
           if (binary.length !== 2048) throw new Error(`Expected classic 2048 bytes, got ${binary.length}`);
           const parsed = new LevelReader(binary);
           const level = { id, format: 'classic-dat', title: parsed.levelProperties.levelName, pack, groundSet: parsed.graphicSet1,
-            aliases: levelAliases, width: parsed.levelWidth, height: parsed.levelHeight, placements: parsed.terrains.map(placement),
+            aliases: levelAliases, width: parsed.levelWidth, height: parsed.levelHeight, placements: parsed.terrains.map(placement), objects: parsed.objects.map(placement),
             sha256: sha(await fs.readFile(path.join(root, filename))) };
           packRecord.parsed++;
           if (parsed.graphicSet2) {
@@ -277,6 +287,7 @@ export async function mineTerrainRecipes({ root = ROOT } = {}) {
             packRecord.specialBitmaps++; continue;
           }
           const theme = await loadAssets(pack, parsed.graphicSet1);
+          assemblyMiner.observe(level, assemblyAssets.get(`${pack}/${parsed.graphicSet1}`));
           mineLevel(theme, level, descriptorMiner); level.theme = theme.id; levels.push(level); packRecord.tileAssemblies++;
           if (levels.length > LIMITS.levels) throw new Error('Level count exceeds bounded scan limit');
         } catch (error) { failures.push({ source: id, error: error.message }); }
@@ -339,9 +350,10 @@ export async function mineTerrainRecipes({ root = ROOT } = {}) {
     inventory: { scope: 'Repository source tree, excluding symlinks and generated/cache directories', configuredAliases,
       physicalClassicLevels: packs.reduce((sum, p) => sum + p.physicalLevels, 0), tileAssemblyLevels: levels.length,
       nonclassicLevels: nonclassic.length, packs, nonclassic, specialBitmaps: special, failures,
-      sourceDigest: sha(JSON.stringify(corpus)), sourceFilesScanned: files.filter(file => /(?:config\.json|\.DAT|\.nxlv|\.lvl)$/i.test(file)).length, archiveFiles: archives }, themes, corpus, descriptors: descriptorMiner.finish() };
+      sourceDigest: sha(JSON.stringify(corpus)), sourceFilesScanned: files.filter(file => /(?:config\.json|\.DAT|\.nxlv|\.lvl)$/i.test(file)).length, archiveFiles: archives }, themes, corpus, descriptors: descriptorMiner.finish(), assemblies: assemblyMiner.finish() };
   validateTerrainRecipeBook(book);
   validateTerrainDescriptors(book.descriptors);
+  validateAuthoredAssemblyCatalogs(book.assemblies);
   return book;
 }
 
@@ -381,13 +393,23 @@ export function terrainRecipeReport(book) {
     '`ProcgenTerrainZonePlanner` compiles available source IDs and word-owned glyph exclusions once per selected descriptor revision. A seed chooses a fixed chunk-aligned zone width for the lane; each successive zone chooses an observed asset pair and at most four ordered role groups (eight placements each), preserving flags, offsets and source-level provenance. The width cannot exceed either the selected pack cap or the descriptor normal-level maximum; the current classic cap is 1600px, so 128px chunks yield zones up to 1536px.', '',
     'The default cache retains 128 plans per source revision, with a hard configurable limit of 256. Eviction or reset recomputes identical seeded plans. A changed source revision requires a new planner. Source mining stays offline; no per-frame learning or complete-level copying occurs.', '',
     'The selected-pack adapter fingerprints loaded decoded art once and selects an exact canonical descriptor before applying plans. It compiles only additive route/decoration groups with source flips and alpha, excluding conditional overwrite/erase roles, steel, unavailable art and word-owned glyphs. At most two small groups are placed in a chunk; the source-themed foundation and existing scenery remain the baseline. Route columns require continuous actual support and rise at most two pixels into the walking corridor. Decoration components require terrain contact and stay noncolliding. The spawn chunk, eight-pixel boundary insets, gap margins, words and gadget footprints are protected. Other measured roles remain unapplied; co-occurrence is not a constructibility proof.', '',
-    'Verified canonical pack worlds reveal source collision and display together in eight-column increments. The bounded queue prepares immutable source chunks ahead of real frontiers and prioritizes their time to reach, including the two-pixel maximum forward action step and conservative service rounds. At 64 lanes, each simulation tick permits four preparations and sixteen reveal jobs, targets a 104-pixel reveal lead and retains a 64-pixel safety reserve. Pending source work joins the existing stall protection and clears after completion or reset; pause creates no work. Source gadgets wait for their full footprint to be revealed. This batch does not add generated trap/drowning physics or mining/digging/turning strategies.', '',
+    'Verified canonical pack worlds materialize whole source motif sections and attached pieces using one active-job state for collision, steel, basin geometry and rendering. Source-backed support dependencies precede attached details; ambiguous ordering remains a connected section. Tick-driven bounded queues prioritize time to reach, accounting for two-pixel action steps, source job count and service rounds while retaining a 64-pixel safety reserve. Partial tiles use filtered samplers; completed geometry returns to the normal caches. Pause creates no work, reset clears jobs, and ready source work joins existing stall protection. Generated traps, drowning and fire use shared source owners. Local bridge/tunnel/digging proposals are engine-calibrated fixtures, not universal constructibility or independent-solver certification.', '',
     '## Runtime consumption', '',
     '`ProcgenTerrainRecipes.js` loads and validates the artifact, selects an exact pack-local asset family and composes bounded chunks from real decoded art. It returns color pixels, solid mask, top profile and placed-piece provenance. Keep seed/variant stable for a lane and pass worldX so repeated assemblies join across chunk boundaries. A caller may select another variant at an explicitly checked seam.', '',
     'There is no generic-color geometry fallback. Missing art or a missing supported recipe fails clearly. Colors and collision come from the same source-alpha stamp. Gameplay challenge cuts and builder/destructive edits remain the runtime’s responsibility; recipe screening is not a gameplay solver.', '',
     '## Reproduction and bounds', '',
     'Run `node tools/mineTerrainRecipes.js` to regenerate the checked-in JSON and this report, or `node tools/mineTerrainRecipes.js --check` to verify exact reproducibility. No network access or new dependency is required. NodeFileProvider, FileContainer, LevelReader, GroundReader, NxlvParser and StyleRegistry are the existing decoders.', '',
     'The scan is bounded by file/level/pixel/placement caps recorded in the JSON. It skips symlinks and generated/cache directories, deduplicates assets by decoded pixel/palette hash, analyzes every physical source once and retains only small motif samples. The corpus index preserves level identities, alias mapping and source hashes. Unsupported standalone LVL bindings, complex NXLV transforms or archive inputs are reported rather than silently treated as covered.', '');
+  lines.push('', '## Authored assembly catalog', '',
+    'Configured tile levels also supply bounded small assemblies from actual decoded preview-alpha contact and overlap. Object members keep their existing trigger roles; terrain and objects retain exact source offsets, flags and provenance. Nonoverlapping object-only groups normalize independent draw order; overlapping and terrain order remains authored. No asset names or manual blacklist infer component ownership.', '',
+    '| Pack / ground | Authored levels | Accepted / ambiguous | Quarantined terrain / objects | Omitted candidates / alpha scans |',
+    '| --- | ---: | ---: | ---: | ---: |');
+  for (const catalog of book.assemblies || []) { const t = catalog.totals; lines.push(`| ${catalog.pack} / ${catalog.groundSet} | ${t.authoredLevels} | ${t.acceptedEntries} / ${t.ambiguousEntries} | ${t.quarantinedTerrainIds} / ${t.quarantinedObjectIds} | ${t.omittedCandidates} / ${t.omittedAlphaScans} |`); }
+  lines.push('',
+    'Confidence is an evidence score, not a semantic or solvability proof: 0.9 for repeated source levels, 0.8 for repeated instances, and 0.55 for one contact. External support anchors separately distinguish exact transform repetition from a repeated attachment family (same member, anchor ID/flags, side and transverse contact coordinate); every retained variant keeps its exact source transform and exact/family counts. Alpha contacts use a decoded preview frame, not every animation pose.', '',
+    'Per-asset source-use totals, distinct linked uses and intrinsic-use shares distinguish exclusive bodies from common supports. Component quarantine requires at least 60% intrinsic attachment usage and a repeated exact transform. Bottom contact with a generic floor is support evidence rather than intrinsic body ownership. Quarantine is derived from all bounded candidates, including groups too large or omitted from the retained catalog. Unsupported single objects remain explicit evidence, not invented supported assemblies.', '',
+    'The OhNo bubble chameleon is measured as trap object8 joined to decor object10 at body offset(-32,20), observed three times in three configured levels; object10 has three source uses and three linked uses. Both IDs are quarantined from standalone use. Its body attaches at the left to terrain44/48 source variants; these preserve the authored side contact instead of snapping the trap head to a generic floor.', '',
+    'Each exact pack/ground/terrain-art/object-art revision retains at most 64 entries of eight members, four source examples and four external support anchors. Candidate maps cap at4096, comparisons at65536 and preview-alpha checks at400000 per level; omitted work is counted, never claimed analyzed. Runtime selection requires both actual art hashes, compiles only available source art once, keeps object alpha separate from terrain collision, and requires real external support before placement. Ambiguous or unsupported attachments are suppressed.', '');
   return lines.join('\n');
 }
 

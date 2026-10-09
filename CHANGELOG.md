@@ -29,6 +29,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Per-lane distance records and generous simulation-time/spawn stall recovery preserve progress markers through a staggered OHNO cascade and restart.
 
 ### Fixed
+
+- Procgen starts on supported terrain, uses bounded shared-action build/bash/dig/mine proposals, and transfers actors, workers, triggers and music between stripes without treating lane boundaries as deaths.
+- Generated terrain reveals whole sourced pieces and dependency-ordered attached assemblies with shared collision/render/hazard state; unsupported decorations and generated digging arrows are suppressed.
+- Local audio removes voice-capacity attenuation, preserves independent repeated-pitch gates and applies one shared compressor before the existing ceiling; quiet spawn defaults and priority/lane overflow protect performance notes.
+- Procgen defaults to eight lanes while preserving saved choices and exposes compact progress metrics, a secondary Seed disclosure and a centered panel handle.
+
 - Empty skill counts use black wells and unavailable skills retain dimmed source icons instead of a full checkerboard; custom-theme HUD colors remain classic without changing scene colors.
 - Contact-anchored hazard artwork remains visible at viewport edges when simulation coordinates drift; far-zoom scenery reuses indexed catalog groups.
 - Procgen avoids duplicate assisted walking scans and unchanged RAF composites, skips decorative collision work, and shares stateless actor loggers; MIDI rate warnings avoid unused breakdown maps and reservations prune once.
@@ -37,7 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Temporal event clips expose distinct event/pass/trigger-bar conditions, layered pitches and gap-preserving onset recording, retaining reusable clip assignments and local-only auditions.
 - Starting palettes sit beside local listening; compact event cards show pitches, preserve hidden mappings and restore skill rows immediately with cheats. Successful audition footers are quiet, and direct Panic and joined level controls stay accessible.
 - Focused speed ranges retain Help and game shortcuts while arrows keep native range navigation; canvas clicks release range focus, and shared speed detents follow effective slowdown.
-- Local listening offers an explicit boost through the existing master control with a bounded output ceiling, preserves saved gain, and applies stronger starting-palette velocities without changing project limits or external MIDI values.
+- Local listening offers an explicit boost through the existing master control with a bounded output ceiling, preserves saved master-control values, and applies stronger starting-palette velocities without changing project limits or external MIDI values.
 - Action changes clear only the owning character skin, preserving stable palette caches across 1,024 actors instead of scanning all cached skins and allocating replacement variants.
 - Character appearance changes preload and swap atomically, retaining the last ready look during delayed or failed loads. Stable seeded mixed shapes and random native colors survive redraw and rewind.
 - Clip inspectors now explain their actual event-driven playback and the current meaning of saved Hold, Tie and probability fields, without rewriting imported music.

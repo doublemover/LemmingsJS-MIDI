@@ -108,6 +108,19 @@ describe('procgen visible edge and configured worker crews', function() {
     expect(world.getDebugState().workerLimits).to.deep.equal(world.workerLimits); world.dispose();
   });
 
+  it('shares one excavation cap between real digging and mining while retaining active owners after lowering it', () => {
+    const world = new ProcgenLaneWorld({ masks, terrain: flatTerrain(), assists: false, workerLimits: { diggers: 2 } });
+    const digger = walker(world, 70), miner = walker(world, 110), waiting = walker(world, 150);
+    expect(world.assignWorker(digger, 'diggers')).to.equal(true); expect(world.assignWorker(miner, 'miners')).to.equal(true);
+    expect(world.assignWorker(waiting, 'miners')).to.equal(false); expect(world.assignWorker(waiting, 'diggers')).to.equal(false);
+    expect(world.stats.digs).to.equal(1); expect(world.stats.mines).to.equal(1);
+    world.setWorkerLimits({ diggers: 0 }); world.step();
+    expect(digger.action).to.equal(world.actions[State.DIGGING]); expect(miner.action).to.equal(world.actions[State.MINING]);
+    expect(world.getLaneMusicSignals(0).diggingCount).to.equal(2); expect(world.getLaneMusicSignals(0).miningCount).to.equal(1);
+    expect(world.accessTasks[0].filter(task => task.owner)).to.have.length(2); expect(world.assignWorker(waiting, 'miners')).to.equal(false);
+    world.dispose();
+  });
+
   it('permits independent bash/dig/build tasks within their own limits and excludes overlapping builder footprints', () => {
     const world = new ProcgenLaneWorld({ masks, terrain: flatTerrain(), assists: false }), actors = Array.from({ length: 10 }, (_, index) => walker(world, 70 + index * 20));
     expect(world.assignWorker(actors[0], 'bashers')).to.equal(true); expect(world.assignWorker(actors[1], 'bashers')).to.equal(true);

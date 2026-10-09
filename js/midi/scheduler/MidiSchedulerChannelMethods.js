@@ -1,3 +1,4 @@
+import { selectLocalAudioVoice } from './LocalAudioVoiceBudget.js';
 import { getAppContext } from '../../core/dependencies.js';
 import {
   canMeasurePerformance,
@@ -271,6 +272,30 @@ const midiSchedulerChannelMethods = {
     return count;
   },
 
+  _admitLocalNote(output, meta, trackId, voiceBudget) {
+    if (typeof output.isVoiceActive === 'function') {
+      for (const [token, info] of this._activeNotes) {
+        if (info.output === output && info.hasStarted && !output.isVoiceActive(token)) this._stopActiveNoteToken(token);
+      }
+    }
+    if (typeof output.canAllocateVoice === 'function' && !output.canAllocateVoice()) {
+      this.recordThrottle('local-source-cap', this._nowMs(), meta);
+      return false;
+    }
+    let matches = null;
+    if (trackId && voiceBudget != null && this._countActiveNotesForTrack(trackId) >= voiceBudget) {
+      matches = info => normalizeTrackId(info.trackId) === trackId;
+    } else if (this._activeNotes.size < this._maxActiveNotes) return true;
+    const candidates = [...this._activeNotes.values()].filter(info => info.output === output && (!matches || matches(info)));
+    const victim = selectLocalAudioVoice(candidates, meta);
+    if (!victim) {
+      this.recordThrottle('local-voice-priority', this._nowMs(), meta);
+      return false;
+    }
+    this._stopActiveNoteToken(victim.token, 'local-voice-budget');
+    return true;
+  },
+
   _stealOldestNoteForTrack(trackId) {
     const normalized = normalizeTrackId(trackId);
     if (!normalized) return;
@@ -285,7 +310,7 @@ const midiSchedulerChannelMethods = {
     this._stopActiveNoteToken(oldestToken);
   },
 
-  _stopActiveNoteToken(oldestToken) {
+  _stopActiveNoteToken(oldestToken, reason = 'ownership-release') {
     if (oldestToken == null) return;
     if (typeof this._activeNotes?.get !== 'function') return;
     const info = this._activeNotes.get(oldestToken);
@@ -299,7 +324,7 @@ const midiSchedulerChannelMethods = {
     let sentMessages = 0;
     try {
       if (channel && info.hasStarted !== false) {
-        this._sendOutput(output, info.channel, 'sendNoteOff', [info.note], { ...info.captureMeta, scheduledMs: this._nowMs(), reason: 'ownership-release' });
+        this._sendOutput(output, info.channel, 'sendNoteOff', [info.note, ...(output.supportsIndependentNoteGates ? [{ voiceToken: info.token, reason }] : [])], { ...info.captureMeta, scheduledMs: this._nowMs(), reason });
         sentMessages += 1;
         if (info.mpe) {
           this._sendOutput(output, info.channel, 'sendPitchBend', [0], info.captureMeta);

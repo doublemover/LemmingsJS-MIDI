@@ -121,7 +121,8 @@ body { flex-direction: column; }
 #procgenTopbar #procgenPanic { background: #ad4434; border-color: #963b2d; }
 #procgenMasterVolume { width: 58px; accent-color: #d2aa67; }
 #procgenMasterVolumeValue { min-width: 30px; font: 10px ui-monospace,monospace; }
-#procgenTopbar #procgenTab { position: static; transform: none; margin-left: auto; border: 1px solid #71614c; border-radius: 4px; padding: 4px 8px; font: inherit; }
+#procgenTab { top: calc(var(--procgen-bar-height, 42px) - 1px); width: 48px; height: 18px; padding: 0; line-height: 16px; border-radius: 0 0 6px 6px; }
+#procgenTab:hover { background: #344838; border-color: #75957a; }
 #gameCanvas { flex: 1 1 auto; min-height: 0; }
 #procgenDrawer { top: var(--procgen-bar-height, 42px); max-height: min(calc(100dvh - var(--procgen-bar-height, 42px)), 660px); padding-top: 10px; }
 #procgenTopbar :focus-visible { outline: 2px solid #ffcc38; outline-offset: 2px; }
@@ -130,7 +131,14 @@ body { flex-direction: column; }
 #procgenOutputPressure { color: #ead093; font: 9px ui-monospace,monospace; white-space: nowrap; }
 #procgenOutputPressure[hidden] { display: none; }
 
-#procgenAliveCount { position: fixed; right: 8px; top: calc(var(--procgen-bar-height, 42px) + 6px); z-index: 20; padding: 3px 6px; background: #10151c; color: #e6ece5; font: 12px monospace; pointer-events: none; border-radius: 3px; }
+#procgenAliveCount, #procgenDistance, #procgenBest { white-space: nowrap; font: 11px ui-monospace, monospace; color: #e6ece5; }
+.procgen-run-progress { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.procgen-advanced { position: relative; }
+.procgen-advanced > summary { list-style: none; cursor: pointer; min-height: 28px; display: flex; align-items: center; padding: 0 8px; box-sizing: border-box; border: 1px solid #4a5b4c; border-radius: 4px; background: #253329; }
+.procgen-advanced > summary::-webkit-details-marker { display: none; }
+.procgen-advanced > summary:hover { background: #344838; border-color: #75957a; }
+.procgen-advanced > summary:focus-visible { outline: 2px solid #ffcc38; outline-offset: 2px; }
+.procgen-seed-controls { position: absolute; left: 0; top: calc(100% + 5px); z-index: 25; display: grid; gap: 6px; padding: 8px; border: 1px solid #526455; border-radius: 4px; background: #1d2922; box-shadow: 0 4px 16px #0008; }
 
 .procgen-cctv-controls { border: 1px solid #526455; border-radius: 5px; margin: 10px 0; padding: 6px 10px; }
 #procgenCctvViews { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; margin: 8px 0; }

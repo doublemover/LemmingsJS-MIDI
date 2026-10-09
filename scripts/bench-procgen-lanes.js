@@ -7,6 +7,8 @@ import { MaskProvider } from '../js/render/MaskProvider.js';
 import { NodeFileProvider } from '../tools/NodeFileProvider.js';
 import { GroundReader, loadSteelSprites } from '../js/level/GroundReader.js';
 import { loadTerrainRecipeBook, selectThemeRecipe } from '../js/app/procgen/ProcgenTerrainRecipes.js';
+import { fingerprintObjectImages, selectAuthoredAssemblyCatalog } from '../js/app/procgen/ProcgenAuthoredAssemblies.js';
+import { fingerprintTerrainImages, getPackTerrainWidthLimit, selectTerrainDescriptor } from '../js/app/procgen/ProcgenTerrainDescriptors.js';
 import { ProcgenRecipeTerrain } from '../js/app/procgen/ProcgenRecipeTerrain.js';
 import { ProcgenLaneWorld, normalizeLaneCount } from '../js/app/procgen/ProcgenLaneWorld.js';
 
@@ -22,8 +24,12 @@ const loadProcgenTerrain = async (packPath = 'lemmings_ohNo', groundSet = 0) => 
     id, image, width: image.width, height: image.height, frame: image.frames[0], isSteel: !!image.isSteel,
     solidRatio: image.frames[0].filter(ci => !(ci & 128)).length / (image.width * image.height)
   }));
-  const recipe = selectThemeRecipe(await loadTerrainRecipeBook(provider), { packPath, groundSet });
-  return new ProcgenRecipeTerrain({ recipe, terrainPieces, objectPieces: reader.getObjectImages().map((image, id) => ({ id, image })) });
+  const book = await loadTerrainRecipeBook(provider), recipe = selectThemeRecipe(book, { packPath, groundSet });
+  const objectImages = reader.getObjectImages(), objectPieces = objectImages.map((image, id) => ({ id, image }));
+  const assetSha256 = await fingerprintTerrainImages(reader.getTerrainImages()), objectSha256 = await fingerprintObjectImages(objectImages);
+  const sourceDescriptor = selectTerrainDescriptor(book, { packPath, groundSet, assetSha256 });
+  const assemblyCatalog = selectAuthoredAssemblyCatalog(book, { packPath, groundSet, assetSha256, objectSha256 });
+  return new ProcgenRecipeTerrain({ recipe, terrainPieces, objectPieces, sourceDescriptor, assemblyCatalog, packWidthLimit: getPackTerrainWidthLimit(book, packPath) });
 };
 const runLaneBenchmark = ({ masks, lanes = 32, ticks = 3000, seed = 42, assists = true, terrain = null, cohorts = false, spawnSpreadTicks = 0 } = {}) => {
   const world = new ProcgenLaneWorld({ masks, laneCount: lanes, seed, assists, terrain, cohorts, spawnSpreadTicks });

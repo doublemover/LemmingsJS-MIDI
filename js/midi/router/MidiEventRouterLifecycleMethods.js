@@ -16,6 +16,10 @@ import {
 const midiEventRouterLifecycleMethods = {
   setCapture(capture = null) { this.scheduler.setCapture?.(capture); },
 
+  transferActorLane(id, from, to, laneCount) {
+    return this.scheduler.transferActorLane(id, from, to, laneCount);
+  },
+
   getEventPlaybackState(event) {
     const base = this.mapping.config?.sfx?.[event?.sfxId];
     const mapping = event?.triggerType != null ? { ...base, ...this.mapping.config?.triggers?.[event.triggerType] } : base;

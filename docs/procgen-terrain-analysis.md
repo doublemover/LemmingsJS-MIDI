@@ -84,7 +84,7 @@ The default cache retains 128 plans per source revision, with a hard configurabl
 
 The selected-pack adapter fingerprints loaded decoded art once and selects an exact canonical descriptor before applying plans. It compiles only additive route/decoration groups with source flips and alpha, excluding conditional overwrite/erase roles, steel, unavailable art and word-owned glyphs. At most two small groups are placed in a chunk; the source-themed foundation and existing scenery remain the baseline. Route columns require continuous actual support and rise at most two pixels into the walking corridor. Decoration components require terrain contact and stay noncolliding. The spawn chunk, eight-pixel boundary insets, gap margins, words and gadget footprints are protected. Other measured roles remain unapplied; co-occurrence is not a constructibility proof.
 
-Verified canonical pack worlds reveal source collision and display together in eight-column increments. The bounded queue prepares immutable source chunks ahead of real frontiers and prioritizes their time to reach, including the two-pixel maximum forward action step and conservative service rounds. At 64 lanes, each simulation tick permits four preparations and sixteen reveal jobs, targets a 104-pixel reveal lead and retains a 64-pixel safety reserve. Pending source work joins the existing stall protection and clears after completion or reset; pause creates no work. Source gadgets wait for their full footprint to be revealed. This batch does not add generated trap/drowning physics or mining/digging/turning strategies.
+Verified canonical pack worlds materialize whole source motif sections and attached pieces using one active-job state for collision, steel, basin geometry and rendering. Source-backed support dependencies precede attached details; ambiguous ordering remains a connected section. Tick-driven bounded queues prioritize time to reach, accounting for two-pixel action steps, source job count and service rounds while retaining a 64-pixel safety reserve. Partial tiles use filtered samplers; completed geometry returns to the normal caches. Pause creates no work, reset clears jobs, and ready source work joins existing stall protection. Generated traps, drowning and fire use shared source owners. Local bridge/tunnel/digging proposals are engine-calibrated fixtures, not universal constructibility or independent-solver certification.
 
 ## Runtime consumption
 
@@ -97,3 +97,35 @@ There is no generic-color geometry fallback. Missing art or a missing supported 
 Run `node tools/mineTerrainRecipes.js` to regenerate the checked-in JSON and this report, or `node tools/mineTerrainRecipes.js --check` to verify exact reproducibility. No network access or new dependency is required. NodeFileProvider, FileContainer, LevelReader, GroundReader, NxlvParser and StyleRegistry are the existing decoders.
 
 The scan is bounded by file/level/pixel/placement caps recorded in the JSON. It skips symlinks and generated/cache directories, deduplicates assets by decoded pixel/palette hash, analyzes every physical source once and retains only small motif samples. The corpus index preserves level identities, alias mapping and source hashes. Unsupported standalone LVL bindings, complex NXLV transforms or archive inputs are reported rather than silently treated as covered.
+
+
+## Authored assembly catalog
+
+Configured tile levels also supply bounded small assemblies from actual decoded preview-alpha contact and overlap. Object members keep their existing trigger roles; terrain and objects retain exact source offsets, flags and provenance. Nonoverlapping object-only groups normalize independent draw order; overlapping and terrain order remains authored. No asset names or manual blacklist infer component ownership.
+
+| Pack / ground | Authored levels | Accepted / ambiguous | Quarantined terrain / objects | Omitted candidates / alpha scans |
+| --- | ---: | ---: | ---: | ---: |
+| holiday93 / 1 | 1 | 36 / 28 | 0 / 0 | 0 / 0 |
+| holiday93 / 2 | 31 | 43 / 21 | 0 / 0 | 729 / 0 |
+| holiday94 / 1 | 1 | 36 / 28 | 0 / 0 | 0 / 0 |
+| holiday94 / 2 | 63 | 47 / 17 | 0 / 0 | 7416 / 0 |
+| lemmings / 0 | 15 | 38 / 26 | 0 / 0 | 5777 / 2501 |
+| lemmings / 1 | 21 | 41 / 23 | 0 / 0 | 2612 / 680 |
+| lemmings / 2 | 19 | 53 / 11 | 0 / 0 | 3196 / 347 |
+| lemmings / 3 | 15 | 30 / 34 | 0 / 0 | 510 / 0 |
+| lemmings / 4 | 6 | 18 / 46 | 0 / 0 | 0 / 172 |
+| lemmings_ohNo / 0 | 45 | 52 / 12 | 0 / 0 | 7797 / 0 |
+| lemmings_ohNo / 1 | 19 | 47 / 17 | 0 / 4 | 3922 / 0 |
+| lemmings_ohNo / 2 | 20 | 35 / 29 | 0 / 0 | 1183 / 280 |
+| lemmings_ohNo / 3 | 16 | 44 / 20 | 0 / 2 | 1471 / 0 |
+| xmas91 / 0 | 2 | 37 / 27 | 0 / 0 | 0 / 0 |
+| xmas91 / 2 | 2 | 7 / 57 | 0 / 0 | 0 / 112 |
+| xmas92 / 2 | 4 | 37 / 27 | 0 / 0 | 0 / 0 |
+
+Confidence is an evidence score, not a semantic or solvability proof: 0.9 for repeated source levels, 0.8 for repeated instances, and 0.55 for one contact. External support anchors separately distinguish exact transform repetition from a repeated attachment family (same member, anchor ID/flags, side and transverse contact coordinate); every retained variant keeps its exact source transform and exact/family counts. Alpha contacts use a decoded preview frame, not every animation pose.
+
+Per-asset source-use totals, distinct linked uses and intrinsic-use shares distinguish exclusive bodies from common supports. Component quarantine requires at least 60% intrinsic attachment usage and a repeated exact transform. Bottom contact with a generic floor is support evidence rather than intrinsic body ownership. Quarantine is derived from all bounded candidates, including groups too large or omitted from the retained catalog. Unsupported single objects remain explicit evidence, not invented supported assemblies.
+
+The OhNo bubble chameleon is measured as trap object8 joined to decor object10 at body offset(-32,20), observed three times in three configured levels; object10 has three source uses and three linked uses. Both IDs are quarantined from standalone use. Its body attaches at the left to terrain44/48 source variants; these preserve the authored side contact instead of snapping the trap head to a generic floor.
+
+Each exact pack/ground/terrain-art/object-art revision retains at most 64 entries of eight members, four source examples and four external support anchors. Candidate maps cap at4096, comparisons at65536 and preview-alpha checks at400000 per level; omitted work is counted, never claimed analyzed. Runtime selection requires both actual art hashes, compiles only available source art once, keeps object alpha separate from terrain collision, and requires real external support before placement. Ambiguous or unsupported attachments are suppressed.

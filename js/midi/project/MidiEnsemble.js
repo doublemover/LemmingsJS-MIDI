@@ -84,7 +84,7 @@ const applyMidiEnsembleToSpec = (spec, event, config, mapping = {}) => {
     velocity, releaseVelocity: clamp(Math.round((spec.releaseVelocity ?? spec.velocity) * track.velocityScale), 1, 127),
     durationTicks: Math.max(1, Math.round(spec.durationTicks * role.durationScale)),
     channel: track.channel, program: track.program, trackId: track.id, voiceBudget: track.voiceBudget,
-    priority: track.priority, outputId: track.outputId, pan, spatialPan: false,
+    priority: mapping.eventPriority ?? track.priority, outputId: track.outputId, pan, spatialPan: false,
     timbre: null, pitchBend: Number.isFinite(mapping.pitchBend) ? spec.pitchBend : null,
     percussion: role.percussion, ensembleRole: role.id,
     ...(role.percussion ? { arp: null, phrase: null } : {}) };

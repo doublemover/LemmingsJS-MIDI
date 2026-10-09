@@ -28,23 +28,24 @@ describe('frontier procgen optimization contracts', function() {
   this.timeout(30000);
   let masks;
   before(async () => { masks = await loadProcgenMasks(); });
-  it('composes independent changing phases from the complete nonempty terrain and object vocabularies', async () => {
+  it('composes independent changing phases from supported source geometry and bounded assemblies', async () => {
     const terrain = await loadProcgenTerrain(), signatures = new Set(), phases = new Set();
-    let low = 96, high = 0, decorPixels = 0, steelPixels = 0;
+    let low = 96, high = 0, decorPixels = 0;
     for (const seed of [1, 42, 12345]) for (let index = 0; index < 32; index++) {
       const chunk = terrain.getChunk(seed, index, true);
       signatures.add(`${chunk.code}:${chunk.placements.map(p => p.piece.id).join(',')}`); phases.add(chunk.phase);
       for (const y of chunk.topProfile) if (y >= 0) { low = Math.min(low, y); high = Math.max(high, y); }
       for (let at = 0; at < chunk.pixels.length; at++) {
         if (chunk.pixels[at] && !(chunk.solid[at >>> 5] & (1 << (at & 31)))) decorPixels++;
-        if (chunk.steel[at >>> 5] & (1 << (at & 31))) steelPixels++;
       }
       expect(chunk.objects.every(object => !object.interactive)).to.equal(true);
     }
     expect(signatures.size).to.equal(96); expect(phases.size).to.equal(8);
-    expect(high - low).to.be.at.least(40); expect(decorPixels).to.be.greaterThan(0); expect(steelPixels).to.be.greaterThan(0);
-    expect(terrain.selectedTerrainIds.size).to.equal(terrain.pieces.length);
-    expect(terrain.selectedObjectIds.size).to.equal(terrain.objects.length);
+    expect(high - low).to.be.at.least(40); expect(decorPixels).to.be.greaterThan(0);
+    expect(terrain.selectedTerrainIds.size).to.be.greaterThan(0);
+    expect([...terrain.selectedTerrainIds].every(id => terrain.eligibleTerrainIds.has(id))).to.equal(true);
+    expect([...terrain.selectedObjectIds].every(id => terrain.eligibleObjectIds.has(id))).to.equal(true);
+    expect(terrain.getDebugState().terrainCatalogAvailable).to.equal(terrain.pieces.length);
   });
   it('samples exact far-zoom source colors without rasterizing an entire source chunk', async () => {
     const terrain = await loadProcgenTerrain();
@@ -73,28 +74,29 @@ describe('frontier procgen optimization contracts', function() {
       for (let i = 0; i < 3000; i++) { fast.step(); reference.step(); }
       expect(actorState(fast)).to.deep.equal(actorState(reference));
       expect([...fast.editChunks]).to.deep.equal([...reference.editChunks]);
-      expect(Array.from(fast.generatedThrough, (x, lane) => x - fast.frontiers[lane]).every(margin => margin >= 64 && margin < 192)).to.equal(true);
+      expect(Array.from(fast.generatedThrough, (x, lane) => x - fast.frontiers[lane]).every(margin => margin >= fast.terrainGrowth.safetyLead && margin <= fast.terrainGrowth.targetLead + terrain.chunkWidth)).to.equal(true);
       fast.dispose(); reference.dispose();
     }
   });
   it('protects steel from clearing masks without making decoration collide', async () => {
     const terrain = await loadProcgenTerrain(), world = new ProcgenLaneWorld({ masks, terrain });
-    let point = null;
-    for (let cx = 1; cx < 50 && !point; cx++) {
-      const chunk = terrain.getChunk(world.laneSeeds[0], cx, true);
-      for (let i = 0; i < chunk.pixels.length && !point; i++) if (chunk.steel[i >>> 5] & (1 << (i & 31))) point = { x: cx * 128 + i % 128, y: Math.floor(i / 128) };
-    }
-    expect(point).not.to.equal(null);
+    const piece = terrain.pieces.find(piece => piece.isSteel), descriptor = terrain.describe(world.laneSeeds[0], 0);
+    expect(piece).to.exist;
+    descriptor.placements.push({ piece, x: 64, y: 32, decor: false });
+    terrain.collision.clear(); terrain._lastKey = null; terrain._lastChunk = null;
+    const chunk = terrain.getChunk(world.laneSeeds[0], 0, true);
+    const index = Array.from({ length: chunk.pixels.length }, (_, i) => i).find(i => chunk.steel[i >>> 5] & (1 << (i & 31)));
+    const point = { x: index % 128, y: Math.floor(index / 128) };
     const mask = { width: 1, height: 1, offsetX: 0, offsetY: 0, at: () => false };
     expect(world.hasSteelUnderMask(mask, point.x, point.y)).to.equal(true);
     expect(world.clearGroundWithMaskCount(mask, point.x, point.y)).to.equal(0);
     expect(world.hasGroundAt(point.x, point.y)).to.equal(true);
   });
-  it('emits one classic fell-off event when an actor leaves its independent lane', () => {
+  it('emits one classic fell-off event at the actual global bottom', () => {
     const world = new ProcgenLaneWorld({ masks, assists: false }), actor = world.actors[0], events = [];
     world.soundEvents.onEvent.on(event => events.push(event)); world.baseGroundAt = () => 0; actor.y = 95;
     for (let i = 0; i < 6; i++) world.step();
-    expect(actor.failureReason).to.equal('out-of-lane');
+    expect(actor.failureReason).to.equal('out-of-world');
     expect(events.filter(event => event.type === 'lemming-fell-off')).to.have.length(1);
     world.dispose();
   });
@@ -137,9 +139,10 @@ describe('frontier procgen optimization contracts', function() {
       expect(renderer.image.data.length).to.be.at.most(1280 * 720 * 4);
       expect(renderer.buffer.width).to.be.at.most(1280); expect(renderer.buffer.height).to.be.at.most(720);
     }
-    expect([...terrain.collision.values()].every(chunk => chunk.origin === 0)).to.equal(true);
+    const preparedKeys = [...terrain.collision.keys()];
+    expect([...terrain.collision.values()].every(chunk => chunk.origin + terrain.chunkWidth <= Math.max(...world.generatedThrough))).to.equal(true);
     renderer.cameraX = 1000000; renderer.render();
-    expect([...terrain.collision.values()].every(chunk => chunk.origin === 0)).to.equal(true);
+    expect([...terrain.collision.keys()]).to.deep.equal(preparedKeys);
     renderer.dispose(); world.dispose();
   });
 });

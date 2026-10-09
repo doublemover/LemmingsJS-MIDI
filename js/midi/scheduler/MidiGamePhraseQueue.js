@@ -1,6 +1,16 @@
 const MAX_GAME_PHRASE_VOICES = 16;
 const MAX_GAME_PHRASE_NOTES = 8;
 
+const transferGamePhraseVoiceKey = (key, id, from, to) => {
+  try {
+    const parts = JSON.parse(key);
+    if (Array.isArray(parts) && parts.length === 7 && parts[0] === from && parts[1] === id) {
+      parts[0] = to; return JSON.stringify(parts);
+    }
+  } catch { /* Non-router keys retain their existing ownership. */ }
+  return key;
+};
+
 class MidiGamePhraseQueue {
   constructor() {
     this.voices = new Map();
@@ -10,6 +20,21 @@ class MidiGamePhraseQueue {
   clear() {
     this.voices.clear();
     this.tick = null;
+  }
+
+  transferActorLane(id, from, to, laneCount) {
+    const changedKeys = new Map();
+    for (const [key, voice] of [...this.voices]) {
+      if (voice.meta.lemmingId !== id || voice.meta.laneIndex !== from) continue;
+      voice.meta = { ...voice.meta, originLaneIndex: voice.meta.originLaneIndex ?? from, laneIndex: to, laneCount };
+      const nextKey = voice.cells ? key : transferGamePhraseVoiceKey(key, id, from, to);
+      if (nextKey !== key) {
+        this.voices.delete(key);
+        if (!this.voices.has(nextKey)) this.voices.set(nextKey, voice);
+        changedKeys.set(key, nextKey);
+      }
+    }
+    return changedKeys;
   }
 
   advance(tick, send, isBusy = () => false, onlyKey = null) {
@@ -61,4 +86,4 @@ class MidiGamePhraseQueue {
   }
 }
 
-export { MAX_GAME_PHRASE_VOICES, MAX_GAME_PHRASE_NOTES, MidiGamePhraseQueue };
+export { MAX_GAME_PHRASE_VOICES, MAX_GAME_PHRASE_NOTES, MidiGamePhraseQueue, transferGamePhraseVoiceKey };

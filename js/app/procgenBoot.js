@@ -353,7 +353,7 @@ const init = async () => {
     window.procgenSelectedTheme = themeContract.selectedTheme;
     window.procgenThemeContract = themeContract;
     if (activeProcgenRuntime !== runtime) { view.dispose(); return; }
-    const laneCount = procgenUi?.settings.laneCount || 1;
+    const laneCount = procgenUi?.settings.laneCount || 8;
     if (procgenUi) {
       const assets = new ProcgenAssetManager({ styleName, config, fileProvider: view.gameFactory.fileProvider, random: terrainRng });
       await assets.load();

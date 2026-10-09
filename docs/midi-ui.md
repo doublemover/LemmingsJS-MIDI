@@ -86,11 +86,37 @@ rewind and panic contracts remain in effect for live listening.
 
 Local cell auditions retain their original spacing beyond the audio scheduling horizon. A bounded queue schedules the next notes incrementally; Stop, Panic, replacement and disposal cancel the remaining tail. Fully elapsed notes after a delayed timer are discarded instead of sounding together on resume.
 
-The existing local master control ranges from mute to 400%. Values through 100%
-retain their previous gain, including the 70% default and saved preferences.
-Choosing 400% adds up to 12 dB relative to 100%; a local output ceiling controls
-dense polyphony. This boost never changes external MIDI velocities or CC values.
-Legacy saved levels retain their previous effective gain.
+The existing local master control ranges from mute to 400%; the 70% default and
+explicit saved control values remain unchanged. Local output no longer divides
+every note by the square root of the configured voice capacity. Compared with
+the previous 16-voice preview default, this removes 12 dB of attenuation that
+also affected solo notes; the current gate budget is 32.
+Choosing 400% still adds 12 dB relative to 100%. These gains affect only local
+Web Audio; external MIDI velocities and CC values stay within their existing limits.
+
+One shared signal-driven compressor precedes the existing output ceiling. It uses
+a -9 dB threshold, 6 dB knee, ratio 12, 1 ms attack and 80 ms release. A fixed 0.647
+output compensation cancels measured low-level compressor makeup independently of
+voice capacity. Unsupported compressor contexts retain the ceiling-only fallback.
+The Web Audio compressor has [6 ms lookahead](https://www.w3.org/TR/webaudio-1.1/#dynamicscompressor-processing);
+source/API timestamps remain distinct from audible output onset.
+
+Local gates are independently owned, including repeated pitches; hardware MIDI
+retains its channel/note ownership rules. The default simultaneous local budget
+is 32, matching the existing scheduler/project policy. It is not a Web Audio or
+MIDI-channel limit. Explicit preview configurations allow at most 64 simultaneous
+voices and 96 scheduled sources including release tails; defaults remain 32/64.
+Each note uses one oscillator or shared-buffer noise source. Priority and lane
+occupancy choose overflow victims; quiet spawn events cannot steal a full set of
+higher-priority performance gates. Panic clears voices, gates and queued notes.
+
+Run `node scripts/measure-local-audio.js --url=http://127.0.0.1:8096/procgen.html?e2e=1 --label=review`
+against a local review server for 19 bounded compressed/bypass comparisons. Muted
+Edge OfflineAudioContext renders measured coherent 32-voice maximum-velocity output
+below 0.7 before the ceiling and exact silence after mid-sustain Panic. This is
+digital PCM evidence; render cost includes measurement taps and JavaScript callbacks,
+and does not establish real-time performance, acoustic quality or physical MIDI receipt.
+Compressor behavior may vary across browser engines.
 
 Expert **Output capture** records an existing output session for at most two minutes
 and retains the latest 4,096 records. It does not enable listening or request a
