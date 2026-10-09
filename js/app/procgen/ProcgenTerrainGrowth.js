@@ -35,6 +35,16 @@ class ProcgenTerrainGrowth {
     const start = chunk * this.chunkWidth;
     return this.completed[lane]?.some(range => start >= range[0] && start + this.chunkWidth <= range[1]) ? null : EMPTY_STATE;
   }
+  columnReady(lane, x) {
+    if (!Number.isInteger(lane) || lane < 0 || lane >= this.queues.length || !Number.isFinite(x) || x < 0) return false;
+    const chunk = Math.floor(x / this.chunkWidth), state = this.stateFor(lane, chunk);
+    if (!state) return true;
+    if (!state.plan) return false;
+    const localX = x - chunk * this.chunkWidth;
+    // An unrelated pending piece elsewhere in this tile cannot change this
+    // column. Complete shared jobs publish both halves before active is set.
+    return state.plan.jobs.every((job, index) => localX < job.x1 || localX >= job.x2 || !!state.active[index]);
+  }
   objectReady(lane, chunk, objectIndex) {
     const state = this.stateFor(lane, chunk);
     if (!state) return true;

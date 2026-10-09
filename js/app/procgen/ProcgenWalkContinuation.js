@@ -41,7 +41,7 @@ class ProcgenWalkContinuation {
     const read = (x, y) => {
       if (x < left || x > right || y < top || y > bottom || y < 0 || y >= world.height) { failure ||= 'bounds'; return false; }
       const lane = Math.floor(y / world.laneHeight), chunk = Math.floor(x / world.terrain.chunkWidth);
-      if (x >= world.generatedThrough[lane] || world.terrainGrowth?.stateFor(lane, chunk)) { failure ||= 'unrevealed'; return false; }
+      if (x >= world.generatedThrough[lane] || (world.terrainGrowth?.stateFor(lane, chunk) && !world.terrainGrowth.columnReady?.(lane, x))) { failure ||= 'unrevealed'; return false; }
       const key = (y - top) * (WALK_CONTINUATION_DISTANCE + 1) + x - left;
       if (!cells.has(key)) {
         if (cells.size >= maxWork) { failure ||= 'budget'; return false; }
