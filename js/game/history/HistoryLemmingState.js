@@ -1,6 +1,8 @@
 // @ts-check
 const createLemmingState = (size) => ({
   capacity: size,
+  layout: 'indexed',
+  actorIds: new Int32Array(size),
   present: new Uint8Array(size),
   x: new Int32Array(size),
   y: new Int32Array(size),
@@ -21,6 +23,8 @@ const createLemmingState = (size) => ({
 const cloneLemmingState = (state, length) => {
   const size = length ?? state.capacity;
   const copy = createLemmingState(size);
+  copy.layout = state.layout || 'indexed';
+  if (state.actorIds) copy.actorIds.set(state.actorIds.subarray(0, size));
   copy.present.set(state.present.subarray(0, size));
   copy.x.set(state.x.subarray(0, size));
   copy.y.set(state.y.subarray(0, size));
@@ -43,6 +47,8 @@ const ensureLemmingCapacity = (state, size) => {
   if (state.capacity >= size) return state;
   const next = Math.max(size, state.capacity * 2, 1);
   const grown = createLemmingState(next);
+  grown.layout = state.layout || 'indexed';
+  if (state.actorIds) grown.actorIds.set(state.actorIds);
   grown.present.set(state.present);
   grown.x.set(state.x);
   grown.y.set(state.y);

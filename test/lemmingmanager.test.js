@@ -14,6 +14,7 @@ const makeMiniMap = (overrides = {}) => ({
   scaleY: 1,
   setLiveDots(arr, activeLength = arr.length) { this.dots = arr.slice(0, activeLength); },
   setSelectedDot() {},
+  addDeath() {},
   ...overrides
 });
 
@@ -123,8 +124,8 @@ describe('LemmingManager core behavior', function() {
     manager.refreshMiniMapDots();
     expect(mm.dots.length).to.equal(2);
 
-    manager.lemmings.length = 0;
-    manager.activeLemmings.length = 0;
+    manager.removeOne(manager.getLemming(0));
+    manager._compactActiveLemmings();
     manager.refreshMiniMapDots();
     expect(mm.dots.length).to.equal(0);
   });
@@ -187,7 +188,9 @@ describe('LemmingManager core behavior', function() {
     manager.tick();
 
     expect(mm.dots.length).to.equal(2);
-    expect(manager.lemmings[0]).to.equal(null);
+    expect(manager.getLemming(0)).to.equal(null);
+    expect(manager.getLemming(1).id).to.equal(1);
+    expect(manager.lemmings).to.have.length(1);
   });
 
   it('getNearestLemming picks closest active lemming', function() {
@@ -205,7 +208,9 @@ describe('LemmingManager core behavior', function() {
     expect(nearest).to.equal(lem1);
 
     manager.addLemming(18, 18);
-    const lem3 = manager.lemmings[2];
+    const lem3 = manager.getLemming(2);
+    expect(manager.getLemming(1)).to.equal(null);
+    expect(manager.lemmings).to.have.length(2);
     nearest = manager.getNearestLemming(19, 19);
     expect(nearest).to.equal(lem3);
   });
@@ -223,7 +228,10 @@ describe('LemmingManager core behavior', function() {
 
     manager.removeOne(first);
     manager.addLemming(12, 14);
-    const reused = manager.lemmings[1];
+    const reused = manager.getLemming(1);
+    expect(manager.getLemming(0)).to.equal(null);
+    expect(manager.lemmings).to.have.length(1);
+    expect(manager.activeLemmings).to.eql([reused]);
 
     expect(reused).to.equal(first);
     expect(reused.id).to.equal(1);

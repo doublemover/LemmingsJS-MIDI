@@ -43,6 +43,8 @@ class HistoryStore {
     this._currentTick = null;
     this._currentDelta = null;
     this._lemmingState = createLemmingState(0);
+    this._liveLemmingSlots = new Map(); this._liveLemmingFree = []; this._liveLemmingSlotCount = 0;
+    this._liveLemmingValues = new Int32Array(14);
     this._lemmingManagerState = null;
     this._entranceOpened = new Uint8Array(0);
     this._skillsState = null;
@@ -61,6 +63,8 @@ class HistoryStore {
     this._afterTick = null;
     this._groundDirty = true;
     this._lastKeyframe = null;
+    this._scratchLiveLemmingIds = new Set();
+    this._scratchReplayAddedLemmings = [];
     this._scratchTouchedBlocks = new Set();
     this._scratchStaticTriggers = new Set();
     this._scratchRemoveOwners = new Set();

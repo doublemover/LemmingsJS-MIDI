@@ -29,6 +29,13 @@ describe('bounded canonical co-occurrence zones', () => {
     }
     expect(new Set(plans.map(plan => plan.anchorPair.a + '/' + plan.anchorPair.b)).size).to.be.greaterThan(1);
   });
+  it('rotates bounded source roles so repeat/erase are reachable and preparation eligibility remains authoritative', () => {
+    const planner = create(), roles = new Set();
+    for (let index = 0; index < 20; index++) for (const group of planner.zoneAt(42, index * planner.widthFor(42)).groups) roles.add(group.role);
+    expect(roles.has('repeat')).to.equal(true); expect(roles.has('erase')).to.equal(true);
+    const only = descriptor.groups.find(group => group.role === 'repeat'), screened = create({ eligibleGroups: new Set([only]) });
+    for (let index = 0; index < 10; index++) expect(screened.zoneAt(42, index * screened.widthFor(42)).groups).to.deep.equal([only]);
+  });
   it('excludes unavailable and word-owned glyphs before planning while preserving ordered flags and offsets', () => {
     const glyphs = new Set(Array.from({ length: 27 }, (_, index) => index + 31));
     const planner = create({ excludedIds: glyphs, availableIds: ids.filter(id => id !== 0) });

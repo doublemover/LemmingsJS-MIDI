@@ -1,5 +1,6 @@
 // @ts-check
 import { SkillTypes } from '../SkillTypes.js';
+import { hasLiveLookup } from './HistoryLiveLemmingState.js';
 import { Trigger } from '../../level/Trigger.js';
 import {
   COLD_BLOCK_MAGIC,
@@ -158,10 +159,11 @@ const historyStoreApplyDeltaMethods = {
     if (!Array.isArray(manager.lemmings)) manager.lemmings = [];
     for (const snap of list) {
       if (snap == null || !Number.isFinite(snap.id)) continue;
-      let lem = manager.lemmings[snap.id];
+      let lem = hasLiveLookup(manager) ? manager.getLemming(snap.id) : manager.lemmings[snap.id];
       if (!lem) {
         lem = this._createReplayLemming(manager, snap.x, snap.y, snap.id);
-        manager.lemmings[snap.id] = lem;
+        if (hasLiveLookup(manager)) manager._registerLemming(lem);
+        else manager.lemmings[snap.id] = lem;
       }
       const action = snap.actionType >= 0 ? manager.actions?.[snap.actionType] : null;
       applyLemmingSnapshot(lem, snap, action, countdownAction);
@@ -172,7 +174,8 @@ const historyStoreApplyDeltaMethods = {
     if (!manager || !Array.isArray(list) || !list.length) return;
     for (const snap of list) {
       if (snap == null || !Number.isFinite(snap.id)) continue;
-      manager.lemmings[snap.id] = null;
+      if (hasLiveLookup(manager)) manager._removeReplayLemming(snap.id);
+      else manager.lemmings[snap.id] = null;
     }
   },
 
@@ -183,7 +186,7 @@ const historyStoreApplyDeltaMethods = {
       const id = changes.ids[i];
       const field = changes.fields[i];
       const value = useNext ? changes.next[i] : changes.prev[i];
-      const lem = manager.lemmings?.[id];
+      const lem = hasLiveLookup(manager) ? manager.getLemming(id) : manager.lemmings?.[id];
       if (!lem) continue;
       switch (field) {
       case 0: lem.x = value; break;
@@ -211,6 +214,7 @@ const historyStoreApplyDeltaMethods = {
     if (!state) return;
     manager.selectedIndex = state.selectedIndex ?? -1;
     manager.spawnTotal = state.spawnTotal ?? 0;
+    if (hasLiveLookup(manager)) manager._nextLemmingId = Math.max(manager._nextLemmingId, state.nextLemmingId ?? state.spawnTotal ?? 0);
     manager.releaseTickIndex = state.releaseTickIndex ?? 0;
     manager.mmTickCounter = state.mmTickCounter ?? 0;
     manager.nextNukingLemmingsIndex = state.nextNukingLemmingsIndex ?? -1;
@@ -221,11 +225,15 @@ const historyStoreApplyDeltaMethods = {
     if (!manager || !Array.isArray(ids)) return null;
     const lems = manager.lemmings || [];
     const resolved = [];
+    if (hasLiveLookup(manager)) manager._nukeTargetIds = ids.slice();
     for (let i = 0; i < ids.length; i += 1) {
       const id = ids[i];
-      if (!Number.isFinite(id)) continue;
-      const lem = lems[id];
-      if (lem) resolved.push(lem);
+      if (!Number.isFinite(id)) {
+        if (hasLiveLookup(manager)) resolved.push(null);
+        continue;
+      }
+      const lem = hasLiveLookup(manager) ? manager.getLemming(id) : lems[id];
+      if (lem || hasLiveLookup(manager)) resolved.push(lem);
     }
     return resolved;
   },
@@ -235,6 +243,29 @@ const historyStoreApplyDeltaMethods = {
     manager.particles?.clear();
     const lems = manager.lemmings || [];
     const active = Array.isArray(manager.activeLemmings) ? manager.activeLemmings : [];
+    if (hasLiveLookup(manager)) {
+      // Ordinary processing follows birth order, independently of swap-removed lookup slots.
+      let retained = 0;
+      for (let i = 0; i < active.length; i++) {
+        const actor = active[i];
+        if (actor.removed || manager._lemmingById.get(actor.id) !== actor) continue;
+        actor._activeIndex = retained; active[retained++] = actor;
+      }
+      active.length = retained;
+      const added = this._scratchReplayAddedLemmings ?? (this._scratchReplayAddedLemmings = []); added.length = 0;
+      for (const actor of lems) if (!actor.removed && active[actor._activeIndex] !== actor) added.push(actor);
+      // Only restored admissions need ordering; membership-unchanged replay ticks never sort.
+      if (added.length > 1) added.sort((a, b) => a.id - b.id);
+      let oldIndex = retained - 1, addedIndex = added.length - 1, write = retained + added.length - 1;
+      active.length = write + 1;
+      while (addedIndex >= 0) {
+        const actor = oldIndex >= 0 && active[oldIndex].id > added[addedIndex].id ? active[oldIndex--] : added[addedIndex--];
+        actor._activeIndex = write; active[write--] = actor;
+      }
+      added.length = 0;
+      manager.activeLemmings = active; manager._activeDirty = false; manager._nearestGridDirty = true;
+      return;
+    }
     active.length = 0;
     for (let i = 0; i < lems.length; i += 1) {
       const lem = lems[i];
@@ -244,6 +275,7 @@ const historyStoreApplyDeltaMethods = {
     }
     manager.activeLemmings = active;
     manager._activeDirty = false;
+    manager._nearestGridDirty = true;
   },
 
   _refreshMiniMapDots(manager) {

@@ -55,12 +55,8 @@ class LemmingManager extends BaseLogger {
     });
     const app = getApp();
     try {
-      if (!isBenchMode(app) && (app?.extraLemmings | 0) === 0) {
-        this.lemmings = new Array(gameVictoryCondition.getReleaseCount());
-        this.lemmings.length = 0;
-      } else {
-        this.lemmings = [];
-      }
+      // Collection slots are live storage; actor identities are monotonically issued and mapped separately.
+      this.lemmings = []; this._lemmingById = new Map(); this._nextLemmingId = 0;
       this.activeLemmings = [];
       this._activeDirty = false;
       this.minimapDots = new Uint8Array(0);
@@ -87,7 +83,7 @@ class LemmingManager extends BaseLogger {
       this.miniMap = null;
       this.nextNukingLemmingsIndex = -1;
       this._nukeTargets = null;
-      this._nukeScratch = [];
+      this._nukeScratch = []; this._nukeTargetIds = [];
       this._nearestCellShift = 4;
       this._nearestGrid = new Map();
       this._nearestGridPool = [];
@@ -217,6 +213,7 @@ class LemmingManager extends BaseLogger {
         canMeasurePerformance();
     const start = perfEnabled ? performance.now() : 0;
     if (this.lemmings) this.lemmings.length = 0;
+    this._lemmingById?.clear();
     if (this.activeLemmings) this.activeLemmings.length = 0;
     if (this.minimapDots) this.minimapDots = new Uint8Array(0);
     this._minimapDotBuffer = null;
@@ -237,7 +234,7 @@ class LemmingManager extends BaseLogger {
     this.#mmTickCounter = null;
     this.nextNukingLemmingsIndex = null;
     this._nukeTargets = null;
-    this._nukeScratch = null;
+    this._nukeScratch = null; this._nukeTargetIds = null;
     this._nearestGrid = null;
     this._nearestGridPool = null;
     if (this._lemmingPool) this._lemmingPool.length = 0;

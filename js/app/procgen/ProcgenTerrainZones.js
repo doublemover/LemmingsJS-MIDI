@@ -11,7 +11,7 @@ const choose = (items, code) => {
 // Compiled once per exact source revision. Plans reference small measured groups;
 // applying a role to gameplay still requires alpha, clearance and seam screening.
 class ProcgenTerrainZonePlanner {
-  constructor({ descriptor, availableIds, excludedIds = new Set(), packWidthLimit = descriptor?.widths.max, chunkWidth = 128, cacheLimit = 128 }) {
+  constructor({ descriptor, availableIds, excludedIds = new Set(), eligibleGroups = null, packWidthLimit = descriptor?.widths.max, chunkWidth = 128, cacheLimit = 128 }) {
     if (!descriptor || !Number.isInteger(chunkWidth) || chunkWidth < 1 || !Number.isInteger(packWidthLimit) || packWidthLimit < chunkWidth) throw new TypeError('Canonical zones require measured widths and source art');
     this.descriptor = descriptor; this.chunkWidth = chunkWidth;
     this.widthLimit = Math.min(packWidthLimit, descriptor.widths.max);
@@ -19,7 +19,8 @@ class ProcgenTerrainZonePlanner {
     this.maximumChunks = Math.floor(this.widthLimit / chunkWidth);
     this.minimumChunks = Math.min(this.maximumChunks, Math.max(1, Math.ceil(descriptor.widths.median / chunkWidth / 2)));
     const available = new Set(availableIds), eligible = id => available.has(id) && !excludedIds.has(id);
-    this.groups = descriptor.groups.filter(group => group.placements.every(placement => eligible(placement.id)));
+    this.groups = descriptor.groups.filter(group => (!eligibleGroups || eligibleGroups.has(group)) && group.placements.every(placement => eligible(placement.id)));
+    this.groupsByRole = new Map(ROLES.map(role => [role, this.groups.filter(group => group.role === role)]));
     this.pairs = descriptor.assetPairs.filter(pair => eligible(pair.a) && eligible(pair.b));
     this.revisionCode = parseInt(descriptor.sourceRevision.slice(0, 8), 16) >>> 0;
     this.cacheLimit = Math.max(1, Math.min(256, Math.trunc(cacheLimit) || 128)); this.cache = new Map();
@@ -34,8 +35,9 @@ class ProcgenTerrainZonePlanner {
     let zone = this.cache.get(key); if (zone) return zone;
     const code = mix(seed ^ this.revisionCode ^ Math.imul(index + 1, 0x9e3779b1)), pair = choose(this.pairs, code);
     const groups = [];
-    for (let roleIndex = 0; roleIndex < ROLES.length && groups.length < 4; roleIndex++) {
-      const candidates = this.groups.filter(group => group.role === ROLES[roleIndex]);
+    const roleOffset = mix(code ^ 0x51ed270b) % ROLES.length;
+    for (let slot = 0; slot < ROLES.length && groups.length < 4; slot++) {
+      const roleIndex = (slot + roleOffset) % ROLES.length, candidates = this.groupsByRole.get(ROLES[roleIndex]);
       if (!candidates.length) continue;
       let related = candidates;
       if (pair) {

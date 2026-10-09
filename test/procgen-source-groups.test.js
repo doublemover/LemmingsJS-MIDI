@@ -22,11 +22,11 @@ describe('screened exact-source canonical terrain groups', function() {
     expect(await fingerprintTerrainImages([image])).to.equal(hash);
     image.frames[0][1] = 4; expect(await fingerprintTerrainImages([image])).not.to.equal(hash);
   });
-  it('preserves ordered source flip alpha and rejects conditional/destructive, steel, missing and glyph roles', () => {
+  it('preserves ordered source flip alpha and compiles measured roles while excluding missing and glyph art', () => {
     const safe = group('route', [{ id: 1, x: 0, y: 0, f: 10 }]), erase = group('route', [{ id: 1, x: 0, y: 0, f: 1 }]), overwrite = group('route', [{ id: 1, x: 0, y: 0, f: 16 }]);
     const conditional = group('route', [{ id: 1, x: 0, y: 0, f: 4 }]), other = group('join'), steel = group('route', [{ id: 2, x: 0, y: 0, f: 0 }]), glyph = group('decoration', [{ id: 3, x: 0, y: 0, f: 0 }]), missing = group('route', [{ id: 4, x: 0, y: 0, f: 0 }]);
     const library = createSourceGroupLibrary({ groups: [safe, erase, overwrite, conditional, other, steel, glyph, missing] }, [piece(), piece(2, { isSteel: true }), piece(3)], new Set([3]));
-    expect(library.size).to.equal(1); expect(library.get(safe).piece.rgba[0]).to.equal((0xff102030 + 16) >>> 0);
+    expect(library.size).to.equal(6); expect(library.get(safe).piece.rgba[0]).to.equal((0xff102030 + 16) >>> 0);
     expect(library.get(safe).group).to.equal(safe);
   });
   it('roots route additions within two walkable pixels, protects chunk seams/gaps and requires actual support', () => {
@@ -39,9 +39,9 @@ describe('screened exact-source canonical terrain groups', function() {
     expect(place(library, [route], { chunk: 0 })).to.have.length(0);
     expect(place(library, [route], { baseSurface: x => x === p.x ? -1 : 72 })).to.have.length(0);
   });
-  it('grounds decoration components while keeping them noncolliding and rejects broken route columns', () => {
+  it('grounds physical decoration components and rejects broken route columns', () => {
     const decoration = group('decoration'), art = piece(), library = createSourceGroupLibrary({ groups: [decoration] }, [art]);
-    expect(place(library, [decoration])[0]).to.include({ decor: true, y: 68 });
+    expect(place(library, [decoration])[0]).to.include({ decor: false, y: 68 });
     expect(place(library, [decoration], { baseSolid: () => false })).to.have.length(0);
     art.frame[4] = 128; expect(createSourceGroupLibrary({ groups: [group()] }, [art]).size).to.equal(0);
   });

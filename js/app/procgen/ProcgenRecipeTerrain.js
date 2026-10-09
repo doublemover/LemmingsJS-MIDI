@@ -1,6 +1,8 @@
 import { composeRecipeChunk } from './ProcgenTerrainRecipes.js';
+import { validateProcgenRouteCatalogue } from './ProcgenRouteContracts.js';
 import { ProcgenTerrainZonePlanner } from './ProcgenTerrainZones.js';
 import { createSourceGroupLibrary, placeSourceGroups } from './ProcgenTerrainGroups.js';
+import { CLEAR_TERRAIN, PAINT_TERRAIN, PAINT_STEEL, terrainStampAt, terrainStampColor, stampTerrainPlacement } from './ProcgenTerrainCompositing.js';
 import { TriggerTypes } from '../../level/TriggerTypes.js';
 import { createProcgenWordPlanner } from './ProcgenWords.js';
 import { PROCGEN_INTRO_SAFE_END, PROCGEN_RECOVERY_GAP_END, progressionAt, introAssemblyEligible } from './ProcgenTerrainProgression.js';
@@ -18,9 +20,11 @@ const opaque = value => (value | 0xff000000) >>> 0;
 // Source motifs are ingredients, not an endless repeating track. Only requested
 // frontier chunks are composed; collision and display have separate bounded caches.
 class ProcgenRecipeTerrain {
-  constructor({ recipe, terrainPieces, objectPieces = [], sourceDescriptor = null, assemblyCatalog = null, packWidthLimit = sourceDescriptor?.widths.max }) {
+  constructor({ recipe, terrainPieces, objectPieces = [], sourceDescriptor = null, assemblyCatalog = null, routeContracts = [], packWidthLimit = sourceDescriptor?.widths.max }) {
     if (!recipe?.routes?.length) throw new Error('The selected theme has no sourced terrain recipes');
     this.recipe = recipe;
+    // Source-scoped loader proposals are cold metadata, never verified routes.
+    this.routeContracts = Object.freeze(validateProcgenRouteCatalogue(routeContracts));
     this.pieces = terrainPieces.filter(p => p?.frame?.length && p.width && p.height);
     this.wordPlanner = createProcgenWordPlanner(recipe, this.pieces);
     this.assemblyCatalog = assemblyCatalog?.assetSha256 === recipe.assetSha256 && recipe.sources?.some(source => source.pack === assemblyCatalog.pack && source.groundSet === assemblyCatalog.groundSet) ? assemblyCatalog : null;
@@ -35,8 +39,9 @@ class ProcgenRecipeTerrain {
     this.ingredients = this.pieces.filter(piece => routeIds.has(piece.id));
     this.sourceDescriptor = sourceDescriptor?.assetSha256 === recipe.assetSha256 && recipe.sources?.some(source => source.pack === sourceDescriptor.pack && source.groundSet === sourceDescriptor.groundSet) ? sourceDescriptor : null;
     this.supportsFineGrowth = !!this.sourceDescriptor;
-    this.zonePlanner = this.sourceDescriptor ? new ProcgenTerrainZonePlanner({ descriptor: this.sourceDescriptor, availableIds: this.pieces.map(piece => piece.id), excludedIds: this.excludedTerrainIds, packWidthLimit }) : null;
     this.sourceGroups = createSourceGroupLibrary(this.sourceDescriptor, this.pieces, this.excludedTerrainIds);
+    this.zonePlanner = this.sourceDescriptor ? new ProcgenTerrainZonePlanner({ descriptor: this.sourceDescriptor, availableIds: this.pieces.map(piece => piece.id), excludedIds: this.excludedTerrainIds, eligibleGroups: new Set(this.sourceGroups.keys()), packWidthLimit }) : null;
+    this._sampleScratch = { solid: false, steel: false, color: 0 };
     this.descriptions = new Map(); this.growthPlans = new Map(); this.descriptionLimit = 256;
     this.objects = objectPieces.filter(p => p?.image?.frames?.[0]?.length && p.image.width && p.image.height);
     this.compiledAssemblies = compileAuthoredAssemblies(this.assemblyCatalog, this.pieces, this.objects);
@@ -81,7 +86,7 @@ class ProcgenRecipeTerrain {
   configure(laneCount, maxActors = 16384) { this.collisionLimit = Math.max(256, Math.min(32768, maxActors + laneCount * 2)); }
   reset() { this.descriptions.clear(); this.growthPlans.clear(); this.zonePlanner?.reset(); this.collision.clear(); this.rasters.clear(); this._lastKey = null; this._lastChunk = null; }
   get memoryMB() {
-    let bytes = [...this.sourceGroups.values()].reduce((n, group) => n + group.piece.rgba.byteLength + group.piece.frame.byteLength + group.columnTop.byteLength + group.columnBottom.byteLength, 0);
+    let bytes = [...this.sourceGroups.values()].reduce((n, group) => n + group.piece.composite.colors.byteLength + group.piece.composite.operations.byteLength + group.piece.composite.impact.byteLength + group.piece.frame.byteLength + group.columnTop.byteLength + group.columnBottom.byteLength, 0);
     bytes += this.patterns.reduce((n, p) => n + p.pixels.byteLength + p.mask.byteLength + p.topProfile.byteLength + p.columnColors.byteLength + p.introColumns.byteLength, 0);
     for (const p of this.collision.values()) bytes += p.solid.byteLength + p.steel.byteLength + p.topProfile.byteLength;
     for (const p of this.rasters.values()) bytes += p.byteLength;
@@ -135,9 +140,10 @@ class ProcgenRecipeTerrain {
     const occupied = [...descriptor.placements, ...descriptor.assemblies.map(assembly => ({ x: assembly.bounds.x1 - origin,
       y: assembly.bounds.y1, piece: { width: assembly.bounds.x2 - assembly.bounds.x1, height: assembly.bounds.y2 - assembly.bounds.y1 }, decor: false }))];
     descriptor.placements.push(...placeSourceGroups({ zone: descriptor.zone, library: this.sourceGroups, code, chunk, baseSurface,
-      baseSolid: (x, y) => this.solidSample(seed, chunk, x, y, descriptor), occupied, gapX: descriptor.gapX - origin, gapWidth: descriptor.gapWidth }));
+      baseSolid: (x, y) => this.solidSample(seed, chunk, x, y, descriptor), baseSteel: (x, y) => this.steelSample(seed, chunk, x, y, descriptor),
+      baseColor: (x, y) => this.rasterSample(seed, chunk, x, y, descriptor), occupied, gapX: descriptor.gapX - origin, gapWidth: descriptor.gapWidth, progression,
+      validate: members => { const member = members.at(-1); return this._introAssemblyEligible(seed, chunk, descriptor, { bounds: { x1: origin + member.x, x2: origin + member.x + member.piece.width } }, members, baseSurface); } }));
     descriptor.objects.push(...this._placeObjects(seed, chunk, descriptor));
-    descriptor.placements = descriptor.placements.filter(p => !p.canonicalGroup || !descriptor.objects.some(object => p.x + p.piece.width > object.x - origin - 2 && p.x < object.x - origin + object.piece.image.width + 2 && p.y + p.piece.height > object.y - 2 && p.y < object.y + object.piece.image.height + 2));
     if (this.descriptions.size >= this.descriptionLimit) this.descriptions.delete(this.descriptions.keys().next().value);
     this.descriptions.set(cacheKey, descriptor);
     return descriptor;
@@ -205,6 +211,9 @@ class ProcgenRecipeTerrain {
             envelopeLeft < Math.max(origin + 8, PROCGEN_INTRO_SAFE_END) || envelopeRight > origin + TERRAIN_CHUNK_WIDTH - 8 ||
             bounds.y1 < 0 || bounds.y2 > TERRAIN_HEIGHT || mix(code ^ Math.imul(piece.id + 1, 0x9e3779b1)) % 1024 >= descriptor.progression.hazardThreshold) continue;
       }
+      const envelope = { left: Math.min(x, x + image.trigger_left), right: Math.max(x + image.width, x + image.trigger_left + image.trigger_width),
+        top: Math.min(y, y + image.trigger_top), bottom: role === 'liquid' ? TERRAIN_HEIGHT : Math.max(y + image.height + 8, y + image.trigger_top + image.trigger_height) };
+      if (descriptor.placements.some(p => p.canonicalGroup && origin + p.x + p.piece.width > envelope.left - 2 && origin + p.x < envelope.right + 2 && p.y + p.piece.height > envelope.top - 2 && p.y < envelope.bottom + 2)) continue;
       if (descriptor.assemblies.some(a => x + image.width > a.bounds.x1 - 2 && x < a.bounds.x2 + 2 && y + image.height > a.bounds.y1 - 2 && y < a.bounds.y2 + 2)) continue;
       const word = descriptor.word;
       if (word && x + image.width > origin + word.x - 2 && x < origin + word.x + word.width + 2 && y + image.height > word.y - 2 && y < word.baseline + 2) continue;
@@ -215,23 +224,39 @@ class ProcgenRecipeTerrain {
     return objects;
   }
   solidSample(seed, chunk, x, y, descriptor = this.describe(seed, chunk), state = null) {
-    if (x < 0 || x >= TERRAIN_CHUNK_WIDTH || y < 0 || y >= TERRAIN_HEIGHT) return false;
+    return this._sampleTerrain(seed, chunk, x, y, descriptor, state).solid;
+  }
+  // All sample channels share ordered foundation-aware stamps and active flags.
+  // One borrowed scratch record avoids allocation on collision/render queries.
+  _sampleTerrain(seed, chunk, x, y, descriptor, state, withColor = false) {
+    const result = this._sampleScratch; result.solid = result.steel = false; result.color = 0;
+    if (x < 0 || x >= TERRAIN_CHUNK_WIDTH || y < 0 || y >= TERRAIN_HEIGHT) return result;
     const pattern = this.patterns[mix(descriptor.phaseCode ^ descriptor.code) % this.patterns.length];
+    const px = this._foundationColumn(pattern, x + descriptor.origin, descriptor), surface = this._surface(seed, chunk, x, descriptor);
     const active = this._activePlan(seed, chunk, state);
-    let solid = (!active || !!state.active[active.foundationByColumn[x]]) && pattern.topProfile[this._foundationColumn(pattern, x + descriptor.origin, descriptor)] >= 0 && y >= this._surface(seed, chunk, x, descriptor);
+    result.solid = (!active || !!state.active[active.foundationByColumn[x]]) && pattern.topProfile[px] >= 0 && y >= surface;
+    if (withColor && result.solid) result.color = pattern.columnColors[px * TERRAIN_HEIGHT + y - surface];
     for (let index = 0; index < descriptor.placements.length; index++) {
-      const placement = descriptor.placements[index]; if (placement.decor || active && !state.active[active.placementJobs[index]]) continue;
-      const { piece } = placement, dx = x - placement.x, dy = y - placement.y;
-      if (dx >= 0 && dx < piece.width && dy >= 0 && dy < piece.height && !(piece.frame[(placement.flipY ? piece.height - 1 - dy : dy) * piece.width + (placement.flip ? piece.width - 1 - dx : dx)] & 128)) solid = true;
+      const p = descriptor.placements[index]; if (p.decor || active && !state.active[active.placementJobs[index]]) continue;
+      const stamp = terrainStampAt(p, x, y, result.solid), operation = stamp & 3; if (!operation) continue;
+      result.solid = operation !== CLEAR_TERRAIN; result.steel = operation === PAINT_STEEL;
+      if (withColor) result.color = result.solid ? terrainStampColor(p, stamp) : 0;
     }
-    if (this._gapVoid(descriptor, x + descriptor.origin, y)) solid = false;
+    if (this._gapVoid(descriptor, x + descriptor.origin, y)) { result.solid = result.steel = false; result.color = 0; }
     for (let index = 0; index < descriptor.objects.length; index++) {
       const object = descriptor.objects[index]; if (object.role !== 'liquid' || active && !state.active[active.objectJobs[index]]) continue;
       const dx = x + descriptor.origin - object.x, bottom = object.y + object.piece.image.height;
-      if (dx >= 0 && dx < object.piece.image.width && y >= object.y) solid = y >= bottom;
-      else if ((dx === -1 || dx === object.piece.image.width) && y >= object.y) solid = true;
+      if (y >= object.y && dx >= -1 && dx <= object.piece.image.width) {
+        result.solid = dx < 0 || dx === object.piece.image.width || y >= bottom;
+        if (!result.solid) result.steel = false;
+        if (withColor) result.color = result.solid ? pattern.columnColors[px * TERRAIN_HEIGHT + Math.max(0, y - surface)] : 0;
+      }
     }
-    return solid;
+    if (withColor && !result.solid) for (let index = 0; index < descriptor.placements.length; index++) {
+      const p = descriptor.placements[index]; if (!p.decor || active && !state.active[active.placementJobs[index]]) continue;
+      const stamp = terrainStampAt(p, x, y, false); if ((stamp & 3) >= PAINT_TERRAIN) result.color = terrainStampColor(p, stamp);
+    }
+    return result;
   }
   _patternColumn(pattern, worldX) {
     const x = worldX % pattern.width;
@@ -266,20 +291,7 @@ class ProcgenRecipeTerrain {
     const solid = new Uint32Array(width * height / 32), steel = new Uint32Array(solid.length);
     const pixels = raster ? new Uint32Array(width * height) : null;
     const topProfile = new Int16Array(width); topProfile.fill(-1);
-    const stamp = ({ piece, x: ox, y: oy, flip, flipY, decor }) => {
-      const image = piece.image, source = piece.frame || image.frames[0], sw = image.width, sh = image.height;
-      for (let y = Math.max(0, -oy); y < Math.min(sh, height - oy); y++) for (let x = Math.max(0, -ox); x < Math.min(sw, width - ox); x++) {
-        const sourceIndex = (flipY ? sh - 1 - y : y) * sw + (flip ? sw - 1 - x : x), ci = source[sourceIndex];
-        if (ci & 128) continue;
-        const index = (y + oy) * width + x + ox, bit = 1 << (index & 31), at = index >>> 5;
-        if (decor) { if (pixels && !(solid[at] & bit)) pixels[index] = piece.rgba?.[sourceIndex] || opaque(image.palette.getColor(ci)); }
-        else {
-          solid[at] |= bit;
-          if (piece.isSteel) steel[at] |= bit;
-          if (pixels) pixels[index] = piece.rgba?.[sourceIndex] || opaque(image.palette.getColor(ci));
-        }
-      }
-    };
+    const stamp = placement => stampTerrainPlacement(placement, width, height, solid, steel, pixels);
     // Column-shift an independently selected source motif onto this chunk's
     // elevation profile, extending its opaque columns into connected foundations.
     for (let x = 0; x < width; x++) {
@@ -318,50 +330,10 @@ class ProcgenRecipeTerrain {
     return result;
   }
   rasterSample(seed, chunk, x, y, descriptor = this.describe(seed, chunk), state = null) {
-    if (x < 0 || x >= TERRAIN_CHUNK_WIDTH || y < 0 || y >= TERRAIN_HEIGHT) return 0;
-    const pattern = this.patterns[mix(descriptor.phaseCode ^ descriptor.code) % this.patterns.length];
-    const px = this._foundationColumn(pattern, x + descriptor.origin, descriptor), surface = this._surface(seed, chunk, x, descriptor);
-    const active = this._activePlan(seed, chunk, state);
-    let solid = (!active || !!state.active[active.foundationByColumn[x]]) && pattern.topProfile[px] >= 0 && y >= surface;
-    let color = solid ? pattern.columnColors[px * TERRAIN_HEIGHT + y - surface] : 0;
-    const pieceColor = placement => {
-      const piece = placement.piece, dx = x - placement.x, dy = y - placement.y;
-      if (dx < 0 || dx >= piece.width || dy < 0 || dy >= piece.height) return 0;
-      const ci = piece.frame[(placement.flipY ? piece.height - 1 - dy : dy) * piece.width + (placement.flip ? piece.width - 1 - dx : dx)];
-      return ci & 128 ? 0 : piece.rgba?.[(placement.flipY ? piece.height - 1 - dy : dy) * piece.width + (placement.flip ? piece.width - 1 - dx : dx)] || opaque(piece.image.palette.getColor(ci));
-    };
-    for (let index = 0; index < descriptor.placements.length; index++) {
-      const placement = descriptor.placements[index]; if (placement.decor || active && !state.active[active.placementJobs[index]]) continue;
-      const stamped = pieceColor(placement); if (stamped) { color = stamped; solid = true; }
-    }
-    if (this._gapVoid(descriptor, x + descriptor.origin, y)) { color = 0; solid = false; }
-    for (let index = 0; index < descriptor.objects.length; index++) {
-      const object = descriptor.objects[index]; if (object.role !== 'liquid' || active && !state.active[active.objectJobs[index]]) continue;
-      const dx = x + descriptor.origin - object.x, bottom = object.y + object.piece.image.height;
-      if (y >= object.y && dx >= -1 && dx <= object.piece.image.width) {
-        solid = dx < 0 || dx === object.piece.image.width || y >= bottom;
-        color = solid ? pattern.columnColors[px * TERRAIN_HEIGHT + Math.max(0, y - surface)] : 0;
-      }
-    }
-    if (!solid) for (let index = 0; index < descriptor.placements.length; index++) {
-      const placement = descriptor.placements[index]; if (placement.decor && (!active || state.active[active.placementJobs[index]])) color = pieceColor(placement) || color;
-    }
-    return color;
+    return this._sampleTerrain(seed, chunk, x, y, descriptor, state, true).color;
   }
   steelSample(seed, chunk, x, y, descriptor = this.describe(seed, chunk), state = null) {
-    if (x < 0 || x >= TERRAIN_CHUNK_WIDTH || y < 0 || y >= TERRAIN_HEIGHT || this._gapVoid(descriptor, x + descriptor.origin, y)) return false;
-    const active = this._activePlan(seed, chunk, state);
-    let steel = false;
-    for (let index = 0; index < descriptor.placements.length; index++) {
-      const p = descriptor.placements[index]; if (p.decor || !p.piece.isSteel || active && !state.active[active.placementJobs[index]]) continue;
-      const dx = x - p.x, dy = y - p.y, piece = p.piece;
-      if (dx >= 0 && dy >= 0 && dx < piece.width && dy < piece.height && !(piece.frame[(p.flipY ? piece.height - 1 - dy : dy) * piece.width + (p.flip ? piece.width - 1 - dx : dx)] & 128)) steel = true;
-    }
-    for (let index = 0; index < descriptor.objects.length; index++) {
-      const object = descriptor.objects[index]; if (object.role !== 'liquid' || active && !state.active[active.objectJobs[index]]) continue;
-      if (x + descriptor.origin >= object.x && x + descriptor.origin < object.x + object.piece.image.width && y >= object.y && y < object.supportY) return false;
-    }
-    return steel;
+    return this._sampleTerrain(seed, chunk, x, y, descriptor, state).steel;
   }
   getChunk(seed, chunk, raster = false) {
     const key = keyFor(seed, chunk);
@@ -413,7 +385,7 @@ class ProcgenRecipeTerrain {
       collisionLimit: this.collisionLimit, rasterLimit: this.rasterLimit, memoryMB: this.memoryMB,
       terrainVocabularyUsed: this.selectedTerrainIds.size, terrainVocabularyAvailable: this.eligibleTerrainIds.size, terrainCatalogAvailable: this.pieces.length,
       wordGlyphsAvailable: this.wordPlanner?.glyphs.size || 0, wordChoicesAvailable: this.wordPlanner?.choices.length || 0,
-      canonicalDescriptor: this.sourceDescriptor?.id || null, canonicalGroupsAvailable: this.sourceGroups.size, cachedDescriptions: this.descriptions.size, cachedZones: this.zonePlanner?.cache.size || 0,
+      canonicalDescriptor: this.sourceDescriptor?.id || null, canonicalGroupsAvailable: this.sourceGroups.size, proposedRouteContracts: this.routeContracts.length, cachedDescriptions: this.descriptions.size, cachedZones: this.zonePlanner?.cache.size || 0,
       objectVocabularyUsed: this.selectedObjectIds.size, objectVocabularyAvailable: this.eligibleObjectIds.size, assemblyCatalogRevision: this.assemblyCatalog?.sourceRevision || null, assembliesAvailable: this.compiledAssemblies.length, associatedTerrainIds: [...this.associatedTerrainIds], associatedObjectIds: [...this.associatedObjectIds], objectCatalogAvailable: this.objects.length, phaseChunks: PHASE_CHUNKS }; }
 }
 export { ProcgenRecipeTerrain, TERRAIN_CHUNK_WIDTH, TERRAIN_HEIGHT };

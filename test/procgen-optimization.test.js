@@ -30,18 +30,21 @@ describe('frontier procgen optimization contracts', function() {
   before(async () => { masks = await loadProcgenMasks(); });
   it('composes independent changing phases from supported source geometry and bounded assemblies', async () => {
     const terrain = await loadProcgenTerrain(), signatures = new Set(), phases = new Set();
-    let low = 96, high = 0, decorPixels = 0;
+    let low = 96, high = 0, canonicalDecoration = 0, pixelMaskMismatches = 0;
     for (const seed of [1, 42, 12345]) for (let index = 0; index < 32; index++) {
       const chunk = terrain.getChunk(seed, index, true);
       signatures.add(`${chunk.code}:${chunk.placements.map(p => p.piece.id).join(',')}`); phases.add(chunk.phase);
       for (const y of chunk.topProfile) if (y >= 0) { low = Math.min(low, y); high = Math.max(high, y); }
+      for (const placement of chunk.placements) if (placement.canonicalGroup?.role === 'decoration') {
+        canonicalDecoration++; expect(placement.decor).to.equal(false);
+      }
       for (let at = 0; at < chunk.pixels.length; at++) {
-        if (chunk.pixels[at] && !(chunk.solid[at >>> 5] & (1 << (at & 31)))) decorPixels++;
+        if (!!chunk.pixels[at] !== !!(chunk.solid[at >>> 5] & (1 << (at & 31)))) pixelMaskMismatches++;
       }
       expect(chunk.objects.every(object => !object.interactive)).to.equal(true);
     }
     expect(signatures.size).to.equal(96); expect(phases.size).to.equal(8);
-    expect(high - low).to.be.at.least(40); expect(decorPixels).to.be.greaterThan(0);
+    expect(high - low).to.be.at.least(40); expect(canonicalDecoration).to.be.greaterThan(0); expect(pixelMaskMismatches).to.equal(0);
     expect(terrain.selectedTerrainIds.size).to.be.greaterThan(0);
     expect([...terrain.selectedTerrainIds].every(id => terrain.eligibleTerrainIds.has(id))).to.equal(true);
     expect([...terrain.selectedObjectIds].every(id => terrain.eligibleObjectIds.has(id))).to.equal(true);

@@ -1,5 +1,6 @@
 // @ts-check
 import { SkillTypes } from '../SkillTypes.js';
+import { LIVE_LAYOUT, hasLiveLookup } from './HistoryLiveLemmingState.js';
 import { Trigger } from '../../level/Trigger.js';
 import {
   COLD_BLOCK_MAGIC,
@@ -68,40 +69,43 @@ const historyStoreApplyStateMethods = {
     const manager = game.getLemmingManager?.();
     if (manager && keyframe.lemmingState) {
       const state = keyframe.lemmingState;
-      const lems = manager.lemmings || [];
-      if (lems.length !== state.present.length) {
-        manager.lemmings = new Array(state.present.length);
-      }
-      const countdownAction = manager.skillActions?.[SkillTypes.BOMBER] ?? null;
-      for (let i = 0; i < state.present.length; i++) {
-        if (!state.present[i]) {
-          manager.lemmings[i] = null;
-          continue;
+      if (hasLiveLookup(manager)) this._applyLiveLemmingKeyframe(manager, state);
+      else {
+        const lems = manager.lemmings || [];
+        if (lems.length !== state.present.length) {
+          manager.lemmings = new Array(state.present.length);
         }
-        let lem = manager.lemmings[i];
-        if (!lem) {
-          lem = this._createReplayLemming(manager, state.x[i], state.y[i], i);
-          manager.lemmings[i] = lem;
+        const countdownAction = manager.skillActions?.[SkillTypes.BOMBER] ?? null;
+        for (let i = 0; i < state.present.length; i++) {
+          if (!state.present[i]) {
+            manager.lemmings[i] = null;
+            continue;
+          }
+          let lem = manager.lemmings[i];
+          if (!lem) {
+            lem = this._createReplayLemming(manager, state.x[i], state.y[i], i);
+            manager.lemmings[i] = lem;
+          }
+          const action = state.actionType[i] >= 0 ? manager.actions?.[state.actionType[i]] : null;
+          const snap = {
+            id: i,
+            x: state.x[i],
+            y: state.y[i],
+            lookRight: state.lookRight[i],
+            frameIndex: state.frameIndex[i],
+            state: state.state[i],
+            canClimb: state.canClimb[i],
+            hasParachute: state.hasParachute[i],
+            removed: state.removed[i],
+            disabled: state.disabled[i],
+            countdown: state.countdown[i],
+            hasExploded: state.hasExploded[i],
+            lastTriggerType: state.lastTriggerType[i],
+            actionType: state.actionType[i],
+            countdownActive: state.countdownActive[i]
+          };
+          applyLemmingSnapshot(lem, snap, action, countdownAction);
         }
-        const action = state.actionType[i] >= 0 ? manager.actions?.[state.actionType[i]] : null;
-        const snap = {
-          id: i,
-          x: state.x[i],
-          y: state.y[i],
-          lookRight: state.lookRight[i],
-          frameIndex: state.frameIndex[i],
-          state: state.state[i],
-          canClimb: state.canClimb[i],
-          hasParachute: state.hasParachute[i],
-          removed: state.removed[i],
-          disabled: state.disabled[i],
-          countdown: state.countdown[i],
-          hasExploded: state.hasExploded[i],
-          lastTriggerType: state.lastTriggerType[i],
-          actionType: state.actionType[i],
-          countdownActive: state.countdownActive[i]
-        };
-        applyLemmingSnapshot(lem, snap, action, countdownAction);
       }
       this._rebuildActiveLemmings(manager);
     }
@@ -110,6 +114,7 @@ const historyStoreApplyStateMethods = {
       const state = keyframe.lemmingManagerState;
       manager.selectedIndex = state.selectedIndex ?? -1;
       manager.spawnTotal = state.spawnTotal ?? 0;
+      if (hasLiveLookup(manager)) manager._nextLemmingId = Math.max(manager._nextLemmingId, state.nextLemmingId ?? state.spawnTotal ?? 0);
       manager.releaseTickIndex = state.releaseTickIndex ?? 0;
       manager.mmTickCounter = state.mmTickCounter ?? 0;
       manager.nextNukingLemmingsIndex = state.nextNukingLemmingsIndex ?? -1;
@@ -184,6 +189,28 @@ const historyStoreApplyStateMethods = {
     }
 
     this.captureBaseline(game);
+  },
+
+  _applyLiveLemmingKeyframe(manager, state) {
+    // Legacy indexed frames imply that every preceding identity was already issued.
+    if (state.layout !== LIVE_LAYOUT) manager._nextLemmingId = Math.max(manager._nextLemmingId, state.present.length);
+    const keep = this._scratchLiveLemmingIds; keep.clear();
+    for (let slot = 0; slot < state.present.length; slot++) if (state.present[slot] && !state.removed[slot]) {
+      const id = state.layout === LIVE_LAYOUT ? state.actorIds[slot] : slot; keep.add(id);
+    }
+    for (const [id] of manager._lemmingById) if (!keep.has(id)) manager._removeReplayLemming(id);
+    const countdownAction = manager.skillActions?.[SkillTypes.BOMBER] ?? null;
+    for (let slot = 0; slot < state.present.length; slot++) if (state.present[slot] && !state.removed[slot]) {
+      const id = state.layout === LIVE_LAYOUT ? state.actorIds[slot] : slot;
+      let actor = manager.getLemming(id);
+      if (!actor) actor = this._createReplayLemming(manager, state.x[slot], state.y[slot], id);
+      const snapshot = { id, x: state.x[slot], y: state.y[slot], lookRight: state.lookRight[slot], frameIndex: state.frameIndex[slot],
+        state: state.state[slot], canClimb: state.canClimb[slot], hasParachute: state.hasParachute[slot], removed: state.removed[slot],
+        disabled: state.disabled[slot], countdown: state.countdown[slot], hasExploded: state.hasExploded[slot],
+        lastTriggerType: state.lastTriggerType[slot], actionType: state.actionType[slot], countdownActive: state.countdownActive[slot] };
+      applyLemmingSnapshot(actor, snapshot, manager.actions[snapshot.actionType], countdownAction); manager._registerLemming(actor);
+    }
+    keep.clear();
   },
 
   _readTriggerState(game) {

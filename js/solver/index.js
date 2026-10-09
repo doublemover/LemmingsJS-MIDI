@@ -12,3 +12,6 @@ export * from './TimingSearch.js';
 export * from './TacticalSolver.js';
 export * from './ProcgenCertificates.js';
 export * from './EditorAdvisory.js';
+export * from './ProcgenSolverAdapter.js';
+export * from './ProcgenGoalSearch.js';
+export * from './ProcgenRouteQualification.js';

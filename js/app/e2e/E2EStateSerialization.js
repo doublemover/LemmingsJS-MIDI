@@ -514,6 +514,8 @@ const getGameState = (view) => {
       ? {
         selectedIndex: manager.selectedIndex,
         spawnTotal: manager.spawnTotal,
+        nextLemmingId: manager._nextLemmingId ?? null,
+        liveLookupCount: manager._lemmingById?.size ?? null,
         releaseTickIndex: manager.releaseTickIndex,
         mmTickCounter: manager.mmTickCounter,
         activeCount,

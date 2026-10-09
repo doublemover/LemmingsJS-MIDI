@@ -111,3 +111,11 @@ The editor also exposes a manual **Check Solvability** command in the validation
 panel. It refreshes the preview, runs the same bounded advisory pass, and reports
 a compact ok/warning status for designers and E2E without changing validation or
 export blocking behavior.
+
+## Independent procedural physical goals
+
+`ProcgenSolverAdapter` runs the actual shared action systems with assistance and new admissions disabled. It tracks 1-64 ordinary actors by stable ID against a finite physical arrival region; `goalKind: physical-region` and `exitRescues: false` keep this separate from authored exit rescue. Snapshots include real ground/steel, bounded source-object metadata and source/options identity. Protected terrain is checked once after replay, rather than scanned per tick.
+
+`searchProcgenGoal(factory, options)` starts from fresh deterministic worlds and discovers action candidates from actual geometry and available skills, without a catalogue script or intended route input. Default limits are 32 nodes, 1,200 ticks per candidate, four actions, 32,768 total simulated ticks and one second of wall time; hard maxima are 64 nodes, 4,096 candidate ticks, eight actions, 262,144 total ticks and ten seconds. Search snapshots cap at 131,072 pixels and 512 source objects. A found plan must pass a fresh whole-crew replay; a bounded negative is unknown/timeout, never an unsolvability proof. Current candidates cover the four worker skills and the current frontier walker; this is not exhaustive multi-actor strategy search.
+
+Optional `routeContracts` in the recipe book retain stable version/source provenance, measured entry/exit/containment geometry, one complete joint worker inventory, ordered timing rules, crew entry state, guards and failure cases. Exact pack/ground/art selection passes records to the source terrain as cold proposals. Existing synchronous/asynchronous certificate APIs use `options.procgenAdapterFactory` and `chunk.routeContract` to run independent qualification. Actual discovered action timing, every ordinary actor, zero loss, protected terrain and requested hazard/containment guards must match before the record becomes engine-qualified. Proposed research status and separate per-skill minima never establish qualification. The external research catalogue remains unavailable pending an authorized text handoff.

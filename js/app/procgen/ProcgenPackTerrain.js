@@ -1,3 +1,4 @@
+import { selectProcgenRouteContracts } from './ProcgenRouteContracts.js';
 import { ProcgenAssetManager } from '../procgenAssetManager.js';
 import { ProcgenRecipeTerrain } from './ProcgenRecipeTerrain.js';
 import { fingerprintTerrainImages, getPackTerrainWidthLimit, selectTerrainDescriptor } from './ProcgenTerrainDescriptors.js';
@@ -64,10 +65,11 @@ const loadProcgenPackTerrain = async ({ styleNames, config, fileProvider, book, 
     if (!recipe) throw new Error(`No source recipe for ${styleName}`);
     const assetSha256 = await fingerprintTerrainImages(assets.assets.terrainImages);
     const sourceDescriptor = selectTerrainDescriptor(book, { packPath: config.path, groundSet: assets.groundSet, assetSha256 });
+    const routeContracts = selectProcgenRouteContracts(book, { packPath: config.path, groundSet: assets.groundSet, assetSha256 });
     const objectSha256 = await fingerprintObjectImages(assets.assets.gadgetImages);
     const assemblyCatalog = selectAuthoredAssemblyCatalog(book, { packPath: config.path, groundSet: assets.groundSet, assetSha256, objectSha256 });
     const objectPieces = (assets.assets?.gadgetImages || []).map((image, id) => ({ ...assets.assets.gadgets[id], id, image }));
-    return { styleName, terrain: new ProcgenRecipeTerrain({ recipe, terrainPieces: assets.terrainPieces, objectPieces, sourceDescriptor, assemblyCatalog, packWidthLimit: getPackTerrainWidthLimit(book, config.path) }) };
+    return { styleName, terrain: new ProcgenRecipeTerrain({ recipe, terrainPieces: assets.terrainPieces, objectPieces, sourceDescriptor, assemblyCatalog, routeContracts, packWidthLimit: getPackTerrainWidthLimit(book, config.path) }) };
   }));
   const themes = results.filter(result => result.status === 'fulfilled').map(result => result.value);
   const terrain = new ProcgenPackTerrain(themes);

@@ -4,6 +4,7 @@ import {
   createSolverResult
 } from './SolverTypes.js';
 import { solveTactical } from './TacticalSolver.js';
+import { qualifyProcgenRouteContract } from './ProcgenRouteQualification.js';
 
 const PROCGEN_CHALLENGE_TYPES = Object.freeze({
   WALK: 'walk',
@@ -269,6 +270,15 @@ const createProcgenChallengeCertificate = (input = {}) => {
 
 const verifyProcgenChallengeCertificate = async (certificate, chunk, options = {}) => {
   const normalized = createProcgenChallengeCertificate(certificate);
+  if (options.procgenAdapterFactory) {
+    if (!chunk?.routeContract) return { ...normalized, verificationResult: createSolverResult({ resultType: 'unsupported', summary: 'Real procgen qualification requires a complete route contract' }) };
+    try {
+      const qualified = qualifyProcgenRouteContract(chunk.routeContract, options.procgenAdapterFactory, options);
+      return { ...normalized, routeContract: qualified.contract, routeQualification: qualified.qualification, verificationResult: qualified.verificationResult };
+    } catch (error) {
+      return { ...normalized, verificationResult: createSolverResult({ resultType: 'unsupported', summary: 'Invalid complete procgen route contract', explanations: [{ code: 'unsupported-mechanic', detail: error.message }] }) };
+    }
+  }
   const resolved = await resolveTacticalSolver(options);
   let verificationResult;
   if (resolved.error) {
@@ -291,6 +301,15 @@ const verifyProcgenChallengeCertificate = async (certificate, chunk, options = {
 
 const verifyProcgenChallengeCertificateSync = (certificate, chunk, options = {}) => {
   const normalized = createProcgenChallengeCertificate(certificate);
+  if (options.procgenAdapterFactory) {
+    if (!chunk?.routeContract) return { ...normalized, verificationResult: createSolverResult({ resultType: 'unsupported', summary: 'Real procgen qualification requires a complete route contract' }) };
+    try {
+      const qualified = qualifyProcgenRouteContract(chunk.routeContract, options.procgenAdapterFactory, options);
+      return { ...normalized, routeContract: qualified.contract, routeQualification: qualified.qualification, verificationResult: qualified.verificationResult };
+    } catch (error) {
+      return { ...normalized, verificationResult: createSolverResult({ resultType: 'unsupported', summary: 'Invalid complete procgen route contract', explanations: [{ code: 'unsupported-mechanic', detail: error.message }] }) };
+    }
+  }
   const resolved = resolveTacticalSolverSync(options);
   let verificationResult;
   if (resolved.error) {

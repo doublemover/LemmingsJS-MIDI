@@ -120,7 +120,8 @@ describe('LemmingManager coverage', function() {
     const lemA = makeLem(1);
     const lemB = makeLem(2);
     manager.activeLemmings = [lemA, lemB];
-    manager.lemmings = [lemA, lemB];
+    manager._registerLemming(lemA);
+    manager._registerLemming(lemB);
     manager.selectedIndex = lemA.id;
     manager.tick();
     expect(manager.miniMap.dots.length).to.equal(2);

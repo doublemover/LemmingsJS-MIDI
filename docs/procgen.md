@@ -30,7 +30,7 @@ four chunks. The source catalogue retains every nonempty terrain and object entr
 
 Source-colored connected foundations form shelves, slopes, abrupt climbs and
 drops; stamped pieces add overhangs and steel, while gaps require bridges.
-Background terrain decorations and animated object artwork are noncolliding.
+Admitted canonical decorative terrain uses its real source collision. Cosmetic word artwork and animated object artwork remain separate from terrain collision.
 Supported source traps, water and lethal/fire objects use shared contact/action owners. Exits and entrances remain presentation-only. Each lane keeps one available groundset from the selected pack. A seeded permutation spreads starting themes evenly across lanes; a new generation rotates this order. Assets from other packs are never borrowed. Unavailable themes are omitted rather than substituted. Real steel pixels
 are protected from bashing/explosions. Climbers enter the actual wall column before climbing; tunnel ceilings make them turn and fall instead of hoisting through the underside. Non-climbers retain their normal turnaround. Assistance uses ordinary classic walking, building, climbing and bashing. Source routes use the bounded hazard-aware planner described below; rejected proposals continue normal movement without teleporting actors or changing action timing.
 

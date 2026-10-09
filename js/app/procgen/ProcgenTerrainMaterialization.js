@@ -32,11 +32,15 @@ const createTerrainGrowthPlan = ({ descriptor, pattern, route, pieces, assemblie
     let group = terrainGroups.get(key); if (!group) { group = []; terrainGroups.set(key, group); }
     group.push(at);
   }
+  let priorCanonicalJob = null;
   for (const [key, members] of terrainGroups) {
     const placements = members.map(at => descriptor.placements[at]), x1 = Math.min(...placements.map(p => p.x)), x2 = Math.max(...placements.map(p => p.x + p.piece.width));
     const y1 = Math.min(...placements.map(p => p.y)), y2 = Math.max(...placements.map(p => p.y + p.piece.height));
     const ids = placements.flatMap(p => p.canonicalGroup ? p.canonicalGroup.placements.map(p => p.id) : [p.piece.id]);
-    const index = add('terrain', { x1, x2, y1, y2 }, foundationDeps(x1, x2), ids, { placementIndices: Object.freeze(members) });
+    const dependencies = foundationDeps(x1, x2), canonical = placements[0].canonicalGroup;
+    if (canonical && priorCanonicalJob != null) dependencies.push(priorCanonicalJob);
+    const index = add('terrain', { x1, x2, y1, y2 }, dependencies, ids, { placementIndices: Object.freeze(members), ...(canonical ? { sourceGroup: canonical, orderedSource: true } : {}) });
+    if (canonical) priorCanonicalJob = index;
     for (const at of members) placementJobs[at] = index;
     if (placements[0].assembly) assemblyTerrain.set(key, index);
   }

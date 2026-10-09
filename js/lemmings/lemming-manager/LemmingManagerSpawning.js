@@ -147,7 +147,44 @@ const lemmingManagerSpawningMethods = {
     return { best, bestDist };
   },
 
+  _allocateLemmingId() {
+    if (!Number.isInteger(this._nextLemmingId) || this._nextLemmingId > 0x7fffffff) {
+      const error = new RangeError('Lemming actor ID range exhausted; identities cannot wrap.');
+      error.code = 'lemming-id-exhausted'; throw error;
+    }
+    return this._nextLemmingId++;
+  },
+
+  _registerLemming(lem) {
+    if (!Number.isInteger(lem.id) || lem.id < 0 || lem.id > 0x7fffffff) throw new RangeError('Invalid stable lemming ID');
+    const existing = this._lemmingById.get(lem.id);
+    if (existing && existing !== lem) throw new Error('Duplicate live lemming ID');
+    if (!existing) { lem._lookupIndex = this.lemmings.length; this.lemmings.push(lem); this._lemmingById.set(lem.id, lem); }
+    this._nextLemmingId = Math.max(this._nextLemmingId, lem.id + 1);
+  },
+
+  _forgetLemming(lem) {
+    const triggers = this.triggerManager;
+    // Record owner identity before remove/reset clears it; normal managers use O(1) owner maps.
+    if (!(triggers?._ownerTriggers instanceof Map) || triggers._ownerTriggers.has(lem)) triggers?.removeByOwner?.(lem);
+    if (!(triggers?._ownerObserverTriggers instanceof Map) || triggers._ownerObserverTriggers.has(lem)) triggers?.removeObserverByOwner?.(lem);
+    if (this._lemmingById.get(lem.id) === lem) this._lemmingById.delete(lem.id);
+    let index = lem._lookupIndex;
+    if (this.lemmings[index] !== lem) index = this.lemmings.indexOf(lem);
+    if (index >= 0) {
+      const last = this.lemmings.pop();
+      if (index < this.lemmings.length) { this.lemmings[index] = last; last._lookupIndex = index; }
+    }
+    lem._lookupIndex = -1;
+  },
+
+  _removeReplayLemming(id) {
+    const lem = this.getLemming(id); if (!lem) return;
+    this._forgetLemming(lem); lem.remove(); this._releaseLemming(lem); this._activeDirty = true;
+  },
+
   _acquireLemming(x, y, id) {
+    if (this._activeDirty) this._compactActiveLemmings();
     const pool = this._lemmingPool;
     const lem = pool.length ? pool.pop() : null;
     if (lem && typeof lem.reset === 'function') {
@@ -227,49 +264,21 @@ const lemmingManagerSpawningMethods = {
   },
 
   addLemming(x, y) {
-    const app = getApp();
-    const startingLemLength = this.lemmings.length;
-    const lem = this._acquireLemming(x, y, startingLemLength);
-    if (isBenchMode(app)) {
-      lem.lookRight = Math.random() < 0.5;
+    const app = getApp(), extraCount = Math.max(0, app?.extraLemmings | 0);
+    if (this._nextLemmingId + extraCount > 0x7fffffff) {
+      const error = new RangeError('Lemming actor ID range exhausted; identities cannot wrap.');
+      error.code = 'lemming-id-exhausted'; throw error;
     }
-    this.setLemmingState(lem, LemmingStateType.FALLING);
-    this.lemmings.push(lem);
-    this._addActiveLemming(lem);
-    this.spawnTotal += 1;
-
-    const extraCount = app?.extraLemmings | 0;
-    if (extraCount > 0) {
-      const action = this.actions[LemmingStateType.FALLING];
-      const extras = new Array(extraCount);
-      for (let i = 0; i < extraCount; i++) {
-        const extra = this._acquireLemming(
-          x,
-          y,
-          startingLemLength + 1 + i
-        );
-        if (isBenchMode(app)) {
-          extra.lookRight = Math.random() < 0.5;
-        }
-        extra.setAction(action);
-        extras[i] = extra;
-        this._addActiveLemming(extra);
-      }
-      Array.prototype.push.apply(this.lemmings, extras);
-      this.spawnTotal += extraCount;
+    const soundBus = getRuntimeSoundEvents(this.runtime), action = this.actions[LemmingStateType.FALLING];
+    for (let i = 0; i <= extraCount; i++) {
+      const lem = this._acquireLemming(x, y, this._allocateLemmingId());
+      if (isBenchMode(app)) lem.lookRight = Math.random() < 0.5;
+      if (i === 0) this.setLemmingState(lem, LemmingStateType.FALLING); else lem.setAction(action);
+      this._registerLemming(lem); this._addActiveLemming(lem); this.spawnTotal++;
+      soundBus?.emitSfx?.(SoundEventTypes.LEMMING_SPAWN, SoundEffectIds.SPAWN,
+        { lemmingId: lem.id, x: lem.x, y: lem.y });
     }
     this._nearestGridDirty = true;
-    const soundBus = getRuntimeSoundEvents(this.runtime);
-    if (soundBus?.emitSfx) {
-      for (let i = startingLemLength; i < this.lemmings.length; i += 1) {
-        const spawned = this.lemmings[i];
-        soundBus.emitSfx(
-          SoundEventTypes.LEMMING_SPAWN,
-          SoundEffectIds.SPAWN,
-          { lemmingId: spawned.id, x: spawned.x, y: spawned.y }
-        );
-      }
-    }
   },
 
   addNewLemmings() {
