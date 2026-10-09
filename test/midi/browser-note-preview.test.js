@@ -616,17 +616,19 @@ describe('BrowserNotePreview', function() {
   });
 
   it('rejects source-cap overflow before evicting an existing scheduler gate', async () => {
-    const { preview } = setup(); await preview.enable();
-    let available = true;
-    const output = { ...preview.output, canAllocateVoice: () => available };
-    const scheduler = new MidiScheduler({ enabled: true, mpe: { enabled: false }, limits: { maxActiveNotes: 1 } }); scheduler.setOutput(output);
-    expect(scheduler.sendNote({ note: 60, durationTicks: 0 }, { priority: 0 })).to.equal(true);
-    const existing = [...scheduler._activeNotes.keys()]; available = false;
-    expect(scheduler.sendNote({ note: 72, durationTicks: 0 }, { priority: 4 })).to.equal(false);
-    expect([...scheduler._activeNotes.keys()]).to.deep.equal(existing);
-    expect([...preview._voices][0].released).to.equal(false);
-    expect(scheduler.getOutputPressure().reason).to.equal('local-source-cap');
-    scheduler.dispose(); await preview.dispose();
+    await withFakeClockAndPerformance(async clock => {
+      const { preview } = setup({ nowMs: () => clock.now }); await preview.enable();
+      let available = true;
+      const output = { ...preview.output, canAllocateVoice: () => available };
+      const scheduler = new MidiScheduler({ enabled: true, mpe: { enabled: false }, limits: { maxActiveNotes: 1 } }); scheduler.setOutput(output);
+      expect(scheduler.sendNote({ note: 60, durationTicks: 0 }, { priority: 0 })).to.equal(true);
+      const existing = [...scheduler._activeNotes.keys()]; available = false;
+      expect(scheduler.sendNote({ note: 72, durationTicks: 0 }, { priority: 4 })).to.equal(false);
+      expect([...scheduler._activeNotes.keys()]).to.deep.equal(existing);
+      expect([...preview._voices][0].released).to.equal(false);
+      expect(scheduler.getOutputPressure().reason).to.equal('local-source-cap');
+      scheduler.dispose(); await preview.dispose();
+    }, { now: 60000 });
   });
 
   it('retains a decaying percussion note whose zero-level release is scheduled in the future', async () => {
