@@ -38,10 +38,36 @@ describe('musical span editing and lane rectangles', () => {
     expect(picker.children).to.have.length(3); picker.value = 'span-open-air'; document.getElementById('procgenSpanDomain').value = 'distance';
     button.dispatchEvent({ type: 'click', target: button });
     expect(intents).to.have.length(1); expect(intents[0].type).to.equal('automation.bundle.add');
+    expect(controls.getSelectedIds()).to.have.length(3);
+    expect(controls.getSelectedIds()).to.deep.equal(project.automation.filter(entry => entry.span).map(entry => entry.id));
     expect(project.automation.filter(entry => entry.span).map(entry => entry.target)).to.deep.equal(['note', 'duration', 'release']);
     expect(project.automation.filter(entry => entry.span).every(entry => entry.span.domain === 'distance')).to.equal(true);
     expect(project.enabled).to.equal(false); expect(document.getElementById('procgenSpanPresetStatus').textContent).to.include('scale-safe');
     controls.dispose(); button.dispatchEvent({ type: 'click', target: button }); expect(intents).to.have.length(1);
+  });
+  it('keeps multiple span editors open, applies one common transaction and retains field focus and names', () => {
+    const document = new TestDocument(); document.registerElement('procgenSpanList', document.createElement('div'));
+    let project = createMidiProjectFromMidiConfig({ sfx: {}, triggers: {} }); const intents = [];
+    let controls;
+    controls = createProcgenMidiSpanControls({ document, getProject: () => project, getLaneCount: () => 8, getRouter: () => null,
+      onIntent: intent => { intents.push(intent); project = reduceMidiProject(project, intent); controls?.render(); } });
+    const first = controls.addSpan(), second = controls.addSpan(); controls.select(first); controls.select(second, { additive: true });
+    const list = document.getElementById('procgenSpanList');
+    expect(controls.getSelectedIds()).to.deep.equal([first, second]);
+    expect(list.children.filter(row => row.className === 'midi-span-row').every(row => find(row, element => element.className === 'midi-span-editor')?.open)).to.equal(true);
+    const name = find(list, element => element.dataset.spanId === first), nameInput = find(name, element => element.dataset.spanProperty === 'name');
+    nameInput.focus(); nameInput.value = 'First melody'; nameInput.dispatchEvent({ type: 'change', target: nameInput });
+    expect(project.automation.find(entry => entry.id === first).name).to.equal('First melody');
+    expect(document.activeElement.dataset.spanProperty).to.equal('name');
+    const bulk = find(list, element => element.dataset.bulkSpanField === 'duration'); bulk.focus(); bulk.value = '8';
+    const before = intents.length; bulk.dispatchEvent({ type: 'change', target: bulk });
+    expect(intents.length).to.equal(before + 1); expect(intents.at(-1).type).to.equal('automation.batch.update');
+    expect(project.automation.filter(entry => entry.span).map(entry => entry.span.duration)).to.deep.equal([8, 8]);
+    expect(document.activeElement.dataset.bulkSpanField).to.equal('duration');
+    controls.updateSelected({ enabled: false }); expect(project.automation.filter(entry => entry.span).every(entry => !entry.enabled)).to.equal(true);
+    const prior = project;
+    expect(reduceMidiProject(project, { type: 'automation.batch.update', updates: [{ automationId: first, patch: { name: 'Partial' } }, { automationId: 'missing', patch: {} }] })).to.deep.equal(prior);
+    expect(reduceMidiProject(project, { type: 'automation.batch.update', updates: [null] })).to.deep.equal(prior);
   });
   it('aligns distance span geometry and drawing with actual144pixel lanes', () => {
     const document = new TestDocument(), canvas = document.createElement('canvas'); document.registerElement('gameCanvas', canvas);

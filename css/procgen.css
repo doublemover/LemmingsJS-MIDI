@@ -165,3 +165,7 @@ body { flex-direction: column; }
 #procgenAdvanced { margin: 10px 0; }
 #procgenDrawer details > summary { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) { #procgenPanel { transition: none; } }
+
+.midi-span-batch { display: flex; flex-wrap: wrap; align-items: end; gap: 6px; padding: 8px; background: #263a2d; border-radius: 6px; }
+.midi-span-batch label { display: grid; gap: 2px; font-size: 11px; }
+.midi-span-batch input, .midi-span-batch select { max-width: 110px; }

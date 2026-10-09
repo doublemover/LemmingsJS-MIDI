@@ -1093,6 +1093,16 @@ function reduceMidiProject(project, intent = {}) {
   case 'automation.add':
     next = addAutomation(current, intent.automation);
     break;
+  case 'automation.batch.update': {
+    const updates = intent.updates;
+    if (!Array.isArray(updates) || !updates.length || updates.length > MAX_MIDI_AUTOMATION_SPANS) return current;
+    const ids = new Set(updates.map(update => update?.automationId));
+    if (ids.size !== updates.length || updates.some(update => !update || !current.automation.some(lane => lane.id === update.automationId && lane.span))) return current;
+    let automation = current.automation;
+    for (const update of updates) automation = updateAutomationLane(automation, update.automationId, update.patch, current.tracks);
+    next = { ...current, automation };
+    break;
+  }
   case 'automation.update':
     next = { ...current, automation: updateAutomationLane(current.automation, intent.automationId, intent.patch, current.tracks) };
     break;

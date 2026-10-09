@@ -5,6 +5,7 @@ import { createMidiOutputCapture } from '../../midi/capture/MidiOutputCapture.js
 import { createMidiCaptureControls } from '../midi-ui/midiCaptureControls.js';
 import { DECORATION_CHOICES } from '../../decorations/ProcgenDecorationPacks.js';
 import { createCharacterUiController, mountCharacterControls } from '../characterUiController.js';
+import { createProcgenMidiOutput } from './ProcgenMidiOutput.js';
 import { createLocalGamePreview } from '../midi-ui/localGamePreview.js';
 import { createMidiProjectFromMidiConfig, projectToMidiConfig, reduceMidiProject, sanitizeMidiProject } from '../../midi/project/MidiProject.js';
 import { PROCGEN_GAME_EVENT_MIDI_PRESETS, applyProcgenGameEventMidiPreset, getProcgenSpawnPriority, setProcgenSpawnPriority, getProcgenMusicBeatTicks } from '../../midi/project/ProcgenMidiDefaults.js';
@@ -51,18 +52,33 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   try { const stored = JSON.parse(window.localStorage?.getItem(spanStorageKey) || 'null'); if (stored?.version === 1 && Array.isArray(stored.value)) project = sanitizeMidiProject({ ...project, automation: [...project.automation, ...stored.value.filter(entry => entry?.span).slice(0, 64)] }); } catch { /* Keep session defaults. */ }
   try { const stored = JSON.parse(window.localStorage?.getItem(workerStorageKey) || 'null'); if (stored?.version === 1) settings.workerLimits = normalizeWorkerLimits(stored.value); } catch { /* Keep session defaults. */ }
   let config = projectToMidiConfig(project), disposed = false;
-  const local = createLocalGamePreview({ getLemmings: () => getRuntime()?.view, getConfig: () => config, immutableConfig: true,
-    onStateChange: state => {
-      const button = byId('procgenListen');
-      if (button) { button.textContent = state.enabled || state.status === 'starting' ? 'Stop listening' : 'Listen locally'; button.setAttribute('aria-pressed', String(state.enabled)); }
-      if (byId('procgenAudioStatus')) byId('procgenAudioStatus').textContent = state.message + (settings.soundFont ? ` SoundFont ${settings.soundFont} requested; sample loading unavailable.` : '') + (settings.output === 'midi' ? ' External MIDI requested; this surface provides local synth listening.' : '');
+  const renderOutput = state => {
+    const button = byId('procgenListen'), midi = state.selectedBackend === 'midi';
+    if (button) { button.textContent = state.enabled || state.status === 'starting' ? 'Stop output' : midi ? 'Connect MIDI' : 'Listen locally'; button.setAttribute('aria-pressed', String(state.enabled)); }
+    if (byId('procgenAudioStatus')) byId('procgenAudioStatus').textContent = state.message + (!midi && settings.soundFont ? ' Requested sample bank is unavailable; using the browser synth.' : '');
+    if (byId('procgenMasterVolume')) byId('procgenMasterVolume').disabled = midi;
+    if (byId('procgenMidiDevice')) byId('procgenMidiDevice').hidden = !midi;
+  };
+  let local;
+  const preview = createLocalGamePreview({ getLemmings: () => getRuntime()?.view, getConfig: () => config, immutableConfig: true,
+    onStateChange: () => local?.localStateChanged() });
+  local = createProcgenMidiOutput({ local: preview, getView: () => getRuntime()?.view, getConfig: () => config, getWebMidi: () => window.WebMidi,
+    backend: settings.output, onStateChange: renderOutput, onDevicesChange: (ports, selectedId) => {
+      const select = byId('procgenMidiDevice'); if (!select) return;
+      select.replaceChildren(); const placeholder = document.createElement('option'); placeholder.value = ''; placeholder.textContent = ports.length ? 'Choose MIDI output' : 'Connect to find MIDI outputs'; select.append(placeholder);
+      for (const port of ports) { const option = document.createElement('option'); option.value = port.id; option.textContent = port.name || port.id; select.append(option); }
+      select.value = selectedId || '';
     } });
+  if (byId('procgenOutput')) byId('procgenOutput').value = settings.output || 'synth';
+  listen(byId('procgenOutput'), 'change', event => { settings.output = event.target.value; local.setBackend(settings.output); });
+  listen(byId('procgenMidiDevice'), 'change', event => local.setOutputId(event.target.value));
+  renderOutput(local.getState());
   const outputCapture = createMidiOutputCapture();
-  const captureControls = createMidiCaptureControls({ document, window, capture: outputCapture, prefix: 'procgenCapture', inspect: () => local.audio.inspectRender?.(),
+  const captureControls = createMidiCaptureControls({ document, window, capture: outputCapture, prefix: 'procgenCapture', inspect: () => local.getState().backend === 'local-browser-audio' ? local.audio.inspectRender?.() : null,
     attach: capture => local.setCapture(capture),
     getMetadata: () => {
       const runtime = getRuntime(), timer = runtime?.game?.getGameTimer?.();
-      return { backend: local.getState().enabled ? 'local-browser-audio' : 'no-active-output', seed: runtime?.world?.seed ?? settings.seed, generation: runtime?.world?.generation,
+      return { backend: local.getState().backend, outputId: local.getState().outputId, outputName: local.getState().outputName, seed: runtime?.world?.seed ?? settings.seed, generation: runtime?.world?.generation,
         tempoBpm: project.transport.bpmBase, speed: timer?.speedFactor, frameMs: timer?.frameTime, scale: project.global.scale,
         settingsReference: { localMasterGain: local.audio.getState().masterVolume, preset: settings.preset, mode: settings.mode, laneCount: settings.laneCount, pack: settings.pack,
           tracks: project.tracks.slice(0, 16).map(track => ({ id: track.id, channel: track.channel, program: track.program })), ensemble: project.ensemble },
@@ -77,7 +93,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     } });
   const spanControls = createProcgenMidiSpanControls({ document, getProject: () => project, getLaneCount: () => settings.laneCount,
     getRouter: () => getRuntime()?.view?.midiPreviewRouter,
-    onSelect: id => spanOverlay.select(id),
+    onSelect: (id, ids) => spanOverlay.select(id, ids),
     onIntent: intent => { project = reduceMidiProject(project, intent); config = projectToMidiConfig(project); local.syncConfig(); spanControls.render(); spanOverlay.changed();
       try { window.localStorage?.setItem(spanStorageKey, JSON.stringify({ version: 1, value: project.automation.filter(entry => entry.span) })); } catch { /* Keep the session edits. */ }
     } });
@@ -330,6 +346,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   const syncActiveCount = count => { if (byId('procgenAliveCount')) byId('procgenAliveCount').textContent = Math.max(0, count).toLocaleString() + ' alive'; };
   return { settings, local, outputCapture, captureControls, getShareUrl, syncActiveCount,
     syncMetrics(state) {
+      local.syncStatus?.();
       syncActiveCount(state.alive); syncProgress(state); tensionControls.syncStatus(); spanControls.syncStatus();
       const pressure = getRuntime()?.view?.midiPreviewRouter?.getOutputPressure?.();
       const outputPressure = byId('procgenOutputPressure');

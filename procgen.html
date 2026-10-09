@@ -10,6 +10,7 @@
   <link type="text/css" rel="stylesheet" href="css/character-controls.css">
   <link type="text/css" rel="stylesheet" href="css/midi-spans.css">
   <link type="text/css" rel="stylesheet" href="css/icons.css">
+  <script src="js/vendor/webmidi.js"></script>
   <script type="module" src="js/app/procgenBoot.js"></script>
 </head>
 <body>
@@ -30,7 +31,7 @@
       </div>
     <div class="procgen-button-group"><button id="procgenPause" type="button" aria-pressed="false" title="Pause or play (Space)">Pause</button><button id="procgenStep" type="button" title="Pause and advance one tick (])">Step</button></div>
     <div class="procgen-button-group"><button id="procgenZoomOut" type="button" aria-label="Zoom out" title="Zoom out (Z)">−</button><button id="procgenFollow" type="button" title="Follow the leading living lemming (F)">Follow</button><button id="procgenZoomIn" type="button" aria-label="Zoom in" title="Zoom in (X)">+</button></div>
-    <div id="procgenAudioControls" class="procgen-audio-controls"><button id="procgenListen" type="button" aria-pressed="false">Listen locally</button><label title="Local master volume; above 100% boosts browser listening"><span class="visually-hidden">Master volume</span><input id="procgenMasterVolume" type="range" min="0" max="400" step="1" value="70" aria-label="Master volume"><output id="procgenMasterVolumeValue">70%</output></label><button id="procgenPanic" type="button" title="Stop all local notes">Panic</button></div>
+    <div id="procgenAudioControls" class="procgen-audio-controls"><label><span class="visually-hidden">Sound destination</span><select id="procgenOutput" aria-label="Sound destination"><option value="synth">Browser synth</option><option value="midi">MIDI device</option></select></label><select id="procgenMidiDevice" aria-label="MIDI output device" hidden><option value="">Connect to find MIDI outputs</option></select><button id="procgenListen" type="button" aria-pressed="false">Listen locally</button><label title="Local master volume; above 100% boosts browser listening"><span class="visually-hidden">Master volume</span><input id="procgenMasterVolume" type="range" min="0" max="400" step="1" value="70" aria-label="Master volume"><output id="procgenMasterVolumeValue">70%</output></label><button id="procgenPanic" type="button" title="Stop all notes on the active output">Panic</button></div>
     <span id="procgenOutputPressure" role="status" aria-live="off"></span>
     <button id="procgenHelp" type="button" title="Controls and shortcuts">Help</button>
     <span id="procgenNukeStatus" class="procgen-nuke-status" role="status"></span>
@@ -77,6 +78,7 @@
         <label><input id="procgenSpanVisible" type="checkbox" checked> Show rectangles</label>
         <label><input id="procgenSpanEdit" type="checkbox"> Draw on lanes</label>
       </div><p>Beat rectangles use a musical timeline across the screen; distance rectangles follow world X. Enable Draw on lanes to select, move, resize or draw a lane group. Camera dragging resumes when drawing is off.</p>
+      <p id="procgenSpanPresetStatus" role="status" aria-live="polite"></p>
       <div id="procgenSpanList" class="midi-span-list"></div>
     </details>
     <details class="midi-output-capture"><summary>Output capture</summary>

@@ -33,6 +33,7 @@ const getMidiSpanRectangles = (renderer, project, entries = project.automation) 
 };
 const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDomain, getTarget, onUpdate, onAdd, onSelect }) => {
   const canvas = document.getElementById('gameCanvas'), listeners = [];
+  let selectedIds = new Set();
   let renderer = null, selectedId = null, editing = false, visible = true, drag = null, draft = null, rectangles = [], revision = 0;
   const listen = (name, handler) => { canvas?.addEventListener(name, handler, { capture: true }); listeners.push([name, handler]); };
   const changed = () => { revision++; renderer?.render(); };
@@ -72,7 +73,7 @@ const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDom
   const api = {
     get revision() { return revision; },
     sync() { const next = getRuntime()?.lanes?.renderer; if (next !== renderer) { if (renderer?.midiSpanOverlay === api) renderer.midiSpanOverlay = null; renderer = next; if (renderer) renderer.midiSpanOverlay = api; } },
-    changed, select(id) { selectedId = id; changed(); },
+    changed, select(id, ids = [id]) { selectedId = id; selectedIds = new Set(ids); changed(); },
     setEditing(value) { editing = value === true; if (editing) visible = true; else draft = drag = null; changed(); },
     setVisible(value) { visible = value === true; if (!visible) { editing = false; draft = drag = null; rectangles = []; } changed(); },
     draw(context, current, dpr) {
@@ -83,7 +84,7 @@ const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDom
       for (const rect of rectangles) {
         const { entry } = rect, color = SPAN_COLORS[entry.target] || '#dfb75d';
         context.globalAlpha = entry.enabled ? 0.14 : 0.04; context.fillStyle = color; context.fillRect(rect.x, rect.y, rect.w, rect.h);
-        context.globalAlpha = entry.enabled ? 0.85 : 0.35; context.strokeStyle = color; context.lineWidth = selectedId === entry.id ? 2 : 1;
+        context.globalAlpha = entry.enabled ? 0.85 : 0.35; context.strokeStyle = color; context.lineWidth = selectedIds.has(entry.id) ? 2 : 1;
         context.setLineDash(rect.repeating ? [2, 3] : entry.span.shape === 'ramp' ? [6, 3] : entry.enabled ? [] : [2, 4]); context.strokeRect(rect.x, rect.y, rect.w, rect.h);
         const labelY = Math.max(rect.y, current.hud?.sprites ? 16 * Math.max(1, Math.floor(Math.min(3, rect.axis.width / 540))) + 2 : 0), labelX = rect.x + Math.max(0, rect.w - 280);
         if (labelY + 18 <= rect.y + rect.h && rect.w >= 34) {

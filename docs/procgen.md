@@ -1,6 +1,6 @@
 # Procedural shared-world mode
 
-`procgen.html` is a full-viewport, left-to-right shared world. Common controls stay visible; the centered Details handle travels with its sliding panel, closed and inert by default. New sessions start with eight lanes, 144 physical pixels per lane and the original Lemmings pack. Explicit saved lane/height/music preferences and core URL choices take precedence. Local listening requires one click and never sends to a hardware MIDI port.
+`procgen.html` is a full-viewport, left-to-right shared world. Common controls stay visible; the centered Details handle travels with its sliding panel, closed and inert by default. New sessions start with eight lanes, 144 physical pixels per lane and the original Lemmings pack. Explicit saved lane/height/music preferences and core URL choices take precedence. Browser listening requires one click. Selecting MIDI device exposes an explicit Connect action and device picker; only that action requests Web MIDI permission.
 
 ## Shared terrain and simulation
 
@@ -128,7 +128,7 @@ particle colors directly rather than caching a mutable one-pixel sprite. The
 headless scaling harness omits sprites and this cosmetic pool.
 
 Local music uses the same immutable preset catalog and router as the studio.
-Audio starts only on the Listen button. Live lane/height/pack changes detach the old game and reattach the existing unlocked AudioContext; blur and hidden pages suspend it until focus/visibility returns. Explicit Stop or Panic cancels resumption and never auto-enables hardware MIDI. Polyphony/event
+Audio starts only on Listen locally or Connect MIDI for the selected destination. Live lane/height/pack changes detach the old game and reattach the already unlocked browser graph or connected device; blur and hidden pages suspend the route until focus/visibility returns. Explicit Stop or Panic cancels resumption. Choosing a destination requests no permission and starts no sound. MIDI device selection stops the old route and requires Connect again; denied/missing/disconnected devices produce an actionable status without silently enabling synth. Local gain is disabled for hardware output, whose velocities remain MIDI-safe. Output capture records the actual destination and device. A requested sample bank remains an explicit browser-synth fallback until an authorized bank and sample loader are available. Polyphony/event
 limits still apply to dense cohorts; not every simultaneous event is audible.
 Procgen events use the RAF wall timestamp and the speed-adjusted nominal tick
 duration, avoiding future-time drift. Pause/visibility changes silence notes while
@@ -163,7 +163,7 @@ are in reach instead of wasting repeated bashes and then digging into void.
 resume, bounded step and compact state. `window.procgenDebugState()` reports the
 shared-world state. Tests cover real mask equivalence, deterministic replay,
 independent routes, all source recipes, stall growth/pause/cascade/reset,
-character balance, drawer interactions and local-only controls. Browser E2E and
+character balance, drawer interactions and selected output controls. Browser E2E and
 visual QA require a permitted browser environment; unit/headless results alone
 are not a live-rendering or listening pass.
 

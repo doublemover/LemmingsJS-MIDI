@@ -32,10 +32,10 @@ describe('bounded output capture controls', () => {
   it('records changed context as bounded flat fields and detaches the stopped observer', async () => {
     await withFakeClockAndPerformance(async clock => {
       const f = fixture(clock); f.controls.start();
-      f.metadata.backend = 'local-browser-audio'; f.metadata.settingsReference.updatedAt = 2;
+      f.metadata.backend = 'midi-output-api'; f.metadata.outputId = 'changed-device'; f.metadata.outputName = 'Changed device'; f.metadata.settingsReference.updatedAt = 2;
       f.controls.refresh();
       const marker = f.capture.snapshot().records.find(record => record.stage === 'context-change');
-      expect(marker).to.include({ backend: 'local-browser-audio', scaleName: 'dorian', scaleRoot: 2, projectId: 'test', projectUpdatedAt: 2 });
+      expect(marker).to.include({ backend: 'midi-output-api', outputId: 'changed-device', outputName: 'Changed device', scaleName: 'dorian', scaleRoot: 2, projectId: 'test', projectUpdatedAt: 2 });
       expect(marker.scaleDegrees).to.deep.equal([0, 2, 3, 5, 7, 9, 10]);
       expect(marker.trackPrograms).to.deep.equal([33]);
       f.controls.stop(); expect(f.attachments.at(-1)).to.equal(null);

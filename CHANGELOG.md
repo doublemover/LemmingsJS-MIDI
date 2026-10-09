@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Share one bounded browser mix across game listening and instrument-faithful audition while preserving independent Stop and global Panic.
+- Preserve lossless cold procgen edits and bounded interest-based revisions; deduplicate and account for forced terrain growth.
+- Keep multiple musical span editors open with atomic common edits; send selected procgen MIDI output to the explicitly connected device.
+
 - Preserve ensemble musical Undo and reversible Reset; stop auditions and pending unlocks, report session-only saves, add explicit Save as new, and reject stale imports.
 - Give newly queued terrain work its actual grace period and fairly admit bounded relevant route workfronts after harmless earlier actors.
 
