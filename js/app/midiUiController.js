@@ -1188,7 +1188,7 @@ const createMidiUiController = ({
   const hasRecordCapture = () => recordState.active || recordState.notes.length > 0 || recordState.activeNotes.size > 0;
 
   const clearTransientProjectState = () => {
-    editHistory.endGesture();
+    workbench?.clearPlayback(); editHistory.endGesture();
     learnState.active = false; learnState.pending = null; learnState.sourceId = null; learnState.trackId = null; learnState.conflicts = [];
     clearLearnCapture(); clearRecordCapture(); resetRecordState();
     localInteraction += 1; auditionPending = false;
@@ -2612,7 +2612,7 @@ const createMidiUiController = ({
           : 'One plain note at the exact game event. Listen here uses browser audio only.');
     chooseSoundView(soundView);
     renderLocalSummary();
-    workbench?.render(); eventClipEditor?.render();
+    eventClipEditor?.render(); workbench?.render();
   };
 
   const renderConnectionControls = () => {

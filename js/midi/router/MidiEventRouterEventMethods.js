@@ -90,7 +90,9 @@ const midiEventRouterEventMethods = {
       const meta = {
         ...origin, requestId, tick, speed: event.speedFactor, frameMs: event.frameMs, ...this._captureBeatFields(tick),
         sfxId: event.sfxId,
-        eventType: event.type,
+        sourceId: sfx.sourceId ?? null, sourceKind: sfx.sourceKind ?? (triggerCfg ? 'trigger' : 'sfx'),
+        sourceKey: sfx.sourceKey ?? String(triggerCfg ? event.triggerType : event.sfxId), clipId: sfx.clipSequence?.id ?? null,
+        originTick: tick, eventType: event.type,
         priority,
         triggerType: event.triggerType ?? null,
         trackId: spec.trackId ?? null,

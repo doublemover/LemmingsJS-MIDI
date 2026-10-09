@@ -250,3 +250,5 @@ body.game-page.studio-open[data-midi-layout=overlay] .midi-sequencer { grid-colu
 .midi-output-capture [hidden] { display: none; }
 
 .midi-output-pressure[hidden] { display: none; }
+
+.midi-event-clip-cell .midi-dispatched-cell-note { position: absolute; left: 2px; right: 2px; z-index: 1; pointer-events: none; border-radius: 2px; background: #e9bf78; color: #1a281e; font: 8px ui-monospace, monospace; line-height: 10px; text-align: left; padding: 0 2px; }

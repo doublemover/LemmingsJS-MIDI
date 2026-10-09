@@ -1108,15 +1108,17 @@ describe('polyphonic clip dispatch to existing event-card playback feedback', fu
       const document = new TestDocument(), row = document.createElement('button'); row.dataset.gameEventId = '20';
       let reads = 0; row.getBoundingClientRect = () => { reads++; return { width: 240 }; };
       const create = document.createElement.bind(document), animations = [], emitted = [];
-      document.createElement = tag => { const node = create(tag); node.isConnected = true; node.remove = () => row.removeChild(node);
+      document.createElement = tag => { const node = create(tag); node.isConnected = true; node.remove = () => node.parent?.removeChild(node);
         node.animate = (frames, options) => { const animation = { frames, options, cancel() {} }; animations.push(animation); return animation; }; return node; };
-      const feedback = createMidiEventPlayback({ document, window: { performance: { now: () => clock.now } }, getRows: () => [row] });
+      const cells = Array.from({ length: 8 }, () => document.createElement('button')); let selectedSource = 'sfx-20';
+      const feedback = createMidiEventPlayback({ document, window: { performance: { now: () => clock.now } }, getRows: () => [row],
+        getCellTarget: event => event.clipId === 'poly' && event.sourceId === selectedSource ? cells[event.stepIndex] : null });
       const preview = new BrowserNotePreview({ createAudioContext: () => context, nowMs: () => clock.now,
         onPlayback: event => { emitted.push(event); feedback.onPlayback({ ...event, owner: 'game' }); } }); await preview.enable();
       const router = new MidiEventRouter({ enabled: true, mpe: { enabled: false }, density: { velocityBoost: 0, durationScale: 0 },
         scale: { name: 'chromatic', root: 0 }, noteRange: { min: 0, max: 127 }, velocityRange: { min: 1, max: 127, default: 80 },
-        durationTicks: { min: 1, max: 960, default: 4 }, sfx: { 20: { note: 60, channel: 1, clipSequence: { id: 'poly', advance: 'game-tick', spacingTicks: 2,
-          steps: [{ voices: [{ note: 60, velocity: 45, durationTicks: 5 }, { note: 64, velocity: 95, durationTicks: 2 }], transformLayers: [{ type: 'repeat', count: 2, spacingTicks: 2, transpose: 7 }] }] } } } });
+        durationTicks: { min: 1, max: 960, default: 4 }, sfx: { 20: { note: 60, channel: 1, sourceId: 'sfx-20', sourceKind: 'sfx', sourceKey: '20', clipSequence: { id: 'poly', advance: 'game-tick', spacingTicks: 2,
+          steps: [{ voices: [{ note: 60, velocity: 45, durationTicks: 5 }, { note: 64, velocity: 95, durationTicks: 2 }], transformLayers: [{ type: 'repeat', count: 2, spacingTicks: 2, transpose: 7 }] }, { note: null }, { note: 72, probability: 0 }] } } } });
       const timer = { tick: 0, frameTime: 60, onGameTick: new EventHandler(), getGameTicks() { return this.tick; }, get tps() { return 1000 / this.frameTime; } };
       router.setOutput(preview.output); router.attach({ onEvent: new EventHandler(), gameTimer: timer });
       try {
@@ -1126,9 +1128,13 @@ describe('polyphonic clip dispatch to existing event-card playback feedback', fu
         expect(starts.map(event => [event.note, event.velocity])).to.deep.equal([[60, 45], [64, 95], [67, 45], [71, 95]]);
         starts.forEach((event, index) => expect(event.durationMs).to.be.closeTo(index % 2 ? 120 : 300, 0.000001));
         expect(new Set(starts.map(event => event.id)).size).to.equal(4); expect(row.children.map(node => node.textContent)).to.include.members(['C4', 'E4', 'G4', 'B4']);
+        expect(starts.every(event => event.clipId === 'poly' && event.sourceId === 'sfx-20' && event.originTick === 0 && event.stepIndex === 0)).to.equal(true);
+        expect(cells[0].children.map(node => node.textContent)).to.deep.equal(['C4', 'E4', 'G4', 'B4']); expect(cells.slice(1).every(cell => !cell.children.length)).to.equal(true);
+        selectedSource = 'sfx-21'; feedback.render(); expect(cells.every(cell => !cell.children.length)).to.equal(true); expect(row.children).to.have.length(4);
+        selectedSource = 'sfx-20'; feedback.render(); expect(cells[0].children).to.have.length(4);
         const before = reads; for (let index = 0; index < 5; index++) feedback.render(); expect(reads).to.equal(before);
         expect(animations.every(animation => animation.options.duration > 0 && animation.frames.at(-1).opacity === 0)).to.equal(true);
-        router.scheduler.allNotesOff(); expect(row.children).to.have.length(0); expect(preview._voices.size).to.equal(0);
+        router.scheduler.allNotesOff(); expect(row.children).to.have.length(0); expect(preview._voices.size).to.equal(0); expect(cells.every(cell => !cell.children.length)).to.equal(true);
       } finally { router.dispose(); preview.dispose(); feedback.dispose(); }
     });
   });

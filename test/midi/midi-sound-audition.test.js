@@ -60,7 +60,7 @@ describe('local event audition context', function() {
         { index: 1, note: null }, { index: 2, note: 72, velocity: 100, durationTicks: 4 }] }];
     const clean = sanitizeMidiProject(project), assigned = clean.sources.find(item => item.id === source.id);
     const plan = createSoundAuditionPlan(assigned, clean, 60, 0, {}, { roleTrackId: 'ensemble-melody' });
-    expect(plan.notes).to.have.length(3); expect(plan.notes.map(note => note.offsetMs)).to.deep.equal([0, 0, 360]);
+    expect(plan.notes).to.have.length(3); expect(plan.notes.every(note => note.playback.sourceId === assigned.id && note.playback.clipId === 'context-clip' && note.playback.eventType === 'local-audition')).to.equal(true); expect(plan.notes.map(note => note.offsetMs)).to.deep.equal([0, 0, 360]);
     expect(plan.notes.every(note => note.program === 81 && note.channel === 4 && note.ensembleRole === 'melody' && note.trackId === 'ensemble-melody')).to.equal(true);
     expect(plan.notes.map(note => note.durationMs)).to.deep.equal([120, 300, 240]);
     expect(plan.notes[0].velocity).not.to.equal(plan.notes[1].velocity);

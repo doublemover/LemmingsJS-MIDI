@@ -1587,6 +1587,7 @@ function projectToMidiConfig(project, factoryConfig = {}) {
     const mapping = source.mode === 'clip'
       ? buildRuntimeClipMapping(source, track, clipsById.get(source.clipId), hiddenByTrack, defaultVelocity, defaultDuration)
       : buildRuntimeMapping(source, track, hiddenByTrack, defaultVelocity);
+    mapping.sourceId = source.id; mapping.sourceKind = source.kind; mapping.sourceKey = source.sourceKey;
     if (source.kind === 'trigger' || source.kind === 'midiFlag') {
       config.triggers[source.sourceKey] = mapping;
     } else if (source.kind === 'sfx') {

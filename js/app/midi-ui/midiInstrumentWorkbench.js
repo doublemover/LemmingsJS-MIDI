@@ -26,7 +26,12 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
   const activity = new Map(), references = new Map();
   const getRows = getEventRows || (() => Array.from(byId('midiGameEventList')?.children || []));
   const skillDock = createMidiSkillEventDock({ document, window, getLemmings, getRows });
-  const playback = createMidiEventPlayback({ document, window, getRows });
+  const playback = createMidiEventPlayback({ document, window, getRows, getCellTarget: event => {
+    const source = getSource(), root = byId('midiEventClipGrid');
+    if (!visible || source?.mode !== 'clip' || !root || !event.clipId || source.clipId !== event.clipId || !Number.isInteger(event.stepIndex) || event.stepIndex < 0 || event.stepIndex >= 16) return null;
+    const matches = event.sourceId != null ? source.id === event.sourceId : source.kind === event.sourceKind && source.sourceKey === String(event.sourceKey);
+    return matches ? root.children[event.stepIndex] || null : null;
+  } });
   let layoutAnimation = null;
   let lastEvent = null, lastTick = null;
   try { const stored = window?.localStorage?.getItem(LAYOUT_KEY); if (LAYOUTS.includes(stored)) layout = stored; } catch { /* Layout is optional storage. */ }
@@ -254,7 +259,7 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
       (event.shiftKey ? history.redo : history.undo)(getProject(), commitProject); render();
     });
   };
-  return { initialize, render, setVisible, setAudioActive, setLayout, refreshClock, onPlayback: playback.onPlayback,
+  return { initialize, render, setVisible, setAudioActive, setLayout, refreshClock, onPlayback: playback.onPlayback, clearPlayback: playback.clear,
     getState: () => ({ layout, visible, clock: gameClock(getLemmings()?.game?.getGameTimer?.()), lastEvent: lastEvent && { sfxId: lastEvent.sfxId, tick: lastEvent.tick } }),
     dispose: () => { disposed = true; visible = false; refreshChrome(); if (timerId != null) window?.clearInterval?.(timerId); timerId = null; detach(); skillDock.dispose(); playback.dispose(); layoutAnimation?.cancel?.(); menus?.dispose(); menus = null; palettes?.dispose(); palettes = null; references.clear(); activity.clear(); } };
 };

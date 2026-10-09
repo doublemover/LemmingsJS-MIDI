@@ -190,7 +190,13 @@ describe('expanded game-event MIDI preset library', function() {
           [TriggerTypes.DROWN, SoundEffectIds.DROWN],
           [TriggerTypes.KILL, SoundEffectIds.TRAP_FIRE],
           [TriggerTypes.FRYING, SoundEffectIds.TRAP_FIRE]
-        ]) expect(config.triggers[trigger]).to.deep.equal(config.sfx[sfx]);
+        ]) {
+          const { sourceId: triggerId, sourceKind: triggerKind, sourceKey: triggerKey, ...triggerMusic } = config.triggers[trigger];
+          const { sourceId: sfxId, sourceKind: sfxKind, sourceKey: sfxKey, ...sfxMusic } = config.sfx[sfx];
+          expect(triggerMusic).to.deep.equal(sfxMusic);
+          expect(triggerKind).to.equal('trigger'); expect(triggerKey).to.equal(String(trigger));
+          expect(sfxKind).to.equal('sfx'); expect(sfxKey).to.equal(String(sfx)); expect(triggerId).not.to.equal(sfxId);
+        }
       }
     }
   });

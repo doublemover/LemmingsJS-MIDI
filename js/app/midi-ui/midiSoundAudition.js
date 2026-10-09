@@ -38,7 +38,8 @@ const createSoundAuditionPlan = (source, project, frameMs = 60, eventIndex = 0, 
     pitchBendRange: config.mpe?.enabled ? (config.mpe.pitchBendRange?.semitones ?? 2) + (config.mpe.pitchBendRange?.cents ?? 0) / 100 : 2,
     trackId: item.trackId, priority: item.priority, voiceBudget: item.voiceBudget, laneIndex, laneCount: event.laneCount,
     previewContextSource: explicitRole ? 'explicit-role' : Number.isInteger(previewContext.lemmingId) ? 'explicit-actor' : 'source-only' });
-  const playback = (item = spec) => ({ sfxId: event.sfxId, triggerType: event.triggerType, laneIndex, laneCount: event.laneCount, lemmingId: previewContext.lemmingId ?? null,
+  const playback = (item = spec) => ({ sourceId: source.id, sourceKind: source.kind, sourceKey: source.sourceKey,
+    clipId: m.clipSequence?.id ?? null, originTick: counters.tick ?? null, eventType: 'local-audition', sfxId: event.sfxId, triggerType: event.triggerType, laneIndex, laneCount: event.laneCount, lemmingId: previewContext.lemmingId ?? null,
     ensembleRole: item.ensembleRole, program: item.program, channel: item.channel, percussion: item.percussion });
   if (m.clipSequence) {
     const sequence = m.clipSequence, length = sequence.steps.length;
