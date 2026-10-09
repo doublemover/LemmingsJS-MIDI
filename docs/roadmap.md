@@ -1120,3 +1120,23 @@ pointer release, undoes/redoes both together, and preserves a named, disabled
 spatial curve and its points across reload. No output activation, MIDI permission
 request or page error occurs. Existing runtime limits remain unchanged. The
 ignored receipt is temp/procgen-group-native/receipt.json.
+
+Open-bank geometry checkpoint: Crystal lane seed 8, chunk 15 naturally reserves
+one complete 64 by 16 liquid, with its original frames and trigger, two 24-pixel
+shores at y=124 and a solid floor at y=140. The production records its native
+motif foundation and explicit negative void; it is generated geometry, not an
+authored open basin or a qualified crew route. Optional words, columns and
+assemblies respect the reservation. Existing closed cavities and the roofed
+4157451727 candidate retain their source geometry. The entire opening and hazard
+activate in one existing object job after all bank/floor foundation dependencies.
+
+Focused checks compare every collision, color and steel sample before and after
+activation, reject missing support, steel, source art, overlapping hazards and
+invalid bounds, and verify cold rebuild/request-order identity. New helper
+coverage is 100% lines/functions and 98.18% branches; another prior non-liquid
+object envelope remains a useful branch target. The muted native inspection uses
+public seed 4274680063, 16 lanes, lane 9 and 3x zoom. Cold terrain has no enabled
+hazard; explicit bounded source preparation reveals both intact shores, floor,
+open sky and original liquid with no page errors. This source inspection does
+not certify ordinary traffic. Ignored receipts are temp/source-open-bank-native.json
+and temp/source-open-bank-inspection-native.png.

@@ -14,6 +14,7 @@ import { PROCGEN_INTRO_SAFE_END, PROCGEN_RECOVERY_GAP_END, progressionAt, introA
 import { compileAuthoredAssemblies } from './ProcgenAuthoredAssemblies.js';
 import { placeAuthoredAssemblies, isProcgenAssemblyEligible } from './ProcgenAssemblyPlacement.js';
 import { createTerrainGrowthPlan } from './ProcgenTerrainMaterialization.js';
+import { planOpenBankBasin, basinVoidAt } from './ProcgenOpenBankBasins.js';
 
 const TERRAIN_CHUNK_WIDTH = 128;
 const TERRAIN_HEIGHT = 96;
@@ -151,10 +152,16 @@ class ProcgenRecipeTerrain {
     // upper opening and optional bridge remain; later gaps keep full depth.
     descriptor.gapFloor = descriptor.gapWidth && progression.gapDepth != null ? Math.min(this.height - 2,
       Math.max(this._surface(seed, chunk, descriptor.gapX - origin - 1, descriptor), this._surface(seed, chunk, descriptor.gapX - origin + descriptor.gapWidth, descriptor)) + progression.gapDepth) : null;
-    descriptor.objects = [];
+    descriptor.objects = []; descriptor.assemblies = [];
     descriptor.zone = this.zonePlanner?.zoneAt(seed, origin) || null;
     const pattern = this.patterns[mix(phaseCode ^ code) % this.patterns.length];
-    const baseSurface = x => pattern.topProfile[this._patternColumn(pattern, x + origin)] < 0 ? -1 : this._surface(seed, chunk, x, descriptor);
+    // Choose the complete basin grammar before optional attachments. A reserved
+    // footprint prevents those sources from being placed then erased for a pool.
+    if (origin >= SHARED_TERRAIN_MINIMUM_X && (code & 384) === 384)
+      descriptor.objects = this._placeObjects(seed, chunk, descriptor).filter(object => object.basin);
+    const basinReservations = descriptor.objects.map(object => ({ x: object.basin.bounds.x1 - origin, y: 0,
+      piece: { width: object.basin.bounds.x2 - object.basin.bounds.x1, height: this.height }, decor: false }));
+    const baseSurface = x => basinReservations.some(p => x >= p.x && x < p.x + p.piece.width) || pattern.topProfile[this._patternColumn(pattern, x + origin)] < 0 ? -1 : this._surface(seed, chunk, x, descriptor);
     descriptor.word = !reserved && this.wordPlanner?.plan(seed, chunk, TERRAIN_CHUNK_WIDTH, x => {
       if (x + origin >= descriptor.gapX && x + origin < descriptor.gapX + descriptor.gapWidth) return -1;
       return baseSurface(x);
@@ -166,7 +173,7 @@ class ProcgenRecipeTerrain {
       descriptor.placements.push(...word.placements);
     }
     const assembled = placeAuthoredAssemblies({ compiled: this.compiledAssemblies, seed, chunk, origin, code, progression,
-      baseSolid: (x, y) => this.solidSample(seed, chunk, x, y, descriptor), baseSurface, occupied: descriptor.placements, height: this.height,
+      baseSolid: (x, y) => this.solidSample(seed, chunk, x, y, descriptor), baseSurface, occupied: [...descriptor.placements, ...basinReservations], height: this.height,
       gapX: descriptor.gapX - origin, gapWidth: descriptor.gapWidth });
     // Filter complete final groups before any member enters growth/collision.
     // Later source eligibility and every exact member transform stay intact.
@@ -177,9 +184,9 @@ class ProcgenRecipeTerrain {
         admitted.add(assembly); descriptor.placements.push(...members);
       } else descriptor.deferredAssemblies.push({ id: assembly.id, sourceRevision: assembly.sourceRevision, reason: 'early-local-route-envelope' });
     }
-    descriptor.objects = assembled.objects.filter(object => admitted.has(object.assembly));
+    descriptor.objects.push(...assembled.objects.filter(object => admitted.has(object.assembly)));
     descriptor.assemblies = assembled.assemblies.filter(assembly => admitted.has(assembly));
-    const occupied = [...descriptor.placements, ...descriptor.assemblies.map(assembly => ({ x: assembly.bounds.x1 - origin,
+    const occupied = [...descriptor.placements, ...basinReservations, ...descriptor.assemblies.map(assembly => ({ x: assembly.bounds.x1 - origin,
       y: assembly.bounds.y1, piece: { width: assembly.bounds.x2 - assembly.bounds.x1, height: assembly.bounds.y2 - assembly.bounds.y1 }, decor: false }))];
     if (!reserved) descriptor.placements.push(...placeSourceColumn({ library: this.columnLibrary, code, origin, height: this.height, surface: baseSurface,
       solid: (x, y) => this.solidSample(seed, chunk, x, y, descriptor), steel: (x, y) => this.steelSample(seed, chunk, x, y, descriptor),
@@ -282,17 +289,27 @@ class ProcgenRecipeTerrain {
       if (descriptor.assemblies.some(a => x + image.width > a.bounds.x1 - 2 && x < a.bounds.x2 + 2 && y + image.height > a.bounds.y1 - 2 && y < a.bounds.y2 + 2)) continue;
       // Previously admitted gadgets retain their full contact/support envelope;
       // a second cavity cannot erase the first pool's side or floor support.
-      if (objects.some(other => {
+      if ([...descriptor.objects, ...objects].some(other => {
         const previous = other.piece.image;
-        const left = Math.min(other.x, other.x + previous.trigger_left) - 2, right = Math.max(other.x + previous.width, other.x + previous.trigger_left + previous.trigger_width) + 2;
-        const top = Math.min(other.y, other.y + previous.trigger_top), bottom = other.role === 'liquid' ? this.height : Math.max(other.supportY + 8, other.y + previous.trigger_top + previous.trigger_height);
+        const left = (other.basin?.bounds.x1 ?? Math.min(other.x, other.x + previous.trigger_left)) - 2, right = (other.basin?.bounds.x2 ?? Math.max(other.x + previous.width, other.x + previous.trigger_left + previous.trigger_width)) + 2;
+        const top = other.basin ? 0 : Math.min(other.y, other.y + previous.trigger_top), bottom = other.role === 'liquid' ? this.height : Math.max(other.supportY + 8, other.y + previous.trigger_top + previous.trigger_height);
         return envelope.left < right && envelope.right > left && envelope.top < bottom && envelope.bottom > top;
       })) continue;
       const word = descriptor.word;
       if (word && x + image.width > origin + word.x - 2 && x < origin + word.x + word.width + 2 && y + image.height > word.y - 2 && y < word.baseline + 2) continue;
-      objects.push({ piece, x, y, role, phase: code % image.frames.length, interactive: false,
+      const object = { piece, x, y, role, phase: code % image.frames.length, interactive: false,
         animation: trigger === TriggerTypes.TRAP || image.animationLoop === false ? 'idle' : 'loop',
-        clipToTerrain: role === 'terrain-overlay', supportY: role === 'ambient' || role === 'terrain-overlay' ? null : y + image.height });
+        clipToTerrain: role === 'terrain-overlay', supportY: role === 'ambient' || role === 'terrain-overlay' ? null : y + image.height };
+      // Optional complete open-bank production. Rejected candidates retain the
+      // existing closed cavity, including every authored roof and support.
+      if (role === 'liquid' && (code & 384) === 384) {
+        const pattern = this.patterns[mix(phaseCode ^ code) % this.patterns.length];
+        const basin = planOpenBankBasin({ object, descriptor: { ...descriptor, objects: [...descriptor.objects, ...objects] },
+          route: this.routes.find(route => route.id === pattern.routeId), height: this.height, sourceRevision: this.recipe.assetSha256,
+          solid: (x, y) => this.solidSample(seed, chunk, x, y, descriptor), steel: (x, y) => this.steelSample(seed, chunk, x, y, descriptor) });
+        if (basin) object.basin = basin;
+      }
+      objects.push(object);
     }
     return objects;
   }
@@ -319,7 +336,7 @@ class ProcgenRecipeTerrain {
     for (let index = 0; index < descriptor.objects.length; index++) {
       const object = descriptor.objects[index]; if (object.role !== 'liquid' || active && !state.active[active.objectJobs[index]]) continue;
       const dx = x + descriptor.origin - object.x, bottom = object.y + object.piece.image.height;
-      if (y >= object.y && y < bottom && dx >= 0 && dx < object.piece.image.width) {
+      if (y >= object.y && y < bottom && dx >= 0 && dx < object.piece.image.width || basinVoidAt(object.basin, x + descriptor.origin, y)) {
         result.solid = result.steel = false;
         if (withColor) result.color = 0;
       }
@@ -383,8 +400,10 @@ class ProcgenRecipeTerrain {
       if (pixels) pixels[index] = 0;
     }
     for (const object of d.objects) if (object.role === 'liquid') {
-      const left = object.x - d.origin, right = left + object.piece.image.width, bottom = object.y + object.piece.image.height;
-      for (let x = left; x < right; x++) for (let y = object.y; y < bottom; y++) {
+      const left = (object.basin?.bounds.x1 ?? object.x) - d.origin, right = (object.basin?.bounds.x2 ?? object.x + object.piece.image.width) - d.origin;
+      const top = object.basin ? 0 : object.y, bottom = object.y + object.piece.image.height;
+      for (let x = left; x < right; x++) for (let y = top; y < bottom; y++) {
+        if (object.basin && !basinVoidAt(object.basin, x + d.origin, y)) continue;
         const index = y * width + x, bit = 1 << (index & 31), at = index >>> 5;
         solid[at] &= ~bit; steel[at] &= ~bit; if (pixels) pixels[index] = 0;
       }

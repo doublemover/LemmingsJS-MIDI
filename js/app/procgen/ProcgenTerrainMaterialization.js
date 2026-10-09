@@ -79,12 +79,13 @@ const createTerrainGrowthPlan = ({ descriptor, pattern, route, pieces, assemblie
         objectJobs[at] = index; emitted.set(member, index);
       }
     } else {
-      const x1 = assembly ? assembly.bounds.x1 - descriptor.origin : Math.min(...objects.map(o => o.x - descriptor.origin - (o.role === 'liquid' ? 1 : 0)));
-      const x2 = assembly ? assembly.bounds.x2 - descriptor.origin : Math.max(...objects.map(o => o.x - descriptor.origin + o.piece.image.width + (o.role === 'liquid' ? 1 : 0)));
-      const y1 = Math.min(...objects.map(o => o.y)), y2 = Math.max(...objects.map(o => o.y + o.piece.image.height));
+      const x1 = assembly ? assembly.bounds.x1 - descriptor.origin : Math.min(...objects.map(o => o.basin ? o.basin.bounds.x1 - descriptor.origin : o.x - descriptor.origin - (o.role === 'liquid' ? 1 : 0)));
+      const x2 = assembly ? assembly.bounds.x2 - descriptor.origin : Math.max(...objects.map(o => o.basin ? o.basin.bounds.x2 - descriptor.origin : o.x - descriptor.origin + o.piece.image.width + (o.role === 'liquid' ? 1 : 0)));
+      const y1 = Math.min(...objects.map(o => o.basin ? 0 : o.y)), y2 = Math.max(...objects.map(o => o.y + o.piece.image.height));
       const dependencies = foundationDeps(x1, x2); if (assemblyTerrain.has(key)) dependencies.push(assemblyTerrain.get(key));
       const index = add('object', { x1, x2, y1, y2 }, dependencies, objects.map(o => o.piece.id),
-        { objectIndices: Object.freeze(members), attachmentFallback: !!assembly });
+        { objectIndices: Object.freeze(members), attachmentFallback: !!assembly,
+          ...(objects[0].basin ? { basin: objects[0].basin, foundationSourceIds: Object.freeze(objects[0].basin.foundation.sourcePlacements.map(p => p.id)) } : {}) });
       for (const at of members) objectJobs[at] = index;
     }
   }

@@ -10,15 +10,15 @@ const placeTerrainSpan = ({ seed, firstChunk, code, descriptors, height, wordPla
     ...d.placements.map(p => ({ ...p, x: p.x + part * 128 })),
     ...d.assemblies.map(a => ({ x: a.bounds.x1 - firstChunk * 128 - 2, y: a.bounds.y1 - 2, piece: { width: a.bounds.x2 - a.bounds.x1 + 4, height: a.bounds.y2 - a.bounds.y1 + 4 } })),
     ...d.objects.map(o => { const i = o.piece.image;
-      const left = Math.min(o.x, o.x + i.trigger_left), right = Math.max(o.x + i.width, o.x + i.trigger_left + i.trigger_width);
-      const top = Math.min(o.y, o.y + i.trigger_top), bottom = o.role === 'liquid' ? height : Math.max(o.y + i.height, o.y + i.trigger_top + i.trigger_height);
+      const left = o.basin?.bounds.x1 ?? Math.min(o.x, o.x + i.trigger_left), right = o.basin?.bounds.x2 ?? Math.max(o.x + i.width, o.x + i.trigger_left + i.trigger_width);
+      const top = o.basin ? 0 : Math.min(o.y, o.y + i.trigger_top), bottom = o.role === 'liquid' ? height : Math.max(o.y + i.height, o.y + i.trigger_top + i.trigger_height);
       return { x: left - firstChunk * 128 - 2, y: top - 2, piece: { width: right - left + 4, height: bottom - top + 4 } }; })
   ]);
   const objectEnvelopes = descriptors.flatMap(d => d.objects.map(o => {
     const i = o.piece.image;
-    return { x1: Math.min(o.x, o.x + i.trigger_left) - firstChunk * 128,
-      x2: Math.max(o.x + i.width, o.x + i.trigger_left + i.trigger_width) - firstChunk * 128,
-      y1: Math.min(o.y, o.y + i.trigger_top), y2: o.role === 'liquid' ? height : Math.max(o.y + i.height, o.y + i.trigger_top + i.trigger_height) };
+    return { x1: (o.basin?.bounds.x1 ?? Math.min(o.x, o.x + i.trigger_left)) - firstChunk * 128,
+      x2: (o.basin?.bounds.x2 ?? Math.max(o.x + i.width, o.x + i.trigger_left + i.trigger_width)) - firstChunk * 128,
+      y1: o.basin ? 0 : Math.min(o.y, o.y + i.trigger_top), y2: o.role === 'liquid' ? height : Math.max(o.y + i.height, o.y + i.trigger_top + i.trigger_height) };
   }));
   // Full terrain alpha was already checked by the glyph planner. An attachment's
   // broad box cannot turn transparent source margins into invisible collision.

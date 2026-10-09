@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Generate bounded whole-liquid open-bank basins from existing source motif foundations, protecting shores and reserving their openings before optional attachments.
+
 - Preserve all saved procgen automation with canonical migration, grouped canvas moves/resizes, and automation-only Undo/Redo.
 
 - Reward actual ordinary crew passage and recovered containment, decay learned lane preferences toward seeded personalities, and publish completion only after the completed tick.
