@@ -133,6 +133,45 @@ describe('bounded actual shared-action deeper crew descents', function() {
     expect(bounded.proposal).to.equal(null); expect(bounded.failure).to.equal('bounds');
     helper.dispose(); world.dispose();
   });
+  it('replays actual lower-stripe blocker contacts and invalidates a previously accepted descent without terrain edits', () => {
+    const { world, crew, helper } = crewFor(masks), leader = crew[0];
+    expect(helper.prove(leader, MAX_DESCENT_PROBES).proposal).not.to.equal(null);
+    const terrainRevision = world.terrainRevision, blocker = world._spawn(1, false);
+    Object.assign(blocker, { x: 84, y: 104, laneIndex: 1, scout: false }); blocker.setAction(world.actions[State.BLOCKING]);
+    blocker.process(world);
+    expect(world.triggerManager.byOwner.get(blocker)).to.have.length(2);
+    const frame = blocker.frameIndex, events = []; world.soundEvents.onEvent.on(event => events.push(event));
+    const result = helper.prove(leader, MAX_DESCENT_PROBES);
+    expect(result).to.include({ proposal: null, failure: 'blocker-contact' });
+    expect(world.terrainRevision).to.equal(terrainRevision); expect(blocker.frameIndex).to.equal(frame);
+    expect(blocker.lookRight).to.equal(true); expect(world.stats.removedPixels).to.equal(0); expect(events).to.have.length(0);
+    blocker.x = 140; world.triggerManager.synchronize(blocker);
+    expect(helper.prove(leader, MAX_DESCENT_PROBES).proposal).not.to.equal(null);
+    blocker.x = 84; world.triggerManager.synchronize(blocker);
+    expect(helper.prove(leader, MAX_DESCENT_PROBES).failure).to.equal('blocker-contact');
+    blocker.disabled = true;
+    expect(helper.prove(leader, MAX_DESCENT_PROBES).proposal).not.to.equal(null);
+    helper.dispose(); world.dispose();
+  });
+  it('invalidates cached passage when a live hazard envelope becomes observable and keeps trigger scans bounded', () => {
+    const { world, crew, helper } = crewFor(masks), leader = crew[0];
+    expect(helper.prove(leader, MAX_DESCENT_PROBES).proposal).not.to.equal(null);
+    world.hazards.nearby = (lane, x, options, out) => {
+      out.length = 0;
+      if (lane === 1) out.push({ lane, type: 6, x1: 60, x2: 68, y1: 97, y2: 99, enabled: true });
+      return out;
+    };
+    expect(helper.prove(leader, MAX_DESCENT_PROBES)).to.include({ proposal: null, failure: 'hazard' });
+    world.hazards.nearby = (lane, x, options, out) => { out.length = 0; return out; };
+    expect(helper.prove(leader, MAX_DESCENT_PROBES).proposal).not.to.equal(null);
+    world.triggerManager.byLane[1] = new Array(65).fill({});
+    expect(helper.prove(leader, MAX_DESCENT_PROBES)).to.include({ proposal: null, probes: 0, actionSteps: 0, failure: 'blocker-observation-limit' });
+    world.triggerManager.byLane[1] = [];
+    world.hazards.nearby = (lane, x, options, out) => { out.length = 8; return out; };
+    expect(helper.prove(leader, MAX_DESCENT_PROBES)).to.include({ proposal: null, probes: 0, actionSteps: 0, failure: 'hazard-observation-limit' });
+    expect(world.stats.removedPixels + world.hazards.stats.contacts).to.equal(0);
+    helper.dispose(); world.dispose();
+  });
   it('protects live claims on initial and cached proposals while retaining a released geometry decision', () => {
     const { world, crew, helper } = crewFor(masks, 8, {}, { workerLimits: { builders: 1, bashers: 1, diggers: 1 } });
     const worker = crew[0], other = crew[1], proposal = helper.prove(worker, MAX_DESCENT_PROBES).proposal;

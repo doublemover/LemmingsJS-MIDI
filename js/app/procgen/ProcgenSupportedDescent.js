@@ -1,6 +1,8 @@
 import { procgenTileRevision } from './ProcgenTerrainRetention.js';
 import { Lemming } from '../../lemmings/Lemming.js';
 import { LemmingStateType as State } from '../../lemmings/LemmingStateType.js';
+import { TriggerTypes as Types } from '../../level/TriggerTypes.js';
+import { lemmingManagerInteractionMethods } from '../../lemmings/lemming-manager/LemmingManagerInteraction.js';
 import { ActionDiggSystem } from '../../actions/ActionDiggSystem.js';
 import { ActionMineSystem } from '../../actions/ActionMineSystem.js';
 import { ActionFallSystem } from '../../actions/ActionFallSystem.js';
@@ -50,6 +52,28 @@ class ProcgenSupportedDescent {
       key += ':' + Math.min(world.generatedThrough[lane], right + 1);
       for (let chunk = firstChunk; chunk <= lastChunk; chunk++) key += ':' + (procgenTileRevision(world, lane * 0x800000 + chunk));
     }
+    // Contact geometry can change without a terrain edit. Observe it before
+    // reusing a decision, and keep actual blocker owners out of private replay.
+    const bounds = { x1: left, x2: right + 1, y1: startY - 12, y2: startY + 34 }, triggers = [];
+    for (let lane = Math.max(0, firstLane - 1); lane <= Math.min(world.laneCount - 1, lastLane + 1); lane++) {
+      const bucket = world.triggerManager?.byLane[lane] || [];
+      if (bucket.length > 64) return { proposal: null, probes: 0, actionSteps: 0, failure: 'blocker-observation-limit' };
+      for (const trigger of bucket) {
+        const owner = trigger.owner;
+        if (!owner || owner === actor || owner.removed || owner.disabled || owner.failureReason || owner.terminalReason ||
+            owner.action !== world.actions[State.BLOCKING] || !overlaps(bounds, trigger)) continue;
+        const copy = { x1: trigger.x1, x2: trigger.x2, y1: trigger.y1, y2: trigger.y2, type: trigger.type };
+        triggers.push(copy); key += ':b:' + owner.id + ':' + copy.type + ':' + copy.x1 + ':' + copy.x2 + ':' + copy.y1 + ':' + copy.y2;
+      }
+    }
+    this.hazards.length = 0;
+    for (let lane = firstLane; lane <= lastLane; lane++) for (const [x, ahead, behind] of [[startX - 8, 8, 32], [startX, 40, 0]]) {
+      world.hazards.nearby(lane, x, { ahead, behind }, this.nearby);
+      if (this.nearby.length >= 8) return { proposal: null, probes: 0, actionSteps: 0, failure: 'hazard-observation-limit' };
+      for (const hazard of this.nearby) if (!this.hazards.some(h => h.lane === hazard.lane && h.x1 === hazard.x1 && h.x2 === hazard.x2 && h.y1 === hazard.y1 && h.y2 === hazard.y2)) {
+        this.hazards.push(hazard); key += ':h:' + hazard.lane + ':' + hazard.type + ':' + hazard.x1 + ':' + hazard.x2 + ':' + hazard.y1 + ':' + hazard.y2;
+      }
+    }
     const cached = this.cache[actor.laneIndex];
     if (cached?.key === key && (cached.failure !== 'budget' || cached.maxProbes >= maxProbes)) {
       this.stats.cacheHits++; return { proposal: cached.proposal && !this._busy(cached.proposal.footprint) ? cached.proposal : null, probes: 0, actionSteps: 0, failure: cached.failure };
@@ -60,7 +84,7 @@ class ProcgenSupportedDescent {
     const read = (x, y) => {
       if (x < left || x > right || y < startY - 12 || y > startY + 33 || y < 0 || y >= world.height) { failure ||= 'bounds'; return 0; }
       const lane = Math.floor(y / world.laneHeight), chunk = Math.floor(x / world.terrain.chunkWidth);
-      if (x >= world.generatedThrough[lane] || world.terrainGrowth?.stateFor(lane, chunk)) { failure ||= 'unrevealed'; return 0; }
+      if (x >= world.generatedThrough[lane] || (world.terrainGrowth?.stateFor(lane, chunk) && !world.terrainGrowth.columnReady?.(lane, x))) { failure ||= 'unrevealed'; return 0; }
       const at = address(x, y);
       if (!cells.has(at)) {
         if (probes >= maxProbes) { failure ||= 'budget'; return 0; }
@@ -75,12 +99,6 @@ class ProcgenSupportedDescent {
       if (!(before & 1)) return 0;
       edits.add(address(x, y)); return 1;
     };
-    this.hazards.length = 0;
-    for (let lane = firstLane; lane <= lastLane; lane++) for (const [x, ahead, behind] of [[startX - 8, 8, 32], [startX, 40, 0]]) {
-      world.hazards.nearby(lane, x, { ahead, behind }, this.nearby);
-      if (this.nearby.length >= 8) failure ||= 'hazard-observation-limit';
-      for (const hazard of this.nearby) if (!this.hazards.some(h => h.lane === hazard.lane && h.x1 === hazard.x1 && h.x2 === hazard.x2 && h.y1 === hazard.y1 && h.y2 === hazard.y2)) this.hazards.push(hazard);
-    }
     const safe = (x, y) => !this.hazards.some(hazard => contact(hazard, x, y));
     const level = {
       width: world.width, height: world.height, getGroundMaskLayer: () => level,
@@ -104,6 +122,10 @@ class ProcgenSupportedDescent {
     const copy = (x = startX, y = startY, lookRight = true, state = State.WALKING) => {
       const lem = new Lemming(x, y, actor.id); lem.lookRight = lookRight; lem.setAction(this.actions[state]); return lem;
     };
+    const interaction = { triggerManager: { trigger(x, y) {
+      for (const trigger of triggers) if (x >= trigger.x1 && x < trigger.x2 && y >= trigger.y1 && y < trigger.y2) return trigger.type;
+      return Types.NO_TRIGGER;
+    } } };
     const advance = lem => {
       if (actionSteps >= maxProbes) { failure ||= 'budget'; return; }
       actionSteps++;
@@ -115,6 +137,9 @@ class ProcgenSupportedDescent {
         if (!this.actions[state]) { failure ||= 'termination'; return; }
         lem.setAction(this.actions[state]);
       }
+      const direction = lem.lookRight;
+      lemmingManagerInteractionMethods.runTrigger.call(interaction, lem, world.tickIndex + actionSteps);
+      if (lem.lookRight !== direction) failure ||= 'blocker-contact';
     };
     const wall = (x, y, lookRight) => {
       const lem = copy(x, y, lookRight);
