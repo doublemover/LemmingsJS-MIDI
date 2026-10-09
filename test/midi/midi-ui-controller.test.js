@@ -2,6 +2,7 @@ import { GameSkills } from '../../js/game/GameSkills.js';
 import { SkillTypes } from '../../js/game/SkillTypes.js';
 import { expect } from 'chai';
 import { withFakeClockAndPerformance } from '../support/timers.js';
+import { BrowserNotePreview } from '../../js/app/midi-ui/browserNotePreview.js';
 import { createMidiUiController } from '../../js/app/midiUiController.js';
 import { MidiEventRouter } from '../../js/midi/MidiEventRouter.js';
 import { SoundEventBus } from '../../js/game/SoundEvents.js';
@@ -51,6 +52,8 @@ const registerSequencerDom = (doc) => {
     midiSoundLevel: 'input',
     midiSoundLevelValue: 'output',
     midiSoundPreview: 'button',
+    midiSoundPreviewRole: 'select',
+    midiSoundPreviewRoleField: 'label',
     midiSoundHint: 'p',
     midiSoundAdvanced: 'button',
     midiProjectStatus: 'div',
@@ -253,6 +256,39 @@ const createControllerHarness = ({
 };
 
 describe('midiUiController sequencer', function() {
+  it('wires game and role audition to one actual synth graph and closes the graph once', async () => {
+    await withFakeClockAndPerformance(async () => {
+
+      const param = () => ({ value: 0, setValueAtTime() {}, linearRampToValueAtTime() {}, cancelScheduledValues() {} });
+      const node = () => ({ gain: param(), frequency: param(), detune: param(), pan: param(), connect() {}, disconnect() {}, start() {}, stop() {} });
+      let contexts = 0, closes = 0, factories = 0, graph;
+      const context = { state: 'running', currentTime: 2, destination: {}, createGain: node, createWaveShaper: node, createOscillator: node, createStereoPanner: node,
+        createDynamicsCompressor() { return { ...node(), threshold: param(), knee: param(), ratio: param(), attack: param(), release: param() }; },
+        close() { closes++; return Promise.resolve(); } };
+      const { controller, doc, win, view } = createControllerHarness({ freshProjectPresetId: 'game-iron-ensemble',
+        lemmings: { setMidiPreviewRouter(router) { this.midiPreviewRouter = router; } },
+        createPreviewAudio(options) { factories++; graph = new BrowserNotePreview({ ...options, createAudioContext: () => { contexts++; return context; }, nowMs: () => 1000 }); return graph; }
+      });
+      try {
+        controller.bindMidiUi();
+        await doc.getElementById('midiLocalListenButton').listeners.get('click')[0]();
+        view.midiPreviewRouter._onEvent({ sfxId: 1, tick: 0, lemmingId: 0, laneIndex: 0, laneCount: 1 });
+        const gameVoices = [...graph._voices]; expect(gameVoices).not.to.have.length(0);
+        doc.getElementById('midiSoundPreviewRole').value = 'ensemble-melody';
+        expect(await controller.testSelectedSound()).to.equal(true);
+        expect(factories).to.equal(1); expect(contexts).to.equal(1);
+        expect([...graph._voices].filter(voice => voice.owner.startsWith('audition')).every(voice => voice.instrument.role === 'melody' && voice.instrument.program === 81)).to.equal(true);
+        expect([...graph._voices].filter(voice => voice.owner.startsWith('audition'))).not.to.have.length(0);
+        expect(gameVoices.every(voice => graph._voices.has(voice))).to.equal(true);
+        expect(await controller.testSelectedSound()).to.equal(true); expect(gameVoices.every(voice => graph._voices.has(voice))).to.equal(true);
+        expect(win.__LEMMINGS_MIDI_UI__.getLocalAudioState().sharedMix.sessionCount).to.equal(2);
+        expect(controller.getProject().enabled).to.equal(false); controller.panic(); expect(graph.getState().activeVoices).to.equal(0);
+        controller.dispose(); await graph.dispose(); expect(closes).to.equal(1);
+
+      } finally { controller.dispose(); await graph?.dispose(); }
+    }, { now: 1000 });
+  });
+
   it('makes Reset reversible while preserving device selection, listening gain and the immediate musical state', () => {
     const { controller, doc, win } = createControllerHarness({ freshProjectPresetId: 'game-iron-ensemble' }); controller.bindMidiUi();
     controller.dispatchProjectIntent({ type: 'ensemble.role.update', trackId: 'ensemble-bass', patch: { pan: -71 } });
@@ -589,7 +625,7 @@ describe('midiUiController sequencer', function() {
     const { controller, doc } = createControllerHarness({ createPreviewAudio: () => ({
       preview: async () => ok, getState: () => ({ message: 'Enable browser audio again' }), dispose() {}
     }) });
-    controller.bindMidiUi(); expect(await controller.testSelectedSound()).to.equal(true);
+    controller.bindMidiUi(); expect(await controller.testSelectedSound({ x: 0, y: 0 })).to.equal(true);
     expect(doc.getElementById('midiProjectStatus').textContent).to.equal('');
     ok = false; expect(await controller.testSelectedSound()).to.equal(false);
     expect(doc.getElementById('midiProjectStatus').textContent).to.equal('Enable browser audio again');

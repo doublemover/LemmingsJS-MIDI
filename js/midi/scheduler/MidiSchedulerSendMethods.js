@@ -1,3 +1,4 @@
+import { getLocalAudioNotePan } from './LocalAudioVoiceBudget.js';
 import { transferGamePhraseVoiceKey } from './MidiGamePhraseQueue.js';
 import { getAppContext } from '../../core/dependencies.js';
 import {
@@ -152,11 +153,7 @@ const midiSchedulerSendMethods = {
           }
           Object.assign(expression.state, expression.spanState);
 
-          const spread = this.config.position?.lanePanSpread;
-          const lanes = Math.max(1, Math.min(1024, Math.trunc(meta.laneCount) || 1));
-          const lane = Math.max(0, Math.min(lanes - 1, Math.trunc(meta.laneIndex) || 0));
-          const notePan = output.supportsPerNotePan && Number.isFinite(spread) && !spec.explicitPan && !spec.spanPan
-            ? clamp((spec.pan ?? 0) + (lanes > 1 ? (lane * 2 / (lanes - 1) - 1) * spread : 0), -127, 127) : spec.pan;
+          const notePan = getLocalAudioNotePan(spec, meta, this.config.position, output.supportsPerNotePan);
           const accepted = this._sendOutput(output, channelNumber, 'sendNoteOn', [spec.note, { rawAttack: attackVelocity, time: sendTimeMs,
             ...(output.supportsIndependentNoteGates ? { voiceToken: token, priority: meta.priority ?? 1, laneIndex: meta.laneIndex ?? 0 } : {}),
             ...(output.supportsPlaybackMetadata ? { playback: { sfxId: meta.sfxId, triggerType: meta.triggerType, durationMs, stepIndex: spec.stepIndex, stepCount: spec.stepCount, lemmingId: meta.lemmingId, laneIndex: meta.laneIndex, ensembleRole: spec.ensembleRole, program: spec.program, channel: channelNumber } } : {}),

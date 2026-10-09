@@ -112,6 +112,99 @@ const setup = (options = {}, context = new FakeContext()) => {
 };
 
 describe('BrowserNotePreview', function() {
+  it('coalesces owner unlock requests and cancels replaced requests while another owner is waiting', async () => {
+    const context = new FakeContext('suspended'), pending = deferred(); context.resumeResult = pending.promise;
+    const { preview } = setup({}, context), game = preview.createSession('game'), audition = preview.createSession('audition');
+    const gameReady = game.enable(); expect(game.enable()).to.equal(gameReady);
+    const replaced = [];
+    for (let i = 0; i < 12; i++) {
+      replaced.push(audition.enable()); expect(preview._pendingEnables.size).to.equal(2);
+      audition.stop(); expect(preview._pendingEnables.size).to.equal(1);
+    }
+    expect((await Promise.all(replaced)).every(value => value === false)).to.equal(true);
+    context.state = 'running'; pending.resolve(); expect(await gameReady).to.equal(true);
+    expect(context.resumeCalls).to.equal(1); expect(preview._pendingEnables.size).to.equal(0); await preview.dispose();
+  });
+
+  it('uses the audition bend range without retuning another owner on the same channel', async () => {
+    const { preview, context } = setup();
+    const game = preview.createSession('game'), audition = preview.createSession('audition');
+    await game.enable(); game.output.channels[2].sendNoteOn(60, { voiceToken: 1 });
+    expect(await audition.preview([{ note: 64, channel: 2, pitchBend: 0.25, pitchBendRange: 12.5 }])).to.equal(true);
+    expect(context.oscillators[0].detune.events.at(-1).value).to.equal(0);
+    expect(context.oscillators[1].detune.events.at(-1).value).to.equal(312.5);
+    await preview.dispose();
+  });
+
+  it('shares one graph and total voice budget while isolating owner channels, same-pitch gates and Stop', async () => {
+    const { preview, context, creations } = setup({ maxVoices: 2 });
+    const game = preview.createSession('game'), audition = preview.createSession('audition');
+    await game.enable(); await audition.enable();
+    expect(creations()).to.equal(1); expect(context.compressors).to.have.length(1); expect(context.limiters).to.have.length(1);
+    game.output.channels[1].sendProgramChange(38); audition.output.channels[1].sendProgramChange(81);
+    game.output.channels[1].sendNoteOn(60, { voiceToken: 1, priority: 4, pan: -0.5 });
+    audition.output.channels[1].sendNoteOn(60, { voiceToken: 1, priority: 4, pan: 0.5 });
+    const [gameVoice, auditionVoice] = [...preview._voices];
+    expect(context.oscillators.map(node => node.type)).to.deep.equal(['sine', 'sawtooth']);
+    audition.output.channels[1].sendPitchBend(0.5);
+    expect(gameVoice.oscillator.detune.events.at(-1).value).to.equal(0);
+    expect(auditionVoice.oscillator.detune.events.at(-1).value).to.equal(100);
+    audition.output.channels[1].sendControlChange(7, 32);
+    const gameChannel = preview._channels.get(game.getState().ownerId + ':1');
+    expect(gameChannel.volume).to.equal(1);
+    expect(audition.output.channels[1].sendNoteOn(64, { voiceToken: 2, priority: 0 })).to.equal(false);
+    expect(preview.getState().voiceDrops).to.equal(1); expect(preview.getState().activeVoices).to.equal(2);
+    audition.stop(); expect(game.output.isVoiceActive(1)).to.equal(true); expect(audition.output.isVoiceActive(1)).to.equal(false);
+    expect(preview.getState().enabled).to.equal(true); expect(game.getState().activeVoices).to.equal(1);
+    await audition.dispose(); expect(context.closeCalls).to.equal(0);
+    const replacement = preview.createSession('audition'); await replacement.enable();
+    replacement.output.channels[1].sendNoteOn(60, { voiceToken: 1 });
+    audition.output.clear(); expect(replacement.output.isVoiceActive(1)).to.equal(true);
+    preview.panic(); expect(preview.getState().activeVoices).to.equal(0); expect(game.getState().enabled).to.equal(false);
+    await preview.dispose(); expect(context.closeCalls).to.equal(1);
+  });
+
+  it('cancels one pending owner unlock without canceling or resurrecting the other owner', async () => {
+    const context = new FakeContext('suspended'), pending = deferred(); context.resumeResult = pending.promise;
+    const { preview } = setup({}, context);
+    const game = preview.createSession('game'), audition = preview.createSession('audition');
+    const gameReady = game.enable(), auditionReady = audition.enable();
+    audition.stop(); expect(await auditionReady).to.equal(false);
+    context.state = 'running'; pending.resolve(); expect(await gameReady).to.equal(true);
+    expect(context.resumeCalls).to.equal(1); expect(game.getState().enabled).to.equal(true); expect(audition.getState().enabled).to.equal(false);
+    await audition.dispose(); expect(game.getState().enabled).to.equal(true); await preview.dispose();
+  });
+
+  it('retains all long audition cells on the shared bounded queue and stops only its future tail', async () => {
+    await withFakeClockAndPerformance(async clock => {
+      const { preview, context } = setup({ nowMs: () => clock.now });
+      Object.defineProperty(context, 'currentTime', { get: () => 2 + clock.now / 1000 });
+      const game = preview.createSession('game'), audition = preview.createSession('audition');
+      await game.enable(); game.output.channels[1].sendNoteOn(45, { voiceToken: 1 });
+      expect(await audition.preview(Array.from({ length: 16 }, (_, i) => ({ note: 60 + i, offsetMs: i * 960, durationMs: 120 })))).to.equal(true);
+      await clock.tickAsync(10500);
+      expect(context.oscillators).to.have.length(17); expect(audition.getState().pendingNotes).to.equal(0);
+      await audition.preview([{ note: 80, offsetMs: 14400 }]); expect(audition.getState().pendingNotes).to.equal(1);
+      game.output.channels[1].sendNoteOn(48, { voiceToken: 2 });
+      audition.stop(); expect(game.output.isVoiceActive(2)).to.equal(true);
+      const count = context.oscillators.length; await clock.tickAsync(16000); expect(context.oscillators).to.have.length(count);
+      expect(preview.getState().pendingNotes).to.equal(0); await preview.dispose();
+    });
+  });
+
+  it('bounds reusable sessions and records distinct scopes at the shared render boundary', async () => {
+    const { preview } = setup(), records = [];
+    preview.setCapture({ isActive: () => true, record(stage, fields) { records.push({ stage, ...fields }); return records.length; } });
+    const game = preview.createSession('game'), audition = preview.createSession('audition');
+    preview.createSession('third'); preview.createSession('fourth');
+    expect(() => preview.createSession('fifth')).to.throw(RangeError);
+    await game.enable(); await audition.enable();
+    game.output.channels[1].sendNoteOn(60, { voiceToken: 1 }); audition.output.channels[1].sendNoteOn(64, { voiceToken: 1 });
+    expect(records.filter(item => item.stage === 'synth-scheduled').map(item => item.outputScope)).to.deep.equal([game.output.captureScope, audition.output.captureScope]);
+    await audition.dispose(); expect(preview._channels.size).to.equal(1); expect(preview.createSession('fifth')).not.to.equal(null);
+    await preview.dispose();
+  });
+
   it('emits every cell of a 14.4-second audition incrementally at its original timestamp', async () => {
     await withFakeClockAndPerformance(async clock => {
       const { preview, context } = setup({ nowMs: () => clock.now });

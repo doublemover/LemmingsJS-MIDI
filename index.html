@@ -112,7 +112,8 @@
           <label class="midi-field"><span>Pan · left / right</span><input id="midiSoundPan" type="range" min="-127" max="127" step="1" aria-label="Sound pan slider" /><input id="midiSoundPanNumber" type="number" min="-127" max="127" step="1" aria-label="Exact sound pan" /></label>
           </div>
           <label id="midiSoundOrderField" class="midi-field"><span>Event pattern order</span><select id="midiSoundOrder"><option value="up">Up</option><option value="down">Down</option><option value="updown">Up / down</option></select></label>
-          <button id="midiSoundPreview" data-icon="play" type="button">Test event locally</button>
+          <label id="midiSoundPreviewRoleField" class="midi-field" hidden><span>Test ensemble role</span><select id="midiSoundPreviewRole" aria-label="Local test ensemble role"></select></label>
+          <button id="midiSoundPreview" title="Uses the local oscillator/noise synth. Program/role approximations follow the game; no sound-font bank or external MIDI is used." data-icon="play" type="button">Test event locally</button>
           <details class="midi-sound-secondary"><summary data-icon="settings-2">Routing &amp; reference</summary>
           <p id="midiSoundRoute" class="midi-route-summary"></p>
           <button id="midiInspectTrack" data-icon="arrow-up-right" type="button">Inspect destination track</button>

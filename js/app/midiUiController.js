@@ -317,6 +317,7 @@ const createMidiUiController = ({
   let projectPersisted = true;
   let auditionPending = false;
   let soundView = 'sounds';
+  let localAudioGraph = null;
   let localAudio = null;
   let auditionAudio = null;
   let masterVolume = DEFAULT_MASTER_VOLUME;
@@ -443,7 +444,7 @@ const createMidiUiController = ({
   const readOrCreateProject = () => {
     cleanupLegacyMidiProjectStorage(storage);
     captureControls = createMidiCaptureControls({ document, window, capture: outputCapture, prefix: 'midiCapture', download: downloadTextFile,
-      inspect: () => { localAudio?.inspectRender?.(); auditionAudio?.inspectRender?.(); },
+      inspect: () => { if (localAudioGraph) localAudioGraph.inspectRender?.(); else { localAudio?.inspectRender?.(); auditionAudio?.inspectRender?.(); } },
       attach: capture => { getLemmings()?.midiRouter?.setCapture?.(capture); localGamePreview?.setCapture(capture); localAudio?.setCapture?.(capture, captureContext); auditionAudio?.setCapture?.(capture, captureContext); },
       getMetadata: () => {
         const current = ensureProject(), timer = getLemmings()?.game?.getGameTimer?.();
@@ -2376,9 +2377,20 @@ const createMidiUiController = ({
     setText(document?.getElementById('midiLocalListenButton'), stopping ? 'Stop listening' : 'Listen to game');
   };
 
+  const createLocalAudioOwner = owner => {
+    const callbacks = { onStateChange: renderLocalSummary, onPlayback: event => workbench?.onPlayback({ ...event, owner }) };
+    if (!localAudioGraph) {
+      const audio = createPreviewAudio({ masterVolume, ...callbacks, onStateChange: () => { if (!localAudioGraph) renderLocalSummary(); } });
+      // Existing injected adapters may lack sessions; the built-in synth always shares one graph.
+      if (typeof audio.createSession !== 'function') return audio;
+      localAudioGraph = audio;
+    }
+    return localAudioGraph.createSession(owner, callbacks);
+  };
+
   const ensureLocalPreview = () => {
     getLemmings()?.setLocalAudioStopHandler?.(stopLocalPreview);
-    if (!localAudio) localAudio = createPreviewAudio({ masterVolume, onStateChange: renderLocalSummary, onPlayback: event => workbench?.onPlayback({ ...event, owner: 'game' }) });
+    if (!localAudio) localAudio = createLocalAudioOwner('game');
     if (!localGamePreview) localGamePreview = createLocalGamePreview({
       getLemmings, getConfig: getProjectConfig, immutableConfig: true, audio: localAudio, onStateChange: renderLocalSummary
     });
@@ -2404,10 +2416,10 @@ const createMidiUiController = ({
     renderLocalSummary();
   };
 
-  const testSelectedSound = async () => {
+  const testSelectedSound = async (previewContext = {}) => {
     const source = selectedSource();
     if (!source) return false;
-    if (!auditionAudio) auditionAudio = createPreviewAudio({ masterVolume, onStateChange: renderLocalSummary, onPlayback: event => workbench?.onPlayback({ ...event, owner: 'audition' }) });
+    if (!auditionAudio) auditionAudio = createLocalAudioOwner('audition');
     auditionAudio.setCapture?.(outputCapture.getState().active ? outputCapture : null, captureContext);
     const key = JSON.stringify([source.mapping, source.clipId, ensureProject().clips.find(clip => clip.id === source.clipId)?.playback]);
     settleAuditionPasses();
@@ -2416,7 +2428,7 @@ const createMidiUiController = ({
     const tickMs = Math.max(1, Number(getLemmings()?.game?.getGameTimer?.()?.frameTime) || 60);
     const timer = getLemmings()?.game?.getGameTimer?.();
     const completedPasses = previous?.key === key ? (previous.completedPasses || 0) : 0;
-    const plan = createSoundAuditionPlan(source, ensureProject(), tickMs, index, { completedPasses, tick: timer?.getGameTicks?.() ?? timer?.tickIndex, tickMs: timer?.TIME_PER_FRAME_MS || 60 });
+    const plan = createSoundAuditionPlan(source, ensureProject(), tickMs, index, { completedPasses, tick: timer?.getGameTicks?.() ?? timer?.tickIndex, tickMs: timer?.TIME_PER_FRAME_MS || 60 }, { roleTrackId: document?.getElementById('midiSoundPreviewRole')?.value || undefined, ...previewContext });
     const advance = () => auditionSteps.set(source.id, { key, index: index + 1, completedPasses, completionAt: plan.completionMs == null ? null : nowMs() + plan.completionMs });
     if (plan.advance || plan.notes.length) settleAuditionPasses(true);
     if (!plan.notes.length) { if (plan.advance) { localInteraction += 1; auditionPending = false; auditionAudio.stop?.(); advance(); renderLocalSummary(); } setStatus(plan.reason); return false; }
@@ -2428,7 +2440,7 @@ const createMidiUiController = ({
     if (interaction !== localInteraction || disposed) return false;
     if (ok) {
       advance();
-      setStatus(plan.omitted ? plan.omitted + ' notes omitted by the local audition/expansion cap. Shorten repeats or test fewer cells.' : '');
+      setStatus([plan.omitted ? plan.omitted + ' notes omitted by the local audition/expansion cap. Shorten repeats or test fewer cells.' : '', plan.notice].filter(Boolean).join(' '));
     } else setStatus(auditionAudio.getState().message || 'Local audio could not start');
     renderLocalSummary();
     return ok;
@@ -2505,6 +2517,16 @@ const createMidiUiController = ({
         list.appendChild(row);
         if (focused === String(event.id)) row.focus?.();
       }
+    }
+    const previewRole = document?.getElementById('midiSoundPreviewRole'), previewRoleField = document?.getElementById('midiSoundPreviewRoleField');
+    if (previewRoleField) previewRoleField.hidden = !current.ensemble?.enabled;
+    if (previewRole) {
+      const selected = previewRole.value; removeChildren(previewRole); appendOption(document, previewRole, '', 'Source mapping (no actor)');
+      if (current.ensemble?.enabled) for (const role of current.ensemble.roles) {
+        const track = current.tracks.find(item => item.id === role.trackId);
+        if (track) appendOption(document, previewRole, role.trackId, `${track.name} (program ${track.program}, channel ${track.channel})`);
+      }
+      previewRole.value = Array.from(previewRole.children).some(option => option.value === selected) ? selected : '';
     }
     setText(document?.getElementById('midiSoundTitle'), source ? `${eventLabel} sound` : eventLabel);
     setText(document?.getElementById('midiActiveKeySummary'), `Key: ${KEY_ROOT_LABELS[current.global.scale.root] || 'C'} ${SCALE_LABELS[current.global.scale.name] || current.global.scale.name}`);
@@ -3426,7 +3448,7 @@ const createMidiUiController = ({
       getOutputCapture: () => outputCapture,
       startOutputCapture: () => captureControls?.start(),
       stopOutputCapture: () => captureControls?.stop(),
-      getLocalAudioState: () => ({ masterVolume, monitor: localGamePreview?.getState(), audition: auditionAudio?.getState() }),
+      getLocalAudioState: () => ({ masterVolume, sharedMix: localAudioGraph?.getState(), monitor: localGamePreview?.getState(), audition: auditionAudio?.getState() }),
       undo: () => editHistory.undo(ensureProject(), commitProject),
       redo: () => editHistory.redo(ensureProject(), commitProject)
     };
@@ -3442,6 +3464,7 @@ const createMidiUiController = ({
     auditionSteps.clear();
     localGamePreview?.dispose?.();
     if (!localGamePreview) localAudio?.dispose?.();
+    localAudioGraph?.dispose?.();
     captureControls?.dispose(); captureControls = null;
     tensionControls?.dispose(); tensionControls = null;
     if (refreshTimer != null && typeof window?.clearTimeout === 'function') {
