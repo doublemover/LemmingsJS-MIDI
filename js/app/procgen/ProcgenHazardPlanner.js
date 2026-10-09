@@ -198,6 +198,13 @@ class ProcgenHazardPlanner {
       world.hazards.nearby(adjacent, actor.x, { ahead: MAX_LOCAL_ROUTE_DISTANCE, behind: 4 }, this.adjacentObservations);
       this.observations.push(...this.adjacentObservations);
     }
+    const basin = world.basinRoutes?.candidate(actor, this.observations, MAX_ROUTE_PROBES - this.probes);
+    if (basin?.handled) {
+      this.probes += basin.probes; this.stats.probes += basin.probes;
+      if (basin.proposal) this.admission.served(actor, this.probes);
+      else this.admission.screened(actor, this.probes);
+      return basin.proposal;
+    }
     let cliff = null, gap = false;
     for (let dx = 2; dx <= 24 && !cliff; dx += 2) {
       const x = actor.x + dx;

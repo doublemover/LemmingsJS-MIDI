@@ -993,10 +993,10 @@ Boundary repair acceptance: the published c4437e5e [Node.js CI run 37936016415](
 
 Accepted design is pinned to fe73f80 in the [independent audit](https://chatgpt.com/space/page_67ee173f128c8191bb2aa83346210c79), [terrain/crew design](https://chatgpt.com/space/page_107a474a65cc8191828ac7a3dd8bffab) and [music/interaction design](https://chatgpt.com/space/page_50e7cfca60408191892809c1cca9ad4a). All three full Pages are accessible. Their Node timings, cache endpoint parity and catalogue counts are source evidence; native interaction, sound and visible-scene acceptance remain separate. The approved four-commit continuation through fe73f80 is published to existing PR966, whose base remains master.
 
-- [ ] Compose one naturally selected source-backed basin region with explicit
+- [x] Compose one naturally selected source-backed basin region with explicit
   shores, public route ports and protected void/support envelopes. Reuse exact
   source alpha/order/steel and complete assembly ownership across storage tiles.
-- [ ] Connect scout discovery, proactive bridge, containment, ordinary crowd
+- [x] Connect scout discovery, proactive bridge, containment, ordinary crowd
   passage and release/recovery through existing physical action owners; emit
   musical resolution only from actual completed-tick progress. Qualify the exact
   scene with ordinary crews and inspect it at the default native camera.
@@ -1171,3 +1171,43 @@ The restart observer began after four initial births; later full cohorts each
 contain all eight lanes. There are no permission requests, output activation or
 page errors. Receipt: temp/procgen-beat-birth-native/receipt.json. The earlier
 truthful-target batch passes 140 affected controller/span/preset checks.
+
+Staged basin checkpoint: one bounded scene owner uses the actual enabled source
+basin, four privately screened full 12-brick BUILD cycles and natural SHRUG/WALK
+transitions. The scout service actor legally holds supported endpoints between
+sections. The original rear blocker stays until a real final landing; it and the
+landing owner recover through empty-mask BASH. One canonical project covers all
+sections, current admitted ordinary recipients and recovered blockers. The
+passive exit is distinct from the revision footprint, preventing a release
+deadlock. Equivalent cold receipt rebuilds preserve source identity and geometry.
+
+Source readiness and crew capacity reject before BUILD. Waiting work shares the
+existing lane admission ledger; a 16-lane off-service launch is independently
+screened rather than moving an actor. Relevant foreign edits, lost crew, deadline,
+queued nuke or failed project retire once through the existing lane-local OHNO
+lifecycle, preserving other lanes. Worker-only progress and future births cannot
+produce a crew completion. The scene uses one worker, at most four sections,
+a 1,200-tick lifetime, unchanged worker caps and the existing 40-pixel forward
+route, 1,024-work and eight-lane service limits; maximum private combined work is
+369. The new manager covers all lines, 82.71% branches and 92.3% functions;
+Projects covers 98.03% lines and 92.48% branches. Remaining alternate rejection
+and active-scene snapshot branches are useful focused coverage targets.
+
+Native muted Edge at 1440 by 900 and normal 3x zoom uses the actual public seed
+4274680063, lane 9, Crystal lane seed 8, with a deliberately positioned bank
+cohort: 16 ordinary recipients plus one birth-classified scout worker. It connects
+at tick 831 and completes at 969. All 17 are actual WALK recipients afterward,
+with four complete builder cycles, two empty recoveries, no losses, hazard
+contacts, removed terrain, digging, mining or stripe transfers. One true scene
+cue maps to notes 60/64/67/72 at ticks 969/972/975/978, with four owned offs,
+pause preservation and empty Panic state. There are no page errors; active scene,
+actor tags and temporary trigger owners clear. Root inspected the visible start,
+section-2 and completed-scene images in temp/source-basin-crew-*.png; the detailed
+receipt is temp/source-basin-crew-native.json. This qualifies the exact controlled
+source-bank crew, not unaided public arrival, every generated route, high-lane
+cadence beyond 16, acoustics or physical MIDI. General catalogue ports remain
+explicitly unqualified until they have their own physical evidence.
+
+The birth owner additionally passes all 20 affected population/spawn checks,
+with all PopulationPolicy lines/functions and 91.22% branches covered. Nonfinite
+policy and exact quantization boundary alternatives remain useful branch targets.

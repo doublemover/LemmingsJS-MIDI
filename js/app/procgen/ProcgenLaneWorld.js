@@ -1,4 +1,5 @@
 import { ProcgenTerrainEdits, ProcgenTerrainRevisions } from './ProcgenTerrainRetention.js';
+import { ProcgenBasinCrewRoutes } from './ProcgenBasinCrewRoutes.js';
 import { ProcgenLanePolicy } from './ProcgenLanePolicy.js';
 import { DEFAULT_LANE_HEIGHT, MAX_LANE_HEIGHT, normalizeLaneHeight } from './ProcgenLaneGeometry.js';
 import { CharacterParticles } from '../../lemmings/CharacterParticles.js';
@@ -136,6 +137,7 @@ class ProcgenLaneWorld {
       [State.EXPLODING]: new ActionExplodingSystem(sprites, masks, this.triggerManager, particleTable)
     };
     for (const action of Object.values(this.actions)) { action.setRuntime(runtime); action.characterParticles = this.characterParticles; }
+    this.basinRoutes = new ProcgenBasinCrewRoutes(this);
     this.actors = [];
     this._musicActorPositions = new Map(); this._musicCompletedSlot = 0; this._musicCompletedTick = this.tickIndex;
     if (!cohorts) for (let lane = 0; lane < this.laneCount; lane++) this._spawn(lane, false);
@@ -205,10 +207,10 @@ class ProcgenLaneWorld {
     }
   }
   _restart(previousDistances) {
-    this.characterParticles?.clear(); this.triggerManager.reset(); this.hazardPlanner.reset(); this.edgeBlockers.fill(null); this._processingLane = null;
+    this.characterParticles?.clear(); this.triggerManager.reset(); this.hazardPlanner.reset(); this.basinRoutes.reset(); this.edgeBlockers.fill(null); this._processingLane = null;
     this._assistedColumn.valid = false; this.accessTasks.fill(null); this._edgeWallCache.fill(null); this._edgeWallRevisions.fill(0); this._edgeWallHazards.length = 0;
     this._musicActorPositions.clear(); this._musicCompletedSlot = 0; this._musicCompletedTick = this.tickIndex;
-    for (const actor of this.actors) { this._clearConstructionCrew(actor); actor._laneRouteAttempt = null; }
+    for (const actor of this.actors) { this._clearConstructionCrew(actor); actor._laneRouteAttempt = null; actor._basinSceneId = null; }
     this.actors.length = 0; this.activeCount = 0; this.admissionPaused = false; this._manualNukeLanes.fill(0); this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this.terrain?.reset?.();
     this._laneChunk.fill(null); this._laneChunkIndex.fill(-1); this._collisionSlots.fill(null); this._collisionIndices.fill(-1); this._laneEdits.fill(null); this._laneEditIndex.fill(-1); this._editCache.fill(null); this._editIndices.fill(-1); this.frontiers.fill(36);
     this.generatedThrough.fill(this.terrain?.chunkWidth || CHUNK_WIDTH); this.terrainRevision++; this.frontierRevision++; this.generation++; this.generationStartTick = this.tickIndex;
@@ -419,6 +421,7 @@ class ProcgenLaneWorld {
       this.terrainActivityTicks[Math.floor(y / this.laneHeight)] = this.tickIndex;
       const width = this.terrain?.chunkWidth || CHUNK_WIDTH;
       this.terrainTileRevisions.set(Math.floor(y / this.laneHeight) * 0x800000 + Math.floor(x / width), this.terrainRevision);
+      this.basinRoutes?.edit(x, y, this._processingActorId);
     }
   }
   setGroundAt(x, y) { this._setPixel(x, y, 3); }
@@ -559,6 +562,7 @@ class ProcgenLaneWorld {
     this.onLaneTransfer?.(actor.id, previous, lane, this.laneCount);
   }
   _syncTriggerOwner(actor) {
+    if (actor.removed || actor.failureReason || actor.terminalReason || [this.actions[State.OHNO], this.actions[State.EXPLODING]].includes(actor.action)) actor._basinSceneId = null;
     this.triggerManager.synchronize(actor);
     if (actor.assistConstructionTask && (actor.removed || actor.failureReason || actor.disabled || actor.terminalReason || actor.action !== this.actions[State.BLOCKING] || actor.laneIndex !== actor.assistConstructionTask.startLane)) this._clearConstructionCrew(actor);
     if (this.edgeBlockers[actor.laneIndex] === actor && (actor.removed || actor.failureReason || actor.disabled || actor.terminalReason || actor.action !== this.actions[State.BLOCKING])) this.edgeBlockers[actor.laneIndex] = null;
@@ -640,7 +644,7 @@ class ProcgenLaneWorld {
   _assistConstructionCrew(actor) {
     const held = actor.assistConstructionTask;
     if (held && actor.action === this.actions[State.BLOCKING]) {
-      if (this._constructionPassage(held) !== false && this._emptyBashMasks(actor)) this.assignWorker(actor, 'bashers');
+      if (this.basinRoutes.canRelease(held) && (held.basinSceneId || this._constructionPassage(held) !== false) && this._emptyBashMasks(actor)) this.assignWorker(actor, 'bashers');
       return true;
     }
     if (actor.action !== this.actions[State.WALKING] || !actor.lookRight || actor.scout || actor.canClimb || actor.hasParachute || !this.workerLimits.bashers) return false;
@@ -649,7 +653,7 @@ class ProcgenLaneWorld {
     for (const task of tasks) {
       const owner = task.owner;
       if (task.blocker || !owner || owner.removed || owner.failureReason || owner.terminalReason || owner.action !== this.actions[State.BUILDING] ||
-          !task.direction || task.startLane !== actor.laneIndex || actor.x < task.startX - 16 || actor.x > task.startX - 8 ||
+          !task.direction || task.startLane !== actor.laneIndex || actor.x < task.startX - (task.basinSceneId ? 8 : 16) || actor.x > task.startX - 8 ||
           Math.abs(actor.y - task.startY) > 3 || !this.hasGroundAt(actor.x, actor.y + 1) || this._constructionPassage(task) !== false || !this._emptyBashMasks(actor)) continue;
       actor.setAction(this.actions[State.BLOCKING]); actor.assistConstructionTask = task; task.blocker = actor;
       this.stats.blockers++; actor.assists++; return true;
@@ -658,7 +662,7 @@ class ProcgenLaneWorld {
   }
   _assist(actor) {
     if (!this.assists) return;
-    if (this._assistConstructionCrew(actor)) return;
+    if (this.basinRoutes.assist(actor) || this._assistConstructionCrew(actor)) return;
     const scoutReady = this.population.scoutReady(actor, this.tickIndex);
     const climbReady = scoutReady && !!(actor.scoutAbilities & 1), floatReady = scoutReady && !!(actor.scoutAbilities & 2);
     if (floatReady && actor.action === this.actions[State.FALLING] && actor.state > 16 &&
@@ -740,7 +744,7 @@ class ProcgenLaneWorld {
         { lemmingId: actor.id, laneIndex: actor.laneIndex, laneCount: this.laneCount, x: actor.x, y: actor.y, spawnTick: actor.spawnTick, spawnPhaseTicks: actor.spawnPhaseTicks, presentationPhase: actor.laneIndex / this.laneCount });
       this._assistedColumn.valid = false;
       if (this.stall.phase === 'running') this._assist(actor);
-      const previousX = actor.x, previousAction = actor.action; this._processingLane = actor.laneIndex;
+      const previousX = actor.x, previousAction = actor.action; this._processingLane = actor.laneIndex; this._processingActorId = actor.id;
       const next = actor.process(this);
       this._synchronizeLane(actor);
       this.soundEvents.laneIndex = actor.laneIndex;
@@ -766,6 +770,7 @@ class ProcgenLaneWorld {
         }
       }
 
+      this.basinRoutes.observe(actor, previousAction);
       this.lanePolicy.observe(actor, previousAction, previousX);
       this._syncTriggerOwner(actor);
       if (!actor.failureReason && !actor.removed) {
@@ -787,11 +792,12 @@ class ProcgenLaneWorld {
       }
       if (actor.x > actor.furthestX) { actor.furthestX = actor.x; actor.lastProgressTick = this.tickIndex; }
     }
-    this._processingLane = null; this.activeCount = activeCount;
+    this._processingLane = null; this._processingActorId = null; this.activeCount = activeCount;
     this.terrainGrowth?.update({ through: this.generatedThrough, frontiers: this.frontiers, lanes: this.stall.lanes, prepare: this._prepareGrowthChunk, reveal: this._revealGrowth });
     for (let laneIndex = 0; laneIndex < this.laneCount; laneIndex++) {
       const lane = this.stall.lanes[laneIndex]; lane.peakAlive = Math.max(lane.peakAlive, lane.alive);
       lane.populationPeak = Math.max(lane.populationPeak || 0, lane.alive);
+      this.basinRoutes.finish(laneIndex);
       this.lanePolicy.projects.finish(laneIndex);
       lane.admitted = Math.max(0, lane.spawned + (lane.transferredIn || 0) - (lane.transferredOut || 0));
       this._effectiveTerrainWork[laneIndex] = Math.min(65535, this.pendingTerrainWork[laneIndex] + (this.terrainGrowth?.pending[laneIndex] || 0));
@@ -892,7 +898,7 @@ class ProcgenLaneWorld {
       population: this.population.snapshot(), workerLimits: { ...this.workerLimits }, musicActorPositions: this._musicActorPositions.size, leftEdgeX: this.leftEdgeX, actorTriggers: this.triggerManager.snapshot(),
       stall: this.cohorts ? this.stall.snapshot(this.tickIndex) : null,
       distance: { min: Number.isFinite(minDistance) ? minDistance : 0, max: maxDistance, mean: distance / Math.max(1, this.actors.length) },
-      terrainGrowth: this.terrainGrowth?.snapshot() || null, generatedHazards: this.hazards.snapshot(), routePlanner: { ...this.hazardPlanner.stats, tunnels: { ...this.hazardPlanner.tunnels.stats }, descents: { ...this.hazardPlanner.descents.stats } },
+      terrainGrowth: this.terrainGrowth?.snapshot() || null, generatedHazards: this.hazards.snapshot(), basinCrew: this.basinRoutes.snapshot(), routePlanner: { ...this.hazardPlanner.stats, tunnels: { ...this.hazardPlanner.tunnels.stats }, descents: { ...this.hazardPlanner.descents.stats } },
       terrainGeneration: this.terrain?.getDebugState?.() || null, collisionResidentSlots: this._collisionSlots.length, residentCollisionMB: residentCollisionBytes / 1048576,
       frontierMargins: Array.from(this.generatedThrough, (x, lane) => x - this.frontiers[lane]),
       laneThemes: this.terrain?.laneThemes || null,
@@ -902,7 +908,7 @@ class ProcgenLaneWorld {
       terrainMemoryMB: this.editChunks.snapshot().totalBytes / 1048576,
       ...this.stats };
   }
-  dispose() { this._manualNukeLanes.fill(0); for (const actor of this.actors) this._clearConstructionCrew(actor); this._musicActorPositions.clear(); this.triggerManager.dispose(); this.hazardPlanner.dispose(); this.lanePolicy.dispose(); this.terrainGrowth?.dispose(); this.edgeBlockers.fill(null); this.accessTasks.fill(null); this._edgeWallCache.fill(null); this._edgeWallHazards.length = 0; this.onRestart = null; this.onLaneTransfer = null; this.characterParticles?.clear(); this.timer.onGameTick.dispose(); this.soundEvents.onEvent.dispose(); this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this._laneChunk.fill(null); this._collisionSlots.fill(null); this._laneEdits.fill(null); this._editCache.fill(null); this.terrain?.reset?.(); }
+  dispose() { this._manualNukeLanes.fill(0); for (const actor of this.actors) this._clearConstructionCrew(actor); this._musicActorPositions.clear(); this.triggerManager.dispose(); this.hazardPlanner.dispose(); this.basinRoutes.dispose(); this.lanePolicy.dispose(); this.terrainGrowth?.dispose(); this.edgeBlockers.fill(null); this.accessTasks.fill(null); this._edgeWallCache.fill(null); this._edgeWallHazards.length = 0; this.onRestart = null; this.onLaneTransfer = null; this.characterParticles?.clear(); this.timer.onGameTick.dispose(); this.soundEvents.onEvent.dispose(); this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this._laneChunk.fill(null); this._collisionSlots.fill(null); this._laneEdits.fill(null); this._editCache.fill(null); this.terrain?.reset?.(); }
 }
 
 export { ProcgenLaneWorld, MAX_PROCGEN_LANES, LANE_HEIGHT, CHUNK_WIDTH, PROCGEN_LEFT_EDGE, normalizeLaneCount, DEFAULT_LANE_HEIGHT, MAX_LANE_HEIGHT, normalizeLaneHeight, DEFAULT_PROCGEN_POPULATION, normalizePopulationPolicy };

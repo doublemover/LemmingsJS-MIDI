@@ -31,6 +31,13 @@ class ProcgenCrewProjects {
     state.projects = state.projects.filter(project => project.phase !== 'complete' && project.phase !== 'failed');
     return state;
   }
+  canBegin(actor) {
+    const state = this._refresh(actor.laneIndex);
+    if (!Number.isInteger(actor.id) || state.overflowTick >= this.world.tickIndex - 1 || state.projects.length >= MAX_CREW_PROJECTS) return false;
+    let members = 1;
+    for (const record of state.live.values()) if (record.id !== actor.id && record.ordinary && !record.blocking && record.x >= actor.x - 128 && record.x <= actor.x + 40 && Math.abs(record.y - actor.y) <= 32) members++;
+    return members <= MAX_PROJECT_CREW;
+  }
   begin(actor, kind, task) {
     const state = this._refresh(actor.laneIndex);
     if (task.crewProjectId != null) return;
@@ -115,6 +122,10 @@ class ProcgenCrewProjects {
   }
   finish(lane) {
     const state = this._refresh(lane);
+    if (this.world._manualNukeLanes?.[lane] || this.world.stall && this.world.stall.phase !== 'running') {
+      for (const project of state.projects) this._fail(project, 'scene-cancelled');
+      return;
+    }
     for (const project of state.projects) {
       if (project.phase !== 'connected' || !project.ordinaryCrossings || !this._valid(project)) continue;
       let arrived = true, blockers = 0;
@@ -129,7 +140,7 @@ class ProcgenCrewProjects {
       this.world.soundEvents?.emit({ type: SoundEventTypes.PROCGEN_ROUTE_COMPLETE, sfxId: SoundEffectIds.PROCGEN_ROUTE_COMPLETE, lemmingId: project.ownerId, laneIndex: project.lane, laneCount: this.world.laneCount,
         generation: project.generation, tick: this.world.tickIndex, crewProjectId: project.id, routeRevisionsUnchanged: true, kind: project.kind,
         ordinaryCrossings: project.ordinaryCrossings, admittedCrew: project.members.size, x: project.goalX, y: project.goalY,
-        startTick: project.startTick, connectionTick: project.connectionTick, recoveredBlockers: blockers });
+        startTick: project.startTick, connectionTick: project.connectionTick, recoveredBlockers: blockers, ...project.scene });
     }
   }
   signals(lane) {

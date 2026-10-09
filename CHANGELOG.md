@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Carry bounded ordinary crews across real open-bank source basins with four legal builder sections, physical containment/recovery, and one completed-scene phrase.
+
 - Anchor procgen births to the existing absolute generation beat grid, preserving admitted cohort settings and exposing bounded grid deferral.
 
 - Describe automation controller, note-off velocity and gate/strength targets by their real backend behavior while preserving saved mappings.

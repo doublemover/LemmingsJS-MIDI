@@ -73,6 +73,7 @@ class ProcgenLanePolicy {
     const lane = this.lanes[actor.laneIndex], task = this.world.accessTasks[actor.laneIndex]?.find(entry => entry.owner === actor);
     if (!lane || !task) return;
     this._decay(lane); lane.attempts++;
+    if (proposal.basinScene) { this.world.basinRoutes.begin(actor, proposal, task); return; }
     this.projects.begin(actor, proposal.kind, task);
     actor._laneRouteAttempt = { lane: actor.laneIndex, kind: proposal.kind, task, action: actor.action, x: actor.x, y: actor.y, falling: false };
   }
