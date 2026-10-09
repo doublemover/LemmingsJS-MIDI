@@ -433,10 +433,11 @@ class BrowserNotePreview {
   _observe(stage, fields) {
     if (!this._captureEnabled()) return null;
     const session = fields.owner == null ? null : this._sessions.get(fields.owner);
-    if (session) fields = { captureScope: session.api.output.captureScope, outputId: session.api.output.id, ...fields };
+    const output = session?.api.output || this.output;
+    if (session) fields = { captureScope: output.captureScope, ...fields };
     try {
       const context = this._captureContextFields();
-      return this.capture?.record(stage, { captureScope: this._captureScope, ...context, ...fields, backend: 'local-synth', outputId: fields.outputId || this.output.id, outputScope: fields.outputScope || fields.captureScope || this._captureScope }) ?? null; } catch { return null; }
+      return this.capture?.record(stage, { captureScope: this._captureScope, ...context, ...fields, backend: 'local-synth', outputId: output.id, outputScope: output.captureScope }) ?? null; } catch { return null; }
   }
 
   /** Notes use {note, velocity, durationMs, offsetMs, channel}; numbers are also accepted. */
@@ -458,7 +459,7 @@ class BrowserNotePreview {
       if (!this._validNote(spec.note)) continue;
       const offset = finite(spec.offsetMs, 0);
       if (offset < 0 || !Number.isFinite(baseTime + offset)) continue;
-      const requestId = this._observe('request', { ...spec.playback, ...(session ? { captureScope: session.api.output.captureScope, outputScope: session.api.output.captureScope } : {}), type: 'audition', note: spec.note,
+      const requestId = this._observe('request', { ...spec.playback, ...(session ? { captureScope: session.api.output.captureScope, outputScope: session.api.output.captureScope } : {}), type: 'audition', owner, note: spec.note,
         channel: spec.channel ?? 1, program: spec.program, intendedMs: baseTime + offset, eventType: 'audition' });
       this._previewPending.push({ spec: { ...spec, capture: { ...captureContext, ...spec.playback, requestId, captureScope: session?.api.output.captureScope || this._captureScope, outputScope: session?.api.output.captureScope || this._captureScope, eventType: 'audition',
         note: spec.note, channel: spec.channel ?? 1, program: spec.program, ensembleRole: spec.ensembleRole,
@@ -482,7 +483,7 @@ class BrowserNotePreview {
       if (!output) continue;
       const channel = output.channels[clamp(Math.trunc(finite(spec.channel, 1)), 1, 16)];
       const length = clamp(finite(spec.durationMs, durationMs), 30, this._maxNoteSeconds * 1000);
-      if (time + length <= now) { this._observe('drop', { ...spec.capture, type: 'noteOn', reason: 'expired-audition' }); continue; }
+      if (time + length <= now) { this._observe('drop', { ...spec.capture, owner: spec.owner, type: 'noteOn', reason: 'expired-audition' }); continue; }
       if (Number.isFinite(spec.pitchBendRange)) channel.sendPitchBendRange(spec.pitchBendRange);
       if (Number.isFinite(spec.pitchBend)) channel.sendPitchBend(spec.pitchBend, { time });
       if (channel.sendNoteOn(spec.note, { rawAttack: finite(spec.velocity, 80), time, capture: spec.capture, playback: spec.playback, priority: spec.priority, laneIndex: spec.laneIndex, instrument: { program: spec.program, percussion: spec.percussion, role: spec.ensembleRole, legacy: !spec.ensembleRole && spec.percussion !== true },
@@ -595,7 +596,7 @@ class BrowserNotePreview {
       oscillator = noise ? context.createBufferSource() : context.createOscillator();
       if (noise) { oscillator.buffer = noise; oscillator.loop = true; }
       gain = context.createGain();
-      voice = { oscillator, gain, number, owner: options.owner ?? null, note, start, id: ++this._voiceSequence, playback: options.playback, startMs: this._nowMs() + (start - context.currentTime) * 1000, end: start + Math.min(this._maxNoteSeconds, profile.seconds || this._maxNoteSeconds), released: false, captureMeta: this._captureEnabled() ? { owner: options.owner ?? null, ...options.capture } : null,
+      voice = { oscillator, gain, number, owner: options.owner ?? null, note, start, id: ++this._voiceSequence, playback: options.playback, startMs: this._nowMs() + (start - context.currentTime) * 1000, end: start + Math.min(this._maxNoteSeconds, profile.seconds || this._maxNoteSeconds), released: false, captureMeta: this._captureEnabled() ? { ...options.capture, owner: options.owner ?? null } : null,
         ...incoming, startedAt: start,
         token: Number.isInteger(options.voiceToken) && options.voiceToken > 0 ? options.voiceToken : null,
         peak: clamp(finite(options?.rawAttack, 80), 1, 127) / 127 * profile.gain, attack: profile.attack, decay: profile.decay,
@@ -733,7 +734,7 @@ class BrowserNotePreview {
     this._previewTimer = null;
     for (const entry of this._previewPending) {
       if ((owner === undefined || (entry.spec.owner ?? null) === owner) && (number == null || clamp(Math.trunc(finite(entry.spec.channel, 1)), 1, 16) === number)) {
-        this._observe('cancelled', { ...entry.spec.capture, type: 'noteOn', reason: 'audition-stop' });
+        this._observe('cancelled', { ...entry.spec.capture, owner: entry.spec.owner, type: 'noteOn', reason: 'audition-stop' });
       }
     }
     this._previewPending = this._previewPending.filter(entry => !((owner === undefined || (entry.spec.owner ?? null) === owner) && (number == null || clamp(Math.trunc(finite(entry.spec.channel, 1)), 1, 16) === number)));

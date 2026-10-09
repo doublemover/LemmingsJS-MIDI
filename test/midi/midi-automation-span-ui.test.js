@@ -106,6 +106,42 @@ describe('musical span editing and lane rectangles', () => {
     expect(rectangles).to.have.length(2); expect(rectangles[0]).to.include({ x: 0, y: 288, w: 360, h: 612 }); expect(rectangles[1]).to.include({ x: 0, y: 0, w: 384, h: 900 });
     expect(beat.span.laneEnd).to.equal(4);
   });
+  it('commits canvas moves and resizes once, cancels drafts, and releases old-runtime capture', () => {
+    const document = new TestDocument(), canvas = document.createElement('canvas'); document.registerElement('gameCanvas', canvas);
+    canvas.width = 240; canvas.height = 192; canvas.getBoundingClientRect = () => ({ left: 0, top: 0 });
+    let captured = null, releases = 0;
+    canvas.setPointerCapture = id => { captured = id; };
+    canvas.hasPointerCapture = id => captured === id;
+    canvas.releasePointerCapture = () => { captured = null; releases++; };
+    const context = { save() {}, restore() {}, scale() {}, fillRect() {}, strokeRect() {}, setLineDash() {}, fillText() {} };
+    let project = createMidiProjectFromMidiConfig({ sfx: {}, triggers: {} });
+    project = reduceMidiProject(project, { type: 'automation.add', automation: { id: 'canvas-span', name: 'Phrase', target: 'velocity', min: 48, max: 110,
+      span: { ...createMidiSpan('distance'), start: 96, duration: 48, loop: false, laneScope: 'lane', laneStart: 0, laneEnd: 0 } } });
+    let renderer, overlay; const updates = [];
+    const makeRenderer = () => ({ canvas, window: { devicePixelRatio: 1 }, world: { laneCount: 2, tickIndex: 0 }, originX: 64, originY: 0, viewWidth: 240, viewHeight: 192,
+      render() { overlay.draw(context, this, 1); } });
+    renderer = makeRenderer();
+    overlay = createProcgenMidiSpanOverlay({ document, getRuntime: () => ({ lanes: { renderer } }), getProject: () => project, getDomain: () => 'distance', getTarget: () => 'velocity',
+      onUpdate: (automationId, patch) => { updates.push(patch); project = reduceMidiProject(project, { type: 'automation.update', automationId, patch }); },
+      onSelect: id => overlay.select(id), onAdd() { throw new Error('An existing interval must be edited'); } });
+    const pointer = (type, x) => canvas.dispatchEvent({ type, clientX: x, clientY: 40, pointerId: 7, preventDefault() {}, stopImmediatePropagation() {} });
+    try {
+      overlay.sync(); overlay.setEditing(true);
+      expect(overlay.snapshot().rectangles[0]).to.include({ x: 32, width: 48 });
+      pointer('pointerdown', 40); pointer('pointermove', 60); expect(updates).to.have.length(0); pointer('pointerup', 60);
+      expect(updates[0].span).to.include({ start: 116, duration: 48 }); expect(captured).to.equal(null);
+      pointer('pointerdown', 97); pointer('pointermove', 109); pointer('pointerup', 109);
+      expect(updates[1].span).to.include({ start: 116, duration: 60 });
+      pointer('pointerdown', 109); pointer('pointermove', 129); pointer('pointercancel', 129);
+      expect(updates).to.have.length(2); expect(overlay.snapshot().rectangles[0].width).to.equal(60);
+      pointer('pointerdown', 60); pointer('pointermove', 80);
+      const previous = renderer; renderer = makeRenderer(); overlay.sync(); pointer('pointerup', 80);
+      expect(previous.midiSpanOverlay).to.equal(null); expect(renderer.midiSpanOverlay).to.equal(overlay);
+      expect(updates).to.have.length(2); expect(captured).to.equal(null); expect(releases).to.equal(4);
+      renderer.render(); pointer('pointerdown', 60); pointer('pointermove', 80); overlay.setVisible(false); pointer('pointerup', 80);
+      expect(updates).to.have.length(2); expect(captured).to.equal(null);
+    } finally { overlay.dispose(); }
+  });
   it('represents the whole dense repeat area with one bounded rectangle', () => {
     const renderer = { canvas: { width: 1440, height: 900 }, window: { devicePixelRatio: 1 }, world: { laneCount: 8, tickIndex: 0 }, originX: 0, originY: 0, viewWidth: 480, viewHeight: 300 };
     const entry = { id: 'dense', target: 'velocity', span: { ...createMidiSpan(), duration: 0.25 } };

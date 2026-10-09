@@ -37,12 +37,17 @@ const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDom
   let renderer = null, selectedId = null, editing = false, visible = true, drag = null, draft = null, rectangles = [], revision = 0;
   const listen = (name, handler) => { canvas?.addEventListener(name, handler, { capture: true }); listeners.push([name, handler]); };
   const changed = () => { revision++; renderer?.render(); };
+  const cancelDrag = () => {
+    if (drag?.pointerId != null && canvas.hasPointerCapture?.(drag.pointerId)) canvas.releasePointerCapture?.(drag.pointerId);
+    draft = drag = null;
+  };
   const position = (event, domain) => {
     const box = canvas.getBoundingClientRect(), x = event.clientX - box.left, y = event.clientY - box.top, axis = getSpanAxis(renderer, domain, getProject());
     return { x, y, value: Math.max(0, axis.start + x / axis.width * axis.length), lane: Math.max(0, Math.min(renderer.world.laneCount - 1, Math.floor((renderer.originY + y * renderer.viewHeight / (canvas.height / Math.min(2, renderer.window.devicePixelRatio || 1) - (renderer.overviewBandHeight || 0))) / getLaneHeight(renderer)))) };
   };
   const stop = event => { event.preventDefault(); event.stopImmediatePropagation?.(); };
   listen('pointerdown', event => {
+    api.sync();
     if (!editing || !visible || !renderer || event.button) return;
     const point = position(event, getDomain()), dpr = Math.min(2, renderer.window.devicePixelRatio || 1);
     if (point.y >= canvas.height / dpr - (renderer.overviewBandHeight || 0)) return;
@@ -50,9 +55,10 @@ const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDom
     const hit = [...rectangles].reverse().find(rect => point.x >= rect.x && point.x <= rect.x + rect.w && point.y >= rect.y && point.y <= rect.y + rect.h);
     const entry = hit?.entry, domain = entry?.span.domain || getDomain(), source = position(event, domain);
     if (entry) { selectedId = entry.id; onSelect(entry.id); }
-    drag = { entry, domain, point: source, mode: hit ? !hit.repeating && point.x >= hit.x + hit.w - 8 ? 'resize' : 'move' : 'draw' };
+    drag = { entry, domain, point: source, pointerId: event.pointerId, mode: hit ? !hit.repeating && point.x >= hit.x + hit.w - 8 ? 'resize' : 'move' : 'draw' };
   });
   listen('pointermove', event => {
+    api.sync();
     if (!drag) return; stop(event);
     const next = position(event, drag.domain), quantum = drag.domain === 'distance' ? 1 : 0.25, snap = value => Math.round(value / quantum) * quantum;
     const original = drag.entry?.span || createMidiSpan(drag.domain), delta = snap(next.value - drag.point.value);
@@ -63,19 +69,20 @@ const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDom
     draft = { ...(drag.entry || { id: 'draft', name: getTarget() + ' span', target: getTarget(), min: 48, max: 110, enabled: true }), span }; changed();
   });
   listen('pointerup', event => {
+    api.sync();
     if (!drag) return; stop(event);
-    const ready = draft, entry = drag.entry; draft = drag = null;
+    const ready = draft, entry = drag.entry; cancelDrag();
     if (ready) { if (entry) onUpdate(entry.id, { span: ready.span }); else onAdd(ready.span, ready.target); }
     changed();
   });
-  listen('pointercancel', event => { if (drag) { stop(event); draft = drag = null; changed(); } });
+  listen('pointercancel', event => { if (drag) { stop(event); cancelDrag(); changed(); } });
   listen('dblclick', event => { if (editing) stop(event); });
   const api = {
     get revision() { return revision; },
-    sync() { const next = getRuntime()?.lanes?.renderer; if (next !== renderer) { if (renderer?.midiSpanOverlay === api) renderer.midiSpanOverlay = null; renderer = next; if (renderer) renderer.midiSpanOverlay = api; } },
-    changed, select(id, ids = [id]) { selectedId = id; selectedIds = new Set(ids); changed(); },
-    setEditing(value) { editing = value === true; if (editing) visible = true; else draft = drag = null; changed(); },
-    setVisible(value) { visible = value === true; if (!visible) { editing = false; draft = drag = null; rectangles = []; } changed(); },
+    sync() { const next = getRuntime()?.lanes?.renderer; if (next !== renderer) { cancelDrag(); rectangles = []; if (renderer?.midiSpanOverlay === api) renderer.midiSpanOverlay = null; renderer = next; if (renderer) renderer.midiSpanOverlay = api; } },
+    changed, cancelDraft() { cancelDrag(); changed(); }, select(id, ids = [id]) { selectedId = id; selectedIds = new Set(ids); changed(); },
+    setEditing(value) { editing = value === true; if (editing) visible = true; else cancelDrag(); changed(); },
+    setVisible(value) { visible = value === true; if (!visible) { editing = false; cancelDrag(); rectangles = []; } changed(); },
     draw(context, current, dpr) {
       if (!visible) { rectangles = []; return; }
       const project = getProject(), entries = draft ? [...project.automation.filter(entry => entry.id !== draft.id), draft] : project.automation;
@@ -99,7 +106,7 @@ const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDom
       context.restore();
     },
     snapshot: () => ({ editing, visible, selectedId, revision, rectangles: rectangles.map(rect => ({ id: rect.entry.id, domain: rect.entry.span.domain, x: rect.x, y: rect.y, width: rect.w, height: rect.h })) }),
-    dispose() { for (const [name, handler] of listeners) canvas?.removeEventListener?.(name, handler, { capture: true }); if (renderer?.midiSpanOverlay === api) renderer.midiSpanOverlay = null; renderer = null; rectangles = []; draft = drag = null; }
+    dispose() { cancelDrag(); for (const [name, handler] of listeners) canvas?.removeEventListener?.(name, handler, { capture: true }); if (renderer?.midiSpanOverlay === api) renderer.midiSpanOverlay = null; renderer = null; rectangles = []; draft = drag = null; }
   };
   return api;
 };

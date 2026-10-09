@@ -179,6 +179,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   let restartId = 0;
   const doRestart = async () => {
     const id = ++restartId;
+    spanOverlay.cancelDraft();
     const seed = byId('procgenSeed')?.value?.trim();
     if (seed) settings.seed = normalizeSeed(seed);
     settings.camera = camera()?.getState?.();

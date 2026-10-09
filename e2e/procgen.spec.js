@@ -75,6 +75,17 @@ test('musical span bundles keep several editors open and apply common edits dura
   await expect(rows).toHaveCount(3);
   await expect(rows.first().locator('input[data-span-property=name]')).toHaveValue('Shared rise');
   expect((await stored()).map(entry => entry.span.duration)).toEqual([8, 8, 8]);
+  const beforeDrag = await stored(); await page.locator('#procgenSpanEdit').check(); await page.locator('#procgenTab').click();
+  const point = await page.evaluate(() => {
+    const api = window.__PROCGEN_LANES__; api.renderer.render();
+    const rect = api.renderer.midiSpanOverlay.snapshot().rectangles[0], box = document.getElementById('gameCanvas').getBoundingClientRect();
+    return { x: box.left + rect.x + 24, y: box.top + rect.y + Math.min(70, rect.height - 4) };
+  });
+  await page.mouse.move(point.x, point.y); await page.mouse.down(); await page.mouse.move(point.x + 35, point.y);
+  expect(await page.locator('#gameCanvas').evaluate(canvas => canvas.hasPointerCapture(1))).toBe(true);
+  expect(await stored()).toEqual(beforeDrag);
+  expect(await page.evaluate(() => { document.getElementById('procgenRestart').click(); return document.getElementById('gameCanvas').hasPointerCapture(1); })).toBe(false);
+  await page.mouse.up(); await ready(page); expect(await stored()).toEqual(beforeDrag);
 });
 
 test('procgen selected MIDI destination connects explicitly, sends actual bytes and stops on disconnect', async ({ page }) => {

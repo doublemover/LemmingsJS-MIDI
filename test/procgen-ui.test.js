@@ -130,6 +130,23 @@ describe('compact procgen drawer', () => {
     f.el('procgenRestart').dispatchEvent({ type: 'click' }); await Promise.resolve();
     expect(calls).to.deep.equal(['suspend', 'resume']); expect(f.restarts).to.equal(1); f.ui.dispose();
   });
+  it('cancels a captured musical draft before asynchronous regeneration resumes', async () => {
+    const f = fixture(), canvas = f.el('gameCanvas'); let captured = null;
+    canvas.width = 240; canvas.height = 192; canvas.getBoundingClientRect = () => ({ left: 0, top: 0 });
+    canvas.setPointerCapture = id => { captured = id; }; canvas.hasPointerCapture = id => captured === id; canvas.releasePointerCapture = () => { captured = null; };
+    const context = { save() {}, restore() {}, scale() {}, fillRect() {}, strokeRect() {}, setLineDash() {}, fillText() {} };
+    const renderer = { canvas, window: { devicePixelRatio: 1 }, world: { laneCount: 2, tickIndex: 0 }, originX: 0, originY: 0, viewWidth: 240, viewHeight: 192,
+      render() { this.midiSpanOverlay?.draw(context, this, 1); } };
+    f.runtime.lanes = { renderer };
+    const pointer = (type, x) => canvas.dispatchEvent({ type, clientX: x, clientY: 40, pointerId: 7, preventDefault() {}, stopImmediatePropagation() {} });
+    try {
+      f.ui.sync(); renderer.midiSpanOverlay.setEditing(true);
+      pointer('pointerdown', 20); pointer('pointermove', 40); expect(captured).to.equal(7);
+      f.el('procgenRestart').dispatchEvent({ type: 'click' }); expect(captured).to.equal(null);
+      pointer('pointerup', 40); await Promise.resolve();
+      expect(f.window.localStorage.getItem('lemmings.procgen.automationSpans.v1')).to.equal(null); expect(f.restarts).to.equal(1);
+    } finally { f.ui.dispose(); }
+  });
   it('resets volume and speed through their existing owners on right click', () => {
     const f = fixture(); let prevented = 0;
     f.el('procgenMasterVolume').dispatchEvent({ type: 'contextmenu', preventDefault: () => prevented++ });

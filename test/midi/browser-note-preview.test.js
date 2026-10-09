@@ -9,6 +9,8 @@ import { createMidiProject, projectToMidiConfig } from '../../js/midi/project/Mi
 import { MidiEventRouter } from '../../js/midi/MidiEventRouter.js';
 import { SoundEffectIds } from '../../js/game/SoundEvents.js';
 import { MidiScheduler } from '../../js/midi/MidiScheduler.js';
+import { createMidiOutputCapture } from '../../js/midi/capture/MidiOutputCapture.js';
+import { analyzeMidiOutputCapture } from '../../js/midi/capture/MidiCaptureAnalysis.js';
 import { withFakeClockAndPerformance } from '../support/timers.js';
 
 const deferred = () => {
@@ -203,6 +205,36 @@ describe('BrowserNotePreview', function() {
     expect(records.filter(item => item.stage === 'synth-scheduled').map(item => item.outputScope)).to.deep.equal([game.output.captureScope, audition.output.captureScope]);
     await audition.dispose(); expect(preview._channels.size).to.equal(1); expect(preview.createSession('fifth')).not.to.equal(null);
     await preview.dispose();
+  });
+
+  it('matches scheduler-observed future notes to their actual shared-session cancellation', async () => {
+    await withFakeClockAndPerformance(async clock => {
+      const { preview } = setup({ nowMs: () => clock.now });
+      const game = preview.createSession('game'), audition = preview.createSession('audition');
+      const capture = createMidiOutputCapture(); capture.start(); preview.setCapture(capture);
+      const scheduler = new MidiScheduler({ enabled: true, defaultChannel: 1 });
+      scheduler.setCapture(capture); scheduler.setOutput(game.output);
+      try {
+        await game.enable(); await audition.enable();
+        audition.output.channels[1].sendNoteOn(60, { voiceToken: 1 });
+        await audition.preview([{ note: 64, offsetMs: 1200, durationMs: 200 }], { replace: false });
+        // Exercise the real scheduler API boundary with an accepted future local schedule.
+        const origin = { captureScope: scheduler._captureScope, token: 1, requestId: 1, laneIndex: 3,
+          owner: audition.getState().ownerId, outputId: 'retained-origin-output', outputScope: 'retained-origin-scope' };
+        expect(scheduler._sendOutput(game.output, 1, 'sendNoteOn', [60, { time: 1000, rawAttack: 96, voiceToken: 1 }], origin)).to.equal(true);
+        scheduler.allNotesOff();
+        expect(audition.output.isVoiceActive(1)).to.equal(true);
+        const snapshot = capture.snapshot(), gameRecords = snapshot.records.filter(record => record.token === 1);
+        expect(gameRecords.map(record => record.stage)).to.include.members(['api-dispatch', 'synth-scheduled', 'synth-end']);
+        for (const record of gameRecords) expect(record).to.include({ captureScope: origin.captureScope,
+          outputScope: game.output.captureScope, outputId: game.output.id, laneIndex: 3 });
+        const auditionRecords = snapshot.records.filter(record => record.outputId === audition.output.id);
+        expect(auditionRecords.map(record => record.stage)).to.include('request');
+        expect(auditionRecords.every(record => record.outputScope === audition.output.captureScope)).to.equal(true);
+        const note = analyzeMidiOutputCapture(snapshot).notes.find(entry => entry.outputId === game.output.id);
+        expect(note).to.include({ startMs: 1000, synthEndReason: 'panic-or-stop', cancelledBeforeStart: true });
+      } finally { scheduler.dispose(); await preview.dispose(); }
+    });
   });
 
   it('emits every cell of a 14.4-second audition incrementally at its original timestamp', async () => {
