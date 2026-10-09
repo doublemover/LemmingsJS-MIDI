@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { applyProcgenGameEventMidiPreset } from '../../js/midi/project/ProcgenMidiDefaults.js';
+import { applyProcgenGameEventMidiPreset, PROCGEN_SPAWN_MIDI_DEFAULTS } from '../../js/midi/project/ProcgenMidiDefaults.js';
 import { GAME_EVENT_MIDI_PRESETS, applyGameEventMidiPreset } from '../../js/midi/project/GameEventMidiPresets.js';
 import { createMidiProject, createMidiProjectFromMidiConfig, reduceMidiProject, projectToMidiConfig,
   stringifyMidiProjectExport, importMidiProjectPayload } from '../../js/midi/project/MidiProject.js';
@@ -12,15 +12,18 @@ import { withFakeClockAndPerformance } from '../support/timers.js';
 const spawn = project => project.sources.find(source => source.kind === 'sfx' && source.sourceKey === String(SoundEffectIds.SPAWN));
 
 describe('procgen spawn MIDI policy', function() {
-  it('softens only fresh procgen spawn mappings across palettes and playback modes', function() {
+  it('softens fresh spawn,landing and crowd turns without replacing other palette voices', function() {
     for (const preset of GAME_EVENT_MIDI_PRESETS) for (const mode of ['steps', 'phrase']) {
       const base = createMidiProjectFromMidiConfig({ enabled: false, sfx: {}, triggers: {} });
       const original = applyGameEventMidiPreset(base, preset.id, { mode });
       const procgen = applyProcgenGameEventMidiPreset(base, preset.id, { mode });
-      expect(spawn(procgen).mapping).to.include({ velocity: 32, priority: 0 });
-      const withoutSpawn = project => project.sources.filter(source => source.id !== spawn(project).id);
+      expect(spawn(procgen).mapping).to.include(PROCGEN_SPAWN_MIDI_DEFAULTS);
+      const changedIds = new Set([SoundEffectIds.SPAWN, SoundEffectIds.LAND, SoundEffectIds.BLOCKER_TURN, SoundEffectIds.BLOCKER_CONTACT].map(String));
+      const withoutSpawn = project => project.sources.filter(source => source.kind !== 'sfx' || !changedIds.has(source.sourceKey));
       expect(withoutSpawn(procgen)).to.deep.equal(withoutSpawn(original));
-      for (const key of ['global', 'tracks', 'ensemble', 'transport', 'enabled', 'devices', 'clips', 'automation']) {
+      expect(procgen.global.position.lanePanSpread).to.equal(72);
+      expect({ ...procgen.global, position: { ...procgen.global.position, lanePanSpread: undefined } }).to.deep.equal({ ...original.global, position: { ...original.global.position, lanePanSpread: undefined } });
+      for (const key of ['tracks', 'ensemble', 'transport', 'enabled', 'devices', 'clips', 'automation']) {
         expect(procgen[key], key).to.deep.equal(original[key]);
       }
       expect(spawn(procgen).mapping.phrase).to.deep.equal(spawn(original).mapping.phrase);

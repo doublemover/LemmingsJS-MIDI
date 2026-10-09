@@ -152,11 +152,16 @@ const midiSchedulerSendMethods = {
           }
           Object.assign(expression.state, expression.spanState);
 
+          const spread = this.config.position?.lanePanSpread;
+          const lanes = Math.max(1, Math.min(1024, Math.trunc(meta.laneCount) || 1));
+          const lane = Math.max(0, Math.min(lanes - 1, Math.trunc(meta.laneIndex) || 0));
+          const notePan = output.supportsPerNotePan && Number.isFinite(spread) && !spec.explicitPan && !spec.spanPan
+            ? clamp((spec.pan ?? 0) + (lanes > 1 ? (lane * 2 / (lanes - 1) - 1) * spread : 0), -127, 127) : spec.pan;
           const accepted = this._sendOutput(output, channelNumber, 'sendNoteOn', [spec.note, { rawAttack: attackVelocity, time: sendTimeMs,
             ...(output.supportsIndependentNoteGates ? { voiceToken: token, priority: meta.priority ?? 1, laneIndex: meta.laneIndex ?? 0 } : {}),
             ...(output.supportsPlaybackMetadata ? { playback: { sfxId: meta.sfxId, triggerType: meta.triggerType, durationMs, stepIndex: spec.stepIndex, stepCount: spec.stepCount, lemmingId: meta.lemmingId, laneIndex: meta.laneIndex, ensembleRole: spec.ensembleRole, program: spec.program, channel: channelNumber } } : {}),
             ...(output.supportsPerNoteInstrument ? { instrument: { program: spec.program, percussion: spec.percussion, role: spec.ensembleRole, legacy: !spec.ensembleRole && spec.percussion !== true } } : {}),
-            ...(output.supportsPerNotePan && Number.isFinite(spec.pan) ? { pan: spec.pan / 127 } : {}) }], captureMeta);
+            ...(output.supportsPerNotePan && Number.isFinite(notePan) ? { pan: notePan / 127 } : {}) }], captureMeta);
           if (accepted === false) {
             dispatchFailed = true;
             this.recordThrottle('local-render-rejected', this._nowMs(), captureMeta);

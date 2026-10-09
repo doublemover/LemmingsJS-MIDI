@@ -178,7 +178,7 @@ describe('GameView coverage', function() {
   });
 
   it('handles WebMidi enable lifecycle', async function() {
-    globalThis.window = { isSecureContext: true, location: { protocol: 'https:', hostname: 'example.com', search: '' } };
+    globalThis.window = { isSecureContext: true, location: { protocol: 'https:', hostname: 'example.com', search: '?midi=1' } };
     const view = new GameView();
 
     let errorMessage = null;

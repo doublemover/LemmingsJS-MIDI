@@ -60,8 +60,8 @@ describe('real procgen population and delayed scouts', function() {
     world.tickIndex = 11; for (const actor of world.actors) world._assist(actor);
     expect(world.actors.some(actor => actor.canClimb)).to.equal(false);
     world.step();
-    expect(world.actors.filter(actor => actor.canClimb)).to.have.length(2);
-    expect(world.actors.filter(actor => actor.action === world.actions[State.CLIMBING])).to.have.length(2);
+    expect(world.actors.filter(actor => actor.canClimb)).to.have.length(world.actors.filter(actor => actor.scoutAbilities & 1).length);
+    expect(world.actors.filter(actor => actor.action === world.actions[State.CLIMBING])).to.have.length(world.actors.filter(actor => actor.scoutAbilities & 1).length);
     expect(world.actors.every(actor => !actor.hasParachute)).to.equal(true); world.dispose();
   });
   it('records changed terrain work only, and clears bounded pending work on reset', () => {
@@ -76,7 +76,7 @@ describe('real procgen population and delayed scouts', function() {
   });
   it('uses the real floating system for an eligible falling scout and preserves manually assigned abilities', () => {
     const world = flat(new ProcgenLaneWorld({ masks, assists: true, populationPolicy: { scoutsEvery: 1, scoutDelayTicks: 12 } }));
-    const scout = world.actors[0]; Object.assign(scout, { x: 20, y: 10, state: 18 });
+    const scout = world.actors[0]; Object.assign(scout, { x: 20, y: 10, state: 18, scoutAbilities: 2 });
     world.tickIndex = 11; world._assist(scout); expect(scout.hasParachute).to.equal(false);
     world.step(); expect(scout.action).to.equal(world.actions[State.FLOATING]); expect(scout.hasParachute).to.equal(true);
     for (let tick = 0; tick < 50; tick++) world.step();
@@ -110,7 +110,7 @@ describe('real assisted tunnel oscillation and pile recovery', () => {
     const world = new ProcgenLaneWorld({ masks: await loadProcgenMasks(), terrain: enclosedTunnel(), cohorts: true, maxActors: 8,
       populationPolicy: { scoutsEvery: 8, scoutDelayTicks: 0 }, stallPolicy: { ...pilePolicySettings, releaseIntervalTicks: 10 } });
     const spawn = world._spawn.bind(world);
-    world._spawn = (...args) => { const actor = spawn(...args); Object.assign(actor, { x: 64, y: 72, furthestX: 64, scout: actor.spawnOrdinal === 0 }); actor.setAction(world.actions[State.WALKING]); return actor; };
+    world._spawn = (...args) => { const actor = spawn(...args); Object.assign(actor, { x: 64, y: 72, furthestX: 64, scout: actor.spawnOrdinal === 0, scoutAbilities: actor.spawnOrdinal === 0 ? 1 : 0 }); actor.setAction(world.actions[State.WALKING]); return actor; };
     const events = []; world.soundEvents.onEvent.on(event => events.push(event));
     let climbEntries = 0, previousAction = null, hoisted = false, sawGrowingPile = false;
     for (let tick = 0; tick < 400 && world.generation === 1; tick++) {

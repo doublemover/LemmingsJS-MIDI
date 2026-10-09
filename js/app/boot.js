@@ -1,4 +1,5 @@
 import './bootstrap.js';
+import { createProcgenRedirectUrl } from './StartupUrlConfig.js';
 import { GameView } from '../game/GameView.js';
 import { MidiInputController } from '../midi/input/MidiInputController.js';
 import { createCharacterUiController } from './characterUiController.js';
@@ -496,6 +497,8 @@ function bindResize() {
 
 function start() {
   const { windowRef, documentRef } = hydrateRuntimeContext();
+  const redirect = createProcgenRedirectUrl(windowRef?.location?.href);
+  if (redirect) { windowRef.location.replace(redirect); return; }
   const embedMode = detectEmbedMode({ windowRef, documentRef });
   createBootAnalytics({ windowRef, documentRef });
   try {

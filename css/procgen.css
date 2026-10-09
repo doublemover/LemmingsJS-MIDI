@@ -152,3 +152,16 @@ body { flex-direction: column; }
 .midi-output-capture iframe { width: 100%; height: 330px; box-sizing: border-box; border: 1px solid #536252; background: #f5f7f8; }
 .midi-output-capture pre { white-space: pre-wrap; max-height: 220px; overflow: auto; font: 11px/1.4 ui-monospace, monospace; }
 .midi-output-capture [hidden] { display: none; }
+
+/* The panel and its handle move together; closed height leaves only the handle. */
+#procgenPanel { position: fixed; inset: var(--procgen-bar-height, 42px) 0 auto; z-index: 20; display: flex; flex-direction: column; transform: translateY(calc(-100% + 18px)); transition: transform 180ms ease; pointer-events: none; }
+#procgenPanel.is-open { transform: translateY(0); }
+#procgenPanel #procgenDrawer { position: relative; inset: auto; width: 100%; max-height: min(calc(100dvh - var(--procgen-bar-height, 42px) - 18px), 660px); transform: none; transition: none; pointer-events: auto; }
+#procgenPanel #procgenTab { position: relative; top: auto; left: auto; transform: none; align-self: center; flex: none; pointer-events: auto; }
+#procgenOutputPressure { display: inline-block; flex: 0 0 14ch; width: 14ch; min-height: 12px; overflow: hidden; text-overflow: ellipsis; }
+#gameCanvas.nuke-armed { cursor: crosshair; }
+#procgenNukeStatus { position: fixed; top: calc(var(--procgen-bar-height, 42px) + 22px); left: 50%; transform: translateX(-50%); max-width: calc(100vw - 20px); box-sizing: border-box; padding: 4px 8px; background: #443326; color: #ffdb95; border: 1px solid #9a7d4c; border-radius: 4px; pointer-events: none; }
+#procgenNukeStatus:empty { display: none; }
+#procgenAdvanced { margin: 10px 0; }
+#procgenDrawer details > summary { cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { #procgenPanel { transition: none; } }

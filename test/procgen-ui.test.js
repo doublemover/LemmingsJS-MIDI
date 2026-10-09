@@ -1,14 +1,15 @@
 import { expect } from 'chai';
 import fs from 'node:fs';
 import * as cheerio from 'cheerio';
-import { GAME_EVENT_MIDI_PRESETS } from '../js/midi/project/GameEventMidiPresets.js';
+import { PROCGEN_GAME_EVENT_MIDI_PRESETS } from '../js/midi/project/ProcgenMidiDefaults.js';
 import { normalizeSeed } from '../js/core/seededRandom.js';
 import { createProcgenUiController } from '../js/app/procgen/ProcgenUiController.js';
 import { TestDocument, createTestWindow } from './helpers/test-dom.js';
 import { registerElement } from './support/dom-fixtures.js';
-const fixture = (search = '', storedLanes = null) => {
+const fixture = (search = '', storedLanes = null, preferences = {}) => {
   const document = new TestDocument(), window = createTestWindow(document);
   if (storedLanes != null) window.localStorage.setItem('lemmings.procgen.lanes.v1', JSON.stringify(storedLanes));
+  for (const [key, value] of Object.entries(preferences)) window.localStorage.setItem(key, JSON.stringify(value));
   window.location = { search, href: `https://example.test/procgen.html${search}` };
   for (const target of [document, window]) {
     const events = new Map();
@@ -16,9 +17,9 @@ const fixture = (search = '', storedLanes = null) => {
     target.removeEventListener = (name, callback) => events.get(name)?.delete(callback);
     target.dispatchEvent = event => { for (const callback of events.get(event.type) || []) callback(event); };
   }
-  for (const [tag, ids] of [['div', ['procgenDrawer']], ['button', ['procgenTab', 'procgenRestart', 'procgenListen', 'procgenSpeedDown', 'procgenSpeedUp', 'procgenShare', 'procgenNewSeed', 'procgenPause', 'procgenStep', 'procgenFollow', 'procgenZoomIn', 'procgenZoomOut', 'procgenPanic', 'procgenCctvPin', 'procgenCctvClear']],
-    ['select', ['procgenPreset', 'procgenPack', 'procgenSpeed', 'procgenCctvMode']], ['input', ['procgenLanes', 'procgenPhrases', 'procgenSeed', 'procgenMasterVolume', 'procgenCctvLane', 'procgenWorkerBashers', 'procgenWorkerDiggers', 'procgenWorkerBuilders']],
-    ['p', ['procgenMasterVolumeValue', 'procgenPresetDescription', 'procgenAudioStatus', 'procgenRunStatus', 'procgenMetrics', 'procgenStallStatus', 'procgenAliveCount', 'procgenDistance', 'procgenBest', 'procgenCctvStatus']]]) {
+  for (const [tag, ids] of [['div', ['procgenDrawer', 'procgenPanel']], ['details', ['procgenHelpFields']], ['canvas', ['gameCanvas']], ['button', ['procgenTab', 'procgenHelp', 'procgenRestart', 'procgenListen', 'procgenSpeedDown', 'procgenSpeedUp', 'procgenShare', 'procgenNewSeed', 'procgenPause', 'procgenStep', 'procgenFollow', 'procgenZoomIn', 'procgenZoomOut', 'procgenPanic', 'procgenCctvPin', 'procgenCctvClear']],
+    ['select', ['procgenPreset', 'procgenPack', 'procgenSpeed', 'procgenCctvMode']], ['input', ['procgenLanes', 'procgenPhrases', 'procgenSeed', 'procgenMasterVolume', 'procgenCctvLane', 'procgenWorkerBashers', 'procgenWorkerDiggers', 'procgenWorkerBuilders', 'procgenLaneHeight', 'procgenCctvEnabled', 'procgenScoutsEvery', 'procgenScoutDelay', 'procgenSpawnSpread', 'procgenSpawnPriority']],
+    ['p', ['procgenMasterVolumeValue', 'procgenPresetDescription', 'procgenAudioStatus', 'procgenRunStatus', 'procgenMetrics', 'procgenStallStatus', 'procgenAliveCount', 'procgenDistance', 'procgenBest', 'procgenCctvStatus', 'procgenNukeStatus', 'procgenOutputPressure']]]) {
     for (const id of ids) { const el = registerElement(document, tag, id); el.removeEventListener = (event, callback) => el.listeners.set(event, (el.listeners.get(event) || []).filter(fn => fn !== callback)); }
   }
   let restarts = 0;
@@ -56,8 +57,9 @@ describe('compact procgen drawer', () => {
   });
   it('retains Director mode and pins when a replacement renderer reports its initial empty state', () => {
     const f = fixture();
-    const createCctv = () => ({ mode: 'leaders', pins: [],
-      getState() { return { mode: this.mode, pins: [...this.pins], slots: [] }; },
+    const createCctv = () => ({ mode: 'leaders', pins: [], enabled: false,
+      getState() { return { mode: this.mode, pins: [...this.pins], enabled: this.enabled, slots: [] }; },
+      setEnabled(enabled) { this.enabled = enabled; this.onChange?.(this.getState()); },
       setMode(mode) { this.mode = mode; this.onChange?.(this.getState()); },
       setPins(pins) { this.pins = [...pins]; this.onChange?.(this.getState()); },
       togglePin(lane) { this.pins = this.pins.includes(lane) ? this.pins.filter(value => value !== lane) : [...this.pins, lane]; this.onChange?.(this.getState()); return true; }
@@ -66,8 +68,9 @@ describe('compact procgen drawer', () => {
     f.el('procgenCctvMode').value = 'director'; f.el('procgenCctvMode').dispatchEvent({ type: 'change' });
     f.el('procgenCctvLane').value = '9'; f.el('procgenCctvPin').dispatchEvent({ type: 'click' });
     expect(f.ui.settings.cctvPins).to.deep.equal([8]);
+    f.el('procgenCctvEnabled').checked = true; f.el('procgenCctvEnabled').dispatchEvent({ type: 'change', target: f.el('procgenCctvEnabled') });
     f.runtime.lanes.renderer.cctv = createCctv(); f.ui.sync();
-    expect(f.runtime.lanes.renderer.cctv.mode).to.equal('director'); expect(f.runtime.lanes.renderer.cctv.pins).to.deep.equal([8]);
+    expect(f.runtime.lanes.renderer.cctv.enabled).to.equal(true); expect(f.runtime.lanes.renderer.cctv.mode).to.equal('director'); expect(f.runtime.lanes.renderer.cctv.pins).to.deep.equal([8]);
     f.el('procgenCctvClear').dispatchEvent({ type: 'click' }); expect(f.ui.settings.cctvPins).to.deep.equal([]); f.ui.dispose();
   });
   it('applies and saves bounded crew limits in place and preserves the last choice on invalid edits', () => {
@@ -76,12 +79,77 @@ describe('compact procgen drawer', () => {
     f.runtime.world = { actors: [], setWorkerLimits: limits => calls.push({ ...limits }) }; f.ui.sync();
     f.el('procgenWorkerBashers').value = '4'; f.el('procgenWorkerBashers').dispatchEvent({ type: 'change', target: f.el('procgenWorkerBashers') });
     f.el('procgenWorkerDiggers').value = '19'; f.el('procgenWorkerDiggers').dispatchEvent({ type: 'change', target: f.el('procgenWorkerDiggers') });
-    expect(calls.at(-1)).to.deep.equal({ bashers: 4, diggers: 16, builders: 2 }); expect(f.restarts).to.equal(0);
+    expect(calls.at(-1)).to.deep.equal({ bashers: 4, diggers: 16, builders: 8 }); expect(f.restarts).to.equal(0);
     f.el('procgenWorkerBashers').value = ''; f.el('procgenWorkerBashers').dispatchEvent({ type: 'change', target: f.el('procgenWorkerBashers') });
     expect(f.el('procgenWorkerBashers').value).to.equal('4'); expect(JSON.parse(stored.get('lemmings.procgen.workerLimits.v1')).value.bashers).to.equal(4); f.ui.dispose();
   });
+  it('applies scout cadence and birth priority live, preserving saved preferences and invalid edits', () => {
+    const f = fixture('', null, { 'lemmings.procgen.population.v1': { version: 1, value: { scoutsEvery: 0, scoutDelayTicks: 60, spawnSpreadTicks: 0 } }, 'lemmings.procgen.spawnPriority.v1': { version: 1, value: 7 } });
+    const calls = []; f.runtime.world = { actors: [], setPopulationPolicy: policy => calls.push({ ...policy }) }; f.ui.sync();
+    expect(f.ui.settings.populationPolicy).to.include({ scoutsEvery: 0, scoutDelayTicks: 60, spawnSpreadTicks: 0 });
+    expect(f.el('procgenSpawnPriority').value).to.equal(7);
+    f.el('procgenScoutsEvery').value = '12'; f.el('procgenScoutsEvery').dispatchEvent({ type: 'change', target: f.el('procgenScoutsEvery') });
+    expect(calls.at(-1).scoutsEvery).to.equal(12); expect(calls.at(-1).spawnBeatTicks).to.be.greaterThan(0);
+    f.el('procgenSpawnPriority').value = '150'; f.el('procgenSpawnPriority').dispatchEvent({ type: 'change', target: f.el('procgenSpawnPriority') });
+    expect(f.el('procgenSpawnPriority').value).to.equal(100);
+    f.el('procgenPreset').value = 'procgen-airy-arrivals'; f.el('procgenPreset').dispatchEvent({ type: 'change' }); expect(f.el('procgenSpawnPriority').value).to.equal(100);
+    f.el('procgenScoutsEvery').value = ''; f.el('procgenScoutsEvery').dispatchEvent({ type: 'change', target: f.el('procgenScoutsEvery') }); expect(f.el('procgenScoutsEvery').value).to.equal(12);
+    expect(f.restarts).to.equal(0); expect(f.ui.local.getState().enabled).to.equal(false);
+    expect(JSON.parse(f.window.localStorage.getItem('lemmings.procgen.population.v1')).value.scoutsEvery).to.equal(12); f.ui.dispose();
+  });
+  it('restores deliberate physical height and favorite music while URL choices take precedence', () => {
+    const preferences = { 'lemmings.procgen.laneHeight.v1': { version: 1, value: 96 }, 'lemmings.procgen.music.v1': { version: 1, preset: 'game-lydian-lanterns', mode: 'phrase' } };
+    const f = fixture('', null, preferences); expect(f.ui.settings).to.include({ laneHeight: 96, preset: 'game-lydian-lanterns', mode: 'phrase' });
+    f.el('procgenLaneHeight').value = '200'; f.el('procgenLaneHeight').dispatchEvent({ type: 'change', target: f.el('procgenLaneHeight') });
+    expect(f.restarts).to.equal(1); expect(JSON.parse(f.window.localStorage.getItem('lemmings.procgen.laneHeight.v1')).value).to.equal(200);
+    f.el('procgenLaneHeight').value = ''; f.el('procgenLaneHeight').dispatchEvent({ type: 'change', target: f.el('procgenLaneHeight') }); expect(f.restarts).to.equal(1); expect(f.ui.settings.laneHeight).to.equal(200); f.ui.dispose();
+    const explicit = fixture('?laneHeight=144&preset=procgen-clockwork-crowd&musicMode=steps', null, preferences);
+    expect(explicit.ui.settings).to.include({ laneHeight: 144, preset: 'procgen-clockwork-crowd', mode: 'steps' }); explicit.ui.dispose();
+  });
+  it('keeps game shortcuts reachable after a range/button click while preserving native editing keys', () => {
+    const f = fixture(), pans = []; f.runtime.lanes = { renderer: { camera: { pan: (...args) => pans.push(args) } } };
+    const press = (key, target) => f.window.dispatchEvent({ type: 'keydown', key, code: key === '+' ? 'NumpadAdd' : key === '-' ? 'Minus' : key, target, preventDefault() {} });
+    press('ArrowLeft', { tagName: 'INPUT', type: 'range' }); expect(pans).to.have.length(0);
+    press('+', { tagName: 'INPUT', type: 'range' }); expect(f.timer.speedFactor).to.equal(4);
+    press('+', { tagName: 'INPUT', type: 'number' }); expect(f.timer.speedFactor).to.equal(4);
+    press('-', { tagName: 'BUTTON' }); expect(f.timer.speedFactor).to.equal(3); f.ui.dispose();
+  });
+  it('opens visible Help after range focus and preserves native checkbox/radio activation', () => {
+    const f = fixture(), calls = []; f.runtime.lanes = { pause: () => calls.push('pause'), renderer: { camera: { pan: () => calls.push('pan') } } };
+    f.el('procgenHelpFields').offsetTop = 420;
+    const press = (code, target, extra = {}) => f.window.dispatchEvent({ type: 'keydown', code, key: code === 'Space' ? ' ' : code, target, preventDefault() {}, ...extra });
+    press('Space', { tagName: 'INPUT', type: 'checkbox' }); press('Space', { tagName: 'INPUT', type: 'radio' }); press('ArrowRight', { tagName: 'INPUT', type: 'radio' });
+    expect(calls).to.deep.equal([]);
+    press('F1', { tagName: 'INPUT', type: 'text' }); expect(f.el('procgenDrawer').inert).to.equal(true);
+    press('F1', { tagName: 'INPUT', type: 'range' }); expect(f.el('procgenHelpFields').open).to.equal(true); expect(f.el('procgenDrawer').scrollTop).to.equal(420);
+    f.document.dispatchEvent({ type: 'keydown', key: 'Escape' }); press('Slash', null, { shiftKey: true }); expect(f.el('procgenDrawer').inert).to.equal(false);
+    f.ui.dispose();
+  });
+  it('keeps listening intent across restart through the existing audio lifecycle hooks', async () => {
+    const f = fixture(), calls = []; f.ui.local.suspendGame = () => { calls.push('suspend'); return true; }; f.ui.local.resumeGame = async () => calls.push('resume');
+    f.el('procgenRestart').dispatchEvent({ type: 'click' }); await Promise.resolve();
+    expect(calls).to.deep.equal(['suspend', 'resume']); expect(f.restarts).to.equal(1); f.ui.dispose();
+  });
+  it('resets volume and speed through their existing owners on right click', () => {
+    const f = fixture(); let prevented = 0;
+    f.el('procgenMasterVolume').dispatchEvent({ type: 'contextmenu', preventDefault: () => prevented++ });
+    f.el('procgenSpeed').dispatchEvent({ type: 'contextmenu', preventDefault: () => prevented++ });
+    expect(f.ui.local.audio.getState().masterVolume).to.equal(1); expect(f.timer.speedFactor).to.equal(1); expect(prevented).to.equal(2); f.ui.dispose();
+  });
+  it('arms a lane nuke, ignores repeats/forms and cancels or nukes all explicitly', () => {
+    const f = fixture(), calls = [], canvas = f.el('gameCanvas'); canvas.getBoundingClientRect = () => ({ top: 40 });
+    f.runtime.world = { laneHeight: 144, nukeLane: lane => { calls.push(lane); return true; }, nukeAll: () => calls.push('all') };
+    f.runtime.lanes = { renderer: { cameraY: 144, scale: 2, camera: { viewport: () => ({ height: 432 }) } } };
+    const press = extra => f.window.dispatchEvent({ type: 'keydown', key: 't', code: 'KeyT', preventDefault() {}, ...extra });
+    press({ repeat: true }); expect(canvas.classList.contains('nuke-armed')).to.equal(false);
+    press({ target: { tagName: 'INPUT' } }); expect(canvas.classList.contains('nuke-armed')).to.equal(false);
+    press({ target: { tagName: 'BUTTON' } }); canvas.dispatchEvent({ type: 'pointerdown', button: 0, clientY: 380, preventDefault() {}, stopImmediatePropagation() {} });
+    expect(calls).to.deep.equal([2]); expect(canvas.classList.contains('nuke-armed')).to.equal(false);
+    press({ target: { tagName: 'INPUT', type: 'range' } }); f.window.dispatchEvent({ type: 'keydown', key: 'Escape' }); expect(canvas.classList.contains('nuke-armed')).to.equal(false);
+    press({ shiftKey: true }); expect(calls).to.deep.equal([2, 'all']); f.ui.dispose();
+  });
   it('offers the shared catalog and never mounts hardware routing/studio controls', () => {
-    const f = fixture(); expect(f.el('procgenPreset').children.length).to.equal(GAME_EVENT_MIDI_PRESETS.length);
+    const f = fixture(); expect(f.el('procgenPreset').children.length).to.equal(PROCGEN_GAME_EVENT_MIDI_PRESETS.length);
     expect(f.ui.local.getState().enabled).to.equal(false);
     const html = fs.readFileSync('procgen.html', 'utf8'); expect(html).not.to.match(/midiOutput|midiInput|midiStudio|requestMIDIAccess/);
     expect(html).to.include('max="1024"'); f.ui.dispose();
@@ -120,6 +188,11 @@ describe('compact procgen drawer', () => {
     expect($('#procgenTab').closest('#procgenTopbar').length).to.equal(0);
     expect($('#procgenTab').attr('aria-label')).to.equal('Show details');
     expect($('#procgenCharacters').closest('#procgenDrawer').length).to.equal(1);
+    expect($('#procgenTab').parent().attr('id')).to.equal('procgenPanel');
+    expect($('#procgenAdvanced').next().hasClass('procgen-cctv-controls')).to.equal(true);
+    expect($('#procgenCctvEnabled').attr('checked')).to.equal(undefined);
+    expect($('#procgenShare').closest('#procgenDrawer').length).to.equal(1);
+    expect($('#procgenOutputPressure').prev().attr('id')).to.equal('procgenAudioControls');
   });
   it('regenerates the chosen seed and reuses pause, step, follow, gain and Panic owners', () => {
     const f = fixture('?seed=42'), calls = [];
@@ -134,10 +207,10 @@ describe('compact procgen drawer', () => {
     f.ui.local.panic = () => calls.push('panic'); f.el('procgenPanic').dispatchEvent({ type: 'click' }); expect(calls.at(-1)).to.equal('panic');
     f.ui.dispose();
   });
-  it('uses validated query appearance and music over stored/default selections without starting audio', () => {
+  it('ignores query appearance while accepting independent music and synth defaults without starting audio', () => {
     const f = fixture('?shape=classic&bodyColor=%23ffd447&accessory=crown&eyewear=monocle&speed=150&preset=game-lydian-lanterns&musicMode=phrase');
     expect(f.ui.settings).to.include({ speed: 150, preset: 'game-lydian-lanterns', mode: 'phrase' });
     expect(f.el('procgenPhrases').checked).to.equal(true); expect(f.ui.local.getState().enabled).to.equal(false);
-    expect(new URL(f.ui.getShareUrl()).searchParams.get('shape')).to.equal('classic'); f.ui.dispose();
+    expect(new URL(f.ui.getShareUrl()).searchParams.get('shape')).to.equal(null); expect(f.ui.settings).to.include({ output: 'synth', sound: true, laneHeight: 144, pack: 1 }); f.ui.dispose();
   });
 });

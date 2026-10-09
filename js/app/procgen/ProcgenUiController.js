@@ -7,10 +7,9 @@ import { DECORATION_CHOICES } from '../../decorations/ProcgenDecorationPacks.js'
 import { createCharacterUiController, mountCharacterControls } from '../characterUiController.js';
 import { createLocalGamePreview } from '../midi-ui/localGamePreview.js';
 import { createMidiProjectFromMidiConfig, projectToMidiConfig, reduceMidiProject, sanitizeMidiProject } from '../../midi/project/MidiProject.js';
-import { GAME_EVENT_MIDI_PRESETS } from '../../midi/project/GameEventMidiPresets.js';
-import { applyProcgenGameEventMidiPreset } from '../../midi/project/ProcgenMidiDefaults.js';
-import { normalizeLaneCount } from './ProcgenLaneWorld.js';
-import { getCharacterPreference } from '../../lemmings/CharacterSpriteSet.js';
+import { PROCGEN_GAME_EVENT_MIDI_PRESETS, applyProcgenGameEventMidiPreset, getProcgenSpawnPriority, setProcgenSpawnPriority, getProcgenMusicBeatTicks } from '../../midi/project/ProcgenMidiDefaults.js';
+import { normalizeLaneCount, normalizeLaneHeight, DEFAULT_LANE_HEIGHT, normalizePopulationPolicy } from './ProcgenLaneWorld.js';
+import { normalizeWorkerLimits } from './ProcgenWorkerLimits.js';
 import { KeybindingRegistry, DEFAULT_KEYBINDINGS } from '../../input/KeybindingRegistry.js';
 import { normalizeProcgenSpeed, changeProcgenSpeed, renderProcgenSpeedControl } from './ProcgenSpeedControl.js';
 import { normalizeSeed } from '../../core/seededRandom.js';
@@ -19,7 +18,7 @@ import { readProcgenUrlConfig, createProcgenShareUrl } from './ProcgenUrlConfig.
 const createProcgenUiController = ({ document, window, getRuntime, restart, initial = {} }) => {
   const byId = id => document.getElementById(id);
   const listeners = [];
-  const listen = (target, event, handler) => { target?.addEventListener(event, handler); listeners.push([target, event, handler]); };
+  const listen = (target, event, handler, options) => { target?.addEventListener(event, handler, options); listeners.push([target, event, handler, options]); };
   const urlConfig = readProcgenUrlConfig(window?.location?.search);
   const laneStorageKey = 'lemmings.procgen.lanes.v1';
   let preferredLanes = 8;
@@ -27,16 +26,28 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     const stored = JSON.parse(window.localStorage?.getItem(laneStorageKey) || 'null');
     if (stored?.version === 1 && Number.isInteger(stored.value) && stored.value >= 1 && stored.value <= 1024) preferredLanes = stored.value;
   } catch { /* Start with eight lanes. */ }
+  const heightKey = 'lemmings.procgen.laneHeight.v1';
+  let preferredHeight = DEFAULT_LANE_HEIGHT;
+  try { const stored = JSON.parse(window.localStorage?.getItem(heightKey) || 'null'); if (stored?.version === 1) preferredHeight = normalizeLaneHeight(stored.value, DEFAULT_LANE_HEIGHT); } catch { /* Keep physical default. */ }
+  const musicKey = 'lemmings.procgen.music.v1';
+  let musicPreference = {};
+  try { const stored = JSON.parse(window.localStorage?.getItem(musicKey) || 'null'); if (stored?.version === 1 && PROCGEN_GAME_EVENT_MIDI_PRESETS.some(p => p.id === stored.preset)) musicPreference = { preset: stored.preset, mode: stored.mode === 'phrase' ? 'phrase' : 'steps' }; } catch { /* Keep original favorite default. */ }
   const initialLanes = String(initial.laneCount ?? '').trim();
-  const settings = { laneCount: initialLanes && Number.isFinite(Number(initialLanes)) ? normalizeLaneCount(initialLanes) : preferredLanes, speed: normalizeProcgenSpeed(initial.speed), pack: [1, 2, 3, 4, 5, 6].includes(Number(initial.pack)) ? Number(initial.pack) : 2,
-    preset: 'game-iron-ensemble', mode: 'steps', decoration: 'none', ...urlConfig.settings, ...(urlConfig.seed != null ? { seed: urlConfig.seed } : {}) };
+  const settings = { laneCount: initialLanes && Number.isFinite(Number(initialLanes)) ? normalizeLaneCount(initialLanes) : preferredLanes, speed: normalizeProcgenSpeed(initial.speed), pack: [1, 2, 3, 4, 5, 6].includes(Number(initial.pack)) ? Number(initial.pack) : 1,
+    laneHeight: preferredHeight,
+    preset: 'game-iron-ensemble', mode: 'steps', decoration: 'none', ...musicPreference, ...urlConfig.settings, ...(urlConfig.seed != null ? { seed: urlConfig.seed } : {}) };
   const tensionStorageKey = 'lemmings.procgen.ensembleTension.v1';
   let tensionPreferences = null;
   try { const stored = JSON.parse(window.localStorage?.getItem(tensionStorageKey) || 'null'); if (stored?.version === 1 && stored.value && typeof stored.value === 'object') tensionPreferences = stored.value; } catch { /* Keep the preset defaults. */ }
   let project = applyProcgenGameEventMidiPreset(createMidiProjectFromMidiConfig({ enabled: false, sfx: {}, triggers: {} }), settings.preset);
   const spanStorageKey = 'lemmings.procgen.automationSpans.v1', workerStorageKey = 'lemmings.procgen.workerLimits.v1';
-  const normalizeWorkerLimits = value => Object.fromEntries(['bashers', 'diggers', 'builders'].map(key => [key, Number.isFinite(Number(value?.[key])) ? Math.max(0, Math.min(16, Math.trunc(Number(value[key])))) : 2]));
-  settings.workerLimits = normalizeWorkerLimits(null);
+  settings.workerLimits = normalizeWorkerLimits();
+  const populationKey = 'lemmings.procgen.population.v1', priorityKey = 'lemmings.procgen.spawnPriority.v1';
+  settings.populationPolicy = normalizePopulationPolicy();
+  let savedPriority;
+  try { const stored = JSON.parse(window.localStorage?.getItem(populationKey) || 'null'); if (stored?.version === 1) settings.populationPolicy = normalizePopulationPolicy(stored.value); } catch { /* Keep defaults. */ }
+  try { const stored = JSON.parse(window.localStorage?.getItem(priorityKey) || 'null'); if (stored?.version === 1 && Number.isFinite(stored.value)) savedPriority = stored.value; } catch { /* Keep defaults. */ }
+  if (savedPriority !== undefined) project = setProcgenSpawnPriority(project, savedPriority);
   try { const stored = JSON.parse(window.localStorage?.getItem(spanStorageKey) || 'null'); if (stored?.version === 1 && Array.isArray(stored.value)) project = sanitizeMidiProject({ ...project, automation: [...project.automation, ...stored.value.filter(entry => entry?.span).slice(0, 64)] }); } catch { /* Keep session defaults. */ }
   try { const stored = JSON.parse(window.localStorage?.getItem(workerStorageKey) || 'null'); if (stored?.version === 1) settings.workerLimits = normalizeWorkerLimits(stored.value); } catch { /* Keep session defaults. */ }
   let config = projectToMidiConfig(project), disposed = false;
@@ -44,7 +55,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     onStateChange: state => {
       const button = byId('procgenListen');
       if (button) { button.textContent = state.enabled || state.status === 'starting' ? 'Stop listening' : 'Listen locally'; button.setAttribute('aria-pressed', String(state.enabled)); }
-      if (byId('procgenAudioStatus')) byId('procgenAudioStatus').textContent = state.message;
+      if (byId('procgenAudioStatus')) byId('procgenAudioStatus').textContent = state.message + (settings.soundFont ? ` SoundFont ${settings.soundFont} requested; sample loading unavailable.` : '') + (settings.output === 'midi' ? ' External MIDI requested; this surface provides local synth listening.' : '');
     } });
   const outputCapture = createMidiOutputCapture();
   const captureControls = createMidiCaptureControls({ document, window, capture: outputCapture, prefix: 'procgenCapture', inspect: () => local.audio.inspectRender?.(),
@@ -86,10 +97,26 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     settings.workerLimits = normalizeWorkerLimits({ ...settings.workerLimits, [key]: event.target.value }); syncWorkerLimits();
     try { window.localStorage?.setItem(workerStorageKey, JSON.stringify({ version: 1, value: settings.workerLimits })); } catch { /* Keep the session choice. */ }
   });
+  const syncPopulation = () => {
+    settings.populationPolicy = normalizePopulationPolicy({ spawnBeatTicks: getProcgenMusicBeatTicks(project, getRuntime()?.world?.getGameTimer?.().TIME_PER_FRAME_MS || 60) }, settings.populationPolicy);
+    getRuntime()?.world?.setPopulationPolicy?.(settings.populationPolicy);
+    for (const [key, id] of [['scoutsEvery', 'procgenScoutsEvery'], ['scoutDelayTicks', 'procgenScoutDelay'], ['spawnSpreadTicks', 'procgenSpawnSpread']]) if (byId(id)) byId(id).value = settings.populationPolicy[key];
+    if (byId('procgenSpawnPriority')) byId('procgenSpawnPriority').value = getProcgenSpawnPriority(project);
+  };
+  for (const [key, id] of [['scoutsEvery', 'procgenScoutsEvery'], ['scoutDelayTicks', 'procgenScoutDelay'], ['spawnSpreadTicks', 'procgenSpawnSpread']]) listen(byId(id), 'change', event => {
+    if (!String(event.target.value).trim() || !Number.isFinite(Number(event.target.value))) { syncPopulation(); return; }
+    settings.populationPolicy = normalizePopulationPolicy({ [key]: event.target.value }, settings.populationPolicy); syncPopulation();
+    try { window.localStorage?.setItem(populationKey, JSON.stringify({ version: 1, value: settings.populationPolicy })); } catch { /* Keep live settings. */ }
+  });
+  listen(byId('procgenSpawnPriority'), 'change', event => {
+    if (!String(event.target.value).trim() || !Number.isFinite(Number(event.target.value))) { syncPopulation(); return; }
+    project = setProcgenSpawnPriority(project, Number(event.target.value)); savedPriority = getProcgenSpawnPriority(project); config = projectToMidiConfig(project); local.syncConfig(); syncPopulation();
+    try { window.localStorage?.setItem(priorityKey, JSON.stringify({ version: 1, value: savedPriority })); } catch { /* Keep live setting. */ }
+  });
   const panel = byId('procgenDrawer'), tab = byId('procgenTab');
   const setOpen = open => {
     if (!panel || !tab) return;
-    panel.classList.toggle('is-open', open); panel.inert = !open;
+    panel.classList.toggle('is-open', open); byId('procgenPanel')?.classList.toggle('is-open', open); panel.inert = !open;
     tab.setAttribute('aria-expanded', String(open)); tab.textContent = open ? '▴' : '▾';
     tab.setAttribute('aria-label', open ? 'Hide details' : 'Show details'); tab.title = open ? 'Hide details' : 'Show details';
     if (!open && panel.contains(document.activeElement)) tab.focus();
@@ -98,8 +125,14 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   listen(tab, 'pointerdown', event => { dragStart = event.clientY; });
   listen(tab, 'pointerup', event => { if (dragStart != null && event.clientY - dragStart > 15) { setOpen(true); pulledOpen = true; } dragStart = null; });
   listen(tab, 'click', () => { if (pulledOpen) { pulledOpen = false; return; } setOpen(tab.getAttribute('aria-expanded') !== 'true'); });
-  listen(document, 'keydown', event => { if (event.key === 'Escape') { setOpen(false); spanOverlay.setEditing(false); if (byId('procgenSpanEdit')) byId('procgenSpanEdit').checked = false; } });
+  const isEditing = event => event.target?.isContentEditable || ['TEXTAREA', 'SELECT'].includes(event.target?.tagName) || (event.target?.tagName === 'INPUT' && !['range', 'checkbox', 'radio', 'button', 'submit'].includes(event.target.type || 'text'));
+  listen(document, 'keydown', event => { if (event.key === 'Escape' && !isEditing(event)) { setOpen(false); spanOverlay.setEditing(false); if (byId('procgenSpanEdit')) byId('procgenSpanEdit').checked = false; } });
   setOpen(false);
+  const showHelp = () => {
+    setOpen(true); const help = byId('procgenHelpFields');
+    if (help) { help.open = true; if (panel) panel.scrollTop = help.offsetTop || 0; }
+  };
+  listen(byId('procgenHelp'), 'click', showHelp);
   const charactersHost = byId('procgenCharacters');
   if (charactersHost) mountCharacterControls(document, charactersHost);
   const characters = createCharacterUiController({ document, window, getView: () => getRuntime()?.view,
@@ -111,26 +144,31 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     select.value = String(value);
   };
   fill('procgenDecoration', DECORATION_CHOICES.map(choice => [choice.id, choice.label]), settings.decoration);
-  fill('procgenPreset', GAME_EVENT_MIDI_PRESETS.map(preset => [preset.id, preset.label]), settings.preset);
+  fill('procgenPreset', PROCGEN_GAME_EVENT_MIDI_PRESETS.map(preset => [preset.id, preset.label]), settings.preset);
   fill('procgenPack', [[1, 'Lemmings'], [2, 'Oh No! More Lemmings'], [3, 'Xmas 1991'], [4, 'Xmas 1992'], [5, 'Holiday 1993'], [6, 'Holiday 1994']], settings.pack);
   if (byId('procgenSpeed')) byId('procgenSpeed').value = settings.speed;
   if (byId('procgenPhrases')) byId('procgenPhrases').checked = settings.mode === 'phrase';
   if (byId('procgenLanes')) byId('procgenLanes').value = settings.laneCount;
-  const refreshPreset = () => {
+  const refreshPreset = ({ replaceRollingDefaults = false } = {}) => {
     settings.preset = byId('procgenPreset').value; settings.mode = byId('procgenPhrases')?.checked ? 'phrase' : 'steps';
-    project = applyProcgenGameEventMidiPreset(project, settings.preset, { mode: settings.mode });
+    project = applyProcgenGameEventMidiPreset(project, settings.preset, { mode: settings.mode, replaceRollingDefaults });
+    if (savedPriority !== undefined) project = setProcgenSpawnPriority(project, savedPriority);
     if (project.ensemble && tensionPreferences) project = reduceMidiProject(project, { type: 'ensemble.tension.update', patch: tensionPreferences });
-    config = projectToMidiConfig(project); local.syncConfig(); tensionControls.sync(); spanControls.render();
-    if (byId('procgenPresetDescription')) byId('procgenPresetDescription').textContent = GAME_EVENT_MIDI_PRESETS.find(p => p.id === settings.preset).description;
+    config = projectToMidiConfig(project); local.syncConfig(); tensionControls.sync(); spanControls.render(); syncPopulation();
+    try { window.localStorage?.setItem(musicKey, JSON.stringify({ version: 1, preset: settings.preset, mode: settings.mode })); } catch { /* Keep session palette. */ }
+    if (byId('procgenPresetDescription')) byId('procgenPresetDescription').textContent = PROCGEN_GAME_EVENT_MIDI_PRESETS.find(p => p.id === settings.preset).description;
   };
-  listen(byId('procgenPreset'), 'change', refreshPreset); listen(byId('procgenPhrases'), 'change', refreshPreset); refreshPreset();
+  listen(byId('procgenPreset'), 'change', () => refreshPreset({ replaceRollingDefaults: true })); listen(byId('procgenPhrases'), 'change', () => refreshPreset()); refreshPreset();
   listen(byId('procgenListen'), 'click', () => { if (local.getState().enabled || local.getState().status === 'starting') local.stop(); else local.start(); });
+  let restartId = 0;
   const doRestart = async () => {
+    const id = ++restartId;
     const seed = byId('procgenSeed')?.value?.trim();
     if (seed) settings.seed = normalizeSeed(seed);
-    local.stop();
+    settings.camera = camera()?.getState?.();
+    const listening = local.suspendGame();
     if (byId('procgenRunStatus')) byId('procgenRunStatus').textContent = 'Loading…';
-    try { await restart(); } catch (error) { if (!disposed && byId('procgenRunStatus')) byId('procgenRunStatus').textContent = `Could not start: ${error.message}`; }
+    try { await restart(); if (listening && !disposed && id === restartId) await local.resumeGame(); } catch (error) { if (!disposed && byId('procgenRunStatus')) byId('procgenRunStatus').textContent = `Could not start: ${error.message}`; }
   };
   listen(byId('procgenRestart'), 'click', doRestart);
   listen(byId('procgenNewSeed'), 'click', () => {
@@ -150,6 +188,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   };
   setVolume(typeof storedVolume === 'number' ? Math.max(0, Math.min(1, storedVolume)) : storedVolume?.version === 2 ? storedVolume.value : 0.7, false);
   listen(byId('procgenMasterVolume'), 'input', event => setVolume(Number(event.target.value) / 100));
+  listen(byId('procgenMasterVolume'), 'contextmenu', event => { event.preventDefault?.(); setVolume(1); });
   listen(byId('procgenPanic'), 'click', () => local.panic());
   listen(byId('procgenLanes'), 'change', () => {
     const input = byId('procgenLanes'), value = String(input.value).trim();
@@ -158,19 +197,28 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     try { window.localStorage?.setItem(laneStorageKey, JSON.stringify({ version: 1, value: settings.laneCount })); } catch { /* Keep the session choice. */ }
     doRestart();
   });
+  if (byId('procgenLaneHeight')) byId('procgenLaneHeight').value = settings.laneHeight;
+  listen(byId('procgenLaneHeight'), 'change', event => {
+    if (!String(event.target.value).trim() || !Number.isFinite(Number(event.target.value))) { event.target.value = settings.laneHeight; return; }
+    settings.laneHeight = normalizeLaneHeight(event.target.value, settings.laneHeight); event.target.value = settings.laneHeight;
+    try { window.localStorage?.setItem(heightKey, JSON.stringify({ version: 1, value: settings.laneHeight })); } catch { /* Keep session height. */ }
+    doRestart();
+  });
   listen(byId('procgenDecoration'), 'change', () => { settings.decoration = byId('procgenDecoration').value; doRestart(); });
   listen(byId('procgenPack'), 'change', () => { settings.pack = Number(byId('procgenPack').value); doRestart(); });
   const camera = () => getRuntime()?.lanes?.renderer?.camera;
   const panelSprites = () => getRuntime()?.lanes?.renderer?.hud?.sprites;
   const cctv = () => getRuntime()?.lanes?.renderer?.cctv;
-  settings.cctvMode = 'leaders'; settings.cctvPins = [];
+  settings.cctvMode = 'leaders'; settings.cctvPins = []; settings.cctvEnabled = false;
   const syncCctv = state => {
     if (!state) return;
     settings.cctvMode = state.mode; settings.cctvPins = state.pins;
+    if (typeof state.enabled === 'boolean') settings.cctvEnabled = state.enabled;
+    if (byId('procgenCctvEnabled')) byId('procgenCctvEnabled').checked = settings.cctvEnabled;
     if (byId('procgenCctvMode')) byId('procgenCctvMode').value = state.mode;
     for (let index = 0; index < 8; index++) {
       const button = byId('procgenCctvSlot' + index), slot = state.slots[index]; if (!button) continue;
-      button.hidden = !slot; if (!slot) continue;
+      button.hidden = state.enabled === false || !slot; if (!slot) continue;
       button.dataset.lane = slot.lane; button.disabled = state.mode !== 'director'; button.setAttribute('aria-pressed', String(slot.pinned));
       button.textContent = 'Lane ' + (slot.lane + 1) + ' / #' + slot.rank + ' / ' + slot.reason;
       button.title = slot.pinned ? 'Unpin this lane' : 'Pin this lane in Director mode';
@@ -179,6 +227,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
       : 'Eight distance leaders. Pins are retained for Director mode.';
     if (byId('procgenCctvStatus') && byId('procgenCctvStatus').textContent !== message) byId('procgenCctvStatus').textContent = message;
   };
+  listen(byId('procgenCctvEnabled'), 'change', event => { settings.cctvEnabled = event.target.checked; cctv()?.setEnabled?.(settings.cctvEnabled); syncCctv(cctv()?.getState()); });
   listen(byId('procgenCctvMode'), 'change', () => { cctv()?.setMode(byId('procgenCctvMode').value); syncCctv(cctv()?.getState()); });
   const toggleCctvPin = lane => {
     if (!cctv()?.togglePin(lane)) { if (byId('procgenCctvStatus')) byId('procgenCctvStatus').textContent = 'Choose a valid lane; unpin a lane before adding a fifth pin.'; return; }
@@ -195,13 +244,14 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     const timer = runtime?.game?.getGameTimer?.(); if (timer) timer.speedFactor = settings.speed;
     renderProcgenSpeedControl({ document, sprites: panelSprites(), speed: settings.speed });
   };
+  for (const id of ['procgenSpeed', 'procgenSpeedReadout', 'procgenSpeedDown', 'procgenSpeedUp']) listen(byId(id), 'contextmenu', event => { event.preventDefault?.(); setSpeed(1); });
   listen(byId('procgenSpeed'), 'change', () => setSpeed(byId('procgenSpeed').value));
   for (const [id, direction] of [['procgenSpeedDown', -1], ['procgenSpeedUp', 1]]) {
     listen(byId(id), 'click', event => setSpeed(changeProcgenSpeed(settings.speed, direction, { panel: true, fast: event.shiftKey })));
   }
   const supportedKeys = new Set(['panLeft', 'panRight', 'panUp', 'panDown', 'zoomIn', 'zoomOut', 'zoomReset', 'speedDown', 'speedDownFast', 'speedUp', 'speedUpFast', 'togglePause', 'stepForward', 'restartLevel']);
   const keyConfig = config => ({ bindings: { ...Object.fromEntries(Object.entries(DEFAULT_KEYBINDINGS.bindings).map(([action, bindings]) =>
-    [action, supportedKeys.has(action) ? config?.bindings?.[action] ?? bindings : []])), followFrontier: config?.bindings?.followFrontier || ['KeyF'] } });
+    [action, supportedKeys.has(action) ? config?.bindings?.[action] ?? bindings : []])), followFrontier: config?.bindings?.followFrontier || ['KeyF'], toggleShortcutOverlay: config?.bindings?.toggleShortcutOverlay || ['F1', 'Shift+Slash'] } });
   const keybindings = new KeybindingRegistry(keyConfig());
   window?.fetch?.('keybindings.json').then(response => response.ok ? response.json() : null).then(config => {
     if (config && !disposed) keybindings.setConfig(keyConfig(config));
@@ -215,8 +265,33 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   listen(byId('procgenStep'), 'click', () => { setPaused(true); getRuntime()?.lanes?.step(); });
   listen(byId('procgenFollow'), 'click', () => { camera()?.followFrontier(); byId('gameCanvas')?.focus?.(); });
   for (const [id, factor] of [['procgenZoomOut', 1 / 1.1], ['procgenZoomIn', 1.1]]) listen(byId(id), 'click', () => camera()?.setZoom(camera().getState().scale * factor));
+  let nukeArmed = false;
+  const setNukeArmed = armed => {
+    nukeArmed = armed; byId('gameCanvas')?.classList.toggle('nuke-armed', armed);
+    if (byId('procgenNukeStatus')) byId('procgenNukeStatus').textContent = armed ? 'Click a lane to start its nuke; Escape cancels.' : '';
+  };
+  const canvas = byId('gameCanvas');
+  listen(canvas, 'pointerdown', event => {
+    if (!nukeArmed || event.button !== 0) return;
+    const runtime = getRuntime(), renderer = runtime?.lanes?.renderer, world = runtime?.world, rect = canvas.getBoundingClientRect?.();
+    if (!renderer || !world || !rect) return;
+    const height = renderer.camera.viewport().height, cssY = event.clientY - rect.top;
+    if (cssY < 0 || cssY >= height * renderer.scale) return;
+    const lane = Math.floor((renderer.cameraY + cssY / renderer.scale) / world.laneHeight);
+    if (world.nukeLane(lane)) { event.preventDefault?.(); event.stopImmediatePropagation?.(); setNukeArmed(false); }
+  }, { capture: true });
   const handleKey = event => {
-    if (event.defaultPrevented || event.target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'SUMMARY'].includes(event.target?.tagName)) return;
+    if (event.defaultPrevented || isEditing(event)) return;
+    if (!event.ctrlKey && !event.altKey && !event.metaKey && (event.code === 'KeyT' || event.key?.toLowerCase() === 't')) {
+      if (!event.repeat) { if (event.shiftKey) { getRuntime()?.world?.nukeAll?.(); setNukeArmed(false); } else setNukeArmed(!nukeArmed); }
+      event.preventDefault?.(); return;
+    }
+    if (event.key === 'Escape') { setNukeArmed(false); return; }
+    if (event.repeat) return;
+    if (event.target?.type === 'range' && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(event.key)) return;
+    const activationKey = [' ', 'Enter'].includes(event.key) || ['Space', 'Enter', 'NumpadEnter'].includes(event.code);
+    if (activationKey && (['BUTTON', 'SUMMARY'].includes(event.target?.tagName) || event.target?.tagName === 'INPUT' && ['checkbox', 'radio', 'button', 'submit'].includes(event.target.type))) return;
+    if (event.target?.type === 'radio' && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key || event.code)) return;
     let handled = false;
     for (const action of keybindings.getActionsForEvent(event)) {
       if (action.startsWith('pan') && action !== 'panBoost') {
@@ -230,19 +305,21 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
       else if (action.startsWith('speed')) { setSpeed(changeProcgenSpeed(settings.speed, action.startsWith('speedUp') ? 1 : -1, { fast: action.endsWith('Fast') })); handled = true; }
       else if (action === 'togglePause' && !event.repeat) { setPaused(!paused); handled = true; }
       else if (action === 'stepForward') { if (paused) getRuntime()?.lanes?.step(); handled = true; }
+      else if (action === 'toggleShortcutOverlay') { showHelp(); handled = true; }
       else if (action === 'restartLevel' && !event.repeat) { doRestart(); handled = true; }
     }
     if (handled) event.preventDefault?.();
   };
   listen(window, 'keydown', handleKey);
   const getShareUrl = () => createProcgenShareUrl({ url: window.location.href, seed: window.procgenSeed,
-    settings, appearance: getCharacterPreference(), camera: camera()?.getState() || { cameraX: 0, cameraY: 0, scale: 3, follow: true } });
+    settings, camera: camera()?.getState() || { cameraX: 0, cameraY: 0, scale: 3, follow: true } });
   listen(byId('procgenShare'), 'click', () => {
     const input = byId('procgenShareUrl'); if (!input) return;
     input.value = getShareUrl(); input.hidden = false; input.focus?.(); input.select?.();
   });
-  listen(window, 'blur', () => local.stop());
-  listen(document, 'visibilitychange', () => { if (document.hidden) local.stop(); });
+  listen(window, 'blur', () => local.suspendGame());
+  listen(window, 'focus', () => { if (!document.hidden) local.resumeGame(); });
+  listen(document, 'visibilitychange', () => { if (document.hidden) local.suspendGame(); else local.resumeGame(); });
   const syncProgress = state => {
     const lanes = getRuntime()?.world?.stall?.lanes;
     const distance = lanes ? lanes.reduce((max, lane) => Math.max(max, lane.maxX - 36), 0) : state?.distance?.max || 0;
@@ -256,26 +333,27 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
       syncActiveCount(state.alive); syncProgress(state); tensionControls.syncStatus(); spanControls.syncStatus();
       const pressure = getRuntime()?.view?.midiPreviewRouter?.getOutputPressure?.();
       const outputPressure = byId('procgenOutputPressure');
-      if (outputPressure) { outputPressure.hidden = !pressure?.throttled; outputPressure.textContent = pressure?.throttled ? 'Thinned ' + pressure.dropped : ''; outputPressure.title = pressure?.throttled ? 'Shared sound budget: ' + pressure.reason : ''; }
+      if (outputPressure) { outputPressure.hidden = false; outputPressure.textContent = pressure?.throttled ? 'Thinned ' + pressure.dropped : '';  outputPressure.title = pressure?.throttled ? 'Shared sound budget: ' + pressure.reason : ''; }
       const label = byId('procgenMetrics');
       if (label) label.textContent = `${state.alive.toLocaleString()} alive · ${state.spawnedTotal.toLocaleString()} spawned · ${Math.round(state.distance.max).toLocaleString()} px forward · run ${state.generation}${state.admissionPaused ? ' · spawn admission paused at actor cap' : ''}`;
+      if (label && Number.isFinite(state.achievedTicksPerSecond)) label.textContent += ` · ${settings.speed}× requested / ${(state.achievedTicksPerSecond * 0.06).toFixed(1)}× measured`;
       const policy = byId('procgenStallStatus');
       if (policy) policy.textContent = state.stall?.phase === 'cascade' ? 'Stalled cohort: staggered OHNO; restart follows the last actor.' : 'Progressing and working lanes stay protected. Reset follows all-lane probe/transit grace or a sustained growing pile.';
     },
     sync() {
-      characters.sync(); syncProgress(); tensionControls.sync(); spanControls.render(); spanOverlay.sync(); syncWorkerLimits();
-      paused = false;
+      characters.sync(); syncProgress(); tensionControls.sync(); spanControls.render(); spanOverlay.sync(); syncWorkerLimits(); syncPopulation();
+      paused = false; setNukeArmed(false);
       if (byId('procgenPause')) { byId('procgenPause').textContent = 'Pause'; byId('procgenPause').setAttribute('aria-pressed', 'false'); }
       if (byId('procgenSeed')) byId('procgenSeed').value = String(settings.seed ?? window.procgenSeed ?? '');
-      camera()?.applyState(urlConfig.camera);
+      camera()?.applyState(settings.camera || urlConfig.camera);
       const overview = cctv();
-      if (overview) { const mode = settings.cctvMode, pins = [...settings.cctvPins]; overview.onChange = syncCctv; overview.setMode(mode); overview.setPins(pins); syncCctv(overview.getState()); }
+      if (overview) { const mode = settings.cctvMode, pins = [...settings.cctvPins], enabled = settings.cctvEnabled; overview.onChange = syncCctv; overview.setMode(mode); overview.setPins(pins); overview.setEnabled?.(enabled); syncCctv(overview.getState()); }
       setSpeed(settings.speed);
       const runtime = getRuntime();
       if (byId('procgenAliveCount') && runtime?.world) byId('procgenAliveCount').textContent = runtime.world.actors.reduce((count, actor) => count + (actor.failureReason ? 0 : 1), 0).toLocaleString() + ' alive';
       if (byId('procgenRunStatus')) byId('procgenRunStatus').textContent = `${settings.laneCount.toLocaleString()} ${settings.laneCount === 1 ? 'lane' : 'lanes'} · ${runtime?.world ? 'Wheel or Z/X zoom; arrows or drag pan; F follows the leader.' : 'Left-to-right generation'}`;
     },
-    dispose() { disposed = true; local.dispose(); captureControls.dispose(); tensionControls.dispose(); spanControls.dispose(); spanOverlay.dispose(); characters.dispose?.(); for (const [target, event, handler] of listeners) target?.removeEventListener(event, handler); }
+    dispose() { disposed = true; local.dispose(); captureControls.dispose(); tensionControls.dispose(); spanControls.dispose(); spanOverlay.dispose(); characters.dispose?.(); for (const [target, event, handler, options] of listeners) target?.removeEventListener(event, handler, options); }
   };
 };
 export { createProcgenUiController };

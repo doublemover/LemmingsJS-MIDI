@@ -34,7 +34,7 @@ const makeWindow = (navigator, search = '', innerWidth = 390) => ({
   navigator, location: { search }, innerWidth
 });
 
-describe('mobile MIDI availability policy', function() {
+describe('explicit browser MIDI availability policy', function() {
   for (const [name, navigator] of mobileDevices) {
     it(`requires one explicit opt-in for ${name} at every viewport width`, function() {
       const windowRef = makeWindow(navigator);
@@ -53,14 +53,15 @@ describe('mobile MIDI availability policy', function() {
   }
 
   for (const [name, navigator] of desktopDevices) {
-    it(`keeps ${name} available even in a narrow viewport`, function() {
+    it(`requires explicit opt-in for ${name} even in a narrow viewport`, function() {
       const windowRef = makeWindow(navigator);
       for (const width of [320, 1440, 390]) {
         windowRef.innerWidth = width;
-        for (const search of [...deniedQueries, '?midi=1']) {
+        for (const search of deniedQueries) {
           windowRef.location.search = search;
-          expect(resolveMidiAvailability({ windowRef }), `${width}px ${search}`).to.equal(true);
+          expect(resolveMidiAvailability({ windowRef }), `${width}px ${search}`).to.equal(false);
         }
+        windowRef.location.search = '?midi=1'; expect(resolveMidiAvailability({ windowRef })).to.equal(true);
       }
     });
   }
@@ -76,7 +77,7 @@ describe('mobile MIDI availability policy', function() {
   it('handles missing browser globals without throwing', function() {
     expect(resolveMidiAvailability()).to.equal(true);
     expect(resolveMidiAvailability({ windowRef: null, navigatorRef: null })).to.equal(true);
-    expect(resolveMidiAvailability({ navigatorRef: { userAgent: 'iPhone' } })).to.equal(false);
+    expect(resolveMidiAvailability({ navigatorRef: { userAgent: 'iPhone' } })).to.equal(true);
   });
 });
 
@@ -135,8 +136,8 @@ const createTrackedController = ({ navigator, search = '', width = 390 } = {}) =
   return { controller, document, window, values, calls, resize, savedProject, savedTemplates };
 };
 
-describe('mobile MIDI controller gate', function() {
-  for (const [name, navigator] of mobileDevices) {
+describe('browser MIDI controller gate', function() {
+  for (const [name, navigator] of [...mobileDevices, ...desktopDevices]) {
     it(`leaves ${name} inert despite a stored enabled project and later resize`, function() {
       const { controller, document, window, values, calls, resize, savedProject, savedTemplates } = createTrackedController({ navigator });
       const workspace = document.getElementById('midiSequencerWorkspace');
@@ -180,8 +181,7 @@ describe('mobile MIDI controller gate', function() {
   for (const [name, navigator, search] of [
     ['opted-in phone', mobileDevices[0][1], '?midi=1'],
     ['opted-in tablet', mobileDevices[5][1], '?midi=1'],
-    ['narrow desktop', desktopDevices[0][1], ''],
-    ['desktop with midi=0', desktopDevices[0][1], '?midi=0']
+    ['opted-in narrow desktop', desktopDevices[0][1], '?midi=1']
   ]) {
     it(`keeps the studio and saved enabled state usable on ${name}`, function() {
       const { controller, document, resize, calls } = createTrackedController({ navigator, search });

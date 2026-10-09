@@ -77,14 +77,14 @@ class ProcgenSolverAdapter {
   snapshot() {
     const { x, y, width, height } = this.bounds, groundMask = new Uint8Array(width * height), steelMask = new Uint8Array(width * height);
     for (let py = 0; py < height; py++) for (let px = 0; px < width; px++) {
-      const lane = Math.floor((py + y) / 96);
+      const lane = Math.floor((py + y) / this.world.laneHeight);
       if (this.world.terrainGrowth && px + x >= this.world.generatedThrough[lane]) throw new Error('Procgen snapshot includes unrevealed geometry');
       const at = py * width + px; groundMask[at] = Number(this.world.hasGroundAt(px + x, py + y)); steelMask[at] = Number(this.world.hasSteelAt(px + x, py + y));
     }
     const hazards = [];
     if (this.world.terrain?.objects?.length && this.world.terrain.describe) {
       const chunkWidth = this.world.terrain.chunkWidth;
-      for (let lane = Math.floor(y / 96); lane <= Math.floor((y + height - 1) / 96); lane++) for (let chunk = Math.floor(x / chunkWidth); chunk <= Math.floor((x + width - 1) / chunkWidth); chunk++) {
+      for (let lane = Math.floor(y / this.world.laneHeight); lane <= Math.floor((y + height - 1) / this.world.laneHeight); lane++) for (let chunk = Math.floor(x / chunkWidth); chunk <= Math.floor((x + width - 1) / chunkWidth); chunk++) {
         for (const object of this.world.terrain.describe(this.world.laneSeeds[lane], chunk).objects) {
           if (hazards.length >= 512) throw new RangeError('Procgen snapshot source-object budget exceeded');
           const image = object.piece.image;
@@ -99,7 +99,7 @@ class ProcgenSolverAdapter {
       for (let at = 0, next = 0; at < steelMask.length; at++) if (steelMask[at]) this._protectedCells[next++] = at * 2 + groundMask[at];
     }
     return { kind: 'procgen', id: this.id, width, height, groundMask, steelMask, hazards,
-      source: { assetSha256: this.world.terrain?.recipe?.assetSha256 ?? null, sourceRevision: this.world.terrain?.sourceDescriptor?.sourceRevision ?? null, seed: this.world.seed, generation: this.world.generation, laneSeeds: Array.from(this.world.laneSeeds) }, workerLimits: { ...this.world.workerLimits }, skills: { ...this.skills },
+      source: { assetSha256: this.world.terrain?.recipe?.assetSha256 ?? null, sourceRevision: this.world.terrain?.sourceDescriptor?.sourceRevision ?? null, seed: this.world.seed, generation: this.world.generation, laneHeight: this.world.laneHeight, laneSeeds: Array.from(this.world.laneSeeds) }, workerLimits: { ...this.world.workerLimits }, skills: { ...this.skills },
       lemmings: this.getFinalStateSummary().lemmings.map(actor => ({ ...actor, x: actor.x - x, y: actor.y - y })),
       exits: [{ ...this.goal, x: this.goal.x - x, y: this.goal.y - y, kind: 'physical-region' }], needCount: this.crewCount,
       timer: { tick: this.tick }, sourceOffset: { x, y }, goalKind: 'physical-region' };

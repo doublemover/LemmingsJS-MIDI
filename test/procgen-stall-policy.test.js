@@ -108,7 +108,9 @@ describe('bounded spatial pile and useful-work stall signals', () => {
     const work = { terrainActivityTicks: new Float64Array([-Infinity]), pendingTerrainWork: new Uint32Array([1]) };
     actors[0].action = { actionName: 'mining' };
     policy.update(actors, 50, work); expect(policy.phase).to.equal('running'); expect(policy.lanes[0].activeWork).to.equal(true);
-    policy.update(actors, 500, work); expect(policy.phase).to.equal('running');
+    policy.update(actors, 249, work); expect(policy.phase).to.equal('running');
+    const stale = preparePile(); stale.actors[0].action = { actionName: 'mining' };
+    stale.policy.update(stale.actors, 50, work); stale.policy.update(stale.actors, 500, work); expect(stale.policy.phase).to.equal('cascade');
     work.pendingTerrainWork[0] = 0; work.terrainActivityTicks[0] = 500;
     policy.update(actors, 500, work); expect(policy.phase).to.equal('running');
     policy.update(actors, 601, work); expect(policy.phase).to.equal('cascade');
@@ -128,7 +130,7 @@ describe('bounded spatial pile and useful-work stall signals', () => {
     policy.update(actors, 23); actors[0].x = 50; policy.update(actors, 24);
     expect(policy.lanes[0].pileCount).to.equal(0); expect(policy.lanes[0].spawnsSinceProgress).to.equal(0);
   });
-  it('keeps summaries bounded and does not mistake a static initial crowd or a distant probe for growth', () => {
+  it('keeps summaries bounded and does not mistake a static initial crowd for growth and bounds an actually observed distant growing pile', () => {
     const policy = new ProcgenStallPolicy(64, pileSettings), actors = pileActors(10);
     policy.update(actors, 1); for (let spawn = 0; spawn < 12; spawn++) policy.spawn(0, 2);
     const counts = policy._pileCounts, cells = policy._pileCells;
@@ -138,6 +140,23 @@ describe('bounded spatial pile and useful-work stall signals', () => {
     const far = new ProcgenStallPolicy(1, pileSettings), probes = pileActors(4).map(actor => ({ ...actor, x: 5036 }));
     far.update(probes, 1); for (let spawn = 0; spawn < far.allowance(far.lanes[0]); spawn++) far.spawn(0, 2);
     far.update(probes, 20); probes.push(...probes.slice(0, 2).map(actor => ({ ...actor, id: actor.id + 4 })));
-    far.update(probes, 21); far.update(probes, 3000); expect(far.phase).to.equal('running');
+    far.update(probes, 21); far.update(probes, 3000); expect(far.phase).to.equal('cascade');
+    expect(far.lanes[0].reason).to.equal('sustained-growing-pile');
+  });
+});
+
+describe('local sustained pile detonation while other lanes progress', () => {
+  it('queues only the actual growing stalled lane once on simulation ticks, preserves a progressing lane and bounds stale pending grace', () => {
+    const policy = new ProcgenStallPolicy(2, pileSettings), actors = [...pileActors(4), { id: 99, laneIndex: 1, x: 40, y: 168, lastProgressTick: 1 }];
+    policy.update(actors, 1); for (let count = 0; count < 6; count++) policy.spawn(0, 2);
+    policy.update(actors, 20); actors.push(...pileActors(6).slice(4)); policy.update(actors, 21);
+    actors[4].x = 100; policy.update(actors, 50); expect(policy.phase).to.equal('running');
+    expect(policy.cascade.map(entry => entry.id)).to.have.members([0, 1, 2, 3, 4, 5]); expect(policy.lanes[0].detonationQueued).to.equal(true);
+    const entries = policy.cascade.slice(); for (let repeat = 0; repeat < 20; repeat++) policy.update(actors, 50); expect(policy.cascade).to.deep.equal(entries);
+    expect(policy.takeDue(100)).to.have.members([0, 1, 2, 3, 4, 5]); policy.update(actors, 100); expect(policy.cascade).to.have.length(6);
+    actors[0].x = 70; policy.update(actors, 101); expect(policy.lanes[0].detonationQueued).to.equal(false); expect(policy.consumeRestart()).to.equal(null);
+    const { policy: protectedPolicy, actors: crew } = preparePile(), work = { pendingTerrainWork: [1], terrainActivityTicks: [-Infinity] };
+    for (let tick = 50; tick < 500; tick += 50) { work.pendingTerrainWork[0]++; work.terrainActivityTicks[0] = tick; protectedPolicy.update(crew, tick, work); expect(protectedPolicy.phase).to.equal('running'); }
+    work.terrainActivityTicks[0] = -Infinity; protectedPolicy.update(crew, 551, work); expect(protectedPolicy.phase).to.equal('cascade');
   });
 });

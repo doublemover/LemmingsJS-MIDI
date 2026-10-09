@@ -2,8 +2,8 @@ const MAX_MATERIALIZATION_JOBS = 32;
 
 // Foundation sections cover complete source motif spans. Edge clipping is at
 // the existing chunk seam; the scheduler never invents a pixel-strip quantum.
-const createTerrainGrowthPlan = ({ descriptor, pattern, route, pieces, assemblies, sourceRevision }) => {
-  const width = 128, height = 96, jobs = [], foundationSections = [], foundationByColumn = new Uint8Array(width);
+const createTerrainGrowthPlan = ({ descriptor, pattern, route, pieces, assemblies, sourceRevision, height = 96 }) => {
+  const width = 128, jobs = [], foundationSections = [], foundationByColumn = new Uint8Array(width);
   const placementJobs = new Uint8Array(descriptor.placements.length), objectJobs = new Uint8Array(descriptor.objects.length);
   const add = (kind, bounds, dependencies, sourceIds, extra = {}) => {
     const index = jobs.length;
@@ -32,15 +32,17 @@ const createTerrainGrowthPlan = ({ descriptor, pattern, route, pieces, assemblie
     let group = terrainGroups.get(key); if (!group) { group = []; terrainGroups.set(key, group); }
     group.push(at);
   }
-  let priorCanonicalJob = null;
+  let priorCanonicalJob = null; const columnJobs = new Map();
   for (const [key, members] of terrainGroups) {
     const placements = members.map(at => descriptor.placements[at]), x1 = Math.min(...placements.map(p => p.x)), x2 = Math.max(...placements.map(p => p.x + p.piece.width));
     const y1 = Math.min(...placements.map(p => p.y)), y2 = Math.max(...placements.map(p => p.y + p.piece.height));
     const ids = placements.flatMap(p => p.canonicalGroup ? p.canonicalGroup.placements.map(p => p.id) : [p.piece.id]);
     const dependencies = foundationDeps(x1, x2), canonical = placements[0].canonicalGroup;
     if (canonical && priorCanonicalJob != null) dependencies.push(priorCanonicalJob);
+    const column = placements[0].sourcedColumn; if (columnJobs.has(column)) dependencies.push(columnJobs.get(column));
     const index = add('terrain', { x1, x2, y1, y2 }, dependencies, ids, { placementIndices: Object.freeze(members), ...(canonical ? { sourceGroup: canonical, orderedSource: true } : {}) });
     if (canonical) priorCanonicalJob = index;
+    if (column) columnJobs.set(column, index);
     for (const at of members) placementJobs[at] = index;
     if (placements[0].assembly) assemblyTerrain.set(key, index);
   }

@@ -1,7 +1,11 @@
+import { MIDI_AUTOMATION_SPAN_PRESETS, createMidiAutomationSpanBundle } from '../../midi/project/MidiAutomationSpanPresets.js';
 import { createMidiAutomationSpanEditor, createMidiSpan } from '../midi-ui/midiAutomationSpanEditor.js';
 import { AUTOMATION_TARGETS } from '../../midi/project/MidiProject.js';
 const createProcgenMidiSpanControls = ({ document, getProject, onIntent, getRouter, getLaneCount, onSelect = () => {} }) => {
   const list = document.getElementById('procgenSpanList'), add = document.getElementById('procgenSpanAdd');
+  const presetPicker = document.getElementById('procgenSpanPreset'), presetButton = document.getElementById('procgenSpanPresetApply');
+  if (presetPicker && !presetPicker.children.length) for (const preset of MIDI_AUTOMATION_SPAN_PRESETS) { const option = document.createElement('option'); option.value = preset.id; option.textContent = preset.label; presetPicker.append(option); }
+  if (presetPicker && !presetPicker.value) presetPicker.value = MIDI_AUTOMATION_SPAN_PRESETS[0].id;
   let selectedId = null, selectedEditor = null, sequence = 0, rendering = false;
   const select = id => { selectedId = id; render(); onSelect(id); };
   const addSpan = (span = createMidiSpan(document.getElementById('procgenSpanDomain')?.value), target = document.getElementById('procgenSpanTarget')?.value || 'velocity') => {
@@ -10,6 +14,13 @@ const createProcgenMidiSpanControls = ({ document, getProject, onIntent, getRout
     const [min, max] = target === 'note' ? [0, 12] : target === 'duration' ? [2, 12] : target === 'pan' ? [-64, 64] : ['attack', 'decay', 'sustain', 'release'].includes(target) ? [0.5, 1.5] : [48, 110];
     onIntent({ type: 'automation.add', automation: { id, name: target + ' span', target, min, max, span } });
     render(); onSelect(id); return id;
+  };
+  const applyPreset = id => {
+    const bundle = createMidiAutomationSpanBundle(id, { domain: document.getElementById('procgenSpanDomain')?.value });
+    if (!bundle.length || getProject().automation.filter(entry => entry.span).length + bundle.length > 64) return false;
+    onIntent({ type: 'automation.bundle.add', automation: bundle }); render();
+    const status = document.getElementById('procgenSpanPresetStatus'); if (status) status.textContent = MIDI_AUTOMATION_SPAN_PRESETS.find(preset => preset.id === id).description;
+    return true;
   };
   const render = () => {
     if (!list || rendering) return;
@@ -41,10 +52,11 @@ const createProcgenMidiSpanControls = ({ document, getProject, onIntent, getRout
         list.append(row);
       }
       if (add) add.disabled = spans.length >= 64;
+      if (presetButton) presetButton.disabled = spans.length + 3 > 64;
     } finally { rendering = false; }
   };
-  const addClicked = () => addSpan(); add?.addEventListener('click', addClicked);
+  const addClicked = () => addSpan(), presetClicked = () => applyPreset(presetPicker?.value); add?.addEventListener('click', addClicked); presetButton?.addEventListener('click', presetClicked);
   render();
-  return { render, select, addSpan, getSelectedId: () => selectedId, syncStatus: () => selectedEditor?.syncStatus?.(), dispose: () => add?.removeEventListener('click', addClicked) };
+  return { render, select, addSpan, applyPreset, getSelectedId: () => selectedId, syncStatus: () => selectedEditor?.syncStatus?.(), dispose: () => { add?.removeEventListener('click', addClicked); presetButton?.removeEventListener('click', presetClicked); } };
 };
 export { createProcgenMidiSpanControls };

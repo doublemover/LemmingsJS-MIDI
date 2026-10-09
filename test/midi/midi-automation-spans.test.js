@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { sanitizeMidiAutomationSpan, previewMidiAutomationSpan, MAX_MIDI_AUTOMATION_SPANS, MAX_MIDI_AUTOMATION_SPAN_STATES } from '../../js/midi/project/MidiAutomationSpan.js';
 import { createMidiProjectFromMidiConfig, createDefaultMidiAutomation, reduceMidiProject, projectToMidiConfig, stringifyMidiProjectExport, importMidiProjectPayload } from '../../js/midi/project/MidiProject.js';
+import { createMidiAutomationSpanBundle } from '../../js/midi/project/MidiAutomationSpanPresets.js';
 import { MidiAutomationSpans } from '../../js/midi/router/MidiAutomationSpans.js';
 import { MidiMapping } from '../../js/midi/MidiMapping.js';
 import { MidiEventRouter } from '../../js/midi/MidiEventRouter.js';
@@ -31,6 +32,33 @@ const withRouter = (entries, run, extra = {}, local = true) => withFakeClockAndP
   finally { router.dispose(); bus.dispose(); timer.onGameTick.dispose(); }
 });
 describe('bounded musical automation spans', function() {
+  it('adds complete editable combinations atomically without altering spatial curves or partially filling the cap', () => {
+    let project = createMidiProjectFromMidiConfig(base);
+    project = reduceMidiProject(project, { type: 'automation.add', automation: { id: 'spatial', target: 'pan', axis: 'x', min: -60, max: 60 } });
+    const bundle = createMidiAutomationSpanBundle('span-tool-dialogue', { domain: 'distance', laneStart: 2, laneEnd: 4 });
+    project = reduceMidiProject(project, { type: 'automation.bundle.add', automation: bundle });
+    bundle[0].span.condition.sfxId = 65535;
+    project = importMidiProjectPayload(stringifyMidiProjectExport(project));
+    expect(project.automation).to.have.length(4);
+    expect(project.automation[0]).to.include({ id: 'spatial', axis: 'x', min: -60, max: 60 });
+    expect(new Set(project.automation.map(entry => entry.id)).size).to.equal(4);
+    expect(project.automation.slice(1).map(entry => entry.target)).to.deep.equal(['velocity', 'duration', 'pan']);
+    expect(project.automation.slice(1).every(entry => entry.span.domain === 'distance' && entry.span.duration === 512 && entry.span.laneStart === 2 && entry.span.laneEnd === 4)).to.equal(true);
+    expect(project.automation[1].span.condition.sfxId).to.equal(21);
+    while (project.automation.filter(entry => entry.span).length < 62) project = reduceMidiProject(project, { type: 'automation.add', automation: { target: 'duration', span: span({}) } });
+    expect(reduceMidiProject(project, { type: 'automation.bundle.add', automation: createMidiAutomationSpanBundle('span-relay') })).to.deep.equal(project);
+    expect(reduceMidiProject(project, { type: 'automation.bundle.add', automation: Array.from({ length: 5 }, () => createMidiAutomationSpanBundle('span-relay')[0]) })).to.deep.equal(project);
+  });
+  it('applies simultaneous intensity, duration and stereo spans only to actual event dispatch', () => {
+    withRouter(createMidiAutomationSpanBundle('span-relay'), ({ event, advance, ons, calls, clock }) => {
+      advance(34); expect(ons()).to.have.length(0);
+      event(); expect(ons()).to.have.length(1);
+      expect(ons()[0].opts.rawAttack).to.equal(60);
+      expect(ons()[0].opts.pan).to.equal(1 / 127);
+      clock.tick(180);
+      expect(calls.find(call => call.type === 'noteOff').opts.time - ons()[0].opts.time).to.equal(180);
+    });
+  });
   it('preserves spatial curves and persists optional spans with partial reducer edits', function() {
     let project = createMidiProjectFromMidiConfig(base);
     project = reduceMidiProject(project, { type: 'automation.add', automation: { id: 'spatial', target: 'pan', axis: 'x', min: -60, max: 60 } });

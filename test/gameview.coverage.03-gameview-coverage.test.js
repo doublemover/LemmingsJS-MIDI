@@ -341,7 +341,7 @@ describe('GameView coverage', function() {
   });
 
   it('reports WebMidi enable failures', async function() {
-    globalThis.window = { isSecureContext: true, location: { protocol: 'https:', hostname: 'example.com', search: '' } };
+    globalThis.window = { isSecureContext: true, location: { protocol: 'https:', hostname: 'example.com', search: '?midi=1' } };
     let errorMessage = null;
     globalThis.WebMidi = {
       enabled: false,

@@ -41,17 +41,20 @@ describe('source pieces and sections share materialized geometry', function() {
     expect(plan.jobs[bodyJob].dependencies.some(index => plan.jobs[index].kind === 'terrain')).to.equal(true);
   });
   it('keeps complete words atomic and gates actual liquid cavities with their object job', async () => {
-    const terrain = await loadProcgenTerrain('lemmings', 1), wordPlan = terrain.growthPlan(42, 3);
-    expect(wordPlan.descriptor.word).to.exist;
+    const terrain = await loadProcgenTerrain('lemmings', 1); terrain.configure(1, 16, { laneHeight: 144 });
+    let wordPlan;
+    for (let chunk = 0; chunk < 32 && !wordPlan; chunk++) { const plan = terrain.growthPlan(42, chunk); if (plan.descriptor.word) wordPlan = plan; }
+    expect(wordPlan.descriptor.word.physical).to.equal(true);
     const wordIndices = wordPlan.descriptor.placements.flatMap((p, index) => p.letter ? [wordPlan.placementJobs[index]] : []);
     expect(new Set(wordIndices).size).to.equal(1);
-    const plan = terrain.growthPlan(42, 9), descriptor = plan.descriptor, index = descriptor.objects.findIndex(o => o.role === 'liquid');
-    expect(index).to.be.at.least(0);
+    const liquid = await loadProcgenTerrain('lemmings', 3); let plan, chunk;
+    for (let at = 2; at < 48 && !plan; at++) { const candidate = liquid.growthPlan(42, at); if (candidate.descriptor.objects.some(o => o.role === 'liquid')) { plan = candidate; chunk = at; } }
+    expect(plan).to.exist; const descriptor = plan.descriptor, index = descriptor.objects.findIndex(o => o.role === 'liquid');
     const object = descriptor.objects[index], x = object.x - descriptor.origin + 1, y = object.y + 1;
     const state = { plan, active: new Uint8Array(plan.jobs.length), complete: false, revision: 0 };
     for (const section of plan.foundationSections) activate(state, section.index);
-    expect(terrain.solidSample(42, 9, x, y, descriptor, state)).to.equal(true);
-    activate(state, plan.objectJobs[index]); expect(terrain.solidSample(42, 9, x, y, descriptor, state)).to.equal(false);
-    expect(terrain.rasterSample(42, 9, x, y, descriptor, state)).to.equal(0);
+    expect(liquid.solidSample(42, chunk, x, y, descriptor, state)).to.equal(true);
+    activate(state, plan.objectJobs[index]); expect(liquid.solidSample(42, chunk, x, y, descriptor, state)).to.equal(false);
+    expect(liquid.rasterSample(42, chunk, x, y, descriptor, state)).to.equal(0);
   });
 });

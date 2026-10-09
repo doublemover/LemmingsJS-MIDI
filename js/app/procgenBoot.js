@@ -25,7 +25,7 @@ import {
   createSeededRandom
 } from '../core/seededRandom.js';
 
-const PROCGEN_GAME_TYPE = GameTypes.OHNO;
+const PROCGEN_GAME_TYPE = GameTypes.LEMMINGS;
 const PROCGEN_LEVEL_WIDTH = 65535;
 const PROCGEN_LEVEL_HEIGHT = DEFAULT_LEVEL_HEIGHT;
 const PROCGEN_RELEASE_RATE = 50;
@@ -92,7 +92,7 @@ const disposeProcgenRuntime = () => {
   activeProcgenRuntime = null;
   saveProcgenDistances(runtime.world);
   runFocusBlurCleanup(runtime);
-  procgenUi?.local.stop();
+  procgenUi?.local.suspendGame();
   runtime.lanes?.stop();
   runtime.controller?.stop?.();
   if (runtime.view && runtime.view.procgenController === runtime.controller) {
@@ -365,7 +365,7 @@ const init = async () => {
       const [sprites, masks, hudSprites] = await Promise.all([resources.getLemmingsSprite(palette), resources.getMasks(), resources.getSkillPanelSprite(palette)]);
       if (activeProcgenRuntime !== runtime) { view.dispose(); return; }
       const lanes = createProcgenLaneRuntime({ canvas, resources, sprites, masks, assets, laneCount, seed: procgenSeed,
-        speed: view.gameSpeedFactor, terrain, previousDistances: readProcgenDistances(), workerLimits: procgenUi?.settings.workerLimits, onMetrics: state => procgenUi?.syncMetrics(state), onActiveCount: count => procgenUi?.syncActiveCount(count), windowRef: window });
+        speed: procgenUi.settings.speed, laneHeight: procgenUi.settings.laneHeight, terrain, previousDistances: readProcgenDistances(), workerLimits: procgenUi?.settings.workerLimits, populationPolicy: procgenUi.settings.populationPolicy, onMetrics: state => procgenUi?.syncMetrics(state), onActiveCount: count => procgenUi?.syncActiveCount(count), windowRef: window });
       lanes.renderer.hud = new ProcgenBitmapHud({ canvas, sprites: hudSprites });
       view.dispose();
       runtime.lanes = lanes; runtime.world = lanes.world; runtime.view = lanes.view; runtime.game = lanes.game;

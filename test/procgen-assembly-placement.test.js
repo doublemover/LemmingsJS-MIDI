@@ -54,7 +54,7 @@ describe('bounded authored attachment placement', () => {
   });
   it('gates the complete group on reveal and actual edited contacts without composing collision chunks', () => {
     const { args } = fixture(), result = placeAuthoredAssemblies(args), object = result.objects[0], edits = new Map(); let probes = 0;
-    const world = { laneCount: 1, laneSeeds: [1], generation: 1, leftEdgeX: 8, generatedThrough: [1024], terrainTileRevisions: new Map(), editChunks: edits,
+    const world = { laneCount: 1, laneHeight: 96, laneSeeds: [1], generation: 1, leftEdgeX: 8, generatedThrough: [1024], terrainTileRevisions: new Map(), editChunks: edits,
       _editKey: (x, y) => Math.floor(y / 96) * 0x2000000 + Math.floor(x / 32), terrain: { chunkWidth: 128, solidSample: (_seed, _chunk, x, y) => {
         probes++; if (y >= 72) return true;
         return result.terrainPlacements.some(p => x >= p.x && x < p.x + p.piece.width && y >= p.y && y < p.y + p.piece.height);

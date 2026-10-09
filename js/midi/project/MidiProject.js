@@ -136,6 +136,7 @@ const sanitizePositionConfig = (position = {}, fallback = DEFAULT_CONFIG.positio
   timbreRange: sanitizeRange(position?.timbreRange, fallback.timbreRange ?? { min: 0, max: 127 }, 0, 127),
   viewPan: sanitizeBoolean(position?.viewPan, fallback.viewPan ?? false),
   panMode: position?.panMode === 'level' ? 'level' : 'viewport',
+  ...(Number.isFinite(position?.lanePanSpread) ? { lanePanSpread: clamp(position.lanePanSpread, 0, 127) } : {}),
   panRange: sanitizeRange(position?.panRange, fallback.panRange ?? { min: -127, max: 127 }, -127, 127),
   panDeadZonePct: clamp(toFiniteNumber(position?.panDeadZonePct, fallback.panDeadZonePct ?? 0.02), 0, 0.5),
   panOnscreenWeight: clamp(toFiniteNumber(position?.panOnscreenWeight, fallback.panOnscreenWeight ?? 0.8), 0, 1),
@@ -296,7 +297,8 @@ const sanitizeDirectMapping = (mapping = {}) => {
   out.phrase = isPlainObject(out.phrase) ? {
     enabled: out.phrase.enabled === true,
     mode: out.phrase.mode === 'down' ? 'down' : 'up',
-    spacingTicks: clamp(toInteger(out.phrase.spacingTicks, 2), 1, 8)
+    spacingTicks: clamp(toInteger(out.phrase.spacingTicks, 2), 1, 8),
+    ...(isPlainObject(out.phrase.rolling) ? { rolling: { enabled: out.phrase.rolling.enabled !== false, bars: clamp(toInteger(out.phrase.rolling.bars, 2), 2, 8), evolve: clamp(toInteger(out.phrase.rolling.evolve, 2), -12, 12) } } : {})
   } : null;
   return out;
 };
@@ -1081,6 +1083,13 @@ function reduceMidiProject(project, intent = {}) {
   case 'clip.select':
     next = { ...current, ui: { ...current.ui, selectedClipId: intent.clipId, activeRegion: 'clips' } };
     break;
+  case 'automation.bundle.add': {
+    const bundle = Array.isArray(intent.automation) && intent.automation.length <= 4 ? intent.automation : [];
+    if (!bundle.length || bundle.some(entry => !sanitizeMidiAutomationSpan(entry?.span)) || current.automation.filter(entry => entry.span).length + bundle.length > MAX_MIDI_AUTOMATION_SPANS) return current;
+    next = current;
+    for (const entry of bundle) next = addAutomation(next, entry);
+    break;
+  }
   case 'automation.add':
     next = addAutomation(current, intent.automation);
     break;

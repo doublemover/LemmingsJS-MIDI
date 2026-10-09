@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Default normal-game MIDI to explicit URL opt-in; keep procgen links lean and its sliding controls attached to the panel.
+- Retain unlocked local listening across regenerated worlds; add quieter layered procgen palettes, local lane pan and editable three-span bundles through the existing scheduler.
+- Give procgen configurable physical lane height, default original pack, supported source liquid geometry, independent scouts and larger locally guarded construction crews.
+- Add bounded revision-scoped scout learning, supported physical word/column motifs, whole-crew blocker bypass and earlier per-lane stall recovery.
+- Reuse cosmetic-aware visibility buckets during paused high-lane panning and show requested versus achieved game speed.
+
 - Keep Increase/Decrease labels clear of OUT and preview the actual minimap click destination with a lighter, cached marching-ants outline.
 
 - Dock existing skill-event cards beneath action selectors, fit the canvas/footer together and retain cross-region keyboard focus and immediate cheat restoration.

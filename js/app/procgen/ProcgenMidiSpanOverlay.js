@@ -1,6 +1,6 @@
 import { createMidiSpan, SPAN_COLORS } from '../midi-ui/midiAutomationSpanEditor.js';
 import { previewMidiAutomationSpan } from '../../midi/project/MidiAutomationSpan.js';
-const laneHeight = 96;
+const getLaneHeight = renderer => renderer.world.laneHeight || 96;
 const getSpanAxis = (renderer, domain, project) => {
   const width = renderer.canvas.width / Math.min(2, renderer.window.devicePixelRatio || 1);
   if (domain === 'distance') return { start: renderer.originX, length: renderer.viewWidth, width };
@@ -10,7 +10,7 @@ const getSpanAxis = (renderer, domain, project) => {
 };
 const getMidiSpanRectangles = (renderer, project, entries = project.automation) => {
   const dpr = Math.min(2, renderer.window.devicePixelRatio || 1), height = renderer.canvas.height / dpr - (renderer.overviewBandHeight || 0);
-  const result = [];
+  const result = [], laneHeight = getLaneHeight(renderer);
   const spans = entries.filter(entry => entry.span).slice(0, 64).sort((a, b) => a.span.priority - b.span.priority);
   for (const entry of spans) {
     const span = entry.span, axis = getSpanAxis(renderer, span.domain, project);
@@ -38,7 +38,7 @@ const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDom
   const changed = () => { revision++; renderer?.render(); };
   const position = (event, domain) => {
     const box = canvas.getBoundingClientRect(), x = event.clientX - box.left, y = event.clientY - box.top, axis = getSpanAxis(renderer, domain, getProject());
-    return { x, y, value: Math.max(0, axis.start + x / axis.width * axis.length), lane: Math.max(0, Math.min(renderer.world.laneCount - 1, Math.floor((renderer.originY + y * renderer.viewHeight / (canvas.height / Math.min(2, renderer.window.devicePixelRatio || 1) - (renderer.overviewBandHeight || 0))) / laneHeight))) };
+    return { x, y, value: Math.max(0, axis.start + x / axis.width * axis.length), lane: Math.max(0, Math.min(renderer.world.laneCount - 1, Math.floor((renderer.originY + y * renderer.viewHeight / (canvas.height / Math.min(2, renderer.window.devicePixelRatio || 1) - (renderer.overviewBandHeight || 0))) / getLaneHeight(renderer)))) };
   };
   const stop = event => { event.preventDefault(); event.stopImmediatePropagation?.(); };
   listen('pointerdown', event => {

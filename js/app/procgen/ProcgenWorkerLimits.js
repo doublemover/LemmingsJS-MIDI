@@ -1,5 +1,5 @@
 const MAX_PROCGEN_WORKERS = 16;
-const DEFAULT_PROCGEN_WORKER_LIMITS = Object.freeze({ bashers: 2, diggers: 2, builders: 2 });
+const DEFAULT_PROCGEN_WORKER_LIMITS = Object.freeze({ bashers: 4, diggers: 4, builders: 8 });
 const normalizeWorkerLimits = (next = {}, current = DEFAULT_PROCGEN_WORKER_LIMITS) => {
   const result = {};
   for (const kind of Object.keys(DEFAULT_PROCGEN_WORKER_LIMITS)) {

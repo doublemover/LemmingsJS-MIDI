@@ -1,6 +1,8 @@
 import { expect } from 'chai';
 import fs from 'node:fs';
 import { ProcgenLaneWorld } from '../js/app/procgen/ProcgenLaneWorld.js';
+import { MAX_COLUMN_PIECES } from '../js/app/procgen/ProcgenTerrainColumns.js';
+import { PROCGEN_RECOVERY_GAP_END } from '../js/app/procgen/ProcgenTerrainProgression.js';
 import { stampRecipePlacements } from '../js/app/procgen/ProcgenTerrainRecipes.js';
 import { loadProcgenMasks, loadProcgenTerrain } from '../scripts/bench-procgen-lanes.js';
 const book = JSON.parse(fs.readFileSync('assets/procgen/terrain-recipes.json', 'utf8'));
@@ -41,7 +43,25 @@ describe('source-art shared world routes', function () {
       expect(result.terrainGeneration.terrainCatalogAvailable).to.equal(terrain.pieces.length);
       for (let chunk = 0; chunk < 128; chunk++) {
         const descriptor = terrain.describe(42, chunk);
-        expect(descriptor.placements.every(p => p.assembly || p.canonicalGroup || p.letter)).to.equal(true);
+        expect(descriptor.placements.every(p => p.assembly || p.canonicalGroup || p.letter || p.sourcedColumn)).to.equal(true);
+        for (const column of new Set(descriptor.placements.filter(p => p.sourcedColumn).map(p => p.sourcedColumn))) {
+          const members = descriptor.placements.filter(p => p.sourcedColumn === column), ingredient = terrain.columnLibrary.find(entry =>
+            entry.piece.id === column.sourceId && entry.source.f === column.sourceFlags && entry.routeId === column.routeId);
+          expect(descriptor.origin).to.be.at.least(PROCGEN_RECOVERY_GAP_END);
+          expect(column.kind).to.equal('complete-source-column'); expect(column.sourceRevision).to.equal(terrain.recipe.assetSha256);
+          expect(ingredient).to.exist; expect(column.provenance).to.deep.equal(ingredient.provenance);
+          expect(members.length).to.be.within(2, MAX_COLUMN_PIECES);
+          expect(members[0].y + ingredient.piece.height).to.equal(column.floor); expect(members.at(-1).y).to.equal(0);
+          for (let index = 0; index < members.length; index++) {
+            const member = members[index];
+            expect(member.piece).to.equal(ingredient.piece); expect(member.f).to.equal(ingredient.source.f);
+            expect(member.flip).to.equal(!!(ingredient.source.f & 8)); expect(member.flipY).to.equal(!!(ingredient.source.f & 2));
+            expect(member.sourceRevision).to.equal(terrain.recipe.assetSha256); expect(member.decor).to.equal(false);
+            expect(member.x).to.equal(column.x); expect(member.y).to.be.at.least(0); expect(member.y + member.piece.height).to.be.at.most(column.floor);
+            expect(member.columnOrder).to.equal(index);
+            if (index) { expect(member.y).to.be.lessThan(members[index - 1].y); expect(member.y + member.piece.height).to.be.greaterThan(members[index - 1].y); }
+          }
+        }
         expect(descriptor.objects.every(o => o.assembly || terrain._standaloneObjectEligible(o.piece))).to.equal(true);
       }
       // Word mode deliberately excludes unused glyphs from generic decor. The
@@ -88,6 +108,20 @@ describe('source-art shared world routes', function () {
     for (let tick = 0; tick < 12; tick++) world.step();
     expect(world.spawnedTotal).to.equal(32); expect(new Set(events.map(e => e.tick)).size).to.equal(12);
     expect(events.every(e => Number.isInteger(e.tick))).to.equal(true);
-    expect(world.actors.map(a => a.appearanceIndex)).to.deep.equal(Array.from({ length: 32 }, (_, i) => i));
+    expect([...world.actors.map(a => a.appearanceIndex)].sort((a, b) => a - b)).to.deep.equal(Array.from({ length: 32 }, (_, lane) => lane));
+    expect(world.actors.every(actor => actor.appearanceIndex === actor.spawnLaneIndex)).to.equal(true);
+    expect(new Set(events.map(event => event.laneIndex)).size).to.equal(32);
+    for (const event of events) {
+      const actor = world.actors.find(candidate => candidate.id === event.lemmingId);
+      expect(actor.spawnLaneIndex).to.equal(event.laneIndex); expect(actor.spawnTick).to.equal(event.tick);
+      expect(event.spawnTick).to.equal(event.tick); expect(event.spawnPhaseTicks).to.equal(actor.spawnPhaseTicks);
+    }
+    const order = events.map(event => [event.laneIndex, event.tick, event.spawnPhaseTicks]); world.dispose();
+    const replay = new ProcgenLaneWorld({ masks, terrain, laneCount: 32, cohorts: true, spawnSpreadTicks: 12 }), repeated = [];
+    try {
+      replay.soundEvents.onEvent.on(event => { if (event.type === 'lemming-spawn') repeated.push([event.laneIndex, event.tick, event.spawnPhaseTicks]); });
+      for (let tick = 0; tick < 12; tick++) replay.step();
+      expect(repeated).to.deep.equal(order); expect(replay.spawnedTotal).to.equal(32);
+    } finally { replay.dispose(); }
   });
 });

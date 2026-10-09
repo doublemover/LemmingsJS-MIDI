@@ -18,7 +18,7 @@ class ProcgenSupportedTunnel {
     this.stats = { proofs: 0, probes: 0, accepted: 0, rejected: 0, cacheHits: 0 };
   }
   _busy(footprint) {
-    const world = this.world, first = Math.max(0, Math.floor(footprint.y1 / 96)), last = Math.min(world.laneCount - 1, Math.floor((footprint.y2 - 1) / 96));
+    const world = this.world, first = Math.max(0, Math.floor(footprint.y1 / world.laneHeight)), last = Math.min(world.laneCount - 1, Math.floor((footprint.y2 - 1) / world.laneHeight));
     for (let lane = first; lane <= last; lane++) for (const task of world.accessTasks[lane] || []) {
       const owner = task.owner;
       if (owner && !owner.removed && !owner.disabled && !owner.failureReason && !owner.terminalReason && owner.action === task.action && task.footprint && overlaps(footprint, task.footprint)) return true;
@@ -28,7 +28,7 @@ class ProcgenSupportedTunnel {
   prove(actor, maxProbes) {
     maxProbes = Math.max(0, Math.min(MAX_TUNNEL_PROBES, Math.trunc(maxProbes) || 0));
     if (this._busy({ x1: actor.x - 1, x2: actor.x + 1, y1: actor.y - 10, y2: actor.y + 2 })) return { proposal: null, probes: 0 };
-    const world = this.world, firstLane = Math.max(0, Math.floor((actor.y - 10) / 96)), lastLane = Math.min(world.laneCount - 1, Math.floor((actor.y + 3) / 96));
+    const world = this.world, firstLane = Math.max(0, Math.floor((actor.y - 10) / world.laneHeight)), lastLane = Math.min(world.laneCount - 1, Math.floor((actor.y + 3) / world.laneHeight));
     const firstChunk = Math.floor(Math.max(world.leftEdgeX, actor.x - MAX_RETURN_DISTANCE) / world.terrain.chunkWidth), lastChunk = Math.floor((actor.x + MAX_SUPPORTED_TUNNEL_DISTANCE) / world.terrain.chunkWidth);
     let key = `${world.generation}:${actor.x}:${actor.y}`;
     for (let lane = firstLane; lane <= lastLane; lane++) {
@@ -41,7 +41,7 @@ class ProcgenSupportedTunnel {
     let failure = null, probes = 0, observedX = startX;
     const read = (x, y) => {
       if (x < left || x > right || y < startY - 10 || y > startY + 3 || y < 0 || y >= world.height) { failure ||= 'bounds'; return 0; }
-      const lane = Math.floor(y / 96), chunk = Math.floor(x / world.terrain.chunkWidth);
+      const lane = Math.floor(y / world.laneHeight), chunk = Math.floor(x / world.terrain.chunkWidth);
       if (x >= world.generatedThrough[lane] || world.terrainGrowth?.stateFor(lane, chunk)) { failure ||= 'unrevealed'; return 0; }
       const at = (y - startY + 10) * (right - left + 1) + x - left;
       if (!cells.has(at)) {
@@ -52,7 +52,7 @@ class ProcgenSupportedTunnel {
       return cells.get(at);
     };
     const safe = lem => !this.hazards.some(hazard => hazardContact(hazard, lem.x, lem.y));
-    const laneFirst = Math.max(0, Math.floor((startY - 10) / 96)), laneLast = Math.min(world.laneCount - 1, Math.floor((startY + 3) / 96));
+    const laneFirst = Math.max(0, Math.floor((startY - 10) / world.laneHeight)), laneLast = Math.min(world.laneCount - 1, Math.floor((startY + 3) / world.laneHeight));
     this.hazards.length = 0;
     for (let lane = laneFirst; lane <= laneLast; lane++) for (const [x, ahead, behind] of [[startX - 32, 32, 32], [startX, 64, 0], [startX + 64, 48, 0]]) {
       world.hazards.nearby(lane, x, { ahead, behind }, this.nearby); this.hazards.push(...this.nearby);

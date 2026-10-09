@@ -1,8 +1,21 @@
+import { quantizeToScale, resolveScale } from '../midi-mapping/MidiMappingDomain.js';
 import { flattenMidiClipPhrase } from '../project/MidiClipPlayback.js';
 import { MAX_GAME_PHRASE_NOTES } from '../scheduler/MidiGamePhraseQueue.js';
 import { MAX_EVENTS_PER_TICK } from './MidiEventRouterShared.js';
 
 const midiEventRouterPhraseMethods = {
+  _syncGamePhraseGeneration() {
+    const world = this.context?.game || null, generation = world?.generation ?? 0;
+    if (this._phraseGenerationWorld === world && this._phraseGeneration === generation) return;
+    const previouslyBound = this._phraseGenerationWorld !== undefined;
+    this._phraseGenerationWorld = world; this._phraseGeneration = generation;
+    if (!previouslyBound) return;
+    // Generation resets can retain monotonic ticks, including without spans or tension.
+    for (const [token, voice] of this.scheduler._activeNotes) if (voice.phraseVoiceKey) this.scheduler._stopActiveNoteToken(token);
+    this.scheduler.gamePhrases.clear();
+    this._arpStateBySfx.clear(); this._lastTickBySfx.clear();
+    this._lastAcceptedBySfx.clear(); this._repeatHistoryByKey.clear();
+  },
   _sendGamePhraseNote(spec, meta, tick, counted = false) {
     if (!this.mapping.config?.enabled) return false;
     if (!this.scheduler.hasOutput?.(spec.outputId ?? null)) return false;
@@ -38,6 +51,44 @@ const midiEventRouterPhraseMethods = {
     }
     if (sent) this._lastAcceptedBySfx.set(meta.sfxId, now);
     return sent;
+  },
+
+  _queueGameRollingPhrase(event, spec, meta, notes, rolling) {
+    const tick = event.tick, queue = this.scheduler.gamePhrases;
+    if (event.reverse || !Number.isInteger(tick) || !this._phraseTimer?.onGameTick || !queue) return;
+    // A lane/role responds as one finite phrase; collisions do not restart its tail.
+    const key = JSON.stringify([event.laneIndex ?? 0, null, 'rolling-bounce', null, spec.trackId ?? null, spec.outputId ?? null, spec.channel ?? null]);
+    if (queue.voices.get(key)?.rolling) {
+      this.scheduler._observe?.('coalesced', { ...meta, type: 'event', count: 1, reason: 'rolling-phrase-origin' });
+      return;
+    }
+    const passKey = 'rolling:' + key, pass = queue.nextRollingPass(event.laneIndex ?? 0);
+    this._storeArpState(passKey, { index: pass, dir: 1, length: 8 });
+    const scale = resolveScale(this.mapping.config.scale), range = this.mapping.config.noteRange;
+    const role = this.mapping.config.ensemble?.roles.find(role => role.id === spec.ensembleRole);
+    const low = Math.max(range.min, role?.register.min ?? range.min), high = Math.min(range.max, role?.register.max ?? range.max);
+    const pitches = notes.slice(0, MAX_GAME_PHRASE_NOTES).filter(Number.isFinite).sort((a, b) => a - b);
+    if (!pitches.length) return;
+    const phrase = Array.from({ length: 8 }, (_, index) => {
+      if (spec.percussion) return pitches[index % pitches.length];
+      let note = quantizeToScale(pitches[index % pitches.length] + ((pass - 1 + Math.floor(index / 4)) % 3) * rolling.evolve, scale);
+      while (note < low) note += 12;
+      while (note > high) note -= 12;
+      if (note < low || note > high) {
+        for (let candidate = low; candidate <= high; candidate++) if (scale.degrees.includes(((candidate - scale.root) % 12 + 12) % 12)) return candidate;
+        return null;
+      }
+      return note;
+    }).filter(Number.isFinite);
+    const timer = this._phraseTimer, timing = this.mapping.config.timing, baseMs = timer.TIME_PER_FRAME_MS || 60;
+    const ticksPerBeat = 60000 / Math.max(20, timing.bpmBase || 120) / baseMs;
+    const beatsPerBar = Math.max(1, timing.timeSignature?.beats || 4) * 4 / Math.max(1, timing.timeSignature?.unit || 4);
+    const origin = this.context?.game?.generationStartTick || 0, beat = (tick - origin) / ticksPerBeat;
+    const startOffsetTicks = Math.max(1, Math.ceil((Math.floor(beat) + 1) * ticksPerBeat + origin - tick));
+    queue.replaceRolling(key, phrase, { ...spec, notes: null, arp: null, phrase: null }, meta, tick, {
+      startOffsetTicks, spacingTicks: ticksPerBeat * beatsPerBar * rolling.bars / 8,
+      onDrop: (reason, details) => this.scheduler.recordThrottle?.(reason, this._nowMs(), details)
+    });
   },
 
   _queueGameEventPhrase(event, spec, meta, notes) {
@@ -86,6 +137,7 @@ const midiEventRouterPhraseMethods = {
     }
     this.scheduler.setTickMs(this._tickMsFromEvent({ tps: timer.tps, frameMs: timer.frameTime }));
     const tick = timer.getGameTicks?.();
+    this._syncGamePhraseGeneration();
     this._updateMusicTension(tick);
     this._syncAutomationSpans(tick);
     if (Number.isInteger(tick) && queue.tick != null && tick < queue.tick) {

@@ -662,6 +662,7 @@
               <input id="midiGlobalEnvRelease" type="number" min="0" max="2" step="0.05" />
             </label>
           </div>
+          <div class="midi-inline-fields"><label>Span bundle <select id="midiSpanPreset"></select></label><label>Domain <select id="midiSpanPresetDomain"><option value="beats">Musical beats</option><option value="distance">Actor world distance</option></select></label><button id="midiSpanPresetApply" type="button">Add bundle</button></div>
           <div id="midiAutomationList" class="midi-automation-list" aria-label="Modulation lanes and musical spans"></div>
         </details>
       </section>
@@ -707,7 +708,7 @@
       <div class="midi-headunit-readout"><output id="midiGameClock" aria-live="off">PAUSE · tick 0</output><span id="midiLastEvent">Waiting for game events</span></div>
       <label class="midi-speed-control" title="Game speed multiplier"><span>Speed</span><input id="midiGameSpeed" type="range" min="0" max="29" step="1" aria-label="Game speed slider" /><input id="midiGameSpeedValue" type="number" min="0.1" max="120" step="any" aria-label="Exact game speed" /></label>
       <div class="midi-control-group midi-key-controls"><label class="midi-field midi-field--compact"><span class="visually-hidden">Key</span><select id="midiScaleRoot" aria-label="Musical key" title="Musical key"></select></label><label class="midi-field midi-field--compact"><span class="visually-hidden">Scale</span><select id="midiScaleName" aria-label="Musical scale" title="Musical scale"></select></label></div>
-      <div id="midiAudioControls" class="midi-listen-row"><span id="midiOutputPressure" class="midi-output-pressure" role="status" aria-live="off" hidden></span><button id="midiPanicButton" data-icon="square" type="button" title="Stop all MIDI and local notes" aria-label="Panic all MIDI notes">Panic</button><button id="midiLocalListenButton" type="button" data-icon="headphones">Listen to game</button><label class="midi-volume-control" title="Local master volume; above 100% boosts browser listening"><span class="visually-hidden">Master volume</span><input id="midiMasterVolume" type="range" min="0" max="400" value="70" step="1" aria-label="Master volume" /><output id="midiMasterVolumeValue">70%</output></label>    <details id="midiStartingPalettes" class="midi-preset-panel midi-starting-palettes"><summary data-icon="music" title="Starting palettes" aria-label="Starting palettes">Palette</summary><div class="midi-preset-popover">
+      <div id="midiAudioControls" class="midi-listen-row"><button id="midiPanicButton" data-icon="square" type="button" title="Stop all MIDI and local notes" aria-label="Panic all MIDI notes">Panic</button><button id="midiLocalListenButton" type="button" data-icon="headphones">Listen to game</button><label class="midi-volume-control" title="Local master volume; above 100% boosts browser listening"><span class="visually-hidden">Master volume</span><input id="midiMasterVolume" type="range" min="0" max="400" value="70" step="1" aria-label="Master volume" /><output id="midiMasterVolumeValue">70%</output></label>    <details id="midiStartingPalettes" class="midi-preset-panel midi-starting-palettes"><summary data-icon="music" title="Starting palettes" aria-label="Starting palettes">Palette</summary><div class="midi-preset-popover">
       <p>Choose a starting sound, then apply it. Game events always supply the timing.</p>
       <div class="midi-preset-actions">
         <label class="midi-field"><span>Starting palette</span><select id="midiGamePresetSelect"></select></label>
@@ -717,7 +718,7 @@
       <p id="midiGamePresetModeDescription" class="midi-help"></p>
       <p id="midiGamePresetDescription" class="midi-help" role="status"></p>
       <p class="midi-help">Applying a palette replaces gameplay-event mappings; it keeps your devices, tracks, and clips. The selected palette describes how each event plays.</p>
-    </div></details></div>
+    </div></details><span class="midi-output-pressure-slot"><span id="midiOutputPressure" class="midi-output-pressure" role="status" aria-live="off" hidden></span></span></div>
       <div class="midi-layout-choices segmented" role="group" aria-label="Map layout"><button id="midiLayoutFocus" type="button" data-icon="panel-left" title="Compact map, larger sound controls">Focus</button><button id="midiLayoutSplit" type="button" data-icon="columns-2" title="Game between character and sound panels">Split</button><button id="midiLayoutOverlay" type="button" data-icon="layers" title="Sound controls over the right side of the map">Overlay</button></div>
     </section>
     <button id="midiWorkspaceToggle" hidden class="midi-workspace-toggle" type="button" data-icon="audio-lines" aria-controls="midiSequencerWorkspace" aria-expanded="false">MIDI Studio</button>

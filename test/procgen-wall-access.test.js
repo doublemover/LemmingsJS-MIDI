@@ -95,7 +95,7 @@ describe('procgen real wall access and ordinary bounce', function() {
     for (let i = 1; i < 8; i++) world._spawn(0);
     world.actors.forEach(actor => atWall(world, actor));
     world.tickIndex = 11; world.step();
-    expect(world.actors.filter(actor => actor.canClimb)).to.have.length(2);
+    expect(world.actors.filter(actor => actor.canClimb)).to.have.length(world.actors.filter(actor => actor.scoutAbilities & 1).length);
     const follower = world.actors.find(actor => !actor.scout);
     expect(follower.lookRight).to.equal(false); expect(follower.x).to.equal(64);
     world.step(); expect(follower.x).to.equal(63); expect(follower.lookRight).to.equal(false);

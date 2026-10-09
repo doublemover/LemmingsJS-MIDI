@@ -1,4 +1,6 @@
 import { expect } from 'chai';
+import { SoundEffectIds } from '../../js/game/SoundEvents.js';
+import { TriggerTypes } from '../../js/level/TriggerTypes.js';
 import { TestDocument } from '../helpers/test-dom.js';
 import { createMidiAutomationSpanEditor, createMidiSpan } from '../../js/app/midi-ui/midiAutomationSpanEditor.js';
 import { createProcgenMidiSpanControls } from '../../js/app/procgen/ProcgenMidiSpanControls.js';
@@ -15,6 +17,45 @@ const editorFixture = () => {
   return { editor, updates, pointer, bar, timeline, setState: value => { state = value; } };
 };
 describe('musical span editing and lane rectangles', () => {
+  it('explains actual sound and physical trigger conditions while preserving unknown saved IDs', () => {
+    const f = editorFixture(), sound = find(f.editor, el => el.dataset.spanField === 'sfxId'), trigger = find(f.editor, el => el.dataset.spanField === 'triggerType');
+    expect(sound.tagName).to.equal('SELECT'); expect(trigger.tagName).to.equal('SELECT');
+    expect(sound.children.find(option => option.value === String(SoundEffectIds.LAND)).textContent).to.equal('Safe landing');
+    expect(trigger.children.find(option => option.value === String(TriggerTypes.EXIT_LEVEL)).textContent).to.equal('Exit trigger');
+    sound.value = String(SoundEffectIds.LAND); sound.dispatchEvent({ type: 'change', target: sound });
+    expect(f.updates.at(-1).span.condition.sfxId).to.equal(SoundEffectIds.LAND);
+    const saved = createMidiAutomationSpanEditor({ document: new TestDocument(), lane: { id: 'legacy', min: 20, max: 40, span: { ...createMidiSpan(), condition: { sfxId: 1234, triggerType: null, unit: 'event', every: 1, phase: 0 } } }, onUpdate() {} });
+    const selected = find(saved, el => el.dataset.spanField === 'sfxId');
+    expect(selected.value).to.equal('1234'); expect(selected.children.at(-1).textContent).to.include('Unrecognized saved sound event (1234)');
+  });
+  it('adds a named procgen combination with one saved intent and removes its click handler on disposal', () => {
+    const document = new TestDocument();
+    for (const [id, tag] of [['procgenSpanList', 'div'], ['procgenSpanDomain', 'select'], ['procgenSpanPreset', 'select'], ['procgenSpanPresetApply', 'button'], ['procgenSpanPresetStatus', 'p']]) document.registerElement(id, document.createElement(tag));
+    let project = createMidiProjectFromMidiConfig({ enabled: false, sfx: {}, triggers: {} }); const intents = [];
+    const controls = createProcgenMidiSpanControls({ document, getProject: () => project, getLaneCount: () => 8, getRouter: () => null, onIntent: intent => { intents.push(intent); project = reduceMidiProject(project, intent); } });
+    const picker = document.getElementById('procgenSpanPreset'), button = document.getElementById('procgenSpanPresetApply');
+    button.removeEventListener = (type, handler) => button.listeners.set(type, button.listeners.get(type).filter(listener => listener !== handler));
+    expect(picker.children).to.have.length(3); picker.value = 'span-open-air'; document.getElementById('procgenSpanDomain').value = 'distance';
+    button.dispatchEvent({ type: 'click', target: button });
+    expect(intents).to.have.length(1); expect(intents[0].type).to.equal('automation.bundle.add');
+    expect(project.automation.filter(entry => entry.span).map(entry => entry.target)).to.deep.equal(['note', 'duration', 'release']);
+    expect(project.automation.filter(entry => entry.span).every(entry => entry.span.domain === 'distance')).to.equal(true);
+    expect(project.enabled).to.equal(false); expect(document.getElementById('procgenSpanPresetStatus').textContent).to.include('scale-safe');
+    controls.dispose(); button.dispatchEvent({ type: 'click', target: button }); expect(intents).to.have.length(1);
+  });
+  it('aligns distance span geometry and drawing with actual144pixel lanes', () => {
+    const document = new TestDocument(), canvas = document.createElement('canvas'); document.registerElement('gameCanvas', canvas);
+    canvas.width = 720; canvas.height = 432; canvas.getBoundingClientRect = () => ({ left: 0, top: 0 });
+    const renderer = { canvas, window: { devicePixelRatio: 1 }, world: { laneHeight: 144, laneCount: 4, tickIndex: 0 }, originX: 0, originY: 144, viewWidth: 720, viewHeight: 432, render() {} };
+    const span = { ...createMidiSpan('distance'), loop: false, laneScope: 'lane', laneStart: 2, laneEnd: 2 };
+    const project = { transport: { bpmBase: 120 }, automation: [{ id: 'height', span, target: 'velocity' }] };
+    expect(getMidiSpanRectangles(renderer, project)[0]).to.include({ y: 144, h: 144 });
+    const added = [], overlay = createProcgenMidiSpanOverlay({ document, getRuntime: () => ({ lanes: { renderer } }), getProject: () => project, getDomain: () => 'distance', getTarget: () => 'velocity', onUpdate() {}, onSelect() {}, onAdd: value => added.push(value) });
+    overlay.sync(); overlay.setEditing(true);
+    for (const [type, clientX] of [['pointerdown', 20], ['pointermove', 40], ['pointerup', 40]]) canvas.dispatchEvent({ type, clientX, clientY: 150, preventDefault() {}, stopImmediatePropagation() {} });
+    expect(added[0]).to.include({ laneScope: 'lane', laneStart: 2, laneEnd: 2 }); overlay.dispose();
+  });
+
   it('commits one moved interval after a drag and discards canceled resize edits', () => {
     const f = editorFixture(); f.pointer('pointerdown', 20); f.pointer('pointermove', 40); expect(f.updates).to.have.length(0);
     f.pointer('pointerup', 40); expect(f.updates).to.have.length(1); expect(f.updates[0].span).to.include({ start: 2, duration: 4 });

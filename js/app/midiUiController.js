@@ -1,3 +1,4 @@
+import { MIDI_AUTOMATION_SPAN_PRESETS, createMidiAutomationSpanBundle } from '../midi/project/MidiAutomationSpanPresets.js';
 import { createMidiAutomationSpanEditor } from './midi-ui/midiAutomationSpanEditor.js';
 import { createMidiTensionControls } from './midi-ui/midiTensionControls.js';
 import { createMidiOutputCapture } from '../midi/capture/MidiOutputCapture.js';
@@ -3252,6 +3253,17 @@ const createMidiUiController = ({
     for (const id of ['midiGlobalEnvAttack', 'midiGlobalEnvDecay', 'midiGlobalEnvSustain', 'midiGlobalEnvRelease']) {
       bindById(id, 'change', updateGlobalEnvelope);
     }
+    const spanPreset = document?.getElementById('midiSpanPreset');
+    if (spanPreset && !spanPreset.children.length) for (const preset of MIDI_AUTOMATION_SPAN_PRESETS) appendOption(document, spanPreset, preset.id, preset.label);
+    if (spanPreset && !spanPreset.value) spanPreset.value = MIDI_AUTOMATION_SPAN_PRESETS[0].id;
+    bindById('midiSpanPresetApply', 'click', () => {
+      const bundle = createMidiAutomationSpanBundle(spanPreset?.value, { domain: document?.getElementById('midiSpanPresetDomain')?.value });
+      const status = document?.getElementById('midiSpanPresetStatus');
+      if (!bundle.length) return;
+      if (ensureProject().automation.filter(entry => entry.span).length + bundle.length > 64) { if (status) status.textContent = 'Remove three spans before adding this combination.'; return; }
+      dispatchProjectIntent({ type: 'automation.bundle.add', automation: bundle });
+      if (status) status.textContent = MIDI_AUTOMATION_SPAN_PRESETS.find(preset => preset.id === spanPreset.value).description;
+    });
     bindById('midiAutomationAddButton', 'click', () => {
       const current = ensureProject();
       const targets = ['note', 'velocity', 'pan', 'duration'];

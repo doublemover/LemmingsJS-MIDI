@@ -24,7 +24,7 @@ class ProcgenSupportedDescent {
   }
   _busy(bounds) {
     const world = this.world;
-    for (let lane = Math.max(0, Math.floor(bounds.y1 / 96)); lane <= Math.min(world.laneCount - 1, Math.floor((bounds.y2 - 1) / 96)); lane++) {
+    for (let lane = Math.max(0, Math.floor(bounds.y1 / world.laneHeight)); lane <= Math.min(world.laneCount - 1, Math.floor((bounds.y2 - 1) / world.laneHeight)); lane++) {
       for (const task of world.accessTasks[lane] || []) {
         const owner = task.owner;
         if (owner && !owner.removed && !owner.disabled && !owner.failureReason && !owner.terminalReason &&
@@ -33,7 +33,7 @@ class ProcgenSupportedDescent {
     }
     return false;
   }
-  prove(actor, maxProbes, preferredKind = null) {
+  prove(actor, maxProbes, preferredKind = null, modePreference = null) {
     const world = this.world;
     if (!world || !actor || actor.runtime !== world.runtime || actor.action !== world.actions[State.WALKING] || !actor.lookRight ||
         actor.failureReason || actor.removed || actor.disabled || actor.terminalReason || actor.canClimb || actor.hasParachute) return { proposal: null, probes: 0 };
@@ -42,9 +42,9 @@ class ProcgenSupportedDescent {
     // MINING deliberately shares the configured digging/mining worker cap.
     if (!world.workerLimits.diggers || this._busy({ x1: actor.x - 8, x2: actor.x + 8, y1: actor.y - 12, y2: actor.y + 33 })) return { proposal: null, probes: 0 };
     const startX = actor.x, startY = actor.y, left = Math.max(world.leftEdgeX, startX - MAX_DESCENT_DISTANCE), right = startX + MAX_DESCENT_DISTANCE;
-    const firstLane = Math.max(0, Math.floor((startY - 12) / 96)), lastLane = Math.min(world.laneCount - 1, Math.floor((startY + 33) / 96));
+    const firstLane = Math.max(0, Math.floor((startY - 12) / world.laneHeight)), lastLane = Math.min(world.laneCount - 1, Math.floor((startY + 33) / world.laneHeight));
     const firstChunk = Math.floor(left / world.terrain.chunkWidth), lastChunk = Math.floor(right / world.terrain.chunkWidth);
-    let key = world.generation + ':' + startX + ':' + startY + ':' + preferredKind;
+    let key = world.generation + ':' + startX + ':' + startY + ':' + preferredKind + ':' + modePreference;
     for (let lane = firstLane; lane <= lastLane; lane++) {
       key += ':' + Math.min(world.generatedThrough[lane], right + 1);
       for (let chunk = firstChunk; chunk <= lastChunk; chunk++) key += ':' + (world.terrainTileRevisions.get(lane * 0x800000 + chunk) || 0);
@@ -58,7 +58,7 @@ class ProcgenSupportedDescent {
     const address = (x, y) => (y - startY + 12) * columns + x - left;
     const read = (x, y) => {
       if (x < left || x > right || y < startY - 12 || y > startY + 33 || y < 0 || y >= world.height) { failure ||= 'bounds'; return 0; }
-      const lane = Math.floor(y / 96), chunk = Math.floor(x / world.terrain.chunkWidth);
+      const lane = Math.floor(y / world.laneHeight), chunk = Math.floor(x / world.terrain.chunkWidth);
       if (x >= world.generatedThrough[lane] || world.terrainGrowth?.stateFor(lane, chunk)) { failure ||= 'unrevealed'; return 0; }
       const at = address(x, y);
       if (!cells.has(at)) {
@@ -133,7 +133,7 @@ class ProcgenSupportedDescent {
     }
     if (landing == null || landing - startY <= 20 || !level.hasGroundAt(startX, startY)) failure ||= 'not-deep-descent';
     const rearWallX = failure ? null : wall(startX, startY, false), upperWallX = failure ? null : wall(startX, startY, true);
-    const modes = failure ? [] : preferredKind ? [preferredKind] : ['diggers', 'miners'];
+    const modes = failure ? [] : preferredKind ? [preferredKind] : modePreference === 'miners' ? ['miners', 'diggers'] : ['diggers', 'miners'];
     let proposal = null;
     for (const kind of modes) {
       if (failure && !['protected', 'termination', 'entry', 'continuation', 'corridor'].includes(failure)) break;

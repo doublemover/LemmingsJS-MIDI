@@ -27,7 +27,7 @@ const createSourceGroupLibrary = (descriptor, pieces, excludedIds = new Set()) =
 // Admission uses complete source/foundation masks once during cached descriptor
 // creation. It neither consults actors nor borrows mutable materialization flags.
 const placeSourceGroups = ({ zone, library, code, chunk, baseSurface, baseSolid, baseSteel = () => false, baseColor = null,
-  occupied, gapX, gapWidth, progression = {}, validate = () => true }) => {
+  occupied, gapX, gapWidth, progression = {}, height = 96, validate = () => true }) => {
   if (!zone || chunk === 0) return [];
   const placed = [];
   const sample = (x, y, kind) => {
@@ -57,7 +57,7 @@ const placeSourceGroups = ({ zone, library, code, chunk, baseSurface, baseSolid,
       // deep foundation, while the walking support band remains protected.
       for (let dx = 0; dx < piece.width; dx++) y = Math.max(y, baseSurface(x + dx) + 8);
     }
-    if (!valid || !Number.isFinite(y) || y < 2 || y + piece.height > 96) continue;
+    if (!valid || !Number.isFinite(y) || y < 2 || y + piece.height > height) continue;
     const placement = { piece, x, y, flip: false, decor: false, canonicalGroup: group, sourceRevision: zone.sourceRevision };
     const added = new Uint8Array(piece.width * piece.height); let changed = 0;
     for (let dy = 0; dy < piece.height && valid; dy++) for (let dx = 0; dx < piece.width; dx++) {
@@ -78,7 +78,7 @@ const placeSourceGroups = ({ zone, library, code, chunk, baseSurface, baseSolid,
         for (const [nx, ny] of [[dx - 1, dy], [dx + 1, dy], [dx, dy - 1], [dx, dy + 1]]) {
           const next = ny * piece.width + nx;
           if (nx >= 0 && nx < piece.width && ny >= 0 && ny < piece.height && added[next]) { if (!visited[next]) { visited[next] = 1; queue.push(next); } }
-          else if (x + nx >= 0 && x + nx < 128 && y + ny >= 0 && y + ny < 96 && sample(x + nx, y + ny, 'solid') &&
+          else if (x + nx >= 0 && x + nx < 128 && y + ny >= 0 && y + ny < height && sample(x + nx, y + ny, 'solid') &&
             (terrainStampAt(placement, x + nx, y + ny, true) & 3) !== CLEAR_TERRAIN) supported = true;
         }
       }

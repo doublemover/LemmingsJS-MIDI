@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 import { readProcgenUrlConfig, createProcgenShareUrl } from '../js/app/procgen/ProcgenUrlConfig.js';
+import { createProcgenRedirectUrl } from '../js/app/StartupUrlConfig.js';
 import { changeProcgenSpeed, normalizeProcgenSpeed } from '../js/app/procgen/ProcgenSpeedControl.js';
 import { createProcgenCameraController, PROCGEN_MIN_SCALE } from '../js/app/procgen/ProcgenCameraController.js';
 import { PROCGEN_HUD_GLYPHS } from '../js/app/procgen/ProcgenBitmapHud.js';
@@ -16,13 +17,13 @@ const cameraFixture = () => {
 };
 
 describe('procgen compact controls and share configuration', () => {
-  it('validates explicit query config while retaining compatible aliases and free-form seeds', () => {
+  it('validates core run config while ignoring appearance and private policy parameters', () => {
     const parsed = readProcgenUrlConfig('?seed=forest&lanes=2048&pack=6&speed=128&appearance=donut&body=random&accessory=crown&eyewear=monocle&frameColor=%2304bb9f&musicPreset=game-lydian-lanterns&phrases=1&x=200&y=96&scale=0.125');
     expect(parsed.settings).to.include({ laneCount: 1024, pack: 6, speed: 128, preset: 'game-lydian-lanterns', mode: 'phrase' });
-    expect(parsed.appearance).to.include({ shape: 'donut', bodyColor: 'random', accessory: 'crown', eyewear: 'monocle', eyewearColor: '#04bb9f' });
+    expect(parsed.appearance).to.deep.equal({});
     expect(parsed.camera).to.deep.equal({ cameraX: 200, cameraY: 96, scale: 0.125, follow: false });
     expect(parsed.seed).to.be.a('number');
-    expect(readProcgenUrlConfig('?speed=Infinity&pack=7&shape=missing&bodyColor=red&cameraY=-1&zoom=0&follow=maybe').settings).to.deep.equal({});
+    expect(readProcgenUrlConfig('?speed=Infinity&pack=7&shape=missing&bodyColor=red&cameraY=-1&zoom=0&follow=maybe').settings).to.deep.equal({ output: 'synth', sound: true });
     expect(readProcgenUrlConfig('?speed=Infinity&pack=7&shape=missing&bodyColor=red&cameraY=-1&zoom=0&follow=maybe').camera).to.deep.equal({});
   });
   it('round-trips a full run link without enabling listening', () => {
@@ -31,8 +32,18 @@ describe('procgen compact controls and share configuration', () => {
     const camera = { cameraX: 400, cameraY: 192, scale: 0.125, follow: false };
     const url = createProcgenShareUrl({ url: 'https://example.test/procgen.html?seed=7&x=2&e2e=1', seed: 99, settings, appearance, camera });
     const parsed = readProcgenUrlConfig(new URL(url).search);
-    expect(parsed).to.deep.equal({ seed: 99, settings, appearance, camera });
+    expect(parsed).to.deep.equal({ seed: 99, settings: { ...settings, output: 'synth', sound: true }, appearance: {}, camera });
+    expect(new URL(url).searchParams.has('shape')).to.equal(false); expect(new URL(url).searchParams.has('e2e')).to.equal(false);
     expect(url).not.to.include('listen='); expect(url).not.to.include('&x=');
+  });
+  it('redirects normal-game procgen selection before boot and keeps soundFont separate from the palette', () => {
+    const url = createProcgenRedirectUrl('https://example.test/index.html?mode=procgen&lanes=32&laneHeight=144&soundFont=warm-bank&preset=game-lydian-lanterns&shape=donut&scoutsEvery=4');
+    const target = new URL(url); expect(target.pathname).to.equal('/procgen.html');
+    expect([...target.searchParams.keys()]).to.deep.equal(['lanes', 'laneHeight', 'preset', 'soundFont', 'output', 'sound']);
+    expect(readProcgenUrlConfig(target.search).settings).to.include({ laneCount: 32, laneHeight: 144, preset: 'game-lydian-lanterns', soundFont: 'warm-bank', output: 'synth', sound: true });
+    expect(createProcgenRedirectUrl(target.href)).to.equal(null);
+    expect(createProcgenRedirectUrl('https://example.test/?midi=1')).to.equal(null);
+    expect(createProcgenRedirectUrl('https://example.test/?procgen=1&output=midi&sound=0')).to.include('output=midi&sound=0');
   });
   it('matches classic keyboard/panel steps while allowing speeds beyond the old procgen dropdown and game cap', () => {
     expect(changeProcgenSpeed(0.1, -1)).to.equal(0.1);

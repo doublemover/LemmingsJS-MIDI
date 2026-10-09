@@ -7,7 +7,7 @@ describe('default ordinary crews and sparse permanent abilities', function() {
   this.timeout(30000);
   let masks, terrain;
   before(async () => { masks = await loadProcgenMasks(); terrain = await loadProcgenTerrain('lemmings', 3); });
-  it('starts every new/default and restarted actor ordinary, then floats exactly the delayed default scouts', () => {
+  it('starts every new/default and restarted actor ordinary, then floats only delayed scouts with a floating role', () => {
     const world = new ProcgenLaneWorld({ masks, terrain, laneCount: 2 });
     for (let ordinal = 1; ordinal < 16; ordinal++) world._spawn(0, false);
     const crew = world.actors.filter(a => a.laneIndex === 0);
@@ -19,9 +19,9 @@ describe('default ordinary crews and sparse permanent abilities', function() {
     expect(crew.some(a => a.hasParachute)).to.equal(false);
     world.tickIndex = 180;
     for (const actor of crew) world._assist(actor);
-    expect(crew.filter(a => a.hasParachute)).to.have.length(2);
-    expect(crew.every(a => a.hasParachute === a.scout && !a.canClimb)).to.equal(true);
-    const scout = crew.find(a => a.scout), ordinary = crew.find(a => !a.scout);
+    expect(crew.filter(a => a.hasParachute)).to.have.length(crew.filter(a => a.scoutAbilities & 2).length);
+    expect(crew.every(a => a.hasParachute === !!(a.scoutAbilities & 2) && !a.canClimb)).to.equal(true);
+    const scout = crew.find(a => a.scoutAbilities & 2), ordinary = crew.find(a => !a.scout);
     scout.y = 100; world._synchronizeLane(scout);
     expect(scout.laneIndex).to.equal(1); expect(scout.spawnLaneIndex).to.equal(0); expect(scout.hasParachute).to.equal(true);
     expect(ordinary.hasParachute).to.equal(false);
@@ -38,8 +38,8 @@ describe('default ordinary crews and sparse permanent abilities', function() {
     world.getColumnStepHeight = (x, y, height) => { for (let i = 0; i < height; i++) if (!world.hasGroundAt(x, y + height - 1 - i)) return i; return height; };
     world.hasSteelAt = () => false; world.hazardPlanner.plan = () => null; world.tickIndex = 180;
     for (const actor of world.actors) { Object.assign(actor, { x: 64, y: 72 }); actor.setAction(world.actions[State.WALKING]); world._assist(actor); }
-    expect(world.actors.filter(a => a.canClimb)).to.have.length(2);
-    expect(world.actors.every(a => a.canClimb === a.scout && !a.hasParachute)).to.equal(true);
+    expect(world.actors.filter(a => a.canClimb)).to.have.length(world.actors.filter(a => a.scoutAbilities & 1).length);
+    expect(world.actors.every(a => a.canClimb === !!(a.scoutAbilities & 1) && !a.hasParachute)).to.equal(true);
     const manual = world.actors.find(a => !a.scout); manual.hasParachute = true; manual.canClimb = true;
     manual.y = 100; world._synchronizeLane(manual);
     expect(manual.hasParachute).to.equal(true); expect(manual.canClimb).to.equal(true); world.dispose();

@@ -96,7 +96,7 @@ describe('procgen visible edge and configured worker crews', function() {
 
   it('normalizes an editable copied policy and lets existing jobs finish after a limit is lowered', () => {
     const world = new ProcgenLaneWorld({ masks, terrain: flatTerrain(), assists: false, workerLimits: { bashers: 3, diggers: 2 } });
-    expect(world.workerLimits).to.deep.equal({ bashers: 3, diggers: 2, builders: 2 });
+    expect(world.workerLimits).to.deep.equal({ bashers: 3, diggers: 2, builders: 8 });
     const a = walker(world, 70), b = walker(world, 95), c = walker(world, 110);
     expect(world.assignWorker(a, 'diggers')).to.equal(true); expect(world.assignWorker(b, 'diggers')).to.equal(true);
     const policy = world.setWorkerLimits({ diggers: 0, bashers: 99, builders: -1 });
@@ -104,7 +104,7 @@ describe('procgen visible edge and configured worker crews', function() {
     expect(world.workerLimits.diggers).to.equal(0); expect(world.assignWorker(c, 'diggers')).to.equal(false);
     world.step(); expect(a.action).to.equal(world.actions[State.DIGGING]); expect(b.action).to.equal(world.actions[State.DIGGING]);
     expect(world.getLaneMusicSignals(0).diggingCount).to.equal(2);
-    expect(normalizeWorkerLimits({ bashers: Infinity, builders: '4.9' })).to.deep.equal({ bashers: 2, diggers: 2, builders: 4 });
+    expect(normalizeWorkerLimits({ bashers: Infinity, builders: '4.9' })).to.deep.equal({ bashers: 4, diggers: 4, builders: 4 });
     expect(world.getDebugState().workerLimits).to.deep.equal(world.workerLimits); world.dispose();
   });
 
@@ -122,7 +122,7 @@ describe('procgen visible edge and configured worker crews', function() {
   });
 
   it('permits independent bash/dig/build tasks within their own limits and excludes overlapping builder footprints', () => {
-    const world = new ProcgenLaneWorld({ masks, terrain: flatTerrain(), assists: false }), actors = Array.from({ length: 10 }, (_, index) => walker(world, 70 + index * 20));
+    const world = new ProcgenLaneWorld({ masks, terrain: flatTerrain(), assists: false, workerLimits: { bashers: 2, diggers: 2, builders: 2 } }), actors = Array.from({ length: 10 }, (_, index) => walker(world, 70 + index * 20));
     expect(world.assignWorker(actors[0], 'bashers')).to.equal(true); expect(world.assignWorker(actors[1], 'bashers')).to.equal(true);
     expect(world.assignWorker(actors[2], 'bashers')).to.equal(false);
     expect(world.assignWorker(actors[3], 'diggers')).to.equal(true); expect(world.assignWorker(actors[4], 'diggers')).to.equal(true);
@@ -133,6 +133,21 @@ describe('procgen visible edge and configured worker crews', function() {
     expect(world.assignWorker(actors[8], 'builders', 270)).to.equal(true);
     expect(world.assignWorker(actors[9], 'builders', 300)).to.equal(false);
     expect(world.accessTasks[0].filter(task => task.owner)).to.have.length(6); world.dispose();
+  });
+
+  it('admits the raised default crews while retaining exact local exclusion and configured bounds', () => {
+    for (const [kind, limit] of [['bashers', 4], ['diggers', 4], ['builders', 8]]) {
+      const world = new ProcgenLaneWorld({ masks, terrain: flatTerrain(), assists: false });
+      expect(world.workerLimits[kind]).to.equal(limit);
+      for (let index = 0; index < limit; index++) {
+        const actor = walker(world, 64 + index * 64);
+        expect(world.assignWorker(actor, kind, actor.x + 24)).to.equal(true);
+        if (index === 0) expect(world.assignWorker(walker(world, actor.x), kind, actor.x + 24)).to.equal(false);
+      }
+      const excess = walker(world, 64 + limit * 64);
+      expect(world.assignWorker(excess, kind, excess.x + 24)).to.equal(false);
+      expect(world.accessTasks[0].filter(task => task.owner)).to.have.length(limit); world.dispose();
+    }
   });
 
   it('runs actual concurrent dig rows, steel stops, lane bounds, terrain accounting and source sound payloads', () => {

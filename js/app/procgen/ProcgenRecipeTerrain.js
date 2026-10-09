@@ -1,3 +1,5 @@
+import { createSourceColumnLibrary, placeSourceColumn } from './ProcgenTerrainColumns.js';
+import { normalizeLaneHeight } from './ProcgenLaneGeometry.js';
 import { composeRecipeChunk } from './ProcgenTerrainRecipes.js';
 import { validateProcgenRouteCatalogue } from './ProcgenRouteContracts.js';
 import { ProcgenTerrainZonePlanner } from './ProcgenTerrainZones.js';
@@ -37,6 +39,7 @@ class ProcgenRecipeTerrain {
     // actual source groups, words and complete supported assemblies are placed.
     const routeIds = new Set(this.routes.flatMap(route => route.placements.map(p => p.id)));
     this.ingredients = this.pieces.filter(piece => routeIds.has(piece.id));
+    this.columnLibrary = createSourceColumnLibrary(this.routes, this.ingredients, this.excludedTerrainIds);
     this.sourceDescriptor = sourceDescriptor?.assetSha256 === recipe.assetSha256 && recipe.sources?.some(source => source.pack === sourceDescriptor.pack && source.groundSet === sourceDescriptor.groundSet) ? sourceDescriptor : null;
     this.supportsFineGrowth = !!this.sourceDescriptor;
     this.sourceGroups = createSourceGroupLibrary(this.sourceDescriptor, this.pieces, this.excludedTerrainIds);
@@ -72,7 +75,7 @@ class ProcgenRecipeTerrain {
         }
       }
     }
-    this.chunkWidth = TERRAIN_CHUNK_WIDTH;
+    this.chunkWidth = TERRAIN_CHUNK_WIDTH; this.height = TERRAIN_HEIGHT;
     this.collision = new Map();
     this.rasters = new Map();
     this.collisionLimit = 256;
@@ -83,7 +86,11 @@ class ProcgenRecipeTerrain {
     this.selectedObjectIds = new Set();
     this._lastKey = null; this._lastChunk = null;
   }
-  configure(laneCount, maxActors = 16384) { this.collisionLimit = Math.max(256, Math.min(32768, maxActors + laneCount * 2)); }
+  configure(laneCount, maxActors = 16384, { laneHeight = this.height } = {}) {
+    const height = normalizeLaneHeight(laneHeight);
+    if (height !== this.height) { this.height = height; this.reset(); }
+    this.collisionLimit = Math.max(256, Math.min(32768, maxActors + laneCount * 2));
+  }
   reset() { this.descriptions.clear(); this.growthPlans.clear(); this.zonePlanner?.reset(); this.collision.clear(); this.rasters.clear(); this._lastKey = null; this._lastChunk = null; }
   get memoryMB() {
     let bytes = [...this.sourceGroups.values()].reduce((n, group) => n + group.piece.composite.colors.byteLength + group.piece.composite.operations.byteLength + group.piece.composite.impact.byteLength + group.piece.frame.byteLength + group.columnTop.byteLength + group.columnBottom.byteLength, 0);
@@ -100,31 +107,30 @@ class ProcgenRecipeTerrain {
     const progression = progressionAt(origin), gap = !progression.safeIntro && (code & 7) < 1 + Math.floor(progression.difficulty);
     const placements = [];
     const left = this._elevation(seed, chunk), right = this._elevation(seed, chunk + 1);
-    const middle = progression.difficulty >= 1 ? 28 + (phaseCode >>> 9) % 47 : Math.round((left + right) / 2) + (phaseCode >>> 9) % (progression.localRise + 1) - progression.localRise;
+    const middle = progression.difficulty >= 1 ? this.height - TERRAIN_HEIGHT + 28 + (phaseCode >>> 9) % 47 : Math.round((left + right) / 2) + (phaseCode >>> 9) % (progression.localRise + 1) - progression.localRise;
     const descriptor = { code, phase, phaseCode, origin, placements, progression, left, right, middle,
       gapX: origin + 88 + (code >>> 5) % 8, gapWidth: gap ? 3 + (code >>> 10) % (progression.gapMaximum - 2) : 0,
       barrierX: origin + (placements[0]?.x || 0), barrierWidth: progression.safeIntro ? 0 : (placements[0]?.piece.width || 0) };
     // Early narrow gaps retain a real source-foundation recovery floor. Their
     // upper opening and optional bridge remain; later gaps keep full depth.
-    descriptor.gapFloor = descriptor.gapWidth && progression.gapDepth != null ? Math.min(TERRAIN_HEIGHT - 2,
+    descriptor.gapFloor = descriptor.gapWidth && progression.gapDepth != null ? Math.min(this.height - 2,
       Math.max(this._surface(seed, chunk, descriptor.gapX - origin - 1, descriptor), this._surface(seed, chunk, descriptor.gapX - origin + descriptor.gapWidth, descriptor)) + progression.gapDepth) : null;
     descriptor.objects = [];
     descriptor.zone = this.zonePlanner?.zoneAt(seed, origin) || null;
     const pattern = this.patterns[mix(phaseCode ^ code) % this.patterns.length];
     const baseSurface = x => pattern.topProfile[this._patternColumn(pattern, x + origin)] < 0 ? -1 : this._surface(seed, chunk, x, descriptor);
     descriptor.word = this.wordPlanner?.plan(seed, chunk, TERRAIN_CHUNK_WIDTH, x => {
-      if (x + origin >= descriptor.gapX && x + origin < descriptor.gapX + descriptor.gapWidth) return 0;
-      let surface = this._surface(seed, chunk, x, descriptor);
-      for (const placement of placements) if (!placement.decor && x >= placement.x && x < placement.x + placement.piece.width) surface = Math.min(surface, placement.y);
-      return surface;
-    }) || null;
+      if (x + origin >= descriptor.gapX && x + origin < descriptor.gapX + descriptor.gapWidth) return -1;
+      return baseSurface(x);
+    }, (x, y) => this.solidSample(seed, chunk, x, y, descriptor)) || null;
+    if (descriptor.word && !this._introAssemblyEligible(seed, chunk, descriptor, { bounds: { x1: origin + descriptor.word.x, x2: origin + descriptor.word.x + descriptor.word.width } }, descriptor.word.placements, baseSurface)) descriptor.word = null;
     if (descriptor.word) {
       const word = descriptor.word;
       descriptor.placements = placements.filter(p => !p.decor || p.x + p.piece.width <= word.x - 2 || p.x >= word.x + word.width + 2 || p.y + p.piece.height <= word.y - 2 || p.y >= word.baseline + 2);
       descriptor.placements.push(...word.placements);
     }
     const assembled = placeAuthoredAssemblies({ compiled: this.compiledAssemblies, seed, chunk, origin, code, progression,
-      baseSolid: (x, y) => this.solidSample(seed, chunk, x, y, descriptor), baseSurface, occupied: descriptor.placements,
+      baseSolid: (x, y) => this.solidSample(seed, chunk, x, y, descriptor), baseSurface, occupied: descriptor.placements, height: this.height,
       gapX: descriptor.gapX - origin, gapWidth: descriptor.gapWidth });
     // Filter complete final groups before any member enters growth/collision.
     // Later source eligibility and every exact member transform stay intact.
@@ -139,9 +145,13 @@ class ProcgenRecipeTerrain {
     descriptor.assemblies = assembled.assemblies.filter(assembly => admitted.has(assembly));
     const occupied = [...descriptor.placements, ...descriptor.assemblies.map(assembly => ({ x: assembly.bounds.x1 - origin,
       y: assembly.bounds.y1, piece: { width: assembly.bounds.x2 - assembly.bounds.x1, height: assembly.bounds.y2 - assembly.bounds.y1 }, decor: false }))];
+    descriptor.placements.push(...placeSourceColumn({ library: this.columnLibrary, code, origin, height: this.height, surface: baseSurface,
+      solid: (x, y) => this.solidSample(seed, chunk, x, y, descriptor), steel: (x, y) => this.steelSample(seed, chunk, x, y, descriptor),
+      occupied, gapX: descriptor.gapX - origin, gapWidth: descriptor.gapWidth, sourceRevision: this.recipe.assetSha256 }));
+    occupied.push(...descriptor.placements.filter(p => p.sourcedColumn));
     descriptor.placements.push(...placeSourceGroups({ zone: descriptor.zone, library: this.sourceGroups, code, chunk, baseSurface,
       baseSolid: (x, y) => this.solidSample(seed, chunk, x, y, descriptor), baseSteel: (x, y) => this.steelSample(seed, chunk, x, y, descriptor),
-      baseColor: (x, y) => this.rasterSample(seed, chunk, x, y, descriptor), occupied, gapX: descriptor.gapX - origin, gapWidth: descriptor.gapWidth, progression,
+      baseColor: (x, y) => this.rasterSample(seed, chunk, x, y, descriptor), height: this.height, occupied, gapX: descriptor.gapX - origin, gapWidth: descriptor.gapWidth, progression,
       validate: members => { const member = members.at(-1); return this._introAssemblyEligible(seed, chunk, descriptor, { bounds: { x1: origin + member.x, x2: origin + member.x + member.piece.width } }, members, baseSurface); } }));
     descriptor.objects.push(...this._placeObjects(seed, chunk, descriptor));
     if (this.descriptions.size >= this.descriptionLimit) this.descriptions.delete(this.descriptions.keys().next().value);
@@ -154,21 +164,21 @@ class ProcgenRecipeTerrain {
     const candidate = { ...descriptor, placements: [...descriptor.placements, ...members] };
     // Descriptor creation is bounded and cached; no partial-growth state or
     // runtime actor queries participate in this full source-alpha admission.
-    const samples = new Uint8Array(TERRAIN_CHUNK_WIDTH * TERRAIN_HEIGHT);
+    const samples = new Uint8Array(TERRAIN_CHUNK_WIDTH * this.height);
     const solid = (x, y) => {
-      if (x < 0 || x >= TERRAIN_CHUNK_WIDTH || y < 0 || y >= TERRAIN_HEIGHT) return false;
+      if (x < 0 || x >= TERRAIN_CHUNK_WIDTH || y < 0 || y >= this.height) return false;
       const at = y * TERRAIN_CHUNK_WIDTH + x;
       if (!samples[at]) samples[at] = this.solidSample(seed, chunk, x, y, candidate) ? 2 : 1;
       return samples[at] === 2;
     };
-    return introAssemblyEligible({ origin: descriptor.origin, left, right, surface, solid,
+    return introAssemblyEligible({ origin: descriptor.origin, left, right, surface, solid, height: this.height,
       steel: (x, y) => this.steelSample(seed, chunk, x, y, candidate) });
   }
   growthPlan(seed, chunk) {
     const key = keyFor(seed, chunk), cached = this.growthPlans.get(key); if (cached) return cached;
     const descriptor = this.describe(seed, chunk), pattern = this.patterns[mix(descriptor.phaseCode ^ descriptor.code) % this.patterns.length];
     const route = this.routes.find(route => route.id === pattern.routeId), pieces = new Map(this.pieces.map(piece => [piece.id, piece]));
-    const plan = createTerrainGrowthPlan({ descriptor, pattern, route, pieces, assemblies: this.assemblySources, sourceRevision: this.sourceDescriptor?.sourceRevision || this.recipe.assetSha256 });
+    const plan = createTerrainGrowthPlan({ descriptor, pattern, route, pieces, height: this.height, assemblies: this.assemblySources, sourceRevision: this.sourceDescriptor?.sourceRevision || this.recipe.assetSha256 });
     if (this.growthPlans.size >= this.descriptionLimit) this.growthPlans.delete(this.growthPlans.keys().next().value);
     this.growthPlans.set(key, plan); return plan;
   }
@@ -182,7 +192,7 @@ class ProcgenRecipeTerrain {
     const objectCount = this.objects.length ? 1 + (phaseCode >>> 8) % 2 : 0;
     for (let i = 0; i < objectCount; i++) {
       const piece = this.objects[(chunk * 2 + i + seed % this.objects.length) % this.objects.length], image = piece.image;
-      if (!this._standaloneObjectEligible(piece) || image.width > TERRAIN_CHUNK_WIDTH - 16 || image.height > TERRAIN_HEIGHT - 2) continue;
+      if (!this._standaloneObjectEligible(piece) || image.width > TERRAIN_CHUNK_WIDTH - 16 || image.height > this.height - 2) continue;
       const x = origin + 8 + ((code >>> (i * 3)) % Math.max(1, TERRAIN_CHUNK_WIDTH - image.width - 8));
       const trigger = image.trigger_effect_id;
       if (trigger === TriggerTypes.ONEWAY_LEFT || trigger === TriggerTypes.ONEWAY_RIGHT) continue;
@@ -199,22 +209,49 @@ class ProcgenRecipeTerrain {
         floor = Math.max(floor, this._surface(seed, chunk, localX, descriptor));
       }
       if (!supported) continue;
-      const y = role === 'terrain-overlay' ? Math.min(TERRAIN_HEIGHT - image.height, floor + 4) :
-        role === 'liquid' ? Math.min(TERRAIN_HEIGHT - image.height - 2, floor - 4) :
+      const y = role === 'terrain-overlay' ? Math.min(this.height - image.height, floor + 4) :
+        role === 'liquid' ? floor :
           role === 'ambient' ? 2 + (code >>> 12) % 18 : floor - image.height;
       if (y < 0) continue;
+      // A pool cuts only a measured cavity in existing source foundation. It
+      // never creates raised retaining walls or replaces protected terrain.
+      if (role === 'liquid') {
+        const bottom = y + image.height, localX = x - origin;
+        if (bottom >= this.height) continue;
+        let basin = true;
+        for (let dx = -1; dx <= image.width && basin; dx++) for (let py = y; py <= bottom; py++) {
+          if (!this.solidSample(seed, chunk, localX + dx, py, descriptor) ||
+              dx >= 0 && dx < image.width && py < bottom && this.steelSample(seed, chunk, localX + dx, py, descriptor)) { basin = false; break; }
+        }
+        if (!basin) continue;
+      }
+      if (role === 'trap' || role === 'hazard') {
+        let clearance = true;
+        for (let dx = 0; dx < image.width && clearance; dx++) for (let py = y; py < floor; py++) {
+          if (this.solidSample(seed, chunk, x - origin + dx, py, descriptor)) { clearance = false; break; }
+        }
+        if (!clearance) continue;
+      }
       if (['trap', 'liquid', 'hazard'].includes(role)) {
         const bounds = { x1: x + image.trigger_left, x2: x + image.trigger_left + image.trigger_width,
           y1: y + image.trigger_top, y2: y + image.trigger_top + image.trigger_height };
         const envelopeLeft = Math.min(x, bounds.x1), envelopeRight = Math.max(x + image.width, bounds.x2);
         if (![bounds.x1, bounds.x2, bounds.y1, bounds.y2].every(Number.isFinite) || bounds.x1 >= bounds.x2 || bounds.y1 >= bounds.y2 ||
             envelopeLeft < Math.max(origin + 8, PROCGEN_INTRO_SAFE_END) || envelopeRight > origin + TERRAIN_CHUNK_WIDTH - 8 ||
-            bounds.y1 < 0 || bounds.y2 > TERRAIN_HEIGHT || mix(code ^ Math.imul(piece.id + 1, 0x9e3779b1)) % 1024 >= descriptor.progression.hazardThreshold) continue;
+            bounds.y1 < 0 || bounds.y2 > this.height || mix(code ^ Math.imul(piece.id + 1, 0x9e3779b1)) % 1024 >= descriptor.progression.hazardThreshold) continue;
       }
       const envelope = { left: Math.min(x, x + image.trigger_left), right: Math.max(x + image.width, x + image.trigger_left + image.trigger_width),
-        top: Math.min(y, y + image.trigger_top), bottom: role === 'liquid' ? TERRAIN_HEIGHT : Math.max(y + image.height + 8, y + image.trigger_top + image.trigger_height) };
-      if (descriptor.placements.some(p => p.canonicalGroup && origin + p.x + p.piece.width > envelope.left - 2 && origin + p.x < envelope.right + 2 && p.y + p.piece.height > envelope.top - 2 && p.y < envelope.bottom + 2)) continue;
+        top: Math.min(y, y + image.trigger_top), bottom: role === 'liquid' ? this.height : Math.max(y + image.height + 8, y + image.trigger_top + image.trigger_height) };
+      if (descriptor.placements.some(p => (p.canonicalGroup || p.sourcedColumn) && origin + p.x + p.piece.width > envelope.left - 2 && origin + p.x < envelope.right + 2 && p.y + p.piece.height > envelope.top - 2 && p.y < envelope.bottom + 2)) continue;
       if (descriptor.assemblies.some(a => x + image.width > a.bounds.x1 - 2 && x < a.bounds.x2 + 2 && y + image.height > a.bounds.y1 - 2 && y < a.bounds.y2 + 2)) continue;
+      // Previously admitted gadgets retain their full contact/support envelope;
+      // a second cavity cannot erase the first pool's side or floor support.
+      if (objects.some(other => {
+        const previous = other.piece.image;
+        const left = Math.min(other.x, other.x + previous.trigger_left) - 2, right = Math.max(other.x + previous.width, other.x + previous.trigger_left + previous.trigger_width) + 2;
+        const top = Math.min(other.y, other.y + previous.trigger_top), bottom = other.role === 'liquid' ? this.height : Math.max(other.supportY + 8, other.y + previous.trigger_top + previous.trigger_height);
+        return envelope.left < right && envelope.right > left && envelope.top < bottom && envelope.bottom > top;
+      })) continue;
       const word = descriptor.word;
       if (word && x + image.width > origin + word.x - 2 && x < origin + word.x + word.width + 2 && y + image.height > word.y - 2 && y < word.baseline + 2) continue;
       objects.push({ piece, x, y, role, phase: code % image.frames.length, interactive: false,
@@ -230,12 +267,12 @@ class ProcgenRecipeTerrain {
   // One borrowed scratch record avoids allocation on collision/render queries.
   _sampleTerrain(seed, chunk, x, y, descriptor, state, withColor = false) {
     const result = this._sampleScratch; result.solid = result.steel = false; result.color = 0;
-    if (x < 0 || x >= TERRAIN_CHUNK_WIDTH || y < 0 || y >= TERRAIN_HEIGHT) return result;
+    if (x < 0 || x >= TERRAIN_CHUNK_WIDTH || y < 0 || y >= this.height) return result;
     const pattern = this.patterns[mix(descriptor.phaseCode ^ descriptor.code) % this.patterns.length];
     const px = this._foundationColumn(pattern, x + descriptor.origin, descriptor), surface = this._surface(seed, chunk, x, descriptor);
     const active = this._activePlan(seed, chunk, state);
     result.solid = (!active || !!state.active[active.foundationByColumn[x]]) && pattern.topProfile[px] >= 0 && y >= surface;
-    if (withColor && result.solid) result.color = pattern.columnColors[px * TERRAIN_HEIGHT + y - surface];
+    if (withColor && result.solid) result.color = pattern.columnColors[px * TERRAIN_HEIGHT + (y - surface) % TERRAIN_HEIGHT];
     for (let index = 0; index < descriptor.placements.length; index++) {
       const p = descriptor.placements[index]; if (p.decor || active && !state.active[active.placementJobs[index]]) continue;
       const stamp = terrainStampAt(p, x, y, result.solid), operation = stamp & 3; if (!operation) continue;
@@ -246,10 +283,9 @@ class ProcgenRecipeTerrain {
     for (let index = 0; index < descriptor.objects.length; index++) {
       const object = descriptor.objects[index]; if (object.role !== 'liquid' || active && !state.active[active.objectJobs[index]]) continue;
       const dx = x + descriptor.origin - object.x, bottom = object.y + object.piece.image.height;
-      if (y >= object.y && dx >= -1 && dx <= object.piece.image.width) {
-        result.solid = dx < 0 || dx === object.piece.image.width || y >= bottom;
-        if (!result.solid) result.steel = false;
-        if (withColor) result.color = result.solid ? pattern.columnColors[px * TERRAIN_HEIGHT + Math.max(0, y - surface)] : 0;
+      if (y >= object.y && y < bottom && dx >= 0 && dx < object.piece.image.width) {
+        result.solid = result.steel = false;
+        if (withColor) result.color = 0;
       }
     }
     if (withColor && !result.solid) for (let index = 0; index < descriptor.placements.length; index++) {
@@ -271,10 +307,10 @@ class ProcgenRecipeTerrain {
   }
   _elevation(seed, node) {
     const progression = progressionAt(node * TERRAIN_CHUNK_WIDTH), code = this._code(seed ^ 0xc2b2ae35, node);
-    return progression.difficulty >= 1 ? 40 + code % 39 : 72 - code % (progression.elevationRange + 1);
+    return this.height - TERRAIN_HEIGHT + (progression.difficulty >= 1 ? 40 + code % 39 : 72 - code % (progression.elevationRange + 1));
   }
   _surface(seed, chunk, x, descriptor) {
-    if (chunk === 0 && x < 64) return 72;
+    if (chunk === 0 && x < 64) return this.height - TERRAIN_HEIGHT + 72;
     const { left, right, middle } = descriptor;
     // Flat shelves, abrupt climbable faces and gentle connecting slopes all
     // share exact boundary elevations, including transitions between phases.
@@ -286,7 +322,7 @@ class ProcgenRecipeTerrain {
   }
   _compose(seed, chunk, raster) {
     const start = globalThis.performance?.now?.() || 0;
-    const d = this.describe(seed, chunk), width = TERRAIN_CHUNK_WIDTH, height = TERRAIN_HEIGHT;
+    const d = this.describe(seed, chunk), width = TERRAIN_CHUNK_WIDTH, height = this.height;
     const pattern = this.patterns[mix(d.phaseCode ^ d.code) % this.patterns.length];
     const solid = new Uint32Array(width * height / 32), steel = new Uint32Array(solid.length);
     const pixels = raster ? new Uint32Array(width * height) : null;
@@ -301,7 +337,7 @@ class ProcgenRecipeTerrain {
       for (let y = surface; y < height; y++) {
         const index = y * width + x;
         solid[index >>> 5] |= 1 << (index & 31);
-        if (pixels) pixels[index] = pattern.columnColors[px * height + y - surface];
+        if (pixels) pixels[index] = pattern.columnColors[px * TERRAIN_HEIGHT + (y - surface) % TERRAIN_HEIGHT];
       }
     }
     for (const placement of d.placements) if (!placement.decor) stamp(placement);
@@ -312,10 +348,9 @@ class ProcgenRecipeTerrain {
     }
     for (const object of d.objects) if (object.role === 'liquid') {
       const left = object.x - d.origin, right = left + object.piece.image.width, bottom = object.y + object.piece.image.height;
-      for (let x = left - 1; x <= right; x++) for (let y = object.y; y < height; y++) {
+      for (let x = left; x < right; x++) for (let y = object.y; y < bottom; y++) {
         const index = y * width + x, bit = 1 << (index & 31), at = index >>> 5;
-        if (x >= left && x < right && y < bottom) { solid[at] &= ~bit; steel[at] &= ~bit; if (pixels) pixels[index] = 0; }
-        else { solid[at] |= bit; if (pixels) pixels[index] = pattern.columnColors[this._patternColumn(pattern, x + d.origin) * height + Math.max(0, y - this._surface(seed, chunk, x, d))]; }
+        solid[at] &= ~bit; steel[at] &= ~bit; if (pixels) pixels[index] = 0;
       }
     }
     if (pixels) for (const placement of d.placements) if (placement.decor) stamp(placement);
@@ -365,7 +400,7 @@ class ProcgenRecipeTerrain {
     return raster ? { ...result, pixels } : result;
   }
   collisionAt(seed, x, y, steel = false) {
-    if (x < 0 || y < 0 || y >= TERRAIN_HEIGHT) return false;
+    if (x < 0 || y < 0 || y >= this.height) return false;
     const p = this.getChunk(seed, Math.floor(x / TERRAIN_CHUNK_WIDTH));
     const index = y * TERRAIN_CHUNK_WIDTH + x % TERRAIN_CHUNK_WIDTH;
     return !!((steel ? p.steel : p.solid)[index >>> 5] & (1 << (index & 31)));
@@ -373,7 +408,7 @@ class ProcgenRecipeTerrain {
   surface(seed, x) { return this.getChunk(seed, Math.floor(x / TERRAIN_CHUNK_WIDTH)).topProfile[x % TERRAIN_CHUNK_WIDTH]; }
   isFlat(seed, x) { const y = this.surface(seed, x); return y >= 0 && this.surface(seed, x + 8) === y; }
   sample(seed, x, y) {
-    if (x < 0 || y < 0 || y >= TERRAIN_HEIGHT) return 0;
+    if (x < 0 || y < 0 || y >= this.height) return 0;
     const p = this.getChunk(seed, Math.floor(x / TERRAIN_CHUNK_WIDTH), true);
     return p.pixels[y * TERRAIN_CHUNK_WIDTH + x % TERRAIN_CHUNK_WIDTH];
   }

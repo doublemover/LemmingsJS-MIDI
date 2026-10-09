@@ -38,6 +38,7 @@ const midiEventRouterEventMethods = {
       } else if (!this.scheduler.output) {
         return;
       }
+      this._syncGamePhraseGeneration();
       const automationOrigin = this._observeAutomationEvent(event);
       const now = this._nowMs();
       const tick = event.tick;
@@ -141,6 +142,11 @@ const midiEventRouterEventMethods = {
         }
         if (!Number.isFinite(cell.note)) return;
         spec = cell; noteList = [cell.note];
+      }
+
+      if (!sfx.clipSequence && sfx.phrase?.rolling?.enabled) {
+        this._queueGameRollingPhrase(event, spec, meta, noteList, sfx.phrase.rolling);
+        return;
       }
 
       const fire = !sfx.clipSequence && event.type === 'lemming-fire';

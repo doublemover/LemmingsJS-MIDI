@@ -179,6 +179,10 @@ const registerSequencerDom = (doc) => {
     midiGlobalEnvDecay: 'input',
     midiGlobalEnvSustain: 'input',
     midiGlobalEnvRelease: 'input',
+    midiSpanPreset: 'select',
+    midiSpanPresetDomain: 'select',
+    midiSpanPresetApply: 'button',
+    midiSpanPresetStatus: 'p',
     midiAutomationAddButton: 'button',
     midiAutomationList: 'div',
     midiSchedulerPressure: 'div',
@@ -248,6 +252,20 @@ const createControllerHarness = ({
 };
 
 describe('midiUiController sequencer', function() {
+  it('applies a named span combination through the current project controls without enabling output or replacing spatial edits', () => {
+    const { controller, doc, win, view } = createControllerHarness(); controller.bindMidiUi();
+    controller.dispatchProjectIntent({ type: 'automation.add', automation: { id: 'spatial', target: 'pan', axis: 'x', min: -22, max: 22 } });
+    const picker = doc.getElementById('midiSpanPreset'), button = doc.getElementById('midiSpanPresetApply');
+    expect(picker.children).to.have.length(3); picker.value = 'span-open-air'; doc.getElementById('midiSpanPresetDomain').value = 'beats';
+    button.dispatchEvent({ type: 'click', target: button });
+    const project = controller.getProject();
+    expect(project.automation.find(entry => entry.id === 'spatial')).to.include({ min: -22, max: 22 });
+    expect(project.automation.filter(entry => entry.span).map(entry => entry.target)).to.deep.equal(['note', 'duration', 'release']);
+    expect(project.automation.filter(entry => entry.span).every(entry => entry.span.duration === 16 && entry.span.domain === 'beats')).to.equal(true);
+    expect(project.enabled).to.equal(false); expect(view.midiEnabled).to.equal(false);
+    expect(JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY)).automation).to.deep.equal(project.automation);
+    expect(doc.getElementById('midiSpanPresetStatus').textContent).to.include('scale-safe'); controller.dispose();
+  });
   it('installs the fresh ensemble once and preserves edited saved roles on reload and re-enable', () => {
     const { controller, doc, win, view } = createControllerHarness({ freshProjectPresetId: 'game-iron-ensemble' });
     controller.bindMidiUi();
