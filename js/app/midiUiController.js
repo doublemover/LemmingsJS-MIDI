@@ -39,7 +39,8 @@ import {
   readStoredMidiProjectTemplates,
   resetMidiProjectStorage,
   saveMidiProject,
-  saveMidiProjectTemplate
+  saveMidiProjectWithOutcome,
+  saveMidiProjectTemplateWithOutcome
 } from '../midi/project/MidiProjectStorage.js';
 import {
   downloadTextFile as downloadTextFileDefault,
@@ -312,6 +313,9 @@ const createMidiUiController = ({
   let midiEnableRequest = 0;
   let midiConnectionPending = false;
   let disposed = false;
+  let importRequest = 0;
+  let projectPersisted = true;
+  let auditionPending = false;
   let soundView = 'sounds';
   let localAudio = null;
   let auditionAudio = null;
@@ -619,8 +623,14 @@ const createMidiUiController = ({
 
   const getUiMetrics = () => cloneSafeObject(uiMetrics);
 
+  const getActiveRouter = () => {
+    const view = getLemmings();
+    if (localGamePreview?.getState().enabled && view?.midiPreviewRouter) return view.midiPreviewRouter;
+    return ensureProject().enabled && getWebMidi()?.enabled ? view?.midiRouter : null;
+  };
+
   const getSchedulerPressure = () => {
-    const router = getLemmings()?.midiRouter;
+    const router = getActiveRouter();
     const report = router?.getRateReport?.();
     const snapshot = report?.snapshot || router?.getRateSnapshot?.();
     const queued = Math.max(0, Math.round(Number(snapshot?.next?.count) || 0));
@@ -638,7 +648,10 @@ const createMidiUiController = ({
     const next = sanitizeMidiProject(nextProject);
     editHistory.record(project, next);
     project = next;
-    if (persist) project = saveMidiProject(storage, project);
+    if (persist) {
+      const saved = saveMidiProjectWithOutcome(storage, project);
+      project = saved.project; projectPersisted = saved.persisted;
+    }
     if (apply && !renderUi) applyProjectToRuntime();
     if (renderUi) render();
     return project;
@@ -646,10 +659,9 @@ const createMidiUiController = ({
 
   const dispatchProjectIntent = (intent) => {
     const current = ensureProject();
-    const factory = getFactoryConfig() || {};
-    const next = intent?.type === 'project.reset'
-      ? captureFactoryProject(factory)
-      : reduceMidiProject(current, intent);
+    if (intent?.type === 'project.reset') return resetProject('midi-mapping');
+    if (intent?.type === 'project.set') return setProject(intent.project);
+    const next = reduceMidiProject(current, intent);
     return commitProject(next);
   };
 
@@ -702,6 +714,7 @@ const createMidiUiController = ({
       status: lastStatus,
       error: document?.getElementById('errorDisplay')?.textContent || '',
       scheduler: getSchedulerPressure(),
+      persistence: { persisted: projectPersisted },
       outputLog: outputLog.slice(),
       recovery: {
         resetAvailable: true,
@@ -711,28 +724,38 @@ const createMidiUiController = ({
   };
 
   const resetProject = (templateId = null) => {
+    if (disposed) return null;
     const factory = getFactoryConfig() || {};
     const nextTemplateId = templateId || selectedTemplateId();
     const nextTemplateLabel = selectedTemplateLabel(nextTemplateId);
+    const current = ensureProject();
+    importRequest += 1;
+    clearTransientProjectState();
     captureFactoryProject(factory);
-    project = resetMidiProjectStorage(storage, factory, nextTemplateId);
+    const reset = resetMidiProjectStorage(storage, factory, nextTemplateId, { persist: false });
     projectNeedsFactory = false;
-    applyProjectToRuntime();
-    render();
-    const message = `Reset project from ${nextTemplateLabel}`;
-    setStatus(message);
-    logOutput(message);
+    commitProject({ ...reset, enabled: current.enabled, devices: current.devices,
+      tracks: reset.tracks.map(track => ({ ...track, outputId: current.tracks.find(entry => entry.id === track.id)?.outputId ?? null })) });
+    const message = 'Reset project from ' + nextTemplateLabel + (projectPersisted ? '' : '; session-only, export to keep changes');
+    setStatus(message); logOutput(message);
     return project;
   };
 
-  const setProject = (nextProject) => commitProject(nextProject);
+  const setProject = (nextProject) => {
+    if (disposed) return null;
+    importRequest += 1;
+    return replaceProject(nextProject);
+  };
 
   const saveProjectTemplate = (options = {}) => {
-    const template = saveMidiProjectTemplate(storage, ensureProject(), options);
+    const outcome = saveMidiProjectTemplateWithOutcome(storage, ensureProject(), options);
+    const template = { ...outcome.template, persisted: outcome.persisted, storageReason: outcome.reason };
+    if (outcome.persisted) commitProject({ ...ensureProject(), templateId: template.id });
     renderTransport();
-    const message = `Saved template ${template.name}`;
-    setStatus(message);
-    logOutput(message);
+    const message = outcome.persisted
+      ? 'Saved template ' + template.name + (projectPersisted ? '' : '; project identity is session-only')
+      : 'Template was not saved; changes are session-only. Export to keep them.';
+    setStatus(message); logOutput(message);
     return template;
   };
 
@@ -756,24 +779,45 @@ const createMidiUiController = ({
     return payload;
   };
 
-  const importProject = (payload) => {
-    const imported = importMidiProjectPayload(payload);
+  const replaceProject = (nextProject) => {
+    const imported = sanitizeMidiProject(nextProject);
+    const current = ensureProject();
+    clearTransientProjectState();
+    midiEnableRequest += 1; midiConnectionPending = false;
+    // Import never requests device permission. A connected destination can be reused.
+    imported.enabled = current.enabled && !!getWebMidi()?.enabled;
+    if (imported.enabled) stopLocalPreview();
+    const routeChanged = current.enabled !== imported.enabled || JSON.stringify(current.devices) !== JSON.stringify(imported.devices) ||
+      JSON.stringify(current.tracks.map(track => [track.id, track.outputId, track.channel])) !== JSON.stringify(imported.tracks.map(track => [track.id, track.outputId, track.channel]));
+    if (routeChanged) clearMidiOutputState();
+    if (!imported.enabled) { unbindDeviceListeners(); setActiveMidiInput(null); }
     projectNeedsFactory = false;
-    const next = commitProject(imported);
-    setStatus(`Imported ${next.name}`);
-    logOutput(`Imported ${next.name}`);
+    return commitProject(imported);
+  };
+
+  const importProject = (payload) => {
+    if (disposed) return null;
+    const imported = importMidiProjectPayload(payload);
+    importRequest += 1;
+    const next = replaceProject(imported);
+    const message = 'Imported ' + next.name + (projectPersisted ? '' : '; session-only, export to keep changes');
+    setStatus(message); logOutput(message);
     return next;
   };
 
   const importProjectFile = async (file) => {
-    if (!file) return null;
+    if (!file || disposed) return null;
+    const request = ++importRequest;
     try {
-      return importProject(await readTextFile(file));
+      const text = await readTextFile(file);
+      if (disposed || request !== importRequest) return null;
+      return importProject(text);
     } catch (e) {
+      if (disposed || request !== importRequest) return null;
       const message = e?.message || 'MIDI project import failed.';
       showError(message);
       setStatus('Import failed');
-      logOutput(`Import failed: ${message}`);
+      logOutput('Import failed: ' + message);
       return null;
     }
   };
@@ -1130,6 +1174,14 @@ const createMidiUiController = ({
 
   const hasRecordCapture = () => recordState.active || recordState.notes.length > 0 || recordState.activeNotes.size > 0;
 
+  const clearTransientProjectState = () => {
+    editHistory.endGesture();
+    learnState.active = false; learnState.pending = null; learnState.sourceId = null; learnState.trackId = null; learnState.conflicts = [];
+    clearLearnCapture(); clearRecordCapture(); resetRecordState();
+    localInteraction += 1; auditionPending = false;
+    auditionAudio?.stop?.(); auditionSteps.clear();
+  };
+
   const cancelActiveCapture = () => {
     if (hasLearnCapture()) return cancelLearn();
     if (hasRecordCapture()) return cancelRecording();
@@ -1230,8 +1282,8 @@ const createMidiUiController = ({
 
   const clearMidiOutputState = () => {
     const scheduler = getLemmings()?.midiRouter?.scheduler;
-    scheduler?.allNotesOff?.();
-    scheduler?.clearQueue?.();
+    scheduler?.allNotesOff?.({ preserveRateHistory: true });
+    scheduler?.clearQueue?.({ preserveRateHistory: true });
   };
 
   const refreshDeviceLists = ({ preserveSelection = true } = {}) => {
@@ -2088,7 +2140,7 @@ const createMidiUiController = ({
       row.append(enabledLabel, targetLabel, axisLabel, opLabel, minLabel, maxLabel, pointBeatLabel, pointValueLabel, remove);
       if (lane.span) { axisLabel.hidden = opLabel.hidden = pointBeatLabel.hidden = pointValueLabel.hidden = true; minText.textContent = 'Start value'; maxText.textContent = 'End value'; }
       row.append(createMidiAutomationSpanEditor({ document, lane, tracks: current.tracks, open: openSpans.get(lane.id) || false, canAddSpan: current.automation.filter(entry => entry.enabled && entry.span).length < 64,
-        getState: () => (getLemmings()?.midiRouter || getLemmings()?.midiPreviewRouter)?.getAutomationSpanState?.(lane.id, 0),
+        getState: () => getActiveRouter()?.getAutomationSpanState?.(lane.id, 0),
         onUpdate: patch => dispatchProjectIntent({ type: 'automation.update', automationId: lane.id, patch }) }));
       list.appendChild(row);
     }
@@ -2305,18 +2357,23 @@ const createMidiUiController = ({
     renderMasterVolume();
   };
 
+  const localOwnershipState = () => {
+    const live = localGamePreview?.getState?.(), audition = auditionAudio?.getState?.();
+    const auditionActive = auditionPending || audition?.status === 'unlocking' || !!audition?.activeVoices || !!audition?.pendingNotes;
+    return { live, auditionActive, stopping: !!(live?.enabled || live?.status === 'starting' || localAudio?.getState()?.activeVoices || auditionActive) };
+  };
+
   const renderLocalSummary = () => {
     for (const editor of document?.getElementById('midiAutomationList')?.querySelectorAll?.('.midi-span-editor') || []) editor.syncStatus?.();
     renderMasterVolume(); tensionControls?.syncStatus();
-    const localState = localGamePreview?.getState?.();
-    const audioState = auditionAudio?.getState?.();
-    workbench?.setAudioActive(ensureProject().enabled || getLemmings()?.midiEnabled || localState?.enabled || localState?.status === 'starting' || audioState?.activeVoices);
+    const { live: localState, auditionActive, stopping } = localOwnershipState();
+    workbench?.setAudioActive(ensureProject().enabled || getLemmings()?.midiEnabled || localState?.enabled || localState?.status === 'starting' || auditionActive);
     const hardwareOn = !!getLemmings()?.midiEnabled && !!getWebMidi()?.enabled && !!getLemmings()?.midiOut;
     const label = localState?.status === 'starting' ? 'Starting local audio'
-      : localState?.enabled ? `Listening to game locally${audioState?.activeVoices ? ' + test event' : ''}`
-        : audioState?.activeVoices ? 'Previewing this sound locally' : 'Local sound off';
+      : localState?.enabled ? `Listening to game locally${auditionActive ? ' + test event' : ''}`
+        : auditionActive ? 'Previewing this sound locally' : 'Local sound off';
     setText(document?.getElementById('midiOutputSummary'), `${label} · MIDI ${hardwareOn ? 'on' : 'off'}`);
-    setText(document?.getElementById('midiLocalListenButton'), localState?.enabled || localState?.status === 'starting' || audioState?.activeVoices ? 'Stop listening' : 'Listen to game');
+    setText(document?.getElementById('midiLocalListenButton'), stopping ? 'Stop listening' : 'Listen to game');
   };
 
   const ensureLocalPreview = () => {
@@ -2339,7 +2396,7 @@ const createMidiUiController = ({
   };
 
   const stopLocalPreview = () => {
-    localInteraction += 1;
+    localInteraction += 1; auditionPending = false;
     localGamePreview?.stop?.();
     localAudio?.stop?.();
     auditionAudio?.stop?.();
@@ -2362,9 +2419,12 @@ const createMidiUiController = ({
     const plan = createSoundAuditionPlan(source, ensureProject(), tickMs, index, { completedPasses, tick: timer?.getGameTicks?.() ?? timer?.tickIndex, tickMs: timer?.TIME_PER_FRAME_MS || 60 });
     const advance = () => auditionSteps.set(source.id, { key, index: index + 1, completedPasses, completionAt: plan.completionMs == null ? null : nowMs() + plan.completionMs });
     if (plan.advance || plan.notes.length) settleAuditionPasses(true);
-    if (!plan.notes.length) { if (plan.advance) { localInteraction += 1; auditionAudio.stop?.(); advance(); } setStatus(plan.reason); return false; }
+    if (!plan.notes.length) { if (plan.advance) { localInteraction += 1; auditionPending = false; auditionAudio.stop?.(); advance(); renderLocalSummary(); } setStatus(plan.reason); return false; }
     const interaction = ++localInteraction;
-    const ok = await auditionAudio.preview(plan.notes, { replace: true });
+    auditionPending = true; renderLocalSummary();
+    let ok;
+    try { ok = await auditionAudio.preview(plan.notes, { replace: true }); }
+    finally { if (interaction === localInteraction) { auditionPending = false; renderLocalSummary(); } }
     if (interaction !== localInteraction || disposed) return false;
     if (ok) {
       advance();
@@ -2704,7 +2764,7 @@ const createMidiUiController = ({
     disposed = false;
     tensionControls ??= createMidiTensionControls({ document, prefix: 'midiTension', getProject: ensureProject,
       update: patch => dispatchProjectIntent({ type: 'ensemble.tension.update', patch }),
-      getRouter: () => getLemmings()?.midiPreviewRouter || getLemmings()?.midiRouter });
+      getRouter: getActiveRouter });
     let storedMasterVolume = null;
     try {
       const stored = JSON.parse(storage?.getItem(MASTER_VOLUME_STORAGE_KEY) || 'null');
@@ -2715,7 +2775,7 @@ const createMidiUiController = ({
     cleanupLegacyMidiProjectStorage(storage);
     workbench = createMidiInstrumentWorkbench({ document, window, getLemmings, getProject: ensureProject, getSource: selectedSource,
       updateMapping: updateSelectedMapping, updateSource: updateSelectedSource, commitProject, chooseView: chooseSoundView,
-      bind: bindById, panic, history: editHistory, setStatus, getEventRows: getGameEventRows });
+      bind: bindById, panic, history: editHistory, setStatus, getEventRows: getGameEventRows, getRouter: getActiveRouter });
     workbench.initialize();
     eventClipEditor = createMidiEventClipEditor({ document, bind: bindById, getProject: ensureProject, getSource: selectedSource,
       commitProject, dispatch: dispatchProjectIntent, history: editHistory, setStatus });
@@ -2763,8 +2823,8 @@ const createMidiUiController = ({
     bindById('midiMasterVolume', 'input', updateMasterVolume);
     bindById('midiMasterVolume', 'change', updateMasterVolume);
     bindById('midiLocalListenButton', 'click', async () => {
+      if (localOwnershipState().stopping) { stopLocalPreview(); return; }
       const preview = ensureLocalPreview();
-      if (preview.getState().enabled || preview.getState().status === 'starting' || localAudio?.getState()?.activeVoices) { stopLocalPreview(); return; }
       const interaction = ++localInteraction;
       midiEnableRequest += 1;
       midiConnectionPending = false;
@@ -2909,12 +2969,13 @@ const createMidiUiController = ({
       resetProject();
     });
     bindById('midiTemplateSaveButton', 'click', () => saveProjectTemplate());
+    bindById('midiTemplateSaveAsButton', 'click', () => saveProjectTemplate({ asNew: true }));
     bindById('midiProjectExportButton', 'click', () => exportProject());
     bindById('midiProjectImportButton', 'click', () => document?.getElementById('midiProjectImportInput')?.click?.());
     bindById('midiProjectImportInput', 'change', async event => {
       const file = event.target?.files?.[0] || null;
       await importProjectFile(file);
-      if (event.target) event.target.value = '';
+      if (!disposed && event.target?.files?.[0] === file) event.target.value = '';
     });
     bindById('midiSourceSearch', 'input', event => {
       sourceFilters.search = event.target.value || '';
@@ -3372,7 +3433,8 @@ const createMidiUiController = ({
   };
 
   const dispose = () => {
-    disposed = true;
+    disposed = true; importRequest += 1;
+    clearTransientProjectState();
     workbench?.dispose(); eventClipEditor?.dispose(); gameEventRows.clear();
     localInteraction += 1;
     getLemmings()?.setLocalAudioStopHandler?.(null);

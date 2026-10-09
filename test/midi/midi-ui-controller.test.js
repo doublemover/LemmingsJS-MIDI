@@ -71,6 +71,7 @@ const registerSequencerDom = (doc) => {
     midiPanicButton: 'button',
     midiReversePanicToggle: 'input',
     midiTemplateSaveButton: 'button',
+    midiTemplateSaveAsButton: 'button',
     midiProjectExportButton: 'button',
     midiProjectImportButton: 'button',
     midiProjectImportInput: 'input',
@@ -252,6 +253,131 @@ const createControllerHarness = ({
 };
 
 describe('midiUiController sequencer', function() {
+  it('makes Reset reversible while preserving device selection, listening gain and the immediate musical state', () => {
+    const { controller, doc, win } = createControllerHarness({ freshProjectPresetId: 'game-iron-ensemble' }); controller.bindMidiUi();
+    controller.dispatchProjectIntent({ type: 'ensemble.role.update', trackId: 'ensemble-bass', patch: { pan: -71 } });
+    controller.dispatchProjectIntent({ type: 'ensemble.tension.update', patch: { amount: 0.35 } });
+    controller.dispatchProjectIntent({ type: 'devices.set', devices: { outputId: 'deliberate', inputId: 'input' } });
+    const volume = doc.getElementById('midiMasterVolume'); volume.value = '180'; volume.dispatchEvent({ type: 'input', target: volume });
+    const prior = controller.getProject(); controller.resetProject('midi-mapping');
+    expect(controller.getProject()).not.to.have.property('ensemble');
+    expect(controller.getProject().devices).to.deep.equal(prior.devices);
+    expect(win.__LEMMINGS_MIDI_UI__.undo()).to.equal(true);
+    expect(controller.getProject().ensemble).to.deep.equal(prior.ensemble);
+    expect(controller.getProject().tracks).to.deep.equal(prior.tracks);
+    expect(volume.value).to.equal('180');
+    expect(win.__LEMMINGS_MIDI_UI__.redo()).to.equal(true); expect(controller.getProject()).not.to.have.property('ensemble');
+    controller.dispose();
+  });
+
+  it('stops audition-only voices and pending unlock without creating a live monitor or accepting the canceled completion', async () => {
+    const created = []; let finish;
+    const { controller, doc, view } = createControllerHarness({
+      lemmings: { setMidiPreviewRouter(router) { this.midiPreviewRouter = router; } },
+      createPreviewAudio(options) {
+        let active = 0, pending = false, generation = 0;
+        const audio = { output: makeOutput([1], [], 'local'), setMasterVolume() {},
+          getState: () => ({ enabled: active > 0, activeVoices: active, pendingNotes: 0, status: pending ? 'unlocking' : 'idle' }),
+          preview() { pending = true; const request = generation; return new Promise(resolve => { finish = () => { pending = false; active = request === generation ? 1 : 0; options.onStateChange(); resolve(active > 0); }; }); },
+          stop() { generation++; active = 0; pending = false; options.onStateChange(); }, dispose() {} };
+        created.push(audio); return audio;
+      }
+    }); controller.bindMidiUi();
+    const click = doc.getElementById('midiLocalListenButton').listeners.get('click')[0];
+    const pending = controller.testSelectedSound(); expect(doc.getElementById('midiLocalListenButton').textContent).to.equal('Stop listening');
+    await click(); finish(); expect(await pending).to.equal(false);
+    expect(created).to.have.length(1); expect(view.midiPreviewRouter).to.equal(undefined);
+    expect(doc.getElementById('midiLocalListenButton').textContent).to.equal('Listen to game');
+    const sounding = controller.testSelectedSound(); finish(); expect(await sounding).to.equal(true);
+    expect(doc.getElementById('midiLocalListenButton').textContent).to.equal('Stop listening');
+    await click(); expect(created).to.have.length(1); expect(created[0].getState().activeVoices).to.equal(0);
+    expect(view.midiEnabled).to.equal(false); controller.dispose();
+  });
+
+  it('adopts Save identity, updates it through the button, and creates an explicit Save as copy', () => {
+    const { controller, doc } = createControllerHarness(); controller.bindMidiUi();
+    doc.getElementById('midiTemplateSaveButton').dispatchEvent({ type: 'click' });
+    const id = controller.getProject().templateId; expect(id).not.to.equal('midi-mapping');
+    controller.dispatchProjectIntent({ type: 'source.mapping.update', sourceId: 'sfx-1', patch: { note: 74 } });
+    doc.getElementById('midiTemplateSaveButton').dispatchEvent({ type: 'click' });
+    expect(controller.getProjectTemplates()).to.have.length(1);
+    expect(controller.getProjectTemplates()[0].project.sources[0].mapping.note).to.equal(74);
+    doc.getElementById('midiTemplateSaveAsButton').dispatchEvent({ type: 'click' });
+    expect(controller.getProjectTemplates()).to.have.length(2); expect(controller.getProject().templateId).not.to.equal(id);
+    controller.dispose();
+  });
+
+  it('keeps failed template and project persistence honest while preserving exportable session edits', () => {
+    const { controller, doc, win, view } = createControllerHarness(); controller.bindMidiUi();
+    win.localStorage.setItem = () => { throw new Error('quota'); };
+    controller.dispatchProjectIntent({ type: 'source.mapping.update', sourceId: 'sfx-1', patch: { note: 75 } });
+    const saved = controller.saveProjectTemplate(); expect(saved.persisted).to.equal(false);
+    expect(controller.getProjectTemplates()).to.have.length(0);
+    expect(doc.getElementById('midiProjectStatus').textContent).to.include('not saved');
+    controller.importProject({ ...controller.getProject(), name: 'Session import' });
+    expect(doc.getElementById('midiProjectStatus').textContent).to.include('session-only');
+    doc.getElementById('midiProjectExportButton').dispatchEvent({ type: 'click' });
+    expect(JSON.parse(view.downloads.at(-1).text).project.sources[0].mapping.note).to.equal(75); controller.dispose();
+  });
+
+  it('supersedes out-of-order file imports and invalidates pending reads on Reset, direct replacement and Dispose', async () => {
+    const { controller, doc } = createControllerHarness(); controller.bindMidiUi(); const base = controller.getProject();
+    let older, newer, reset, replaced, disposed;
+    const one = controller.importProjectFile({ text: new Promise(resolve => { older = resolve; }) });
+    const input = doc.getElementById('midiProjectImportInput'); input.value = 'selected'; input.files = [{ text: new Promise(resolve => { newer = resolve; }) }];
+    const two = input.listeners.get('change')[0]({ target: input }); newer({ ...base, name: 'Newer' }); await two;
+    older({ ...base, name: 'Older' }); expect(await one).to.equal(null); expect(controller.getProject().name).to.equal('Newer'); expect(input.value).to.equal('');
+    const three = controller.importProjectFile({ text: new Promise(resolve => { reset = resolve; }) }); controller.resetProject('midi-mapping');
+    reset({ ...base, name: 'Stale reset' }); expect(await three).to.equal(null);
+    const four = controller.importProjectFile({ text: new Promise(resolve => { replaced = resolve; }) }); controller.importProject({ ...base, name: 'Direct' });
+    replaced({ ...base, name: 'Stale direct' }); expect(await four).to.equal(null); expect(controller.getProject().name).to.equal('Direct');
+    const five = controller.importProjectFile({ text: new Promise(resolve => { disposed = resolve; }) }); controller.dispose();
+    disposed({ ...base, name: 'Stale disposal' }); expect(await five).to.equal(null); expect(controller.getProject().name).to.equal('Direct');
+  });
+
+  it('ignores superseded read failures and clears transient learn/record ownership on import and reset', async () => {
+    const { controller, doc } = createControllerHarness(); let fail;
+    const input = { setNoteCapture(fn) { this.note = fn; }, setMessageCapture(fn) { this.message = fn; }, detach() {} };
+    controller.setMidiInputController(input); controller.bindMidiUi(); controller.startLearn();
+    const pending = controller.importProjectFile({ text: new Promise((resolve, reject) => { fail = reject; }) });
+    controller.importProject({ ...controller.getProject(), name: 'Replacement' });
+    expect(input.note).to.equal(null); expect(controller.confirmLearn()).to.equal(false);
+    fail(new Error('old read failed')); expect(await pending).to.equal(null); expect(doc.getElementById('errorDisplay').textContent).not.to.include('old read failed');
+    controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'take', lengthSteps: 2 } }); controller.startRecording();
+    controller.captureRecordMessage({ type: 0x90, note: 64, velocity: 90, channel: 1, timestamp: 0 });
+    controller.resetProject('midi-mapping'); expect(input.message).to.equal(null); expect(controller.captureRecordMessage({ type: 0x80, note: 64, channel: 1 })).to.equal(false);
+    controller.dispose(); controller.bindMidiUi(); expect(input.message).to.equal(null); expect(controller.confirmLearn()).to.equal(false); controller.dispose();
+  });
+
+  it('changes connected import destinations through owned gate cleanup without granting access or enabling an off route', () => {
+    const lifecycle = [];
+    const webMidi = { enabled: true, inputs: [], outputs: [{ id: 'old' }, { id: 'new' }], addListener() {}, removeListener() {} };
+    const { controller, view } = createControllerHarness({ webMidi, lemmings: { midiRouter: { scheduler: {
+      allNotesOff(options) { lifecycle.push(['off', view.midiOut?.id, options]); }, clearQueue(options) { lifecycle.push(['clear', options]); }
+    } } } }); controller.bindMidiUi();
+    controller.importProject({ ...controller.getProject(), enabled: true }); expect(controller.getProject().enabled).to.equal(false); expect(lifecycle).to.have.length(0);
+    controller.dispatchProjectIntent({ type: 'enabled.set', enabled: true }); lifecycle.length = 0;
+    controller.importProject({ ...controller.getProject(), devices: { ...controller.getProject().devices, outputId: 'new' } });
+    expect(lifecycle[0]).to.deep.equal(['off', 'old', { preserveRateHistory: true }]);
+    expect(view.midiOut.id).to.equal('new'); expect(controller.getProject().enabled).to.equal(true); controller.dispose();
+  });
+
+  it('uses the active local destination for spans, tension and pressure while hardware is retained, then reports idle after Stop', async () => {
+    let hardwareReads = 0, localReads = 0;
+    const { controller, doc, view } = createControllerHarness({ lemmings: {
+      midiRouter: { getRateReport() { hardwareReads++; return { reason: 'old-hardware' }; }, getAutomationSpanState() { hardwareReads++; return { reason: 'old-hardware' }; } },
+      setMidiPreviewRouter(router) { this.midiPreviewRouter = router; }
+    }, createPreviewAudio: () => ({ output: makeOutput([1], [], 'local'), setMasterVolume() {}, getState: () => ({ enabled: true, activeVoices: 0 }), async enable() { return true; }, subscribe: () => () => {}, stop() {}, dispose() {} }) });
+    controller.bindMidiUi(); const click = doc.getElementById('midiLocalListenButton').listeners.get('click')[0]; await click();
+    view.midiPreviewRouter.getRateReport = () => { localReads++; return { reason: 'local-budget' }; };
+    view.midiPreviewRouter.getAutomationSpanState = () => { localReads++; return { active: true, phase: 0.5, eventCount: 7, bar: 3, spanPass: 2 }; };
+    controller.dispatchProjectIntent({ type: 'automation.add', automation: { id: 'live-span', target: 'pan', span: { domain: 'beats', start: 0, duration: 8 } } });
+    expect(controller.getMidiSetupState().scheduler.reason).to.equal('local-budget');
+    expect(doc.getElementById('midiAutomationList').querySelectorAll('.midi-span-status')[0].textContent).to.include('event 7');
+    expect(localReads).to.be.greaterThan(0); expect(hardwareReads).to.equal(0);
+    await click(); expect(controller.getMidiSetupState().scheduler.reason).to.equal(null); expect(hardwareReads).to.equal(0); controller.dispose();
+  });
+
   it('applies a named span combination through the current project controls without enabling output or replacing spatial edits', () => {
     const { controller, doc, win, view } = createControllerHarness(); controller.bindMidiUi();
     controller.dispatchProjectIntent({ type: 'automation.add', automation: { id: 'spatial', target: 'pan', axis: 'x', min: -22, max: 22 } });
@@ -2305,6 +2431,7 @@ describe('midiUiController sequencer', function() {
 
   it('shows queued scheduler pressure when no rate limit is active', function() {
     const { controller, doc } = createControllerHarness({
+      factoryConfig: { enabled: true, sfx: { 1: { note: 60 } } }, webMidi: { enabled: true, inputs: [], outputs: [] },
       lemmings: {
         midiRouter: {
           getRateReport() {
@@ -2484,8 +2611,9 @@ describe('midiUiController sequencer', function() {
     });
 
     controller.bindMidiUi();
-    expect(doc.getElementById('midiSchedulerPressure').textContent).to.equal('Scheduler: count-limit');
+    expect(doc.getElementById('midiSchedulerPressure').textContent).to.equal('Scheduler: idle');
     controller.dispatchProjectIntent({ type: 'enabled.set', enabled: true });
+    expect(doc.getElementById('midiSchedulerPressure').textContent).to.equal('Scheduler: count-limit');
     controller.dispatchProjectIntent({
       type: 'track.update',
       trackId: 'track-1',

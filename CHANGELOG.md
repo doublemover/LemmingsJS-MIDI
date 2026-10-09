@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Preserve ensemble musical Undo and reversible Reset; stop auditions and pending unlocks, report session-only saves, add explicit Save as new, and reject stale imports.
+- Give newly queued terrain work its actual grace period and fairly admit bounded relevant route workfronts after harmless earlier actors.
+
 - Default normal-game MIDI to explicit URL opt-in; keep procgen links lean and its sliding controls attached to the panel.
 - Retain unlocked local listening across regenerated worlds; add quieter layered procgen palettes, local lane pan and editable three-span bundles through the existing scheduler.
 - Give procgen configurable physical lane height, default original pack, supported source liquid geometry, independent scouts and larger locally guarded construction crews.

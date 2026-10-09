@@ -18,7 +18,7 @@ const gameClock = timer => {
 };
 
 const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProject, getSource,
-  updateMapping, updateSource, commitProject, chooseView, bind, panic, history, setStatus, getEventRows }) => {
+  updateMapping, updateSource, commitProject, chooseView, bind, panic, history, setStatus, getEventRows, getRouter }) => {
   const byId = id => document?.getElementById(id);
   const text = (id, value) => { const el = byId(id); if (el && el.textContent !== String(value)) el.textContent = value; };
   const value = (id, next) => { const el = byId(id); if (el && (el.type === 'range' || el !== document?.activeElement) && el.value !== String(next)) el.value = String(next); };
@@ -108,7 +108,7 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     for (const row of visibleRows) row.tabIndex = row === selectedRow ? 0 : -1;
     if (document?.activeElement?.hidden && document.activeElement?.dataset?.gameEventId) selectedRow?.focus?.();
     const source = getSource();
-    const runtime = view?.midiPreviewRouter || view?.midiRouter;
+    const runtime = getRouter ? getRouter() : view?.midiPreviewRouter || view?.midiRouter;
     const pressure = runtime?.getOutputPressure?.();
     const outputPressure = byId('midiOutputPressure');
     if (outputPressure) {

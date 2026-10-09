@@ -35,10 +35,13 @@ const safeGetItem = (storage, key) => {
 };
 
 const safeSetItem = (storage, key, value) => {
+  if (typeof storage?.setItem !== 'function') return { persisted: false, reason: 'unavailable' };
   try {
-    storage?.setItem?.(key, value);
-  } catch (e) {
-    // Storage is optional; callers still get a sanitized in-memory project.
+    storage.setItem(key, value);
+    return { persisted: true, reason: null };
+  } catch {
+    // Valid session state remains usable when durable storage rejects the write.
+    return { persisted: false, reason: 'write-failed' };
   }
 };
 
@@ -56,11 +59,12 @@ const cleanupLegacyMidiProjectStorage = (storage) => {
   }
 };
 
-const saveMidiProject = (storage, project) => {
+const saveMidiProjectWithOutcome = (storage, project) => {
   const clean = sanitizeMidiProject(project);
-  safeSetItem(storage, PROJECT_STORAGE_KEY, JSON.stringify(clean));
-  return clean;
+  return { project: clean, ...safeSetItem(storage, PROJECT_STORAGE_KEY, JSON.stringify(clean)) };
 };
+
+const saveMidiProject = (storage, project) => saveMidiProjectWithOutcome(storage, project).project;
 
 const readStoredMidiProject = (storage) => {
   const raw = safeGetItem(storage, PROJECT_STORAGE_KEY);
@@ -95,14 +99,26 @@ const saveStoredMidiProjectTemplates = (storage, templates) => {
   return clean;
 };
 
-const saveMidiProjectTemplate = (storage, project, options = {}) => {
-  const template = createMidiProjectTemplate(project, options);
-  const templates = readStoredMidiProjectTemplates(storage)
-    .filter(entry => entry.id !== template.id);
-  templates.push(template);
-  saveStoredMidiProjectTemplates(storage, templates);
-  return template;
+const saveMidiProjectTemplateWithOutcome = (storage, project, options = {}) => {
+  const templates = readStoredMidiProjectTemplates(storage);
+  const previous = options.asNew ? null : templates.find(entry => entry.id === (options.id || project.templateId));
+  const templateOptions = { ...(previous ? { name: previous.name, createdAt: previous.createdAt } : {}), ...options };
+  if (options.asNew) {
+    const base = options.id || 'user-template-' + (Number.isFinite(options.now) ? options.now : Date.now());
+    let id = base, suffix = 1;
+    while (templates.some(entry => entry.id === id)) id = base + '-' + suffix++;
+    templateOptions.id = id;
+  }
+  const template = createMidiProjectTemplate(project, templateOptions);
+  const next = templates.filter(entry => entry.id !== template.id);
+  next.push(template);
+  const outcome = safeSetItem(storage, TEMPLATE_STORAGE_KEY, JSON.stringify({ version: 1, templates: next }));
+  return { template, ...outcome };
 };
+
+const saveMidiProjectTemplate = (storage, project, options = {}) => (
+  saveMidiProjectTemplateWithOutcome(storage, project, options).template
+);
 
 const resolveStoredMidiProjectTemplate = (storage, templateId) => (
   readStoredMidiProjectTemplates(storage)
@@ -114,7 +130,7 @@ const loadMidiProject = (storage, factoryConfig = {}) => {
   return readStoredMidiProject(storage) || createMidiProjectFromMidiConfig(factoryConfig);
 };
 
-const resetMidiProjectStorage = (storage, factoryConfig = {}, templateId = FACTORY_TEMPLATE_ID) => {
+const resetMidiProjectStorage = (storage, factoryConfig = {}, templateId = FACTORY_TEMPLATE_ID, { persist = true } = {}) => {
   cleanupLegacyMidiProjectStorage(storage);
   const template = templateId && templateId !== FACTORY_TEMPLATE_ID
     ? resolveStoredMidiProjectTemplate(storage, templateId)
@@ -129,7 +145,7 @@ const resetMidiProjectStorage = (storage, factoryConfig = {}, templateId = FACTO
       updatedAt: Date.now()
     })
     : createMidiProjectFromMidiConfig(factoryConfig);
-  return saveMidiProject(storage, project);
+  return persist ? saveMidiProject(storage, project) : project;
 };
 
 const clearMidiProjectStorage = (storage) => {
@@ -149,6 +165,8 @@ export {
   resetMidiProjectStorage,
   resolveStoredMidiProjectTemplate,
   saveMidiProject,
+  saveMidiProjectWithOutcome,
   saveMidiProjectTemplate,
+  saveMidiProjectTemplateWithOutcome,
   saveStoredMidiProjectTemplates
 };

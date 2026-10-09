@@ -2,8 +2,8 @@ import { cloneSafeObject } from '../../util/safeObject.js';
 
 const musicSnapshot = project => cloneSafeObject({
   name: project.name, templateId: project.templateId, transport: project.transport,
-  global: project.global, tracks: project.tracks, sources: project.sources,
-  clips: project.clips, automation: project.automation
+  global: project.global, tracks: project.tracks.map(track => { const musical = { ...track }; delete musical.outputId; return musical; }), sources: project.sources,
+  clips: project.clips, automation: project.automation, ensemble: project.ensemble ?? null
 });
 
 // Device access and selection are deliberately outside musical undo.
@@ -28,7 +28,8 @@ const createMidiEditHistory = (limit = 64) => {
     to.push(musicSnapshot(current));
     const snapshot = from.pop();
     restoring = true;
-    try { commit({ ...current, ...snapshot }); } finally { restoring = false; }
+    try { commit({ ...current, ...snapshot, tracks: snapshot.tracks.map(track => ({ ...track,
+      outputId: current.tracks.find(entry => entry.id === track.id)?.outputId ?? null })) }); } finally { restoring = false; }
     return true;
   };
   return {
