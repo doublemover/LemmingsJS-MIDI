@@ -8,24 +8,30 @@ const digest = value => createHash('sha256').update(JSON.stringify(value)).diges
 const canonical = (level, configs) => level.format === 'classic-dat' && configs.has(level.pack) && level.aliases?.length && !level.generated &&
   !level.graphicSet2 && level.id?.startsWith(level.pack + '/') && /^(?:LEVEL|DLVEL)\d+\.DAT#\d+$/i.test(level.id.slice(level.pack.length + 1));
 const imageFrame = image => image?.frames?.[image.preview_image_index ?? image.firstFrameIndex ?? 0] || image?.frames?.[0];
-const pixel = (node, x, y) => {
-  const dx = x - node.x, dy = y - node.y, image = node.image;
-  if (dx < 0 || dy < 0 || dx >= image.width || dy >= image.height) return false;
-  return !(node.frame[(node.f & FLIP_Y ? image.height - dy - 1 : dy) * image.width + (node.f & FLIP_X ? image.width - dx - 1 : dx)] & 128);
-};
+const MAX_CONTACT_CACHE = 8192;
+const EMPTY_ALPHA_ROW = [];
 const relation = (a, b, budget) => {
   const left = Math.max(a.x - 1, b.x - 1), right = Math.min(a.x + a.image.width + 1, b.x + b.image.width + 1);
   const top = Math.max(a.y - 1, b.y - 1), bottom = Math.min(a.y + a.image.height + 1, b.y + b.image.height + 1);
   if (left >= right || top >= bottom) return null;
+  budget.checks += (right - left) * (bottom - top);
+  if (budget.checks > LIMITS.alphaChecks) { budget.checks = LIMITS.alphaChecks + 1; return null; }
   let contactPixels = 0, overlapPixels = 0, anchor = null;
-  for (let y = top; y < bottom; y++) for (let x = left; x < right; x++) {
-    if (++budget.checks > LIMITS.alphaChecks) return null;
-    if (!pixel(a, x, y)) continue;
-    for (const [dx, dy] of [[0, 0], [-1, 0], [1, 0], [0, -1], [0, 1]]) if (pixel(b, x + dx, y + dy)) {
-      contactPixels++; if (!dx && !dy) overlapPixels++;
-      if (!anchor || !overlapPixels && anchor.side === 'overlap') anchor = { x, y, anchorX: x + dx, anchorY: y + dy,
-        side: !dx && !dy ? 'overlap' : dx < 0 ? 'left' : dx > 0 ? 'right' : dy < 0 ? 'top' : 'bottom' };
-      break;
+  for (let y = Math.max(top, a.y); y < Math.min(bottom, a.y + a.image.height); y++) {
+    const by = y - b.y, row = b.alphaMasks[by + 1] || EMPTY_ALPHA_ROW;
+    const above = b.alphaMasks[by] || EMPTY_ALPHA_ROW, below = b.alphaMasks[by + 2] || EMPTY_ALPHA_ROW;
+    for (const column of a.opaqueRows[y - a.y]) {
+      const x = a.x + column;
+      if (x < left) continue;
+      if (x >= right) break;
+      const bx = x - b.x;
+      const side = row[bx + 1] ? 'overlap' : row[bx] ? 'left' : row[bx + 2] ? 'right' :
+        above[bx + 1] ? 'top' : below[bx + 1] ? 'bottom' : null;
+      if (!side) continue;
+      contactPixels++; if (side === 'overlap') overlapPixels++;
+      if (!anchor || !overlapPixels && anchor.side === 'overlap') anchor = { x, y,
+        anchorX: x + (side === 'left' ? -1 : side === 'right' ? 1 : 0),
+        anchorY: y + (side === 'top' ? -1 : side === 'bottom' ? 1 : 0), side };
     }
   }
   return contactPixels ? { type: overlapPixels ? 'overlap' : 'contact', contactPixels, overlapPixels, ...anchor } : null;
@@ -41,6 +47,43 @@ const rank = values => [...values].sort((a, b) => b.levels.size - a.levels.size 
 /** Learns small exact assemblies from configured authored geometry; no whole-level or online learning. */
 const createAuthoredAssemblyMiner = (configs = []) => {
   const configHashes = new Map(configs.map(config => [config.path, digest(config)])), scopes = new Map();
+  const contacts = new WeakMap(), silhouettes = new WeakMap(); let contactCount = 0;
+  const opaqueRows = (image, frame, flags) => {
+    let variants = silhouettes.get(frame);
+    const key = [image.width, image.height, flags & (FLIP_X | FLIP_Y)].join('/');
+    if (variants?.has(key)) return variants.get(key);
+    const rows = Array.from({ length: image.height }, () => []), masks = Array.from({ length: image.height + 2 }, () => new Uint8Array(image.width + 2));
+    for (let y = 0; y < image.height; y++) for (let x = 0; x < image.width; x++) {
+      const sy = flags & FLIP_Y ? image.height - y - 1 : y, sx = flags & FLIP_X ? image.width - x - 1 : x;
+      if (!(frame[sy * image.width + sx] & 128)) { rows[y].push(x); masks[y + 1][x + 1] = 1; }
+    }
+    if (!variants) { variants = new Map(); silhouettes.set(frame, variants); }
+    const shape = { rows: rows.map(row => Uint16Array.from(row)), masks }; variants.set(key, shape); return shape;
+  };
+  const measureContact = (a, b, budget) => {
+    if (a.x + a.image.width + 1 <= b.x - 1 || b.x + b.image.width + 1 <= a.x - 1 ||
+        a.y + a.image.height + 1 <= b.y - 1 || b.y + b.image.height + 1 <= a.y - 1) return null;
+    const key = [a.f & (FLIP_X | FLIP_Y), b.f & (FLIP_X | FLIP_Y), b.x - a.x, b.y - a.y,
+      a.image.width, a.image.height, b.image.width, b.image.height].join('/');
+    let partners = contacts.get(a.frame), transforms = partners?.get(b.frame);
+    const cached = transforms?.get(key);
+    if (cached) {
+      // Cache reuse still spends the original logical alpha budget, including
+      // a rejected scan that would cross the per-level cap.
+      budget.checks += cached.checks;
+      if (budget.checks > LIMITS.alphaChecks) { budget.checks = LIMITS.alphaChecks + 1; return null; }
+      const value = cached.value;
+      return value ? { ...value, x: value.x + a.x, y: value.y + a.y, anchorX: value.anchorX + a.x, anchorY: value.anchorY + a.y } : null;
+    }
+    const before = budget.checks, value = relation(a, b, budget);
+    if (budget.checks <= LIMITS.alphaChecks && contactCount < MAX_CONTACT_CACHE) {
+      if (!partners) { partners = new WeakMap(); contacts.set(a.frame, partners); }
+      if (!transforms) { transforms = new Map(); partners.set(b.frame, transforms); }
+      transforms.set(key, { checks: budget.checks - before, value: value ? { ...value,
+        x: value.x - a.x, y: value.y - a.y, anchorX: value.anchorX - a.x, anchorY: value.anchorY - a.y } : null }); contactCount++;
+    }
+    return value;
+  };
   const observe = (level, art) => {
     if (!canonical(level, configHashes)) return;
     if (level.placements.length > LIMITS.placements || (level.objects?.length || 0) > LIMITS.objects || level.width > 4096 || level.height > 4096) throw new RangeError('Authored assembly scan exceeds bounds');
@@ -62,8 +105,9 @@ const createAuthoredAssemblyMiner = (configs = []) => {
     }
     const make = (p, index, kind, images) => {
       const image = images[p.id], frame = imageFrame(image);
-      return image?.width && image?.height && frame && frame.length === image.width * image.height && image.width <= LIMITS.width && image.height <= LIMITS.height ?
-        { ...p, index, kind, image, frame, serial: 0 } : null;
+      if (!image?.width || !image?.height || !frame || frame.length !== image.width * image.height || image.width > LIMITS.width || image.height > LIMITS.height) return null;
+      const shape = opaqueRows(image, frame, p.f);
+      return { ...p, index, kind, image, frame, opaqueRows: shape.rows, alphaMasks: shape.masks, serial: 0 };
     };
     const nodes = [...level.placements.map((p, index) => make(p, index, 'terrain', art.terrain)),
       ...(level.objects || []).map((p, index) => make(p, index, 'object', art.objects))].filter(Boolean);
@@ -125,7 +169,7 @@ const createAuthoredAssemblyMiner = (configs = []) => {
         if (pairs.has(key)) continue; pairs.add(key);
         if (++comparisons > LIMITS.comparisons || budget.checks >= LIMITS.alphaChecks) { scope.alphaOmitted++; break; }
         if ((a.f | b.f) & ERASE) continue;
-        const contact = relation(a, b, budget); if (!contact) continue;
+        const contact = measureContact(a, b, budget); if (!contact) continue;
         const edge = { a, b, ...contact }; relations.set(key, edge);
         for (const [head, part] of [[a, b], [b, a]]) if (hazard(head)) {
           const use = scope.uses.get(part.kind + '/' + part.id), uid = level.id + '/' + part.index;
