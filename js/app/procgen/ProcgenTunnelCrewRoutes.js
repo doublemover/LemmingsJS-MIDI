@@ -41,11 +41,27 @@ class ProcgenTunnelCrewRoutes {
     if (this.nearby.some(h => actor.x + 2 > h.x1 && actor.x - 2 < h.x2 && actor.y + 1 > h.y1 && actor.y - 10 < h.y2)) failure ||= 'hazard';
     return { safe: !failure, probes: cells.size };
   }
+  _releaseGuard(scene, actor) {
+    const world = this.world, project = world.lanePolicy.projects.lanes[scene.lane].projects.find(p => p.id === scene.task?.crewProjectId);
+    const claim = { manager: this, project, scene, actor, bounds: world._workerClaimBounds(actor, world.actions[State.BASHING]), tick: world.tickIndex };
+    this._claim = claim;
+    try { return world.assignWorker(actor, 'bashers', actor.x, null, claim); }
+    finally { this._claim = null; }
+  }
+  allowsProjectClaim(claim, actor, action, bounds) {
+    const world = this.world, scene = claim.scene, b = claim.bounds, triggers = world.triggerManager.byOwner.get(actor) || [];
+    const key = triggers.map(t => `${t.type}:${t.x1}:${t.x2}:${t.y1}:${t.y2}`).join(',');
+    return claim === this._claim && claim.actor === actor && this.scenes[actor.laneIndex] === scene && scene.guard === actor && actor._tunnelScene === scene &&
+      scene.task?.crewProjectId === claim.project.id && claim.project.phase === 'connected' && scene.phase === 'connected' && scene.releaseReady && !scene.failure &&
+      scene.generation === world.generation && world.tickIndex >= scene.startTick && world.tickIndex - scene.startTick <= TUNNEL_GUARD_TICKS && claim.tick === world.tickIndex &&
+      actor.action === world.actions[State.BLOCKING] && actor.x === scene.guardX && actor.y === scene.guardY && actor.lookRight && triggers.length === 2 && key === scene.triggerKey &&
+      action === world.actions[State.BASHING] && b && ['x1', 'x2', 'y1', 'y2'].every(field => bounds[field] === b[field]) && world._emptyBashMasks(actor);
+  }
   assist(actor) {
     const world = this.world, scene = this.scenes[actor.laneIndex]; if (!scene) return false;
     if (actor === scene.guard) {
       if (scene.phase === 'recovering') return true;
-      if (scene.phase === 'connected' && scene.releaseReady && actor.action === world.actions[State.BLOCKING] && world._emptyBashMasks(actor) && world.assignWorker(actor, 'bashers')) {
+      if (scene.phase === 'connected' && scene.releaseReady && actor.action === world.actions[State.BLOCKING] && world._emptyBashMasks(actor) && this._releaseGuard(scene, actor)) {
         scene.phase = 'released'; this.stats.released++;
       }
       return actor.action === world.actions[State.BLOCKING];

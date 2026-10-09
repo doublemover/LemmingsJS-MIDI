@@ -2,6 +2,7 @@ import { ProcgenTerrainEdits, ProcgenTerrainRevisions } from './ProcgenTerrainRe
 import { ProcgenTunnelCrewRoutes } from './ProcgenTunnelCrewRoutes.js';
 import { ProcgenBasinCrewRoutes } from './ProcgenBasinCrewRoutes.js';
 import { ProcgenLanePolicy } from './ProcgenLanePolicy.js';
+import { PROJECT_LIFETIME_TICKS } from './ProcgenCrewProjects.js';
 import { DEFAULT_LANE_HEIGHT, MAX_LANE_HEIGHT, normalizeLaneHeight } from './ProcgenLaneGeometry.js';
 import { CharacterParticles } from '../../lemmings/CharacterParticles.js';
 import { Lemming } from '../../lemmings/Lemming.js';
@@ -475,9 +476,24 @@ class ProcgenLaneWorld {
     const tasks = this._accessTaskRecords(lane);
     return tasks.find(task => task.owner) || tasks[tasks.length - 1] || null;
   }
-  _claimAccess(actor, action, targetX, footprint = null) {
+  _workerClaimBounds(actor, action) {
+    if (action === this.actions[State.BUILDING]) return { x1: actor.x + (actor.lookRight ? 0 : -26), x2: actor.x + (actor.lookRight ? 28 : 2), y1: actor.y - 12, y2: actor.y + 1 };
+    if (action === this.actions[State.DIGGING]) return { x1: actor.x - 4, x2: actor.x + 5, y1: actor.y - 2, y2: actor.y + 1 };
+    const count = action === this.actions[State.BASHING] ? 4 : action === this.actions[State.MINING] ? 2 : 0;
+    const masks = action.masks?.get(actor.getDirection()); let bounds = null;
+    for (let index = 0; index < count; index++) {
+      const mask = masks?.GetMask(index); if (!mask) return null;
+      const x = actor.x + mask.offsetX, y = actor.y + mask.offsetY;
+      if (!bounds) bounds = { x1: x, x2: x + mask.width, y1: y, y2: y + mask.height };
+      else { bounds.x1 = Math.min(bounds.x1, x); bounds.x2 = Math.max(bounds.x2, x + mask.width); bounds.y1 = Math.min(bounds.y1, y); bounds.y2 = Math.max(bounds.y2, y + mask.height); }
+    }
+    return bounds;
+  }
+  _claimAccess(actor, action, targetX, footprint = null, continuation = null) {
     const kind = this._workerKind(action);
     if (!kind || !this.workerLimits[kind]) return false;
+    const initial = this._workerClaimBounds(actor, action), projects = this.lanePolicy.projects;
+    if (projects.claimConflict(actor, action, initial, continuation) || footprint && projects.claimConflict(actor, action, footprint, continuation)) return false;
     const tasks = this._accessTaskRecords(actor.laneIndex);
     if (kind === 'builders' && !footprint) footprint = { x1: actor.x + (actor.lookRight ? 0 : -26), x2: actor.x + (actor.lookRight ? 28 : 2), y1: actor.y - 12, y2: actor.y + 1 };
     let active = 0;
@@ -498,7 +514,7 @@ class ProcgenLaneWorld {
     }
     return true;
   }
-  assignWorker(actor, kind, targetX = actor?.x, footprint = null) {
+  assignWorker(actor, kind, targetX = actor?.x, footprint = null, continuation = null) {
     const state = kind === 'bashers' ? State.BASHING : kind === 'diggers' ? State.DIGGING : kind === 'miners' ? State.MINING : kind === 'builders' ? State.BUILDING : null;
     if (!state || !actor || actor.runtime !== this.runtime || actor.removed || actor.disabled || actor.failureReason || actor.terminalReason ||
         !Number.isFinite(targetX) || ![this.actions[State.WALKING], this.actions[State.BLOCKING], this.actions[State.SHRUG]].includes(actor.action) || !this.hasGroundAt(actor.x, actor.y)) return false;
@@ -511,7 +527,7 @@ class ProcgenLaneWorld {
       const mask = action.masks?.get(actor.getDirection())?.GetMask(index);
       if (!mask || this.hasSteelUnderMask(mask, actor.x, actor.y) || this.hasArrowUnderMask(mask, actor.x, actor.y, actor.lookRight)) return false;
     }
-    if (!this._claimAccess(actor, action, targetX, footprint)) return false;
+    if (!this._claimAccess(actor, action, targetX, footprint, continuation)) return false;
     if (!action.triggerLemAction(actor)) return false;
     this._syncTriggerOwner(actor);
     this.stats[kind === 'bashers' ? 'bashes' : kind === 'diggers' ? 'digs' : kind === 'miners' ? 'mines' : 'builds']++; actor.assists++;
@@ -642,10 +658,25 @@ class ProcgenLaneWorld {
     }
     return true;
   }
+  _recoverConstructionCrew(actor, task) {
+    const project = this.lanePolicy.projects.lanes[task.startLane]?.projects.find(p => p.id === task.crewProjectId);
+    const claim = { manager: this, project, actor, task, bounds: this._workerClaimBounds(actor, this.actions[State.BASHING]) };
+    this._constructionClaim = claim;
+    try { return this.assignWorker(actor, 'bashers', actor.x, null, claim); }
+    finally { this._constructionClaim = null; }
+  }
+  allowsProjectClaim(claim, actor, action, bounds) {
+    const project = claim.project, task = claim.task, b = claim.bounds;
+    return claim === this._constructionClaim && claim.actor === actor && actor.assistConstructionTask === task && task.blocker === actor && task.crewProjectId === project.id &&
+      project.generation === this.generation && actor.laneIndex === project.lane && this.tickIndex >= project.startTick && this.tickIndex - project.startTick <= PROJECT_LIFETIME_TICKS &&
+      project.members.has(actor.id) && action === this.actions[State.BASHING] && actor.action === this.actions[State.BLOCKING] &&
+      b && ['x1', 'x2', 'y1', 'y2'].every(key => bounds[key] === b[key]) && this.basinRoutes.canRelease(task) &&
+      (task.basinSceneId || this._constructionPassage(task) !== false) && this._emptyBashMasks(actor);
+  }
   _assistConstructionCrew(actor) {
     const held = actor.assistConstructionTask;
     if (held && actor.action === this.actions[State.BLOCKING]) {
-      if (this.basinRoutes.canRelease(held) && (held.basinSceneId || this._constructionPassage(held) !== false) && this._emptyBashMasks(actor)) this.assignWorker(actor, 'bashers');
+      if (this.basinRoutes.canRelease(held) && (held.basinSceneId || this._constructionPassage(held) !== false) && this._emptyBashMasks(actor)) this._recoverConstructionCrew(actor, held);
       return true;
     }
     if (actor.action !== this.actions[State.WALKING] || !actor.lookRight || actor.scout || actor.canClimb || actor.hasParachute || !this.workerLimits.bashers) return false;

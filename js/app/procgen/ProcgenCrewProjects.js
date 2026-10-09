@@ -31,6 +31,21 @@ class ProcgenCrewProjects {
     state.projects = state.projects.filter(project => project.phase !== 'complete' && project.phase !== 'failed' && project.phase !== 'retired');
     return state;
   }
+  claimConflict(actor, action, bounds, continuation = null) {
+    if (!bounds || !Object.values(bounds).every(Number.isFinite) || bounds.x2 <= bounds.x1 || bounds.y2 <= bounds.y1 || bounds.x2 - bounds.x1 > 128 || bounds.y2 - bounds.y1 > 256) return true;
+    const world = this.world, height = world.laneHeight, margin = Math.ceil(256 / height);
+    const first = Math.max(0, Math.floor(bounds.y1 / height) - margin), last = Math.min(world.laneCount - 1, Math.floor((bounds.y2 - 1) / height) + margin);
+    for (let lane = first; lane <= last; lane++) for (const project of this.lanes[lane].projects) {
+      if (!['working', 'connected'].includes(project.phase) || project.generation !== world.generation) continue;
+      const b = project.bounds;
+      if (bounds.x1 >= b.x2 || bounds.x2 <= b.x1 || bounds.y1 >= b.y2 || bounds.y2 <= b.y1) continue;
+      const manager = continuation?.manager;
+      if (continuation?.project === project && this._valid(project) && (manager === world || manager === world.basinRoutes || manager === world.tunnelRoutes) &&
+          manager.allowsProjectClaim?.(continuation, actor, action, bounds)) continue;
+      return true;
+    }
+    return false;
+  }
   canBegin(actor) {
     const state = this._refresh(actor.laneIndex);
     if (!Number.isInteger(actor.id) || state.overflowTick >= this.world.tickIndex - 1 || state.projects.length >= MAX_CREW_PROJECTS) return false;

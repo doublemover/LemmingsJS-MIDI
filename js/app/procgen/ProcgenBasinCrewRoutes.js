@@ -201,6 +201,23 @@ class ProcgenBasinCrewRoutes {
     this.stats.lastFailure = { lane: scene.lane, sceneId: scene.id, reason, tick: this.world.tickIndex, section: scene.section };
     this.world.nukeLane(scene.lane);
   }
+  _assignSceneWorker(scene, actor, kind, targetX = actor.x, footprint = null) {
+    const bounds = footprint || this.world._workerClaimBounds(actor, this.world.actions[State.BASHING]);
+    const claim = { manager: this, project: scene.project, scene, actor, kind, bounds, x: actor.x, y: actor.y, direction: actor.lookRight, tick: this.world.tickIndex };
+    this._claim = claim;
+    try { return this.world.assignWorker(actor, kind, targetX, footprint, claim); }
+    finally { this._claim = null; }
+  }
+  allowsProjectClaim(claim, actor, action, bounds) {
+    const world = this.world, scene = claim.scene, b = claim.bounds;
+    if (claim !== this._claim || claim.actor !== actor || this.scenes[actor.laneIndex] !== scene || scene.project !== claim.project || scene.ownerId !== actor.id ||
+        actor._basinSceneId !== scene.id || scene.failure || scene.generation !== world.generation || claim.tick !== world.tickIndex ||
+        world.tickIndex < scene.startTick || world.tickIndex - scene.startTick > BASIN_PROJECT_TICKS || actor.x !== claim.x || actor.y !== claim.y || actor.lookRight !== claim.direction ||
+        !b || !['x1', 'x2', 'y1', 'y2'].every(key => bounds[key] === b[key]) || actor.action !== world.actions[State.BLOCKING] ||
+        scene.guardTiles.some(([key, revision]) => procgenTileRevision(world, key) !== revision) || !this._enabled(scene.lane, scene.chunk, scene.objectIndex, scene.basin)) return false;
+    if (claim.kind === 'builders') return scene.phase === 'waiting' && scene.project.phase === 'working' && action === world.actions[State.BUILDING];
+    return claim.kind === 'bashers' && scene.phase === 'connected' && scene.project.phase === 'connected' && scene.release && action === world.actions[State.BASHING] && world._emptyBashMasks(actor);
+  }
   assist(actor) {
     const world = this.world, scene = this.scenes[actor.laneIndex];
     if (!scene || actor._basinSceneId !== scene.id) return false;
@@ -209,7 +226,7 @@ class ProcgenBasinCrewRoutes {
     if (scene.generation !== world.generation || world.tickIndex < scene.startTick || world.tickIndex - scene.startTick > BASIN_PROJECT_TICKS || actor.removed || actor.failureReason || actor.terminalReason) { this._fail(scene, 'scene-owner'); return true; }
     if (scene.guardTiles.some(([key, revision]) => procgenTileRevision(world, key) !== revision)) { this._fail(scene, 'changed-route'); return true; }
     if (scene.phase === 'connected') {
-      if (scene.release && actor.action === world.actions[State.BLOCKING] && world._emptyBashMasks(actor)) world.assignWorker(actor, 'bashers');
+      if (scene.release && actor.action === world.actions[State.BLOCKING] && world._emptyBashMasks(actor)) this._assignSceneWorker(scene, actor, 'bashers');
       return true;
     }
     if (scene.phase !== 'waiting') return true;
@@ -224,7 +241,7 @@ class ProcgenBasinCrewRoutes {
     world.hazardPlanner.admission.served(actor, Math.min(WORK, ledger.probes + result.probes));
     if (result.failure === 'budget' || result.failure === 'unrevealed') return true;
     if (result.failure) { this._fail(scene, result.failure); return true; }
-    if (!world.assignWorker(actor, 'builders', result.proposal.targetX, result.proposal.footprint)) return true;
+    if (!this._assignSceneWorker(scene, actor, 'builders', result.proposal.targetX, result.proposal.footprint)) return true;
     scene.task = world.accessTasks[actor.laneIndex].find(task => task.owner === actor); scene.task.crewProjectId = scene.projectId; scene.task.basinSceneId = scene.id;
     scene.section++; scene.endpoint = result.proposal.routeEvidence; scene.phase = 'building'; this.stats.sections++; return true;
   }
