@@ -37,7 +37,8 @@ const SoundEventTypes = Object.freeze({
   LEMMING_BASH: 'lemming-bash',
   LEMMING_DIG: 'lemming-dig',
   LEMMING_MINE: 'lemming-mine',
-  TRAP_TRIGGER: 'trap-trigger'
+  TRAP_TRIGGER: 'trap-trigger',
+  PROCGEN_ROUTE_COMPLETE: 'procgen-route-complete'
 });
 
 const SoundEffectIds = Object.freeze({
@@ -69,7 +70,8 @@ const SoundEffectIds = Object.freeze({
   LAND: 0x19,
   BLOCKER_TURN: 0x1A,
   BLOCKER_CONTACT: 0x1B,
-  COUNTDOWN: 0x1C
+  COUNTDOWN: 0x1C,
+  PROCGEN_ROUTE_COMPLETE: 0x1D
 });
 
 class SoundEventBus {

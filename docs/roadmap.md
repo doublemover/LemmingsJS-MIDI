@@ -1070,3 +1070,12 @@ This fixture retains155,520 region typed-payload bytes initially and304,512 with
 Dirt's unsupported atoms remain suppressed. Joint object regions, broader
 stratified mining and physical traversal of these ports remain unqualified.
 The exact pixel/steel/support/activation test is test/procgen-source-regions.test.js.
+
+Musical completion source: a dedicated procgen route-complete event/SFX has an
+editable four-cell rising phrase through the existing scheduler, distinct from
+exit/death events. Existing saved completion clips, bypass, track and performance
+edits survive preset changes; projects without this source stay silent. The
+26 focused defaults/phrase checks pass, with actual output calls at0/180/360/540ms
+and four corresponding gate releases. Physical/acoustic acceptance remains
+separate. Live crew emission is the next policy checkpoint; a source default by
+itself is not an actual scene resolution.

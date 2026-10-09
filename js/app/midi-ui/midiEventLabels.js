@@ -5,7 +5,7 @@ const SOUND_LABELS = {
   OHNO: 'Bomber warning', SPLAT: 'Fatal landing', STEEL_HIT: 'Tool hits steel', EXPLOSION: 'Explosion', EXIT: 'Successful exit', DROWN: 'Drowning',
   BUILDER_WARNING: 'Builder running out of bricks', FELL_OFF: 'Actor leaves the level', BUILDER_STEP: 'Builder places a brick', BASH: 'Basher clears terrain',
   DIG: 'Digger clears terrain', MINE: 'Miner clears terrain', SPAWN: 'Actor released from entrance', LAND: 'Safe landing',
-  BLOCKER_TURN: 'Walker turns at a wall or blocker', BLOCKER_CONTACT: 'Walker touches a blocker', COUNTDOWN: 'Bomber countdown',
+  BLOCKER_TURN: 'Walker turns at a wall or blocker', BLOCKER_CONTACT: 'Walker touches a blocker', COUNTDOWN: 'Bomber countdown', PROCGEN_ROUTE_COMPLETE: 'Procgen crew completes a connected route',
   TRAP_ZAP: 'Electric trap', TRAP_SQUISH: 'Squashing trap', TRAP_SLICER: 'Slicing trap', TRAP_FIRE: 'Fire hazard', TRAP_TEN_TON: 'Heavy trap', TRAP_BEAR: 'Snapping trap', UNKNOWN_0B: 'Unidentified legacy sound'
 };
 const TRIGGER_LABELS = { NO_TRIGGER: 'No physical trigger', EXIT_LEVEL: 'Exit trigger', TRAP: 'Trap contact', DROWN: 'Water contact', KILL: 'Lethal contact',

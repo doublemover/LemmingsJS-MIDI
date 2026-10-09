@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Add an editable procgen crew-passage resolution phrase, preserving saved source edits and silence for projects without that source.
+
 - Admit complete supported source regions across two terrain tiles, preserving native order, open underpasses, source provenance and atomic materialization.
 
 - Keep procgen Draw/Nuke gestures exclusive, freeze span drag coordinates, retain main spatial conversion and reject stale restart errors.

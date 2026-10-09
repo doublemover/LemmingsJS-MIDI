@@ -1,6 +1,6 @@
 import { SoundEffectIds } from '../../game/SoundEvents.js';
 import { applyGameEventMidiPreset, GAME_EVENT_MIDI_PRESETS } from './GameEventMidiPresets.js';
-import { sanitizeMidiProject, reduceMidiProject } from './MidiProject.js';
+import { createMidiSourceFromMapping, sanitizeMidiProject, reduceMidiProject } from './MidiProject.js';
 import { quantizeToScale, resolveScale } from '../midi-mapping/MidiMappingDomain.js';
 
 const PROCGEN_SPAWN_MIDI_DEFAULTS = Object.freeze({ velocity: 24, priority: 0 });
@@ -21,9 +21,21 @@ const applyProcgenGameEventMidiPreset = (project, presetId, options = {}) => {
   const previousMappings = new Map(clean.sources.map(source => [source.kind + ':' + source.sourceKey, source.mapping]));
   const rollingDefaults = { enabled: true, bars: definition?.bars || 2, evolve: definition?.evolve ?? 2 };
   const landingTicks = definition?.landingTicks || (preset.family === 'Atmospheric' ? 5 : preset.family === 'Gentle' ? 2 : preset.family === 'Rhythmic' ? 2 : 3);
+  // A completed local cohort is distinct from an authored exit or a death.
+  // Keep an existing source intact, including its bypass, clip and track edits.
+  const sources = [...next.sources];
+  if (!sourceAt(next, SoundEffectIds.PROCGEN_ROUTE_COMPLETE)) {
+    const root = quantizeToScale((landing?.mapping.note ?? 48) + 12, scale);
+    sources.push(createMidiSourceFromMapping('sfx', SoundEffectIds.PROCGEN_ROUTE_COMPLETE, {
+      name: 'Crew passage - rising resolution', note: root,
+      notes: [0, 4, 7, 12].map(offset => quantizeToScale(root + offset, scale)),
+      velocity: 56, priority: 8, durationTicks: 3,
+      phrase: { enabled: true, mode: 'up', spacingTicks: 3 }
+    }, next.ensemble?.sourceTrackId || next.tracks[0].id));
+  }
   return sanitizeMidiProject({ ...next,
     global: { ...next.global, position: { ...next.global.position, lanePanSpread: clean.global.position.lanePanSpread ?? 72 } },
-    sources: next.sources.map(source => {
+    sources: sources.map(source => {
       const previous = previousMappings.get(source.kind + ':' + source.sourceKey), performance = {};
       for (const field of ['velocity', 'priority', 'pan', 'timbre', 'pitchBend', 'envelope']) if (previous?.[field] != null) performance[field] = previous[field];
       source = { ...source, mapping: { ...source.mapping, ...performance } };

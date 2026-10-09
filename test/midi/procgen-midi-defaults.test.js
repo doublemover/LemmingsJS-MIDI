@@ -5,7 +5,8 @@ import { createMidiProject, createMidiProjectFromMidiConfig, reduceMidiProject, 
   stringifyMidiProjectExport, importMidiProjectPayload } from '../../js/midi/project/MidiProject.js';
 import { MidiMapping } from '../../js/midi/MidiMapping.js';
 import { MidiEventRouter } from '../../js/midi/MidiEventRouter.js';
-import { SoundEffectIds } from '../../js/game/SoundEvents.js';
+import { SoundEventBus, SoundEffectIds, SoundEventTypes } from '../../js/game/SoundEvents.js';
+import { EventHandler } from '../../js/util/EventHandler.js';
 import { makeOutput } from '../support/midi-output.js';
 import { withFakeClockAndPerformance } from '../support/timers.js';
 
@@ -18,7 +19,7 @@ describe('procgen spawn MIDI policy', function() {
       const original = applyGameEventMidiPreset(base, preset.id, { mode });
       const procgen = applyProcgenGameEventMidiPreset(base, preset.id, { mode });
       expect(spawn(procgen).mapping).to.include(PROCGEN_SPAWN_MIDI_DEFAULTS);
-      const changedIds = new Set([SoundEffectIds.SPAWN, SoundEffectIds.LAND, SoundEffectIds.BLOCKER_TURN, SoundEffectIds.BLOCKER_CONTACT].map(String));
+      const changedIds = new Set([SoundEffectIds.SPAWN, SoundEffectIds.LAND, SoundEffectIds.BLOCKER_TURN, SoundEffectIds.BLOCKER_CONTACT, SoundEffectIds.PROCGEN_ROUTE_COMPLETE].map(String));
       const withoutSpawn = project => project.sources.filter(source => source.kind !== 'sfx' || !changedIds.has(source.sourceKey));
       expect(withoutSpawn(procgen)).to.deep.equal(withoutSpawn(original));
       expect(procgen.global.position.lanePanSpread).to.equal(72);
@@ -30,6 +31,43 @@ describe('procgen spawn MIDI policy', function() {
       expect(spawn(procgen).mapping.notes).to.deep.equal(spawn(original).mapping.notes);
       expect(spawn(original).mapping.velocity).to.be.greaterThan(32);
     }
+  });
+
+  it('keeps an edited or bypassed completion source intact and dispatches one owned rising phrase', function() {
+    withFakeClockAndPerformance(clock => {
+      let project = applyProcgenGameEventMidiPreset(createMidiProject({ enabled: true, global: { mpe: { enabled: false }, density: { velocityBoost: 0, durationScale: 0 } } }), 'game-major');
+      const source = project.sources.find(item => item.sourceKey === String(SoundEffectIds.PROCGEN_ROUTE_COMPLETE));
+      expect(source.label).to.equal('Crew passage - rising resolution');
+      project = reduceMidiProject(project, { type: 'source.mapping.update', sourceId: source.id, patch: { velocity: 39, pan: -23 } });
+      const saved = project.sources.find(item => item.id === source.id);
+      project = applyProcgenGameEventMidiPreset(importMidiProjectPayload(stringifyMidiProjectExport(project)), 'procgen-airy-arrivals');
+      expect(project.sources.find(item => item.id === source.id)).to.deep.equal(saved);
+      project = reduceMidiProject(project, { type: 'enabled.set', enabled: true });
+      const calls = [], output = makeOutput([1], calls, 'fake-local');
+      const router = new MidiEventRouter(projectToMidiConfig(project)); router.setOutput(output);
+      const timer = { tick: 0, frameTime: 60, speedFactor: 1, onGameTick: new EventHandler(), getGameTicks() { return this.tick; } };
+      const bus = new SoundEventBus(timer); router.attach(bus);
+      const advance = count => { for (let i = 0; i < count; i++) { clock.tick(60); timer.tick++; timer.onGameTick.trigger(); } };
+      try {
+        expect(calls.filter(call => call.type === 'noteOn')).to.have.length(0);
+        const unconfigured = new MidiEventRouter({ enabled: true, sfx: {} }); unconfigured.setOutput(output);
+        try { unconfigured._onEvent({ sfxId: SoundEffectIds.PROCGEN_ROUTE_COMPLETE, tick: 0 }); } finally { unconfigured.dispose(); }
+        expect(calls.filter(call => call.type === 'noteOn')).to.have.length(0);
+        bus.emitSfx(SoundEventTypes.PROCGEN_ROUTE_COMPLETE, SoundEffectIds.PROCGEN_ROUTE_COMPLETE,
+          { laneIndex: 0, laneCount: 1, lemmingId: 7, crewProjectId: '1:0:2', ordinaryCrossings: 2, admittedCrew: 3 });
+        advance(13);
+        const notes = calls.filter(call => call.type === 'noteOn');
+        expect(notes.map(call => call.note)).to.deep.equal(saved.mapping.notes);
+        expect(notes.map(call => call.opts.time)).to.deep.equal([0, 180, 360, 540]);
+        expect(notes.every(call => call.opts.rawAttack === 39)).to.equal(true);
+        expect(calls.filter(call => call.type === 'noteOff')).to.have.length(4);
+        expect(router.scheduler.gamePhrases.voices.size).to.equal(0);
+        expect(router.scheduler._activeNotes.size).to.equal(0);
+        const disabled = reduceMidiProject(project, { type: 'source.update', sourceId: source.id, patch: { enabled: false } });
+        expect(disabled.sources.find(item => item.id === source.id)?.enabled).to.equal(false);
+        expect(applyProcgenGameEventMidiPreset(disabled, 'procgen-clockwork-crowd').sources.find(item => item.id === source.id)).to.deep.equal(disabled.sources.find(item => item.id === source.id));
+      } finally { router.dispose(); bus.dispose(); }
+    });
   });
 
   it('preserves saved loudness and event priority through preset changes and enablement', function() {

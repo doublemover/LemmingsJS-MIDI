@@ -26,7 +26,7 @@ const midiEventRouterEventMethods = {
     try {
       if (!event || event.sfxId == null) return;
       if (!this.mapping.config?.enabled) return;
-      if ((event.sfxId === SoundEffectIds.SPAWN || event.sfxId === SoundEffectIds.LAND) && !this.mapping.getSfxConfig(event.sfxId)) return;
+      if ((event.sfxId === SoundEffectIds.SPAWN || event.sfxId === SoundEffectIds.LAND || event.sfxId === SoundEffectIds.PROCGEN_ROUTE_COMPLETE) && !this.mapping.getSfxConfig(event.sfxId)) return;
       if (event.reverse || (Number.isInteger(event.tick) && this._tickCounter.tick != null && event.tick < this._tickCounter.tick)) {
         this.musicTension.reset(); this._releaseTensionVoices();
         this._resetAutomationSpans();
