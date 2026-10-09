@@ -2,7 +2,8 @@ import { expect } from 'chai';
 import {
   DEFAULT_PLAYWRIGHT_BASE_URL,
   resolvePlaywrightBaseUrl,
-  resolvePlaywrightWebServerPort
+  resolvePlaywrightWebServerPort,
+  resolvePlaywrightWebServer
 } from '../playwright.config.js';
 
 describe('playwright.config', function () {
@@ -18,6 +19,21 @@ describe('playwright.config', function () {
     expect(resolvePlaywrightWebServerPort('https://10.0.0.126:8080')).to.equal(8080);
     expect(resolvePlaywrightWebServerPort('https://localhost')).to.equal(443);
     expect(resolvePlaywrightWebServerPort('http://127.0.0.1')).to.equal(80);
+  });
+
+  it('starts its own server with the configured loopback port and protocol without implicit reuse', () => {
+    const plain = resolvePlaywrightWebServer('http://127.0.0.1:43821');
+    expect(plain.url).to.equal('http://127.0.0.1:43821'); expect(plain.command).to.include('-p 43821');
+    expect(plain.command).not.to.include(' -S'); expect(plain.reuseExistingServer).to.equal(false);
+    const secure = resolvePlaywrightWebServer('https://localhost:43822');
+    expect(secure.url).to.equal('https://localhost:43822'); expect(secure.command).to.include('-p 43822'); expect(secure.command).to.include(' -S');
+    expect(secure.ignoreHTTPSErrors).to.equal(true); expect(secure.reuseExistingServer).to.equal(false);
+  });
+
+  it('uses an explicitly managed server only when requested and rejects remote auto-start', () => {
+    expect(resolvePlaywrightWebServer('http://127.0.0.1:43821', { externalServer: true })).to.equal(undefined);
+    expect(() => resolvePlaywrightWebServer('https://example.com')).to.throw('EXTERNAL_SERVER=1');
+    expect(resolvePlaywrightWebServer('https://example.com', { externalServer: true })).to.equal(undefined);
   });
 
   it('rejects invalid base URLs', function () {

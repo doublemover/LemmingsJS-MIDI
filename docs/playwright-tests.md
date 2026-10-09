@@ -7,19 +7,33 @@ part of `npm test`.
 
 - `npm run test-e2e:install`
 - `npm run test-e2e`
+- `npm run test-e2e:boundaries`
 - `npm run test-e2e:ui`
 - `npm run test-e2e -- e2e/harness.game.spec.js`
 
-Playwright defaults to `https://localhost:8080` and starts the HTTPS server via
-`npm run start-https`. To point tests at another same-origin server:
+The boundary command owns a fresh static server on an OS-assigned loopback HTTP
+port, runs Playwright against this checkout, and closes that server on success or
+failure. It overrides inherited base URLs and does not reuse port 8080. CI runs it
+before starting the separate HTTPS server needed by MCP/performance smoke checks.
+The fourteen explicitly tagged `@boundary` journeys cover game/editor history,
+file persistence, real focus/geometry/pointer transitions and output lifecycle.
+They share overlapping schema checks with real journeys rather than separate
+page boots. Routine browser checks retain failure traces/screenshots; successful visual
+capture belongs to the explicit capture commands below.
+
+Direct Playwright commands default to `https://localhost:8080`. Their managed
+server binds the configured loopback port and protocol and never implicitly reuses
+a listener. To use an explicitly provisioned server instead:
 
 ```powershell
 $env:LEMMINGS_E2E_BASE_URL = "https://127.0.0.1:8080"
+$env:LEMMINGS_E2E_EXTERNAL_SERVER = "1"
 npm run test-e2e
 Remove-Item Env:\LEMMINGS_E2E_BASE_URL
+Remove-Item Env:\LEMMINGS_E2E_EXTERNAL_SERVER
 ```
 
-The server uses the self-signed certs in `certs/`. Replace those files locally
+The direct HTTPS server uses the self-signed certs in `certs/`. Replace those files locally
 if a trusted certificate is needed for a device or VM.
 
 ## E2E Harness

@@ -34,7 +34,7 @@ const snapshotInvariantState = (state) => {
   };
 };
 
-test('Harness exposes state and can step/seek', async ({ page }) => {
+test('Harness exposes state, steps and restores time travel invariants', { tag: '@boundary' }, async ({ page }) => {
   await page.evaluate(() => window.__E2E__.pause());
   await page.evaluate(() => window.__E2E__.flushSoundEvents());
   const tickBefore = await page.evaluate(() => window.__E2E__.getState().game.timer.tickIndex);
@@ -60,11 +60,7 @@ test('Harness exposes state and can step/seek', async ({ page }) => {
   expect(state.game.triggers.entries.length).toBe(state.game.triggers.totalCount);
   expect(state.game.objects.entries.length).toBe(state.game.objects.count);
   expect(state.midi.enabled).toBe(state.view.midiEnabled);
-});
 
-test('Time travel restores invariant state', async ({ page }) => {
-  await page.evaluate(() => window.__E2E__.pause());
-  await page.evaluate(() => window.__E2E__.flushSoundEvents());
   await page.evaluate(() => window.__E2E__.step(6));
   await page.waitForFunction(() => {
     const history = window.__E2E__?.getState?.().game?.history;

@@ -40,7 +40,7 @@ test('simple Exit editing changes the effective trigger voice and shows the acti
   expect(await page.evaluate(() => window.__E2E__.midiGetRuntimeConfig().triggers[1].note)).toBe(76);
 });
 
-test('local game listening remains independent of WebMIDI permission and stops cleanly', async ({ page }) => {
+test('local game listening remains independent of WebMIDI permission and stops cleanly', { tag: '@boundary' }, async ({ page }) => {
   expect(await page.evaluate(() => window.WebMidi.enabled)).toBe(false);
   await page.locator('#midiLocalListenButton').click();
   await expect(page.locator('#midiOutputSummary')).toContainText('Listening to game locally · MIDI off');

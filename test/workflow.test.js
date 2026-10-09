@@ -21,7 +21,14 @@ for (const file of ['test.yml', 'maintenance-full.yml']) {
       }
       expect(runs.some(run => run.includes('git diff --check'))).to.equal(true);
       expect(runs.some(run => run.includes('git checkout origin/master -- tools'))).to.equal(false);
-      expect(steps.find(step => step.name === 'Stop HTTPS server').if).to.equal('always()');
+      const browser = steps.findIndex(step => step.run === 'npm run test-e2e:boundaries');
+      const start = steps.findIndex(step => step.name === 'Start HTTPS server');
+      expect(browser).to.be.lessThan(start);
+      expect(start).to.be.lessThan(steps.findIndex(step => step.run === 'npm run test-mcp-smoke'));
+      expect(steps[start].run).to.include('node "$GITHUB_WORKSPACE/node_modules/http-server/bin/http-server"');
+      const stop = steps.find(step => step.name === 'Stop HTTPS server');
+      expect(stop.if).to.equal('always()'); expect(stop.run).to.include('/proc/$server_pid/cmdline');
+      expect(stop.run).to.include('"${server_args[1]}" = "$GITHUB_WORKSPACE/node_modules/http-server/bin/http-server"');
     });
   });
 }

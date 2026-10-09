@@ -89,7 +89,7 @@ test('focused speed range preserves global Help and speed keys while native arro
   await expect(number).toHaveValue('0.4');
 });
 
-test('modulation labels sit inside high-contrast compact fields', async ({ page }, testInfo) => {
+test('modulation labels sit inside high-contrast compact fields', { tag: '@boundary' }, async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 }); await installExternalAssetStubs(page);
   await page.goto('/?e2e=1&midi=1'); await waitForHarnessReady(page);
   if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
@@ -124,5 +124,4 @@ test('modulation labels sit inside high-contrast compact fields', async ({ page 
       expect(row[index].leftRadius).toBe('0px'); expect(row[index - 1].rightRadius).toBe('0px');
     }
   }
-  await page.locator('#midiModulationInspector').screenshot({ path: testInfo.outputPath('modulation-integrated-high-contrast.png') });
 });

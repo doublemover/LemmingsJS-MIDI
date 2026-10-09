@@ -50,7 +50,7 @@ test('1024 lane count clamps and restarts without multiplying renderers', async 
   await expect(page.locator('#procgenLanes')).toHaveValue('1024');
 });
 
-test('musical span bundles keep several editors open and apply common edits durably', async ({ page }) => {
+test('musical span bundles keep several editors open and apply common edits durably', { tag: '@boundary' }, async ({ page }) => {
   await page.goto('/procgen.html?e2e=1&seed=span-edit&lanes=4'); await ready(page);
   await page.locator('#procgenTab').click();
   await page.locator('#procgenSpanFields > summary').click();
@@ -88,7 +88,7 @@ test('musical span bundles keep several editors open and apply common edits dura
   await page.mouse.up(); await ready(page); expect(await stored()).toEqual(beforeDrag);
 });
 
-test('procgen selected MIDI destination connects explicitly, sends actual bytes and stops on disconnect', async ({ page }) => {
+test('procgen selected MIDI destination connects explicitly, sends actual bytes and stops on disconnect', { tag: '@boundary' }, async ({ page }) => {
   await installWebMidiStub(page);
   await page.addInitScript(() => {
     const request = navigator.requestMIDIAccess; window.__procgenMidiRequests = 0; window.__procgenMidiBytes = [];

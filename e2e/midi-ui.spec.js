@@ -418,7 +418,7 @@ test('MIDI project persists across reload', async ({ page }) => {
   expect(note).toBe(74);
 });
 
-test('MIDI project file and template controls preserve edits, adopted identity and reset across reload', async ({ page }) => {
+test('MIDI project file and template controls preserve edits, adopted identity and reset across reload', { tag: '@boundary' }, async ({ page }) => {
   const midi = await openMidiUi(page);
   await page.locator('#midiSourceList .midi-source-row[data-source-id="sfx-1"]').click();
   await page.locator('#midiMappingNote').fill('79');

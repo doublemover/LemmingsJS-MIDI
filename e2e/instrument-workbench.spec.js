@@ -15,7 +15,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('all layouts keep the identical live map canvas and musical undo keeps game time', async ({ page }, testInfo) => {
+test('all layouts keep the identical live map canvas and musical undo keeps game time', { tag: '@boundary' }, async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 1000 });
   await page.goto('/?e2e=1&midi=1');
   await waitForHarnessReady(page);
@@ -28,7 +28,6 @@ test('all layouts keep the identical live map canvas and musical undo keeps game
     await expect(page.locator('#gameCanvas')).toBeVisible();
     expect(await page.evaluate(() => document.getElementById('gameCanvas') === window.__originalGameCanvas)).toBe(true);
     await expect(page.locator('#gameCanvas')).toHaveCount(1);
-    await page.screenshot({ path: testInfo.outputPath(`workbench-${layout.toLowerCase()}.png`), fullPage: true });
   }
   const duration = page.locator('#midiSoundDurationNumber');
   const before = await duration.inputValue();
@@ -104,7 +103,7 @@ test.describe('mobile workbench availability', () => {
   });
 });
 
-test('every right-pane workspace keeps aligned direct Panic and close controls', async ({ page }, testInfo) => {
+test('every right-pane workspace keeps aligned direct Panic and close controls', { tag: '@boundary' }, async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
   await page.goto('/?e2e=1&midi=1'); await waitForHarnessReady(page);
   await page.evaluate(() => window.__E2E__.pause());
@@ -126,12 +125,11 @@ test('every right-pane workspace keeps aligned direct Panic and close controls',
   await expect(page.locator('.midi-sound-secondary')).not.toHaveAttribute('open');
   await page.locator('.midi-sound-secondary > summary').click(); await expect(page.locator('#midiSoundSnapshot')).toBeVisible();
   await page.locator('.midi-sound-secondary > summary').click(); await expect(page.locator('#midiSoundSnapshot')).toBeHidden();
-  await page.screenshot({ path: testInfo.outputPath('midi-pane-titlebar-hierarchy.png'), fullPage: true });
   expect(await page.evaluate(() => window.__midiPermissionCalls)).toBe(0);
 });
 
 
-test('Studio cell edits preserve focus and saved Hold/Tie', async ({ page }) => {
+test('Studio cell edits preserve focus and saved Hold/Tie', { tag: '@boundary' }, async ({ page }) => {
   await page.goto('/?e2e=1&midi=1'); await waitForHarnessReady(page);
   await page.evaluate(() => window.__E2E__.pause());
   if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
@@ -186,7 +184,7 @@ test('Studio cell edits preserve focus and saved Hold/Tie', async ({ page }) => 
 });
 
 
-test('Studio span bundles keep selection, atomic Undo and saved edits', async ({ page }) => {
+test('Studio span bundles keep selection, atomic Undo and saved edits', { tag: '@boundary' }, async ({ page }) => {
   await page.goto('/?e2e=1&midi=1'); await waitForHarnessReady(page);
   await page.evaluate(() => window.__E2E__.pause());
   if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
@@ -248,7 +246,7 @@ test('Studio span bundles keep selection, atomic Undo and saved edits', async ({
 });
 
 
-test('Studio saved span pages retain overflow entries and keyboard focus', async ({ page }) => {
+test('Studio saved span pages retain overflow entries and keyboard focus', { tag: '@boundary' }, async ({ page }) => {
   await page.goto('/?e2e=1&midi=1'); await waitForHarnessReady(page);
   await page.evaluate(() => window.__E2E__.pause());
   if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
