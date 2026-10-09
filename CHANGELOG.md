@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Add opt-in Scene replies through the existing ensemble and phrase queue, with shared simulation musical boundaries and persistent compact status controls.
+- Retire notes on their original MIDI output and fence reentrant Panic/queue replacement, with scoped phrase cancellation that leaves unrelated voices intact.
+- Admit a real ordinary walker at its observed tunnel entrance from a retained full guarded proof, rechecking identity, route, contact, claims and the original deadline.
+
 - Carry bounded ordinary crews across real open-bank source basins with four legal builder sections, physical containment/recovery, and one completed-scene phrase.
 
 - Anchor procgen births to the existing absolute generation beat grid, preserving admitted cohort settings and exposing bounded grid deferral.

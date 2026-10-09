@@ -43,6 +43,18 @@ When a milestone replaces an old path, remove the old path in the same phase.
 - [x] Dock existing skill-specific cards beneath action selectors, preserving canvas controls, keyboard focus and synchronous availability/cheat updates.
 - [x] Leave a glyph of space before OUT while retaining complete Increase/Decrease labels; show a lighter minimap click-destination preview with existing marching ants.
 
+## Current worker follow-through (October 9, 2026)
+
+- [x] Publish the owner-approved 32-commit checkpoint through 5ab94ec1 on existing PR 966 against master; do not merge.
+- [x] Audit real JavaScript output/phrase lifecycle hazards, preserving emitted-pitch ownership and unrelated voices.
+- [x] Reuse the existing ensemble and clip/phrase owners for opt-in, bar-aligned scene direction and rare verified-passage replies.
+- [x] Persist one shared compact recipe/status control through the existing project, storage and Undo.
+- [x] Retain a full guarded entrance approval for the real ordinary walker; preserve exact current-pose proofs and original budgets/deadlines.
+- [x] Qualify the fixed ordinary-spawn basin crossing and native local cue ownership; retain global casualty accounting separately.
+- [x] Update the approved PR 966 description to the published checkpoint only; fresh direct owner approval resolved the separate disclosure review.
+- [x] Check native recipe focus, dimensions, local cue scheduling and owned Panic after a qualified passage.
+- [ ] Review acoustic quality and physical MIDI behavior; muted output-call tests do not complete these items.
+
 ## Milestone 1: DAW-Like Multichannel MIDI Sequencer UI
 
 **Outcome:** The MIDI surface is a DAW-like multichannel sequencer for gameplay
@@ -1581,8 +1593,94 @@ temp/music-span-resolution-review/native.json.
 Evidence remains in ignored project-owned temp: continuation-route-grid-check,
 music-envelope-grid-review, music-grid-admissions-review,
 source-return-generated-ordinary, natural-guarded-port-diagnostic and
-relief-proof-coverage. Local commits only; no new checkout or publication.
-Last inspected publication checkpoint: PR 966 was open against master at fe73f80;
-this restarted audit implementation is local only. The owner checkout remains
+relief-proof-coverage. Those earlier receipts supported the owner-approved publication through
+5ab94ec1 on existing PR 966 against master. Six new follow-through commits
+remain local; the approved checkpoint description is updated, with no retarget
+or merge. The owner checkout remains
 at d3b9ce9 and its saved stash at 8083a30, with prior metrics/index/archive changes
 preserved. No excluded content, vendor code or binary assets were modified.
+
+The complete 83-block LabMuse review was read and reconciled with actual current
+JavaScript owners. Its useful direction is implemented in local commits b6d9fd6d
+(scheduler lifecycle), 6d77cc1b (real entrance approval), 169e2915 (shared clock
+and scene direction), and bc35266f (canonical recipe and compact UI). The
+default Event music path adds no director or completed-summary reads. Scene
+replies are explicit opt-in; arrangements commit together at a shared musical
+bar, with future attack gains moving over one quarter. A verified completed
+crew project can request a next-quarter lead and a different permitted role
+can answer one bar later only after actual admission. Source clip cells,
+transforms, event/pass counters and trailing rests remain authored; a missed
+reply boundary drops rather than bursting late. Manual mute/solo, scale/register,
+spans, tension and existing sixteen ordinary voices/1,024 rolling lanes/sixteen
+rolling dispatches retain authority. There is no second sequencer or C++ port.
+
+The scheduler audit reproduced seven failures before fixes and added nine
+causal checks. Retired destinations release the actual original output gates;
+cleanup detaches token ownership before callbacks; reentrant Panic prevents
+late onsets. Phrase dispatch uses a bounded phase snapshot, so clear or
+replacement cannot continue a stale tail or erase callback-created work.
+Scoped cancelGamePhrase releases only matching tokens, without CC120/123.
+Existing emitted-pitch ownership was already covered and did not need a new
+transposition implementation.
+
+The first combined category run exposed five supported-tunnel regressions: an
+already occupied wall produced a zero-step terrain turn, and future lookahead
+spent the existing exact-entrance proof budget. Restricting lookahead to positive
+steps restored all original assertions. Forty-eight affected physical checks
+pass, including unchanged 8/16 whole-crew routes. The final npm test midi procgen
+run passes all 1,473 checks in 86.62 seconds with runtime lint and critical
+types. Required formatting, undefined-call, dependency and whitespace checks
+pass. Receipt: temp/scene-entrance-categories-final.log. Scene owners have all
+lines/functions covered and 91.16% branches over nineteen causal checks; useful
+remaining targets are overloaded-voice/cue-thinning combinations and native
+recipe layout/listening. Receipt: temp/director-coverage-final/coverage-summary.json.
+Scheduler affected coverage is 92.25% lines/87.26% branches; new shared UI
+controls have all lines/functions and 95.74% branches. Physical MIDI and acoustic
+acceptance remain open. The following ordinary and native receipts close the scoped passage/cue
+acceptance without implying whole-run survival or acoustic quality.
+
+The single ordinary-spawn replay against bc35266f now admits the actual actor 52
+at the previously blocking source wall: a positive-step approach requests the
+port at 1587, the full guarded approval is retained at 1605, and the same real
+ordinary walker becomes BASH at its exact 1422/101 entrance at 1608. No extra
+proof is spent at that off-service arrival. It reaches the supported basin bank
+at 2723, starts the four-section job at 2739 and connects at 3559. The completed
+project 1:9:27 emits its single unchanged-source basin cue at 3691. Both original
+ordinary members 52 and 116 are recorded as crossed and supported WALK at 3692;
+both blockers recovered. The original 1,200-tick scene deadline, abilities,
+geometry and caps are unchanged. Maximum charged work is still 1,024 with eight
+serviced lanes. Global outcome is separately 538 births/174 failures; sixteen
+original/current lane-9 casualties are retained without truncation. This is a
+scoped passage proof, not whole-run survival. Receipt:
+temp/natural-approved-entrance-arrival.json, including committed head, source
+hashes, entrance approvals and actual membership.
+
+The first qualified muted native capture exposed a genuine integration gap:
+completed projects store [tile, revision] pairs and can be pruned from active
+admission lists before a deferred musical cue. It produced a qualified request
+but no owned note. Commit 51528e16 retains the actual bounded completed project
+reference for the short cue lifetime and validates its real tuple revisions;
+owner/generation/completion are checked at request. A causal prune regression
+passes alongside actual revision and manual-shutdown negatives. The final MIDI
+category passes 927 checks in 9.53 seconds with runtime lint and critical types;
+production route owners are unchanged from the passing combined category.
+Twenty focused director checks cover all lines/functions and 90.43% branches.
+Receipts: temp/native-completion-midi.log and
+temp/director-completion-coverage/coverage-summary.json.
+
+One repetition for that concrete fix, against committed 51528e16, confirms the
+qualified basin cue at the same native tick 3691, separated from twenty-two
+unrelated lane-9 route completions. Scene replies remains selected; its node,
+focus and 150 by 32 dimensions stay unchanged. One uniquely captured origin
+request owns four local lead notes (74, 67, 69, 74), four synth schedules, four
+ends and four releases. The existing rare-cue cooldown places the first attack
+at shared quarter 444/tick 3700, then actual ticks 3704, 3708 and 3713. Pause
+holds tick 3691 for 182 ms with no cue onset; Panic at 3715 prevents a pending
+answer and leaves zero open gates/orphan releases. The bounded capture contains
+3,007 of 4,096 records without truncation, zero MIDI permission requests, no
+external output and no page errors. Source fingerprints match before/after.
+Receipts: temp/natural-approved-basin-native-fixed.json, .jsonl and .png; the
+initial negative receipt is preserved as natural-approved-basin-native. These
+muted browser API and render-schedule observations do not establish acoustics
+or physical MIDI acceptance. The owned loopback test server is stopped at the
+end of this task.

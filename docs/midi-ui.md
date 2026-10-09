@@ -490,3 +490,41 @@ The editor status holds the last resolved value and phase from a matching event 
 Game listening and standalone audition share one bounded browser mix and master gain. Each owns its controls, gates and cancellation; stopping an audition leaves game listening active, while Panic stops both. The preview role picker and explicit actor context reuse the existing ensemble/instrument mapping. A standalone preview labels unavailable live tension, spatial span and rolling-context evaluation.
 
 Main Studio and procgen span checkboxes select several rows; modifier-clicking a name adds it to selection. Previously opened editors on the same page stay open. Rename each span in its own Name field. The selected toolbar changes a common target, values, same-domain interval or bypass state in one project transaction, so one Undo restores the entire common edit. Input identity and text caret survive rendering. Main Studio keeps spatial curves in their existing rows; both views use the same span controls and saved project model. Applying a bundle selects and opens all three new spans, without enabling output. Projects with more than 64 saved spans retain every entry; Previous/Next spans pages render at most 64 rows while the selection remains capped at 64. Existing bypassed entries stay bypassed.
+
+## Scene replies
+
+The Music recipe selector beside Palette (or procgen Action music) chooses Event
+music or Scene replies. Event music is the default for new and saved projects.
+The choice belongs to the project, exports and existing Undo; selecting it does
+not start local audio or request a MIDI device. Its fixed status slot shows the
+committed scene, next bar and pending breakthrough or answer.
+
+Scene replies reuse the current ensemble, source mapping, clips and game phrase
+queue. Completed work summaries move the ensemble between exploration,
+construction and relief after one quarter of stable activity, at the next
+musical bar. Future attack gains move over a quarter; sounding gates keep their
+original releases and instruments. Ordinary event rhythms remain the source of
+notes. There is no independent accompaniment clock.
+
+A verified procgen crew passage with an unchanged completed route can request a
+short resolution at the next quarter. It uses up to four authored mapped clip
+voices or pitches, retaining clip overlaps, rests, dynamics and transforms.
+Event clips advance one cell per cue; phrase clips retain their started/completed
+pass counters and full trailing-rest completion. A missed answer boundary is
+skipped instead of replaying late. An
+automatic ensemble selects an available pitched lead and, only after actual
+lead admission, an available different role can answer one bar later. Replies
+are rare: one foreground globally, one pending project per lane, sixty-four
+pending lanes and four bars between admitted leads. Old, changed or manually
+shut down routes expire without a cue. Other level events retain their existing
+mappings; this recipe does not invent progress or success evidence.
+
+Track mute/solo, scale, register, source bypass, spans, population tension and
+existing output budgets still decide actual admission. A declined lead earns no
+answer. This layer does not switch held instruments or send channel-wide kills
+for an individual phrase. Panic, output retirement, regeneration and tick jumps
+clear owned pending work; a paused simulation freezes musical position, and
+identical device/project refreshes preserve it. Base ticks, BPM, signature and
+generation origin now supply one shared position for clip bars, rolling phrases,
+spans, scene cues and capture. Fractional meters and tempos use absolute
+boundaries rather than accumulating rounded bar lengths.
