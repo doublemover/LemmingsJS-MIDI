@@ -1,3 +1,4 @@
+import { placeTerrainSpan, SHARED_TERRAIN_MINIMUM_X } from './ProcgenTerrainSpans.js';
 import { createSourceColumnLibrary, placeSourceColumn } from './ProcgenTerrainColumns.js';
 import { normalizeLaneHeight } from './ProcgenLaneGeometry.js';
 import { composeRecipeChunk } from './ProcgenTerrainRecipes.js';
@@ -42,7 +43,11 @@ class ProcgenRecipeTerrain {
     this.columnLibrary = createSourceColumnLibrary(this.routes, this.ingredients, this.excludedTerrainIds);
     this.sourceDescriptor = sourceDescriptor?.assetSha256 === recipe.assetSha256 && recipe.sources?.some(source => source.pack === sourceDescriptor.pack && source.groundSet === sourceDescriptor.groundSet) ? sourceDescriptor : null;
     this.supportsFineGrowth = !!this.sourceDescriptor;
-    this.sourceGroups = createSourceGroupLibrary(this.sourceDescriptor, this.pieces, this.excludedTerrainIds);
+    const sourceLibrary = createSourceGroupLibrary(this.sourceDescriptor, this.pieces, this.excludedTerrainIds, { maxWidth: 224 });
+    this.sourceGroups = new Map([...sourceLibrary].filter(([, group]) => group.piece.width <= 112));
+    this.wideSourceGroups = new Map([...sourceLibrary].filter(([, group]) => group.piece.width > 112));
+    this.wideZonePlanner = this.sourceDescriptor ? new ProcgenTerrainZonePlanner({ descriptor: this.sourceDescriptor, availableIds: this.pieces.map(piece => piece.id), excludedIds: this.excludedTerrainIds, eligibleGroups: new Set(this.wideSourceGroups.keys()), packWidthLimit }) : null;
+    this.sharedSpanBudget = 2;
     this.zonePlanner = this.sourceDescriptor ? new ProcgenTerrainZonePlanner({ descriptor: this.sourceDescriptor, availableIds: this.pieces.map(piece => piece.id), excludedIds: this.excludedTerrainIds, eligibleGroups: new Set(this.sourceGroups.keys()), packWidthLimit }) : null;
     this._sampleScratch = { solid: false, steel: false, color: 0 };
     this.descriptions = new Map(); this.growthPlans = new Map(); this.descriptionLimit = 256;
@@ -52,8 +57,8 @@ class ProcgenRecipeTerrain {
     this.eligibleObjectIds = new Set(this.objects.filter(p => this._standaloneObjectEligible(p)).map(p => p.id));
     for (const group of this.assemblySources.values()) for (const member of group.objects) this.eligibleObjectIds.add(member.id);
     this.eligibleTerrainIds = new Set(routeIds);
-    for (const group of this.sourceGroups.keys()) for (const member of group.placements) this.eligibleTerrainIds.add(member.id);
-    for (const word of this.wordPlanner?.choices || []) for (const glyph of word.letters) this.eligibleTerrainIds.add(glyph.piece.id);
+    for (const group of [...this.sourceGroups.keys(), ...this.wideSourceGroups.keys()]) for (const member of group.placements) this.eligibleTerrainIds.add(member.id);
+    for (const word of [...(this.wordPlanner?.choices || []), ...(this.wordPlanner?.wideChoices || [])]) for (const glyph of word.letters) this.eligibleTerrainIds.add(glyph.piece.id);
     for (const group of this.assemblySources.values()) { for (const member of group.terrain) this.eligibleTerrainIds.add(member.id); for (const support of group.supportAnchors) if (support.anchor.kind === 'terrain') this.eligibleTerrainIds.add(support.anchor.id); }
     this.patterns = this.routes.map((route, index) => composeRecipeChunk({ recipe: { ...recipe, routes: [route] }, terrainPieces,
       seed: index + 1, width: route.period * Math.ceil(TERRAIN_CHUNK_WIDTH / route.period), height: TERRAIN_HEIGHT, surfaceY: 72, decoration: false }));
@@ -86,14 +91,15 @@ class ProcgenRecipeTerrain {
     this.selectedObjectIds = new Set();
     this._lastKey = null; this._lastChunk = null;
   }
-  configure(laneCount, maxActors = 16384, { laneHeight = this.height } = {}) {
+  configure(laneCount, maxActors = 16384, { laneHeight = this.height, sharedSpanBudget = this.sharedSpanBudget } = {}) {
     const height = normalizeLaneHeight(laneHeight);
-    if (height !== this.height) { this.height = height; this.reset(); }
+    const capacity = sharedSpanBudget >= 2 ? 2 : 1;
+    if (height !== this.height || capacity !== this.sharedSpanBudget) { this.height = height; this.sharedSpanBudget = capacity; this.reset(); }
     this.collisionLimit = Math.max(256, Math.min(32768, maxActors + laneCount * 2));
   }
-  reset() { this.descriptions.clear(); this.growthPlans.clear(); this.zonePlanner?.reset(); this.collision.clear(); this.rasters.clear(); this._lastKey = null; this._lastChunk = null; }
+  reset() { this.descriptions.clear(); this.growthPlans.clear(); this.zonePlanner?.reset(); this.wideZonePlanner?.reset(); this.collision.clear(); this.rasters.clear(); this._lastKey = null; this._lastChunk = null; }
   get memoryMB() {
-    let bytes = [...this.sourceGroups.values()].reduce((n, group) => n + group.piece.composite.colors.byteLength + group.piece.composite.operations.byteLength + group.piece.composite.impact.byteLength + group.piece.frame.byteLength + group.columnTop.byteLength + group.columnBottom.byteLength, 0);
+    let bytes = [...this.sourceGroups.values(), ...this.wideSourceGroups.values()].reduce((n, group) => n + group.piece.composite.colors.byteLength + group.piece.composite.operations.byteLength + group.piece.composite.impact.byteLength + group.piece.frame.byteLength + group.columnTop.byteLength + group.columnBottom.byteLength, 0);
     bytes += this.patterns.reduce((n, p) => n + p.pixels.byteLength + p.mask.byteLength + p.topProfile.byteLength + p.columnColors.byteLength + p.introColumns.byteLength, 0);
     for (const p of this.collision.values()) bytes += p.solid.byteLength + p.steel.byteLength + p.topProfile.byteLength;
     for (const p of this.rasters.values()) bytes += p.byteLength;
@@ -101,7 +107,35 @@ class ProcgenRecipeTerrain {
   }
   _code(seed, chunk) { return mix(seed ^ Math.imul(chunk + 1, 0x85ebca6b)); }
   describe(seed, chunk) {
-    const cacheKey = keyFor(seed, chunk), cached = this.descriptions.get(cacheKey); if (cached) return cached;
+    const cached = this.descriptions.get(keyFor(seed, chunk)); if (cached) return cached;
+    const first = chunk - chunk % 2, code = this._code(seed ^ 0x713d02ab, first);
+    let pair = null;
+    if (this.sharedSpanBudget >= 2 && first * TERRAIN_CHUNK_WIDTH >= SHARED_TERRAIN_MINIMUM_X && (code & 6) === 0 && (this.wideSourceGroups.size || this.wordPlanner?.wideChoices.length)) {
+      pair = [this._describeSingle(seed, first, true), this._describeSingle(seed, first + 1, true)];
+      const descriptorAt = x => pair[Math.floor(x / TERRAIN_CHUNK_WIDTH)], localX = x => x % TERRAIN_CHUNK_WIDTH;
+      const sample = (kind, x, y) => x >= 0 && x < 256 ? this[kind](seed, first + Math.floor(x / TERRAIN_CHUNK_WIDTH), localX(x), y, descriptorAt(x)) : 0;
+      const surface = x => {
+        const d = descriptorAt(x); if (!d) return -1;
+        const pattern = this.patterns[mix(d.phaseCode ^ d.code) % this.patterns.length];
+        return pattern.topProfile[this._foundationColumn(pattern, x + first * TERRAIN_CHUNK_WIDTH, d)] < 0 ? -1 : this._surface(seed, first + Math.floor(x / TERRAIN_CHUNK_WIDTH), localX(x), d);
+      };
+      if (!placeTerrainSpan({ seed, firstChunk: first, code, descriptors: pair, height: this.height, wordPlanner: this.wordPlanner,
+        groupLibrary: this.wideSourceGroups, zone: this.wideZonePlanner?.zoneAt(seed, first * TERRAIN_CHUNK_WIDTH), surface,
+        solid: (x, y) => sample('solidSample', x, y), steel: (x, y) => sample('steelSample', x, y), color: (x, y) => sample('rasterSample', x, y),
+        sourceRevision: this.sourceDescriptor?.sourceRevision || this.recipe.assetSha256 })) pair = null;
+    }
+    pair ||= [this._describeSingle(seed, first), this._describeSingle(seed, first + 1)];
+    // Evict aligned units together; rebuilding one half never replaces a cached
+    // sibling with geometry chosen through a different descriptor request order.
+    while (this.descriptions.size + 2 > this.descriptionLimit) {
+      const oldest = this.descriptions.keys().next().value, at = Number(oldest.slice(oldest.lastIndexOf(':') + 1));
+      const prefix = oldest.slice(0, oldest.lastIndexOf(':') + 1), even = at - at % 2;
+      this.descriptions.delete(prefix + even); this.descriptions.delete(prefix + (even + 1));
+    }
+    this.descriptions.set(keyFor(seed, first), pair[0]); this.descriptions.set(keyFor(seed, first + 1), pair[1]);
+    return pair[chunk % 2];
+  }
+  _describeSingle(seed, chunk, reserved = false) {
     const code = this._code(seed, chunk), phase = Math.floor(chunk / PHASE_CHUNKS), phaseCode = this._code(seed ^ 0x51ed270b, phase);
     const origin = chunk * TERRAIN_CHUNK_WIDTH;
     const progression = progressionAt(origin), gap = !progression.safeIntro && (code & 7) < 1 + Math.floor(progression.difficulty);
@@ -119,7 +153,7 @@ class ProcgenRecipeTerrain {
     descriptor.zone = this.zonePlanner?.zoneAt(seed, origin) || null;
     const pattern = this.patterns[mix(phaseCode ^ code) % this.patterns.length];
     const baseSurface = x => pattern.topProfile[this._patternColumn(pattern, x + origin)] < 0 ? -1 : this._surface(seed, chunk, x, descriptor);
-    descriptor.word = this.wordPlanner?.plan(seed, chunk, TERRAIN_CHUNK_WIDTH, x => {
+    descriptor.word = !reserved && this.wordPlanner?.plan(seed, chunk, TERRAIN_CHUNK_WIDTH, x => {
       if (x + origin >= descriptor.gapX && x + origin < descriptor.gapX + descriptor.gapWidth) return -1;
       return baseSurface(x);
     }, (x, y) => this.solidSample(seed, chunk, x, y, descriptor)) || null;
@@ -145,17 +179,15 @@ class ProcgenRecipeTerrain {
     descriptor.assemblies = assembled.assemblies.filter(assembly => admitted.has(assembly));
     const occupied = [...descriptor.placements, ...descriptor.assemblies.map(assembly => ({ x: assembly.bounds.x1 - origin,
       y: assembly.bounds.y1, piece: { width: assembly.bounds.x2 - assembly.bounds.x1, height: assembly.bounds.y2 - assembly.bounds.y1 }, decor: false }))];
-    descriptor.placements.push(...placeSourceColumn({ library: this.columnLibrary, code, origin, height: this.height, surface: baseSurface,
+    if (!reserved) descriptor.placements.push(...placeSourceColumn({ library: this.columnLibrary, code, origin, height: this.height, surface: baseSurface,
       solid: (x, y) => this.solidSample(seed, chunk, x, y, descriptor), steel: (x, y) => this.steelSample(seed, chunk, x, y, descriptor),
       occupied, gapX: descriptor.gapX - origin, gapWidth: descriptor.gapWidth, sourceRevision: this.recipe.assetSha256 }));
     occupied.push(...descriptor.placements.filter(p => p.sourcedColumn));
-    descriptor.placements.push(...placeSourceGroups({ zone: descriptor.zone, library: this.sourceGroups, code, chunk, baseSurface,
+    if (!reserved) descriptor.placements.push(...placeSourceGroups({ zone: descriptor.zone, library: this.sourceGroups, code, chunk, baseSurface,
       baseSolid: (x, y) => this.solidSample(seed, chunk, x, y, descriptor), baseSteel: (x, y) => this.steelSample(seed, chunk, x, y, descriptor),
       baseColor: (x, y) => this.rasterSample(seed, chunk, x, y, descriptor), height: this.height, occupied, gapX: descriptor.gapX - origin, gapWidth: descriptor.gapWidth, progression,
       validate: members => { const member = members.at(-1); return this._introAssemblyEligible(seed, chunk, descriptor, { bounds: { x1: origin + member.x, x2: origin + member.x + member.piece.width } }, members, baseSurface); } }));
     descriptor.objects.push(...this._placeObjects(seed, chunk, descriptor));
-    if (this.descriptions.size >= this.descriptionLimit) this.descriptions.delete(this.descriptions.keys().next().value);
-    this.descriptions.set(cacheKey, descriptor);
     return descriptor;
   }
   _introAssemblyEligible(seed, chunk, descriptor, assembly, members, surface) {
@@ -174,7 +206,8 @@ class ProcgenRecipeTerrain {
     return introAssemblyEligible({ origin: descriptor.origin, left, right, surface, solid, height: this.height,
       steel: (x, y) => this.steelSample(seed, chunk, x, y, candidate) });
   }
-  growthPlan(seed, chunk) {
+  growthPlan(seed, chunk, { maxSharedSpanTiles = this.sharedSpanBudget } = {}) {
+    if (maxSharedSpanTiles < this.sharedSpanBudget) throw new RangeError('Configure source shared-span capacity before preparing terrain');
     const key = keyFor(seed, chunk), cached = this.growthPlans.get(key); if (cached) return cached;
     const descriptor = this.describe(seed, chunk), pattern = this.patterns[mix(descriptor.phaseCode ^ descriptor.code) % this.patterns.length];
     const route = this.routes.find(route => route.id === pattern.routeId), pieces = new Map(this.pieces.map(piece => [piece.id, piece]));
@@ -419,7 +452,7 @@ class ProcgenRecipeTerrain {
     return { ...this.stats, chunkMs: { p50: percentile(0.5), p95: percentile(0.95), p99: percentile(0.99) }, cachedCollisionChunks: this.collision.size, cachedRasterChunks: this.rasters.size,
       collisionLimit: this.collisionLimit, rasterLimit: this.rasterLimit, memoryMB: this.memoryMB,
       terrainVocabularyUsed: this.selectedTerrainIds.size, terrainVocabularyAvailable: this.eligibleTerrainIds.size, terrainCatalogAvailable: this.pieces.length,
-      wordGlyphsAvailable: this.wordPlanner?.glyphs.size || 0, wordChoicesAvailable: this.wordPlanner?.choices.length || 0,
+      wordGlyphsAvailable: this.wordPlanner?.glyphs.size || 0, wordChoicesAvailable: this.wordPlanner?.choices.length || 0, wideWordChoicesAvailable: this.wordPlanner?.wideChoices.length || 0, sharedSpanBudget: this.sharedSpanBudget, wideCanonicalGroupsAvailable: this.wideSourceGroups.size,
       canonicalDescriptor: this.sourceDescriptor?.id || null, canonicalGroupsAvailable: this.sourceGroups.size, proposedRouteContracts: this.routeContracts.length, cachedDescriptions: this.descriptions.size, cachedZones: this.zonePlanner?.cache.size || 0,
       objectVocabularyUsed: this.selectedObjectIds.size, objectVocabularyAvailable: this.eligibleObjectIds.size, assemblyCatalogRevision: this.assemblyCatalog?.sourceRevision || null, assembliesAvailable: this.assemblySources.size, associatedTerrainIds: [...this.associatedTerrainIds], associatedObjectIds: [...this.associatedObjectIds], objectCatalogAvailable: this.objects.length, phaseChunks: PHASE_CHUNKS }; }
 }

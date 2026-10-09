@@ -51,10 +51,13 @@ class ProcgenTerrainGrowth {
     const key = this._key(lane, chunk), previous = this.states.get(key);
     if (previous) return previous;
     if (!this.stateFor(lane, chunk)) return null;
-    const result = prepare(lane, chunk), plan = result?.jobs ? result : { jobs: [{ index: 0, kind: 'foundation', x1: 0, x2: this.chunkWidth, dependencies: [] }], objectJobs: [] };
+    const result = prepare(lane, chunk, { maxSharedSpanTiles: this.revealBudget }), plan = result?.jobs ? result : { jobs: [{ index: 0, kind: 'foundation', x1: 0, x2: this.chunkWidth, dependencies: [] }], objectJobs: [] };
     if (!plan.jobs.length || plan.jobs.length > MAX_PIECES_PER_CHUNK) throw new Error('Terrain growth requires 1-32 source pieces per chunk');
     for (let index = 0; index < plan.jobs.length; index++) {
       const job = plan.jobs[index];
+      if (job.sharedSpan && (this.revealBudget < 2 || job.sharedSpan.cost !== 2 || !Number.isInteger(job.sharedSpan.firstChunk) ||
+          job.sharedSpan.firstChunk % 2 || job.sharedSpan.lastChunk !== job.sharedSpan.firstChunk + 1 ||
+          chunk < job.sharedSpan.firstChunk || chunk > job.sharedSpan.lastChunk)) throw new Error('Shared source terrain requires a two-tile preparation capacity');
       if (!Number.isFinite(job.x1) || !Number.isFinite(job.x2) || job.x1 < 0 || job.x2 > this.chunkWidth || job.x1 >= job.x2 ||
           job.dependencies?.some(dependency => !Number.isInteger(dependency) || dependency < 0 || dependency >= index)) throw new Error('Invalid terrain construction dependencies');
     }
@@ -62,15 +65,38 @@ class ProcgenTerrainGrowth {
     this.states.set(key, state); this.queues[lane].push(state); this.queues[lane].sort((a, b) => a.chunk - b.chunk); this.stats.prepared++;
     return state;
   }
-  _activate(state, index, through, reveal) {
+  _sharedPartner(state, job) {
+    if (!job.sharedSpan) return null;
+    const chunk = state.chunk === job.sharedSpan.firstChunk ? job.sharedSpan.lastChunk : job.sharedSpan.firstChunk;
+    const partner = this.states.get(this._key(state.lane, chunk));
+    const index = partner?.plan.jobs.findIndex(other => other.sharedSpan?.id === job.sharedSpan.id);
+    return index >= 0 ? { state: partner, index } : null;
+  }
+  _ready(state, index) {
     if (state.active[index]) return false;
     const job = state.plan.jobs[index];
     if (job.dependencies?.some(dependency => !state.active[dependency])) return false;
-    state.active[index] = 1; state.revision++; state.remaining--; this.stats.revealed++;
-    const previous = through[state.lane]; through[state.lane] = Math.max(previous, state.chunk * this.chunkWidth + job.x2);
-    state.complete = state.remaining === 0;
-    if (state.complete) this._remember(state.lane, state.chunk * this.chunkWidth, (state.chunk + 1) * this.chunkWidth);
-    reveal(state.lane, previous, through[state.lane], state.chunk, job); return true;
+    if (!job.sharedSpan) return true;
+    const partner = this._sharedPartner(state, job);
+    return !!partner && !partner.state.active[partner.index] &&
+      !partner.state.plan.jobs[partner.index].dependencies?.some(dependency => !partner.state.active[dependency]);
+  }
+  _activate(state, index, through, reveal) {
+    if (!this._ready(state, index)) return false;
+    const job = state.plan.jobs[index], partner = this._sharedPartner(state, job), parts = [{ state, index }];
+    if (partner) parts.push(partner);
+    const previous = through[state.lane];
+    // Publish all active flags before either dirty-tile callback can sample the
+    // source. A complete piece has no observable half-collision/half-display state.
+    for (const part of parts) {
+      const owner = part.state, item = owner.plan.jobs[part.index];
+      owner.active[part.index] = 1; owner.revision++; owner.remaining--; this.stats.revealed++;
+      through[owner.lane] = Math.max(through[owner.lane], owner.chunk * this.chunkWidth + item.x2);
+      owner.complete = owner.remaining === 0;
+      if (owner.complete) this._remember(owner.lane, owner.chunk * this.chunkWidth, (owner.chunk + 1) * this.chunkWidth);
+    }
+    for (const part of parts) reveal(part.state.lane, previous, through[part.state.lane], part.state.chunk, part.state.plan.jobs[part.index]);
+    return true;
   }
   _rememberLocal(lane, x1, x2) {
     const ranges = this.localCoverage[lane];
@@ -88,20 +114,40 @@ class ProcgenTerrainGrowth {
     const first = Math.max(0, Math.floor(x1 / this.chunkWidth)), last = Math.floor(x2 / this.chunkWidth);
     let needed = x + 8 >= through[lane];
     for (let chunk = first; !needed && chunk <= last; chunk++) needed = this.stateFor(lane, chunk) !== null;
-    if (!needed) { this._rememberLocal(lane, first * this.chunkWidth, x2); return; }
-    const preparedBefore = this.stats.prepared; let forced = 0;
+    if (!needed) { this._rememberLocal(lane, x1, x2); return; }
+    const preparedBefore = this.stats.prepared, revealedBefore = this.stats.revealed, requiredByState = new Map();
+    const requireJob = (state, index) => {
+      if (state.active[index]) return;
+      let required = requiredByState.get(state);
+      if (!required) { required = new Uint8Array(state.active.length); requiredByState.set(state, required); }
+      if (required[index]) return; required[index] = 1;
+      const job = state.plan.jobs[index];
+      for (const dependency of job.dependencies || []) requireJob(state, dependency);
+      if (job.sharedSpan) {
+        const partnerChunk = state.chunk === job.sharedSpan.firstChunk ? job.sharedSpan.lastChunk : job.sharedSpan.firstChunk;
+        const partner = this._prepare(lane, partnerChunk, prepare);
+        const partnerIndex = partner?.plan.jobs.findIndex(other => other.sharedSpan?.id === job.sharedSpan.id);
+        if (!(partnerIndex >= 0)) throw new Error('Shared source terrain is missing its complete partner');
+        requireJob(partner, partnerIndex);
+      }
+    };
     for (let chunk = first; chunk <= last; chunk++) {
       const state = this._prepare(lane, chunk, prepare); if (!state) continue;
-      const required = new Uint8Array(state.active.length);
-      const requireJob = index => { if (required[index] || state.active[index]) return; required[index] = 1; for (const dependency of state.plan.jobs[index].dependencies || []) requireJob(dependency); };
-      for (let index = 0; index < state.plan.jobs.length; index++) if (chunk * this.chunkWidth + state.plan.jobs[index].x1 < x2) requireJob(index);
-      for (let index = 0; index < state.active.length; index++) if (required[index] && this._activate(state, index, through, reveal)) forced++;
+      for (let index = 0; index < state.plan.jobs.length; index++) {
+        const job = state.plan.jobs[index];
+        if (chunk * this.chunkWidth + job.x1 < x2 && chunk * this.chunkWidth + job.x2 > x1) requireJob(state, index);
+      }
     }
-    const prepared = this.stats.prepared - preparedBefore;
+    // At most the footprint's two chunks plus their aligned partner chunks.
+    // All local prerequisites precede a shared final job, so two bounded passes
+    // publish support first, then the complete source span.
+    for (let pass = 0; pass < 2; pass++) for (const [state, required] of requiredByState)
+      for (let index = 0; index < state.active.length; index++) if (required[index]) this._activate(state, index, through, reveal);
+    const prepared = this.stats.prepared - preparedBefore, forced = this.stats.revealed - revealedBefore;
     this.preparedThrough[lane] = Math.max(this.preparedThrough[lane], (last + 1) * this.chunkWidth);
     frontiers[lane] = Math.max(frontiers[lane], x); this.stats.forced += forced; this._forcedSinceUpdate += forced;
     this.stats.forcedPrepared += prepared; this._forcedPreparedSinceUpdate += prepared;
-    this._rememberLocal(lane, first * this.chunkWidth, x2);
+    this._rememberLocal(lane, x1, x2);
   }
   observe(lane, forwardPixels) { this.speed[lane] = Math.max(this.speed[lane], Math.min(2, forwardPixels)); }
   _push(lane) {
@@ -120,10 +166,10 @@ class ProcgenTerrainGrowth {
     if (this.size) this.heap[at] = last;
     return lane;
   }
-  _next(lane, frontier) {
+  _next(lane, frontier, budget = this.revealBudget) {
     for (const state of this.queues[lane]) if (!state.complete) for (let index = 0; index < state.active.length; index++) {
       const job = state.plan.jobs[index];
-      if (!state.active[index] && !job.dependencies?.some(dependency => !state.active[dependency]) && state.chunk * this.chunkWidth + job.x1 <= frontier + this.targetLead) return { state, index };
+      if ((job.sharedSpan?.cost || 1) <= budget && this._ready(state, index) && state.chunk * this.chunkWidth + job.x1 <= frontier + this.targetLead) return { state, index };
     }
     return null;
   }
@@ -149,8 +195,10 @@ class ProcgenTerrainGrowth {
       if (next) { this.priority[lane] = (next.state.chunk * this.chunkWidth + next.state.plan.jobs[next.index].x1 - frontiers[lane]) / this.speed[lane]; this._push(lane); }
     }
     while (this.size && revealed < this.revealBudget) {
-      const lane = this._pop(), next = this._next(lane, frontiers[lane]);
-      if (next && this._activate(next.state, next.index, through, reveal)) { this.pending[lane]--; revealed++; }
+      const lane = this._pop(), next = this._next(lane, frontiers[lane], this.revealBudget - revealed), before = this.stats.revealed;
+      if (next && this._activate(next.state, next.index, through, reveal)) {
+        const cost = this.stats.revealed - before; this.pending[lane] = Math.max(0, this.pending[lane] - cost); revealed += cost;
+      }
     }
     const prepared = this.stats.prepared - preparedBefore;
     this.stats.normalPrepared += prepared; this.stats.normalRevealed += revealed;

@@ -1,4 +1,4 @@
-const PROCGEN_WORD_POOL = Object.freeze(['WOW', 'FUN', 'GO', 'HI', 'YES', 'HELL', 'DAMN', 'FUCK', 'SHIT', 'BASH', 'LEMM', 'ZOOM', 'NOPE', 'YEP', 'HA', 'BOP', 'JAM', 'BASS', 'MIDI', 'DUET', 'RIFF', 'BEAT', 'POP', 'WET', 'DRIP', 'FLOW', 'SPLASH', 'HUSH', 'SNEAK', 'SHH', 'HOT', 'TEASE', 'MOAN', 'OH', 'GO HI', 'HI YA', 'OH YES', 'I GO', 'I DO']);
+const PROCGEN_WORD_POOL = Object.freeze(['WOW', 'FUN', 'GO', 'HI', 'YES', 'HELL', 'DAMN', 'FUCK', 'SHIT', 'BASH', 'LEMM', 'ZOOM', 'NOPE', 'YEP', 'HA', 'BOP', 'JAM', 'BASS', 'MIDI', 'DUET', 'RIFF', 'BEAT', 'POP', 'WET', 'HYDRO', 'SNEAKY', 'DRIP', 'FLOW', 'SPLASH', 'HUSH', 'SNEAK', 'SHH', 'HOT', 'TEASE', 'MOAN', 'OH', 'GO HI', 'HI YA', 'OH YES', 'I GO', 'I DO']);
 const BLOCKED_RUNS = new Set(['NIGGER', 'NIGGA', 'FAG', 'FAGGOT', 'KIKE', 'SPIC', 'CHINK', 'TRANNY']);
 const GLYPH_SPACING = 5;
 const GLYPH_SOURCE_REVISION = '49df39b5aefcef219376f06a24ed3fe12c5efb21ad641ebe6549e46909e60839';
@@ -56,13 +56,41 @@ const createProcgenWordPlanner = (recipe, pieces) => {
       glyphs.set(String.fromCharCode(65 + index), { piece, left, top, right, bottom, width: right - left, height: bottom - top, cells, feet, components });
     }
   }
-  const choices = PROCGEN_WORD_POOL.map(text => ({ text, letters: [...text].filter(letter => letter !== ' ').map(letter => glyphs.get(letter)) }))
+  const availableChoices = PROCGEN_WORD_POOL.map(text => ({ text, letters: [...text].filter(letter => letter !== ' ').map(letter => glyphs.get(letter)) }))
     .filter(word => word.letters.every(Boolean)).map(word => ({ ...word,
       width: word.letters.reduce((total, glyph) => total + glyph.width, 0) + (word.letters.length - 1) * GLYPH_SPACING + (word.text.split(' ').length - 1) * 10,
-      height: Math.max(...word.letters.map(glyph => glyph.height)) })).filter(word => word.width <= 108);
+      height: Math.max(...word.letters.map(glyph => glyph.height)) }));
+  const choices = availableChoices.filter(word => word.width <= 108), wideChoices = availableChoices.filter(word => word.width > 108 && word.width <= 224);
   if (!choices.length) return null;
   const ids = new Set(Array.from({ length: 27 }, (_, index) => 31 + index));
-  return { sourceRevision: recipe.assetSha256, glyphs, ids, choices,
+  const planWord = (word, x, width, surfaceAt, solidAt) => {
+    let baseline = Infinity;
+    for (let dx = 0; dx < word.width; dx++) baseline = Math.min(baseline, surfaceAt(x + dx));
+    if (baseline < word.height + 2 || !Number.isFinite(baseline)) return null;
+    const placements = [], readable = []; let at = x;
+    for (const letter of word.text) {
+      if (letter === ' ') { at += 10; continue; }
+      const glyph = glyphs.get(letter), px = at - glyph.left, py = baseline - glyph.bottom;
+      if (px < 0 || px + glyph.piece.width > width || py < 0 ||
+          glyph.cells.some(([dx, dy]) => solidAt(px + dx, py + dy)) ||
+          glyph.components.some(feet => !feet.some(([dx, dy]) => solidAt(px + dx, py + dy)))) return null;
+      placements.push({ piece: glyph.piece, x: px, y: py, decor: false, flip: false, letter });
+      readable.push({ letter, x: at, right: at + glyph.width, baseline }); at += glyph.width + GLYPH_SPACING;
+    }
+    if (hasBlockedReadableRun(readable)) return null;
+    return { text: word.text, x, y: baseline - word.height, width: word.width, height: word.height, baseline, placements, readable, physical: true };
+  };
+  return { sourceRevision: recipe.assetSha256, glyphs, ids, choices, wideChoices,
+    planWide(code, width, surfaceAt, solidAt, text = null, accept = () => true) {
+      const preferred = wideChoices.filter(word => word.text === 'HYDRO' || word.text === 'SNEAKY');
+      const candidates = text ? wideChoices.filter(word => word.text === text) : preferred.length ? preferred : wideChoices;
+      if (!solidAt || !candidates.length) return null;
+      for (let attempt = 0; attempt < Math.min(8, candidates.length * 4); attempt++) {
+        const word = candidates[((code >>> 8) + attempt) % candidates.length], x = Math.ceil((width - word.width) / 2) + [0, -4, 4, -8][Math.floor(attempt / candidates.length)];
+        const planned = planWord(word, x, width, surfaceAt, solidAt); if (planned && accept(planned)) return planned;
+      }
+      return null;
+    },
     plan(seed, chunk, width, surfaceAt, solidAt = null) {
       const phase = Math.floor(chunk / 4), code = mix(seed ^ Math.imul(phase + 1, 0x85ebca6b));
       if ((chunk % 4) !== (code % 4) || !solidAt) return null;
@@ -70,21 +98,7 @@ const createProcgenWordPlanner = (recipe, pieces) => {
       for (let attempt = 0; attempt < Math.min(8, choices.length); attempt++) {
         const word = choices[(code + attempt) % choices.length], position = mix(code ^ Math.imul(attempt + 1, 0x9e3779b1));
         const x = 8 + (position >>> 8) % Math.max(1, width - word.width - 16);
-        let baseline = Infinity;
-        for (let dx = 0; dx < word.width; dx++) baseline = Math.min(baseline, surfaceAt(x + dx));
-        if (baseline < word.height + 2 || !Number.isFinite(baseline)) continue;
-        const placements = [], readable = []; let at = x, valid = true;
-        for (const letter of word.text) {
-          if (letter === ' ') { at += 10; continue; }
-          const glyph = glyphs.get(letter), px = at - glyph.left, py = baseline - glyph.bottom;
-          if (px < 0 || px + glyph.piece.width > width || py < 0 ||
-              glyph.cells.some(([dx, dy]) => solidAt(px + dx, py + dy)) ||
-              glyph.components.some(feet => !feet.some(([dx, dy]) => solidAt(px + dx, py + dy)))) { valid = false; break; }
-          placements.push({ piece: glyph.piece, x: px, y: py, decor: false, flip: false, letter });
-          readable.push({ letter, x: at, right: at + glyph.width, baseline }); at += glyph.width + GLYPH_SPACING;
-        }
-        if (!valid || hasBlockedReadableRun(readable)) continue;
-        return { text: word.text, x, y: baseline - word.height, width: word.width, height: word.height, baseline, placements, readable, physical: true };
+        const planned = planWord(word, x, width, surfaceAt, solidAt); if (planned) return planned;
       }
       return null;
     } };

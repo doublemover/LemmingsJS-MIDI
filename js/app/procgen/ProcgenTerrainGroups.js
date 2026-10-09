@@ -3,13 +3,13 @@ import { CLEAR_TERRAIN, PAINT_TERRAIN, PAINT_STEEL, compileTerrainGroup, terrain
 
 const SOURCE_GROUP_ROLES = new Set(['route', 'decoration', 'join', 'overlap', 'repeat', 'erase']);
 const MAX_SOURCE_GROUP_WIDTH = 112, MAX_SOURCE_GROUP_HEIGHT = 94, MAX_SOURCE_GROUPS_PER_CHUNK = 2;
-const createSourceGroupLibrary = (descriptor, pieces, excludedIds = new Set()) => {
+const createSourceGroupLibrary = (descriptor, pieces, excludedIds = new Set(), { maxWidth = MAX_SOURCE_GROUP_WIDTH } = {}) => {
   const available = new Map(pieces.map(piece => [piece.id, piece])), library = new Map();
   for (const group of (descriptor?.groups || []).slice(0, 12)) {
     if (!SOURCE_GROUP_ROLES.has(group.role) || !group.placements.length || group.placements.length > 8 || group.placements.some(p => excludedIds.has(p.id) || !available.has(p.id))) continue;
     const width = Math.max(...group.placements.map(p => p.x + available.get(p.id).width));
     const height = Math.max(...group.placements.map(p => p.y + available.get(p.id).height));
-    if (width > MAX_SOURCE_GROUP_WIDTH || height > MAX_SOURCE_GROUP_HEIGHT || width < 1 || height < 1) continue;
+    if (width > maxWidth || height > MAX_SOURCE_GROUP_HEIGHT || width < 1 || height < 1) continue;
     const composite = compileTerrainGroup(group, available, width, height), columnTop = new Int16Array(width), columnBottom = new Int16Array(width);
     columnTop.fill(-1); columnBottom.fill(-1); let paints = false, continuous = true;
     for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) if (!(composite.frame[y * width + x] & 128)) {
@@ -27,7 +27,7 @@ const createSourceGroupLibrary = (descriptor, pieces, excludedIds = new Set()) =
 // Admission uses complete source/foundation masks once during cached descriptor
 // creation. It neither consults actors nor borrows mutable materialization flags.
 const placeSourceGroups = ({ zone, library, code, chunk, baseSurface, baseSolid, baseSteel = () => false, baseColor = null,
-  occupied, gapX, gapWidth, progression = {}, height = 96, validate = () => true }) => {
+  occupied, gapX, gapWidth, progression = {}, height = 96, width = 128, maxGroups = MAX_SOURCE_GROUPS_PER_CHUNK, centered = false, allowVerticalSeparation = false, validate = () => true }) => {
   if (!zone || chunk === 0) return [];
   const placed = [];
   const sample = (x, y, kind) => {
@@ -40,10 +40,10 @@ const placeSourceGroups = ({ zone, library, code, chunk, baseSurface, baseSolid,
     return value;
   };
   for (const group of zone.groups) {
-    const compiled = library.get(group); if (!compiled || placed.length >= MAX_SOURCE_GROUPS_PER_CHUNK) continue;
+    const compiled = library.get(group); if (!compiled || placed.length >= maxGroups) continue;
     const { piece, columnTop, columnBottom, paints } = compiled;
-    const x = 8 + ((code >>> (placed.length * 7)) % Math.max(1, 113 - piece.width));
-    if (gapWidth && x + piece.width > gapX - 4 && x < gapX + gapWidth + 4 || occupied.some(p => x + piece.width > p.x - 2 && x < p.x + p.piece.width + 2)) continue;
+    const x = centered ? Math.floor((width - piece.width) / 2) : 8 + ((code >>> (placed.length * 7)) % Math.max(1, width - 15 - piece.width));
+    if (gapWidth && x + piece.width > gapX - 4 && x < gapX + gapWidth + 4) continue;
     let y = -Infinity, valid = true;
     for (let dx = 0; dx < piece.width; dx++) if (baseSurface(x + dx) < 0) valid = false;
     if (paints) {
@@ -58,6 +58,8 @@ const placeSourceGroups = ({ zone, library, code, chunk, baseSurface, baseSolid,
       for (let dx = 0; dx < piece.width; dx++) y = Math.max(y, baseSurface(x + dx) + 8);
     }
     if (!valid || !Number.isFinite(y) || y < 2 || y + piece.height > height) continue;
+    if (occupied.some(p => x + piece.width > p.x - 2 && x < p.x + p.piece.width + 2 &&
+      (!allowVerticalSeparation || !Number.isFinite(p.y) || !Number.isFinite(p.piece.height) || y + piece.height > p.y - 2 && y < p.y + p.piece.height + 2))) continue;
     const placement = { piece, x, y, flip: false, decor: false, canonicalGroup: group, sourceRevision: zone.sourceRevision };
     const added = new Uint8Array(piece.width * piece.height); let changed = 0;
     for (let dy = 0; dy < piece.height && valid; dy++) for (let dx = 0; dx < piece.width; dx++) {
@@ -78,7 +80,7 @@ const placeSourceGroups = ({ zone, library, code, chunk, baseSurface, baseSolid,
         for (const [nx, ny] of [[dx - 1, dy], [dx + 1, dy], [dx, dy - 1], [dx, dy + 1]]) {
           const next = ny * piece.width + nx;
           if (nx >= 0 && nx < piece.width && ny >= 0 && ny < piece.height && added[next]) { if (!visited[next]) { visited[next] = 1; queue.push(next); } }
-          else if (x + nx >= 0 && x + nx < 128 && y + ny >= 0 && y + ny < height && sample(x + nx, y + ny, 'solid') &&
+          else if (x + nx >= 0 && x + nx < width && y + ny >= 0 && y + ny < height && sample(x + nx, y + ny, 'solid') &&
             (terrainStampAt(placement, x + nx, y + ny, true) & 3) !== CLEAR_TERRAIN) supported = true;
         }
       }

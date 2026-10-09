@@ -28,7 +28,8 @@ const createTerrainGrowthPlan = ({ descriptor, pattern, route, pieces, assemblie
   const foundationDeps = (x1, x2) => foundationSections.filter(section => section.x2 > x1 && section.x1 < x2).map(section => section.index);
   const terrainGroups = new Map(), assemblyTerrain = new Map();
   for (let at = 0; at < descriptor.placements.length; at++) {
-    const p = descriptor.placements[at], key = p.assembly || (p.letter ? descriptor.word : p);
+    const p = descriptor.placements[at]; if (p.sharedSpan) continue;
+    const key = p.assembly || (p.letter ? descriptor.word : p);
     let group = terrainGroups.get(key); if (!group) { group = []; terrainGroups.set(key, group); }
     group.push(at);
   }
@@ -86,6 +87,16 @@ const createTerrainGrowthPlan = ({ descriptor, pattern, route, pieces, assemblie
         { objectIndices: Object.freeze(members), attachmentFallback: !!assembly });
       for (const at of members) objectJobs[at] = index;
     }
+  }
+  if (descriptor.sharedSpan) {
+    const members = descriptor.placements.map((p, at) => p.sharedSpan ? at : -1).filter(at => at >= 0);
+    const placements = members.map(at => descriptor.placements[at]);
+    const x1 = Math.min(...placements.map(p => p.x)), x2 = Math.max(...placements.map(p => p.x + p.piece.width));
+    const y1 = Math.min(...placements.map(p => p.y)), y2 = Math.max(...placements.map(p => p.y + p.piece.height));
+    const ids = placements.flatMap(p => p.canonicalGroup ? p.canonicalGroup.placements.map(member => member.id) : [p.piece.id]);
+    const index = add('terrain', { x1, x2, y1, y2 }, jobs.map(job => job.index), ids,
+      { placementIndices: Object.freeze(members), sharedSpan: descriptor.sharedSpan, orderedSource: true });
+    for (const at of members) placementJobs[at] = index;
   }
   return Object.freeze({ descriptor, jobs: Object.freeze(jobs), foundationSections: Object.freeze(foundationSections),
     foundationByColumn, placementJobs, objectJobs, sourceMotif: route.id, sourceRevision, patternWidth: pattern.width });

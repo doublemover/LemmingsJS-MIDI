@@ -35,7 +35,7 @@ class ProcgenPackTerrain {
   forSeed(seed) { return this.themes[this.assignments.get(seed) ?? mix(seed) % this.themes.length].terrain; }
   configure(lanes, maxActors = 16384, options = {}) { for (const theme of this.themes) theme.terrain.configure(lanes, Math.ceil(maxActors / this.themes.length), options); this.height = this.themes[0].terrain.height; }
   reset() { for (const theme of this.themes) theme.terrain.reset(); this.assignments.clear(); }
-  growthPlan(seed, chunk) { return this.forSeed(seed).growthPlan(seed, chunk); }
+  growthPlan(seed, chunk, options) { return this.forSeed(seed).growthPlan(seed, chunk, options); }
   describe(seed, chunk) { const terrain = this.forSeed(seed); return { ...terrain.describe(seed, chunk), themeId: terrain.recipe.id }; }
   objectsAt(seed, chunk) { return this.forSeed(seed).objectsAt(seed, chunk); }
   getChunk(seed, chunk, raster = false) { return this.forSeed(seed).getChunk(seed, chunk, raster); }

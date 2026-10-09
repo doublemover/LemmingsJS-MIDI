@@ -101,7 +101,7 @@ class ProcgenLaneWorld {
     terrain?.registerLanes?.(this.laneSeeds, this.seed, this.generation);
     this.terrainGrowth = terrain?.supportsFineGrowth ? new ProcgenTerrainGrowth(this.laneCount, terrain.chunkWidth) : null;
     this.terrainGrowth?.reset(this.generatedThrough, this.frontiers);
-    this._prepareGrowthChunk = (lane, chunk) => this.terrain.growthPlan?.(this.laneSeeds[lane], chunk);
+    this._prepareGrowthChunk = (lane, chunk, options) => this.terrain.growthPlan?.(this.laneSeeds[lane], chunk, options);
     this._revealGrowth = (lane, previous, next, chunk, job) => {
       this.terrainRevision++; this.frontierRevision++;
       if (job?.kind === 'foundation' || job?.kind === 'terrain') this.terrainActivityTicks[lane] = this.tickIndex;
