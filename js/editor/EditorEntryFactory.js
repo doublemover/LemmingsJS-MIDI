@@ -92,6 +92,7 @@ const createTerrainEntry = (params = {}) => {
     NO_OVERWRITE: params.noOverwrite ? true : undefined,
     ERASE: params.erase ? true : undefined,
     ONE_WAY: params.oneWay ? true : undefined,
+    ROTATE: params.rotate,
     WIDTH: params.width,
     HEIGHT: params.height
   }, null, { prefix: 't' });

@@ -14,6 +14,7 @@ const makeMiniMap = (overrides = {}) => ({
   scaleY: 1,
   setLiveDots(arr, activeLength = arr.length) { this.dots = arr.slice(0, activeLength); },
   setSelectedDot() {},
+  addDeath() {},
   ...overrides
 });
 
@@ -23,30 +24,34 @@ class BlockAction extends DummyAction {}
 class DigAction extends DummyAction {}
 class MineAction extends DummyAction {}
 
-useGlobalLemmings({ bench: false, extraLemmings: 0, game: { showDebug: true } });
 
-beforeEach(function() {
-  this._winW = global.winW;
-  this._winH = global.winH;
-  this._worldW = global.worldW;
-  this._worldH = global.worldH;
-  global.winW = 1600;
-  global.winH = 1200;
-  global.worldW = 1600;
-  global.worldH = 1200;
-  this._restoreActions = withActionStubs({
-    ActionBashSystem: BashAction,
-    ActionBlockerSystem: BlockAction,
-    ActionDiggSystem: DigAction,
-    ActionMineSystem: MineAction
+
+const useManagerFixtures = () => {
+  beforeEach(function() {
+    this._dimensions = Object.fromEntries(['winW', 'winH', 'worldW', 'worldH'].map(key => [key, {
+      present: Object.hasOwn(globalThis, key), value: globalThis[key]
+    }]));
+    Object.assign(globalThis, { winW: 1600, winH: 1200, worldW: 1600, worldH: 1200 });
+    this._restoreActions = withActionStubs({
+      ActionBashSystem: BashAction,
+      ActionBlockerSystem: BlockAction,
+      ActionDiggSystem: DigAction,
+      ActionMineSystem: MineAction
+    });
   });
-});
-
-afterEach(function() {
-  this._restoreActions();
-});
+  afterEach(function() {
+    this._restoreActions();
+    for (const [key, saved] of Object.entries(this._dimensions)) {
+      if (saved.present) globalThis[key] = saved.value;
+      else delete globalThis[key];
+    }
+  });
+};
 
 describe('LemmingManager core behavior', function() {
+  useManagerFixtures();
+  useGlobalLemmings({ bench: false, extraLemmings: 0, game: { showDebug: true } });
+
   it('addLemming and addNewLemmings use release counts', function() {
     const { manager, gvc } = makeManager({ width: 100, height: 50, releaseCount: 2 });
 
@@ -123,8 +128,8 @@ describe('LemmingManager core behavior', function() {
     manager.refreshMiniMapDots();
     expect(mm.dots.length).to.equal(2);
 
-    manager.lemmings.length = 0;
-    manager.activeLemmings.length = 0;
+    manager.removeOne(manager.getLemming(0));
+    manager._compactActiveLemmings();
     manager.refreshMiniMapDots();
     expect(mm.dots.length).to.equal(0);
   });
@@ -187,7 +192,9 @@ describe('LemmingManager core behavior', function() {
     manager.tick();
 
     expect(mm.dots.length).to.equal(2);
-    expect(manager.lemmings[0]).to.equal(null);
+    expect(manager.getLemming(0)).to.equal(null);
+    expect(manager.getLemming(1).id).to.equal(1);
+    expect(manager.lemmings).to.have.length(1);
   });
 
   it('getNearestLemming picks closest active lemming', function() {
@@ -205,7 +212,9 @@ describe('LemmingManager core behavior', function() {
     expect(nearest).to.equal(lem1);
 
     manager.addLemming(18, 18);
-    const lem3 = manager.lemmings[2];
+    const lem3 = manager.getLemming(2);
+    expect(manager.getLemming(1)).to.equal(null);
+    expect(manager.lemmings).to.have.length(2);
     nearest = manager.getNearestLemming(19, 19);
     expect(nearest).to.equal(lem3);
   });
@@ -223,7 +232,10 @@ describe('LemmingManager core behavior', function() {
 
     manager.removeOne(first);
     manager.addLemming(12, 14);
-    const reused = manager.lemmings[1];
+    const reused = manager.getLemming(1);
+    expect(manager.getLemming(0)).to.equal(null);
+    expect(manager.lemmings).to.have.length(1);
+    expect(manager.activeLemmings).to.eql([reused]);
 
     expect(reused).to.equal(first);
     expect(reused.id).to.equal(1);
@@ -274,6 +286,9 @@ describe('LemmingManager core behavior', function() {
 });
 
 describe('LemmingManager additional', function() {
+  useManagerFixtures();
+  useGlobalLemmings({ bench: false, extraLemmings: 0, game: { showDebug: true } });
+
 
   it('setLemmingState clears countdown on lethal state', function() {
     const { manager } = makeManager();
@@ -307,6 +322,9 @@ describe('LemmingManager additional', function() {
 });
 
 describe('LemmingManager triggers and nuking', function() {
+  useManagerFixtures();
+  useGlobalLemmings({ bench: false, extraLemmings: 0, game: { showDebug: true } });
+
   it('runTrigger maps triggers and flips blockers', function() {
     const { manager } = makeManager();
     manager.addLemming(5, 5);

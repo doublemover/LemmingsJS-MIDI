@@ -1,3 +1,4 @@
+import { selectProcgenRouteContracts } from './ProcgenRouteContracts.js';
 import { ProcgenAssetManager } from '../procgenAssetManager.js';
 import { ProcgenRecipeTerrain } from './ProcgenRecipeTerrain.js';
 import { fingerprintTerrainImages, getPackTerrainWidthLimit, selectTerrainDescriptor } from './ProcgenTerrainDescriptors.js';
@@ -32,9 +33,14 @@ class ProcgenPackTerrain {
     }
   }
   forSeed(seed) { return this.themes[this.assignments.get(seed) ?? mix(seed) % this.themes.length].terrain; }
-  configure(lanes, maxActors) { for (const theme of this.themes) theme.terrain.configure(lanes, Math.ceil(maxActors / this.themes.length)); }
+  configure(lanes, maxActors = 16384, options = {}) { for (const theme of this.themes) theme.terrain.configure(lanes, Math.ceil(maxActors / this.themes.length), options); this.height = this.themes[0].terrain.height; }
   reset() { for (const theme of this.themes) theme.terrain.reset(); this.assignments.clear(); }
-  growthPlan(seed, chunk) { return this.forSeed(seed).growthPlan(seed, chunk); }
+  retainDescriptors(interests) {
+    const grouped = new Map(this.themes.map(theme => [theme.terrain, new Map()]));
+    for (const [seed, chunks] of interests) grouped.get(this.forSeed(seed)).set(seed, chunks);
+    for (const [terrain, regions] of grouped) terrain.retainDescriptors(regions);
+  }
+  growthPlan(seed, chunk, options) { return this.forSeed(seed).growthPlan(seed, chunk, options); }
   describe(seed, chunk) { const terrain = this.forSeed(seed); return { ...terrain.describe(seed, chunk), themeId: terrain.recipe.id }; }
   objectsAt(seed, chunk) { return this.forSeed(seed).objectsAt(seed, chunk); }
   getChunk(seed, chunk, raster = false) { return this.forSeed(seed).getChunk(seed, chunk, raster); }
@@ -49,7 +55,7 @@ class ProcgenPackTerrain {
   getDebugState() {
     const sources = this.themes.map(theme => ({ styleName: theme.styleName, ...theme.terrain.getDebugState() }));
     const totals = {};
-    for (const key of ['generated', 'rasterized', 'evicted', 'generationMs', 'groundPlacements', 'decorPlacements', 'objectPlacements', 'canonicalGroups', 'canonicalSourcePlacements', 'cachedCollisionChunks', 'cachedRasterChunks', 'collisionLimit', 'rasterLimit', 'terrainVocabularyUsed', 'terrainVocabularyAvailable', 'objectVocabularyUsed', 'objectVocabularyAvailable']) totals[key] = sources.reduce((sum, theme) => sum + (theme[key] || 0), 0);
+    for (const key of ['descriptorCalls', 'descriptorHits', 'descriptorMisses', 'descriptorRebuilds', 'descriptorEvictions', 'growthPlanHits', 'growthPlanMisses', 'pinnedDescriptorPairs', 'descriptionLimit', 'cachedDescriptions', 'cachedGrowthPlans', 'descriptorTypedPayloadBytes', 'descriptorEstimatedMetadataBytes', 'generated', 'rasterized', 'evicted', 'generationMs', 'groundPlacements', 'decorPlacements', 'objectPlacements', 'canonicalGroups', 'canonicalSourcePlacements', 'cachedCollisionChunks', 'cachedRasterChunks', 'collisionLimit', 'rasterLimit', 'terrainVocabularyUsed', 'terrainVocabularyAvailable', 'objectVocabularyUsed', 'objectVocabularyAvailable']) totals[key] = sources.reduce((sum, theme) => sum + (theme[key] || 0), 0);
     return { ...totals, maxGenerationMs: Math.max(...sources.map(theme => theme.maxGenerationMs)), memoryMB: this.memoryMB,
       availableThemes: this.themes.map(theme => theme.styleName), laneThemes: this.laneThemes.slice(), themes: sources };
   }
@@ -64,10 +70,11 @@ const loadProcgenPackTerrain = async ({ styleNames, config, fileProvider, book, 
     if (!recipe) throw new Error(`No source recipe for ${styleName}`);
     const assetSha256 = await fingerprintTerrainImages(assets.assets.terrainImages);
     const sourceDescriptor = selectTerrainDescriptor(book, { packPath: config.path, groundSet: assets.groundSet, assetSha256 });
+    const routeContracts = selectProcgenRouteContracts(book, { packPath: config.path, groundSet: assets.groundSet, assetSha256 });
     const objectSha256 = await fingerprintObjectImages(assets.assets.gadgetImages);
     const assemblyCatalog = selectAuthoredAssemblyCatalog(book, { packPath: config.path, groundSet: assets.groundSet, assetSha256, objectSha256 });
     const objectPieces = (assets.assets?.gadgetImages || []).map((image, id) => ({ ...assets.assets.gadgets[id], id, image }));
-    return { styleName, terrain: new ProcgenRecipeTerrain({ recipe, terrainPieces: assets.terrainPieces, objectPieces, sourceDescriptor, assemblyCatalog, packWidthLimit: getPackTerrainWidthLimit(book, config.path) }) };
+    return { styleName, terrain: new ProcgenRecipeTerrain({ recipe, terrainPieces: assets.terrainPieces, objectPieces, sourceDescriptor, assemblyCatalog, routeContracts, packWidthLimit: getPackTerrainWidthLimit(book, config.path) }) };
   }));
   const themes = results.filter(result => result.status === 'fulfilled').map(result => result.value);
   const terrain = new ProcgenPackTerrain(themes);

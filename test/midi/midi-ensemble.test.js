@@ -13,6 +13,23 @@ const playable = value => projectToMidiConfig({ ...value, enabled: true });
 const event = lemmingId => ({ sfxId: SoundEffectIds.BUILDER_STEP, lemmingId, laneIndex: 0 });
 
 describe('Lemming MIDI ensemble', function() {
+  it('preserves explicitly selected position pan through role selection and shared-channel suppression', () => {
+    withFakeClockAndPerformance(() => {
+      const config = playable(project()); config.position = { ...config.position, viewPan: true, panMode: 'level', lanePanSpread: 72 };
+      const spec = new MidiMapping(config).mapEvent({ ...event(0), x: 50, laneCount: 4 }, { levelWidth: 100 });
+      expect(spec).to.include({ ensembleRole: 'bass', pan: 0, spatialPan: true, explicitPan: true });
+      for (const local of [false, true]) {
+        const calls = [], output = makeOutput([2], calls), scheduler = new MidiScheduler(config);
+        if (local) { output.supportsPerNotePan = true; output.supportsPerNoteInstrument = true; }
+        try {
+          scheduler.setOutput(output); scheduler.sendNote(spec, { laneIndex: 0, laneCount: 4 });
+          expect(calls.some(call => call.type === 'cc' && call.cc === 10)).to.equal(false);
+          const note = calls.find(call => call.type === 'noteOn'); expect(note).to.exist;
+          if (local) expect(note.opts.pan).to.equal(0); else expect(note.opts).not.to.have.property('pan');
+        } finally { scheduler.dispose(); }
+      }
+    });
+  });
   it('coalesces repeated programs and controllers and releases channel voices before a conflicting edit', function() {
     withFakeClockAndPerformance(clock => {
       const calls = [], output = makeOutput([2], calls, 'fake-hardware');

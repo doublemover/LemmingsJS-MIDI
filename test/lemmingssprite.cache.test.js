@@ -5,9 +5,11 @@ import '../js/lemmings/SpriteTypes.js';
 import '../js/render/ColorPalette.js';
 import '../js/render/Animation.js';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('LemmingsSprite caching', function() {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   let OrigAnimation;
   let callCount;
   beforeEach(function() {

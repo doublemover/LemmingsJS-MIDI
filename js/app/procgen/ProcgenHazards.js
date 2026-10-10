@@ -1,3 +1,4 @@
+import { procgenTileRevision } from './ProcgenTerrainRetention.js';
 import { Animation } from '../../render/Animation.js';
 import { MapObject } from '../../level/MapObject.js';
 import { Trigger } from '../../level/Trigger.js';
@@ -5,7 +6,6 @@ import { TriggerTypes as Types } from '../../level/TriggerTypes.js';
 import { assemblyPlacementReady } from './ProcgenAssemblyPlacement.js';
 import { procgenObjectImage } from './ProcgenObjectPresentation.js';
 
-const LANE_HEIGHT = 96;
 const hazardType = object => {
   const image = object.piece.image, type = image.trigger_effect_id;
   if (type === Types.TRAP && object.role === 'trap' || type === Types.DROWN && object.role === 'liquid') return type;
@@ -26,18 +26,18 @@ class ProcgenHazards {
   _key(lane, chunk) { return lane * 0x800000 + chunk; }
   _bounds(object, lane) {
     const image = procgenObjectImage(object);
-    return { x1: object.x + image.trigger_left, y1: lane * LANE_HEIGHT + object.y + image.trigger_top,
-      x2: object.x + image.trigger_left + image.trigger_width, y2: lane * LANE_HEIGHT + object.y + image.trigger_top + image.trigger_height };
+    return { x1: object.x + image.trigger_left, y1: lane * this.world.laneHeight + object.y + image.trigger_top,
+      x2: object.x + image.trigger_left + image.trigger_width, y2: lane * this.world.laneHeight + object.y + image.trigger_top + image.trigger_height };
   }
   placementReady(lane, chunk, object, descriptor) {
     if (!hazardType(object)) return false;
     if (this.world.terrainGrowth?.objectReady && !this.world.terrainGrowth.objectReady(lane, chunk, descriptor.objects.indexOf(object))) return false;
     const world = this.world, terrain = world.terrain, image = procgenObjectImage(object), bounds = this._bounds(object, lane);
     if (object.assembly) return bounds.x1 < bounds.x2 && bounds.y1 < bounds.y2 && assemblyPlacementReady(world, lane, object, descriptor);
-    const origin = chunk * terrain.chunkWidth, top = lane * LANE_HEIGHT;
+    const origin = chunk * terrain.chunkWidth, top = lane * this.world.laneHeight;
     if (![bounds.x1, bounds.y1, bounds.x2, bounds.y2, object.supportY].every(Number.isFinite) ||
         bounds.x1 >= bounds.x2 || bounds.y1 >= bounds.y2 || bounds.x1 < origin || bounds.x2 > origin + terrain.chunkWidth ||
-        bounds.y1 < top || bounds.y2 > top + LANE_HEIGHT || object.y < 0 || object.supportY >= LANE_HEIGHT) return false;
+        bounds.y1 < top || bounds.y2 > top + this.world.laneHeight || object.y < 0 || object.supportY >= this.world.laneHeight) return false;
     const liquid = object.role === 'liquid';
     if (Math.max(object.x + image.width, bounds.x2) + (liquid ? 1 : 0) > world.generatedThrough[lane]) return false;
     if (liquid && (bounds.x1 < object.x || bounds.x2 > object.x + image.width || bounds.y1 < top + object.y || bounds.y2 > top + object.supportY)) return false;
@@ -52,7 +52,7 @@ class ProcgenHazards {
     return true;
   }
   _refresh(record, create) {
-    const world = this.world, key = this._key(record.lane, record.chunk), revision = world.terrainTileRevisions.get(key) || 0;
+    const world = this.world, key = this._key(record.lane, record.chunk), revision = procgenTileRevision(world, key);
     const through = Math.min(world.generatedThrough[record.lane], (record.chunk + 1) * world.terrain.chunkWidth);
     if (record.revision === revision && record.through === through && (!create || record.complete)) return;
     record.revision = revision; record.through = through; record.complete = create;
@@ -63,7 +63,7 @@ class ProcgenHazards {
       if (enabled !== entry.enabled) { entry.enabled = enabled; this.revision++; }
       if (!enabled || entry.owner || !create) continue;
       const object = entry.object, image = procgenObjectImage(object), type = hazardType(object), bounds = this._bounds(object, record.lane);
-      entry.owner = new MapObject({ id: object.piece.id, x: object.x, y: record.lane * LANE_HEIGHT + object.y, drawProperties: 0 }, image, new Animation(), type, world.runtime);
+      entry.owner = new MapObject({ id: object.piece.id, x: object.x, y: record.lane * this.world.laneHeight + object.y, drawProperties: 0 }, image, new Animation(), type, world.runtime);
       entry.trigger = new Trigger(type, bounds.x1, bounds.y1, bounds.x2, bounds.y2, type === Types.TRAP ? image.frameCount : 0, image.trap_sound_effect_id, entry.owner);
       entry.trigger.runtime = world.runtime;
       this.stats.created++; this.ownerCount++; this.revision++;
@@ -83,8 +83,8 @@ class ProcgenHazards {
     record.lastTouch = tick; this._refresh(record, true); return record;
   }
   trigger(x, y, actor, tick = this.world.tickIndex) {
-    const terrain = this.world.terrain, lane = actor?.laneIndex ?? Math.floor(y / LANE_HEIGHT);
-    if (!terrain?.objects?.length || lane < 0 || lane >= this.world.laneCount || y < lane * LANE_HEIGHT || y >= (lane + 1) * LANE_HEIGHT) return Types.NO_TRIGGER;
+    const terrain = this.world.terrain, lane = actor?.laneIndex ?? Math.floor(y / this.world.laneHeight);
+    if (!terrain?.objects?.length || lane < 0 || lane >= this.world.laneCount || y < lane * this.world.laneHeight || y >= (lane + 1) * this.world.laneHeight) return Types.NO_TRIGGER;
     const chunk = Math.floor(x / terrain.chunkWidth), record = this._chunk(lane, chunk, tick);
     if (!record) return Types.NO_TRIGGER;
     for (const entry of record.entries) {
@@ -113,8 +113,8 @@ class ProcgenHazards {
         const entry = record.entries[index], trigger = entry?.trigger;
         if (!entry?.enabled || !trigger || trigger.x2 <= left || trigger.x1 >= right) continue;
         out.push({ lane, chunk, objectIndex: index, type: trigger.type, x1: trigger.x1, y1: trigger.y1, x2: trigger.x2, y2: trigger.y2,
-          objectX: entry.object.x, objectY: lane * LANE_HEIGHT + entry.object.y, width: entry.object.piece.image.width, height: entry.object.piece.image.height,
-          supportY: entry.object.supportY == null ? null : lane * LANE_HEIGHT + entry.object.supportY, enabled: true, cooling: trigger.disabledUntilTick > world.tickIndex, disabledUntilTick: trigger.disabledUntilTick });
+          objectX: entry.object.x, objectY: lane * this.world.laneHeight + entry.object.y, width: entry.object.piece.image.width, height: entry.object.piece.image.height,
+          supportY: entry.object.supportY == null ? null : lane * this.world.laneHeight + entry.object.supportY, enabled: true, cooling: trigger.disabledUntilTick > world.tickIndex, disabledUntilTick: trigger.disabledUntilTick });
       }
     }
     return out;

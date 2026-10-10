@@ -1,3 +1,5 @@
+import { getMidiMusicalPosition } from './MidiMusicalPosition.js';
+import { getMidiClipVoices, expandMidiClipCell, clipConditionMatches, applyMidiClipTransforms, MAX_CLIP_PHRASE_OUTPUTS } from './MidiClipTransforms.js';
 const getPlayableMidiClipSteps = clip => (
   Array.isArray(clip?.steps)
     ? clip.steps.filter(step => Number.isFinite(step?.note) && (step.probability ?? 1) > 0 && !step.tie)
@@ -23,24 +25,7 @@ const describeMidiClipPlayback = clip => {
 export { getPlayableMidiClipSteps, describeMidiClipPlayback };
 
 // Bars follow level simulation time; wall-clock pauses and effective speed do not change position.
-const getMidiTransportBar = (timing, tick, tickMs = 60) => {
-  const beats = Math.max(1, timing?.timeSignature?.beats || 4);
-  const unit = Math.max(1, timing?.timeSignature?.unit || 4);
-  const bpm = Math.max(20, timing?.bpmBase || 120);
-  return Math.floor(Math.max(0, Number(tick) || 0) * tickMs * bpm / 60000 / (beats * 4 / unit)) + 1;
-};
-const clipCounter = (unit, eventCount, passCount, barCount) => unit === 'bar' ? barCount : unit === 'pass' ? passCount : eventCount;
-const clipConditionMatches = (condition, eventCount, passCount, barCount = 1) => {
-  const every = Math.max(1, condition?.every || 1);
-  return clipCounter(condition?.unit, eventCount, passCount, barCount) % every === (condition?.phase || 0);
-};
-const applyMidiClipTransforms = (step, eventCount, passCount, barCount = 1) => {
-  if (!Number.isFinite(step?.note)) return step;
-  const layers = step.transforms || {};
-  const offset = (Math.max(1, clipCounter(layers.unit, eventCount, passCount, barCount)) - 1) % Math.max(1, layers.span || 1);
-  return { ...step, note: Math.max(0, Math.min(127, step.note + (layers.transpose || 0) + 12 * (layers.octave || 0) + offset * (layers.interval || 0))) };
-};
-
+const getMidiTransportBar = (timing, tick, tickMs = 60, origin = 0) => getMidiMusicalPosition(timing, tick, tickMs, origin).bar;
 const clipStepEnabled = (sequence, step, eventCount, passCount, barCount = 1) => {
   if (!step || (step.probability ?? 1) <= 0) return false;
   if (!clipConditionMatches(step.condition, eventCount, passCount, barCount)) return false;
@@ -52,22 +37,53 @@ const clipStepEnabled = (sequence, step, eventCount, passCount, barCount = 1) =>
   return (hash >>> 0) / 4294967296 < (step.probability ?? 1);
 };
 
-const clipCellEnabled = (sequence, step, eventCount, passCount, barCount = 1) => Number.isFinite(step?.note) && !step.tie && clipStepEnabled(sequence, step, eventCount, passCount, barCount);
+const clipCellEnabled = (sequence, step, eventCount, passCount, barCount = 1) => getMidiClipVoices(step).some(voice => Number.isFinite(voice.note)) && !step.tie && clipStepEnabled(sequence, step, eventCount, passCount, barCount);
 
+const buildMidiClipCell = (sequence, step, eventCount, passCount, mapStep, barCount = 1) => {
+  if (!clipCellEnabled(sequence, step, eventCount, passCount, barCount)) return { note: null };
+  const expanded = expandMidiClipCell(step, eventCount, passCount, barCount);
+  const voices = expanded.notes.map(voice => ({ ...mapStep(voice), offsetTicks: voice.offsetTicks, clipVoiceIndex: voice.voiceIndex }))
+    .filter(voice => Number.isFinite(voice.note));
+  const primary = voices[0];
+  return primary ? { ...primary, ...(step.voices || step.transformLayers ? { voices, expansionTruncated: expanded.truncated } : {}) } : { note: null };
+};
 const buildMidiClipPhrase = (sequence, eventCount, passCount, mapStep, barCount = 1) => {
   const steps = sequence.steps.slice(0, 16), spacing = sequence.spacingTicks;
-  const cells = steps.map((step, index) => clipCellEnabled(sequence, step, eventCount, passCount, barCount)
-    ? { ...mapStep(applyMidiClipTransforms(step, eventCount, passCount, barCount)), stepIndex: index, stepCount: steps.length } : { note: null, stepIndex: index, stepCount: steps.length });
+  const cells = steps.map((step, index) => ({ ...buildMidiClipCell(sequence, step, eventCount, passCount, mapStep, barCount),
+    stepIndex: index, stepCount: steps.length }));
   let previous = null;
   cells.forEach((cell, index) => {
-    if (Number.isFinite(cell.note)) previous = cell;
-    else if (steps[index].tie && previous && !steps[previous.stepIndex].hold && clipStepEnabled(sequence, steps[index], eventCount, passCount, barCount)) previous.durationTicks += spacing;
-    if (Number.isFinite(cell.note) && steps[index].hold) {
+    const voices = cell.voices || (Number.isFinite(cell.note) ? [cell] : []);
+    if (voices.length) previous = cell;
+    else if (steps[index].tie && previous && !steps[previous.stepIndex].hold && clipStepEnabled(sequence, steps[index], eventCount, passCount, barCount)) {
+      for (const voice of previous.voices || [previous]) voice.durationTicks += spacing;
+      if (previous.voices) previous.durationTicks = previous.voices[0].durationTicks;
+    }
+    if (voices.length && steps[index].hold) {
       const next = cells.findIndex((candidate, at) => at > index && Number.isFinite(candidate.note));
-      cell.durationTicks = Math.max(cell.durationTicks, (next < 0 ? cells.length - index : next - index) * spacing);
+      for (const voice of voices) voice.durationTicks = Math.max(voice.durationTicks,
+        Math.max(1, (next < 0 ? cells.length - index : next - index) * spacing - (voice.offsetTicks || 0)));
+      if (cell.voices) cell.durationTicks = cell.voices[0].durationTicks;
     }
   });
   return cells;
 };
-
-export { clipCellEnabled, buildMidiClipPhrase, clipConditionMatches, applyMidiClipTransforms, getMidiTransportBar };
+const flattenMidiClipPhrase = (cells, spacingTicks = 2) => {
+  const entries = []; let truncated = 0, completionTicks = 0;
+  for (const [index, cell] of cells.slice(0, 16).entries()) {
+    const offset = index * spacingTicks; completionTicks = Math.max(completionTicks, offset);
+    truncated += cell.expansionTruncated || 0;
+    const voices = cell.voices || (Number.isFinite(cell.note) ? [cell] : []);
+    for (const voice of voices) {
+      const offsetTicks = offset + (voice.offsetTicks || 0);
+      if (entries.length >= MAX_CLIP_PHRASE_OUTPUTS) { truncated++; continue; }
+      entries.push({ ...voice, stepIndex: cell.stepIndex ?? index, stepCount: cell.stepCount ?? cells.length, offsetTicks });
+      completionTicks = Math.max(completionTicks, offsetTicks);
+    }
+  }
+  entries.sort((a, b) => a.offsetTicks - b.offsetTicks || a.stepIndex - b.stepIndex);
+  // A silent terminal marker retains pass completion through trailing rests and bounded thinning.
+  entries.push({ note: null, offsetTicks: completionTicks });
+  return { entries, truncated, completionTicks };
+};
+export { clipCellEnabled, buildMidiClipCell, buildMidiClipPhrase, flattenMidiClipPhrase, clipConditionMatches, applyMidiClipTransforms, getMidiTransportBar };

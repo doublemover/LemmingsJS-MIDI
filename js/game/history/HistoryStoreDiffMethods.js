@@ -1,5 +1,6 @@
 // @ts-check
 import { SkillTypes } from '../SkillTypes.js';
+import { hasLiveLookup, resetLiveLemmingState, cloneLiveLemmingState, diffLiveLemmings } from './HistoryLiveLemmingState.js';
 import { Trigger } from '../../level/Trigger.js';
 import {
   COLD_BLOCK_MAGIC,
@@ -66,7 +67,7 @@ const historyStoreDiffMethods = {
   _captureKeyframe(game, tickIndex) {
     const lemmingManager = game.getLemmingManager?.();
     const lemmings = lemmingManager?.lemmings || [];
-    const lemmingState = cloneLemmingState(this._lemmingState, lemmings.length || 0);
+    const lemmingState = hasLiveLookup(lemmingManager) ? cloneLiveLemmingState(this._lemmingState) : cloneLemmingState(this._lemmingState, lemmings.length || 0);
     const lemmingManagerState = this._readLemmingManager(lemmingManager);
     const entrances = game.level?.entrances || [];
     const entranceOpened = new Uint8Array(entrances.length);
@@ -121,6 +122,7 @@ const historyStoreDiffMethods = {
   },
 
   _captureLemmingState(manager) {
+    if (hasLiveLookup(manager)) { resetLiveLemmingState(this, manager); return; }
     if (!manager) return;
     const lems = manager.lemmings || [];
     this._lemmingState = ensureLemmingCapacity(this._lemmingState, lems.length);
@@ -137,6 +139,7 @@ const historyStoreDiffMethods = {
   },
 
   _diffLemmings(manager, delta) {
+    if (hasLiveLookup(manager)) { diffLiveLemmings(this, manager, delta); return; }
     if (!manager) return;
     const lems = manager.lemmings || [];
     this._lemmingState = ensureLemmingCapacity(this._lemmingState, lems.length);
@@ -263,12 +266,13 @@ const historyStoreDiffMethods = {
     if (Array.isArray(sourceTargets)) {
       targets = new Array(sourceTargets.length);
       for (let i = 0; i < sourceTargets.length; i += 1) {
-        targets[i] = sourceTargets[i]?.id ?? null;
+        targets[i] = manager._nukeTargetIds?.[i] ?? sourceTargets[i]?.id ?? null;
       }
     }
     return {
       selectedIndex: manager.selectedIndex,
       spawnTotal: manager.spawnTotal,
+      nextLemmingId: manager._nextLemmingId,
       releaseTickIndex: manager.releaseTickIndex,
       mmTickCounter: manager.mmTickCounter,
       nextNukingLemmingsIndex: manager.nextNukingLemmingsIndex,
@@ -280,6 +284,7 @@ const historyStoreDiffMethods = {
     if (!a || !b) return false;
     if (a.selectedIndex !== b.selectedIndex) return false;
     if (a.spawnTotal !== b.spawnTotal) return false;
+    if (a.nextLemmingId !== b.nextLemmingId) return false;
     if (a.releaseTickIndex !== b.releaseTickIndex) return false;
     if (a.mmTickCounter !== b.mmTickCounter) return false;
     if (a.nextNukingLemmingsIndex !== b.nextNukingLemmingsIndex) return false;
@@ -292,13 +297,13 @@ const historyStoreDiffMethods = {
     return true;
   },
 
-  _diffLemmingField(delta, id, field, prevValue, nextValue, store) {
+  _diffLemmingField(delta, id, field, prevValue, nextValue, store, slot = id) {
     if (prevValue === nextValue) return;
     delta.lemChanges.ids.push(id);
     delta.lemChanges.fields.push(field);
     delta.lemChanges.prev.push(prevValue);
     delta.lemChanges.next.push(nextValue);
-    store[id] = nextValue;
+    store[slot] = nextValue;
   },
 
   _writeLemmingState(state, index, lem, actionType, countdownActive) {

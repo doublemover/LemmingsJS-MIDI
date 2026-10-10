@@ -142,7 +142,11 @@ const lemmingManagerInteractionMethods = {
   },
 
   getLemming(id) {
-    return this.lemmings[id] ?? null;
+    const mapped = this._lemmingById?.get(id);
+    if (mapped?.id === id && !mapped.removed) return mapped;
+    // Compatibility for small external fixtures that replace the public collection explicitly.
+    const candidate = this.lemmings?.[id];
+    return candidate?.id === id && !candidate.removed ? candidate : null;
   },
 
   getSelectedLemming() {
@@ -284,10 +288,10 @@ const lemmingManagerInteractionMethods = {
     for (let i = 0; i < lems.length; i += 1) {
       const lem = lems[i];
       if (!lem || lem.removed || lem.disabled) continue;
-      scratch[count] = lem;
+      scratch[count] = lem; this._nukeTargetIds[count] = lem.id;
       count += 1;
     }
-    scratch.length = count;
+    scratch.length = count; this._nukeTargetIds.length = count;
     this._nukeTargets = scratch;
     this.nextNukingLemmingsIndex = count ? 0 : -1;
   },
@@ -311,7 +315,7 @@ const lemmingManagerInteractionMethods = {
       }
       const lem = lems[idx];
       let applied = false;
-      if (lem && !lem.removed && !lem.disabled) {
+      if (lem && (!this._nukeTargetIds?.length || lem.id === this._nukeTargetIds[idx]) && !lem.removed && !lem.disabled) {
         applied = this.doLemmingAction(lem, SkillTypes.BOMBER);
       }
       if (idx + 1 >= count) {
@@ -331,10 +335,9 @@ const lemmingManagerInteractionMethods = {
               lem.action !== this.actions[LemmingStateType.EXITING]) {
       this.miniMap.addDeath(lem.x, lem.y);
     }
-    const lemId = lem.id;
+    this._forgetLemming(lem);
     lem.remove();
     this._releaseLemming(lem);
-    if (lemId !== null && lemId !== undefined) this.lemmings[lemId] = null;
     this._activeDirty = true;
     this._nearestGridDirty = true;
     this.gameVictoryCondition.removeOne();

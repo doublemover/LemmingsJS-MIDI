@@ -1,7 +1,9 @@
+import { projectMidiAutomationSpan } from './midiAutomationSpanProjection.js';
+import { midiConditionChoices } from './midiEventLabels.js';
 const SPAN_COLORS = { note: '#77b9e9', velocity: '#dfb75d', pan: '#a4cf82', duration: '#c698dd', timbre: '#e68f89', attack: '#85cec9', decay: '#85cec9', sustain: '#85cec9', release: '#85cec9' };
 const spanEditorUi = new WeakMap();
 const createMidiSpan = (domain = 'beats') => ({ domain, start: 0, duration: domain === 'distance' ? 128 : 4, loop: true, shape: 'ramp', laneScope: 'global', laneStart: 0, laneEnd: 0, priority: 0, condition: { sfxId: null, triggerType: null, unit: 'event', every: 1, phase: 0 } });
-const createMidiAutomationSpanEditor = ({ document, lane, tracks = [], laneCount = 1024, onUpdate, getState = () => null, open = false, canAddSpan = true }) => {
+const createMidiAutomationSpanEditor = ({ document, lane, tracks = [], laneCount = 1024, onUpdate, getState = () => null, open = false, canAddSpan = true, canReturnToSpatial = true }) => {
   const host = document.createElement('details'); host.className = 'midi-span-editor'; host.dataset.automationSpanId = lane.id; host.open = open;
   const summary = document.createElement('summary'); summary.textContent = lane.span ? 'Musical span' : 'Add a musical span'; host.append(summary);
   if (!lane.span) {
@@ -44,8 +46,8 @@ const createMidiAutomationSpanEditor = ({ document, lane, tracks = [], laneCount
   field('Every N', 'every', span.condition.every, null, value => condition({ every: value }), { min: 1, max: 1024, step: 1 });
   field('Counter', 'unit', span.condition.unit, [['event', 'Matching events'], ['bar', 'Musical bars'], ['pass', 'Span loop passes']], value => condition({ unit: value }));
   field('Phase (0 = N)', 'phase', span.condition.phase, null, value => condition({ phase: value }), { min: 0, step: 1 });
-  const sfx = field('Sound event ID (blank = any)', 'sfxId', span.condition.sfxId ?? '', null, value => condition({ sfxId: value }), { min: 0, step: 1 }); sfx.placeholder = 'Any';
-  const trigger = field('Trigger type (blank = any)', 'triggerType', span.condition.triggerType ?? '', null, value => condition({ triggerType: value }), { min: 0, step: 1 }); trigger.placeholder = 'Any';
+  field('Sound event', 'sfxId', span.condition.sfxId ?? '', midiConditionChoices('sfx', span.condition.sfxId), value => condition({ sfxId: value === '' ? null : Number(value) }));
+  field('Physical trigger', 'triggerType', span.condition.triggerType ?? '', midiConditionChoices('trigger', span.condition.triggerType), value => condition({ triggerType: value === '' ? null : Number(value) }));
   host.append(fields, advanced);
   const timeline = document.createElement('div'); timeline.className = 'midi-span-timeline'; timeline.setAttribute('aria-label', lane.name + ' editable ' + units + ' rectangle');
   const horizon = Math.max(span.domain === 'distance' ? 512 : 16, span.start + span.duration * 2);
@@ -71,9 +73,17 @@ const createMidiAutomationSpanEditor = ({ document, lane, tracks = [], laneCount
   timeline.addEventListener('pointercancel', () => { drag = null; paint(span.start, span.duration); });
   host.append(timeline);
   const status = document.createElement('p'); status.className = 'midi-span-status';
-  host.syncStatus = () => { const state = getState(); phase.style.left = Math.max(0, Math.min(1, state?.phase || 0)) * 100 + '%'; phase.style.display = lane.enabled === false ? 'none' : ''; status.textContent = lane.enabled === false ? 'Bypassed' : state ? (state.active ? 'Active' : 'Waiting or gated') + ' · ' + Math.round(state.phase * 100) + '% · event ' + state.eventCount + ' · bar ' + state.bar + ' · span pass ' + state.spanPass + (span.domain === 'distance' ? Number.isFinite(state.distance) ? ' · ' + Math.round(state.distance) + ' px · ' + (state.distanceSource === 'completed-actor' ? 'completed actor' : 'event origin') : ' · distance unavailable' : Number.isFinite(state.beat) ? ' · beat ' + state.beat.toFixed(2) : '') : 'Waiting for matching game events'; }; host.syncStatus(); host.append(status);
-  const help = document.createElement('p'); help.className = 'midi-span-help'; help.textContent = 'Drag the rectangle to move it; drag ↔ to resize; draw on the empty strip to replace its interval. Up to 64 enabled spans run. Higher priority wins each target; equal priority uses the later row. Beats share game ticks and freeze on pause. Distance samples the actor, not a clock.'; host.append(help);
-  const spatial = document.createElement('button'); spatial.type = 'button'; spatial.textContent = 'Return to spatial curve'; spatial.addEventListener('click', () => onUpdate({ span: null })); host.append(spatial);
+  host.syncStatus = () => {
+    const state = getState(), projection = projectMidiAutomationSpan(lane, state);
+    phase.style.left = Math.max(0, Math.min(1, projection.phase)) * 100 + '%';
+    phase.style.display = projection.resolved && lane.enabled !== false ? '' : 'none';
+    phase.style.opacity = projection.winning ? '1' : '0.3';
+    status.textContent = projection.text + (state ? ' | matching event ' + state.eventCount + (projection.resolved ? ' | resolved bar ' + projection.bar + ' | span pass ' + projection.spanPass : '') : '');
+  }; host.syncStatus(); host.append(status);
+  const help = document.createElement('p'); help.className = 'midi-span-help'; help.textContent = 'Drag the rectangle to move it; drag ↔ to resize; draw on the empty strip to replace its interval. Up to 64 enabled spans run. Higher priority wins each target; equal priority uses the later row. Beats share game ticks and freeze on pause. Distance samples the actor, not a clock. The playhead holds the last resolved note evaluation, before output admission.'; host.append(help);
+  if (canReturnToSpatial) {
+    const spatial = document.createElement('button'); spatial.type = 'button'; spatial.textContent = 'Return to spatial curve'; spatial.addEventListener('click', () => onUpdate({ span: null })); host.append(spatial);
+  }
   return host;
 };
 export { createMidiSpan, createMidiAutomationSpanEditor, SPAN_COLORS };

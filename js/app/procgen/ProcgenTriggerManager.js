@@ -38,7 +38,7 @@ class ProcgenTriggerManager {
   trigger(x, y, actor, tick) {
     const hazard = this.hazards.trigger(x, y, actor, tick);
     if (hazard !== Types.NO_TRIGGER) return hazard;
-    for (let lane = Math.max(0, Math.floor(y / 96) - 1); lane <= Math.min(this.byLane.length - 1, Math.floor(y / 96) + 1); lane++) {
+    for (let lane = Math.max(0, Math.floor(y / this.world.laneHeight) - 1); lane <= Math.min(this.byLane.length - 1, Math.floor(y / this.world.laneHeight) + 1); lane++) {
       const bucket = this.byLane[lane];
       if (bucket) for (const trigger of bucket) {
         const owner = trigger.owner;

@@ -56,22 +56,41 @@ const midiSchedulerChannelMethods = {
   },
 
   setOutput(output) {
-    if ((output || null) !== this.output) this.gamePhrases.clear();
-    this.output = output || null;
-    if (this.output) this._registerOutput(this.output);
-    this._initMpe(this.output);
+    if (this._disposed) return;
+    const next = output || null, previous = this.output;
+    if (next === previous) return;
+    this._cleanupDepth++;
+    try {
+      this.gamePhrases.clear();
+      if (previous) {
+        this._retireOutput(previous);
+        const id = normalizeOutputId(previous.id);
+        if (this._outputsById.get(id) === previous) this._outputsById.delete(id);
+      }
+      this.output = next;
+      if (next) this._registerOutput(next);
+      this._initMpe(next);
+    } finally { this._cleanupDepth--; }
   },
 
   setOutputs(outputs) {
-    const nextOutputs = toOutputList(outputs);
-    const previousOutputs = [...this._outputsById.values()];
-    if (previousOutputs.some(output => !nextOutputs.includes(output))) this.gamePhrases.clear();
-    this._outputsById.clear();
-    for (const output of nextOutputs) {
-      this._registerOutput(output);
-    }
-    if (this.output) this._registerOutput(this.output);
-    this._initMpe();
+    if (this._disposed) return;
+    const nextOutputs = toOutputList(outputs), previousOutputs = [...this._outputsById.values()];
+    this._cleanupDepth++;
+    try {
+      for (const output of previousOutputs) if (!nextOutputs.includes(output)) {
+        this.gamePhrases.clear(); this._retireOutput(output);
+      }
+      this._outputsById.clear();
+      for (const output of nextOutputs) this._registerOutput(output);
+      if (this.output) this._registerOutput(this.output);
+      for (const output of nextOutputs) if (!previousOutputs.includes(output)) this._initMpe(output);
+    } finally { this._cleanupDepth--; }
+  },
+
+  _retireOutput(output) {
+    for (const [token, voice] of this._activeNotes) if (voice.output === output) this._stopActiveNoteToken(token, 'output-retired');
+    this._expressionByOutput.delete(output);
   },
 
   hasAnyOutput() {
@@ -310,49 +329,43 @@ const midiSchedulerChannelMethods = {
     this._stopActiveNoteToken(oldestToken);
   },
 
-  _stopActiveNoteToken(oldestToken, reason = 'ownership-release') {
-    if (oldestToken == null) return;
-    if (typeof this._activeNotes?.get !== 'function') return;
+  _stopActiveNoteToken(oldestToken, reason = 'ownership-release', releaseOptions = null) {
+    if (oldestToken == null || typeof this._activeNotes?.get !== 'function') return;
     const info = this._activeNotes.get(oldestToken);
     if (!info) return;
-    const pending = this._pendingNoteOns.get(oldestToken);
-    if (pending?.timerId != null) clearTimeout(pending.timerId);
-    this._pendingNoteOns.delete(oldestToken);
-    if (info.hasStarted === false) this._observe('cancelled', { ...info.captureMeta, type: 'noteOn', reason: 'pending-note-cancelled' });
-    const output = info.output || this._resolveOutput(info.outputId);
-    const channel = output?.channels?.[info.channel];
-    let sentMessages = 0;
-    try {
-      if (channel && info.hasStarted !== false) {
-        this._sendOutput(output, info.channel, 'sendNoteOff', [info.note, ...(output.supportsIndependentNoteGates ? [{ voiceToken: info.token, reason }] : [])], { ...info.captureMeta, scheduledMs: this._nowMs(), reason });
-        sentMessages += 1;
-        if (info.mpe) {
-          this._sendOutput(output, info.channel, 'sendPitchBend', [0], info.captureMeta);
-          this._expressionState(output, info.channel).bend = 0;
-          sentMessages += 1;
-        }
-      }
-    } catch (error) { this.lastOutputError = error?.message || String(error); }
-    if (typeof this._activeNotes.delete === 'function') {
-      this._activeNotes.delete(oldestToken);
-    }
+    // Detach ownership before invoking an output: callbacks may stop or replace it.
+    this._activeNotes.delete(oldestToken);
     if (info.mpe) {
       const key = this._activeChannelKey(info.channel, info.outputId);
       if (this._activeByChannel.get(key)?.token === oldestToken) this._activeByChannel.delete(key);
     }
     this._removeScheduledNoteOff(oldestToken);
+    const pending = this._pendingNoteOns.get(oldestToken);
+    if (pending?.timerId != null) clearTimeout(pending.timerId);
+    this._pendingNoteOns.delete(oldestToken);
+    if (info.hasStarted === false) this._observe('cancelled', { ...info.captureMeta, type: 'noteOn', reason: 'pending-note-cancelled' });
+    const output = info.output || this._resolveOutput(info.outputId), channel = output?.channels?.[info.channel];
+    let sentMessages = 0;
+    this._cleanupDepth++;
+    try {
+      if (channel && info.hasStarted !== false) {
+        const options = releaseOptions || output.supportsIndependentNoteGates
+          ? [{ ...releaseOptions, ...(output.supportsIndependentNoteGates ? { voiceToken: info.token, reason } : {}) }] : [];
+        this._sendOutput(output, info.channel, 'sendNoteOff', [info.note, ...options], { ...info.captureMeta, scheduledMs: releaseOptions?.time ?? this._nowMs(), reason });
+        sentMessages += 1;
+        if (info.mpe) {
+          this._sendOutput(output, info.channel, 'sendPitchBend', [0, ...(releaseOptions ? [{ time: releaseOptions.time }] : [])], info.captureMeta);
+          this._expressionState(output, info.channel).bend = 0;
+          sentMessages += 1;
+        }
+      }
+    } catch (error) { this.lastOutputError = error?.message || String(error); }
+    finally { this._cleanupDepth--; }
     this._removePlannedRateEntries(oldestToken, 'off');
     if (info.hasStarted === false) this._removePlannedRateEntries(oldestToken, 'on');
-    if (sentMessages > 0) {
-      this._recordSent({
-        timeMs: this._nowMs(),
-        count: sentMessages,
-        bytes: sentMessages * MIDI_MESSAGE_BYTES,
-        token: oldestToken,
-        phase: 'off',
-        laneIndex: info.laneIndex ?? 0, laneCount: info.laneCount ?? 1, sfxId: info.sfxId, priority: info.priority
-      });
-    }
+    // Normal timed releases already own a reserved rate entry.
+    if (sentMessages > 0 && !releaseOptions) this._recordSent({ timeMs: this._nowMs(), count: sentMessages, bytes: sentMessages * MIDI_MESSAGE_BYTES,
+      token: oldestToken, phase: 'off', laneIndex: info.laneIndex ?? 0, laneCount: info.laneCount ?? 1, sfxId: info.sfxId, priority: info.priority });
   },
 
   _allocateChannel(outputId = null) {

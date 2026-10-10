@@ -3,9 +3,11 @@ import { useGlobalLemmings } from '../helpers/lemmings.js';
 import { SolidLayer } from '../../js/render/SolidLayer.js';
 import '../../js/util/LogHandler.js';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('SolidLayer', function() {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('computes column gaps and counts mask regions', function() {
     const layer = new SolidLayer(4, 4);
     layer.setMaskAt(1, 2);

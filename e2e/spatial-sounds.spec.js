@@ -13,7 +13,7 @@ test('pan mode persists, live local audio is 48 kHz and studio restores focus', 
       constructor(options) { super(options); window.__audioContexts.push(this); }
     };
   });
-  await page.goto('/?e2e=1');
+  await page.goto('/?e2e=1&midi=1');
   await waitForHarnessReady(page);
   if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
   await page.locator('#midiGlobalPanMode').selectOption('level');
@@ -26,7 +26,6 @@ test('pan mode persists, live local audio is 48 kHz and studio restores focus', 
   await page.locator('#midiLocalListenButton').click();
   await expect(page.locator('#midiOutputSummary')).toContainText('Listening to game locally');
   expect(await page.evaluate(() => window.__audioContexts.map(context => context.sampleRate))).toEqual([48000]);
-  await page.screenshot({ path: '../evidence/lemmings-studio-desktop.png', fullPage: true });
   await page.locator('#midiWorkspaceClose').click();
   await expect(page.locator('#midiWorkspaceToggle')).toBeFocused();
 });
@@ -54,23 +53,25 @@ test('Learn and Record cancellation leave mappings and clips unchanged', async (
   expect(await page.evaluate(() => window.__E2E__.midiGetProject().clips)).toEqual(clips);
 });
 
-test('mobile MIDI stays hidden except for a single exact opt-in', async ({ browser }) => {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true,
+test('mobile MIDI stays hidden except for a single exact opt-in', { tag: '@boundary' }, async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, viewport: { width: 390, height: 844 }, isMobile: true,
     hasTouch: true, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile' });
-  const page = await context.newPage();
-  await installExternalAssetStubs(page);
-  for (const query of ['', '&midi=0', '&midi=1&midi=1', '&midi=true']) {
-    await page.goto(`http://127.0.0.1:8080/?e2e=1${query}`);
+  try {
+    const page = await context.newPage();
+    await installExternalAssetStubs(page);
+    for (const query of ['', '&midi=0', '&midi=1&midi=1', '&midi=true']) {
+      await page.goto(`/?e2e=1${query}`);
+      await waitForHarnessReady(page);
+      await expect(page.locator('#midiWorkspaceToggle')).toBeHidden();
+    }
+    await page.goto('/?e2e=1&midi=1');
     await waitForHarnessReady(page);
-    await expect(page.locator('#midiWorkspaceToggle')).toBeHidden();
+    await expect(page.locator('#midiWorkspaceToggle')).toBeVisible();
+    if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
+    await expect(page.locator('#midiSoundsView')).toBeVisible();
+    const dimensions = await page.evaluate(() => ({ width: window.innerWidth, scroll: document.documentElement.scrollWidth }));
+    expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.width + 1);
+  } finally {
+    await context.close();
   }
-  await page.goto('http://127.0.0.1:8080/?e2e=1&midi=1');
-  await waitForHarnessReady(page);
-  await expect(page.locator('#midiWorkspaceToggle')).toBeVisible();
-  if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
-  await expect(page.locator('#midiSoundsView')).toBeVisible();
-  const dimensions = await page.evaluate(() => ({ width: window.innerWidth, scroll: document.documentElement.scrollWidth }));
-  expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.width + 1);
-  await page.screenshot({ path: '../evidence/lemmings-studio-mobile.png', fullPage: true });
-  await context.close();
 });

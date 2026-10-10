@@ -9,24 +9,23 @@ a bottom editor; short landscape screens switch to an editing view, and Close
 returns to the full game. Game controls stay above the play surface and level
 arrows stay in the right rail.
 
-## Mobile opt-in
+## MIDI opt-in
 
-On phones and tablets the entire MIDI Studio, launcher, MIDI device initialization,
-and local note preview are unavailable by default. Saved MIDI projects are left
-untouched and cannot activate MIDI on these visits. Ordinary game audio is unchanged.
+On the normal game page, MIDI Studio, its launcher, MIDI device initialization
+and local note preview require an explicit URL opt-in on every browser. Saved
+projects stay untouched and cannot activate these routes without it. Ordinary
+game audio keeps its separate setting.
 
-To make MIDI Studio available on mobile, open
-[the mobile opt-in link](https://doublemover.github.io/LemmingsJS-MIDI/?midi=1).
+To expose MIDI Studio, open
+[the MIDI opt-in link](https://doublemover.github.io/LemmingsJS-MIDI/?midi=1).
 Use `&midi=1` when the URL already has query parameters. Exactly one `midi=1` is
 required: absent, empty, false, malformed, or duplicate values do not opt in.
 The flag exposes the normal controls; it does not grant device permission or
 unlock browser audio. Use the listening or device controls to do that.
 
-The gate uses mobile browser/device identity (including desktop-mode iPads),
-not the CSS width breakpoint. Rotating a phone does not expose MIDI, and making
-a desktop window narrow does not remove it. Change the URL and reload to opt in.
-Desktop behavior is unchanged. Mobile device detection is necessarily browser-reported;
-a browser that fully disguises itself as a desktop cannot be distinguished.
+The gate checks the URL rather than device identity or viewport width. Resizing
+or rotating a window does not opt in. Change the URL and reload. Procgen has
+its own local listening controls; these also require a user action to unlock audio.
 
 ## Make one sound
 
@@ -76,11 +75,19 @@ Audio unlock happens only in response to Listen. Unsupported audio, denied or
 interrupted resume, rapid repeated clicks, cancellation while resume is pending,
 level changes and disposal are handled without leaving sounding notes behind.
 Stop listening cancels both live and one-shot local audio. Closing the editor
-keeps live listening running; reopen it to stop.
+keeps live listening running; reopen it to stop. Live procgen lane-count, seed
+and game replacements release the old router's notes and reconnect the already
+unlocked local graph. They do not require another Listen action. Explicit Stop
+or Panic cancels that resume intent; browser audio interruption reports an error
+instead of silently unlocking again.
 
-The local instrument is a triangle-tone preview with pitch, note length,
-velocity, pan and pitch bend. It is not a recreation of an external synthesizer's
-programs or timbre. Voices and queued notes are bounded, with a maximum note
+The local preview supports pitch, note length, velocity, per-voice pan and pitch
+bend. Unspecified legacy previews retain a triangle tone. Ensemble roles use
+bounded bass, guitar, lead and percussion profiles built from oscillators or
+shared noise, with profile-specific envelopes. These approximate local tones
+do not reproduce an external synthesizer's programs. A named `soundFont` URL
+request is retained separately from palettes and output selection; sample-bank
+loading is unavailable. Voices and queued notes are bounded, with a maximum note
 lifetime as a safety cutoff. Existing game-clock phrase replacement, pause,
 rewind and panic contracts remain in effect for live listening.
 
@@ -147,8 +154,8 @@ Expert **Send MIDI test** controls are explicitly hardware tests, distinct from
 local **Listen here**. MIDI device selectors show a disabled connection prompt
 until access is available instead of rendering empty dropdowns.
 
-The game speed slider and +/- shortcuts use tenths below 1x, integers from 1x
-through 10x, and tens above 10x through 120x. The slider follows the effective
+The authored main-game speed slider and +/- shortcuts use tenths below 1x,
+integers from 1x through 10x, and tens above 10x through 120x. The slider follows the effective
 game timer speed, including benchmark slowdown. Its arrows remain range controls;
 Help and game shortcuts continue working while it is focused. The adjacent number
 field retains ordinary text editing and permits an exact multiplier. Clicking the
@@ -164,7 +171,7 @@ retain their note-offs. Pending phrases are bounded to 16 voices with at most
 saved project velocity limits and track scales remain unchanged. Opening an
 existing project does not reapply a palette or change its notes or levels.
 
-Event cards show stored direct pitches and hide only skill events known to be
+Event cards show stored direct pitches and all temporal cell voices; accessible labels retain cell order and rests. Moving markers show actual dispatched pitches after transforms and routing. Cards hide only skill events known to be
 impossible from the level inventory. Consuming the last skill does not remove
 rows for actions already underway. Cheats restore these rows immediately, and
 hiding a card never changes its saved mapping. Nuke warning/explosion and unrelated
@@ -214,9 +221,63 @@ events remain visible. Unknown inventory leaves skill rows available.
   project default for sources not present in the factory template.
 - Learn: arm a selected direct source, capture the next MIDI note-on as a
   pending note/velocity/channel assignment, then commit or cancel it.
-- Record: capture a short mocked or live MIDI phrase into consecutive steps of
-  the selected step clip, then commit or cancel the transient recording.
+- Record: capture MIDI note input into the selected step clip, explicitly choose
+  Mono/Poly, Compact/Keep gaps and Replace/Overdub, then Commit or Cancel. These
+  controls do not create a second transport or activate an output.
 - Output Status: shows recent audition/output activity and scheduler pressure.
+
+## Modifier inventory and counters
+
+The existing owners compose these changes on event notes or bounded clip cells.
+They do not run independent note or controller streams.
+
+| Owner | Editable behavior | Timing and limits |
+| --- | --- | --- |
+| Source mapping | Direct pitch or scale degree/octave; chords and inversion; event arpeggio direction and custom up/down/hold pattern; velocity, duration, pan, timbre and pitch bend | One real event supplies the origin. Legacy chord/arp clips keep their saved semantics until temporal playback is selected. |
+| Temporal cell | Rest, deterministic chance, condition, Hold/Tie, pitch, velocity and duration; independent voices | At most 16 cells and 8 voices per cell. Phrase mode retains rests and extends owned voices; event mode treats Tie as a rest. |
+| Cell pitch transform | Transpose, octave and cyclic interval ramp | The selected event/bar/pass counter chooses the ramp position. |
+| Ordered cell layers | Pitch transforms and repeat layers, with individual bypass and conditions; Earlier/Later reorders them | At most 4 layers. Repeats include the original; count 1-8, spacing 1-8 game ticks and per-repeat transpose. Expansion caps are 16 outputs per cell and 256 per phrase. |
+| Spatial modulation | Axis curves and operators for pitch, velocity, duration, pan, timbre and envelope values | Applies to the original event position; these curves remain separate from optional musical spans. |
+| Musical spans | Beat/distance intervals, lane/global/group plus optional track scope, constant/ramp, repeat, source filters and target priority | At most 64 spans. Each dispatched phrase cell samples current base-clock beat or completed actor distance. |
+| Intensity and envelope modifiers | Global/event intensity, density velocity boost and duration scaling; attack/decay velocity factors, sustain duration factor and release velocity factor | Values stay within the existing ordinary MIDI ranges. These are mapping factors, not programmable local synth ADSR times. |
+| Musical tension | Observed population collapse/recovery thins eligible ensemble layers toward a real survivor | Completed simulation observations only; no new notes or changed instrument assignments. |
+
+Counters have distinct meanings:
+
+| Counter | What advances or determines it |
+| --- | --- |
+| Clip event | Each origin that advances a temporal cell or starts its phrase. Rest/chance/condition suppression still consumes that origin. |
+| Clip pass | One event-cell traversal, or the explicitly selected started/completed phrase count. A completed phrase means its final cell was consumed, including rests; note releases can continue. |
+| Clip trigger bar | One-based simulation time at base BPM/meter, sampled when the origin advances/starts the clip. Queued repeats keep that origin's bar for cell/layer conditions. |
+| Span matching event | Origins that match that span's lane, track, sound and physical-trigger filters. Queued cells retain their origin count. |
+| Span musical bar | One-based bar from the current generation-relative base tick position; main levels use tick zero. It is sampled again at queued dispatch. |
+| Span loop pass | The interval traversal index at the current beat/world X. It is separate from both clip passes and accepted note calls. |
+| Rolling crowd pass | A newly started finite lane/role reply. Repeated collisions coalesce without advancing or replacing that reply. |
+
+Conditions select counter modulo N = phase. Phase 0 selects N, 2N and so on; phase 1
+selects 1, N+1 and so on. Cell/layer cadence is bounded to 64; span cadence to 1,024.
+Pitch layers run in their saved order before project scale/range mapping. Active
+spans then choose one winner per target, followed by eligible tension admission
+and the existing scheduler's priority/lane/rate checks. No counter establishes
+that speakers or external hardware received a note.
+
+These controls take conceptual inspiration from teenage engineering's
+[OP-Z step components](https://teenage.engineering/guides/op-z/step-components),
+which combine multiple behaviors on one step; its
+[track controls](https://teenage.engineering/guides/op-z/track), which distinguish
+note length, playback style and trigger-driven advancement; and
+[general operation](https://teenage.engineering/guides/op-z/general-operation),
+which separates parameter locks, recording and note cleanup. This implementation
+uses its own bounded game-event model. It does not claim OP-Z file compatibility,
+all hardware components, external clock synchronization or MIDI 2.0.
+
+For a varied construction clip, keep rests in an eight-cell phrase, add two or
+three independent pitches to selected cells, and use one Repeat layer with count 2,
+spacing 3 ticks and an every-second-completed-pass condition. A separate Pitch layer
+can use a four-event interval cycle. The existing chance, parameter locks and
+Tool dialogue spans can then shape different actual action events without turning
+every collision into the same pulse. The output caps and project scale/range
+still apply; dispatched markers show the result rather than changing entered notes.
 
 ## Conflict Checks
 
@@ -228,7 +289,7 @@ notes that clamp outside the project range.
 
 ## Persistence
 
-Editable MIDI state is stored only in `lemmings.midi.project.v1`.
+Main-editor project state is stored in `lemmings.midi.project.v1`.
 `midi-mapping.json` is the factory template source for fresh projects and reset.
 Legacy localStorage keys from the old UI are deleted on load and are not
 migrated into the project.
@@ -303,21 +364,111 @@ factory projects.
   clip duplication, audition, persistence, filters, conflict warnings, E2E
   helper metrics, and responsive overflow checks.
 
-Audible row notes follow successfully dispatched local triangle voices, showing actual pitches moving left to right through their attack, held level and release fade. Cancelled future notes create no marker; Panic removes active markers. The local triangle has an 8 ms attack, no separate decay and a 40 ms release. Project envelope controls still scale MIDI velocity/duration; they do not imply synth ADSR timing. Focus/Split/Overlay move the same editor with compositor transforms, retaining focus and playback without resizing the canvas every animation frame.
+Row notes follow successfully dispatched local voices, showing actual pitches moving left to right through their attack, held level and release fade. Cancelled future notes create no marker; Panic removes active markers. The legacy local triangle has an 8 ms attack, no separate decay and a 40 ms release; ensemble profiles retain their own envelopes. Project envelope controls still scale MIDI velocity/duration; they do not imply synth ADSR timing. Focus/Split/Overlay move the same editor with compositor transforms, retaining focus and playback without resizing the canvas every animation frame.
 
 Event note cells extend reusable clips. Create a clip explicitly from an event, then enter C4/F#4, MIDI numbers or rest, or paint and drag the 8/16-cell grid. One drag is one Undo. Per-cell velocity/duration are parameter locks; chance is deterministic for the same event/pass order. Event advance consumes one cell on each trigger, including rests, and loops after the last cell. A pass is a complete traversal. Game-tick phrase advance starts the cells on each trigger and retains silent-cell spacing. Saved clips default to started-phrase passes. New event clips use completed-phrase passes; the selector makes this explicit. Completion means the final cell was consumed, including silent cells, while sounding notes may still release. Retriggering an unfinished phrase discards its tail without completing a pass. Pause freezes unsounded cells; speed changes affect subsequent spacing. Retriggers replace the unsounded tail and Panic/rewind clear it. Overlapping pitches use the scheduler's existing owned-gate rules.
 
-Existing clips retain their saved chord/event-arp behavior until a temporal mode is explicitly selected. Event mode leaves Hold stored and treats Tie as a rest; phrase mode holds until the next played cell or the bounded phrase end, and ties extend the preceding note. New temporal playback is bounded to 16 cells; longer legacy clips remain stored and editable in detailed wiring. Reduce the length explicitly before selecting temporal playback. Events, pattern passes and trigger bars are distinct. Bar position is one-based level simulation time at the project BPM/time signature (60 ms per base game tick), sampled once when an event advances a cell or starts a phrase. Pause freezes it; speed/benchmark slowdown changes its wall-time rate. Editing BPM/signature recomputes position, and level rewind/restart resets clip counters. Conditions select counter modulo N = phase; phase 0 means N, 2N, and phase 1 means 1, N+1. Chance and conditions also gate Tie extensions. A pitch layer adds transpose, octave and a cyclic interval ramp selected by event/pass/trigger-bar counter before the existing project scale/range mapping. Entered grid notes stay editable; moving playback notes show the dispatched result. Local tests have independent event/pass counters and sample the same level bar; an interrupted local test does not complete a pass. No independent transport or MIDI 2.0 implementation was introduced.
+Existing clips retain their saved chord/event-arp behavior until a temporal mode is explicitly selected. Event mode leaves Hold stored and treats Tie as a rest; phrase mode holds until the next played cell or the bounded phrase end, and ties extend the preceding note. New temporal playback is bounded to 16 cells; longer legacy clips remain stored and editable in detailed wiring. Reduce the length explicitly before selecting temporal playback. Events, pattern passes and trigger bars are distinct. Bar position is one-based level simulation time at the project BPM/time signature (60 ms per base game tick), sampled once when an event advances a cell or starts a phrase. Pause freezes it; speed/benchmark slowdown changes its wall-time rate. Editing BPM/signature recomputes position, and level rewind/restart resets clip counters. Conditions select counter modulo N = phase; phase 0 means N, 2N, and phase 1 means 1, N+1. Chance and conditions also gate Tie extensions. The saved base pitch transform adds transpose, octave and a cyclic interval ramp selected by event/pass/trigger-bar counter. Up to four ordered pitch/repeat layers then run before the existing project scale/range mapping. Each layer has its own event/pass/trigger-bar condition and bypass; Earlier/Later changes the order. Repeat count includes the original, spacing uses game ticks, and each repeat may transpose. Event mode advances one cell per trigger while its deferred repeats use the existing game-tick phrase queue; a retrigger replaces that cell's unsounded repeats. There is no extra clock. Entered grid notes stay editable; moving playback notes show the dispatched result. Local tests have independent event/pass counters and sample the same level bar; an interrupted local test does not complete a pass. No independent transport or MIDI 2.0 implementation was introduced.
 
 Skill-specific Blocker/Builder/Basher/Miner/Digger cards use the same event buttons in a footer beneath their real canvas selector slots. Stage scale and GUI offsets determine placement; narrow canvases use five readable groups. The game still owns selection/assignment inside the original 800×480 canvas. Canvas fitting reserves the footer and shares the HUD's bottom margin on resize, without per-frame layout changes. Unavailable rows remain mapped, and cheats restore them synchronously. Shared nuke/explosion, generic assignment/selection and non-skill events remain in the event browser, also reachable on narrow layouts. Arrow navigation starts from the focused card and crosses both regions.
 
 The game HUD reserves one glyph before OUT and keeps Increase/Decrease labels complete at long tick counts. Minimap hover uses the existing click/drag destination calculation, draws a lighter marching-ants outline without moving the camera, reuses unchanged frames, and clears on leaving the GUI/canvas. Hover changes request the existing GUI redraw so preview cleanup also works while paused.
 
-Record placement is explicit. Compact notes preserves legacy note-off ordering and approximate 120 ms duration conversion. Keep gaps supports the bounded 8/16-cell grid, snapshots the effective game tick duration and clip spacing at Record, and rounds note-on offsets from the first onset to the nearest cell. It replaces the entire grid with notes/rests and clears prior cell modifiers; no leading silence is stored. The latest onset wins each monophonic cell (last received note-on breaks simultaneous ties), even when note-offs arrive in a different order. Duration uses the snapshot, so overlapping lengths remain; held notes close on Commit in the same timestamp domain. Playback uses game-tick phrase mode at the current game speed. Commit reports replaced same-cell notes and omitted notes beyond the clip. Cancel leaves the project unchanged. Full polyphonic/chord capture and overdubbing remain future work.
+The compact selected-cell inspector includes Hold and Tie checkboxes. Compact and Expert help follows the selected playback mode; switching modes preserves the saved flags. Editing automation, voice or layer fields retains the matching field focus and supported text caret.
+
+Each temporal cell can hold up to eight independent voices with their own pitch, velocity and duration. The existing grid shows every entered pitch, and the cell inspector adds, edits or removes each voice. Blank dynamics inherit the cell/project defaults. Scalar detailed controls edit the first voice; Rest erases the entire cell. Phrase Hold/Tie extends all voices, including deferred repeats, within the bounded phrase. Actual dispatched row markers retain separate voice gates and pitches. Optional voices/layers survive project import/export; existing scalar clips retain their saved playback behavior.
+
+The grid lights the matching source and clip cell when a note is admitted to output. Its badge shows the resulting pitches after transforms and scale/range mapping, including independent voices and repeats. Another source sharing that clip does not borrow these indicators. Rests, skipped cells and refused notes stay quiet. Replacing the project or pressing Panic clears the indicators.
+
+Record placement, Voices and Write are explicit. Mono + Replace remains the default. Compact notes retains saved note-off ordering and approximate 120 ms duration conversion. Keep gaps snapshots the effective game tick duration and clip spacing at Record, rounds note-on offsets from the first onset to the nearest 8/16-cell position, and omits leading silence. Mono keeps the latest onset in each cell; Poly retains independent pitches and gates up to the eight-voice limit and selects Keep gaps. Note-off order does not change onset placement. Held notes close on Commit in the same timestamp domain. Keep-gaps playback follows game ticks at the current speed.
+
+Keep-gaps Replace rebuilds the entire grid, including rests, and clears old cell modifiers. Overdub changes captured cells only, preserving untouched notes, chance, conditions, Hold/Tie and transforms; a captured pitch already in a cell replaces that pitch's velocity/duration, otherwise it appends within the voice limit. Compact Overdub uses consecutive note-off placements. Capture admits at most 1,024 notes including open gates; it stops admitting more until Commit or Cancel. Commit reports collisions, out-of-grid notes and omitted voices with an actionable status. Cancel leaves the project unchanged.
+
+Expansion retains at most 16 outputs per cell and 256 per phrase; local one-shot tests retain 64 notes. Truncation appears in audition status or existing output pressure. The shared scheduler still applies its owned-gate, priority, lane, rate and Panic policies; the local simultaneous gate budget remains 32. Expanded repeats use the existing game clock and queue, so pause, rewind, retrigger and Panic keep their established cleanup behavior.
 
 The existing scheduler owns one shared physical output budget. Lane reservations include expanded notes and controller/off-message cost, so simulation speed does not create a fresh allowance. Busy lanes receive fair shares; idle shares can be borrowed, and oversized atomic phrases rotate through the least-served lanes. Late note starts are discarded rather than forming a delayed burst. Note-off, sustain release and Panic retain their safety paths. A compact Thinned indicator appears while the budget is dropping sound output; simulation and visual events continue.
 
 Fresh main-game projects and new procgen sessions offer Iron ensemble in D dorian: stable bass, rhythm, melody and percussion roles use ordinary channels 2/3/4/10. Existing stored projects are retained, and switching MIDI on never reapplies a palette. Palette explicitly applies or resets the ensemble. The existing track inspector edits program, channel and voice budget plus role register, pan and duration, with optional per-lemming/lane assignments. Explicit event-track choices override automatic roles. The local preview uses bounded bass/guitar/lead/drum profiles under the existing master ceiling; earlier unspecified previews retain triangle timbre. External MIDI uses the selected device's ordinary programs and channels.
+
+## Procgen musical presets and rolling replies
+
+Procgen retains all original game palettes and adds three starting choices:
+
+| Preset | Fresh musical defaults |
+| --- | --- |
+| Crowd relay - Dorian bass | Compact bass-register event hooks, two-tick quiet landings and a two-bar crowd reply evolving by 2 semitones before scale mapping. |
+| Airy arrivals - Lydian | Spacious modal actions, five-tick quiet landings and a four-bar crowd reply evolving by 4 semitones. |
+| Clockwork crowd - harmonic minor | Angular construction, three-tick quiet landings and a three-bar crowd reply evolving by -2 semitones. |
+
+Fresh spawn velocity is 24 with priority 0. Safe landings use four higher arriving
+pitches in descending game-tick order, velocity 32 and family-specific duration.
+Role register folding and selected scales still apply. Crowd turn/contact defaults
+use velocity 18 and priority 0. Explicit existing event velocity, priority, pan,
+timbre, pitch bend and envelope edits survive palette application. Initial refresh, re-enable and phrase-mode
+edits preserve rolling settings. A deliberate procgen palette selection also
+applies that palette's rolling bars/evolution; the helper exposes this solely as
+`replaceRollingDefaults: true` (default false). Saved edits can therefore differ
+from the fresh-default table. Global velocity minima and track/envelope scales
+still affect the final values; a deliberate high minimum is not silently lowered.
+
+Turn/contact collisions start one finite eight-note reply per lane/role, aligned
+to the next simulation musical beat and spread over its configured 2-8 bars.
+While that reply is pending, further collisions coalesce instead of emitting or
+restarting collision notes. A later real collision starts the next evolving reply.
+Evolution cycles three offsets instead of accumulating transposition indefinitely.
+There is no endless accompaniment when collisions stop. At most 1,024 rolling
+entries plus 16 ordinary phrase entries are retained, and no more than 16 rolling
+dispatch attempts run per completed tick. Expired cells are dropped rather than
+replayed in a burst. The existing shared real-time budget can thin further.
+
+Pause freezes pending cells. Speed changes affect subsequent wall-time spacing;
+the actual sent budget history remains shared. Rewind, Panic and a new generation
+clear pending replies and their pass state. Generation cleanup releases only old
+phrase-owned gates; unrelated direct notes retain their normal ownership. Lane
+transfers update current metadata without replaying notes or moving historical
+budget charges.
+
+Local lane pan adds a modest default spread to the selected role's pan at each
+new note. A single lane remains centered relative to its role. Explicit source,
+Viewport/Whole-level, spatial-curve and active span pan take precedence. Existing
+voices keep their pan. This uses the local adapter's per-note option and adds no
+external channel-wide stereo CC. Shared-channel external spatial pan stays
+suppressed by the existing safety rule.
+
+The procgen birth schedule receives fractional beat spacing from base BPM and the
+60 ms simulation tick, independent of effective speed. Its seeded lane offsets fit
+within the chosen spawn spread and are rounded after quarter-beat subdivision.
+Spread 0 remains simultaneous; equal integer offsets are valid when many lanes
+share a short spread. Spawn event metadata carries actual birth ticks and nominal phases.
+
+## Span combinations
+
+Start with a named combination in the main Modulation controls or procgen Details,
+then Apply. Each choice adds three ordinary editable spans with one saved project
+change. Existing spatial curves and spans are retained. The entire addition is
+refused when three slots are unavailable; output is never activated by Apply.
+Choose simulation beats or world distance before applying. Distance bundles use
+512-pixel intervals; beat defaults are shown below.
+
+| Combination | Three simultaneous targets |
+| --- | --- |
+| Relay - intensity, length and stereo | Eight-beat velocity 40-80 ramp, constant three-tick duration, pan -48 to 48 on every second musical bar. |
+| Open air - pitch, length and release | Sixteen-beat scale-safe pitch offset 0-12, duration 3-10 and release-velocity factor 0.7-1.4. |
+| Tool dialogue - bash, mine and construction | Eight-beat basher velocity 44-88, miner duration 2-5 and builder pan -42 to 42, with real sound-event filters. |
+
+For a quiet airy arrangement, pair Airy arrivals with Open air. Clockwork crowd
+with Tool dialogue separates construction, bashing and mining responses without
+raising spawn velocity. Relay intensity applies globally until you select a Sound
+event, Physical trigger, lane/group or track filter; restrict it to an action if
+you want to retain the quiet spawn default. These are editable starting points,
+not measured acoustic-quality claims. Target, range, timing and repeat appear first;
+source/cadence/priority refinements remain in the existing advanced editor.
+
+Applying another combination appends its rows. Highest priority wins per target;
+later rows win ties, so remove, bypass or raise priority deliberately when
+combining overlapping targets. Sound event and Physical trigger selectors show
+readable meanings such as Safe landing, Basher clears terrain and Exit trigger;
+unrecognized saved IDs remain visible without changing their stored value.
 
 ## Musical tension
 
@@ -328,10 +479,52 @@ Procgen and authored main levels supply completed-tick population and frontier o
 
 ## Musical automation spans
 
-Conditions / modulation can turn an existing automation entry into a musical span. The same editor appears in procgen Details, where Add span or Draw on lanes creates an interval for one lane, a lane group or all lanes. Start, length, repeat, constant/ramp shape, track, priority and optional SFX/trigger filters are explicit. Start value and End value use the existing velocity, pitch-offset, pan, duration and timbre targets. The interval strip supports move/resize/draw with one project change on pointer release; canceled drags leave the saved project intact. Procgen span edits persist through regeneration and reload without enabling listening.
+Conditions / modulation can turn an existing automation entry into a musical span. The same editor appears in procgen Details, where Add span or Draw on lanes creates an interval for one lane, a lane group or all lanes. Start, length, repeat, constant/ramp shape, track, priority and optional SFX/trigger filters are explicit. Start value and End value use the existing velocity, pitch-offset, pan, duration and timbre targets. The interval strip supports move/resize/draw with one project change on pointer release; canceled drags leave the saved project intact. Hiding drawing or replacing the procgen runtime cancels the draft and releases its canvas pointer capture. Procgen span edits persist through regeneration and reload without enabling listening.
 
 Beat spans use generation-relative base game ticks and the project BPM, with a 16-beat screen timeline in procgen. Distance spans use event world X; queued phrase cells in both main and procgen games use the actor's latest completed-tick position when available, otherwise the status labels the event-origin fallback. Main-game position lookups are constant time and reuse up to 4,096 live-actor records; removed, dying, exiting or uncached actors retain the labeled fallback. Population observations still count the complete active crew. These domains remain distinct. Pause freezes their simulation position. Matching events, one-based project bars and repeated span passes are separate condition counters. Phase 0 means every Nth count. Phrase tails retain their origin event count, while each dispatched cell samples the current beat/distance. Editing values, intervals or cadence keeps matching-event history; changing the matched source resets that span's history. Restart/rewind clears it.
 
 At each actual note dispatch, the highest-priority active span wins per target; later entries win equal priorities. Outside the interval or on bypass, normal mapping resumes. Scale/register clamps, owned notes, channel safeguards and the existing shared output budget still apply. Pan/timbre changes use the existing coalesced controller path on actual notes. No timer, independent transport, autonomous controller stream or MIDI 2.0 implementation is added. Panic cancels pending phrase cells and span-owned voices without advancing counters.
 
-The editor status observes the last evaluated event/cell and never advances playback when polled. Procgen beat rectangles show the shared musical cursor; this cursor alone is not evidence of a dispatched note. Distance playheads reflect evaluated actor/event positions. Up to 64 active spans and 2,048 inspection states are retained; drawing uses bounded rectangles in the existing renderer. Dense loops show one dashed repeated area labeled with the interval length; the editor strip retains exact interval sizing. Draw on lanes explicitly claims the main scene's pointer input, leaving CCTV controls available. Turning it off, hiding rectangles or pressing Escape restores camera input.
+The editor status holds the last resolved value and phase from a matching event or phrase cell; it does not slide that result forward as the transport moves. Last resolved identifies the winning span value, Gated means its condition did not match, and Superseded shows the overlapping winner and its value. Bypassed, outside-interval and waiting states remain explicit. Procgen shows a dim transport preview and a brighter held marker for the resolved winner in the displayed lane. Distance status distinguishes completed actor positions from the event-origin fallback. These labels describe modulation evaluation, not output admission or device receipt. The separate matching-event, musical-bar and span-loop-pass counters continue to use the existing game clock. Panic clears resolved feedback. Up to 64 active spans and 2,048 inspection states are retained; drawing uses bounded rectangles in the existing renderer. Dense loops show one dashed repeated area labeled with the interval length; the editor strip retains exact interval sizing. Draw on lanes explicitly claims the main scene's pointer input, leaving CCTV controls available. Turning it off, hiding rectangles or pressing Escape restores camera input.
+
+Game listening and standalone audition share one bounded browser mix and master gain. Each owns its controls, gates and cancellation; stopping an audition leaves game listening active, while Panic stops both. The preview role picker and explicit actor context reuse the existing ensemble/instrument mapping. A standalone preview labels unavailable live tension, spatial span and rolling-context evaluation.
+
+Main Studio and procgen span checkboxes select several rows; modifier-clicking a name adds it to selection. Previously opened editors on the same page stay open. Rename each span in its own Name field. The selected toolbar changes a common target, values, same-domain interval or bypass state in one project transaction, so one Undo restores the entire common edit. Input identity and text caret survive rendering. Main Studio keeps spatial curves in their existing rows; both views use the same span controls and saved project model. Applying a bundle selects and opens all three new spans, without enabling output. Projects with more than 64 saved spans retain every entry; Previous/Next spans pages render at most 64 rows while the selection remains capped at 64. Existing bypassed entries stay bypassed.
+
+## Scene replies
+
+The Music recipe selector beside Palette (or procgen Action music) chooses Event
+music or Scene replies. Event music is the default for new and saved projects.
+The choice belongs to the project, exports and existing Undo; selecting it does
+not start local audio or request a MIDI device. Its fixed status slot shows the
+committed scene, next bar and pending breakthrough or answer.
+
+Scene replies reuse the current ensemble, source mapping, clips and game phrase
+queue. Completed work summaries move the ensemble between exploration,
+construction and relief after one quarter of stable activity, at the next
+musical bar. Future attack gains move over a quarter; sounding gates keep their
+original releases and instruments. Ordinary event rhythms remain the source of
+notes. There is no independent accompaniment clock.
+
+A verified procgen crew passage with an unchanged completed route can request a
+short resolution at the next quarter. It uses up to four authored mapped clip
+voices or pitches, retaining clip overlaps, rests, dynamics and transforms.
+Event clips advance one cell per cue; phrase clips retain their started/completed
+pass counters and full trailing-rest completion. A missed answer boundary is
+skipped instead of replaying late. An
+automatic ensemble selects an available pitched lead and, only after actual
+lead admission, an available different role can answer one bar later. Replies
+are rare: one foreground globally, one pending project per lane, sixty-four
+pending lanes and four bars between admitted leads. Old, changed or manually
+shut down routes expire without a cue. Other level events retain their existing
+mappings; this recipe does not invent progress or success evidence.
+
+Track mute/solo, scale, register, source bypass, spans, population tension and
+existing output budgets still decide actual admission. A declined lead earns no
+answer. This layer does not switch held instruments or send channel-wide kills
+for an individual phrase. Panic, output retirement, regeneration and tick jumps
+clear owned pending work; a paused simulation freezes musical position, and
+identical device/project refreshes preserve it. Base ticks, BPM, signature and
+generation origin now supply one shared position for clip bars, rolling phrases,
+spans, scene cues and capture. Fractional meters and tempos use absolute
+boundaries rather than accumulating rounded bar lengths.

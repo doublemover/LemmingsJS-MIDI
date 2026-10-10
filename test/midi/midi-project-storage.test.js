@@ -8,7 +8,9 @@ import {
   readStoredMidiProjectTemplates,
   resetMidiProjectStorage,
   saveMidiProject,
-  saveMidiProjectTemplate
+  saveMidiProjectTemplate,
+  saveMidiProjectWithOutcome,
+  saveMidiProjectTemplateWithOutcome
 } from '../../js/midi/project/MidiProjectStorage.js';
 
 const createStorage = () => {
@@ -33,6 +35,27 @@ const createStorage = () => {
 };
 
 describe('MidiProjectStorage', function() {
+  it('reports durable write failures separately from usable sanitized session state', () => {
+    const storage = { setItem() { throw new Error('quota'); }, getItem() { return null; } };
+    const saved = saveMidiProjectWithOutcome(storage, { name: 'Session', tracks: [{ id: 'a', channel: 99 }] });
+    expect(saved).to.include({ persisted: false, reason: 'write-failed' });
+    expect(saved.project.tracks[0].channel).to.equal(16);
+    expect(saveMidiProjectWithOutcome(null, {}).reason).to.equal('unavailable');
+    const template = saveMidiProjectTemplateWithOutcome(storage, saved.project);
+    expect(template.persisted).to.equal(false); expect(template.template.project.name).to.equal('Session Template');
+  });
+
+  it('updates the adopted template and makes explicit Save as copies without same-clock collisions', () => {
+    const storage = createStorage();
+    const first = saveMidiProjectTemplateWithOutcome(storage, { name: 'Lead' }, { now: 10 });
+    const project = { ...first.template.project, name: 'Live', sources: [{ id: 'sfx-1', kind: 'sfx', sourceKey: '1', mapping: { note: 72 } }] };
+    const update = saveMidiProjectTemplateWithOutcome(storage, project, { now: 11 });
+    expect(update.persisted).to.equal(true); expect(update.template).to.include({ id: first.template.id, name: first.template.name, createdAt: 10 });
+    expect(readStoredMidiProjectTemplates(storage)).to.have.length(1);
+    const copy = saveMidiProjectTemplateWithOutcome(storage, project, { asNew: true, now: 10 });
+    expect(copy.template.id).to.equal('user-template-10-1');
+    expect(readStoredMidiProjectTemplates(storage)).to.have.length(2);
+  });
   it('exports the canonical project key and legacy cleanup list', function() {
     expect(PROJECT_STORAGE_KEY).to.equal('lemmings.midi.project.v1');
     expect(TEMPLATE_STORAGE_KEY).to.equal('lemmings.midi.templates.v1');

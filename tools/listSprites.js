@@ -2,12 +2,10 @@ import * as Lemmings from '../js/exports.js';
 import '../js/LemmingsBootstrap.js';
 import { NodeFileProvider } from './NodeFileProvider.js';
 import fs from 'fs';
-import path from 'path';
-import { pathToFileURL } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 
-function loadDefaultPack() {
+export function loadDefaultPack(cfgPath = fileURLToPath(new URL('../config.json', import.meta.url))) {
   try {
-    const cfgPath = path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'config.json');
     const txt = fs.readFileSync(cfgPath, 'utf8');
     const cfg = JSON.parse(txt);
     return cfg[0]?.path || 'lemmings';

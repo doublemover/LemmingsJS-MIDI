@@ -16,8 +16,12 @@ const waitFor = async (predicate, timeoutMs = 2000) => {
   throw new Error('Timed out while waiting for condition.');
 };
 
-const connectSocket = async (url) => {
+const connectSocket = async (url, cleanup) => {
   const ws = new WebSocket(url);
+  cleanup.push(() => {
+    if (ws.readyState === WebSocket.CLOSED) return;
+    return new Promise(resolve => { ws.once('error', () => {}); ws.once('close', resolve); ws.terminate(); });
+  });
   await new Promise((resolve, reject) => {
     const onOpen = () => {
       ws.off('error', onError);
@@ -36,19 +40,25 @@ const connectSocket = async (url) => {
 describe('mcp spectator tools', function () {
   let tempDir = '';
   let spectatorHtmlPath = '';
+  let cleanup = [];
 
   beforeEach(async function () {
+    cleanup = [];
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'lemmings-mcp-spectator-'));
     spectatorHtmlPath = path.join(tempDir, 'spectator.html');
     await fs.writeFile(spectatorHtmlPath, '<!doctype html><html><body>spectator</body></html>', 'utf8');
   });
 
   afterEach(async function () {
+    const results = await Promise.allSettled(cleanup.reverse().map(close => Promise.resolve().then(close)));
+    const failed = results.find(result => result.status === 'rejected');
+    cleanup = [];
     if (tempDir) {
       await fs.rm(tempDir, { recursive: true, force: true });
     }
     tempDir = '';
     spectatorHtmlPath = '';
+    if (failed) throw failed.reason;
   });
 
   it('streams frames and handles human keyboard/mouse input when enabled', async function () {
@@ -94,13 +104,14 @@ describe('mcp spectator tools', function () {
       spectator: null
     };
 
+    cleanup.push(() => stopSpectatorServer(session));
     const baseUrl = await startSpectatorServer(session, {
       port: 0,
       allowHumanInput: true,
       frameIntervalMs: 50
     });
 
-    const ws = await connectSocket(baseUrl.replace('http://', 'ws://'));
+    const ws = await connectSocket(baseUrl.replace('http://', 'ws://'), cleanup);
     await waitFor(() => captureCalls > 0);
     expect(captureCalls).to.be.greaterThan(0);
 
@@ -151,15 +162,17 @@ describe('mcp spectator tools', function () {
       spectator: null
     };
 
+    cleanup.push(() => stopSpectatorServer(session));
     const baseUrl = await startSpectatorServer(session, {
       port: 0,
       allowHumanInput: false,
       frameIntervalMs: 50
     });
-    const ws = await connectSocket(baseUrl.replace('http://', 'ws://'));
+    const ws = await connectSocket(baseUrl.replace('http://', 'ws://'), cleanup);
     ws.send(JSON.stringify({ type: 'key', action: 'press', key: 'A' }));
     ws.send(JSON.stringify({ type: 'click', x: 0.5, y: 0.5 }));
-    await delay(100);
+    // Pong confirms receipt of the preceding input frames on this connection.
+    await new Promise((resolve, reject) => { ws.once('pong', resolve); ws.once('error', reject); ws.ping(); });
 
     expect(keyCalls).to.deep.equal([]);
     expect(mouseClicks).to.deep.equal([]);
@@ -193,6 +206,7 @@ describe('mcp spectator tools', function () {
       spectator: null
     };
 
+    cleanup.push(() => stopSpectatorServer(session));
     const firstUrl = await startSpectatorServer(session, {
       port: -123.8,
       allowHumanInput: false,
@@ -243,12 +257,13 @@ describe('mcp spectator tools', function () {
       spectator: null
     };
 
+    cleanup.push(() => stopSpectatorServer(session));
     const baseUrl = await startSpectatorServer(session, {
       port: 0,
       allowHumanInput: true,
       frameIntervalMs: 50
     });
-    const ws = await connectSocket(baseUrl.replace('http://', 'ws://'));
+    const ws = await connectSocket(baseUrl.replace('http://', 'ws://'), cleanup);
     ws.send(JSON.stringify({ type: 'click', x: 1, y: 1 }));
     await waitFor(() => mouseClicks.length === 1);
 

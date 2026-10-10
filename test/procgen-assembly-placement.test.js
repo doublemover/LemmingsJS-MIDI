@@ -22,6 +22,20 @@ describe('bounded authored attachment placement', () => {
     expect(flag.assembly).to.equal(pole.assembly); expect(flag.supportY).to.equal(null);
     expect(result.assemblies[0].foundationSupports.every(p => p.y === 72)).to.equal(true);
   });
+  it('rejects complete entrance, exit, liquid and one-way groups without orphaning their terrain or companions', () => {
+    for (const type of [Types.EXIT_LEVEL, Types.DROWN, Types.ONEWAY_LEFT, Types.ONEWAY_RIGHT]) {
+      const { args, flag } = fixture(); flag.image.trigger_effect_id = type;
+      const result = placeAuthoredAssemblies(args);
+      expect(result).to.deep.equal({ terrainPlacements: [], objects: [], assemblies: [] });
+    }
+    const { args, group } = fixture(); group.objects[0].id = 1;
+    expect(placeAuthoredAssemblies(args)).to.deep.equal({ terrainPlacements: [], objects: [], assemblies: [] });
+  });
+  it('leaves excluded entrance/exit slots empty instead of substituting unrelated complete assemblies', () => {
+    const { args, group } = fixture(), exit = { ...group, objects: group.objects.map(member => ({ ...member, image: { ...member.image, trigger_effect_id: Types.EXIT_LEVEL } })) },
+      entrance = { ...group, objects: group.objects.map(member => ({ ...member, id: 1 })) };
+    expect(placeAuthoredAssemblies({ ...args, compiled: [exit, entrance, group] })).to.deep.equal({ terrainPlacements: [], objects: [], assemblies: [] });
+  });
   it('rejects an ambiguous anchor, gap support, partial group overlap, and unanchored sky placement', () => {
     const { args, group } = fixture(); group.supportAnchors[0].confidence = 0.55;
     expect(placeAuthoredAssemblies(args).objects).to.have.length(0); group.supportAnchors[0].confidence = 0.9;
@@ -54,7 +68,7 @@ describe('bounded authored attachment placement', () => {
   });
   it('gates the complete group on reveal and actual edited contacts without composing collision chunks', () => {
     const { args } = fixture(), result = placeAuthoredAssemblies(args), object = result.objects[0], edits = new Map(); let probes = 0;
-    const world = { laneCount: 1, laneSeeds: [1], generation: 1, leftEdgeX: 8, generatedThrough: [1024], terrainTileRevisions: new Map(), editChunks: edits,
+    const world = { laneCount: 1, laneHeight: 96, laneSeeds: [1], generation: 1, leftEdgeX: 8, generatedThrough: [1024], terrainTileRevisions: new Map(), editChunks: edits,
       _editKey: (x, y) => Math.floor(y / 96) * 0x2000000 + Math.floor(x / 32), terrain: { chunkWidth: 128, solidSample: (_seed, _chunk, x, y) => {
         probes++; if (y >= 72) return true;
         return result.terrainPlacements.some(p => x >= p.x && x < p.x + p.piece.width && y >= p.y && y < p.y + p.piece.height);

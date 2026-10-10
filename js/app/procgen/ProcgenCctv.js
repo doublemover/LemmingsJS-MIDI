@@ -1,5 +1,4 @@
 import { ProcgenCctvDirector } from './ProcgenCctvDirector.js';
-import { LANE_HEIGHT } from './ProcgenLaneWorld.js';
 
 const CCTV_INTERVAL_MS = 100;
 const CCTV_MAX_WINDOWS = 8;
@@ -32,14 +31,15 @@ const cctvLayout = (width, height, count) => {
 // second simulation, sound subscription, timer or entity camera is created.
 class ProcgenCctv {
   constructor(renderer) {
-    this.renderer = renderer; this.slots = []; this.views = new Map(); this.layout = null;
+    this.renderer = renderer; this.enabled = false; this.slots = []; this.views = new Map(); this.layout = null;
     this.lastUpdateMs = -Infinity; this.lastStateKey = ''; this.renderKey = ''; this.refreshes = 0;
     this.generation = -1; this.actorScans = 0; this.director = new ProcgenCctvDirector(); this.onChange = null; this.lastSelectionKey = '';
   }
   getState() {
-    return { mode: this.director.mode, pins: [...this.director.pins], slots: this.slots.map(lane => ({ lane, rank: this.views.get(lane)?.rank,
+    return { enabled: this.enabled, mode: this.director.mode, pins: [...this.director.pins], slots: this.slots.map(lane => ({ lane, rank: this.views.get(lane)?.rank,
       reason: this.director.mode === 'director' ? this.director.reasons.get(lane) || 'Distance leader' : 'Distance leader', pinned: this.director.pins.has(lane) })) };
   }
+  setEnabled(enabled) { if (this.enabled === !!enabled) return; this.enabled = !!enabled; this.lastStateKey = ''; this.renderKey = ''; this.renderer.render(); this.onChange?.(this.getState()); }
   setMode(mode) { if (this.director.setMode(mode)) { if (mode === 'leaders') this.slots = []; this.lastStateKey = ''; this.renderer.render(); } }
   setPins(lanes) { if (this.director.setPins(lanes, this.renderer.world.laneCount)) { this.lastStateKey = ''; this.renderer.render(); } }
   togglePin(lane) { const changed = this.director.togglePin(lane, this.renderer.world.laneCount); if (changed) { this.lastStateKey = ''; this.renderer.render(); } return changed; }
@@ -50,8 +50,8 @@ class ProcgenCctv {
     if (this.layoutWidth !== width || this.layoutHeight !== height || this.layoutCount !== count) {
       this.layout = cctvLayout(width, height, count); this.layoutWidth = width; this.layoutHeight = height; this.layoutCount = count;
     }
-    r.overviewBandHeight = r.overviewActive ? this.layout.bandHeight : 0;
-    if (!r.overviewActive) return;
+    r.overviewBandHeight = this.enabled && r.overviewActive ? this.layout.bandHeight : 0;
+    if (!this.enabled || !r.overviewActive) return;
     const now = r.window.performance?.now?.() || 0, world = r.world;
     const key = [world.generation, world.tickIndex, world.terrainRevision, world.frontierRevision, width, height, world.sprites?.activePreference, this.director.revision].join(':');
     const resized = this.width !== width || this.height !== height || this.lastAppearance !== world.sprites?.activePreference || this.lastSprites !== world.sprites;
@@ -63,7 +63,7 @@ class ProcgenCctv {
     const selected = new Set(this.slots), leaders = new Map(), actorsByLane = new Map();
     for (const actor of world.actors) {
       this.actorScans++;
-      const lane = actor.laneIndex ?? Math.floor(actor.y / LANE_HEIGHT);
+      const lane = actor.laneIndex ?? Math.floor(actor.y / (world.laneHeight || 96));
       if (!selected.has(lane) || actor.failureReason || actor.removed || !Number.isFinite(actor.x) || !Number.isFinite(actor.y)) continue;
       const previous = leaders.get(lane);
       if (!previous || actor.x > previous.x || actor.x === previous.x && actor.id < previous.id) leaders.set(lane, actor);
@@ -102,7 +102,7 @@ class ProcgenCctv {
     }
     view.viewWidth = width; view.viewHeight = height;
     view.originX = Math.max(0, Math.floor((leader?.x ?? world.stall.lanes[lane].maxX ?? 36) - width * 0.55));
-    view.originY = lane * LANE_HEIGHT + Math.max(0, Math.min(LANE_HEIGHT - height, Math.floor((leader?.y ?? lane * LANE_HEIGHT + 60) - lane * LANE_HEIGHT - height * 0.6)));
+    view.originY = lane * (world.laneHeight || 96) + Math.max(0, Math.min((world.laneHeight || 96) - height, Math.floor((leader?.y ?? lane * (world.laneHeight || 96) + 60) - lane * (world.laneHeight || 96) - height * 0.6)));
     const geometry = [lane, view.originX, view.originY, width, height, world.generation].join(':');
     const terrainKey = geometry + ':' + world.terrainRevision + ':' + world.frontierRevision;
     if (terrainKey !== view.lastTerrainKey) { view._terrainPixels(width, height, geometry !== view.lastGeometryKey); view.lastTerrainKey = terrainKey; view.lastGeometryKey = geometry; }
@@ -114,7 +114,7 @@ class ProcgenCctv {
   }
   draw(context, dpr) {
     const r = this.renderer;
-    if (!r.overviewActive || !this.layout || !this.slots.length) return;
+    if (!this.enabled || !r.overviewActive || !this.layout || !this.slots.length) return;
     const { columns, bandHeight, tileWidth, tileHeight } = this.layout, top = r.canvas.height / dpr - bandHeight;
     context.save?.(); context.imageSmoothingEnabled = false;
     context.fillStyle = '#10151c'; context.fillRect(0, top * dpr, r.canvas.width, bandHeight * dpr);

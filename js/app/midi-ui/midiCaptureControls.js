@@ -12,7 +12,7 @@ const createMidiCaptureControls = ({ document, window, capture, prefix, getMetad
     if (state.active) {
       const metadata = getMetadata?.() || {}, key = JSON.stringify(metadata);
       if (key !== metadataKey) { const settings = metadata.settingsReference || {};
-        capture.record('context-change', { backend: metadata.backend, seed: metadata.seed, generation: metadata.generation,
+        capture.record('context-change', { backend: metadata.backend, outputId: metadata.outputId, outputName: metadata.outputName, seed: metadata.seed, generation: metadata.generation,
           tempoBpm: metadata.tempoBpm, speed: metadata.speed, frameMs: metadata.frameMs,
           scaleName: metadata.scale?.name, scaleRoot: metadata.scale?.root, scaleDegrees: metadata.scale?.degrees,
           projectId: settings.projectId, projectUpdatedAt: settings.updatedAt, localMasterGain: settings.localMasterGain, preset: settings.preset, mode: settings.mode, pack: settings.pack, laneCount: settings.laneCount,

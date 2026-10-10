@@ -57,6 +57,10 @@ const applyMidiEnsembleToSpec = (spec, event, config, mapping = {}) => {
   if (!spec || !ensemble?.enabled || spec.trackId !== ensemble.sourceTrackId) return spec;
   const role = getMidiEnsembleRole(ensemble, event);
   if (!role) return spec;
+  return applyMidiEnsembleRoleToSpec(spec, role, config, mapping, event);
+};
+
+const applyMidiEnsembleRoleToSpec = (spec, role, config, mapping = {}, event = {}) => {
   if (role.disabled || !role.track) return null;
   const track = role.track, scale = resolveScale(config.scale);
   const low = Math.max(config.noteRange?.min ?? 0, role.register.min);
@@ -78,17 +82,17 @@ const applyMidiEnsembleToSpec = (spec, event, config, mapping = {}) => {
   if (!role.percussion && notes.some(note => note == null)) return null;
   const drumNotes = [36, 38, 42, 45, 49];
   const note = role.percussion ? drumNotes[Math.abs(Math.trunc(number(event.sfxId, 0))) % drumNotes.length] : notes[0];
-  const pan = Number.isFinite(mapping.pan) ? spec.pan : role.pan;
+  const pan = spec.explicitPan || Number.isFinite(mapping.pan) ? spec.pan : role.pan;
   const velocity = clamp(Math.round(spec.velocity * track.velocityScale), 1, 127);
   return { ...spec, note, notes: role.percussion ? null : spec.notes ? notes : null,
     velocity, releaseVelocity: clamp(Math.round((spec.releaseVelocity ?? spec.velocity) * track.velocityScale), 1, 127),
     durationTicks: Math.max(1, Math.round(spec.durationTicks * role.durationScale)),
     channel: track.channel, program: track.program, trackId: track.id, voiceBudget: track.voiceBudget,
-    priority: mapping.eventPriority ?? track.priority, outputId: track.outputId, pan, spatialPan: false,
+    priority: mapping.eventPriority ?? track.priority, outputId: track.outputId, pan, spatialPan: !!spec.explicitPan && spec.spatialPan === true,
     timbre: null, pitchBend: Number.isFinite(mapping.pitchBend) ? spec.pitchBend : null,
     percussion: role.percussion, ensembleRole: role.id,
     ...(role.percussion ? { arp: null, phrase: null } : {}) };
 };
 
 export { MIDI_ENSEMBLE_ROLES, sanitizeMidiEnsemble, createDefaultMidiEnsemble, buildMidiEnsembleConfig,
-  getMidiEnsembleRole, applyMidiEnsembleToSpec };
+  getMidiEnsembleRole, applyMidiEnsembleToSpec, applyMidiEnsembleRoleToSpec };

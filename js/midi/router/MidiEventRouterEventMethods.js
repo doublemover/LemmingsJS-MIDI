@@ -1,4 +1,4 @@
-import { clipCellEnabled, buildMidiClipPhrase, applyMidiClipTransforms, getMidiTransportBar } from '../project/MidiClipPlayback.js';
+import { buildMidiClipCell, buildMidiClipPhrase, getMidiTransportBar } from '../project/MidiClipPlayback.js';
 import { MidiMapping } from '../MidiMapping.js';
 import { MidiScheduler } from '../MidiScheduler.js';
 import { isMidiFlagTriggerType } from '../MidiFlagTriggers.js';
@@ -26,7 +26,7 @@ const midiEventRouterEventMethods = {
     try {
       if (!event || event.sfxId == null) return;
       if (!this.mapping.config?.enabled) return;
-      if ((event.sfxId === SoundEffectIds.SPAWN || event.sfxId === SoundEffectIds.LAND) && !this.mapping.getSfxConfig(event.sfxId)) return;
+      if ((event.sfxId === SoundEffectIds.SPAWN || event.sfxId === SoundEffectIds.LAND || event.sfxId === SoundEffectIds.PROCGEN_ROUTE_COMPLETE) && !this.mapping.getSfxConfig(event.sfxId)) return;
       if (event.reverse || (Number.isInteger(event.tick) && this._tickCounter.tick != null && event.tick < this._tickCounter.tick)) {
         this.musicTension.reset(); this._releaseTensionVoices();
         this._resetAutomationSpans();
@@ -38,6 +38,7 @@ const midiEventRouterEventMethods = {
       } else if (!this.scheduler.output) {
         return;
       }
+      this._syncGamePhraseGeneration();
       const automationOrigin = this._observeAutomationEvent(event);
       const now = this._nowMs();
       const tick = event.tick;
@@ -82,6 +83,7 @@ const midiEventRouterEventMethods = {
         return;
       }
       spec.reverse = !!event.reverse;
+      this._syncMusicDirection(event.tick);
       if (event.tick != null) {
         this._lastTickBySfx.set(event.sfxId, event.tick);
       }
@@ -89,7 +91,9 @@ const midiEventRouterEventMethods = {
       const meta = {
         ...origin, requestId, tick, speed: event.speedFactor, frameMs: event.frameMs, ...this._captureBeatFields(tick),
         sfxId: event.sfxId,
-        eventType: event.type,
+        sourceId: sfx.sourceId ?? null, sourceKind: sfx.sourceKind ?? (triggerCfg ? 'trigger' : 'sfx'),
+        sourceKey: sfx.sourceKey ?? String(triggerCfg ? event.triggerType : event.sfxId), clipId: sfx.clipSequence?.id ?? null,
+        originTick: tick, eventType: event.type,
         priority,
         triggerType: event.triggerType ?? null,
         trackId: spec.trackId ?? null,
@@ -113,6 +117,7 @@ const midiEventRouterEventMethods = {
         noteList = this._singleNoteBuffer;
       }
 
+      if (this._queueMusicDirectionEvent(event, spec, meta)) return;
       if (sfx.clipSequence?.steps?.length) {
         const sequence = sfx.clipSequence, length = sequence.steps.length;
         const key = this._resolveArpKey(event, sfx), previous = this._arpStateBySfx.get(key);
@@ -120,7 +125,7 @@ const midiEventRouterEventMethods = {
         const completedPasses = previous?.seqKey === sequence.id ? previous.completedPasses || 0 : 0;
         const pass = sequence.advance === 'event' ? Math.floor(count / length) + 1 : sequence.passCounter === 'completed' ? completedPasses + 1 : count + 1;
         const timer = this._phraseTimer || this.context?.game?.getGameTimer?.();
-        const bar = getMidiTransportBar(this.mapping.config?.timing, event.tick ?? timer?.getGameTicks?.(), timer?.TIME_PER_FRAME_MS || 60);
+        const bar = getMidiTransportBar(this.mapping.config?.timing, event.tick ?? timer?.getGameTicks?.(), timer?.TIME_PER_FRAME_MS || 60, this.context?.game?.generationStartTick || 0);
         this._storeArpState(key, { index: count + 1, dir: 1, length, seqKey: sequence.id, completedPasses, pass, bar, advance: sequence.advance });
         const mapStep = step => this.mapping.mapEvent(event, context, density, { ...sfx, note: step.note, notes: null,
           velocity: step.velocity, durationTicks: step.durationTicks, arp: null, phrase: null });
@@ -133,9 +138,19 @@ const midiEventRouterEventMethods = {
           return;
         }
         const index = count % length, step = sequence.steps[index];
-        if (!clipCellEnabled(sequence, step, count + 1, pass, bar)) return;
-        spec = { ...mapStep(applyMidiClipTransforms(step, count + 1, pass, bar)), reverse: !!event.reverse, stepIndex: index, stepCount: length };
-        noteList = [spec.note];
+        const cell = { ...buildMidiClipCell(sequence, step, count + 1, pass, mapStep, bar), reverse: !!event.reverse, stepIndex: index, stepCount: length };
+        if (step.voices || step.transformLayers) {
+          for (const voice of cell.voices || [cell]) voice.clipScheduleAheadMs = Math.max(0, sendTimeMs - now);
+          this._queueGameEventClip(event, spec, meta, [cell], sequence.spacingTicks);
+          return;
+        }
+        if (!Number.isFinite(cell.note)) return;
+        spec = cell; noteList = [cell.note];
+      }
+
+      if (!sfx.clipSequence && sfx.phrase?.rolling?.enabled) {
+        this._queueGameRollingPhrase(event, spec, meta, noteList, sfx.phrase.rolling);
+        return;
       }
 
       const fire = !sfx.clipSequence && event.type === 'lemming-fire';
@@ -277,6 +292,8 @@ const midiEventRouterEventMethods = {
         specWithTime = adjusted.spec;
         activeNotes = adjusted.activeNotes;
       }
+      specWithTime = this._applyMusicDirection(specWithTime, tick);
+      if (!specWithTime) return;
       if (this.automationSpans.entries.length) {
         specWithTime = this._applyAutomationSpans({ ...specWithTime, notes: activeNotes }, meta, tick);
         if (!specWithTime) return;

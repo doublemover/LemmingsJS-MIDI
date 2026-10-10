@@ -10,7 +10,7 @@ import '../js/level/ObjectImageInfo.js';
 import { GroundReader } from '../js/level/GroundReader.js';
 
 // Silence debug output
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 const withFetchStub = async (stub, fn) => {
   const origFetch = globalThis.fetch;
@@ -39,6 +39,8 @@ const withMockLogHandler = (fn) => {
 };
 
 describe('GroundReader', function() {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('reads palettes and detects steel', async function() {
     await withFetchStub(
       async () => ({ json: async () => ({ lemmings: { 'GROUND0O.DAT': [0] } }) }),

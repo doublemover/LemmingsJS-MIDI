@@ -3,9 +3,11 @@ import { Lemmings, useGlobalLemmings, withGlobalLemmings, withMissingGlobalLemmi
 import { GameVictoryCondition } from '../js/game/GameVictoryCondition.js';
 
 // minimal global environment
-useGlobalLemmings(Lemmings);
+
 
 describe('GameVictoryCondition methods', function () {
+  useGlobalLemmings(Lemmings);
+
   function makeVC() {
     const level = { needCount: 1, releaseCount: 10, releaseRate: 10 };
     return new GameVictoryCondition(level);

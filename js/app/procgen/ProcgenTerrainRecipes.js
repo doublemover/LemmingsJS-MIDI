@@ -1,4 +1,5 @@
 import { validateTerrainDescriptors } from './ProcgenTerrainDescriptors.js';
+import { validateProcgenRouteCatalogue } from './ProcgenRouteContracts.js';
 
 const RECIPE_SCHEMA_VERSION = 1;
 const ERASE = 1, FLIP_Y = 2, NO_OVERWRITE = 4, FLIP_X = 8, ONLY_OVERWRITE = 16;
@@ -16,6 +17,7 @@ const validateTerrainRecipeBook = book => {
       }
     }
   }
+  if (book.routeContracts != null) validateProcgenRouteCatalogue(book.routeContracts);
   if (book.descriptors != null) validateTerrainDescriptors(book.descriptors);
   return book;
 };

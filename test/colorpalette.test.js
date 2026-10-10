@@ -1,10 +1,10 @@
 import { expect } from 'chai';
-import { useGlobalLemmings } from './helpers/lemmings.js';
 import { ColorPalette } from '../js/render/ColorPalette.js';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('ColorPalette', function() {
+
   it('maintains consistent RGB values', function() {
     const pal = new ColorPalette();
     pal.setColorRGB(0, 12, 34, 56);

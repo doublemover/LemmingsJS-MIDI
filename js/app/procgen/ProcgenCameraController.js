@@ -34,7 +34,7 @@ const createProcgenCameraController = renderer => {
   const pan = (dx, dy) => {
     if (!Number.isFinite(dx) || !Number.isFinite(dy) || Math.hypot(dx, dy) < 1) return false;
     renderer.follow = false; renderer.cameraX += dx / renderer.scale; renderer.cameraY += dy / renderer.scale;
-    clamp(); renderer.render(); return true;
+    clamp(); renderer.render(false); return true;
   };
   const setZoom = scale => {
     const previous = viewport(), pinnedX = renderer.cameraX === 0, pinnedY = renderer.cameraY === 0;
@@ -44,10 +44,10 @@ const createProcgenCameraController = renderer => {
     const next = viewport();
     renderer.cameraX = pinnedX ? 0 : centerX - next.width / 2;
     renderer.cameraY = pinnedY ? 0 : centerY - next.height / 2;
-    clamp(); renderer.render();
+    clamp(); renderer.render(false);
   };
   let cachedLeader = null, leaderTick = -1, leaderGeneration = -1, leaderActors = null, leaderCount = -1;
-  const followFrontier = () => { renderer.follow = true; update(true); renderer.render(); };
+  const followFrontier = () => { renderer.follow = true; update(true); renderer.render(false); };
   const update = (immediate = false, reuseLeader = false) => {
     clamp();
     if (!renderer.follow) return;

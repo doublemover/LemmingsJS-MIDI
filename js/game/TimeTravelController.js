@@ -102,6 +102,7 @@ class TimeTravelController {
         this.game.gameGui.gameTimeChanged = true;
       }
     }
+    this.history.captureBaseline?.(this.game);
     this.game.render?.();
   }
 
@@ -127,6 +128,7 @@ class TimeTravelController {
       cursor += 1;
       timer.tickIndex = cursor;
     }
+    this.history.captureBaseline?.(this.game);
     this.game.invalidateMusicObservations?.();
     if (this.game.gameGui) {
       this.game.gameGui.gameTimeChanged = true;

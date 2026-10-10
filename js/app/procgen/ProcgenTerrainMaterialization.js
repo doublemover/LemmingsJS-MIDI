@@ -2,8 +2,8 @@ const MAX_MATERIALIZATION_JOBS = 32;
 
 // Foundation sections cover complete source motif spans. Edge clipping is at
 // the existing chunk seam; the scheduler never invents a pixel-strip quantum.
-const createTerrainGrowthPlan = ({ descriptor, pattern, route, pieces, assemblies, sourceRevision }) => {
-  const width = 128, height = 96, jobs = [], foundationSections = [], foundationByColumn = new Uint8Array(width);
+const createTerrainGrowthPlan = ({ descriptor, pattern, route, pieces, assemblies, sourceRevision, height = 96 }) => {
+  const width = 128, jobs = [], foundationSections = [], foundationByColumn = new Uint8Array(width);
   const placementJobs = new Uint8Array(descriptor.placements.length), objectJobs = new Uint8Array(descriptor.objects.length);
   const add = (kind, bounds, dependencies, sourceIds, extra = {}) => {
     const index = jobs.length;
@@ -28,15 +28,22 @@ const createTerrainGrowthPlan = ({ descriptor, pattern, route, pieces, assemblie
   const foundationDeps = (x1, x2) => foundationSections.filter(section => section.x2 > x1 && section.x1 < x2).map(section => section.index);
   const terrainGroups = new Map(), assemblyTerrain = new Map();
   for (let at = 0; at < descriptor.placements.length; at++) {
-    const p = descriptor.placements[at], key = p.assembly || (p.letter ? descriptor.word : p);
+    const p = descriptor.placements[at]; if (p.sharedSpan) continue;
+    const key = p.assembly || (p.letter ? descriptor.word : p);
     let group = terrainGroups.get(key); if (!group) { group = []; terrainGroups.set(key, group); }
     group.push(at);
   }
+  let priorCanonicalJob = null; const columnJobs = new Map();
   for (const [key, members] of terrainGroups) {
     const placements = members.map(at => descriptor.placements[at]), x1 = Math.min(...placements.map(p => p.x)), x2 = Math.max(...placements.map(p => p.x + p.piece.width));
     const y1 = Math.min(...placements.map(p => p.y)), y2 = Math.max(...placements.map(p => p.y + p.piece.height));
     const ids = placements.flatMap(p => p.canonicalGroup ? p.canonicalGroup.placements.map(p => p.id) : [p.piece.id]);
-    const index = add('terrain', { x1, x2, y1, y2 }, foundationDeps(x1, x2), ids, { placementIndices: Object.freeze(members) });
+    const dependencies = foundationDeps(x1, x2), canonical = placements[0].canonicalGroup;
+    if (canonical && priorCanonicalJob != null) dependencies.push(priorCanonicalJob);
+    const column = placements[0].sourcedColumn; if (columnJobs.has(column)) dependencies.push(columnJobs.get(column));
+    const index = add('terrain', { x1, x2, y1, y2 }, dependencies, ids, { placementIndices: Object.freeze(members), ...(canonical ? { sourceGroup: canonical, orderedSource: true } : {}) });
+    if (canonical) priorCanonicalJob = index;
+    if (column) columnJobs.set(column, index);
     for (const at of members) placementJobs[at] = index;
     if (placements[0].assembly) assemblyTerrain.set(key, index);
   }
@@ -72,14 +79,25 @@ const createTerrainGrowthPlan = ({ descriptor, pattern, route, pieces, assemblie
         objectJobs[at] = index; emitted.set(member, index);
       }
     } else {
-      const x1 = assembly ? assembly.bounds.x1 - descriptor.origin : Math.min(...objects.map(o => o.x - descriptor.origin - (o.role === 'liquid' ? 1 : 0)));
-      const x2 = assembly ? assembly.bounds.x2 - descriptor.origin : Math.max(...objects.map(o => o.x - descriptor.origin + o.piece.image.width + (o.role === 'liquid' ? 1 : 0)));
-      const y1 = Math.min(...objects.map(o => o.y)), y2 = Math.max(...objects.map(o => o.y + o.piece.image.height));
+      const x1 = assembly ? assembly.bounds.x1 - descriptor.origin : Math.min(...objects.map(o => o.basin ? o.basin.bounds.x1 - descriptor.origin : o.x - descriptor.origin - (o.role === 'liquid' ? 1 : 0)));
+      const x2 = assembly ? assembly.bounds.x2 - descriptor.origin : Math.max(...objects.map(o => o.basin ? o.basin.bounds.x2 - descriptor.origin : o.x - descriptor.origin + o.piece.image.width + (o.role === 'liquid' ? 1 : 0)));
+      const y1 = Math.min(...objects.map(o => o.basin ? 0 : o.y)), y2 = Math.max(...objects.map(o => o.y + o.piece.image.height));
       const dependencies = foundationDeps(x1, x2); if (assemblyTerrain.has(key)) dependencies.push(assemblyTerrain.get(key));
       const index = add('object', { x1, x2, y1, y2 }, dependencies, objects.map(o => o.piece.id),
-        { objectIndices: Object.freeze(members), attachmentFallback: !!assembly });
+        { objectIndices: Object.freeze(members), attachmentFallback: !!assembly,
+          ...(objects[0].basin ? { basin: objects[0].basin, foundationSourceIds: Object.freeze(objects[0].basin.foundation.sourcePlacements.map(p => p.id)) } : {}) });
       for (const at of members) objectJobs[at] = index;
     }
+  }
+  if (descriptor.sharedSpan) {
+    const members = descriptor.placements.map((p, at) => p.sharedSpan ? at : -1).filter(at => at >= 0);
+    const placements = members.map(at => descriptor.placements[at]);
+    const x1 = Math.min(...placements.map(p => p.x)), x2 = Math.max(...placements.map(p => p.x + p.piece.width));
+    const y1 = Math.min(...placements.map(p => p.y)), y2 = Math.max(...placements.map(p => p.y + p.piece.height));
+    const ids = placements.flatMap(p => p.sourceRegion ? p.sourceRegion.sourcePlacements.map(member => member.id) : p.canonicalGroup ? p.canonicalGroup.placements.map(member => member.id) : [p.piece.id]);
+    const index = add('terrain', { x1, x2, y1, y2 }, jobs.map(job => job.index), ids,
+      { placementIndices: Object.freeze(members), sharedSpan: descriptor.sharedSpan, orderedSource: true });
+    for (const at of members) placementJobs[at] = index;
   }
   return Object.freeze({ descriptor, jobs: Object.freeze(jobs), foundationSections: Object.freeze(foundationSections),
     foundationByColumn, placementJobs, objectJobs, sourceMotif: route.id, sourceRevision, patternWidth: pattern.width });

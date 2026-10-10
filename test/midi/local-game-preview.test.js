@@ -87,6 +87,46 @@ const setup = (options = {}) => {
 };
 
 describe('local game note preview', function() {
+  it('retains one unlocked audio graph across replacement games and silences old gates', async function() {
+    let current = makeView(); const old = current, audio = makeAudio();
+    const local = createLocalGamePreview({ audio, getLemmings: () => current, getConfig: config });
+    await local.start();
+    old.game.soundEvents.emitSfx(SoundEventTypes.LEMMING_SPAWN, SoundEffectIds.SPAWN);
+    const stops = audio.stopCalls;
+    expect(local.suspendGame()).to.equal(true);
+    expect(local.getState()).to.include({ enabled: true, status: 'suspended' });
+    expect(old.game.soundEvents.onEvent.handlers.size).to.equal(0);
+    expect(old.game.timer.onGameTick.handlers.size).to.equal(0);
+    expect(old.midiPreviewRouter).to.equal(null);
+    current = makeView();
+    expect(await local.resumeGame()).to.equal(true);
+    expect(audio.enableCalls).to.equal(1); expect(audio.stopCalls).to.equal(stops);
+    expect(current.game.soundEvents.onEvent.handlers.size).to.equal(1);
+    expect(current.game.timer.onGameTick.handlers.size).to.equal(1);
+    expect(audio.calls.some(call => call.type === 'noteOff' || call.type === 'clear')).to.equal(true);
+    const count = audio.calls.filter(call => call.type === 'noteOn').length;
+    old.game.soundEvents.emitSfx(SoundEventTypes.LEMMING_SPAWN, SoundEffectIds.SPAWN);
+    expect(audio.calls.filter(call => call.type === 'noteOn')).to.have.length(count);
+    current.game.soundEvents.emitSfx(SoundEventTypes.LEMMING_SPAWN, SoundEffectIds.SPAWN);
+    expect(audio.calls.filter(call => call.type === 'noteOn')).to.have.length(count + 1);
+    local.suspendGame(); local.panic();
+    expect(await local.resumeGame()).to.equal(false);
+    expect(current.midiPreviewRouter).to.equal(null);
+    await local.dispose();
+  });
+
+  it('does not unlock again for a changed live view and respects interruption while suspended', async function() {
+    let current = makeView(); const audio = makeAudio();
+    const local = createLocalGamePreview({ audio, getLemmings: () => current, getConfig: config });
+    await local.start(); current = makeView();
+    expect(await local.start()).to.equal(true); expect(audio.enableCalls).to.equal(1);
+    local.suspendGame(); audio.interrupt();
+    expect(local.getState()).to.include({ enabled: false, status: 'error' });
+    expect(await local.resumeGame()).to.equal(false);
+    expect(current.midiPreviewRouter).to.equal(null);
+    await local.dispose();
+  });
+
   it('reuses immutable source identity without resetting arpeggios and refreshes after restart', async function() {
     const state = setup({ immutableConfig: true });
     await state.local.start();

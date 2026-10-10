@@ -7,9 +7,11 @@ import { Level } from '../js/level/Level.js';
 import { ActionWalkSystem } from '../js/actions/ActionWalkSystem.js';
 
 // minimal global for logging
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('ActionWalkSystem wall collision', function() {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('reverts position when walking into a wall', function() {
     const spriteStub = { getAnimation() { return { frames: [] }; } };
     const walkAction = new ActionWalkSystem(spriteStub);

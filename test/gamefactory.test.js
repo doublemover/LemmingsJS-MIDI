@@ -3,9 +3,11 @@ import { useGlobalLemmings } from './helpers/lemmings.js';
 import { GameFactory } from '../js/game/GameFactory.js';
 import { applyDependencyOverrides } from './support/deps.js';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('GameFactory.createFromConfig', function () {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('builds a Game with GameResources and timer', async function () {
     class FileProviderStub {
       constructor(root) { this.root = root; }

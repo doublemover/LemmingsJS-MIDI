@@ -7,9 +7,11 @@ import { Trigger } from '../js/level/Trigger.js';
 import { TriggerManager } from '../js/level/TriggerManager.js';
 import { TriggerTypes } from '../js/level/TriggerTypes.js';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('TriggerManager', function () {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('handles bucketed triggers and removal', function () {
     const timer = { tick: 0, getGameTicks () { return this.tick; } };
     const tm = new TriggerManager(timer, 31, 31, 16);

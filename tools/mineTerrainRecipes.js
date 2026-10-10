@@ -17,7 +17,7 @@ import { ERASE, FLIP_Y, NO_OVERWRITE, FLIP_X, ONLY_OVERWRITE, stampRecipePlaceme
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const LIMITS = { files: 20000, levels: 4096, terrainPerLevel: 4096, pixelsPerLevel: 4000000, representatives: 8 };
-const SKIP = new Set(['.git', 'node_modules', 'exports', 'temp', 'dist', 'coverage', '.agents', '.codex']);
+const SKIP = new Set(['.git', 'node_modules', 'exports', 'temp', 'dist', 'coverage', 'test-results', 'playwright-report', '.agents', '.codex']);
 const names = { lemmings: ['dirt', 'fire', 'squasher', 'pillar', 'crystal'], lemmings_ohNo: ['brick', 'rock', 'snow', 'bubble'] };
 const round = n => Math.round(n * 1000) / 1000;
 const add = (map, key, value, amount = 1) => { const entry = map.get(key); if (entry) entry.count += amount; else map.set(key, { ...value, count: amount }); };

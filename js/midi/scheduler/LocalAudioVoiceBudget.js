@@ -1,3 +1,12 @@
+// Both live notes and standalone local tests use the same explicit-pan and lane-spread policy.
+const getLocalAudioNotePan = (spec, meta, position, supported = true) => {
+  const spread = position?.lanePanSpread;
+  const lanes = Math.max(1, Math.min(1024, Math.trunc(meta.laneCount) || 1));
+  const lane = Math.max(0, Math.min(lanes - 1, Math.trunc(meta.laneIndex) || 0));
+  return supported && Number.isFinite(spread) && !spec.explicitPan && !spec.spanPan
+    ? Math.max(-127, Math.min(127, (spec.pan ?? 0) + (lanes > 1 ? (lane * 2 / (lanes - 1) - 1) * spread : 0))) : spec.pan;
+};
+
 const priorityOf = voice => Number.isFinite(voice.priority) ? voice.priority : 1;
 
 /** Select a bounded local gate victim; hardware allocation keeps its existing policy. */
@@ -21,4 +30,4 @@ const selectLocalAudioVoice = (voices, incoming) => {
   return selected;
 };
 
-export { selectLocalAudioVoice };
+export { selectLocalAudioVoice, getLocalAudioNotePan };

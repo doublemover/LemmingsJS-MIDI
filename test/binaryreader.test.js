@@ -3,7 +3,7 @@ import { Lemmings, setDependency, useGlobalLemmings, withShowDebug } from './hel
 import { BinaryReader } from '../js/data/BinaryReader.js';
 import '../js/util/LogHandler.js';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 class MockLogHandler {
   constructor() { this.logged = []; }
@@ -22,6 +22,8 @@ const withMockLogHandler = (fn) => {
 };
 
 describe('BinaryReader', function () {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('reads data from Blob asynchronously', async function () {
     const bytes = Uint8Array.from([1, 2, 3, 4]);
     const blob = new Blob([bytes]);

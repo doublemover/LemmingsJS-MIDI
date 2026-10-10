@@ -47,7 +47,11 @@ class MidiUiPage {
   }
 
   async goto(path = '/') {
-    await this.page.goto(path);
+    const url = new URL(path, 'http://localhost');
+    url.searchParams.delete('midi');
+    url.searchParams.set('midi', '1');
+    const target = /^https?:/i.test(path) ? url.href : url.pathname + url.search + url.hash;
+    await this.page.goto(target);
     if (!await this.page.locator('#midiSequencerWorkspace').isVisible()) await this.page.locator('#midiWorkspaceToggle').click();
     await this.page.locator('#midiSequencerWorkspace details').evaluateAll(elements => elements.forEach(element => { element.open = true; }));
     await this.page.locator('#midiViewExpert').click();

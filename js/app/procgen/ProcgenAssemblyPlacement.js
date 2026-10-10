@@ -1,6 +1,9 @@
+import { procgenTileRevision } from './ProcgenTerrainRetention.js';
 import { TriggerTypes as Types } from '../../level/TriggerTypes.js';
 
 const readiness = new WeakMap(), footCache = new WeakMap();
+const excludedTriggers = new Set([Types.EXIT_LEVEL, Types.ONEWAY_LEFT, Types.ONEWAY_RIGHT, Types.DROWN]);
+const isProcgenAssemblyEligible = group => group.objects.every(member => member.id !== 1 && !excludedTriggers.has(member.image.trigger_effect_id));
 const lethal = role => ['trap', 'hazard', 'liquid'].includes(role);
 const roleFor = image => image.trigger_effect_id === Types.TRAP ? 'trap' : image.trigger_effect_id === Types.DROWN ? 'liquid' :
   [Types.KILL, Types.FRYING].includes(image.trigger_effect_id) ? 'hazard' : image.trigger_effect_id === Types.EXIT_LEVEL || image.animationLoop === false ? 'structure' : 'ambient';
@@ -27,10 +30,14 @@ const placeAuthoredAssemblies = ({ compiled = [], chunk, origin = chunk * 128, c
   occupied = [], existingObjects = [], chunkWidth = 128, height = 96, introSafeEnd = 256, gapX = -1, gapWidth = 0 } = {}) => {
   const terrainPlacements = [], objects = [], assemblies = [];
   if (!compiled.length || !baseSolid || !baseSurface || origin < introSafeEnd) return { terrainPlacements, objects, assemblies };
-  const count = Math.min(4, compiled.length);
-  for (let attempt = 0; attempt < count && assemblies.length < 2; attempt++) {
+  const count = Math.min(4, compiled.length); let excludedSlots = 0;
+  for (let attempt = 0; attempt < count && assemblies.length + excludedSlots < 2; attempt++) {
     const group = compiled[((code >>> 0) + chunk + attempt) % compiled.length], entry = group.entry;
-    if (group.objects.some(member => [Types.ONEWAY_LEFT, Types.ONEWAY_RIGHT, Types.DROWN].includes(member.image.trigger_effect_id))) continue;
+    if (!isProcgenAssemblyEligible(group)) {
+      // Removing an entrance/exit leaves its deterministic placement slot empty.
+      if (group.objects.some(member => member.id === 1 || member.image.trigger_effect_id === Types.EXIT_LEVEL)) excludedSlots++;
+      continue;
+    }
     for (const support of group.supportAnchors.filter(anchor => anchor.confidence >= 0.8 && anchor.anchor.kind === 'terrain' && anchor.anchor.piece && !anchor.anchor.piece.isSteel).slice(0, 4)) {
       const anchor = support.anchor, anchorMember = { ...anchor, image: anchor.image || anchor.piece.image, pixels: anchor.pixels || anchor.piece.frame,
         orientation: anchor.orientation || { flipX: !!(anchor.f & 8), flipY: !!(anchor.f & 2) } };
@@ -90,7 +97,8 @@ const placeAuthoredAssemblies = ({ compiled = [], chunk, origin = chunk * 128, c
       ]);
       contacts.push({ x: origin + ox + support.anchorX, y: oy + support.anchorY });
       const assembly = { id: entry.id, sourceRevision: group.sourceRevision, chunk, bounds: { ...box, x1: origin + box.x1, x2: origin + box.x2 },
-        contacts, foundationSupports: supports, supportMember: support.member, memberCount: all.length };
+        contacts, foundationSupports: supports, supportMember: support.member, memberCount: all.length,
+        sourceSupport: { member: support.member, anchor: { kind: anchor.kind, id: anchor.id, x: anchor.x, y: anchor.y, f: anchor.f }, source: { ...support.source } } };
       for (const member of all) if (member.kind === 'terrain' && (member !== anchorMember || !match)) terrainPlacements.push({ piece: member.piece,
         x: ox + member.x, y: oy + member.y, flip: member.orientation.flipX, flipY: member.orientation.flipY, decor: false,
         assembly, assemblyMemberIds: [member.id], sourceRevision: group.sourceRevision });
@@ -110,18 +118,18 @@ const assemblyPlacementReady = (world, lane, object, descriptor) => {
   if (!assembly || lane < 0 || lane >= world.laneCount) return false;
   const objectIndex = descriptor.objects?.indexOf(object);
   if (Number.isInteger(objectIndex) && objectIndex >= 0 && world.terrainGrowth && !world.terrainGrowth.objectReady(lane, assembly.chunk, objectIndex)) return false;
-  const revision = world.terrainTileRevisions?.get(lane * 0x800000 + assembly.chunk) || 0, through = world.generatedThrough[lane], cached = readiness.get(assembly);
+  const revision = procgenTileRevision(world, lane * 0x800000 + assembly.chunk), through = world.generatedThrough[lane], cached = readiness.get(assembly);
   if (cached?.world === world && cached.lane === lane && cached.generation === world.generation && cached.revision === revision && cached.through === through) return cached.ready;
-  const top = lane * 96, bounds = assembly.bounds, chunkWidth = world.terrain.chunkWidth;
+  const height = world.laneHeight, top = lane * height, bounds = assembly.bounds, chunkWidth = world.terrain.chunkWidth;
   const state = world.terrainGrowth?.stateFor(lane, assembly.chunk);
   const solid = point => {
-    if (point.y < 0 || point.y >= 96 || point.x < assembly.chunk * chunkWidth || point.x >= (assembly.chunk + 1) * chunkWidth) return false;
+    if (point.y < 0 || point.y >= height || point.x < assembly.chunk * chunkWidth || point.x >= (assembly.chunk + 1) * chunkWidth) return false;
     const edits = world.editChunks.get(world._editKey(point.x, top + point.y)), edit = edits?.[point.y * 32 + point.x % 32] || 0;
     return edit ? edit > 1 : world.terrain.solidSample(world.laneSeeds[lane], assembly.chunk, point.x - assembly.chunk * chunkWidth, point.y, descriptor, state);
   };
-  const ready = bounds.x1 >= world.leftEdgeX && bounds.x2 <= through && bounds.y1 >= 0 && bounds.y2 <= 96 &&
+  const ready = bounds.x1 >= world.leftEdgeX && bounds.x2 <= through && bounds.y1 >= 0 && bounds.y2 <= height &&
     assembly.contacts.length > 0 && assembly.contacts.length <= 57 && assembly.foundationSupports.length > 0 && assembly.foundationSupports.length <= 16 &&
     [...assembly.contacts, ...assembly.foundationSupports].every(solid);
   readiness.set(assembly, { world, lane, generation: world.generation, revision, through, ready }); return ready;
 };
-export { placeAuthoredAssemblies, assemblyPlacementReady };
+export { placeAuthoredAssemblies, assemblyPlacementReady, isProcgenAssemblyEligible };

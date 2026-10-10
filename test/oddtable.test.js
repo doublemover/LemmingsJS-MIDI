@@ -8,9 +8,11 @@ import '../js/data/BitWriter.js';
 import '../js/data/UnpackFilePart.js';
 import { FileContainer } from '../js/data/FileContainer.js';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('ODDTABLE offsets', function() {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('parses part offsets from LEVEL000.DAT', function() {
     const buf = readFileSync(new URL('../lemmings/LEVEL000.DAT', import.meta.url));
     const br = new Lemmings.BinaryReader(new Uint8Array(buf));

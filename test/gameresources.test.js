@@ -4,9 +4,11 @@ import '../js/util/LogHandler.js';
 import { GameResources } from '../js/game/GameResources.js';
 import { NodeFileProvider } from '../tools/NodeFileProvider.js';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('GameResources', function () {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   let origFileContainer;
   let origLemmingsSprite;
   let origSkillPanelSprites;

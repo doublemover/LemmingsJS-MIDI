@@ -3,9 +3,11 @@ import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import { BinaryReader } from '../js/data/BinaryReader.js';
 import { BitReader } from '../js/data/BitReader.js';
 
-useGlobalLemmings(Lemmings);
+
 
 describe('BitReader', function() {
+  useGlobalLemmings(Lemmings);
+
   it('reads reversed bytes and tracks checksum', function() {
     const bytes = new Uint8Array([0xAA, 0x55]);
     const bin = new BinaryReader(bytes);

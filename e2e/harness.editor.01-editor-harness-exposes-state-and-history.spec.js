@@ -196,7 +196,7 @@ test.beforeEach(async ({ page }) => {
   await waitForEditorHarness(page);
 });
 
-test('Editor harness exposes state and history', async ({ page }) => {
+const assertEditorHarnessState = async page => {
   const state = await getEditorState(page);
   expect(state.mode).toBe('editor');
   expect(state.editor).toBeTruthy();
@@ -218,7 +218,9 @@ test('Editor harness exposes state and history', async ({ page }) => {
 
   const missingEntry = await page.evaluate(() => window.__E2E__.getEditorHistoryEntry(9999));
   expect(missingEntry).toBeNull();
-});
+};
+
+test('Editor harness exposes state and history', async ({ page }) => { await assertEditorHarnessState(page); });
 
 test('Editor playtest toggles timer and input state', async ({ page }) => {
   let state = await getEditorState(page);
@@ -275,7 +277,8 @@ test('Editor level selection loads into editor session', async ({ page }) => {
   expect(normalizedTitle).toBe(targetName);
 });
 
-test('Editor built-in classic level can be edited, saved, reloaded, and exported', async ({ page }) => {
+test('Editor built-in classic level can be edited, saved, reloaded, and exported', { tag: '@boundary' }, async ({ page }) => {
+  await assertEditorHarnessState(page);
   const state = await getEditorState(page);
   const levelSelect = page.locator('#editorLevelIndexSelect');
   const optionCount = await levelSelect.locator('option').count();
@@ -412,7 +415,7 @@ test('Editor layer order buttons reorder selection', async ({ page }) => {
   expect(afterIndex).toBe(beforeIndex + 1);
 });
 
-test('Editor gadget and trigger placement use centered tool placement', async ({ page }) => {
+test('Editor gadget and trigger placement use centered tool placement', { tag: '@boundary' }, async ({ page }) => {
   let state = await getEditorState(page);
   const gadgetId = state.editor.assets.gadgets[0]?.id;
   expect(Number.isFinite(gadgetId)).toBe(true);

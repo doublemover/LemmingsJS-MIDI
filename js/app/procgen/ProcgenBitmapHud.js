@@ -1,4 +1,3 @@
-import { LANE_HEIGHT } from './ProcgenLaneWorld.js';
 
 const PROCGEN_HUD_GLYPHS = /^[ A-Z0-9%-]*$/;
 
@@ -25,12 +24,12 @@ class ProcgenBitmapHud {
     if (!this.sprites) return;
     context.imageSmoothingEnabled = false;
     const state = camera.getState();
-    const first = Math.max(0, Math.floor(state.cameraY / LANE_HEIGHT));
-    const last = Math.min(world.laneCount - 1, Math.floor((state.cameraY + camera.viewport().height) / LANE_HEIGHT));
+    const first = Math.max(0, Math.floor(state.cameraY / (world.laneHeight || 96)));
+    const last = Math.min(world.laneCount - 1, Math.floor((state.cameraY + camera.viewport().height) / (world.laneHeight || 96)));
     if (state.scale < 0.5) return;
     for (let lane = first; lane <= last; lane++) {
       const progress = world.stall.lanes[lane];
-      const y = Math.round((lane * LANE_HEIGHT - state.cameraY) * state.scale * dpr);
+      const y = Math.round((lane * (world.laneHeight || 96) - state.cameraY) * state.scale * dpr);
       if (y < 16 * dpr || y > this.canvas.height - 16 * dpr) continue;
       const label = `LANE ${lane + 1}  DIST ${Math.max(0, Math.round(progress.maxX - 36))}  BEST ${Math.round(progress.previousDistance || 0)}`;
       this.drawString(context, label, 0, y, dpr);

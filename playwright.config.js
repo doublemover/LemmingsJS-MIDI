@@ -22,6 +22,16 @@ const resolvePlaywrightWebServerPort = (baseUrl) => {
   return url.protocol === 'https:' ? 443 : 80;
 };
 
+const resolvePlaywrightWebServer = (baseUrl, { externalServer = false } = {}) => {
+  if (externalServer) return undefined;
+  const url = new URL(baseUrl);
+  if (!['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) throw new Error('Remote E2E origins require LEMMINGS_E2E_EXTERNAL_SERVER=1 for an explicitly managed server.');
+  const address = url.hostname === '[::1]' ? '::1' : '127.0.0.1';
+  const secure = url.protocol === 'https:' ? ' -S -C certs/localhost.pem -K certs/localhost-key.pem' : '';
+  return { command: 'node node_modules/http-server/bin/http-server -a ' + address + ' -p ' + resolvePlaywrightWebServerPort(baseUrl) + ' -c-1 --silent' + secure,
+    url: baseUrl, ignoreHTTPSErrors: true, reuseExistingServer: false, timeout: 30000 };
+};
+
 const baseURL = resolvePlaywrightBaseUrl();
 
 export default defineConfig({
@@ -37,21 +47,19 @@ export default defineConfig({
     ignoreHTTPSErrors: true,
     permissions: ['midi'],
     launchOptions: {
+      executablePath: process.env.LEMMINGS_E2E_EXECUTABLE || undefined,
       args: ['--allow-insecure-localhost', '--ignore-certificate-errors']
     },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure'
   },
-  webServer: {
-    command: 'npm run start-https',
-    port: resolvePlaywrightWebServerPort(baseURL),
-    reuseExistingServer: !process.env.CI
-  }
+  webServer: resolvePlaywrightWebServer(baseURL, { externalServer: process.env.LEMMINGS_E2E_EXTERNAL_SERVER === '1' })
 });
 
 export {
   DEFAULT_PLAYWRIGHT_BASE_URL,
   resolvePlaywrightBaseUrl,
-  resolvePlaywrightWebServerPort
+  resolvePlaywrightWebServerPort,
+  resolvePlaywrightWebServer
 };

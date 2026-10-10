@@ -3,9 +3,11 @@ import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 import { CommandManager } from '../js/commands/CommandManager.js';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('CommandManager', function() {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   class MockTimer {
     constructor() {
       this.tick = 0;

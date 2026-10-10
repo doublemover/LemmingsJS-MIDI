@@ -316,6 +316,7 @@ class MidiMapping {
       timbre,
       pan,
       spatialPan: pan != null && !Number.isFinite(sfx.pan),
+      ...(Number.isFinite(sfx.pan) || panOverride != null || positionCfg.viewPan && Number.isFinite(pan) ? { explicitPan: true } : {}),
       pitchBend,
       frequencyHz,
       channel: sfx.channel ?? null,

@@ -5,7 +5,7 @@ import '../js/LemmingsBootstrap.js';
 import { __test__ as LevelLoaderTest } from '../js/level/LevelLoader.js';
 
 // Silence debug output
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 const readLevelProperties = (config, levelMode, levelIndex) => {
   const resolver = new Lemmings.LevelIndexResolve(config);
@@ -77,6 +77,8 @@ const withSteelSpritesStub = async (fn) => {
 };
 
 describe('LevelLoader', function () {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('builds a level from LEVEL000.DAT', async function () {
     const buf = readFileSync(new URL('../lemmings/LEVEL000.DAT', import.meta.url));
     const br = new Lemmings.BinaryReader(new Uint8Array(buf));

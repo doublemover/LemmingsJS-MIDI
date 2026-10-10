@@ -1,14 +1,27 @@
+import { ProcgenRouteAdmission } from './ProcgenRouteAdmission.js';
+import { ProcgenBlockerBypass } from './ProcgenBlockerBypass.js';
 import { LemmingStateType as State } from '../../lemmings/LemmingStateType.js';
+import { ProcgenSupportedTunnel } from './ProcgenSupportedTunnel.js';
+import { ProcgenSupportedDescent } from './ProcgenSupportedDescent.js';
+import { ProcgenWalkContinuation } from './ProcgenWalkContinuation.js';
+import { ProcgenSupportedRelief } from './ProcgenSupportedRelief.js';
+import { ProcgenGuardedTunnel } from './ProcgenGuardedTunnel.js';
+import { ProcgenSupportedBuild } from './ProcgenSupportedBuild.js';
 
 const MAX_LOCAL_ROUTE_DISTANCE = 40;
 const MAX_ROUTE_PROBES = 1024;
 const ROUTE_LANES_PER_TICK = 8;
+// A rejected builder must leave shared lane work for independent alternatives.
+const BUILD_CANDIDATE_WORK = MAX_ROUTE_PROBES / 2;
 const intersects = (hazard, x, y) => x + 2 > hazard.x1 && x - 2 < hazard.x2 && y + 1 > hazard.y1 && y - 9 < hazard.y2;
 
 class ProcgenHazardPlanner {
   constructor(world) {
+    this.bypasses = new ProcgenBlockerBypass(world); this.tunnels = new ProcgenSupportedTunnel(world); this.descents = new ProcgenSupportedDescent(world);
+    this.walking = new ProcgenWalkContinuation(world); this.building = new ProcgenSupportedBuild(world); this.guardedTunnels = new ProcgenGuardedTunnel(world); this.relief = new ProcgenSupportedRelief(world);
     this.world = world; this.observations = []; this.adjacentObservations = []; this.cache = new Array(world.laneCount);
-    this.stats = { plans: 0, deferred: 0, probes: 0, budgetExhausted: 0 };
+    this.admission = new ProcgenRouteAdmission(world);
+    this.stats = { plans: 0, deferred: 0, probes: 0, budgetExhausted: 0, admission: this.admission.stats };
   }
   _ground(x, y) {
     if (++this.probes > MAX_ROUTE_PROBES) { this.exhausted = true; return false; }
@@ -17,7 +30,7 @@ class ProcgenHazardPlanner {
     if (!this._revealed(x, y)) { this.unrevealed = true; return false; }
     return this.world.hasGroundAt(x, y);
   }
-  _revealed(x, y) { return x >= this.world.leftEdgeX && y >= 0 && y < this.world.height && x < this.world.generatedThrough[Math.floor(y / 96)]; }
+  _revealed(x, y) { return x >= this.world.leftEdgeX && y >= 0 && y < this.world.height && x < this.world.generatedThrough[Math.floor(y / this.world.laneHeight)]; }
   _floor(x, y, rise = 0, drop = 12) {
     if (!this._revealed(x, y)) return null;
     for (let at = y - rise; at <= y + drop; at++) if (this._ground(x, at)) return at;
@@ -47,7 +60,7 @@ class ProcgenHazardPlanner {
     return { y: last, span: 8 };
   }
   _constructionOverlap(bounds) {
-    const first = Math.max(0, Math.floor(bounds.y1 / 96)), last = Math.min(this.world.laneCount - 1, Math.floor((bounds.y2 - 1) / 96));
+    const first = Math.max(0, Math.floor(bounds.y1 / this.world.laneHeight)), last = Math.min(this.world.laneCount - 1, Math.floor((bounds.y2 - 1) / this.world.laneHeight));
     for (let lane = first; lane <= last; lane++) {
       const tasks = this.world.accessTasks[lane]; if (!tasks) continue;
       for (const task of tasks) {
@@ -60,21 +73,26 @@ class ProcgenHazardPlanner {
   }
   _builder(actor) {
     if (!this.world.workerLimits?.builders || !this._ground(actor.x, actor.y) || !this._safe(actor.x, actor.y)) return null;
-    let x = actor.x, y = actor.y;
+    let endpointX = actor.x, endpointY = actor.y;
     for (let step = 0; step < 12; step++) {
-      if (!this._revealed(x + 5, y - 1) || !this._safe(x, y)) return null;
-      y--;
+      if (!this._revealed(endpointX + 5, endpointY - 1) || !this._safe(endpointX, endpointY)) return null;
+      endpointY--;
       for (let advance = 0; advance < 2; advance++) {
-        x++;
-        if (this._ground(x, y - 1) || this.world.isArrowAt?.(x, y - 1, true) || !this._safe(x, y)) return null;
+        endpointX++;
+        if (this._ground(endpointX, endpointY - 1) || this.world.isArrowAt?.(endpointX, endpointY - 1, true) || !this._safe(endpointX, endpointY)) return null;
       }
-      if (step < 11 && (this._ground(x + 2, y - 9) || this.world.isArrowAt?.(x + 2, y - 9, true))) return null;
+      if (step < 11 && (this._ground(endpointX + 2, endpointY - 9) || this.world.isArrowAt?.(endpointX + 2, endpointY - 9, true))) return null;
     }
-    const continuation = this._continuation(x, y);
-    if (!continuation) return null;
+    const requireOpening = !this._continuation(endpointX, endpointY);
+    const result = this.building.prove(actor, (x, y) => this._ground(x, y), this.observations, Math.min(BUILD_CANDIDATE_WORK, MAX_ROUTE_PROBES - this.probes), requireOpening);
+    this.probes += result.actionSteps; this.stats.probes += result.actionSteps;
+    if (result.failure === 'unrevealed') this.unrevealed = true;
+    if (!result.safe) return null;
+    const x = actor.x + 24, continuation = { y: result.y, span: 8 };
     const gain = actor.y - continuation.y, crew = this.world.getLaneMusicSignals?.(actor.laneIndex);
     return { kind: 'builders', targetX: x, footprint: { x1: actor.x, x2: actor.x + 28, y1: actor.y - 12, y2: actor.y + 1 },
-      continuationY: continuation.y, estimatedTicks: 192, materialCost: 12,
+      continuationY: continuation.y, estimatedTicks: result.exitTicks, materialCost: 12,
+      routeEvidence: { kind: 'shared-full-build', exitX: result.x, exitY: result.y, exitTicks: result.exitTicks, naturalFall: result.fell, observedBounds: { x1: actor.x - 1, x2: actor.x + 41, y1: actor.y - 32, y2: actor.y + 33 } },
       score: 100 - 192 / 8 - 18 + Math.max(0, gain) * 4 + continuation.span + Math.min(8, crew?.alive || 1) - (crew?.buildingCount || 0) * 4 };
   }
   _basher(actor, cliff) {
@@ -175,18 +193,27 @@ class ProcgenHazardPlanner {
     const world = this.world;
     if (!world || !actor || actor.runtime !== world.runtime || actor.action !== world.actions[State.WALKING] || !actor.lookRight || actor.failureReason || actor.removed || actor.disabled || actor.terminalReason) return null;
     const lane = actor.laneIndex, stride = Math.max(1, Math.ceil(world.laneCount / ROUTE_LANES_PER_TICK));
-    if (lane % stride !== world.tickIndex % stride) { this.stats.deferred++; return null; }
+    if (lane % stride !== world.tickIndex % stride) { this.admission.observe(actor); this.stats.deferred++; return null; }
+    const service = this.admission.begin(lane); this.admission.observe(actor);
     const cached = this.cache[lane], key = `${world.generation}:${actor.x}:${actor.y}:${world.terrainRevision}:${world.frontierRevision}:${world.workerLimits?.builders}:${world.workerLimits?.bashers}:${world.workerLimits?.diggers}`;
     if (cached?.tick === world.tickIndex) {
       const proposal = cached.proposal;
-      if (cached.key !== key || proposal && proposal.kind !== 'builders' && this._constructionOverlap(proposal.footprint)) return null;
+      if (cached.key !== key || proposal && proposal.kind !== 'builders' && (this._constructionOverlap(proposal.footprint) || proposal.routeEvidence && this.tunnels._busy(proposal.footprint))) return null;
       return proposal;
     }
-    this.top = lane * 96; this.through = world.generatedThrough[lane]; this.probes = 0; this.exhausted = false; this.unrevealed = false;
+    if (!this.admission.accepts(actor) || service.consumed || service.probes >= MAX_ROUTE_PROBES) { this.stats.deferred++; return null; }
+    this.top = lane * world.laneHeight; this.through = world.generatedThrough[lane]; this.probes = service.probes; this.exhausted = false; this.unrevealed = false;
     world.hazards.nearby(lane, actor.x, { ahead: MAX_LOCAL_ROUTE_DISTANCE, behind: 4 }, this.observations);
-    for (const adjacent of [Math.floor((actor.y - 24) / 96), Math.floor((actor.y + 12) / 96)]) if (adjacent !== lane && adjacent >= 0 && adjacent < world.laneCount) {
+    for (const adjacent of [Math.floor((actor.y - 24) / this.world.laneHeight), Math.floor((actor.y + 12) / this.world.laneHeight)]) if (adjacent !== lane && adjacent >= 0 && adjacent < world.laneCount) {
       world.hazards.nearby(adjacent, actor.x, { ahead: MAX_LOCAL_ROUTE_DISTANCE, behind: 4 }, this.adjacentObservations);
       this.observations.push(...this.adjacentObservations);
+    }
+    const basin = world.basinRoutes?.candidate(actor, this.observations, MAX_ROUTE_PROBES - this.probes);
+    if (basin?.handled) {
+      this.probes += basin.probes; this.stats.probes += basin.probes;
+      if (basin.proposal) this.admission.served(actor, this.probes);
+      else this.admission.screened(actor, this.probes);
+      return basin.proposal;
     }
     let cliff = null, gap = false;
     for (let dx = 2; dx <= 24 && !cliff; dx += 2) {
@@ -197,19 +224,88 @@ class ProcgenHazardPlanner {
       if (rise >= 7) cliff = { x, y: actor.y - rise };
     }
     const threat = this.observations.find(hazard => hazard.x2 > actor.x && hazard.x1 < actor.x + 28 && actor.y + 1 > hazard.y1 && actor.y - 9 < hazard.y2);
-    let proposal = null;
-    if (threat || cliff || gap) {
-      const build = this._builder(actor), bash = this._basher(actor, cliff);
+    const bypass = this.bypasses.prove(actor, Math.max(0, MAX_ROUTE_PROBES - this.probes));
+    this.probes += bypass.probes; this.stats.probes += bypass.probes;
+    let proposal = bypass.proposal;
+    if (bypass.failure === 'budget') this.exhausted = true;
+    if (bypass.failure === 'unrevealed') this.unrevealed = true;
+    if (!proposal && !threat && !cliff && !gap && !bypass.failure && !this.exhausted && !this.unrevealed) { this.admission.screened(actor, this.probes); return null; }
+    if (!proposal && !bypass.failure && (cliff || gap) && world.workerLimits?.bashers && world.lanePolicy.projects.canBegin(actor)) {
+      // A lower revealed endpoint is only a cheap candidate screen. The shared
+      // unchanged walk must actually fail before any relief cut is admitted.
+      const lower = this._floor(actor.x + MAX_LOCAL_ROUTE_DISTANCE, actor.y, 0, 32);
+      if (lower != null && lower - actor.y > 12 && !this.exhausted && !this.unrevealed) {
+        const result = this.relief.prove(actor, MAX_ROUTE_PROBES - this.probes, world.tunnelRoutes.guard(actor));
+        this.probes += result.probes; this.stats.probes += result.probes;
+        if (result.proposal) proposal = result.proposal;
+        else if (result.guardCandidate) world.tunnelRoutes.request(actor, result.guardCandidate);
+        if (result.proposal || result.guardCandidate || world.tunnelRoutes.guard(actor)) {
+          this.admission.served(actor, Math.min(MAX_ROUTE_PROBES, this.probes));
+          this.cache[lane] = { tick: world.tickIndex, key, proposal }; this.stats.plans++;
+          return proposal;
+        }
+      }
+    }
+    if (!proposal && (threat || cliff || gap)) {
+      const build = this._builder(actor);
+      if (build) build.score += world.lanePolicy?.score(actor, build) || 0;
+      // A coarse gap under existing bricks is not a reason to excavate their
+      // safe passive exit. Retain proactive building unless completed nearby
+      // construction and an actual ordinary shared-action replay justify WALK.
+      if (!bypass.failure && (!build || world.lanePolicy?.connectedConstruction(actor))) {
+        const walking = this.walking.prove(actor, (x, y) => this._ground(x, y), this.observations, MAX_ROUTE_PROBES - this.probes);
+        if (walking.failure === 'unrevealed') this.unrevealed = true;
+        if (walking.safe && !this.exhausted && !this.unrevealed) { this.admission.screened(actor, this.probes); return null; }
+        // Discover a real imminent WALK entrance before scalar excavation scans
+        // spend its service. The live actor keeps following its shared actions.
+        if (!build && walking.terrainTurn?.steps > 0 && !actor.scout && !actor.canClimb && !actor.hasParachute && world.workerLimits?.bashers &&
+            !this.exhausted && !this.unrevealed && !world.tunnelRoutes.scenes[lane] && world.lanePolicy.projects.canBegin(actor)) {
+          const pose = Object.assign(Object.create(actor), { x: walking.terrainTurn.x, y: walking.terrainTurn.y });
+          const guarded = this.guardedTunnels.prove(pose, MAX_ROUTE_PROBES - this.probes);
+          this.probes += guarded.probes; this.stats.probes += guarded.probes;
+          if (guarded.guardCandidate && world.tunnelRoutes.request(actor, guarded.guardCandidate, walking.terrainTurn)) {
+            this.admission.served(actor, Math.min(MAX_ROUTE_PROBES, this.probes));
+            this.cache[lane] = { tick: world.tickIndex, key, proposal: null }; this.stats.plans++; return null;
+          }
+        }
+      }
+      let bash = null, observedLong = false, guardedPending = false;
+      if (!build && cliff && world.workerLimits?.bashers && this._ground(actor.x + 30, actor.y - 6)) {
+        let up = 0; while (up < 8 && this._ground(actor.x + 1, actor.y - up)) up++;
+        if (up === 8) {
+          observedLong = true;
+          const result = this.tunnels.prove(actor, Math.max(0, MAX_ROUTE_PROBES - this.probes));
+          this.probes += result.probes; this.stats.probes += result.probes;
+          if (result.proposal) proposal = result.proposal;
+          else if (this.probes < MAX_ROUTE_PROBES && world.lanePolicy.projects.canBegin(actor)) {
+            const guarded = this.guardedTunnels.prove(actor, MAX_ROUTE_PROBES - this.probes, world.tunnelRoutes.guard(actor));
+            this.probes += guarded.probes; this.stats.probes += guarded.probes;
+            if (guarded.proposal) proposal = guarded.proposal;
+            else if (guarded.guardCandidate) world.tunnelRoutes.request(actor, guarded.guardCandidate);
+            guardedPending = !!world.tunnelRoutes.scenes[lane];
+          }
+        }
+      }
+      if (!observedLong) bash = this._basher(actor, cliff);
+      if (bash) bash.score += world.lanePolicy?.score(actor, bash) || 0;
       if (build && (!bash || build.score > bash.score)) proposal = { ...build, reason: threat ? 'supported-hazard-bypass' : cliff ? 'short-stair-to-ledge' : 'supported-local-gap' };
-      else if (bash && bash.startX === actor.x) proposal = { ...bash, reason: 'supported-local-tunnel' };
-      if (!proposal) proposal = this._digDescent(actor) || this._mineDescent(actor);
+      else if (!proposal && bash && bash.startX === actor.x) proposal = { ...bash, reason: 'supported-local-tunnel' };
+      if (!proposal && !guardedPending && world.workerLimits?.diggers && this.probes < MAX_ROUTE_PROBES) {
+        const result = this.descents.prove(actor, MAX_ROUTE_PROBES - this.probes, null, world.lanePolicy?.descentPreference(actor));
+        this.probes += result.probes; this.stats.probes += result.probes;
+        proposal = result.proposal;
+        if (result.failure === 'budget') this.exhausted = true;
+        if (result.failure === 'unrevealed') this.unrevealed = true;
+      }
+      if (!proposal && !guardedPending && this.probes < MAX_ROUTE_PROBES) proposal = this._digDescent(actor) || this._mineDescent(actor);
     }
     if (this.unrevealed) proposal = null;
     if (this.exhausted) { proposal = null; this.stats.budgetExhausted++; }
+    this.admission.served(actor, Math.min(MAX_ROUTE_PROBES, this.probes));
     this.cache[lane] = { tick: world.tickIndex, key, proposal }; this.stats.plans++;
     return proposal;
   }
-  reset() { this.cache.fill(null); this.observations.length = 0; this.adjacentObservations.length = 0; }
-  dispose() { this.reset(); this.world = null; }
+  reset() { this.admission.reset(); this.bypasses.reset(); this.tunnels.reset(); this.descents.reset(); this.walking.reset(); this.building.reset(); this.relief.reset(); this.cache.fill(null); this.observations.length = 0; this.adjacentObservations.length = 0; }
+  dispose() { this.reset(); this.admission.dispose(); this.bypasses.dispose(); this.tunnels.dispose(); this.descents.dispose(); this.walking.dispose(); this.building.dispose(); this.guardedTunnels.dispose(); this.relief.dispose(); this.world = null; }
 }
 export { ProcgenHazardPlanner, MAX_LOCAL_ROUTE_DISTANCE, MAX_ROUTE_PROBES, ROUTE_LANES_PER_TICK };

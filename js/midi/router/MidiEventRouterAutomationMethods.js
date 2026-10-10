@@ -18,15 +18,9 @@ const midiEventRouterAutomationMethods = {
     }
   },
   _automationPosition(meta, tick, queued = false) {
-    const world = this.context?.game, timer = this._phraseTimer || world?.getGameTimer?.();
-    const origin = Number.isFinite(world?.generationStartTick) ? world.generationStartTick : 0;
-    const baseMs = Number.isFinite(timer?.TIME_PER_FRAME_MS) && timer.TIME_PER_FRAME_MS > 0 ? timer.TIME_PER_FRAME_MS : 60;
-    const tempo = this.mapping.config?.timing?.bpmBase;
-    const bpm = Number.isFinite(tempo) ? Math.max(20, tempo) : 120;
-    const rawBeat = Number.isFinite(tick) ? Math.max(0, tick - origin) * baseMs / 60000 * bpm : null;
-    const beat = Number.isFinite(rawBeat) ? Math.min(Number.MAX_SAFE_INTEGER, rawBeat) : null;
-    const signature = this.mapping.config?.timing?.timeSignature;
-    const beatsPerBar = Math.max(1, signature?.beats || 4) * 4 / Math.max(1, signature?.unit || 4);
+    const world = this.context?.game;
+    const position = this._directionPosition(tick);
+    const beat = Number.isFinite(tick) ? position.beat : null;
     let distance = Number.isFinite(meta.eventWorldX) ? meta.eventWorldX : null, distanceSource = distance == null ? null : 'event-origin';
     if (queued && typeof world?.getLaneMusicActorPosition === 'function') {
       const position = world.getLaneMusicActorPosition(meta.lemmingId, meta.laneIndex ?? 0);
@@ -34,7 +28,7 @@ const midiEventRouterAutomationMethods = {
         distance = position.x; distanceSource = 'completed-actor';
       }
     }
-    return { tick, beat, bar: beat == null ? 1 : Math.floor(beat / beatsPerBar) + 1, distance, distanceSource };
+    return { tick, beat, bar: position.bar, distance, distanceSource };
   },
   _observeAutomationEvent(event) {
     if (!this.automationSpans.entries.length) return null;

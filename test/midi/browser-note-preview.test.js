@@ -1,4 +1,7 @@
 import { expect } from 'chai';
+import { EventHandler } from '../../js/util/EventHandler.js';
+import { createMidiEventPlayback, getMidiEventPlaybackEnvelope } from '../../js/app/midi-ui/midiEventPlayback.js';
+import { TestDocument } from '../helpers/test-dom.js';
 import { readFileSync } from 'node:fs';
 import { BrowserNotePreview, createBrowserNotePreview } from '../../js/app/midi-ui/browserNotePreview.js';
 import { applyGameEventMidiPreset } from '../../js/midi/project/GameEventMidiPresets.js';
@@ -6,6 +9,8 @@ import { createMidiProject, projectToMidiConfig } from '../../js/midi/project/Mi
 import { MidiEventRouter } from '../../js/midi/MidiEventRouter.js';
 import { SoundEffectIds } from '../../js/game/SoundEvents.js';
 import { MidiScheduler } from '../../js/midi/MidiScheduler.js';
+import { createMidiOutputCapture } from '../../js/midi/capture/MidiOutputCapture.js';
+import { analyzeMidiOutputCapture } from '../../js/midi/capture/MidiCaptureAnalysis.js';
 import { withFakeClockAndPerformance } from '../support/timers.js';
 
 const deferred = () => {
@@ -109,6 +114,129 @@ const setup = (options = {}, context = new FakeContext()) => {
 };
 
 describe('BrowserNotePreview', function() {
+  it('coalesces owner unlock requests and cancels replaced requests while another owner is waiting', async () => {
+    const context = new FakeContext('suspended'), pending = deferred(); context.resumeResult = pending.promise;
+    const { preview } = setup({}, context), game = preview.createSession('game'), audition = preview.createSession('audition');
+    const gameReady = game.enable(); expect(game.enable()).to.equal(gameReady);
+    const replaced = [];
+    for (let i = 0; i < 12; i++) {
+      replaced.push(audition.enable()); expect(preview._pendingEnables.size).to.equal(2);
+      audition.stop(); expect(preview._pendingEnables.size).to.equal(1);
+    }
+    expect((await Promise.all(replaced)).every(value => value === false)).to.equal(true);
+    context.state = 'running'; pending.resolve(); expect(await gameReady).to.equal(true);
+    expect(context.resumeCalls).to.equal(1); expect(preview._pendingEnables.size).to.equal(0); await preview.dispose();
+  });
+
+  it('uses the audition bend range without retuning another owner on the same channel', async () => {
+    const { preview, context } = setup();
+    const game = preview.createSession('game'), audition = preview.createSession('audition');
+    await game.enable(); game.output.channels[2].sendNoteOn(60, { voiceToken: 1 });
+    expect(await audition.preview([{ note: 64, channel: 2, pitchBend: 0.25, pitchBendRange: 12.5 }])).to.equal(true);
+    expect(context.oscillators[0].detune.events.at(-1).value).to.equal(0);
+    expect(context.oscillators[1].detune.events.at(-1).value).to.equal(312.5);
+    await preview.dispose();
+  });
+
+  it('shares one graph and total voice budget while isolating owner channels, same-pitch gates and Stop', async () => {
+    const { preview, context, creations } = setup({ maxVoices: 2 });
+    const game = preview.createSession('game'), audition = preview.createSession('audition');
+    await game.enable(); await audition.enable();
+    expect(creations()).to.equal(1); expect(context.compressors).to.have.length(1); expect(context.limiters).to.have.length(1);
+    game.output.channels[1].sendProgramChange(38); audition.output.channels[1].sendProgramChange(81);
+    game.output.channels[1].sendNoteOn(60, { voiceToken: 1, priority: 4, pan: -0.5 });
+    audition.output.channels[1].sendNoteOn(60, { voiceToken: 1, priority: 4, pan: 0.5 });
+    const [gameVoice, auditionVoice] = [...preview._voices];
+    expect(context.oscillators.map(node => node.type)).to.deep.equal(['sine', 'sawtooth']);
+    audition.output.channels[1].sendPitchBend(0.5);
+    expect(gameVoice.oscillator.detune.events.at(-1).value).to.equal(0);
+    expect(auditionVoice.oscillator.detune.events.at(-1).value).to.equal(100);
+    audition.output.channels[1].sendControlChange(7, 32);
+    const gameChannel = preview._channels.get(game.getState().ownerId + ':1');
+    expect(gameChannel.volume).to.equal(1);
+    expect(audition.output.channels[1].sendNoteOn(64, { voiceToken: 2, priority: 0 })).to.equal(false);
+    expect(preview.getState().voiceDrops).to.equal(1); expect(preview.getState().activeVoices).to.equal(2);
+    audition.stop(); expect(game.output.isVoiceActive(1)).to.equal(true); expect(audition.output.isVoiceActive(1)).to.equal(false);
+    expect(preview.getState().enabled).to.equal(true); expect(game.getState().activeVoices).to.equal(1);
+    await audition.dispose(); expect(context.closeCalls).to.equal(0);
+    const replacement = preview.createSession('audition'); await replacement.enable();
+    replacement.output.channels[1].sendNoteOn(60, { voiceToken: 1 });
+    audition.output.clear(); expect(replacement.output.isVoiceActive(1)).to.equal(true);
+    preview.panic(); expect(preview.getState().activeVoices).to.equal(0); expect(game.getState().enabled).to.equal(false);
+    await preview.dispose(); expect(context.closeCalls).to.equal(1);
+  });
+
+  it('cancels one pending owner unlock without canceling or resurrecting the other owner', async () => {
+    const context = new FakeContext('suspended'), pending = deferred(); context.resumeResult = pending.promise;
+    const { preview } = setup({}, context);
+    const game = preview.createSession('game'), audition = preview.createSession('audition');
+    const gameReady = game.enable(), auditionReady = audition.enable();
+    audition.stop(); expect(await auditionReady).to.equal(false);
+    context.state = 'running'; pending.resolve(); expect(await gameReady).to.equal(true);
+    expect(context.resumeCalls).to.equal(1); expect(game.getState().enabled).to.equal(true); expect(audition.getState().enabled).to.equal(false);
+    await audition.dispose(); expect(game.getState().enabled).to.equal(true); await preview.dispose();
+  });
+
+  it('retains all long audition cells on the shared bounded queue and stops only its future tail', async () => {
+    await withFakeClockAndPerformance(async clock => {
+      const { preview, context } = setup({ nowMs: () => clock.now });
+      Object.defineProperty(context, 'currentTime', { get: () => 2 + clock.now / 1000 });
+      const game = preview.createSession('game'), audition = preview.createSession('audition');
+      await game.enable(); game.output.channels[1].sendNoteOn(45, { voiceToken: 1 });
+      expect(await audition.preview(Array.from({ length: 16 }, (_, i) => ({ note: 60 + i, offsetMs: i * 960, durationMs: 120 })))).to.equal(true);
+      await clock.tickAsync(10500);
+      expect(context.oscillators).to.have.length(17); expect(audition.getState().pendingNotes).to.equal(0);
+      await audition.preview([{ note: 80, offsetMs: 14400 }]); expect(audition.getState().pendingNotes).to.equal(1);
+      game.output.channels[1].sendNoteOn(48, { voiceToken: 2 });
+      audition.stop(); expect(game.output.isVoiceActive(2)).to.equal(true);
+      const count = context.oscillators.length; await clock.tickAsync(16000); expect(context.oscillators).to.have.length(count);
+      expect(preview.getState().pendingNotes).to.equal(0); await preview.dispose();
+    });
+  });
+
+  it('bounds reusable sessions and records distinct scopes at the shared render boundary', async () => {
+    const { preview } = setup(), records = [];
+    preview.setCapture({ isActive: () => true, record(stage, fields) { records.push({ stage, ...fields }); return records.length; } });
+    const game = preview.createSession('game'), audition = preview.createSession('audition');
+    preview.createSession('third'); preview.createSession('fourth');
+    expect(() => preview.createSession('fifth')).to.throw(RangeError);
+    await game.enable(); await audition.enable();
+    game.output.channels[1].sendNoteOn(60, { voiceToken: 1 }); audition.output.channels[1].sendNoteOn(64, { voiceToken: 1 });
+    expect(records.filter(item => item.stage === 'synth-scheduled').map(item => item.outputScope)).to.deep.equal([game.output.captureScope, audition.output.captureScope]);
+    await audition.dispose(); expect(preview._channels.size).to.equal(1); expect(preview.createSession('fifth')).not.to.equal(null);
+    await preview.dispose();
+  });
+
+  it('matches scheduler-observed future notes to their actual shared-session cancellation', async () => {
+    await withFakeClockAndPerformance(async clock => {
+      const { preview } = setup({ nowMs: () => clock.now });
+      const game = preview.createSession('game'), audition = preview.createSession('audition');
+      const capture = createMidiOutputCapture(); capture.start(); preview.setCapture(capture);
+      const scheduler = new MidiScheduler({ enabled: true, defaultChannel: 1 });
+      scheduler.setCapture(capture); scheduler.setOutput(game.output);
+      try {
+        await game.enable(); await audition.enable();
+        audition.output.channels[1].sendNoteOn(60, { voiceToken: 1 });
+        await audition.preview([{ note: 64, offsetMs: 1200, durationMs: 200 }], { replace: false });
+        // Exercise the real scheduler API boundary with an accepted future local schedule.
+        const origin = { captureScope: scheduler._captureScope, token: 1, requestId: 1, laneIndex: 3,
+          owner: audition.getState().ownerId, outputId: 'retained-origin-output', outputScope: 'retained-origin-scope' };
+        expect(scheduler._sendOutput(game.output, 1, 'sendNoteOn', [60, { time: 1000, rawAttack: 96, voiceToken: 1 }], origin)).to.equal(true);
+        scheduler.allNotesOff();
+        expect(audition.output.isVoiceActive(1)).to.equal(true);
+        const snapshot = capture.snapshot(), gameRecords = snapshot.records.filter(record => record.token === 1);
+        expect(gameRecords.map(record => record.stage)).to.include.members(['api-dispatch', 'synth-scheduled', 'synth-end']);
+        for (const record of gameRecords) expect(record).to.include({ captureScope: origin.captureScope,
+          outputScope: game.output.captureScope, outputId: game.output.id, laneIndex: 3 });
+        const auditionRecords = snapshot.records.filter(record => record.outputId === audition.output.id);
+        expect(auditionRecords.map(record => record.stage)).to.include('request');
+        expect(auditionRecords.every(record => record.outputScope === audition.output.captureScope)).to.equal(true);
+        const note = analyzeMidiOutputCapture(snapshot).notes.find(entry => entry.outputId === game.output.id);
+        expect(note).to.include({ startMs: 1000, synthEndReason: 'panic-or-stop', cancelledBeforeStart: true });
+      } finally { scheduler.dispose(); await preview.dispose(); }
+    });
+  });
+
   it('emits every cell of a 14.4-second audition incrementally at its original timestamp', async () => {
     await withFakeClockAndPerformance(async clock => {
       const { preview, context } = setup({ nowMs: () => clock.now });
@@ -242,6 +370,25 @@ describe('BrowserNotePreview', function() {
     await preview.dispose();
   });
 
+  it('publishes profile envelope and early-release amplitude only from actual admitted local voices', async function() {
+    const events = [], { preview } = setup({ onPlayback: event => events.push(event) });
+    try {
+      await preview.enable();
+      const options = { rawAttack: 100, time: 1100, voiceToken: 1, instrument: { program: 38, legacy: false }, playback: { sfxId: 20, durationMs: 120, stepIndex: 1, stepCount: 3 } };
+      expect(preview.output.channels[1].sendNoteOn(48, options)).to.equal(true);
+      const voice = [...preview._voices][0], onset = events[0];
+      expect(onset).to.include({ phase: 'start', note: 48, attackMs: 6, decayMs: 50, sustain: 0.82, releaseDurationMs: 60, mixLatencyMs: 6, stepIndex: 1, stepCount: 3 });
+      const gain = voice.gain.gain.events;
+      expect(gain.find(event => event.type === 'ramp' && event.value === voice.peak).time - voice.start).to.be.closeTo(onset.attackMs / 1000, 0.000001);
+      expect(gain.find(event => event.type === 'ramp' && event.value === voice.peak * onset.sustain).time - voice.start).to.be.closeTo((onset.attackMs + onset.decayMs) / 1000, 0.000001);
+      expect(getMidiEventPlaybackEnvelope(onset).endMs).to.be.closeTo(1286, 0.000001);
+      preview.output.channels[1].sendNoteOff(48, { time: 1104, voiceToken: 1 });
+      const release = events[1]; expect(release.releaseLevel).to.be.closeTo(2 / 3, 0.000001);
+      expect(getMidiEventPlaybackEnvelope(release).points[1].level).to.be.closeTo(voice.releaseLevel / voice.peak, 0.000001);
+      expect(getMidiEventPlaybackEnvelope(release).endMs).to.be.closeTo(1170, 0.000001);
+      preview.stop(); expect(events.at(-1).phase).to.equal('end');
+    } finally { await preview.dispose(); }
+  });
   it('emits playback only at scheduler dispatch and cancels a future note before it sounds', async function() {
     await withFakeClockAndPerformance(async clock => {
       const events = []; const { preview } = setup({ nowMs: () => clock.now, onPlayback: event => events.push(event) });
@@ -950,5 +1097,45 @@ describe('inactive hardware boundary', function() {
     scheduler.output = null;
     scheduler._outputsById.clear();
     scheduler.dispose();
+  });
+});
+
+
+describe('polyphonic clip dispatch to existing event-card playback feedback', function() {
+  it('creates separate actual-pitch gate spans for voices/repeats and cleans all spans on Panic without a frame layout loop', async function() {
+    await withFakeClockAndPerformance(async clock => {
+      const context = new FakeContext(); context.currentTime = 0;
+      const document = new TestDocument(), row = document.createElement('button'); row.dataset.gameEventId = '20';
+      let reads = 0; row.getBoundingClientRect = () => { reads++; return { width: 240 }; };
+      const create = document.createElement.bind(document), animations = [], emitted = [];
+      document.createElement = tag => { const node = create(tag); node.isConnected = true; node.remove = () => node.parent?.removeChild(node);
+        node.animate = (frames, options) => { const animation = { frames, options, cancel() {} }; animations.push(animation); return animation; }; return node; };
+      const cells = Array.from({ length: 8 }, () => document.createElement('button')); let selectedSource = 'sfx-20';
+      const feedback = createMidiEventPlayback({ document, window: { performance: { now: () => clock.now } }, getRows: () => [row],
+        getCellTarget: event => event.clipId === 'poly' && event.sourceId === selectedSource ? cells[event.stepIndex] : null });
+      const preview = new BrowserNotePreview({ createAudioContext: () => context, nowMs: () => clock.now,
+        onPlayback: event => { emitted.push(event); feedback.onPlayback({ ...event, owner: 'game' }); } }); await preview.enable();
+      const router = new MidiEventRouter({ enabled: true, mpe: { enabled: false }, density: { velocityBoost: 0, durationScale: 0 },
+        scale: { name: 'chromatic', root: 0 }, noteRange: { min: 0, max: 127 }, velocityRange: { min: 1, max: 127, default: 80 },
+        durationTicks: { min: 1, max: 960, default: 4 }, sfx: { 20: { note: 60, channel: 1, sourceId: 'sfx-20', sourceKind: 'sfx', sourceKey: '20', clipSequence: { id: 'poly', advance: 'game-tick', spacingTicks: 2,
+          steps: [{ voices: [{ note: 60, velocity: 45, durationTicks: 5 }, { note: 64, velocity: 95, durationTicks: 2 }], transformLayers: [{ type: 'repeat', count: 2, spacingTicks: 2, transpose: 7 }] }, { note: null }, { note: 72, probability: 0 }] } } } });
+      const timer = { tick: 0, frameTime: 60, onGameTick: new EventHandler(), getGameTicks() { return this.tick; }, get tps() { return 1000 / this.frameTime; } };
+      router.setOutput(preview.output); router.attach({ onEvent: new EventHandler(), gameTimer: timer });
+      try {
+        router._onEvent({ sfxId: 20, tick: 0, frameMs: 60 });
+        for (let index = 0; index < 2; index++) { context.currentTime += 0.06; clock.tick(60); timer.tick++; timer.onGameTick.trigger(); }
+        const starts = emitted.filter(event => event.phase === 'start');
+        expect(starts.map(event => [event.note, event.velocity])).to.deep.equal([[60, 45], [64, 95], [67, 45], [71, 95]]);
+        starts.forEach((event, index) => expect(event.durationMs).to.be.closeTo(index % 2 ? 120 : 300, 0.000001));
+        expect(new Set(starts.map(event => event.id)).size).to.equal(4); expect(row.children.map(node => node.textContent)).to.include.members(['C4', 'E4', 'G4', 'B4']);
+        expect(starts.every(event => event.clipId === 'poly' && event.sourceId === 'sfx-20' && event.originTick === 0 && event.stepIndex === 0)).to.equal(true);
+        expect(cells[0].children.map(node => node.textContent)).to.deep.equal(['C4', 'E4', 'G4', 'B4']); expect(cells.slice(1).every(cell => !cell.children.length)).to.equal(true);
+        selectedSource = 'sfx-21'; feedback.render(); expect(cells.every(cell => !cell.children.length)).to.equal(true); expect(row.children).to.have.length(4);
+        selectedSource = 'sfx-20'; feedback.render(); expect(cells[0].children).to.have.length(4);
+        const before = reads; for (let index = 0; index < 5; index++) feedback.render(); expect(reads).to.equal(before);
+        expect(animations.every(animation => animation.options.duration > 0 && animation.frames.at(-1).opacity === 0)).to.equal(true);
+        router.scheduler.allNotesOff(); expect(row.children).to.have.length(0); expect(preview._voices.size).to.equal(0); expect(cells.every(cell => !cell.children.length)).to.equal(true);
+      } finally { router.dispose(); preview.dispose(); feedback.dispose(); }
+    });
   });
 });

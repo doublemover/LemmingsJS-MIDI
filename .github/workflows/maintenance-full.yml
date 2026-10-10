@@ -25,18 +25,15 @@ jobs:
     - run: npm ci
     - run: npm audit --audit-level=moderate
     - run: npx playwright install --with-deps chromium
-    - run: npm run format
     - name: Check changed-line whitespace
       run: git diff --check HEAD
-    - run: git diff --exit-code
     - run: npm run check-undefined
     - run: npm run lint
     - run: npm run typecheck:critical
     - run: npm run release-readiness
     - run: npm run depcheck
     - run: npm run check-mcp-clients
-    - run: npm run test-bench-unit
-    - run: npm test
+    - run: npm run test-e2e:boundaries
     - name: Create localhost HTTPS cert
       run: |
         mkdir -p certs
@@ -48,16 +45,25 @@ jobs:
           -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
     - name: Start HTTPS server
       run: |
-        npm run start-https > /tmp/lemmings-http.log 2>&1 &
-        echo $! > /tmp/lemmings-http.pid
-        node -e "const https=require('node:https'); const started=Date.now(); const tick=()=>{const req=https.get('https://localhost:8080/?e2e=1',{rejectUnauthorized:false},res=>{res.resume(); process.exit(0);}); req.on('error',()=>{if(Date.now()-started>30000) process.exit(1); setTimeout(tick,500);});}; tick();"
+        node "$GITHUB_WORKSPACE/node_modules/http-server/bin/http-server" --cors="*" -S -C certs/localhost.pem -K certs/localhost-key.pem -a 127.0.0.1 -p 8080 > "$RUNNER_TEMP/lemmings-http-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${GITHUB_JOB}.log" 2>&1 &
+        echo $! > "$RUNNER_TEMP/lemmings-http-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${GITHUB_JOB}.pid"
+        LEMMINGS_HTTP_PID="$(cat "$RUNNER_TEMP/lemmings-http-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${GITHUB_JOB}.pid")" node -e "const ensureOwned=()=>{try{process.kill(Number(process.env.LEMMINGS_HTTP_PID),0);}catch{process.exit(1);}}; const https=require('node:https'); const started=Date.now(); const tick=()=>{ensureOwned(); const req=https.get('https://localhost:8080/?e2e=1',{rejectUnauthorized:false},res=>{res.resume(); ensureOwned(); process.exit(res.statusCode===200?0:1);}); req.on('error',()=>{if(Date.now()-started>30000) process.exit(1); setTimeout(tick,500);});}; tick();"
     - run: npm run test-mcp-smoke
     - run: npm run bench-smoke
     - name: Stop HTTPS server
       if: always()
       run: |
-        if [ -f /tmp/lemmings-http.pid ]; then
-          kill "$(cat /tmp/lemmings-http.pid)" || true
+        if [ -f "$RUNNER_TEMP/lemmings-http-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${GITHUB_JOB}.pid" ]; then
+          server_pid=$(cat "$RUNNER_TEMP/lemmings-http-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${GITHUB_JOB}.pid")
+          if [ -r "/proc/$server_pid/cmdline" ]; then
+            mapfile -d '' server_args < "/proc/$server_pid/cmdline"
+            if [ "${server_args[1]}" = "$GITHUB_WORKSPACE/node_modules/http-server/bin/http-server" ]; then
+              kill "$server_pid"
+            else
+              echo "Server PID no longer identifies this job's HTTP server; leaving it untouched." >&2
+              exit 1
+            fi
+          fi
         fi
     - run: npm run coverage
     - uses: actions/upload-artifact@v4

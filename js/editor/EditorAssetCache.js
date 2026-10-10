@@ -1,6 +1,7 @@
 import { createNeonCabaretGroundSet } from '../decorations/NeonCabaretGroundSet.js';
 import { FileContainer } from '../data/FileContainer.js';
 import { GroundReader, loadSteelSprites } from '../level/GroundReader.js';
+import { getSourceImageGeometry } from '../render/SourceImageGeometry.js';
 import { TriggerTypes } from '../level/TriggerTypes.js';
 import {
   getDefaultStyle,
@@ -71,12 +72,13 @@ class EditorAssetCache {
     const gadgetById = new Map();
 
     const terrain = terrainImages.map((img, id) => {
+      const geometry = getSourceImageGeometry(img);
       const name = buildPieceName(resolveTerrainName(resolvedStyle, id), 'terrain_', id);
       const entry = {
         id,
         name,
-        width: img?.width || 0,
-        height: img?.height || 0,
+        width: geometry.width,
+        height: geometry.height,
         isSteel: !!img?.isSteel,
         steelWidth: img?.steelWidth || 0,
         steelHeight: img?.steelHeight || 0
@@ -87,12 +89,13 @@ class EditorAssetCache {
 
     let exitId = null;
     const gadgets = objectImages.map((img, id) => {
+      const geometry = getSourceImageGeometry(img);
       const name = buildPieceName(resolveGadgetName(resolvedStyle, id), 'object_', id);
       const entry = {
         id,
         name,
-        width: img?.width || 0,
-        height: img?.height || 0,
+        width: geometry.width,
+        height: geometry.height,
         triggerEffectId: img?.trigger_effect_id || 0,
         triggerWidth: img?.trigger_width || 0,
         triggerHeight: img?.trigger_height || 0

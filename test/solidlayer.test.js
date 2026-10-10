@@ -3,9 +3,11 @@ import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import { SolidLayer } from '../js/render/SolidLayer.js';
 import { Mask } from '../js/render/Mask.js';
 
-useGlobalLemmings(Lemmings);
+
 
 describe('SolidLayer', function() {
+  useGlobalLemmings(Lemmings);
+
   it('updates mask when setting and clearing ground', function() {
     const layer = new SolidLayer(3, 3);
     expect(layer.hasGroundAt(1, 1)).to.equal(false);

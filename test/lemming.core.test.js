@@ -20,6 +20,7 @@ describe('Lemming core', function() {
     expect(lem.setCountDown({})).to.equal(true);
     expect(lem.countdown).to.equal(80);
     expect(lem.setCountDown({})).to.equal(false);
+    expect(lem.countdown).to.equal(80);
   });
 
   it('processes out-of-level and missing action states', function() {

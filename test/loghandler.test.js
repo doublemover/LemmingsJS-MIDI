@@ -49,9 +49,11 @@ const withDebugConsole = (fn) => withShowDebug(true, () => {
   }
 });
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('LogHandler', function() {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   let origHandler;
   before(function() {
     origHandler = Lemmings.LogHandler;
@@ -70,6 +72,8 @@ describe('LogHandler', function() {
 });
 
 describe('Logger output levels', function() {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('formats info, warning and error messages', function() {
     withDebugConsole(({ calls }) => {
       const logger = new Lemmings.Logger('Mod');
@@ -96,6 +100,8 @@ describe('Logger output levels', function() {
 });
 
 describe('withPerformance', function() {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   let origPerf;
   before(function() {
     origPerf = globalThis.performance;
@@ -128,7 +134,9 @@ describe('withPerformance', function() {
   });
 });
 
-describe('startMeasure and withPerformance error handling', function() {        
+describe('startMeasure and withPerformance error handling', function() {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   let origPerf;
   beforeEach(function() {
     origPerf = globalThis.performance;

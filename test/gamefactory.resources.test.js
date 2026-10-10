@@ -3,7 +3,7 @@ import { setGlobalLemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import { GameFactory } from '../js/game/GameFactory.js';
 import { applyDependencyOverrides } from './support/deps.js';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 class FileProviderStub {
   constructor(root) { this.root = root; }
@@ -31,6 +31,8 @@ const withPerfStub = async (perf, lemmings, fn) => {
 };
 
 describe('GameFactory resource helpers', function () {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   afterEach(function () {
     delete globalThis.__LEMMINGS_RUNTIME_REVISION__;
   });

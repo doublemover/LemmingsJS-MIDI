@@ -1,12 +1,15 @@
+import { ProcgenActorVisibility } from './ProcgenActorVisibility.js';
 import { ProcgenCctv } from './ProcgenCctv.js';
 import { assemblyPlacementReady } from './ProcgenAssemblyPlacement.js';
 import { procgenObjectImage } from './ProcgenObjectPresentation.js';
 import { DecorationLayer } from '../../decorations/DecorationLayer.js';
-import { LANE_HEIGHT } from './ProcgenLaneWorld.js';
 import { createProcgenCameraController } from './ProcgenCameraController.js';
+
+const unprepared = state => state?.complete === false && state.active?.length === 0 && !state.plan;
 
 class ProcgenLaneRenderer {
   constructor({ canvas, world, assets, windowRef = window }) {
+    this.actorVisibility = new ProcgenActorVisibility(world);
     this.canvas = canvas; this.world = world; this.assets = assets; this.window = windowRef;
     this.context = canvas.getContext('2d', { alpha: false });
     this.buffer = canvas.ownerDocument.createElement('canvas'); this.bufferContext = this.buffer.getContext('2d', { alpha: false });
@@ -25,6 +28,7 @@ class ProcgenLaneRenderer {
     this.markerDash = [4, 4]; this.markerSolidDash = [];
     this.cctv = new ProcgenCctv(this);
   }
+  get laneHeight() { return this.world.laneHeight || 96; }
   resize() { this.lastTerrainKey = ''; this.lastGeometryKey = ''; this.render(); }
   _frameCanvas(frame) {
     let bitmap = this.frames.get(frame);
@@ -72,28 +76,28 @@ class ProcgenLaneRenderer {
     const world = this.world, terrain = world.terrain, step = this.rasterStep, x0 = this.originX, y0 = this.originY;
     const pixels = this.pixels, dirty = [];
     if (reset || !terrain) { pixels.fill(0xff0e0807); this.tileRevisions.clear(); }
-    const firstLane = Math.max(0, Math.floor(y0 / LANE_HEIGHT)), lastLane = Math.min(world.laneCount - 1, Math.floor((y0 + this.viewHeight) / LANE_HEIGHT));
+    const firstLane = Math.max(0, Math.floor(y0 / this.laneHeight)), lastLane = Math.min(world.laneCount - 1, Math.floor((y0 + this.viewHeight) / this.laneHeight));
     if (terrain) {
       const chunkWidth = terrain.chunkWidth;
       for (let lane = firstLane; lane <= lastLane; lane++) {
-        const py0 = Math.max(0, Math.ceil((lane * LANE_HEIGHT - y0) / step)), py1 = Math.min(height, Math.ceil(((lane + 1) * LANE_HEIGHT - y0) / step));
+        const py0 = Math.max(0, Math.ceil((lane * this.laneHeight - y0) / step)), py1 = Math.min(height, Math.ceil(((lane + 1) * this.laneHeight - y0) / step));
         if (py0 >= py1) continue;
         const through = Math.min(x0 + this.viewWidth, world.generatedThrough[lane]);
         for (let cx = Math.floor(x0 / chunkWidth); cx * chunkWidth < through; cx++) {
           const px0 = Math.max(0, Math.ceil((cx * chunkWidth - x0) / step)), px1 = Math.min(width, Math.ceil((Math.min((cx + 1) * chunkWidth, through) - x0) / step));
           if (px0 >= px1) continue;
-          const tileKey = lane * 0x800000 + cx, revision = world.terrainTileRevisions?.get(tileKey) || 0;
-          const materialization = world.terrainGrowth?.stateFor?.(lane, cx);
-          const tileRevision = revision + ':' + Math.min(chunkWidth, through - cx * chunkWidth) + ':' + (materialization?.revision || 0);
+          const tileKey = lane * 0x800000 + cx, revision = world.getTerrainTileRevision?.(tileKey) ?? world.terrainTileRevisions?.get(tileKey) ?? 0;
+          const materialization = world.terrainGrowth?.stateFor?.(lane, cx), hidden = unprepared(materialization);
+          const tileRevision = revision + ':' + Math.min(chunkWidth, through - cx * chunkWidth) + ':' + (hidden ? 'unprepared' : materialization?.revision || 0);
           if (!reset && this.tileRevisions.get(tileKey) === tileRevision) continue;
           this.tileRevisions.set(tileKey, tileRevision); dirty.push([px0, py0, px1 - px0, py1 - py0]);
-          const seed = world.laneSeeds[lane], descriptor = step >= 8 || materialization ? materialization?.plan?.descriptor || terrain.describe(seed, cx) : null;
-          const tile = descriptor ? null : terrain.getChunk(seed, cx, true).pixels;
+          const seed = world.laneSeeds[lane], descriptor = hidden ? null : step >= 8 || materialization ? materialization?.plan?.descriptor || terrain.describe(seed, cx) : null;
+          const tile = hidden || descriptor ? null : terrain.getChunk(seed, cx, true).pixels;
           for (let py = py0; py < py1; py++) {
-            const y = Math.floor(y0 + py * step), localY = y - lane * LANE_HEIGHT, row = localY * chunkWidth;
+            const y = Math.floor(y0 + py * step), localY = y - lane * this.laneHeight, row = localY * chunkWidth;
             const output = py * width;
             for (let px = px0; px < px1; px++) {
-              const x = Math.floor(x0 + px * step), color = x < world.leftEdgeX ? 0 : descriptor ? terrain.rasterSample(seed, cx, x - cx * chunkWidth, localY, descriptor, materialization) : tile[row + x - cx * chunkWidth];
+              const x = Math.floor(x0 + px * step), color = hidden || x < world.leftEdgeX ? 0 : descriptor ? terrain.rasterSample(seed, cx, x - cx * chunkWidth, localY, descriptor, materialization) : tile[row + x - cx * chunkWidth];
               const edits = world.editChunks.get(world._editKey(x, y));
               const edit = edits?.[localY * 32 + x % 32] || 0;
               pixels[output + px] = 0xff0e0807;
@@ -106,7 +110,7 @@ class ProcgenLaneRenderer {
       }
     } else {
       for (let py = 0; py < height; py++) {
-        const y = Math.floor(y0 + py * step), lane = Math.floor(y / LANE_HEIGHT);
+        const y = Math.floor(y0 + py * step), lane = Math.floor(y / this.laneHeight);
         if (lane >= world.laneCount) break;
         const piece = this.assets.groundPieces[world.laneSeeds[lane] % Math.max(1, this.assets.groundPieces.length)];
         for (let px = 0; px < width; px++) {
@@ -134,15 +138,17 @@ class ProcgenLaneRenderer {
     if (key === this.lastPlacementKey) return;
     this.lastPlacementKey = key; this.objectPlacements.length = 0;
     const bins = new Map();
-    const first = Math.max(0, Math.floor(this.originY / LANE_HEIGHT)), last = Math.min(world.laneCount - 1, Math.floor((this.originY + this.viewHeight) / LANE_HEIGHT));
-    const laneStride = Math.max(1, Math.floor(step / LANE_HEIGHT)), chunkStride = Math.max(1, Math.floor(step / width));
+    const first = Math.max(0, Math.floor(this.originY / this.laneHeight)), last = Math.min(world.laneCount - 1, Math.floor((this.originY + this.viewHeight) / this.laneHeight));
+    const laneStride = Math.max(1, Math.floor(step / this.laneHeight)), chunkStride = Math.max(1, Math.floor(step / width));
     for (let lane = first; lane <= last; lane += laneStride) {
       const end = Math.min(this.originX + this.viewWidth, world.generatedThrough[lane]);
       for (let cx = Math.floor(this.originX / width); cx * width < end; cx += chunkStride) {
         // Decorative placement must never compose or evict collision chunks.
-        const seed = world.laneSeeds[lane], descriptor = terrain.describe(seed, cx), materialization = world.terrainGrowth?.stateFor?.(lane, cx);
+        const materialization = world.terrainGrowth?.stateFor?.(lane, cx);
+        if (unprepared(materialization)) continue;
+        const seed = world.laneSeeds[lane], descriptor = terrain.describe(seed, cx);
         const matchesTerrain = (x, y) => {
-          const edits = world.editChunks.get(world._editKey(x, lane * LANE_HEIGHT + y));
+          const edits = world.editChunks.get(world._editKey(x, lane * this.laneHeight + y));
           return x >= world.leftEdgeX && !edits?.[y * 32 + x % 32] && terrain.solidSample(seed, cx, x - cx * width, y, descriptor, materialization);
         };
         for (let objectIndex = 0; objectIndex < descriptor.objects.length; objectIndex++) {
@@ -158,7 +164,7 @@ class ProcgenLaneRenderer {
             for (let dx = 0; dx < object.piece.image.width; dx++) if (!matchesTerrain(object.x + dx, object.supportY)) { supported = false; break; }
             if (!supported) continue;
           }
-          const image = procgenObjectImage(object), px = (object.x - this.originX) / step, py = (lane * LANE_HEIGHT + object.y - this.originY) / step;
+          const image = procgenObjectImage(object), px = (object.x - this.originX) / step, py = (lane * this.laneHeight + object.y - this.originY) / step;
           const placement = { image, px, py, hazardEntry, phase: object.phase, animation: object.animation, clip: null, clippedFrames: null };
           if (object.clipToTerrain) {
             placement.clip = new Uint8Array(image.width * image.height); placement.clippedFrames = new WeakMap();
@@ -217,16 +223,16 @@ class ProcgenLaneRenderer {
     const context = this.context, sx = this.canvas.width / this.viewWidth;
     const screenHeight = this.canvas.height - (Number(this.overviewBandHeight) || 0) * dpr;
     const sy = screenHeight / this.viewHeight;
-    const first = Math.max(0, Math.floor(this.originY / LANE_HEIGHT));
-    const last = Math.min(this.world.laneCount - 1, Math.floor((this.originY + this.viewHeight) / LANE_HEIGHT));
+    const first = Math.max(0, Math.floor(this.originY / this.laneHeight));
+    const last = Math.min(this.world.laneCount - 1, Math.floor((this.originY + this.viewHeight) / this.laneHeight));
     this.markerDash[0] = this.markerDash[1] = 4 * dpr;
     context.save?.(); context.lineCap = 'butt';
     for (let lane = first; lane <= last; lane++) {
       const previous = this.world.stall.lanes[lane].previousDistance;
       const x = (previous + 36 - this.originX) * sx;
       if (previous <= 0 || x < 0 || x >= this.canvas.width) continue;
-      const y0 = Math.max(0, (lane * LANE_HEIGHT - this.originY) * sy);
-      const y1 = Math.min(screenHeight, ((lane + 1) * LANE_HEIGHT - this.originY) * sy);
+      const y0 = Math.max(0, (lane * this.laneHeight - this.originY) * sy);
+      const y1 = Math.min(screenHeight, ((lane + 1) * this.laneHeight - this.originY) * sy);
       context.beginPath(); context.moveTo(Math.round(x), y0); context.lineTo(Math.round(x), y1);
       context.strokeStyle = '#000'; context.lineWidth = 2 * dpr; context.setLineDash?.(this.markerSolidDash); context.stroke();
       context.strokeStyle = '#fff'; context.lineWidth = dpr; context.setLineDash?.(this.markerDash);
@@ -269,10 +275,10 @@ class ProcgenLaneRenderer {
     this.decorationLayer?.draw(this, !!this.reducedMotion?.matches);
     this._drawObjects();
     this.renderedActors = 0; this.actorDots.clear();
-    for (const actor of this.world.actors) {
+    for (const actor of this.actorVisibility.query(this.originY, this.viewHeight, force)) {
       if (actor.failureReason) continue;
       if (actor.y < this.originY - 32 || actor.y > this.originY + this.viewHeight + 32 || actor.x < this.originX - 32 || actor.x >= this.originX + this.viewWidth + 32) {
-        const bounds = actor.action?.spriteProvider?.getActorDrawBounds?.(actor);
+        const bounds = this.actorVisibility.bounds.get(actor);
         if (!bounds || bounds.x >= this.originX + this.viewWidth || bounds.y >= this.originY + this.viewHeight || bounds.x + bounds.width <= this.originX || bounds.y + bounds.height <= this.originY) continue;
       }
       actor.render(this); this.renderedActors++;
@@ -289,7 +295,7 @@ class ProcgenLaneRenderer {
     this.lastFrameMs = (this.window.performance?.now?.() ?? start) - start;
     return true;
   }
-  dispose() { this.objectPlacements.length = 0; this.camera.dispose(); this.cctv.dispose(); this.decorationLayer = null; this.midiSpanOverlay = null; this.frames = new WeakMap(); this.objectFrames = new WeakMap();
+  dispose() { this.actorVisibility.dispose(); this.objectPlacements.length = 0; this.camera.dispose(); this.cctv.dispose(); this.decorationLayer = null; this.midiSpanOverlay = null; this.frames = new WeakMap(); this.objectFrames = new WeakMap();
     this.dotColors = new WeakMap(); this.actorDots = new Map(); this.objectDots = new Map(); this.image = null; this.pixels = null; this.lastFrameKey = null;
     this.lastAppearance = this.lastSprites = this.lastHud = this.lastHudSprites = this.lastDecorationLayer = null; }
 }

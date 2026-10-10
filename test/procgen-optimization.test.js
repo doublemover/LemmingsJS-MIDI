@@ -30,18 +30,21 @@ describe('frontier procgen optimization contracts', function() {
   before(async () => { masks = await loadProcgenMasks(); });
   it('composes independent changing phases from supported source geometry and bounded assemblies', async () => {
     const terrain = await loadProcgenTerrain(), signatures = new Set(), phases = new Set();
-    let low = 96, high = 0, decorPixels = 0;
+    let low = 96, high = 0, canonicalDecoration = 0, pixelMaskMismatches = 0;
     for (const seed of [1, 42, 12345]) for (let index = 0; index < 32; index++) {
       const chunk = terrain.getChunk(seed, index, true);
       signatures.add(`${chunk.code}:${chunk.placements.map(p => p.piece.id).join(',')}`); phases.add(chunk.phase);
       for (const y of chunk.topProfile) if (y >= 0) { low = Math.min(low, y); high = Math.max(high, y); }
+      for (const placement of chunk.placements) if (placement.canonicalGroup?.role === 'decoration') {
+        canonicalDecoration++; expect(placement.decor).to.equal(false);
+      }
       for (let at = 0; at < chunk.pixels.length; at++) {
-        if (chunk.pixels[at] && !(chunk.solid[at >>> 5] & (1 << (at & 31)))) decorPixels++;
+        if (!!chunk.pixels[at] !== !!(chunk.solid[at >>> 5] & (1 << (at & 31)))) pixelMaskMismatches++;
       }
       expect(chunk.objects.every(object => !object.interactive)).to.equal(true);
     }
     expect(signatures.size).to.equal(96); expect(phases.size).to.equal(8);
-    expect(high - low).to.be.at.least(40); expect(decorPixels).to.be.greaterThan(0);
+    expect(high - low).to.be.at.least(40); expect(canonicalDecoration).to.be.greaterThan(0); expect(pixelMaskMismatches).to.equal(0);
     expect(terrain.selectedTerrainIds.size).to.be.greaterThan(0);
     expect([...terrain.selectedTerrainIds].every(id => terrain.eligibleTerrainIds.has(id))).to.equal(true);
     expect([...terrain.selectedObjectIds].every(id => terrain.eligibleObjectIds.has(id))).to.equal(true);
@@ -111,6 +114,19 @@ describe('frontier procgen optimization contracts', function() {
     expect(renderer.objectPlacements).to.equal(placements);
     expect(renderer.objectPlacements.length).to.be.at.most(1280 * 720);
     renderer.dispose(); world.dispose();
+  });
+  it('skips unprepared source descriptors while retaining shared edits and later completed geometry', async () => {
+    const terrain = await loadProcgenTerrain(), world = new ProcgenLaneWorld({ masks, terrain }), describe = terrain.describe;
+    world.terrainGrowth.completed[0] = [];
+    terrain.describe = () => { throw new Error('Unprepared source geometry must stay cold'); };
+    const renderer = new ProcgenLaneRenderer({ canvas: canvasFixture(120, 96), world, assets: { groundPieces: terrain.pieces }, windowRef: { devicePixelRatio: 1, performance } });
+    renderer.follow = false; renderer.scale = 1;
+    try {
+      renderer.render(); expect(renderer.pixels.every(color => color === 0xff0e0807)).to.equal(true); expect(renderer.objectPlacements).to.have.length(0);
+      world.setGroundAt(40, 80); renderer.render(); expect(renderer.pixels[80 * 120 + 40]).to.equal(0xff86cbea);
+      terrain.describe = describe; world.terrainGrowth.completed[0] = [[0, world.generatedThrough[0]]]; world.terrainRevision++; world.frontierRevision++;
+      renderer.render(); expect(renderer.pixels[80 * 120 + 39]).not.to.equal(0xff0e0807); expect(renderer.pixels[80 * 120 + 40]).to.equal(0xff86cbea);
+    } finally { terrain.describe = describe; renderer.dispose(); world.dispose(); }
   });
   it('invalidates erased analytic fallback pixels with a stationary camera', () => {
     const world = new ProcgenLaneWorld({ masks });

@@ -76,7 +76,11 @@
     "procgen:check-recipes": "node tools/mineTerrainRecipes.js --check",
     "bench-procgen-optimization": "node --expose-gc scripts/bench-procgen-optimization.mjs",
     "bench-procgen-midi-clock": "node scripts/profile-procgen-midi-clock.mjs",
-    "bench-character-palettes": "node --expose-gc scripts/bench-character-palettes.js"
+    "bench-character-palettes": "node --expose-gc scripts/bench-character-palettes.js",
+    "test-e2e:boundaries": "node scripts/run-browser-boundaries.js e2e/harness.game.spec.js e2e/harness.editor.01-editor-harness-exposes-state-and-history.spec.js e2e/instrument-workbench.spec.js e2e/midi-workflow.spec.js e2e/midi-ui.spec.js e2e/spatial-sounds.spec.js e2e/desktop-studio-controls.spec.js e2e/procgen.spec.js --grep @boundary --workers=1",
+    "test-procgen-long": "mocha integration/procgen-source-long.test.js",
+    "capture:e2e:editor-assets": "cross-env LEMMINGS_CAPTURE_ALL_EDITOR_ASSETS=1 playwright test e2e/harness.editor.02-editor-pack-switch-refreshes-palettes-and-placem.spec.js --grep \"Editor selection overlays render for every asset\" --workers=1",
+    "procgen:survey": "node scripts/run-procgen-survey.js"
   },
   "c8": {
     "check-coverage": true,

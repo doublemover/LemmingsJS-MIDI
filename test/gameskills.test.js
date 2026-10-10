@@ -4,7 +4,7 @@ import '../js/util/EventHandler.js';
 import '../js/game/SkillTypes.js';
 import '../js/game/GameSkills.js';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 function createGameSkills(initial) {
   const level = { skills: new Array(Object.keys(Lemmings.SkillTypes).length).fill(0) };
@@ -15,6 +15,8 @@ function createGameSkills(initial) {
 }
 
 describe('GameSkills', function() {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('decrements skill counts when used', function() {
     const gs = createGameSkills({ CLIMBER: 2 });
     let triggered = false;

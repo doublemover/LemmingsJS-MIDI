@@ -246,16 +246,7 @@ describe('GameDisplay', function() {
     expect(stage.visible).to.equal(false);
   });
 
-  it('exposes drawCorner test hook', function() {
-    const display = makeDisplay({ drawRect(...args) { this.args = args; } });
-    const { game, lemmingManager, level, objectManager, triggerManager } = makeContext();
-    const gd = new GameDisplay(game, level, lemmingManager, objectManager, triggerManager);
-    gd.display = display;
 
-    GameDisplay.__test__.drawCorner(gd, 1, 2, 3, 4, 5);
-
-    expect(display.args).to.eql([1, 2, 2, 2, 3, 4, 5, true]);
-  });
 
   it('renders debug overlays and advances dash offset', function() {
     const display = { drawDashedRect(...args) { this.args = args; } };

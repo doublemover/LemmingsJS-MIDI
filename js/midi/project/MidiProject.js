@@ -1,3 +1,4 @@
+import { sanitizeClipVoices, sanitizeClipTransformLayers } from './MidiClipTransforms.js';
 import { sanitizeMidiAutomationSpan, clampMidiAutomationSpanValue, MAX_MIDI_AUTOMATION_SPANS } from './MidiAutomationSpan.js';
 import { sanitizeMidiEnsemble, buildMidiEnsembleConfig } from './MidiEnsemble.js';
 import { DEFAULT_CONFIG, mergeConfig } from '../midi-mapping/MidiMappingDomain.js';
@@ -135,6 +136,7 @@ const sanitizePositionConfig = (position = {}, fallback = DEFAULT_CONFIG.positio
   timbreRange: sanitizeRange(position?.timbreRange, fallback.timbreRange ?? { min: 0, max: 127 }, 0, 127),
   viewPan: sanitizeBoolean(position?.viewPan, fallback.viewPan ?? false),
   panMode: position?.panMode === 'level' ? 'level' : 'viewport',
+  ...(Number.isFinite(position?.lanePanSpread) ? { lanePanSpread: clamp(position.lanePanSpread, 0, 127) } : {}),
   panRange: sanitizeRange(position?.panRange, fallback.panRange ?? { min: -127, max: 127 }, -127, 127),
   panDeadZonePct: clamp(toFiniteNumber(position?.panDeadZonePct, fallback.panDeadZonePct ?? 0.02), 0, 0.5),
   panOnscreenWeight: clamp(toFiniteNumber(position?.panOnscreenWeight, fallback.panOnscreenWeight ?? 0.8), 0, 1),
@@ -295,7 +297,8 @@ const sanitizeDirectMapping = (mapping = {}) => {
   out.phrase = isPlainObject(out.phrase) ? {
     enabled: out.phrase.enabled === true,
     mode: out.phrase.mode === 'down' ? 'down' : 'up',
-    spacingTicks: clamp(toInteger(out.phrase.spacingTicks, 2), 1, 8)
+    spacingTicks: clamp(toInteger(out.phrase.spacingTicks, 2), 1, 8),
+    ...(isPlainObject(out.phrase.rolling) ? { rolling: { enabled: out.phrase.rolling.enabled !== false, bars: clamp(toInteger(out.phrase.rolling.bars, 2), 2, 8), evolve: clamp(toInteger(out.phrase.rolling.evolve, 2), -12, 12) } } : {})
   } : null;
   return out;
 };
@@ -347,6 +350,9 @@ const sanitizeTransport = (transport = {}) => {
   };
 };
 
+// Persist only the recipe; live musical direction belongs to the router.
+const sanitizeMusicDirector = value => ({ recipe: value?.recipe === 'scenes' ? 'scenes' : 'events' });
+
 const buildGlobalFromConfig = (config = {}) => {
   const merged = mergeConfig(DEFAULT_CONFIG, config || {});
   return {
@@ -359,7 +365,8 @@ const buildGlobalFromConfig = (config = {}) => {
     position: sanitizePositionConfig(merged.position),
     mpe: cloneObject(merged.mpe),
     limits: cloneObject(merged.limits),
-    reverse: cloneObject(merged.reverse)
+    reverse: cloneObject(merged.reverse),
+    musicDirector: sanitizeMusicDirector(merged.musicDirector)
   };
 };
 
@@ -375,7 +382,8 @@ const sanitizeGlobal = (global = {}) => {
     position: sanitizePositionConfig(global.position, defaults.position),
     mpe: cloneObject(global.mpe, defaults.mpe),
     limits: cloneObject(global.limits, defaults.limits),
-    reverse: cloneObject(global.reverse, defaults.reverse)
+    reverse: cloneObject(global.reverse, defaults.reverse),
+    musicDirector: sanitizeMusicDirector(global.musicDirector)
   };
 };
 
@@ -460,10 +468,13 @@ const sanitizeStep = (step, fallbackIndex) => {
   if (!isPlainObject(step)) {
     return createDefaultMidiStep(fallbackIndex, { note: null });
   }
+  const voices = sanitizeClipVoices(step.voices), layers = sanitizeClipTransformLayers(step.transformLayers);
   return {
     ...cloneObject(step),
+    ...(step.voices != null ? { voices: voices || [] } : {}),
+    ...(step.transformLayers != null ? { transformLayers: layers || [] } : {}),
     index: Math.max(0, toInteger(step.index, fallbackIndex)),
-    note: step.note == null ? null : sanitizeNote(step.note),
+    note: voices ? voices[0]?.note ?? null : step.note == null ? null : sanitizeNote(step.note),
     velocity: step.velocity == null ? null : sanitizeVelocity(step.velocity),
     durationTicks: step.durationTicks == null ? null : sanitizeDurationTicks(step.durationTicks),
     tie: sanitizeBoolean(step.tie, false),
@@ -912,10 +923,22 @@ const updateClipStep = (clips, clipId, stepIndex, patch) => clips.map(clip => {
   while (steps.length < clip.lengthSteps) {
     steps.push(createDefaultMidiStep(steps.length, { note: null }));
   }
+  const previous = steps[index], cleanPatch = cloneObject(patch);
+  if (previous?.voices && !Object.prototype.hasOwnProperty.call(cleanPatch, 'voices')) {
+    if (cleanPatch.note === null) cleanPatch.voices = [];
+    else {
+      const voices = previous.voices.map(voice => ({ ...voice }));
+      for (const key of ['note', 'velocity', 'durationTicks']) if (Object.prototype.hasOwnProperty.call(cleanPatch, key)) {
+        if (!voices.length && cleanPatch.note != null) voices.push({ note: cleanPatch.note });
+        if (voices[0]) voices[0][key] = cleanPatch[key];
+      }
+      cleanPatch.voices = voices;
+    }
+  }
   steps[index] = {
     ...createDefaultMidiStep(index, { note: null }),
     ...steps[index],
-    ...cloneObject(patch),
+    ...cleanPatch,
     index
   };
   return { ...clip, steps };
@@ -1065,9 +1088,26 @@ function reduceMidiProject(project, intent = {}) {
   case 'clip.select':
     next = { ...current, ui: { ...current.ui, selectedClipId: intent.clipId, activeRegion: 'clips' } };
     break;
+  case 'automation.bundle.add': {
+    const bundle = Array.isArray(intent.automation) && intent.automation.length <= 4 ? intent.automation : [];
+    if (!bundle.length || bundle.some(entry => !sanitizeMidiAutomationSpan(entry?.span)) || current.automation.filter(entry => entry.span).length + bundle.length > MAX_MIDI_AUTOMATION_SPANS) return current;
+    next = current;
+    for (const entry of bundle) next = addAutomation(next, entry);
+    break;
+  }
   case 'automation.add':
     next = addAutomation(current, intent.automation);
     break;
+  case 'automation.batch.update': {
+    const updates = intent.updates;
+    if (!Array.isArray(updates) || !updates.length || updates.length > MAX_MIDI_AUTOMATION_SPANS) return current;
+    const ids = new Set(updates.map(update => update?.automationId));
+    if (ids.size !== updates.length || updates.some(update => !update || !current.automation.some(lane => lane.id === update.automationId && lane.span))) return current;
+    let automation = current.automation;
+    for (const update of updates) automation = updateAutomationLane(automation, update.automationId, update.patch, current.tracks);
+    next = { ...current, automation };
+    break;
+  }
   case 'automation.update':
     next = { ...current, automation: updateAutomationLane(current.automation, intent.automationId, intent.patch, current.tracks) };
     break;
@@ -1480,6 +1520,9 @@ const buildRuntimeClipMapping = (source, track, clip, hiddenByTrack, globalVeloc
   if (notes.length > 1) out.notes = notes;
   if (clip?.playback) {
     out.clipSequence = { id: clip.id, ...clip.playback, steps: clip.steps.slice(0, 16).map(step => ({ ...step,
+      ...(step.voices ? { voices: step.voices.map(voice => ({ ...voice,
+        velocity: sanitizeVelocity(Math.round((voice.velocity ?? step.velocity ?? globalVelocityDefault) * track.velocityScale)),
+        durationTicks: voice.durationTicks ?? step.durationTicks ?? globalDurationDefault })) } : {}),
       velocity: sanitizeVelocity(Math.round((step.velocity ?? globalVelocityDefault) * track.velocityScale)),
       durationTicks: step.durationTicks ?? globalDurationDefault
     })) };
@@ -1527,6 +1570,7 @@ function projectToMidiConfig(project, factoryConfig = {}) {
     mpe: clean.global.mpe,
     limits: clean.global.limits,
     reverse: clean.global.reverse,
+    musicDirector: clean.global.musicDirector,
     input: {
       ...(base.input || {}),
       channel: clean.devices.inputChannel,
@@ -1549,6 +1593,7 @@ function projectToMidiConfig(project, factoryConfig = {}) {
     const mapping = source.mode === 'clip'
       ? buildRuntimeClipMapping(source, track, clipsById.get(source.clipId), hiddenByTrack, defaultVelocity, defaultDuration)
       : buildRuntimeMapping(source, track, hiddenByTrack, defaultVelocity);
+    mapping.sourceId = source.id; mapping.sourceKind = source.kind; mapping.sourceKey = source.sourceKey;
     if (source.kind === 'trigger' || source.kind === 'midiFlag') {
       config.triggers[source.sourceKey] = mapping;
     } else if (source.kind === 'sfx') {

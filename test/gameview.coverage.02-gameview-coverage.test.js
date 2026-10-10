@@ -146,7 +146,7 @@ describe('GameView coverage', function() {
   });
 
   it('initializes MIDI routing with project config', async function() {
-    globalThis.window = { location: { search: '' } };
+    globalThis.window = { location: { search: '?midi=1' } };
     globalThis.WebMidi = { enabled: true, outputs: [{ id: 'out' }] };
     setDependency('MidiEventRouter', class {
       constructor(mapping) { this.mapping = mapping; this.scheduler = { allNotesOff() {} }; }

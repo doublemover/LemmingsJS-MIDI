@@ -23,6 +23,16 @@ describe('bounded shared-lane renderer', () => {
     renderer.cameraY = 1000000; renderer.render(); expect(renderer.renderedActors).to.be.lessThan(4);
     renderer.dispose(); expect(canvas.listeners.size).to.equal(0);
   });
+  it('reuses visibility buckets while panning a paused high-lane world and invalidates after real actor motion', async () => {
+    const world = new ProcgenLaneWorld({ masks: await loadProcgenMasks(), laneCount: 1024, laneHeight: 144 });
+    const canvas = canvasFixture(), renderer = new ProcgenLaneRenderer({ canvas, world, assets: { groundPieces: [] }, windowRef: { devicePixelRatio: 1, performance } });
+    renderer.follow = false; renderer.render(false); const builds = renderer.actorVisibility.rebuilds;
+    for (let row = 1; row < 40; row++) renderer.camera.pan(0, 144 * 3);
+    expect(renderer.actorVisibility.rebuilds).to.equal(builds); expect(renderer.actorVisibility.candidates.length).to.be.lessThan(5);
+    world.actors[0].y = renderer.originY + 40; world.tickIndex++; renderer.render(false);
+    expect(renderer.actorVisibility.rebuilds).to.equal(builds + 1); expect(renderer.actorVisibility.candidates).to.include(world.actors[0]);
+    renderer.dispose(); expect(renderer.actorVisibility.bounds.size).to.equal(0); world.dispose();
+  });
   it('draws uncached particle colors and opacity after actors vanish with world-coordinate culling', async () => {
     const world = new ProcgenLaneWorld({ masks: await loadProcgenMasks(), laneCount: 2 });
     world.actors.length = 0;
@@ -44,6 +54,15 @@ describe('bounded shared-lane renderer', () => {
     expect(renderer.bufferContext.globalAlpha).to.equal(1);
     expect(world.characterParticles.frame).to.equal(0);
     renderer.dispose(); world.dispose();
+  });
+  it('keeps cross-stripe cosmetic presentations visible once without allocating unbounded row memberships', async () => {
+    const world = new ProcgenLaneWorld({ masks: await loadProcgenMasks(), laneCount: 64, laneHeight: 144 }), canvas = canvasFixture();
+    const renderer = new ProcgenLaneRenderer({ canvas, world, assets: { groundPieces: [] }, windowRef: { devicePixelRatio: 1, performance } }); renderer.follow = false;
+    const actor = world.actors[63]; actor.x = 10000; let draws = 0;
+    actor.action = { spriteProvider: { getActorDrawBounds: () => ({ x: 10, y: 10, width: 16, height: 22 }) } }; actor.render = () => draws++;
+    renderer.render(); expect(draws).to.equal(1); expect(renderer.actorVisibility.wide).to.include(actor);
+    renderer.actorVisibility.query(0, world.height); expect(renderer.actorVisibility.candidates.filter(value => value === actor)).to.have.length(1);
+    actor.removed = true; world.tickIndex++; renderer.render(false); expect(draws).to.equal(1); expect(renderer.actorVisibility.bounds.has(actor)).to.equal(false); renderer.dispose(); world.dispose();
   });
   it('retains visible cosmetic bounds outside the cheap simulation-position gate', async () => {
     const world = new ProcgenLaneWorld({ masks: await loadProcgenMasks() }), canvas = canvasFixture();

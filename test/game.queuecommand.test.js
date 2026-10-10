@@ -4,9 +4,11 @@ import '../js/util/EventHandler.js';
 import { Game } from '../js/game/Game.js';
 
 // minimal global for logging
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('Game.queueCommand', function() {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('forwards commands to CommandManager', function() {
     let received = null;
     const manager = { queueCommand(cmd) { received = cmd; } };

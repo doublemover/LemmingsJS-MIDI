@@ -1,5 +1,5 @@
 import { ParticleTable } from '../../render/ParticleTable.js';
-import { ProcgenLaneWorld } from './ProcgenLaneWorld.js';
+import { ProcgenLaneWorld, DEFAULT_LANE_HEIGHT } from './ProcgenLaneWorld.js';
 import { ProcgenLaneRenderer } from './ProcgenLaneRenderer.js';
 
 // Accumulate real time rather than speed-scaled time: even extreme finite
@@ -16,8 +16,8 @@ const advanceProcgenClock = (elapsed, deltaMs, speed, step, now) => {
   return elapsed;
 };
 
-const createProcgenLaneRuntime = ({ canvas, resources, sprites, masks, assets, laneCount, seed, terrain, previousDistances = [], workerLimits, onMetrics, onActiveCount, speed = 3, windowRef = window }) => {
-  const world = new ProcgenLaneWorld({ laneCount, seed, sprites, masks, speed, cohorts: true, spawnSpreadTicks: 12,
+const createProcgenLaneRuntime = ({ canvas, resources, sprites, masks, assets, laneCount, seed, terrain, laneHeight = DEFAULT_LANE_HEIGHT, previousDistances = [], workerLimits, populationPolicy, onMetrics, onActiveCount, speed = 3, windowRef = window }) => {
+  const world = new ProcgenLaneWorld({ laneCount, laneHeight, seed, sprites, masks, speed, cohorts: true, populationPolicy,
     terrain, previousDistances, workerLimits,
     particleTable: new ParticleTable(assets.groundPieces[0].image.palette) });
   const renderer = new ProcgenLaneRenderer({ canvas, world, assets, windowRef });
@@ -63,7 +63,7 @@ const createProcgenLaneRuntime = ({ canvas, resources, sprites, masks, assets, l
   windowRef.document.addEventListener?.('visibilitychange', visibilityChanged);
   frame = windowRef.requestAnimationFrame(update);
   const getDebugState = () => ({ ...world.getDebugState(), selectedTheme: terrain?.recipe.family || assets.styleName,
-    renderer: { visibleActors: renderer.renderedActors, frameMs: renderer.lastFrameMs, cameraX: renderer.cameraX, cameraY: renderer.cameraY, scale: renderer.scale, rasterWidth: renderer.buffer.width, rasterHeight: renderer.buffer.height, terrainRebuilds: renderer.terrainRebuilds, terrainCacheHits: renderer.terrainCacheHits, frameCacheHits: renderer.frameCacheHits } });
+    renderer: { visibleActors: renderer.renderedActors, frameMs: renderer.lastFrameMs, cameraX: renderer.cameraX, cameraY: renderer.cameraY, scale: renderer.scale, rasterWidth: renderer.buffer.width, rasterHeight: renderer.buffer.height, terrainRebuilds: renderer.terrainRebuilds, terrainCacheHits: renderer.terrainCacheHits, frameCacheHits: renderer.frameCacheHits, actorCandidates: renderer.actorVisibility.candidates.length, actorIndexRebuilds: renderer.actorVisibility.rebuilds || 0 } });
   return { view, game: world, world, renderer, getDebugState,
     pause() { paused = true; previewRouter?.resetClock?.({ preserveGamePhrases: true }); },
     resume() { paused = false; lastTime = null; },

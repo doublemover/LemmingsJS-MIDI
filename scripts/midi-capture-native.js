@@ -4,7 +4,7 @@ import { installWebMidiStub } from '../e2e/helpers/webmidiStub.js';
 import { installExternalAssetStubs } from '../e2e/helpers/externalAssets.js';
 import { writeMidiCaptureArtifacts } from './midi-capture-fixture.js';
 
-const url = process.argv.find(arg => arg.startsWith('--url='))?.slice(6) || 'http://localhost:8094/?e2e=1';
+const url = process.argv.find(arg => arg.startsWith('--url='))?.slice(6) || 'http://localhost:8094/?e2e=1&midi=1';
 const directory = process.argv.find(arg => arg.startsWith('--out-dir='))?.slice(10) || 'temp/midi-capture-native';
 const browser = await chromium.launch({ channel: 'msedge', headless: true, args: ['--mute-audio'] });
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });

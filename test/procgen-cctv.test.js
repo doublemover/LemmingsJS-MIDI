@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { ProcgenLaneRenderer } from '../js/app/procgen/ProcgenLaneRenderer.js';
 import { selectCctvLanes, cctvLayout } from '../js/app/procgen/ProcgenCctv.js';
-const fixture = (count = 64) => {
+const fixture = (count = 64, enabled = true) => {
   let now = 0;
   const context = { globalAlpha: 1, createImageData: (w, h) => ({ data: new Uint8ClampedArray(w * h * 4) }), putImageData() {}, drawImage() {}, fillRect() {}, fillText() {}, beginPath() {}, moveTo() {}, lineTo() {}, stroke() {}, save() {}, restore() {} };
   const document = { createElement: () => ({ width: 0, height: 0, getContext: () => context }) };
@@ -10,9 +10,17 @@ const fixture = (count = 64) => {
     stall: { lanes: Array.from({ length: count }, (_, i) => ({ maxX: 36 + i * 100, previousDistance: 0 })) }, actors: [] };
   world.actors = Array.from({ length: count }, (_, laneIndex) => ({ id: laneIndex, laneIndex, x: 36 + laneIndex * 100, y: laneIndex * 96 + 64, render() {} }));
   const renderer = new ProcgenLaneRenderer({ canvas, world, assets: { groundPieces: [] }, windowRef: { devicePixelRatio: 1, performance: { now: () => now } } });
+  if (enabled) renderer.cctv.setEnabled(true);
   return { renderer, world, canvas, advance: ms => { now += ms; } };
 };
 describe('bounded live procgen CCTV', () => {
+  it('starts disabled and avoids overview scans while retaining deliberate pins', () => {
+    const { renderer } = fixture(64, false); renderer.camera.setZoom(0);
+    expect(renderer.cctv.getState().enabled).to.equal(false); expect(renderer.overviewBandHeight).to.equal(0);
+    expect(renderer.cctv.actorScans).to.equal(0); expect(renderer.cctv.views.size).to.equal(0);
+    renderer.cctv.setPins([3]); renderer.cctv.setEnabled(true); expect(renderer.cctv.views.size).to.equal(8);
+    renderer.cctv.setEnabled(false); expect(renderer.overviewBandHeight).to.equal(0); expect(renderer.cctv.getState().pins).to.deep.equal([3]); renderer.dispose();
+  });
   it('keeps deterministic ranks and stable slots until an outsider establishes a lead', () => {
     const { world, renderer } = fixture(10);
     const initial = selectCctvLanes(world); expect(initial).to.deep.equal([9, 8, 7, 6, 5, 4, 3, 2]);

@@ -31,7 +31,7 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
   const getState = () => ({
     status,
     message,
-    enabled: status === 'live' && audio.getState().enabled,
+    enabled: (status === 'live' || status === 'suspended') && audio.getState().enabled,
     audio: audio.getState()
   });
   const report = (nextStatus, nextMessage) => {
@@ -46,6 +46,7 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
     router = null;
     configKey = null;
     sourceConfig = null;
+    audibilityKey = null;
   };
   const stop = () => {
     generation += 1;
@@ -71,8 +72,42 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
     configKey = nextKey;
     return true;
   };
+  const attachView = view => {
+    const source = getConfig(), config = localConfig(source);
+    router = new MidiEventRouter(config);
+    router.setCapture(capture);
+    router.setOutput(audio.output);
+    router.setOutputs([audio.output]);
+    configKey = JSON.stringify(config);
+    sourceConfig = source;
+    attachedView = view;
+    view.setMidiPreviewRouter(router, stop);
+    report('live', 'Listening to game notes in the browser. No MIDI is sent.');
+  };
+  const suspendGame = () => {
+    if (disposed || !['live', 'suspended'].includes(status) || !audio.getState().enabled) return false;
+    generation += 1;
+    // Release old gates and routes while retaining the already unlocked audio graph.
+    report('suspended', 'Listening will resume when the game is ready.');
+    detach();
+    return true;
+  };
+  const resumeGame = async () => {
+    if (disposed || status !== 'suspended' || !audio.getState().enabled) return false;
+    const view = getLemmings(), request = generation;
+    if (!view || typeof view.setMidiPreviewRouter !== 'function' || view._midiPreviewDisposed || view.midiAvailable === false) return false;
+    try {
+      if (view.midiEnabled) await view.setMidiEnabled(false);
+      if (disposed || generation !== request || status !== 'suspended' || !audio.getState().enabled || getLemmings() !== view) return false;
+      attachView(view);
+      return true;
+    } catch {
+      if (!disposed && request === generation) { detach(); audio.stop(); report('error', 'Browser preview could not resume. Try again.'); }
+      return false;
+    }
+  };
   const unsubscribe = audio.subscribe?.(state => {
-    if (status !== 'live' || state.enabled || disposed) return;
+    if (!['live', 'suspended'].includes(status) || state.enabled || disposed) return;
     generation += 1;
     detach();
     report('error', state.message || 'Browser audio stopped. Enable preview again.');
@@ -81,6 +116,8 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
     if (disposed) return false;
     const view = getLemmings();
     if (view?.midiAvailable === false) return false;
+    if (status === 'suspended') return resumeGame();
+    if (status === 'live' && attachedView !== view && audio.getState().enabled) { suspendGame(); return resumeGame(); }
     if (status === 'live' && attachedView === view && audio.getState().enabled) {
       syncConfig();
       return true;
@@ -106,17 +143,7 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
         report('error', 'The game changed while audio was starting. Try preview again.');
         return false;
       }
-      const source = getConfig();
-      const config = localConfig(source);
-      router = new MidiEventRouter(config);
-      router.setCapture(capture);
-      router.setOutput(audio.output);
-      router.setOutputs([audio.output]);
-      configKey = JSON.stringify(config);
-      sourceConfig = source;
-      attachedView = view;
-      view.setMidiPreviewRouter(router, stop);
-      report('live', 'Listening to game notes in the browser. No MIDI is sent.');
+      attachView(view);
       return true;
     } catch {
       if (!disposed && request === generation) {
@@ -137,7 +164,7 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
     return disposePromise;
   };
   const setCapture = observer => { capture = observer; router?.setCapture(capture); audio.setCapture?.(capture); };
-  return { start, stop, panic: stop, dispose, syncConfig, getState, setCapture, audio };
+  return { start, stop, panic: stop, suspendGame, resumeGame, dispose, syncConfig, getState, setCapture, audio };
 };
 
 export { createLocalGamePreview };

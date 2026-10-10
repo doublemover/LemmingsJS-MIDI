@@ -33,9 +33,11 @@ const withSoundEvents = (events, fn) => {
   });
 };
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('MapObject', function () {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('anchors liquid contact inside its trigger region, ignoring animated bubbles and rims above it', () => {
     const first = new Frame(6, 10), second = new Frame(6, 10);
     for (const frame of [first, second]) { for (let x = 1; x < 5; x++) for (let y = 6; y < 10; y++) frame.setPixel(x, y, 0xff00ff00); frame.setPixel(2, 3, 0xffffffff); }

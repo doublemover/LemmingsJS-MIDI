@@ -29,6 +29,17 @@ describe('Procgen real-time stepping clock', () => {
     world.timer.speedFactor = 1; expect(world.timer.tps).to.be.closeTo(1000 / 60, 1e-9);
     world.dispose();
   });
+  it('uses the same mutable timer rate for initialized and live high speed under the same work budget', () => {
+    for (const speed of [20, 100, 1000]) {
+      const run = live => {
+        const world = new ProcgenLaneWorld({ laneCount: 1, speed: live ? 3 : speed }); if (live) world.timer.speedFactor = speed;
+        let elapsed = 0, cost = 0, ticks = 0;
+        for (let frame = 0; frame < 60; frame++) elapsed = advanceProcgenClock(elapsed, 1000 / 60, world.getGameTimer().speedFactor, () => { ticks++; cost += 0.1; }, () => cost);
+        world.dispose(); return { ticks, elapsed };
+      };
+      expect(run(true)).to.deep.equal(run(false));
+    }
+  });
   it('preserves a huge finite multiplier when incrementing and decrementing its control', () => {
     expect(changeProcgenSpeed(1e308, 1)).to.equal(1e308);
     expect(changeProcgenSpeed(1e308, -1)).to.equal(1e308);

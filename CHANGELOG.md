@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Add an opt-in paired procgen survey with isolated real worlds, bounded workers, complete crew accounting, immutable replay evidence and a muted comparison dashboard.
+
+- Add opt-in Scene replies through the existing ensemble and phrase queue, with shared simulation musical boundaries and persistent compact status controls.
+- Retire notes on their original MIDI output and fence reentrant Panic/queue replacement, with scoped phrase cancellation that leaves unrelated voices intact.
+- Admit a real ordinary walker at its observed tunnel entrance from a retained full guarded proof, rechecking identity, route, contact, claims and the original deadline.
+
+- Carry bounded ordinary crews across real open-bank source basins with four legal builder sections, physical containment/recovery, and one completed-scene phrase.
+
+- Anchor procgen births to the existing absolute generation beat grid, preserving admitted cohort settings and exposing bounded grid deferral.
+
+- Describe automation controller, note-off velocity and gate/strength targets by their real backend behavior while preserving saved mappings.
+
+- Generate bounded whole-liquid open-bank basins from existing source motif foundations, protecting shores and reserving their openings before optional attachments.
+
+- Preserve all saved procgen automation with canonical migration, grouped canvas moves/resizes, and automation-only Undo/Redo.
+
+- Reward actual ordinary crew passage and recovered containment, decay learned lane preferences toward seeded personalities, and publish completion only after the completed tick.
+
+- Add an editable procgen crew-passage resolution phrase, preserving saved source edits and silence for projects without that source.
+
+- Admit complete supported source regions across two terrain tiles, preserving native order, open underpasses, source provenance and atomic materialization.
+
+- Keep procgen Draw/Nuke gestures exclusive, freeze span drag coordinates, retain main spatial conversion and reject stale restart errors.
+- Retain aligned source descriptor/growth owners fairly around active actors, worksites and materialization, with bounded cold history and cache counters.
+
+- Reuse multi-span selection, naming and atomic common edits in main Studio; preserve field focus through span edits and transform reordering.
+
+- Keep Studio automation/voice/layer edit focus and expose mode-correct compact Hold/Tie controls.
+
+- Preserve safe completed stair exits through bounded real passive actions instead of unnecessary excavation, while keeping proactive builder proposals.
+
+- Share genuine ceiling-rejected scout climb failures through the existing revision-scoped lane knowledge.
+
+- Preserve complete wide source motifs and HYDRO/SNEAKY glyph words across two tiles with atomic, budgeted collision and display.
+
+- Cancel captured musical span drafts before regeneration; retain true local output identity in note-cancellation capture.
+
+- Share one bounded browser mix across game listening and instrument-faithful audition while preserving independent Stop and global Panic.
+- Preserve lossless cold procgen edits and bounded interest-based revisions; deduplicate and account for forced terrain growth.
+- Keep multiple musical span editors open with atomic common edits; send selected procgen MIDI output to the explicitly connected device.
+
+- Preserve ensemble musical Undo and reversible Reset; stop auditions and pending unlocks, report session-only saves, add explicit Save as new, and reject stale imports.
+- Give newly queued terrain work its actual grace period and fairly admit bounded relevant route workfronts after harmless earlier actors.
+
+- Default normal-game MIDI to explicit URL opt-in; keep procgen links lean and its sliding controls attached to the panel.
+- Retain unlocked local listening across regenerated worlds; add quieter layered procgen palettes, local lane pan and editable three-span bundles through the existing scheduler.
+- Give procgen configurable physical lane height, default original pack, supported source liquid geometry, independent scouts and larger locally guarded construction crews.
+- Add bounded revision-scoped scout learning, supported physical word/column motifs, whole-crew blocker bypass and earlier per-lane stall recovery.
+- Reuse cosmetic-aware visibility buckets during paused high-lane panning and show requested versus achieved game speed.
+- Exclude complete entrance/exit assemblies from random procgen placement while preserving source catalogs and empty placement slots; independently verify finite whole-crew blocker bypasses with real stationary trigger owners.
+- Keep unprepared future source chunks cold during rendering while retaining shared construction edits and prepared/partial materialization.
+
 - Keep Increase/Decrease labels clear of OUT and preview the actual minimap click destination with a lighter, cached marching-ants outline.
 
 - Dock existing skill-event cards beneath action selectors, fit the canvas/footer together and retain cross-region keyboard focus and immediate cheat restoration.

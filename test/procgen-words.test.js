@@ -17,25 +17,43 @@ describe('sourced procgen words', function() {
     expect(partial.choices.some(word => word.text.includes('F'))).to.equal(false);
     expect(PROCGEN_WORD_POOL).to.include.members(['FUCK', 'SHIT', 'FUN']);
   });
-  it('aligns deterministic words by visible alpha bounds and a common baseline above actual terrain', async () => {
-    const terrain = await loadProcgenTerrain('lemmings', 1), chunks = [3, 6, 9, 20];
-    for (const chunk of chunks) {
+  it('stamps deterministic complete physical words only on actual supported components', async () => {
+    const terrain = await loadProcgenTerrain('lemmings', 1); terrain.configure(1, 16, { laneHeight: 144 });
+    const admitted = [];
+    for (let chunk = 0; chunk < 32; chunk++) {
       const descriptor = terrain.describe(42, chunk), word = descriptor.word;
-      expect(word).to.exist; expect(PROCGEN_WORD_POOL).to.include(word.text);
-      expect(terrain.describe(42, chunk).word).to.deep.equal(word);
+      if (!word) continue;
+      admitted.push(word.text); expect(PROCGEN_WORD_POOL).to.include(word.text);
+      expect(terrain.describe(42, chunk).word).to.deep.equal(word); expect(word.physical).to.equal(true);
       expect(word.x).to.be.at.least(8); expect(word.x + word.width).to.be.at.most(120);
       expect(word.y).to.be.at.least(2); expect(hasBlockedReadableRun(word.readable)).to.equal(false);
-      for (const placement of descriptor.placements) if (placement.piece.id >= 31 && placement.piece.id <= 57) expect(placement.letter).to.be.a('string');
+      const base = { ...descriptor, placements: descriptor.placements.filter(p => !p.letter), objects: [] };
       for (const placement of word.placements) {
         const glyph = terrain.wordPlanner.glyphs.get(placement.letter);
-        expect(placement.y + glyph.bottom).to.equal(word.baseline);
-        for (let y = 0; y < placement.piece.height; y++) for (let x = 0; x < placement.piece.width; x++) if (!(placement.piece.frame[y * placement.piece.width + x] & 128)) {
-          expect(terrain.solidSample(42, chunk, placement.x + x, placement.y + y, descriptor)).to.equal(false);
-        }
+        expect(placement.decor).to.equal(false); expect(placement.y + glyph.bottom).to.equal(word.baseline);
+        for (const [x, y] of glyph.cells) expect(terrain.solidSample(42, chunk, placement.x + x, placement.y + y, descriptor)).to.equal(true);
+        for (const feet of glyph.components) expect(feet.some(([x, y]) => terrain.solidSample(42, chunk, placement.x + x, placement.y + y, base))).to.equal(true);
       }
-      const composed = terrain.getChunk(42, chunk, true);
-      for (let y = 0; y < 96; y += 3) for (let x = 0; x < 128; x += 3) expect(terrain.rasterSample(42, chunk, x, y, descriptor)).to.equal(composed.pixels[y * 128 + x]);
+      const composed = terrain.getChunk(42, chunk, true), plan = terrain.growthPlan(42, chunk), active = new Uint8Array(plan.jobs.length);
+      const job = plan.placementJobs[descriptor.placements.indexOf(word.placements[0])];
+      expect(word.placements.every(p => plan.placementJobs[descriptor.placements.indexOf(p)] === job)).to.equal(true);
+      for (const dependency of plan.jobs[job].dependencies) active[dependency] = 1;
+      const p = word.placements[0], glyph = terrain.wordPlanner.glyphs.get(p.letter), [x, y] = glyph.cells[0];
+      expect(terrain.solidSample(42, chunk, p.x + x, p.y + y, descriptor, { plan, active, complete: false })).to.equal(false);
+      active[job] = 1;
+      expect(terrain.solidSample(42, chunk, p.x + x, p.y + y, descriptor, { plan, active, complete: false })).to.equal(true);
+      for (let y = 0; y < 144; y += 3) for (let x = 0; x < 128; x += 3) expect(terrain.rasterSample(42, chunk, x, y, descriptor)).to.equal(composed.pixels[y * 128 + x]);
     }
+    expect(admitted.length).to.be.greaterThan(0);
+    expect(terrain.wordPlanner.choices.map(choice => choice.text)).to.include.members(['BOP', 'WET', 'SHH', 'HOT', 'I GO']);
+    expect(terrain.wordPlanner.plan(42, 9, 128, () => 120, () => false)).to.equal(null);
+    expect(terrain.wordPlanner.plan(42, 9, 128, () => 120, () => true)).to.equal(null);
+  });
+  it('offers combinable musical, hydro, sneaky and non-graphic suggestive vocabulary using only available glyphs', async () => {
+    const terrain = await loadProcgenTerrain('lemmings', 1);
+    expect(PROCGEN_WORD_POOL).to.include.members(['MIDI', 'BOP', 'WET', 'HUSH', 'TEASE', 'GO HI']);
+    expect(terrain.wordPlanner.choices.every(choice => choice.letters.every(glyph => terrain.wordPlanner.glyphs.has(String.fromCharCode(glyph.piece.id - 31 + 65))))).to.equal(true);
+    const combination = terrain.wordPlanner.choices.find(choice => choice.text.includes(' ')); expect(combination).to.exist;
   });
   it('rejects an actual adjacent readable slur run while retaining profanity and innocent longer runs', () => {
     expect(hasBlockedReadableRun(letters('FAG'))).to.equal(true);

@@ -7,9 +7,11 @@ import { FileContainer } from '../js/data/FileContainer.js';
 import '../js/data/UnpackFilePart.js';
 import { readFileSync } from 'fs';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('BitReader/BitWriter', function () {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('decompresses raw bytes', function () {
     const compressed = Uint8Array.from([0x10, 0x48, 0x58, 0x48]);
     const br = new BinaryReader(compressed);

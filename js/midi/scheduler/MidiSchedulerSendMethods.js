@@ -1,3 +1,4 @@
+import { getLocalAudioNotePan } from './LocalAudioVoiceBudget.js';
 import { transferGamePhraseVoiceKey } from './MidiGamePhraseQueue.js';
 import { getAppContext } from '../../core/dependencies.js';
 import {
@@ -16,6 +17,8 @@ import {
 
 const midiSchedulerSendMethods = {
   sendNote(spec, meta = {}) {
+    if (this._disposed || this._cleanupDepth) return false;
+    const lifecycle = this._lifecycleVersion;
     const app = this.config?.runtime?.app || getAppContext();
     const perfEnabled = !!app &&
         (app.performanceAPI === true || app.perfMetrics === true) &&
@@ -87,6 +90,7 @@ const midiSchedulerSendMethods = {
         this._stealOldestNote();
       }
 
+      if (this._disposed || lifecycle !== this._lifecycleVersion || this._resolveOutput(outputId) !== output) return false;
       this._activeNotes.set(token, {
         channel: channelNumber,
         note: spec.note,
@@ -118,7 +122,8 @@ const midiSchedulerSendMethods = {
       const dispatchStart = () => {
         this._pendingNoteOns.delete(token);
         const active = this._activeNotes.get(token);
-        if (!active) return;
+        if (!active) { dispatchFailed = true; return; }
+        const ownsVoice = () => !this._disposed && !this._cleanupDepth && this._activeNotes.get(token) === active;
         if (this._nowMs() > sendTimeMs + 120 || (durationMs > 0 && this._nowMs() >= offTimeMs)) {
           this.recordThrottle('expired-note', this._nowMs(), captureMeta);
           this._stopActiveNoteToken(token);
@@ -134,6 +139,7 @@ const midiSchedulerSendMethods = {
           }
         }
         try {
+          if (!ownsVoice()) { dispatchFailed = true; return; }
           const expression = this._expressionPlan(spec, output, channelNumber);
           if (!mpeEnabled && !output.supportsPerNoteInstrument && expression.controls.length) {
             for (const [previousToken, previous] of [...this._activeNotes]) {
@@ -145,25 +151,30 @@ const midiSchedulerSendMethods = {
           if (expression.coalesced) this._observe('coalesced', { ...captureMeta, type: 'controllers',
             count: expression.coalesced, reason: 'unchanged-controllers' });
           for (const control of expression.controls) {
+            if (!ownsVoice()) { dispatchFailed = true; return; }
             if (control.type === 'program') this._sendOutput(output, channelNumber, 'sendProgramChange', [control.value, { time: sendTimeMs }], captureMeta);
             else if (control.type === 'bend') this._sendOutput(output, channelNumber, 'sendPitchBend', [control.value, { time: sendTimeMs }], captureMeta);
             else this._sendOutput(output, channelNumber, 'sendControlChange', [control.cc, control.value, { time: sendTimeMs }], captureMeta);
+            if (!ownsVoice()) { dispatchFailed = true; return; }
             expression.state[control.key] = control.value;
           }
           Object.assign(expression.state, expression.spanState);
 
+          if (!ownsVoice()) { dispatchFailed = true; return; }
+          active.hasStarted = true;
+          const notePan = getLocalAudioNotePan(spec, meta, this.config.position, output.supportsPerNotePan);
           const accepted = this._sendOutput(output, channelNumber, 'sendNoteOn', [spec.note, { rawAttack: attackVelocity, time: sendTimeMs,
             ...(output.supportsIndependentNoteGates ? { voiceToken: token, priority: meta.priority ?? 1, laneIndex: meta.laneIndex ?? 0 } : {}),
-            ...(output.supportsPlaybackMetadata ? { playback: { sfxId: meta.sfxId, triggerType: meta.triggerType, durationMs, stepIndex: spec.stepIndex, stepCount: spec.stepCount, lemmingId: meta.lemmingId, laneIndex: meta.laneIndex, ensembleRole: spec.ensembleRole, program: spec.program, channel: channelNumber } } : {}),
+            ...(output.supportsPlaybackMetadata ? { playback: { sfxId: meta.sfxId, triggerType: meta.triggerType, sourceId: meta.sourceId, sourceKind: meta.sourceKind, sourceKey: meta.sourceKey, clipId: meta.clipId, originTick: meta.originTick, eventType: meta.eventType, durationMs, stepIndex: spec.stepIndex, stepCount: spec.stepCount, lemmingId: meta.lemmingId, laneIndex: meta.laneIndex, ensembleRole: spec.ensembleRole, program: spec.program, channel: channelNumber } } : {}),
             ...(output.supportsPerNoteInstrument ? { instrument: { program: spec.program, percussion: spec.percussion, role: spec.ensembleRole, legacy: !spec.ensembleRole && spec.percussion !== true } } : {}),
-            ...(output.supportsPerNotePan && Number.isFinite(spec.pan) ? { pan: spec.pan / 127 } : {}) }], captureMeta);
+            ...(output.supportsPerNotePan && Number.isFinite(notePan) ? { pan: notePan / 127 } : {}) }], captureMeta);
           if (accepted === false) {
             dispatchFailed = true;
             this.recordThrottle('local-render-rejected', this._nowMs(), captureMeta);
             this._stopActiveNoteToken(token);
             return;
           }
-          active.hasStarted = true;
+          if (!ownsVoice()) { dispatchFailed = true; return; }
           if (typeof window !== 'undefined') window.lastMidiOutputMessage = {
             type: 'noteOn', note: spec.note, velocity: attackVelocity, channel: channelNumber, outputId, timeMs: sendTimeMs, program: spec.program, ensembleRole: spec.ensembleRole, laneIndex: meta.laneIndex, lemmingId: meta.lemmingId
           };
@@ -260,38 +271,20 @@ const midiSchedulerSendMethods = {
     this._noteOffTimerId = 0;
     if (!this.hasAnyOutput() || !this._noteOffs.length) return;
     const now = this._nowMs();
-    let idx = 0;
-    while (idx < this._noteOffs.length && this._noteOffs[idx].timeMs <= now) {
-      const entry = this._noteOffs[idx];
-      const active = this._activeNotes.get(entry.token);
-      if (active) {
-        const pending = this._pendingNoteOns.get(entry.token);
-        if (pending?.timerId != null) clearTimeout(pending.timerId);
-        this._pendingNoteOns.delete(entry.token);
-        if (active.hasStarted !== false) {
-          const output = active.output || this._resolveOutput(active.outputId ?? entry.outputId);
-          const channel = output?.channels?.[entry.channel];
-          try {
-            this._sendOutput(output, entry.channel, 'sendNoteOff', [entry.note, { rawRelease: entry.releaseVelocity, time: entry.timeMs,
-              ...(output.supportsIndependentNoteGates ? { voiceToken: entry.token } : {}) }], active.captureMeta);
-            if (entry.mpe) {
-              this._sendOutput(output, entry.channel, 'sendPitchBend', [0, { time: entry.timeMs }], active.captureMeta);
-              this._expressionState(output, entry.channel).bend = 0;
-            }
-          } catch (error) { this.lastOutputError = error?.message || String(error); }
-        }
-        if (entry.mpe) {
-          const key = this._activeChannelKey(entry.channel, active.outputId ?? entry.outputId);
-          if (this._activeByChannel.get(key)?.token === entry.token) this._activeByChannel.delete(key);
-        }
-        this._activeNotes.delete(entry.token);
-      }
-      idx++;
-    }
-    if (idx > 0) {
-      this._noteOffs.splice(0, idx);
+    while (this._noteOffs.length && this._noteOffs[0].timeMs <= now) {
+      const entry = this._noteOffs.shift();
+      this._stopActiveNoteToken(entry.token, 'duration-ended', { rawRelease: entry.releaseVelocity, time: entry.timeMs });
     }
     this._armNoteOffTimer();
+  },
+
+  cancelGamePhrase(key, { releaseActive = true } = {}) {
+    if (key == null) return false;
+    let cancelled = this.gamePhrases.voices.delete(key);
+    for (const [token, voice] of this._activeNotes) if (voice.phraseVoiceKey === key && (releaseActive || !voice.hasStarted)) {
+      this._stopActiveNoteToken(token, 'phrase-cancelled'); cancelled = true;
+    }
+    return cancelled;
   },
 
   transferActorLane(id, from, to, laneCount) {
@@ -319,75 +312,79 @@ const midiSchedulerSendMethods = {
   },
 
   allNotesOff({ preserveGamePhrases = false, preserveRateHistory = false } = {}) {
-    this._observe('panic', { type: 'allNotesOff', preserveRateHistory, reason: 'panic-or-lifecycle' });
-    if (preserveRateHistory) this._pruneRateEntries(this._nowMs());
-    if (!preserveGamePhrases) this.gamePhrases.clear();
-    for (const pending of this._pendingNoteOns.values()) if (pending.timerId != null) clearTimeout(pending.timerId);
-    const mpe = this.config.mpe;
-    let channels;
-    if (mpe?.enabled) {
-      const master = normalizeChannelNumber(mpe.masterChannel, 1);
-      const members = (Array.isArray(mpe.memberChannels) ? mpe.memberChannels : [])
-        .map((channel) => normalizeChannelNumber(channel))
-        .filter((channel, index, list) => channel !== master && list.indexOf(channel) === index);
-      channels = [master, ...members];
-    } else {
-      channels = [normalizeChannelNumber(this.config.defaultChannel, 1)];
-    }
-    const outputs = new Set([...this._listOutputs(), ...this._usedOutputChannels.keys()]);
-    const now = this._nowMs();
-    for (const output of outputs) {
-      let cleared = false;
-      try {
-        // WebMidi's clear wrapper can silently do nothing when native clear is unavailable.
-        if (typeof output.clear === 'function' && (!output._midiOutput || typeof output._midiOutput.clear === 'function')) {
-          this._sendOutput(output, null, 'clear');
-          cleared = true;
-        }
-      } catch (error) {
-        // Future note-ons still need a paired emergency note-off if clear fails.
+    if (this._panicking) return;
+    this._panicking = true; this._cleanupDepth++; this._lifecycleVersion++;
+    try {
+      this._observe('panic', { type: 'allNotesOff', preserveRateHistory, reason: 'panic-or-lifecycle' });
+      if (preserveRateHistory) this._pruneRateEntries(this._nowMs());
+      if (!preserveGamePhrases) this.gamePhrases.clear();
+      for (const pending of this._pendingNoteOns.values()) if (pending.timerId != null) clearTimeout(pending.timerId);
+      const mpe = this.config.mpe;
+      let channels;
+      if (mpe?.enabled) {
+        const master = normalizeChannelNumber(mpe.masterChannel, 1);
+        const members = (Array.isArray(mpe.memberChannels) ? mpe.memberChannels : [])
+          .map((channel) => normalizeChannelNumber(channel))
+          .filter((channel, index, list) => channel !== master && list.indexOf(channel) === index);
+        channels = [master, ...members];
+      } else {
+        channels = [normalizeChannelNumber(this.config.defaultChannel, 1)];
       }
-      const usedChannels = new Set([...channels, ...(this._usedOutputChannels.get(output) || [])]);
-      for (const active of this._activeNotes.values()) {
-        if (this._resolveOutput(active.outputId) === output) usedChannels.add(active.channel);
-      }
-      for (const ch of usedChannels) {
-        const channel = output.channels?.[ch];
-        if (!channel) continue;
+      const outputs = new Set([...this._listOutputs(), ...this._usedOutputChannels.keys()]);
+      const now = this._nowMs();
+      for (const output of outputs) {
+        let cleared = false;
         try {
-          this._sendOutput(output, ch, 'sendControlChange', [64, 0], { reason: 'panic' });
-          this._sendOutput(output, ch, 'sendControlChange', [120, 0], { reason: 'panic' });
-          this._sendOutput(output, ch, 'sendAllNotesOff', [], { reason: 'panic' });
-          this._sendOutput(output, ch, 'sendPitchBend', [0], { reason: 'panic' });
+        // WebMidi's clear wrapper can silently do nothing when native clear is unavailable.
+          if (typeof output.clear === 'function' && (!output._midiOutput || typeof output._midiOutput.clear === 'function')) {
+            this._sendOutput(output, null, 'clear');
+            cleared = true;
+          }
         } catch (error) {
-          // A disconnected output must not prevent Panic reaching the other channels.
+        // Future note-ons still need a paired emergency note-off if clear fails.
         }
-      }
-      if (!cleared) {
-        for (const pending of this._pendingNoteOns.values()) {
-          if (pending.timerId != null || pending.output !== output || pending.timeMs <= now) continue;
-          const channel = output.channels?.[pending.channel];
+        const usedChannels = new Set([...channels, ...(this._usedOutputChannels.get(output) || [])]);
+        for (const active of this._activeNotes.values()) {
+          if (this._resolveOutput(active.outputId) === output) usedChannels.add(active.channel);
+        }
+        for (const ch of usedChannels) {
+          const channel = output.channels?.[ch];
+          if (!channel) continue;
           try {
-            this._sendOutput(output, pending.channel, 'sendNoteOff', [pending.note, { time: pending.timeMs + 1 }], { reason: 'panic-future-release' });
-            this._sendOutput(output, pending.channel, 'sendPitchBend', [0, { time: pending.timeMs + 1 }], { reason: 'panic-future-release' });
+            this._sendOutput(output, ch, 'sendControlChange', [64, 0], { reason: 'panic' });
+            this._sendOutput(output, ch, 'sendControlChange', [120, 0], { reason: 'panic' });
+            this._sendOutput(output, ch, 'sendAllNotesOff', [], { reason: 'panic' });
+            this._sendOutput(output, ch, 'sendPitchBend', [0], { reason: 'panic' });
           } catch (error) {
+          // A disconnected output must not prevent Panic reaching the other channels.
+          }
+        }
+        if (!cleared) {
+          for (const pending of this._pendingNoteOns.values()) {
+            if (pending.timerId != null || pending.output !== output || pending.timeMs <= now) continue;
+            const channel = output.channels?.[pending.channel];
+            try {
+              this._sendOutput(output, pending.channel, 'sendNoteOff', [pending.note, { time: pending.timeMs + 1 }], { reason: 'panic-future-release' });
+              this._sendOutput(output, pending.channel, 'sendPitchBend', [0, { time: pending.timeMs + 1 }], { reason: 'panic-future-release' });
+            } catch (error) {
             // Continue silencing other queued notes when an output has disconnected.
+            }
           }
         }
       }
-    }
-    this._expressionByOutput.clear();
-    this._pendingNoteOns.clear();
-    this._noteOffs.length = 0;
-    if (this._noteOffTimerId) {
-      clearTimeout(this._noteOffTimerId);
-      this._noteOffTimerId = 0;
-    }
-    this._activeByChannel.clear();
-    this._activeNotes.clear();
-    this._noteOffs.length = 0;
-    if (!preserveRateHistory) this._rateSent.length = 0;
-    if (!preserveRateHistory) this._ratePlanned.length = 0;
+      this._expressionByOutput.clear();
+      this._pendingNoteOns.clear();
+      this._noteOffs.length = 0;
+      if (this._noteOffTimerId) {
+        clearTimeout(this._noteOffTimerId);
+        this._noteOffTimerId = 0;
+      }
+      this._activeByChannel.clear();
+      this._activeNotes.clear();
+      this._noteOffs.length = 0;
+      if (!preserveRateHistory) this._rateSent.length = 0;
+      if (!preserveRateHistory) this._ratePlanned.length = 0;
+    } finally { this._cleanupDepth--; this._panicking = false; }
   },
 
   clearQueue({ preserveGamePhrases = false, preserveRateHistory = false } = {}) {
@@ -398,6 +395,7 @@ const midiSchedulerSendMethods = {
   },
 
   dispose() {
+    this._disposed = true;
     for (const [ch, active] of this._activeByChannel.entries()) {
       try {
         this._stopActiveChannel(active?.channel ?? ch, active?.outputId ?? null);

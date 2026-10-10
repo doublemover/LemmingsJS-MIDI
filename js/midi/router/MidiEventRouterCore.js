@@ -1,3 +1,4 @@
+import { midiEventRouterDirectionMethods } from './MidiEventRouterDirectionMethods.js';
 import { MidiAutomationSpans } from './MidiAutomationSpans.js';
 import { midiEventRouterAutomationMethods } from './MidiEventRouterAutomationMethods.js';
 import { MidiLaneMusicTension } from './MidiLaneMusicTension.js';
@@ -41,6 +42,7 @@ class MidiEventRouter {
 Object.assign(
   MidiEventRouter.prototype,
   midiEventRouterLifecycleMethods,
+  midiEventRouterDirectionMethods,
   midiEventRouterTensionMethods,
   midiEventRouterAutomationMethods,
   midiEventRouterPlanningMethods,

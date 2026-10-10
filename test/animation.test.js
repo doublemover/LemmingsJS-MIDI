@@ -6,9 +6,11 @@ import '../js/render/ColorPalette.js';
 import '../js/render/PaletteImage.js';
 import '../js/render/Frame.js';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('Animation.loadFromFileWithPaletteSwap', function () {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   it('replaces FIRE_INDICES colors with ICE_COLORS', function () {
     const palette = new Lemmings.ColorPalette();
     for (let i = 0; i < 16; i++) palette.setColorRGB(i, i, i, i);

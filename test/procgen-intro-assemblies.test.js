@@ -34,10 +34,12 @@ describe('conservative early complete source assembly eligibility', function() {
     expect(eligible(() => { throw new Error('Later admission must not sample geometry'); }, { origin: PROCGEN_RECOVERY_GAP_END })).to.equal(true);
     expect(eligible(() => false)).to.equal(false);
   });
-  it('defers the two actual early Brick walls as whole groups and ordinary crews walk past their prior bounds', async () => {
+  it('defers the two actual early Brick walls in an assembly-isolated scene and ordinary crews walk past their prior bounds', async () => {
     const masks = await loadProcgenMasks(), before = await loadProcgenTerrain('lemmings_ohNo', 0), after = await loadProcgenTerrain('lemmings_ohNo', 0);
-    // This test-only control restores the previous selection boundary. Shared
-    // actions, terrain pieces and ordinary ability state are identical.
+    // Isolate complete assembly eligibility from canonical terrain groups, whose
+    // newly physical decoration can introduce independent local route challenges.
+    // Both owners retain the same actual foundation, assembly art and actions.
+    before.sourceGroups.clear(); after.sourceGroups.clear();
     before._introAssemblyEligible = () => true;
     const config = { masks, laneCount: 8, seed: 42, assists: false, populationPolicy: { scoutsEvery: 1000000, scoutDelayTicks: 1000000 } };
     const control = new ProcgenLaneWorld({ ...config, terrain: before }), world = new ProcgenLaneWorld({ ...config, terrain: after });

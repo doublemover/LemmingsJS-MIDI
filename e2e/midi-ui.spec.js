@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 import { installExternalAssetStubs } from './helpers/externalAssets.js';
 import { clearLocalStorage, waitForHarnessReady } from './helpers/harness.js';
@@ -417,50 +418,41 @@ test('MIDI project persists across reload', async ({ page }) => {
   expect(note).toBe(74);
 });
 
-test('MIDI sequencer imports, exports, saves templates, and resets from templates', async ({ page }) => {
+test('MIDI project file and template controls preserve edits, adopted identity and reset across reload', { tag: '@boundary' }, async ({ page }) => {
   const midi = await openMidiUi(page);
-
-  const state = await page.evaluate(() => {
-    window.__E2E__.midiDispatchProjectIntent({
-      type: 'source.mapping.update',
-      sourceId: 'sfx-1',
-      patch: { note: 79 }
-    });
-    const exported = window.__E2E__.midiExportProject({ download: false, exportedAt: 1 });
-    const template = window.__E2E__.midiSaveProjectTemplate({
-      id: 'lead-template',
-      name: 'Lead Template',
-      now: 1
-    });
-    const imported = window.__E2E__.midiImportProject(JSON.stringify({
-      kind: 'lemmings.midi.project',
-      version: 1,
-      project: {
-        ...exported.project,
-        name: 'Imported MIDI',
-        sources: exported.project.sources.map(source => (
-          source.id === 'sfx-1'
-            ? { ...source, mapping: { ...source.mapping, note: 84 } }
-            : source
-        ))
-      }
-    }));
-    const reset = window.__E2E__.midiResetProject('lead-template');
-    return {
-      exported,
-      template,
-      importedNote: imported.sources.find(source => source.id === 'sfx-1').mapping.note,
-      resetNote: reset.sources.find(source => source.id === 'sfx-1').mapping.note,
-      templates: window.__E2E__.midiGetProjectTemplates()
-    };
-  });
-
-  expect(state.exported.kind).toBe('lemmings.midi.project');
-  expect(state.template).toMatchObject({ id: 'lead-template', name: 'Lead Template' });
-  expect(state.importedNote).toBe(84);
-  expect(state.resetNote).toBe(79);
-  expect(state.templates.map(template => template.id)).toContain('lead-template');
-  await expect(midi.templateSelect()).toContainText('Lead Template');
+  await page.locator('#midiSourceList .midi-source-row[data-source-id="sfx-1"]').click();
+  await page.locator('#midiMappingNote').fill('79');
+  await page.locator('#midiMappingNote').press('Tab');
+  await page.locator('#midiViewProject').click();
+  await midi.templateSaveButton().click();
+  await expect(page.locator('#midiProjectStatus')).toContainText('Saved template');
+  const id = await page.evaluate(() => window.__E2E__.midiGetProject().templateId);
+  expect(id).toBeTruthy();
+  await midi.templateSaveButton().click();
+  expect(await page.evaluate(() => window.__E2E__.midiGetProjectTemplates().filter(template => template.id === window.__E2E__.midiGetProject().templateId).length)).toBe(1);
+  const downloading = page.waitForEvent('download');
+  await midi.projectExportButton().click();
+  const download = await downloading;
+  const payload = JSON.parse(await fs.readFile(await download.path(), 'utf8'));
+  expect(payload.kind).toBe('lemmings.midi.project');
+  expect(payload.project.sources.find(source => source.id === 'sfx-1').mapping.note).toBe(79);
+  payload.project.name = 'Imported MIDI';
+  payload.project.sources.find(source => source.id === 'sfx-1').mapping.note = 84;
+  const choosing = page.waitForEvent('filechooser');
+  await midi.projectImportButton().click();
+  await (await choosing).setFiles({ name: 'import.lemmings-midi-project.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(payload)) });
+  await expect(page.locator('#midiProjectStatus')).toContainText('Imported Imported MIDI');
+  expect(await page.evaluate(() => window.__E2E__.midiGetProject().sources.find(source => source.id === 'sfx-1').mapping.note)).toBe(84);
+  await midi.templateSelect().selectOption(id);
+  await page.locator('#midiProjectResetButton').click();
+  expect(await page.evaluate(() => window.__E2E__.midiGetProject().sources.find(source => source.id === 'sfx-1').mapping.note)).toBe(79);
+  await page.locator('#midiTemplateSaveAsButton').click();
+  const copy = await page.evaluate(() => window.__E2E__.midiGetProject().templateId);
+  expect(copy).not.toBe(id);
+  await page.reload();
+  await waitForHarnessReady(page);
+  expect(await page.evaluate(() => window.__E2E__.midiGetProject().templateId)).toBe(copy);
+  expect(await page.evaluate(() => window.__E2E__.midiGetProject().sources.find(source => source.id === 'sfx-1').mapping.note)).toBe(79);
 });
 
 test('MIDI sequencer learns a selected direct source note and resolves range warnings', async ({ page }) => {

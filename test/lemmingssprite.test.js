@@ -6,7 +6,7 @@ import '../js/render/ColorPalette.js';
 import '../js/render/Animation.js';
 
 // Ensure quiet logging
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 /** Simple stub to track instantiations */
 class StubAnimation {
@@ -16,6 +16,8 @@ class StubAnimation {
 StubAnimation.count = 0;
 
 describe('LemmingsSprite animation retrieval', function () {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   let origAnimation;
 
   beforeEach(function () {

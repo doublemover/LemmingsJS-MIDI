@@ -4,9 +4,11 @@ import '../js/util/EventHandler.js';
 import '../js/game/GameStateTypes.js';
 import { Game } from '../js/game/Game.js';
 
-useGlobalLemmings({ game: { showDebug: false } });
+
 
 describe('Game', function() {
+  useGlobalLemmings({ game: { showDebug: false } });
+
   let originals;
   beforeEach(function() {
     originals = {

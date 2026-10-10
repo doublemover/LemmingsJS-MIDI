@@ -61,6 +61,26 @@ describe('shared bounded collision/display terrain reveal', function() {
     growth.pending.fill(20); growth.speed.fill(2); frontiers.fill(36); growth.reset(through, frontiers);
     expect([...growth.pending]).to.deep.equal([0, 0]); expect([...growth.speed]).to.deep.equal([1, 1]); expect([...through]).to.deep.equal([256, 256]); expect(growth.states.size).to.equal(0);
   });
+  it('qualifies only complete physical columns while unrelated jobs in the same tile remain pending', () => {
+    const growth = new ProcgenTerrainGrowth(1, 128), through = new Float64Array(1), frontiers = Float64Array.of(36);
+    growth.reset(through, frontiers);
+    const state = growth._prepare(0, 2, () => ({ jobs: [
+      { index: 0, kind: 'foundation', x1: 0, x2: 128, dependencies: [] },
+      { index: 1, kind: 'assembly', x1: 80, x2: 100, dependencies: [0] }
+    ], objectJobs: [] }));
+    expect(growth.columnReady(0, 300)).to.equal(false);
+    expect(growth._activate(state, 0, through, () => {})).to.equal(true);
+    expect(state.complete).to.equal(false); expect(growth.stateFor(0, 2)).to.equal(state);
+    expect(growth.columnReady(0, 335)).to.equal(true); expect(growth.columnReady(0, 336)).to.equal(false);
+    expect(growth.columnReady(0, 355)).to.equal(false); expect(growth.columnReady(0, 356)).to.equal(true);
+    const active = state.active.slice();
+    expect(growth.columnReady(0, 384)).to.equal(false); expect(state.active).to.deep.equal(active);
+    for (const [lane, x] of [[-1, 300], [1, 300], [0, -1], [0, Infinity]]) expect(growth.columnReady(lane, x)).to.equal(false);
+    expect(growth.columnReady(0, 40)).to.equal(true);
+    expect(growth._activate(state, 1, through, () => {})).to.equal(true);
+    expect(growth.columnReady(0, 336)).to.equal(true); expect(growth.columnReady(0, 355)).to.equal(true);
+    growth.dispose();
+  });
   it('gates hidden source collision, steel and color at the same boundary without composing future chunks', () => {
     const world = new ProcgenLaneWorld({ masks, terrain: new ProcgenPackTerrain([source]), seed: 42 });
     const x = world.generatedThrough[0], before = source.terrain.stats.generated;
