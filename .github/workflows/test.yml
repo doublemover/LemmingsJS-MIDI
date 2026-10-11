@@ -49,7 +49,7 @@ jobs:
             -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
       - name: Start HTTPS server
         run: |
-          node "$GITHUB_WORKSPACE/node_modules/http-server/bin/http-server" --cors="*" -S -C certs/localhost.pem -K certs/localhost-key.pem -a 127.0.0.1 -p 8080 > "$RUNNER_TEMP/lemmings-http-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${GITHUB_JOB}.log" 2>&1 &
+          LEMMINGS_HTTP_OWNER="${GITHUB_RUN_ID}:${GITHUB_RUN_ATTEMPT}:${GITHUB_JOB}" node "$GITHUB_WORKSPACE/node_modules/http-server/bin/http-server" --cors="*" -S -C certs/localhost.pem -K certs/localhost-key.pem -a 127.0.0.1 -p 8080 > "$RUNNER_TEMP/lemmings-http-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${GITHUB_JOB}.log" 2>&1 &
           echo $! > "$RUNNER_TEMP/lemmings-http-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${GITHUB_JOB}.pid"
           LEMMINGS_HTTP_PID="$(cat "$RUNNER_TEMP/lemmings-http-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${GITHUB_JOB}.pid")" node -e "const ensureOwned=()=>{try{process.kill(Number(process.env.LEMMINGS_HTTP_PID),0);}catch{process.exit(1);}}; const https=require('node:https'); const started=Date.now(); const tick=()=>{ensureOwned(); const req=https.get('https://localhost:8080/?e2e=1',{rejectUnauthorized:false},res=>{res.resume(); ensureOwned(); process.exit(res.statusCode===200?0:1);}); req.on('error',()=>{if(Date.now()-started>30000) process.exit(1); setTimeout(tick,500);});}; tick();"
       - run: npm run test-mcp-smoke
@@ -59,9 +59,8 @@ jobs:
         run: |
           if [ -f "$RUNNER_TEMP/lemmings-http-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${GITHUB_JOB}.pid" ]; then
             server_pid=$(cat "$RUNNER_TEMP/lemmings-http-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${GITHUB_JOB}.pid")
-            if [ -r "/proc/$server_pid/cmdline" ]; then
-              mapfile -d '' server_args < "/proc/$server_pid/cmdline"
-              if [ "${server_args[1]}" = "$GITHUB_WORKSPACE/node_modules/http-server/bin/http-server" ]; then
+            if [ -d "/proc/$server_pid" ]; then
+              if grep -zFxq "LEMMINGS_HTTP_OWNER=${GITHUB_RUN_ID}:${GITHUB_RUN_ATTEMPT}:${GITHUB_JOB}" "/proc/$server_pid/environ"; then
                 kill "$server_pid"
               else
                 echo "Server PID no longer identifies this job's HTTP server; leaving it untouched." >&2
