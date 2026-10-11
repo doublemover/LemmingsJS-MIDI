@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="lemmings-analytics" content="runtime" />
   <meta name="lemmings-analytics-endpoint" content="" />
-  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=0.0, viewport-fit=cover"/>
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, viewport-fit=cover"/>
   <link type="text/css" rel="stylesheet" href="css/procgen.css">
   <link type="text/css" rel="stylesheet" href="css/character-controls.css">
   <link type="text/css" rel="stylesheet" href="css/midi-spans.css">
@@ -15,13 +15,8 @@
 </head>
 <body>
   <header id="procgenTopbar" aria-label="Run controls">
-    <details id="procgenSeedControls" class="procgen-advanced"><summary title="Generation seed and restart options">Seed</summary><div class="procgen-seed-controls">
-    <label class="procgen-seed-field">Seed <input id="procgenSeed" type="text" value="" aria-label="Generation seed" title="Numbers or words; regenerate repeats this seed"></label>
-    <div class="procgen-button-group"><button id="procgenRestart" type="button" title="Regenerate the same seed (Backspace)">Regenerate</button><button id="procgenNewSeed" type="button" title="Choose a new seed and generate">New seed</button></div>
-    </div></details>
-    <label>Lanes <input id="procgenLanes" type="number" min="1" max="1024" step="1" value="8"></label>
-    <label>Height <input id="procgenLaneHeight" type="number" min="96" max="256" step="8" value="144" title="Physical pixels per lane; regenerates this run"></label>
-    <label>Pack <select id="procgenPack"></select></label>
+    <div class="procgen-control-section procgen-run-controls" role="group" aria-label="Playback and camera">
+    <span class="procgen-section-label">Run</span>
       <div class="procgen-speed-control" role="group" aria-label="Game speed">
         <span>Speed</span><div class="procgen-speed-segments">
           <button id="procgenSpeedDown" type="button" aria-label="Decrease game speed" title="Decrease speed (-); Shift for five steps"><span class="visually-hidden">Decrease</span></button>
@@ -31,18 +26,32 @@
       </div>
     <div class="procgen-button-group"><button id="procgenPause" type="button" aria-pressed="false" title="Pause or play (Space)">Pause</button><button id="procgenStep" type="button" title="Pause and advance one tick (])">Step</button></div>
     <div class="procgen-button-group"><button id="procgenZoomOut" type="button" aria-label="Zoom out" title="Zoom out (Z)">−</button><button id="procgenFollow" type="button" title="Follow the leading living lemming (F)">Follow</button><button id="procgenZoomIn" type="button" aria-label="Zoom in" title="Zoom in (X)">+</button></div>
-    <div id="procgenAudioControls" class="procgen-audio-controls"><label><span class="visually-hidden">Sound destination</span><select id="procgenOutput" aria-label="Sound destination"><option value="synth">Browser synth</option><option value="midi">MIDI device</option></select></label><select id="procgenMidiDevice" aria-label="MIDI output device" hidden><option value="">Connect to find MIDI outputs</option></select><button id="procgenListen" type="button" aria-pressed="false">Listen locally</button><label title="Local master volume; above 100% boosts browser listening"><span class="visually-hidden">Master volume</span><input id="procgenMasterVolume" type="range" min="0" max="400" step="1" value="70" aria-label="Master volume"><output id="procgenMasterVolumeValue">70%</output></label><button id="procgenPanic" type="button" title="Stop all notes on the active output">Panic</button></div>
+    </div>
+    <div class="procgen-control-section procgen-world-controls" role="group" aria-label="World generation">
+    <span class="procgen-section-label">World</span>
+    <details id="procgenSeedControls" class="procgen-advanced"><summary title="Generation seed and restart options">Seed</summary><div class="procgen-seed-controls">
+    <label class="procgen-seed-field">Seed <input id="procgenSeed" type="text" value="" aria-label="Generation seed" title="Numbers or words; regenerate repeats this seed"></label>
+    <div class="procgen-button-group"><button id="procgenRestart" type="button" title="Regenerate the same seed (Backspace)">Regenerate</button><button id="procgenNewSeed" type="button" title="Choose a new seed and generate">New seed</button></div>
+    </div></details>
+    <label title="Changing the lane count regenerates the run">Lanes <input id="procgenLanes" type="number" min="1" max="1024" step="1" value="8"></label>
+    <label>Lane height <input id="procgenLaneHeight" type="number" min="96" max="256" step="8" value="144" title="Physical pixels per lane; regenerates this run"></label>
+    <label>Terrain pack <select id="procgenPack" title="Changing the terrain pack regenerates the run"></select></label>
+    </div>
+    <div id="procgenAudioControls" class="procgen-audio-controls procgen-control-section" role="group" aria-label="Sound output"><span class="procgen-section-label">Sound</span><label><span class="visually-hidden">Sound destination</span><select id="procgenOutput" aria-label="Sound destination"><option value="synth">Browser synth</option><option value="midi">MIDI device</option></select></label><select id="procgenMidiDevice" aria-label="MIDI output device" hidden><option value="">Connect to find MIDI outputs</option></select><button id="procgenListen" type="button" aria-pressed="false">Listen locally</button><label title="Local master volume; above 100% boosts browser listening"><span class="visually-hidden">Master volume</span><input id="procgenMasterVolume" type="range" min="0" max="400" step="1" value="70" aria-label="Master volume"><output id="procgenMasterVolumeValue">70%</output></label><button id="procgenPanic" type="button" title="Stop all notes on the active output">Panic</button></div>
     <span id="procgenOutputPressure" role="status" aria-live="off"></span>
+    <div class="procgen-status-strip">
     <button id="procgenHelp" type="button" title="Controls and shortcuts">Help</button>
     <span id="procgenNukeStatus" class="procgen-nuke-status" role="status"></span>
     <div class="procgen-run-progress"><output id="procgenDistance" aria-label="Current run distance">0 px</output><output id="procgenBest" aria-label="Previous best distance">Best 0</output>
 <output id="procgenAliveCount" aria-label="Current active lemmings across all lanes" title="Active actors across all lanes; failed actors are excluded and each new generation resets the count">Loading</output>
     </div>
+    </div>
   </header>
-  <canvas id="gameCanvas" class="gameCanvas" aria-label="Procedural Lemmings world" tabindex="0"></canvas>
+  <canvas id="gameCanvas" class="gameCanvas" aria-label="Procedural Lemmings world" aria-describedby="procgenWorldGuide" tabindex="0"></canvas>
 
   <div id="procgenPanel">
   <section id="procgenDrawer" aria-label="Procgen details" inert>
+    <div class="procgen-drawer-intro"><h1>World &amp; music</h1><p id="procgenWorldGuide">Follow the crew as it builds over gaps and cuts through terrain. Drag to explore, scroll to zoom, or use Follow to return to the leader.</p></div>
     <div class="procgen-controls-row">
       <label>Scenery <select id="procgenDecoration"></select></label>
     </div>
@@ -109,6 +118,7 @@
         <label>Birth sound priority <input id="procgenSpawnPriority" type="number" min="0" max="100" step="1" value="0"></label>
       </div><p>Zero scout frequency disables new automatic scouts. Existing scout abilities stay assigned. Birth spread follows simulation speed; priority only controls the shared sound budget.</p>
     <details id="procgenWorkerFields"><summary>Construction crews</summary>
+      <p>Builders create stairways over gaps. Bashers cut sideways; diggers and miners open routes down through terrain. These limits control simultaneous workers in each lane.</p>
       <div class="procgen-drawer-row">
         <label>Concurrent bashers per lane <input id="procgenWorkerBashers" type="number" min="0" max="16" step="1" value="4"></label>
         <label>Concurrent digging/mining per lane <input id="procgenWorkerDiggers" type="number" min="0" max="16" step="1" value="4"></label>
@@ -147,7 +157,7 @@
     <p id="procgenStallStatus"></p>
     <p id="procgenRunStatus" role="status">Loading…</p>
   </section>
-  <button id="procgenTab" type="button" aria-controls="procgenDrawer" aria-expanded="false" aria-label="Show details" title="Show details">&#9662;</button>
+  <button id="procgenTab" type="button" aria-controls="procgenDrawer" aria-expanded="false" aria-label="Show details" title="Show details">Details +</button>
   </div>
 </body>
 </html>

@@ -59,3 +59,106 @@ test.describe('procgen survey native boundary', () => {
     } finally { controls?.cancel(); await pool; await server.close(); }
   });
 });
+
+const reviewFixture = () => {
+  const scenario = { id: 'recorded-scene', laneHeight: 144 };
+  const candidates = [{ id: 'candidate-a', family: 'Baseline', kind: 'baseline' }, { id: 'candidate-b', family: 'Exploration', kind: 'candidate' }];
+  const telemetry = tick => ({ preview: { tick, actors: [{ x: tick, y: 70 }], geometry: { solid: [{ x: 0, y: 72, width: 512, height: 72 }] } } });
+  return { schemaVersion: 1, manifest: { experimentId: 'ui-recording-only', scenarios: [scenario], developmentScenarioIds: [scenario.id], candidates, budgetPolicy: { executionWorkers: 1, residentWorlds: 2 } },
+    results: candidates.map((candidate, index) => ({ trialId: candidate.id, candidateId: candidate.id, candidate, scenario, scenarioId: scenario.id, policySeed: 1, status: 'completed', episodeComplete: false, lastTick: 64, accounting: { designated: 8, alive: 8, arrived: index ? 8 : 4, deaths: 0 }, milestones: [0, 32, 64].map(tick => ({ tick, telemetry: telemetry(tick) })) })) };
+};
+
+test.describe('survey recorded review interactions', () => {
+  test('keeps selection, keyboard order and empty comparisons consistent', async ({ page }) => {
+    await page.goto('/procgen-survey.html');
+    await expect(page.locator('#surveyReplay')).toBeDisabled();
+    await expect(page.locator('#surveyPause')).toBeDisabled();
+    await page.evaluate(value => window.__procgenSurveyDashboard.load(value), reviewFixture());
+    await expect(page.locator('#surveyTick')).toHaveText('Tick 64');
+    await expect(page.locator('#surveyStep')).toBeDisabled();
+    await expect(page.locator('.survey-tile').first()).toHaveAttribute('aria-pressed', 'true');
+    await page.locator('#surveySort').selectOption('completion');
+    await expect(page.locator('.survey-tile').first()).toHaveAttribute('data-trial-id', 'candidate-b');
+    await page.locator('.survey-tile').first().focus();
+    await page.keyboard.press('Space');
+    await expect(page.locator('.survey-tile').first()).toHaveAttribute('aria-pressed', 'true');
+    await page.keyboard.press('Tab');
+    await expect(page.locator('.survey-tile').nth(1)).toBeFocused();
+    await page.locator('#surveyScrub').focus();
+    await page.keyboard.press('Home');
+    await expect(page.locator('#surveyTick')).toHaveText('Tick 0');
+    await page.locator('#surveyStep').click();
+    await expect(page.locator('#surveyTick')).toHaveText('Tick 32');
+    await page.evaluate(() => { const dashboard = window.__procgenSurveyDashboard; dashboard.load(dashboard.getReport()); });
+    await expect(page.locator('#surveyTick')).toHaveText('Tick 32');
+    await page.locator('#surveyFilter').selectOption('failure');
+    await expect(page.locator('.survey-tile:visible')).toHaveCount(0);
+    await expect(page.locator('#surveyEmpty')).toBeVisible();
+    await expect(page.locator('#surveyFocusTitle')).toHaveText('No trial selected');
+    await expect(page.locator('#surveyDetails')).toHaveText('');
+    await expect(page.locator('#surveyStep')).toBeDisabled();
+    await expect(page.locator('#surveyDivergence')).toBeDisabled();
+    await page.locator('#surveyFilter').selectOption('all');
+    await expect(page.locator('#surveyTick')).toHaveText('Tick 64');
+  });
+
+  test('explains an absent baseline and fits a narrow review viewport', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/procgen-survey.html');
+    const report = reviewFixture(); report.results = report.results.slice(1);
+    await page.evaluate(value => window.__procgenSurveyDashboard.load(value), report);
+    await expect(page.locator('#surveyBaselineStatus')).toContainText('No paired baseline');
+    await expect(page.locator('#surveyDivergence')).toBeDisabled();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.locator('.survey-tile').focus();
+    await page.evaluate(() => { const dashboard = window.__procgenSurveyDashboard; dashboard.load(dashboard.getReport()); });
+    await expect(page.locator('.survey-tile')).toBeFocused();
+  });
+
+  test('keeps the pause label truthful when the server rejects a control', async ({ page }) => {
+    await page.route('**/survey-api/report', route => route.fulfill({ json: { ...reviewFixture(), controlState: { paused: false } } }));
+    await page.route('**/survey-api/control', route => route.fulfill({ status: 403 }));
+    await page.goto('/procgen-survey.html#token=local-test');
+    await expect(page.locator('.survey-tile')).toHaveCount(2);
+    await page.locator('#surveyPause').click();
+    await expect(page.locator('#surveyStatus')).toHaveText('Survey control was rejected');
+    await expect(page.locator('#surveyPause')).toHaveText('Pause all');
+    await expect(page.locator('#surveyPause')).toBeEnabled();
+  });
+});
+
+
+test('offline replay pause follows active playback and resets after completion', async ({ page }) => {
+  await page.route('**/ProcgenSurveyBrowserAssets.js', route => route.fulfill({ contentType: 'text/javascript', body: `
+    export const createBrowserSurveyTrial = async () => {
+      await new Promise(resolve => { window.__releaseReplaySetup = resolve; });
+      const world = { tickIndex: 0 };
+      window.__stubReplayWorld = world;
+      return { world, get done() { return !!window.__finishStubReplay; },
+        step(count) { world.tickIndex += count; }, telemetry() { return {}; }, preview() { return {}; },
+        result() { return {}; }, dispose() { window.__stubReplayDisposed = true; } };
+    };` }));
+  await page.goto('/procgen-survey.html');
+  const report = reviewFixture(); report.results[0].episodeComplete = true; report.results[0].scenario.horizonTicks = 100000;
+  await page.evaluate(value => window.__procgenSurveyDashboard.load(value), report);
+  const pause = page.locator('#surveyPause');
+  await expect(pause).toBeDisabled();
+  await expect(pause).toHaveText('Pause replay');
+  await page.locator('#surveyReplay').click();
+  await expect.poll(() => page.evaluate(() => typeof window.__releaseReplaySetup)).toBe('function');
+  await expect(pause).toBeDisabled();
+  await page.evaluate(() => window.__releaseReplaySetup());
+  await expect(pause).toBeEnabled();
+  await pause.click();
+  await expect(pause).toHaveText('Resume replay');
+  const pausedTick = await page.evaluate(() => window.__stubReplayWorld.tickIndex);
+  await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 120)));
+  expect(await page.evaluate(() => window.__stubReplayWorld.tickIndex)).toBe(pausedTick);
+  await pause.click();
+  await expect(pause).toHaveText('Pause replay');
+  await expect.poll(() => page.evaluate(() => window.__stubReplayWorld.tickIndex)).toBeGreaterThan(pausedTick);
+  await page.evaluate(() => { window.__finishStubReplay = true; });
+  await expect(pause).toBeDisabled();
+  await expect(page.locator('#surveyReplay')).toBeEnabled();
+  expect(await page.evaluate(() => window.__stubReplayDisposed)).toBe(true);
+});

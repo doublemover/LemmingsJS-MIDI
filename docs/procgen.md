@@ -25,6 +25,27 @@ four chunks. The source catalogue retains every nonempty terrain and object entr
 
 Source-colored connected foundations form shelves, slopes, abrupt climbs and
 drops; stamped pieces add overhangs and steel, while gaps require bridges.
+Three alternating chunks at x384, x640 and x896 introduce a seeded rotation of
+four readable foundation challenges: an 8–10 pixel ledge, an 18–24 pixel finite
+wall, a 10–16 pixel gap with a recovery floor 16 pixels below, and ordinary
+three-pixel terraces. They reserve a clear approach and exit before optional
+attachments, keep exact seam elevations, and use the existing source-colored
+foundation columns for both collision and rendering. These chunks intentionally
+change older seed layouts; repeatability is within the same source version.
+The later source assemblies, basins and unconstrained landscape remain intact.
+Challenge labels describe generation only: the planner reads observed terrain,
+and an intended shape never serves as a route certificate.
+
+Short basher candidates now replay the real four excavation masks, frame-five
+termination, directional blockers and subsequent walking/jumping/falling on a
+private bounded patch. A candidate must remove material and reach its observed
+supported exit without a protected cut or hazard contact. No rehearsal edits
+live terrain or emits MIDI. Walking is screened before spending a builder:
+a shared jump may finish up to eight pixels beyond the nominal 24-pixel lookahead,
+but still must land supported within observed geometry. This avoids treating a
+normal terrace jump as an obstruction. The existing 1,024-work/eight-lane service
+limits and worker inventories still apply.
+
 Admitted canonical decorative terrain uses its real source collision. Admitted words use verified original glyph alpha as physical terrain. Each connected glyph component must touch measured foundation, its full source rectangle must fit, and the existing early-route clearance screen can reject it. Animated object artwork remains separate from terrain collision.
 Supported source traps, water and lethal/fire objects use shared contact/action owners. Entrances and exits are excluded from random generated placement. Multipart hazard assemblies retain their complete source-relative transforms; unsupported or buried triggers are rejected. Water only carves the measured image-sized cavity when original terrain already supports both sides and the bottom; it adds no liquid wall. Each lane keeps one available groundset from the selected pack. A seeded permutation spreads starting themes evenly across lanes; a new generation rotates this order. Assets from other packs are never borrowed. Unavailable themes are omitted rather than substituted. Real steel pixels
 are protected from bashing/explosions. Climbers enter the actual wall column before climbing; tunnel ceilings make them turn and fall instead of hoisting through the underside. Non-climbers retain their normal turnaround. Assistance uses ordinary classic walking, building, climbing and bashing. Source routes use the bounded hazard-aware planner described below; rejected proposals continue normal movement without teleporting actors or changing action timing.

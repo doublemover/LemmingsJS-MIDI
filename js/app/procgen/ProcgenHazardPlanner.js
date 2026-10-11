@@ -7,6 +7,7 @@ import { ProcgenWalkContinuation } from './ProcgenWalkContinuation.js';
 import { ProcgenSupportedRelief } from './ProcgenSupportedRelief.js';
 import { ProcgenGuardedTunnel } from './ProcgenGuardedTunnel.js';
 import { ProcgenSupportedBuild } from './ProcgenSupportedBuild.js';
+import { ProcgenLocalTunnel } from './ProcgenLocalTunnel.js';
 
 const MAX_LOCAL_ROUTE_DISTANCE = 40;
 const MAX_ROUTE_PROBES = 1024;
@@ -18,7 +19,7 @@ const intersects = (hazard, x, y) => x + 2 > hazard.x1 && x - 2 < hazard.x2 && y
 class ProcgenHazardPlanner {
   constructor(world) {
     this.bypasses = new ProcgenBlockerBypass(world); this.tunnels = new ProcgenSupportedTunnel(world); this.descents = new ProcgenSupportedDescent(world);
-    this.walking = new ProcgenWalkContinuation(world); this.building = new ProcgenSupportedBuild(world); this.guardedTunnels = new ProcgenGuardedTunnel(world); this.relief = new ProcgenSupportedRelief(world);
+    this.walking = new ProcgenWalkContinuation(world); this.building = new ProcgenSupportedBuild(world); this.localTunnels = new ProcgenLocalTunnel(world); this.guardedTunnels = new ProcgenGuardedTunnel(world); this.relief = new ProcgenSupportedRelief(world);
     this.world = world; this.observations = []; this.adjacentObservations = []; this.cache = new Array(world.laneCount);
     this.admission = new ProcgenRouteAdmission(world);
     this.stats = { plans: 0, deferred: 0, probes: 0, budgetExhausted: 0, admission: this.admission.stats };
@@ -99,6 +100,7 @@ class ProcgenHazardPlanner {
     if (!cliff || !this.world.workerLimits?.bashers) return null;
     const action = this.world.actions[State.BASHING], mask = action?.masks?.get('right')?.GetMask(1);
     const startX = Math.max(actor.x, cliff.x - 8);
+    if (startX !== actor.x) return null;
     if (!mask || !this._ground(startX, actor.y) || this.world.hasSteelUnderMask(mask, startX, actor.y) || this.world.hasArrowUnderMask(mask, startX, actor.y, true)) return null;
     let clear = 0, excavated = 0, end = null;
     for (let x = startX + 1; x <= Math.min(actor.x + MAX_LOCAL_ROUTE_DISTANCE - 9, this.through - 9); x++) {
@@ -115,9 +117,14 @@ class ProcgenHazardPlanner {
     const footprint = { x1: startX - 1, x2: end + 9, y1: actor.y - 9, y2: actor.y + 2 };
     const continuation = this._continuation(end + 1, actor.y);
     if (!continuation || this._constructionOverlap(footprint)) return null;
-    const depth = Math.max(0, actor.y - cliff.y), ticks = (startX - actor.x) + 16 * Math.ceil((end - startX) / 5);
+    const result = this.localTunnels.prove(actor, (x, y) => this._ground(x, y), this.observations, MAX_ROUTE_PROBES - this.probes, end + 9);
+    this.probes += result.actionSteps; this.stats.probes += result.actionSteps;
+    if (result.failure === 'unrevealed') this.unrevealed = true;
+    if (!result.safe) return null;
+    const depth = Math.max(0, actor.y - cliff.y), ticks = result.actionSteps;
     const crew = this.world.getLaneMusicSignals?.(actor.laneIndex);
-    return { kind: 'bashers', targetX: cliff.x, startX, footprint, continuationY: continuation.y, estimatedTicks: ticks, materialCost: 0,
+    return { kind: 'bashers', targetX: cliff.x, startX, footprint, continuationY: result.y, estimatedTicks: ticks, materialCost: 0,
+      routeEvidence: { kind: 'shared-local-bash', exitX: result.x, exitY: result.y, bashTicks: result.bashTicks, excavated: result.excavated },
       score: 100 - ticks / 8 - excavated / 24 - depth * 4 + continuation.span + Math.min(8, crew?.alive || 1) - (crew?.bashingCount || 0) * 4 };
   }
   _digDescent(actor) {
@@ -247,15 +254,12 @@ class ProcgenHazardPlanner {
       }
     }
     if (!proposal && (threat || cliff || gap)) {
+      const walking = !bypass.failure ? this.walking.prove(actor, (x, y) => this._ground(x, y), this.observations, MAX_ROUTE_PROBES - this.probes) : null;
+      if (walking?.failure === 'unrevealed') this.unrevealed = true;
+      if (walking?.safe && !this.exhausted && !this.unrevealed) { this.admission.screened(actor, this.probes); return null; }
       const build = this._builder(actor);
       if (build) build.score += world.lanePolicy?.score(actor, build) || 0;
-      // A coarse gap under existing bricks is not a reason to excavate their
-      // safe passive exit. Retain proactive building unless completed nearby
-      // construction and an actual ordinary shared-action replay justify WALK.
-      if (!bypass.failure && (!build || world.lanePolicy?.connectedConstruction(actor))) {
-        const walking = this.walking.prove(actor, (x, y) => this._ground(x, y), this.observations, MAX_ROUTE_PROBES - this.probes);
-        if (walking.failure === 'unrevealed') this.unrevealed = true;
-        if (walking.safe && !this.exhausted && !this.unrevealed) { this.admission.screened(actor, this.probes); return null; }
+      if (walking) {
         // Discover a real imminent WALK entrance before scalar excavation scans
         // spend its service. The live actor keeps following its shared actions.
         if (!build && walking.terrainTurn?.steps > 0 && !actor.scout && !actor.canClimb && !actor.hasParachute && world.workerLimits?.bashers &&
@@ -306,6 +310,6 @@ class ProcgenHazardPlanner {
     return proposal;
   }
   reset() { this.admission.reset(); this.bypasses.reset(); this.tunnels.reset(); this.descents.reset(); this.walking.reset(); this.building.reset(); this.relief.reset(); this.cache.fill(null); this.observations.length = 0; this.adjacentObservations.length = 0; }
-  dispose() { this.reset(); this.admission.dispose(); this.bypasses.dispose(); this.tunnels.dispose(); this.descents.dispose(); this.walking.dispose(); this.building.dispose(); this.guardedTunnels.dispose(); this.relief.dispose(); this.world = null; }
+  dispose() { this.reset(); this.admission.dispose(); this.bypasses.dispose(); this.tunnels.dispose(); this.descents.dispose(); this.walking.dispose(); this.building.dispose(); this.localTunnels.dispose(); this.guardedTunnels.dispose(); this.relief.dispose(); this.world = null; }
 }
 export { ProcgenHazardPlanner, MAX_LOCAL_ROUTE_DISTANCE, MAX_ROUTE_PROBES, ROUTE_LANES_PER_TICK };

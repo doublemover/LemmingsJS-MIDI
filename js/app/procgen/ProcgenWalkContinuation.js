@@ -22,7 +22,8 @@ class ProcgenWalkContinuation {
   }
   prove(actor, ground, hazards, maxWork) {
     const world = this.world, left = actor.x, right = left + WALK_CONTINUATION_DISTANCE, top = actor.y - 20, bottom = actor.y + 12;
-    const bounds = { x1: left, x2: right + 1, y1: top, y2: bottom + 1 };
+    const landingRight = right + 8;
+    const bounds = { x1: left, x2: landingRight + 1, y1: top, y2: bottom + 1 };
     const first = Math.max(0, Math.floor(top / world.laneHeight)), last = Math.min(world.laneCount - 1, Math.floor(bottom / world.laneHeight));
     const triggers = [];
     for (let lane = first; lane <= last; lane++) {
@@ -41,10 +42,10 @@ class ProcgenWalkContinuation {
     let failure = null, steps = 0, fell = false, terrainTurn = null, fullWalkColumn = false, touchedTrigger = false, invalidTurn = false;
     const tiles = new Map();
     const read = (x, y) => {
-      if (x < left || x > right || y < top || y > bottom || y < 0 || y >= world.height) { invalidTurn = true; failure ||= 'bounds'; return false; }
+      if (x < left || x > landingRight || y < top || y > bottom || y < 0 || y >= world.height) { invalidTurn = true; failure ||= 'bounds'; return false; }
       const lane = Math.floor(y / world.laneHeight), chunk = Math.floor(x / world.terrain.chunkWidth);
       if (x >= world.generatedThrough[lane] || (world.terrainGrowth?.stateFor(lane, chunk) && !world.terrainGrowth.columnReady?.(lane, x))) { invalidTurn = true; failure ||= 'unrevealed'; return false; }
-      const key = (y - top) * (WALK_CONTINUATION_DISTANCE + 1) + x - left;
+      const key = (y - top) * (WALK_CONTINUATION_DISTANCE + 9) + x - left;
       if (!cells.has(key)) {
         if (cells.size >= maxWork) { invalidTurn = true; failure ||= 'budget'; return false; }
         cells.set(key, ground(x, y));
@@ -80,10 +81,10 @@ class ProcgenWalkContinuation {
       fell ||= copy.action === this.actions[State.FALLING];
       lemmingManagerInteractionMethods.runTrigger.call(interaction, copy, world.tickIndex + steps);
       if (!copy.lookRight) failure ||= 'turn';
-      if (!failure && copy.x === right && copy.action === this.actions[State.WALKING] && read(copy.x, copy.y)) { break; }
+      if (!failure && copy.x >= right && copy.action === this.actions[State.WALKING] && read(copy.x, copy.y)) { break; }
     }
     if (world.terrainRevision !== revision || world.frontierRevision !== frontier || world.generation !== generation) failure ||= 'changed-terrain';
-    if (copy.x !== right || copy.action !== this.actions[State.WALKING] || !read(copy.x, copy.y)) failure ||= steps >= maxSteps ? 'budget' : 'continuation';
+    if (copy.x < right || copy.action !== this.actions[State.WALKING] || !read(copy.x, copy.y)) failure ||= steps >= maxSteps ? 'budget' : 'continuation';
     this.stats.actionSteps += steps;
     if (!failure) this.stats.accepted++;
     if (failure !== 'turn' || touchedTrigger || invalidTurn || world.terrainRevision !== revision || world.frontierRevision !== frontier || world.generation !== generation || [...tiles].some(([tile, at]) => procgenTileRevision(world, tile) !== at)) terrainTurn = null;

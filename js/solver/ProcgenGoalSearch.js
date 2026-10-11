@@ -47,17 +47,26 @@ const searchProcgenGoal = (factory, options = {}) => {
             search: { ...limits, intendedRouteHint: false, initialFingerprint } };
         }
         if (adapter.isTerminal() || adapter.tick === limits.maxTicks) break;
-        if (next === script.length && script.length < limits.maxActions && adapter.tick % limits.decisionStride === 0 && queue.length + nodes < limits.maxNodes) {
+        if (next === script.length && script.length < limits.maxActions && queue.length + nodes < limits.maxNodes) {
           const actor = adapter.selectLemming('frontier'), world = adapter.world, bounds = adapter.bounds;
           if (actor?.action === world.actions[State.WALKING] && actor.x >= bounds.x + 4 && actor.x + 10 < bounds.x + bounds.width && actor.y >= bounds.y + 12 && actor.y + 4 < bounds.y + bounds.height && world.hasGroundAt(actor.x, actor.y)) {
             const ahead = actor.x + (actor.lookRight ? 1 : -1), obstacle = world.getColumnStepHeight(ahead, actor.y - 7, 8) >= 7 || world.getColumnGapDepth(ahead, actor.y + 1, 3) > 3;
+            // A one-column launch or wall pose may fall between stride samples.
+            // Observe imminent contact each tick; keep exploratory scans sparse.
+            const sampled = adapter.tick % limits.decisionStride === 0;
+            let approach = false;
+            if (sampled && adapter.getSkillCount('builder')) for (let dx = 8; dx <= 20; dx += 4) {
+              const x = actor.x + (actor.lookRight ? dx : -dx);
+              if (x < bounds.x || x >= bounds.x + bounds.width) break;
+              if (world.getColumnStepHeight(x, actor.y - 7, 8) >= 7 || world.getColumnGapDepth(x, actor.y + 1, 3) > 3) { approach = true; break; }
+            }
             const directionalType = actor.lookRight ? Types.BLOCKER_LEFT : Types.BLOCKER_RIGHT;
-            const blocker = adapter.getEnvironmentalBlockerRects().some(rect => rect.type === directionalType && actor.y >= rect.y1 && actor.y < rect.y2 &&
+            const blocker = sampled && adapter.getEnvironmentalBlockerRects().some(rect => rect.type === directionalType && actor.y >= rect.y1 && actor.y < rect.y2 &&
               (actor.lookRight ? rect.x1 > actor.x && rect.x1 - actor.x <= 40 : rect.x2 <= actor.x && actor.x - rect.x2 <= 40));
             let descent = false;
             // Candidate discovery reads actual bounded geometry; it does not use
             // the assistant planner or a proposed route/action sequence.
-            if (!obstacle && actor.y + 32 < bounds.y + bounds.height) {
+            if (sampled && !obstacle && actor.y + 32 < bounds.y + bounds.height) {
               let air = false;
               for (let drop = 1; drop <= 32; drop++) {
                 if (!world.hasGroundAt(actor.x, actor.y + drop)) air = true;
@@ -71,7 +80,7 @@ const searchProcgenGoal = (factory, options = {}) => {
                 }
               }
             }
-            if (obstacle || descent || blocker) for (const skillType of obstacle ? ['builder', 'basher', 'digger', 'miner'] : blocker ? ['builder'] : ['digger', 'miner']) {
+            if (obstacle || approach || descent || blocker) for (const skillType of obstacle ? ['builder', 'basher', 'digger', 'miner'] : blocker || approach ? ['builder'] : ['digger', 'miner']) {
               if (!adapter.getSkillCount(skillType) || queue.length + nodes >= limits.maxNodes) continue;
               const candidate = [...script, { tick: adapter.tick, target: actor.id, skillType }], key = JSON.stringify(candidate);
               if (!seen.has(key)) { seen.add(key); queue.push(candidate); }

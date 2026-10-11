@@ -154,9 +154,9 @@ body { flex-direction: column; }
 .midi-output-capture [hidden] { display: none; }
 
 /* The panel and its handle move together; closed height leaves only the handle. */
-#procgenPanel { position: fixed; inset: var(--procgen-bar-height, 42px) 0 auto; z-index: 20; display: flex; flex-direction: column; transform: translateY(calc(-100% + 18px)); transition: transform 180ms ease; pointer-events: none; }
+#procgenPanel { position: fixed; inset: var(--procgen-bar-height, 42px) 0 auto; z-index: 20; display: flex; flex-direction: column; transform: translateY(calc(-100% + 32px)); transition: transform 180ms ease; pointer-events: none; }
 #procgenPanel.is-open { transform: translateY(0); }
-#procgenPanel #procgenDrawer { position: relative; inset: auto; width: 100%; max-height: min(calc(100dvh - var(--procgen-bar-height, 42px) - 18px), 660px); transform: none; transition: none; pointer-events: auto; }
+#procgenPanel #procgenDrawer { position: relative; inset: auto; width: 100%; max-height: min(calc(100dvh - var(--procgen-bar-height, 42px) - 32px), 660px); transform: none; transition: none; pointer-events: auto; }
 #procgenPanel #procgenTab { position: relative; top: auto; left: auto; transform: none; align-self: center; flex: none; pointer-events: auto; }
 #procgenOutputPressure { display: inline-block; flex: 0 0 14ch; width: 14ch; min-height: 12px; overflow: hidden; text-overflow: ellipsis; }
 #gameCanvas.nuke-armed { cursor: crosshair; }
@@ -169,3 +169,94 @@ body { flex-direction: column; }
 .midi-music-direction { display: flex; flex-direction: column; flex: 0 0 150px; width: 150px; gap: 0; min-width: 0; }
 .midi-music-direction select { box-sizing: border-box; width: 100%; min-height: 24px; height: 24px; padding: 2px 4px; font-size: 11px; }
 .midi-music-direction-status { display: block; height: 12px; line-height: 12px; font-size: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Keep live controls together and give generation changes their own space. */
+#procgenTopbar {
+  gap: 8px 12px;
+  padding: 10px max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left));
+  font-size: 12px;
+  background: #17241e;
+}
+.procgen-control-section {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  padding-right: 12px;
+  border-right: 1px solid #405044;
+}
+.procgen-section-label {
+  color: #a7b9ab;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  margin-right: 2px;
+}
+.procgen-run-controls { order: 0; }
+.procgen-world-controls { order: 1; }
+#procgenAudioControls { order: 2; border-right: 0; padding-right: 0; }
+#procgenTopbar button, #procgenTopbar select, #procgenTopbar input:not([type=range]),
+#procgenTopbar .procgen-advanced > summary { min-height: 34px; }
+#procgenTopbar #procgenPause { min-width: 62px; background: #3b5c43; border-color: #73977a; font-weight: 650; }
+#procgenTopbar #procgenPause[aria-pressed=true] { background: #665131; border-color: #b49358; }
+#procgenTopbar .procgen-speed-segments { height: 32px; }
+#procgenTopbar .procgen-speed-segments button { width: 30px; height: 32px; min-height: 32px; }
+#procgenTopbar #procgenSpeed { min-height: 34px; }
+#procgenTopbar #procgenMidiDevice { max-width: 180px; }
+#procgenTopbar [hidden] { display: none; }
+#procgenTopbar button:disabled, #procgenDrawer button:disabled { opacity: .5; cursor: default; }
+#procgenMasterVolume { width: 72px; }
+.procgen-status-strip {
+  order: 3;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 30px;
+  border-top: 1px solid #34473a;
+}
+#procgenTopbar #procgenHelp { min-height: 26px; border: 0; background: transparent; color: #c4d5c7; padding: 2px 0; }
+#procgenOutputPressure { order: 2; flex-basis: auto; width: auto; max-width: 22ch; font-size: 10px; }
+#procgenOutputPressure:empty { display: none; }
+.procgen-run-progress { gap: 14px; }
+#procgenAliveCount { color: #b9e6b8; }
+#procgenBest { color: #a7b9ab; }
+#procgenPanel #procgenTab { width: auto; min-width: 112px; height: 32px; padding: 0 16px; font-size: 12px; font-weight: 600; }
+#procgenPanel #procgenDrawer { padding: 20px clamp(16px, 3vw, 40px); overscroll-behavior: contain; scrollbar-gutter: stable; }
+.procgen-drawer-intro { max-width: 760px; margin-bottom: 16px; }
+.procgen-drawer-intro h1 { margin: 0 0 6px; font-size: 20px; font-weight: 650; color: #f5e4c8; }
+#procgenDrawer .procgen-drawer-intro p { font-size: 13px; line-height: 1.6; }
+#procgenDrawer > details { border-top: 1px solid #514838; margin-top: 12px; padding-top: 10px; }
+#procgenDrawer details > summary { min-height: 32px; line-height: 32px; font-weight: 600; }
+#procgenDrawer details[open] > summary { color: #f3dca6; margin-bottom: 8px; }
+#procgenDrawer select { max-width: 100%; }
+#procgenDrawer .procgen-drawer-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+#procgenDrawer .procgen-drawer-row label { display: grid; gap: 4px; }
+#procgenDrawer p { line-height: 1.6; }
+#procgenNukeStatus { top: calc(var(--procgen-bar-height, 42px) + 38px); }
+@media (max-width: 700px) {
+  #procgenTopbar { gap: 6px; padding: 8px 8px 0; }
+  .procgen-control-section { width: 100%; border-right: 0; padding-right: 0; gap: 6px; }
+  .procgen-section-label { width: 40px; flex: none; }
+  #procgenTopbar .procgen-world-controls label { font-size: 11px; }
+  #procgenTopbar #procgenPack { max-width: 120px; }
+  #procgenTopbar #procgenOutput { max-width: 128px; }
+  #procgenTopbar #procgenMidiDevice { max-width: 140px; }
+  #procgenTopbar .procgen-run-controls { gap: 5px; }
+  #procgenTopbar .procgen-speed-control > span { display: none; }
+  #procgenTopbar #procgenSpeed { width: 46px; }
+  #procgenMasterVolume { width: 60px; }
+  .procgen-status-strip { gap: 8px; }
+  .procgen-run-progress { gap: 10px; }
+}
+@media (max-width: 420px) {
+  .procgen-section-label { display: none; }
+  #procgenTopbar .procgen-world-controls { gap: 5px; }
+  #procgenTopbar #procgenPack { max-width: 94px; }
+  #procgenTopbar .procgen-world-controls label { gap: 3px; }
+  #procgenTopbar input[type=number] { width: 48px; }
+  #procgenTopbar #procgenSpeed { width: 42px; }
+  #procgenTopbar button { padding-right: 5px; padding-left: 5px; }
+}

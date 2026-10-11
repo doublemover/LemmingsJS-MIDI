@@ -15,6 +15,7 @@ import { compileAuthoredAssemblies } from './ProcgenAuthoredAssemblies.js';
 import { placeAuthoredAssemblies, isProcgenAssemblyEligible } from './ProcgenAssemblyPlacement.js';
 import { createTerrainGrowthPlan } from './ProcgenTerrainMaterialization.js';
 import { planOpenBankBasin, basinVoidAt } from './ProcgenOpenBankBasins.js';
+import { planTerrainChallenge, challengeSurface } from './ProcgenTerrainChallenges.js';
 
 const TERRAIN_CHUNK_WIDTH = 128;
 const TERRAIN_HEIGHT = 96;
@@ -150,6 +151,15 @@ class ProcgenRecipeTerrain {
     const descriptor = { code, phase, phaseCode, origin, placements, progression, left, right, middle,
       gapX: origin + 88 + (code >>> 5) % 8, gapWidth: gap ? 3 + (code >>> 10) % (progression.gapMaximum - 2) : 0,
       barrierX: origin + (placements[0]?.x || 0), barrierWidth: progression.safeIntro ? 0 : (placements[0]?.piece.width || 0) };
+    descriptor.challenge = planTerrainChallenge({ seed, chunk, left, right, height: this.height });
+    if (descriptor.challenge) {
+      const challenge = descriptor.challenge;
+      descriptor.gapX = origin + challenge.start; descriptor.gapWidth = challenge.kind === 'gap' ? challenge.width : 0;
+      descriptor.gapFloor = challenge.recoveryFloor;
+      descriptor.objects = []; descriptor.assemblies = []; descriptor.deferredAssemblies = [];
+      descriptor.zone = this.zonePlanner?.zoneAt(seed, origin) || null;
+      return descriptor;
+    }
     // Early narrow gaps retain a real source-foundation recovery floor. Their
     // upper opening and optional bridge remain; later gaps keep full depth.
     descriptor.gapFloor = descriptor.gapWidth && progression.gapDepth != null ? Math.min(this.height - 2,
@@ -355,6 +365,7 @@ class ProcgenRecipeTerrain {
   }
   _foundationColumn(pattern, worldX, descriptor) {
     const column = this._patternColumn(pattern, worldX);
+    if (descriptor.challenge) return pattern.introColumns[column];
     return descriptor.gapFloor != null && worldX >= descriptor.gapX && worldX < descriptor.gapX + descriptor.gapWidth && pattern.topProfile[column] < 0 ? pattern.introColumns[column] : column;
   }
   _gapVoid(descriptor, worldX, y) {
@@ -365,6 +376,7 @@ class ProcgenRecipeTerrain {
     return this.height - TERRAIN_HEIGHT + (progression.difficulty >= 1 ? 40 + code % 39 : 72 - code % (progression.elevationRange + 1));
   }
   _surface(seed, chunk, x, descriptor) {
+    if (descriptor.challenge) return challengeSurface(descriptor.challenge, x, descriptor.left, descriptor.right);
     if (chunk === 0 && x < 64) return this.height - TERRAIN_HEIGHT + 72;
     const { left, right, middle } = descriptor;
     // Flat shelves, abrupt climbable faces and gentle connecting slopes all

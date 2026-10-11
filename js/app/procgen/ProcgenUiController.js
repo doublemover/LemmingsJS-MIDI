@@ -170,20 +170,31 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   const setOpen = open => {
     if (!panel || !tab) return;
     panel.classList.toggle('is-open', open); byId('procgenPanel')?.classList.toggle('is-open', open); panel.inert = !open;
-    tab.setAttribute('aria-expanded', String(open)); tab.textContent = open ? '▴' : '▾';
+    tab.setAttribute('aria-expanded', String(open)); tab.textContent = open ? 'Close details' : 'Details +';
     tab.setAttribute('aria-label', open ? 'Hide details' : 'Show details'); tab.title = open ? 'Hide details' : 'Show details';
     if (!open && panel.contains(document.activeElement)) tab.focus();
   };
   let dragStart = null, pulledOpen = false;
-  listen(tab, 'pointerdown', event => { dragStart = event.clientY; });
+  listen(tab, 'pointerdown', event => { dragStart = event.clientY; pulledOpen = false; });
+  listen(tab, 'pointercancel', () => { dragStart = null; pulledOpen = false; });
   listen(tab, 'pointerup', event => { if (dragStart != null && event.clientY - dragStart > 15) { setOpen(true); pulledOpen = true; } dragStart = null; });
   listen(tab, 'click', () => { if (pulledOpen) { pulledOpen = false; return; } setOpen(tab.getAttribute('aria-expanded') !== 'true'); });
   const isEditing = event => event.target?.isContentEditable || ['TEXTAREA', 'SELECT'].includes(event.target?.tagName) || (event.target?.tagName === 'INPUT' && !['range', 'checkbox', 'radio', 'button', 'submit'].includes(event.target.type || 'text'));
   listen(document, 'keydown', event => { if (event.key === 'Escape' && !isEditing(event)) { setOpen(false); setSpanEditing(false); setNukeArmed(false); } });
+  const seedControls = byId('procgenSeedControls');
+  listen(document, 'pointerdown', event => {
+    if (seedControls?.open && !seedControls.contains(event.target)) seedControls.open = false;
+  });
+  listen(seedControls, 'keydown', event => {
+    if (event.key === 'Escape') {
+      seedControls.open = false; seedControls.querySelector?.('summary')?.focus();
+      event.preventDefault?.(); event.stopPropagation?.();
+    }
+  });
   setOpen(false);
   const showHelp = () => {
     setOpen(true); const help = byId('procgenHelpFields');
-    if (help) { help.open = true; if (panel) panel.scrollTop = help.offsetTop || 0; }
+    if (help) { help.open = true; if (panel) panel.scrollTop = help.offsetTop || 0; help.querySelector?.('summary')?.focus({ preventScroll: true }); }
   };
   listen(byId('procgenHelp'), 'click', showHelp);
   const charactersHost = byId('procgenCharacters');
