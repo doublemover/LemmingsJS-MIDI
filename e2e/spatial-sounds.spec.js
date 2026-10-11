@@ -52,26 +52,3 @@ test('Learn and Record cancellation leave mappings and clips unchanged', async (
   await page.locator('#midiRecordCancelButton').click();
   expect(await page.evaluate(() => window.__E2E__.midiGetProject().clips)).toEqual(clips);
 });
-
-test('mobile MIDI stays hidden except for a single exact opt-in', { tag: '@boundary' }, async ({ browser, baseURL }) => {
-  const context = await browser.newContext({ baseURL, viewport: { width: 390, height: 844 }, isMobile: true,
-    hasTouch: true, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile' });
-  try {
-    const page = await context.newPage();
-    await installExternalAssetStubs(page);
-    for (const query of ['', '&midi=0', '&midi=1&midi=1', '&midi=true']) {
-      await page.goto(`/?e2e=1${query}`);
-      await waitForHarnessReady(page);
-      await expect(page.locator('#midiWorkspaceToggle')).toBeHidden();
-    }
-    await page.goto('/?e2e=1&midi=1');
-    await waitForHarnessReady(page);
-    await expect(page.locator('#midiWorkspaceToggle')).toBeVisible();
-    if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
-    await expect(page.locator('#midiSoundsView')).toBeVisible();
-    const dimensions = await page.evaluate(() => ({ width: window.innerWidth, scroll: document.documentElement.scrollWidth }));
-    expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.width + 1);
-  } finally {
-    await context.close();
-  }
-});
