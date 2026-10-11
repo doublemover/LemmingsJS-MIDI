@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Add seeded ledges, finite tunnel walls, recoverable gaps and walkable terraces with clear approaches between the entrance and later source terrain.
+- Validate short bashers with the actual mask/action lifecycle, preserve passive jump landings, and discover solver skill windows between sampled decisions.
+- Group procgen controls for smaller screens and improve survey selection, empty states, comparison and keyboard navigation.
+
 - Add an opt-in paired procgen survey with isolated real worlds, bounded workers, complete crew accounting, immutable replay evidence and a muted comparison dashboard.
 
 - Add opt-in Scene replies through the existing ensemble and phrase queue, with shared simulation musical boundaries and persistent compact status controls.

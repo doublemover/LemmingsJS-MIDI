@@ -70,7 +70,8 @@ const createProcgenLaneRuntime = ({ canvas, resources, sprites, masks, assets, l
     step(count = 1) {
       const now = windowRef.performance?.now?.() ?? world.eventTimeMs;
       for (let i = 0; i < Math.max(1, Math.min(10000, Math.trunc(count))); i++) world.step(now);
-      renderer.render(); reportActiveCount();
+      renderer.render(); reportActiveCount(); onMetrics?.(world.getDebugState());
+      lastMetrics = null;
     },
     stop() { running = false; windowRef.document.removeEventListener?.('visibilitychange', visibilityChanged); if (frame != null) windowRef.cancelAnimationFrame(frame); view.setMidiPreviewRouter(null); world.dispose(); renderer.dispose(); },
     resize() { renderer.resize(); } };

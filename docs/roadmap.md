@@ -55,6 +55,52 @@ When a milestone replaces an old path, remove the old path in the same phase.
 - [x] Check native recipe focus, dimensions, local cue scheduling and owned Panic after a qualified passage.
 - [ ] Review acoustic quality and physical MIDI behavior; muted output-call tests do not complete these items.
 
+## Terrain and skill decisions (October 10, 2026)
+
+- [x] Introduce seeded ledge, finite-wall, recovery-gap and walking-terrace forms with reserved approaches, supported exits and unchanged chunk seams.
+- [x] Replace scalar-only short-tunnel acceptance with a silent private replay of the real basher masks and exit actions; retain steel, hazard, observation and work limits.
+- [x] Fix passive jump completion beyond the nominal lookahead endpoint and choose safe walking before construction.
+- [x] Discover imminent solver decisions between stride samples and sample builder approaches before contact; retain fresh-world replay as the authority.
+- [x] Refine main procgen controls and survey comparison in disjoint Astra Medium UI scopes; exercise desktop/mobile controls and real resident-world pause/step/cancel.
+- [ ] Broaden whole-crew reliability sampling across source themes only when a concrete regression calls for it. These finite cases and two natural-spawn comparisons are not a policy ranking.
+- [ ] Add focused local-tunnel coverage for unusual directional-blocker and world-boundary combinations; keep acoustic/physical MIDI acceptance separate.
+
+The causal regressions are in `test/procgen-skill-decisions.test.js` and
+`test/procgen-terrain-challenges.test.js`. A 16-tick decision stride previously
+missed the x77/tick13 bridge launch, despite a successful real action replay.
+The current search discovers it. A basher head contact at y61..63 was outside
+the old scalar envelope; the actual-action rehearsal rejects it without live
+effects. A terrace WALK proof previously stopped at exact x440 while JUMP
+landed at x441, leading to an unnecessary builder; the supported landing now
+qualifies ordinary walking. Controlled generated ledge/gap crossings each use
+one full twelve-brick builder, the wall uses one real basher, and terraces use
+zero skills.
+
+Two 1,800-tick, one-ordinary-actor Dirt comparisons against merged 3dffaea1
+retain seed, masks and worker limits. Seed 2 changes from three builders/no
+basher to two builders/one basher; seed 42 changes from two builders/no basher
+to three builders/one basher. Both survive; current positions at the horizon
+are respectively x726 and x961 versus x867 and x699, so these examples do not
+claim universal forward-progress improvement. Changed early terrain produces
+different trajectories. Maximum charged lane work stays at or below 1,024.
+Disposable receipts are `temp/seeds-before.jsonl`, `temp/seeds-after.jsonl`,
+`temp/skill-coverage/`, and the helpers' `temp/e2e-captures/` and `temp/survey-ui/`.
+
+Validation: the full `npm test` gate passed 3,479 checks in 154.88 seconds
+within the existing 180-second budget, including critical type and runtime
+checks. The final active-construction guard passed a supplemental 57 affected
+checks; focused coverage of the four terrain/search/proof owners is 100% of
+lines/functions and 94% of branches. Format, lint, undefined-call, dependency
+and whitespace checks pass. Fourteen focused Edge journeys cover the main
+page and survey, including actual resident-world controls, responsive layouts,
+MIDI bytes, span editing and reload. Offline replay pause/resume has a bounded
+UI regression; a new exact-source saved-report browser qualification was not
+run. A muted integrated four-lane seed-42 capture at tick 1,500 had no page
+errors and retained all 60 births, 59 living actors and one trapped failure.
+That capture exposed stale manual-step counters, now fixed and checked in the
+browser. Receipts: `temp/full-test-final.log`, `temp/skill-coverage-final.log`,
+`temp/integrated-browser.json` and `temp/integrated-terrain.png`.
+
 ## Milestone 1: DAW-Like Multichannel MIDI Sequencer UI
 
 **Outcome:** The MIDI surface is a DAW-like multichannel sequencer for gameplay

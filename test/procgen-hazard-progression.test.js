@@ -34,7 +34,7 @@ describe('source hazard introduction and bounded observations', function() {
     const terrain = await loadProcgenTerrain('lemmings', 1); let hazards = 0;
     for (const chunk of [2, 3, 4, 8, 9, 10, 16, 20, 28]) {
       const descriptor = terrain.describe(42, chunk);
-      expect(descriptor.gapWidth).to.be.at.most(descriptor.progression.gapMaximum);
+      expect(descriptor.gapWidth).to.be.at.most(descriptor.challenge?.kind === 'gap' ? 16 : descriptor.progression.gapMaximum);
       for (const object of descriptor.objects) if (lethal.has(object.piece.image.trigger_effect_id)) {
         hazards++; const image = object.piece.image;
         expect(Math.min(object.x, object.x + image.trigger_left)).to.be.at.least(PROCGEN_INTRO_SAFE_END);
@@ -65,7 +65,7 @@ describe('source hazard introduction and bounded observations', function() {
     }
     const leader = world.actors[0];
     Object.assign(leader, { x: descriptor.gapX - 3, y: descriptor.right, lookRight: true }); leader.setAction(world.actions[State.WALKING]); world.step();
-    expect(world.hazardPlanner.plan(leader)).to.include({ kind: 'builders', reason: 'supported-local-gap' });
+    expect(world.hazardPlanner.plan(leader)).to.equal(null);
     for (let ordinal = 0; ordinal < 8; ordinal++) {
       const actor = ordinal ? world._spawn(0, false) : world.actors[0];
       Object.assign(actor, { x: descriptor.gapX - 15 - ordinal % 4, y: 72, lookRight: true }); actor.setAction(world.actions[State.WALKING]);

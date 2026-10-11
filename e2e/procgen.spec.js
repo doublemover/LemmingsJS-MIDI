@@ -1,5 +1,17 @@
 import { expect, test } from '@playwright/test';
+import { PROCGEN_GAME_EVENT_MIDI_PRESETS } from '../js/midi/project/ProcgenMidiDefaults.js';
 import { installWebMidiStub } from './helpers/webmidiStub.js';
+const expectBoundedTerrain = state => {
+  const themes = state.terrainGeneration.themes;
+  expect(themes.length).toBeGreaterThan(0);
+  // Each source theme owns its atlas and bounded caches; the world shares them across lanes.
+  for (const theme of themes) {
+    expect(theme.memoryMB).toBeLessThan(8);
+    expect(theme.cachedCollisionChunks).toBeLessThanOrEqual(theme.collisionLimit);
+    expect(theme.cachedRasterChunks).toBeLessThanOrEqual(theme.rasterLimit);
+    expect(theme.cachedDescriptions).toBeLessThanOrEqual(theme.descriptionLimit);
+  }
+};
 const ready = async page => {
   await page.waitForFunction(() => window.__PROCGEN_LANES__?.getState?.().terrainRecipe);
   await page.evaluate(() => window.__PROCGEN_LANES__.pause());
@@ -14,15 +26,16 @@ test('procgen hides controls by default and generates a single shared real-art w
   const after = await page.evaluate(() => window.__PROCGEN_LANES__.getState());
   expect(after.lanes).toBe(8); expect(after.spawnedTotal).toBeGreaterThan(initial.spawnedTotal);
   expect(after.distance.max).toBeGreaterThan(initial.distance.max);
+  await expect(page.locator('#procgenDistance')).toContainText(String(Math.floor(after.distance.max)));
   expect(after.terrainRecipe).toEqual(expect.any(String));
-  expect(after.recipeMemoryMB).toBeLessThan(4);
-  expect(await page.locator('canvas').count()).toBe(1);
+  expectBoundedTerrain(after);
+  expect(await page.locator('canvas.gameCanvas').count()).toBe(1);
 });
 
 test('drawer keyboard/repeated controls keep stable appearance and expose local presets only', async ({ page }) => {
   await page.goto('/procgen.html?e2e=1&seed=42&lanes=4'); await ready(page);
   await page.locator('#procgenTab').click();
-  await expect(page.locator('#procgenPreset option')).toHaveCount(15);
+  await expect(page.locator('#procgenPreset option')).toHaveCount(PROCGEN_GAME_EVENT_MIDI_PRESETS.length);
   await expect(page.locator('#characterShapeChoices [role=radio]')).toHaveCount(14);
   const getAppearance = () => page.evaluate(() => {
     const api = window.__PROCGEN_LANES__, sprites = api.world.gameResources.characterSprites;
@@ -45,12 +58,16 @@ test('1024 lane count clamps and restarts without multiplying renderers', async 
   await page.waitForFunction(() => window.__PROCGEN_LANES__?.getState?.().lanes === 1024);
   await page.evaluate(() => { window.__PROCGEN_LANES__.pause(); window.__PROCGEN_LANES__.step(12); });
   const state = await page.evaluate(() => window.__PROCGEN_LANES__.getState());
-  expect(state.alive).toBeGreaterThanOrEqual(1024); expect(state.recipeMemoryMB).toBeLessThan(4);
-  expect(await page.locator('canvas').count()).toBe(1);
+  expect(state.alive).toBeGreaterThanOrEqual(1024); expectBoundedTerrain(state);
+  expect(await page.locator('canvas.gameCanvas').count()).toBe(1);
   await expect(page.locator('#procgenLanes')).toHaveValue('1024');
 });
 
 test('musical span bundles keep several editors open and apply common edits durably', { tag: '@boundary' }, async ({ page }) => {
+  await page.addInitScript(() => {
+    const key = 'lemmings.procgen.automation.v2';
+    if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify({ version: 2, value: [] }));
+  });
   await page.goto('/procgen.html?e2e=1&seed=span-edit&lanes=4'); await ready(page);
   await page.locator('#procgenTab').click();
   await page.locator('#procgenSpanFields > summary').click();
@@ -62,7 +79,7 @@ test('musical span bundles keep several editors open and apply common edits dura
   const length = page.getByRole('spinbutton', { name: 'Selected spans Length', exact: true });
   await length.fill('8'); await length.dispatchEvent('change');
   await expect(length).toBeFocused();
-  const stored = () => page.evaluate(() => JSON.parse(localStorage.getItem('lemmings.procgen.automationSpans.v1')).value);
+  const stored = () => page.evaluate(() => JSON.parse(localStorage.getItem('lemmings.procgen.automation.v2')).value);
   expect((await stored()).map(entry => entry.span.duration)).toEqual([8, 8, 8]);
   const name = rows.first().locator('input[data-span-property=name]');
   await name.fill('Shared rise'); await name.dispatchEvent('change');
@@ -112,3 +129,39 @@ test('procgen selected MIDI destination connects explicitly, sends actual bytes 
   await page.locator('#procgenOutput').selectOption('synth'); await expect(page.locator('#procgenListen')).toHaveText('Listen locally');
   await expect(page.locator('#procgenMasterVolume')).toBeEnabled(); expect(await page.evaluate(() => window.__procgenMidiRequests)).toBe(1);
 });
+
+
+test('seed menu dismissal and Help preserve useful keyboard focus', async ({ page }) => {
+  await page.goto('/procgen.html?e2e=1&seed=42&lanes=2'); await ready(page);
+  const seed = page.locator('#procgenSeedControls');
+  await seed.locator('summary').click(); await page.locator('#procgenSeed').focus();
+  await page.keyboard.press('Escape');
+  await expect(seed).not.toHaveAttribute('open', '');
+  await expect(seed.locator('summary')).toBeFocused();
+  await seed.locator('summary').click(); await page.locator('#procgenPause').click();
+  await expect(seed).not.toHaveAttribute('open', '');
+  await page.locator('#procgenHelp').click();
+  await expect(page.locator('#procgenHelpFields > summary')).toBeFocused();
+  await expect(page.locator('#procgenTab')).toHaveText('Close details');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#procgenTab')).toBeFocused();
+  await expect(page.locator('#procgenTab')).toHaveText('Details +');
+  expect(await page.locator('#procgenDrawer').evaluate(el => el.inert)).toBe(true);
+});
+
+for (const width of [390, 768, 1440]) {
+  test('procgen primary controls fit a ' + width + 'px viewport', async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/procgen.html?e2e=1&seed=42&lanes=2'); await ready(page);
+    for (const id of ['procgenPause', 'procgenFollow', 'procgenListen', 'procgenLanes', 'procgenPack', 'procgenHelp', 'procgenTab']) {
+      const box = await page.locator('#' + id).boundingBox();
+      expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(width);
+      expect(box.height).toBeGreaterThanOrEqual(26);
+    }
+    const canvas = await page.locator('#gameCanvas').boundingBox();
+    expect(canvas.height).toBeGreaterThan(500);
+    await page.locator('#procgenTab').click();
+    expect(await page.locator('#procgenDrawer').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+    await expect(page.locator('#procgenWorldGuide')).toBeVisible();
+  });
+}

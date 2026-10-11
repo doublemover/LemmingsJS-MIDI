@@ -20,21 +20,39 @@ const renderSurveyPreview = (canvas, telemetry, { cameraX = null, cameraY = 0, w
 const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fetch.bind(window) }) => {
   const element = id => document.getElementById(id), url = new URL(window.location.href), token = url.searchParams.get('token') || new URLSearchParams(url.hash.slice(1)).get('token');
   const tiles = new Map();
-  let report = null, selectedId = null, replay = null, disposed = false, polling = null, paused = false;
+  let report = null, selectedId = null, replay = null, disposed = false, polling = null, paused = false, replayPending = false, pausePending = false;
   const status = text => { element('surveyStatus').textContent = text; };
+  const syncPause = () => {
+    const button = element('surveyPause');
+    button.disabled = disposed || pausePending || (!token && !replay);
+    button.textContent = (paused ? 'Resume' : 'Pause') + (token ? ' all' : ' replay');
+  };
   const records = () => report?.results || [];
   const selected = () => records().find(result => result.trialId === selectedId);
   const baseline = result => records().find(other => other.scenarioId === result?.scenarioId && other.candidate?.kind === 'baseline' && other.policySeed === result?.policySeed);
   const finalTelemetry = result => (report?.telemetry || []).find(([id]) => id === result?.trialId)?.[1] || result?.telemetry;
   const milestoneAt = (result, tick) => [...(result?.milestones || [])].reverse().find(entry => entry.tick <= tick)?.telemetry || result?.telemetry;
   const publishFocus = () => {
-    const result = selected(); if (!result) return;
+    const result = selected();
+    element('surveyCamera').disabled = !result;
+    element('surveyScrub').disabled = !result?.milestones?.length;
+    element('surveyReplay').disabled = replayPending || !!replay || !result?.episodeComplete;
+    element('surveyDivergence').disabled = !result || !baseline(result) || baseline(result)?.trialId === result.trialId;
+    element('surveyStep').disabled = !token && (!result || Number(element('surveyScrub').value) >= Number(element('surveyScrub').max));
+    if (!result) {
+      renderSurveyPreview(element('surveyFocus')); renderSurveyPreview(element('surveyBaseline'));
+      element('surveyFocusTitle').textContent = 'No trial selected';
+      element('surveyBaselineStatus').textContent = 'Select a trial to compare the same scene and policy seed.';
+      element('surveyTick').textContent = 'No checkpoint'; element('surveyDetails').textContent = '';
+      return;
+    }
     const index = Number(element('surveyScrub').value) || 0, milestone = result.milestones?.[index], tick = milestone?.tick ?? result.lastTick;
     const telemetry = tick === result.lastTick ? finalTelemetry(result) || milestone?.telemetry : milestone?.telemetry;
-    element('surveyReplay').disabled = !!replay || !result.episodeComplete;
     const camera = renderSurveyPreview(element('surveyFocus'), telemetry, { height: result.scenario?.laneHeight || 144 });
     const paired = baseline(result), pairedTelemetry = tick === paired?.lastTick ? finalTelemetry(paired) || milestoneAt(paired, tick) : milestoneAt(paired, tick);
     renderSurveyPreview(element('surveyBaseline'), pairedTelemetry, element('surveyCamera').value === 'shared' ? camera : { height: paired?.scenario?.laneHeight || 144 });
+    element('surveyBaselineStatus').textContent = !paired ? 'No paired baseline is recorded for this scene and policy seed.' : paired.trialId === result.trialId ? 'This trial is the baseline; both views show the same recording.' : 'Baseline: ' + paired.candidateId + ' · same scene and policy seed · recorded at or before tick ' + tick;
+    element('surveyScrub').setAttribute('aria-valuetext', 'Tick ' + tick);
     element('surveyTick').textContent = 'Tick ' + tick; element('surveyFocusTitle').textContent = result.candidate?.family + ' · ' + result.scenarioId;
     const archive = report.exemplars?.selected?.find(entry => entry.trialId === result.trialId);
     element('surveyDetails').textContent = JSON.stringify({ status: result.status, policy: result.candidate?.configuration, accounting: result.accounting, skills: result.metrics?.skills,
@@ -45,10 +63,11 @@ const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fet
   const select = (id, keepPosition = false) => {
     const previousPosition = Number(element('surveyScrub').value); selectedId = id; const result = selected(); element('surveyScrub').max = Math.max(0, (result?.milestones?.length || 1) - 1);
     element('surveyScrub').value = keepPosition ? Math.min(previousPosition, Number(element('surveyScrub').max)) : element('surveyScrub').max;
-    for (const tile of element('surveyMosaic').children) tile.classList.toggle('selected', tile.dataset.trialId === id); publishFocus();
+    for (const tile of element('surveyMosaic').children) { const active = tile.dataset.trialId === id; tile.classList.toggle('selected', active); tile.setAttribute('aria-pressed', String(active)); } publishFocus();
   };
   const render = () => {
     if (!report) return; const manifest = report.manifest;
+    for (const id of ['surveyExport', 'surveyScene', 'surveyFilter', 'surveySort']) element(id).disabled = false;
     element('surveySummary').textContent = manifest.candidates.length + ' logical candidates · ' + manifest.budgetPolicy.executionWorkers + ' CPU worker(s) · ' + manifest.budgetPolicy.residentWorlds + ' resident worlds · ' + (report.status || 'running');
     element('surveyEvidence').textContent = JSON.stringify({ source: manifest.sourceManifest, criteria: manifest.criteria, storage: report.storage, analysis: report.analysis, rankingsTrusted: report.rankingsTrusted }, null, 2);
     const scenePicker = element('surveyScene'), previousScene = scenePicker.value;
@@ -61,25 +80,31 @@ const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fet
     const data = records().filter(result => result.scenarioId === sceneId).filter(result => filter === 'all' || filter === 'success' ? filter !== 'success' || remarkable.has(result.trialId) : filter === 'failure' ? result.status === 'failed' || result.status === 'timeout' : filter === 'interrupted' ? ['interrupted', 'cancelled', 'infrastructure-error'].includes(result.status) : result.status === filter);
     const visibleIds = new Set(data.map(result => result.trialId)); for (const [id, tile] of tiles) tile.hidden = !visibleIds.has(id);
     data.sort((a, b) => sort === 'survival' ? (b.accounting?.alive || 0) - (a.accounting?.alive || 0) : sort === 'skills' ? (a.metrics?.skillCount || 0) - (b.metrics?.skillCount || 0) : sort === 'completion' ? (b.accounting?.arrived || 0) - (a.accounting?.arrived || 0) : a.candidateId.localeCompare(b.candidateId));
+    element('surveyCount').textContent = data.length + ' of ' + records().filter(result => result.scenarioId === sceneId).length + ' trials shown';
+    element('surveyEmpty').hidden = data.length > 0;
+    element('surveyEmpty').textContent = 'No trials match this scene and filter. Choose another scene or show all trials.';
+    const focusedTile = document.activeElement?.closest('.survey-tile');
     for (const [index, result] of data.entries()) {
       let tile = tiles.get(result.trialId);
       if (!tile) { tile = document.createElement('button'); tile.type = 'button'; tile.className = 'survey-tile'; tile.dataset.trialId = result.trialId; tile.addEventListener('click', () => select(result.trialId)); tiles.set(result.trialId, tile); mosaic.append(tile); }
-      tile.hidden = false; tile.style.order = String(index); tile.replaceChildren();
+      tile.hidden = false; tile.replaceChildren(); if (mosaic.children[index] !== tile) mosaic.insertBefore(tile, mosaic.children[index] || null);
       tile.classList.toggle('failed', result.status === 'failed'); tile.classList.toggle('remarkable', remarkable.has(result.trialId));
       const name = document.createElement('strong'); name.textContent = result.candidate?.kind === 'no-learning' ? 'No learned preferences' : (result.candidate?.family || 'Candidate') + ' · ' + result.candidateId.slice(-4);
-      const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 96;
+      const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 96; canvas.setAttribute('aria-hidden', 'true');
       const detail = document.createElement('small'); detail.textContent = result.scenarioId + ' · tick ' + result.lastTick + ' · ' + result.status;
       const counts = document.createElement('small'); counts.textContent = (result.accounting?.alive ?? '?') + '/' + (result.accounting?.designated ?? '?') + ' alive · ' + (result.accounting?.arrived ?? '?') + ' arrived · ' + (result.accounting?.deaths ?? '?') + ' lost';
       tile.append(name, canvas, detail, counts);
       renderSurveyPreview(canvas, finalTelemetry(result) || milestoneAt(result, result.lastTick), { height: result.scenario?.laneHeight || 144 });
     }
-    if (!selectedId || !data.some(result => result.trialId === selectedId)) selectedId = data[0]?.trialId; if (selectedId) select(selectedId, true);
+    const keepPosition = !!selectedId && data.some(result => result.trialId === selectedId);
+    select(keepPosition ? selectedId : data[0]?.trialId, keepPosition);
+    if (focusedTile && !focusedTile.hidden && document.activeElement !== focusedTile) focusedTile.focus({ preventScroll: true });
   };
   const load = value => {
     const next = value.value || value;
     if (next.schemaVersion !== 1 || !next.manifest?.candidates || next.manifest.candidates.length > 64 || !Array.isArray(next.results) || next.results.length > 4096) throw new Error('Unsupported or oversized survey report');
     if (report?.manifest?.experimentId !== next.manifest.experimentId) { for (const tile of tiles.values()) tile.remove(); tiles.clear(); element('surveyScene').replaceChildren(); selectedId = null; }
-    if (token && typeof next.controlState?.paused === 'boolean') { paused = next.controlState.paused; element('surveyPause').textContent = paused ? 'Resume all' : 'Pause all'; }
+    if (token && typeof next.controlState?.paused === 'boolean') { paused = next.controlState.paused; syncPause(); }
     report = next; render(); status('Recorded comparison loaded. Missing validity or truncated evidence stays explicit; no policy winner is claimed.');
   };
   const control = async command => {
@@ -88,7 +113,15 @@ const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fet
   };
   element('surveyFile').addEventListener('change', async event => { try { const file = event.target.files[0]; if (!file || file.size > 64 * 1048576) throw new Error('Report exceeds the 64 MiB view limit'); load(JSON.parse(await file.text())); } catch (error) { status(error.message); } });
   element('surveyScene').addEventListener('change', render); element('surveyFilter').addEventListener('change', render); element('surveySort').addEventListener('change', render); element('surveyScrub').addEventListener('input', publishFocus); element('surveyCamera').addEventListener('change', publishFocus);
-  element('surveyPause').addEventListener('click', async () => { paused = !paused; element('surveyPause').textContent = paused ? 'Resume all' : 'Pause all'; await control(paused ? 'pause' : 'resume').catch(error => status(error.message)); });
+  syncPause();
+  element('surveyMode').textContent = token ? 'Connected local survey' : 'Saved report review';
+  element('surveyPause').addEventListener('click', async () => {
+    if (pausePending || (!token && !replay)) return;
+    const nextPaused = !paused; pausePending = true; syncPause();
+    try { await control(nextPaused ? 'pause' : 'resume'); paused = nextPaused; }
+    catch (error) { status(error.message); }
+    finally { pausePending = false; syncPause(); }
+  });
   element('surveyStep').addEventListener('click', () => control('step').catch(error => status(error.message)));
   element('surveyCancel').disabled = !token; element('surveyCancel').addEventListener('click', () => control('cancel').catch(error => status(error.message)));
   element('surveyDivergence').addEventListener('click', () => { const result = selected(), pair = baseline(result); const divergence = result && pair && firstSurveyDivergence(pair, result);
@@ -96,10 +129,12 @@ const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fet
     element('surveyScrub').value = result.milestones.findIndex(entry => entry.tick === divergence.throughTick); publishFocus(); status('First recorded divergence between ticks ' + divergence.fromTick + ' and ' + divergence.throughTick + '. Exact localization needs detailed replay.'); });
   element('surveyExport').addEventListener('click', () => { if (!report) return; const href = window.URL.createObjectURL(new Blob([JSON.stringify(report)], { type: 'application/json' })); const link = document.createElement('a'); link.href = href; link.download = report.manifest.experimentId + '.json'; link.click(); window.setTimeout(() => window.URL.revokeObjectURL(href), 1000); });
   element('surveyReplay').addEventListener('click', async () => {
-    const original = selected(); if (!original?.episodeComplete || replay) return;
+    const original = selected(); if (!original?.episodeComplete || replay || replayPending) return;
+    replayPending = true;
     const button = element('surveyReplay'); button.disabled = true; element('surveyReplayStatus').textContent = 'Checking exact source and assets…';
     try {
       replay = await createBrowserSurveyTrial({ scenario: original.scenario, candidate: original.candidate, sourceManifest: report.manifest.sourceManifest });
+      if (!token) paused = false; syncPause();
       while (!disposed && !replay.done && replay.world.tickIndex < original.scenario.horizonTicks) {
         if (!paused) replay.step(Math.min(16, original.scenario.horizonTicks - replay.world.tickIndex));
         renderSurveyPreview(element('surveyFocus'), { ...replay.telemetry(), preview: replay.preview() }, { height: original.scenario.laneHeight });
@@ -107,7 +142,7 @@ const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fet
       }
       if (!disposed) { const receipt = compareSurveyReplay(original, replay.result()); element('surveyReplayStatus').textContent = receipt.matched ? 'Exact physics and event hashes match. This rerun is not an independent sample.' : 'Replay mismatch: ' + receipt.differences.join(', '); window.__procgenSurveyReplayReceipt = receipt; }
     } catch (error) { element('surveyReplayStatus').textContent = 'Could not verify: ' + error.message; }
-    finally { replay?.dispose(); replay = null; button.disabled = false; }
+    finally { replay?.dispose(); replay = null; replayPending = false; if (!token) paused = false; syncPause(); publishFocus(); }
   });
   if (token) polling = window.setInterval(async () => { if (disposed) return; try { const response = await fetchData('/survey-api/report'); if (response.ok) load(await response.json()); } catch (error) { status(error.message); } }, 1000);
   else if (url.searchParams.get('report')) {
