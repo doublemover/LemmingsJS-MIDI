@@ -44,6 +44,7 @@ const applyProcgenGameEventMidiPreset = (project, presetId, options = {}) => {
       if (id === SoundEffectIds.SPAWN) return { ...source, mapping: { ...source.mapping,
         velocity: previous?.velocity ?? PROCGEN_SPAWN_MIDI_DEFAULTS.velocity,
         priority: previous?.priority ?? PROCGEN_SPAWN_MIDI_DEFAULTS.priority } };
+      if (preset.percussion) return source;
       if (id === SoundEffectIds.LAND) return { ...source, label: 'Safe landing - quiet descending arrival', mapping: { ...source.mapping,
         notes: [0, 4, 7, 12].map(offset => quantizeToScale(landBase + offset, scale)), note: quantizeToScale(landBase, scale),
         velocity: previous?.velocity ?? 32, priority: previous?.priority ?? 0, durationTicks: landingTicks,

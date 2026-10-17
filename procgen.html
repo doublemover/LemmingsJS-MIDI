@@ -10,10 +10,11 @@
   <link type="text/css" rel="stylesheet" href="css/character-controls.css">
   <link type="text/css" rel="stylesheet" href="css/midi-spans.css">
   <link type="text/css" rel="stylesheet" href="css/icons.css">
+  <link type="text/css" rel="stylesheet" href="css/procgen-workstation.css">
   <script src="js/vendor/webmidi.js"></script>
   <script type="module" src="js/app/procgenBoot.js"></script>
 </head>
-<body>
+<body class="procgen-workstation">
   <header id="procgenTopbar" aria-label="Run controls">
     <div class="procgen-control-section procgen-run-controls" role="group" aria-label="Playback and camera">
     <span class="procgen-section-label">Run</span>
@@ -30,7 +31,7 @@
     <div class="procgen-control-section procgen-world-controls" role="group" aria-label="World generation">
     <span class="procgen-section-label">World</span>
     <details id="procgenSeedControls" class="procgen-advanced"><summary title="Generation seed and restart options">Seed</summary><div class="procgen-seed-controls">
-    <label class="procgen-seed-field">Seed <input id="procgenSeed" type="text" value="" aria-label="Generation seed" title="Numbers or words; regenerate repeats this seed"></label>
+    <label class="procgen-seed-field">Seed <input id="procgenSeed" type="text" value="" aria-label="Generation seed" title="Numbers or words; Enter or Regenerate applies this seed"></label>
     <div class="procgen-button-group"><button id="procgenRestart" type="button" title="Regenerate the same seed (Backspace)">Regenerate</button><button id="procgenNewSeed" type="button" title="Choose a new seed and generate">New seed</button></div>
     </div></details>
     <label title="Changing the lane count regenerates the run">Lanes <input id="procgenLanes" type="number" min="1" max="1024" step="1" value="8"></label>
@@ -44,6 +45,7 @@
     <span id="procgenNukeStatus" class="procgen-nuke-status" role="status"></span>
     <div class="procgen-run-progress"><output id="procgenDistance" aria-label="Current run distance">0 px</output><output id="procgenBest" aria-label="Previous best distance">Best 0</output>
 <output id="procgenAliveCount" aria-label="Current active lemmings across all lanes" title="Active actors across all lanes; failed actors are excluded and each new generation resets the count">Loading</output>
+<output id="procgenThroughput" aria-label="Requested and measured simulation speed" title="Requested simulation speed and achieved simulation throughput; the musical clock remains independent"></output>
     </div>
     </div>
   </header>
@@ -51,16 +53,24 @@
 
   <div id="procgenPanel">
   <section id="procgenDrawer" aria-label="Procgen details" inert>
-    <div class="procgen-drawer-intro"><h1>World &amp; music</h1><p id="procgenWorldGuide">Follow the crew as it builds over gaps and cuts through terrain. Drag to explore, scroll to zoom, or use Follow to return to the leader.</p></div>
+    <div class="procgen-workspace-heading"><div><span class="procgen-eyebrow">Music workspace</span><h1>Give every lane a voice</h1><p>Shape one shared soundtrack, then assign different schemes to groups of lanes.</p></div><div class="procgen-music-history" role="group" aria-label="Music edit history"><button id="procgenSpanUndo" type="button" title="Undo music edit" disabled>Undo</button><button id="procgenSpanRedo" type="button" title="Redo music edit" disabled>Redo</button></div></div>
+    <p id="procgenSpanHistoryStatus" role="status" aria-live="polite"></p>
+    <section class="procgen-music-overview" aria-label="Global music settings">
+      <div class="procgen-music-card"><h2>Default sound</h2><p class="procgen-card-help">The starting scheme for lanes without an override.</p>
     <div class="procgen-controls-row">
-      <label>Scenery <select id="procgenDecoration"></select></label>
-    </div>
-    <div id="procgenCharacters" class="character-control-content"></div>
-    <div class="procgen-controls-row">
-      <label>Action music <select id="procgenPreset"></select></label>
+      <label>Default scheme <select id="procgenPreset"></select></label>
       <div class="midi-music-direction"><select id="procgenMusicRecipe" aria-label="Music recipe" title="Scene replies follow completed game activity and wait for musical boundaries"><option value="events">Event music</option><option value="scenes">Scene replies</option></select><output id="procgenMusicStatus" class="midi-music-direction-status" role="status" aria-live="off">Event music</output></div>
       <label class="procgen-check"><input id="procgenPhrases" type="checkbox"> Short phrases</label>
     </div>
+
+        <p id="procgenPresetDescription"></p>
+        <p>Scheme names describe their starting tonality. Your global key and scale override melodic lanes.</p>
+      </div>
+      <div class="procgen-music-card" id="procgenMusicGlobal"><h2>Key &amp; spread</h2><p class="procgen-card-help">Shared tonal settings for the whole world.</p><div id="procgenMusicGlobalControls"></div></div>
+    </section>
+    <section class="procgen-music-card procgen-lane-music" aria-labelledby="procgenLaneMusicHeading"><div class="procgen-section-heading"><div><h2 id="procgenLaneMusicHeading">Lane schemes</h2><p>Give a lane or a continuous range its own musical character.</p></div></div><div id="procgenLaneMusicControls"></div></section>
+    <div class="procgen-output-note"><span class="procgen-eyebrow">Output</span><p id="procgenAudioStatus" role="status">Local sound is off. No hardware output.</p></div>
+    <section class="procgen-workspace-section" aria-labelledby="procgenAutomationHeading"><h2 id="procgenAutomationHeading">Automation &amp; dynamics</h2>
     <details id="procgenTensionFields" hidden><summary>Musical tension</summary>
               <label><input id="procgenTensionEnabled" type="checkbox"> Thin layers when an established crew declines</label>
               <div class="procgen-controls-row">
@@ -87,30 +97,20 @@
         <button id="procgenSpanAdd" type="button">Add span</button>
         <label><input id="procgenSpanVisible" type="checkbox" checked> Show rectangles</label>
         <label><input id="procgenSpanEdit" type="checkbox"> Draw on lanes</label>
-        <button id="procgenSpanUndo" type="button" title="Undo music edit" disabled>Undo</button><button id="procgenSpanRedo" type="button" title="Redo music edit" disabled>Redo</button>
+
       </div><p>Beat rectangles use a musical timeline across the screen; distance rectangles follow world X. Enable Draw on lanes to select, move, resize or draw a lane group. Camera dragging resumes when drawing is off.</p>
       <p id="procgenSpanTargetHelp"></p>
       <p id="procgenSpanPresetStatus" role="status" aria-live="polite"></p>
-      <p id="procgenSpanHistoryStatus" role="status" aria-live="polite"></p>
       <div id="procgenSpanList" class="midi-span-list"></div>
     </details>
-    <details class="midi-output-capture"><summary>Output capture</summary>
-      <div class="midi-capture-buttons" role="group" aria-label="Bounded output capture">
-        <button id="procgenCaptureStart" type="button">Capture 2 minutes</button><button id="procgenCaptureStop" type="button" disabled>Stop capture</button>
-        <button id="procgenCaptureReport" type="button" disabled>Inspect</button><button id="procgenCaptureJSONL" type="button" disabled>JSONL</button><button id="procgenCaptureCSV" type="button" disabled>CSV</button><button id="procgenCaptureHTML" type="button" disabled>Report file</button>
-      </div>
-      <p id="procgenCaptureStatus" role="status" aria-live="off"></p>
-      <p>Records existing output only; start local listening separately. At most 4,096 records are retained. Stop capture keeps playback running.</p>
-      <iframe id="procgenCaptureRoll" title="Captured note schedules piano roll" sandbox="" hidden></iframe>
-      <pre id="procgenCaptureSummary" hidden></pre>
-    </details>
-    <details id="procgenHelpFields"><summary>Help and shortcuts</summary>
-      <p>This is one shared world with live game-event rhythms. Lanes and physical height regenerate the seed; speed, crews, scouts, camera and musical controls update live. Listen locally unlocks browser synthesis once. SoundFont sample loading is unavailable.</p>
-      <p>F1 or ? opens Help. Arrows pan; Shift makes a larger pan. Drag to pan; wheel or Z/X zoom; Shift+wheel pans. F or double-click follows the leading living actor. Space pauses; ] advances one paused tick. Backspace regenerates. +/− change speed; Shift changes five steps. Right-click volume resets to 100%; right-click speed resets to 1x.</p>
-      <p>T arms a lane nuke; click the lane to start its real OHNO cascade. Shift+T queues all lanes. Escape cancels arming, closes Details and exits span drawing. Nukes advance with game ticks, so paused lanes wait. Text fields keep their editing keys; repeated shortcut keydowns are ignored.</p>
-      <p>Event patterns advance on actual triggers; timed phrases use the existing game-tick musical clock. Musical span bundles contain separate finite beat or distance ranges and never start an independent note stream. CCTV is optional and appears at full-stack zoom. Share this run includes core settings and camera, without character or detailed solver preferences.</p>
-    </details>
-    <details id="procgenAdvanced"><summary>Advanced</summary>
+
+    </section>
+    <details id="procgenWorldFields" class="procgen-workspace-section"><summary>World &amp; crew</summary><p id="procgenWorldGuide">Follow the crew as it builds over gaps and cuts through terrain. Drag to explore, scroll to zoom, or use Follow to return to the leader.</p>
+    <div class="procgen-controls-row">
+      <label>Scenery <select id="procgenDecoration"></select></label>
+    </div>
+    <div id="procgenCharacters" class="character-control-content"></div>
+    <details id="procgenAdvanced"><summary>Population &amp; spawning</summary>
       <div class="procgen-controls-row">
         <label>Scout every N arrivals <input id="procgenScoutsEvery" type="number" min="0" max="1048576" step="1" value="8"></label>
         <label>Scout delay, game ticks <input id="procgenScoutDelay" type="number" min="0" max="36000" step="1" value="180"></label>
@@ -147,17 +147,36 @@
       </div>
       <p id="procgenCctvStatus" role="status" aria-live="polite"></p>
     </fieldset>
+
+    </details>
+    <details class="midi-output-capture"><summary>Output capture</summary>
+      <div class="midi-capture-buttons" role="group" aria-label="Bounded output capture">
+        <button id="procgenCaptureStart" type="button">Capture 2 minutes</button><button id="procgenCaptureStop" type="button" disabled>Stop capture</button>
+        <button id="procgenCaptureReport" type="button" disabled>Inspect</button><button id="procgenCaptureJSONL" type="button" disabled>JSONL</button><button id="procgenCaptureCSV" type="button" disabled>CSV</button><button id="procgenCaptureHTML" type="button" disabled>Report file</button>
+      </div>
+      <p id="procgenCaptureStatus" role="status" aria-live="off"></p>
+      <p>Records existing output only; start local listening separately. At most 4,096 records are retained. Stop capture keeps playback running.</p>
+      <iframe id="procgenCaptureRoll" title="Captured note schedules piano roll" sandbox="" hidden></iframe>
+      <pre id="procgenCaptureSummary" hidden></pre>
+    </details>
+    <details id="procgenHelpFields"><summary>Help and shortcuts</summary>
+      <p>This is one shared world with live game-event rhythms. Lanes and physical height regenerate the seed; speed, crews, scouts, camera and musical controls update live. Listen locally unlocks browser synthesis once. SoundFont sample loading is unavailable.</p>
+      <p>F1 or ? opens Help. Arrows pan; Shift makes a larger pan. Drag to pan; wheel or Z/X zoom; Shift+wheel pans. F or double-click follows the leading living actor. Space pauses; ] pauses and advances one tick. Backspace regenerates. +/− change speed; Shift changes five steps. Right-click volume resets to 100%; right-click speed resets to 1x.</p>
+      <p>T arms a lane nuke; click the lane to start its real OHNO cascade. Shift+T queues all lanes. Escape cancels arming, closes Details and exits span drawing. Nukes advance with game ticks, so paused lanes wait. Text fields keep their editing keys; repeated shortcut keydowns are ignored.</p>
+      <p>Event patterns advance on actual triggers; timed phrases use the existing game-tick musical clock. Musical span bundles contain separate finite beat or distance ranges and never start an independent note stream. CCTV is optional and appears at full-stack zoom. Share this run includes core settings and camera, without character or detailed solver preferences.</p>
+    </details>
+
+    <footer class="procgen-workspace-footer">
     <div class="procgen-controls-row">
       <button id="procgenShare" type="button">Share this run</button>
       <input id="procgenShareUrl" type="text" readonly hidden aria-label="Shareable run URL">
     </div>
-    <p id="procgenPresetDescription"></p>
-    <p id="procgenAudioStatus" role="status">Local sound is off. No hardware output.</p>
     <p id="procgenMetrics" role="status"></p>
     <p id="procgenStallStatus"></p>
     <p id="procgenRunStatus" role="status">Loading…</p>
+    </footer>
   </section>
-  <button id="procgenTab" type="button" aria-controls="procgenDrawer" aria-expanded="false" aria-label="Show details" title="Show details">Details +</button>
+  <button id="procgenTab" type="button" aria-controls="procgenDrawer" aria-expanded="false" aria-label="Show music and world controls" title="Show music and world controls">Music &amp; world</button>
   </div>
 </body>
 </html>

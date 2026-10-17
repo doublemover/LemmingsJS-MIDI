@@ -8,6 +8,7 @@ import { ProcgenSupportedRelief } from './ProcgenSupportedRelief.js';
 import { ProcgenGuardedTunnel } from './ProcgenGuardedTunnel.js';
 import { ProcgenSupportedBuild } from './ProcgenSupportedBuild.js';
 import { ProcgenLocalTunnel } from './ProcgenLocalTunnel.js';
+import { ProcgenActionChain } from './ProcgenActionChain.js';
 
 const MAX_LOCAL_ROUTE_DISTANCE = 40;
 const MAX_ROUTE_PROBES = 1024;
@@ -21,12 +22,29 @@ class ProcgenHazardPlanner {
     this.bypasses = new ProcgenBlockerBypass(world); this.tunnels = new ProcgenSupportedTunnel(world); this.descents = new ProcgenSupportedDescent(world);
     this.walking = new ProcgenWalkContinuation(world); this.building = new ProcgenSupportedBuild(world); this.localTunnels = new ProcgenLocalTunnel(world); this.guardedTunnels = new ProcgenGuardedTunnel(world); this.relief = new ProcgenSupportedRelief(world);
     this.world = world; this.observations = []; this.adjacentObservations = []; this.cache = new Array(world.laneCount);
+    this.chains = new ProcgenActionChain(world);
     this.admission = new ProcgenRouteAdmission(world);
-    this.stats = { plans: 0, deferred: 0, probes: 0, budgetExhausted: 0, admission: this.admission.stats };
+    this.stats = { plans: 0, deferred: 0, probes: 0, contactReads: 0, budgetExhausted: 0, admission: this.admission.stats };
+  }
+  observeContact(actor) {
+    const world = this.world;
+    if (!world?.workstationEnabled || actor.action !== world.actions[State.WALKING] || !actor.lookRight) return null;
+    const contact = actor._procgenContact ||= {};
+    if (contact.tick === world.tickIndex && contact.x === actor.x && contact.y === actor.y && contact.revision === world.terrainRevision) return contact;
+    Object.assign(contact, { tick: world.tickIndex, x: actor.x, y: actor.y, revision: world.terrainRevision, reads: 0, wall: true, gap: true, revealed: true });
+    const ground = (x, y) => {
+      contact.reads++; this.stats.contactReads++;
+      if (!this._revealed(x, y)) { contact.revealed = false; return false; }
+      return world.hasGroundAt(x, y);
+    };
+    for (let up = 0; up < 8; up++) if (!ground(actor.x + 1, actor.y - up)) { contact.wall = false; break; }
+    if (contact.wall) contact.gap = false;
+    else for (let down = 1; down <= 3; down++) if (ground(actor.x + 3, actor.y + down)) { contact.gap = false; break; }
+    return contact;
   }
   _ground(x, y) {
-    if (++this.probes > MAX_ROUTE_PROBES) { this.exhausted = true; return false; }
-    this.stats.probes++;
+    if (this.probes >= MAX_ROUTE_PROBES) { this.exhausted = true; return false; }
+    this.probes++; this.stats.probes++;
     if (y < 0 || y >= this.world.height || x < this.world.leftEdgeX) return false;
     if (!this._revealed(x, y)) { this.unrevealed = true; return false; }
     return this.world.hasGroundAt(x, y);
@@ -196,9 +214,33 @@ class ProcgenHazardPlanner {
     return { kind: 'miners', targetX: exit.x, footprint,
       continuationY: continuation.y, estimatedTicks: ticks, materialCost: 0, reason: 'known-safe-mine-descent', score: 72 - ticks / 8 - (landing - actor.y) + continuation.span };
   }
+  _chainHazards(actor, bounds = { y1: actor.y - 64, y2: actor.y + 49 }) {
+    const world = this.world, hazards = [], bucket = [], origin = bounds.x1 == null ? actor.x : bounds.x1 + 5;
+    for (let lane = Math.max(0, Math.floor(bounds.y1 / world.laneHeight)); lane <= Math.min(world.laneCount - 1, Math.floor((bounds.y2 - 1) / world.laneHeight)); lane++) {
+      for (const offset of [0, 60]) {
+        world.hazards.nearby(lane, origin + offset, { ahead: offset ? 52 : 64, behind: 5 }, bucket);
+        if (bucket.length >= 8) return null;
+        for (const hazard of bucket) if (!hazards.some(other => other.lane === hazard.lane && other.chunk === hazard.chunk && other.objectIndex === hazard.objectIndex)) hazards.push(hazard);
+      }
+    }
+    return hazards;
+  }
+  revalidateChain(actor, project) {
+    const world = this.world, lane = actor.laneIndex, stride = Math.max(1, Math.ceil(world.laneCount / ROUTE_LANES_PER_TICK));
+    if (lane % stride !== world.tickIndex % stride) return { deferred: true };
+    const service = this.admission.begin(lane);
+    if (service.consumed || service.probes >= MAX_ROUTE_PROBES) return { deferred: true };
+    const chain = project.chain, stage = chain.stages[chain.index];
+    const hazards = this._chainHazards(actor, chain.bounds); if (!hazards) return { safe: false, failure: 'hazard-capacity' };
+    const proof = this.chains.prove(actor, hazards, MAX_ROUTE_PROBES - service.probes, { firstKind: stage.kind, minStages: 1, bounds: chain.bounds, followerStart: { x: project.startX, y: project.startY } });
+    this.admission.served(actor, service.probes + proof.work); this.stats.probes += proof.work;
+    if (proof.stages.length + chain.index > 4) return { safe: false, failure: 'chain-stage-limit' };
+    return proof;
+  }
   plan(actor) {
     const world = this.world;
     if (!world || !actor || actor.runtime !== world.runtime || actor.action !== world.actions[State.WALKING] || !actor.lookRight || actor.failureReason || actor.removed || actor.disabled || actor.terminalReason) return null;
+    const contact = this.observeContact(actor);
     const lane = actor.laneIndex, stride = Math.max(1, Math.ceil(world.laneCount / ROUTE_LANES_PER_TICK));
     if (lane % stride !== world.tickIndex % stride) { this.admission.observe(actor); this.stats.deferred++; return null; }
     const service = this.admission.begin(lane); this.admission.observe(actor);
@@ -211,7 +253,7 @@ class ProcgenHazardPlanner {
     if (!this.admission.accepts(actor) || service.consumed || service.probes >= MAX_ROUTE_PROBES) { this.stats.deferred++; return null; }
     this.top = lane * world.laneHeight; this.through = world.generatedThrough[lane]; this.probes = service.probes; this.exhausted = false; this.unrevealed = false;
     world.hazards.nearby(lane, actor.x, { ahead: MAX_LOCAL_ROUTE_DISTANCE, behind: 4 }, this.observations);
-    for (const adjacent of [Math.floor((actor.y - 24) / this.world.laneHeight), Math.floor((actor.y + 12) / this.world.laneHeight)]) if (adjacent !== lane && adjacent >= 0 && adjacent < world.laneCount) {
+    for (const adjacent of [Math.floor((actor.y - 24) / this.world.laneHeight), Math.floor((actor.y + 32) / this.world.laneHeight)]) if (adjacent !== lane && adjacent >= 0 && adjacent < world.laneCount) {
       world.hazards.nearby(adjacent, actor.x, { ahead: MAX_LOCAL_ROUTE_DISTANCE, behind: 4 }, this.adjacentObservations);
       this.observations.push(...this.adjacentObservations);
     }
@@ -221,6 +263,37 @@ class ProcgenHazardPlanner {
       if (basin.proposal) this.admission.served(actor, this.probes);
       else this.admission.screened(actor, this.probes);
       return basin.proposal;
+    }
+    if (world.workstationEnabled) {
+      // Eleven or fewer immediate reads run every walking tick. Broad proofs
+      // still rotate through eight lanes and include these reads on service ticks.
+      const stepHeight = (x, y, height) => { for (let i = 0; i < height; i++) if (!this._ground(x, y + height - i - 1)) return i; return height; };
+      const contactWork = Math.min(contact.reads, MAX_ROUTE_PROBES - this.probes);
+      this.probes += contactWork; this.stats.probes += contactWork;
+      const wallContact = contact.revealed && contact.wall, gapContact = contact.revealed && contact.gap;
+      if ((wallContact || gapContact) && world.lanePolicy.projects.canBegin(actor)) {
+        const compound = gapContact ? this._floor(actor.x + 24, actor.y, 12, 32) == null || [28, 32, 36].some(dx => stepHeight(actor.x + dx, actor.y - 19, 8) === 8) :
+          [12, 20, 28].some(dx => !this._ground(actor.x + dx, actor.y + 3));
+        if (compound) {
+          const hazards = this._chainHazards(actor); if (!hazards) { this.admission.served(actor, this.probes); return null; }
+          let chain = this.chains.prove(actor, hazards, MAX_ROUTE_PROBES - this.probes);
+          this.probes += chain.work; this.stats.probes += chain.work;
+          if (!chain.safe && chain.failure === 'passive' && world.workerLimits.diggers && this._ground(actor.x, actor.y + 1) && !this._ground(actor.x, actor.y + 2)) {
+            const walking = this.walking.prove(actor, (x, y) => this._ground(x, y), hazards, Math.floor((MAX_ROUTE_PROBES - this.probes) / 2));
+            this.probes += walking.actionSteps; this.stats.probes += walking.actionSteps;
+            if (walking.safe) { this.admission.screened(actor, this.probes); return null; }
+            if (!['budget', 'unrevealed', 'construction'].includes(walking.failure) && this.probes < MAX_ROUTE_PROBES) {
+              chain = this.chains.prove(actor, hazards, MAX_ROUTE_PROBES - this.probes, { firstKind: 'miners' });
+              this.probes += chain.work; this.stats.probes += chain.work;
+            }
+          }
+          if (chain.safe) {
+            const first = chain.stages[0], proposal = { kind: first.kind, targetX: first.x + (first.kind === 'builders' ? 24 : 8), footprint: chain.footprint, chain, reason: 'shared-action-chain' };
+            this.admission.served(actor, this.probes); this.cache[lane] = { tick: world.tickIndex, key, proposal }; this.stats.plans++; return proposal;
+          }
+          if (this.probes >= MAX_ROUTE_PROBES) { this.admission.served(actor, this.probes); this.stats.budgetExhausted++; return null; }
+        }
+      }
     }
     let cliff = null, gap = false;
     for (let dx = 2; dx <= 24 && !cliff; dx += 2) {
@@ -259,7 +332,12 @@ class ProcgenHazardPlanner {
       if (walking?.safe && !this.exhausted && !this.unrevealed) { this.admission.screened(actor, this.probes); return null; }
       const build = this._builder(actor);
       if (build) build.score += world.lanePolicy?.score(actor, build) || 0;
-      if (walking) {
+      const longWall = !build && cliff && world.workerLimits?.bashers && this._ground(actor.x + 30, actor.y - 6);
+      let bash = null, shortTried = false;
+      // A current short cut must get its budget before a speculative future
+      // guarded entrance, or the first ordinary walker can miss its only pose.
+      if (!build && !longWall) { bash = this._basher(actor, cliff); shortTried = true; }
+      if (walking && !bash) {
         // Discover a real imminent WALK entrance before scalar excavation scans
         // spend its service. The live actor keeps following its shared actions.
         if (!build && walking.terrainTurn?.steps > 0 && !actor.scout && !actor.canClimb && !actor.hasParachute && world.workerLimits?.bashers &&
@@ -273,8 +351,8 @@ class ProcgenHazardPlanner {
           }
         }
       }
-      let bash = null, observedLong = false, guardedPending = false;
-      if (!build && cliff && world.workerLimits?.bashers && this._ground(actor.x + 30, actor.y - 6)) {
+      let observedLong = false, guardedPending = false;
+      if (longWall) {
         let up = 0; while (up < 8 && this._ground(actor.x + 1, actor.y - up)) up++;
         if (up === 8) {
           observedLong = true;
@@ -290,10 +368,13 @@ class ProcgenHazardPlanner {
           }
         }
       }
-      if (!observedLong) bash = this._basher(actor, cliff);
+      if (!observedLong && !shortTried) bash = this._basher(actor, cliff);
       if (bash) bash.score += world.lanePolicy?.score(actor, bash) || 0;
       if (build && (!bash || build.score > bash.score)) proposal = { ...build, reason: threat ? 'supported-hazard-bypass' : cliff ? 'short-stair-to-ledge' : 'supported-local-gap' };
       else if (!proposal && bash && bash.startX === actor.x) proposal = { ...bash, reason: 'supported-local-tunnel' };
+      // A working stair inside the passive corridor is not evidence that the
+      // approach needs digging. Let that real job finish before opening a shaft.
+      if (!proposal && walking?.failure === 'construction') { this.admission.screened(actor, this.probes); return null; }
       if (!proposal && !guardedPending && world.workerLimits?.diggers && this.probes < MAX_ROUTE_PROBES) {
         const result = this.descents.prove(actor, MAX_ROUTE_PROBES - this.probes, null, world.lanePolicy?.descentPreference(actor));
         this.probes += result.probes; this.stats.probes += result.probes;
@@ -310,6 +391,6 @@ class ProcgenHazardPlanner {
     return proposal;
   }
   reset() { this.admission.reset(); this.bypasses.reset(); this.tunnels.reset(); this.descents.reset(); this.walking.reset(); this.building.reset(); this.relief.reset(); this.cache.fill(null); this.observations.length = 0; this.adjacentObservations.length = 0; }
-  dispose() { this.reset(); this.admission.dispose(); this.bypasses.dispose(); this.tunnels.dispose(); this.descents.dispose(); this.walking.dispose(); this.building.dispose(); this.localTunnels.dispose(); this.guardedTunnels.dispose(); this.relief.dispose(); this.world = null; }
+  dispose() { this.reset(); this.chains.dispose(); this.admission.dispose(); this.bypasses.dispose(); this.tunnels.dispose(); this.descents.dispose(); this.walking.dispose(); this.building.dispose(); this.localTunnels.dispose(); this.guardedTunnels.dispose(); this.relief.dispose(); this.world = null; }
 }
 export { ProcgenHazardPlanner, MAX_LOCAL_ROUTE_DISTANCE, MAX_ROUTE_PROBES, ROUTE_LANES_PER_TICK };

@@ -130,5 +130,19 @@ class MidiAutomationSpans {
     const { entryIndex, ...copy } = state;
     return Object.freeze({ ...copy, resolution: state.resolution ? Object.freeze({ ...state.resolution }) : null, generation: this.generation });
   }
+  exportState() {
+    return { version: 1, key: this.key, counts: [...this.counts], lastEvents: [...this.lastEvents],
+      states: [...this.states].map(([key, value]) => [key, { ...value, resolution: value.resolution ? { ...value.resolution } : null }]),
+      owners: this.entries.map(entry => entry.owner), ownerSequence: this._ownerSequence, epoch: this.epoch,
+      generation: this.generation, tick: this.tick, evaluation: this.evaluation };
+  }
+  restoreState(saved) {
+    if (saved?.version !== 1 || saved.key !== this.key || saved.counts?.length !== this.counts.length || saved.lastEvents?.length !== this.lastEvents.length) return false;
+    this.counts.set(saved.counts); this.lastEvents.set(saved.lastEvents);
+    this.states = new Map((saved.states || []).slice(0, MAX_MIDI_AUTOMATION_SPAN_STATES));
+    for (let index = 0; index < this.entries.length; index++) this.entries[index].owner = saved.owners?.[index] ?? this.entries[index].owner;
+    this._ownerSequence = saved.ownerSequence; this.epoch = saved.epoch; this.generation = saved.generation; this.tick = saved.tick; this.evaluation = saved.evaluation;
+    this._resolutionStates.fill(null); return true;
+  }
 }
 export { MidiAutomationSpans };

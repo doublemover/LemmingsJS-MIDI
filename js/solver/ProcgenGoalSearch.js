@@ -48,12 +48,18 @@ const searchProcgenGoal = (factory, options = {}) => {
         }
         if (adapter.isTerminal() || adapter.tick === limits.maxTicks) break;
         if (next === script.length && script.length < limits.maxActions && queue.length + nodes < limits.maxNodes) {
-          const actor = adapter.selectLemming('frontier'), world = adapter.world, bounds = adapter.bounds;
-          if (actor?.action === world.actions[State.WALKING] && actor.x >= bounds.x + 4 && actor.x + 10 < bounds.x + bounds.width && actor.y >= bounds.y + 12 && actor.y + 4 < bounds.y + bounds.height && world.hasGroundAt(actor.x, actor.y)) {
+          const world = adapter.world, bounds = adapter.bounds, sampled = adapter.tick % limits.decisionStride === 0;
+          // Keep temporal alternatives in the node budget, while a busy or
+          // already-arrived leader no longer hides the unfinished walkers.
+          const candidates = adapter.getActiveLemmings().filter(actor => !adapter.arrivals.has(actor.id) && actor.action === world.actions[State.WALKING])
+            .sort((a, b) => adapter.goalDirection * (b.x - a.x) || a.id - b.id).slice(0, 1);
+          const blockers = sampled ? adapter.getEnvironmentalBlockerRects() : [];
+          for (const actor of candidates) {
+            if (queue.length + nodes >= limits.maxNodes) break;
+            if (actor.x < bounds.x + 4 || actor.x + 10 >= bounds.x + bounds.width || actor.y < bounds.y + 12 || actor.y + 4 >= bounds.y + bounds.height || !world.hasGroundAt(actor.x, actor.y)) continue;
             const ahead = actor.x + (actor.lookRight ? 1 : -1), obstacle = world.getColumnStepHeight(ahead, actor.y - 7, 8) >= 7 || world.getColumnGapDepth(ahead, actor.y + 1, 3) > 3;
             // A one-column launch or wall pose may fall between stride samples.
             // Observe imminent contact each tick; keep exploratory scans sparse.
-            const sampled = adapter.tick % limits.decisionStride === 0;
             let approach = false;
             if (sampled && adapter.getSkillCount('builder')) for (let dx = 8; dx <= 20; dx += 4) {
               const x = actor.x + (actor.lookRight ? dx : -dx);
@@ -61,7 +67,7 @@ const searchProcgenGoal = (factory, options = {}) => {
               if (world.getColumnStepHeight(x, actor.y - 7, 8) >= 7 || world.getColumnGapDepth(x, actor.y + 1, 3) > 3) { approach = true; break; }
             }
             const directionalType = actor.lookRight ? Types.BLOCKER_LEFT : Types.BLOCKER_RIGHT;
-            const blocker = sampled && adapter.getEnvironmentalBlockerRects().some(rect => rect.type === directionalType && actor.y >= rect.y1 && actor.y < rect.y2 &&
+            const blocker = blockers.some(rect => rect.type === directionalType && actor.y >= rect.y1 && actor.y < rect.y2 &&
               (actor.lookRight ? rect.x1 > actor.x && rect.x1 - actor.x <= 40 : rect.x2 <= actor.x && actor.x - rect.x2 <= 40));
             let descent = false;
             // Candidate discovery reads actual bounded geometry; it does not use

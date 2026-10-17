@@ -29,7 +29,8 @@ describe('procgen spawn MIDI policy', function() {
       }
       expect(spawn(procgen).mapping.phrase).to.deep.equal(spawn(original).mapping.phrase);
       expect(spawn(procgen).mapping.notes).to.deep.equal(spawn(original).mapping.notes);
-      expect(spawn(original).mapping.velocity).to.be.greaterThan(32);
+      if (preset.percussion) expect(spawn(original).mapping.velocity).to.equal(24);
+      else expect(spawn(original).mapping.velocity).to.be.greaterThan(32);
     }
   });
 

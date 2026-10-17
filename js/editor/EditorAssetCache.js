@@ -30,7 +30,7 @@ class EditorAssetCache {
     this.cache.clear();
   }
 
-  async loadStyleAssets(styleName, config, fileProvider) {
+  async loadStyleAssets(styleName, config, fileProvider, options = {}) {
     if (!fileProvider || !config) {
       return {
         styleName: styleName || 'unknown',
@@ -49,7 +49,7 @@ class EditorAssetCache {
 
     const style = getStyleForName(styleName);
     const resolvedStyle = style?.name || styleName || 'dirt';
-    const groundSet = Number.isFinite(style?.groundSet) ? style.groundSet | 0 : 0;
+    const groundSet = Number.isInteger(options.groundSet) && options.groundSet >= 0 ? options.groundSet : Number.isFinite(style?.groundSet) ? style.groundSet | 0 : 0;
     const cacheKey = `${config.path || ''}|${resolvedStyle}|${groundSet}`;
     const cached = this.cache.get(cacheKey);
     if (cached) return { ...cached, styleName: resolvedStyle };

@@ -260,3 +260,59 @@ body { flex-direction: column; }
   #procgenTopbar #procgenSpeed { width: 42px; }
   #procgenTopbar button { padding-right: 5px; padding-left: 5px; }
 }
+
+/* The workspace keeps global decisions and lane overrides together. */
+.procgen-workspace-heading { display: flex; align-items: start; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+.procgen-workspace-heading h1 { margin: 4px 0 6px; color: #f6e8cf; font-size: clamp(22px, 3vw, 28px); letter-spacing: -.025em; line-height: 1.2; }
+.procgen-eyebrow { color: #a7c5ac; font: 700 10px/1.5 system-ui, sans-serif; text-transform: uppercase; letter-spacing: .1em; }
+.procgen-music-history { display: flex; gap: 6px; flex: none; }
+.procgen-music-overview { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; margin: 16px 0; }
+.procgen-music-card { min-width: 0; padding: 16px; border: 1px solid #514c3f; border-radius: 10px; background: #211f19; }
+#procgenDrawer h2 { margin: 0 0 5px; font-size: 15px; line-height: 1.4; font-weight: 650; color: #f1e3cc; }
+#procgenDrawer .procgen-card-help { color: #b4b4a6; margin-bottom: 12px; }
+#procgenDrawer .procgen-music-card .procgen-controls-row { margin: 10px 0 8px; }
+#procgenDrawer .procgen-music-card select { width: 100%; }
+#procgenDrawer .procgen-music-card input[type=number] { width: 100%; min-width: 0; }
+#procgenDrawer .procgen-music-card label { min-width: 0; max-width: 100%; }
+#procgenDrawer #procgenPreset { max-width: 100%; }
+#procgenDrawer .procgen-music-card .midi-music-direction { flex: 1 1 160px; }
+#procgenDrawer .procgen-music-card .midi-music-direction-status { height: auto; min-height: 16px; line-height: 16px; font-size: 11px; }
+.procgen-output-note { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin: 12px 0 20px; }
+.procgen-section-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
+.procgen-workspace-section { margin-top: 18px; padding-top: 16px; border-top: 1px solid #514838; }
+#procgenDrawer .procgen-workspace-section > details { margin: 8px 0; padding: 4px 0; }
+#procgenDrawer > details { margin-top: 14px; }
+#procgenDrawer #procgenSpanHistoryStatus:empty { display: none; }
+.procgen-workspace-footer { margin-top: 16px; padding-top: 12px; border-top: 1px solid #514838; }
+.procgen-music-global-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.procgen-music-global-fields label { display: grid; gap: 5px; }
+.procgen-lane-music-list { display: grid; gap: 10px; margin: 14px 0; }
+.procgen-lane-music-row { border: 1px solid #53584b; border-radius: 7px; padding: 12px; background: #292b23; }
+.procgen-lane-music-fields { display: grid; grid-template-columns: auto minmax(60px, .5fr) minmax(60px, .5fr) minmax(150px, 2fr) auto; align-items: end; gap: 10px; }
+.procgen-lane-music-fields label { display: grid; gap: 4px; }
+.procgen-lane-music-fields label:first-child { display: flex; align-items: center; min-height: 34px; }
+.procgen-lane-music-row.is-bypassed { opacity: .7; }
+#procgenDrawer .procgen-lane-music-warning { color: #e6c284; margin-top: 8px; }
+#procgenDrawer .procgen-lane-music-summary { color: #b4d5b8; margin-top: 8px; }
+.procgen-lane-music-empty { border: 1px dashed #626351; border-radius: 6px; padding: 16px; margin: 14px 0; }
+#procgenDrawer .procgen-lane-music-rules { max-width: 76ch; margin: 10px 0; }
+@media (max-width: 800px) {
+  .procgen-music-overview { grid-template-columns: 1fr; }
+  .procgen-lane-music-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .procgen-lane-music-fields label:first-child { grid-column: 1 / -1; }
+  .procgen-lane-music-fields .procgen-lane-scheme-field { grid-column: 1 / -1; }
+  .procgen-lane-music-fields button { justify-self: start; }
+  .procgen-lane-music-fields .procgen-lane-music-actions { grid-column: 1 / -1; max-width: none; }
+}
+@media (max-width: 420px) {
+  .procgen-workspace-heading { flex-direction: column; gap: 10px; }
+  .procgen-music-card { padding: 12px; }
+  .procgen-music-global-fields { grid-template-columns: 1fr 1fr; }
+}
+
+.procgen-spread-presets, .procgen-lane-music-actions { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0; }
+#procgenDrawer .procgen-spread-presets button, #procgenDrawer .procgen-lane-music-actions button { font-size: 11px; padding: 5px 8px; }
+#procgenDrawer .procgen-lane-music-actions { max-width: 164px; margin: 0; }
+#procgenDrawer #procgenMusicSpreadValue { display: block; font-size: 12px; margin-top: 8px; color: #b4d5b8; }
+#procgenDrawer .procgen-music-card [hidden] { display: none; }
+#procgenLaneMusicAssignments { padding-left: 20px; font-size: 12px; line-height: 1.7; }

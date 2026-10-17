@@ -3,10 +3,12 @@ import { MAX_LOCAL_ROUTE_DISTANCE } from './ProcgenHazardPlanner.js';
 const PROCGEN_INTRO_SAFE_END = 256;
 const PROCGEN_HAZARD_RAMP_END = 2048;
 const PROCGEN_RECOVERY_GAP_END = 1024;
+const PROCGEN_FIRST_LETHAL_HAZARD = 1024;
 const progressionAt = worldX => {
   const difficulty = Math.max(0, Math.min(1, (worldX - PROCGEN_INTRO_SAFE_END) / (PROCGEN_HAZARD_RAMP_END - PROCGEN_INTRO_SAFE_END)));
   return { difficulty, safeIntro: worldX < PROCGEN_INTRO_SAFE_END, elevationRange: Math.floor(32 * difficulty),
-    localRise: Math.floor(20 * difficulty), gapDepth: worldX < PROCGEN_RECOVERY_GAP_END ? 4 + Math.floor(3 * Math.max(0, worldX - PROCGEN_INTRO_SAFE_END) / (PROCGEN_RECOVERY_GAP_END - PROCGEN_INTRO_SAFE_END)) : null, gapMaximum: 3 + Math.floor(9 * difficulty), hazardThreshold: 256 + Math.floor(768 * difficulty) };
+    localRise: Math.floor(20 * difficulty), gapDepth: worldX < PROCGEN_RECOVERY_GAP_END ? 4 + Math.floor(3 * Math.max(0, worldX - PROCGEN_INTRO_SAFE_END) / (PROCGEN_RECOVERY_GAP_END - PROCGEN_INTRO_SAFE_END)) : worldX < PROCGEN_HAZARD_RAMP_END ? 16 : null, gapMaximum: 3 + Math.floor(9 * difficulty),
+    hazardThreshold: worldX < PROCGEN_FIRST_LETHAL_HAZARD ? 0 : 256 + Math.floor(768 * difficulty) };
 };
 // Conservative preparation-time admission, not route certification. Use actual
 // transformed terrain alpha on the final foundation, never assembly boxes as
@@ -49,4 +51,4 @@ const introAssemblyEligible = ({ origin, left, right, surface, solid, steel = ()
   }
   return true;
 };
-export { PROCGEN_INTRO_SAFE_END, PROCGEN_HAZARD_RAMP_END, PROCGEN_RECOVERY_GAP_END, progressionAt, introAssemblyEligible };
+export { PROCGEN_INTRO_SAFE_END, PROCGEN_HAZARD_RAMP_END, PROCGEN_RECOVERY_GAP_END, PROCGEN_FIRST_LETHAL_HAZARD, progressionAt, introAssemblyEligible };

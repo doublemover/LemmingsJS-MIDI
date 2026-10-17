@@ -21,8 +21,8 @@ const midiEventRouterLifecycleMethods = {
   },
 
   getEventPlaybackState(event) {
-    const base = this.mapping.config?.sfx?.[event?.sfxId];
-    const mapping = event?.triggerType != null ? { ...base, ...this.mapping.config?.triggers?.[event.triggerType] } : base;
+    const base = this.mapping.getSfxConfig(event?.sfxId, event);
+    const mapping = event?.triggerType != null ? { ...base, ...this.mapping.getTriggerConfig(event) } : base;
     const key = this._resolveArpKey(event, mapping);
     const state = this._arpStateBySfx.get(key);
     return { nextIndex: state ? state.index % Math.max(1, state.length) : 0, direction: state?.dir ?? 1,
@@ -31,6 +31,10 @@ const midiEventRouterLifecycleMethods = {
 
   setMapping(mapping) {
     const next = mapping instanceof MidiMapping ? mapping : new MidiMapping(mapping || {});
+    const arrangement = config => JSON.stringify([config.laneMusic, config.scale]);
+    if (arrangement(next.config) !== arrangement(this.mapping.config)) {
+      this.scheduler.allNotesOff(); this.scheduler.gamePhrases?.clear(); this._arpStateBySfx.clear();
+    }
     if (this.musicDirector && JSON.stringify(next.config) !== JSON.stringify(this.mapping.config)) this._releaseMusicDirection();
     this.mapping = next;
     this.scheduler.setConfig(this.mapping.config);

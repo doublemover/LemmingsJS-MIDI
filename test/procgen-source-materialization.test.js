@@ -32,7 +32,7 @@ describe('source pieces and sections share materialized geometry', function() {
     expect(terrain.growthPlan(42, 57).jobs.map(job => job.id)).to.deep.equal(keys);
   });
   it('roots attachment order in the admitted authored support: actual body before trap head', async () => {
-    const terrain = await loadProcgenTerrain('lemmings_ohNo', 3), plan = terrain.growthPlan(42, 57), descriptor = plan.descriptor;
+    const terrain = await loadProcgenTerrain('lemmings_ohNo', 3), plan = terrain.growthPlan(42, 94), descriptor = plan.descriptor;
     const head = descriptor.objects.findIndex(o => o.piece.id === 8), body = descriptor.objects.findIndex(o => o.piece.id === 10);
     expect(head).to.be.at.least(0); expect(body).to.be.at.least(0);
     const headJob = plan.objectJobs[head], bodyJob = plan.objectJobs[body];

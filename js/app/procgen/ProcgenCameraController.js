@@ -16,18 +16,20 @@ const createProcgenCameraController = renderer => {
     const size = dimensions();
     return Math.max(PROCGEN_MIN_SCALE, (reserved ? size.height : size.fullHeight) / Math.max(1, world.height));
   };
-  const minimumScale = () => fitScale(true);
+  const minimumScale = () => renderer.workstationLayout ? 1 : fitScale(true);
   const boundedScale = scale => {
     const minimum = minimumScale();
     return Math.max(minimum, Math.min(Math.max(PROCGEN_MAX_SCALE, minimum), Number(scale) || 3));
   };
   const viewport = () => {
     const size = dimensions();
+    if (renderer.workstationLayout) return { width: size.width / renderer.scale, height: renderer.workstationLayout.count * renderer.laneHeight,
+      fullHeight: renderer.workstationLayout.count * renderer.laneHeight, bandHeight: 0 };
     return { width: size.width / renderer.scale, height: size.height / renderer.scale,
       fullHeight: size.fullHeight / renderer.scale, bandHeight: size.bandHeight / renderer.scale };
   };
   const clamp = () => {
-    renderer.scale = renderer.overviewActive ? minimumScale() : boundedScale(renderer.scale);
+    renderer.scale = renderer.overviewActive && !renderer.workstationLayout ? minimumScale() : boundedScale(renderer.scale);
     renderer.cameraX = Math.max(0, renderer.cameraX);
     renderer.cameraY = Math.max(0, Math.min(Math.max(0, world.height - viewport().height), renderer.cameraY));
   };
@@ -46,15 +48,22 @@ const createProcgenCameraController = renderer => {
     renderer.cameraY = pinnedY ? 0 : centerY - next.height / 2;
     clamp(); renderer.render(false);
   };
-  let cachedLeader = null, leaderTick = -1, leaderGeneration = -1, leaderActors = null, leaderCount = -1;
+  let cachedLeader = null, leaderTick = -1, leaderGeneration = -1, leaderActors = null, leaderCount = -1, leaderWindow = '';
   const followFrontier = () => { renderer.follow = true; update(true); renderer.render(false); };
   const update = (immediate = false, reuseLeader = false) => {
     clamp();
     if (!renderer.follow) return;
-    if (!reuseLeader || cachedLeader?.failureReason || cachedLeader?.removed || leaderTick !== world.tickIndex || leaderGeneration !== world.generation || leaderActors !== world.actors || leaderCount !== world.actors.length) {
+    const projection = renderer.workstationLayout, selected = Number.isInteger(renderer.followLaneIndex) ? renderer.followLaneIndex : null;
+    const firstLane = projection ? selected ?? projection.firstLane : 0, lastLane = projection ? selected == null ? firstLane + projection.count : selected + 1 : world.laneCount ?? Infinity;
+    const visibleWindow = `${firstLane}:${lastLane}`;
+    if (!reuseLeader || cachedLeader?.failureReason || cachedLeader?.removed || leaderTick !== world.tickIndex || leaderGeneration !== world.generation || leaderActors !== world.actors || leaderCount !== world.actors.length || leaderWindow !== visibleWindow) {
       cachedLeader = null;
-      for (const actor of world.actors) if (!actor.failureReason && !actor.removed && Number.isFinite(actor.x) && Number.isFinite(actor.y) && (!cachedLeader || actor.x > cachedLeader.x)) cachedLeader = actor;
+      for (const actor of world.actors) {
+        const lane = Math.floor(actor.y / (renderer.laneHeight || world.laneHeight || 96));
+        if (!actor.failureReason && !actor.removed && Number.isFinite(actor.x) && Number.isFinite(actor.y) && lane >= firstLane && lane < lastLane && (!cachedLeader || actor.x > cachedLeader.x)) cachedLeader = actor;
+      }
       leaderTick = world.tickIndex; leaderGeneration = world.generation; leaderActors = world.actors; leaderCount = world.actors.length;
+      leaderWindow = visibleWindow;
     }
     const leader = cachedLeader;
     if (!leader) return;

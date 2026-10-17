@@ -79,9 +79,9 @@ const createCharacterUiController = ({ document, window, getView, defaults = {},
     }
     select.dataset.options = key;
   };
-  const sync = async () => {
+  const sync = async (preparedSprites) => {
     const request = ++generation;
-    const sprites = getView()?.game?.gameResources?.characterSprites;
+    const sprites = preparedSprites || getView()?.game?.gameResources?.characterSprites;
     if (!byId('characterShape') || !sprites) return;
     fillChoices('characterShape', [
       { id: 'mixed', label: 'Stable mix of all shapes', image: randomShapeImage },

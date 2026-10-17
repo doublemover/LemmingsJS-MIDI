@@ -37,7 +37,7 @@ const midiSchedulerChannelMethods = {
       config?.enabled, config?.sfx, config?.triggers, config?.scale, config?.noteRange,
       config?.velocityRange, config?.durationTicks, config?.density, config?.envelope,
       config?.position, config?.mpe, config?.limits, config?.defaultChannel, config?.timing,
-      config?.repeat, config?.reverse
+      config?.repeat, config?.reverse, config?.laneMusic
     ]);
     if (phraseConfigKey !== this._gamePhraseConfigKey) this.gamePhrases.clear();
     this._gamePhraseConfigKey = phraseConfigKey;
@@ -148,12 +148,18 @@ const midiSchedulerChannelMethods = {
 
   _ensembleChannels() {
     const ensemble = this.config.ensemble;
-    return new Set(ensemble?.enabled ? (ensemble.roles || []).filter(role => role.track).map(role =>
+    const channels = new Set(ensemble?.enabled ? (ensemble.roles || []).filter(role => role.track).map(role =>
       normalizeChannelNumber(role.track.channel, 1)) : []);
+    if (Object.values(this.config.sfx || {}).some(source => source?.percussion)) channels.add(10);
+    for (const range of this.config.laneMusic?.ranges || []) if (range.enabled) {
+      if (range.schemeId.startsWith('procgen-drum-')) channels.add(10);
+      if (range.schemeId === 'game-iron-ensemble') for (const channel of [2, 3, 4, 10]) channels.add(channel);
+    }
+    return channels;
   },
 
   _isMpeNote(spec) {
-    return !!this.config.mpe?.enabled && !spec?.ensembleRole;
+    return !!this.config.mpe?.enabled && !spec?.ensembleRole && !spec?.percussion;
   },
 
   _expressionPlan(spec, output, channelNumber, estimating = false) {

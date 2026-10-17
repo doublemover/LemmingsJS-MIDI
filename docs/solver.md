@@ -124,6 +124,10 @@ so a one-column bridge launch cannot disappear between samples. Sampled builder
 approaches inspect 8–20 pixels ahead to allow a stair to gain height before a
 ledge. These are candidate-discovery changes only; the unchanged finite
 node/action/tick budgets and independent whole-crew replay decide acceptance.
+The decision frontier is the foremost unfinished walking actor. An already
+arrived or busy leader cannot hide a follower's skill window. One actor is
+considered per decision tick to preserve temporal alternatives within the same
+node budget; this remains a bounded strategy search, not exhaustive crew search.
 
 Optional `routeContracts` in the recipe book retain stable version/source provenance, measured entry/exit/containment geometry, one complete joint worker inventory, ordered timing rules, crew entry state, guards and failure cases. Exact pack/ground/art selection passes records to the source terrain as cold proposals. Existing synchronous/asynchronous certificate APIs use `options.procgenAdapterFactory` and `chunk.routeContract` to run independent qualification. Actual discovered action timing, every ordinary actor, zero loss, protected terrain and requested hazard/containment guards must match before the record becomes engine-qualified. Proposed research status and separate per-skill minima never establish qualification. The external research catalogue remains unavailable pending an authorized text handoff.
 

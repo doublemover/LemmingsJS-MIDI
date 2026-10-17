@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { ProcgenLaneWorld } from '../js/app/procgen/ProcgenLaneWorld.js';
 import { LemmingStateType as State } from '../js/lemmings/LemmingStateType.js';
 import { TriggerTypes as Types } from '../js/level/TriggerTypes.js';
-import { PROCGEN_INTRO_SAFE_END, PROCGEN_HAZARD_RAMP_END, PROCGEN_RECOVERY_GAP_END, progressionAt } from '../js/app/procgen/ProcgenTerrainProgression.js';
+import { PROCGEN_INTRO_SAFE_END, PROCGEN_HAZARD_RAMP_END, PROCGEN_RECOVERY_GAP_END, PROCGEN_FIRST_LETHAL_HAZARD, progressionAt } from '../js/app/procgen/ProcgenTerrainProgression.js';
 import { loadProcgenMasks, loadProcgenTerrain } from '../scripts/bench-procgen-lanes.js';
 
 const lethal = new Set([Types.TRAP, Types.DROWN, Types.KILL, Types.FRYING]);
@@ -37,7 +37,7 @@ describe('source hazard introduction and bounded observations', function() {
       expect(descriptor.gapWidth).to.be.at.most(descriptor.challenge?.kind === 'gap' ? 16 : descriptor.progression.gapMaximum);
       for (const object of descriptor.objects) if (lethal.has(object.piece.image.trigger_effect_id)) {
         hazards++; const image = object.piece.image;
-        expect(Math.min(object.x, object.x + image.trigger_left)).to.be.at.least(PROCGEN_INTRO_SAFE_END);
+        expect(Math.min(object.x, object.x + image.trigger_left)).to.be.at.least(PROCGEN_FIRST_LETHAL_HAZARD);
         expect(object.x + image.trigger_left + image.trigger_width).to.be.at.most((chunk + 1) * 128 - 8);
         expect(object.y + image.trigger_top).to.be.at.least(0); expect(object.y + image.trigger_top + image.trigger_height).to.be.at.most(96);
       }
@@ -75,7 +75,8 @@ describe('source hazard introduction and bounded observations', function() {
     expect(world.actors.every(actor => actor.x > descriptor.gapX + descriptor.gapWidth + 16 && !actor.failureReason && !actor.canClimb && !actor.hasParachute)).to.equal(true);
     expect(world.stats.builds + world.stats.bashes + world.stats.digs + world.stats.mines).to.equal(0); world.dispose();
     expect(progressionAt(PROCGEN_RECOVERY_GAP_END - 128).gapDepth).to.equal(6);
-    expect(progressionAt(PROCGEN_RECOVERY_GAP_END).gapDepth).to.equal(null);
+    expect(progressionAt(PROCGEN_RECOVERY_GAP_END).gapDepth).to.equal(16);
+    expect(progressionAt(PROCGEN_HAZARD_RAMP_END).gapDepth).to.equal(null);
     const later = terrain.describe(seed, 16);
     expect(later.gapWidth).to.equal(7); expect(later.origin).to.be.at.least(PROCGEN_RECOVERY_GAP_END); expect(later.gapFloor).to.equal(null);
     expect(terrain.solidSample(seed, later.origin / 128, later.gapX - later.origin, 95, later)).to.equal(false);

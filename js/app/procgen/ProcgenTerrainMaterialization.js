@@ -1,8 +1,8 @@
 const MAX_MATERIALIZATION_JOBS = 32;
 
-// Foundation sections cover complete source motif spans. Edge clipping is at
-// the existing chunk seam; the scheduler never invents a pixel-strip quantum.
-const createTerrainGrowthPlan = ({ descriptor, pattern, route, pieces, assemblies, sourceRevision, height = 96 }) => {
+// Foundation sections follow source motif or primitive spans. Only chunk seams
+// clip a span; appearance is scheduled independently from cache preparation.
+const createTerrainGrowthPlan = ({ descriptor, pattern, route, pieces, assemblies, sourceRevision, height = 96, piecewise = false }) => {
   const width = 128, jobs = [], foundationSections = [], foundationByColumn = new Uint8Array(width);
   const placementJobs = new Uint8Array(descriptor.placements.length), objectJobs = new Uint8Array(descriptor.objects.length);
   const add = (kind, bounds, dependencies, sourceIds, extra = {}) => {
@@ -14,7 +14,8 @@ const createTerrainGrowthPlan = ({ descriptor, pattern, route, pieces, assemblie
     return index;
   };
   const extent = Math.max(route.period, ...route.placements.map(p => p.x + pieces.get(p.id).width)) - Math.min(0, ...route.placements.map(p => p.x));
-  const span = Math.min(width, Math.max(1, extent)), intervals = [];
+  const sourcePieceWidth = Math.min(...route.placements.map(p => pieces.get(p.id).width));
+  const span = Math.min(width, Math.max(1, piecewise ? sourcePieceWidth : extent)), intervals = [];
   for (let left = -descriptor.origin % span; left < width; left += span) intervals.push({ x1: Math.max(0, left), x2: Math.min(width, left + span) });
   const terrainJobs = new Set(descriptor.placements.map(p => p.assembly || (p.letter ? descriptor.word : p))).size;
   const maximumSections = Math.max(1, Math.min(16, MAX_MATERIALIZATION_JOBS - terrainJobs - descriptor.objects.length));
@@ -69,7 +70,7 @@ const createTerrainGrowthPlan = ({ descriptor, pattern, route, pieces, assemblie
       const emitted = new Map();
       for (const { at, member, depth } of order) {
         const object = descriptor.objects[at], x1 = assembly.bounds.x1 - descriptor.origin, x2 = assembly.bounds.x2 - descriptor.origin;
-        const dependencies = foundationDeps(x1, x2); if (assemblyTerrain.has(key)) dependencies.push(assemblyTerrain.get(key));
+        const dependencies = foundationDeps(x1 - (piecewise ? 24 : 0), x2 + (piecewise ? 32 : 0)); if (assemblyTerrain.has(key)) dependencies.push(assemblyTerrain.get(key));
         for (const edge of compiled.entry.relations) {
           const neighbor = edge.a === member ? edge.b : edge.b === member ? edge.a : -1;
           if (emitted.has(neighbor)) dependencies.push(emitted.get(neighbor));
@@ -82,7 +83,7 @@ const createTerrainGrowthPlan = ({ descriptor, pattern, route, pieces, assemblie
       const x1 = assembly ? assembly.bounds.x1 - descriptor.origin : Math.min(...objects.map(o => o.basin ? o.basin.bounds.x1 - descriptor.origin : o.x - descriptor.origin - (o.role === 'liquid' ? 1 : 0)));
       const x2 = assembly ? assembly.bounds.x2 - descriptor.origin : Math.max(...objects.map(o => o.basin ? o.basin.bounds.x2 - descriptor.origin : o.x - descriptor.origin + o.piece.image.width + (o.role === 'liquid' ? 1 : 0)));
       const y1 = Math.min(...objects.map(o => o.basin ? 0 : o.y)), y2 = Math.max(...objects.map(o => o.y + o.piece.image.height));
-      const dependencies = foundationDeps(x1, x2); if (assemblyTerrain.has(key)) dependencies.push(assemblyTerrain.get(key));
+      const dependencies = foundationDeps(x1 - (piecewise ? 24 : 0), x2 + (piecewise ? 32 : 0)); if (assemblyTerrain.has(key)) dependencies.push(assemblyTerrain.get(key));
       const index = add('object', { x1, x2, y1, y2 }, dependencies, objects.map(o => o.piece.id),
         { objectIndices: Object.freeze(members), attachmentFallback: !!assembly,
           ...(objects[0].basin ? { basin: objects[0].basin, foundationSourceIds: Object.freeze(objects[0].basin.foundation.sourcePlacements.map(p => p.id)) } : {}) });
@@ -99,7 +100,7 @@ const createTerrainGrowthPlan = ({ descriptor, pattern, route, pieces, assemblie
       { placementIndices: Object.freeze(members), sharedSpan: descriptor.sharedSpan, orderedSource: true });
     for (const at of members) placementJobs[at] = index;
   }
-  return Object.freeze({ descriptor, jobs: Object.freeze(jobs), foundationSections: Object.freeze(foundationSections),
+  return Object.freeze({ descriptor, piecewise, jobs: Object.freeze(jobs), foundationSections: Object.freeze(foundationSections),
     foundationByColumn, placementJobs, objectJobs, sourceMotif: route.id, sourceRevision, patternWidth: pattern.width });
 };
 export { createTerrainGrowthPlan, MAX_MATERIALIZATION_JOBS };

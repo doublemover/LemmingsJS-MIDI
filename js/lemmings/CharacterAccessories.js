@@ -101,7 +101,7 @@ function composeCharacterAccessories(manifest, pack, appearance) {
   }
   const dark = append([32, 34, 40, 255]), highlight = append([177, 197, 211, 255]);
   const compose = (frames, items) => frames.map((rows, frame) => {
-    const result = rows.map(row => [...row]);
+    const result = rows.slice();
     for (const slot of ['ears', 'headwear', 'neck', 'eyewear']) {
       const selected = slot === 'headwear' ? customHead && accessory : slot === 'ears' ? accessory === 'headphones' && accessory
         : slot === 'neck' ? accessory === 'bow' && accessory : selectedAppearance.eyewear;
@@ -109,11 +109,16 @@ function composeCharacterAccessories(manifest, pack, appearance) {
       const patch = pack.patches[items[selected][frame]];
       if (!patch) continue;
       const [left, top, pixels] = patch;
-      pixels.forEach((row, y) => [...row].forEach((symbol, x) => {
-        if (symbol !== '.') result[top + y][left + x] = ({ p: slots[slot], d: dark, h: highlight, o: '6', O: '7', Y: '8' })[symbol];
-      }));
+      const colors = { p: slots[slot], d: dark, h: highlight, o: '6', O: '7', Y: '8' };
+      for (let y = 0; y < pixels.length; y++) for (let x = 0; x < pixels[y].length; x++) {
+        const symbol = pixels[y][x];
+        if (symbol === '.') continue;
+        const row = top + y;
+        if (typeof result[row] === 'string') result[row] = [...result[row]];
+        result[row][left + x] = colors[symbol];
+      }
     }
-    return result.map(row => row.join(''));
+    return result.map(row => typeof row === 'string' ? row : row.join(''));
   });
   const landing = manifest.cosmetics?.beretLanding;
   return { ...manifest, palette, symbols,

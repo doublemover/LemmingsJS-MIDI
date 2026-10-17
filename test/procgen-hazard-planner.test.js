@@ -218,4 +218,12 @@ describe('bounded procgen physical route proposals', function() {
     world.tickIndex++; expect(planner.plan(world.actors[1])).to.exist; planner.reset(); expect(planner.cache.every(value => !value)).to.equal(true);
     planner.dispose(); expect(planner.world).to.equal(null); world.dispose();
   });
+  it('does not charge or read terrain again after the shared probe limit is exhausted', () => {
+    const world = make((_x, y) => y >= 72), planner = world.hazardPlanner;
+    let reads = 0; world.hasGroundAt = () => { reads++; return true; };
+    planner.probes = MAX_ROUTE_PROBES - 1; planner.exhausted = false;
+    expect(planner._ground(64, 72)).to.equal(true);
+    for (let at = 0; at < 32; at++) expect(planner._ground(64, 72)).to.equal(false);
+    expect(reads).to.equal(1); expect(planner.probes).to.equal(MAX_ROUTE_PROBES); expect(planner.exhausted).to.equal(true); world.dispose();
+  });
 });

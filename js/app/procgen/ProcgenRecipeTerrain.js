@@ -16,6 +16,8 @@ import { placeAuthoredAssemblies, isProcgenAssemblyEligible } from './ProcgenAss
 import { createTerrainGrowthPlan } from './ProcgenTerrainMaterialization.js';
 import { planOpenBankBasin, basinVoidAt } from './ProcgenOpenBankBasins.js';
 import { planTerrainChallenge, challengeSurface } from './ProcgenTerrainChallenges.js';
+import { hazardType } from './ProcgenHazards.js';
+import { procgenObjectImage } from './ProcgenObjectPresentation.js';
 
 const TERRAIN_CHUNK_WIDTH = 128;
 const TERRAIN_HEIGHT = 96;
@@ -87,6 +89,7 @@ class ProcgenRecipeTerrain {
       }
     }
     this.chunkWidth = TERRAIN_CHUNK_WIDTH; this.height = TERRAIN_HEIGHT;
+    this.workstation = false; this.hazardSpacing = 0;
     this.collision = new Map();
     this.rasters = new Map();
     this.collisionLimit = 256;
@@ -97,10 +100,13 @@ class ProcgenRecipeTerrain {
     this.selectedObjectIds = new Set();
     this._lastKey = null; this._lastChunk = null;
   }
-  configure(laneCount, maxActors = 16384, { laneHeight = this.height, sharedSpanBudget = this.sharedSpanBudget } = {}) {
+  configure(laneCount, maxActors = 16384, { laneHeight = this.height, sharedSpanBudget = this.sharedSpanBudget, workstation = this.workstation, hazardSpacing = workstation ? 160 : 0 } = {}) {
     const height = normalizeLaneHeight(laneHeight);
     const capacity = sharedSpanBudget >= 2 ? 2 : 1;
-    if (height !== this.height || capacity !== this.sharedSpanBudget) { this.height = height; this.sharedSpanBudget = capacity; this.reset(); }
+    const spacing = Math.max(0, Math.min(2048, Number(hazardSpacing) || 0));
+    if (height !== this.height || capacity !== this.sharedSpanBudget || workstation !== this.workstation || spacing !== this.hazardSpacing) {
+      this.height = height; this.sharedSpanBudget = capacity; this.workstation = workstation; this.hazardSpacing = spacing; this.reset();
+    }
     this.collisionLimit = Math.max(256, Math.min(32768, maxActors + laneCount * 2));
   }
   retainDescriptors(interests) { this.descriptionLimit = this.descriptorResidency.retain(interests); this.descriptorResidency.trim(this.descriptionLimit); }
@@ -142,7 +148,8 @@ class ProcgenRecipeTerrain {
     return pair[chunk % 2];
   }
   _describeSingle(seed, chunk, reserved = false) {
-    const code = this._code(seed, chunk), phase = Math.floor(chunk / PHASE_CHUNKS), phaseCode = this._code(seed ^ 0x51ed270b, phase);
+    const runLength = this.workstation ? 3 + mix(seed ^ 0x12a48f03) % 7 : PHASE_CHUNKS;
+    const code = this._code(seed, chunk), phase = Math.floor(chunk / runLength), phaseCode = this._code(seed ^ 0x51ed270b, phase);
     const origin = chunk * TERRAIN_CHUNK_WIDTH;
     const progression = progressionAt(origin), gap = !progression.safeIntro && (code & 7) < 1 + Math.floor(progression.difficulty);
     const placements = [];
@@ -151,7 +158,11 @@ class ProcgenRecipeTerrain {
     const descriptor = { code, phase, phaseCode, origin, placements, progression, left, right, middle,
       gapX: origin + 88 + (code >>> 5) % 8, gapWidth: gap ? 3 + (code >>> 10) % (progression.gapMaximum - 2) : 0,
       barrierX: origin + (placements[0]?.x || 0), barrierWidth: progression.safeIntro ? 0 : (placements[0]?.piece.width || 0) };
-    descriptor.challenge = planTerrainChallenge({ seed, chunk, left, right, height: this.height });
+    if (this.workstation) {
+      const shape = mix(code ^ 0x2869bc1d);
+      descriptor.profile = { approach: 12 + shape % 21, riseEnd: 42 + (shape >>> 5) % 19, fallStart: 70 + (shape >>> 10) % 17, exit: 100 + (shape >>> 15) % 21, runLength };
+    }
+    descriptor.challenge = reserved && chunk >= 17 ? null : planTerrainChallenge({ seed, chunk, left, right, height: this.height, varied: this.workstation });
     if (descriptor.challenge) {
       const challenge = descriptor.challenge;
       descriptor.gapX = origin + challenge.start; descriptor.gapWidth = challenge.kind === 'gap' ? challenge.width : 0;
@@ -164,6 +175,18 @@ class ProcgenRecipeTerrain {
     // upper opening and optional bridge remain; later gaps keep full depth.
     descriptor.gapFloor = descriptor.gapWidth && progression.gapDepth != null ? Math.min(this.height - 2,
       Math.max(this._surface(seed, chunk, descriptor.gapX - origin - 1, descriptor), this._surface(seed, chunk, descriptor.gapX - origin + descriptor.gapWidth, descriptor)) + progression.gapDepth) : null;
+    if (descriptor.gapFloor != null && origin >= PROCGEN_RECOVERY_GAP_END) {
+      descriptor.gapRecoveryRamp = { start: descriptor.gapX - origin + descriptor.gapWidth + 12, end: TERRAIN_CHUNK_WIDTH - 1, floor: descriptor.gapFloor };
+    }
+    if (descriptor.gapWidth && descriptor.gapFloor == null) {
+      const left = descriptor.gapX - origin + descriptor.gapWidth + 4, right = left + 4;
+      if (right < TERRAIN_CHUNK_WIDTH - 8) {
+        const support = this._surface(seed, chunk, right, descriptor), profile = new Int16Array(TERRAIN_CHUNK_WIDTH).fill(-1);
+        for (let x = left; x < right; x++) profile[x] = support - 8;
+        descriptor.gapReturnProfile = profile;
+        descriptor.gapReturnWalls = [{ x1: origin + left, x2: origin + right, y: support - 8 }];
+      }
+    }
     descriptor.objects = []; descriptor.assemblies = [];
     descriptor.zone = this.zonePlanner?.zoneAt(seed, origin) || null;
     const pattern = this.patterns[mix(phaseCode ^ code) % this.patterns.length];
@@ -192,6 +215,8 @@ class ProcgenRecipeTerrain {
     const admitted = new Set(); descriptor.deferredAssemblies = [];
     for (const assembly of assembled.assemblies) {
       const members = assembled.terrainPlacements.filter(p => p.assembly === assembly);
+      if (this.hazardSpacing && assembled.objects.some(object => object.assembly === assembly && ['trap', 'liquid', 'hazard'].includes(object.role)) &&
+          (!this._hazardSlot(seed, chunk) || assembly.bounds.x1 < origin + 24 || assembly.bounds.x2 > origin + TERRAIN_CHUNK_WIDTH - 32)) continue;
       if (this._introAssemblyEligible(seed, chunk, descriptor, assembly, members, baseSurface)) {
         admitted.add(assembly); descriptor.placements.push(...members);
       } else descriptor.deferredAssemblies.push({ id: assembly.id, sourceRevision: assembly.sourceRevision, reason: 'early-local-route-envelope' });
@@ -209,7 +234,27 @@ class ProcgenRecipeTerrain {
       baseColor: (x, y) => this.rasterSample(seed, chunk, x, y, descriptor), height: this.height, occupied, gapX: descriptor.gapX - origin, gapWidth: descriptor.gapWidth, progression,
       validate: members => { const member = members.at(-1); return this._introAssemblyEligible(seed, chunk, descriptor, { bounds: { x1: origin + member.x, x2: origin + member.x + member.piece.width } }, members, baseSurface); } }));
     descriptor.objects.push(...this._placeObjects(seed, chunk, descriptor));
+    if (this.hazardSpacing) this._admitHazards(seed, chunk, descriptor);
+    this._fireReturns(seed, chunk, descriptor);
     return descriptor;
+  }
+  _fireReturns(seed, chunk, descriptor) {
+    for (const object of descriptor.objects) {
+      if (hazardType(object) !== TriggerTypes.FRYING) continue;
+      const image = procgenObjectImage(object), left = object.x + image.trigger_left + image.trigger_width + 4 - descriptor.origin, right = left + 4;
+      if (image.trigger_width > 24 || left < 8 || right >= TERRAIN_CHUNK_WIDTH - 8 ||
+          descriptor.gapWidth && left + descriptor.origin < descriptor.gapX + descriptor.gapWidth && right + descriptor.origin > descriptor.gapX) continue;
+      let support = null;
+      for (let y = Math.max(8, object.y + image.trigger_top - 1); y < Math.min(this.height - 1, object.y + image.trigger_top + image.trigger_height + 16); y++) {
+        if (this.solidSample(seed, chunk, right, y, descriptor)) { support = y; break; }
+      }
+      if (support == null) continue;
+      // A visible grounded lip catches returning walkers below the completed
+      // high bridge. The source object, trigger and ordinary approach remain.
+      const profile = descriptor.fireReturnProfile ||= new Int16Array(TERRAIN_CHUNK_WIDTH).fill(-1);
+      for (let x = left; x < right; x++) profile[x] = profile[x] < 0 ? support - 8 : Math.min(profile[x], support - 8);
+      (descriptor.fireReturnWalls ||= []).push({ x1: descriptor.origin + left, x2: descriptor.origin + right, y: support - 8 });
+    }
   }
   _introAssemblyEligible(seed, chunk, descriptor, assembly, members, surface) {
     const left = assembly.bounds.x1 - descriptor.origin, right = assembly.bounds.x2 - descriptor.origin;
@@ -227,14 +272,14 @@ class ProcgenRecipeTerrain {
     return introAssemblyEligible({ origin: descriptor.origin, left, right, surface, solid, height: this.height,
       steel: (x, y) => this.steelSample(seed, chunk, x, y, candidate) });
   }
-  growthPlan(seed, chunk, { maxSharedSpanTiles = this.sharedSpanBudget } = {}) {
+  growthPlan(seed, chunk, { maxSharedSpanTiles = this.sharedSpanBudget, piecewise = false } = {}) {
     if (maxSharedSpanTiles < this.sharedSpanBudget) throw new RangeError('Configure source shared-span capacity before preparing terrain');
     const key = keyFor(seed, chunk), cached = this.growthPlans.get(key);
-    if (cached) { this.descriptorResidency.stats.growthPlanHits++; this.descriptorResidency.read(key); return cached; }
+    if (cached?.piecewise === piecewise) { this.descriptorResidency.stats.growthPlanHits++; this.descriptorResidency.read(key); return cached; }
     this.descriptorResidency.stats.growthPlanMisses++;
     const descriptor = this.describe(seed, chunk), pattern = this.patterns[mix(descriptor.phaseCode ^ descriptor.code) % this.patterns.length];
     const route = this.routes.find(route => route.id === pattern.routeId), pieces = new Map(this.pieces.map(piece => [piece.id, piece]));
-    const plan = createTerrainGrowthPlan({ descriptor, pattern, route, pieces, height: this.height, assemblies: this.assemblySources, sourceRevision: this.sourceDescriptor?.sourceRevision || this.recipe.assetSha256 });
+    const plan = createTerrainGrowthPlan({ descriptor, pattern, route, pieces, height: this.height, assemblies: this.assemblySources, sourceRevision: this.sourceDescriptor?.sourceRevision || this.recipe.assetSha256, piecewise });
     this.growthPlans.set(key, plan); return plan;
   }
   _activePlan(seed, chunk, state) { return state && !state.complete ? state.plan || this.growthPlan(seed, chunk) : null; }
@@ -242,8 +287,33 @@ class ProcgenRecipeTerrain {
   _standaloneObjectEligible(piece) {
     return piece.id !== 1 && !this.associatedObjectIds.has(piece.id) && [TriggerTypes.TRAP, TriggerTypes.DROWN, TriggerTypes.KILL, TriggerTypes.FRYING].includes(piece.image.trigger_effect_id);
   }
+  _hazardSlot(seed, chunk) {
+    const stride = Math.max(1, Math.ceil((this.hazardSpacing + TERRAIN_CHUNK_WIDTH) / TERRAIN_CHUNK_WIDTH));
+    return chunk % stride === mix(seed ^ 0x731acbd9) % stride;
+  }
+  _admitHazards(seed, chunk, descriptor) {
+    const groups = new Map(), rejected = new Set(); let previous = -Infinity;
+    for (const object of descriptor.objects) if (['trap', 'liquid', 'hazard'].includes(object.role)) {
+      const key = object.assembly || object, group = groups.get(key) || []; group.push(object); groups.set(key, group);
+    }
+    for (const [key, group] of groups) {
+      const left = Math.min(...group.map(object => Math.min(object.x, object.x + object.piece.image.trigger_left, object.basin?.bounds.x1 ?? Infinity))),
+        right = Math.max(...group.map(object => Math.max(object.x + object.piece.image.width, object.x + object.piece.image.trigger_left + object.piece.image.trigger_width, object.basin?.bounds.x2 ?? -Infinity)));
+      let ready = this._hazardSlot(seed, chunk) && left >= descriptor.origin + 24 && right <= descriptor.origin + 96 && left - previous >= this.hazardSpacing;
+      for (let wx = left - 24; ready && wx < right + 32; wx++) {
+        if (wx >= left && wx < right) continue;
+        const local = wx - descriptor.origin, surface = this._surface(seed, chunk, local, descriptor);
+        ready = this.solidSample(seed, chunk, local, surface, descriptor) && !this.solidSample(seed, chunk, local, surface - 8, descriptor);
+      }
+      if (ready) previous = right; else rejected.add(key);
+    }
+    descriptor.objects = descriptor.objects.filter(object => !rejected.has(object.assembly || object));
+    descriptor.placements = descriptor.placements.filter(placement => !rejected.has(placement.assembly));
+    descriptor.assemblies = descriptor.assemblies.filter(assembly => !rejected.has(assembly));
+  }
   _placeObjects(seed, chunk, descriptor) {
     const { origin, code, phaseCode } = descriptor, objects = [];
+    if (this.hazardSpacing && (!this._hazardSlot(seed, chunk) || descriptor.objects.some(object => ['trap', 'liquid', 'hazard'].includes(object.role)))) return objects;
     const objectCount = this.objects.length ? 1 + (phaseCode >>> 8) % 2 : 0;
     for (let i = 0; i < objectCount; i++) {
       const piece = this.objects[(chunk * 2 + i + seed % this.objects.length) % this.objects.length], image = piece.image;
@@ -291,6 +361,17 @@ class ProcgenRecipeTerrain {
         const bounds = { x1: x + image.trigger_left, x2: x + image.trigger_left + image.trigger_width,
           y1: y + image.trigger_top, y2: y + image.trigger_top + image.trigger_height };
         const envelopeLeft = Math.min(x, bounds.x1), envelopeRight = Math.max(x + image.width, bounds.x2);
+        if (this.hazardSpacing) {
+          if (objects.length || envelopeLeft < origin + 24 || envelopeRight > origin + TERRAIN_CHUNK_WIDTH - 32) continue;
+          let accessible = true;
+          for (let wx = envelopeLeft - 24; wx < envelopeRight + 32; wx++) {
+            if (wx >= envelopeLeft && wx < envelopeRight) continue;
+            const local = wx - origin, surface = this._surface(seed, chunk, local, descriptor);
+            if (this._gapVoid(descriptor, wx, surface) || !this.solidSample(seed, chunk, local, surface, descriptor) ||
+                this.solidSample(seed, chunk, local, surface - 8, descriptor)) { accessible = false; break; }
+          }
+          if (!accessible) continue;
+        }
         if (![bounds.x1, bounds.x2, bounds.y1, bounds.y2].every(Number.isFinite) || bounds.x1 >= bounds.x2 || bounds.y1 >= bounds.y2 ||
             envelopeLeft < Math.max(origin + 8, PROCGEN_INTRO_SAFE_END) || envelopeRight > origin + TERRAIN_CHUNK_WIDTH - 8 ||
             bounds.y1 < 0 || bounds.y2 > this.height || mix(code ^ Math.imul(piece.id + 1, 0x9e3779b1)) % 1024 >= descriptor.progression.hazardThreshold) continue;
@@ -365,7 +446,7 @@ class ProcgenRecipeTerrain {
   }
   _foundationColumn(pattern, worldX, descriptor) {
     const column = this._patternColumn(pattern, worldX);
-    if (descriptor.challenge) return pattern.introColumns[column];
+    if (descriptor.challenge || descriptor.gapRecoveryRamp && worldX % TERRAIN_CHUNK_WIDTH >= descriptor.gapRecoveryRamp.start || descriptor.fireReturnProfile?.[worldX % TERRAIN_CHUNK_WIDTH] >= 0 || descriptor.gapReturnProfile?.[worldX % TERRAIN_CHUNK_WIDTH] >= 0) return pattern.introColumns[column];
     return descriptor.gapFloor != null && worldX >= descriptor.gapX && worldX < descriptor.gapX + descriptor.gapWidth && pattern.topProfile[column] < 0 ? pattern.introColumns[column] : column;
   }
   _gapVoid(descriptor, worldX, y) {
@@ -377,15 +458,17 @@ class ProcgenRecipeTerrain {
   }
   _surface(seed, chunk, x, descriptor) {
     if (descriptor.challenge) return challengeSurface(descriptor.challenge, x, descriptor.left, descriptor.right);
+    const recovery = descriptor.gapRecoveryRamp;
+    if (recovery && x >= recovery.start) return Math.round(recovery.floor + (descriptor.right - recovery.floor) * (x - recovery.start) / (recovery.end - recovery.start));
     if (chunk === 0 && x < 64) return this.height - TERRAIN_HEIGHT + 72;
     const { left, right, middle } = descriptor;
     // Flat shelves, abrupt climbable faces and gentle connecting slopes all
     // share exact boundary elevations, including transitions between phases.
-    if (x < 24) return left;
-    if (x < 48) return descriptor.code & 4 ? middle : Math.round(left + (middle - left) * (x - 24) / 24);
-    if (x < 88) return middle;
-    if (x < 112) return descriptor.code & 8 ? right : Math.round(middle + (right - middle) * (x - 88) / 24);
-    return right;
+    const { approach = 24, riseEnd = 48, fallStart = 88, exit = 112 } = descriptor.profile || {};
+    const surface = x < approach ? left : x < riseEnd ? descriptor.code & 4 ? middle : Math.round(left + (middle - left) * (x - approach) / (riseEnd - approach))
+      : x < fallStart ? middle : x < exit ? descriptor.code & 8 ? right : Math.round(middle + (right - middle) * (x - fallStart) / (exit - fallStart)) : right;
+    const fire = descriptor.fireReturnProfile?.[x], gap = descriptor.gapReturnProfile?.[x];
+    return Math.min(surface, fire >= 0 ? fire : surface, gap >= 0 ? gap : surface);
   }
   _compose(seed, chunk, raster) {
     const start = globalThis.performance?.now?.() || 0;

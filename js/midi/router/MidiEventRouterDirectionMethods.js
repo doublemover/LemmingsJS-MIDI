@@ -55,15 +55,16 @@ const midiEventRouterDirectionMethods = {
       project.tiles.every(([key, revision]) => world.getTerrainTileRevision(key) === revision);
   },
   _musicDirectionCells(cue, phase, position) {
-    const config = this.mapping.config, source = this.mapping.getSfxConfig(cue.event.sfxId);
+    const config = this.mapping.eventConfig(cue.event), source = this.mapping.getSfxConfig(cue.event.sfxId, cue.event);
     if (!source) return [];
-    const ensemble = config.ensemble, automatic = ensemble?.enabled && source.trackId === ensemble.sourceTrackId;
+    const ensemble = config.ensemble, automatic = !source.percussion && ensemble?.enabled && source.trackId === ensemble.sourceTrackId;
     if (phase === 'reply' && !automatic) return [];
     const roles = automatic ? ensemble.roles.filter(role => !role.disabled && role.track && !role.percussion) : [];
     const lead = roles.find(role => role.id === 'melody') || roles[0];
     const role = phase === 'lead' ? lead : roles.find(role => role !== lead && role.id === 'bass') || roles.find(role => role !== lead);
     if (automatic && (!role || phase === 'reply' && role === lead)) return [];
-    const mapping = automatic ? new MidiMapping({ ...config, ensemble: { ...ensemble, enabled: false } }) : this.mapping;
+    const mapping = automatic ? new MidiMapping({ ...config, laneMusic: config.laneMusic ? { ...config.laneMusic, referenceRoot: config.laneReferenceRoot ?? config.laneMusic.referenceRoot, ranges: [] } : null,
+      ensemble: { ...ensemble, enabled: false } }) : this.mapping;
     const map = step => {
       const spec = mapping.mapEvent(cue.event, {}, 0, { ...source, ...step, notes: step?.note == null ? source.notes : null, phrase: null, arp: null });
       return spec && automatic ? applyMidiEnsembleRoleToSpec(spec, role, config, source, cue.event) : spec;

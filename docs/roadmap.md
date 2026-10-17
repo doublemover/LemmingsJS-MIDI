@@ -30,6 +30,135 @@ When a milestone replaces an old path, remove the old path in the same phase.
 
 ## Current MIDI and game UI backlog (October 8, 2026)
 
+### ProcGen performance workstation (October 12, 2026)
+
+- **Outcome:** Eight wide, independently voiced lanes in one physical world, with persistent musical editing and resumable live projects.
+- **Scope:** The approved five-stage workstation plan, based on `d16efe87` with current master integrated on `codex/procgen-workstation`.
+- **Workflow Coverage:** Identical Strip/Overlay edits, independent global key and collections, deterministic hybrid patterns, synchronized transport/MIDI, full checkpoint continuation, incremental terrain and real follower-verified action chains.
+- **Deliverables:** `js/app/procgen/workstation/`, the integrated workstation shell, shared projection, mixed classic terrain loader, scenery layer, action-chain proof and regression/browser cases.
+- **Acceptance:** Automated tests and browser evidence below; subjective listening and physical-device synchronization require separate evidence and remain explicitly unverified until exercised.
+- **Out of Scope:** Publishing or merging the branch; treating mocked MIDI as physical-device validation.
+
+Implementation milestones:
+
+1. **Session and lane foundation — implemented.** The canonical MIDI project now carries lane identity, four phrases, step expressions, roles and routing. The versioned session wraps music, transport and a graph checkpoint preserving actor/action frames, terrain edits, growth, scenery and crew ownership. Tests compare continued real simulations after JSON round trips, including active building, bashing, mining and mixed-theme assignments.
+2. **Transport and MIDI — implemented and browser verified.** A worker wakeup driver advances one musical authority separately from physical simulation. It handles internal/external clocks, 24 PPQN, Start/Stop/Continue/SPP, timestamped output, loss/suspension cleanup, recording, CC and SMF export. Timely incoming clock pulses refresh scheduling activity; genuine missed deadlines still stop playback. Character previews finish preparing before the new runtime is published. Port fixtures and browser clock input do not establish physical MIDI jitter or audible quality.
+3. **Workstation and music — implemented and browser verified.** Persistent silver/glass transport, virtualized lane headers, Strip/Overlay steps, resizable inspector, project workflows and editing use one project model. Ten collections each provide eight roles, including articulation, register, dynamics, patterns and event responses. Soft patches alter playback dynamics without replacing edited steps. Existing spatial curves and bounded automation spans remain active. Input monitoring and explicit Thru are separate from clock output.
+4. **Terrain and reveal — implemented.** Mixed classic families, variable composition, actor-led piece assembly, wider hazard corridors and bounded distant scenery replace uniform visual chunk cadence. Scenery is non-colliding and dithered; reduced motion and checkpoint restoration are covered. Three seeded eight-lane runs and a sixteen-lane run each completed 3,000 ticks with bounded residency.
+5. **Solver and automated acceptance — implemented and verified.** Real action-system fixtures exercise build→bash, bash→build, mine→build, repeated building, three-stage and four-stage routes, worker loss, guarded followers and reservations. A discovered four-stage route consumes 996 of the existing 1,024 proof-work budget. Sixteen-lane fixtures preserve waiting chains through service rotation using real blockers, then revalidate before assignment. Immediate contact observation uses at most eleven reads per walking actor per tick; broader proof retains eight serviced lanes per tick and the existing work budget. Successful cases require ordinary followers crossing the route. Physical MIDI and subjective listening acceptance remain manual.
+
+Scoped coverage: 111 workstation/checkpoint/music/solver tests passed, measuring 84.27% lines and 84.12% branches across the selected owners. The chain proof measured 100% lines and 91.25% branches; checkpoint serialization measured 97.48% lines and 90.62% branches. Changed terrain modules separately measured 98.19% lines and 87.2% branches. Node coverage does not exercise most DOM rendering or IndexedDB implementation paths; real browser workflows cover those separately. Coverage follow-up: collect browser V8 coverage and add explicit IndexedDB quota/transaction-abort cases.
+
+Final unit evidence (October 13): the complete suite passed 3,642 cases in 187.72 seconds, using a ten-second per-test allowance on this busy host. The optional 180-second suite budget was exceeded by 7.72 seconds; it was not an enforced gate. Formatting, lint, critical type, dependency, undefined-call and whitespace checks passed. Current master (`0ff0a369`) was fetched again and is already integrated. Integrated browser workflows cover real IndexedDB restore at the saved tick, paused load, key/edited-chord preservation through collection changes, fresh New/Reroll seeds, deterministic Replay, quantized phrase launch, MIDI input recording/export and both layouts. A real Web Audio analyser measured non-zero synthesizer output; that is signal evidence, not a subjective listening verdict.
+
+Final browser evidence (October 13): all fifteen workstation cases passed together in 41 seconds after fixing external-clock activity tracking and late character-preview preparation. Twelve retained legacy ProcGen browser cases also passed. New checkpoint regressions cover automatic reset continuation and reproducing terrain, spawn order and later reset seeds from the displayed seed. Saved internal and measured external tempo survive subsequent control events. The 250 ms suspension and 750 ms clock-loss guards were not relaxed.
+
+Live Edge profiling at 1440×1000, 3× visual zoom, sound enabled, eight visible rows, after a 1,200-tick warmup:
+
+| Session / view | Render p50 | Render p95 | Render p99 |
+| --- | --- | --- | --- |
+| 8 lanes / Strip | 4.6 ms | 11.4 ms | 13.7 ms |
+| 8 lanes / Overlay | 1.6 ms | 8.7 ms | 10.0 ms |
+| 16 lanes / Strip | 7.7 ms | 13.9 ms | 14.9 ms |
+| 16 lanes / Overlay | 2.3 ms | 10.2 ms | 12.2 ms |
+
+Each sample ran six seconds, advancing 100 physical ticks. All p95 render costs were below the 16.7 ms desktop target. Headless Edge's animation callback cadence was approximately 240 Hz; these timings measure render cost, not a promise of display refresh or device latency. Terrain residency stayed approximately 18.6–18.8 MB for eight lanes and 20.3–20.7 MB for sixteen; scenery stayed at 112–116 / 230–236 pieces. A paused 100,000-pixel camera pan generated no terrain descriptors and preserved reveal progress. Reduced-motion scenery completed statically. The user explicitly deferred physical MIDI synchronization to manual device testing; acoustic palette approval also remains outside the measured signal test.
+
+### Music workspace and deeper source checkpoint (October 11, 2026)
+
+- **Outcome:** One discoverable musical workspace, saved lane orchestration, and better crew survival beyond the introductory skill stretch.
+- **Scope:** Global root/scale, 0–48 semitone total lane spread, local stereo width, six event-driven percussion schemes, ordered inclusive lane ranges, shared Undo and source-terrain reliability.
+- **Workflow Coverage:** Muted desktop/mobile musical edits, range precedence/reordering, Undo/reload, explicit survey evidence, real source crews and shared builder/basher actions.
+- **Deliverables:** `ProcgenMusicControls`, `ProcgenMusicProject`, `MidiLaneMusic`, `MidiLaneSchemes`, `ProcgenDrumSchemes`, integrated project persistence and regression cases.
+- **Acceptance:** Bounded affected tests and unchanged physical work limits; retain incomplete routes and aggregate-gate uncertainty explicitly.
+- **Out of Scope:** Publication, physical MIDI acceptance, acoustic approval and another full aggregate test run.
+
+At the October 11 checkpoint, the music drawer was the main workspace, with world/population controls folded
+below it. Ranges use 1-based inclusive endpoints, at most 32 rows; the last
+enabled matching row wins. Unassigned lanes retain the default scheme. Disabled
+and out-of-run ranges remain saved. Existing explicit clips, mute decisions and
+destination routing survive lane overrides. Global key/scale edits affect
+melodies; General MIDI drum instrument numbers stay fixed on channel 10 and are
+excluded from MPE member allocation. Six kits cover pocket, breakbeat, tom,
+hand percussion, soft ticks and metal voices, with deterministic accent choices.
+Pitch spread is the total low-to-high span across current lanes, bounded by the
+existing note range. Stereo width uses the existing local per-note audio owner.
+
+The existing v2 automation payload gains a versioned musical snapshot; old v1
+spans and v2 automation-only saves still load. Full saved compositions take
+precedence over legacy palette preferences. Musical Undo includes palette,
+key/spread, ranges, tension and automation, and excludes device access and output
+enablement. Legacy projects keep their event pitches until an explicit global
+pitch edit. No control starts sound or regenerates the world.
+
+Two existing helpers, both launch-confirmed `gpt-6-astra` at Medium, completed
+disjoint main-workspace and survey-review scopes. The survey now separates
+physical arrivals, qualified arrivals, deaths, unresolved members and unknown
+validity; scenario/policy navigation retains paired-baseline context. This is
+evidence review, not automatic policy promotion.
+
+Fresh finite cases used 16 original ordinary births, six ticks apart, for 3,000
+ticks, without replacement, special abilities or increased work budgets:
+
+| Lemmings ground / seed | Alive before → after | Physical arrivals at x1024 after | Physical arrivals at x1536 after |
+| --- | --- | --- | --- |
+| Fire / 7 | 16 → 16 | 16 | 0 |
+| Fire / 19 | 16 → 16 | 16 | 0 |
+| Fire / 73 | 15 → 16 | 16 | 0 |
+| Fire / 113 | 0 → 16 | 15 | 0 |
+| Dirt / 7 | 0 → 16 | 16 | 0 |
+| Crystal / 19 | 16 → 16 | 15 | 0 |
+
+All final cases had zero hazard contacts and at most 1,024 charged lane probes.
+These are survival improvements, **not completed deeper routes**. Dirt seed 7
+previously recorded eight arrivals at x1536 before losing all sixteen actors;
+its new intermediate recovery floor preserves the cohort but leaves it below
+the far bank. Fire 113 now completes its actual two-section fire project; one
+original actor remains the entrance blocker. Unrestricted source walls still
+stop forward progress in this corpus.
+
+The fire failure combined a six-pixel following distance with an eight-pixel
+guard admission threshold. A closer physical blocker safely holds the follower,
+but overlaps the first stair. Recovery now rehearses the existing basher and
+walker against the finished bridge, charges the existing lane budget, and grants
+only its exact removed cells to the original guard until that action expires.
+An unrelated edit by the same actor still invalidates the project. Source fire
+triggers are unchanged.
+
+Intermediate gaps between x1024 and x2048 retain a visible 16-pixel recovery
+floor and a finite far-bank ramp. Later full-depth gaps retain their void and
+gain a visible return lip. Starting at chunk 17, one in eight chunks offers a
+seeded ledge, tunnel, gap or terrace, with chapter-dependent dimensions and
+source terrain between encounters. Existing wide source assemblies take
+precedence. Four positioned deep encounters at chunks 17/25 each pass all
+sixteen original walkers, with real construction/excavation or passive walking;
+this controlled evidence does not establish natural arrival at those chunks.
+
+Validation receipts are `temp/campaign-midi-tests.log` (412 passing),
+`temp/campaign-terrain-tests.log` and `temp/campaign-integration-tests.log`
+(the single initially mistimed recovery assertion was corrected and passed in
+the integration selection). The fresh before/final corpus is
+`temp/campaign-seeds-{before,final}.jsonl`. Main UI: 11 muted Edge journeys;
+survey UI: 12 muted Edge journeys. Screenshots at 390/768/1440 widths show no
+drawer overflow, and output stayed off. The prior full aggregate gate remains
+unverified; no timeout or budget was relaxed. All work remains local pending a
+separate publication approval, and the team is parked after this checkpoint.
+
+Focused coverage collected 29 passing tests: 92.74% lines / 77.27% branches
+across the selected owners. The lane scheme resolver, drum definitions, lane
+schema, local tunnel and terrain challenge owners have 100% line coverage in
+that collection. The musical command adapter is 75% lines / 37.5% branches;
+its range ordering/removal is covered by the muted browser journey, while
+isolated invalid-command and boundary tests remain a future coverage task.
+The additional percussion scene-cue regression passes with the ten-test lane
+music selection. Format, lint, undefined-call, dependency, critical type and
+diff checks pass. The ignored historical checkpoint copies are excluded from
+format/lint because they are evidence snapshots rather than runnable sources.
+
+- [ ] Resolve intermediate lower-bank escapes and unrestricted source-wall stalls without weakening complete-crew accounting.
+- [ ] Broaden natural arrival/return qualification for the spaced deep encounters.
+- [ ] Review acoustic quality and physical MIDI behavior separately from muted scheduling evidence.
+
 - [x] Diagnose local preview attenuation; offer explicit local gain/headroom while preserving saved levels and external MIDI values.
 - [x] Strengthen explicitly applied starting palettes without rewriting saved projects or their velocity limits.
 - [x] Restore game shortcuts while a speed range is focused; use tenths below 1x, integers through 10x, then tens, following effective slowdown.
@@ -62,7 +191,7 @@ When a milestone replaces an old path, remove the old path in the same phase.
 - [x] Fix passive jump completion beyond the nominal lookahead endpoint and choose safe walking before construction.
 - [x] Discover imminent solver decisions between stride samples and sample builder approaches before contact; retain fresh-world replay as the authority.
 - [x] Refine main procgen controls and survey comparison in disjoint Astra Medium UI scopes; exercise desktop/mobile controls and real resident-world pause/step/cancel.
-- [ ] Broaden whole-crew reliability sampling across source themes only when a concrete regression calls for it. These finite cases and two natural-spawn comparisons are not a policy ranking.
+- [x] Broaden whole-crew reliability sampling for the concrete follower failures recorded in the October 11 follow-through below; these finite cases are not a policy ranking.
 - [ ] Add focused local-tunnel coverage for unusual directional-blocker and world-boundary combinations; keep acoustic/physical MIDI acceptance separate.
 
 The causal regressions are in `test/procgen-skill-decisions.test.js` and
@@ -100,6 +229,130 @@ errors and retained all 60 births, 59 living actors and one trapped failure.
 That capture exposed stale manual-step counters, now fixed and checked in the
 browser. Receipts: `temp/full-test-final.log`, `temp/skill-coverage-final.log`,
 `temp/integrated-browser.json` and `temp/integrated-terrain.png`.
+
+## Whole-crew follow-through (October 11, 2026)
+
+The approved checkpoint `8b49fe7c` is published as draft PR 967 against master.
+The following work is isolated on `codex/crew-route-reliability-20261011` and
+requires separate publication approval.
+
+- [x] Retain followers at incomplete early stairs/tunnels with an actual entrance return wall; give fallen gap followers a finite far-bank bash and supported rising exit.
+- [x] Rehearse supported walking falls down to 32 pixels with matching lower-band hazard observations, and defer fallback excavation while another real construction job occupies the passive corridor.
+- [x] Spend short-basher proof work before speculative future guarded entrances; keep denied terrain queries from charging beyond the existing 1,024-work cap.
+- [x] Search the foremost unfinished walking actor after a leader is busy or already arrived; retain temporal alternatives, bounded nodes and fresh whole-crew verification.
+- [x] Move lethal source objects after x1024 so the crew encounters the initial skill challenges first; retain later real hazards and their existing ramp.
+- [x] Preserve paused regeneration and explicit seed drafts, unify keyboard/button stepping, and repair keyboard drawer focus.
+- [x] Fence stale report requests and replay instances, detach imported reports from live controls, and reject future baseline telemetry at earlier checkpoints.
+- [x] Exercise real saved-report browser replay from current source, including changed-byte rejection, without requesting MIDI or audio.
+- [x] Resolve the fifteen recorded later Fire deaths with bounded two-section builder routes, recoverable coincident guards and visible return lips; qualify both original birth cohorts beyond the fire.
+- [x] Diagnose recorded test timeouts with sequential exact-case rechecks at unchanged limits; remove unnecessary accessory row allocation while retaining byte-identical output.
+- [ ] Extend forward progress beyond later source walls (including Fire seed3 at x1316), and qualify additional hazards without treating prefix arrivals as whole-run survival.
+- [ ] Extend loader branch coverage for request failures, byte limits and unavailable assets; keep physical MIDI and acoustic acceptance open.
+- [ ] Cover unusual local-tunnel directional blockers and boundary exits, basin delegation in the planner, and the default steel predicate in early assembly admission.
+
+The controlled corpus covers thirty distinct seed/theme/cohort configurations,
+including crews of eight and sixteen in Dirt, Fire and Snow, all four challenge
+forms and six additional seed/chunk combinations. Repeated gap executions check
+determinism rather than providing independent reliability samples. Two separate
+entrance regressions use sixteen real births at six-tick intervals. Every
+original member must reach supported walking beyond the stated goal. Controlled
+cases start from declared supported poses; after initialization, no actor is
+replaced, teleported, granted a permanent ability or omitted from accounting.
+
+Matched dense Dirt cases at the published checkpoint reached 11/16 for the
+ledge, 11/16 for the wall and 5/16 for the gap; the revised local forms retain
+all sixteen. The short Snow source wall exposed a different cause: at tick304,
+a future guarded proof spent 369 observations before the current short bash,
+and actor0 missed its launch at x330. Prioritizing the actual short cut keeps
+that original leader. A separate eight-actor independent search previously
+ignored seven blocked followers after its frontier actor arrived; the current
+search discovers and freshly replays the follower's tick7 basher assignment.
+
+The initial natural-spawn receipt samples Dirt, Fire and Snow with seeds 2, 3
+and 42, sixteen births at six-tick intervals and a 2,200-tick ceiling. All 144
+original actors reach supported walking at or beyond x1024; all charged lane
+work stays at or below 1,024. Seven runs retain all sixteen living actors when
+the last member arrives. Fire seed3 loses twelve and Fire seed42 loses three
+actors to later fire after their recorded arrivals, leaving 129 alive globally.
+These are early-prefix crossings, not whole-run survival qualifications.
+That pre-fire-fix receipt is `temp/crew-natural-verified.jsonl`.
+
+The fifteen later deaths exposed a two-section fire crossing, a flat-floor
+containment omission and overlapping walkers inside a blocker's central gap.
+Reusing the physical staged-project owner and legally recovering both guards
+resolves the outbound crossing. A longer seed3 check then exposed returning
+traffic below the bridge; a visible eight-pixel foundation lip resolves that
+specific return path without changing the source trigger. The current natural
+birth regressions retain 32/32 original actors through seed3 tick2600 and seed42
+tick2200, with all sixteen in each case reaching supported walking beyond the
+fire, zero contacts/deaths, two real builder sections and one completed crew
+project each. No permanent abilities, replacements or held guards qualify.
+The source trigger bounds remain 1052..1076/y53..61 and 1107..1131/y55..63.
+These are two finite cases; later terrain still limits progress. Regressions
+are in `test/procgen-fire-crews.test.js`; keep the negative traces in
+`temp/fire-crews-before.jsonl` and `temp/fire-reuse-seed3.jsonl` as causal evidence.
+
+Before the fire follow-up, focused terrain/solver validation passed 113 checks. Across the six inspected
+modules, coverage is 99.29% of lines, 98.18% of functions and 93.89% of branches;
+the challenge shapes have full line/function/branch coverage. Coverage describes
+that focused suite only. The fire follow-up passes 43 affected checks, covering
+fire crews, basins, construction claims, terrain growth, challenges and hazard
+progression. Coverage of the three inspected owners is 90.10% lines, 86.54%
+functions and 84.48% branches; the staged crew owner has 100% lines/functions
+and 87.94% branches. Uncovered recipe fallback/cache paths and uncommon scene
+rejection branches remain candidates for focused future coverage. Both UI helpers used `gpt-6-astra` at Medium effort;
+their disjoint controller and survey ownership changes are integrated here.
+All 22 self-contained main/survey Edge journeys pass with audio muted, including
+two exact-source 64-tick saved reports, changed-source rejection, MIDI stub
+bytes, span persistence, pause/step and responsive controls. The pre-existing
+external campaign-report journey was not rerun. Desktop and narrow-view
+screenshots were inspected in `temp/crew-browser-final/`.
+A separate muted Edge check renders the explicitly selected single-theme Fire
+fixture before and after construction with the real renderer and sprites;
+all sixteen original births survive tick2600 with zero contacts or page errors.
+The completed stair and source-colored return lip were visually inspected in
+`temp/fire-visual-1250.png` and `temp/fire-visual-2600.png`. This controlled
+source-scene view is separate from the default pack's theme selection and HUD.
+
+Format, lint, undefined-call, dependency and whitespace checks pass. The final
+full gate is blocked: `temp/crew-full-test.log` records 3,495 passes and one
+15-second recipe-mining timeout; that unchanged file then passes all seven
+checks alone, regenerating the source book in 6.8 seconds. A full retry records
+3,485 passes and nine timeouts in character rendering, source mining and lane
+simulation (`temp/crew-full-test-retry.log`). A read-only host snapshot showed
+substantial unrelated CPU activity; that is evidence of contention, not proof
+that every timeout is environmental. No timeout, work or budget limit was
+relaxed. A subsequent affected-file recheck still recorded twelve timing
+failures (`temp/crew-timeout-rechecks.log`). Exact selections from those three
+logs were then run sequentially in fresh Node processes. Source assemblies,
+behavior, lane determinism/1024-lane execution, donut colors and several
+character cases passed. The remaining six cases passed individually after
+the accessory allocation fix (`temp/timeout-individual-summary.jsonl`): the
+unchanged recipe regeneration took 4.98 seconds; character checks took
+0.244..1.472 seconds at their original limits. The former supports host
+contention as an explanation, without proving every historical timeout was
+environmental. A bounded comparison confirms all 96 accessory outputs are
+identical and source rows remain unchanged; measured composition CPU drops
+from 548ms to 141ms (`temp/accessory-work-comparison.json`).
+
+Checkpoint verification: 43 affected tests and format, lint, undefined-call,
+dependency, critical-type and whitespace checks pass. All 18 prior timeout
+cases have passing targeted rechecks at unchanged limits. The two extended
+Fire cases retain 32/32 original actors. The full aggregate gate was not rerun
+and remains unverified for this follow-on tree.
+
+The owner explicitly approved a local checkpoint commit with that limitation
+documented, as a specific exception to the full-gate-before-commit policy.
+The checksummed pre-commit file/patch checkpoint remains preserved in
+`temp/crew-route-checkpoint/`. This follow-on starts at `8b49fe7c`, the head of
+`codex/terrain-skill-design-20261010`. Any future publication should stack onto
+that branch to keep PR967's changes out of the follow-on diff. No follow-on
+push or PR is authorized.
+
+Disposable diagnostics remain under `temp/crew-*`, `temp/snow-budget-*`,
+`temp/survey-final-ownership-tests` and `temp/survey-browser-coverage`. Retain the
+intermediate negative cases: these explain the fixes and are not qualified
+final-source receipts.
 
 ## Milestone 1: DAW-Like Multichannel MIDI Sequencer UI
 

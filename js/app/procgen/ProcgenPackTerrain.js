@@ -11,6 +11,13 @@ const procgenThemeOrder = (count, seed) => {
   for (let at = count - 1; at > 0; at--) { state = mix(state ^ at); const other = state % (at + 1); [order[at], order[other]] = [order[other], order[at]]; }
   return order;
 };
+const PROCGEN_THEME_FAMILIES = Object.freeze([
+  ['crystal', 'lemmings', 4], ['bubble', 'lemmings_ohNo', 3], ['dirt', 'lemmings', 0],
+  ['rock', 'lemmings_ohNo', 1], ['fire', 'lemmings', 1], ['brick', 'lemmings_ohNo', 0],
+  ['snow', 'lemmings_ohNo', 2], ['pillar', 'lemmings', 3], ['squasher', 'lemmings', 2],
+  ['holiday-snow', 'holiday94', 2]
+].map(([id, pack, groundSet]) => Object.freeze({ id, pack, groundSet, styleName: id === 'holiday-snow' ? 'snow' : id })));
+const DEFAULT_PROCGEN_LANE_THEMES = Object.freeze(PROCGEN_THEME_FAMILIES.slice(0, 8).map(theme => theme.id));
 
 class ProcgenPackTerrain {
   constructor(themes) {
@@ -28,9 +35,20 @@ class ProcgenPackTerrain {
     this.assignments.clear(); this.laneThemes.length = seeds.length;
     const order = procgenThemeOrder(this.themes.length, runSeed), offset = (generation - 1) % order.length;
     for (let lane = 0; lane < seeds.length; lane++) {
-      const index = order[(lane + offset) % order.length];
+      const requested = this.laneAssignments?.[lane % this.laneAssignments.length];
+      const selected = this.themes.findIndex(theme => (theme.familyId || theme.styleName) === requested);
+      const index = selected >= 0 ? selected : order[(lane + offset) % order.length];
       this.assignments.set(seeds[lane], index); this.laneThemes[lane] = this.themes[index].styleName;
     }
+  }
+  setLaneAssignments(assignments) {
+    if (!Array.isArray(assignments) || !assignments.length || assignments.some(id => !this.themes.some(theme => (theme.familyId || theme.styleName) === id))) throw new Error('Unavailable lane theme assignment');
+    this.laneAssignments = assignments.slice();
+  }
+  exportAssignments() { return { laneAssignments: this.laneAssignments?.slice() || null, assignments: [...this.assignments], laneThemes: this.laneThemes.slice() }; }
+  restoreAssignments(data) {
+    if (data.laneAssignments) this.setLaneAssignments(data.laneAssignments);
+    this.assignments = new Map(data.assignments); this.laneThemes = data.laneThemes.slice();
   }
   forSeed(seed) { return this.themes[this.assignments.get(seed) ?? mix(seed) % this.themes.length].terrain; }
   configure(lanes, maxActors = 16384, options = {}) { for (const theme of this.themes) theme.terrain.configure(lanes, Math.ceil(maxActors / this.themes.length), options); this.height = this.themes[0].terrain.height; }
@@ -81,4 +99,19 @@ const loadProcgenPackTerrain = async ({ styleNames, config, fileProvider, book, 
   terrain.unavailableThemes = results.flatMap((result, index) => result.status === 'rejected' ? [names[index]] : []);
   return terrain;
 };
-export { ProcgenPackTerrain, procgenThemeOrder, loadProcgenPackTerrain };
+const loadProcgenMixedTerrain = async ({ configs, fileProvider, book, laneAssignments = DEFAULT_PROCGEN_LANE_THEMES, random = Math.random } = {}) => {
+  const available = configs instanceof Map ? [...configs.values()] : Array.isArray(configs) ? configs : Object.values(configs || {});
+  const results = await Promise.allSettled(PROCGEN_THEME_FAMILIES.map(async family => {
+    const config = available.find(config => String(config.path).replace(/\\/g, '/').split('/').filter(Boolean).at(-1) === family.pack);
+    if (!config) throw new Error(`Pack unavailable: ${family.pack}`);
+    const assets = await new ProcgenAssetManager({ styleName: family.styleName, groundSet: family.groundSet, config, fileProvider, random }).load();
+    const loaded = await loadProcgenPackTerrain({ styleNames: [family.styleName], config, fileProvider, book, random, initialAssets: assets });
+    const theme = loaded.themes[0];
+    return { ...theme, familyId: family.id, styleName: family.id, provenance: { pack: family.pack, groundSet: family.groundSet, recipeId: theme.terrain.recipe.id, assetSha256: theme.terrain.recipe.assetSha256 } };
+  }));
+  const terrain = new ProcgenPackTerrain(results.filter(result => result.status === 'fulfilled').map(result => result.value));
+  terrain.unavailableThemes = results.flatMap((result, index) => result.status === 'rejected' ? [PROCGEN_THEME_FAMILIES[index].id] : []);
+  terrain.setLaneAssignments(laneAssignments);
+  return terrain;
+};
+export { ProcgenPackTerrain, procgenThemeOrder, loadProcgenPackTerrain, loadProcgenMixedTerrain, PROCGEN_THEME_FAMILIES, DEFAULT_PROCGEN_LANE_THEMES };

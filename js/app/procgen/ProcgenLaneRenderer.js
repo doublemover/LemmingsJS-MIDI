@@ -30,6 +30,29 @@ class ProcgenLaneRenderer {
   }
   get laneHeight() { return this.world.laneHeight || 96; }
   resize() { this.lastTerrainKey = ''; this.lastGeometryKey = ''; this.render(); }
+  _drawScenery(terrainKey, width, height) {
+    const scenery = this.world.scenery; if (!scenery) return;
+    scenery.reducedMotion = !!this.reducedMotion?.matches;
+    if (!this.sceneryBuffer) {
+      this.sceneryBuffer = this.canvas.ownerDocument.createElement('canvas'); this.sceneryContext = this.sceneryBuffer.getContext('2d');
+    }
+    const key = `${terrainKey}:${scenery.revision}`;
+    if (!this.sceneryImage || this.sceneryBuffer.width !== width || this.sceneryBuffer.height !== height) {
+      this.sceneryBuffer.width = width; this.sceneryBuffer.height = height;
+      this.sceneryImage = this.sceneryContext.createImageData(width, height); this.sceneryPixels = new Uint32Array(this.sceneryImage.data.buffer); this.lastSceneryKey = '';
+    }
+    if (key !== this.lastSceneryKey) {
+      this.sceneryPixels.fill(0);
+      const first = Math.max(0, Math.floor(this.originY / this.laneHeight)), last = Math.min(this.world.laneCount, Math.ceil((this.originY + this.viewHeight) / this.laneHeight));
+      const drawPixel = (x, y, color) => {
+        const px = Math.floor((x - this.originX) / this.rasterStep), py = Math.floor((y - this.originY) / this.rasterStep), index = py * width + px;
+        if (px >= 0 && py >= 0 && px < width && py < height && this.pixels[index] === 0xff0e0807) this.sceneryPixels[index] = color;
+      };
+      for (let lane = first; lane < last; lane++) scenery.drawLane({ lane, left: this.originX, right: this.originX + this.viewWidth, top: this.originY, bottom: this.originY + this.viewHeight, drawPixel });
+      this.sceneryContext.putImageData(this.sceneryImage, 0, 0); this.lastSceneryKey = key;
+    }
+    this.bufferContext.drawImage(this.sceneryBuffer, 0, 0);
+  }
   _frameCanvas(frame) {
     let bitmap = this.frames.get(frame);
     if (!bitmap) {
@@ -246,15 +269,16 @@ class ProcgenLaneRenderer {
     const start = this.window.performance?.now?.() ?? 0;
     this.cctv.prepare(); this.camera.update(false, !force);
     const dpr = Math.min(2, this.window.devicePixelRatio || 1), scale = this.scale * dpr;
-    this.rasterStep = Math.max(1, 1 / scale);
+    const layout = this.workstationLayout;
+    this.rasterStep = layout ? 1 : Math.max(1, 1 / scale);
     const mainHeight = Math.max(1, this.canvas.height - (this.overviewBandHeight || 0) * dpr);
-    const width = Math.max(1, Math.ceil(this.canvas.width / Math.max(1, scale))), height = Math.max(1, Math.ceil(mainHeight / Math.max(1, scale)));
+    const width = Math.max(1, Math.ceil(this.canvas.width / (layout ? scale : Math.max(1, scale)))), height = layout ? layout.count * this.laneHeight : Math.max(1, Math.ceil(mainHeight / Math.max(1, scale)));
     this.viewWidth = width * this.rasterStep; this.viewHeight = height * this.rasterStep;
     this.originX = Math.floor(this.cameraX / this.rasterStep) * this.rasterStep;
-    this.originY = Math.floor(this.cameraY / this.rasterStep) * this.rasterStep;
+    this.originY = layout ? layout.firstLane * this.laneHeight : Math.floor(this.cameraY / this.rasterStep) * this.rasterStep;
     const world = this.world, sprites = world.sprites, appearance = sprites?.activePreference || sprites?.getPreference?.();
-    const geometryKey = `${this.originX}:${this.originY}:${width}:${height}:${this.rasterStep}:${world.generation}`;
-    const frameKey = `${geometryKey}:${world.tickIndex}:${world.terrainRevision}:${world.frontierRevision}:${world.hazards?.revision || 0}:${this.canvas.width}:${this.canvas.height}:${dpr}:${this.scale}:${this.cameraY}:${this.follow}:${!!this.reducedMotion?.matches}:${this.cctv.renderKey}:${!!this.overviewActive}:${this.midiSpanOverlay?.revision || 0}`;
+    const geometryKey = `${this.originX}:${this.originY}:${width}:${height}:${this.rasterStep}:${world.generation}:${layout?.mode || ''}:${layout?.rowHeight || 0}`;
+    const frameKey = `${geometryKey}:${world.tickIndex}:${world.terrainRevision}:${world.frontierRevision}:${world.hazards?.revision || 0}:${world.scenery?.revision || 0}:${this.canvas.width}:${this.canvas.height}:${dpr}:${this.scale}:${this.cameraY}:${this.follow}:${!!this.reducedMotion?.matches}:${this.cctv.renderKey}:${!!this.overviewActive}:${this.midiSpanOverlay?.revision || 0}`;
     if (!force && frameKey === this.lastFrameKey && appearance === this.lastAppearance && sprites === this.lastSprites && this.hud === this.lastHud && this.hud?.sprites === this.lastHudSprites && this.decorationLayer === this.lastDecorationLayer) {
       this.frameCacheHits++; this.lastFrameMs = (this.window.performance?.now?.() ?? start) - start;
       return false;
@@ -272,6 +296,7 @@ class ProcgenLaneRenderer {
     else this.terrainCacheHits++;
     this.bufferContext.imageSmoothingEnabled = false;
     this.bufferContext.drawImage(this.terrainBuffer, 0, 0);
+    this._drawScenery(key, width, height);
     this.decorationLayer?.draw(this, !!this.reducedMotion?.matches);
     this._drawObjects();
     this.renderedActors = 0; this.actorDots.clear();
@@ -286,17 +311,39 @@ class ProcgenLaneRenderer {
     this._flushDots(this.actorDots);
     this.world.characterParticles?.render(this);
     this.context.imageSmoothingEnabled = false;
-    this.context.drawImage(this.buffer, 0, 0, this.canvas.width, mainHeight);
-    this._drawPreviousDistances(dpr);
-    this.midiSpanOverlay?.draw(this.context, this, dpr);
-    this.hud?.render(this.context, this.world, this.camera, dpr);
-    this.cctv.draw(this.context, dpr);
+    if (layout) {
+      this.context.fillStyle = '#101927'; this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      layout.scale = this.scale; layout.rowSourceY = []; this.workstationRows = [];
+      const leaders = new Array(layout.count);
+      for (const actor of this.world.actors) {
+        const row = Math.floor(actor.y / this.laneHeight) - layout.firstLane;
+        if (row < 0 || row >= layout.count || actor.removed || actor.failureReason || actor.x < this.originX || actor.x >= this.originX + this.viewWidth) continue;
+        if (!leaders[row] || leaders[row].x < actor.x) leaders[row] = actor;
+      }
+      for (let row = 0; row < layout.count; row++) {
+        const available = layout.rowHeight - layout.stripHeight, crop = Math.min(this.laneHeight, available / this.scale), lane = layout.firstLane + row;
+        const focus = leaders[row] ? leaders[row].y - lane * this.laneHeight : this.laneHeight - 25;
+        const sourceY = Math.max(0, Math.min(this.laneHeight - crop, focus - crop * 0.6));
+        layout.rowSourceY[row] = sourceY;
+        this.workstationRows.push({ lane, sourceY: lane * this.laneHeight + sourceY, sourceHeight: crop, destinationY: row * layout.rowHeight, destinationHeight: crop * this.scale });
+        this.context.drawImage(this.buffer, 0, row * this.laneHeight + sourceY, width, crop, 0, row * layout.rowHeight * dpr, this.canvas.width, crop * scale);
+      }
+      this.onWorkstationFrame?.();
+    } else {
+      this.context.drawImage(this.buffer, 0, 0, this.canvas.width, mainHeight);
+      this._drawPreviousDistances(dpr);
+      this.midiSpanOverlay?.draw(this.context, this, dpr);
+      this.hud?.render(this.context, this.world, this.camera, dpr);
+      this.cctv.draw(this.context, dpr);
+    }
     this.lastFrameKey = frameKey; this.lastAppearance = appearance; this.lastSprites = sprites; this.lastHud = this.hud; this.lastHudSprites = this.hud?.sprites; this.lastDecorationLayer = this.decorationLayer;
     this.lastFrameMs = (this.window.performance?.now?.() ?? start) - start;
     return true;
   }
   dispose() { this.actorVisibility.dispose(); this.objectPlacements.length = 0; this.camera.dispose(); this.cctv.dispose(); this.decorationLayer = null; this.midiSpanOverlay = null; this.frames = new WeakMap(); this.objectFrames = new WeakMap();
     this.dotColors = new WeakMap(); this.actorDots = new Map(); this.objectDots = new Map(); this.image = null; this.pixels = null; this.lastFrameKey = null;
+    if (this.sceneryBuffer) this.sceneryBuffer.width = this.sceneryBuffer.height = 0;
+    this.sceneryBuffer = this.sceneryContext = this.sceneryImage = this.sceneryPixels = null;
     this.lastAppearance = this.lastSprites = this.lastHud = this.lastHudSprites = this.lastDecorationLayer = null; }
 }
 export { ProcgenLaneRenderer };

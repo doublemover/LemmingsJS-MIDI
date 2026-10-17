@@ -16,12 +16,13 @@ const advanceProcgenClock = (elapsed, deltaMs, speed, step, now) => {
   return elapsed;
 };
 
-const createProcgenLaneRuntime = ({ canvas, resources, sprites, masks, assets, laneCount, seed, terrain, laneHeight = DEFAULT_LANE_HEIGHT, previousDistances = [], workerLimits, populationPolicy, onMetrics, onActiveCount, speed = 3, windowRef = window }) => {
-  const world = new ProcgenLaneWorld({ laneCount, laneHeight, seed, sprites, masks, speed, cohorts: true, populationPolicy,
-    terrain, previousDistances, workerLimits,
+const createProcgenLaneRuntime = ({ canvas, resources, sprites, masks, assets, laneCount, seed, terrain, laneHeight = DEFAULT_LANE_HEIGHT, previousDistances = [], workerLimits, populationPolicy, onMetrics, onActiveCount, speed = 3, workstation = false, hazardSpacing = 160, initialWorld = null, windowRef = window }) => {
+  const world = initialWorld || new ProcgenLaneWorld({ laneCount, laneHeight, seed, sprites, masks, speed, cohorts: true, populationPolicy,
+    terrain, previousDistances, workerLimits, workstation, hazardSpacing,
     particleTable: new ParticleTable(assets.groundPieces[0].image.palette) });
   const renderer = new ProcgenLaneRenderer({ canvas, world, assets, windowRef });
   let paused = false;
+  let clockDriven = false, clockTime = null;
   let running = true, frame = null, lastTime = null, elapsed = 0, previewRouter = null, lastMetrics = null, lastMetricTick = 0;
   let displayedActiveCount = -1;
   const reportActiveCount = () => {
@@ -43,12 +44,12 @@ const createProcgenLaneRuntime = ({ canvas, resources, sprites, masks, assets, l
   world.render = () => renderer.render();
   const update = time => {
     if (!running) return;
-    if (lastTime != null && !paused && !windowRef.document.hidden) {
+    if (!clockDriven && lastTime != null && !paused && !windowRef.document.hidden) {
       elapsed = advanceProcgenClock(elapsed, time - lastTime, world.timer.speedFactor,
         () => world.step(time), () => windowRef.performance?.now?.() ?? Date.now());
     }
     lastTime = time;
-    renderer.render(false); reportActiveCount();
+    if (!windowRef.document.hidden) renderer.render(false); reportActiveCount();
     if (lastMetrics == null) { lastMetrics = time; lastMetricTick = world.tickIndex; }
     if (time - lastMetrics >= 1000) {
       world.timer.achievedTicksPerSecond = (world.tickIndex - lastMetricTick) * 1000 / (time - lastMetrics);
@@ -58,15 +59,22 @@ const createProcgenLaneRuntime = ({ canvas, resources, sprites, masks, assets, l
   };
   const visibilityChanged = () => {
     lastTime = null;
-    if (windowRef.document.hidden) previewRouter?.resetClock?.({ preserveGamePhrases: true });
+    if (!clockDriven && windowRef.document.hidden) previewRouter?.resetClock?.({ preserveGamePhrases: true });
   };
   windowRef.document.addEventListener?.('visibilitychange', visibilityChanged);
   frame = windowRef.requestAnimationFrame(update);
   const getDebugState = () => ({ ...world.getDebugState(), selectedTheme: terrain?.recipe.family || assets.styleName,
     renderer: { visibleActors: renderer.renderedActors, frameMs: renderer.lastFrameMs, cameraX: renderer.cameraX, cameraY: renderer.cameraY, scale: renderer.scale, rasterWidth: renderer.buffer.width, rasterHeight: renderer.buffer.height, terrainRebuilds: renderer.terrainRebuilds, terrainCacheHits: renderer.terrainCacheHits, frameCacheHits: renderer.frameCacheHits, actorCandidates: renderer.actorVisibility.candidates.length, actorIndexRebuilds: renderer.actorVisibility.rebuilds || 0 } });
   return { view, game: world, world, renderer, getDebugState,
+    setClockDriven(value) { clockDriven = !!value; clockTime = null; elapsed = 0; },
+    pump(time) {
+      if (!clockDriven || !running) return;
+      if (!paused && clockTime != null) elapsed = advanceProcgenClock(elapsed, Math.max(0, time - clockTime), world.timer.speedFactor,
+        () => world.step(time), () => windowRef.performance?.now?.() ?? Date.now());
+      clockTime = time; reportActiveCount();
+    },
     pause() { paused = true; previewRouter?.resetClock?.({ preserveGamePhrases: true }); },
-    resume() { paused = false; lastTime = null; },
+    resume() { paused = false; lastTime = null; clockTime = null; },
     step(count = 1) {
       const now = windowRef.performance?.now?.() ?? world.eventTimeMs;
       for (let i = 0; i < Math.max(1, Math.min(10000, Math.trunc(count))); i++) world.step(now);

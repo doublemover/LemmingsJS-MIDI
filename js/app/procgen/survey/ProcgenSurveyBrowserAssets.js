@@ -25,7 +25,8 @@ const sourcePath = (name, code) => {
   if (url.origin !== repoUrl.origin || !url.pathname.startsWith(repoUrl.pathname)) throw new Error('Replay sources must remain in this origin and repository');
   return url;
 };
-const verifiedBrowserFiles = async (manifest, fetchRef) => {
+const verifiedBrowserFiles = async (manifest, fetchRef, signal) => {
+  signal?.throwIfAborted();
   canonicalSurveyJson(manifest);
   if (manifest?.schemaVersion !== 1 || !/^[a-f0-9]{40}$/.test(manifest.engineCommit || '') || !manifest.codeHashes || !manifest.assetHashes || !/^[a-f0-9]{64}$/.test(manifest.codeDigest || '')) throw new Error('Replay requires the complete original source manifest');
   const code = Object.entries(manifest.codeHashes), assets = Object.entries(manifest.assetHashes), entries = [...code.map(entry => [...entry, true]), ...assets.map(entry => [...entry, false])];
@@ -37,9 +38,10 @@ const verifiedBrowserFiles = async (manifest, fetchRef) => {
   const bytes = new Map(); let totalBytes = 0, cursor = 0;
   const read = async () => {
     while (cursor < entries.length) {
-      const [name, expected, isCode] = entries[cursor++], response = await fetchRef(sourcePath(name, isCode), { cache: 'no-store', credentials: 'same-origin', redirect: 'error' });
+      signal?.throwIfAborted();
+      const [name, expected, isCode] = entries[cursor++], response = await fetchRef(sourcePath(name, isCode), { cache: 'no-store', credentials: 'same-origin', redirect: 'error', signal });
       if (!response.ok) throw new Error(`Replay source request failed: ${name} (${response.status})`);
-      const data = new Uint8Array(await response.arrayBuffer()); totalBytes += data.byteLength;
+      const data = new Uint8Array(await response.arrayBuffer()); signal?.throwIfAborted(); totalBytes += data.byteLength;
       if (data.byteLength > MAX_FILE_BYTES || totalBytes > MAX_SOURCE_BYTES) throw new Error('Replay source byte limit exceeded');
       if (await hexSha256(data) !== expected) throw new Error(`Replay source differs from the saved trial: ${name}`);
       bytes.set(name, data);
@@ -76,15 +78,17 @@ const browserTerrain = async (scenario, files) => {
   const assemblyCatalog = selectAuthoredAssemblyCatalog(book, { packPath: pack, groundSet: scenario.groundSet, assetSha256, objectSha256 });
   return new ProcgenRecipeTerrain({ recipe, terrainPieces, objectPieces, sourceDescriptor, assemblyCatalog, packWidthLimit: getPackTerrainWidthLimit(book, pack) });
 };
-const createBrowserSurveyTrial = async ({ scenario: rawScenario, candidate, sourceManifest, fetchFile = globalThis.fetch } = {}) => {
+const createBrowserSurveyTrial = async ({ scenario: rawScenario, candidate, sourceManifest, fetchFile = globalThis.fetch, signal } = {}) => {
   if (typeof fetchFile !== 'function') throw new Error('Verified replay requires fetch');
   const scenario = normalizeSurveyScenario(rawScenario);
   if (!/^[A-Za-z0-9_-]+$/.test(scenario.pack)) throw new Error('Browser survey supports one local source pack');
   if (scenario.engineCommit !== sourceManifest?.engineCommit || canonicalSurveyJson(scenario.assetHashes) !== canonicalSurveyJson(sourceManifest?.assetHashes)) throw new Error('Scenario source identity differs from its manifest');
-  const { bytes, verification } = await verifiedBrowserFiles(sourceManifest, fetchFile);
+  const { bytes, verification } = await verifiedBrowserFiles(sourceManifest, fetchFile, signal);
+  signal?.throwIfAborted();
   const main = bytes.get('lemmings_ohNo/MAIN.DAT'); if (!main) throw new Error('Replay masks are missing from provenance');
   const masks = new MaskProvider(new FileContainer(new BinaryReader(main)).getPart(1));
   const terrain = scenario.mode === 'generated' ? await browserTerrain(scenario, bytes) : null;
+  signal?.throwIfAborted();
   const trial = createSurveyTrial({ scenario, candidate, masks, terrain }); trial.sourceVerification = verification;
   return trial;
 };

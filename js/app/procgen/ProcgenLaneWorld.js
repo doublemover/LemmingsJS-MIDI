@@ -16,7 +16,7 @@ import { ActionSplatterSystem } from '../../actions/ActionSplatterSystem.js';
 import { lemmingManagerInteractionMethods } from '../../lemmings/lemming-manager/LemmingManagerInteraction.js';
 import { TriggerTypes } from '../../level/TriggerTypes.js';
 import { ProcgenHazards } from './ProcgenHazards.js';
-import { ProcgenHazardPlanner } from './ProcgenHazardPlanner.js';
+import { ProcgenHazardPlanner, MAX_ROUTE_PROBES } from './ProcgenHazardPlanner.js';
 import { ProcgenTriggerManager } from './ProcgenTriggerManager.js';
 import { MAX_PROCGEN_WORKERS, normalizeWorkerLimits } from './ProcgenWorkerLimits.js';
 import { ActionBlockerSystem } from '../../actions/ActionBlockerSystem.js';
@@ -36,7 +36,8 @@ import { ActionShrugSystem } from '../../actions/ActionShrugSystem.js';
 import { SoundEventTypes, SoundEffectIds } from '../../game/SoundEvents.js';
 import { ProcgenSoundEventBus } from './ProcgenSoundEventBus.js';
 import { EventHandler } from '../../util/EventHandler.js';
-import { normalizeSeed } from '../../core/seededRandom.js';
+import { normalizeSeed, deriveSeed } from '../../core/seededRandom.js';
+import { ProcgenScenery } from './ProcgenScenery.js';
 
 const MAX_PROCGEN_LANES = 1024;
 const LANE_HEIGHT = 96;
@@ -49,10 +50,11 @@ const mix = value => { let n = Math.imul(value ^ (value >>> 16), 0x45d9f3b); n =
 // Terrain is queried in one shared coordinate system. No world-sized bitmap,
 // per-lane Game, or rendering dependency is needed by the real action systems.
 class ProcgenLaneWorld {
-  constructor({ laneCount = 1, laneHeight = 96, seed = 1, sprites = null, masks, assists = true, speed = 3, cohorts = false, spawnSpreadTicks = null, maxActors = 16384, stallPolicy = {}, populationPolicy = {}, previousDistances = [], workerLimits = {}, policyConfig = {}, particleTable = null, terrain = null } = {}) {
+  constructor({ laneCount = 1, laneHeight = 96, seed = 1, sprites = null, masks, assists = true, speed = 3, cohorts = false, spawnSpreadTicks = null, maxActors = 16384, stallPolicy = {}, populationPolicy = {}, previousDistances = [], workerLimits = {}, policyConfig = {}, particleTable = null, terrain = null, workstation = false, hazardSpacing = 160 } = {}) {
     this.laneCount = normalizeLaneCount(laneCount);
     this.laneHeight = normalizeLaneHeight(laneHeight);
     this.seed = normalizeSeed(seed);
+    this.workstationEnabled = workstation;
     this.width = 0x3fffffff;
     this.height = this.laneCount * this.laneHeight;
     this.tickIndex = 0;
@@ -64,7 +66,7 @@ class ProcgenLaneWorld {
     this.sprites = sprites;
     this._assistedColumn = { valid: false, x: 0, y: 0, height: 0, revision: 0, value: 0 };
     this.terrain = terrain;
-    terrain?.configure?.(this.laneCount, maxActors, { laneHeight: this.laneHeight });
+    terrain?.configure?.(this.laneCount, maxActors, { laneHeight: this.laneHeight, workstation, hazardSpacing: workstation ? hazardSpacing : 0 });
     this.terrainRevision = 0; this.frontierRevision = 0; this.terrainTileRevisions = new ProcgenTerrainRevisions(this.laneCount, Math.max(128, this.laneCount * 16));
     this.frontiers = new Float64Array(this.laneCount); this.frontiers.fill(36);
     this.generatedThrough = new Float64Array(this.laneCount); this.generatedThrough.fill(terrain?.chunkWidth || CHUNK_WIDTH);
@@ -102,7 +104,7 @@ class ProcgenLaneWorld {
     this._spawnPhaseRanks = new Uint16Array(this.laneCount); this._spawnPhases = new Uint16Array(this.laneCount);
     this._laneAdmissionCohorts = new Float64Array(this.laneCount); this._resetSpawnPhases();
     terrain?.registerLanes?.(this.laneSeeds, this.seed, this.generation);
-    this.terrainGrowth = terrain?.supportsFineGrowth ? new ProcgenTerrainGrowth(this.laneCount, terrain.chunkWidth) : null;
+    this.terrainGrowth = terrain?.supportsFineGrowth ? new ProcgenTerrainGrowth(this.laneCount, terrain.chunkWidth, { justAhead: workstation }) : null;
     this.terrainGrowth?.reset(this.generatedThrough, this.frontiers);
     this._prepareGrowthChunk = (lane, chunk, options) => this.terrain.growthPlan?.(this.laneSeeds[lane], chunk, options);
     this._revealGrowth = (lane, previous, next, chunk, job) => {
@@ -111,6 +113,8 @@ class ProcgenLaneWorld {
       this.terrainTileRevisions.set(lane * 0x800000 + chunk, this.terrainRevision);
       if (chunk === 0) this._edgeWallRevisions[lane]++;
     };
+    this.scenery = workstation && terrain ? new ProcgenScenery({ terrain, laneSeeds: this.laneSeeds, laneHeight: this.laneHeight, solidLead: this.terrainGrowth?.targetLead || 96 }) : null;
+    if (workstation) for (let lane = 0; lane < this.laneCount; lane++) this.terrainGrowth?.ensureLocal(lane, 36, { through: this.generatedThrough, frontiers: this.frontiers, prepare: this._prepareGrowthChunk, reveal: this._revealGrowth });
     this.eventTimeMs = 0;
     this.timer = { speedFactor: speed, onGameTick: new EventHandler(), getGameTicks: () => this.tickIndex,
       TIME_PER_FRAME_MS: 60,
@@ -171,7 +175,7 @@ class ProcgenLaneWorld {
     return actor;
   }
   _resetSpawnPhases() {
-    const order = Array.from({ length: this.laneCount }, (_, lane) => lane); let state = mix(this.seed ^ this.generation);
+    const order = Array.from({ length: this.laneCount }, (_, lane) => lane); let state = mix(this.seed ^ (this.workstationEnabled ? 1 : this.generation));
     for (let at = order.length - 1; at > 0; at--) { state = mix(state ^ at); const other = state % (at + 1); [order[at], order[other]] = [order[other], order[at]]; }
     for (let rank = 0; rank < order.length; rank++) this._spawnPhaseRanks[order[rank]] = rank;
     this.population.cohortSpreadTicks = this.spawnSpreadTicks;
@@ -209,6 +213,11 @@ class ProcgenLaneWorld {
     }
   }
   _restart(previousDistances) {
+    if (this.workstationEnabled) {
+      // Each displayed seed defines its run and the next seed, including after Replay Seed.
+      const nextSeed = deriveSeed(this.seed, 'procgen:auto-reset');
+      this.seed = nextSeed === this.seed ? (nextSeed + 1) >>> 0 : nextSeed;
+    }
     this.characterParticles?.clear(); this.triggerManager.reset(); this.hazardPlanner.reset(); this.basinRoutes.reset(); this.tunnelRoutes.reset(); this.edgeBlockers.fill(null); this._processingLane = null;
     this._assistedColumn.valid = false; this.accessTasks.fill(null); this._edgeWallCache.fill(null); this._edgeWallRevisions.fill(0); this._edgeWallHazards.length = 0;
     this._musicActorPositions.clear(); this._musicCompletedSlot = 0; this._musicCompletedTick = this.tickIndex;
@@ -216,9 +225,12 @@ class ProcgenLaneWorld {
     this.actors.length = 0; this.activeCount = 0; this.admissionPaused = false; this._manualNukeLanes.fill(0); this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this.terrain?.reset?.();
     this._laneChunk.fill(null); this._laneChunkIndex.fill(-1); this._collisionSlots.fill(null); this._collisionIndices.fill(-1); this._laneEdits.fill(null); this._laneEditIndex.fill(-1); this._editCache.fill(null); this._editIndices.fill(-1); this.frontiers.fill(36);
     this.generatedThrough.fill(this.terrain?.chunkWidth || CHUNK_WIDTH); this.terrainRevision++; this.frontierRevision++; this.generation++; this.generationStartTick = this.tickIndex;
-    for (let lane = 0; lane < this.laneCount; lane++) this.laneSeeds[lane] = mix(this.seed ^ Math.imul(lane + 1, 0x9e3779b1) ^ Math.imul(this.generation - 1, 0x85ebca6b));
-    this.terrain?.registerLanes?.(this.laneSeeds, this.seed, this.generation);
+    const terrainGeneration = this.workstationEnabled ? 1 : this.generation;
+    for (let lane = 0; lane < this.laneCount; lane++) this.laneSeeds[lane] = mix(this.seed ^ Math.imul(lane + 1, 0x9e3779b1) ^ Math.imul(terrainGeneration - 1, 0x85ebca6b));
+    this.terrain?.registerLanes?.(this.laneSeeds, this.seed, terrainGeneration);
     this.population.reset(this.generationStartTick); this._resetSpawnPhases(); this.lanePolicy.reset(); this.terrainActivityTicks.fill(-Infinity); this.pendingTerrainWork.fill(0); this._effectiveTerrainWork.fill(0); this.terrainGrowth?.reset(this.generatedThrough, this.frontiers);
+    this.scenery?.reset();
+    if (this.workstationEnabled) for (let lane = 0; lane < this.laneCount; lane++) this.terrainGrowth?.ensureLocal(lane, 36, { through: this.generatedThrough, frontiers: this.frontiers, prepare: this._prepareGrowthChunk, reveal: this._revealGrowth });
     this.stall = new ProcgenStallPolicy(this.laneCount, this.stall.settings, previousDistances, { laneHeight: this.laneHeight });
     for (const lane of this.stall.lanes) lane.lastProgressTick = this.tickIndex;
     this._retainTerrainDescriptors();
@@ -527,6 +539,10 @@ class ProcgenLaneWorld {
       const mask = action.masks?.get(actor.getDirection())?.GetMask(index);
       if (!mask || this.hasSteelUnderMask(mask, actor.x, actor.y) || this.hasArrowUnderMask(mask, actor.x, actor.y, actor.lookRight)) return false;
     }
+    if (continuation?.manager === this.lanePolicy.projects && continuation.project?.ownerId === actor.id && continuation.project.chain?.lostOwners.length) {
+      const tasks = this._accessTaskRecords(actor.laneIndex);
+      for (let index = tasks.length - 1; index >= 0; index--) if (!tasks[index].owner && tasks[index].crewProjectId === continuation.project.id) tasks.splice(index, 1);
+    }
     if (!this._claimAccess(actor, action, targetX, footprint, continuation)) return false;
     if (!action.triggerLemAction(actor)) return false;
     this._syncTriggerOwner(actor);
@@ -624,7 +640,10 @@ class ProcgenLaneWorld {
   _clearConstructionCrew(actor) {
     const task = actor.assistConstructionTask;
     if (!task) return;
-    if (task.blocker === actor) task.blocker = null;
+    if (task.blocker === actor) {
+      task.blocker = task.coincidentBlockers?.values().next().value || null;
+      if (task.blocker) task.coincidentBlockers.delete(task.blocker);
+    } else task.coincidentBlockers?.delete(actor);
     actor.assistConstructionTask = null;
   }
   _constructionPassage(task) {
@@ -660,33 +679,61 @@ class ProcgenLaneWorld {
   }
   _recoverConstructionCrew(actor, task) {
     const project = this.lanePolicy.projects.lanes[task.startLane]?.projects.find(p => p.id === task.crewProjectId);
-    const claim = { manager: this, project, actor, task, bounds: this._workerClaimBounds(actor, this.actions[State.BASHING]) };
+    let recovery = null;
+    if (!this._emptyBashMasks(actor)) {
+      // A close guard can overlap the first stair. Permit only the exact cells
+      // removed by a successful shared-action recovery, within the lane budget.
+      const scene = this.basinRoutes.scenes[actor.laneIndex], planner = this.hazardPlanner, service = planner.admission.begin(actor.laneIndex);
+      if (service.consumed || !task.basinSceneId || !scene || scene.id !== task.basinSceneId || scene.basin.production !== 'observed-fire-span' || scene.phase !== 'connected') return false;
+      const hazards = this.hazards.nearby(actor.laneIndex, actor.x, { ahead: 40, behind: 4 });
+      recovery = planner.localTunnels.prove(actor, (x, y) => this.hasGroundAt(x, y), hazards, Math.max(0, MAX_ROUTE_PROBES - service.probes), task.startX + 8, true);
+      planner.admission.served(actor, Math.min(MAX_ROUTE_PROBES, service.probes + recovery.probes + recovery.actionSteps));
+      if (!recovery.safe) return false;
+      recovery.revision = this.terrainRevision;
+    }
+    const claim = { manager: this, project, actor, task, recovery, bounds: this._workerClaimBounds(actor, this.actions[State.BASHING]) };
     this._constructionClaim = claim;
-    try { return this.assignWorker(actor, 'bashers', actor.x, null, claim); }
+    try {
+      const assigned = this.assignWorker(actor, 'bashers', actor.x, null, claim);
+      if (assigned && recovery) {
+        const scene = this.basinRoutes.scenes[actor.laneIndex];
+        (scene.recoveries ||= new Map()).set(actor.id, { actor, until: this.tickIndex + recovery.bashTicks + 1,
+          cells: new Set(recovery.removedCells.map(([x, y]) => `${x}:${y}`)) });
+      }
+      return assigned;
+    }
     finally { this._constructionClaim = null; }
   }
   allowsProjectClaim(claim, actor, action, bounds) {
     const project = claim.project, task = claim.task, b = claim.bounds;
-    return claim === this._constructionClaim && claim.actor === actor && actor.assistConstructionTask === task && task.blocker === actor && task.crewProjectId === project.id &&
+    return claim === this._constructionClaim && claim.actor === actor && actor.assistConstructionTask === task && (task.blocker === actor || task.coincidentBlockers?.has(actor)) && task.crewProjectId === project.id &&
       project.generation === this.generation && actor.laneIndex === project.lane && this.tickIndex >= project.startTick && this.tickIndex - project.startTick <= PROJECT_LIFETIME_TICKS &&
       project.members.has(actor.id) && action === this.actions[State.BASHING] && actor.action === this.actions[State.BLOCKING] &&
       b && ['x1', 'x2', 'y1', 'y2'].every(key => bounds[key] === b[key]) && this.basinRoutes.canRelease(task) &&
-      (task.basinSceneId || this._constructionPassage(task) !== false) && this._emptyBashMasks(actor);
+      (task.basinSceneId || this._constructionPassage(task) !== false) && (this._emptyBashMasks(actor) || claim.recovery?.safe && claim.recovery.revision === this.terrainRevision);
   }
   _assistConstructionCrew(actor) {
     const held = actor.assistConstructionTask;
     if (held && actor.action === this.actions[State.BLOCKING]) {
-      if (this.basinRoutes.canRelease(held) && (held.basinSceneId || this._constructionPassage(held) !== false) && this._emptyBashMasks(actor)) this._recoverConstructionCrew(actor, held);
+      if (this.basinRoutes.canRelease(held) && (held.basinSceneId || this._constructionPassage(held) !== false)) this._recoverConstructionCrew(actor, held);
       return true;
     }
     if (actor.action !== this.actions[State.WALKING] || !actor.lookRight || actor.scout || actor.canClimb || actor.hasParachute || !this.workerLimits.bashers) return false;
     const tasks = this.accessTasks[actor.laneIndex];
     if (!tasks) return false;
     for (const task of tasks) {
-      const owner = task.owner;
+      const owner = task.owner, containment = this.basinRoutes.requiresContainment(task);
+      if (task.blocker && containment && Math.abs(actor.x - task.blocker.x) <= 3 && Math.abs(actor.y - task.blocker.y) <= 3 &&
+          this.hasGroundAt(actor.x, actor.y + 1) && this._emptyBashMasks(actor) && this.basinRoutes.canContain(actor, task)) {
+        // A walker already inside the blocker's central gap cannot hit its
+        // left trigger. Hold that original actor too, then release both legally.
+        actor.setAction(this.actions[State.BLOCKING]); actor.assistConstructionTask = task;
+        (task.coincidentBlockers ||= new Set()).add(actor); this.stats.blockers++; actor.assists++; return true;
+      }
       if (task.blocker || !owner || owner.removed || owner.failureReason || owner.terminalReason || owner.action !== this.actions[State.BUILDING] ||
-          !task.direction || task.startLane !== actor.laneIndex || actor.x < task.startX - (task.basinSceneId ? 8 : 16) || actor.x > task.startX - 8 ||
-          Math.abs(actor.y - task.startY) > 3 || !this.hasGroundAt(actor.x, actor.y + 1) || this._constructionPassage(task) !== false || !this._emptyBashMasks(actor) || !this.basinRoutes.canContain(actor, task)) continue;
+          !task.direction || task.startLane !== actor.laneIndex || actor.x < task.startX - (task.basinSceneId && !containment ? 8 : 16) || actor.x > task.startX - (containment ? 4 : 8) ||
+          Math.abs(actor.y - task.startY) > 3 || !this.hasGroundAt(actor.x, actor.y + 1) ||
+          this._constructionPassage(task) !== false && !this.basinRoutes.requiresContainment(task) || !this._emptyBashMasks(actor) || !this.basinRoutes.canContain(actor, task)) continue;
       actor.setAction(this.actions[State.BLOCKING]); actor.assistConstructionTask = task; task.blocker = actor;
       this.stats.blockers++; actor.assists++; return true;
     }
@@ -694,6 +741,7 @@ class ProcgenLaneWorld {
   }
   _assist(actor) {
     if (!this.assists) return;
+    if (this.lanePolicy.projects.assistChain(actor)) return;
     if (this.tunnelRoutes.assist(actor) || this.basinRoutes.assist(actor) || this._assistConstructionCrew(actor)) return;
     const route = actor._laneRouteAttempt;
     if (route?.buildExit && actor.lookRight && this.tickIndex <= route.buildDeadlineTick) return;
@@ -830,6 +878,7 @@ class ProcgenLaneWorld {
     }
     this._processingLane = null; this._processingActorId = null; this.activeCount = activeCount;
     this.terrainGrowth?.update({ through: this.generatedThrough, frontiers: this.frontiers, lanes: this.stall.lanes, prepare: this._prepareGrowthChunk, reveal: this._revealGrowth });
+    this.scenery?.update({ frontiers: this.frontiers, tick: this.tickIndex, reducedMotion: this.scenery.reducedMotion });
     for (let laneIndex = 0; laneIndex < this.laneCount; laneIndex++) {
       const lane = this.stall.lanes[laneIndex]; lane.peakAlive = Math.max(lane.peakAlive, lane.alive);
       lane.populationPeak = Math.max(lane.populationPeak || 0, lane.alive);
@@ -944,7 +993,7 @@ class ProcgenLaneWorld {
       terrainMemoryMB: this.editChunks.snapshot().totalBytes / 1048576,
       ...this.stats };
   }
-  dispose() { this._manualNukeLanes.fill(0); for (const actor of this.actors) this._clearConstructionCrew(actor); this._musicActorPositions.clear(); this.triggerManager.dispose(); this.hazardPlanner.dispose(); this.basinRoutes.dispose(); this.tunnelRoutes.dispose(); this.lanePolicy.dispose(); this.terrainGrowth?.dispose(); this.edgeBlockers.fill(null); this.accessTasks.fill(null); this._edgeWallCache.fill(null); this._edgeWallHazards.length = 0; this.onRestart = null; this.onLaneTransfer = null; this.characterParticles?.clear(); this.timer.onGameTick.dispose(); this.soundEvents.onEvent.dispose(); this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this._laneChunk.fill(null); this._collisionSlots.fill(null); this._laneEdits.fill(null); this._editCache.fill(null); this.terrain?.reset?.(); }
+  dispose() { this._manualNukeLanes.fill(0); for (const actor of this.actors) this._clearConstructionCrew(actor); this._musicActorPositions.clear(); this.triggerManager.dispose(); this.hazardPlanner.dispose(); this.basinRoutes.dispose(); this.tunnelRoutes.dispose(); this.lanePolicy.dispose(); this.terrainGrowth?.dispose(); this.scenery?.dispose(); this.edgeBlockers.fill(null); this.accessTasks.fill(null); this._edgeWallCache.fill(null); this._edgeWallHazards.length = 0; this.onRestart = null; this.onLaneTransfer = null; this.characterParticles?.clear(); this.timer.onGameTick.dispose(); this.soundEvents.onEvent.dispose(); this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this._laneChunk.fill(null); this._collisionSlots.fill(null); this._laneEdits.fill(null); this._editCache.fill(null); this.terrain?.reset?.(); }
 }
 
 export { ProcgenLaneWorld, MAX_PROCGEN_LANES, LANE_HEIGHT, CHUNK_WIDTH, PROCGEN_LEFT_EDGE, normalizeLaneCount, DEFAULT_LANE_HEIGHT, MAX_LANE_HEIGHT, normalizeLaneHeight, DEFAULT_PROCGEN_POPULATION, normalizePopulationPolicy };

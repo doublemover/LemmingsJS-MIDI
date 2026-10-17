@@ -3,6 +3,7 @@ import { TriggerTypes } from '../../level/TriggerTypes.js';
 import { createDefaultMidiEnsemble } from './MidiEnsemble.js';
 import { DEFAULT_SCALES } from '../midi-mapping/MidiMappingDomain.js';
 import { createMidiSourceFromMapping, sanitizeMidiProject } from './MidiProject.js';
+import { PROCGEN_DRUM_SCHEMES, createProcgenDrumMappings } from './ProcgenDrumSchemes.js';
 
 const freezeDefinition = (value) => {
   if (value && typeof value === 'object') {
@@ -247,7 +248,7 @@ const PRESET_DEFINITIONS = freezeDefinition([
   },
 ]);
 
-const GAME_EVENT_MIDI_PRESETS = Object.freeze(PRESET_DEFINITIONS.map(({ actions, phrase, ...metadata }) => Object.freeze(metadata)));
+const GAME_EVENT_MIDI_PRESETS = Object.freeze([...PRESET_DEFINITIONS.map(({ actions, phrase, ...metadata }) => Object.freeze(metadata)), ...PROCGEN_DRUM_SCHEMES]);
 
 const PALETTES = Object.freeze({
   'game-major': { base: 60, scale: 'major', root: 0, third: 4, second: 2, fifth: 7, seventh: 11, run: [0, 4, 7, 12] },
@@ -384,12 +385,12 @@ const createScaleMappings = (preset, mode) => {
 };
 
 const applyGameEventMidiPreset = (project, presetId, { mode = 'steps' } = {}) => {
-  const preset = PRESET_DEFINITIONS.find(entry => entry.id === presetId);
+  const preset = PRESET_DEFINITIONS.find(entry => entry.id === presetId) || PROCGEN_DRUM_SCHEMES.find(entry => entry.id === presetId);
   if (!preset) throw new Error(`Unknown game-event MIDI preset: ${presetId}`);
   if (mode !== 'phrase' && mode !== 'steps') throw new Error(`Unknown game-event playback mode: ${mode}`);
   const clean = sanitizeMidiProject(project);
-  const mappings = preset.actions ? createScaleMappings(preset, mode) : createClassicMappings(PALETTES[preset.id], mode);
-  for (const mapping of mappings.values()) mapping.velocity = Math.min(127, Math.round(mapping.velocity * 1.5));
+  const mappings = preset.percussion ? createProcgenDrumMappings(preset) : preset.actions ? createScaleMappings(preset, mode) : createClassicMappings(PALETTES[preset.id], mode);
+  if (!preset.percussion) for (const mapping of mappings.values()) mapping.velocity = Math.min(127, Math.round(mapping.velocity * 1.5));
   const replacements = new Map();
   for (const [id, mapping] of mappings) replacements.set(`sfx:${id}`, mapping);
   // These real events carry trigger metadata, which takes precedence over SFX mappings.

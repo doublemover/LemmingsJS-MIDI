@@ -46,7 +46,7 @@ describe('complete supported procgen source assemblies', function() {
     expect([...terrain.associatedObjectIds]).to.deep.equal([8, 10]);
     expect(terrain.assemblyCatalog.objectSha256).to.match(/^[a-f0-9]{64}$/);
     let pair = null, pairs = 0;
-    for (let chunk = 2; chunk < 66; chunk++) {
+    for (let chunk = 2; chunk < 96; chunk++) {
       const descriptor = terrain.describe(42, chunk);
       for (const object of descriptor.objects) if ([8, 10].includes(object.piece.id)) expect(object.assembly).to.exist;
       for (const assembly of descriptor.assemblies) {

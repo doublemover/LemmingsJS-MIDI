@@ -59,4 +59,15 @@ describe('verified selected browser survey asset contracts', function() {
     const corrupt = copy(sourceManifest); corrupt.codeDigest = '0'.repeat(64);
     await rejects(() => verifiedBrowserFiles(corrupt, fileFetch), 'digest mismatch');
   });
+  it('aborts obsolete verification before issuing requests or creating a replay', async () => {
+    const aborted = new AbortController(); aborted.abort(); let requests = 0;
+    await rejects(() => createBrowserSurveyTrial({ scenario: controlled, sourceManifest, signal: aborted.signal, fetchFile: async () => { requests++; } }), 'aborted');
+    expect(requests).to.equal(0);
+    const during = new AbortController();
+    await rejects(() => verifiedBrowserFiles(sourceManifest, async (url, options) => {
+      expect(options.signal).to.equal(during.signal); requests++; during.abort(); return fileFetch(url);
+    }, during.signal), 'aborted');
+    expect(requests).to.equal(1);
+  });
+
 });

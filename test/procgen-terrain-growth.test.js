@@ -116,7 +116,7 @@ describe('shared bounded collision/display terrain reveal', function() {
   });
   it('assembles real authored pieces with matching collision and display, then body before attached head', () => {
     const world = new ProcgenLaneWorld({ masks, terrain: bubble, seed: 42, cohorts: true, assists: false }); world.laneSeeds[0] = 42;
-    const chunk = 57, origin = chunk * 128, plan = bubble.growthPlan(42, chunk), descriptor = plan.descriptor;
+    const chunk = 94, origin = chunk * 128, plan = bubble.growthPlan(42, chunk), descriptor = plan.descriptor;
     const bodyIndex = descriptor.objects.findIndex(object => object.piece.id === 10), headIndex = descriptor.objects.findIndex(object => object.piece.id === 8);
     expect(bodyIndex).to.be.at.least(0); expect(headIndex).to.be.at.least(0); expect(plan.objectJobs[bodyIndex]).to.not.equal(plan.objectJobs[headIndex]);
     const state = world.terrainGrowth._prepare(0, chunk, () => plan), canvas = canvasFixture(); canvas.width = 128; canvas.height = 96;

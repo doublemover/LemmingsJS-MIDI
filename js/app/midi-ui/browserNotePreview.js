@@ -592,6 +592,12 @@ class BrowserNotePreview {
     try {
       const channel = this._channel(number, options.owner);
       const profile = instrumentProfile(options.instrument?.program ?? channel.program, options.instrument?.percussion === true || number === 10, note, options.instrument?.legacy !== true);
+      for (const key of ['attack', 'decay', 'sustain', 'release']) {
+        const value = options.instrument?.envelope?.[key];
+        if (Number.isFinite(value)) profile[key] = clamp(value, 0, key === 'sustain' ? 1 : 2);
+      }
+      const resumed = options.instrument?.resumed === true;
+      if (resumed) { profile.attack = 0; profile.decay = 0; }
       const noise = profile.noise && this._percussionNoise();
       oscillator = noise ? context.createBufferSource() : context.createOscillator();
       if (noise) { oscillator.buffer = noise; oscillator.loop = true; }
@@ -616,8 +622,8 @@ class BrowserNotePreview {
       for (const bend of channel.bends) {
         if (bend.time > start) oscillator.detune.setValueAtTime(bend.value * channel.bendRange * 100, bend.time);
       }
-      gain.gain.setValueAtTime(0, start);
-      gain.gain.linearRampToValueAtTime(voice.peak, start + voice.attack);
+      gain.gain.setValueAtTime(resumed ? voice.peak * voice.sustain : 0, start);
+      if (!resumed) gain.gain.linearRampToValueAtTime(voice.peak, start + voice.attack);
       const sustainAt = Math.min(voice.end - voice.release, start + voice.attack + voice.decay);
       if (voice.decay > 0) gain.gain.linearRampToValueAtTime(voice.peak * voice.sustain, sustainAt);
       gain.gain.setValueAtTime(voice.peak * voice.sustain, voice.end - voice.release);

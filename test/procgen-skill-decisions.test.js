@@ -4,6 +4,7 @@ import { searchProcgenGoal } from '../js/solver/ProcgenGoalSearch.js';
 import { replayProcgenGoal } from '../js/solver/ProcgenSolverAdapter.js';
 import { challengeWorld, challengeAdapter } from './support/procgen-challenge-fixtures.js';
 import { LemmingStateType as State } from '../js/lemmings/LemmingStateType.js';
+import { ProcgenSolverAdapter } from '../js/solver/ProcgenSolverAdapter.js';
 
 describe('physical builder and basher decision windows', function() {
   this.timeout(15000); let masks;
@@ -25,6 +26,31 @@ describe('physical builder and basher decision windows', function() {
       expect(planner._basher(world.actors[0], { x: 76, y: 48 })).to.equal(null);
       expect(world.terrainRevision).to.equal(revision); expect(world.stats.removedPixels).to.equal(0); expect(events).to.have.length(0);
       expect(planner.probes).to.be.at.most(1024);
+    } finally { world.dispose(); }
+  });
+  it('searches the remaining seven walkers when the foremost actor has already reached the goal', () => {
+    const factory = () => new ProcgenSolverAdapter({ createWorld: () => {
+      const world = challengeWorld(masks, (x, y) => y >= 72 || (x <= 40 || x >= 76 && x < 90) && y >= 44, { x: 110 });
+      for (let index = 1; index < 8; index++) {
+        const actor = world._spawn(0, false); Object.assign(actor, { x: 68, y: 72, canClimb: false, hasParachute: false, scout: false }); actor.setAction(world.actions[State.WALKING]);
+      }
+      return world;
+    }, skills: { basher: 1 }, goal: { x: 110, y: 60, width: 200, height: 24 }, bounds: { x: 16, y: 0, width: 320, height: 96 } });
+    expect(replayProcgenGoal(factory, [{ tick: 7, target: 1, skillType: 'basher' }], { maxTicks: 220 }).resultType).to.equal('solved');
+    const result = searchProcgenGoal(factory, { maxNodes: 8, maxActions: 1, maxTicks: 220 });
+    expect(result.resultType).to.equal('solved'); expect(result.actions[0]).to.include({ target: 1, skillType: 'basher', tick: 7 });
+    expect(result.replaySummary).to.include({ verified: true, goalReachedCount: 8, deadCount: 0 });
+  });
+  it('preserves a real 26-pixel walking drop but rejects hazards along that deeper continuation', () => {
+    const world = challengeWorld(masks, (x, y) => y >= (x < 72 ? 56 : 82));
+    try {
+      const actor = world.actors[0]; actor.y = 56;
+      const proof = hazards => world.hazardPlanner.walking.prove(actor, world.hasGroundAt.bind(world), hazards, 1024);
+      const safe = proof([]); expect(safe).to.include({ safe: true, fell: true, y: 82 });
+      expect(proof([{ x1: 72, x2: 78, y1: 72, y2: 76 }])).to.include({ safe: false, failure: 'hazard' });
+      for (let tick = 0; tick < safe.actionSteps; tick++) world.step();
+      expect(actor).to.include({ x: safe.x, y: safe.y, failureReason: null }); expect(actor.action).to.equal(world.actions[State.WALKING]);
+      expect(world.stats.builds + world.stats.bashes + world.stats.digs + world.stats.mines + world.stats.removedPixels).to.equal(0);
     } finally { world.dispose(); }
   });
   it('qualifies the complete real short bash and rejects hidden, protected, exhausted and changed observations', () => {

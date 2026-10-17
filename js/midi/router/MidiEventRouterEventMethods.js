@@ -26,7 +26,8 @@ const midiEventRouterEventMethods = {
     try {
       if (!event || event.sfxId == null) return;
       if (!this.mapping.config?.enabled) return;
-      if ((event.sfxId === SoundEffectIds.SPAWN || event.sfxId === SoundEffectIds.LAND || event.sfxId === SoundEffectIds.PROCGEN_ROUTE_COMPLETE) && !this.mapping.getSfxConfig(event.sfxId)) return;
+      if (typeof this.workstationEventHandler === 'function' && this.workstationEventHandler(event) === true) return;
+      if ((event.sfxId === SoundEffectIds.SPAWN || event.sfxId === SoundEffectIds.LAND || event.sfxId === SoundEffectIds.PROCGEN_ROUTE_COMPLETE) && !this.mapping.getSfxConfig(event.sfxId, event)) return;
       if (event.reverse || (Number.isInteger(event.tick) && this._tickCounter.tick != null && event.tick < this._tickCounter.tick)) {
         this.musicTension.reset(); this._releaseTensionVoices();
         this._resetAutomationSpans();
@@ -69,9 +70,9 @@ const midiEventRouterEventMethods = {
         levelHeight: this.context?.game?.level?.height ?? this.context?.level?.height ?? null,
         viewRect
       };
-      const baseSfx = this.mapping.getSfxConfig(event.sfxId) || {};
+      const baseSfx = this.mapping.getSfxConfig(event.sfxId, event) || {};
       const triggerCfg = event?.triggerType != null
-        ? this.mapping.config?.triggers?.[String(event.triggerType)] || null
+        ? this.mapping.getTriggerConfig(event) || null
         : null;
       if (isMidiFlagTriggerType(event?.triggerType) && !triggerCfg) {
         return;
@@ -153,7 +154,7 @@ const midiEventRouterEventMethods = {
         return;
       }
 
-      const fire = !sfx.clipSequence && event.type === 'lemming-fire';
+      const fire = !sfx.clipSequence && !spec.percussion && event.type === 'lemming-fire';
       if (fire && !event.reverse) {
         const key = `fire:${event.sfxId}`;
         const previous = this._arpStateBySfx.get(key);
@@ -184,7 +185,7 @@ const midiEventRouterEventMethods = {
         for (let i = 0; i < noteList.length; i += 1) {
           sorted.push(noteList[i]);
         }
-        sorted.sort((a, b) => a - b);
+        if (!spec.percussion) sorted.sort((a, b) => a - b);
         const length = Math.max(1, Math.min(arp.length ?? sorted.length, sorted.length));
         let seqKey = '';
         for (let i = 0; i < length; i += 1) {

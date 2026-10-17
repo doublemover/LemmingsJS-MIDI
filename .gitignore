@@ -10,6 +10,8 @@
 dist/
 build/
 coverage/
+coverage-*/
+.tmp/
 node_modules/
 exports/
 

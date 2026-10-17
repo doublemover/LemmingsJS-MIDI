@@ -2,12 +2,14 @@ const EMPTY_STATE = Object.freeze({ active: new Uint8Array(0), complete: false, 
 const MAX_PIECES_PER_CHUNK = 32;
 const MAX_LOCAL_COVERAGE_RANGES = 4;
 class ProcgenTerrainGrowth {
-  constructor(laneCount, chunkWidth) {
+  constructor(laneCount, chunkWidth, { justAhead = false } = {}) {
+    this.justAhead = justAhead;
     this.chunkWidth = chunkWidth;
     this.preparationBudget = Math.min(16, Math.max(4, Math.ceil(laneCount / 64)));
     this.revealBudget = Math.min(1024, Math.max(8, laneCount));
     this.safetyLead = 64;
     this.targetLead = this.safetyLead + 2 * (Math.ceil(laneCount / this.preparationBudget) + MAX_PIECES_PER_CHUNK);
+    if (justAhead) this.targetLead = this.safetyLead + 16 + 2 * Math.ceil(laneCount / this.preparationBudget);
     this.preparationLead = this.targetLead + 2 * Math.ceil(laneCount / this.preparationBudget) + chunkWidth;
     this.preparedThrough = new Float64Array(laneCount); this.pending = new Uint32Array(laneCount);
     this.speed = new Float32Array(laneCount); this.heap = new Int32Array(laneCount); this.priority = new Float64Array(laneCount);
@@ -22,8 +24,8 @@ class ProcgenTerrainGrowth {
   reset(through, frontiers) {
     this.states.clear(); this.size = 0;
     for (let lane = 0; lane < through.length; lane++) {
-      through[lane] = Math.ceil((frontiers[lane] + this.targetLead) / this.chunkWidth) * this.chunkWidth;
-      this.preparedThrough[lane] = through[lane]; this.queues[lane].length = 0; this.completed[lane] = [[0, through[lane]]]; this.localCoverage[lane].length = 0;
+      through[lane] = this.justAhead ? 0 : Math.ceil((frontiers[lane] + this.targetLead) / this.chunkWidth) * this.chunkWidth;
+      this.preparedThrough[lane] = through[lane]; this.queues[lane].length = 0; this.completed[lane] = through[lane] ? [[0, through[lane]]] : []; this.localCoverage[lane].length = 0;
     }
     this.pending.fill(0); this.speed.fill(1); this._forcedSinceUpdate = 0; this._forcedPreparedSinceUpdate = 0;
     this.stats.lastPrepared = this.stats.lastRevealed = this.stats.lastPreparationAttempts = 0;
@@ -61,7 +63,7 @@ class ProcgenTerrainGrowth {
     const key = this._key(lane, chunk), previous = this.states.get(key);
     if (previous) return previous;
     if (!this.stateFor(lane, chunk)) return null;
-    const result = prepare(lane, chunk, { maxSharedSpanTiles: this.revealBudget }), plan = result?.jobs ? result : { jobs: [{ index: 0, kind: 'foundation', x1: 0, x2: this.chunkWidth, dependencies: [] }], objectJobs: [] };
+    const result = prepare(lane, chunk, { maxSharedSpanTiles: this.revealBudget, piecewise: this.justAhead }), plan = result?.jobs ? result : { jobs: [{ index: 0, kind: 'foundation', x1: 0, x2: this.chunkWidth, dependencies: [] }], objectJobs: [] };
     if (!plan.jobs.length || plan.jobs.length > MAX_PIECES_PER_CHUNK) throw new Error('Terrain growth requires 1-32 source pieces per chunk');
     for (let index = 0; index < plan.jobs.length; index++) {
       const job = plan.jobs[index];
@@ -182,6 +184,25 @@ class ProcgenTerrainGrowth {
       if ((job.sharedSpan?.cost || 1) <= budget && this._ready(state, index) && state.chunk * this.chunkWidth + job.x1 <= frontier + this.targetLead) return { state, index };
     }
     return null;
+  }
+  exportState() {
+    return { version: 1, justAhead: this.justAhead, preparedThrough: [...this.preparedThrough], pending: [...this.pending], speed: [...this.speed],
+      completed: this.completed.map(ranges => ranges.map(range => range.slice())), localCoverage: this.localCoverage.map(ranges => ranges.map(range => range.slice())),
+      states: [...this.states.values()].map(state => ({ lane: state.lane, chunk: state.chunk, active: [...state.active], revision: state.revision })),
+      stats: { ...this.stats, minimumMargin: Number.isFinite(this.stats.minimumMargin) ? this.stats.minimumMargin : null }, forced: this._forcedSinceUpdate, forcedPrepared: this._forcedPreparedSinceUpdate };
+  }
+  restoreState(data, prepare) {
+    if (data?.version !== 1 || data.preparedThrough?.length !== this.queues.length || data.justAhead !== this.justAhead) throw new Error('Incompatible terrain growth snapshot');
+    this.dispose();
+    for (const saved of data.states) {
+      const state = this._prepare(saved.lane, saved.chunk, prepare);
+      if (saved.active.length !== state.active.length) throw new Error('Terrain source changed since snapshot');
+      state.active.set(saved.active); state.revision = saved.revision; state.remaining = state.active.reduce((n, active) => n + !active, 0); state.complete = !state.remaining;
+    }
+    this.preparedThrough.set(data.preparedThrough); this.pending.set(data.pending); this.speed.set(data.speed);
+    this.completed = data.completed.map(ranges => ranges.map(range => range.slice())); this.localCoverage = data.localCoverage.map(ranges => ranges.map(range => range.slice()));
+    Object.assign(this.stats, data.stats); this._forcedSinceUpdate = data.forced; this._forcedPreparedSinceUpdate = data.forcedPrepared;
+    if (data.stats.minimumMargin == null) this.stats.minimumMargin = Infinity;
   }
   update({ through, frontiers, lanes, prepare, reveal }) {
     this.size = 0; let attempts = 0, revealed = 0; const preparedBefore = this.stats.prepared;

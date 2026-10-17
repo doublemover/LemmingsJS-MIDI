@@ -27,8 +27,14 @@ for (const file of ['test.yml', 'maintenance-full.yml']) {
       expect(start).to.be.lessThan(steps.findIndex(step => step.run === 'npm run test-mcp-smoke'));
       expect(steps[start].run).to.include('node "$GITHUB_WORKSPACE/node_modules/http-server/bin/http-server"');
       const stop = steps.find(step => step.name === 'Stop HTTPS server');
-      expect(stop.if).to.equal('always()'); expect(stop.run).to.include('/proc/$server_pid/cmdline');
-      expect(stop.run).to.include('"${server_args[1]}" = "$GITHUB_WORKSPACE/node_modules/http-server/bin/http-server"');
+      expect(stop.if).to.equal('always()');
+      if (file === 'test.yml') {
+        expect(steps[start].run).to.include('LEMMINGS_HTTP_OWNER="${GITHUB_RUN_ID}:${GITHUB_RUN_ATTEMPT}:${GITHUB_JOB}"');
+        expect(stop.run).to.include('grep -zFxq "LEMMINGS_HTTP_OWNER=${GITHUB_RUN_ID}:${GITHUB_RUN_ATTEMPT}:${GITHUB_JOB}" "/proc/$server_pid/environ"');
+      } else {
+        expect(stop.run).to.include('/proc/$server_pid/cmdline');
+        expect(stop.run).to.include('"${server_args[1]}" = "$GITHUB_WORKSPACE/node_modules/http-server/bin/http-server"');
+      }
     });
   });
 }

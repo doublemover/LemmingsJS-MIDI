@@ -4,6 +4,7 @@ import { generateProcgenSurveyCandidates } from '../js/app/procgen/survey/Procge
 import { createSurveyTrialId } from '../js/app/procgen/survey/ProcgenSurveyCore.js';
 import { createSurveyServer } from '../scripts/procgen-survey/SurveyServer.js';
 import { runSurveyJobs } from '../scripts/procgen-survey/SurveyWorkerPool.js';
+import { createSurveySourceManifest, createNodeSurveyTrial } from '../scripts/procgen-survey/SurveyNodeWorld.js';
 import { normalizeSurveyScenario } from '../js/app/procgen/survey/ProcgenSurveyScenario.js';
 
 test.use({ permissions: [] });
@@ -161,4 +162,193 @@ test('offline replay pause follows active playback and resets after completion',
   await expect(pause).toBeDisabled();
   await expect(page.locator('#surveyReplay')).toBeEnabled();
   expect(await page.evaluate(() => window.__stubReplayDisposed)).toBe(true);
+});
+
+test.describe('survey report and replay ownership', () => {
+  test('newer files win over delayed files and URL reports; malformed replacement is atomic', async ({ page }) => {
+    let releaseUrl;
+    await page.route(url => url.pathname === '/temp/procgen-surveys/delayed.json', async route => {
+      await new Promise(resolve => { releaseUrl = resolve; });
+      await route.fulfill({ json: reviewFixture() });
+    });
+    await page.goto('/procgen-survey.html?report=/temp/procgen-surveys/delayed.json');
+    await expect.poll(() => !!releaseUrl).toBe(true);
+    await page.evaluate(() => {
+      window.__fileReads = {};
+      File.prototype.text = function() { return new Promise(resolve => { window.__fileReads[this.name] = resolve; }); };
+    });
+    const input = page.locator('#surveyFile');
+    await input.setInputFiles({ name: 'old.json', mimeType: 'application/json', buffer: Buffer.from('{}') });
+    await input.setInputFiles({ name: 'new.json', mimeType: 'application/json', buffer: Buffer.from('{}') });
+    const latest = reviewFixture(); latest.manifest.experimentId = 'newest-report';
+    await page.evaluate(value => window.__fileReads['new.json'](JSON.stringify(value)), latest);
+    await expect.poll(() => page.evaluate(() => window.__procgenSurveyDashboard.getReport()?.manifest.experimentId)).toBe('newest-report');
+    await page.evaluate(value => window.__fileReads['old.json'](JSON.stringify(value)), reviewFixture());
+    releaseUrl();
+    await page.waitForResponse('**/temp/procgen-surveys/delayed.json');
+    await expect.poll(() => page.evaluate(() => window.__procgenSurveyDashboard.getReport()?.manifest.experimentId)).toBe('newest-report');
+    const invalid = { ...latest, results: [...latest.results, latest.results[0]] };
+    await input.setInputFiles({ name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from('{}') });
+    await page.evaluate(value => window.__fileReads['bad.json'](JSON.stringify(value)), invalid);
+    await expect(page.locator('#surveyStatus')).toHaveText('Unsupported or oversized survey report');
+    await expect(page.locator('.survey-tile')).toHaveCount(2);
+    expect(await page.evaluate(() => window.__procgenSurveyDashboard.getReport().manifest.experimentId)).toBe('newest-report');
+  });
+
+  test('a changed manifest with the same experiment ID replaces scene and trial identity', async ({ page }) => {
+    await page.goto('/procgen-survey.html');
+    const original = reviewFixture();
+    await page.evaluate(value => window.__procgenSurveyDashboard.load(value), original);
+    const changed = reviewFixture(); changed.manifest.scenarios[0].id = 'replacement-scene'; changed.manifest.developmentScenarioIds = ['replacement-scene'];
+    changed.results.forEach(result => { result.scenarioId = 'replacement-scene'; });
+    await page.evaluate(value => window.__procgenSurveyDashboard.load(value), changed);
+    await expect(page.locator('#surveyScene option')).toHaveCount(1);
+    await expect(page.locator('#surveyScene')).toHaveValue('replacement-scene');
+    await expect(page.locator('#surveyFocusTitle')).toContainText('replacement-scene');
+    await expect(page.locator('.survey-tile:visible')).toHaveCount(2);
+  });
+
+  test('a saved file detaches live controls and ignores a pending live report', async ({ page }) => {
+    let releasePoll;
+    await page.route('**/survey-api/report', async route => {
+      await new Promise(resolve => { releasePoll = resolve; });
+      await route.fulfill({ json: reviewFixture() });
+    });
+    await page.goto('/procgen-survey.html#token=local-test');
+    await expect.poll(() => !!releasePoll).toBe(true);
+    const saved = reviewFixture(); saved.manifest.experimentId = 'saved-review';
+    await page.locator('#surveyFile').setInputFiles({ name: 'saved.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(saved)) });
+    await expect(page.locator('#surveyMode')).toHaveText('Saved report review');
+    await expect(page.locator('#surveyCancel')).toBeDisabled();
+    await expect(page.locator('#surveyPause')).toBeDisabled();
+    releasePoll(); await page.waitForResponse('**/survey-api/report');
+    expect(await page.evaluate(() => window.__procgenSurveyDashboard.getReport().manifest.experimentId)).toBe('saved-review');
+  });
+
+  test('obsolete replay setup cannot paint, publish a receipt or dispose a newer replay', async ({ page }) => {
+    const errors = []; page.on('pageerror', error => errors.push(error.message));
+    await page.route('**/ProcgenSurveyBrowserAssets.js', route => route.fulfill({ contentType: 'text/javascript', body: `
+      export const createBrowserSurveyTrial = async ({ candidate }) => {
+        window.__setups ||= {}; window.__trials ||= {};
+        const trial = { world: { tickIndex: 0 }, done: false, steps: 0, disposals: 0,
+          step(count) { this.steps++; this.world.tickIndex += count; }, telemetry() { return {}; }, preview() { return {}; },
+          result() { return {}; }, dispose() { this.disposals++; } };
+        window.__trials[candidate.id] = trial;
+        await new Promise(resolve => { window.__setups[candidate.id] = resolve; }); return trial;
+      };` }));
+    await page.goto('/procgen-survey.html');
+    const report = reviewFixture(); report.results.forEach(result => { result.episodeComplete = true; result.scenario.horizonTicks = 100000; });
+    await page.evaluate(value => window.__procgenSurveyDashboard.load(value), report);
+    await page.locator('#surveyReplay').click();
+    await expect.poll(() => page.evaluate(() => !!window.__setups?.['candidate-a'])).toBe(true);
+    await page.locator('[data-trial-id="candidate-b"]').click();
+    await expect(page.locator('#surveyReplay')).toBeEnabled();
+    await page.locator('#surveyReplay').click();
+    await page.evaluate(() => window.__setups['candidate-b']());
+    await expect(page.locator('#surveyPause')).toBeEnabled();
+    await page.locator('#surveyPause').click();
+    await page.evaluate(() => window.__setups['candidate-a']());
+    await expect.poll(() => page.evaluate(() => window.__trials['candidate-a'].disposals)).toBe(1);
+    expect(await page.evaluate(() => ({ steps: window.__trials['candidate-a'].steps, currentDisposed: window.__trials['candidate-b'].disposals, receipt: !!window.__procgenSurveyReplayReceipt }))).toEqual({ steps: 0, currentDisposed: 0, receipt: false });
+    await expect(page.locator('#surveyPause')).toHaveText('Resume replay');
+    await expect(page.locator('#surveyReplay')).toBeDisabled();
+    await page.evaluate(() => window.__procgenSurveyDashboard.dispose());
+    await expect.poll(() => page.evaluate(() => window.__trials['candidate-b'].disposals)).toBe(1);
+    expect(await page.evaluate(() => window.__procgenSurveyReplayReceipt)).toBeUndefined();
+    expect(errors).toEqual([]);
+  });
+});
+
+
+test('saved exact-source reports replay muted controlled and generated trials and reject changed bytes', async ({ page }, testInfo) => {
+  test.setTimeout(60000);
+  const scenes = [normalizeSurveyScenario({ id: 'saved-controlled', horizonTicks: 64 }),
+    normalizeSurveyScenario({ id: 'saved-generated', mode: 'generated', pack: 'lemmings_ohNo', groundSet: 0, horizonTicks: 64, laneHeight: 144 })];
+  const sourceManifest = await createSurveySourceManifest(scenes), candidate = generateProcgenSurveyCandidates({ count: 16 })[0], receipts = [], errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.addInitScript(() => {
+    window.__surveyOutputRequests = { midi: 0, audio: 0 };
+    navigator.requestMIDIAccess = () => { window.__surveyOutputRequests.midi++; throw new Error('Unexpected MIDI'); };
+    window.AudioContext = class { constructor() { window.__surveyOutputRequests.audio++; throw new Error('Unexpected audio'); } };
+  });
+  await page.goto('/procgen-survey.html');
+  for (const raw of scenes) {
+    const scenario = normalizeSurveyScenario({ ...raw, engineCommit: sourceManifest.engineCommit, assetHashes: sourceManifest.assetHashes });
+    const trial = await createNodeSurveyTrial({ scenario, candidate });
+    let result;
+    try { trial.step(scenario.horizonTicks); result = trial.result(); } finally { trial.dispose(); }
+    expect(result.episodeComplete).toBe(true);
+    const report = { schemaVersion: 1, manifest: { experimentId: 'saved-' + scenario.id, sourceManifest, scenarios: [scenario], candidates: [candidate], developmentScenarioIds: [scenario.id], budgetPolicy: { executionWorkers: 1, residentWorlds: 1 } }, results: [result] };
+    await page.locator('#surveyFile').setInputFiles({ name: scenario.id + '.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ value: report })) });
+    await page.locator('#surveyReplay').click();
+    await expect.poll(() => page.evaluate(() => window.__procgenSurveyReplayReceipt), { timeout: 30000 }).toBeTruthy();
+    const receipt = await page.evaluate(() => window.__procgenSurveyReplayReceipt);
+    expect(receipt.matched).toBe(true); expect(receipt.independentSample).toBe(false); receipts.push(receipt);
+  }
+  await page.route('**/js/app/procgen/survey/ProcgenSurveyCore.js', route => route.fulfill({ contentType: 'text/javascript', body: '// changed source bytes' }));
+  await page.locator('#surveyReplay').click();
+  await expect(page.locator('#surveyReplayStatus')).toContainText('Replay source differs from the saved trial', { timeout: 30000 });
+  expect(await page.evaluate(() => window.__procgenSurveyReplayReceipt)).toBeUndefined();
+  const outputs = await page.evaluate(() => window.__surveyOutputRequests);
+  expect(outputs).toEqual({ midi: 0, audio: 0 }); expect(errors).toEqual([]);
+  await testInfo.attach('saved-report-source-replay.json', { body: JSON.stringify({ sourceDigest: sourceManifest.codeDigest, receipts, outputs, errors, changedSourceRejected: true }), contentType: 'application/json' });
+});
+
+
+test('a missing early baseline checkpoint never substitutes future final telemetry', async ({ page }) => {
+  await page.goto('/procgen-survey.html');
+  const report = reviewFixture(), baseline = report.results[0];
+  baseline.telemetry = baseline.milestones[2].telemetry; baseline.milestones = [];
+  await page.evaluate(value => window.__procgenSurveyDashboard.load(value), report);
+  await page.locator('[data-trial-id="candidate-b"]').click();
+  await page.locator('#surveyScrub').focus(); await page.keyboard.press('Home');
+  await expect(page.locator('#surveyBaselineStatus')).toHaveText('No baseline checkpoint is retained at or before tick 0.');
+  expect(await page.locator('#surveyBaseline').evaluate(canvas => [...canvas.getContext('2d').getImageData(20, 200, 1, 1).data])).toEqual([9, 14, 22, 255]);
+  await page.keyboard.press('End');
+  await expect(page.locator('#surveyBaselineStatus')).toContainText('same scene and policy seed');
+  expect(await page.locator('#surveyBaseline').evaluate(canvas => [...canvas.getContext('2d').getImageData(20, 200, 1, 1).data])).toEqual([74, 97, 117, 255]);
+});
+
+test('scenario and policy-seed review preserves candidate identity and exposes distinct outcome evidence', async ({ page }) => {
+  await page.goto('/procgen-survey.html');
+  const report = reviewFixture(), original = report.results;
+  report.manifest.scenarios = [101, 202, 303].map((seed, index) => ({ id: 'scene-' + index, environmentSeed: seed, laneHeight: 144, horizonTicks: 64, cohort: { size: 8 }, mode: 'controlled', pack: 'lemmings', corpus: index ? 'holdout' : 'development' }));
+  report.manifest.developmentScenarioIds = ['scene-0'];
+  report.results = report.manifest.scenarios.flatMap((scenario, sceneIndex) => [1, 2].flatMap(policySeed => original.map((trial, index) => ({
+    ...trial, trialId: scenario.id + '-' + trial.candidateId + '-' + policySeed, scenario, scenarioId: scenario.id, policySeed,
+    episodeComplete: policySeed === 1, status: index ? 'completed' : 'timeout',
+    accounting: { designated: 8, arrived: index ? 8 : 4, qualified: index ? 8 : 4, alive: index && sceneIndex === 1 ? 7 : 8, deaths: index && sceneIndex === 1 ? 1 : 0, unresolved: index ? 0 : 4 },
+    validity: { accountingComplete: true, deterministic: true, protectedTerrain: index ? true : null, legitimateActions: true }, evidence: { truncated: !index }
+  }))));
+  await page.evaluate(value => window.__procgenSurveyDashboard.load(value), report);
+  await expect(page.locator('#surveyScenarioContext')).toContainText('Environment seed 101');
+  await expect(page.locator('#surveyPreviousScene')).toBeDisabled();
+  await page.locator('#surveyPolicySeed').selectOption('1');
+  await page.locator('[data-trial-id="scene-0-candidate-b-1"]').click();
+  await page.getByRole('button', { name: 'Next scenario', exact: true }).click();
+  await expect(page.locator('[data-trial-id="scene-1-candidate-b-1"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#surveyScenarioContext')).toContainText('Environment seed 202');
+  await expect(page.locator('#surveyNavigationStatus')).toContainText('Kept candidate candidate-b and policy seed 1');
+  await expect(page.locator('#surveyOutcomeSummary')).toContainText('Goal met at horizon');
+  await expect(page.locator('#surveyOutcomeSummary')).toContainText('Recorded deaths: 1');
+  const row = label => page.locator('#surveyOutcomeRows tr').filter({ has: page.getByRole('rowheader', { name: label, exact: true }) });
+  await expect(row('Alive / designated').locator('td').first()).toHaveText('7 / 8');
+  await expect(row('Physical arrivals / designated').locator('td').first()).toHaveText('8 / 8');
+  await expect(row('Declared outcome').locator('td').nth(1)).toHaveText('Goal not met at horizon');
+  await expect(row('Protected terrain').locator('td').nth(1)).toHaveText('Unknown');
+  await expect(row('Evidence retention').locator('td').nth(1)).toHaveText('Truncated');
+  await page.locator('#surveyFilter').selectOption('casualties');
+  await expect(page.locator('.survey-tile:visible')).toHaveCount(1);
+  await page.locator('#surveyFilter').selectOption('unknown');
+  await expect(page.locator('.survey-tile:visible')).toHaveCount(1);
+  await expect(page.locator('#surveyOutcomeSummary')).toContainText('Validity unknown');
+  await page.locator('#surveyFilter').selectOption('all');
+  await page.locator('#surveyPolicySeed').selectOption('2');
+  await expect(page.locator('#surveyOutcomeSummary')).toContainText('Incomplete episode');
+  await page.locator('#surveyFilter').selectOption('incomplete');
+  await expect(page.locator('.survey-tile:visible')).toHaveCount(2);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.getByRole('button', { name: 'Next scenario', exact: true }).click();
+  await expect(page.locator('#surveyNextScene')).toBeDisabled();
 });

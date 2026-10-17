@@ -294,6 +294,24 @@ describe('BrowserNotePreview', function() {
     });
   });
 
+  it('applies workstation envelopes through the scheduler and resumes directly at sustain without another attack', async function() {
+    await withFakeClockAndPerformance(async clock => {
+      const { preview } = setup({ nowMs: () => clock.now });
+      await preview.enable();
+      const scheduler = new MidiScheduler({}); scheduler.setOutput(preview.output);
+      const envelope = { attack: 0.7, decay: 0.2, sustain: 0.8, release: 0.4 };
+      scheduler.sendNote({ note: 60, velocity: 100, channel: 1, durationTicks: 100, ensembleRole: 'texture', envelope });
+      scheduler.sendNote({ note: 64, velocity: 100, channel: 1, durationTicks: 100, ensembleRole: 'texture', envelope, resumed: true });
+      const [fresh, held] = [...preview._voices];
+      expect(fresh).to.include({ attack: 0.7, decay: 0.2, sustain: 0.8, release: 0.4 });
+      expect(fresh.gain.gain.events.find(event => event.type === 'ramp' && event.value === fresh.peak).time).to.equal(fresh.start + 0.7);
+      expect(held).to.include({ attack: 0, decay: 0, sustain: 0.8, release: 0.4 });
+      expect(held.gain.gain.events[0]).to.deep.equal({ type: 'set', value: held.peak * 0.8, time: held.start });
+      expect(held.gain.gain.events.some(event => event.type === 'ramp' && event.value === held.peak)).to.equal(false);
+      scheduler.dispose(); await preview.dispose();
+    });
+  });
+
   it('preserves triangle preview for older palettes with saved program and channel edits', async function() {
     await withFakeClockAndPerformance(async clock => {
       const { preview, context } = setup({ nowMs: () => clock.now });

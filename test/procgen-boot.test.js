@@ -40,31 +40,19 @@ describe('procgenBoot helpers', function () {
     registerClassicStyles();
   });
 
-  it('resolves procgen seed with query -> storage -> timestamp precedence', function () {
+  it('honors an explicit seed and otherwise starts fresh without reading the prior seed', function () {
     globalThis.window = {
       localStorage: {
         getItem() {
-          return 'from-storage';
+          throw new Error('Previous seed must not be read');
         }
-      }
+      },
+      crypto: { getRandomValues(values) { values[0] = 123456789; } }
     };
 
     expect(procgenBoot.resolveProcgenSeed(new URLSearchParams('seed=42')))
       .to.equal(normalizeSeed('42'));
-    expect(procgenBoot.resolveProcgenSeed(new URLSearchParams('')))
-      .to.equal(normalizeSeed('from-storage'));
-
-    const originalNow = Date.now;
-    Date.now = () => 123456789;
-    globalThis.window.localStorage.getItem = () => {
-      throw new Error('storage blocked');
-    };
-    try {
-      expect(procgenBoot.resolveProcgenSeed(new URLSearchParams('')))
-        .to.equal(normalizeSeed(123456789));
-    } finally {
-      Date.now = originalNow;
-    }
+    expect(procgenBoot.resolveProcgenSeed(new URLSearchParams(''))).to.equal(123456789);
   });
 
   it('selects one deterministic compatible style without reading the previous run', async function () {
@@ -272,6 +260,13 @@ describe('procgenBoot helpers', function () {
     globalThis.document = { getElementById: id => id === 'gameCanvas' ? canvas : id === 'procgenTopbar' ? { getBoundingClientRect: () => ({ height: 120 }) } : null };
     procgenBoot.resizeCanvas(); expect(canvas.width).to.equal(780); expect(canvas.height).to.equal(1360);
     expect(canvas.style.height).to.equal('680px');
+  });
+  it('sizes the workstation canvas from its stage instead of covering headers and inspector', function () {
+    const canvas = { width: 0, height: 0, style: {} };
+    globalThis.window = { devicePixelRatio: 2, innerWidth: 1440, innerHeight: 1000 };
+    globalThis.document = { getElementById: id => id === 'gameCanvas' ? canvas : id === 'procgenStudioStage' ? { clientWidth: 954, clientHeight: 786 } : null };
+    procgenBoot.resizeCanvas(); expect(canvas.width).to.equal(1908); expect(canvas.height).to.equal(1572);
+    expect(canvas.style.width).to.equal('954px'); expect(canvas.style.height).to.equal('786px');
   });
 
   it('falls back to finite canvas dimensions when viewport metrics are invalid', function () {

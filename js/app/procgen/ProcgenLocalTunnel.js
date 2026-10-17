@@ -21,7 +21,7 @@ class ProcgenLocalTunnel {
     for (const action of Object.values(this.actions)) action.setRuntime(this.runtime);
     this.stats = { proofs: 0, accepted: 0, actionSteps: 0 };
   }
-  prove(actor, ground, hazards, maxWork, exitX) {
+  prove(actor, ground, hazards, maxWork, exitX, captureEdits = false) {
     const world = this.world, left = actor.x - 4, right = actor.x + 40, top = actor.y - 12, bottom = actor.y + 16;
     const cells = new Map(), removed = new Set(), triggers = [];
     const revision = world.terrainRevision, generation = world.generation, frontier = world.frontierRevision;
@@ -92,7 +92,8 @@ class ProcgenLocalTunnel {
     if (!walking || !excavated || worker.x < exitX || worker.action !== this.actions[State.WALKING]) failure ||= 'continuation';
     if (world.terrainRevision !== revision || world.generation !== generation || world.frontierRevision !== frontier) failure ||= 'changed-terrain';
     this.stats.actionSteps += steps; if (!failure) this.stats.accepted++;
-    return { safe: !failure, failure, actionSteps: steps, probes: cells.size, bashTicks, excavated, x: worker.x, y: worker.y };
+    return { safe: !failure, failure, actionSteps: steps, probes: cells.size, bashTicks, excavated, x: worker.x, y: worker.y,
+      ...(captureEdits && !failure ? { removedCells: [...removed].map(at => [left + at % 45, top + Math.floor(at / 45)]) } : {}) };
   }
   dispose() { this.world = null; this.actions[State.BASHING].masks = null; }
 }

@@ -84,6 +84,7 @@ class ProcgenLanePolicy {
     const lane = this.lanes[actor.laneIndex], task = this.world.accessTasks[actor.laneIndex]?.find(entry => entry.owner === actor);
     if (!lane || !task) return;
     this._decay(lane); lane.attempts++;
+    if (proposal.chain) { this.projects.beginChain(actor, proposal, task); return; }
     if (proposal.basinScene) { this.world.basinRoutes.begin(actor, proposal, task); return; }
     this.projects.begin(actor, proposal.kind, task);
     this.world.tunnelRoutes?.begin(actor, proposal, task);
@@ -96,6 +97,7 @@ class ProcgenLanePolicy {
     }
   }
   edit(x, y, ownerId) {
+    this.projects.edit(x, y, ownerId);
     const lane = Math.floor(y / this.world.laneHeight), width = this.world.terrain?.chunkWidth || 256, key = lane * 0x800000 + Math.floor(x / width);
     // Existing retained task lists are capped; no actor scan or new history.
     for (let index = Math.max(0, lane - 1); index <= Math.min(this.world.laneCount - 1, lane + 1); index++) for (const task of this.world.accessTasks[index] || []) {

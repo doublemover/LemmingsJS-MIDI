@@ -40,7 +40,7 @@ class ProcgenCrewProjects {
       const b = project.bounds;
       if (bounds.x1 >= b.x2 || bounds.x2 <= b.x1 || bounds.y1 >= b.y2 || bounds.y2 <= b.y1) continue;
       const manager = continuation?.manager;
-      if (continuation?.project === project && this._valid(project) && (manager === world || manager === world.basinRoutes || manager === world.tunnelRoutes) &&
+      if (continuation?.project === project && this._valid(project) && (manager === this || manager === world || manager === world.basinRoutes || manager === world.tunnelRoutes) &&
           manager.allowsProjectClaim?.(continuation, actor, action, bounds)) continue;
       return true;
     }
@@ -89,10 +89,106 @@ class ProcgenCrewProjects {
   fail(lane, id, reason = 'worker-failure') {
     const project = this.lanes[lane]?.projects.find(entry => entry.id === id); if (project) this._fail(project, reason);
   }
+  beginChain(actor, proposal, task) {
+    const id = this.begin(actor, proposal.kind, task), project = this.lanes[actor.laneIndex].projects.find(entry => entry.id === id);
+    if (!project) return false;
+    const proof = proposal.chain;
+    project.chain = { stages: proof.stages.map(stage => ({ ...stage, footprint: { ...stage.footprint } })), index: 0,
+      exitX: proof.exitX, exitY: proof.exitY, bounds: { ...proof.bounds }, changed: false, lostOwners: [], stageStartTick: this.world.tickIndex };
+    project.tiles = proof.tiles.map(tile => [...tile]); project.exitX = proof.exitX - 8;
+    actor._crewChainId = id;
+    return true;
+  }
+  allowsProjectClaim(continuation, actor, action, bounds) {
+    const project = continuation.project, chain = project?.chain, stage = chain?.stages[chain.index];
+    return project?.phase === 'working' && project.ownerId === actor.id && !chain.changed && stage &&
+      actor.x === stage.x && actor.y === stage.y && action === this.world.actions[stage.kind === 'builders' ? State.BUILDING : stage.kind === 'bashers' ? State.BASHING : State.MINING] &&
+      bounds.x1 >= project.bounds.x1 && bounds.x2 <= project.bounds.x2 && bounds.y1 >= project.bounds.y1 && bounds.y2 <= project.bounds.y2;
+  }
+  edit(x, y, ownerId) {
+    const world = this.world, key = Math.floor(y / world.laneHeight) * 0x800000 + Math.floor(x / (world.terrain?.chunkWidth || 256));
+    const lane = Math.floor(y / world.laneHeight), margin = Math.ceil(128 / world.laneHeight);
+    for (let index = Math.max(0, lane - margin); index <= Math.min(world.laneCount - 1, lane + margin); index++) for (const project of this.lanes[index].projects) {
+      if (!project.chain || project.phase !== 'working') continue;
+      const b = project.chain.bounds;
+      if (x >= b.x1 && x < b.x2 && y >= b.y1 && y < b.y2 && ownerId !== project.ownerId) project.chain.changed = true;
+      if (ownerId === project.ownerId) for (const tile of project.tiles) if (tile[0] === key) tile[1] = procgenTileRevision(world, key);
+    }
+  }
+  assistChain(actor) {
+    const world = this.world, state = this.lanes[actor.laneIndex];
+    if (!state) return false;
+    world.hazardPlanner.observeContact(actor);
+    const held = state.projects.find(entry => entry.id === actor._crewChainHoldId);
+    if (actor._crewChainHoldId && actor.action === world.actions[State.BLOCKING]) {
+      if (!held || held.phase === 'failed' || (held.phase === 'connected' || held.phase === 'working' && held.ownerId == null) && this._valid(held)) {
+        const stride = Math.max(1, Math.ceil(world.laneCount / 8)), service = world.hazardPlanner.admission.begin(actor.laneIndex);
+        if (actor.laneIndex % stride === world.tickIndex % stride && !service.consumed && service.probes + 256 <= 1024) {
+          world.hazardPlanner.admission.served(actor, service.probes + 256);
+          if (world._emptyBashMasks(actor) && world.assignWorker(actor, 'bashers', actor.x)) actor._crewChainHoldId = null;
+        }
+      }
+      return true;
+    }
+    const waiting = state.projects.find(entry => entry.chain && entry.phase === 'working' && entry.ownerId !== actor.id && entry.members.has(actor.id));
+    if (waiting && waiting.ownerId != null && actor.action === world.actions[State.WALKING] && actor.lookRight && actor.x >= waiting.startX - 32 && actor.x <= waiting.startX - 12 &&
+        Math.abs(actor.y - waiting.startY) <= 3 && world.hasGroundAt(actor.x, actor.y + 1) && world.workerLimits.bashers && world._emptyBashMasks(actor)) {
+      actor.setAction(world.actions[State.BLOCKING]); actor._crewChainHoldId = waiting.id; waiting.members.get(actor.id).blocker = true; world.stats.blockers++; actor.assists++;
+      return true;
+    }
+    let project = state.projects.find(entry => entry.id === actor._crewChainId && entry.phase === 'working');
+    if (!project) {
+      actor._crewChainId = null;
+      // Replacement workers must physically reach the pending launch pose.
+      project = state.projects.find(entry => entry.chain && entry.phase === 'working' && entry.ownerId == null && entry.members.has(actor.id) &&
+        actor.action === world.actions[State.WALKING] && actor.lookRight && actor.x === entry.chain.stages[entry.chain.index].x && actor.y === entry.chain.stages[entry.chain.index].y);
+      if (!project) return false;
+      project.ownerId = actor.id; actor._crewChainId = project.id; project.chain.pending = true; project.chain.changed = true;
+    }
+    const chain = project.chain;
+    if (!this._alive(actor)) return false;
+    if (!actor.lookRight || world.tickIndex - chain.stageStartTick > 400) { this._fail(project, 'chain-deviation'); actor._crewChainId = null; return false; }
+    if (actor.action !== world.actions[State.WALKING] && !(chain.waitingService && actor.action === world.actions[State.BLOCKING])) return true;
+    if (!chain.pending) {
+      const next = chain.stages[chain.index + 1];
+      if (!next) {
+        if (actor.x >= chain.exitX && Math.abs(actor.y - chain.exitY) <= 3 && !chain.changed && this._valid(project)) {
+          this.connect(project.lane, project.id, chain.exitX - 8, chain.exitY, project.tiles); actor._crewChainId = null;
+        }
+        return true;
+      }
+      if (actor.x < next.x) return true;
+      if (actor.x !== next.x || actor.y !== next.y) { this._fail(project, 'chain-launch-missed'); actor._crewChainId = null; return false; }
+      chain.index++; chain.pending = true;
+    }
+    const planned = chain.stages[chain.index];
+    if (actor.x !== planned.x || actor.y !== planned.y) { this._fail(project, 'chain-launch-missed'); actor._crewChainId = null; return false; }
+    const proof = world.hazardPlanner.revalidateChain(actor, project);
+    if (proof?.deferred) {
+      if (!chain.waitingService && world.hasGroundAt(actor.x, actor.y + 1)) {
+        actor.setAction(world.actions[State.BLOCKING]); world.stats.blockers++; actor.assists++; chain.waitingService = true;
+      }
+      return true;
+    }
+    if (!proof?.safe) { this._fail(project, proof?.failure || 'chain-service-deferred'); actor._crewChainId = null; return false; }
+    chain.stages.splice(chain.index, chain.stages.length - chain.index, ...proof.stages);
+    chain.exitX = proof.exitX; chain.exitY = proof.exitY; project.exitX = proof.exitX - 8; project.tiles = proof.tiles; chain.changed = false;
+    const next = chain.stages[chain.index];
+    if (!world.assignWorker(actor, next.kind, next.x + (next.kind === 'builders' ? 24 : 8), next.footprint, { manager: this, project })) {
+      this._fail(project, 'chain-claim'); actor._crewChainId = null; return false;
+    }
+    const task = world.accessTasks[actor.laneIndex].find(entry => entry.owner === actor); if (task) task.crewProjectId = project.id;
+    chain.pending = false; chain.waitingService = false; chain.stageStartTick = world.tickIndex;
+    return true;
+  }
   retire(actor, reason = 'crew-loss') {
     const lane = actor._crewObservedLane ?? actor.laneIndex, state = this.lanes[lane]; if (!state) return;
     state.live.delete(actor.id);
-    for (const project of state.projects) if (project.members.has(actor.id)) this._fail(project, reason);
+    for (const project of state.projects) if (project.members.has(actor.id)) {
+      if (project.chain && project.phase === 'working' && project.ownerId === actor.id && project.members.size > 1) {
+        project.chain.lostOwners.push(actor.id); project.members.delete(actor.id); project.ownerId = null; project.chain.changed = true;
+      } else this._fail(project, reason);
+    }
     actor._crewObservedLane = null;
   }
   observe(actor) {
@@ -167,7 +263,8 @@ class ProcgenCrewProjects {
       this.world.soundEvents?.emit({ type: SoundEventTypes.PROCGEN_ROUTE_COMPLETE, sfxId: SoundEffectIds.PROCGEN_ROUTE_COMPLETE, lemmingId: project.ownerId, laneIndex: project.lane, laneCount: this.world.laneCount,
         generation: project.generation, tick: this.world.tickIndex, crewProjectId: project.id, routeRevisionsUnchanged: true, kind: project.kind,
         ordinaryCrossings: project.ordinaryCrossings, admittedCrew: project.members.size, x: project.goalX, y: project.goalY,
-        startTick: project.startTick, connectionTick: project.connectionTick, recoveredBlockers: blockers, ...project.scene });
+        startTick: project.startTick, connectionTick: project.connectionTick, recoveredBlockers: blockers,
+        ...(project.chain ? { chainStages: project.chain.stages.map(stage => stage.kind), lostWorkers: project.chain.lostOwners.length } : {}), ...project.scene });
     }
   }
   signals(lane) {

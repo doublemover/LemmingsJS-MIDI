@@ -21,7 +21,7 @@ class ProcgenWalkContinuation {
     this.stats = { proofs: 0, accepted: 0, actionSteps: 0 };
   }
   prove(actor, ground, hazards, maxWork) {
-    const world = this.world, left = actor.x, right = left + WALK_CONTINUATION_DISTANCE, top = actor.y - 20, bottom = actor.y + 12;
+    const world = this.world, left = actor.x, right = left + WALK_CONTINUATION_DISTANCE, top = actor.y - 20, bottom = actor.y + 32;
     const landingRight = right + 8;
     const bounds = { x1: left, x2: landingRight + 1, y1: top, y2: bottom + 1 };
     const first = Math.max(0, Math.floor(top / world.laneHeight)), last = Math.min(world.laneCount - 1, Math.floor(bottom / world.laneHeight));

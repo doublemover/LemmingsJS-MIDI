@@ -248,7 +248,8 @@ describe('compact procgen drawer', () => {
       expect(moved.find(entry => entry.id === 'b').span).to.include({ start: 8, laneStart: 3, laneEnd: 4 });
       expect(moved.filter(entry => !['a', 'b'].includes(entry.id))).to.deep.equal(entries.filter(entry => !['a', 'b'].includes(entry.id)));
       f.el('procgenSpawnPriority').value = '7'; f.el('procgenSpawnPriority').dispatchEvent({ type: 'change', target: f.el('procgenSpawnPriority') });
-      f.el('procgenSpanUndo').dispatchEvent({ type: 'click' }); expect(read()).to.deep.equal(entries); expect(f.el('procgenSpawnPriority').value).to.equal(7);
+      f.el('procgenSpanUndo').dispatchEvent({ type: 'click' }); expect(read()).to.deep.equal(moved); expect(f.el('procgenSpawnPriority').value).to.equal(0);
+      f.el('procgenSpanUndo').dispatchEvent({ type: 'click' }); expect(read()).to.deep.equal(entries);
       f.el('procgenSpanRedo').dispatchEvent({ type: 'click' }); expect(read()).to.deep.equal(moved);
       pointer('pointerdown', 59, 226); pointer('pointermove', 79, 226); pointer('pointerup', 79, 226);
       expect(read().find(entry => entry.id === 'a').span.duration).to.equal(4); expect(read().find(entry => entry.id === 'b').span.duration).to.equal(5);
@@ -328,6 +329,36 @@ describe('compact procgen drawer', () => {
     press('Backspace', { target: { tagName: 'INPUT' } }); expect(f.restarts).to.equal(0);
     press('Backspace'); expect(f.restarts).to.equal(1); f.ui.dispose();
   });
+  it('preserves paused review across a replacement runtime and honors later Play', () => {
+    const f = fixture('?seed=42'), calls = [];
+    f.runtime.lanes = { pause: () => calls.push('old pause') };
+    f.el('procgenPause').dispatchEvent({ type: 'click' });
+    f.el('procgenSeed').value = 'forest'; f.el('procgenRestart').dispatchEvent({ type: 'click' });
+    f.runtime.lanes = { pause: () => calls.push('new pause'), resume: () => calls.push('new resume') };
+    f.ui.sync();
+    expect(f.el('procgenPause').getAttribute('aria-pressed')).to.equal('true');
+    expect(calls).to.include('new pause');
+    f.el('procgenPause').dispatchEvent({ type: 'click' });
+    expect(calls.at(-1)).to.equal('new resume'); f.ui.dispose();
+  });
+  it('does not apply an unsubmitted seed draft when changing world dimensions', () => {
+    const f = fixture('?seed=42'); f.el('procgenSeed').value = 'unsubmitted';
+    f.el('procgenLanes').value = '4'; f.el('procgenLanes').dispatchEvent({ type: 'change' });
+    expect(f.ui.settings.seed).to.equal(42);
+    f.el('procgenSeed').dispatchEvent({ type: 'keydown', key: 'Enter', repeat: true, preventDefault() {} });
+    expect(f.restarts).to.equal(1);
+    f.el('procgenSeed').dispatchEvent({ type: 'keydown', key: 'Enter', preventDefault() {} });
+    expect(f.ui.settings.seed).to.equal(normalizeSeed('unsubmitted')); expect(f.restarts).to.equal(2); f.ui.dispose();
+  });
+  it('uses the same pause-and-step action from the keyboard and button', () => {
+    const f = fixture(), calls = [];
+    f.runtime.lanes = { pause: () => calls.push('pause'), step: () => calls.push('step') };
+    f.window.dispatchEvent({ type: 'keydown', code: 'BracketRight', preventDefault() {} });
+    expect(calls).to.deep.equal(['pause', 'step']);
+    expect(f.el('procgenPause').textContent).to.equal('Play');
+    f.el('procgenStep').dispatchEvent({ type: 'click' });
+    expect(calls).to.deep.equal(['pause', 'step', 'step']); f.ui.dispose();
+  });
   it('mounts one set of common controls outside the inert drawer', () => {
     const $ = cheerio.load(fs.readFileSync('procgen.html', 'utf8'));
     for (const id of ['procgenRestart', 'procgenSeed', 'procgenLanes', 'procgenPack', 'procgenSpeed', 'procgenPause', 'procgenStep', 'procgenFollow', 'procgenListen', 'procgenMasterVolume', 'procgenPanic']) {
@@ -339,7 +370,7 @@ describe('compact procgen drawer', () => {
     expect($('#procgenAliveCount').closest('#procgenTopbar').length).to.equal(1);
     expect($('#procgenDistance').closest('#procgenTopbar').length).to.equal(1);
     expect($('#procgenTab').closest('#procgenTopbar').length).to.equal(0);
-    expect($('#procgenTab').attr('aria-label')).to.equal('Show details');
+    expect($('#procgenTab').attr('aria-label')).to.equal('Show music and world controls');
     expect($('#procgenCharacters').closest('#procgenDrawer').length).to.equal(1);
     expect($('#procgenTab').parent().attr('id')).to.equal('procgenPanel');
     expect($('#procgenAdvanced').next().hasClass('procgen-cctv-controls')).to.equal(true);
@@ -354,7 +385,7 @@ describe('compact procgen drawer', () => {
     expect(f.ui.settings.seed).to.equal(normalizeSeed('forest')); expect(f.restarts).to.equal(1);
     f.el('procgenPause').dispatchEvent({ type: 'click' }); expect(f.el('procgenPause').textContent).to.equal('Play');
     f.el('procgenStep').dispatchEvent({ type: 'click' }); f.el('procgenFollow').dispatchEvent({ type: 'click' });
-    expect(calls).to.deep.equal(['pause', 'pause', 'step', 'follow']);
+    expect(calls).to.deep.equal(['pause', 'step', 'follow']);
     f.el('procgenMasterVolume').value = '180'; f.el('procgenMasterVolume').dispatchEvent({ type: 'input', target: f.el('procgenMasterVolume') });
     expect(f.ui.local.audio.getState().masterVolume).to.equal(1.8); expect(f.el('procgenMasterVolumeValue').textContent).to.equal('180%');
     f.ui.local.panic = () => calls.push('panic'); f.el('procgenPanic').dispatchEvent({ type: 'click' }); expect(calls.at(-1)).to.equal('panic');

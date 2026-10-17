@@ -1,9 +1,11 @@
 import { sanitizeClipVoices, sanitizeClipTransformLayers } from './MidiClipTransforms.js';
 import { sanitizeMidiAutomationSpan, clampMidiAutomationSpanValue, MAX_MIDI_AUTOMATION_SPANS } from './MidiAutomationSpan.js';
 import { sanitizeMidiEnsemble, buildMidiEnsembleConfig } from './MidiEnsemble.js';
+import { sanitizeMidiLaneMusic } from './MidiLaneMusic.js';
 import { DEFAULT_CONFIG, mergeConfig } from '../midi-mapping/MidiMappingDomain.js';
 import { getPlayableMidiClipSteps as activeClipSteps } from './MidiClipPlayback.js';
 import { cloneSafeObject, isPlainObject, safeObjectEntries } from '../../util/safeObject.js';
+import { sanitizeProcgenWorkstation, reduceProcgenWorkstationProject } from '../../app/procgen/workstation/ProcgenWorkstationProject.js';
 
 const MIDI_PROJECT_VERSION = 1;
 const DEFAULT_TRACK_ID = 'track-1';
@@ -27,7 +29,8 @@ const DIRECT_MAPPING_KEYS = Object.freeze([
   'pitchBend',
   'envelope',
   'arp',
-  'phrase'
+  'phrase',
+  'percussion'
 ]);
 
 const SOURCE_KINDS = Object.freeze(['sfx', 'trigger', 'midiFlag', 'system', 'procgen']);
@@ -294,6 +297,7 @@ const sanitizeDirectMapping = (mapping = {}) => {
   out.pitchBend = out.pitchBend == null ? null : clamp(toFiniteNumber(out.pitchBend, 0), -1, 1);
   out.envelope = sanitizeEnvelope(out.envelope);
   out.arp = sanitizeArpPayload(out.arp);
+  if (out.percussion != null) out.percussion = out.percussion === true;
   out.phrase = isPlainObject(out.phrase) ? {
     enabled: out.phrase.enabled === true,
     mode: out.phrase.mode === 'down' ? 'down' : 'up',
@@ -366,7 +370,8 @@ const buildGlobalFromConfig = (config = {}) => {
     mpe: cloneObject(merged.mpe),
     limits: cloneObject(merged.limits),
     reverse: cloneObject(merged.reverse),
-    musicDirector: sanitizeMusicDirector(merged.musicDirector)
+    musicDirector: sanitizeMusicDirector(merged.musicDirector),
+    ...(merged.laneMusic ? { laneMusic: sanitizeMidiLaneMusic(merged.laneMusic) } : {})
   };
 };
 
@@ -383,7 +388,8 @@ const sanitizeGlobal = (global = {}) => {
     mpe: cloneObject(global.mpe, defaults.mpe),
     limits: cloneObject(global.limits, defaults.limits),
     reverse: cloneObject(global.reverse, defaults.reverse),
-    musicDirector: sanitizeMusicDirector(global.musicDirector)
+    musicDirector: sanitizeMusicDirector(global.musicDirector),
+    ...(global.laneMusic ? { laneMusic: sanitizeMidiLaneMusic(global.laneMusic) } : {})
   };
 };
 
@@ -565,6 +571,7 @@ const buildProjectBase = (overrides = {}) => {
     },
     transport: sanitizeTransport(overrides.transport),
     global: sanitizeGlobal(overrides.global),
+    ...(overrides.procgen ? { procgen: sanitizeProcgenWorkstation(overrides.procgen) } : {}),
     ...(overrides.ensemble ? { ensemble: overrides.ensemble } : {}),
     tracks: Array.isArray(overrides.tracks) && overrides.tracks.length
       ? overrides.tracks
@@ -678,6 +685,7 @@ function sanitizeMidiProject(project = {}) {
     },
     transport: sanitizeTransport(source.transport),
     global: sanitizeGlobal(source.global),
+    ...(source.procgen ? { procgen: sanitizeProcgenWorkstation(source.procgen) } : {}),
     ...(sanitizeMidiEnsemble(source.ensemble, trackIds) ? { ensemble: sanitizeMidiEnsemble(source.ensemble, trackIds) } : {}),
     tracks,
     sources,
@@ -977,6 +985,7 @@ const updateAutomationLane = (automation, automationId, patch, tracks) => {
 
 function reduceMidiProject(project, intent = {}) {
   const current = sanitizeMidiProject(project);
+  if (intent.type?.startsWith('procgen/')) return sanitizeMidiProject(touchProject(reduceProcgenWorkstationProject(current, intent)));
   let next = current;
   switch (intent?.type) {
   case 'project.set':
@@ -1140,8 +1149,8 @@ const buildRuntimeMapping = (source, track, hiddenByTrack, globalVelocityDefault
     if (value != null) out[key] = cloneSafeObject(value);
   }
   out.name = source.label;
-  out.channel = track.channel;
-  if (track.program != null) out.program = track.program;
+  out.channel = out.percussion ? 10 : track.channel;
+  if (track.program != null && !out.percussion) out.program = track.program;
   out.priority = mapping.priority ?? track.priority;
   if (mapping.priority != null) out.eventPriority = mapping.priority;
   out.voiceBudget = track.voiceBudget;
@@ -1571,6 +1580,7 @@ function projectToMidiConfig(project, factoryConfig = {}) {
     limits: clean.global.limits,
     reverse: clean.global.reverse,
     musicDirector: clean.global.musicDirector,
+    ...(clean.global.laneMusic ? { laneMusic: clean.global.laneMusic } : {}),
     input: {
       ...(base.input || {}),
       channel: clean.devices.inputChannel,

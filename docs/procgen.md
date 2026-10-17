@@ -32,9 +32,34 @@ three-pixel terraces. They reserve a clear approach and exit before optional
 attachments, keep exact seam elevations, and use the existing source-colored
 foundation columns for both collision and rendering. These chunks intentionally
 change older seed layouts; repeatability is within the same source version.
-The later source assemblies, basins and unconstrained landscape remain intact.
+Later source assemblies and basins retain their authored relationships.
 Challenge labels describe generation only: the planner reads observed terrain,
 and an intended shape never serves as a route certificate.
+
+The entrance of each challenge now drops eight pixels behind the working area.
+Followers that turn at unfinished construction meet that real return wall and
+walk back toward the job. Gap recovery floors connect to a finite far-bank wall
+and a rising exit, so a fallen follower can open a real basher route. There are
+no invisible turns, replacement actors or permanent blockers required by these
+forms. Lethal source objects begin after x1024, letting the crew encounter the
+initial skill forms before the existing hazard ramp and later source landscape.
+
+An observed narrow fire strip can use the existing staged crew-project owner
+for two complete builder sections. Each section rehearses the shared actions
+against revealed terrain, protected pixels, blockers and the unchanged source
+trigger before assignment. The passive screen and builder proof share the
+existing work allowance. A real temporary rear blocker holds the crew while
+construction is open; a walker already inside its central trigger gap can
+also block and later leave through the same legal empty-bash release. A
+supported eight-pixel terrain lip beyond eligible fire strips turns returning
+walkers before they reach the fire beneath the high bridge. Its collision and
+source-colored rendering share the same foundation profile.
+
+Natural sixteen-birth Fire cases for seeds 3 and 42 retain every original actor
+through 2,600 and 2,200 ticks respectively, with zero hazard contacts and one
+completed two-section crew project each. These finite cases cover the exposed
+fire failures; they do not certify indefinite survival or forward progress
+past every later source wall.
 
 Short basher candidates now replay the real four excavation masks, frame-five
 termination, directional blockers and subsequent walking/jumping/falling on a
@@ -42,8 +67,12 @@ private bounded patch. A candidate must remove material and reach its observed
 supported exit without a protected cut or hazard contact. No rehearsal edits
 live terrain or emits MIDI. Walking is screened before spending a builder:
 a shared jump may finish up to eight pixels beyond the nominal 24-pixel lookahead,
-but still must land supported within observed geometry. This avoids treating a
-normal terrace jump as an obstruction. The existing 1,024-work/eight-lane service
+but still must land supported within observed geometry. Supported falls up to
+32 pixels below the starting feet are rehearsed with real FALL actions and
+hazard observations from the lower band. Active construction in that corridor
+defers fallback excavation instead of encouraging a new shaft through the
+approach. Current short bashers receive their budget before speculative future
+guarded-tunnel proofs. The existing 1,024-work/eight-lane service
 limits and worker inventories still apply.
 
 Admitted canonical decorative terrain uses its real source collision. Admitted words use verified original glyph alpha as physical terrain. Each connected glyph component must touch measured foundation, its full source rectangle must fit, and the existing early-route clearance screen can reject it. Animated object artwork remains separate from terrain collision.
@@ -82,13 +111,18 @@ Wheel or Z/X zooms down to the fit of the actual lane stack and usable canvas he
 left edge and first-lane top edge pinned when the view is at the origin. Drag,
 arrows, or Shift-wheel pans; Shift-arrows pans faster. Deliberate panning suspends
 following; zoom and pointer jitter keep following. F or double-click resumes on the furthest-ahead living actor, including
-its current lane. V resets the zoom, Space pauses, ] steps while paused, Backspace
+its current lane. V resets the zoom, Space pauses, ] pauses and steps once, Backspace
 restarts, and +/- changes speed (Shift applies five steps). Existing overrides in
 keybindings.json apply to these actions. F1 or ? opens and scrolls to Help. Text and selection controls retain editing keys; range arrows and native button, checkbox and radio activation remain native while other game keys still work after a control click. The speed buttons use the main-game bitmap glyphs and step sizes;
 procgen has no upper speed dropdown cap. The runtime still reports actual achieved
 throughput separately from the requested multiplier. Frame work is limited by an
 eight-millisecond CPU budget, rather than a fixed 32-tick ceiling; an expensive
 tick always completes atomically and overload is visible in achieved throughput.
+
+Regeneration preserves Pause. Only Enter in the seed field or Regenerate applies
+an edited seed; scenery/size changes and Backspace regenerate the active seed.
+Keyboard opening of Details focuses its controls, and Escape closes text editing
+and returns focus to the handle. Native select Escape behavior remains intact.
 
 ## Distance and stall recovery
 

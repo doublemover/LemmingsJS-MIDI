@@ -73,6 +73,17 @@ describe('procgen compact controls and share configuration', () => {
     expect(renderer.cameraX).to.equal(0); expect(renderer.cameraY).to.equal(0);
     camera.dispose(); expect(listeners.size).to.equal(0);
   });
+  it('follows only visible workstation lanes and invalidates a paused leader when the row window changes', () => {
+    const { renderer, camera } = cameraFixture();
+    renderer.laneHeight = 96; renderer.world.laneCount = 16;
+    renderer.workstationLayout = { firstLane: 0, count: 2 }; renderer.world.tickIndex = 1;
+    camera.update(true, true); expect(renderer.cameraX).to.equal(0);
+    renderer.workstationLayout.firstLane = 2;
+    camera.update(true, true); expect(renderer.cameraX).to.equal(480);
+    renderer.followLaneIndex = 0;
+    camera.update(true, true); expect(renderer.cameraX).to.equal(0);
+    camera.dispose();
+  });
   it('uses the usable CSS viewport and optional overview band across lane count, resize and DPR changes', () => {
     const { renderer, camera } = cameraFixture();
     renderer.canvas.clientWidth = 450; renderer.canvas.clientHeight = 300;

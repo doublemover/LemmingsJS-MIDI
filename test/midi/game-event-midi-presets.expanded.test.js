@@ -13,7 +13,7 @@ import { EventHandler } from '../../js/util/EventHandler.js';
 import { makeOutput } from '../support/midi-output.js';
 import { withFakeClockAndPerformance } from '../support/timers.js';
 
-const expanded = GAME_EVENT_MIDI_PRESETS.slice(3).filter(preset => !preset.ensemble);
+const expanded = GAME_EVENT_MIDI_PRESETS.slice(3).filter(preset => !preset.ensemble && !preset.percussion);
 const actionEvents = [
   [SoundEffectIds.SPAWN, SoundEventTypes.LEMMING_SPAWN],
   [SoundEffectIds.EXIT, SoundEventTypes.LEMMING_EXIT, TriggerTypes.EXIT_LEVEL],
@@ -224,7 +224,7 @@ describe('expanded game-event MIDI preset library', function() {
   });
 
   it('plays bounded phrases on simulation ticks with each palette\'s real spacing and no wall-clock advancement', function() {
-    for (const preset of GAME_EVENT_MIDI_PRESETS) {
+    for (const preset of GAME_EVENT_MIDI_PRESETS.filter(preset => !preset.percussion)) {
       for (const [sfxId, type, triggerType] of actionEvents.slice(0, 2)) {
         withFakeClockAndPerformance(clock => {
           const project = applyGameEventMidiPreset(playableProject(), preset.id, { mode: 'phrase' });

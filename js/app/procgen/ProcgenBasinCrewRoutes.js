@@ -8,6 +8,7 @@ import { ActionJumpSystem } from '../../actions/ActionJumpSystem.js';
 import { MAX_LOCAL_ROUTE_DISTANCE as DISTANCE, MAX_ROUTE_PROBES as WORK, ROUTE_LANES_PER_TICK as LANES } from './ProcgenHazardPlanner.js';
 import { procgenTileRevision } from './ProcgenTerrainRetention.js';
 import { MAX_PROJECT_CREW } from './ProcgenCrewProjects.js';
+import { TriggerTypes } from '../../level/TriggerTypes.js';
 
 const MAX_BASIN_SECTIONS = 4, BASIN_PROJECT_TICKS = 1200;
 const signature = basin => basin && [basin.id, basin.sourceRevision, basin.object.id, basin.object.x, basin.object.y, basin.object.width, basin.object.height,
@@ -27,6 +28,11 @@ class ProcgenBasinCrewRoutes {
   _object(lane, chunk, index) { return this.world.terrain.describe(this.world.laneSeeds[lane], chunk).objects[index]; }
   _enabled(lane, chunk, index, basin) {
     const world = this.world, object = this._object(lane, chunk, index);
+    if (basin.production === 'observed-fire-span') {
+      if (object?.piece.id !== basin.object.id || object.x !== basin.object.x || object.y !== basin.object.y || world.terrainGrowth && !world.terrainGrowth.objectReady(lane, chunk, index)) return false;
+      world.hazards.nearby(lane, basin.trigger.x1, { behind: 0, ahead: 1 }, this.nearby);
+      return this.nearby.some(h => h.chunk === chunk && h.objectIndex === index && h.type === TriggerTypes.FRYING && ['x1', 'x2', 'y1', 'y2'].every(key => h[key] === basin.trigger[key]));
+    }
     if (signature(object?.basin) !== signature(basin) || world.terrainGrowth && !world.terrainGrowth.objectReady(lane, chunk, index)) return false;
     world.hazards.nearby(lane, basin.object.x, { behind: 0, ahead: 1 }, this.nearby);
     return this.nearby.some(h => h.chunk === chunk && h.objectIndex === index && h.enabled);
@@ -38,6 +44,10 @@ class ProcgenBasinCrewRoutes {
     for (const h of observations) {
       if (!h.enabled || h.lane !== actor.laneIndex) continue;
       const object = this._object(h.lane, h.chunk, h.objectIndex), basin = object?.basin;
+      if (!basin && h.type === TriggerTypes.FRYING) {
+        const fire = this._fireCandidate(actor, h, object, maxWork, observations);
+        if (fire) return fire;
+      }
       if (!basin || actor.y !== h.lane * world.laneHeight + basin.object.y || actor.x < basin.shores[0].x1 || actor.x >= basin.object.x) continue;
       if (!world.workerLimits.builders || !world.workerLimits.bashers) return { handled: true, proposal: null, probes: 0, failure: 'resources' };
       if (!world.lanePolicy.projects.canBegin(actor)) return { handled: true, proposal: null, probes: 0, failure: 'crew-capacity' };
@@ -55,18 +65,40 @@ class ProcgenBasinCrewRoutes {
     }
     return { handled: false, proposal: null, probes: 0 };
   }
+  _fireCandidate(actor, hazard, object, maxWork, observations) {
+    const world = this.world, distance = hazard.x1 - actor.x, top = actor.laneIndex * world.laneHeight;
+    if (distance < 18 || distance > 22 || hazard.x2 - hazard.x1 > 24 || actor.y + 1 <= hazard.y1 || actor.y - 9 >= hazard.y2 ||
+        !world.workerLimits.builders || !world.workerLimits.bashers || !world.lanePolicy.projects.canBegin(actor)) return null;
+    const sections = Math.ceil((hazard.x2 + 2 - actor.x) / 24);
+    if (sections !== 2) return null;
+    let screened = 0;
+    const passive = world.hazardPlanner.walking.prove(actor, (x, y) => { screened++; return world.hasGroundAt(x, y); }, observations, Math.floor(maxWork / 2));
+    screened += passive.actionSteps;
+    if (passive.safe || passive.failure === 'budget' || passive.failure === 'unrevealed') return { handled: true, proposal: null, probes: screened, failure: passive.failure };
+    const basin = { id: `fire:${hazard.chunk}:${hazard.objectIndex}`, production: 'observed-fire-span', sourceRevision: world.generation,
+      object: { id: object.piece.id, x: object.x, y: object.y, width: hazard.width, height: hazard.height },
+      trigger: { x1: hazard.x1, x2: hazard.x2, y1: hazard.y1, y2: hazard.y2 },
+      bounds: { x1: actor.x - 24, x2: actor.x + 64, y1: actor.y - top - 48, y2: actor.y - top + 33 },
+      shores: [{ x1: actor.x - 24, x2: actor.x + 1, y: actor.y - top, direction: 1 }, { x1: hazard.x2 + 2, x2: actor.x + 64, y: actor.y - top, direction: -1 }],
+      floor: { x1: actor.x - 24, x2: actor.x + 64, y: Math.min(world.laneHeight - 1, actor.y - top + 32), supportColumns: 0 } };
+    const scene = { basin, chunk: hazard.chunk, objectIndex: hazard.objectIndex, sections, section: 0, lane: hazard.lane, startX: actor.x, startY: actor.y };
+    const proof = this.prove(actor, scene, Math.max(0, maxWork - screened));
+    if (proof.proposal) proof.proposal.basinScene = scene;
+    return { ...proof, probes: screened + proof.probes, handled: true };
+  }
   prove(actor, scene, maxWork = WORK) {
-    const world = this.world, last = scene.section + 1 === scene.sections;
+    const world = this.world, last = scene.section + 1 === scene.sections, fire = scene.basin.production === 'observed-fire-span';
     maxWork = Math.max(0, Math.min(WORK, Math.trunc(maxWork) || 0)); this.stats.proofs++;
     const left = actor.x - 1, right = actor.x + DISTANCE, top = actor.y - 24;
-    const bankY = scene.lane * world.laneHeight + scene.basin.object.y, bottom = Math.max(actor.y + 2, last ? bankY + 2 : actor.y + 2);
+    const bankY = fire ? scene.startY : scene.lane * world.laneHeight + scene.basin.object.y;
+    const bottom = Math.max(actor.y + 2, last ? Math.min(world.height - 1, bankY + (fire ? 32 : 2)) : actor.y + 2);
     const footprint = { x1: actor.x, x2: actor.x + 28, y1: actor.y - 12, y2: actor.y + 1 };
     let probes = 0, actionSteps = 0, failure = null, built = 0, shrugged = false, fell = false;
     const cells = new Map(), patch = new Set(), key = (x, y) => y * (DISTANCE + 2) + x - left;
     const read = (x, y) => {
       if (x < left || x > right || y < top || y > bottom || y < 0 || y >= world.height) { failure ||= 'bounds'; return 0; }
       const lane = Math.floor(y / world.laneHeight), chunk = Math.floor(x / world.terrain.chunkWidth);
-      if (x >= world.generatedThrough[lane] || world.terrainGrowth?.stateFor(lane, chunk)) { failure ||= 'unrevealed'; return 0; }
+      if (x >= world.generatedThrough[lane] || world.terrainGrowth?.stateFor(lane, chunk) && !world.terrainGrowth.columnReady?.(lane, x)) { failure ||= 'unrevealed'; return 0; }
       const at = key(x, y);
       if (!cells.has(at)) {
         if (probes + actionSteps >= maxWork) { failure ||= 'budget'; return 0; }
@@ -110,7 +142,7 @@ class ProcgenBasinCrewRoutes {
           if (worker.x !== actor.x + 24 || worker.y !== actor.y - 12 || !level.hasGroundAt(worker.x, worker.y + 1)) failure ||= 'endpoint';
           break;
         }
-        if (fell && worker.y === bankY && worker.x >= scene.basin.shores[1].x1) {
+        if (fell && (fire || worker.y === bankY) && worker.x >= scene.basin.shores[1].x1) {
           if (!level.hasGroundAt(worker.x, worker.y + 1)) failure ||= 'landing-support';
           break;
         }
@@ -118,7 +150,7 @@ class ProcgenBasinCrewRoutes {
     }
     if (built !== 72 || !shrugged || worker.action !== this.actions[State.WALKING] || last && !fell) failure ||= 'incomplete';
     this.stats.probes += probes; this.stats.actionSteps += actionSteps; this.stats.maxWork = Math.max(this.stats.maxWork, probes + actionSteps);
-    return { proposal: failure ? null : { kind: 'builders', targetX: actor.x + 28, footprint, reason: 'staged-source-basin',
+    return { proposal: failure ? null : { kind: 'builders', targetX: actor.x + 28, footprint, reason: fire ? 'staged-observed-fire' : 'staged-source-basin',
       estimatedTicks: actionSteps, materialCost: 12, score: 120, routeEvidence: { sections: scene.sections, section: scene.section + 1, endpointX: worker.x, endpointY: worker.y, naturalFall: fell, independentQualification: false } },
     probes: probes + actionSteps, groundProbes: probes, actionSteps, failure };
   }
@@ -192,6 +224,10 @@ class ProcgenBasinCrewRoutes {
     const scene = this.scenes[task.startLane];
     return !task.basinSceneId || scene?.id === task.basinSceneId && scene.phase === 'connected' && scene.arrival?.phase !== 'open';
   }
+  requiresContainment(task) {
+    const scene = this.scenes[task.startLane];
+    return !!task.basinSceneId && scene?.id === task.basinSceneId && scene.basin.production === 'observed-fire-span' && scene.phase !== 'connected' && scene.phase !== 'failed';
+  }
   _fail(scene, reason) {
     if (scene.phase === 'failed') return;
     scene.phase = 'failed'; scene.failure = reason; this.stats.failed++;
@@ -257,13 +293,14 @@ class ProcgenBasinCrewRoutes {
         actor.setAction(world.actions[State.BLOCKING]); world.stats.blockers++; actor.assists++; scene.phase = 'waiting';
       } else scene.phase = 'landing';
     }
-    if (scene.phase === 'landing' && actor.action === world.actions[State.WALKING] && actor.y === scene.startY && actor.x >= scene.basin.shores[1].x1) {
+    const landingY = scene.basin.production === 'observed-fire-span' ? scene.endpoint.endpointY : scene.startY;
+    if (scene.phase === 'landing' && actor.action === world.actions[State.WALKING] && actor.y === landingY && actor.x >= scene.basin.shores[1].x1) {
       if (!world.hasGroundAt(actor.x, actor.y + 1)) { this._fail(scene, 'shore-support'); return; }
       scene.phase = 'connected'; scene.connectionTick = world.tickIndex; this.stats.connected++;
       actor.setAction(world.actions[State.BLOCKING]); world.stats.blockers++; actor.assists++;
       const project = world.lanePolicy.projects.lanes[scene.lane].projects.find(p => p.id === scene.projectId);
       if (project) project.members.get(actor.id).blocker = true;
-      world.lanePolicy.projects.connect(scene.lane, scene.projectId, scene.basin.shores[1].x1, scene.startY, []);
+      world.lanePolicy.projects.connect(scene.lane, scene.projectId, scene.basin.shores[1].x1, landingY, []);
       scene.tiles = project?.tiles || []; world.lanePolicy.lanes[scene.lane].successes++;
     }
   }
@@ -290,7 +327,10 @@ class ProcgenBasinCrewRoutes {
   edit(x, y, ownerId) {
     const scene = this.scenes[Math.floor(y / this.world.laneHeight)]; if (!scene || scene.phase === 'failed') return;
     const key = scene.lane * 0x800000 + Math.floor(x / this.world.terrain.chunkWidth), b = scene.bounds;
-    if (x >= b.x1 && x < b.x2 && y >= b.y1 && y < b.y2 && (ownerId !== scene.ownerId || scene.phase !== 'building')) { this._fail(scene, 'foreign-route-edit'); return; }
+    const recovery = scene.recoveries?.get(ownerId), cell = `${x}:${y}`;
+    const approvedRecovery = scene.phase === 'connected' && recovery && this.world.tickIndex <= recovery.until &&
+      recovery.actor.action === this.world.actions[State.BASHING] && scene.project.members.has(ownerId) && recovery.cells.delete(cell);
+    if (x >= b.x1 && x < b.x2 && y >= b.y1 && y < b.y2 && !approvedRecovery && (ownerId !== scene.ownerId || scene.phase !== 'building')) { this._fail(scene, 'foreign-route-edit'); return; }
     const revision = procgenTileRevision(this.world, key);
     for (const tile of scene.guardTiles) if (tile[0] === key) tile[1] = revision;
     for (const tile of scene.project.tiles) if (tile[0] === key) tile[1] = revision;

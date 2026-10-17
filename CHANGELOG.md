@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Add the ProcGen workstation with eight mixed tileset lanes, Strip/Overlay sequencing, role collections, inspectors, phrase editing, recording, automation and musical Undo.
+- Add a shared BPM/game transport, MIDI clock and transport synchronization, independent clock/note ports, channel conflict reporting and Standard MIDI File performance export.
+- Save versioned full-world checkpoints and musical sessions, with portable files, named browser projects and fresh seeds for new worlds.
+- Assemble terrain pieces just ahead of crews, vary lane pacing, space traps farther apart and reveal distant scenery with world-anchored dithering.
+- Rehearse bounded action chains of up to four stages with real physics and validate completed routes through ordinary follower passage.
+
+- Add a music workspace with global key, scale and pitch spread, ordered lane-range schemes, six drum kits, and shared musical persistence/Undo.
+- Keep General MIDI percussion on channel 10 across melodic transposition, MPE allocation and scene replies; retain legacy project playback until a deliberate pitch edit.
+- Add scenario/policy navigation and explicit whole-cohort validity, casualty and baseline comparisons to the survey dashboard.
+- Extend seeded skill encounters deeper into source terrain, introduce intermediate-depth recovery gaps, and give deep gaps visible far-bank return lips.
+- Contain close followers at fire bridges and release guards with bounded shared-action basher rehearsals and exact edit ownership.
+
+- Retain whole crews around early skill challenges with physical return walls, finite gap-recovery exits, and lethal hazards introduced after the skill stretch.
+- Preserve safe deeper walking drops, prioritize current short basher opportunities, and search unfinished walkers after a leader arrives.
+- Cross observed narrow fire strips with two real builder sections, recover overlapping temporary guards, and retain returning walkers with visible terrain.
+- Avoid copying untouched accessory sprite rows while preserving all composed pixels and source assets.
+- Preserve pause and explicit seed edits across regeneration; unify keyboard/button stepping and improve drawer focus.
+- Fence stale survey loads and replays, detach imported reports from live controls, and avoid showing future baseline telemetry at earlier checkpoints.
+
 - Add seeded ledges, finite tunnel walls, recoverable gaps and walkable terraces with clear approaches between the entrance and later source terrain.
 - Validate short bashers with the actual mask/action lifecycle, preserve passive jump landings, and discover solver skill windows between sampled decisions.
 - Group procgen controls for smaller screens and improve survey selection, empty states, comparison and keyboard navigation.

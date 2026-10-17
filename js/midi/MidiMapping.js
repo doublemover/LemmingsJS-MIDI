@@ -1,5 +1,7 @@
 import { applyMidiAutomationSpanValues } from './midi-mapping/MidiAutomationSpanValues.js';
 import { applyMidiEnsembleToSpec } from './project/MidiEnsemble.js';
+import { resolveMidiLaneScheme, laneSchemeSource } from './midi-mapping/MidiLaneSchemes.js';
+import { sanitizeMidiLaneMusic } from './project/MidiLaneMusic.js';
 import { positionCurveValue } from './midi-mapping/PositionCurve.js';
 import { cloneSafeObject, isPlainObject } from '../util/safeObject.js';
 import {
@@ -24,6 +26,8 @@ import {
 class MidiMapping {
   constructor(config = {}) {
     this.config = mergeConfig(DEFAULT_CONFIG, config);
+    if (this.config.laneMusic) this.config.laneMusic = sanitizeMidiLaneMusic(this.config.laneMusic);
+    this.laneSchemes = new Map();
   }
 
   static fromJson(json) {
@@ -42,9 +46,17 @@ class MidiMapping {
 
   applySpanValues(spec, values) { return applyMidiAutomationSpanValues(spec, values, this.config); }
 
-  getSfxConfig(sfxId) {
+  eventConfig(event) { return resolveMidiLaneScheme(this.config, event, this.laneSchemes); }
+
+  getTriggerConfig(event) {
+    const key = String(event?.triggerType), original = this.config.triggers?.[key], resolved = this.eventConfig(event);
+    return resolved === this.config ? original : laneSchemeSource(original, resolved.triggers?.[key]);
+  }
+
+  getSfxConfig(sfxId, event = null) {
     if (sfxId == null) return null;
-    const configured = this.config.sfx?.[String(sfxId)];
+    const original = this.config.sfx?.[String(sfxId)], resolved = this.eventConfig(event);
+    const configured = resolved === this.config ? original : laneSchemeSource(original, resolved.sfx?.[String(sfxId)]);
     if (configured != null) return configured;
     if (sfxId === 26 || sfxId === 27 || sfxId === 28) {
       return { note: sfxId === 27 ? 67 : 60, durationTicks: 2, velocity: 72 };
@@ -75,17 +87,17 @@ class MidiMapping {
    * }|null}
    */
   mapEvent(event, context = {}, density = 0, overrideSfx = null) {
-    const cfg = this.config;
-    if (!cfg.enabled || !event) return null;
-    const sfx = overrideSfx || this.getSfxConfig(event.sfxId) || {};
+    if (!this.config.enabled || !event) return null;
+    const sfx = overrideSfx || this.getSfxConfig(event.sfxId, event) || {};
+    const cfg = sfx.clipSequence ? this.config : this.eventConfig(event), percussion = sfx.percussion === true;
     if (sfx.disabled) return null;
 
-    const noteRange = cfg.noteRange || DEFAULT_CONFIG.noteRange;
+    const noteRange = percussion ? { min: 0, max: 127 } : cfg.noteRange || DEFAULT_CONFIG.noteRange;
     const velocityRange = cfg.velocityRange || DEFAULT_CONFIG.velocityRange;
     const durationCfg = cfg.durationTicks || DEFAULT_CONFIG.durationTicks;
     const densityCfg = cfg.density || DEFAULT_CONFIG.density;
     const positionCfg = cfg.position || DEFAULT_CONFIG.position;
-    const scale = resolveScale(cfg.scale);
+    const scale = resolveScale(percussion ? { name: 'chromatic', root: 0 } : cfg.scale);
     const noteDefaults = cfg.noteDefaults || DEFAULT_CONFIG.noteDefaults;
     const positionMappings = resolvePositionMappings(positionCfg);
     const axisValues = resolveAxisValues(event, context);
@@ -179,9 +191,13 @@ class MidiMapping {
       pitchBend = clamp(pitchBendOverride, -1, 1);
     }
 
+    const transposeAbsolute = cfg.laneMusic && cfg.laneMusic.pitchEnabled !== false && !percussion && !Number.isFinite(sfx.frequencyHz);
+    const reference = cfg.laneReferenceRoot ?? cfg.laneMusic?.referenceRoot ?? scale.root;
+    const transpose = transposeAbsolute ? ((scale.root - reference + 18) % 12) - 6 : 0;
+    const tune = pitch => clampNoteToRange(quantizeToScale(pitch + transpose, scale), noteRange);
     let notes = null;
     if (Array.isArray(sfx.notes) && sfx.notes.length) {
-      notes = sfx.notes.map(n => clampNoteToRange(n, noteRange));
+      notes = sfx.notes.map(n => transposeAbsolute ? tune(n) : clampNoteToRange(n, noteRange));
       note = notes[0];
     } else if (sfx.chord && (sfx.degree != null || sfx.note == null)) {
       const degree = sfx.degree ?? noteDefaults.degree ?? 0;
@@ -197,10 +213,10 @@ class MidiMapping {
       note = buildScaleNote(degree, scale, octave);
       note = clampNoteToRange(note, noteRange);
     } else {
-      note = quantizeToScale(note, scale);
+      note = quantizeToScale(note + transpose, scale);
       note = clampNoteToRange(note, noteRange);
     }
-    if (Number.isFinite(noteOffset) && noteOffset !== 0) {
+    if (!percussion && Number.isFinite(noteOffset) && noteOffset !== 0) {
       const offset = Math.round(noteOffset);
       if (Array.isArray(notes) && notes.length) {
         notes = notes.map(n => clampNoteToRange(n + offset, noteRange));
@@ -300,33 +316,47 @@ class MidiMapping {
       }
     }
 
-    if (event.type === 'bomber-countdown' && Number.isInteger(event.countdownNumber)) {
+    if (!percussion && event.type === 'bomber-countdown' && Number.isInteger(event.countdownNumber)) {
       note = clamp(quantizeToScale(note + (clamp(event.countdownNumber, 1, 5) - 1) * 3, scale),
         Math.max(0, noteRange.min), Math.min(127, noteRange.max));
       notes = null;
     }
     const frequencyHz = sfx.frequencyHz ?? noteToFrequency(note);
 
-    return applyMidiEnsembleToSpec({
+    if (percussion) {
+      const variation = cfg.laneMusic?.variation || 'balanced';
+      const phase = Math.abs(Math.trunc(event.tick || 0) + Math.trunc(event.laneIndex || 0) * 3 + Math.trunc(event.lemmingId || 0)) % 8;
+      if (variation === 'steady') notes = null;
+      else velocity = clamp(Math.round(velocity * (phase === 0 ? 1.15 : phase % 2 ? variation === 'animated' ? 0.62 : 0.82 : 1)), 1, 127);
+    }
+    const result = applyMidiEnsembleToSpec({
       note,
       notes,
       velocity,
       durationTicks,
       releaseVelocity,
-      timbre,
+      timbre: percussion ? null : timbre,
       pan,
       spatialPan: pan != null && !Number.isFinite(sfx.pan),
       ...(Number.isFinite(sfx.pan) || panOverride != null || positionCfg.viewPan && Number.isFinite(pan) ? { explicitPan: true } : {}),
-      pitchBend,
+      pitchBend: percussion ? null : pitchBend,
       frequencyHz,
-      channel: sfx.channel ?? null,
-      ...(Number.isInteger(sfx.program) ? { program: sfx.program } : {}),
+      channel: percussion ? 10 : sfx.channel ?? null,
+      ...(percussion ? { percussion: true, program: null } : Number.isInteger(sfx.program) ? { program: sfx.program } : {}),
       voiceBudget: sfx.voiceBudget ?? null,
       outputId: sfx.outputId ?? null,
       trackId: sfx.trackId ?? null,
       arp: sfx.arp ?? null,
       phrase: sfx.phrase ?? null
-    }, event, cfg, sfx);
+    }, event, percussion ? { ...cfg, ensemble: null } : cfg, sfx);
+    if (result && cfg !== this.config && sfx.outputId != null) result.outputId = sfx.outputId;
+    if (result && !result.percussion && cfg.laneMusic?.spread && Number.isInteger(event.laneIndex) && event.laneCount > 1) {
+      const position = Math.max(0, Math.min(1, event.laneIndex / (event.laneCount - 1))) - 0.5;
+      const offset = Math.round(position * cfg.laneMusic.spread), spread = pitch => clampNoteToRange(quantizeToScale(pitch + offset, scale), noteRange);
+      result.note = spread(result.note); if (result.notes) result.notes = result.notes.map(spread);
+      result.frequencyHz = noteToFrequency(result.note);
+    }
+    return result;
   }
 }
 

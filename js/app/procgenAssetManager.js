@@ -49,9 +49,10 @@ const getTerrainStats = (image) => {
 };
 
 class ProcgenAssetManager {
-  constructor({ styleName, config, fileProvider, random } = {}) {
+  constructor({ styleName, config, fileProvider, random, groundSet } = {}) {
     this.styleName = styleName || 'dirt';
     this.groundSet = null;
+    this.groundSetOverride = groundSet;
     this.config = config || null;
     this.fileProvider = fileProvider || null;
     this.random = typeof random === 'function' ? random : Math.random;
@@ -70,7 +71,8 @@ class ProcgenAssetManager {
     const assets = await this.cache.loadStyleAssets(
       this.styleName,
       this.config,
-      this.fileProvider
+      this.fileProvider,
+      { groundSet: this.groundSetOverride }
     );
     this.assets = assets;
     this.styleName = assets?.styleName || this.styleName;
