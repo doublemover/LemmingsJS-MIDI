@@ -27,7 +27,7 @@ const procgenStepNotes = (step, sound, scale) => {
   notes = notes.map((note, index) => clamp(note + (index % 2 ? (step.chord?.spread || 0) * 12 : 0), 0, 127));
   return [...new Set(notes)];
 };
-const createProcgenPatternEngine = ({ getProject, emit, emitCC, getLaneDistance = () => 0, getLaneObservation, getLaneSpatialPosition = () => ({}), onLaunch = () => {}, now = () => performance.now(), maxNotesPerPulse = 128 } = {}) => {
+const createProcgenPatternEngine = ({ getProject, emit, emitCC, getSinkKey = () => 'default', getLaneDistance = () => 0, getLaneObservation, getLaneSpatialPosition = () => ({}), onLaunch = () => {}, now = () => performance.now(), maxNotesPerPulse = 128 } = {}) => {
   const emptyState = () => ({ version: 1, beat: -1, timestamp: 0, bpm: 120, lanes: {}, pending: [], active: [], cursor: 0, budget: maxNotesPerPulse, ccBudget: maxNotesPerPulse, automationSerial: 0 });
   const automation = new MidiAutomationSpans([]);
   let state = emptyState(), cachedProject = null, solo = false, liveLanes = new Map(), spatialCurves = [];
@@ -47,11 +47,16 @@ const createProcgenPatternEngine = ({ getProject, emit, emitCC, getLaneDistance 
     return state.lanes[lane.id];
   };
   const audible = (project, lane) => !lane.mute && lane.gain > 0 && (!solo || lane.solo);
+  const accepted = receipt => receipt?.status === 'accepted';
   const send = (spec, meta) => {
-    if (state.budget <= 0) return;
-    state.budget--; emit?.(spec, meta);
+    if (state.budget <= 0) return false;
+    state.budget--;
+    let receipt;
+    try { receipt = emit?.(spec, meta); } catch { return false; }
+    if (!accepted(receipt)) return false;
     if (state.active.length >= 512) state.active.shift();
-    state.active.push({ spec, meta, endBeat: meta.beat + spec.durationMs * state.bpm / 60000 });
+    state.active.push({ spec, meta, receipt, endBeat: meta.beat + spec.durationMs * state.bpm / 60000 });
+    return true;
   };
   const matches = (condition, counters, observed) => {
     if (!condition) return true;
@@ -137,6 +142,8 @@ const createProcgenPatternEngine = ({ getProject, emit, emitCC, getLaneDistance 
   const barBeats = project => (project.transport?.timeSignature?.beats || 4) * 4 / (project.transport?.timeSignature?.unit || 4);
   const automate = (project, lane, laneIndex, current, beat, timestamp) => {
     if (!emitCC || !audible(project, lane)) return;
+    const sinkKey = String(getSinkKey(lane));
+    if (current.ccRoute !== sinkKey) { current.cc = {}; current.ccRoute = sinkKey; }
     current.cc ||= {};
     for (const curve of lane.ccAutomation || []) {
       if (state.ccBudget <= 0) break;
@@ -148,9 +155,11 @@ const createProcgenPatternEngine = ({ getProject, emit, emitCC, getLaneDistance 
       const value = Math.round(left.value + (right.value - left.value) * fraction);
       const identity = `${curve.id}:${lane.outputId}:${lane.channel}:${curve.controller}`;
       if (current.cc[identity] === value) continue;
-      current.cc[identity] = value;
       state.ccBudget--;
-      emitCC({ controller: curve.controller, value, channel: lane.channel, outputId: lane.outputId, timeMs: timestamp }, { laneId: lane.id, laneIndex, source: 'automation', beat });
+      let receipt;
+      try { receipt = emitCC({ controller: curve.controller, value, channel: lane.channel, outputId: lane.outputId, timeMs: timestamp }, { laneId: lane.id, laneIndex, source: 'automation', beat }); }
+      catch { continue; }
+      if (accepted(receipt)) current.cc[identity] = value;
     }
   };
   const onBeat = position => {
@@ -246,6 +255,7 @@ const createProcgenPatternEngine = ({ getProject, emit, emitCC, getLaneDistance 
     const project = getProject?.();
     if (!project?.procgen) return;
     derive(project);
+    const resumedActive = [];
     for (const item of activeNotes) {
       const lane = liveLanes.get(item.meta.laneId), startBeat = Math.max(beat, item.meta.beat), remaining = item.endBeat - startBeat;
       if (!lane || !audible(project, lane) || remaining <= 0) continue;
@@ -253,8 +263,12 @@ const createProcgenPatternEngine = ({ getProject, emit, emitCC, getLaneDistance 
       if (resumed && item.spec.percussion) continue;
       const durationMs = remaining * 60000 / bpm;
       const envelope = resumed ? { ...item.spec.envelope, attack: 0, decay: 0 } : item.spec.envelope;
-      emit?.({ ...item.spec, envelope, resumed, timeMs: timestamp + (startBeat - beat) * 60000 / bpm, durationMs, durationTicks: durationMs / 60 }, { ...item.meta, resumed, beat: startBeat });
+      try {
+        const receipt = emit?.({ ...item.spec, envelope, resumed, timeMs: timestamp + (startBeat - beat) * 60000 / bpm, durationMs, durationTicks: durationMs / 60 }, { ...item.meta, resumed, beat: startBeat });
+        if (accepted(receipt)) resumedActive.push({ ...item, receipt });
+      } catch { /* A rejected resume cannot become a future active voice. */ }
     }
+    state.active = resumedActive;
   };
   const getLanePosition = id => { const lane = state.lanes[id]; return lane ? { slot: lane.slot, origin: lane.origin, lastStep: lane.lastStep } : null; };
   return { onBeat, onGameEvent, snapshot, restore, reset, flush, resume, getState: snapshot, getLanePosition, getAutomationSpanState: (id, lane) => automation.snapshot(id, lane) };

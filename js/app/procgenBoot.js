@@ -150,7 +150,11 @@ const installProcgenBootListeners = () => {
     init().catch(error => { const status = document.getElementById('procgenRunStatus'); if (status) status.textContent = `Could not start: ${error.message}`; });
   };
   addProcgenBootListener(window, 'resize', () => resizeCanvas());
-  addProcgenBootListener(window, 'beforeunload', disposeProcgenRuntime);
+  addProcgenBootListener(window, 'beforeunload', () => {
+    workstationInitSerial++;
+    procgenStudio?.dispose();
+    disposeProcgenRuntime();
+  });
   addProcgenBootListener(window, 'orientationchange', () => resizeCanvas());
 
   if (document.readyState === 'loading') {
@@ -290,26 +294,31 @@ const buildProcgenEditorLevel = (styleName) => {
   return { level, entranceX, entranceY };
 };
 
-const initWorkstation = async ({ session } = {}) => {
+const initWorkstation = async ({ session, lease } = {}) => {
   if (session) validateProcgenSession(session);
   const serial = ++workstationInitSerial, canvas = document.getElementById('gameCanvas');
   if (!canvas) return;
   const settings = session ? { ...session.settings, laneCount: session.world.laneCount, laneHeight: session.world.laneHeight, seed: session.world.seed } : { ...procgenStudio.prepareSettings() };
-  const view = new GameView(); let candidate = null, lanes = null, committed = false;
+  const view = new GameView(); let candidate = null, lanes = null, terrain = null, committed = false;
+  const canCommit = () => serial === workstationInitSerial && !lease?.signal?.aborted;
   try {
     const factory = view.gameFactory, fileProvider = factory.fileProvider;
     const [configs, resources, book] = await Promise.all([
       Promise.all([GameTypes.LEMMINGS, GameTypes.OHNO, GameTypes.HOLIDAY94].map(type => factory.getConfig(type))),
       factory.getGameResources(GameTypes.LEMMINGS), loadTerrainRecipeBook(fileProvider)
     ]);
-    const terrain = await loadProcgenMixedTerrain({ configs, fileProvider, book,
+    if (!canCommit()) return false;
+    terrain = await loadProcgenMixedTerrain({ configs, fileProvider, book,
       laneAssignments: session?.project?.procgen?.lanes?.map(lane => lane.family) || procgenStudio.getLaneAssignments() });
+    if (!canCommit()) return false;
     const assets = await new ProcgenAssetManager({ styleName: 'crystal', groundSet: 4, config: configs[0], fileProvider }).load();
+    if (!canCommit()) return false;
     assets.decorationPack = getDecorationPack(settings.decoration);
     const palette = assets.assets?.gadgetImages?.find(image => image?.palette)?.palette || assets.groundPieces[0].image.palette;
     const [sprites, masks, hudSprites] = await Promise.all([resources.getLemmingsSprite(palette), resources.getMasks(), resources.getSkillPanelSprite(palette)]);
+    if (!canCommit()) return false;
     await procgenUi.prepareCharacters(sprites);
-    if (serial !== workstationInitSerial) { terrain.reset(); return; }
+    if (!canCommit()) return false;
     candidate = new ProcgenLaneWorld({ laneCount: settings.laneCount, laneHeight: settings.laneHeight, seed: settings.seed, sprites, masks, terrain,
       speed: settings.speed, cohorts: true, workstation: true, hazardSpacing: settings.hazardSpacing,
       previousDistances: readProcgenDistances(), workerLimits: settings.workerLimits, populationPolicy: settings.populationPolicy, particleTable: new ParticleTable(palette) });
@@ -317,6 +326,7 @@ const initWorkstation = async ({ session } = {}) => {
     lanes = createProcgenLaneRuntime({ canvas, resources, sprites, masks, assets, terrain, initialWorld: candidate, workstation: true,
       onMetrics: state => procgenUi?.syncMetrics(state), onActiveCount: count => procgenUi?.syncActiveCount(count), windowRef: window });
     lanes.renderer.hud = new ProcgenBitmapHud({ canvas, sprites: hudSprites });
+    if (!canCommit()) return false;
     if (activeProcgenRuntime) procgenStudio.beforeRestart();
     disposeProcgenRuntime();
     activeProcgenRuntime = { lanes, world: candidate, view: lanes.view, game: lanes.game, stageAdapter: { updateStageSize: () => lanes.resize() }, controller: null, focusBlurCleanup: null };
@@ -326,10 +336,14 @@ const initWorkstation = async ({ session } = {}) => {
     if (params.has('e2e')) window.__PROCGEN_LANES__ = { world: candidate, renderer: lanes.renderer, getState: lanes.getDebugState, pause: lanes.pause, resume: lanes.resume, step: lanes.step };
     procgenUi.sync({ charactersReady: true }); procgenStudio.bindRuntime({ session }); resizeCanvas();
     registerServiceWorker({ profile: 'perf' }); return activeProcgenRuntime;
-  } catch (error) {
-    if (!committed) { if (lanes) lanes.stop(); else candidate?.dispose(); }
-    throw error;
-  } finally { view.dispose(); }
+  } finally {
+    if (!committed) {
+      if (lanes) lanes.stop();
+      else if (candidate) candidate.dispose();
+      else terrain?.reset();
+    }
+    view.dispose();
+  }
 };
 
 const init = async (options = {}) => {

@@ -42,6 +42,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let view = null, disposed = false, boundRuntime = null, boundSession = null, unhookRouter = null, unhookWorld = null;
   let ports, engine, lastPlaying = false, lastLegacySpeed = legacy.settings.speed, pendingResume = false, lastTempo = null;
   let savedName = 'Untitled session', clipboard = null, loadSerial = 0, suppressPersistence = false;
+  let operationSerial = 0, currentOperation = null;
   let lastRecovery = now(), recoveryPending = false, recoveryTimer = null;
   let lastBudgetNotice = -Infinity;
   let lastObserverAt = -Infinity, observerCursor = 0;
@@ -50,7 +51,16 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let laneObserver = null;
   const routerRestores = new Map();
   const undo = [], redo = [], listeners = [], noteEntries = new Map();
-  const status = text => view?.status(text);
+  const status = text => { if (!disposed) view?.status(text); };
+  const beginOperation = kind => {
+    currentOperation?.controller.abort();
+    const lease = { ownerId: 'procgen-workstation', generation: ++operationSerial, kind, controller: new AbortController() };
+    lease.signal = lease.controller.signal;
+    currentOperation = lease;
+    return lease;
+  };
+  const ownsOperation = lease => !disposed && currentOperation === lease && !lease.signal.aborted;
+  const finishOperation = lease => { if (currentOperation === lease) currentOperation = null; };
   const listen = (target, event, handler) => { target?.addEventListener?.(event, handler); listeners.push(() => target?.removeEventListener?.(event, handler)); };
   const runtime = () => getRuntime?.();
   const renderer = () => runtime()?.lanes?.renderer;
@@ -157,7 +167,13 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     onLearn: event => inputStep(event, true), onRecord: event => { if (event.source === 'input') inputStep(event); }
   });
   const localEnabled = () => legacy.local.getState().enabled && legacy.local.getState().selectedBackend !== 'midi';
+  let outputEpoch = 0;
+  const admission = (status, sinkId, spec, meta, reason = null) => ({ status, reason, sinkId,
+    eventId: meta?.eventId ?? meta?.automationEventId ?? null, voiceId: meta?.voiceId ?? null,
+    connectionEpoch: outputEpoch, targetTime: spec?.timeMs ?? null, timeDomain: 'performance-ms',
+    ackState: status === 'accepted' ? 'scheduled' : 'none' });
   engine = createProcgenPatternEngine({ getProject: () => project, now,
+    getSinkKey: () => { const output = legacy.local.getState(); return `${output.selectedBackend}:${output.outputId || ''}:${output.enabled}:${outputEpoch}`; },
     getLaneDistance: index => runtime()?.world?.frontiers?.[index] || 0,
     getLaneObservation: index => laneObserver?.(index),
     getLaneSpatialPosition: index => {
@@ -165,26 +181,42 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       return { x: observed?.x, y: observed?.y, levelWidth: world?.width, levelHeight: world?.height };
     },
     emit(spec, meta) {
-      if (!transport.getState().playing) return;
+      if (!transport.getState().playing) return admission('rejected', null, spec, meta, 'transport-stopped');
       if (localEnabled()) {
         const scheduler = router()?.scheduler;
-        if (scheduler?.sendNote({ ...spec, outputId: null, durationTicks: (spec.durationMs || 0) / (scheduler.tickMs || 60) }, meta)) ports.recordOutput(spec, meta);
-        else if (scheduler?.getOutputPressure?.().throttled) budgetNotice();
-      } else if (legacy.local.getState().selectedBackend === 'midi' && legacy.local.getState().enabled && !ports.sendNote(spec, meta)) budgetNotice();
+        if (scheduler?.sendNote({ ...spec, outputId: null, durationTicks: (spec.durationMs || 0) / (scheduler.tickMs || 60) }, meta)) {
+          ports.recordOutput(spec, meta);
+          return admission('accepted', 'local-preview', spec, meta);
+        }
+        if (scheduler?.getOutputPressure?.().throttled) budgetNotice();
+        return admission('rejected', 'local-preview', spec, meta, 'scheduler-rejected');
+      }
+      if (legacy.local.getState().selectedBackend === 'midi' && legacy.local.getState().enabled) {
+        if (ports.sendNote(spec, meta)) return admission('accepted', spec.outputId || 'midi-default', spec, meta);
+        budgetNotice(); return admission('rejected', spec.outputId || 'midi-default', spec, meta, 'output-rejected');
+      }
+      return admission('rejected', null, spec, meta, 'no-enabled-sink');
     },
     emitCC(spec, meta) {
       const event = { ...spec, type: 'cc', timestamp: spec.timeMs };
       if (localEnabled()) {
         const scheduler = router()?.scheduler, channel = scheduler?.output?.channels?.[spec.channel];
         const reservation = scheduler?.evaluateAndReserve?.({ on: { timeMs: spec.timeMs, count: 1, bytes: 3 } }, meta, now());
-        if (reservation && !reservation.ok) { scheduler.recordThrottle?.(reservation.reason, now(), meta); budgetNotice(); return; }
-        if (channel?.sendControlChange) { channel.sendControlChange(spec.controller, spec.value, { time: spec.timeMs }); ports.recordEvent(event, meta); }
-      } else if (legacy.local.getState().selectedBackend === 'midi' && legacy.local.getState().enabled && !ports.sendEvent(event)) budgetNotice();
+        if (reservation && !reservation.ok) { scheduler.recordThrottle?.(reservation.reason, now(), meta); budgetNotice(); return admission('rejected', 'local-preview', spec, meta, reservation.reason); }
+        if (channel?.sendControlChange) { channel.sendControlChange(spec.controller, spec.value, { time: spec.timeMs }); ports.recordEvent(event, meta); return admission('accepted', 'local-preview', spec, meta); }
+        return admission('rejected', 'local-preview', spec, meta, 'channel-unavailable');
+      }
+      if (legacy.local.getState().selectedBackend === 'midi' && legacy.local.getState().enabled) {
+        if (ports.sendEvent(event)) return admission('accepted', spec.outputId || 'midi-default', spec, meta);
+        budgetNotice(); return admission('rejected', spec.outputId || 'midi-default', spec, meta, 'output-rejected');
+      }
+      return admission('rejected', null, spec, meta, 'no-enabled-sink');
     },
     onLaunch: action => dispatch({ type: 'procgen/launched', ...action })
   });
   const devices = () => ({ inputs: Array.from(window.WebMidi?.inputs || []).filter(port => port.state !== 'disconnected'), outputs: Array.from(window.WebMidi?.outputs || []).filter(port => port.state !== 'disconnected') });
   const syncPorts = () => {
+    outputEpoch++;
     const available = devices(), outputState = legacy.local.getState();
     ports.setNoteOutputs(available.outputs);
     ports.setNoteOutput(outputState.selectedBackend === 'midi' && outputState.enabled ? available.outputs.find(port => port.id === outputState.outputId) || null : null);
@@ -215,6 +247,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     next.resetClock?.({ preserveGamePhrases: true });
   };
   const bindRuntime = ({ session } = {}) => {
+    if (disposed) return null;
     const next = runtime(); if (!next || (next === boundRuntime && session === boundSession)) return next;
     unhookRouter?.(); unhookWorld?.(); boundRuntime = next; boundSession = session;
     laneObserver = createProcgenLaneObserver(next.world);
@@ -274,8 +307,10 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     link.href = url; link.download = filename; document.body.append(link); link.click(); link.remove(); window.setTimeout(() => window.URL.revokeObjectURL(url), 0);
   };
   const safe = fn => async (...args) => { try { return await fn(...args); } catch (error) { status(error?.message || String(error)); return false; } };
-  async function loadSession(value) {
+  async function loadSession(value, admittedLease = null) {
+    if (disposed || (admittedLease && !ownsOperation(admittedLease))) return false;
     if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
+    const lease = admittedLease || beginOperation('load');
     const session = validateProcgenSession(value), serial = ++loadSerial;
     const validatedProject = createProcgenWorkstationProject(sanitizeMidiProject(session.project));
     if (validatedProject.procgen.lanes.length !== session.world.laneCount) throw new Error('Project lanes and world checkpoint do not match.');
@@ -284,15 +319,19 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const prepared = { ...session, project: validatedProject };
     beforeRestart();
     try {
-      await restart({ session: prepared });
-      if (disposed || serial !== loadSerial) return false;
+      const restarted = await restart({ session: prepared, lease });
+      if (!ownsOperation(lease) || serial !== loadSerial) return false;
+      if (restarted === false) throw new Error('World preparation was canceled.');
       bindRuntime({ session: prepared }); return true;
     } catch (error) {
+      if (!ownsOperation(lease)) return false;
       Object.assign(legacy.settings, oldSettings); lastLegacySpeed = legacy.settings.speed; if (previous.playing) play(); throw error;
-    } finally { worldBusy = false; }
+    } finally { worldBusy = false; finishOperation(lease); }
   }
   async function rebuild({ seed = project.procgen.seed, fresh = false, projectNext = null, history = true } = {}) {
+    if (disposed) return false;
     if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
+    const lease = beginOperation('rebuild');
     worldBusy = true;
     const previous = project, oldSettings = { ...legacy.settings }, previousTransport = transport.getState(), previousPatterns = engine.snapshot(), undoLength = undo.length;
     beforeRestart();
@@ -302,9 +341,13 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     syncProject(next, { history }); prepareSettings();
     const staged = project;
     try {
-      await restart({}); engine.reset(); transport.stop(); pendingResume = false; bindRuntime();
+      const restarted = await restart({ lease });
+      if (!ownsOperation(lease)) return false;
+      if (restarted === false) throw new Error('World preparation was canceled.');
+      engine.reset(); transport.stop(); pendingResume = false; bindRuntime();
       if (previousTransport.playing) play(); status(fresh ? 'New project ready.' : 'World rebuilt.'); return true;
     } catch (error) {
+      if (!ownsOperation(lease)) return false;
       const restored = rollbackWorldProject(previous, staged, project);
       syncProject(restored, { history: false }); undo.length = undoLength;
       if (!equal(restored, previous)) undo.push(previous);
@@ -312,20 +355,20 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       lastLegacySpeed = legacy.settings.speed;
       transport.restore(previousTransport); engine.restore(previousPatterns); pendingResume = true;
       if (previousTransport.playing) play(); throw error;
-    } finally { worldBusy = false; }
+    } finally { worldBusy = false; finishOperation(lease); }
   }
   const changesWorld = next => next.procgen.seed !== project.procgen.seed || next.procgen.lanes.length !== project.procgen.lanes.length || next.procgen.lanes.some((lane, index) => lane.family !== project.procgen.lanes[index]?.family);
   const historyMove = async (from, to) => {
     if (!from.length) return;
     const previous = project, next = from.at(-1);
-    if (changesWorld(next)) await rebuild({ projectNext: next, seed: next.procgen.seed, history: false });
+    if (changesWorld(next) && !await rebuild({ projectNext: next, seed: next.procgen.seed, history: false })) return false;
     else syncProject(next, { history: false });
     from.pop(); to.push(previous);
   };
   const handlers = {
     status, preferences: persist, devices, engineState: () => engine.getState(), playhead: id => engine.getLanePosition?.(id),
     transport(patch) { configureTransport(patch); if (patch.gameSpeed != null) legacy.setSpeed(patch.gameSpeed); persist(); },
-    addLane: safe(async () => { await rebuild({ projectNext: reduceMidiProject(project, { type: 'procgen/addLane' }) }); state.laneId = project.procgen.lanes.at(-1).id; view.render(); }),
+    addLane: safe(async () => { if (!await rebuild({ projectNext: reduceMidiProject(project, { type: 'procgen/addLane' }) })) return false; state.laneId = project.procgen.lanes.at(-1).id; view.render(); return true; }),
     removeLane: safe(async () => { await rebuild({ projectNext: reduceMidiProject(project, { type: 'procgen/removeLane', laneId: selected().id }) }); }),
     duplicate() { const lane = selected(), slot = (state.slot + 1) % 4; dispatch({ type: 'procgen/pattern', laneId: lane.id, slot, patch: clone(lane.patterns[state.slot]) }); state.slot = slot; view.render(); },
     clear() { const lane = selected(); dispatch({ type: 'procgen/pattern', laneId: lane.id, slot: state.slot, patch: { steps: lane.patterns[state.slot].steps.map(step => ({ ...step, enabled: false, tie: false })) } }); },
@@ -344,11 +387,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     save: safe(async () => {
       if (worldBusy) throw new Error('Wait for the world change to finish before saving.');
       const wasPlaying = transport.getState().playing; beforeRestart();
-      try { const name = window.prompt?.('Project name', savedName) ?? savedName; if (!name) return false; const session = capture(name, { resume: false }); await storage.save(name, session); savedName = name; status('Saved ' + name + '.'); return true; }
+      try { const name = typeof window.prompt === 'function' ? window.prompt('Project name', savedName) : savedName; if (name == null) return false; if (!name.trim()) { status('Enter a project name to save.'); return false; } const session = capture(name, { resume: false }); await storage.save(name, session); savedName = name; status('Saved ' + name + '.'); return true; }
       finally { if (wasPlaying) play(); }
     }),
-    load: safe(async () => view.showProjects(await storage.list(), safe(async id => loadSession(await storage.load(id))))),
-    import: safe(async file => loadSession(JSON.parse(await file.text()))),
+    load: safe(async () => { if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.'); const lease = beginOperation('select-session'); const entries = await storage.list(); if (!ownsOperation(lease)) return false; view.showProjects(entries, safe(async id => { if (!ownsOperation(lease)) return false; return loadSession(await storage.load(id), lease); })); return true; }),
+    import: safe(async file => { if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.'); const lease = beginOperation('import'); const text = await file.text(); if (!ownsOperation(lease)) return false; const session = JSON.parse(text); if (!ownsOperation(lease)) return false; return loadSession(session, lease); }),
     export: safe(async () => { const session = capture(); download(JSON.stringify(session), savedName.replace(/[^a-z0-9_-]+/gi, '-') + '.procgen.json', 'application/json'); status('Project exported.'); }),
     exportMidi() { download(exportProcgenMidi(ports.getRecording(), { bpm: transport.getState().bpm, beatsPerBar: project.transport?.timeSignature?.beats, beatUnit: project.transport?.timeSignature?.unit }), 'procgen-performance.mid', 'audio/midi'); status('Recorded performance exported.'); },
     new: safe(() => rebuild({ seed: freshProcgenSeed(window.crypto, project.procgen.seed), fresh: true })),
@@ -376,7 +419,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   listen(document, 'keyup', syncLegacyControls);
   listen(window, 'pagehide', () => { persist(); recover(); });
   listen(document.getElementById('procgenPanic'), 'click', () => { ports.panic(); status('All notes stopped.'); });
-  const disconnected = () => { ports.checkConnections(); view.renderInspector(); };
+  const disconnected = () => { outputEpoch++; ports.checkConnections(); view.renderInspector(); };
   const connected = () => { syncPorts(); view.renderInspector(); status('MIDI device connected. Press Play or send MIDI Start/Continue to resume.'); };
   window.WebMidi?.addListener?.('disconnected', disconnected);
   window.WebMidi?.addListener?.('connected', connected);
@@ -388,7 +431,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     prepareSettings, bindRuntime, beforeRestart, loadSession, capture, recover, dispatch, play, handlers, state, transport, ports, engine,
     get settings() { return legacy.settings; },
     dispose() {
-      if (disposed) return; disposed = true; loadSerial++; unhookRouter?.(); unhookWorld?.(); transport.dispose(); ports.dispose();
+      if (disposed) return; disposed = true; loadSerial++; currentOperation?.controller.abort(); currentOperation = null; unhookRouter?.(); unhookWorld?.(); transport.dispose(); ports.dispose();
       if (recoveryTimer != null) window.clearTimeout?.(recoveryTimer);
       for (const remove of listeners) remove(); view.dispose(); Promise.resolve(storage.close?.()).catch(() => {});
     }

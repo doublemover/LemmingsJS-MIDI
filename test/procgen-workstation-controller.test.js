@@ -13,7 +13,7 @@ function setup({ lookaheadMs = 0, webMidi } = {}) {
   let time = 0, paused = false, enabled = false;
   const elements = new Map(['procgenPause', 'procgenPanic', 'procgenSpeed', 'procgenSpeedUp', 'procgenSpeedDown', 'procgenSpeedReadout'].map(id => [id, target()]));
   const document = { ...target(), getElementById: id => elements.get(id) || null };
-  const values = new Map(), stored = new Map(), calls = [], positions = [], statuses = [], restarts = [];
+  const values = new Map(), stored = new Map(), calls = [], positions = [], statuses = [], restarts = [], captures = [];
   const window = { WebMidi: webMidi, performance: { now: () => time }, localStorage: { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value) },
     crypto: { getRandomValues(value) { value[0] = 91; } }, prompt: () => 'Test song' };
   const scheduler = { tickMs: 60, sendNote(spec, meta) { calls.push({ spec, meta }); return true; }, allNotesOff() {}, output: { channels: { 1: { sendControlChange() {} } } } };
@@ -29,16 +29,17 @@ function setup({ lookaheadMs = 0, webMidi } = {}) {
     local: { getState: () => ({ enabled, selectedBackend: 'synth' }) } };
   let viewProps;
   const view = { render() {}, renderInspector() {}, transport() {}, recording() {}, status: value => statuses.push(value), showProjects() {}, dispose() { this.disposed = true; } };
-  const storage = { async save(id, session) { stored.set(id, session); }, async load(id) { return stored.get(id); }, async list() { return [...stored.keys()].map(id => ({ id })); }, close() {} };
-  let rejectRestart = false, restartGate = null;
+  let rejectSave = false, saveCalls = 0;
+  const storage = { async save(id, session) { saveCalls++; if (rejectSave) throw new Error('Storage unavailable'); stored.set(id, session); }, async load(id) { return stored.get(id); }, async list() { return [...stored.keys()].map(id => ({ id })); }, close() {} };
+  let rejectRestart = false, returnFalseRestart = false, restartGate = null;
   const studio = createProcgenWorkstation({ document, window, legacy, getRuntime: () => runtime,
-    restart: async request => { restarts.push(request); if (restartGate) await restartGate; if (rejectRestart) throw new Error('Assets unavailable'); runtime = makeRuntime(); runtime.world.laneCount = request.session?.world.laneCount || legacy.settings.laneCount; runtime.world.seed = request.session?.world.seed ?? legacy.settings.seed; },
+    restart: async request => { restarts.push(request); if (restartGate) await restartGate; if (request.lease?.signal.aborted || returnFalseRestart) return false; if (rejectRestart) throw new Error('Assets unavailable'); runtime = makeRuntime(); runtime.world.laneCount = request.session?.world.laneCount || legacy.settings.laneCount; runtime.world.seed = request.session?.world.seed ?? legacy.settings.seed; },
     createView: props => { viewProps = props; return view; }, storage,
-    captureCheckpoint: world => ({ version: 1, laneCount: world.laneCount, seed: world.seed, clock: { ...world.timer } }),
+    captureCheckpoint: world => { captures.push(world); return { version: 1, laneCount: world.laneCount, seed: world.seed, clock: { ...world.timer } }; },
     transportOptions: { driver: { start() {}, stop() {} }, lookaheadMs }
   });
-  return { studio, legacy, view, calls, positions, statuses, restarts, stored, elements, window, get runtime() { return runtime; }, get viewProps() { return viewProps; },
-    enable() { enabled = true; }, time(value) { time = value; studio.transport.pump(); }, failRestart() { rejectRestart = true; },
+  return { studio, legacy, view, calls, positions, statuses, restarts, stored, captures, elements, window, get runtime() { return runtime; }, get viewProps() { return viewProps; }, get saveCalls() { return saveCalls; },
+    enable() { enabled = true; }, time(value) { time = value; studio.transport.pump(); }, failRestart() { rejectRestart = true; }, cancelRestart() { returnFalseRestart = true; }, failSave() { rejectSave = true; },
     holdRestart() { let release; restartGate = new Promise(resolve => { release = resolve; }); return release; } };
 }
 
@@ -120,6 +121,80 @@ describe('ProcGen workstation orchestration', () => {
     expect(f.studio.transport.getState()).to.include({ playing: false, beat: 0.25 });
     expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(60);
     expect(f.runtime.lanes.renderer.camera.restored).to.deep.equal({ cameraX: 45 }); f.studio.dispose();
+  });
+
+  it('cancels Save before checkpoint capture or storage writes and restores playback', async () => {
+    const f = setup(); f.studio.bindRuntime(); f.time(125);
+    f.window.prompt = () => null;
+    const project = f.studio.getProject(), before = f.studio.transport.getState(), captures = f.captures.length;
+    expect(await f.studio.handlers.save()).to.equal(false);
+    expect(f.captures).to.have.length(captures);
+    expect(f.stored.size).to.equal(0);
+    expect(f.studio.getProject()).to.equal(project);
+    expect(f.studio.transport.getState()).to.include({ playing: before.playing, beat: before.beat });
+    f.studio.dispose();
+  });
+
+  it('preserves a paused session on Cancel and leaves the old saved record on a storage error', async () => {
+    const f = setup(); f.studio.bindRuntime();
+    expect(await f.studio.handlers.save()).to.equal(true);
+    const original = f.stored.get('Test song');
+    f.studio.transport.pause(); f.window.prompt = () => null;
+    const beforeCalls = f.saveCalls;
+    expect(await f.studio.handlers.save()).to.equal(false);
+    expect(f.saveCalls).to.equal(beforeCalls);
+    expect(f.studio.transport.getState().playing).to.equal(false);
+    f.window.prompt = () => 'Test song'; f.failSave();
+    expect(await f.studio.handlers.save()).to.equal(false);
+    expect(f.stored.get('Test song')).to.equal(original);
+    expect(f.studio.transport.getState().playing).to.equal(false);
+    f.studio.dispose();
+  });
+
+  it('does not publish a pending world after workstation disposal', async () => {
+    const f = setup(); f.studio.bindRuntime(); const previous = f.runtime, release = f.holdRestart();
+    const pending = f.studio.handlers.addLane(), statusCount = f.statuses.length;
+    f.studio.dispose(); release();
+    expect(await pending).to.equal(false);
+    expect(f.runtime).to.equal(previous);
+    expect(f.statuses).to.have.length(statusCount);
+    expect(f.view.disposed).to.equal(true);
+  });
+
+  it('rolls back a canceled world preparation while its workstation still owns the operation', async () => {
+    const f = setup(); f.studio.bindRuntime(); const previous = f.studio.getProject(), original = f.runtime;
+    f.cancelRestart();
+    expect(await f.studio.handlers.addLane()).to.equal(false);
+    expect(f.studio.getProject().procgen.lanes).to.have.length(previous.procgen.lanes.length);
+    expect(f.runtime).to.equal(original);
+    expect(f.studio.transport.getState().playing).to.equal(true);
+    f.studio.dispose();
+  });
+
+  it('admits only the latest selected import before reading and parsing', async () => {
+    const f = setup(); f.studio.bindRuntime();
+    const first = f.studio.capture(), second = f.studio.capture();
+    first.project.procgen.lanes[0].patterns[0].steps[0].note = 60;
+    second.project.procgen.lanes[0].patterns[0].steps[0].note = 81;
+    let finishFirst;
+    const old = f.studio.handlers.import({ text: () => new Promise(resolve => { finishFirst = resolve; }) });
+    const recent = f.studio.handlers.import({ text: async () => JSON.stringify(second) });
+    expect(await recent).to.equal(true);
+    finishFirst(JSON.stringify(first));
+    expect(await old).to.equal(false);
+    expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(81);
+    expect(f.restarts).to.have.length(1);
+    f.studio.dispose();
+  });
+
+  it('does not parse or restart an imported file that completes after disposal', async () => {
+    const f = setup(); f.studio.bindRuntime();
+    let finishRead;
+    const pending = f.studio.handlers.import({ text: () => new Promise(resolve => { finishRead = resolve; }) });
+    f.studio.dispose();
+    finishRead('{invalid JSON');
+    expect(await pending).to.equal(false);
+    expect(f.restarts).to.have.length(0);
   });
 
   it('preserves causal events and queued phrases when resuming a checkpoint ahead of the audible beat', async () => {

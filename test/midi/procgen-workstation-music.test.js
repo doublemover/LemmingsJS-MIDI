@@ -7,7 +7,7 @@ import { createProcgenPatternEngine, procgenStepNotes } from '../../js/app/procg
 const setup = (options = {}) => {
   let project = createProcgenWorkstationProject(createMidiProject({ enabled: true }), options);
   const notes = [], launches = [];
-  const engine = createProcgenPatternEngine({ getProject: () => project, emit: (spec, meta) => notes.push({ spec, meta }), onLaunch: value => launches.push(value), now: () => 1234 });
+  const engine = createProcgenPatternEngine({ getProject: () => project, emit: (spec, meta) => { notes.push({ spec, meta }); return { status: 'accepted', sinkId: 'test' }; }, onLaunch: value => launches.push(value), now: () => 1234 });
   const edit = action => { project = reduceMidiProject(project, action); };
   const beat = value => engine.onBeat({ beat: value, timestamp: value * 500, bpm: 120 });
   return { engine, notes, launches, edit, beat, get project() { return project; } };
@@ -21,7 +21,7 @@ describe('Procgen workstation musical domain', function() {
       points: [{ beat: 0, value: 20 }, { beat: 0.5, value: 60 }, { beat: 1, value: 100 }] } });
     project = sanitizeMidiProject(JSON.parse(JSON.stringify(project)));
     const coordinates = [{ x: 25, y: 25, levelWidth: 100, levelHeight: 100 }, { x: 75, y: 75, levelWidth: 100, levelHeight: 100 }];
-    const notes = [], options = { getProject: () => project, getLaneSpatialPosition: index => coordinates[index], emit: (spec, meta) => notes.push({ spec, meta }) };
+    const notes = [], options = { getProject: () => project, getLaneSpatialPosition: index => coordinates[index], emit: (spec, meta) => { notes.push({ spec, meta }); return { status: 'accepted', sinkId: 'test' }; } };
     const engine = createProcgenPatternEngine(options);
     engine.onBeat({ beat: 0, timestamp: 0, bpm: 120 });
     expect(notes.map(item => [item.meta.laneIndex, item.spec.velocity])).to.deep.equal([[0, 40], [1, 80]]);
@@ -70,7 +70,7 @@ describe('Procgen workstation musical domain', function() {
     const project = createProcgenWorkstationProject(createMidiProject(), { lanes: [createProcgenLane(0)] });
     for (const step of project.procgen.lanes[0].patterns[0].steps) { step.enabled = true; step.condition = { kind: 'terrain', value: 'gap' }; }
     let observation = { action: 'walk', terrain: 'ground' };
-    const notes = [], engine = createProcgenPatternEngine({ getProject: () => project, getLaneObservation: () => observation, emit: spec => notes.push(spec) });
+    const notes = [], engine = createProcgenPatternEngine({ getProject: () => project, getLaneObservation: () => observation, emit: spec => { notes.push(spec); return { status: 'accepted', sinkId: 'test' }; } });
     engine.onBeat({ beat: 0, timestamp: 0, bpm: 120 });
     expect(notes).to.have.length(0);
     observation = { action: 'fall', terrain: 'gap' };
@@ -330,15 +330,53 @@ describe('Procgen workstation authoritative pattern clock', function() {
       { id: 'distance', controller: 1, axis: 'distance', length: 100, points: [{ beat: 0, value: 10 }, { beat: 100, value: 110 }] }
     ] }] });
     const events = []; let distance = 0;
-    const engine = createProcgenPatternEngine({ getProject: () => project, emitCC: event => events.push(event), getLaneDistance: () => distance });
+    const engine = createProcgenPatternEngine({ getProject: () => project, emitCC: event => { events.push(event); return { status: 'accepted', sinkId: 'test' }; }, getLaneDistance: () => distance });
     engine.onBeat({ beat: 0, timestamp: 100, bpm: 120 });
     expect(events.map(event => [event.controller, event.value])).to.deep.equal([[74, 0], [1, 10]]);
     distance = 50; engine.onBeat({ beat: 2, timestamp: 1100, bpm: 120 });
     expect(events.slice(2).map(event => [event.controller, event.value])).to.deep.equal([[74, 50], [1, 60]]);
-    const restored = createProcgenPatternEngine({ getProject: () => project, emitCC: event => events.push(event), getLaneDistance: () => distance });
+    const restored = createProcgenPatternEngine({ getProject: () => project, emitCC: event => { events.push(event); return { status: 'accepted', sinkId: 'test' }; }, getLaneDistance: () => distance });
     restored.restore(engine.snapshot());
     restored.onBeat({ beat: 2.001, timestamp: 1100.5, bpm: 120 });
     expect(events).to.have.length(4);
+  });
+
+  it('retries rejected constant CC values and never resumes rejected notes', function() {
+    const project = createProcgenWorkstationProject(createMidiProject(), { lanes: [{ ...lane('game'), ccAutomation: [
+      { id: 'constant', controller: 74, length: 4, points: [{ beat: 0, value: 64 }] }
+    ] }] });
+    let admit = false, noteAttempts = 0, ccAttempts = 0, route = 'one';
+    const engine = createProcgenPatternEngine({ getProject: () => project,
+      getSinkKey: () => route,
+      emit: () => { noteAttempts++; return { status: admit ? 'accepted' : 'rejected', sinkId: 'test' }; },
+      emitCC: () => { ccAttempts++; return { status: admit ? 'accepted' : 'rejected', sinkId: 'test' }; }
+    });
+    engine.onBeat({ beat: 0, timestamp: 0, bpm: 120 });
+    engine.onGameEvent({ laneIndex: 0, type: 'builder-step' });
+    expect(noteAttempts).to.equal(1);
+    expect(engine.snapshot().active).to.have.length(0);
+    expect(engine.snapshot().lanes['lane-1'].cc).to.deep.equal({});
+    engine.resume({ beat: 0, timestamp: 10, bpm: 120 });
+    expect(noteAttempts).to.equal(1);
+    admit = true;
+    engine.onBeat({ beat: 1 / 24, timestamp: 20, bpm: 120 });
+    expect(ccAttempts).to.equal(2);
+    expect(engine.snapshot().lanes['lane-1'].cc['constant:null:1:74']).to.equal(64);
+    engine.onGameEvent({ laneIndex: 0, type: 'builder-step' });
+    expect(engine.snapshot().active).to.have.length(1);
+    route = 'two';
+    engine.onBeat({ beat: 2 / 24, timestamp: 40, bpm: 120 });
+    expect(ccAttempts).to.equal(3);
+  });
+
+  it('treats missing, untyped, and throwing sink responses as rejected', function() {
+    const project = createProcgenWorkstationProject(createMidiProject(), { lanes: [lane('game')] });
+    for (const emit of [undefined, () => 1, () => { throw new Error('sink gone'); }]) {
+      const engine = createProcgenPatternEngine({ getProject: () => project, emit });
+      engine.onBeat({ beat: 0, timestamp: 0, bpm: 120 });
+      engine.onGameEvent({ laneIndex: 0, type: 'builder-step' });
+      expect(engine.snapshot().active).to.have.length(0);
+    }
   });
 
   it('applies legacy beat spans to clocked notes using shared lane priority and duration semantics', function() {
@@ -361,7 +399,7 @@ describe('Procgen workstation authoritative pattern clock', function() {
       span: { domain: 'distance', start: 100, duration: 50, condition: { sfxId: 42, unit: 'event', every: 2, phase: 0 } } } });
     run.engine.onGameEvent({ laneIndex: 0, type: 'walk', sfxId: 42, x: 120 });
     expect(run.engine.getAutomationSpanState('distance-events', 0).active).to.equal(false);
-    const emitted = [], restored = createProcgenPatternEngine({ getProject: () => run.project, emit: (spec, meta) => emitted.push({ spec, meta }), now: () => 1234 });
+    const emitted = [], restored = createProcgenPatternEngine({ getProject: () => run.project, emit: (spec, meta) => { emitted.push({ spec, meta }); return { status: 'accepted', sinkId: 'test' }; }, now: () => 1234 });
     restored.restore(run.engine.snapshot()); run.notes.length = 0;
     for (const engine of [run.engine, restored]) engine.onGameEvent({ laneIndex: 0, type: 'walk', sfxId: 42, x: 120 });
     expect(emitted).to.deep.equal(run.notes);
