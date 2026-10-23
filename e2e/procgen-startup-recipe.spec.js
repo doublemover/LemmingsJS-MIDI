@@ -33,3 +33,33 @@ test('a malformed shared recipe leaves the prior recoverable setup untouched', a
   expect(await page.evaluate(() => ({ saved: localStorage.getItem('lemmings.procgen.workstation.v1'),
     world: !!window.__PROCGEN_LANES__ }))).toEqual({ saved: '{"version":1,"project":{"saved":"prior"}}', world: false });
 });
+
+test('document and recovery startup restore their artifact paused and reject conflicting physical overrides', async ({ page }) => {
+  test.setTimeout(240000);
+  await page.goto('/procgen.html?e2e=1&recipe=1&seed=12&lanes=2');
+  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain);
+  const saved = await page.evaluate(async () => {
+    const studio = window.__PROCGEN_STUDIO__; studio.transport.pause();
+    const session = studio.capture(), { createProcgenSessionStorage } = await import('/js/app/procgen/workstation/ProcgenSessionStorage.js');
+    const store = createProcgenSessionStorage(indexedDB);
+    try {
+      const receipt = await store.saveDocument('doc:startup-e2e', 0, session, 'startup-e2e-commit');
+      await store.saveRecovery(session);
+      return { revision: receipt.revision, tick: session.world.graph.owners.find(owner => owner.name === 'world').props.tickIndex };
+    } finally { store.close(); }
+  });
+  await page.goto('/procgen.html?e2e=1&startup=document&document=doc%3Astartup-e2e&documentRevision=' + saved.revision);
+  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain);
+  const reopened = await page.evaluate(() => ({ plan: window.__PROCGEN_STUDIO__.getStartupPlan().mode,
+    document: window.__PROCGEN_STUDIO__.getDocumentState(), seed: window.__PROCGEN_LANES__.world.seed,
+    lanes: window.__PROCGEN_LANES__.world.laneCount, tick: window.__PROCGEN_LANES__.world.tickIndex,
+    playing: window.__PROCGEN_STUDIO__.transport.getState().playing }));
+  expect(reopened).toMatchObject({ plan: 'document', document: { id: 'doc:startup-e2e', revision: saved.revision }, seed: 12, lanes: 2, tick: saved.tick, playing: false });
+  await page.goto('/procgen.html?e2e=1&startup=recovery');
+  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain);
+  expect(await page.evaluate(() => ({ mode: window.__PROCGEN_STUDIO__.getStartupPlan().mode,
+    seed: window.__PROCGEN_LANES__.world.seed, playing: window.__PROCGEN_STUDIO__.transport.getState().playing }))).toEqual({ mode: 'recovery', seed: 12, playing: false });
+  await page.goto('/procgen.html?e2e=1&startup=document&document=doc%3Astartup-e2e&seed=999');
+  await expect(page.locator('#procgenRunStatus')).toContainText('conflicts with physical recipe');
+  expect(await page.evaluate(() => !!window.__PROCGEN_LANES__)).toBe(false);
+});

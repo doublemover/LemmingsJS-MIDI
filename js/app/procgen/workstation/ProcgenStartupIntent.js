@@ -1,29 +1,90 @@
 import { createMidiProject, sanitizeMidiProject } from '../../../midi/project/MidiProject.js';
 import { applyProcgenGameEventMidiPreset, PROCGEN_GAME_EVENT_MIDI_PRESETS } from '../../../midi/project/ProcgenMidiDefaults.js';
 import { normalizeSeed } from '../../../core/seededRandom.js';
-import { DEFAULT_LANE_HEIGHT, normalizeLaneCount, normalizeLaneHeight } from '../ProcgenLaneWorld.js';
+import { DEFAULT_LANE_HEIGHT, normalizeLaneCount, normalizeLaneHeight, normalizePopulationPolicy } from '../ProcgenLaneWorld.js';
+import { normalizeWorkerLimits } from '../ProcgenWorkerLimits.js';
 import { DECORATION_CHOICES } from '../../../decorations/ProcgenDecorationPacks.js';
 import { procgenMusicDefaults } from '../ProcgenMusicProject.js';
 import { createProcgenWorkstationProject } from './ProcgenWorkstationProject.js';
+import { validateProcgenSession } from './ProcgenSessionStorage.js';
+import { cloneJournalData } from './CausalJournalCanonical.js';
+import { hashSurveyValue } from '../survey/ProcgenSurveyCanonical.js';
 
 const RECIPE_KEYS = ['recipe', 'seed', 'lanes', 'speed', 'pack', 'laneHeight', 'preset', 'musicPreset', 'musicMode', 'phrases', 'decoration'];
+const STARTUP_KEYS = ['startup', 'document', 'documentRevision', ...RECIPE_KEYS];
+const startupModes = ['fresh', 'recipe', 'document', 'recovery', 'previous-setup'];
+const recipeDefaults = () => ({ laneCount: 8, laneHeight: DEFAULT_LANE_HEIGHT, pack: 1, speed: 3, preset: 'game-iron-ensemble', mode: 'steps', decoration: 'none',
+  workerLimits: normalizeWorkerLimits(), populationPolicy: normalizePopulationPolicy() });
+export const parseProcgenStartupIntent = (search = '') => {
+  const params = new URLSearchParams(search);
+  if (params.toString().length > 8192) throw new Error('Startup URL exceeds the supported size');
+  for (const key of STARTUP_KEYS) if (params.getAll(key).length > 1) throw new Error('Duplicate startup field: ' + key);
+  const explicit = params.get('startup'), hasRecipe = RECIPE_KEYS.some(key => params.has(key));
+  if (explicit != null && !startupModes.includes(explicit)) throw new Error('Unsupported startup mode');
+  const mode = explicit || (params.has('document') ? 'document' : hasRecipe ? 'recipe' : null);
+  if (mode === 'recipe' && params.toString().length > 2048) throw new Error('Recipe URL exceeds the supported size');
+  if (mode && mode !== 'recipe' && hasRecipe) throw new Error('Startup mode conflicts with physical recipe overrides');
+  if (mode !== 'document' && (params.has('document') || params.has('documentRevision'))) throw new Error('Document identity requires document startup mode');
+  const documentId = mode === 'document' ? params.get('document') : null;
+  if (mode === 'document' && (!documentId || documentId.length > 256 || /[\x00-\x1f\x7f]/.test(documentId))) throw new Error('Invalid startup document identity');
+  const revision = params.has('documentRevision') ? Number(params.get('documentRevision')) : null;
+  if (params.has('documentRevision') && (!params.get('documentRevision')?.trim() || !Number.isSafeInteger(revision) || revision < 1)) throw new Error('Invalid startup document revision');
+  return cloneJournalData({ schemaVersion: 1, mode, explicit: explicit != null, documentId, documentRevision: revision,
+    recipe: Object.fromEntries(RECIPE_KEYS.filter(key => params.has(key)).map(key => [key, params.get(key)])),
+    presence: Object.fromEntries(STARTUP_KEYS.map(key => [key, params.has(key) ? 'explicit' : 'absent'])) });
+};
+export async function loadProcgenStartupSource(intent, { storage, signal, timeoutMs = 20000 } = {}) {
+  signal?.throwIfAborted();
+  if (!['document', 'recovery'].includes(intent?.mode)) return { session: null, documentIdentity: null };
+  if (!storage || !Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 120000) throw new Error('Invalid startup source owner');
+  let timer, rejectInterrupted;
+  const interrupted = new Promise((_resolve, reject) => { rejectInterrupted = reject; });
+  const abort = () => rejectInterrupted(signal.reason || new Error('Startup source loading canceled'));
+  signal?.addEventListener('abort', abort, { once: true });
+  timer = setTimeout(() => rejectInterrupted(new Error('Startup source loading deadline exceeded')), timeoutMs);
+  try {
+    const source = await Promise.race([Promise.resolve().then(async () => {
+      signal?.throwIfAborted();
+      if (intent.mode === 'document') {
+        const record = await storage.loadDocument(intent.documentId);
+        return { session: record.session, documentIdentity: { id: record.id, revision: record.revision } };
+      }
+      const session = await storage.loadRecovery(); if (!session) throw new Error('No verified recovery is available');
+      return { session, documentIdentity: null };
+    }), interrupted]);
+    signal?.throwIfAborted(); return source;
+  } finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); }
+}
 const boundedNumber = (params, key, min, max, integer = false) => {
   if (!params.has(key)) return null;
   const raw = params.get(key)?.trim(), value = Number(raw);
   if (!raw || !Number.isFinite(value) || value < min || value > max || integer && !Number.isInteger(value)) throw new Error(`Invalid recipe ${key}`);
   return value;
 };
-const resolveProcgenStartupIntent = ({ search = '', seed, legacyProject, legacySettings = {}, saved = null } = {}) => {
-  const params = search instanceof URLSearchParams ? search : new URLSearchParams(search);
-  const hasRecipe = RECIPE_KEYS.some(key => params.has(key));
-  if (hasRecipe && params.toString().length > 2048) throw new Error('Recipe URL exceeds the supported size');
+const resolveProcgenStartupIntent = ({ search = '', intent = parseProcgenStartupIntent(search), seed, legacyProject, legacySettings = {}, saved = null,
+  session = null, documentIdentity = null } = {}) => {
+  if (intent.schemaVersion !== 1 || intent.mode != null && !startupModes.includes(intent.mode)) throw new Error('Unsupported startup intent');
+  const params = new URLSearchParams(intent.recipe);
   const legacySaved = saved?.project?.procgen && saved.project.procgen.version !== 2;
-  const mode = hasRecipe ? 'recipe' : saved?.project && !legacySaved ? 'previous-setup' : 'fresh';
+  const mode = intent.mode || (saved?.project && !legacySaved ? 'previous-setup' : 'fresh');
   const baseSeed = normalizeSeed(seed ?? legacySettings.seed ?? 777);
   const provenance = {}, diagnostics = [];
   if (legacySaved) diagnostics.push('legacy-project-requires-explicit-physical-conversion');
-  let project, worldOptions, transport;
-  if (mode === 'recipe') {
+  let project, worldOptions, transport, sourceIdentity = null;
+  if (mode === 'document' || mode === 'recovery') {
+    const artifact = validateProcgenSession(session);
+    if (artifact.project.procgen?.version !== 2) throw new Error('Startup document requires explicit legacy conversion before reopening');
+    const snapshot = cloneJournalData({ project: artifact.project, settings: artifact.settings, transport: artifact.transport }, { maxBytes: 8 * 1048576, maxNodes: 300000 });
+    project = createProcgenWorkstationProject(sanitizeMidiProject(snapshot.project));
+    if (project.procgen.lanes.length !== artifact.world.laneCount || project.procgen.seed !== artifact.world.seed) throw new Error('Startup document and checkpoint dimensions or seed differ');
+    if (mode === 'document' && (documentIdentity?.id !== intent.documentId || !Number.isSafeInteger(documentIdentity.revision) ||
+        intent.documentRevision != null && documentIdentity.revision !== intent.documentRevision)) throw new Error('Startup document identity or revision changed');
+    worldOptions = { ...snapshot.settings, seed: artifact.world.seed, laneCount: artifact.world.laneCount, laneHeight: artifact.world.laneHeight };
+    for (const key of ['output', 'outputId', 'inputId', 'clockOutputId', 'recording', 'thru', 'soundFont']) delete worldOptions[key];
+    transport = { ...snapshot.transport, playing: false };
+    sourceIdentity = mode === 'document' ? { id: documentIdentity.id, revision: documentIdentity.revision } : { kind: 'verified-recovery', savedAt: artifact.savedAt || null };
+    for (const key of Object.keys(worldOptions)) provenance[key] = mode + '-artifact';
+  } else if (mode === 'recipe') {
     if (params.has('recipe') && params.get('recipe') !== '1') throw new Error('Unsupported recipe version');
     if (params.has('recipe') && !params.has('seed')) throw new Error('Invalid recipe: a shared starting recipe requires its seed');
     if (params.has('preset') && params.has('musicPreset') && params.get('preset') !== params.get('musicPreset'))
@@ -46,10 +107,12 @@ const resolveProcgenStartupIntent = ({ search = '', seed, legacyProject, legacyS
     const musical = sanitizeMidiProject({ ...base, global: { ...base.global,
       laneMusic: procgenMusicDefaults(base, { laneCount, preset, mode: musicMode }) } });
     project = createProcgenWorkstationProject(musical, { seed: recipeSeed, lanes: Array.from({ length: laneCount }, () => ({})) });
-    worldOptions = { seed: recipeSeed, laneCount, laneHeight, pack, speed };
-    transport = { bpm: 120, gameSpeed: speed, speedMode: 'game' };
-    for (const key of Object.keys(worldOptions)) provenance[key] = params.has(key === 'laneCount' ? 'lanes' : key) ? 'recipe-url' : key === 'seed' ? 'generated' : 'recipe-v1-default';
+    worldOptions = { ...recipeDefaults(), seed: recipeSeed, laneCount, laneHeight, pack, speed, preset, mode: musicMode, decoration: params.get('decoration') || 'none' };
+    transport = { bpm: 120, gameSpeed: speed, speedMode: 'game', linked: true, clockSource: 'internal' };
+    const keys = { laneCount: 'lanes', preset: params.has('preset') ? 'preset' : 'musicPreset', mode: params.has('musicMode') ? 'musicMode' : 'phrases' };
+    for (const key of Object.keys(worldOptions)) provenance[key] = params.has(keys[key] || key) ? 'recipe-url' : key === 'seed' ? 'generated' : 'recipe-v1-default';
   } else if (mode === 'previous-setup') {
+    if (!saved?.project || legacySaved) throw new Error('No compatible previous setup is available');
     project = createProcgenWorkstationProject(sanitizeMidiProject(saved.project), { seed: baseSeed });
     const previousSpeed = saved.transport?.gameSpeed ?? legacySettings.speed ?? 3;
     worldOptions = { seed: baseSeed, laneCount: project.procgen.lanes.length, laneHeight: legacySettings.laneHeight ?? DEFAULT_LANE_HEIGHT,
@@ -57,16 +120,18 @@ const resolveProcgenStartupIntent = ({ search = '', seed, legacyProject, legacyS
     transport = { bpm: 120, speedMode: 'bpm', ...(saved.transport || {}), gameSpeed: previousSpeed };
     provenance.seed = 'fresh-seed'; provenance.laneCount = 'previous-setup'; provenance.speed = 'previous-setup';
   } else {
-    const laneCount = normalizeLaneCount(legacySettings.laneCount ?? 8);
-    const source = legacyProject?.procgen?.version === 2 ? legacyProject : { ...(legacyProject || createMidiProject()), procgen: undefined };
+    const defaults = intent.explicit ? recipeDefaults() : legacySettings;
+    const laneCount = normalizeLaneCount(defaults.laneCount ?? 8);
+    const source = intent.explicit ? createMidiProject() : legacyProject?.procgen?.version === 2 ? legacyProject : { ...(legacyProject || createMidiProject()), procgen: undefined };
     project = createProcgenWorkstationProject(sanitizeMidiProject(source),
       { seed: baseSeed, lanes: Array.from({ length: laneCount }, (_, index) => source.procgen?.lanes?.[index] || {}) });
-    worldOptions = { seed: baseSeed, laneCount, laneHeight: legacySettings.laneHeight ?? DEFAULT_LANE_HEIGHT,
-      pack: legacySettings.pack ?? 1, speed: legacySettings.speed ?? 3 };
+    worldOptions = { ...recipeDefaults(), ...defaults, seed: baseSeed, laneCount, laneHeight: defaults.laneHeight ?? DEFAULT_LANE_HEIGHT,
+      pack: defaults.pack ?? 1, speed: defaults.speed ?? 3 };
     transport = { bpm: 120, gameSpeed: worldOptions.speed, speedMode: 'game' };
     provenance.seed = 'fresh-seed'; provenance.laneCount = 'preference-or-default'; provenance.speed = 'preference-or-default';
   }
-  return { schemaVersion: 1, intentId: `startup-v1:${mode}:${worldOptions.seed}:${worldOptions.laneCount}`,
-    mode, sourceRevision: 1, project, worldOptions, transport, provenance, diagnostics };
+  const identity = hashSurveyValue({ mode, sourceIdentity, worldOptions, transport, lanes: project.procgen.lanes.map(lane => [lane.family, lane.role, lane.patch]) });
+  return cloneJournalData({ schemaVersion: 1, intentId: `startup-v1:${mode}:${identity}`, presence: intent.presence,
+    mode, sourceRevision: sourceIdentity?.revision ?? 1, sourceIdentity, project, worldOptions, transport, provenance, diagnostics }, { maxBytes: 8 * 1048576, maxNodes: 300000 });
 };
 export { resolveProcgenStartupIntent };

@@ -1,4 +1,4 @@
-import { createMidiProject, sanitizeMidiProject, reduceMidiProject, projectToMidiConfig, isCanonicalMidiProject, markCanonicalMidiProject, sameMidiRuntimeInputs } from '../../../midi/project/MidiProject.js';
+import { sanitizeMidiProject, reduceMidiProject, projectToMidiConfig, isCanonicalMidiProject, markCanonicalMidiProject, sameMidiRuntimeInputs } from '../../../midi/project/MidiProject.js';
 import { createProcgenWorkstationProject, createProcgenPattern, convertLegacyProcgenWorkstationProject } from './ProcgenWorkstationProject.js';
 import { createProcgenPatternEngine } from './ProcgenPatternEngine.js';
 import { createProcgenTransport } from './ProcgenTransport.js';
@@ -57,21 +57,22 @@ function rollbackWorldProject(previous, staged, current) {
 export function createProcgenWorkstation({ document, window, legacy, getRuntime, restart,
   createView = createProcgenWorkstationView, storage = createProcgenSessionStorage(window.indexedDB),
   captureCheckpoint = captureProcgenCheckpoint, transportOptions = {}, historyBytesLimit = 32 * 1024 * 1024,
-  resourceBudget = null }) {
+  resourceBudget = null, startupIntent, startupSource = null }) {
   if (!Number.isSafeInteger(historyBytesLimit) || historyBytesLimit < 1024) throw new Error('Invalid history byte limit.');
   const now = () => window.performance?.now?.() ?? performance.now();
   let saved = null;
   try { saved = JSON.parse(window.localStorage?.getItem(STORAGE_KEY) || 'null'); } catch { /* Keep the default project. */ }
   if (saved?.version !== 1 || !saved.project || typeof saved.project !== 'object') saved = null;
   const initialSeed = legacy.settings.seed ?? freshProcgenSeed(window.crypto);
-  const startupPlan = resolveProcgenStartupIntent({ search: window.location?.search || '', seed: initialSeed,
-    legacyProject: legacy.getProject(), legacySettings: legacy.settings, saved });
+  const startupPlan = resolveProcgenStartupIntent({ search: window.location?.search || '', ...(startupIntent ? { intent: startupIntent } : {}), seed: initialSeed,
+    legacyProject: legacy.getProject(), legacySettings: legacy.settings, saved, session: startupSource?.session, documentIdentity: startupSource?.documentIdentity });
   Object.assign(legacy.settings, startupPlan.worldOptions);
   let project = markCanonicalMidiProject(startupPlan.project);
   const state = { laneId: project.procgen.lanes[0].id, slot: 0, step: 0, tab: 'Lane', tool: 'select', layout: 'strip',
     inspectorWidth: 304, firstLane: 0, minimumRow: 64, hazardSpacing: 160, observerMode: 'overview', observerLane: null, observerHold: 6,
     inputId: null, clockOutputId: null, thru: false, recording: false, lastMidi: '', ...(startupPlan.mode === 'previous-setup' ? saved?.ui || {} : {}) };
-  state.recording = false; state.thru = false;
+  state.recording = false; state.thru = false; state.inputId = null; state.clockOutputId = null;
+  let startupCommitted = false, deferredPersist = false;
   let view = null, disposed = false, boundRuntime = null, boundSession = null, unhookRouter = null, unhookWorld = null;
   let ports, engine, lastPlaying = false, lastLegacySpeed = legacy.settings.speed, pendingResume = false, lastTempo = null;
   let savedName = 'Untitled session', documentId = null, documentRevision = 0, clipboard = null, loadSerial = 0, suppressPersistence = false;
@@ -168,11 +169,16 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   const writePersist = () => {
     if (suppressPersistence || disposed) return;
+    if (!startupCommitted) return;
+    if (worldBusy) { deferredPersist = true; return; }
     try { window.localStorage?.setItem(STORAGE_KEY, JSON.stringify({ version: 1, project, ui: { ...state, recording: false, thru: false, lastMidi: '' }, transport: transport.snapshot() })); }
     catch { status('Project preferences could not be stored. Export a project file to save.'); }
   };
   const persist = ({ immediate = false } = {}) => {
     if (suppressPersistence || disposed) return;
+    if (!startupCommitted) return;
+    if (worldBusy) { deferredPersist = true; return; }
+    deferredPersist = false;
     if (immediate || project.procgen.lanes.length <= 64 || !window.setTimeout) {
       if (persistTimer != null) { window.clearTimeout?.(persistTimer); persistTimer = null; }
       writePersist(); return;
@@ -716,7 +722,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       try {
         syncProject(session.project, { history: false, render: false }); Object.assign(legacy.settings, session.settings, { workstation: true });
         lastLegacySpeed = legacy.settings.speed;
-        Object.assign(state, session.ui || {}, { recording: false, thru: false }); savedName = session.name;
+        Object.assign(state, session.ui || {}, { recording: false, thru: false, inputId: null, clockOutputId: null }); savedName = session.name;
         transport.restore(session.transport); engine.restore(session.patterns); pendingResume = true;
         if (session.camera) renderer()?.camera?.applyState?.(session.camera);
       } finally { suppressPersistence = false; }
@@ -730,6 +736,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       onRevealLane: lane => { state.firstLane = lane; view?.layout?.(); view?.launched?.(); } });
     if (legacy.local.getState().status === 'suspended') Promise.resolve(legacy.local.resumeGame?.()).catch(error => status(error?.message || 'Reconnect the audio output.'));
     if (!session && !pendingResume) play();
+    if (!startupCommitted && startupPlan.mode === 'document') {
+      documentId = startupPlan.sourceIdentity.id; documentRevision = startupPlan.sourceIdentity.revision;
+      savedRevision = editRevision; lastSavedAt = session?.savedAt || null;
+    }
+    startupCommitted = true;
     persist(); return next;
   };
   const snapshotSession = name => {
@@ -830,13 +841,14 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     worldBusy = true;
     const previous = transport.getState(), oldSettings = { ...legacy.settings };
     const previousRuntime = runtime();
+    let loaded = false;
     const prepared = { ...session, project: validatedProject, camera: session.camera || null, ui: session.ui || {} };
     beforeRestart();
     try {
       const restarted = await restart({ session: prepared, lease });
       if (!ownsOperation(lease) || serial !== loadSerial) return false;
       if (restarted === false) throw new Error('World preparation was canceled.');
-      bindRuntime({ session: prepared }); return true;
+      bindRuntime({ session: prepared }); loaded = true; return true;
     } catch (error) {
       if (!ownsOperation(lease)) return false;
       if (runtime() !== previousRuntime) {
@@ -845,7 +857,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         throw error;
       }
       Object.assign(legacy.settings, oldSettings); lastLegacySpeed = legacy.settings.speed; if (previous.playing) play(); throw error;
-    } finally { worldBusy = false; finishOperation(lease); }
+    } finally { worldBusy = false; finishOperation(lease); if (deferredPersist && startupCommitted && (loaded || runtime() === previousRuntime)) persist(); }
   }
   async function rebuild({ seed = project.procgen.seed, fresh = false, projectNext = null, history = true } = {}) {
     if (disposed) return false;
@@ -855,10 +867,12 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     worldBusy = true;
     const previous = project, oldSettings = { ...legacy.settings }, previousTransport = transport.getState(), previousPatterns = engine.snapshot(), undoLength = undo.length;
     const previousRuntime = runtime();
+    let completed = false, rolledBack = false;
     beforeRestart();
     const source = projectNext || project;
-    const next = fresh ? createProcgenWorkstationProject(createMidiProject(), { seed }) : { ...source, procgen: { ...source.procgen, seed } };
-    if (fresh) { transport.configure({ baseBpm: 120, bpm: 120, gameSpeed: 1, speedMode: 'bpm', linked: true, clockSource: 'internal' }); legacy.setSpeed(1); lastLegacySpeed = 1; }
+    const freshPlan = fresh ? resolveProcgenStartupIntent({ search: '?startup=fresh', seed }) : null;
+    const next = freshPlan?.project || { ...source, procgen: { ...source.procgen, seed } };
+    if (fresh) { Object.assign(legacy.settings, freshPlan.worldOptions); transport.configure({ ...freshPlan.transport, baseBpm: 120 }); legacy.setSpeed(freshPlan.worldOptions.speed); lastLegacySpeed = legacy.settings.speed; }
     syncProject(next, { history }); prepareSettings();
     const staged = project;
     try {
@@ -869,7 +883,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (fresh) documentGeneration++;
       bindRuntime();
       if (fresh) { savedName = 'Untitled session'; documentId = null; documentRevision = 0; savedRevision = -1; lastSavedAt = null; storageStatus(); }
-      if (previousTransport.playing) play(); status(fresh ? 'New project ready.' : 'World rebuilt.'); return true;
+      if (previousTransport.playing) play(); status(fresh ? 'New project ready.' : 'World rebuilt.'); completed = true; return true;
     } catch (error) {
       if (!ownsOperation(lease)) return false;
       if (runtime() !== previousRuntime) {
@@ -883,8 +897,9 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       Object.assign(legacy.settings, oldSettings);
       lastLegacySpeed = legacy.settings.speed;
       transport.restore(previousTransport); engine.restore(previousPatterns); pendingResume = true;
+      rolledBack = true;
       if (previousTransport.playing) play(); throw error;
-    } finally { worldBusy = false; finishOperation(lease); }
+    } finally { worldBusy = false; finishOperation(lease); if (deferredPersist && startupCommitted && (completed || rolledBack)) persist(); }
   }
   const changesWorld = next => next.procgen.seed !== project.procgen.seed || next.procgen.lanes.length !== project.procgen.lanes.length || next.procgen.lanes.some((lane, index) => lane.family !== project.procgen.lanes[index]?.family);
   const historyMove = async (from, to) => {

@@ -298,9 +298,21 @@ describe('ProcGen workstation orchestration', () => {
     expect(f.studio.getStartupPlan().mode).to.equal('recipe');
     expect(f.studio.getProject().procgen.lanes).to.have.length(3);
     expect(f.studio.prepareSettings()).to.include({ laneCount: 3, seed: 999 });
-    expect(f.studio.transport.getState()).to.include({ bpm: 120, gameSpeed: 2 });
+    expect(f.studio.transport.getState()).to.include({ bpm: 240, gameSpeed: 2 });
     expect(f.studio.state.slot).to.equal(0);
     expect(f.window.localStorage.getItem('lemmings.procgen.workstation.v1')).to.equal(JSON.stringify(persisted));
+    f.studio.dispose();
+  });
+  it('defers startup and candidate preferences until a coherent world is committed', async () => {
+    const f = setup(), key = 'lemmings.procgen.workstation.v1';
+    expect(f.window.localStorage.getItem(key)).to.equal(undefined);
+    f.studio.handlers.preferences(); expect(f.window.localStorage.getItem(key)).to.equal(undefined);
+    f.studio.bindRuntime(); const previous = f.window.localStorage.getItem(key);
+    const release = f.holdRestart(), rebuilding = f.studio.handlers.reroll();
+    await Promise.resolve(); expect(f.window.localStorage.getItem(key)).to.equal(previous);
+    release(); expect(await rebuilding).to.equal(true);
+    const committed = JSON.parse(f.window.localStorage.getItem(key));
+    expect(committed.project.procgen.seed).to.equal(f.runtime.world.seed);
     f.studio.dispose();
   });
   it('keeps discovered unused MIDI outputs inert and ignores their disconnects', () => {

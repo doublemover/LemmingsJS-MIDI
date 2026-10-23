@@ -146,12 +146,36 @@ back to the previous one if the latest payload is corrupt. Checksumming the
 detached snapshot yields between bounded slices; capture of the live world graph
 still runs on the main thread and can cost more than one frame for large worlds.
 
-**New** creates a default composition and a fresh world. **Reroll world** keeps
+**New** creates a default composition and a fresh world through the same
+versioned fresh-start resolver used by `?startup=fresh`. **Reroll world** keeps
 the composition and changes the seed. **Replay seed** rebuilds the current seed's
 starting world. Explicit seed URLs remain reproducible; ordinary visits and new
 runs receive fresh seeds. Play resumes the existing world.
 Automatic run resets derive a different seed from the saved run state, so a
 loaded checkpoint continues through the same subsequent worlds.
+
+Startup resolves one immutable plan before asset preparation. Shared recipes
+use versioned defaults for omitted fields, including decoration, population and
+worker policy; unrelated previous setup preferences cannot fill those gaps.
+Explicit physical recipe fields conflict with document/recovery launch modes
+and duplicate launch fields are rejected. The plan exposes presence, source and
+field provenance separately from live output ownership.
+
+`?startup=document&document=<id>&documentRevision=<revision>` opens that local
+document revision; an omitted revision opens its current stored revision.
+`?startup=recovery` opens a checksum-verified recovery, or reports that none is
+available. Both use the existing validated load transaction and restore paused.
+They reject conflicting seed/lane overrides. `?startup=previous-setup`
+deliberately reuses a compatible musical setup with a new physical seed.
+Document IDs address this browser's local store; they are not portable recipes.
+Input selection, clock output, recording and thru are reset on document load.
+
+Initial preference writes wait for a committed world. Later world candidates
+also defer preference publication until commit or a completed rollback. An
+invalid source, canceled startup or rejected recipe cannot overwrite the prior
+recoverable setup while assets prepare. Startup source reads have a bounded
+deadline and navigation cancellation. Added resolver/controller/browser
+fixtures remain unexecuted during the frontloaded implementation pass.
 
 The World inspector controls trap spacing and display row height. Playable terrain
 assembles near approaching actors; camera movement does not build distant terrain.

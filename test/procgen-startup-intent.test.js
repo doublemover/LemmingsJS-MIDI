@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { createMidiProject } from '../js/midi/project/MidiProject.js';
 import { createProcgenWorkstationProject } from '../js/app/procgen/workstation/ProcgenWorkstationProject.js';
-import { resolveProcgenStartupIntent } from '../js/app/procgen/workstation/ProcgenStartupIntent.js';
+import { resolveProcgenStartupIntent, parseProcgenStartupIntent, loadProcgenStartupSource } from '../js/app/procgen/workstation/ProcgenStartupIntent.js';
 import { createProcgenRecipeShareDescriptor, createProcgenShareUrl } from '../js/app/procgen/ProcgenUrlConfig.js';
 
 describe('ProcGen startup intent', () => {
@@ -31,6 +31,41 @@ describe('ProcGen startup intent', () => {
       saved: { ...saved, transport: { bpm: 60, speedMode: 'game' } } });
     expect(incompleteTransport.worldOptions.speed).to.equal(3);
     expect(incompleteTransport.transport).to.include({ bpm: 60, gameSpeed: 3, speedMode: 'game' });
+  });
+  it('makes an explicit fresh start independent of the previous document and physical preferences', () => {
+    const fresh = resolveProcgenStartupIntent({ ...base, saved, search: '?startup=fresh', legacySettings: { laneCount: 2, speed: 0.5, pack: 6, decoration: 'winter' } });
+    expect(fresh.mode).to.equal('fresh'); expect(fresh.worldOptions).to.include({ laneCount: 8, speed: 3, pack: 1, decoration: 'none' });
+    expect(fresh.project.procgen.lanes).to.have.length(8); expect(Object.isFrozen(fresh.project)).to.equal(true);
+    const recipe = resolveProcgenStartupIntent({ ...base, search: '?recipe=1&seed=999', legacySettings: { ...base.legacySettings, decoration: 'winter', workerLimits: { builder: 1 } } });
+    expect(recipe.worldOptions.decoration).to.equal('none'); expect(recipe.worldOptions.workerLimits).not.to.deep.equal({ builder: 1 });
+    expect(recipe.transport.clockSource).to.equal('internal');
+  });
+  it('restores document and recovery plans from their artifact and rejects conflicting URL authority', () => {
+    const session = { format: 'lemmings-procgen-session', version: 1, name: 'Saved', project: legacyProject,
+      world: { seed: 12, laneCount: 2, laneHeight: 144 }, settings: { speed: 0.5, pack: 2, outputId: 'private-device', output: 'midi' },
+      transport: { bpm: 60, gameSpeed: 0.5, speedMode: 'bpm', playing: true }, patterns: { version: 1, beat: 0, lanes: {}, pending: [], active: [] } };
+    const document = resolveProcgenStartupIntent({ ...base, saved, search: '?startup=document&document=doc%3Afixture&documentRevision=3',
+      session, documentIdentity: { id: 'doc:fixture', revision: 3 } });
+    expect(document.mode).to.equal('document'); expect(document.worldOptions).to.include({ seed: 12, laneCount: 2, laneHeight: 144 });
+    expect(document.worldOptions).not.to.have.property('outputId'); expect(document.transport.playing).to.equal(false);
+    expect(document.sourceIdentity).to.deep.equal({ id: 'doc:fixture', revision: 3 });
+    expect(resolveProcgenStartupIntent({ ...base, search: '?startup=recovery', session }).mode).to.equal('recovery');
+    expect(() => resolveProcgenStartupIntent({ ...base, search: '?startup=document&document=doc%3Afixture&documentRevision=2',
+      session, documentIdentity: { id: 'doc:fixture', revision: 3 } })).to.throw('revision changed');
+    for (const search of ['?startup=document&document=doc%3Afixture&seed=999', '?startup=recovery&lanes=3', '?startup=fresh&speed=2', '?seed=1&seed=2', '?startup=unknown'])
+      expect(() => parseProcgenStartupIntent(search)).to.throw();
+  });
+  it('loads an explicitly selected source with cancellation before publication', async () => {
+    const intent = parseProcgenStartupIntent('?startup=document&document=doc%3Afixture');
+    const canceled = new AbortController(); canceled.abort(); let reads = 0, error;
+    try { await loadProcgenStartupSource(intent, { signal: canceled.signal, storage: { loadDocument() { reads++; } } }); } catch (failure) { error = failure; }
+    expect(error.name).to.equal('AbortError'); expect(reads).to.equal(0);
+    const during = new AbortController(); let resolve;
+    const loading = loadProcgenStartupSource(intent, { signal: during.signal, storage: { loadDocument() { reads++; return new Promise(done => { resolve = done; }); } } });
+    await Promise.resolve(); during.abort();
+    try { await loading; } catch (failure) { error = failure; }
+    expect(error.name).to.equal('AbortError'); resolve({ id: 'doc:fixture', revision: 1, session: {} });
+    expect(reads).to.equal(1);
   });
   it('rejects malformed physical recipe values instead of quietly blending preferences', () => {
     for (const search of ['?lanes=3.5', '?lanes=0', '?lanes=', '?speed=not-a-number', '?pack=7', '?seed=', '?laneHeight=nope', '?musicMode=weird', '?preset=unknown'])

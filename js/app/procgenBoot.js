@@ -8,7 +8,8 @@ import { PROCGEN_TRIGGER_INDEX_BYTES_PER_ACTOR } from './procgen/ProcgenTriggerM
 import { ParticleTable } from '../render/ParticleTable.js';
 import { createProcgenWorkstation } from './procgen/workstation/ProcgenWorkstation.js';
 import { restoreProcgenCheckpoint } from './procgen/workstation/ProcgenCheckpoint.js';
-import { freshProcgenSeed, validateProcgenSession } from './procgen/workstation/ProcgenSessionStorage.js';
+import { freshProcgenSeed, validateProcgenSession, createProcgenSessionStorage } from './procgen/workstation/ProcgenSessionStorage.js';
+import { parseProcgenStartupIntent, loadProcgenStartupSource } from './procgen/workstation/ProcgenStartupIntent.js';
 import { loadTerrainRecipeBook } from './procgen/ProcgenTerrainRecipes.js';
 import { createProcgenLaneRuntime } from './procgen/ProcgenLaneRuntime.js';
 import { createProcgenRetirementScope } from './procgen/ProcgenRetirement.js';
@@ -91,6 +92,7 @@ const saveProcgenDistances = world => {
 let procgenBootListeners = [];
 let procgenBarObserver = null;
 let lastProcgenRuntimeRetirement = null;
+let startupController = null, startupPending = false, startupBlocked = null;
 
 const runFocusBlurCleanup = (runtime) => {
   const cleanup = runtime?.focusBlurCleanup;
@@ -143,6 +145,7 @@ const addProcgenBootListener = (target, eventName, handler, options) => {
 };
 
 const disposeProcgenBootListeners = () => {
+  startupController?.abort(); startupController = null; startupPending = false;
   try { procgenBarObserver?.disconnect(); } catch { /* Remove the remaining listeners. */ }
   procgenBarObserver = null;
   while (procgenBootListeners.length) {
@@ -153,35 +156,54 @@ const disposeProcgenBootListeners = () => {
 
 const installProcgenBootListeners = () => {
   disposeProcgenBootListeners();
-  const boot = () => {
-    const params = new URLSearchParams(window.location.search);
-    document.body?.classList?.toggle('procgen-workstation', params.get('workstation') !== '0');
-    resizeCanvas();
-    if (!procgenUi && document.getElementById('procgenDrawer')) {
-      procgenUi = createProcgenUiController({ document, window, getRuntime: () => activeProcgenRuntime, restart: init,
-        resourceBudget: procgenResourceBudget,
-        initial: { laneCount: params.get('lanes'), speed: params.get('speed'), pack: params.get('pack') } });
-      if (params.get('workstation') !== '0') {
-        procgenUi.settings.seed = resolveProcgenSeed(params);
-        try {
-          procgenStudio = createProcgenWorkstation({ document, window, legacy: procgenUi, getRuntime: () => activeProcgenRuntime,
-            restart: init, resourceBudget: procgenResourceBudget });
-          procgenStudio.prepareSettings();
-        } catch (error) {
-          const status = document.getElementById('procgenRunStatus');
-          if (status) status.textContent = `Could not open startup recipe: ${error.message}`;
-          return;
+  const boot = async () => {
+    const controller = new AbortController(); startupController?.abort(); startupController = controller;
+    startupPending = true; startupBlocked = null; let startupStorage = null, storageTransferred = false;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const startupIntent = parseProcgenStartupIntent(params);
+      document.body?.classList?.toggle('procgen-workstation', params.get('workstation') !== '0');
+      resizeCanvas();
+      if (!procgenUi && document.getElementById('procgenDrawer')) {
+        procgenUi = createProcgenUiController({ document, window, getRuntime: () => activeProcgenRuntime, restart: init,
+          resourceBudget: procgenResourceBudget,
+          initial: { laneCount: params.get('lanes'), speed: params.get('speed'), pack: params.get('pack') } });
+        if (params.get('workstation') !== '0') {
+          procgenUi.settings.seed = resolveProcgenSeed(params);
+          try {
+            startupStorage = createProcgenSessionStorage(window.indexedDB);
+            const startupSource = await loadProcgenStartupSource(startupIntent, { storage: startupStorage, signal: controller.signal });
+            controller.signal.throwIfAborted();
+            procgenStudio = createProcgenWorkstation({ document, window, legacy: procgenUi, getRuntime: () => activeProcgenRuntime,
+              restart: init, resourceBudget: procgenResourceBudget, startupIntent, startupSource, storage: startupStorage });
+            storageTransferred = true;
+            procgenStudio.prepareSettings();
+            startupPending = false;
+            if (startupSource.session) await procgenStudio.loadSession(startupSource.session);
+            else await init();
+          } catch (error) {
+            const status = document.getElementById('procgenRunStatus');
+            if (status) status.textContent = `Could not open startup recipe: ${error.message}`;
+            startupBlocked = error; return;
+          }
+          if (params.has('e2e')) window.__PROCGEN_STUDIO__ = procgenStudio;
+          resizeCanvas();
         }
-        if (params.has('e2e')) window.__PROCGEN_STUDIO__ = procgenStudio;
-        resizeCanvas();
       }
+      const bar = document.getElementById('procgenTopbar');
+      if (bar && typeof window.ResizeObserver === 'function') { procgenBarObserver = new window.ResizeObserver(() => resizeCanvas()); procgenBarObserver.observe(bar); const stage = document.getElementById('procgenStudioStage'); if (stage) procgenBarObserver.observe(stage); }
+      startupPending = false;
+      if (!procgenStudio) await init();
+    } catch (error) {
+      if (!controller.signal.aborted) { startupBlocked = error; const status = document.getElementById('procgenRunStatus'); if (status) status.textContent = `Could not open startup intent: ${error.message}`; }
+    } finally {
+      if (!storageTransferred) startupStorage?.close();
+      if (startupController === controller) { startupController = null; startupPending = false; }
     }
-    const bar = document.getElementById('procgenTopbar');
-    if (bar && typeof window.ResizeObserver === 'function') { procgenBarObserver = new window.ResizeObserver(() => resizeCanvas()); procgenBarObserver.observe(bar); const stage = document.getElementById('procgenStudioStage'); if (stage) procgenBarObserver.observe(stage); }
-    init().catch(error => { const status = document.getElementById('procgenRunStatus'); if (status) status.textContent = `Could not start: ${error.message}`; });
   };
   addProcgenBootListener(window, 'resize', () => resizeCanvas());
   addProcgenBootListener(window, 'pagehide', () => {
+    startupController?.abort();
     if (!procgenStudio) activeProcgenRuntime?.lanes?.pause?.();
     procgenUi?.local?.suspendGame?.();
   });
@@ -409,6 +431,7 @@ const initWorkstation = async ({ session, lease } = {}) => {
 };
 
 const init = async (options = {}) => {
+  if (startupPending || startupBlocked) throw startupBlocked || new Error('Wait for the startup plan to finish preparing.');
   if (procgenStudio) return initWorkstation(options);
   disposeProcgenRuntime();
   analytics = createAnalyticsService({
