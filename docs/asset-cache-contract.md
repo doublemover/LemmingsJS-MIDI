@@ -137,11 +137,31 @@ Pass `{budgetAdapter, budgetOwner}` to `FileProvider`, or call
 uses the synchronous ResourceBudget `reserve`, `release` and optional
 `registerEvictor` methods. Owners must be unique when supplied explicitly.
 
-Binary XHR reserves the configured response ceiling before construction/send,
-then shrinks its reservation to the completed byte count. Content-Length does
-not reduce this reservation. A denied request fails with `kind: 'budget'` before
-sending. This conservative ceiling can refuse a small response near the limit;
-callers may select a smaller known response ceiling for their asset profile.
+`binaryTransport: 'auto'` uses Fetch streaming when a budget adapter and Fetch
+are available and no XHR adapter was injected. `stream` explicitly selects this
+path, including an injected Fetch adapter; `xhr` keeps the legacy transport.
+Streaming reserves its first buffer before sending. The initial buffer defaults
+to 64 KiB (`binaryChunkBytes`, capped at 1 MiB), bounded by `maxResponseBytes`.
+Content-Length may reject an advertised oversized response but never reduces
+admission or proves the decoded body size.
+
+The streaming reader prefers BYOB: the platform fills an admitted view and
+transfers its buffer back, preserving previous bytes. Growth reserves both old
+and replacement capacities before allocating/copying. An admitted one-byte probe
+distinguishes EOF from necessary growth or excess, including an exact ceiling.
+The final exact-size buffer is also admitted before copying. There is no
+`response.arrayBuffer()` materialization. Missing or lying small lengths and
+compressed bodies follow the same observed decoded-byte limit. A denied first
+buffer fails with `kind: 'budget'` before Fetch is called; a later denial cancels
+the read before the requested allocation and preserves active generations.
+
+`requireByob: true` rejects an unavailable BYOB boundary without retrying another
+transport. Otherwise an ordinary stream reader is an explicitly estimated
+fallback because its platform-created chunks cannot be admitted before delivery.
+`byobResponses` and `estimatedStreamResponses` distinguish the two. Legacy XHR
+reserves the configured response ceiling before construction/send and shrinks
+to the completed count. Its native buffering remains estimated. These
+conservative reservations may refuse a small response near the shared limit.
 
 One raw allocation has one stable budget token. `BinaryReader.release()` and
 `RawAssetHandle.release()` are idempotent; each fork keeps its own reference to
@@ -169,8 +189,12 @@ and bytes, peak reserved bytes, binary network responses/bytes and SHA input
 copies/bytes. The copy count tracks provider-created digest inputs; caller-owned
 copies and native browser copies are excluded. Forking readers does not increment
 it. Peak reserved bytes include response headroom and transient estimates.
+Stream buffer allocations, copies and copied bytes are counted separately.
 These include reserved response ceilings and transient estimates while work is
-pending. Browser XHR, crypto and IndexedDB internal copies remain estimates;
+pending. Cancellation returns an unused pre-header reservation immediately;
+an allocated buffer held by an uncooperative pending read stays charged until
+that read actually settles. Browser network buffering, XHR, crypto and IndexedDB
+internal copies remain estimates;
 XHR does not expose chunk admission, and native buffering may overshoot a limit
 before a progress callback observes it. These reservations are not a measured
 browser heap ceiling. In particular,
@@ -249,6 +273,10 @@ stale metadata touches, delayed prune totals and transaction settlement.
 `test/fileprovider-budget.test.js` checks denial before XHR, shared fork charges,
 old/current generations, explicit release, 304 refresh pins, no-store ownership,
 digest completion after disposal, cache retirement and late/busy lock grants.
+`test/fileprovider-stream.test.js` checks BYOB growth/final-copy admission,
+unknown/lying lengths, exact-ceiling EOF, four concurrent oversized bodies,
+timeout and late cancellation, strict/estimated boundaries, 304 reuse and typed
+HTTP failure without automatic retry.
 
 `e2e/asset-resilience.spec.js` serves the real absent seasonal resource over HTTP,
 compares fallback terrain and steel to an explicitly pinned source, checks denied,

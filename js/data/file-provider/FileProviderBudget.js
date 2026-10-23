@@ -6,13 +6,18 @@ export const fileProviderBudgetMethods = {
     let lease;
     try {
       lease = new RawByteLease(this._budgetAdapter, { owner: this._budgetOwner, generation: this._cacheEpoch,
-        bytes, onRelease: lease => { this._rawByteLeases.delete(lease); this._rawByteMetrics.retiredStorageCount++; } });
+        bytes, onResize: () => this._measureRawPeak(),
+        onRelease: lease => { this._rawByteLeases.delete(lease); this._rawByteMetrics.retiredStorageCount++; } });
     } catch (error) { this._rawByteMetrics.denials++; throw error; }
     this._rawByteLeases.add(lease);
     this._rawByteMetrics.reservations++;
+    this._measureRawPeak();
+    return lease;
+  },
+
+  _measureRawPeak() {
     let reserved = 0; for (const live of this._rawByteLeases) reserved += live.bytes;
     this._rawByteMetrics.peakReservedBytes = Math.max(this._rawByteMetrics.peakReservedBytes, reserved);
-    return lease;
   },
 
   setBudgetAdapter(adapter) {

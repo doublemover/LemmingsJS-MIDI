@@ -8,13 +8,15 @@ export class RawByteLease {
   #initial = Symbol('acquisition');
   #retired = false;
   #onRelease;
+  #onResize;
 
-  constructor(adapter, { owner, generation, bytes, onRelease } = {}) {
+  constructor(adapter, { owner, generation, bytes, onRelease, onResize } = {}) {
     this.#adapter = adapter;
     this.#owner = owner;
     this.#generation = generation;
     this.#bytes = bytes;
     this.#onRelease = onRelease;
+    this.#onResize = onResize;
     this.#references.set(this.#initial, 'pending');
     this.#publish(bytes);
   }
@@ -33,6 +35,7 @@ export class RawByteLease {
     if (this.#retired) throw new Error('Raw byte lease has retired');
     this.#publish(bytes);
     this.#bytes = bytes;
+    this.#onResize?.(this);
   }
 
   acquire(role = 'consumer') {

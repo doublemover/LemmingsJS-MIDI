@@ -38,6 +38,12 @@ class FileProvider extends BaseLogger {
     this._rawByteLeases = new Set();
     this._rawByteMetrics = { reservations: 0, denials: 0, retiredStorageCount: 0, evictedStorageCount: 0, evictedBytes: 0, peakReservedBytes: 0,
       binaryNetworkResponses: 0, binaryNetworkBytes: 0, hashInputCopies: 0, hashInputBytes: 0 };
+    this._rawByteMetrics.byobResponses = 0; this._rawByteMetrics.estimatedStreamResponses = 0;
+    this._rawByteMetrics.streamBufferAllocations = 0; this._rawByteMetrics.streamBufferCopies = 0; this._rawByteMetrics.streamBufferCopyBytes = 0;
+    this._binaryTransport = options.binaryTransport ?? 'auto';
+    if (!['auto', 'stream', 'xhr'].includes(this._binaryTransport)) throw new TypeError('Unknown binary resource transport');
+    this._binaryChunkBytes = Number.isSafeInteger(options.binaryChunkBytes) ? Math.max(1, Math.min(1024 * 1024, options.binaryChunkBytes)) : 64 * 1024;
+    this._requireByob = options.requireByob === true;
     this._unregisterBudgetEvictor = this._budgetAdapter?.registerEvictor?.(this._budgetOwner, request => this._evictRawCache(request));
     this._cacheEpoch = 0;
     this._requestVersions = new Map();
@@ -60,7 +66,7 @@ class FileProvider extends BaseLogger {
     this._resourceLeases = new Set();
     this._disposeRequested = false;
     this._requestTimeoutMs = Number.isFinite(options.requestTimeoutMs) ? Math.max(1, options.requestTimeoutMs) : 15000;
-    this._maxResponseBytes = Number.isFinite(options.maxResponseBytes) ? Math.max(1, options.maxResponseBytes) : 64 * 1024 * 1024;
+    this._maxResponseBytes = Number.isSafeInteger(options.maxResponseBytes) ? Math.max(1, options.maxResponseBytes) : 64 * 1024 * 1024;
     this._idbPromise = null;
     this._idb = null;
     this._idbDisabled = false;

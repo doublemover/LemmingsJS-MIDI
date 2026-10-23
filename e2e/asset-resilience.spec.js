@@ -29,10 +29,11 @@ test('raw byte leases cover real transport and warm IndexedDB readers through fi
     await provider._pruneIndexedDb();
     const total = provider.getCacheStats().indexedDbBytes;
     provider.dispose(); warm.release();
-    return { pinned, cleared, warmBytes, value, total, final: budget.diagnostics().residentBytes, peak: budget.diagnostics().peakAccountedBytes };
+    return { pinned, cleared, warmBytes, value, total, final: budget.diagnostics().residentBytes, peak: budget.diagnostics().peakAccountedBytes,
+      byobResponses: provider.getRawAssetStats().byobResponses, estimatedResponses: provider.getRawAssetStats().estimatedStreamResponses };
   });
   expect(requests).toBe(1);
-  expect(result).toMatchObject({ pinned: 256, cleared: 0, warmBytes: 256, value: 7, total: 256, final: 0 });
+  expect(result).toMatchObject({ pinned: 256, cleared: 0, warmBytes: 256, value: 7, total: 256, final: 0, byobResponses: 1, estimatedResponses: 0 });
   expect(result.peak).toBeLessThanOrEqual(65536);
 });
 

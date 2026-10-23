@@ -16,6 +16,7 @@ import {
 } from './FileProviderShared.js';
 import { ResourceLoadError, resourceKindFromStatus } from './ResourceLoadError.js';
 import { RawAssetHandle } from './RawAssetHandle.js';
+import { requestBinaryStream } from './FileProviderStream.js';
 
 const requestWithXhrUnbounded = (provider, url, responseType, owner = null) => new Promise((resolve, reject) => {
   if (provider._disposed || owner?.controller.signal.aborted) { reject(new ResourceLoadError('cancelled', url)); return; }
@@ -100,7 +101,12 @@ const requestWithXhr = (provider, url, responseType, owner = null) => new Promis
   const run = () => {
     if (provider._disposed || owner?.controller.signal.aborted) { reject(new ResourceLoadError('cancelled', url)); return; }
     provider._activeRequestCount++;
-    requestWithXhrUnbounded(provider, url, responseType, owner).then(resolve, reject).finally(release);
+    const fetchRef = provider._hasFetchOverride ? provider._fetch : globalThis.fetch;
+    const stream = responseType === 'arraybuffer' && (provider._binaryTransport === 'stream' || provider._binaryTransport === 'auto' &&
+      provider._budgetAdapter && !provider._hasXhrOverride && typeof fetchRef === 'function');
+    const work = stream ? typeof fetchRef === 'function' ? requestBinaryStream(provider, url, owner, fetchRef) :
+      Promise.reject(new ResourceLoadError('unavailable', url)) : requestWithXhrUnbounded(provider, url, responseType, owner);
+    work.then(resolve, reject).finally(release);
   };
   if (provider._activeRequestCount < provider._maxConcurrentRequests) run();
   else {
