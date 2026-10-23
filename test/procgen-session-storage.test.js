@@ -2,7 +2,8 @@ import { expect } from 'chai';
 import { createProcgenDocumentId, createProcgenSessionStorage } from '../js/app/procgen/workstation/ProcgenSessionStorage.js';
 
 const session = name => ({ format: 'lemmings-procgen-session', version: 1, name, savedAt: '2026-10-22T00:00:00.000Z',
-  project: {}, settings: {}, world: { laneCount: 1, seed: 7 } });
+  project: {}, settings: {}, world: { laneCount: 1, seed: 7 }, transport: {},
+  patterns: { version: 1, beat: 0, lanes: {}, pending: [], active: [] } });
 
 function fakeIndexedDb({ failFirst = false, blocked = false, pending = false } = {}) {
   const records = new Map(), metadata = new Map(), connections = [], requests = [], reads = { sessions: 0, projectMetadata: 0 };

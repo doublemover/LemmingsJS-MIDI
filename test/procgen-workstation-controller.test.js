@@ -16,11 +16,12 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
   const document = { ...target(), getElementById: id => elements.get(id) || null };
   const values = new Map(), stored = new Map(), calls = [], positions = [], statuses = [], storageReceipts = [], restarts = [], captures = [];
   if (persisted) values.set('lemmings.procgen.workstation.v1', JSON.stringify(persisted));
-  const window = { WebMidi: webMidi, location: { search }, performance: { now: () => time }, localStorage: { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value) },
+  const window = { ...target(), WebMidi: webMidi, location: { search }, performance: { now: () => time }, localStorage: { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value) },
     crypto: { getRandomValues(value) { value[0] = 91; } }, prompt: () => 'Test song' };
   const scheduler = { tickMs: 60, sendNote(spec, meta) { calls.push({ spec, meta }); return true; }, allNotesOff() {}, output: { channels: { 1: { sendControlChange() {} } } } };
+  let throwCamera = false;
   const makeRuntime = () => ({ world: { laneCount: 1, seed: 7, timer: { speedFactor: 1 }, frontiers: [100], soundEvents: { onEvent: new EventHandler() } },
-    lanes: { setClockDriven(value) { this.clockDriven = value; }, pump(value) { positions.push(value); }, renderer: { camera: { getState: () => ({ cameraX: 45 }), applyState(value) { this.restored = value; } } } },
+    lanes: { setClockDriven(value) { this.clockDriven = value; }, pump(value) { positions.push(value); }, renderer: { camera: { getState: () => ({ cameraX: 45 }), applyState(value) { if (throwCamera) throw new Error('Camera unavailable'); this.restored = value; } } } },
     view: { midiPreviewRouter: { scheduler, resetClock() {} }, setMidiPreviewRouter(value) { this.midiPreviewRouter = value; } } });
   let runtime = makeRuntime();
   let project = createProcgenWorkstationProject(createMidiProject(), { seed: 7, lanes: [{ mode: 'hybrid', patterns: [{ length: 4, steps: Array.from({ length: 4 }, () => ({ enabled: true, note: 60, duration: 1 })) }] }] });
@@ -42,7 +43,7 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
   });
   return { studio, legacy, view, storage, calls, positions, statuses, storageReceipts, restarts, stored, captures, elements, window, get runtime() { return runtime; }, get viewProps() { return viewProps; }, get saveCalls() { return saveCalls; },
     enable() { enabled = true; }, time(value) { time = value; studio.transport.pump(); }, failRestart() { rejectRestart = true; }, cancelRestart() { returnFalseRestart = true; }, failSave() { rejectSave = true; },
-    holdRestart() { let release; restartGate = new Promise(resolve => { release = resolve; }); return release; } };
+    holdRestart() { let release; restartGate = new Promise(resolve => { release = resolve; }); return release; }, failCamera() { throwCamera = true; } };
 }
 
 describe('ProcGen workstation orchestration', () => {
@@ -518,6 +519,31 @@ describe('ProcGen workstation orchestration', () => {
     expect(f.studio.getProject()).to.equal(project); expect(f.studio.transport.getState().playing).to.equal(true); f.studio.dispose();
   });
 
+  it('loads a legacy session without optional camera data and rejects malformed patterns before restart', async () => {
+    const f = setup(); f.studio.bindRuntime(); const saved = f.studio.capture();
+    const oldRuntime = f.runtime, oldProject = f.studio.getProject();
+    const malformed = { ...saved, patterns: { ...saved.patterns, pending: null } };
+    let error; try { await f.studio.loadSession(malformed); } catch (value) { error = value; }
+    expect(error.message).to.include('pattern state is incomplete');
+    expect(f.restarts).to.have.length(0);
+    expect(f.runtime).to.equal(oldRuntime); expect(f.studio.getProject()).to.equal(oldProject);
+    expect(await f.studio.loadSession({ ...saved, camera: undefined })).to.equal(true);
+    expect(f.studio.transport.getState().playing).to.equal(false);
+    f.studio.dispose();
+  });
+
+  it('keeps a post-commit presentation failure paused and restores persistence admission', async () => {
+    const f = setup(); f.studio.bindRuntime(); const saved = f.studio.capture(), oldRuntime = f.runtime;
+    f.failCamera();
+    let error; try { await f.studio.loadSession(saved); } catch (value) { error = value; }
+    expect(error.message).to.equal('Camera unavailable');
+    expect(f.runtime).not.to.equal(oldRuntime);
+    expect(f.studio.transport.getState().playing).to.equal(false);
+    f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 81 } });
+    expect(JSON.parse(f.window.localStorage.getItem('lemmings.procgen.workstation.v1')).project.procgen.lanes[0].patterns[0].steps[0].note).to.equal(81);
+    f.studio.dispose();
+  });
+
   it('keeps concurrent musical edits when a candidate world fails', async () => {
     const f = setup(); f.studio.bindRuntime(); const release = f.holdRestart(); f.failRestart();
     const pending = f.studio.handlers.addLane();
@@ -526,6 +552,20 @@ describe('ProcGen workstation orchestration', () => {
     expect(f.studio.getProject().procgen.lanes).to.have.length(1);
     expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(84);
     await f.studio.handlers.undo(); expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(60); f.studio.dispose();
+  });
+
+  it('captures recovery before page suspension and leaves BFCache restoration paused', () => {
+    const f = setup(); f.studio.bindRuntime();
+    const world = f.runtime.world;
+    expect(f.studio.transport.getState().playing).to.equal(true);
+    f.window.emit('pagehide', { persisted: true });
+    expect(f.runtime.world).to.equal(world);
+    expect(f.studio.transport.getState().playing).to.equal(false);
+    expect(f.stored.get('__recovery__').world.seed).to.equal(world.seed);
+    f.window.emit('pageshow', { persisted: true });
+    expect(f.studio.transport.getState().playing).to.equal(false);
+    expect(f.statuses.at(-1)).to.include('restored paused');
+    f.studio.dispose();
   });
 
   it('does not treat a restored legacy speed as a new tempo edit on the next control event', async () => {

@@ -369,11 +369,13 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       documentId = null; documentRevision = 0;
       savedRevision = -1; lastSavedAt = null; storageStatus();
       suppressPersistence = true;
-      syncProject(session.project, { history: false, render: false }); Object.assign(legacy.settings, session.settings, { workstation: true });
-      lastLegacySpeed = legacy.settings.speed;
-      Object.assign(state, session.ui || {}, { recording: false, thru: false }); savedName = session.name;
-      transport.restore(session.transport || {}); engine.restore(session.patterns); pendingResume = true;
-      renderer()?.camera?.applyState?.(session.camera); suppressPersistence = false;
+      try {
+        syncProject(session.project, { history: false, render: false }); Object.assign(legacy.settings, session.settings, { workstation: true });
+        lastLegacySpeed = legacy.settings.speed;
+        Object.assign(state, session.ui || {}, { recording: false, thru: false }); savedName = session.name;
+        transport.restore(session.transport); engine.restore(session.patterns); pendingResume = true;
+        if (session.camera) renderer()?.camera?.applyState?.(session.camera);
+      } finally { suppressPersistence = false; }
       ports.configure({ recording: false, thru: false }); undo.length = 0; redo.length = 0; status('Project loaded paused. Press Play to resume.');
     }
     prepareSettings(); legacy.setPaused(!transport.getState().playing); lastPlaying = transport.getState().playing;
@@ -427,9 +429,12 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (session.physicalTimeline) createProcgenPhysicalScoreClock().restore(session.physicalTimeline);
     const validatedProject = createProcgenWorkstationProject(sanitizeMidiProject(session.project));
     if (validatedProject.procgen.lanes.length !== session.world.laneCount) throw new Error('Project lanes and world checkpoint do not match.');
+    const preparedEngine = createProcgenPatternEngine({ getProject: () => validatedProject, now });
+    preparedEngine.restore(session.patterns);
     worldBusy = true;
     const previous = transport.getState(), oldSettings = { ...legacy.settings };
-    const prepared = { ...session, project: validatedProject };
+    const previousRuntime = runtime();
+    const prepared = { ...session, project: validatedProject, camera: session.camera || null, ui: session.ui || {} };
     beforeRestart();
     try {
       const restarted = await restart({ session: prepared, lease });
@@ -438,6 +443,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       bindRuntime({ session: prepared }); return true;
     } catch (error) {
       if (!ownsOperation(lease)) return false;
+      if (runtime() !== previousRuntime) {
+        transport.pause(); ports.flush(); suppressPersistence = false;
+        status('The new world is paused after a presentation error. Export a recovery copy before continuing.');
+        throw error;
+      }
       Object.assign(legacy.settings, oldSettings); lastLegacySpeed = legacy.settings.speed; if (previous.playing) play(); throw error;
     } finally { worldBusy = false; finishOperation(lease); }
   }
@@ -447,6 +457,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const lease = beginOperation('rebuild');
     worldBusy = true;
     const previous = project, oldSettings = { ...legacy.settings }, previousTransport = transport.getState(), previousPatterns = engine.snapshot(), undoLength = undo.length;
+    const previousRuntime = runtime();
     beforeRestart();
     const source = projectNext || project;
     const next = fresh ? createProcgenWorkstationProject(createMidiProject(), { seed }) : { ...source, procgen: { ...source.procgen, seed } };
@@ -464,6 +475,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (previousTransport.playing) play(); status(fresh ? 'New project ready.' : 'World rebuilt.'); return true;
     } catch (error) {
       if (!ownsOperation(lease)) return false;
+      if (runtime() !== previousRuntime) {
+        transport.pause(); ports.flush(); suppressPersistence = false;
+        status('The rebuilt world is paused after a presentation error. Export a recovery copy before continuing.');
+        throw error;
+      }
       const restored = rollbackWorldProject(previous, staged, project);
       syncProject(restored, { history: false }); undo.length = undoLength;
       if (!equal(restored, previous)) undo.push(previous);
@@ -636,7 +652,15 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   }
   listen(document, 'keyup', syncLegacyControls);
   listen(document, 'keydown', event => { if (event.key === 'Escape' && inputLease) cancelInputEdits('canceled by user'); });
-  listen(window, 'pagehide', () => { persist(); recover(); });
+  listen(window, 'pagehide', () => {
+    beforeRestart(); persist(); recover();
+    status('Page suspended. Press Play after returning to resume.');
+  });
+  listen(window, 'pageshow', event => {
+    if (!event.persisted) return;
+    transport.pause(); ports.flush(); view?.transport(transport.getState());
+    status('Page restored paused. Press Play to resume.');
+  });
   listen(document.getElementById('procgenPanic'), 'click', () => { ports.panic(); status('All notes stopped.'); });
   const disconnected = () => { syncPorts(); view.renderInspector(); };
   const connected = () => { syncPorts(); view.renderInspector(); status('MIDI device connected. Press Play or send MIDI Start/Continue to resume.'); };

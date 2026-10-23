@@ -162,11 +162,11 @@ const installProcgenBootListeners = () => {
     init().catch(error => { const status = document.getElementById('procgenRunStatus'); if (status) status.textContent = `Could not start: ${error.message}`; });
   };
   addProcgenBootListener(window, 'resize', () => resizeCanvas());
-  addProcgenBootListener(window, 'beforeunload', () => {
-    workstationInitSerial++;
-    procgenStudio?.dispose();
-    disposeProcgenRuntime();
+  addProcgenBootListener(window, 'pagehide', () => {
+    if (!procgenStudio) activeProcgenRuntime?.lanes?.pause?.();
+    procgenUi?.local?.suspendGame?.();
   });
+  addProcgenBootListener(window, 'pageshow', event => { if (event.persisted) resizeCanvas(); });
   addProcgenBootListener(window, 'orientationchange', () => resizeCanvas());
 
   if (document.readyState === 'loading') {

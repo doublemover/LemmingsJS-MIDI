@@ -226,7 +226,9 @@ describe('procgenBoot helpers', function () {
 
     procgenBoot.installProcgenBootListeners();
     expect(windowListeners.has('resize')).to.equal(true);
-    expect(windowListeners.has('beforeunload')).to.equal(true);
+    expect(windowListeners.has('beforeunload')).to.equal(false);
+    expect(windowListeners.has('pagehide')).to.equal(true);
+    expect(windowListeners.has('pageshow')).to.equal(true);
     expect(documentListeners.has('DOMContentLoaded')).to.equal(true);
 
     procgenBoot.disposeProcgenBootListeners();

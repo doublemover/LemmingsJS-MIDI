@@ -2,6 +2,12 @@ const SESSION_VERSION = 1;
 const namedError = (name, message) => Object.assign(new Error(message), { name });
 const validateProcgenSession = value => {
   if (!value || value.format !== 'lemmings-procgen-session' || value.version !== SESSION_VERSION || !value.project || !value.world || !value.settings) throw new Error('This is not a supported ProcGen project.');
+  if (typeof value.project !== 'object' || typeof value.world !== 'object' || typeof value.settings !== 'object' || Array.isArray(value.settings) ||
+      !value.transport || typeof value.transport !== 'object' || !value.patterns || typeof value.patterns !== 'object' ||
+      value.patterns.version !== 1 || !Number.isFinite(value.patterns.beat) || !value.patterns.lanes || typeof value.patterns.lanes !== 'object' ||
+      !Array.isArray(value.patterns.pending) || !Array.isArray(value.patterns.active)) throw new Error('Project transport or pattern state is incomplete.');
+  if (value.camera != null && (typeof value.camera !== 'object' || Array.isArray(value.camera)) ||
+      value.ui != null && (typeof value.ui !== 'object' || Array.isArray(value.ui))) throw new Error('Project presentation state is invalid.');
   if (!Number.isInteger(value.world.laneCount) || value.world.laneCount < 1 || value.world.laneCount > 1024 || !Number.isFinite(value.world.seed)) throw new Error('Invalid world settings.');
   return value;
 };

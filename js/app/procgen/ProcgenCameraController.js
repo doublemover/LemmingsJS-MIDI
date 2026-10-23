@@ -89,6 +89,7 @@ const createProcgenCameraController = renderer => {
   listen('dblclick', followFrontier);
   const getState = () => ({ cameraX: renderer.cameraX, cameraY: renderer.cameraY, scale: renderer.scale, follow: renderer.follow });
   const applyState = state => {
+    if (!state || typeof state !== 'object') return;
     renderer.overviewActive = Number(state.scale) <= fitScale(false) + 1e-10;
     renderer.scale = boundedScale(Number(state.scale) || renderer.scale);
     renderer.cameraX = Math.max(0, Number(state.cameraX) || 0); renderer.cameraY = Math.max(0, Number(state.cameraY) || 0);
