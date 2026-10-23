@@ -164,12 +164,14 @@
       <p>This is one shared world with live game-event rhythms. Lanes and physical height regenerate the seed; speed, crews, scouts, camera and musical controls update live. Listen locally unlocks browser synthesis once. SoundFont sample loading is unavailable.</p>
       <p>F1 or ? opens Help. Arrows pan; Shift makes a larger pan. Drag to pan; wheel or Z/X zoom; Shift+wheel pans. F or double-click follows the leading living actor. Space pauses; ] pauses and advances one tick. Backspace regenerates. +/− change speed; Shift changes five steps. Right-click volume resets to 100%; right-click speed resets to 1x.</p>
       <p>T arms a lane nuke; click the lane to start its real OHNO cascade. Shift+T queues all lanes. Escape cancels arming, closes Details and exits span drawing. Nukes advance with game ticks, so paused lanes wait. Text fields keep their editing keys; repeated shortcut keydowns are ignored.</p>
-      <p>Event patterns advance on actual triggers; timed phrases use the existing game-tick musical clock. Musical span bundles contain separate finite beat or distance ranges and never start an independent note stream. CCTV is optional and appears at full-stack zoom. Share this run includes core settings and camera, without character or detailed solver preferences.</p>
+      <p>Event patterns advance on actual triggers; timed phrases use the existing game-tick musical clock. Musical span bundles contain separate finite beat or distance ranges and never start an independent note stream. CCTV is optional and appears at full-stack zoom. A starting recipe link includes core generation settings and optional camera framing, not the current edited performance.</p>
     </details>
 
     <footer class="procgen-workspace-footer">
     <div class="procgen-controls-row">
-      <button id="procgenShare" type="button">Share this run</button>
+      <button id="procgenShare" type="button">Copy starting recipe link</button>
+      <label><input id="procgenShareCamera" type="checkbox"> Include current camera view</label>
+      <p id="procgenShareStatus" role="status">A recipe link starts a new world. Current edits, performers, and recorded takes are not included.</p>
       <input id="procgenShareUrl" type="text" readonly hidden aria-label="Shareable run URL">
     </div>
     <p id="procgenMetrics" role="status"></p>

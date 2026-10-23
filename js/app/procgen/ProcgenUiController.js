@@ -414,11 +414,23 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     if (handled) event.preventDefault?.();
   };
   listen(window, 'keydown', handleKey);
-  const getShareUrl = () => createProcgenShareUrl({ url: window.location.href, seed: window.procgenSeed,
-    settings, camera: camera()?.getState() || { cameraX: 0, cameraY: 0, scale: 3, follow: true } });
-  listen(byId('procgenShare'), 'click', () => {
+  const getShareUrl = () => {
+    const world = getRuntime()?.world;
+    if (world?.laneCount != null && world.laneCount !== settings.laneCount) throw new Error('Wait for the world change to finish before copying a recipe');
+    return createProcgenShareUrl({ url: window.location.href, seed: world?.seed ?? window.procgenSeed ?? settings.seed,
+      settings, camera: camera()?.getState() || { cameraX: 0, cameraY: 0, scale: 3, follow: true },
+      includeCamera: byId('procgenShareCamera')?.checked === true });
+  };
+  listen(byId('procgenShare'), 'click', async () => {
     const input = byId('procgenShareUrl'); if (!input) return;
-    input.value = getShareUrl(); input.hidden = false; input.focus?.(); input.select?.();
+    const status = byId('procgenShareStatus');
+    try {
+      input.value = getShareUrl(); input.hidden = false; input.focus?.(); input.select?.();
+      if (window.navigator?.clipboard?.writeText) {
+        await window.navigator.clipboard.writeText(input.value);
+        if (status) status.textContent = 'Starting recipe link copied. Current edits and takes are not included.';
+      } else if (status) status.textContent = 'Select and copy this starting recipe link. Current edits and takes are not included.';
+    } catch (error) { if (status) status.textContent = `Could not copy recipe: ${error.message}. Select and copy the visible link if available.`; }
   });
   listen(window, 'blur', () => { if (!settings.workstation) local.suspendGame(); });
   listen(window, 'focus', () => { if (!settings.workstation && !document.hidden) local.resumeGame(); });

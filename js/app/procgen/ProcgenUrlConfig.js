@@ -2,7 +2,7 @@ import { DECORATION_CHOICES } from '../../decorations/ProcgenDecorationPacks.js'
 import { normalizeSeed } from '../../core/seededRandom.js';
 import { PROCGEN_GAME_EVENT_MIDI_PRESETS } from '../../midi/project/ProcgenMidiDefaults.js';
 import { normalizeLaneCount, normalizeLaneHeight, DEFAULT_LANE_HEIGHT } from './ProcgenLaneWorld.js';
-import { PROCGEN_URL_KEYS, readAudioUrlConfig } from '../StartupUrlConfig.js';
+import { readAudioUrlConfig } from '../StartupUrlConfig.js';
 import { PROCGEN_MIN_SCALE, PROCGEN_MAX_SCALE } from './ProcgenCameraController.js';
 
 const enumValue = (params, keys, values) => {
@@ -37,14 +37,19 @@ const readProcgenUrlConfig = search => {
   else if (camera.cameraX !== undefined || camera.cameraY !== undefined || camera.scale !== undefined) camera.follow = false;
   return { settings, appearance, camera, ...(params.get('seed')?.trim() ? { seed: normalizeSeed(params.get('seed')) } : {}) };
 };
-const createProcgenShareUrl = ({ url, seed, settings, camera }) => {
+const createProcgenShareUrl = ({ url, seed, settings, camera, includeCamera = true }) => {
   const result = new URL(url), params = result.searchParams;
-  for (const key of [...params.keys()]) if (!PROCGEN_URL_KEYS.includes(key)) params.delete(key);
+  if (!['http:', 'https:'].includes(result.protocol) || !result.pathname.endsWith('/procgen.html')) throw new Error('Starting recipe requires the ProcGen application URL');
+  result.username = ''; result.password = '';
+  for (const key of [...params.keys()]) params.delete(key);
+  result.hash = '';
+  params.set('recipe', '1');
+  const presentation = includeCamera ? { cameraX: camera?.cameraX, cameraY: camera?.cameraY, zoom: camera?.scale, follow: camera?.follow ? '1' : '0' } : {};
   for (const [key, value] of Object.entries({ seed: normalizeSeed(seed), lanes: settings.laneCount, pack: settings.pack, speed: settings.speed, decoration: settings.decoration,
-    laneHeight: settings.laneHeight, output: settings.output || 'synth', sound: settings.sound === false ? '0' : '1', soundFont: settings.soundFont,
-    preset: settings.preset, musicMode: settings.mode, cameraX: camera.cameraX, cameraY: camera.cameraY, zoom: camera.scale, follow: camera.follow ? '1' : '0' })) {
+    laneHeight: settings.laneHeight, preset: settings.preset, musicMode: settings.mode, ...presentation })) {
     if (value !== undefined) params.set(key, String(typeof value === 'number' ? Math.round(value * 1000000) / 1000000 : value));
   }
+  if (result.href.length > 2048) throw new Error('Starting recipe link exceeds the supported URL size');
   return result.href;
 };
 export { readProcgenUrlConfig, createProcgenShareUrl };

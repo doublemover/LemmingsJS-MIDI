@@ -6,7 +6,7 @@ import { DECORATION_CHOICES } from '../../../decorations/ProcgenDecorationPacks.
 import { procgenMusicDefaults } from '../ProcgenMusicProject.js';
 import { createProcgenWorkstationProject } from './ProcgenWorkstationProject.js';
 
-const RECIPE_KEYS = ['seed', 'lanes', 'speed', 'pack', 'laneHeight', 'preset', 'musicPreset', 'musicMode', 'phrases', 'decoration'];
+const RECIPE_KEYS = ['recipe', 'seed', 'lanes', 'speed', 'pack', 'laneHeight', 'preset', 'musicPreset', 'musicMode', 'phrases', 'decoration'];
 const boundedNumber = (params, key, min, max, integer = false) => {
   if (!params.has(key)) return null;
   const raw = params.get(key)?.trim(), value = Number(raw);
@@ -20,8 +20,9 @@ const resolveProcgenStartupIntent = ({ search = '', seed, legacyProject, legacyS
   const provenance = {}, diagnostics = [];
   let project, worldOptions, transport;
   if (mode === 'recipe') {
+    if (params.has('recipe') && params.get('recipe') !== '1') throw new Error('Unsupported recipe version');
     const laneCount = boundedNumber(params, 'lanes', 1, 1024, true) ?? 8;
-    const speed = boundedNumber(params, 'speed', 0.1, 100) ?? 3;
+    const speed = boundedNumber(params, 'speed', 0.1, 1000) ?? 3;
     const pack = boundedNumber(params, 'pack', 1, 6, true) ?? 1;
     const laneHeight = params.has('laneHeight') ? normalizeLaneHeight(boundedNumber(params, 'laneHeight', 96, 256, true), DEFAULT_LANE_HEIGHT) : DEFAULT_LANE_HEIGHT;
     if (params.has('seed') && !params.get('seed')?.trim()) throw new Error('Invalid recipe seed');
