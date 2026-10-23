@@ -73,6 +73,74 @@ const sanitizeProcgenWorkstation = (value = {}) => {
 };
 const createProcgenWorkstationProject = (project = {}, overrides = {}) => ({ ...project,
   procgen: sanitizeProcgenWorkstation({ ...project.procgen, ...overrides }) });
+const sameValue = (left, right) => JSON.stringify(left) === JSON.stringify(right);
+const reduceCanonicalProcgenProject = (project, action) => {
+  const procgen = project.procgen, lanes = procgen.lanes;
+  if (action.type === 'procgen/seed') {
+    const seed = integer(action.seed, procgen.seed, 0, 0xffffffff);
+    return seed === procgen.seed ? project : { ...project, procgen: { ...procgen, seed } };
+  }
+  if (action.type === 'procgen/addLane') {
+    if (lanes.length >= MAX_PROCGEN_LANES) return project;
+    let serial = lanes.length + 1; while (lanes.some(lane => lane.id === `lane-${serial}`)) serial++;
+    return { ...project, procgen: { ...procgen, lanes: [...lanes, createProcgenLane(lanes.length, { ...action.lane, id: `lane-${serial}` })] } };
+  }
+  if (action.type === 'procgen/launchedBatch') {
+    if (!Array.isArray(action.launches) || !action.launches.length) return project;
+    const byLane = new Map(action.launches.map(launch => [launch.laneId, launch.slot]));
+    let changed = false;
+    const updated = lanes.map(lane => {
+      const slot = byLane.get(lane.id);
+      if (!Number.isInteger(slot) || slot < 0 || slot >= lane.patterns.length ||
+          lane.activeSlot === slot && lane.queuedSlot == null) return lane;
+      changed = true;
+      return { ...lane, activeSlot: slot, queuedSlot: null };
+    });
+    return changed ? { ...project, procgen: { ...procgen, lanes: updated } } : project;
+  }
+  const index = lanes.findIndex(lane => lane.id === action.laneId);
+  if (index < 0) return project;
+  if (action.type === 'procgen/removeLane') {
+    return lanes.length <= 1 ? project : { ...project, procgen: { ...procgen, lanes: lanes.filter((_, at) => at !== index) } };
+  }
+  const lane = lanes[index]; let next = lane;
+  if (action.type === 'procgen/lane') {
+    if (!action.patch || typeof action.patch !== 'object') return project;
+    next = createProcgenLane(index, { ...lane, ...action.patch, id: lane.id });
+    if (action.patch.patterns === undefined) next.patterns = lane.patterns;
+  } else if (action.type === 'procgen/palette') {
+    next = createProcgenLane(index, { ...lane, family: action.family ?? lane.family, role: action.role ?? lane.role,
+      patch: action.patch ?? null, patterns: action.resetPatterns ? undefined : lane.patterns });
+    if (!action.resetPatterns) next.patterns = lane.patterns;
+  } else if (action.type === 'procgen/step' || action.type === 'procgen/pattern') {
+    const slot = action.slot ?? lane.activeSlot, pattern = lane.patterns[slot];
+    if (!pattern || !action.patch || typeof action.patch !== 'object') return project;
+    let changed;
+    if (action.type === 'procgen/step') {
+      if (!Number.isInteger(action.index) || action.index < 0 || action.index >= pattern.length) return project;
+      const step = sanitizeProcgenStep({ ...pattern.steps[action.index], ...action.patch });
+      if (sameValue(step, pattern.steps[action.index])) return project;
+      const steps = pattern.steps.slice(); steps[action.index] = step;
+      changed = { ...pattern, steps };
+    } else {
+      changed = sanitizePattern({ ...pattern, ...action.patch }, lane.family, lane.role, slot);
+      if (action.patch.steps === undefined && changed.length === pattern.length) changed.steps = pattern.steps;
+      if (sameValue(changed, pattern)) return project;
+    }
+    const patterns = lane.patterns.slice(); patterns[slot] = changed;
+    next = { ...lane, patterns };
+  } else if (action.type === 'procgen/launch') {
+    if (!Number.isInteger(action.slot) || action.slot < 0 || action.slot >= lane.patterns.length) return project;
+    next = { ...lane, queuedSlot: action.slot, launchSerial: lane.launchSerial + 1 };
+  } else if (action.type === 'procgen/launched') {
+    if (!Number.isInteger(action.slot) || action.slot < 0 || action.slot >= lane.patterns.length ||
+        lane.activeSlot === action.slot && lane.queuedSlot == null) return project;
+    next = { ...lane, activeSlot: action.slot, queuedSlot: null };
+  } else return project;
+  if (next === lane || sameValue(next, lane)) return project;
+  const updated = lanes.slice(); updated[index] = next;
+  return { ...project, procgen: { ...procgen, lanes: updated } };
+};
 const reduceProcgenWorkstationProject = (project, action = {}) => {
   const procgen = sanitizeProcgenWorkstation(project.procgen);
   let lanes = procgen.lanes;
@@ -91,4 +159,4 @@ const reduceProcgenWorkstationProject = (project, action = {}) => {
   if (action.type === 'procgen/global') return { ...project, global: { ...project.global, ...action.patch }, procgen };
   return { ...project, procgen: sanitizeProcgenWorkstation({ ...procgen, lanes, ...(action.type === 'procgen/seed' ? { seed: action.seed } : {}) }) };
 };
-export { MAX_PROCGEN_LANES, createProcgenLane, createProcgenPattern, createProcgenWorkstationProject, sanitizeProcgenStep, sanitizeProcgenWorkstation, sanitizeProcgenCcAutomation, reduceProcgenWorkstationProject };
+export { MAX_PROCGEN_LANES, createProcgenLane, createProcgenPattern, createProcgenWorkstationProject, sanitizeProcgenStep, sanitizeProcgenWorkstation, sanitizeProcgenCcAutomation, reduceProcgenWorkstationProject, reduceCanonicalProcgenProject };

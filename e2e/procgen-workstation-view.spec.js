@@ -12,7 +12,7 @@ const ready = async (page, count = 8) => {
     const runtime = {};
     const handlers = Object.fromEntries(['copy', 'paste', 'undo', 'redo', 'observe', 'record'].map(name => [name, value => calls.push({ name, value })]));
     const view = createProcgenWorkstationView({ document, window, getProject: () => project, getRuntime: () => runtime, state, handlers,
-      dispatch: action => { actions.push(action); project = reduceMidiProject(project, action); view.render(); } });
+      dispatch: action => { actions.push(action); project = reduceMidiProject(project, action); if (action.type === 'procgen/step') view.patchStep(action); else view.render(); } });
     view.render();
     window.workstationViewTest = { view, state, calls, actions, runtime, getProject: () => project };
   }, count);
@@ -76,6 +76,21 @@ test('project renders retain the focused field buffer, caret and selected edit t
   await page.getByLabel('Name', { exact: true }).dispatchEvent('change');
   await expect(page.getByLabel('Name', { exact: true })).toBeFocused();
   expect(await page.evaluate(() => window.workstationViewTest.getProject().procgen.lanes[0].name)).toBe('Committed lane');
+});
+
+test('single-step edits keep visible rows and other cells mounted', async ({ page }) => {
+  await ready(page, 1024);
+  await page.locator('.studio-sequence').first().locator('.studio-cell').nth(3).click();
+  await page.evaluate(() => {
+    window.editRow = document.querySelector('.studio-sequence');
+    window.otherCell = window.editRow.children[2];
+  });
+  const note = page.getByLabel('Fixed MIDI note');
+  await note.fill('64'); await note.dispatchEvent('change');
+  expect(await page.evaluate(() => ({ row: window.editRow === document.querySelector('.studio-sequence'),
+    cell: window.otherCell === document.querySelector('.studio-sequence').children[2],
+    note: window.workstationViewTest.getProject().procgen.lanes[0].patterns[0].steps[3].note }))).toEqual({ row: true, cell: true, note: 64 });
+  await expect(note).toBeFocused();
 });
 
 test('inspector arrow keys resize only the inspector and view disposal detaches its renderer callback', async ({ page }) => {

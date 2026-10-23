@@ -14,6 +14,17 @@ const setup = (options = {}) => {
 };
 
 describe('Procgen workstation musical domain', function() {
+  it('shares untouched lanes, patterns and steps for canonical single-cell edits', () => {
+    const project = sanitizeMidiProject(createProcgenWorkstationProject(createMidiProject(),
+      { lanes: Array.from({ length: 128 }, (_, index) => createProcgenLane(index)) }));
+    const changed = reduceMidiProject(project, { type: 'procgen/step', laneId: project.procgen.lanes[0].id,
+      slot: 0, index: 3, patch: { note: 44 } });
+    expect(changed.procgen.lanes[1]).to.equal(project.procgen.lanes[1]);
+    expect(changed.procgen.lanes[0].patterns[1]).to.equal(project.procgen.lanes[0].patterns[1]);
+    expect(changed.procgen.lanes[0].patterns[0].steps[2]).to.equal(project.procgen.lanes[0].patterns[0].steps[2]);
+    expect(reduceMidiProject(changed, { type: 'procgen/step', laneId: project.procgen.lanes[0].id,
+      slot: 0, index: 3, patch: { note: 44 } })).to.equal(changed);
+  });
   it('restores legacy spatial curves at each lane physical position and uses actual game-event coordinates', function() {
     let project = createProcgenWorkstationProject(createMidiProject(), { lanes: [createProcgenLane(0), createProcgenLane(1)] });
     for (const lane of project.procgen.lanes) for (const step of lane.patterns[0].steps) step.enabled = true;
@@ -195,6 +206,23 @@ describe('Procgen workstation authoritative pattern clock', function() {
     expect(run.launches).to.deep.equal([{ laneId: 'lane-1', slot: 2 }]);
     run.beat(8);
     expect(run.launches).to.have.length(1);
+  });
+
+  it('acknowledges simultaneous phrase launches in one project update', () => {
+    let project = sanitizeMidiProject(createProcgenWorkstationProject(createMidiProject(), {
+      lanes: Array.from({ length: 128 }, (_, index) => createProcgenLane(index, { queuedSlot: 1, launchSerial: 1 }))
+    }));
+    const previous = project, batches = [];
+    const engine = createProcgenPatternEngine({ getProject: () => project, onLaunchBatch: launches => {
+      batches.push(launches);
+      project = reduceMidiProject(project, { type: 'procgen/launchedBatch', launches });
+    } });
+    engine.onBeat({ beat: 0, timestamp: 0, bpm: 120 });
+    expect(batches).to.have.length(1);
+    expect(batches[0]).to.have.length(128);
+    expect(project).not.to.equal(previous);
+    expect(project.procgen.lanes.every(lane => lane.activeSlot === 1 && lane.queuedSlot == null)).to.equal(true);
+    expect(reduceMidiProject(project, { type: 'procgen/launchedBatch', launches: batches[0] })).to.equal(project);
   });
 
   it('filters game, pattern and hybrid routes and applies event accent gain', function() {

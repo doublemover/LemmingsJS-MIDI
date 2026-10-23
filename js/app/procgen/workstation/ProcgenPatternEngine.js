@@ -27,7 +27,7 @@ const procgenStepNotes = (step, sound, scale) => {
   notes = notes.map((note, index) => clamp(note + (index % 2 ? (step.chord?.spread || 0) * 12 : 0), 0, 127));
   return [...new Set(notes)];
 };
-const createProcgenPatternEngine = ({ getProject, emit, emitCC, getSinkKey = () => 'default', getLaneDistance = () => 0, getLaneObservation, getLaneSpatialPosition = () => ({}), onLaunch = () => {}, now = () => performance.now(), maxNotesPerPulse = 128 } = {}) => {
+const createProcgenPatternEngine = ({ getProject, emit, emitCC, getSinkKey = () => 'default', getLaneDistance = () => 0, getLaneObservation, getLaneSpatialPosition = () => ({}), onLaunch = () => {}, onLaunchBatch, now = () => performance.now(), maxNotesPerPulse = 128 } = {}) => {
   const emptyState = () => ({ version: 1, beat: -1, timestamp: 0, bpm: 120, lanes: {}, pending: [], active: [], cursor: 0, budget: maxNotesPerPulse, ccBudget: maxNotesPerPulse, automationSerial: 0 });
   const automation = new MidiAutomationSpans([]);
   let state = emptyState(), cachedProject = null, solo = false, liveLanes = new Map(), spatialCurves = [];
@@ -186,7 +186,7 @@ const createProcgenPatternEngine = ({ getProject, emit, emitCC, getSinkKey = () 
       } else remaining.push(item);
     }
     state.pending = remaining;
-    const laneCount = project.procgen.lanes.length;
+    const laneCount = project.procgen.lanes.length, launches = [];
     for (let offset = 0; offset < laneCount; offset++) {
       const laneIndex = (offset + state.cursor) % laneCount;
       const lane = project.procgen.lanes[laneIndex];
@@ -201,7 +201,8 @@ const createProcgenPatternEngine = ({ getProject, emit, emitCC, getSinkKey = () 
           current.slot = lane.queuedSlot; current.launchSerial = lane.launchSerial;
           current.origin = current.launchBeat; current.lastStep = -1;
           state.pending = state.pending.filter(item => item.meta.laneId !== lane.id);
-          onLaunch({ laneId: lane.id, slot: current.slot });
+          const launch = { laneId: lane.id, slot: current.slot };
+          if (onLaunchBatch) launches.push(launch); else onLaunch(launch);
         }
       }
       if (lane.mode === 'game') continue;
@@ -218,6 +219,7 @@ const createProcgenPatternEngine = ({ getProject, emit, emitCC, getSinkKey = () 
         queueStep(project, lane, laneIndex, current, pattern, ((step % pattern.length) + pattern.length) % pattern.length, stepBeat, timestamp, 'pattern');
       }
     }
+    if (launches.length) onLaunchBatch(launches);
     if (laneCount > maxNotesPerPulse && (state.budget < maxNotesPerPulse || state.ccBudget < maxNotesPerPulse)) state.cursor = (state.cursor + Math.max(1, maxNotesPerPulse)) % laneCount;
   };
   const onGameEvent = (event, timestamp = now()) => {

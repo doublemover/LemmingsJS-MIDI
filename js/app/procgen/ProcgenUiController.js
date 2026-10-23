@@ -12,7 +12,7 @@ import { DECORATION_CHOICES } from '../../decorations/ProcgenDecorationPacks.js'
 import { createCharacterUiController, mountCharacterControls } from '../characterUiController.js';
 import { createProcgenMidiOutput } from './ProcgenMidiOutput.js';
 import { createLocalGamePreview } from '../midi-ui/localGamePreview.js';
-import { createMidiProjectFromMidiConfig, projectToMidiConfig, reduceMidiProject, sanitizeMidiProject } from '../../midi/project/MidiProject.js';
+import { createMidiProjectFromMidiConfig, projectToMidiConfig, reduceMidiProject, sanitizeMidiProject, isCanonicalMidiProject, sameMidiRuntimeInputs } from '../../midi/project/MidiProject.js';
 import { PROCGEN_GAME_EVENT_MIDI_PRESETS, applyProcgenGameEventMidiPreset, getProcgenSpawnPriority, setProcgenSpawnPriority, getProcgenMusicBeatTicks } from '../../midi/project/ProcgenMidiDefaults.js';
 import { normalizeLaneCount, normalizeLaneHeight, DEFAULT_LANE_HEIGHT, normalizePopulationPolicy } from './ProcgenLaneWorld.js';
 import { normalizeWorkerLimits } from './ProcgenWorkerLimits.js';
@@ -125,9 +125,13 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     if (byId('procgenSpanHistoryStatus')) byId('procgenSpanHistoryStatus').textContent = automationStatus;
   };
   const commitAutomation = (next, record = true, persist = true) => {
-    next = sanitizeMidiProject(next);
+    next = isCanonicalMidiProject(next) ? next : sanitizeMidiProject(next);
+    const runtimeUnchanged = sameMidiRuntimeInputs(project, next);
     if (record) automationHistory.record(project, next);
-    project = next; config = projectToMidiConfig(project); local.syncConfig(); spanControls.render(); spanOverlay.changed(); musicDirection?.sync(); syncMusic(); syncPopulation();
+    project = next;
+    if (!runtimeUnchanged) {
+      config = projectToMidiConfig(project); local.syncConfig(); spanControls.render(); spanOverlay.changed(); musicDirection?.sync(); syncMusic(); syncPopulation();
+    }
     if (persist) automationStatus = saveProcgenAutomation(automationStorage(), project) ? '' : 'Music edits kept for this session; browser storage is unavailable.';
     syncAutomationHistory();
     for (const listener of projectListeners) listener(project);

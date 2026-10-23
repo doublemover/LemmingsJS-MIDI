@@ -10,23 +10,25 @@ function target() {
   return { addEventListener(type, fn) { if (!events.has(type)) events.set(type, new Set()); events.get(type).add(fn); },
     removeEventListener(type, fn) { events.get(type)?.delete(fn); }, emit(type, event = {}) { for (const fn of events.get(type) || []) fn(event); } };
 }
-function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth', outputId = null, search = '', persisted = null, startupSettings = {}, storageOverride = null } = {}) {
+function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth', outputId = null, search = '', persisted = null, startupSettings = {}, storageOverride = null,
+  laneCount = 1, windowTimers = {} } = {}) {
   let time = 0, paused = false, enabled = false;
   const elements = new Map(['procgenPause', 'procgenPanic', 'procgenSpeed', 'procgenSpeedUp', 'procgenSpeedDown', 'procgenSpeedReadout'].map(id => [id, target()]));
   const document = { ...target(), getElementById: id => elements.get(id) || null };
   const values = new Map(), stored = new Map(), calls = [], positions = [], statuses = [], storageReceipts = [], restarts = [], captures = [];
   if (persisted) values.set('lemmings.procgen.workstation.v1', JSON.stringify(persisted));
-  const window = { ...target(), WebMidi: webMidi, location: { search }, performance: { now: () => time }, localStorage: { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value) },
+  const window = { ...target(), ...windowTimers, WebMidi: webMidi, location: { search }, performance: { now: () => time }, localStorage: { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value) },
     crypto: { getRandomValues(value) { value[0] = 91; } }, prompt: () => 'Test song' };
   const scheduler = { tickMs: 60, sendNote(spec, meta) { calls.push({ spec, meta }); return true; }, allNotesOff() {}, output: { channels: { 1: { sendControlChange() {} } } } };
   let throwCamera = false;
-  const makeRuntime = () => ({ world: { laneCount: 1, seed: 7, timer: { speedFactor: 1 }, frontiers: [100], soundEvents: { onEvent: new EventHandler() } },
+  const makeRuntime = () => ({ world: { laneCount, seed: 7, timer: { speedFactor: 1 }, frontiers: [100], soundEvents: { onEvent: new EventHandler() } },
     lanes: { setClockDriven(value) { this.clockDriven = value; }, pump(value) { positions.push(value); }, renderer: { camera: { getState: () => ({ cameraX: 45 }), applyState(value) { if (throwCamera) throw new Error('Camera unavailable'); this.restored = value; } } } },
     view: { midiPreviewRouter: { scheduler, resetClock() {} }, setMidiPreviewRouter(value) { this.midiPreviewRouter = value; } } });
   let runtime = makeRuntime();
-  let project = createProcgenWorkstationProject(createMidiProject(), { seed: 7, lanes: [{ mode: 'hybrid', patterns: [{ length: 4, steps: Array.from({ length: 4 }, () => ({ enabled: true, note: 60, duration: 1 })) }] }] });
+  let project = createProcgenWorkstationProject(createMidiProject(), { seed: 7, lanes: Array.from({ length: laneCount }, (_, index) => index ? {} :
+    { mode: 'hybrid', patterns: [{ length: 4, steps: Array.from({ length: 4 }, () => ({ enabled: true, note: 60, duration: 1 })) }] }) });
   const projectListeners = new Set();
-  const legacy = { settings: { seed: 7, speed: 1, laneCount: 1, ...startupSettings }, getProject: () => project, setProject(value) { project = value; for (const listener of projectListeners) listener(value); },
+  const legacy = { settings: { seed: 7, speed: 1, laneCount, ...startupSettings }, getProject: () => project, setProject(value) { project = value; for (const listener of projectListeners) listener(value); },
     subscribeProject(listener) { projectListeners.add(listener); return () => projectListeners.delete(listener); },
     setPaused(value) { paused = value; }, isPaused: () => paused, setSpeed(value) { this.settings.speed = value; },
     local: { getState: () => ({ enabled, selectedBackend: backend, outputId }) } };
@@ -47,6 +49,21 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
 }
 
 describe('ProcGen workstation orchestration', () => {
+  it('coalesces large-project preference writes while edits stay in the canonical project', () => {
+    const timers = [], f = setup({ laneCount: 128, windowTimers: {
+      setTimeout(callback) { timers.push(callback); return timers.length; },
+      clearTimeout(id) { timers[id - 1] = null; }
+    } });
+    const key = 'lemmings.procgen.workstation.v1', original = f.window.localStorage.getItem(key);
+    f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 45 } });
+    f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 1, patch: { note: 46 } });
+    expect(f.window.localStorage.getItem(key)).to.equal(original);
+    expect(timers.filter(Boolean)).to.have.length(1);
+    timers[0]();
+    const durable = JSON.parse(f.window.localStorage.getItem(key));
+    expect(durable.project.procgen.lanes[0].patterns[0].steps.slice(0, 2).map(step => step.note)).to.deep.equal([45, 46]);
+    f.studio.dispose();
+  });
   it('prepares a recipe with declared lanes and speed without inheriting a saved project', () => {
     const savedProject = createProcgenWorkstationProject(createMidiProject(), { seed: 12, lanes: [{}, {}] });
     const persisted = { version: 1, project: savedProject, transport: { bpm: 60, gameSpeed: 0.5, speedMode: 'bpm' }, ui: { slot: 2 } };
@@ -263,6 +280,22 @@ describe('ProcGen workstation orchestration', () => {
     for (let note = 61; note < 75; note++) f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note } });
     expect(f.studio.handlers.historyState().retainedBytes).to.be.at.most(4096);
     expect(f.studio.handlers.historyState().dropped).to.be.greaterThan(0);
+    f.studio.dispose();
+  });
+
+  it('retains many structurally shared edits and accounts for redo by patch size', async () => {
+    const f = setup({ laneCount: 128 });
+    for (let note = 1; note <= 30; note++) f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1',
+      slot: 0, index: 0, patch: { note } });
+    const before = f.studio.handlers.historyState();
+    expect(before.undo).to.equal(30);
+    expect(before.retainedBytes).to.be.lessThan(100000);
+    expect(await f.studio.handlers.undo()).to.equal(true);
+    const after = f.studio.handlers.historyState();
+    expect(after.redo).to.equal(1);
+    expect(after.retainedBytes).to.be.lessThan(100000);
+    expect(await f.studio.handlers.redo()).to.equal(true);
+    expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(30);
     f.studio.dispose();
   });
 

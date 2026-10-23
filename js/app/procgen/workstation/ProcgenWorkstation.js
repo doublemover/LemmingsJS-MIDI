@@ -1,4 +1,4 @@
-import { createMidiProject, sanitizeMidiProject, reduceMidiProject, projectToMidiConfig } from '../../../midi/project/MidiProject.js';
+import { createMidiProject, sanitizeMidiProject, reduceMidiProject, projectToMidiConfig, isCanonicalMidiProject, markCanonicalMidiProject, sameMidiRuntimeInputs } from '../../../midi/project/MidiProject.js';
 import { createProcgenWorkstationProject, createProcgenPattern } from './ProcgenWorkstationProject.js';
 import { createProcgenPatternEngine } from './ProcgenPatternEngine.js';
 import { createProcgenTransport } from './ProcgenTransport.js';
@@ -14,8 +14,24 @@ import { resolveProcgenStartupIntent } from './ProcgenStartupIntent.js';
 
 const STORAGE_KEY = 'lemmings.procgen.workstation.v1';
 const MAX_SESSION_FILE_BYTES = 64 * 1048576;
+const FAST_PROCGEN_ACTIONS = new Set(['procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
+  'procgen/step', 'procgen/pattern', 'procgen/launch', 'procgen/launched', 'procgen/launchedBatch']);
 const clone = value => JSON.parse(JSON.stringify(value));
 const equal = (left, right) => JSON.stringify(left) === JSON.stringify(right);
+const historyPatchBytes = (before, after, action) => {
+  const commandBytes = JSON.stringify(action).length * 2;
+  const structuralBytes = before.procgen.lanes.length * 8 + 1024;
+  const lane = before.procgen.lanes.find(item => item.id === action.laneId);
+  if (action.type === 'procgen/step') {
+    const pattern = lane?.patterns[action.slot ?? lane.activeSlot];
+    return commandBytes + JSON.stringify(pattern?.steps[action.index] ?? null).length * 2 + structuralBytes;
+  }
+  if (action.type === 'procgen/pattern') return commandBytes + JSON.stringify(lane?.patterns[action.slot ?? lane.activeSlot] ?? null).length * 2 + structuralBytes;
+  if (action.type === 'procgen/lane' || action.type === 'procgen/palette' || action.type === 'procgen/removeLane')
+    return commandBytes + JSON.stringify(lane ?? null).length * 2 + structuralBytes;
+  if (action.type === 'procgen/addLane') return commandBytes + JSON.stringify(after.procgen.lanes.at(-1)).length * 2 + structuralBytes;
+  return commandBytes + structuralBytes;
+};
 
 // Keep musical edits made while assets were loading if the candidate world fails.
 function rollbackWorldProject(previous, staged, current) {
@@ -43,7 +59,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const startupPlan = resolveProcgenStartupIntent({ search: window.location?.search || '', seed: initialSeed,
     legacyProject: legacy.getProject(), legacySettings: legacy.settings, saved });
   Object.assign(legacy.settings, startupPlan.worldOptions);
-  let project = startupPlan.project;
+  let project = markCanonicalMidiProject(startupPlan.project);
   const state = { laneId: project.procgen.lanes[0].id, slot: 0, step: 0, tab: 'Lane', tool: 'select', layout: 'strip',
     inspectorWidth: 304, firstLane: 0, minimumRow: 64, hazardSpacing: 160, observerMode: 'overview', observerLane: null, observerHold: 6,
     inputId: null, clockOutputId: null, thru: false, recording: false, lastMidi: '', ...(startupPlan.mode === 'previous-setup' ? saved?.ui || {} : {}) };
@@ -52,7 +68,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let ports, engine, lastPlaying = false, lastLegacySpeed = legacy.settings.speed, pendingResume = false, lastTempo = null;
   let savedName = 'Untitled session', documentId = null, documentRevision = 0, clipboard = null, loadSerial = 0, suppressPersistence = false;
   let operationSerial = 0, currentOperation = null;
-  let lastRecovery = now(), recoveryPending = false, recoveryTimer = null;
+  let lastRecovery = now(), recoveryPending = false, recoveryTimer = null, persistTimer = null;
   let lastRecoveryError = -Infinity;
   let lastBudgetNotice = -Infinity;
   let lastObserverAt = -Infinity, observerCursor = 0;
@@ -110,7 +126,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const renderer = () => runtime()?.lanes?.renderer;
   const router = () => runtime()?.view?.midiPreviewRouter;
   const selected = () => project.procgen.lanes.find(lane => lane.id === state.laneId) || project.procgen.lanes[0];
-  const setLegacyProject = (next, options) => { writingLegacy = true; try { legacy.setProject(next, options); } finally { writingLegacy = false; } };
+  const setLegacyProject = (next, options = { persist: false }) => { writingLegacy = true; try { legacy.setProject(next, options); } finally { writingLegacy = false; } };
   const budgetNotice = () => { if (now() - lastBudgetNotice > 1000) { lastBudgetNotice = now(); status('Output budget reached; some notes or CC were thinned. The musical clock continues.'); } };
   const reportRouting = () => {
     const addresses = new Map();
@@ -124,7 +140,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const syncWorldSeed = () => {
     if (worldBusy) return;
     const seed = runtime()?.world?.seed;
-    if (Number.isFinite(seed) && seed !== project.procgen.seed) { project = { ...project, procgen: { ...project.procgen, seed } }; legacy.settings.seed = seed; setLegacyProject(project); persist(); }
+    if (Number.isFinite(seed) && seed !== project.procgen.seed) { project = markCanonicalMidiProject({ ...project, procgen: { ...project.procgen, seed } }); legacy.settings.seed = seed; setLegacyProject(project); persist(); }
   };
   const observeFrame = timestamp => {
     if (state.observerMode !== 'director' || timestamp - lastObserverAt < Math.max(2, Number(state.observerHold) || 6) * 1000) return;
@@ -134,26 +150,39 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const count = Math.min(8, ranked.length), selectedLane = ranked[observerCursor++ % count];
     if (selectedLane) { state.firstLane = selectedLane.index; render.followLaneIndex = selectedLane.index; render.camera?.followFrontier?.(); view?.layout?.(); view?.launched?.(); }
   };
-  const persist = () => {
+  const writePersist = () => {
     if (suppressPersistence || disposed) return;
     try { window.localStorage?.setItem(STORAGE_KEY, JSON.stringify({ version: 1, project, ui: { ...state, recording: false, thru: false, lastMidi: '' }, transport: transport.snapshot() })); }
     catch { status('Project preferences could not be stored. Export a project file to save.'); }
   };
-  const syncProject = (next, { history = true, historyGroup = null, render = true, fromLegacy = false } = {}) => {
+  const persist = ({ immediate = false } = {}) => {
+    if (suppressPersistence || disposed) return;
+    if (immediate || project.procgen.lanes.length <= 64 || !window.setTimeout) {
+      if (persistTimer != null) { window.clearTimeout?.(persistTimer); persistTimer = null; }
+      writePersist(); return;
+    }
+    if (persistTimer == null) persistTimer = window.setTimeout(() => { persistTimer = null; writePersist(); }, 250);
+  };
+  const syncProject = (next, { history = true, historyGroup = null, historyCost = null, render = true, renderAction = null, fromLegacy = false } = {}) => {
+    const runtimeUnchanged = sameMidiRuntimeInputs(project, next);
     if (history) {
-      if (historyGroup == null || historyGroup !== lastHistoryGroup) { undo.push(project); if (undo.length > 20) { undo.shift(); historyDropped++; } }
+      if (historyGroup == null || historyGroup !== lastHistoryGroup) {
+        if (historyCost != null) historySizes.set(project, historyCost);
+        undo.push(project); if (undo.length > 1000) { undo.shift(); historyDropped++; }
+      }
       redo.length = 0;
       trimHistory();
     }
     lastHistoryGroup = history ? historyGroup : null;
-    project = createProcgenWorkstationProject(sanitizeMidiProject(next));
+    project = isCanonicalMidiProject(next) ? next : markCanonicalMidiProject(createProcgenWorkstationProject(sanitizeMidiProject(next)));
     projectRevision++;
     editRevision++; storageStatus();
     if (inputLease && !inputTarget(inputLease)) cancelInputEdits('target was removed');
     if (!project.procgen.lanes.some(lane => lane.id === state.laneId)) state.laneId = project.procgen.lanes[0].id;
     state.slot = Math.max(0, Math.min(3, state.slot || 0)); state.step = Math.max(0, Math.min(selected().patterns[state.slot].length - 1, state.step || 0));
-    if (!fromLegacy) setLegacyProject(project); ports?.configure({ schedulerConfig: projectToMidiConfig(project) });
-    persist(); if (render) { view?.render(); reportRouting(); } return project;
+    if (!fromLegacy) setLegacyProject(project);
+    if (!runtimeUnchanged) ports?.configure({ schedulerConfig: projectToMidiConfig(project) });
+    persist(); if (render) { if (renderAction?.type === 'procgen/step' && view?.patchStep) view.patchStep(renderAction); else view?.render(); reportRouting(); } return project;
   };
   const dispatch = (action, { historyGroup = null } = {}) => {
     if (disposed) return project;
@@ -169,7 +198,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         status('Undo or Redo is still preparing. Finish it before adding more edits.'); return false;
       }
       pendingHistory.commands.push({ action: JSON.parse(serialized), historyGroup }); pendingHistory.bytes += bytes;
-      const updated = syncProject(next, { history: false });
+      const updated = syncProject(next, { history: false, renderAction: action });
       if (action.type === 'procgen/lane' && action.patch?.outputId !== undefined) syncPorts();
       return updated;
     }
@@ -177,11 +206,14 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       return safe(() => rebuild({ projectNext: reduceMidiProject(project, action) }))();
     }
     const reduced = reduceMidiProject(project, action);
-    if (equal(reduced, project)) return project;
-    const next = syncProject(reduced, { history: action.type !== 'procgen/launched', historyGroup,
-      render: action.type !== 'procgen/launched' });
+    if (reduced === project || !FAST_PROCGEN_ACTIONS.has(action.type) && equal(reduced, project)) return project;
+    const historyCost = isCanonicalMidiProject(project) && FAST_PROCGEN_ACTIONS.has(action.type) ?
+      historyPatchBytes(project, reduced, action) : null;
+    const launchAcknowledgment = action.type === 'procgen/launched' || action.type === 'procgen/launchedBatch';
+    const next = syncProject(reduced, { history: !launchAcknowledgment, historyGroup, historyCost,
+      render: !launchAcknowledgment, renderAction: action });
     if (action.type === 'procgen/lane' && action.patch?.outputId !== undefined) syncPorts();
-    if (action.type === 'procgen/launched') view?.launched?.();
+    if (launchAcknowledgment) view?.launched?.();
     return next;
   };
   const transport = createProcgenTransport({ now, ...startupPlan.transport, ...transportOptions,
@@ -293,7 +325,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       }
       return admission('rejected', null, spec, meta, 'no-enabled-sink');
     },
-    onLaunch: action => dispatch({ type: 'procgen/launched', ...action })
+    onLaunchBatch: launches => dispatch({ type: 'procgen/launchedBatch', launches })
   });
   const devices = () => ({ inputs: Array.from(window.WebMidi?.inputs || []).filter(port => port.state !== 'disconnected'), outputs: Array.from(window.WebMidi?.outputs || []).filter(port => port.state !== 'disconnected') });
   let routedPortReferences = [];
@@ -494,9 +526,9 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const historyMove = async (from, to) => {
     if (!from.length || pendingHistory || worldBusy) return false;
     cancelInputEdits('history changed');
-    const previous = project, next = from.at(-1);
+    const previous = project, next = from.at(-1), movedCost = historyBytes(next);
     if (!changesWorld(next)) {
-      syncProject(next, { history: false }); from.pop(); to.push(previous); trimHistory(); return true;
+      syncProject(next, { history: false }); from.pop(); historySizes.set(previous, movedCost); to.push(previous); trimHistory(); return true;
     }
     const undoBefore = [...undo], redoBefore = [...redo];
     const transaction = { commands: [], bytes: 0 }; pendingHistory = transaction;
@@ -505,7 +537,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     catch (error) { failure = error; }
     if (disposed) { pendingHistory = null; return false; }
     undo.splice(0, undo.length, ...undoBefore); redo.splice(0, redo.length, ...redoBefore);
-    if (committed) { from.pop(); to.push(previous); trimHistory(); }
+    if (committed) { from.pop(); historySizes.set(previous, movedCost); to.push(previous); trimHistory(); }
     syncProject(committed ? next : previous, { history: false, render: false });
     pendingHistory = null;
     for (const { action, historyGroup } of transaction.commands) {
@@ -664,7 +696,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   listen(document, 'keyup', syncLegacyControls);
   listen(document, 'keydown', event => { if (event.key === 'Escape' && inputLease) cancelInputEdits('canceled by user'); });
   listen(window, 'pagehide', () => {
-    beforeRestart(); persist(); recover();
+    beforeRestart(); persist({ immediate: true }); recover();
     status('Page suspended. Press Play after returning to resume.');
   });
   listen(window, 'pageshow', event => {
@@ -691,13 +723,16 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     dispose() {
       if (disposed) return retirement.retire();
       cancelInputEdits('workstation closed');
+      persist({ immediate: true });
       disposed = true; loadSerial++;
       const operation = currentOperation; currentOperation = null;
       const timer = recoveryTimer; recoveryTimer = null;
+      const pendingPersist = persistTimer; persistTimer = null;
       const removeListeners = listeners.splice(0);
       return retirement.retire([
         { name: 'operation', run: () => operation?.controller.abort() },
         { name: 'recovery-timer', run: () => { if (timer != null) window.clearTimeout?.(timer); } },
+        { name: 'persist-timer', run: () => { if (pendingPersist != null) window.clearTimeout?.(pendingPersist); } },
         { name: 'router-hook', run: () => unhookRouter?.() },
         { name: 'world-hook', run: () => unhookWorld?.() },
         { name: 'transport', run: () => transport.dispose()?.completion },

@@ -283,7 +283,11 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
           if (state.tool !== 'select') dispatch({ type: 'procgen/step', laneId: lane.id, slot: state.slot, index, patch: { enabled: state.tool === 'draw' } }); else render();
         }, `${lane.role}, step ${index + 1}, ${step.enabled ? 'on' : 'off'}, probability ${Math.round(step.probability * 100)}%`);
         cell.className = 'studio-cell'; cell.dataset.index = index; cell.classList.toggle('enabled', step.enabled); cell.classList.toggle('conditional', !!step.condition || step.probability < 1); cell.classList.toggle('selected', state.laneId === lane.id && state.step === index); cell.setAttribute('aria-pressed', String(step.enabled));
-        cell.addEventListener('dblclick', () => { if (state.tool === 'select') dispatch({ type: 'procgen/step', laneId: lane.id, slot: displaySlot, index, patch: { enabled: !step.enabled } }); });
+        cell.addEventListener('dblclick', () => {
+          if (state.tool !== 'select') return;
+          const current = getProject().procgen.lanes.find(item => item.id === lane.id)?.patterns[displaySlot]?.steps[index];
+          if (current) dispatch({ type: 'procgen/step', laneId: lane.id, slot: displaySlot, index, patch: { enabled: !current.enabled } });
+        });
         sequence.append(cell);
       }
       grid.append(sequence);
@@ -301,7 +305,7 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
       row.querySelector('.playing')?.classList.remove('playing'); row.children[index]?.classList.add('playing'); row.dataset.playing = String(index);
     }
   }
-  function render() {
+  function render({ partial = false } = {}) {
     if (disposed) return;
     const active = document.activeElement;
     const pathFrom = scope => {
@@ -324,7 +328,7 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
     const matched = Object.keys(SCALES).find(name => JSON.stringify(SCALES[name]) === JSON.stringify(current.degrees));
     if (!matched && ![...scale.options].some(option => option.value === current.name)) { const option = node('option', current.name); option.value = current.name; scale.append(option); }
     scale.value = matched || current.name;
-    layout(); renderRows();
+    if (!partial) { layout(); renderRows(); }
     if (composing && fieldPath) pendingInspectorRender = true;
     else renderInspector();
     records.setAttribute('aria-pressed', String(!!state.recording));
@@ -341,6 +345,23 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
         if (focus.selectionStart != null) try { target.setSelectionRange?.(focus.selectionStart, focus.selectionEnd); } catch { /* Number inputs have no caret. */ }
       } else if (fieldFocus) tabs.querySelector?.('button[aria-pressed="true"]')?.focus?.({ preventScroll: true });
     }
+  }
+  function patchStep(action) {
+    if (disposed) return;
+    const lane = getProject().procgen.lanes.find(item => item.id === action.laneId);
+    const slot = action.slot ?? lane?.activeSlot;
+    const row = [...grid.children].find(item => item.dataset.laneId === action.laneId && Number(item.dataset.slot) === slot);
+    const step = lane?.patterns[slot]?.steps[action.index], cell = row?.children[action.index];
+    if (step && cell) {
+      cell.textContent = step.tie ? '―' : step.enabled ? step.chord ? '◆' : '●' : '·';
+      cell.title = `${lane.role}, step ${action.index + 1}, ${step.enabled ? 'on' : 'off'}, probability ${Math.round(step.probability * 100)}%`;
+      cell.classList.toggle('enabled', step.enabled);
+      cell.classList.toggle('conditional', !!step.condition || step.probability < 1);
+      cell.setAttribute('aria-pressed', String(step.enabled));
+    }
+    for (const selectedCell of grid.querySelectorAll('.studio-cell.selected')) selectedCell.classList.remove('selected');
+    if (state.laneId === action.laneId && state.slot === slot) row?.children[state.step]?.classList.add('selected');
+    render({ partial: true });
   }
   on(lanes, 'wheel', event => { if (getProject().procgen.lanes.length <= projection.count) return; event.preventDefault(); state.firstLane += Math.sign(event.deltaY); layout(); renderRows(); }, { passive: false });
   on(lanes, 'keydown', event => {
@@ -382,7 +403,7 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
     if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); changeStep({ enabled: false }); }
     else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); const length = selected().patterns[state.slot].length; state.step = (state.step + (event.key === 'ArrowLeft' ? length - 1 : 1)) % length; state.tab = 'Step'; render(); }
   });
-  return { render, layout, renderInspector: render, showProjects, showProjectPage, status: text => { status.textContent = text; },
+  return { render, patchStep, layout, renderInspector: render, showProjects, showProjectPage, status: text => { status.textContent = text; },
     storage({ dirty, savedAt, error }) {
       storageStatus.textContent = error ? 'Save failed · Export' : dirty ? 'Unsaved' : 'Saved';
       storageStatus.dataset.state = error ? 'error' : dirty ? 'dirty' : 'saved';
