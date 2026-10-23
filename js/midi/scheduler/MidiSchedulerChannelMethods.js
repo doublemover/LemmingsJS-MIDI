@@ -1,4 +1,5 @@
 import { selectLocalAudioVoice } from './LocalAudioVoiceBudget.js';
+import { createMpeZonePlan } from './MpeZonePlan.js';
 import { getAppContext } from '../../core/dependencies.js';
 import {
   canMeasurePerformance,
@@ -32,7 +33,8 @@ const toOutputList = (outputs) => {
 const midiSchedulerChannelMethods = {
   setConfig(config) {
     const mpeChanged = JSON.stringify(this.config?.mpe) !== JSON.stringify(config?.mpe) ||
-      (this.config?.enabled === false && config?.enabled !== false);
+      (this.config?.enabled === false && config?.enabled !== false) ||
+      JSON.stringify([...this._ensembleChannels(this.config || {})]) !== JSON.stringify([...this._ensembleChannels(config || {})]);
     if (mpeChanged) {
       this._mpeRevision++;
       for (const [token, voice] of this._activeNotes) if (voice.mpe) this._stopActiveNoteToken(token, 'mpe-zone-changed');
@@ -64,10 +66,8 @@ const midiSchedulerChannelMethods = {
     const maxBytes = toPositiveInt(this.config.limits?.maxBytesPerSecond, MIDI_BYTES_PER_SECOND);
     this._maxMessagesPerSecond = clamp(maxMessages, 1, 1000);
     this._maxBytesPerSecond = maxBytes;
-    const members = Array.isArray(this.config.mpe?.memberChannels) ? this.config.mpe.memberChannels : [];
-    this._memberChannels = members
-      .map((channel) => normalizeChannelNumber(channel))
-      .filter((channel, index, list) => list.indexOf(channel) === index);
+    this._mpeZonePlan = createMpeZonePlan(this.config.mpe, this._ensembleChannels());
+    this._memberChannels = this._mpeZonePlan.ok ? [...this._mpeZonePlan.memberChannels] : [];
     if (this.hasAnyOutput() && mpeChanged) this._initMpe();
   },
 
@@ -148,9 +148,13 @@ const midiSchedulerChannelMethods = {
     return { outputId: this._resolveOutputId(outputId), active: !!lease, available: !!output && output.state !== 'disconnected',
       connectionEpoch: lease?.connectionEpoch ?? null, routeRevision: lease?.routeRevision ?? this._routeRevision,
       budgetProfile: this.getTransportBudget(outputId),
-      mpeReady: output ? this._mpeStatusByOutput.get(output) ?? null : null,
-      mpeFailure: output ? this._mpeFailureByOutput.get(output) ?? null : null,
-      mpeEvidence: output && this._mpeStatusByOutput.get(output) ? 'manual-zone-api-accepted' : null };
+      mpeReady: output && this.config.mpe?.enabled ? this._mpeStatusByOutput.get(output) ?? null : null,
+      mpeFailure: output && this.config.mpe?.enabled ? this._mpeFailureByOutput.get(output) ?? null : null,
+      mpeZone: this.config.mpe?.enabled ? this._mpeZonePlan : null,
+      expressiveCapacity: this.config.mpe?.enabled ? this._memberChannels.length : null,
+      voicePolicy: this.config.mpe?.enabled ? this._mpeZonePlan?.voicePolicy : null,
+      mpeEvidence: output && this.config.mpe?.enabled && this._mpeStatusByOutput.get(output) ? this._mpeZonePlan?.configuration === 'send-zone'
+        ? 'zone-configuration-api-accepted' : 'manual-zone-api-accepted' : null };
   },
 
   invalidateOutputState(outputId = null, channel = null) {
@@ -209,12 +213,12 @@ const midiSchedulerChannelMethods = {
     return state;
   },
 
-  _ensembleChannels() {
-    const ensemble = this.config.ensemble;
+  _ensembleChannels(config = this.config) {
+    const ensemble = config.ensemble;
     const channels = new Set(ensemble?.enabled ? (ensemble.roles || []).filter(role => role.track).map(role =>
       normalizeChannelNumber(role.track.channel, 1)) : []);
-    if (Object.values(this.config.sfx || {}).some(source => source?.percussion)) channels.add(10);
-    for (const range of this.config.laneMusic?.ranges || []) if (range.enabled) {
+    if (Object.values(config.sfx || {}).some(source => source?.percussion)) channels.add(10);
+    for (const range of config.laneMusic?.ranges || []) if (range.enabled) {
       if (range.schemeId.startsWith('procgen-drum-')) channels.add(10);
       if (range.schemeId === 'game-iron-ensemble') for (const channel of [2, 3, 4, 10]) channels.add(channel);
     }
@@ -239,17 +243,20 @@ const midiSchedulerChannelMethods = {
       spanBasePan: Number.isFinite(spec.spanBasePan) ? panValue(spec.spanBasePan) : state.spanPan ? state.spanBasePan : state.pan ?? panValue(0),
       spanBaseTimbre: Number.isFinite(spec.spanBaseTimbre) ? spec.spanBaseTimbre : state.spanTimbre ? state.spanBaseTimbre : state.timbre ?? 64 };
     let coalesced = 0;
-    const add = (key, value, type, cc = null, bytes = MIDI_MESSAGE_BYTES, force = false) => {
+    const add = (key, value, type, cc = null, bytes = MIDI_MESSAGE_BYTES, force = false, targetChannel = channelNumber) => {
       const binding = `${type}:${cc ?? key}`;
-      if (force || uncertain || state.bindings?.get(binding) !== value) controls.push({ key, value, type, cc, bytes, binding });
+      const controlState = targetChannel === channelNumber ? state : this._expressionState(output, targetChannel);
+      if (force || uncertain || controlState.bindings?.get(binding) !== value) controls.push({ key, value, type, cc, bytes, binding, channel: targetChannel, state: controlState });
       else coalesced += 1;
     };
+    const patchChannel = this._isMpeNote(spec) && this._mpeZonePlan?.programPolicy !== 'member-mode4'
+      ? this._mpeZonePlan.managerChannel : channelNumber;
     if (!output?.supportsPerNoteInstrument) {
-      if (Number.isInteger(spec.bankMsb) && spec.bankMsb >= 0 && spec.bankMsb <= 127) add('bankMsb', spec.bankMsb, 'cc', 0);
-      if (Number.isInteger(spec.bankLsb) && spec.bankLsb >= 0 && spec.bankLsb <= 127) add('bankLsb', spec.bankLsb, 'cc', 32);
+      if (Number.isInteger(spec.bankMsb) && spec.bankMsb >= 0 && spec.bankMsb <= 127) add('bankMsb', spec.bankMsb, 'cc', 0, 3, false, patchChannel);
+      if (Number.isInteger(spec.bankLsb) && spec.bankLsb >= 0 && spec.bankLsb <= 127) add('bankLsb', spec.bankLsb, 'cc', 32, 3, false, patchChannel);
     }
     if (!output?.supportsPerNoteInstrument && Number.isInteger(spec.program) && spec.program >= 0 && spec.program <= 127) {
-      add('program', spec.program, 'program', null, 2, controls.some(control => control.key === 'bankMsb' || control.key === 'bankLsb'));
+      add('program', spec.program, 'program', null, 2, controls.some(control => control.key === 'bankMsb' || control.key === 'bankLsb'), patchChannel);
     }
     if (this._isMpeNote(spec) || Number.isFinite(spec.pitchBend)) add('bend', clamp(spec.pitchBend ?? 0, -1, 1), 'bend');
     if (Number.isFinite(spec.timbre)) add('timbre', clamp(spec.timbre, 0, 127), 'cc', this.config.mpe?.timbreCc ?? 74);
@@ -288,32 +295,24 @@ const midiSchedulerChannelMethods = {
     const mpe = this.config.mpe;
     if (!mpe?.enabled) return;
     const setupRevision = this._mpeRevision;
-    const bend = mpe.pitchBendRange || { semitones: 2, cents: 0 };
-    const master = normalizeChannelNumber(mpe.masterChannel, 1);
-    const members = Array.isArray(mpe.memberChannels)
-      ? mpe.memberChannels.map((channel) => normalizeChannelNumber(channel))
-      : [];
-    const reserved = this._ensembleChannels();
-    const uniqueMembers = members
-      .filter((channel, index, list) => channel !== master && list.indexOf(channel) === index && !reserved.has(channel));
-    const invalidAddress = (mpe.masterChannel != null && (!Number.isInteger(mpe.masterChannel) || mpe.masterChannel < 1 || mpe.masterChannel > 16)) ||
-      (mpe.memberChannels != null && !Array.isArray(mpe.memberChannels)) ||
-      (Array.isArray(mpe.memberChannels) ? mpe.memberChannels : []).some(channel => !Number.isInteger(channel) || channel < 1 || channel > 16 || channel === master);
-    this._mpeZoneFailure = invalidAddress ? 'invalid-mpe-channel' : !uniqueMembers.length ? 'empty-mpe-zone' : reserved.has(master) || members.some(channel => reserved.has(channel))
-      ? 'reserved-mpe-channel' : null;
-    const channels = uniqueMembers.length ? [master, ...uniqueMembers].filter(channel => !reserved.has(channel)) : [];
+    const plan = this._mpeZonePlan || createMpeZonePlan(mpe, this._ensembleChannels());
+    const master = plan.managerChannel, uniqueMembers = plan.memberChannels;
+    this._mpeZoneFailure = plan.reason;
+    const channels = plan.ok ? [master, ...uniqueMembers] : [];
     for (const targetOutput of outputs) {
       let ready = !this._mpeZoneFailure && channels.length === uniqueMembers.length + 1;
       if (ready) ready = channels.every(ch => targetOutput.channels?.[ch] &&
         typeof targetOutput.channels[ch].sendPitchBendRange === 'function' &&
         typeof targetOutput.channels[ch].sendPitchBend === 'function');
+      if (ready && plan.configurationMessages.length) ready = typeof targetOutput.channels?.[master]?.sendControlChange === 'function';
       if (!ready) {
         this._mpeStatusByOutput.set(targetOutput, false);
         this._mpeFailureByOutput.set(targetOutput, this._mpeZoneFailure || 'mpe-channel-unsupported');
         continue;
       }
       const outputId = this._resolveOutputId(targetOutput.id), timestamp = this._nowMs();
-      const reservation = this.evaluateAndReserve({ on: { timeMs: timestamp, count: channels.length * 7, bytes: channels.length * 21 } },
+      const setupMessages = channels.length * 7 + plan.configurationMessages.length;
+      const reservation = this.evaluateAndReserve({ on: { timeMs: timestamp, count: setupMessages, bytes: setupMessages * 3 } },
         { outputId, source: 'mpe-init' }, timestamp);
       if (!reservation.ok) {
         this._mpeStatusByOutput.set(targetOutput, false); this._mpeFailureByOutput.set(targetOutput, 'setup-' + reservation.reason);
@@ -330,9 +329,15 @@ const midiSchedulerChannelMethods = {
         }
       });
       try {
+        for (const [controller, value] of plan.configurationMessages) {
+          if (!stillAuthorized() || this._sendOutput(targetOutput, master, 'sendControlChange', [controller, value], { reason: 'mpe-init' }) === false) {
+            ready = false; break;
+          }
+        }
         for (const ch of channels) {
           try {
-            if (!stillAuthorized()) { ready = false; break; }
+            if (!ready || !stillAuthorized()) { ready = false; break; }
+            const bend = ch === master ? plan.managerRange : plan.memberRange;
             const before = acceptedBytes;
             const rangeAccepted = this._sendOutput(targetOutput, ch, 'sendPitchBendRange', [bend.semitones, bend.cents], { reason: 'mpe-init' });
             if (rangeAccepted === false) { ready = false; break; }
@@ -350,13 +355,14 @@ const midiSchedulerChannelMethods = {
             break;
           }
         }
-      } finally { removeObserver(); this._releaseReservation(reservation.reservationId); }
+      } catch (error) { ready = false; this.lastOutputError = error?.message || String(error); }
+      finally { removeObserver(); this._releaseReservation(reservation.reservationId); }
       if (setupRevision !== this._mpeRevision) continue;
       this._mpeStatusByOutput.set(targetOutput, ready);
       this._mpeFailureByOutput.set(targetOutput, ready ? null : 'mpe-setup-rejected');
       if (!ready) this._expressionByOutput.delete(targetOutput);
     }
-    if (setupRevision === this._mpeRevision) this._memberChannels = uniqueMembers.slice();
+    if (setupRevision === this._mpeRevision) this._memberChannels = plan.ok ? uniqueMembers.slice() : [];
   },
 
   _stopActiveChannel(channelNumber, outputId = null, reason = 'ownership-release') {
@@ -513,6 +519,7 @@ const midiSchedulerChannelMethods = {
     if (!mpe?.enabled) {
       return normalizeChannelNumber(this.config.defaultChannel, 1);
     }
+    if (this._mpeZonePlan?.ok === false) return null;
     const normalizedOutputId = this._resolveOutputId(outputId);
     const output = this._resolveOutput(normalizedOutputId);
     const reserved = this._ensembleChannels();
@@ -522,6 +529,7 @@ const midiSchedulerChannelMethods = {
         return ch;
       }
     }
+    if (this._mpeZonePlan?.voicePolicy === 'reject') return null;
     let oldest = null;
     let oldestTime = Infinity;
     for (const [ch, info] of this._activeByChannel.entries()) {

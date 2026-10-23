@@ -164,20 +164,26 @@ const midiSchedulerSendMethods = {
         }
         if (deferredMpe) {
           const started = info => info.hasStarted === true;
+          const rejectCapacity = () => {
+            dispatchFailed = true; this.recordThrottle('mpe-capacity', this._nowMs(), { ...meta, outputId, note: spec.note });
+            this._stopActiveNoteToken(token, 'mpe-capacity');
+          };
           if (trackId && voiceBudget != null &&
               [...this._activeNotes.values()].filter(info => started(info) && info.trackId === trackId).length >= voiceBudget) {
+            if (this._mpeZonePlan?.voicePolicy === 'reject') { rejectCapacity(); return; }
             const victim = this._findOldestActiveNote(info => started(info) && info.trackId === trackId);
             this._stopActiveNoteToken(victim, 'mpe-track-voice-budget');
           }
           if (!ownsVoice()) { dispatchFailed = true; return; }
           if ([...this._activeNotes.values()].filter(started).length >= this._maxActiveNotes) {
+            if (this._mpeZonePlan?.voicePolicy === 'reject') { rejectCapacity(); return; }
             this._stopActiveNoteToken(this._findOldestActiveNote(started), 'mpe-global-voice-budget');
           }
           if (!ownsVoice()) { dispatchFailed = true; return; }
           channelNumber = this._allocateChannel(outputId, 'mpe-channel-steal');
           if (!ownsVoice()) { dispatchFailed = true; return; }
           if (!output.channels?.[channelNumber] || this._activeByChannel.has(this._activeChannelKey(channelNumber, outputId))) {
-            this._stopActiveNoteToken(token, 'channel-unavailable');
+            rejectCapacity();
             return;
           }
           active.channel = channelNumber;
@@ -206,11 +212,11 @@ const midiSchedulerSendMethods = {
             if (!ownsVoice()) { dispatchFailed = true; return; }
             const method = control.type === 'program' ? 'sendProgramChange' : control.type === 'bend' ? 'sendPitchBend' : 'sendControlChange';
             const args = control.type === 'cc' ? [control.cc, control.value, { time: sendTimeMs }] : [control.value, { time: sendTimeMs }];
-            const target = output.channels?.[channelNumber];
-            const accepted = typeof target?.[method] === 'function' && this._sendOutput(output, channelNumber, method, args, captureMeta) !== false;
+            const target = output.channels?.[control.channel];
+            const accepted = typeof target?.[method] === 'function' && this._sendOutput(output, control.channel, method, args, captureMeta) !== false;
             if (!accepted) {
               dispatchFailed = true;
-              this._expressionByOutput.get(output)?.delete(channelNumber);
+              this._expressionByOutput.delete(output);
               this.recordThrottle('setup-rejected', this._nowMs(), captureMeta);
               this._stopActiveNoteToken(token, 'setup-rejected');
               return;
@@ -218,14 +224,16 @@ const midiSchedulerSendMethods = {
             this._recordSent({ timeMs: this._nowMs(), count: 1, bytes: control.bytes, token, phase: 'on', outputId, trackId,
               laneIndex: meta.laneIndex ?? 0, laneCount: meta.laneCount ?? 1, sfxId: meta.sfxId, priority: meta.priority });
             if (!ownsVoice()) { dispatchFailed = true; return; }
-            expression.state[control.key] = control.value;
-            expression.state.bindings.set(control.binding, control.value);
+            control.state[control.key] = control.value;
+            control.state.bindings.set(control.binding, control.value);
           }
           Object.assign(expression.state, expression.spanState);
 
-          if (!mpeEnabled && !output.supportsPerNoteInstrument && expression.controls.length) {
+          const zonePatchChanged = mpeEnabled && expression.controls.some(control => control.channel !== channelNumber);
+          if ((!mpeEnabled || zonePatchChanged) && !output.supportsPerNoteInstrument && expression.controls.length) {
             for (const [previousToken, previous] of [...this._activeNotes]) {
-              if (previousToken !== token && previous.hasStarted && previous.output === output && previous.channel === channelNumber) {
+              if (previousToken !== token && previous.hasStarted && previous.output === output &&
+                  (zonePatchChanged ? previous.mpe : previous.channel === channelNumber)) {
                 this._stopActiveNoteToken(previousToken);
               }
             }
@@ -269,7 +277,7 @@ const midiSchedulerSendMethods = {
         } catch (error) {
           dispatchFailed = true;
           this.lastOutputError = error?.message || String(error);
-          this._expressionByOutput.get(output)?.delete(channelNumber);
+          this._expressionByOutput.delete(output);
           this._stopActiveNoteToken(token);
           if (spec.phraseVoiceKey != null) this.cancelGamePhrase(spec.phraseVoiceKey, { releaseActive: false });
         }

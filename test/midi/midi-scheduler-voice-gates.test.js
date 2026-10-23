@@ -163,7 +163,7 @@ describe('owned MIDI voice gates', function() {
     });
   });
 
-  it('retires an old MPE zone before initializing new members and never reuses its channel', function() {
+  it('retires an old MPE zone before rejecting a noncontiguous replacement and never resurrects its channel', function() {
     withFakeClockAndPerformance(clock => {
       const calls = [], scheduler = new MidiScheduler({ mpe: { enabled: true, masterChannel: 1, memberChannels: [2] } });
       scheduler.setOutput(makeOutput([1, 2, 3], calls)); scheduler.setTickMs(10); calls.length = 0;
@@ -172,10 +172,12 @@ describe('owned MIDI voice gates', function() {
       scheduler.setConfig({ mpe: { enabled: true, masterChannel: 1, memberChannels: [3], pitchBendRange: { semitones: 12, cents: 0 } } });
       expect(calls.find(call => call.type === 'noteOff' && call.note === 60)?.id).to.equal(2);
       calls.length = 0;
-      scheduler.sendNote({ note: 64, durationTicks: 100 });
-      scheduler.sendNote({ note: 67, durationTicks: 100 });
+      expect(scheduler.sendNote({ note: 64, durationTicks: 100 })).to.equal(false);
+      expect(scheduler.sendNote({ note: 67, durationTicks: 100 })).to.equal(false);
       clock.tick(300);
-      expect(calls.filter(call => call.type === 'noteOn').map(call => [call.note, call.id])).to.deep.equal([[64, 3], [67, 3]]);
+      expect(calls.filter(call => call.type === 'noteOn')).to.deep.equal([]);
+      expect(scheduler.getOutputRouteState().mpeFailure).to.equal('noncontiguous-mpe-zone');
+      expect(scheduler._activeNotes.size).to.equal(0);
       expect(calls.some(call => call.type === 'noteOn' && call.note === 62)).to.equal(false);
       scheduler.dispose();
     });

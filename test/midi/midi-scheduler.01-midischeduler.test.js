@@ -287,7 +287,7 @@ describe('MidiScheduler 1', function() {
     expect(noteOn.id).to.equal(4);
   });
 
-  it('normalizes invalid limit values and channel configuration', function() {
+  it('normalizes invalid limit values and rejects invalid MPE channel configuration', function() {
     const scheduler = new MidiScheduler({
       limits: {
         maxActiveNotes: 'bad',
@@ -305,7 +305,8 @@ describe('MidiScheduler 1', function() {
     expect(scheduler._maxActiveNotes).to.equal(32);
     expect(scheduler._maxMessagesPerSecond).to.equal(1000);
     expect(scheduler._maxBytesPerSecond).to.equal(3125);
-    expect(scheduler._allocateChannel()).to.equal(2);
+    expect(scheduler._allocateChannel()).to.equal(null);
+    expect(scheduler._mpeZonePlan.reason).to.equal('invalid-mpe-channel');
   });
 
   it('admits independent endpoint traffic under separate rate windows', function() {

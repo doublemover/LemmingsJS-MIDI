@@ -104,6 +104,36 @@ reserves and counts its six RPN control messages plus pitch center per channel;
 an accepted prefix remains charged after a later setup failure. Local audio
 uses its voice/source admission rather than DIN byte or message quotas.
 
+## Legacy MPE zone policy
+
+MPE accepts a contiguous lower zone (manager 1, members ascending from 2) or
+upper zone (manager 16, members descending from 15). Empty, duplicate,
+noncontiguous, out-of-range and ensemble-reserved members are rejected.
+`oppositeZoneMemberCount` can declare the other zone's occupancy; overlapping
+zones are rejected. A newly reserved ensemble channel retires conflicting held
+and future MPE voices before rejecting the replacement configuration.
+
+`pitchBendRange` sets every member's range; `masterPitchBendRange` sets the
+manager's independent range. Their defaults are 48 and 2 semitones respectively.
+Ranges are validated through 96 semitones. `configuration: 'manual'` assumes a
+receiver's zone was configured externally and sends only range/bend setup.
+Explicit `configuration: 'send-zone'` admits the complete zone RPN, null
+selection and range setup before dispatch. API acceptance reports
+`zone-configuration-api-accepted`, with `verified: false`; no receiver response
+or CI MPE Profile is implied. No speculative Reset All Controllers is sent.
+
+`voicePolicy: 'steal-oldest'` deterministically replaces an owned member at the
+new onset; `'reject'` preserves occupied members and rejects excess onsets at
+dispatch. Route state reports expressive capacity and policy. Terminal receipts
+retain the displaced actor and the stealing reason. No policy uses the manager
+as a substitute note member. Ordinary bank/program selection targets the manager;
+`programPolicy: 'member-mode4'` explicitly selects receiver Mode 4 behavior.
+Custom pan or timbre controller mappings still require receiver-specific support.
+
+These rules follow the MIDI Association's
+[MIDI Polyphonic Expression specification](https://midi.org/mpe-midi-polyphonic-expression).
+Zone layout, ranges and setup byte fixtures do not verify a physical receiver.
+
 ## Explicit MIDI 2 source lowering
 
 The byte backend accepts an explicit MIDI 2 Channel Voice source through

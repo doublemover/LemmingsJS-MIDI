@@ -193,7 +193,7 @@ describe('MidiScheduler coverage: core behavior', function() {
     const scheduler = new MidiScheduler({ mpe: { enabled: false }, defaultChannel: 3 });
     expect(scheduler._allocateChannel()).to.equal(3);
 
-    scheduler.setConfig({ mpe: { enabled: true, masterChannel: 9, memberChannels: [2] } });
+    scheduler.setConfig({ mpe: { enabled: true, masterChannel: 1, memberChannels: [2] } });
     scheduler._memberChannels = [2];
     expect(scheduler._allocateChannel()).to.equal(2);
 
