@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "selectedBackends": {
+    "browserMidi": "vendored WebMidi.js 3.1.12; MIDI 1 byte output",
+    "nativeUmp": "none selected or shipped",
+    "audioRuntime": "first-party Web Audio local preview",
+    "optionalAudioBank": "none selected or shipped"
+  },
+  "workerSources": [
+    "js/app/procgen/workstation/ProcgenTimingDriver.js"
+  ],
+  "components": [
+    {
+      "id": "jquery-vendored",
+      "upstream": "https://github.com/jquery/jquery",
+      "upstreamVersion": "1.11.1",
+      "license": "MIT",
+      "licenseFile": "js/vendor/jquery.js",
+      "reproductionStatus": "source-artifact-hash-unverified",
+      "classification": "precache",
+      "entryPoints": ["service-worker.js"],
+      "files": ["js/vendor/jquery.js"],
+      "fileCount": 1,
+      "sha256": "d0f289f78a7df0bae8f9b5ae0ada0b93b75c961672bc3593c7a4c8f6a31a05f6"
+    },
+    {
+      "id": "webmidi-vendored",
+      "upstream": "https://github.com/djipco/webmidi",
+      "upstreamVersion": "3.1.12",
+      "license": "Apache-2.0",
+      "licenseFile": "js/vendor/webmidi.js",
+      "reproductionStatus": "source-artifact-hash-unverified",
+      "classification": "runtime",
+      "entryPoints": ["index.html", "procgen.html"],
+      "files": ["js/vendor/webmidi.js"],
+      "fileCount": 1,
+      "sha256": "b54f0b1c8d2c47902439bfcaedfb924108f760d040750190c132cfd8d4a3afe2"
+    },
+    {
+      "id": "hqx-generated",
+      "upstream": "https://github.com/CryZe/wasmboy-rs",
+      "upstreamVersion": "v0.1.2 (declared by local README)",
+      "license": "Apache-2.0",
+      "licenseFile": "js/vendor/hqx/LICENSE",
+      "reproductionStatus": "generated-input-and-recipe-unverified",
+      "classification": "generated",
+      "entryPoints": ["js/render/display/DisplayImageShared.js"],
+      "directory": "js/vendor/hqx",
+      "fileCount": 5,
+      "sha256": "c67b250ff436d9fcbac0d1adfb8f8a37fc02a63dc6457d0ddf481e065b78fd9f"
+    },
+    {
+      "id": "lucide-icon-subset",
+      "upstream": "https://github.com/lucide-icons/lucide",
+      "upstreamVersion": "main snapshot 2026-10-07 (commit unrecorded)",
+      "license": "ISC",
+      "licenseFile": "assets/icons/lucide/LICENSE",
+      "reproductionStatus": "upstream-commit-unverified; local notice also identifies MIT-derived icons",
+      "classification": "runtime",
+      "entryPoints": ["css/game.css", "css/editor.css"],
+      "directory": "assets/icons/lucide",
+      "fileCount": 50,
+      "sha256": "22da3793f4ceb3dce740d1102cd13faa019ec9caa73d0b76049760de2543d67f"
+    },
+    {
+      "id": "cyclonedx-schemas",
+      "upstream": "https://github.com/CycloneDX/specification/tree/ad83dae28b236b8760286399da4daba77592de86/schema",
+      "upstreamVersion": "ad83dae28b236b8760286399da4daba77592de86",
+      "license": "Apache-2.0",
+      "licenseFile": "provenance/schema/LICENSE",
+      "reproductionStatus": "pinned-upstream-source-copy",
+      "classification": "development",
+      "entryPoints": ["scripts/check-runtime-provenance.mjs"],
+      "directory": "provenance/schema",
+      "fileCount": 4,
+      "sha256": "71d2c79048c24a658782cd12ed7aed8aff38255fe017a2457f746f765dd078cc"
+    },
+    {
+      "id": "lemmings-service-worker",
+      "upstream": "https://github.com/doublemover/LemmingsJS-MIDI",
+      "upstreamVersion": "source-bound",
+      "license": "NOASSERTION",
+      "reproductionStatus": "first-party-source",
+      "classification": "source",
+      "entryPoints": ["js/app/registerServiceWorker.js"],
+      "files": ["service-worker.js"],
+      "fileCount": 1,
+      "sha256": "3e54083c3dd3cb5eac7208f956da8b59becc9283fe28df2647532a134cd20502"
+    },
+    {
+      "id": "lemmings-timing-worker-source",
+      "upstream": "https://github.com/doublemover/LemmingsJS-MIDI",
+      "upstreamVersion": "source-bound",
+      "license": "NOASSERTION",
+      "reproductionStatus": "first-party-inline-blob-worker",
+      "classification": "source",
+      "entryPoints": ["js/app/procgen/workstation/ProcgenTimingDriver.js"],
+      "files": ["js/app/procgen/workstation/ProcgenTimingDriver.js"],
+      "fileCount": 1,
+      "sha256": "b60fa0011a6f0f62db23aa2f193b3e9609b6184c576f197d3d81c1cf50cc6718"
+    }
+  ]
+}

@@ -52,6 +52,8 @@
     "bench-history-soak": "node scripts/bench-history-stress.js --soak --profile=soak",
     "bench-procgen-soak": "node scripts/bench-procgen-soak.js",
     "release-readiness": "node scripts/check-release-readiness.js",
+    "provenance:check": "node scripts/check-runtime-provenance.mjs",
+    "provenance:sbom": "node scripts/check-runtime-provenance.mjs --sbom",
     "coverage": "cross-env C8_FORK=1 c8 mocha --recursive",
     "coverage-editor": "cross-env C8_FORK=1 c8 --include=js/editor/** --check-coverage --lines 100 --statements 100 --functions 100 --branches 100 mocha \"test/editor/*.test.js\"",
     "coverage-report": "c8 report --reporter=html",
@@ -113,20 +115,22 @@
     "@playwright/test": "^1.49.1",
     "@sinonjs/fake-timers": "^14.0.0",
     "adm-zip": "^0.6.1",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
     "c8": "^10.1.3",
     "chai": "^5.2.0",
     "cheerio": "^1.0.0",
     "cross-env": "^7.0.3",
     "eslint": "^9.28.0",
     "http-server": "^14.1.1",
+    "knip": "^6.40.0",
     "mocha": "^11.5.0",
     "node-unrar-js": "^2.0.2",
     "pngjs": "^7.0.0",
     "tar": "^7.4.3",
     "typescript": "^5.9.3",
     "ws": "^8.18.1",
-    "zod": "^3.25.76",
-    "knip": "^6.40.0"
+    "zod": "^3.25.76"
   },
   "dependencies": {
     "js-yaml": "^4.1.0"
