@@ -1,8 +1,20 @@
 import { expect } from 'chai';
 import { createResourceBudget } from '../../js/app/resources/ResourceBudget.js';
-import { createAudioResourceLeases, KERNEL_TYPED_BYTES, WORKLET_HOST_ESTIMATE } from '../../js/app/midi-ui/AudioResourceLeases.js';
+import { createAudioResourceLeases, releaseAudioResourceAfterRetirement, KERNEL_TYPED_BYTES, WORKLET_HOST_ESTIMATE } from '../../js/app/midi-ui/AudioResourceLeases.js';
+import { createProcgenRetirementScope } from '../../js/app/procgen/ProcgenRetirement.js';
 
 describe('Audio resource admission', () => {
+  it('holds uncertain native retirement through owner disposal until the closed context acknowledges it', () => {
+    const budget = createResourceBudget(), audio = createAudioResourceLeases({ resourceBudget: budget });
+    const voice = audio.reserveNativeVoice('game'), cue = audio.reserveNativeVoice('cue');
+    const retirement = createProcgenRetirementScope().retire([{ name: 'native-disconnect', run() { throw new Error('disconnect failed'); } }]);
+    expect(() => releaseAudioResourceAfterRetirement(voice, retirement)).to.throw('incomplete');
+    expect(voice.releaseState()).to.equal('failed-or-unknown'); expect(voice.isActive()).to.equal(false);
+    expect(audio.retireOwner('game').outcome).to.equal('partial'); expect(cue.isActive()).to.equal(true);
+    expect(budget.diagnostics().unreleasedEstimatedBytes).to.be.greaterThan(0);
+    cue.release(); expect(audio.confirmClosedContext().outcome).to.equal('complete');
+    expect(audio.diagnostics().reservations).to.equal(0); expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
   it('retains failed adapter accounting while releasing every independent reservation exactly once', async () => {
     const ledger = new Map(); let attempts = 0;
     const adapter = { reserve(record) { ledger.set(record.token, record); return { accountedBytes: record.bytes }; },
