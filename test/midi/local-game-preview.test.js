@@ -23,7 +23,7 @@ const makeAudio = () => {
   let pending = null;
   let serial = 0;
   const audio = {
-    output: makeOutput(Array.from({ length: 16 }, (_, index) => index + 1), calls, 'local'),
+    output: { ...makeOutput(Array.from({ length: 16 }, (_, index) => index + 1), calls, 'local'), supportsIndependentNoteGates: true },
     getState: () => ({ enabled, message: enabled ? 'Ready' : 'Audio off' }),
     subscribe: callback => { listeners.add(callback); return () => listeners.delete(callback); },
     enableCalls: 0,

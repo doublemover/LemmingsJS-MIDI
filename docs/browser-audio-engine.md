@@ -236,3 +236,74 @@ allocation. Encoded bytes, decoder workspace and optional resampled variants
 need their own bounds at their owning loader. Buffer leases remain valid while
 output is disarmed and are revoked when the owner is disposed. Native node
 estimates and the worklet host allowance require device/browser calibration.
+
+## Content-addressed samples and impulse responses
+
+`createAudioAssetLoader` in `AudioAssetLoader.js` accepts `getContext`, either
+`resolveAssetUrl(ref)` or `fetchAsset(ref, { signal })`, optional `rawStore`, and
+the shared `resourceBudget`. Its first codec profile is complete RIFF/WAVE PCM
+(8/16/24/32-bit integer or 32-bit float), one or two channels. Other codecs fail
+explicitly. Asset references carry a SHA-256 `contentHash`, encoded `bytes`,
+`mime`, `channels`, `sourceSampleRate`, source `frames`, `decodeVersion`
+(`web-audio-wav-v1`), relative pack `path`, `licenseId`, and `attribution`.
+Optional `kind: 'impulse-response'` has a separate 30-second limit; samples have
+a 180-second limit. Loop markers use source frames and are validated before
+decoding. Relative pack paths remain identities; object URLs are not persisted.
+
+Raw content and decoded PCM have separate bounded LRU caches. Decoded keys are
+the hash, actual context sample rate, and decoder version. Default limits are
+16 MiB per encoded asset, 32 MiB raw cache, 32 MiB per decoded asset, 64 MiB
+decoded cache, 128 entries, and two concurrent fetches and decodes. RIFF sizes,
+source format and frame counts are checked against the hashed bytes before the
+browser decoder runs. Stream reads enforce the declared byte count, and finite
+decoded samples and the resampled frame bound are checked before readiness.
+
+The loader reserves encoded storage, a bounded input copy and workspace
+estimate, and an upper bound for Float32 PCM before allocation. It reconciles
+the PCM reservation down to the actual backing. Browser decoder internals have
+an estimated workspace allowance; their process residency is not observable.
+The initial codec restriction permits a verified decoded upper bound before
+calling the native decoder. Admitting arbitrary compressed formats without a
+verified expansion bound remains unsupported.
+
+```js
+const loader = createAudioAssetLoader({
+  getContext: () => preview.getAudioContext(),
+  resolveAssetUrl: ref => packBaseUrl + ref.path,
+  resourceBudget,
+  rawStore: createAudioAssetStore()
+});
+const assets = createAudioAssetSet({ loader, owner: 'instrument-1' });
+await assets.replace(requiredRefs, { generation, signal });
+const preparedPins = assets.snapshot();
+const renderPin = preparedPins[0].retain({ owner: 'render-job', generation });
+// Pass renderPin.buffer to the renderer; release it after its final child ends.
+renderPin.release();
+assets.dispose();
+loader.dispose();
+```
+
+Preparation swaps only after every asset is ready. Failed, canceled and stale
+preparations release their staged pins and retain the old set. Multiple owners
+share one fetch/decode; canceling one subscriber does not cancel another. An
+in-flight native decode cannot be aborted by Web Audio, so its reservation stays
+held until it returns and the result is dropped. Existing render pins survive
+loader disposal and prevent cache eviction until their final release. A caller
+cannot retain new pins after loader disposal.
+
+`downloadPack`, `inspectPack`, and `removePack` provide progress, exact-byte
+totals, missing/offline state, shared-pack retention and an explicit
+`referenced-by-project` removal consequence. `createAudioAssetStore` uses only
+the app-owned `lemmings-audio-assets-v1` CacheStorage namespace. Reads reverify
+hashes; an offline-ready inventory reports `integrity: 'verified-on-read'`.
+Canceled/quota-failed downloads never publish a replacement pack manifest;
+already completed hash entries may remain reusable. Recording storage is never
+enumerated or removed. Pack controls in the patch browser, persisted installed
+pack manifests, external asset resolvers, and redistribution-reviewed content
+still require application integration. Asset bytes are never evaluated as code.
+
+Focused loader fixtures cover shared cancellation, native decode cancellation,
+disposal with live pins, queued retry, context sample-rate changes, malformed
+containers/loops, hash mismatch, offline/quota, finite PCM, interrupted pack
+replacement, and a 100-patch LRU soak. These are control-plane fixtures; browser
+decoder and rendered sample-loop PCM qualification are separate evidence.

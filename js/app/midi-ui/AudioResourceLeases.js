@@ -28,8 +28,15 @@ export function createAudioResourceLeases({ resourceBudget = null, ownerPrefix =
       resourceBudget?.release({ token, owner: budgetOwner }); return true;
     };
     lease.release = release;
-    return Object.freeze({ release, isActive: () => !lease.released && !disposed, receipt: Object.freeze({ enabled: !!resourceBudget, kind, owner, generation,
-      exactBytes: bytes, estimatedBytes: estimateBytes, accountedBytes: receipt?.accountedBytes ?? null }) });
+    const shrink = nextBytes => {
+      if (lease.released || disposed || !Number.isSafeInteger(nextBytes) || nextBytes < 0 || nextBytes > bytes) throw new RangeError('Invalid audio reservation reconciliation.');
+      const next = resourceBudget?.reserve({ token, owner: budgetOwner, generation, category: 'audio', kind,
+        previousBytes: bytes + estimateBytes, bytes: nextBytes + estimateBytes, pinned: true, cache: false, reloadable: false }) || null;
+      exactBytes += nextBytes - bytes; bytes = nextBytes; lease.bytes = bytes; receipt = next; return true;
+    };
+    return Object.freeze({ release, shrink, isActive: () => !lease.released && !disposed,
+      get receipt() { return Object.freeze({ enabled: !!resourceBudget, kind, owner, generation,
+        exactBytes: bytes, estimatedBytes: estimateBytes, accountedBytes: receipt?.accountedBytes ?? null }); } });
   };
   const reserveDecodedBuffer = ({ frames, channels, sampleRate = null, owner = null, generation = 0 } = {}) => {
     if (!Number.isSafeInteger(frames) || frames < 1 || !Number.isSafeInteger(channels) || channels < 1 || channels > 32 ||
@@ -43,7 +50,8 @@ export function createAudioResourceLeases({ resourceBudget = null, ownerPrefix =
           sampleRate != null && buffer.sampleRate !== sampleRate) throw new RangeError('Decoded audio exceeds its admitted format or frame bound.');
       return true;
     };
-    return Object.freeze({ ...lease, validate, frames, channels, sampleRate });
+    return Object.freeze({ ...lease, get receipt() { return lease.receipt; }, validate,
+      reconcile: buffer => { validate(buffer); return lease.shrink(buffer.length * buffer.numberOfChannels * 4); }, frames, channels, sampleRate });
   };
   const releaseOwner = owner => { let count = 0; for (const lease of leases.values()) if (lease.owner === owner) { lease.release(); count++; } return count; };
   const diagnostics = () => Object.freeze({ enabled: !!resourceBudget, reservations: leases.size, exactBytes, estimatedBytes,

@@ -41,4 +41,14 @@ describe('Audio resource admission', () => {
     expect(() => audio.reserveDecodedBuffer({ frames: 2 ** 31, channels: 2 })).to.throw(RangeError);
     expect(budget.diagnostics().reservations).to.equal(0);
   });
+
+  it('shrinks an admitted PCM upper bound to the actual backing without a second allocation lease', () => {
+    const budget = createResourceBudget(), audio = createAudioResourceLeases({ resourceBudget: budget });
+    const pin = audio.reserveDecodedBuffer({ frames: 48001, channels: 2, sampleRate: 48000 });
+    expect(pin.reconcile({ length: 48000, numberOfChannels: 2, sampleRate: 48000 })).to.equal(true);
+    expect(pin.receipt.exactBytes).to.equal(384000); expect(audio.diagnostics().exactBytes).to.equal(384000);
+    expect(budget.diagnostics().residentBytes).to.equal(384000); expect(budget.diagnostics().categories.audio.entries).to.equal(1);
+    expect(() => pin.shrink(384008)).to.throw(RangeError);
+    pin.release(); expect(budget.diagnostics().residentBytes).to.equal(0);
+  });
 });
