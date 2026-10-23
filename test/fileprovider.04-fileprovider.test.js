@@ -159,7 +159,7 @@ describe('FileProvider', function () {
   const cacheKey = (url) => `lem-cache:${url}`;
 
   const setCacheEntry = (url, entry) => {
-    global.localStorage.setItem(cacheKey(url), JSON.stringify(entry));
+    global.localStorage.setItem(cacheKey(url), JSON.stringify({ formatVersion: 2, ...entry }));
   };
 
   const setCacheRaw = (url, raw) => {
@@ -289,8 +289,8 @@ describe('FileProvider', function () {
     const entries = idb._stores.get('entries');
     const payloads = idb._stores.get('payloads');
     const url = makeUrl('cached.txt');
-    entries.set(url, { url, type: 'text', size: 4, lastAccess: 1 });
-    payloads.set(url, { url, data: 'ok' });
+    entries.set(url, { url, formatVersion: 2, generation: 'fixture', type: 'text', size: 2, lastAccess: 1 });
+    payloads.set(url, { url, formatVersion: 2, generation: 'fixture', data: 'ok' });
 
     const result = await provider._loadFromIndexedDb(url, 'text');
     assert.strictEqual(result.value, 'ok');
@@ -341,7 +341,7 @@ describe('FileProvider', function () {
       removeItem(key) { removed += 1; store.delete(key); },
       setItem(key, value) { store.set(key, value); }
     };
-    provider._evictLocalStorage(4 * 1024 * 1024 - 80);
+    provider._evictLocalStorage(4 * 1024 * 1024 - 100);
     assert.strictEqual(removed, 1);
   });
 
@@ -365,7 +365,7 @@ describe('FileProvider', function () {
     provider = new FileProvider(rootPath);
     const url = provider._buildUrl('data', 'cached.bin');
     const buffer = new ArrayBuffer(4);
-    await provider._storeInIndexedDb(url, { type: 'binary', data: buffer, hash: 'h' });
+    await provider._storeInIndexedDb(url, { type: 'binary', data: buffer });
 
     const result = await provider.loadBinary('data', 'cached.bin');
     assert.ok(result instanceof MockBinaryReader);

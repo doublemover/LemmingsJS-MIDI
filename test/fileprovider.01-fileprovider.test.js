@@ -159,7 +159,7 @@ describe('FileProvider', function () {
   const cacheKey = (url) => `lem-cache:${url}`;
 
   const setCacheEntry = (url, entry) => {
-    global.localStorage.setItem(cacheKey(url), JSON.stringify(entry));
+    global.localStorage.setItem(cacheKey(url), JSON.stringify({ formatVersion: 2, ...entry }));
   };
 
   const setCacheRaw = (url, raw) => {
@@ -342,7 +342,9 @@ describe('FileProvider', function () {
     assert.deepStrictEqual(provider.getCacheStats(), {
       memoryEntries: 1,
       localStorageBytes: 12,
-      indexedDbBytes: 34
+      indexedDbBytes: 34,
+      ownedRequests: 0,
+      resourceLeases: 0
     });
   });
 
@@ -368,7 +370,7 @@ describe('FileProvider', function () {
     provider = new FileProvider(rootPath);
     const data = Uint8Array.from([1, 2, 3]).buffer;
     const url = makeUrl('data/file.bin');
-    setBinaryCache(url, data, 'h');
+    setBinaryCache(url, data);
 
     const result = await provider.loadBinary('data', 'file.bin');
     assert.ok(result instanceof MockBinaryReader);
@@ -379,6 +381,7 @@ describe('FileProvider', function () {
     const url = makeUrl('bad.txt');
     setCacheRaw(url, '{bad');
     const promise = provider.loadString(url);
+    await new Promise(resolve => setTimeout(resolve, 0));
     requests[0].respond(200, 'ok');
     const result = await promise;
     assert.strictEqual(result, 'ok');

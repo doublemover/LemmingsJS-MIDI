@@ -53,7 +53,7 @@ const fileProviderHashMethods = {
   },
 
   _arrayBufferToBase64(buffer) {
-    const bytes = new Uint8Array(buffer);
+    const bytes = ArrayBuffer.isView(buffer) ? new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength) : new Uint8Array(buffer);
     const chunkSize = 0x8000;
     const chunks = [];
     for (let i = 0; i < bytes.byteLength; i += chunkSize) {

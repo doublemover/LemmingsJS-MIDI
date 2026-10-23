@@ -159,7 +159,7 @@ describe('FileProvider', function () {
   const cacheKey = (url) => `lem-cache:${url}`;
 
   const setCacheEntry = (url, entry) => {
-    global.localStorage.setItem(cacheKey(url), JSON.stringify(entry));
+    global.localStorage.setItem(cacheKey(url), JSON.stringify({ formatVersion: 2, ...entry }));
   };
 
   const setCacheRaw = (url, raw) => {

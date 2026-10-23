@@ -1,6 +1,7 @@
 import {
   BaseLogger,
   BinaryReader,
+  CACHE_FORMAT_VERSION,
   IDB_MAX_BYTES,
   IDB_NAME,
   IDB_STORE_ENTRIES,
@@ -33,7 +34,7 @@ const fileProviderStorageMethods = {
   },
 
   _canUseIndexedDb() {
-    return !this._idbDisabled && !!this._indexedDB?.open;
+    return !this._disposed && !this._idbDisabled && !!this._indexedDB?.open;
   },
 
   _getLocalStorage() {
@@ -56,9 +57,23 @@ const fileProviderStorageMethods = {
       return Promise.resolve(true);
     }
     return new Promise((resolve, reject) => {
-      tx.oncomplete = () => resolve(true);
-      tx.onabort = () => reject(tx.error || new Error('indexedDB transaction aborted'));
-      tx.onerror = () => reject(tx.error || new Error('indexedDB transaction failed'));
+      let settled = false;
+      this._cacheTransactions.add(tx);
+      const finish = (callback, value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        this._cacheTransactions.delete(tx);
+        tx.oncomplete = null; tx.onabort = null; tx.onerror = null;
+        callback(value);
+      };
+      const timer = setTimeout(() => {
+        finish(reject, new Error('indexedDB transaction timed out'));
+        try { tx.abort?.(); } catch { /* The transaction may already be inactive. */ }
+      }, this._cacheProbeMs);
+      tx.oncomplete = () => finish(resolve, true);
+      tx.onabort = () => finish(reject, tx.error || new Error('indexedDB transaction aborted'));
+      tx.onerror = () => finish(reject, tx.error || new Error('indexedDB transaction failed'));
     });
   },
 
@@ -73,14 +88,18 @@ const fileProviderStorageMethods = {
       const settle = db => {
         if (settled) { db?.close?.(); return; }
         settled = true; clearTimeout(timer);
+        if (this._cancelIdbOpen === cancelOpen) this._cancelIdbOpen = null;
         if (this._idbPromise === promise && !db) this._idbPromise = null;
         resolve(db);
       };
+      const cancelOpen = () => settle(null);
+      this._cancelIdbOpen = cancelOpen;
       const timer = setTimeout(() => { this._idbDisabled = true; settle(null); }, this._cacheProbeMs);
       try { request = this._indexedDB.open(IDB_NAME, IDB_VERSION); }
       catch { this._idbDisabled = true; settle(null); return; }
       request.onupgradeneeded = () => {
         const db = request.result;
+        if (settled || this._disposed || openEpoch !== this._idbOpenEpoch) { try { request.transaction?.abort?.(); } catch { /* Retired upgrade. */ } return; }
         if (!db.objectStoreNames.contains(IDB_STORE_ENTRIES)) {
           const store = db.createObjectStore(IDB_STORE_ENTRIES, { keyPath: 'url' });
           store.createIndex('lastAccess', 'lastAccess', { unique: false });
@@ -112,119 +131,181 @@ const fileProviderStorageMethods = {
     return promise;
   },
 
+  _isCacheRecordValid(entry, payload, type = entry?.type) {
+    if (!entry || entry.formatVersion !== CACHE_FORMAT_VERSION || typeof entry.generation !== 'string' || !entry.generation || entry.type !== type ||
+        !['binary', 'text'].includes(type) || !Number.isSafeInteger(entry.size) || entry.size < 0) return false;
+    if (entry.hash != null && !/^[a-f0-9]{64}$/i.test(entry.hash)) return false;
+    if (!payload || payload.formatVersion !== CACHE_FORMAT_VERSION || payload.generation !== entry.generation) return false;
+    if (type === 'binary' && !(payload.data instanceof ArrayBuffer || ArrayBuffer.isView(payload.data))) return false;
+    if (type === 'text' && typeof payload.data !== 'string') return false;
+    return this._estimateEntrySize({ type, data: payload.data }) === entry.size;
+  },
+
   async _loadFromIndexedDb(url, type, path = '') {
-    const db = await this._openIndexedDb();
-    if (!db) return null;
+    const epoch = this._cacheEpoch, db = await this._openIndexedDb();
+    if (!db || this._disposed || epoch !== this._cacheEpoch) return null;
     try {
       const tx = db.transaction([IDB_STORE_ENTRIES, IDB_STORE_PAYLOADS], 'readonly');
-      const entries = tx.objectStore(IDB_STORE_ENTRIES);
-      const payloads = tx.objectStore(IDB_STORE_PAYLOADS);
-      const entry = await this._idbRequest(entries.get(url));
-      if (!entry || entry.type !== type) return null;
-      const payload = await this._idbRequest(payloads.get(url));
-      if (!payload || payload.data == null) return null;
-      this._scheduleCacheValidation(url, entry);
-      this._touchIndexedDbEntry(url, entry);
-      let value;
-      if (type === 'binary') {
-        const Reader = getDependency('BinaryReader', BinaryReader);
-        value = new Reader(payload.data, 0, null, this._filenameFromUrl(url), path);
-      } else {
-        value = payload.data;
-      }
+      const done = this._idbTransactionDone(tx).catch(() => false);
+      const entries = tx.objectStore(IDB_STORE_ENTRIES), payloads = tx.objectStore(IDB_STORE_PAYLOADS);
+      const [entry, payload] = await Promise.all([this._idbRequest(entries.get(url)), this._idbRequest(payloads.get(url))]);
+      if (!await done || this._disposed || epoch !== this._cacheEpoch || !this._isCacheRecordValid(entry, payload, type)) return null;
+      this._touchIndexedDbEntry(url);
+      const Reader = getDependency('BinaryReader', BinaryReader);
+      const value = type === 'binary' ? new Reader(payload.data, 0, null, this._filenameFromUrl(url), path) : payload.data;
       return { value, entry };
-    } catch (e) {
-      return null;
-    }
+    } catch { return null; }
   },
 
   async _touchIndexedDbEntry(url) {
-    const db = await this._openIndexedDb();
-    if (!db) return;
+    const now = Date.now();
+    if (now - (this._cacheTouchTimes.get(url) || 0) < 30000) return;
+    this._cacheTouchTimes.set(url, now);
+    const epoch = this._cacheEpoch, db = await this._openIndexedDb();
+    if (!db || this._disposed || epoch !== this._cacheEpoch) return;
     try {
       const tx = db.transaction(IDB_STORE_ENTRIES, 'readwrite');
       const done = this._idbTransactionDone(tx).catch(() => false);
       const store = tx.objectStore(IDB_STORE_ENTRIES);
       const current = await this._idbRequest(store.get(url));
-      if (current) store.put({ ...current, lastAccess: Date.now() });
+      if (current) store.put({ ...current, lastAccess: now });
       await done;
-    } catch (e) {
-      // ignore
-    }
+    } catch { /* Recency is optional. */ }
   },
 
-  async _storeInIndexedDb(url, entry) {
-    const db = await this._openIndexedDb();
-    if (!db) return false;
+  async _visitIndexedDbEntries(entries, visit, useIndex = true) {
+    const request = (!useIndex && typeof entries.openCursor === 'function' ? entries : entries.index('lastAccess')).openCursor();
+    let count = 0, timer;
     try {
-      const now = Date.now();
-      const size = this._estimateEntrySize(entry);
-      const tx = db.transaction([IDB_STORE_ENTRIES, IDB_STORE_PAYLOADS, IDB_STORE_META], 'readwrite');
-      let transactionError = null;
-      const done = this._idbTransactionDone(tx).catch((err) => {
-        transactionError = err;
-        return false;
+      await new Promise((resolve, reject) => {
+        timer = setTimeout(() => reject(new Error('indexedDB scan timed out')), this._cacheProbeMs);
+        request.onerror = () => reject(request.error || new Error('indexedDB cursor failed'));
+        request.onsuccess = () => {
+          const cursor = request.result;
+          if (!cursor) { resolve(); return; }
+          if (++count > 10000) { reject(new Error('indexedDB reconciliation limit exceeded')); return; }
+          try {
+            const next = visit(cursor.value);
+            if (next && typeof next.then === 'function') next.then(() => cursor.continue(), reject);
+            else cursor.continue();
+          } catch (error) { reject(error); }
+        };
       });
-      const entries = tx.objectStore(IDB_STORE_ENTRIES);
-      const payloads = tx.objectStore(IDB_STORE_PAYLOADS);
-      const metaStore = tx.objectStore(IDB_STORE_META);
-      const existing = await this._idbRequest(entries.get(url));
-      const prevSize = existing?.size || 0;
-      entries.put({
-        url,
-        type: entry.type,
-        etag: entry.etag || null,
-        lastModified: entry.lastModified || null,
-        hash: entry.hash || null,
-        size,
-        lastAccess: now
-      });
-      payloads.put({ url, data: entry.data });
-      const meta = await this._idbRequest(metaStore.get('totalBytes'));
-      const total = Math.max(0, (meta?.value || 0) - prevSize + size);
-      metaStore.put({ key: 'totalBytes', value: total });
-      const committed = await done;
-      if (!committed) {
-        throw transactionError || new Error('indexedDB transaction failed');
-      }
+    } finally { clearTimeout(timer); request.onerror = null; request.onsuccess = null; }
+  },
+
+  async _transactionalCacheTotal(entries, payloads, metaStore, reconcile = false) {
+    const meta = await this._idbRequest(metaStore.get('totalBytes'));
+    if (!reconcile && meta?.accountingVersion === CACHE_FORMAT_VERSION && Number.isSafeInteger(meta.value) && meta.value >= 0) return meta.value;
+    let total = 0;
+    await this._visitIndexedDbEntries(entries, async entry => {
+      const payload = await this._idbRequest(payloads.get(entry.url));
+      if (!this._isCacheRecordValid(entry, payload)) { entries.delete(entry.url); payloads.delete(entry.url); }
+      else total += entry.size;
+    }, false);
+    if (typeof payloads.openCursor === 'function') await this._visitIndexedDbEntries(payloads, async payload => {
+      if (!await this._idbRequest(entries.get(payload.url))) payloads.delete(payload.url);
+    }, false);
+    return total;
+  },
+
+  async _evictIndexedDbToBudget(entries, payloads, total, protectedUrl = null) {
+    if (total <= IDB_MAX_BYTES) return total;
+    await this._visitIndexedDbEntries(entries, entry => {
+      if (total <= IDB_MAX_BYTES || entry.url === protectedUrl) return;
+      entries.delete(entry.url); payloads.delete(entry.url);
+      total = Math.max(0, total - (Number.isFinite(entry.size) ? entry.size : 0));
+    });
+    return total;
+  },
+
+  async _storeInIndexedDb(url, entry, ownership = {}) {
+    const size = this._estimateEntrySize(entry);
+    if (size > IDB_MAX_BYTES || this._disposed) return false;
+    const epoch = ownership.epoch ?? this._cacheEpoch;
+    const db = await this._openIndexedDb();
+    if (!db || this._disposed || epoch !== this._cacheEpoch || ownership.owner?.controller.signal.aborted ||
+        ownership.owner && this._requestVersions.get(ownership.owner.key) !== ownership.owner.version) return false;
+    let tx;
+    try {
+      tx = db.transaction([IDB_STORE_ENTRIES, IDB_STORE_PAYLOADS, IDB_STORE_META], 'readwrite');
+      const done = this._idbTransactionDone(tx).catch(() => false);
+      const entries = tx.objectStore(IDB_STORE_ENTRIES), payloads = tx.objectStore(IDB_STORE_PAYLOADS), metaStore = tx.objectStore(IDB_STORE_META);
+      const [existing, oldPayload] = await Promise.all([this._idbRequest(entries.get(url)), this._idbRequest(payloads.get(url))]);
+      const validExisting = this._isCacheRecordValid(existing, oldPayload);
+      let total = await this._transactionalCacheTotal(entries, payloads, metaStore, !!existing && !validExisting);
+      const generation = entry.hash || `${Date.now()}:${++this._nextRequestId}`;
+      entries.put({ url, formatVersion: CACHE_FORMAT_VERSION, generation, type: entry.type, etag: entry.etag || null,
+        lastModified: entry.lastModified || null, cacheControl: entry.cacheControl || null,
+        hash: entry.hash || null, size, fetchedAt: Date.now(), lastAccess: Date.now() });
+      payloads.put({ url, formatVersion: CACHE_FORMAT_VERSION, generation, data: entry.data });
+      total = Math.max(0, total - (validExisting ? existing.size : 0) + size);
+      total = await this._evictIndexedDbToBudget(entries, payloads, total, url);
+      metaStore.put({ key: 'totalBytes', accountingVersion: CACHE_FORMAT_VERSION, value: total });
+      if (!await done) return false;
       this._cacheStats.indexedDbBytes = total;
-      if (total > IDB_MAX_BYTES) await this._pruneIndexedDb(total);
       return true;
-    } catch (e) {
+    } catch {
+      try { tx?.abort?.(); } catch { /* Failed transactions are already inactive. */ }
       return false;
     }
   },
 
-  async _pruneIndexedDb(totalBytes) {
+  async _pruneIndexedDb() {
     const db = await this._openIndexedDb();
-    if (!db) return;
+    if (!db || this._disposed) return;
+    let tx;
+    try {
+      tx = db.transaction([IDB_STORE_ENTRIES, IDB_STORE_PAYLOADS, IDB_STORE_META], 'readwrite');
+      const done = this._idbTransactionDone(tx).catch(() => false);
+      const entries = tx.objectStore(IDB_STORE_ENTRIES), payloads = tx.objectStore(IDB_STORE_PAYLOADS), metaStore = tx.objectStore(IDB_STORE_META);
+      const current = await this._idbRequest(metaStore.get('totalBytes'));
+      let total = Number.isFinite(current?.value) ? current.value : await this._transactionalCacheTotal(entries, payloads, metaStore);
+      total = await this._evictIndexedDbToBudget(entries, payloads, total);
+      metaStore.put({ key: 'totalBytes', accountingVersion: CACHE_FORMAT_VERSION, value: total });
+      if (await done) this._cacheStats.indexedDbBytes = total;
+    } catch { try { tx?.abort?.(); } catch { /* Failed optional prune. */ } }
+  },
+
+  async reconcilePersistentCache() {
+    const db = await this._openIndexedDb();
+    if (!db || this._disposed) return false;
+    let tx;
+    try {
+      tx = db.transaction([IDB_STORE_ENTRIES, IDB_STORE_PAYLOADS, IDB_STORE_META], 'readwrite');
+      const done = this._idbTransactionDone(tx).catch(() => false);
+      const entries = tx.objectStore(IDB_STORE_ENTRIES), payloads = tx.objectStore(IDB_STORE_PAYLOADS), metaStore = tx.objectStore(IDB_STORE_META);
+      let total = await this._transactionalCacheTotal(entries, payloads, metaStore, true);
+      total = await this._evictIndexedDbToBudget(entries, payloads, total);
+      metaStore.put({ key: 'totalBytes', accountingVersion: CACHE_FORMAT_VERSION, value: total });
+      if (!await done) return false;
+      this._cacheStats.indexedDbBytes = total;
+      return true;
+    } catch { try { tx?.abort?.(); } catch { /* Optional reconciliation is bounded. */ } return false; }
+  },
+
+  async _discardPersistentEntry(url, expected) {
+    try {
+      const storage = this._getLocalStorage(), key = this._localStorageKey(url), item = storage?.getItem?.(key);
+      if (item) {
+        const current = JSON.parse(item);
+        if (!expected || current.generation === expected.generation) storage.removeItem?.(key);
+      }
+    } catch { /* Optional storage can be denied. */ }
+    const db = await this._openIndexedDb();
+    if (!db || this._disposed) return;
     try {
       const tx = db.transaction([IDB_STORE_ENTRIES, IDB_STORE_PAYLOADS, IDB_STORE_META], 'readwrite');
       const done = this._idbTransactionDone(tx).catch(() => false);
-      const entries = tx.objectStore(IDB_STORE_ENTRIES);
-      const payloads = tx.objectStore(IDB_STORE_PAYLOADS);
-      const metaStore = tx.objectStore(IDB_STORE_META);
-      const current = await this._idbRequest(metaStore.get('totalBytes'));
-      let remaining = Number.isFinite(current?.value) ? current.value : totalBytes;
-      if (!(remaining > IDB_MAX_BYTES)) { await done; return; }
-      const index = entries.index('lastAccess');
-      const cursorRequest = index.openCursor();
-      await new Promise((resolve, reject) => {
-        cursorRequest.onerror = () => reject(cursorRequest.error || new Error('indexedDB prune cursor failed'));
-        cursorRequest.onsuccess = () => {
-          const cursor = cursorRequest.result;
-          if (!cursor || remaining <= IDB_MAX_BYTES) { resolve(); return; }
-          const entry = cursor.value;
-          entries.delete(entry.url); payloads.delete(entry.url);
-          remaining = Math.max(0, remaining - (entry?.size || 0));
-          cursor.continue();
-        };
-      });
-      metaStore.put({ key: 'totalBytes', value: Math.max(0, remaining) });
-      if (await done) this._cacheStats.indexedDbBytes = Math.max(0, remaining);
-    } catch (e) {
-      // ignore
-    }
+      const entries = tx.objectStore(IDB_STORE_ENTRIES), payloads = tx.objectStore(IDB_STORE_PAYLOADS), metaStore = tx.objectStore(IDB_STORE_META);
+      const total = await this._transactionalCacheTotal(entries, payloads, metaStore);
+      const current = await this._idbRequest(entries.get(url));
+      if (current && (!expected || current.generation === expected.generation)) {
+        entries.delete(url); payloads.delete(url);
+        metaStore.put({ key: 'totalBytes', accountingVersion: CACHE_FORMAT_VERSION, value: Math.max(0, total - current.size) });
+      }
+      if (await done && current && (!expected || current.generation === expected.generation)) this._cacheStats.indexedDbBytes = Math.max(0, total - current.size);
+    } catch { /* A corrupt optional entry remains a cache miss. */ }
   },
 
   _getLocalStorageEntries() {
@@ -251,18 +332,18 @@ const fileProviderStorageMethods = {
 
   _getLocalStorageUsage() {
     return this._getLocalStorageEntries()
-      .reduce((total, entry) => total + (entry.value ? String(entry.value).length * 2 : 0), 0);
+      .reduce((total, entry) => total + (entry.key.length + String(entry.value || '').length) * 2, 0);
   },
 
   _updateLocalStorageStats() {
     this._cacheStats.localStorageBytes = this._getLocalStorageUsage();
   },
 
-  _serializeLocalStorageEntry(entry) {
+  _serializeLocalStorageEntry(entry, key = '') {
     const next = { ...entry, lastAccess: entry.lastAccess || Date.now() };
     next.size = 0;
     let json = JSON.stringify(next);
-    while (next.size !== json.length * 2) { next.size = json.length * 2; json = JSON.stringify(next); }
+    while (next.size !== (json.length + key.length) * 2) { next.size = (json.length + key.length) * 2; json = JSON.stringify(next); }
     return { entry: next, json };
   },
 
@@ -284,7 +365,7 @@ const fileProviderStorageMethods = {
     const parsed = [];
     for (const entry of entries) {
       const raw = entry.value;
-      total += raw ? String(raw).length * 2 : 0;
+      total += (entry.key.length + String(raw || '').length) * 2;
       let parsedEntry = null;
       try {
         parsedEntry = raw ? JSON.parse(raw) : null;
@@ -294,7 +375,7 @@ const fileProviderStorageMethods = {
       parsed.push({
         key: entry.key,
         lastAccess: parsedEntry?.lastAccess || 0,
-        size: raw ? String(raw).length * 2 : 0
+        size: (entry.key.length + String(raw || '').length) * 2
       });
     }
     const target = Math.max(0, LOCAL_STORAGE_MAX_BYTES - requiredBytes);
@@ -323,9 +404,9 @@ const fileProviderStorageMethods = {
       const item = storage.getItem(this._localStorageKey(url));
       if (!item) return null;
       const entry = JSON.parse(item);
-      if (entry.type !== type) return null;
+      if (entry.formatVersion !== CACHE_FORMAT_VERSION || entry.type !== type || typeof entry.data !== 'string') return null;
+      if (entry.hash != null && !/^[a-f0-9]{64}$/i.test(entry.hash)) return null;
 
-      this._scheduleCacheValidation(url, entry);
 
       let value;
       if (type === 'binary') {
@@ -343,21 +424,25 @@ const fileProviderStorageMethods = {
   },
 
   _storeInLocalStorage(url, entry) {
-    if (!this._getLocalStorage()) return false;
     try {
-      const stored = { ...entry };
-      if (stored.type === 'binary' && stored.data instanceof ArrayBuffer) {
+      if (!this._getLocalStorage()) return false;
+      const byteLength = entry.data?.byteLength;
+      if (entry.type === 'binary' && Number.isFinite(byteLength) && Math.ceil(byteLength / 3) * 8 > LOCAL_STORAGE_MAX_BYTES ||
+          entry.type === 'text' && typeof entry.data === 'string' && entry.data.length * 2 > LOCAL_STORAGE_MAX_BYTES) return false;
+      const stored = { ...entry, formatVersion: CACHE_FORMAT_VERSION, generation: entry.hash || `${Date.now()}:${++this._nextRequestId}`, fetchedAt: Date.now() };
+      if (stored.type === 'binary' && (stored.data instanceof ArrayBuffer || ArrayBuffer.isView(stored.data))) {
         stored.data = this._arrayBufferToBase64(stored.data);
       }
       stored.lastAccess = Date.now();
-      const serialized = this._serializeLocalStorageEntry(stored);
       const key = this._localStorageKey(url);
+      const serialized = this._serializeLocalStorageEntry(stored, key);
       const previous = this._getLocalStorage()?.getItem?.(key);
-      const previousSize = previous ? String(previous).length * 2 : 0;
-      const required = serialized.json.length * 2;
+      const previousSize = previous == null ? 0 : (key.length + String(previous).length) * 2;
+      const required = (key.length + serialized.json.length) * 2;
       if (required > LOCAL_STORAGE_MAX_BYTES) return false;
       if (this._getLocalStorageUsage() - previousSize + required > LOCAL_STORAGE_MAX_BYTES) this._evictLocalStorage(required);
-      if (this._getLocalStorageUsage() - (this._getLocalStorage()?.getItem?.(key)?.length || 0) * 2 + required > LOCAL_STORAGE_MAX_BYTES) return false;
+      const retained = this._getLocalStorage()?.getItem?.(key);
+      if (this._getLocalStorageUsage() - (retained == null ? 0 : (key.length + retained.length) * 2) + required > LOCAL_STORAGE_MAX_BYTES) return false;
       if (!this._setLocalStorageItem(key, serialized.json)) {
         this._evictLocalStorage(required);
         if (!this._setLocalStorageItem(key, serialized.json)) {
@@ -367,7 +452,7 @@ const fileProviderStorageMethods = {
       this._updateLocalStorageStats();
       return true;
     } catch (e) {
-      this.log.log('cache write error', e);
+      this.log.log('cache write error', { name: e?.name || 'Error' });
       return false;
     }
   }

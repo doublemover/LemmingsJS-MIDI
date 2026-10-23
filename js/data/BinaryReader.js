@@ -22,6 +22,8 @@ class BinaryReader extends BaseLogger {
   /** @type {number} Current absolute position (relative to #data) */
   #pos;
 
+  #readyPromise;
+
   /** @type {string} File name (for logging/debug) */
   filename;
 
@@ -57,7 +59,7 @@ class BinaryReader extends BaseLogger {
      * For synchronous sources it resolves immediately with the data array.
      * @type {Promise<Uint8Array>}
      */
-    this.ready = Promise.resolve();
+    this.#readyPromise = Promise.resolve();
 
     // Set initial offsets to allow property access before async load
     this.#hiddenOffset = offset;
@@ -87,7 +89,7 @@ class BinaryReader extends BaseLogger {
       this.#data = new Uint8Array(0);
       dataLength = 0;
       this.log.log('BinaryReader from Blob; reading asynchronously');
-      this.ready = (async () => {
+      this.#readyPromise = (async () => {
         let buf;
         if (typeof dataArray.arrayBuffer === 'function') {
           buf = await dataArray.arrayBuffer();
@@ -107,10 +109,9 @@ class BinaryReader extends BaseLogger {
         this.#hiddenOffset = offset;
         this.#length = length;
         this.#pos = this.#hiddenOffset;
-        return this.#data;
       })();
       // constructor returns immediately; callers should await this.ready
-      this.ready.catch(() => {}); // avoid unhandled rejection
+      this.#readyPromise.catch(() => {}); // avoid unhandled rejection
       return;
     } else {
       // Generic object: treat as array-like
@@ -123,12 +124,20 @@ class BinaryReader extends BaseLogger {
     this.#hiddenOffset = baseHiddenOffset + offset;
     this.#length = Math.max(0, Math.min(length, dataLength - offset));
     this.#pos = this.#hiddenOffset;
-    this.ready = Promise.resolve(this.#data);
+  }
+
+  get ready() {
+    return this.#readyPromise.then(() => this.#data.slice());
   }
 
   /** @returns {Uint8Array} Independent copy of the backing bytes. */
   get data() {
     return this.#data.slice();
+  }
+
+  /** Return an owned copy of this reader's logical window. */
+  copyBytes() {
+    return this.#data.slice(this.#hiddenOffset, this.#hiddenOffset + this.#length);
   }
 
   /** @returns {number} Logical start offset */
