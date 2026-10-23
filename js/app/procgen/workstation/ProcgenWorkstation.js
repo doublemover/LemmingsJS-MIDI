@@ -11,7 +11,7 @@ import { createProcgenSession, validateProcgenSession, createProcgenSessionStora
 import { createProcgenPhysicalScoreClock } from './ProcgenPhysicalScoreClock.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 import { resolveProcgenStartupIntent } from './ProcgenStartupIntent.js';
-import { requestBrowserDownload } from '../../export/BrowserDownload.js';
+import { deliverArtifactToAnchor, deliverArtifactToFileHandle, prepareExportArtifact, requestExportFileHandle } from '../../export/ExportArtifact.js';
 
 const STORAGE_KEY = 'lemmings.procgen.workstation.v1';
 const MAX_SESSION_FILE_BYTES = 64 * 1048576;
@@ -475,7 +475,23 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       return snapshotSession(name);
     } finally { if (resume && wasPlaying) play(); }
   };
-  const download = (bytes, filename, type) => requestBrowserDownload({ document, windowRef: window, bytes, filename, mediaType: type });
+  let preparedExport = null, lastDelivery = null, activeExportAbort = null;
+  const publishExportState = () => view?.exportState?.(preparedExport?.metadata() || null, lastDelivery);
+  const prepareDownload = ({ bytes, filename, type, sourceRef, formatVersion, lossRef = null }) => {
+    const artifact = prepareExportArtifact({ bytes, immutableSourceRef: sourceRef, formatVersion,
+      mediaType: type, suggestedFilename: filename, coverageLossReportRef: lossRef });
+    preparedExport?.discard(); preparedExport = artifact; lastDelivery = null; publishExportState();
+    artifact.digest().then(() => { if (preparedExport === artifact && !disposed) publishExportState(); });
+    return artifact;
+  };
+  const deliverPrepared = () => {
+    if (!preparedExport) return null;
+    lastDelivery = deliverArtifactToAnchor(preparedExport, { document, windowRef: window });
+    if (lastDelivery.errorKind === 'artifact-expired') { preparedExport.discard(); status('Prepared file expired. Export again.'); }
+    else if (lastDelivery.state === 'failed') status('File is prepared, but the browser download request failed. Use Retry file.');
+    publishExportState();
+    return lastDelivery;
+  };
   const safe = fn => async (...args) => { try { return await fn(...args); } catch (error) { status(error?.message || String(error)); return false; } };
   async function loadSession(value, admittedLease = null) {
     if (disposed || (admittedLease && !ownsOperation(admittedLease))) return false;
@@ -682,8 +698,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (!ownsOperation(lease)) return false;
       return loadSession(session, lease);
     }),
-    export: safe(async () => { const session = capture(); download(JSON.stringify(session), savedName.replace(/[^a-z0-9_-]+/gi, '-') + '.procgen.json', 'application/json'); status('Project download requested. Check your browser downloads.'); }),
-    exportMidi() {
+    export: safe(async () => { const session = capture(); prepareDownload({ bytes: JSON.stringify(session),
+      filename: savedName.replace(/[^a-z0-9_-]+/gi, '-') + '.procgen.json', type: 'application/json',
+      sourceRef: `project:${documentId}:${editRevision}:${session.world?.tickIndex ?? 'unknown'}`, formatVersion: 'procgen-session/v1' });
+    if (deliverPrepared()?.state === 'delivery-requested') status('Project download requested. Check your browser downloads. Retry file uses the same prepared project.'); }),
+    exportMidi: safe(() => {
       const state = ports.getState();
       const submitted = ports.getRecording({ direction: 'output', evidence: 'api-accepted' });
       const hasSubmitted = submitted.some(event => event.direction === 'output');
@@ -696,13 +715,62 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         retainedRange: state.retainedRange, firstLostSequence: state.firstLostSequence,
         droppedRecords: state.droppedRecords, droppedCategories: state.droppedCategories,
         omittedOnsets: balanced.omittedOnsets, omittedReleases: balanced.omittedReleases };
-      download(exportProcgenMidi(balanced.events, { bpm: transport.getState().bpm,
+      prepareDownload({ bytes: exportProcgenMidi(balanced.events, { bpm: transport.getState().bpm,
         beatsPerBar: project.transport?.timeSignature?.beats, beatUnit: project.transport?.timeSignature?.unit, manifest }),
-      complete ? 'procgen-performance.mid' : 'procgen-performance-partial.mid', 'audio/midi');
+      filename: complete ? 'procgen-performance.mid' : 'procgen-performance-partial.mid', type: 'audio/midi',
+      sourceRef: `recording:${documentId}:${state.retainedRange.firstSequence ?? 0}:${state.retainedRange.lastSequence ?? 0}`,
+      formatVersion: 'smf1/v1', lossRef: 'embedded-midi-manifest' });
+      if (deliverPrepared()?.state !== 'delivery-requested') return;
       const source = hasSubmitted ? 'submitted output' : 'rendered preview intent';
       const reasons = state.incompleteReasons.length ? state.incompleteReasons.join(', ') : reason;
       status(complete ? `Recorded ${source} download requested. Check your browser downloads.` :
         `Partial ${source} download requested: ${reasons}; ${balanced.omittedOnsets} unmatched onset(s) omitted.`);
+    }),
+    retryExport() {
+      const receipt = deliverPrepared();
+      if (!receipt) { status('No prepared file is available to retry.'); return null; }
+      if (receipt.state === 'delivery-requested') status('Prepared file download requested again. Check your browser downloads.');
+      return receipt;
+    },
+    discardExport() {
+      if (!preparedExport) return false;
+      preparedExport.discard(); preparedExport = null; lastDelivery = null;
+      publishExportState(); status('Prepared file discarded. The source project is unchanged.'); return true;
+    },
+    cancelExportDelivery() {
+      if (!activeExportAbort) return false;
+      activeExportAbort.abort(); status('Canceling file delivery. The prepared file remains ready.'); return true;
+    },
+    async savePreparedExport() {
+      if (!preparedExport) { status('Prepare a project or MIDI export first.'); return null; }
+      if (activeExportAbort) { status('A file delivery is already in progress.'); return null; }
+      const artifact = preparedExport;
+      const selected = await requestExportFileHandle(artifact, { windowRef: window });
+      if (disposed || preparedExport !== artifact) return Object.freeze({ deliveryId: null, artifactId: artifact.artifactId,
+        sinkKind: 'file-picker', state: 'canceled', bytesWritten: 0, errorKind: 'source-replaced', evidence: 'artifact-retired-before-delivery' });
+      if (selected.state !== 'selected') {
+        if (selected.errorKind === 'artifact-expired') artifact.discard();
+        lastDelivery = Object.freeze({ deliveryId: null, artifactId: artifact.artifactId, sinkKind: 'file-picker',
+          state: selected.state, bytesWritten: 0, errorKind: selected.errorKind, evidence: 'picker-result' });
+        status(selected.state === 'canceled' ? 'File picker canceled. The prepared file remains ready.' :
+          `Save file unavailable: ${selected.errorKind}. The prepared file remains ready.`);
+        publishExportState();
+        return lastDelivery;
+      }
+      const controller = new AbortController(); activeExportAbort = controller;
+      lastDelivery = Object.freeze({ deliveryId: null, artifactId: artifact.artifactId, sinkKind: 'file-handle',
+        state: 'writing', bytesWritten: 0, errorKind: null, evidence: 'delivery-in-progress' });
+      publishExportState();
+      let delivery;
+      try { delivery = await deliverArtifactToFileHandle(artifact, selected.handle, { signal: controller.signal }); }
+      finally { if (activeExportAbort === controller) activeExportAbort = null; }
+      if (!disposed && preparedExport === artifact) {
+        lastDelivery = delivery;
+        status(delivery.state === 'close-acknowledged' ? 'File stream closed successfully. Verify the saved file before relying on it.' :
+          `File delivery ${delivery.state}: ${delivery.errorKind}. The prepared file remains ready.`);
+        publishExportState();
+      }
+      return delivery;
     },
     new: safe(() => rebuild({ seed: freshProcgenSeed(window.crypto, project.procgen.seed), fresh: true })),
     reroll: safe(() => rebuild({ seed: freshProcgenSeed(window.crypto, project.procgen.seed) })),
@@ -746,6 +814,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   listeners.push(() => window.WebMidi?.removeListener?.('connected', connected));
   prepareSettings(); setLegacyProject(project, { persist: false }); legacy.setSpeed(transport.getState().gameSpeed); lastLegacySpeed = legacy.settings.speed; view.render(); view.transport(transport.getState()); storageStatus();
   return { getProject: () => project, getInputEditLease: () => inputLease && Object.freeze({ ...inputLease }),
+    getExportState: () => Object.freeze({ artifact: preparedExport?.metadata() || null, delivery: lastDelivery }),
     getDocumentState: () => Object.freeze({ id: documentId, revision: documentRevision, editRevision, savedRevision,
       dirty: editRevision !== savedRevision, savedAt: lastSavedAt }),
     getRecoveryState: () => Object.freeze({ state: recoveryState, pendingRevision: editRevision, durableRevision: durableRecoveryRevision,
@@ -768,6 +837,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'operation', run: () => operation?.controller.abort() },
         { name: 'recovery-timer', run: () => { if (timer != null) window.clearTimeout?.(timer); } },
         { name: 'persist-timer', run: () => { if (pendingPersist != null) window.clearTimeout?.(pendingPersist); } },
+        { name: 'prepared-export', run: () => { activeExportAbort?.abort(); preparedExport?.discard(); } },
         { name: 'router-hook', run: () => unhookRouter?.() },
         { name: 'world-hook', run: () => unhookWorld?.() },
         { name: 'transport', run: () => transport.dispose()?.completion },

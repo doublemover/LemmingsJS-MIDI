@@ -15,7 +15,7 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
   let time = 0, paused = false, enabled = false;
   const elements = new Map(['procgenPause', 'procgenPanic', 'procgenSpeed', 'procgenSpeedUp', 'procgenSpeedDown', 'procgenSpeedReadout'].map(id => [id, target()]));
   const document = { ...target(), getElementById: id => elements.get(id) || null };
-  const values = new Map(), stored = new Map(), calls = [], positions = [], statuses = [], storageReceipts = [], restarts = [], captures = [];
+  const values = new Map(), stored = new Map(), calls = [], positions = [], statuses = [], storageReceipts = [], exportStates = [], restarts = [], captures = [];
   if (persisted) values.set('lemmings.procgen.workstation.v1', JSON.stringify(persisted));
   const window = { ...target(), ...windowTimers, WebMidi: webMidi, location: { search }, performance: { now: () => time }, localStorage: { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value) },
     crypto: { getRandomValues(value) { value[0] = 91; } }, prompt: () => 'Test song' };
@@ -33,7 +33,8 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
     setPaused(value) { paused = value; }, isPaused: () => paused, setSpeed(value) { this.settings.speed = value; },
     local: { getState: () => ({ enabled, selectedBackend: backend, outputId }) } };
   let viewProps;
-  const view = { render() {}, renderInspector() {}, transport() {}, recording() {}, status: value => statuses.push(value), storage: value => storageReceipts.push(value), showProjects() {}, dispose() { this.disposed = true; } };
+  const view = { render() {}, renderInspector() {}, transport() {}, recording() {}, status: value => statuses.push(value), storage: value => storageReceipts.push(value),
+    exportState: (artifact, delivery) => exportStates.push({ artifact, delivery }), showProjects() {}, dispose() { this.disposed = true; } };
   let rejectSave = false, saveCalls = 0;
   const storage = storageOverride || { async save(id, session) { saveCalls++; if (rejectSave) throw new Error('Storage unavailable'); stored.set(id, session); }, async load(id) { return stored.get(id); }, async list() { return [...stored.keys()].map(id => ({ id })); }, close() {} };
   let rejectRestart = false, returnFalseRestart = false, restartGate = null;
@@ -43,12 +44,98 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
     captureCheckpoint: world => { captures.push(world); return { version: 1, laneCount: world.laneCount, seed: world.seed, clock: { ...world.timer } }; },
     transportOptions: { driver: { start() {}, stop() {} }, lookaheadMs }, historyBytesLimit
   });
-  return { studio, legacy, view, storage, calls, positions, statuses, storageReceipts, restarts, stored, captures, elements, window, get runtime() { return runtime; }, get viewProps() { return viewProps; }, get saveCalls() { return saveCalls; },
+  return { studio, legacy, view, storage, calls, positions, statuses, storageReceipts, exportStates, restarts, stored, captures, elements, document, window, get runtime() { return runtime; }, get viewProps() { return viewProps; }, get saveCalls() { return saveCalls; },
     enable() { enabled = true; }, time(value) { time = value; studio.transport.pump(); }, failRestart() { rejectRestart = true; }, cancelRestart() { returnFalseRestart = true; }, failSave() { rejectSave = true; },
     holdRestart() { let release; restartGate = new Promise(resolve => { release = resolve; }); return release; }, failCamera() { throwCamera = true; } };
 }
 
 describe('ProcGen workstation orchestration', () => {
+  it('retries the same prepared MIDI bytes after an anchor request fails', async () => {
+    const f = setup(), blobs = [], calls = [], timers = [];
+    let failClick = true;
+    f.document.body = { append() { calls.push('append'); } };
+    f.document.createElement = () => ({ click() { calls.push('click'); if (failClick) throw new Error('blocked'); }, remove() { calls.push('remove'); } });
+    f.window.Blob = Blob;
+    f.window.URL = { createObjectURL(blob) { blobs.push(blob); return `blob:fixture-${blobs.length}`; }, revokeObjectURL() { calls.push('revoke'); } };
+    f.window.setTimeout = callback => { timers.push(callback); return timers.length; };
+    await f.studio.handlers.exportMidi();
+    const prepared = f.studio.getExportState();
+    expect(prepared.artifact).to.include({ retained: true, activeLeases: 0 });
+    expect(prepared.delivery.state).to.equal('failed');
+    expect(calls.at(-1)).to.equal('revoke');
+    failClick = false;
+    const retried = f.studio.handlers.retryExport();
+    expect(retried).to.include({ artifactId: prepared.artifact.artifactId, state: 'delivery-requested' });
+    expect(new Uint8Array(await blobs[0].arrayBuffer())).to.deep.equal(new Uint8Array(await blobs[1].arrayBuffer()));
+    let pickerCalls = 0, written = 0, closed = false;
+    f.window.showSaveFilePicker = () => { pickerCalls++; return Promise.resolve({ createWritable() { return Promise.resolve({
+      write(chunk) { written += chunk.byteLength; }, close() { closed = true; }, abort() {}
+    }); } }); };
+    const saving = f.studio.handlers.savePreparedExport();
+    expect(pickerCalls).to.equal(1);
+    const saved = await saving;
+    expect(saved).to.include({ artifactId: prepared.artifact.artifactId, state: 'close-acknowledged' });
+    expect(written).to.equal(prepared.artifact.byteLength); expect(closed).to.equal(true);
+    timers.at(-1)();
+    const retired = f.studio.dispose(); await retired.completion;
+    expect(f.studio.getExportState().artifact.retained).to.equal(false);
+  });
+  it('never writes a newer artifact to a picker opened for an older export', async () => {
+    const f = setup(); let resolvePicker, opened = 0;
+    f.document.body = { append() {} };
+    f.document.createElement = () => ({ click() {}, remove() {} });
+    f.window.URL = { createObjectURL() { return 'blob:fixture'; }, revokeObjectURL() {} };
+    f.window.setTimeout = () => 1;
+    await f.studio.handlers.exportMidi();
+    const originalId = f.studio.getExportState().artifact.artifactId;
+    f.window.showSaveFilePicker = () => new Promise(resolve => { resolvePicker = resolve; });
+    const saving = f.studio.handlers.savePreparedExport();
+    await f.studio.handlers.exportMidi();
+    expect(f.studio.getExportState().artifact.artifactId).not.to.equal(originalId);
+    resolvePicker({ createWritable() { opened++; return Promise.resolve({ write() {}, close() {} }); } });
+    expect(await saving).to.include({ state: 'canceled', errorKind: 'source-replaced' });
+    expect(opened).to.equal(0);
+    await f.studio.dispose().completion;
+  });
+  it('shows source and delivery receipts separately and discards only prepared bytes', async () => {
+    const f = setup(), before = f.studio.getProject();
+    f.document.body = { append() {} };
+    f.document.createElement = () => ({ click() {}, remove() {} });
+    f.window.URL = { createObjectURL() { return 'blob:fixture'; }, revokeObjectURL() {} };
+    f.window.setTimeout = () => 1;
+    await f.studio.handlers.exportMidi();
+    const shown = f.exportStates.at(-1);
+    expect(shown.artifact).to.include({ retained: true, formatVersion: 'smf1/v1' });
+    expect(shown.delivery).to.include({ state: 'delivery-requested', sinkKind: 'anchor' });
+    expect(f.studio.handlers.discardExport()).to.equal(true);
+    expect(f.studio.getExportState()).to.include({ artifact: null, delivery: null });
+    expect(f.exportStates.at(-1)).to.deep.equal({ artifact: null, delivery: null });
+    expect(f.studio.getProject()).to.equal(before);
+    await f.studio.dispose().completion;
+  });
+  it('cancels a file write while retaining the prepared artifact for another delivery', async () => {
+    const f = setup();
+    f.document.body = { append() {} };
+    f.document.createElement = () => ({ click() {}, remove() {} });
+    f.window.URL = { createObjectURL() { return 'blob:fixture'; }, revokeObjectURL() {} };
+    f.window.setTimeout = () => 1;
+    await f.studio.handlers.exportMidi();
+    const originalId = f.studio.getExportState().artifact.artifactId;
+    let started, aborted = 0;
+    const writing = new Promise(resolve => { started = resolve; });
+    f.window.showSaveFilePicker = () => Promise.resolve({ createWritable() { return Promise.resolve({
+      write() { started(); return new Promise(() => {}); }, close() {}, abort() { aborted++; }
+    }); } });
+    const pending = f.studio.handlers.savePreparedExport();
+    await writing;
+    expect(f.studio.getExportState().delivery.state).to.equal('writing');
+    expect(f.studio.handlers.cancelExportDelivery()).to.equal(true);
+    expect(await pending).to.include({ state: 'canceled', artifactId: originalId });
+    expect(aborted).to.equal(1);
+    expect(f.studio.getExportState().artifact).to.include({ artifactId: originalId, retained: true, activeLeases: 0 });
+    expect(f.studio.handlers.retryExport()).to.include({ artifactId: originalId, state: 'delivery-requested' });
+    await f.studio.dispose().completion;
+  });
   it('schedules recovery after paused edits and reports the durable revision', async () => {
     const timers = [], f = setup({ windowTimers: {
       setTimeout(callback) { timers.push(callback); return timers.length; },

@@ -95,9 +95,17 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
   footer.append(button('+ Lane', () => handlers.addLane?.()), button('− Lane', () => handlers.removeLane?.()), button('Duplicate', () => handlers.duplicate?.()), button('Clear', () => handlers.clear?.()), tool,
     button('Copy', () => handlers.copy?.()), button('Paste', () => handlers.paste?.()), button('Undo', () => handlers.undo?.()), button('Redo', () => handlers.redo?.()));
   const records = button('● Record', () => handlers.record?.(!state.recording), 'Record MIDI input into the selected phrase'); records.id = 'studioRecord';
+  const exportDesk = node('details', null, 'studio-export-desk'); exportDesk.setAttribute('aria-label', 'Prepared export');
+  const exportSummary = node('summary', 'No prepared file');
+  const exportDetails = node('output', 'Choose Export or MIDI to prepare a file.', 'studio-export-details');
+  const retryExport = button('Retry file', () => handlers.retryExport?.(), 'Request the same prepared file again'); retryExport.disabled = true;
+  const savePrepared = button('Save file', () => handlers.savePreparedExport?.(), 'Stream the prepared file to a selected destination'); savePrepared.disabled = true;
+  const cancelDelivery = button('Cancel delivery', () => handlers.cancelExportDelivery?.(), 'Stop the current file write but keep the prepared file'); cancelDelivery.disabled = true;
+  const discardPrepared = button('Discard file', () => handlers.discardExport?.(), 'Release the prepared file without changing the project'); discardPrepared.disabled = true;
+  exportDesk.append(exportSummary, exportDetails, retryExport, savePrepared, cancelDelivery, discardPrepared);
   footer.append(records, status, storageStatus, recoveryStatus, button('Save', () => handlers.save?.()), button('Save As', () => handlers.saveAs?.()),
     button('Rename', () => handlers.rename?.()), button('Load', () => handlers.load?.()), button('New', () => handlers.new?.()),
-    button('Export', () => handlers.export?.()), button('MIDI', () => handlers.exportMidi?.()));
+    button('Export', () => handlers.export?.()), button('MIDI', () => handlers.exportMidi?.()), exportDesk);
   const importInput = input('', () => {}, { type: 'file' }); importInput.accept = '.json,.procgen'; importInput.hidden = true; footer.append(importInput);
   on(importInput, 'change', () => { if (importInput.files?.[0]) handlers.import?.(importInput.files[0]); importInput.value = ''; });
   footer.append(button('Import', () => importInput.click()));
@@ -405,6 +413,17 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
     else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); const length = selected().patterns[state.slot].length; state.step = (state.step + (event.key === 'ArrowLeft' ? length - 1 : 1)) % length; state.tab = 'Step'; render(); }
   });
   return { render, patchStep, layout, renderInspector: render, showProjects, showProjectPage, status: text => { status.textContent = text; },
+    exportState(artifact, delivery) {
+      const ready = !!artifact?.retained && Date.now() < artifact.expiresAt;
+      const writing = delivery?.state === 'writing';
+      retryExport.disabled = !ready; savePrepared.disabled = !ready || writing || typeof window.showSaveFilePicker !== 'function';
+      cancelDelivery.disabled = !writing; discardPrepared.disabled = !artifact?.retained;
+      exportSummary.textContent = artifact ? `${artifact.suggestedFilename} · ${artifact.byteLength.toLocaleString()} bytes${ready ? '' : ' · expired'}` : 'No prepared file';
+      exportDetails.textContent = artifact ? `Source ${artifact.immutableSourceRef} · ${artifact.formatVersion} · SHA-256 ${artifact.sha256 || artifact.digestState}` +
+        `${artifact.coverageLossReportRef ? ` · coverage ${artifact.coverageLossReportRef}` : ''} · Delivery ${delivery?.state || 'ready'}` :
+        'Choose Export or MIDI to prepare a file.';
+      if (artifact?.retained) exportDesk.open = true;
+    },
     storage({ dirty, savedAt, error, recovery }) {
       storageStatus.textContent = error ? 'Save failed · Export' : dirty ? 'Unsaved' : 'Saved';
       storageStatus.dataset.state = error ? 'error' : dirty ? 'dirty' : 'saved';

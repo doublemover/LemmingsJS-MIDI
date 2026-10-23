@@ -72,6 +72,14 @@ incomplete. A near-cap state appears on the Record control at 80% capacity.
 Project and MIDI export show “Download requested” after the browser anchor
 clicks. The app cannot tell whether the browser saved the file; check the
 browser's downloads before relying on a local copy.
+The footer's **Retry file** button requests the same prepared bytes again after
+an export. On browsers with a file picker, **Save file** streams those same
+bytes to the selected handle and reports when the writable stream closes. It
+does not prove physical disk durability. Neither action recaptures the world
+or changes the MIDI take. Preparing a
+new export replaces the previous one; closing the workstation discards it.
+Prepared browser exports have a 128 MiB staging limit and expire after ten
+minutes. A failed download request leaves the file ready to retry.
 Conflicting programs or controllers on a shared output/channel are reported.
 Panic clears queued output and releases active notes.
 

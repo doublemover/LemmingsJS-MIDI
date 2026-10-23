@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Retain bounded prepared ProcGen project and MIDI exports for exact retry, with separate anchor-request and writable-close delivery receipts.
 - Classify missing browser and Node pack resources consistently, keep seasonal fallback attempts and source provenance visible, verify optional pinned asset hashes, and make strict odd-table requirements explicit.
 
 - Add the ProcGen workstation with eight mixed tileset lanes, Strip/Overlay sequencing, role collections, inspectors, phrase editing, recording, automation and musical Undo.
