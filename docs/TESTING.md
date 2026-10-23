@@ -172,7 +172,11 @@ Remove-Item Env:\LEMMINGS_E2E_BASE_URL
 
 The service-worker smoke asserts same-origin scope instead of literal localhost,
 so the same spec should pass for localhost and non-localhost origins served by
-the configured HTTPS server.
+the configured HTTPS server. Disabled editor, ProcGen, test, and performance
+profiles skip registration without deleting existing workers. A page already
+controlled by this app's worker stays controlled until that owned registration
+is explicitly removed and the page reloads. Cache names include the app's
+deployment path; activation removes only older caches from that path.
 
 ## Visual capture smoke
 

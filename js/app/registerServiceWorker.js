@@ -3,8 +3,37 @@ import { getRuntimeDependency } from '../core/dependencies.js';
 import { DEFAULT_RUNTIME_PROFILE, normalizeRuntimeProfile } from '../core/runtimeProfiles.js';
 
 const DISABLED_PROFILES = new Set(['dev', 'editor', 'perf', 'e2e']);
-const DISABLED_CACHE_PREFIXES = Object.freeze(['lemmings-core-', 'lemmings-runtime-']);
 let activeServiceWorkerRuntime = null;
+
+const ownedWorkerUrls = location => {
+  try {
+    const page = new URL(location.href || `${location.protocol}//${location.host || location.hostname}${location.pathname || '/'}`);
+    const scope = new URL('./', page);
+    const script = new URL('service-worker.js', scope);
+    return { scope: scope.href, script: script.href, tag: encodeURIComponent(scope.pathname) };
+  } catch { return null; }
+};
+const isOwnedScript = (scriptURL, owner) => {
+  if (!scriptURL || !owner) return false;
+  try {
+    const url = new URL(scriptURL);
+    return url.origin + url.pathname === owner.script;
+  } catch { return false; }
+};
+const isOwnedRegistration = (registration, owner) => {
+  if (!owner || registration?.scope !== owner.scope) return false;
+  const workers = [registration.active, registration.waiting, registration.installing].filter(Boolean);
+  return workers.length > 0 && workers.every(worker => isOwnedScript(worker.scriptURL, owner));
+};
+const isOwnedCache = (key, owner) => {
+  if (!owner) return false;
+  const scoped = ['lemmings-core-', 'lemmings-runtime-'].some(prefix => {
+    const stem = `${prefix}${owner.tag}-v`;
+    return key.startsWith(stem) && /^[0-9]+$/.test(key.slice(stem.length));
+  });
+  const legacyRoot = /^lemmings-(?:core|runtime)-v[0-9]+$/;
+  return scoped || owner.tag === '%2F' && legacyRoot.test(key);
+};
 
 const isTruthyQueryValue = (value) => {
   if (value == null || value === '') return true;
@@ -49,8 +78,12 @@ const shouldBypassServiceWorker = ({
 
 const disableActiveServiceWorker = async (
   serviceWorker = null,
-  cacheStorage = getRuntimeDependency('caches', null)
+  cacheStorage = getRuntimeDependency('caches', null),
+  { location = getRuntimeDependency('location', null), shouldContinue = () => true, removeCaches = true } = {}
 ) => {
+  const owner = location && ownedWorkerUrls(location);
+  const result = { unregistered: 0, deletedCaches: 0, controlled: !!serviceWorker?.controller };
+  if (!owner) return result;
   if (serviceWorker) {
     const registrations = [];
     try {
@@ -68,24 +101,27 @@ const disableActiveServiceWorker = async (
       }
     }
     for (let i = 0; i < registrations.length; i += 1) {
+      if (!shouldContinue()) return result;
+      if (!isOwnedRegistration(registrations[i], owner)) continue;
       try {
-        await registrations[i]?.unregister?.();
+        if (await registrations[i]?.unregister?.()) result.unregistered++;
       } catch {
         /* ignored */
       }
     }
   }
 
-  if (cacheStorage?.keys && cacheStorage?.delete) {
+  if (removeCaches && cacheStorage?.keys && cacheStorage?.delete) {
     try {
       const cacheKeys = await cacheStorage.keys();
       for (let i = 0; i < cacheKeys.length; i += 1) {
+        if (!shouldContinue()) return result;
         const key = cacheKeys[i];
-        if (!DISABLED_CACHE_PREFIXES.some(prefix => String(key).startsWith(prefix))) {
+        if (!isOwnedCache(String(key), owner)) {
           continue;
         }
         try {
-          await cacheStorage.delete(key);
+          if (await cacheStorage.delete(key)) result.deletedCaches++;
         } catch {
           /* ignored */
         }
@@ -94,6 +130,7 @@ const disableActiveServiceWorker = async (
       /* ignored */
     }
   }
+  return result;
 };
 
 const registerServiceWorker = (options = {}) => {
@@ -103,7 +140,9 @@ const registerServiceWorker = (options = {}) => {
   const windowRef = options.window ?? getRuntimeDependency('window', null);
   const documentRef = options.document ?? getRuntimeDependency('document', null);
   const location = options.location ?? windowRef?.location ?? getRuntimeDependency('location', null);
+  const owner = location && ownedWorkerUrls(location);
   let disposed = false;
+  let mode = 'pending';
   const cleanup = [];
   let updateIntervalId = null;
   const addCleanup = (fn) => {
@@ -115,8 +154,20 @@ const registerServiceWorker = (options = {}) => {
     addCleanup(() => target.removeEventListener?.(eventName, handler, listenerOptions));
   };
   const runtime = {
+    getState: () => ({ mode, controlledByOwnedWorker: isOwnedScript(nav?.serviceWorker?.controller?.scriptURL, owner),
+      controlled: !!nav?.serviceWorker?.controller }),
+    async removeOwnedAndReload() {
+      if (disposed || !isOwnedScript(nav?.serviceWorker?.controller?.scriptURL, owner)) return false;
+      const result = await disableActiveServiceWorker(nav.serviceWorker, options.cacheStorage ?? getRuntimeDependency('caches', null),
+        { location, removeCaches: false, shouldContinue: () => !disposed && activeServiceWorkerRuntime === runtime });
+      if (disposed || !result.unregistered) return false;
+      mode = 'reload-pending';
+      windowRef?.location?.reload?.();
+      return true;
+    },
     dispose() {
       disposed = true;
+      mode = 'disposed';
       if (updateIntervalId != null) {
         windowRef?.clearInterval?.(updateIntervalId);
         updateIntervalId = null;
@@ -140,10 +191,7 @@ const registerServiceWorker = (options = {}) => {
   const onLoad = async () => {
     if (disposed) return;
     if (shouldBypassServiceWorker({ ...options, location })) {
-      await disableActiveServiceWorker(
-        serviceWorker,
-        options.cacheStorage ?? getRuntimeDependency('caches', null)
-      );
+      mode = serviceWorker.controller && isOwnedScript(serviceWorker.controller.scriptURL, owner) ? 'bypassed-controlled' : 'bypassed';
       return;
     }
 
@@ -156,6 +204,8 @@ const registerServiceWorker = (options = {}) => {
       });
       const workerUrl = appendRevisionParam('service-worker.js', revision);
       const registration = await serviceWorker.register(workerUrl, { updateViaCache: 'none' });
+      if (disposed) return;
+      mode = 'registered';
       let refreshing = false;
       const requestUpdate = () => registration.update?.().catch(() => {});
       const activateWaiting = () => {

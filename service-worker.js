@@ -1,6 +1,18 @@
-const CACHE_VERSION = 'v1';
-const CORE_CACHE = `lemmings-core-${CACHE_VERSION}`;
-const RUNTIME_CACHE = `lemmings-runtime-${CACHE_VERSION}`;
+const CACHE_VERSION = 1;
+const SCOPE_URL = new URL(self.registration.scope);
+const CACHE_SCOPE = encodeURIComponent(SCOPE_URL.pathname);
+const CORE_CACHE = `lemmings-core-${CACHE_SCOPE}-v${CACHE_VERSION}`;
+const RUNTIME_CACHE = `lemmings-runtime-${CACHE_SCOPE}-v${CACHE_VERSION}`;
+const obsoleteOwnedCache = key => {
+  for (const prefix of ['lemmings-core-', 'lemmings-runtime-']) {
+    const stem = `${prefix}${CACHE_SCOPE}-v`;
+    if (key.startsWith(stem)) {
+      const version = key.slice(stem.length);
+      return /^[0-9]+$/.test(version) && Number(version) < CACHE_VERSION;
+    }
+  }
+  return false;
+};
 const CORE_PATHS = [
   'index.html',
   'editor.html',
@@ -21,7 +33,7 @@ const CORE_PATHS = [
 const toUrl = (path) => new URL(path, self.registration.scope).toString();
 const CORE_ASSETS = CORE_PATHS.map(toUrl);
 
-const isSameOrigin = (url) => url.origin === self.location.origin;
+const isOwnedUrl = url => url.origin === self.location.origin && url.pathname.startsWith(SCOPE_URL.pathname);
 const isHtmlRequest = (request) => request.mode === 'navigate' ||
   (request.headers.get('accept') || '').includes('text/html');
 
@@ -82,12 +94,12 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
-    const keys = await caches.keys();
-    await Promise.all(
-      keys
-        .filter(key => ![CORE_CACHE, RUNTIME_CACHE].includes(key))
-        .map(key => caches.delete(key))
-    );
+    // A newer candidate may already be installing. Its versioned cache must
+    // survive activation of this worker, as must sibling applications' caches.
+    if (!self.registration.installing && !self.registration.waiting) {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter(obsoleteOwnedCache).map(key => caches.delete(key)));
+    }
     await self.clients.claim();
   })());
 });
@@ -96,7 +108,7 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
-  if (!isSameOrigin(url)) return;
+  if (!isOwnedUrl(url)) return;
 
   if (isHtmlRequest(request)) {
     const fallbackPath = url.pathname.endsWith('/editor.html') ? 'editor.html' : 'index.html';
