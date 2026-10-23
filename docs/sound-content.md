@@ -117,3 +117,9 @@ variants. They contain no recordings. Their redistribution terms remain
 `NOASSERTION`; compilation supplies no legal permission or listening verdict.
 Audition manifests explicitly require a real causal take and effective render
 evidence. Compilation alone does not qualify advanced sound families or DSP.
+
+Browser recipe compilation uses the registered `compile-sound-content` job.
+The fixed worker resolves renderer descriptors from its own immutable executing
+catalog. Recipe data cannot provide an engine implementation or mint artifact
+authority. Existing shared admission, cancellation and bounded small-input
+fallback rules govern compilation and its retained result.

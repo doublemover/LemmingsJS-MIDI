@@ -1,7 +1,7 @@
 import { createResourceBudget } from './ResourceBudget.js';
 
 const priorities = Object.freeze({ interactive: 3, recovery: 2, background: 1 });
-const kinds = new Set(['parse-json', 'encode-json', 'encode-canonical-json', 'recovery-checksum', 'asset-decode', 'asset-hash', 'survey-replay', 'physical-search']);
+const kinds = new Set(['parse-json', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'asset-decode', 'asset-hash', 'survey-replay', 'physical-search']);
 const invalid = message => Object.assign(new Error(message), { name: 'BackgroundJobAdmissionError' });
 export function createBackgroundWorkerAdmission({ maxWorkers = 2, maxQueuedJobs = 32, maxQueuedInputBytes = 64 * 1048576,
   resourceBudget = createResourceBudget(), now = () => performance.now() } = {}) {
