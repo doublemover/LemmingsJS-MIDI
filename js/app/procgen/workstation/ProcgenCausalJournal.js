@@ -72,14 +72,17 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
   };
   const openWriter = initial => {
     let manifest = cloneJournalData(initial, { maxBytes: 8 * 1048576 }), pending = [], pendingBytes = 0, admittedSequence = initial.durableSequence;
-    let state = 'recording', draining = null, checkpointing = null, finishing = false, failure = null, rejectedRange = null;
+    let state = 'recording', draining = null, checkpointing = null, finishing = false, stopping = null, stopRequest = null, failure = null, rejectedRange = null;
+    const discardedRanges = [];
     const notify = () => { try { onState(status()); } catch { /* Inspection does not change recording admission. */ } };
     const status = () => freezeJournalData({ takeId: manifest.takeId, documentId: manifest.documentId, state,
       revision: manifest.revision, durableSequence: manifest.durableSequence, admittedSequence, pendingBytes,
       complete: state === 'finalized' && manifest.complete, failure: failure ? { code: failure.code || failure.name || 'storage', message: String(failure.message) } : null,
-      rejectedRange });
-    const fail = (error, detail = {}) => {
-      state = 'partial'; failure = error; rejectedRange ||= detail;
+      rejectedRange, recoveryRequired: state === 'recovery-required', captureStopped: finishing,
+      terminal: manifest.state !== 'recording', discardedRanges });
+    const fail = (error, detail = {}, permanent = false) => {
+      state = permanent ? 'partial' : 'recovery-required'; failure = error;
+      if (permanent) rejectedRange ||= detail;
       notify();
     };
     const appendMany = inputs => {
@@ -100,7 +103,7 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
         if (bytes > maxChunkBytes || pendingBytes + bytes > maxPendingBytes) throw journalError('capacity', 'Causal journal pending capacity reached.');
       } catch (error) {
         release?.();
-        fail(error, { firstSequence, tick: inputs[0]?.tick ?? null, generation: inputs[0]?.generation ?? null, reason: 'admission-failed' });
+        fail(error, { firstSequence, tick: inputs[0]?.tick ?? null, generation: inputs[0]?.generation ?? null, reason: 'admission-failed' }, true);
         return Object.freeze({ status: 'rejected', reason: error.code || 'unsupported-record', ...status() });
       }
       const group = { entries: prepared, bytes, release };
@@ -115,7 +118,8 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
         // Recover an acknowledged-by-storage commit when only its caller receipt
         // was lost. Never append the same sequence a second time.
         const latest = await storage.loadCausalTake(manifest.takeId).catch(() => null);
-        if (latest?.lastCommitId !== update.commitId) throw error;
+        if (latest?.lastCommitId !== update.commitId || latest.revision !== update.manifest.revision ||
+            latest.canonicalHash !== update.manifest.canonicalHash || latest.finalizationHash !== update.manifest.finalizationHash) throw error;
       }
       manifest = cloneJournalData(update.manifest, { maxBytes: 8 * 1048576 });
     };
@@ -148,27 +152,38 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
     const flush = () => {
       if (checkpointing) return checkpointing.then(() => flush());
       if (draining) return draining;
-      draining = drain().catch(error => { fail(error, { firstSequence: manifest.durableSequence + 1, reason: 'durability-failed' }); throw error; })
+      draining = drain().then(() => { if (!rejectedRange) { failure = null; state = finishing ? 'stopping' : 'recording'; } })
+        .catch(error => { fail(error); throw error; })
         .finally(() => { draining = null; });
       return draining;
     };
-    const stop = async ({ coverage = { status: 'complete', gaps: [] }, boundaryState = {}, reason = 'user-stop' } = {}) => {
-      if (state === 'finalized') return status();
+    const stop = ({ coverage = { status: 'complete', gaps: [] }, boundaryState = {}, reason = 'user-stop', finalCheckpoint = null } = {}) => {
+      if (manifest.state !== 'recording') return Promise.resolve(status());
+      if (stopping) return stopping;
       finishing = true;
-      try { await flush(); } catch { /* Finalize the verified durable prefix as partial when possible. */ }
-      const complete = !failure && state !== 'partial' && coverage.status === 'complete' && manifest.durableSequence === admittedSequence;
-      const next = { ...manifest, revision: manifest.revision + 1, state: complete ? 'finalized' : 'partial', complete,
-        admittedSequence, stopBoundaryState: cloneJournalData(boundaryState), stopReason: reason,
-        coverage: cloneJournalData({ ...coverage, status: complete ? 'complete' : 'partial',
-          gaps: [...(coverage.gaps || []), ...(rejectedRange ? [rejectedRange] : [])] }),
-        lastCommitId: `${manifest.takeId}:stop:${manifest.revision + 1}` };
-      next.finalizationHash = await hashJournalData(finalizationEvidence(next), { maxBytes: 8 * 1048576 });
-      try { await commit({ takeId: manifest.takeId, expectedRevision: manifest.revision, manifest: next, commitId: next.lastCommitId }); state = next.state; }
-      catch (error) { fail(error, rejectedRange || { firstSequence: manifest.durableSequence + 1, reason: 'finalization-failed' }); }
-      notify(); return status();
+      stopRequest ||= { coverage: cloneJournalData(coverage), boundaryState: cloneJournalData(boundaryState), reason, finalCheckpoint };
+      const finish = async () => {
+        try {
+          await flush();
+          if (stopRequest.finalCheckpoint && !discardedRanges.length) await checkpoint({ ...stopRequest.finalCheckpoint, finalBoundary: true });
+        } catch (error) { fail(error); return status(); }
+        if (pendingBytes) { fail(journalError('pending-durability', 'The stopped take still owns an undurable suffix.')); return status(); }
+        const complete = !rejectedRange && !discardedRanges.length && stopRequest.coverage.status === 'complete' && manifest.durableSequence === admittedSequence;
+        const next = { ...manifest, revision: manifest.revision + 1, state: complete ? 'finalized' : 'partial', complete,
+          admittedSequence, stopBoundaryState: stopRequest.boundaryState, stopReason: stopRequest.reason,
+          coverage: cloneJournalData({ ...stopRequest.coverage, status: complete ? 'complete' : 'partial',
+            gaps: [...(stopRequest.coverage.gaps || []), ...(rejectedRange ? [rejectedRange] : []), ...discardedRanges] }),
+          lastCommitId: `${manifest.takeId}:stop:${manifest.revision + 1}` };
+        next.finalizationHash = await hashJournalData(finalizationEvidence(next), { maxBytes: 8 * 1048576 });
+        try { await commit({ takeId: manifest.takeId, expectedRevision: manifest.revision, manifest: next, commitId: next.lastCommitId }); state = next.state; }
+        catch (error) { fail(error); }
+        notify(); return status();
+      };
+      stopping = finish().finally(() => { stopping = null; });
+      return stopping;
     };
-    const checkpoint = ({ value, tick, generation } = {}) => {
-      if (state !== 'recording' || finishing || checkpointing || !Number.isSafeInteger(tick) || tick < 0 || !Number.isSafeInteger(generation) || generation < 0) throw new Error('Invalid or busy causal checkpoint boundary.');
+    const checkpoint = ({ value, tick, generation, finalBoundary = false } = {}) => {
+      if (manifest.state !== 'recording' || finishing && !finalBoundary || checkpointing || !Number.isSafeInteger(tick) || tick < 0 || !Number.isSafeInteger(generation) || generation < 0) throw new Error('Invalid or busy causal checkpoint boundary.');
       const release = reserve(estimateJournalBytes(value, { maxBytes: 32 * 1048576, maxNodes: 4000000 }) * 4, generation);
       let canonical, checkpointBytes;
       try { const encoded = canonicalJournalText(value, { maxBytes: 32 * 1048576, maxNodes: 4000000 }); canonical = encoded.text; checkpointBytes = encoded.bytes.length; } catch (error) { release(); throw error; }
@@ -194,12 +209,23 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
     };
     const discardPending = ({ reason } = {}) => {
       if (!finishing || draining || checkpointing || !nameReason(reason)) throw new Error('Pending take data requires an explicit discard reason after completed stop.');
+      if (stopping) throw new Error('Wait for the finishing attempt before discarding its suffix.');
+      if (pending.length) {
+        let firstTick = Infinity, lastTick = -Infinity;
+        const generations = new Set();
+        for (const group of pending) for (const { record } of group.entries) {
+          firstTick = Math.min(firstTick, record.tick); lastTick = Math.max(lastTick, record.tick); generations.add(record.generation);
+        }
+        discardedRanges.push({ kind: 'all', firstSequence: pending[0].entries[0].record.sequence,
+          lastSequence: pending.at(-1).entries.at(-1).record.sequence, firstTick, lastTick,
+          generations: [...generations], reason, discarded: true });
+      }
       for (const group of pending) group.release();
-      pending = []; pendingBytes = 0; state = 'partial'; rejectedRange ||= { firstSequence: manifest.durableSequence + 1, reason };
+      pending = []; pendingBytes = 0; state = 'recovery-required';
       notify(); return status();
     };
     return { appendMany, append: input => appendMany([input]), flush, stop, status, checkpoint, discardPending,
-      manifest: () => manifest, canReplaceDocument: () => state === 'finalized' || state === 'partial' && !pendingBytes };
+      manifest: () => manifest, canReplaceDocument: () => manifest.state !== 'recording' && !pendingBytes };
   };
   const readChunk = async ref => {
     const chunk = await storage.loadCausalChunk(ref.id);

@@ -47,7 +47,7 @@ describe('durable causal take journal', function() {
     expect(budget.diagnostics().accountedBytes).to.equal(0);
     control.failNext = true; writer.append(marker(2));
     try { await writer.flush(); } catch { /* The live caller receives a partial status. */ }
-    expect(writer.status()).to.include({ state: 'partial', durableSequence: 1, admittedSequence: 2 });
+    expect(writer.status()).to.include({ state: 'recovery-required', durableSequence: 1, admittedSequence: 2 });
     expect(writer.canReplaceDocument()).to.equal(false);
     control.failNext = true;
     const stopped = await writer.stop();
@@ -56,7 +56,30 @@ describe('durable causal take journal', function() {
     expect(budget.diagnostics().accountedBytes).to.be.greaterThan(0);
     writer.discardPending({ reason: 'user-discarded-undurable-tail' });
     expect(budget.diagnostics().accountedBytes).to.equal(0);
+    expect(writer.canReplaceDocument()).to.equal(false);
+    await writer.stop();
+    expect((await journal.openTake('take:quota')).coverage.gaps).to.deep.include({ kind: 'all', firstSequence: 2,
+      lastSequence: 2, firstTick: 2, lastTick: 2, generations: [1], reason: 'user-discarded-undurable-tail', discarded: true });
     expect(writer.canReplaceDocument()).to.equal(true);
+  });
+
+  it('keeps a selectively failed chunk retryable without publishing a terminal manifest', async () => {
+    const store = createMemoryCausalStore(), commit = store.storage.commitCausalTake;
+    let rejectChunks = true, finalizations = 0;
+    store.storage.commitCausalTake = update => {
+      if (update.chunk && rejectChunks) return Promise.reject(Object.assign(new Error('full'), { name: 'QuotaExceededError' }));
+      if (update.manifest.state !== 'recording') finalizations++;
+      return commit(update);
+    };
+    const journal = createProcgenCausalJournal({ storage: store.storage }), writer = await journal.createTake(definition('take:retry'));
+    writer.append(marker(1)); await writer.flush().catch(() => {});
+    expect(await writer.stop()).to.include({ state: 'recovery-required', captureStopped: true, terminal: false });
+    expect(finalizations).to.equal(0); expect(store.manifests.get('take:retry').state).to.equal('recording');
+    rejectChunks = false;
+    const [first, duplicate] = await Promise.all([writer.stop(), writer.stop()]);
+    expect(first).to.deep.equal(duplicate); expect(first).to.include({ state: 'finalized', durableSequence: 1, pendingBytes: 0 });
+    expect(store.chunks.size).to.equal(1); expect(finalizations).to.equal(1);
+    expect((await journal.verify('take:retry')).status).to.equal('complete');
   });
 
   it('recovers a lost successful commit receipt without duplicating the source sequence', async () => {

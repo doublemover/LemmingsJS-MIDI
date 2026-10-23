@@ -111,7 +111,7 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
       if (!world._failedTick && !world._disposed) finalCheckpoint = session.snapshot();
       stopPromise = recorder.stop({ finalCheckpoint, boundaryState: boundary(), reason }).then(receipt => {
         phase = receipt.complete ? 'finalized' : 'partial'; return receipt;
-      });
+      }).finally(() => { if (!recorder.canReplaceDocument()) stopPromise = null; });
       return stopPromise;
     };
     const dispose = async ({ discardPendingReason = null } = {}) => {
@@ -120,6 +120,8 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
       if (!recorder.canReplaceDocument()) {
         if (!discardPendingReason) throw journalError('undurable-branch-tail', 'Keep the physical branch until its pending data is durable or explicitly discarded.');
         recorder.discardPending({ reason: discardPendingReason });
+        await stop({ reason: 'physical-branch-discarded-tail' });
+        if (!recorder.canReplaceDocument()) throw journalError('undurable-branch-finalization', 'The discarded branch prefix still needs a durable finalization receipt.');
       }
       disposed = true; phase = 'disposed'; world.soundEvents.onBatch.off(onBatch); session.dispose();
     };
@@ -130,7 +132,10 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
   } catch (error) {
     if (writer) {
       await writer.stop({ coverage: { status: 'partial', gaps: [{ kind: 'all', reason: 'branch-preparation-failed', firstTick: world.tickIndex, lastTick: world.tickIndex, generation: world.generation }] }, reason: 'branch-preparation-failed' }).catch(() => {});
-      if (!writer.canReplaceDocument()) writer.discardPending({ reason: 'preparation-failed-before-branch-activation' });
+      if (!writer.canReplaceDocument()) {
+        writer.discardPending({ reason: 'preparation-failed-before-branch-activation' });
+        await writer.stop().catch(() => {});
+      }
       error.provisionalTakeId = takeId;
     }
     session.dispose(); throw error;

@@ -35,7 +35,7 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
   const gaps = (prefixCoverage?.gaps || []).map(gap => ({ ...gap })), batches = new Set(), order = [];
   let firstTick = prefixCoverage?.sourceRange?.firstTick ?? null, lastTick = sourceCursor?.tick ?? null,
     lastGeneration = sourceCursor?.generation ?? null, nextGenerationBoundary = null, lastSequence = sourceCursor?.lastCausalSequence ?? -1,
-    worldId = sourceCursor?.worldId ?? null, stopped = false;
+    worldId = sourceCursor?.worldId ?? null, stopped = false, stopRequest = null;
   const addGap = gap => {
     const prior = gaps.at(-1);
     if (prior && prior.kind === gap.kind && prior.reason === gap.reason && prior.generation === gap.generation && prior.lastTick + 1 === gap.firstTick) prior.lastTick = gap.lastTick;
@@ -87,15 +87,13 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
   };
   const stop = async ({ boundaryState: finalBoundary = {}, finalCheckpoint = null, reason = 'user-stop' } = {}) => {
     stopped = true;
-    if (finalCheckpoint != null) {
-      try { await writer.checkpoint({ value: finalCheckpoint, tick: lastTick ?? 0, generation: lastGeneration ?? 0 }); }
-      catch (error) { addGap({ kind: 'all', firstTick: lastTick ?? 0, lastTick: lastTick ?? 0, generation: lastGeneration ?? 0,
-        reason: 'final-component-checkpoint-failed', detail: String(error.code || error.name || 'checkpoint') }); }
-    }
-    return writer.stop({ reason, boundaryState: finalBoundary, coverage: { status: gaps.some(gap => ['physical-facts', 'all'].includes(gap.kind)) ? 'partial' : 'complete',
-      sourceRange: { firstTick, lastTick, worldId }, available: { factKinds: profile.factKinds, descriptorKinds: profile.descriptorKinds,
-        stateKinds: [...observedStateKinds] }, observedFactKinds: [...observedFactKinds].sort(), intentKinds: [...intentKinds].sort(),
-      mappingRevisions: [...mappingRevisions], gaps } });
+    stopRequest ||= { reason, boundaryState: cloneJournalData(finalBoundary),
+      finalCheckpoint: finalCheckpoint == null ? null : { value: finalCheckpoint, tick: lastTick ?? 0, generation: lastGeneration ?? 0 },
+      coverage: { status: gaps.some(gap => ['physical-facts', 'all'].includes(gap.kind)) ? 'partial' : 'complete',
+        sourceRange: { firstTick, lastTick, worldId }, available: { factKinds: profile.factKinds, descriptorKinds: profile.descriptorKinds,
+          stateKinds: [...observedStateKinds] }, observedFactKinds: [...observedFactKinds].sort(), intentKinds: [...intentKinds].sort(),
+        mappingRevisions: [...mappingRevisions], gaps: cloneJournalData(gaps) } };
+    return writer.stop(stopRequest);
   };
   const recordMapping = (next, boundary) => {
     const validated = validateCausalInstrumentGraph(next);

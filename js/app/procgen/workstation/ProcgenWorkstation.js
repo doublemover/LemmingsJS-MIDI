@@ -448,7 +448,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       contactSpans: physical?.active?.filter(voice => voice.lifetimeScope === 'contactSpan') || [],
       timeline: physicalScoreClock.snapshot() };
   };
-  const causalTakeState = () => Object.freeze({ recording: !!causalTake,
+  const causalTakeState = () => Object.freeze({ recording: !!causalTake && !causalTake.status().captureStopped,
+    recovering: !!causalTake?.status().captureStopped && !causalTake.canReplaceDocument(),
     starting: !!causalTakeStart, stopping: !!causalTakeStop,
     active: causalTake?.status() || null, last: lastCausalTake, inspection: lastCausalInspection,
     selectedTakeId: selectedCausalTakeId, takePage: causalTakePage, takePageNumber: causalTakeBack.length + 1,
@@ -520,7 +521,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     try {
       const world = runtime()?.world;
       if (!world) throw new Error('The recorded world is no longer available.');
-      finalCheckpoint = { world: captureCheckpoint(world), engine: physicalPlayback?.engine.snapshot() || null,
+      if (!recorder.status().captureStopped) finalCheckpoint = { world: captureCheckpoint(world), engine: physicalPlayback?.engine.snapshot() || null,
         timeline: physicalScoreClock.snapshot(), replay: { version: 1, bpm: transport.getState().bpm, scoreTimeline: true } };
     } catch (error) {
       const world = runtime()?.world, tick = Number.isSafeInteger(world?.tickIndex) && world.tickIndex >= 0 ? world.tickIndex : 0;
@@ -533,13 +534,19 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       lastCausalTake = receipt;
       selectedCausalTakeId = receipt.takeId;
       physicalScoreAbort?.abort(); physicalScoreSerial++; physicalScore = physicalScoreQuery = physicalScoreParent = null;
-      if (!recorder.canReplaceDocument()) throw new Error('Causal take has an undurable tail. Retry finishing the take before replacing the world.');
+      if (!recorder.canReplaceDocument()) throw new Error('Causal take saving needs recovery. Retry saving, or explicitly discard the unsaved tail before replacing the world.');
       if (causalTake === recorder) causalTake = null;
       status(receipt.complete ? `Causal take ${receipt.takeId} saved.` :
         `Causal take ${receipt.takeId} saved as partial. Inspect its coverage before relying on it.`);
       return receipt;
     }).finally(() => { causalTakeStop = null; view?.renderInspector?.(); });
     return causalTakeStop;
+  };
+  const discardCausalTail = async () => {
+    if (!causalTake?.status().captureStopped || causalTakeStop) throw new Error('Finish the current saving attempt before discarding its unsaved tail.');
+    if (!window.confirm?.('Permanently discard the unsaved causal take tail? The saved prefix and exact omitted range will remain inspectable.')) return false;
+    causalTake.discardPending({ reason: 'performer-discarded-undurable-tail' });
+    return stopCausalTake({ reason: 'explicit-tail-discard' });
   };
   const startCausalTake = async ({ takeName = 'Untitled take' } = {}) => {
     if (causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the current causal take first.');
@@ -907,7 +914,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const handlers = {
     status, preferences: persist, presentationGeneration: () => documentGeneration,
     devices, engineState: () => engine.getState(), playhead: id => engine.getLanePosition?.(id),
-    causalTakeState, startCausalTake: safe(startCausalTake), stopCausalTake: safe(stopCausalTake), cancelCausalTakeArm,
+    causalTakeState, startCausalTake: safe(startCausalTake), stopCausalTake: safe(stopCausalTake), discardCausalTail: safe(discardCausalTail), cancelCausalTakeArm,
     markCausalTake: safe(markCausalTake), inspectLastCausalTake: safe(inspectLastCausalTake),
     prepareCausalArchive: safe(prepareCausalArchive), browseCausalTakes: safe(browseCausalTakes), selectCausalTake: safe(selectCausalTake),
     readPhysicalScore: safe(readPhysicalScore), inspectPhysicalScoreCause: safe(inspectPhysicalScoreCause),

@@ -263,11 +263,13 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
         labeled('Take name', input(state.takeNameDraft, takeName => {
           state.takeNameDraft = takeName.slice(0, 120); handlers.preferences?.();
         }, { type: 'text', max: 120 }), controls);
-        const toggle = button(take.starting ? 'Cancel arming' : take.recording ? 'Stop causal take' : 'Record causal take', () =>
-          take.starting ? handlers.cancelCausalTakeArm?.() : take.recording ? handlers.stopCausalTake?.() :
+        const toggle = button(take.starting ? 'Cancel arming' : take.recovering ? 'Retry saving take' : take.recording ? 'Stop causal take' : 'Record causal take', () =>
+          take.starting ? handlers.cancelCausalTakeArm?.() : take.recording || take.recovering ? handlers.stopCausalTake?.() :
             handlers.startCausalTake?.({ takeName: state.takeNameDraft }));
         toggle.disabled = take.stopping;
         controls.append(toggle);
+        if (take.recovering && !take.stopping) controls.append(button('Discard unsaved tail', () => handlers.discardCausalTail?.(),
+          'Confirm permanent loss of unsaved records and preserve a partial take with its exact omitted range'));
         if (take.recording) {
           labeled('Marker', input(state.takeMarkerDraft, label => { state.takeMarkerDraft = label.slice(0, 120); }, { type: 'text' }), controls);
           controls.append(button('Mark latest tick', () => handlers.markCausalTake?.(state.takeMarkerDraft),

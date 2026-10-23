@@ -190,3 +190,18 @@ and attaches a separate playback execution epoch and sound patch. It does not
 deliver anything. Portable archive encoding/import has its own admission and
 provenance checks; journal completeness never claims source mechanics or delivery
 evidence that were not observed.
+# Durability recovery
+
+Stopping capture freezes its final boundary and prevents new admission. A failed
+chunk, component checkpoint or finalization write leaves the durable manifest in
+`recording` and exposes `recovery-required` on its owning writer. Retry uses the
+same admitted immutable suffix and original stop boundary. Only a successful
+finalization transaction makes the take terminal and permits world replacement.
+
+The workstation offers Retry saving take and a separately confirmed Discard
+unsaved tail action. Discard records the exact omitted source sequence and tick
+range, releases its memory, and still requires a durable partial finalization.
+It does not reopen terminal takes. Branch disposal obeys the same rule. Regression
+fixtures include selective chunk failure with healthy manifest writes; runtime
+execution is deferred during this implementation pass.
+
