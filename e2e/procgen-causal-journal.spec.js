@@ -42,8 +42,8 @@ test('causal takes upgrade v3 project storage and reopen the exact durable prefi
   expect(result.receipt.complete).toBe(true);
   expect(result.verified.verifiedThroughSequence).toBe(100);
   expect(result.oldName).toBe('Existing v3 project');
-  expect(result.databaseState.version).toBe(4);
-  expect(result.databaseState.stores).toEqual(expect.arrayContaining(['sessions', 'projectMetadata', 'takeManifests', 'takeChunks', 'takeCheckpoints']));
+  expect(result.databaseState.version).toBe(5);
+  expect(result.databaseState.stores).toEqual(expect.arrayContaining(['sessions', 'projectMetadata', 'takeHeaders', 'takeHeads', 'takeSummaries', 'takeChunkIndex', 'takeCheckpointIndex', 'takeChunks', 'takeCheckpoints']));
   expect(result.ticks).toEqual([40, 41, 42]);
   expect(result.inspection).toEqual({ paused: true, recording: false, hardware: false, thru: false, physicalLayers: false });
 });
@@ -63,7 +63,7 @@ test('causal take CAS admits one concurrent writer and unfinished finalization r
     await Promise.allSettled([first.flush(), second.flush()]);
     const states = [first.status().state, second.status().state];
     const durable = await journal.query({ takeId: 'take:race' });
-    const failureStorage = { ...storage, commitCausalTake: args => args.manifest.state !== 'recording'
+    const failureStorage = { ...storage, commitCausalTake: args => (args.head || args.manifest).state !== 'recording'
       ? Promise.reject(new Error('Interrupted final flush')) : storage.commitCausalTake(args) };
     const unfinishedJournal = createProcgenCausalJournal({ storage: failureStorage });
     const unfinished = await unfinishedJournal.createTake({ ...definition, takeId: 'take:unfinished' });
@@ -77,7 +77,7 @@ test('causal take CAS admits one concurrent writer and unfinished finalization r
     return { states, durableRecords: durable.records.length, durableSequence: durable.records[0].sequence,
       stop, effectiveStatus: reopened.effectiveStatus, prefix, firstPage, secondPage };
   });
-  expect(result.states.sort()).toEqual(['partial', 'recording']);
+  expect(result.states.sort()).toEqual(['recording', 'recovery-required']);
   expect(result.durableRecords).toBe(1); expect(result.durableSequence).toBe(1);
   expect(result.stop.complete).toBe(false); expect(result.effectiveStatus).toBe('partial');
   expect(result.prefix.verifiedThroughSequence).toBe(1);

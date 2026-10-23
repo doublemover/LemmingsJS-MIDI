@@ -15,6 +15,30 @@ const setup = options => {
 
 describe('durable causal take journal', function() {
   this.timeout(15000);
+  it('publishes one new index reference per append with bounded compact metadata', async () => {
+    const { journal, control, storage } = setup({ maxChunkRecords: 1 });
+    const commit = storage.commitCausalTake, sizes = [];
+    storage.commitCausalTake = update => {
+      expect(update).not.to.have.property('manifest');
+      expect(update.head).not.to.have.any.keys('chunks', 'checkpoints', 'sourceVersions', 'mapping');
+      if (update.chunk) {
+        expect(update.header).to.equal(null);
+        sizes.push(canonicalJournalText({ head: update.head, chunkRef: update.chunkRef }).bytes.length);
+      }
+      return commit(update);
+    };
+    const writer = await journal.createTake(definition('take:incremental'));
+    for (let tick = 1; tick <= 200; tick++) { writer.append(marker(tick)); await writer.flush(); }
+    expect(control.indexReferences).to.equal(201);
+    expect(Math.max(...sizes) - Math.min(...sizes)).to.be.lessThan(100);
+    expect(control.manifestReads).to.equal(0);
+    const snapshot = writer.manifest(); snapshot.chunks.length = 0; snapshot.mapping.revision = 99;
+    expect(writer.manifest().chunks).to.have.length(200); expect(writer.manifest().mapping.revision).to.equal(1);
+    control.loseNextReceipt = true; await writer.stop();
+    expect(control.manifestReads).to.equal(0); expect(control.headReads).to.equal(1);
+    expect((await journal.verify('take:incremental')).verifiedThroughSequence).to.equal(200);
+  });
+
   it('stores 10000 ordered boundaries in bounded chunks and reopens with hardware disarmed', async () => {
     const { journal, chunks } = setup(), writer = await journal.createTake(definition('take:10000'));
     for (let tick = 1; tick <= 10000; tick++) expect(writer.append(marker(tick)).status).to.equal('accepted');
@@ -68,7 +92,7 @@ describe('durable causal take journal', function() {
     let rejectChunks = true, finalizations = 0;
     store.storage.commitCausalTake = update => {
       if (update.chunk && rejectChunks) return Promise.reject(Object.assign(new Error('full'), { name: 'QuotaExceededError' }));
-      if (update.manifest.state !== 'recording') finalizations++;
+      if ((update.head || update.manifest).state !== 'recording') finalizations++;
       return commit(update);
     };
     const journal = createProcgenCausalJournal({ storage: store.storage }), writer = await journal.createTake(definition('take:retry'));

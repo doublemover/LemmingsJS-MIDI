@@ -1,4 +1,5 @@
 import { canonicalJournalText, estimateJournalBytes, cloneJournalData, freezeJournalData, hashJournalText, hashJournalData, journalError } from './CausalJournalCanonical.js';
+import { compactCausalCommit, causalTakeHead } from './CausalJournalLayout.js';
 
 const id = value => typeof value === 'string' && value.length > 0 && value.length <= 256;
 const nameReason = value => typeof value === 'string' && value.length > 0 && value.length <= 128;
@@ -47,6 +48,7 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
     let released = false;
     return () => { if (!released) { released = true; resourceBudget?.release({ token, owner }); } };
   };
+  const publish = update => storage.commitCausalTake(storage.causalIndexVersion === 2 ? compactCausalCommit(update) : update);
   const createTake = async ({ takeId, takeName = 'Untitled take', documentId, sourceVersions, captureProfile, boundaryState = {}, initialCheckpoint,
     mapping, assetRefs = [], prefix = null } = {}) => {
     if (!id(takeId) || typeof takeName !== 'string' || !takeName.trim() || takeName.length > 120 || !id(documentId) || !sourceVersions || !captureProfile || !initialCheckpoint || !mapping) throw new Error('A take requires bounded name/document/source/checkpoint/capture identities.');
@@ -65,7 +67,7 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
         admittedSequence: start, chunkCount: 0, chunks: [], canonicalHash: rootHash, rootHash,
         coverage: { status: 'complete', gaps: [] }, lastCommitId: `${takeId}:create` };
       manifest.checkpoints = [manifest.initialCheckpoint];
-      await storage.commitCausalTake({ takeId, expectedRevision: 0, manifest,
+      await publish({ takeId, expectedRevision: 0, manifest,
         checkpoint: { id: checkpointId, takeId, sequence: 0, hash: checkpointHash, canonical: checkpointText }, commitId: manifest.lastCommitId });
       return openWriter(manifest);
     } finally { release(); }
@@ -114,15 +116,20 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
       return Object.freeze({ status: 'accepted', takeId: manifest.takeId, firstSequence, lastSequence: admittedSequence });
     };
     const commit = async update => {
-      try { await storage.commitCausalTake(update); }
+      const legacy = storage.causalIndexVersion !== 2;
+      const published = legacy ? { ...update, manifest: { ...update.manifest,
+        chunks: update.chunkRef ? [...manifest.chunks, update.chunkRef] : manifest.chunks,
+        checkpoints: update.checkpointRef ? [...manifest.checkpoints, update.checkpointRef] : manifest.checkpoints } } : update;
+      try { await publish(published); }
       catch (error) {
         // Recover an acknowledged-by-storage commit when only its caller receipt
         // was lost. Never append the same sequence a second time.
-        const latest = await storage.loadCausalTake(manifest.takeId).catch(() => null);
-        if (latest?.lastCommitId !== update.commitId || latest.revision !== update.manifest.revision ||
-            latest.canonicalHash !== update.manifest.canonicalHash || latest.finalizationHash !== update.manifest.finalizationHash) throw error;
+        const latest = await (storage.loadCausalTakeHead?.(manifest.takeId) ?? storage.loadCausalTake(manifest.takeId)).catch(() => null);
+        if (!latest || canonicalJournalText(causalTakeHead(latest)).text !== canonicalJournalText(causalTakeHead(published.manifest)).text) throw error;
       }
-      manifest = cloneJournalData(update.manifest, { maxBytes: 8 * 1048576 });
+      if (update.chunkRef) manifest.chunks.push(update.chunkRef);
+      if (update.checkpointRef) manifest.checkpoints.push(update.checkpointRef);
+      manifest = update.manifest;
     };
     const drain = async () => {
       while (pending.length) {
@@ -143,9 +150,9 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
             firstTick: Math.min(...records.map(record => record.tick)), lastTick: Math.max(...records.map(record => record.tick)),
             generations: [...new Set(records.map(record => record.generation))], kinds: [...new Set(records.map(record => record.kind))] };
           const next = { ...manifest, revision: manifest.revision + 1, durableSequence: lastSequence, admittedSequence,
-            chunkCount: ordinal, chunks: [...manifest.chunks, ref], canonicalHash: hash, lastCommitId: `${manifest.takeId}:chunk:${ordinal}:${hash}` };
+            chunkCount: ordinal, canonicalHash: hash, lastCommitId: `${manifest.takeId}:chunk:${ordinal}:${hash}` };
           await commit({ takeId: manifest.takeId, expectedRevision: manifest.revision, manifest: next,
-            chunk: { ...ref, canonical }, commitId: next.lastCommitId });
+            chunkRef: ref, chunk: { ...ref, canonical }, commitId: next.lastCommitId });
           pending.splice(0, groups.length); pendingBytes -= bytes; for (const group of groups) group.release(); notify();
         } finally { release(); }
       }
@@ -199,10 +206,10 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
           return Object.freeze({ status: 'unchanged', ...ref });
         }
         if (manifest.checkpoints.length >= 4096) throw new Error('Causal checkpoint index capacity reached.');
-        const next = { ...manifest, revision: manifest.revision + 1, checkpoints: [...manifest.checkpoints, ref],
+        const next = { ...manifest, revision: manifest.revision + 1, checkpointCount: manifest.checkpoints.length + 1,
           lastCommitId: `${manifest.takeId}:checkpoint:${sequence}:${hash}` };
         await commit({ takeId: manifest.takeId, expectedRevision: manifest.revision, manifest: next,
-          checkpoint: { ...ref, takeId: manifest.takeId, canonical }, commitId: next.lastCommitId });
+          checkpointRef: ref, checkpoint: { ...ref, takeId: manifest.takeId, canonical }, commitId: next.lastCommitId });
         return Object.freeze({ status: 'durable', ...ref });
       })();
       checkpointing = work.finally(() => { release(); checkpointing = null; if (pending.length && !finishing) void flush().catch(() => {}); });
@@ -226,7 +233,7 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
       notify(); return status();
     };
     return { appendMany, append: input => appendMany([input]), flush, stop, status, checkpoint, discardPending,
-      manifest: () => manifest, canReplaceDocument: () => manifest.state !== 'recording' && !pendingBytes };
+      manifest: () => cloneJournalData(manifest, { maxBytes: 8 * 1048576 }), canReplaceDocument: () => manifest.state !== 'recording' && !pendingBytes };
   };
   const readChunk = async ref => {
     const chunk = await storage.loadCausalChunk(ref.id);

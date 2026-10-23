@@ -78,13 +78,13 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
     };
     if (!indexedDB) { finish(namedError('SecurityError', 'IndexedDB is unavailable')); return promise; }
     try {
-      request = indexedDB.open('lemmings.procgen.sessions', 4);
+      request = indexedDB.open('lemmings.procgen.sessions', 5);
       request.onupgradeneeded = () => {
         if (!request.result.objectStoreNames.contains('sessions')) request.result.createObjectStore('sessions', { keyPath: 'id' });
         const metadata = request.result.objectStoreNames.contains('projectMetadata') ? request.transaction.objectStore('projectMetadata') :
           request.result.createObjectStore('projectMetadata', { keyPath: 'id' });
         if (!metadata.indexNames.contains('byUpdated')) metadata.createIndex('byUpdated', ['savedAt', 'id']);
-        upgradeCausalJournalStores(request.result);
+        upgradeCausalJournalStores(request.result, request.transaction);
       };
       request.onsuccess = () => finish(null, request.result);
       request.onerror = () => finish(request.error || new Error('IndexedDB open failed'));

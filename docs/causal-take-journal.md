@@ -1,12 +1,24 @@
 # Causal take journal
 
 The causal journal is the durable source for physical takes. The workstation
-session database upgrades from version 3 to version 4, preserving `sessions` and
-`projectMetadata` and adding `takeManifests`, `takeChunks` and `takeCheckpoints`.
-There is no second take database. Each append transaction compares the manifest
-revision and atomically stores its immutable chunk/checkpoint and new durable
-prefix. A repeated commit ID must have identical manifest content. Concurrent
-writers cannot both extend the same revision.
+session database upgrades to version 5, preserving `sessions` and
+`projectMetadata`. Immutable source headers, compact mutable heads, compact
+browsing summaries and append-only chunk/checkpoint index rows have separate
+stores. Existing version 4 manifests migrate atomically during upgrade, then
+their old authoritative rows are removed. Chunk and checkpoint bytes retain
+their original hashes and identities. There is no second take database.
+
+Each append transaction compares the head revision and atomically adds only the
+new bytes/index row and updates the compact head/summary. It never reads or
+serializes earlier index rows or the source header. A repeated commit ID must
+have identical compact metadata, index references and content hashes. Concurrent
+writers cannot both extend the same revision. Lost-receipt reconciliation reads
+only the compact head. The recorder retains its index in memory and appends to
+it only after durable publication; explicit manifest inspection returns a copy.
+Library browsing opens only `takeSummaries`. Full manifest reconstruction is an
+explicit operation with cancelable index pages of at most 256 rows and a total
+row budget; it rejects a revision change while materializing. Regression
+fixtures for this layout are added but runtime execution remains deferred.
 
 ## Integration
 
