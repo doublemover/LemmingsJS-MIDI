@@ -4,6 +4,7 @@ import { captureProcgenCheckpoint, restoreProcgenCheckpoint } from './ProcgenChe
 import { inspectProcgenCheckpoint, hashProcgenPhysicsCheckpoint, compareProcgenPhysicsCheckpoints } from './ProcgenCheckpointProvenance.js';
 import { canonicalJournalText, cloneJournalData, hashJournalData, journalError } from './CausalJournalCanonical.js';
 import { compareCausalRecords } from './CausalTake.js';
+import { queryCausalCoverage } from './CausalCoverage.js';
 
 const id = value => typeof value === 'string' && value.length > 0 && value.length <= 512;
 const equal = (left, right) => canonicalJournalText(left, { maxBytes: 32 * 1048576, maxNodes: 4000000 }).text ===
@@ -42,8 +43,12 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
     const boundary = target ? await journal.query({ takeId, takeRevision: manifest.revision, firstSequence: target, lastSequence: target, limit: 1, signal }) : null;
     const throughTick = target ? boundary?.records[0]?.tick : worldTick(initial.world);
     if (!Number.isSafeInteger(throughTick)) reasons.push('missing-replay-boundary');
-    if (manifest.coverage?.gaps?.some(gap => ['all', 'physical-facts'].includes(gap.kind) &&
-        (gap.firstSequence != null ? gap.firstSequence <= target : gap.firstTick <= throughTick && gap.lastTick >= worldTick(initial.world)))) reasons.push('incomplete-physical-source');
+    if (target && Number.isSafeInteger(throughTick)) {
+      const sourceStart = manifest.coverage?.sourceRange?.firstTick;
+      const coverage = queryCausalCoverage({ coverage: manifest.coverage, kind: 'physical-facts',
+        range: { firstTick: Math.min(throughTick, Number.isSafeInteger(sourceStart) ? sourceStart : worldTick(initial.world)), lastTick: throughTick } });
+      if (coverage.status !== 'known-covered') reasons.push(coverage.status === 'unknown' ? 'unknown-physical-source-coverage' : 'incomplete-physical-source');
+    }
     const checkpoint = inspectProcgenCheckpoint(initial.world, { assetRefs: runtimeAssets, generator: runtimeVersions.generator });
     if (checkpoint.continuation === 'unsupported') reasons.push(...checkpoint.reasons);
     if (initial.engine?.version !== 1) reasons.push('missing-semantic-engine-checkpoint');

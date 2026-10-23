@@ -190,7 +190,8 @@ and attaches a separate playback execution epoch and sound patch. It does not
 deliver anything. Portable archive encoding/import has its own admission and
 provenance checks; journal completeness never claims source mechanics or delivery
 evidence that were not observed.
-# Durability recovery
+
+## Durability recovery
 
 Stopping capture freezes its final boundary and prevents new admission. A failed
 chunk, component checkpoint or finalization write leaves the durable manifest in
@@ -205,3 +206,16 @@ It does not reopen terminal takes. Branch disposal obeys the same rule. Regressi
 fixtures include selective chunk failure with healthy manifest writes; runtime
 execution is deferred during this implementation pass.
 
+## Bounded coverage knowledge
+
+Coverage intervals merge by kind, reason, generation and scope, including repeated
+same-tick observations. Movement-path gaps are recorded once per physical batch.
+Overlapping dropped counts retain an explicit lower bound rather than counting
+one report repeatedly. At capacity, an open unknown suffix preserves uncertainty
+across subsequent kinds and generations; legacy frozen overflow markers have the
+same conservative interpretation. Known earlier ranges remain queryable.
+
+The shared coverage query returns known-covered, known-missing or unknown.
+Reinterpretation, replay/branch admission and score inspection use that result;
+a declared capture profile alone never certifies a source range. The new interval
+fixtures are staged for the deferred runtime validation pass.

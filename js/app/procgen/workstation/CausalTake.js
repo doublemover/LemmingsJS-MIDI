@@ -1,5 +1,6 @@
 import { cloneJournalData, canonicalJournalText, freezeJournalData, journalError } from './CausalJournalCanonical.js';
 import { validateCausalInstrumentGraph } from './CausalMusicEngine.js';
+import { createCausalCoverageIndex, queryCausalCoverage } from './CausalCoverage.js';
 
 const name = value => typeof value === 'string' && value.length > 0 && value.length <= 128;
 const boundedKinds = value => Array.isArray(value) && value.length <= 128 && value.every(name) && new Set(value).size === value.length;
@@ -32,17 +33,11 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
   const observedFactKinds = new Set(prefixCoverage?.observedFactKinds || []), intentKinds = new Set(prefixCoverage?.intentKinds || []),
     mappingRevisions = new Set([...(prefixCoverage?.mappingRevisions || []), graph.revision]);
   const observedStateKinds = new Set(profile.stateKinds.filter(kind => Object.hasOwn(boundaryState, kind) && boundaryState[kind] != null));
-  const gaps = (prefixCoverage?.gaps || []).map(gap => ({ ...gap })), batches = new Set(), order = [];
+  const coverageIndex = createCausalCoverageIndex({ gaps: prefixCoverage?.gaps || [] }), batches = new Set(), order = [];
   let firstTick = prefixCoverage?.sourceRange?.firstTick ?? null, lastTick = sourceCursor?.tick ?? null,
     lastGeneration = sourceCursor?.generation ?? null, nextGenerationBoundary = null, lastSequence = sourceCursor?.lastCausalSequence ?? -1,
     worldId = sourceCursor?.worldId ?? null, stopped = false, stopRequest = null;
-  const addGap = gap => {
-    const prior = gaps.at(-1);
-    if (prior && prior.kind === gap.kind && prior.reason === gap.reason && prior.generation === gap.generation && prior.lastTick + 1 === gap.firstTick) prior.lastTick = gap.lastTick;
-    else if (gaps.length < 4096) gaps.push({ ...gap });
-    else if (!gaps.some(item => item.reason === 'coverage-index-capacity')) gaps.push({ kind: 'all', firstTick: gap.firstTick,
-      lastTick: gap.lastTick, generation: gap.generation, reason: 'coverage-index-capacity' });
-  };
+  const addGap = coverageIndex.add;
   const recordCommittedBatch = ({ batch, intents, deliveryOutcomes = [] } = {}) => {
     if (stopped) return Object.freeze({ status: 'rejected', reason: 'take-stopped' });
     if (batch?.version !== 1 || !name(batch.batchId) || !name(batch.worldId) || !Number.isSafeInteger(batch.tick) || batch.tick < 0 ||
@@ -73,11 +68,13 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
     worldId = batch.worldId; firstTick ??= batch.tick; lastTick = batch.tick; lastGeneration = batch.generation; lastSequence = sequence;
     if (batch.completeness?.status !== 'complete') addGap({ kind: 'physical-facts', firstTick: batch.tick, lastTick: batch.tick,
       generation: batch.generation, reason: 'incomplete-source-batch', dropped: batch.completeness?.dropped ?? null });
+    let missingMovementPath = false;
     for (const fact of batch.facts) {
       if (fact.kind) observedFactKinds.add(fact.kind);
-      if (fact.kind === 'MotionCommitted' && fact.physicalPayload?.pathEvidence !== 'committed-coordinate-write') addGap({
-        kind: 'movement-path', firstTick: batch.tick, lastTick: batch.tick, generation: batch.generation, reason: 'endpoint-only-evidence' });
+      if (fact.kind === 'MotionCommitted' && fact.physicalPayload?.pathEvidence !== 'committed-coordinate-write') missingMovementPath = true;
     }
+    if (missingMovementPath) addGap({ kind: 'movement-path', firstTick: batch.tick, lastTick: batch.tick,
+      generation: batch.generation, reason: 'endpoint-only-evidence' });
     for (const intent of intents) intentKinds.add(intent.kind);
     return receipt;
   };
@@ -87,6 +84,7 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
   };
   const stop = async ({ boundaryState: finalBoundary = {}, finalCheckpoint = null, reason = 'user-stop' } = {}) => {
     stopped = true;
+    const gaps = coverageIndex.snapshot();
     stopRequest ||= { reason, boundaryState: cloneJournalData(finalBoundary),
       finalCheckpoint: finalCheckpoint == null ? null : { value: finalCheckpoint, tick: lastTick ?? 0, generation: lastGeneration ?? 0 },
       coverage: { status: gaps.some(gap => ['physical-facts', 'all'].includes(gap.kind)) ? 'partial' : 'complete',
@@ -110,8 +108,8 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
     addGap(value);
     return record('marker', { type: 'coverage-gap', gap: value }, { tick: value.firstTick, generation: value.generation });
   };
-  const status = () => freezeJournalData({ ...writer.status(), coverage: { status: gaps.some(gap => ['physical-facts', 'all'].includes(gap.kind)) ? 'partial' : 'complete',
-    gaps: gaps.map(gap => ({ ...gap })) } });
+  const status = () => { const gaps = coverageIndex.snapshot(); return freezeJournalData({ ...writer.status(), coverage: {
+    status: gaps.some(gap => ['physical-facts', 'all'].includes(gap.kind)) ? 'partial' : 'complete', gaps, index: coverageIndex.diagnostics() } }); };
   return { recordCommittedBatch, recordIntervention: (command, outcome, boundary) => record('intervention', { command, outcome }, boundary),
     recordInput: (observation, boundary) => record('input-observation', observation, boundary),
     recordTimeline: (timeline, boundary) => { const receipt = record('timeline', timeline, boundary); if (receipt.status === 'accepted') observedStateKinds.add('timeline'); return receipt; }, recordMapping,
@@ -146,16 +144,16 @@ const planCausalReinterpretation = ({ manifest, graph, range = null, verifiedRec
     canonicalJournalText(verifiedReconstruction.assetRefs ?? null).text === canonicalJournalText(manifest.assetRefs).text ? verifiedReconstruction : null;
   const results = graphCaptureRequirements(graph).map(requirement => {
     const keys = requirement.type === 'fact' ? 'factKinds' : requirement.type === 'state' ? 'stateKinds' : 'descriptorKinds';
-    const missing = (coverage.gaps || []).filter(gap => (gap.kind === requirement.kind || gap.kind === 'physical-facts' || gap.kind === 'all') &&
-      gap.firstTick <= requested.lastTick && gap.lastTick >= requested.firstTick);
-    const outside = coverage.sourceRange && (requested.firstTick < coverage.sourceRange.firstTick || requested.lastTick > coverage.sourceRange.lastTick);
+    const queried = queryCausalCoverage({ coverage, kind: requirement.kind, range: requested });
+    const missing = [...queried.missingRanges, ...queried.unknownRanges];
+    const outside = missing.some(gap => gap.reason === 'outside-captured-range');
     const captured = available[keys]?.includes(requirement.kind) === true;
-    if (captured && !missing.length && !outside) return { ...requirement, status: 'supported-directly' };
+    if (captured && queried.status === 'known-covered') return { ...requirement, status: 'supported-directly' };
     if (reconstruction?.coverage?.[keys]?.includes(requirement.kind) && reconstruction.firstTick <= requested.firstTick && reconstruction.lastTick >= requested.lastTick) {
       return { ...requirement, status: 'supported-by-verified-reconstruction', artifactId: reconstruction.artifactId };
     }
-    return { ...requirement, status: captured && !coverage.sourceRange ? 'unknown' : 'unavailable',
-      reason: outside ? 'outside-captured-range' : missing.length ? 'coverage-gap' : 'not-captured', missingRanges: missing,
+    return { ...requirement, status: queried.status === 'unknown' ? 'unknown' : 'unavailable', coverageStatus: queried.status,
+      reason: outside ? 'outside-captured-range' : queried.status === 'unknown' ? 'coverage-unknown' : missing.length ? 'coverage-gap' : 'not-captured', missingRanges: missing,
       reconstructionCandidate: !!manifest.initialCheckpoint && !!manifest.sourceVersions && Array.isArray(manifest.assetRefs) };
   });
   return freezeJournalData({ version: 1, takeId: manifest.takeId, takeRevision: manifest.revision, sourceCanonicalHash: manifest.canonicalHash,

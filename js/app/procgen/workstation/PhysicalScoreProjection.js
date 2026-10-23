@@ -1,4 +1,5 @@
 import { cloneJournalData, journalError } from './CausalJournalCanonical.js';
+import { queryCausalCoverage } from './CausalCoverage.js';
 
 const boundedId = value => typeof value === 'string' && value.length > 0 && value.length <= 512;
 const tick = value => Number.isSafeInteger(value) && value >= 0;
@@ -153,14 +154,8 @@ const createPhysicalScoreProjection = ({ journal, maxRecords = 4096, maxSourceFa
         }
       }
       if (resolution.mode === 'aggregate') glyphs.push(...aggregates.values());
-      const unknownRegions = (manifest.coverage?.gaps || []).filter(gap => (gap.generation == null || gap.generation === generation) &&
-        gap.firstTick <= range.lastTick && gap.lastTick >= range.firstTick).map(gap => ({ ...gap, firstTick: Math.max(gap.firstTick, range.firstTick), lastTick: Math.min(gap.lastTick, range.lastTick) }));
-      const captured = manifest.coverage?.sourceRange;
-      if (!captured || captured.firstTick == null || captured.lastTick == null) unknownRegions.push({ kind: 'source-coverage', reason: 'unknown-captured-range', ...range });
-      else {
-        if (range.firstTick < captured.firstTick) unknownRegions.push({ kind: 'source-coverage', reason: 'outside-captured-range', firstTick: range.firstTick, lastTick: Math.min(range.lastTick, captured.firstTick - 1) });
-        if (range.lastTick > captured.lastTick) unknownRegions.push({ kind: 'source-coverage', reason: 'outside-captured-range', firstTick: Math.max(range.firstTick, captured.lastTick + 1), lastTick: range.lastTick });
-      }
+      const queriedCoverage = queryCausalCoverage({ coverage: manifest.coverage, range, generation });
+      const unknownRegions = [...queriedCoverage.missingRanges, ...queriedCoverage.unknownRanges];
       continuation ||= page.nextSequence == null ? null : { sequence: page.nextSequence, factOffset: 0 };
       if (continuation) unknownRegions.push({ kind: 'query-window', reason: 'bounded-continuation', firstSequence: continuation.sequence, factOffset: continuation.factOffset });
       const voices = new Map();
