@@ -172,42 +172,60 @@ export async function requestExportFileHandle(artifact, { windowRef = globalThis
   } catch (error) { return { state: errorKind(error) === 'cancelled' ? 'canceled' : 'failed', handle: null, errorKind: errorKind(error) }; }
 }
 
-export async function deliverArtifactToFileHandle(artifact, handle, { signal, onProgress = () => {}, maxDeliveryMs = 300000 } = {}) {
+export async function deliverArtifactToFileHandle(artifact, handle, { signal, onProgress = () => {}, maxDeliveryMs = 300000,
+  clock = () => globalThis.performance?.now?.() ?? Date.now() } = {}) {
   if (!Number.isFinite(maxDeliveryMs) || maxDeliveryMs < 1 || maxDeliveryMs > 900000) throw new RangeError('Invalid export delivery deadline.');
+  if (typeof clock !== 'function') throw new TypeError('Invalid export delivery clock.');
   const deliveryId = nextId('delivery'), { artifactId } = artifact.metadata();
-  const deadline = Date.now() + maxDeliveryMs;
+  let observedTime = clock();
+  if (!Number.isFinite(observedTime)) throw new TypeError('Invalid export delivery clock reading.');
+  const startedAt = observedTime, deadline = startedAt + maxDeliveryMs;
   const ownerAbort = new AbortController();
   const forwardAbort = () => ownerAbort.abort();
   signal?.addEventListener('abort', forwardAbort, { once: true });
   const unwatch = artifact.onDiscard(forwardAbort);
   if (signal?.aborted) ownerAbort.abort();
-  const wait = work => waitForSink(work, ownerAbort.signal, Math.max(1, Math.min(30000, deadline - Date.now())));
+  const preflight = () => {
+    if (ownerAbort.signal.aborted) throw Object.assign(new Error('Export delivery canceled.'), { name: 'AbortError' });
+    const reading = clock();
+    if (!Number.isFinite(reading)) throw new TypeError('Invalid export delivery clock reading.');
+    observedTime = Math.max(observedTime, reading);
+    if (observedTime >= deadline) throw Object.assign(new Error('Export delivery deadline exceeded.'), { name: 'TimeoutError' });
+    return Math.min(30000, deadline - observedTime);
+  };
+  const wait = start => {
+    const remaining = preflight();
+    return waitForSink(start(), ownerAbort.signal, remaining);
+  };
   let lease, writable, reader, iterator, bytesWritten = 0, phase = 'opening', abortAttempted = false, abortAcknowledged = false, retired = false;
   let state = 'failed', kind = null, evidence = null;
   try {
-    if (ownerAbort.signal.aborted) throw Object.assign(new Error('Export delivery canceled.'), { name: 'AbortError' });
+    preflight();
     lease = artifact.borrow();
-    const opening = Promise.resolve(handle.createWritable({ keepExistingData: false }));
-    opening.then(late => {
-      if (retired) { try { Promise.resolve(late.abort?.()).catch(() => {}); } catch { /* Late handle remains unacknowledged. */ } }
-    }, () => {});
-    writable = await wait(opening);
+    writable = await wait(() => {
+      const opening = Promise.resolve(handle.createWritable({ keepExistingData: false }));
+      opening.then(late => {
+        if (retired) { try { Promise.resolve(late.abort?.()).catch(() => {}); } catch { /* Late handle remains unacknowledged. */ } }
+      }, () => {});
+      return opening;
+    });
+    preflight();
     if (lease.blob) reader = lease.blob.stream().getReader();
     else iterator = lease.openChunks()[Symbol.asyncIterator]();
     phase = 'writing';
     while (true) {
-      const { done, value } = await wait(reader ? reader.read() : iterator.next());
+      const { done, value } = await wait(() => reader ? reader.read() : iterator.next());
       if (done) break;
       if (!(value instanceof Uint8Array)) throw Object.assign(new Error('Export source yielded invalid bytes.'), { kind: 'invalid-source' });
       if (bytesWritten + value.byteLength > (artifact.metadata().maxDeliveryBytes || MAX_BROWSER_DOWNLOAD_BYTES))
         throw Object.assign(new Error('Export stream exceeded its declared limit.'), { kind: 'artifact-limit' });
-      await wait(writable.write(value));
+      await wait(() => writable.write(value));
       bytesWritten += value.byteLength;
       try { onProgress(bytesWritten, artifact.metadata().byteLength ?? artifact.metadata().streamingEstimate); } catch { /* Presentation callbacks cannot fail delivery. */ }
     }
     if (artifact.metadata().byteLength != null && bytesWritten !== artifact.metadata().byteLength)
       throw Object.assign(new Error('Export source length changed.'), { kind: 'source-length-mismatch' });
-    phase = 'closing'; await wait(writable.close()); writable = null;
+    phase = 'closing'; await wait(() => writable.close()); writable = null;
     state = 'close-acknowledged'; evidence = 'writable-close-resolved';
   } catch (error) { kind = error.kind || errorKind(error); state = kind === 'cancelled' ? 'canceled' : 'failed'; evidence = phase; }
   finally {
@@ -222,8 +240,11 @@ export async function deliverArtifactToFileHandle(artifact, handle, { signal, on
     lease?.release();
     unwatch(); signal?.removeEventListener('abort', forwardAbort);
   }
+  const finalTime = clock();
+  if (Number.isFinite(finalTime)) observedTime = Math.max(observedTime, finalTime);
   return Object.freeze({ deliveryId, artifactId, sinkKind: 'file-handle', state, bytesWritten,
-    errorKind: kind, evidence, abortAttempted, abortAcknowledged });
+    errorKind: kind, evidence, abortAttempted, abortAcknowledged,
+    deadlineExceeded: kind === 'timeout' || observedTime >= deadline, elapsedMs: observedTime - startedAt });
 }
 
 export function aggregateExportDeliveries(receipts) {

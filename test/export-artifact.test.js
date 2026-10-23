@@ -15,6 +15,30 @@ const anchor = (failClick = false) => {
 };
 
 describe('prepared export artifacts and delivery receipts', () => {
+  it('checks the absolute deadline before each immediately resolved source or sink step', async () => {
+    for (const expiresDuring of ['open', 'read', 'write', 'progress']) {
+      let time = 0, reads = 0, writes = 0, closes = 0, aborts = 0;
+      const expire = phase => { if (phase === expiresDuring) time = 100; };
+      const artifact = prepareReplayableExportArtifact({ immutableSourceRef: 'take:deadline:1',
+        formatVersion: 'bytes/v1', suggestedFilename: 'take.bin', byteLength: 20,
+        openChunks: async function* () { for (let index = 0; index < 20; index++) { reads++; expire('read'); yield Uint8Array.of(index); } } });
+      const writer = { async write() { writes++; expire('write'); }, async close() { closes++; }, async abort() { aborts++; } };
+      const receipt = await deliverArtifactToFileHandle(artifact, { async createWritable() { expire('open'); return writer; } },
+        { clock: () => time, maxDeliveryMs: 10, onProgress() { expire('progress'); } });
+      expect(receipt).to.include({ state: 'failed', errorKind: 'timeout', deadlineExceeded: true, abortAcknowledged: true });
+      expect(writes).to.equal(['open', 'read'].includes(expiresDuring) ? 0 : 1);
+      expect(reads).to.equal(expiresDuring === 'open' ? 0 : 1); expect(closes).to.equal(0); expect(aborts).to.equal(1);
+      time = 0; const bytes = [];
+      const retry = await deliverArtifactToFileHandle(artifact, { async createWritable() { return {
+        async write(chunk) { bytes.push(...chunk); }, async close() {}, async abort() {}
+      }; } }, { clock: () => time, maxDeliveryMs: 10 });
+      // A fresh source may still advance its clock; source expiry therefore remains a failure.
+      expect(retry.state).to.equal(expiresDuring === 'read' ? 'failed' : 'close-acknowledged');
+      if (expiresDuring !== 'read') expect(bytes).to.deep.equal(Array.from({ length: 20 }, (_, index) => index));
+      artifact.discard();
+    }
+  });
+
   it('admits staging before allocation and retains its budget through a borrowed delivery', () => {
     const budget = createResourceBudget({ limitBytes: 4096 });
     const artifact = prepare(new Uint8Array(1800), { budgetAdapter: budget });
