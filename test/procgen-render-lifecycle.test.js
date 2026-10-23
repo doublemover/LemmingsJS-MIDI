@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { ProcgenLaneRenderer } from '../js/app/procgen/ProcgenLaneRenderer.js';
 import { createProcgenLaneRuntime } from '../js/app/procgen/ProcgenLaneRuntime.js';
+import { createResourceBudget } from '../js/app/resources/ResourceBudget.js';
 import { ProcgenRenderResources } from '../js/app/procgen/ProcgenRenderResources.js';
 
 const fixture = (options = {}) => {
@@ -104,6 +105,32 @@ describe('ProcGen display resource lifecycle', () => {
     resources.resize(first, 16, 16, { cache: true }); resources.resize(second, 16, 16, { cache: true });
     expect(first.width).to.equal(0); expect(second.width).to.equal(16); expect(resources.getStats().evictions).to.equal(1);
     resources.dispose(); expect(second.width).to.equal(0); expect(reservations.size).to.equal(0);
+  });
+
+  it('keeps strict shared replacement accounting after uncertain canvas retirement and reuse', () => {
+    const { canvas } = fixture(), budget = createResourceBudget({ limitBytes: 16384, costFactors: { other: 1 } });
+    const resources = new ProcgenRenderResources(canvas.ownerDocument, { budgetAdapter: budget }), backing = resources.canvas();
+    resources.resize(backing, 16, 16); let reject = true, width = 16, height = 16;
+    Object.defineProperty(backing, 'width', { get: () => width, set: value => { if (reject) throw new Error('Width unavailable'); width = value; } });
+    Object.defineProperty(backing, 'height', { get: () => height, set: value => { if (reject) throw new Error('Height unavailable'); height = value; } });
+    resources.release(backing); expect(budget.diagnostics().residentBytes).to.equal(1024);
+    reject = false; resources.resize(backing, 8, 8);
+    expect(budget.diagnostics().residentBytes).to.equal(256); expect(resources.getStats().estimatedBytes).to.equal(256);
+    resources.dispose(); expect(budget.diagnostics().residentBytes).to.equal(0);
+  });
+
+  it('protects the current cache token when shared admission reenters the renderer evictor', () => {
+    const { canvas } = fixture(), budget = createResourceBudget({ limitBytes: 4096, costFactors: { other: 1 } });
+    const resources = new ProcgenRenderResources(canvas.ownerDocument, { budgetBytes: 16384, budgetAdapter: budget });
+    const first = resources.canvas(), second = resources.canvas();
+    resources.resize(first, 16, 16, { cache: true }); resources.resize(second, 16, 16, { cache: true });
+    const other = {}; budget.reserve({ token: other, owner: 'assets', bytes: 1300 });
+    const unregister = budget.registerEvictor('renderer-test', () => resources.clearCaches());
+    resources.resize(first, 32, 16, { cache: true });
+    expect(first.width).to.equal(32); expect(second.width).to.equal(0);
+    expect(resources.getStats()).to.include({ estimatedBytes: 2048, cachedBitmapBytes: 2048 });
+    expect(budget.diagnostics().residentBytes).to.equal(3348);
+    resources.dispose(); unregister(); budget.release({ token: other, owner: 'assets' }); expect(budget.diagnostics().residentBytes).to.equal(0);
   });
 
   it('attempts both dimensions and every remaining surface when one retirement setter rejects zero', () => {

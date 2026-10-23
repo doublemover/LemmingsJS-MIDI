@@ -87,4 +87,9 @@ describe('ProcGen current lane conditions', () => {
     f.world.actors[0].action = f.world.actions[State.MINING]; f.world.tickIndex++;
     expect(f.observe(0).action).to.equal('mine build');
   });
+  it('reports unavailable lane facts for a lightweight runtime without an actor collection', () => {
+    const observe = createProcgenLaneObserver({ laneCount: 8 });
+    expect(observe(0)).to.deep.equal({ action: '', terrain: '' }); expect(observe(7)).to.deep.equal({ action: '', terrain: '' });
+    expect(observe.getStats()).to.include({ actorVisits: 0, fallbackBuilds: 1, indexAllocations: 1 });
+  });
 });

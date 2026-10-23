@@ -10,6 +10,7 @@ const publishProcgenActorVisibility = world => registered.get(world)?.publish();
 class ProcgenActorVisibility {
   constructor(world) { this.world = world; this.rows = []; this.physicalRows = []; this.semanticLanes = []; this.physicalLeaders = []; this.semanticLeaders = [];
     this.observationLeaders = []; this.actionMasks = new Uint16Array(0); this.actionOrders = new Float64Array(0); this.actionCounts = new Uint32Array(0);
+    this.actorIds = new Map();
     this.wide = []; this.bounds = new Map(); this.seen = new Set(); this.candidates = []; this.tick = null; this.actorScans = 0; this.queryVisits = 0; }
   publish(force = false) {
     const world = this.world, height = world.laneHeight || 96, count = world.laneCount;
@@ -27,9 +28,11 @@ class ProcgenActorVisibility {
     for (const lane of this.semanticLanes) lane.length = 0;
     this.physicalLeaders.fill(null); this.semanticLeaders.fill(null);
     this.observationLeaders.fill(null); this.actionMasks.fill(0); this.actionOrders.fill(0); this.actionCounts.fill(0);
+    this.actorIds.clear();
     for (const actor of world.actors) {
       this.actorScans++;
       if (actor.failureReason || actor.removed) continue;
+      this.actorIds.set(actor.id, actor);
       const physical = Math.floor(actor.y / height), semantic = actor.laneIndex;
       if (Number.isFinite(actor.x) && Number.isFinite(actor.y)) {
         if (physical >= 0 && physical < count) {
@@ -115,13 +118,14 @@ class ProcgenActorVisibility {
     this.publish(); const code = PROCGEN_ACTION_LABELS.indexOf(label);
     return code < 0 || lane < 0 || lane >= this.semanticLanes.length ? 0 : this.actionCounts[lane * PROCGEN_ACTION_LABELS.length + code];
   }
+  actorById(id) { this.publish(); return this.actorIds.get(id) || null; }
   getStats() { return { revision: this.revision || null, publications: this.publications || 0, rebuilds: this.rebuilds || 0,
     actorScans: this.actorScans, drawScans: this.drawScans || 0, queryVisits: this.queryVisits, deferredPublications: this.deferredPublications || 0,
     actionIndexBytes: this.actionMasks.byteLength + this.actionOrders.byteLength + this.actionCounts.byteLength,
     retainedActors: this.semanticLanes.reduce((sum, lane) => sum + lane.length, 0) }; }
   dispose() { if (registered.get(this.world) === this) registered.delete(this.world);
     this.rows.length = 0; this.physicalRows.length = 0; this.semanticLanes.length = 0; this.physicalLeaders.length = 0; this.semanticLeaders.length = 0;
-    this.observationLeaders.length = 0; this.actionMasks = new Uint16Array(0); this.actionOrders = new Float64Array(0); this.actionCounts = new Uint32Array(0); this.actionCodes?.clear(); this.actionOwner = null;
+    this.observationLeaders.length = 0; this.actionMasks = new Uint16Array(0); this.actionOrders = new Float64Array(0); this.actionCounts = new Uint32Array(0); this.actionCodes?.clear(); this.actionOwner = null; this.actorIds.clear();
     this.wide.length = 0; this.candidates.length = 0; this.bounds.clear(); this.seen.clear(); this.actors = this.world = this.sprites = this.appearance = null; }
 }
 export { ProcgenActorVisibility, registerProcgenActorVisibility, getProcgenActorVisibility, publishProcgenActorVisibility };

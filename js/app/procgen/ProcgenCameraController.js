@@ -41,11 +41,12 @@ const createProcgenCameraController = renderer => {
   const pan = (dx, dy) => {
     if (disposed) return false;
     if (!Number.isFinite(dx) || !Number.isFinite(dy) || Math.hypot(dx, dy) < 1) return false;
-    renderer.follow = false; lastFollowMs = null; renderer.cameraX += dx / renderer.scale; renderer.cameraY += dy / renderer.scale;
+    renderer.inspectionRowAnchor = null; renderer.follow = false; lastFollowMs = null; renderer.cameraX += dx / renderer.scale; renderer.cameraY += dy / renderer.scale;
     clamp(); renderer.render(false); return true;
   };
   const setZoom = scale => {
     if (disposed) return false;
+    renderer.inspectionRowAnchor = null;
     const previous = viewport(), pinnedX = renderer.cameraX === 0, pinnedY = renderer.cameraY === 0;
     const centerX = renderer.cameraX + previous.width / 2, centerY = renderer.cameraY + previous.height / 2;
     renderer.overviewActive = Number(scale) <= (renderer.overviewActive ? minimumScale() : fitScale(false)) + 1e-10;
@@ -56,7 +57,7 @@ const createProcgenCameraController = renderer => {
     clamp(); renderer.render(false);
   };
   let cachedLeader = null, leaderTick = -1, leaderGeneration = -1, leaderActors = null, leaderCount = -1, leaderWindow = '', lastFollowMs = null, disposed = false;
-  const followFrontier = () => { renderer.follow = true; update(true); renderer.render(false); };
+  const followFrontier = () => { renderer.inspectionRowAnchor = null; renderer.follow = true; update(true); renderer.render(false); };
   const update = (immediate = false, reuseLeader = false, presentationMs = windowRef.performance?.now?.() ?? Date.now()) => {
     if (disposed) return;
     if (world._stepping && world._musicCompletedTick !== world.tickIndex) return;
@@ -97,12 +98,13 @@ const createProcgenCameraController = renderer => {
     else if (event.deltaY) setZoom(renderer.scale * (event.deltaY > 0 ? 1 / 1.1 : 1.1));
   }, { passive: false });
   let drag = null;
-  listen('pointerdown', event => { if (event.button && event.button !== 1) return; canvas.focus?.(); drag = { x: event.clientX, y: event.clientY, startX: event.clientX, startY: event.clientY, moved: false }; canvas.setPointerCapture?.(event.pointerId); });
+  listen('pointerdown', event => { if (event.button && event.button !== 1) return; canvas.focus?.(); drag = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, startX: event.clientX, startY: event.clientY, moved: false }; canvas.setPointerCapture?.(event.pointerId); });
   listen('pointermove', event => {
-    if (!drag || !drag.moved && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 4) return;
+    if (!drag || drag.pointerId !== event.pointerId || !drag.moved && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 4) return;
     if (pan(drag.x - event.clientX, drag.y - event.clientY)) { drag.x = event.clientX; drag.y = event.clientY; drag.moved = true; }
   });
-  listen('pointerup', () => { drag = null; }); listen('pointercancel', () => { drag = null; });
+  const finish = event => { if (drag?.pointerId === event.pointerId) drag = null; };
+  listen('pointerup', finish); listen('pointercancel', finish); listen('lostpointercapture', finish);
   listen('dblclick', followFrontier);
   const getState = () => ({ cameraX: renderer.cameraX, cameraY: renderer.cameraY, scale: renderer.scale, follow: renderer.follow });
   const applyState = state => {

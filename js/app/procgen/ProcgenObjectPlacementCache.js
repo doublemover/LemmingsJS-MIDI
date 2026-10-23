@@ -58,7 +58,8 @@ class ProcgenObjectPlacementCache {
         for (let dx = 0; dx < image.width; dx++) if (!matchesTerrain(object.x + dx, object.supportY)) { supported = false; break; }
         if (!supported) continue;
       }
-      const placement = { image, x: object.x, y: top + object.y, lane, chunk, objectIndex, phase: object.phase, animation: object.animation, clip: null, clippedFrames: null };
+      const placement = { image, x: object.x, y: top + object.y, lane, chunk, objectIndex, sourceObjectId: object.piece.id, role: object.role, assemblyId: object.assembly?.id || null,
+        phase: object.phase, animation: object.animation, clip: null, clippedFrames: null };
       if (object.clipToTerrain) {
         if (image.width * image.height > this.maxClipBytes) throw new Error('Object terrain mask exceeds the display cache budget');
         placement.clip = new Uint8Array(image.width * image.height); placement.clippedFrames = new Map();

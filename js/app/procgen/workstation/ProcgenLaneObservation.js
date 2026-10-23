@@ -2,6 +2,7 @@ import { getProcgenActorVisibility } from '../ProcgenActorVisibility.js';
 import { createProcgenActionCodes, formatProcgenActionMask } from '../ProcgenActorActions.js';
 
 const EMPTY = Object.freeze({ action: '', terrain: '' });
+const EMPTY_ACTORS = Object.freeze([]);
 
 // Lane facts share the completed publication. Contact reads remain lazy and
 // never reveal terrain or create hazard owners.
@@ -10,11 +11,11 @@ export function createProcgenLaneObserver(world) {
   let leaders = [], masks = new Uint16Array(0), orders = new Float64Array(0), observations = [];
   let projection = null, codes = new Map(), fallbackBuilds = 0, actorVisits = 0, contactQueries = 0, indexAllocations = 0, observationAllocations = 0;
   const index = () => {
-    const next = getProcgenActorVisibility(world);
+    const next = getProcgenActorVisibility(world), population = world.actors || EMPTY_ACTORS;
     revision = world.terrainRevision;
-    if (tick === world.tickIndex && generation === world.generation && actors === world.actors && actorCount === world.actors.length &&
+    if (tick === world.tickIndex && generation === world.generation && actors === population && actorCount === population.length &&
         projection === next && actionOwner === world.actions && leaders.length === world.laneCount) return;
-    tick = world.tickIndex; generation = world.generation; actors = world.actors; actorCount = actors.length; projection = next; serial++;
+    tick = world.tickIndex; generation = world.generation; actors = population; actorCount = actors.length; projection = next; serial++;
     if (actionOwner !== world.actions) { actionOwner = world.actions; codes = createProcgenActionCodes(world.actions); }
     if (leaders.length !== world.laneCount) {
       leaders = new Array(world.laneCount); masks = new Uint16Array(world.laneCount); orders = new Float64Array(world.laneCount);

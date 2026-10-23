@@ -14,6 +14,7 @@ class ProcgenRenderResources {
     this.evictions = 0; this.allocations = 0; this.failures = 0; this.disposed = false;
     this.contextListeners = new Map();
     this.budgetAdapter = budgetAdapter;
+    this.adapterSizes = new WeakMap(); this.reservationsInFlight = new Set();
     this.retirementFailures = 0; this.unreleasedBytes = 0; this.unreleased = new WeakMap();
   }
   _size(width, height) {
@@ -22,10 +23,10 @@ class ProcgenRenderResources {
     }
     return width * height * 4;
   }
-  _reserve(key, bytes, cache = false, retire = null) {
+  _reserve(key, bytes, cache = false, retire = null, kind = typeof key.getContext === 'function' ? 'canvas' : 'pixels') {
     if (this.disposed) throw new ProcgenRenderAllocationError('Display resources have retired');
     const previous = this.entries.get(key), previousBytes = previous?.bytes || 0, unknownBytes = this.unreleased.get(key) || 0;
-    if (previous && previousBytes === bytes && previous.cache === cache && (!retire || retire === previous.retire)) { this.touch(key); return; }
+    if (previous && previousBytes === bytes && previous.cache === cache && previous.kind === kind && (!retire || retire === previous.retire)) { this.touch(key); return; }
     for (const [candidate, entry] of this.entries) {
       if (this.bytes + this.unreleasedBytes - unknownBytes - previousBytes + bytes <= this.budgetBytes && (!cache || this.cacheBytes - (previous?.cache ? previousBytes : 0) + bytes <= this.cacheLimit)) break;
       if (candidate !== key && entry.cache) { this.release(candidate); this.evictions++; }
@@ -33,11 +34,15 @@ class ProcgenRenderResources {
     if (this.bytes + this.unreleasedBytes - unknownBytes - previousBytes + bytes > this.budgetBytes || cache && this.cacheBytes - (previous?.cache ? previousBytes : 0) + bytes > this.cacheLimit) {
       this.failures++; throw new ProcgenRenderAllocationError('Display backing-store budget exhausted');
     }
-    this.budgetAdapter?.reserve?.({ token: key, owner: 'renderer', bytes, previousBytes, kind: typeof key.getContext === 'function' ? 'canvas' : 'pixels', cache });
+    this.reservationsInFlight.add(key);
+    try {
+      this.budgetAdapter?.reserve?.({ token: key, owner: 'renderer', bytes, previousBytes: this.adapterSizes.get(key) || 0, kind, cache });
+      this.adapterSizes.set(key, bytes);
+    } finally { this.reservationsInFlight.delete(key); }
     if (unknownBytes) { this.unreleasedBytes -= unknownBytes; this.unreleased.delete(key); }
     this.bytes += bytes - previousBytes;
     this.cacheBytes += (cache ? bytes : 0) - (previous?.cache ? previousBytes : 0);
-    this.entries.delete(key); this.entries.set(key, { bytes, cache, retire: retire || previous?.retire });
+    this.entries.delete(key); this.entries.set(key, { bytes, cache, kind, retire: retire || previous?.retire });
     this.peakBytes = Math.max(this.peakBytes, this.bytes);
   }
   canvas() {
@@ -69,7 +74,7 @@ class ProcgenRenderResources {
     try { const image = context.createImageData(width, height); this.allocations++; return image; }
     catch (error) { this.release(key); this.failures++; throw error; }
   }
-  retain(key, bytes) { this._reserve(key, bytes); }
+  retain(key, bytes, kind = 'pixels') { this._reserve(key, bytes, false, null, kind); }
   touch(key) { const entry = this.entries.get(key); if (entry) { this.entries.delete(key); this.entries.set(key, entry); } }
   bytesFor(keys) { return keys.reduce((bytes, key) => bytes + (this.entries.get(key)?.bytes || 0), 0); }
   retireCanvas(canvas) {
@@ -81,10 +86,13 @@ class ProcgenRenderResources {
     if (retained) this.unreleased.set(canvas, retained); else this.unreleased.delete(canvas);
   }
   _retirementReservation(key, previousBytes) {
-    const retained = this.unreleased.get(key) || 0;
+    const retained = this.unreleased.get(key) || 0, sharedBytes = this.adapterSizes.get(key) || 0;
     try {
-      if (retained) this.budgetAdapter?.reserve?.({ token: key, owner: 'renderer', bytes: Math.max(previousBytes, retained), previousBytes, kind: 'canvas', cache: false, unreleased: true });
-      else this.budgetAdapter?.release?.({ token: key, owner: 'renderer', bytes: previousBytes });
+      if (retained) {
+        const bytes = Math.max(previousBytes, sharedBytes, retained);
+        this.budgetAdapter?.reserve?.({ token: key, owner: 'renderer', bytes, previousBytes: sharedBytes, kind: 'canvas', cache: false, unreleased: true });
+        this.adapterSizes.set(key, bytes);
+      } else { this.budgetAdapter?.release?.({ token: key, owner: 'renderer', bytes: sharedBytes }); this.adapterSizes.delete(key); }
     } catch { this.retirementFailures++; }
   }
   release(key) {
@@ -104,7 +112,7 @@ class ProcgenRenderResources {
     try { entry.retire?.(); } catch { this.retirementFailures++; }
     this._retirementReservation(key, entry.bytes);
   }
-  clearCaches() { for (const [key, entry] of this.entries) if (entry.cache) this.release(key); }
+  clearCaches() { for (const [key, entry] of this.entries) if (entry.cache && !this.reservationsInFlight.has(key)) this.release(key); }
   clear() { for (const key of this.entries.keys()) this.release(key); }
   getStats() { return { estimatedBytes: this.bytes + this.unreleasedBytes, cachedBitmapBytes: this.cacheBytes, peakEstimatedBytes: this.peakBytes,
     budgetBytes: this.budgetBytes, cacheBudgetBytes: this.cacheLimit, backingStores: this.entries.size,

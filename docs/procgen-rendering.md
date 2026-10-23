@@ -121,3 +121,77 @@ remove the full draw-bounds pass recorded above. Contact queries still use the
 world's authoritative terrain reads, which can recompose an evicted collision
 cache entry; an explicit read-only residency/unknown API is a separate remaining
 part of the shared projection work.
+
+## Presented world inspection (#1029)
+
+`renderer.presentation` publishes one immutable snapshot after an accepted canvas
+paint. It includes world/generation/completed tick, projection revision, the
+logical canvas size, backing resolution, actual DOM **content** rectangle and
+per-row source crop/destination rectangle. Selection outlines, support-contact
+marks, hit queries and explicit keyboard Reveal use those same row transforms.
+The content-rect reader accounts for borders, padding, translation and axis-aligned
+CSS scaling. Rotated or skewed canvases are outside this contract.
+
+`procgenScreenToWorld` and `procgenWorldToScreen` convert between CSS pointer
+coordinates and logical/world coordinates without multiplying a pointer by DPR.
+Strips between cropped rows and the CCTV band are excluded. Pure fixtures cover
+an 800×608 logical canvas in a 400×304 content rectangle, fractional DPR 1/1.25/1.5/2,
+zoom 0.5/1/2, crop boundaries, border/padding and translated/scaled boxes. Accepted
+round trips stay within **0.001 CSS pixel** in those floating-point fixtures; the
+practical presentation tolerance is **0.5 CSS pixel**. Actor bounds use the actual
+raster-rounded submitted sprite rectangle or downsampled dot cell.
+
+The visible spatial index uses 48-logical-pixel cells. Actor IDs sort numerically
+before contacts, source objects and zones; stable IDs break ties. Repeated clicks
+within six CSS pixels cycle the same overlap order. A paged native-button list
+exposes the same identities to keyboard users, with at most 32 buttons mounted.
+Queries visit one cell plus wide entities, never scan all physical actors on
+pointer movement. At most 16,384 visible entities are admitted; a truncated list
+reports its display limit.
+
+`createProcgenWorldInspector({renderer,document,window,parent,getLaneInfo,
+onRevealLane})` appends an isolated section to the inspector dock. It returns
+`select`, `clear`, `cycle`, `reveal`, `refresh`, `getState` and idempotent `dispose`.
+Selection pins exact world/generation/entity identity without enabling camera
+follow or paging every frame. An offscreen actor retains its identity and exposes
+Reveal. Reveal applies a numeric one-shot camera/crop anchor and explicitly pages
+the lane; later pan, zoom or Follow clears that anchor. A terminated selected actor
+retains its observed final reason and offers a nearest **visible** surviving actor
+as a separate action. A new generation clears the selection and outline. The
+component reads the project lane role; it never issues musical/terrain edits,
+transport changes or note events merely by selecting or revealing.
+
+Inspection requires a successfully presented, visible snapshot. `acquire(owner,
+{purpose:'inspect'})` returns a bounded lease; a pointer gesture retains its frozen
+mapping and exact identity across ordinary actor/camera motion. DOM content-rect,
+page/layout, backing resolution, generation, display loss and disposal invalidate
+admission. Only the owning pointer can finish a gesture, and a four-pixel drag
+cancels inspection. The host rejects **every edit lease** with the dock's explicit
+inspection-only explanation. Future field/gate engines must publish their actual
+selectable bounds and render capability before obtaining editing authority.
+
+Snapshots are demand-driven and retain no live actor references. A ledger
+reservation estimates strings, entity/row records, region records, spatial cells
+and memberships. Retained leases preserve that accounting until release; at most
+32 leases may exist and normal frames retire their unleased predecessor. Budget
+denial disables inspection while canvas painting continues. Private estimates
+and optional shared `ResourceBudget` admission both apply. Strict replacement and
+reentrant eviction fixtures cover uncertain canvas retirement/reuse and protect
+the cache token currently being resized.
+
+Canonical support contacts and rendered source objects are currently inspectable.
+The renderer does not fabricate gate/field mechanics, causality, hover state or a
+sounding-actor marker where the owning engine supplies no such presentation fact.
+The snapshot schema accepts future gate/zone bounds, but those engine integrations
+remain separate work. The legacy automation overlay retains its own unavailable
+editing admission; this inspection host does not grant it hidden edit authority.
+
+The production `e2e/procgen-world-inspection.spec.js` fixture passed four checks on
+installed Microsoft Edge: natural source-art actors selected by pointer and native
+keyboard button at DPR 1 and 2; a translated half-size CSS host with stale-rect
+cancellation; and synthetic display loss/retry plus generation identity reset.
+The fixture advances the real world until a visible spawn, then pauses before
+recording physical tick/terrain/event sequence, document and transport receipts.
+Inspection leaves those receipts unchanged. Playwright attaches the selected
+canvas screenshot and geometry/identity receipts. This is one installed browser,
+not cross-browser, retained-heap, acoustic-sync or rotated-host qualification.
