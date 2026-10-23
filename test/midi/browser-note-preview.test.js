@@ -115,6 +115,164 @@ const setup = (options = {}, context = new FakeContext()) => {
 };
 
 describe('BrowserNotePreview', function() {
+  const nativePatch = (revision = 1) => ({ status: 'ready', patch: { id: 'native-lifecycle', revision,
+    engineId: 'native-oscillator', engineVersion: 1, parameters: { gain01: 0.8, sustain01: 0.6, pan01: 0 },
+    sampleRefs: [], voicePolicy: { maxVoices: 8 }, mix: { gain01: 0.7, pan01: 0.1 } },
+  receipt: { patchId: 'native-lifecycle', revision } });
+  const nativeIntent = (voiceId, generation = 1) => ({ version: 1, kind: 'begin', voiceId, generation,
+    pitch: { cents: 6000.001, referenceHz: 440 }, velocity01: 0.7501, expression: {},
+    sourceEventIds: ['physical:1'], onsetId: 'onset:' + voiceId, actorId: 'actor:' + voiceId });
+
+  it('keeps semantic pressure independent from its envelope and MIDI compatibility controls', async () => {
+    const { preview, context } = setup(), game = preview.createSession('game'), backend = game.createInstrumentBackend();
+    await backend.prepare(nativePatch()); await game.enable();
+    backend.begin(nativeIntent('a'), 96000);
+    const voice = [...preview._voices][0], envelope = [...voice.gain.gain.events];
+    expect(backend.update('a', { pressure01: 0.5001, pitchOffsetCents: 100.001, pan01: -0.2 }, 98400).status).to.equal('accepted');
+    expect(voice.gain.gain.events).to.deep.equal(envelope);
+    expect(voice.pressureGain.gain.events.at(-1)).to.include({ type: 'ramp', value: 0.5001 });
+    expect(voice.pressureGain.gain.events.at(-1).time).to.be.closeTo(2.058, 1e-12);
+    const pitch = [...voice.oscillator.detune.events];
+    game.output.channels[1].sendPitchBend(-1); game.output.channels[1].sendControlChange(11, 0);
+    expect(voice.oscillator.detune.events).to.deep.equal(pitch);
+    expect(voice.pan.pan.events.at(-1).value).to.be.closeTo(-0.1, 1e-12);
+    expect(backend.end('a', { seconds: 0.04 }, 100800).status).to.equal('accepted');
+    expect(voice.gain.gain.events.at(-1)).to.include({ type: 'ramp', value: 0 });
+    expect(context.oscillators[0].stops.at(-1)).to.be.closeTo(2.14, 1e-12);
+    await preview.dispose();
+  });
+
+  it('rejects an overflowing expression batch without applying its other controls', async () => {
+    const { preview } = setup(), game = preview.createSession('game'), backend = game.createInstrumentBackend({ maxControlEvents: 1 });
+    await backend.prepare(nativePatch()); await game.enable(); backend.begin(nativeIntent('a'), 96000);
+    backend.update('a', { pressure01: 0.5 }, 98400);
+    const voice = [...preview._voices][0], pitch = [...voice.oscillator.detune.events];
+    expect(backend.update('a', { pressure01: 0.25, pitchOffsetCents: 20 }, 100800).reason).to.equal('expression-queue-full');
+    expect(voice.oscillator.detune.events).to.deep.equal(pitch);
+    expect(backend.end('a', { seconds: 0.04 }, 100800).status).to.equal('accepted');
+    await preview.dispose();
+  });
+
+  it('holds a stationary owned voice for 60 seconds using authoritative liveness without expression updates', async () => {
+    const { preview, context } = setup(), game = preview.createSession('game'), backend = game.createInstrumentBackend({ gateMode: 'owned' });
+    await backend.prepare(nativePatch()); await game.enable();
+    expect(backend.begin(nativeIntent('drone'), 96000).reason).to.equal('execution-lease-required');
+    expect(backend.renewExecutionLease(1, 'live', 70 * 48000).status).to.equal('accepted');
+    expect(backend.begin(nativeIntent('drone'), 96000).status).to.equal('accepted');
+    const voice = [...preview._voices][0]; context.currentTime = 62;
+    expect(preview._voiceFinished(voice)).to.equal(false);
+    expect(backend.renderDiagnostics({ includeVoices: true }).voices[0]).to.include({ state: 'held', voiceId: 'drone', modeledParameters: true });
+    expect(backend.end('drone', { seconds: 0.04 }, 62 * 48000).status).to.equal('accepted');
+    voice.oscillator.end(); expect(backend.renderDiagnostics().activeVoices).to.equal(0);
+    expect(voice.pressureGain.disconnected).to.equal(true);
+    await preview.dispose();
+  });
+
+  it('renews only the matching owner execution lease and reports watchdog termination as a sink outcome', async () => {
+    const { preview, context } = setup(), game = preview.createSession('game'), backend = game.createInstrumentBackend({ gateMode: 'owned' });
+    await backend.prepare(nativePatch()); await game.enable();
+    backend.renewExecutionLease(1, 'live', 4 * 48000); backend.renewExecutionLease(1, 'cue', 5 * 48000);
+    backend.begin(nativeIntent('same'), 96000, 'live'); backend.begin(nativeIntent('same'), 96000, 'cue');
+    context.currentTime = 3; backend.renewExecutionLease(1, 'live', 70 * 48000);
+    const voices = [...preview._voices]; expect(voices.map(voice => voice.end)).to.deep.equal([70, 5]);
+    context.currentTime = 5; voices[1].oscillator.end();
+    expect(backend.renderDiagnostics().activeVoices).to.equal(1);
+    expect(backend.renderDiagnostics({ includeTraces: true }).traces.at(-1)).to.include({ executionEpoch: 'cue', reason: 'owner-lease-expired' });
+    await preview.dispose();
+  });
+
+  it('snapshots patch revisions, cancels stale preparations and retains the previous sound', async () => {
+    const { preview } = setup(), game = preview.createSession('game'), backend = game.createInstrumentBackend();
+    const resolution = nativePatch(); await backend.prepare(resolution); resolution.patch.mix.gain01 = 0;
+    await game.enable(); backend.begin(nativeIntent('old'), 96000);
+    expect([...preview._voices][0].basePeak).to.be.closeTo(0.7501 * 0.8 * 0.7, 1e-12);
+    const replacement = backend.prepare(nativePatch(2)); game.stop();
+    expect((await replacement).reason).to.equal('preparation-cancelled');
+    expect(backend.renderDiagnostics().patchRevision).to.equal(1);
+    await preview.dispose();
+  });
+
+  it('bounds semantic traces and keeps scheduled cancellation separate from rendering acknowledgment', async () => {
+    const { preview } = setup(), game = preview.createSession('game'), backend = game.createInstrumentBackend({ traceLimit: 2 });
+    await backend.prepare(nativePatch()); await game.enable(); backend.begin(nativeIntent('a'), 100800);
+    backend.update('a', { pressure01: 0.7 }, 101280);
+    const cancellation = backend.cancelGenerationWithReceipt(1, 'live');
+    expect(cancellation.outcomes[0]).to.include({ stage: 'scheduled-cancellation-requested', beforeOnset: true,
+      appliedFrame: null, renderedStatus: 'unknown', acousticReceipt: false });
+    const diagnostics = backend.renderDiagnostics({ includeTraces: true });
+    expect(diagnostics.traceCount).to.equal(2); expect(diagnostics.truncatedTraces).to.be.greaterThan(0);
+    expect(diagnostics.activeVoices).to.equal(0);
+    await preview.dispose();
+  });
+
+  it('keeps owner capture leases private while a separate mix observer sees both owners', async () => {
+    const { preview } = setup(), game = preview.createSession('game'), cue = preview.createSession('cue');
+    const a = [], b = [], mix = []; let project = 'A';
+    game.setCapture({ record(stage, fields) { a.push({ stage, ...fields }); } }, () => ({ projectId: project }));
+    cue.setCapture({ record(stage, fields) { b.push({ stage, ...fields }); } }, { projectId: 'B' });
+    const detachMix = preview.observeMix({ record(stage, fields) { mix.push({ stage, ...fields }); } });
+    await game.enable(); await cue.enable(); game.output.channels[1].sendNoteOn(60, { voiceToken: 1 });
+    project = 'replacement'; cue.setCapture(null);
+    const voice = [...preview._voices][0]; voice.oscillator.end();
+    expect(a.filter(record => record.stage === 'synth-end')[0]).to.include({ projectId: 'A', owner: game.getState().ownerId });
+    expect(b).to.have.length(0); expect(mix.map(record => record.stage)).to.include('synth-end');
+    expect(a.every(record => record.projectId === 'A')).to.equal(true);
+    detachMix(); await game.dispose(); expect(preview._observers.diagnostics().leases).to.equal(0);
+    await preview.dispose();
+  });
+
+  it('replaces a closed context on the next explicit enable and invalidates old execution leases', async () => {
+    const first = new FakeContext(), second = new FakeContext(), contexts = [first, second];
+    first.resume = () => Promise.reject(new Error('A closed context cannot resume.'));
+    const preview = createBrowserNotePreview({ createAudioContext: () => contexts.shift(), nowMs: () => 1000 });
+    const game = preview.createSession('game'), backend = game.createInstrumentBackend({ gateMode: 'owned' });
+    await backend.prepare(nativePatch()); expect(await game.enable()).to.equal(true);
+    backend.renewExecutionLease(1, 'live', 70 * 48000); backend.begin(nativeIntent('old'), 96000);
+    await first.close(); expect(await game.enable()).to.equal(true);
+    expect(preview.getState().contextEpoch).to.equal(2); expect(first.oscillators[0].disconnected).to.equal(true);
+    expect(backend.begin(nativeIntent('new'), 96000).reason).to.equal('execution-lease-required');
+    expect(backend.renewExecutionLease(1, 'live', 70 * 48000).status).to.equal('accepted');
+    expect(backend.begin(nativeIntent('new'), 96000).status).to.equal('accepted');
+    expect(second.oscillators).to.have.length(1);
+    await preview.dispose();
+  });
+
+  it('does not renew an owned gate after its safety release has already started', async () => {
+    const { preview, context } = setup(), game = preview.createSession('game'), backend = game.createInstrumentBackend({ gateMode: 'owned' });
+    await backend.prepare(nativePatch()); await game.enable(); backend.renewExecutionLease(1, 'live', 3 * 48000);
+    backend.begin(nativeIntent('held'), 96000); context.currentTime = 2.99;
+    expect(backend.renewExecutionLease(1, 'live', 70 * 48000).reason).to.equal('execution-lease-too-late');
+    expect([...preview._voices][0].end).to.equal(3);
+    await preview.dispose();
+  });
+
+  it('cleans every partially initialized semantic component when scheduling fails before registration', async () => {
+    const { preview, context } = setup(), game = preview.createSession('game'), backend = game.createInstrumentBackend();
+    await backend.prepare(nativePatch()); await game.enable();
+    const create = context.createOscillator.bind(context);
+    context.createOscillator = () => {
+      const oscillator = create(); oscillator.frequency.setValueAtTime = () => { throw new Error('AudioParam failure'); }; return oscillator;
+    };
+    const firstGain = context.gains.length;
+    expect(backend.begin(nativeIntent('failed'), 96000).reason).to.equal('backend-failure');
+    expect(preview._voices.size).to.equal(0); expect(context.oscillators[0].disconnected).to.equal(true);
+    expect(context.gains.slice(firstGain, firstGain + 2).every(gain => gain.disconnected)).to.equal(true);
+    expect(backend.renderDiagnostics().deliveryErrors).to.equal(1);
+    await preview.dispose();
+  });
+
+  it('terminates only the failed admitted voice when continuous automation throws', async () => {
+    const { preview } = setup(), game = preview.createSession('game'), backend = game.createInstrumentBackend();
+    await backend.prepare(nativePatch()); await game.enable(); backend.begin(nativeIntent('a'), 96000); backend.begin(nativeIntent('b'), 96000);
+    const [a, b] = [...preview._voices];
+    a.pressureGain.gain.setValueAtTime = () => { throw new Error('AudioParam failure'); };
+    expect(backend.update('a', { pressure01: 0.5 }, 98400).reason).to.equal('backend-failure-after-acceptance');
+    expect(preview._voices.has(a)).to.equal(false); expect(preview._voices.has(b)).to.equal(true);
+    expect(backend.renderDiagnostics().activeVoices).to.equal(1);
+    expect(backend.renderDiagnostics({ includeTraces: true }).traces.some(trace => trace.reason === 'backend-failure-after-acceptance')).to.equal(true);
+    await preview.dispose();
+  });
+
   it('plays independent same-pitch semantic voices with precise per-voice expression in the shared mix', async () => {
     const { preview, context } = setup();
     const game = preview.createSession('game'), backend = game.createInstrumentBackend();
