@@ -1,21 +1,25 @@
 import { expect, test } from '@playwright/test';
 
-const ready = async (page, count = 8) => {
+const ready = async (page, count = 8, steps = 16) => {
   await page.goto('/README.md');
   await page.setContent('<style>.studio-stage{position:relative;width:800px;height:608px}.studio-cell{min-width:24px}.studio-sequences{position:absolute;inset:0}.studio-sequence{position:absolute;display:grid;width:100%}</style><header id="procgenTopbar"></header><canvas id="gameCanvas"></canvas>');
-  await page.evaluate(async count => {
+  await page.evaluate(async ({ count, steps }) => {
     const { createProcgenWorkstationView } = await import('/js/app/procgen/workstation/ProcgenWorkstationView.js');
     const { createProcgenWorkstationProject, createProcgenLane } = await import('/js/app/procgen/workstation/ProcgenWorkstationProject.js');
     const { createMidiProject, reduceMidiProject } = await import('/js/midi/project/MidiProject.js');
-    let project = createProcgenWorkstationProject(createMidiProject(), { lanes: Array.from({ length: count }, (_, index) => createProcgenLane(index)) });
+    let project = createProcgenWorkstationProject(createMidiProject(), { lanes: Array.from({ length: count }, (_, index) =>
+      createProcgenLane(index, steps === 16 ? {} : { patterns: Array.from({ length: 4 }, () => ({ length: steps })) })) });
     const state = { laneId: 'lane-1', slot: 0, step: 0 }, calls = [], actions = [];
     const runtime = {};
     const handlers = Object.fromEntries(['copy', 'paste', 'undo', 'redo', 'observe', 'record'].map(name => [name, value => calls.push({ name, value })]));
-    const view = createProcgenWorkstationView({ document, window, getProject: () => project, getRuntime: () => runtime, state, handlers,
-      dispatch: action => { actions.push(action); project = reduceMidiProject(project, action); if (action.type === 'procgen/step') view.patchStep(action); else view.render(); } });
+    const dispatch = action => { actions.push(action); project = reduceMidiProject(project, action);
+      if (action.type === 'procgen/step') view.patchStep(action);
+      else if (action.type === 'procgen/launchedBatch') view.launched();
+      else view.render(); };
+    const view = createProcgenWorkstationView({ document, window, getProject: () => project, getRuntime: () => runtime, state, handlers, dispatch });
     view.render();
-    window.workstationViewTest = { view, state, calls, actions, runtime, getProject: () => project };
-  }, count);
+    window.workstationViewTest = { view, state, calls, actions, runtime, dispatch, getProject: () => project };
+  }, { count, steps });
 };
 
 test('selecting another lane edits its displayed phrase and supports fixed note zero', async ({ page }) => {
@@ -143,4 +147,66 @@ test('draw and erase gestures commit one reducer action for an entire stroke', a
   await stroke('erase');
   expect(await page.evaluate(() => window.workstationViewTest.getProject().procgen.lanes[0].patterns[0].steps.slice(0, 4).every(step => !step.enabled))).toBe(true);
   expect(await page.evaluate(() => window.workstationViewTest.actions.length)).toBe(2);
+});
+
+test('benchmark 64-step edit and simultaneous launch latency @benchmark', async ({ page }) => {
+  test.skip(!process.env.LEMMINGS_BENCH, 'Run explicitly with LEMMINGS_BENCH=1');
+  const results = [];
+  for (const laneCount of [8, 128, 1024]) {
+    await ready(page, laneCount, 64);
+    results.push(await page.evaluate(async () => {
+      const fixture = window.workstationViewTest, samples = [], launchSamples = [];
+      const percentile = (values, fraction) => [...values].sort((a, b) => a - b)[Math.min(values.length - 1, Math.floor(values.length * fraction))];
+      for (let index = 0; index < 20; index++) fixture.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: index % 2 ? 60 : 61 } });
+      const before = performance.memory?.usedJSHeapSize ?? null;
+      for (let index = 0; index < 120; index++) {
+        const start = performance.now();
+        fixture.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: index % 2 ? 60 : 61 } });
+        samples.push(performance.now() - start);
+      }
+      const after = performance.memory?.usedJSHeapSize ?? null;
+      for (let index = 0; index < 120; index++) {
+        const launches = fixture.getProject().procgen.lanes.map(lane => ({ laneId: lane.id, slot: index % 2 ? 1 : 0 }));
+        const start = performance.now(); fixture.dispatch({ type: 'procgen/launchedBatch', launches });
+        launchSamples.push(performance.now() - start);
+      }
+      const result = { lanes: fixture.getProject().procgen.lanes.length, steps: 64, scope: 'browser reducer/view and synthetic workstation host; no audio or IndexedDB',
+        editMs: { p50: percentile(samples, 0.5), p95: percentile(samples, 0.95), p99: percentile(samples, 0.99), over16: samples.filter(value => value > 16).length },
+        launchMs: { p50: percentile(launchSamples, 0.5), p95: percentile(launchSamples, 0.95), p99: percentile(launchSamples, 0.99), over16: launchSamples.filter(value => value > 16).length },
+        heapDeltaBytes: before == null || after == null || after === before ? null : after - before };
+      const project = fixture.getProject(); fixture.view.dispose();
+      window.localStorage.removeItem('lemmings.procgen.workstation.v1');
+      const { createProcgenWorkstation } = await import('/js/app/procgen/workstation/ProcgenWorkstation.js');
+      let legacyProject = project;
+      const listeners = new Set(), runtime = { world: { laneCount: result.lanes, seed: 7, timer: { speedFactor: 1 }, frontiers: [100] }, lanes: { renderer: null }, view: {} };
+      const legacy = { settings: { seed: 7, speed: 1, laneCount: result.lanes }, getProject: () => legacyProject,
+        setProject(value) { legacyProject = value; for (const listener of listeners) listener(value); },
+        subscribeProject(listener) { listeners.add(listener); return () => listeners.delete(listener); },
+        setPaused() {}, setSpeed() {}, local: { getState: () => ({ enabled: false, selectedBackend: 'synth' }) } };
+      const studio = createProcgenWorkstation({ document, window, legacy, getRuntime: () => runtime, restart: async () => {},
+        storage: { close() {} }, captureCheckpoint: () => ({ version: 1, laneCount: result.lanes, seed: 7 }),
+        transportOptions: { driver: { start() {}, stop() {} }, lookaheadMs: 0 } });
+      const controller = [];
+      for (let index = 0; index < 20; index++) studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: index % 2 ? 60 : 61 } });
+      for (let index = 0; index < 120; index++) {
+        const start = performance.now();
+        studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: index % 2 ? 60 : 61 } });
+        controller.push(performance.now() - start);
+      }
+      result.controllerMs = { p50: percentile(controller, 0.5), p95: percentile(controller, 0.95), p99: percentile(controller, 0.99), over16: controller.filter(value => value > 16).length };
+      studio.handlers.record(true);
+      const captures = [];
+      for (let index = 0; index < 120; index++) {
+        const timestamp = performance.now(), start = timestamp;
+        studio.ports.receiveMidi([0x90, 60 + index % 2, 90], timestamp);
+        studio.ports.receiveMidi([0x80, 60 + index % 2, 0], timestamp + 10);
+        captures.push(performance.now() - start);
+      }
+      result.captureMs = { p50: percentile(captures, 0.5), p95: percentile(captures, 0.95), p99: percentile(captures, 0.99), over16: captures.filter(value => value > 16).length };
+      studio.dispose();
+      return result;
+    }));
+  }
+  console.log('ProcGen browser edit benchmark:', JSON.stringify(results));
+  expect(results.map(result => result.lanes)).toEqual([8, 128, 1024]);
 });
