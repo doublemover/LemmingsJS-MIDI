@@ -5,12 +5,12 @@ import { MidiScheduler } from '../js/midi/MidiScheduler.js';
 import { withFakeClockAndPerformance } from './support/timers.js';
 import { makeOutput } from './support/midi-output.js';
 
-function fixture() {
+function fixture(clock = () => 1000) {
   const output = { id: 'notes', messages: [], clears: 0, send(data, timestamp) { this.messages.push({ data, timestamp }); }, clear() { this.clears++; } };
   const scheduler = { tickMs: 60, setOutput(value) { this.output = value; }, setOutputs(value) { this.outputs = value; }, allNotesOff() { this.panics = (this.panics || 0) + 1; }, setTickMs(value) { this.tickMs = value; }, sendNote(spec, meta) { this.note = { spec, meta }; return true; } };
   const transport = { pause() { this.pauses = (this.pauses || 0) + 1; }, panic() { this.panics = (this.panics || 0) + 1; }, receiveMidi(data, timestamp) { this.received = { data, timestamp }; }, setClockOutput(port) { this.clock = port; }, getState: () => ({ beat: 2, bpm: 120 }) };
   const monitored = [], learned = [], recorded = [];
-  const ports = createProcgenMidiPorts({ transport, scheduler, now: () => 1000,
+  const ports = createProcgenMidiPorts({ transport, scheduler, now: clock,
     onMonitor: event => monitored.push(event), onLearn: event => learned.push(event), onRecord: event => recorded.push(event) });
   ports.setNoteOutput(output);
   return { ports, output, transport, scheduler, monitored, learned, recorded };
@@ -81,6 +81,56 @@ describe('ProcGen workstation MIDI ports', () => {
     input.state = 'connected'; expect(f.ports.checkConnections()).to.equal(true);
     expect(f.ports.getState().inputId).to.equal(null); f.ports.dispose();
     f.ports.setInput(input); expect(listeners.size).to.equal(0);
+  });
+  it('arms sensing only after FE, refreshes on ordinary traffic and releases only owned Thru notes on observed loss', () => {
+    let time = 0; const f = fixture(() => time);
+    f.ports.configure({ thru: true, recording: true });
+    time = 1000; f.ports.checkConnections(); expect(f.ports.getState().inputLiveness.mode).to.equal('unobserved');
+    f.ports.receiveMidi([0xfe], time); expect(f.ports.getState().inputLiveness.mode).to.equal('armed');
+    time = 1100; f.ports.receiveMidi([0x90, 60, 100], time);
+    time = 1250; f.ports.receiveMidi([0xb0, 1, 5], time);
+    time = 1500; f.ports.checkConnections(); expect(f.ports.getState().inputLiveness.mode).to.equal('armed');
+    time = 1551; f.ports.checkConnections();
+    expect(f.ports.getState().inputLiveness).to.include({ mode: 'expired', reason: 'sensing-expired' });
+    expect(f.ports.getState()).to.include({ recordingComplete: false, incompleteReason: 'input-sensing-terminated' });
+    expect(f.ports.getRecording().some(event => event.type === 'safety-termination' && event.reason === 'sensing-expired')).to.equal(true);
+    expect(f.output.messages.map(message => message.data)).to.deep.equal([[0x90, 60, 100], [0xb0, 1, 5], [0x80, 60, 0]]);
+    expect(f.transport.panics || 0).to.equal(0);
+    expect(f.ports.receiveMidi([0x90, 61, 100], 1200)).to.equal(false);
+    time = 1560; f.ports.receiveMidi([0xfe], time); expect(f.ports.getState().inputLiveness.mode).to.equal('armed');
+    expect(f.ports.receiveMidi([0x90, 62, 100], 1200)).to.equal(false);
+    f.ports.dispose();
+  });
+  it('reports host observation gaps separately and keeps System Reset under an input policy', () => {
+    let time = 0; const f = fixture(() => time); f.ports.configure({ thru: true });
+    f.ports.receiveMidi([0xfe], time); f.ports.receiveMidi([0x90, 64, 90], time);
+    time = 1000; f.ports.checkConnections();
+    expect(f.ports.getState().inputLiveness).to.include({ mode: 'unavailable', reason: 'host-suspended' });
+    expect(f.output.messages.at(-1).data).to.deep.equal([0x80, 64, 0]);
+    time = 1100; f.ports.receiveMidi([0x90, 65, 90], time); f.ports.receiveMidi([0xff], time);
+    expect(f.output.messages.at(-1).data).to.deep.equal([0x90, 65, 90]);
+    f.ports.configure({ systemResetPolicy: 'release-owned' }); f.ports.receiveMidi([0xff], time);
+    expect(f.output.messages.at(-1).data).to.deep.equal([0x80, 65, 0]);
+    expect(f.output.messages.some(message => message.data[0] === 0xff)).to.equal(false);
+    f.ports.dispose();
+  });
+  it('runs an owned sensing watchdog even when the workstation render loop is idle', () => withFakeClockAndPerformance(clock => {
+    const f = fixture(() => clock.now); f.ports.configure({ thru: true });
+    f.ports.receiveMidi([0xfe], clock.now); f.ports.receiveMidi([0x90, 67, 90], clock.now);
+    clock.tick(301);
+    expect(f.ports.getState().inputLiveness.mode).to.equal('expired');
+    expect(f.output.messages.at(-1).data).to.deep.equal([0x80, 67, 0]);
+    f.ports.dispose();
+  }));
+  it('does not let a queued message from a replaced input rearm the new connection epoch', () => {
+    let time = 0; const f = fixture(() => time), listeners = [];
+    const port = id => ({ id, state: 'connected', addEventListener(_type, listener) { listeners.push(listener); }, removeEventListener() {} });
+    f.ports.setInput(port('first')); const oldListener = listeners[0];
+    oldListener({ data: [0xfe], receivedTime: 0 }); expect(f.ports.getState().inputLiveness.mode).to.equal('armed');
+    f.ports.setInput(port('second')); expect(f.ports.getState().inputLiveness).to.include({ mode: 'unobserved', connectionEpoch: 2 });
+    oldListener({ data: [0xfe], receivedTime: 0 }); expect(f.ports.getState().inputLiveness.mode).to.equal('unobserved');
+    listeners[1]({ data: [0xfe], receivedTime: 0 }); expect(f.ports.getState().inputLiveness.mode).to.equal('armed');
+    f.ports.dispose();
   });
 
   it('round trips expression bytes and treats velocity zero as note off', () => {

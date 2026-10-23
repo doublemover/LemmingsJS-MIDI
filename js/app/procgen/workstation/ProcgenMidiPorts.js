@@ -3,6 +3,8 @@ import { clearProcgenMidiQueue, sendProcgenMidiBytes } from './ProcgenMidiBytes.
 
 const byte = value => Math.min(127, Math.max(0, Math.round(Number(value) || 0)));
 const channelByte = channel => Math.min(15, Math.max(0, (Number(channel) || 1) - 1));
+const ACTIVE_SENSING_TIMEOUT_MS = 300;
+const HOST_OBSERVATION_GAP_MS = 600;
 
 export function decodeProcgenMidi(data, timestamp = 0) {
   const bytes = Array.from(data || []), status = bytes[0], family = status & 0xf0;
@@ -41,6 +43,9 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
   const scheduler = suppliedScheduler || new MidiScheduler(schedulerConfig);
   let input = null, noteOutput = null, clockOutput = null, removeInput = null;
   let thru = false, recording = false, learn = null, disposed = false, records = [], droppedRecords = 0;
+  let inputEpoch = 0, lastObservationMs = now(), expiredAt = null, systemResetPolicy = 'observe', sensingTimer = null;
+  const inputLiveness = { mode: 'unobserved', lastTrafficTime: null, deadline: null, evidence: 'no-active-sensing-observed', reason: null };
+  const thruNotes = new Map();
   let retainedEvents = 0, eventSequence = 0, firstLostSequence = null, incompleteReason = null, intentRenderSequence = 0;
   const intentRenderEntries = new Set(), intentExpiry = [], activeTrace = new Map();
   const usedChannels = new Map(), noteOutputs = new Map();
@@ -51,6 +56,9 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
   };
   const getState = () => ({ inputId: input?.id || null, noteOutputId: noteOutput?.id || null,
     clockOutputId: clockOutput?.id || null, thru, recording, learning: !!learn,
+    inputPortConnected: input ? input.state !== 'disconnected' : null,
+    inputLiveness: { sourceRoute: input?.id || null, connectionEpoch: inputEpoch, observationDomain: 'performance-now', ...inputLiveness },
+    clockStatus: transport?.getState?.().clockStatus ?? null, systemResetPolicy,
     noteOutputIds: [...noteOutputs.keys()], recordedEvents: retainedEvents, droppedRecords,
     recordingComplete: !incompleteReason, incompleteReason, firstLostSequence,
     pressure: scheduler.getOutputPressure?.(now()) || null });
@@ -171,6 +179,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
   }
   function flush() {
     flushRecording();
+    thruNotes.clear();
     for (const port of new Set([noteOutput, clockOutput, ...noteOutputs.values()])) clearProcgenMidiQueue(port);
     scheduler.allNotesOff({ preserveRateHistory: true });
     for (const [port, channels] of usedChannels) {
@@ -188,21 +197,81 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     usedChannels.clear();
   }
   function panic() { transport?.panic(); flush(); }
+  function releaseThru(reason) {
+    const timestamp = now();
+    for (const entry of thruNotes.values()) {
+      for (let index = 0; index < entry.count; index++) {
+        const data = [0x80 | (entry.channel - 1), entry.note, 0];
+        try {
+          if (sendProcgenMidiBytes(entry.port, data, timestamp)) record({ data, timestamp, submittedMs: now(),
+            outputId: entry.port?.id || null, direction: 'output', source: 'input-safety', reason,
+            evidence: 'api-accepted', acknowledgement: 'adapter-returned' });
+        } catch { /* A disconnected output cannot acknowledge a safety release. */ }
+      }
+    }
+    thruNotes.clear();
+  }
+  const resetInputLiveness = (mode = 'unobserved', reason = null) => {
+    clearTimeout(sensingTimer); sensingTimer = null;
+    inputLiveness.mode = mode; inputLiveness.lastTrafficTime = null; inputLiveness.deadline = null;
+    inputLiveness.evidence = mode === 'unavailable' ? 'host-observation-gap' : 'no-active-sensing-observed';
+    inputLiveness.reason = reason; expiredAt = null; lastObservationMs = now();
+  };
+  const inspectInputLiveness = () => {
+    const observedAt = now();
+    if (inputLiveness.mode === 'armed' && observedAt > inputLiveness.deadline) {
+      const hostGap = observedAt - lastObservationMs > HOST_OBSERVATION_GAP_MS;
+      inputLiveness.mode = hostGap ? 'unavailable' : 'expired'; inputLiveness.deadline = null;
+      clearTimeout(sensingTimer); sensingTimer = null;
+      inputLiveness.evidence = hostGap ? 'host-observation-gap' : 'active-sensing-timeout';
+      inputLiveness.reason = hostGap ? 'host-suspended' : 'sensing-expired'; expiredAt = observedAt;
+      if ([...activeTrace.keys()].some(key => key.startsWith('input:'))) {
+        record({ type: 'safety-termination', direction: 'safety', source: 'input-liveness', reason: inputLiveness.reason,
+          data: [], timestamp: observedAt, connectionEpoch: inputEpoch });
+        for (const key of activeTrace.keys()) if (key.startsWith('input:')) activeTrace.delete(key);
+        markIncomplete('input-sensing-terminated');
+      }
+      releaseThru(inputLiveness.reason); report();
+    }
+    lastObservationMs = observedAt;
+    return observedAt;
+  };
+  const scheduleSensingWatchdog = () => {
+    clearTimeout(sensingTimer);
+    if (disposed || inputLiveness.mode !== 'armed') return;
+    sensingTimer = setTimeout(() => { sensingTimer = null; inspectInputLiveness(); if (inputLiveness.mode === 'armed') scheduleSensingWatchdog(); },
+      Math.max(1, Math.ceil(inputLiveness.deadline - now() + 1)));
+  };
   function receiveMidi(data, timestamp = now()) {
     if (disposed || !data?.length) return false;
+    const observedAt = inspectInputLiveness();
+    if (expiredAt != null && Number.isFinite(timestamp) && timestamp < expiredAt) return false;
     const event = decodeProcgenMidi(data, timestamp);
+    if (data[0] === 0xfe) {
+      const changed = inputLiveness.mode !== 'armed'; inputLiveness.mode = 'armed'; inputLiveness.evidence = 'observed-active-sensing'; inputLiveness.reason = null;
+      inputLiveness.lastTrafficTime = observedAt; inputLiveness.deadline = observedAt + ACTIVE_SENSING_TIMEOUT_MS;
+      if (changed) report();
+    } else if (inputLiveness.mode === 'armed') { inputLiveness.lastTrafficTime = observedAt; inputLiveness.deadline = observedAt + ACTIVE_SENSING_TIMEOUT_MS; }
+    else if (expiredAt != null) { inputLiveness.mode = 'unobserved'; inputLiveness.evidence = 'no-active-sensing-observed'; inputLiveness.reason = null; }
+    if (inputLiveness.mode === 'armed') scheduleSensingWatchdog();
     onMonitor(event); transport?.receiveMidi(data, timestamp);
+    if (data[0] === 0xff && systemResetPolicy === 'release-owned') releaseThru('system-reset-observed');
     if (event.type === 'system') return true;
     record({ ...event, direction: 'input', source: 'input' });
     if (learn) { const callback = learn; learn = null; callback(event); report(); }
     // Realtime/transport messages are never echoed, including when Thru is on.
-    if (thru) raw(event.data, timestamp, { source: 'thru' });
+    if (thru && raw(event.data, timestamp, { source: 'thru' }) && ['noteOn', 'noteOff'].includes(event.type)) {
+      const port = noteOutput, key = `${inputEpoch}:${port?.id}:${event.channel}:${event.note}`, previous = thruNotes.get(key);
+      if (event.type === 'noteOn') thruNotes.set(key, { port, channel: event.channel, note: event.note, count: (previous?.count || 0) + 1 });
+      else if (previous?.count > 1) previous.count--; else thruNotes.delete(key);
+    }
     return true;
   }
-  const listener = event => receiveMidi(event.data || event.message?.data, event.receivedTime ?? event.timestamp ?? now());
   const replaceInput = port => {
     if (input === port || disposed) return;
-    transport?.pause(); removeInput?.(); removeInput = null; input = port || null;
+    transport?.pause(); releaseThru('input-replaced'); removeInput?.(); removeInput = null; input = port || null; inputEpoch++; resetInputLiveness();
+    const epoch = inputEpoch, attached = input;
+    const listener = event => attached === input && epoch === inputEpoch && receiveMidi(event.data || event.message?.data, event.receivedTime ?? event.timestamp ?? now());
     if (input?.addEventListener) {
       input.addEventListener('midimessage', listener);
       const attached = input; removeInput = () => attached.removeEventListener('midimessage', listener);
@@ -277,6 +346,10 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     },
     configure(settings = {}) {
       if (settings.thru !== undefined) thru = !!settings.thru;
+      if (settings.systemResetPolicy !== undefined) {
+        if (!['observe', 'release-owned'].includes(settings.systemResetPolicy)) throw new RangeError('Invalid input System Reset policy');
+        systemResetPolicy = settings.systemResetPolicy;
+      }
       if (settings.recording !== undefined) {
         if (recording && !settings.recording && (activeTrace.size || [...intentRenderEntries].some(entry => !entry.end || entry.end.timestamp > now()))) {
           markIncomplete('open-notes-at-stop');
@@ -338,8 +411,10 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
       intentRenderEntries.clear(); intentExpiry.length = 0; activeTrace.clear(); report();
     },
     checkConnections() {
-      if ([input, noteOutput, clockOutput].some(port => port?.state === 'disconnected')) {
-        panic(); if (input?.state === 'disconnected') replaceInput(null); report(); return false;
+      inspectInputLiveness();
+      if (input?.state === 'disconnected') { replaceInput(null); report(); return false; }
+      if ([noteOutput, clockOutput].some(port => port?.state === 'disconnected')) {
+        panic(); report(); return false;
       }
       const connected = [...noteOutputs.values()].filter(port => port?.state !== 'disconnected');
       if (connected.length !== noteOutputs.size) { this.setNoteOutputs(connected); report(); return false; }
@@ -347,6 +422,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     },
     dispose() {
       if (disposed) return;
+      clearTimeout(sensingTimer); sensingTimer = null;
       panic(); removeInput?.(); removeInput = null; input = null; noteOutput = null; clockOutput = null;
       noteOutputs.clear();
       removeSubmissionObserver?.();
