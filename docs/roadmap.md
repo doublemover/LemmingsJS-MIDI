@@ -2014,3 +2014,31 @@ Receipts: `temp/procgen-surveys/acceptance/survey-16e82578ac28bafc/report.json`,
 - [ ] Before any 64-world campaign, review the measured resource checkpoint, reserve storage for required comparisons and add compressed trace export. Never delete pinned originals to admit more diagnostics.
 - [ ] Cover fatal worker exit, HTTP disconnect and conditional qualification/storage exhaustion branches with narrow faults; preserve the existing coverage thresholds.
 - [ ] Investigate the retained wall guard timeouts and real gap counterexample as bounded routing work, preserving the original predicates and source semantics. Unknown validity remains an exclusion, not a favorable result.
+
+## Open-issue implementation continuation (October 23, 2026)
+
+The current inventory contains 288 open issues. Continue implementation solo on
+`codex/all-open-issues-20261022`, commit and push complete batches, and refresh
+draft PR #1243 after every 20 continuation commits. The owner requested runtime
+tests only after all open-issue code is implemented. Formatting and static
+dependency analysis continue; newly authored runtime fixtures are unexecuted.
+Earlier measurements above apply only to their recorded revisions.
+
+Recent foundations include opaque audio execution retirement, append-only
+causal journal indexes, cross-page score joins, recoverable stopped take tails,
+bounded coverage uncertainty, scoped MIDI route grants, independent teardown,
+immutable browser generations, complete offline installation and fresh-worker
+survey execution identity. Startup now resolves fresh, recipe, document,
+recovery and previous-setup modes through the existing load transaction and
+publishes preferences after world commit. These are implementation statements,
+not acceptance or acoustic/native-device qualification receipts.
+
+- [ ] Finish shared background job execution for import, export encoding,
+  recovery and asset preparation under the shared worker/memory admission owner.
+- [ ] Complete remaining issue contracts in dependency batches, preserving
+  authored sound/content, physical semantics and output ownership requirements.
+- [ ] After implementation, run deferred unit, real-browser, interruption,
+  performance and artifact qualification gates; repair failures and record their
+  exact revisions. Keep unsupported hardware/listening evidence explicit.
+- [ ] Reconcile every open issue against its complete acceptance requirements
+  before closure. No issue is closed merely for adding a schema or fixture.

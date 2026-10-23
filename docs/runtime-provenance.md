@@ -148,3 +148,11 @@ change retires the in-flight replay. Failed worker termination retains its
 reservation and prevents admitting a replacement with unknown ownership.
 Browser fixtures cover initial offline startup, incomplete updates, retained
 old clients, isolated replay and forged source inventories; they are unexecuted.
+
+Replay worker startup now goes through `BackgroundWorkerAdmission`, the shared
+non-realtime admission boundary. It bounds active workers, queued job count,
+retained queued input and aggregate estimated memory before granting execution.
+Priority aging gives older background work a chance to run. Resource leases
+remain charged until the caller acknowledges retirement; cancellation callbacks
+cannot manufacture a completed release. Import, encoding, recovery and asset
+job execution still need to consume the same boundary.

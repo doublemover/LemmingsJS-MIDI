@@ -3,10 +3,11 @@ import { cloneJournalData } from '../workstation/CausalJournalCanonical.js';
 import { browserSurveyReplayBudget, estimateBrowserSurveyReplayBytes } from './ProcgenSurveyReplayBudget.js';
 import { getApplicationDeploymentRoot } from '../../../runtime/ActiveExecutionIdentity.js';
 import { readBrowserGenerationStatus } from '../../../runtime/BrowserGenerationClient.js';
+import { backgroundWorkerAdmission } from '../../resources/BackgroundWorkerAdmission.js';
 
 let activeOwner = null;
 export async function createBrowserSurveyReplaySession({ scenario, candidate, sourceManifest, signal, resourceBudget = browserSurveyReplayBudget,
-  Worker = globalThis.Worker, serviceWorker = globalThis.navigator?.serviceWorker } = {}) {
+  Worker = globalThis.Worker, serviceWorker = globalThis.navigator?.serviceWorker, workerAdmission = backgroundWorkerAdmission } = {}) {
   signal?.throwIfAborted();
   const job = cloneJournalData({ scenario, candidate: candidate || {}, sourceManifest }, { maxBytes: 4 * 1048576, maxNodes: 65536 });
   const comparison = compareActiveExecutionIdentity(job.sourceManifest?.executionIdentity);
@@ -17,7 +18,11 @@ export async function createBrowserSurveyReplaySession({ scenario, candidate, so
   if (!root || !controller || new URL(controller.scriptURL).origin + new URL(controller.scriptURL).pathname !== new URL('service-worker.js', root).href)
     throw new Error('Open the application installer before exact replay; a verified generation controller is required.');
   const token = {}, owner = 'isolated-survey-replay', bytes = estimateBrowserSurveyReplayBytes(job.scenario), nonce = globalThis.crypto.randomUUID();
-  resourceBudget.reserve({ token, owner, generation: 0, category: 'checkpoint', bytes, pinned: true, reloadable: false }); activeOwner = token;
+  activeOwner = token; let admission, retireJob = () => {};
+  try {
+    admission = await workerAdmission.acquire({ kind: 'survey-replay', ownerId: owner, ownerEpoch: 0, sourceRevision: comparison.active.buildId,
+      estimatedPeakBytes: bytes, signal, budgetAdapter: resourceBudget, deadlineMs: 300000, onCancel: reason => retireJob(reason) });
+  } catch (error) { if (activeOwner === token) activeOwner = null; throw error; }
   let worker = null, pending = null, retired = false, sequence = 0, state = null, verification = null;
   const lifecycle = new AbortController();
   const retire = (reason = new Error('Isolated replay was canceled.')) => {
@@ -27,12 +32,13 @@ export async function createBrowserSurveyReplaySession({ scenario, candidate, so
     clearTimeout(lifetime);
     const request = pending; pending = null; if (request) { clearTimeout(request.timer); request.reject(reason); }
     try { worker?.terminate(); }
-    catch { resourceBudget.reserve({ token, owner, generation: 0, category: 'checkpoint', bytes, pinned: true, reloadable: false, unreleased: true }); return; }
-    worker = null; if (activeOwner === token) activeOwner = null; resourceBudget.release({ token, owner });
+    catch (error) { admission.retainUnknown(error); return; }
+    worker = null; if (activeOwner === token) activeOwner = null; admission.release();
   };
   const cancel = () => retire(signal.reason || new Error('Isolated replay was canceled.'));
   const controllerChanged = () => retire(new Error('The generation controller changed during isolated replay; restart the replay.'));
   const lifetime = setTimeout(() => retire(new Error('Isolated replay lifetime exceeded its five-minute bound.')), 300000);
+  retireJob = retire;
   const request = (kind, details = {}) => {
     if (retired || pending) return Promise.reject(new Error(retired ? 'Replay owner is retired.' : 'Replay already has one pending command.'));
     return new Promise((resolve, reject) => {
