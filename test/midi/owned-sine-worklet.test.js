@@ -237,6 +237,22 @@ describe('Owned worklet host lifecycle', () => {
     expect((await backend.prepare(patch)).status).to.equal('ready'); expect(nodes).to.have.length(2);
     expect(backend.begin(intent('b'), 100).status).to.equal('accepted'); backend.dispose();
   });
+  it('contains native teardown failure, closes independent leaves and retains uncertain runtime storage', async () => {
+    const { backend, nodes, patch, intent, preview, context } = setupHost();
+    const budget = createResourceBudget({ limitBytes: 2 * 1024 * 1024 }); preview._audioResources = createAudioResourceLeases({ resourceBudget: budget });
+    await backend.prepare(patch); backend.begin(intent('a'), 100); backend.begin(intent('b'), 100);
+    let disconnects = 0, portCloses = 0;
+    nodes[0].disconnect = () => { disconnects++; throw new Error('disconnect failed'); };
+    nodes[0].port.close = () => { portCloses++; };
+    nodes[0].onprocessorerror();
+    expect(preview._voices.size).to.equal(0); expect(portCloses).to.equal(1); expect(disconnects).to.equal(1);
+    expect(backend.renderDiagnostics().retirement.outcome).to.equal('partial');
+    expect((await backend.prepare(patch)).reason).to.equal('audio-retirement-unknown');
+    expect(preview._audioResources.retireOwner('owner').outcome).to.equal('partial');
+    expect(budget.diagnostics().accountedBytes).to.be.greaterThan(0);
+    backend.dispose(); expect(portCloses).to.equal(1); expect(disconnects).to.equal(1);
+    context.state = 'closed'; preview._audioResources.confirmClosedContext(); expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
 
   it('releases repeated Stop reservations, including admitted onsets still in host and kernel queues', async () => {
     const { backend, nodes, patch, intent, preview, context } = setupHost(); await backend.prepare(patch);

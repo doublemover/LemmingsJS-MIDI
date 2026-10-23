@@ -1,6 +1,7 @@
 import { createAudioCommandQueue } from './AudioCommandQueue.js';
 import { createInstrumentExecutionLifecycle, isManagedExecutionEpoch } from './InstrumentExecutionLifecycle.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
+import { releaseAudioResourceAfterRetirement } from './AudioResourceLeases.js';
 import { createAudioDisplayTelemetry } from './AudioDisplayTelemetry.js';
 import { PROTOCOL, WIDTH, CAPACITY, MAX_VOICES, RECEIPT_WIDTH, BEGIN, UPDATE, END, CANCEL, LEASE,
   SCHEDULED, APPLIED, REJECTED, ENDED, CANCELLED, FAULTED, DISPLAY_PROTOCOL, DISPLAY_WIDTH, DISPLAY_VOICES } from './worklet/OwnedSineProcessor.js';
@@ -30,6 +31,9 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   let runtimeResourceLease = null;
   let pumpQueued = false;
   let lifecycle = null;
+  let faultRetirement = null;
+  let retirementContext = null;
+  const nodeRetirements = new WeakMap();
   const retirement = createProcgenRetirementScope();
   const voices = new Map(), epochs = new Map(), leases = new Map(), cancelled = new Set(), inFlight = new Map(), traces = [];
   const pendingInitializations = new Set();
@@ -52,15 +56,35 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   };
   const reject = (reason, voiceId = null) => { counters.rejected++; return record({ status: 'rejected', reason, voiceId, stage: 'none' }); };
   const clearTimer = () => { if (pumpTimer != null) clearTimeout(pumpTimer); pumpTimer = null; };
+  const retireNode = (retiringNode, resourceLease) => {
+    if (retiringNode && nodeRetirements.has(retiringNode)) return nodeRetirements.get(retiringNode);
+    let nativeRetirement;
+    const receipt = createProcgenRetirementScope().retire([
+      { name: 'native-worklet', run: () => { nativeRetirement = createProcgenRetirementScope().retire([
+        { name: 'processor-handler', run: () => { if (retiringNode) retiringNode.onprocessorerror = null; } },
+        { name: 'message-handler', run: () => { if (retiringNode) retiringNode.port.onmessage = null; } },
+        { name: 'disconnect', run: () => retiringNode?.disconnect() },
+        { name: 'message-port', run: () => retiringNode?.port.close() }
+      ]); return nativeRetirement; } },
+      { name: 'runtime-reservation', run: () => releaseAudioResourceAfterRetirement(resourceLease, nativeRetirement) }
+    ]);
+    if (retiringNode) nodeRetirements.set(retiringNode, receipt);
+    return receipt;
+  };
   const markFault = reason => {
-    if (fault || disposed) return;
-    fault = reason; ready = false; display.stop(); counters.faults++; clearTimer(); queue?.clear(); inFlight.clear(); kernelQueued.clear();
-    try { node?.port.postMessage({ type: 'panic', protocol: PROTOCOL }); } catch { /* The processor may have failed. */ }
-    for (const voice of voices.values()) preview._destroyVoice(voice, 'kernel-fault');
-    voices.clear(); slots.fill(null); node?.disconnect(); node?.port.close(); node = null;
-    lifecycle?.invalidate();
-    runtimeResourceLease?.release(); runtimeResourceLease = null;
+    if (fault || disposed) return faultRetirement;
+    fault = reason; ready = false; counters.faults++; retirementContext = context;
+    faultRetirement = createProcgenRetirementScope().retire([
+      { name: 'display', run: () => display.stop() }, { name: 'timer', run: clearTimer },
+      { name: 'commands', run: () => { queue?.clear(); inFlight.clear(); kernelQueued.clear(); } },
+      { name: 'panic-request', run: () => node?.port.postMessage({ type: 'panic', protocol: PROTOCOL }) },
+      ...[...voices.values()].map(voice => ({ name: 'voice-' + voice.id, run: () => preview._destroyVoice(voice, 'kernel-fault') })),
+      { name: 'native-runtime', run: () => retireNode(node, runtimeResourceLease) },
+      { name: 'executions', run: () => lifecycle?.invalidate() }
+    ]);
+    if (faultRetirement.outcome === 'complete') { slots.fill(null); node = null; runtimeResourceLease = null; }
     record({ status: 'faulted', reason, stage: 'runtime', appliedFrame: null });
+    return faultRetirement;
   };
   const pump = () => {
     clearTimer();
@@ -159,14 +183,15 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   };
   const prepare = async (resolution, assets = []) => {
     if (disposed) return reject('disposed');
+    if (faultRetirement?.outcome === 'partial' && (retirementContext || context)?.state !== 'closed') return reject('audio-retirement-unknown');
     if (!Array.isArray(assets) || assets.length) return reject('assets-unsupported');
     const next = validate(resolution); if (!next) return reject('unsupported-patch-or-engine');
     const candidateContext = preview.getAudioContext();
     if (!candidateContext?.audioWorklet?.addModule) return reject('audio-worklet-unavailable');
-    if (context && context !== candidateContext) { onOwnerStop(); node?.disconnect(); node?.port.close(); node = null; ready = false;
-      for (const voice of voices.values()) preview._destroyVoice(voice, 'context-replaced');
-      slots.fill(null); lifecycle?.invalidate();
-      runtimeResourceLease?.release(); runtimeResourceLease = null; }
+    if (context && context !== candidateContext) {
+      if (context.state === 'closed') { node = null; ready = false; voices.clear(); slots.fill(null); runtimeResourceLease = null; }
+      else { markFault('context-replaced'); if (faultRetirement?.outcome !== 'complete') return reject('audio-retirement-unknown'); }
+    }
     const revision = ++preparing, generation = preview._generation, ownerGeneration = preview._sessions.get(owner)?.generation;
     let candidate = null, timer = null, cancelInitialization = null, candidateResourceLease = null;
     let interrupt;
@@ -197,27 +222,33 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
           };
         }), interrupted]);
         if (disposed || revision !== preparing || generation !== preview._generation || ownerGeneration !== preview._sessions.get(owner)?.generation) {
-          candidate.disconnect(); candidate.port.close(); return reject('preparation-cancelled');
+          return reject('preparation-cancelled');
         }
         candidate.connect(destination);
         node = candidate; candidate = null; context = candidateContext;
         queue = createAudioCommandQueue({ capacity: CAPACITY, terminalReserve: MAX_VOICES, maxHorizonFrames: Math.ceil(context.sampleRate * 10) });
         const connectedNode = node;
         node.port.onmessage = event => {
-          if (disposed || node !== connectedNode) return;
+          if (disposed || !ready || node !== connectedNode) return;
           if (event.data?.type === 'receipts') onReceipts(event.data);
           else if (event.data?.type === 'display-samples') display.consume(event.data);
           else if (event.data?.type === 'protocol-error') markFault('kernel-protocol-error');
         };
         node.onprocessorerror = () => { if (node === connectedNode) markFault('processor-error'); };
         runtimeResourceLease = candidateResourceLease; candidateResourceLease = null;
-        ready = true; fault = null; ownerStopped = false; display.configure(true);
+        ready = true; fault = null; faultRetirement = null; retirementContext = null; ownerStopped = false; display.configure(true);
       }
       patch = next; return Object.freeze({ status: 'ready', patchId: next.id, revision: next.revision, capabilities, runtime });
     } catch (error) {
-      candidate?.disconnect(); candidate?.port.close();
       return reject(error?.name === 'ResourceBudgetError' ? 'audio-resource-budget' : String(error?.message || 'worklet-initialization-failed').slice(0, 160));
-    } finally { candidateResourceLease?.release(); if (timer != null) clearTimeout(timer); pendingInitializations.delete(cancelInitialization); }
+    } finally {
+      const cleanup = createProcgenRetirementScope().retire([
+        { name: 'candidate-runtime', run: () => retireNode(candidate, candidateResourceLease) },
+        { name: 'initialization-timer', run: () => { if (timer != null) clearTimeout(timer); } },
+        { name: 'initialization-owner', run: () => pendingInitializations.delete(cancelInitialization) }
+      ]);
+      if (cleanup.outcome !== 'complete') { faultRetirement = cleanup; retirementContext = candidateContext; fault = 'preparation-retirement-unknown'; ready = false; }
+    }
   };
   const epochToken = epoch => {
     if (epochs.has(epoch)) return epochs.get(epoch);
@@ -363,19 +394,26 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       stage: outcome?.status === 'accepted' ? 'scheduled-cancellation-requested' : 'not-submitted', appliedFrame: null, renderedStatus: 'unknown' });
   };
   const onOwnerStop = () => {
-    ownerStopped = true; clearTimer(); preparing++; counters.producerCancelled += queue?.clear() || 0;
-    leases.clear(); inFlight.clear(); kernelQueued.clear();
-    for (const voice of voices.values()) if (!voice.submitted) { voice.kernelEnded = true;
-      preview._destroyVoice(voice, 'owner-stop-before-submission'); slots[voice.slot] = null; }
-    for (const cancel of pendingInitializations) cancel(); pendingInitializations.clear();
-    try { if (node) { counters.stopRequests++; node.port.postMessage({ type: 'panic', protocol: PROTOCOL }); } } catch { markFault('terminal-port-failure'); }
-    display.stop();
+    ownerStopped = true; preparing++;
+    return createProcgenRetirementScope().retire([
+      { name: 'timer', run: clearTimer },
+      { name: 'commands', run: () => { counters.producerCancelled += queue?.clear() || 0; leases.clear(); inFlight.clear(); kernelQueued.clear(); } },
+      ...[...voices.values()].filter(voice => !voice.submitted).map(voice => ({ name: 'unsent-voice-' + voice.id, run: () => {
+        voice.kernelEnded = true; const receipt = preview._destroyVoice(voice, 'owner-stop-before-submission'); slots[voice.slot] = null; return receipt;
+      } })),
+      ...[...pendingInitializations].map((cancel, index) => ({ name: 'initialization-' + index, run: cancel })),
+      { name: 'initialization-registry', run: () => pendingInitializations.clear() },
+      { name: 'panic-request', run: () => { try { if (node) { counters.stopRequests++; node.port.postMessage({ type: 'panic', protocol: PROTOCOL }); } }
+      catch (error) { if (disposed) throw error; return markFault('terminal-port-failure'); } } },
+      { name: 'display', run: () => display.stop() }
+    ]);
   };
   const renderDiagnostics = ({ includeTraces = false } = {}) => Object.freeze({ engineId: runtime.engineId, runtime, capabilities,
     readiness: disposed ? 'disposed' : fault || !ready ? fault || 'runtime-unprepared' : ownerStopped ? 'kernel-stop-pending' : !preview._ownerReady(owner) ? 'audio-not-ready' : 'ready',
     activeVoices: voices.size, queued: queue?.diagnostics() || null, inFlight: inFlight.size, counters: Object.freeze({ ...counters }),
     awaitingKernelAdmission: inFlight.size - kernelQueued.size,
     traceCount: traces.length, truncatedTraces: truncated, cancellationHistoryFull, display: display.diagnostics(),
+    retirement: faultRetirement ? Object.freeze({ state: faultRetirement.state, outcome: faultRetirement.outcome }) : null,
     ...(includeTraces ? { traces: Object.freeze([...traces]) } : {}) });
   const dispose = () => {
     if (retirement.getReceipt()) return retirement.getReceipt();
@@ -384,9 +422,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       { name: 'admission', run: () => { disposed = true; ready = false; } },
       { name: 'kernel-stop', run: onOwnerStop },
       ...[...voices.values()].map(voice => ({ name: `voice-${voice.id}`, run: () => preview._destroyVoice(voice, 'backend-disposed') })),
-      { name: 'disconnect', run: () => retiringNode?.disconnect() },
-      { name: 'message-port', run: () => retiringNode?.port.close() },
-      { name: 'runtime-reservation', run: () => runtimeResourceLease?.release() },
+      { name: 'native-runtime', run: () => retireNode(retiringNode, runtimeResourceLease) },
       { name: 'display', run: () => display.dispose() },
       { name: 'identities', run: () => { slots.fill(null); patch = null; } }
     ]);
