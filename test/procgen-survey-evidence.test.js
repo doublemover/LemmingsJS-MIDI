@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { SurveyEvidenceStore, SurveyStorageLimitError, SurveyImmutableConflictError, SurveyEvidenceIntegrityError, SurveyManifestRecoveryError } from '../scripts/procgen-survey/SurveyEvidenceStore.js';
+import { SurveyEvidenceStore, SurveyStorageLimitError, SurveyImmutableConflictError, SurveyOutcomeConflictError, SurveyEvidenceIntegrityError, SurveyManifestRecoveryError } from '../scripts/procgen-survey/SurveyEvidenceStore.js';
 import { normalizeSurveyResources } from '../scripts/procgen-survey/SurveyWorkerPool.js';
 
 describe('bounded procgen survey evidence', function() {
@@ -31,6 +31,54 @@ describe('bounded procgen survey evidence', function() {
     await store.commitResult(result('cancelled'), { id: 'cancelled' }); expect(await store.completed(result().trialId)).to.equal(null);
     await store.commitResult(result(), { id: 'replayed' }); expect((await store.completed(result().trialId)).status).to.equal('completed');
     expect((await store.read('attempts/' + result().trialId + '-cancelled.json')).result.status).to.equal('cancelled');
+  });
+  it('publishes equivalent concurrent attempts under one owner while preserving the first complete original', async () => {
+    const contender = await new SurveyEvidenceStore(directory, { maxBytes: 32768 }).initialize({ id: 'frozen', code: 'sha' });
+    const outcomes = await Promise.all([store.commitResult({ ...result(), capture: 'first' }, { id: 'one' }, { withReceipt: true }),
+      contender.commitResult({ ...result(), capture: 'second' }, { id: 'two' }, { withReceipt: true })]);
+    const original = await store.completed(result().trialId);
+    expect(outcomes[0].result).to.deep.equal(original); expect(outcomes[1].result).to.deep.equal(original);
+    expect(outcomes.every(outcome => outcome.publication.status === 'original-and-attempt-published')).to.equal(true);
+    expect(outcomes[0].publication.originalChecksum).to.equal(outcomes[1].publication.originalChecksum);
+    expect(outcomes[0].publication.attemptChecksum).not.to.equal(outcomes[1].publication.attemptChecksum);
+    expect(await fs.readdir(path.join(directory, 'attempts'))).to.have.length(2); expect(await fs.readdir(path.join(directory, 'conflicts'))).to.deep.equal([]);
+  });
+  it('preserves a complete attempt after result publication fails and recovers without recomputing it', async () => {
+    const write = fs.writeFile; fs.writeFile = async (file, ...args) => {
+      if (String(file).startsWith(path.join(directory, 'results', result().trialId + '.json.'))) { const error = new Error('disk full before result publication'); error.code = 'ENOSPC'; throw error; }
+      return write(file, ...args);
+    };
+    try { await store.commitResult(result(), { id: 'recoverable' }); throw new Error('unexpected result publication'); }
+    catch (error) { expect(error.code).to.equal('ENOSPC'); } finally { fs.writeFile = write; }
+    expect(await store.completed(result().trialId)).to.equal(null);
+    const retained = await store.read('attempts/' + result().trialId + '-recoverable.json'); expect(retained.result).to.deep.equal(result());
+    const recovered = await store.recoverCompleted(result().trialId);
+    expect(recovered).to.include({ status: 'recovered-from-complete-attempt', attemptReference: 'attempts/' + result().trialId + '-recoverable.json' });
+    expect(recovered.result).to.deep.equal(result()); expect(await store.completed(result().trialId)).to.deep.equal(result());
+    expect((await store.recoverCompleted(result().trialId)).status).to.equal('already-published');
+  });
+  it('keeps conflicting complete attempts for inspection and refuses to choose one during recovery', async () => {
+    await store.writeImmutable('attempts/' + result().trialId + '-one.json', { result: { ...result(), crew: [{ id: 'actor', x: 10 }] }, attempt: { id: 'one' } });
+    await store.writeImmutable('attempts/' + result().trialId + '-two.json', { result: { ...result(), crew: [{ id: 'actor', x: 11 }] }, attempt: { id: 'two' } });
+    let failure; try { await store.recoverCompleted(result().trialId); } catch (error) { failure = error; }
+    expect(failure).to.be.instanceOf(SurveyOutcomeConflictError); expect(failure.kind).to.equal('determinism-defect');
+    expect(failure.originalReference).to.include('attempts/'); expect(failure.attemptedReference).to.include('attempts/');
+    expect(await store.completed(result().trialId)).to.equal(null); expect(await fs.readdir(path.join(directory, 'attempts'))).to.have.length(2);
+  });
+  it('distinguishes another trial whose retained-attempt filename shares the requested prefix', async () => {
+    const other = { ...result(), trialId: result().trialId + '-other' };
+    await store.writeImmutable('attempts/' + other.trialId + '-one.json', { result: other, attempt: { id: 'one' } });
+    expect((await store.recoverCompleted(result().trialId)).status).to.equal('no-complete-attempt');
+    expect((await store.recoverCompleted(other.trialId)).result).to.deep.equal(other);
+  });
+  it('retains explicit incomplete and unsupported attempts without turning them into scored resume originals', async () => {
+    for (const [index, status] of ['completed', 'unsupported', 'interrupted'].entries()) await store.commitResult({ ...result(status), schemaVersion: 1, episodeComplete: false }, { id: 'incomplete-' + index });
+    expect(await store.completed(result().trialId)).to.equal(null); expect((await store.recoverCompleted(result().trialId)).status).to.equal('no-complete-attempt');
+    expect(await fs.readdir(path.join(directory, 'attempts'))).to.have.length(3);
+    for (const attempt of [{}, { id: '../escape' }, { id: 'a/b' }]) {
+      let error; try { await store.commitResult(result(), attempt); } catch (failure) { error = failure; }
+      expect(error).to.be.instanceOf(TypeError);
+    }
   });
   it('stops at the storage cap while retaining pinned originals and reports corrupt receipts', async () => {
     await store.commitResult(result(), { id: 'a' });
@@ -237,6 +285,29 @@ describe('bounded procgen survey evidence', function() {
       expect((await fs.readdir(path.join(directory, 'results')))).to.deep.equal(['before-crash.json']);
       expect(reopened[0].snapshot().bytes).to.equal(reopened[1].snapshot().bytes);
     } finally { if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL'); }
+  });
+  it('recovers verified attempts and originals when a process dies immediately after either hard-link boundary', async function() {
+    this.timeout(15000);
+    const source = new URL('../scripts/procgen-survey/SurveyEvidenceStore.js', import.meta.url).href;
+    for (const boundary of ['attempts', 'results']) {
+      const trialId = 'crash-' + boundary;
+      const program = `import { SurveyEvidenceStore } from ${JSON.stringify(source)}; import fs from 'node:fs/promises'; import path from 'node:path';
+        const store = await new SurveyEvidenceStore(process.argv[1], { maxBytes: 32768 }).initialize({ id: 'frozen', code: 'sha' });
+        const link = fs.link; fs.link = async (temporary, target) => { await link(temporary, target);
+          if (String(target).includes(path.sep + process.argv[2] + path.sep)) { process.stdout.write('published'); await new Promise(() => { setInterval(() => {}, 1000); }); } };
+        await store.commitResult({ trialId: process.argv[3], status: 'completed', lastTick: 100, finalStateHash: 'verified-original' }, { id: 'crashed' });`;
+      const child = spawn(process.execPath, ['--input-type=module', '-e', program, directory, boundary, trialId], { stdio: ['ignore', 'pipe', 'pipe'] });
+      try {
+        await new Promise((resolve, reject) => { child.once('error', reject); child.stdout.once('data', resolve); child.once('exit', code => reject(new Error('Crash boundary fixture exited early: ' + code))); });
+        const exited = new Promise(resolve => child.once('exit', resolve)); child.kill('SIGKILL'); await exited;
+        const reopened = await new SurveyEvidenceStore(directory, { maxBytes: 32768 }).initialize({ id: 'frozen', code: 'sha' });
+        const recovered = await reopened.recoverCompleted(trialId);
+        expect(recovered.status).to.equal(boundary === 'attempts' ? 'recovered-from-complete-attempt' : 'already-published');
+        expect(recovered.result.finalStateHash).to.equal('verified-original');
+        expect((await reopened.read('attempts/' + trialId + '-crashed.json')).result).to.deep.equal(recovered.result);
+        expect((await fs.readdir(path.join(directory, 'results'))).some(name => name.endsWith('.tmp'))).to.equal(false);
+      } finally { if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL'); }
+    }
   });
   it('separates logical/resident counts from the small CPU worker pool and rejects impossible resources', () => {
     const bounds = normalizeSurveyResources({ residentWorlds: 64, executionWorkers: 1 }); expect(bounds.residentWorlds).to.equal(64); expect(bounds.executionWorkers).to.equal(1);

@@ -37,7 +37,7 @@ const runSurveyJobs = async (jobs, options = {}) => {
   const count = Math.min(resources.executionWorkers, resources.residentWorlds, jobs.length), workers = [], activeWorkers = new Set(), results = [], receipts = new Map(), finished = new Set(), presentationErrors = [], persistence = new Map(), deliveryConflicts = [];
   const assignedByTrial = new Map(jobs.map(job => [job.trialId, job]));
   let cancelled = !!options.signal?.aborted, reason = cancelled ? 'cancelled' : null, callbackError = null, callbackTail = Promise.resolve(), paused = !!options.paused, controlId = 0, stepBarrier = null, stepInFlight = null, workersReady = false, pendingResultCount = 0, pendingResultBytes = 0;
-  const generations = new Map(), assignments = new Map(), workerSlots = new Map(), reservations = new Map(), transferRequests = [], persistenceControllers = new Set(), computations = new Map(), readyWorkers = new Set(), trialTimers = new Map(), controlReceipts = [];
+  const generations = new Map(), assignments = new Map(), workerSlots = new Map(), reservations = new Map(), transferRequests = [], persistenceControllers = new Set(), computations = new Map(), readyWorkers = new Set(), trialTimers = new Map(), controlReceipts = [], awaitingOutcomeAcks = new Map();
   const admissions = new Map(jobs.map(job => [job.trialId, { trialId: job.trialId, attemptId: job.attemptId, scenarioId: job.scenario.id,
     candidateId: job.candidate.id, runGeneration, status: 'not-admitted', lastVerifiedTick: 0 }]));
   let peakPendingResultCount = 0, peakPendingResultBytes = 0, closed = false, latestStepReceipt = null, discardedControlReceipts = 0;
@@ -87,13 +87,22 @@ const runSurveyJobs = async (jobs, options = {}) => {
       if (pendingResultBytes + request.bytes > resources.maxPendingResultBytes) break;
       transferRequests.shift(); reservations.set(request.trialId, request); pendingResultCount++; pendingResultBytes += request.bytes;
       peakPendingResultCount = Math.max(peakPendingResultCount, pendingResultCount); peakPendingResultBytes = Math.max(peakPendingResultBytes, pendingResultBytes);
-      send(request.worker, { type: 'result-permit', trialId: request.trialId, attemptId: request.attemptId });
+      send(request.worker, { type: 'result-permit', trialId: request.trialId, attemptId: request.attemptId, digest: request.digest });
     }
+  };
+  const acknowledgePersistence = (worker, receipt) => {
+    if (!receipt) return;
+    if (receipt.workerReceiptStatus !== 'acknowledged') {
+      receipt.workerReceiptStatus = activeWorkers.has(worker) ? 'sent-unacknowledged' : 'worker-unavailable';
+      if (activeWorkers.has(worker)) awaitingOutcomeAcks.set(worker, receipt.trialId);
+    }
+    send(worker, { type: 'result-ack', trialId: receipt.trialId, attemptId: receipt.attemptId, digest: receipt.digest, status: receipt.status,
+      publication: receipt.publication || null, publicationDigest: receipt.publicationDigest || null });
   };
   const releaseTransfer = trialId => {
     const reservation = reservations.get(trialId); if (!reservation) return;
     reservations.delete(trialId); pendingResultCount--; pendingResultBytes -= reservation.bytes;
-    send(reservation.worker, { type: 'result-ack', trialId, attemptId: reservation.attemptId }); admitTransfers();
+    acknowledgePersistence(reservation.worker, persistence.get(trialId)); admitTransfers();
   };
   const finishStepBarrier = () => {
     if (!workersReady || !stepBarrier || stepBarrier.pending.size) return;
@@ -135,14 +144,15 @@ const runSurveyJobs = async (jobs, options = {}) => {
     const encoded = JSON.stringify(result), digest = createHash('sha256').update(encoded).digest('hex'), bytes = Buffer.byteLength(encoded);
     if (finished.has(result.trialId)) {
       if (persistence.get(result.trialId)?.digest !== digest) { deliveryConflicts.push({ trialId: result.trialId, attemptId: message.attemptId, digest }); callbackError ||= new Error('Conflicting worker result'); cancel('infrastructure-error'); }
-      else if (!reservations.has(result.trialId)) send(worker, { type: 'result-ack', trialId: result.trialId, attemptId: message.attemptId });
+      else if (!reservations.has(result.trialId)) acknowledgePersistence(worker, persistence.get(result.trialId));
       return;
     }
     const reservation = reservations.get(result.trialId);
     if (!synthetic && (!reservation || reservation.worker !== worker || reservation.bytes !== bytes || reservation.digest !== digest)) { infrastructure('Unreserved or conflicting worker result transfer', worker); return; }
     freezeSurveyData(result); finished.add(result.trialId); results.push(result);
     const receipt = { trialId: result.trialId, attemptId: message.attemptId, digest, runGeneration, workerGeneration: generations.get(worker),
-      sourceIdentity: result.provenance?.sourceHash || null, status: 'received', bytes, receivedMs: performance.now() - started };
+      sourceIdentity: result.provenance?.sourceHash || null, status: 'received', bytes, receivedMs: performance.now() - started,
+      workerReceiptStatus: synthetic ? 'not-applicable-synthetic' : 'awaiting-storage-outcome' };
     persistence.set(result.trialId, receipt);
     admissions.get(result.trialId).outcomeStatus = result.status;
     if (!synthetic && computations.has(result.trialId)) computations.get(result.trialId).status = 'received';
@@ -154,13 +164,29 @@ const runSurveyJobs = async (jobs, options = {}) => {
       let timer, onAbort;
       const deadline = new Promise(resolve => { onAbort = () => resolve({ expired: true }); controller.signal.addEventListener('abort', onAbort, { once: true });
         timer = setTimeout(() => controller.abort(new SurveyPersistenceDeadlineError()), Math.min(resources.maxPersistenceMs, remaining)); });
-      const callback = Promise.resolve().then(() => options.onResult?.(result, { id: message.attemptId, performance: message.performance },
-        { signal: controller.signal, runGeneration, deadline: Date.now() + Math.min(resources.maxPersistenceMs, remaining), receipt: { ...receipt } })).then(() => ({ committed: true }), error => ({ error }));
+      const callback = Promise.resolve().then(() => options.onResult?.(result, { id: message.attemptId, performance: message.performance,
+        runGeneration, workerGeneration: generations.get(worker), outcomeDigest: digest, sourceIdentity: receipt.sourceIdentity },
+      { signal: controller.signal, runGeneration, deadline: Date.now() + Math.min(resources.maxPersistenceMs, remaining), receipt: { ...receipt } })).then(value => ({ committed: true, publication: value?.publication })).catch(error => ({ error }));
       try {
         const outcome = await Promise.race([callback, deadline]); receipt.callbackLatencyMs = performance.now() - started - receipt.callbackStartedMs;
         if (outcome.expired) { receipt.status = 'unknown-after-timeout'; receipt.failureKind = 'persistence-deadline'; callbackError ||= new SurveyPersistenceDeadlineError(); cancel('persistence-timeout'); }
-        else if (outcome.error) { receipt.status = 'failed-or-unknown'; receipt.failureKind = outcome.error.code || outcome.error.name || 'callback-error'; callbackError ||= outcome.error; cancel('storage-or-callback'); }
-        else receipt.status = options.onResult ? 'committed' : 'computed-only';
+        else if (outcome.error) { receipt.status = 'failed-or-unknown'; receipt.failureKind = outcome.error.kind || outcome.error.code || outcome.error.name || 'callback-error'; callbackError ||= outcome.error; cancel('storage-or-callback'); }
+        else {
+          receipt.status = options.onResult ? 'committed' : 'computed-only';
+          if (outcome.publication && typeof outcome.publication === 'object') {
+            try {
+              const publication = { schemaVersion: 1 };
+              if (outcome.publication.schemaVersion !== 1 || typeof outcome.publication.status !== 'string') throw new TypeError('Invalid callback publication receipt');
+              for (const key of ['status', 'reference', 'checksum', 'attemptReference', 'attemptChecksum', 'originalReference', 'originalChecksum', 'durability']) {
+                const value = outcome.publication[key];
+                if (value === undefined || value === null) continue;
+                if (typeof value !== 'string' || value.length > 1024) throw new TypeError('Invalid callback publication receipt field');
+                publication[key] = value;
+              }
+              receipt.publication = freezeSurveyData(publication); receipt.publicationDigest = createHash('sha256').update(JSON.stringify(publication)).digest('hex'); receipt.publicationStatus = 'callback-reported';
+            } catch { receipt.publicationStatus = 'invalid-callback-receipt'; }
+          }
+        }
       } finally { clearTimeout(timer); controller.signal.removeEventListener('abort', onAbort); persistenceControllers.delete(controller); releaseTransfer(result.trialId); notify(options.onControlState, state()); }
     });
   };
@@ -176,6 +202,7 @@ const runSurveyJobs = async (jobs, options = {}) => {
       for (const job of assigned) Object.assign(admissions.get(job.trialId), { worker: index, workerGeneration });
       supervised.push(new Promise(resolve => {
         let done = false;
+        const pendingOutcome = () => awaitingOutcomeAcks.has(worker);
         const startupLimit = resources.maxStartupMs < resources.maxTotalMs ? setTimeout(() => {
           for (const job of assigned) Object.assign(admissions.get(job.trialId), { failureKind: 'startup-deadline', startupLimitMs: resources.maxStartupMs });
           cancel('startup-timeout'); worker.terminate();
@@ -190,6 +217,7 @@ const runSurveyJobs = async (jobs, options = {}) => {
             for (const job of assigned) Object.assign(admissions.get(job.trialId), { workerGeneration, workerReadyMs: performance.now() - started, assetPreparationMs: message.assetPreparationMs });
             notify(options.onControlState, state());
           } else if (message.type === 'preparing') {
+            if (pendingOutcome()) { infrastructure('Worker resumed without acknowledging persistence outcome', worker); return; }
             const job = assignedByTrial.get(message.trialId), admission = admissions.get(message.trialId);
             if (!readyWorkers.has(worker) || !assignments.get(worker).has(message.trialId) || message.attemptId !== job?.attemptId ||
                 message.scenarioId !== job.scenario.id || message.candidateId !== job.candidate.id || admission.status !== 'not-admitted') { infrastructure('Invalid worker preparation identity', worker); return; }
@@ -207,20 +235,29 @@ const runSurveyJobs = async (jobs, options = {}) => {
             Object.assign(previous, { status: 'admitted', admittedMs: performance.now() - started, preparationLatencyMs: performance.now() - started - previous.preparationStartedMs });
             notify(options.onControlState, state());
           } else if (message.type === 'result-ready') {
+            if (pendingOutcome()) { infrastructure('Worker resumed without acknowledging persistence outcome', worker); return; }
             const job = assignedByTrial.get(message.trialId);
             if (!readyWorkers.has(worker) || !assignments.get(worker).has(message.trialId) || message.attemptId !== job?.attemptId || !Number.isSafeInteger(message.bytes) || message.bytes < 1 || !/^[0-9a-f]{64}$/.test(message.digest || '')) { infrastructure('Invalid worker transfer identity', worker); return; }
             clearTimeout(trialTimers.get(job.trialId)); trialTimers.delete(job.trialId);
             const duplicate = reservations.get(message.trialId) || transferRequests.find(request => request.trialId === message.trialId) || computations.get(message.trialId);
             if (duplicate) {
               if (duplicate.digest !== message.digest || duplicate.bytes !== message.bytes || duplicate.attemptId !== message.attemptId) { deliveryConflicts.push({ trialId: message.trialId, attemptId: message.attemptId, digest: message.digest, originalDigest: duplicate.digest }); infrastructure('Conflicting worker transfer request', worker); }
-              else if (reservations.has(message.trialId) || persistence.has(message.trialId)) send(worker, { type: 'result-permit', trialId: message.trialId, attemptId: message.attemptId });
+              else if (reservations.has(message.trialId) || persistence.has(message.trialId)) send(worker, { type: 'result-permit', trialId: message.trialId, attemptId: message.attemptId, digest: message.digest });
               return;
             }
             computations.set(message.trialId, { trialId: message.trialId, attemptId: message.attemptId, digest: message.digest, bytes: message.bytes,
               runGeneration, workerGeneration, status: 'computed-waiting-transfer' });
-            if (message.bytes > resources.maxPendingResultBytes) { computations.get(message.trialId).status = 'transfer-rejected-byte-bound'; send(worker, { type: 'result-reject', trialId: message.trialId, attemptId: message.attemptId }); infrastructure('Worker result exceeds pending byte bound'); return; }
+            if (message.bytes > resources.maxPendingResultBytes) { computations.get(message.trialId).status = 'transfer-rejected-byte-bound'; send(worker, { type: 'result-reject', trialId: message.trialId, attemptId: message.attemptId, digest: message.digest }); infrastructure('Worker result exceeds pending byte bound'); return; }
             transferRequests.push({ ...message, worker }); admitTransfers();
           } else if (message.type === 'result') accept(message, worker);
+          else if (message.type === 'result-outcome-ack') {
+            const receipt = persistence.get(message.trialId);
+            if (!receipt || !assignments.get(worker).has(message.trialId) || message.attemptId !== receipt.attemptId || receipt.workerGeneration !== workerGeneration ||
+                message.digest !== receipt.digest || message.status !== receipt.status || message.publicationDigest !== (receipt.publicationDigest || null) ||
+                !['sent-unacknowledged', 'acknowledged'].includes(receipt.workerReceiptStatus)) { infrastructure('Invalid worker persistence outcome acknowledgement', worker); return; }
+            receipt.workerReceiptStatus = 'acknowledged'; receipt.workerAcknowledgedMs ??= performance.now() - started;
+            if (awaitingOutcomeAcks.get(worker) === message.trialId) awaitingOutcomeAcks.delete(worker); notify(options.onControlState, state());
+          }
           else if (message.type === 'telemetry') {
             const job = assignedByTrial.get(message.trialId), admission = admissions.get(message.trialId);
             if (!assignments.get(worker).has(message.trialId) || admission.status !== 'admitted' || message.value?.trialId !== message.trialId ||
@@ -265,13 +302,17 @@ const runSurveyJobs = async (jobs, options = {}) => {
             for (const receipt of selected) admissions.get(receipt.trialId).lastVerifiedTick = Math.max(admissions.get(receipt.trialId).lastVerifiedTick, receipt.tick);
             stepBarrier.maxTick = Math.max(stepBarrier.maxTick, message.maxTick); stepBarrier.pending.delete(worker); finishStepBarrier();
           }
-          else if (message.type === 'done') done = true;
+          else if (message.type === 'done') {
+            if (pendingOutcome()) { infrastructure('Worker completed without acknowledging persistence outcome', worker); return; }
+            done = true;
+          }
           else if (message.type === 'fatal') { callbackError ||= new Error(message.error); cancel('infrastructure-error'); }
           else if (message.type !== 'step-ready') infrastructure('Unknown worker message type', worker);
         });
         worker.on('error', error => { callbackError ||= error; cancel('infrastructure-error'); });
         worker.on('exit', code => {
           clearTimeout(startupLimit); clearTimeout(hardLimit); activeWorkers.delete(worker); readyWorkers.delete(worker);
+          awaitingOutcomeAcks.delete(worker);
           for (const job of assigned) { clearTimeout(trialTimers.get(job.trialId)); trialTimers.delete(job.trialId); }
           if ((!done || code !== 0) && !cancelled) infrastructure('Worker exited unexpectedly: ' + code);
           const pendingStep = stepBarrier || stepInFlight;

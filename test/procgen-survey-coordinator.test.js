@@ -7,6 +7,8 @@ import { SurveyEvidenceStore } from '../scripts/procgen-survey/SurveyEvidenceSto
 import { normalizeSurveyScenario } from '../js/app/procgen/survey/ProcgenSurveyScenario.js';
 import { generateProcgenSurveyCandidates, createProcgenSurveyExperiment } from '../js/app/procgen/survey/ProcgenSurveyCandidates.js';
 import { normalizeSurveyResources } from '../scripts/procgen-survey/SurveyWorkerPool.js';
+import { createNodeSurveyTrial } from '../scripts/procgen-survey/SurveyNodeWorld.js';
+import { createSurveyTrialId } from '../js/app/procgen/survey/ProcgenSurveyCore.js';
 
 describe('real bounded procgen survey coordination', function() {
   this.timeout(15000);
@@ -28,6 +30,7 @@ describe('real bounded procgen survey coordination', function() {
     expect(report.rankingsTrusted).to.equal(false); expect(states).to.include('held-out');
     expect(report.admissions).to.have.length(report.persistenceReceipts.length);
     expect(report.admissions.every(receipt => receipt.status === 'admitted' && receipt.stage && receipt.workerGeneration && receipt.runGeneration)).to.equal(true);
+    expect(report.persistenceReceipts.every(receipt => receipt.workerReceiptStatus === 'acknowledged' && receipt.publicationStatus === 'callback-reported' && receipt.publication?.durability)).to.equal(true);
     await store.writeDerivative('report.json', report);
     const firstBytes = store.snapshot().bytes;
     const resumed = await runSurveyExperiment(manifest, store); expect(resumed.status).to.equal('complete'); expect(resumed.execution.admittedTicks).to.equal(0); expect(store.snapshot().bytes).to.equal(firstBytes); expect(resumed.telemetry).to.deep.equal(report.telemetry); expect(resumed.performance).to.deep.equal(report.performance); expect(resumed.priorExecution).to.deep.equal(report.execution);
@@ -69,5 +72,18 @@ describe('real bounded procgen survey coordination', function() {
     expect(observed.selected.every(value => value.tick === 64 && value.attemptId)).to.equal(true); expect(observed.reachedCheckpoint).to.equal(64);
     expect(report.status).to.equal('interrupted'); expect(report.controlReceipts).to.have.length(1);
     expect(report.controlReceipts[0]).to.include({ stage: 'development', status: 'reached', reachedCheckpoint: 64 });
+  });
+  it('reconciles a complete retained attempt before admitting replacement simulation on resume', async () => {
+    const manifest = declaration(); directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lemmings-survey-coordinator-'));
+    const store = await new SurveyEvidenceStore(directory).initialize(manifest), scenario = manifest.scenarios[0], candidate = manifest.candidates[0];
+    const trialId = createSurveyTrialId(scenario, candidate), trial = await createNodeSurveyTrial({ scenario, candidate, trialId, attemptId: 'crashed' });
+    trial.step(scenario.horizonTicks); const original = trial.result(); trial.dispose();
+    await store.writeImmutable('attempts/' + trialId + '-crashed.json', { result: original, attempt: { id: 'crashed', performance: { measuredTicks: scenario.horizonTicks } } });
+    let controls;
+    const report = await runSurveyExperiment(manifest, store, { onControlReady: value => { controls = value; }, onState: get => { if (get().status === 'development') controls.cancel(); } });
+    expect(report.status).to.equal('interrupted'); expect(report.admissions).to.deep.equal([]); expect(report.results).to.have.length(1);
+    expect(report.results[0]).to.deep.equal(original); expect(await store.completed(trialId)).to.deep.equal(original);
+    expect(report.recoveryReceipts[0]).to.include({ status: 'recovered-from-complete-attempt', trialId, stage: 'development', attemptReference: 'attempts/' + trialId + '-crashed.json' });
+    expect(report.attempts[0].id).to.equal('crashed'); expect(report.performance[0].measuredTicks).to.equal(scenario.horizonTicks);
   });
 });

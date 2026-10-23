@@ -8,12 +8,12 @@ const resident = [], waiting = workerData.jobs.slice();
 const deliveryWaiters = new Map();
 const post = message => parentPort.postMessage({ ...message, runGeneration: workerData.runGeneration, workerGeneration: workerData.workerGeneration });
 const deliver = async message => {
-  const encoded = JSON.stringify(message.result), trialId = message.result.trialId;
-  const wait = () => new Promise(resolve => deliveryWaiters.set(trialId, { attemptId: message.attemptId, resolve }));
-  const permission = wait();
-  post({ type: 'result-ready', trialId, attemptId: message.attemptId, bytes: Buffer.byteLength(encoded), digest: createHash('sha256').update(encoded).digest('hex') });
+  const encoded = JSON.stringify(message.result), trialId = message.result.trialId, digest = createHash('sha256').update(encoded).digest('hex');
+  const wait = phase => new Promise(resolve => deliveryWaiters.set(trialId, { attemptId: message.attemptId, digest, phase, resolve }));
+  const permission = wait('permission');
+  post({ type: 'result-ready', trialId, attemptId: message.attemptId, bytes: Buffer.byteLength(encoded), digest });
   if (!await permission) return;
-  const acknowledged = wait(); post(message); await acknowledged;
+  const acknowledged = wait('outcome'); post(message); await acknowledged;
 };
 const controlState = () => ({ paused, stepTarget: stepTarget?.tick ?? null, residentWorlds: resident.length, queued: waiting.length, ticks: resident.map(entry => ({ trialId: entry.job.trialId, tick: entry.trial.world.tickIndex })) });
 const plannedSelection = () => {
@@ -26,7 +26,16 @@ parentPort.on('message', message => {
   if (message.runGeneration !== workerData.runGeneration || message.workerGeneration !== workerData.workerGeneration) return;
   if (['result-permit', 'result-ack', 'result-reject'].includes(message.type)) {
     const pending = deliveryWaiters.get(message.trialId);
-    if (pending?.attemptId === message.attemptId) { deliveryWaiters.delete(message.trialId); pending.resolve(message.type !== 'result-reject'); }
+    if (pending?.attemptId === message.attemptId) {
+      if (message.type === 'result-permit' && pending.phase === 'outcome' && message.digest === pending.digest) return;
+      if (message.digest !== pending.digest || message.type === 'result-ack' && (pending.phase !== 'outcome' ||
+          !['committed', 'computed-only', 'received-uncommitted', 'failed-or-unknown', 'unknown-after-timeout'].includes(message.status)) ||
+          message.type !== 'result-ack' && pending.phase !== 'permission') throw new Error('Invalid host persistence outcome receipt');
+      if (message.type === 'result-ack' && message.publicationDigest !== (message.publication ? createHash('sha256').update(JSON.stringify(message.publication)).digest('hex') : null)) throw new Error('Invalid host publication receipt digest');
+      deliveryWaiters.delete(message.trialId);
+      if (message.type === 'result-ack') post({ type: 'result-outcome-ack', trialId: message.trialId, attemptId: message.attemptId, digest: message.digest, status: message.status, publicationDigest: message.publicationDigest });
+      pending.resolve(message.type !== 'result-reject');
+    }
     return;
   }
   if (message.type === 'cancel') { stopped = true; stepTarget = null; preparedStep = null; }
@@ -69,6 +78,7 @@ const main = async () => {
         post({ type: 'started', trialId: job.trialId,
           attemptId: job.attemptId, scenarioId: trial.scenario.id, candidateId: trial.candidate.id, tick: trial.world.tickIndex }); publish(entry);
       } catch (error) {
+        preparingJob = null;
         const receipt = { trialId: job.trialId, attemptId: job.attemptId, tick: 0, status: 'infrastructure-error' };
         if (lease?.selected.has(job.trialId)) lease.selected.set(job.trialId, receipt);
         if (stepTarget?.selected.has(job.trialId)) stepTarget.selected.set(job.trialId, receipt);

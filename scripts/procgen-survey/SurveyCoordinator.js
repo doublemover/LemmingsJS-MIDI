@@ -1,5 +1,5 @@
 import { performance as clock } from 'node:perf_hooks';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { runSurveyJobs } from './SurveyWorkerPool.js';
 import { createSurveyTrialId } from '../../js/app/procgen/survey/ProcgenSurveyCore.js';
 import { normalizeSurveyScenario, normalizeSurveyCandidate } from '../../js/app/procgen/survey/ProcgenSurveyScenario.js';
@@ -21,7 +21,8 @@ const runSurveyExperiment = async (manifest, store, { signal, onTelemetry = () =
     throw new SurveyExperimentIdentityError('Legacy survey state or canonical encoding requires a separately declared experiment');
   const prior = await store.read('report.json');
   const started = clock.now(), results = [], telemetry = new Map(prior?.telemetry || []), performance = [...(prior?.performance || [])], attempts = [...(prior?.attempts || [])], verification = [], successQualification = [],
-    persistenceReceipts = [...(prior?.persistenceReceipts || [])], admissions = [...(prior?.admissions || [])], controlReceipts = [...(prior?.controlReceipts || [])].slice(-128);
+    persistenceReceipts = [...(prior?.persistenceReceipts || [])], admissions = [...(prior?.admissions || [])], controlReceipts = [...(prior?.controlReceipts || [])].slice(-128),
+    recoveryReceipts = [...(prior?.recoveryReceipts || [])];
   let stage = 'queued', activeControls = null, paused = false, cancelled = false, pendingStep = false, controlState = {}, currentExecution = null, executedTicks = 0,
     discardedControlReceipts = (prior?.discardedControlReceipts || 0) + Math.max(0, (prior?.controlReceipts?.length || 0) - 128);
   const jobsFor = (scenarios, candidates) => scenarios.flatMap(scenario => candidates.map(candidate => ({ scenario, candidate,
@@ -69,19 +70,34 @@ const runSurveyExperiment = async (manifest, store, { signal, onTelemetry = () =
   const incomplete = () => allJobs.filter(job => !results.some(result => result.trialId === job.trialId && result.episodeComplete)).map(job => ({ trialId: job.trialId, scenarioId: job.scenario.id,
     candidateId: job.candidate.id, status: results.find(result => result.trialId === job.trialId)?.status || 'not-run' }));
   const interrupted = reason => ({ ...publicState(), results, performance, attempts, verification, successQualification, status: 'interrupted', reason,
-    incompleteTrials: incomplete(), storage: store.snapshot(), persistenceReceipts, admissions, controlReceipts, discardedControlReceipts, presentationErrors: currentExecution?.presentationErrors || [] });
+    incompleteTrials: incomplete(), storage: store.snapshot(), persistenceReceipts, admissions, controlReceipts, discardedControlReceipts, recoveryReceipts, presentationErrors: currentExecution?.presentationErrors || [] });
   const retain = (result, job) => ({ ...result, ...result.provenance, sourceHash: hashSurveyValue({ core: result.provenance?.sourceHash || null, codeDigest: manifest.sourceManifest.codeDigest || null }), environmentSeed: job.scenario.environmentSeed, clusterId: 'world-' + job.scenario.environmentSeed,
     replayManifest: { schemaVersion: 1, scenario: job.scenario, candidate: job.candidate, sourceManifest: { engineCommit: manifest.sourceManifest.engineCommit,
       codeDigest: manifest.sourceManifest.codeDigest, assetHashes: manifest.sourceManifest.assetHashes, harnessVersion: manifest.sourceManifest.harnessVersion, manifestReference: 'manifest.json' },
     budgetPolicy: manifest.budgetPolicy, experimentId: manifest.experimentId } });
+  const publishWorkerEvidence = async (reference, value, delivery) => {
+    await store.writeImmutable(reference, value, delivery); delivery.signal.throwIfAborted();
+    return { publication: { schemaVersion: 1, status: 'immutable-published', reference,
+      checksum: createHash('sha256').update(JSON.stringify(value)).digest('hex'), durability: store.snapshot().durability } };
+  };
   for (const block of [{ name: 'development', jobs: allJobs.slice(0, development.length * manifest.candidates.length) }, { name: 'held-out', jobs: allJobs.slice(development.length * manifest.candidates.length) }]) {
     const pending = [];
-    for (const job of block.jobs) { const saved = await store.completed(job.trialId); if (saved) results.push(saved); else pending.push(job); }
+    for (const job of block.jobs) {
+      let saved = await store.completed(job.trialId);
+      if (!saved && !signal?.aborted && !cancelled) {
+        const recovery = await store.recoverCompleted(job.trialId, { signal }); saved = recovery.result;
+        if (recovery.status === 'recovered-from-complete-attempt') {
+          const { result, attempt, ...receipt } = recovery; recoveryReceipts.push({ ...receipt, trialId: job.trialId, stage: block.name });
+          if (attempt && !attempts.some(previous => previous.id === attempt.id)) { attempts.push(attempt); if (attempt.performance) performance.push(attempt.performance); }
+        }
+      }
+      if (saved) results.push(saved); else pending.push(job);
+    }
     const execution = await execute(pending, block.name, async (result, attempt, delivery) => {
       const job = pending.find(value => value.trialId === result.trialId), retained = retain(result, job);
-      await store.commitResult(retained, attempt, delivery); delivery.signal.throwIfAborted();
+      const publication = await store.commitResult(retained, attempt, { ...delivery, withReceipt: true }); delivery.signal.throwIfAborted();
       results.push(retained); attempts.push(attempt); if (attempt.performance) performance.push(attempt.performance);
-      try { onResult(retained, block.name); } catch { /* Read-only display callback. */ } present();
+      try { onResult(retained, block.name); } catch { /* Read-only display callback. */ } present(); return { publication: publication.publication };
     });
     if (execution.cancelled || execution.error) return interrupted(execution.error || execution.reason);
     if (pending.some(job => !results.find(result => result.trialId === job.trialId)?.episodeComplete)) return interrupted('incomplete-episode');
@@ -95,7 +111,7 @@ const runSurveyExperiment = async (manifest, store, { signal, onTelemetry = () =
   }
   const exact = await execute(pendingVerification.map(job => ({ ...job, attemptId: randomUUID() })), 'exact-verification', async (replay, attempt, delivery) => {
     const original = results.find(result => result.trialId === replay.trialId), receipt = compareSurveyReplay(original, replay);
-    await store.writeImmutable('verification/' + replay.trialId + '-exact.json', { ...receipt, replay, attempt }, delivery); delivery.signal.throwIfAborted(); verification.push(receipt); promote(original, receipt);
+    const publication = await publishWorkerEvidence('verification/' + replay.trialId + '-exact.json', { ...receipt, replay, attempt }, delivery); verification.push(receipt); promote(original, receipt); return publication;
   });
   if (exact.error || exact.cancelled) return interrupted(exact.error || exact.reason);
   if (verification.some(receipt => receipt.validity === 'invalid-or-incomplete')) return interrupted('replay-evidence-invalid-or-incomplete');
@@ -126,14 +142,14 @@ const runSurveyExperiment = async (manifest, store, { signal, onTelemetry = () =
     for (const job of jobs) { const saved = await store.read('verification/' + job.id + '-original.json'); if (saved) first.set(job.trialId, saved); else firstPending.push(job); }
     const firstRun = await execute(firstPending, 'success-qualification', async (result, attempt, delivery) => {
       const job = jobs.find(item => item.trialId === result.trialId), retained = retain(result, job);
-      await store.writeImmutable('verification/' + job.id + '-original.json', { jobId: job.id, result: retained, attempt }, delivery); delivery.signal.throwIfAborted(); first.set(result.trialId, { result: retained, attempt });
+      const publication = await publishWorkerEvidence('verification/' + job.id + '-original.json', { jobId: job.id, result: retained, attempt }, delivery); first.set(result.trialId, { result: retained, attempt }); return publication;
     });
     if (!firstRun.error && !firstRun.cancelled) {
       const secondRun = await execute(jobs.map(job => ({ ...job, attemptId: randomUUID() })), 'success-qualification-replay', async (replay, attempt, delivery) => {
         const job = jobs.find(item => item.trialId === replay.trialId), originalRecord = first.get(replay.trialId), receipt = compareSurveyReplay(originalRecord.result, replay);
         const derived = { ...originalRecord.result, validity: { ...originalRecord.result.validity, deterministic: receipt.matched } };
         const record = { jobId: job.id, result: derived, originalReference: job.id + '-original.json', replay, receipt, attempt };
-        await store.writeImmutable('verification/' + job.id + '.json', record, delivery); delivery.signal.throwIfAborted(); records.push(record);
+        const publication = await publishWorkerEvidence('verification/' + job.id + '.json', record, delivery); records.push(record); return publication;
       });
       if (secondRun.error || secondRun.cancelled) return interrupted(secondRun.error || secondRun.reason);
     }
@@ -157,7 +173,7 @@ const runSurveyExperiment = async (manifest, store, { signal, onTelemetry = () =
   }
   stage = 'complete'; present();
   return { schemaVersion: 1, manifest, results, telemetry: [...telemetry], performance, attempts, analysis, exemplars: { ...selected, selected: archiveSelections }, successQualification,
-    status: incomplete().length ? 'interrupted' : 'complete', incompleteTrials: incomplete(), verification, persistenceReceipts, admissions, controlReceipts, discardedControlReceipts, storage: store.snapshot(), rankingsTrusted: false,
+    status: incomplete().length ? 'interrupted' : 'complete', incompleteTrials: incomplete(), verification, persistenceReceipts, admissions, controlReceipts, discardedControlReceipts, recoveryReceipts, storage: store.snapshot(), rankingsTrusted: false,
     priorExecution: prior?.execution || null, execution: { elapsedMs: clock.now() - started, admittedTicks: executedTicks, memoryScope: 'Worker V8 old heap capped; reported RSS covers the whole Node process.' } };
 };
 export { runSurveyExperiment, SurveyExperimentIdentityError };

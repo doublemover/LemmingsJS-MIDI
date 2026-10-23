@@ -14,6 +14,9 @@ const instrumentWorker = (mode, retained = []) => (entry, configuration) => {
     ${mode === 'delayed-start' ? 'await new Promise(resolve => setTimeout(resolve, 1000));' : ''}
     const send = parentPort.postMessage.bind(parentPort); let changed = false;
     parentPort.postMessage = message => {
+      if (${JSON.stringify(mode)} === 'missing-outcome-ack' && message.type === 'result-outcome-ack') return;
+      if (${JSON.stringify(mode)} === 'wrong-outcome-ack' && message.type === 'result-outcome-ack') { send({ ...message, digest: 'f'.repeat(64) }); return; }
+      if (${JSON.stringify(mode)} === 'duplicate-outcome-ack' && message.type === 'result-outcome-ack') { send(message); send(message); return; }
       if (${JSON.stringify(mode)} === 'wrong-admission' && message.type === 'started') { send({ ...message, attemptId: 'unassigned' }); return; }
       send(message);
       if (${JSON.stringify(mode)} === 'delayed-preparation' && message.type === 'preparing') Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000);
@@ -109,6 +112,25 @@ describe('real isolated procgen survey workers', function() {
     expect(report.error).to.equal('Worker exited unexpectedly: 23'); expect(report.reason).to.equal('infrastructure-error');
     expect(report.results).to.have.length(1); expect(report.results[0].episodeComplete).to.equal(true);
     expect(report.persistence[0].status).to.equal('committed'); expect(workers.every(worker => worker.threadId === -1)).to.equal(true);
+    expect(report.persistence[0].workerReceiptStatus).not.to.equal('acknowledged');
+  });
+  it('binds the actual storage outcome acknowledgement to its attempt, digest and publication receipt', async () => {
+    let attempt;
+    const publication = { schemaVersion: 1, status: 'original-and-attempt-published', originalReference: 'results/test.json', originalChecksum: 'a'.repeat(64), durability: 'atomic-namespace-publication; no power-loss flush guarantee' };
+    const report = await runSurveyJobs(jobs().slice(0, 1), { maxTotalMs: 5000, workerFactory: instrumentWorker('duplicate-outcome-ack'),
+      onResult: (result, retained) => { attempt = retained; return { publication }; } });
+    expect(report.error).to.equal(null); const receipt = report.persistence[0];
+    expect(receipt).to.include({ status: 'committed', workerReceiptStatus: 'acknowledged', publicationStatus: 'callback-reported' });
+    expect(receipt.publication).to.deep.equal(publication); expect(receipt.publicationDigest).to.match(/^[a-f0-9]{64}$/);
+    expect(attempt).to.include({ id: receipt.attemptId, runGeneration: receipt.runGeneration, workerGeneration: receipt.workerGeneration, outcomeDigest: receipt.digest });
+    expect(receipt.workerAcknowledgedMs).to.be.at.least(receipt.callbackStartedMs);
+  });
+  it('preserves the computed original when a worker omits or forges its persistence outcome acknowledgement', async () => {
+    for (const mode of ['missing-outcome-ack', 'wrong-outcome-ack']) {
+      const report = await runSurveyJobs(jobs().slice(0, 1), { maxTotalMs: 5000, workerFactory: instrumentWorker(mode), onResult: () => {} });
+      expect(report.error).to.equal(mode === 'missing-outcome-ack' ? 'Worker completed without acknowledging persistence outcome' : 'Invalid worker persistence outcome acknowledgement');
+      expect(report.results).to.have.length(1); expect(report.persistence[0]).to.include({ status: 'committed', workerReceiptStatus: 'sent-unacknowledged' });
+    }
   });
   it('returns an unknown persistence receipt when the storage callback never settles', async () => {
     const started = Date.now();
@@ -117,6 +139,7 @@ describe('real isolated procgen survey workers', function() {
     expect(Date.now() - started).to.be.lessThan(3000);
     expect(report.reason).to.equal('persistence-timeout');
     expect(report.persistence[0].status).to.equal('unknown-after-timeout');
+    expect(report.persistence[0].workerReceiptStatus).to.equal('acknowledged');
     expect(report.results).to.have.length(1);
   });
   it('reserves transfer count and bytes while a slow write backpressures fast real workers', async () => {
@@ -163,6 +186,7 @@ describe('real isolated procgen survey workers', function() {
     const rejected = await runSurveyJobs(jobs().slice(0, 1), { maxTotalMs: 5000, onResult: () => { const error = new Error('disk full fixture'); error.code = 'ENOSPC'; throw error; } });
     expect(rejected.reason).to.equal('storage-or-callback'); expect(rejected.error).to.equal('disk full fixture');
     expect(rejected.persistence[0].status).to.equal('failed-or-unknown');
+    expect(rejected.persistence[0].workerReceiptStatus).to.equal('acknowledged');
     const oversized = await runSurveyJobs(jobs().slice(0, 1), { maxTotalMs: 5000, maxPendingResultBytes: 4096 });
     expect(oversized.error).to.include('exceeds pending byte bound'); expect(oversized.computations[0].status).to.equal('transfer-rejected-byte-bound');
     expect(oversized.storage.peakPendingResultBytes).to.equal(0); expect(oversized.results[0].status).to.equal('interrupted');

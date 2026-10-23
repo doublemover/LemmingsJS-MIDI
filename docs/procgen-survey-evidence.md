@@ -14,6 +14,17 @@ producing another result. At most one computed result per execution worker
 waits outside the host queue. Retained committed results are governed by the
 declared trial and evidence limits, separately from pending transfer limits.
 
+The result acknowledgement carries the actual storage outcome, its result
+digest and a digest of any publication receipt returned by the callback. The
+worker validates that envelope and acknowledges receiving it before admitting
+more work. `workerReceiptStatus` records acknowledged, sent-but-unacknowledged,
+unavailable or synthetic delivery separately from persistence success. A worker
+crash can leave a committed original with an unacknowledged delivery. Failed and
+unknown outcomes are acknowledged explicitly; receiving them never turns them
+into committed evidence. Attempt records retain run and worker generations and
+the worker's outcome digest. Callback-reported artifact references/checksums
+remain identified as such and do not promise stronger filesystem durability.
+
 `maxPendingResultCount` and `maxPendingResultBytes` cap reservations, including
 the result whose callback is running. An individual oversized result fails
 with an explicit transfer receipt. Identical repeated delivery is idempotent;
@@ -121,6 +132,24 @@ The coordinator also compares its execution declaration with this owned
 manifest before admitting a worker. A changed experiment declaration or an
 explicit legacy state/encoding version fails before simulation; it is never
 normalized silently into current qualification.
+
+Publishing an attempt, checking any preceding deterministic outcome and
+publishing its completed original now share one writer lease. Equivalent
+concurrent attempts retain the first original and both attempts even when their
+additional capture metadata differs. Disagreeing physical hashes, crew records,
+accounting or validity retain both attempts and return a typed outcome conflict
+with their references and checksums.
+
+If a process dies after publishing a complete attempt and before publishing its
+result, `recoverCompleted()` can restore the result from that verified attempt
+under the same owner. Recovery checks every retained complete attempt for that
+trial and rejects disagreement instead of selecting a favorable outcome. It
+holds at most one candidate result and the currently read attempt in memory.
+Coordinator resume performs this reconciliation before admitting replacement
+simulation and retains the recovery references in its report. Explicitly
+incomplete and unsupported attempts remain attempts; they cannot become scored
+resume originals. Legacy status-only evidence remains readable, while current
+versioned result records require an explicit completed-episode flag.
 
 This protocol requires local filesystem support for exclusive directory
 creation and atomic same-filesystem hard-link creation. NTFS on Windows and

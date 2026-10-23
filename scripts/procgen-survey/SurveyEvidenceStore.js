@@ -11,9 +11,16 @@ const createEnvelope = (value, kind, generation) => {
   if (generation !== undefined) record.generation = generation;
   record.metadataChecksum = digest(envelopeMetadata(record)); return record;
 };
-const stableOutcome = result => ({ status: result.status, lastTick: result.lastTick, initialStateHash: result.initialStateHash,
-  finalStateHash: result.finalStateHash, eventHash: result.eventHash, initialScenarioStateHash: result.initialScenarioStateHash, accounting: result.accounting, metrics: result.metrics, provenance: result.provenance, episodeComplete: result.episodeComplete });
-const verifiedEpisode = result => ['completed', 'failed', 'timed-out', 'timeout', 'unsupported'].includes(result.status);
+const stableOutcome = result => ({ schemaVersion: result.schemaVersion, scenarioId: result.scenarioId, candidateId: result.candidateId, policySeed: result.policySeed,
+  status: result.status, terminationReason: result.terminationReason, lastTick: result.lastTick, initialStateHash: result.initialStateHash,
+  finalStateHash: result.finalStateHash, finalPhysicalStateHash: result.finalPhysicalStateHash, eventHash: result.eventHash,
+  initialScenarioStateHash: result.initialScenarioStateHash, accounting: result.accounting, metrics: result.metrics, crew: result.crew,
+  provenance: result.provenance, episodeComplete: result.episodeComplete,
+  validity: result.validity && { accountingComplete: result.validity.accountingComplete, protectedTerrain: result.validity.protectedTerrain, legitimateActions: result.validity.legitimateActions } });
+const verifiedEpisode = result => ['completed', 'failed', 'timed-out', 'timeout'].includes(result?.status) &&
+  (result.episodeComplete === true || result.episodeComplete === undefined && result.schemaVersion === undefined);
+const evidenceIdentity = value => { if (typeof value !== 'string' || !/^[a-zA-Z0-9_-]{1,256}$/.test(value)) throw new TypeError('Invalid survey trial or attempt identity'); return value; };
+const publicationDurability = 'atomic-namespace-publication; no power-loss flush guarantee';
 const derivativePath = name => name === 'report.json' || /^verification\/[a-zA-Z0-9_-]+-qualification-summary\.json$/.test(name);
 class SurveyStorageLimitError extends Error { constructor(message) { super(message); this.name = 'SurveyStorageLimitError'; this.kind = 'storage-quota'; } }
 class SurveyWriterLeaseError extends Error { constructor(message) { super(message); this.name = 'SurveyWriterLeaseError'; this.kind = 'writer-lease'; } }
@@ -28,6 +35,12 @@ class SurveyImmutableConflictError extends Error {
   constructor(name, originalChecksum, attemptedChecksum, conflictReference = null) {
     super('Conflicting immutable survey evidence: ' + name); this.name = 'SurveyImmutableConflictError';
     this.originalChecksum = originalChecksum; this.attemptedChecksum = attemptedChecksum; this.conflictReference = conflictReference;
+  }
+}
+class SurveyOutcomeConflictError extends Error {
+  constructor(trialId, originalReference, attemptedReference, originalChecksum, attemptedChecksum) {
+    super('Determinism defect: duplicate survey attempts disagree for ' + trialId); this.name = 'SurveyOutcomeConflictError'; this.kind = 'determinism-defect';
+    Object.assign(this, { trialId, originalReference, attemptedReference, originalChecksum, attemptedChecksum });
   }
 }
 class SurveyEvidenceStore {
@@ -230,22 +243,73 @@ class SurveyEvidenceStore {
     }, { signal });
   }
   async completed(trialId) {
-    const result = await this.read('results/' + trialId + '.json'); return result && verifiedEpisode(result) ? result : null;
+    const result = await this.read('results/' + evidenceIdentity(trialId) + '.json'); return result && verifiedEpisode(result) ? result : null;
   }
-  async commitResult(result, attempt, { signal } = {}) {
-    await this.writeImmutable('attempts/' + result.trialId + '-' + attempt.id + '.json', { result, attempt }, { signal });
-    if (!verifiedEpisode(result)) return result;
-    const previous = await this.completed(result.trialId);
+  async _publishEpisode(result, attemptReference, signal) {
+    const reference = 'results/' + result.trialId + '.json', previous = await this._readEnvelope(reference);
     if (previous) {
-      if (digest(stableOutcome(previous)) !== digest(stableOutcome(result))) throw new Error('Determinism defect: duplicate survey attempts disagree for ' + result.trialId);
-      return previous;
+      if (!verifiedEpisode(previous.value)) throw new SurveyEvidenceIntegrityError(reference, 'An incomplete original occupies a completed-result identity');
+      if (digest(stableOutcome(previous.value)) !== digest(stableOutcome(result))) throw new SurveyOutcomeConflictError(result.trialId, reference, attemptReference, previous.checksum, digest(result));
+      return previous.value;
     }
-    await this.writeImmutable('results/' + result.trialId + '.json', result, { signal }); return result;
+    return this._publishImmutable(reference, result, signal);
+  }
+  async commitResult(result, attempt, { signal, withReceipt = false } = {}) {
+    const trialId = evidenceIdentity(result?.trialId), attemptId = evidenceIdentity(attempt?.id);
+    return this._enqueue(async () => {
+      const attemptReference = 'attempts/' + trialId + '-' + attemptId + '.json', retained = { result, attempt };
+      await this._publishImmutable(attemptReference, retained, signal);
+      const original = verifiedEpisode(result) ? await this._publishEpisode(result, attemptReference, signal) : null;
+      const publication = { schemaVersion: 1, status: original ? 'original-and-attempt-published' : 'attempt-published',
+        attemptReference, attemptChecksum: digest(retained), originalReference: original ? 'results/' + trialId + '.json' : null,
+        originalChecksum: original ? digest(original) : null, durability: publicationDurability };
+      return withReceipt ? { result: original || result, publication } : original || result;
+    }, { signal });
+  }
+  async recoverCompleted(trialId, { signal } = {}) {
+    evidenceIdentity(trialId);
+    signal?.throwIfAborted();
+    const published = await this._readEnvelope('results/' + trialId + '.json');
+    if (published) {
+      if (!verifiedEpisode(published.value)) throw new SurveyEvidenceIntegrityError('results/' + trialId + '.json', 'An incomplete original occupies a completed-result identity');
+      return { status: 'already-published', result: published.value, originalReference: 'results/' + trialId + '.json', originalChecksum: published.checksum, durability: publicationDurability };
+    }
+    const prefix = trialId + '-'; let retainedAttempt = false;
+    for await (const entry of await fs.opendir(path.join(this.directory, 'attempts'))) {
+      signal?.throwIfAborted();
+      if (entry.isFile() && entry.name.startsWith(prefix) && entry.name.endsWith('.json')) { retainedAttempt = true; break; }
+    }
+    if (!retainedAttempt) return { status: 'no-complete-attempt', result: null, originalReference: 'results/' + trialId + '.json', durability: publicationDurability };
+    return this._enqueue(async () => {
+      const reference = 'results/' + trialId + '.json', existing = await this._readEnvelope(reference);
+      if (existing) {
+        if (!verifiedEpisode(existing.value)) throw new SurveyEvidenceIntegrityError(reference, 'An incomplete original occupies a completed-result identity');
+        return { status: 'already-published', result: existing.value, originalReference: reference, originalChecksum: existing.checksum, durability: publicationDurability };
+      }
+      let first = null, outcomeChecksum = null;
+      for await (const entry of await fs.opendir(path.join(this.directory, 'attempts'))) {
+        signal?.throwIfAborted();
+        if (!entry.isFile() || !entry.name.startsWith(prefix) || !entry.name.endsWith('.json')) continue;
+        const attemptReference = 'attempts/' + entry.name, record = await this._readEnvelope(attemptReference), retained = record?.value;
+        if (!retained || typeof retained.result?.trialId !== 'string' || typeof retained.attempt?.id !== 'string' || entry.name !== retained.result.trialId + '-' + retained.attempt.id + '.json') throw new SurveyEvidenceIntegrityError(attemptReference, 'Retained survey attempt identity mismatch');
+        if (retained.result.trialId !== trialId) continue;
+        if (!verifiedEpisode(retained.result)) continue;
+        const checksum = digest(stableOutcome(retained.result));
+        if (first && checksum !== outcomeChecksum) throw new SurveyOutcomeConflictError(trialId, first.attemptReference, attemptReference, first.record.checksum, record.checksum);
+        if (!first || attemptReference < first.attemptReference) first = { attemptReference, record };
+        outcomeChecksum = checksum;
+      }
+      if (!first) return { status: 'no-complete-attempt', result: null, originalReference: reference, durability: publicationDurability };
+      const result = first.record.value.result;
+      await this._publishEpisode(result, first.attemptReference, signal);
+      return { status: 'recovered-from-complete-attempt', result, attempt: first.record.value.attempt, attemptReference: first.attemptReference, attemptChecksum: first.record.checksum,
+        originalReference: reference, originalChecksum: digest(result), durability: publicationDurability };
+    }, { signal });
   }
   async exemplar(selection, result, replayManifest, context = [], qualification = null) {
     return this.writeImmutable('exemplars/' + result.trialId + '.json', { schemaVersion: 1, selection, original: result, replayManifest, context, qualification });
   }
   snapshot() { return { bytes: this.bytes, maxBytes: this.maxBytes, remainingBytes: this.maxBytes - this.bytes,
-    durability: 'atomic-namespace-publication; no power-loss flush guarantee', publication: 'same-filesystem hard-link no-replace' }; }
+    durability: publicationDurability, publication: 'same-filesystem hard-link no-replace' }; }
 }
-export { SurveyEvidenceStore, SurveyStorageLimitError, SurveyWriterLeaseError, SurveyDerivativeConflictError, SurveyImmutableConflictError, SurveyEvidenceIntegrityError, SurveyManifestRecoveryError, stableOutcome, verifiedEpisode };
+export { SurveyEvidenceStore, SurveyStorageLimitError, SurveyWriterLeaseError, SurveyDerivativeConflictError, SurveyImmutableConflictError, SurveyOutcomeConflictError, SurveyEvidenceIntegrityError, SurveyManifestRecoveryError, stableOutcome, verifiedEpisode };
