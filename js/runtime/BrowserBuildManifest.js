@@ -5,7 +5,7 @@ export const BUILD_IDENTITY_PATH = 'js/runtime/ActiveExecutionIdentity.js';
 export const BUILD_IDENTITY_SLOT = 'const APPLICATION_BUILD = null; // IMMUTABLE_APPLICATION_BUILD_SLOT';
 export const BUILD_TEMPLATE_PATH = 'runtime-templates/identity.txt';
 const hashPattern = /^[a-f0-9]{64}$/;
-const recipePaths = ['scripts/BrowserRuntimeBuild.js', 'scripts/BrowserRuntimeClosure.js', 'scripts/RuntimeSourceClosure.js'];
+const recipePaths = ['scripts/BrowserRuntimeBuild.js', 'scripts/BrowserRuntimeClosure.js', 'scripts/RuntimeSourceClosure.js', 'scripts/RuntimeProvenance.js'];
 const before = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 export const validBrowserBuildPath = value => typeof value === 'string' && value.length > 0 && value.length <= 512 &&
   /^[A-Za-z0-9_./@-]+$/.test(value) && !value.split('/').some(part => !part || part === '.' || part === '..');
@@ -32,7 +32,7 @@ export const renderBrowserBuildIdentity = (template, identity) => {
 export const verifyBrowserBuildManifest = async (manifest, { expectedBuildId = null, template = null } = {}) => {
   if (!manifest || manifest.schema !== BROWSER_BUILD_SCHEMA || !hashPattern.test(manifest.buildId) ||
       expectedBuildId != null && manifest.buildId !== expectedBuildId || !Array.isArray(manifest.files) || !manifest.files.length || manifest.files.length > 8192 ||
-      !Array.isArray(manifest.recipe) || manifest.recipe.length !== recipePaths.length ||
+      !Array.isArray(manifest.recipe) || ![3, recipePaths.length].includes(manifest.recipe.length) ||
       !Array.isArray(manifest.routes) || manifest.routes.length < requiredEntryRoutes.length || manifest.routes.length > BROWSER_ENTRY_ROUTES.length ||
       new Set(manifest.routes).size !== manifest.routes.length || manifest.routes.some(route => !BROWSER_ENTRY_ROUTES.includes(route)) ||
       requiredEntryRoutes.some(route => !manifest.routes.includes(route))) throw new Error('Unsupported browser build manifest.');

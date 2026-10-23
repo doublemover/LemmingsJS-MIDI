@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { cpSync, mkdirSync, mkdtempSync, rmSync, appendFileSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, rmSync, appendFileSync, writeFileSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -15,8 +15,10 @@ const copy = (target, item) => {
 const withFixture = work => {
   const target = mkdtempSync(path.join(tmpdir(), 'lemmings-provenance-'));
   try {
-    for (const item of ['js/vendor', 'assets/icons/lucide', 'service-worker.js',
-      'js/app/procgen/workstation/ProcgenTimingDriver.js', 'provenance/runtime-artifacts.json', 'provenance/schema', 'package.json']) copy(target, item);
+    const manifest = JSON.parse(readFileSync(path.join(repository, 'provenance/runtime-artifacts.json'), 'utf8'));
+    const inputs = new Set(['provenance/runtime-artifacts.json', 'package.json', ...manifest.workerSources]);
+    for (const component of manifest.components) for (const file of component.directory ? [component.directory] : component.files) inputs.add(file);
+    for (const item of inputs) copy(target, item);
     const run = () => spawnSync(process.execPath, [checker, `--root=${target}`], { encoding: 'utf8' });
     work({ target, run });
   } finally {

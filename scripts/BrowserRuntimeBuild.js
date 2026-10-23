@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { collectBrowserRuntimeClosure } from './BrowserRuntimeClosure.js';
+import { verifyRuntimeProvenance } from './RuntimeProvenance.js';
 import { BUILD_IDENTITY_PATH, BUILD_IDENTITY_SLOT, BUILD_TEMPLATE_PATH, computeBrowserBuildIdentity, renderBrowserBuildIdentity, verifyBrowserBuildManifest } from '../js/runtime/BrowserBuildManifest.js';
 
 const IDENTITY_PATH = BUILD_IDENTITY_PATH, IDENTITY_SLOT = BUILD_IDENTITY_SLOT;
@@ -13,10 +14,11 @@ export async function buildBrowserRuntime({ rootDir, outputDir = null, inventory
   const root = path.resolve(rootDir), output = path.resolve(outputDir || path.join(root, 'dist', 'browser'));
   if (!inside(path.join(root, 'dist'), output) || output === path.join(root, 'dist')) throw new Error('Browser build output must be inside this workspace dist directory.');
   const closure = await collectBrowserRuntimeClosure({ rootDir: root, inventory, fsImpl });
+  verifyRuntimeProvenance({ rootDir: root, sourceInventory: closure.files });
   const identitySource = await fsImpl.readFile(path.join(root, IDENTITY_PATH), 'utf8');
   if (closure.files.find(file => file.path === IDENTITY_PATH)?.sha256 !== sha256(identitySource)) throw new Error('Browser identity source changed during closure preparation.');
   if (identitySource.split(IDENTITY_SLOT).length !== 2) throw new Error('Browser execution identity has an unsupported generation slot.');
-  const recipeFiles = ['scripts/BrowserRuntimeBuild.js', 'scripts/BrowserRuntimeClosure.js', 'scripts/RuntimeSourceClosure.js'];
+  const recipeFiles = ['scripts/BrowserRuntimeBuild.js', 'scripts/BrowserRuntimeClosure.js', 'scripts/RuntimeSourceClosure.js', 'scripts/RuntimeProvenance.js'];
   const recipe = [];
   for (const file of recipeFiles) recipe.push({ path: file, sha256: sha256(await fsImpl.readFile(path.join(root, file))) });
   const normalized = closure.files;

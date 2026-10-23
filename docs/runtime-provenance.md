@@ -84,7 +84,12 @@ frontloaded implementation pass.
 the build recipe. A single generated data slot gives the executing module its
 build identity without a circular self-hash; the manifest separately records
 the actual generated carrier bytes and its normalization template. Every copy
-is rehashed during staging. Existing content-addressed generations are never
+is rehashed during staging. Generations are published only after the reusable
+provenance verifier admits the source inventory,
+including reviewed vendor hashes, notices and parser-discovered worker owners.
+The verifier's bytes are included in new build recipes. Older three-file build
+recipes remain readable for pinned generations.
+Existing content-addressed generations are never
 overwritten, and a conflicting byte is an error. Artifact metadata excludes
 timestamps. The builder reports offline installation and entry execution as
 not yet performed; staging alone does not grant either claim.

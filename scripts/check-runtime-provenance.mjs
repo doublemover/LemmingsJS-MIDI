@@ -1,53 +1,18 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
+import { verifyRuntimeProvenance } from './RuntimeProvenance.js';
 
 const rootArgument = process.argv.find(argument => argument.startsWith('--root='));
 const root = rootArgument ? path.resolve(rootArgument.slice('--root='.length)) : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const resolve = name => path.join(root, name);
-const relative = name => name.split(path.sep).join('/');
-const manifest = JSON.parse(readFileSync(resolve('provenance/runtime-artifacts.json'), 'utf8'));
 const packageInfo = JSON.parse(readFileSync(resolve('package.json'), 'utf8'));
-const filesUnder = directory => {
-  const visit = folder => readdirSync(resolve(folder), { withFileTypes: true }).flatMap(entry => {
-    const name = relative(path.join(folder, entry.name));
-    return entry.isDirectory() ? visit(name) : entry.isFile() ? [name] : [];
-  });
-  return visit(directory).sort();
-};
-const bundleHash = files => {
-  const hash = createHash('sha256');
-  for (const file of files) { hash.update(file); hash.update('\0'); hash.update(readFileSync(resolve(file))); hash.update('\0'); }
-  return hash.digest('hex');
-};
 const fail = message => { throw new Error(`Runtime provenance: ${message}`); };
-const check = () => {
-  if (manifest.version !== 1 || !Array.isArray(manifest.components) || !manifest.selectedBackends ||
-      ['browserMidi', 'nativeUmp', 'audioRuntime', 'optionalAudioBank'].some(key => !manifest.selectedBackends[key])) fail('invalid manifest schema');
-  const seen = new Set(), covered = new Set();
-  for (const component of manifest.components) {
-    if (!component.id || seen.has(component.id) || !component.upstream || !component.license || !component.reproductionStatus ||
-        !['runtime', 'precache', 'generated', 'source', 'development'].includes(component.classification)) fail(`incomplete component ${component.id}`);
-    seen.add(component.id);
-    const files = component.directory ? filesUnder(component.directory) : component.files;
-    if (!Array.isArray(files) || !files.length || files.some(file => covered.has(file) || !statSync(resolve(file)).isFile())) fail(`invalid files for ${component.id}`);
-    files.forEach(file => covered.add(file));
-    if (component.fileCount !== files.length || component.sha256 !== bundleHash(files)) fail(`hash or inventory changed for ${component.id}`);
-    if (component.licenseFile && !statSync(resolve(component.licenseFile)).isFile()) fail(`missing license notice for ${component.id}`);
-  }
-  for (const directory of ['js/vendor', 'assets/icons/lucide', 'provenance/schema']) for (const file of filesUnder(directory)) if (!covered.has(file)) fail(`unlisted vendored file ${file}`);
-  for (const file of ['service-worker.js', 'js/app/procgen/workstation/ProcgenTimingDriver.js']) if (!covered.has(file)) fail(`unlisted worker source ${file}`);
-  const workerSources = filesUnder('js').filter(file => !file.startsWith('js/vendor/') && /\.js$/.test(file) &&
-    /new\s+(?:[A-Za-z_$][\w$]*\.)?Worker\s*\(/.test(readFileSync(resolve(file), 'utf8')));
-  if (JSON.stringify(workerSources) !== JSON.stringify([...manifest.workerSources].sort())) fail('worker source inventory changed');
-  return manifest.components.map(component => ({ ...component, files: component.directory ? filesUnder(component.directory) : component.files }));
-};
-
-const components = check();
+const { components, manifest } = verifyRuntimeProvenance({ rootDir: root });
 if (process.argv.includes('--sbom')) {
   const npmCli = process.env.npm_execpath || path.join(path.dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');
   const bom = JSON.parse(execFileSync(process.execPath, [npmCli, 'sbom', '--sbom-format=cyclonedx', '--package-lock-only'],

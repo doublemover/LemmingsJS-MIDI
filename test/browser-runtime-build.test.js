@@ -18,10 +18,11 @@ describe('immutable browser generation staging', () => {
       'js/entry.js': 'export { getActiveExecutionIdentity } from "./runtime/ActiveExecutionIdentity.js";',
       'js/app/procgen/survey/ProcgenSurveyCanonical.js': 'export const SURVEY_STATE_SCHEMA = 3;',
       'config.json': '[{"path":"classic"}]', 'classic/MAIN.DAT': 'fixture', 'keybindings.json': '{}',
-      'site.webmanifest': '{}', 'provenance/runtime-artifacts.json': '{}' };
+      'site.webmanifest': '{}', 'provenance/runtime-artifacts.json': JSON.stringify({ version: 1,
+        selectedBackends: { browserMidi: 'fixture', nativeUmp: 'fixture', audioRuntime: 'fixture', optionalAudioBank: 'fixture' }, workerSources: [], components: [] }) };
     for (const [file, source] of Object.entries(files)) { await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.writeFile(path.join(root, file), source); }
     for (const file of ['js/runtime/ActiveExecutionIdentity.js', 'js/runtime/BrowserBuildManifest.js', 'js/runtime/BrowserGenerationService.js',
-      'js/runtime/BrowserGenerationClient.js', 'scripts/BrowserRuntimeBuild.js', 'scripts/BrowserRuntimeClosure.js', 'scripts/RuntimeSourceClosure.js']) {
+      'js/runtime/BrowserGenerationClient.js', 'scripts/BrowserRuntimeBuild.js', 'scripts/BrowserRuntimeClosure.js', 'scripts/RuntimeSourceClosure.js', 'scripts/RuntimeProvenance.js']) {
       await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.copyFile(path.join(repo, file), path.join(root, file));
     }
   });
@@ -65,6 +66,7 @@ describe('immutable browser generation staging', () => {
   it('accepts a pinned three-route v1 generation while binding route claims to its file inventory', async () => {
     const first = await build(), template = await fs.readFile(path.join(first.path, first.manifest.sourceNormalization.templatePath), 'utf8');
     const legacy = structuredClone(first.manifest);
+    legacy.recipe = legacy.recipe.slice(0, 3);
     legacy.files = legacy.files.filter(file => file.path !== 'procgen-survey.html');
     legacy.routes = legacy.routes.filter(route => route !== 'procgen-survey.html');
     const normalized = legacy.files.map(file => file.path === legacy.sourceNormalization.path ?
@@ -81,5 +83,12 @@ describe('immutable browser generation staging', () => {
       let error; try { await verifyBrowserBuildManifest(invalid, { template }); } catch (failure) { error = failure; }
       expect(error).to.be.instanceOf(Error);
     }
+  });
+  it('refuses unreviewed vendored content before publishing an installer', async () => {
+    await fs.mkdir(path.join(root, 'js/vendor'), { recursive: true }); await fs.writeFile(path.join(root, 'js/vendor/unreviewed.js'), 'export const unreviewed = true;');
+    let error; try { await build(); } catch (failure) { error = failure; }
+    expect(error.message).to.include('unlisted vendored file');
+    let published = false; try { await fs.stat(path.join(root, 'dist/browser/index.html')); published = true; } catch (failure) { if (failure.code !== 'ENOENT') throw failure; }
+    expect(published).to.equal(false);
   });
 });
