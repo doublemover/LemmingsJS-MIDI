@@ -77,3 +77,20 @@ generated immutable entry actually executes. It is input to generation staging,
 not proof that the current tab ran those fetched bytes or that offline install
 completed. Added synthetic closure fixtures remain unexecuted during the
 frontloaded implementation pass.
+
+`npm run build:browser -- --name=rook` stages that inventory under
+`dist/browser/<buildId>/`. The build ID binds normalized source/asset hashes and
+the build recipe. A single generated data slot gives the executing module its
+build identity without a circular self-hash; the manifest separately records
+the actual generated carrier bytes and its normalization template. Every copy
+is rehashed during staging. Existing content-addressed generations are never
+overwritten, and a conflicting byte is an error. Artifact metadata excludes
+timestamps. The builder reports offline installation and entry execution as
+not yet performed; staging alone does not grant either claim.
+
+The source checkout's `ActiveExecutionIdentity.js` has no build authority.
+Generated identity is accepted only from its matching immutable URL namespace
+and a distinct runtime realm, with the actual state schema and selected
+capability profile. Report-supplied data cannot set the executing identity.
+Generation installer and replay-handshake integration use this authority;
+runtime qualification fixtures remain deferred.
