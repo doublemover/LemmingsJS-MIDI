@@ -10,6 +10,7 @@ import { createProcgenLaneObserver } from './ProcgenLaneObservation.js';
 import { createProcgenSession, validateProcgenSession, createProcgenSessionStorage, freshProcgenSeed } from './ProcgenSessionStorage.js';
 import { createProcgenPhysicalScoreClock } from './ProcgenPhysicalScoreClock.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
+import { resolveProcgenStartupIntent } from './ProcgenStartupIntent.js';
 
 const STORAGE_KEY = 'lemmings.procgen.workstation.v1';
 const clone = value => JSON.parse(JSON.stringify(value));
@@ -36,11 +37,15 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const now = () => window.performance?.now?.() ?? performance.now();
   let saved = null;
   try { saved = JSON.parse(window.localStorage?.getItem(STORAGE_KEY) || 'null'); } catch { /* Keep the default project. */ }
+  if (saved?.version !== 1 || !saved.project || typeof saved.project !== 'object') saved = null;
   const initialSeed = legacy.settings.seed ?? freshProcgenSeed(window.crypto);
-  let project = createProcgenWorkstationProject(sanitizeMidiProject(saved?.project || legacy.getProject()), { seed: initialSeed });
+  const startupPlan = resolveProcgenStartupIntent({ search: window.location?.search || '', seed: initialSeed,
+    legacyProject: legacy.getProject(), legacySettings: legacy.settings, saved });
+  Object.assign(legacy.settings, startupPlan.worldOptions);
+  let project = startupPlan.project;
   const state = { laneId: project.procgen.lanes[0].id, slot: 0, step: 0, tab: 'Lane', tool: 'select', layout: 'strip',
     inspectorWidth: 304, firstLane: 0, minimumRow: 64, hazardSpacing: 160, observerMode: 'overview', observerLane: null, observerHold: 6,
-    inputId: null, clockOutputId: null, thru: false, recording: false, lastMidi: '', ...(saved?.ui || {}) };
+    inputId: null, clockOutputId: null, thru: false, recording: false, lastMidi: '', ...(startupPlan.mode === 'previous-setup' ? saved?.ui || {} : {}) };
   state.recording = false; state.thru = false;
   let view = null, disposed = false, boundRuntime = null, boundSession = null, unhookRouter = null, unhookWorld = null;
   let ports, engine, lastPlaying = false, lastLegacySpeed = legacy.settings.speed, pendingResume = false, lastTempo = null;
@@ -88,7 +93,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const renderer = () => runtime()?.lanes?.renderer;
   const router = () => runtime()?.view?.midiPreviewRouter;
   const selected = () => project.procgen.lanes.find(lane => lane.id === state.laneId) || project.procgen.lanes[0];
-  const setLegacyProject = next => { writingLegacy = true; try { legacy.setProject(next); } finally { writingLegacy = false; } };
+  const setLegacyProject = (next, options) => { writingLegacy = true; try { legacy.setProject(next, options); } finally { writingLegacy = false; } };
   const budgetNotice = () => { if (now() - lastBudgetNotice > 1000) { lastBudgetNotice = now(); status('Output budget reached; some notes or CC were thinned. The musical clock continues.'); } };
   const reportRouting = () => {
     const addresses = new Map();
@@ -159,9 +164,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (action.type === 'procgen/launched') view?.launched?.();
     return next;
   };
-  const explicitSpeed = new URLSearchParams(window.location?.search || '').has('speed');
-  const transport = createProcgenTransport({ now, bpm: 120, gameSpeed: explicitSpeed ? legacy.settings.speed || 1 : 1,
-    speedMode: 'bpm', ...(saved?.transport || {}), ...transportOptions,
+  const transport = createProcgenTransport({ now, ...startupPlan.transport, ...transportOptions,
     onBeat: position => {
       const held = position.source === 'external' && pendingResume ? engine?.snapshot().active : null;
       if (held) pendingResume = false;
@@ -525,8 +528,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   window.WebMidi?.addListener?.('connected', connected);
   listeners.push(() => window.WebMidi?.removeListener?.('disconnected', disconnected));
   listeners.push(() => window.WebMidi?.removeListener?.('connected', connected));
-  prepareSettings(); setLegacyProject(project); legacy.setSpeed(transport.getState().gameSpeed); lastLegacySpeed = legacy.settings.speed; view.render(); view.transport(transport.getState());
-  return { getProject: () => project, getLaneAssignments: () => project.procgen.lanes.map(lane => lane.family),
+  prepareSettings(); setLegacyProject(project, { persist: false }); legacy.setSpeed(transport.getState().gameSpeed); lastLegacySpeed = legacy.settings.speed; view.render(); view.transport(transport.getState());
+  return { getProject: () => project, getStartupPlan: () => ({ ...startupPlan, project: clone(startupPlan.project) }), getLaneAssignments: () => project.procgen.lanes.map(lane => lane.family),
     getPlaybackState: () => ({ ...legacy.local.getState(), activeNotes: router()?.scheduler?._activeNotes?.size || 0, pendingNotes: router()?.scheduler?._pendingNoteOns?.size || 0, pressure: router()?.scheduler?.getOutputPressure?.() || ports.getState().pressure }),
     prepareSettings, bindRuntime, beforeRestart, loadSession, capture, recover, dispatch, play, handlers, state, transport, ports, engine,
     getPhysicalScoreClock: () => physicalScoreClock,

@@ -10,12 +10,13 @@ function target() {
   return { addEventListener(type, fn) { if (!events.has(type)) events.set(type, new Set()); events.get(type).add(fn); },
     removeEventListener(type, fn) { events.get(type)?.delete(fn); }, emit(type, event = {}) { for (const fn of events.get(type) || []) fn(event); } };
 }
-function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth', outputId = null } = {}) {
+function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth', outputId = null, search = '', persisted = null, startupSettings = {} } = {}) {
   let time = 0, paused = false, enabled = false;
   const elements = new Map(['procgenPause', 'procgenPanic', 'procgenSpeed', 'procgenSpeedUp', 'procgenSpeedDown', 'procgenSpeedReadout'].map(id => [id, target()]));
   const document = { ...target(), getElementById: id => elements.get(id) || null };
   const values = new Map(), stored = new Map(), calls = [], positions = [], statuses = [], restarts = [], captures = [];
-  const window = { WebMidi: webMidi, performance: { now: () => time }, localStorage: { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value) },
+  if (persisted) values.set('lemmings.procgen.workstation.v1', JSON.stringify(persisted));
+  const window = { WebMidi: webMidi, location: { search }, performance: { now: () => time }, localStorage: { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value) },
     crypto: { getRandomValues(value) { value[0] = 91; } }, prompt: () => 'Test song' };
   const scheduler = { tickMs: 60, sendNote(spec, meta) { calls.push({ spec, meta }); return true; }, allNotesOff() {}, output: { channels: { 1: { sendControlChange() {} } } } };
   const makeRuntime = () => ({ world: { laneCount: 1, seed: 7, timer: { speedFactor: 1 }, frontiers: [100], soundEvents: { onEvent: new EventHandler() } },
@@ -24,7 +25,7 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
   let runtime = makeRuntime();
   let project = createProcgenWorkstationProject(createMidiProject(), { seed: 7, lanes: [{ mode: 'hybrid', patterns: [{ length: 4, steps: Array.from({ length: 4 }, () => ({ enabled: true, note: 60, duration: 1 })) }] }] });
   const projectListeners = new Set();
-  const legacy = { settings: { seed: 7, speed: 1, laneCount: 1 }, getProject: () => project, setProject(value) { project = value; for (const listener of projectListeners) listener(value); },
+  const legacy = { settings: { seed: 7, speed: 1, laneCount: 1, ...startupSettings }, getProject: () => project, setProject(value) { project = value; for (const listener of projectListeners) listener(value); },
     subscribeProject(listener) { projectListeners.add(listener); return () => projectListeners.delete(listener); },
     setPaused(value) { paused = value; }, isPaused: () => paused, setSpeed(value) { this.settings.speed = value; },
     local: { getState: () => ({ enabled, selectedBackend: backend, outputId }) } };
@@ -45,6 +46,18 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
 }
 
 describe('ProcGen workstation orchestration', () => {
+  it('prepares a recipe with declared lanes and speed without inheriting a saved project', () => {
+    const savedProject = createProcgenWorkstationProject(createMidiProject(), { seed: 12, lanes: [{}, {}] });
+    const persisted = { version: 1, project: savedProject, transport: { bpm: 60, gameSpeed: 0.5, speedMode: 'bpm' }, ui: { slot: 2 } };
+    const f = setup({ search: '?seed=999&lanes=3&speed=2', persisted, startupSettings: { seed: 999, laneCount: 3, speed: 2 } });
+    expect(f.studio.getStartupPlan().mode).to.equal('recipe');
+    expect(f.studio.getProject().procgen.lanes).to.have.length(3);
+    expect(f.studio.prepareSettings()).to.include({ laneCount: 3, seed: 999 });
+    expect(f.studio.transport.getState()).to.include({ bpm: 120, gameSpeed: 2 });
+    expect(f.studio.state.slot).to.equal(0);
+    expect(f.window.localStorage.getItem('lemmings.procgen.workstation.v1')).to.equal(JSON.stringify(persisted));
+    f.studio.dispose();
+  });
   it('keeps discovered unused MIDI outputs inert and ignores their disconnects', () => {
     const calls = [], listeners = new Map();
     const makePort = id => ({ id, state: 'connected', channels: { 1: {

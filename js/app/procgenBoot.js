@@ -145,8 +145,14 @@ const installProcgenBootListeners = () => {
         initial: { laneCount: params.get('lanes'), speed: params.get('speed'), pack: params.get('pack') } });
       if (params.get('workstation') !== '0') {
         procgenUi.settings.seed = resolveProcgenSeed(params);
-        procgenStudio = createProcgenWorkstation({ document, window, legacy: procgenUi, getRuntime: () => activeProcgenRuntime, restart: init });
-        procgenStudio.prepareSettings();
+        try {
+          procgenStudio = createProcgenWorkstation({ document, window, legacy: procgenUi, getRuntime: () => activeProcgenRuntime, restart: init });
+          procgenStudio.prepareSettings();
+        } catch (error) {
+          const status = document.getElementById('procgenRunStatus');
+          if (status) status.textContent = `Could not open startup recipe: ${error.message}`;
+          return;
+        }
         if (params.has('e2e')) window.__PROCGEN_STUDIO__ = procgenStudio;
         resizeCanvas();
       }

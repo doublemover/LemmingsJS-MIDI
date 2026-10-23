@@ -124,11 +124,11 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     if (byId('procgenSpanRedo')) byId('procgenSpanRedo').disabled = !state.canRedo;
     if (byId('procgenSpanHistoryStatus')) byId('procgenSpanHistoryStatus').textContent = automationStatus;
   };
-  const commitAutomation = (next, record = true) => {
+  const commitAutomation = (next, record = true, persist = true) => {
     next = sanitizeMidiProject(next);
     if (record) automationHistory.record(project, next);
     project = next; config = projectToMidiConfig(project); local.syncConfig(); spanControls.render(); spanOverlay.changed(); musicDirection?.sync(); syncMusic(); syncPopulation();
-    automationStatus = saveProcgenAutomation(automationStorage(), project) ? '' : 'Music edits kept for this session; browser storage is unavailable.';
+    if (persist) automationStatus = saveProcgenAutomation(automationStorage(), project) ? '' : 'Music edits kept for this session; browser storage is unavailable.';
     syncAutomationHistory();
     for (const listener of projectListeners) listener(project);
   };
@@ -433,7 +433,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   const syncActiveCount = count => { if (byId('procgenAliveCount')) byId('procgenAliveCount').textContent = Math.max(0, count).toLocaleString() + ' alive'; };
   return { settings, local, outputCapture, captureControls, getShareUrl, syncActiveCount,
     getProject: () => project,
-    setProject: next => commitAutomation(next, false),
+    setProject: (next, { persist = true } = {}) => commitAutomation(next, false, persist),
     subscribeProject(listener) { projectListeners.add(listener); return () => projectListeners.delete(listener); },
     setPaused, setSpeed, restart: doRestart,
     isPaused: () => paused,
