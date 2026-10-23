@@ -144,6 +144,58 @@ describe('ProcGen workstation orchestration', () => {
     expect(step).to.include({ enabled: true, note: 67, velocity: 97, duration: 0.25 }); f.studio.dispose();
   });
 
+  it('cancels an armed MIDI Learn when a different session loads', async () => {
+    const f = setup(); f.studio.bindRuntime();
+    f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 55 } });
+    const saved = f.studio.capture();
+    f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 60 } });
+    expect(f.studio.handlers.learn()).to.equal(true);
+    expect(await f.studio.loadSession(saved)).to.equal(true);
+    f.studio.ports.receiveMidi([0x90, 81, 100], 0);
+    expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(55);
+    expect(f.studio.getInputEditLease()).to.equal(null);
+    expect(f.studio.ports.getState().learning).to.equal(false);
+    f.studio.dispose();
+  });
+
+  it('learns into the armed step even if selection changes, then offers one Undo', async () => {
+    const f = setup(); f.studio.bindRuntime();
+    expect(f.studio.handlers.learn()).to.equal(true);
+    const lease = f.studio.getInputEditLease();
+    expect(lease).to.include({ laneId: 'lane-1', slot: 0, index: 0, policy: 'fixed-target' });
+    f.studio.state.step = 1;
+    f.studio.ports.receiveMidi([0x90, 81, 100], 0);
+    const steps = f.studio.getProject().procgen.lanes[0].patterns[0].steps;
+    expect(steps[0].note).to.equal(81); expect(steps[1].note).to.equal(60);
+    expect(await f.studio.handlers.undo()).to.equal(true);
+    expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(60);
+    f.studio.dispose();
+  });
+
+  it('cancels MIDI Learn on target removal, input replacement, and explicit cancellation', () => {
+    const f = setup(); f.studio.bindRuntime();
+    f.studio.state.step = 3;
+    f.studio.handlers.learn();
+    f.studio.dispatch({ type: 'procgen/pattern', laneId: 'lane-1', slot: 0, patch: { length: 2 } });
+    expect(f.studio.getInputEditLease()).to.equal(null);
+    f.studio.state.step = 0;
+    f.studio.handlers.learn();
+    f.studio.ports.setInput({ id: 'keys', ...target() });
+    expect(f.studio.getInputEditLease()).to.equal(null);
+    expect(f.studio.ports.getState().learning).to.equal(false);
+    f.studio.handlers.learn(); f.studio.handlers.cancelLearn();
+    expect(f.studio.getInputEditLease()).to.equal(null);
+    f.studio.dispose();
+  });
+
+  it('keeps a rejected session load from leaving MIDI Learn armed', async () => {
+    const f = setup(); f.studio.bindRuntime(); f.studio.handlers.learn();
+    try { await f.studio.loadSession({ invalid: true }); } catch { /* Rejection is expected. */ }
+    expect(f.studio.getInputEditLease()).to.equal(null);
+    expect(f.studio.ports.getState().learning).to.equal(false);
+    f.studio.dispose();
+  });
+
   it('supports phrase editing undo and redo without a second project model', () => {
     const f = setup(); f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 1, patch: { note: 72 } });
     expect(f.legacy.getProject().procgen.lanes[0].patterns[0].steps[1].note).to.equal(72);

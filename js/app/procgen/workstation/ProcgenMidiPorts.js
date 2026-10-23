@@ -269,7 +269,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
   }
   const replaceInput = port => {
     if (input === port || disposed) return;
-    transport?.pause(); releaseThru('input-replaced'); removeInput?.(); removeInput = null; input = port || null; inputEpoch++; resetInputLiveness();
+    transport?.pause(); releaseThru('input-replaced'); removeInput?.(); removeInput = null; input = port || null; inputEpoch++; learn = null; resetInputLiveness();
     const epoch = inputEpoch, attached = input;
     const listener = event => attached === input && epoch === inputEpoch && receiveMidi(event.data || event.message?.data, event.receivedTime ?? event.timestamp ?? now());
     if (input?.addEventListener) {

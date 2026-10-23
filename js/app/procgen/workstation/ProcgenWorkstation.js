@@ -63,6 +63,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const undo = [], redo = [], listeners = [], noteEntries = new Map();
   const retirement = createProcgenRetirementScope();
   let lastHistoryGroup = null, inputGestureSerial = 0;
+  let documentGeneration = 1, projectRevision = 0, inputLease = null;
   const historySizes = new WeakMap();
   let historyDropped = 0;
   const historyBytes = value => {
@@ -79,7 +80,17 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }
   };
   const status = text => { if (!disposed) view?.status(text); };
+  const inputTarget = lease => {
+    const lane = project.procgen.lanes.find(item => item.id === lease.laneId);
+    const pattern = lane?.patterns?.[lease.slot];
+    return pattern && lease.index < pattern.length && pattern.steps?.[lease.index] ? { lane, pattern } : null;
+  };
+  const cancelInputEdits = reason => {
+    if (inputLease) { inputLease = null; ports?.cancelLearn(); status(`MIDI Learn canceled: ${reason}.`); }
+    noteEntries.clear();
+  };
   const beginOperation = kind => {
+    cancelInputEdits('project transition');
     currentOperation?.controller.abort();
     const lease = { ownerId: 'procgen-workstation', generation: ++operationSerial, kind, controller: new AbortController() };
     lease.signal = lease.controller.signal;
@@ -130,6 +141,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }
     lastHistoryGroup = history ? historyGroup : null;
     project = createProcgenWorkstationProject(sanitizeMidiProject(next));
+    projectRevision++;
+    if (inputLease && !inputTarget(inputLease)) cancelInputEdits('target was removed');
     if (!project.procgen.lanes.some(lane => lane.id === state.laneId)) state.laneId = project.procgen.lanes[0].id;
     state.slot = Math.max(0, Math.min(3, state.slot || 0)); state.step = Math.max(0, Math.min(selected().patterns[state.slot].length - 1, state.step || 0));
     if (!fromLegacy) setLegacyProject(project); ports?.configure({ schedulerConfig: projectToMidiConfig(project) });
@@ -193,14 +206,17 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       }
     }
   });
-  const inputStep = (event, learned = false) => {
+  const inputStep = (event, learned = false, target = null) => {
     if (event.type !== 'noteOn' && event.type !== 'noteOff') return;
     const key = `${event.channel}:${event.note}`;
     if (event.type === 'noteOn') {
-      const lane = selected(), laneId = lane.id, slot = state.slot, pattern = lane.patterns[slot], position = transport.getState(), beat = event.beat ?? position.beat;
-      const index = !learned && state.recording && position.playing
+      const lane = target ? project.procgen.lanes.find(item => item.id === target.laneId) : selected();
+      const laneId = lane?.id, slot = target?.slot ?? state.slot, pattern = lane?.patterns?.[slot], position = transport.getState(), beat = event.beat ?? position.beat;
+      if (!pattern) return false;
+      const index = target ? target.index : !learned && state.recording && position.playing
         ? ((Math.floor((beat - (engine.getLanePosition(laneId)?.origin || 0)) * 4 * pattern.rate + 1e-7) % pattern.length) + pattern.length) % pattern.length : state.step;
-      const chord = [...noteEntries.values()].filter(entry => entry.laneId === laneId && entry.slot === slot && entry.index === index && Math.abs(entry.beat - beat) < 0.25 / pattern.rate);
+      if (index < 0 || index >= pattern.length || !pattern.steps[index]) return false;
+      const chord = learned ? [] : [...noteEntries.values()].filter(entry => entry.laneId === laneId && entry.slot === slot && entry.index === index && Math.abs(entry.beat - beat) < 0.25 / pattern.rate);
       const notes = [...new Set([...chord.map(entry => entry.note), event.note])].sort((a, b) => a - b),
         group = chord[0]?.group || { duration: 0, historyGroup: ++inputGestureSerial };
       dispatch({ type: 'procgen/step', laneId, slot, index, patch: { enabled: true, note: notes[0], velocity: event.velocity,
@@ -208,6 +224,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       { historyGroup: group.historyGroup });
       if (!learned) noteEntries.set(key, { laneId, slot, index, beat, note: event.note, group });
       status(`Recorded note ${event.note} into step ${index + 1}.`);
+      return true;
     } else {
       const start = noteEntries.get(key); if (!start) return;
       noteEntries.delete(key); start.group.duration = Math.max(start.group.duration, 1 / 96, (event.beat ?? transport.getState().beat) - start.beat);
@@ -217,7 +234,10 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   ports = createProcgenMidiPorts({ transport, now, schedulerConfig: projectToMidiConfig(project),
     onMonitor(event) { state.lastMidi = event.type === 'system' ? `MIDI ${event.data[0].toString(16).toUpperCase()}` : `${event.type} · ch ${event.channel} · ${event.note ?? event.controller ?? ''} ${event.velocity ?? event.value ?? ''}`; view?.midi?.(state.lastMidi); },
-    onLearn: event => inputStep(event, true), onRecord: event => { if (event.source === 'input') inputStep(event); }
+    onState(midiState) {
+      if (inputLease && midiState.inputLiveness.connectionEpoch !== inputLease.inputEndpointEpoch) cancelInputEdits('input changed');
+    },
+    onRecord: event => { if (event.source === 'input' && !inputLease) inputStep(event); }
   });
   const localEnabled = () => legacy.local.getState().enabled && legacy.local.getState().selectedBackend !== 'midi';
   let outputEpoch = 0;
@@ -337,6 +357,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }
     attachRouter(next.view?.midiPreviewRouter);
     if (session) {
+      documentGeneration++;
+      cancelInputEdits('project loaded');
       suppressPersistence = true;
       syncProject(session.project, { history: false, render: false }); Object.assign(legacy.settings, session.settings, { workstation: true });
       lastLegacySpeed = legacy.settings.speed;
@@ -417,7 +439,9 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       const restarted = await restart({ lease });
       if (!ownsOperation(lease)) return false;
       if (restarted === false) throw new Error('World preparation was canceled.');
-      engine.reset(); transport.stop(); pendingResume = false; bindRuntime();
+      engine.reset(); transport.stop(); pendingResume = false;
+      if (fresh) documentGeneration++;
+      bindRuntime();
       if (previousTransport.playing) play(); status(fresh ? 'New project ready.' : 'World rebuilt.'); return true;
     } catch (error) {
       if (!ownsOperation(lease)) return false;
@@ -433,6 +457,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const changesWorld = next => next.procgen.seed !== project.procgen.seed || next.procgen.lanes.length !== project.procgen.lanes.length || next.procgen.lanes.some((lane, index) => lane.family !== project.procgen.lanes[index]?.family);
   const historyMove = async (from, to) => {
     if (!from.length || pendingHistory || worldBusy) return false;
+    cancelInputEdits('history changed');
     const previous = project, next = from.at(-1);
     if (!changesWorld(next)) {
       syncProject(next, { history: false }); from.pop(); to.push(previous); trimHistory(); return true;
@@ -471,8 +496,27 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     redo: safe(() => historyMove(redo, undo)),
     resetPattern() { dispatch({ type: 'procgen/pattern', laneId: selected().id, slot: state.slot, patch: createProcgenPattern(selected().family, selected().role, state.slot) }); },
     record(value) { state.recording = !!value; ports.configure({ recording: state.recording }); noteEntries.clear(); view.recording(state.recording); if (state.recording) ports.recordTempo(transport.getState().bpm, transport.getState().beat); },
-    learn() { const accept = event => { if (event.type === 'noteOn') inputStep(event, true); else ports.learnNext(accept); }; ports.learnNext(accept); status('Play a MIDI note to learn this step.'); },
-    input(id) { state.inputId = id || null; syncPorts(); view.renderInspector(); persist(); },
+    learn() {
+      if (inputLease) { cancelInputEdits('canceled by user'); return false; }
+      const lane = selected(), lease = { id: ++inputGestureSerial, documentGeneration, projectRevision,
+        laneId: lane.id, slot: state.slot, index: state.step,
+        inputEndpointEpoch: ports.getState().inputLiveness.connectionEpoch, armedAt: now(), policy: 'fixed-target' };
+      if (!inputTarget(lease)) return false;
+      inputLease = lease;
+      const accept = event => {
+        if (inputLease !== lease || lease.documentGeneration !== documentGeneration ||
+            lease.inputEndpointEpoch !== ports.getState().inputLiveness.connectionEpoch || !inputTarget(lease)) {
+          if (inputLease === lease) cancelInputEdits('target or input changed');
+          return;
+        }
+        if (event.type !== 'noteOn') { ports.learnNext(accept); return; }
+        inputLease = null;
+        inputStep(event, true, lease);
+      };
+      ports.learnNext(accept); status('Play a MIDI note to learn this step.'); return true;
+    },
+    cancelLearn() { cancelInputEdits('canceled by user'); },
+    input(id) { cancelInputEdits('input changed'); state.inputId = id || null; syncPorts(); view.renderInspector(); persist(); },
     clockOutput(id) { state.clockOutputId = id || null; syncPorts(); persist(); },
     thru(value) { state.thru = !!value; ports.configure({ thru: state.thru }); },
     connect: safe(async () => { if (!window.WebMidi) throw new Error('Web MIDI is unavailable in this browser.'); if (!window.WebMidi.enabled) await window.WebMidi.enable({ sysex: false }); syncPorts(); view.renderInspector(); status('MIDI connected. Choose note and clock ports, then press Play.'); }),
@@ -520,6 +564,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const el = document.getElementById(id); listen(el, 'click', syncLegacyControls); listen(el, 'change', syncLegacyControls); listen(el, 'contextmenu', syncLegacyControls);
   }
   listen(document, 'keyup', syncLegacyControls);
+  listen(document, 'keydown', event => { if (event.key === 'Escape' && inputLease) cancelInputEdits('canceled by user'); });
   listen(window, 'pagehide', () => { persist(); recover(); });
   listen(document.getElementById('procgenPanic'), 'click', () => { ports.panic(); status('All notes stopped.'); });
   const disconnected = () => { syncPorts(); view.renderInspector(); };
@@ -529,13 +574,15 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   listeners.push(() => window.WebMidi?.removeListener?.('disconnected', disconnected));
   listeners.push(() => window.WebMidi?.removeListener?.('connected', connected));
   prepareSettings(); setLegacyProject(project, { persist: false }); legacy.setSpeed(transport.getState().gameSpeed); lastLegacySpeed = legacy.settings.speed; view.render(); view.transport(transport.getState());
-  return { getProject: () => project, getStartupPlan: () => ({ ...startupPlan, project: clone(startupPlan.project) }), getLaneAssignments: () => project.procgen.lanes.map(lane => lane.family),
+  return { getProject: () => project, getInputEditLease: () => inputLease && Object.freeze({ ...inputLease }),
+    getStartupPlan: () => ({ ...startupPlan, project: clone(startupPlan.project) }), getLaneAssignments: () => project.procgen.lanes.map(lane => lane.family),
     getPlaybackState: () => ({ ...legacy.local.getState(), activeNotes: router()?.scheduler?._activeNotes?.size || 0, pendingNotes: router()?.scheduler?._pendingNoteOns?.size || 0, pressure: router()?.scheduler?.getOutputPressure?.() || ports.getState().pressure }),
     prepareSettings, bindRuntime, beforeRestart, loadSession, capture, recover, dispatch, play, handlers, state, transport, ports, engine,
     getPhysicalScoreClock: () => physicalScoreClock,
     get settings() { return legacy.settings; },
     dispose() {
       if (disposed) return retirement.retire();
+      cancelInputEdits('workstation closed');
       disposed = true; loadSerial++;
       const operation = currentOperation; currentOperation = null;
       const timer = recoveryTimer; recoveryTimer = null;
