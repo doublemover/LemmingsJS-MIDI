@@ -4,6 +4,7 @@ import { Lemmings, setDependency, useGlobalLemmings } from './helpers/lemmings.j
 import '../js/LemmingsBootstrap.js';
 import { __test__ as LevelLoaderTest } from '../js/level/LevelLoader.js';
 import { FileProvider } from '../js/data/FileProvider.js';
+import { ResourceLoadError } from '../js/data/file-provider/ResourceLoadError.js';
 
 // Silence debug output
 
@@ -298,6 +299,65 @@ describe('LevelLoader', function () {
       catch (error) { expect(error.kind).to.equal('server'); expect(error.status).to.equal(500); }
       expect(failed.requests).not.to.include('xmas91/GROUND0O.DAT');
     });
+  });
+
+  it('uses ordered explicit nested fallback roots once and records their source', async function() {
+    const calls = [];
+    class Provider {
+      loadBinary(root, file) {
+        calls.push(`${root}/${file}`);
+        const folder = root === 'packs/shared/xmas91' ? 'xmas91' : root;
+        const data = readFileSync(new URL(`../${folder}/${file}`, import.meta.url));
+        return Promise.resolve(new Lemmings.BinaryReader(new Uint8Array(data), 0, data.length, file, root));
+      }
+    }
+    const config = makeConfig({ path: 'xmas92', gametype: Lemmings.GameTypes.XMAS92,
+      resourceFallbackPaths: ['missing', 'packs/shared/xmas91', 'packs/shared/xmas91'],
+      level: { filePrefix: 'LEVEL', useOddTable: false, order: [[4]] } });
+    const loader = new Lemmings.LevelLoader(new Provider(), config);
+    const level = await loader.getLevel(0, 0);
+    expect(loader.resourceFallbackPaths).to.deep.equal(['xmas92', 'missing', 'packs/shared/xmas91', 'xmas91']);
+    expect(level.resourceSources.ground).to.deep.equal({ root: 'packs/shared/xmas91', filename: 'GROUND0O.DAT' });
+    expect(calls.filter(call => call.endsWith('/GROUND0O.DAT'))).to.deep.equal([
+      'xmas92/GROUND0O.DAT', 'missing/GROUND0O.DAT', 'packs/shared/xmas91/GROUND0O.DAT'
+    ]);
+  });
+
+  it('reports all attempted fallback roots and preserves nonabsence failures', async function() {
+    const config = makeConfig({ path: 'xmas92', gametype: Lemmings.GameTypes.XMAS92,
+      resourceFallbackPaths: ['missing'], level: { filePrefix: 'LEVEL', useOddTable: false, order: [[4]] } });
+    class MissingProvider {
+      loadBinary(root, file) {
+        if (file === 'GROUND0O.DAT') throw new ResourceLoadError('not-found', `${root}/${file}`, { status: 404 });
+        const data = readFileSync(new URL(`../${root}/${file}`, import.meta.url));
+        return Promise.resolve(new Lemmings.BinaryReader(new Uint8Array(data), 0, data.length, file, root));
+      }
+    }
+    try { await new Lemmings.LevelLoader(new MissingProvider(), config).getLevel(0, 0); expect.fail('Expected exhausted roots'); }
+    catch (error) { expect(error.kind).to.equal('not-found'); expect(error.attemptedRoots).to.deep.equal(['xmas92', 'missing', 'xmas91']); }
+    for (const kind of ['denied', 'cancelled', 'integrity', 'server']) {
+      const calls = [];
+      class FailingProvider extends MissingProvider {
+        loadBinary(root, file) {
+          calls.push(`${root}/${file}`);
+          if (file === 'GROUND0O.DAT') throw new ResourceLoadError(kind, `${root}/${file}`);
+          return super.loadBinary(root, file);
+        }
+      }
+      try { await new Lemmings.LevelLoader(new FailingProvider(), config).getLevel(0, 0); expect.fail('Expected terminal failure'); }
+      catch (error) { expect(error.kind).to.equal(kind); expect(error.attemptedRoots).to.deep.equal(['xmas92']); }
+      expect(calls).not.to.include('xmas91/GROUND0O.DAT');
+    }
+  });
+
+  it('requires an explicitly strict odd table without hiding absent or empty declared entries', async function() {
+    const config = makeConfig({ level: { oddTableRequired: true } });
+    const missing = makeProvider(() => Promise.reject(Object.assign(new Error('missing'), { code: 'ENOENT' })));
+    try { await new Lemmings.LevelLoader(new missing(), config).getLevel(0, 0); expect.fail('Expected required table'); }
+    catch (error) { expect(error.code).to.equal('ENOENT'); }
+    const empty = makeProvider(() => Promise.resolve(new Lemmings.BinaryReader(new Uint8Array(0))));
+    try { await new Lemmings.LevelLoader(new empty(), config).getLevel(0, 0); expect.fail('Expected required table entry'); }
+    catch (error) { expect(error.kind).to.equal('decode'); }
   });
 
   it('applies seasonal steel sprite mappings to generate steel masks', async function () {

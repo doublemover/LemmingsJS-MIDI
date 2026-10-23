@@ -7,7 +7,7 @@ import { LevelReader } from './LevelReader.js';
 import { OddTableReader } from '../data/OddTableReader.js';
 import { SolidLayer } from '../render/SolidLayer.js';
 import { VGASpecReader } from '../data/VGASpecReader.js';
-import { isMissingResourceError } from '../data/file-provider/ResourceLoadError.js';
+import { ResourceLoadError, isMissingResourceError } from '../data/file-provider/ResourceLoadError.js';
 
 const PACK_RESOURCE_FALLBACKS = Object.freeze({
   xmas92: Object.freeze(['xmas91'])
@@ -62,7 +62,7 @@ class LevelLoader {
     this.fileProvider = fileProvider;
     this.config = config;
     this.levelIndexResolve = new LevelIndexResolve(config);
-    this.resourceFallbackPaths = this.#buildResourceFallbackPaths();
+    this.resourceFallbackPaths = Object.freeze(this.#buildResourceFallbackPaths());
   }
 
   #buildResourceFallbackPaths() {
@@ -89,8 +89,10 @@ class LevelLoader {
   async #loadBinaryWithFallback(filename) {
     let lastMissing = null;
     const roots = this.resourceFallbackPaths;
+    const attemptedRoots = [];
     for (let i = 0; i < roots.length; i += 1) {
       const root = roots[i];
+      attemptedRoots.push(root);
       try {
         return { reader: await this.fileProvider.loadBinary(root, filename), root, filename };
       } catch (error) {
@@ -98,11 +100,13 @@ class LevelLoader {
           lastMissing = error;
           continue;
         }
+        if (error && typeof error === 'object' && Object.isExtensible(error)) error.attemptedRoots = Object.freeze([...attemptedRoots]);
         throw error;
       }
     }
-    if (lastMissing) throw lastMissing;
-    throw new Error(`Unable to load resource: ${filename}`);
+    const error = new ResourceLoadError('not-found', filename, { cause: lastMissing });
+    error.attemptedRoots = Object.freeze([...attemptedRoots]);
+    throw error;
   }
 
   async getLevel (levelMode, levelIndex) {
@@ -115,6 +119,7 @@ class LevelLoader {
     if (levelInfo == null) return null;
 
     const useOddTable   = levelInfo.useOddTable && this.config.level.useOddTable;
+    const requireOddTable = useOddTable && this.config.level.oddTableRequired === true;
     const paddedFileId  = ('0000' + levelInfo.fileId).slice(-3);
 
     const baseLevel     = this.fileProvider.loadBinary(
@@ -123,7 +128,7 @@ class LevelLoader {
 
     const oddTableBuf = useOddTable
       ? Promise.resolve().then(() => this.fileProvider.loadBinary(this.config.path, 'ODDTABLE.DAT'))
-        .catch(error => { if (isMissingResourceError(error)) return null; throw error; })
+        .catch(error => { if (isMissingResourceError(error) && !requireOddTable) return null; throw error; })
       : null;
 
     const [levelDat, oddBuf] = await Promise.all([baseLevel, oddTableBuf]);
@@ -151,6 +156,9 @@ class LevelLoader {
       const oddTable           = new OddTableReader(oddBuf);
       oddProperties            = oddTable.getLevelProperties(levelInfo.levelNumber);
     }
+    if (requireOddTable && !oddProperties) throw new ResourceLoadError('decode', `${this.config.path}/ODDTABLE.DAT`, {
+      cause: new Error('Required odd-table entry is missing or empty')
+    });
     const levelProperties      = mergeLevelProperties(baseProperties, oddProperties);
 
     level.name         = levelProperties.levelName;
@@ -175,6 +183,7 @@ class LevelLoader {
     const vgagrBuf = vgagrSource.reader, groundBuf = groundSource.reader, vgaspecBuf = vgaspecSource?.reader ?? null;
     level.resourceSources = Object.freeze({
       level: Object.freeze({ root: this.config.path, filename: this.config.level.filePrefix + paddedFileId + '.DAT' }),
+      ...(useOddTable && oddBuf?.length ? { oddTable: Object.freeze({ root: this.config.path, filename: 'ODDTABLE.DAT' }) } : {}),
       vgagr: Object.freeze({ root: vgagrSource.root, filename: vgagrSource.filename }),
       ground: Object.freeze({ root: groundSource.root, filename: groundSource.filename }),
       ...(vgaspecSource ? { vgaspec: Object.freeze({ root: vgaspecSource.root, filename: vgaspecSource.filename }) } : {})

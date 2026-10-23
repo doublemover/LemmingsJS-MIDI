@@ -71,6 +71,16 @@ describe('ConfigReader', function () {
     expect(cfg.mechanics).to.eql(packMechanics.lemmings_ohNo);
   });
 
+  it('passes strict odd-table and ordered fallback roots to the runtime loader', async function () {
+    const entry = { name: 'seasonal', path: 'xmas92', gametype: 'XMAS92', resourceFallbackPaths: ['nested/shared', 'xmas91'],
+      'level.filePrefix': 'LEVEL', 'level.groups': ['A'], 'level.order': [[-1]],
+      'level.useOddTable': true, 'level.oddTableRequired': true };
+    const reader = new ConfigReader(Promise.resolve(JSON.stringify([entry])));
+    const config = await reader.getConfig(Lemmings.GameTypes.XMAS92);
+    expect(config.resourceFallbackPaths).to.deep.equal(['nested/shared', 'xmas91']);
+    expect(config.level.oddTableRequired).to.equal(true);
+  });
+
   it('returns empty configs on parse errors', function () {
     const reader = new ConfigReader(Promise.resolve('bad json'));
     const parsed = reader.parseConfig('bad json');

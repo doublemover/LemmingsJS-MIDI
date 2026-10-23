@@ -11,6 +11,8 @@
 - `level.groups` – Ordered list of rank names within the pack.
 - `level.order` – Array of arrays listing level numbers for each rank.
 - `level.useOddTable` – Set to `true` when the pack uses an ODDTABLE resource.
+- `level.oddTableRequired` *(optional)* – Reject a level marked for ODDTABLE when the table is absent, empty or lacks its entry. Older packs default to optional because some checked-in tables are empty placeholders.
+- `resourceFallbackPaths` *(optional)* – Ordered pack roots searched after `path` for absent terrain, object and VGASPEC files. Duplicate roots are ignored; the built-in xmas92 → xmas91 fallback comes last. Denied, canceled, corrupt and server-failed loads never select another root.
 - `mechanics` *(optional)* – Object of gameplay flags that override or extend the defaults.
 
 `packMechanics.js` supplies defaults like `classicBuilder`, `bomberAssist`, `pauseGlitch`, `nukeGlitch`, and `rightClickGlitch` for each pack. `ConfigReader` merges these defaults with the `mechanics` object from `config.json` so game code only needs to consult a single merged `mechanics` field.

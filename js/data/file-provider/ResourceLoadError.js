@@ -1,6 +1,7 @@
 export class ResourceLoadError extends Error {
   constructor(kind, requestedUrl, { status = null, cause = null, operationId = null } = {}) {
-    super(`error load file (${status == null ? kind : `HTTP ${status}`})`, cause ? { cause } : undefined);
+    const description = status != null ? `HTTP ${status}` : kind === 'not-found' ? 'not found' : kind;
+    super(`error load file (${description})`, cause ? { cause } : undefined);
     this.name = 'ResourceLoadError';
     this.kind = kind;
     this.requestedUrl = requestedUrl;
