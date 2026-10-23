@@ -200,6 +200,16 @@ individually observed. Fetching source files with valid hashes does not prove
 which module instances executed a browser replay. Compatibility receipts keep
 active execution unbound and never promote themselves to exact qualification.
 
+Current replay evidence also binds physical checksum boundaries, each retained
+checkpoint's event-prefix digest and telemetry identity, the declared policy
+seed, and complete crew/lifecycle accounting. Matching empty crew arrays cannot
+qualify a populated trial. Duplicate actor identities, nonfinite final positions,
+inconsistent death counts or unaccounted retained lifecycles are incomplete
+evidence. The declared goal outcome must agree with that accounting. Coverage distinguishes logical state, physical state and event
+checksum disagreements at their shared checkpoints. These structural checks
+establish retained-record consistency; they do not attest which loaded module
+instances produced a record or promote separate policy-validity gates.
+
 These receipts qualify bounded survey consistency. They do not provide release,
 hardware, physical MIDI or acoustic qualification, and they do not implement a
 reusable branch-prefix cache.

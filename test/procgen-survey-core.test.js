@@ -7,6 +7,7 @@ import { ProcgenSurveyTerrain } from '../js/app/procgen/survey/ProcgenSurveyTerr
 import { canonicalSurveyJson, hashSurveyValue, semanticSurveyRandom } from '../js/app/procgen/survey/ProcgenSurveyCanonical.js';
 import { compareSurveyReplay, compareSurveyCompatibilityReplay } from '../js/app/procgen/survey/ProcgenSurveyReplay.js';
 import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
+import { createNodeSurveyTrial } from '../scripts/procgen-survey/SurveyNodeWorld.js';
 
 const scene = (overrides = {}) => ({ id: 'flat-eight', horizonTicks: 220, checkpointEvery: 32, environmentSeed: 42,
   worldOptions: { assists: true, workerLimits: { builders: 1, bashers: 1, diggers: 1 } },
@@ -244,16 +245,62 @@ describe('isolated deterministic real procgen survey core', function() {
     trial.world.terrainActivityTicks[0] = NaN;
     expect(() => trial.snapshot()).to.throw('Invalid terrain activity tick'); trial.dispose();
   });
+  it('requires complete crew accounting and physical checksum domains even when two incomplete records match', () => {
+    const complete = finalReplay(masks), compareBoth = value => compareSurveyReplay(value, value);
+    expect(compareBoth(complete).matched).to.equal(true);
+    const missingCrew = { ...complete, crew: [] };
+    expect(compareBoth(missingCrew).reasons).to.include('original:crew-accounting-not-bound');
+    const missingPhysical = { ...complete }; delete missingPhysical.finalPhysicalStateHash;
+    expect(compareBoth(missingPhysical).reasons).to.include('original:missing-finalPhysicalStateHash');
+    const duplicate = { ...complete, crew: [complete.crew[0], ...complete.crew.slice(0, -1)] };
+    expect(compareBoth(duplicate).reasons).to.include('original:invalid-crew-records');
+    const accounting = { ...complete, accounting: { ...complete.accounting, deaths: complete.accounting.deaths + 1 } };
+    expect(compareBoth(accounting).reasons).to.include('original:crew-accounting-not-bound');
+    const lifecycle = { ...complete, evidence: { ...complete.evidence, pendingLifecycles: complete.evidence.pendingLifecycles + 1 } };
+    expect(compareBoth(lifecycle).reasons).to.include('original:lifecycle-retention-not-bound');
+    const invalidPosition = { ...complete, crew: complete.crew.map((record, index) => index ? record : { ...record, x: NaN }) };
+    expect(compareBoth(invalidPosition).reasons).to.include('original:invalid-crew-records');
+    const seed = { ...complete, policySeed: complete.policySeed + 1 };
+    expect(compareBoth(seed).reasons).to.include('original:policy-seed-not-bound');
+    const outcome = { ...complete, status: 'completed', terminationReason: 'declared-goal-qualified', accounting: { ...complete.accounting, qualified: 0 }, crew: complete.crew.map(record => ({ ...record, qualifiedTick: null })) };
+    expect(compareBoth(outcome).reasons).to.include('original:outcome-accounting-not-bound');
+    const physical = { ...complete, finalPhysicalStateHash: '0'.repeat(16), milestones: complete.milestones.map((entry, index) => index === complete.milestones.length - 1 ? { ...entry, physicalStateHash: '0'.repeat(16) } : entry) };
+    const comparison = compareSurveyReplay(complete, physical);
+    expect(comparison.validity).to.equal('mismatch'); expect(comparison.differences).to.include('finalPhysicalStateHash');
+    expect(comparison.coverage.physicalMismatchedTicks).to.deep.equal([complete.lastTick]);
+    expect(comparison.coverage.checksumDomains).to.include('physical-state');
+    expect(compareBoth({ ...complete, milestones: [null] }).validity).to.equal('invalid-or-incomplete');
+  });
+  it('binds every retained checkpoint event prefix to its telemetry identity and logical event log', () => {
+    const complete = finalReplay(masks), at = Math.min(1, complete.milestones.length - 1);
+    const changed = { ...complete, milestones: complete.milestones.map((entry, index) => index === at ? { ...entry, eventHash: '0'.repeat(16), telemetry: { ...entry.telemetry, eventHash: '0'.repeat(16) } } : entry) };
+    expect(compareSurveyReplay(changed, changed).reasons).to.include('original:milestone-events-not-bound');
+    const identity = { ...complete, milestones: complete.milestones.map((entry, index) => index === at ? { ...entry, telemetry: { ...entry.telemetry, trialId: 'different-trial' } } : entry) };
+    expect(compareSurveyReplay(identity, identity).reasons).to.include('original:milestone-events-not-bound');
+    const missing = { ...complete, milestones: complete.milestones.map((entry, index) => index === at ? { ...entry, telemetry: undefined } : entry) };
+    expect(compareSurveyReplay(missing, missing).reasons).to.include('original:milestone-events-not-bound');
+    const event = { ...complete, events: complete.events.map((entry, index) => index ? entry : { ...entry, tick: complete.lastTick + 1 }) };
+    expect(compareSurveyReplay(event, event).reasons).to.include('original:invalid-event-records');
+  });
+  it('validates retained crew and event-prefix evidence from fresh generated source terrain', async () => {
+    const trial = await createNodeSurveyTrial({ scenario: { id: 'generated-evidence', mode: 'generated', pack: 'lemmings_ohNo', groundSet: 0, laneHeight: 144, horizonTicks: 192 } }, masks);
+    try {
+      trial.step(192); const result = trial.result(), replay = compareSurveyReplay(result, result);
+      expect(replay.matched, JSON.stringify(replay)).to.equal(true); expect(result.accounting.totalBirths).to.equal(result.crew.length);
+    } finally { trial.dispose(); }
+  });
   it('qualifies the whole ordinary wall crew and retains a genuine incomplete bridge crew', () => {
     const wall = finalReplay(masks, { id: 'wall-eight', horizonTicks: 500, cohort: { size: 8, birthInterval: 8 }, goal: { x: 120, y: 64, width: 72, height: 16 },
       geometry: { solid: [{ x: 8, y: 72, width: 1024, height: 24 }, { x: 64, y: 48, width: 32, height: 24 }], steel: [{ x: 12, y: 48, width: 1, height: 24 }] },
       worldOptions: { assists: true, workerLimits: { builders: 0, bashers: 1, diggers: 0 } } });
     expect(wall.accounting).to.include({ designated: 8, arrived: 8, deaths: 0 }); expect(wall.metrics.skills.bashes).to.equal(2); expect(wall.metrics.excavatedPixels).to.be.greaterThan(0);
+    const wallReplay = compareSurveyReplay(wall, wall); expect(wallReplay.matched, JSON.stringify(wallReplay)).to.equal(true);
     expect(wall.finalStateHash).to.equal(finalReplay(masks, { ...wall.scenario }).finalStateHash);
     const gap = finalReplay(masks, { id: 'gap-eight', horizonTicks: 500, cohort: { size: 8, birthInterval: 8 },
       geometry: { solid: [{ x: 8, y: 72, width: 62, height: 24 }, { x: 78, y: 72, width: 954, height: 24 }], steel: [{ x: 12, y: 48, width: 1, height: 24 }] },
       worldOptions: { assists: true, workerLimits: { builders: 1, bashers: 0, diggers: 0 } } });
     expect(gap.accounting).to.include({ designated: 8, arrived: 1, deaths: 7 }); expect(gap.metrics.skills.builds).to.equal(1);
     expect(gap.status).to.equal('failed'); expect(gap.accounting.deathsByCause).to.deep.equal({ 'out-of-world': 7 });
+    const gapReplay = compareSurveyReplay(gap, gap); expect(gapReplay.matched, JSON.stringify(gapReplay)).to.equal(true);
   });
 });
