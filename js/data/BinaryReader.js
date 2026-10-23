@@ -81,6 +81,7 @@ class BinaryReader extends BaseLogger {
     } else if (dataArray instanceof BinaryReader) {
       dataArray.#assertAvailable();
       this.#data = dataArray.#data;
+      if (dataArray.sourceIdentity) Object.defineProperty(this, 'sourceIdentity', { value: dataArray.sourceIdentity });
       if (dataArray.#storageGroup) this._attachStorageLease(dataArray.#storageGroup);
       dataLength = dataArray.length;
       baseHiddenOffset = dataArray.hiddenOffset;

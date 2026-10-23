@@ -134,13 +134,13 @@ class EditorAssetCache {
     if (resolvedStyle === 'neon-cabaret') {
       groundReader = createNeonCabaretGroundSet();
     } else {
-      let terrainReader, objectReader;
+      let container, terrainReader, objectReader;
       try {
         await loadSteelSprites();
         assertLive();
         const [vgagr, ground] = await Promise.all([loadBinary(`VGAGR${groundSet}.DAT`), loadBinary(`GROUND${groundSet}O.DAT`)]);
         assertLive();
-        const container = new this.FileContainer(vgagr.reader);
+        container = new this.FileContainer(vgagr.reader);
         terrainReader = container.getPart(0); objectReader = container.getPart(1);
         groundReader = new this.GroundReader(ground.reader, terrainReader, objectReader);
         resourceSources = Object.freeze({ vgagr: vgagr.source, ground: ground.source });
@@ -148,6 +148,7 @@ class EditorAssetCache {
         readersRetired = true;
         for (const reader of rawReaders) reader.release?.();
         terrainReader?.release?.(); objectReader?.release?.();
+        container?.dispose?.();
       }
     }
 

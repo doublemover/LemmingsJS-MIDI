@@ -141,4 +141,16 @@ describe('GameResources', function () {
       assert.strictEqual(gr.mainDat, null);
     }
   });
+
+  it('retires a pending MAIN.DAT request and releases an uncooperative late reader', async function () {
+    let finish, signal, loads = 0;
+    const provider = { loadBinary(_root, _file, options) { loads++; signal = options.signal; return new Promise(resolve => { finish = resolve; }); } };
+    const gr = new GameResources(provider, config), pending = gr.getMainDat();
+    gr.dispose(); gr.dispose(); assert.equal(signal.aborted, true);
+    const late = new Lemmings.BinaryReader(Uint8Array.of(1)); finish(late);
+    await assert.rejects(pending, error => error.kind === 'cancelled');
+    assert.equal(late.length, 0);
+    await assert.rejects(gr.getMainDat(), error => error.kind === 'cancelled');
+    assert.equal(loads, 1);
+  });
 });

@@ -30,7 +30,7 @@ describe('FileProvider raw byte budget and release', () => {
     requests[0].respond(200, Uint8Array.from([8, 0, 0, 0, 0, 20, 0, 0, 0, 11, 0]).buffer);
     const reader = await pending, container = new FileContainer(reader);
     assert.throws(() => container.getPart(0), RangeError);
-    await provider.waitForCacheWrites(); reader.release(); provider.dispose();
+    await provider.waitForCacheWrites(); container.dispose(); reader.release(); provider.dispose();
     assert.equal(budget.diagnostics().residentBytes, 0);
   });
 
@@ -42,6 +42,9 @@ describe('FileProvider raw byte budget and release', () => {
     const reader = await pending, nested = new BinaryReader(reader, 1, 2);
     await provider.waitForCacheWrites();
     assert.equal(budget.diagnostics().residentBytes, 64);
+    const stats = provider.getRawAssetStats();
+    assert.equal(stats.binaryNetworkResponses, 1); assert.equal(stats.binaryNetworkBytes, 64);
+    assert.equal(stats.hashInputCopies, 1); assert.equal(stats.hashInputBytes, 64);
     provider.clearCache(); reader.release(); reader.release();
     assert.equal(budget.diagnostics().residentBytes, 64);
     assert.equal(nested.readByte(), 0);
@@ -78,6 +81,9 @@ describe('FileProvider raw byte budget and release', () => {
     requests[1].respond(200); const second = await admitted;
     await provider.waitForCacheWrites(); second.release(); provider.dispose();
     assert.equal(budget.diagnostics().residentBytes, 0);
+    const stats = provider.getRawAssetStats();
+    assert.equal(stats.denials, 1); assert.equal(stats.evictedStorageCount, 1); assert.equal(stats.evictedBytes, 64);
+    assert.equal(stats.peakReservedBytes, 4096); assert.equal(stats.storageCount, 0);
   });
 
   it('retires aborted requests and no-store readers without retaining a cache owner', async () => {

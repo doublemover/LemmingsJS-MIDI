@@ -6,6 +6,7 @@ import '../js/LemmingsBootstrap.js';
 import { __test__ as LevelLoaderTest } from '../js/level/LevelLoader.js';
 import { FileProvider } from '../js/data/FileProvider.js';
 import { ResourceLoadError } from '../js/data/file-provider/ResourceLoadError.js';
+import assert from 'node:assert/strict';
 
 // Silence debug output
 
@@ -37,6 +38,7 @@ const makeConfig = (overrides = {}) => ({
     order: [[-1]],
     ...overrides.level
   }
+
 });
 
 const expectLevelProperties = (level, props) => {
@@ -416,4 +418,29 @@ describe('LevelLoader', function () {
     }
   });
 
+  it('aborts failed graphics siblings and releases a late result without publishing a level', async function() {
+    const readers = [], signals = []; let finishLate;
+    const provider = { loadBinary(root, file, options) {
+      signals.push(options.signal);
+      if (file.startsWith('VGAGR')) return new Promise(resolve => { finishLate = resolve; });
+      if (file.startsWith('GROUND')) return Promise.reject(new ResourceLoadError('server', file, { status: 500 }));
+      const bytes = readFileSync(new URL(`../${root}/${file}`, import.meta.url));
+      const reader = new Lemmings.BinaryReader(new Uint8Array(bytes), 0, bytes.length, file, root);
+      readers.push(reader); return Promise.resolve(reader);
+    } };
+    const loader = new Lemmings.LevelLoader(provider, makeConfig({ level: { useOddTable: false, order: [[0]] } }));
+    await assert.rejects(loader.getLevel(0, 0), error => error.kind === 'server');
+    assert.equal(signals.every(signal => signal.aborted), true);
+    assert.equal(readers.every(reader => reader.length === 0), true);
+    const late = new Lemmings.BinaryReader(Uint8Array.of(1)); finishLate(late);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.equal(late.length, 0);
+  });
+
+  it('rejects cancellation before reading or falling back to another root', async function() {
+    let loads = 0; const controller = new AbortController(); controller.abort();
+    const loader = new Lemmings.LevelLoader({ loadBinary() { loads++; } }, makeConfig());
+    await assert.rejects(loader.getLevel(0, 0, { signal: controller.signal, operationId: 99 }), error => error.kind === 'cancelled' && error.operationId === 99);
+    assert.equal(loads, 0);
+  });
 });

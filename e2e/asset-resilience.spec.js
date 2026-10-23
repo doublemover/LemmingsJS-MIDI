@@ -86,6 +86,43 @@ test('real terrain decoding retires private compressed cursors before cache evic
   expect(result.warm.pinnedBytes).toBe(0); expect(result.retired).toBe(0);
 });
 
+test('GameResources and LevelLoader retire owned raw cursors while surviving consumers stay readable', async ({ page }) => {
+  let mainRequests = 0;
+  page.on('request', request => { if (request.url().endsWith('/lemmings/MAIN.DAT')) mainRequests++; });
+  await page.route('**/lemmings/*.DAT', async route => {
+    const response = await route.fetch();
+    return route.fulfill({ response, headers: { ...response.headers(), 'cache-control': 'max-age=3600' } });
+  });
+  await openFixture(page);
+  const result = await page.evaluate(async () => {
+    const [{ FileProvider }, { GameResources }, { LevelLoader }, { GameTypes }, { createResourceBudget }] = await Promise.all([
+      import('/js/data/FileProvider.js'), import('/js/game/GameResources.js'), import('/js/level/LevelLoader.js'),
+      import('/js/game/GameTypes.js'), import('/js/app/resources/ResourceBudget.js')
+    ]);
+    const budget = createResourceBudget({ limitBytes: 32 * 1024 * 1024 });
+    const provider = new FileProvider('/', { budgetAdapter: budget, maxResponseBytes: 2 * 1024 * 1024, localStorage: null, cacheProbeMs: 1000 });
+    const config = { path: 'lemmings', gametype: GameTypes.LEMMINGS, mechanics: {}, level: { groups: [], filePrefix: 'LEVEL', useOddTable: false, order: [[0]] } };
+    const a = new GameResources(provider, config), b = new GameResources(provider, config);
+    const [first, second] = await Promise.all([a.getMainDat(), b.getMainDat()]);
+    await provider.waitForCacheWrites();
+    const before = provider.getRawAssetStats().pinnedBytes;
+    const held = first.getPart(0), expected = held.readByte(); held.setOffset(0);
+    a.dispose(); const afterOne = provider.getRawAssetStats().pinnedBytes;
+    const survivor = second.getPart(0), survivorValue = survivor.readByte(); survivor.release(); b.dispose();
+    const afterBoth = provider.getRawAssetStats().pinnedBytes, heldValue = held.readByte(); held.release();
+    const level = await new LevelLoader(provider, config).getLevel(0, 0);
+    await provider.waitForCacheWrites();
+    const afterLevel = provider.getRawAssetStats().pinnedBytes;
+    provider.clearCache(); const cleared = budget.diagnostics().residentBytes;
+    provider.dispose();
+    return { before, afterOne, afterBoth, afterLevel, expected, survivorValue, heldValue, cleared, levelPixels: level.groundMask.mask.some(Boolean) };
+  });
+  expect(mainRequests).toBe(1);
+  expect(result.before).toBeGreaterThan(0); expect(result.afterOne).toBe(result.before);
+  expect(result.afterBoth).toBe(0); expect(result.afterLevel).toBe(0); expect(result.cleared).toBe(0);
+  expect(result.survivorValue).toBe(result.expected); expect(result.heldValue).toBe(result.expected); expect(result.levelPixels).toBe(true);
+});
+
 test('HTTP conditional 304 updates metadata without a payload rewrite and changed bytes preserve old handles', async ({ page }) => {
   let revision = 1, failure = false;
   const observed = [];

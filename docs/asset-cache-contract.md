@@ -164,6 +164,11 @@ attempt settles, even when optional bookkeeping has already timed out. The
 budget therefore continues to show unresolved native work after cancellation.
 
 `getRawAssetStats()` reports storage count and resident, pinned and cache bytes.
+It also reports cumulative reservations/denials, retired storage, evicted storage
+and bytes, peak reserved bytes, binary network responses/bytes and SHA input
+copies/bytes. The copy count tracks provider-created digest inputs; caller-owned
+copies and native browser copies are excluded. Forking readers does not increment
+it. Peak reserved bytes include response headroom and transient estimates.
 These include reserved response ceilings and transient estimates while work is
 pending. Browser XHR, crypto and IndexedDB internal copies remain estimates;
 XHR does not expose chunk admission, and native buffering may overshoot a limit
@@ -174,6 +179,30 @@ them. Caller-owned `copyBytes`/`data`/`ready` copies, primitive text lifetimes a
 decoded mutable art are outside this raw-storage accounting. This adapter does
 not claim pre-admission coverage for decoder expansion or the combined
 1024-lane/audio/recovery benchmark.
+
+### Container and decoder consumers
+
+`FileContainer` owns a separate source cursor, preserving the caller's offset.
+Its `dispose()` releases that cursor and the private unpacked-part caches.
+`UnpackFilePart.unpack()` returns an independent reader on the first call and
+every later call. Releasing a returned part cannot poison the cached part, and
+returned part readers remain readable after container disposal. Source identity,
+filename and folder provenance follow the decoded reader separately from its
+decoded bytes.
+
+`GameResources.dispose()` aborts its MAIN.DAT consumer and retires its container,
+including late completion. It does not close the provider or dispose already
+prepared sprite/mask/HUD objects. Temporary preparation views call it after
+transferring those objects and their provider lease. A surviving GameResources
+owner can continue reading the same raw generation. Sprite/mask helpers release
+their temporary part cursors after synchronous construction.
+
+`LevelLoader.getLevel(mode, index, {signal, operationId})` owns its raw readers,
+containers and part cursors until level construction finishes. Success or failure
+retires them, aborts unfinished sibling consumers and releases late results. It
+rejects cancellation before the first read. Pinned browser resources consume the
+verified raw handle rather than making a second digest copy. The resulting level
+owns its decoded maps and object data; disposing raw cursors does not change it.
 
 ## Disk budgets and recovery
 
@@ -226,6 +255,8 @@ compares fallback terrain and steel to an explicitly pinned source, checks denie
 rate-limit/server responses, and exercises real IndexedDB/localStorage warm reads,
 cross-provider writes, injected quota refusal and reconciliation, real raw-budget
 warm reads and simultaneous fallback writes from separate tabs. It also verifies
-that real terrain decoding leaves no pinned compressed cursors. Annotations
+that real terrain decoding leaves no pinned compressed cursors. A two-owner
+GameResources/LevelLoader fixture verifies immediate retirement while another
+raw owner and previously returned decoded readers keep working. Annotations
 report warm operation counts and maximum observed read duration. These are small
 browser fixtures, not a full instrument startup or 1/8/1024-lane memory benchmark.

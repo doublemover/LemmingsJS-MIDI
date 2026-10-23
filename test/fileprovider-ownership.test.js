@@ -370,13 +370,16 @@ describe('FileProvider request and byte ownership', () => {
   });
 
   it('delivers bytes before a stalled optional cache write and enforces expected hashes', async () => {
-    const { provider, requests } = fixture();
-    let completeWrite;
-    provider._storeInCache = () => new Promise(resolve => { completeWrite = resolve; });
+    const { provider, requests } = fixture({ crypto: { subtle: { async digest(_algorithm, data) {
+      return Uint8Array.from(createHash('sha256').update(new Uint8Array(data)).digest()).buffer;
+    } } } });
+    let completeWrite, markStarted;
+    const writeStarted = new Promise(resolve => { markStarted = resolve; });
+    provider._storeInCache = () => new Promise(resolve => { completeWrite = resolve; markStarted(); });
     const pending = provider.loadBinary('data', 'verified.bin');
     requests[0].respond(200, Uint8Array.from([11, 22]).buffer);
     assert.equal((await pending).readByte(), 11);
-    await new Promise(resolve => setTimeout(resolve, 0)); assert.equal(typeof completeWrite, 'function');
+    await writeStarted; assert.equal(typeof completeWrite, 'function');
     const good = createHash('sha256').update(Uint8Array.from([11, 22])).digest('hex');
     assert.equal((await provider.loadBinary('data', 'verified.bin', { expectedHash: good })).readByte(), 11);
     await assert.rejects(provider.loadBinary('data', 'verified.bin', { expectedHash: '0'.repeat(64) }), error => error.kind === 'integrity');
@@ -393,7 +396,7 @@ describe('FileProvider request and byte ownership', () => {
     assert.equal(await provider.loadString(url), 'new'); provider.dispose();
   });
 
-  it('does not rewrite warm localStorage payloads and enforces its UTF-16 byte cap', () => {
+  it('does not rewrite warm localStorage payloads and enforces its UTF-16 byte cap', async () => {
     const entries = new Map(); let writes = 0, reads = 0;
     const storage = { getItem(key) { reads++; return entries.get(key) ?? null; },
       setItem(key, value) { writes++; entries.set(key, value); }, removeItem(key) { entries.delete(key); },
@@ -403,6 +406,9 @@ describe('FileProvider request and byte ownership', () => {
     assert.equal(provider._storeInLocalStorage('/assets/small.txt', { type: 'text', data: 'hello' }), true);
     writes = 0; reads = 0;
     for (let index = 0; index < 8; index++) assert.equal(provider._loadFromLocalStorage('/assets/small.txt', 'text').value, 'hello');
+    assert.equal(writes, 0); assert.equal(reads, 8);
+    reads = 0;
+    for (let index = 0; index < 8; index++) { provider.clearCache(); assert.equal(await provider.loadString('/assets/small.txt'), 'hello'); }
     assert.equal(writes, 0); assert.equal(reads, 8);
     assert.equal(provider._storeInLocalStorage('/assets/large.txt', { type: 'text', data: 'x'.repeat(2_100_000) }), false);
     assert.equal(entries.size, 1); provider.dispose();

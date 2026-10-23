@@ -151,12 +151,12 @@ const fileProviderFetchMethods = {
     if (this._disposed || record?.controller.signal.aborted) throw new ResourceLoadError('cancelled', record?.url);
   },
 
-  async _probePersistent(url, type, path, expectedHash, record) {
+  async _probePersistent(url, type, path, expectedHash, record, initialCached = null) {
     let timer, expired = false;
     const probe = async () => {
       let cached, accepted = false;
       try {
-        cached = this._canUseIndexedDb() ? await this._loadFromIndexedDb(url, type, path).catch(() => null) : null;
+        cached = initialCached || (this._canUseIndexedDb() ? await this._loadFromIndexedDb(url, type, path).catch(() => null) : null);
         this._assertAcquisitionLive(record);
         if (expired) return null;
         if (!cached) cached = this._loadFromLocalStorage(url, type, path);
@@ -224,9 +224,9 @@ const fileProviderFetchMethods = {
       const acquire = async () => {
         let value;
         try {
-          let hasPersistent = this._canUseIndexedDb();
-          try { hasPersistent ||= !!this._getLocalStorage()?.getItem?.(this._localStorageKey(url)); } catch { /* Optional storage can be denied. */ }
-          value = !fresh && hasPersistent ? await this._probePersistent(url, type, path, opts.expectedHash, record) : null;
+          const hasIndexedDb = !fresh && this._canUseIndexedDb();
+          const localCached = !fresh && !hasIndexedDb ? this._loadFromLocalStorage(url, type, path) : null;
+          value = hasIndexedDb || localCached ? await this._probePersistent(url, type, path, opts.expectedHash, record, localCached) : null;
           this._assertAcquisitionLive(record);
           if (value == null) {
             record.phase = 'network';
@@ -329,7 +329,11 @@ const fileProviderFetchMethods = {
     if (!hash) {
       hash = (async () => {
         const reservation = this._reserveRawBytes(value.length * 2);
-        try { return await this._tryHashBuffer(value.copyBytes()); }
+        try {
+          const copy = value.copyBytes();
+          this._rawByteMetrics.hashInputCopies++; this._rawByteMetrics.hashInputBytes += copy.byteLength;
+          return await this._tryHashBuffer(copy);
+        }
         finally { reservation?.release(); }
       })();
       this._contentHashes.set(value, hash);
@@ -397,6 +401,7 @@ const fileProviderFetchMethods = {
       if (response.notModified) return this._acceptNotModified(url, response.headers, owner);
 
       const buf = response.data;
+      this._rawByteMetrics.binaryNetworkResponses++; this._rawByteMetrics.binaryNetworkBytes += buf.byteLength;
       const Reader = getDependency('BinaryReader', BinaryReader);
       const reader = new Reader(buf, 0, null, this._filenameFromUrl(url), path);
       if (response.storageLease) reader._attachStorageLease(response.storageLease, 'pending');

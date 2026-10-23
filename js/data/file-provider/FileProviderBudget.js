@@ -3,9 +3,15 @@ import { RawByteLease } from './RawByteLease.js';
 export const fileProviderBudgetMethods = {
   _reserveRawBytes(bytes) {
     if (!this._budgetAdapter) return null;
-    const lease = new RawByteLease(this._budgetAdapter, { owner: this._budgetOwner, generation: this._cacheEpoch,
-      bytes, onRelease: lease => this._rawByteLeases.delete(lease) });
+    let lease;
+    try {
+      lease = new RawByteLease(this._budgetAdapter, { owner: this._budgetOwner, generation: this._cacheEpoch,
+        bytes, onRelease: lease => { this._rawByteLeases.delete(lease); this._rawByteMetrics.retiredStorageCount++; } });
+    } catch (error) { this._rawByteMetrics.denials++; throw error; }
     this._rawByteLeases.add(lease);
+    this._rawByteMetrics.reservations++;
+    let reserved = 0; for (const live of this._rawByteLeases) reserved += live.bytes;
+    this._rawByteMetrics.peakReservedBytes = Math.max(this._rawByteMetrics.peakReservedBytes, reserved);
     return lease;
   },
 
@@ -21,7 +27,7 @@ export const fileProviderBudgetMethods = {
   getRawAssetStats() {
     let residentBytes = 0, pinnedBytes = 0;
     for (const lease of this._rawByteLeases) { residentBytes += lease.bytes; if (lease.pinned) pinnedBytes += lease.bytes; }
-    return Object.freeze({ storageCount: this._rawByteLeases.size, residentBytes, pinnedBytes, cacheBytes: residentBytes - pinnedBytes });
+    return Object.freeze({ storageCount: this._rawByteLeases.size, residentBytes, pinnedBytes, cacheBytes: residentBytes - pinnedBytes, ...this._rawByteMetrics });
   },
 
   _publishCacheSource(key, value) {
@@ -60,6 +66,7 @@ export const fileProviderBudgetMethods = {
       if (value._isStoragePinned()) continue;
       this._cacheSources.delete(key); this._cache.delete(key);
       released += value.length;
+      this._rawByteMetrics.evictedStorageCount++; this._rawByteMetrics.evictedBytes += value.length;
       value.release();
     }
     return released;

@@ -36,6 +36,8 @@ class FileProvider extends BaseLogger {
     if (this._budgetAdapter && (typeof this._budgetAdapter.reserve !== 'function' || typeof this._budgetAdapter.release !== 'function')) throw new TypeError('A synchronous resource budget adapter is required');
     this._budgetOwner = options.budgetOwner || `asset-provider-${++nextProviderOwner}`;
     this._rawByteLeases = new Set();
+    this._rawByteMetrics = { reservations: 0, denials: 0, retiredStorageCount: 0, evictedStorageCount: 0, evictedBytes: 0, peakReservedBytes: 0,
+      binaryNetworkResponses: 0, binaryNetworkBytes: 0, hashInputCopies: 0, hashInputBytes: 0 };
     this._unregisterBudgetEvictor = this._budgetAdapter?.registerEvictor?.(this._budgetOwner, request => this._evictRawCache(request));
     this._cacheEpoch = 0;
     this._requestVersions = new Map();
