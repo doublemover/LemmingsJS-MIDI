@@ -242,9 +242,9 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (cancelled.has(generationKey) || cancellationHistoryFull) return reject('generation-cancelled', intent.voiceId);
     if (voices.has(key) || preview._semanticVoiceOwners.has(JSON.stringify([owner, executionEpoch, intent.voiceId]))) return reject('duplicate-owner-voice', intent.voiceId);
     const slot = slots.findIndex(voice => voice == null), token = epochToken(executionEpoch);
-    if (slot < 0 || token == null || voices.size >= patch.maxVoices || preview._voices.size >= preview._maxScheduledVoices ||
-        [...preview._voices].filter(voice => !voice.stolen && voice.start <= targetFrame / context.sampleRate &&
-          voice.releaseAt > targetFrame / context.sampleRate).length >= preview._maxVoices) return reject('shared-voice-budget', intent.voiceId);
+    if (slot < 0 || token == null || voices.size >= patch.maxVoices || preview._renderVoiceCount() >= preview._maxScheduledVoices ||
+        preview._renderVoiceCount([...preview._voices].filter(voice => !voice.stolen && (voice.renderCost > 1 || voice.start <= targetFrame / context.sampleRate &&
+          voice.releaseAt > targetFrame / context.sampleRate))) >= preview._maxVoices) return reject('shared-voice-budget', intent.voiceId);
     if (slotTokens[slot] === 0xffffffff) return reject('voice-slot-generation-exhausted', intent.voiceId);
     const parameters = patch.parameters, endFrame = leases.get(generationKey) ?? targetFrame + Math.ceil(preview._maxNoteSeconds * context.sampleRate);
     if (endFrame <= targetFrame + parameters.releaseSeconds * context.sampleRate) return reject('execution-lease-expired', intent.voiceId);

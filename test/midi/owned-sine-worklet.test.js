@@ -122,6 +122,7 @@ const setupHost = () => {
   const preview = { _generation: 0, _sessions: new Map([['owner', { generation: 0 }]]), _voices: new Set(), _semanticVoiceOwners: new Map(),
     _maxVoices: 64, _maxScheduledVoices: 96, _maxNoteSeconds: 8, _voiceSequence: 0, _nowMs: () => context.currentTime * 1000,
     _ownerReady: () => true, getAudioContext: () => context, _channel: () => ({ gain: {} }), _captureMetadata: fields => fields,
+    _renderVoiceCount(voices = this._voices) { return [...voices].reduce((sum, voice) => sum + (voice.renderCost || 1), 0); },
     _destroyVoice(voice, reason) { if (this._voices.delete(voice)) { voice.onDestroy?.(reason); voice.resourceLease?.release(); } } };
   const createWorkletNode = () => {
     const kernel = new OwnedSineKernel(48000), node = { kernel, disconnected: false, connect() {}, disconnect() { this.disconnected = true; },
@@ -147,6 +148,13 @@ const setupHost = () => {
 };
 
 describe('Owned worklet host lifecycle', () => {
+  it('counts release layers reserved by another local backend before admitting a worklet source', async () => {
+    const { backend, patch, intent, preview } = setupHost(); await backend.prepare(patch);
+    for (let n = 0; n < 32; n++) preview._voices.add({ start: 0, releaseAt: 8, renderCost: 2 });
+    expect(backend.begin(intent('over-budget'), 480).reason).to.equal('shared-voice-budget');
+    expect(backend.renderDiagnostics().activeVoices).to.equal(0); backend.dispose();
+  });
+
   it('requires a verified runtime handshake and joins applied receipts to independent executions', async () => {
     const { backend, nodes, patch, intent, preview } = setupHost();
     expect(backend.begin(intent('same'), 100).reason).to.equal('audio-not-ready');

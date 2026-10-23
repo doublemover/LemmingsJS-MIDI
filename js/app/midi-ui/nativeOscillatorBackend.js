@@ -156,14 +156,14 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
     const activeForBackend = [...voices.values()].filter(voice => !voice.stolen && voice.start <= start && voice.releaseAt > start);
     if (activeForBackend.length >= prepared.patch.voicePolicy.maxVoices) return failure('patch-voice-budget', intent);
     for (const voice of preview._voices) if (preview._voiceFinished(voice)) preview._destroyVoice(voice, 'inaudible-voice-reuse');
-    if (preview._voices.size >= preview._maxScheduledVoices) return failure('shared-scheduled-voice-budget', intent);
+    if (preview._renderVoiceCount() >= preview._maxScheduledVoices) return failure('shared-scheduled-voice-budget', intent);
     let resourceLease;
     try { resourceLease = preview._audioResources.reserveNativeVoice(owner, intent.generation); }
     catch { return failure('audio-resource-budget', intent); }
     const incoming = { priority: 1, laneIndex: intent.laneId ?? 0 };
-    const simultaneous = [...preview._voices].filter(voice => !voice.stolen && voice.start <= start && voice.releaseAt > start);
+    const simultaneous = [...preview._voices].filter(voice => !voice.stolen && (voice.renderCost > 1 || voice.start <= start && voice.releaseAt > start));
     let victim = null;
-    if (simultaneous.length >= preview._maxVoices) {
+    if (preview._renderVoiceCount(simultaneous) >= preview._maxVoices) {
       victim = selectLocalAudioVoice(simultaneous, incoming);
       if (!victim) { resourceLease.release(); return failure('shared-voice-budget', intent); }
     }

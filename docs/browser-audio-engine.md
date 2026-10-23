@@ -307,3 +307,114 @@ disposal with live pins, queued retry, context sample-rate changes, malformed
 containers/loops, hash mismatch, offline/quota, finite PCM, interrupted pack
 replacement, and a 100-patch LRU soak. These are control-plane fixtures; browser
 decoder and rendered sample-loop PCM qualification are separate evidence.
+
+## Owned native sample regions
+
+The optional `native-sample@1` renderer uses the same preview context, owner
+session, shared mix, execution leases and Begin/Update/End contract as the native
+oscillator. Enable the session and prepare exact decoded asset pins first:
+
+```js
+const backend = await session.createSampleInstrumentBackend({
+  gateMode: 'owned',
+  resolveRegion: (intent, patchReceipt) => resolvedRegions.get(intent.voiceId)
+});
+await backend.prepare(samplePatchResolution, decodedPins);
+backend.renewExecutionLease(generation, executionEpoch, validUntilOutputFrame);
+backend.begin(intent, targetOutputFrame, executionEpoch);
+backend.update(intent.voiceId, { pitchOffsetCents: 12.5, pressure01: 0.6 },
+  nextOutputFrame, executionEpoch);
+backend.end(intent.voiceId, { seconds: 0.04, velocity01: 0.3 },
+  endOutputFrame, executionEpoch);
+```
+
+`resolveRegion` is called once for each otherwise valid Begin attempt. The
+content-map owner decides whether selection advances on semantic strike or on
+accepted playback. The renderer does no alternate selection and never calls
+the resolver on release, parameter updates, lease renewal, or diagnostics. A
+region supplied by the future #1133 content map must have:
+
+```js
+{
+  domain: 'source-frames', assetHash: sha256,
+  rootCents: 6000, onsetFrame: 4410, endFrame: 30870,
+  gain01: 1, tuningCents: 0, selectionSeed: 123,
+  pitchRange: { minCents: 5400, maxCents: 6600 },
+  loop: { mode: 'sustain', startFrame: 8820, endFrame: 17640,
+    crossfadeFrames: 0 },
+  releaseRegion: { domain: 'source-frames', assetHash: releaseSha256,
+    rootCents: 6000, onsetFrame: 0, endFrame: 8820, gain01: 0.3 },
+  chokeGroup: 'hat', chokeScope: 'kit-instance-1'
+}
+```
+
+The domain, hash, root pitch, and source region boundaries are required; other
+fields shown are optional. Boundaries are integers in the original asset's
+source frame domain. They convert to buffer seconds using `sourceSampleRate`,
+so browser resampling does not reinterpret source frames as output frames.
+Targets, lease caps and receipt times are output frames at the current context
+rate. The renderer snapshots nested region data, preserves the selected seed,
+and retains its own decoded pins. A prepared patch can be replaced or its loader
+disposed while existing voices keep their original PCM and patch revision.
+Failed or stale preparation retains the previous patch.
+
+The native profile supports one-shot forward regions and forward/sustain loops.
+Held loops continue during the controlled release fade; a separately authored
+release region supplies a post-loop tail. The profile does not implement
+scheduled loop-exit playback of an arbitrary buffer suffix. Pitch is continuous
+playback-rate transposition on the existing source, with a default 8 ms causal
+linear rate slew. It preserves phase and changes duration. The native parameter
+is k-rate, so output-frame scheduling is not a sample-rate playback-rate promise.
+An authored `pitchRange` rejects out-of-range requests, including reference-Hz
+offsets; the native rate ratio is additionally bounded to 1/16 through 16.
+
+Each logical voice admits one source and, if authored, a second release source
+before constructing either. Both decoded pins and native cost reservations stay
+held until the final child ends. Potential release layers count against the
+shared render limit across MIDI-compatible, semantic oscillator, worklet and
+sample backends. Thus 64 admitted source layers permit 32 release-enabled sample
+parents. Sample admission conservatively counts scheduled parents, rejects
+overflow, and leaves current parents intact. Other native backends may steal an
+entire sample parent according to their existing shared priority policy.
+
+The release child is preallocated but starts only on the owned End intent. Its
+gain includes release velocity, region trim and patch gain, followed by the
+parent's independent pressure/pan graph. It has a 5 ms attack/fade and a maximum
+four-second bounded region tail, limited by the execution lease. Earlier
+expression arriving after a future End rebuilds its scheduled rate and envelope
+without starting the child twice. Release before onset, generation cancellation,
+steal, choke, owner Stop and Panic suppress or remove every child. A one-shot
+main with an untriggered release child remains owned until End or lease expiry;
+one bounded housekeeping timer retires silent expired pins, with at most a
+one-second control-plane cleanup interval. Native source stops remain scheduled
+at the actual cap.
+
+Choke groups and scopes belong to one backend instance. Their bounded schedule
+is derived from live owned onsets and original semantic releases, including
+future onsets received out of order. Equal-frame collisions use voice ID order.
+Canceling a future strike rebuilds older parents' pending stop/envelope plans,
+so it cannot leave a phantom choke. A choke whose onset has already passed is
+terminal. Cross-owner and separate backend instances remain isolated.
+
+Crossfade seams, reverse playback, arbitrary cursor/position-driven playback,
+scrub/reflect/clamp boundaries and independent time stretching return explicit
+unsupported receipts. No worklet sample renderer, content-map catalog, selected
+sample checkpoint/resume, distributable proof pack, or patch-browser activation
+is included in this profile. `renderDiagnostics({ includeVoices: true })`
+reports the actual selected asset/region/root/seed and modeled rate; playhead and
+native applied-frame acknowledgment remain unavailable rather than inferred.
+
+```text
+node scripts/measure-sample-audio.js --executable=C:/path/to/chrome.exe
+```
+
+The actual Chromium 156 offline decoder/render fixture covers 44.1/48/96 kHz,
+same-pitch opposite pitch/pressure, future End before earlier expression,
+continuous phase/loop seams, release-child velocity, cue Stop, future
+cancellation and Panic, and 16/32 parents reserving up to 64 source layers. A
+mid-render cancellation of a future choke must restore PCM identical to a take
+without that strike. Unit fixtures cover transactional pins, lease renewal,
+before-onset End, construction/quota rollback, canceled choke chains, duplicate
+owners, and original-release restoration. This establishes digital offline and
+control-plane evidence. Realtime deadlines, spectral quality on arbitrary
+authored seams, other browsers, listening and physical loopback remain unrun.

@@ -138,7 +138,7 @@ class BrowserNotePreview {
       name: 'Browser audio preview' + (owner == null ? '' : ' (' + owner + ')'),
       supportsPerNotePan: true, supportsPerNoteInstrument: true, supportsIndependentNoteGates: true,
       isVoiceActive: token => this._isVoiceActive(token, owner),
-      canAllocateVoice: () => this._voices.size < this._maxScheduledVoices || [...this._voices].some(voice => this._voiceFinished(voice)),
+      canAllocateVoice: () => this._renderVoiceCount() < this._maxScheduledVoices || [...this._voices].some(voice => this._voiceFinished(voice)),
       supportsPlaybackMetadata: true, channels: Object.freeze(channels),
       clear: () => this._clearVoices(null, owner)
     });
@@ -201,6 +201,12 @@ class BrowserNotePreview {
         const { createWorkletInstrumentBackend } = await import('./workletInstrumentBackend.js');
         if (session.disposed || this._disposed || generation !== session.generation) throw new Error('Audio backend selection was cancelled.');
         return this._registerInstrumentBackend(createWorkletInstrumentBackend(this, id, options), id);
+      },
+      createSampleInstrumentBackend: async options => {
+        const generation = session.generation;
+        const { createSampleInstrumentBackend } = await import('./sampleInstrumentBackend.js');
+        if (session.disposed || this._disposed || generation !== session.generation) throw new Error('Audio backend selection was cancelled.');
+        return this._registerInstrumentBackend(createSampleInstrumentBackend(this, id, options), id);
       },
       preview: (notes, options) => this.preview(notes, { ...options, owner: id }),
       setMasterVolume: value => this.setMasterVolume(value),
@@ -670,7 +676,12 @@ class BrowserNotePreview {
 
   _voiceFinished(voice) {
     const now = this._context?.currentTime ?? 0;
+    if (voice.isFinished) return voice.isFinished(now);
     return voice.end <= now || (voice.released && voice.releaseLevel === 0 && voice.releaseAt <= now) || (voice.sustain === 0 && now >= voice.start + voice.attack + voice.decay);
+  }
+
+  _renderVoiceCount(voices = this._voices) {
+    let count = 0; for (const voice of voices) count += voice.renderCost || 1; return count;
   }
 
   _isVoiceActive(token, owner = null) {
@@ -694,13 +705,13 @@ class BrowserNotePreview {
       this._observe('drop', { ...options.capture, type: 'noteOn', note, channel: number, owner: options.owner, ...incoming, reason });
       return false;
     };
-    if (this._voices.size >= this._maxScheduledVoices) return drop('scheduled-voice-cap');
+    if (this._renderVoiceCount() >= this._maxScheduledVoices) return drop('scheduled-voice-cap');
     let resourceLease;
     try { resourceLease = this._audioResources.reserveNativeVoice(options.owner ?? null, this._generation); }
     catch { return drop('audio-resource-budget'); }
-    const simultaneous = [...this._voices].filter(voice => !voice.stolen && voice.start <= start && voice.releaseAt > start);
+    const simultaneous = [...this._voices].filter(voice => !voice.stolen && (voice.renderCost > 1 || voice.start <= start && voice.releaseAt > start));
     let victim = null;
-    if (simultaneous.length >= this._maxVoices) {
+    if (this._renderVoiceCount(simultaneous) >= this._maxVoices) {
       victim = selectLocalAudioVoice(simultaneous, incoming);
       if (!victim) { resourceLease.release(); return drop('local-voice-priority'); }
     }
