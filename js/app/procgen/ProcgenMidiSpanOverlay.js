@@ -35,9 +35,11 @@ const getMidiSpanRectangles = (renderer, project, entries = project.automation, 
 const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDomain, getTarget, onUpdate, onBatchUpdate, onAdd, onSelect, onStatus = () => {} }) => {
   const canvas = document.getElementById('gameCanvas'), listeners = [];
   let selectedIds = new Set();
-  let renderer = null, selectedId = null, editing = false, visible = true, drag = null, drafts = null, rectangles = [], revision = 0;
+  let renderer = null, selectedId = null, editing = false, visible = true, drag = null, drafts = null, rectangles = [], revision = 0, presented = null;
   const listen = (name, handler) => { canvas?.addEventListener(name, handler, { capture: true }); listeners.push([name, handler]); };
   const changed = () => { revision++; renderer?.render?.(); };
+  const canPresent = () => visible && renderer && !renderer.workstationLayout && renderer.midiSpanOverlay === api &&
+    presented?.renderer === renderer && presented.generation === renderer.world?.generation && presented.revision === revision;
   const cancelDrag = () => {
     if (drag?.pointerId != null && canvas.hasPointerCapture?.(drag.pointerId)) canvas.releasePointerCapture?.(drag.pointerId);
     drafts = drag = null;
@@ -56,7 +58,7 @@ const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDom
   const stop = event => { event.preventDefault(); event.stopImmediatePropagation?.(); };
   listen('pointerdown', event => {
     api.sync();
-    if (!editing || !visible || !renderer || event.button) return;
+    if (!editing || !canPresent() || event.button) return;
     const point = position(event, getDomain()), dpr = Math.min(2, renderer.window.devicePixelRatio || 1);
     if (point.y < 0 || point.y >= canvas.height / dpr - (renderer.overviewBandHeight || 0)) return;
     stop(event); canvas.focus?.(); canvas.setPointerCapture?.(event.pointerId);
@@ -130,12 +132,13 @@ const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDom
   listen('dblclick', event => { if (editing) stop(event); });
   const api = {
     get revision() { return revision; },
-    sync() { const next = getRuntime()?.lanes?.renderer; if (drag && next === renderer && drag.transform.generation !== renderer?.world?.generation) { cancelDrag(); rectangles = []; } if (next !== renderer) { cancelDrag(); rectangles = []; if (renderer?.midiSpanOverlay === api) renderer.midiSpanOverlay = null; renderer = next; if (renderer) renderer.midiSpanOverlay = api; } },
+    sync() { const next = getRuntime()?.lanes?.renderer; if (drag && next === renderer && drag.transform.generation !== renderer?.world?.generation) { cancelDrag(); rectangles = []; presented = null; } if (next !== renderer) { cancelDrag(); rectangles = []; presented = null; if (renderer?.midiSpanOverlay === api) renderer.midiSpanOverlay = null; renderer = next; if (renderer) renderer.midiSpanOverlay = api; } if (renderer?.workstationLayout) { editing = false; cancelDrag(); rectangles = []; presented = null; } },
     changed, cancelDraft() { cancelDrag(); changed(); }, select(id, ids = [id]) { selectedId = id; selectedIds = new Set(ids.slice(0, 64)); changed(); },
-    setEditing(value) { editing = value === true; if (editing) visible = true; else cancelDrag(); changed(); },
-    setVisible(value) { visible = value === true; if (!visible) { editing = false; cancelDrag(); rectangles = []; } changed(); },
+    setEditing(value) { api.sync(); if (value === true) { visible = true; if (!canPresent()) changed(); } editing = value === true && !!canPresent(); if (!editing) { cancelDrag(); if (value === true) onStatus(renderer?.workstationLayout ? 'Canvas span editing is unavailable in workstation layout.' : 'Wait for the span overlay to render before editing.'); } changed(); if (editing && !canPresent()) { editing = false; cancelDrag(); } return editing; },
+    setVisible(value) { visible = value === true; if (!visible) { editing = false; cancelDrag(); rectangles = []; presented = null; } changed(); },
+    presentationStatus() { return renderer?.workstationLayout ? 'Canvas span editing is unavailable in workstation layout.' : !renderer ? 'Canvas span editing is unavailable until the world loads.' : !canPresent() ? 'Wait for the span overlay to render before editing.' : ''; },
     draw(context, current, dpr) {
-      if (!visible) { rectangles = []; return; }
+      if (!visible || current.workstationLayout) { rectangles = []; presented = null; return; }
       const project = getProject(), draftIds = drafts ? new Set(drafts.map(entry => entry.id)) : null;
       const entries = drafts ? [...project.automation.filter(entry => !draftIds.has(entry.id)), ...drafts] : project.automation;
       const displayed = selectMidiSpanDisplayEntries(entries, drafts ? new Set([...selectedIds, ...draftIds]) : selectedIds);
@@ -175,9 +178,10 @@ const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDom
         }
       }
       context.restore();
+      presented = { renderer: current, generation: current.world?.generation, revision };
     },
     snapshot: () => ({ editing, visible, selectedId, revision, dragging: !!drag, rectangles: rectangles.map(rect => ({ id: rect.entry.id, domain: rect.entry.span.domain, x: rect.x, y: rect.y, width: rect.w, height: rect.h, resolution: rect.projection })) }),
-    dispose() { cancelDrag(); for (const [name, handler] of listeners) canvas?.removeEventListener?.(name, handler, { capture: true }); if (renderer?.midiSpanOverlay === api) renderer.midiSpanOverlay = null; renderer = null; rectangles = []; drafts = drag = null; }
+    dispose() { cancelDrag(); for (const [name, handler] of listeners) canvas?.removeEventListener?.(name, handler, { capture: true }); if (renderer?.midiSpanOverlay === api) renderer.midiSpanOverlay = null; renderer = null; rectangles = []; drafts = drag = null; presented = null; }
   };
   return api;
 };

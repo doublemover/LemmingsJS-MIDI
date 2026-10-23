@@ -7,17 +7,11 @@ import { LevelReader } from './LevelReader.js';
 import { OddTableReader } from '../data/OddTableReader.js';
 import { SolidLayer } from '../render/SolidLayer.js';
 import { VGASpecReader } from '../data/VGASpecReader.js';
+import { isMissingResourceError } from '../data/file-provider/ResourceLoadError.js';
 
 const PACK_RESOURCE_FALLBACKS = Object.freeze({
   xmas92: Object.freeze(['xmas91'])
 });
-
-const isMissingResourceError = (error) => {
-  if (!error) return false;
-  if (error.code === 'ENOENT') return true;
-  const message = String(error.message || '');
-  return message.includes('ENOENT');
-};
 
 const mergeLevelProperties = (baseProperties, oddProperties) => {
   if (!oddProperties) return baseProperties;
@@ -98,7 +92,7 @@ class LevelLoader {
     for (let i = 0; i < roots.length; i += 1) {
       const root = roots[i];
       try {
-        return await this.fileProvider.loadBinary(root, filename);
+        return { reader: await this.fileProvider.loadBinary(root, filename), root, filename };
       } catch (error) {
         if (isMissingResourceError(error)) {
           lastMissing = error;
@@ -128,9 +122,8 @@ class LevelLoader {
       this.config.level.filePrefix + paddedFileId + '.DAT');
 
     const oddTableBuf = useOddTable
-      ? this.fileProvider
-        .loadBinary(this.config.path, 'ODDTABLE.DAT')
-        .catch(() => null)
+      ? Promise.resolve().then(() => this.fileProvider.loadBinary(this.config.path, 'ODDTABLE.DAT'))
+        .catch(error => { if (isMissingResourceError(error)) return null; throw error; })
       : null;
 
     const [levelDat, oddBuf] = await Promise.all([baseLevel, oddTableBuf]);
@@ -177,8 +170,15 @@ class LevelLoader {
       ? this.#loadBinaryWithFallback(`VGASPEC${levelReader.graphicSet2 - 1}.DAT`)
       : null;
 
-    const [vgagrBuf, groundBuf, vgaspecBuf] =
+    const [vgagrSource, groundSource, vgaspecSource] =
       await Promise.all([vgagrFile, groundFile, vgaspecFile]);
+    const vgagrBuf = vgagrSource.reader, groundBuf = groundSource.reader, vgaspecBuf = vgaspecSource?.reader ?? null;
+    level.resourceSources = Object.freeze({
+      level: Object.freeze({ root: this.config.path, filename: this.config.level.filePrefix + paddedFileId + '.DAT' }),
+      vgagr: Object.freeze({ root: vgagrSource.root, filename: vgagrSource.filename }),
+      ground: Object.freeze({ root: groundSource.root, filename: groundSource.filename }),
+      ...(vgaspecSource ? { vgaspec: Object.freeze({ root: vgaspecSource.root, filename: vgaspecSource.filename }) } : {})
+    });
 
     // ----------------------------------------------------------------------- //
     // 4 · Decode terrain / objects and render background                      //

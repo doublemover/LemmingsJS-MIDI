@@ -183,6 +183,71 @@ describe('BrowserNotePreview', function() {
     backend.dispose(); await preview.dispose();
   });
 
+  it('resolves future volume and expression by event time regardless of submission order', async () => {
+    const run = async reversed => {
+      const { preview } = setup(); await preview.enable();
+      const channel = preview.output.channels[1];
+      const events = [{ control: 7, value: 63.5, time: 2000 }, { control: 11, value: 63.5, time: 1000 }];
+      for (const event of reversed ? events.reverse() : events) expect(channel.sendControlChange(event.control, event.value, { time: event.time })).to.equal(true);
+      const scheduled = preview._channels.get(1).gain.gain.events.filter(event => event.type === 'set' && event.time >= 2);
+      await preview.dispose(); return scheduled;
+    };
+    const forward = await run(false), reverse = await run(true);
+    expect(forward).to.deep.equal(reverse);
+    expect(forward.slice(-2).map(event => [event.time, event.value])).to.deep.equal([[2, 0.5], [3, 0.25]]);
+  });
+
+  it('uses the program and bend effective at a future note onset even when controls arrive later', async () => {
+    const { preview, context } = setup(); await preview.enable();
+    const channel = preview.output.channels[1];
+    channel.sendProgramChange(38, { time: 2000 });
+    expect(channel.sendNoteOn(60, { time: 1000, instrument: { legacy: false } })).to.equal(true);
+    expect(channel.sendNoteOn(62, { time: 2000, instrument: { legacy: false } })).to.equal(true);
+    expect(context.oscillators[0].type).to.equal('triangle');
+    expect(context.oscillators[1].type).to.equal('sine');
+    channel.sendNoteOn(64, { time: 2000 });
+    channel.sendPitchBend(1, { time: 1000 });
+    expect(context.oscillators[2].detune.events[0]).to.deep.equal({ type: 'set', value: 200, time: 3 });
+    await preview.dispose();
+  });
+
+  it('revises an already queued future note when an earlier program arrives afterward', async () => {
+    const run = async noteFirst => {
+      const { preview, context } = setup(); await preview.enable();
+      const channel = preview.output.channels[1];
+      const note = () => channel.sendNoteOn(60, { time: 2000, instrument: { legacy: false } });
+      const program = () => channel.sendProgramChange(38, { time: 1000 });
+      if (noteFirst) { note(); program(); } else { program(); note(); }
+      const result = { waveform: context.oscillators[0].type,
+        envelope: [...context.gains.at(-1).gain.events] };
+      await preview.dispose(); return result;
+    };
+    expect(await run(true)).to.deep.equal(await run(false));
+  });
+
+  it('schedules future all-notes-off without cutting a voice at call time', async () => {
+    const { preview, context } = setup(); await preview.enable();
+    const channel = preview.output.channels[1];
+    expect(channel.sendNoteOn(60, { time: 1000 })).to.equal(true);
+    const first = [...preview._voices][0];
+    expect(channel.sendControlChange(123, 0, { time: 2000 })).to.equal(true);
+    expect(first.releaseAt).to.be.greaterThan(context.currentTime);
+    expect(first.releaseAt).to.be.closeTo(3, 1e-9);
+    expect(channel.sendNoteOn(62, { time: 1000 })).to.equal(true);
+    expect([...preview._voices].find(voice => voice.note === 62).releaseAt).to.be.closeTo(3, 1e-9);
+    await preview.dispose();
+  });
+
+  it('recomputes future bend events when bend range arrives out of order', async () => {
+    const { preview, context } = setup(); await preview.enable();
+    const channel = preview.output.channels[1];
+    channel.sendNoteOn(60, { time: 2000 });
+    channel.sendPitchBend(1, { time: 1000 });
+    channel.sendPitchBendRange(3, 50, { time: 1500 });
+    expect(context.oscillators[0].detune.events).to.deep.equal([{ type: 'set', value: 350, time: 3 }]);
+    await preview.dispose();
+  });
+
   it('cancels only the selected semantic execution generation and reports unsupported expression', async () => {
     const { preview } = setup(), game = preview.createSession('game'), backend = game.createInstrumentBackend();
     const resolution = { status: 'ready', patch: { id: 'native-test', revision: 1, engineId: 'native-oscillator', engineVersion: 1,
@@ -1060,7 +1125,11 @@ describe('BrowserNotePreview', function() {
       { type: 'set', value: 0, time: 2.5 }
     ]);
     channel.sendPitchBend(-1, { time: 1300 });
-    expect(context.oscillators[0].detune.events.at(-1)).to.eql({ type: 'set', value: -350, time: 2.3 });
+    expect(context.oscillators[0].detune.events).to.eql([
+      { type: 'set', value: 175, time: 2.2 },
+      { type: 'set', value: -350, time: 2.3 },
+      { type: 'set', value: 0, time: 2.5 }
+    ]);
     channel.sendControlChange(7, 100);
     channel.sendControlChange(11, 64);
     expect(preview._channels.get(3).gain.gain.events.at(-1).value).to.be.closeTo(100 * 64 / (127 * 127), 0.00001);

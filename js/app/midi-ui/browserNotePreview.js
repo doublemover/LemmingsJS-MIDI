@@ -1,5 +1,6 @@
 import { selectLocalAudioVoice } from '../../midi/scheduler/LocalAudioVoiceBudget.js';
 import { createNativeOscillatorBackend } from './nativeOscillatorBackend.js';
+import { createTimedControlTimeline } from './TimedControlTimeline.js';
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const finite = (value, fallback) => Number.isFinite(value) ? value : fallback;
 const ATTACK_SECONDS = 0.008;
@@ -118,7 +119,7 @@ class BrowserNotePreview {
         sendNoteOff: (note, options) => ready(() => this._noteOff(number, note, optionsForOwner(options))),
         sendControlChange: (control, value, options) => ready(() => this._safeSend(() => this._control(number, control, value, options, owner))),
         sendPitchBend: (value, options) => ready(() => this._safeSend(() => this._pitchBend(number, value, options, owner))),
-        sendPitchBendRange: (semitones, cents) => ready(() => this._safeSend(() => this._pitchBendRange(number, semitones, cents, owner))),
+        sendPitchBendRange: (semitones, cents, options) => ready(() => this._safeSend(() => this._pitchBendRange(number, semitones, cents, options, owner))),
         sendAllNotesOff: () => this._clearVoices(number, owner)
       });
     }
@@ -528,15 +529,54 @@ class BrowserNotePreview {
       pan?.disconnect();
       throw error;
     }
-    channel = { owner, number, gain, pan, bendRange: 2, bends: [], volume: 1, expression: 1, program: null };
+    channel = { owner, number, gain, pan, bendRange: 2, volume: 1, expression: 1, program: null,
+      controls: createTimedControlTimeline({ maxEvents: MAX_CONTROL_EVENTS }) };
     this._channels.set(key, channel);
     return channel;
   }
 
   _program(number, value, options, owner = null) {
     if (!this._ready() || !Number.isInteger(value) || value < 0 || value > 127) return false;
-    this._channel(number, owner).program = value;
+    const channel = this._channel(number, owner);
+    channel.controls.retainFrom(this._context.currentTime);
+    if (!channel.controls.insert(this._audioTime(options), 'program', value)) return false;
+    channel.program = channel.controls.at(this._context.currentTime).program;
+    for (const voice of this._voices) if (voice.owner === owner && voice.number === number && voice.implicitProgram) {
+      this._rescheduleFutureProgram(channel, voice);
+    }
     return true;
+  }
+
+  _rescheduleFutureProgram(channel, voice) {
+    if (voice.start <= this._context.currentTime || voice.released || voice.number === 10) return;
+    const controlState = channel.controls.at(voice.start);
+    const program = controlState.program;
+    if (program === voice.programAtStart && controlState.timbre === voice.timbreAtStart) return;
+    const source = voice.sourceInstrument || {};
+    const profile = instrumentProfile(program, source.percussion === true, voice.note, source.legacy !== true);
+    if (controlState.timbre != null && !profile.noise) profile.waveform = controlState.timbre < 1 / 3 ? 'sine' : controlState.timbre > 2 / 3 ? 'sawtooth' : 'triangle';
+    if (profile.noise) return;
+    for (const key of ['attack', 'decay', 'sustain', 'release']) {
+      if (Number.isFinite(source.envelope?.[key])) profile[key] = clamp(source.envelope[key], 0, key === 'sustain' ? 1 : 2);
+    }
+    if (source.resumed === true) { profile.attack = 0; profile.decay = 0; }
+    voice.oscillator.type = profile.waveform;
+    voice.programAtStart = program;
+    voice.timbreAtStart = controlState.timbre;
+    voice.instrument = { ...source, program };
+    voice.peak = voice.velocity / 127 * profile.gain;
+    voice.attack = profile.attack; voice.decay = profile.decay; voice.sustain = profile.sustain; voice.release = profile.release;
+    voice.releaseAt = voice.end - voice.release;
+    const param = voice.gain.gain;
+    param.cancelScheduledValues(voice.start);
+    param.setValueAtTime(source.resumed === true ? voice.peak * voice.sustain : 0, voice.start);
+    if (source.resumed !== true) param.linearRampToValueAtTime(voice.peak, voice.start + voice.attack);
+    const sustainAt = Math.min(voice.end - voice.release, voice.start + voice.attack + voice.decay);
+    if (voice.decay > 0) param.linearRampToValueAtTime(voice.peak * voice.sustain, sustainAt);
+    param.setValueAtTime(voice.peak * voice.sustain, voice.end - voice.release);
+    param.linearRampToValueAtTime(0, voice.end);
+    this._observe('synth-revised', { ...voice.captureMeta, type: 'noteOn', voiceId: voice.id,
+      channel: voice.number, note: voice.note, program, waveform: profile.waveform, audioTime: voice.start });
   }
 
   _percussionNoise() {
@@ -594,7 +634,9 @@ class BrowserNotePreview {
     let gain;
     try {
       const channel = this._channel(number, options.owner);
-      const profile = instrumentProfile(options.instrument?.program ?? channel.program, options.instrument?.percussion === true || number === 10, note, options.instrument?.legacy !== true);
+      const controlState = channel.controls.at(start);
+      const profile = instrumentProfile(options.instrument?.program ?? controlState.program, options.instrument?.percussion === true || number === 10, note, options.instrument?.legacy !== true);
+      if (controlState.timbre != null && !profile.noise) profile.waveform = controlState.timbre < 1 / 3 ? 'sine' : controlState.timbre > 2 / 3 ? 'sawtooth' : 'triangle';
       for (const key of ['attack', 'decay', 'sustain', 'release']) {
         const value = options.instrument?.envelope?.[key];
         if (Number.isFinite(value)) profile[key] = clamp(value, 0, key === 'sustain' ? 1 : 2);
@@ -608,6 +650,8 @@ class BrowserNotePreview {
       voice = { oscillator, gain, number, owner: options.owner ?? null, note, start, id: ++this._voiceSequence, playback: options.playback, startMs: this._nowMs() + (start - context.currentTime) * 1000, end: start + Math.min(this._maxNoteSeconds, profile.seconds || this._maxNoteSeconds), released: false, captureMeta: this._captureEnabled() ? { ...options.capture, owner: options.owner ?? null } : null,
         ...incoming, startedAt: start,
         token: Number.isInteger(options.voiceToken) && options.voiceToken > 0 ? options.voiceToken : null,
+        implicitProgram: options.instrument?.program == null, programAtStart: controlState.program, timbreAtStart: controlState.timbre,
+        sourceInstrument: options.instrument || null,
         peak: clamp(finite(options?.rawAttack, 80), 1, 127) / 127 * profile.gain, attack: profile.attack, decay: profile.decay,
         sustain: profile.sustain, release: profile.release, instrument: options.instrument, velocity: clamp(finite(options?.rawAttack, 80), 1, 127) };
       voice.releaseAt = voice.end - voice.release;
@@ -618,13 +662,7 @@ class BrowserNotePreview {
         oscillator.frequency.setValueAtTime(profile.frequency || 440 * (2 ** ((note - 69) / 12)), start);
         if (profile.endFrequency) oscillator.frequency.linearRampToValueAtTime(profile.endFrequency, start + profile.decay);
       }
-      this._pruneBends(channel);
-      let initialBend = 0;
-      for (const bend of channel.bends) if (bend.time <= start) initialBend = bend.value;
-      oscillator.detune.setValueAtTime(initialBend * channel.bendRange * 100, start);
-      for (const bend of channel.bends) {
-        if (bend.time > start) oscillator.detune.setValueAtTime(bend.value * channel.bendRange * 100, bend.time);
-      }
+      this._scheduleBend(channel, voice);
       gain.gain.setValueAtTime(resumed ? voice.peak * voice.sustain : 0, start);
       if (!resumed) gain.gain.linearRampToValueAtTime(voice.peak, start + voice.attack);
       const sustainAt = Math.min(voice.end - voice.release, start + voice.attack + voice.decay);
@@ -643,6 +681,8 @@ class BrowserNotePreview {
       oscillator.onended = () => this._destroyVoice(voice);
       oscillator.start(start);
       oscillator.stop(voice.end);
+      const futureOff = channel.controls.from(start).find(event => event.kind === 'allNotesOff' && event.time < voice.end);
+      if (futureOff) this._release(voice, futureOff.time, false, 'scheduled-all-notes-off');
       this._observe('synth-scheduled', { ...voice.captureMeta, type: 'noteOn', voiceId: voice.id, channel: number,
         note, velocity: voice.velocity, program: options.instrument?.program, ensembleRole: options.instrument?.role,
         percussion: options.instrument?.percussion, scheduledMs: voice.startMs, audioTime: start,
@@ -756,11 +796,13 @@ class BrowserNotePreview {
     }
     for (const channel of this._channels.values()) {
       if ((owner !== undefined && channel.owner !== owner) || (number != null && channel.number !== number)) continue;
-      channel.bends.length = 0;
       channel.gain.gain.cancelScheduledValues(0);
       channel.gain.gain.value = 1;
       channel.volume = 1;
       channel.expression = 1;
+      channel.program = null;
+      channel.bendRange = 2;
+      channel.controls.clear();
       if (channel.pan) {
         channel.pan.pan.cancelScheduledValues(0);
         channel.pan.pan.value = 0;
@@ -770,16 +812,28 @@ class BrowserNotePreview {
 
   _control(number, control, value, options = {}, owner = null) {
     if (!this._ready() || !Number.isFinite(control) || !Number.isFinite(value)) return false;
-    if (control === 120 || control === 123) { this._clearVoices(number, owner); return true; }
     const channel = this._channel(number, owner);
     const time = this._audioTime(options);
-    const normalized = clamp(value, 0, 127) / 127;
-    if (control === 10) channel.pan?.pan.setValueAtTime(normalized * 2 - 1, time);
-    if (control === 7 || control === 11) {
-      channel[control === 7 ? 'volume' : 'expression'] = normalized;
-      channel.gain.gain.setValueAtTime(channel.volume * channel.expression, time);
+    if (control === 120 || control === 123) {
+      if (!Number.isFinite(options?.time) || time <= this._context.currentTime) { this._clearVoices(number, owner); return true; }
+      channel.controls.retainFrom(this._context.currentTime);
+      if (!channel.controls.insert(time, 'allNotesOff', null)) return false;
+      for (const voice of this._voices) if (voice.owner === owner && voice.number === number &&
+          voice.start <= time && time < voice.end) this._release(voice, time, false, 'scheduled-all-notes-off');
+      return true;
     }
-    // Sustain and synth-specific CCs are intentionally ignored by this short-tone monitor.
+    const normalized = clamp(value, 0, 127) / 127;
+    if (![7, 10, 11, 74].includes(control)) return false;
+    channel.controls.retainFrom(this._context.currentTime);
+    if (!channel.controls.insert(time, control === 7 ? 'volume' : control === 11 ? 'expression' : control === 74 ? 'timbre' : 'pan',
+      control === 10 ? normalized * 2 - 1 : normalized)) return false;
+    if (control === 74) for (const voice of this._voices) if (voice.owner === owner && voice.number === number && voice.implicitProgram) this._rescheduleFutureProgram(channel, voice);
+    if (control === 10) this._scheduleChannelPan(channel);
+    if (control === 7 || control === 11) {
+      const effective = channel.controls.at(this._context.currentTime);
+      channel.volume = effective.volume; channel.expression = effective.expression;
+      this._scheduleChannelGain(channel);
+    }
     return true;
   }
 
@@ -790,10 +844,36 @@ class BrowserNotePreview {
     }
   }
 
-  _pruneBends(channel) {
-    const now = this._context.currentTime;
-    while (channel.bends.length > 1 && channel.bends[1].time <= now) channel.bends.shift();
-    while (channel.bends.length > MAX_CONTROL_EVENTS) channel.bends.shift();
+  _scheduleChannelGain(channel) {
+    const now = this._context.currentTime, param = channel.gain.gain;
+    const state = channel.controls.at(now);
+    param.cancelScheduledValues(now);
+    param.setValueAtTime(state.volume * state.expression, now);
+    for (const event of channel.controls.from(now)) if (event.kind === 'volume' || event.kind === 'expression') {
+      state[event.kind] = event.value;
+      param.setValueAtTime(state.volume * state.expression, event.time);
+    }
+  }
+
+  _scheduleChannelPan(channel) {
+    if (!channel.pan) return;
+    const now = this._context.currentTime, param = channel.pan.pan;
+    const state = channel.controls.at(now);
+    param.cancelScheduledValues(now);
+    param.setValueAtTime(state.pan, now);
+    for (const event of channel.controls.from(now)) if (event.kind === 'pan') param.setValueAtTime(event.value, event.time);
+  }
+
+  _scheduleBend(channel, voice) {
+    const from = Math.max(this._context.currentTime, voice.start), param = voice.oscillator.detune;
+    const state = channel.controls.at(from);
+    param.cancelScheduledValues(from);
+    param.setValueAtTime(state.bend * state.bendRange * 100, from);
+    for (const event of channel.controls.from(from)) if (event.time < voice.end &&
+        (event.kind === 'bend' || event.kind === 'bendRange')) {
+      state[event.kind] = event.value;
+      param.setValueAtTime(state.bend * state.bendRange * 100, event.time);
+    }
   }
 
   _pitchBend(number, value, options = {}, owner = null) {
@@ -801,20 +881,19 @@ class BrowserNotePreview {
     const channel = this._channel(number, owner);
     const time = this._audioTime(options);
     const bend = clamp(value, -1, 1);
-    channel.bends.push({ time, value: bend });
-    channel.bends.sort((a, b) => a.time - b.time);
-    this._pruneBends(channel);
-    for (const voice of this._voices) {
-      if (voice.owner === owner && voice.number === number && time >= voice.start && time < voice.end) {
-        voice.oscillator.detune.setValueAtTime(bend * channel.bendRange * 100, time);
-      }
-    }
+    channel.controls.retainFrom(this._context.currentTime);
+    if (!channel.controls.insert(time, 'bend', bend)) return false;
+    for (const voice of this._voices) if (voice.owner === owner && voice.number === number && !voice.stolen) this._scheduleBend(channel, voice);
     return true;
   }
 
-  _pitchBendRange(number, semitones, cents = 0, owner = null) {
+  _pitchBendRange(number, semitones, cents = 0, options = {}, owner = null) {
     if (!this._ready() || !Number.isFinite(semitones)) return false;
-    this._channel(number, owner).bendRange = clamp(semitones + finite(cents, 0) / 100, 0, 48);
+    const channel = this._channel(number, owner);
+    channel.controls.retainFrom(this._context.currentTime);
+    if (!channel.controls.insert(this._audioTime(options), 'bendRange', clamp(semitones + finite(cents, 0) / 100, 0, 48))) return false;
+    channel.bendRange = channel.controls.at(this._context.currentTime).bendRange;
+    for (const voice of this._voices) if (voice.owner === owner && voice.number === number && !voice.stolen) this._scheduleBend(channel, voice);
     return true;
   }
 }

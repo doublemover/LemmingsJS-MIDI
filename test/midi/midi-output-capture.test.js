@@ -62,7 +62,9 @@ describe('bounded MIDI output capture', function() {
   it('protects canonical and note lifecycle fields when real observer provenance exceeds 48 fields', function() {
     withFakeClockAndPerformance(clock => {
       const capture = capturing(clock), scheduler = new MidiScheduler(config);
-      scheduler.setCapture(capture); scheduler.setOutput(makeOutput([1], []));
+      const output = makeOutput([1], []);
+      output.channels[1].sendProgramChange = () => {};
+      scheduler.setCapture(capture); scheduler.setOutput(output);
       const metadata = Object.fromEntries(Array.from({ length: 80 }, (_, index) => ['optional' + index, 'extra metadata']));
       Object.assign(metadata, { tick: 100, beat: 12, laneIndex: 3, laneCount: 16, lemmingId: 9, seed: 42, generation: 4, themeId: 'dirt', origin: 'procgen' });
       scheduler.sendNote({ note: 60, channel: 1, durationTicks: 2, program: 38, pan: -12 }, metadata);

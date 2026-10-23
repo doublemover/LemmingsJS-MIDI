@@ -33,6 +33,10 @@ const midiSchedulerChannelMethods = {
   setConfig(config) {
     const mpeChanged = JSON.stringify(this.config?.mpe) !== JSON.stringify(config?.mpe) ||
       (this.config?.enabled === false && config?.enabled !== false);
+    if (mpeChanged) {
+      for (const [token, voice] of this._activeNotes) if (voice.mpe) this._stopActiveNoteToken(token, 'mpe-zone-changed');
+      this._expressionByOutput.clear();
+    }
     const phraseConfigKey = JSON.stringify([
       config?.enabled, config?.sfx, config?.triggers, config?.scale, config?.noteRange,
       config?.velocityRange, config?.durationTicks, config?.density, config?.envelope,
@@ -164,7 +168,6 @@ const midiSchedulerChannelMethods = {
 
   _expressionPlan(spec, output, channelNumber, estimating = false) {
     const state = output ? this._expressionState(output, channelNumber) : {};
-    const channel = output?.channels?.[channelNumber];
     let hasPending = false, pendingSpanPan = false, pendingSpanTimbre = false;
     if (estimating) for (const pending of this._pendingNoteOns.values()) if (pending.output === output && pending.channel === channelNumber) {
       hasPending = true; pendingSpanPan ||= pending.spanPan; pendingSpanTimbre ||= pending.spanTimbre;
@@ -181,8 +184,9 @@ const midiSchedulerChannelMethods = {
       if (uncertain || state[key] !== value) controls.push({ key, value, type, cc, bytes });
       else coalesced += 1;
     };
-    if (!output?.supportsPerNoteInstrument && Number.isInteger(spec.program) && spec.program >= 0 && spec.program <= 127 &&
-      (!output || typeof channel?.sendProgramChange === 'function')) add('program', spec.program, 'program', null, 2);
+    if (!output?.supportsPerNoteInstrument && Number.isInteger(spec.program) && spec.program >= 0 && spec.program <= 127) {
+      add('program', spec.program, 'program', null, 2);
+    }
     if (this._isMpeNote(spec) || Number.isFinite(spec.pitchBend)) add('bend', clamp(spec.pitchBend ?? 0, -1, 1), 'bend');
     if (Number.isFinite(spec.timbre)) add('timbre', clamp(spec.timbre, 0, 127), 'cc', this.config.mpe?.timbreCc ?? 74);
     else if (state.spanTimbre || pendingSpanTimbre) add('timbre', state.spanBaseTimbre ?? 64, 'cc', this.config.mpe?.timbreCc ?? 74);
@@ -227,15 +231,32 @@ const midiSchedulerChannelMethods = {
     const reserved = this._ensembleChannels();
     const uniqueMembers = members
       .filter((channel, index, list) => channel !== master && list.indexOf(channel) === index && !reserved.has(channel));
-    const channels = [master, ...uniqueMembers].filter(channel => !reserved.has(channel));
+    const channels = uniqueMembers.length ? [master, ...uniqueMembers].filter(channel => !reserved.has(channel)) : [];
     for (const targetOutput of outputs) {
-      for (const ch of channels) {
-        const channel = targetOutput.channels?.[ch];
-        if (!channel) continue;
-        this._sendOutput(targetOutput, ch, 'sendPitchBendRange', [bend.semitones, bend.cents], { reason: 'mpe-init' });
-        this._sendOutput(targetOutput, ch, 'sendPitchBend', [0], { reason: 'mpe-init' });
-        this._expressionState(targetOutput, ch).bend = 0;
+      let ready = channels.length === uniqueMembers.length + 1;
+      if (ready) ready = channels.every(ch => targetOutput.channels?.[ch] &&
+        typeof targetOutput.channels[ch].sendPitchBendRange === 'function' &&
+        typeof targetOutput.channels[ch].sendPitchBend === 'function');
+      if (!ready) {
+        this._mpeStatusByOutput.set(targetOutput, false);
+        continue;
       }
+      for (const ch of channels) {
+        try {
+          if (this._sendOutput(targetOutput, ch, 'sendPitchBendRange', [bend.semitones, bend.cents], { reason: 'mpe-init' }) === false ||
+              this._sendOutput(targetOutput, ch, 'sendPitchBend', [0], { reason: 'mpe-init' }) === false) {
+            ready = false;
+            break;
+          }
+          this._expressionState(targetOutput, ch).bend = 0;
+        } catch (error) {
+          this.lastOutputError = error?.message || String(error);
+          ready = false;
+          break;
+        }
+      }
+      this._mpeStatusByOutput.set(targetOutput, ready);
+      if (!ready) this._expressionByOutput.delete(targetOutput);
     }
     this._memberChannels = uniqueMembers.slice();
   },
@@ -380,27 +401,29 @@ const midiSchedulerChannelMethods = {
       return normalizeChannelNumber(this.config.defaultChannel, 1);
     }
     const normalizedOutputId = this._resolveOutputId(outputId);
+    const output = this._resolveOutput(normalizedOutputId);
     const reserved = this._ensembleChannels();
+    const eligible = new Set(this._memberChannels.filter(ch => !reserved.has(ch) && (!output || !!output.channels?.[ch])));
     for (const ch of this._memberChannels) {
-      if (!reserved.has(ch) && !this._activeByChannel.has(this._activeChannelKey(ch, normalizedOutputId))) {
+      if (eligible.has(ch) && !this._activeByChannel.has(this._activeChannelKey(ch, normalizedOutputId))) {
         return ch;
       }
     }
     let oldest = null;
     let oldestTime = Infinity;
     for (const [ch, info] of this._activeByChannel.entries()) {
-      if (this._resolveOutputId(info?.outputId) !== normalizedOutputId || reserved.has(info.channel)) continue;
+      const occupiedChannel = info.channel ?? ch;
+      if (this._resolveOutputId(info?.outputId) !== normalizedOutputId || !eligible.has(occupiedChannel)) continue;
       if (info.startedAt < oldestTime) {
         oldestTime = info.startedAt;
-        oldest = info.channel ?? ch;
+        oldest = occupiedChannel;
       }
     }
     if (oldest != null) {
       this._stopActiveChannel(oldest, normalizedOutputId);
       return oldest;
     }
-    const master = normalizeChannelNumber(mpe.masterChannel, 1);
-    return reserved.has(master) ? null : master;
+    return null;
   },
 };
 

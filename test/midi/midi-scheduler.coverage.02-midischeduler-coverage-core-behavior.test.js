@@ -9,10 +9,10 @@ import { withFakeClock, withFakeClockAndPerformance } from '../support/timers.js
 describe('MidiScheduler coverage: core behavior', function() {
   it('initializes MPE when output is already set', function() {
     const calls = [];
-    const output = makeOutput([1], calls);
+    const output = makeOutput([1, 2], calls);
     const scheduler = new MidiScheduler({ mpe: { enabled: false } });
     scheduler.setOutput(output);
-    scheduler.setConfig({ mpe: { enabled: true, masterChannel: 1, memberChannels: [] } });
+    scheduler.setConfig({ mpe: { enabled: true, masterChannel: 1, memberChannels: [2] } });
     expect(calls.some(call => call.type === 'bendRange')).to.equal(true);
   });
 
@@ -313,7 +313,7 @@ describe('MidiScheduler coverage: core behavior', function() {
     expect(initCalls).to.equal(0);
   });
 
-  it('initMpe skips missing channels and defaults master channel', function() {
+  it('initMpe rejects missing member channels without touching the master', function() {
     const calls = [];
     const scheduler = new MidiScheduler({
       mpe: { enabled: true, memberChannels: [2], pitchBendRange: { semitones: 2, cents: 0 } }
@@ -322,8 +322,7 @@ describe('MidiScheduler coverage: core behavior', function() {
     calls.length = 0;
     scheduler._initMpe();
     const bendRange = calls.filter(call => call.type === 'bendRange');
-    expect(bendRange).to.have.length(1);
-    expect(bendRange[0].id).to.equal(1);
+    expect(bendRange).to.have.length(0);
   });
 
   it('nowMs prefers performance when available', function() {
@@ -371,16 +370,16 @@ describe('MidiScheduler coverage: core behavior', function() {
     expect(scheduler._activeByChannel.has(1)).to.equal(true);
   });
 
-  it('allocateChannel falls back to the master channel', function() {
+  it('allocateChannel rejects a master-only zone', function() {
     const scheduler = new MidiScheduler({ mpe: { enabled: true, masterChannel: 9, memberChannels: [] } });
     scheduler._memberChannels = [];
-    expect(scheduler._allocateChannel()).to.equal(9);
+    expect(scheduler._allocateChannel()).to.equal(null);
   });
 
-  it('allocates channel 1 when the MPE master is falsy', function() {
+  it('rejects a memberless zone when the MPE master is falsy', function() {
     const scheduler = new MidiScheduler({ mpe: { enabled: true, masterChannel: 0, memberChannels: [] } });
     scheduler._memberChannels = [];
-    expect(scheduler._allocateChannel()).to.equal(1);
+    expect(scheduler._allocateChannel()).to.equal(null);
   });
 
   it('allocates default channel 1 when unspecified', function() {

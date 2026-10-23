@@ -397,7 +397,7 @@ describe('MidiScheduler 1', function() {
     }
   });
 
-  it('skips init when output is missing and ignores missing channels', function() {
+  it('skips MPE setup when the configured member channel is missing', function() {
     const calls = [];
     const scheduler = new MidiScheduler({
       mpe: { enabled: true, masterChannel: 1, memberChannels: [2] }
@@ -405,7 +405,7 @@ describe('MidiScheduler 1', function() {
     scheduler._initMpe();
     scheduler.setOutput(makeOutput([1], calls));
     const bendRangeCalls = calls.filter(c => c.type === 'bendRange');
-    expect(bendRangeCalls.length).to.equal(1);
+    expect(bendRangeCalls.length).to.equal(0);
   });
 
   it('skips stopping channels when output is missing', function() {
@@ -435,7 +435,7 @@ describe('MidiScheduler 1', function() {
     expect(scheduler._activeNotes.size).to.equal(1);
   });
 
-  it('allocates MPE channels and falls back to master', function() {
+  it('allocates MPE members and rejects a master-only zone', function() {
     const calls = [];
     const output = makeOutput([1, 2, 3], calls);
     const scheduler = new MidiScheduler({
@@ -453,7 +453,7 @@ describe('MidiScheduler 1', function() {
     expect(reused).to.equal(2);
 
     const masterOnly = new MidiScheduler({ mpe: { enabled: true, masterChannel: 9 } });
-    expect(masterOnly._allocateChannel()).to.equal(9);
+    expect(masterOnly._allocateChannel()).to.equal(null);
   });
 
   it('aggregates rate entries by sfx id', function() {
@@ -507,7 +507,7 @@ describe('MidiScheduler 1', function() {
 
   it('sends pitch bend reset when MPE is enabled', function() {
     const calls = [];
-    const output = makeOutput([2], calls);
+    const output = makeOutput([1, 2], calls);
     const scheduler = new MidiScheduler({ mpe: { enabled: true, memberChannels: [2] } });
     scheduler.setOutput(output);
     const ok = scheduler.sendNote({ note: 60, velocity: 64, durationTicks: 0, pitchBend: 0 });

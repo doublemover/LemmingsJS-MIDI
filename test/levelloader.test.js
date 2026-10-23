@@ -3,6 +3,7 @@ import { readFileSync } from 'fs';
 import { Lemmings, setDependency, useGlobalLemmings } from './helpers/lemmings.js';
 import '../js/LemmingsBootstrap.js';
 import { __test__ as LevelLoaderTest } from '../js/level/LevelLoader.js';
+import { FileProvider } from '../js/data/FileProvider.js';
 
 // Silence debug output
 
@@ -164,7 +165,7 @@ describe('LevelLoader', function () {
     const config = makeConfig();
     const baseProps = readLevelProperties(config, 0, 0);
     const Provider = makeProvider(
-      () => Promise.reject(new Error('missing'))
+      () => Promise.reject(Object.assign(new Error('missing'), { code: 'ENOENT' }))
     );
     const level = await withSteelSpritesStub(async () => {
       const loader = new Lemmings.LevelLoader(new Provider(), config);
@@ -172,6 +173,14 @@ describe('LevelLoader', function () {
     });
 
     expectLevelProperties(level, baseProps);
+  });
+
+  it('does not hide a failed present odd table as an absent optional file', async function() {
+    const Provider = makeProvider(() => Promise.reject(new Error('corrupt odd table')));
+    await withSteelSpritesStub(async () => {
+      try { await new Lemmings.LevelLoader(new Provider(), makeConfig()).getLevel(0, 0); throw new Error('Expected odd-table rejection'); }
+      catch (error) { expect(error.message).to.equal('corrupt odd table'); }
+    });
   });
 
   it('falls back to base properties when odd table is empty', async function () {
@@ -251,6 +260,44 @@ describe('LevelLoader', function () {
     expect(level).to.be.instanceOf(Lemmings.Level);
     expect(calls).to.include('xmas92/GROUND0O.DAT');
     expect(calls).to.include('xmas91/GROUND0O.DAT');
+    expect(level.resourceSources.ground).to.deep.equal({ root: 'xmas91', filename: 'GROUND0O.DAT' });
+  });
+
+  it('uses HTTP 404 for seasonal fallback but never substitutes on a server failure', async function() {
+    const config = makeConfig({ path: 'xmas92', gametype: Lemmings.GameTypes.XMAS92,
+      level: { filePrefix: 'LEVEL', useOddTable: false, order: [[4]] } });
+    const makeHttpProvider = (groundStatus = 404) => {
+      const requests = [];
+      class Xhr {
+        open(method, url) { this.url = url; }
+        getResponseHeader() { return null; }
+        send() {
+          const path = this.url.slice(1); requests.push(path);
+          queueMicrotask(() => {
+            if (path === 'xmas92/GROUND0O.DAT') this.status = groundStatus;
+            else {
+              try {
+                const bytes = readFileSync(new URL(`../${path}`, import.meta.url));
+                this.response = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+                this.status = 200;
+              } catch (error) { this.status = error.code === 'ENOENT' ? 404 : 500; }
+            }
+            this.onload();
+          });
+        }
+      }
+      return { provider: new FileProvider('/', { indexedDB: null, localStorage: null, createXMLHttpRequest: () => new Xhr() }), requests };
+    };
+    await withSteelSpritesStub(async () => {
+      const found = makeHttpProvider(), level = await new Lemmings.LevelLoader(found.provider, config).getLevel(0, 0);
+      expect(level).to.be.instanceOf(Lemmings.Level);
+      expect(found.requests).to.include('xmas91/GROUND0O.DAT');
+      expect(level.resourceSources.ground.root).to.equal('xmas91');
+      const failed = makeHttpProvider(500);
+      try { await new Lemmings.LevelLoader(failed.provider, config).getLevel(0, 0); throw new Error('Expected HTTP 500 rejection'); }
+      catch (error) { expect(error.kind).to.equal('server'); expect(error.status).to.equal(500); }
+      expect(failed.requests).not.to.include('xmas91/GROUND0O.DAT');
+    });
   });
 
   it('applies seasonal steel sprite mappings to generate steel masks', async function () {

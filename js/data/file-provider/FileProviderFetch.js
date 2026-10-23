@@ -14,6 +14,29 @@ import {
   getRuntimeDependency,
   sanitizeCacheBust
 } from './FileProviderShared.js';
+import { ResourceLoadError, resourceKindFromStatus } from './ResourceLoadError.js';
+
+const requestWithXhr = (provider, url, responseType) => new Promise((resolve, reject) => {
+  let xhr;
+  try { xhr = provider._createXhr(); } catch (cause) { reject(new ResourceLoadError('unavailable', url, { cause })); return; }
+  const fail = (kind, status = null, cause = null) => {
+    const error = new ResourceLoadError(kind, url, { status, cause });
+    provider.log.log(error.message);
+    reject(error);
+  };
+  xhr.onload = () => {
+    if (xhr.status >= 200 && xhr.status < 300) {
+      resolve({ data: xhr.response, headers: {
+        etag: typeof xhr.getResponseHeader === 'function' ? xhr.getResponseHeader('ETag') : null,
+        lastModified: typeof xhr.getResponseHeader === 'function' ? xhr.getResponseHeader('Last-Modified') : null
+      } });
+    } else fail(resourceKindFromStatus(xhr.status), xhr.status);
+  };
+  xhr.onerror = event => fail('network', null, event instanceof Error ? event : null);
+  xhr.onabort = () => fail('cancelled');
+  xhr.ontimeout = () => fail('timeout');
+  try { xhr.open('GET', url); xhr.responseType = responseType; xhr.send(); } catch (cause) { fail('network', null, cause); }
+});
 const fileProviderFetchMethods = {
   loadBinary(path, filename = null, opts = {}) {
     const url = this._buildUrl(path, filename);
@@ -25,14 +48,9 @@ const fileProviderFetchMethods = {
     if (!opts.forceReload) {
       if (this._canUseIndexedDb()) {
         promise = this._loadFromIndexedDb(url, 'binary', path)
+          .catch(() => null)
           .then((cached) => {
             if (cached) return cached.value;
-            const fallback = this._loadFromLocalStorage(url, 'binary', path);
-            if (fallback) return fallback.value;
-            this.log.debug('loading: ' + url);
-            return this._fetchBinary(url, path);
-          })
-          .catch(() => {
             const fallback = this._loadFromLocalStorage(url, 'binary', path);
             if (fallback) return fallback.value;
             this.log.debug('loading: ' + url);
@@ -72,13 +90,9 @@ const fileProviderFetchMethods = {
     if (!opts.forceReload) {
       if (this._canUseIndexedDb()) {
         promise = this._loadFromIndexedDb(resolvedUrl, 'text')
+          .catch(() => null)
           .then((cached) => {
             if (cached) return cached.value;
-            const fallback = this._loadFromLocalStorage(resolvedUrl, 'text');
-            if (fallback) return fallback.value;
-            return this._fetchText(resolvedUrl);
-          })
-          .catch(() => {
             const fallback = this._loadFromLocalStorage(resolvedUrl, 'text');
             if (fallback) return fallback.value;
             return this._fetchText(resolvedUrl);
@@ -121,32 +135,9 @@ const fileProviderFetchMethods = {
   },
 
   async _fetchBinary(url, path) {
-    const response = await new Promise((resolve, reject) => {
-      const xhr = this._createXhr();
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          const headers = {
-            etag: typeof xhr.getResponseHeader === 'function' ? xhr.getResponseHeader('ETag') : null,
-            lastModified: typeof xhr.getResponseHeader === 'function' ? xhr.getResponseHeader('Last-Modified') : null,
-          };
-          resolve({ buffer: xhr.response, headers });
-        } else {
-          const err = new Error('error load file: ' + url);
-          this.log.log(err.message);
-          reject(err);
-        }
-      };
-      xhr.onerror = () => {
-        const err = new Error('error load file: ' + url);
-        this.log.log(err.message);
-        reject(err);
-      };
-      xhr.open('GET', url);
-      xhr.responseType = 'arraybuffer';
-      xhr.send();
-    });
+    const response = await requestWithXhr(this, url, 'arraybuffer');
 
-    const buf = response.buffer;
+    const buf = response.data;
     const Reader = getDependency('BinaryReader', BinaryReader);
     const reader = new Reader(buf, 0, null, this._filenameFromUrl(url), path);
     let hash = null;
@@ -161,32 +152,9 @@ const fileProviderFetchMethods = {
   },
 
   async _fetchText(url) {
-    const response = await new Promise((resolve, reject) => {
-      const xhr = this._createXhr();
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          const headers = {
-            etag: typeof xhr.getResponseHeader === 'function' ? xhr.getResponseHeader('ETag') : null,
-            lastModified: typeof xhr.getResponseHeader === 'function' ? xhr.getResponseHeader('Last-Modified') : null,
-          };
-          resolve({ text: xhr.response, headers });
-        } else {
-          const err = new Error('error load file: ' + url);
-          this.log.log(err.message);
-          reject(err);
-        }
-      };
-      xhr.onerror = () => {
-        const err = new Error('error load file: ' + url);
-        this.log.log(err.message);
-        reject(err);
-      };
-      xhr.open('GET', url);
-      xhr.responseType = 'text';
-      xhr.send();
-    });
+    const response = await requestWithXhr(this, url, 'text');
 
-    const text = response.text;
+    const text = response.data;
     let hash = null;
     try {
       hash = await this._tryHashString(text);

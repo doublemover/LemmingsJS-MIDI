@@ -277,7 +277,7 @@ describe('MidiScheduler coverage: branch paths and fallbacks', function() {
 
     scheduler.setConfig({ mpe: { enabled: true, masterChannel: 7, memberChannels: [] } });
     scheduler._memberChannels = [];
-    expect(scheduler._allocateChannel()).to.equal(7);
+    expect(scheduler._allocateChannel()).to.equal(null);
 
     scheduler._rateSent = [
       { timeMs: 0, count: 1, bytes: 3, sfxId: 1 },

@@ -155,14 +155,22 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   musicControls = createProcgenMusicControls({ document, getState: () => procgenMusicState(project, settings),
     onChange: command => commitAutomation(editProcgenMusicProject(project, settings, command)) });
   syncTargetHelp = () => spanControls.syncTargetHelp();
+  const syncSpanTool = () => {
+    const control = byId('procgenSpanEdit'), visibleControl = byId('procgenSpanVisible'), status = byId('procgenSpanToolStatus');
+    const reason = spanOverlay.presentationStatus();
+    const unavailable = !!getRuntime()?.lanes?.renderer?.workstationLayout;
+    if (control) { control.disabled = unavailable; control.checked = spanOverlay.snapshot().editing; }
+    if (visibleControl) visibleControl.disabled = unavailable;
+    if (status) status.textContent = reason;
+  };
   const setSpanEditing = enabled => {
-    if (enabled) setNukeArmed(false);
-    spanOverlay.setEditing(enabled);
-    if (byId('procgenSpanEdit')) byId('procgenSpanEdit').checked = enabled;
-    if (enabled && byId('procgenSpanVisible')) byId('procgenSpanVisible').checked = true;
+    const active = spanOverlay.setEditing(enabled);
+    if (active) setNukeArmed(false);
+    syncSpanTool();
+    if (active && byId('procgenSpanVisible')) byId('procgenSpanVisible').checked = true;
   };
   listen(byId('procgenSpanEdit'), 'change', event => setSpanEditing(event.target.checked));
-  listen(byId('procgenSpanVisible'), 'change', event => { spanOverlay.setVisible(event.target.checked); if (!event.target.checked && byId('procgenSpanEdit')) byId('procgenSpanEdit').checked = false; });
+  listen(byId('procgenSpanVisible'), 'change', event => { spanOverlay.setVisible(event.target.checked); syncSpanTool(); });
   const syncWorkerLimits = () => {
     getRuntime()?.world?.setWorkerLimits?.(settings.workerLimits);
     for (const [key, suffix] of [['bashers', 'Bashers'], ['diggers', 'Diggers'], ['builders', 'Builders']]) if (byId('procgenWorker' + suffix)) byId('procgenWorker' + suffix).value = String(settings.workerLimits[key]);
@@ -446,7 +454,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     prepareCharacters: sprites => characters.sync(sprites),
     sync({ charactersReady = false } = {}) {
       if (!charactersReady) characters.sync();
-      syncProgress(); musicDirection.sync(); syncMusic(); spanControls.render(); spanOverlay.sync(); syncWorkerLimits(); syncPopulation();
+      syncProgress(); musicDirection.sync(); syncMusic(); spanControls.render(); spanOverlay.sync(); syncSpanTool(); syncWorkerLimits(); syncPopulation();
       setPaused(paused); setNukeArmed(false);
       if (byId('procgenSeed')) byId('procgenSeed').value = String(settings.seed ?? window.procgenSeed ?? '');
       camera()?.applyState(settings.camera || urlConfig.camera);

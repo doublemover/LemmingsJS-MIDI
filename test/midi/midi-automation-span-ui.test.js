@@ -147,10 +147,12 @@ describe('musical span editing and lane rectangles', () => {
   it('aligns distance span geometry and drawing with actual144pixel lanes', () => {
     const document = new TestDocument(), canvas = document.createElement('canvas'); document.registerElement('gameCanvas', canvas);
     canvas.width = 720; canvas.height = 432; canvas.getBoundingClientRect = () => ({ left: 0, top: 0 });
-    const renderer = { canvas, window: { devicePixelRatio: 1 }, world: { laneHeight: 144, laneCount: 4, tickIndex: 0 }, originX: 0, originY: 144, viewWidth: 720, viewHeight: 432, render() {} };
+    const context = { save() {}, restore() {}, scale() {}, fillRect() {}, strokeRect() {}, setLineDash() {}, fillText() {} };
+    const renderer = { canvas, window: { devicePixelRatio: 1 }, world: { laneHeight: 144, laneCount: 4, tickIndex: 0 }, originX: 0, originY: 144, viewWidth: 720, viewHeight: 432, render() { this.midiSpanOverlay?.draw(context, this, 1); } };
     const span = { ...createMidiSpan('distance'), loop: false, laneScope: 'lane', laneStart: 2, laneEnd: 2 };
     const project = { transport: { bpmBase: 120 }, automation: [{ id: 'height', span, target: 'velocity' }] };
     expect(getMidiSpanRectangles(renderer, project)[0]).to.include({ y: 144, h: 144 });
+    project.automation = [];
     const added = [], overlay = createProcgenMidiSpanOverlay({ document, getRuntime: () => ({ lanes: { renderer } }), getProject: () => project, getDomain: () => 'distance', getTarget: () => 'velocity', onUpdate() {}, onSelect() {}, onAdd: value => added.push(value) });
     overlay.sync(); overlay.setEditing(true);
     for (const [type, clientX] of [['pointerdown', 20], ['pointermove', 40], ['pointerup', 40]]) canvas.dispatchEvent({ type, clientX, clientY: 150, preventDefault() {}, stopImmediatePropagation() {} });
@@ -242,7 +244,8 @@ describe('musical span editing and lane rectangles', () => {
   it('keeps pointer input available to game/camera controls until drawing is explicitly enabled', () => {
     const document = new TestDocument(), canvas = document.createElement('canvas'); canvas.id = 'gameCanvas'; document.registerElement('gameCanvas', canvas);
     canvas.width = 1440; canvas.height = 900; canvas.getBoundingClientRect = () => ({ left: 0, top: 0 });
-    const renderer = { canvas, window: { devicePixelRatio: 1 }, world: { laneCount: 8, tickIndex: 0 }, originX: 0, originY: 0, viewWidth: 480, viewHeight: 300, scale: 3, render() {} };
+    const context = { save() {}, restore() {}, scale() {}, fillRect() {}, strokeRect() {}, setLineDash() {}, fillText() {} };
+    const renderer = { canvas, window: { devicePixelRatio: 1 }, world: { laneCount: 8, tickIndex: 0 }, originX: 0, originY: 0, viewWidth: 480, viewHeight: 300, scale: 3, render() { this.midiSpanOverlay?.draw(context, this, 1); } };
     const added = [], project = { transport: { bpmBase: 120 }, automation: [] };
     const overlay = createProcgenMidiSpanOverlay({ document, getRuntime: () => ({ lanes: { renderer } }), getProject: () => project, getDomain: () => 'distance', getTarget: () => 'velocity', onUpdate() {}, onSelect() {}, onAdd: span => added.push(span) }); overlay.sync();
     let claimed = 0; const pointer = (type, x, y) => canvas.dispatchEvent({ type, clientX: x, clientY: y, preventDefault: () => claimed++, stopImmediatePropagation() {} });
@@ -251,6 +254,27 @@ describe('musical span editing and lane rectangles', () => {
     expect(added).to.have.length(1); expect(added[0]).to.include({ domain: 'distance', laneScope: 'group', laneStart: 0, laneEnd: 1, start: 33, duration: 133 });
     overlay.setVisible(false); const previousClaims = claimed; pointer('pointerdown', 100, 200); pointer('pointermove', 500, 450); pointer('pointerup', 500, 450);
     expect(claimed).to.equal(previousClaims); expect(overlay.snapshot()).to.include({ editing: false, visible: false }); overlay.dispose();
+  });
+  it('cannot commit invisible workstation gestures or a draft after the renderer changes mode', () => {
+    const document = new TestDocument(), canvas = document.createElement('canvas'); document.registerElement('gameCanvas', canvas);
+    canvas.width = 800; canvas.height = 608; canvas.getBoundingClientRect = () => ({ left: 0, top: 0 });
+    const context = { save() {}, restore() {}, scale() {}, fillRect() {}, strokeRect() {}, setLineDash() {}, fillText() {} };
+    const renderer = { canvas, window: { devicePixelRatio: 1 }, world: { laneCount: 8, laneHeight: 76, generation: 1, tickIndex: 0 }, originX: 0, originY: 0, viewWidth: 800, viewHeight: 608,
+      workstationLayout: { firstLane: 0, count: 8 }, render() { if (!this.workstationLayout) this.midiSpanOverlay?.draw(context, this, 1); } };
+    const added = [], project = { transport: { bpmBase: 120 }, automation: [] };
+    const overlay = createProcgenMidiSpanOverlay({ document, getRuntime: () => ({ lanes: { renderer } }), getProject: () => project,
+      getDomain: () => 'distance', getTarget: () => 'velocity', onUpdate() {}, onSelect() {}, onAdd: span => added.push(span) });
+    const pointer = type => canvas.dispatchEvent({ type, clientX: type === 'pointerdown' ? 100 : 200, clientY: 50, pointerId: 7, preventDefault() {}, stopImmediatePropagation() {} });
+    try {
+      overlay.sync(); expect(overlay.setEditing(true)).to.equal(false);
+      pointer('pointerdown'); pointer('pointermove'); pointer('pointerup');
+      expect(added).to.have.length(0); expect(overlay.snapshot().editing).to.equal(false); expect(overlay.snapshot().rectangles).to.deep.equal([]);
+      renderer.workstationLayout = null;
+      expect(overlay.setEditing(true)).to.equal(true);
+      pointer('pointerdown'); pointer('pointermove');
+      renderer.workstationLayout = { firstLane: 0, count: 8 }; overlay.sync(); pointer('pointerup');
+      expect(added).to.have.length(0); expect(overlay.snapshot().editing).to.equal(false);
+    } finally { overlay.dispose(); }
   });
   it('projects only resolved note winners and holds their phase/value while the transport and origin observations advance', () => {
     const low = { id: 'low', enabled: true, target: 'velocity', min: 20, max: 100, span: { ...createMidiSpan(), duration: 8 } };
