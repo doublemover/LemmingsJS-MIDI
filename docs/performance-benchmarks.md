@@ -42,3 +42,20 @@ so scripts and tests can inspect live performance data while running.
 RAF loop falls behind. Bench mode `bench2` is the best place to verify this
 behaves as intended. If the slowdown triggers too aggressively or never
 triggers, adjust thresholds in `GameTimer.#catchupSpeedAdjust()`.
+
+## Smoke result admission
+
+Performance, history and hotpath producers attach `lemmings-benchmark-result/v1`
+receipts with workload/profile identities, requested scenario IDs, units and a
+completed status. The smoke evaluator admits required finite numeric measurements
+before comparing thresholds. Missing or unsupported receipts are measurement
+failures, never synthetic zero-cost passes.
+
+Raw performance observations and summaries gate tail latency and throughput;
+filtered summaries remain diagnostic. Every requested history speed is required
+exactly once and gates independently. Mandatory hotpaths declare positive work
+counts and at least three observations. Producer failures remain failures even
+when another scenario passes. JSON includes typed diagnostics distinguishing
+invalid measurements from performance regressions. Source fixtures cover the
+reported missing/NaN/filtered-tail/scenario defects; execution is deferred until
+the implementation backlog is ready for validation.

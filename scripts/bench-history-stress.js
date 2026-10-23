@@ -1,6 +1,7 @@
 import { chromium } from '@playwright/test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createBenchmarkReceipt } from './BenchmarkReceipt.js';
 
 const DEFAULT_BASE_URL = 'https://localhost:8080/?e2e=1';
 
@@ -328,6 +329,7 @@ const run = async (config = createHistoryBenchConfig()) => {
       let spanTicks = 0;
       let maxSpan = 0;
       let lastHistory = null;
+      let sampleCount = 0;
       while (Date.now() - start < durationMs) {
         assertRuntimeBudget(`speed=${speed} sampling`);
         const history = await withTimeout(
@@ -336,6 +338,7 @@ const run = async (config = createHistoryBenchConfig()) => {
           'readHistoryState'
         );
         lastHistory = history || null;
+        sampleCount++;
         spanTicks = history?.spanTicks || 0;
         if (spanTicks > maxSpan) maxSpan = spanTicks;
         if (spanTicks >= targetSpan) break;
@@ -460,6 +463,7 @@ const run = async (config = createHistoryBenchConfig()) => {
       }), opTimeoutMs, 'readMemorySnapshot');
 
       results.push({
+        sampleCount,
         speedFactor: speed,
         durationMs: Date.now() - start,
         maxSpanTicks: maxSpan,
@@ -491,6 +495,7 @@ const run = async (config = createHistoryBenchConfig()) => {
     }
 
     console.log(JSON.stringify({
+      receipt: createBenchmarkReceipt('history', requestedProfile, speeds.map(speed => `speed:${speed}`)),
       profile: requestedProfile,
       targetSpanTicks: targetSpan,
       sampleMs,

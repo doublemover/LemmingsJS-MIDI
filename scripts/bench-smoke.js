@@ -2,6 +2,7 @@
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { admitSmokeMeasurements } from './BenchmarkReceipt.js';
 
 const parseArgs = (argv) => {
   const out = new Map();
@@ -62,63 +63,23 @@ const runNodeScript = (scriptPath, scriptArgs, timeoutMs, label) => {
   };
 };
 
-const evaluateSmokeResults = ({ performance, history, hotpaths }, thresholds) => {
-  const failures = [];
-
-  const perfP95Frame = Number(performance?.filteredFrameStats?.p95 ?? performance?.frameStats?.p95 ?? 0);
-  const perfP50Tps = Number(performance?.filteredTpsStats?.p50 ?? performance?.tpsStats?.p50 ?? 0);
-  if (perfP95Frame > thresholds.perfP95FrameMsMax) {
-    failures.push(`perf frame p95 ${perfP95Frame.toFixed(2)}ms > ${thresholds.perfP95FrameMsMax.toFixed(2)}ms`);
-  }
-  if (perfP50Tps < thresholds.perfP50TpsMin) {
-    failures.push(`perf TPS p50 ${perfP50Tps.toFixed(2)} < ${thresholds.perfP50TpsMin.toFixed(2)}`);
-  }
-
-  const historyResults = Array.isArray(history?.results) ? history.results : [];
-  const historyRatio = historyResults.length
-    ? historyResults.reduce((acc, item) => {
-      const target = Number(item?.targetSpanTicks || 0);
-      const span = Number(item?.maxSpanTicks || 0);
-      if (!Number.isFinite(target) || target <= 0) return acc;
-      return Math.max(acc, span / target);
-    }, 0)
-    : 0;
-  if (historyRatio < thresholds.historySpanRatioMin) {
-    failures.push(`history span ratio ${historyRatio.toFixed(3)} < ${thresholds.historySpanRatioMin.toFixed(3)}`);
-  }
-
-  const antsAvgMs = Number(hotpaths?.marchingAnts?.avgMs ?? 0);
-  if (antsAvgMs > thresholds.antsAvgMsMax) {
-    failures.push(`marching ants avg ${antsAvgMs.toFixed(2)}ms > ${thresholds.antsAvgMsMax.toFixed(2)}ms`);
-  }
-  const tileCompositionAvgMs = Number(hotpaths?.tileComposition?.avgMs ?? 0);
-  if (tileCompositionAvgMs > thresholds.tileCompositionAvgMsMax) {
-    failures.push(`tile composition avg ${tileCompositionAvgMs.toFixed(2)}ms > ${thresholds.tileCompositionAvgMsMax.toFixed(2)}ms`);
-  }
-
-  const overlayPlaneAvgMs = Number(hotpaths?.overlayPlane?.avgMs ?? 0);
-  if (overlayPlaneAvgMs > thresholds.overlayPlaneAvgMsMax) {
-    failures.push(`overlay plane avg ${overlayPlaneAvgMs.toFixed(2)}ms > ${thresholds.overlayPlaneAvgMsMax.toFixed(2)}ms`);
-  }
-
-  const scaledBlitAvgMs = Number(hotpaths?.scaledBlit?.avgMs ?? 0);
-  if (scaledBlitAvgMs > thresholds.scaledBlitAvgMsMax) {
-    failures.push(`scaled blit avg ${scaledBlitAvgMs.toFixed(2)}ms > ${thresholds.scaledBlitAvgMsMax.toFixed(2)}ms`);
-  }
-
-  return {
-    ok: failures.length === 0,
-    failures,
-    metrics: {
-      perfP95Frame,
-      perfP50Tps,
-      historyRatio,
-      antsAvgMs,
-      tileCompositionAvgMs,
-      overlayPlaneAvgMs,
-      scaledBlitAvgMs
+const evaluateSmokeResults = (results, thresholds, options = {}) => {
+  const admitted = admitSmokeMeasurements(results, options), diagnostics = [...admitted.diagnostics];
+  const compare = (value, threshold, path, minimum = false) => {
+    if (typeof threshold !== 'number' || !Number.isFinite(threshold) || threshold <= 0) {
+      diagnostics.push({ kind: 'invalid-threshold', path, reason: 'expected a finite positive threshold' }); return;
     }
+    if (value != null && (minimum ? value < threshold : value > threshold))
+      diagnostics.push({ kind: 'performance-regression', path, reason: `${value} ${minimum ? '<' : '>'} ${threshold}` });
   };
+  const metrics = admitted.metrics;
+  compare(metrics.perfP95Frame, thresholds.perfP95FrameMsMax, 'performance.frameStats.p95');
+  compare(metrics.perfP50Tps, thresholds.perfP50TpsMin, 'performance.tpsStats.p50', true);
+  for (const scenario of admitted.scenarios) compare(scenario.ratio, thresholds.historySpanRatioMin, `history.speed:${scenario.speed}.spanRatio`, true);
+  for (const [metric, threshold] of [['antsAvgMs', 'antsAvgMsMax'], ['tileCompositionAvgMs', 'tileCompositionAvgMsMax'],
+    ['overlayPlaneAvgMs', 'overlayPlaneAvgMsMax'], ['scaledBlitAvgMs', 'scaledBlitAvgMsMax']]) compare(metrics[metric], thresholds[threshold], `hotpaths.${metric}`);
+  return { ok: diagnostics.length === 0, failures: diagnostics.map(item => `${item.kind}: ${item.path}: ${item.reason}`),
+    diagnostics, metrics, measurementValid: admitted.valid, scenarios: admitted.scenarios };
 };
 
 const main = (argv = process.argv.slice(2)) => {
@@ -182,7 +143,7 @@ const main = (argv = process.argv.slice(2)) => {
     performance: performance.data,
     history: history.data,
     hotpaths: hotpaths.data
-  }, thresholds);
+  }, thresholds, { profile: soakRequested ? 'soak' : 'smoke' });
 
   const summary = {
     ok: gate.ok,
@@ -195,7 +156,8 @@ const main = (argv = process.argv.slice(2)) => {
       benchHotpaths: hotpaths.durationMs
     },
     metrics: gate.metrics,
-    failures: gate.failures
+    failures: gate.failures,
+    diagnostics: gate.diagnostics, measurementValid: gate.measurementValid, scenarios: gate.scenarios
   };
 
   console.log(JSON.stringify(summary, null, 2));
