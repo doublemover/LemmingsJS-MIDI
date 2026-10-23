@@ -140,6 +140,45 @@ describe('isolated deterministic real procgen survey core', function() {
       }
     } finally { trial.dispose(); }
   });
+  it('compacts committed terminations once and preserves death-animation lifecycle evidence', () => {
+    const trial = createSurveyTrial({ masks, scenario: scene({ horizonTicks: 100, cohort: { size: 1, birthInterval: 0 },
+      goal: { x: 44, y: 64, width: 8, height: 16, postArrivalTicks: 50 }, worldOptions: { assists: false },
+      geometry: { solid: [{ x: 8, y: 72, width: 1024, height: 24 }], hazards: [{ id: 'fire', type: 'FRYING', x: 60, y: 60, width: 8, height: 20 }] } }) });
+    try {
+      while (!trial._records[0].deathReason) trial.step();
+      const record = trial._records[0]; expect(record.actor).not.to.equal(null); expect(record.terminal).to.equal(undefined);
+      while (!trial.done && record.actor) trial.step();
+      expect(record.actor).to.equal(null); expect(record.terminal).to.be.frozen;
+      expect(record.terminal.terminationReason).to.equal('fried'); expect(record.terminal.tick).to.be.greaterThan(record.deathTick);
+      const finalized = trial.observationWork().finalizedActors; trial.step(100);
+      expect(trial.observationWork().finalizedActors).to.equal(finalized);
+      expect(trial.result().crew[0].terminal).to.deep.equal(record.terminal);
+      expect(trial.result().validity.accountingComplete).to.equal(true);
+    } finally { trial.dispose(); }
+  });
+  it('allows deferred presentation without changing exact physics, events or final accounting', () => {
+    const eager = createSurveyTrial({ masks, scenario: scene() }), deferred = createSurveyTrial({ masks, scenario: scene() });
+    try {
+      for (let tick = 0; tick < 220; tick++) { eager.step(); deferred.step(1, { telemetry: false }); }
+      expect(deferred.observationWork().telemetryProjections).to.be.lessThan(eager.observationWork().telemetryProjections / 2);
+      expect(deferred.telemetry().tick).to.equal(220); expect(deferred.result()).to.deep.equal(eager.result());
+    } finally { eager.dispose(); deferred.dispose(); }
+  });
+  it('keeps ordinary observer work constant across 64, 8192 and 65536 terminal records', () => {
+    const trial = createSurveyTrial({ masks, scenario: scene({ cohort: { size: 1 } }) });
+    try {
+      trial.world.actors[0].failureReason = 'trapped'; trial.step();
+      expect(trial._activeRecords.size).to.equal(0);
+      for (const count of [64, 8192, 65536]) {
+        while (trial._records.length < count) trial._records.push({ id: 'historical-' + trial._records.length,
+          get actor() { throw new Error('Observer revisited finalized actor'); }, terminal: trial._records[0].terminal });
+        const before = trial.observationWork();
+        for (let tick = 0; tick < 16; tick++) trial._observe();
+        expect(trial.observationWork().actorVisits - before.actorVisits).to.equal(0);
+        expect(trial.observationWork().telemetryProjections - before.telemetryProjections).to.equal(0);
+      }
+    } finally { trial.dispose(); }
+  });
   it('hashes canonical semantic identities independently of object key order and display metadata', () => {
     expect(hashSurveyValue({ a: 1, b: [2, 3] })).to.equal(hashSurveyValue({ b: [2, 3], a: 1 }));
     expect(hashSurveyValue(undefined)).not.to.equal(hashSurveyValue(['undefined']));
@@ -170,6 +209,17 @@ describe('isolated deterministic real procgen survey core', function() {
     expect(compareSurveyReplay(complete, { ...complete, provenance: { ...complete.provenance, stateSchema: 1 } }).matched).to.equal(false);
     expect(compareSurveyReplay(complete, { ...complete, evidence: { ...complete.evidence, truncated: true } }).matched).to.equal(false);
     expect(compareSurveyReplay(complete, { ...complete, milestones: [] }).matched).to.equal(false);
+    const unbound = { ...complete, provenance: { ...complete.provenance, scenarioHash: '0'.repeat(16) } };
+    expect(compareSurveyReplay(unbound, unbound).reasons).to.include('original:scenario-hash-not-bound');
+    const divergent = { ...complete, finalStateHash: '0'.repeat(16),
+      milestones: complete.milestones.map((entry, index) => index === complete.milestones.length - 1 ? { ...entry, stateHash: '0'.repeat(16) } : entry) };
+    expect(compareSurveyReplay(complete, divergent).validity).to.equal('mismatch');
+    expect(compareSurveyReplay(complete, { ...complete, milestones: {} }).validity).to.equal('invalid-or-incomplete');
+    const boundary = { ...complete, milestones: complete.milestones.map((entry, index) => index ? entry : { ...entry, stateHash: '0'.repeat(16) }) };
+    expect(compareSurveyReplay(boundary, boundary).reasons).to.include('original:milestone-boundary-mismatch');
+    const unordered = { ...complete, milestones: [complete.milestones[0], complete.milestones[1], complete.milestones[1], ...complete.milestones.slice(2)] };
+    expect(compareSurveyReplay(unordered, unordered).reasons).to.include('original:invalid-milestones');
+    expect(compareSurveyReplay(complete, complete).coverage.intervals[0].observation).to.include('interior ticks not individually observed');
     const trial = createSurveyTrial({ masks, scenario: scene() });
     trial.world.terrainActivityTicks[0] = NaN;
     expect(() => trial.snapshot()).to.throw('Invalid terrain activity tick'); trial.dispose();

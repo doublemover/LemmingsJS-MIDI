@@ -75,6 +75,21 @@ describe('local survey server and atomic live controls', function() {
     expect(receipt.selected[0].tick).to.equal(32);
     const report = await execution; expect(report.results[0].lastTick).to.equal(32);
   });
+  it('supersedes startup steps and repeatedly advances one shared boundary across real workers', async () => {
+    let controls; const acknowledgements = [];
+    const execution = runSurveyJobs(jobs(2, 32), { executionWorkers: 2, residentWorlds: 2, paused: true, checkpointTicks: 4,
+      maxTotalMs: 8000, onControlReady: value => { controls = value; value.step(); value.step(); },
+      onControlState: value => { if (value.stepStatus) acknowledgements.push(value); } });
+    try {
+      await until(() => acknowledgements.filter(value => value.controlId === 2).length === 2);
+      expect(acknowledgements.some(value => value.controlId === 1)).to.equal(false);
+      expect(acknowledgements.every(value => value.reachedCheckpoint === 4 && value.selected.length === 1)).to.equal(true);
+      controls.step(); await until(() => acknowledgements.filter(value => value.controlId === 3).length === 2);
+      expect(acknowledgements.filter(value => value.controlId === 3).every(value => value.reachedCheckpoint === 8)).to.equal(true);
+      controls.resume(); const report = await execution;
+      expect(report.error).to.equal(null); expect(report.results.every(result => result.lastTick === 32)).to.equal(true);
+    } catch (error) { controls?.cancel(); await execution; throw error; }
+  });
   it('pauses at completed boundaries, advances resident worlds to one shared checkpoint, then resumes the exact real trajectories', async () => {
     const requested = jobs(), pauseAcks = new Map(), reached = new Map(), previews = [], ticks = new Map(); let controls, pauseRequested = false, telemetryCount = 0;
     const execution = runSurveyJobs(requested, { executionWorkers: 2, residentWorlds: 4, sliceTicks: 8, checkpointTicks: 32, maxTotalMs: 8000, maxTrialMs: 7000,
@@ -91,7 +106,7 @@ describe('local survey server and atomic live controls', function() {
       expect(previews.every(preview => Number.isInteger(preview.tick) && typeof preview.stale === 'boolean' && preview.terrainScope.includes('base collision'))).to.equal(true);
       controls.resume(); const report = await execution; expect(report.cancelled).to.equal(false); expect(report.results).to.have.length(4); expect(report.error).to.equal(null);
       const masks = await loadProcgenMasks();
-      for (const job of requested) { const trial = await createNodeSurveyTrial(job, masks); trial.step(job.scenario.horizonTicks); const expected = trial.result(); trial.dispose(); expect(compareSurveyReplay(expected, report.results.find(result => result.trialId === job.trialId)).matched).to.equal(true); }
+      for (const job of requested) { const trial = await createNodeSurveyTrial(job, masks); trial.step(job.scenario.horizonTicks); const expected = trial.result(); trial.dispose(); const receipt = compareSurveyReplay(expected, report.results.find(result => result.trialId === job.trialId)); expect(receipt.matched, JSON.stringify(receipt)).to.equal(true); }
     } catch (error) { controls?.cancel(); await execution; throw error; }
   });
   it('keeps dashboard callback exceptions separate from simulation results', async () => {

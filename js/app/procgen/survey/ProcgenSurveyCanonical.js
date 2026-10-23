@@ -1,4 +1,5 @@
-const SURVEY_STATE_SCHEMA = 2;
+const SURVEY_STATE_SCHEMA = 3;
+const SURVEY_CANONICAL_SCHEMA = 2;
 const SUPPORTED_VIEWS = new Set(['Int8Array', 'Uint8Array', 'Uint8ClampedArray', 'Int16Array', 'Uint16Array',
   'Int32Array', 'Uint32Array', 'Float32Array', 'Float64Array', 'BigInt64Array', 'BigUint64Array']);
 const compareText = (a, b) => a < b ? -1 : a > b ? 1 : 0;
@@ -45,4 +46,4 @@ const freezeSurveyData = value => {
   if (value && typeof value === 'object' && !Object.isFrozen(value)) { for (const entry of Object.values(value)) freezeSurveyData(entry); Object.freeze(value); }
   return value;
 };
-export { SURVEY_STATE_SCHEMA, canonicalSurveyJson, hashSurveyValue, semanticSurveyRandom, freezeSurveyData };
+export { SURVEY_STATE_SCHEMA, SURVEY_CANONICAL_SCHEMA, canonicalSurveyJson, hashSurveyValue, semanticSurveyRandom, freezeSurveyData };

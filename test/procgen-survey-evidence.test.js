@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { SurveyEvidenceStore, SurveyStorageLimitError } from '../scripts/procgen-survey/SurveyEvidenceStore.js';
+import { SurveyEvidenceStore, SurveyStorageLimitError, SurveyImmutableConflictError } from '../scripts/procgen-survey/SurveyEvidenceStore.js';
 import { normalizeSurveyResources } from '../scripts/procgen-survey/SurveyWorkerPool.js';
 
 describe('bounded procgen survey evidence', function() {
@@ -67,6 +67,51 @@ describe('bounded procgen survey evidence', function() {
     catch (error) { expect(error.message).to.include('Stale survey derivative generation'); }
     expect(await store.read('report.json')).to.deep.equal({ version: 2 });
   });
+  it('retains the conflicting attempt with both checksums without replacing the original', async () => {
+    await store.writeImmutable('results/original.json', { writer: 'first' });
+    let conflict;
+    try { await store.writeImmutable('results/original.json', { writer: 'second' }); } catch (error) { conflict = error; }
+    expect(conflict).to.be.instanceOf(SurveyImmutableConflictError);
+    const retained = await store.read(conflict.conflictReference);
+    expect(retained).to.include({ target: 'results/original.json', originalChecksum: conflict.originalChecksum, attemptedChecksum: conflict.attemptedChecksum });
+    expect(retained.value).to.deep.equal({ writer: 'second' }); expect(await store.read('results/original.json')).to.deep.equal({ writer: 'first' });
+    expect(store.snapshot().durability).to.include('no power-loss flush guarantee');
+  });
+  it('protects immutable namespaces against derivative publication and path aliases', async () => {
+    await store.writeImmutable('results/original.json', { value: 'original' });
+    expect(() => store.writeDerivative('results/original.json', { value: 'replaced' }, { expectedGeneration: 0 })).to.throw('Original evidence cannot be replaced');
+    expect(() => store.writeDerivative('verification/../results/original.json', { value: 'alias' })).to.throw('Original evidence cannot be replaced');
+    expect(() => store.writeImmutable('report.json', { value: 'wrong owner' })).to.throw('requires generation publication');
+    expect(() => store._file('results/../manifest.json')).to.throw('Invalid survey evidence path');
+    expect(await store.read('results/original.json')).to.deep.equal({ value: 'original' });
+  });
+  it('checks replacement staging peak and cancels queued publication before it can commit', async () => {
+    await store.writeDerivative('report.json', { data: 'x'.repeat(17000) });
+    try { await store.writeDerivative('report.json', { data: 'y'.repeat(17000) }, { expectedGeneration: 0 }); throw new Error('unexpected staging'); }
+    catch (error) { expect(error).to.be.instanceOf(SurveyStorageLimitError); }
+    expect((await store.read('report.json')).data[0]).to.equal('x');
+    const cancelled = new AbortController(); cancelled.abort(new Error('retired persistence generation'));
+    try { await store.writeImmutable('results/cancelled.json', { writer: 'late' }, { signal: cancelled.signal }); throw new Error('unexpected commit'); }
+    catch (error) { expect(error.message).to.equal('retired persistence generation'); }
+    expect(await store.read('results/cancelled.json')).to.equal(null);
+    expect((await fs.readdir(path.join(directory, 'results'))).some(name => name.endsWith('.tmp'))).to.equal(false);
+  });
+  it('cleans a partial disk-full staging write and retains the preceding original exactly', async () => {
+    await store.writeImmutable('results/pinned.json', { value: 'original' }); const before = store.snapshot().bytes;
+    const writeFile = fs.writeFile;
+    fs.writeFile = async (file, data, options) => {
+      if (String(file).startsWith(path.join(directory, 'results', 'partial.json.'))) {
+        await writeFile(file, String(data).slice(0, 7), options); const error = new Error('disk full during staging'); error.code = 'ENOSPC'; throw error;
+      }
+      return writeFile(file, data, options);
+    };
+    try {
+      try { await store.writeImmutable('results/partial.json', { value: 'never published' }); throw new Error('unexpected publication'); }
+      catch (error) { expect(error.code).to.equal('ENOSPC'); }
+    } finally { fs.writeFile = writeFile; }
+    expect(await store.read('results/pinned.json')).to.deep.equal({ value: 'original' }); expect(await store.read('results/partial.json')).to.equal(null);
+    expect((await fs.readdir(path.join(directory, 'results')))).to.deep.equal(['pinned.json']); expect(store.snapshot().bytes).to.equal(before);
+  });
   it('removes only app-owned orphan staging after reopening', async () => {
     const orphan = path.join(directory, 'results', 'missing.json.00000000-0000-0000-0000-000000000000.tmp');
     const unknown = path.join(directory, 'results', 'external.tmp');
@@ -91,6 +136,27 @@ describe('bounded procgen survey evidence', function() {
     const outcomes = await Promise.all([child('A'), child('B')]);
     expect(outcomes.sort()).to.deep.equal(['committed', 'conflict']);
     expect(['A', 'B']).to.include((await store.read('results/process-race.json')).writer);
+  });
+  it('recovers a killed writer and preserves its published original beside orphan staging', async () => {
+    const source = new URL('../scripts/procgen-survey/SurveyEvidenceStore.js', import.meta.url).href;
+    const program = `import { SurveyEvidenceStore } from ${JSON.stringify(source)};
+      import fs from 'node:fs/promises'; import path from 'node:path';
+      const store = await new SurveyEvidenceStore(process.argv[1], { maxBytes: 32768 }).initialize({ id: 'frozen', code: 'sha' });
+      await store.writeImmutable('results/before-crash.json', { writer: 'crashed', verified: true });
+      await store._withWriterLease(async () => {
+        await fs.writeFile(path.join(process.argv[1], 'results', 'partial.json.00000000-0000-0000-0000-000000000000.tmp'), '{partial');
+        process.stdout.write('leased'); await new Promise(() => { setInterval(() => {}, 1000); });
+      });`;
+    const child = spawn(process.execPath, ['--input-type=module', '-e', program, directory], { stdio: ['ignore', 'pipe', 'pipe'] });
+    try {
+      await new Promise((resolve, reject) => { child.on('error', reject); child.stdout.once('data', resolve); child.once('exit', code => reject(new Error('Crash fixture exited before lease: ' + code))); });
+      const exited = new Promise(resolve => child.once('exit', resolve)); child.kill('SIGKILL'); await exited;
+      const reopened = await Promise.all([new SurveyEvidenceStore(directory, { maxBytes: 32768 }).initialize({ id: 'frozen', code: 'sha' }),
+        new SurveyEvidenceStore(directory, { maxBytes: 32768 }).initialize({ id: 'frozen', code: 'sha' })]);
+      for (const reader of reopened) expect(await reader.read('results/before-crash.json')).to.deep.equal({ writer: 'crashed', verified: true });
+      expect((await fs.readdir(path.join(directory, 'results')))).to.deep.equal(['before-crash.json']);
+      expect(reopened[0].snapshot().bytes).to.equal(reopened[1].snapshot().bytes);
+    } finally { if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL'); }
   });
   it('separates logical/resident counts from the small CPU worker pool and rejects impossible resources', () => {
     const bounds = normalizeSurveyResources({ residentWorlds: 64, executionWorkers: 1 }); expect(bounds.residentWorlds).to.equal(64); expect(bounds.executionWorkers).to.equal(1);

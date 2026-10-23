@@ -55,9 +55,10 @@ const runSurveyExperiment = async (manifest, store, { signal, onTelemetry = () =
   for (const block of [{ name: 'development', jobs: allJobs.slice(0, development.length * manifest.candidates.length) }, { name: 'held-out', jobs: allJobs.slice(development.length * manifest.candidates.length) }]) {
     const pending = [];
     for (const job of block.jobs) { const saved = await store.completed(job.trialId); if (saved) results.push(saved); else pending.push(job); }
-    const execution = await execute(pending, block.name, async (result, attempt) => {
+    const execution = await execute(pending, block.name, async (result, attempt, delivery) => {
       const job = pending.find(value => value.trialId === result.trialId), retained = retain(result, job);
-      await store.commitResult(retained, attempt); results.push(retained); attempts.push(attempt); if (attempt.performance) performance.push(attempt.performance);
+      await store.commitResult(retained, attempt, delivery); delivery.signal.throwIfAborted();
+      results.push(retained); attempts.push(attempt); if (attempt.performance) performance.push(attempt.performance);
       try { onResult(retained, block.name); } catch { /* Read-only display callback. */ } present();
     });
     if (execution.cancelled || execution.error) return interrupted(execution.error || execution.reason);
@@ -70,11 +71,12 @@ const runSurveyExperiment = async (manifest, store, { signal, onTelemetry = () =
     const saved = await store.read('verification/' + job.trialId + '-exact.json'), original = results.find(result => result.trialId === job.trialId);
     if (saved) { const receipt = compareSurveyReplay(original, saved.replay); verification.push(receipt); promote(original, receipt); } else pendingVerification.push(job);
   }
-  const exact = await execute(pendingVerification.map(job => ({ ...job, attemptId: randomUUID() })), 'exact-verification', async (replay, attempt) => {
+  const exact = await execute(pendingVerification.map(job => ({ ...job, attemptId: randomUUID() })), 'exact-verification', async (replay, attempt, delivery) => {
     const original = results.find(result => result.trialId === replay.trialId), receipt = compareSurveyReplay(original, replay);
-    await store.writeImmutable('verification/' + replay.trialId + '-exact.json', { ...receipt, replay, attempt }); verification.push(receipt); promote(original, receipt);
+    await store.writeImmutable('verification/' + replay.trialId + '-exact.json', { ...receipt, replay, attempt }, delivery); delivery.signal.throwIfAborted(); verification.push(receipt); promote(original, receipt);
   });
   if (exact.error || exact.cancelled) return interrupted(exact.error || exact.reason);
+  if (verification.some(receipt => receipt.validity === 'invalid-or-incomplete')) return interrupted('replay-evidence-invalid-or-incomplete');
   if (verification.some(receipt => !receipt.matched)) return interrupted('determinism-defect');
   const baseline = manifest.candidates.find(candidate => candidate.kind === 'baseline'), baselineId = baseline.id;
   const selected = selectProcgenSurveyExemplars(results, { baselineId, capacities: { success: 4, failure: 4, normal: 2, context: 2 } });
@@ -100,16 +102,16 @@ const runSurveyExperiment = async (manifest, store, { signal, onTelemetry = () =
     const first = new Map(), jobs = pending.map(job => ({ ...job, trialId: createSurveyTrialId(job.scenario, job.candidate), attemptId: randomUUID() }));
     const firstPending = [];
     for (const job of jobs) { const saved = await store.read('verification/' + job.id + '-original.json'); if (saved) first.set(job.trialId, saved); else firstPending.push(job); }
-    const firstRun = await execute(firstPending, 'success-qualification', async (result, attempt) => {
-      const job = jobs.find(item => item.trialId === result.trialId), retained = retain(result, job); first.set(result.trialId, { result: retained, attempt });
-      await store.writeImmutable('verification/' + job.id + '-original.json', { jobId: job.id, result: retained, attempt });
+    const firstRun = await execute(firstPending, 'success-qualification', async (result, attempt, delivery) => {
+      const job = jobs.find(item => item.trialId === result.trialId), retained = retain(result, job);
+      await store.writeImmutable('verification/' + job.id + '-original.json', { jobId: job.id, result: retained, attempt }, delivery); delivery.signal.throwIfAborted(); first.set(result.trialId, { result: retained, attempt });
     });
     if (!firstRun.error && !firstRun.cancelled) {
-      const secondRun = await execute(jobs.map(job => ({ ...job, attemptId: randomUUID() })), 'success-qualification-replay', async (replay, attempt) => {
+      const secondRun = await execute(jobs.map(job => ({ ...job, attemptId: randomUUID() })), 'success-qualification-replay', async (replay, attempt, delivery) => {
         const job = jobs.find(item => item.trialId === replay.trialId), originalRecord = first.get(replay.trialId), receipt = compareSurveyReplay(originalRecord.result, replay);
         const derived = { ...originalRecord.result, validity: { ...originalRecord.result.validity, deterministic: receipt.matched } };
         const record = { jobId: job.id, result: derived, originalReference: job.id + '-original.json', replay, receipt, attempt };
-        await store.writeImmutable('verification/' + job.id + '.json', record); records.push(record);
+        await store.writeImmutable('verification/' + job.id + '.json', record, delivery); delivery.signal.throwIfAborted(); records.push(record);
       });
       if (secondRun.error || secondRun.cancelled) return interrupted(secondRun.error || secondRun.reason);
     }
