@@ -51,6 +51,21 @@ describe('local survey server and atomic live controls', function() {
     const report = await execution; expect(report.cancelled).to.equal(true); expect(report.results).to.have.length(3);
     expect(report.results.every(result => result.status === 'cancelled' && result.lastTick === 0 && result.terminationReason === 'not-admitted')).to.equal(true);
   });
+  it('leases bounded queued trials for an initially paused checkpoint and reports their actual ticks', async () => {
+    let controls, receipt; const telemetry = [];
+    const execution = runSurveyJobs(jobs(3, 64), { executionWorkers: 1, residentWorlds: 2, paused: true, sliceTicks: 2, checkpointTicks: 4,
+      maxTotalMs: 5000, maxTrialMs: 4000, onControlReady: value => { controls = value; },
+      onControlState: value => { if (value.stepStatus) receipt = value; }, onTelemetry: (id, value) => telemetry.push({ id, tick: value.tick }) });
+    try {
+      await until(() => !!controls); controls.step(); await until(() => !!receipt);
+      expect(receipt.stepStatus).to.equal('reached'); expect(receipt.reachedCheckpoint).to.equal(4);
+      expect(receipt.selected).to.have.length(2); expect(receipt.selected.every(value => value.tick === 4)).to.equal(true);
+      expect(receipt.queued).to.equal(1); expect(telemetry.some(value => value.tick === 4)).to.equal(true);
+      const before = telemetry.length; await delay(75); expect(telemetry.length).to.equal(before);
+      controls.resume(); const report = await execution; expect(report.results).to.have.length(3);
+      expect(report.results.every(result => result.episodeComplete)).to.equal(true);
+    } catch (error) { controls?.cancel(); await execution; throw error; }
+  });
   it('pauses at completed boundaries, advances resident worlds to one shared checkpoint, then resumes the exact real trajectories', async () => {
     const requested = jobs(), pauseAcks = new Map(), reached = new Map(), previews = [], ticks = new Map(); let controls, pauseRequested = false, telemetryCount = 0;
     const execution = runSurveyJobs(requested, { executionWorkers: 2, residentWorlds: 4, sliceTicks: 8, checkpointTicks: 32, maxTotalMs: 8000, maxTrialMs: 7000,

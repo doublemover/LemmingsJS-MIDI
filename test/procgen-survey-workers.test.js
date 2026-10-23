@@ -35,4 +35,13 @@ describe('real isolated procgen survey workers', function() {
     try { await runSurveyJobs(jobs(), { maxTotalTicks: 127, onTelemetry: () => updates++ }); throw new Error('unexpected admission'); } catch (error) { expect(error.message).to.include('simulation budget'); }
     expect(updates).to.equal(0);
   });
+  it('returns an unknown persistence receipt when the storage callback never settles', async () => {
+    const started = Date.now();
+    const report = await runSurveyJobs(jobs().slice(0, 1), { maxTotalMs: 5000, maxPersistenceMs: 100,
+      onResult: () => new Promise(() => {}) });
+    expect(Date.now() - started).to.be.lessThan(3000);
+    expect(report.reason).to.equal('persistence-timeout');
+    expect(report.persistence[0].status).to.equal('unknown-after-timeout');
+    expect(report.results).to.have.length(1);
+  });
 });

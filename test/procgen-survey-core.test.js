@@ -5,6 +5,7 @@ import { normalizeProcgenPolicyConfig, DEFAULT_PROCGEN_POLICY_CONFIG } from '../
 import { createSurveyTrial, createSurveyTrialId, normalizeSurveyScenario } from '../js/app/procgen/survey/ProcgenSurveyCore.js';
 import { ProcgenSurveyTerrain } from '../js/app/procgen/survey/ProcgenSurveyTerrain.js';
 import { canonicalSurveyJson, hashSurveyValue, semanticSurveyRandom } from '../js/app/procgen/survey/ProcgenSurveyCanonical.js';
+import { compareSurveyReplay } from '../js/app/procgen/survey/ProcgenSurveyReplay.js';
 import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
 
 const scene = (overrides = {}) => ({ id: 'flat-eight', horizonTicks: 220, checkpointEvery: 32, environmentSeed: 42,
@@ -103,6 +104,16 @@ describe('isolated deterministic real procgen survey core', function() {
     const noLearning = new ProcgenLanePolicy(world, { learningEnabled: false }); noLearning._credit(0, 'builders', 'passage'); noLearning._credit(0, 'builders', 'crew-failure');
     expect(noLearning.lanes[0].learned.builders).to.equal(0); copy.dispose(); noLearning.dispose(); world.dispose();
   });
+  it('does not read terminal actor actions on later observation ticks', () => {
+    const trial = createSurveyTrial({ masks, scenario: scene() }), actor = trial.world.actors[0];
+    actor.terminalReason = 'trapped'; trial._observe();
+    const first = trial._accounting(); expect(first.allDeaths).to.equal(1);
+    const action = actor.action; let reads = 0;
+    Object.defineProperty(actor, 'action', { configurable: true, get() { reads++; return action; } });
+    for (let index = 0; index < 100; index++) trial._observe();
+    expect(reads).to.equal(0); expect(trial._accounting()).to.deep.equal(first);
+    Object.defineProperty(actor, 'action', { configurable: true, writable: true, value: action }); trial.dispose();
+  });
   it('hashes canonical semantic identities independently of object key order and display metadata', () => {
     expect(hashSurveyValue({ a: 1, b: [2, 3] })).to.equal(hashSurveyValue({ b: [2, 3], a: 1 }));
     expect(hashSurveyValue(undefined)).not.to.equal(hashSurveyValue(['undefined']));
@@ -116,6 +127,22 @@ describe('isolated deterministic real procgen survey core', function() {
     expect(() => normalizeSurveyScenario(scene({ physicalLaneCount: 0 }))).to.throw();
     expect(() => normalizeSurveyScenario(scene({ admissions: [{ id: 'same' }, { id: 'same' }] }))).to.throw('identities');
     expect(() => createSurveyTrial({ masks, scenario: scene({ mode: 'generated' }) })).to.throw('fresh loaded terrain');
+  });
+  it('preserves special typed values and rejects incomplete replay evidence', () => {
+    const values = [-0, 0, NaN, Infinity, -Infinity];
+    expect(new Set(values.map(value => hashSurveyValue(new Float64Array([value])))).size).to.equal(5);
+    const bytes = new Uint8Array([1, 2, 3, 4]);
+    expect(hashSurveyValue(new DataView(bytes.buffer, 0, 2))).not.to.equal(hashSurveyValue(new DataView(bytes.buffer, 1, 2)));
+    expect(hashSurveyValue(new BigInt64Array([1n]))).not.to.equal(hashSurveyValue(new BigInt64Array([2n])));
+    expect(compareSurveyReplay({}, {}).matched).to.equal(false);
+    const complete = finalReplay(masks);
+    expect(compareSurveyReplay(complete, complete).matched).to.equal(true);
+    expect(compareSurveyReplay(complete, { ...complete, provenance: { ...complete.provenance, stateSchema: 1 } }).matched).to.equal(false);
+    expect(compareSurveyReplay(complete, { ...complete, evidence: { ...complete.evidence, truncated: true } }).matched).to.equal(false);
+    expect(compareSurveyReplay(complete, { ...complete, milestones: [] }).matched).to.equal(false);
+    const trial = createSurveyTrial({ masks, scenario: scene() });
+    trial.world.terrainActivityTicks[0] = NaN;
+    expect(() => trial.snapshot()).to.throw('Invalid terrain activity tick'); trial.dispose();
   });
   it('qualifies the whole ordinary wall crew and retains a genuine incomplete bridge crew', () => {
     const wall = finalReplay(masks, { id: 'wall-eight', horizonTicks: 500, cohort: { size: 8, birthInterval: 8 }, goal: { x: 120, y: 64, width: 72, height: 16 },

@@ -45,6 +45,17 @@ describe('bounded procgen survey evidence', function() {
     try { await store.writeDerivative('report.json', { data: 'x'.repeat(32768) }); throw new Error('unexpected report write'); } catch (error) { expect(error).to.be.instanceOf(SurveyStorageLimitError); }
     expect((await store.read('report.json')).data.length).to.equal(10);
   });
+  it('publishes one immutable value across independent stores and reconciles repeated initialization', async () => {
+    const second = await new SurveyEvidenceStore(directory, { maxBytes: 32768 }).initialize({ id: 'frozen', code: 'sha' });
+    const before = store.snapshot().bytes;
+    await store.initialize({ id: 'frozen', code: 'sha' }); expect(store.snapshot().bytes).to.equal(before);
+    const attempts = await Promise.allSettled([store.writeImmutable('results/race.json', { writer: 'A' }), second.writeImmutable('results/race.json', { writer: 'B' })]);
+    expect(attempts.filter(entry => entry.status === 'fulfilled')).to.have.length(1);
+    expect(attempts.filter(entry => entry.status === 'rejected')[0].reason.message).to.include('Conflicting immutable');
+    const retained = await store.read('results/race.json'); expect(['A', 'B']).to.include(retained.writer);
+    expect((await fs.readdir(path.join(directory, 'results')))).to.deep.equal(['race.json']);
+    expect(await second.writeImmutable('results/race.json', retained)).to.deep.equal(retained);
+  });
   it('separates logical/resident counts from the small CPU worker pool and rejects impossible resources', () => {
     const bounds = normalizeSurveyResources({ residentWorlds: 64, executionWorkers: 1 }); expect(bounds.residentWorlds).to.equal(64); expect(bounds.executionWorkers).to.equal(1);
     for (const patch of [{ executionWorkers: 16 }, { residentWorlds: 65 }, { sliceTicks: 0 }, { maxTotalTicks: Infinity }]) expect(() => normalizeSurveyResources(patch)).to.throw(RangeError);

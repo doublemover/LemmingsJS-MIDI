@@ -30,7 +30,8 @@ const captureState = (world, records, eventHash, { physicalOnly = false } = {}) 
     if (actors.has(value) && !path.startsWith('actors.')) return { actor: actors.get(value) };
     if (seen.has(value)) return { reference: seen.get(value) };
     seen.set(value, path);
-    if (ArrayBuffer.isView(value)) return { typed: value.constructor.name, length: value.length, hash: hashSurveyValue(value) };
+    if (ArrayBuffer.isView(value)) return { typed: value.constructor.name, length: value.length ?? value.byteLength,
+      byteOffset: value.byteOffset, byteLength: value.byteLength, hash: hashSurveyValue(value) };
     if (value instanceof Map) return { map: Array.from(Map.prototype.entries.call(value), ([key, entry], index) => [encode(key, `${path}.key${index}`), encode(entry, `${path}.value${index}`)]),
       properties: Object.fromEntries(Object.keys(value).filter(key => !ignoredKeys.has(key) && !key.startsWith('_last')).sort().map(key => [key, encode(Object.getOwnPropertyDescriptor(value, key)?.value, `${path}.${key}`)])) };
     if (value instanceof Set) return { set: Array.from(value, (entry, index) => encode(entry, `${path}.${index}`)) };
@@ -71,9 +72,9 @@ class ProcgenSurveyTrial {
     terrain ||= new ProcgenSurveyTerrain(this.scenario.geometry);
     if (activeTerrainOwners.has(terrain)) throw new Error('Survey replicas cannot share mutable terrain');
     activeTerrainOwners.add(terrain); this._terrain = terrain;
-    this._records = []; this._byIdentity = new Map(); this._pendingAdmission = null; this._nextAdmission = 0; this._disposed = false;
+    this._records = []; this._activeRecords = new Set(); this._byIdentity = new Map(); this._pendingAdmission = null; this._nextAdmission = 0; this._disposed = false;
     this._events = []; this._eventCount = 0; this._eventHash = hashSurveyValue(['logical-events-v1']); this._milestones = []; this._milestonesOmitted = 0;
-    this._resets = 0; this._actorSteps = 0; this._missingActors = 0; this._illegitimateTraits = false; this._lastStatus = null; this._protectedViolation = false;
+    this._resets = 0; this._actorSteps = 0; this._missingActors = 0; this._allDeaths = 0; this._illegitimateTraits = false; this._lastStatus = null; this._protectedViolation = false;
     const s = this.scenario;
     try {
       this.world = new ProcgenLaneWorld({ ...s.worldOptions, masks, terrain, laneCount: s.physicalLaneCount, laneHeight: s.laneHeight,
@@ -90,7 +91,8 @@ class ProcgenSurveyTrial {
       this._restartOriginal = this.world._restart;
       this.world._restart = previous => {
         this._observe();
-        for (const record of this._records) if (record.generation === this.world.generation && !record.deathReason && !record.retired) { record.retired = 'generation-reset'; record.retiredTick = this.world.tickIndex; }
+        for (const record of this._activeRecords) if (record.generation === this.world.generation && !record.deathReason && !record.retired) { record.retired = 'generation-reset'; record.retiredTick = this.world.tickIndex; }
+        for (const record of this._activeRecords) if (record.retired || record.deathReason) this._activeRecords.delete(record);
         this._resets++; this._recordEvent({ type: 'generation-reset', generation: this.world.generation, tick: this.world.tickIndex });
         this._restartOriginal.call(this.world, previous);
       };
@@ -108,7 +110,7 @@ class ProcgenSurveyTrial {
       birthLane: actor.spawnLaneIndex, birthOrdinal: actor.spawnOrdinal, designated: this.scenario.designatedCohort.includes(id),
       scout: actor.scout, worker: false, guard: false, allowedClimb: actor.canClimb || !!(actor.scoutAbilities & 1),
       allowedFloat: actor.hasParachute || !!(actor.scoutAbilities & 2), arrivalTick: null, qualifiedTick: null, deathTick: null, deathReason: null, retired: null };
-    this._records.push(record); this._byIdentity.set(id, record); return record;
+    this._records.push(record); this._activeRecords.add(record); this._byIdentity.set(id, record); return record;
   }
   _admit() {
     const tape = this.scenario.admissions, world = this.world;
@@ -154,12 +156,12 @@ class ProcgenSurveyTrial {
   }
   _observe() {
     const world = this.world, live = new Set(world.actors), goal = this.scenario.goal;
-    for (const record of this._records) {
+    for (const record of this._activeRecords) {
       const actor = record.actor;
       record.worker ||= [State.BUILDING, State.BASHING, State.MINING, State.DIGGING].some(state => actor.action === world.actions[state]);
       record.guard ||= actor.action === world.actions[State.BLOCKING];
       this._illegitimateTraits ||= !!actor.canClimb && !record.allowedClimb || !!actor.hasParachute && !record.allowedFloat;
-      if (!record.deathReason && (actor.failureReason || actor.terminalReason)) { record.deathReason = actor.terminalReason || actor.failureReason; record.deathTick = world.tickIndex; }
+      if (!record.deathReason && (actor.failureReason || actor.terminalReason)) { record.deathReason = actor.terminalReason || actor.failureReason; record.deathTick = world.tickIndex; this._allDeaths++; }
       if (!record.retired && actor.removed && !record.deathReason) { record.retired = 'removed'; record.retiredTick = world.tickIndex; }
       if (!record.retired && !record.deathReason && !live.has(actor)) { record.retired = 'missing'; record.retiredTick = world.tickIndex; this._missingActors++; }
       const alive = !record.deathReason && !record.retired && !actor.disabled;
@@ -168,6 +170,7 @@ class ProcgenSurveyTrial {
         record.arrivalTick = world.tickIndex; this._recordEvent({ type: 'designated-arrival', identity: record.id, designated: record.designated, tick: world.tickIndex });
       }
       if (alive && record.arrivalTick != null && record.qualifiedTick == null && world.tickIndex - record.arrivalTick >= goal.postArrivalTicks) record.qualifiedTick = world.tickIndex;
+      if (record.deathReason || record.retired) this._activeRecords.delete(record);
     }
   }
   _accounting() {
@@ -181,7 +184,7 @@ class ProcgenSurveyTrial {
       retired: admitted.filter(record => record.retired).length, deathsByCause, firstDeathTick: deathRecords.length ? Math.min(...deathRecords.map(record => record.deathTick)) : null,
       ordinary: admitted.filter(record => !record.scout).length, scouts: admitted.filter(record => record.scout).length,
       workers: admitted.filter(record => record.worker).length, guards: admitted.filter(record => record.guard).length,
-      totalBirths: this._records.length, additionalBirths: this._records.length - admitted.length, allDeaths: this._records.filter(record => record.deathReason).length,
+      totalBirths: this._records.length, additionalBirths: this._records.length - admitted.length, allDeaths: this._allDeaths,
       resets: this._resets, missingActors: this._missingActors };
   }
   _refreshTelemetry() {
@@ -202,10 +205,11 @@ class ProcgenSurveyTrial {
     if (!Number.isInteger(count) || count < 0 || count > 100000) throw new Error('Invalid survey step count');
     for (let at = 0; at < count && !this.done; at++) {
       if (this.scenario.mode === 'controlled') this._admit();
-      this._actorSteps += this.world.actors.length; this.world.step(); this._observe(); this._refreshTelemetry();
-      if (this.world.tickIndex % this.scenario.checkpointEvery === 0 || this.done) this.observeMilestone();
+      this._actorSteps += this.world.actors.length; this.world.step(); this._observe();
+      if (this.world.tickIndex % this.scenario.checkpointEvery === 0 || this.done) { this._refreshTelemetry(); this.observeMilestone(); }
       if (this._records.length >= this.scenario.actorRecordLimit) this._lastStatus = 'infrastructure-error';
     }
+    if (this._telemetry.tick !== this.world.tickIndex) this._refreshTelemetry();
     return this._telemetry;
   }
   telemetry() { return this._telemetry; }
@@ -229,6 +233,13 @@ class ProcgenSurveyTrial {
   }
   snapshot() {
     if (this._disposed) throw new Error('Survey trial is disposed');
+    for (const tick of this.world.terrainActivityTicks) {
+      if (tick !== -Infinity && (!Number.isFinite(tick) || tick < 0)) {
+        const error = new Error('Invalid terrain activity tick in survey state');
+        error.name = 'SurveyInvalidStateError'; error.kind = 'invalid-state'; error.field = 'terrainActivityTicks';
+        throw error;
+      }
+    }
     const state = captureState(this.world, this._records, this._eventHash);
     state.controlledTriggers = this._fixedTriggers?.map(trigger => ({ id: trigger.surveyId, cooldown: trigger.disabledUntilTick })) || [];
     state.evaluation = { resets: this._resets, missingActors: this._missingActors, protectedViolation: this._protectedViolation, illegitimateTraits: this._illegitimateTraits };
