@@ -154,5 +154,6 @@ non-realtime admission boundary. It bounds active workers, queued job count,
 retained queued input and aggregate estimated memory before granting execution.
 Priority aging gives older background work a chance to run. Resource leases
 remain charged until the caller acknowledges retirement; cancellation callbacks
-cannot manufacture a completed release. Import, encoding, recovery and asset
-job execution still need to consume the same boundary.
+cannot manufacture a completed release. Import parsing and export encoding now
+consume the same boundary through registered pure job kernels. Recovery and
+asset job integration remains pending.

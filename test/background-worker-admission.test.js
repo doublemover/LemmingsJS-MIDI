@@ -34,4 +34,10 @@ describe('shared background worker and queued-input admission', () => {
     held.release(); const search = await background; expect(order).to.deep.equal(['search']); search.release();
     const imported = await interactive; imported.release(); expect(order).to.deep.equal(['search', 'import']); service.dispose();
   });
+  it('keeps computed bytes reserved after freeing their worker slot', async () => {
+    const service = createBackgroundWorkerAdmission({ maxWorkers: 1 }), first = await service.acquire(request('encode'));
+    first.computationFinished(); const next = await service.acquire(request('hash', { kind: 'asset-hash' }));
+    expect(service.diagnostics()).to.include({ activeWorkers: 1, retainedResults: 1 });
+    first.release(); next.release(); expect(service.diagnostics().memory.accountedBytes).to.equal(0); service.dispose();
+  });
 });

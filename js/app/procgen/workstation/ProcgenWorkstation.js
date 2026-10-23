@@ -18,6 +18,8 @@ import { createProcgenWorldInspector } from './ProcgenWorldInspector.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 import { resolveProcgenStartupIntent } from './ProcgenStartupIntent.js';
 import { deliverArtifactToAnchor, deliverArtifactToFileHandle, prepareExportArtifact, requestExportFileHandle } from '../../export/ExportArtifact.js';
+import { backgroundJobService } from '../../resources/BackgroundJobService.js';
+import { readBrowserBuildResponse } from '../../../runtime/BrowserGenerationService.js';
 
 const STORAGE_KEY = 'lemmings.procgen.workstation.v1';
 const MAX_SESSION_FILE_BYTES = 64 * 1048576;
@@ -57,7 +59,7 @@ function rollbackWorldProject(previous, staged, current) {
 export function createProcgenWorkstation({ document, window, legacy, getRuntime, restart,
   createView = createProcgenWorkstationView, storage = createProcgenSessionStorage(window.indexedDB),
   captureCheckpoint = captureProcgenCheckpoint, transportOptions = {}, historyBytesLimit = 32 * 1024 * 1024,
-  resourceBudget = null, startupIntent, startupSource = null }) {
+  resourceBudget = null, startupIntent, startupSource = null, backgroundJobs = backgroundJobService }) {
   if (!Number.isSafeInteger(historyBytesLimit) || historyBytesLimit < 1024) throw new Error('Invalid history byte limit.');
   const now = () => window.performance?.now?.() ?? performance.now();
   let saved = null;
@@ -1042,17 +1044,36 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
       const lease = beginOperation('import');
       if (file?.size != null && (!Number.isSafeInteger(file.size) || file.size < 0 || file.size > MAX_SESSION_FILE_BYTES)) throw new Error('Project file exceeds the 64 MiB import limit.');
-      const text = await file.text();
-      if (!ownsOperation(lease)) return false;
-      if (text.length > MAX_SESSION_FILE_BYTES) throw new Error('Project file exceeds the 64 MiB import limit.');
-      const session = JSON.parse(text);
-      if (!ownsOperation(lease)) return false;
-      return loadSession(session, lease);
+      const generation = documentGeneration, revision = editRevision, inputBytes = file.size ?? 0;
+      let computed = null;
+      try {
+        computed = await backgroundJobs.compute({ kind: 'parse-json', ownerId: 'procgen-import', ownerEpoch: generation,
+          sourceRevision: `${generation}:${revision}`, inputBytes, estimatedPeakBytes: Math.min(400 * 1048576, 64 * 1048576 + inputBytes * 24),
+          signal: lease.signal, budgetAdapter: resourceBudget, isCurrent: () => ownsOperation(lease) && documentGeneration === generation && editRevision === revision,
+          prepareInput: async ({ signal }) => {
+            if (typeof file.stream !== 'function') return file.text();
+            const bytes = await readBrowserBuildResponse(new globalThis.Response(file.stream()), MAX_SESSION_FILE_BYTES, signal);
+            return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+          }, onProgress: phase => status(`Preparing project: ${phase.phase}.`) });
+        if (!ownsOperation(lease)) return false;
+        return await loadSession(computed.value, lease);
+      } finally { computed?.release(); finishOperation(lease); }
     }),
-    export: safe(async () => { const session = capture(); prepareDownload({ bytes: JSON.stringify(session),
-      filename: savedName.replace(/[^a-z0-9_-]+/gi, '-') + '.procgen.json', type: 'application/json',
-      sourceRef: `project:${documentId}:${editRevision}:${session.world?.tickIndex ?? 'unknown'}`, formatVersion: 'procgen-session/v1' });
-    if (deliverPrepared()?.state === 'delivery-requested') status('Project download requested. Check your browser downloads. Retry file uses the same prepared project.'); }),
+    export: safe(async () => {
+      if (worldBusy) throw new Error('Wait for the world change to finish before exporting.');
+      const lease = beginOperation('export'), generation = documentGeneration, revision = editRevision, id = documentId, name = savedName;
+      let computed = null, session = null;
+      try {
+        computed = await backgroundJobs.compute({ kind: 'encode-json', ownerId: 'procgen-export', ownerEpoch: generation,
+          sourceRevision: `${generation}:${revision}`, inputBytes: 0, estimatedPeakBytes: 128 * 1048576 + project.procgen.lanes.length * 131072,
+          signal: lease.signal, budgetAdapter: resourceBudget, isCurrent: () => ownsOperation(lease) && documentGeneration === generation && editRevision === revision,
+          prepareInput: () => { session = capture(); return session; }, onProgress: phase => status(`Preparing project file: ${phase.phase}.`) });
+        if (!ownsOperation(lease)) return false;
+        prepareDownload({ bytes: computed.value, filename: name.replace(/[^a-z0-9_-]+/gi, '-') + '.procgen.json', type: 'application/json',
+          sourceRef: `project:${id}:${revision}:${session.world?.tickIndex ?? 'unknown'}`, formatVersion: 'procgen-session/v1' });
+        if (deliverPrepared()?.state === 'delivery-requested') status('Project download requested. Check your browser downloads. Retry file uses the same prepared project.');
+      } finally { computed?.release(); session = null; finishOperation(lease); }
+    }),
     exportMidi: safe(() => {
       const state = ports.getState();
       const submitted = ports.getRecording({ direction: 'output', evidence: 'api-accepted' });

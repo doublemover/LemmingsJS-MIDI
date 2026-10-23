@@ -177,6 +177,22 @@ recoverable setup while assets prepare. Startup source reads have a bounded
 deadline and navigation cancellation. Added resolver/controller/browser
 fixtures remain unexecuted during the frontloaded implementation pass.
 
+Project import parsing and export JSON encoding use registered background jobs.
+Admission reserves estimated source, staging and result overlap before reading
+an import or capturing an export snapshot. Jobs carry the document generation
+and edit revision; an obsolete result cannot publish into a replacement
+document. Computed results release their worker slot while retaining their
+memory lease through load/artifact publication. Data is copied as an owned
+snapshot; this path never transfers or detaches live world buffers.
+
+The job protocol registers JSON parsing, JSON encoding, recovery checksums and
+asset hashes. Worker jobs are bound to the executing build when generated
+application identity exists. Without workers, only small bounded JSON jobs and
+native byte hashing are admitted; a large synchronous parse is not described
+as cancellable. Snapshot capture itself still runs at a completed main-thread
+boundary. Recovery/asset integration, content coalescing and measured live-load
+qualification remain follow-through work.
+
 The World inspector controls trap spacing and display row height. Playable terrain
 assembles near approaching actors; camera movement does not build distant terrain.
 Farther scenery is visual only and uses staggered, world-anchored dithering.

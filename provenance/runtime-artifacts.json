@@ -8,7 +8,8 @@
   },
   "workerSources": [
     "js/app/procgen/survey/ProcgenSurveyReplaySession.js",
-    "js/app/procgen/workstation/ProcgenTimingDriver.js"
+    "js/app/procgen/workstation/ProcgenTimingDriver.js",
+    "js/app/resources/BackgroundJobService.js"
   ],
   "components": [
     {
@@ -99,6 +100,18 @@
       "files": ["js/app/procgen/survey/ProcgenSurveyExecution.js", "js/app/procgen/survey/ProcgenSurveyReplayBudget.js", "js/app/procgen/survey/ProcgenSurveyReplaySession.js", "js/app/procgen/survey/ProcgenSurveyReplayWorker.js"],
       "fileCount": 4,
       "sha256": "6d5adf7256666b74ef8bef66cc70f9a7b5b2797450c092f64565219f70b32bdf"
+    },
+    {
+      "id": "lemmings-background-job-worker",
+      "upstream": "https://github.com/doublemover/LemmingsJS-MIDI",
+      "upstreamVersion": "source-bound",
+      "license": "NOASSERTION",
+      "reproductionStatus": "first-party-immutable-module-worker",
+      "classification": "source",
+      "entryPoints": ["js/app/procgen/workstation/ProcgenWorkstation.js"],
+      "files": ["js/app/resources/BackgroundWorkerAdmission.js", "js/app/resources/BackgroundJobKernels.js", "js/app/resources/BackgroundJobService.js", "js/app/resources/BackgroundJobWorker.js"],
+      "fileCount": 4,
+      "sha256": "41b2c1bca5ab22c56479c3033c55065e118574f8601c1ed92d86573fbccf1fd6"
     },
     {
       "id": "lemmings-timing-worker-source",

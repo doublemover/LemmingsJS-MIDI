@@ -2,7 +2,7 @@ import { SURVEY_STATE_SCHEMA } from '../app/procgen/survey/ProcgenSurveyCanonica
 
 // The release builder replaces only this data slot inside an immutable graph.
 const APPLICATION_BUILD = null; // IMMUTABLE_APPLICATION_BUILD_SLOT
-const profiles = new Set(['browser-survey-core', 'browser-native-audio', 'browser-worklet-sine']);
+const profiles = new Set(['browser-survey-core', 'browser-native-audio', 'browser-worklet-sine', 'browser-background-jobs']);
 const realmId = globalThis.crypto?.randomUUID?.() ?? null;
 const executingRoot = new URL('../../', import.meta.url);
 const fields = ['buildId', 'closureDigest', 'harnessVersion', 'stateSchema', 'assetDigest', 'capabilityProfile'];
