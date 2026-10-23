@@ -53,6 +53,21 @@ describe('ProcGen presentation admission and retention', () => {
       expect(lease.active).to.equal(false); expect(f.reservations.size).to.equal(0); release(); f.host.dispose();
     }
   });
+  it('suspends nested transition owners until a complete post-transition frame is accepted', () => {
+    const f = fixture(), release = f.host.subscribe(() => {}); f.renderer.render();
+    const lease = f.host.acquire('pointer'), fullscreen = f.host.suspend('fullscreen', 'Fullscreen transition'), dock = f.host.suspend('dock', 'Dock transition');
+    expect(lease.active).to.equal(false); expect(f.host.getStatus()).to.include({ available: false, suspended: true });
+    expect(f.renderer.render()).to.equal(null); expect(f.host.acquire('pointer')).to.equal(null);
+    fullscreen(); fullscreen(); expect(f.host.getStatus().suspended).to.equal(true); expect(f.renderer.render()).to.equal(null);
+    f.rect({ left: 0, top: 0, width: 800, height: 608 }); dock();
+    expect(f.host.getStatus()).to.include({ available: false, suspended: false }); expect(f.renderer.lastFrameKey).to.equal(null);
+    f.renderer.render(); expect(f.host.getSnapshot().rect.width).to.equal(800); expect(f.host.acquire('pointer').active).to.equal(true);
+    f.host.dispose(); release(); fullscreen(); dock(); expect(f.reservations.size).to.equal(0);
+  });
+  it('bounds suspension owners and permits late releases after disposal', () => {
+    const f = fixture(), releases = Array.from({ length: 8 }, (_, id) => f.host.suspend(`owner${id}`));
+    expect(f.host.suspend('overflow')).to.equal(null); f.host.dispose(); for (const release of releases) expect(release).not.to.throw();
+  });
   it('caps retained gestures and fails inspection admission without breaking rendering', () => {
     const f = fixture(), release = f.host.subscribe(() => {}); f.renderer.render();
     const leases = Array.from({ length: 32 }, () => f.host.acquire('pointer'));

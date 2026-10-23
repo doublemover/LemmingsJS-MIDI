@@ -195,3 +195,11 @@ recording physical tick/terrain/event sequence, document and transport receipts.
 Inspection leaves those receipts unchanged. Playwright attaches the selected
 canvas screenshot and geometry/identity receipts. This is one installed browser,
 not cross-browser, retained-heap, acoustic-sync or rotated-host qualification.
+
+The host also offers `presentation.suspend(owner, reason)`, returning an idempotent
+release callback. A fullscreen/layout owner can hold admission across its DOM
+transition, apply final layout/resize, release, then request a renderer paint.
+Suspension immediately cancels gestures and prevents publication until all owners
+release (at most eight holds). `presentation.getSnapshot()` reports unavailable
+until a coherent visible frame is accepted, with its accepted generation/tick,
+projection, content rect, logical/backing sizes and capabilities.

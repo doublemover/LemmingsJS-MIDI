@@ -7,7 +7,7 @@ const layoutKey = renderer => {
 
 class ProcgenPresentationHost {
   constructor(renderer) {
-    this.renderer = renderer; this.current = null; this.retained = new Map(); this.leases = new Map(); this.listeners = new Set();
+    this.renderer = renderer; this.current = null; this.retained = new Map(); this.leases = new Map(); this.listeners = new Set(); this.suspensions = new Map();
     this.revision = 0; this.projectionRevision = 0; this.demandRevision = 0; this.reason = 'Wait for the world display to present.'; this.disposed = false; this.maxLeases = 32;
   }
   domKey() { const rect = this.demanded && readProcgenCanvasRect(this.renderer.canvas, this.renderer.window); return rect ? [rect.left, rect.top, rect.width, rect.height].join(':') : 'hidden'; }
@@ -23,8 +23,14 @@ class ProcgenPresentationHost {
     if (!snapshot || snapshot === this.current || [...this.leases.values()].some(record => record.snapshot === snapshot)) return;
     const key = this.retained.get(snapshot); if (key) this.renderer.resources.release(key); this.retained.delete(snapshot);
   }
+  suspend(owner, reason = 'World input is waiting for the display transition.') {
+    if (this.disposed || !owner || this.suspensions.size >= 8) return null;
+    const token = {}; this.suspensions.set(token, { owner, reason: String(reason).slice(0, 200) }); this.invalidate(String(reason).slice(0, 200));
+    let released = false;
+    return () => { if (released) return; released = true; this.suspensions.delete(token); if (!this.disposed && !this.suspensions.size) { this.demandRevision++; this.reason = 'World input is waiting for a coherent presented frame.'; this.renderer.lastFrameKey = null; this._notify(); } };
+  }
   publish(entities, beforeNotify = null) {
-    if (this.disposed || !this.demanded) return null;
+    if (this.disposed || !this.demanded || this.suspensions.size) return null;
     const renderer = this.renderer, world = renderer.world, rect = readProcgenCanvasRect(renderer.canvas, renderer.window);
     if (!rect) { this.invalidate('The world display has no visible content area.'); return null; }
     const dpr = renderer.presentationDpr || Math.min(2, renderer.window.devicePixelRatio || 1), logicalSize = { width: renderer.canvas.width / dpr, height: renderer.canvas.height / dpr };
@@ -54,7 +60,7 @@ class ProcgenPresentationHost {
   }
   valid(snapshot = this.current, { edit = false, frozen = false } = {}) {
     const renderer = this.renderer;
-    if (!snapshot || this.disposed || renderer.lifecycleState !== 'ready' || !renderer.world || renderer.world.generation !== snapshot.generation || renderer.world.worldId !== snapshot.worldId ||
+    if (!snapshot || this.disposed || this.suspensions.size || renderer.lifecycleState !== 'ready' || !renderer.world || renderer.world.generation !== snapshot.generation || renderer.world.worldId !== snapshot.worldId ||
         layoutKey(renderer) !== snapshot.layoutKey || renderer.canvas.width !== snapshot.backingSize.width || renderer.canvas.height !== snapshot.backingSize.height ||
         !sameProcgenRect(snapshot.rect, readProcgenCanvasRect(renderer.canvas, renderer.window))) return false;
     if (edit) return snapshot === this.current && snapshot.capabilities.edit && renderer.world.tickIndex === snapshot.physicalTick && renderer.world.terrainRevision === snapshot.terrainRevision;
@@ -85,8 +91,8 @@ class ProcgenPresentationHost {
     for (const key of this.retained.values()) this.renderer.resources.release(key);
     this.retained.clear(); if (previous || previousReason !== reason) this._notify();
   }
-  getStatus() { return { available: !!this.current, reason: this.reason, revision: this.current?.revision ?? null, retainedSnapshots: this.retained.size, leases: this.leases.size }; }
-  dispose() { if (this.disposed) return; this.disposed = true; this.invalidate('World inspection has closed.'); this.listeners.clear(); this.renderer = null; }
+  getStatus() { return { available: !!this.current, reason: this.reason, revision: this.current?.revision ?? null, retainedSnapshots: this.retained.size, leases: this.leases.size, suspended: this.suspensions.size > 0 }; }
+  dispose() { if (this.disposed) return; this.disposed = true; this.invalidate('World inspection has closed.'); this.listeners.clear(); this.suspensions.clear(); this.renderer = null; }
 }
 
 export { ProcgenPresentationHost };
