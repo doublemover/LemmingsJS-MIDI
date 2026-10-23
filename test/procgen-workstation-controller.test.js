@@ -49,6 +49,48 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
 }
 
 describe('ProcGen workstation orchestration', () => {
+  it('schedules recovery after paused edits and reports the durable revision', async () => {
+    const timers = [], f = setup({ windowTimers: {
+      setTimeout(callback) { timers.push(callback); return timers.length; },
+      clearTimeout(id) { timers[id - 1] = null; }
+    } });
+    f.studio.bindRuntime(); f.studio.transport.pause();
+    f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 45 } });
+    f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 1, patch: { note: 46 } });
+    expect(timers.filter(Boolean)).to.have.length(1);
+    expect(f.studio.getRecoveryState().state).to.equal('pending');
+    const tick = timers.find(Boolean); tick();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const recovery = f.studio.getRecoveryState();
+    expect(recovery.state).to.equal('saved');
+    expect(recovery.durableRevision).to.equal(recovery.pendingRevision);
+    expect(f.stored.get('__recovery__').project.procgen.lanes[0].patterns[0].steps.slice(0, 2).map(step => step.note)).to.deep.equal([45, 46]);
+    f.studio.dispose();
+  });
+  it('coalesces edits made during recovery and never reports a failed write as durable', async () => {
+    const timers = [], writes = []; let finishFirst;
+    const f = setup({ windowTimers: {
+      setTimeout(callback) { timers.push(callback); return timers.length; },
+      clearTimeout(id) { timers[id - 1] = null; }
+    }, storageOverride: {
+      saveRecovery(session) { writes.push(session); return writes.length === 1 ? new Promise(resolve => { finishFirst = resolve; }) : Promise.reject(new Error('Quota unavailable')); },
+      close() {}
+    } });
+    f.studio.bindRuntime(); f.studio.transport.pause();
+    f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 45 } });
+    const first = f.studio.recover();
+    f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 1, patch: { note: 46 } });
+    finishFirst(); await first;
+    expect(f.studio.getRecoveryState()).to.include({ state: 'pending', durableRevision: 1, pendingRevision: 2 });
+    expect(timers.filter(Boolean)).to.have.length(1);
+    timers.find(Boolean)(); await new Promise(resolve => setTimeout(resolve, 0));
+    const recovery = f.studio.getRecoveryState();
+    expect(recovery.state).to.equal('unavailable');
+    expect(recovery.durableRevision).to.equal(1);
+    expect(recovery.error.message).to.equal('Quota unavailable');
+    expect(f.storageReceipts.at(-1).recovery.state).to.equal('unavailable');
+    f.studio.dispose();
+  });
   it('coalesces large-project preference writes while edits stay in the canonical project', () => {
     const timers = [], f = setup({ laneCount: 128, windowTimers: {
       setTimeout(callback) { timers.push(callback); return timers.length; },

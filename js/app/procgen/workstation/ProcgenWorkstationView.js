@@ -51,6 +51,7 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
   const footer = node('footer', null, 'studio-footer'); footer.id = 'procgenStudioFooter'; shell.after(footer);
   const status = node('output', 'Ready', 'studio-status'); status.setAttribute('aria-live', 'polite');
   const storageStatus = node('output', 'Unsaved', 'studio-storage-status'); storageStatus.setAttribute('aria-label', 'Project save status');
+  const recoveryStatus = node('output', 'Recovery unsaved', 'studio-recovery-status'); recoveryStatus.setAttribute('aria-label', 'Crash recovery status');
   let projection, dragging = null, lastFrame = 0, lastMidiFrame = 0, stroke = null, suppressClickUntil = 0;
   let attachedRenderer = null, disposed = false, superseded = false, composing = false, pendingInspectorRender = false;
   const owner = {};
@@ -94,7 +95,7 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
   footer.append(button('+ Lane', () => handlers.addLane?.()), button('− Lane', () => handlers.removeLane?.()), button('Duplicate', () => handlers.duplicate?.()), button('Clear', () => handlers.clear?.()), tool,
     button('Copy', () => handlers.copy?.()), button('Paste', () => handlers.paste?.()), button('Undo', () => handlers.undo?.()), button('Redo', () => handlers.redo?.()));
   const records = button('● Record', () => handlers.record?.(!state.recording), 'Record MIDI input into the selected phrase'); records.id = 'studioRecord';
-  footer.append(records, status, storageStatus, button('Save', () => handlers.save?.()), button('Save As', () => handlers.saveAs?.()),
+  footer.append(records, status, storageStatus, recoveryStatus, button('Save', () => handlers.save?.()), button('Save As', () => handlers.saveAs?.()),
     button('Rename', () => handlers.rename?.()), button('Load', () => handlers.load?.()), button('New', () => handlers.new?.()),
     button('Export', () => handlers.export?.()), button('MIDI', () => handlers.exportMidi?.()));
   const importInput = input('', () => {}, { type: 'file' }); importInput.accept = '.json,.procgen'; importInput.hidden = true; footer.append(importInput);
@@ -404,10 +405,15 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
     else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); const length = selected().patterns[state.slot].length; state.step = (state.step + (event.key === 'ArrowLeft' ? length - 1 : 1)) % length; state.tab = 'Step'; render(); }
   });
   return { render, patchStep, layout, renderInspector: render, showProjects, showProjectPage, status: text => { status.textContent = text; },
-    storage({ dirty, savedAt, error }) {
+    storage({ dirty, savedAt, error, recovery }) {
       storageStatus.textContent = error ? 'Save failed · Export' : dirty ? 'Unsaved' : 'Saved';
       storageStatus.dataset.state = error ? 'error' : dirty ? 'dirty' : 'saved';
       storageStatus.title = error?.message || (savedAt ? 'Last saved ' + new Date(savedAt).toLocaleString() : 'No saved project yet');
+      const state = recovery?.state || 'unsaved';
+      recoveryStatus.textContent = `Recovery ${state}`;
+      recoveryStatus.dataset.state = state;
+      recoveryStatus.title = recovery?.error?.message || (recovery?.durableRevision >= 0
+        ? `Last durable edit revision ${recovery.durableRevision}, world tick ${recovery.durableTick ?? 'unknown'}` : 'No recovery checkpoint yet');
     },
     launched: () => renderRows(),
     transport(position) { state.beat = position.beat; if (document.activeElement !== bpm) bpm.value = String(Math.round(position.bpm * 100) / 100); bpm.disabled = position.clockSource === 'external'; clockStatus.textContent = position.clockSource === 'external' ? position.clockStatus : `${Math.floor(position.beat / 4) + 1} : ${Math.floor(position.beat % 4) + 1}`; linked.checked = position.linked; speedMode.value = position.speedMode; clock.value = position.clockSource; frame(position.beat); },

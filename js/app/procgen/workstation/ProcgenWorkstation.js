@@ -69,6 +69,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let savedName = 'Untitled session', documentId = null, documentRevision = 0, clipboard = null, loadSerial = 0, suppressPersistence = false;
   let operationSerial = 0, currentOperation = null;
   let lastRecovery = now(), recoveryPending = false, recoveryTimer = null, persistTimer = null;
+  let recoveryState = 'unsaved', recoveryError = null, durableRecoveryRevision = -1, durableRecoveryTick = null;
   let lastRecoveryError = -Infinity;
   let lastBudgetNotice = -Infinity;
   let lastObserverAt = -Infinity, observerCursor = 0;
@@ -101,7 +102,9 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }
   };
   const status = text => { if (!disposed) view?.status(text); };
-  const storageStatus = error => view?.storage?.({ dirty: editRevision !== savedRevision, savedAt: lastSavedAt, error });
+  const storageStatus = error => view?.storage?.({ dirty: editRevision !== savedRevision, savedAt: lastSavedAt, error,
+    recovery: { state: recoveryState, durableRevision: durableRecoveryRevision, durableTick: durableRecoveryTick,
+      pendingRevision: editRevision, error: recoveryError } });
   const inputTarget = lease => {
     const lane = project.procgen.lanes.find(item => item.id === lease.laneId);
     const pattern = lane?.patterns?.[lease.slot];
@@ -163,6 +166,12 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }
     if (persistTimer == null) persistTimer = window.setTimeout(() => { persistTimer = null; writePersist(); }, 250);
   };
+  const scheduleRecovery = (delay = 2000) => {
+    if (disposed || suppressPersistence || !boundRuntime || !window.setTimeout) return;
+    if (recoveryTimer != null) window.clearTimeout?.(recoveryTimer);
+    recoveryState = 'pending'; storageStatus();
+    recoveryTimer = window.setTimeout(() => { recoveryTimer = null; void recover(); }, delay);
+  };
   const syncProject = (next, { history = true, historyGroup = null, historyCost = null, render = true, renderAction = null, fromLegacy = false } = {}) => {
     const runtimeUnchanged = sameMidiRuntimeInputs(project, next);
     if (history) {
@@ -182,7 +191,9 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     state.slot = Math.max(0, Math.min(3, state.slot || 0)); state.step = Math.max(0, Math.min(selected().patterns[state.slot].length - 1, state.step || 0));
     if (!fromLegacy) setLegacyProject(project);
     if (!runtimeUnchanged) ports?.configure({ schedulerConfig: projectToMidiConfig(project) });
-    persist(); if (render) { if (renderAction?.type === 'procgen/step' && view?.patchStep) view.patchStep(renderAction); else view?.render(); reportRouting(); } return project;
+    persist();
+    if (!transport.getState().playing) scheduleRecovery();
+    if (render) { if (renderAction?.type === 'procgen/step' && view?.patchStep) view.patchStep(renderAction); else view?.render(); reportRouting(); } return project;
   };
   const dispatch = (action, { historyGroup = null } = {}) => {
     if (disposed) return project;
@@ -242,7 +253,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       view?.transport(position);
       if (position.playing && position.timestamp - lastRecovery >= 30000 && !recoveryPending && recoveryTimer == null) {
         lastRecovery = position.timestamp;
-        recoveryTimer = window.setTimeout?.(() => { recoveryTimer = null; recover(); }, 0) ?? null;
+        scheduleRecovery(0);
       }
     }
   });
@@ -427,19 +438,28 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   const recover = async () => {
     if (disposed || worldBusy || recoveryPending || !runtime()?.world) return false;
-    recoveryPending = true; lastRecovery = now();
+    if (recoveryTimer != null) { window.clearTimeout?.(recoveryTimer); recoveryTimer = null; }
+    recoveryPending = true; lastRecovery = now(); recoveryState = 'saving'; recoveryError = null; storageStatus();
+    let capturedRevision = editRevision, capturedTick = runtime().world.simulationTimeMs ?? null;
     try {
       const session = snapshotSession(savedName + ' (recovery)');
+      capturedRevision = editRevision; capturedTick = runtime().world.simulationTimeMs ?? null;
       if (storage.saveRecovery) await storage.saveRecovery(session); else await storage.save('__recovery__', session);
+      durableRecoveryRevision = capturedRevision; durableRecoveryTick = capturedTick;
+      recoveryState = editRevision === capturedRevision ? 'saved' : 'pending'; storageStatus();
       return true;
     }
     catch (error) {
+      recoveryState = 'unavailable'; recoveryError = error; storageStatus();
       if (now() - lastRecoveryError >= 60000) {
         lastRecoveryError = now(); status('Recovery checkpoint was not saved. Export this project if storage remains unavailable. ' + (error?.message || ''));
       }
       return false;
     }
-    finally { recoveryPending = false; }
+    finally {
+      recoveryPending = false;
+      if (!disposed && recoveryState === 'pending' && !transport.getState().playing) scheduleRecovery();
+    }
   };
   const capture = (name = savedName, { resume = true } = {}) => {
     if (worldBusy) throw new Error('Wait for the world change to finish before saving.');
@@ -553,7 +573,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     historyBusy: () => pendingHistory !== null,
     historyState: () => Object.freeze({ undo: undo.length, redo: redo.length,
       retainedBytes: retainedHistoryBytes(), byteLimit: historyBytesLimit, dropped: historyDropped }),
-    transport(patch) { configureTransport(patch); if (patch.gameSpeed != null) legacy.setSpeed(patch.gameSpeed); editRevision++; storageStatus(); persist(); },
+    transport(patch) { configureTransport(patch); if (patch.gameSpeed != null) legacy.setSpeed(patch.gameSpeed); editRevision++; storageStatus(); persist(); if (!transport.getState().playing) scheduleRecovery(); },
     addLane: safe(async () => { if (!await rebuild({ projectNext: reduceMidiProject(project, { type: 'procgen/addLane' }) })) return false; state.laneId = project.procgen.lanes.at(-1).id; view.render(); return true; }),
     removeLane: safe(async () => { await rebuild({ projectNext: reduceMidiProject(project, { type: 'procgen/removeLane', laneId: selected().id }) }); }),
     duplicate() { const lane = selected(), slot = (state.slot + 1) % 4; dispatch({ type: 'procgen/pattern', laneId: lane.id, slot, patch: clone(lane.patterns[state.slot]) }); state.slot = slot; view.render(); },
@@ -715,6 +735,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   return { getProject: () => project, getInputEditLease: () => inputLease && Object.freeze({ ...inputLease }),
     getDocumentState: () => Object.freeze({ id: documentId, revision: documentRevision, editRevision, savedRevision,
       dirty: editRevision !== savedRevision, savedAt: lastSavedAt }),
+    getRecoveryState: () => Object.freeze({ state: recoveryState, pendingRevision: editRevision, durableRevision: durableRecoveryRevision,
+      durableTick: durableRecoveryTick, error: recoveryError }),
     getStartupPlan: () => ({ ...startupPlan, project: clone(startupPlan.project) }), getLaneAssignments: () => project.procgen.lanes.map(lane => lane.family),
     getPlaybackState: () => ({ ...legacy.local.getState(), activeNotes: router()?.scheduler?._activeNotes?.size || 0, pendingNotes: router()?.scheduler?._pendingNoteOns?.size || 0, pressure: router()?.scheduler?.getOutputPressure?.() || ports.getState().pressure }),
     prepareSettings, bindRuntime, beforeRestart, loadSession, capture, recover, dispatch, play, handlers, state, transport, ports, engine,
