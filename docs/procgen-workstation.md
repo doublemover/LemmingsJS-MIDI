@@ -102,6 +102,11 @@ crew plans and random state. Capture occurs between completed simulation ticks.
 Load validates a temporary world before replacing the open one, restores paused,
 and leaves output silent until playback resumes. Timers, render caches and device
 connections are rebuilt. Missing or incompatible terrain assets reject the load.
+Checkpoint graph version 2 preserves signed zero and nonfinite floating values
+through JSON export. Older browser checkpoints with intact numeric values remain
+readable; an older JSON export that converted a typed value to `null` is rejected
+because its exact simulation state cannot be recovered. The footer reports crash
+recovery separately from named Save, including the last durable edit revision.
 
 **New** creates a default composition and a fresh world. **Reroll world** keeps
 the composition and changes the seed. **Replay seed** rebuilds the current seed's

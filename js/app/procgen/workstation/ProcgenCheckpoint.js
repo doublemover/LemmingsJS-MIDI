@@ -3,9 +3,18 @@ import { Trigger } from '../../../level/Trigger.js';
 import { Animation } from '../../../render/Animation.js';
 import { MapObject } from '../../../level/MapObject.js';
 
-const VERSION = 1;
+const VERSION = 2;
 const OMIT = new Set(['log', 'gameResources', 'render', 'characterParticles', '_collisionSlots', '_collisionIndices', '_laneChunk', '_laneChunkIndex', '_laneEdits', '_laneEditIndex', '_editCache', '_editIndices', '_edgeWallCache', 'challengeCache']);
 const TYPES = { Uint8Array, Uint8ClampedArray, Int8Array, Uint16Array, Int16Array, Uint32Array, Int32Array, Float32Array, Float64Array };
+const encodeNumber = value => Object.is(value, -0) ? { special: '-0' } : Number.isFinite(value) ? value : { special: String(value) };
+const decodeNumber = value => {
+  if (typeof value === 'number') return value;
+  if (value.special === '-0') return -0;
+  if (value.special === 'Infinity') return Infinity;
+  if (value.special === '-Infinity') return -Infinity;
+  if (value.special === 'NaN') return NaN;
+  throw new Error('Invalid checkpoint typed-array number.');
+};
 const forbidden = key => ['__proto__', 'prototype', 'constructor'].includes(key);
 const MAX_GRAPH_BYTES = 128 * 1048576, MAX_GRAPH_SLOTS = 4000000, MAX_GRAPH_STRING_UNITS = 16 * 1048576;
 const LAZY_OWNER_KEYS = new Map([
@@ -66,13 +75,16 @@ function createGraph(world) {
   const bound = bindings(world), nodes = [], seen = new Map();
   const encode = value => {
     if (value === undefined) return { special: 'undefined' };
-    if (typeof value === 'number' && !Number.isFinite(value)) return { special: String(value) };
+    if (typeof value === 'number' && (!Number.isFinite(value) || Object.is(value, -0))) return encodeNumber(value);
     if (value === null || typeof value !== 'object') return value;
     if (bound.objects.has(value)) return { external: bound.objects.get(value) };
     if (seen.has(value)) return { ref: seen.get(value) };
     const index = nodes.length; seen.set(value, index); nodes.push(null);
     let entry;
-    if (ArrayBuffer.isView(value)) entry = { type: value.constructor.name, values: Array.from(value) };
+    if (ArrayBuffer.isView(value)) {
+      if (!Object.hasOwn(TYPES, value.constructor.name)) throw new Error('Unsupported checkpoint view: ' + value.constructor.name);
+      entry = { type: value.constructor.name, values: Array.from(value, encodeNumber) };
+    }
     else if (value instanceof Map) entry = { type: 'Map', entries: [...Map.prototype.entries.call(value)].map(([k, v]) => [encode(k), encode(v)]) };
     else if (value instanceof Set) entry = { type: 'Set', values: [...value].map(encode) };
     else if (value instanceof MapObject) entry = { type: 'MapObject', props: props(value), image: encode(value.animation.objectImg) };
@@ -99,7 +111,7 @@ const captureProcgenCheckpoint = world => ({ version: VERSION, generator: 'procg
   growth: world.terrainGrowth?.exportState?.() || null, scenery: world.scenery?.snapshot?.() || null,
   clock: { speedFactor: world.timer.speedFactor, eventTimeMs: world.eventTimeMs, simulationTimeMs: world.simulationTimeMs } });
 
-function validateCheckpointGraph(graph, bound) {
+function validateCheckpointGraph(graph, bound, version) {
   const { nodes, owners } = graph || {};
   if (!Array.isArray(nodes) || nodes.length > 2000000 || !Array.isArray(owners) || owners.length > bound.owners.size) throw new Error('Invalid checkpoint graph.');
   let bytes = nodes.length * 96, slots = 0, stringUnits = 0;
@@ -112,7 +124,7 @@ function validateCheckpointGraph(graph, bound) {
     if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length !== 1) throw new Error('Invalid checkpoint value.');
     if (Object.hasOwn(value, 'ref')) { if (!Number.isSafeInteger(value.ref) || value.ref < 0 || value.ref >= nodes.length) throw new Error('Invalid checkpoint reference.'); return; }
     if (Object.hasOwn(value, 'external')) { if (typeof value.external !== 'string' || !bound.names.has(value.external)) throw new Error('Missing checkpoint resource.'); text(value.external); return; }
-    if (Object.hasOwn(value, 'special') && ['undefined', 'Infinity', '-Infinity', 'NaN'].includes(value.special)) return;
+    if (Object.hasOwn(value, 'special') && ['undefined', '-0', 'Infinity', '-Infinity', 'NaN'].includes(value.special)) return;
     throw new Error('Invalid checkpoint value.');
   };
   const props = value => {
@@ -129,8 +141,15 @@ function validateCheckpointGraph(graph, bound) {
       if (!Array.isArray(entry.values)) throw new Error('Invalid checkpoint typed-array payload.');
       bytes += entry.values.length * TYPES[type].BYTES_PER_ELEMENT;
       if (bytes > MAX_GRAPH_BYTES) throw new Error('Checkpoint memory budget exceeded.');
-      for (let index = 0; index < entry.values.length; index++) if (!Object.hasOwn(entry.values, index) ||
-          entry.values[index] !== null && (typeof entry.values[index] !== 'number' || !Number.isFinite(entry.values[index]))) throw new Error('Invalid checkpoint typed-array value.');
+      for (let index = 0; index < entry.values.length; index++) {
+        if (!Object.hasOwn(entry.values, index)) throw new Error('Invalid checkpoint typed-array value.');
+        const value = entry.values[index], floating = type === 'Float32Array' || type === 'Float64Array';
+        if (value === null) throw new Error('Legacy checkpoint typed array lost numeric state.');
+        if (typeof value === 'number') {
+          if (!Number.isFinite(value) && (version !== 1 || !floating)) throw new Error('Invalid checkpoint typed-array value.');
+        } else if (version !== 2 || !floating || !value || typeof value !== 'object' || Array.isArray(value) ||
+            Object.keys(value).length !== 1 || !['-0', 'Infinity', '-Infinity', 'NaN'].includes(value.special)) throw new Error('Invalid checkpoint typed-array value.');
+      }
     } else if (type === 'Map') {
       if (!Array.isArray(entry.entries)) throw new Error('Invalid checkpoint map.');
       for (const pair of entry.entries) { if (!Array.isArray(pair) || pair.length !== 2) throw new Error('Invalid checkpoint map entry.'); slot(pair[0]); slot(pair[1]); }
@@ -161,18 +180,19 @@ function validateCheckpointGraph(graph, bound) {
 }
 
 function restoreProcgenCheckpoint(world, saved) {
-  if (saved?.version !== VERSION || saved.generator !== 'procgen-workstation-1' || saved.laneCount !== world.laneCount || saved.laneHeight !== world.laneHeight || saved.seed !== world.seed) throw new Error('Incompatible world checkpoint.');
+  if (![1, VERSION].includes(saved?.version) || saved.generator !== 'procgen-workstation-1' || saved.laneCount !== world.laneCount || saved.laneHeight !== world.laneHeight || saved.seed !== world.seed) throw new Error('Incompatible world checkpoint.');
   if (JSON.stringify(saved.assets) !== JSON.stringify(assetIdentity(world))) throw new Error('Checkpoint terrain assets do not match the installed collection.');
   if (!saved.clock || !Number.isFinite(saved.clock.speedFactor) || saved.clock.speedFactor < 0 ||
       saved.clock.eventTimeMs != null && (!Number.isFinite(saved.clock.eventTimeMs) || saved.clock.eventTimeMs < 0) ||
       saved.clock.simulationTimeMs != null && (!Number.isFinite(saved.clock.simulationTimeMs) || saved.clock.simulationTimeMs < 0)) throw new Error('Invalid checkpoint clock.');
   const { nodes, owners } = saved.graph || {};
   const bound = bindings(world);
-  validateCheckpointGraph(saved.graph, bound);
+  validateCheckpointGraph(saved.graph, bound, saved.version);
   const worldProps = owners.find(entry => entry.name === 'world').props;
-  if (worldProps.seed !== saved.seed || worldProps.laneCount !== saved.laneCount || worldProps.laneHeight !== saved.laneHeight) throw new Error('Checkpoint world envelope does not match its graph.');
+  if (worldProps.seed !== saved.seed || worldProps.laneCount !== saved.laneCount || worldProps.laneHeight !== saved.laneHeight ||
+      !Number.isSafeInteger(worldProps.tickIndex) || worldProps.tickIndex < 0) throw new Error('Checkpoint world envelope does not match its graph.');
   const values = nodes.map(entry => {
-    if (Object.hasOwn(TYPES, entry.type)) return new TYPES[entry.type](entry.values);
+    if (Object.hasOwn(TYPES, entry.type)) return new TYPES[entry.type](entry.values.map(decodeNumber));
     if (entry.type === 'Map') return new Map();
     if (entry.type === 'Set') return new Set();
     if (entry.type === 'Array') return [];
@@ -187,6 +207,7 @@ function restoreProcgenCheckpoint(world, saved) {
     if (!value || typeof value !== 'object') return value;
     if (value.special) {
       if (value.special === 'undefined') return undefined;
+      if (value.special === '-0') return -0;
       if (value.special === 'Infinity') return Infinity;
       if (value.special === '-Infinity') return -Infinity;
       if (value.special === 'NaN') return NaN;
@@ -212,6 +233,10 @@ function restoreProcgenCheckpoint(world, saved) {
       return [key, decode(value)];
     })), entries: entry.entries?.map(([k, v]) => [decode(k), decode(v)]) };
   });
+  const activityTicks = prepared.find(item => item.entry.name === 'world')?.props.terrainActivityTicks;
+  if (!(activityTicks instanceof Float64Array) || activityTicks.length !== saved.laneCount ||
+      Array.from(activityTicks).some(value => value !== -Infinity && (!Number.isSafeInteger(value) || value < 0 || value > worldProps.tickIndex)))
+    throw new Error('Invalid terrain activity tick in checkpoint.');
   for (let index = 0; index < nodes.length; index++) if (nodes[index].type === 'MapObject' && values[index]) {
     const item = values[index], animation = item.animation, rebuilt = new MapObject(item.ob, decode(nodes[index].image), new Animation(), item.triggerType, world.runtime);
     animation.frames = rebuilt.animation.frames;

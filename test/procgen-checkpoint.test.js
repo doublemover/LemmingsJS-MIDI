@@ -33,6 +33,33 @@ describe('ProcGen world checkpoints', function() {
     }
     finally { world.dispose(); }
   });
+  it('preserves floating sentinels through JSON and rejects ambiguous legacy numbers', async () => {
+    const original = await make(), restored = await make();
+    try {
+      original._edgeWallRevisions[0] = -0;
+      const saved = JSON.parse(JSON.stringify(captureProcgenCheckpoint(original)));
+      expect(saved.version).to.equal(2);
+      const props = saved.graph.owners.find(owner => owner.name === 'world').props;
+      const activity = saved.graph.nodes[props.terrainActivityTicks.ref], signed = saved.graph.nodes[props._edgeWallRevisions.ref];
+      expect(activity.values[0]).to.deep.equal({ special: '-Infinity' });
+      expect(signed.values[0]).to.deep.equal({ special: '-0' });
+      restoreProcgenCheckpoint(restored, saved);
+      expect(restored.terrainActivityTicks[0]).to.equal(-Infinity);
+      expect(Object.is(restored._edgeWallRevisions[0], -0)).to.equal(true);
+      for (const special of ['Infinity', 'NaN']) {
+        const invalid = structuredClone(saved);
+        invalid.graph.nodes[props.terrainActivityTicks.ref].values[0] = { special };
+        expect(() => restoreProcgenCheckpoint(restored, invalid)).to.throw('Invalid terrain activity tick');
+      }
+      const legacy = structuredClone(saved); legacy.version = 1;
+      for (const node of legacy.graph.nodes) if (node.type === 'Float32Array' || node.type === 'Float64Array') node.values = node.values.map(value => {
+        if (typeof value !== 'object') return value;
+        return { '-0': -0, Infinity, '-Infinity': -Infinity, NaN }[value.special];
+      });
+      restoreProcgenCheckpoint(restored, legacy);
+      expect(() => restoreProcgenCheckpoint(restored, JSON.parse(JSON.stringify(legacy)))).to.throw('lost numeric state');
+    } finally { original.dispose(); restored.dispose(); }
+  });
   it('continues the same automatic reset seeds and terrain after a saved real cascade', async () => {
     const makeResetWorld = async seed => new ProcgenLaneWorld({ masks, terrain: await loadProcgenTerrain('lemmings', 0),
       laneCount: 2, seed, cohorts: true, workstation: true, spawnSpreadTicks: 0,
