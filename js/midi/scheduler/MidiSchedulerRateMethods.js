@@ -216,7 +216,9 @@ const midiSchedulerRateMethods = {
       maxBytesPerSecond: maxBytes,
       snapshot,
       proposed,
-      combined
+      combined,
+      route: Object.freeze({ outputId, connectionEpoch: this._outputLeases.get(this._resolveOutput(outputId))?.connectionEpoch ?? null,
+        routeRevision: this._outputLeases.get(this._resolveOutput(outputId))?.routeRevision ?? null })
     };
     result.sharedLink = sharedLink;
     if (this._rateHistorySaturated) { result.ok = false; result.softOk = false; result.reason = 'history-cap'; }
@@ -233,7 +235,18 @@ const midiSchedulerRateMethods = {
 
   reserveEvaluation(evaluation, plan, meta = {}, now = this._nowMs(), alreadyPruned = false) {
     if (!evaluation?.ok) return evaluation || { ok: false, reason: 'count-limit' };
-    if (evaluation.reservationId) return evaluation;
+    if (evaluation.reservationId) return this._ratePlanned.some(entry => entry.reservationId === evaluation.reservationId)
+      ? evaluation : { ...evaluation, ok: false, reason: 'closed-reservation' };
+    if (!alreadyPruned) {
+      const outputId = this._resolveOutputId(meta.outputId), lease = this._outputLeases.get(this._resolveOutput(outputId));
+      if (evaluation.route && (evaluation.route.outputId !== outputId || evaluation.route.connectionEpoch !== (lease?.connectionEpoch ?? null) ||
+          evaluation.route.routeRevision !== (lease?.routeRevision ?? null))) return { ...evaluation, ok: false, reason: 'stale-route-evaluation' };
+      evaluation = this.evaluateAndReserve(plan, meta, now, { reserve: false,
+        maxMessagesPerSecond: evaluation.maxMessagesPerSecond, maxBytesPerSecond: evaluation.maxBytesPerSecond,
+        softMaxMessagesPerSecond: evaluation.softMaxMessagesPerSecond });
+      if (!evaluation.ok) return evaluation;
+      alreadyPruned = true;
+    }
     if (this._ratePlanned.length + this._planEntries(plan).length > MAX_RATE_ENTRIES) return { ...evaluation, ok: false, reason: 'reservation-cap' };
     const reservationId = ++this._reservationSeq;
     if ((meta.laneCount ?? 1) > 1) this._laneBudgetState(meta.outputId)._rateLaneLastServed.set(meta.laneIndex ?? 0, now);
@@ -273,6 +286,23 @@ const midiSchedulerRateMethods = {
       ...options,
       reserve: true
     });
+  },
+
+  inspectReservation(reservationId) {
+    const entries = this._ratePlanned.filter(entry => entry.reservationId === reservationId), phases = Object.create(null);
+    for (const entry of entries) {
+      const phase = entry.phase || 'unknown';
+      phases[phase] ||= { count: 0, bytes: 0 }; phases[phase].count += entry.count; phases[phase].bytes += entry.bytes;
+    }
+    return Object.freeze({ reservationId, state: entries.length ? 'pending' : 'not-pending', pendingEntries: entries.length,
+      outputId: entries[0]?.outputId ?? null, connectionEpoch: entries[0]?.connectionEpoch ?? null,
+      routeRevision: entries[0]?.routeRevision ?? null, boundTokens: Object.freeze([...new Set(entries.map(entry => entry.token).filter(token => token != null))]),
+      phases: Object.freeze(Object.fromEntries(Object.entries(phases).map(([phase, value]) => [phase, Object.freeze(value)]))) });
+  },
+
+  _reservationIssue(reason, reservationId, outputId) {
+    this.lastReservationIssue = Object.freeze({ reason, reservationId, outputId, timestamp: this._nowMs() });
+    return false;
   },
 
   _laneBudgetState(outputId) {
@@ -353,6 +383,7 @@ const midiSchedulerRateMethods = {
       sharedLink: snapshot.sharedLink,
       historyAggregations: this._rateHistoryAggregations || 0,
       historyDetail: this._rateHistoryAggregations ? 'conservative-endpoint-totals' : 'messages',
+      lastReservationIssue: this.lastReservationIssue || null,
       maxMessages: snapshot.maxMessagesPerSecond, laneCount: outputId === undefined ? this._rateLaneCount : this._laneBudgetState(outputId)._rateLaneCount,
       pendingNotes: pending.length, oldestDeadline: pending.length ? Math.min(...pending.map(entry => entry.timeMs)) : null };
   },
@@ -480,10 +511,16 @@ const midiSchedulerRateMethods = {
     const index = this._ratePlanned.findIndex(entry => entry.reservationId === reservationId && entry.token == null && entry.phase === phase);
     if (index < 0) return false;
     const entry = this._ratePlanned[index];
+    const outputId = this._resolveOutputId(meta.outputId ?? entry.outputId), lease = this._outputLeases.get(this._resolveOutput(outputId));
+    if (entry.outputId !== outputId) return this._reservationIssue('wrong-endpoint', reservationId, outputId);
+    if (entry.connectionEpoch != null && entry.connectionEpoch !== lease?.connectionEpoch ||
+        entry.routeRevision != null && entry.routeRevision !== lease?.routeRevision) return this._reservationIssue('stale-route', reservationId, outputId);
+    if (!Number.isInteger(count) || count <= 0 || !Number.isInteger(bytes) || bytes <= 0) return this._reservationIssue('invalid-cost', reservationId, outputId);
+    if (count > entry.count || bytes > entry.bytes) return this._reservationIssue('cost-exceeded', reservationId, outputId);
     entry.count -= count; entry.bytes -= bytes;
     if (entry.count <= 0 || entry.bytes <= 0) this._ratePlanned.splice(index, 1);
     this._recordSent({ timeMs: sentAt, count, bytes, phase, reservationId,
-      outputId: meta.outputId ?? entry.outputId, trackId: meta.trackId ?? entry.trackId,
+      outputId, trackId: meta.trackId ?? entry.trackId,
       laneIndex: meta.laneIndex ?? entry.laneIndex, laneCount: meta.laneCount ?? entry.laneCount,
       sfxId: meta.sfxId ?? entry.sfxId, priority: meta.priority ?? entry.priority }, sentAt);
     return true;

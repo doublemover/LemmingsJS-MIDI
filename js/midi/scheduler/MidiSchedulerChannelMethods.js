@@ -474,7 +474,7 @@ const midiSchedulerChannelMethods = {
     const pending = this._pendingNoteOns.get(oldestToken);
     if (pending?.timerId != null) clearTimeout(pending.timerId);
     this._pendingNoteOns.delete(oldestToken);
-    if (info.hasStarted === false) this._observe('cancelled', { ...info.captureMeta, type: 'noteOn', reason: 'pending-note-cancelled' });
+    if (info.hasStarted === false && !info.submitting) this._observe('cancelled', { ...info.captureMeta, type: 'noteOn', reason: 'pending-note-cancelled' });
     const output = info.output || this._resolveOutput(info.outputId), channel = output?.channels?.[info.channel];
     let sentMessages = 0, released = false, cleanupUncertain = false;
     this._cleanupDepth++;
@@ -508,8 +508,8 @@ const midiSchedulerChannelMethods = {
     }
     const result = Object.freeze({ token: oldestToken, outputId: info.outputId ?? null, channel: info.channel,
       connectionEpoch: info.connectionEpoch ?? null, routeRevision: info.routeRevision ?? null, reason,
-      state: info.hasStarted === false ? 'cancelled' : released && !cleanupUncertain ? 'release-submitted' : 'uncertain',
-      evidence: info.hasStarted === false ? 'application-queue-removed' : released ? 'adapter-returned' : 'release-unconfirmed' });
+      state: info.submitting ? 'uncertain' : info.hasStarted === false ? 'cancelled' : released && !cleanupUncertain ? 'release-submitted' : 'uncertain',
+      evidence: info.submitting ? 'submission-in-progress' : info.hasStarted === false ? 'application-queue-removed' : released ? 'adapter-returned' : 'release-unconfirmed' });
     this._observe('voice-terminal', { ...info.captureMeta, ...result });
     return result;
   },

@@ -43,15 +43,22 @@ const midiOutputObserverMethods = {
   },
 
   _sendAccountedCleanup(output, channel, method, args = [], meta = {}) {
+    const result = this._submitAccountedOutput(output, channel, method, args, meta, { phase: 'off' });
+    if (result.error) throw result.error;
+    return result.ok;
+  },
+
+  _submitAccountedOutput(output, channel, method, args = [], meta = {}, rateMeta = {}) {
     let count = 0, bytes = 0;
     const remove = this.addSubmissionObserver(event => {
       if (event.output !== output || event.channel !== channel || event.method !== method || !event.accepted || !event.midiBytes) return;
       count++; bytes += event.midiBytes.length;
     });
-    try { return this._sendOutput(output, channel, method, args, meta); }
+    try { return { ok: this._sendOutput(output, channel, method, args, meta) !== false, acceptedMessages: count, acceptedBytes: bytes, error: null }; }
+    catch (error) { return { ok: false, acceptedMessages: count, acceptedBytes: bytes, error }; }
     finally {
       remove();
-      if (count) this._recordSent({ timeMs: this._nowMs(), outputId: output?.id ?? null, count, bytes, phase: 'off' }, this._nowMs());
+      if (count) this._recordSent({ ...rateMeta, timeMs: this._nowMs(), outputId: output?.id ?? null, count, bytes }, this._nowMs());
     }
   },
 

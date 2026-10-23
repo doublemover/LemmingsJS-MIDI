@@ -213,16 +213,16 @@ const midiSchedulerSendMethods = {
             const method = control.type === 'program' ? 'sendProgramChange' : control.type === 'bend' ? 'sendPitchBend' : 'sendControlChange';
             const args = control.type === 'cc' ? [control.cc, control.value, { time: sendTimeMs }] : [control.value, { time: sendTimeMs }];
             const target = output.channels?.[control.channel];
-            const accepted = typeof target?.[method] === 'function' && this._sendOutput(output, control.channel, method, args, captureMeta) !== false;
-            if (!accepted) {
+            const submission = typeof target?.[method] === 'function' ? this._submitAccountedOutput(output, control.channel, method, args, captureMeta,
+              { token, phase: 'on', trackId, laneIndex: meta.laneIndex ?? 0, laneCount: meta.laneCount ?? 1, sfxId: meta.sfxId, priority: meta.priority }) : { ok: false };
+            if (!submission.ok) {
               dispatchFailed = true;
+              if (submission.error) this.lastOutputError = submission.error?.message || String(submission.error);
               this._expressionByOutput.delete(output);
               this.recordThrottle('setup-rejected', this._nowMs(), captureMeta);
               this._stopActiveNoteToken(token, 'setup-rejected');
               return;
             }
-            this._recordSent({ timeMs: this._nowMs(), count: 1, bytes: control.bytes, token, phase: 'on', outputId, trackId,
-              laneIndex: meta.laneIndex ?? 0, laneCount: meta.laneCount ?? 1, sfxId: meta.sfxId, priority: meta.priority });
             if (!ownsVoice()) { dispatchFailed = true; return; }
             control.state[control.key] = control.value;
             control.state.bindings.set(control.binding, control.value);
@@ -246,29 +246,34 @@ const midiSchedulerSendMethods = {
             this._stopActiveNoteToken(token, 'onset-unsupported');
             return;
           }
-          active.hasStarted = true;
+          active.submitting = true;
           const notePan = getLocalAudioNotePan(spec, meta, this.config.position, output.supportsPerNotePan);
-          const accepted = this._sendOutput(output, channelNumber, 'sendNoteOn', [spec.note, { rawAttack: attackVelocity, time: sendTimeMs,
+          const submission = this._submitAccountedOutput(output, channelNumber, 'sendNoteOn', [spec.note, { rawAttack: attackVelocity, time: sendTimeMs,
             ...(output.supportsIndependentNoteGates ? { voiceToken: token, priority: meta.priority ?? 1, laneIndex: meta.laneIndex ?? 0 } : {}),
             ...(output.supportsPlaybackMetadata ? { playback: { sfxId: meta.sfxId, triggerType: meta.triggerType, sourceId: meta.sourceId, sourceKind: meta.sourceKind, sourceKey: meta.sourceKey, clipId: meta.clipId, originTick: meta.originTick, eventType: meta.eventType, durationMs, stepIndex: spec.stepIndex, stepCount: spec.stepCount, lemmingId: meta.lemmingId, laneIndex: meta.laneIndex, ensembleRole: spec.ensembleRole, program: spec.program, channel: channelNumber } } : {}),
             ...(output.supportsPerNoteInstrument ? { instrument: { program: spec.program, percussion: spec.percussion, role: spec.ensembleRole, legacy: !spec.ensembleRole && spec.percussion !== true,
               ...(spec.ensembleRole && spec.envelope ? { envelope: spec.envelope } : {}), resumed: spec.resumed === true } } : {}),
-            ...(output.supportsPerNotePan && Number.isFinite(notePan) ? { pan: notePan / 127 } : {}) }], captureMeta);
-          if (accepted === false) {
-            dispatchFailed = true;
-            active.hasStarted = false;
-            this.recordThrottle('local-render-rejected', this._nowMs(), captureMeta);
-            this._stopActiveNoteToken(token);
-            return;
-          }
-          this._recordSent({ timeMs: this._nowMs(), count: 1, bytes: MIDI_MESSAGE_BYTES, token, phase: 'on', outputId, trackId,
-            laneIndex: meta.laneIndex ?? 0, laneCount: meta.laneCount ?? 1, sfxId: meta.sfxId, priority: meta.priority });
+            ...(output.supportsPerNotePan && Number.isFinite(notePan) ? { pan: notePan / 127 } : {}) }], captureMeta,
+          { token, phase: 'on', trackId, laneIndex: meta.laneIndex ?? 0, laneCount: meta.laneCount ?? 1, sfxId: meta.sfxId, priority: meta.priority });
+          active.submitting = false;
+          active.hasStarted = submission.ok || submission.acceptedMessages > 0;
           if (!ownsVoice()) {
             dispatchFailed = true;
-            if (this._sendOutput(output, channelNumber, 'sendNoteOff', [spec.note, { rawRelease: releaseVelocity }],
-              { ...captureMeta, reason: 'onset-retired-during-submission' }) !== false) {
-              this._recordSent({ timeMs: this._nowMs(), count: 1, bytes: MIDI_MESSAGE_BYTES, token, phase: 'off', outputId, trackId }, this._nowMs());
+            if (active.hasStarted) {
+              const cleanupMeta = { ...captureMeta, reason: 'onset-retired-during-submission' }, cleanupRate = { token, phase: 'off', trackId };
+              const cleanup = this._submitAccountedOutput(output, channelNumber, 'sendNoteOff', [spec.note, { rawRelease: releaseVelocity,
+                ...(output.supportsIndependentNoteGates ? { voiceToken: token } : {}) }], cleanupMeta, cleanupRate);
+              const reset = mpeEnabled ? this._submitAccountedOutput(output, channelNumber, 'sendPitchBend', [0], cleanupMeta, cleanupRate) : { ok: true };
+              this._observe('voice-terminal', { ...cleanupMeta, state: cleanup.ok && reset.ok ? 'release-submitted' : 'uncertain',
+                evidence: cleanup.ok && reset.ok ? 'adapter-returned' : 'release-unconfirmed' });
             }
+            return;
+          }
+          if (!submission.ok) {
+            dispatchFailed = true;
+            if (submission.error) this.lastOutputError = submission.error?.message || String(submission.error);
+            this.recordThrottle('local-render-rejected', this._nowMs(), captureMeta);
+            this._stopActiveNoteToken(token);
             return;
           }
           if (typeof window !== 'undefined') window.lastMidiOutputMessage = {

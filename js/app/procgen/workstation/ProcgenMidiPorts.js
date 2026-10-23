@@ -1,11 +1,13 @@
 import { MidiScheduler } from '../../../midi/MidiScheduler.js';
 import { lowerMidi2ChannelVoice } from '../../../midi/protocol/MidiProtocolLowering.js';
-import { clearProcgenMidiQueue, sendProcgenMidiBytes } from './ProcgenMidiBytes.js';
+import { clearProcgenMidiQueue, sendProcgenMidiBytes, validProcgenMidiChannelBytes } from './ProcgenMidiBytes.js';
 
 const byte = value => Math.min(127, Math.max(0, Math.round(Number(value) || 0)));
 const channelByte = channel => Math.min(15, Math.max(0, (Number(channel) || 1) - 1));
 const ACTIVE_SENSING_TIMEOUT_MS = 300;
 const HOST_OBSERVATION_GAP_MS = 600;
+const isReleasePacket = data => (data[0] & 0xf0) === 0x80 || ((data[0] & 0xf0) === 0x90 && data[2] === 0) ||
+  ((data[0] & 0xf0) === 0xb0 && [64, 120, 123].includes(data[1]) && !data[2]);
 const snapshotIntent = intent => Object.freeze({ ...intent,
   ...(intent.laneIndices ? { laneIndices: Object.freeze([...intent.laneIndices]) } : {}),
   ...(Array.isArray(intent.channels) ? { channels: Object.freeze([...intent.channels]) } : {}),
@@ -33,7 +35,8 @@ export function decodeProcgenMidi(data, timestamp = 0) {
 }
 
 export function encodeProcgenMidi(event) {
-  if (event.data) return [Array.from(event.data)];
+  if (!event || typeof event !== 'object') return [];
+  if (event.data) return validProcgenMidiChannelBytes(event.data) ? [Array.from(event.data)] : [];
   const channel = channelByte(event.channel);
   switch (event.type) {
   case 'noteOn': return [[0x90 | channel, byte(event.note), byte(event.velocity ?? 100)]];
@@ -340,9 +343,10 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     return lastCleanup;
   }
   const raw = (data, timestamp = now(), meta = {}, capture = true) => {
+    if (!validProcgenMidiChannelBytes(data) || !Number.isFinite(timestamp) || timestamp < 0) return false;
     const port = outputForIntent(meta.outputId);
     if (disposed || !port || data[0] >= 0xf0) return false;
-    if (rawDispatchDepth) return false;
+    if (rawDispatchDepth || scheduler._outputCallbackDepth) return false;
     const route = activeOutputs.get(String(port.id)), channel = (data[0] & 15) + 1;
     if (route?.intent.channels && !route.intent.channels.includes(channel)) return false;
     const maxPending = Math.min(4096, Math.max(1, scheduler.config?.limits?.maxPendingRawVoices ?? 1024));
@@ -352,10 +356,10 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     let ownedReservationId = null;
     try {
       const family = data[0] & 0xf0;
-      const release = family === 0x80 || (family === 0x90 && data[2] === 0) || (family === 0xb0 && [64, 120, 123].includes(data[1]) && !data[2]);
+      const release = isReleasePacket(data), phase = meta.reservationPhase ?? (release ? 'off' : 'on');
       if (meta.source === 'thru' && [0x80, 0x90].includes(family) && release &&
           ![...thruNotes.values()].some(entry => entry.port === port && entry.channel === channel && entry.note === data[1] && entry.inputEpoch === inputEpoch)) return false;
-      if (capture && !release && meta.reservationId == null) {
+      if (capture && !release) {
         const reservation = scheduler.evaluateAndReserve?.({ on: { timeMs: timestamp, count: 1, bytes: data.length } }, { ...meta, outputId: port.id }, now());
         if (reservation && !reservation.ok) { scheduler.recordThrottle?.(reservation.reason, now(), meta); return false; }
         ownedReservationId = reservation?.reservationId ?? null;
@@ -367,10 +371,10 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
         scheduler._releaseReservation?.(ownedReservationId, true);
         retireOutput(String(port.id), 'output-send-rejected'); syncSchedulerOutputs(); report(); return false;
       }
-      const sentAt = now(), reservationId = meta.reservationId ?? ownedReservationId;
-      const committed = reservationId != null && scheduler._commitReservationMessage?.(reservationId, meta.reservationPhase ?? 'on', data.length,
+      const sentAt = now(), reservationId = ownedReservationId ?? (capture ? null : meta.reservationId);
+      const committed = reservationId != null && scheduler._commitReservationMessage?.(reservationId, phase, data.length,
         { ...meta, outputId: port.id }, sentAt);
-      if (!committed) scheduler._recordSent?.({ timeMs: sentAt, count: 1, bytes: data.length, phase: meta.reservationPhase ?? 'on',
+      if (!committed) scheduler._recordSent?.({ timeMs: sentAt, count: 1, bytes: data.length, phase,
         outputId: port.id, trackId: meta.trackId, laneIndex: meta.laneIndex, laneCount: meta.laneCount, sfxId: meta.sfxId, priority: meta.priority }, sentAt);
       useChannel(port, (data[0] & 15) + 1);
       if (meta.source !== 'thru' && [0x80, 0x90].includes(family)) forgetThruGate(port, channel, data[1]);
@@ -734,18 +738,31 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     learnNext(callback = onLearn) { learn = callback; report(); },
     cancelLearn() { learn = null; report(); },
     sendEvent(event) {
-      if (event?.umpWords) return sendLoweredEvent(event);
+      if (!event || typeof event !== 'object') return false;
       const timestamp = event.timestamp ?? event.timeMs ?? now();
+      if (!Number.isFinite(timestamp) || timestamp < 0) return false;
+      if (event?.umpWords) return sendLoweredEvent(event);
       const messages = encodeProcgenMidi(event);
-      if (!messages.length) return false;
-      for (const data of messages) if (!raw(data, timestamp, event)) return false;
-      return true;
+      if (!messages.length || !messages.every(validProcgenMidiChannelBytes)) return false;
+      const port = outputForIntent(event.outputId);
+      if (disposed || !port) return false;
+      const planned = messages.filter(data => !isReleasePacket(data));
+      const reservation = planned.length ? scheduler.evaluateAndReserve?.({ on: { timeMs: timestamp,
+        count: planned.length, bytes: planned.reduce((sum, data) => sum + data.length, 0) } }, { ...event, outputId: port.id }, now()) : null;
+      if (reservation && !reservation.ok) { scheduler.recordThrottle?.(reservation.reason, now(), { ...event, outputId: port.id }); return false; }
+      try {
+        for (const data of messages) if (!raw(data, timestamp, { ...event, outputId: port.id,
+          reservationId: isReleasePacket(data) ? null : reservation?.reservationId, reservationPhase: isReleasePacket(data) ? 'off' : 'on' }, false)) return false;
+        return true;
+      } finally { scheduler._releaseReservation?.(reservation?.reservationId, true); }
     },
     sendNote(spec, meta = {}) {
       if (rawDispatchDepth || !spec || !Number.isFinite(spec.note)) return false;
+      const timestamp = spec.timeMs ?? now();
+      if (!Number.isFinite(timestamp) || timestamp < 0 || [spec.durationMs, spec.durationTicks].some(value => value != null && (!Number.isFinite(value) || value < 0))) return false;
       const port = outputForIntent(spec.outputId);
       if (disposed || !port) return false;
-      const timestamp = spec.timeMs ?? now(), durationMs = duration(spec), outputId = spec.outputId ?? port.id ?? null;
+      const durationMs = duration(spec), outputId = spec.outputId ?? port.id ?? null;
       if (port.channels) {
         const allowed = activeOutputs.get(String(port.id))?.intent.channels;
         if (allowed && !scheduler.config?.mpe?.enabled && !allowed.includes(spec.channel ?? scheduler.config?.defaultChannel ?? 1)) return false;

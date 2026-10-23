@@ -93,6 +93,12 @@ messages (at most 4,096); `queueHorizonMs` bounds future submissions (at most
 Pending reservations retain their endpoint, connection epoch and route revision.
 Binding a stale or different endpoint reservation is rejected;
 canceling unused work refunds it without inventing sent traffic.
+An evaluated plan is rechecked against intervening traffic and its original
+route epoch before reservation. Closed reservations cannot be reopened by
+reusing an old evaluation. Partial commits validate the endpoint, route revision
+and remaining phase cost. `inspectReservation(id)` reports immutable pending
+ownership and phase totals; pressure exposes the latest bounded
+`lastReservationIssue` diagnostic.
 Changing route budgets cancels old pending work before accepting a new revision.
 Submitted history survives retirement. The 4,096-entry rolling history compacts
 older messages into conservative endpoint totals rather than dropping their
@@ -109,6 +115,9 @@ commit requested state or admit its dependent onset. MPE range initialization
 reserves and counts its six RPN control messages plus pitch center per channel;
 an accepted prefix remains charged after a later setup failure. Local audio
 uses its voice/source admission rather than DIN byte or message quotas.
+Ordinary `sendEvent({ type: 'bank', ... })` also admits both selectors together.
+Final channel packets and schedule fields are validated before endpoint
+activation; caller-provided event metadata cannot spend another reservation.
 
 ## Legacy MPE zone policy
 
@@ -196,6 +205,12 @@ duplicating messages. Test adapters without a byte method expose the separate
 `adapter-method-contract` encoding evidence. Neither form proves receiver
 processing or audible output. Offline intent rendering remains explicitly
 labelled as `intent-render`.
+
+Ordinary controller and onset dispatch account accepted bytes even when their
+helper later throws or returns false. A rejected onset with no accepted bytes
+does not fabricate a Note Off. Cancellation while an onset call is in progress
+reports `submission-in-progress` uncertainty; a late accepted onset receives its
+owned compensation afterward, including its local voice token or MPE reset.
 
 Input Active Sensing arms only after a valid observed FE packet. Ordinary valid
 traffic refreshes its 300 ms deadline; musical silence before arming is legal.
