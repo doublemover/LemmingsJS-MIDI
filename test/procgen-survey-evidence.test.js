@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { SurveyEvidenceStore, SurveyStorageLimitError, SurveyImmutableConflictError } from '../scripts/procgen-survey/SurveyEvidenceStore.js';
+import { SurveyEvidenceStore, SurveyStorageLimitError, SurveyImmutableConflictError, SurveyEvidenceIntegrityError } from '../scripts/procgen-survey/SurveyEvidenceStore.js';
 import { normalizeSurveyResources } from '../scripts/procgen-survey/SurveyWorkerPool.js';
 
 describe('bounded procgen survey evidence', function() {
@@ -67,6 +67,30 @@ describe('bounded procgen survey evidence', function() {
     catch (error) { expect(error.message).to.include('Stale survey derivative generation'); }
     expect(await store.read('report.json')).to.deep.equal({ version: 2 });
   });
+  it('binds derivative ownership and generation metadata to the intact payload checksum', async () => {
+    await store.writeDerivative('report.json', { version: 1 });
+    const file = path.join(directory, 'report.json'), receipt = JSON.parse(await fs.readFile(file, 'utf8'));
+    expect(receipt.envelopeVersion).to.equal(2); receipt.generation = 99;
+    await fs.writeFile(file, JSON.stringify(receipt));
+    let rejected;
+    try { await store.derivativeGeneration('report.json'); } catch (error) { rejected = error; }
+    expect(rejected).to.be.instanceOf(SurveyEvidenceIntegrityError); expect(rejected.message).to.include('metadata checksum mismatch');
+  });
+  it('preserves legacy envelopes and refuses generation overflow instead of resetting the counter', async () => {
+    await store.writeDerivative('report.json', { version: 1 });
+    const file = path.join(directory, 'report.json'), receipt = JSON.parse(await fs.readFile(file, 'utf8'));
+    delete receipt.envelopeVersion; delete receipt.metadataChecksum;
+    await fs.writeFile(file, JSON.stringify(receipt));
+    expect(await store.read('report.json')).to.deep.equal({ version: 1 });
+    await store.writeDerivative('report.json', { version: 2 }, { expectedGeneration: 0 });
+    expect(JSON.parse(await fs.readFile(file, 'utf8')).envelopeVersion).to.equal(2);
+    const exhausted = JSON.parse(await fs.readFile(file, 'utf8'));
+    delete exhausted.envelopeVersion; delete exhausted.metadataChecksum; exhausted.generation = Number.MAX_SAFE_INTEGER;
+    await fs.writeFile(file, JSON.stringify(exhausted));
+    try { await store.writeDerivative('report.json', { version: 'overflow' }, { expectedGeneration: Number.MAX_SAFE_INTEGER }); throw new Error('unexpected generation overflow'); }
+    catch (error) { expect(error.message).to.include('generation exhausted'); }
+    expect(await store.read('report.json')).to.deep.equal({ version: 2 });
+  });
   it('retains the conflicting attempt with both checksums without replacing the original', async () => {
     await store.writeImmutable('results/original.json', { writer: 'first' });
     let conflict;
@@ -111,6 +135,25 @@ describe('bounded procgen survey evidence', function() {
     } finally { fs.writeFile = writeFile; }
     expect(await store.read('results/pinned.json')).to.deep.equal({ value: 'original' }); expect(await store.read('results/partial.json')).to.equal(null);
     expect((await fs.readdir(path.join(directory, 'results')))).to.deep.equal(['pinned.json']); expect(store.snapshot().bytes).to.equal(before);
+  });
+  it('cancels a lease waiter promptly without releasing or modifying the active writer lease', async () => {
+    let entered, release;
+    const acquired = new Promise(resolve => { entered = resolve; });
+    const holding = store._withWriterLease(async () => { entered(); await new Promise(resolve => { release = resolve; }); });
+    await acquired;
+    const leaseFile = path.join(directory, '.writer-lease', 'owner.json'), owner = await fs.readFile(leaseFile, 'utf8');
+    const contender = new SurveyEvidenceStore(directory, { maxBytes: 32768 }), controller = new AbortController();
+    const waiting = contender.writeImmutable('results/cancelled-waiter.json', { value: 'late' }, { signal: controller.signal });
+    try {
+      await new Promise(resolve => setTimeout(resolve, 30)); const started = Date.now(); controller.abort(new Error('retired delivery'));
+      let rejected;
+      try { await waiting; } catch (error) { rejected = error; }
+      expect(rejected).to.be.instanceOf(Error); expect(rejected.name).to.equal('AbortError');
+      expect(Date.now() - started).to.be.lessThan(1000); expect(await fs.readFile(leaseFile, 'utf8')).to.equal(owner);
+      expect(await store.read('results/cancelled-waiter.json')).to.equal(null);
+    } finally { controller.abort(); release(); await holding; }
+    await contender.writeImmutable('results/after-cancel.json', { value: 'fresh' });
+    expect(await contender.read('results/after-cancel.json')).to.deep.equal({ value: 'fresh' });
   });
   it('removes only app-owned orphan staging after reopening', async () => {
     const orphan = path.join(directory, 'results', 'missing.json.00000000-0000-0000-0000-000000000000.tmp');

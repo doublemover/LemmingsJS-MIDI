@@ -179,6 +179,22 @@ describe('isolated deterministic real procgen survey core', function() {
       }
     } finally { trial.dispose(); }
   });
+  it('rejects observations inside a physical transaction or after a failed tick', () => {
+    const trial = createSurveyTrial({ masks, scenario: scene() }), actor = trial.world.actors[0], process = actor.process;
+    try {
+      actor.process = function(world) {
+        expect(() => trial.snapshot()).to.throw('requires a completed physical tick');
+        expect(() => trial.telemetry()).to.throw('requires a completed physical tick');
+        expect(() => trial.observeMilestone()).to.throw('requires a completed physical tick');
+        return process.call(this, world);
+      };
+      trial.step(); expect(trial.snapshot().tick).to.equal(1);
+      actor.process = () => { throw new Error('failed physical fixture'); };
+      expect(() => trial.step()).to.throw('failed physical fixture');
+      for (const observe of [() => trial.snapshot(), () => trial.telemetry(), () => trial.observeMilestone(), () => trial.result()])
+        expect(observe).to.throw('requires a completed physical tick');
+    } finally { trial.dispose(); }
+  });
   it('hashes canonical semantic identities independently of object key order and display metadata', () => {
     expect(hashSurveyValue({ a: 1, b: [2, 3] })).to.equal(hashSurveyValue({ b: [2, 3], a: 1 }));
     expect(hashSurveyValue(undefined)).not.to.equal(hashSurveyValue(['undefined']));
@@ -215,6 +231,10 @@ describe('isolated deterministic real procgen survey core', function() {
       milestones: complete.milestones.map((entry, index) => index === complete.milestones.length - 1 ? { ...entry, stateHash: '0'.repeat(16) } : entry) };
     expect(compareSurveyReplay(complete, divergent).validity).to.equal('mismatch');
     expect(compareSurveyReplay(complete, { ...complete, milestones: {} }).validity).to.equal('invalid-or-incomplete');
+    const changedCrew = { ...complete, crew: complete.crew.map((record, index) => index ? record : { ...record, birthTick: record.birthTick + 1 }) };
+    expect(compareSurveyReplay(complete, changedCrew).differences).to.include('crew');
+    const changedEvents = { ...complete, events: complete.events.map((event, index) => index ? event : { ...event, changed: true }) };
+    expect(compareSurveyReplay(changedEvents, changedEvents).reasons).to.include('original:event-hash-not-bound');
     const boundary = { ...complete, milestones: complete.milestones.map((entry, index) => index ? entry : { ...entry, stateHash: '0'.repeat(16) }) };
     expect(compareSurveyReplay(boundary, boundary).reasons).to.include('original:milestone-boundary-mismatch');
     const unordered = { ...complete, milestones: [complete.milestones[0], complete.milestones[1], complete.milestones[1], ...complete.milestones.slice(2)] };

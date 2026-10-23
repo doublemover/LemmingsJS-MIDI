@@ -35,6 +35,11 @@ admitted wall time, including pauses and time waiting behind other residents'
 transfers. Each executing callback has `maxPersistenceMs`, further bounded by
 remaining total time. Callback latency and peak queue count/bytes are reported.
 Presentation callback failures are isolated from physics and storage status.
+Lease acquisition and directory reconciliation cooperate with the callback's
+abort signal. Canceling a waiter leaves the active writer's lease intact and
+removes its retry timer. Completed run controls are retired; a run with no
+queued or resident trials returns an explicit empty Step receipt and never
+claims to have reached a checkpoint.
 
 ## Filesystem publication
 
@@ -50,6 +55,10 @@ destination exists. Equal checksums are idempotent. Conflicting content leaves
 the original unchanged and retains the attempted value under `conflicts/`
 when quota permits; the typed conflict always includes both checksums.
 Derived reports use expected generations and may replace an older derivative.
+Envelope version 2 binds file ownership, generation and the existing payload
+checksum with a separate metadata checksum. Corrupt generation headers and
+counter overflow fail explicitly. Legacy checksum envelopes remain readable
+without being rewritten; a newly published derivative uses version 2.
 Quota includes the old report and its complete staged replacement at their
 peak. Reopening resets accounting and cleans only app-owned UUID staging
 files while holding the lease.
@@ -71,6 +80,9 @@ selected bytes. Big integer views use decimal strings. These portable evidence
 checksums remain separate from cryptographic source and asset verification.
 Terrain activity permits its legitimate negative-infinity sentinel and rejects
 NaN or positive infinity before issuing a state snapshot.
+Snapshots, milestones and telemetry reject an in-progress or failed physical
+tick. The source manifest records canonical encoding and physical state schema
+versions separately, and labels its loaded execution identity as unbound.
 
 Survey state schema 3 stores compact immutable terminal records. A first death
 observation preserves arrival, qualification and cause accounting immediately;
@@ -90,6 +102,8 @@ outcomes. The actor record cap remains explicit.
 Exact replay requires current state and canonical schemas, complete identities,
 trial/scenario/source/budget hashes bound to their declared payloads, a completed declared horizon, complete retention
 accounting, ordered checkpoints and matching initial/final checkpoint hashes.
+Complete event logs must reconstruct their declared event digest, and the
+per-actor crew evidence participates in comparison alongside scalar totals.
 Empty, legacy, malformed or truncated evidence is invalid/incomplete. A valid
 complete comparison with different outcomes reports mismatch. The coordinator
 keeps those outcomes separate from invalid or incomplete replay evidence.

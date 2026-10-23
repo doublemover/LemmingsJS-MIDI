@@ -1,8 +1,16 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
 
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+const envelopeMetadata = record => ({ schemaVersion: record.schemaVersion, envelopeVersion: record.envelopeVersion,
+  kind: record.kind, generation: record.generation ?? null, checksum: record.checksum });
+const createEnvelope = (value, kind, generation) => {
+  const record = { schemaVersion: 1, envelopeVersion: 2, kind, checksum: digest(value), value };
+  if (generation !== undefined) record.generation = generation;
+  record.metadataChecksum = digest(envelopeMetadata(record)); return record;
+};
 const stableOutcome = result => ({ status: result.status, lastTick: result.lastTick, initialStateHash: result.initialStateHash,
   finalStateHash: result.finalStateHash, eventHash: result.eventHash, initialScenarioStateHash: result.initialScenarioStateHash, accounting: result.accounting, metrics: result.metrics, provenance: result.provenance, episodeComplete: result.episodeComplete });
 const verifiedEpisode = result => ['completed', 'failed', 'timed-out', 'timeout', 'unsupported'].includes(result.status);
@@ -10,6 +18,9 @@ const derivativePath = name => name === 'report.json' || /^verification\/[a-zA-Z
 class SurveyStorageLimitError extends Error {}
 class SurveyWriterLeaseError extends Error {}
 class SurveyDerivativeConflictError extends Error {}
+class SurveyEvidenceIntegrityError extends Error {
+  constructor(name, reason, options) { super(reason + ': ' + name, options); this.name = 'SurveyEvidenceIntegrityError'; this.kind = 'evidence-integrity'; this.reference = name; }
+}
 class SurveyImmutableConflictError extends Error {
   constructor(name, originalChecksum, attemptedChecksum, conflictReference = null) {
     super('Conflicting immutable survey evidence: ' + name); this.name = 'SurveyImmutableConflictError';
@@ -27,10 +38,11 @@ class SurveyEvidenceStore {
     for (const name of ['results', 'attempts', 'exemplars', 'verification', 'conflicts']) await fs.mkdir(path.join(this.directory, name), { recursive: true });
     this.bytes = await this._countBytes(); await this.writeImmutable('manifest.json', manifest); return this;
   }
-  async _countBytes() {
+  async _countBytes(signal) {
     let bytes = 0;
     const count = async directory => {
       for (const entry of await fs.readdir(directory, { withFileTypes: true })) {
+        signal?.throwIfAborted();
         if (entry.name === '.writer-lease' || entry.name.startsWith('.writer-recovery-')) continue;
         const file = path.join(directory, entry.name);
         if (entry.isDirectory()) await count(file); else if (entry.isFile()) bytes += (await fs.stat(file)).size;
@@ -38,10 +50,11 @@ class SurveyEvidenceStore {
     };
     await count(this.directory); return bytes;
   }
-  async _cleanOrphanStaging() {
+  async _cleanOrphanStaging(signal) {
     const appTemporary = /\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.tmp$/i;
     const visit = async directory => {
       for (const entry of await fs.readdir(directory, { withFileTypes: true })) {
+        signal?.throwIfAborted();
         if (entry.name === '.writer-lease' || entry.name.startsWith('.writer-recovery-')) continue;
         const file = path.join(directory, entry.name);
         if (entry.isDirectory()) await visit(file);
@@ -50,9 +63,10 @@ class SurveyEvidenceStore {
     };
     await visit(this.directory);
   }
-  async _withWriterLease(action) {
+  async _withWriterLease(action, { signal } = {}) {
     const lease = path.join(this.directory, '.writer-lease'), token = randomUUID(), deadline = Date.now() + 10000;
     for (;;) {
+      signal?.throwIfAborted();
       try {
         await fs.mkdir(lease);
         try { await fs.writeFile(path.join(lease, 'owner.json'), JSON.stringify({ pid: process.pid, token }), { flag: 'wx' }); }
@@ -73,7 +87,7 @@ class SurveyEvidenceStore {
             if (recoveryError.code === 'ENOENT') continue;
             if (recoveryError.code !== 'EEXIST') throw recoveryError;
             if (Date.now() >= deadline) throw new SurveyWriterLeaseError('Survey stale-writer recovery is already reserved; interrupted recovery requires inspection');
-            await new Promise(resolve => setTimeout(resolve, 20)); continue;
+            await delay(20, undefined, { signal }); continue;
           }
           const orphan = path.join(this.directory, '.writer-recovery-' + randomUUID());
           try {
@@ -85,10 +99,10 @@ class SurveyEvidenceStore {
           continue;
         }
         if (Date.now() >= deadline) throw new SurveyWriterLeaseError('Survey evidence writer lease is busy');
-        await new Promise(resolve => setTimeout(resolve, 20));
+        await delay(20, undefined, { signal });
       }
     }
-    try { await this._cleanOrphanStaging(); this.bytes = await this._countBytes(); return await action(); }
+    try { signal?.throwIfAborted(); await this._cleanOrphanStaging(signal); this.bytes = await this._countBytes(signal); return await action(); }
     finally {
       const owner = JSON.parse(await fs.readFile(path.join(lease, 'owner.json'), 'utf8'));
       if (owner.token === token) await fs.rm(lease, { recursive: true, force: true });
@@ -105,27 +119,34 @@ class SurveyEvidenceStore {
   async _readEnvelope(name) {
     try {
       const record = JSON.parse(await fs.readFile(this._file(name), 'utf8'));
-      if (record.schemaVersion !== 1 || record.checksum !== digest(record.value)) throw new Error('Survey evidence checksum mismatch: ' + name);
+      if (!record || typeof record !== 'object' || Array.isArray(record) || record.schemaVersion !== 1 || !Object.hasOwn(record, 'value')) throw new SurveyEvidenceIntegrityError(name, 'Invalid survey evidence envelope');
+      if (record.checksum !== digest(record.value)) throw new SurveyEvidenceIntegrityError(name, 'Survey evidence checksum mismatch');
+      if (record.kind !== undefined && !['original', 'derivative', 'conflict'].includes(record.kind) ||
+          record.envelopeVersion !== undefined && record.envelopeVersion !== 2 ||
+          record.envelopeVersion === 2 && record.metadataChecksum !== digest(envelopeMetadata(record))) throw new SurveyEvidenceIntegrityError(name, 'Survey evidence metadata checksum mismatch');
+      if (record.kind === 'derivative' && !Number.isSafeInteger(record.generation) || record.generation !== undefined &&
+          (!Number.isSafeInteger(record.generation) || record.generation < 0 || record.kind && record.kind !== 'derivative')) throw new SurveyEvidenceIntegrityError(name, 'Invalid survey derivative generation');
       return record;
-    } catch (error) { if (error.code === 'ENOENT') return null; throw error; }
+    } catch (error) { if (error.code === 'ENOENT') return null; if (error instanceof SyntaxError) throw new SurveyEvidenceIntegrityError(name, 'Malformed survey evidence JSON', { cause: error }); throw error; }
   }
   async derivativeGeneration(name) {
     if (!derivativePath(name)) throw new SurveyDerivativeConflictError('Original evidence cannot be replaced by a derivative: ' + name);
     const record = await this._readEnvelope(name);
     if (!record) return null;
-    if (!Number.isSafeInteger(record.generation) || record.generation < 0) return 0;
-    return record.generation;
+    return record.generation ?? 0;
   }
-  async _retainConflict(name, previous, value) {
+  async _retainConflict(name, previous, value, signal) {
+    signal?.throwIfAborted();
     const attemptedChecksum = digest(value), conflict = { target: name, originalChecksum: previous.checksum, attemptedChecksum, value };
     const conflictReference = 'conflicts/' + digest(conflict) + '.json';
-    const record = { schemaVersion: 1, kind: 'conflict', checksum: digest(conflict), value: conflict };
+    const record = createEnvelope(conflict, 'conflict');
     const data = JSON.stringify(record) + '\n', size = Buffer.byteLength(data);
     let retained = null;
     if (this.bytes + size <= this.maxBytes) {
       const file = this._file(conflictReference), temporary = file + '.' + randomUUID() + '.tmp';
       try {
         await fs.writeFile(temporary, data, { flag: 'wx' });
+        signal?.throwIfAborted();
         try { await fs.link(temporary, file); this.bytes += size; } catch (error) { if (error.code !== 'EEXIST') throw error; await this._readEnvelope(conflictReference); }
         retained = conflictReference;
       } finally { await fs.rm(temporary, { force: true }); }
@@ -137,8 +158,8 @@ class SurveyEvidenceStore {
     const operation = this.tail.then(() => this._withWriterLease(async () => {
       signal?.throwIfAborted();
       const previous = await this._readEnvelope(name);
-      if (previous) { if (previous.checksum !== digest(value)) return this._retainConflict(name, previous, value); return previous.value; }
-      const data = JSON.stringify({ schemaVersion: 1, kind: 'original', checksum: digest(value), value }) + '\n';
+      if (previous) { if (previous.checksum !== digest(value)) return this._retainConflict(name, previous, value, signal); return previous.value; }
+      const data = JSON.stringify(createEnvelope(value, 'original')) + '\n';
       const size = Buffer.byteLength(data);
       if (this.bytes + size > this.maxBytes) throw new SurveyStorageLimitError('Survey storage cap reached; required originals retained');
       const file = this._file(name), temporary = file + '.' + randomUUID() + '.tmp';
@@ -154,7 +175,7 @@ class SurveyEvidenceStore {
         }
       } finally { await fs.rm(temporary, { force: true }); }
       return value;
-    }));
+    }, { signal }));
     this.tail = operation.catch(() => {}); return operation;
   }
   writeDerivative(name, value, { expectedGeneration = null, signal } = {}) {
@@ -166,7 +187,8 @@ class SurveyEvidenceStore {
       if (previous?.kind && previous.kind !== 'derivative') throw new SurveyDerivativeConflictError('Original evidence cannot be replaced by a derivative: ' + name);
       const actualGeneration = previous ? previous.generation ?? 0 : null;
       if (actualGeneration !== expectedGeneration) throw new SurveyDerivativeConflictError('Stale survey derivative generation: ' + name);
-      const data = JSON.stringify({ schemaVersion: 1, kind: 'derivative', generation: (actualGeneration ?? -1) + 1, checksum: digest(value), value }) + '\n';
+      if (actualGeneration === Number.MAX_SAFE_INTEGER) throw new SurveyDerivativeConflictError('Survey derivative generation exhausted: ' + name);
+      const data = JSON.stringify(createEnvelope(value, 'derivative', (actualGeneration ?? -1) + 1)) + '\n';
       const previousBytes = previous ? (await fs.stat(file)).size : 0;
       const size = Buffer.byteLength(data);
       if (this.bytes + size > this.maxBytes) throw new SurveyStorageLimitError('Survey storage peak staging cap reached while exporting derived report; originals retained');
@@ -174,7 +196,7 @@ class SurveyEvidenceStore {
       try { await fs.writeFile(temporary, data, { flag: 'wx' }); signal?.throwIfAborted(); await fs.rename(temporary, file); this.bytes += size - previousBytes; }
       finally { await fs.rm(temporary, { force: true }); }
       return value;
-    }));
+    }, { signal }));
     this.tail = operation.catch(() => {}); return operation;
   }
   async completed(trialId) {
@@ -196,4 +218,4 @@ class SurveyEvidenceStore {
   snapshot() { return { bytes: this.bytes, maxBytes: this.maxBytes, remainingBytes: this.maxBytes - this.bytes,
     durability: 'atomic-namespace-publication; no power-loss flush guarantee', publication: 'same-filesystem hard-link no-replace' }; }
 }
-export { SurveyEvidenceStore, SurveyStorageLimitError, SurveyWriterLeaseError, SurveyDerivativeConflictError, SurveyImmutableConflictError, stableOutcome, verifiedEpisode };
+export { SurveyEvidenceStore, SurveyStorageLimitError, SurveyWriterLeaseError, SurveyDerivativeConflictError, SurveyImmutableConflictError, SurveyEvidenceIntegrityError, stableOutcome, verifiedEpisode };

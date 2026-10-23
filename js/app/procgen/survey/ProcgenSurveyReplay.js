@@ -31,6 +31,13 @@ const surveyReplayEvidenceProblems = result => {
       milestones.at(-1)?.eventHash !== result.eventHash) problems.push('milestone-boundary-mismatch');
   if (!Array.isArray(result.events) || !Number.isSafeInteger(result.evidence?.eventCount) || result.evidence.eventCount !== result.events.length ||
       result.evidence?.eventsOmitted !== 0 || result.evidence?.milestonesOmitted !== 0) problems.push('incomplete-retention-accounting');
+  if (Array.isArray(result.events) && result.evidence?.eventsOmitted === 0) {
+    try {
+      const eventHash = result.events.reduce((hash, event) => hashSurveyValue([hash, event]), hashSurveyValue(['logical-events-v1']));
+      if (eventHash !== result.eventHash) problems.push('event-hash-not-bound');
+    } catch { problems.push('unsupported-event-payload'); }
+  }
+  if (!Array.isArray(result.crew) || result.evidence?.terminalRecordSchema !== 1) problems.push('unsupported-crew-evidence');
   return problems;
 };
 const surveyReplayCoverage = (original, replay) => {
@@ -55,7 +62,7 @@ const compareSurveyReplay = (original, replay, { scope = 'exact deterministic re
   if (!coverage.commonTicks.length) reasons.push('no-common-checkpoints');
   if (original?.trialId !== replay?.trialId) reasons.push('different-trial-identities');
   if (original?.provenance?.sourceHash !== replay?.provenance?.sourceHash) reasons.push('different-source-identities');
-  const fields = ['scenarioId', 'candidateId', 'scenario', 'candidate', 'status', 'lastTick', 'initialStateHash', 'finalStateHash', 'eventHash', 'accounting', 'metrics', 'provenance', 'episodeComplete', 'events'];
+  const fields = ['scenarioId', 'candidateId', 'scenario', 'candidate', 'status', 'lastTick', 'initialStateHash', 'finalStateHash', 'eventHash', 'accounting', 'metrics', 'provenance', 'episodeComplete', 'events', 'crew'];
   const differences = fields.filter(key => {
     try { return canonicalSurveyJson(original?.[key]) !== canonicalSurveyJson(replay?.[key]); }
     catch { reasons.push('unsupported-canonical-field:' + key); return true; }

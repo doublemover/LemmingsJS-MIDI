@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import { createBrowserSurveyTrial, verifiedBrowserFiles, hexSha256 } from '../js/app/procgen/survey/ProcgenSurveyBrowserAssets.js';
 import { normalizeSurveyScenario } from '../js/app/procgen/survey/ProcgenSurveyCore.js';
 import { createSurveySourceManifest, createNodeSurveyTrial } from '../scripts/procgen-survey/SurveyNodeWorld.js';
-import { SURVEY_STATE_SCHEMA } from '../js/app/procgen/survey/ProcgenSurveyCanonical.js';
+import { SURVEY_STATE_SCHEMA, SURVEY_CANONICAL_SCHEMA } from '../js/app/procgen/survey/ProcgenSurveyCanonical.js';
 
 const fileFetch = async url => {
   const data = await fs.readFile(url);
@@ -20,6 +20,8 @@ describe('verified selected browser survey asset contracts', function() {
     const scenes = [normalizeSurveyScenario({ id: 'verified-flat', horizonTicks: 64 }), normalizeSurveyScenario({ id: 'verified-real-source', mode: 'generated', pack: 'lemmings_ohNo', groundSet: 0, horizonTicks: 192, laneHeight: 144 })];
     sourceManifest = await createSurveySourceManifest(scenes);
     expect(sourceManifest.canonicalStateVersion).to.equal(SURVEY_STATE_SCHEMA);
+    expect(sourceManifest.canonicalEncodingVersion).to.equal(SURVEY_CANONICAL_SCHEMA);
+    expect(sourceManifest.executionIdentity.status).to.equal('unbound');
     [controlled, generated] = scenes.map(scene => normalizeSurveyScenario({ ...scene, engineCommit: sourceManifest.engineCommit, assetHashes: sourceManifest.assetHashes }));
   });
   it('decodes real masks and preserves headless controlled physical and logical hashes', async () => {

@@ -35,6 +35,15 @@ describe('real isolated procgen survey workers', function() {
     try { await runSurveyJobs(jobs(), { maxTotalTicks: 127, onTelemetry: () => updates++ }); throw new Error('unexpected admission'); } catch (error) { expect(error.message).to.include('simulation budget'); }
     expect(updates).to.equal(0);
   });
+  it('rejects missing or oversized assignment identities before starting a worker', async () => {
+    let admitted = 0;
+    for (const patch of [{ attemptId: '' }, { attemptId: undefined }, { trialId: undefined }, { trialId: 'x'.repeat(257) }, { candidate: {} }]) {
+      let rejected;
+      try { await runSurveyJobs([{ ...jobs()[0], ...patch }], { onControlReady: () => { admitted++; } }); } catch (error) { rejected = error; }
+      expect(rejected?.message).to.include('unique trial, attempt, scenario and candidate identities');
+    }
+    expect(admitted).to.equal(0);
+  });
   it('returns an unknown persistence receipt when the storage callback never settles', async () => {
     const started = Date.now();
     const report = await runSurveyJobs(jobs().slice(0, 1), { maxTotalMs: 5000, maxPersistenceMs: 100,

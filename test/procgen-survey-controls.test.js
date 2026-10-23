@@ -44,6 +44,16 @@ describe('local survey server and atomic live controls', function() {
     try { expect(one.origin).not.to.equal(two.origin); expect((await fetch(one.origin + '/survey-api/report')).status).to.equal(500); await one.close(); expect((await (await fetch(two.origin + '/survey-api/report')).json()).status).to.equal('independent'); expect(calls).to.equal(0); }
     finally { await one.close(); await two.close(); }
   });
+  it('reports empty work explicitly when stepping a run with no queued or resident trials', async () => {
+    let controls, receipt;
+    const report = await runSurveyJobs([], { paused: true, onControlReady: value => { controls = value; }, onControlState: value => { receipt = value; } });
+    const stepped = controls.step(); expect(stepped).to.equal(receipt);
+    expect(receipt).to.include({ stepStatus: 'empty', reachedCheckpoint: null, executionWorkers: 0, retired: true });
+    expect(receipt.selected).to.deep.equal([]); expect(receipt.runGeneration).to.equal(report.runGeneration);
+    expect(report.results).to.deep.equal([]); expect(report.error).to.equal(null);
+    const aborted = new AbortController(); aborted.abort();
+    expect((await runSurveyJobs([], { signal: aborted.signal })).reason).to.equal('cancelled');
+  });
   it('does not admit worlds while initially paused and records every queued cancellation explicitly', async () => {
     let controls, telemetry = 0;
     const execution = runSurveyJobs(jobs(3, 128), { executionWorkers: 1, residentWorlds: 2, paused: true, maxTotalMs: 5000, maxTrialMs: 4000, onControlReady: value => { controls = value; }, onTelemetry: () => { telemetry++; } });

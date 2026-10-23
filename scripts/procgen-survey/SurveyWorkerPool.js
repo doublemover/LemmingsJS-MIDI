@@ -19,9 +19,19 @@ const normalizeSurveyResources = (value = {}) => ({
 });
 const runSurveyJobs = async (jobs, options = {}) => {
   const resources = normalizeSurveyResources(options), started = performance.now(), runGeneration = randomUUID();
-  if (!Array.isArray(jobs) || jobs.length > 1024 || new Set(jobs.map(job => job.trialId)).size !== jobs.length) throw new Error('Survey jobs require bounded unique identities');
+  if (!Array.isArray(jobs) || jobs.length > 1024 || jobs.some(job => !job ||
+      ![job.trialId, job.attemptId, job.scenario?.id, job.candidate?.id].every(id => typeof id === 'string' && id.length > 0 && id.length <= 256)) ||
+      new Set(jobs.map(job => job.trialId)).size !== jobs.length) throw new Error('Survey jobs require bounded unique trial, attempt, scenario and candidate identities');
   if (jobs.some(job => !Number.isInteger(job.scenario?.horizonTicks) || job.scenario.horizonTicks < 1) || jobs.reduce((sum, job) => sum + job.scenario.horizonTicks, 0) > resources.maxTotalTicks) throw new RangeError('Survey total simulation budget exceeded before admission');
-  if (!jobs.length) return { results: [], resources, elapsedMs: 0, cancelled: false };
+  if (!jobs.length) {
+    const presentationErrors = [], state = freezeSurveyData({ runGeneration, paused: true, retired: true, executionWorkers: 0,
+      cancelled: !!options.signal?.aborted, stepPending: false, stepStatus: 'empty', selected: [], reachedCheckpoint: null });
+    const notify = callback => { try { const result = callback?.(); result?.catch?.(error => presentationErrors.push(String(error?.message || error))); } catch (error) { presentationErrors.push(String(error?.message || error)); } };
+    const empty = () => { notify(() => options.onControlState?.(state)); return state; };
+    notify(() => options.onControlReady?.({ pause: empty, resume: empty, step: empty, cancel: empty }));
+    return { results: [], resources, runGeneration, elapsedMs: 0, cancelled: state.cancelled, reason: state.cancelled ? 'cancelled' : null,
+      error: null, persistence: [], computations: [], controlState: state, presentationErrors };
+  }
   const count = Math.min(resources.executionWorkers, resources.residentWorlds, jobs.length), workers = [], activeWorkers = new Set(), results = [], receipts = new Map(), finished = new Set(), presentationErrors = [], persistence = new Map(), deliveryConflicts = [];
   const assignedByTrial = new Map(jobs.map(job => [job.trialId, job]));
   let cancelled = !!options.signal?.aborted, reason = cancelled ? 'cancelled' : null, callbackError = null, callbackTail = Promise.resolve(), paused = !!options.paused, controlId = 0, stepBarrier = null, stepInFlight = null, workersReady = false, pendingResultCount = 0, pendingResultBytes = 0;

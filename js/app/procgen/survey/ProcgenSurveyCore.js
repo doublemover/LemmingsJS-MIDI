@@ -252,7 +252,7 @@ class ProcgenSurveyTrial {
     }
     return telemetry ? this.telemetry() : null;
   }
-  telemetry() { if (this._telemetry.tick !== this.world.tickIndex) this._refreshTelemetry(); return this._telemetry; }
+  telemetry() { this._assertCompletedBoundary(); if (this._telemetry.tick !== this.world.tickIndex) this._refreshTelemetry(); return this._telemetry; }
   observationWork() { return Object.freeze({ ...this._observationWork, activeRecords: this._activeRecords.size,
     openLifecycles: this._openRecords.size, retainedRecords: this._records.length }); }
   preview({ maximumChunks = 4 } = {}) {
@@ -273,8 +273,15 @@ class ProcgenSurveyTrial {
     return freezeSurveyData({ ...this.telemetry().preview, chunks, chunksOmitted: Math.max(0, available - chunks.length),
       terrainScope: 'Already cached base collision only; edits and partial growth are not reconstructed.' });
   }
-  snapshot() {
+  _assertCompletedBoundary() {
     if (this._disposed) throw new Error('Survey trial is disposed');
+    if (this.world._stepping || this.world._failedTick) {
+      const error = new Error('Survey evidence requires a completed physical tick');
+      error.name = 'SurveyInvalidStateError'; error.kind = 'incomplete-physical-boundary'; throw error;
+    }
+  }
+  snapshot() {
+    this._assertCompletedBoundary();
     for (const tick of this.world.terrainActivityTicks) {
       if (tick !== -Infinity && (!Number.isFinite(tick) || tick < 0)) {
         const error = new Error('Invalid terrain activity tick in survey state');
@@ -290,6 +297,7 @@ class ProcgenSurveyTrial {
     return freezeSurveyData({ tick: this.world.tickIndex, stateHash: hashSurveyValue(state), physicalStateHash: hashSurveyValue(physical), eventHash: this._eventHash, state });
   }
   observeMilestone() {
+    this._assertCompletedBoundary();
     const previous = this._milestones[this._milestones.length - 1]; if (previous?.tick === this.world.tickIndex) return previous;
     const snapshot = this.snapshot(), milestone = freezeSurveyData({ tick: snapshot.tick, stateHash: snapshot.stateHash, physicalStateHash: snapshot.physicalStateHash, eventHash: snapshot.eventHash, telemetry: this.telemetry() });
     if (this._milestones.length >= MAX_MILESTONES) { this._milestones.splice(1, 1); this._milestonesOmitted++; }
