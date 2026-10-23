@@ -17,14 +17,14 @@ const advanceProcgenClock = (elapsed, deltaMs, speed, step, now) => {
   return elapsed;
 };
 
-const createProcgenLaneRuntime = ({ canvas, resources, resourceLease = null, sprites, masks, assets, laneCount, seed, terrain, laneHeight = DEFAULT_LANE_HEIGHT, previousDistances = [], workerLimits, populationPolicy, onMetrics, onActiveCount, speed = 3, workstation = false, hazardSpacing = 160, initialWorld = null, windowRef = window }) => {
+const createProcgenLaneRuntime = ({ canvas, resources, resourceLease = null, renderBudget, sprites, masks, assets, laneCount, seed, terrain, laneHeight = DEFAULT_LANE_HEIGHT, previousDistances = [], workerLimits, populationPolicy, onMetrics, onActiveCount, speed = 3, workstation = false, hazardSpacing = 160, initialWorld = null, windowRef = window }) => {
   const retirement = createProcgenRetirementScope();
   let world = null, renderer = null, constructionFrame = null, constructionVisibility = null;
   try {
     world = initialWorld || new ProcgenLaneWorld({ laneCount, laneHeight, seed, sprites, masks, speed, cohorts: true, populationPolicy,
       terrain, previousDistances, workerLimits, workstation, hazardSpacing,
       particleTable: new ParticleTable(assets.groundPieces[0].image.palette) });
-    renderer = new ProcgenLaneRenderer({ canvas, world, assets, windowRef });
+    renderer = new ProcgenLaneRenderer({ canvas, world, assets, windowRef, renderBudget });
     let paused = false;
     let clockDriven = false, clockTime = null;
     let running = true, frame = null, lastTime = null, elapsed = 0, previewRouter = null, lastMetrics = null, lastMetricTick = 0;

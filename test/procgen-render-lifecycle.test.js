@@ -7,7 +7,7 @@ const fixture = (options = {}) => {
   let now = 0;
   const canvases = [], callbacks = new Map(), documentListeners = new Map();
   const document = { hidden: false, createElement() {
-    if (options.creationFailure) throw new Error('Injected canvas creation failure');
+    if (options.creationFailure || options.creationFailureAt === canvases.length) throw new Error('Injected canvas creation failure');
     const listeners = new Map(), context = { globalAlpha: 1, createImageData(w, h) {
       if (options.allocationFailure || w > (options.maxImageWidth || Infinity)) throw new Error('Injected image allocation failure');
       return { data: new Uint8ClampedArray(w * h * 4) };
@@ -104,5 +104,46 @@ describe('ProcGen display resource lifecycle', () => {
     resources.resize(first, 16, 16, { cache: true }); resources.resize(second, 16, 16, { cache: true });
     expect(first.width).to.equal(0); expect(second.width).to.equal(16); expect(resources.getStats().evictions).to.equal(1);
     resources.dispose(); expect(second.width).to.equal(0); expect(reservations.size).to.equal(0);
+  });
+
+  it('attempts both dimensions and every remaining surface when one retirement setter rejects zero', () => {
+    const { renderer, canvases } = fixture(); renderer.render();
+    const width = renderer.buffer.width;
+    Object.defineProperty(renderer.buffer, 'width', { get: () => width, set: () => { throw new Error('Injected retirement setter failure'); } });
+    expect(() => renderer.dispose()).not.to.throw();
+    expect(renderer.getDisplayState()).to.include({ state: 'disposed', estimatedBytes: 0, unreleasedEstimatedBytes: 0 });
+    expect(renderer.getDisplayState().retirementFailures).to.be.greaterThan(0);
+    expect(canvases.every(surface => surface.width === 0 || surface.height === 0)).to.equal(true);
+    expect(canvases.every(surface => surface.listeners.size === 0)).to.equal(true); expect(renderer.world).to.equal(null);
+  });
+
+  it('reports a backing store whose browser refuses both retirement dimensions', () => {
+    const { canvas } = fixture(), reservations = new Map(), updates = [];
+    const resources = new ProcgenRenderResources(canvas.ownerDocument, { budgetAdapter: {
+        reserve: receipt => { reservations.set(receipt.token, receipt.bytes); updates.push(receipt); }, release: ({ token }) => reservations.delete(token)
+      } }), backing = resources.canvas();
+    resources.resize(backing, 16, 16);
+    for (const dimension of ['width', 'height']) Object.defineProperty(backing, dimension, { get: () => 16, set: () => { throw new Error('Injected total retirement failure'); } });
+    expect(() => resources.dispose()).not.to.throw();
+    expect(resources.getStats()).to.include({ estimatedBytes: 1024, unreleasedEstimatedBytes: 1024, backingStores: 0, retirementFailures: 2 });
+    expect(reservations.get(backing)).to.equal(1024); expect(updates.at(-1).unreleased).to.equal(true);
+  });
+
+  it('cleans partial renderer construction after an owned canvas cannot be created', () => {
+    const { canvas, canvases, world, windowRef } = fixture({ runtime: true, creationFailureAt: 2 });
+    let released = 0;
+    expect(() => createProcgenLaneRuntime({ canvas, assets: { groundPieces: [] }, initialWorld: world, windowRef,
+      resourceLease: { release: () => released++ } })).to.throw('Injected canvas creation failure');
+    expect(world.disposals).to.equal(1); expect(released).to.equal(1);
+    expect(canvases.every(surface => surface.width === 0 && surface.height === 0 && surface.listeners.size === 0)).to.equal(true);
+  });
+
+  it('passes shared render reservations through runtime creation and retires them on stop', () => {
+    const { canvas, world, windowRef } = fixture({ runtime: true }), reservations = new Map();
+    const runtime = createProcgenLaneRuntime({ canvas, assets: { groundPieces: [] }, initialWorld: world, windowRef, renderBudget: {
+      budgetAdapter: { reserve: ({ token, bytes }) => reservations.set(token, bytes), release: ({ token }) => reservations.delete(token) }
+    } });
+    runtime.renderer.render(); expect([...reservations.values()].reduce((sum, bytes) => sum + bytes, 0)).to.be.greaterThan(0);
+    runtime.stop(); expect(reservations.size).to.equal(0);
   });
 });

@@ -39,7 +39,7 @@ class ProcgenLaneRenderer {
       for (const [event, listener] of [['contextlost', lost], ['contextrestored', restored]]) { canvas.addEventListener?.(event, listener); this.contextListeners.push([event, listener]); }
       this._acquireContexts();
     } catch (error) {
-      this.actorVisibility.dispose(); this.camera?.dispose(); this.cctv?.dispose(); this.decorationLayer?.dispose(); this.objectTileCache?.dispose(); this.resources.dispose();
+      this.actorVisibility.dispose(); this.camera?.dispose(); this.cctv?.dispose(); this.decorationLayer?.dispose(); this.objectTileCache?.dispose(); this.resources.release(canvas); this.resources.dispose();
       throw error;
     }
   }
@@ -60,15 +60,14 @@ class ProcgenLaneRenderer {
     try { if (changed) this.onDisplayState?.({ state, reason: this.displayError, attempts: this.recoveryAttempts }); } catch { /* Status listeners cannot break the display host. */ }
   }
   _releasePresentation() {
-    this.decorationLayer?.reset?.(); this.objectTileCache.clear();
-    this.cctv?.releaseViews(); this.resources.clearCaches();
-    for (const canvas of [this.canvas, this.buffer, this.terrainBuffer, this.objectBuffer, this.sceneryBuffer]) if (canvas) { this.resources.release(canvas); canvas.width = canvas.height = 0; }
-    this.resources.release(this.imageKey); this.resources.release(this.sceneryImageKey);
+    for (const release of [() => this.decorationLayer?.reset?.(), () => this.objectTileCache.clear(), () => this.cctv?.releaseViews()]) {
+      try { release(); } catch { this.resources.retirementFailures++; }
+    }
+    this.resources.clear(); this.resources.release(this.canvas);
     this.image = this.pixels = this.sceneryImage = this.sceneryPixels = null;
     this.frames = new WeakMap(); this.objectFrames = new WeakMap(); this.dotColors = new WeakMap();
     this.objectPlacements.length = 0; this.tileRevisions.clear(); this.lastFrameKey = null;
     this.lastTerrainKey = this.lastGeometryKey = this.lastObjectKey = this.lastPlacementKey = this.lastSceneryKey = '';
-    if (this.sceneryBuffer) this.sceneryBuffer.width = this.sceneryBuffer.height = 0;
     this.sceneryBuffer = this.sceneryContext = null;
   }
   _failDisplay(error, lost = false) {
@@ -118,7 +117,7 @@ class ProcgenLaneRenderer {
     let bitmap = this.frames.get(frame);
     if (!bitmap) {
       bitmap = this.resources.canvas(); this.resources.resize(bitmap, frame.width, frame.height, { cache: true,
-        retire: () => { bitmap.width = bitmap.height = 0; this.frames.delete(frame); } });
+        retire: () => { this.frames.delete(frame); } });
       const context = bitmap.getContext('2d'); if (!context) throw new Error('Sprite canvas context unavailable');
       const key = {}, pixels = this.resources.image(context, frame.width, frame.height, key);
       try {
@@ -274,7 +273,7 @@ class ProcgenLaneRenderer {
       let bitmap = frameCache.get(frame);
       if (!bitmap) {
         bitmap = this.resources.canvas(); this.resources.resize(bitmap, image.width, image.height, { cache: true,
-          retire: () => { bitmap.width = bitmap.height = 0; frameCache.delete(frame); } });
+          retire: () => { frameCache.delete(frame); } });
         const ctx = bitmap.getContext('2d'); if (!ctx) throw new Error('Object canvas context unavailable');
         const pixelKey = {}, data = this.resources.image(ctx, image.width, image.height, pixelKey), rgba = new Uint32Array(data.data.buffer);
         try {
@@ -419,7 +418,6 @@ class ProcgenLaneRenderer {
     this.contextListeners.length = 0;
     this.actorVisibility.dispose(); this.camera.dispose(); this._releasePresentation(); this.cctv.dispose(); this.decorationLayer?.dispose?.(); this.objectTileCache.dispose(); this.resources.dispose(); this.decorationLayer = null; this.midiSpanOverlay = null; this.frames = new WeakMap(); this.objectFrames = new WeakMap();
     this.dotColors = new WeakMap(); this.actorDots = new Map(); this.objectDots = new Map(); this.image = null; this.pixels = null; this.lastFrameKey = null;
-    if (this.sceneryBuffer) this.sceneryBuffer.width = this.sceneryBuffer.height = 0;
     this.sceneryBuffer = this.sceneryContext = this.sceneryImage = this.sceneryPixels = null;
     this.lastAppearance = this.lastSprites = this.lastHud = this.lastHudSprites = this.lastDecorationLayer = null;
     this.onWorkstationFrame = this.onDisplayState = this.hud = this.world = this.assets = this.workstationLayout = this.workstationRows = null;

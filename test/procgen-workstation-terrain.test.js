@@ -6,6 +6,7 @@ import { ProcgenTerrainGrowth } from '../js/app/procgen/ProcgenTerrainGrowth.js'
 import { NodeFileProvider } from '../tools/NodeFileProvider.js';
 import { ProcgenLaneWorld } from '../js/app/procgen/ProcgenLaneWorld.js';
 import { ProcgenLaneRenderer } from '../js/app/procgen/ProcgenLaneRenderer.js';
+import { ProcgenRenderResources } from '../js/app/procgen/ProcgenRenderResources.js';
 import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
 import { captureProcgenCheckpoint, restoreProcgenCheckpoint } from '../js/app/procgen/workstation/ProcgenCheckpoint.js';
 import { createProcgenLaneProjection } from '../js/app/procgen/workstation/ProcgenLaneProjection.js';
@@ -134,6 +135,7 @@ describe('just ahead source publication and scenery', () => {
     Object.assign(renderer, { canvas: { ownerDocument: { createElement: () => ({ width: 0, height: 0, getContext: () => context }) } }, bufferContext: context,
       originX: 0, originY: 0, viewWidth: 8, viewHeight: 8, rasterStep: 1, pixels: new Uint32Array(64).fill(0xff0e0807),
       world: { laneCount: 1, laneHeight: 8, scenery: { revision: 1, drawLane({ drawPixel, reducedMotion }) { samples++; lastReducedMotion = reducedMotion; drawPixel(1, 1, 0xff0000ff); drawPixel(2, 1, 0xff0000ff); } } } });
+    renderer.resources = new ProcgenRenderResources(renderer.canvas.ownerDocument); renderer.sceneryImageKey = {};
     renderer.pixels[10] = 0xffabcdef;
     renderer._drawScenery('terrain:0', 8, 8); renderer._drawScenery('terrain:0', 8, 8);
     assert.equal(uploads, 1); assert.equal(samples, 1); assert.equal(draws, 2);
@@ -142,5 +144,6 @@ describe('just ahead source publication and scenery', () => {
     renderer._drawScenery('terrain:1', 8, 8); assert.equal(uploads, 3);
     renderer.reducedMotion = { matches: true }; renderer._drawScenery('terrain:1', 8, 8);
     assert.equal(uploads, 4); assert.equal(lastReducedMotion, true); assert.equal(renderer.world.scenery.reducedMotion, undefined);
+    renderer.resources.dispose();
   });
 });

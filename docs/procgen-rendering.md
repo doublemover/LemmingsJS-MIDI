@@ -29,6 +29,13 @@ and peak estimates, cache bytes, allocations, evictions and failures. An optiona
 `release({token, owner, bytes})` hooks. Reservations replace the prior byte count
 for the same token. The private cap continues to apply.
 
+Retirement attempts width and height independently. If a browser rejects both
+zero-dimension writes, diagnostics retain `unreleasedEstimatedBytes` and increment
+`retirementFailures`; disposal continues through the remaining surfaces. An
+unknown backing store is not reported as a confirmed zero-byte retirement.
+Shared accounting retains that token with `unreleased: true`; its release is
+reported only after the backing dimensions accept retirement.
+
 Disposal zeros every owned canvas, retires cached bitmaps, removes context and
 pointer listeners, releases retained arrays, and drops world/assets/frame
 callbacks. CCTV eviction releases only its own three canvases and image array;
@@ -56,3 +63,40 @@ retries, late callbacks, construction cleanup, 100 resize/retirement cycles,
 cross-chunk mask dependencies and bounded scrolling residency. These fixtures do
 not constitute browser fault injection, retained-heap measurement, screenshots,
 or cross-browser motion qualification.
+
+## Recorded cache probe and browser recovery
+
+Run `node --expose-gc scripts/bench-procgen-render-cache.mjs --name=Rook
+--iterations=200 --output=render-cache-results.json`. The checked-in
+[receipt](procgen-render-cache-results.json) records Node v26.12.1, Windows x64,
+an AMD Ryzen 7 5800X3D, source hashes and source art identity. It measures
+production JavaScript and typed arrays with mocked canvas submission, using a
+controlled dense source-art clipping fixture. It does not measure browser GPU
+time, interaction latency or retained heap after a long soak.
+
+For two hundred distant edits, with eight visible rows and a stationary camera:
+
+| Total lanes | Retained p50/p95/p99 (ms) | Uncached reference p50/p95/p99 (ms) |
+| ---: | --- | --- |
+| 8 | 0.128 / 0.552 / 5.060 | 6.594 / 22.748 / 57.768 |
+| 128 | 0.095 / 0.144 / 0.199 | 4.971 / 7.955 / 13.584 |
+| 1024 | 0.092 / 0.226 / 0.447 | 4.895 / 11.918 / 19.717 |
+
+Every retained row sampled zero clip pixels, allocated zero image arrays and
+rebuilt zero placement tiles during those distant edits. Each uncached reference
+row sampled 5,760,000 clip pixels and allocated 4,800 image arrays. Both modes
+retained an estimated 6,410,880 bytes after the scenario. This demonstrates work
+removal in this fixture; the distributions are one short local run on a shared development host with concurrent agent work; they are not release gates.
+
+The animated scenario still exposes the existing full actor draw-bounds refresh:
+200 frames scanned 1,600, 25,600 and 204,800 actors at 8, 128 and 1024 total lanes.
+Cached clipping does not resolve that separate projection optimization.
+
+`e2e/procgen-render-recovery.spec.js` passed three production-layout checks on the
+installed Edge browser: an injected terrain upload exception restored identical
+canvas PNG bytes and physical/event hash; a synthetic `contextlost` event kept
+transport/Panic controls available and recovered on the original canvas; and a
+disposed renderer ignored late recovery while all owned surfaces stayed zeroed.
+The tests attach hash/ownership receipts to Playwright results. These are fault
+injection tests, not evidence of an operating-system GPU reset or support across
+other browsers. The bundled Playwright Chromium executable was unavailable.

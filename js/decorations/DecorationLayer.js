@@ -17,7 +17,7 @@ class DecorationLayer {
     let bitmap = this.frames.get(frame);
     if (!bitmap) {
       bitmap = this.resources?.canvas() || this.document.createElement('canvas');
-      if (this.resources) this.resources.resize(bitmap, image.width, image.height, { cache: true, retire: () => { bitmap.width = bitmap.height = 0; this.frames.delete(frame); this.bitmaps.delete(bitmap); } });
+      if (this.resources) this.resources.resize(bitmap, image.width, image.height, { cache: true, retire: () => { this.frames.delete(frame); this.bitmaps.delete(bitmap); } });
       else { bitmap.width = image.width; bitmap.height = image.height; }
       this.bitmaps.add(bitmap);
       const context = bitmap.getContext('2d'), key = {}, data = this.resources ? this.resources.image(context, image.width, image.height, key) : context.createImageData(image.width, image.height), pixels = new Uint32Array(data.data.buffer);
@@ -120,9 +120,13 @@ class DecorationLayer {
     renderer.bufferContext.drawImage(this.canvas, 0, 0);
   }
   reset() {
-    for (const bitmap of this.bitmaps) { this.resources?.release(bitmap); bitmap.width = bitmap.height = 0; }
+    const retire = canvas => {
+      if (this.resources) this.resources.release(canvas);
+      else for (const dimension of ['width', 'height']) { try { canvas[dimension] = 0; } catch { /* Continue through the other dimension and remaining surfaces. */ } }
+    };
+    for (const bitmap of this.bitmaps) retire(bitmap);
     this.bitmaps.clear();
-    for (const canvas of [this.canvas, this.mask]) { this.resources?.release(canvas); canvas.width = canvas.height = 0; }
+    for (const canvas of [this.canvas, this.mask]) retire(canvas);
     this.frames = new WeakMap(); this.dotColors = new WeakMap(); this.key = this.maskKey = this.placementKey = ''; this.placements.length = this.trims.length = 0;
   }
   dispose() { this.reset(); this.pack = this.document = this.resources = this.context = this.maskContext = this.lastPack = null; }
