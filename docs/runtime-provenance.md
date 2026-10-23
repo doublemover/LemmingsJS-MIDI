@@ -60,3 +60,20 @@ The CI workflow pins checkout, setup-node and upload-artifact to reviewed
 commit IDs with their release tags in comments. To update one, resolve the new
 official action tag to a commit, review its release notes and changes, then
 replace the commit and comment together.
+
+## Browser generation inventory
+
+`scripts/BrowserRuntimeClosure.js` inventories all three HTML entry routes,
+their executable dependency closure, stylesheet resources and the tracked
+bundled asset/pack profile. It shares the parser-based module collector used by
+MCP packaging, including literal dynamic imports and URL resources. Unresolved,
+computed or escaping module references fail inventory admission. Source files
+are hashed as data; the collector never evaluates application modules or report
+text. Required CSS imports and local URL resources must exist.
+
+The inventory separates executable and asset digests and records a combined
+closure digest. Its qualification is explicitly artifact-inventory-only until a
+generated immutable entry actually executes. It is input to generation staging,
+not proof that the current tab ran those fetched bytes or that offline install
+completed. Added synthetic closure fixtures remain unexecuted during the
+frontloaded implementation pass.
