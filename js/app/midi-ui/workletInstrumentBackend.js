@@ -3,6 +3,7 @@ import { createInstrumentExecutionLifecycle, isManagedExecutionEpoch } from './I
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 import { releaseAudioResourceAfterRetirement } from './AudioResourceLeases.js';
 import { createAudioDisplayTelemetry } from './AudioDisplayTelemetry.js';
+import { NATIVE_WORKLET_FIELDS as fields } from './NativeInstrumentSchema.js';
 import { PROTOCOL, WIDTH, CAPACITY, MAX_VOICES, RECEIPT_WIDTH, BEGIN, UPDATE, END, CANCEL, LEASE,
   SCHEDULED, APPLIED, REJECTED, ENDED, CANCELLED, FAULTED, DISPLAY_PROTOCOL, DISPLAY_WIDTH, DISPLAY_VOICES } from './worklet/OwnedSineProcessor.js';
 
@@ -14,8 +15,6 @@ const capabilities = Object.freeze({ independentSamePitch: true, perVoicePitch: 
   perVoiceTimbre: false, offlineRender: true, ownedGates: true, renderAcknowledgment: true,
   maximumVoices: MAX_VOICES, latencyFrames: 0, sustainPedal: false, sostenuto: false, releaseVelocity: false, displayTelemetry: true,
   supportedParameterIds: Object.freeze(['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds', 'gain01', 'pan01']) });
-const fields = Object.freeze({ attackSeconds: [0, 2, 0.008], decaySeconds: [0, 4, 0.05], sustain01: [0, 1, 0.7],
-  releaseSeconds: [0.002, 4, 0.04], gain01: [0, 1, 0.5], pan01: [-1, 1, 0] });
 const finite = (value, min, max) => Number.isFinite(value) && value >= min && value <= max;
 const keyFor = (epoch, id) => JSON.stringify([epoch, id]);
 const kernelReasons = Object.freeze({ 1: 'invalid-command', 2: 'kernel-queue-full', 3: 'generation-cancelled', 4: 'late-command',

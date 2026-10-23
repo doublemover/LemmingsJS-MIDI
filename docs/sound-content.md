@@ -79,3 +79,11 @@ boundary records material integrity, with render qualification still separate.
 Native IndexedDB integration fixtures cover concurrency, immutable conflicts,
 connection reopening and archived project material; they are deferred with the
 rest of runtime validation.
+
+Native oscillator, sample and worklet renderers share the parameter contracts
+used by `getNativeInstrumentCatalog`. Pinned engine descriptors are available
+from an immutable browser generation and bind the complete application build;
+their schema hashes include actual units, limits, defaults and capabilities.
+An unbuilt source page retains preview playback but cannot claim matching pinned
+engine artifacts. Engine identity and schema compatibility still do not prove
+audible quality, gesture support or a successful render.

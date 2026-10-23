@@ -1,0 +1,41 @@
+import { freezeData, hashData } from '../../core/CanonicalData.js';
+import { getActiveExecutionIdentity } from '../../runtime/ActiveExecutionIdentity.js';
+import { validateEngineDescriptor } from '../../midi/content/InstrumentPatchV2.js';
+
+const parameter = (id, min, max, defaultValue, unit, discrete = false) => Object.freeze({ id, min, max, default: defaultValue,
+  unit, discrete, interpolation: 'linear', liveSafe: !['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds', 'waveform'].includes(id), capability: null });
+const envelope = (attack, decay, sustain, gain) => [parameter('attackSeconds', 0, 2, attack, 's'), parameter('decaySeconds', 0, 4, decay, 's'),
+  parameter('sustain01', 0, 1, sustain, 'ratio'), parameter('releaseSeconds', 0.002, 4, 0.04, 's'),
+  parameter('gain01', 0, 1, gain, 'ratio'), parameter('pan01', -1, 1, 0, 'normalized')];
+const schemas = freezeData({
+  'native-oscillator': [parameter('waveform', 0, 3, 1, 'index', true), ...envelope(0.008, 0.05, 0.7, 0.5)],
+  'worklet-sine': envelope(0.008, 0.05, 0.7, 0.5),
+  'native-sample': envelope(0.005, 0, 1, 0.7)
+});
+export const NATIVE_OSCILLATOR_PARAMETERS = freezeData(Object.fromEntries(schemas['native-oscillator'].map(spec =>
+  [spec.id, { min: spec.min, max: spec.max, integer: spec.discrete, default: spec.default }])));
+export const NATIVE_WORKLET_FIELDS = freezeData(Object.fromEntries(schemas['worklet-sine'].map(spec => [spec.id, [spec.min, spec.max, spec.default]])));
+export const NATIVE_SAMPLE_FIELDS = freezeData(Object.fromEntries(schemas['native-sample'].map(spec => [spec.id, [spec.min, spec.max, spec.default]])));
+const capabilities = id => Object.freeze({ samples: id === 'native-sample', independentSamePitch: true, perVoicePitch: true,
+  perVoicePressure: true, perVoicePan: true, perVoiceTimbre: false, ownedGates: true, releaseVelocity: id === 'native-sample',
+  forwardLoops: id === 'native-sample', displayTelemetry: id === 'worklet-sine', renderAcknowledgment: id === 'worklet-sine',
+  modulationGraph: false, macroPerformance: false, causalBindings: false });
+let catalogPromise = null;
+
+export function getNativeInstrumentCatalog() {
+  const identity = getActiveExecutionIdentity('browser-native-audio');
+  if (identity.activeExecution !== 'bound') return Promise.resolve(freezeData({ state: 'execution-unbound', executionIdentity: identity,
+    descriptors: [], engines: Object.keys(schemas), qualification: 'source-preview-without-pinned-artifact-authority' }));
+  if (!catalogPromise) catalogPromise = (async () => {
+    const descriptors = [];
+    for (const [engineId, parameters] of Object.entries(schemas)) {
+      const engineCapabilities = capabilities(engineId);
+      const parameterSchemaHash = await hashData({ version: 1, parameters, capabilities: engineCapabilities });
+      const artifactHash = await hashData({ engineId, engineVersion: 1, buildId: identity.buildId, closureDigest: identity.closureDigest });
+      descriptors.push(validateEngineDescriptor({ engineId, engineVersion: 1, artifactHash, parameterSchemaHash, parameters, capabilities: engineCapabilities }));
+    }
+    return freezeData({ state: 'bound-application-engines', executionIdentity: identity, descriptors, engines: Object.keys(schemas),
+      artifactScope: 'complete-immutable-application-build', qualification: 'identity-and-parameter-contract-not-render-qualification' });
+  })().catch(error => { catalogPromise = null; throw error; });
+  return catalogPromise;
+}

@@ -3,13 +3,9 @@ import { createSmoothedAudioParameter } from './SmoothedAudioParameter.js';
 import { createInstrumentExecutionLifecycle, isManagedExecutionEpoch } from './InstrumentExecutionLifecycle.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 import { releaseAudioResourceAfterRetirement } from './AudioResourceLeases.js';
+import { NATIVE_OSCILLATOR_PARAMETERS as parameters } from './NativeInstrumentSchema.js';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-const parameters = Object.freeze({
-  waveform: { min: 0, max: 3, integer: true }, attackSeconds: { min: 0, max: 2 },
-  decaySeconds: { min: 0, max: 4 }, sustain01: { min: 0, max: 1 },
-  releaseSeconds: { min: 0.002, max: 4 }, gain01: { min: 0, max: 1 }, pan01: { min: -1, max: 1 }
-});
 const waveforms = Object.freeze(['sine', 'triangle', 'sawtooth', 'square']);
 const capabilities = Object.freeze({ independentSamePitch: true, perVoicePitch: true, perVoicePressure: true,
   perVoicePan: true, perVoiceTimbre: false, offlineRender: false,
@@ -62,8 +58,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
         resolution.patch.engineId !== 'native-oscillator' || resolution.patch.engineVersion !== 1 ||
         resolution.patch.sampleRefs?.length || resolution.patch.modulations?.length || resolution.receipt?.patchId !== resolution.patch.id ||
         resolution.receipt?.revision !== resolution.patch.revision) return null;
-    const values = { waveform: 1, attackSeconds: 0.008, decaySeconds: 0.05, sustain01: 0.7,
-      releaseSeconds: 0.04, gain01: 0.5, pan01: 0 };
+    const values = Object.fromEntries(Object.entries(parameters).map(([id, spec]) => [id, spec.default]));
     for (const [name, value] of Object.entries(resolution.patch.parameters || {})) {
       const spec = parameters[name];
       if (!spec || !Number.isFinite(value) || value < spec.min || value > spec.max || spec.integer && !Number.isInteger(value)) return null;

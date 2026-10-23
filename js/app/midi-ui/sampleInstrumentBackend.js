@@ -2,6 +2,7 @@ import { createSmoothedAudioParameter } from './SmoothedAudioParameter.js';
 import { createInstrumentExecutionLifecycle, isManagedExecutionEpoch } from './InstrumentExecutionLifecycle.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 import { releaseAudioResourceAfterRetirement } from './AudioResourceLeases.js';
+import { NATIVE_SAMPLE_FIELDS as parameterSpecs } from './NativeInstrumentSchema.js';
 
 const plain = value => value != null && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
 const finite = (value, min, max) => Number.isFinite(value) && value >= min && value <= max;
@@ -13,8 +14,6 @@ const capabilities = Object.freeze({ independentSamePitch: true, perVoicePitch: 
   crossfadeLoops: false, reverse: false, positionDriven: false, independentTimeStretch: false,
   renderAcknowledgment: false, offlineRender: false, maximumVoices: 64, latencyFrames: 0,
   supportedParameterIds: Object.freeze(['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds', 'gain01', 'pan01']) });
-const parameterSpecs = { attackSeconds: [0, 2, 0.005], decaySeconds: [0, 4, 0], sustain01: [0, 1, 1],
-  releaseSeconds: [0.002, 4, 0.04], gain01: [0, 1, 0.7], pan01: [-1, 1, 0] };
 
 // Region selection belongs to the content map. This renderer snapshots exactly
 // one resolved source-frame region at onset and never rerolls it at release.
