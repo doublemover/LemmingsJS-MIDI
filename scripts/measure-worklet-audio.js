@@ -17,7 +17,7 @@ try {
   const evidence = await page.evaluate(async rates => {
     const { BrowserNotePreview } = await import('/js/app/midi-ui/browserNotePreview.js');
     const reports = [];
-    const run = async (sampleRate, reverse = false, crowd = 2) => {
+    const run = async (sampleRate, reverse = false, crowd = 2, telemetry = false) => {
       const raw = new globalThis.OfflineAudioContext(6, Math.ceil(sampleRate * 0.7), sampleRate);
       if (!raw.audioWorklet) throw new Error('Required offline AudioWorklet capability unavailable.');
       const adapter = { state: 'running', get currentTime() { return raw.currentTime; }, sampleRate: raw.sampleRate, destination: raw.destination,
@@ -32,8 +32,19 @@ try {
       receipt: { patchId: 'worklet-fixture', revision: 1 } };
       const prepared = await Promise.all([A.prepare(patch), B.prepare(patch)]);
       if (prepared.some(receipt => receipt.status !== 'ready')) throw new Error('Worklet prepare failed: ' + JSON.stringify(prepared));
+      const displaySamples = [], displayErrors = [];
+      if (telemetry) for (const [backend, session, executionEpoch] of [[A, live, 'live'], [B, cue, 'cue']]) {
+        backend.setDisplayContext({ worldId: 'fixture', graphRevision: 1, routeRevision: 1 });
+        backend.observeDisplaySamples(sample => {
+          if (displaySamples.length < 256) displaySamples.push(sample);
+          if (sample.owner !== session.getState().ownerId || sample.contextEpoch !== preview.getState().contextEpoch ||
+              sample.appliedFrame >= sample.windowEndFrame || sample.windowStartFrame < Math.round(0.02 * sampleRate) ||
+              sample.quantities.some(quantity => !Number.isFinite(quantity.value)) || sample.routeState.muted !== null) displayErrors.push('invalid-display-evidence');
+        }, { identity: { worldId: 'fixture', generation: 1, executionEpoch, contextEpoch: preview.getState().contextEpoch, graphRevision: 1, routeRevision: 1 }, maxVoices: 32 });
+      }
       const frame = time => Math.round(time * sampleRate), intent = id => ({ version: 1, kind: 'begin', voiceId: id,
-        generation: 1, velocity01: 0.7501, pitch: { cents: 6000.125, referenceHz: 440 }, expression: {}, sourceEventIds: ['physical:' + id] });
+        generation: 1, actorId: id === 'same' ? 1 : 2, onsetId: 'onset:' + id,
+        velocity01: 0.7501, pitch: { cents: 6000.125, referenceHz: 440 }, expression: {}, sourceEventIds: ['physical:' + id] });
       const receipts = [];
       for (let index = 0; index < crowd; index++) receipts.push((index % 2 ? B : A).begin(intent(index < 2 ? 'same' : 'crowd:' + index), frame(0.02), index % 2 ? 'cue' : 'live'));
       const controls = [[A, { pitchOffsetCents: 200.001, pressure01: 0.5001, pan01: -0.8 }, 0.1, 'live'],
@@ -54,12 +65,20 @@ try {
         }
         throw new Error('Kernel did not acknowledge the offline fixture queue.');
       };
+      const waitForStopQueued = async backends => {
+        for (let attempt = 0; attempt < 100; attempt++) {
+          if (backends.every(backend => { const state = backend.renderDiagnostics(); return state.counters.stopQueued >= state.counters.stopRequests; })) return;
+          await new Promise(resolve => setTimeout(resolve, 1));
+        }
+        throw new Error('Kernel did not queue the offline fixture Stop request.');
+      };
       await waitForAdmission();
       const pumpBoundary = raw.suspend(0.04), cueStop = raw.suspend(0.3), panic = raw.suspend(0.5), rendering = raw.startRendering();
       await pumpBoundary;
       // Renewing causes the one bounded pump to submit the now-known queued start.
       B.renewExecutionLease(1, 'cue', frame(1)); await waitForAdmission(); await raw.resume();
-      await cueStop; cue.stop(); await raw.resume(); await panic; preview.panic(); await raw.resume();
+      await cueStop; cue.stop(); await waitForStopQueued([B]); await raw.resume();
+      await panic; preview.panic(); await waitForStopQueued([A, B]); await raw.resume();
       const buffer = await rendering;
       // Drain already queued port messages before collecting render receipts.
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -72,12 +91,14 @@ try {
         return { peak, rms: Math.sqrt(square / count), nonfinite };
       };
       const diagnostics = [A.renderDiagnostics({ includeTraces: true }), B.renderDiagnostics({ includeTraces: true })];
-      const report = { sampleRate: raw.sampleRate, crowd, accepted: receipts.filter(receipt => receipt.status === 'accepted').length, expected: receipts.length,
+      const report = { sampleRate: raw.sampleRate, crowd, telemetry, displaySamples: displaySamples.length, displayErrors,
+        displayOwners: [...new Set(displaySamples.map(sample => sample.owner))],
+        accepted: receipts.filter(receipt => receipt.status === 'accepted').length, expected: receipts.length,
         final: measure(0, 0, 0.7), liveAfterCueStop: measure(2, 0.35, 0.45), cueAfterStop: measure(4, 0.35, 0.45),
         postPanic: measure(0, 0.52, 0.7), applied: diagnostics.flatMap(item => item.traces).filter(trace => trace.stage === 'render-kernel-applied').length,
         kernelFaults: diagnostics.reduce((sum, item) => sum + item.counters.faults, 0), activeAfterPanic: preview.getState().activeVoices,
         rejections: diagnostics.flatMap(item => item.traces).filter(trace => trace.status === 'rejected'),
-        diagnostics: diagnostics.map(item => ({ counters: item.counters, inFlight: item.inFlight, traceCount: item.traceCount, truncated: item.truncatedTraces })) };
+        diagnostics: diagnostics.map(item => ({ counters: item.counters, inFlight: item.inFlight, traceCount: item.traceCount, truncated: item.truncatedTraces, display: item.display })) };
       A.dispose(); B.dispose(); await preview.dispose(); return { report, samples };
     };
     for (const rate of rates) {
@@ -86,7 +107,12 @@ try {
       for (let channel = 0; channel < 6; channel++) for (let frame = 0; frame < chronological.samples[channel].length; frame++)
         permutationError = Math.max(permutationError, Math.abs(chronological.samples[channel][frame] - shuffled.samples[channel][frame]));
       reports.push({ ...chronological.report, permutationError });
+      const observed = await run(rate, false, 2, true); let telemetryPcmError = 0;
+      for (let channel = 0; channel < 6; channel++) for (let frame = 0; frame < chronological.samples[channel].length; frame++)
+        telemetryPcmError = Math.max(telemetryPcmError, Math.abs(chronological.samples[channel][frame] - observed.samples[channel][frame]));
+      reports.push({ ...observed.report, telemetryPcmError });
       for (const crowd of [16, 32, 64]) reports.push((await run(rate, false, crowd)).report);
+      reports.push((await run(rate, false, 64, true)).report);
     }
     return { engine: 'worklet-sine@1', scope: 'digital-offline', reports,
       evidence: { renderKernelReceipts: true, realtimeDeadline: 'not-run', listened: 'not-run', physicalLoopback: 'not-run' } };
@@ -96,7 +122,8 @@ try {
     [file, createHash('sha256').update(await fs.readFile(path.join(root, file))).digest('hex')])));
   const failed = evidence.reports.filter(report => report.accepted !== report.expected || report.final.nonfinite || report.final.peak >= 0.9 ||
     report.liveAfterCueStop.rms < 1e-5 || report.cueAfterStop.peak > 1e-7 || report.postPanic.peak > 1e-7 ||
-    report.kernelFaults || report.rejections.length || report.activeAfterPanic || !report.applied || report.permutationError > 1e-6);
+    report.kernelFaults || report.rejections.length || report.activeAfterPanic || !report.applied || report.permutationError > 1e-6 ||
+    report.telemetry && (!report.displaySamples || report.displayOwners.length !== 2 || report.displayErrors.length || report.telemetryPcmError > 0));
   evidence.passed = !errors.length && !failed.length;
   await fs.mkdir(directory, { recursive: true }); await fs.writeFile(path.join(directory, 'worklet.json'), JSON.stringify(evidence, null, 2) + '\n');
   console.log(JSON.stringify({ passed: evidence.passed, environment, cases: evidence.reports.length, failed, output: path.join(directory, 'worklet.json') }, null, 2));

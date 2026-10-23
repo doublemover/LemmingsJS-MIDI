@@ -3,6 +3,7 @@
 const PROTOCOL = 1, WIDTH = 18, CAPACITY = 512, MAX_VOICES = 64, RECEIPT_WIDTH = 6;
 const BEGIN = 1, UPDATE = 2, END = 3, CANCEL = 4, PANIC = 5, LEASE = 6;
 const SCHEDULED = 1, APPLIED = 2, REJECTED = 3, ENDED = 4, CANCELLED = 5, FAULTED = 6;
+const DISPLAY_PROTOCOL = 1, DISPLAY_WIDTH = 20, DISPLAY_VOICES = 32, DISPLAY_STATE_WIDTH = 16;
 
 class OwnedSineKernel {
   constructor(sampleRate, maxVoices = MAX_VOICES) {
@@ -14,6 +15,57 @@ class OwnedSineKernel {
     this.receipts = new Float64Array(2048 * RECEIPT_WIDTH); this.receiptCount = 0;
     this.counters = new Uint32Array(8); this.panicPending = false;
     this.lastPacket = 0; this.lastFrame = 0; this.nonfinite = 0;
+    this.displayTokens = new Uint32Array(MAX_VOICES); this.displayState = new Float64Array(MAX_VOICES * DISPLAY_STATE_WIDTH);
+    this.displayData = new Float64Array(DISPLAY_VOICES * DISPLAY_WIDTH); this.displayCount = 0;
+    this.displayEnabled = false; this.displayReady = false; this.displayInterval = 0; this.displayNext = 0;
+    this.displayRevision = 0; this.displaySequence = 0; this.displayDropped = 0;
+  }
+
+  configureDisplay(tokens, interval, revision) {
+    if (!(tokens instanceof Uint32Array) || tokens.length !== MAX_VOICES || !Number.isSafeInteger(interval) ||
+        interval < Math.ceil(this.sampleRate / 30) || interval > Math.ceil(this.sampleRate / 4) ||
+        !Number.isSafeInteger(revision) || revision <= this.displayRevision) return false;
+    let count = 0; for (let slot = 0; slot < MAX_VOICES; slot++) if (tokens[slot]) count++;
+    if (count > DISPLAY_VOICES) return false;
+    for (let slot = 0; slot < MAX_VOICES; slot++) if (this.displayState[slot * DISPLAY_STATE_WIDTH + 5]) { this.displayDropped++; break; }
+    this.displayTokens.set(tokens); this.displayState.fill(0); this.displayEnabled = count > 0;
+    this.displayInterval = interval; this.displayNext = this.lastFrame + interval; this.displayRevision = revision;
+    if (this.displayReady) this.displayDropped++; this.displayReady = false; return true;
+  }
+
+  measureDisplay(slot, sample, frame, phase, flags = 0) {
+    const voice = slot * 28, token = this.voice[voice + 2];
+    if (!this.displayEnabled || this.displayTokens[slot] !== token) return;
+    const at = slot * DISPLAY_STATE_WIDTH, state = this.displayState;
+    if (state[at] !== token || flags & 6) {
+      for (let field = 0; field < DISPLAY_STATE_WIDTH; field++) state[at + field] = 0;
+      state[at] = token; state[at + 3] = frame;
+    }
+    state[at + 1] = this.voice[voice]; state[at + 2] = this.voice[voice + 1];
+    state[at + 4] = frame + 1; state[at + 5]++; state[at + 6] += sample * sample;
+    state[at + 7] = Math.max(state[at + 7], Math.abs(sample)); state[at + 8] = phase;
+    state[at + 9] = this.voice[voice + 5]; state[at + 10] = this.voice[voice + 8]; state[at + 11] = this.voice[voice + 10];
+    state[at + 12] = flags & 6 ? 0 : this.voice[voice + 4]; state[at + 13] = flags;
+    state[at + 14] = this.voice[voice + 26]; state[at + 15] = this.voice[voice + 27];
+  }
+
+  finishDisplay(frame) {
+    if (!this.displayEnabled || frame < this.displayNext) return;
+    if (this.displayReady) this.displayDropped++;
+    this.displayCount = 0; this.displaySequence++; this.displayNext = frame + this.displayInterval;
+    for (let slot = 0; slot < MAX_VOICES; slot++) {
+      const from = slot * DISPLAY_STATE_WIDTH, state = this.displayState;
+      if (!state[from + 5] || this.displayTokens[slot] !== state[from]) continue;
+      const at = this.displayCount++ * DISPLAY_WIDTH, data = this.displayData;
+      data[at] = slot; data[at + 1] = state[from]; data[at + 2] = state[from + 1]; data[at + 3] = state[from + 2];
+      data[at + 4] = state[from + 3]; data[at + 5] = state[from + 4]; data[at + 6] = state[from + 5]; data[at + 7] = state[from + 14];
+      data[at + 8] = Math.sqrt(state[from + 6] / state[from + 5]); data[at + 9] = state[from + 7];
+      for (let field = 0; field < 6; field++) data[at + 10 + field] = state[from + 8 + field];
+      data[at + 16] = state[from + 4] - 1; data[at + 17] = this.displaySequence;
+      data[at + 18] = this.displayRevision; data[at + 19] = state[from + 15];
+      state[from + 3] = frame; state[from + 5] = 0; state[from + 6] = 0; state[from + 7] = 0;
+    }
+    this.displayReady = this.displayCount > 0;
   }
 
   less(left, right) {
@@ -80,6 +132,7 @@ class OwnedSineKernel {
     const at = slot * 28, voices = this.voice;
     voices[at + 18] = Math.max(1, frames); voices[at + 19] = voices[at + 4] / voices[at + 18];
     voices[at + 20] = reason; voices[at + 21] = frame;
+    voices[at + 26] = frame;
   }
 
   apply(frame) {
@@ -135,6 +188,7 @@ class OwnedSineKernel {
       if (mask & 4) { voices[at + 11] = queue[9]; voices[at + 25] = Math.max(1, Math.round(queue[14])); }
     } else if (opcode === END) this.release(slot, Math.max(1, queue[13]), frame, 1);
     else if (opcode === LEASE) voices[at + 16] = Math.max(voices[at + 16], queue[16]);
+    voices[at + 26] = frame; voices[at + 27] = sequence;
     this.receipt(APPLIED, sequence, slot, token, frame);
   }
 
@@ -163,6 +217,7 @@ class OwnedSineKernel {
         if (voices[at + 18]) {
           voices[at + 4] = Math.max(0, voices[at + 4] - voices[at + 19]); voices[at + 18]--;
           if (voices[at + 18] === 0 || voices[at + 4] === 0) {
+            if (this.displayEnabled) this.measureDisplay(slot, 0, frame, 0, 2);
             this.active[slot] = 0; this.receipt(ENDED, voices[at + 22], slot, voices[at + 2], frame, voices[at + 20]); continue;
           }
         } else if (age < voices[at + 12]) voices[at + 4] = age / voices[at + 12];
@@ -171,16 +226,19 @@ class OwnedSineKernel {
         if (voices[at + 23] > 0) { voices[at + 5] += (voices[at + 6] - voices[at + 5]) / voices[at + 23]; voices[at + 23]--; }
         if (voices[at + 24] > 0) { voices[at + 8] += (voices[at + 9] - voices[at + 8]) / voices[at + 24]; voices[at + 24]--; }
         if (voices[at + 25] > 0) { voices[at + 10] += (voices[at + 11] - voices[at + 10]) / voices[at + 25]; voices[at + 25]--; }
-        const sample = Math.sin(voices[at + 3]) * voices[at + 4] * voices[at + 7] * voices[at + 8];
+        const phase = voices[at + 3], sample = Math.sin(phase) * voices[at + 4] * voices[at + 7] * voices[at + 8];
         voices[at + 3] += 2 * Math.PI * voices[at + 5] / this.sampleRate;
         if (voices[at + 3] > 2 * Math.PI) voices[at + 3] -= 2 * Math.PI;
         if (!Number.isFinite(sample) || !Number.isFinite(voices[at + 3])) {
+          if (this.displayEnabled) this.measureDisplay(slot, 0, frame, 0, 4);
           this.active[slot] = 0; this.nonfinite++; this.receipt(FAULTED, voices[at + 22], slot, voices[at + 2], frame, 8); continue;
         }
         const angle = (voices[at + 10] + 1) * Math.PI / 4;
+        if (this.displayEnabled) this.measureDisplay(slot, sample, frame, phase, voices[at + 18] ? 1 : 0);
         sumLeft += sample * Math.cos(angle); sumRight += sample * Math.sin(angle);
       }
       left[offset] = sumLeft; if (right) right[offset] = sumRight;
+      if (this.displayEnabled && frame + 1 >= this.displayNext) this.finishDisplay(frame + 1);
     }
     this.lastFrame = frameStart + left.length;
   }
@@ -191,18 +249,32 @@ class OwnedSineProcessor extends ProcessorBase {
   constructor(options) {
     super(); this.kernel = new OwnedSineKernel(globalThis.sampleRate, options?.processorOptions?.maxVoices || MAX_VOICES);
     this.message = { type: 'receipts', protocol: PROTOCOL, count: 0, data: new Float64Array(64 * RECEIPT_WIDTH) };
+    this.displayMessage = { type: 'display-samples', protocol: PROTOCOL, displayProtocol: DISPLAY_PROTOCOL, revision: 0,
+      sequence: 0, droppedWindows: 0, count: 0, data: new Float64Array(DISPLAY_VOICES * DISPLAY_WIDTH) };
+    this.displayAwaiting = 0;
     this.port.onmessage = event => {
       const data = event.data;
       if (data?.type === 'commands' && data.protocol === PROTOCOL) this.kernel.accept(data.data, data.count, data.packetSequence);
-      else if (data?.type === 'panic') this.kernel.panicPending = true;
+      else if (data?.type === 'panic') {
+        this.kernel.panicPending = true; this.kernel.receipt(SCHEDULED, 0, -1, 0, this.kernel.lastFrame, 2);
+      }
+      else if (data?.type === 'display-config' && data.displayProtocol === DISPLAY_PROTOCOL) this.kernel.configureDisplay(data.tokens, data.intervalFrames, data.revision);
+      else if (data?.type === 'display-ack' && data.sequence === this.displayAwaiting) { this.displayAwaiting = 0; this.flushDisplay(); }
       else if (data?.type === 'inspect') this.port.postMessage({ type: 'health', protocol: PROTOCOL,
         counters: Array.from(this.kernel.counters), nonfinite: this.kernel.nonfinite, queued: this.kernel.queueLength, frame: this.kernel.lastFrame });
       else this.port.postMessage({ type: 'protocol-error', protocol: PROTOCOL });
       this.flushReceipts();
     };
     this.port.postMessage({ type: 'ready', protocol: PROTOCOL, engineId: 'worklet-sine', engineVersion: 1,
-      runtimeABI: 'owned-sine-f64-command-v1', buildId: 'owned-sine-v1',
+      runtimeABI: 'owned-sine-f64-command-v1', buildId: 'owned-sine-v2-display',
+      displayProtocol: DISPLAY_PROTOCOL, displayWidth: DISPLAY_WIDTH, displayVoices: DISPLAY_VOICES,
       sampleRate: globalThis.sampleRate, maxVoices: this.kernel.maxVoices, capacity: CAPACITY, width: WIDTH });
+  }
+  flushDisplay() {
+    if (this.displayAwaiting || !this.kernel.displayReady) return;
+    const message = this.displayMessage; message.count = this.kernel.displayCount; message.sequence = this.kernel.displaySequence;
+    message.revision = this.kernel.displayRevision; message.droppedWindows = this.kernel.displayDropped;
+    message.data.set(this.kernel.displayData); this.kernel.displayReady = false; this.displayAwaiting = message.sequence; this.port.postMessage(message);
   }
   flushReceipts() {
     if (!this.kernel.receiptCount) return;
@@ -217,10 +289,11 @@ class OwnedSineProcessor extends ProcessorBase {
   process(_inputs, outputs) {
     const output = outputs[0];
     if (!output?.[0]) return true;
-    this.kernel.render(output[0], output[1], globalThis.currentFrame); this.flushReceipts(); return true;
+    this.kernel.render(output[0], output[1], globalThis.currentFrame); this.flushReceipts(); this.flushDisplay(); return true;
   }
 }
 if (typeof globalThis.registerProcessor === 'function') globalThis.registerProcessor('lemmings-owned-sine-v1', OwnedSineProcessor);
 
-export { OwnedSineKernel, PROTOCOL, WIDTH, CAPACITY, MAX_VOICES, RECEIPT_WIDTH,
+export { OwnedSineKernel, OwnedSineProcessor, PROTOCOL, WIDTH, CAPACITY, MAX_VOICES, RECEIPT_WIDTH,
+  DISPLAY_PROTOCOL, DISPLAY_WIDTH, DISPLAY_VOICES, DISPLAY_STATE_WIDTH,
   BEGIN, UPDATE, END, CANCEL, PANIC, LEASE, SCHEDULED, APPLIED, REJECTED, ENDED, CANCELLED, FAULTED };

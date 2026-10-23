@@ -205,7 +205,7 @@ replacement release the relevant tokens. Disposing audio preserves reservations
 owned by the renderer or other application subsystems.
 
 Accounting separates known typed-array/Float32 bytes from estimates. The worklet
-kernel's fixed storage is 189,536 bytes; its host allowance is a separate
+kernel and processor's fixed storage is 208,224 bytes; its host allowance is a separate
 128 KiB estimate. Native voices have a 16 KiB node/host estimate, and browser
 graph overhead has its own declared allowance. The shared service applies its
 configured audio overhead factor. These are admission costs, not a measurement
@@ -418,3 +418,88 @@ before-onset End, construction/quota rollback, canceled choke chains, duplicate
 owners, and original-release restoration. This establishes digital offline and
 control-plane evidence. Realtime deadlines, spectral quality on arbitrary
 authored seams, other browsers, listening and physical loopback remain unrun.
+
+## Worklet-owned display telemetry
+
+`worklet-sine@1`, build `owned-sine-v2-display`, has a demand-leased observation
+path. It measures each selected voice before stereo panning and before the
+owner bus or shared protection graph. It never divides shared output energy
+among actors. The native oscillator/sample paths continue to report their
+scheduling/model evidence; they do not produce these measured actor windows.
+
+```js
+backend.setDisplayContext({ worldId, graphRevision, routeRevision });
+// The context above is frozen into future Begin admissions. Existing voices
+// retain their original world/graph/route identity through their release tails.
+const release = backend.observeDisplaySamples(sample => {
+  const correlation = currentFrameToPresentationCorrelation(); // #972 owner
+  display.ingestAudioDisplaySample(sample, correlation);
+}, {
+  identity: { worldId, generation, executionEpoch,
+    contextEpoch: preview.getState().contextEpoch, graphRevision, routeRevision },
+  actorIds: visibleActorIds, maxVoices: 16, rateHz: 20
+});
+// Hidden, disconnected, replaced and disposed views must revoke their lease.
+release(); // Idempotent; releasing one observer preserves other observers.
+```
+
+The callback receives one frozen `AudioDisplaySample` at a time, including the
+exact session `owner`, world/context/execution identity, actor/onset/voice/node
+IDs, patch revision, last kernel-applied command frame, measurement window and
+sequence. Actor IDs must be nonnegative integers and onset IDs must be present
+at admission. Missing identity leaves the voice playable and increments the
+`identityUnavailable` diagnostic counter. `getDisplaySamples()` returns at most
+32 latest records for inspection; timestamps still determine their validity.
+
+Windows use half-open output frame intervals. Their RMS and peak reduce actual
+mono Float64 DSP samples before summing/panning. `amplitude-envelope` is the same
+measured window peak normalized to unity full scale; it is not a newly invented
+oscillator or an envelope-follower simulation. Detector metadata declares the
+tap, one channel, sampled frame count, normalization and up to one window of
+response delay (`responseDelayFrames`/`detectorDelayFrames`). Frequency, pressure
+and pan carry `applied-parameter` evidence. Radian oscillator phase carries
+`kernel-state` evidence and is omitted after end/fault. No low-frequency wobble,
+filter/drive quantity, shared return or delay ghost is fabricated.
+
+The applied frame is the last command/state transition actually processed by
+the kernel. It may precede the measured window. It is neither the original
+requested target nor a device/acoustic acknowledgment. `effectiveFrame` is the
+last measured output frame; validity ends after another half-second. Future
+queued onsets produce no measured samples. Terminal zero, a fault and absent
+phase have separate fields. The processing flags describe this sine voice.
+Output mute lies beyond its pre-bus detector, so `routeState.muted` is `null`
+with unknown evidence. The renderer preserves this uncertainty and suppresses
+moving audible claims while retaining inspectable digital measurements.
+
+Each backend permits eight observer leases, 16 selected voices by default,
+32 maximum, and 4–30 Hz. Exact execution/graph/route filters and stable actor/voice
+ordering bound crowd selection. Per-window coverage stays complete for the
+actual selected tap; selection omissions and overwritten windows have separate
+counters. Old/recycled slots require the exact slot token, epoch and generation.
+Stale/context-replaced callbacks are discarded. Observer exceptions, malformed
+display packets and display transport failure do not fault musical commands.
+
+DSP reductions and both feature packet buffers are fixed at construction and
+included in the 208,224-byte runtime reservation. With no observers, no meter
+reductions or recurring feature messages run. An active display admits another
+512 exact host selector bytes and a 192 KiB host/object estimate before feature
+allocation, released on the final unsubscribe. There are no per-block rich JS
+trace allocations in the processor. MessagePort structured cloning still has a
+browser allocation/serialization cost. At most one feature packet is in flight;
+new windows overwrite the unsent mailbox until acknowledgment. Musical
+admission/applied receipts use their separate existing path. An explicit
+`kernel-stop-queued` receipt has `appliedFrame: null`; kernel-applied Stop remains
+a separate render outcome.
+
+Focused fixtures qualify applied-vs-future state, actual per-voice window RMS,
+terminal zero, phase absence, observer/resource ownership, stale and recycled
+identities, malformed packets, fixed detector storage, stable 32-of-64 LOD and
+one-packet backpressure. The Chromium 156 offline worklet fixture has 18 cases
+at 44.1/48/96 kHz including observer-enabled/disabled identical PCM, two owners
+with the same voice token/pitch, and 64-voice demand. Its asynchronous Stop
+transport is admitted before offline resume. This is a deterministic digital
+fixture, not a realtime scheduling/deadline or acoustic-latency measurement.
+Application source hookup and #972 correlation remain with the workstation;
+native/bus/effect feature producers, playback-path underrun observation, visible
+“why silent?” integration and privacy-minimized repro bundles remain open in
+#1081. Telemetry is a bounded diagnostic projection, not the lossless journal.

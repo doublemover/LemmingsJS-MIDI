@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { OwnedSineKernel, WIDTH, PROTOCOL, RECEIPT_WIDTH, BEGIN, UPDATE, END, CANCEL, LEASE,
-  APPLIED, REJECTED, ENDED } from '../../js/app/midi-ui/worklet/OwnedSineProcessor.js';
+  APPLIED, REJECTED, ENDED, DISPLAY_PROTOCOL, DISPLAY_WIDTH, DISPLAY_VOICES } from '../../js/app/midi-ui/worklet/OwnedSineProcessor.js';
 import { createWorkletInstrumentBackend } from '../../js/app/midi-ui/workletInstrumentBackend.js';
 import { createAudioCommandQueue } from '../../js/app/midi-ui/AudioCommandQueue.js';
 import { createAudioResourceLeases } from '../../js/app/midi-ui/AudioResourceLeases.js';
@@ -136,7 +136,8 @@ const setupHost = () => {
         kernel.receiptCount = 0;
       }, render(frames, start = 0) { const result = render(kernel, frames, start); this.flush(); return result; } };
     nodes.push(node); queueMicrotask(() => node.port.onmessage?.({ data: { type: 'ready', protocol: PROTOCOL, engineId: 'worklet-sine', engineVersion: 1,
-      runtimeABI: 'owned-sine-f64-command-v1', buildId: 'owned-sine-v1', maxVoices: 64,
+      runtimeABI: 'owned-sine-f64-command-v1', buildId: 'owned-sine-v2-display', maxVoices: 64,
+      displayProtocol: DISPLAY_PROTOCOL, displayWidth: DISPLAY_WIDTH, displayVoices: DISPLAY_VOICES,
       sampleRate: 48000, width: WIDTH, capacity: 512 } })); return node;
   };
   const backend = createWorkletInstrumentBackend(preview, 'owner', { createWorkletNode });

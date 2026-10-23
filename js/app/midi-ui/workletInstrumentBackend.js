@@ -1,14 +1,15 @@
 import { createAudioCommandQueue } from './AudioCommandQueue.js';
+import { createAudioDisplayTelemetry } from './AudioDisplayTelemetry.js';
 import { PROTOCOL, WIDTH, CAPACITY, MAX_VOICES, RECEIPT_WIDTH, BEGIN, UPDATE, END, CANCEL, LEASE,
-  SCHEDULED, APPLIED, REJECTED, ENDED, CANCELLED, FAULTED } from './worklet/OwnedSineProcessor.js';
+  SCHEDULED, APPLIED, REJECTED, ENDED, CANCELLED, FAULTED, DISPLAY_PROTOCOL, DISPLAY_WIDTH, DISPLAY_VOICES } from './worklet/OwnedSineProcessor.js';
 
-const runtime = Object.freeze({ buildId: 'owned-sine-v1', hostProtocolVersion: PROTOCOL, runtimeABI: 'owned-sine-f64-command-v1',
+const runtime = Object.freeze({ buildId: 'owned-sine-v2-display', hostProtocolVersion: PROTOCOL, runtimeABI: 'owned-sine-f64-command-v1',
   engineId: 'worklet-sine', engineVersion: 1, workletUrl: new URL('./worklet/OwnedSineProcessor.js', import.meta.url).href,
   transport: 'batched-transferable-message-port', sharedMemory: false });
 const modules = new WeakMap();
 const capabilities = Object.freeze({ independentSamePitch: true, perVoicePitch: true, perVoicePressure: true, perVoicePan: true,
   perVoiceTimbre: false, offlineRender: true, ownedGates: true, renderAcknowledgment: true,
-  maximumVoices: MAX_VOICES, latencyFrames: 0, sustainPedal: false, sostenuto: false, releaseVelocity: false,
+  maximumVoices: MAX_VOICES, latencyFrames: 0, sustainPedal: false, sostenuto: false, releaseVelocity: false, displayTelemetry: true,
   supportedParameterIds: Object.freeze(['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds', 'gain01', 'pan01']) });
 const fields = Object.freeze({ attackSeconds: [0, 2, 0.008], decaySeconds: [0, 4, 0.05], sustain01: [0, 1, 0.7],
   releaseSeconds: [0.002, 4, 0.04], gain01: [0, 1, 0.5], pan01: [-1, 1, 0] });
@@ -30,7 +31,9 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   const pendingInitializations = new Set();
   const kernelQueued = new Set();
   const slots = new Array(MAX_VOICES).fill(null), slotTokens = new Uint32Array(MAX_VOICES);
-  const counters = { queued: 0, applied: 0, late: 0, rejected: 0, faults: 0, ended: 0, producerCancelled: 0, kernelCancelled: 0 };
+  const counters = { queued: 0, applied: 0, late: 0, rejected: 0, faults: 0, ended: 0, producerCancelled: 0, kernelCancelled: 0, stopRequests: 0, stopQueued: 0 };
+  const display = createAudioDisplayTelemetry({ owner, getContext: () => context || preview.getAudioContext(), getContextEpoch: () => preview._contextEpoch ?? 0,
+    getVoices: () => voices.values(), resources: preview._audioResources, send: message => { if (!node || disposed) return false; node.port.postMessage(message); return true; } });
   let queue = null;
   const frameNow = () => context && context === preview.getAudioContext() ? Math.ceil(context.currentTime * context.sampleRate) : null;
   const record = value => {
@@ -42,7 +45,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   const clearTimer = () => { if (pumpTimer != null) clearTimeout(pumpTimer); pumpTimer = null; };
   const markFault = reason => {
     if (fault || disposed) return;
-    fault = reason; ready = false; counters.faults++; clearTimer(); queue?.clear(); inFlight.clear(); kernelQueued.clear();
+    fault = reason; ready = false; display.stop(); counters.faults++; clearTimer(); queue?.clear(); inFlight.clear(); kernelQueued.clear();
     try { node?.port.postMessage({ type: 'panic', protocol: PROTOCOL }); } catch { /* The processor may have failed. */ }
     for (const voice of voices.values()) preview._destroyVoice(voice, 'kernel-fault');
     voices.clear(); slots.fill(null); node?.disconnect(); node?.port.close(); node = null;
@@ -99,6 +102,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       const frame = data.data[at + 4], reason = data.data[at + 5], original = inFlight.get(serial);
       const voice = slots[slot]?.slotToken === token ? slots[slot] : null;
       if (code === SCHEDULED) {
+        if (reason === 2 && slot === -1) { counters.stopQueued++; record({ status: 'accepted', stage: 'kernel-stop-queued', appliedFrame: null, targetFrame: frame }); }
         if (original) kernelQueued.add(serial);
         if (original) record({ status: 'accepted', stage: 'kernel-queued', sequence: serial, voiceId: original.voiceId,
           executionEpoch: original.epoch, generation: original.generation, targetFrame: original.frame, appliedFrame: null });
@@ -175,7 +179,8 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
             const data = event.data;
             if (data?.type !== 'ready' || data.protocol !== PROTOCOL || data.engineId !== runtime.engineId || data.engineVersion !== 1 ||
                 data.runtimeABI !== runtime.runtimeABI || data.buildId !== runtime.buildId || data.maxVoices !== MAX_VOICES ||
-                data.sampleRate !== candidateContext.sampleRate || data.width !== WIDTH || data.capacity !== CAPACITY) return rejectReady(new Error('kernel-abi-mismatch'));
+                data.sampleRate !== candidateContext.sampleRate || data.width !== WIDTH || data.capacity !== CAPACITY ||
+                data.displayProtocol !== DISPLAY_PROTOCOL || data.displayWidth !== DISPLAY_WIDTH || data.displayVoices !== DISPLAY_VOICES) return rejectReady(new Error('kernel-abi-mismatch'));
             resolve();
           };
         }), interrupted]);
@@ -189,11 +194,12 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
         node.port.onmessage = event => {
           if (disposed || node !== connectedNode) return;
           if (event.data?.type === 'receipts') onReceipts(event.data);
+          else if (event.data?.type === 'display-samples') display.consume(event.data);
           else if (event.data?.type === 'protocol-error') markFault('kernel-protocol-error');
         };
         node.onprocessorerror = () => { if (node === connectedNode) markFault('processor-error'); };
         runtimeResourceLease = candidateResourceLease; candidateResourceLease = null;
-        ready = true; fault = null; ownerStopped = false;
+        ready = true; fault = null; ownerStopped = false; display.configure(true);
       }
       patch = next; return Object.freeze({ status: 'ready', patchId: next.id, revision: next.revision, capabilities, runtime });
     } catch (error) {
@@ -268,6 +274,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       },
       onDestroy: reason => {
         if (voices.get(key) === voice) voices.delete(key);
+        display.retire(voice);
         const shared = JSON.stringify([owner, executionEpoch, intent.voiceId]);
         if (preview._semanticVoiceOwners.get(shared) === voice) preview._semanticVoiceOwners.delete(shared);
         const removed = queue?.invalidate(item => item.slotToken === voice.slotToken && item.voiceId === voice.voiceId && item.epoch === executionEpoch) || 0;
@@ -282,6 +289,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       12: parameters.sustain01, 13: Math.round(parameters.releaseSeconds * context.sampleRate), 16: endFrame });
     if (result.status === 'rejected') { resourceLease?.release(); return result; }
     voices.set(key, voice); slots[slot] = voice; preview._voices.add(voice);
+    display.admit(voice, intent); display.configure();
     preview._semanticVoiceOwners.set(JSON.stringify([owner, executionEpoch, intent.voiceId]), voice); voice.submitted = inFlight.has(result.sequence);
     return result;
   };
@@ -336,21 +344,24 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     for (const voice of voices.values()) if (!voice.submitted) { voice.kernelEnded = true;
       preview._destroyVoice(voice, 'owner-stop-before-submission'); slots[voice.slot] = null; }
     for (const cancel of pendingInitializations) cancel(); pendingInitializations.clear();
-    try { node?.port.postMessage({ type: 'panic', protocol: PROTOCOL }); } catch { markFault('terminal-port-failure'); }
+    try { if (node) { counters.stopRequests++; node.port.postMessage({ type: 'panic', protocol: PROTOCOL }); } } catch { markFault('terminal-port-failure'); }
+    display.stop();
   };
   const renderDiagnostics = ({ includeTraces = false } = {}) => Object.freeze({ engineId: runtime.engineId, runtime, capabilities,
     readiness: disposed ? 'disposed' : fault || !ready ? fault || 'runtime-unprepared' : ownerStopped ? 'kernel-stop-pending' : !preview._ownerReady(owner) ? 'audio-not-ready' : 'ready',
     activeVoices: voices.size, queued: queue?.diagnostics() || null, inFlight: inFlight.size, counters: Object.freeze({ ...counters }),
     awaitingKernelAdmission: inFlight.size - kernelQueued.size,
-    traceCount: traces.length, truncatedTraces: truncated, cancellationHistoryFull,
+    traceCount: traces.length, truncatedTraces: truncated, cancellationHistoryFull, display: display.diagnostics(),
     ...(includeTraces ? { traces: Object.freeze([...traces]) } : {}) });
   const dispose = () => {
     if (disposed) return; onOwnerStop(); disposed = true; ready = false;
     for (const voice of voices.values()) preview._destroyVoice(voice, 'backend-disposed'); voices.clear(); slots.fill(null);
     node?.disconnect(); node?.port.close(); node = null; patch = null;
     runtimeResourceLease?.release(); runtimeResourceLease = null;
+    display.dispose();
   };
   return Object.freeze({ capabilities, runtime, prepare, begin, update, end, renewExecutionLease, cancelGenerationWithReceipt,
     cancelGeneration: (generation, epoch) => cancelGenerationWithReceipt(generation, epoch).count,
+    setDisplayContext: display.setContext, observeDisplaySamples: display.observe, getDisplaySamples: display.inspect,
     onOwnerStop, renderDiagnostics, dispose });
 }

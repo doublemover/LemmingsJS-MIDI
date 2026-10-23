@@ -1,5 +1,6 @@
 const MAX_BYTES = 512 * 1024 * 1024;
-const KERNEL_TYPED_BYTES = 512 * 18 * 8 + 64 * 28 * 8 + 64 + 2048 * 6 * 8 + 64 * 6 * 8 + 8 * 4;
+const KERNEL_TYPED_BYTES = 512 * 18 * 8 + 64 * 28 * 8 + 64 + 2048 * 6 * 8 + 64 * 6 * 8 + 8 * 4 +
+  64 * 16 * 8 + 64 * 4 + 2 * 32 * 20 * 8;
 const NATIVE_VOICE_ESTIMATE = 16 * 1024, WORKLET_HOST_ESTIMATE = 128 * 1024;
 
 // This adapter reserves declared storage before its caller allocates. Browser
