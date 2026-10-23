@@ -19,9 +19,56 @@ const ready = async (page, count = 8, steps = 16) => {
       else view.render(); };
     const view = createProcgenWorkstationView({ document, window, getProject: () => project, getRuntime: () => runtime, state, handlers, dispatch });
     view.render();
-    window.workstationViewTest = { view, state, calls, actions, runtime, dispatch, getProject: () => project };
+    window.workstationViewTest = { view, state, calls, actions, runtime, dispatch, handlers, getProject: () => project };
   }, { count, steps });
 };
+
+test('project picker ignores reversed searches and old continuation completions @boundary', async ({ page }) => {
+  await ready(page);
+  await page.evaluate(() => {
+    const f = window.workstationViewTest; f.requests = [];
+    f.view.showProjectPage({ items: [], nextCursor: null }, async () => false,
+      (cursor, query) => new Promise((resolve, reject) => f.requests.push({ cursor, query, resolve, reject })));
+  });
+  const search = page.getByRole('searchbox', { name: 'Search project names' });
+  for (const query of ['alpha', 'beta']) { await search.fill(query); await search.dispatchEvent('change'); }
+  await page.evaluate(() => window.workstationViewTest.requests[1].resolve({ items: [{ id: 'beta', name: 'Beta', savedAt: '2026-10-22' }], nextCursor: null }));
+  await expect(page.locator('.studio-project-items')).toHaveText(/Beta/);
+  await expect(page.locator('.studio-project-feedback')).toHaveText('');
+  await page.evaluate(() => window.workstationViewTest.requests[0].resolve({ items: [{ id: 'alpha', name: 'Alpha', savedAt: '2026-10-22' }], nextCursor: 'alpha-next' }));
+  await expect(page.locator('.studio-project-items')).toHaveText(/Beta/);
+  await expect(page.getByRole('button', { name: 'More projects' })).toBeHidden();
+  await search.fill('alpha'); await search.dispatchEvent('change');
+  await page.evaluate(() => window.workstationViewTest.requests[2].resolve({ items: [{ id: 'alpha', name: 'Alpha', savedAt: '2026-10-22' }], nextCursor: 'alpha-next' }));
+  await page.getByRole('button', { name: 'More projects' }).click();
+  await search.fill('beta'); await search.dispatchEvent('change');
+  await page.evaluate(() => window.workstationViewTest.requests[4].resolve({ items: [{ id: 'beta-new', name: 'Beta new', savedAt: '2026-10-22' }], nextCursor: null }));
+  await page.evaluate(() => window.workstationViewTest.requests[3].resolve({ items: [{ id: 'alpha-next', name: 'Alpha next', savedAt: '2026-10-22' }], nextCursor: 'alpha-later' }));
+  await expect(page.locator('.studio-project-items')).toHaveText(/Beta new/);
+  await expect(page.locator('.studio-project-items')).not.toHaveText(/Alpha/);
+  await expect(page.getByRole('button', { name: 'More projects' })).toBeHidden();
+});
+
+test('Escape cancels the picker once and late loads cannot close a newer picker @boundary', async ({ page }) => {
+  await ready(page);
+  await page.evaluate(() => {
+    const f = window.workstationViewTest; f.cancelCount = 0; f.handlers.cancelProjectPicker = () => f.cancelCount++;
+    f.view.showProjectPage({ items: [{ id: 'target', name: 'Target', savedAt: '2026-10-22' }], nextCursor: null },
+      () => new Promise(resolve => { f.finishLoad = resolve; }));
+  });
+  await page.getByRole('button', { name: /Target ·/ }).click(); await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Saved projects' })).not.toBeVisible();
+  expect(await page.evaluate(() => window.workstationViewTest.cancelCount)).toBe(1);
+  await page.evaluate(() => {
+    const f = window.workstationViewTest;
+    f.view.showProjectPage({ items: [{ id: 'new', name: 'New owner', savedAt: '2026-10-22' }], nextCursor: null }, async () => false);
+    f.finishLoad(true);
+  });
+  await expect(page.getByRole('dialog', { name: 'Saved projects' })).toBeVisible();
+  await expect(page.locator('.studio-project-items')).toHaveText(/New owner/);
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  expect(await page.evaluate(() => window.workstationViewTest.cancelCount)).toBe(2);
+});
 
 test('selecting another lane edits its displayed phrase and supports fixed note zero', async ({ page }) => {
   await ready(page);

@@ -177,36 +177,68 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
   on(importInput, 'change', () => { if (importInput.files?.[0]) handlers.import?.(importInput.files[0]); importInput.value = ''; });
   footer.append(button('Import', () => importInput.click()));
   const projectList = node('dialog', null, 'studio-dialog'); projectList.setAttribute('aria-label', 'Saved projects'); presentationRoot.append(projectList);
+  let pickerOwner = null, pendingPickerCloses = 0;
+  const retirePicker = (owner, { cancel = false, close = false } = {}) => {
+    if (!owner || owner.closed || pickerOwner !== owner) return;
+    owner.closed = true; owner.generation++; pickerOwner = null;
+    if (cancel) handlers.cancelProjectPicker?.();
+    if (close && projectList.open) { pendingPickerCloses++; projectList.close(); }
+  };
+  on(projectList, 'cancel', event => {
+    if (event.defaultPrevented || !pickerOwner) return;
+    event.preventDefault(); retirePicker(pickerOwner, { cancel: true, close: true });
+  });
+  on(projectList, 'close', () => {
+    if (pendingPickerCloses) { pendingPickerCloses--; return; }
+    retirePicker(pickerOwner, { cancel: true });
+  });
   const showProjectPage = (page, load, fetchPage = null) => {
+    if (disposed) return;
+    retirePicker(pickerOwner);
+    const owner = { generation: 0, closed: false, loading: false, query: '' }; pickerOwner = owner;
+    const current = generation => !disposed && pickerOwner === owner && !owner.closed && owner.generation === generation;
     const items = node('div', null, 'studio-project-items'), feedback = node('p', '', 'studio-project-feedback');
     const search = node('input'); search.type = 'search'; search.placeholder = 'Search project names'; search.setAttribute('aria-label', 'Search project names');
     const more = button('More projects', async () => {
-      if (!page.nextCursor || !fetchPage) return;
+      if (!current(owner.generation) || owner.loading || !page.nextCursor || !fetchPage) return;
+      const generation = owner.generation, cursor = page.nextCursor, query = owner.query;
+      owner.loading = true;
       more.disabled = true; feedback.textContent = 'Loading more projects…';
-      try { const next = await fetchPage(page.nextCursor, search.value); if (!next) return; page = next; append(next.items); feedback.textContent = next.items.length ? '' :
-        next.nextCursor ? 'No matches in this page. Continue the search with More projects.' : 'No matching projects.'; }
-      catch (error) { feedback.textContent = error?.message || 'Could not load more projects. Retry.'; }
-      finally { more.disabled = !page.nextCursor; more.hidden = !page.nextCursor; }
+      try {
+        const next = await fetchPage(cursor, query);
+        if (!current(generation) || owner.query !== query || page.nextCursor !== cursor || !next) return;
+        page = next; append(next.items); feedback.textContent = next.items.length ? '' : next.nextCursor ?
+          'No matches in this page. Continue the search with More projects.' : 'No more matching projects.';
+      } catch (error) { if (current(generation)) feedback.textContent = error?.message || 'Could not load more projects. Retry.'; }
+      finally { if (current(generation)) { owner.loading = false; more.disabled = !page.nextCursor; more.hidden = !page.nextCursor; } }
     });
     const append = entries => {
       for (const entry of entries) items.append(button(`${entry.name} · ${new Date(entry.savedAt).toLocaleString()} · ${String(entry.id).slice(-6)}`, async () => {
+        if (!current(owner.generation) || owner.loading) return;
+        const generation = owner.generation; owner.loading = true; search.disabled = true; more.disabled = true;
         feedback.textContent = 'Opening project…';
         try {
-          if (await load(entry.id)) projectList.close();
+          const loaded = await load(entry.id); if (!current(generation)) return;
+          if (loaded) retirePicker(owner, { close: true });
           else feedback.textContent = 'Project could not be opened. It may have changed or been removed; choose another or retry.';
-        } catch (error) { feedback.textContent = error?.message || 'Project could not be opened.'; }
+        } catch (error) { if (current(generation)) feedback.textContent = error?.message || 'Project could not be opened.'; }
+        finally { if (current(generation)) { owner.loading = false; search.disabled = false; more.disabled = !page.nextCursor; } }
       }));
       if (!items.childElementCount) feedback.textContent = page.nextCursor ? 'No matches in this page. Continue the search with More projects.' :
         'No matching projects. Save here or import a project file.';
     };
     search.addEventListener('change', async () => {
-      if (!fetchPage) return;
+      if (!fetchPage || !current(owner.generation) || search.disabled) return;
+      const generation = ++owner.generation, query = search.value.trim(); owner.query = query; owner.loading = true;
+      page = { items: [], nextCursor: null }; items.replaceChildren(); more.disabled = true; more.hidden = true;
       feedback.textContent = 'Searching projects…';
-      try { const next = await fetchPage(null, search.value); if (!next) return; page = next; items.replaceChildren(); append(next.items); }
-      catch (error) { feedback.textContent = error?.message || 'Project search failed. Retry.'; }
-      more.disabled = !page.nextCursor; more.hidden = !page.nextCursor;
+      try {
+        const next = await fetchPage(null, query); if (!current(generation) || !next) return;
+        page = next; append(next.items); if (next.items.length) feedback.textContent = '';
+      } catch (error) { if (current(generation)) feedback.textContent = error?.message || 'Project search failed. Retry.'; }
+      finally { if (current(generation)) { owner.loading = false; more.disabled = !page.nextCursor; more.hidden = !page.nextCursor; } }
     });
-    projectList.replaceChildren(node('h2', 'Saved projects'), button('Close', () => { handlers.cancelProjectPicker?.(); projectList.close(); }), search, items, feedback, more);
+    projectList.replaceChildren(node('h2', 'Saved projects'), button('Close', () => retirePicker(owner, { cancel: true, close: true })), search, items, feedback, more);
     append(page.items); more.hidden = !page.nextCursor;
     if (handlers.reclaimRecovery) projectList.append(button('Remove recovery checkpoint', () => handlers.reclaimRecovery()));
     projectList.showModal();
@@ -678,6 +710,7 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
     midi(text) { state.lastMidi = text; const time = window.performance.now(); if (time - lastMidiFrame < 50) return; lastMidiFrame = time; const monitor = fields.querySelector('.studio-midi-monitor'); if (monitor && monitor.textContent !== text) monitor.textContent = text; },
     dispose() {
       if (disposed) return; disposed = true;
+      retirePicker(pickerOwner, { cancel: true, close: true });
       fullscreenSession.dispose(); geometryUnsubscribe?.(); geometryRelease?.(); state.presentationTransition = false;
       detachRenderer(); for (const unlisten of listeners) unlisten();
       if (canvasParent) canvasParent.insertBefore(canvas, canvasSibling?.parentNode === canvasParent ? canvasSibling : null);
