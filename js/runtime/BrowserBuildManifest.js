@@ -1,3 +1,5 @@
+import { computeInstrumentArtifacts } from './InstrumentArtifactManifest.js';
+
 export const BROWSER_BUILD_SCHEMA = 'lemmings-browser-build/v1';
 export const BROWSER_ENTRY_ROUTES = Object.freeze(['index.html', 'editor.html', 'procgen.html', 'procgen-survey.html']);
 const requiredEntryRoutes = ['index.html', 'editor.html', 'procgen.html'];
@@ -5,7 +7,7 @@ export const BUILD_IDENTITY_PATH = 'js/runtime/ActiveExecutionIdentity.js';
 export const BUILD_IDENTITY_SLOT = 'const APPLICATION_BUILD = null; // IMMUTABLE_APPLICATION_BUILD_SLOT';
 export const BUILD_TEMPLATE_PATH = 'runtime-templates/identity.txt';
 const hashPattern = /^[a-f0-9]{64}$/;
-const recipePaths = ['scripts/BrowserRuntimeBuild.js', 'scripts/BrowserRuntimeClosure.js', 'scripts/RuntimeSourceClosure.js', 'scripts/RuntimeProvenance.js'];
+const recipePaths = ['scripts/BrowserRuntimeBuild.js', 'scripts/BrowserRuntimeClosure.js', 'scripts/RuntimeSourceClosure.js', 'scripts/RuntimeProvenance.js', 'scripts/InstrumentArtifactClosure.js'];
 const before = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 export const validBrowserBuildPath = value => typeof value === 'string' && value.length > 0 && value.length <= 512 &&
   /^[A-Za-z0-9_./@-]+$/.test(value) && !value.split('/').some(part => !part || part === '.' || part === '..');
@@ -15,24 +17,31 @@ export const hashBrowserBuildBytes = async bytes => {
 };
 const hashData = value => hashBrowserBuildBytes(new TextEncoder().encode(JSON.stringify(value)));
 
-export const computeBrowserBuildIdentity = async (files, recipe) => {
+export const computeBrowserBuildIdentity = async (files, recipe, instrumentProfiles = null) => {
+  const instrumentArtifacts = instrumentProfiles == null ? null : await computeInstrumentArtifacts(files, instrumentProfiles);
   const code = [], assets = [];
   for (const file of files) (/\.(?:[cm]?js|wasm)$/.test(file.path) ? code : assets).push(file);
   const [buildId, closureDigest, assetDigest, codeDigest] = await Promise.all([
-    hashData({ schema: 'lemmings-immutable-browser-input/v1', files, recipe }), hashData(files), hashData(assets), hashData(code)
+    hashData(instrumentArtifacts == null ? { schema: 'lemmings-immutable-browser-input/v1', files, recipe } :
+      { schema: 'lemmings-immutable-browser-input/v2', files, recipe, instrumentProfiles, instrumentArtifacts }), hashData(files), hashData(assets), hashData(code)
   ]);
-  return Object.freeze({ buildId, closureDigest, assetDigest, codeDigest, harnessVersion: 'browser-survey-v1', identityRecipe: 'normalized-data-slot-v1' });
+  return Object.freeze({ buildId, closureDigest, assetDigest, codeDigest, harnessVersion: 'browser-survey-v1',
+    identityRecipe: instrumentArtifacts == null ? 'normalized-data-slot-v1' : 'normalized-data-slot-v2-instruments',
+    ...(instrumentArtifacts == null ? {} : { instrumentArtifacts }) });
 };
 
 export const renderBrowserBuildIdentity = (template, identity) => {
   if (typeof template !== 'string' || template.split(BUILD_IDENTITY_SLOT).length !== 2) throw new Error('Unsupported browser identity generation slot.');
-  return template.replace(BUILD_IDENTITY_SLOT, `const APPLICATION_BUILD = Object.freeze(${JSON.stringify(identity)}); // IMMUTABLE_APPLICATION_BUILD_SLOT`);
+  const { instrumentArtifacts, ...scalars } = identity;
+  const expression = instrumentArtifacts == null ? `Object.freeze(${JSON.stringify(identity)})` :
+    `Object.freeze({...${JSON.stringify(scalars)},instrumentArtifacts:Object.freeze([${instrumentArtifacts.map(artifact => `Object.freeze(${JSON.stringify(artifact)})`).join(',')}])})`;
+  return template.replace(BUILD_IDENTITY_SLOT, `const APPLICATION_BUILD = ${expression}; // IMMUTABLE_APPLICATION_BUILD_SLOT`);
 };
 
 export const verifyBrowserBuildManifest = async (manifest, { expectedBuildId = null, template = null } = {}) => {
   if (!manifest || manifest.schema !== BROWSER_BUILD_SCHEMA || !hashPattern.test(manifest.buildId) ||
       expectedBuildId != null && manifest.buildId !== expectedBuildId || !Array.isArray(manifest.files) || !manifest.files.length || manifest.files.length > 8192 ||
-      !Array.isArray(manifest.recipe) || ![3, recipePaths.length].includes(manifest.recipe.length) ||
+      !Array.isArray(manifest.recipe) || ![3, 4, recipePaths.length].includes(manifest.recipe.length) ||
       !Array.isArray(manifest.routes) || manifest.routes.length < requiredEntryRoutes.length || manifest.routes.length > BROWSER_ENTRY_ROUTES.length ||
       new Set(manifest.routes).size !== manifest.routes.length || manifest.routes.some(route => !BROWSER_ENTRY_ROUTES.includes(route)) ||
       requiredEntryRoutes.some(route => !manifest.routes.includes(route))) throw new Error('Unsupported browser build manifest.');
@@ -57,8 +66,9 @@ export const verifyBrowserBuildManifest = async (manifest, { expectedBuildId = n
   if (totalBytes + normalization.templateBytes > 256 * 1048576) throw new Error('Browser generation plus its template exceeds its byte budget.');
   const normalized = files.map(file => file.path === BUILD_IDENTITY_PATH ?
     { path: file.path, bytes: normalization.templateBytes, sha256: normalization.templateSha256 } : file).sort((a, b) => before(a.path, b.path));
-  const identity = await computeBrowserBuildIdentity(normalized, recipe);
-  for (const field of Object.keys(identity)) if (manifest[field] !== identity[field]) throw new Error('Browser build identity does not bind its complete inventory.');
+  if ((manifest.instrumentArtifactProfiles != null) !== (recipe.length === 5)) throw new Error('Browser instrument inventory requires its pinned build recipe.');
+  const identity = await computeBrowserBuildIdentity(normalized, recipe, manifest.instrumentArtifactProfiles ?? null);
+  for (const field of Object.keys(identity)) if (JSON.stringify(manifest[field]) !== JSON.stringify(identity[field])) throw new Error('Browser build identity does not bind its complete inventory.');
   if (template != null) {
     const bytes = new TextEncoder().encode(template);
     if (bytes.byteLength !== normalization.templateBytes || await hashBrowserBuildBytes(bytes) !== normalization.templateSha256) throw new Error('Browser build identity template changed.');

@@ -22,7 +22,8 @@ describe('immutable browser generation staging', () => {
         selectedBackends: { browserMidi: 'fixture', nativeUmp: 'fixture', audioRuntime: 'fixture', optionalAudioBank: 'fixture' }, workerSources: [], components: [] }) };
     for (const [file, source] of Object.entries(files)) { await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.writeFile(path.join(root, file), source); }
     for (const file of ['js/runtime/ActiveExecutionIdentity.js', 'js/runtime/BrowserBuildManifest.js', 'js/runtime/BrowserGenerationService.js',
-      'js/runtime/BrowserGenerationClient.js', 'scripts/BrowserRuntimeBuild.js', 'scripts/BrowserRuntimeClosure.js', 'scripts/RuntimeSourceClosure.js', 'scripts/RuntimeProvenance.js']) {
+      'js/runtime/BrowserGenerationClient.js', 'js/runtime/InstrumentArtifactManifest.js', 'js/core/CanonicalData.js', 'scripts/BrowserRuntimeBuild.js',
+      'scripts/BrowserRuntimeClosure.js', 'scripts/RuntimeSourceClosure.js', 'scripts/RuntimeProvenance.js', 'scripts/InstrumentArtifactClosure.js']) {
       await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.copyFile(path.join(repo, file), path.join(root, file));
     }
   });
@@ -67,6 +68,7 @@ describe('immutable browser generation staging', () => {
     const first = await build(), template = await fs.readFile(path.join(first.path, first.manifest.sourceNormalization.templatePath), 'utf8');
     const legacy = structuredClone(first.manifest);
     legacy.recipe = legacy.recipe.slice(0, 3);
+    delete legacy.instrumentArtifacts; delete legacy.instrumentArtifactProfiles;
     legacy.files = legacy.files.filter(file => file.path !== 'procgen-survey.html');
     legacy.routes = legacy.routes.filter(route => route !== 'procgen-survey.html');
     const normalized = legacy.files.map(file => file.path === legacy.sourceNormalization.path ?

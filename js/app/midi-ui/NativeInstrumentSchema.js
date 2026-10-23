@@ -31,11 +31,12 @@ export function getNativeInstrumentCatalog() {
     for (const [engineId, parameters] of Object.entries(schemas)) {
       const engineCapabilities = capabilities(engineId);
       const parameterSchemaHash = await hashData({ version: 1, parameters, capabilities: engineCapabilities });
-      const artifactHash = await hashData({ engineId, engineVersion: 1, buildId: identity.buildId, closureDigest: identity.closureDigest });
+      const artifactHash = identity.instrumentArtifacts?.find(artifact => artifact.engineId === engineId && artifact.engineVersion === 1)?.artifactHash;
+      if (!artifactHash) continue;
       descriptors.push(validateEngineDescriptor({ engineId, engineVersion: 1, artifactHash, parameterSchemaHash, parameters, capabilities: engineCapabilities }));
     }
     return freezeData({ state: 'bound-application-engines', executionIdentity: identity, descriptors, engines: Object.keys(schemas),
-      artifactScope: 'complete-immutable-application-build', qualification: 'identity-and-parameter-contract-not-render-qualification' });
+      artifactScope: 'transitive-renderer-code-bound-by-immutable-application-build', qualification: 'identity-and-parameter-contract-not-render-qualification' });
   })().catch(error => { catalogPromise = null; throw error; });
   return catalogPromise;
 }

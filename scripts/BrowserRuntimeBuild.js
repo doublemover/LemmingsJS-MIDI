@@ -3,6 +3,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { collectBrowserRuntimeClosure } from './BrowserRuntimeClosure.js';
 import { verifyRuntimeProvenance } from './RuntimeProvenance.js';
+import { collectInstrumentArtifactProfiles } from './InstrumentArtifactClosure.js';
 import { BUILD_IDENTITY_PATH, BUILD_IDENTITY_SLOT, BUILD_TEMPLATE_PATH, computeBrowserBuildIdentity, renderBrowserBuildIdentity, verifyBrowserBuildManifest } from '../js/runtime/BrowserBuildManifest.js';
 
 const IDENTITY_PATH = BUILD_IDENTITY_PATH, IDENTITY_SLOT = BUILD_IDENTITY_SLOT;
@@ -18,11 +19,12 @@ export async function buildBrowserRuntime({ rootDir, outputDir = null, inventory
   const identitySource = await fsImpl.readFile(path.join(root, IDENTITY_PATH), 'utf8');
   if (closure.files.find(file => file.path === IDENTITY_PATH)?.sha256 !== sha256(identitySource)) throw new Error('Browser identity source changed during closure preparation.');
   if (identitySource.split(IDENTITY_SLOT).length !== 2) throw new Error('Browser execution identity has an unsupported generation slot.');
-  const recipeFiles = ['scripts/BrowserRuntimeBuild.js', 'scripts/BrowserRuntimeClosure.js', 'scripts/RuntimeSourceClosure.js', 'scripts/RuntimeProvenance.js'];
+  const recipeFiles = ['scripts/BrowserRuntimeBuild.js', 'scripts/BrowserRuntimeClosure.js', 'scripts/RuntimeSourceClosure.js', 'scripts/RuntimeProvenance.js', 'scripts/InstrumentArtifactClosure.js'];
   const recipe = [];
   for (const file of recipeFiles) recipe.push({ path: file, sha256: sha256(await fsImpl.readFile(path.join(root, file))) });
   const normalized = closure.files;
-  const identity = await computeBrowserBuildIdentity(normalized, recipe), { buildId } = identity;
+  const { profiles: instrumentArtifactProfiles } = await collectInstrumentArtifactProfiles({ rootDir: root, inventory: normalized, fsImpl });
+  const identity = await computeBrowserBuildIdentity(normalized, recipe, instrumentArtifactProfiles), { buildId } = identity;
   const generatedIdentity = renderBrowserBuildIdentity(identitySource, identity);
   let ancestor = output;
   while (true) {
@@ -49,7 +51,7 @@ export async function buildBrowserRuntime({ rootDir, outputDir = null, inventory
     }
     const templatePath = path.join(stage, BUILD_TEMPLATE_PATH);
     await fsImpl.mkdir(path.dirname(templatePath), { recursive: true }); await fsImpl.writeFile(templatePath, identitySource);
-    const manifest = { schema: 'lemmings-browser-build/v1', ...identity, routes: closure.routes, assetProfile: closure.assetProfile,
+    const manifest = { schema: 'lemmings-browser-build/v1', ...identity, instrumentArtifactProfiles, routes: closure.routes, assetProfile: closure.assetProfile,
       files, sourceBytes: files.reduce((total, file) => total + file.bytes, 0), recipe,
       sourceNormalization: { path: IDENTITY_PATH, templateSha256: sha256(identitySource), templateBytes: Buffer.byteLength(identitySource), templatePath: BUILD_TEMPLATE_PATH },
       qualification: { artifact: 'staged-with-content-hashes', offlineInstallation: 'not-installed', execution: 'entry-not-executed' } };

@@ -82,8 +82,16 @@ rest of runtime validation.
 
 Native oscillator, sample and worklet renderers share the parameter contracts
 used by `getNativeInstrumentCatalog`. Pinned engine descriptors are available
-from an immutable browser generation and bind the complete application build;
+from an immutable browser generation and bind each renderer's transitive code;
 their schema hashes include actual units, limits, defaults and capabilities.
 An unbuilt source page retains preview playback but cannot claim matching pinned
 engine artifacts. Engine identity and schema compatibility still do not prove
 audible quality, gesture support or a successful render.
+
+The build independently collects each renderer's complete static code closure,
+including worklet modules and normalized build-identity source. Its artifact
+hash excludes compiled sound catalogs, avoiding a circular content/engine pin.
+The application identity binds those code vectors and their reviewed collection
+recipe. A content-only edit therefore changes the application build while
+preserving an unchanged renderer's artifact identity. Old browser generations
+keep their previous identity recipe and remain explicitly without this catalog.
