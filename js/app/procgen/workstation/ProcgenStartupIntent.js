@@ -25,6 +25,11 @@ const resolveProcgenStartupIntent = ({ search = '', seed, legacyProject, legacyS
   let project, worldOptions, transport;
   if (mode === 'recipe') {
     if (params.has('recipe') && params.get('recipe') !== '1') throw new Error('Unsupported recipe version');
+    if (params.has('recipe') && !params.has('seed')) throw new Error('Invalid recipe: a shared starting recipe requires its seed');
+    if (params.has('preset') && params.has('musicPreset') && params.get('preset') !== params.get('musicPreset'))
+      throw new Error('Invalid recipe: conflicting music presets');
+    if (params.has('phrases') && !['0', '1', 'false', 'true'].includes(params.get('phrases')))
+      throw new Error('Invalid recipe phrases');
     const laneCount = boundedNumber(params, 'lanes', 1, 1024, true) ?? 8;
     const speed = boundedNumber(params, 'speed', 0.1, 1000) ?? 3;
     const pack = boundedNumber(params, 'pack', 1, 6, true) ?? 1;
@@ -42,13 +47,14 @@ const resolveProcgenStartupIntent = ({ search = '', seed, legacyProject, legacyS
       laneMusic: procgenMusicDefaults(base, { laneCount, preset, mode: musicMode }) } });
     project = createProcgenWorkstationProject(musical, { seed: recipeSeed, lanes: Array.from({ length: laneCount }, () => ({})) });
     worldOptions = { seed: recipeSeed, laneCount, laneHeight, pack, speed };
-    transport = { bpm: 120, gameSpeed: speed, speedMode: 'bpm' };
+    transport = { bpm: 120, gameSpeed: speed, speedMode: 'game' };
     for (const key of Object.keys(worldOptions)) provenance[key] = params.has(key === 'laneCount' ? 'lanes' : key) ? 'recipe-url' : key === 'seed' ? 'generated' : 'recipe-v1-default';
   } else if (mode === 'previous-setup') {
     project = createProcgenWorkstationProject(sanitizeMidiProject(saved.project), { seed: baseSeed });
+    const previousSpeed = saved.transport?.gameSpeed ?? legacySettings.speed ?? 3;
     worldOptions = { seed: baseSeed, laneCount: project.procgen.lanes.length, laneHeight: legacySettings.laneHeight ?? DEFAULT_LANE_HEIGHT,
-      pack: legacySettings.pack ?? 1, speed: saved.transport?.gameSpeed ?? legacySettings.speed ?? 1 };
-    transport = { bpm: 120, gameSpeed: 1, speedMode: 'bpm', ...(saved.transport || {}) };
+      pack: legacySettings.pack ?? 1, speed: previousSpeed };
+    transport = { bpm: 120, speedMode: 'bpm', ...(saved.transport || {}), gameSpeed: previousSpeed };
     provenance.seed = 'fresh-seed'; provenance.laneCount = 'previous-setup'; provenance.speed = 'previous-setup';
   } else {
     const laneCount = normalizeLaneCount(legacySettings.laneCount ?? 8);
@@ -57,7 +63,7 @@ const resolveProcgenStartupIntent = ({ search = '', seed, legacyProject, legacyS
       { seed: baseSeed, lanes: Array.from({ length: laneCount }, (_, index) => source.procgen?.lanes?.[index] || {}) });
     worldOptions = { seed: baseSeed, laneCount, laneHeight: legacySettings.laneHeight ?? DEFAULT_LANE_HEIGHT,
       pack: legacySettings.pack ?? 1, speed: legacySettings.speed ?? 3 };
-    transport = { bpm: 120, gameSpeed: worldOptions.speed, speedMode: 'bpm' };
+    transport = { bpm: 120, gameSpeed: worldOptions.speed, speedMode: 'game' };
     provenance.seed = 'fresh-seed'; provenance.laneCount = 'preference-or-default'; provenance.speed = 'preference-or-default';
   }
   return { schemaVersion: 1, intentId: `startup-v1:${mode}:${worldOptions.seed}:${worldOptions.laneCount}`,

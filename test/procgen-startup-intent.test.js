@@ -16,7 +16,7 @@ describe('ProcGen startup intent', () => {
     expect({ ...occupied.project, createdAt: null, updatedAt: null }).to.deep.equal({ ...empty.project, createdAt: null, updatedAt: null });
     expect(occupied.worldOptions).to.deep.equal(empty.worldOptions);
     expect(occupied.worldOptions).to.include({ seed: 999, laneCount: 3, speed: 2, pack: 4 });
-    expect(occupied.transport).to.include({ bpm: 120, gameSpeed: 2 });
+    expect(occupied.transport).to.include({ bpm: 120, gameSpeed: 2, speedMode: 'game' });
     expect(occupied.project.procgen.lanes).to.have.length(3);
     expect(occupied.project.procgen.lanes.every(lane => lane.outputId === null)).to.equal(true);
   });
@@ -27,6 +27,10 @@ describe('ProcGen startup intent', () => {
     expect(previous.transport).to.include({ bpm: 60, gameSpeed: 0.5 });
     const fresh = resolveProcgenStartupIntent(base);
     expect(fresh).to.include({ mode: 'fresh' }); expect(fresh.worldOptions.laneCount).to.equal(8);
+    const incompleteTransport = resolveProcgenStartupIntent({ ...base,
+      saved: { ...saved, transport: { bpm: 60, speedMode: 'game' } } });
+    expect(incompleteTransport.worldOptions.speed).to.equal(3);
+    expect(incompleteTransport.transport).to.include({ bpm: 60, gameSpeed: 3, speedMode: 'game' });
   });
   it('rejects malformed physical recipe values instead of quietly blending preferences', () => {
     for (const search of ['?lanes=3.5', '?lanes=0', '?lanes=', '?speed=not-a-number', '?pack=7', '?seed=', '?laneHeight=nope', '?musicMode=weird', '?preset=unknown'])
@@ -38,6 +42,12 @@ describe('ProcGen startup intent', () => {
     expect(omitted.provenance.laneCount).to.equal('recipe-v1-default');
     expect(() => resolveProcgenStartupIntent({ ...base, search: '?recipe=1&extra=' + 'x'.repeat(2050) }))
       .to.throw('supported size');
+    expect(() => resolveProcgenStartupIntent({ ...base, search: '?recipe=1&lanes=3' }))
+      .to.throw('requires its seed');
+    expect(() => resolveProcgenStartupIntent({ ...base, search: '?seed=999&preset=a&musicPreset=b' }))
+      .to.throw('conflicting music presets');
+    expect(() => resolveProcgenStartupIntent({ ...base, search: '?seed=999&phrases=perhaps' }))
+      .to.throw('Invalid recipe phrases');
   });
   it('round-trips a small recipe without carrying unrelated query or fragment state', () => {
     const url = createProcgenShareUrl({ url: 'https://example.test/procgen.html?debug=1&output=midi#private-draft-marker',

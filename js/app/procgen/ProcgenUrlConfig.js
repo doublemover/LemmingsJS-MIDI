@@ -59,7 +59,7 @@ const createProcgenRecipeShareDescriptor = options => {
     legacyProject: null, legacySettings: {}, saved: null });
   return Object.freeze({ schema: 'procgen-recipe-share/v1', url, scope: 'starting-recipe',
     worldOptions: Object.freeze({ ...plan.worldOptions }), sourceCompatibility: 'unverified-on-recipient',
-    includesCamera: options.includeCamera === true, omitted: Object.freeze([
+    includesCamera: options.includeCamera !== false, omitted: Object.freeze([
       'edited terrain and routes', 'current actors', 'instrument patches and external assets',
       'recorded takes and audio', 'local devices and output permissions'
     ]) });
