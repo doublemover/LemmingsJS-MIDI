@@ -1,27 +1,34 @@
 # ProcGen workstation
 
 Open `procgen.html` through the local web server (`npm start`). Eight lanes share
-one physical world. Each starts with its own classic tileset and musical role:
+one physical world. Each starts with its own classic tileset and visual role:
 Crystal/Lead, Bubble/Arp, Dirt/Bass, Rock/Percussion, Fire/Drums, Brick/Chords,
 Snow/Melody and Pillar/Texture. Sound remains off until **Listen locally**.
 
+New projects play from committed physical facts. Builder work, ordinary wall
+contacts, and the first crossing of x=40 have explicit instrument mappings;
+none requires a phrase cell. The **Physical** inspector lists each mapping and
+lets you change its pitch, velocity, or mute state. Changes carry a graph
+revision and affect later facts. **Listen locally** enables the owned browser
+audio voice session; game preview, MIDI routing, and physical voices share the
+audio graph without sharing note ownership.
+
 ## Editing
 
-Choose **Strip** to place the steps below the terrain, or **Overlay** to place
-translucent steps over it. Both edit the same project. Select a lane header or
-step to open its inspector. Double-click toggles a trigger; Draw and Erase apply
-their respective tools. Arrow keys move step selection, Delete clears a step,
-and Ctrl/Cmd+C, V, Z and Shift+Z copy, paste, undo and redo musical edits.
+Choose **Strip** or **Overlay** to position lane controls around the terrain.
+Physical lanes show a live cause strip. Select a lane header to edit its
+collection, role, routing, and physical mapping. Mute and Solo remain lane
+controls. Global key and scale are in the transport header.
 
-The lane inspector selects collection, role, patch, Game/Pattern/Hybrid mode,
-pattern length, playback rate, level, pan and game accents. Every collection
-contains all eight roles. Global key and scale are in the transport header and
-remain independent of sound selection. A fixed MIDI note overrides a step's
-scale degree; leave it empty to follow the global key. Drums use General MIDI
-drum note numbers.
+Use **Complementary pattern** only when you want an authored clocked layer.
+Each such lane records its physical purpose and has four phrase slots. Draw and
+Erase edit cells; double-click toggles a trigger. Arrow keys move step
+selection, Delete clears a step, and Ctrl/Cmd+C, V, Z and Shift+Z copy, paste,
+undo, and redo phrase edits. A fixed MIDI note overrides a step's scale degree;
+leave it empty to follow the global key. Drums use General MIDI drum notes.
 
-Four phrase buttons select and queue phrases for the next bar. Duplicate copies
-the selected phrase into the following slot. Step and Chord inspectors expose
+For a complementary lane, phrase buttons queue playback for the next bar.
+Duplicate copies the selected phrase into the following slot. Step and Chord inspectors expose
 velocity, gate duration, probability, conditions, repeats, tie/hold, chord
 degrees, inversion and spread. Probability uses a deterministic musical stream.
 Terrain/action conditions use observations from the selected lane.
@@ -30,8 +37,7 @@ living actor's support and nearby contacts. Unbuilt terrain is not classified as
 a gap. Available matches are labeled in the inspector.
 
 The Automation inspector edits controller curves as `position:value` points,
-with beat or world-distance positioning. Mute and Solo operate on whole lanes;
-Hybrid mode combines the clocked pattern with separately adjustable game accents.
+with beat or world-distance positioning. Mute and Solo operate on whole lanes.
 Imported spatial curves retain their normalized physical-world coordinates.
 The endless world's horizontal extent is very large, so use distance spans or
 distance-based CC curves for changes over a short terrain run.
@@ -115,6 +121,14 @@ projects and the latest recovery checkpoint. **Export** writes a portable
 current origin, so export important projects before changing server ports or
 clearing site data.
 
+Version 1 Game/Hybrid setups are never silently interpreted as physical
+projects. A previous local setup shows a conversion button with the number of
+enabled phrase steps it would discard. Importing or loading a legacy session
+asks for the same explicit physical conversion; the source file or saved
+record is left untouched. The converted project declares schema version 2 and
+contains the default physical graph. Complementary pattern lanes can then be
+authored separately.
+
 A project includes music, automation, mix, routing choices, transport, camera,
 actors and current action frames, edited terrain, generation/reveal progress,
 crew plans and random state. Capture occurs between completed simulation ticks.
@@ -126,6 +140,11 @@ through JSON export. Older browser checkpoints with intact numeric values remain
 readable; an older JSON export that converted a typed value to `null` is rejected
 because its exact simulation state cannot be recovered. The footer reports crash
 recovery separately from named Save, including the last durable edit revision.
+Recovery writes rotate two checksum-verified generations with an atomic head
+record. Opening recovery chooses the newest valid committed generation and falls
+back to the previous one if the latest payload is corrupt. Checksumming the
+detached snapshot yields between bounded slices; capture of the live world graph
+still runs on the main thread and can cost more than one frame for large worlds.
 
 **New** creates a default composition and a fresh world. **Reroll world** keeps
 the composition and changes the seed. **Replay seed** rebuilds the current seed's

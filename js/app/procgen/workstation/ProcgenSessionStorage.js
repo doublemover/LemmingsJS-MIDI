@@ -1,3 +1,5 @@
+import { checksumProcgenRecovery } from './ProcgenRecoveryChecksum.js';
+
 const SESSION_VERSION = 1;
 const namedError = (name, message) => Object.assign(new Error(message), { name });
 const validateProcgenSession = value => {
@@ -6,14 +8,15 @@ const validateProcgenSession = value => {
       !value.transport || typeof value.transport !== 'object' || !value.patterns || typeof value.patterns !== 'object' ||
       value.patterns.version !== 1 || !Number.isFinite(value.patterns.beat) || !value.patterns.lanes || typeof value.patterns.lanes !== 'object' ||
       !Array.isArray(value.patterns.pending) || !Array.isArray(value.patterns.active)) throw new Error('Project transport or pattern state is incomplete.');
-  if (value.camera != null && (typeof value.camera !== 'object' || Array.isArray(value.camera)) ||
+  if (value.physicalState != null && (typeof value.physicalState !== 'object' || Array.isArray(value.physicalState) || value.physicalState.version !== 1) ||
+      value.camera != null && (typeof value.camera !== 'object' || Array.isArray(value.camera)) ||
       value.ui != null && (typeof value.ui !== 'object' || Array.isArray(value.ui))) throw new Error('Project presentation state is invalid.');
   if (!Number.isInteger(value.world.laneCount) || value.world.laneCount < 1 || value.world.laneCount > 1024 || !Number.isFinite(value.world.seed)) throw new Error('Invalid world settings.');
   return value;
 };
-const createProcgenSession = ({ name = 'Untitled session', project, settings, world, transport, patterns, physicalTimeline = null, camera, ui }) => ({
+const createProcgenSession = ({ name = 'Untitled session', project, settings, world, transport, patterns, physicalTimeline = null, physicalState = null, camera, ui }) => ({
   format: 'lemmings-procgen-session', version: SESSION_VERSION, name: String(name).slice(0, 120), savedAt: new Date().toISOString(),
-  project, settings: { ...settings }, world, transport, patterns, physicalTimeline, camera, ui
+  project, settings: { ...settings }, world, transport, patterns, physicalTimeline, physicalState, camera, ui
 });
 let documentIdSequence = 0;
 const createProcgenDocumentId = (crypto = globalThis.crypto) => {
@@ -246,18 +249,55 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
         } catch (error) { reject(storageFailure(error)); }
       });
     },
-    async saveRecovery(session) {
+    async saveRecovery(session, { signal, documentRevision = null, tick = null } = {}) {
       validateProcgenSession(session);
-      await operation('readwrite', store => store.put({ id: 'recovery:latest', kind: 'recovery', name: session.name,
-        savedAt: session.savedAt, session }));
-      return 'recovery:latest';
+      const checksum = await checksumProcgenRecovery(session, { signal });
+      if (signal?.aborted) throw namedError('AbortError', 'Recovery write canceled');
+      const db = await open();
+      if (retired || db !== database) throw storageFailure(null, 'Project storage connection changed. Retry recovery.');
+      return new Promise((resolve, reject) => {
+        let transaction, receipt;
+        try {
+          transaction = db.transaction('sessions', 'readwrite');
+          const abort = () => { try { transaction.abort(); } catch { /* A completed transaction needs no cancellation. */ } };
+          signal?.addEventListener('abort', abort, { once: true });
+          const store = transaction.objectStore('sessions'), request = store.get('recovery:head');
+          request.onsuccess = () => {
+            if (signal?.aborted) { transaction.abort(); return; }
+            const generation = (request.result?.generation || 0) + 1, slot = generation % 2;
+            receipt = { generation, checksum, documentRevision, tick };
+            store.put({ id: `recovery:slot:${slot}`, kind: 'recovery-generation', ...receipt,
+              name: session.name, savedAt: session.savedAt, session });
+            store.put({ id: 'recovery:head', kind: 'recovery-head', generation, slot, checksum });
+          };
+          transaction.oncomplete = () => { signal?.removeEventListener('abort', abort); resolve(receipt); };
+          transaction.onabort = () => { signal?.removeEventListener('abort', abort);
+            reject(storageFailure(transaction.error || request.error || namedError('AbortError', 'Recovery transaction aborted'))); };
+        } catch (error) { reject(storageFailure(error)); }
+      });
     },
     async loadRecovery() {
       await migrateLegacy();
-      const record = await operation('readonly', store => store.get('recovery:latest'));
-      return record ? validateProcgenSession(record.session) : null;
+      const [head, first, second, legacy] = await Promise.all([
+        operation('readonly', store => store.get('recovery:head')),
+        operation('readonly', store => store.get('recovery:slot:0')),
+        operation('readonly', store => store.get('recovery:slot:1')),
+        operation('readonly', store => store.get('recovery:latest'))
+      ]);
+      for (const record of [first, second].filter(item => item && head && Number.isSafeInteger(item.generation) &&
+        item.generation <= head.generation && (item.generation !== head.generation || item.checksum === head.checksum))
+        .sort((a, b) => b.generation - a.generation)) {
+        try {
+          if (record.kind === 'recovery-generation' && record.checksum === await checksumProcgenRecovery(record.session))
+            return validateProcgenSession(record.session);
+        } catch { /* Try the previous complete generation. */ }
+      }
+      return legacy ? validateProcgenSession(legacy.session) : null;
     },
-    async removeRecovery() { await operation('readwrite', store => store.delete('recovery:latest')); },
+    async removeRecovery() { await operation('readwrite', store => {
+      for (const id of ['recovery:latest', 'recovery:head', 'recovery:slot:0']) store.delete(id);
+      return store.delete('recovery:slot:1');
+    }); },
     async estimateUsage() {
       const estimate = await globalThis.navigator?.storage?.estimate?.();
       return estimate ? { usage: estimate.usage ?? null, quota: estimate.quota ?? null } : null;

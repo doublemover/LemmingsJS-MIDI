@@ -15,9 +15,11 @@ const boundedNumber = (params, key, min, max, integer = false) => {
 };
 const resolveProcgenStartupIntent = ({ search = '', seed, legacyProject, legacySettings = {}, saved = null } = {}) => {
   const params = search instanceof URLSearchParams ? search : new URLSearchParams(search);
-  const mode = RECIPE_KEYS.some(key => params.has(key)) ? 'recipe' : saved?.project ? 'previous-setup' : 'fresh';
+  const legacySaved = saved?.project?.procgen && saved.project.procgen.version !== 2;
+  const mode = RECIPE_KEYS.some(key => params.has(key)) ? 'recipe' : saved?.project && !legacySaved ? 'previous-setup' : 'fresh';
   const baseSeed = normalizeSeed(seed ?? legacySettings.seed ?? 777);
   const provenance = {}, diagnostics = [];
+  if (legacySaved) diagnostics.push('legacy-project-requires-explicit-physical-conversion');
   let project, worldOptions, transport;
   if (mode === 'recipe') {
     if (params.has('recipe') && params.get('recipe') !== '1') throw new Error('Unsupported recipe version');
@@ -48,8 +50,9 @@ const resolveProcgenStartupIntent = ({ search = '', seed, legacyProject, legacyS
     provenance.seed = 'fresh-seed'; provenance.laneCount = 'previous-setup'; provenance.speed = 'previous-setup';
   } else {
     const laneCount = normalizeLaneCount(legacySettings.laneCount ?? 8);
-    project = createProcgenWorkstationProject(sanitizeMidiProject(legacyProject || createMidiProject()),
-      { seed: baseSeed, lanes: Array.from({ length: laneCount }, (_, index) => legacyProject?.procgen?.lanes?.[index] || {}) });
+    const source = legacyProject?.procgen?.version === 2 ? legacyProject : { ...(legacyProject || createMidiProject()), procgen: undefined };
+    project = createProcgenWorkstationProject(sanitizeMidiProject(source),
+      { seed: baseSeed, lanes: Array.from({ length: laneCount }, (_, index) => source.procgen?.lanes?.[index] || {}) });
     worldOptions = { seed: baseSeed, laneCount, laneHeight: legacySettings.laneHeight ?? DEFAULT_LANE_HEIGHT,
       pack: legacySettings.pack ?? 1, speed: legacySettings.speed ?? 3 };
     transport = { bpm: 120, gameSpeed: worldOptions.speed, speedMode: 'bpm' };

@@ -26,7 +26,8 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
     view: { midiPreviewRouter: { scheduler, resetClock() {} }, setMidiPreviewRouter(value) { this.midiPreviewRouter = value; } } });
   let runtime = makeRuntime();
   let project = createProcgenWorkstationProject(createMidiProject(), { seed: 7, lanes: Array.from({ length: laneCount }, (_, index) => index ? {} :
-    { mode: 'hybrid', patterns: [{ length: 4, steps: Array.from({ length: 4 }, () => ({ enabled: true, note: 60, duration: 1 })) }] }) });
+    { mode: 'pattern', patternPurpose: 'Complementary transport test fixture',
+      patterns: [{ length: 4, steps: Array.from({ length: 4 }, () => ({ enabled: true, note: 60, duration: 1 })) }] }) });
   const projectListeners = new Set();
   const legacy = { settings: { seed: 7, speed: 1, laneCount, ...startupSettings }, getProject: () => project, setProject(value) { project = value; for (const listener of projectListeners) listener(value); },
     subscribeProject(listener) { projectListeners.add(listener); return () => projectListeners.delete(listener); },
@@ -265,7 +266,7 @@ describe('ProcGen workstation orchestration', () => {
     expect(f.positions).to.include(125); f.studio.dispose(); expect(f.view.disposed).to.equal(true);
   });
 
-  it('hooks replacement routers so game events use the canonical hybrid lane engine', () => {
+  it('hooks replacement routers while keeping game events out of the complementary pattern lane', () => {
     const f = setup(); f.studio.bindRuntime(); f.enable();
     const fresh = { scheduler: f.runtime.view.midiPreviewRouter.scheduler, resetClock() {} };
     f.runtime.view.setMidiPreviewRouter(fresh);
@@ -273,7 +274,7 @@ describe('ProcGen workstation orchestration', () => {
     expect(fresh.workstationEventHandler({ laneIndex: 0, action: 'building' })).to.equal(true);
     expect(f.calls).to.have.length(0);
     f.runtime.world.soundEvents.onEvent.trigger({ laneIndex: 0, action: 'building' });
-    expect(f.calls.some(call => call.meta.source === 'game')).to.equal(true); f.studio.dispose();
+    expect(f.calls.some(call => call.meta.source === 'game')).to.equal(false); f.studio.dispose();
   });
 
   it('observes game conditions before listening without double-counting router events', () => {
@@ -752,11 +753,13 @@ describe('ProcGen workstation orchestration', () => {
     const listeners = new Map(), input = { id: 'keys', state: 'connected', addListener() {}, removeListener() {} };
     const webMidi = { enabled: true, inputs: [input], outputs: [], addListener: (type, fn) => listeners.set(type, fn), removeListener: type => listeners.delete(type) };
     const f = setup({ webMidi }); f.studio.bindRuntime(); f.studio.handlers.input('keys');
+    const playing = f.studio.transport.getState().playing;
     input.state = 'disconnected'; listeners.get('disconnected')();
-    expect(f.studio.transport.getState().playing).to.equal(false);
+    expect(f.studio.transport.getState().playing).to.equal(playing);
+    expect(f.studio.ports.getState().inputLiveness.mode).to.equal('unobserved');
     let attached = 0;
     webMidi.inputs = [{ ...input, state: 'connected', addListener() { attached++; } }]; listeners.get('connected')();
-    expect(attached).to.be.greaterThan(0); expect(f.studio.transport.getState().playing).to.equal(false);
+    expect(attached).to.be.greaterThan(0); expect(f.studio.transport.getState().playing).to.equal(playing);
     f.studio.dispose(); expect(listeners.size).to.equal(0);
   });
 

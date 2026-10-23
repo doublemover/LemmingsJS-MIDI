@@ -52,6 +52,8 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
   const status = node('output', 'Ready', 'studio-status'); status.setAttribute('aria-live', 'polite');
   const storageStatus = node('output', 'Unsaved', 'studio-storage-status'); storageStatus.setAttribute('aria-label', 'Project save status');
   const recoveryStatus = node('output', 'Recovery unsaved', 'studio-recovery-status'); recoveryStatus.setAttribute('aria-label', 'Crash recovery status');
+  const legacyNotice = node('div', null, 'studio-legacy-conversion'); legacyNotice.hidden = true;
+  footer.append(legacyNotice);
   let projection, dragging = null, lastFrame = 0, lastMidiFrame = 0, stroke = null, suppressClickUntil = 0;
   let attachedRenderer = null, disposed = false, superseded = false, composing = false, pendingInspectorRender = false;
   const owner = {};
@@ -84,8 +86,10 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
   const scale = select(Object.keys(SCALES), 'Major', value => dispatch({ type: 'procgen/global', patch: { scale: { ...getProject().global.scale, name: value, degrees: SCALES[value] } } }), 'Global scale');
   const clock = select([['internal', 'Internal'], ['external', 'MIDI in']], 'internal', value => handlers.transport?.({ clockSource: value }), 'Clock source');
   const clockStatus = node('output', 'Internal', 'studio-clock-status');
+  const displayStatus = node('output', 'Display ready', 'studio-display-status'); displayStatus.setAttribute('aria-live', 'polite');
+  const retryDisplay = button('Retry display', () => handlers.retryDisplay?.(), 'Retry canvas display after context loss'); retryDisplay.hidden = true;
   labeled('View', layoutMode, transport); labeled('Speed', speedMode, transport); labeled('BPM', bpm, transport); labeled('Link world', linked, transport);
-  labeled('Key', root, transport); labeled('Scale', scale, transport); labeled('Clock', clock, transport); transport.append(clockStatus);
+  labeled('Key', root, transport); labeled('Scale', scale, transport); labeled('Clock', clock, transport); transport.append(clockStatus, displayStatus, retryDisplay);
   const tool = select(['select', 'draw', 'erase'], state.tool, value => { state.tool = value; }, 'Step editing tool');
   const laneRange = node('output', '', 'studio-lane-range'); laneRange.setAttribute('aria-label', 'Visible lane range');
   const moveLanes = delta => { state.firstLane += delta; layout(); renderRows(); handlers.preferences?.(); };
@@ -147,14 +151,21 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
   const showProjects = (entries, load) => showProjectPage({ items: entries, nextCursor: null }, load);
   const selected = () => { const project = getProject(), lane = project.procgen.lanes.find(item => item.id === state.laneId) || project.procgen.lanes[0]; state.laneId = lane.id; return lane; };
   const changeLane = patch => dispatch({ type: 'procgen/lane', laneId: selected().id, patch });
-  const changePattern = patch => dispatch({ type: 'procgen/pattern', laneId: selected().id, slot: state.slot, patch });
-  const changeStep = patch => dispatch({ type: 'procgen/step', laneId: selected().id, slot: state.slot, index: state.step, patch });
+  const changePattern = patch => { if (selected().mode === 'pattern') dispatch({ type: 'procgen/pattern', laneId: selected().id, slot: state.slot, patch }); };
+  const changeStep = patch => { if (selected().mode === 'pattern') dispatch({ type: 'procgen/step', laneId: selected().id, slot: state.slot, index: state.step, patch }); };
+  const changePhysicalInstrument = (id, patch) => {
+    const graph = getProject().procgen.physicalGraph;
+    dispatch({ type: 'procgen/physicalGraph', graph: { ...graph, revision: graph.revision + 1,
+      instruments: graph.instruments.map(instrument => instrument.id === id ? { ...instrument, ...patch } : instrument) } });
+  };
   function renderInspector() {
     const lane = selected(); state.slot = Math.max(0, Math.min(3, state.slot));
-    const pattern = lane.patterns[state.slot]; state.step = Math.max(0, Math.min(state.step, pattern.length - 1));
-    const step = pattern.steps[state.step];
+    const pattern = lane.mode === 'pattern' ? lane.patterns[state.slot] : null;
+    state.step = pattern ? Math.max(0, Math.min(state.step, pattern.length - 1)) : 0;
+    const step = pattern?.steps[state.step];
+    if (!pattern && ['Step', 'Chord'].includes(state.tab)) state.tab = 'Lane';
     tabs.replaceChildren();
-    for (const tab of ['Lane', 'Step', 'Chord', 'MIDI', 'World', 'Automation']) { const el = button(tab, () => { state.tab = tab; render(); }); el.setAttribute('aria-pressed', String(state.tab === tab)); tabs.append(el); }
+    for (const tab of (pattern ? ['Lane', 'Step', 'Chord', 'MIDI', 'World', 'Automation'] : ['Lane', 'Physical', 'MIDI', 'World', 'Automation'])) { const el = button(tab, () => { state.tab = tab; render(); }); el.setAttribute('aria-pressed', String(state.tab === tab)); tabs.append(el); }
     fields.replaceChildren(node('div', `${lane.family.toUpperCase()} / ${lane.role}`, 'studio-eyebrow'), node('h2', state.tab === 'Step' || state.tab === 'Chord' ? `Step ${state.step + 1} · Phrase ${state.slot + 1}` : lane.name));
     if (state.tab === 'Lane') {
       labeled('Name', input(lane.name, name => changeLane({ name }), { type: 'text' }), fields);
@@ -162,16 +173,33 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
       labeled('Role', select(PROCGEN_ROLES, lane.role, role => dispatch({ type: 'procgen/palette', laneId: lane.id, role }), 'Instrument role'), fields);
       const collection = PROCGEN_SOUND_COLLECTIONS.find(c => c.id === lane.family).roles.find(r => r.id === lane.role);
       labeled('Patch', select(collection.patches.map(p => [p.id, p.name]), lane.patch, patch => dispatch({ type: 'procgen/palette', laneId: lane.id, patch }), 'Sound patch'), fields);
-      labeled('Mode', select([['game', 'Game events'], ['pattern', 'Clocked pattern'], ['hybrid', 'Hybrid']], lane.mode, mode => changeLane({ mode }), 'Lane playback mode'), fields);
-      labeled('Pattern length', input(pattern.length, length => changePattern({ length }), { min: 1, max: 64 }), fields);
-      labeled('Playback rate', select([0.125, 0.25, 0.5, 1, 2, 4, 8].map(v => [v, v + '×']), pattern.rate, value => changePattern({ rate: Number(value) }), 'Lane playback rate'), fields);
+      labeled('Mode', select([['physical', 'Physical causes'], ['pattern', 'Complementary pattern']], lane.mode, mode =>
+        changeLane(mode === 'pattern' ? { mode, patternPurpose: 'Clocked support for physical events' } :
+          { mode, patternPurpose: null, patterns: [] }), 'Lane playback mode'), fields);
+      if (pattern) {
+        labeled('Physical purpose', input(lane.patternPurpose || '', patternPurpose => changeLane({ patternPurpose }), { type: 'text' }), fields);
+        labeled('Pattern length', input(pattern.length, length => changePattern({ length }), { min: 1, max: 64 }), fields);
+        labeled('Playback rate', select([0.125, 0.25, 0.5, 1, 2, 4, 8].map(v => [v, v + '×']), pattern.rate, value => changePattern({ rate: Number(value) }), 'Lane playback rate'), fields);
+      } else fields.append(node('p', 'This lane follows committed world causes. The Physical tab edits the live instrument mapping.', 'studio-hint'));
       labeled('Level', input(lane.gain, gain => changeLane({ gain }), { type: 'range', min: 0, max: 2, step: 0.01 }), fields);
       labeled('Game accent', input(lane.eventAccent, eventAccent => changeLane({ eventAccent }), { type: 'range', min: 0, max: 2, step: 0.01 }), fields);
       labeled('Pan', input(lane.pan, pan => changeLane({ pan }), { type: 'range', min: -127, max: 127 }), fields);
       const events = node('fieldset', null, 'studio-event-mask'); events.append(node('legend', 'Game events'));
       for (const action of ['build', 'bash', 'mine', 'dig', 'fall', 'land', 'spawn']) labeled(action, input(lane.eventMask?.[action] !== false, enabled => changeLane({ eventMask: { ...lane.eventMask, [action]: enabled } }), { type: 'checkbox' }), events);
       fields.append(events);
-      fields.append(button('Reset phrase to this sound', () => handlers.resetPattern?.()));
+      if (pattern) fields.append(button('Reset phrase to this sound', () => handlers.resetPattern?.()));
+    } else if (state.tab === 'Physical') {
+      fields.append(node('p', 'Physical instruments respond to committed builder work, contacts, and crossings. They do not need phrase cells.', 'studio-hint'));
+      const graph = getProject().procgen.physicalGraph;
+      for (const instrument of graph.instruments) {
+        const group = node('fieldset', null, 'studio-physical-instrument');
+        group.append(node('legend', instrument.id));
+        group.append(node('p', `${instrument.sourceKind}${instrument.operationKind ? ` · ${instrument.operationKind}` : ''}${instrument.causeKind ? ` · ${instrument.causeKind}` : ''}${instrument.gateX != null ? ` · x=${instrument.gateX}` : ''}`, 'studio-hint'));
+        labeled('Enabled', input(!instrument.mute, enabled => changePhysicalInstrument(instrument.id, { mute: !enabled }), { type: 'checkbox' }), group);
+        labeled('Pitch / cents', input(instrument.pitchCents, pitchCents => changePhysicalInstrument(instrument.id, { pitchCents }), { min: -24000, max: 24000 }), group);
+        labeled('Velocity', input(Math.round(instrument.velocity01 * 100), velocity => changePhysicalInstrument(instrument.id, { velocity01: velocity / 100 }), { min: 0, max: 100 }), group);
+        fields.append(group);
+      }
     } else if (state.tab === 'Step' || state.tab === 'Chord') {
       labeled('Trigger', input(step.enabled, enabled => changeStep({ enabled }), { type: 'checkbox' }), fields);
       labeled('Scale degree', input(step.degree, degree => changeStep({ degree }), { min: -56, max: 56 }), fields);
@@ -207,10 +235,14 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
       labeled('Clock output', select([['', 'Off'], ...ports.outputs.map(p => [p.id, p.name || p.id])], state.clockOutputId || '', id => handlers.clockOutput?.(id), 'MIDI clock output'), fields);
       labeled('MIDI Thru', input(state.thru, value => handlers.thru?.(value), { type: 'checkbox' }), fields);
       for (const [key, title] of [['bankMSB', 'Bank MSB'], ['bankLSB', 'Bank LSB']]) labeled(title, input(lane[key] ?? '', value => changeLane({ [key]: value }), { min: 0, max: 127, nullable: true }), fields);
-      fields.append(button('Connect MIDI', () => handlers.connect?.()), button('Learn step note', () => handlers.learn?.()), node('p', 'Clock and note routing are independent. Incoming clock is never echoed.', 'studio-hint'));
+      fields.append(button('Connect MIDI', () => handlers.connect?.()),
+        ...(pattern ? [button('Learn step note', () => handlers.learn?.())] : []),
+        node('p', 'Clock and note routing are independent. Incoming clock is never echoed.', 'studio-hint'));
       for (const [type, title, low, high] of [['sustain', 'Sustain', 0, 127], ['bend', 'Pitch bend', -8192, 8191], ['pressure', 'Pressure', 0, 127]]) labeled(title, input(0, value => handlers.expression?.({ type, value, channel: lane.channel, outputId: lane.outputId }), { type: 'range', min: low, max: high }), fields);
       fields.append(node('output', state.lastMidi || 'No input received', 'studio-midi-monitor'));
-      fields.append(node('p', state.inputId ? `Input ready · recording targets ${lane.name}, phrase ${state.slot + 1}.` : 'Connect and select a MIDI input to record notes or learn a step.', 'studio-hint'));
+      fields.append(node('p', pattern ? (state.inputId ? `Input ready · recording targets ${lane.name}, phrase ${state.slot + 1}.` :
+        'Connect and select a MIDI input to record notes or learn a step.') :
+        'Physical instruments use committed world facts. MIDI input remains available for transport and capture.', 'studio-hint'));
     } else if (state.tab === 'World') {
       fields.append(button('Reroll world', () => handlers.reroll?.()), button('Replay seed', () => handlers.replay?.()));
       labeled('Seed', input(getRuntime()?.world?.seed || 0, seed => handlers.seed?.(seed), { min: 0, max: 4294967295 }), fields);
@@ -273,18 +305,26 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
     laneRange.textContent = `${projection.firstLane + 1}–${projection.firstLane + projection.count} of ${project.procgen.lanes.length}`;
     previousLanes.disabled = projection.firstLane === 0; nextLanes.disabled = projection.firstLane + projection.count >= project.procgen.lanes.length;
     for (let row = 0; row < projection.count; row++) {
-      const laneIndex = projection.firstLane + row, lane = project.procgen.lanes[laneIndex], displaySlot = state.laneId === lane.id ? state.slot : lane.activeSlot, pattern = lane.patterns[displaySlot];
+      const laneIndex = projection.firstLane + row, lane = project.procgen.lanes[laneIndex], displaySlot = state.laneId === lane.id ? state.slot : lane.activeSlot, pattern = lane.mode === 'pattern' ? lane.patterns[displaySlot] : null;
       const header = node('section', null, 'studio-lane-header'); header.dataset.laneId = lane.id; header.style.setProperty('--lane-color', COLORS[laneIndex % 8]); header.classList.toggle('selected', state.laneId === lane.id);
       const label = button(`${laneIndex + 1}  ${lane.family.toUpperCase()}`, () => { state.laneId = lane.id; state.slot = lane.activeSlot; state.tab = 'Lane'; render(); }); label.className = 'studio-lane-title';
       const role = node('span', lane.role, 'studio-role');
       const controls = node('div', null, 'studio-lane-mini');
       for (const [key, text] of [['solo', 'S'], ['mute', 'M']]) { const el = button(text, () => dispatch({ type: 'procgen/lane', laneId: lane.id, patch: { [key]: !lane[key] } }), `${key} ${lane.name}`); el.setAttribute('aria-pressed', String(lane[key])); controls.append(el); }
       const slots = node('div', null, 'studio-slots');
-      for (let slot = 0; slot < 4; slot++) { const el = button(String(slot + 1), () => { state.laneId = lane.id; state.slot = slot; dispatch({ type: 'procgen/launch', laneId: lane.id, slot }); }, `Launch phrase ${slot + 1} on next bar`); el.setAttribute('aria-pressed', String(lane.activeSlot === slot)); el.classList.toggle('queued', lane.queuedSlot === slot); slots.append(el); }
+      if (pattern) for (let slot = 0; slot < 4; slot++) { const el = button(String(slot + 1), () => { state.laneId = lane.id; state.slot = slot; dispatch({ type: 'procgen/launch', laneId: lane.id, slot }); }, `Launch phrase ${slot + 1} on next bar`); el.setAttribute('aria-pressed', String(lane.activeSlot === slot)); el.classList.toggle('queued', lane.queuedSlot === slot); slots.append(el); }
+      else slots.append(node('span', 'LIVE', 'studio-physical-badge'));
       header.append(label, role, controls, slots); lanes.append(header);
-      const sequence = node('div', null, 'studio-sequence'); sequence.dataset.laneId = lane.id; sequence.dataset.slot = displaySlot; sequence.style.setProperty('--lane-color', COLORS[laneIndex % 8]); sequence.style.gridTemplateColumns = `repeat(${pattern.length}, minmax(0, 1fr))`;
+      const sequence = node('div', null, 'studio-sequence'); sequence.dataset.laneId = lane.id; sequence.dataset.slot = displaySlot; sequence.style.setProperty('--lane-color', COLORS[laneIndex % 8]); sequence.style.gridTemplateColumns = `repeat(${pattern?.length || 1}, minmax(0, 1fr))`;
       sequence.style.top = (row * projection.rowHeight + projection.rowHeight - (state.layout === 'strip' ? 25 : Math.min(44, projection.rowHeight * 0.48))) + 'px';
       sequence.style.height = (state.layout === 'strip' ? 25 : Math.min(44, projection.rowHeight * 0.48)) + 'px';
+      if (!pattern) {
+        sequence.classList.add('studio-physical-row');
+        sequence.style.gridTemplateColumns = '1fr';
+        sequence.append(node('span', 'Physical causes · live world', 'studio-physical-label'));
+        grid.append(sequence);
+        continue;
+      }
       for (let index = 0; index < pattern.length; index++) {
         const step = pattern.steps[index], cell = button(step.tie ? '―' : step.enabled ? step.chord ? '◆' : '●' : '·', () => {
           if (window.performance.now() < suppressClickUntil) return;
@@ -309,7 +349,8 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
       const lane = getProject().procgen.lanes.find(l => l.id === row.dataset.laneId); if (!lane) continue;
       const playhead = handlers.playhead?.(lane.id), slot = playhead?.slot ?? lane.activeSlot;
       if (String(slot) !== row.dataset.slot) { row.querySelector('.playing')?.classList.remove('playing'); delete row.dataset.playing; continue; }
-      const pattern = lane.patterns[slot], index = Math.floor(Math.max(0, beat - (playhead?.origin || 0)) * 4 * pattern.rate) % pattern.length;
+      const pattern = lane.patterns?.[slot]; if (!pattern) continue;
+      const index = Math.floor(Math.max(0, beat - (playhead?.origin || 0)) * 4 * pattern.rate) % pattern.length;
       if (row.dataset.playing === String(index)) continue;
       row.querySelector('.playing')?.classList.remove('playing'); row.children[index]?.classList.add('playing'); row.dataset.playing = String(index);
     }
@@ -390,6 +431,7 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
     const cell = event.target.closest?.('.studio-cell'), row = cell?.closest('.studio-sequence'); if (!row) return;
     event.preventDefault();
     const lane = getProject().procgen.lanes.find(item => item.id === row.dataset.laneId), slot = Number(row.dataset.slot);
+    if (!lane?.patterns?.[slot]) return;
     stroke = { laneId: lane.id, slot, steps: lane.patterns[slot].steps.slice(), enabled: state.tool === 'draw', changed: false };
     state.laneId = lane.id; state.slot = slot; state.tab = 'Step'; paint(cell);
   });
@@ -410,9 +452,21 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
     const action = modifier ? key === 'c' ? 'copy' : key === 'v' ? 'paste' : key === 'z' ? event.shiftKey ? 'redo' : 'undo' : key === 'y' ? 'redo' : null : null;
     if (action) { event.preventDefault(); handlers[action]?.(); return; }
     if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); changeStep({ enabled: false }); }
-    else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); const length = selected().patterns[state.slot].length; state.step = (state.step + (event.key === 'ArrowLeft' ? length - 1 : 1)) % length; state.tab = 'Step'; render(); }
+    else if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && selected().mode === 'pattern') { event.preventDefault(); const length = selected().patterns[state.slot].length; state.step = (state.step + (event.key === 'ArrowLeft' ? length - 1 : 1)) % length; state.tab = 'Step'; render(); }
   });
   return { render, patchStep, layout, renderInspector: render, showProjects, showProjectPage, status: text => { status.textContent = text; },
+    offerLegacyConversion(report, convert) {
+      legacyNotice.replaceChildren(node('span', `Previous setup uses legacy phrases. Physical conversion will discard ${report.discardedEnabledSteps} enabled steps across ${report.laneCount} lanes.`),
+        button('Convert previous setup', () => convert?.(), 'Replace the previous setup with a physical instrument graph'));
+      legacyNotice.hidden = false;
+    },
+    clearLegacyConversion() { legacyNotice.hidden = true; legacyNotice.replaceChildren(); },
+    displayState(receipt) {
+      const current = receipt?.state || 'unavailable';
+      displayStatus.textContent = `Display ${current}${receipt?.reason ? `: ${receipt.reason}` : ''}`;
+      displayStatus.dataset.state = current;
+      retryDisplay.hidden = !['lost', 'unavailable'].includes(current);
+    },
     exportState(artifact, delivery) {
       const ready = !!artifact?.retained && Date.now() < artifact.expiresAt;
       const writing = delivery?.state === 'writing';

@@ -114,7 +114,9 @@ const disposeProcgenRuntime = () => {
     } },
     { name: 'stage-adapter', run: () => runtime.stageAdapter?.dispose?.() },
     { name: 'game', run: () => runtime.game?.stop?.() },
-    { name: 'view', run: () => runtime.view?.dispose?.() }
+    { name: 'view', run: () => runtime.view?.dispose?.() },
+    { name: 'asset-provider-lease', run: () => runtime.providerLease?.release() },
+    { name: 'asset-provider', run: () => runtime.fileProvider?.dispose?.() }
   ]);
   return lastProcgenRuntimeRetirement;
 };
@@ -312,9 +314,12 @@ const initWorkstation = async ({ session, lease } = {}) => {
   if (!canvas) return;
   const settings = session ? { ...session.settings, laneCount: session.world.laneCount, laneHeight: session.world.laneHeight, seed: session.world.seed } : { ...procgenStudio.prepareSettings() };
   const view = new GameView(); let candidate = null, lanes = null, terrain = null, committed = false;
+  let fileProvider = null, resourceLease = null;
   const canCommit = () => serial === workstationInitSerial && !lease?.signal?.aborted;
   try {
-    const factory = view.gameFactory, fileProvider = factory.fileProvider;
+    const factory = view.gameFactory;
+    fileProvider = factory.fileProvider;
+    resourceLease = fileProvider?.acquireLease?.() || null;
     const [configs, resources, book] = await Promise.all([
       Promise.all([GameTypes.LEMMINGS, GameTypes.OHNO, GameTypes.HOLIDAY94].map(type => factory.getConfig(type))),
       factory.getGameResources(GameTypes.LEMMINGS), loadTerrainRecipeBook(fileProvider)
@@ -335,8 +340,9 @@ const initWorkstation = async ({ session, lease } = {}) => {
       speed: settings.speed, cohorts: true, workstation: true, hazardSpacing: settings.hazardSpacing,
       previousDistances: readProcgenDistances(), workerLimits: settings.workerLimits, populationPolicy: settings.populationPolicy, particleTable: new ParticleTable(palette) });
     if (session) restoreProcgenCheckpoint(candidate, session.world);
-    lanes = createProcgenLaneRuntime({ canvas, resources, sprites, masks, assets, terrain, initialWorld: candidate, workstation: true,
+    lanes = createProcgenLaneRuntime({ canvas, resources, resourceLease, sprites, masks, assets, terrain, initialWorld: candidate, workstation: true,
       onMetrics: state => procgenUi?.syncMetrics(state), onActiveCount: count => procgenUi?.syncActiveCount(count), windowRef: window });
+    resourceLease = null;
     lanes.renderer.hud = new ProcgenBitmapHud({ canvas, sprites: hudSprites });
     if (!canCommit()) return false;
     if (activeProcgenRuntime) procgenStudio.beforeRestart();
@@ -354,6 +360,8 @@ const initWorkstation = async ({ session, lease } = {}) => {
       else if (candidate) candidate.dispose();
       else terrain?.reset();
     }
+    resourceLease?.release();
+    if (fileProvider?.acquireLease) fileProvider.dispose();
     view.dispose();
   }
 };
@@ -381,7 +389,9 @@ const init = async (options = {}) => {
     game: null,
     controller: null,
     stageAdapter: null,
-    focusBlurCleanup: null
+    focusBlurCleanup: null,
+    fileProvider: null,
+    providerLease: null
   };
   const canvas = document.getElementById('gameCanvas');
   if (!canvas) return;
@@ -400,6 +410,8 @@ const init = async (options = {}) => {
     const aiDebugOverlay = params.has('aiDebug');
     const view = new GameView();
     runtime.view = view;
+    runtime.fileProvider = view.gameFactory.fileProvider;
+    runtime.providerLease = runtime.fileProvider?.acquireLease?.() || null;
     const gameType = procgenUi?.settings.pack || PROCGEN_GAME_TYPE;
     view.gameType = gameType;
     view.levelGroupIndex = 0;
@@ -439,10 +451,13 @@ const init = async (options = {}) => {
       const palette = assets.assets?.gadgetImages?.find(image => image?.palette)?.palette || assets.groundPieces[0]?.image?.palette;
       const [sprites, masks, hudSprites] = await Promise.all([resources.getLemmingsSprite(palette), resources.getMasks(), resources.getSkillPanelSprite(palette)]);
       if (activeProcgenRuntime !== runtime) { view.dispose(); return; }
-      const lanes = createProcgenLaneRuntime({ canvas, resources, sprites, masks, assets, laneCount, seed: procgenSeed,
+      const lanes = createProcgenLaneRuntime({ canvas, resources, resourceLease: runtime.providerLease, sprites, masks, assets, laneCount, seed: procgenSeed,
         speed: procgenUi.settings.speed, laneHeight: procgenUi.settings.laneHeight, terrain, previousDistances: readProcgenDistances(), workerLimits: procgenUi?.settings.workerLimits, populationPolicy: procgenUi.settings.populationPolicy, onMetrics: state => procgenUi?.syncMetrics(state), onActiveCount: count => procgenUi?.syncActiveCount(count), windowRef: window });
+      runtime.lanes = lanes;
+      runtime.providerLease = null;
       lanes.renderer.hud = new ProcgenBitmapHud({ canvas, sprites: hudSprites });
       view.dispose();
+      runtime.fileProvider.dispose?.(); runtime.fileProvider = null;
       runtime.lanes = lanes; runtime.world = lanes.world; runtime.view = lanes.view; runtime.game = lanes.game;
       runtime.stageAdapter = { updateStageSize: () => lanes.resize() };
       window.procgenDebugState = () => lanes.getDebugState();
@@ -464,7 +479,7 @@ const init = async (options = {}) => {
     );
     if (activeProcgenRuntime !== runtime) { view.dispose(); return; }
     if (!level) {
-      runtime.view?.dispose?.();
+      disposeProcgenRuntime();
       return;
     }
 
@@ -545,6 +560,8 @@ const init = async (options = {}) => {
     runtime?.stageAdapter?.dispose?.();
     runtime?.game?.stop?.();
     runtime?.view?.dispose?.();
+    runtime?.providerLease?.release?.();
+    runtime?.fileProvider?.dispose?.();
     runFocusBlurCleanup(runtime);
     throw err;
   }

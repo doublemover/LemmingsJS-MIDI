@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 import { createProcgenDocumentId, createProcgenSessionStorage } from '../js/app/procgen/workstation/ProcgenSessionStorage.js';
+import { checksumProcgenRecovery } from '../js/app/procgen/workstation/ProcgenRecoveryChecksum.js';
 
 const session = name => ({ format: 'lemmings-procgen-session', version: 1, name, savedAt: '2026-10-22T00:00:00.000Z',
   project: {}, settings: {}, world: { laneCount: 1, seed: 7 }, transport: {},
@@ -111,8 +112,36 @@ describe('ProcGen session storage connection lifecycle', () => {
     await storage.saveRecovery(session('recovery'));
     expect((await storage.listDocuments()).map(record => record.id)).to.have.members([first, second]);
     expect((await storage.loadDocument(first)).session.name).to.equal('__recovery__');
-    expect(adapter.records.get('recovery:latest').session.name).to.equal('recovery');
+    expect(adapter.records.get('recovery:slot:1').session.name).to.equal('recovery');
+    expect(adapter.records.get('recovery:head')).to.include({ generation: 1, slot: 1 });
     storage.close();
+  });
+
+  it('keeps the previous checksum-valid recovery generation when the newest copy is corrupt', async () => {
+    const adapter = fakeIndexedDb(), storage = createProcgenSessionStorage(adapter);
+    const first = await storage.saveRecovery(session('first'), { documentRevision: 3, tick: 60 });
+    const second = await storage.saveRecovery(session('second'), { documentRevision: 4, tick: 120 });
+    expect(first).to.include({ generation: 1, documentRevision: 3, tick: 60 });
+    expect(second).to.include({ generation: 2, documentRevision: 4, tick: 120 });
+    expect((await storage.loadRecovery()).name).to.equal('second');
+    adapter.records.get('recovery:slot:0').session = session('changed after commit');
+    expect((await storage.loadRecovery()).name).to.equal('first');
+    await storage.removeRecovery();
+    expect(await storage.loadRecovery()).to.equal(null);
+    expect([...adapter.records.keys()].filter(id => id.startsWith('recovery:'))).to.deep.equal([]);
+    storage.close();
+  });
+
+  it('slices recovery checksumming and can cancel before an obsolete write begins', async () => {
+    const source = session('long'); source.project.steps = Array.from({ length: 5000 }, (_, index) => ({ index, enabled: true }));
+    const controller = new AbortController(); let slices = 0, clock = 0;
+    let canceled;
+    try {
+      await checksumProcgenRecovery(source, { signal: controller.signal, now: () => ++clock,
+        yieldTask: async () => { slices++; controller.abort(); } });
+    } catch (error) { canceled = error; }
+    expect(slices).to.be.greaterThan(0);
+    expect(canceled?.name).to.equal('AbortError');
   });
 
   it('compares revisions atomically and recognizes a repeated uncertain commit', async () => {
