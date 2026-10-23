@@ -111,7 +111,7 @@
       "entryPoints": ["js/app/procgen/workstation/ProcgenWorkstation.js"],
       "files": ["js/app/resources/BackgroundWorkerAdmission.js", "js/app/resources/BackgroundJobKernels.js", "js/app/resources/BackgroundJobService.js", "js/app/resources/BackgroundJobWorker.js"],
       "fileCount": 4,
-      "sha256": "41b2c1bca5ab22c56479c3033c55065e118574f8601c1ed92d86573fbccf1fd6"
+      "sha256": "1662277b4d60e1f6db6f88b21207d4bdbf0cf1a55a9f1a1bbccb974587bbdf10"
     },
     {
       "id": "lemmings-timing-worker-source",

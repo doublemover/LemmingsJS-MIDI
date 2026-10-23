@@ -3,6 +3,7 @@ import { createBackgroundJobService } from '../js/app/resources/BackgroundJobSer
 import { createBackgroundWorkerAdmission } from '../js/app/resources/BackgroundWorkerAdmission.js';
 import { runBackgroundJobKernel } from '../js/app/resources/BackgroundJobKernels.js';
 import { getActiveExecutionIdentity } from '../js/runtime/ActiveExecutionIdentity.js';
+import { checksumProcgenRecovery } from '../js/app/procgen/workstation/ProcgenRecoveryChecksum.js';
 
 const rejects = async (work, text) => { let error; try { await work; } catch (failure) { error = failure; } expect(error).to.be.instanceOf(Error); expect(error.message).to.include(text); return error; };
 describe('owned pure background computations', () => {
@@ -52,5 +53,17 @@ describe('owned pure background computations', () => {
     const original = new Uint8Array([1, 2, 3]), hash = await runBackgroundJobKernel('asset-hash', original, options);
     expect(hash.value).to.match(/^[a-f0-9]{64}$/); expect([...original]).to.deep.equal([1, 2, 3]); expect(original.buffer.byteLength).to.equal(3);
     if (typeof globalThis.SharedArrayBuffer === 'function') await rejects(runBackgroundJobKernel('asset-hash', new Uint8Array(new globalThis.SharedArrayBuffer(8)), options), 'shared live memory');
+  });
+  it('keeps byte hashing native and provides a genuinely cooperative checksum fallback', async () => {
+    let workers = 0, yields = 0;
+    class Worker { constructor() { workers++; throw new Error('Native hashing must not create a worker.'); } }
+    const admission = createBackgroundWorkerAdmission(), native = createBackgroundJobService({ admission, Worker });
+    const bytes = new Uint8Array([1, 2, 3]), hash = await native.compute(specification({ kind: 'asset-hash', inputBytes: 3, prepareInput: () => bytes }));
+    expect(hash.value).to.match(/^[a-f0-9]{64}$/); expect(hash.receipt.method).to.equal('native-crypto'); hash.release(); expect(workers).to.equal(0);
+    const cooperative = createBackgroundJobService({ admission, Worker: null, yieldTask: async () => { yields++; } });
+    const data = Array.from({ length: 20000 }, (_, index) => index % 8);
+    const result = await cooperative.compute(specification({ kind: 'recovery-checksum', inputBytes: 200000, estimatedPeakBytes: 4 * 1048576, prepareInput: () => data }));
+    expect(result.value).to.equal(await checksumProcgenRecovery(data)); expect(result.receipt.method).to.equal('cooperative-main-thread-fallback'); expect(yields).to.be.greaterThan(1);
+    result.release(); native.dispose(); cooperative.dispose(); admission.dispose();
   });
 });

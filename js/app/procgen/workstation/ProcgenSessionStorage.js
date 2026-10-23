@@ -1,4 +1,4 @@
-import { checksumProcgenRecovery } from './ProcgenRecoveryChecksum.js';
+import { backgroundJobService } from '../../resources/BackgroundJobService.js';
 import { upgradeCausalJournalStores, createCausalJournalStorage } from './ProcgenCausalJournalStorage.js';
 
 const SESSION_VERSION = 1;
@@ -40,9 +40,26 @@ const storageFailure = (error, fallback = 'Project storage failed.') => {
   const failure = new Error(messages[category], { cause: error }); failure.name = 'ProcgenStorageError'; failure.category = category;
   return failure;
 };
-const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTimeoutMs = 5000, onState = () => {}, keyRange = globalThis.IDBKeyRange } = {}) => {
+const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTimeoutMs = 5000, onState = () => {}, keyRange = globalThis.IDBKeyRange,
+  backgroundJobs = backgroundJobService, budgetAdapter = null } = {}) => {
   if (!Number.isSafeInteger(openTimeoutMs) || openTimeoutMs < 1) throw new RangeError('Invalid project storage open timeout');
   let database = null, opening = null, generation = 0, retired = false, state = 'closed', lastError = null;
+  const lifetime = new AbortController(); let checksumSequence = 0;
+  const checksumSnapshot = async (prepareSnapshot, { signal, laneCount = 1024 } = {}) => {
+    const controller = new AbortController(), cancel = () => controller.abort(signal?.reason || lifetime.signal.reason);
+    signal?.addEventListener('abort', cancel, { once: true }); lifetime.signal.addEventListener('abort', cancel, { once: true });
+    if (signal?.aborted || lifetime.signal.aborted) cancel();
+    let computed = null, snapshot = null;
+    const release = () => { signal?.removeEventListener('abort', cancel); lifetime.signal.removeEventListener('abort', cancel); computed?.release(); snapshot = null; };
+    try {
+      if (checksumSequence === Number.MAX_SAFE_INTEGER) throw new Error('Recovery checksum operation identity exhausted.');
+      computed = await backgroundJobs.compute({ kind: 'recovery-checksum', ownerId: 'procgen-recovery-storage', ownerEpoch: generation,
+        sourceRevision: `recovery:${++checksumSequence}`, inputBytes: 0, estimatedPeakBytes: 128 * 1048576 + Math.max(1, Math.min(1024, laneCount || 1024)) * 131072,
+        priority: 'recovery', budgetAdapter, signal: controller.signal, isCurrent: () => !retired,
+        prepareInput: async () => { snapshot = await prepareSnapshot(); validateProcgenSession(snapshot); return snapshot; } });
+      return { checksum: computed.value, snapshot, signal: controller.signal, release };
+    } catch (error) { release(); throw error; }
+  };
   const report = (next, error = null) => { state = next; lastError = error; onState({ state, error, generation }); };
   const invalidate = (db, reason) => {
     if (database !== db) return;
@@ -209,6 +226,7 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
   const causalJournalStorage = createCausalJournalStorage({ open, available: db => !retired && db === database, wrapFailure: storageFailure });
   return {
     ...causalJournalStorage,
+    supportsRecoveryFactory: true,
     getState: () => ({ state, error: lastError, generation, retired }),
     saveDocument,
     async loadDocument(id) {
@@ -253,49 +271,65 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
         } catch (error) { reject(storageFailure(error)); }
       });
     },
-    async saveRecovery(session, { signal, documentRevision = null, tick = null } = {}) {
-      validateProcgenSession(session);
-      const checksum = await checksumProcgenRecovery(session, { signal });
-      if (signal?.aborted) throw namedError('AbortError', 'Recovery write canceled');
-      const db = await open();
-      if (retired || db !== database) throw storageFailure(null, 'Project storage connection changed. Retry recovery.');
-      return new Promise((resolve, reject) => {
-        let transaction, receipt;
-        try {
-          transaction = db.transaction('sessions', 'readwrite');
-          const abort = () => { try { transaction.abort(); } catch { /* A completed transaction needs no cancellation. */ } };
-          signal?.addEventListener('abort', abort, { once: true });
-          const store = transaction.objectStore('sessions'), request = store.get('recovery:head');
-          request.onsuccess = () => {
-            if (signal?.aborted) { transaction.abort(); return; }
-            const generation = (request.result?.generation || 0) + 1, slot = generation % 2;
-            receipt = { generation, checksum, documentRevision, tick };
-            store.put({ id: `recovery:slot:${slot}`, kind: 'recovery-generation', ...receipt,
-              name: session.name, savedAt: session.savedAt, session });
-            store.put({ id: 'recovery:head', kind: 'recovery-head', generation, slot, checksum });
-          };
-          transaction.oncomplete = () => { signal?.removeEventListener('abort', abort); resolve(receipt); };
-          transaction.onabort = () => { signal?.removeEventListener('abort', abort);
-            reject(storageFailure(transaction.error || request.error || namedError('AbortError', 'Recovery transaction aborted'))); };
-        } catch (error) { reject(storageFailure(error)); }
-      });
+    async saveRecovery(source, { signal, documentRevision = null, tick = null, laneCount = source?.world?.laneCount, snapshotMetadata = null } = {}) {
+      if (typeof source !== 'function') validateProcgenSession(source);
+      if (snapshotMetadata != null && typeof snapshotMetadata !== 'function') throw new TypeError('Recovery metadata requires an owned snapshot callback.');
+      const computed = await checksumSnapshot(async () => {
+        const snapshot = globalThis.structuredClone(typeof source === 'function' ? await source() : source);
+        if (snapshotMetadata) { const metadata = snapshotMetadata(); documentRevision = metadata.documentRevision; tick = metadata.tick; }
+        if (documentRevision != null && (!Number.isSafeInteger(documentRevision) || documentRevision < 0) || tick != null && (!Number.isSafeInteger(tick) || tick < 0))
+          throw new TypeError('Invalid recovery snapshot revision or tick.');
+        return snapshot;
+      }, { signal, laneCount });
+      const { checksum, snapshot: session } = computed;
+      signal = computed.signal;
+      try {
+        if (signal?.aborted) throw namedError('AbortError', 'Recovery write canceled');
+        const db = await open();
+        if (retired || db !== database) throw storageFailure(null, 'Project storage connection changed. Retry recovery.');
+        return await new Promise((resolve, reject) => {
+          let transaction, receipt;
+          try {
+            transaction = db.transaction('sessions', 'readwrite');
+            const abort = () => { try { transaction.abort(); } catch { /* A completed transaction needs no cancellation. */ } };
+            signal?.addEventListener('abort', abort, { once: true });
+            const store = transaction.objectStore('sessions'), request = store.get('recovery:head');
+            request.onsuccess = () => {
+              if (signal?.aborted) { transaction.abort(); return; }
+              const generation = (request.result?.generation || 0) + 1, slot = generation % 2;
+              receipt = { generation, checksum, documentRevision, tick };
+              store.put({ id: `recovery:slot:${slot}`, kind: 'recovery-generation', ...receipt,
+                name: session.name, savedAt: session.savedAt, session });
+              store.put({ id: 'recovery:head', kind: 'recovery-head', generation, slot, checksum });
+            };
+            transaction.oncomplete = () => { signal?.removeEventListener('abort', abort); resolve(receipt); };
+            transaction.onabort = () => { signal?.removeEventListener('abort', abort);
+              reject(storageFailure(transaction.error || request.error || namedError('AbortError', 'Recovery transaction aborted'))); };
+          } catch (error) { reject(storageFailure(error)); }
+        });
+      } finally { computed.release(); }
     },
-    async loadRecovery() {
+    async loadRecovery({ requireVerified = false, signal } = {}) {
       await migrateLegacy();
-      const [head, first, second, legacy] = await Promise.all([
-        operation('readonly', store => store.get('recovery:head')),
-        operation('readonly', store => store.get('recovery:slot:0')),
-        operation('readonly', store => store.get('recovery:slot:1')),
-        operation('readonly', store => store.get('recovery:latest'))
-      ]);
-      for (const record of [first, second].filter(item => item && head && Number.isSafeInteger(item.generation) &&
-        item.generation <= head.generation && (item.generation !== head.generation || item.checksum === head.checksum))
-        .sort((a, b) => b.generation - a.generation)) {
+      const head = await operation('readonly', store => store.get('recovery:head'));
+      const slots = head && Number.isSafeInteger(head.generation) && head.generation >= 0 ? [head.generation % 2, 1 - head.generation % 2] : [];
+      for (const slot of slots) {
+        let record, computed;
         try {
-          if (record.kind === 'recovery-generation' && record.checksum === await checksumProcgenRecovery(record.session))
-            return validateProcgenSession(record.session);
-        } catch { /* Try the previous complete generation. */ }
+          computed = await checksumSnapshot(async () => {
+            record = await operation('readonly', store => store.get(`recovery:slot:${slot}`));
+            if (!record || record.kind !== 'recovery-generation' || !Number.isSafeInteger(record.generation) || record.generation > head.generation ||
+                record.generation === head.generation && record.checksum !== head.checksum) throw namedError('RecoveryCandidateError', 'Recovery candidate was not committed.');
+            try { validateProcgenSession(record.session); } catch { throw namedError('RecoveryCandidateError', 'Recovery candidate has an unsupported session header.'); }
+            return record.session;
+          }, { signal });
+          if (computed.checksum === record.checksum) return validateProcgenSession(record.session);
+        } catch (error) {
+          if (retired || signal?.aborted || error.name !== 'RecoveryCandidateError' && !(error.name === 'BackgroundJobError' && error.code === 'invalid-data')) throw error;
+        } finally { computed?.release(); }
       }
+      const legacy = await operation('readonly', store => store.get('recovery:latest'));
+      if (legacy && requireVerified) throw new Error('Legacy recovery has no checksum; open it explicitly as a legacy project.');
       return legacy ? validateProcgenSession(legacy.session) : null;
     },
     async removeRecovery() { await operation('readwrite', store => {
@@ -313,6 +347,7 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
     close() {
       if (retired) return;
       retired = true; generation++;
+      lifetime.abort(namedError('AbortError', 'Project storage closed'));
       const pending = opening; opening = null;
       pending?.reject(new Error('Project storage closed'));
       const db = database; database = null;

@@ -17,6 +17,7 @@ import {
 import { ResourceLoadError, resourceKindFromStatus } from './ResourceLoadError.js';
 import { RawAssetHandle } from './RawAssetHandle.js';
 import { requestBinaryStream } from './FileProviderStream.js';
+import { backgroundJobService } from '../../app/resources/BackgroundJobService.js';
 
 const requestWithXhrUnbounded = (provider, url, responseType, owner = null) => new Promise((resolve, reject) => {
   if (provider._disposed || owner?.controller.signal.aborted) { reject(new ResourceLoadError('cancelled', url)); return; }
@@ -334,16 +335,25 @@ const fileProviderFetchMethods = {
     if (hash && this._failedHashPromises.has(hash)) hash = null;
     if (!hash) {
       hash = (async () => {
-        const reservation = this._reserveRawBytes(value.length * 2);
+        let reservation = null, computed = null;
+        const epoch = this._cacheEpoch, source = this._sourceRecords.get(value);
+        const crypto = this._crypto || globalThis.crypto;
+        if (!crypto?.subtle) return null;
         try {
-          const copy = value.copyBytes();
-          this._rawByteMetrics.hashInputCopies++; this._rawByteMetrics.hashInputBytes += copy.byteLength;
-          return await this._tryHashBuffer(copy);
+          computed = await (this._backgroundJobs || backgroundJobService).compute({ kind: 'asset-hash', ownerId: this._budgetOwner || 'file-provider', ownerEpoch: epoch,
+            sourceRevision: `raw:${epoch}:${value.length}`, inputBytes: value.length, estimatedPeakBytes: Math.max(4096, value.length * 6),
+            signal: source?.controller?.signal, crypto, priority: 'interactive', isCurrent: () => !this._disposed,
+            prepareInput: () => {
+              reservation = this._reserveRawBytes(value.length * 2);
+              const copy = value.copyBytes();
+              this._rawByteMetrics.hashInputCopies++; this._rawByteMetrics.hashInputBytes += copy.byteLength; return copy;
+            }, releasePreparedInput: () => reservation?.release() });
+          return computed.value;
         }
-        finally { reservation?.release(); }
+        finally { computed?.release(); }
       })();
       this._contentHashes.set(value, hash);
-      hash.catch(() => this._failedHashPromises.add(hash));
+      hash.then(value => { if (!value) this._failedHashPromises.add(hash); }, () => this._failedHashPromises.add(hash));
     }
     return hash;
   },
@@ -357,7 +367,8 @@ const fileProviderFetchMethods = {
       if (cause?.name === 'ResourceBudgetError') throw new ResourceLoadError('budget', url, { cause });
       throw cause;
     }
-    if (!actual || actual.toLowerCase() !== String(expectedHash).toLowerCase()) throw new ResourceLoadError('integrity', url);
+    if (!actual) throw new ResourceLoadError('unavailable', url);
+    if (actual.toLowerCase() !== String(expectedHash).toLowerCase()) throw new ResourceLoadError('integrity', url);
     return value;
   },
 

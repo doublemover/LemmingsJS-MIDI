@@ -189,9 +189,24 @@ The job protocol registers JSON parsing, JSON encoding, recovery checksums and
 asset hashes. Worker jobs are bound to the executing build when generated
 application identity exists. Without workers, only small bounded JSON jobs and
 native byte hashing are admitted; a large synchronous parse is not described
-as cancellable. Snapshot capture itself still runs at a completed main-thread
-boundary. Recovery/asset integration, content coalescing and measured live-load
-qualification remain follow-through work.
+as cancellable. Recovery checksumming also has a bounded cooperative fallback.
+Snapshot capture itself still runs at a completed main-thread boundary.
+
+Recovery uses the same admission owner before invoking its snapshot factory.
+The checksum and atomic generation write use one private snapshot. Its revision
+and completed simulation tick are captured when the admitted snapshot is taken.
+Closing storage cancels owned checksum/commit work. Recovery reads inspect one
+candidate generation at a time, admitting its payload before checksum work;
+temporary worker or capacity failures are not reported as corrupt recovery.
+Automatic recovery startup requires a checksum; legacy source records remain
+available through explicit legacy loading.
+
+FileProvider binary verification uses the same boundary before copying hash
+input. It keeps WebCrypto native, retains raw-byte leases until digest work
+settles and shares an immutable generation's existing hash promise. Content
+coalescing across independent jobs, broader terrain decode execution and
+measured live-load qualification remain follow-through work. New fixtures are
+unexecuted.
 
 The World inspector controls trap spacing and display row height. Playable terrain
 assembles near approaching actors; camera movement does not build distant terrain.

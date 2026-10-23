@@ -33,6 +33,7 @@ class FileProvider extends BaseLogger {
     this._cacheSources = new Map();
     this._sourceRecords = new WeakMap();
     this._budgetAdapter = options.budgetAdapter || null;
+    this._backgroundJobs = options.backgroundJobs || null;
     if (this._budgetAdapter && (typeof this._budgetAdapter.reserve !== 'function' || typeof this._budgetAdapter.release !== 'function')) throw new TypeError('A synchronous resource budget adapter is required');
     this._budgetOwner = options.budgetOwner || `asset-provider-${++nextProviderOwner}`;
     this._rawByteLeases = new Set();

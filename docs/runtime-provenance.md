@@ -155,5 +155,8 @@ retained queued input and aggregate estimated memory before granting execution.
 Priority aging gives older background work a chance to run. Resource leases
 remain charged until the caller acknowledges retirement; cancellation callbacks
 cannot manufacture a completed release. Import parsing and export encoding now
-consume the same boundary through registered pure job kernels. Recovery and
-asset job integration remains pending.
+consume the same boundary through registered pure job kernels. Recovery
+checksums and binary asset hashes now use it as well. Binary hashing stays on
+native WebCrypto, avoiding a worker copy solely for a digest. Recovery has a
+cooperative fallback and cannot relabel a capacity failure as corrupt data.
+Content coalescing and terrain-decode job integration remain pending.

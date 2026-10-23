@@ -640,7 +640,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (disposed) return null;
     const next = runtime(); if (!next || (next === boundRuntime && session === boundSession)) return next;
     if (causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the causal take before replacing its world.');
-    if (session) recoveryAbort?.abort();
+    recoveryAbort?.abort();
     unhookRouter?.(); unhookWorld?.(); physicalPlayback?.dispose(); physicalPlayback = null; boundRuntime = next; boundSession = session;
     laneObserver = createProcgenLaneObserver(next.world);
     const bus = next.world?.soundEvents?.onEvent;
@@ -758,19 +758,26 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (recoveryTimer != null) { window.clearTimeout?.(recoveryTimer); recoveryTimer = null; }
     recoveryPending = true; lastRecovery = now(); recoveryState = 'saving'; recoveryError = null; storageStatus();
     const controller = new AbortController(); recoveryAbort = controller;
-    let capturedRevision = editRevision, capturedTick = runtime().world.simulationTimeMs ?? null;
+    const sourceDocumentGeneration = documentGeneration;
+    let capturedRevision = editRevision, capturedTick = runtime().world.tickIndex ?? null;
     try {
-      const session = snapshotSession(savedName + ' (recovery)');
-      capturedRevision = editRevision; capturedTick = runtime().world.simulationTimeMs ?? null;
-      const receipt = storage.saveRecovery ? await storage.saveRecovery(session, { signal: controller.signal, documentRevision: capturedRevision, tick: capturedTick }) :
-        await storage.save('__recovery__', session);
-      if (controller.signal.aborted) return false;
+      const captureRecovery = () => {
+        if (disposed || documentGeneration !== sourceDocumentGeneration) throw new Error('Recovery document changed before snapshot admission.');
+        const session = snapshotSession(savedName + ' (recovery)');
+        capturedRevision = editRevision; capturedTick = runtime().world.tickIndex ?? null; return session;
+      };
+      const source = storage.supportsRecoveryFactory ? captureRecovery : captureRecovery();
+      const receipt = storage.saveRecovery ? await storage.saveRecovery(source, { signal: controller.signal, documentRevision: capturedRevision, tick: capturedTick,
+        laneCount: runtime().world.laneCount, snapshotMetadata: () => ({ documentRevision: capturedRevision, tick: capturedTick }) }) : await storage.save('__recovery__', source);
+      if (disposed) return false;
+      if (controller.signal.aborted || documentGeneration !== sourceDocumentGeneration) { recoveryState = 'pending'; storageStatus(); return false; }
       durableRecoveryRevision = capturedRevision; durableRecoveryTick = capturedTick;
       durableRecoveryGeneration = receipt?.generation ?? durableRecoveryGeneration;
       recoveryState = editRevision === capturedRevision ? 'saved' : 'pending'; storageStatus();
       return true;
     }
     catch (error) {
+      if (disposed) return false;
       if (controller.signal.aborted) { recoveryState = 'pending'; storageStatus(); return false; }
       recoveryState = 'unavailable'; recoveryError = error; storageStatus();
       if (now() - lastRecoveryError >= 60000) {

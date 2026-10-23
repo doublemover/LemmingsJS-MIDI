@@ -47,15 +47,24 @@ const inspectText = async (text, { maxBytes, maxNodes, estimatedPeakBytes, signa
   const bytes = encodedLength(text); if (bytes > maxBytes) throw problem('input-capacity', 'JSON UTF-8 input exceeds the admitted byte bound.');
   return { bytes, nodes };
 };
-const inspectValue = async (value, { maxBytes, maxNodes, estimatedPeakBytes, signal, current, onProgress, yieldControl }, { allowBinary = false } = {}) => {
+const inspectValue = async (value, { maxBytes, maxNodes, maxStringBytes, estimatedPeakBytes, signal, current, onProgress, yieldControl }, { allowBinary = false } = {}) => {
   const stack = [{ value, depth: 0 }], active = new WeakSet(); let units = 0, bytes = 0, nodes = 0;
   while (stack.length) {
     const item = stack.pop();
     if (item.leave) { active.delete(item.value); continue; }
+    if (item.array) {
+      if (item.index < item.value.length) {
+        const index = item.index++; stack.push(item);
+        const descriptor = Object.getOwnPropertyDescriptor(item.value, index);
+        if (!descriptor || !Object.hasOwn(descriptor, 'value') || !allowBinary && descriptor.value === undefined) throw problem('invalid-data', 'Background arrays require explicit snapshot values.');
+        stack.push({ value: descriptor.value, depth: item.depth + 1 });
+      }
+      continue;
+    }
     if (++nodes > maxNodes || item.depth > 48) throw problem('structure-capacity', 'Background input exceeds its structural bound.');
     const input = item.value, type = typeof input;
-    if (input === null || type === 'boolean' || type === 'number') { if (type === 'number' && !Number.isFinite(input)) throw problem('invalid-data', 'JSON numbers must be finite.'); bytes += 32; }
-    else if (type === 'string') { if (input.length > maxBytes) throw problem('input-capacity', 'Background string exceeds its byte bound.'); bytes += jsonStringBytes(input); }
+    if (input === null || type === 'boolean' || type === 'number') { if (type === 'number' && !Number.isFinite(input)) throw problem('invalid-data', 'JSON numbers must be finite.'); bytes += String(input).length; }
+    else if (type === 'string') { if (input.length > Math.min(maxBytes, maxStringBytes)) throw problem('input-capacity', 'Background string exceeds its byte bound.'); bytes += jsonStringBytes(input); }
     else if (type === 'undefined') bytes += 4;
     else if (type !== 'object' || active.has(input)) throw problem('invalid-data', 'Background input must contain only acyclic snapshot data.');
     else if (shared(input)) throw problem('shared-live-input', 'Background jobs require owned snapshot buffers, not shared live memory.');
@@ -63,16 +72,24 @@ const inspectValue = async (value, { maxBytes, maxNodes, estimatedPeakBytes, sig
     else {
       if (!Array.isArray(input) && ![Object.prototype, null].includes(Object.getPrototypeOf(input))) throw problem('invalid-data', 'Unsupported background snapshot object.');
       active.add(input); stack.push({ value: input, leave: true });
-      if (Array.isArray(input) && input.length > maxNodes) throw problem('structure-capacity', 'Background array exceeds its element bound.');
+      if (Array.isArray(input)) {
+        if (Object.getPrototypeOf(input) !== Array.prototype || Object.hasOwn(input, 'toJSON')) throw problem('invalid-data', 'Background arrays cannot define serialization behavior.');
+        if (input.length + nodes > maxNodes) throw problem('structure-capacity', 'Background array exceeds its element bound.');
+        bytes += input.length + 2;
+        if (bytes > maxBytes || bytes * 6 + nodes * 32 > estimatedPeakBytes) throw problem('memory-capacity', 'Background array exceeds its admitted representation bound.');
+        stack.push({ value: input, depth: item.depth, index: 0, array: true });
+        if (++units % 2048 === 0) { guard(signal, current); onProgress({ phase: 'validating-snapshot', completedUnits: units, totalUnits: null }); await yieldControl(); }
+        continue;
+      }
       const keys = []; for (const key in input) if (Object.hasOwn(input, key)) {
         if (keys.length + nodes >= maxNodes || bytes * 6 + (keys.length + nodes) * 64 > estimatedPeakBytes) throw problem('structure-capacity', 'Background snapshot exceeds its property staging bound.'); keys.push(key);
+        if (keys.length % 2048 === 0) { guard(signal, current); await yieldControl(); }
       }
-      if (Array.isArray(input) && keys.length < input.length) throw problem('invalid-data', 'Background JSON arrays must contain explicit values.');
       bytes += keys.length * 4 + 2;
       for (let index = keys.length - 1; index >= 0; index--) {
         const key = keys[index], descriptor = Object.getOwnPropertyDescriptor(input, key);
         if (!descriptor || !Object.hasOwn(descriptor, 'value')) throw problem('invalid-data', 'Background snapshots cannot contain getters.');
-        if (!allowBinary && Array.isArray(input) && descriptor.value === undefined) throw problem('invalid-data', 'Background JSON arrays require lossless explicit values.');
+        if (key.length > maxStringBytes) throw problem('input-capacity', 'Background property exceeds its byte bound.');
         bytes += jsonStringBytes(key); stack.push({ value: descriptor.value, depth: item.depth + 1 });
       }
     }
@@ -83,10 +100,11 @@ const inspectValue = async (value, { maxBytes, maxNodes, estimatedPeakBytes, sig
 };
 
 export async function runBackgroundJobKernel(kind, input, { signal, current, maxBytes = MAX_BYTES, estimatedPeakBytes,
-  maxNodes = MAX_NODES, onProgress = () => {}, yieldControl = yieldTask, expectedInputHash = null } = {}) {
+  maxNodes = MAX_NODES, maxStringBytes = MAX_BYTES, crypto = globalThis.crypto, onProgress = () => {}, yieldControl = yieldTask, expectedInputHash = null } = {}) {
   if (!BACKGROUND_JOB_KINDS.includes(kind) || !Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > MAX_BYTES ||
       !Number.isSafeInteger(estimatedPeakBytes) || estimatedPeakBytes < 4096 || estimatedPeakBytes > 512 * 1048576 ||
       !Number.isSafeInteger(maxNodes) || maxNodes < 1 || maxNodes > MAX_NODES ||
+      !Number.isSafeInteger(maxStringBytes) || maxStringBytes < 1 || maxStringBytes > MAX_BYTES ||
       expectedInputHash != null && !/^[a-f0-9]{64}$/.test(expectedInputHash)) throw problem('invalid-contract', 'Unsupported background job kernel contract.');
   guard(signal, current);
   if (expectedInputHash != null || kind === 'asset-hash') {
@@ -95,12 +113,12 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     const count = typeof input === 'string' ? encodedLength(input) : input.byteLength;
     if (count > maxBytes || count * 6 > estimatedPeakBytes) throw problem('memory-capacity', 'Hash input exceeds the admitted byte bound.');
     const bytes = typeof input === 'string' ? new TextEncoder().encode(input) : input;
-    const result = await globalThis.crypto.subtle.digest('SHA-256', bytes); guard(signal, current);
+    const result = await crypto.subtle.digest('SHA-256', bytes); guard(signal, current);
     const hash = [...new Uint8Array(result)].map(byte => byte.toString(16).padStart(2, '0')).join('');
     if (expectedInputHash != null && expectedInputHash !== hash) throw problem('content-mismatch', 'Background job input differs from its content reference.');
     if (kind === 'asset-hash') return { value: hash, inputBytes: count, nodes: 1 };
   }
-  const options = { maxBytes, maxNodes, estimatedPeakBytes, signal, current, onProgress, yieldControl };
+  const options = { maxBytes, maxNodes, maxStringBytes, estimatedPeakBytes, signal, current, onProgress, yieldControl };
   if (kind === 'parse-json') {
     const metadata = await inspectText(input, options); guard(signal, current);
     const value = JSON.parse(input); guard(signal, current); return { value, inputBytes: metadata.bytes, nodes: metadata.nodes };

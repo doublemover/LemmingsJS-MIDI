@@ -171,7 +171,7 @@ const installProcgenBootListeners = () => {
         if (params.get('workstation') !== '0') {
           procgenUi.settings.seed = resolveProcgenSeed(params);
           try {
-            startupStorage = createProcgenSessionStorage(window.indexedDB);
+            startupStorage = createProcgenSessionStorage(window.indexedDB, { budgetAdapter: procgenResourceBudget });
             const startupSource = await loadProcgenStartupSource(startupIntent, { storage: startupStorage, signal: controller.signal });
             controller.signal.throwIfAborted();
             procgenStudio = createProcgenWorkstation({ document, window, legacy: procgenUi, getRuntime: () => activeProcgenRuntime,

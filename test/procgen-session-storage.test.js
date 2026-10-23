@@ -1,6 +1,9 @@
 import { expect } from 'chai';
 import { createProcgenDocumentId, createProcgenSessionStorage } from '../js/app/procgen/workstation/ProcgenSessionStorage.js';
 import { checksumProcgenRecovery } from '../js/app/procgen/workstation/ProcgenRecoveryChecksum.js';
+import { createResourceBudget } from '../js/app/resources/ResourceBudget.js';
+import { createBackgroundJobService } from '../js/app/resources/BackgroundJobService.js';
+import { createBackgroundWorkerAdmission } from '../js/app/resources/BackgroundWorkerAdmission.js';
 
 const session = name => ({ format: 'lemmings-procgen-session', version: 1, name, savedAt: '2026-10-22T00:00:00.000Z',
   project: {}, settings: {}, world: { laneCount: 1, seed: 7 }, transport: {},
@@ -63,6 +66,21 @@ function fakeIndexedDb({ failFirst = false, blocked = false, pending = false } =
 }
 
 describe('ProcGen session storage connection lifecycle', () => {
+  it('reserves recovery capacity before calling the snapshot factory or opening storage', async () => {
+    const adapter = fakeIndexedDb(), budget = createResourceBudget({ limitBytes: 4096 }), storage = createProcgenSessionStorage(adapter, { budgetAdapter: budget });
+    let captures = 0, error;
+    try { await storage.saveRecovery(() => { captures++; return session('unadmitted'); }, { laneCount: 1 }); } catch (failure) { error = failure; }
+    expect(error.name).to.equal('ResourceBudgetError'); expect(captures).to.equal(0); expect(adapter.opens).to.equal(0); storage.close();
+  });
+  it('checksums and commits the same private snapshot if a caller changes its original during preparation', async () => {
+    const adapter = fakeIndexedDb(), admission = createBackgroundWorkerAdmission(), real = createBackgroundJobService({ admission, Worker: null });
+    let ready, release; const prepared = new Promise(resolve => { ready = resolve; }), gate = new Promise(resolve => { release = resolve; });
+    const jobs = { compute: options => real.compute({ ...options, prepareInput: async context => { const value = await options.prepareInput(context); ready(); await gate; return value; } }) };
+    const storage = createProcgenSessionStorage(adapter, { backgroundJobs: jobs }), original = session('before');
+    const saving = storage.saveRecovery(original); await prepared; original.name = 'changed original'; release(); await saving;
+    expect(adapter.records.get('recovery:slot:1').session.name).to.equal('before');
+    expect((await storage.loadRecovery()).name).to.equal('before'); storage.close(); real.dispose(); admission.dispose();
+  });
   it('shares one failed open among callers, then retries the next explicit save', async () => {
     const adapter = fakeIndexedDb({ failFirst: true }), storage = createProcgenSessionStorage(adapter);
     const failures = await Promise.allSettled([storage.save('one', session('one')), storage.save('two', session('two'))]);

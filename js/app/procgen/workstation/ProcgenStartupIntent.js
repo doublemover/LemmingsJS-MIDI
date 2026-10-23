@@ -49,7 +49,7 @@ export async function loadProcgenStartupSource(intent, { storage, signal, timeou
         const record = await storage.loadDocument(intent.documentId);
         return { session: record.session, documentIdentity: { id: record.id, revision: record.revision } };
       }
-      const session = await storage.loadRecovery(); if (!session) throw new Error('No verified recovery is available');
+      const session = await storage.loadRecovery({ requireVerified: true, signal }); if (!session) throw new Error('No verified recovery is available');
       return { session, documentIdentity: null };
     }), interrupted]);
     signal?.throwIfAborted(); return source;

@@ -24,6 +24,14 @@ function fixture(options = {}) {
 }
 
 describe('FileProvider raw byte budget and release', () => {
+  it('denies background verification before making its raw input copy', async () => {
+    const failure = Object.assign(new Error('Background hashing capacity is occupied.'), { name: 'ResourceBudgetError' });
+    const { provider, budget, requests } = fixture({ backgroundJobs: { compute: async () => { throw failure; } } });
+    const pending = provider.loadBinary('/denied.bin', null, { expectedHash: 'a'.repeat(64) }); requests[0].respond(200);
+    await assert.rejects(pending, error => error.kind === 'budget');
+    assert.equal(provider.getRawAssetStats().hashInputCopies, 0);
+    await provider.waitForCacheWrites(); provider.dispose(); assert.equal(budget.diagnostics().residentBytes, 0);
+  });
   it('releases the private bit-reader fork when a compressed part fails decoding', async () => {
     const { provider, budget, requests } = fixture();
     const pending = provider.loadBinary('/broken-part.bin');
