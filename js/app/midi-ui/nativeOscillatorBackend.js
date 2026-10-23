@@ -1,6 +1,7 @@
 import { selectLocalAudioVoice } from '../../midi/scheduler/LocalAudioVoiceBudget.js';
 import { createSmoothedAudioParameter } from './SmoothedAudioParameter.js';
 import { createInstrumentExecutionLifecycle, isManagedExecutionEpoch } from './InstrumentExecutionLifecycle.js';
+import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const parameters = Object.freeze({
@@ -32,6 +33,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
       !Number.isSafeInteger(traceLimit) || traceLimit < 0 || traceLimit > 4096) throw new Error('Invalid native audio backend options.');
   let prepared = null, disposed = false, deliveryErrors = 0, preparationRevision = 0, traceSequence = 0, truncatedTraces = 0;
   const voices = new Map();
+  const retirement = createProcgenRetirementScope();
   const leases = new Map(), traces = [], decisions = Object.create(null);
   const cancelledGenerations = new Set();
   let cancellationHistoryFull = false;
@@ -326,9 +328,11 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
         endFrame: Math.round(voice.end * preview._context.sampleRate),
         modeledPressure01: voice.pressureAutomation.valueAt(now), modeledParameters: true }))) } : {}) });
   };
-  const dispose = () => { if (disposed) return; disposed = true; preparationRevision++;
-    for (const voice of voices.values()) preview._destroyVoice(voice, 'backend-disposed');
-    voices.clear(); leases.clear(); prepared = null; };
+  const dispose = () => retirement.retire([
+    { name: 'admission', run: () => { disposed = true; preparationRevision++; } },
+    ...[...voices.values()].map(voice => ({ name: `voice-${voice.id}`, run: () => preview._destroyVoice(voice, 'backend-disposed') })),
+    { name: 'leases', run: () => leases.clear() }, { name: 'patch', run: () => { prepared = null; } }
+  ]);
   return createInstrumentExecutionLifecycle({ capabilities, prepare, begin, update, end, renewExecutionLease, cancelGeneration,
     cancelGenerationWithReceipt, renderDiagnostics, dispose }, {
     getContext: () => preview.getAudioContext(), getGeneration: () => preview._sessions.get(owner)?.generation ?? preview._generation,

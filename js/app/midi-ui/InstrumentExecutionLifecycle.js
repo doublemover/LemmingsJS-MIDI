@@ -1,3 +1,5 @@
+import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
+
 const PREFIX = '@owned-execution:';
 let backendSequence = 0;
 
@@ -8,6 +10,7 @@ export const isManagedExecutionEpoch = epoch => typeof epoch === 'string' && epo
 export function createInstrumentExecutionLifecycle(backend, { isSettled, forget, getContext, getGeneration, capacity = 64 }) {
   const handles = new WeakMap(), live = new Map();
   const backendId = ++backendSequence;
+  const retirement = createProcgenRetirementScope();
   let serial = 0, disposed = false, peak = 0, retired = 0, incarnation = 0;
   let context = getContext(), generation = getGeneration();
   const rejected = reason => Object.freeze({ status: 'rejected', stage: 'none', reason });
@@ -21,7 +24,11 @@ export function createInstrumentExecutionLifecycle(backend, { isSettled, forget,
     entry.state = 'retiring';
     backend.cancelGenerationWithReceipt(entry.handle.generation, entry.epoch);
   };
-  const invalidate = () => { incarnation++; for (const entry of live.values()) close(entry); collect(); };
+  const invalidate = () => {
+    incarnation++;
+    return createProcgenRetirementScope().retire([...live.values()].map(entry => ({ name: `execution-${entry.epoch}`, run: () => close(entry) }))
+      .concat({ name: 'settled-identities', run: collect }));
+  };
   const sync = () => {
     const nextContext = getContext(), nextGeneration = getGeneration();
     if (context !== nextContext || generation !== nextGeneration) {
@@ -88,8 +95,13 @@ export function createInstrumentExecutionLifecycle(backend, { isSettled, forget,
     renewExecutionLease: (...args) => call('renewExecutionLease', args, 1, args[0]),
     cancelGenerationWithReceipt, cancelGeneration: (...args) => cancelGenerationWithReceipt(...args).count || 0,
     renderDiagnostics: options => Object.freeze({ ...backend.renderDiagnostics(options), executions: diagnostics() }),
-    onOwnerStop: () => { invalidate(); backend.onOwnerStop?.(); collect(); },
-    dispose: () => { if (disposed) return; invalidate(); disposed = true; backend.dispose(); collect(); }
+    onOwnerStop: () => createProcgenRetirementScope().retire([
+      { name: 'execution-fence', run: invalidate }, { name: 'backend-stop', run: () => backend.onOwnerStop?.() }, { name: 'settled-identities', run: collect }
+    ]),
+    dispose: () => retirement.retire([
+      { name: 'admission', run: () => { disposed = true; } }, { name: 'execution-fence', run: invalidate },
+      { name: 'backend', run: () => backend.dispose() }, { name: 'settled-identities', run: collect }
+    ])
   });
   return { api, invalidate, collect };
 }

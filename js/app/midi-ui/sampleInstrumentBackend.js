@@ -1,5 +1,6 @@
 import { createSmoothedAudioParameter } from './SmoothedAudioParameter.js';
 import { createInstrumentExecutionLifecycle, isManagedExecutionEpoch } from './InstrumentExecutionLifecycle.js';
+import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 
 const plain = value => value != null && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
 const finite = (value, min, max) => Number.isFinite(value) && value >= min && value <= max;
@@ -21,6 +22,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
   if (typeof resolveRegion !== 'function' || !['owned', 'bounded'].includes(gateMode) || !finite(smoothingSeconds, 0, 1) ||
       !integer(maxControlEvents, 1, 4096) || !integer(traceLimit, 0, 4096)) throw new TypeError('Invalid sample audio backend options.');
   const voices = new Map(), leases = new Map(), cancelled = new Set(), traces = [];
+  const retirement = createProcgenRetirementScope();
   let prepared = null, revision = 0, disposed = false, cancellationHistoryFull = false, errors = 0, sequence = 0, expiryTimer = null, rebuildingChokes = false;
   const keyFor = (epoch, id) => JSON.stringify([epoch, id]), generationKey = (generation, epoch) => JSON.stringify([generation, epoch]);
   const sharedKey = (epoch, voiceId) => JSON.stringify([owner, epoch, voiceId]);
@@ -207,13 +209,21 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
         isFinished: now => voice.end <= now,
         onDestroy: reason => {
           voices.delete(identity); if (preview._semanticVoiceOwners.get(sharedIdentity) === voice) preview._semanticVoiceOwners.delete(sharedIdentity);
-          for (const component of components) {
-            if (component.source) { component.source.onended = null; try { component.source.stop(); } catch { /* A release child may never have started. */ } component.source.disconnect(); component.source.buffer = null; }
-            component.gain?.disconnect(); component.pin.release();
-          }
-          pressureGain.disconnect(); for (const allocation of allocations) allocation.release();
-          trace({ status: 'ended', voiceId: intent.voiceId, generation: intent.generation, executionEpoch, reason }); armExpiry();
-          if (!disposed && region.chokeGroup && context.currentTime < voice.start && preview._ownerReady(owner)) rebuildChokes(region.chokeGroup, region.chokeScope);
+          return createProcgenRetirementScope().retire([
+            ...components.flatMap((component, index) => [
+              { name: `source-stop-${index}`, run: () => { if (component.source) { component.source.onended = null;
+                if (component.started) component.source.stop(); } } },
+              { name: `source-disconnect-${index}`, run: () => component.source?.disconnect() },
+              { name: `source-buffer-${index}`, run: () => { if (component.source) component.source.buffer = null; } },
+              { name: `source-gain-${index}`, run: () => component.gain?.disconnect() }, { name: `sample-pin-${index}`, run: () => component.pin.release() }
+            ]),
+            { name: 'pressure-gain', run: () => pressureGain.disconnect() },
+            ...allocations.map((allocation, index) => ({ name: `allocation-${index}`, run: () => allocation.release() })),
+            { name: 'observation', run: () => { trace({ status: 'ended', voiceId: intent.voiceId, generation: intent.generation, executionEpoch, reason }); armExpiry(); } },
+            { name: 'choke-ownership', run: () => {
+              if (!disposed && region.chokeGroup && context.currentTime < voice.start && preview._ownerReady(owner)) rebuildChokes(region.chokeGroup, region.chokeScope);
+            } }
+          ]);
         } };
       voice.rateAutomation = createSmoothedAudioParameter({ param: voice.main.source.playbackRate, initialValue: rate, startTime: start, smoothingSeconds, maxEvents: maxControlEvents });
       voice.pressureAutomation = createSmoothedAudioParameter({ param: pressureGain.gain, initialValue: expression.pressure01 ?? 1, startTime: start, smoothingSeconds, maxEvents: maxControlEvents });
@@ -370,9 +380,13 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
       targetFrame: Math.round(voice.start * preview._context.sampleRate), endFrame: Math.ceil(voice.end * preview._context.sampleRate), renderCost: voice.renderCost }))) } : {}) });
   const onOwnerStop = () => { revision++; leases.clear(); if (expiryTimer != null) clearTimeout(expiryTimer); expiryTimer = null; };
   const dispose = () => {
-    if (disposed) return; disposed = true; onOwnerStop();
-    for (const voice of voices.values()) preview._destroyVoice(voice, 'sample-backend-disposed');
-    releasePrepared(prepared); prepared = null;
+    if (retirement.getReceipt()) return retirement.getReceipt();
+    return retirement.retire([
+      { name: 'admission', run: () => { disposed = true; } }, { name: 'owner-stop', run: onOwnerStop },
+      ...[...voices.values()].map(voice => ({ name: `voice-${voice.id}`, run: () => preview._destroyVoice(voice, 'sample-backend-disposed') })),
+      ...[...(prepared?.assets?.values() || [])].map((pin, index) => ({ name: `prepared-pin-${index}`, run: () => pin.release() })),
+      { name: 'patch', run: () => { prepared = null; } }
+    ]);
   };
   return createInstrumentExecutionLifecycle({ capabilities, prepare, begin, update, end, renewExecutionLease, cancelGenerationWithReceipt,
     cancelGeneration: (generation, executionEpoch = 'live') => cancelGenerationWithReceipt(generation, executionEpoch).count || 0,

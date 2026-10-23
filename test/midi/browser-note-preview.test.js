@@ -118,6 +118,50 @@ const setup = (options = {}, context = new FakeContext()) => {
 };
 
 describe('BrowserNotePreview', function() {
+  for (const boundary of ['channel-release', 'channel-disconnect', 'backend-stop', 'backend-dispose', 'observer-revoke'])
+    it(`retires every independent session leaf after ${boundary} fails`, async () => {
+      const context = new FakeContext(), ledger = new Map(); let refused = false, releaseAttempts = 0;
+      const resourceBudget = { reserve(record) { ledger.set(record.token, record); return { accountedBytes: record.bytes }; },
+        release({ token }) {
+          if (boundary === 'channel-release' && ledger.get(token)?.kind === 'channel-graph' && !refused) { refused = true; releaseAttempts++; throw new Error('release refused'); }
+          ledger.delete(token); return true;
+        } };
+      const preview = new BrowserNotePreview({ createAudioContext: () => context, resourceBudget });
+      const owner = preview.createSession('retired'), cue = preview.createSession('cue'); await owner.enable(); await cue.enable();
+      const pcm = owner.reserveDecodedBuffer({ frames: 48000, channels: 2, sampleRate: 48000 });
+      owner.output.channels[1].sendProgramChange(8);
+      const ownerId = owner.getState().ownerId, channel = [...preview._channels.values()].find(value => value.owner === ownerId);
+      if (boundary === 'channel-disconnect') channel.gain.disconnect = () => { throw new Error('disconnect refused'); };
+      if (boundary.startsWith('backend')) preview._registerInstrumentBackend({
+        onOwnerStop() { if (boundary === 'backend-stop') throw new Error('stop refused'); },
+        dispose() { if (boundary === 'backend-dispose') throw new Error('backend disposal refused'); }
+      }, ownerId);
+      if (boundary === 'observer-revoke') preview._observers.revokeOwner = () => { throw new Error('observer revoke refused'); };
+      const first = owner.dispose(); expect(owner.dispose()).to.equal(first);
+      const receipt = await first;
+      expect(receipt.outcome).to.equal('partial'); expect(pcm.isActive()).to.equal(false);
+      expect(cue.getState().enabled).to.equal(true); expect(owner.getState().status).to.equal('disposed');
+      expect(owner.getState().retirement.outcome).to.equal('partial');
+      if (boundary === 'channel-release') {
+        expect(releaseAttempts).to.equal(1);
+        expect(preview.getState().resourceAccounting.unreconciledReservations).to.equal(1);
+        expect([...ledger.values()].some(value => value.kind === 'channel-graph')).to.equal(true);
+      }
+      await preview.dispose();
+      if (boundary === 'channel-release') expect(releaseAttempts).to.equal(1);
+    });
+
+  it('retains a shared root receipt and closes unrelated leaves when context close rejects', async () => {
+    const context = new FakeContext(), preview = new BrowserNotePreview({ createAudioContext: () => context });
+    const owner = preview.createSession('owner'); await owner.enable();
+    const pcm = owner.reserveDecodedBuffer({ frames: 48000, channels: 2 });
+    context.close = () => { context.closeCalls++; return Promise.reject(new Error('close refused')); };
+    const first = preview.dispose(); expect(preview.dispose()).to.equal(first);
+    const receipt = await first;
+    expect(receipt.outcome).to.equal('partial'); expect(pcm.isActive()).to.equal(false);
+    expect(context.closeCalls).to.equal(1); expect(preview.getState()).to.include({ status: 'disposed', unclosedContext: true });
+    expect(receipt.resources.find(resource => resource.name === 'context')).to.include({ status: 'failed', error: 'close refused' });
+  });
   it('publishes an enable lease before session observers can reenter or cancel activation', async () => {
     const { preview } = setup(); await preview.enable();
     const session = preview.createSession('reentrant-enable'); let nested, reports = 0;

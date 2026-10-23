@@ -1,5 +1,6 @@
 import { createAudioCommandQueue } from './AudioCommandQueue.js';
 import { createInstrumentExecutionLifecycle, isManagedExecutionEpoch } from './InstrumentExecutionLifecycle.js';
+import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 import { createAudioDisplayTelemetry } from './AudioDisplayTelemetry.js';
 import { PROTOCOL, WIDTH, CAPACITY, MAX_VOICES, RECEIPT_WIDTH, BEGIN, UPDATE, END, CANCEL, LEASE,
   SCHEDULED, APPLIED, REJECTED, ENDED, CANCELLED, FAULTED, DISPLAY_PROTOCOL, DISPLAY_WIDTH, DISPLAY_VOICES } from './worklet/OwnedSineProcessor.js';
@@ -29,6 +30,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   let runtimeResourceLease = null;
   let pumpQueued = false;
   let lifecycle = null;
+  const retirement = createProcgenRetirementScope();
   const voices = new Map(), epochs = new Map(), leases = new Map(), cancelled = new Set(), inFlight = new Map(), traces = [];
   const pendingInitializations = new Set();
   const kernelQueued = new Set();
@@ -376,11 +378,21 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     traceCount: traces.length, truncatedTraces: truncated, cancellationHistoryFull, display: display.diagnostics(),
     ...(includeTraces ? { traces: Object.freeze([...traces]) } : {}) });
   const dispose = () => {
-    if (disposed) return; onOwnerStop(); disposed = true; ready = false;
-    for (const voice of voices.values()) preview._destroyVoice(voice, 'backend-disposed'); voices.clear(); slots.fill(null);
-    node?.disconnect(); node?.port.close(); node = null; patch = null;
-    runtimeResourceLease?.release(); runtimeResourceLease = null;
-    display.dispose();
+    if (retirement.getReceipt()) return retirement.getReceipt();
+    const retiringNode = node;
+    const receipt = retirement.retire([
+      { name: 'admission', run: () => { disposed = true; ready = false; } },
+      { name: 'kernel-stop', run: onOwnerStop },
+      ...[...voices.values()].map(voice => ({ name: `voice-${voice.id}`, run: () => preview._destroyVoice(voice, 'backend-disposed') })),
+      { name: 'disconnect', run: () => retiringNode?.disconnect() },
+      { name: 'message-port', run: () => retiringNode?.port.close() },
+      { name: 'runtime-reservation', run: () => runtimeResourceLease?.release() },
+      { name: 'display', run: () => display.dispose() },
+      { name: 'identities', run: () => { slots.fill(null); patch = null; } }
+    ]);
+    if (receipt.outcome === 'complete') node = null;
+    else receipt.completion.then(value => { if (value.outcome === 'complete') node = null; });
+    return receipt;
   };
   lifecycle = createInstrumentExecutionLifecycle({ capabilities, runtime, prepare, begin, update, end, renewExecutionLease, cancelGenerationWithReceipt,
     cancelGeneration: (generation, epoch) => cancelGenerationWithReceipt(generation, epoch).count,

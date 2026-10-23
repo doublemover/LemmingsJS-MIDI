@@ -3,6 +3,9 @@ import { createNativeOscillatorBackend } from './nativeOscillatorBackend.js';
 import { createTimedControlTimeline } from './TimedControlTimeline.js';
 import { createAudioObservationLeases } from './AudioObservationLeases.js';
 import { createAudioResourceLeases } from './AudioResourceLeases.js';
+import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
+const retirementState = receipt => receipt ? { state: receipt.state, outcome: receipt.outcome,
+  failures: receipt.resources.filter(resource => ['failed', 'unknown'].includes(resource.status)).map(resource => ({ name: resource.name, status: resource.status, error: resource.error })) } : null;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const finite = (value, fallback) => Number.isFinite(value) ? value : fallback;
 const ATTACK_SECONDS = 0.008;
@@ -81,6 +84,9 @@ class BrowserNotePreview {
     this._resumePromise = null;
     this._pendingEnables = new Set();
     this._disposePromise = null;
+    this._retirement = createProcgenRetirementScope();
+    this._retiredVoices = new Map();
+    this._retirementFaults = new Set();
     this._generation = 0;
     this._enabled = false;
     this._disposed = false;
@@ -144,7 +150,7 @@ class BrowserNotePreview {
     });
   }
 
-  _ownerReady(owner) { return this._ready() && (owner == null || this._sessions.get(owner)?.enabled === true); }
+  _ownerReady(owner) { return this._ready() && !this._retirementFaults.has(owner) && (owner == null || this._sessions.get(owner)?.enabled === true); }
   _tokenKey(token, owner = null) { return owner == null ? token : owner + ':' + token; }
   _hasEnabledOwners() { return this._defaultEnabled || this._defaultEnableRequests > 0 || [...this._sessions.values()].some(session => session.enabled || session.starting); }
 
@@ -152,17 +158,20 @@ class BrowserNotePreview {
   createSession(name, { onStateChange, onPlayback } = {}) {
     const label = String(name || '').trim().slice(0, 48);
     if (!label || this._disposed) return null;
+    if (this._retiredVoices.size >= MAX_RENDER_VOICES + MAX_RELEASE_TAILS) throw new RangeError('Unresolved audio retirement capacity reached.');
     for (const session of this._sessions.values()) if (session.name === label) return session.api;
     if (this._sessions.size >= MAX_AUDIO_SESSIONS) throw new RangeError('Local audio supports at most four owner sessions.');
     const id = label + '#' + (++this._sessionSequence);
     const session = { id, name: label, enabled: false, starting: false, disposed: false, generation: 0, pending: new Set(), listeners: new Set(), onPlayback };
+    const retirement = createProcgenRetirementScope();
     if (typeof onStateChange === 'function') session.listeners.add(onStateChange);
     const getState = () => {
       const state = this.getState(); let activeVoices = 0, pendingNotes = 0;
       for (const voice of this._voices) if (voice.owner === id) activeVoices++;
       for (const entry of this._previewPending) if (entry.spec.owner === id) pendingNotes++;
-      return { ...state, owner: label, ownerId: id, sharedMix: true, activeVoices, pendingNotes, enabled: session.enabled && state.enabled,
-        status: session.disposed ? 'disposed' : session.starting ? 'unlocking' : session.enabled ? state.status : ['error', 'unsupported', 'interrupted'].includes(state.status) ? state.status : 'idle',
+      return { ...state, owner: label, ownerId: id, sharedMix: true, activeVoices, pendingNotes, enabled: session.enabled && state.enabled && !this._retirementFaults.has(id),
+        retirement: retirementState(retirement.getReceipt()),
+        status: session.disposed ? 'disposed' : this._retirementFaults.has(id) ? 'error' : session.starting ? 'unlocking' : session.enabled ? state.status : ['error', 'unsupported', 'interrupted'].includes(state.status) ? state.status : 'idle',
         message: session.disposed ? 'Local audio session is closed.' : session.enabled || session.starting ? state.message : 'Local audio session is off.' };
     };
     session.report = () => { for (const listener of session.listeners) { try { listener(getState()); } catch { /* Session observers do not own audio. */ } } };
@@ -173,11 +182,14 @@ class BrowserNotePreview {
       for (const cancel of session.pending) cancel(); session.pending.clear();
     };
     const stop = () => {
-      session.cancel(); this._clearVoices(null, id);
-      if (!this._hasEnabledOwners()) this.stop(); else session.report();
+      return createProcgenRetirementScope().retire([
+        { name: 'session-admission', run: () => session.cancel() },
+        { name: 'owned-voices', run: () => this._clearVoices(null, id) },
+        { name: 'mix-state', run: () => { if (!this._hasEnabledOwners()) return this.stop(); session.report(); } }
+      ]);
     };
     const enable = () => {
-      if (session.disposed || this._disposed) return Promise.resolve(false);
+      if (session.disposed || this._disposed || this._retirementFaults.has(id)) return Promise.resolve(false);
       if (session.enablePromise) return session.enablePromise;
       if (session.enabled && this._ownerReady(id)) return Promise.resolve(true);
       let resolve;
@@ -230,13 +242,19 @@ class BrowserNotePreview {
       },
       subscribe: listener => { if (typeof listener !== 'function' || session.disposed) return () => {}; session.listeners.add(listener); return () => session.listeners.delete(listener); },
       dispose: () => {
-        if (session.disposed) return Promise.resolve();
-        session.disposed = true; stop(); session.report(); session.listeners.clear(); this._sessions.delete(id);
-        for (const entry of this._instrumentBackends) if (entry.owner === id) entry.backend.dispose();
-        this._observers.revokeOwner(id); this._captureReleases.delete(id);
-        for (const [key, channel] of this._channels) if (channel.owner === id) { channel.gain.disconnect(); channel.pan?.disconnect(); channel.resourceLease?.release(); this._channels.delete(key); }
-        this._audioResources.releaseOwner(id);
-        return Promise.resolve();
+        if (retirement.getReceipt()) return retirement.getReceipt().completion;
+        const backends = [...this._instrumentBackends].filter(entry => entry.owner === id), channels = [...this._channels].filter(([, channel]) => channel.owner === id);
+        const receipt = retirement.retire([
+          { name: 'invalidate-session', run: () => { session.disposed = true; session.cancel(); } },
+          { name: 'stop-session', run: stop },
+          ...backends.map((entry, index) => ({ name: `backend-${index}`, run: () => entry.backend.dispose() })),
+          { name: 'observers', run: () => this._observers.revokeOwner(id) },
+          { name: 'capture-registration', run: () => this._captureReleases.delete(id) },
+          ...channels.map(([key, channel]) => ({ name: `channel-${channel.number}`, run: () => this._retireChannel(key, channel) })),
+          { name: 'resource-reservations', run: () => this._audioResources.retireOwner(id) },
+          { name: 'session-state', run: () => { session.report(); session.listeners.clear(); this._sessions.delete(id); } }
+        ]);
+        return receipt.completion;
       }
     };
     this._sessions.set(id, session);
@@ -250,6 +268,7 @@ class BrowserNotePreview {
       enabled: this._enabled && this._context?.state === 'running',
       contextEpoch: this._contextEpoch,
       resourceAccounting: this._audioResources.diagnostics(),
+      retirement: retirementState(this._retirement.getReceipt()), retiredVoices: this._retiredVoices.size, unclosedContext: !!this._retiringContext,
       activeVoices: this._voices.size, sharedMix: this._sessions.size > 0, sessionCount: this._sessions.size,
       maxVoices: this._maxVoices, maxScheduledVoices: this._maxScheduledVoices,
       voiceSteals: this._voiceSteals, voiceDrops: this._voiceDrops,
@@ -264,7 +283,12 @@ class BrowserNotePreview {
   _registerInstrumentBackend(backend, owner) {
     if (this._disposed || this._instrumentBackends.size >= 8) { backend.dispose(); throw new RangeError('Local audio backend limit reached.'); }
     const entry = { owner, backend: null };
-    entry.backend = Object.freeze({ ...backend, dispose: () => { backend.dispose(); this._instrumentBackends.delete(entry); } });
+    const retirement = createProcgenRetirementScope();
+    entry.backend = Object.freeze({ ...backend, dispose: () => {
+      const receipt = retirement.retire([{ name: 'backend', run: () => backend.dispose() }]);
+      receipt.completion.then(value => { if (value.outcome === 'complete') this._instrumentBackends.delete(entry); });
+      return receipt;
+    } });
     this._instrumentBackends.add(entry); return entry.backend;
   }
 
@@ -310,6 +334,7 @@ class BrowserNotePreview {
   }
 
   async enable(owner = null) {
+    if (this._retirementFaults.has(owner)) return false;
     if (this._disposed) return false;
     if (!this._createContext) {
       this._setStatus('unsupported', 'Browser audio is not supported.');
@@ -425,57 +450,58 @@ class BrowserNotePreview {
   stop() {
     this._generation += 1;
     this._enabled = false; this._defaultEnabled = false;
-    for (const session of this._sessions.values()) session.cancel();
-    this._setMixEnabled(false);
-    for (const cancel of this._pendingEnables) cancel();
+    const sessions = [...this._sessions.values()], pending = [...this._pendingEnables];
     this._pendingEnables.clear();
     this._resumePromise = null;
-    this._clearVoices();
-    if (!this._disposed) this._setStatus(this._createContext ? 'idle' : 'unsupported',
-      this._createContext ? 'Browser preview is off.' : 'Browser audio is not supported.');
+    return createProcgenRetirementScope().retire([
+      ...sessions.map(session => ({ name: `session-${session.name}`, run: session.cancel })),
+      { name: 'mute-mix', run: () => this._setMixEnabled(false) },
+      ...pending.map((cancel, index) => ({ name: `pending-enable-${index}`, run: cancel })),
+      { name: 'voices', run: () => this._clearVoices() },
+      { name: 'status', run: () => { if (!this._disposed) this._setStatus(this._createContext ? 'idle' : 'unsupported',
+        this._createContext ? 'Browser preview is off.' : 'Browser audio is not supported.'); } }
+    ]);
   }
 
   panic() { this.stop(); }
 
   dispose() {
-    if (this._disposePromise) return this._disposePromise;
-    this._disposed = true;
-    for (const entry of this._instrumentBackends) entry.backend.dispose();
-    for (const session of this._sessions.values()) session.disposed = true;
-    this.stop();
+    if (this._retirement.getReceipt()) return this._retirement.getReceipt().completion;
     const context = this._context;
-    context?.removeEventListener?.('statechange', this._onContextState);
-    for (const channel of this._channels.values()) {
-      channel.gain.disconnect();
-      channel.pan?.disconnect();
-      channel.resourceLease?.release();
-    }
-    this._channels.clear();
-    this._noiseBuffer = null;
-    this._master?.disconnect();
-    this._limiter?.disconnect();
-    this._compressor?.disconnect();
-    this._compressorOutput?.disconnect();
-    this._captureAnalyser?.disconnect();
-    this._captureAnalyser = null;
-    this._captureSamples = null;
-    this._limiter = null;
-    this._compressor = null;
-    this._compressorOutput = null;
-    this._master = null;
-    this._context = null;
-    this._setStatus('disposed', 'Browser preview is closed.');
-    this._listeners.clear();
-    for (const session of this._sessions.values()) session.listeners.clear();
-    this._sessions.clear();
-    this._audioResources.dispose();
-    this._observers.clear(); this._captureReleases.clear(); this.capture = null;
-    try {
-      this._disposePromise = Promise.resolve(context?.close?.()).catch(() => {});
-    } catch {
-      this._disposePromise = Promise.resolve();
-    }
+    const receipt = this._retirement.retire([
+      { name: 'invalidate-audio', run: () => { this._disposed = true; } },
+      ...[...this._sessions.values()].map(session => ({ name: `session-${session.name}`, run: () => session.api.dispose() })),
+      ...[...this._instrumentBackends].map((entry, index) => ({ name: `backend-${index}`, run: () => entry.backend.dispose() })),
+      { name: 'stop', run: () => this.stop() },
+      { name: 'context-listener', run: () => context?.removeEventListener?.('statechange', this._onContextState) },
+      ...[...this._channels].map(([key, channel]) => ({ name: `channel-${key}`, run: () => this._retireChannel(key, channel) })),
+      ...['_master', '_limiter', '_compressor', '_compressorOutput', '_captureAnalyser'].map(field => ({ name: field, run: () => { this[field]?.disconnect(); this[field] = null; } })),
+      { name: 'buffers', run: () => { this._noiseBuffer = null; this._captureSamples = null; } },
+      { name: 'resource-reservations', run: () => this._audioResources.dispose() },
+      { name: 'observers', run: () => this._observers.clear() },
+      { name: 'context', run: () => {
+        this._context = null; this._retiringContext = context;
+        return Promise.resolve(context?.close?.()).then(() => { this._retiringContext = null; });
+      } },
+      { name: 'terminal-state', run: () => {
+        this._setStatus('disposed', 'Browser preview is closed.'); this._listeners.clear();
+        for (const session of this._sessions.values()) session.listeners.clear();
+        this._sessions.clear(); this._captureReleases.clear(); this.capture = null;
+      } }
+    ]);
+    this._disposePromise = receipt.completion;
     return this._disposePromise;
+  }
+
+  _retireChannel(key, channel) {
+    channel.retirement ||= createProcgenRetirementScope();
+    const receipt = channel.retirement.retire([
+      { name: 'gain', run: () => channel.gain.disconnect() },
+      { name: 'pan', run: () => channel.pan?.disconnect() },
+      { name: 'reservation', run: () => channel.resourceLease?.release() }
+    ]);
+    if (receipt.outcome === 'complete' && this._channels.get(key) === channel) this._channels.delete(key);
+    return receipt;
   }
 
   inspectRender() {
@@ -601,6 +627,7 @@ class BrowserNotePreview {
     const key = owner == null ? number : owner + ':' + number;
     let channel = this._channels.get(key);
     if (channel) return channel;
+    if (this._channels.size >= 128) throw new RangeError('Audio channel retirement capacity reached.');
     const resourceLease = this._audioResources.reserve({ kind: 'channel-graph', owner, generation: this._generation, estimateBytes: 8192 });
     let gain;
     let pan;
@@ -855,22 +882,28 @@ class BrowserNotePreview {
   }
 
   _destroyVoice(voice, reason = 'source-ended') {
-    if (!voice || !this._voices.delete(voice)) return;
-    voice.onDestroy?.(reason);
-    voice.resourceLease?.release();
-    if (voice.token != null && this._voicesByToken.get(this._tokenKey(voice.token, voice.owner)) === voice) this._voicesByToken.delete(this._tokenKey(voice.token, voice.owner));
-    this._observe('synth-end', { ...voice.captureMeta, type: 'noteEnd', voiceId: voice.id, channel: voice.number,
-      note: voice.note, audioTime: this._context?.currentTime, scheduledMs: voice.startMs + (voice.end - voice.start) * 1000,
-      matchedDurationMs: Math.max(0, ((this._context?.currentTime ?? voice.start) - voice.start) * 1000), reason });
-    this._emitPlayback(voice, 'end');
-    if (voice.oscillator) {
-      voice.oscillator.onended = null;
-      try { voice.oscillator.stop(); } catch { /* Already ended or failed to start. */ }
-      voice.oscillator.disconnect();
-    }
-    voice.gain?.disconnect();
-    voice.pan?.disconnect();
-    this._setStatus(this._status, this._message);
+    if (!voice) return;
+    if (voice.retirement) return voice.retirement.getReceipt();
+    if (!this._voices.delete(voice)) return;
+    voice.retirement = createProcgenRetirementScope();
+    const receipt = voice.retirement.retire([
+      { name: 'token', run: () => { if (voice.token != null && this._voicesByToken.get(this._tokenKey(voice.token, voice.owner)) === voice) this._voicesByToken.delete(this._tokenKey(voice.token, voice.owner)); } },
+      { name: 'backend-voice', run: () => voice.onDestroy?.(reason) },
+      { name: 'reservation', run: () => voice.resourceLease?.release() },
+      { name: 'observation', run: () => this._observe('synth-end', { ...voice.captureMeta, type: 'noteEnd', voiceId: voice.id, channel: voice.number,
+        note: voice.note, audioTime: this._context?.currentTime, scheduledMs: voice.startMs + (voice.end - voice.start) * 1000,
+        matchedDurationMs: Math.max(0, ((this._context?.currentTime ?? voice.start) - voice.start) * 1000), reason }) },
+      { name: 'playback-observer', run: () => this._emitPlayback(voice, 'end') },
+      { name: 'source-stop', run: () => { if (voice.oscillator) { voice.oscillator.onended = null;
+        try { voice.oscillator.stop(); } catch (error) { if (error.name !== 'InvalidStateError') throw error; } } } },
+      { name: 'source-disconnect', run: () => voice.oscillator?.disconnect() },
+      { name: 'gain', run: () => voice.gain?.disconnect() },
+      { name: 'pan', run: () => voice.pan?.disconnect() },
+      { name: 'status', run: () => this._setStatus(this._status, this._message) }
+    ]);
+    const retainFailure = value => { if (value.outcome !== 'complete') { this._retiredVoices.set(voice.id, voice); this._retirementFaults.add(voice.owner); } };
+    if (receipt.state === 'retired') retainFailure(receipt); else receipt.completion.then(retainFailure);
+    return receipt;
   }
 
   _emitPlayback(voice, phase, releaseAt = voice.end - voice.release) {
@@ -887,33 +920,25 @@ class BrowserNotePreview {
   }
 
   _clearVoices(number = null, owner = undefined) {
-    if (number == null) for (const entry of this._instrumentBackends) if (owner === undefined || entry.owner === owner) entry.backend.onOwnerStop?.();
-    if (this._previewTimer != null) clearTimeout(this._previewTimer);
-    this._previewTimer = null;
-    for (const entry of this._previewPending) {
-      if ((owner === undefined || (entry.spec.owner ?? null) === owner) && (number == null || clamp(Math.trunc(finite(entry.spec.channel, 1)), 1, 16) === number)) {
-        this._observe('cancelled', { ...entry.spec.capture, owner: entry.spec.owner, type: 'noteOn', reason: 'audition-stop' });
-      }
-    }
-    this._previewPending = this._previewPending.filter(entry => !((owner === undefined || (entry.spec.owner ?? null) === owner) && (number == null || clamp(Math.trunc(finite(entry.spec.channel, 1)), 1, 16) === number)));
-    if (this._previewPending.length && this._ready()) this._drainPreviewQueue();
-    for (const voice of this._voices) {
-      if ((owner === undefined || voice.owner === owner) && (number == null || voice.number === number)) this._destroyVoice(voice, 'panic-or-stop');
-    }
-    for (const channel of this._channels.values()) {
-      if ((owner !== undefined && channel.owner !== owner) || (number != null && channel.number !== number)) continue;
-      channel.gain.gain.cancelScheduledValues(0);
-      channel.gain.gain.value = 1;
-      channel.volume = 1;
-      channel.expression = 1;
-      channel.program = null;
-      channel.bendRange = 2;
-      channel.controls.clear();
-      if (channel.pan) {
-        channel.pan.pan.cancelScheduledValues(0);
-        channel.pan.pan.value = 0;
-      }
-    }
+    const owns = value => (owner === undefined || value.owner === owner) && (number == null || value.number === number);
+    const pending = this._previewPending.filter(entry => (owner === undefined || (entry.spec.owner ?? null) === owner) &&
+      (number == null || clamp(Math.trunc(finite(entry.spec.channel, 1)), 1, 16) === number));
+    const removed = new Set(pending);
+    this._previewPending = this._previewPending.filter(entry => !removed.has(entry));
+    return createProcgenRetirementScope().retire([
+      ...(number == null ? [...this._instrumentBackends].filter(entry => owner === undefined || entry.owner === owner).map((entry, index) =>
+        ({ name: `backend-stop-${index}`, run: () => entry.backend.onOwnerStop?.() })) : []),
+      { name: 'preview-timer', run: () => { if (this._previewTimer != null) clearTimeout(this._previewTimer); this._previewTimer = null; } },
+      ...pending.map((entry, index) => ({ name: `pending-note-${index}`, run: () => this._observe('cancelled',
+        { ...entry.spec.capture, owner: entry.spec.owner, type: 'noteOn', reason: 'audition-stop' }) })),
+      ...[...this._voices].filter(owns).map(voice => ({ name: `voice-${voice.id}`, run: () => this._destroyVoice(voice, 'panic-or-stop') })),
+      ...[...this._channels.values()].filter(owns).map(channel => ({ name: `channel-state-${channel.number}`, run: () => {
+        channel.gain.gain.cancelScheduledValues(0); channel.gain.gain.value = 1;
+        channel.volume = 1; channel.expression = 1; channel.program = null; channel.bendRange = 2; channel.controls.clear();
+        if (channel.pan) { channel.pan.pan.cancelScheduledValues(0); channel.pan.pan.value = 0; }
+      } })),
+      { name: 'remaining-preview', run: () => { if (this._previewPending.length && this._ready()) this._drainPreviewQueue(); } }
+    ]);
   }
 
   _control(number, control, value, options = {}, owner = null) {

@@ -22,7 +22,7 @@ export function createProcgenRetirementScope({ deadlineMs = 5000 } = {}) {
         const resource = { name, status: 'attempted' };
         receipt.resources.push(resource);
         try {
-          const result = run(), completion = result?.schema === receipt.schema && result !== receipt ? result.completion : result;
+          const result = run(), completion = result?.schema === receipt.schema && result !== receipt ? result.state === 'retired' ? null : result.completion : result;
           if (completion && typeof completion.then === 'function') {
             resource.status = 'pending';
             pending.push(Promise.resolve(completion).then(value => { settle(resource, value); }, error => {

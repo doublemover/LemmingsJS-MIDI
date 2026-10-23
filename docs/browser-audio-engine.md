@@ -552,3 +552,15 @@ adapter again. Owner retirement attempts all independent reservations, so one
 failed channel release cannot strand unrelated PCM leases. Nested retirement
 receipts propagate partial/unknown outcomes to the enclosing owner; repeated
 retirement retains the same evidence. New adapter-failure fixtures are deferred.
+
+Session and root disposal now install their shared terminal receipt before
+cleanup callbacks run. Backend stops/disposal, voices, sample source components
+and pins, channel nodes, capture observers, resource reservations and context
+closure are independent retirement leaves. A failing leaf does not skip later
+leaves. Session disposal preserves another enabled owner's graph. Failed voice
+cleanup retains the voice record and blocks that owner's further admission;
+failed channel cleanup retains its channel record. A context close rejection
+retains an explicit unclosed-context reference. Public disposal promises resolve
+to the same complete/partial receipt on repeat calls. Newly added fault fixtures
+cover the reported channel-budget failure and disconnect/backend/observer/close
+failures; runtime execution is still deferred.
