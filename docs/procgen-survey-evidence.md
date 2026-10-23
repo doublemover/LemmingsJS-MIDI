@@ -58,6 +58,35 @@ removes its retry timer. Completed run controls are retired; a run with no
 queued or resident trials returns an explicit empty Step receipt and never
 claims to have reached a checkpoint.
 
+## Step receipts
+
+A Step selects each worker's current resident set. When that worker has no
+resident world, it leases only its bounded next resident set, including an
+admission already preparing assets. The preparation receipt fixes the exact
+trial and attempt identities. Repeated Step, Pause and Resume supersede the
+older lease by control ID; newly finishing asset preparation remains associated
+with a newer selection that includes that trial. Persistent paused mode does
+not admit the rest of the queue.
+
+`stepReceipt` aggregates every worker's actual acknowledgement. A short-horizon
+trial stays visible as `terminal-before-target` even when another worker reaches
+the target. Only an aggregate with actual progress for every selected trial can
+claim `reachedCheckpoint`. Empty workers do not invent progress. Worker-level
+diagnostic callbacks remain available, while the coordinator's display state
+uses the aggregate receipt and clears stale reached fields when a new command
+arrives. A Step requested before coordinator startup is dispatched when its
+execution controls become available.
+
+`maxControlMs` independently bounds startup, selection, stepping and receipt
+delivery for one Step. A deadline retires that control generation and sends a
+new Pause. Its receipt reports `timed-out`, the workers still unacknowledged and
+their last verified observations; those observations do not claim the workers'
+current ticks. Late acknowledgements cannot turn that receipt into a reached
+checkpoint. Resume can continue the same worlds. Each run and report retains at
+most 128 completed, superseded, canceled or timed-out control receipts, with an
+explicit count of retired history. Control receipts survive report resume and
+remain separate from per-trial computation and persistence outcomes.
+
 ## Filesystem publication
 
 One writer operation owns the experiment directory through an exclusive

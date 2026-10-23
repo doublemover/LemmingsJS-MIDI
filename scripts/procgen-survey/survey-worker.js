@@ -3,7 +3,7 @@ import { performance } from 'node:perf_hooks';
 import { createHash } from 'node:crypto';
 import { createNodeSurveyTrial, loadProcgenMasks } from './SurveyNodeWorld.js';
 
-let stopped = false, paused = !!workerData.paused, stepTarget = null, controlId = 0;
+let stopped = false, paused = !!workerData.paused, stepTarget = null, preparedStep = null, preparingJob = null, controlId = 0;
 const resident = [], waiting = workerData.jobs.slice();
 const deliveryWaiters = new Map();
 const post = message => parentPort.postMessage({ ...message, runGeneration: workerData.runGeneration, workerGeneration: workerData.workerGeneration });
@@ -16,6 +16,12 @@ const deliver = async message => {
   const acknowledged = wait(); post(message); await acknowledged;
 };
 const controlState = () => ({ paused, stepTarget: stepTarget?.tick ?? null, residentWorlds: resident.length, queued: waiting.length, ticks: resident.map(entry => ({ trialId: entry.job.trialId, tick: entry.trial.world.tickIndex })) });
+const plannedSelection = () => {
+  const selected = resident.map(entry => ({ trialId: entry.job.trialId, attemptId: entry.job.attemptId, tick: entry.trial.world.tickIndex, status: 'resident' }));
+  if (preparingJob) selected.push({ trialId: preparingJob.trialId, attemptId: preparingJob.attemptId, tick: 0, status: 'preparing' });
+  if (!resident.length) for (const job of waiting.slice(0, Math.max(0, workerData.residentWorlds - selected.length))) selected.push({ trialId: job.trialId, attemptId: job.attemptId, tick: 0, status: 'queued' });
+  return selected;
+};
 parentPort.on('message', message => {
   if (message.runGeneration !== workerData.runGeneration || message.workerGeneration !== workerData.workerGeneration) return;
   if (['result-permit', 'result-ack', 'result-reject'].includes(message.type)) {
@@ -23,15 +29,18 @@ parentPort.on('message', message => {
     if (pending?.attemptId === message.attemptId) { deliveryWaiters.delete(message.trialId); pending.resolve(message.type !== 'result-reject'); }
     return;
   }
-  if (message.type === 'cancel') { stopped = true; stepTarget = null; }
+  if (message.type === 'cancel') { stopped = true; stepTarget = null; preparedStep = null; }
   else if (Number.isSafeInteger(message.controlId) && message.controlId > controlId && ['pause', 'resume', 'step-prepare'].includes(message.type)) {
-    controlId = message.controlId; stepTarget = null; paused = message.type !== 'resume';
-    if (message.type === 'step-prepare') post({ type: 'step-ready', controlId, maxTick: Math.max(0, ...resident.map(entry => entry.trial.world.tickIndex)) });
+    controlId = message.controlId; stepTarget = null; preparedStep = null; paused = message.type !== 'resume';
+    if (message.type === 'step-prepare') {
+      const selected = plannedSelection(); preparedStep = { controlId, selected };
+      post({ type: 'step-ready', controlId, selected, maxTick: Math.max(0, ...selected.map(receipt => receipt.tick)) });
+    }
     else post({ type: 'control-state', value: { ...controlState(), controlId } });
   } else if (message.type === 'step' && message.controlId === controlId && message.workerGeneration === workerData.workerGeneration &&
-      Number.isSafeInteger(message.targetTick) && message.targetTick >= 1) {
-    paused = true; stepTarget = { tick: message.targetTick, controlId, selected: new Map(), admit: resident.length === 0 };
-    for (const entry of resident) stepTarget.selected.set(entry.job.trialId, { trialId: entry.job.trialId, tick: entry.trial.world.tickIndex, status: 'resident' });
+      preparedStep?.controlId === controlId && Number.isSafeInteger(message.targetTick) && message.targetTick >= 1) {
+    paused = true; stepTarget = { tick: message.targetTick, controlId, selected: new Map(preparedStep.selected.map(receipt => [receipt.trialId, receipt])), admit: resident.length === 0 };
+    preparedStep = null;
   }
 });
 const yieldTurn = () => new Promise(resolve => setImmediate(resolve));
@@ -47,14 +56,24 @@ const main = async () => {
   const masks = await loadProcgenMasks();
   post({ type: 'ready', queued: waiting.length, residentWorldLimit: workerData.residentWorlds, assetPreparationMs: performance.now() - preparing });
   const admit = async (lease = null) => {
-    while (!stopped && (!paused || lease?.admit && stepTarget === lease) && waiting.length && resident.length < workerData.residentWorlds) {
+    while (!stopped && (!paused || lease?.admit && stepTarget === lease && lease.selected.has(waiting[0]?.trialId)) && waiting.length && resident.length < workerData.residentWorlds) {
       const job = waiting.shift(), start = performance.now();
+      preparingJob = job;
       post({ type: 'preparing', trialId: job.trialId, attemptId: job.attemptId, scenarioId: job.scenario.id, candidateId: job.candidate.id });
       try {
         const trial = await createNodeSurveyTrial(job, masks), entry = { job, trial, start, ticks: 0, lastPublished: -Infinity };
-        resident.push(entry); lease?.selected.set(job.trialId, { trialId: job.trialId, tick: 0, status: 'admitted' }); post({ type: 'started', trialId: job.trialId,
+        resident.push(entry);
+        const receipt = { trialId: job.trialId, attemptId: job.attemptId, tick: 0, status: 'admitted' };
+        if (lease?.selected.has(job.trialId)) lease.selected.set(job.trialId, receipt);
+        if (stepTarget?.selected.has(job.trialId)) stepTarget.selected.set(job.trialId, receipt);
+        post({ type: 'started', trialId: job.trialId,
           attemptId: job.attemptId, scenarioId: trial.scenario.id, candidateId: trial.candidate.id, tick: trial.world.tickIndex }); publish(entry);
-      } catch (error) { lease?.selected.set(job.trialId, { trialId: job.trialId, tick: 0, status: 'infrastructure-error' }); await deliver({ type: 'result', result: { trialId: job.trialId, scenarioId: job.scenario.id, candidateId: job.candidate.id, status: 'infrastructure-error', episodeComplete: false, lastTick: 0, error: error.message }, attemptId: job.attemptId }); }
+      } catch (error) {
+        const receipt = { trialId: job.trialId, attemptId: job.attemptId, tick: 0, status: 'infrastructure-error' };
+        if (lease?.selected.has(job.trialId)) lease.selected.set(job.trialId, receipt);
+        if (stepTarget?.selected.has(job.trialId)) stepTarget.selected.set(job.trialId, receipt);
+        await deliver({ type: 'result', result: { trialId: job.trialId, scenarioId: job.scenario.id, candidateId: job.candidate.id, status: 'infrastructure-error', episodeComplete: false, lastTick: 0, error: error.message }, attemptId: job.attemptId });
+      } finally { preparingJob = null; }
       await yieldTurn();
     }
     if (lease) lease.admit = false;
@@ -86,17 +105,17 @@ const main = async () => {
         } catch (error) {
           status = 'infrastructure-error'; await deliver({ type: 'result', result: { trialId: job.trialId, scenarioId: job.scenario.id, candidateId: job.candidate.id, status, episodeComplete: false, lastTick: trial.world.tickIndex, error: error.message }, attemptId: job.attemptId });
         }
-        if (stepTarget?.selected.has(job.trialId)) stepTarget.selected.set(job.trialId, { trialId: job.trialId, tick: trial.world.tickIndex, status: status || 'resident' });
+        if (stepTarget?.selected.has(job.trialId)) stepTarget.selected.set(job.trialId, { trialId: job.trialId, attemptId: job.attemptId, tick: trial.world.tickIndex, status: status || 'resident' });
         if (status) { trial.dispose(); resident.splice(index, 1); } else index++;
         await yieldTurn();
       }
-      if (stepTarget && !stepTarget.admit && [...stepTarget.selected.values()].every(receipt => receipt.status !== 'resident' ||
-          receipt.tick >= Math.min(stepTarget.tick, resident.find(entry => entry.job.trialId === receipt.trialId)?.job.scenario.horizonTicks ?? stepTarget.tick))) {
+      if (stepTarget && !stepTarget.admit && [...stepTarget.selected.values()].every(receipt => !['resident', 'admitted', 'preparing', 'queued'].includes(receipt.status) ||
+          receipt.tick >= Math.min(stepTarget.tick, workerData.jobs.find(job => job.trialId === receipt.trialId).scenario.horizonTicks))) {
         const lease = stepTarget; stepTarget = null;
         const selected = [...lease.selected.values()], reached = selected.length > 0 && selected.every(receipt => receipt.tick >= lease.tick);
         const stepStatus = !selected.length ? 'empty' : reached ? 'reached' : selected.some(receipt => receipt.status === 'infrastructure-error') ? 'failed' : 'terminal-before-target';
         post({ type: 'control-state', value: { ...controlState(), controlId: lease.controlId,
-          workerGeneration: workerData.workerGeneration, stepStatus,
+          workerGeneration: workerData.workerGeneration, stepStatus, targetTick: lease.tick,
           reachedCheckpoint: reached ? lease.tick : null, selected } });
       }
       if (!resident.length && paused && !stopped) await idle();

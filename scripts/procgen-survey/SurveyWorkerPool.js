@@ -13,7 +13,7 @@ const normalizeSurveyResources = (value = {}) => ({
   sliceTicks: integer(value.sliceTicks, 16, 1, 128), checkpointTicks: integer(value.checkpointTicks, 64, 1, 4096),
   maxTotalTicks: integer(value.maxTotalTicks, 100000, 1, 1000000), maxTotalMs: integer(value.maxTotalMs, 120000, 100, 900000),
   maxTrialMs: integer(value.maxTrialMs, 60000, 50, 300000), maxWorkerMB: integer(value.maxWorkerMB, 512, 64, 2048),
-  maxStartupMs: integer(value.maxStartupMs, 15000, 50, 60000),
+  maxStartupMs: integer(value.maxStartupMs, 15000, 50, 60000), maxControlMs: integer(value.maxControlMs, 10000, 50, 60000),
   maxPersistenceMs: integer(value.maxPersistenceMs, 30000, 50, 300000),
   maxPendingResultCount: integer(value.maxPendingResultCount, 32, 1, 1024),
   maxPendingResultBytes: integer(value.maxPendingResultBytes, 8 * 1048576, 4096, 128 * 1048576)
@@ -37,21 +37,47 @@ const runSurveyJobs = async (jobs, options = {}) => {
   const count = Math.min(resources.executionWorkers, resources.residentWorlds, jobs.length), workers = [], activeWorkers = new Set(), results = [], receipts = new Map(), finished = new Set(), presentationErrors = [], persistence = new Map(), deliveryConflicts = [];
   const assignedByTrial = new Map(jobs.map(job => [job.trialId, job]));
   let cancelled = !!options.signal?.aborted, reason = cancelled ? 'cancelled' : null, callbackError = null, callbackTail = Promise.resolve(), paused = !!options.paused, controlId = 0, stepBarrier = null, stepInFlight = null, workersReady = false, pendingResultCount = 0, pendingResultBytes = 0;
-  const generations = new Map(), assignments = new Map(), reservations = new Map(), transferRequests = [], persistenceControllers = new Set(), computations = new Map(), readyWorkers = new Set(), trialTimers = new Map();
+  const generations = new Map(), assignments = new Map(), workerSlots = new Map(), reservations = new Map(), transferRequests = [], persistenceControllers = new Set(), computations = new Map(), readyWorkers = new Set(), trialTimers = new Map(), controlReceipts = [];
   const admissions = new Map(jobs.map(job => [job.trialId, { trialId: job.trialId, attemptId: job.attemptId, scenarioId: job.scenario.id,
     candidateId: job.candidate.id, runGeneration, status: 'not-admitted', lastVerifiedTick: 0 }]));
-  let peakPendingResultCount = 0, peakPendingResultBytes = 0, closed = false;
+  let peakPendingResultCount = 0, peakPendingResultBytes = 0, closed = false, latestStepReceipt = null, discardedControlReceipts = 0;
   const displayError = error => { if (presentationErrors.length < 16) presentationErrors.push(String(error?.message || error)); };
   const notify = (callback, ...args) => { try { const returned = callback?.(...args); returned?.catch?.(displayError); } catch (error) { displayError(error); } };
   const send = (worker, message) => { if (activeWorkers.has(worker)) worker.postMessage({ ...message, runGeneration, workerGeneration: generations.get(worker) }); };
   const broadcast = message => { for (const worker of activeWorkers) send(worker, message); };
   const state = () => ({ runGeneration, controlId, paused, cancelled, stepPending: !!stepBarrier || !!stepInFlight?.pending.size, executionWorkers: activeWorkers.size,
+    stepReceipt: stepBarrier || stepInFlight ? projectStep(stepBarrier || stepInFlight, 'pending') : latestStepReceipt,
     readyWorkers: readyWorkers.size, preparingWorkers: [...activeWorkers].filter(worker => !readyWorkers.has(worker)).length,
     computation: { computedResults: computations.size, receivedResults: results.length,
       preparingTrials: [...admissions.values()].filter(receipt => receipt.status === 'preparing' && !receipt.outcomeStatus).length,
       admittedTrials: [...admissions.values()].filter(receipt => receipt.status === 'admitted' && !receipt.outcomeStatus).length },
     storage: { pendingResultCount, pendingResultBytes, peakPendingResultCount, peakPendingResultBytes } });
-  const cancel = message => { if (!cancelled) { cancelled = true; reason = message; } stepBarrier = null; stepInFlight = null; broadcast({ type: 'cancel' });
+  const projectStep = (request, status, terminationReason = null) => {
+    const workers = [...request.workers.values()].map(receipt => ({ worker: receipt.worker, workerGeneration: receipt.workerGeneration,
+      status: receipt.status, selectionKnown: receipt.selected !== null, acknowledged: !!receipt.acknowledged,
+      selected: (receipt.selected || []).map(selected => receipt.acknowledged ? { ...selected } : {
+        trialId: selected.trialId, attemptId: selected.attemptId, status: 'unknown-progress', lastVerifiedTick: Math.max(selected.tick, admissions.get(selected.trialId).lastVerifiedTick) }) }));
+    const selected = workers.flatMap(receipt => receipt.selected.map(value => ({ ...value, worker: receipt.worker, workerGeneration: receipt.workerGeneration })));
+    return freezeSurveyData({ schemaVersion: 1, runGeneration, controlId: request.controlId, status,
+      phase: status === 'pending' ? request.phase : 'complete', targetTick: request.targetTick ?? null,
+      requestedMs: request.requestedMs, prepareLatencyMs: request.preparedMs === undefined ? null : request.preparedMs - request.requestedMs,
+      barrierLatencyMs: performance.now() - started - request.requestedMs,
+      reachedCheckpoint: status === 'reached' ? request.targetTick : null, terminationReason,
+      selected, selectedCount: selected.length, selectionComplete: workers.length === request.expectedWorkers && workers.every(receipt => receipt.selectionKnown), workers,
+      expectedWorkers: request.expectedWorkers, acknowledgedWorkers: workers.filter(receipt => receipt.acknowledged).length,
+      unacknowledgedWorkerCount: request.expectedWorkers - workers.filter(receipt => receipt.acknowledged).length,
+      unacknowledgedWorkers: workers.filter(receipt => !receipt.acknowledged).map(receipt => ({ worker: receipt.worker, workerGeneration: receipt.workerGeneration })) });
+  };
+  const finishStep = (status, terminationReason = null) => {
+    const request = stepBarrier || stepInFlight; if (!request) return;
+    clearTimeout(request.timer); latestStepReceipt = projectStep(request, status, terminationReason);
+    controlReceipts.push(latestStepReceipt); if (controlReceipts.length > 128) { controlReceipts.shift(); discardedControlReceipts++; }
+    stepBarrier = null; stepInFlight = null;
+  };
+  const includeStepWorkers = request => {
+    for (const worker of activeWorkers) if (!request.workers.has(worker)) request.workers.set(worker, { worker: workerSlots.get(worker), workerGeneration: generations.get(worker), status: 'preparing', selected: null, acknowledged: false });
+  };
+  const cancel = message => { if (!cancelled) { cancelled = true; reason = message; } finishStep('cancelled', message); broadcast({ type: 'cancel' });
     if (['wall-time-safety', 'persistence-timeout'].includes(message)) for (const controller of persistenceControllers) controller.abort(new Error(message));
     notify(options.onControlState, state()); return state(); };
   const infrastructure = (message, worker) => { callbackError ||= new Error(message); cancel('infrastructure-error'); if (worker) worker.terminate(); };
@@ -73,16 +99,25 @@ const runSurveyJobs = async (jobs, options = {}) => {
     if (!workersReady || !stepBarrier || stepBarrier.pending.size) return;
     const targetTick = (Math.floor(stepBarrier.maxTick / resources.checkpointTicks) + 1) * resources.checkpointTicks;
     const id = stepBarrier.controlId;
-    const requestedMs = stepBarrier.requestedMs;
-    stepBarrier = null; stepInFlight = { controlId: id, targetTick, requestedMs, preparedMs: performance.now() - started, pending: new Set(activeWorkers) };
+    stepInFlight = stepBarrier; stepBarrier = null;
+    Object.assign(stepInFlight, { targetTick, phase: 'stepping', preparedMs: performance.now() - started, pending: new Set(activeWorkers) });
     for (const worker of activeWorkers) send(worker, { type: 'step', controlId: id, targetTick });
+    if (!stepInFlight.pending.size) finishStep('empty');
     notify(options.onControlState, { ...state(), controlId: id, targetTick });
   };
   const controls = {
-    pause: () => { if (closed) return { ...state(), retired: true }; paused = true; controlId++; stepBarrier = null; stepInFlight = null; broadcast({ type: 'pause', controlId }); return state(); },
-    resume: () => { if (closed) return { ...state(), retired: true }; paused = false; controlId++; stepBarrier = null; stepInFlight = null; broadcast({ type: 'resume', controlId }); return state(); },
-    step: () => { if (closed) return { ...state(), retired: true }; paused = true; controlId++; stepInFlight = null; stepBarrier = { controlId, requestedMs: performance.now() - started, pending: new Set(activeWorkers), maxTick: 0 };
-      if (workersReady) broadcast({ type: 'step-prepare', controlId }); finishStepBarrier(); return state(); },
+    pause: () => { if (closed) return { ...state(), retired: true }; finishStep('superseded', 'pause'); paused = true; controlId++; broadcast({ type: 'pause', controlId }); notify(options.onControlState, state()); return state(); },
+    resume: () => { if (closed) return { ...state(), retired: true }; finishStep('superseded', 'resume'); paused = false; controlId++; broadcast({ type: 'resume', controlId }); notify(options.onControlState, state()); return state(); },
+    step: () => {
+      if (closed) return { ...state(), retired: true }; finishStep('superseded', 'new-step'); paused = true; controlId++;
+      const request = { controlId, requestedMs: performance.now() - started, phase: 'preparing', expectedWorkers: workersReady ? activeWorkers.size : count, pending: new Set(activeWorkers), workers: new Map(), maxTick: 0 };
+      stepBarrier = request; includeStepWorkers(request);
+      request.timer = setTimeout(() => {
+        if (stepBarrier !== request && stepInFlight !== request) return;
+        finishStep('timed-out', 'control-deadline'); paused = true; controlId++; broadcast({ type: 'pause', controlId }); notify(options.onControlState, state());
+      }, resources.maxControlMs);
+      if (workersReady) broadcast({ type: 'step-prepare', controlId }); finishStepBarrier(); notify(options.onControlState, state()); return state();
+    },
     cancel: () => closed ? { ...state(), retired: true } : cancel('cancelled')
   };
   const abort = () => cancel('cancelled'); options.signal?.addEventListener('abort', abort, { once: true });
@@ -137,7 +172,7 @@ const runSurveyJobs = async (jobs, options = {}) => {
       const worker = (options.workerFactory || ((url, configuration) => new Worker(url, configuration)))(new URL('./survey-worker.js', import.meta.url),
         { workerData: { ...resources, residentWorlds, paused, jobs: assigned, workerGeneration, runGeneration }, resourceLimits: { maxOldGenerationSizeMb: resources.maxWorkerMB } });
       if (!(worker instanceof Worker)) throw new TypeError('Survey workerFactory must return a native Worker');
-      workers.push(worker); activeWorkers.add(worker); generations.set(worker, workerGeneration); assignments.set(worker, new Set(assigned.map(job => job.trialId)));
+      workers.push(worker); activeWorkers.add(worker); generations.set(worker, workerGeneration); workerSlots.set(worker, index); assignments.set(worker, new Set(assigned.map(job => job.trialId)));
       for (const job of assigned) Object.assign(admissions.get(job.trialId), { worker: index, workerGeneration });
       supervised.push(new Promise(resolve => {
         let done = false;
@@ -192,23 +227,57 @@ const runSurveyJobs = async (jobs, options = {}) => {
                 !Number.isSafeInteger(message.value.tick) || message.value.tick < admission.lastVerifiedTick || message.value.tick > job.scenario.horizonTicks) { infrastructure('Invalid worker telemetry identity or tick', worker); return; }
             admission.lastVerifiedTick = message.value.tick; receipts.set(message.trialId, message.value); notify(options.onTelemetry, message.trialId, message.value);
           }
-          else if (message.type === 'control-state') { if (stepInFlight && stepInFlight.controlId === message.value.controlId &&
-              message.value.workerGeneration === workerGeneration && ['reached', 'empty', 'failed', 'terminal-before-target'].includes(message.value.stepStatus)) {
-            message.value = { ...message.value, barrierLatencyMs: performance.now() - started - stepInFlight.requestedMs,
-              prepareLatencyMs: stepInFlight.preparedMs - stepInFlight.requestedMs };
-            stepInFlight.pending.delete(worker); if (!stepInFlight.pending.size) stepInFlight = null;
-          } if (message.value.controlId == null || message.value.controlId === controlId) notify(options.onControlState, { ...state(), worker: index, ...message.value }); }
-          else if (message.type === 'step-ready' && stepBarrier?.controlId === message.controlId && message.workerGeneration === workerGeneration && stepBarrier.pending.has(worker)) { stepBarrier.maxTick = Math.max(stepBarrier.maxTick, message.maxTick); stepBarrier.pending.delete(worker); finishStepBarrier(); }
+          else if (message.type === 'control-state') {
+            const value = message.value;
+            if (!value || !Number.isSafeInteger(value.controlId)) { infrastructure('Invalid worker control identity', worker); return; }
+            if (value.controlId !== controlId) return;
+            if (value.stepStatus !== undefined) {
+              if (!stepInFlight || stepInFlight.controlId !== value.controlId || !stepInFlight.pending.has(worker)) return;
+              const prepared = stepInFlight.workers.get(worker), selected = value.selected;
+              const validSelection = Array.isArray(selected) && selected.length === prepared.selected.length && new Set(selected.map(receipt => receipt?.trialId)).size === selected.length && selected.every(receipt => {
+                const prior = prepared.selected.find(original => original.trialId === receipt?.trialId), job = assignedByTrial.get(receipt?.trialId);
+                return prior && receipt.attemptId === job.attemptId && Number.isSafeInteger(receipt.tick) && receipt.tick >= prior.tick && receipt.tick <= job.scenario.horizonTicks &&
+                  ['resident', 'episode', 'infrastructure-error', 'cancelled', 'interrupted'].includes(receipt.status) &&
+                  (receipt.tick >= stepInFlight.targetTick || receipt.status !== 'resident');
+              });
+              const reached = validSelection && selected.length > 0 && selected.every(receipt => receipt.tick >= stepInFlight.targetTick);
+              const expected = !validSelection ? null : !selected.length ? 'empty' : reached ? 'reached' : selected.some(receipt => receipt.status === 'infrastructure-error') ? 'failed' : 'terminal-before-target';
+              if (!validSelection || value.workerGeneration !== workerGeneration || value.targetTick !== stepInFlight.targetTick || value.stepStatus !== expected || value.reachedCheckpoint !== (reached ? stepInFlight.targetTick : null)) { infrastructure('Invalid worker checkpoint receipt', worker); return; }
+              message.value = { ...value, barrierLatencyMs: performance.now() - started - stepInFlight.requestedMs, prepareLatencyMs: stepInFlight.preparedMs - stepInFlight.requestedMs };
+              Object.assign(prepared, { acknowledged: true, status: value.stepStatus, selected: selected.map(receipt => ({ ...receipt })) });
+              for (const receipt of selected) admissions.get(receipt.trialId).lastVerifiedTick = Math.max(admissions.get(receipt.trialId).lastVerifiedTick, receipt.tick);
+              stepInFlight.pending.delete(worker);
+              if (!stepInFlight.pending.size) {
+                const outcomes = [...stepInFlight.workers.values()];
+                finishStep(outcomes.some(receipt => receipt.status === 'failed') ? 'failed' : outcomes.some(receipt => receipt.status === 'terminal-before-target') ? 'terminal-before-target' : outcomes.some(receipt => receipt.status === 'reached') ? 'reached' : 'empty');
+              }
+            }
+            notify(options.onControlState, { ...state(), worker: index, ...message.value });
+          }
+          else if (message.type === 'step-ready' && stepBarrier?.controlId === message.controlId && stepBarrier.pending.has(worker)) {
+            const selected = message.selected;
+            if (!Array.isArray(selected) || selected.length > residentWorlds || new Set(selected.map(receipt => receipt?.trialId)).size !== selected.length || selected.some(receipt => {
+              const job = assignedByTrial.get(receipt?.trialId);
+              return !assignments.get(worker).has(receipt?.trialId) || receipt.attemptId !== job.attemptId || !Number.isSafeInteger(receipt.tick) || receipt.tick < 0 || receipt.tick > job.scenario.horizonTicks ||
+                !['resident', 'preparing', 'queued'].includes(receipt.status) || receipt.status !== 'resident' && receipt.tick !== 0;
+            }) || message.maxTick !== Math.max(0, ...selected.map(receipt => receipt.tick))) { infrastructure('Invalid worker checkpoint selection', worker); return; }
+            Object.assign(stepBarrier.workers.get(worker), { status: 'prepared', selected: selected.map(receipt => ({ ...receipt })) });
+            for (const receipt of selected) admissions.get(receipt.trialId).lastVerifiedTick = Math.max(admissions.get(receipt.trialId).lastVerifiedTick, receipt.tick);
+            stepBarrier.maxTick = Math.max(stepBarrier.maxTick, message.maxTick); stepBarrier.pending.delete(worker); finishStepBarrier();
+          }
           else if (message.type === 'done') done = true;
           else if (message.type === 'fatal') { callbackError ||= new Error(message.error); cancel('infrastructure-error'); }
           else if (message.type !== 'step-ready') infrastructure('Unknown worker message type', worker);
         });
         worker.on('error', error => { callbackError ||= error; cancel('infrastructure-error'); });
         worker.on('exit', code => {
-          clearTimeout(startupLimit); clearTimeout(hardLimit); activeWorkers.delete(worker); readyWorkers.delete(worker); stepInFlight?.pending.delete(worker);
+          clearTimeout(startupLimit); clearTimeout(hardLimit); activeWorkers.delete(worker); readyWorkers.delete(worker);
           for (const job of assigned) { clearTimeout(trialTimers.get(job.trialId)); trialTimers.delete(job.trialId); }
           if ((!done || code !== 0) && !cancelled) infrastructure('Worker exited unexpectedly: ' + code);
-          if (stepBarrier) { stepBarrier.pending.delete(worker); finishStepBarrier(); }
+          const pendingStep = stepBarrier || stepInFlight;
+          if (pendingStep?.pending.has(worker)) {
+            pendingStep.workers.get(worker).status = 'worker-exited'; finishStep('failed', 'worker-exited-before-control-receipt'); notify(options.onControlState, state());
+          }
           for (let index = transferRequests.length - 1; index >= 0; index--) if (transferRequests[index].worker === worker) transferRequests.splice(index, 1);
           for (const job of assigned) if (!finished.has(job.trialId)) {
             if (computations.get(job.trialId)?.status === 'computed-waiting-transfer') computations.get(job.trialId).status = 'computed-not-transferred-worker-exit';
@@ -222,7 +291,7 @@ const runSurveyJobs = async (jobs, options = {}) => {
       if (cancelled) send(worker, { type: 'cancel' });
     }
     workersReady = true;
-    if (stepBarrier) { stepBarrier.pending = new Set(activeWorkers); broadcast({ type: 'step-prepare', controlId: stepBarrier.controlId }); finishStepBarrier(); }
+    if (stepBarrier) { includeStepWorkers(stepBarrier); stepBarrier.pending = new Set(activeWorkers); broadcast({ type: 'step-prepare', controlId: stepBarrier.controlId }); finishStepBarrier(); }
     notify(options.onControlState, state());
     await Promise.all(supervised);
     await callbackTail;
@@ -231,13 +300,14 @@ const runSurveyJobs = async (jobs, options = {}) => {
       persistence: [...persistence.values()].map(receipt => ({ ...receipt })), deliveryConflicts, presentationErrors,
       computations: [...computations.values()].map(receipt => ({ ...receipt })),
       admissions: [...admissions.values()].map(receipt => ({ ...receipt })),
+      controlReceipts: [...controlReceipts], discardedControlReceipts, controlState: state(),
       storage: { pendingResultCount, pendingResultBytes, peakPendingResultCount, peakPendingResultBytes },
       cancellationPolicy: 'stop-admission; drain received evidence within persistence and total deadlines',
-      deadlineScope: 'startup includes import and mask preparation until readiness; trial includes per-world asset preparation, admitted pause and transfer waits; total includes all stages' };
+      deadlineScope: 'startup includes import and mask preparation until readiness; control includes startup, selection, stepping and acknowledgement; trial includes per-world asset preparation, admitted pause and transfer waits; total includes all stages' };
   } finally {
     closed = true; for (const controller of persistenceControllers) controller.abort(new Error('run-closed'));
     for (const timer of trialTimers.values()) clearTimeout(timer); trialTimers.clear();
-    clearTimeout(timeout); options.signal?.removeEventListener('abort', abort); stepBarrier = null; stepInFlight = null;
+    clearTimeout(timeout); clearTimeout((stepBarrier || stepInFlight)?.timer); options.signal?.removeEventListener('abort', abort); stepBarrier = null; stepInFlight = null;
     await Promise.all(workers.map(worker => worker.terminate()));
   }
 };

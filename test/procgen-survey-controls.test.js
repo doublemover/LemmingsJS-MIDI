@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { Worker } from 'node:worker_threads';
 import { createSurveyServer } from '../scripts/procgen-survey/SurveyServer.js';
 import { runSurveyJobs } from '../scripts/procgen-survey/SurveyWorkerPool.js';
 import { createNodeSurveyTrial, loadProcgenMasks } from '../scripts/procgen-survey/SurveyNodeWorld.js';
@@ -12,6 +13,24 @@ const jobs = (count = 4, horizonTicks = 512) => Array.from({ length: count }, (_
   const candidate = { id: 'baseline' };
   return { scenario, candidate, trialId: createSurveyTrialId(scenario, candidate), attemptId: `control-test-${index}` };
 });
+const controlWorker = mode => (entry, configuration) => {
+  const provider = new URL('../tools/NodeFileProvider.js', import.meta.url);
+  const source = `import { parentPort } from 'node:worker_threads';
+    ${mode === 'delayed-start' ? 'await new Promise(resolve => setTimeout(resolve, 750));' : ''}
+    ${mode === 'slow-assets' ? `const { NodeFileProvider } = await import(${JSON.stringify(provider.href)});
+      const load = NodeFileProvider.prototype.loadBinary; let held = false;
+      NodeFileProvider.prototype.loadBinary = async function(...args) { if (!held) { held = true; await new Promise(resolve => setTimeout(resolve, 250)); } return load.apply(this, args); };` : ''}
+    const send = parentPort.postMessage.bind(parentPort);
+    parentPort.postMessage = message => {
+      if (${JSON.stringify(mode)} === 'wrong-selection' && message.type === 'step-ready' && message.selected.length) { send({ ...message, selected: message.selected.map(value => ({ ...value, attemptId: 'wrong-attempt' })) }); return; }
+      if (${JSON.stringify(mode)} === 'forged-checkpoint' && message.type === 'control-state' && message.value.stepStatus) { send({ ...message, value: { ...message.value, selected: message.value.selected.map(value => ({ ...value, tick: message.value.targetTick + 1000 })) } }); return; }
+      if (${JSON.stringify(mode)} === 'late-ack' && message.type === 'control-state' && message.value.stepStatus) { setTimeout(() => send(message), 350); return; }
+      if (${JSON.stringify(mode)} === 'exit-before-ack' && message.type === 'control-state' && message.value.stepStatus) process.exit(23);
+      send(message);
+    };
+    await import(${JSON.stringify(entry.href)});`;
+  return new Worker(new URL('data:text/javascript,' + encodeURIComponent(source)), configuration);
+};
 
 describe('local survey server and atomic live controls', function() {
   this.timeout(15000);
@@ -100,6 +119,75 @@ describe('local survey server and atomic live controls', function() {
       controls.resume(); const report = await execution;
       expect(report.error).to.equal(null); expect(report.results.every(result => result.lastTick === 32)).to.equal(true);
     } catch (error) { controls?.cancel(); await execution; throw error; }
+  });
+  it('retains every worker outcome in one receipt when only part of the selected set reaches the target', async () => {
+    const requested = [jobs(1, 32)[0], jobs(2, 64)[1]]; let controls, aggregate;
+    const execution = runSurveyJobs(requested, { executionWorkers: 2, residentWorlds: 2, paused: true, checkpointTicks: 48, maxTotalMs: 6000,
+      onControlReady: value => { controls = value; value.step(); }, onControlState: value => { if (value.stepReceipt?.status !== 'pending') aggregate = value.stepReceipt; } });
+    try {
+      await until(() => !!aggregate); expect(aggregate.status).to.equal('terminal-before-target'); expect(aggregate.reachedCheckpoint).to.equal(null);
+      expect(aggregate.selected.map(value => value.tick).sort((a,b) => a - b)).to.deep.equal([32, 48]);
+      expect(aggregate.workers.map(value => value.status)).to.have.members(['terminal-before-target', 'reached']);
+      expect(aggregate.unacknowledgedWorkers).to.deep.equal([]); expect(aggregate.selectionComplete).to.equal(true);
+      expect(Object.isFrozen(aggregate.selected[0])).to.equal(true); controls.resume();
+      const report = await execution; expect(report.error).to.equal(null); expect(report.controlReceipts).to.have.length(1);
+      expect(report.controlReceipts[0]).to.deep.equal(aggregate);
+    } catch (error) { controls?.cancel(); await execution; throw error; }
+  });
+  it('preserves an in-flight asset admission when a newer Step supersedes its lease', async () => {
+    const scenario = normalizeSurveyScenario({ id: 'step-during-assets', mode: 'generated', pack: 'lemmings_ohNo', groundSet: 0, horizonTicks: 16, cohort: { size: 1 } }), candidate = { id: 'baseline' };
+    const requested = [{ scenario, candidate, trialId: createSurveyTrialId(scenario, candidate), attemptId: 'assets-attempt' }];
+    let controls, superseded = false, aggregate;
+    const execution = runSurveyJobs(requested, { paused: true, residentWorlds: 1, checkpointTicks: 4, maxTotalMs: 8000, workerFactory: controlWorker('slow-assets'),
+      onControlReady: value => { controls = value; value.step(); }, onControlState: value => {
+        if (!superseded && value.computation?.preparingTrials) { superseded = true; controls.step(); }
+        if (value.stepReceipt?.controlId === 2 && value.stepReceipt.status === 'reached') aggregate = value.stepReceipt;
+      } });
+    try {
+      await until(() => !!aggregate); expect(superseded).to.equal(true); expect(aggregate.selected).to.have.length(1);
+      expect(aggregate.selected[0]).to.include({ trialId: requested[0].trialId, attemptId: 'assets-attempt', tick: 4 });
+      controls.resume(); const report = await execution; expect(report.error).to.equal(null);
+      expect(report.controlReceipts.map(value => value.status)).to.deep.equal(['superseded', 'reached']);
+      expect(report.admissions.filter(value => value.status === 'admitted')).to.have.length(1);
+    } catch (error) { controls?.cancel(); await execution; throw error; }
+  });
+  it('bounds a startup Step independently and reports unknown progress without claiming a reached checkpoint', async () => {
+    let controls, receipt;
+    const execution = runSurveyJobs(jobs(1, 32), { paused: true, maxTotalMs: 5000, maxControlMs: 50, workerFactory: controlWorker('delayed-start'),
+      onControlReady: value => { controls = value; value.step(); }, onControlState: value => { if (value.stepReceipt?.status === 'timed-out') receipt = value.stepReceipt; } });
+    await until(() => !!receipt); expect(receipt).to.include({ status: 'timed-out', terminationReason: 'control-deadline', reachedCheckpoint: null, selectionComplete: false });
+    expect(receipt.unacknowledgedWorkers).to.have.length(1); controls.cancel();
+    const report = await execution; expect(report.controlReceipts[0]).to.deep.equal(receipt); expect(report.admissions[0].status).to.equal('not-admitted');
+  });
+  it('retires a timed-out control generation and ignores its late real-worker checkpoint acknowledgement', async () => {
+    let controls, ready = false, receipt; const acknowledgements = [];
+    const execution = runSurveyJobs(jobs(1, 32), { paused: true, maxTotalMs: 6000, maxControlMs: 150, checkpointTicks: 4, workerFactory: controlWorker('late-ack'),
+      onControlReady: value => { controls = value; }, onControlState: value => { ready ||= value.readyWorkers === 1;
+        if (value.stepStatus) acknowledgements.push(value); if (value.stepReceipt?.status === 'timed-out') receipt = value.stepReceipt; } });
+    try {
+      await until(() => ready); controls.step(); await until(() => !!receipt); await delay(400);
+      expect(receipt.reachedCheckpoint).to.equal(null); expect(receipt.selected[0]).to.include({ status: 'unknown-progress', lastVerifiedTick: 4 });
+      expect(receipt.selected[0]).not.to.have.property('tick'); expect(acknowledgements).to.deep.equal([]);
+      controls.resume(); const report = await execution; expect(report.error).to.equal(null); expect(report.results[0].lastTick).to.equal(32);
+    } catch (error) { controls?.cancel(); await execution; throw error; }
+  });
+  it('rejects selected attempts or actual checkpoint ticks that do not belong to the assigned real trial', async () => {
+    for (const mode of ['wrong-selection', 'forged-checkpoint']) {
+      const report = await runSurveyJobs(jobs(1, 32), { paused: true, checkpointTicks: 4, maxTotalMs: 5000, workerFactory: controlWorker(mode), onControlReady: value => value.step() });
+      expect(report.error).to.equal(mode === 'wrong-selection' ? 'Invalid worker checkpoint selection' : 'Invalid worker checkpoint receipt');
+      expect(report.controlReceipts[0].reachedCheckpoint).to.equal(null); expect(report.controlReceipts[0].status).to.equal('cancelled');
+    }
+  });
+  it('retains a bounded control history and records how many superseded receipts were retired', async () => {
+    const report = await runSurveyJobs(jobs(1, 32), { paused: true, maxTotalMs: 5000, onControlReady: value => { for (let count = 0; count < 140; count++) value.step(); value.cancel(); } });
+    expect(report.controlReceipts).to.have.length(128); expect(report.discardedControlReceipts).to.equal(12);
+    expect(report.controlReceipts.at(-1)).to.include({ controlId: 140, status: 'cancelled', reachedCheckpoint: null });
+  });
+  it('retains an unacknowledged selected set when a worker exits during the barrier', async () => {
+    const report = await runSurveyJobs(jobs(1, 32), { paused: true, checkpointTicks: 4, maxTotalMs: 5000, workerFactory: controlWorker('exit-before-ack'), onControlReady: value => value.step() });
+    expect(report.error).to.equal('Worker exited unexpectedly: 23'); expect(report.controlReceipts).to.have.length(1);
+    const receipt = report.controlReceipts[0]; expect(receipt).to.include({ status: 'cancelled', terminationReason: 'infrastructure-error', reachedCheckpoint: null, unacknowledgedWorkerCount: 1 });
+    expect(receipt.selected[0]).to.include({ status: 'unknown-progress', lastVerifiedTick: 4 }); expect(receipt.selected[0]).not.to.have.property('tick');
   });
   it('pauses at completed boundaries, advances resident worlds to one shared checkpoint, then resumes the exact real trajectories', async () => {
     const requested = jobs(), pauseAcks = new Map(), reached = new Map(), previews = [], ticks = new Map(); let controls, pauseRequested = false, telemetryCount = 0;

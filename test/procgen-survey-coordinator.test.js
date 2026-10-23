@@ -58,4 +58,16 @@ describe('real bounded procgen survey coordination', function() {
     expect(report.status).to.equal('interrupted'); expect(report.incompleteTrials).to.have.length(18); expect(report.incompleteTrials.every(record => record.status === 'not-run')).to.equal(true);
     expect(report.results).to.have.length(0);
   });
+  it('dispatches a Step queued before worker controls exist and presents the aggregate receipt', async () => {
+    const manifest = declaration(); directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lemmings-survey-coordinator-'));
+    const store = await new SurveyEvidenceStore(directory).initialize(manifest); let controls, queued, observed;
+    const report = await runSurveyExperiment(manifest, store, { onControlReady: value => { controls = value; queued = controls.step(); }, onState: get => {
+      const state = get(); if (!observed && state.controlState.stepStatus === 'reached') { observed = state.controlState; controls.cancel(); }
+    } });
+    expect(queued).to.include({ paused: true, queued: true, stepPending: true, reachedCheckpoint: null });
+    expect(observed.stepReceipt.status).to.equal('reached'); expect(observed.selected).to.have.length(4);
+    expect(observed.selected.every(value => value.tick === 64 && value.attemptId)).to.equal(true); expect(observed.reachedCheckpoint).to.equal(64);
+    expect(report.status).to.equal('interrupted'); expect(report.controlReceipts).to.have.length(1);
+    expect(report.controlReceipts[0]).to.include({ stage: 'development', status: 'reached', reachedCheckpoint: 64 });
+  });
 });

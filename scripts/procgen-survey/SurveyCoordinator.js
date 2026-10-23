@@ -21,8 +21,9 @@ const runSurveyExperiment = async (manifest, store, { signal, onTelemetry = () =
     throw new SurveyExperimentIdentityError('Legacy survey state or canonical encoding requires a separately declared experiment');
   const prior = await store.read('report.json');
   const started = clock.now(), results = [], telemetry = new Map(prior?.telemetry || []), performance = [...(prior?.performance || [])], attempts = [...(prior?.attempts || [])], verification = [], successQualification = [],
-    persistenceReceipts = [...(prior?.persistenceReceipts || [])], admissions = [...(prior?.admissions || [])];
-  let stage = 'queued', activeControls = null, paused = false, cancelled = false, controlState = {}, currentExecution = null, executedTicks = 0;
+    persistenceReceipts = [...(prior?.persistenceReceipts || [])], admissions = [...(prior?.admissions || [])], controlReceipts = [...(prior?.controlReceipts || [])].slice(-128);
+  let stage = 'queued', activeControls = null, paused = false, cancelled = false, pendingStep = false, controlState = {}, currentExecution = null, executedTicks = 0,
+    discardedControlReceipts = (prior?.discardedControlReceipts || 0) + Math.max(0, (prior?.controlReceipts?.length || 0) - 128);
   const jobsFor = (scenarios, candidates) => scenarios.flatMap(scenario => candidates.map(candidate => ({ scenario, candidate,
     trialId: createSurveyTrialId(scenario, candidate), attemptId: randomUUID() })));
   const development = manifest.scenarios.filter(scene => manifest.developmentScenarioIds.includes(scene.id));
@@ -37,10 +38,10 @@ const runSurveyExperiment = async (manifest, store, { signal, onTelemetry = () =
       lastTick: telemetry.get(job.trialId)?.tick || 0, accounting: telemetry.get(job.trialId)?.accounting, telemetry: telemetry.get(job.trialId) }), verification });
   const present = () => { try { onState(publicState); } catch { /* Presentation cannot mutate or cancel physics. */ } };
   onControlReady({
-    pause: () => { paused = true; return activeControls?.pause() || { paused }; },
-    resume: () => { paused = false; return activeControls?.resume() || { paused }; },
-    step: () => { paused = true; return activeControls?.step() || { paused, queued: true }; },
-    cancel: () => { cancelled = true; return activeControls?.cancel() || { cancelled }; }
+    pause: () => { pendingStep = false; paused = true; return activeControls?.pause() || { paused }; },
+    resume: () => { pendingStep = false; paused = false; return activeControls?.resume() || { paused }; },
+    step: () => { paused = true; if (activeControls) return activeControls.step(); pendingStep = true; return { paused, queued: true, stepPending: true, reachedCheckpoint: null }; },
+    cancel: () => { pendingStep = false; cancelled = true; return activeControls?.cancel() || { cancelled }; }
   });
   const remainingMs = () => Math.floor(manifest.budgetPolicy.maxTotalMs - (clock.now() - started));
   const execute = async (jobs, label, accept) => {
@@ -50,17 +51,25 @@ const runSurveyExperiment = async (manifest, store, { signal, onTelemetry = () =
     if (executedTicks + ticks > manifest.budgetPolicy.maxTotalTicks) return { cancelled: true, reason: 'experiment-tick-budget' };
     executedTicks += ticks;
     currentExecution = await runSurveyJobs(jobs, { ...manifest.budgetPolicy, maxTotalMs: remainingMs(), signal, paused,
-      onControlReady: controls => { activeControls = controls; },
-      onControlState: state => { controlState = { ...controlState, ...state }; present(); },
+      onControlReady: controls => { activeControls = controls; if (pendingStep) { pendingStep = false; controls.step(); } },
+      onControlState: state => {
+        const receipt = state.stepReceipt && (state.stepReceipt.controlId === state.controlId || state.stepReceipt.status === 'timed-out') ? state.stepReceipt : null;
+        controlState = { ...state, stepStatus: receipt?.status ?? state.stepStatus ?? null,
+          reachedCheckpoint: receipt?.reachedCheckpoint ?? null, selected: receipt?.selected ?? state.selected ?? [] };
+        present();
+      },
       onTelemetry: (id, value) => { telemetry.set(id, value); onTelemetry(id, value, label); present(); }, onResult: accept });
     persistenceReceipts.push(...(currentExecution.persistence || []).map(receipt => ({ ...receipt, stage: label })));
     admissions.push(...(currentExecution.admissions || []).map(receipt => ({ ...receipt, stage: label })));
+    controlReceipts.push(...(currentExecution.controlReceipts || []).map(receipt => ({ ...receipt, stage: label })));
+    discardedControlReceipts += (currentExecution.discardedControlReceipts || 0) + Math.max(0, controlReceipts.length - 128);
+    if (controlReceipts.length > 128) controlReceipts.splice(0, controlReceipts.length - 128);
     activeControls = null; return currentExecution;
   };
   const incomplete = () => allJobs.filter(job => !results.some(result => result.trialId === job.trialId && result.episodeComplete)).map(job => ({ trialId: job.trialId, scenarioId: job.scenario.id,
     candidateId: job.candidate.id, status: results.find(result => result.trialId === job.trialId)?.status || 'not-run' }));
   const interrupted = reason => ({ ...publicState(), results, performance, attempts, verification, successQualification, status: 'interrupted', reason,
-    incompleteTrials: incomplete(), storage: store.snapshot(), persistenceReceipts, admissions, presentationErrors: currentExecution?.presentationErrors || [] });
+    incompleteTrials: incomplete(), storage: store.snapshot(), persistenceReceipts, admissions, controlReceipts, discardedControlReceipts, presentationErrors: currentExecution?.presentationErrors || [] });
   const retain = (result, job) => ({ ...result, ...result.provenance, sourceHash: hashSurveyValue({ core: result.provenance?.sourceHash || null, codeDigest: manifest.sourceManifest.codeDigest || null }), environmentSeed: job.scenario.environmentSeed, clusterId: 'world-' + job.scenario.environmentSeed,
     replayManifest: { schemaVersion: 1, scenario: job.scenario, candidate: job.candidate, sourceManifest: { engineCommit: manifest.sourceManifest.engineCommit,
       codeDigest: manifest.sourceManifest.codeDigest, assetHashes: manifest.sourceManifest.assetHashes, harnessVersion: manifest.sourceManifest.harnessVersion, manifestReference: 'manifest.json' },
@@ -148,7 +157,7 @@ const runSurveyExperiment = async (manifest, store, { signal, onTelemetry = () =
   }
   stage = 'complete'; present();
   return { schemaVersion: 1, manifest, results, telemetry: [...telemetry], performance, attempts, analysis, exemplars: { ...selected, selected: archiveSelections }, successQualification,
-    status: incomplete().length ? 'interrupted' : 'complete', incompleteTrials: incomplete(), verification, persistenceReceipts, admissions, storage: store.snapshot(), rankingsTrusted: false,
+    status: incomplete().length ? 'interrupted' : 'complete', incompleteTrials: incomplete(), verification, persistenceReceipts, admissions, controlReceipts, discardedControlReceipts, storage: store.snapshot(), rankingsTrusted: false,
     priorExecution: prior?.execution || null, execution: { elapsedMs: clock.now() - started, admittedTicks: executedTicks, memoryScope: 'Worker V8 old heap capped; reported RSS covers the whole Node process.' } };
 };
 export { runSurveyExperiment, SurveyExperimentIdentityError };
