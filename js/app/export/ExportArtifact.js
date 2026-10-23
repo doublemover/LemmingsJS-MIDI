@@ -65,19 +65,38 @@ export function prepareExportArtifact({ bytes, immutableSourceRef, formatVersion
   } catch (error) { if (budgetHeld) budgetAdapter?.release({ token: budgetToken, owner: 'export' }); throw error; }
   const artifactId = nextId('artifact'), expiresAt = clock() + lifetimeMs, byteLength = blob.size;
   let discarded = false, leases = 0, digestState = blob.size <= MAX_DIGEST_BYTES ? 'pending' : 'omitted-over-budget', digest = null;
+  let digestPending = digestState === 'pending', releaseAttempted = false, releaseError = null;
+  const retireBlob = () => {
+    if (!discarded || leases || digestPending) return;
+    blob = null;
+    if (budgetHeld) {
+      if (releaseAttempted) throw releaseError;
+      releaseAttempted = true; releaseError = new Error('Export reservation release is already retiring or failed.');
+      try {
+        const acknowledged = budgetAdapter.release({ token: budgetToken, owner: 'export' });
+        if (acknowledged === false || acknowledged && typeof acknowledged.then === 'function') {
+          if (acknowledged?.then) Promise.resolve(acknowledged).catch(() => {});
+          throw new Error('Export reservation release was not acknowledged synchronously.');
+        }
+      } catch (error) { releaseError = error; throw error; }
+      budgetHeld = false; releaseError = null;
+    }
+  };
   const discardListeners = new Set();
   const digestPromise = digestState === 'pending' ? (async () => {
-    const subtle = globalThis.crypto?.subtle;
-    if (!subtle) { digestState = 'unavailable'; return null; }
     try {
+      const subtle = globalThis.crypto?.subtle;
+      if (!subtle) { digestState = 'unavailable'; return null; }
       const bytes = await blob.arrayBuffer(), hash = await subtle.digest('SHA-256', bytes);
       digest = Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, '0')).join('');
       digestState = 'ready'; return digest;
     } catch { digestState = 'unavailable'; return null; }
+    finally { digestPending = false; try { retireBlob(); } catch { /* The retained release failure is exposed in artifact metadata. */ } }
   })() : Promise.resolve(null);
   const metadata = () => Object.freeze({ artifactId, immutableSourceRef, formatVersion, mediaType, suggestedFilename,
     byteLength, deliveryModes: Object.freeze(['anchor', 'file-handle']), digestState, sha256: digest,
-    coverageLossReportRef, expiresAt, retained: !discarded, activeLeases: leases });
+    coverageLossReportRef, expiresAt, retained: !discarded, activeLeases: leases,
+    budgetState: releaseError ? 'failed-or-unknown' : budgetHeld ? discarded ? 'waiting-for-leases-or-digest' : 'retained' : budgetAdapter ? 'released' : 'unbudgeted' });
   return Object.freeze({ artifactId, metadata, digest: () => digestPromise,
     onDiscard(callback) {
       if (discarded) { callback(); return () => {}; }
@@ -87,13 +106,11 @@ export function prepareExportArtifact({ bytes, immutableSourceRef, formatVersion
       if (discarded || clock() >= expiresAt) throw Object.assign(new Error('Prepared export has expired.'), { kind: 'artifact-expired' });
       leases++;
       let released = false;
-      return Object.freeze({ blob, release() { if (!released) { released = true; leases--; if (discarded && leases === 0) {
-        blob = null; if (budgetHeld) { budgetAdapter.release({ token: budgetToken, owner: 'export' }); budgetHeld = false; }
-      } } } });
+      return Object.freeze({ blob, release() { if (!released) { released = true; leases--; retireBlob(); } } });
     },
     discard() {
       if (!discarded) { discarded = true; for (const listener of discardListeners) { try { listener(); } catch { /* Retirement continues. */ } } discardListeners.clear(); }
-      if (!leases) { blob = null; if (budgetHeld) { budgetAdapter.release({ token: budgetToken, owner: 'export' }); budgetHeld = false; } }
+      retireBlob();
       return metadata();
     } });
 }

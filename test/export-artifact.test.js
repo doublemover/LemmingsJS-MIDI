@@ -39,15 +39,26 @@ describe('prepared export artifacts and delivery receipts', () => {
     }
   });
 
-  it('admits staging before allocation and retains its budget through a borrowed delivery', () => {
+  it('admits staging before allocation and retains its budget through a borrowed delivery', async () => {
     const budget = createResourceBudget({ limitBytes: 4096 });
     const artifact = prepare(new Uint8Array(1800), { budgetAdapter: budget });
     const lease = artifact.borrow();
     expect(budget.diagnostics()).to.include({ residentBytes: 1800, accountedBytes: 3600 });
     expect(() => prepare(new Uint8Array(300), { budgetAdapter: budget })).to.throw(ResourceBudgetError);
     artifact.discard(); expect(budget.diagnostics().accountedBytes).to.equal(3600);
-    lease.release(); expect(budget.diagnostics().accountedBytes).to.equal(0);
-    const retry = prepare(new Uint8Array(300), { budgetAdapter: budget }); retry.discard();
+    lease.release(); await artifact.digest(); expect(budget.diagnostics().accountedBytes).to.equal(0);
+    const retry = prepare(new Uint8Array(300), { budgetAdapter: budget }); retry.discard(); await retry.digest();
+  });
+  it('retains a discarded native digest until its actual byte read settles and keeps failed release accounting', async () => {
+    const budget = createResourceBudget(); let finish;
+    class DelayedBlob extends Blob { arrayBuffer() { return new Promise(resolve => { finish = () => super.arrayBuffer().then(resolve); }); } }
+    const artifact = prepare(new DelayedBlob(['owned source']), { budgetAdapter: budget }); artifact.discard();
+    expect(artifact.metadata().budgetState).to.equal('waiting-for-leases-or-digest'); expect(budget.diagnostics().accountedBytes).to.be.greaterThan(0);
+    await finish(); await artifact.digest(); expect(budget.diagnostics().accountedBytes).to.equal(0);
+    let attempts = 0;
+    const failed = prepare(Uint8Array.of(1), { budgetAdapter: { reserve() {}, release() { attempts++; return false; } } });
+    await failed.digest(); expect(() => failed.discard()).to.throw('not acknowledged');
+    expect(failed.metadata().budgetState).to.equal('failed-or-unknown'); expect(() => failed.discard()).to.throw('not acknowledged'); expect(attempts).to.equal(1);
   });
   it('reopens a bounded chunk source for retry and reports the failed write without restaging', async () => {
     let opens = 0;

@@ -1,8 +1,9 @@
 import { checksumProcgenRecovery } from '../procgen/workstation/ProcgenRecoveryChecksum.js';
 import { decodeGroundAssetSnapshot } from './GroundAssetDecode.js';
+import { canonicalDataText } from '../../core/CanonicalData.js';
 
 export const BACKGROUND_JOB_PROTOCOL = 1;
-export const BACKGROUND_JOB_KINDS = Object.freeze(['parse-json', 'encode-json', 'recovery-checksum', 'asset-hash', 'asset-decode']);
+export const BACKGROUND_JOB_KINDS = Object.freeze(['parse-json', 'encode-json', 'encode-canonical-json', 'recovery-checksum', 'asset-hash', 'asset-decode']);
 const MAX_BYTES = 64 * 1048576, MAX_NODES = 4000000;
 const problem = (code, message) => Object.assign(new Error(message), { code, name: 'BackgroundJobError' });
 const shared = value => typeof globalThis.SharedArrayBuffer === 'function' && (value instanceof globalThis.SharedArrayBuffer || value?.buffer instanceof globalThis.SharedArrayBuffer);
@@ -127,7 +128,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
   }
   const metadata = await inspectValue(input, options, { allowBinary: kind === 'recovery-checksum' });
   if (kind === 'recovery-checksum') return { value: await checksumProcgenRecovery(input, { signal, yieldTask: yieldControl }), inputBytes: metadata.bytes, nodes: metadata.nodes };
-  const value = JSON.stringify(input); guard(signal, current);
+  const value = kind === 'encode-canonical-json' ? canonicalDataText(input, { maxBytes, maxNodes }).text : JSON.stringify(input); guard(signal, current);
   if (typeof value !== 'string' || encodedLength(value) > maxBytes) throw problem('output-capacity', 'Encoded background result exceeds its byte bound.');
   return { value, inputBytes: metadata.bytes, nodes: metadata.nodes };
 }

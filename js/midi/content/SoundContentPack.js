@@ -1,4 +1,4 @@
-import { cloneData, freezeData, hashData, hashDataText } from '../../core/CanonicalData.js';
+import { canonicalDataText, cloneData, freezeData, hashData, hashDataText } from '../../core/CanonicalData.js';
 import { validateEngineDescriptor, validateInstrumentPatchV2 } from './InstrumentPatchV2.js';
 
 export const SOUND_CONTENT_SCHEMA = 'lemmings-sound-content/v1';
@@ -14,6 +14,7 @@ const assertContent = (condition, path, message) => { if (!condition) throw fail
 const kinds = ['engine-code', 'patch-recipe', 'sample-recording', 'demo-composition', 'derived-data'];
 const fileKinds = ['sample', 'impulse-response', 'wavetable', 'body-table', 'tuning', 'spectrum', 'generated-data'];
 const before = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+const preparedPacks = new WeakMap();
 
 const rights = (value, path, licenses) => {
   assertContent(value && kinds.includes(value.kind) && (value.creator == null || text(value.creator, 160)) && sourceUrl(value.sourceUrl) &&
@@ -39,7 +40,14 @@ export async function prepareSoundContentPack(raw, { engineDescriptors = [], sig
     assertContent(await hashDataText(license.text) === license.sha256, 'licenses.' + license.id, 'license snapshot hash mismatch'); licenses.set(license.sha256, license);
   }
   const files = new Map(), paths = new Set(); let totalBytes = 0;
+  const rightsDigests = new Map(), fileRights = new Map();
+  const rightsDigest = async value => {
+    const encoded = canonicalDataText(value, { maxBytes: 65536, maxNodes: 2048, domain: 'Sound rights' });
+    if (!rightsDigests.has(encoded.text)) rightsDigests.set(encoded.text, hashDataText(encoded.text));
+    return rightsDigests.get(encoded.text);
+  };
   for (const file of pack.files) {
+    signal?.throwIfAborted();
     assertContent(file && localPath(file.path) && !paths.has(file.path) && hash(file.sha256) && !files.has(file.sha256) && natural(file.bytes, 16 * 1048576) &&
       fileKinds.includes(file.kind) && !/\.(?:[cm]?js|wasm|html|svg)$/i.test(file.path) &&
       (['sample', 'impulse-response'].includes(file.kind) ? ['audio/wav', 'audio/x-wav'].includes(file.mediaType) : ['application/json', 'application/octet-stream'].includes(file.mediaType)) &&
@@ -48,6 +56,7 @@ export async function prepareSoundContentPack(raw, { engineDescriptors = [], sig
     assertContent(['sample-recording', 'derived-data'].includes(file.rights.kind), 'files.' + file.path, 'engine or recipe rights cannot stand in for recorded/derived asset rights');
     totalBytes += file.bytes; assertContent(totalBytes <= 256 * 1048576, 'files', 'declared source bytes exceed the pack limit');
     paths.add(file.path); files.set(file.sha256, file);
+    fileRights.set(file.sha256, await rightsDigest(file.rights));
   }
   const states = new Map();
   const visit = (value, depth = 0) => {
@@ -79,19 +88,21 @@ export async function prepareSoundContentPack(raw, { engineDescriptors = [], sig
     assertContent(samples.length <= 32 && samples.every(ref => hash(ref?.sha256) && natural(ref.bytes, 256 * 1048576) && entry.dependencies.includes(ref.sha256)), 'patches.' + identity, 'sample dependencies are incomplete');
     for (const sample of samples) if (files.has(sample.sha256)) assertContent(files.get(sample.sha256).bytes === sample.bytes, 'patches.' + identity, 'sample dependency byte count differs');
     patches.push({ identity, definitionHash: await hashData(patch, LIMITS), definition, archivedDefinition: patch, dependencies: entry.dependencies,
-      engineRequirement: requirement, rights: entry.rights, state, reason });
+      engineRequirement: requirement, rights: entry.rights, rightsHash: await rightsDigest(entry.rights), state, reason });
   }
   signal?.throwIfAborted();
   const normalized = { ...pack, files: pack.files.map(file => ({ ...file, parents: [...file.parents].sort() })).sort((a, b) => before(a.path, b.path)),
     licenses: [...pack.licenses].sort((a, b) => before(a.sha256, b.sha256)),
     patches: pack.patches.map(entry => ({ ...entry, dependencies: [...entry.dependencies].sort() })).sort((a, b) => before(a.definition.id + '@' + a.definition.revision, b.definition.id + '@' + b.definition.revision)) };
   patches.sort((a, b) => before(a.identity, b.identity));
-  return freezeData({ schema: SOUND_CONTENT_SCHEMA, contentHash: await hashData(normalized, LIMITS), pack: normalized, patches, totalBytes,
+  const encoded = canonicalDataText(normalized, LIMITS);
+  const result = freezeData({ schema: SOUND_CONTENT_SCHEMA, contentHash: await hashDataText(encoded.text), manifestBytes: encoded.bytes.byteLength, pack: normalized, patches, totalBytes,
     qualification: 'bounded-declarative-inventory-only' });
+  preparedPacks.set(result, { fileRights }); return result;
 }
 
 export function planSoundContentSelection(prepared, selection, { availableHashes = [], reviewRights = () => ({ decision: 'unknown' }) } = {}) {
-  assertContent(prepared?.schema === SOUND_CONTENT_SCHEMA && Array.isArray(selection) && selection.length > 0 && selection.length <= 256 &&
+  assertContent(preparedPacks.has(prepared) && Array.isArray(selection) && selection.length > 0 && selection.length <= 256 &&
     new Set(selection).size === selection.length && Array.isArray(availableHashes) && availableHashes.length <= 1024 && availableHashes.every(hash) &&
     typeof reviewRights === 'function', 'selection', 'invalid selection plan');
   const patches = selection.map(identity => { const patch = prepared.patches.find(entry => entry.identity === identity); assertContent(patch, 'selection', 'unknown patch revision'); return patch; });
@@ -103,12 +114,13 @@ export function planSoundContentSelection(prepared, selection, { availableHashes
   };
   for (const patch of patches) for (const dependency of patch.dependencies) add(dependency);
   const files = [...required].filter(value => byHash.has(value)).map(value => byHash.get(value)).sort((a, b) => a.sha256 < b.sha256 ? -1 : 1);
-  const credits = [...patches.map(patch => ({ subject: patch.identity, kind: 'patch-recipe', rights: patch.rights })),
-    ...files.map(file => ({ subject: file.sha256, kind: file.kind, rights: file.rights }))].map(entry => {
+  const credits = [...patches.map(patch => ({ subject: patch.identity, contentHash: patch.definitionHash, rightsHash: patch.rightsHash, kind: 'patch-recipe', rights: patch.rights })),
+    ...files.map(file => ({ subject: file.sha256, contentHash: file.sha256, rightsHash: preparedPacks.get(prepared).fileRights.get(file.sha256), kind: file.kind, rights: file.rights }))].map(entry => {
     let decision;
-    try { decision = reviewRights(entry); } catch { decision = { decision: 'unknown' }; }
+    try { decision = reviewRights(Object.freeze(entry)); } catch { decision = { decision: 'unknown' }; }
     const complete = entry.rights.creator && entry.rights.sourceUrl && entry.rights.licenseTextHash && entry.rights.licenseId !== 'NOASSERTION';
-    return { ...entry, redistribution: complete && entry.rights.declaredUse === 'redistributable' && decision?.decision === 'allow' && text(decision.receiptId, 256) ? 'allowed' :
+    return { ...entry, redistribution: complete && entry.rights.declaredUse === 'redistributable' && decision?.decision === 'allow' &&
+      decision.contentHash === entry.contentHash && decision.rightsHash === entry.rightsHash && text(decision.receiptId, 256) ? 'allowed' :
       decision?.decision === 'deny' || entry.rights.declaredUse === 'private' ? 'private' : 'unknown', reviewReceiptId: text(decision?.receiptId, 256) ? decision.receiptId : null };
   });
   const unavailableEngines = patches.filter(patch => patch.state !== 'definition-admitted').map(patch => ({ identity: patch.identity, state: patch.state, reason: patch.reason }));

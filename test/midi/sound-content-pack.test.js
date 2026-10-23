@@ -25,7 +25,7 @@ describe('canonical sound material and rights closure', () => {
       patches: [patch('derived', b), patch('private', secret)] };
   });
   const prepare = input => prepareSoundContentPack(input, { engineDescriptors: [engine] });
-  const reviewed = () => ({ decision: 'allow', receiptId: 'fixture-local-rights-review' });
+  const reviewed = entry => ({ decision: 'allow', receiptId: 'fixture-local-rights-review', contentHash: entry.contentHash, rightsHash: entry.rightsHash });
   it('selects only the declared patch and its ancestry while keeping credits and playability separate', async () => {
     const admitted = await prepare(pack), selected = planSoundContentSelection(admitted, ['derived@1'], { availableHashes: [a, b], reviewRights: reviewed });
     expect(selected.files.map(file => file.sha256)).to.deep.equal([a, b]); expect(selected.files.some(file => file.sha256 === secret)).to.equal(false);
