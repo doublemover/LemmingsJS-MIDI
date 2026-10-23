@@ -99,6 +99,7 @@ class UnpackFilePart extends BaseLogger {
    * @returns {BinaryReader}
    */
   #doUnpacking(fileReader) {
+    let bitReader;
     const endMeasure = this.startMeasure('doUnpacking', {
       track: 'UnpackFilePart',
       trackGroup: 'IO',
@@ -106,7 +107,7 @@ class UnpackFilePart extends BaseLogger {
       tooltipText: `doUnpacking ${fileReader.filename}`
     });
     try {
-      const bitReader = new BitReader(
+      bitReader = new BitReader(
         fileReader,
         this.#offset,
         this.#compressedSize,
@@ -152,6 +153,7 @@ class UnpackFilePart extends BaseLogger {
       // Create a BinaryReader over the decompressed buffer
       return outBuffer.getFileReader(`${fileReader.filename}[${this.#index}]`);
     } finally {
+      bitReader?.release();
       endMeasure();
     }
   }

@@ -11,14 +11,27 @@ export class RawAssetHandle {
     Object.freeze(this);
   }
 
-  createReader({ filename = this.#source.filename, foldername = this.#source.foldername } = {}) {
-    const reader = new BinaryReader(this.#source, 0, null, filename, foldername);
+  #getSource() {
+    if (!this.#source) throw new Error('Raw asset handle has been released');
+    return this.#source;
+  }
+
+  get released() { return this.#source === null; }
+
+  release() {
+    this.#source?.release();
+    this.#source = null;
+  }
+
+  createReader(options = {}) {
+    const source = this.#getSource(), { filename = source.filename, foldername = source.foldername } = options;
+    const reader = new BinaryReader(source, 0, null, filename, foldername);
     Object.defineProperty(reader, 'sourceIdentity', { value: this.identity });
     return reader;
   }
 
   copyBytes() {
-    return this.#source.copyBytes();
+    return this.#getSource().copyBytes();
   }
 
   decodeText(encoding = 'utf-8') {

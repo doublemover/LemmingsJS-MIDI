@@ -5,6 +5,87 @@ const openFixture = async page => {
   await page.goto('/__asset_fixture__');
 };
 
+test('raw byte leases cover real transport and warm IndexedDB readers through final release', async ({ page }) => {
+  let requests = 0;
+  await page.route('**/budget-real.bin', route => {
+    requests++;
+    return route.fulfill({ headers: { 'Cache-Control': 'max-age=3600' }, body: Buffer.alloc(256, 7) });
+  });
+  await openFixture(page);
+  const result = await page.evaluate(async () => {
+    const { FileProvider } = await import('/js/data/FileProvider.js');
+    const { createResourceBudget } = await import('/js/app/resources/ResourceBudget.js');
+    const budget = createResourceBudget({ limitBytes: 65536 });
+    const provider = new FileProvider('/', { budgetAdapter: budget, maxResponseBytes: 4096, localStorage: null, cacheProbeMs: 1000 });
+    const handle = await provider.resolveAsset('/budget-real.bin'); await provider.waitForCacheWrites();
+    const reader = handle.createReader(); handle.release(); provider.clearCache();
+    const pinned = budget.diagnostics().residentBytes; reader.release();
+    const cleared = budget.diagnostics().residentBytes;
+    const warm = await provider.loadBinary('budget-real.bin'); await provider.waitForCacheWrites();
+    const warmBytes = budget.diagnostics().residentBytes, value = warm.readByte();
+    const db = await provider._openIndexedDb();
+    const tx = db.transaction('meta', 'readwrite'), done = provider._idbTransactionDone(tx);
+    tx.objectStore('meta').put({ key: 'totalBytes', value: 999, accountingVersion: 1 }); await done;
+    await provider._pruneIndexedDb();
+    const total = provider.getCacheStats().indexedDbBytes;
+    provider.dispose(); warm.release();
+    return { pinned, cleared, warmBytes, value, total, final: budget.diagnostics().residentBytes, peak: budget.diagnostics().peakAccountedBytes };
+  });
+  expect(requests).toBe(1);
+  expect(result).toMatchObject({ pinned: 256, cleared: 0, warmBytes: 256, value: 7, total: 256, final: 0 });
+  expect(result.peak).toBeLessThanOrEqual(65536);
+});
+
+test('fallback admissions in separate tabs share the Web Lock and preserve owned UTF-16 cap', async ({ page, context }) => {
+  await openFixture(page);
+  const other = await context.newPage(); await openFixture(other);
+  await page.evaluate(() => globalThis.localStorage.setItem('user-session-fixture', 'keep'));
+  const write = (target, suffix) => target.evaluate(async suffix => {
+    const { FileProvider } = await import('/js/data/FileProvider.js');
+    const provider = new FileProvider('/', { indexedDB: null, cacheProbeMs: 1000 });
+    const admitted = await provider._storeInLocalStorageCoordinated(`/parallel-${suffix}`, { type: 'text', data: suffix.repeat(1_100_000) });
+    const bytes = provider._getLocalStorageUsage(); provider.dispose();
+    return { admitted, bytes };
+  }, suffix);
+  const results = await Promise.all([write(page, 'a'), write(other, 'b')]);
+  const usage = await page.evaluate(() => {
+    let bytes = 0;
+    for (let i = 0; i < globalThis.localStorage.length; i++) {
+      const key = globalThis.localStorage.key(i);
+      if (key.startsWith('lem-cache:')) bytes += (key.length + globalThis.localStorage.getItem(key).length) * 2;
+    }
+    return { bytes, session: globalThis.localStorage.getItem('user-session-fixture') };
+  });
+  expect(results.some(result => result.admitted)).toBe(true);
+  expect(usage.bytes).toBeLessThanOrEqual(4 * 1024 * 1024); expect(usage.session).toBe('keep');
+  await other.close();
+});
+
+test('real terrain decoding retires private compressed cursors before cache eviction', async ({ page }) => {
+  await page.route('**/lemmings/*.DAT', async route => {
+    const response = await route.fetch();
+    return route.fulfill({ response, headers: { ...response.headers(), 'cache-control': 'max-age=3600' } });
+  });
+  await openFixture(page);
+  const result = await page.evaluate(async () => {
+    const { FileProvider } = await import('/js/data/FileProvider.js');
+    const { EditorAssetCache } = await import('/js/editor/EditorAssetCache.js');
+    const { createResourceBudget } = await import('/js/app/resources/ResourceBudget.js');
+    const budget = createResourceBudget({ limitBytes: 32 * 1024 * 1024 });
+    const provider = new FileProvider('/', { budgetAdapter: budget, maxResponseBytes: 2 * 1024 * 1024, localStorage: null, cacheProbeMs: 1000 });
+    const cache = new EditorAssetCache();
+    const assets = await cache.loadStyleAssets('dirt', { path: 'lemmings' }, provider);
+    await provider.waitForCacheWrites();
+    const warm = provider.getRawAssetStats();
+    provider.clearCache(); const retired = budget.diagnostics().residentBytes;
+    const decoded = assets.terrainImages.some(image => image?.frames?.length);
+    cache.clear(); provider.dispose();
+    return { warm, retired, decoded };
+  });
+  expect(result.decoded).toBe(true); expect(result.warm.residentBytes).toBeGreaterThan(0);
+  expect(result.warm.pinnedBytes).toBe(0); expect(result.retired).toBe(0);
+});
+
 test('HTTP conditional 304 updates metadata without a payload rewrite and changed bytes preserve old handles', async ({ page }) => {
   let revision = 1, failure = false;
   const observed = [];

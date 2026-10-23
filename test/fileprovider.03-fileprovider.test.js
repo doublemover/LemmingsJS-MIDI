@@ -205,7 +205,7 @@ describe('FileProvider', function () {
     origIndexedDb = global.indexedDB;
     setDependency('BinaryReader', MockBinaryReader);
     setDependency('LogHandler', MockLogHandler);
-    provider = new FileProvider(rootPath);
+    provider = new FileProvider(rootPath, { cacheLockManager: { request: async (name, options, callback) => callback({ name }) } });
     global.localStorage = new (class {
       constructor() { this.store = new Map(); }
       getItem(k) { return this.store.has(k) ? this.store.get(k) : null; }
@@ -292,7 +292,7 @@ describe('FileProvider', function () {
   });
 
   it('_hashBuffer rejects when web crypto is missing', async function () {
-    provider = new FileProvider(rootPath);
+    provider = new FileProvider(rootPath, { cacheLockManager: { request: async (name, options, callback) => callback({ name }) } });
     const buf = Uint8Array.from([1,2,3]).buffer;
     const orig = global.crypto;
     delete global.crypto;
@@ -301,7 +301,7 @@ describe('FileProvider', function () {
   });
 
   it('_tryHashBuffer returns null when web crypto is missing', async function () {
-    provider = new FileProvider(rootPath);
+    provider = new FileProvider(rootPath, { cacheLockManager: { request: async (name, options, callback) => callback({ name }) } });
     const buf = Uint8Array.from([1, 2, 3]).buffer;
     const orig = global.crypto;
     delete global.crypto;
@@ -334,7 +334,7 @@ describe('FileProvider', function () {
   });
 
   it('base64 conversion roundtrips', function () {
-    provider = new FileProvider(rootPath);
+    provider = new FileProvider(rootPath, { cacheLockManager: { request: async (name, options, callback) => callback({ name }) } });
     const buf = Uint8Array.from([65,66,67]).buffer;
     const b64 = provider._arrayBufferToBase64(buf);
     const out = provider._base64ToArrayBuffer(b64);

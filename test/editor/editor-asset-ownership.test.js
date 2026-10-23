@@ -90,4 +90,25 @@ describe('EditorAssetCache candidate ownership', () => {
     assert.equal(attempts, 0); assert.equal(requests.length, 2);
     cache.clear();
   });
+
+  it('releases verified handles and their temporary readers after decoding', async () => {
+    const { cache, decodes } = fixture(); let handlesReleased = 0, readersReleased = 0;
+    const provider = { async resolveAsset() {
+      return { identity: { contentHash: 'a'.repeat(64) }, release() { handlesReleased++; },
+        createReader() { return { release() { readersReleased++; } }; } };
+    } };
+    await cache.loadStyleAssets('dirt', { path: 'lemmings' }, provider);
+    assert.equal(decodes(), 1); assert.equal(handlesReleased, 2); assert.equal(readersReleased, 2);
+    cache.clear();
+  });
+
+  it('releases readers arriving after their canceled candidate has retired', async () => {
+    const { cache, provider, requests, decodes } = fixture(), controller = new AbortController();
+    const pending = cache.loadStyleAssets('dirt', { path: 'lemmings' }, provider, { signal: controller.signal });
+    await settle(); controller.abort(); await assert.rejects(pending, error => error.kind === 'cancelled');
+    let releases = 0;
+    for (const request of requests) request.resolve({ release() { releases++; } });
+    await settle();
+    assert.equal(releases, 2); assert.equal(decodes(), 0); cache.clear();
+  });
 });

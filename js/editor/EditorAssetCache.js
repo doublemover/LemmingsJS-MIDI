@@ -102,16 +102,25 @@ class EditorAssetCache {
 
     const assertLive = () => { if (options.signal?.aborted) throw new ResourceLoadError('cancelled', resolvedStyle); };
     let groundReader, resourceSources = null;
+    const rawReaders = new Set();
+    let readersRetired = false;
+    const retainReader = reader => {
+      if (readersRetired) { reader.release?.(); throw new ResourceLoadError('cancelled', resolvedStyle); }
+      rawReaders.add(reader); return reader;
+    };
     const loadBinary = async filename => {
       const pin = config.resourcePins?.[filename], root = pin?.root || config.path;
       if (pin && (typeof pin.root !== 'string' || !pin.root || !/^[a-f0-9]{64}$/i.test(pin.sha256 || ''))) throw new ResourceLoadError('integrity', filename);
       assertLive();
       if (typeof fileProvider.resolveAsset === 'function' && (pin || typeof fileProvider.canVerifyContent !== 'function' || fileProvider.canVerifyContent())) {
         const handle = await fileProvider.resolveAsset({ path: root, filename }, { signal: options.signal, expectedHash: pin?.sha256, operationId: options.operationId });
-        assertLive();
-        return { reader: handle.createReader({ filename, foldername: root }), source: Object.freeze({ root, filename, sha256: handle.identity.contentHash }) };
+        try {
+          assertLive();
+          return { reader: retainReader(handle.createReader({ filename, foldername: root })), source: Object.freeze({ root, filename, sha256: handle.identity.contentHash }) };
+        } finally { handle.release?.(); }
       }
       const reader = await fileProvider.loadBinary(root, filename, { signal: options.signal, expectedHash: pin?.sha256, operationId: options.operationId });
+      retainReader(reader);
       assertLive();
       if (pin) {
         if (!globalThis.crypto?.subtle || !reader?.copyBytes) throw new ResourceLoadError('unavailable', filename);
@@ -125,13 +134,21 @@ class EditorAssetCache {
     if (resolvedStyle === 'neon-cabaret') {
       groundReader = createNeonCabaretGroundSet();
     } else {
-      await loadSteelSprites();
-      assertLive();
-      const [vgagr, ground] = await Promise.all([loadBinary(`VGAGR${groundSet}.DAT`), loadBinary(`GROUND${groundSet}O.DAT`)]);
-      assertLive();
-      const container = new this.FileContainer(vgagr.reader);
-      groundReader = new this.GroundReader(ground.reader, container.getPart(0), container.getPart(1));
-      resourceSources = Object.freeze({ vgagr: vgagr.source, ground: ground.source });
+      let terrainReader, objectReader;
+      try {
+        await loadSteelSprites();
+        assertLive();
+        const [vgagr, ground] = await Promise.all([loadBinary(`VGAGR${groundSet}.DAT`), loadBinary(`GROUND${groundSet}O.DAT`)]);
+        assertLive();
+        const container = new this.FileContainer(vgagr.reader);
+        terrainReader = container.getPart(0); objectReader = container.getPart(1);
+        groundReader = new this.GroundReader(ground.reader, terrainReader, objectReader);
+        resourceSources = Object.freeze({ vgagr: vgagr.source, ground: ground.source });
+      } finally {
+        readersRetired = true;
+        for (const reader of rawReaders) reader.release?.();
+        terrainReader?.release?.(); objectReader?.release?.();
+      }
     }
 
     assertLive();

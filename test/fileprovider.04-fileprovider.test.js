@@ -205,7 +205,7 @@ describe('FileProvider', function () {
     origIndexedDb = global.indexedDB;
     setDependency('BinaryReader', MockBinaryReader);
     setDependency('LogHandler', MockLogHandler);
-    provider = new FileProvider(rootPath);
+    provider = new FileProvider(rootPath, { cacheLockManager: { request: async (name, options, callback) => callback({ name }) } });
     global.localStorage = new (class {
       constructor() { this.store = new Map(); }
       getItem(k) { return this.store.has(k) ? this.store.get(k) : null; }
@@ -264,7 +264,7 @@ describe('FileProvider', function () {
   it('skips indexedDB entries with mismatched types or missing payloads', async function () {
     const idb = createIndexedDb();
     global.indexedDB = idb;
-    provider = new FileProvider(rootPath);
+    provider = new FileProvider(rootPath, { cacheLockManager: { request: async (name, options, callback) => callback({ name }) } });
     await provider._openIndexedDb();
     const entries = idb._stores.get('entries');
     const payloads = idb._stores.get('payloads');
@@ -284,7 +284,7 @@ describe('FileProvider', function () {
   it('loads text payloads from indexedDB', async function () {
     const idb = createIndexedDb();
     global.indexedDB = idb;
-    provider = new FileProvider(rootPath);
+    provider = new FileProvider(rootPath, { cacheLockManager: { request: async (name, options, callback) => callback({ name }) } });
     await provider._openIndexedDb();
     const entries = idb._stores.get('entries');
     const payloads = idb._stores.get('payloads');
@@ -362,7 +362,7 @@ describe('FileProvider', function () {
   it('uses indexedDB cache when available', async function () {
     const idb = createIndexedDb();
     global.indexedDB = idb;
-    provider = new FileProvider(rootPath);
+    provider = new FileProvider(rootPath, { cacheLockManager: { request: async (name, options, callback) => callback({ name }) } });
     const url = provider._buildUrl('data', 'cached.bin');
     const buffer = new ArrayBuffer(4);
     await provider._storeInIndexedDb(url, { type: 'binary', data: buffer });
@@ -375,7 +375,7 @@ describe('FileProvider', function () {
 
   it('disables indexedDB on open errors', async function () {
     global.indexedDB = createIndexedDb({ failOpen: true });
-    provider = new FileProvider(rootPath);
+    provider = new FileProvider(rootPath, { cacheLockManager: { request: async (name, options, callback) => callback({ name }) } });
     const db = await provider._openIndexedDb();
     assert.strictEqual(db, null);
     assert.strictEqual(provider._idbDisabled, true);
@@ -401,7 +401,7 @@ describe('FileProvider', function () {
   it('prunes indexedDB entries when over the limit', async function () {
     const idb = createIndexedDb();
     global.indexedDB = idb;
-    provider = new FileProvider(rootPath);
+    provider = new FileProvider(rootPath, { cacheLockManager: { request: async (name, options, callback) => callback({ name }) } });
     await provider._openIndexedDb();
     const entries = idb._stores.get('entries');
     const payloads = idb._stores.get('payloads');

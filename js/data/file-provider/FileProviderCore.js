@@ -18,6 +18,8 @@ import { fileProviderCacheMethods } from './FileProviderCache.js';
 import { fileProviderStorageMethods } from './FileProviderStorage.js';
 import { fileProviderFetchMethods } from './FileProviderFetch.js';
 import { fileProviderHashMethods } from './FileProviderHash.js';
+import { fileProviderBudgetMethods } from './FileProviderBudget.js';
+let nextProviderOwner = 0;
 class FileProvider extends BaseLogger {
   constructor(rootPath, options = {}) {
     super();
@@ -28,6 +30,13 @@ class FileProvider extends BaseLogger {
 
     /** Cached immutable acquisition promises. Binary and text use distinct keys. */
     this._cache = new Map();
+    this._cacheSources = new Map();
+    this._sourceRecords = new WeakMap();
+    this._budgetAdapter = options.budgetAdapter || null;
+    if (this._budgetAdapter && (typeof this._budgetAdapter.reserve !== 'function' || typeof this._budgetAdapter.release !== 'function')) throw new TypeError('A synchronous resource budget adapter is required');
+    this._budgetOwner = options.budgetOwner || `asset-provider-${++nextProviderOwner}`;
+    this._rawByteLeases = new Set();
+    this._unregisterBudgetEvictor = this._budgetAdapter?.registerEvictor?.(this._budgetOwner, request => this._evictRawCache(request));
     this._cacheEpoch = 0;
     this._requestVersions = new Map();
     this._disposed = false;
@@ -41,6 +50,7 @@ class FileProvider extends BaseLogger {
     this._consumerCounts = new Map();
     this._acquisitionRecords = new WeakMap();
     this._contentHashes = new WeakMap();
+    this._failedHashPromises = new WeakSet();
     this._acquisitions = new Set();
     this._nextRequestId = 0;
     this._cacheTransactions = new Set();
@@ -60,6 +70,8 @@ class FileProvider extends BaseLogger {
     this._storage = Object.hasOwn(options, 'localStorage')
       ? options.localStorage
       : undefined;
+    this._cacheLockManager = Object.hasOwn(options, 'cacheLockManager') ? options.cacheLockManager :
+      (typeof navigator !== 'undefined' ? navigator.locks : null);
     this._indexedDB = Object.hasOwn(options, 'indexedDB')
       ? options.indexedDB
       : (typeof globalThis !== 'undefined' ? globalThis.indexedDB : null);
@@ -88,6 +100,7 @@ for (const methods of [
   fileProviderCacheMethods,
   fileProviderStorageMethods,
   fileProviderFetchMethods,
+  fileProviderBudgetMethods,
   fileProviderHashMethods
 ]) {
   Object.defineProperties(FileProvider.prototype, Object.getOwnPropertyDescriptors(methods));

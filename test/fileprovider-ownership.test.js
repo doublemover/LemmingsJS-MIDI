@@ -413,7 +413,7 @@ describe('FileProvider request and byte ownership', () => {
     const records = new Map([['asset', entry], ['other', { url: 'other', size: 30_000_000, lastAccess: 2 }],
       ['third', { url: 'third', size: 30_000_000, lastAccess: 3 }]]);
     const payloads = new Map([...records].map(([key]) => [key, { url: key }]));
-    const metadata = new Map([['totalBytes', { key: 'totalBytes', value: 90_000_000 }]]);
+    const metadata = new Map([['totalBytes', { key: 'totalBytes', accountingVersion: 2, value: 90_000_000 }]]);
     const request = value => {
       const result = { result: undefined };
       queueMicrotask(() => { result.result = value; result.onsuccess?.(); });

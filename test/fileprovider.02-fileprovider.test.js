@@ -205,7 +205,7 @@ describe('FileProvider', function () {
     origIndexedDb = global.indexedDB;
     setDependency('BinaryReader', MockBinaryReader);
     setDependency('LogHandler', MockLogHandler);
-    provider = new FileProvider(rootPath);
+    provider = new FileProvider(rootPath, { cacheLockManager: { request: async (name, options, callback) => callback({ name }) } });
     global.localStorage = new (class {
       constructor() { this.store = new Map(); }
       getItem(k) { return this.store.has(k) ? this.store.get(k) : null; }

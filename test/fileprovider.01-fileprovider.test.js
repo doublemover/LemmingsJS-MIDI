@@ -205,7 +205,7 @@ describe('FileProvider', function () {
     origIndexedDb = global.indexedDB;
     setDependency('BinaryReader', MockBinaryReader);
     setDependency('LogHandler', MockLogHandler);
-    provider = new FileProvider(rootPath);
+    provider = new FileProvider(rootPath, { cacheLockManager: { request: async (name, options, callback) => callback({ name }) } });
     global.localStorage = new (class {
       constructor() { this.store = new Map(); }
       getItem(k) { return this.store.has(k) ? this.store.get(k) : null; }
@@ -359,7 +359,7 @@ describe('FileProvider', function () {
     assert.ok(stored, 'entry stored');
 
     // new provider simulating page reload
-    provider = new FileProvider(rootPath);
+    provider = new FileProvider(rootPath, { cacheLockManager: { request: async (name, options, callback) => callback({ name }) } });
     const p2 = provider.loadString(url);
     assert.strictEqual(requests.length, 1, 'no new XHR');
     const result2 = await p2;
@@ -367,7 +367,7 @@ describe('FileProvider', function () {
   });
 
   it('loadBinary uses cached binary entries from localStorage', async function () {
-    provider = new FileProvider(rootPath);
+    provider = new FileProvider(rootPath, { cacheLockManager: { request: async (name, options, callback) => callback({ name }) } });
     const data = Uint8Array.from([1, 2, 3]).buffer;
     const url = makeUrl('data/file.bin');
     setBinaryCache(url, data);

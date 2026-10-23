@@ -130,6 +130,51 @@ usable. The final idempotent `release()` performs retirement. New leases cannot
 be acquired after retirement is requested. ProcGen runtime teardown releases the
 transferred lease even if another cleanup step fails.
 
+### Raw storage reservations
+
+Pass `{budgetAdapter, budgetOwner}` to `FileProvider`, or call
+`setBudgetAdapter(sharedBudget)` before the first binary acquisition. The adapter
+uses the synchronous ResourceBudget `reserve`, `release` and optional
+`registerEvictor` methods. Owners must be unique when supplied explicitly.
+
+Binary XHR reserves the configured response ceiling before construction/send,
+then shrinks its reservation to the completed byte count. Content-Length does
+not reduce this reservation. A denied request fails with `kind: 'budget'` before
+sending. This conservative ceiling can refuse a small response near the limit;
+callers may select a smaller known response ceiling for their asset profile.
+
+One raw allocation has one stable budget token. `BinaryReader.release()` and
+`RawAssetHandle.release()` are idempotent; each fork keeps its own reference to
+the same allocation. Released readers/handles reject further reads or forks.
+Cache eviction, replacement, clear and provider disposal remove cache references;
+active readers and older pinned generations remain readable and charged until
+their last reference releases. Editor preparation releases temporary handles,
+compressed readers and unpacked readers after synchronous decoding, including
+late sibling completions. Decompression releases BitReader's private source
+fork on success and failure. FinalizationRegistry is a fallback for legacy callers;
+prompt recovery of budget capacity requires explicit release.
+
+Hash copies reserve twice the logical byte count before copying (including a
+digest-input estimate). IndexedDB binary reads reserve declared payload bytes
+before requesting the payload, writes reserve their structured-clone estimate,
+and reconciliation scans payload keys without cloning each body. Binary
+localStorage decoding and serialization also reserve their transient expansion.
+An asynchronous hash or persistence attempt retains its bytes until the actual
+attempt settles, even when optional bookkeeping has already timed out. The
+budget therefore continues to show unresolved native work after cancellation.
+
+`getRawAssetStats()` reports storage count and resident, pinned and cache bytes.
+These include reserved response ceilings and transient estimates while work is
+pending. Browser XHR, crypto and IndexedDB internal copies remain estimates;
+XHR does not expose chunk admission, and native buffering may overshoot a limit
+before a progress callback observes it. These reservations are not a measured
+browser heap ceiling. In particular,
+malformed IndexedDB records can only be validated after the browser has cloned
+them. Caller-owned `copyBytes`/`data`/`ready` copies, primitive text lifetimes and
+decoded mutable art are outside this raw-storage accounting. This adapter does
+not claim pre-admission coverage for decoder expansion or the combined
+1024-lane/audio/recovery benchmark.
+
 ## Disk budgets and recovery
 
 IndexedDB admits at most 50 MiB of raw binary bytes plus UTF-8 encoded text bytes.
@@ -156,6 +201,13 @@ Recency is coarse insertion/replacement order. Scans happen on admission/evictio
 not on reads. Only `lem-cache:` keys may be evicted. No user session or unrelated
 application key is removed.
 
+Production fallback writes take the shared exclusive `lem-cache:admission` Web
+Lock with `ifAvailable: true`. Admission, eviction and write occur synchronously
+inside that lock, so participating tabs cannot race the cap. A busy/unavailable
+lock or expired grant skips the optional write; it never delays required bytes.
+Existing fallback records remain readable on browsers without Web Locks. The
+private synchronous store helper requires its caller to hold the admission lock.
+
 ## Focused evidence
 
 `test/fileprovider-revalidation.test.js` covers conditional 304, validator
@@ -165,10 +217,15 @@ verification cancellation, independent cursors and windows, transfer copies,
 pinned refresh failure, competing refreshes, probe isolation, no-store, hash
 reuse and corrupted disk data. Existing provider fixtures cover cache admission,
 stale metadata touches, delayed prune totals and transaction settlement.
+`test/fileprovider-budget.test.js` checks denial before XHR, shared fork charges,
+old/current generations, explicit release, 304 refresh pins, no-store ownership,
+digest completion after disposal, cache retirement and late/busy lock grants.
 
 `e2e/asset-resilience.spec.js` serves the real absent seasonal resource over HTTP,
 compares fallback terrain and steel to an explicitly pinned source, checks denied,
 rate-limit/server responses, and exercises real IndexedDB/localStorage warm reads,
-cross-provider writes, injected quota refusal and reconciliation. Its annotations
+cross-provider writes, injected quota refusal and reconciliation, real raw-budget
+warm reads and simultaneous fallback writes from separate tabs. It also verifies
+that real terrain decoding leaves no pinned compressed cursors. Annotations
 report warm operation counts and maximum observed read duration. These are small
 browser fixtures, not a full instrument startup or 1/8/1024-lane memory benchmark.

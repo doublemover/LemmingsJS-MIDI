@@ -19,6 +19,7 @@ const fileProviderCacheMethods = {
     this._cacheEpoch++;
     for (const retire of this._retireCacheWrites) retire();
     this._cache.clear();
+    this._clearRawCacheSources();
     this._refreshes.clear();
     this._cacheTouchTimes.clear();
     for (const tx of [...this._cacheTransactions]) { try { tx.abort?.(); } catch { /* Already committed. */ } }
@@ -45,6 +46,9 @@ const fileProviderCacheMethods = {
     for (const queued of [...this._requestQueue]) queued.abort();
     for (const record of this._acquisitions) record.controller.abort();
     this._cache.clear();
+    this._clearRawCacheSources();
+    this._unregisterBudgetEvictor?.();
+    this._unregisterBudgetEvictor = null;
     this._validationPromises.clear();
     this._refreshes.clear();
     this.close().catch(() => {});
@@ -81,7 +85,7 @@ const fileProviderCacheMethods = {
     if (this._disposed || ownership.epoch != null && ownership.epoch !== this._cacheEpoch || ownership.owner?.controller.signal.aborted ||
         ownership.owner && this._requestVersions.get(ownership.owner.key) !== ownership.owner.version) return;
     if (!stored) {
-      this._storeInLocalStorage(url, entry);
+      await this._storeInLocalStorageCoordinated(url, entry, ownership);
     }
   },
 
@@ -124,7 +128,11 @@ const fileProviderCacheMethods = {
     const epoch = this._cacheEpoch, version = this._requestVersions.get(key);
     if (value != null) {
       if (this._disposed) return;
-      try { await this._loadResource(type, url, '', { cachePolicy: 'reload', validation: { value, entry } }); }
+      const ownedValue = type === 'binary' ? this._forkBinaryReader(value, url, '') : value;
+      try {
+        const reader = await this._loadResource(type, url, '', { cachePolicy: 'reload', validation: { value: ownedValue, entry, ownsValue: type === 'binary' } });
+        if (type === 'binary') reader.release?.();
+      }
       catch (error) { this.log.log('cache update error', { kind: error?.kind || 'unavailable', status: error?.status ?? null }); }
       return;
     }
