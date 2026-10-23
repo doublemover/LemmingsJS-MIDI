@@ -9,6 +9,7 @@ const CHECKPOINT_COMPONENT_CODECS = Object.freeze({ worldGraph: 2, physicalIdent
   terrainAssignments: 1, terrainGrowth: 1, presentationScenery: 1 });
 const validateCheckpointCodecs = saved => {
   if (saved.schema != null && saved.schema !== 'lemmings-procgen-checkpoint' || saved.numericEncoding != null && saved.numericEncoding !== 'typed-f64-sentinels-v2') throw new Error('Unsupported checkpoint schema or numeric encoding.');
+  if (saved.physicsAlgorithms != null && ![1, 2].includes(saved.physicsAlgorithms.stallCascade)) throw new Error('Unsupported checkpoint physical policy.');
   if (saved.componentCodecs != null && (Object.keys(saved.componentCodecs).length !== Object.keys(CHECKPOINT_COMPONENT_CODECS).length ||
       Object.entries(CHECKPOINT_COMPONENT_CODECS).some(([key, version]) => saved.componentCodecs[key] !== version))) throw new Error('Unsupported checkpoint component codec.');
 };
@@ -119,6 +120,7 @@ const captureProcgenCheckpoint = world => {
   return { schema: 'lemmings-procgen-checkpoint', version: VERSION, generator: 'procgen-workstation-1',
     componentCodecs: { ...CHECKPOINT_COMPONENT_CODECS }, numericEncoding: 'typed-f64-sentinels-v2', laneCount: world.laneCount, laneHeight: world.laneHeight,
     seed: world.seed, assets: assetIdentity(world), graph: createGraph(world),
+    physicsAlgorithms: { stallCascade: world.stall.settings.cascadeDecisionVersion ?? 1 },
     terrainAssignments: world.terrain?.exportAssignments?.() || null,
     terrainSettings: (world.terrain?.themes || [{ terrain: world.terrain }]).map(({ terrain }) => terrain ? { workstation: terrain.workstation, hazardSpacing: terrain.hazardSpacing, laneHeight: terrain.height, sharedSpanBudget: terrain.sharedSpanBudget } : null),
     growth: world.terrainGrowth?.exportState?.() || null, scenery: world.scenery?.snapshot?.() || null,
@@ -255,6 +257,9 @@ function restoreProcgenCheckpoint(world, saved) {
     })), entries: entry.entries?.map(([k, v]) => [decode(k), decode(v)]) };
   });
   const activityTicks = prepared.find(item => item.entry.name === 'world')?.props.terrainActivityTicks;
+  const cascadeVersion = prepared.find(item => item.entry.name === 'stall')?.props.settings?.cascadeDecisionVersion ?? 1;
+  if (![1, 2].includes(cascadeVersion) || cascadeVersion !== (saved.physicsAlgorithms?.stallCascade ?? 1))
+    throw new Error('Checkpoint physical policy identity does not match its state.');
   if (!(activityTicks instanceof Float64Array) || activityTicks.length !== saved.laneCount ||
       Array.from(activityTicks).some(value => value !== -Infinity && (!Number.isSafeInteger(value) || value < 0 || value > worldProps.tickIndex)))
     throw new Error('Invalid terrain activity tick in checkpoint.');

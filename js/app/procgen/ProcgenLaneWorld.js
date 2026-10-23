@@ -179,6 +179,7 @@ class ProcgenLaneWorld {
     actor.laneIndex = lane; actor.spawnLaneIndex = lane;
     actor.spawnTick = this.tickIndex;
     actor.spawnOrdinal = this.stall.lanes[lane].spawned;
+    actor.proceduralSeed = deriveSeed(this.laneSeeds[lane], `procgen:actor:${actor.spawnOrdinal}`);
     actor.scoutAbilities = this.population.scoutAbilities(this.laneSeeds[lane], actor.spawnOrdinal); actor.scout = !!actor.scoutAbilities;
     actor.spawnPhaseTicks = this._spawnPhaseForLane(lane);
     actor.lastProgressTick = this.tickIndex;

@@ -78,6 +78,7 @@ const projectProcgenPhysicsCheckpoint = saved => {
       ...(owner.entries ? { entries: owner.entries.map(pair => pair.map(slot)) } : {}) }));
   return { schema: 'lemmings-procgen-physics-state', version: 2, numericEncoding: 'typed-f64-sentinels-v2',
     generator: saved.generator, seed: saved.seed, laneCount: saved.laneCount, laneHeight: saved.laneHeight, assets: saved.assets,
+    physicsAlgorithms: saved.physicsAlgorithms ?? { stallCascade: 1 },
     graph: { nodes: projected, owners }, terrainAssignments: saved.terrainAssignments, terrainSettings: saved.terrainSettings,
     growth: saved.growth, physicalIdentity: saved.physicalIdentity,
     clock: { speedFactor: saved.clock.speedFactor, simulationTimeMs: saved.clock.simulationTimeMs } };

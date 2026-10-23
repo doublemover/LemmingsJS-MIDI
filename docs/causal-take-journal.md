@@ -227,3 +227,13 @@ separate from glyph limits. An unresolved role join is reported as unavailable,
 never silently treated as a role mismatch. Immediate grouped outcomes remain
 distinct from later evidence outside the inspected window. Continuation cursors
 are bound to take revision, source range, axis, filters and aggregation settings.
+
+New physical worlds use stall-cascade decision policy 2. Each actor has a keyed
+procedural seed derived from its lane seed and lane-local birth ordinal. Cascade
+spacing uses that identity while causal ownership retains lifetime actor IDs.
+Checkpoint state, checkpoint policy metadata and take source versions pin the
+decision policy; existing policy-1 checkpoint queues retain their original times
+and versioned continuation. Seed replay starts policy 2 and is not a claim of
+byte-identical continuation of an older policy. The source audit found the cascade
+modulo as the lifetime-ID-dependent procedural choice; lane policy exploration
+already uses birth lane/ordinal, and other actor-ID uses retain ownership/order.

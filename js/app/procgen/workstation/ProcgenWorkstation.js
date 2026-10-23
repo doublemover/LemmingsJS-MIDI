@@ -562,6 +562,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       const physical = physicalPlayback.engine.snapshot(), timeline = physicalScoreClock.snapshot();
       const takeId = createProcgenDocumentId(window.crypto).replace(/^doc:/, 'take:');
       const sourceVersions = { generator: 'procgen-workstation-1', worldCheckpoint: capturedWorld.version,
+        stallCascade: capturedWorld.physicsAlgorithms.stallCascade,
         physicalBatch: 1, physicalMusic: 1, project: project.procgen.version,
         numericCanonicalization: 'finite-f64-minus-zero-v1', mappingRevision: project.procgen.physicalGraph.revision };
       const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget });
