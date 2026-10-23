@@ -156,12 +156,29 @@ const disposeProcgenBootListeners = () => {
 
 const installProcgenBootListeners = () => {
   disposeProcgenBootListeners();
+  const reportStartupFailure = error => {
+    startupBlocked = error;
+    const status = document.getElementById('procgenRunStatus');
+    if (status) status.textContent = `Could not open startup intent: ${error.message}`;
+    if (!status?.parentNode || typeof document.createElement !== 'function') return;
+    document.getElementById('procgenStartupFresh')?.remove();
+    const fresh = document.createElement('button'); fresh.id = 'procgenStartupFresh'; fresh.type = 'button'; fresh.textContent = 'Start fresh';
+    fresh.title = 'Open a new session with default settings.';
+    addProcgenBootListener(fresh, 'click', () => {
+      const target = new URL(window.location.href); target.search = ''; target.hash = ''; target.username = ''; target.password = '';
+      target.searchParams.set('startup', 'fresh');
+      if (new URLSearchParams(window.location.search).has('e2e')) target.searchParams.set('e2e', '1');
+      window.location.assign(target.href);
+    });
+    status.parentNode.insertBefore(fresh, status.nextSibling);
+  };
   const boot = async () => {
     const controller = new AbortController(); startupController?.abort(); startupController = controller;
     startupPending = true; startupBlocked = null; let startupStorage = null, storageTransferred = false;
     try {
       const params = new URLSearchParams(window.location.search);
       const startupIntent = parseProcgenStartupIntent(params);
+      if (params.get('workstation') === '0' && ['document', 'recovery'].includes(startupIntent.mode)) throw new Error('Document and recovery startup require the workstation surface.');
       document.body?.classList?.toggle('procgen-workstation', params.get('workstation') !== '0');
       resizeCanvas();
       if (!procgenUi && document.getElementById('procgenDrawer')) {
@@ -182,9 +199,8 @@ const installProcgenBootListeners = () => {
             if (startupSource.session) await procgenStudio.loadSession(startupSource.session);
             else await init();
           } catch (error) {
-            const status = document.getElementById('procgenRunStatus');
-            if (status) status.textContent = `Could not open startup recipe: ${error.message}`;
-            startupBlocked = error; return;
+            if (!controller.signal.aborted) reportStartupFailure(error);
+            return;
           }
           if (params.has('e2e')) window.__PROCGEN_STUDIO__ = procgenStudio;
           resizeCanvas();
@@ -195,7 +211,7 @@ const installProcgenBootListeners = () => {
       startupPending = false;
       if (!procgenStudio) await init();
     } catch (error) {
-      if (!controller.signal.aborted) { startupBlocked = error; const status = document.getElementById('procgenRunStatus'); if (status) status.textContent = `Could not open startup intent: ${error.message}`; }
+      if (!controller.signal.aborted) reportStartupFailure(error);
     } finally {
       if (!storageTransferred) startupStorage?.close();
       if (startupController === controller) { startupController = null; startupPending = false; }

@@ -176,6 +176,9 @@ invalid source, canceled startup or rejected recipe cannot overwrite the prior
 recoverable setup while assets prepare. Startup source reads have a bounded
 deadline and navigation cancellation. Added resolver/controller/browser
 fixtures remain unexecuted during the frontloaded implementation pass.
+An invalid startup offers an explicit **Start fresh** action. That action opens
+the versioned fresh defaults and removes the failed recipe/document query;
+there is no automatic fallback that could be mistaken for a restored source.
 
 Project import parsing and export JSON encoding use registered background jobs.
 Admission reserves estimated source, staging and result overlap before reading

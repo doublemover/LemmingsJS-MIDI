@@ -26,12 +26,17 @@ test('a shared recipe opens its declared world with an unrelated saved two-lane 
 });
 
 test('a malformed shared recipe leaves the prior recoverable setup untouched', async ({ page }) => {
+  test.setTimeout(90000);
   await page.goto('/README.md');
   await page.evaluate(() => localStorage.setItem('lemmings.procgen.workstation.v1', '{"version":1,"project":{"saved":"prior"}}'));
   await page.goto('/procgen.html?e2e=1&recipe=1&lanes=3');
   await expect(page.locator('#procgenRunStatus')).toContainText('requires its seed');
   expect(await page.evaluate(() => ({ saved: localStorage.getItem('lemmings.procgen.workstation.v1'),
     world: !!window.__PROCGEN_LANES__ }))).toEqual({ saved: '{"version":1,"project":{"saved":"prior"}}', world: false });
+  await page.getByRole('button', { name: 'Start fresh', exact: true }).click();
+  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain);
+  expect(await page.evaluate(() => ({ mode: window.__PROCGEN_STUDIO__.getStartupPlan().mode, lanes: window.__PROCGEN_LANES__.world.laneCount,
+    recipe: new URLSearchParams(location.search).has('recipe') }))).toEqual({ mode: 'fresh', lanes: 8, recipe: false });
 });
 
 test('document and recovery startup restore their artifact paused and reject conflicting physical overrides', async ({ page }) => {
