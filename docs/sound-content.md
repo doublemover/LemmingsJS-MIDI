@@ -64,3 +64,18 @@ Stages have explicit consumer leases and expiration. Discard or cancellation
 invalidates access immediately; accepted native reads and borrowed consumers
 retain their shared reservation until settlement or release. Staging changes no
 project, performing lane, output permission or durable registry record.
+
+`SoundContentRegistry` commits the verified manifest, immutable origin/version,
+patch identities, content-addressed blobs, headers and storage counters in one
+IndexedDB transaction. Matching data deduplicates. Conflicting pack versions or
+patch revisions abort the entire transaction. Reference imports can later gain
+verified local bytes without changing saved definitions. Storage limits count
+encoded material and canonical manifests separately from memory reservations.
+
+Library pages read headers only. Full manifests and material use explicit owned
+read leases. Archiving hides a pack from browsing while preserving its material
+and stable project references; restoring it is reversible. This first registry
+boundary records material integrity, with render qualification still separate.
+Native IndexedDB integration fixtures cover concurrency, immutable conflicts,
+connection reopening and archived project material; they are deferred with the
+rest of runtime validation.
