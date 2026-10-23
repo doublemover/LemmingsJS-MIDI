@@ -18,11 +18,11 @@ const source = tick => ({ version: 1, worldId: 'world:score', generation: 1, tic
 const intents = tick => [{ version: 1, kind: 'begin', intentId: `intent:${tick}`, voiceId: `voice:${tick}`, sourceEventIds: [`work:${tick}`],
   actorId: 7, role: 'builder', mappingId: 'work', generation: 1, batchId: `batch:${tick}`,
   scoreTime: { beat: tick / 8, epoch: 'score:1', simTick: tick, subTick: 0, precision: 'tick', sourceTimeMs: tick * 20 } }];
-const fixture = async ({ ticks = 10, gaps = false, ...bounds } = {}) => {
+const fixture = async ({ ticks = 10, gaps = false, sparse = false, ...bounds } = {}) => {
   const store = createMemoryCausalStore(), journal = createProcgenCausalJournal({ storage: store.storage });
   const recorder = await createCausalTakeRecorder({ journal, takeId: 'take:score', documentId: 'doc:score', sourceVersions: { physicalBatch: 1 },
     mapping: graph, initialCheckpoint: { tick: 0 }, boundaryState: { voices: [], timeline: { epoch: 'score:1', segments: [{ simTickOrigin: 0, tempoBpm: 120 }] } } });
-  for (let tick = 1; tick <= ticks; tick++) recorder.recordCommittedBatch({ batch: source(tick), intents: intents(tick),
+  for (let tick = 1; tick <= ticks; tick++) recorder.recordCommittedBatch({ batch: source(tick), intents: sparse && tick !== ticks ? [] : intents(tick),
     deliveryOutcomes: tick === 3 ? [{ intentId: `intent:${tick}`, sinkId: 'midi', stage: 'none', status: 'rejected', reason: 'driver-drop' }] : [] });
   if (gaps) recorder.markGap({ kind: 'physical-facts', firstTick: 4, lastTick: 4, generation: 1, reason: 'missing-source' });
   await recorder.stop();
@@ -32,6 +32,29 @@ const fixture = async ({ ticks = 10, gaps = false, ...bounds } = {}) => {
 };
 
 describe('read-only PhysicalScore projection', () => {
+  it('preserves captured roles, score times and immediate evidence across every semantic page split', async () => {
+    for (const maxRecords of [1, 2, 3, 4, 512, 513]) {
+      const ticks = maxRecords >= 512 ? 256 : 4;
+      const { queryPhysicalScore, request } = await fixture({ ticks, sparse: maxRecords >= 512, maxRecords, maxGlyphs: 64, maxSourceFacts: 1024 });
+      let cursor = null; const glyphs = [];
+      do {
+        const page = await queryPhysicalScore({ ...request, cursor, timeDomain: 'musical-score-time', actorOrRoleFilter: { roles: ['builder'] } });
+        glyphs.push(...page.glyphs); cursor = page.continuation;
+      } while (cursor);
+      expect(glyphs.map(glyph => glyph.glyphId)).to.deep.equal(maxRecords >= 512 ? ['work:256'] : ['work:1', 'work:2', 'work:3', 'work:4']);
+      for (const glyph of glyphs) expect(glyph.axis.status).to.equal('known');
+      if (maxRecords < 512) expect(glyphs[2].intents[0].sinkEvidence[0].reason).to.equal('driver-drop');
+    }
+  });
+
+  it('binds continuation cursors to the complete source/filter query', async () => {
+    const { queryPhysicalScore, request } = await fixture({ ticks: 4, maxRecords: 1 });
+    const page = await queryPhysicalScore(request); let error;
+    try { await queryPhysicalScore({ ...request, cursor: page.continuation, actorOrRoleFilter: { roles: ['builder'] } }); }
+    catch (failure) { error = failure; }
+    expect(error.code).to.equal('stale-cursor');
+  });
+
   it('reconciles exact typed source counts, transferred actor strands and actual sink evidence', async () => {
     const { queryPhysicalScore, request } = await fixture();
     const score = await queryPhysicalScore(request);

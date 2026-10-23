@@ -1,4 +1,4 @@
-import { cloneJournalData, journalError } from './CausalJournalCanonical.js';
+import { canonicalJournalText, cloneJournalData, journalError } from './CausalJournalCanonical.js';
 import { queryCausalCoverage } from './CausalCoverage.js';
 
 const boundedId = value => typeof value === 'string' && value.length > 0 && value.length <= 512;
@@ -29,10 +29,10 @@ const axisValue = (domain, fact, batch, intents) => {
 };
 
 const createPhysicalScoreProjection = ({ journal, maxRecords = 4096, maxSourceFacts = 16384, maxGlyphs = 2048,
-  maxStrands = 512, maxEvidence = 4096, maxBytes = 4194304 } = {}) => {
+  maxStrands = 512, maxEvidence = 4096, maxBytes = 4194304, maxJoinRecords = 4096 } = {}) => {
   if (!journal || typeof journal.openTake !== 'function' || typeof journal.query !== 'function' ||
-      ![maxRecords, maxSourceFacts, maxGlyphs, maxStrands, maxEvidence, maxBytes].every(value => Number.isSafeInteger(value) && value > 0) ||
-      maxRecords > 65536 || maxSourceFacts > 262144 || maxGlyphs > 16384 || maxStrands > 4096 || maxEvidence > 65536 || maxBytes > 32 * 1048576) throw new Error('Invalid PhysicalScore projection bounds.');
+      ![maxRecords, maxSourceFacts, maxGlyphs, maxStrands, maxEvidence, maxBytes, maxJoinRecords].every(value => Number.isSafeInteger(value) && value > 0) ||
+      maxRecords > 65536 || maxSourceFacts > 262144 || maxGlyphs > 16384 || maxStrands > 4096 || maxEvidence > 65536 || maxJoinRecords > 65536 || maxBytes > 32 * 1048576) throw new Error('Invalid PhysicalScore projection bounds.');
   const requests = new Map();
   const begin = (requestId, signal) => {
     if (!boundedId(requestId) || !requests.has(requestId) && requests.size >= 64) throw new Error('A bounded PhysicalScore request identity is required.');
@@ -58,15 +58,45 @@ const createPhysicalScoreProjection = ({ journal, maxRecords = 4096, maxSourceFa
           sourceSelection.last.sequence < sourceSelection.first.sequence || !tick(sourceSelection.last.factOffset) ||
           sourceSelection.first.sequence === sourceSelection.last.sequence && sourceSelection.last.factOffset < sourceSelection.first.factOffset)) throw new Error('Invalid PhysicalScore query.');
     const request = begin(requestId, signal);
+    const queryKey = JSON.stringify([takeId, takeRevision, generation, range, timeDomain, actors, roles, glyphKinds, sourceSelection, resolution]);
     try {
       request.check();
+      if (cursor && (cursor.version !== 1 || cursor.takeId !== takeId || cursor.takeRevision !== takeRevision || cursor.queryKey !== queryKey))
+        throw journalError('stale-cursor', 'PhysicalScore continuation belongs to another take revision or query.', { requestId });
       const manifest = await journal.openTake(takeId);
       request.check();
       if (manifest.revision !== takeRevision) throw journalError('stale-revision', 'PhysicalScore request refers to a stale take revision.', { requestId });
       const page = await journal.query({ takeId, takeRevision, generation, firstTick: range.firstTick, lastTick: range.lastTick,
-        firstSequence: cursor?.sequence || sourceSelection?.first.sequence || 1, lastSequence: sourceSelection ? Math.min(Number.MAX_SAFE_INTEGER, sourceSelection.last.sequence + 2) : Number.MAX_SAFE_INTEGER,
+        firstSequence: cursor?.sequence || sourceSelection?.first.sequence || 1, lastSequence: sourceSelection?.last.sequence ?? Number.MAX_SAFE_INTEGER,
         kinds: SCORE_KINDS, limit: maxRecords, signal });
       request.check();
+      const joinRecords = new Map(page.records.map(record => [record.sequence, record]));
+      const capturedBatches = new Set(page.records.filter(record => record.kind === 'musical-intents').map(record => record.payload.batchId));
+      let companionRecordsRead = 0, companionBytes = 0;
+      for (const record of page.records) {
+        if (record.kind !== 'physical-batch') continue;
+        const group = record.admissionGroup;
+        const splitGroup = group ? group.lastSequence > page.records.at(-1).sequence : page.nextSequence != null && record.tick === page.records.at(-1).tick;
+        if (capturedBatches.has(record.payload.batchId) && !splitGroup) continue;
+        request.check();
+        if (group && (group.version !== 1 || !Number.isSafeInteger(group.firstSequence) || !Number.isSafeInteger(group.lastSequence) ||
+            group.firstSequence < 1 || group.firstSequence > record.sequence || group.lastSequence < record.sequence || group.lastSequence - group.firstSequence >= 1024))
+          throw journalError('score-join-invalid', 'A captured semantic admission group is malformed.', { sourceSequence: record.sequence });
+        const remaining = maxJoinRecords - companionRecordsRead;
+        if (remaining < 1) throw journalError('score-join-capacity', 'PhysicalScore companion-read capacity reached; narrow the window.', { sourceSequence: record.sequence });
+        const companion = await journal.query({ takeId, takeRevision, generation, firstTick: record.tick, lastTick: record.tick,
+          firstSequence: group?.firstSequence ?? record.sequence + 1, lastSequence: group?.lastSequence ?? Number.MAX_SAFE_INTEGER,
+          kinds: ['musical-intents', 'sink-outcome'], limit: remaining, signal });
+        request.check(); companionRecordsRead += companion.records.length;
+        if (companion.nextSequence != null) throw journalError('score-join-capacity', 'A semantic companion lookup exceeded its bounded read window.', { sourceSequence: record.sequence });
+        for (const extra of companion.records) {
+          if (extra.kind === 'musical-intents') capturedBatches.add(extra.payload.batchId);
+          if (joinRecords.has(extra.sequence)) continue;
+          companionBytes += canonicalJournalText(extra, { maxBytes }).bytes.length;
+          if (companionBytes > maxBytes) throw journalError('score-join-capacity', 'PhysicalScore companion workspace exceeded its byte budget.', { sourceSequence: record.sequence });
+          joinRecords.set(extra.sequence, extra);
+        }
+      }
       const intentsByCause = new Map(), evidenceByIntent = new Map(), allIntents = [], timelines = [], interventions = [];
       let evidenceCount = 0, missingEvidenceCount = 0;
       const addEvidence = outcome => {
@@ -75,7 +105,7 @@ const createPhysicalScoreProjection = ({ journal, maxRecords = 4096, maxSourceFa
         if (!evidenceByIntent.has(outcome.intentId)) evidenceByIntent.set(outcome.intentId, []);
         evidenceByIntent.get(outcome.intentId).push(outcome);
       };
-      for (const record of page.records) {
+      for (const record of [...joinRecords.values()].sort((left, right) => left.sequence - right.sequence)) {
         request.check();
         if (record.kind === 'musical-intents') for (const intent of record.payload.intents || []) {
           if (allIntents.length >= maxSourceFacts) throw journalError('score-capacity', 'PhysicalScore intent window is too dense; request a smaller source range.', { requestId });
@@ -99,6 +129,8 @@ const createPhysicalScoreProjection = ({ journal, maxRecords = 4096, maxSourceFa
         if (sourceSelection && record.sequence > sourceSelection.last.sequence) continue;
         physicalBatches++;
         const batch = record.payload;
+        const interpretationKnown = capturedBatches.has(batch.batchId);
+        if (!interpretationKnown && roleSet.size) throw journalError('score-join-unavailable', 'Captured intent companion is unavailable; a role mismatch cannot be inferred.', { sourceSequence: record.sequence });
         const first = cursor || sourceSelection?.first;
         for (let factIndex = record.sequence === first?.sequence ? first.factOffset : 0; factIndex < batch.facts.length; factIndex++) {
           request.check();
@@ -127,7 +159,8 @@ const createPhysicalScoreProjection = ({ journal, maxRecords = 4096, maxSourceFa
             evidenceStatus: evidenceByIntent.has(intent.intentId) ? 'observed-in-window' : 'unknown' }));
           const glyph = { glyphId: fact.eventId, kind: glyphKind(fact), strandId, source, actorId: fact.actorId ?? null,
             actionInstanceId: fact.actionInstanceId || null, spanId: fact.spanId || null, factKind: fact.kind || fact.type || 'unknown',
-            axis: axisValue(timeDomain, fact, batch, intents), fact, intents: joined };
+            axis: axisValue(timeDomain, fact, batch, intents), fact, intents: joined,
+            interpretationCoverage: interpretationKnown ? 'captured-companion' : 'unknown' };
           if (resolution.mode === 'exact') glyphs.push(glyph);
           else {
             const bucket = Math.floor(record.tick / resolution.bucketTicks), key = JSON.stringify([strandId, glyph.kind, bucket]);
@@ -157,6 +190,7 @@ const createPhysicalScoreProjection = ({ journal, maxRecords = 4096, maxSourceFa
       const queriedCoverage = queryCausalCoverage({ coverage: manifest.coverage, range, generation });
       const unknownRegions = [...queriedCoverage.missingRanges, ...queriedCoverage.unknownRanges];
       continuation ||= page.nextSequence == null ? null : { sequence: page.nextSequence, factOffset: 0 };
+      if (continuation) continuation = { ...continuation, version: 1, takeId, takeRevision, queryKey };
       if (continuation) unknownRegions.push({ kind: 'query-window', reason: 'bounded-continuation', firstSequence: continuation.sequence, factOffset: continuation.factOffset });
       const voices = new Map();
       for (const strand of strands.values()) for (const voiceId of strand.voiceIds) {
@@ -168,6 +202,7 @@ const createPhysicalScoreProjection = ({ journal, maxRecords = 4096, maxSourceFa
         actorStrands: [...strands.values()].map(strand => ({ ...strand, voiceIds: [...strand.voiceIds], roles: [...strand.roles] })),
         voiceStrands: [...voices.values()], clockSegments: { boundary: manifest.boundaryState?.timeline || null, observedWindow: timelines,
           coverage: 'captured-boundary-and-query-window' }, interventions, evidenceCoverage: { scope: 'query-window', observed: evidenceCount, unjoinable: missingEvidenceCount },
+        joinWork: { companionRecordsRead, companionBytes, maxJoinRecords },
         counts: { physicalBatches, sourceFacts, selectedFacts, glyphs: glyphs.length,
           representedEvents: glyphs.reduce((sum, glyph) => sum + (glyph.eventCount || 1), 0) }, continuation,
         inspection: { paused: true, hardware: false, recording: false, thru: false, physicalLayers: false } };

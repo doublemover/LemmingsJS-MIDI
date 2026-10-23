@@ -96,7 +96,8 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
         for (const input of inputs) {
           if (!RECORD_KINDS.has(input?.kind) || !Number.isSafeInteger(input.tick) || input.tick < 0 ||
               !Number.isSafeInteger(input.generation) || input.generation < 0) throw new Error('Invalid causal journal record identity.');
-          const record = cloneJournalData({ ...input, sequence: firstSequence + prepared.length }, { maxBytes: maxRecordBytes });
+          const record = cloneJournalData({ ...input, sequence: firstSequence + prepared.length,
+            admissionGroup: { version: 1, firstSequence, lastSequence: firstSequence + inputs.length - 1 } }, { maxBytes: maxRecordBytes });
           const size = canonicalJournalText(record, { maxBytes: maxRecordBytes }).bytes.length;
           prepared.push({ record, bytes: size }); bytes += size;
         }

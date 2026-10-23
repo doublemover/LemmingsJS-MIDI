@@ -219,3 +219,11 @@ The shared coverage query returns known-covered, known-missing or unknown.
 Reinterpretation, replay/branch admission and score inspection use that result;
 a declared capture profile alone never certifies a source range. The new interval
 fixtures are staged for the deferred runtime validation pass.
+
+PhysicalScore resolves captured semantic companions independently of its record
+page. New records carry an explicit admission-group sequence range; older records
+use a bounded same-tick companion lookup. Read count and workspace byte limits are
+separate from glyph limits. An unresolved role join is reported as unavailable,
+never silently treated as a role mismatch. Immediate grouped outcomes remain
+distinct from later evidence outside the inspected window. Continuation cursors
+are bound to take revision, source range, axis, filters and aggregation settings.
