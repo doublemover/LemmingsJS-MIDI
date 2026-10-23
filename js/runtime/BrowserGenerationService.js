@@ -1,16 +1,17 @@
-import { hashBrowserBuildBytes, validBrowserBuildPath, verifyBrowserBuildManifest } from './BrowserBuildManifest.js';
+import { hashBrowserBuildBytes, validBrowserBuildPath, verifyBrowserBuildManifest, BROWSER_ENTRY_ROUTES } from './BrowserBuildManifest.js';
 
 const MANIFEST_LIMIT = 2 * 1048576, CACHE_LIMIT = 512 * 1048576;
 const digestPattern = /^[a-f0-9]{64}$/;
 const failure = (code, message) => Object.assign(new Error(message), { code });
-const withSignal = async (start, signal) => {
+export const awaitBrowserBuildOperation = async (start, signal) => {
   signal?.throwIfAborted(); if (!signal) return start();
   let rejectAbort; const interrupted = new Promise((_resolve, reject) => { rejectAbort = reject; });
   const abort = () => rejectAbort(signal.reason || failure('cancelled', 'Browser generation operation canceled.'));
   signal.addEventListener('abort', abort, { once: true });
-  try { signal.throwIfAborted(); return await Promise.race([start(), interrupted]); }
+  try { return await Promise.race([Promise.resolve().then(() => { signal.throwIfAborted(); return start(); }), interrupted]); }
   finally { signal.removeEventListener('abort', abort); }
 };
+const withSignal = awaitBrowserBuildOperation;
 export async function readBrowserBuildResponse(response, maximum, signal) {
   if (!response?.ok || !Number.isSafeInteger(maximum) || maximum < 0) throw failure('response-unavailable', 'Browser generation response is unavailable.');
   const declared = response.headers?.get('content-length');
@@ -24,13 +25,14 @@ export async function readBrowserBuildResponse(response, maximum, signal) {
   const cancel = reason => { try { Promise.resolve(reader.cancel(reason)).catch(() => {}); } catch { /* The platform reader already retired. */ } };
   const abort = () => { rejectAbort(signal.reason || failure('cancelled', 'Browser generation read canceled.')); cancel(signal.reason); };
   signal?.addEventListener('abort', abort, { once: true });
-  const parts = []; let size = 0, filled = 65536;
+  const parts = []; let size = 0, filled = 65536, chunks = 0;
   try {
     const consume = async () => {
       while (true) {
         signal?.throwIfAborted();
         const { done, value } = await (byob ? reader.read(new Uint8Array(Math.min(65536, maximum - size + 1))) : reader.read());
         signal?.throwIfAborted(); if (done) break;
+        if (++chunks > 262144) throw failure('response-work-capacity', 'Browser generation stream exceeds its chunk work bound.');
         if (!(value instanceof Uint8Array) || size + value.byteLength > maximum) throw failure('response-capacity', 'Browser generation stream exceeds its bound.');
         let offset = 0;
         while (offset < value.byteLength) {
@@ -54,7 +56,7 @@ export function createBrowserGenerationService({ scopeUrl, buildId, cacheStorage
   if (!digestPattern.test(buildId) || !['https:', 'http:'].includes(scope.protocol) || !scope.pathname.endsWith('/') || scope.search || scope.hash ||
       !Number.isSafeInteger(maximumCacheBytes) || maximumCacheBytes < 1 || maximumCacheBytes > 1024 * 1048576) throw new Error('Invalid browser generation owner.');
   const markerUrl = new URL('__runtime_generation_manifest__', scope).href;
-  const catalog = new Map(), qualifications = new Map();
+  const catalog = new Map(), qualifications = new Map(), verifications = new Map();
   let installing = null, restoring = null, state = { schemaVersion: 1, buildId, status: 'uninstalled', offlineReady: false, completedFiles: 0, totalFiles: null, completedBytes: 0 };
   const ownedName = name => name.startsWith(prefix) && /^[a-f0-9]{64}-[a-f0-9]{32}$/.test(name.slice(prefix.length));
   const request = async (url, maximum, signal) => {
@@ -97,17 +99,30 @@ export function createBrowserGenerationService({ scopeUrl, buildId, cacheStorage
     if (qualifications.size >= 8) qualifications.delete(qualifications.keys().next().value);
     qualifications.set(record.name, result); return result;
   };
-  const checkStored = async (record, signal) => {
+  const checkStored = async (record, signal, publishProgress = true) => {
     const verified = await qualify(record, signal);
-    state = { ...state, status: 'checking-installed-generation', totalFiles: verified.files.length, completedFiles: 0, completedBytes: 0 };
+    if (publishProgress) state = { ...state, status: 'checking-installed-generation', totalFiles: verified.files.length, completedFiles: 0, completedBytes: 0 };
     for (const file of verified.files) {
       const response = await withSignal(() => record.cache.match(new URL(`${record.marker.buildId}/${file.path}`, scope).href), signal);
       if (!response) return false;
       const bytes = await readBrowserBuildResponse(response, file.bytes, signal);
       if (bytes.byteLength !== file.bytes || await hashBrowserBuildBytes(bytes) !== file.sha256) return false;
-      state = { ...state, completedFiles: state.completedFiles + 1, completedBytes: state.completedBytes + bytes.byteLength };
+      if (publishProgress) state = { ...state, completedFiles: state.completedFiles + 1, completedBytes: state.completedBytes + bytes.byteLength };
     }
     return true;
+  };
+  const verifyInstalledBuild = requestedBuild => {
+    if (!digestPattern.test(requestedBuild)) return Promise.reject(failure('invalid-generation', 'Invalid generation verification request.'));
+    if (verifications.has(requestedBuild)) return verifications.get(requestedBuild);
+    if (verifications.size >= 2) return Promise.reject(failure('generation-verification-capacity', 'Two generation verifications are already active.'));
+    const controller = new AbortController(), timer = setTimeout(() => controller.abort(failure('verification-deadline', 'Installed generation verification timed out.')), 120000);
+    const pending = Promise.resolve().then(async () => {
+      for (const record of await records(controller.signal, { requestedBuild, strict: false })) if (record.marker.status === 'complete' &&
+          await checkStored(record, controller.signal, false).catch(error => { if (controller.signal.aborted) throw error; return false; }))
+        return Object.freeze({ schemaVersion: 1, buildId: requestedBuild, status: 'installed', offlineReady: true, resourceDelivery: 'verified-immutable-responses' });
+      throw failure('generation-unavailable', 'The requested generation is incomplete.');
+    }).finally(() => { clearTimeout(timer); verifications.delete(requestedBuild); });
+    verifications.set(requestedBuild, pending); return pending;
   };
   const install = () => {
     if (installing) return installing;
@@ -186,7 +201,7 @@ export function createBrowserGenerationService({ scopeUrl, buildId, cacheStorage
   const responseFor = async requestValue => {
     const url = new URL(requestValue.url), relative = url.pathname.slice(scope.pathname.length);
     if (url.origin !== scope.origin || !url.pathname.startsWith(scope.pathname) || requestValue.method !== 'GET') return null;
-    if (['', 'index.html', 'editor.html', 'procgen.html'].includes(relative)) {
+    if (!relative || BROWSER_ENTRY_ROUTES.includes(relative)) {
       if (['rev', 'cb', 'cacheBust'].some(key => url.searchParams.has(key) && url.searchParams.get(key) !== buildId)) return new globalThis.Response('This source revision is unavailable offline.', { status: 503 });
       try { await restore(); } catch { return new globalThis.Response('This browser generation is not completely installed.', { status: 503 }); }
       const target = new URL(`${buildId}/${relative || 'index.html'}`, scope); target.search = url.search;
@@ -194,7 +209,7 @@ export function createBrowserGenerationService({ scopeUrl, buildId, cacheStorage
     }
     const slash = relative.indexOf('/'), requestedBuild = relative.slice(0, slash), filePath = relative.slice(slash + 1);
     if (slash < 0 || !digestPattern.test(requestedBuild) || !validBrowserBuildPath(filePath)) return null;
-    const revision = url.searchParams.get('rev'), navigation = requestValue.mode === 'navigate' && ['index.html', 'editor.html', 'procgen.html'].includes(filePath);
+    const revision = url.searchParams.get('rev'), navigation = requestValue.mode === 'navigate' && BROWSER_ENTRY_ROUTES.includes(filePath);
     if (['rev', 'cb', 'cacheBust'].some(key => url.searchParams.has(key) && url.searchParams.get(key) !== requestedBuild) ||
         url.search && !navigation && !(url.searchParams.size === 1 && revision === requestedBuild)) return new globalThis.Response('The requested resource identity is unavailable.', { status: 503 });
     for (const record of await records(undefined, { requestedBuild, strict: false })) if (record.marker.status === 'complete') {
@@ -229,7 +244,7 @@ export function createBrowserGenerationService({ scopeUrl, buildId, cacheStorage
     }
     for (const record of await records(undefined, { strict: false })) if (!active.has(record.marker.buildId)) { await cacheStorage.delete(record.name); catalog.delete(record.name); qualifications.delete(record.name); }
   };
-  return Object.freeze({ install, restore, responseFor, trim, getState: () => Object.freeze({ ...state }) });
+  return Object.freeze({ install, restore, verifyInstalledBuild, responseFor, trim, getState: () => Object.freeze({ ...state }) });
 }
 
 export function installBrowserGenerationWorker({ buildId, worker = globalThis } = {}) {
@@ -244,6 +259,11 @@ export function installBrowserGenerationWorker({ buildId, worker = globalThis } 
     event.respondWith(owner.responseFor(event.request).then(response => response || worker.fetch(event.request)));
   });
   worker.addEventListener('message', event => {
+    if (event.data?.type === 'GENERATION_VERIFY') {
+      const verified = owner.verifyInstalledBuild(event.data.buildId).then(receipt => event.ports?.[0]?.postMessage(receipt),
+        () => event.ports?.[0]?.postMessage({ schemaVersion: 1, buildId: event.data.buildId, status: 'failed', offlineReady: false }));
+      event.waitUntil?.(verified); return;
+    }
     if (event.data?.type === 'GENERATION_STATUS') {
       const restored = owner.restore(); event.waitUntil?.(restored.catch(() => {}));
       event.ports?.[0]?.postMessage(owner.getState());

@@ -1,4 +1,5 @@
 import { canonicalSurveyJson, hashSurveyValue, SURVEY_STATE_SCHEMA, SURVEY_CANONICAL_SCHEMA } from './ProcgenSurveyCanonical.js';
+import { compareActiveExecutionIdentity } from '../../../runtime/ActiveExecutionIdentity.js';
 const checksum = value => typeof value === 'string' && /^[0-9a-f]{16}$/i.test(value);
 const whole = value => Number.isSafeInteger(value) && value >= 0;
 const crewEvidenceProblems = result => {
@@ -145,6 +146,17 @@ const compareSurveyCompatibilityReplay = (original, replay, sourceVerification) 
     executionIdentity: { status: 'unbound', reason: sourceVerification?.executionReason || 'active-module-graph-not-proven' },
     replayConsistency: { status: compatibilityMatch ? 'matched' : 'mismatch', coverage: comparison.coverage } };
 };
+const compareSurveyBoundReplay = (original, replay, sourceVerification, recordedIdentity) => {
+  const comparison = compareSurveyReplay(original, replay), active = compareActiveExecutionIdentity(sourceVerification?.executionIdentity), recorded = compareActiveExecutionIdentity(recordedIdentity);
+  const bound = active.matched && recorded.matched && sourceVerification?.activeExecution === 'bound' && sourceVerification?.artifactIntegrity === 'verified' &&
+    sourceVerification?.executionReason === 'owned-immutable-dedicated-worker' && sourceVerification?.executionIdentity?.realmId !== active.active.realmId;
+  return { ...comparison, schemaVersion: 4, matched: bound && comparison.matched,
+    validity: bound ? comparison.validity : 'execution-unbound',
+    reasons: [...comparison.reasons, ...(!bound ? ['active-execution-unbound-or-mismatched'] : [])],
+    artifactIntegrity: { status: sourceVerification?.artifactIntegrity || 'unknown', codeDigest: sourceVerification?.codeDigest || null },
+    executionIdentity: { status: bound ? 'bound' : 'unbound', recorded: recordedIdentity || null, executing: sourceVerification?.executionIdentity || null },
+    replayConsistency: { status: comparison.matched ? 'matched' : 'mismatch', coverage: comparison.coverage } };
+};
 const firstSurveyDivergence = (baseline, candidate) => {
   const other = new Map((candidate.milestones || []).map(entry => [entry.tick, entry])); let previousTick = 0;
   for (const entry of baseline.milestones || []) {
@@ -156,4 +168,4 @@ const firstSurveyDivergence = (baseline, candidate) => {
   }
   return null;
 };
-export { compareSurveyReplay, compareSurveyCompatibilityReplay, firstSurveyDivergence };
+export { compareSurveyReplay, compareSurveyCompatibilityReplay, compareSurveyBoundReplay, firstSurveyDivergence };

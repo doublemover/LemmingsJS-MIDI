@@ -1,5 +1,7 @@
 import { createBrowserSurveyTrial } from './ProcgenSurveyBrowserAssets.js';
-import { compareSurveyCompatibilityReplay, firstSurveyDivergence } from './ProcgenSurveyReplay.js';
+import { compareSurveyCompatibilityReplay, compareSurveyBoundReplay, firstSurveyDivergence } from './ProcgenSurveyReplay.js';
+import { createBrowserSurveyReplaySession } from './ProcgenSurveyReplaySession.js';
+import { compareActiveExecutionIdentity } from '../../../runtime/ActiveExecutionIdentity.js';
 import { requestBrowserDownload } from '../../export/BrowserDownload.js';
 
 const renderSurveyPreview = (canvas, telemetry, { cameraX = null, cameraY = 0, width = 512, height = 144 } = {}) => {
@@ -55,7 +57,7 @@ const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fet
   const tiles = new Map(), disposedTrials = new WeakSet();
   const releaseTrial = trial => { if (trial && !disposedTrials.has(trial)) { disposedTrials.add(trial); trial.dispose(); } };
   let report = null, selectedId = null, replay = null, disposed = false, polling = null, paused = false, replayPending = false, pausePending = false, stepPending = false, connected = !!token, loadEpoch = 0, replayEpoch = 0, replayAbort = null, manifestIdentity = null, filePending = null, preferredTrial = null, displayedStep = null;
-  const replayHelp = 'Current-runtime comparison checks recorded physics and events. Active build identity is not yet verified.';
+  const replayHelp = 'Choose a current-runtime comparison, or exact replay when this application has the recorded immutable build installed.';
   const status = text => { if (!disposed) element('surveyStatus').textContent = text; };
   const publishStep = state => {
     if (disposed) return;
@@ -96,6 +98,7 @@ const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fet
     const gate = value => value === true ? 'Passed' : value === false ? 'Failed' : 'Unknown';
     const replayState = trial => {
       const receipt = window.__procgenSurveyReplayReceipt?.originalTrialId === trial.trialId ? window.__procgenSurveyReplayReceipt : report.verification?.find(entry => entry.originalTrialId === trial.trialId);
+      if (receipt?.executionIdentity?.status === 'bound') return receipt.matched ? 'Exact replay matched · build verified' : 'Exact replay differs · build verified';
       if (receipt?.executionIdentity?.status === 'unbound') return receipt.compatibilityMatch ? 'Fields match · build unverified' : 'Comparison mismatch · build unverified';
       return receipt?.matched === true ? 'Archived match · build unverified' : receipt?.matched === false ? 'Mismatch' : 'Not recorded';
     };
@@ -300,14 +303,17 @@ const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fet
     const current = () => !disposed && epoch === replayEpoch;
     let trial = null;
     replayPending = true; delete window.__procgenSurveyReplayReceipt;
+    const exact = element('surveyReplayMode')?.value === 'exact';
     element('surveyReplay').disabled = true; element('surveyReplayStatus').textContent = 'Checking saved source and asset integrity.';
     try {
-      trial = await createBrowserSurveyTrial({ scenario: original.scenario, candidate: original.candidate, sourceManifest: report.manifest.sourceManifest, signal: controller.signal, mode: 'compatibility' });
+      const options = { scenario: original.scenario, candidate: original.candidate, sourceManifest: report.manifest.sourceManifest, signal: controller.signal };
+      trial = exact ? await createBrowserSurveyReplaySession(options) : await createBrowserSurveyTrial({ ...options, mode: 'compatibility' });
       if (!current()) return;
       replay = trial; if (!connected) paused = false; syncPause();
-      element('surveyReplayStatus').textContent = 'Comparing with the current runtime in a muted local replay. Execution identity remains unverified.';
+      element('surveyReplayStatus').textContent = exact ? 'Replaying the matching build in an isolated, muted worker.' : 'Comparing with the current runtime in a muted local replay. Execution identity remains unverified.';
       while (current() && !trial.done && trial.world.tickIndex < original.scenario.horizonTicks) {
-        if (!paused) trial.step(Math.min(16, original.scenario.horizonTicks - trial.world.tickIndex));
+        if (!paused) await trial.step(Math.min(16, original.scenario.horizonTicks - trial.world.tickIndex));
+        if (!current()) break;
         const tick = trial.world.tickIndex, pair = baseline(original), pairedTelemetry = milestoneAt(pair, tick);
         const camera = renderSurveyPreview(element('surveyFocus'), { ...trial.telemetry(), preview: trial.preview() }, { height: original.scenario.laneHeight });
         renderSurveyPreview(element('surveyBaseline'), pairedTelemetry, element('surveyCamera').value === 'shared' ? camera : { height: pair?.scenario?.laneHeight || 144 });
@@ -316,8 +322,10 @@ const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fet
         await new Promise(resolve => window.setTimeout(resolve, paused ? 30 : 0));
       }
       if (current()) {
-        const receipt = compareSurveyCompatibilityReplay(original, trial.result(), trial.sourceVerification);
-        element('surveyReplayStatus').textContent = receipt.compatibilityMatch ?
+        const result = await trial.result(); if (!current()) return;
+        const receipt = exact ? compareSurveyBoundReplay(original, result, trial.sourceVerification, report.manifest.sourceManifest?.executionIdentity) : compareSurveyCompatibilityReplay(original, result, trial.sourceVerification);
+        element('surveyReplayStatus').textContent = exact ? receipt.matched ? 'Exact replay matched under the recorded build in a fresh worker. This checks consistency, not independent reliability.' :
+          'Exact replay differs: ' + [...receipt.reasons, ...receipt.differences].join(', ') : receipt.compatibilityMatch ?
           'Recorded fields match under the current runtime. The active build is unverified; this is not an exact replay receipt or independent sample.' :
           'Current-runtime comparison differs: ' + [...receipt.reasons, ...receipt.differences].join(', ');
         window.__procgenSurveyReplayReceipt = receipt;
@@ -327,6 +335,13 @@ const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fet
       releaseTrial(trial);
       if (current()) { replay = null; replayPending = false; replayAbort = null; if (!connected) paused = false; syncPause(); publishFocus(); }
     }
+  });
+  element('surveyReplayMode')?.addEventListener('change', () => {
+    cancelReplay();
+    const exact = element('surveyReplayMode').value === 'exact';
+    element('surveyReplay').textContent = exact ? 'Replay matching build' : 'Compare with current runtime';
+    if (exact && !compareActiveExecutionIdentity(report?.manifest?.sourceManifest?.executionIdentity).matched)
+      element('surveyReplayStatus').textContent = 'Exact replay is unavailable for this report and application build. Choose current-runtime comparison to keep its execution guarantee explicit.';
   });
   let pollPending = false;
   const poll = async () => {

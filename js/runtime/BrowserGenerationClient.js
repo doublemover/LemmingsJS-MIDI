@@ -1,7 +1,8 @@
 import { getApplicationBuild, getApplicationDeploymentRoot } from './ActiveExecutionIdentity.js';
+import { BROWSER_ENTRY_ROUTES } from './BrowserBuildManifest.js';
 
 const cancelled = () => new globalThis.DOMException('Browser generation entry canceled.', 'AbortError');
-export function readBrowserGenerationStatus(worker, { signal, timeout = 1500, Channel = globalThis.MessageChannel } = {}) {
+export function readBrowserGenerationStatus(worker, { signal, timeout = 1500, verifyBuildId = null, Channel = globalThis.MessageChannel } = {}) {
   signal?.throwIfAborted();
   if (!worker?.postMessage || typeof Channel !== 'function') return Promise.resolve(null);
   return new Promise((resolve, reject) => {
@@ -16,11 +17,12 @@ export function readBrowserGenerationStatus(worker, { signal, timeout = 1500, Ch
       const value = event.data;
       if (!value || value.schemaVersion !== 1 || typeof value.buildId !== 'string' || !/^[a-f0-9]{64}$/.test(value.buildId)) { finish(null); return; }
       finish(null, Object.freeze({ buildId: value.buildId, status: String(value.status).slice(0, 64), offlineReady: value.offlineReady === true,
+        resourceDelivery: value.resourceDelivery === 'verified-immutable-responses' ? value.resourceDelivery : null,
         completedFiles: Number.isSafeInteger(value.completedFiles) ? value.completedFiles : null, totalFiles: Number.isSafeInteger(value.totalFiles) ? value.totalFiles : null }));
     };
-    timer = setTimeout(() => finish(null), Math.max(1, Math.min(5000, timeout)));
+    timer = setTimeout(() => finish(null), Math.max(1, Math.min(verifyBuildId ? 125000 : 5000, timeout)));
     signal?.addEventListener('abort', abort, { once: true });
-    try { signal?.throwIfAborted(); worker.postMessage({ type: 'GENERATION_STATUS' }, [channel.port2]); }
+    try { signal?.throwIfAborted(); worker.postMessage(verifyBuildId ? { type: 'GENERATION_VERIFY', buildId: verifyBuildId } : { type: 'GENERATION_STATUS' }, [channel.port2]); }
     catch (error) { finish(error); }
   });
 }
@@ -47,7 +49,7 @@ export async function waitForBrowserGeneration(registration, buildId, { signal, 
 export async function startBrowserGenerationEntry({ route, windowRef = globalThis.window, navigatorRef = globalThis.navigator,
   documentRef = globalThis.document } = {}) {
   const build = getApplicationBuild(), root = getApplicationDeploymentRoot();
-  if (!build || !root || !['index.html', 'editor.html', 'procgen.html'].includes(route)) throw new Error('This entry has no immutable browser generation.');
+  if (!build || !root || !BROWSER_ENTRY_ROUTES.includes(route)) throw new Error('This entry has no immutable browser generation.');
   const controller = new AbortController(), stop = () => controller.abort(cancelled());
   windowRef.addEventListener('pagehide', stop, { once: true });
   const status = documentRef.getElementById('generation-status');

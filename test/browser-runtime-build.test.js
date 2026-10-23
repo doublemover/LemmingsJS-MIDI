@@ -14,6 +14,7 @@ describe('immutable browser generation staging', () => {
     root = await fs.mkdtemp(path.join(os.tmpdir(), 'lemmings-browser-build-'));
     const files = { 'index.html': '<script type="module" src="js/entry.js"></script>',
       'editor.html': '<script type="module" src="js/entry.js"></script>', 'procgen.html': '<script type="module" src="js/entry.js"></script>',
+      'procgen-survey.html': '<script type="module" src="js/entry.js"></script>',
       'js/entry.js': 'export { getActiveExecutionIdentity } from "./runtime/ActiveExecutionIdentity.js";',
       'js/app/procgen/survey/ProcgenSurveyCanonical.js': 'export const SURVEY_STATE_SCHEMA = 3;',
       'config.json': '[{"path":"classic"}]', 'classic/MAIN.DAT': 'fixture', 'keybindings.json': '{}',

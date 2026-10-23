@@ -4,10 +4,12 @@ import { createBrowserSurveyTrial, verifiedBrowserFiles, hexSha256 } from '../js
 import { normalizeSurveyScenario } from '../js/app/procgen/survey/ProcgenSurveyCore.js';
 import { createSurveySourceManifest, createNodeSurveyTrial } from '../scripts/procgen-survey/SurveyNodeWorld.js';
 import { SURVEY_STATE_SCHEMA, SURVEY_CANONICAL_SCHEMA } from '../js/app/procgen/survey/ProcgenSurveyCanonical.js';
+import { createResourceBudget } from '../js/app/resources/ResourceBudget.js';
+import { createBrowserSurveyReplaySession } from '../js/app/procgen/survey/ProcgenSurveyReplaySession.js';
 
 const fileFetch = async url => {
   const data = await fs.readFile(url);
-  return { ok: true, status: 200, arrayBuffer: async () => data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) };
+  return new globalThis.Response(data);
 };
 const copy = value => JSON.parse(JSON.stringify(value));
 const rejects = async (operation, message) => {
@@ -47,7 +49,7 @@ describe('verified selected browser survey asset contracts', function() {
     expect(requested).to.equal(0);
     await rejects(() => createBrowserSurveyTrial({ scenario: controlled, sourceManifest, fetchFile: async (url, options) => {
       expect(options).to.include({ cache: 'no-store', credentials: 'same-origin', redirect: 'error' });
-      if (url.pathname.endsWith('/ProcgenSurveyCore.js')) return { ok: true, arrayBuffer: async () => new TextEncoder().encode('stale code').buffer };
+      if (url.pathname.endsWith('/ProcgenSurveyCore.js')) return new globalThis.Response('stale code');
       return fileFetch(url);
     } }), 'differs from the saved trial');
   });
@@ -56,6 +58,24 @@ describe('verified selected browser survey asset contracts', function() {
     await rejects(() => createBrowserSurveyTrial({ scenario: controlled, sourceManifest, mode: 'exact',
       fetchFile: async () => { requests++; return fileFetch(); } }), 'Active execution identity is unbound');
     expect(requests).to.equal(0);
+    let workers = 0;
+    await rejects(() => createBrowserSurveyReplaySession({ scenario: controlled, sourceManifest, Worker: class { constructor() { workers++; } } }), 'recorded immutable browser build');
+    expect(workers).to.equal(0);
+  });
+  it('admits preparation before fetching and retains source reservations through disposal', async () => {
+    const denied = createResourceBudget({ limitBytes: 4096 }); let requests = 0;
+    await rejects(() => verifiedBrowserFiles(sourceManifest, async () => { requests++; }, null, { resourceBudget: denied }), 'accounted bytes');
+    expect(requests).to.equal(0); expect(denied.diagnostics().accountedBytes).to.equal(0);
+    const budget = createResourceBudget({ limitBytes: 256 * 1048576 });
+    const trial = await createBrowserSurveyTrial({ scenario: controlled, sourceManifest, fetchFile: fileFetch, resourceBudget: budget });
+    expect(budget.diagnostics().categories.asset.pinned).to.equal(1);
+    trial.dispose(); trial.dispose(); expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+  it('rejects oversized declared source responses before reading or allocating them', async () => {
+    const budget = createResourceBudget({ limitBytes: 256 * 1048576 }); let reads = 0;
+    await rejects(() => verifiedBrowserFiles(sourceManifest, async () => ({ ok: true, headers: { get: () => String(17 * 1048576) },
+      body: { getReader() { reads++; throw new Error('Must not read.'); } } }), null, { resourceBudget: budget }), 'exceeds its bound');
+    expect(reads).to.equal(0); expect(budget.diagnostics().accountedBytes).to.equal(0);
   });
   it('requires a complete relative module closure and refuses external or traversing source paths', async () => {
     const incomplete = copy(sourceManifest); delete incomplete.codeHashes['js/app/procgen/ProcgenLanePolicy.js'];
@@ -76,7 +96,7 @@ describe('verified selected browser survey asset contracts', function() {
     expect(requests).to.equal(0);
     const during = new AbortController();
     await rejects(() => verifiedBrowserFiles(sourceManifest, async (url, options) => {
-      expect(options.signal).to.equal(during.signal); requests++; during.abort(); return fileFetch(url);
+      expect(options.signal.aborted).to.equal(false); requests++; during.abort(); expect(options.signal.aborted).to.equal(true); return fileFetch(url);
     }, during.signal), 'aborted');
     expect(requests).to.equal(1);
   });

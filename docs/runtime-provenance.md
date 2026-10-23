@@ -63,7 +63,8 @@ replace the commit and comment together.
 
 ## Browser generation inventory
 
-`scripts/BrowserRuntimeClosure.js` inventories all three HTML entry routes,
+`scripts/BrowserRuntimeClosure.js` inventories the game, editor, instrument and
+survey HTML entry routes,
 their executable dependency closure, stylesheet resources and the tracked
 bundled asset/pack profile. It shares the parser-based module collector used by
 MCP packaging, including literal dynamic imports and URL resources. Unresolved,
@@ -92,8 +93,8 @@ The source checkout's `ActiveExecutionIdentity.js` has no build authority.
 Generated identity is accepted only from its matching immutable URL namespace
 and a distinct runtime realm, with the actual state schema and selected
 capability profile. Report-supplied data cannot set the executing identity.
-The generation installer consumes this authority. Replay-handshake integration
-and runtime qualification fixtures remain deferred.
+The generation installer and exact survey replay consume this authority.
+Runtime qualification fixtures remain deferred.
 
 The unbuilt service-worker shell now distinguishes its three HTML routes and
 uses exact precached script/style responses on network failure. Resource
@@ -128,3 +129,22 @@ performance. This installation path does not enable cross-origin isolation or
 claim that a decoder, worklet or audio context was successfully initialized.
 Deterministic interruption, restart, exact-route and retention fixtures are
 added but remain unexecuted during the frontloaded development pass.
+
+Exact survey replay requires an installed matching generation and starts a
+fresh dedicated module worker at an application-owned URL. The controller
+rechecks the requested package; the worker separately compares every executable
+inventory entry and selected asset hash with its trusted generated manifest.
+Its realm ID must differ from the host. A copied build label with three fake
+source files cannot substitute for the complete executable closure. Imported
+report source remains non-executable data; no report selects a module URL.
+
+The survey offers exact replay separately from a current-runtime comparison.
+Legacy Node source receipts remain execution-unbound. Exact receipts separate
+artifact integrity, actual execution identity and observed replay consistency.
+One replay worker and one pending command are admitted per application realm,
+with shared resource reservation before allocation, source/body limits,
+preparation/command/lifetime deadlines and immediate cancellation. A controller
+change retires the in-flight replay. Failed worker termination retains its
+reservation and prevents admitting a replacement with unknown ownership.
+Browser fixtures cover initial offline startup, incomplete updates, retained
+old clients, isolated replay and forged source inventories; they are unexecuted.

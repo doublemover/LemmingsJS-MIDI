@@ -22,7 +22,7 @@ describe('complete immutable browser installation', () => {
     await first; expect(service.getState()).to.include({ status: 'installed', offlineReady: true });
     const restarted = owner(build, { fetchFile: () => { throw new Error('Offline restore must not fetch.'); } });
     await restarted.restore(); expect(restarted.getState().offlineReady).to.equal(true);
-    for (const route of ['index.html', 'editor.html', 'procgen.html']) {
+    for (const route of ['index.html', 'editor.html', 'procgen.html', 'procgen-survey.html']) {
       const redirect = await restarted.responseFor(request(route + '?seed=123', 'navigate'));
       expect(redirect.headers.get('location')).to.equal(scope + build.buildId + '/' + route + '?seed=123');
       const response = await restarted.responseFor(request(build.buildId + '/' + route + '?seed=123', 'navigate'));
@@ -34,6 +34,9 @@ describe('complete immutable browser installation', () => {
     expect((await restarted.responseFor(request(build.buildId + '/js/not-declared.js'))).status).to.equal(503);
     expect(await restarted.responseFor(request('not-an-app-route'))).to.equal(null);
     expect((await restarted.responseFor(request(build.buildId + '/runtime-build.json'))).status).to.equal(200);
+    const checking = restarted.verifyInstalledBuild(build.buildId);
+    expect(restarted.verifyInstalledBuild(build.buildId)).to.equal(checking);
+    expect(await checking).to.include({ buildId: build.buildId, offlineReady: true, resourceDelivery: 'verified-immutable-responses' });
   });
   it('keeps an installed A and unrelated recording cache when interrupted B cannot finish', async () => {
     const a = await fixture.build(); await owner(a).install();

@@ -10,6 +10,7 @@ export async function browserGenerationFixture() {
   const files = { 'index.html': '<link rel="stylesheet" href="css/shell.css"><script type="module" src="js/entry.js"></script>',
     'editor.html': '<title>Editor fixture</title><script type="module" src="js/entry.js"></script>',
     'procgen.html': '<title>Instrument fixture</title><script type="module" src="js/entry.js"></script>',
+    'procgen-survey.html': '<title>Survey fixture</title><script type="module" src="js/entry.js"></script>',
     'js/entry.js': 'import { getActiveExecutionIdentity } from "./runtime/ActiveExecutionIdentity.js"; globalThis.fixtureIdentity = getActiveExecutionIdentity();',
     'js/app/procgen/survey/ProcgenSurveyCanonical.js': 'export const SURVEY_STATE_SCHEMA = 3;',
     'config.json': '[{"path":"classic"}]', 'classic/MAIN.DAT': 'fixture', 'css/shell.css': 'body { color: rgb(10, 20, 30); }',

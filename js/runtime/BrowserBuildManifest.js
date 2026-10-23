@@ -1,4 +1,5 @@
 export const BROWSER_BUILD_SCHEMA = 'lemmings-browser-build/v1';
+export const BROWSER_ENTRY_ROUTES = Object.freeze(['index.html', 'editor.html', 'procgen.html', 'procgen-survey.html']);
 export const BUILD_IDENTITY_PATH = 'js/runtime/ActiveExecutionIdentity.js';
 export const BUILD_IDENTITY_SLOT = 'const APPLICATION_BUILD = null; // IMMUTABLE_APPLICATION_BUILD_SLOT';
 export const BUILD_TEMPLATE_PATH = 'runtime-templates/identity.txt';
@@ -31,8 +32,8 @@ export const verifyBrowserBuildManifest = async (manifest, { expectedBuildId = n
   if (!manifest || manifest.schema !== BROWSER_BUILD_SCHEMA || !hashPattern.test(manifest.buildId) ||
       expectedBuildId != null && manifest.buildId !== expectedBuildId || !Array.isArray(manifest.files) || !manifest.files.length || manifest.files.length > 8192 ||
       !Array.isArray(manifest.recipe) || manifest.recipe.length !== recipePaths.length ||
-      !Array.isArray(manifest.routes) || manifest.routes.length !== 3 ||
-      ['index.html', 'editor.html', 'procgen.html'].some(route => !manifest.routes.includes(route))) throw new Error('Unsupported browser build manifest.');
+      !Array.isArray(manifest.routes) || manifest.routes.length !== BROWSER_ENTRY_ROUTES.length ||
+      BROWSER_ENTRY_ROUTES.some(route => !manifest.routes.includes(route))) throw new Error('Unsupported browser build manifest.');
   const files = [], seen = new Set(); let totalBytes = 0;
   for (const file of manifest.files) {
     if (!validBrowserBuildPath(file?.path) || seen.has(file.path) || !Number.isSafeInteger(file.bytes) || file.bytes < 0 || file.bytes > 16 * 1048576 ||

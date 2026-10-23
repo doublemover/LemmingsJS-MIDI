@@ -7,6 +7,7 @@
     "optionalAudioBank": "none selected or shipped"
   },
   "workerSources": [
+    "js/app/procgen/survey/ProcgenSurveyReplaySession.js",
     "js/app/procgen/workstation/ProcgenTimingDriver.js"
   ],
   "components": [
@@ -86,6 +87,18 @@
       "files": ["service-worker.js"],
       "fileCount": 1,
       "sha256": "7343667833e5eecfb3d291788721678aad563b614728e0e994304538d78615d9"
+    },
+    {
+      "id": "lemmings-survey-replay-worker",
+      "upstream": "https://github.com/doublemover/LemmingsJS-MIDI",
+      "upstreamVersion": "source-bound",
+      "license": "NOASSERTION",
+      "reproductionStatus": "first-party-immutable-module-worker",
+      "classification": "source",
+      "entryPoints": ["js/app/procgen/survey/ProcgenSurveyDashboard.js"],
+      "files": ["js/app/procgen/survey/ProcgenSurveyExecution.js", "js/app/procgen/survey/ProcgenSurveyReplayBudget.js", "js/app/procgen/survey/ProcgenSurveyReplaySession.js", "js/app/procgen/survey/ProcgenSurveyReplayWorker.js"],
+      "fileCount": 4,
+      "sha256": "f4748b5d6208c905b26cb97d4db586fc6d7904eb73a62f7496ac13283069222d"
     },
     {
       "id": "lemmings-timing-worker-source",

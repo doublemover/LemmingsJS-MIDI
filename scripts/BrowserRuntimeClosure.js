@@ -5,6 +5,7 @@ import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
 import { load } from 'cheerio';
 import { collectRuntimeSourceClosure, discoverRuntimeDependencies } from './RuntimeSourceClosure.js';
+import { BROWSER_ENTRY_ROUTES } from '../js/runtime/BrowserBuildManifest.js';
 
 const execute = promisify(execFile), base = new URL('https://build.invalid/');
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -17,7 +18,7 @@ const localResource = (specifier, importer) => {
   return relative;
 };
 
-export async function collectBrowserRuntimeClosure({ rootDir, routes = ['index.html', 'editor.html', 'procgen.html'], inventory = null,
+export async function collectBrowserRuntimeClosure({ rootDir, routes = BROWSER_ENTRY_ROUTES, inventory = null,
   fsImpl = fs, maxFiles = 8192, maxBytes = 256 * 1048576 } = {}) {
   const root = path.resolve(rootDir), resources = new Set(['keybindings.json', 'config.json', 'site.webmanifest', 'provenance/runtime-artifacts.json']);
   const entries = new Set(['js/runtime/ActiveExecutionIdentity.js', 'js/runtime/BrowserBuildManifest.js',
