@@ -53,3 +53,14 @@ settles. Completed artifacts transfer to the caller's delivery owner. The
 artifact's digest also retains its reservation until native hashing finishes.
 Material integrity is separate from backend preparation and render/listening
 qualification. Archive preparation does not install a pack or apply a lane.
+
+`SoundContentReader` accepts bounded local Blob archives. It checks the fixed
+signature, exact canonical header, manifest hash, payload inventory, lengths,
+trailing bytes and each included content hash before returning an owned stage.
+Reference archives preserve missing-engine/material requirements for inspection.
+Foreign review references never grant local redistribution permission.
+
+Stages have explicit consumer leases and expiration. Discard or cancellation
+invalidates access immediately; accepted native reads and borrowed consumers
+retain their shared reservation until settlement or release. Staging changes no
+project, performing lane, output permission or durable registry record.
