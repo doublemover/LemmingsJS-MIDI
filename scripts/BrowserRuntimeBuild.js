@@ -2,9 +2,9 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { collectBrowserRuntimeClosure } from './BrowserRuntimeClosure.js';
+import { BUILD_IDENTITY_PATH, BUILD_IDENTITY_SLOT, BUILD_TEMPLATE_PATH, computeBrowserBuildIdentity, renderBrowserBuildIdentity, verifyBrowserBuildManifest } from '../js/runtime/BrowserBuildManifest.js';
 
-const IDENTITY_PATH = 'js/runtime/ActiveExecutionIdentity.js';
-const IDENTITY_SLOT = 'const APPLICATION_BUILD = null; // IMMUTABLE_APPLICATION_BUILD_SLOT';
+const IDENTITY_PATH = BUILD_IDENTITY_PATH, IDENTITY_SLOT = BUILD_IDENTITY_SLOT;
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const inside = (root, target) => { const relative = path.relative(root, target); return relative !== '..' && !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative); };
 
@@ -19,11 +19,8 @@ export async function buildBrowserRuntime({ rootDir, outputDir = null, inventory
   const recipe = [];
   for (const file of recipeFiles) recipe.push({ path: file, sha256: sha256(await fsImpl.readFile(path.join(root, file))) });
   const normalized = closure.files;
-  const buildId = sha256(JSON.stringify({ schema: 'lemmings-immutable-browser-input/v1', files: normalized, recipe }));
-  const codeFiles = normalized.filter(file => /\.(?:[cm]?js|wasm)$/.test(file.path)), assets = normalized.filter(file => !/\.(?:[cm]?js|wasm)$/.test(file.path));
-  const identity = { buildId, closureDigest: sha256(JSON.stringify(normalized)), assetDigest: sha256(JSON.stringify(assets)), codeDigest: sha256(JSON.stringify(codeFiles)),
-    harnessVersion: 'browser-survey-v1', identityRecipe: 'normalized-data-slot-v1' };
-  const generatedIdentity = identitySource.replace(IDENTITY_SLOT, `const APPLICATION_BUILD = Object.freeze(${JSON.stringify(identity)}); // IMMUTABLE_APPLICATION_BUILD_SLOT`);
+  const identity = await computeBrowserBuildIdentity(normalized, recipe), { buildId } = identity;
+  const generatedIdentity = renderBrowserBuildIdentity(identitySource, identity);
   let ancestor = output;
   while (true) {
     try { const real = await fsImpl.realpath(ancestor); if (!inside(await fsImpl.realpath(root), real)) throw new Error('Browser output ancestor escapes the workspace.'); break; }
@@ -47,16 +44,20 @@ export async function buildBrowserRuntime({ rootDir, outputDir = null, inventory
       await fsImpl.mkdir(path.dirname(destination), { recursive: true }); await fsImpl.writeFile(destination, bytes);
       files.push({ path: file.path, bytes: bytes.byteLength, sha256: sha256(bytes) });
     }
+    const templatePath = path.join(stage, BUILD_TEMPLATE_PATH);
+    await fsImpl.mkdir(path.dirname(templatePath), { recursive: true }); await fsImpl.writeFile(templatePath, identitySource);
     const manifest = { schema: 'lemmings-browser-build/v1', ...identity, routes: closure.routes, assetProfile: closure.assetProfile,
       files, sourceBytes: files.reduce((total, file) => total + file.bytes, 0), recipe,
-      sourceNormalization: { path: IDENTITY_PATH, templateSha256: sha256(identitySource) },
+      sourceNormalization: { path: IDENTITY_PATH, templateSha256: sha256(identitySource), templateBytes: Buffer.byteLength(identitySource), templatePath: BUILD_TEMPLATE_PATH },
       qualification: { artifact: 'staged-with-content-hashes', offlineInstallation: 'not-installed', execution: 'entry-not-executed' } };
+    await verifyBrowserBuildManifest(manifest, { expectedBuildId: buildId, template: identitySource });
     const canonical = JSON.stringify(manifest) + '\n'; await fsImpl.writeFile(path.join(stage, 'runtime-build.json'), canonical);
     try { await fsImpl.rename(stage, finalPath); }
     catch (error) {
       if (!['EEXIST', 'ENOTEMPTY', 'EPERM'].includes(error.code)) throw error;
       if (await fsImpl.readFile(path.join(finalPath, 'runtime-build.json'), 'utf8') !== canonical) throw new Error('An immutable browser generation already has conflicting metadata.');
       for (const file of files) if (sha256(await fsImpl.readFile(path.join(finalPath, file.path))) !== file.sha256) throw new Error('An immutable browser generation has changed bytes.');
+      if (sha256(await fsImpl.readFile(path.join(finalPath, BUILD_TEMPLATE_PATH))) !== manifest.sourceNormalization.templateSha256) throw new Error('An immutable browser generation has changed template bytes.');
       await cleanup();
     }
     return { buildId, path: finalPath, manifest, offlineInstallation: 'not-installed', activeExecution: 'entry-not-executed' };

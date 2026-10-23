@@ -20,7 +20,7 @@ const localResource = (specifier, importer) => {
 export async function collectBrowserRuntimeClosure({ rootDir, routes = ['index.html', 'editor.html', 'procgen.html'], inventory = null,
   fsImpl = fs, maxFiles = 8192, maxBytes = 256 * 1048576 } = {}) {
   const root = path.resolve(rootDir), resources = new Set(['keybindings.json', 'config.json', 'site.webmanifest', 'provenance/runtime-artifacts.json']);
-  const entries = new Set(['js/runtime/ActiveExecutionIdentity.js']);
+  const entries = new Set(['js/runtime/ActiveExecutionIdentity.js', 'js/runtime/BrowserBuildManifest.js']);
   for (const route of routes) {
     const relative = localResource(route, 'index.html'); resources.add(relative);
     const $ = load(await fsImpl.readFile(path.join(root, relative), 'utf8'));

@@ -102,3 +102,11 @@ game shell at an instrument URL. Its status explicitly remains an unqualified
 shell with `offlineReady: false`; it does not advertise the complete generated
 runtime inventory as installed. Registration exposes a separate unqualified
 installation state. Deterministic fallback fixtures are added but unexecuted.
+
+The generated manifest has one shared browser/Node verifier. It recomputes the
+complete normalized inventory and build recipe, checks all required routes and
+file/byte bounds, and verifies that the generated identity carrier is exactly
+the bound template plus derived build data. Installer consumers must obtain
+`templateVerified: true` before publication; checking only the normalized slot
+would otherwise hide a changed executable carrier. Template bytes are shipped
+as bounded data alongside the generation and checked on repeat staging.

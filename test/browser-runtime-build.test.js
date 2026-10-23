@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { buildBrowserRuntime } from '../scripts/BrowserRuntimeBuild.js';
+import { verifyBrowserBuildManifest } from '../js/runtime/BrowserBuildManifest.js';
 
 const repo = fileURLToPath(new URL('../', import.meta.url));
 describe('immutable browser generation staging', () => {
@@ -18,7 +19,7 @@ describe('immutable browser generation staging', () => {
       'config.json': '[{"path":"classic"}]', 'classic/MAIN.DAT': 'fixture', 'keybindings.json': '{}',
       'site.webmanifest': '{}', 'provenance/runtime-artifacts.json': '{}' };
     for (const [file, source] of Object.entries(files)) { await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.writeFile(path.join(root, file), source); }
-    for (const file of ['js/runtime/ActiveExecutionIdentity.js', 'scripts/BrowserRuntimeBuild.js', 'scripts/BrowserRuntimeClosure.js', 'scripts/RuntimeSourceClosure.js']) {
+    for (const file of ['js/runtime/ActiveExecutionIdentity.js', 'js/runtime/BrowserBuildManifest.js', 'scripts/BrowserRuntimeBuild.js', 'scripts/BrowserRuntimeClosure.js', 'scripts/RuntimeSourceClosure.js']) {
       await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.copyFile(path.join(repo, file), path.join(root, file));
     }
   });
@@ -35,6 +36,8 @@ describe('immutable browser generation staging', () => {
     const expected = first.manifest.files.find(file => file.path === 'js/runtime/ActiveExecutionIdentity.js');
     expect(createHash('sha256').update(carrier).digest('hex')).to.equal(expected.sha256);
     expect(carrier.toString()).to.include(first.buildId); expect(expected.sha256).not.to.equal(first.manifest.sourceNormalization.templateSha256);
+    const template = await fs.readFile(path.join(first.path, first.manifest.sourceNormalization.templatePath), 'utf8');
+    expect((await verifyBrowserBuildManifest(first.manifest, { expectedBuildId: first.buildId, template })).templateVerified).to.equal(true);
     await fs.writeFile(path.join(root, 'classic/MAIN.DAT'), 'new fixture');
     const changed = await build(); expect(changed.buildId).not.to.equal(first.buildId);
     expect(await fs.readFile(path.join(first.path, 'classic/MAIN.DAT'), 'utf8')).to.equal('fixture');
@@ -44,5 +47,15 @@ describe('immutable browser generation staging', () => {
     let error; try { await build(); } catch (failure) { error = failure; }
     expect(error.message).to.include('immutable browser generation has changed bytes');
     expect(await fs.readFile(path.join(first.path, 'js/entry.js'), 'utf8')).to.equal('changed');
+  });
+  it('rejects inventory tampering and a generated carrier hidden behind an unchanged normalized slot', async () => {
+    const first = await build(), template = await fs.readFile(path.join(first.path, first.manifest.sourceNormalization.templatePath), 'utf8');
+    const tampered = structuredClone(first.manifest); tampered.files.find(file => file.path === 'js/entry.js').sha256 = 'f'.repeat(64);
+    let error; try { await verifyBrowserBuildManifest(tampered, { expectedBuildId: first.buildId, template }); } catch (failure) { error = failure; }
+    expect(error.message).to.include('complete inventory');
+    const forged = structuredClone(first.manifest), slot = forged.files.find(file => file.path === 'js/runtime/ActiveExecutionIdentity.js');
+    slot.sha256 = 'e'.repeat(64);
+    try { await verifyBrowserBuildManifest(forged, { expectedBuildId: first.buildId, template }); } catch (failure) { error = failure; }
+    expect(error.message).to.include('carrier does not follow');
   });
 });
