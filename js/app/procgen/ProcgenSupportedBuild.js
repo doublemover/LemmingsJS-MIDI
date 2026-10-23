@@ -32,7 +32,7 @@ class ProcgenSupportedBuild {
     maxWork = Math.max(0, Math.trunc(maxWork) || 0);
     for (let lane = Math.max(0, Math.floor(top / world.laneHeight)); lane <= Math.min(world.laneCount - 1, Math.floor(bottom / world.laneHeight)); lane++) {
       for (const task of world.accessTasks[lane] || []) if (task.owner && task.owner !== actor && !task.owner.removed && !task.owner.failureReason && !task.owner.terminalReason && task.owner.action === task.action && task.footprint && overlap(observedBounds, task.footprint)) failure ||= 'construction';
-      const owned = world.triggerManager?.byLane[lane] || [];
+      const owned = world.triggerManager?.getLaneTriggers(lane) || [];
       if (owned.length > 64) failure ||= 'blocker-limit';
       else triggers.push(...owned);
     }

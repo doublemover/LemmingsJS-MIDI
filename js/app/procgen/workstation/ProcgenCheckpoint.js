@@ -3,6 +3,7 @@ import { Trigger } from '../../../level/Trigger.js';
 import { Animation } from '../../../render/Animation.js';
 import { MapObject } from '../../../level/MapObject.js';
 import { validatePhysicalEventIdentity } from '../ProcgenSoundEventBus.js';
+import { PROCGEN_TRIGGER_INDEX_FIELDS } from '../ProcgenTriggerManager.js';
 
 const VERSION = 2;
 const CHECKPOINT_COMPONENT_CODECS = Object.freeze({ worldGraph: 2, physicalIdentity: 1, clock: 1,
@@ -110,7 +111,7 @@ function createGraph(world) {
     nodes[index] = entry; return { ref: index };
   };
   const props = (value, extra = new Set()) => Object.fromEntries(Object.entries(value).filter(([key, v]) => !forbidden(key) && !OMIT.has(key) && !extra.has(key) && typeof v !== 'function').map(([key, v]) => [key, encode(v)]));
-  const owners = [...bound.owners].map(([name, value]) => ({ name, props: props(value),
+  const owners = [...bound.owners].map(([name, value]) => ({ name, props: props(value, new Set(name === 'triggerManager' ? PROCGEN_TRIGGER_INDEX_FIELDS : [])),
     ...(value instanceof Map ? { entries: [...Map.prototype.entries.call(value)].map(([k, v]) => [encode(k), encode(v)]) } : {}) }));
   return { nodes, owners };
 }
@@ -275,6 +276,7 @@ function restoreProcgenCheckpoint(world, saved) {
     if (entries) { Map.prototype.clear.call(target); for (const [key, value] of entries) Map.prototype.set.call(target, key, value); }
   }
   world._authoritativeActors = new WeakSet(world.actors);
+  world.triggerManager.rebuildIndex();
   world.soundEvents.restoreIdentity(saved.physicalIdentity ?? null);
   world._completedPhysicalSnapshot = null;
   world.timer.speedFactor = saved.clock.speedFactor; world.eventTimeMs = saved.clock.eventTimeMs;

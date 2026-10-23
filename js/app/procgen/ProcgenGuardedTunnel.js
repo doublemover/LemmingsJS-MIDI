@@ -39,7 +39,7 @@ class ProcgenGuardedTunnel {
     this.hazards.length = 0;
     for (let lane = Math.max(0, Math.floor(top / world.laneHeight)); lane <= Math.min(world.laneCount - 1, Math.floor(bottom / world.laneHeight)); lane++) {
       for (const [x, ahead, behind] of [[actor.x, 64, 16], [actor.x + 64, 48, 0]]) { world.hazards.nearby(lane, x, { ahead, behind }, this.nearby); this.hazards.push(...this.nearby); }
-      const bucket = world.triggerManager.byLane[lane] || []; if (bucket.length > 64) failure ||= 'blocker-limit'; else triggers.push(...bucket);
+      const bucket = world.triggerManager.getLaneTriggers(lane); if (bucket.length > 64) failure ||= 'blocker-limit'; else triggers.push(...bucket);
       for (const task of world.accessTasks[lane] || []) if (task.owner && task.owner !== actor && task.owner.action === task.action && task.footprint && task.footprint.x1 < right && task.footprint.x2 > left && task.footprint.y1 < bottom && task.footprint.y2 > top) failure ||= 'construction';
     }
     const safe = lem => !this.hazards.some(h => contact(h, lem.x, lem.y));

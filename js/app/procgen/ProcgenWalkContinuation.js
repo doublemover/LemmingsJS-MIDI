@@ -32,7 +32,7 @@ class ProcgenWalkContinuation {
         if (owner && !owner.removed && !owner.disabled && !owner.failureReason && !owner.terminalReason && owner.action === task.action && task.footprint && overlap(bounds, task.footprint))
           return { safe: false, failure: 'construction', actionSteps: 0 };
       }
-      const bucket = world.triggerManager?.byLane[lane] || [];
+      const bucket = world.triggerManager?.getLaneTriggers(lane) || [];
       if (bucket.length > 64) return { safe: false, failure: 'blocker-observation-limit', actionSteps: 0 };
       triggers.push(...bucket);
     }

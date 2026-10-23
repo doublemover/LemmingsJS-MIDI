@@ -79,7 +79,7 @@ class ProcgenActionChain {
       return true;
     };
     for (let lane = Math.max(0, Math.floor(bounds.y1 / world.laneHeight)); lane <= Math.min(world.laneCount - 1, Math.floor((bounds.y2 - 1) / world.laneHeight)); lane++) {
-      const list = world.triggerManager?.byLane[lane] || [];
+      const list = world.triggerManager?.getLaneTriggers(lane) || [];
       if (list.length > 64) failure ||= 'blocker-limit'; else triggers.push(...list);
     }
     for (const state of [State.BASHING, State.MINING]) this.actions[state].masks = world.actions[state].masks;

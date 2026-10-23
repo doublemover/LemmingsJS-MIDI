@@ -113,7 +113,7 @@ class ProcgenBasinCrewRoutes {
       if (nearby.length >= 8) failure ||= 'hazard-limit'; hazards.push(...nearby);
     }
     const safe = lem => !hazards.some(h => lem.x + 2 > h.x1 && lem.x - 2 < h.x2 && lem.y + 1 > h.y1 && lem.y - 10 < h.y2);
-    const triggers = world.triggerManager.byLane[actor.laneIndex] || [];
+    const triggers = world.triggerManager.getLaneTriggers(actor.laneIndex);
     if (triggers.length > 64) failure ||= 'blocker-limit';
     const level = { width: world.width, height: world.height, getGroundMaskLayer: () => level,
       hasGroundAt: (x, y) => !!(read(x, y) & 1), isArrowAt: (x, y, direction) => world.isArrowAt(x, y, direction),

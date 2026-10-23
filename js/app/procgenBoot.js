@@ -4,6 +4,7 @@ import { ProcgenBitmapHud } from './procgen/ProcgenBitmapHud.js';
 import { createProcgenUiController } from './procgen/ProcgenUiController.js';
 import { loadProcgenPackTerrain, loadProcgenMixedTerrain } from './procgen/ProcgenPackTerrain.js';
 import { ProcgenLaneWorld, normalizeLaneHeight } from './procgen/ProcgenLaneWorld.js';
+import { PROCGEN_TRIGGER_INDEX_BYTES_PER_ACTOR } from './procgen/ProcgenTriggerManager.js';
 import { ParticleTable } from '../render/ParticleTable.js';
 import { createProcgenWorkstation } from './procgen/workstation/ProcgenWorkstation.js';
 import { restoreProcgenCheckpoint } from './procgen/workstation/ProcgenCheckpoint.js';
@@ -71,7 +72,7 @@ const estimateCandidateWorldBytes = ({ laneCount, laneHeight }) => {
   const height = normalizeLaneHeight(laneHeight);
   // An initial terrain chunk, collision/edit indexes, lane planners, and
   // actor headroom. Future growth is still reported by the world subsystem.
-  return lanes * (65536 + height * 384) + 16384 * 128;
+  return lanes * (65536 + height * 384) + 16384 * (128 + PROCGEN_TRIGGER_INDEX_BYTES_PER_ACTOR);
 };
 let analytics = null;
 let procgenUi = null;
