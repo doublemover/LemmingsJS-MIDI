@@ -1,6 +1,7 @@
 import { PROCGEN_SOUND_COLLECTIONS, PROCGEN_ROLES, resolveProcgenSound } from './ProcgenSoundCollections.js';
 import { createProcgenLaneProjection } from './ProcgenLaneProjection.js';
 import { procgenStepNotes } from './ProcgenPatternEngine.js';
+import { createProcgenFullscreenSession } from './ProcgenFullscreenSession.js';
 
 const NOTES = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
 const SCALES = { Major: [0, 2, 4, 5, 7, 9, 11], Minor: [0, 2, 3, 5, 7, 8, 10], Dorian: [0, 2, 3, 5, 7, 9, 10], Lydian: [0, 2, 4, 6, 7, 9, 11], Pentatonic: [0, 2, 4, 7, 9], Chromatic: Array.from({ length: 12 }, (_, i) => i) };
@@ -32,10 +33,13 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
   };
   const labeled = (label, control, parent) => { const wrap = node('label', null, 'studio-field'); wrap.append(node('span', label), control); parent.append(wrap); return control; };
   const byId = id => document.getElementById(id);
+  const topbar = byId('procgenTopbar'), topbarParent = topbar.parentNode, topbarSibling = topbar.nextSibling;
+  const presentationRoot = node('div', null, 'procgen-presentation-root'); presentationRoot.id = 'procgenPresentationRoot';
+  topbarParent.insertBefore(presentationRoot, topbar); presentationRoot.append(topbar);
   const shell = node('main', null, 'procgen-studio'); shell.id = 'procgenStudio';
   const heading = node('div', null, 'studio-brand'); heading.append(node('strong', 'PROCGEN'), node('span', 'Living worlds. Musical stories.'));
-  byId('procgenTopbar').prepend(heading);
-  const transport = node('div', null, 'studio-transport'); transport.setAttribute('aria-label', 'Musical transport'); byId('procgenTopbar').append(transport);
+  topbar.prepend(heading);
+  const transport = node('div', null, 'studio-transport'); transport.setAttribute('aria-label', 'Musical transport'); topbar.append(transport);
   const lanes = node('div', null, 'studio-lane-headers'); lanes.setAttribute('aria-label', 'Musical lanes'); lanes.tabIndex = 0;
   const stage = node('div', null, 'studio-stage'); stage.id = 'procgenStudioStage';
   const canvas = byId('gameCanvas'), canvasParent = canvas.parentNode, canvasSibling = canvas.nextSibling; stage.append(canvas);
@@ -47,8 +51,10 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
   resize.setAttribute('aria-controls', fields.id); resize.setAttribute('aria-valuemin', '250'); resize.setAttribute('aria-valuemax', '480');
   resize.setAttribute('aria-valuenow', String(state.inspectorWidth));
   inspector.append(resize, tabs, fields);
-  shell.append(lanes, stage, inspector); byId('procgenTopbar').after(shell);
+  shell.append(lanes, stage, inspector); topbar.after(shell);
   const footer = node('footer', null, 'studio-footer'); footer.id = 'procgenStudioFooter'; shell.after(footer);
+  const panel = byId('procgenPanel'), panelParent = panel?.parentNode, panelSibling = panel?.nextSibling;
+  if (panel) presentationRoot.append(panel);
   const status = node('output', 'Ready', 'studio-status'); status.setAttribute('aria-live', 'polite');
   const storageStatus = node('output', 'Unsaved', 'studio-storage-status'); storageStatus.setAttribute('aria-label', 'Project save status');
   const recoveryStatus = node('output', 'Recovery unsaved', 'studio-recovery-status'); recoveryStatus.setAttribute('aria-label', 'Crash recovery status');
@@ -56,6 +62,7 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
   footer.append(legacyNotice);
   let projection, dragging = null, lastFrame = 0, lastMidiFrame = 0, stroke = null, suppressClickUntil = 0;
   let attachedRenderer = null, disposed = false, superseded = false, composing = false, pendingInspectorRender = false;
+  let geometryPending = false, geometryRelease = null, geometryUnsubscribe = null;
   const owner = {};
   on(fields, 'compositionstart', () => { composing = true; });
   on(fields, 'compositionend', () => {
@@ -71,6 +78,31 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
     if (renderer.onWorkstationFrame === frame) renderer.onWorkstationFrame = lease.baseFrame;
     if (renderer.workstationLayout === projection) renderer.workstationLayout = lease.baseLayout;
     renderer.resize();
+  };
+  const finishGeometry = () => {
+    if (!geometryPending || disposed) return;
+    const renderer = getRuntime()?.lanes?.renderer;
+    if (renderer?.presentation?.demanded && !renderer.presentation.getSnapshot()) return;
+    geometryPending = false; state.presentationTransition = false; grid.inert = false;
+    delete stage.dataset.presentation;
+    geometryUnsubscribe?.(); geometryUnsubscribe = null;
+  };
+  const beginGeometry = () => {
+    if (disposed) return;
+    stroke = null; dragging = null; geometryPending = true; state.presentationTransition = true;
+    grid.inert = true; stage.dataset.presentation = 'preparing';
+    geometryRelease?.(); geometryRelease = null;
+    geometryUnsubscribe?.(); geometryUnsubscribe = null;
+    const host = getRuntime()?.lanes?.renderer?.presentation;
+    geometryRelease = host?.suspend?.(owner, 'The world display is preparing its fullscreen geometry.') || null;
+    geometryUnsubscribe = host?.subscribe?.(() => finishGeometry()) || null;
+  };
+  const reflowGeometry = () => {
+    if (disposed) return;
+    layout(); renderRows();
+    geometryRelease?.(); geometryRelease = null;
+    getRuntime()?.lanes?.renderer?.render?.(false);
+    finishGeometry();
   };
   on(resize, 'pointerdown', event => { dragging = event.pointerId; resize.setPointerCapture(event.pointerId); });
   const setInspectorWidth = width => { state.inspectorWidth = Math.max(250, Math.min(480, width)); resize.setAttribute('aria-valuenow', String(state.inspectorWidth)); shell.style.setProperty('--inspector-width', state.inspectorWidth + 'px'); layout(); };
@@ -88,8 +120,39 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
   const clockStatus = node('output', 'Internal', 'studio-clock-status');
   const displayStatus = node('output', 'Display ready', 'studio-display-status'); displayStatus.setAttribute('aria-live', 'polite');
   const retryDisplay = button('Retry display', () => handlers.retryDisplay?.(), 'Retry canvas display after context loss'); retryDisplay.hidden = true;
+  const stopOutput = button('Stop', () => handlers.stopOutput?.(), 'Stop the musical transport and flush pending output'); stopOutput.id = 'studioStopOutput';
+  let fullscreenSession = null;
+  const fullscreenCommand = () => { void fullscreenSession?.toggle(); };
+  const fullscreenMenu = node('details', null, 'studio-transport-overflow');
+  const fullscreenSummary = node('summary', 'View actions'); fullscreenMenu.append(fullscreenSummary);
+  const commandSearch = node('input'); commandSearch.type = 'search'; commandSearch.placeholder = 'Find command';
+  commandSearch.setAttribute('aria-label', 'Find workstation command');
+  const fullscreenAction = button('Expand fullscreen', fullscreenCommand);
+  on(commandSearch, 'input', () => { fullscreenAction.hidden = !!commandSearch.value.trim() &&
+    !/fullscreen|expand|exit|presentation/i.test(commandSearch.value); });
+  fullscreenMenu.append(commandSearch, fullscreenAction);
+  const fullscreenExit = button('Exit fullscreen', fullscreenCommand); fullscreenExit.id = 'studioFullscreenExit'; fullscreenExit.hidden = true;
+  // Opening the command and changing presentation geometry must not blur a numeric draft.
+  for (const action of [fullscreenSummary, fullscreenAction, fullscreenExit]) on(action, 'pointerdown', event => {
+    if (event.button === 0) event.preventDefault();
+  });
+  const syncFullscreen = () => {
+    const current = fullscreenSession?.getState();
+    const entered = !!current?.entered;
+    fullscreenAction.textContent = entered ? 'Exit fullscreen' : current?.state === 'requesting' ? 'Cancel fullscreen request' : 'Expand fullscreen';
+    fullscreenAction.disabled = current?.state === 'exiting';
+    fullscreenExit.hidden = !entered; fullscreenExit.setAttribute('aria-pressed', String(entered));
+  };
   labeled('View', layoutMode, transport); labeled('Speed', speedMode, transport); labeled('BPM', bpm, transport); labeled('Link world', linked, transport);
-  labeled('Key', root, transport); labeled('Scale', scale, transport); labeled('Clock', clock, transport); transport.append(clockStatus, displayStatus, retryDisplay);
+  labeled('Key', root, transport); labeled('Scale', scale, transport); labeled('Clock', clock, transport);
+  transport.append(stopOutput, clockStatus, displayStatus, retryDisplay, fullscreenMenu, fullscreenExit);
+  fullscreenSession = createProcgenFullscreenSession({ document, root: presentationRoot, control: fullscreenAction,
+    getGeneration: () => handlers.presentationGeneration?.() ?? 0,
+    onTransition: () => { beginGeometry(); syncFullscreen(); },
+    onReflow: () => { syncFullscreen(); reflowGeometry(); },
+    onStatus: message => { status.textContent = message; },
+    focusFallback: () => byId('procgenPause') });
+  syncFullscreen();
   const tool = select(['select', 'draw', 'erase'], state.tool, value => { state.tool = value; }, 'Step editing tool');
   const laneRange = node('output', '', 'studio-lane-range'); laneRange.setAttribute('aria-label', 'Visible lane range');
   const moveLanes = delta => { state.firstLane += delta; layout(); renderRows(); handlers.preferences?.(); };
@@ -113,7 +176,7 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
   const importInput = input('', () => {}, { type: 'file' }); importInput.accept = '.json,.procgen'; importInput.hidden = true; footer.append(importInput);
   on(importInput, 'change', () => { if (importInput.files?.[0]) handlers.import?.(importInput.files[0]); importInput.value = ''; });
   footer.append(button('Import', () => importInput.click()));
-  const projectList = node('dialog', null, 'studio-dialog'); projectList.setAttribute('aria-label', 'Saved projects'); document.body.append(projectList);
+  const projectList = node('dialog', null, 'studio-dialog'); projectList.setAttribute('aria-label', 'Saved projects'); presentationRoot.append(projectList);
   const showProjectPage = (page, load, fetchPage = null) => {
     const items = node('div', null, 'studio-project-items'), feedback = node('p', '', 'studio-project-feedback');
     const search = node('input'); search.type = 'search'; search.placeholder = 'Search project names'; search.setAttribute('aria-label', 'Search project names');
@@ -611,8 +674,18 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
       records.dataset.state = partial ? 'partial' : midiState?.recordingPressure >= 0.8 ? 'near-cap' : value ? 'recording' : 'idle';
     },
     midi(text) { state.lastMidi = text; const time = window.performance.now(); if (time - lastMidiFrame < 50) return; lastMidiFrame = time; const monitor = fields.querySelector('.studio-midi-monitor'); if (monitor && monitor.textContent !== text) monitor.textContent = text; },
-    dispose() { if (disposed) return; disposed = true; detachRenderer(); for (const unlisten of listeners) unlisten(); if (canvasParent) canvasParent.insertBefore(canvas, canvasSibling?.parentNode === canvasParent ? canvasSibling : null); projectList.remove(); shell.remove(); footer.remove(); transport.remove(); heading.remove(); },
-    getProjection: () => projection
+    dispose() {
+      if (disposed) return; disposed = true;
+      fullscreenSession.dispose(); geometryUnsubscribe?.(); geometryRelease?.(); state.presentationTransition = false;
+      detachRenderer(); for (const unlisten of listeners) unlisten();
+      if (canvasParent) canvasParent.insertBefore(canvas, canvasSibling?.parentNode === canvasParent ? canvasSibling : null);
+      projectList.remove(); shell.remove(); footer.remove(); transport.remove(); heading.remove();
+      if (panelParent) panelParent.insertBefore(panel, panelSibling?.parentNode === panelParent ? panelSibling : null);
+      topbarParent.insertBefore(topbar, topbarSibling?.parentNode === topbarParent ? topbarSibling : null);
+      presentationRoot.remove();
+    },
+    getProjection: () => projection,
+    getFullscreenState: () => fullscreenSession.getState()
   };
 }
 export { createProcgenWorkstationView };

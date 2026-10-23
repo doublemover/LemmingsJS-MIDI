@@ -120,6 +120,34 @@ describe('ProcGen workstation orchestration', () => {
     expect(records[3].payload).to.deep.equal({ version: 1, kind: 'world-speed', speedFactor: 1.5 });
     await f.studio.dispose().completion;
   });
+  it('commits and releases local CC reservations after channel submission', async () => {
+    const f = setup(); f.studio.bindRuntime(); f.enable();
+    const scheduler = f.runtime.view.midiPreviewRouter.scheduler, ledger = [];
+    scheduler.output.id = 'local-cc';
+    scheduler.evaluateAndReserve = (_plan, meta) => { ledger.push(['reserve', meta.outputId]); return { ok: true, reservationId: 8 }; };
+    scheduler._resolveOutputId = () => 'local-cc';
+    scheduler._commitReservationMessage = (id, phase, bytes, meta) => { ledger.push(['commit', id, phase, bytes, meta.outputId]); return true; };
+    scheduler._releaseReservation = (id, unclaimedOnly) => { ledger.push(['release', id, unclaimedOnly]); return 0; };
+    scheduler.output.channels[1].sendControlChange = () => ledger.push(['send']);
+    const lane = f.studio.getProject().procgen.lanes[0];
+    f.studio.dispatch({ type: 'procgen/lane', laneId: lane.id, patch: { ccAutomation: [{ id: 'cc-test', enabled: true,
+      controller: 74, axis: 'beat', length: 4, mode: 'step', points: [{ beat: 0, value: 40 }] }] } });
+    f.studio.play(); f.studio.engine.onBeat({ beat: 0.25, timestamp: 100, bpm: 120 });
+    expect(ledger).to.deep.include(['reserve', 'local-cc']);
+    expect(ledger).to.deep.include(['commit', 8, 'on', 3, 'local-cc']);
+    expect(ledger).to.deep.include(['release', 8, true]);
+    expect(ledger.findIndex(entry => entry[0] === 'send')).to.be.lessThan(ledger.findIndex(entry => entry[0] === 'commit'));
+    await f.studio.dispose().completion;
+  });
+  it('stops the musical transport and flushes output without replacing the world', async () => {
+    const f = setup(); f.studio.bindRuntime(); f.studio.play();
+    const world = f.runtime.world;
+    const stopped = f.studio.handlers.stopOutput();
+    expect(stopped).to.include({ playing: false, beat: 0, reason: 'stopped' });
+    expect(f.runtime.world).to.equal(world);
+    expect(f.statuses.at(-1)).to.include('output flushed');
+    await f.studio.dispose().completion;
+  });
   it('retries the same prepared MIDI bytes after an anchor request fails', async () => {
     const f = setup(), blobs = [], calls = [], timers = [];
     let failClick = true;

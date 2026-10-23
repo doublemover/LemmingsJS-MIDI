@@ -1,15 +1,26 @@
 /* The shared world stays underneath both views; only editing chrome changes. */
 body.procgen-workstation {
   box-sizing: border-box;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 8px;
-  padding: 10px;
+  display: block;
+  padding: 0;
   height: 100dvh;
+  overflow: hidden;
   color: #253544;
   background: radial-gradient(ellipse at 15% 0%, #fbfdff, transparent 70%), linear-gradient(125deg, #e6ebef, #bfc9d1);
   font: 12px/1.4 system-ui, sans-serif;
 }
+.procgen-presentation-root {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 10px;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 15% 0%, #fbfdff, transparent 70%), linear-gradient(125deg, #e6ebef, #bfc9d1);
+}
+.procgen-presentation-root:fullscreen { width: 100vw; height: 100dvh; }
 .procgen-workstation *, .procgen-workstation *::before, .procgen-workstation *::after { box-sizing: border-box; }
 .procgen-workstation #procgenTopbar {
   position: relative; inset: auto; width: auto; margin: 0; padding: 8px 10px;
@@ -56,6 +67,11 @@ body.procgen-workstation {
 .studio-transport { order: 4; display: flex; flex-wrap: wrap; align-items: center; gap: 7px 12px; padding-top: 4px; }
 .studio-transport .studio-field { display: flex; align-items: center; gap: 5px; margin: 0; font-size: 11px; }
 .studio-transport input[type=number] { width: 62px; }
+.studio-transport-overflow { position: relative; z-index: 35; }
+.studio-transport-overflow summary { cursor: pointer; }
+.studio-transport-overflow[open] { display: grid; gap: 4px; }
+.studio-transport-overflow input[type=search] { max-width: 160px; }
+.studio-stage[data-presentation=preparing]::after { content: 'Preparing world display…'; position: absolute; inset: auto 8px 8px auto; z-index: 4; padding: 4px 7px; border-radius: 4px; background: #162936dd; color: white; font: 10px system-ui, sans-serif; pointer-events: none; }
 .studio-clock-status { color: #55818e; min-width: 30px; font: 11px ui-monospace, monospace; }
 .procgen-studio { display: grid; grid-template-columns: 144px minmax(0, 1fr) var(--inspector-width, 304px); gap: 8px; min-height: 0; min-width: 0; }
 .studio-lane-headers { min-height: 0; overflow: hidden; border: 1px solid #fff9; border-radius: 8px; background: #eef3f550; }
@@ -142,7 +158,7 @@ body.procgen-workstation {
 .procgen-workstation #procgenPanel #procgenTab { align-self: flex-end; position: absolute; top: 100%; right: 5px; height: 22px; min-height: 22px; min-width: 70px; font-size: 9px; padding: 1px 8px; border-radius: 0 0 5px 5px; color: #627481; background: #e5edf2; border-color: #bac6ce; }
 @media (max-width: 1150px) { .procgen-studio { grid-template-columns: 122px minmax(0, 1fr) min(var(--inspector-width, 270px), 270px); } .procgen-workstation .procgen-status-strip { display: none; } .studio-brand span { display: none; } .studio-transport { gap: 5px 8px; } }
 @media (max-width: 760px) {
-  body.procgen-workstation { padding: 5px; gap: 5px; }
+  .procgen-presentation-root { padding: 5px; gap: 5px; }
   .procgen-studio { grid-template-columns: 110px minmax(0, 1fr); grid-template-rows: minmax(110px, 1fr) minmax(100px, 28vh); gap: 5px; }
   .studio-inspector { grid-column: 1 / -1; }
   .studio-inspector-fields { padding: 8px; }

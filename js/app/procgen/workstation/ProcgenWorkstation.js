@@ -159,7 +159,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (Number.isFinite(seed) && seed !== project.procgen.seed) { project = markCanonicalMidiProject({ ...project, procgen: { ...project.procgen, seed } }); legacy.settings.seed = seed; setLegacyProject(project); persist(); }
   };
   const observeFrame = timestamp => {
-    if (state.observerMode !== 'director' || timestamp - lastObserverAt < Math.max(2, Number(state.observerHold) || 6) * 1000) return;
+    if (state.presentationTransition || state.observerMode !== 'director' || timestamp - lastObserverAt < Math.max(2, Number(state.observerHold) || 6) * 1000) return;
     lastObserverAt = timestamp;
     const world = runtime()?.world, render = renderer(); if (!world || !render) return;
     const ranked = project.procgen.lanes.map((lane, index) => ({ index, distance: world.stall?.lanes?.[index]?.maxX || world.frontiers?.[index] || 0 })).sort((a, b) => b.distance - a.distance || a.index - b.index);
@@ -351,10 +351,19 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       const event = { ...spec, type: 'cc', timestamp: spec.timeMs };
       if (localEnabled()) {
         const scheduler = router()?.scheduler, channel = scheduler?.output?.channels?.[spec.channel];
-        const reservation = scheduler?.evaluateAndReserve?.({ on: { timeMs: spec.timeMs, count: 1, bytes: 3 } }, meta, now());
+        const localMeta = { ...meta, outputId: scheduler?._resolveOutputId?.(null) ?? scheduler?.output?.id ?? null };
+        const reservation = scheduler?.evaluateAndReserve?.({ on: { timeMs: spec.timeMs, count: 1, bytes: 3 } }, localMeta, now());
         if (reservation && !reservation.ok) { scheduler.recordThrottle?.(reservation.reason, now(), meta); budgetNotice(); return admission('rejected', 'local-preview', spec, meta, reservation.reason); }
-        if (channel?.sendControlChange) { channel.sendControlChange(spec.controller, spec.value, { time: spec.timeMs }); ports.recordEvent(event, { ...meta, source: 'local-preview' }); return admission('accepted', 'local-preview', spec, meta); }
-        return admission('rejected', 'local-preview', spec, meta, 'channel-unavailable');
+        let submitted = false;
+        try {
+          if (!channel?.sendControlChange) return admission('rejected', 'local-preview', spec, meta, 'channel-unavailable');
+          channel.sendControlChange(spec.controller, spec.value, { time: spec.timeMs });
+          submitted = true;
+          if (reservation?.reservationId != null) scheduler._commitReservationMessage(reservation.reservationId, 'on', 3, localMeta, now());
+          ports.recordEvent(event, { ...meta, source: 'local-preview' });
+          return admission('accepted', 'local-preview', spec, meta);
+        } catch (error) { return admission(submitted ? 'accepted' : 'rejected', 'local-preview', spec, meta, error?.message || 'channel-unavailable'); }
+        finally { scheduler?._releaseReservation?.(reservation?.reservationId, true); }
       }
       if (legacy.local.getState().selectedBackend === 'midi' && legacy.local.getState().enabled) {
         if (ports.sendEvent(event)) return admission('accepted', spec.outputId || 'midi-default', spec, meta);
@@ -896,7 +905,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     return committed;
   };
   const handlers = {
-    status, preferences: persist, devices, engineState: () => engine.getState(), playhead: id => engine.getLanePosition?.(id),
+    status, preferences: persist, presentationGeneration: () => documentGeneration,
+    devices, engineState: () => engine.getState(), playhead: id => engine.getLanePosition?.(id),
     causalTakeState, startCausalTake: safe(startCausalTake), stopCausalTake: safe(stopCausalTake), cancelCausalTakeArm,
     markCausalTake: safe(markCausalTake), inspectLastCausalTake: safe(inspectLastCausalTake),
     prepareCausalArchive: safe(prepareCausalArchive), browseCausalTakes: safe(browseCausalTakes), selectCausalTake: safe(selectCausalTake),
@@ -904,6 +914,12 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     historyBusy: () => pendingHistory !== null,
     historyState: () => Object.freeze({ undo: undo.length, redo: redo.length,
       retainedBytes: retainedHistoryBytes(), byteLimit: historyBytesLimit, dropped: historyDropped }),
+    stopOutput() {
+      transport.stop(); pendingResume = false;
+      recordCausalControl('input', { version: 1, kind: 'transport-state', playing: false });
+      status('Transport stopped and output flushed.');
+      return transport.getState();
+    },
     transport(patch) { configureTransport(patch); if (patch.gameSpeed != null) legacy.setSpeed(patch.gameSpeed); editRevision++; storageStatus(); persist(); if (!transport.getState().playing) scheduleRecovery(); },
     addLane: safe(async () => { if (!await rebuild({ projectNext: reduceMidiProject(project, { type: 'procgen/addLane' }) })) return false; state.laneId = project.procgen.lanes.at(-1).id; view.render(); return true; }),
     removeLane: safe(async () => { await rebuild({ projectNext: reduceMidiProject(project, { type: 'procgen/removeLane', laneId: selected().id }) }); }),

@@ -8,7 +8,8 @@ const ready = async (page, count = 8, steps = 16) => {
     const { createProcgenWorkstationProject, createProcgenLane } = await import('/js/app/procgen/workstation/ProcgenWorkstationProject.js');
     const { createMidiProject, reduceMidiProject } = await import('/js/midi/project/MidiProject.js');
     let project = createProcgenWorkstationProject(createMidiProject(), { lanes: Array.from({ length: count }, (_, index) =>
-      createProcgenLane(index, steps === 16 ? {} : { patterns: Array.from({ length: 4 }, () => ({ length: steps })) })) });
+      createProcgenLane(index, { mode: 'pattern', patternPurpose: 'Complement the physical world in this view fixture',
+        ...(steps === 16 ? {} : { patterns: Array.from({ length: 4 }, () => ({ length: steps })) }) })) });
     const state = { laneId: 'lane-1', slot: 0, step: 0 }, calls = [], actions = [];
     const runtime = {};
     const handlers = Object.fromEntries(['copy', 'paste', 'undo', 'redo', 'observe', 'record'].map(name => [name, value => calls.push({ name, value })]));
@@ -80,6 +81,26 @@ test('project renders retain the focused field buffer, caret and selected edit t
   await page.getByLabel('Name', { exact: true }).dispatchEvent('change');
   await expect(page.getByLabel('Name', { exact: true })).toBeFocused();
   expect(await page.evaluate(() => window.workstationViewTest.getProject().procgen.lanes[0].name)).toBe('Committed lane');
+});
+
+test('fullscreen keeps the same instrument root, numeric draft and emergency controls', async ({ page }) => {
+  await ready(page);
+  const name = page.getByLabel('Name', { exact: true });
+  await name.fill('Uncommitted draft');
+  await page.locator('.studio-transport-overflow summary').click();
+  await page.getByRole('button', { name: 'Expand fullscreen' }).click();
+  await expect.poll(() => page.evaluate(() => document.fullscreenElement?.id)).toBe('procgenPresentationRoot');
+  expect(await page.evaluate(() => ({ draft: document.activeElement.value, changes: window.workstationViewTest.actions.length,
+    canvasCount: document.querySelectorAll('#gameCanvas').length, stop: !!document.getElementById('studioStopOutput'),
+    rootCount: document.querySelectorAll('#procgenPresentationRoot').length }))).toEqual({
+    draft: 'Uncommitted draft', changes: 0, canvasCount: 1, stop: true, rootCount: 1
+  });
+  await page.locator('#studioFullscreenExit').click();
+  await expect.poll(() => page.evaluate(() => document.fullscreenElement)).toBeNull();
+  await expect(name).toHaveValue('Uncommitted draft');
+  await page.evaluate(() => window.workstationViewTest.view.dispose());
+  await expect(page.locator('#procgenPresentationRoot')).toHaveCount(0);
+  await expect(page.locator('#gameCanvas')).toHaveCount(1);
 });
 
 test('single-step edits keep visible rows and other cells mounted', async ({ page }) => {
