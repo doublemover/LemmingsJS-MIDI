@@ -9,7 +9,7 @@ import { analyzeProcgenSurveyPairs, selectProcgenSurveyExemplars, createProcgenS
 
 const runSurveyExperiment = async (manifest, store, { signal, onTelemetry = () => {}, onResult = () => {}, onState = () => {}, onControlReady = () => {} } = {}) => {
   const prior = await store.read('report.json');
-  const started = clock.now(), results = [], telemetry = new Map(prior?.telemetry || []), performance = [...(prior?.performance || [])], attempts = [...(prior?.attempts || [])], verification = [], successQualification = [];
+  const started = clock.now(), results = [], telemetry = new Map(prior?.telemetry || []), performance = [...(prior?.performance || [])], attempts = [...(prior?.attempts || [])], verification = [], successQualification = [], persistenceReceipts = [];
   let stage = 'queued', activeControls = null, paused = false, cancelled = false, controlState = {}, currentExecution = null, executedTicks = 0;
   const jobsFor = (scenarios, candidates) => scenarios.flatMap(scenario => candidates.map(candidate => ({ scenario, candidate,
     trialId: createSurveyTrialId(scenario, candidate), attemptId: randomUUID() })));
@@ -41,12 +41,13 @@ const runSurveyExperiment = async (manifest, store, { signal, onTelemetry = () =
       onControlReady: controls => { activeControls = controls; },
       onControlState: state => { controlState = { ...controlState, ...state }; present(); },
       onTelemetry: (id, value) => { telemetry.set(id, value); onTelemetry(id, value, label); present(); }, onResult: accept });
+    persistenceReceipts.push(...(currentExecution.persistence || []).map(receipt => ({ ...receipt, stage: label })));
     activeControls = null; return currentExecution;
   };
   const incomplete = () => allJobs.filter(job => !results.some(result => result.trialId === job.trialId && result.episodeComplete)).map(job => ({ trialId: job.trialId, scenarioId: job.scenario.id,
     candidateId: job.candidate.id, status: results.find(result => result.trialId === job.trialId)?.status || 'not-run' }));
   const interrupted = reason => ({ ...publicState(), results, performance, attempts, verification, successQualification, status: 'interrupted', reason,
-    incompleteTrials: incomplete(), storage: store.snapshot(), presentationErrors: currentExecution?.presentationErrors || [] });
+    incompleteTrials: incomplete(), storage: store.snapshot(), persistenceReceipts, presentationErrors: currentExecution?.presentationErrors || [] });
   const retain = (result, job) => ({ ...result, ...result.provenance, sourceHash: hashSurveyValue({ core: result.provenance?.sourceHash || null, codeDigest: manifest.sourceManifest.codeDigest || null }), environmentSeed: job.scenario.environmentSeed, clusterId: 'world-' + job.scenario.environmentSeed,
     replayManifest: { schemaVersion: 1, scenario: job.scenario, candidate: job.candidate, sourceManifest: { engineCommit: manifest.sourceManifest.engineCommit,
       codeDigest: manifest.sourceManifest.codeDigest, assetHashes: manifest.sourceManifest.assetHashes, harnessVersion: manifest.sourceManifest.harnessVersion, manifestReference: 'manifest.json' },
@@ -82,6 +83,8 @@ const runSurveyExperiment = async (manifest, store, { signal, onTelemetry = () =
   const protocol = manifest.budgetPolicy.successQualification;
   for (const selection of selected.selected.filter(item => item.kind === 'success').slice(0, protocol?.maxOriginals || 0)) {
     const original = results.find(result => result.trialId === selection.trialId), scenario = original.scenario, candidate = original.candidate;
+    const summaryFile = 'verification/' + original.trialId + '-qualification-summary.json';
+    const summaryGeneration = await store.derivativeGeneration(summaryFile);
     const competitors = [manifest.candidates.find(policy => ![candidate.id, baselineId].includes(policy.id))].filter(Boolean);
     const nearbyScenarios = scenario.mode === 'controlled' ? protocol.nearbyAdmissionOffsets.map(offset => normalizeSurveyScenario({ ...scenario, id: scenario.id + '-admission-' + offset,
       admissions: scenario.admissions.map(actor => ({ ...actor, x: Math.max(8, actor.x + offset) })) })) : [];
@@ -111,7 +114,7 @@ const runSurveyExperiment = async (manifest, store, { signal, onTelemetry = () =
       if (secondRun.error || secondRun.cancelled) return interrupted(secondRun.error || secondRun.reason);
     }
     const summary = summarizeProcgenSuccessQualification(plan, original, records); successQualification.push({ originalTrialId: original.trialId, plan, summary });
-    await store.writeDerivative('verification/' + original.trialId + '-qualification-summary.json', summary);
+    await store.writeDerivative(summaryFile, summary, { expectedGeneration: summaryGeneration });
     if (firstRun.error || firstRun.cancelled) return interrupted(firstRun.error || firstRun.reason);
   }
   const analyze = ids => analyzeProcgenSurveyPairs(results.filter(result => ids.includes(result.scenarioId)), { baselineId,
@@ -130,7 +133,7 @@ const runSurveyExperiment = async (manifest, store, { signal, onTelemetry = () =
   }
   stage = 'complete'; present();
   return { schemaVersion: 1, manifest, results, telemetry: [...telemetry], performance, attempts, analysis, exemplars: { ...selected, selected: archiveSelections }, successQualification,
-    status: incomplete().length ? 'interrupted' : 'complete', incompleteTrials: incomplete(), verification, storage: store.snapshot(), rankingsTrusted: false,
+    status: incomplete().length ? 'interrupted' : 'complete', incompleteTrials: incomplete(), verification, persistenceReceipts, storage: store.snapshot(), rankingsTrusted: false,
     priorExecution: prior?.execution || null, execution: { elapsedMs: clock.now() - started, admittedTicks: executedTicks, memoryScope: 'Worker V8 old heap capped; reported RSS covers the whole Node process.' } };
 };
 export { runSurveyExperiment };

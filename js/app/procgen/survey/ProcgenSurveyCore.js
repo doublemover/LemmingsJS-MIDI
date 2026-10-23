@@ -73,6 +73,8 @@ class ProcgenSurveyTrial {
     if (activeTerrainOwners.has(terrain)) throw new Error('Survey replicas cannot share mutable terrain');
     activeTerrainOwners.add(terrain); this._terrain = terrain;
     this._records = []; this._activeRecords = new Set(); this._byIdentity = new Map(); this._pendingAdmission = null; this._nextAdmission = 0; this._disposed = false;
+    this._counts = { admitted: 0, arrived: 0, qualified: 0, deaths: 0, unresolved: this.scenario.designatedCohort.length,
+      retired: 0, deathsByCause: {}, firstDeathTick: null, ordinary: 0, scouts: 0, workers: 0, guards: 0 };
     this._events = []; this._eventCount = 0; this._eventHash = hashSurveyValue(['logical-events-v1']); this._milestones = []; this._milestonesOmitted = 0;
     this._resets = 0; this._actorSteps = 0; this._missingActors = 0; this._allDeaths = 0; this._illegitimateTraits = false; this._lastStatus = null; this._protectedViolation = false;
     const s = this.scenario;
@@ -91,7 +93,9 @@ class ProcgenSurveyTrial {
       this._restartOriginal = this.world._restart;
       this.world._restart = previous => {
         this._observe();
-        for (const record of this._activeRecords) if (record.generation === this.world.generation && !record.deathReason && !record.retired) { record.retired = 'generation-reset'; record.retiredTick = this.world.tickIndex; }
+        for (const record of this._activeRecords) if (record.generation === this.world.generation && !record.deathReason && !record.retired) {
+          record.retired = 'generation-reset'; record.retiredTick = this.world.tickIndex; if (record.designated) this._counts.retired++;
+        }
         for (const record of this._activeRecords) if (record.retired || record.deathReason) this._activeRecords.delete(record);
         this._resets++; this._recordEvent({ type: 'generation-reset', generation: this.world.generation, tick: this.world.tickIndex });
         this._restartOriginal.call(this.world, previous);
@@ -110,7 +114,9 @@ class ProcgenSurveyTrial {
       birthLane: actor.spawnLaneIndex, birthOrdinal: actor.spawnOrdinal, designated: this.scenario.designatedCohort.includes(id),
       scout: actor.scout, worker: false, guard: false, allowedClimb: actor.canClimb || !!(actor.scoutAbilities & 1),
       allowedFloat: actor.hasParachute || !!(actor.scoutAbilities & 2), arrivalTick: null, qualifiedTick: null, deathTick: null, deathReason: null, retired: null };
-    this._records.push(record); this._activeRecords.add(record); this._byIdentity.set(id, record); return record;
+    this._records.push(record); this._activeRecords.add(record); this._byIdentity.set(id, record);
+    if (record.designated) { this._counts.admitted++; this._counts[record.scout ? 'scouts' : 'ordinary']++; }
+    return record;
   }
   _admit() {
     const tape = this.scenario.admissions, world = this.world;
@@ -122,7 +128,9 @@ class ProcgenSurveyTrial {
       Object.assign(actor, { x: admission.x, y: admission.y, lookRight: admission.lookRight, canClimb: admission.canClimb, hasParachute: admission.hasParachute,
         scout: admission.canClimb || admission.hasParachute, scoutAbilities: (admission.canClimb ? 1 : 0) | (admission.hasParachute ? 2 : 0), furthestX: admission.x });
       actor.setAction(world.actions[State[admission.state]]); world._syncTriggerOwner(actor);
-      const record = this._byIdentity.get(admission.id); record.scout = actor.scout; record.allowedClimb = actor.canClimb; record.allowedFloat = actor.hasParachute;
+      const record = this._byIdentity.get(admission.id);
+      if (record.designated && record.scout !== actor.scout) { this._counts[record.scout ? 'scouts' : 'ordinary']--; this._counts[actor.scout ? 'scouts' : 'ordinary']++; }
+      record.scout = actor.scout; record.allowedClimb = actor.canClimb; record.allowedFloat = actor.hasParachute;
       if (world.tickIndex > 0) world.soundEvents.emitSfx(SoundEventTypes.LEMMING_SPAWN, SoundEffectIds.SPAWN,
         { lemmingId: actor.id, laneIndex: actor.laneIndex, laneCount: world.laneCount, x: actor.x, y: actor.y, spawnTick: actor.spawnTick });
     }
@@ -158,33 +166,34 @@ class ProcgenSurveyTrial {
     const world = this.world, live = new Set(world.actors), goal = this.scenario.goal;
     for (const record of this._activeRecords) {
       const actor = record.actor;
-      record.worker ||= [State.BUILDING, State.BASHING, State.MINING, State.DIGGING].some(state => actor.action === world.actions[state]);
-      record.guard ||= actor.action === world.actions[State.BLOCKING];
+      if (!record.worker && [State.BUILDING, State.BASHING, State.MINING, State.DIGGING].some(state => actor.action === world.actions[state])) { record.worker = true; if (record.designated) this._counts.workers++; }
+      if (!record.guard && actor.action === world.actions[State.BLOCKING]) { record.guard = true; if (record.designated) this._counts.guards++; }
       this._illegitimateTraits ||= !!actor.canClimb && !record.allowedClimb || !!actor.hasParachute && !record.allowedFloat;
-      if (!record.deathReason && (actor.failureReason || actor.terminalReason)) { record.deathReason = actor.terminalReason || actor.failureReason; record.deathTick = world.tickIndex; this._allDeaths++; }
-      if (!record.retired && actor.removed && !record.deathReason) { record.retired = 'removed'; record.retiredTick = world.tickIndex; }
-      if (!record.retired && !record.deathReason && !live.has(actor)) { record.retired = 'missing'; record.retiredTick = world.tickIndex; this._missingActors++; }
+      if (!record.deathReason && (actor.failureReason || actor.terminalReason)) {
+        record.deathReason = actor.terminalReason || actor.failureReason; record.deathTick = world.tickIndex; this._allDeaths++;
+        if (record.designated) { this._counts.deaths++; this._counts.deathsByCause[record.deathReason] = (this._counts.deathsByCause[record.deathReason] || 0) + 1;
+          this._counts.firstDeathTick = Math.min(this._counts.firstDeathTick ?? world.tickIndex, world.tickIndex); if (record.arrivalTick == null) this._counts.unresolved--; }
+      }
+      if (!record.retired && actor.removed && !record.deathReason) { record.retired = 'removed'; record.retiredTick = world.tickIndex; if (record.designated) this._counts.retired++; }
+      if (!record.retired && !record.deathReason && !live.has(actor)) { record.retired = 'missing'; record.retiredTick = world.tickIndex; this._missingActors++; if (record.designated) this._counts.retired++; }
       const alive = !record.deathReason && !record.retired && !actor.disabled;
       if (alive && record.arrivalTick == null && actor.x >= goal.x && actor.x < goal.x + goal.width && actor.y >= goal.y && actor.y < goal.y + goal.height &&
           (!goal.requireWalking || actor.action === world.actions[State.WALKING])) {
         record.arrivalTick = world.tickIndex; this._recordEvent({ type: 'designated-arrival', identity: record.id, designated: record.designated, tick: world.tickIndex });
+        if (record.designated) { this._counts.arrived++; this._counts.unresolved--; }
       }
-      if (alive && record.arrivalTick != null && record.qualifiedTick == null && world.tickIndex - record.arrivalTick >= goal.postArrivalTicks) record.qualifiedTick = world.tickIndex;
+      if (alive && record.arrivalTick != null && record.qualifiedTick == null && world.tickIndex - record.arrivalTick >= goal.postArrivalTicks) { record.qualifiedTick = world.tickIndex; if (record.designated) this._counts.qualified++; }
       if (record.deathReason || record.retired) this._activeRecords.delete(record);
     }
   }
   _accounting() {
-    const ids = this.scenario.designatedCohort, selected = ids.map(id => this._byIdentity.get(id)), admitted = selected.filter(Boolean);
-    const deathRecords = admitted.filter(record => record.deathReason), deathsByCause = {};
-    for (const record of deathRecords) deathsByCause[record.deathReason] = (deathsByCause[record.deathReason] || 0) + 1;
-    return { designated: ids.length, planned: ids.length, admitted: admitted.length, suppressed: ids.length - admitted.length,
-      arrived: admitted.filter(record => record.arrivalTick != null).length, qualified: admitted.filter(record => record.qualifiedTick != null).length,
-      alive: admitted.filter(record => !record.deathReason && !record.retired && !record.actor.disabled).length, deaths: deathRecords.length,
-      unresolved: selected.filter(record => !record || record.arrivalTick == null && !record.deathReason).length,
-      retired: admitted.filter(record => record.retired).length, deathsByCause, firstDeathTick: deathRecords.length ? Math.min(...deathRecords.map(record => record.deathTick)) : null,
-      ordinary: admitted.filter(record => !record.scout).length, scouts: admitted.filter(record => record.scout).length,
-      workers: admitted.filter(record => record.worker).length, guards: admitted.filter(record => record.guard).length,
-      totalBirths: this._records.length, additionalBirths: this._records.length - admitted.length, allDeaths: this._allDeaths,
+    const counts = this._counts, designated = this.scenario.designatedCohort.length;
+    let alive = 0; for (const record of this._activeRecords) if (record.designated && !record.actor.disabled) alive++;
+    return { designated, planned: designated, admitted: counts.admitted, suppressed: designated - counts.admitted,
+      arrived: counts.arrived, qualified: counts.qualified, alive, deaths: counts.deaths,
+      unresolved: counts.unresolved, retired: counts.retired, deathsByCause: { ...counts.deathsByCause }, firstDeathTick: counts.firstDeathTick,
+      ordinary: counts.ordinary, scouts: counts.scouts, workers: counts.workers, guards: counts.guards,
+      totalBirths: this._records.length, additionalBirths: this._records.length - counts.admitted, allDeaths: this._allDeaths,
       resets: this._resets, missingActors: this._missingActors };
   }
   _refreshTelemetry() {

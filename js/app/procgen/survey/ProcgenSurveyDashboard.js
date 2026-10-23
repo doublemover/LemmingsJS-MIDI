@@ -257,7 +257,7 @@ const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fet
         element('surveyBaselineStatus').textContent = pairedTelemetry ? 'Recorded baseline at or before replay tick ' + tick + '.' : 'No baseline checkpoint is retained at or before replay tick ' + tick + '.';
         await new Promise(resolve => window.setTimeout(resolve, paused ? 30 : 0));
       }
-      if (current()) { const receipt = compareSurveyReplay(original, trial.result()); element('surveyReplayStatus').textContent = receipt.matched ? 'Exact physics and event hashes match. This rerun is not an independent sample.' : 'Replay mismatch: ' + receipt.differences.join(', '); window.__procgenSurveyReplayReceipt = receipt; }
+      if (current()) { const receipt = compareSurveyReplay(original, trial.result()); element('surveyReplayStatus').textContent = receipt.matched ? 'Exact physics and event hashes match. This rerun is not an independent sample.' : 'Replay mismatch: ' + [...receipt.reasons, ...receipt.differences].join(', '); window.__procgenSurveyReplayReceipt = receipt; }
     } catch (error) { if (current()) element('surveyReplayStatus').textContent = 'Could not verify: ' + error.message; }
     finally {
       releaseTrial(trial);

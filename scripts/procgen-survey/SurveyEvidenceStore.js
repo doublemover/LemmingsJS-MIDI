@@ -8,6 +8,7 @@ const stableOutcome = result => ({ status: result.status, lastTick: result.lastT
 const verifiedEpisode = result => ['completed', 'failed', 'timed-out', 'timeout', 'unsupported'].includes(result.status);
 class SurveyStorageLimitError extends Error {}
 class SurveyWriterLeaseError extends Error {}
+class SurveyDerivativeConflictError extends Error {}
 class SurveyEvidenceStore {
   constructor(directory, { maxBytes = 32 * 1048576 } = {}) {
     if (!Number.isSafeInteger(maxBytes) || maxBytes < 32768 || maxBytes > 128 * 1048576) throw new RangeError('Survey storage bytes must be an integer between 32 KiB and 128 MiB');
@@ -29,6 +30,18 @@ class SurveyEvidenceStore {
       }
     };
     await count(this.directory); return bytes;
+  }
+  async _cleanOrphanStaging() {
+    const appTemporary = /\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.tmp$/i;
+    const visit = async directory => {
+      for (const entry of await fs.readdir(directory, { withFileTypes: true })) {
+        if (entry.name === '.writer-lease' || entry.name.startsWith('.writer-recovery-')) continue;
+        const file = path.join(directory, entry.name);
+        if (entry.isDirectory()) await visit(file);
+        else if (entry.isFile() && appTemporary.test(entry.name)) await fs.rm(file);
+      }
+    };
+    await visit(this.directory);
   }
   async _withWriterLease(action) {
     const lease = path.join(this.directory, '.writer-lease'), token = randomUUID(), deadline = Date.now() + 10000;
@@ -56,7 +69,7 @@ class SurveyEvidenceStore {
         await new Promise(resolve => setTimeout(resolve, 20));
       }
     }
-    try { this.bytes = await this._countBytes(); return await action(); }
+    try { await this._cleanOrphanStaging(); this.bytes = await this._countBytes(); return await action(); }
     finally {
       const owner = JSON.parse(await fs.readFile(path.join(lease, 'owner.json'), 'utf8'));
       if (owner.token === token) await fs.rm(lease, { recursive: true, force: true });
@@ -68,16 +81,25 @@ class SurveyEvidenceStore {
     return target;
   }
   async read(name) {
+    const record = await this._readEnvelope(name); return record?.value ?? null;
+  }
+  async _readEnvelope(name) {
     try {
       const record = JSON.parse(await fs.readFile(this._file(name), 'utf8'));
       if (record.schemaVersion !== 1 || record.checksum !== digest(record.value)) throw new Error('Survey evidence checksum mismatch: ' + name);
-      return record.value;
+      return record;
     } catch (error) { if (error.code === 'ENOENT') return null; throw error; }
+  }
+  async derivativeGeneration(name) {
+    const record = await this._readEnvelope(name);
+    if (!record) return null;
+    if (!Number.isSafeInteger(record.generation) || record.generation < 0) return 0;
+    return record.generation;
   }
   writeImmutable(name, value) {
     const operation = this.tail.then(() => this._withWriterLease(async () => {
-      const previous = await this.read(name);
-      if (previous !== null) { if (digest(previous) !== digest(value)) throw new Error('Conflicting immutable survey evidence: ' + name); return previous; }
+      const previous = await this._readEnvelope(name);
+      if (previous) { if (previous.checksum !== digest(value)) throw new Error('Conflicting immutable survey evidence: ' + name); return previous.value; }
       const data = JSON.stringify({ schemaVersion: 1, checksum: digest(value), value }) + '\n';
       const size = Buffer.byteLength(data);
       if (this.bytes + size > this.maxBytes) throw new SurveyStorageLimitError('Survey storage cap reached; required originals retained');
@@ -87,20 +109,23 @@ class SurveyEvidenceStore {
         try { await fs.link(temporary, file); this.bytes += size; }
         catch (error) {
           if (error.code !== 'EEXIST') throw error;
-          const competing = await this.read(name);
-          if (digest(competing) !== digest(value)) throw new Error('Conflicting immutable survey evidence: ' + name);
-          return competing;
+          const competing = await this._readEnvelope(name);
+          if (competing?.checksum !== digest(value)) throw new Error('Conflicting immutable survey evidence: ' + name);
+          return competing.value;
         }
       } finally { await fs.rm(temporary, { force: true }); }
       return value;
     }));
     this.tail = operation.catch(() => {}); return operation;
   }
-  writeDerivative(name, value) {
+  writeDerivative(name, value, { expectedGeneration = null } = {}) {
+    if (expectedGeneration !== null && (!Number.isSafeInteger(expectedGeneration) || expectedGeneration < 0)) throw new RangeError('Invalid survey derivative generation');
     const operation = this.tail.then(() => this._withWriterLease(async () => {
-      const file = this._file(name), data = JSON.stringify({ schemaVersion: 1, checksum: digest(value), value }) + '\n';
-      let previousBytes = 0;
-      try { previousBytes = (await fs.stat(file)).size; } catch (error) { if (error.code !== 'ENOENT') throw error; }
+      const file = this._file(name), previous = await this._readEnvelope(name);
+      const actualGeneration = previous ? previous.generation ?? 0 : null;
+      if (actualGeneration !== expectedGeneration) throw new SurveyDerivativeConflictError('Stale survey derivative generation: ' + name);
+      const data = JSON.stringify({ schemaVersion: 1, generation: (actualGeneration ?? -1) + 1, checksum: digest(value), value }) + '\n';
+      const previousBytes = previous ? (await fs.stat(file)).size : 0;
       const size = Buffer.byteLength(data);
       if (this.bytes - previousBytes + size > this.maxBytes) throw new SurveyStorageLimitError('Survey storage cap reached while exporting derived report; originals retained');
       const temporary = file + '.' + randomUUID() + '.tmp';
@@ -128,4 +153,4 @@ class SurveyEvidenceStore {
   }
   snapshot() { return { bytes: this.bytes, maxBytes: this.maxBytes, remainingBytes: this.maxBytes - this.bytes }; }
 }
-export { SurveyEvidenceStore, SurveyStorageLimitError, SurveyWriterLeaseError, stableOutcome, verifiedEpisode };
+export { SurveyEvidenceStore, SurveyStorageLimitError, SurveyWriterLeaseError, SurveyDerivativeConflictError, stableOutcome, verifiedEpisode };

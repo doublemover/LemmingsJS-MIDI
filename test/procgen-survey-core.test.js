@@ -20,6 +20,20 @@ const finalReplay = (masks, options = {}, poll = false) => {
   }
   const result = trial.result(); trial.dispose(); return result;
 };
+const referenceAccounting = trial => {
+  const ids = trial.scenario.designatedCohort, selected = ids.map(id => trial._byIdentity.get(id)), admitted = selected.filter(Boolean);
+  const deathRecords = admitted.filter(record => record.deathReason), deathsByCause = {};
+  for (const record of deathRecords) deathsByCause[record.deathReason] = (deathsByCause[record.deathReason] || 0) + 1;
+  return { designated: ids.length, planned: ids.length, admitted: admitted.length, suppressed: ids.length - admitted.length,
+    arrived: admitted.filter(record => record.arrivalTick != null).length, qualified: admitted.filter(record => record.qualifiedTick != null).length,
+    alive: admitted.filter(record => !record.deathReason && !record.retired && !record.actor.disabled).length, deaths: deathRecords.length,
+    unresolved: selected.filter(record => !record || record.arrivalTick == null && !record.deathReason).length,
+    retired: admitted.filter(record => record.retired).length, deathsByCause, firstDeathTick: deathRecords.length ? Math.min(...deathRecords.map(record => record.deathTick)) : null,
+    ordinary: admitted.filter(record => !record.scout).length, scouts: admitted.filter(record => record.scout).length,
+    workers: admitted.filter(record => record.worker).length, guards: admitted.filter(record => record.guard).length,
+    totalBirths: trial._records.length, additionalBirths: trial._records.length - admitted.length, allDeaths: trial._records.filter(record => record.deathReason).length,
+    resets: trial._resets, missingActors: trial._missingActors };
+};
 
 describe('isolated deterministic real procgen survey core', function() {
   this.timeout(30000); let masks; before(async () => { masks = await loadProcgenMasks(); });
@@ -113,6 +127,18 @@ describe('isolated deterministic real procgen survey core', function() {
     for (let index = 0; index < 100; index++) trial._observe();
     expect(reads).to.equal(0); expect(trial._accounting()).to.deep.equal(first);
     Object.defineProperty(actor, 'action', { configurable: true, writable: true, value: action }); trial.dispose();
+  });
+  it('keeps incremental accounting equal to a full historical scan at each tick', () => {
+    const trial = createSurveyTrial({ masks, scenario: scene({ horizonTicks: 80 }) });
+    try {
+      for (let tick = 0; tick < 80; tick++) {
+        if (tick === 10) trial.world.actors[0].terminalReason = 'trapped';
+        if (tick === 20) trial.world.actors[1].remove();
+        if (tick === 30) trial.world._restart([0, 0]);
+        expect(trial._accounting()).to.deep.equal(referenceAccounting(trial));
+        trial.step(); expect(trial._accounting()).to.deep.equal(referenceAccounting(trial));
+      }
+    } finally { trial.dispose(); }
   });
   it('hashes canonical semantic identities independently of object key order and display metadata', () => {
     expect(hashSurveyValue({ a: 1, b: [2, 3] })).to.equal(hashSurveyValue({ b: [2, 3], a: 1 }));

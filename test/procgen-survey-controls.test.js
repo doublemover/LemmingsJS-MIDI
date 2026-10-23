@@ -66,6 +66,15 @@ describe('local survey server and atomic live controls', function() {
       expect(report.results.every(result => result.episodeComplete)).to.equal(true);
     } catch (error) { controls?.cancel(); await execution; throw error; }
   });
+  it('reports a real terminal tick when a paused trial ends before the checkpoint', async () => {
+    let controls, receipt;
+    const execution = runSurveyJobs(jobs(1, 32), { paused: true, checkpointTicks: 64, maxTotalMs: 5000,
+      onControlReady: value => { controls = value; }, onControlState: value => { if (value.stepStatus) receipt = value; } });
+    await until(() => !!controls); controls.step(); await until(() => !!receipt);
+    expect(receipt.stepStatus).to.equal('terminal-before-target'); expect(receipt.reachedCheckpoint).to.equal(null);
+    expect(receipt.selected[0].tick).to.equal(32);
+    const report = await execution; expect(report.results[0].lastTick).to.equal(32);
+  });
   it('pauses at completed boundaries, advances resident worlds to one shared checkpoint, then resumes the exact real trajectories', async () => {
     const requested = jobs(), pauseAcks = new Map(), reached = new Map(), previews = [], ticks = new Map(); let controls, pauseRequested = false, telemetryCount = 0;
     const execution = runSurveyJobs(requested, { executionWorkers: 2, residentWorlds: 4, sliceTicks: 8, checkpointTicks: 32, maxTotalMs: 8000, maxTrialMs: 7000,

@@ -28,7 +28,7 @@ const publish = (entry, final = false) => {
 const main = async () => {
   const masks = await loadProcgenMasks();
   const admit = async (lease = null) => {
-    while (!stopped && (!paused || lease?.admit) && waiting.length && resident.length < workerData.residentWorlds) {
+    while (!stopped && (!paused || lease?.admit && stepTarget === lease) && waiting.length && resident.length < workerData.residentWorlds) {
       const job = waiting.shift(), start = performance.now();
       try {
         const trial = await createNodeSurveyTrial(job, masks), entry = { job, trial, start, ticks: 0, lastPublished: -Infinity };
@@ -72,10 +72,11 @@ const main = async () => {
       if (stepTarget && !stepTarget.admit && [...stepTarget.selected.values()].every(receipt => receipt.status !== 'resident' ||
           receipt.tick >= Math.min(stepTarget.tick, resident.find(entry => entry.job.trialId === receipt.trialId)?.job.scenario.horizonTicks ?? stepTarget.tick))) {
         const lease = stepTarget; stepTarget = null;
-        const selected = [...lease.selected.values()], progressed = selected.some(receipt => receipt.tick > 0);
+        const selected = [...lease.selected.values()], reached = selected.length > 0 && selected.every(receipt => receipt.tick >= lease.tick);
+        const stepStatus = !selected.length ? 'empty' : reached ? 'reached' : selected.some(receipt => receipt.status === 'infrastructure-error') ? 'failed' : 'terminal-before-target';
         parentPort.postMessage({ type: 'control-state', value: { ...controlState(), controlId: lease.controlId,
-          workerGeneration: workerData.workerGeneration, stepStatus: !selected.length ? 'empty' : progressed ? 'reached' : 'failed',
-          reachedCheckpoint: progressed ? lease.tick : null, selected } });
+          workerGeneration: workerData.workerGeneration, stepStatus,
+          reachedCheckpoint: reached ? lease.tick : null, selected } });
       }
       if (!resident.length && paused && !stopped) await idle();
     }

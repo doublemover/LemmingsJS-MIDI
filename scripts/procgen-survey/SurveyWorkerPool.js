@@ -79,7 +79,7 @@ const runSurveyJobs = async (jobs, options = {}) => {
           if (message.type === 'result') accept(message);
           else if (message.type === 'telemetry') { receipts.set(message.trialId, message.value); notify(options.onTelemetry, message.trialId, message.value); }
           else if (message.type === 'control-state') { if (stepInFlight && stepInFlight.controlId === message.value.controlId &&
-              message.value.workerGeneration === workerGeneration && ['reached', 'empty', 'failed'].includes(message.value.stepStatus)) {
+              message.value.workerGeneration === workerGeneration && ['reached', 'empty', 'failed', 'terminal-before-target'].includes(message.value.stepStatus)) {
             stepInFlight.pending.delete(worker); if (!stepInFlight.pending.size) stepInFlight = null;
           } notify(options.onControlState, { ...state(), worker: index, ...message.value }); }
           else if (message.type === 'step-ready' && stepBarrier?.controlId === message.controlId && message.workerGeneration === workerGeneration && stepBarrier.pending.has(worker)) { stepBarrier.maxTick = Math.max(stepBarrier.maxTick, message.maxTick); stepBarrier.pending.delete(worker); finishStepBarrier(); }
