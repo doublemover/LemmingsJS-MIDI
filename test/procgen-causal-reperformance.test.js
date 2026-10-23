@@ -10,6 +10,7 @@ import { createCausalReperformance } from '../js/app/procgen/workstation/CausalR
 import { captureProcgenCheckpoint } from '../js/app/procgen/workstation/ProcgenCheckpoint.js';
 import { inspectProcgenCheckpoint, hashProcgenPhysicsCheckpoint, migrateProcgenCheckpoint } from '../js/app/procgen/workstation/ProcgenCheckpointProvenance.js';
 import { createMemoryCausalStore } from './helpers/causalJournalStore.js';
+import { createResourceBudget } from '../js/app/resources/ResourceBudget.js';
 
 const sourceVersions = { generator: 'procgen-workstation-1', worldCheckpoint: 2, physicalBatch: 1, physicalMusic: 1, numericCanonicalization: 'finite-f64-minus-zero-v1' };
 const mapping = { version: 1, revision: 1, instruments: [
@@ -145,6 +146,80 @@ describe('isolated causal re-performance and checkpoint provenance', function() 
       expect(inspectProcgenCheckpoint(migrated.checkpoint).exactQualified).to.equal(false);
       const node = legacy.graph.nodes.find(entry => entry.type === 'Float64Array'); node.values[0] = null;
       expect(() => migrateProcgenCheckpoint(legacy)).to.throw('lost a floating sentinel');
+    } finally { world.dispose(); }
+  });
+
+  it('reports the first changed physical cause and refuses a retained branch inside an unmatched intent boundary', async () => {
+    const { runtime, source, journal } = await record();
+    const altered = runtime({ createWorld: () => {
+      const world = make(), fall = world.actions[State.FALLING], process = fall.process.bind(fall);
+      fall.process = (...args) => { const result = process(...args); args[1].x += 1; return result; }; return world;
+    } });
+    const result = await altered.reperform({ takeId: source.takeId, executionEpoch: 'altered:action' });
+    expect(result.receipt, JSON.stringify(result.receipt)).to.include({ status: 'mismatch', compatibilityMatch: false });
+    expect(result.receipt.firstDivergence).to.include({ kind: 'physical-batch', tick: 1 });
+    expect(result.receipt.firstDivergence.causeId).to.be.a('string');
+    const row = (await journal.query({ takeId: source.takeId, kinds: ['physical-batch'], limit: 1 })).records[0];
+    const ordinary = runtime(), branch = await ordinary.reperform({ takeId: source.takeId, throughSequence: row.sequence,
+      executionEpoch: 'partial:boundary', retainWorld: true });
+    expect(branch.session).to.equal(null); expect(branch.receipt.failure.code).to.equal('incomplete-branch-boundary'); altered.dispose(); ordinary.dispose();
+  });
+
+  it('reserves shared checkpoint workspace before allocation and retains it only through the owned replay session', async () => {
+    const { runtime, source } = await record();
+    const deniedBudget = createResourceBudget({ limitBytes: 4096 }); let allocations = 0;
+    const denied = runtime({ resourceBudget: deniedBudget, createWorld: () => { allocations++; return make(); } });
+    let error; try { await denied.reperform({ takeId: source.takeId, executionEpoch: 'resource:denied' }); } catch (failure) { error = failure; }
+    expect(error.name).to.equal('ResourceBudgetError'); expect(allocations).to.equal(0); expect(deniedBudget.diagnostics().accountedBytes).to.equal(0);
+    const admittedBudget = createResourceBudget({ limitBytes: 128 * 1048576 }), admitted = runtime({ resourceBudget: admittedBudget });
+    const result = await admitted.reperform({ takeId: source.takeId, executionEpoch: 'resource:owned', retainWorld: true });
+    expect(result.receipt.compatibilityMatch).to.equal(true); expect(admittedBudget.diagnostics().accountedBytes).to.be.greaterThan(0);
+    admitted.dispose(); expect(admittedBudget.diagnostics().accountedBytes).to.equal(0);
+    expect(() => result.session.snapshot()).to.throw('released'); denied.dispose();
+  });
+
+  it('re-performs a mid-held capture without inventing an onset at Record or a release at Stop', async () => {
+    const store = createMemoryCausalStore(), journal = createProcgenCausalJournal({ storage: store.storage }), world = make();
+    const heldGraph = { version: 1, revision: 1, instruments: [
+      { id: 'held-builder', sourceKind: 'ActionEntered', action: 'building', pitchCents: 6100, velocity01: 0.7, role: 'body', route: 'local' }
+    ] };
+    const actor = world.actors[1]; actor.y = world.surfaceAt(1, actor.x); actor.setAction(world.actions[State.WALKING]);
+    const clock = createProcgenPhysicalScoreClock(), engine = createCausalMusicEngine({ getGraph: () => heldGraph, scoreTimeline: clock });
+    let recorder = null;
+    world.soundEvents.onBatch.on(batch => { clock.observe(batch, { bpm: 120 }); const intents = engine.processBatch(batch);
+      recorder?.recordCommittedBatch({ batch, intents }); });
+    world.enqueueIntervention({ id: 'held:builder', kind: 'assign-worker', origin: 'manual', target: { generation: 1, actorId: actor.id }, parameters: { workerKind: 'builders' } });
+    for (let tick = 0; tick < 3; tick++) world.step();
+    expect(engine.snapshot().active).to.have.length(1);
+    const snapshot = () => ({ world: captureProcgenCheckpoint(world), engine: engine.snapshot(), timeline: clock.snapshot(), replay: { version: 1, bpm: 120, scoreTimeline: true } });
+    const initialCheckpoint = snapshot();
+    recorder = await createCausalTakeRecorder({ journal, takeId: 'take:mid-held', documentId: 'doc:held', sourceVersions,
+      assetRefs: initialCheckpoint.world.assets, mapping: heldGraph, initialCheckpoint, boundaryState: { voices: engine.snapshot().active, timeline: clock.snapshot() } });
+    for (let tick = 0; tick < 5; tick++) world.step();
+    await recorder.stop({ finalCheckpoint: snapshot(), boundaryState: { voices: engine.snapshot().active, plannedFutureEnds: [] } });
+    const service = createCausalReperformance({ journal, createWorld: make, sourceVersions, assetRefs: initialCheckpoint.world.assets });
+    try {
+      const result = await service.reperform({ takeId: 'take:mid-held', executionEpoch: 'mid-held:replay', retainWorld: true });
+      expect(result.receipt, JSON.stringify(result.receipt)).to.include({ compatibilityMatch: true, comparedIntents: 0 });
+      expect(result.session.snapshot().engine.active).to.have.length(1);
+      expect(result.session.snapshot().engine.active[0].voiceId).to.equal(initialCheckpoint.engine.active[0].voiceId);
+      const captured = await journal.query({ takeId: 'take:mid-held', kinds: ['musical-intents'] });
+      expect(captured.records.flatMap(record => record.payload.intents)).to.have.length(0); result.session.dispose();
+    } finally { service.dispose(); world.dispose(); }
+  });
+
+  it('hashes logical terrain edits identically across lookup warming and cold/resident representation', async () => {
+    const world = make();
+    try {
+      const patch = new Uint8Array(world.editChunks.chunkLength); patch.fill(2, 3, 9); patch[40] = 1;
+      world.editChunks.set(0, patch);
+      const resident = await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(world));
+      world.editChunks.get(99999);
+      expect(await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(world))).to.equal(resident);
+      world.editChunks._pack(0);
+      expect(await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(world))).to.equal(resident);
+      world.editChunks.get(0)[40] = 2;
+      expect(await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(world))).not.to.equal(resident);
     } finally { world.dispose(); }
   });
 });

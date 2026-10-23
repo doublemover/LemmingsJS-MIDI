@@ -14,6 +14,8 @@ const validateCheckpointCodecs = saved => {
 };
 const OMIT = new Set(['log', 'gameResources', 'render', 'characterParticles', '_collisionSlots', '_collisionIndices', '_laneChunk', '_laneChunkIndex', '_laneEdits', '_laneEditIndex', '_editCache', '_editIndices', '_edgeWallCache', 'challengeCache']);
 const TYPES = { Uint8Array, Uint8ClampedArray, Int8Array, Uint16Array, Int16Array, Uint32Array, Int32Array, Float32Array, Float64Array };
+const INTEGER_VIEW_RANGES = { Uint8Array: [0, 255], Uint8ClampedArray: [0, 255], Int8Array: [-128, 127],
+  Uint16Array: [0, 65535], Int16Array: [-32768, 32767], Uint32Array: [0, 4294967295], Int32Array: [-2147483648, 2147483647] };
 const encodeNumber = value => Object.is(value, -0) ? { special: '-0' } : Number.isFinite(value) ? value : { special: String(value) };
 const decodeNumber = value => {
   if (typeof value === 'number') return value;
@@ -160,6 +162,9 @@ function validateCheckpointGraph(graph, bound, version) {
         if (value === null) throw new Error('Legacy checkpoint typed array lost numeric state.');
         if (typeof value === 'number') {
           if (!Number.isFinite(value) && (version !== 1 || !floating)) throw new Error('Invalid checkpoint typed-array value.');
+          const range = INTEGER_VIEW_RANGES[type];
+          if (range && (!Number.isInteger(value) || value < range[0] || value > range[1]) ||
+              type === 'Float32Array' && Number.isFinite(value) && !Object.is(Math.fround(value), value)) throw new Error('Checkpoint typed-array value would lose precision.');
         } else if (version !== 2 || !floating || !value || typeof value !== 'object' || Array.isArray(value) ||
             Object.keys(value).length !== 1 || !['-0', 'Infinity', '-Infinity', 'NaN'].includes(value.special)) throw new Error('Invalid checkpoint typed-array value.');
       }

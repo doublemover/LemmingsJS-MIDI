@@ -43,6 +43,12 @@ complete/partial state. A failed undurable tail remains owned until an explicit
 `discardPending({reason})` after stop. `canReplaceDocument()` remains false while
 that tail is retained. Unfinished on-disk recordings reopen as partial.
 
+For final world-state comparison, pass `finalCheckpoint` to `stop`. It closes
+recording admission synchronously, persists the full world/engine/timeline/replay
+component checkpoint at the last admitted sequence, then finalizes. Live physics
+can continue. A failed final checkpoint makes finalization partial. Repeated
+different checkpoint content at one sequence is a conflict, not a replacement.
+
 ## Identity, storage and memory
 
 Canonical data preserve nested finite Float64 values, negative zero, movement
@@ -84,6 +90,45 @@ world. This API does not claim that reading records performed or verified that
 simulation. `compareCausalRecords` reports the first divergent sequence, tick
 and actual differing cause.
 
+`createCausalReperformance({journal, createWorld, sourceVersions, assetRefs,
+resourceBudget})` executes this comparison in a fresh isolated world. The
+configured factory is trusted application code; no imported take supplies code,
+module URLs, devices or output sinks. `preflight` checks source/assets and codec
+availability before world allocation. `reperform({takeId, throughSequence,
+executionEpoch, mode: "compatibility", signal})` restores the initial checkpoint,
+replays recorded commands, tempo, speed, pause/resume observations and explicitly
+observation-only external inputs, then compares physical batches and semantic
+intents in their original mutation order. Unknown input effects refuse replay.
+`initialCheckpoint.replay` declares `{version: 1, bpm, scoreTimeline}`; tempo and
+speed changes must be recorded at their source boundaries.
+
+Component checkpoints become reusable only after re-performance actually reaches
+and matches their physical, engine and timeline state. The bounded validation
+cache belongs to that service instance and original take hash. Imported integrity
+claims alone never make a snapshot a trusted seek point. Final world parity is
+reported as unknown when no matching final component checkpoint was captured.
+`retainWorld: true` returns a paused owned session for a complete batch/intent
+boundary; its `snapshot()` can supply a genuinely computed branch checkpoint.
+The caller releases it with `dispose()`; disposing the service releases remaining
+sessions. Shared workspace reservations use actual checkpoint byte inventories
+and owner `causal-journal`, and live through retained session ownership. Source
+metadata is read before workspace admission, with the manifest's 8 MiB bound.
+
+Current runtime comparisons remain explicitly **execution unbound**: fetched or
+filesystem source hashes do not attest the active imported module graph. Matching
+facts/intents/state report `compatibilityMatch`, never `exactQualified`. Exact mode
+refuses before world allocation until a trusted immutable build authority exists.
+This is separate from verified archive/chunk integrity and from MIDI/acoustic
+evidence. Execution epochs wrap historical IDs for future sink ownership without
+rewriting original cause/voice IDs.
+
+Checkpoint envelopes declare component codecs and numeric encoding. Explicit
+legacy migration preserves the original and typed floating sentinels; ambiguous
+legacy JSON nulls refuse migration. The authoritative state hash preserves actor
+array order and physics state while excluding scenery, derived music position
+buffers, ground-query counters and legacy wall time. Scenery remains a separate
+presentation restore component.
+
 `branch({parentTakeId, throughSequence, takeId, takeName})` shares immutable source
 chunk references with explicit per-reference cutoffs, then appends a new chain.
 Each ancestor cutoff survives subsequent branches. The initial checkpoint stays
@@ -120,6 +165,6 @@ raw contact/movement reinterpretation.
 
 `querySoundOnlyRevoice` retains original intent, voice, cause and ordering identity
 and attaches a separate playback execution epoch and sound patch. It does not
-deliver anything. Portable archive encoding/import and the actual qualified
-re-performance executor are separate integrations; journal completeness never
-claims source mechanics or delivery evidence that were not observed.
+deliver anything. Portable archive encoding/import has its own admission and
+provenance checks; journal completeness never claims source mechanics or delivery
+evidence that were not observed.

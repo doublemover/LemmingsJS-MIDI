@@ -34,6 +34,19 @@ describe('ProcGen world checkpoints', function() {
     finally { world.dispose(); }
   });
 
+  it('refuses typed integer wrapping and fractional loss before mutating the live world', async () => {
+    const world = await make();
+    try {
+      const saved = captureProcgenCheckpoint(world), originalTick = world.tickIndex;
+      const integer = saved.graph.nodes.find(node => node.type === 'Uint8Array');
+      integer.values[0] = 256;
+      expect(() => restoreProcgenCheckpoint(world, saved)).to.throw('lose precision');
+      expect(world.tickIndex).to.equal(originalTick);
+      integer.values[0] = 1.25;
+      expect(() => restoreProcgenCheckpoint(world, saved)).to.throw('lose precision');
+    } finally { world.dispose(); }
+  });
+
   it('restores physical event identities and completed source JSON across continued simulation', () => {
     const original = new ProcgenLaneWorld({ masks, seed: 42, assists: false });
     const restored = new ProcgenLaneWorld({ masks, seed: 42, assists: false });

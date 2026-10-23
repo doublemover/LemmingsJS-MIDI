@@ -156,4 +156,16 @@ describe('durable causal take journal', function() {
     let error; try { await journal.query({ takeId: 'take:index-hash', firstTick: 1, lastTick: 1 }); } catch (failure) { error = failure; }
     expect(error.code).to.equal('finalization-divergence');
   });
+
+  it('rejects conflicting component snapshots at one source boundary and verifies their encoded byte inventory', async () => {
+    const { journal, checkpoints } = setup(), writer = await journal.createTake(definition('take:checkpoint-conflict'));
+    writer.append(marker(1)); await writer.checkpoint({ value: { world: { tick: 1 } }, tick: 1, generation: 1 });
+    let error; try { await writer.checkpoint({ value: { world: { tick: 999 } }, tick: 1, generation: 1 }); } catch (failure) { error = failure; }
+    expect(error.code).to.equal('checkpoint-conflict'); await writer.stop();
+    const manifest = await journal.openTake('take:checkpoint-conflict'), ref = manifest.checkpoints.at(-1);
+    expect(ref.bytes).to.equal(new TextEncoder().encode(checkpoints.get(ref.id).canonical).length);
+    expect(await journal.readCheckpoint(ref)).to.deep.equal({ world: { tick: 1 } });
+    try { await journal.readCheckpoint({ ...ref, bytes: ref.bytes - 1 }); } catch (failure) { error = failure; }
+    expect(error.code).to.equal('checkpoint-mismatch');
+  });
 });

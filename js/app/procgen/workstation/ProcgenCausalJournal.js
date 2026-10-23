@@ -53,11 +53,12 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
     const release = reserve((estimateJournalBytes(initialCheckpoint, { maxBytes: 32 * 1048576, maxNodes: 4000000 }) +
       estimateJournalBytes({ sourceVersions, captureProfile, boundaryState, mapping, assetRefs, prefix }, { maxBytes: 8 * 1048576 })) * 4);
     try {
-      const checkpointText = canonicalJournalText(initialCheckpoint, { maxBytes: 32 * 1048576, maxNodes: 4000000 }).text;
+      const encodedCheckpoint = canonicalJournalText(initialCheckpoint, { maxBytes: 32 * 1048576, maxNodes: 4000000 });
+      const checkpointText = encodedCheckpoint.text;
       const checkpointHash = await hashJournalText(checkpointText), checkpointId = JSON.stringify([takeId, 'checkpoint', 0]);
       const metadata = cloneJournalData({ schema: 'lemmings-causal-take', version: 1, takeId, takeName: takeName.trim(), documentId, sourceVersions,
         captureProfile, boundaryState, mapping, assetRefs, prefix,
-        initialCheckpoint: { id: checkpointId, sequence: 0, hash: checkpointHash } }, { maxBytes: 8 * 1048576 });
+        initialCheckpoint: { id: checkpointId, sequence: 0, hash: checkpointHash, bytes: encodedCheckpoint.bytes.length } }, { maxBytes: 8 * 1048576 });
       const rootHash = await hashJournalData(metadata, { maxBytes: 8 * 1048576 });
       const start = prefix?.throughSequence ?? 0;
       const manifest = { ...metadata, revision: 1, state: 'recording', complete: false, durableSequence: start,
@@ -169,14 +170,18 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
     const checkpoint = ({ value, tick, generation } = {}) => {
       if (state !== 'recording' || finishing || checkpointing || !Number.isSafeInteger(tick) || tick < 0 || !Number.isSafeInteger(generation) || generation < 0) throw new Error('Invalid or busy causal checkpoint boundary.');
       const release = reserve(estimateJournalBytes(value, { maxBytes: 32 * 1048576, maxNodes: 4000000 }) * 4, generation);
-      let canonical;
-      try { canonical = canonicalJournalText(value, { maxBytes: 32 * 1048576, maxNodes: 4000000 }).text; } catch (error) { release(); throw error; }
+      let canonical, checkpointBytes;
+      try { const encoded = canonicalJournalText(value, { maxBytes: 32 * 1048576, maxNodes: 4000000 }); canonical = encoded.text; checkpointBytes = encoded.bytes.length; } catch (error) { release(); throw error; }
       const sequence = admittedSequence, existingFlush = flush();
       const work = (async () => {
         await existingFlush;
         const hash = await hashJournalText(canonical);
-        const ref = { id: JSON.stringify([manifest.takeId, 'checkpoint', sequence]), sequence, hash, tick, generation };
-        if (manifest.checkpoints.some(item => item.sequence === sequence)) return Object.freeze({ status: 'unchanged', ...ref });
+        const ref = { id: JSON.stringify([manifest.takeId, 'checkpoint', sequence]), sequence, hash, tick, generation, bytes: checkpointBytes };
+        const existing = manifest.checkpoints.find(item => item.sequence === sequence);
+        if (existing) {
+          if (existing.hash !== hash) throw journalError('checkpoint-conflict', 'A different component checkpoint already owns this source sequence.', { firstSequence: sequence });
+          return Object.freeze({ status: 'unchanged', ...ref });
+        }
         if (manifest.checkpoints.length >= 4096) throw new Error('Causal checkpoint index capacity reached.');
         const next = { ...manifest, revision: manifest.revision + 1, checkpoints: [...manifest.checkpoints, ref],
           lastCommitId: `${manifest.takeId}:checkpoint:${sequence}:${hash}` };
@@ -222,6 +227,8 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
   const readCheckpoint = async ref => {
     const checkpoint = await storage.loadCausalCheckpoint(ref.id);
     if (!checkpoint || typeof checkpoint.canonical !== 'string' || checkpoint.canonical.length > 32 * 1048576 ||
+        ref.bytes != null && (!Number.isSafeInteger(ref.bytes) || ref.bytes < 1 || ref.bytes > 32 * 1048576 ||
+          checkpoint.canonical.length > ref.bytes || new TextEncoder().encode(checkpoint.canonical).length !== ref.bytes) ||
         await hashJournalText(checkpoint.canonical) !== ref.hash) throw journalError('checkpoint-mismatch', 'A causal component checkpoint is missing or corrupt.', { checkpointId: ref.id, firstSequence: ref.sequence });
     let value;
     try { value = JSON.parse(checkpoint.canonical); } catch { throw journalError('checkpoint-mismatch', 'A causal component checkpoint is not JSON.', { checkpointId: ref.id }); }

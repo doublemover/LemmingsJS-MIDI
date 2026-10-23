@@ -25,6 +25,37 @@ const projectProcgenPhysicsCheckpoint = saved => {
   const sourceNodes = saved.graph.nodes, projected = [], seen = new Map();
   const world = saved.graph.owners.find(owner => owner.name === 'world');
   const statsNode = world.props.stats?.ref;
+  const terrainEdits = owner => {
+    const array = (value, type) => {
+      const node = sourceNodes[value?.ref];
+      if (node?.type !== type || !Array.isArray(node.values)) throw journalError('checkpoint-incompatible', 'Invalid terrain edit component encoding.');
+      return node.values;
+    };
+    const runs = values => {
+      const result = [];
+      for (let start = 0; start < values.length;) {
+        const value = values[start]; if (!value) { start++; continue; }
+        let end = start + 1; while (end < values.length && values[end] === value) end++;
+        result.push([start, end - start, value]); start = end;
+      }
+      return result;
+    };
+    const patches = owner.entries.map(([key, value]) => ({ key, runs: runs(array(value, 'Uint8Array')) }));
+    const cold = sourceNodes[owner.props.cold?.ref];
+    if (cold?.type !== 'Map') throw journalError('checkpoint-incompatible', 'Missing cold terrain edit component.');
+    for (const [key, ref] of cold.entries) {
+      const record = sourceNodes[ref?.ref]?.props;
+      if (!record) throw journalError('checkpoint-incompatible', 'Invalid cold terrain patch.');
+      if (record.raw) patches.push({ key, runs: runs(array(record.raw, 'Uint8Array')) });
+      else {
+        const spans = array(record.runs, 'Uint16Array'), values = array(record.values, 'Uint8Array');
+        if (spans.length !== values.length * 2) throw journalError('checkpoint-incompatible', 'Invalid cold terrain run lengths.');
+        patches.push({ key, runs: values.map((value, index) => [spans[index * 2], spans[index * 2 + 1], value]) });
+      }
+    }
+    return { name: owner.name, codec: 'logical-edit-runs-v1', chunkLength: owner.props.chunkLength,
+      patches: patches.filter(patch => patch.runs.length).sort((left, right) => left.key - right.key) };
+  };
   const slot = value => {
     if (!value || typeof value !== 'object' || !Object.hasOwn(value, 'ref')) return value;
     if (!Number.isSafeInteger(value.ref) || value.ref < 0 || value.ref >= sourceNodes.length) throw journalError('checkpoint-incompatible', 'Invalid physical checkpoint reference.');
@@ -43,15 +74,37 @@ const projectProcgenPhysicsCheckpoint = saved => {
   };
   const props = (value, omit = null) => Object.fromEntries(Object.keys(value || {}).sort().filter(key => !omit?.has(key)).map(key => [key, slot(value[key])]));
   const owners = [...saved.graph.owners].sort((left, right) => left.name < right.name ? -1 : left.name > right.name ? 1 : 0)
-    .map(owner => ({ name: owner.name, props: props(owner.props, owner.name === 'world' ? PRESENTATION_WORLD_KEYS : null),
+    .map(owner => owner.name === 'editChunks' ? terrainEdits(owner) : ({ name: owner.name, props: props(owner.props, owner.name === 'world' ? PRESENTATION_WORLD_KEYS : null),
       ...(owner.entries ? { entries: owner.entries.map(pair => pair.map(slot)) } : {}) }));
-  return { schema: 'lemmings-procgen-physics-state', version: 1, numericEncoding: 'typed-f64-sentinels-v2',
+  return { schema: 'lemmings-procgen-physics-state', version: 2, numericEncoding: 'typed-f64-sentinels-v2',
     generator: saved.generator, seed: saved.seed, laneCount: saved.laneCount, laneHeight: saved.laneHeight, assets: saved.assets,
     graph: { nodes: projected, owners }, terrainAssignments: saved.terrainAssignments, terrainSettings: saved.terrainSettings,
     growth: saved.growth, physicalIdentity: saved.physicalIdentity,
     clock: { speedFactor: saved.clock.speedFactor, simulationTimeMs: saved.clock.simulationTimeMs } };
 };
 const hashProcgenPhysicsCheckpoint = saved => hashJournalData(projectProcgenPhysicsCheckpoint(saved), { maxBytes: 32 * 1048576, maxNodes: 4000000 });
+const compareProcgenPhysicsCheckpoints = async (expected, actual) => {
+  const left = projectProcgenPhysicsCheckpoint(expected), right = projectProcgenPhysicsCheckpoint(actual);
+  const expectedHash = await hashJournalData(left, { maxBytes: 32 * 1048576, maxNodes: 4000000 }),
+    actualHash = await hashJournalData(right, { maxBytes: 32 * 1048576, maxNodes: 4000000 });
+  const describe = value => value === undefined ? 'missing' : value === null ? null : typeof value === 'object'
+    ? { type: Array.isArray(value) ? 'array' : 'object', size: Object.keys(value).length }
+    : typeof value === 'string' ? value.slice(0, 128) : value;
+  const difference = (a, b, path) => {
+    if (Object.is(a, b)) return null;
+    if (a && b && typeof a === 'object' && typeof b === 'object' && Array.isArray(a) === Array.isArray(b)) {
+      for (const key of [...new Set([...Object.keys(a), ...Object.keys(b)])].sort()) {
+        const found = difference(a[key], b[key], path + '/' + key); if (found) return found;
+      }
+      return null;
+    }
+    return { path, expected: describe(a), actual: describe(b) };
+  };
+  const firstDifference = expectedHash === actualHash ? null : difference(left, right, '');
+  const ownerIndex = firstDifference?.path.match(/^\/graph\/owners\/(\d+)\//)?.[1];
+  if (firstDifference && ownerIndex != null) firstDifference.component = left.graph.owners[ownerIndex]?.name || right.graph.owners[ownerIndex]?.name || null;
+  return cloneJournalData({ schema: 'lemmings-physics-comparison', version: 2, matched: expectedHash === actualHash, expectedHash, actualHash, firstDifference });
+};
 
 const migrateProcgenCheckpoint = saved => {
   if (![1, 2].includes(saved?.version) || saved.generator !== 'procgen-workstation-1') throw journalError('checkpoint-incompatible', 'Unsupported checkpoint migration.');
@@ -71,4 +124,4 @@ const migrateProcgenCheckpoint = saved => {
     fromVersion: saved.version, toVersion: 2, originalPreserved: true, guarantee: 'typed-state-preserved; active execution remains unbound', inspection }) };
 };
 
-export { inspectProcgenCheckpoint, projectProcgenPhysicsCheckpoint, hashProcgenPhysicsCheckpoint, migrateProcgenCheckpoint };
+export { inspectProcgenCheckpoint, projectProcgenPhysicsCheckpoint, hashProcgenPhysicsCheckpoint, compareProcgenPhysicsCheckpoints, migrateProcgenCheckpoint };
