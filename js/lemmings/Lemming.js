@@ -23,6 +23,7 @@ class Lemming extends BaseLogger {
    * Reinitialize this instance so managers can reuse pooled objects.
    */
   reset(x = 0, y = 0, id) {
+    if (this.id != null && !this._physicalTerminated) this.endPhysicalLifecycle('pooled-reset');
     this.action?.spriteProvider?.resetActor?.(this);
     this.lookRight = true;
     this.frameIndex = 0;
@@ -40,6 +41,11 @@ class Lemming extends BaseLogger {
     this.x = x;
     this.y = y;
     this.id = id;
+    this._physicalActionSerial = 0;
+    this._physicalWorkSerial = 0;
+    this._physicalActionInstanceId = null;
+    this._physicalTerminated = false;
+    this._physicalDirectionFactTick = -1;
   }
 
   getDirection() {
@@ -50,6 +56,14 @@ class Lemming extends BaseLogger {
     const turns = walker && (trigger.type === TriggerTypes.BLOCKER_LEFT && walker.lookRight ||
       trigger.type === TriggerTypes.BLOCKER_RIGHT && !walker.lookRight);
     if (!turns || walker === this) return;
+    const facts = this.runtime?.physicalFacts;
+    if (facts?.enabled?.()) {
+      const contactId = `${walker.id}:${this.id}:${_tick}:blocker`;
+      walker._physicalPendingBlockerContact = { contactId, blockerId: this.id };
+      facts.emit({ kind: 'ContactResolved', contactId, actorId: walker.id, otherActorId: this.id,
+        laneId: walker.laneIndex ?? null, causeKind: 'blocker', participantRoles: { actor: 'walker', otherActor: 'blocker' },
+        positionBefore: { x: walker.x, y: walker.y }, positionAfter: { x: walker.x, y: walker.y } });
+    }
     const bus = getRuntimeSoundEvents(this.runtime);
     bus?.emitSfx?.(SoundEventTypes.BLOCKER_TURN, SoundEffectIds.BLOCKER_TURN,
       { lemmingId: walker.id, blockerId: this.id, x: walker.x, y: walker.y });
@@ -69,6 +83,30 @@ class Lemming extends BaseLogger {
     this.frameIndex = 0;
     this.state = 0;
     action?.spriteProvider?.onActionChange?.(this, previousAction, previousFrameIndex);
+    if (this.id != null) {
+      const facts = this.runtime?.physicalFacts;
+      if (facts?.enabled?.() && previousAction && this._physicalActionInstanceId) facts.emit({ kind: 'ActionExited', actorId: this.id,
+        laneId: this.laneIndex ?? null, action: previousAction.actionName || null, actionInstanceId: this._physicalActionInstanceId,
+        positionBefore: { x: this.x, y: this.y }, terminationReason: 'action-change' });
+      this._physicalActionInstanceId = action ? `${this.id}:action:${++this._physicalActionSerial}` : null;
+      if (facts?.enabled?.() && action) facts.emit({ kind: 'ActionEntered', actorId: this.id,
+        laneId: this.laneIndex ?? null, action: action.actionName || null, actionInstanceId: this._physicalActionInstanceId,
+        positionAfter: { x: this.x, y: this.y } });
+    }
+  }
+
+  endPhysicalLifecycle(reason = 'removed') {
+    if (this.id == null || this._physicalTerminated) return;
+    const facts = this.runtime?.physicalFacts;
+    if (facts?.enabled?.()) {
+      if (this.action && this._physicalActionInstanceId) facts.emit({ kind: 'ActionExited', actorId: this.id,
+        laneId: this.laneIndex ?? null, action: this.action.actionName || null, actionInstanceId: this._physicalActionInstanceId,
+        positionBefore: { x: this.x, y: this.y }, terminationReason: reason });
+      facts.emit({ kind: 'ActorTerminated', actorId: this.id, laneId: this.laneIndex ?? null,
+        actionInstanceId: this._physicalActionInstanceId, positionBefore: { x: this.x, y: this.y }, terminationReason: reason });
+    }
+    this._physicalActionInstanceId = null;
+    this._physicalTerminated = true;
   }
 
   setCountDown(action) {
@@ -149,6 +187,7 @@ class Lemming extends BaseLogger {
   }
 
   remove() {
+    this.endPhysicalLifecycle(this.terminalReason || 'removed');
     this.action?.spriteProvider?.resetActor?.(this);
     this.action = null;
     this.countdownAction = null;

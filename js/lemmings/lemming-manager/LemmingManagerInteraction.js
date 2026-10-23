@@ -66,10 +66,26 @@ const lemmingManagerInteractionMethods = {
       lem.lastTriggerType = triggerType;
       return LemmingStateType.SPLATTING;
     case TriggerTypes.BLOCKER_LEFT:
-      if (lem.lookRight) lem.lookRight = false;
+      if (lem.lookRight) {
+        lem.lookRight = false;
+        const contact = lem._physicalPendingBlockerContact;
+        if (contact) lem.runtime?.physicalFacts?.emit?.({ kind: 'DirectionChanged', contactId: contact.contactId,
+          actorId: lem.id, otherActorId: contact.blockerId, laneId: lem.laneIndex ?? null,
+          directionBefore: 'right', directionAfter: 'left', causeKind: 'blocker' });
+        lem._physicalDirectionFactTick = tickOverride;
+      }
+      lem._physicalPendingBlockerContact = null;
       return LemmingStateType.NO_STATE_TYPE;
     case TriggerTypes.BLOCKER_RIGHT:
-      if (!lem.lookRight) lem.lookRight = true;
+      if (!lem.lookRight) {
+        lem.lookRight = true;
+        const contact = lem._physicalPendingBlockerContact;
+        if (contact) lem.runtime?.physicalFacts?.emit?.({ kind: 'DirectionChanged', contactId: contact.contactId,
+          actorId: lem.id, otherActorId: contact.blockerId, laneId: lem.laneIndex ?? null,
+          directionBefore: 'left', directionAfter: 'right', causeKind: 'blocker' });
+        lem._physicalDirectionFactTick = tickOverride;
+      }
+      lem._physicalPendingBlockerContact = null;
       return LemmingStateType.NO_STATE_TYPE;
     default:
       this.logging.log('unknown trigger type: ' + triggerType);

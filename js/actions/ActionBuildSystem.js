@@ -3,6 +3,7 @@ import { SoundEventTypes, SoundEffectIds } from '../game/SoundEvents.js';
 import { LemmingStateType } from '../lemmings/LemmingStateType.js';
 import { SpriteTypes } from '../lemmings/SpriteTypes.js';
 import { getRuntimeSoundEvents } from '../game/GameRuntime.js';
+import { recordPhysicalWork } from './PhysicalWorkFacts.js';
 
 class ActionBuildSystem extends ActionBaseSystem {
   constructor(sprites) {
@@ -23,11 +24,19 @@ class ActionBuildSystem extends ActionBaseSystem {
       /// lay brick
       const startX = lem.x + (lem.lookRight ? 0 : -4);
       const brickY = lem.y - 1;
+      const observing = lem.runtime?.physicalFacts?.enabled?.() || false;
+      const revisionBefore = Number.isFinite(level.terrainRevision) ? level.terrainRevision : null;
+      let attemptedCells = 0, changedSolidCells = 0, changedAppearanceCells = 0;
       for (let i = 0; i < 6; i++) {
         const brickX = startX + i;
         if (!inHorizontalBounds(brickX) || !inVerticalBounds(brickY)) continue;
-        level.setGroundAt(brickX, brickY, 7);
+        attemptedCells++;
+        const wasSolid = observing ? level.hasGroundAt(brickX, brickY) : false;
+        const changed = level.setGroundAt(brickX, brickY, 7);
+        if (observing && changed) { changedAppearanceCells++; if (!wasSolid) changedSolidCells++; }
       }
+      recordPhysicalWork(level, lem, { operationKind: 'build', phase: 'brick', cycleOrdinal: lem.state,
+        attemptedCells, changedSolidCells, changedAppearanceCells, revisionBefore, targetX: startX, targetY: brickY });
       const soundBus = getRuntimeSoundEvents(this.runtime);
       soundBus?.emitSfx?.(
         SoundEventTypes.BUILDER_STEP,

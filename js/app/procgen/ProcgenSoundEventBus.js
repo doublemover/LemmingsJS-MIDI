@@ -2,7 +2,7 @@ import { normalizeLaneHeight } from './ProcgenLaneGeometry.js';
 import { SoundEventBus } from '../../game/SoundEvents.js';
 import { EventHandler } from '../../util/EventHandler.js';
 
-const TERMINAL_TYPES = new Set(['lemming-exit', 'lemming-splat', 'lemming-explode', 'lemming-drown', 'lemming-fire', 'lemming-fell-off']);
+const TERMINAL_TYPES = new Set(['lemming-exit', 'lemming-splat', 'lemming-explode', 'lemming-drown', 'lemming-fire', 'lemming-fell-off', 'ActorTerminated', 'ActionExited']);
 const copyFact = source => {
   const seen = new Set(), budget = { remaining: 512 };
   const copy = (value, depth) => {
@@ -61,44 +61,52 @@ class ProcgenSoundEventBus extends SoundEventBus {
     this._tick = null; this._sealed = [];
     this._causalSequence = 0; this._maxFacts = 4096; this._maxTerminalFacts = 256;
   }
-  beginTick({ worldId, generation, tick, terrainRevisionBefore }) {
+  beginTick({ worldId, generation, tick, terrainRevisionBefore, ordinal = 0 }) {
     if (this._tick) throw new Error('A physical tick is already being collected.');
     this._sealed = [];
-    this._tick = { worldId, generation, tick, terrainRevisionBefore, facts: [], terminalFacts: [], dropped: 0, ordinal: 0 };
+    this._tick = { worldId, generation, tick, terrainRevisionBefore, facts: [], terminalFacts: [], dropped: 0, ordinal };
   }
   emit(event) {
     if (event && event.laneIndex == null && Number.isFinite(event.y)) {
       event = { ...event, laneIndex: Math.max(0, Math.min(this.laneCount - 1, Math.floor(event.y / this.laneHeight))) };
     }
+    if (this._tick) return this._stage(event, true);
+    return super.emit(event);
+  }
+  emitPhysicalFact(event) {
+    if (!this._tick || !this.onBatch.handlers.size) return null;
+    return this._stage(event, false);
+  }
+  _stage(event, legacy) {
     if (this._tick) {
       const current = this._tick;
       const causalSequence = ++this._causalSequence;
       let copied;
       try { copied = copyFact(event); } catch { current.dropped++; return null; }
-      const fact = { ...copied, causalSequence };
-      if (current.facts.length < this._maxFacts) current.facts.push(fact);
-      else if (TERMINAL_TYPES.has(fact.type) && current.terminalFacts.length < this._maxTerminalFacts) current.terminalFacts.push(fact);
+      const fact = { ...copied, causalSequence }, entry = { fact, legacy };
+      if (current.facts.length < this._maxFacts) current.facts.push(entry);
+      else if ((TERMINAL_TYPES.has(fact.kind) || TERMINAL_TYPES.has(fact.type)) && current.terminalFacts.length < this._maxTerminalFacts) current.terminalFacts.push(entry);
       else current.dropped++;
       return fact;
     }
-    return super.emit(event);
+    return null;
   }
   _seal(snapshot, terrainRevisionAfter, transitionTo = null) {
     const current = this._tick;
     if (!current) throw new Error('No physical tick is being collected.');
     if (!this.onBatch.handlers.size && !current.facts.length && !current.terminalFacts.length) return null;
-    const facts = [...current.facts, ...current.terminalFacts].sort((a, b) => a.causalSequence - b.causalSequence);
+    const facts = [...current.facts, ...current.terminalFacts].sort((a, b) => a.fact.causalSequence - b.fact.causalSequence);
     const batchId = `${current.worldId}:${current.generation}:${current.tick}:${current.ordinal}`;
-    const sealedFacts = Object.freeze(facts.map(fact => Object.freeze({ ...fact, worldId: current.worldId,
+    const sealedFacts = Object.freeze(facts.map(({ fact }) => Object.freeze({ ...fact, worldId: current.worldId,
       generation: current.generation, batchId, eventId: `${batchId}:${fact.causalSequence}`,
-      simTick: current.tick, subTick: 0, precision: 'tick' })));
+      simTick: current.tick, subTick: 0, precision: fact.precision || 'tick' })));
     const batch = Object.freeze({ version: 1, worldId: current.worldId, generation: current.generation,
       tick: current.tick, batchId, physicsOrderVersion: 1,
       firstSequence: sealedFacts[0]?.causalSequence ?? null, lastSequence: sealedFacts.at(-1)?.causalSequence ?? null,
       terrainRevisionBefore: current.terrainRevisionBefore, terrainRevisionAfter, snapshotRevision: snapshot?.revision ?? null,
       facts: sealedFacts, snapshot, terminalGenerationTransition: transitionTo == null ? null : Object.freeze({ from: current.generation, to: transitionTo }),
       completeness: current.dropped ? Object.freeze({ status: 'incomplete', dropped: current.dropped }) : Object.freeze({ status: 'complete', dropped: 0 }) });
-    this._sealed.push(batch);
+    this._sealed.push({ batch, legacyFacts: sealedFacts.filter((_, index) => facts[index].legacy) });
     return batch;
   }
   sealGeneration(snapshot, terrainRevisionAfter, nextGeneration) {
@@ -110,13 +118,13 @@ class ProcgenSoundEventBus extends SoundEventBus {
   }
   commitTick(snapshot, terrainRevisionAfter) {
     this._seal(snapshot, terrainRevisionAfter);
-    const batches = this._sealed;
+    const sealed = this._sealed;
     this._tick = null; this._sealed = [];
-    for (const batch of batches) {
+    for (const { batch, legacyFacts } of sealed) {
       this.onBatch.trigger(batch);
-      for (const fact of batch.facts) super.emit(fact);
+      for (const fact of legacyFacts) super.emit(fact);
     }
-    return batches;
+    return sealed.map(entry => entry.batch);
   }
   abortTick() { this._tick = null; this._sealed = []; }
   dispose() { this.abortTick(); this.onBatch.dispose(); super.dispose(); }

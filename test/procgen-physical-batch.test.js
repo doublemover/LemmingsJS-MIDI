@@ -2,6 +2,9 @@ import { expect } from 'chai';
 import { ProcgenLaneWorld } from '../js/app/procgen/ProcgenLaneWorld.js';
 import { ProcgenSoundEventBus } from '../js/app/procgen/ProcgenSoundEventBus.js';
 import { LemmingStateType as State } from '../js/lemmings/LemmingStateType.js';
+import { Lemming } from '../js/lemmings/Lemming.js';
+import { lemmingManagerInteractionMethods } from '../js/lemmings/lemming-manager/LemmingManagerInteraction.js';
+import { TriggerTypes } from '../js/level/TriggerTypes.js';
 import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
 
 describe('completed physical event batches', () => {
@@ -84,5 +87,109 @@ describe('completed physical event batches', () => {
     expect(batches[0].facts[0].chainStages).to.deep.equal(['build']);
     expect(batches[0].completeness).to.deep.equal({ status: 'incomplete', dropped: 1 });
     bus.dispose();
+  });
+
+  it('records a zero-displacement wall contact and one direction change', () => {
+    const world = new ProcgenLaneWorld({ masks, assists: false });
+    const actor = world.actors[0];
+    actor.setAction(world.actions[State.WALKING]); actor.x = 20; actor.y = 20;
+    world.getColumnStepHeight = () => 8;
+    const batches = []; world.soundEvents.onBatch.on(batch => batches.push(batch));
+    world.step();
+    const facts = batches[0].facts;
+    const contact = facts.find(fact => fact.kind === 'ContactResolved');
+    const turn = facts.find(fact => fact.kind === 'DirectionChanged');
+    expect(contact).to.include({ actorId: actor.id, causeKind: 'wall' });
+    expect(contact.positionBefore).to.deep.equal(contact.positionAfter);
+    expect(turn.contactId).to.equal(contact.contactId);
+    expect(facts.filter(fact => fact.kind === 'MotionCommitted')).to.have.length(0);
+    world.dispose();
+  });
+
+  it('captures action instance endings and actor identity before removal', () => {
+    const bus = new ProcgenSoundEventBus({ getGameTicks: () => 1, frameTime: 60 }, 1);
+    const batches = [], legacy = [];
+    bus.onBatch.on(batch => batches.push(batch)); bus.onEvent.on(event => legacy.push(event));
+    const actor = new Lemming(10, 20, 7, { physicalFacts: { enabled: () => true, emit: fact => bus.emitPhysicalFact(fact) } });
+    actor.laneIndex = 0;
+    bus.beginTick({ worldId: 'scene', generation: 1, tick: 1, terrainRevisionBefore: 0 });
+    actor.setAction({ actionName: 'building' });
+    actor.setAction({ actionName: 'digging' });
+    actor.remove();
+    bus.commitTick(Object.freeze({ revision: '1:1' }), 0);
+    expect(batches[0].facts.map(fact => fact.kind)).to.deep.equal(['ActionEntered', 'ActionExited', 'ActionEntered', 'ActionExited', 'ActorTerminated']);
+    expect(batches[0].facts.filter(fact => fact.kind === 'ActionEntered').map(fact => fact.actionInstanceId)).to.deep.equal(['7:action:1', '7:action:2']);
+    expect(batches[0].facts.at(-1)).to.include({ actorId: 7, terminationReason: 'removed' });
+    expect(legacy).to.have.length(0);
+    bus.dispose();
+  });
+
+  it('gives both blocker participants one contact root and one walker turn', () => {
+    const bus = new ProcgenSoundEventBus({ getGameTicks: () => 4, frameTime: 60 }, 1);
+    const batches = []; bus.onBatch.on(batch => batches.push(batch));
+    const runtime = { physicalFacts: { enabled: () => true, emit: fact => bus.emitPhysicalFact(fact) }, soundEvents: bus };
+    const blocker = new Lemming(100, 50, 1, runtime), walker = new Lemming(96, 50, 2, runtime);
+    blocker.laneIndex = walker.laneIndex = 0;
+    const manager = { triggerManager: { trigger: () => {
+      blocker.onTrigger(4, walker, { type: TriggerTypes.BLOCKER_LEFT });
+      return TriggerTypes.BLOCKER_LEFT;
+    } } };
+    bus.beginTick({ worldId: 'scene', generation: 1, tick: 4, terrainRevisionBefore: 0 });
+    lemmingManagerInteractionMethods.runTrigger.call(manager, walker, 4);
+    bus.commitTick(Object.freeze({ revision: '1:4' }), 0);
+    const physical = batches[0].facts.filter(fact => fact.kind);
+    expect(physical.map(fact => fact.kind)).to.deep.equal(['ContactResolved', 'DirectionChanged']);
+    expect(physical[0]).to.include({ actorId: 2, otherActorId: 1, causeKind: 'blocker' });
+    expect(physical[1].contactId).to.equal(physical[0].contactId);
+    expect(walker.lookRight).to.equal(false);
+    bus.dispose();
+  });
+
+  it('records endpoint motion and terminal failure from the world pass', () => {
+    const world = new ProcgenLaneWorld({ masks, assists: false });
+    const actor = world.actors[0];
+    const batches = []; world.soundEvents.onBatch.on(batch => batches.push(batch));
+    world.step();
+    expect(batches[0].facts.some(fact => fact.kind === 'MotionCommitted' && fact.actorId === actor.id)).to.equal(true);
+    actor.y = world.height + 7;
+    world.step();
+    const terminal = batches[1].facts.find(fact => fact.kind === 'ActorTerminated');
+    expect(terminal).to.include({ actorId: actor.id, terminationReason: 'out-of-world' });
+    world.dispose();
+  });
+
+  it('keeps distinct sequential dig operations and builder no-change work', () => {
+    const world = new ProcgenLaneWorld({ masks, assists: false });
+    const actor = world.actors[0], batches = [];
+    world.soundEvents.onBatch.on(batch => batches.push(batch));
+    actor.setAction(world.actions[State.DIGGING]); actor.frameIndex = 0;
+    world.step();
+    const digs = batches[0].facts.filter(fact => fact.kind === 'TerrainWorkCommitted' && fact.operationKind === 'dig');
+    expect(digs).to.have.length(3);
+    expect(digs.map(fact => fact.operationOrdinal)).to.deep.equal([1, 2, 3]);
+    expect(digs.map(fact => fact.physicalPayload.targetY)).to.deep.equal([actor.y - 3, actor.y - 2, actor.y - 1]);
+    expect(digs[0].causalSequence).to.be.lessThan(digs[1].causalSequence);
+    actor.setAction(world.actions[State.BUILDING]); actor.frameIndex = 8;
+    world.step();
+    actor.frameIndex = 8;
+    world.step();
+    const builds = batches.slice(1).flatMap(batch => batch.facts.filter(fact => fact.kind === 'TerrainWorkCommitted' && fact.operationKind === 'build'));
+    expect(builds).to.have.length(2);
+    expect(builds[0].actionInstanceId).to.equal(builds[1].actionInstanceId);
+    expect(builds[1].outcome).to.equal('no-change');
+    expect(builds[1].physicalPayload.changedAppearanceCells).to.equal(0);
+    world.dispose();
+  });
+
+  it('closes every actor on explicit disposal with a unique terminal batch', () => {
+    const world = new ProcgenLaneWorld({ masks, laneCount: 2, assists: false });
+    const batches = []; world.soundEvents.onBatch.on(batch => batches.push(batch));
+    world.step();
+    const actorIds = world.actors.map(actor => actor.id);
+    world.dispose();
+    const finalBatch = batches.at(-1);
+    expect(finalBatch.batchId).not.to.equal(batches[0].batchId);
+    expect(finalBatch.facts.filter(fact => fact.kind === 'ActorTerminated').map(fact => fact.actorId)).to.deep.equal(actorIds);
+    expect(finalBatch.snapshot.actors).to.have.length(0);
   });
 });

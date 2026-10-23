@@ -126,7 +126,10 @@ class ProcgenLaneWorld {
     this.soundEvents._queueLimit = 0;
     this.soundEvents.laneCount = this.laneCount;
     this.soundEvents.laneIndex = 0;
-    const runtime = { soundEvents: this.soundEvents };
+    const runtime = { soundEvents: this.soundEvents, physicalFacts: {
+      enabled: () => !!this.soundEvents._tick && this.soundEvents.onBatch.handlers.size > 0,
+      emit: fact => this.soundEvents.emitPhysicalFact(fact)
+    } };
     this.runtime = runtime;
     this.characterParticles = sprites ? new CharacterParticles() : null;
     this.hazards = new ProcgenHazards(this); this.triggerManager = new ProcgenTriggerManager(this, this.hazards);
@@ -215,7 +218,9 @@ class ProcgenLaneWorld {
     }
   }
   _restart(previousDistances) {
-    this.soundEvents.sealGeneration(this._physicalSnapshot(), this.terrainRevision, this.generation + 1);
+    for (const actor of this.actors) actor.endPhysicalLifecycle('cohort-reset');
+    const completed = this._physicalSnapshot();
+    this.soundEvents.sealGeneration(completed && Object.freeze({ ...completed, actors: Object.freeze([]) }), this.terrainRevision, this.generation + 1);
     if (this.workstationEnabled) {
       // Each displayed seed defines its run and the next seed, including after Replay Seed.
       const nextSeed = deriveSeed(this.seed, 'procgen:auto-reset');
@@ -434,7 +439,7 @@ class ProcgenLaneWorld {
     return height + 1;
   }
   _setPixel(x, y, color) {
-    if (x < 0 || x >= this.width || y < 0 || y >= this.height) return;
+    if (x < 0 || x >= this.width || y < 0 || y >= this.height) return false;
     const key = this._editKey(x, y);
     let chunk = this.editChunks.get(key);
     if (!chunk) {
@@ -452,9 +457,11 @@ class ProcgenLaneWorld {
       const width = this.terrain?.chunkWidth || CHUNK_WIDTH;
       this.terrainTileRevisions.set(Math.floor(y / this.laneHeight) * 0x800000 + Math.floor(x / width), this.terrainRevision);
       this.basinRoutes?.edit(x, y, this._processingActorId); this.tunnelRoutes?.edit(x, y, this._processingActorId); this.lanePolicy?.edit(x, y, this._processingActorId);
+      return true;
     }
+    return false;
   }
-  setGroundAt(x, y) { this._setPixel(x, y, 3); }
+  setGroundAt(x, y) { return this._setPixel(x, y, 3); }
   isArrowAt() { return false; }
   hasSteelAt(x, y) {
     const lane = Math.floor(y / this.laneHeight);
@@ -833,6 +840,7 @@ class ProcgenLaneWorld {
       const generation = this.generation, terrainRevisionBefore = this.terrainRevision;
       this.tickIndex++;
       this.soundEvents.beginTick({ worldId: this.worldId, generation, tick: this.tickIndex, terrainRevisionBefore });
+      const observePhysical = this.soundEvents.onBatch.handlers.size > 0;
       const nextMusicSlot = 1 - this._musicCompletedSlot;
       this.eventTimeMs = Number.isFinite(eventTimeMs) ? eventTimeMs : this.eventTimeMs + this.timer.frameTime;
       this.characterParticles?.tick();
@@ -840,7 +848,8 @@ class ProcgenLaneWorld {
       let activeCount = 0;
       for (const lane of this.stall.lanes) { lane.alive = 0; lane.lowestSurvivingActorId = null; lane.buildingCount = 0; lane.bashingCount = 0; lane.floatingCount = 0; lane.diggingCount = 0; lane.miningCount = 0; lane.blockingCount = 0; }
       for (const actor of this.actors) {
-        if (actor.failureReason || actor.removed) { this.lanePolicy.projects.retire(actor); this._musicActorPositions.delete(actor._musicPositionId); this._syncTriggerOwner(actor); continue; }
+        if (actor.failureReason || actor.removed) { if (observePhysical) actor.endPhysicalLifecycle(actor.failureReason || 'removed'); this.lanePolicy.projects.retire(actor); this._musicActorPositions.delete(actor._musicPositionId); this._syncTriggerOwner(actor); continue; }
+        const initialX = actor.x, initialY = actor.y, initialDirection = actor.lookRight, initialId = actor.id;
         this.soundEvents.laneIndex = actor.laneIndex;
         this._synchronizeLane(actor);
         this.soundEvents.laneIndex = actor.laneIndex;
@@ -879,6 +888,14 @@ class ProcgenLaneWorld {
         this.tunnelRoutes.observe(actor); this.basinRoutes.observe(actor, previousAction);
         this.lanePolicy.observe(actor, previousAction, previousX);
         this._syncTriggerOwner(actor);
+        if (observePhysical) {
+          if (actor.x !== initialX || actor.y !== initialY) this.soundEvents.emitPhysicalFact({ kind: 'MotionCommitted', actorId: initialId,
+            laneId: actor.laneIndex, positionBefore: { x: initialX, y: initialY }, positionAfter: { x: actor.x, y: actor.y },
+            precision: 'endpoint', physicalPayload: { displacementPixels: Math.hypot(actor.x - initialX, actor.y - initialY) } });
+          if (actor.lookRight !== initialDirection && actor._physicalDirectionFactTick !== this.tickIndex) this.soundEvents.emitPhysicalFact({ kind: 'DirectionChanged', actorId: initialId,
+            laneId: actor.laneIndex, directionBefore: initialDirection ? 'right' : 'left', directionAfter: actor.lookRight ? 'right' : 'left', causeKind: 'unknown' });
+          if (actor.failureReason || actor.removed) actor.endPhysicalLifecycle(actor.failureReason || 'removed');
+        }
         if (!actor.failureReason && !actor.removed) {
           activeCount++; this._cacheMusicPosition(actor, nextMusicSlot);
           const lane = this.stall.lanes[actor.laneIndex]; lane.alive++;
@@ -1020,7 +1037,18 @@ class ProcgenLaneWorld {
       terrainMemoryMB: this.editChunks.snapshot().totalBytes / 1048576,
       ...this.stats };
   }
-  dispose() { this._manualNukeLanes.fill(0); for (const actor of this.actors) this._clearConstructionCrew(actor); this._musicActorPositions.clear(); this.triggerManager.dispose(); this.hazardPlanner.dispose(); this.basinRoutes.dispose(); this.tunnelRoutes.dispose(); this.lanePolicy.dispose(); this.terrainGrowth?.dispose(); this.scenery?.dispose(); this.edgeBlockers.fill(null); this.accessTasks.fill(null); this._edgeWallCache.fill(null); this._edgeWallHazards.length = 0; this.onRestart = null; this.onLaneTransfer = null; this.characterParticles?.clear(); this.timer.onGameTick.dispose(); this.soundEvents.dispose(); this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this._laneChunk.fill(null); this._collisionSlots.fill(null); this._laneEdits.fill(null); this._editCache.fill(null); this.terrain?.reset?.(); }
+  dispose() {
+    if (this._disposed) return;
+    this._disposed = true;
+    if (this.soundEvents.onBatch.handlers.size && !this.soundEvents._tick) {
+      this.soundEvents.beginTick({ worldId: this.worldId, generation: this.generation, tick: this.tickIndex,
+        terrainRevisionBefore: this.terrainRevision, ordinal: 1 });
+      for (const actor of this.actors) actor.endPhysicalLifecycle('world-disposed');
+      const snapshot = this._physicalSnapshot();
+      this.soundEvents.commitTick(Object.freeze({ ...snapshot, actors: Object.freeze([]) }), this.terrainRevision);
+    }
+    this._manualNukeLanes.fill(0); for (const actor of this.actors) this._clearConstructionCrew(actor); this._musicActorPositions.clear(); this.triggerManager.dispose(); this.hazardPlanner.dispose(); this.basinRoutes.dispose(); this.tunnelRoutes.dispose(); this.lanePolicy.dispose(); this.terrainGrowth?.dispose(); this.scenery?.dispose(); this.edgeBlockers.fill(null); this.accessTasks.fill(null); this._edgeWallCache.fill(null); this._edgeWallHazards.length = 0; this.onRestart = null; this.onLaneTransfer = null; this.characterParticles?.clear(); this.timer.onGameTick.dispose(); this.soundEvents.dispose(); this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this._laneChunk.fill(null); this._collisionSlots.fill(null); this._laneEdits.fill(null); this._editCache.fill(null); this.terrain?.reset?.();
+  }
 }
 
 export { ProcgenLaneWorld, MAX_PROCGEN_LANES, LANE_HEIGHT, CHUNK_WIDTH, PROCGEN_LEFT_EDGE, normalizeLaneCount, DEFAULT_LANE_HEIGHT, MAX_LANE_HEIGHT, normalizeLaneHeight, DEFAULT_PROCGEN_POPULATION, normalizePopulationPolicy };
