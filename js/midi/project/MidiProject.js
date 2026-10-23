@@ -781,6 +781,7 @@ const importMidiProjectPayload = (payload) => {
   let projectPayload = null;
   let templateId = null;
   if (parsed.kind === MIDI_TEMPLATE_EXPORT_KIND) {
+    if (parsed.template?.version != null && parsed.template.version !== MIDI_PROJECT_VERSION) throw new Error('Unsupported MIDI template version.');
     projectPayload = parsed.template?.project ?? parsed.project;
     templateId = parsed.template?.id ?? parsed.templateId ?? projectPayload?.templateId ?? null;
   } else if (parsed.kind === MIDI_PROJECT_EXPORT_KIND) {

@@ -33,6 +33,23 @@ const setFieldValue = async (page, selector, value) => {
   }, value);
 };
 
+test('unsupported stored templates remain protected and exportable through the real MIDI surface', async ({ page }) => {
+  const original = '{"version":999,"templates":[{"privateFuture":"preserve exactly"}]}';
+  await page.addInitScript(raw => localStorage.setItem('lemmings.midi.templates.v1', raw), original);
+  await openMidiUi(page);
+  await page.locator('#midiViewProject').click();
+  await expect(page.locator('#midiStorageProtection')).toContainText('protected');
+  await page.locator('#midiTemplateSaveAsButton').click();
+  await expect(page.locator('#midiProjectStatus')).toContainText('Saved template data is protected');
+  expect(await page.evaluate(() => localStorage.getItem('lemmings.midi.templates.v1'))).toBe(original);
+  const requested = page.waitForEvent('download');
+  await page.locator('#midiStoredDataExportButton').click();
+  const download = await requested;
+  const recovered = JSON.parse(await fs.readFile(await download.path(), 'utf8'));
+  expect(recovered.records[0].raw).toBe(original);
+  expect(await page.evaluate(() => localStorage.getItem('lemmings.midi.templates.v1'))).toBe(original);
+});
+
 test('MIDI sequencer gives editor controls scoped accessible names', async ({ page }) => {
   const midi = await openMidiUi(page);
   await expect(midi.workspace()).toBeVisible();
