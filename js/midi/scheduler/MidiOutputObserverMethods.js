@@ -68,6 +68,8 @@ const midiOutputObserverMethods = {
   },
 
   _sendOutput(output, channel, method, args = [], meta = {}) {
+    const scope = this._outputChannelScopes?.get(output);
+    if (channel != null && scope && !scope.has(channel)) return false;
     const target = channel == null ? output : output?.channels?.[channel];
     const send = target?.[method];
     if (typeof send !== 'function' || output?.state === 'disconnected') return false;

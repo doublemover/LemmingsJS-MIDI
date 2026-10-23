@@ -16,6 +16,7 @@ class MidiScheduler {
     this._outputsById = new Map();
     this._additionalOutputs = new Set();
     this._outputLeases = new Map();
+    this._outputChannelScopes = new WeakMap();
     this._connectionSequence = 0;
     this._routeRevision = 0;
     this._mpeRevision = 0;

@@ -255,3 +255,21 @@ These fixtures cover browser MIDI 1 APIs, explicit source lowering and configure
 link budgets using fake outputs. Native UMP delivery, measured physical link
 capacity, acknowledged MPE negotiation, JR timestamps and real cable failure
 measurements require their backend qualification.
+## Reconfiguration under a channel grant
+
+The port owner prepares the normalized MPE manager/member plan against every
+active route's immutable channel grant before changing scheduler configuration.
+An incompatible or invalid candidate is rejected as a whole, with the prior
+configuration and its accepted independent routes retained. No candidate setup
+bytes are sent. `lastConfigurationFailure` reports the reason and affected
+outputs; each affected route exposes `configurationFailure` separately from the
+readiness of its retained configuration. Expanding a grant requires an explicit
+route activation. Narrowing retires that route's queued work under its old grant
+before installing the new one.
+
+The scheduler keeps a channel scope with each output, rejects incompatible
+direct configuration calls, and checks both note admission and the final channel
+submission boundary. An accepted MPE mode change retires old owned voices and
+updates route revisions before new setup. Setup failure remains a distinct
+non-ready route state. New scope and queue regression fixtures are deferred
+until the backlog implementation phase is complete.

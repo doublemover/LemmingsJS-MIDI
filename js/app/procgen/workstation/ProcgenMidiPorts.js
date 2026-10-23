@@ -1,5 +1,6 @@
 import { MidiScheduler } from '../../../midi/MidiScheduler.js';
 import { lowerMidi2ChannelVoice } from '../../../midi/protocol/MidiProtocolLowering.js';
+import { createMpeZonePlan } from '../../../midi/scheduler/MpeZonePlan.js';
 import { clearProcgenMidiQueue, sendProcgenMidiBytes, validProcgenMidiChannelBytes } from './ProcgenMidiBytes.js';
 
 const byte = value => Math.min(127, Math.max(0, Math.round(Number(value) || 0)));
@@ -81,12 +82,14 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
   const retiredPorts = new WeakSet(), retiredOutputIds = new Set();
   const activationFailures = new Map();
   let routeRevision = 0, outputEpoch = 0, lastRouteLoss = null, lastCleanup = null, activeIntentKey = '';
+  let lastConfigurationFailure = null;
   const resolveOutput = outputId => {
     const id = outputId == null || outputId === '' ? noteOutput?.id : outputId;
     return activeOutputs.get(String(id))?.port || null;
   };
   const syncSchedulerOutputs = () => {
     const selected = resolveOutput();
+    for (const route of activeOutputs.values()) scheduler.setOutputChannelScope?.(route.port, route.intent.channels ?? null);
     scheduler.setOutputs?.([...activeOutputs.values()].map(route => route.port));
     scheduler.setOutput(selected || null);
     for (const [id, route] of activeOutputs) {
@@ -101,7 +104,9 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     const invalid = reason => { if (current) retireOutput(id, 'route-activation-rejected'); activationFailures.set(id, reason); return false; };
     if (intent.channels && (!Array.isArray(intent.channels) || intent.channels.some(channel => !Number.isInteger(channel) || channel < 1 || channel > 16))) return invalid('invalid-channel-scope');
     if (port.channels && scheduler.config?.mpe?.enabled && intent.channels) {
-      const required = [scheduler.config.mpe.masterChannel ?? 1, ...(scheduler.config.mpe.memberChannels || [])];
+      const plan = createMpeZonePlan(scheduler.config.mpe, scheduler._ensembleChannels?.() || new Set());
+      if (!plan.ok) return invalid(plan.reason);
+      const required = [plan.managerChannel, ...plan.memberChannels];
       if (required.some(channel => !intent.channels.includes(channel))) return invalid('mpe-channel-scope');
     }
     activationFailures.delete(id);
@@ -157,13 +162,14 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     noteOutputIds: [...noteOutputs.keys()], availableNoteOutputIds: [...noteOutputs.keys()],
     authorizedNoteOutputIds: [...activeOutputs.keys()], activeNoteOutputIds: [...activeOutputs].filter(([id, route]) =>
       !route.port.channels || scheduler.getOutputRouteState?.(id)?.mpeReady !== false).map(([id]) => id),
-    routeRevision, lastRouteLoss, lastLowering, lastInputSafety, lastCallbackError, lastCleanup: lastCleanup || scheduler.lastCleanup || null,
+    routeRevision, lastRouteLoss, lastLowering, lastInputSafety, lastCallbackError, lastConfigurationFailure, lastCleanup: lastCleanup || scheduler.lastCleanup || null,
     outputRoutes: [...new Set([...noteOutputs.keys(), ...activeOutputs.keys(), ...routeIntents.keys(), ...(noteOutput ? [String(noteOutput.id)] : [])])].map(id => {
       const active = activeOutputs.get(id), selected = String(noteOutput?.id) === id;
       const port = noteOutputs.get(id) || active?.port || (selected ? noteOutput : null);
       const schedulerState = scheduler.getOutputRouteState?.(id), ready = schedulerState?.mpeReady !== false;
       return { ...schedulerState, outputId: id, name: port?.name || active?.port.name || null, selected, authorized: !!active, active: !!active && ready,
         activationFailure: activationFailures.get(id) ?? null,
+        configurationFailure: lastConfigurationFailure?.outputIds.includes(id) ? lastConfigurationFailure.reason : null,
         available: !!port && port.state !== 'disconnected', state: active ? ready ? 'active' : 'setup-rejected' : selected || routeIntents.has(id) ? 'unavailable' : 'discovered',
         connectionEpoch: active?.connectionEpoch ?? null, routeRevision: active?.routeRevision ?? routeRevision,
         role: active?.intent.role || (selected ? 'default-note' : 'note') };
@@ -710,6 +716,16 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
       clockOutput = port || null; report();
     },
     configure(settings = {}) {
+      if (settings.schedulerConfig) {
+        const config = settings.schedulerConfig, plan = createMpeZonePlan(config.mpe, scheduler._ensembleChannels?.(config) || new Set());
+        const required = config.mpe?.enabled ? [plan.managerChannel, ...plan.memberChannels] : [];
+        const incompatible = [...activeOutputs].filter(([, route]) => route.port.channels && route.intent.channels && required.some(channel => !route.intent.channels.includes(channel))).map(([id]) => id);
+        if (config.mpe?.enabled && !plan.ok || incompatible.length) {
+          lastConfigurationFailure = Object.freeze({ reason: !plan.ok && config.mpe?.enabled ? plan.reason : 'mpe-channel-scope',
+            outputIds: Object.freeze(incompatible), requiredChannels: Object.freeze(required), retained: true, routeRevision });
+          report(); return getState();
+        }
+      }
       if (settings.thru !== undefined) thru = !!settings.thru;
       if (settings.systemResetPolicy !== undefined) {
         if (!['observe', 'release-owned'].includes(settings.systemResetPolicy)) throw new RangeError('Invalid input System Reset policy');
@@ -732,7 +748,10 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
         }
         recording = !!settings.recording;
       }
-      if (settings.schedulerConfig) scheduler.setConfig?.(settings.schedulerConfig);
+      if (settings.schedulerConfig) {
+        if (scheduler.setConfig?.(settings.schedulerConfig) === false) lastConfigurationFailure = scheduler.lastConfigurationFailure || { reason: 'scheduler-configuration-rejected', outputIds: [], retained: true };
+        else { lastConfigurationFailure = null; syncSchedulerOutputs(); }
+      }
       report(); return getState();
     },
     learnNext(callback = onLearn) { learn = callback; report(); },
@@ -765,7 +784,11 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
       const durationMs = duration(spec), outputId = spec.outputId ?? port.id ?? null;
       if (port.channels) {
         const allowed = activeOutputs.get(String(port.id))?.intent.channels;
-        if (allowed && !scheduler.config?.mpe?.enabled && !allowed.includes(spec.channel ?? scheduler.config?.defaultChannel ?? 1)) return false;
+        if (allowed) {
+          const plan = scheduler.config?.mpe?.enabled ? scheduler._mpeZonePlan || createMpeZonePlan(scheduler.config.mpe, scheduler._ensembleChannels?.() || new Set()) : null;
+          if (plan ? !plan.ok || !allowed.includes(plan.managerChannel) || plan.memberChannels.some(channel => !allowed.includes(channel)) :
+            !allowed.includes(spec.channel ?? scheduler.config?.defaultChannel ?? 1)) return false;
+        }
         const accepted = scheduler.sendNote({ ...spec, durationTicks: durationMs / (scheduler.tickMs || 60) }, meta);
         return accepted;
       }

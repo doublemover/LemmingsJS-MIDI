@@ -50,6 +50,10 @@ const midiSchedulerSendMethods = {
       const releaseVelocity = reverse ? baseVelocity : baseRelease;
       const timbreCc = this.config.mpe?.timbreCc ?? 74;
       const mpeEnabled = this._isMpeNote(spec);
+      const scope = this._outputChannelScopes.get(output);
+      if (scope && (mpeEnabled ? !this._mpeZonePlan?.ok || !scope.has(this._mpeZonePlan.managerChannel) ||
+          this._mpeZonePlan.memberChannels.some(channel => !scope.has(channel)) :
+        !scope.has(normalizeChannelNumber(spec.channel ?? this.config.defaultChannel, 1)))) { releaseExternalShare(); return false; }
       if (mpeEnabled && this._mpeStatusByOutput.get(output) === false) { releaseExternalShare(); return false; }
       if (mpeEnabled && !this._memberChannels.some(ch => output.channels?.[ch] && !this._ensembleChannels().has(ch))) { releaseExternalShare(); return false; }
       if (!mpeEnabled && !output.channels?.[normalizeChannelNumber(spec.channel ?? this.config.defaultChannel, 1)]) { releaseExternalShare(); return false; }

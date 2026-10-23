@@ -17,6 +17,53 @@ function fixture(clock = () => 1000) {
 }
 
 describe('ProcGen workstation MIDI ports', () => {
+  it('rejects normalized MPE reconfiguration before setup can exceed an active route grant', () => {
+    withFakeClockAndPerformance(clock => {
+      const calls = [], scheduler = new MidiScheduler({ mpe: { enabled: false }, defaultChannel: 1 });
+      const output = makeOutput([1, 2, 3], calls, 'scope'), otherCalls = [], other = makeOutput([1, 2, 3], otherCalls, 'other');
+      const ports = createProcgenMidiPorts({ scheduler, now: () => clock.now });
+      try {
+        ports.setNoteOutputs([output, other]);
+        ports.setActiveNoteOutputs([{ outputId: 'scope', channels: [1] }, { outputId: 'other', channels: [1, 2, 3] }]);
+        expect(calls).to.have.length(0);
+        const candidate = { mpe: { enabled: true, masterChannel: 1, memberChannels: [2] } };
+        const state = ports.configure({ schedulerConfig: candidate });
+        expect(state.lastConfigurationFailure).to.include({ reason: 'mpe-channel-scope', retained: true });
+        expect(state.outputRoutes.find(route => route.outputId === 'scope').configurationFailure).to.equal('mpe-channel-scope');
+        expect(scheduler.config.mpe.enabled).to.equal(false); expect(calls).to.have.length(0); expect(otherCalls).to.have.length(0);
+        expect(scheduler.setConfig(candidate)).to.equal(false); expect(calls).to.have.length(0);
+        expect(scheduler._sendOutput(output, 2, 'sendNoteOn', [60])).to.equal(false);
+        expect(ports.sendNote({ outputId: 'other', note: 65, durationMs: 20 })).to.equal(true);
+        ports.setActiveNoteOutputs([{ outputId: 'scope', channels: [1, 2] }, { outputId: 'other', channels: [1, 2, 3] }], { rearm: true });
+        calls.length = 0; ports.configure({ schedulerConfig: candidate });
+        expect(scheduler.config.mpe.enabled).to.equal(true);
+        expect(ports.sendNote({ outputId: 'scope', note: 60, durationMs: 20 })).to.equal(true);
+        expect(calls.filter(call => call.type === 'noteOn').map(call => call.id)).to.deep.equal([2]);
+        calls.length = 0;
+        ports.configure({ schedulerConfig: { mpe: { enabled: true, masterChannel: 1, memberChannels: [2, 3] } } });
+        expect(calls).to.have.length(0); expect(scheduler.config.mpe.memberChannels).to.deep.equal([2]);
+        expect(ports.sendNote({ outputId: 'other', note: 66, durationMs: 20 })).to.equal(true);
+      } finally { ports.dispose(); scheduler.dispose(); }
+    });
+  });
+
+  it('retires queued work when narrowing a grant and never admits an incompatible active zone', () => {
+    withFakeClockAndPerformance(clock => {
+      const calls = [], scheduler = new MidiScheduler({ mpe: { enabled: false } }), output = makeOutput([1, 2, 16, 15], calls, 'scope');
+      const ports = createProcgenMidiPorts({ scheduler, now: () => clock.now });
+      try {
+        ports.setNoteOutputs([output]); ports.setActiveNoteOutputs([{ outputId: 'scope', channels: [1, 2] }]);
+        expect(ports.sendNote({ outputId: 'scope', channel: 2, note: 60, timeMs: 100, durationMs: 20 })).to.equal(true);
+        ports.setActiveNoteOutputs([{ outputId: 'scope', channels: [1] }], { rearm: true }); calls.length = 0;
+        clock.tick(120); expect(calls.filter(call => call.type === 'noteOn')).to.have.length(0);
+        for (const mpe of [{ enabled: true }, { enabled: true, masterChannel: 16, memberChannels: [15] },
+          { enabled: true, masterChannel: 1, memberChannels: [2] }]) {
+          expect(ports.configure({ schedulerConfig: { mpe } }).lastConfigurationFailure).not.to.equal(null);
+          expect(calls).to.have.length(0);
+        }
+      } finally { ports.dispose(); scheduler.dispose(); }
+    });
+  });
   it('monitors and learns input with Thru off by default; never echoes realtime when enabled', () => {
     const f = fixture(); f.ports.learnNext(); f.ports.receiveMidi([0xb2, 74, 91], 99);
     expect(f.output.messages).to.have.length(0); expect(f.learned[0]).to.include({ type: 'cc', channel: 3, controller: 74, value: 91 });

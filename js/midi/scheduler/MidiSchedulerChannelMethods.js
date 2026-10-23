@@ -31,13 +31,48 @@ const toOutputList = (outputs) => {
 };
 
 const midiSchedulerChannelMethods = {
+  prepareOutputConfig(config = {}) {
+    const plan = createMpeZonePlan(config.mpe, this._ensembleChannels(config)), outputIds = [];
+    if (!config.mpe?.enabled) return { ok: true, plan, outputIds };
+    if (!plan.ok) return { ok: false, reason: plan.reason, plan, outputIds };
+    const required = [plan.managerChannel, ...plan.memberChannels];
+    for (const output of this._outputLeases.keys()) {
+      const scope = this._outputChannelScopes.get(output);
+      if (scope && required.some(channel => !scope.has(channel))) outputIds.push(String(output.id));
+    }
+    return { ok: !outputIds.length, reason: outputIds.length ? 'mpe-channel-scope' : null, plan, outputIds };
+  },
+
+  setOutputChannelScope(output, channels = null) {
+    if (!output || channels != null && (!Array.isArray(channels) || channels.some(channel => !Number.isInteger(channel) || channel < 1 || channel > 16))) return false;
+    const prior = this._outputChannelScopes.get(output), scope = channels == null ? null : new Set(channels);
+    if ((!prior && !scope) || prior && scope && prior.size === scope.size && [...prior].every(channel => scope.has(channel))) return true;
+    const active = this._outputLeases.has(output);
+    if (active && scope && this.config.mpe?.enabled && (!this._mpeZonePlan?.ok || !scope.has(this._mpeZonePlan.managerChannel) ||
+        this._mpeZonePlan.memberChannels.some(channel => !scope.has(channel)))) return false;
+    this._cleanupDepth++;
+    try {
+      if (active) this._retireOutput(output);
+      if (scope) this._outputChannelScopes.set(output, scope); else this._outputChannelScopes.delete(output);
+      if (active) { this._registerOutput(output); this._initMpe(output); }
+    } finally { this._cleanupDepth--; }
+    return true;
+  },
+
   setConfig(config) {
+    const candidate = this.prepareOutputConfig(config || {});
+    if (!candidate.ok && [...this._outputLeases.keys()].some(output => this._outputChannelScopes.has(output))) {
+      this.lastConfigurationFailure = Object.freeze({ reason: candidate.reason, outputIds: Object.freeze(candidate.outputIds), retained: true });
+      return false;
+    }
+    this.lastConfigurationFailure = null;
     const mpeChanged = JSON.stringify(this.config?.mpe) !== JSON.stringify(config?.mpe) ||
       (this.config?.enabled === false && config?.enabled !== false) ||
       JSON.stringify([...this._ensembleChannels(this.config || {})]) !== JSON.stringify([...this._ensembleChannels(config || {})]);
     if (mpeChanged) {
       this._mpeRevision++;
-      for (const [token, voice] of this._activeNotes) if (voice.mpe) this._stopActiveNoteToken(token, 'mpe-zone-changed');
+      const modeChanged = !!this.config?.mpe?.enabled !== !!config?.mpe?.enabled;
+      for (const [token, voice] of this._activeNotes) if (voice.mpe || modeChanged) this._stopActiveNoteToken(token, 'mpe-zone-changed');
       this._expressionByOutput.clear();
     }
     const expressionBinding = JSON.stringify([config?.mpe?.timbreCc, config?.position?.panRange, config?.mpe?.pitchBendRange]);
@@ -69,6 +104,7 @@ const midiSchedulerChannelMethods = {
     this._mpeZonePlan = createMpeZonePlan(this.config.mpe, this._ensembleChannels());
     this._memberChannels = this._mpeZonePlan.ok ? [...this._mpeZonePlan.memberChannels] : [];
     if (this.hasAnyOutput() && mpeChanged) this._initMpe();
+    return true;
   },
 
   setOutput(output) {
@@ -147,6 +183,7 @@ const midiSchedulerChannelMethods = {
     const output = this._resolveOutput(outputId), lease = this._outputLeases.get(output);
     return { outputId: this._resolveOutputId(outputId), active: !!lease, available: !!output && output.state !== 'disconnected',
       connectionEpoch: lease?.connectionEpoch ?? null, routeRevision: lease?.routeRevision ?? this._routeRevision,
+      channelScope: this._outputChannelScopes.has(output) ? [...this._outputChannelScopes.get(output)] : null,
       budgetProfile: this.getTransportBudget(outputId),
       mpeReady: output && this.config.mpe?.enabled ? this._mpeStatusByOutput.get(output) ?? null : null,
       mpeFailure: output && this.config.mpe?.enabled ? this._mpeFailureByOutput.get(output) ?? null : null,
