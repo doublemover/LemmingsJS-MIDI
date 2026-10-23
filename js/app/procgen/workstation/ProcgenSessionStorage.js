@@ -1,4 +1,5 @@
 import { checksumProcgenRecovery } from './ProcgenRecoveryChecksum.js';
+import { upgradeCausalJournalStores, createCausalJournalStorage } from './ProcgenCausalJournalStorage.js';
 
 const SESSION_VERSION = 1;
 const namedError = (name, message) => Object.assign(new Error(message), { name });
@@ -77,12 +78,13 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
     };
     if (!indexedDB) { finish(namedError('SecurityError', 'IndexedDB is unavailable')); return promise; }
     try {
-      request = indexedDB.open('lemmings.procgen.sessions', 3);
+      request = indexedDB.open('lemmings.procgen.sessions', 4);
       request.onupgradeneeded = () => {
         if (!request.result.objectStoreNames.contains('sessions')) request.result.createObjectStore('sessions', { keyPath: 'id' });
         const metadata = request.result.objectStoreNames.contains('projectMetadata') ? request.transaction.objectStore('projectMetadata') :
           request.result.createObjectStore('projectMetadata', { keyPath: 'id' });
         if (!metadata.indexNames.contains('byUpdated')) metadata.createIndex('byUpdated', ['savedAt', 'id']);
+        upgradeCausalJournalStores(request.result);
       };
       request.onsuccess = () => finish(null, request.result);
       request.onerror = () => finish(request.error || new Error('IndexedDB open failed'));
@@ -204,7 +206,9 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
     })().finally(() => { migration = null; });
     return migration;
   };
+  const causalJournalStorage = createCausalJournalStorage({ open, available: db => !retired && db === database, wrapFailure: storageFailure });
   return {
+    ...causalJournalStorage,
     getState: () => ({ state, error: lastError, generation, retired }),
     saveDocument,
     async loadDocument(id) {

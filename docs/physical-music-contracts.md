@@ -160,9 +160,10 @@ and delivery evidence. Old SFX remain available for presentation but never
 advance physical-play pattern cells. Engine checkpoints include active voices
 and travel state; the physical score clock persists its piecewise timeline.
 
-The command receipt buffer, causal trace and output diagnostics are bounded
-inspection state. They are not a durable causal take journal, a complete #1092
-recording store, proof of deterministic re-performance, or acoustic evidence.
-Durable capture, complete reinterpretation requirements, per-sink outcomes and
-portable-time export still require their owning integrations. Support/phase
-capture cannot certify mechanics it did not observe.
+The command receipt buffer, causal trace and output diagnostics remain bounded
+inspection state. Durable takes use the separate canonical journal described in
+[causal-take-journal.md](causal-take-journal.md). A take records committed physical
+batches, canonical intents and actual sink receipts; none of those receipts is
+acoustic evidence. Reinterpretation preflight names missing source descriptors
+and state explicitly. Support/phase capture cannot certify mechanics it did not
+observe, and a seek plan still requires qualified re-performance by its caller.
