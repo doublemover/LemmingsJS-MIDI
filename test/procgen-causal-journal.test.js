@@ -32,7 +32,9 @@ describe('durable causal take journal', function() {
     expect(control.indexReferences).to.equal(201);
     expect(Math.max(...sizes) - Math.min(...sizes)).to.be.lessThan(100);
     expect(control.manifestReads).to.equal(0);
-    const snapshot = writer.manifest(); snapshot.chunks.length = 0; snapshot.mapping.revision = 99;
+    const snapshot = writer.manifest();
+    expect(() => { snapshot.chunks.length = 0; }).to.throw(TypeError);
+    expect(() => { snapshot.mapping.revision = 99; }).to.throw(TypeError);
     expect(writer.manifest().chunks).to.have.length(200); expect(writer.manifest().mapping.revision).to.equal(1);
     control.loseNextReceipt = true; await writer.stop();
     expect(control.manifestReads).to.equal(0); expect(control.headReads).to.equal(1);
@@ -135,6 +137,8 @@ describe('durable causal take journal', function() {
     await writer.stop();
     const parentBefore = JSON.stringify(await journal.openTake('take:parent')), originalChunks = chunks.size;
     const branch = await journal.branch({ parentTakeId: 'take:parent', throughSequence: 4, takeId: 'take:branch' });
+    expect(branch.manifest().prefix).to.include({ version: 2, throughSequence: 4, parentRootHash: writer.manifest().rootHash });
+    expect(branch.manifest().prefix).not.to.have.property('chunks');
     branch.append({ ...marker(5), payload: { name: 'alternate' } }); await branch.stop();
     expect(chunks.size).to.equal(originalChunks + 1);
     expect((await journal.query({ takeId: 'take:branch' })).records.map(record => record.payload.name))
@@ -200,8 +204,40 @@ describe('durable causal take journal', function() {
     writer.append(marker(1)); await writer.stop();
     expect((await verifyManifestHashes(await journal.openTake('take:index-hash'))).effectiveStatus).to.equal('complete');
     manifests.get('take:index-hash').chunks[0].firstTick = 999;
-    let error; try { await journal.query({ takeId: 'take:index-hash', firstTick: 1, lastTick: 1 }); } catch (failure) { error = failure; }
+    let error; try { await journal.openTake('take:index-hash', { force: true }); } catch (failure) { error = failure; }
     expect(error.code).to.equal('finalization-divergence');
+  });
+
+  it('qualifies a finalized revision once for repeated tail, middle and replay pages', async () => {
+    const { journal, storage, control } = setup({ maxChunkRecords: 1 });
+    const writer = await journal.createTake(definition('take:qualified'));
+    for (let tick = 1; tick <= 200; tick++) { writer.append(marker(tick)); await writer.flush(); }
+    await writer.stop(); control.manifestReads = 0;
+    for (const firstSequence of [199, 100, 200, 101, 198]) {
+      const result = await journal.query({ takeId: 'take:qualified', firstSequence, lastSequence: firstSequence, limit: 1 });
+      expect(result.records.map(record => record.sequence)).to.deep.equal([firstSequence]);
+    }
+    for (const firstTick of [90, 190, 91]) {
+      const result = await journal.query({ takeId: 'take:qualified', firstTick, lastTick: firstTick, generation: 1, limit: 1 });
+      expect(result.records.map(record => record.tick)).to.deep.equal([firstTick]);
+    }
+    expect(control.manifestReads).to.equal(1);
+    const read = storage.loadCausalChunk;
+    storage.loadCausalChunk = async id => {
+      const value = await read(id); control.afterRead?.(); return value;
+    };
+    const signal = new AbortController(); control.afterRead = () => signal.abort();
+    let error; try { await journal.query({ takeId: 'take:qualified', firstSequence: 200, signal: signal.signal }); } catch (failure) { error = failure; }
+    expect(error.code).to.equal('cancelled');
+  });
+
+  it('rejects a source revision changed while its requested records are being loaded', async () => {
+    const { journal, storage, manifests } = setup(), writer = await journal.createTake(definition('take:mid-read'));
+    writer.append(marker(1)); await writer.flush();
+    const read = storage.loadCausalChunk;
+    storage.loadCausalChunk = async id => { const result = await read(id); manifests.get('take:mid-read').revision++; return result; };
+    let error; try { await journal.query({ takeId: 'take:mid-read' }); } catch (failure) { error = failure; }
+    expect(error.code).to.equal('stale-revision');
   });
 
   it('rejects conflicting component snapshots at one source boundary and verifies their encoded byte inventory', async () => {

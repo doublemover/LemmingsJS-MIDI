@@ -1196,7 +1196,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'midi-ports', run: () => ports.dispose() },
         ...removeListeners.map((remove, index) => ({ name: `listener-${index}`, run: remove })),
         { name: 'view', run: () => view.dispose() },
-        { name: 'storage', run: () => pendingCausalStop ? Promise.resolve(pendingCausalStop).finally(() => storage.close?.()) : storage.close?.() }
+        { name: 'storage', run: () => Promise.resolve(pendingCausalStop).finally(() => { causalJournal?.releaseQualifications(); storage.close?.(); }) }
       ]);
     }
   };

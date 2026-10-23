@@ -8,6 +8,13 @@ const validRange = value => value && Number.isSafeInteger(value.firstSequence) &
   value.firstSequence > 0 && value.lastSequence >= value.firstSequence;
 const makeChunkId = (takeId, ordinal) => JSON.stringify([takeId, 'chunk', ordinal]);
 const METADATA_KEYS = ['schema', 'version', 'takeId', 'takeName', 'documentId', 'sourceVersions', 'captureProfile', 'boundaryState', 'mapping', 'assetRefs', 'prefix', 'initialCheckpoint'];
+const metadataFor = manifest => {
+  const metadata = Object.fromEntries(METADATA_KEYS.map(key => [key, manifest[key]]));
+  if (metadata.prefix?.version === 2) {
+    const { chunks, ...lineage } = metadata.prefix; metadata.prefix = lineage;
+  }
+  return metadata;
+};
 const finalizationEvidence = manifest => ({ canonicalHash: manifest.canonicalHash, state: manifest.state,
   complete: manifest.complete, durableSequence: manifest.durableSequence, admittedSequence: manifest.admittedSequence,
   checkpoints: manifest.checkpoints, chunks: manifest.chunks, coverage: manifest.coverage,
@@ -27,8 +34,10 @@ const verifyManifestHashes = async (manifest, { maxChunks = 4096 } = {}) => {
         !Number.isSafeInteger(manifest.prefix.throughSequence) || manifest.prefix.throughSequence < 0 || manifest.prefix.throughSequence > manifest.durableSequence)) {
     throw journalError('unsupported-take', 'Missing or unsupported causal take.');
   }
-  const metadata = Object.fromEntries(METADATA_KEYS.map(key => [key, manifest[key]]));
+  const metadata = metadataFor(manifest);
   if (await hashJournalData(metadata, { maxBytes: 8 * 1048576 }) !== manifest.rootHash) throw journalError('metadata-divergence', 'The causal take source manifest changed.');
+  if (manifest.prefix?.version === 2 && await hashJournalData(manifest.prefix.chunks, { maxBytes: 8 * 1048576 }) !== manifest.prefix.indexHash)
+    throw journalError('prefix-divergence', 'The resolved causal lineage does not match its immutable range hash.');
   if (manifest.state !== 'recording' && (!hash(manifest.finalizationHash) ||
       await hashJournalData(finalizationEvidence(manifest), { maxBytes: 8 * 1048576 }) !== manifest.finalizationHash)) {
     throw journalError('finalization-divergence', 'The causal take finalization evidence changed.');
@@ -49,6 +58,12 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
     return () => { if (!released) { released = true; resourceBudget?.release({ token, owner }); } };
   };
   const publish = update => storage.commitCausalTake(storage.causalIndexVersion === 2 ? compactCausalCommit(update) : update);
+  const qualified = new Map();
+  let qualifiedBytes = 0;
+  const forgetQualification = takeId => {
+    const entry = qualified.get(takeId);
+    if (entry) { qualifiedBytes -= entry.bytes; qualified.delete(takeId); entry.release?.(); }
+  };
   const createTake = async ({ takeId, takeName = 'Untitled take', documentId, sourceVersions, captureProfile, boundaryState = {}, initialCheckpoint,
     mapping, assetRefs = [], prefix = null } = {}) => {
     if (!id(takeId) || typeof takeName !== 'string' || !takeName.trim() || takeName.length > 120 || !id(documentId) || !sourceVersions || !captureProfile || !initialCheckpoint || !mapping) throw new Error('A take requires bounded name/document/source/checkpoint/capture identities.');
@@ -73,7 +88,8 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
     } finally { release(); }
   };
   const openWriter = initial => {
-    let manifest = cloneJournalData(initial, { maxBytes: 8 * 1048576 }), pending = [], pendingBytes = 0, admittedSequence = initial.durableSequence;
+    const copied = cloneJournalData(initial, { maxBytes: 8 * 1048576 });
+    let manifest = { ...copied, chunks: [...copied.chunks], checkpoints: [...copied.checkpoints] }, pending = [], pendingBytes = 0, admittedSequence = initial.durableSequence;
     let state = 'recording', draining = null, checkpointing = null, finishing = false, stopping = null, stopRequest = null, failure = null, rejectedRange = null;
     const discardedRanges = [];
     const notify = () => { try { onState(status()); } catch { /* Inspection does not change recording admission. */ } };
@@ -81,7 +97,7 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
       revision: manifest.revision, durableSequence: manifest.durableSequence, admittedSequence, pendingBytes,
       complete: state === 'finalized' && manifest.complete, failure: failure ? { code: failure.code || failure.name || 'storage', message: String(failure.message) } : null,
       rejectedRange, recoveryRequired: state === 'recovery-required', captureStopped: finishing,
-      terminal: manifest.state !== 'recording', discardedRanges });
+      terminal: manifest.state !== 'recording', discardedRanges: [...discardedRanges] });
     const fail = (error, detail = {}, permanent = false) => {
       state = permanent ? 'partial' : 'recovery-required'; failure = error;
       if (permanent) rejectedRange ||= detail;
@@ -252,11 +268,74 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
     }
     return freezeJournalData(body);
   };
-  const openTake = async takeId => {
-    const manifest = await storage.loadCausalTake(takeId);
+  const qualifyTake = async (takeId, { signal, force = false, ancestors = new Set() } = {}) => {
+    if (signal?.aborted) throw journalError('cancelled', 'Causal take qualification canceled.');
+    if (ancestors.has(takeId) || ancestors.size >= 32) throw journalError('prefix-divergence', 'Causal lineage is cyclic or exceeds its depth budget.');
+    const head = storage.loadCausalTakeHead ? await storage.loadCausalTakeHead(takeId) : null;
+    const fingerprint = head ? canonicalJournalText(head, { maxBytes: 8 * 1048576 }).text : null;
+    const cached = qualified.get(takeId);
+    if (!force && fingerprint && cached?.fingerprint === fingerprint) {
+      qualified.delete(takeId); qualified.set(takeId, cached); return cached;
+    }
+    forgetQualification(takeId);
+    const manifest = await storage.loadCausalTake(takeId, { signal, maxIndexRows: maxChunks + 4096 });
+    if (manifest?.prefix?.version === 2) {
+      const lineage = manifest.prefix;
+      const parent = (await qualifyTake(lineage.takeId, { signal, force, ancestors: new Set([...ancestors, takeId]) })).manifest;
+      if (parent.rootHash !== lineage.parentRootHash || parent.chunkCount < lineage.parentChunkCount ||
+          (lineage.parentChunkCount ? parent.chunks[lineage.parentChunkCount - 1]?.hash : parent.rootHash) !== lineage.parentHash)
+        throw journalError('prefix-divergence', 'Causal lineage source identity changed.');
+      const refs = [...(parent.prefix?.chunks || []), ...parent.chunks].filter(ref => ref.firstSequence <= lineage.throughSequence)
+        .map(ref => ({ ...ref, throughSequence: Math.min(lineage.throughSequence, ref.throughSequence ?? ref.lastSequence) }));
+      if (refs.length > maxChunks) throw journalError('capacity', 'Resolved causal lineage exceeds its index budget.');
+      manifest.prefix = { ...lineage, chunks: refs };
+    }
     const verified = await verifyManifestHashes(manifest, { maxChunks });
-    return cloneJournalData({ ...manifest, inspection: { paused: true, recording: false, hardware: false, thru: false, physicalLayers: false },
-      effectiveStatus: verified.effectiveStatus }, { maxBytes: 8 * 1048576 });
+    const bytes = canonicalJournalText(manifest, { maxBytes: 8 * 1048576 }).bytes.length;
+    const entry = { fingerprint, bytes: bytes * 3, manifest: freezeJournalData({ ...manifest,
+      inspection: { paused: true, recording: false, hardware: false, thru: false, physicalLayers: false }, effectiveStatus: verified.effectiveStatus }),
+    refs: [...(manifest.prefix?.chunks || []), ...manifest.chunks], tickTrees: new Map() };
+    if (fingerprint && manifest.state !== 'recording' && entry.bytes <= 16 * 1048576) {
+      while (qualified.size >= 8 || qualifiedBytes + entry.bytes > 16 * 1048576) forgetQualification(qualified.keys().next().value);
+      try { entry.release = reserve(entry.bytes); qualified.set(takeId, entry); qualifiedBytes += entry.bytes; }
+      catch (error) { if (error.name !== 'ResourceBudgetError') throw error; }
+    }
+    return entry;
+  };
+  const openTake = async (takeId, options) => (await qualifyTake(takeId, options)).manifest;
+  const selectRefs = (entry, firstSequence, lastSequence, firstTick, lastTick, generation) => {
+    const refs = entry.refs;
+    let low = 0, high = refs.length;
+    while (low < high) { const middle = (low + high) >>> 1;
+      if (Math.min(refs[middle].lastSequence, refs[middle].throughSequence ?? Infinity) < firstSequence) low = middle + 1; else high = middle; }
+    let upper = low, bound = refs.length;
+    while (upper < bound) { const middle = (upper + bound) >>> 1;
+      if (refs[middle].firstSequence <= lastSequence) upper = middle + 1; else bound = middle; }
+    const end = upper;
+    if (end - low <= 128 || firstTick === 0 && lastTick === Number.MAX_SAFE_INTEGER) return refs.slice(low, end);
+    const treeKey = generation ?? 'all';
+    let tree = entry.tickTrees.get(treeKey);
+    if (!entry.tickTrees.has(treeKey)) {
+      const sorted = refs.filter(ref => generation == null || ref.generations.includes(generation)).sort((a, b) => a.firstTick - b.firstTick || a.firstSequence - b.firstSequence);
+      const build = (first, last) => {
+        if (first >= last) return null;
+        const middle = (first + last) >>> 1, ref = sorted[middle], left = build(first, middle), right = build(middle + 1, last);
+        return { ref, left, right, maxTick: Math.max(ref.lastTick, left?.maxTick ?? -1, right?.maxTick ?? -1) };
+      };
+      tree = build(0, sorted.length);
+      if (entry.tickTrees.size >= 8) entry.tickTrees.delete(entry.tickTrees.keys().next().value);
+      entry.tickTrees.set(treeKey, tree);
+    }
+    const selected = [];
+    const visit = node => {
+      if (!node || node.maxTick < firstTick) return;
+      visit(node.left);
+      if (node.ref.firstTick > lastTick) return;
+      if (node.ref.lastTick >= firstTick && node.ref.firstSequence <= lastSequence &&
+          Math.min(node.ref.lastSequence, node.ref.throughSequence ?? Infinity) >= firstSequence) selected.push(node.ref);
+      visit(node.right);
+    };
+    visit(tree); return selected.sort((a, b) => a.firstSequence - b.firstSequence);
   };
   const readCheckpoint = async ref => {
     const checkpoint = await storage.loadCausalCheckpoint(ref.id);
@@ -268,6 +347,13 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
     try { value = JSON.parse(checkpoint.canonical); } catch { throw journalError('checkpoint-mismatch', 'A causal component checkpoint is not JSON.', { checkpointId: ref.id }); }
     return cloneJournalData(value, { maxBytes: 32 * 1048576, maxNodes: 4000000 });
   };
+  const checkQualifiedRevision = async (entry, signal) => {
+    if (signal?.aborted) throw journalError('cancelled', 'Causal take query canceled.');
+    if (!entry.fingerprint || !storage.loadCausalTakeHead) return;
+    const head = await storage.loadCausalTakeHead(entry.manifest.takeId);
+    if (!head || canonicalJournalText(head, { maxBytes: 8 * 1048576 }).text !== entry.fingerprint)
+      throw journalError('stale-revision', 'Causal take changed while reading the requested range.');
+  };
   const query = async ({ takeId, takeRevision = null, firstSequence = 1, lastSequence = Number.MAX_SAFE_INTEGER, firstTick = 0,
     lastTick = Number.MAX_SAFE_INTEGER, generation = null, kinds = null, signal, limit = 4096 } = {}) => {
     if (!id(takeId) || !Number.isSafeInteger(firstSequence) || firstSequence < 1 || !Number.isSafeInteger(lastSequence) || lastSequence < firstSequence ||
@@ -275,7 +361,8 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
         generation != null && (!Number.isSafeInteger(generation) || generation < 0) ||
         kinds && (!Array.isArray(kinds) || kinds.length > RECORD_KINDS.size || kinds.some(kind => !RECORD_KINDS.has(kind))) ||
         !Number.isSafeInteger(limit) || limit < 1 || limit > 65536) throw new Error('Invalid causal take query.');
-    const manifest = await openTake(takeId), refs = [...(manifest.prefix?.chunks || []), ...manifest.chunks], records = [];
+    const qualifiedTake = await qualifyTake(takeId, { signal }), manifest = qualifiedTake.manifest;
+    const refs = selectRefs(qualifiedTake, firstSequence, lastSequence, firstTick, lastTick, generation), records = [];
     let resultBytes = 0;
     if (takeRevision != null && takeRevision !== manifest.revision) throw journalError('stale-revision', 'The requested take revision is no longer current.');
     for (const ref of refs) {
@@ -288,15 +375,19 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
         if (record.sequence < firstSequence || record.sequence > lastSequence || record.tick < firstTick || record.tick > lastTick ||
             generation != null && record.generation !== generation || kinds && !kinds.includes(record.kind)) continue;
         const bytes = canonicalJournalText(record, { maxBytes: maxRecordBytes }).bytes.length;
-        if (records.length >= limit || resultBytes + bytes > maxPendingBytes) return freezeJournalData({ takeId, takeRevision: manifest.revision, records, nextSequence: record.sequence, coverage: manifest.coverage });
+        if (records.length >= limit || resultBytes + bytes > maxPendingBytes) {
+          await checkQualifiedRevision(qualifiedTake, signal);
+          return freezeJournalData({ takeId, takeRevision: manifest.revision, records, nextSequence: record.sequence, coverage: manifest.coverage });
+        }
         resultBytes += bytes;
         records.push(record);
       }
     }
+    await checkQualifiedRevision(qualifiedTake, signal);
     return freezeJournalData({ takeId, takeRevision: manifest.revision, records, nextSequence: null, coverage: manifest.coverage });
   };
   const verify = async takeId => {
-    const manifest = await openTake(takeId), checkpoint = await storage.loadCausalCheckpoint(manifest.initialCheckpoint.id);
+    const manifest = await openTake(takeId, { force: true }), checkpoint = await storage.loadCausalCheckpoint(manifest.initialCheckpoint.id);
     if (!checkpoint || await hashJournalText(checkpoint.canonical) !== manifest.initialCheckpoint.hash) throw journalError('checkpoint-mismatch', 'The causal take initial checkpoint is missing or corrupt.');
     let previousHash = manifest.rootHash, sequence = manifest.prefix?.throughSequence ?? 0;
     for (const ref of manifest.chunks) {
@@ -346,13 +437,16 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
     const checkpoint = await storage.loadCausalCheckpoint(parent.initialCheckpoint.id);
     if (boundaryQualification && (boundaryQualification.sourceTakeId !== parentTakeId || boundaryQualification.sourceCanonicalHash !== parent.canonicalHash ||
         boundaryQualification.sourceTakeRevision !== parent.revision || boundaryQualification.throughSequence !== throughSequence)) throw journalError('qualification-mismatch', 'Branch qualification does not bind this parent prefix.');
-    const prefix = { takeId: parentTakeId, revision: parent.revision, throughSequence, chunks, boundaryQualification,
+    const prefix = { version: 2, takeId: parentTakeId, revision: parent.revision, throughSequence, boundaryQualification,
+      parentRootHash: parent.rootHash, parentChunkCount: parent.chunkCount, indexHash: await hashJournalData(chunks, { maxBytes: 8 * 1048576 }),
       parentHash: parent.canonicalHash, mode: 'immutable-prefix' };
     return createTake({ takeId, takeName: takeName || `${(parent.takeName || 'Take').slice(0, 113)} branch`, documentId: documentId || parent.documentId, sourceVersions: parent.sourceVersions,
       captureProfile: parent.captureProfile, boundaryState: parent.boundaryState, initialCheckpoint: JSON.parse(checkpoint.canonical),
       mapping: parent.mapping, assetRefs: parent.assetRefs, prefix });
   };
-  return { createTake, openTake, query, verify, branch, readChunk, readCheckpoint, seek };
+  return { createTake, openTake, query, verify, branch, readChunk, readCheckpoint, seek,
+    releaseQualifications: () => { for (const takeId of qualified.keys()) forgetQualification(takeId); },
+    qualificationDiagnostics: () => Object.freeze({ retained: qualified.size, estimatedBytes: qualifiedBytes, maximumBytes: 16 * 1048576 }) };
 };
 
 export { createProcgenCausalJournal, verifyManifestHashes, RECORD_KINDS };

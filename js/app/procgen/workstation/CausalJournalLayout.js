@@ -1,4 +1,4 @@
-import { canonicalJournalText, hashJournalData, hashJournalText, journalError } from './CausalJournalCanonical.js';
+import { canonicalJournalText, cloneJournalData, hashJournalData, hashJournalText, journalError } from './CausalJournalCanonical.js';
 
 export const CAUSAL_HEADER_KEYS = Object.freeze(['schema', 'version', 'takeId', 'takeName', 'documentId', 'sourceVersions',
   'captureProfile', 'boundaryState', 'mapping', 'assetRefs', 'prefix', 'initialCheckpoint', 'rootHash']);
@@ -22,12 +22,18 @@ export const compactCausalCommit = update => {
 };
 
 export const prepareCausalCommit = async update => {
-  const value = compactCausalCommit(update), { takeId, expectedRevision, commitId, head, header, chunk, checkpoint, chunkRef, checkpointRef } = value;
+  const compact = compactCausalCommit(update);
+  const value = { ...compact, head: cloneJournalData(compact.head, { maxBytes: 8 * 1048576 }),
+    header: compact.header ? cloneJournalData(compact.header, { maxBytes: 8 * 1048576 }) : null,
+    chunkRef: compact.chunkRef ? cloneJournalData(compact.chunkRef, { maxBytes: 16384 }) : null,
+    checkpointRef: compact.checkpointRef ? cloneJournalData(compact.checkpointRef, { maxBytes: 16384 }) : null,
+    chunk: compact.chunk ? { ...compact.chunk } : null, checkpoint: compact.checkpoint ? { ...compact.checkpoint } : null };
+  const { takeId, expectedRevision, commitId, head, header, chunk, checkpoint, chunkRef, checkpointRef } = value;
   if (typeof takeId !== 'string' || !takeId || !Number.isSafeInteger(expectedRevision) || expectedRevision < 0 ||
       head?.takeId !== takeId || head.revision !== expectedRevision + 1 || head.lastCommitId !== commitId ||
       typeof commitId !== 'string' || !commitId || !Number.isSafeInteger(head.chunkCount) || head.chunkCount < 0 || head.chunkCount > 65536 ||
       !Number.isSafeInteger(head.checkpointCount) || head.checkpointCount < 1 || head.checkpointCount > 4096 ||
-      !Number.isSafeInteger(head.durableSequence) || head.durableSequence < 0 || head.admittedSequence < head.durableSequence ||
+      !Number.isSafeInteger(head.durableSequence) || head.durableSequence < 0 || !Number.isSafeInteger(head.admittedSequence) || head.admittedSequence < head.durableSequence ||
       expectedRevision === 0 && (header?.takeId !== takeId || !checkpoint) || expectedRevision !== 0 && header ||
       Boolean(chunk) !== Boolean(chunkRef) || Boolean(checkpoint) !== Boolean(checkpointRef)) throw new Error('Invalid causal journal transaction.');
   canonicalJournalText(head, { maxBytes: 8 * 1048576 });
@@ -46,6 +52,8 @@ export const prepareCausalCommit = async update => {
 export const validateCausalExtension = (current, update) => {
   const { expectedRevision, head, chunk, chunkRef, checkpoint, checkpointRef, header } = update;
   if ((current?.revision || 0) !== expectedRevision || current && current.state !== 'recording') throw journalError('revision-conflict', 'Causal take changed or was already finalized.');
+  if (!current && (head.chunkCount !== 0 || head.checkpointCount !== 1 || head.durableSequence !== (header.prefix?.throughSequence ?? 0)))
+    throw journalError('prefix-conflict', 'A new causal take must begin at its declared immutable prefix.');
   if (chunk && (chunk.ordinal !== (current?.chunkCount || 0) + 1 || chunkRef.ordinal !== chunk.ordinal ||
       chunk.firstSequence !== (current?.durableSequence ?? header?.prefix?.throughSequence ?? 0) + 1 ||
       chunk.lastSequence !== head.durableSequence || head.chunkCount !== (current?.chunkCount || 0) + 1)) throw journalError('chunk-conflict', 'A causal chunk does not extend the durable prefix.');

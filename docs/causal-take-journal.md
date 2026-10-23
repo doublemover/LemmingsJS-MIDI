@@ -20,6 +20,24 @@ explicit operation with cancelable index pages of at most 256 rows and a total
 row budget; it rejects a revision change while materializing. Regression
 fixtures for this layout are added but runtime execution remains deferred.
 
+Finalized source revisions are qualified under journal-owned immutable objects.
+A bounded LRU retains at most eight qualifications with a 16 MiB memory estimate.
+Each query rechecks the compact head before and after I/O. Revision, commit
+content or finalization changes invalidate qualification; mutable recordings are
+qualified separately. Sequence windows use binary bounds, and repeated tick
+windows use bounded cached interval indexes. Each fetched chunk still passes its
+original byte/hash/record-index validator. Explicit `verify` or
+`openTake(id, {force: true})` requalifies the persisted index for corruption
+inspection; no caller-supplied object can act as a qualification handle.
+
+New branch headers store versioned lineage, the parent root and captured chain
+frontier, the source cutoff and a hash of the selected index range. They do not
+copy ancestor reference arrays. Inspection/query/export resolves that lineage
+under a 32-ancestor depth limit and the existing total index budget, preserving
+each ancestor cutoff. Materialized archive manifests include the resolved range
+and validate it against the lineage hash. Existing version 1 materialized
+prefixes remain readable.
+
 ## Integration
 
 Construct `createProcgenCausalJournal({storage, resourceBudget, onState})` using

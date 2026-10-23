@@ -39,7 +39,7 @@ const prepareCausalTakeArchive = async ({ journal, storage, takeId, maxDeliveryB
     throw new Error('Causal take archive needs journal storage and a bounded delivery limit.');
   }
   await journal.verify(takeId);
-  const raw = await storage.loadCausalTake(takeId);
+  const raw = await journal.openTake(takeId);
   if (!raw || !['finalized', 'partial'].includes(raw.state) || !raw.finalizationHash)
     throw new Error('Finish the causal take before preparing its archive.');
   const manifest = cloneJournalData(raw, { maxBytes: 8 * 1048576 });
@@ -49,7 +49,7 @@ const prepareCausalTakeArchive = async ({ journal, storage, takeId, maxDeliveryB
   const title = String(manifest.takeName || takeId).replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 100) || 'causal-take';
   const sourceRef = `causal-take:${takeId}:${manifest.revision}:${manifest.canonicalHash}`;
   const openChunks = async function*() {
-    const current = await storage.loadCausalTake(takeId);
+    const current = await (storage.loadCausalTakeHead?.(takeId) ?? storage.loadCausalTake(takeId));
     if (current?.revision !== manifest.revision || current?.finalizationHash !== manifest.finalizationHash ||
         current?.canonicalHash !== manifest.canonicalHash) throw new Error('The prepared causal take revision changed. Prepare a new archive.');
     let total = 0;

@@ -1,5 +1,49 @@
 import { test, expect } from '@playwright/test';
 
+test('v4 causal manifests migrate once and browsing touches only compact summary rows @boundary', async ({ page }) => {
+  await page.goto('/e2e/fixtures/causal-journal.html');
+  const result = await page.evaluate(async () => {
+    const { createMemoryCausalStore } = await import('/test/helpers/causalJournalStore.js');
+    const { createProcgenCausalJournal } = await import('/js/app/procgen/workstation/ProcgenCausalJournal.js');
+    const { createProcgenSessionStorage } = await import('/js/app/procgen/workstation/ProcgenSessionStorage.js');
+    const memory = createMemoryCausalStore(), original = createProcgenCausalJournal({ storage: memory.storage, maxChunkRecords: 1 });
+    const writer = await original.createTake({ takeId: 'take:legacy', documentId: 'doc:legacy', sourceVersions: { physicalBatch: 1 },
+      captureProfile: { version: 1, id: 'legacy', factKinds: [], descriptorKinds: [], stateKinds: [] },
+      initialCheckpoint: { tick: 0 }, mapping: { version: 1, revision: 1, instruments: [] } });
+    for (let tick = 1; tick <= 100; tick++) { writer.append({ kind: 'marker', tick, generation: 1, payload: tick }); await writer.flush(); }
+    await writer.stop();
+    await new Promise((resolve, reject) => {
+      const request = indexedDB.open('lemmings.procgen.sessions', 4);
+      request.onupgradeneeded = () => {
+        for (const name of ['sessions', 'projectMetadata', 'takeManifests', 'takeChunks', 'takeCheckpoints']) request.result.createObjectStore(name, { keyPath: 'id' });
+        request.transaction.objectStore('projectMetadata').createIndex('byUpdated', ['savedAt', 'id']);
+      };
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const database = request.result, transaction = database.transaction(['takeManifests', 'takeChunks', 'takeCheckpoints'], 'readwrite');
+        transaction.objectStore('takeManifests').add({ id: 'take:legacy', manifest: writer.manifest() });
+        for (const chunk of memory.chunks.values()) transaction.objectStore('takeChunks').add(chunk);
+        for (const checkpoint of memory.checkpoints.values()) transaction.objectStore('takeCheckpoints').add(checkpoint);
+        transaction.oncomplete = () => { database.close(); resolve(); }; transaction.onabort = () => reject(transaction.error);
+      };
+    });
+    const storage = createProcgenSessionStorage(indexedDB), journal = createProcgenCausalJournal({ storage, maxChunkRecords: 1 });
+    await journal.verify('take:legacy');
+    const transactions = [], transact = globalThis.IDBDatabase.prototype.transaction;
+    globalThis.IDBDatabase.prototype.transaction = function(names, ...args) { transactions.push(typeof names === 'string' ? [names] : [...names]); return transact.call(this, names, ...args); };
+    let listed;
+    try { listed = await storage.listCausalTakes({ limit: 1 }); } finally { globalThis.IDBDatabase.prototype.transaction = transact; }
+    const head = await storage.loadCausalTakeHead('take:legacy');
+    const tail = await journal.query({ takeId: 'take:legacy', firstSequence: 100, limit: 1 });
+    storage.close();
+    return { transactions, listed, head, tick: tail.records[0].tick };
+  });
+  expect(result.transactions).toEqual([['takeSummaries']]);
+  expect(result.listed.items[0]).toMatchObject({ takeId: 'take:legacy', durableSequence: 100, complete: true });
+  expect(result.head.chunkCount).toBe(100); expect(result.head.chunks).toBeUndefined(); expect(result.head.sourceVersions).toBeUndefined();
+  expect(result.tick).toBe(100);
+});
+
 test('causal takes upgrade v3 project storage and reopen the exact durable prefix disarmed @boundary', async ({ page }) => {
   await page.goto('/e2e/fixtures/causal-journal.html');
   const result = await page.evaluate(async () => {
