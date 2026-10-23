@@ -69,6 +69,9 @@ capture evidence and unmatched note counts. Unmatched Note Ons and Note Offs
 are omitted from the exported window; the exporter does not invent releases.
 Stopping while input or output notes remain open likewise marks the take
 incomplete. A near-cap state appears on the Record control at 80% capacity.
+Project and MIDI export show “Download requested” after the browser anchor
+clicks. The app cannot tell whether the browser saved the file; check the
+browser's downloads before relying on a local copy.
 Conflicting programs or controllers on a shared output/channel are reported.
 Panic clears queued output and releases active notes.
 

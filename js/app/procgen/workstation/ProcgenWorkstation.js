@@ -11,6 +11,7 @@ import { createProcgenSession, validateProcgenSession, createProcgenSessionStora
 import { createProcgenPhysicalScoreClock } from './ProcgenPhysicalScoreClock.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 import { resolveProcgenStartupIntent } from './ProcgenStartupIntent.js';
+import { requestBrowserDownload } from '../../export/BrowserDownload.js';
 
 const STORAGE_KEY = 'lemmings.procgen.workstation.v1';
 const MAX_SESSION_FILE_BYTES = 64 * 1048576;
@@ -474,10 +475,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       return snapshotSession(name);
     } finally { if (resume && wasPlaying) play(); }
   };
-  const download = (bytes, filename, type) => {
-    const url = window.URL.createObjectURL(new window.Blob([bytes], { type })), link = document.createElement('a');
-    link.href = url; link.download = filename; document.body.append(link); link.click(); link.remove(); window.setTimeout(() => window.URL.revokeObjectURL(url), 0);
-  };
+  const download = (bytes, filename, type) => requestBrowserDownload({ document, windowRef: window, bytes, filename, mediaType: type });
   const safe = fn => async (...args) => { try { return await fn(...args); } catch (error) { status(error?.message || String(error)); return false; } };
   async function loadSession(value, admittedLease = null) {
     if (disposed || (admittedLease && !ownsOperation(admittedLease))) return false;
@@ -684,7 +682,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (!ownsOperation(lease)) return false;
       return loadSession(session, lease);
     }),
-    export: safe(async () => { const session = capture(); download(JSON.stringify(session), savedName.replace(/[^a-z0-9_-]+/gi, '-') + '.procgen.json', 'application/json'); status('Project exported.'); }),
+    export: safe(async () => { const session = capture(); download(JSON.stringify(session), savedName.replace(/[^a-z0-9_-]+/gi, '-') + '.procgen.json', 'application/json'); status('Project download requested. Check your browser downloads.'); }),
     exportMidi() {
       const state = ports.getState();
       const submitted = ports.getRecording({ direction: 'output', evidence: 'api-accepted' });
@@ -703,7 +701,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       complete ? 'procgen-performance.mid' : 'procgen-performance-partial.mid', 'audio/midi');
       const source = hasSubmitted ? 'submitted output' : 'rendered preview intent';
       const reasons = state.incompleteReasons.length ? state.incompleteReasons.join(', ') : reason;
-      status(complete ? `Recorded ${source} exported.` : `Partial ${source} exported: ${reasons}; ${balanced.omittedOnsets} unmatched onset(s) omitted.`);
+      status(complete ? `Recorded ${source} download requested. Check your browser downloads.` :
+        `Partial ${source} download requested: ${reasons}; ${balanced.omittedOnsets} unmatched onset(s) omitted.`);
     },
     new: safe(() => rebuild({ seed: freshProcgenSeed(window.crypto, project.procgen.seed), fresh: true })),
     reroll: safe(() => rebuild({ seed: freshProcgenSeed(window.crypto, project.procgen.seed) })),
