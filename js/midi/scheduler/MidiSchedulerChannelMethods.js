@@ -269,11 +269,11 @@ const midiSchedulerChannelMethods = {
     this._memberChannels = uniqueMembers.slice();
   },
 
-  _stopActiveChannel(channelNumber, outputId = null) {
+  _stopActiveChannel(channelNumber, outputId = null, reason = 'ownership-release') {
     const activeKey = this._activeChannelKey(channelNumber, outputId);
     const active = this._activeByChannel.get(activeKey);
     if (active?.token != null && this._activeNotes.has(active.token)) {
-      this._stopActiveNoteToken(active.token);
+      this._stopActiveNoteToken(active.token, reason);
       return;
     }
     const resolvedOutputId = active?.outputId ?? outputId;
@@ -411,7 +411,7 @@ const midiSchedulerChannelMethods = {
     }
   },
 
-  _allocateChannel(outputId = null) {
+  _allocateChannel(outputId = null, reason = 'mpe-channel-steal') {
     const mpe = this.config.mpe;
     if (!mpe?.enabled) {
       return normalizeChannelNumber(this.config.defaultChannel, 1);
@@ -436,7 +436,7 @@ const midiSchedulerChannelMethods = {
       }
     }
     if (oldest != null) {
-      this._stopActiveChannel(oldest, normalizedOutputId);
+      this._stopActiveChannel(oldest, normalizedOutputId, reason);
       return oldest;
     }
     return null;

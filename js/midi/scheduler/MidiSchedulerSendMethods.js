@@ -72,9 +72,11 @@ const midiSchedulerSendMethods = {
         localReservationId = reservation.reservationId;
         meta = { ...meta, rateReserved: true, reservationId: reservation.reservationId };
       }
-      const deferredMpe = mpeEnabled && sendTimeMs > now;
+      // Resolve MPE ownership at onset, including an onset dispatched now.
+      // Admission and rate reservation must not evict a sounding owner.
+      const deferredMpe = mpeEnabled;
       let channelNumber = mpeEnabled
-        ? (deferredMpe ? null : this._allocateChannel(outputId))
+        ? null
         : normalizeChannelNumber(spec.channel ?? this.config.defaultChannel, 1);
       if (!deferredMpe && !output.channels?.[channelNumber]) { releaseUnclaimed(); releaseExternalShare(); return false; }
       let usedChannels = this._usedOutputChannels.get(output);
@@ -154,14 +156,14 @@ const midiSchedulerSendMethods = {
           if (trackId && voiceBudget != null &&
               [...this._activeNotes.values()].filter(info => started(info) && info.trackId === trackId).length >= voiceBudget) {
             const victim = this._findOldestActiveNote(info => started(info) && info.trackId === trackId);
-            this._stopActiveNoteToken(victim);
+            this._stopActiveNoteToken(victim, 'mpe-track-voice-budget');
           }
           if (!ownsVoice()) { dispatchFailed = true; return; }
           if ([...this._activeNotes.values()].filter(started).length >= this._maxActiveNotes) {
-            this._stopActiveNoteToken(this._findOldestActiveNote(started));
+            this._stopActiveNoteToken(this._findOldestActiveNote(started), 'mpe-global-voice-budget');
           }
           if (!ownsVoice()) { dispatchFailed = true; return; }
-          channelNumber = this._allocateChannel(outputId);
+          channelNumber = this._allocateChannel(outputId, 'mpe-channel-steal');
           if (!ownsVoice()) { dispatchFailed = true; return; }
           if (!output.channels?.[channelNumber] || this._activeByChannel.has(this._activeChannelKey(channelNumber, outputId))) {
             this._stopActiveNoteToken(token, 'channel-unavailable');

@@ -417,7 +417,16 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
     },
     launched: () => renderRows(),
     transport(position) { state.beat = position.beat; if (document.activeElement !== bpm) bpm.value = String(Math.round(position.bpm * 100) / 100); bpm.disabled = position.clockSource === 'external'; clockStatus.textContent = position.clockSource === 'external' ? position.clockStatus : `${Math.floor(position.beat / 4) + 1} : ${Math.floor(position.beat % 4) + 1}`; linked.checked = position.linked; speedMode.value = position.speedMode; clock.value = position.clockSource; frame(position.beat); },
-    recording(value) { state.recording = !!value; records.setAttribute('aria-pressed', String(value)); },
+    recording(value, midiState = null) {
+      state.recording = !!value;
+      records.setAttribute('aria-pressed', String(value));
+      const partial = midiState?.recordingComplete === false;
+      records.textContent = partial ? '● Partial take' : '● Record';
+      records.title = partial ? `Recording incomplete: ${midiState.incompleteReason}. Export labels the partial window.`
+        : midiState?.recordingPressure >= 0.8 ? `Recording storage ${Math.round(midiState.recordingPressure * 100)}% full.`
+          : 'Record MIDI input into the selected phrase';
+      records.dataset.state = partial ? 'partial' : midiState?.recordingPressure >= 0.8 ? 'near-cap' : value ? 'recording' : 'idle';
+    },
     midi(text) { state.lastMidi = text; const time = window.performance.now(); if (time - lastMidiFrame < 50) return; lastMidiFrame = time; const monitor = fields.querySelector('.studio-midi-monitor'); if (monitor && monitor.textContent !== text) monitor.textContent = text; },
     dispose() { if (disposed) return; disposed = true; detachRenderer(); for (const unlisten of listeners) unlisten(); if (canvasParent) canvasParent.insertBefore(canvas, canvasSibling?.parentNode === canvasParent ? canvasSibling : null); projectList.remove(); shell.remove(); footer.remove(); transport.remove(); heading.remove(); },
     getProjection: () => projection

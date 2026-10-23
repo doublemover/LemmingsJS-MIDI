@@ -3,7 +3,7 @@ import { createProcgenWorkstationProject, createProcgenPattern } from './Procgen
 import { createProcgenPatternEngine } from './ProcgenPatternEngine.js';
 import { createProcgenTransport } from './ProcgenTransport.js';
 import { createProcgenMidiPorts } from './ProcgenMidiPorts.js';
-import { exportProcgenMidi } from './ProcgenMidiExport.js';
+import { exportProcgenMidi, selectBalancedProcgenRecording } from './ProcgenMidiExport.js';
 import { createProcgenWorkstationView } from './ProcgenWorkstationView.js';
 import { captureProcgenCheckpoint } from './ProcgenCheckpoint.js';
 import { createProcgenLaneObserver } from './ProcgenLaneObservation.js';
@@ -287,6 +287,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     onMonitor(event) { state.lastMidi = event.type === 'system' ? `MIDI ${event.data[0].toString(16).toUpperCase()}` : `${event.type} · ch ${event.channel} · ${event.note ?? event.controller ?? ''} ${event.velocity ?? event.value ?? ''}`; view?.midi?.(state.lastMidi); },
     onState(midiState) {
       if (inputLease && midiState.inputLiveness.connectionEpoch !== inputLease.inputEndpointEpoch) cancelInputEdits('input changed');
+      const wasRecording = state.recording;
+      state.recording = midiState.recording;
+      view?.recording?.(midiState.recording, midiState);
+      if (wasRecording && !midiState.recording && midiState.incompleteReasons.includes('recording-cap-reached'))
+        status('Recording storage full. Performance continues; export is labeled partial.');
     },
     onRecord: event => { if (event.source === 'input' && !inputLease) inputStep(event); }
   });
@@ -583,7 +588,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     undo: safe(() => historyMove(undo, redo)),
     redo: safe(() => historyMove(redo, undo)),
     resetPattern() { dispatch({ type: 'procgen/pattern', laneId: selected().id, slot: state.slot, patch: createProcgenPattern(selected().family, selected().role, state.slot) }); },
-    record(value) { state.recording = !!value; ports.configure({ recording: state.recording }); noteEntries.clear(); view.recording(state.recording); if (state.recording) ports.recordTempo(transport.getState().bpm, transport.getState().beat); },
+    record(value) { const midiState = ports.configure({ recording: !!value }); state.recording = midiState.recording; noteEntries.clear(); view.recording(state.recording, midiState); if (state.recording) ports.recordTempo(transport.getState().bpm, transport.getState().beat); },
     learn() {
       if (inputLease) { cancelInputEdits('canceled by user'); return false; }
       const lane = selected(), lease = { id: ++inputGestureSerial, documentGeneration, projectRevision,
@@ -684,12 +689,21 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       const state = ports.getState();
       const submitted = ports.getRecording({ direction: 'output', evidence: 'api-accepted' });
       const hasSubmitted = submitted.some(event => event.direction === 'output');
-      const events = hasSubmitted ? submitted : ports.getRecording({ direction: 'output', evidence: 'intent-render' });
-      download(exportProcgenMidi(events, { bpm: transport.getState().bpm,
-        beatsPerBar: project.transport?.timeSignature?.beats, beatUnit: project.transport?.timeSignature?.unit }),
-      'procgen-performance.mid', 'audio/midi');
+      const captured = hasSubmitted ? submitted : ports.getRecording({ direction: 'output', evidence: 'intent-render' });
+      const balanced = selectBalancedProcgenRecording(captured);
+      const complete = state.recordingComplete && !balanced.omittedOnsets && !balanced.omittedReleases;
+      const reason = state.incompleteReason || (complete ? null : 'unpaired-note-boundary');
+      const manifest = { schema: 'procgen-recording-window/v1', complete, reason, reasons: state.incompleteReasons,
+        evidence: hasSubmitted ? 'api-accepted' : 'intent-render',
+        retainedRange: state.retainedRange, firstLostSequence: state.firstLostSequence,
+        droppedRecords: state.droppedRecords, droppedCategories: state.droppedCategories,
+        omittedOnsets: balanced.omittedOnsets, omittedReleases: balanced.omittedReleases };
+      download(exportProcgenMidi(balanced.events, { bpm: transport.getState().bpm,
+        beatsPerBar: project.transport?.timeSignature?.beats, beatUnit: project.transport?.timeSignature?.unit, manifest }),
+      complete ? 'procgen-performance.mid' : 'procgen-performance-partial.mid', 'audio/midi');
       const source = hasSubmitted ? 'submitted output' : 'rendered preview intent';
-      status(state.recordingComplete ? `Recorded ${source} exported.` : `Partial ${source} exported: ${state.incompleteReason}.`);
+      const reasons = state.incompleteReasons.length ? state.incompleteReasons.join(', ') : reason;
+      status(complete ? `Recorded ${source} exported.` : `Partial ${source} exported: ${reasons}; ${balanced.omittedOnsets} unmatched onset(s) omitted.`);
     },
     new: safe(() => rebuild({ seed: freshProcgenSeed(window.crypto, project.procgen.seed), fresh: true })),
     reroll: safe(() => rebuild({ seed: freshProcgenSeed(window.crypto, project.procgen.seed) })),

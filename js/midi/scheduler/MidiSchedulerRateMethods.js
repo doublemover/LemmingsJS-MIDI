@@ -136,6 +136,7 @@ const midiSchedulerRateMethods = {
 
   evaluateAndReserve(plan, meta = {}, now = this._nowMs(), options = {}) {
     const outputId = this._resolveOutputId(meta.outputId);
+    const rateScope = outputId == null ? undefined : outputId;
     const { maxMessages, maxBytes } = this._outputRateLimits(outputId, options);
     const softMaxMessages = Math.min(
       Math.max(options.softMaxMessagesPerSecond ?? maxMessages, 1),
@@ -144,8 +145,8 @@ const midiSchedulerRateMethods = {
     this._pruneRateEntries(now);
     const snapshot = {
       now,
-      past: this._sumRate(this._rateSent, now - this._rateWindowMs, now + 0.001, true, false, outputId),
-      next: this._sumRate(this._ratePlanned, -Infinity, now + this._rateWindowMs, true, true, outputId),
+      past: this._sumRate(this._rateSent, now - this._rateWindowMs, now + 0.001, true, false, rateScope),
+      next: this._sumRate(this._ratePlanned, -Infinity, now + this._rateWindowMs, true, true, rateScope),
       maxMessagesPerSecond: maxMessages,
       maxBytesPerSecond: maxBytes,
       outputId
@@ -429,8 +430,10 @@ const midiSchedulerRateMethods = {
     const nextCount = toFiniteNumber(snapshot.next?.count, 0);
     const pastBytes = toFiniteNumber(snapshot.past?.bytes, 0);
     const nextBytes = toFiniteNumber(snapshot.next?.bytes, 0);
-    const overMessageRate = pastCount > snapshot.maxMessagesPerSecond || nextCount > snapshot.maxMessagesPerSecond;
-    const overByteRate = pastBytes > snapshot.maxBytesPerSecond || nextBytes > snapshot.maxBytesPerSecond;
+    const maxMessages = toFiniteNumber(snapshot.maxMessagesPerSecond, this._maxMessagesPerSecond);
+    const maxBytes = toFiniteNumber(snapshot.maxBytesPerSecond, this._maxBytesPerSecond);
+    const overMessageRate = pastCount > maxMessages || nextCount > maxMessages;
+    const overByteRate = pastBytes > maxBytes || nextBytes > maxBytes;
     if (overMessageRate || overByteRate) {
       if (now - this._lastRateErrorMs > 1000) {
         this._lastRateErrorMs = now;

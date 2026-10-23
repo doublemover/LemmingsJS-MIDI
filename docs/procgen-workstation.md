@@ -61,6 +61,14 @@ and [Web MIDI API](https://www.w3.org/TR/webmidi/) for protocol details.
 Record captures input and accepted output. Input notes edit the selected phrase;
 MIDI export saves the recorded performance as a Standard MIDI File. The inspector
 also exposes bank selection, sustain, pitch bend, pressure and MIDI learn.
+The recording buffer stops accepting events at its capacity while playback
+continues. The Record control marks a partial take, and MIDI export names it
+`procgen-performance-partial.mid`. Export includes a small MIDI text manifest
+with the retained sequence/time range, first lost sequence, drop categories,
+capture evidence and unmatched note counts. Unmatched Note Ons and Note Offs
+are omitted from the exported window; the exporter does not invent releases.
+Stopping while input or output notes remain open likewise marks the take
+incomplete. A near-cap state appears on the Record control at 80% capacity.
 Conflicting programs or controllers on a shared output/channel are reported.
 Panic clears queued output and releases active notes.
 

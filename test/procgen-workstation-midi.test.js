@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { createProcgenMidiPorts, decodeProcgenMidi, encodeProcgenMidi } from '../js/app/procgen/workstation/ProcgenMidiPorts.js';
-import { exportProcgenMidi } from '../js/app/procgen/workstation/ProcgenMidiExport.js';
+import { exportProcgenMidi, selectBalancedProcgenRecording } from '../js/app/procgen/workstation/ProcgenMidiExport.js';
 import { MidiScheduler } from '../js/midi/MidiScheduler.js';
 import { withFakeClockAndPerformance } from './support/timers.js';
 import { makeOutput } from './support/midi-output.js';
@@ -308,6 +308,16 @@ describe('ProcGen workstation MIDI ports', () => {
     Object.defineProperty(retained[0], 'data', { get() { throw new Error('historical event replayed'); } });
     expect(() => longTake.flush()).not.to.throw(); longTake.dispose();
   });
+
+  it('keeps exact retained and lost ranges when a finite note transaction cannot fit', () => {
+    const ports = createProcgenMidiPorts({ maxRecordedEvents: 2, now: () => 10 });
+    ports.configure({ recording: true }); ports.recordTempo(120, 0, 10);
+    expect(ports.recordOutput({ note: 60, durationMs: 100 })).to.equal(false);
+    expect(ports.getState()).to.include({ recording: false, droppedRecords: 2, firstLostSequence: 2 });
+    expect(ports.getState().retainedRange).to.deep.equal({ firstSequence: 1, lastSequence: 1, firstTimestamp: 10, lastTimestamp: 10 });
+    expect(ports.getState().droppedCategories.output).to.equal(2);
+    ports.dispose();
+  });
 });
 
 function parseSmf(bytes) {
@@ -328,6 +338,23 @@ function parseSmf(bytes) {
 }
 
 describe('ProcGen Standard MIDI File export', () => {
+  it('exports only observed balanced notes and labels the partial window in the MIDI file', () => {
+    const captured = [
+      { data: [0x90, 60, 100], outputId: 'a', beat: 0 },
+      { data: [0x90, 60, 90], outputId: 'a', beat: 1 },
+      { data: [0x80, 60, 0], outputId: 'a', beat: 2 },
+      { data: [0x80, 60, 0], outputId: 'b', beat: 2 },
+      { data: [0x90, 62, 100], outputId: 'a', beat: 3 }
+    ];
+    const selected = selectBalancedProcgenRecording(captured);
+    expect(selected.events.map(event => event.data)).to.deep.equal([[0x90, 60, 100], [0x80, 60, 0]]);
+    expect(selected).to.include({ omittedOnsets: 2, omittedReleases: 1 });
+    const bytes = exportProcgenMidi(selected.events, { manifest: { complete: false, reason: 'recording-cap-reached' } });
+    const parsed = parseSmf(bytes);
+    expect(parsed.filter(event => (event.status & 0xf0) === 0x90 || (event.status & 0xf0) === 0x80).map(event => event.status)).to.deep.equal([0x90, 0x80]);
+    expect(JSON.parse(new TextDecoder().decode(Uint8Array.from(parsed.find(event => event.status === 0xff && event.type === 0x01).data))))
+      .to.deep.equal({ complete: false, reason: 'recording-cap-reached' });
+  });
   it('exports valid type-0 header, tempo, time signature, delta times, byte order and end track', () => {
     const bytes = exportProcgenMidi([
       { type: 'bank', msb: 1, lsb: 3, channel: 2, beat: 0 }, { type: 'program', value: 17, channel: 2, beat: 0 },

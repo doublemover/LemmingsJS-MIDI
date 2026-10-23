@@ -47,6 +47,11 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
   const inputLiveness = { mode: 'unobserved', lastTrafficTime: null, deadline: null, evidence: 'no-active-sensing-observed', reason: null };
   const thruNotes = new Map();
   let retainedEvents = 0, eventSequence = 0, firstLostSequence = null, incompleteReason = null, intentRenderSequence = 0;
+  const incompleteReasons = new Set();
+  let firstRetainedSequence = null, lastRetainedSequence = null, firstRetainedMs = null, lastRetainedMs = null;
+  let retainedRangeDirty = false;
+  let droppedCategories = { input: 0, output: 0, transport: 0, other: 0 };
+  let nearCapReported = false;
   const intentRenderEntries = new Set(), intentExpiry = [], activeTrace = new Map();
   const usedChannels = new Map(), noteOutputs = new Map();
   const resolveOutput = outputId => outputId == null || outputId === '' ? noteOutput : noteOutputs.get(String(outputId)) || (String(noteOutput?.id) === String(outputId) ? noteOutput : null);
@@ -54,34 +59,66 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     if (!usedChannels.has(port)) usedChannels.set(port, new Set());
     usedChannels.get(port).add(channel);
   };
-  const getState = () => ({ inputId: input?.id || null, noteOutputId: noteOutput?.id || null,
+  const refreshRetainedRange = () => {
+    if (!retainedRangeDirty) return;
+    firstRetainedSequence = null; lastRetainedSequence = null; firstRetainedMs = null; lastRetainedMs = null;
+    for (const event of records) {
+      if (event.cancelled) continue;
+      firstRetainedSequence ??= event.sequence; lastRetainedSequence = event.sequence;
+      firstRetainedMs = firstRetainedMs == null ? event.timestamp : Math.min(firstRetainedMs, event.timestamp);
+      lastRetainedMs = lastRetainedMs == null ? event.timestamp : Math.max(lastRetainedMs, event.timestamp);
+    }
+    retainedRangeDirty = false;
+  };
+  const getState = () => { refreshRetainedRange(); return ({ inputId: input?.id || null, noteOutputId: noteOutput?.id || null,
     clockOutputId: clockOutput?.id || null, thru, recording, learning: !!learn,
     inputPortConnected: input ? input.state !== 'disconnected' : null,
     inputLiveness: { sourceRoute: input?.id || null, connectionEpoch: inputEpoch, observationDomain: 'performance-now', ...inputLiveness },
     clockStatus: transport?.getState?.().clockStatus ?? null, systemResetPolicy,
     noteOutputIds: [...noteOutputs.keys()], recordedEvents: retainedEvents, droppedRecords,
-    recordingComplete: !incompleteReason, incompleteReason, firstLostSequence,
-    pressure: scheduler.getOutputPressure?.(now()) || null });
+    recordingComplete: !incompleteReason, incompleteReason, incompleteReasons: [...incompleteReasons], firstLostSequence,
+    retainedRange: { firstSequence: firstRetainedSequence, lastSequence: lastRetainedSequence,
+      firstTimestamp: firstRetainedMs, lastTimestamp: lastRetainedMs },
+    droppedCategories: { ...droppedCategories },
+    recordingCapacity: maxRecordedEvents,
+    recordingPressure: maxRecordedEvents > 0 ? records.length / maxRecordedEvents : records.length ? 1 : 0,
+    pressure: scheduler.getOutputPressure?.(now()) || null }); };
   const report = () => onState(getState());
   const markIncomplete = reason => {
-    if (!incompleteReason) { incompleteReason = reason; report(); }
+    if (incompleteReasons.has(reason)) return;
+    incompleteReasons.add(reason);
+    incompleteReason ??= reason;
+    report();
+  };
+  const drop = (count, category) => {
+    const size = Math.max(1, count);
+    firstLostSequence ??= eventSequence + 1;
+    eventSequence += size;
+    droppedRecords += size;
+    droppedCategories[category] = (droppedCategories[category] || 0) + size;
+    recording = false;
+    markIncomplete('recording-cap-reached');
   };
   const record = event => {
     if (!recording) return false;
-    const sequence = ++eventSequence;
     if (records.length >= maxRecordedEvents) {
-      droppedRecords++;
-      firstLostSequence ??= sequence;
-      recording = false;
-      markIncomplete('recording-cap-reached');
+      drop(1, event.direction === 'input' ? 'input' : event.direction === 'output' ? 'output' : event.type === 'tempo' ? 'transport' : 'other');
       return false;
     }
+    const sequence = ++eventSequence;
     const state = transport?.getState(), timestamp = event.timestamp ?? now();
     const processingMs = now(), sourceIsPast = event.direction === 'input' && timestamp < processingMs;
     const beat = event.beat ?? (sourceIsPast ? null : (state?.beat || 0) + (timestamp - processingMs) * (state?.bpm || 120) / 60000);
     const stored = { ...event, sequence, beat, timestamp, data: [...event.data],
       ...(sourceIsPast ? { processedMs: processingMs, processingBeat: state?.beat ?? null, timingUncertainty: 'source-clock-unmapped' } : {}) };
     records.push(stored); retainedEvents++;
+    if (!nearCapReported && maxRecordedEvents > 0 && records.length >= maxRecordedEvents * 0.8) {
+      nearCapReported = true;
+      report();
+    }
+    firstRetainedSequence ??= sequence; lastRetainedSequence = sequence;
+    firstRetainedMs = firstRetainedMs == null ? timestamp : Math.min(firstRetainedMs, timestamp);
+    lastRetainedMs = lastRetainedMs == null ? timestamp : Math.max(lastRetainedMs, timestamp);
     if (event.evidence !== 'intent-render' && (event.direction === 'input' || event.direction === 'output')) {
       const [status, note, velocity] = stored.data;
       const family = status & 0xf0, key = `${event.direction}:${event.outputId || ''}:${status & 15}:${note}`;
@@ -94,7 +131,12 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     onRecord(stored);
     return stored;
   };
-  const cancelRecorded = event => { if (event && !event.cancelled) { event.cancelled = true; retainedEvents--; } };
+  const cancelRecorded = event => {
+    if (!event || event.cancelled) return;
+    event.cancelled = true; retainedEvents--;
+    if (event.sequence === firstRetainedSequence || event.sequence === lastRetainedSequence ||
+        event.timestamp === firstRetainedMs || event.timestamp === lastRetainedMs) retainedRangeDirty = true;
+  };
   const pruneIntentEntries = timestamp => {
     while (intentExpiry.length && intentExpiry[0].end.timestamp <= timestamp) {
       const last = intentExpiry.pop();
@@ -302,10 +344,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     const outputId = spec.outputId ?? meta.outputId ?? noteOutput?.id ?? null;
     const messages = noteMessages(spec);
     if (records.length + messages.length + (durationMs ? 1 : 0) > maxRecordedEvents) {
-      droppedRecords += messages.length + (durationMs ? 1 : 0);
-      firstLostSequence ??= eventSequence + 1;
-      recording = false;
-      markIncomplete('recording-cap-reached');
+      drop(messages.length + (durationMs ? 1 : 0), 'output');
       return false;
     }
     const id = ++intentRenderSequence, events = [];
@@ -402,12 +441,21 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
         .map(event => ({ ...event, data: [...event.data] }));
     },
     recordEvent(event, meta = {}) {
-      for (const data of encodeProcgenMidi(event)) record({ ...meta, ...event, data, direction: 'output', source: meta.source || 'output',
+      const messages = encodeProcgenMidi(event);
+      if (!recording || !messages.length) return false;
+      if (records.length + messages.length > maxRecordedEvents) { drop(messages.length, 'output'); return false; }
+      for (const data of messages) record({ ...meta, ...event, data, direction: 'output', source: meta.source || 'output',
         evidence: 'intent-render', timestamp: event.timestamp ?? event.timeMs ?? now() });
+      return true;
     },
     recordTempo(bpm, beat = transport?.getState().beat || 0, timestamp = now()) { record({ type: 'tempo', bpm, beat, timestamp, data: [], source: 'transport' }); },
     clearRecording() {
       records = []; droppedRecords = 0; retainedEvents = 0; eventSequence = 0; firstLostSequence = null; incompleteReason = null;
+      incompleteReasons.clear();
+      firstRetainedSequence = null; lastRetainedSequence = null; firstRetainedMs = null; lastRetainedMs = null;
+      retainedRangeDirty = false;
+      droppedCategories = { input: 0, output: 0, transport: 0, other: 0 };
+      nearCapReported = false;
       intentRenderEntries.clear(); intentExpiry.length = 0; activeTrace.clear(); report();
     },
     checkConnections() {
