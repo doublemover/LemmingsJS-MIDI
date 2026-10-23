@@ -266,8 +266,8 @@ class ProcgenLaneRenderer {
   }
   // Explicit requests redraw; the RAF loop may reuse a fully unchanged frame.
   render(force = true) {
-    const start = this.window.performance?.now?.() ?? 0;
-    this.cctv.prepare(); this.camera.update(false, !force);
+    const start = this.window.performance?.now?.() ?? Date.now();
+    this.cctv.prepare(); this.camera.update(false, !force, start);
     const dpr = Math.min(2, this.window.devicePixelRatio || 1), scale = this.scale * dpr;
     const layout = this.workstationLayout;
     this.rasterStep = layout ? 1 : Math.max(1, 1 / scale);

@@ -348,12 +348,31 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   for (const [id, direction] of [['procgenSpeedDown', -1], ['procgenSpeedUp', 1]]) {
     listen(byId(id), 'click', event => setSpeed(changeProcgenSpeed(settings.speed, direction, { panel: true, fast: event.shiftKey })));
   }
-  const supportedKeys = new Set(['panLeft', 'panRight', 'panUp', 'panDown', 'zoomIn', 'zoomOut', 'zoomReset', 'speedDown', 'speedDownFast', 'speedUp', 'speedUpFast', 'togglePause', 'stepForward', 'restartLevel']);
+  const supportedKeys = new Set(['panLeft', 'panRight', 'panUp', 'panDown', 'zoomIn', 'zoomOut', 'zoomReset', 'speedDown', 'speedDownFast', 'speedUp', 'speedUpFast', 'togglePause', 'stepForward', 'restartLevel', 'nuke', 'nukeInstant']);
   const keyConfig = config => ({ bindings: { ...Object.fromEntries(Object.entries(DEFAULT_KEYBINDINGS.bindings).map(([action, bindings]) =>
     [action, supportedKeys.has(action) ? config?.bindings?.[action] ?? bindings : []])), followFrontier: config?.bindings?.followFrontier || ['KeyF'], toggleShortcutOverlay: config?.bindings?.toggleShortcutOverlay || ['F1', 'Shift+Slash'] } });
   const keybindings = new KeybindingRegistry(keyConfig());
+  const shortcutLabel = action => {
+    const binding = keybindings.getBindingsForAction(action)[0];
+    if (!binding) return '';
+    const key = binding.code.startsWith('Key') ? binding.code.slice(3) : binding.code.startsWith('Digit') ? binding.code.slice(5) : binding.code;
+    return [binding.ctrl && 'Ctrl', binding.alt && 'Alt', binding.shift && 'Shift', binding.meta && 'Meta', key].filter(Boolean).join('+');
+  };
+  const updateShortcutHints = () => {
+    for (const [id, action, label] of [['procgenZoomOut', 'zoomOut', 'Zoom out'], ['procgenZoomIn', 'zoomIn', 'Zoom in'], ['procgenFollow', 'followFrontier', 'Follow the leading living lemming']]) {
+      const control = byId(id), shortcut = shortcutLabel(action);
+      if (control) control.title = shortcut ? `${label} (${shortcut})` : label;
+    }
+    const help = byId('procgenShortcutHelp');
+    if (help) help.textContent = 'Drag to pan; wheel to zoom; Shift+wheel pans. Double-click follows the leading living actor. ' +
+      [['panLeft', 'Pan left'], ['panRight', 'Pan right'], ['zoomIn', 'Zoom in'], ['zoomOut', 'Zoom out'],
+        ['followFrontier', 'Follow'], ['togglePause', 'Pause'], ['stepForward', 'Step'], ['restartLevel', 'Regenerate'],
+        ['speedDown', 'Slower'], ['speedUp', 'Faster'], ['nuke', 'Arm nuke'], ['nukeInstant', 'Nuke all'],
+        ['toggleShortcutOverlay', 'Help']].map(([action, label]) => `${label}: ${shortcutLabel(action) || 'unbound'}`).join('; ') + '.';
+  };
+  updateShortcutHints();
   window?.fetch?.('keybindings.json').then(response => response.ok ? response.json() : null).then(config => {
-    if (config && !disposed) keybindings.setConfig(keyConfig(config));
+    if (config && !disposed) { keybindings.setConfig(keyConfig(config)); updateShortcutHints(); }
   }).catch(() => {});
   let paused = false;
   const setPaused = next => {
@@ -383,12 +402,10 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     if (world.nukeLane(lane)) { event.preventDefault?.(); event.stopImmediatePropagation?.(); setNukeArmed(false); }
   }, { capture: true });
   const handleKey = event => {
-    if (event.defaultPrevented || isEditing(event)) return;
+    if (event.defaultPrevented || event.isComposing || event.key === 'Dead' || isEditing(event) ||
+        document.querySelector?.('dialog[open]') || event.composedPath?.().some(node => node?.tagName === 'DIALOG' && node.open)) return;
     if (settings.workstation && ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;
-    if (!event.ctrlKey && !event.altKey && !event.metaKey && (event.code === 'KeyT' || event.key?.toLowerCase() === 't')) {
-      if (!event.repeat) { if (event.shiftKey) { setSpanEditing(false); getRuntime()?.world?.nukeAll?.(); setNukeArmed(false); } else setNukeArmed(!nukeArmed); }
-      event.preventDefault?.(); return;
-    }
+    if (['separator', 'slider', 'tab', 'menuitem'].includes(event.target?.getAttribute?.('role')) && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return;
     if (event.key === 'Escape') { setNukeArmed(false); setSpanEditing(false); return; }
     if (event.repeat) return;
     if (event.target?.type === 'range' && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(event.key)) return;
@@ -410,6 +427,8 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
       else if (action === 'stepForward') { stepOnce(); handled = true; }
       else if (action === 'toggleShortcutOverlay') { showHelp(); handled = true; }
       else if (action === 'restartLevel' && !event.repeat) { doRestart(); handled = true; }
+      else if (action === 'nuke') { setNukeArmed(!nukeArmed); handled = true; }
+      else if (action === 'nukeInstant') { setSpanEditing(false); getRuntime()?.world?.nukeAll?.(); setNukeArmed(false); handled = true; }
     }
     if (handled) event.preventDefault?.();
   };

@@ -302,6 +302,16 @@ describe('compact procgen drawer', () => {
     press({ target: { tagName: 'INPUT', type: 'range' } }); f.window.dispatchEvent({ type: 'keydown', key: 'Escape' }); expect(canvas.classList.contains('nuke-armed')).to.equal(false);
     press({ shiftKey: true }); expect(calls).to.deep.equal([2, 'all']); f.ui.dispose();
   });
+  it('does not run a destructive shortcut inside a modal or during composition', () => {
+    const f = fixture(), calls = [];
+    f.runtime.world = { nukeAll: () => calls.push('all') };
+    const press = extra => f.window.dispatchEvent({ type: 'keydown', key: 'T', code: 'KeyT', shiftKey: true, preventDefault() {}, ...extra });
+    press({ target: { tagName: 'BUTTON' }, composedPath: () => [{ tagName: 'BUTTON' }, { tagName: 'DIALOG', open: true }] });
+    press({ target: { tagName: 'CANVAS' }, isComposing: true });
+    expect(calls).to.deep.equal([]);
+    press({ target: { tagName: 'CANVAS' } }); expect(calls).to.deep.equal(['all']);
+    f.ui.dispose();
+  });
   it('offers the shared catalog and never mounts hardware routing/studio controls', () => {
     const f = fixture(); expect(f.el('procgenPreset').children.length).to.equal(PROCGEN_GAME_EVENT_MIDI_PRESETS.length);
     expect(f.ui.local.getState().enabled).to.equal(false);

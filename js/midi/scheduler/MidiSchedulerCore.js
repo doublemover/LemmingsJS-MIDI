@@ -33,6 +33,7 @@ class MidiScheduler {
     this._reservationSeq = 0;
     this._rateLaneActivity = new Map();
     this._rateLaneLastServed = new Map();
+    this._rateLanesByOutput = new Map();
     this._rateLaneStartMs = null;
     this._rateLaneCount = 1;
     this._throttleState = { dropped: 0, lastDropMs: -Infinity, reason: null };

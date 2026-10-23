@@ -47,7 +47,7 @@ const midiSchedulerRateMethods = {
     }
   },
 
-  _sumRate(entries, startMs, endMs, detailed = true, includePendingOns = false) {
+  _sumRate(entries, startMs, endMs, detailed = true, includePendingOns = false, outputId = undefined) {
     let count = 0;
     let bytes = 0;
     const bySfx = detailed ? new Map() : null;
@@ -63,6 +63,7 @@ const midiSchedulerRateMethods = {
       map.set(key, curr);
     };
     for (const entry of entries) {
+      if (outputId !== undefined && entry.outputId !== outputId) continue;
       if (entry.timeMs < startMs || (entry.timeMs >= endMs && (!includePendingOns || entry.phase !== 'on'))) continue;
       count += entry.count;
       bytes += entry.bytes;
@@ -123,30 +124,38 @@ const midiSchedulerRateMethods = {
     });
   },
 
+  _outputRateLimits(outputId, options = {}) {
+    const output = this._resolveOutput(outputId);
+    const profile = options.budgetProfile || this.config.limits?.endpointProfiles?.[outputId] || output?.budgetProfile || {};
+    return {
+      maxMessages: Math.min(toPositiveInt(options.maxMessagesPerSecond ?? profile.maxMessagesPerSecond, this._maxMessagesPerSecond), 1000),
+      maxBytes: output?.supportsIndependentNoteGates ? Number.MAX_SAFE_INTEGER :
+        toPositiveInt(options.maxBytesPerSecond ?? profile.maxBytesPerSecond, this._maxBytesPerSecond)
+    };
+  },
+
   evaluateAndReserve(plan, meta = {}, now = this._nowMs(), options = {}) {
-    const maxMessages = Math.min(
-      Math.max(options.maxMessagesPerSecond ?? this._maxMessagesPerSecond, 1),
-      1000
-    );
+    const outputId = this._resolveOutputId(meta.outputId);
+    const { maxMessages, maxBytes } = this._outputRateLimits(outputId, options);
     const softMaxMessages = Math.min(
       Math.max(options.softMaxMessagesPerSecond ?? maxMessages, 1),
       maxMessages
     );
-    const maxBytes = Math.max(1, options.maxBytesPerSecond ?? this._maxBytesPerSecond);
     this._pruneRateEntries(now);
     const snapshot = {
       now,
-      past: this._sumRate(this._rateSent, now - this._rateWindowMs, now + 0.001),
-      next: this._sumRate(this._ratePlanned, -Infinity, now + this._rateWindowMs, true, true),
-      maxMessagesPerSecond: this._maxMessagesPerSecond,
-      maxBytesPerSecond: this._maxBytesPerSecond
+      past: this._sumRate(this._rateSent, now - this._rateWindowMs, now + 0.001, true, false, outputId),
+      next: this._sumRate(this._ratePlanned, -Infinity, now + this._rateWindowMs, true, true, outputId),
+      maxMessagesPerSecond: maxMessages,
+      maxBytesPerSecond: maxBytes,
+      outputId
     };
     const proposed = this._sumPlan(plan, now);
     const combined = {
       count: snapshot.past.count + snapshot.next.count + proposed.count,
       bytes: snapshot.past.bytes + snapshot.next.bytes + proposed.bytes
     };
-    const lane = this._evaluateLaneShare(meta, now, snapshot, proposed, softMaxMessages, maxBytes);
+    const lane = this._evaluateLaneShare({ ...meta, outputId }, now, snapshot, proposed, softMaxMessages, maxBytes);
     const overMessages = combined.count > maxMessages;
     const overBytes = combined.bytes > maxBytes;
     const softOverMessages = combined.count > softMaxMessages;
@@ -171,7 +180,7 @@ const midiSchedulerRateMethods = {
     if (evaluation.reservationId) return evaluation;
     if (this._ratePlanned.length + this._planEntries(plan).length > MAX_RATE_ENTRIES) return { ...evaluation, ok: false, reason: 'reservation-cap' };
     const reservationId = ++this._reservationSeq;
-    if ((meta.laneCount ?? 1) > 1) this._rateLaneLastServed.set(meta.laneIndex ?? 0, now);
+    if ((meta.laneCount ?? 1) > 1) this._laneBudgetState(meta.outputId)._rateLaneLastServed.set(meta.laneIndex ?? 0, now);
     if (!alreadyPruned) this._pruneRateEntries(now);
     for (const entry of this._planEntries(plan)) {
       const count = Math.trunc(toFiniteNumber(entry.count, 0));
@@ -208,28 +217,41 @@ const midiSchedulerRateMethods = {
     });
   },
 
+  _laneBudgetState(outputId) {
+    const id = this._resolveOutputId(outputId);
+    if (id == null) return this;
+    let state = this._rateLanesByOutput.get(id);
+    if (!state) {
+      if (this._rateLanesByOutput.size >= 128) this._rateLanesByOutput.delete(this._rateLanesByOutput.keys().next().value);
+      state = { _rateLaneCount: 1, _rateLaneStartMs: null, _rateLaneActivity: new Map(), _rateLaneLastServed: new Map() };
+      this._rateLanesByOutput.set(id, state);
+    }
+    return state;
+  },
+
   _evaluateLaneShare(meta, now, snapshot, proposed, maxMessages, maxBytes) {
+    const state = this._laneBudgetState(meta.outputId);
     const laneCount = clamp(toPositiveInt(meta.laneCount, 1), 1, 1024);
     const laneIndex = clamp(Math.trunc(toFiniteNumber(meta.laneIndex, 0)), 0, laneCount - 1);
     if (laneCount <= 1) {
-      this._rateLaneCount = 1;
-      this._rateLaneStartMs = null;
-      this._rateLaneActivity.clear();
-      this._rateLaneLastServed.clear();
+      state._rateLaneCount = 1;
+      state._rateLaneStartMs = null;
+      state._rateLaneActivity.clear();
+      state._rateLaneLastServed.clear();
       return { ok: true, reason: null, laneIndex, laneCount, activeLanes: 1 };
     }
-    if (this._rateLaneCount !== laneCount || this._rateLaneStartMs == null) {
-      this._rateLaneCount = laneCount;
-      this._rateLaneStartMs = now;
-      this._rateLaneActivity.clear();
-      this._rateLaneLastServed.clear();
+    if (state._rateLaneCount !== laneCount || state._rateLaneStartMs == null) {
+      state._rateLaneCount = laneCount;
+      state._rateLaneStartMs = now;
+      state._rateLaneActivity.clear();
+      state._rateLaneLastServed.clear();
     }
-    this._rateLaneActivity.set(laneIndex, now);
-    for (const [index, seenAt] of this._rateLaneActivity) {
-      if (now - seenAt > this._rateWindowMs * 2) this._rateLaneActivity.delete(index);
+    state._rateLaneActivity.set(laneIndex, now);
+    for (const [index, seenAt] of state._rateLaneActivity) {
+      if (now - seenAt > this._rateWindowMs * 2) state._rateLaneActivity.delete(index);
     }
     // Protect every lane during the first burst; quiet lanes lend their share afterwards.
-    const activeLanes = now - this._rateLaneStartMs < 120 ? laneCount : Math.max(1, this._rateLaneActivity.size);
+    const activeLanes = now - state._rateLaneStartMs < 120 ? laneCount : Math.max(1, state._rateLaneActivity.size);
     const used = [snapshot.past.byLane?.get(laneIndex), snapshot.next.byLane?.get(laneIndex)];
     const count = used.reduce((total, entry) => total + (entry?.count || 0), 0);
     const bytes = used.reduce((total, entry) => total + (entry?.bytes || 0), 0);
@@ -238,12 +260,12 @@ const midiSchedulerRateMethods = {
     let leastServed = Infinity;
     const oversized = proposed.count > maxMessages / activeLanes || proposed.bytes > maxBytes / activeLanes;
     if (oversized) {
-      if (activeLanes > this._rateLaneActivity.size) leastServed = -Infinity;
-      for (const index of this._rateLaneActivity.keys()) {
-        leastServed = Math.min(leastServed, this._rateLaneLastServed.get(index) ?? -Infinity);
+      if (activeLanes > state._rateLaneActivity.size) leastServed = -Infinity;
+      for (const index of state._rateLaneActivity.keys()) {
+        leastServed = Math.min(leastServed, state._rateLaneLastServed.get(index) ?? -Infinity);
       }
     }
-    const inTurn = !oversized || (this._rateLaneLastServed.get(laneIndex) ?? -Infinity) <= leastServed;
+    const inTurn = !oversized || (state._rateLaneLastServed.get(laneIndex) ?? -Infinity) <= leastServed;
     const ok = inTurn && count + proposed.count <= countShare && bytes + proposed.bytes <= byteShare;
     return { ok, reason: ok ? null : 'lane-share', laneIndex, laneCount, activeLanes, countShare, byteShare };
   },
@@ -255,25 +277,26 @@ const midiSchedulerRateMethods = {
     this._throttleState.reason = reason;
   },
 
-  getOutputPressure(now = this._nowMs()) {
-    const snapshot = this.getRateSnapshot(now, false);
+  getOutputPressure(now = this._nowMs(), outputId = undefined) {
+    const snapshot = this.getRateSnapshot(now, false, outputId);
     return { throttled: now - this._throttleState.lastDropMs < 1000,
       dropped: this._throttleState.dropped, reason: this._throttleState.reason,
       messages: snapshot.past.count + snapshot.next.count,
-      maxMessages: this._maxMessagesPerSecond, laneCount: this._rateLaneCount,
+      maxMessages: snapshot.maxMessagesPerSecond, laneCount: outputId === undefined ? this._rateLaneCount : this._laneBudgetState(outputId)._rateLaneCount,
       pendingNotes: this._pendingNoteOns.size };
   },
 
-  getRateSnapshot(now = this._nowMs(), detailed = true) {
+  getRateSnapshot(now = this._nowMs(), detailed = true, outputId = undefined) {
     this._pruneRateEntries(now);
-    const past = this._sumRate(this._rateSent, now - this._rateWindowMs, now + 0.001, detailed);
-    const next = this._sumRate(this._ratePlanned, -Infinity, now + this._rateWindowMs, detailed, true);
+    const past = this._sumRate(this._rateSent, now - this._rateWindowMs, now + 0.001, detailed, false, outputId);
+    const next = this._sumRate(this._ratePlanned, -Infinity, now + this._rateWindowMs, detailed, true, outputId);
+    const limits = outputId === undefined ? { maxMessages: this._maxMessagesPerSecond, maxBytes: this._maxBytesPerSecond } : this._outputRateLimits(outputId);
     return {
       now,
       past,
       next,
-      maxMessagesPerSecond: this._maxMessagesPerSecond,
-      maxBytesPerSecond: this._maxBytesPerSecond
+      maxMessagesPerSecond: limits.maxMessages,
+      maxBytesPerSecond: limits.maxBytes
     };
   },
 
@@ -400,14 +423,14 @@ const midiSchedulerRateMethods = {
     this._ratePlanned.length = write;
   },
 
-  _checkByteRate(now = this._nowMs()) {
-    const snapshot = this.getRateSnapshot(now, false);
+  _checkByteRate(now = this._nowMs(), outputId = undefined) {
+    const snapshot = this.getRateSnapshot(now, false, outputId);
     const pastCount = toFiniteNumber(snapshot.past?.count, 0);
     const nextCount = toFiniteNumber(snapshot.next?.count, 0);
     const pastBytes = toFiniteNumber(snapshot.past?.bytes, 0);
     const nextBytes = toFiniteNumber(snapshot.next?.bytes, 0);
-    const overMessageRate = pastCount > this._maxMessagesPerSecond || nextCount > this._maxMessagesPerSecond;
-    const overByteRate = pastBytes > this._maxBytesPerSecond || nextBytes > this._maxBytesPerSecond;
+    const overMessageRate = pastCount > snapshot.maxMessagesPerSecond || nextCount > snapshot.maxMessagesPerSecond;
+    const overByteRate = pastBytes > snapshot.maxBytesPerSecond || nextBytes > snapshot.maxBytesPerSecond;
     if (overMessageRate || overByteRate) {
       if (now - this._lastRateErrorMs > 1000) {
         this._lastRateErrorMs = now;

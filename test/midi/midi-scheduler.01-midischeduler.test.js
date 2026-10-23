@@ -302,8 +302,27 @@ describe('MidiScheduler 1', function() {
 
     expect(scheduler._maxActiveNotes).to.equal(32);
     expect(scheduler._maxMessagesPerSecond).to.equal(1000);
-    expect(scheduler._maxBytesPerSecond).to.equal(3906.25);
+    expect(scheduler._maxBytesPerSecond).to.equal(3125);
     expect(scheduler._allocateChannel()).to.equal(2);
+  });
+
+  it('admits independent endpoint traffic under separate rate windows', function() {
+    const firstCalls = [], secondCalls = [];
+    const first = makeOutput([1], firstCalls, 'first');
+    const second = makeOutput([1], secondCalls, 'second');
+    withFakeClockAndPerformance(() => {
+      const scheduler = new MidiScheduler({ mpe: { enabled: false }, limits: { maxEventsPerSecond: 1,
+        endpointProfiles: { first: { maxBytesPerSecond: 3 }, second: { maxBytesPerSecond: 3 } } } });
+      scheduler.setOutput(first); scheduler.setOutputs([first, second]);
+      expect(scheduler.sendNote({ note: 60, outputId: 'first' })).to.equal(true);
+      expect(scheduler.sendNote({ note: 62, outputId: 'second' })).to.equal(true);
+      expect(scheduler.sendNote({ note: 64, outputId: 'first' })).to.equal(false);
+      expect(firstCalls.filter(call => call.type === 'noteOn')).to.have.length(1);
+      expect(secondCalls.filter(call => call.type === 'noteOn')).to.have.length(1);
+      expect(scheduler.getRateSnapshot(0, false, 'first').past.bytes).to.equal(3);
+      expect(scheduler.getRateSnapshot(0, false, 'second').past.bytes).to.equal(3);
+      scheduler.allNotesOff();
+    });
   });
 
   it('stops active channels and clears scheduled note offs', function() {

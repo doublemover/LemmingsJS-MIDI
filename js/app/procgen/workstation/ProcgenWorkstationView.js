@@ -5,6 +5,7 @@ import { procgenStepNotes } from './ProcgenPatternEngine.js';
 const NOTES = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
 const SCALES = { Major: [0, 2, 4, 5, 7, 9, 11], Minor: [0, 2, 3, 5, 7, 8, 10], Dorian: [0, 2, 3, 5, 7, 9, 10], Lydian: [0, 2, 4, 6, 7, 9, 11], Pentatonic: [0, 2, 4, 7, 9], Chromatic: Array.from({ length: 12 }, (_, i) => i) };
 const COLORS = ['#289fd1', '#6daa43', '#9362c9', '#ac855a', '#ef7440', '#dc639e', '#58aec6', '#99ac37'];
+const rendererLeases = new WeakMap();
 
 function createProcgenWorkstationView({ document, window, getProject, getRuntime, dispatch, handlers = {}, state = {} }) {
   for (const [key, value] of Object.entries({ slot: 0, step: 0, tab: 'Lane', tool: 'select', layout: 'strip', firstLane: 0, minimumRow: 64, inspectorWidth: 304, hazardSpacing: 160 })) if (state[key] == null) state[key] = value;
@@ -42,18 +43,38 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
   const inspector = node('aside', null, 'studio-inspector'); inspector.setAttribute('aria-label', 'Selected lane inspector');
   const resize = node('div', null, 'studio-resize'); resize.setAttribute('role', 'separator'); resize.setAttribute('aria-label', 'Resize inspector'); resize.tabIndex = 0;
   const tabs = node('div', null, 'studio-inspector-tabs');
-  const fields = node('div', null, 'studio-inspector-fields');
+  const fields = node('div', null, 'studio-inspector-fields'); fields.id = 'procgenInspectorFields';
+  resize.setAttribute('aria-controls', fields.id); resize.setAttribute('aria-valuemin', '250'); resize.setAttribute('aria-valuemax', '480');
+  resize.setAttribute('aria-valuenow', String(state.inspectorWidth));
   inspector.append(resize, tabs, fields);
   shell.append(lanes, stage, inspector); byId('procgenTopbar').after(shell);
   const footer = node('footer', null, 'studio-footer'); footer.id = 'procgenStudioFooter'; shell.after(footer);
   const status = node('output', 'Ready', 'studio-status'); status.setAttribute('aria-live', 'polite');
   const storageStatus = node('output', 'Unsaved', 'studio-storage-status'); storageStatus.setAttribute('aria-label', 'Project save status');
   let projection, dragging = null, lastFrame = 0, lastMidiFrame = 0, stroke = null, suppressClickUntil = 0;
+  let attachedRenderer = null, disposed = false, superseded = false, composing = false, pendingInspectorRender = false;
+  const owner = {};
+  on(fields, 'compositionstart', () => { composing = true; });
+  on(fields, 'compositionend', () => {
+    composing = false;
+    if (pendingInspectorRender) { pendingInspectorRender = false; window.setTimeout?.(() => { if (!disposed) render(); }, 0); }
+  });
+  const detachRenderer = () => {
+    const renderer = attachedRenderer; attachedRenderer = null;
+    if (!renderer) return;
+    const lease = rendererLeases.get(renderer);
+    if (lease?.owner !== owner) return;
+    rendererLeases.delete(renderer);
+    if (renderer.onWorkstationFrame === frame) renderer.onWorkstationFrame = lease.baseFrame;
+    if (renderer.workstationLayout === projection) renderer.workstationLayout = lease.baseLayout;
+    renderer.resize();
+  };
   on(resize, 'pointerdown', event => { dragging = event.pointerId; resize.setPointerCapture(event.pointerId); });
-  on(resize, 'pointermove', event => { if (dragging == null) return; state.inspectorWidth = Math.max(250, Math.min(480, window.innerWidth - event.clientX)); shell.style.setProperty('--inspector-width', state.inspectorWidth + 'px'); layout(); });
+  const setInspectorWidth = width => { state.inspectorWidth = Math.max(250, Math.min(480, width)); resize.setAttribute('aria-valuenow', String(state.inspectorWidth)); shell.style.setProperty('--inspector-width', state.inspectorWidth + 'px'); layout(); };
+  on(resize, 'pointermove', event => { if (dragging != null) setInspectorWidth(window.innerWidth - event.clientX); });
   on(resize, 'pointerup', () => { dragging = null; handlers.preferences?.(); });
   on(resize, 'pointercancel', () => { dragging = null; });
-  on(resize, 'keydown', event => { if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return; state.inspectorWidth = Math.max(250, Math.min(480, state.inspectorWidth + (event.key === 'ArrowLeft' ? 16 : -16))); shell.style.setProperty('--inspector-width', state.inspectorWidth + 'px'); layout(); });
+  on(resize, 'keydown', event => { if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return; event.preventDefault(); event.stopPropagation(); setInspectorWidth(state.inspectorWidth + (event.key === 'ArrowLeft' ? 16 : -16)); });
   const layoutMode = select([['strip', 'Strip'], ['overlay', 'Overlay']], state.layout, value => { state.layout = value; render(); handlers.preferences?.(); }, 'Sequencer layout');
   const bpm = input(120, value => handlers.transport?.({ bpm: value, baseBpm: value }), { min: 20, max: 400, step: 1 }); bpm.setAttribute('aria-label', 'BPM');
   const speedMode = select([['bpm', 'BPM'], ['game', 'Game speed']], 'bpm', value => handlers.transport?.({ speedMode: value }), 'Speed mode');
@@ -124,7 +145,7 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
     const pattern = lane.patterns[state.slot]; state.step = Math.max(0, Math.min(state.step, pattern.length - 1));
     const step = pattern.steps[state.step];
     tabs.replaceChildren();
-    for (const tab of ['Lane', 'Step', 'Chord', 'MIDI', 'World', 'Automation']) { const el = button(tab, () => { state.tab = tab; renderInspector(); }); el.setAttribute('aria-pressed', String(state.tab === tab)); tabs.append(el); }
+    for (const tab of ['Lane', 'Step', 'Chord', 'MIDI', 'World', 'Automation']) { const el = button(tab, () => { state.tab = tab; render(); }); el.setAttribute('aria-pressed', String(state.tab === tab)); tabs.append(el); }
     fields.replaceChildren(node('div', `${lane.family.toUpperCase()} / ${lane.role}`, 'studio-eyebrow'), node('h2', state.tab === 'Step' || state.tab === 'Chord' ? `Step ${state.step + 1} · Phrase ${state.slot + 1}` : lane.name));
     if (state.tab === 'Lane') {
       labeled('Name', input(lane.name, name => changeLane({ name }), { type: 'text' }), fields);
@@ -216,6 +237,7 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
     }
   }
   function layout() {
+    if (disposed) return;
     const width = Math.max(1, stage.clientWidth), height = Math.max(1, stage.clientHeight);
     projection = createProcgenLaneProjection({ laneCount: getProject().procgen.lanes.length, height, firstLane: state.firstLane, mode: state.layout, physicalHeight: getRuntime()?.world?.laneHeight || 144, minimumRow: state.minimumRow });
     state.firstLane = projection.firstLane;
@@ -224,7 +246,17 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
     if (canvas.width !== Math.floor(width * dpr) || canvas.height !== Math.floor(height * dpr)) { canvas.width = Math.floor(width * dpr); canvas.height = Math.floor(height * dpr); }
     canvas.style.width = width + 'px'; canvas.style.height = height + 'px';
     const renderer = getRuntime()?.lanes?.renderer;
-    if (renderer) { renderer.workstationLayout = projection; renderer.onWorkstationFrame = frame; renderer.resize(); }
+    if (renderer !== attachedRenderer) detachRenderer();
+    if (renderer && !superseded) {
+      if (!attachedRenderer) {
+        const previous = rendererLeases.get(renderer);
+        previous?.relinquish();
+        rendererLeases.set(renderer, { owner, baseLayout: previous ? previous.baseLayout : renderer.workstationLayout,
+          baseFrame: previous ? previous.baseFrame : renderer.onWorkstationFrame, relinquish: () => { attachedRenderer = null; superseded = true; } });
+        attachedRenderer = renderer;
+      }
+      renderer.workstationLayout = projection; renderer.onWorkstationFrame = frame; renderer.resize();
+    }
   }
   function renderRows() {
     if (!projection) return;
@@ -233,7 +265,7 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
     previousLanes.disabled = projection.firstLane === 0; nextLanes.disabled = projection.firstLane + projection.count >= project.procgen.lanes.length;
     for (let row = 0; row < projection.count; row++) {
       const laneIndex = projection.firstLane + row, lane = project.procgen.lanes[laneIndex], displaySlot = state.laneId === lane.id ? state.slot : lane.activeSlot, pattern = lane.patterns[displaySlot];
-      const header = node('section', null, 'studio-lane-header'); header.style.setProperty('--lane-color', COLORS[laneIndex % 8]); header.classList.toggle('selected', state.laneId === lane.id);
+      const header = node('section', null, 'studio-lane-header'); header.dataset.laneId = lane.id; header.style.setProperty('--lane-color', COLORS[laneIndex % 8]); header.classList.toggle('selected', state.laneId === lane.id);
       const label = button(`${laneIndex + 1}  ${lane.family.toUpperCase()}`, () => { state.laneId = lane.id; state.slot = lane.activeSlot; state.tab = 'Lane'; render(); }); label.className = 'studio-lane-title';
       const role = node('span', lane.role, 'studio-role');
       const controls = node('div', null, 'studio-lane-mini');
@@ -258,6 +290,7 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
     }
   }
   function frame(beat = state.beat || 0) {
+    if (disposed || superseded) return;
     const now = window.performance.now(); if (now - lastFrame < 32) return; lastFrame = now;
     for (const row of grid.children) {
       const lane = getProject().procgen.lanes.find(l => l.id === row.dataset.laneId); if (!lane) continue;
@@ -269,12 +302,45 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
     }
   }
   function render() {
+    if (disposed) return;
+    const active = document.activeElement;
+    const pathFrom = scope => {
+      const path = []; let node = active;
+      while (node && node !== scope) { const parent = node.parentElement; if (!parent) return null; path.unshift([...parent.children].indexOf(node)); node = parent; }
+      return node === scope ? path : null;
+    };
+    const fieldPath = fields.contains(active) ? pathFrom(fields) : null;
+    const header = active?.closest?.('.studio-lane-header'), row = active?.closest?.('.studio-sequence');
+    const focus = fieldPath ? { scope: fields, path: fieldPath, laneId: state.laneId, slot: state.slot, tab: state.tab } :
+      header ? { scope: 'lane', laneId: header.dataset.laneId, path: pathFrom(header) } :
+        row ? { scope: 'row', laneId: row.dataset.laneId, slot: row.dataset.slot, path: pathFrom(row) } :
+          tabs.contains(active) ? { scope: tabs, path: pathFrom(tabs) } : null;
+    if (focus && active?.tagName === 'INPUT' && ['text', 'number', 'search'].includes(active.type)) {
+      focus.value = active.value;
+      try { focus.selectionStart = active.selectionStart; focus.selectionEnd = active.selectionEnd; } catch { /* Number inputs have no caret. */ }
+    }
     selected(); root.value = String(getProject().global.scale.root);
     const current = getProject().global.scale;
     const matched = Object.keys(SCALES).find(name => JSON.stringify(SCALES[name]) === JSON.stringify(current.degrees));
     if (!matched && ![...scale.options].some(option => option.value === current.name)) { const option = node('option', current.name); option.value = current.name; scale.append(option); }
     scale.value = matched || current.name;
-    layout(); renderRows(); renderInspector(); records.setAttribute('aria-pressed', String(!!state.recording));
+    layout(); renderRows();
+    if (composing && fieldPath) pendingInspectorRender = true;
+    else renderInspector();
+    records.setAttribute('aria-pressed', String(!!state.recording));
+    if (focus && !composing) {
+      const fieldFocus = focus.scope === fields;
+      if (fieldFocus && (focus.laneId !== state.laneId || focus.slot !== state.slot || focus.tab !== state.tab)) { focus.scope = tabs; focus.path = null; }
+      let scope = focus.scope;
+      if (scope === 'lane') scope = [...lanes.children].find(item => item.dataset.laneId === focus.laneId);
+      if (scope === 'row') scope = [...grid.children].find(item => item.dataset.laneId === focus.laneId && item.dataset.slot === focus.slot);
+      const target = focus.path?.reduce((node, index) => node?.children?.[index], scope);
+      if (target?.tagName === active?.tagName && (focus.value == null || target.type === active.type)) {
+        if (focus.value != null) target.value = focus.value;
+        target.focus?.({ preventScroll: true });
+        if (focus.selectionStart != null) try { target.setSelectionRange?.(focus.selectionStart, focus.selectionEnd); } catch { /* Number inputs have no caret. */ }
+      } else if (fieldFocus) tabs.querySelector?.('button[aria-pressed="true"]')?.focus?.({ preventScroll: true });
+    }
   }
   on(lanes, 'wheel', event => { if (getProject().procgen.lanes.length <= projection.count) return; event.preventDefault(); state.firstLane += Math.sign(event.deltaY); layout(); renderRows(); }, { passive: false });
   on(lanes, 'keydown', event => {
@@ -307,14 +373,16 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
   on(window, 'pointercancel', () => { if (stroke) { stroke = null; renderRows(); } });
   on(window, 'resize', render);
   on(window, 'keydown', event => {
-    if (event.target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target?.tagName)) return;
+    if (event.defaultPrevented || event.isComposing || event.key === 'Dead' || projectList.open || document.querySelector?.('dialog[open]') ||
+        event.target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'SUMMARY', 'A'].includes(event.target?.tagName) ||
+        ['separator', 'slider', 'tab', 'menuitem'].includes(event.target?.getAttribute?.('role'))) return;
     const modifier = event.ctrlKey || event.metaKey, key = event.key.toLowerCase();
     const action = modifier ? key === 'c' ? 'copy' : key === 'v' ? 'paste' : key === 'z' ? event.shiftKey ? 'redo' : 'undo' : key === 'y' ? 'redo' : null : null;
     if (action) { event.preventDefault(); handlers[action]?.(); return; }
     if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); changeStep({ enabled: false }); }
     else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); const length = selected().patterns[state.slot].length; state.step = (state.step + (event.key === 'ArrowLeft' ? length - 1 : 1)) % length; state.tab = 'Step'; render(); }
   });
-  return { render, layout, renderInspector, showProjects, showProjectPage, status: text => { status.textContent = text; },
+  return { render, layout, renderInspector: render, showProjects, showProjectPage, status: text => { status.textContent = text; },
     storage({ dirty, savedAt, error }) {
       storageStatus.textContent = error ? 'Save failed · Export' : dirty ? 'Unsaved' : 'Saved';
       storageStatus.dataset.state = error ? 'error' : dirty ? 'dirty' : 'saved';
@@ -324,7 +392,7 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
     transport(position) { state.beat = position.beat; if (document.activeElement !== bpm) bpm.value = String(Math.round(position.bpm * 100) / 100); bpm.disabled = position.clockSource === 'external'; clockStatus.textContent = position.clockSource === 'external' ? position.clockStatus : `${Math.floor(position.beat / 4) + 1} : ${Math.floor(position.beat % 4) + 1}`; linked.checked = position.linked; speedMode.value = position.speedMode; clock.value = position.clockSource; frame(position.beat); },
     recording(value) { state.recording = !!value; records.setAttribute('aria-pressed', String(value)); },
     midi(text) { state.lastMidi = text; const time = window.performance.now(); if (time - lastMidiFrame < 50) return; lastMidiFrame = time; const monitor = fields.querySelector('.studio-midi-monitor'); if (monitor && monitor.textContent !== text) monitor.textContent = text; },
-    dispose() { for (const unlisten of listeners) unlisten(); if (canvasParent) canvasParent.insertBefore(canvas, canvasSibling?.parentNode === canvasParent ? canvasSibling : null); projectList.remove(); shell.remove(); footer.remove(); transport.remove(); heading.remove(); },
+    dispose() { if (disposed) return; disposed = true; detachRenderer(); for (const unlisten of listeners) unlisten(); if (canvasParent) canvasParent.insertBefore(canvas, canvasSibling?.parentNode === canvasParent ? canvasSibling : null); projectList.remove(); shell.remove(); footer.remove(); transport.remove(); heading.remove(); },
     getProjection: () => projection
   };
 }

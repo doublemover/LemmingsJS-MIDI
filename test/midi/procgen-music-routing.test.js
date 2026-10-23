@@ -157,7 +157,7 @@ describe('procgen local musical routing', () => {
       advance(80);
       const rate = router.scheduler.getRateSnapshot();
       expect(rate.past.count + rate.next.count).to.be.at.most(1000);
-      expect(rate.past.bytes + rate.next.bytes).to.be.at.most(3906);
+      expect(rate.past.bytes + rate.next.bytes).to.be.at.most(3125);
       router.scheduler.allNotesOff(); expect(router.scheduler._activeNotes.size).to.equal(0);
     });
   });

@@ -9,11 +9,12 @@ const ready = async (page, count = 8) => {
     const { createMidiProject, reduceMidiProject } = await import('/js/midi/project/MidiProject.js');
     let project = createProcgenWorkstationProject(createMidiProject(), { lanes: Array.from({ length: count }, (_, index) => createProcgenLane(index)) });
     const state = { laneId: 'lane-1', slot: 0, step: 0 }, calls = [], actions = [];
+    const runtime = {};
     const handlers = Object.fromEntries(['copy', 'paste', 'undo', 'redo', 'observe', 'record'].map(name => [name, value => calls.push({ name, value })]));
-    const view = createProcgenWorkstationView({ document, window, getProject: () => project, getRuntime: () => ({}), state, handlers,
+    const view = createProcgenWorkstationView({ document, window, getProject: () => project, getRuntime: () => runtime, state, handlers,
       dispatch: action => { actions.push(action); project = reduceMidiProject(project, action); view.render(); } });
     view.render();
-    window.workstationViewTest = { view, state, calls, actions, getProject: () => project };
+    window.workstationViewTest = { view, state, calls, actions, runtime, getProject: () => project };
   }, count);
 };
 
@@ -55,6 +56,42 @@ test('keyboard editing excludes text inputs and transport pulses keep existing r
     for (let index = 0; index < 24; index++) window.workstationViewTest.view.transport({ beat: index / 24, bpm: 120, clockSource: 'internal', linked: true, speedMode: 'bpm' });
     return first === document.querySelector('.studio-sequence');
   })).toBe(true);
+});
+
+test('project renders retain the focused field buffer, caret and selected edit target', async ({ page }) => {
+  await ready(page);
+  const name = page.getByLabel('Name', { exact: true });
+  await name.fill('Uncommitted lane');
+  await name.evaluate(input => { input.focus(); input.setSelectionRange(4, 4); });
+  await page.evaluate(() => window.workstationViewTest.view.render());
+  expect(await page.evaluate(() => ({ value: document.activeElement.value, caret: document.activeElement.selectionStart,
+    lane: window.workstationViewTest.state.laneId, label: document.activeElement.closest('label')?.textContent }))).toEqual({
+    value: 'Uncommitted lane', caret: 4, lane: 'lane-1', label: 'Name'
+  });
+  await page.setViewportSize({ width: 1100, height: 720 });
+  await expect(page.getByLabel('Name', { exact: true })).toBeFocused();
+  await page.evaluate(() => window.workstationViewTest.view.renderInspector());
+  await expect(page.getByLabel('Name', { exact: true })).toBeFocused();
+  await page.getByLabel('Name', { exact: true }).fill('Committed lane');
+  await page.getByLabel('Name', { exact: true }).dispatchEvent('change');
+  await expect(page.getByLabel('Name', { exact: true })).toBeFocused();
+  expect(await page.evaluate(() => window.workstationViewTest.getProject().procgen.lanes[0].name)).toBe('Committed lane');
+});
+
+test('inspector arrow keys resize only the inspector and view disposal detaches its renderer callback', async ({ page }) => {
+  await ready(page);
+  const separator = page.getByRole('separator', { name: 'Resize inspector' });
+  await separator.focus(); await page.keyboard.press('ArrowRight');
+  expect(await page.evaluate(() => ({ width: window.workstationViewTest.state.inspectorWidth,
+    step: window.workstationViewTest.state.step, tab: window.workstationViewTest.state.tab }))).toEqual({ width: 288, step: 0, tab: 'Lane' });
+  expect(await separator.getAttribute('aria-valuenow')).toBe('288');
+  expect(await page.evaluate(() => {
+    const { view, runtime } = window.workstationViewTest;
+    const renderer = { resize() {} }; runtime.lanes = { renderer }; view.render();
+    const attached = !!renderer.workstationLayout && typeof renderer.onWorkstationFrame === 'function';
+    view.dispose(); view.dispose();
+    return { attached, detached: renderer.workstationLayout == null && renderer.onWorkstationFrame == null };
+  })).toEqual({ attached: true, detached: true });
 });
 
 test('virtualizes 1024 lanes and exposes observer controls without losing the canvas on disposal', async ({ page }) => {

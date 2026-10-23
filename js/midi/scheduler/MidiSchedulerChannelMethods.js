@@ -101,6 +101,7 @@ const midiSchedulerChannelMethods = {
       this._ratePlanned[write++] = entry;
     }
     this._ratePlanned.length = write;
+    if (outputId != null) this._rateLanesByOutput.delete(outputId);
     this._expressionByOutput.delete(output);
   },
 
@@ -405,7 +406,8 @@ const midiSchedulerChannelMethods = {
     if (sentMessages > 0) {
       const sentAt = Number.isFinite(releaseOptions?.dispatchedAtMs) ? releaseOptions.dispatchedAtMs : this._nowMs();
       this._recordSent({ timeMs: sentAt, count: sentMessages, bytes: sentMessages * MIDI_MESSAGE_BYTES,
-        token: oldestToken, phase: 'off', laneIndex: info.laneIndex ?? 0, laneCount: info.laneCount ?? 1, sfxId: info.sfxId, priority: info.priority }, sentAt);
+        token: oldestToken, phase: 'off', outputId: info.outputId ?? null, laneIndex: info.laneIndex ?? 0,
+        laneCount: info.laneCount ?? 1, sfxId: info.sfxId, priority: info.priority }, sentAt);
     }
   },
 

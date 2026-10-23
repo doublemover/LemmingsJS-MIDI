@@ -299,7 +299,7 @@ const midiSchedulerSendMethods = {
           });
         }
       }
-      this._checkByteRate(now);
+      this._checkByteRate(now, outputId);
       return !dispatchFailed;
     } finally {
       if (perfEnabled) {

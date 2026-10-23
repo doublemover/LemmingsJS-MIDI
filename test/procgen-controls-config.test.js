@@ -73,6 +73,26 @@ describe('procgen compact controls and share configuration', () => {
     expect(renderer.cameraX).to.equal(0); expect(renderer.cameraY).to.equal(0);
     camera.dispose(); expect(listeners.size).to.equal(0);
   });
+  it('follows by presentation time across refresh rates and caps a resumed-tab stall', () => {
+    const positions = [30, 60, 90, 144].map(rate => {
+      const { renderer, camera } = cameraFixture();
+      camera.update(false, false, 0);
+      for (let frame = 1; frame <= rate / 2; frame++) camera.update(false, true, frame * 1000 / rate);
+      const position = renderer.cameraX; camera.dispose(); return position;
+    });
+    for (const position of positions) expect(position).to.be.closeTo(positions[0], 1e-8);
+    const { renderer, camera } = cameraFixture();
+    camera.update(false, false, 0);
+    for (let frame = 1; frame <= 30; frame++) camera.update(false, true, frame * 1000 / 60);
+    const beforeStall = renderer.cameraX;
+    renderer.world.actors[2].x = 2000;
+    camera.update(false, false, 1500);
+    expect(renderer.cameraX - beforeStall).to.be.lessThan(500);
+    renderer.reducedMotion = { matches: true };
+    camera.update(false, true, 1516);
+    expect(renderer.cameraX).to.equal(1880);
+    camera.dispose();
+  });
   it('follows only visible workstation lanes and invalidates a paused leader when the row window changes', () => {
     const { renderer, camera } = cameraFixture();
     renderer.laneHeight = 96; renderer.world.laneCount = 16;

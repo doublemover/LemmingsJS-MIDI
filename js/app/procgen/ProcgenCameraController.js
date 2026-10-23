@@ -1,5 +1,7 @@
 const PROCGEN_MIN_SCALE = 1 / 256;
 const PROCGEN_MAX_SCALE = 6;
+const FOLLOW_TAU_MS = 130;
+const MAX_FOLLOW_DELTA_MS = 50;
 
 const createProcgenCameraController = renderer => {
   const { canvas, window: windowRef, world } = renderer;
@@ -35,7 +37,7 @@ const createProcgenCameraController = renderer => {
   };
   const pan = (dx, dy) => {
     if (!Number.isFinite(dx) || !Number.isFinite(dy) || Math.hypot(dx, dy) < 1) return false;
-    renderer.follow = false; renderer.cameraX += dx / renderer.scale; renderer.cameraY += dy / renderer.scale;
+    renderer.follow = false; lastFollowMs = null; renderer.cameraX += dx / renderer.scale; renderer.cameraY += dy / renderer.scale;
     clamp(); renderer.render(false); return true;
   };
   const setZoom = scale => {
@@ -48,11 +50,11 @@ const createProcgenCameraController = renderer => {
     renderer.cameraY = pinnedY ? 0 : centerY - next.height / 2;
     clamp(); renderer.render(false);
   };
-  let cachedLeader = null, leaderTick = -1, leaderGeneration = -1, leaderActors = null, leaderCount = -1, leaderWindow = '';
+  let cachedLeader = null, leaderTick = -1, leaderGeneration = -1, leaderActors = null, leaderCount = -1, leaderWindow = '', lastFollowMs = null;
   const followFrontier = () => { renderer.follow = true; update(true); renderer.render(false); };
-  const update = (immediate = false, reuseLeader = false) => {
+  const update = (immediate = false, reuseLeader = false, presentationMs = windowRef.performance?.now?.() ?? Date.now()) => {
     clamp();
-    if (!renderer.follow) return;
+    if (!renderer.follow) { lastFollowMs = null; return; }
     const projection = renderer.workstationLayout, selected = Number.isInteger(renderer.followLaneIndex) ? renderer.followLaneIndex : null;
     const firstLane = projection ? selected ?? projection.firstLane : 0, lastLane = projection ? selected == null ? firstLane + projection.count : selected + 1 : world.laneCount ?? Infinity;
     const visibleWindow = `${firstLane}:${lastLane}`;
@@ -66,9 +68,13 @@ const createProcgenCameraController = renderer => {
       leaderWindow = visibleWindow;
     }
     const leader = cachedLeader;
-    if (!leader) return;
+    if (!leader) { lastFollowMs = null; return; }
     const view = viewport(), targetX = Math.max(0, leader.x - view.width * 0.4);
-    renderer.cameraX += (targetX - renderer.cameraX) * (immediate ? 1 : 0.12);
+    const deltaMs = lastFollowMs == null || !Number.isFinite(presentationMs) ? 0 : Math.max(0, Math.min(MAX_FOLLOW_DELTA_MS, presentationMs - lastFollowMs));
+    lastFollowMs = Number.isFinite(presentationMs) ? presentationMs : null;
+    const alpha = immediate || renderer.reducedMotion?.matches ? 1 : 1 - Math.exp(-deltaMs / FOLLOW_TAU_MS);
+    const distance = targetX - renderer.cameraX;
+    renderer.cameraX = Math.abs(distance) < Math.max(0.01, (renderer.rasterStep || 1) / 4) ? targetX : renderer.cameraX + distance * alpha;
     if (leader && (leader.y < renderer.cameraY + 16 || leader.y > renderer.cameraY + view.height - 16)) {
       renderer.cameraY = Math.max(0, leader.y - view.height * 0.4);
     }
@@ -93,10 +99,10 @@ const createProcgenCameraController = renderer => {
     renderer.overviewActive = Number(state.scale) <= fitScale(false) + 1e-10;
     renderer.scale = boundedScale(Number(state.scale) || renderer.scale);
     renderer.cameraX = Math.max(0, Number(state.cameraX) || 0); renderer.cameraY = Math.max(0, Number(state.cameraY) || 0);
-    renderer.follow = state.follow !== false; clamp();
+    renderer.follow = state.follow !== false; lastFollowMs = null; clamp();
   };
   return { pan, setZoom, followFrontier, update, getState, applyState, viewport, minimumScale,
     dispose() { for (const [event, handler, options] of listeners) canvas.removeEventListener(event, handler, options);
-      listeners.length = 0; cachedLeader = null; leaderActors = null; } };
+      listeners.length = 0; cachedLeader = null; leaderActors = null; lastFollowMs = null; } };
 };
 export { createProcgenCameraController, PROCGEN_MIN_SCALE, PROCGEN_MAX_SCALE };
