@@ -368,6 +368,7 @@ describe('FileProvider', function () {
     const textPromise = provider.loadString(textUrl);
     HeaderXHR.instances[0].respond(200, 'ok');
     await textPromise;
+    await provider.waitForCacheWrites();
     const textEntry = JSON.parse(global.localStorage.getItem(cacheKey(textUrl)));
     assert.strictEqual(textEntry.etag, 'etag-value');
 
@@ -375,6 +376,7 @@ describe('FileProvider', function () {
     const buffer = new ArrayBuffer(0);
     HeaderXHR.instances[1].respond(200, buffer);
     await binPromise;
+    await provider.waitForCacheWrites();
     const binUrl = provider._buildUrl('data', 'file.bin');
     const binEntry = JSON.parse(global.localStorage.getItem(cacheKey(binUrl)));
     assert.strictEqual(binEntry.lastModified, 'modified');
@@ -400,6 +402,7 @@ describe('FileProvider', function () {
     requests[0].getResponseHeader = key => (key === 'ETag' ? 'etag' : 'last');
     requests[0].respond(200, new ArrayBuffer(1));
     await p;
+    await provider.waitForCacheWrites();
     const entry = JSON.parse(global.localStorage.getItem(cacheKey(url)));
     assert.strictEqual(entry.etag, 'etag');
     assert.strictEqual(entry.lastModified, 'last');
@@ -411,6 +414,7 @@ describe('FileProvider', function () {
     requests[0].getResponseHeader = key => (key === 'ETag' ? 'etag' : 'last');
     requests[0].respond(200, 'ok');
     await p;
+    await provider.waitForCacheWrites();
     const entry = JSON.parse(global.localStorage.getItem(cacheKey(url)));
     assert.strictEqual(entry.etag, 'etag');
     assert.strictEqual(entry.lastModified, 'last');

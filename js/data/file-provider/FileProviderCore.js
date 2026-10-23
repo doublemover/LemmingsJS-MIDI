@@ -26,15 +26,25 @@ class FileProvider extends BaseLogger {
       options.cacheBustRevision ?? options.cacheBust ?? null
     );
 
-    /**
-       * Cache mapping full URL → Promise<BinaryReader> or Promise<string>.
-       * Store the Promise itself so concurrent callers share one in‑flight XHR.
-       * @type {Map<string, Promise<any>>}
-       */
+    /** Cached immutable acquisition promises. Binary and text use distinct keys. */
     this._cache = new Map();
+    this._cacheEpoch = 0;
+    this._requestVersions = new Map();
+    this._disposed = false;
+    this._pendingCacheWrites = new Set();
+    this._requests = new Set();
+    this._requestQueue = [];
+    this._activeRequestCount = 0;
+    this._maxConcurrentRequests = Number.isInteger(options.maxConcurrentRequests) ? Math.max(1, options.maxConcurrentRequests) : 16;
+    this._maxQueuedRequests = Number.isInteger(options.maxQueuedRequests) ? Math.max(0, options.maxQueuedRequests) : 128;
+    this._consumerCounts = new Map();
+    this._requestTimeoutMs = Number.isFinite(options.requestTimeoutMs) ? Math.max(1, options.requestTimeoutMs) : 15000;
+    this._maxResponseBytes = Number.isFinite(options.maxResponseBytes) ? Math.max(1, options.maxResponseBytes) : 64 * 1024 * 1024;
     this._idbPromise = null;
     this._idb = null;
     this._idbDisabled = false;
+    this._idbOpenEpoch = 0;
+    this._cacheProbeMs = Number.isFinite(options.cacheProbeMs) ? Math.max(1, options.cacheProbeMs) : 300;
     this._validationPromises = new Map();
     this._cacheStats = { localStorageBytes: 0, indexedDbBytes: 0 };
     this._storage = Object.hasOwn(options, 'localStorage')

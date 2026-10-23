@@ -5,7 +5,7 @@ export class ResourceLoadError extends Error {
     this.kind = kind;
     this.requestedUrl = requestedUrl;
     this.status = status;
-    this.retryable = kind === 'network' || kind === 'timeout' || kind === 'rate-limit' || kind === 'server';
+    this.retryable = kind === 'network' || kind === 'timeout' || kind === 'rate-limit' || kind === 'server' || kind === 'busy';
     this.operationId = operationId;
   }
 }

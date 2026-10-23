@@ -44,8 +44,10 @@ const fileProviderStorageMethods = {
 
   _idbRequest(request) {
     return new Promise((resolve, reject) => {
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
+      const finish = (callback, value) => { clearTimeout(timer); request.onsuccess = null; request.onerror = null; callback(value); };
+      const timer = setTimeout(() => finish(reject, new Error('indexedDB request timed out')), this._cacheProbeMs);
+      request.onsuccess = () => finish(resolve, request.result);
+      request.onerror = () => finish(reject, request.error);
     });
   },
 
@@ -64,8 +66,19 @@ const fileProviderStorageMethods = {
     if (!this._canUseIndexedDb()) return Promise.resolve(null);
     if (this._idb) return Promise.resolve(this._idb);
     if (this._idbPromise) return this._idbPromise;
-    this._idbPromise = new Promise((resolve) => {
-      const request = this._indexedDB.open(IDB_NAME, IDB_VERSION);
+    const openEpoch = ++this._idbOpenEpoch;
+    let promise;
+    promise = new Promise((resolve) => {
+      let request, settled = false;
+      const settle = db => {
+        if (settled) { db?.close?.(); return; }
+        settled = true; clearTimeout(timer);
+        if (this._idbPromise === promise && !db) this._idbPromise = null;
+        resolve(db);
+      };
+      const timer = setTimeout(() => { this._idbDisabled = true; settle(null); }, this._cacheProbeMs);
+      try { request = this._indexedDB.open(IDB_NAME, IDB_VERSION); }
+      catch { this._idbDisabled = true; settle(null); return; }
       request.onupgradeneeded = () => {
         const db = request.result;
         if (!db.objectStoreNames.contains(IDB_STORE_ENTRIES)) {
@@ -81,21 +94,22 @@ const fileProviderStorageMethods = {
       };
       request.onsuccess = () => {
         const db = request.result;
+        if (settled || this._disposed || openEpoch !== this._idbOpenEpoch) { db?.close?.(); settle(null); return; }
         this._idb = db;
         db.onversionchange = () => {
           db.close();
-          if (this._idb === db) this._idb = null;
-          this._idbPromise = null;
+          if (this._idb === db) { this._idb = null; if (this._idbPromise === promise) this._idbPromise = null; }
         };
-        resolve(db);
+        settle(db);
       };
       request.onerror = () => {
         this._idbDisabled = true;
-        this._idbPromise = null;
-        resolve(null);
+        settle(null);
       };
+      request.onblocked = () => { this._idbDisabled = true; settle(null); };
     });
-    return this._idbPromise;
+    this._idbPromise = promise;
+    return promise;
   },
 
   async _loadFromIndexedDb(url, type, path = '') {
@@ -124,14 +138,15 @@ const fileProviderStorageMethods = {
     }
   },
 
-  async _touchIndexedDbEntry(url, entry) {
+  async _touchIndexedDbEntry(url) {
     const db = await this._openIndexedDb();
     if (!db) return;
     try {
       const tx = db.transaction(IDB_STORE_ENTRIES, 'readwrite');
       const done = this._idbTransactionDone(tx).catch(() => false);
       const store = tx.objectStore(IDB_STORE_ENTRIES);
-      store.put({ ...entry, lastAccess: Date.now() });
+      const current = await this._idbRequest(store.get(url));
+      if (current) store.put({ ...current, lastAccess: Date.now() });
       await done;
     } catch (e) {
       // ignore
@@ -173,9 +188,7 @@ const fileProviderStorageMethods = {
         throw transactionError || new Error('indexedDB transaction failed');
       }
       this._cacheStats.indexedDbBytes = total;
-      if (total > IDB_MAX_BYTES) {
-        this._pruneIndexedDb(total);
-      }
+      if (total > IDB_MAX_BYTES) await this._pruneIndexedDb(total);
       return true;
     } catch (e) {
       return false;
@@ -185,29 +198,30 @@ const fileProviderStorageMethods = {
   async _pruneIndexedDb(totalBytes) {
     const db = await this._openIndexedDb();
     if (!db) return;
-    let remaining = totalBytes;
-    if (remaining <= IDB_MAX_BYTES) return;
     try {
       const tx = db.transaction([IDB_STORE_ENTRIES, IDB_STORE_PAYLOADS, IDB_STORE_META], 'readwrite');
+      const done = this._idbTransactionDone(tx).catch(() => false);
       const entries = tx.objectStore(IDB_STORE_ENTRIES);
       const payloads = tx.objectStore(IDB_STORE_PAYLOADS);
       const metaStore = tx.objectStore(IDB_STORE_META);
+      const current = await this._idbRequest(metaStore.get('totalBytes'));
+      let remaining = Number.isFinite(current?.value) ? current.value : totalBytes;
+      if (!(remaining > IDB_MAX_BYTES)) { await done; return; }
       const index = entries.index('lastAccess');
       const cursorRequest = index.openCursor();
-      cursorRequest.onsuccess = () => {
-        const cursor = cursorRequest.result;
-        if (!cursor || remaining <= IDB_MAX_BYTES) {
-          metaStore.put({ key: 'totalBytes', value: Math.max(0, remaining) });
-          this._cacheStats.indexedDbBytes = Math.max(0, remaining);
-          return;
-        }
-        const entry = cursor.value;
-        const size = entry?.size || 0;
-        entries.delete(entry.url);
-        payloads.delete(entry.url);
-        remaining = Math.max(0, remaining - size);
-        cursor.continue();
-      };
+      await new Promise((resolve, reject) => {
+        cursorRequest.onerror = () => reject(cursorRequest.error || new Error('indexedDB prune cursor failed'));
+        cursorRequest.onsuccess = () => {
+          const cursor = cursorRequest.result;
+          if (!cursor || remaining <= IDB_MAX_BYTES) { resolve(); return; }
+          const entry = cursor.value;
+          entries.delete(entry.url); payloads.delete(entry.url);
+          remaining = Math.max(0, remaining - (entry?.size || 0));
+          cursor.continue();
+        };
+      });
+      metaStore.put({ key: 'totalBytes', value: Math.max(0, remaining) });
+      if (await done) this._cacheStats.indexedDbBytes = Math.max(0, remaining);
     } catch (e) {
       // ignore
     }
@@ -237,7 +251,7 @@ const fileProviderStorageMethods = {
 
   _getLocalStorageUsage() {
     return this._getLocalStorageEntries()
-      .reduce((total, entry) => total + (entry.value ? String(entry.value).length : 0), 0);
+      .reduce((total, entry) => total + (entry.value ? String(entry.value).length * 2 : 0), 0);
   },
 
   _updateLocalStorageStats() {
@@ -246,10 +260,9 @@ const fileProviderStorageMethods = {
 
   _serializeLocalStorageEntry(entry) {
     const next = { ...entry, lastAccess: entry.lastAccess || Date.now() };
-    let json = JSON.stringify({ ...next, size: 0 });
-    next.size = json.length;
-    json = JSON.stringify(next);
-    next.size = json.length;
+    next.size = 0;
+    let json = JSON.stringify(next);
+    while (next.size !== json.length * 2) { next.size = json.length * 2; json = JSON.stringify(next); }
     return { entry: next, json };
   },
 
@@ -271,7 +284,7 @@ const fileProviderStorageMethods = {
     const parsed = [];
     for (const entry of entries) {
       const raw = entry.value;
-      total += raw ? String(raw).length : 0;
+      total += raw ? String(raw).length * 2 : 0;
       let parsedEntry = null;
       try {
         parsedEntry = raw ? JSON.parse(raw) : null;
@@ -281,7 +294,7 @@ const fileProviderStorageMethods = {
       parsed.push({
         key: entry.key,
         lastAccess: parsedEntry?.lastAccess || 0,
-        size: parsedEntry?.size || (raw ? String(raw).length : 0)
+        size: raw ? String(raw).length * 2 : 0
       });
     }
     const target = Math.max(0, LOCAL_STORAGE_MAX_BYTES - requiredBytes);
@@ -298,17 +311,9 @@ const fileProviderStorageMethods = {
     this._cacheStats.localStorageBytes = total;
   },
 
-  _touchLocalStorageEntry(url, entry) {
-    if (!entry) return;
-    entry.lastAccess = Date.now();
-    const key = this._localStorageKey(url);
-    const serialized = this._serializeLocalStorageEntry(entry);
-    if (this._setLocalStorageItem(key, serialized.json)) {
-      this._cacheStats.localStorageBytes = Math.max(
-        this._cacheStats.localStorageBytes,
-        this._getLocalStorageUsage()
-      );
-    }
+  _touchLocalStorageEntry() {
+    // A warm read must not synchronously rewrite a base64 payload or scan the origin.
+    // Local storage entries retain coarse insertion recency until replaced.
   },
 
   _loadFromLocalStorage(url, type, path = '') {
@@ -347,8 +352,14 @@ const fileProviderStorageMethods = {
       stored.lastAccess = Date.now();
       const serialized = this._serializeLocalStorageEntry(stored);
       const key = this._localStorageKey(url);
+      const previous = this._getLocalStorage()?.getItem?.(key);
+      const previousSize = previous ? String(previous).length * 2 : 0;
+      const required = serialized.json.length * 2;
+      if (required > LOCAL_STORAGE_MAX_BYTES) return false;
+      if (this._getLocalStorageUsage() - previousSize + required > LOCAL_STORAGE_MAX_BYTES) this._evictLocalStorage(required);
+      if (this._getLocalStorageUsage() - (this._getLocalStorage()?.getItem?.(key)?.length || 0) * 2 + required > LOCAL_STORAGE_MAX_BYTES) return false;
       if (!this._setLocalStorageItem(key, serialized.json)) {
-        this._evictLocalStorage(serialized.entry.size);
+        this._evictLocalStorage(required);
         if (!this._setLocalStorageItem(key, serialized.json)) {
           return false;
         }

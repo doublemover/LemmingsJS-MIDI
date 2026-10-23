@@ -270,7 +270,10 @@ describe('FileProvider', function () {
 
     provider._fetchHead = async () => ({ etag: 'other', lastModified: 'match' });
     await provider._verifyCache('url', { type: 'binary', lastModified: 'match' });
-    assert.strictEqual(fetchCalls, 0);
+    assert.strictEqual(fetchCalls, 1, 'a newly supplied ETag requires a fresh representation');
+    provider._fetchHead = async () => ({ etag: null, lastModified: 'match' });
+    await provider._verifyCache('url', { type: 'binary', lastModified: 'match' });
+    assert.strictEqual(fetchCalls, 1);
   });
 
   it('_verifyCache swallows update errors', async function () {
@@ -344,6 +347,7 @@ describe('FileProvider', function () {
     const promise = provider._fetchText(url);
     requests[0].respond(200, 'hi');
     const result = await promise;
+    await provider.waitForCacheWrites();
     assert.strictEqual(result, 'hi');
     const entry = JSON.parse(global.localStorage.getItem(cacheKey(url)));
     assert.strictEqual(entry.type, 'text');

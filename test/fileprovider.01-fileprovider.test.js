@@ -285,16 +285,18 @@ describe('FileProvider', function () {
   it('loadBinary caches identical requests', async function () {
     const p1 = provider.loadBinary('data', 'file.bin');
     const p2 = provider.loadBinary('data', 'file.bin');
-    assert.strictEqual(p1, p2);
+    assert.notStrictEqual(p1, p2);
     assert.strictEqual(requests.length, 1);
 
     const buffer = new ArrayBuffer(0);
     requests[0].respond(200, buffer);
     const result = await p1;
+    const second = await p2;
     assert.ok(result instanceof MockBinaryReader);
+    assert.notStrictEqual(result, second);
 
     const p3 = provider.loadBinary('data', 'file.bin');
-    assert.strictEqual(p1, p3);
+    assert.notStrictEqual(p1, p3);
     assert.strictEqual(requests.length, 1);
   });
 
@@ -302,7 +304,7 @@ describe('FileProvider', function () {
     const url = makeUrl('text.txt');
     const p1 = provider.loadString(url);
     const p2 = provider.loadString(url);
-    assert.strictEqual(p1, p2);
+    assert.notStrictEqual(p1, p2);
     assert.strictEqual(requests.length, 1);
 
     requests[0].respond(200, 'hello');
@@ -310,7 +312,7 @@ describe('FileProvider', function () {
     assert.strictEqual(result, 'hello');
 
     const p3 = provider.loadString(url);
-    assert.strictEqual(p1, p3);
+    assert.notStrictEqual(p1, p3);
     assert.strictEqual(requests.length, 1);
   });
 
@@ -349,6 +351,7 @@ describe('FileProvider', function () {
     const p1 = provider.loadString(url);
     requests[0].respond(200, 'hello');
     const result1 = await p1;
+    await provider.waitForCacheWrites();
     assert.strictEqual(result1, 'hello');
     const stored = global.localStorage.getItem(cacheKey(url));
     assert.ok(stored, 'entry stored');
@@ -401,7 +404,7 @@ describe('FileProvider', function () {
     await p1;
 
     const p2 = provider.loadBinary('data', 'file.bin');
-    assert.strictEqual(p2, p1);
+    assert.notStrictEqual(p2, p1);
     assert.strictEqual(calls, 1);
     await p2;
 
@@ -410,7 +413,10 @@ describe('FileProvider', function () {
     assert.strictEqual(calls, 2);
     await p3;
 
-    assert.strictEqual(provider._cache.get(url), p1);
+    assert.ok(provider._cache.has(`binary:${url}`));
+    const p4 = provider.loadBinary('data', 'file.bin');
+    await p4;
+    assert.strictEqual(calls, 2);
   });
 
   it('loadBinary uses indexedDB path when enabled and uncached', async function () {

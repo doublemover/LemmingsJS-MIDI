@@ -71,7 +71,7 @@ class BinaryReader extends BaseLogger {
       dataLength = 0;
       this.log.log('BinaryReader from NULL; size: 0');
     } else if (dataArray instanceof BinaryReader) {
-      this.#data = dataArray.data;
+      this.#data = dataArray.#data;
       dataLength = dataArray.length;
       baseHiddenOffset = dataArray.hiddenOffset;
       this.log.log('BinaryReader from BinaryReader; size: ' + dataLength);
@@ -126,9 +126,9 @@ class BinaryReader extends BaseLogger {
     this.ready = Promise.resolve(this.#data);
   }
 
-  /** @returns {Uint8Array} Backing data array */
+  /** @returns {Uint8Array} Independent copy of the backing bytes. */
   get data() {
-    return this.#data;
+    return this.#data.slice();
   }
 
   /** @returns {number} Logical start offset */

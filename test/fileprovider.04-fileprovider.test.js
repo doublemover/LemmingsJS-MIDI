@@ -341,7 +341,7 @@ describe('FileProvider', function () {
       removeItem(key) { removed += 1; store.delete(key); },
       setItem(key, value) { store.set(key, value); }
     };
-    provider._evictLocalStorage(4 * 1024 * 1024 - 1);
+    provider._evictLocalStorage(4 * 1024 * 1024 - 80);
     assert.strictEqual(removed, 1);
   });
 

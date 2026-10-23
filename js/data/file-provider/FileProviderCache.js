@@ -16,10 +16,12 @@ import {
 } from './FileProviderShared.js';
 const fileProviderCacheMethods = {
   clearCache() {
+    this._cacheEpoch++;
     this._cache.clear();
   },
 
   async close() {
+    this._idbOpenEpoch++;
     const db = this._idb || await this._idbPromise?.catch?.(() => null);
     db?.close?.();
     this._idb = null;
@@ -27,9 +29,13 @@ const fileProviderCacheMethods = {
   },
 
   dispose() {
+    this._disposed = true;
+    this._cacheEpoch++;
+    for (const request of [...this._requests]) request.abort();
+    for (const queued of [...this._requestQueue]) queued.abort();
     this._cache.clear();
     this._validationPromises.clear();
-    this.close();
+    this.close().catch(() => {});
   },
 
   getCacheStats() {
@@ -39,6 +45,8 @@ const fileProviderCacheMethods = {
       indexedDbBytes: this._cacheStats.indexedDbBytes
     };
   },
+
+  waitForCacheWrites() { return Promise.allSettled([...this._pendingCacheWrites]); },
 
   async _storeInCache(url, entry) {
     const stored = await this._storeInIndexedDb(url, entry);
@@ -82,13 +90,12 @@ const fileProviderCacheMethods = {
     const head = await this._fetchHead(url);
     if (!head) return;
     if (entry.etag && head.etag && entry.etag === head.etag) return;
-    if (entry.lastModified && head.lastModified && entry.lastModified === head.lastModified) return;
+    if (!entry.etag && !head.etag && entry.lastModified && head.lastModified && entry.lastModified === head.lastModified) return;
+    const type = entry.type, key = type === 'binary' ? `binary:${url}` : url;
+    const epoch = this._cacheEpoch, version = this._requestVersions.get(key);
     try {
-      if (entry.type === 'binary') {
-        await this._fetchBinary(url, '');
-      } else {
-        await this._fetchText(url);
-      }
+      const refreshed = type === 'binary' ? await this._fetchBinary(url, '', epoch) : await this._fetchText(url, epoch);
+      if (!this._disposed && this._cacheEpoch === epoch && this._requestVersions.get(key) === version) this._cache.set(key, Promise.resolve(refreshed));
     } catch (e) {
       this.log.log('cache update error', e);
     }
