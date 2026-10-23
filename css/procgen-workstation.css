@@ -107,6 +107,9 @@ body.procgen-workstation {
 .studio-lane-navigation { display: flex; align-items: center; gap: 4px; padding-right: 5px; border-right: 1px solid #b2c2cd; }
 .studio-lane-range { font: 10px ui-monospace, monospace; color: #557084; white-space: nowrap; }
 .studio-status { flex: 1 1 110px; min-width: 0; max-width: 320px; padding: 0 7px; color: #637c8c; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.studio-storage-status { font-size: 10px; font-weight: 700; color: #805d21; white-space: nowrap; }
+.studio-storage-status[data-state="saved"] { color: #306b45; }
+.studio-storage-status[data-state="error"] { color: #a3342f; }
 .studio-dialog { min-width: min(480px, 90vw); max-height: 80vh; overflow: auto; color: #2e4556; background: #edf3f8; border: 1px solid white; border-radius: 10px; box-shadow: 0 10px 70px #142d4270; }
 .studio-dialog button { display: block; margin: 8px 0; width: 100%; text-align: left; }
 .studio-dialog::backdrop { background: #20324070; backdrop-filter: blur(3px); }

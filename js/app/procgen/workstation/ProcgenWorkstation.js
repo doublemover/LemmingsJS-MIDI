@@ -64,6 +64,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const retirement = createProcgenRetirementScope();
   let lastHistoryGroup = null, inputGestureSerial = 0;
   let documentGeneration = 1, projectRevision = 0, inputLease = null;
+  let editRevision = 0, savedRevision = -1, lastSavedAt = null, saveInFlight = false;
+  let transportStopGeneration = 0;
   const historySizes = new WeakMap();
   let historyDropped = 0;
   const historyBytes = value => {
@@ -80,6 +82,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }
   };
   const status = text => { if (!disposed) view?.status(text); };
+  const storageStatus = error => view?.storage?.({ dirty: editRevision !== savedRevision, savedAt: lastSavedAt, error });
   const inputTarget = lease => {
     const lane = project.procgen.lanes.find(item => item.id === lease.laneId);
     const pattern = lane?.patterns?.[lease.slot];
@@ -142,6 +145,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     lastHistoryGroup = history ? historyGroup : null;
     project = createProcgenWorkstationProject(sanitizeMidiProject(next));
     projectRevision++;
+    editRevision++; storageStatus();
     if (inputLease && !inputTarget(inputLease)) cancelInputEdits('target was removed');
     if (!project.procgen.lanes.some(lane => lane.id === state.laneId)) state.laneId = project.procgen.lanes[0].id;
     state.slot = Math.max(0, Math.min(3, state.slot || 0)); state.step = Math.max(0, Math.min(selected().patterns[state.slot].length - 1, state.step || 0));
@@ -191,6 +195,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       else pendingResume = (engine?.getState().beat ?? -1) >= 0;
     },
     onStop(reason) {
+      transportStopGeneration++;
       if (!disposed && ['clock-lost', 'suspended', 'clock-overload', 'output-disconnected'].includes(reason)) status('Transport stopped: ' + reason.replaceAll('-', ' ') + '. Press Play or send MIDI Start/Continue to resume.');
     },
     onPosition(position) {
@@ -359,6 +364,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (session) {
       documentGeneration++;
       cancelInputEdits('project loaded');
+      savedRevision = -1; lastSavedAt = null; storageStatus();
       suppressPersistence = true;
       syncProject(session.project, { history: false, render: false }); Object.assign(legacy.settings, session.settings, { workstation: true });
       lastLegacySpeed = legacy.settings.speed;
@@ -442,6 +448,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       engine.reset(); transport.stop(); pendingResume = false;
       if (fresh) documentGeneration++;
       bindRuntime();
+      if (fresh) { savedName = 'Untitled session'; savedRevision = -1; lastSavedAt = null; storageStatus(); }
       if (previousTransport.playing) play(); status(fresh ? 'New project ready.' : 'World rebuilt.'); return true;
     } catch (error) {
       if (!ownsOperation(lease)) return false;
@@ -485,7 +492,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     historyBusy: () => pendingHistory !== null,
     historyState: () => Object.freeze({ undo: undo.length, redo: redo.length,
       retainedBytes: retainedHistoryBytes(), byteLimit: historyBytesLimit, dropped: historyDropped }),
-    transport(patch) { configureTransport(patch); if (patch.gameSpeed != null) legacy.setSpeed(patch.gameSpeed); persist(); },
+    transport(patch) { configureTransport(patch); if (patch.gameSpeed != null) legacy.setSpeed(patch.gameSpeed); editRevision++; storageStatus(); persist(); },
     addLane: safe(async () => { if (!await rebuild({ projectNext: reduceMidiProject(project, { type: 'procgen/addLane' }) })) return false; state.laneId = project.procgen.lanes.at(-1).id; view.render(); return true; }),
     removeLane: safe(async () => { await rebuild({ projectNext: reduceMidiProject(project, { type: 'procgen/removeLane', laneId: selected().id }) }); }),
     duplicate() { const lane = selected(), slot = (state.slot + 1) % 4; dispatch({ type: 'procgen/pattern', laneId: lane.id, slot, patch: clone(lane.patterns[state.slot]) }); state.slot = slot; view.render(); },
@@ -522,12 +529,33 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     connect: safe(async () => { if (!window.WebMidi) throw new Error('Web MIDI is unavailable in this browser.'); if (!window.WebMidi.enabled) await window.WebMidi.enable({ sysex: false }); syncPorts(); view.renderInspector(); status('MIDI connected. Choose note and clock ports, then press Play.'); }),
     expression(event) { ports.sendEvent({ ...event, type: event.type === 'pitchBend' ? 'bend' : event.type }); },
     save: safe(async () => {
+      if (saveInFlight) return false;
       if (worldBusy) throw new Error('Wait for the world change to finish before saving.');
+      saveInFlight = true;
       const wasPlaying = transport.getState().playing; beforeRestart();
-      try { const name = typeof window.prompt === 'function' ? window.prompt('Project name', savedName) : savedName; if (name == null) return false; if (!name.trim()) { status('Enter a project name to save.'); return false; } const session = capture(name, { resume: false }); await storage.save(name, session); savedName = name; status('Saved ' + name + '.'); return true; }
-      finally { if (wasPlaying) play(); }
+      const saveDocumentGeneration = documentGeneration, saveOperationSerial = operationSerial;
+      let resumeStopGeneration = transportStopGeneration;
+      try {
+        const name = typeof window.prompt === 'function' ? window.prompt('Project name', savedName) : savedName;
+        if (name == null) return false;
+        if (!name.trim()) { status('Enter a project name to save.'); return false; }
+        const session = capture(name, { resume: false }), revision = editRevision;
+        resumeStopGeneration = transportStopGeneration;
+        await storage.save(name, session);
+        if (disposed) return false;
+        if (documentGeneration !== saveDocumentGeneration || operationSerial !== saveOperationSerial) return true;
+        savedName = name; savedRevision = revision; lastSavedAt = session.savedAt; storageStatus();
+        status(editRevision === revision ? 'Saved ' + name + '.' : 'Snapshot saved; newer edits are unsaved.'); return true;
+      } catch (error) {
+        if (documentGeneration === saveDocumentGeneration && operationSerial === saveOperationSerial) storageStatus(error);
+        throw error;
+      } finally {
+        saveInFlight = false;
+        if (!disposed && wasPlaying && documentGeneration === saveDocumentGeneration && operationSerial === saveOperationSerial &&
+            transportStopGeneration === resumeStopGeneration && !transport.getState().playing) play();
+      }
     }),
-    load: safe(async () => { if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.'); const lease = beginOperation('select-session'); const entries = await storage.list(); if (!ownsOperation(lease)) return false; view.showProjects(entries, safe(async id => { if (!ownsOperation(lease)) return false; return loadSession(await storage.load(id), lease); })); return true; }),
+    load: safe(async () => { if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.'); const lease = beginOperation('select-session'); const entries = await storage.list(); if (!ownsOperation(lease)) return false; view.showProjects(entries, safe(async id => { if (!ownsOperation(lease)) return false; const session = await storage.load(id); const loaded = await loadSession(session, lease); if (loaded) { savedRevision = editRevision; lastSavedAt = session.savedAt; storageStatus(); } return loaded; })); return true; }),
     import: safe(async file => { if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.'); const lease = beginOperation('import'); const text = await file.text(); if (!ownsOperation(lease)) return false; const session = JSON.parse(text); if (!ownsOperation(lease)) return false; return loadSession(session, lease); }),
     export: safe(async () => { const session = capture(); download(JSON.stringify(session), savedName.replace(/[^a-z0-9_-]+/gi, '-') + '.procgen.json', 'application/json'); status('Project exported.'); }),
     exportMidi() {
@@ -573,7 +601,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   window.WebMidi?.addListener?.('connected', connected);
   listeners.push(() => window.WebMidi?.removeListener?.('disconnected', disconnected));
   listeners.push(() => window.WebMidi?.removeListener?.('connected', connected));
-  prepareSettings(); setLegacyProject(project, { persist: false }); legacy.setSpeed(transport.getState().gameSpeed); lastLegacySpeed = legacy.settings.speed; view.render(); view.transport(transport.getState());
+  prepareSettings(); setLegacyProject(project, { persist: false }); legacy.setSpeed(transport.getState().gameSpeed); lastLegacySpeed = legacy.settings.speed; view.render(); view.transport(transport.getState()); storageStatus();
   return { getProject: () => project, getInputEditLease: () => inputLease && Object.freeze({ ...inputLease }),
     getStartupPlan: () => ({ ...startupPlan, project: clone(startupPlan.project) }), getLaneAssignments: () => project.procgen.lanes.map(lane => lane.family),
     getPlaybackState: () => ({ ...legacy.local.getState(), activeNotes: router()?.scheduler?._activeNotes?.size || 0, pendingNotes: router()?.scheduler?._pendingNoteOns?.size || 0, pressure: router()?.scheduler?.getOutputPressure?.() || ports.getState().pressure }),

@@ -14,7 +14,7 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
   let time = 0, paused = false, enabled = false;
   const elements = new Map(['procgenPause', 'procgenPanic', 'procgenSpeed', 'procgenSpeedUp', 'procgenSpeedDown', 'procgenSpeedReadout'].map(id => [id, target()]));
   const document = { ...target(), getElementById: id => elements.get(id) || null };
-  const values = new Map(), stored = new Map(), calls = [], positions = [], statuses = [], restarts = [], captures = [];
+  const values = new Map(), stored = new Map(), calls = [], positions = [], statuses = [], storageReceipts = [], restarts = [], captures = [];
   if (persisted) values.set('lemmings.procgen.workstation.v1', JSON.stringify(persisted));
   const window = { WebMidi: webMidi, location: { search }, performance: { now: () => time }, localStorage: { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value) },
     crypto: { getRandomValues(value) { value[0] = 91; } }, prompt: () => 'Test song' };
@@ -30,7 +30,7 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
     setPaused(value) { paused = value; }, isPaused: () => paused, setSpeed(value) { this.settings.speed = value; },
     local: { getState: () => ({ enabled, selectedBackend: backend, outputId }) } };
   let viewProps;
-  const view = { render() {}, renderInspector() {}, transport() {}, recording() {}, status: value => statuses.push(value), showProjects() {}, dispose() { this.disposed = true; } };
+  const view = { render() {}, renderInspector() {}, transport() {}, recording() {}, status: value => statuses.push(value), storage: value => storageReceipts.push(value), showProjects() {}, dispose() { this.disposed = true; } };
   let rejectSave = false, saveCalls = 0;
   const storage = { async save(id, session) { saveCalls++; if (rejectSave) throw new Error('Storage unavailable'); stored.set(id, session); }, async load(id) { return stored.get(id); }, async list() { return [...stored.keys()].map(id => ({ id })); }, close() {} };
   let rejectRestart = false, returnFalseRestart = false, restartGate = null;
@@ -40,7 +40,7 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
     captureCheckpoint: world => { captures.push(world); return { version: 1, laneCount: world.laneCount, seed: world.seed, clock: { ...world.timer } }; },
     transportOptions: { driver: { start() {}, stop() {} }, lookaheadMs }, historyBytesLimit
   });
-  return { studio, legacy, view, storage, calls, positions, statuses, restarts, stored, captures, elements, window, get runtime() { return runtime; }, get viewProps() { return viewProps; }, get saveCalls() { return saveCalls; },
+  return { studio, legacy, view, storage, calls, positions, statuses, storageReceipts, restarts, stored, captures, elements, window, get runtime() { return runtime; }, get viewProps() { return viewProps; }, get saveCalls() { return saveCalls; },
     enable() { enabled = true; }, time(value) { time = value; studio.transport.pump(); }, failRestart() { rejectRestart = true; }, cancelRestart() { returnFalseRestart = true; }, failSave() { rejectSave = true; },
     holdRestart() { let release; restartGate = new Promise(resolve => { release = resolve; }); return release; } };
 }
@@ -290,6 +290,49 @@ describe('ProcGen workstation orchestration', () => {
     expect(f.studio.transport.getState()).to.include({ playing: false, beat: 0.25 });
     expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(60);
     expect(f.runtime.lanes.renderer.camera.restored).to.deep.equal({ cameraX: 45 }); f.studio.dispose();
+  });
+
+  it('keeps the save indicator dirty when edits outlive an in-flight durable snapshot', async () => {
+    const f = setup(); f.studio.bindRuntime();
+    const originalSave = f.storage.save.bind(f.storage);
+    let release; const gate = new Promise(resolve => { release = resolve; });
+    f.storage.save = async (...args) => { await gate; return originalSave(...args); };
+    const saving = f.studio.handlers.save();
+    await Promise.resolve();
+    f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 81 } });
+    release(); expect(await saving).to.equal(true);
+    expect(f.storageReceipts.at(-1)).to.include({ dirty: true, savedAt: f.stored.get('Test song').savedAt });
+    expect(f.statuses.at(-1)).to.include('newer edits are unsaved');
+    f.studio.dispose();
+  });
+
+  it('does not rename or resume a new document when an older save completes late', async () => {
+    const f = setup(); f.studio.bindRuntime();
+    const originalSave = f.storage.save.bind(f.storage);
+    let release; const gate = new Promise(resolve => { release = resolve; });
+    f.storage.save = async (...args) => { await gate; return originalSave(...args); };
+    const saving = f.studio.handlers.save();
+    await Promise.resolve();
+    expect(await f.studio.handlers.new()).to.equal(true);
+    f.studio.transport.pause();
+    release(); expect(await saving).to.equal(true);
+    expect(f.stored.get('Test song')).to.exist;
+    expect(f.studio.transport.getState().playing).to.equal(false);
+    expect(f.studio.capture().name).to.equal('Untitled session');
+    expect(f.storageReceipts.at(-1).dirty).to.equal(true);
+    f.studio.dispose();
+  });
+
+  it('does not override an explicit pause after Save began', async () => {
+    const f = setup(); f.studio.bindRuntime();
+    const originalSave = f.storage.save.bind(f.storage);
+    let release; const gate = new Promise(resolve => { release = resolve; });
+    f.storage.save = async (...args) => { await gate; return originalSave(...args); };
+    const saving = f.studio.handlers.save();
+    await Promise.resolve(); f.studio.transport.pause();
+    release(); expect(await saving).to.equal(true);
+    expect(f.studio.transport.getState().playing).to.equal(false);
+    f.studio.dispose();
   });
 
   it('cancels Save before checkpoint capture or storage writes and restores playback', async () => {
