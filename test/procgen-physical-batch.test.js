@@ -145,6 +145,26 @@ describe('completed physical event batches', () => {
     bus.dispose();
   });
 
+  it('records accepted and rejected commands without inventing rejected action transitions', () => {
+    const bus = new ProcgenSoundEventBus({ getGameTicks: () => 1, frameTime: 60 }, 1);
+    const batches = []; bus.onBatch.on(batch => batches.push(batch));
+    const actor = new Lemming(10, 20, 7, { physicalFacts: { enabled: () => true, emit: fact => bus.emitPhysicalFact(fact) } });
+    actor.laneIndex = 0;
+    const building = { actionName: 'building' }, digging = { actionName: 'digging' };
+    const manager = { actions: [], skillActions: { dig: { triggerLemAction: lem => { lem.setAction(digging); return true; } } },
+      logging: { log: () => {} } };
+    bus.beginTick({ worldId: 'scene', generation: 1, tick: 1, terrainRevisionBefore: 0 });
+    actor.setAction(building);
+    expect(lemmingManagerInteractionMethods.doLemmingAction.call(manager, actor, 'dig')).to.equal(true);
+    expect(lemmingManagerInteractionMethods.doLemmingAction.call(manager, actor, 'missing')).to.equal(false);
+    bus.commitTick(Object.freeze({ revision: '1:1' }), 0);
+    const kinds = batches[0].facts.map(fact => fact.kind);
+    expect(kinds).to.deep.equal(['ActionEntered', 'ActionExited', 'ActionEntered', 'CommandApplied', 'CommandRejected']);
+    expect(batches[0].facts.at(-1)).to.include({ actorId: 7, reason: 'unknown-skill' });
+    expect(batches[0].facts.filter(fact => fact.kind === 'ActionEntered')).to.have.length(2);
+    bus.dispose();
+  });
+
   it('records endpoint motion and terminal failure from the world pass', () => {
     const world = new ProcgenLaneWorld({ masks, assists: false });
     const actor = world.actors[0];
@@ -155,6 +175,28 @@ describe('completed physical event batches', () => {
     world.step();
     const terminal = batches[1].facts.find(fact => fact.kind === 'ActorTerminated');
     expect(terminal).to.include({ actorId: actor.id, terminationReason: 'out-of-world' });
+    world.dispose();
+  });
+
+  it('publishes between-tick action changes and excludes speculative clone actions', () => {
+    const world = new ProcgenLaneWorld({ masks, assists: false });
+    const actor = world.actors[0], batches = [];
+    world.soundEvents.onBatch.on(batch => batches.push(batch));
+    actor.setAction(world.actions[State.BUILDING]); actor.frameIndex = 8;
+    world.step();
+    expect(batches[0].facts.filter(fact => fact.kind === 'ActionEntered').map(fact => fact.action)).to.include('building');
+    actor.setAction(world.actions[State.DIGGING]);
+    world.step();
+    const transitions = batches[1].facts.filter(fact => ['ActionExited', 'ActionEntered'].includes(fact.kind));
+    expect(transitions.slice(0, 2).map(fact => [fact.kind, fact.action])).to.deep.equal([
+      ['ActionExited', 'building'], ['ActionEntered', 'digging']
+    ]);
+    const clone = new Lemming(actor.x, actor.y, actor.id, world.runtime);
+    world.soundEvents.beginTick({ worldId: world.worldId, generation: world.generation, tick: world.tickIndex + 1,
+      terrainRevisionBefore: world.terrainRevision });
+    clone.setAction(world.actions[State.BUILDING]);
+    world.soundEvents.commitTick(world._physicalSnapshot(), world.terrainRevision);
+    expect(batches.at(-1).facts).to.have.length(0);
     world.dispose();
   });
 

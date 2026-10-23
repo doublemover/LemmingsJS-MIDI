@@ -26,7 +26,7 @@ class ActionWalkSystem extends ActionBaseSystem {
         const directionBefore = lem.lookRight ? 'right' : 'left';
         lem.lookRight = !lem.lookRight;
         const facts = lem.runtime?.physicalFacts;
-        if (facts?.enabled?.()) {
+        if (facts?.enabled?.(lem)) {
           const contactId = `${level.worldId}:${level.generation}:${level.tickIndex}:${lem.id}:wall`;
           const position = { x: lem.x, y: lem.y };
           facts.emit({ kind: 'ContactResolved', contactId, actorId: lem.id, laneId: lem.laneIndex ?? null,

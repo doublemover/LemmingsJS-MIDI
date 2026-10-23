@@ -267,21 +267,35 @@ const lemmingManagerInteractionMethods = {
     if (!lem) {
       return false;
     }
+    const before = { canClimb: lem.canClimb === true, hasParachute: lem.hasParachute === true };
+    const facts = lem.runtime?.physicalFacts;
+    const report = (applied, reason) => {
+      if (facts?.enabled?.(lem)) {
+        const commandId = `${lem.id}:command:${lem._physicalCommandSerial = (lem._physicalCommandSerial || 0) + 1}`;
+        if (applied) {
+          for (const ability of ['canClimb', 'hasParachute']) if (before[ability] !== (lem[ability] === true)) facts.emit({ kind: 'AbilityChanged',
+            commandId, actorId: lem.id, laneId: lem.laneIndex ?? null, ability, before: before[ability], after: lem[ability] === true });
+        }
+        facts.emit({ kind: applied ? 'CommandApplied' : 'CommandRejected', commandId, actorId: lem.id,
+          laneId: lem.laneIndex ?? null, skillType: String(skillType), reason });
+      }
+      return applied;
+    };
     const actionSystem = this.skillActions[skillType];
     if (!actionSystem) {
       this.logging.log(lem.id + ' Unknown Action: ' + skillType);
-      return false;
+      return report(false, 'unknown-skill');
     }
     if (lem.action === this.actions[LemmingStateType.FALLING]) {
       if (!this._canApplyWhileFalling?.[skillType]) {
-        return false;
+        return report(false, 'falling');
       }
     }
     const redundant = this._redundantActionBySkill?.[skillType] ?? null;
     const alreadyDoingIt =
           redundant && (lem.action instanceof redundant);
     if (alreadyDoingIt) {
-      return false;
+      return report(false, 'redundant');
     }
     const wasBlocking = this._actionTypes?.blocker
       ? (lem.action instanceof this._actionTypes.blocker)
@@ -292,7 +306,7 @@ const lemmingManagerInteractionMethods = {
         this.triggerManager.removeByOwner(lem);
       }
     }
-    return ok;
+    return report(ok, ok ? 'applied' : 'trigger-rejected');
   },
 
   isNuking() { return this.nextNukingLemmingsIndex >= 0; },

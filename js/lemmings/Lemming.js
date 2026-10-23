@@ -24,6 +24,7 @@ class Lemming extends BaseLogger {
    */
   reset(x = 0, y = 0, id) {
     if (this.id != null && !this._physicalTerminated) this.endPhysicalLifecycle('pooled-reset');
+    const pendingPhysicalTransitions = this._physicalPendingTransitions;
     this.action?.spriteProvider?.resetActor?.(this);
     this.lookRight = true;
     this.frameIndex = 0;
@@ -42,8 +43,11 @@ class Lemming extends BaseLogger {
     this.y = y;
     this.id = id;
     this._physicalActionSerial = 0;
+    this._physicalCommandSerial = 0;
     this._physicalWorkSerial = 0;
     this._physicalActionInstanceId = null;
+    this._physicalActionPublished = false;
+    this._physicalPendingTransitions = pendingPhysicalTransitions || null;
     this._physicalTerminated = false;
     this._physicalDirectionFactTick = -1;
   }
@@ -57,7 +61,7 @@ class Lemming extends BaseLogger {
       trigger.type === TriggerTypes.BLOCKER_RIGHT && !walker.lookRight);
     if (!turns || walker === this) return;
     const facts = this.runtime?.physicalFacts;
-    if (facts?.enabled?.()) {
+    if (facts?.enabled?.(walker) && facts?.enabled?.(this)) {
       const contactId = `${walker.id}:${this.id}:${_tick}:blocker`;
       walker._physicalPendingBlockerContact = { contactId, blockerId: this.id };
       facts.emit({ kind: 'ContactResolved', contactId, actorId: walker.id, otherActorId: this.id,
@@ -84,28 +88,47 @@ class Lemming extends BaseLogger {
     this.state = 0;
     action?.spriteProvider?.onActionChange?.(this, previousAction, previousFrameIndex);
     if (this.id != null) {
-      const facts = this.runtime?.physicalFacts;
-      if (facts?.enabled?.() && previousAction && this._physicalActionInstanceId) facts.emit({ kind: 'ActionExited', actorId: this.id,
+      if (previousAction && this._physicalActionPublished && this._physicalActionInstanceId) this._queuePhysicalTransition({ kind: 'ActionExited', actorId: this.id,
         laneId: this.laneIndex ?? null, action: previousAction.actionName || null, actionInstanceId: this._physicalActionInstanceId,
         positionBefore: { x: this.x, y: this.y }, terminationReason: 'action-change' });
       this._physicalActionInstanceId = action ? `${this.id}:action:${++this._physicalActionSerial}` : null;
-      if (facts?.enabled?.() && action) facts.emit({ kind: 'ActionEntered', actorId: this.id,
+      this._physicalActionPublished = !!action && this._queuePhysicalTransition({ kind: 'ActionEntered', actorId: this.id,
         laneId: this.laneIndex ?? null, action: action.actionName || null, actionInstanceId: this._physicalActionInstanceId,
+        positionAfter: { x: this.x, y: this.y } });
+    }
+  }
+
+  _queuePhysicalTransition(fact) {
+    const facts = this.runtime?.physicalFacts;
+    if (facts?.enabled?.(this)) { facts.emit(fact); return true; }
+    if (facts?.observing?.(this)) { (this._physicalPendingTransitions ||= []).push(fact); return true; }
+    return false;
+  }
+
+  flushPhysicalTransitions() {
+    const facts = this.runtime?.physicalFacts;
+    if (!facts?.enabled?.(this)) return;
+    for (const fact of this._physicalPendingTransitions || []) facts.emit(fact);
+    this._physicalPendingTransitions = null;
+    if (!this._physicalTerminated && this.action && !this._physicalActionPublished) {
+      this._physicalActionPublished = true;
+      facts.emit({ kind: 'ActionEntered', actorId: this.id, laneId: this.laneIndex ?? null,
+        action: this.action.actionName || null, actionInstanceId: this._physicalActionInstanceId,
         positionAfter: { x: this.x, y: this.y } });
     }
   }
 
   endPhysicalLifecycle(reason = 'removed') {
     if (this.id == null || this._physicalTerminated) return;
-    const facts = this.runtime?.physicalFacts;
-    if (facts?.enabled?.()) {
-      if (this.action && this._physicalActionInstanceId) facts.emit({ kind: 'ActionExited', actorId: this.id,
+    if (this.runtime?.physicalFacts?.enabled?.(this) || this.runtime?.physicalFacts?.observing?.(this)) {
+      if (this.action && this._physicalActionPublished && this._physicalActionInstanceId) this._queuePhysicalTransition({ kind: 'ActionExited', actorId: this.id,
         laneId: this.laneIndex ?? null, action: this.action.actionName || null, actionInstanceId: this._physicalActionInstanceId,
         positionBefore: { x: this.x, y: this.y }, terminationReason: reason });
-      facts.emit({ kind: 'ActorTerminated', actorId: this.id, laneId: this.laneIndex ?? null,
+      this._queuePhysicalTransition({ kind: 'ActorTerminated', actorId: this.id, laneId: this.laneIndex ?? null,
         actionInstanceId: this._physicalActionInstanceId, positionBefore: { x: this.x, y: this.y }, terminationReason: reason });
     }
     this._physicalActionInstanceId = null;
+    this._physicalActionPublished = false;
     this._physicalTerminated = true;
   }
 

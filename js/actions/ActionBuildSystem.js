@@ -24,7 +24,7 @@ class ActionBuildSystem extends ActionBaseSystem {
       /// lay brick
       const startX = lem.x + (lem.lookRight ? 0 : -4);
       const brickY = lem.y - 1;
-      const observing = lem.runtime?.physicalFacts?.enabled?.() || false;
+      const observing = lem.runtime?.physicalFacts?.enabled?.(lem) || false;
       const revisionBefore = Number.isFinite(level.terrainRevision) ? level.terrainRevision : null;
       let attemptedCells = 0, changedSolidCells = 0, changedAppearanceCells = 0;
       for (let i = 0; i < 6; i++) {

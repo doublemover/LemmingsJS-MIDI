@@ -126,8 +126,10 @@ class ProcgenLaneWorld {
     this.soundEvents._queueLimit = 0;
     this.soundEvents.laneCount = this.laneCount;
     this.soundEvents.laneIndex = 0;
+    Object.defineProperty(this, '_authoritativeActors', { value: new WeakSet(), writable: true, configurable: true });
     const runtime = { soundEvents: this.soundEvents, physicalFacts: {
-      enabled: () => !!this.soundEvents._tick && this.soundEvents.onBatch.handlers.size > 0,
+      enabled: actor => !!this.soundEvents._tick && this.soundEvents.onBatch.handlers.size > 0 && this._authoritativeActors.has(actor),
+      observing: actor => this.soundEvents.onBatch.handlers.size > 0 && this._authoritativeActors.has(actor),
       emit: fact => this.soundEvents.emitPhysicalFact(fact)
     } };
     this.runtime = runtime;
@@ -160,6 +162,7 @@ class ProcgenLaneWorld {
   _spawn(lane, emit = true) {
     this.soundEvents.laneIndex = lane;
     const actor = new Lemming(36, lane * this.laneHeight + this.laneHeight - LANE_HEIGHT + 42, this.nextActorId++, this.runtime);
+    this._authoritativeActors.add(actor);
     actor.appearanceIndex = lane; actor._musicPositionId = actor.id;
     actor.laneIndex = lane; actor.spawnLaneIndex = lane;
     actor.spawnTick = this.tickIndex;
@@ -848,6 +851,7 @@ class ProcgenLaneWorld {
       let activeCount = 0;
       for (const lane of this.stall.lanes) { lane.alive = 0; lane.lowestSurvivingActorId = null; lane.buildingCount = 0; lane.bashingCount = 0; lane.floatingCount = 0; lane.diggingCount = 0; lane.miningCount = 0; lane.blockingCount = 0; }
       for (const actor of this.actors) {
+        if (observePhysical) actor.flushPhysicalTransitions();
         if (actor.failureReason || actor.removed) { if (observePhysical) actor.endPhysicalLifecycle(actor.failureReason || 'removed'); this.lanePolicy.projects.retire(actor); this._musicActorPositions.delete(actor._musicPositionId); this._syncTriggerOwner(actor); continue; }
         const initialX = actor.x, initialY = actor.y, initialDirection = actor.lookRight, initialId = actor.id;
         this.soundEvents.laneIndex = actor.laneIndex;
@@ -1043,7 +1047,7 @@ class ProcgenLaneWorld {
     if (this.soundEvents.onBatch.handlers.size && !this.soundEvents._tick) {
       this.soundEvents.beginTick({ worldId: this.worldId, generation: this.generation, tick: this.tickIndex,
         terrainRevisionBefore: this.terrainRevision, ordinal: 1 });
-      for (const actor of this.actors) actor.endPhysicalLifecycle('world-disposed');
+      for (const actor of this.actors) { actor.flushPhysicalTransitions(); actor.endPhysicalLifecycle('world-disposed'); }
       const snapshot = this._physicalSnapshot();
       this.soundEvents.commitTick(Object.freeze({ ...snapshot, actors: Object.freeze([]) }), this.terrainRevision);
     }

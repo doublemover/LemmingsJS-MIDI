@@ -142,6 +142,7 @@ function restoreProcgenCheckpoint(world, saved) {
     Object.assign(target, props);
     if (entries) { Map.prototype.clear.call(target); for (const [key, value] of entries) Map.prototype.set.call(target, key, value); }
   }
+  world._authoritativeActors = new WeakSet(world.actors);
   world.timer.speedFactor = saved.clock.speedFactor; world.eventTimeMs = saved.clock.eventTimeMs;
   const themes = world.terrain?.themes || [{ terrain: world.terrain }];
   for (let index = 0; index < themes.length; index++) if (saved.terrainSettings?.[index]) themes[index].terrain?.configure?.(world.laneCount, world.maxActors, saved.terrainSettings[index]);

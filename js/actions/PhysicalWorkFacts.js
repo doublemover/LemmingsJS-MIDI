@@ -5,7 +5,7 @@ const recordPhysicalWork = (level, actor, { operationKind, phase, cycleOrdinal, 
   targetX = actor.x, targetY = actor.y } = {}) => {
   actor._physicalWorkSerial = (actor._physicalWorkSerial || 0) + 1;
   const facts = actor.runtime?.physicalFacts;
-  if (!facts?.enabled?.()) return;
+  if (!facts?.enabled?.(actor)) return;
   facts.emit({ kind: 'TerrainWorkCommitted', actorId: actor.id, laneId: actor.laneIndex ?? null,
     actionInstanceId: actor._physicalActionInstanceId, workOperationId: `${actor.id}:work:${actor._physicalWorkSerial}`,
     operationOrdinal: actor._physicalWorkSerial, operationKind, phase, cycleOrdinal,
