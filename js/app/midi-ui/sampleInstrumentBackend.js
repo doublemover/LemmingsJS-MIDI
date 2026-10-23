@@ -1,6 +1,7 @@
 import { createSmoothedAudioParameter } from './SmoothedAudioParameter.js';
 import { createInstrumentExecutionLifecycle, isManagedExecutionEpoch } from './InstrumentExecutionLifecycle.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
+import { releaseAudioResourceAfterRetirement } from './AudioResourceLeases.js';
 
 const plain = value => value != null && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
 const finite = (value, min, max) => Number.isFinite(value) && value >= min && value <= max;
@@ -65,6 +66,31 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     }
     return value.retirement;
   };
+  const releaseComponentPin = component => {
+    component.pinRetirementScope ||= createProcgenRetirementScope();
+    return component.pinRetirementScope.retire([{ name: 'sample-pin', run: () => component.pin.release() }]);
+  };
+  const retireComponent = component => {
+    component.retirementScope ||= createProcgenRetirementScope();
+    let native;
+    return component.retirementScope.retire([
+      { name: 'native-source', run: () => { native = createProcgenRetirementScope().retire([
+        { name: 'stop', run: () => { if (component.source) { component.source.onended = null; if (component.started) {
+          try { component.source.stop(); } catch (error) { if (error.name !== 'InvalidStateError') throw error; }
+        } } } },
+        { name: 'disconnect', run: () => component.source?.disconnect() },
+        { name: 'buffer', run: () => { if (component.source) component.source.buffer = null; } },
+        { name: 'gain', run: () => component.gain?.disconnect() }
+      ]); return native; } },
+      { name: 'sample-pin', run: () => {
+        if (native.outcome !== 'complete') { component.pinWithheld = true; throw new Error('Sample source retirement is unknown; its decoded pin remains owned.'); }
+        return releaseComponentPin(component);
+      } }
+    ]);
+  };
+  const reconcileComponents = components => createProcgenRetirementScope().retire(components.map((component, index) => ({
+    name: 'closed-source-pin-' + index, run: () => releaseComponentPin(component)
+  })));
   const prepare = async (resolution, assets = []) => {
     if (disposed) return reject('disposed');
     if (preparationFault) return reject('sample-retirement-unknown');
@@ -221,7 +247,8 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
       pressureGain.connect(pan || channel.gain); pan?.connect(channel.gain);
       voice = { owner, number: 0, note: Math.round(intent.pitch.cents / 100), velocity: intent.velocity01 * 127, id: ++preview._voiceSequence,
         start, end: hardEnd, hardEnd, releaseAt: hardEnd - values.releaseSeconds, released: false, renderCost, startedAt: start, priority: 1, laneIndex: intent.laneId ?? 0,
-        main: components[0], child: components[1] || null, components, gain: components[0].gain, pressureGain, pan,
+        main: components[0], child: components[1] || null, components, gain: components[0].gain, pressureGain, pan, nativeNodesOwnedByBackend: true,
+        onContextClosed: () => reconcileComponents(components),
         peak: intent.velocity01 * values.gain01 * prepared.mix.gain01 * region.gain01, patchGain: values.gain01 * prepared.mix.gain01, attack: values.attackSeconds, decay: values.decaySeconds,
         sustain: values.sustain01, release: values.releaseSeconds, ownedGate: gateMode === 'owned', region, pitch: Object.freeze({ ...intent.pitch }),
         mixPan: prepared.mix.pan01, semanticGeneration: intent.generation, semanticEpoch: executionEpoch, patchId: prepared.id, patchRevision: prepared.revision,
@@ -231,16 +258,13 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
         isFinished: now => voice.end <= now,
         onDestroy: reason => {
           voices.delete(identity); if (preview._semanticVoiceOwners.get(sharedIdentity) === voice) preview._semanticVoiceOwners.delete(sharedIdentity);
+          let native;
           return createProcgenRetirementScope().retire([
-            ...components.flatMap((component, index) => [
-              { name: `source-stop-${index}`, run: () => { if (component.source) { component.source.onended = null;
-                if (component.started) component.source.stop(); } } },
-              { name: `source-disconnect-${index}`, run: () => component.source?.disconnect() },
-              { name: `source-buffer-${index}`, run: () => { if (component.source) component.source.buffer = null; } },
-              { name: `source-gain-${index}`, run: () => component.gain?.disconnect() }, { name: `sample-pin-${index}`, run: () => component.pin.release() }
-            ]),
-            { name: 'pressure-gain', run: () => pressureGain.disconnect() },
-            ...allocations.map((allocation, index) => ({ name: `allocation-${index}`, run: () => allocation.release() })),
+            { name: 'native-sources', run: () => { native = createProcgenRetirementScope().retire([
+              ...components.map((component, index) => ({ name: 'source-' + index, run: () => retireComponent(component) })),
+              { name: 'pressure-gain', run: () => pressureGain.disconnect() }, { name: 'pan', run: () => pan?.disconnect() }
+            ]); return native; } },
+            ...allocations.map((allocation, index) => ({ name: `allocation-${index}`, run: () => releaseAudioResourceAfterRetirement(allocation, native) })),
             { name: 'observation', run: () => { trace({ status: 'ended', voiceId: intent.voiceId, generation: intent.generation, executionEpoch, reason }); armExpiry(); } },
             { name: 'choke-ownership', run: () => {
               if (!disposed && region.chokeGroup && context.currentTime < voice.start && preview._ownerReady(owner)) rebuildChokes(region.chokeGroup, region.chokeScope);
@@ -270,12 +294,20 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
       errors++;
       if (voice && preview._voices.has(voice)) preview._destroyVoice(voice, 'sample-construction-failure');
       else {
-        for (const component of components) {
-          try { component.source?.stop(); } catch { /* Construction did not start a source. */ }
-          component.source?.disconnect(); if (component.source) component.source.buffer = null;
-          component.gain?.disconnect(); component.pin.release();
+        let native;
+        const construction = createProcgenRetirementScope();
+        const receipt = construction.retire([
+          { name: 'native-sources', run: () => { native = createProcgenRetirementScope().retire([
+            ...components.map((component, index) => ({ name: 'source-' + index, run: () => retireComponent(component) })),
+            { name: 'pressure-gain', run: () => pressureGain?.disconnect() }, { name: 'pan', run: () => pan?.disconnect() }
+          ]); return native; } },
+          ...allocations.map((allocation, index) => ({ name: 'allocation-' + index, run: () => releaseAudioResourceAfterRetirement(allocation, native) }))
+        ]);
+        if (receipt.outcome !== 'complete') {
+          const retained = { id: voice?.id ?? ++preview._voiceSequence, owner, nativeContext: context, retirement: construction, components,
+            onContextClosed: () => reconcileComponents(components) };
+          preview._retiredVoices?.set(retained.id, retained); preview._retirementFaults?.add(owner);
         }
-        pressureGain?.disconnect(); pan?.disconnect(); for (const allocation of allocations) allocation.release();
       }
       return reject(error.name === 'ResourceBudgetError' ? 'audio-resource-budget' : error.message || 'sample-construction-failure', intent.voiceId);
     }

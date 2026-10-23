@@ -83,6 +83,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       { name: 'executions', run: () => lifecycle?.invalidate() }
     ]);
     if (faultRetirement.outcome === 'complete') { slots.fill(null); node = null; runtimeResourceLease = null; }
+    else preview._retirementFaults?.add(owner);
     record({ status: 'faulted', reason, stage: 'runtime', appliedFrame: null });
     return faultRetirement;
   };
@@ -247,7 +248,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
         { name: 'initialization-timer', run: () => { if (timer != null) clearTimeout(timer); } },
         { name: 'initialization-owner', run: () => pendingInitializations.delete(cancelInitialization) }
       ]);
-      if (cleanup.outcome !== 'complete') { faultRetirement = cleanup; retirementContext = candidateContext; fault = 'preparation-retirement-unknown'; ready = false; }
+      if (cleanup.outcome !== 'complete') { faultRetirement = cleanup; retirementContext = candidateContext; fault = 'preparation-retirement-unknown'; ready = false; preview._retirementFaults?.add(owner); }
     }
   };
   const epochToken = epoch => {
@@ -427,7 +428,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       { name: 'identities', run: () => { slots.fill(null); patch = null; } }
     ]);
     if (receipt.outcome === 'complete') node = null;
-    else receipt.completion.then(value => { if (value.outcome === 'complete') node = null; });
+    else { preview._retirementFaults?.add(owner); receipt.completion.then(value => { if (value.outcome === 'complete') node = null; }); }
     return receipt;
   };
   lifecycle = createInstrumentExecutionLifecycle({ capabilities, runtime, prepare, begin, update, end, renewExecutionLease, cancelGenerationWithReceipt,

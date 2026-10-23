@@ -88,6 +88,18 @@ describe('Owned native sample regions', () => {
     expect(backend.renderDiagnostics().patchRevision).to.equal(3);
     expect((await backend.prepare(patch('a'.repeat(64), 4), [asset.pin])).reason).to.equal('sample-retirement-unknown');
   });
+  it('holds a failed native source pin until context closure while retiring its independent sibling', async () => {
+    const budget = createResourceBudget(), { backend, preview, context, asset } = await setup({ resourceBudget: budget }, region({ releaseRegion: region() }));
+    backend.begin(intent('source-fault'), 480, 'take');
+    let attempts = 0; context.sources[0].disconnect = () => { attempts++; throw new Error('source disconnect failed'); };
+    const receipt = backend.cancelGenerationWithReceipt(1, 'take');
+    expect(receipt.retirement.outcome).to.equal('partial'); expect(receipt.count).to.equal(0); expect(attempts).to.equal(1);
+    expect(context.sources[1].disconnected).to.equal(true); expect(asset.shared.pins).to.equal(3);
+    expect(preview.getState().retiredVoices).to.equal(1); expect(budget.diagnostics().unreleasedEstimatedBytes).to.be.greaterThan(0);
+    context.state = 'closed'; const closed = preview._replaceClosedContext(); await closed.completion;
+    expect(attempts).to.equal(1); expect(asset.shared.pins).to.equal(2); expect(preview.getState().retiredVoices).to.equal(0);
+    expect(budget.diagnostics().unreleasedEstimatedBytes).to.equal(0);
+  });
 
   it('converts immutable source-frame offsets at the actual decoded rate and preserves fractional pitch', async () => {
     const selected = region({ loop: { mode: 'sustain', startFrame: 8820, endFrame: 26460, crossfadeFrames: 0 } }),

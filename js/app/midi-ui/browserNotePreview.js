@@ -435,14 +435,33 @@ class BrowserNotePreview {
       ...['_master', '_limiter', '_compressor', '_compressorOutput', '_captureAnalyser'].map(field => ({ name: field, run: () => this[field]?.disconnect() })),
       { name: 'graph-reservation', run: () => this._graphResourceLease?.release() },
       { name: 'noise-reservation', run: () => this._noiseResourceLease?.release() },
-      { name: 'closed-context-acknowledgment', run: () => { acknowledgment = this._audioResources.confirmClosedContext(); return acknowledgment; } },
+      { name: 'closed-context-acknowledgment', run: () => { acknowledgment = this._reconcileClosedContext(context); return acknowledgment; } },
       { name: 'context-references', run: () => {
         this._channels.clear(); this._noiseBuffer = null; this._master = null; this._limiter = null; this._compressor = null; this._compressorOutput = null;
         this._captureAnalyser = null; this._captureSamples = null; this._context = null; this._graphResourceLease = null; this._noiseResourceLease = null;
-        if (acknowledgment?.outcome === 'complete') { this._retiredVoices.clear(); this._retirementFaults.clear(); }
+        if (acknowledgment?.outcome === 'complete') this._retirementFaults.clear();
       } }
     ]);
     return this._lastClosedContextRetirement;
+  }
+
+  _reconcileClosedContext(context) {
+    if (context?.state !== 'closed') throw new Error('Native audio retirement needs a closed context acknowledgment.');
+    const retired = [...this._retiredVoices.values()].filter(voice => voice.nativeContext === context);
+    const receipt = createProcgenRetirementScope().retire([
+      ...retired.map(voice => ({ name: 'closed-voice-' + voice.id, run: () => {
+        voice.closedContextRetirement ||= createProcgenRetirementScope();
+        return voice.closedContextRetirement.retire([{ name: 'held-native-assets', run: () => voice.onContextClosed?.() }]);
+      } })),
+      { name: 'native-reservations', run: () => this._audioResources.confirmClosedContext() }
+    ]);
+    const acknowledge = result => {
+      if (result.outcome !== 'complete') return;
+      for (const voice of retired) this._retiredVoices.delete(voice.id);
+      for (const owner of [...this._retirementFaults]) if (![...this._retiredVoices.values()].some(voice => voice.owner === owner)) this._retirementFaults.delete(owner);
+    };
+    if (receipt.state === 'retired') acknowledge(receipt); else receipt.completion.then(acknowledge);
+    return receipt;
   }
 
   _setMixEnabled(enabled) {
@@ -490,7 +509,7 @@ class BrowserNotePreview {
         this._context = null; this._retiringContext = context;
         return Promise.resolve(context?.close?.()).then(() => {
           this._retiringContext = null;
-          if (!context || context.state === 'closed') return this._audioResources.confirmClosedContext();
+          if (context?.state === 'closed') return this._reconcileClosedContext(context);
         });
       } },
       { name: 'terminal-state', run: () => {
@@ -898,15 +917,17 @@ class BrowserNotePreview {
     if (voice.retirement) return voice.retirement.getReceipt();
     if (!this._voices.delete(voice)) return;
     voice.retirement = createProcgenRetirementScope();
+    voice.nativeContext ||= this._context;
     let nativeRetirement;
     const receipt = voice.retirement.retire([
       { name: 'token', run: () => { if (voice.token != null && this._voicesByToken.get(this._tokenKey(voice.token, voice.owner)) === voice) this._voicesByToken.delete(this._tokenKey(voice.token, voice.owner)); } },
       { name: 'native-voice', run: () => { nativeRetirement = createProcgenRetirementScope().retire([
         { name: 'backend-voice', run: () => voice.onDestroy?.(reason) },
-        { name: 'source-stop', run: () => { if (voice.oscillator) { voice.oscillator.onended = null;
+        { name: 'source-stop', run: () => { if (voice.oscillator && !voice.nativeNodesOwnedByBackend) { voice.oscillator.onended = null;
           try { voice.oscillator.stop(); } catch (error) { if (error.name !== 'InvalidStateError') throw error; } } } },
-        { name: 'source-disconnect', run: () => voice.oscillator?.disconnect() },
-        { name: 'gain', run: () => voice.gain?.disconnect() }, { name: 'pan', run: () => voice.pan?.disconnect() }
+        { name: 'source-disconnect', run: () => { if (!voice.nativeNodesOwnedByBackend) voice.oscillator?.disconnect(); } },
+        { name: 'gain', run: () => { if (!voice.nativeNodesOwnedByBackend) voice.gain?.disconnect(); } },
+        { name: 'pan', run: () => { if (!voice.nativeNodesOwnedByBackend) voice.pan?.disconnect(); } }
       ]); return nativeRetirement; } },
       { name: 'reservation', run: () => releaseAudioResourceAfterRetirement(voice.resourceLease, nativeRetirement) },
       { name: 'observation', run: () => this._observe('synth-end', { ...voice.captureMeta, type: 'noteEnd', voiceId: voice.id, channel: voice.number,

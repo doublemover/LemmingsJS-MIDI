@@ -564,3 +564,19 @@ retains an explicit unclosed-context reference. Public disposal promises resolve
 to the same complete/partial receipt on repeat calls. Newly added fault fixtures
 cover the reported channel-budget failure and disconnect/backend/observer/close
 failures; runtime execution is still deferred.
+
+Native disconnect/stop failure now retains the related audio reservation through
+owner disposal. A confirmed closed context acknowledges native retirement;
+bookkeeping failures remain charged and are not blindly retried. Sample source
+components retain their decoded pins when native teardown is unknown, then
+release those withheld pins once after context closure. Backend-owned sample
+nodes have one teardown owner, avoiding duplicate disconnects in the preview.
+Construction rollback follows the same independent-leaf and reservation rules.
+
+Prepared sample and asset-set replacements keep an admitted new selection
+intact when an old pin fails to retire. Receipts expose the partial cleanup,
+further replacements stop at that ownership fault, and independent pins still
+retire. Cache entries with failed release remain inventoried and charged rather
+than disappearing before accounting acknowledges retirement. Causal dispatch
+also retains independent cancellation/execution receipts across sinks. These
+failure-path fixtures are implemented and unexecuted.

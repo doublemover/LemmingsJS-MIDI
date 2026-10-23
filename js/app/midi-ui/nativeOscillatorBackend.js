@@ -2,6 +2,7 @@ import { selectLocalAudioVoice } from '../../midi/scheduler/LocalAudioVoiceBudge
 import { createSmoothedAudioParameter } from './SmoothedAudioParameter.js';
 import { createInstrumentExecutionLifecycle, isManagedExecutionEpoch } from './InstrumentExecutionLifecycle.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
+import { releaseAudioResourceAfterRetirement } from './AudioResourceLeases.js';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const parameters = Object.freeze({
@@ -232,7 +233,21 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
     } catch (error) {
       if (error?.name !== 'ResourceBudgetError') deliveryErrors++;
       if (voice && preview._voices.has(voice)) preview._destroyVoice(voice, 'backend-failure');
-      else { resourceLease.release(); try { oscillator?.stop(); } catch { /* The oscillator may not have started. */ } oscillator?.disconnect(); gain?.disconnect(); pressureGain?.disconnect(); pan?.disconnect(); }
+      else {
+        let native;
+        const construction = createProcgenRetirementScope(), receipt = construction.retire([
+          { name: 'native-nodes', run: () => { native = createProcgenRetirementScope().retire([
+            { name: 'stop', run: () => { if (oscillator) { oscillator.onended = null; try { oscillator.stop(); } catch (failure) { if (failure.name !== 'InvalidStateError') throw failure; } } } },
+            { name: 'oscillator', run: () => oscillator?.disconnect() }, { name: 'gain', run: () => gain?.disconnect() },
+            { name: 'pressure-gain', run: () => pressureGain?.disconnect() }, { name: 'pan', run: () => pan?.disconnect() }
+          ]); return native; } },
+          { name: 'reservation', run: () => releaseAudioResourceAfterRetirement(resourceLease, native) }
+        ]);
+        if (receipt.outcome !== 'complete') {
+          const retained = { id: voice?.id ?? ++preview._voiceSequence, owner, nativeContext: context, retirement: construction, oscillator, gain, pressureGain, pan };
+          preview._retiredVoices?.set(retained.id, retained); preview._retirementFaults?.add(owner);
+        }
+      }
       return failure(error?.name === 'ResourceBudgetError' ? 'audio-resource-budget' : 'backend-failure', intent);
     }
   };
