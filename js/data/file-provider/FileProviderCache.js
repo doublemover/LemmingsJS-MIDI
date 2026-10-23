@@ -19,6 +19,7 @@ const fileProviderCacheMethods = {
     this._cacheEpoch++;
     for (const retire of this._retireCacheWrites) retire();
     this._cache.clear();
+    this._refreshes.clear();
     this._cacheTouchTimes.clear();
     for (const tx of [...this._cacheTransactions]) { try { tx.abort?.(); } catch { /* Already committed. */ } }
   },
@@ -45,6 +46,7 @@ const fileProviderCacheMethods = {
     for (const record of this._acquisitions) record.controller.abort();
     this._cache.clear();
     this._validationPromises.clear();
+    this._refreshes.clear();
     this.close().catch(() => {});
   },
 
@@ -102,23 +104,30 @@ const fileProviderCacheMethods = {
     return text.length || 0;
   },
 
-  _scheduleCacheValidation(url, entry) {
-    if (!url || !entry || this._disposed || this._validationPromises.has(url) || /\bno-store\b/i.test(entry.cacheControl || '')) return;
+  _scheduleCacheValidation(url, entry, value = null) {
+    const key = `${entry?.type}:${url}`;
+    if (!url || !entry || this._disposed || this._validationPromises.has(key) || /\bno-store\b/i.test(entry.cacheControl || '')) return;
     const maxAge = /\bmax-age=(\d+)/i.exec(entry.cacheControl || '');
     if (maxAge && Number.isFinite(entry.fetchedAt) && Date.now() - entry.fetchedAt < Number(maxAge[1]) * 1000) return;
-    const promise = this._verifyCache(url, entry)
+    const promise = this._verifyCache(url, entry, value)
       .catch(() => {})
       .finally(() => {
-        if (this._validationPromises.get(url) === promise) {
-          this._validationPromises.delete(url);
+        if (this._validationPromises.get(key) === promise) {
+          this._validationPromises.delete(key);
         }
       });
-    this._validationPromises.set(url, promise);
+    this._validationPromises.set(key, promise);
   },
 
-  async _verifyCache(url, entry) {
+  async _verifyCache(url, entry, value = null) {
     const type = entry.type, key = type === 'binary' ? `binary:${url}` : url;
     const epoch = this._cacheEpoch, version = this._requestVersions.get(key);
+    if (value != null) {
+      if (this._disposed) return;
+      try { await this._loadResource(type, url, '', { cachePolicy: 'reload', validation: { value, entry } }); }
+      catch (error) { this.log.log('cache update error', { kind: error?.kind || 'unavailable', status: error?.status ?? null }); }
+      return;
+    }
     const head = await this._fetchHead(url);
     if (!head) return;
     if (entry.etag && head.etag && entry.etag === head.etag) return;

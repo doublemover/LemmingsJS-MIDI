@@ -55,6 +55,7 @@ class FileProvider extends BaseLogger {
     this._idbOpenEpoch = 0;
     this._cacheProbeMs = Number.isFinite(options.cacheProbeMs) ? Math.max(1, options.cacheProbeMs) : 300;
     this._validationPromises = new Map();
+    this._refreshes = new Map();
     this._cacheStats = { localStorageBytes: 0, indexedDbBytes: 0 };
     this._storage = Object.hasOwn(options, 'localStorage')
       ? options.localStorage

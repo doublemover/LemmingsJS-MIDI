@@ -256,7 +256,7 @@ describe('FileProvider', function () {
     if (origFetch) {
       global.fetch = origFetch;
     }
-    provider.clearCache();
+    provider.dispose();
     setDependency('BinaryReader', origBR);
     setDependency('LogHandler', origLog);
   });

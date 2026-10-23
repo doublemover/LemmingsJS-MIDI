@@ -42,12 +42,56 @@ reconciliation rather than trusted as current data. A warm memory hit with a
 different required manifest hash fails integrity; callers explicitly refresh or
 retain their previously pinned handle.
 
-Revalidation uses bounded HEAD followed by GET when validators differ or are
-absent. ETag takes precedence over Last-Modified. HEAD failures do not establish
-freshness. `max-age` suppresses probes until its lifetime expires. Refresh work
-coalesces by locator; an intervening explicit generation invalidates an old
-probe's publication. Conditional GET/304 and a decoded asset registry remain
-separate follow-up work.
+`cachePolicy: 'revalidate'` performs a conditional GET of the current generation.
+Disk hits may also revalidate in the background. `If-None-Match` takes precedence
+over `If-Modified-Since`; absent validators require a normal GET. A conditional
+304 keeps the same content generation and updates IndexedDB freshness metadata
+without rewriting its payload. An unsolicited 304 cannot create an empty asset.
+HTTP failure retains the last accepted generation. Legacy internal probes without
+cached bytes retain a bounded HEAD compatibility path; HEAD errors do not prove
+freshness. `max-age` suppresses automatic probes until its lifetime expires.
+Refreshes coalesce by representation, locator and required hash. An intervening
+explicit generation invalidates an old probe's publication. A decoded asset
+registry remains separate follow-up work.
+
+## Required terrain closure
+
+`loadProcgenMixedTerrain` prepares the unique families in explicit
+`laneAssignments` with at most three concurrent collection preparations by
+default (`maxConcurrentCollections` may select 1–8). It reports unselected
+families in `unpreparedThemes`; selecting them in a later candidate prepares
+their bytes then. Tooling that omits `laneAssignments`, or explicitly sets
+`prepareAll: true`, prepares the full catalog. Failure of an unselected optional
+collection does not discard already supported work.
+
+Imported checkpoints supply `requiredFamilies`, an ordered array taken from
+`checkpoint.assets.map(asset => asset.family)`. This preserves the exact saved
+closure and theme order, including inactive declared families in older saves.
+Unknown families, duplicate declarations and a closure missing an assigned
+family fail before any asset read. A missing required collection reports its
+`collection`, typed transport cause and operation identity; a different family
+is never substituted.
+
+Preparation accepts the candidate's `signal` and emits
+`{phase: 'collection', collection, state, completed, total, operationId}`.
+`AssetPreparationScope` registers each manager/terrain cleanup as it is acquired,
+aborts siblings on required failure, retires already prepared siblings and
+reconciles resources registered by a late branch. Known asynchronous cleanup is
+awaited before rejection. Progress observers cannot fail preparation.
+
+`EditorAssetCache` coalesces pending decode work within one cache, with separate
+consumer cancellation and an identity-safe cache epoch. Clearing or losing the
+last consumer cancels sibling raw loads and prevents late decoding/publication.
+Cache identities include provider/root/epoch, style, ground set, source revision
+and declared resource pins. Each declared terrain pin verifies the exact root
+and SHA-256 before decode, and source provenance is retained in the payload.
+
+Decoded image frames and palettes still belong to each manager and can be
+mutable. They are **not** globally shared or made immutable with `Object.freeze`.
+Warm rebuilds therefore still repeat decoded art fingerprinting/compilation.
+A future shared decoded registry needs a deliberate read-only representation
+and lifetime/memory reservations before allocation; the raw content-handle
+boundary and reduced required closure do not claim to implement that registry.
 
 ## Lifetime and failure policy
 
@@ -114,7 +158,9 @@ application key is removed.
 
 ## Focused evidence
 
-`test/fileprovider-ownership.test.js` covers consumer/epoch races, blocked opens,
+`test/fileprovider-revalidation.test.js` covers conditional 304, validator
+precedence, missing validators, shared cancellation, racing generations and
+refresh failure. `test/fileprovider-ownership.test.js` covers consumer/epoch races, blocked opens,
 verification cancellation, independent cursors and windows, transfer copies,
 pinned refresh failure, competing refreshes, probe isolation, no-store, hash
 reuse and corrupted disk data. Existing provider fixtures cover cache admission,

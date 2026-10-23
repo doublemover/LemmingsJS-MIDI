@@ -256,7 +256,7 @@ describe('FileProvider', function () {
     if (origFetch) {
       global.fetch = origFetch;
     }
-    provider.clearCache();
+    provider.dispose();
     setDependency('BinaryReader', origBR);
     setDependency('LogHandler', origLog);
   });
@@ -367,6 +367,7 @@ describe('FileProvider', function () {
     const buffer = new ArrayBuffer(4);
     await provider._storeInIndexedDb(url, { type: 'binary', data: buffer });
 
+    provider._scheduleCacheValidation = () => {};
     const result = await provider.loadBinary('data', 'cached.bin');
     assert.ok(result instanceof MockBinaryReader);
     assert.strictEqual(requests.length, 0);

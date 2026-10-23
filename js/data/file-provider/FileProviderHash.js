@@ -15,6 +15,10 @@ import {
   sanitizeCacheBust
 } from './FileProviderShared.js';
 const fileProviderHashMethods = {
+  canVerifyContent() {
+    return !!(this._crypto || globalThis.crypto)?.subtle;
+  },
+
   async _tryHashBuffer(buffer) {
     const cryptoRef = this._crypto || (typeof globalThis !== 'undefined' ? globalThis.crypto : null);
     if (cryptoRef?.subtle) {

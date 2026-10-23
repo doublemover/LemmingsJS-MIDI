@@ -234,7 +234,7 @@ const fileProviderStorageMethods = {
       const [existing, oldPayload] = await Promise.all([this._idbRequest(entries.get(url)), this._idbRequest(payloads.get(url))]);
       const validExisting = this._isCacheRecordValid(existing, oldPayload);
       let total = await this._transactionalCacheTotal(entries, payloads, metaStore, !!existing && !validExisting);
-      const generation = entry.hash || `${Date.now()}:${++this._nextRequestId}`;
+      const generation = entry.generation || entry.hash || `${Date.now()}:${++this._nextRequestId}`;
       entries.put({ url, formatVersion: CACHE_FORMAT_VERSION, generation, type: entry.type, etag: entry.etag || null,
         lastModified: entry.lastModified || null, cacheControl: entry.cacheControl || null,
         hash: entry.hash || null, size, fetchedAt: Date.now(), lastAccess: Date.now() });
@@ -265,6 +265,21 @@ const fileProviderStorageMethods = {
       metaStore.put({ key: 'totalBytes', accountingVersion: CACHE_FORMAT_VERSION, value: total });
       if (await done) this._cacheStats.indexedDbBytes = total;
     } catch { try { tx?.abort?.(); } catch { /* Failed optional prune. */ } }
+  },
+
+  async _refreshIndexedDbMetadata(url, expected, next, owner) {
+    if (!expected?.generation || owner?.noStore || this._disposed) return false;
+    const epoch = owner?.providerEpoch ?? this._cacheEpoch, db = await this._openIndexedDb();
+    if (!db || this._disposed || epoch !== this._cacheEpoch || owner?.controller.signal.aborted ||
+        owner && this._requestVersions.get(owner.key) !== owner.version) return false;
+    try {
+      const tx = db.transaction(IDB_STORE_ENTRIES, 'readwrite');
+      const done = this._idbTransactionDone(tx).catch(() => false), entries = tx.objectStore(IDB_STORE_ENTRIES);
+      const current = await this._idbRequest(entries.get(url));
+      if (current?.generation === expected.generation) entries.put({ ...current, etag: next.etag || null,
+        lastModified: next.lastModified || null, cacheControl: next.cacheControl || null, fetchedAt: next.fetchedAt, lastAccess: Date.now() });
+      return await done;
+    } catch { return false; }
   },
 
   async reconcilePersistentCache() {
@@ -429,7 +444,7 @@ const fileProviderStorageMethods = {
       const byteLength = entry.data?.byteLength;
       if (entry.type === 'binary' && Number.isFinite(byteLength) && Math.ceil(byteLength / 3) * 8 > LOCAL_STORAGE_MAX_BYTES ||
           entry.type === 'text' && typeof entry.data === 'string' && entry.data.length * 2 > LOCAL_STORAGE_MAX_BYTES) return false;
-      const stored = { ...entry, formatVersion: CACHE_FORMAT_VERSION, generation: entry.hash || `${Date.now()}:${++this._nextRequestId}`, fetchedAt: Date.now() };
+      const stored = { ...entry, formatVersion: CACHE_FORMAT_VERSION, generation: entry.generation || entry.hash || `${Date.now()}:${++this._nextRequestId}`, fetchedAt: Date.now() };
       if (stored.type === 'binary' && (stored.data instanceof ArrayBuffer || ArrayBuffer.isView(stored.data))) {
         stored.data = this._arrayBufferToBase64(stored.data);
       }

@@ -22,6 +22,7 @@ const requestWithXhrUnbounded = (provider, url, responseType, owner = null) => n
   let xhr;
   try { xhr = provider._createXhr(); } catch (cause) { reject(new ResourceLoadError('unavailable', url, { cause })); return; }
   let settled = false;
+  let sentValidator = false;
   let deadlineTimer = null;
   const request = { key: responseType === 'arraybuffer' ? `binary:${url}` : url, owner, abort() {
     if (settled) return;
@@ -43,18 +44,23 @@ const requestWithXhrUnbounded = (provider, url, responseType, owner = null) => n
     provider.log.log(error.message);
     reject(error);
   };
+  const responseHeaders = () => ({
+    etag: typeof xhr.getResponseHeader === 'function' ? xhr.getResponseHeader('ETag') : null,
+    lastModified: typeof xhr.getResponseHeader === 'function' ? xhr.getResponseHeader('Last-Modified') : null,
+    cacheControl: typeof xhr.getResponseHeader === 'function' ? xhr.getResponseHeader('Cache-Control') : null
+  });
   xhr.onload = () => {
     if (provider._disposed || owner?.controller.signal.aborted) { fail('cancelled'); return; }
+    if (xhr.status === 304 && sentValidator) {
+      if (finish()) resolve({ notModified: true, headers: responseHeaders() });
+      return;
+    }
     if (xhr.status >= 200 && xhr.status < 300) {
       const bytes = responseType === 'arraybuffer' ? xhr.response?.byteLength : typeof xhr.response === 'string' ? xhr.response.length * 2 : 0;
       if (responseType === 'arraybuffer' ? !(xhr.response instanceof ArrayBuffer) : typeof xhr.response !== 'string') { fail('decode'); return; }
       if (bytes > provider._maxResponseBytes) { fail('too-large'); return; }
       if (!finish()) return;
-      resolve({ data: xhr.response, headers: {
-        etag: typeof xhr.getResponseHeader === 'function' ? xhr.getResponseHeader('ETag') : null,
-        lastModified: typeof xhr.getResponseHeader === 'function' ? xhr.getResponseHeader('Last-Modified') : null,
-        cacheControl: typeof xhr.getResponseHeader === 'function' ? xhr.getResponseHeader('Cache-Control') : null
-      } });
+      resolve({ data: xhr.response, headers: responseHeaders() });
     } else fail(resourceKindFromStatus(xhr.status), xhr.status);
   };
   xhr.onerror = event => fail(xhr.status ? resourceKindFromStatus(xhr.status) : 'network', xhr.status || null, event instanceof Error ? event : null);
@@ -69,7 +75,15 @@ const requestWithXhrUnbounded = (provider, url, responseType, owner = null) => n
   provider._requests.add(request);
   owner?.controller.signal.addEventListener('abort', request.abort, { once: true });
   deadlineTimer = setTimeout(() => { fail('timeout'); try { xhr.abort?.(); } catch { /* Deadline already settled. */ } }, provider._requestTimeoutMs);
-  try { xhr.open('GET', url); xhr.responseType = responseType; xhr.timeout = provider._requestTimeoutMs; xhr.send(); } catch (cause) { fail('network', null, cause); }
+  try {
+    xhr.open('GET', url);
+    const validators = owner?.validation?.entry;
+    if (typeof xhr.setRequestHeader === 'function' && (validators?.etag || validators?.lastModified)) {
+      xhr.setRequestHeader(validators.etag ? 'If-None-Match' : 'If-Modified-Since', validators.etag || validators.lastModified);
+      sentValidator = true;
+    }
+    xhr.responseType = responseType; xhr.timeout = provider._requestTimeoutMs; xhr.send();
+  } catch (cause) { fail('network', null, cause); }
 });
 const requestWithXhr = (provider, url, responseType, owner = null) => new Promise((resolve, reject) => {
   const key = responseType === 'arraybuffer' ? `binary:${url}` : url;
@@ -132,17 +146,22 @@ const fileProviderFetchMethods = {
   },
 
   async _probePersistent(url, type, path, expectedHash, record) {
-    let timer;
+    let timer, expired = false;
     const probe = async () => {
       let cached = this._canUseIndexedDb() ? await this._loadFromIndexedDb(url, type, path).catch(() => null) : null;
       this._assertAcquisitionLive(record);
+      if (expired) return null;
       if (!cached) cached = this._loadFromLocalStorage(url, type, path);
       if (!cached) return null;
       try {
         await this._verifyExpectedContent(cached.value, type, cached.entry?.hash, url);
         await this._verifyExpectedContent(cached.value, type, expectedHash, url);
         this._assertAcquisitionLive(record);
-        if (cached.entry) this._scheduleCacheValidation(url, cached.entry);
+        if (expired) return null;
+        if (cached.entry) {
+          record.entry = cached.entry;
+          this._scheduleCacheValidation(url, cached.entry, cached.value);
+        }
         return cached.value;
       } catch (error) {
         if (error.kind === 'cancelled') throw error;
@@ -151,7 +170,7 @@ const fileProviderFetchMethods = {
       }
     };
     try {
-      return await Promise.race([probe(), new Promise(resolve => { timer = setTimeout(() => resolve(null), this._cacheProbeMs); })]);
+      return await Promise.race([probe(), new Promise(resolve => { timer = setTimeout(() => { expired = true; resolve(null); }, this._cacheProbeMs); })]);
     } catch (error) {
       if (error.kind === 'cancelled') throw error;
       return null;
@@ -161,8 +180,15 @@ const fileProviderFetchMethods = {
   _loadResource(type, url, path, opts) {
     const key = type === 'binary' ? `binary:${url}` : url;
     if (this._disposed || opts.signal?.aborted) return Promise.reject(new ResourceLoadError('cancelled', url));
+    if (opts.cachePolicy === 'revalidate' && !opts.validation) {
+      const existing = this._cache.get(key), owner = existing && this._acquisitionRecords.get(existing);
+      if (!existing) return this._loadResource(type, url, path, { ...opts, cachePolicy: 'reload' });
+      return this._withConsumerAbort(existing, opts.signal, url, key, owner).then(value => this._loadResource(type, url, path,
+        { ...opts, cachePolicy: 'reload', validation: { value, entry: owner?.entry || {} } }));
+    }
     const fresh = opts.forceReload || opts.cachePolicy === 'reload' || opts.cachePolicy === 'no-store' || opts.probeOnly;
-    let source = !fresh && this._cache.get(key);
+    const refreshKey = opts.validation ? `${key}|${opts.expectedHash || ''}` : null;
+    let source = refreshKey && this._refreshes.get(refreshKey) || !fresh && this._cache.get(key);
     let record = source && this._acquisitionRecords.get(source);
     if (!source) {
       const isolated = opts.probeOnly || opts.cachePolicy === 'no-store';
@@ -170,7 +196,7 @@ const fileProviderFetchMethods = {
       if (!isolated) this._requestVersions.set(key, version);
       record = { key, url, requestId: ++this._nextRequestId, providerEpoch: this._cacheEpoch,
         controller: new AbortController(), consumers: 0, phase: 'cache', noStore: opts.cachePolicy === 'no-store' || opts.probeOnly,
-        version, expectedHash: opts.expectedHash || null, operationId: opts.operationId ?? null };
+        version, expectedHash: opts.expectedHash || null, operationId: opts.operationId ?? null, validation: opts.validation || null };
       this._acquisitions.add(record);
       const acquire = async () => {
         let hasPersistent = this._canUseIndexedDb();
@@ -201,9 +227,11 @@ const fileProviderFetchMethods = {
         clearTimeout(deadlineTimer);
         record.controller.signal.removeEventListener('abort', abortListener);
         this._acquisitions.delete(record);
+        if (refreshKey && this._refreshes.get(refreshKey) === source) this._refreshes.delete(refreshKey);
         if (record.noStore && this._cache.get(key) === source) this._cache.delete(key);
       });
       this._acquisitionRecords.set(source, record);
+      if (refreshKey) this._refreshes.set(refreshKey, source);
       if (fresh) source.then(() => {
         if (!record.noStore && !this._disposed && record.providerEpoch === this._cacheEpoch && this._requestVersions.get(key) === version) this._cache.set(key, source);
       }, () => {});
@@ -231,7 +259,9 @@ const fileProviderFetchMethods = {
       if (retired || this._disposed || epoch !== this._cacheEpoch || owner?.noStore || owner?.controller.signal.aborted ||
           owner && this._requestVersions.get(owner.key) !== owner.version) return;
       if (owner?.expectedHash && hash?.toLowerCase() !== owner.expectedHash.toLowerCase()) return;
-      return this._storeInCache(url, { ...entry, hash }, { epoch, owner });
+      const generation = hash || `${Date.now()}:${++this._nextRequestId}`;
+      if (owner) owner.entry = { ...owner.entry, hash, generation };
+      return this._storeInCache(url, { ...entry, hash, generation }, { epoch, owner });
     };
     const work = Promise.race([attempt().catch(() => {}), lifetime]).finally(() => {
       clearTimeout(timer);
@@ -303,10 +333,12 @@ const fileProviderFetchMethods = {
     const response = await requestWithXhr(this, url, 'arraybuffer', owner);
     if (this._disposed) throw new ResourceLoadError('cancelled', url);
     if (owner && /\bno-store\b/i.test(response.headers.cacheControl || '')) owner.noStore = true;
+    if (response.notModified) return this._acceptNotModified(url, response.headers, owner);
 
     const buf = response.data;
     const Reader = getDependency('BinaryReader', BinaryReader);
     const reader = new Reader(buf, 0, null, this._filenameFromUrl(url), path);
+    if (owner) owner.entry = { type: 'binary', ...response.headers, fetchedAt: Date.now() };
     this._scheduleOptionalStore(url, { type: 'binary', data: buf, ...response.headers }, () => this._hashBinaryContent(reader), requestEpoch, owner);
     return reader;
   },
@@ -315,10 +347,21 @@ const fileProviderFetchMethods = {
     const response = await requestWithXhr(this, url, 'text', owner);
     if (this._disposed) throw new ResourceLoadError('cancelled', url);
     if (owner && /\bno-store\b/i.test(response.headers.cacheControl || '')) owner.noStore = true;
+    if (response.notModified) return this._acceptNotModified(url, response.headers, owner);
 
     const text = response.data;
+    if (owner) owner.entry = { type: 'text', ...response.headers, fetchedAt: Date.now() };
     this._scheduleOptionalStore(url, { type: 'text', data: text, ...response.headers }, () => this._tryHashString(text), requestEpoch, owner);
     return text;
+  },
+
+  _acceptNotModified(url, headers, owner) {
+    if (!owner?.validation || owner.validation.value == null) throw new ResourceLoadError('http', url, { status: 304 });
+    owner.entry = { ...owner.validation.entry, ...Object.fromEntries(Object.entries(headers).filter(([, value]) => value != null)), fetchedAt: Date.now() };
+    const work = this._refreshIndexedDbMetadata(url, owner.validation.entry, owner.entry, owner).catch(() => {});
+    this._pendingCacheWrites.add(work);
+    work.finally(() => this._pendingCacheWrites.delete(work));
+    return owner.validation.value;
   },
 
   async _fetchHead(url) {

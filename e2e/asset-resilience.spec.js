@@ -5,6 +5,66 @@ const openFixture = async page => {
   await page.goto('/__asset_fixture__');
 };
 
+test('HTTP conditional 304 updates metadata without a payload rewrite and changed bytes preserve old handles', async ({ page }) => {
+  let revision = 1, failure = false;
+  const observed = [];
+  await page.route('**/conditional.bin', route => {
+    const request = route.request(), etag = `"revision-${revision}"`;
+    observed.push({ method: request.method(), etag: request.headers()['if-none-match'], modified: request.headers()['if-modified-since'] });
+    if (failure) return route.fulfill({ status: 500, body: 'offline fixture' });
+    const headers = { ETag: etag, 'Last-Modified': 'Wed, 01 Jan 2020 00:00:00 GMT' };
+    return route.fulfill({ status: request.headers()['if-none-match'] === etag ? 304 : 200,
+      headers, body: request.headers()['if-none-match'] === etag ? '' : Buffer.from([revision]) });
+  });
+  await openFixture(page);
+  const first = await page.evaluate(async () => {
+    const { FileProvider } = await import('/js/data/FileProvider.js');
+    const provider = new FileProvider('/', { localStorage: null, cacheProbeMs: 1000 });
+    const old = await provider.resolveAsset('/conditional.bin');
+    await provider.waitForCacheWrites();
+    let payloadWrites = 0;
+    const originalPut = globalThis.IDBObjectStore.prototype.put;
+    globalThis.IDBObjectStore.prototype.put = function(...args) {
+      if (this.name === 'payloads') payloadWrites++;
+      return originalPut.apply(this, args);
+    };
+    globalThis.__assetGenerationFixture = { provider, old, originalPut, writes: () => payloadWrites };
+    provider.clearCache();
+    const cached = await provider.resolveAsset('/conditional.bin');
+    await Promise.all([...provider._validationPromises.values()]);
+    await provider.waitForCacheWrites();
+    return { hash: old.identity.contentHash, sameHash: old.identity.contentHash === cached.identity.contentHash,
+      payloadWrites, value: cached.createReader().readByte() };
+  });
+  expect(first.sameHash).toBe(true); expect(first.value).toBe(1); expect(first.payloadWrites).toBe(0);
+  expect(observed).toEqual([{ method: 'GET', etag: undefined, modified: undefined },
+    { method: 'GET', etag: '"revision-1"', modified: undefined }]);
+  revision = 2;
+  const changed = await page.evaluate(async () => {
+    const state = globalThis.__assetGenerationFixture;
+    state.latest = await state.provider.resolveAsset('/conditional.bin', { cachePolicy: 'revalidate' });
+    await state.provider.waitForCacheWrites();
+    return { hash: state.latest.identity.contentHash, latest: state.latest.createReader().readByte(), old: state.old.createReader().readByte() };
+  });
+  expect(changed.hash).not.toBe(first.hash); expect(changed.latest).toBe(2); expect(changed.old).toBe(1);
+  failure = true;
+  const rejected = await page.evaluate(async () => {
+    const state = globalThis.__assetGenerationFixture;
+    try {
+      await state.provider.resolveAsset('/conditional.bin', { cachePolicy: 'revalidate' });
+      throw new Error('Expected typed refresh failure');
+    } catch (error) {
+      const current = await state.provider.resolveAsset('/conditional.bin');
+      return { kind: error.kind, value: current.createReader().readByte(), hash: current.identity.contentHash };
+    } finally {
+      globalThis.IDBObjectStore.prototype.put = state.originalPut;
+      state.provider.dispose();
+      delete globalThis.__assetGenerationFixture;
+    }
+  });
+  expect(rejected).toEqual({ kind: 'server', value: 2, hash: changed.hash });
+});
+
 test('real HTTP seasonal absence resolves to the same terrain and steel as an explicit source', async ({ page }) => {
   const requests = [];
   page.on('request', request => { if (/GROUND0O\.DAT/.test(request.url())) requests.push(new URL(request.url()).pathname); });

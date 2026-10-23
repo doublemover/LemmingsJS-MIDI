@@ -256,7 +256,7 @@ describe('FileProvider', function () {
     if (origFetch) {
       global.fetch = origFetch;
     }
-    provider.clearCache();
+    provider.dispose();
     setDependency('BinaryReader', origBR);
     setDependency('LogHandler', origLog);
   });
@@ -293,6 +293,7 @@ describe('FileProvider', function () {
     const binUrl = provider._buildUrl('data', 'fallback.bin');
     const buf = Uint8Array.from([1]).buffer;
     setBinaryCache(binUrl, buf);
+    provider._scheduleCacheValidation = () => {};
 
     const bin = await provider.loadBinary('data', 'fallback.bin');
     assert.ok(bin instanceof MockBinaryReader);
