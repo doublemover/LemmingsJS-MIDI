@@ -1,5 +1,6 @@
 import { AudioAssetError, validateAudioAssetRef, inspectWaveAudio, DECODER_VERSION } from './AudioAssetRef.js';
 import { createAudioResourceLeases } from './AudioResourceLeases.js';
+import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 
 let loaderSequence = 0;
 const aborted = signal => { if (signal?.aborted) throw new AudioAssetError('asset-request-cancelled'); };
@@ -37,23 +38,27 @@ export function createAudioAssetLoader({ getContext, resolveAssetUrl, fetchAsset
   const raw = new Map(), decoded = new Map(), packs = new Map(), fetchGate = makeGate(fetchConcurrency, maxEntries), decodeGate = makeGate(decodeConcurrency, maxEntries);
   const fetchBytes = fetchAsset || ((ref, options) => globalThis.fetch(resolveAssetUrl(ref), { signal: options.signal }));
   let disposed = false, rawBytes = 0, decodedBytes = 0, useSequence = 0;
+  const retirement = createProcgenRetirementScope();
   const stats = { fetches: 0, decodes: 0, rawHits: 0, decodedHits: 0, evictions: 0, failures: 0, cancellations: 0 };
   const fail = (reason, ref) => new AudioAssetError(reason, ref?.contentHash);
   const retire = (map, key, entry, kind) => {
-    if (map.get(key) === entry) map.delete(key);
-    if (entry.resource) {
-      entry.resource.release(); entry.resource = null;
-      if (kind === 'raw') rawBytes -= entry.bytes; else decodedBytes -= entry.bytes;
+    if (entry.retirement) return entry.retirement;
+    entry.retirement = createProcgenRetirementScope().retire([{ name: kind + '-reservation', run: () => entry.resource?.release() }]);
+    if (entry.retirement.outcome === 'complete') {
+      if (map.get(key) === entry) map.delete(key);
+      if (entry.resource) { if (kind === 'raw') rawBytes -= entry.bytes; else decodedBytes -= entry.bytes; }
+      entry.resource = null; entry.value = null;
+    } else {
+      entry.state = 'retirement-failed';
     }
-    entry.value = null;
+    return entry.retirement;
   };
   const evict = (map, kind, needed = 0, limit = kind === 'raw' ? maxRawBytes : maxDecodedBytes, all = false, inserted = false) => {
     const entryLimit = maxEntries + (inserted ? 1 : 0);
     const candidates = [...map.entries()].filter(([, entry]) => entry.state === 'ready' && entry.pins === 0 && entry.waiters === 0).sort((a, b) => a[1].used - b[1].used);
     for (const [key, entry] of candidates) {
       if (!all && (kind === 'raw' ? rawBytes : decodedBytes) + needed <= limit && map.size < entryLimit) break;
-      retire(map, key, entry, kind);
-      stats.evictions++;
+      if (retire(map, key, entry, kind).outcome === 'complete') stats.evictions++;
     }
     if (!all && ((kind === 'raw' ? rawBytes : decodedBytes) + needed > limit || map.size >= entryLimit)) throw fail(kind + '-cache-budget-exhausted');
   };
@@ -117,6 +122,7 @@ export function createAudioAssetLoader({ getContext, resolveAssetUrl, fetchAsset
   const acquireRaw = (ref, options = {}) => {
     if (disposed) return Promise.reject(fail('asset-loader-disposed', ref));
     let entry = raw.get(ref.contentHash);
+    if (entry?.state === 'retirement-failed') return Promise.reject(fail('asset-retirement-unknown', ref));
     if (entry && entry.fingerprint !== fingerprint(ref)) return Promise.reject(fail('asset-source-metadata-mismatch', ref));
     if (!entry) {
       try { evict(raw, 'raw', ref.bytes); } catch (error) { return Promise.reject(error); }
@@ -173,6 +179,7 @@ export function createAudioAssetLoader({ getContext, resolveAssetUrl, fetchAsset
     } catch (error) { return Promise.reject(error); }
     const key = ref.contentHash + ':' + context.sampleRate + ':' + DECODER_VERSION;
     let entry = decoded.get(key);
+    if (entry?.state === 'retirement-failed') return Promise.reject(fail('asset-retirement-unknown', ref));
     if (entry && entry.fingerprint !== fingerprint(ref)) return Promise.reject(fail('asset-source-metadata-mismatch', ref));
     if (!entry) {
       const maximumFrames = Math.ceil(ref.frames * context.sampleRate / ref.sourceSampleRate) + 1, maximumBytes = maximumFrames * ref.channels * 4;
@@ -251,14 +258,18 @@ export function createAudioAssetLoader({ getContext, resolveAssetUrl, fetchAsset
     activePins: [...decoded.values()].reduce((sum, entry) => sum + entry.pins, 0), fetch: fetchGate.diagnostics(), decode: decodeGate.diagnostics(),
     resources: resources.diagnostics(), maxRawBytes, maxDecodedBytes, maxEntries, disposed });
   const dispose = () => {
-    if (disposed) return; disposed = true; unregister?.();
-    for (const entry of [...raw.values(), ...decoded.values()]) entry.controller.abort();
-    // Existing render pins outlive the loader. Native decode reservations remain
-    // admitted until its non-abortable browser call returns and drops the result.
-    for (const [map, kind] of [[raw, 'raw'], [decoded, 'decoded']]) {
-      for (const [key, entry] of map) if (entry.state === 'ready' && !entry.pins && !entry.waiters) retire(map, key, entry, kind);
-    }
-    packs.clear();
+    if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true;
+    const entries = [...raw.values(), ...decoded.values()], pending = entries.filter(entry => entry.state === 'pending');
+    const retireUnpinned = () => createProcgenRetirementScope().retire([[raw, 'raw'], [decoded, 'decoded']].flatMap(([map, kind]) =>
+      [...map].filter(([, entry]) => entry.state !== 'pending' && !entry.pins && !entry.waiters)
+        .map(([key, entry]) => ({ name: kind + '-' + key, run: () => retire(map, key, entry, kind) }))));
+    return retirement.retire([
+      { name: 'budget-evictor', run: () => unregister?.() },
+      ...entries.map((entry, index) => ({ name: 'request-' + index, run: () => entry.controller.abort() })),
+      { name: 'unpinned-assets', run: retireUnpinned },
+      ...(pending.length ? [{ name: 'pending-native-assets', run: () => Promise.allSettled(pending.map(entry => entry.promise)).then(retireUnpinned) }] : []),
+      { name: 'pack-index', run: () => packs.clear() }
+    ]);
   };
   return Object.freeze({ acquire, downloadPack, inspectPack, removePack, purge, diagnostics, dispose });
 }
@@ -266,8 +277,20 @@ export function createAudioAssetLoader({ getContext, resolveAssetUrl, fetchAsset
 export function createAudioAssetSet({ loader, owner } = {}) {
   if (!loader?.acquire || typeof owner !== 'string' || !owner) throw new TypeError('Invalid prepared audio asset owner.');
   let current = Object.freeze([]), revision = 0, pending = null, disposed = false, lastError = null;
+  let cleanupFault = null;
+  const retirement = createProcgenRetirementScope(), failedReleases = new Map();
+  const releaseAssets = assets => {
+    const receipt = createProcgenRetirementScope().retire(assets.map((lease, index) => ({ name: 'asset-pin-' + index, run: () => lease.release() })));
+    if (receipt.outcome !== 'complete') {
+      cleanupFault = receipt; failedReleases.set(receipt, assets);
+      receipt.completion.then(result => { if (result.outcome === 'complete') { failedReleases.delete(result); if (cleanupFault === result) cleanupFault = null; } });
+    }
+    return receipt;
+  };
+  const summary = receipt => receipt ? Object.freeze({ state: receipt.state, outcome: receipt.outcome }) : null;
   const replace = async (refs, { generation = 0, signal } = {}) => {
     if (disposed || !Array.isArray(refs) || refs.length > 128) throw new AudioAssetError('invalid-asset-preparation');
+    if (cleanupFault) throw new AudioAssetError('asset-retirement-unknown');
     pending?.abort(); const controller = new AbortController(), request = ++revision; pending = controller;
     const cancel = () => controller.abort(); signal?.addEventListener('abort', cancel, { once: true }); if (signal?.aborted) cancel();
     let firstError = null;
@@ -275,13 +298,22 @@ export function createAudioAssetSet({ loader, owner } = {}) {
       isCurrent: () => !disposed && request === revision }).catch(error => { if (!controller.signal.aborted) firstError = error; controller.abort(); throw error; })));
     signal?.removeEventListener('abort', cancel); if (pending === controller) pending = null;
     const staged = results.filter(result => result.status === 'fulfilled').map(result => result.value);
-    if (disposed || request !== revision || controller.signal.aborted || firstError) {
-      for (const lease of staged) lease.release(); lastError = firstError || new AudioAssetError('asset-preparation-cancelled'); throw lastError;
+    if (disposed || cleanupFault || request !== revision || controller.signal.aborted || firstError) {
+      const receipt = releaseAssets(staged); lastError = firstError || new AudioAssetError('asset-preparation-cancelled'); lastError.retirement = receipt; throw lastError;
     }
-    const prior = current; current = Object.freeze(staged); for (const lease of prior) lease.release(); lastError = null;
-    return Object.freeze({ status: 'ready', revision, assets: current });
+    const prior = current; current = Object.freeze(staged); const receipt = releaseAssets(prior); lastError = null;
+    return Object.freeze({ status: 'ready', revision, assets: current, retirement: summary(receipt) });
   };
   return Object.freeze({ replace, snapshot: () => current,
-    diagnostics: () => Object.freeze({ revision, readyAssets: current.length, preparing: !!pending, lastError: lastError?.reason || lastError?.message || null, disposed }),
-    dispose: () => { if (disposed) return; disposed = true; revision++; pending?.abort(); pending = null; for (const lease of current) lease.release(); current = Object.freeze([]); } });
+    diagnostics: () => Object.freeze({ revision, readyAssets: current.length, preparing: !!pending, lastError: lastError?.reason || lastError?.message || null,
+      retirement: summary(cleanupFault), disposed }),
+    dispose: () => {
+      if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; revision++;
+      return retirement.retire([
+        { name: 'pending-preparation', run: () => { pending?.abort(); pending = null; } },
+        { name: 'current-assets', run: () => releaseAssets(current) },
+        ...[...failedReleases.keys()].map((receipt, index) => ({ name: 'prior-release-' + index, run: () => receipt })),
+        { name: 'asset-references', run: () => { current = Object.freeze([]); } }
+      ]);
+    } });
 }

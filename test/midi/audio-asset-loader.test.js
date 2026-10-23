@@ -33,6 +33,29 @@ const rejection = async (promise, reason) => {
 };
 
 describe('Content addressed audio asset admission', () => {
+  it('preserves failed cache retirement accounting while disposing every independent entry', async () => {
+    const first = fixture(), second = fixture({ marker: 9 }), budget = createResourceBudget(), records = new Map();
+    let failed = false;
+    const adapter = { reserve(record) { records.set(record.token, record); return budget.reserve(record); },
+      release(request) { if (!failed && records.get(request.token)?.kind === 'decoded-pcm-f32') { failed = true; throw new Error('decoded release failed'); }
+        return budget.release(request); } };
+    const loader = makeLoader(first, { resourceBudget: adapter, fetchAsset: ref => ref.contentHash === first.ref.contentHash ? first.bytes : second.bytes });
+    const a = await loader.acquire(first.ref), b = await loader.acquire(second.ref); a.release(); b.release();
+    loader.purge(); expect(loader.diagnostics()).to.include({ decodedEntries: 1, decodedBytes: 256, rawEntries: 0, rawBytes: 0 });
+    await rejection(loader.acquire(first.ref), 'asset-retirement-unknown');
+    const receipt = loader.dispose(); expect(receipt.outcome).to.equal('partial'); expect(loader.dispose()).to.equal(receipt);
+    expect(budget.diagnostics().residentBytes).to.equal(256);
+  });
+  it('keeps replacement assets active while recording every independent failed prior release once', async () => {
+    const calls = [], set = createAudioAssetSet({ owner: 'patch', loader: { acquire: async ref => ({ id: ref.id,
+      release() { calls.push(ref.id); if (ref.id === 'bad') throw new Error('pin release failed'); } }) } });
+    await set.replace([{ id: 'bad' }, { id: 'good' }]);
+    const next = await set.replace([{ id: 'new' }]); expect(next.status).to.equal('ready'); expect(next.retirement.outcome).to.equal('partial');
+    expect(set.snapshot()[0].id).to.equal('new'); expect(calls).to.deep.equal(['bad', 'good']);
+    await rejection(set.replace([{ id: 'later' }]), 'asset-retirement-unknown');
+    const receipt = set.dispose(); expect(receipt.outcome).to.equal('partial'); expect(calls).to.deep.equal(['bad', 'good', 'new']);
+    expect(set.dispose()).to.equal(receipt); expect(set.snapshot()).to.have.length(0);
+  });
   it('validates exact container metadata, relative identities, rights and source-frame loop bounds', () => {
     const item = fixture(), ref = validateAudioAssetRef({ ...item.ref, loopMarkers: { startFrame: 8, endFrame: 48, crossfadeFrames: 12 } });
     expect(Object.isFrozen(ref.loopMarkers)).to.equal(true);
