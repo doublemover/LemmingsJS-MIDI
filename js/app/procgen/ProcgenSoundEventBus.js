@@ -61,10 +61,11 @@ class ProcgenSoundEventBus extends SoundEventBus {
     this._tick = null; this._sealed = [];
     this._causalSequence = 0; this._maxFacts = 4096; this._maxTerminalFacts = 256;
   }
-  beginTick({ worldId, generation, tick, terrainRevisionBefore, ordinal = 0 }) {
+  beginTick({ worldId, generation, tick, terrainRevisionBefore, sourceTimeMs = null, tickDurationMs = null, ordinal = 0 }) {
     if (this._tick) throw new Error('A physical tick is already being collected.');
     this._sealed = [];
-    this._tick = { worldId, generation, tick, terrainRevisionBefore, facts: [], terminalFacts: [], dropped: 0, ordinal };
+    this._tick = { worldId, generation, tick, terrainRevisionBefore, sourceTimeMs, tickDurationMs,
+      facts: [], terminalFacts: [], dropped: 0, ordinal };
   }
   emit(event) {
     if (event && event.laneIndex == null && Number.isFinite(event.y)) {
@@ -102,6 +103,7 @@ class ProcgenSoundEventBus extends SoundEventBus {
       simTick: current.tick, subTick: 0, precision: fact.precision || 'tick' })));
     const batch = Object.freeze({ version: 1, worldId: current.worldId, generation: current.generation,
       tick: current.tick, batchId, physicsOrderVersion: 1,
+      sourceTimeMs: current.sourceTimeMs, tickDurationMs: current.tickDurationMs,
       firstSequence: sealedFacts[0]?.causalSequence ?? null, lastSequence: sealedFacts.at(-1)?.causalSequence ?? null,
       terrainRevisionBefore: current.terrainRevisionBefore, terrainRevisionAfter, snapshotRevision: snapshot?.revision ?? null,
       facts: sealedFacts, snapshot, terminalGenerationTransition: transitionTo == null ? null : Object.freeze({ from: current.generation, to: transitionTo }),
@@ -114,7 +116,8 @@ class ProcgenSoundEventBus extends SoundEventBus {
     if (!current) return;
     this._seal(snapshot, terrainRevisionAfter, nextGeneration);
     this._tick = { worldId: current.worldId, generation: nextGeneration, tick: current.tick,
-      terrainRevisionBefore: terrainRevisionAfter, facts: [], terminalFacts: [], dropped: 0, ordinal: current.ordinal + 1 };
+      terrainRevisionBefore: terrainRevisionAfter, sourceTimeMs: current.sourceTimeMs,
+      tickDurationMs: current.tickDurationMs, facts: [], terminalFacts: [], dropped: 0, ordinal: current.ordinal + 1 };
   }
   commitTick(snapshot, terrainRevisionAfter) {
     this._seal(snapshot, terrainRevisionAfter);

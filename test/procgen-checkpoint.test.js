@@ -17,8 +17,10 @@ describe('ProcGen world checkpoints', function() {
       const saved = JSON.parse(JSON.stringify(captureProcgenCheckpoint(original)));
       restoreProcgenCheckpoint(restored, saved);
       expect(state(restored)).to.deep.equal(state(original));
+      expect(restored.simulationTimeMs).to.equal(original.simulationTimeMs);
       for (let tick = 0; tick < 120; tick++) { original.step(); restored.step(); }
       expect(state(restored)).to.deep.equal(state(original));
+      expect(restored.simulationTimeMs).to.equal(original.simulationTimeMs);
     } finally { original.dispose(); restored.dispose(); }
   });
   it('rejects incompatible assets before restoring', async () => {

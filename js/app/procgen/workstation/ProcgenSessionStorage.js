@@ -4,9 +4,9 @@ const validateProcgenSession = value => {
   if (!Number.isInteger(value.world.laneCount) || value.world.laneCount < 1 || value.world.laneCount > 1024 || !Number.isFinite(value.world.seed)) throw new Error('Invalid world settings.');
   return value;
 };
-const createProcgenSession = ({ name = 'Untitled session', project, settings, world, transport, patterns, camera, ui }) => ({
+const createProcgenSession = ({ name = 'Untitled session', project, settings, world, transport, patterns, physicalTimeline = null, camera, ui }) => ({
   format: 'lemmings-procgen-session', version: SESSION_VERSION, name: String(name).slice(0, 120), savedAt: new Date().toISOString(),
-  project, settings: { ...settings }, world, transport, patterns, camera, ui
+  project, settings: { ...settings }, world, transport, patterns, physicalTimeline, camera, ui
 });
 const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB) => {
   let database;

@@ -30,8 +30,9 @@ const validateCausalInstrumentGraph = value => {
   return Object.freeze({ version: 1, revision: value.revision, instruments: Object.freeze(instruments) });
 };
 
-const createCausalMusicEngine = ({ getGraph, deliver = () => {}, maxBeginsPerBatch = 512, maxVoices = 512, traceLimit = 1024 } = {}) => {
-  if (typeof getGraph !== 'function') throw new Error('A causal graph provider is required.');
+const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline = null,
+  maxBeginsPerBatch = 512, maxVoices = 512, traceLimit = 1024 } = {}) => {
+  if (typeof getGraph !== 'function' || (scoreTimeline && typeof scoreTimeline.map !== 'function')) throw new Error('A causal graph provider and valid score timeline are required.');
   const active = new Map(), seen = new Set(), seenOrder = [], trace = [];
   let generation = null, graph = null, graphSource = null, graphFingerprint = null, liveIds = null, indexed = null, errors = 0, rejected = 0;
   const accepted = new Map(), rejectedByInstrument = new Map();
@@ -41,7 +42,9 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, maxBeginsPerBat
     worldId: batch.worldId, batchId: batch.batchId, generation: voiceGeneration,
     kind, onsetId: voiceId, voiceId, actorId: fact?.actorId ?? null, laneId: fact?.laneId ?? null,
     sourceEventIds: Object.freeze(fact?.eventId ? [fact.eventId] : []),
-    scoreTime: Object.freeze({ simTick: batch.tick, subTick: fact?.subTick ?? 0, precision: fact?.precision ?? 'tick' }),
+    scoreTime: Object.freeze({ ...(scoreTimeline?.map({ simTick: batch.tick, subTick: fact?.subTick ?? 0,
+      precision: fact?.precision ?? 'tick' }) || { simTick: batch.tick, subTick: fact?.subTick ?? 0,
+      precision: fact?.precision ?? 'tick' }), sourceTimeMs: batch.sourceTimeMs ?? null }),
     pitch: Object.freeze({ cents: instrument.pitchCents, referenceHz: 440 }), velocity01: instrument.velocity01,
     expression: Object.freeze({}), role: instrument.role, route: instrument.route, terminationReason: reason
   });
@@ -86,6 +89,13 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, maxBeginsPerBat
     for (const fact of batch.facts) {
       if (!plain(fact) || !Number.isSafeInteger(fact.causalSequence) || fact.causalSequence <= previousSequence) throw new Error('Unordered physical facts.');
       previousSequence = fact.causalSequence;
+    }
+    // Reject an uncovered source batch before touching active voices or the
+    // duplicate ledger. Never substitute the transport's lookahead beat.
+    if (scoreTimeline) {
+      scoreTimeline.map({ simTick: batch.tick });
+      for (const fact of batch.facts) scoreTimeline.map({ simTick: batch.tick,
+        subTick: fact.subTick ?? 0, precision: fact.precision ?? 'tick' });
     }
     if (seen.has(batch.batchId)) return Object.freeze([]);
     seen.add(batch.batchId); seenOrder.push(batch.batchId);

@@ -33,6 +33,19 @@ describe('completed physical event batches', () => {
     world.dispose();
   });
 
+  it('retains distinct simulation source times through a shared wake and checkpoint', () => {
+    const world = new ProcgenLaneWorld({ masks, assists: false, speed: 3 });
+    const batches = []; world.soundEvents.onBatch.on(batch => batches.push(batch));
+    for (let tick = 0; tick < 4; tick++) world.step(200);
+    expect(batches.map(batch => batch.sourceTimeMs)).to.deep.equal([60, 120, 180, 240]);
+    expect(batches.map(batch => batch.tickDurationMs)).to.deep.equal([20, 20, 20, 20]);
+    expect(world.eventTimeMs).to.equal(200);
+    world.timer.speedFactor = 6;
+    world.step(220);
+    expect(batches.at(-1)).to.include({ sourceTimeMs: 300, tickDurationMs: 10 });
+    world.dispose();
+  });
+
   it('isolates throwing musical listeners and does not publish an incomplete physics tick', () => {
     const world = new ProcgenLaneWorld({ masks, laneCount: 2, assists: false });
     for (const actor of world.actors) { actor.setAction(world.actions[State.BUILDING]); actor.frameIndex = 8; }

@@ -9,7 +9,7 @@ function target() {
   return { addEventListener(type, fn) { if (!events.has(type)) events.set(type, new Set()); events.get(type).add(fn); },
     removeEventListener(type, fn) { events.get(type)?.delete(fn); }, emit(type, event = {}) { for (const fn of events.get(type) || []) fn(event); } };
 }
-function setup({ lookaheadMs = 0, webMidi } = {}) {
+function setup({ lookaheadMs = 0, webMidi, historyBytesLimit } = {}) {
   let time = 0, paused = false, enabled = false;
   const elements = new Map(['procgenPause', 'procgenPanic', 'procgenSpeed', 'procgenSpeedUp', 'procgenSpeedDown', 'procgenSpeedReadout'].map(id => [id, target()]));
   const document = { ...target(), getElementById: id => elements.get(id) || null };
@@ -36,7 +36,7 @@ function setup({ lookaheadMs = 0, webMidi } = {}) {
     restart: async request => { restarts.push(request); if (restartGate) await restartGate; if (request.lease?.signal.aborted || returnFalseRestart) return false; if (rejectRestart) throw new Error('Assets unavailable'); runtime = makeRuntime(); runtime.world.laneCount = request.session?.world.laneCount || legacy.settings.laneCount; runtime.world.seed = request.session?.world.seed ?? legacy.settings.seed; },
     createView: props => { viewProps = props; return view; }, storage,
     captureCheckpoint: world => { captures.push(world); return { version: 1, laneCount: world.laneCount, seed: world.seed, clock: { ...world.timer } }; },
-    transportOptions: { driver: { start() {}, stop() {} }, lookaheadMs }
+    transportOptions: { driver: { start() {}, stop() {} }, lookaheadMs }, historyBytesLimit
   });
   return { studio, legacy, view, calls, positions, statuses, restarts, stored, captures, elements, window, get runtime() { return runtime; }, get viewProps() { return viewProps; }, get saveCalls() { return saveCalls; },
     enable() { enabled = true; }, time(value) { time = value; studio.transport.pump(); }, failRestart() { rejectRestart = true; }, cancelRestart() { returnFalseRestart = true; }, failSave() { rejectSave = true; },
@@ -86,6 +86,37 @@ describe('ProcGen workstation orchestration', () => {
     f.studio.handlers.redo(); expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[1].note).to.equal(72); f.studio.dispose();
   });
 
+  it('replays edits made during a world-changing Undo and invalidates its Redo branch', async () => {
+    const f = setup(); f.studio.bindRuntime();
+    expect(await f.studio.handlers.addLane()).to.equal(true);
+    const release = f.holdRestart(), pending = f.studio.handlers.undo();
+    expect(f.studio.handlers.historyBusy()).to.equal(true);
+    f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 81 } });
+    expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(81);
+    release(); expect(await pending).to.equal(true);
+    expect(f.studio.handlers.historyBusy()).to.equal(false);
+    expect(f.studio.getProject().procgen.lanes).to.have.length(1);
+    expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(81);
+    expect(await f.studio.handlers.redo()).to.equal(false);
+    expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(81);
+    expect(await f.studio.handlers.undo()).to.equal(true);
+    expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(60);
+    f.studio.dispose();
+  });
+
+  it('keeps concurrent edits undoable when a history rebuild fails', async () => {
+    const f = setup(); f.studio.bindRuntime();
+    expect(await f.studio.handlers.addLane()).to.equal(true);
+    const release = f.holdRestart(), pending = f.studio.handlers.undo();
+    f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 81 } });
+    f.failRestart(); release(); expect(await pending).to.equal(false);
+    expect(f.studio.getProject().procgen.lanes).to.have.length(2);
+    expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(81);
+    expect(await f.studio.handlers.undo()).to.equal(true);
+    expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(60);
+    f.studio.dispose();
+  });
+
   it('quantizes consecutive recorded notes into different cells and captures simultaneous notes as a chord', () => {
     const f = setup(); f.studio.bindRuntime(); f.studio.handlers.record(true);
     f.studio.ports.receiveMidi([0x90, 60, 90], 0); f.studio.ports.receiveMidi([0x90, 64, 90], 0);
@@ -94,6 +125,27 @@ describe('ProcGen workstation orchestration', () => {
     const steps = f.studio.getProject().procgen.lanes[0].patterns[0].steps;
     expect(steps[0]).to.include({ note: 60, duration: 0.2 }); expect(steps[0].chord.degrees).to.deep.equal([0, 4]);
     expect(steps[1]).to.include({ note: 72, velocity: 95 }); expect(steps[1].duration).to.be.closeTo(0.1, 1e-8); f.studio.dispose();
+  });
+
+  it('groups a captured chord and its note-off duration into one Undo gesture', async () => {
+    const f = setup(); f.studio.bindRuntime(); f.studio.handlers.record(true);
+    f.studio.ports.receiveMidi([0x90, 60, 90], 0); f.studio.ports.receiveMidi([0x90, 64, 90], 0);
+    f.time(100); f.studio.ports.receiveMidi([0x80, 60, 0], 100); f.studio.ports.receiveMidi([0x80, 64, 0], 100);
+    expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].chord.degrees).to.deep.equal([0, 4]);
+    expect(await f.studio.handlers.undo()).to.equal(true);
+    const restored = f.studio.getProject().procgen.lanes[0].patterns[0].steps[0];
+    expect(restored.chord).to.equal(null); expect(restored.note).to.equal(60);
+    f.studio.dispose();
+  });
+
+  it('does not store no-op edits and keeps retained history within its byte budget', () => {
+    const f = setup({ historyBytesLimit: 4096 });
+    f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 60 } });
+    expect(f.studio.handlers.historyState().undo).to.equal(0);
+    for (let note = 61; note < 75; note++) f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note } });
+    expect(f.studio.handlers.historyState().retainedBytes).to.be.at.most(4096);
+    expect(f.studio.handlers.historyState().dropped).to.be.greaterThan(0);
+    f.studio.dispose();
   });
 
   it('accepts legacy music changes without a subscription echo or a stale second project', () => {

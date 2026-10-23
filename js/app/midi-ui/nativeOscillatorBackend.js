@@ -31,7 +31,7 @@ const createNativeOscillatorBackend = (preview, owner = null) => {
   const audioTime = frame => {
     const context = preview._context, rate = context?.sampleRate || 48000;
     if (!Number.isSafeInteger(frame) || frame < 0) return null;
-    return Math.max(context.currentTime, frame / rate);
+    return frame / rate;
   };
   const validatePatch = resolution => {
     if (!resolution || !['ready', 'degraded'].includes(resolution.status) || !resolution.patch ||
@@ -69,6 +69,7 @@ const createNativeOscillatorBackend = (preview, owner = null) => {
         !intent.pitch || frequencyFor(intent.pitch) == null || typeof executionEpoch !== 'string' || !executionEpoch) return failure('invalid-intent', intent);
     const start = audioTime(targetFrame), context = preview._context;
     if (start == null || start - context.currentTime > preview._maxNoteSeconds) return failure('target-frame-out-of-range', intent);
+    if (start < context.currentTime - 1 / context.sampleRate) return failure('late-attack', intent);
     const identity = keyFor(executionEpoch, intent.voiceId);
     if (voices.has(identity)) return failure('duplicate-voice', intent);
     const sharedIdentity = sharedKeyFor(executionEpoch, intent.voiceId);
@@ -144,6 +145,7 @@ const createNativeOscillatorBackend = (preview, owner = null) => {
     if (!voice || voice.stolen || voice.released || !preview._ownerReady(owner)) return failure('voice-not-active', { voiceId });
     const time = audioTime(targetFrame);
     if (time == null || !expression || typeof expression !== 'object') return failure('invalid-expression', { voiceId });
+    if (time < preview._context.currentTime - 1 / preview._context.sampleRate) return failure('stale-expression', { voiceId });
     const unsupported = Object.keys(expression).filter(name => !['pitchOffsetCents', 'pressure01', 'pan01'].includes(name));
     if (unsupported.length) return Object.freeze({ status: 'degraded', reason: 'unsupported-expression', unsupported: Object.freeze(unsupported), voiceId });
     if (expression.pitchOffsetCents != null && !validCents(expression.pitchOffsetCents) ||
@@ -166,9 +168,11 @@ const createNativeOscillatorBackend = (preview, owner = null) => {
         (release.mode != null && release.mode !== 'one-shot') ||
         (release.mode === 'one-shot' && (!Number.isFinite(release.tailSeconds) || release.tailSeconds < 0 || release.tailSeconds > 4)))) return failure('invalid-release', { voiceId });
     if (release) voice.release = release.seconds;
-    const releaseAt = release?.mode === 'one-shot' ? Math.max(time, voice.start + release.tailSeconds) : time;
+    const releaseAt = release?.mode === 'one-shot' ? Math.max(time, voice.start + release.tailSeconds, preview._context.currentTime) :
+      Math.max(time, preview._context.currentTime);
     preview._release(voice, releaseAt, false, release?.mode === 'one-shot' ? 'semantic-one-shot' : 'semantic-end');
-    return Object.freeze({ status: 'accepted', stage: 'scheduled', voiceId, executionEpoch, targetFrame });
+    return Object.freeze({ status: 'accepted', stage: 'scheduled', voiceId, executionEpoch, targetFrame,
+      repair: time < preview._context.currentTime ? 'late-release' : null });
   };
   const cancelGeneration = (generation, executionEpoch = 'live') => {
     let count = 0;

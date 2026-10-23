@@ -166,6 +166,23 @@ describe('BrowserNotePreview', function() {
     backend.dispose(); await preview.dispose();
   });
 
+  it('reports late semantic attacks instead of silently clamping their render time', async () => {
+    const { preview, context } = setup(), game = preview.createSession('game'), backend = game.createInstrumentBackend();
+    const resolution = { status: 'ready', patch: { id: 'late-test', revision: 1, engineId: 'native-oscillator', engineVersion: 1,
+      parameters: {}, sampleRefs: [], voicePolicy: { maxVoices: 8 }, mix: { gain01: 1, pan01: 0 } },
+    receipt: { patchId: 'late-test', revision: 1 } };
+    await backend.prepare(resolution); await game.enable();
+    const intent = voiceId => ({ version: 1, kind: 'begin', voiceId, generation: 1, laneId: 0,
+      pitch: { cents: 6000, referenceHz: 440 }, velocity01: 0.5, expression: {}, sourceEventIds: [] });
+    expect(backend.begin(intent('expired'), 90000).reason).to.equal('late-attack');
+    expect(context.oscillators).to.have.length(0);
+    expect(backend.begin(intent('held'), 96000).status).to.equal('accepted');
+    context.currentTime = 2.1;
+    expect(backend.update('held', { pressure01: 0.5 }, 96000).reason).to.equal('stale-expression');
+    expect(backend.end('held', { seconds: 0.04 }, 96000)).to.include({ status: 'accepted', repair: 'late-release' });
+    backend.dispose(); await preview.dispose();
+  });
+
   it('cancels only the selected semantic execution generation and reports unsupported expression', async () => {
     const { preview } = setup(), game = preview.createSession('game'), backend = game.createInstrumentBackend();
     const resolution = { status: 'ready', patch: { id: 'native-test', revision: 1, engineId: 'native-oscillator', engineVersion: 1,

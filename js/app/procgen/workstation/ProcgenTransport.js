@@ -132,6 +132,8 @@ export function createProcgenTransport(options = {}) {
   return {
     configure, update: configure, play, pause: () => halt('paused'), stop: () => halt('stopped', true),
     seek, receiveMidi, pump, getState, snapshot,
+    diagnostics: () => Object.freeze({ driver: driver.diagnostics?.() ?? null, reason, clockStatus,
+      lastWake, lastClock, waitingSince }),
     panic: () => halt('panic'),
     suspend: () => halt('suspended'),
     setClockOutput(port) {

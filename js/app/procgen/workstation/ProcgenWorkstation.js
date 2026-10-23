@@ -8,6 +8,7 @@ import { createProcgenWorkstationView } from './ProcgenWorkstationView.js';
 import { captureProcgenCheckpoint } from './ProcgenCheckpoint.js';
 import { createProcgenLaneObserver } from './ProcgenLaneObservation.js';
 import { createProcgenSession, validateProcgenSession, createProcgenSessionStorage, freshProcgenSeed } from './ProcgenSessionStorage.js';
+import { createProcgenPhysicalScoreClock } from './ProcgenPhysicalScoreClock.js';
 
 const STORAGE_KEY = 'lemmings.procgen.workstation.v1';
 const clone = value => JSON.parse(JSON.stringify(value));
@@ -29,7 +30,8 @@ function rollbackWorldProject(previous, staged, current) {
 
 export function createProcgenWorkstation({ document, window, legacy, getRuntime, restart,
   createView = createProcgenWorkstationView, storage = createProcgenSessionStorage(window.indexedDB),
-  captureCheckpoint = captureProcgenCheckpoint, transportOptions = {} }) {
+  captureCheckpoint = captureProcgenCheckpoint, transportOptions = {}, historyBytesLimit = 32 * 1024 * 1024 }) {
+  if (!Number.isSafeInteger(historyBytesLimit) || historyBytesLimit < 1024) throw new Error('Invalid history byte limit.');
   const now = () => window.performance?.now?.() ?? performance.now();
   let saved = null;
   try { saved = JSON.parse(window.localStorage?.getItem(STORAGE_KEY) || 'null'); } catch { /* Keep the default project. */ }
@@ -49,8 +51,26 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let writingLegacy = false;
   let worldBusy = false;
   let laneObserver = null;
+  let physicalScoreClock = createProcgenPhysicalScoreClock(), physicalClockError = false;
+  let pendingHistory = null;
   const routerRestores = new Map();
   const undo = [], redo = [], listeners = [], noteEntries = new Map();
+  let lastHistoryGroup = null, inputGestureSerial = 0;
+  const historySizes = new WeakMap();
+  let historyDropped = 0;
+  const historyBytes = value => {
+    let bytes = historySizes.get(value);
+    if (bytes == null) { bytes = JSON.stringify(value).length * 2; historySizes.set(value, bytes); }
+    return bytes;
+  };
+  const retainedHistoryBytes = () => [...undo, ...redo].reduce((sum, entry) => sum + historyBytes(entry), 0);
+  const trimHistory = () => {
+    let bytes = retainedHistoryBytes();
+    while (bytes > historyBytesLimit && (undo.length || redo.length)) {
+      const entry = undo.length ? undo.shift() : redo.shift();
+      bytes -= historyBytes(entry); historyDropped++;
+    }
+  };
   const status = text => { if (!disposed) view?.status(text); };
   const beginOperation = kind => {
     currentOperation?.controller.abort();
@@ -95,20 +115,42 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     try { window.localStorage?.setItem(STORAGE_KEY, JSON.stringify({ version: 1, project, ui: { ...state, recording: false, thru: false, lastMidi: '' }, transport: transport.snapshot() })); }
     catch { status('Project preferences could not be stored. Export a project file to save.'); }
   };
-  const syncProject = (next, { history = true, render = true, fromLegacy = false } = {}) => {
-    if (history) { undo.push(project); if (undo.length > 20) undo.shift(); redo.length = 0; }
+  const syncProject = (next, { history = true, historyGroup = null, render = true, fromLegacy = false } = {}) => {
+    if (history) {
+      if (historyGroup == null || historyGroup !== lastHistoryGroup) { undo.push(project); if (undo.length > 20) { undo.shift(); historyDropped++; } }
+      redo.length = 0;
+      trimHistory();
+    }
+    lastHistoryGroup = history ? historyGroup : null;
     project = createProcgenWorkstationProject(sanitizeMidiProject(next));
     if (!project.procgen.lanes.some(lane => lane.id === state.laneId)) state.laneId = project.procgen.lanes[0].id;
     state.slot = Math.max(0, Math.min(3, state.slot || 0)); state.step = Math.max(0, Math.min(selected().patterns[state.slot].length - 1, state.step || 0));
     if (!fromLegacy) setLegacyProject(project); ports?.configure({ schedulerConfig: projectToMidiConfig(project) });
     persist(); if (render) { view?.render(); reportRouting(); } return project;
   };
-  const dispatch = action => {
+  const dispatch = (action, { historyGroup = null } = {}) => {
     if (disposed) return project;
+    if (pendingHistory) {
+      if (['procgen/palette', 'procgen/addLane', 'procgen/removeLane', 'procgen/seed'].includes(action.type) ||
+          action.type === 'procgen/lane' && (action.patch?.family || action.patch?.role)) {
+        status('Wait for Undo or Redo to finish before changing the world.'); return false;
+      }
+      const next = reduceMidiProject(project, action);
+      if (equal(next, project)) return project;
+      const serialized = JSON.stringify(action), bytes = serialized.length;
+      if (pendingHistory.bytes + bytes > 1048576 || pendingHistory.commands.length >= 256) {
+        status('Undo or Redo is still preparing. Finish it before adding more edits.'); return false;
+      }
+      pendingHistory.commands.push({ action: JSON.parse(serialized), historyGroup }); pendingHistory.bytes += bytes;
+      return syncProject(next, { history: false });
+    }
     if (action.type === 'procgen/palette' && action.family && project.procgen.lanes.find(lane => lane.id === action.laneId)?.family !== action.family) {
       return safe(() => rebuild({ projectNext: reduceMidiProject(project, action) }))();
     }
-    const next = syncProject(reduceMidiProject(project, action), { history: action.type !== 'procgen/launched', render: action.type !== 'procgen/launched' });
+    const reduced = reduceMidiProject(project, action);
+    if (equal(reduced, project)) return project;
+    const next = syncProject(reduced, { history: action.type !== 'procgen/launched', historyGroup,
+      render: action.type !== 'procgen/launched' });
     if (action.type === 'procgen/launched') view?.launched?.();
     return next;
   };
@@ -151,15 +193,18 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       const index = !learned && state.recording && position.playing
         ? ((Math.floor((beat - (engine.getLanePosition(laneId)?.origin || 0)) * 4 * pattern.rate + 1e-7) % pattern.length) + pattern.length) % pattern.length : state.step;
       const chord = [...noteEntries.values()].filter(entry => entry.laneId === laneId && entry.slot === slot && entry.index === index && Math.abs(entry.beat - beat) < 0.25 / pattern.rate);
-      const notes = [...new Set([...chord.map(entry => entry.note), event.note])].sort((a, b) => a - b), group = chord[0]?.group || { duration: 0 };
+      const notes = [...new Set([...chord.map(entry => entry.note), event.note])].sort((a, b) => a - b),
+        group = chord[0]?.group || { duration: 0, historyGroup: ++inputGestureSerial };
       dispatch({ type: 'procgen/step', laneId, slot, index, patch: { enabled: true, note: notes[0], velocity: event.velocity,
-        chord: notes.length > 1 ? { degrees: notes.map(note => note - notes[0]), inversion: 0, spread: 0 } : null } });
+        chord: notes.length > 1 ? { degrees: notes.map(note => note - notes[0]), inversion: 0, spread: 0 } : null } },
+      { historyGroup: group.historyGroup });
       if (!learned) noteEntries.set(key, { laneId, slot, index, beat, note: event.note, group });
       status(`Recorded note ${event.note} into step ${index + 1}.`);
     } else {
       const start = noteEntries.get(key); if (!start) return;
       noteEntries.delete(key); start.group.duration = Math.max(start.group.duration, 1 / 96, (event.beat ?? transport.getState().beat) - start.beat);
-      dispatch({ type: 'procgen/step', laneId: start.laneId, slot: start.slot, index: start.index, patch: { duration: start.group.duration } });
+      dispatch({ type: 'procgen/step', laneId: start.laneId, slot: start.slot, index: start.index, patch: { duration: start.group.duration } },
+        { historyGroup: start.group.historyGroup });
     }
   };
   ports = createProcgenMidiPorts({ transport, now, schedulerConfig: projectToMidiConfig(project),
@@ -252,8 +297,16 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     unhookRouter?.(); unhookWorld?.(); boundRuntime = next; boundSession = session;
     laneObserver = createProcgenLaneObserver(next.world);
     const bus = next.world?.soundEvents?.onEvent;
+    const physicalBus = next.world?.soundEvents?.onBatch;
+    physicalScoreClock = createProcgenPhysicalScoreClock(); physicalClockError = false;
+    if (session?.physicalTimeline) physicalScoreClock.restore(session.physicalTimeline);
     const onGameEvent = event => { if (transport.getState().playing) engine.onGameEvent(event, now()); };
-    bus?.on?.(onGameEvent); unhookWorld = () => bus?.off?.(onGameEvent);
+    const onPhysicalBatch = batch => {
+      try { physicalScoreClock.observe(batch, transport.getState()); }
+      catch (error) { if (!physicalClockError) status('Physical score clock: ' + error.message); physicalClockError = true; }
+    };
+    bus?.on?.(onGameEvent); physicalBus?.on?.(onPhysicalBatch);
+    unhookWorld = () => { bus?.off?.(onGameEvent); physicalBus?.off?.(onPhysicalBatch); };
     next.lanes?.setClockDriven?.(true);
     if (next.view?.setMidiPreviewRouter) {
       const owner = next.view, original = owner.setMidiPreviewRouter;
@@ -285,7 +338,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (worldBusy) throw new Error('Wait for the world change to finish before saving.');
     syncWorldSeed();
     return createProcgenSession({ name, project: clone(project), settings: clone(prepareSettings()), world: captureCheckpoint(runtime().world),
-      transport: transport.snapshot(), patterns: engine.snapshot(), camera: renderer()?.camera?.getState?.(), ui: { ...state, recording: false, thru: false, lastMidi: '' } });
+      transport: transport.snapshot(), patterns: engine.snapshot(), physicalTimeline: physicalScoreClock.snapshot(),
+      camera: renderer()?.camera?.getState?.(), ui: { ...state, recording: false, thru: false, lastMidi: '' } });
   };
   const recover = async () => {
     if (disposed || worldBusy || recoveryPending || !runtime()?.world) return false;
@@ -312,6 +366,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
     const lease = admittedLease || beginOperation('load');
     const session = validateProcgenSession(value), serial = ++loadSerial;
+    if (session.physicalTimeline) createProcgenPhysicalScoreClock().restore(session.physicalTimeline);
     const validatedProject = createProcgenWorkstationProject(sanitizeMidiProject(session.project));
     if (validatedProject.procgen.lanes.length !== session.world.laneCount) throw new Error('Project lanes and world checkpoint do not match.');
     worldBusy = true;
@@ -359,14 +414,34 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   }
   const changesWorld = next => next.procgen.seed !== project.procgen.seed || next.procgen.lanes.length !== project.procgen.lanes.length || next.procgen.lanes.some((lane, index) => lane.family !== project.procgen.lanes[index]?.family);
   const historyMove = async (from, to) => {
-    if (!from.length) return;
+    if (!from.length || pendingHistory || worldBusy) return false;
     const previous = project, next = from.at(-1);
-    if (changesWorld(next) && !await rebuild({ projectNext: next, seed: next.procgen.seed, history: false })) return false;
-    else syncProject(next, { history: false });
-    from.pop(); to.push(previous);
+    if (!changesWorld(next)) {
+      syncProject(next, { history: false }); from.pop(); to.push(previous); trimHistory(); return true;
+    }
+    const undoBefore = [...undo], redoBefore = [...redo];
+    const transaction = { commands: [], bytes: 0 }; pendingHistory = transaction;
+    let committed = false, failure = null;
+    try { committed = !!await rebuild({ projectNext: next, seed: next.procgen.seed, history: false }); }
+    catch (error) { failure = error; }
+    if (disposed) { pendingHistory = null; return false; }
+    undo.splice(0, undo.length, ...undoBefore); redo.splice(0, redo.length, ...redoBefore);
+    if (committed) { from.pop(); to.push(previous); trimHistory(); }
+    syncProject(committed ? next : previous, { history: false, render: false });
+    pendingHistory = null;
+    for (const { action, historyGroup } of transaction.commands) {
+      const reduced = reduceMidiProject(project, action);
+      if (!equal(reduced, project)) syncProject(reduced, { historyGroup, render: false });
+    }
+    view?.render();
+    if (failure) throw failure;
+    return committed;
   };
   const handlers = {
     status, preferences: persist, devices, engineState: () => engine.getState(), playhead: id => engine.getLanePosition?.(id),
+    historyBusy: () => pendingHistory !== null,
+    historyState: () => Object.freeze({ undo: undo.length, redo: redo.length,
+      retainedBytes: retainedHistoryBytes(), byteLimit: historyBytesLimit, dropped: historyDropped }),
     transport(patch) { configureTransport(patch); if (patch.gameSpeed != null) legacy.setSpeed(patch.gameSpeed); persist(); },
     addLane: safe(async () => { if (!await rebuild({ projectNext: reduceMidiProject(project, { type: 'procgen/addLane' }) })) return false; state.laneId = project.procgen.lanes.at(-1).id; view.render(); return true; }),
     removeLane: safe(async () => { await rebuild({ projectNext: reduceMidiProject(project, { type: 'procgen/removeLane', laneId: selected().id }) }); }),
@@ -429,6 +504,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   return { getProject: () => project, getLaneAssignments: () => project.procgen.lanes.map(lane => lane.family),
     getPlaybackState: () => ({ ...legacy.local.getState(), activeNotes: router()?.scheduler?._activeNotes?.size || 0, pendingNotes: router()?.scheduler?._pendingNoteOns?.size || 0, pressure: router()?.scheduler?.getOutputPressure?.() || ports.getState().pressure }),
     prepareSettings, bindRuntime, beforeRestart, loadSession, capture, recover, dispatch, play, handlers, state, transport, ports, engine,
+    getPhysicalScoreClock: () => physicalScoreClock,
     get settings() { return legacy.settings; },
     dispose() {
       if (disposed) return; disposed = true; loadSerial++; currentOperation?.controller.abort(); currentOperation = null; unhookRouter?.(); unhookWorld?.(); transport.dispose(); ports.dispose();

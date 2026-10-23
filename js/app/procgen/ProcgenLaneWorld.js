@@ -118,6 +118,9 @@ class ProcgenLaneWorld {
     this.scenery = workstation && terrain ? new ProcgenScenery({ terrain, laneSeeds: this.laneSeeds, laneHeight: this.laneHeight, solidLead: this.terrainGrowth?.targetLead || 96 }) : null;
     if (workstation) for (let lane = 0; lane < this.laneCount; lane++) this.terrainGrowth?.ensureLocal(lane, 36, { through: this.generatedThrough, frontiers: this.frontiers, prepare: this._prepareGrowthChunk, reveal: this._revealGrowth });
     this.eventTimeMs = 0;
+    // Source time belongs to physics. The legacy event clock may use a RAF
+    // timestamp shared by several catch-up ticks, but this clock never does.
+    this.simulationTimeMs = 0;
     this.timer = { speedFactor: speed, onGameTick: new EventHandler(), getGameTicks: () => this.tickIndex,
       TIME_PER_FRAME_MS: 60,
       get frameTime() { return 60 / Math.max(0.001, this.speedFactor); },
@@ -842,7 +845,9 @@ class ProcgenLaneWorld {
     try {
       const generation = this.generation, terrainRevisionBefore = this.terrainRevision;
       this.tickIndex++;
-      this.soundEvents.beginTick({ worldId: this.worldId, generation, tick: this.tickIndex, terrainRevisionBefore });
+      this.simulationTimeMs += this.timer.TIME_PER_FRAME_MS;
+      this.soundEvents.beginTick({ worldId: this.worldId, generation, tick: this.tickIndex, terrainRevisionBefore,
+        sourceTimeMs: this.simulationTimeMs, tickDurationMs: this.timer.frameTime });
       const observePhysical = this.soundEvents.onBatch.handlers.size > 0;
       const nextMusicSlot = 1 - this._musicCompletedSlot;
       this.eventTimeMs = Number.isFinite(eventTimeMs) ? eventTimeMs : this.eventTimeMs + this.timer.frameTime;
@@ -1046,7 +1051,8 @@ class ProcgenLaneWorld {
     this._disposed = true;
     if (this.soundEvents.onBatch.handlers.size && !this.soundEvents._tick) {
       this.soundEvents.beginTick({ worldId: this.worldId, generation: this.generation, tick: this.tickIndex,
-        terrainRevisionBefore: this.terrainRevision, ordinal: 1 });
+        terrainRevisionBefore: this.terrainRevision, ordinal: 1,
+        sourceTimeMs: this.simulationTimeMs, tickDurationMs: this.timer.frameTime });
       for (const actor of this.actors) { actor.flushPhysicalTransitions(); actor.endPhysicalLifecycle('world-disposed'); }
       const snapshot = this._physicalSnapshot();
       this.soundEvents.commitTick(Object.freeze({ ...snapshot, actors: Object.freeze([]) }), this.terrainRevision);

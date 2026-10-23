@@ -85,7 +85,7 @@ const captureProcgenCheckpoint = world => ({ version: VERSION, generator: 'procg
   terrainAssignments: world.terrain?.exportAssignments?.() || null,
   terrainSettings: (world.terrain?.themes || [{ terrain: world.terrain }]).map(({ terrain }) => terrain ? { workstation: terrain.workstation, hazardSpacing: terrain.hazardSpacing, laneHeight: terrain.height, sharedSpanBudget: terrain.sharedSpanBudget } : null),
   growth: world.terrainGrowth?.exportState?.() || null, scenery: world.scenery?.snapshot?.() || null,
-  clock: { speedFactor: world.timer.speedFactor, eventTimeMs: world.eventTimeMs } });
+  clock: { speedFactor: world.timer.speedFactor, eventTimeMs: world.eventTimeMs, simulationTimeMs: world.simulationTimeMs } });
 
 function restoreProcgenCheckpoint(world, saved) {
   if (saved?.version !== VERSION || saved.generator !== 'procgen-workstation-1' || saved.laneCount !== world.laneCount || saved.laneHeight !== world.laneHeight) throw new Error('Incompatible world checkpoint.');
@@ -144,6 +144,7 @@ function restoreProcgenCheckpoint(world, saved) {
   }
   world._authoritativeActors = new WeakSet(world.actors);
   world.timer.speedFactor = saved.clock.speedFactor; world.eventTimeMs = saved.clock.eventTimeMs;
+  world.simulationTimeMs = saved.clock.simulationTimeMs ?? world.tickIndex * world.timer.TIME_PER_FRAME_MS;
   const themes = world.terrain?.themes || [{ terrain: world.terrain }];
   for (let index = 0; index < themes.length; index++) if (saved.terrainSettings?.[index]) themes[index].terrain?.configure?.(world.laneCount, world.maxActors, saved.terrainSettings[index]);
   if (saved.terrainAssignments && world.terrain?.restoreAssignments) world.terrain.restoreAssignments(saved.terrainAssignments);
