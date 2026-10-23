@@ -1,0 +1,105 @@
+{
+  "schema": "lemmings-sound-recipes/v1",
+  "pack": {
+    "id": "lemmings.native-foundation",
+    "version": "1.0.0",
+    "name": "Native oscillator foundation",
+    "author": "LemmingsJS-MIDI contributors",
+    "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+    "licenseId": "NOASSERTION",
+    "licenseUrl": null,
+    "attribution": "Original declarative oscillator recipes; redistribution terms have not been assigned.",
+    "modifications": [],
+    "redistributionPolicy": "unknown",
+    "licenses": []
+  },
+  "files": [],
+  "recipes": [
+    {
+      "id": "foundation.base",
+      "revision": 1,
+      "abstract": true,
+      "author": "LemmingsJS-MIDI contributors",
+      "tags": ["oscillator", "physical-facts"],
+      "engine": { "id": "native-oscillator", "version": 1 },
+      "rights": {
+        "kind": "patch-recipe",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original native oscillator recipes",
+        "modifications": [],
+        "declaredUse": "unknown"
+      },
+      "components": [
+        { "id": "envelope", "role": "envelope", "parameters": {
+          "attackSeconds": { "value": 0.008, "unit": "s" },
+          "decaySeconds": { "value": 0.08, "unit": "s" },
+          "sustain01": { "value": 0.6, "unit": "ratio" },
+          "releaseSeconds": { "value": 0.08, "unit": "s" }
+        } },
+        { "id": "output", "role": "output", "parameters": {
+          "gain01": { "value": 0.55, "unit": "amplitude-linear" },
+          "pan01": { "value": 0, "unit": "normalized" }
+        } }
+      ],
+      "voicePolicy": { "maxVoices": 16, "steal": "oldest" },
+      "mix": { "gain01": 0.6, "pan01": 0 },
+      "dependencies": []
+    },
+    {
+      "id": "foundation.soft-triangle",
+      "revision": 1,
+      "extends": "foundation.base",
+      "name": "Soft triangle",
+      "components": [
+        { "id": "exciter", "role": "exciter", "parameters": { "waveform": { "value": 1, "unit": "enum" } } },
+        { "id": "envelope", "role": "envelope", "parameters": { "attackSeconds": { "value": 0.04, "unit": "s" } } }
+      ]
+    },
+    {
+      "id": "foundation.short-sine",
+      "revision": 1,
+      "extends": "foundation.base",
+      "name": "Short sine",
+      "components": [
+        { "id": "exciter", "role": "exciter", "parameters": { "waveform": { "value": 0, "unit": "enum" } } },
+        { "id": "envelope", "role": "envelope", "parameters": {
+          "attackSeconds": { "value": 0.002, "unit": "s" },
+          "decaySeconds": { "value": 0.11, "unit": "s" },
+          "sustain01": { "value": 0.05, "unit": "ratio" },
+          "releaseSeconds": { "value": 0.035, "unit": "s" }
+        } }
+      ]
+    },
+    {
+      "id": "foundation.held-sine",
+      "revision": 1,
+      "extends": "foundation.base",
+      "name": "Held worklet sine",
+      "engine": { "id": "worklet-sine", "version": 1 },
+      "components": [
+        { "id": "envelope", "role": "envelope", "parameters": {
+          "attackSeconds": { "value": 0.18, "unit": "s" },
+          "sustain01": { "value": 0.8, "unit": "ratio" },
+          "releaseSeconds": { "value": 0.6, "unit": "s" }
+        } }
+      ]
+    },
+    {
+      "id": "foundation.short-square",
+      "revision": 1,
+      "extends": "foundation.base",
+      "name": "Short square",
+      "components": [
+        { "id": "exciter", "role": "exciter", "parameters": { "waveform": { "value": 3, "unit": "enum" } } },
+        { "id": "output", "role": "output", "parameters": { "gain01": { "value": 0.3, "unit": "amplitude-linear" } } },
+        { "id": "envelope", "role": "envelope", "parameters": {
+          "sustain01": { "value": 0.25, "unit": "ratio" },
+          "releaseSeconds": { "value": 0.025, "unit": "s" }
+        } }
+      ]
+    }
+  ]
+}

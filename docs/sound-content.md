@@ -95,3 +95,25 @@ The application identity binds those code vectors and their reviewed collection
 recipe. A content-only edit therefore changes the application build while
 preserving an unchanged renderer's artifact identity. Old browser generations
 keep their previous identity recipe and remain explicitly without this catalog.
+
+## Authored recipes
+
+`content/sounds/*.json` contains non-executable `lemmings-sound-recipes/v1`
+recipes. `npm run build:sounds -- --name=rook` resolves inheritance and explicit
+unit conversions against allowlisted renderer templates, then emits immutable
+canonical packs, parameter explanations, dependency inventories and review data
+under `dist/sound-content/`. Publication changes `current.json` only after the
+complete new catalog has been staged. A failed build preserves the prior head.
+
+Parameters carry explicit units. Different units require a named conversion;
+unsupported resonators, signal rewiring, modulation graphs or performance macros
+fail at their recipe field. Compiler capabilities describe registered kernels.
+They never authorize executing source from a pack. Inherited overrides remain
+visible. Labels and rights have separate change classifications from effective
+render keys, which bind engine/schema hashes and actual parameter/material maps.
+
+The original foundation recipes author four concrete oscillator/envelope
+variants. They contain no recordings. Their redistribution terms remain
+`NOASSERTION`; compilation supplies no legal permission or listening verdict.
+Audition manifests explicitly require a real causal take and effective render
+evidence. Compilation alone does not qualify advanced sound families or DSP.

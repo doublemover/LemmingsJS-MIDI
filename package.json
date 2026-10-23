@@ -9,6 +9,7 @@
   "scripts": {
     "start": "http-server -a 127.0.0.1 -p 8080 --cors=*",
     "build:browser": "node scripts/build-browser-runtime.js",
+    "build:sounds": "node scripts/build-sound-content.js",
     "start-https": "http-server -a 127.0.0.1 -p 8080 --cors=* -S -C certs/localhost.pem -K certs/localhost-key.pem",
     "mcp": "node mcp/server.js",
     "mcpb:build": "node scripts/build-mcpb-bundle.js",

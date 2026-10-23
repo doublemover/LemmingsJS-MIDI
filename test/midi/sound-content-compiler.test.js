@@ -1,0 +1,45 @@
+import { expect } from 'chai';
+import fs from 'node:fs/promises';
+import { compileSoundContent, convertSoundQuantity, reviewSoundContentChanges } from '../../js/midi/content/SoundContentCompiler.js';
+import { describeNativeInstrumentEngines } from '../../js/app/midi-ui/NativeInstrumentSchema.js';
+
+const rejects = async (promise, field) => { let error; try { await promise; } catch (failure) { error = failure; } expect(error?.name).to.equal('SoundContentCompileError'); expect(error.message).to.include(field); };
+describe('typed declarative sound authoring', () => {
+  let source, targets;
+  before(async () => {
+    source = JSON.parse(await fs.readFile(new URL('../../content/sounds/native.json', import.meta.url), 'utf8'));
+    targets = (await describeNativeInstrumentEngines(['native-oscillator', 'native-sample', 'worklet-sine'].map(engineId =>
+      ({ engineId, engineVersion: 1, artifactHash: 'a'.repeat(64) })))).map(descriptor => ({ descriptor }));
+  });
+  const compile = input => compileSoundContent(input, { targets });
+  it('compiles actual inherited oscillator parameters and preserves visible overrides', async () => {
+    const output = await compile(source), triangle = output.prepared.patches.find(patch => patch.identity === 'foundation.soft-triangle@1');
+    expect(output.prepared.patches).to.have.length(4); expect(triangle.definition.parameters).to.include({ waveform: 1, attackSeconds: 0.04, gain01: 0.55 });
+    expect(output.artifacts.find(artifact => artifact.id === triangle.definition.id).overrides).to.include('envelope.attackSeconds');
+    expect(output.qualification).to.equal('compiled-data-not-render-qualified');
+    expect(output.artifacts.every(artifact => artifact.audition.renderEvidence === 'not-produced')).to.equal(true);
+  });
+  it('preserves render identity for labels and traversal changes while distinguishing audible and rights changes', async () => {
+    const before = await compile(source), label = structuredClone(source); label.recipes.reverse(); label.recipes.find(recipe => recipe.id === 'foundation.soft-triangle').name = 'A different display name';
+    const renamed = await compile(label), change = reviewSoundContentChanges(before, renamed).find(entry => entry.id === 'foundation.soft-triangle');
+    expect(change).to.include({ state: 'render-equivalent', metadataChanged: true, rightsChanged: false });
+    label.recipes.find(recipe => recipe.id === 'foundation.soft-triangle').components[1].parameters.attackSeconds.value = 0.1;
+    expect(reviewSoundContentChanges(before, await compile(label)).find(entry => entry.id === 'foundation.soft-triangle').state).to.equal('effective-render-change');
+    const rights = structuredClone(source); rights.recipes[0].rights.attribution += ' amended';
+    expect(reviewSoundContentChanges(before, await compile(rights)).every(entry => entry.state === 'render-equivalent' && entry.rightsChanged)).to.equal(true);
+  });
+  it('rejects swapped Hz/seconds, ambiguous ratios and unsupported conversions with exact authoring fields', async () => {
+    const wrong = structuredClone(source); wrong.recipes[0].components[0].parameters.attackSeconds.unit = 'Hz';
+    await rejects(compile(wrong), 'attackSeconds: explicit conversion required from Hz to s');
+    expect(convertSoundQuantity({ value: 20, unit: 'ms', conversion: { kind: 'milliseconds-seconds', to: 's' } }, 's')).to.equal(0.02);
+    expect(convertSoundQuantity({ value: -6, unit: 'dB', conversion: { kind: 'db-amplitude', to: 'amplitude-linear' } }, 'amplitude-linear')).to.be.closeTo(0.501187, 0.000001);
+    expect(() => convertSoundQuantity({ value: 1, unit: 'ratio' }, 'Hz')).to.throw('explicit conversion');
+  });
+  it('rejects missing capabilities, unknown components, invalid domains and inheritance cycles before publication', async () => {
+    const cycle = structuredClone(source); cycle.recipes[0].extends = 'foundation.soft-triangle'; await rejects(compile(cycle), 'inheritance cycle');
+    const unknown = structuredClone(source); unknown.recipes[1].components[0].role = 'resonator'; await rejects(compile(unknown), 'component is not supplied');
+    const excessive = structuredClone(source); excessive.recipes[1].components[0].parameters.waveform.value = 4; await rejects(compile(excessive), 'exceeds engine domain');
+    const modulation = structuredClone(source); modulation.recipes[1].modulations = [{}]; await rejects(compile(modulation), 'does not realize');
+    const missing = structuredClone(source); missing.recipes[1].dependencies = ['b'.repeat(64)]; await rejects(compile(missing), 'required immutable assets');
+  });
+});

@@ -6,9 +6,9 @@ const parameter = (id, min, max, defaultValue, unit, discrete = false) => Object
   unit, discrete, interpolation: 'linear', liveSafe: !['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds', 'waveform'].includes(id), capability: null });
 const envelope = (attack, decay, sustain, gain) => [parameter('attackSeconds', 0, 2, attack, 's'), parameter('decaySeconds', 0, 4, decay, 's'),
   parameter('sustain01', 0, 1, sustain, 'ratio'), parameter('releaseSeconds', 0.002, 4, 0.04, 's'),
-  parameter('gain01', 0, 1, gain, 'ratio'), parameter('pan01', -1, 1, 0, 'normalized')];
+  parameter('gain01', 0, 1, gain, 'amplitude-linear'), parameter('pan01', -1, 1, 0, 'normalized')];
 const schemas = freezeData({
-  'native-oscillator': [parameter('waveform', 0, 3, 1, 'index', true), ...envelope(0.008, 0.05, 0.7, 0.5)],
+  'native-oscillator': [parameter('waveform', 0, 3, 1, 'enum', true), ...envelope(0.008, 0.05, 0.7, 0.5)],
   'worklet-sine': envelope(0.008, 0.05, 0.7, 0.5),
   'native-sample': envelope(0.005, 0, 1, 0.7)
 });
@@ -22,19 +22,24 @@ const capabilities = id => Object.freeze({ samples: id === 'native-sample', inde
   modulationGraph: false, macroPerformance: false, causalBindings: false });
 let catalogPromise = null;
 
+export async function describeNativeInstrumentEngines(artifacts) {
+  if (!Array.isArray(artifacts) || artifacts.length > 3) throw new TypeError('Invalid native engine artifact inventory.');
+  const descriptors = [];
+  for (const [engineId, parameters] of Object.entries(schemas)) {
+    const engineCapabilities = capabilities(engineId), artifactHash = artifacts.find(artifact => artifact.engineId === engineId && artifact.engineVersion === 1)?.artifactHash;
+    if (!artifactHash) continue;
+    const parameterSchemaHash = await hashData({ version: 1, parameters, capabilities: engineCapabilities });
+    descriptors.push(validateEngineDescriptor({ engineId, engineVersion: 1, artifactHash, parameterSchemaHash, parameters, capabilities: engineCapabilities }));
+  }
+  return Object.freeze(descriptors);
+}
+
 export function getNativeInstrumentCatalog() {
   const identity = getActiveExecutionIdentity('browser-native-audio');
   if (identity.activeExecution !== 'bound') return Promise.resolve(freezeData({ state: 'execution-unbound', executionIdentity: identity,
     descriptors: [], engines: Object.keys(schemas), qualification: 'source-preview-without-pinned-artifact-authority' }));
   if (!catalogPromise) catalogPromise = (async () => {
-    const descriptors = [];
-    for (const [engineId, parameters] of Object.entries(schemas)) {
-      const engineCapabilities = capabilities(engineId);
-      const parameterSchemaHash = await hashData({ version: 1, parameters, capabilities: engineCapabilities });
-      const artifactHash = identity.instrumentArtifacts?.find(artifact => artifact.engineId === engineId && artifact.engineVersion === 1)?.artifactHash;
-      if (!artifactHash) continue;
-      descriptors.push(validateEngineDescriptor({ engineId, engineVersion: 1, artifactHash, parameterSchemaHash, parameters, capabilities: engineCapabilities }));
-    }
+    const descriptors = await describeNativeInstrumentEngines(identity.instrumentArtifacts || []);
     return freezeData({ state: 'bound-application-engines', executionIdentity: identity, descriptors, engines: Object.keys(schemas),
       artifactScope: 'transitive-renderer-code-bound-by-immutable-application-build', qualification: 'identity-and-parameter-contract-not-render-qualification' });
   })().catch(error => { catalogPromise = null; throw error; });
