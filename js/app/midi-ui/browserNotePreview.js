@@ -87,6 +87,7 @@ class BrowserNotePreview {
     this._voices = new Set();
     this._voicesByToken = new Map();
     this._semanticVoiceOwners = new Map();
+    this._instrumentBackends = new Set();
     this._previewPending = [];
     this._previewTimer = null;
     this._voiceSequence = 0;
@@ -187,7 +188,16 @@ class BrowserNotePreview {
     };
     session.api = {
       output: this._createOutput(id), getState, enable, stop, panic: stop,
-      createInstrumentBackend: options => createNativeOscillatorBackend(this, id, options),
+      createInstrumentBackend: options => {
+        if (session.disposed || this._disposed) throw new Error('Local audio session is closed.');
+        return this._registerInstrumentBackend(createNativeOscillatorBackend(this, id, options), id);
+      },
+      createWorkletInstrumentBackend: async options => {
+        const generation = session.generation;
+        const { createWorkletInstrumentBackend } = await import('./workletInstrumentBackend.js');
+        if (session.disposed || this._disposed || generation !== session.generation) throw new Error('Audio backend selection was cancelled.');
+        return this._registerInstrumentBackend(createWorkletInstrumentBackend(this, id, options), id);
+      },
       preview: (notes, options) => this.preview(notes, { ...options, owner: id }),
       setMasterVolume: value => this.setMasterVolume(value),
       setCapture: (capture, context) => { if (!session.disposed) this.setCapture(capture, context, id); },
@@ -197,6 +207,7 @@ class BrowserNotePreview {
       dispose: () => {
         if (session.disposed) return Promise.resolve();
         session.disposed = true; stop(); session.report(); session.listeners.clear(); this._sessions.delete(id);
+        for (const entry of this._instrumentBackends) if (entry.owner === id) entry.backend.dispose();
         this._observers.revokeOwner(id); this._captureReleases.delete(id);
         for (const [key, channel] of this._channels) if (channel.owner === id) { channel.gain.disconnect(); channel.pan?.disconnect(); this._channels.delete(key); }
         return Promise.resolve();
@@ -222,6 +233,13 @@ class BrowserNotePreview {
   }
 
   getAudioContext() { return this._context; }
+
+  _registerInstrumentBackend(backend, owner) {
+    if (this._disposed || this._instrumentBackends.size >= 8) { backend.dispose(); throw new RangeError('Local audio backend limit reached.'); }
+    const entry = { owner, backend: null };
+    entry.backend = Object.freeze({ ...backend, dispose: () => { backend.dispose(); this._instrumentBackends.delete(entry); } });
+    this._instrumentBackends.add(entry); return entry.backend;
+  }
 
   setMasterVolume(value) {
     if (this._disposed) return this._masterVolume;
@@ -387,6 +405,7 @@ class BrowserNotePreview {
   dispose() {
     if (this._disposePromise) return this._disposePromise;
     this._disposed = true;
+    for (const entry of this._instrumentBackends) entry.backend.dispose();
     for (const session of this._sessions.values()) session.disposed = true;
     this.stop();
     const context = this._context;
@@ -732,6 +751,7 @@ class BrowserNotePreview {
   }
 
   _release(voice, time, force = false, reason = 'note-off') {
+    if (voice.requestRelease) { voice.requestRelease(time, force, reason); return; }
     if (!this._voices.has(voice) || (!force && voice.released && time >= voice.releaseAt)) return;
     const releaseAt = Math.max(voice.start, Math.min(time, voice.end - voice.release));
     const end = Math.min(voice.end, releaseAt + voice.release);
@@ -788,10 +808,12 @@ class BrowserNotePreview {
       note: voice.note, audioTime: this._context?.currentTime, scheduledMs: voice.startMs + (voice.end - voice.start) * 1000,
       matchedDurationMs: Math.max(0, ((this._context?.currentTime ?? voice.start) - voice.start) * 1000), reason });
     this._emitPlayback(voice, 'end');
-    voice.oscillator.onended = null;
-    try { voice.oscillator.stop(); } catch { /* Already ended or failed to start. */ }
-    voice.oscillator.disconnect();
-    voice.gain.disconnect();
+    if (voice.oscillator) {
+      voice.oscillator.onended = null;
+      try { voice.oscillator.stop(); } catch { /* Already ended or failed to start. */ }
+      voice.oscillator.disconnect();
+    }
+    voice.gain?.disconnect();
     voice.pan?.disconnect();
     this._setStatus(this._status, this._message);
   }
@@ -810,6 +832,7 @@ class BrowserNotePreview {
   }
 
   _clearVoices(number = null, owner = undefined) {
+    if (number == null) for (const entry of this._instrumentBackends) if (owner === undefined || entry.owner === owner) entry.backend.onOwnerStop?.();
     if (this._previewTimer != null) clearTimeout(this._previewTimer);
     this._previewTimer = null;
     for (const entry of this._previewPending) {

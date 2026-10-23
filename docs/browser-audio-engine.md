@@ -132,6 +132,63 @@ The installed Playwright revision expected a browser absent from this machine,
 so the measured Chromium run used an explicit cached executable. Generated JSON
 and PCM stay under ignored `temp/`; reports identify the actual browser used.
 Offline rendering establishes digital behavior and does not qualify realtime
-capacity, acoustic latency, or musical listening quality. Worklet/WASM engines,
-spectral residual gates and versioned offline runtime deployment remain separate
-work.
+capacity, acoustic latency, or musical listening quality.
+
+## Optional owned sine worklet
+
+`await session.createWorkletInstrumentBackend(options)` explicitly selects the
+first-party `worklet-sine@1` engine. Its module loads lazily. Activate the session
+from the user gesture before awaiting module/patch preparation, then call
+`backend.prepare(resolution)` with a patch for that exact engine. A missing
+worklet or failed preparation returns an actionable rejection. Selecting a
+different engine requires an explicit new backend and matching patch revision.
+
+The ready handshake verifies build ID, runtime ABI, protocol, sample rate,
+command width and voice capacity before connecting the node to the owned mix.
+Stop cancels pending asset/module/handshake waits without admitting an onset.
+Each context initializes its own module and kernel. A processor fault stops and
+disconnects that backend, releases its owner voices, and permits preparation of
+a new kernel. Old-node callbacks cannot change its replacement.
+
+The sine reference engine has 64 fixed slots and a 512-command priority queue.
+Sixty-four command entries are reserved for End and generation cancellation.
+Commands use a fixed 18-field Float64 payload and stable frame/sequence ordering.
+One microtask collects a source batch into a transferable message. One timer
+pumps already-known commands within the default 250 ms lead window; the window
+can be configured between 10 ms and 2 seconds. A newly observed physical event
+still requires a future target frame or an explicitly declared late policy.
+Queue lead does not predict physical contacts or prove lower device latency.
+
+The render loop uses preallocated command, voice, smoothing and receipt storage,
+a bounded heap, and the actual output block length. It applies commands at
+sample offsets and preserves each parameter's independent smoothing endpoint.
+There is no intentional JS buffer/array/object allocation in the render loop.
+The bounded MessagePort receipt batches still incur browser serialization cost;
+that cost needs realtime qualification. Shared memory and WASM are not used.
+
+Kernel-applied receipts provide the actual applied frame. Scheduled, applied,
+ended, canceled-before-submission, canceled-pending-onset and faulted outcomes
+remain distinct. A Panic received by the kernel purges future commands and
+finishes its controlled mute within one actual render block. Producer delay,
+the graph's compressor lookahead and device-buffered audio remain separate.
+New admissions wait for the owned Stop acknowledgment. Repeated Stop/restart
+cannot leak reserved slots or pending acknowledgments.
+
+Run the actual AudioWorklet PCM fixtures through a whitelisted loopback HTTP
+server with correct JavaScript MIME:
+
+```text
+node scripts/measure-worklet-audio.js
+node scripts/measure-worklet-audio.js --browser=firefox
+node scripts/measure-worklet-audio.js --executable=C:/path/to/chrome.exe
+```
+
+The fixture requires kernel admission before starting its offline render and
+checks kernel rejections as failures. It covers two owners, same-pitch opposing
+controls, chronological/shuffled delivery, queued future starts, isolated cue
+Stop, Panic, and 16/32/64-voice crowds at 44.1/48/96 kHz. Kernel unit fixtures also
+cover arbitrary split-block equivalence, overload, late commands, stale slots,
+nonfinite voice isolation and a static 60-second lease. These establish digital
+offline and fake-control evidence. Realtime deadline/stall qualification,
+worker-to-worklet producers, full engine comparison, spectral residual gates,
+and immutable offline runtime asset packaging remain open.

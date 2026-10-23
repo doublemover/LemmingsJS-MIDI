@@ -153,7 +153,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
     if (voices.has(identity)) return failure('duplicate-voice', intent);
     const sharedIdentity = sharedKeyFor(executionEpoch, intent.voiceId);
     if (preview._semanticVoiceOwners.has(sharedIdentity)) return failure('duplicate-owner-voice', intent);
-    const activeForBackend = [...voices.values()].filter(voice => !voice.released && !voice.stolen);
+    const activeForBackend = [...voices.values()].filter(voice => !voice.stolen && voice.start <= start && voice.releaseAt > start);
     if (activeForBackend.length >= prepared.patch.voicePolicy.maxVoices) return failure('patch-voice-budget', intent);
     for (const voice of preview._voices) if (preview._voiceFinished(voice)) preview._destroyVoice(voice, 'inaudible-voice-reuse');
     if (preview._voices.size >= preview._maxScheduledVoices) return failure('shared-scheduled-voice-budget', intent);
@@ -232,7 +232,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
   };
   const update = (voiceId, expression, targetFrame, executionEpoch = 'live') => {
     const voice = voices.get(keyFor(executionEpoch, voiceId));
-    if (!voice || voice.stolen || voice.released || !preview._ownerReady(owner)) return failure('voice-not-active', { voiceId });
+    if (!voice || voice.stolen || voice.released && voice.releaseAt <= preview._context?.currentTime || !preview._ownerReady(owner)) return failure('voice-not-active', { voiceId });
     const time = audioTime(targetFrame);
     if (time == null || !expression || typeof expression !== 'object' || Array.isArray(expression) ||
         Object.getPrototypeOf(expression) !== Object.prototype) return failure('invalid-expression', { voiceId });
