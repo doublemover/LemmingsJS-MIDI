@@ -8,6 +8,7 @@ const submittedMidiBytes = (method, channel, args) => {
   if (method === 'sendNoteOn') return [0x90 | status, midiByte(a), midiByte(b?.rawAttack)];
   if (method === 'sendNoteOff') return [0x80 | status, midiByte(a), midiByte(b?.rawRelease ?? 64)];
   if (method === 'sendControlChange') return [0xb0 | status, midiByte(a), midiByte(b)];
+  if (method === 'sendAllNotesOff') return [0xb0 | status, 123, 0];
   if (method === 'sendProgramChange') return [0xc0 | status, midiByte(a)];
   if (method === 'sendPitchBend') {
     const bend = Math.round((Math.max(-1, Math.min(1, Number(a) || 0)) + 1) * 16383 / 2);
@@ -39,6 +40,19 @@ const midiOutputObserverMethods = {
       this._captureScale = { scaleRoot: scale.root, scaleDegrees: [...scale.degrees], scaleName: this.config.scale?.name || 'custom' };
     }
     return this._captureScale;
+  },
+
+  _sendAccountedCleanup(output, channel, method, args = [], meta = {}) {
+    let count = 0, bytes = 0;
+    const remove = this.addSubmissionObserver(event => {
+      if (event.output !== output || event.channel !== channel || event.method !== method || !event.accepted || !event.midiBytes) return;
+      count++; bytes += event.midiBytes.length;
+    });
+    try { return this._sendOutput(output, channel, method, args, meta); }
+    finally {
+      remove();
+      if (count) this._recordSent({ timeMs: this._nowMs(), outputId: output?.id ?? null, count, bytes, phase: 'off' }, this._nowMs());
+    }
   },
 
   _observe(stage, fields) {

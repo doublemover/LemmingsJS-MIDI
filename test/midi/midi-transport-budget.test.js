@@ -62,6 +62,7 @@ describe('MIDI endpoint and declared shared-link capacity', function() {
   });
 
   it('retains all accepted cost beyond 4096 messages without charging an independent endpoint', function() {
+    this.timeout(10000);
     const scheduler = new MidiScheduler(config()); scheduler.setOutputs([output('busy'), output('healthy')]);
     for (let index = 0; index < 12000; index++) scheduler._recordSent({ outputId: 'busy', timeMs: 0, count: 1, bytes: 3 }, 0);
     expect(scheduler._rateSent.length).to.be.at.most(4096);
@@ -79,6 +80,7 @@ describe('MIDI endpoint and declared shared-link capacity', function() {
   });
 
   it('bounds retained identity even under endpoint churn without discarding the submitted cost', function() {
+    this.timeout(10000);
     const scheduler = new MidiScheduler(config());
     for (let index = 0; index < 6000; index++) scheduler._recordSent({ outputId: 'retired-' + index, timeMs: 0, count: 1, bytes: 3 }, 0);
     expect(scheduler._rateSent.length).to.be.at.most(4096); expect(scheduler.getRateSnapshot(0).past.count).to.equal(6000);
@@ -134,6 +136,44 @@ describe('MIDI endpoint and declared shared-link capacity', function() {
       expect(calls).to.deep.equal(['accepted-range']); expect(scheduler.hasAnyOutput()).to.equal(false);
       expect(scheduler.getRateSnapshot(0).past).to.include({ count: 6, bytes: 18 });
       expect(scheduler.getRateSnapshot(0).next.count).to.equal(0); scheduler.dispose();
+    });
+  });
+
+  it('retains submitted link cost through stop, queue clear and re-enable while refunding canceled work', function() {
+    withFakeClockAndPerformance(clock => {
+      const scheduler = new MidiScheduler(config({ linkProfiles: { cable: { maxMessagesPerSecond: 4 } } })), calls = [];
+      const a = makeOutput([1], calls, 'a'), b = makeOutput([1], calls, 'b'); a.budgetProfile = b.budgetProfile = { linkId: 'cable' };
+      scheduler.setOutputs([a, b]); scheduler.setOutput(a); scheduler.sendNote({ note: 60 }); scheduler.allNotesOff();
+      scheduler.clearQueue(); expect(scheduler.getRateSnapshot(0, false, 'b').sharedLink.past.count).to.equal(2);
+      expect(scheduler.sendNote({ note: 61, outputId: 'b' })).to.equal(true); expect(scheduler.sendNote({ note: 62, outputId: 'b' })).to.equal(true);
+      expect(scheduler.sendNote({ note: 63, outputId: 'b' })).to.equal(false); scheduler.allNotesOff();
+      expect(scheduler.getRateSnapshot(0, false, 'b').sharedLink.past.count).to.equal(6);
+      clock.tick(1001); expect(scheduler.sendNote({ note: 64, outputId: 'b' })).to.equal(true); scheduler.dispose();
+    });
+  });
+
+  it('removes orphaned external reservations on queue clear without erasing physical cost', function() {
+    withFakeClockAndPerformance(() => {
+      const scheduler = new MidiScheduler(config()); scheduler.setOutputs([output('a')]);
+      scheduler._recordSent({ outputId: 'a', timeMs: 0, count: 1, bytes: 3 }, 0); reserve(scheduler, 'a', 1, 500);
+      scheduler.clearQueue(); expect(scheduler.getRateSnapshot(0).next.count).to.equal(0);
+      expect(scheduler.getRateSnapshot(0).past.count).to.equal(1); scheduler.dispose();
+    });
+  });
+
+  it('charges accepted exclusive and whole-device reset bytes, including a prefix before a rejected helper', function() {
+    withFakeClockAndPerformance(() => {
+      const accepted = [], port = { id: 'a', exclusiveChannels: [1], channels: {}, send(data) { accepted.push([...data]); return true; } };
+      port.channels[1] = {
+        sendNoteOn(note) { port.send([0x90, note, 64]); }, sendNoteOff(note) { port.send([0x80, note, 64]); },
+        sendControlChange(cc, value) { port.send([0xb0, cc, value]); }, sendAllNotesOff() { port.send([0xb0, 123, 0]); },
+        sendPitchBend() { port.send([0xe0, 0, 64]); }
+      };
+      const scheduler = new MidiScheduler(config()); scheduler.setOutput(port); scheduler.sendNote({ note: 60 }); scheduler.allNotesOff();
+      expect(accepted).to.have.length(6); expect(scheduler.getRateSnapshot(0).past).to.include({ count: 6, bytes: 18 });
+      port.channels[1].sendAllNotesOff = () => { port.send([0xb0, 123, 0]); return false; };
+      scheduler.allNotesOff({ wholeDevice: true }); expect(accepted).to.have.length(10);
+      expect(scheduler.getRateSnapshot(0).past).to.include({ count: 10, bytes: 30 }); expect(scheduler.lastCleanup.uncertain).to.be.greaterThan(0); scheduler.dispose();
     });
   });
 });

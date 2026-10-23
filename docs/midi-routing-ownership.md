@@ -52,6 +52,12 @@ hold a released voice; cleanup reports that uncertainty instead of lifting
 another sender's pedal. The scheduler cannot distinguish independent senders
 of the same MIDI 1 channel and pitch without an isolated route.
 
+Stop and queue clearing cancel unsent reservations while retaining recent
+submitted traffic until it expires. Disabling and re-enabling a route cannot
+refund a physical link's already submitted bytes. Whole-device and exclusive
+scope resets count every accepted message, including accepted prefixes before a
+later failure. Disposal frees the retired scheduler's accounting storage.
+
 ## Capacity and setup
 
 DIN defaults to 3,125 data bytes per second, including serial framing.
@@ -199,6 +205,30 @@ Expiry ends only source-owned Thru notes and records a synthetic safety reason.
 Stale source epochs and stale packets after expiry cannot rearm a gesture.
 System Reset remains observable, follows an explicit input policy and is never
 echoed as recovery. Musical clock loss is a separate transport condition.
+
+Accepted scheduler/manual replacement of a MIDI 1 gate transfers its ownership;
+an older Thru release or liveness expiry cannot end the replacement. Rejected
+onsets do not transfer ownership. Thru releases keep their original destination
+when the default selection changes. Input replacement inside an output callback
+waits for that submission's result, and a newly accepted old-source onset is
+released after its irrevocable deadline. Shared pedals and rejected releases
+remain uncertain.
+
+`onInputSafety(event)` and `lastInputSafety` expose immutable source route,
+connection epoch, reason, evidence and cleanup outcome for temporary gesture
+owners. Received System Reset under `release-owned`, source replacement and
+sensing expiry produce distinct safety reasons. `data: []` distinguishes a
+synthetic end from a received Note Off. A host observation gap is
+`mode: 'unavailable'` / `reason: 'host-suspended'`; an observed sensing timeout is
+`mode: 'expired'` / `reason: 'sensing-expired'`. Neither implies musical-clock
+loss or bridge failure. A new source resets observed sensing visibility; an
+explicit filtered/backend-consumed policy remains unknown protection.
+
+Monitor, learning, recording, state and safety consumer exceptions cannot change
+device admission or block source cleanup. `lastCallbackError` reports the latest
+consumer failure separately from output failure. Ingress and callback byte
+evidence are immutable; source epochs are revalidated after callbacks before
+forwarding any packet to Thru.
 
 Run the finite capture benchmark with
 `node --expose-gc scripts/bench-midi-submission.js --name=midi`. It submits a

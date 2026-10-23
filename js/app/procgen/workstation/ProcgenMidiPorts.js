@@ -53,12 +53,17 @@ export function encodeProcgenMidi(event) {
 }
 
 export function createProcgenMidiPorts({ transport, now = () => performance.now(), scheduler: suppliedScheduler, schedulerConfig = { defaultChannel: 1 },
-  onMonitor = () => {}, onLearn = () => {}, onRecord = () => {}, onState = () => {}, maxRecordedEvents = 100000 } = {}) {
+  onMonitor = () => {}, onLearn = () => {}, onRecord = () => {}, onState = () => {}, onInputSafety = () => {}, maxRecordedEvents = 100000 } = {}) {
   const scheduler = suppliedScheduler || new MidiScheduler(schedulerConfig);
   let input = null, noteOutput = null, clockOutput = null, removeInput = null;
   let thru = false, recording = false, learn = null, disposed = false, records = [], droppedRecords = 0;
   let inputEpoch = 0, lastObservationMs = now(), expiredAt = null, systemResetPolicy = 'observe', sensingTimer = null;
-  let activeSensingVisibility = 'unknown';
+  let activeSensingVisibility = 'unknown', configuredSensingVisibility = 'unknown', lastInputSafety = null;
+  let notifyingInputSafety = false, inputSelectionRevision = 0, inputSafetySequence = 0;
+  let lastCallbackError = null;
+  const callConsumer = (source, callback, value) => {
+    try { return callback(value); } catch (error) { lastCallbackError = Object.freeze({ source, message: error?.message || String(error), timestamp: now() }); }
+  };
   let protocolLowering = null, lastLowering = null, rawDispatchDepth = 0;
   const inputLiveness = { mode: 'unobserved', lastTrafficTime: null, deadline: null, evidence: 'no-active-sensing-observed', reason: null };
   const thruNotes = new Map();
@@ -149,7 +154,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     noteOutputIds: [...noteOutputs.keys()], availableNoteOutputIds: [...noteOutputs.keys()],
     authorizedNoteOutputIds: [...activeOutputs.keys()], activeNoteOutputIds: [...activeOutputs].filter(([id, route]) =>
       !route.port.channels || scheduler.getOutputRouteState?.(id)?.mpeReady !== false).map(([id]) => id),
-    routeRevision, lastRouteLoss, lastLowering, lastCleanup: lastCleanup || scheduler.lastCleanup || null,
+    routeRevision, lastRouteLoss, lastLowering, lastInputSafety, lastCallbackError, lastCleanup: lastCleanup || scheduler.lastCleanup || null,
     outputRoutes: [...new Set([...noteOutputs.keys(), ...activeOutputs.keys(), ...routeIntents.keys(), ...(noteOutput ? [String(noteOutput.id)] : [])])].map(id => {
       const active = activeOutputs.get(id), selected = String(noteOutput?.id) === id;
       const port = noteOutputs.get(id) || active?.port || (selected ? noteOutput : null);
@@ -167,7 +172,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     recordingCapacity: maxRecordedEvents,
     recordingPressure: maxRecordedEvents > 0 ? records.length / maxRecordedEvents : records.length ? 1 : 0,
     pressure: scheduler.getOutputPressure?.(now(), noteOutput?.id) || null }); };
-  const report = () => onState(getState());
+  const report = () => callConsumer('state', onState, getState());
   const markIncomplete = reason => {
     if (incompleteReasons.has(reason)) return;
     incompleteReasons.add(reason);
@@ -193,7 +198,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     const state = transport?.getState(), timestamp = event.timestamp ?? now();
     const processingMs = now(), sourceIsPast = event.direction === 'input' && timestamp < processingMs;
     const beat = event.beat ?? (sourceIsPast ? null : (state?.beat || 0) + (timestamp - processingMs) * (state?.bpm || 120) / 60000);
-    const stored = { ...event, sequence, beat, timestamp, data: [...event.data],
+    const stored = { ...event, sequence, beat, timestamp, data: Object.freeze([...event.data]),
       ...(sourceIsPast ? { processedMs: processingMs, processingBeat: state?.beat ?? null, timingUncertainty: 'source-clock-unmapped' } : {}) };
     records.push(stored); retainedEvents++;
     if (!nearCapReported && maxRecordedEvents > 0 && records.length >= maxRecordedEvents * 0.8) {
@@ -212,7 +217,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
         if (remaining > 0) activeTrace.set(key, remaining); else activeTrace.delete(key);
       }
     }
-    onRecord(stored);
+    callConsumer('record', onRecord, Object.freeze({ ...stored }));
     return stored;
   };
   const cancelRecorded = event => {
@@ -249,9 +254,20 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     }
     intentExpiry[index] = entry;
   };
+  const forgetThruGate = (port, channel, note) => {
+    for (const [key, entry] of thruNotes) if (entry.port === port && entry.channel === channel && entry.note === note) thruNotes.delete(key);
+  };
   const removeSubmissionObserver = scheduler.addSubmissionObserver?.(event => {
-    if (disposed || !recording || !event.accepted || event.backend !== 'midi-output-api' || !event.midiBytes) return;
+    if (disposed || !event.accepted || event.backend !== 'midi-output-api' || !event.midiBytes) return;
     const { output, channel, scheduledMs, submittedMs, midiBytes: data } = event;
+    const family = data[0] & 0xf0;
+    if ([0x80, 0x90].includes(family)) {
+      const addressedChannel = (data[0] & 15) + 1;
+      forgetThruGate(output, addressedChannel, data[1]);
+      rawVoices.get(output)?.delete(`${addressedChannel - 1}:${data[1]}`);
+      if (!rawVoices.get(output)?.size) rawVoices.delete(output);
+    }
+    if (!recording) return;
     record({ data, timestamp: scheduledMs, submittedMs, timestampDomain: 'performance-ms',
       outputId: event.outputId, outputScope: event.outputScope, channel, token: event.token ?? null,
       intentId: event.intentId ?? null, onsetId: event.onsetId ?? null, voiceId: event.voiceId ?? null,
@@ -337,6 +353,8 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     try {
       const family = data[0] & 0xf0;
       const release = family === 0x80 || (family === 0x90 && data[2] === 0) || (family === 0xb0 && [64, 120, 123].includes(data[1]) && !data[2]);
+      if (meta.source === 'thru' && [0x80, 0x90].includes(family) && release &&
+          ![...thruNotes.values()].some(entry => entry.port === port && entry.channel === channel && entry.note === data[1] && entry.inputEpoch === inputEpoch)) return false;
       if (capture && !release && meta.reservationId == null) {
         const reservation = scheduler.evaluateAndReserve?.({ on: { timeMs: timestamp, count: 1, bytes: data.length } }, { ...meta, outputId: port.id }, now());
         if (reservation && !reservation.ok) { scheduler.recordThrottle?.(reservation.reason, now(), meta); return false; }
@@ -355,6 +373,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
       if (!committed) scheduler._recordSent?.({ timeMs: sentAt, count: 1, bytes: data.length, phase: meta.reservationPhase ?? 'on',
         outputId: port.id, trackId: meta.trackId, laneIndex: meta.laneIndex, laneCount: meta.laneCount, sfxId: meta.sfxId, priority: meta.priority }, sentAt);
       useChannel(port, (data[0] & 15) + 1);
+      if (meta.source !== 'thru' && [0x80, 0x90].includes(family)) forgetThruGate(port, channel, data[1]);
       trackRawVoice(port, data, timestamp);
       if (!meta.sourceUmp && [0x80, 0x90].includes(family)) for (const [key, voice] of route.loweredVoices) {
         if (voice.channel === channel && voice.note === data[1]) route.loweredVoices.delete(key);
@@ -399,30 +418,74 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     usedChannels.clear();
   }
   function panic(options = {}) { transport?.panic(); flush({ ...options, reason: options.reason || 'owned-panic' }); }
-  function releaseThru(reason) {
+  function releaseThru(reason, source, onComplete = () => {}) {
+    const entries = [...thruNotes.values()]; thruNotes.clear();
+    const release = () => { const result = releaseThruEntries(entries, reason, source); onComplete(result); };
+    if (scheduler._outputCallbackDepth || rawDispatchDepth) queueMicrotask(release); else release();
+  }
+  function releaseThruEntries(entries, reason, source = {}) {
+    if (disposed) return null;
     const timestamp = now();
-    for (const entry of thruNotes.values()) {
+    const cleanup = { reason, ...source, queuedRemoved: 0, releaseSubmitted: 0, ownershipTransferred: 0, uncertain: 0, effectiveBoundary: timestamp };
+    for (const entry of entries) {
+      if (!entry.voice || rawVoices.get(entry.port)?.get(`${entry.channel - 1}:${entry.note}`) !== entry.voice) { cleanup.ownershipTransferred++; continue; }
+      const releaseTime = entry.voice.start > timestamp ? entry.voice.start + 1 : timestamp;
+      if (releaseTime > timestamp) { cleanup.uncertain++; cleanup.effectiveBoundary = Math.max(cleanup.effectiveBoundary, releaseTime); }
+      const route = activeOutputs.get(String(entry.port?.id));
+      const exclusive = route?.intent.exclusiveChannels || entry.port?.exclusiveChannels || [];
+      if (!exclusive.includes(entry.channel) && [...(sustainedChannels.get(entry.port) || [])].some(([binding, held]) => held && Number(binding.split(':')[0]) + 1 === entry.channel)) {
+        cleanup.uncertain++; cleanup.sharedPedalHeld = true;
+      }
       for (let index = 0; index < entry.count; index++) {
         const data = [0x80 | (entry.channel - 1), entry.note, 0];
         try {
-          if (sendProcgenMidiBytes(entry.port, data, timestamp)) {
-            const route = activeOutputs.get(String(entry.port?.id));
+          let accepted;
+          rawDispatchDepth++;
+          try { accepted = sendProcgenMidiBytes(entry.port, data, releaseTime); } finally { rawDispatchDepth--; }
+          if (accepted) {
+            cleanup.releaseSubmitted++;
             scheduler._recordSent?.({ timeMs: now(), count: 1, bytes: data.length, outputId: entry.port.id, phase: 'off' }, now());
-            record({ data, timestamp, submittedMs: now(),
+            record({ data, timestamp: releaseTime, submittedMs: now(),
               outputId: entry.port?.id || null, direction: 'output', source: 'input-safety', reason,
               connectionEpoch: route?.connectionEpoch ?? null, routeRevision: route?.routeRevision ?? routeRevision,
               evidence: 'api-accepted', acknowledgement: 'adapter-returned', encodingEvidence: 'direct-byte-boundary' });
-            trackRawVoice(entry.port, data, timestamp);
-          }
-        } catch { /* A disconnected output cannot acknowledge a safety release. */ }
+            trackRawVoice(entry.port, data, releaseTime);
+          } else cleanup.uncertain++;
+        } catch { cleanup.uncertain++; }
       }
     }
-    thruNotes.clear();
+    lastCleanup = Object.freeze(cleanup);
+    return lastCleanup;
   }
+  const terminateInputSource = (reason, evidence, incomplete = 'input-source-terminated') => {
+    const openTrace = [...activeTrace.keys()].some(key => key.startsWith('input:'));
+    const safety = Object.freeze({ type: 'safety-termination', direction: 'safety', source: 'input-liveness', reason, evidence,
+      sourceRoute: input?.id ?? null, connectionEpoch: inputEpoch, timestamp: now(), observationDomain: 'performance-now',
+      terminationId: ++inputSafetySequence, thruGates: thruNotes.size, data: Object.freeze([]), cleanup: null });
+    lastInputSafety = safety;
+    if (openTrace) {
+      for (const key of activeTrace.keys()) if (key.startsWith('input:')) activeTrace.delete(key);
+      record(safety);
+      markIncomplete(incomplete);
+    }
+    let deferred = false;
+    releaseThru(reason, { sourceRoute: safety.sourceRoute, connectionEpoch: safety.connectionEpoch }, cleanup => {
+      if (cleanup && lastInputSafety?.terminationId === safety.terminationId) {
+        lastInputSafety = Object.freeze({ ...lastInputSafety, cleanup });
+        if (deferred) report();
+      }
+    });
+    deferred = true;
+    if (!notifyingInputSafety) {
+      notifyingInputSafety = true;
+      try { callConsumer('input-safety', onInputSafety, lastInputSafety?.terminationId === safety.terminationId ? lastInputSafety : safety); }
+      finally { notifyingInputSafety = false; }
+    }
+  };
   const resetInputLiveness = (mode = 'unobserved', reason = null) => {
     clearTimeout(sensingTimer); sensingTimer = null;
     inputLiveness.mode = mode; inputLiveness.lastTrafficTime = null; inputLiveness.deadline = null;
-    inputLiveness.evidence = mode === 'unavailable' ? 'host-observation-gap' : 'no-active-sensing-observed';
+    inputLiveness.evidence = mode === 'unavailable' ? reason === 'port-disconnected' ? 'port-disconnected' : 'host-observation-gap' : 'no-active-sensing-observed';
     inputLiveness.reason = reason; expiredAt = null; lastObservationMs = now();
     if (mode === 'unobserved' && ['filtered', 'backend-consumed', 'unavailable'].includes(activeSensingVisibility)) {
       inputLiveness.mode = 'unavailable'; inputLiveness.evidence = 'active-sensing-' + activeSensingVisibility;
@@ -436,13 +499,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
       clearTimeout(sensingTimer); sensingTimer = null;
       inputLiveness.evidence = hostGap ? 'host-observation-gap' : 'active-sensing-timeout';
       inputLiveness.reason = hostGap ? 'host-suspended' : 'sensing-expired'; expiredAt = observedAt;
-      if ([...activeTrace.keys()].some(key => key.startsWith('input:'))) {
-        record({ type: 'safety-termination', direction: 'safety', source: 'input-liveness', reason: inputLiveness.reason,
-          data: [], timestamp: observedAt, connectionEpoch: inputEpoch });
-        for (const key of activeTrace.keys()) if (key.startsWith('input:')) activeTrace.delete(key);
-        markIncomplete('input-sensing-terminated');
-      }
-      releaseThru(inputLiveness.reason); report();
+      terminateInputSource(inputLiveness.reason, inputLiveness.evidence, 'input-sensing-terminated'); report();
     }
     lastObservationMs = observedAt;
     return observedAt;
@@ -453,12 +510,14 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     sensingTimer = setTimeout(() => { sensingTimer = null; inspectInputLiveness(); if (inputLiveness.mode === 'armed') scheduleSensingWatchdog(); },
       Math.max(1, Math.ceil(inputLiveness.deadline - now() + 1)));
   };
-  function receiveMidi(data, timestamp = now(), { connectionEpoch = inputEpoch } = {}) {
-    if (disposed || connectionEpoch !== inputEpoch || !validInputPacket(data)) return false;
+  function receiveMidi(data, timestamp = now(), { connectionEpoch = inputEpoch, sourceRoute = input?.id ?? null } = {}) {
+    if (disposed || connectionEpoch !== inputEpoch || sourceRoute !== (input?.id ?? null) || !validInputPacket(data)) return false;
     const observedAt = inspectInputLiveness();
+    if (connectionEpoch !== inputEpoch || sourceRoute !== (input?.id ?? null)) return false;
     if (expiredAt != null && Number.isFinite(timestamp) && timestamp < expiredAt) return false;
     const event = { ...decodeProcgenMidi(data, timestamp), connectionEpoch: inputEpoch, sourceRoute: input?.id ?? null,
       ingressMs: observedAt, observationDomain: 'performance-now' };
+    Object.freeze(event.data); Object.freeze(event);
     if (data[0] === 0xfe) {
       const changed = inputLiveness.mode !== 'armed'; inputLiveness.mode = 'armed'; inputLiveness.evidence = 'observed-active-sensing'; inputLiveness.reason = null;
       activeSensingVisibility = 'observable';
@@ -467,23 +526,42 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     } else if (inputLiveness.mode === 'armed') { inputLiveness.lastTrafficTime = observedAt; inputLiveness.deadline = observedAt + ACTIVE_SENSING_TIMEOUT_MS; }
     else if (expiredAt != null) { inputLiveness.mode = 'unobserved'; inputLiveness.evidence = 'no-active-sensing-observed'; inputLiveness.reason = null; }
     if (inputLiveness.mode === 'armed') scheduleSensingWatchdog();
-    onMonitor(event); transport?.receiveMidi?.(data, timestamp);
-    if (data[0] === 0xff && systemResetPolicy === 'release-owned') releaseThru('system-reset-observed');
+    callConsumer('monitor', onMonitor, event);
+    if (connectionEpoch !== inputEpoch || sourceRoute !== (input?.id ?? null)) return false;
+    transport?.receiveMidi?.(data, timestamp);
+    if (connectionEpoch !== inputEpoch || sourceRoute !== (input?.id ?? null)) return false;
+    if (data[0] === 0xff && systemResetPolicy === 'release-owned') terminateInputSource('system-reset-observed', 'observed-system-reset');
     if (data[0] === 0xff) record({ ...event, direction: 'input', source: 'input-system', systemResetPolicy });
     if (event.type === 'system') return true;
     record({ ...event, direction: 'input', source: 'input' });
-    if (learn) { const callback = learn; learn = null; callback(event); report(); }
+    if (connectionEpoch !== inputEpoch || sourceRoute !== (input?.id ?? null)) return false;
+    if (learn) { const callback = learn; learn = null; callConsumer('learn', callback, event); report(); }
+    if (connectionEpoch !== inputEpoch || sourceRoute !== (input?.id ?? null)) return false;
     // Realtime/transport messages are never echoed, including when Thru is on.
-    if (thru && raw(event.data, timestamp, { source: 'thru' }) && ['noteOn', 'noteOff'].includes(event.type)) {
-      const port = noteOutput, key = `${inputEpoch}:${port?.id}:${event.channel}:${event.note}`, previous = thruNotes.get(key);
-      if (event.type === 'noteOn') thruNotes.set(key, { port, channel: event.channel, note: event.note, count: (previous?.count || 0) + 1 });
+    const ownedThru = event.type === 'noteOff' ? [...thruNotes.values()].find(entry => entry.inputEpoch === inputEpoch && entry.channel === event.channel && entry.note === event.note) : null;
+    const thruPort = ownedThru?.port || resolveOutput();
+    if (thru && raw(event.data, timestamp, { source: 'thru', outputId: thruPort?.id }) && ['noteOn', 'noteOff'].includes(event.type)) {
+      if (event.connectionEpoch !== inputEpoch) {
+        if (event.type === 'noteOn') releaseThruEntries([{ port: thruPort, channel: event.channel, note: event.note, count: 1,
+          voice: rawVoices.get(thruPort)?.get(`${event.channel - 1}:${event.note}`) }], 'input-changed-during-submission',
+        { sourceRoute: event.sourceRoute, connectionEpoch: event.connectionEpoch });
+        return true;
+      }
+      const port = thruPort, key = `${inputEpoch}:${port?.id}:${event.channel}:${event.note}`, previous = thruNotes.get(key);
+      if (event.type === 'noteOn') thruNotes.set(key, { port, channel: event.channel, note: event.note, inputEpoch,
+        voice: rawVoices.get(port)?.get(`${event.channel - 1}:${event.note}`), count: (previous?.count || 0) + 1 });
       else if (previous?.count > 1) previous.count--; else thruNotes.delete(key);
     }
     return true;
   }
-  const replaceInput = port => {
+  const replaceInput = (port, { reason = port ? 'input-replaced' : 'input-detached' } = {}) => {
     if (input === port || disposed) return;
-    releaseThru('input-replaced'); removeInput?.(); removeInput = null; input = port || null; inputEpoch++; learn = null; resetInputLiveness();
+    const revision = ++inputSelectionRevision;
+    terminateInputSource(reason, reason === 'port-disconnected' ? 'port-disconnected' : 'source-selection-changed');
+    if (revision !== inputSelectionRevision || disposed) return;
+    removeInput?.(); removeInput = null; input = port || null; inputEpoch++; learn = null;
+    activeSensingVisibility = configuredSensingVisibility;
+    resetInputLiveness(reason === 'port-disconnected' ? 'unavailable' : 'unobserved', reason === 'port-disconnected' ? reason : null);
     const epoch = inputEpoch, attached = input;
     const listener = event => attached === input && epoch === inputEpoch && receiveMidi(event.data || event.message?.data, event.receivedTime ?? event.timestamp ?? now());
     if (input?.addEventListener) {
@@ -635,8 +713,8 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
       }
       if (settings.activeSensingVisibility !== undefined) {
         if (!['unknown', 'observable', 'filtered', 'backend-consumed', 'unavailable'].includes(settings.activeSensingVisibility)) throw new RangeError('Invalid Active Sensing visibility');
-        if (inputLiveness.mode === 'armed') releaseThru('sensing-visibility-changed');
-        activeSensingVisibility = settings.activeSensingVisibility; resetInputLiveness();
+        if (inputLiveness.mode === 'armed') terminateInputSource('sensing-visibility-changed', 'visibility-policy-changed');
+        activeSensingVisibility = settings.activeSensingVisibility; configuredSensingVisibility = settings.activeSensingVisibility; resetInputLiveness();
       }
       if (settings.protocolLowering !== undefined) {
         if (settings.protocolLowering !== null && typeof settings.protocolLowering !== 'object') throw new TypeError('Invalid protocol lowering policy');
@@ -712,7 +790,8 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     },
     checkConnections() {
       inspectInputLiveness();
-      if (input?.state === 'disconnected') { replaceInput(null); report(); return false; }
+      const lostInput = input?.state === 'disconnected';
+      if (lostInput) { replaceInput(null, { reason: 'port-disconnected' }); report(); }
       let lostActive = false;
       for (const [id, route] of activeOutputs) if (route.port.state === 'disconnected') { retireOutput(id, 'port-disconnected'); lostActive = true; }
       if (lostActive) syncSchedulerOutputs();
@@ -720,7 +799,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
       const connected = [...noteOutputs.values()].filter(port => port?.state !== 'disconnected');
       if (connected.length !== noteOutputs.size) this.setNoteOutputs(connected);
       if (lostActive) report();
-      return !lostActive;
+      return !lostActive && !lostInput;
     },
     dispose() {
       if (disposed) return;

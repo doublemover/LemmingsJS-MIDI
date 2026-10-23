@@ -17,16 +17,19 @@ import {
 const midiSchedulerRateMethods = {
   _pruneRateEntries(now) {
     const cutoff = now - this._rateWindowMs;
-    if (this._rateSent.length) {
-      let write = 0;
+    if (this._rateSent.length && (this._rateHistoryArray !== this._rateSent || this._rateHistoryLength !== this._rateSent.length ||
+        this._rateHistoryOldest < cutoff)) {
+      let write = 0, oldest = Infinity;
       for (let read = 0; read < this._rateSent.length; read += 1) {
         const entry = this._rateSent[read];
         if (entry.timeMs < cutoff) continue;
         this._rateSent[write] = entry;
+        oldest = Math.min(oldest, entry.timeMs);
         write += 1;
       }
       this._rateSent.length = write;
-    }
+      this._rateHistoryOldest = oldest;
+    } else if (!this._rateSent.length) this._rateHistoryOldest = Infinity;
     if (this._ratePlanned.length) {
       let write = 0;
       for (let read = 0; read < this._ratePlanned.length; read += 1) {
@@ -40,6 +43,7 @@ const midiSchedulerRateMethods = {
       this._ratePlanned.length = write;
     }
     this._trimRateEntries();
+    this._rateHistoryArray = this._rateSent; this._rateHistoryLength = this._rateSent.length;
     if (this._rateSent.length <= MAX_RATE_ENTRIES) this._rateHistorySaturated = false;
   },
 
@@ -493,7 +497,9 @@ const midiSchedulerRateMethods = {
     if (bytes <= 0) return;
     this._pruneRateEntries(now);
     this._rateSent.push({ ...entry, count, bytes, budgetScope: this.getTransportBudget(entry.outputId).scope });
+    this._rateHistoryOldest = Math.min(this._rateHistoryOldest ?? Infinity, entry.timeMs);
     this._trimRateEntries();
+    this._rateHistoryLength = this._rateSent.length;
   },
 
   _removePlannedRateEntries(token, phase = null) {

@@ -297,7 +297,7 @@ describe('ProcGen workstation MIDI ports', () => {
     stopped.dispose();
   });
 
-  it('reports zero-cap pressure immediately and flushes without replaying historical records', () => {
+  it('reports zero-cap pressure immediately and flushes without re-emitting immutable historical receipts', () => {
     const states = [], retained = [];
     const ports = createProcgenMidiPorts({ maxRecordedEvents: 0, onState: state => states.push(state) });
     ports.configure({ recording: true }); ports.receiveMidi([0x90, 60, 100]);
@@ -306,8 +306,10 @@ describe('ProcGen workstation MIDI ports', () => {
     const longTake = createProcgenMidiPorts({ onRecord: event => retained.push(event) });
     longTake.configure({ recording: true });
     for (let index = 0; index < 1000; index++) longTake.receiveMidi([0xb0, 1, index % 128]);
-    Object.defineProperty(retained[0], 'data', { get() { throw new Error('historical event replayed'); } });
-    expect(() => longTake.flush()).not.to.throw(); longTake.dispose();
+    expect(Object.isFrozen(retained[0])).to.equal(true); expect(Object.isFrozen(retained[0].data)).to.equal(true);
+    expect(() => Object.defineProperty(retained[0], 'data', { get() { throw new Error('historical event replayed'); } })).to.throw(TypeError);
+    const count = retained.length;
+    expect(() => longTake.flush()).not.to.throw(); expect(retained).to.have.length(count); longTake.dispose();
   });
 
   it('keeps exact retained and lost ranges when a finite note transaction cannot fit', () => {

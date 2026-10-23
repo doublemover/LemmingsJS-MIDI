@@ -416,12 +416,12 @@ const midiSchedulerSendMethods = {
     return false;
   },
 
-  allNotesOff({ preserveGamePhrases = false, preserveRateHistory = false, wholeDevice = false, reason = 'owned-stop' } = {}) {
+  allNotesOff({ preserveGamePhrases = false, wholeDevice = false, reason = 'owned-stop' } = {}) {
     if (this._panicking) return;
     this._panicking = true; this._cleanupDepth++; this._lifecycleVersion++;
     try {
-      this._observe('panic', { type: 'allNotesOff', preserveRateHistory, wholeDevice, reason });
-      if (preserveRateHistory) this._pruneRateEntries(this._nowMs());
+      this._observe('panic', { type: 'allNotesOff', wholeDevice, reason });
+      this._pruneRateEntries(this._nowMs());
       if (!preserveGamePhrases) this.gamePhrases.clear();
       const cleanup = { reason, wholeDevice, queuedRemoved: 0, releaseSubmitted: 0, uncertain: 0, effectiveBoundary: this._nowMs() };
       const scopes = new Map();
@@ -445,7 +445,7 @@ const midiSchedulerSendMethods = {
         if (!wholeDevice && !output.supportsIndependentNoteGates && !output.exclusiveChannels?.includes(channel)) continue;
         for (const [method, args] of [['sendControlChange', [64, 0]], ['sendControlChange', [120, 0]], ['sendAllNotesOff', []], ['sendPitchBend', [0]]]) {
           try {
-            if (this._sendOutput(output, channel, method, args, { reason }) === false) cleanup.uncertain++;
+            if (this._sendAccountedCleanup(output, channel, method, args, { reason }) === false) cleanup.uncertain++;
           } catch { cleanup.uncertain++; }
         }
       }
@@ -461,16 +461,15 @@ const midiSchedulerSendMethods = {
       this._activeNotes.clear();
       this._usedOutputChannels.clear();
       this._noteOffs.length = 0;
-      if (!preserveRateHistory) this._rateSent.length = 0;
       this._ratePlanned.length = 0;
     } finally { this._cleanupDepth--; this._panicking = false; }
   },
 
-  clearQueue({ preserveGamePhrases = false, preserveRateHistory = false } = {}) {
+  clearQueue({ preserveGamePhrases = false } = {}) {
     if (!preserveGamePhrases) this.gamePhrases.clear();
-    if (this._activeNotes.size || this._pendingNoteOns.size || this._noteOffs.length) this.allNotesOff({ preserveGamePhrases, preserveRateHistory });
-    if (!preserveRateHistory) this._rateSent.length = 0;
-    if (!preserveRateHistory) this._ratePlanned.length = 0;
+    if (this._activeNotes.size || this._pendingNoteOns.size || this._noteOffs.length) this.allNotesOff({ preserveGamePhrases });
+    this._ratePlanned.length = 0;
+    this._pruneRateEntries(this._nowMs());
   },
 
   dispose() {
@@ -489,6 +488,7 @@ const midiSchedulerSendMethods = {
     this._additionalOutputs.clear();
     this._rateLanesByOutput.clear();
     this._throttleByOutput.clear();
+    this._rateSent.length = 0;
     this.output = null;
     this._outputsById.clear();
   },

@@ -296,12 +296,13 @@ describe('MidiScheduler coverage: core behavior', function() {
     expect(stopped).to.equal(true);
   });
 
-  it('clearQueue resets both planned and sent rate windows', function() {
+  it('clearQueue removes planned work while retaining recent physical traffic', function() {
     const scheduler = new MidiScheduler({ mpe: { enabled: false } });
-    scheduler._rateSent = [{ timeMs: 0, count: 1, bytes: 3 }];
-    scheduler._ratePlanned = [{ timeMs: 1, count: 1, bytes: 3 }];
+    const now = scheduler._nowMs();
+    scheduler._rateSent = [{ timeMs: now, count: 1, bytes: 3 }];
+    scheduler._ratePlanned = [{ timeMs: now + 1, count: 1, bytes: 3 }];
     scheduler.clearQueue();
-    expect(scheduler._rateSent).to.have.length(0);
+    expect(scheduler._rateSent).to.have.length(1);
     expect(scheduler._ratePlanned).to.have.length(0);
   });
 
