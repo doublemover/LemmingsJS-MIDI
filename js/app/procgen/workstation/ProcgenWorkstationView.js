@@ -470,9 +470,12 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
     exportState(artifact, delivery) {
       const ready = !!artifact?.retained && Date.now() < artifact.expiresAt;
       const writing = delivery?.state === 'writing';
-      retryExport.disabled = !ready; savePrepared.disabled = !ready || writing || typeof window.showSaveFilePicker !== 'function';
+      retryExport.disabled = !ready || !artifact.deliveryModes?.includes('anchor');
+      savePrepared.disabled = !ready || writing || typeof window.showSaveFilePicker !== 'function';
       cancelDelivery.disabled = !writing; discardPrepared.disabled = !artifact?.retained;
-      exportSummary.textContent = artifact ? `${artifact.suggestedFilename} · ${artifact.byteLength.toLocaleString()} bytes${ready ? '' : ' · expired'}` : 'No prepared file';
+      const size = artifact?.byteLength == null ? artifact?.streamingEstimate == null ? 'size pending' :
+        `about ${artifact.streamingEstimate.toLocaleString()} bytes` : `${artifact.byteLength.toLocaleString()} bytes`;
+      exportSummary.textContent = artifact ? `${artifact.suggestedFilename} · ${size}${ready ? '' : ' · expired'}` : 'No prepared file';
       exportDetails.textContent = artifact ? `Source ${artifact.immutableSourceRef} · ${artifact.formatVersion} · SHA-256 ${artifact.sha256 || artifact.digestState}` +
         `${artifact.coverageLossReportRef ? ` · coverage ${artifact.coverageLossReportRef}` : ''} · Delivery ${delivery?.state || 'ready'}` :
         'Choose Export or MIDI to prepare a file.';

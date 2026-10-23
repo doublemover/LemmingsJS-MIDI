@@ -21,7 +21,10 @@ The renderer uses this shared adapter in addition to its 64 MiB local cap. Its
 backing-store reservations cover canvases, retained image arrays, and object
 clip arrays. If browser canvas dimension retirement fails, its estimated bytes
 stay charged. Prepared browser exports reserve staging before Blob construction
-and keep that reservation until the last delivery lease releases. Both paths
-still need combined-scene qualification with asset, audio, checkpoint, and
-candidate-world allocations. Those categories must use the same service before
-the full #1162 memory outcome can be claimed.
+and keep that reservation until the last delivery lease releases. Workstation
+candidate worlds reserve an estimated lane and actor envelope before construction
+while the old world remains charged. The token transfers on commit and releases
+on retirement or failed preparation. This initial envelope does not measure
+subsequent terrain growth. Asset, audio, and checkpoint allocations still need
+integration and combined-scene qualification before the full #1162 memory
+outcome can be claimed.

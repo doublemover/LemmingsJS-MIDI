@@ -3,7 +3,7 @@ import './bootstrap.js';
 import { ProcgenBitmapHud } from './procgen/ProcgenBitmapHud.js';
 import { createProcgenUiController } from './procgen/ProcgenUiController.js';
 import { loadProcgenPackTerrain, loadProcgenMixedTerrain } from './procgen/ProcgenPackTerrain.js';
-import { ProcgenLaneWorld } from './procgen/ProcgenLaneWorld.js';
+import { ProcgenLaneWorld, normalizeLaneHeight } from './procgen/ProcgenLaneWorld.js';
 import { ParticleTable } from '../render/ParticleTable.js';
 import { createProcgenWorkstation } from './procgen/workstation/ProcgenWorkstation.js';
 import { restoreProcgenCheckpoint } from './procgen/workstation/ProcgenCheckpoint.js';
@@ -66,6 +66,13 @@ let activeProcgenRuntime = null;
 const procgenResourceBudget = createResourceBudget();
 const renderBudget = { budgetAdapter: procgenResourceBudget };
 procgenResourceBudget.registerEvictor('cold-render-buffers', () => activeProcgenRuntime?.lanes?.renderer?.resources?.clearCaches?.());
+const estimateCandidateWorldBytes = ({ laneCount, laneHeight }) => {
+  const lanes = Math.max(1, Math.min(1024, Math.trunc(Number(laneCount)) || 1));
+  const height = normalizeLaneHeight(laneHeight);
+  // An initial terrain chunk, collision/edit indexes, lane planners, and
+  // actor headroom. Future growth is still reported by the world subsystem.
+  return lanes * (65536 + height * 384) + 16384 * 128;
+};
 let analytics = null;
 let procgenUi = null;
 let procgenStudio = null;
@@ -120,7 +127,9 @@ const disposeProcgenRuntime = () => {
     { name: 'game', run: () => runtime.game?.stop?.() },
     { name: 'view', run: () => runtime.view?.dispose?.() },
     { name: 'asset-provider-lease', run: () => runtime.providerLease?.release() },
-    { name: 'asset-provider', run: () => runtime.fileProvider?.dispose?.() }
+    { name: 'asset-provider', run: () => runtime.fileProvider?.dispose?.() },
+    { name: 'world-budget', run: () => runtime.worldBudgetToken && procgenResourceBudget.release({
+      token: runtime.worldBudgetToken, owner: 'active-world' }) }
   ]);
   return lastProcgenRuntimeRetirement;
 };
@@ -186,6 +195,7 @@ const installProcgenBootListeners = () => {
 const setActiveProcgenRuntimeForTest = (runtime) => {
   activeProcgenRuntime = runtime || null;
 };
+const getProcgenResourceBudgetState = () => procgenResourceBudget.diagnostics();
 
 const getProcgenGroundSets = (config) => {
   const key = config?.path || null;
@@ -319,7 +329,7 @@ const initWorkstation = async ({ session, lease } = {}) => {
   if (!canvas) return;
   const settings = session ? { ...session.settings, laneCount: session.world.laneCount, laneHeight: session.world.laneHeight, seed: session.world.seed } : { ...procgenStudio.prepareSettings() };
   const view = new GameView(); let candidate = null, lanes = null, terrain = null, committed = false;
-  let fileProvider = null, resourceLease = null;
+  let fileProvider = null, resourceLease = null, candidateBudgetToken = null, candidateBudgetOwner = 'candidate-world';
   const canCommit = () => serial === workstationInitSerial && !lease?.signal?.aborted;
   try {
     const factory = view.gameFactory;
@@ -344,6 +354,10 @@ const initWorkstation = async ({ session, lease } = {}) => {
     if (!canCommit()) return false;
     await procgenUi.prepareCharacters(sprites);
     if (!canCommit()) return false;
+    candidateBudgetToken = {};
+    procgenResourceBudget.reserve({ token: candidateBudgetToken, owner: candidateBudgetOwner,
+      generation: serial, kind: 'candidate', bytes: estimateCandidateWorldBytes(settings),
+      pinned: true, reloadable: false });
     candidate = new ProcgenLaneWorld({ laneCount: settings.laneCount, laneHeight: settings.laneHeight, seed: settings.seed, sprites, masks, terrain,
       speed: settings.speed, cohorts: true, workstation: true, hazardSpacing: settings.hazardSpacing,
       previousDistances: readProcgenDistances(), workerLimits: settings.workerLimits, populationPolicy: settings.populationPolicy, particleTable: new ParticleTable(palette) });
@@ -355,7 +369,11 @@ const initWorkstation = async ({ session, lease } = {}) => {
     if (!canCommit()) return false;
     if (activeProcgenRuntime) procgenStudio.beforeRestart();
     disposeProcgenRuntime();
-    activeProcgenRuntime = { lanes, world: candidate, view: lanes.view, game: lanes.game, stageAdapter: { updateStageSize: () => lanes.resize() }, controller: null, focusBlurCleanup: null };
+    procgenResourceBudget.transfer({ token: candidateBudgetToken, owner: candidateBudgetOwner,
+      generation: serial, toOwner: 'active-world' });
+    candidateBudgetOwner = 'active-world';
+    activeProcgenRuntime = { lanes, world: candidate, worldBudgetToken: candidateBudgetToken,
+      view: lanes.view, game: lanes.game, stageAdapter: { updateStageSize: () => lanes.resize() }, controller: null, focusBlurCleanup: null };
     committed = true;
     window.procgenSeed = candidate.seed; window.procgenSelectedTheme = 'mixed'; window.procgenDebugState = lanes.getDebugState;
     const params = new URLSearchParams(window.location.search);
@@ -367,6 +385,7 @@ const initWorkstation = async ({ session, lease } = {}) => {
       if (lanes) lanes.stop();
       else if (candidate) candidate.dispose();
       else terrain?.reset();
+      if (candidateBudgetToken) procgenResourceBudget.release({ token: candidateBudgetToken, owner: candidateBudgetOwner });
     }
     resourceLease?.release();
     if (fileProvider?.acquireLease) fileProvider.dispose();
@@ -626,5 +645,6 @@ export {
   disposeProcgenRuntime,
   installProcgenBootListeners,
   disposeProcgenBootListeners,
-  setActiveProcgenRuntimeForTest
+  setActiveProcgenRuntimeForTest,
+  getProcgenResourceBudgetState
 };

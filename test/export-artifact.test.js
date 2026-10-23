@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { aggregateExportDeliveries, deliverArtifactToAnchor, deliverArtifactToFileHandle,
+import { aggregateExportDeliveries, createExportDeliveryManifest, deliverArtifactToAnchor, deliverArtifactToFileHandle,
   prepareExportArtifact, prepareReplayableExportArtifact, requestExportFileHandle } from '../js/app/export/ExportArtifact.js';
 import { createResourceBudget, ResourceBudgetError } from '../js/app/resources/ResourceBudget.js';
 
@@ -161,5 +161,25 @@ describe('prepared export artifacts and delivery receipts', () => {
     }; } }, { maxDeliveryMs: 30 });
     expect(receipt).to.include({ state: 'failed', errorKind: 'timeout', abortAttempted: true, abortAcknowledged: true });
     expect(aborted).to.equal(true);
+  });
+  it('keeps independent stem attempts and does not mark a partial bundle complete', () => {
+    const left = prepare(Uint8Array.of(1), { suggestedFilename: 'left.wav' });
+    const right = prepare(Uint8Array.of(2), { suggestedFilename: 'right.wav' });
+    const first = createExportDeliveryManifest([
+      { artifact: left, receipts: [{ artifactId: left.artifactId, state: 'close-acknowledged' }] },
+      { artifact: right, receipts: [{ artifactId: right.artifactId, state: 'failed' }] }
+    ]);
+    expect(first).to.include({ complete: false, state: 'partial' });
+    expect(first.files.map(file => file.suggestedFilename)).to.deep.equal(['left.wav', 'right.wav']);
+    const retry = createExportDeliveryManifest([
+      { artifact: left, receipts: [{ artifactId: left.artifactId, state: 'close-acknowledged' }] },
+      { artifact: right, receipts: [{ artifactId: right.artifactId, state: 'failed' },
+        { artifactId: right.artifactId, state: 'close-acknowledged' }] }
+    ]);
+    expect(retry).to.include({ complete: true, state: 'close-acknowledged' });
+    expect(retry.files[1].attempts).to.have.length(2);
+    expect(() => createExportDeliveryManifest([{ artifact: left, receipts: [{ artifactId: right.artifactId }] }]))
+      .to.throw(TypeError);
+    left.discard(); right.discard();
   });
 });

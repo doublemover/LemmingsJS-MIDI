@@ -76,7 +76,8 @@ export function prepareExportArtifact({ bytes, immutableSourceRef, formatVersion
     } catch { digestState = 'unavailable'; return null; }
   })() : Promise.resolve(null);
   const metadata = () => Object.freeze({ artifactId, immutableSourceRef, formatVersion, mediaType, suggestedFilename,
-    byteLength, digestState, sha256: digest, coverageLossReportRef, expiresAt, retained: !discarded, activeLeases: leases });
+    byteLength, deliveryModes: Object.freeze(['anchor', 'file-handle']), digestState, sha256: digest,
+    coverageLossReportRef, expiresAt, retained: !discarded, activeLeases: leases });
   return Object.freeze({ artifactId, metadata, digest: () => digestPromise,
     onDiscard(callback) {
       if (discarded) { callback(); return () => {}; }
@@ -116,7 +117,8 @@ export function prepareReplayableExportArtifact({ openChunks, immutableSourceRef
   let discarded = false, leases = 0;
   const discardListeners = new Set();
   const metadata = () => Object.freeze({ artifactId, immutableSourceRef, formatVersion, mediaType,
-    suggestedFilename, byteLength, streamingEstimate, maxDeliveryBytes, digestState: 'omitted-streaming',
+    suggestedFilename, byteLength, streamingEstimate, maxDeliveryBytes,
+    deliveryModes: Object.freeze(['file-handle']), digestState: 'omitted-streaming',
     sha256: null, coverageLossReportRef, expiresAt, retained: !discarded, activeLeases: leases });
   return Object.freeze({ artifactId, metadata, digest: () => Promise.resolve(null),
     onDiscard(callback) {
@@ -229,4 +231,26 @@ export function aggregateExportDeliveries(receipts) {
   return Object.freeze({ state: !list.length ? 'empty' : list.every(item => item.state === 'close-acknowledged') ? 'close-acknowledged' :
     list.some(item => ['failed', 'canceled', 'unsupported'].includes(item.state)) ? 'partial' : 'delivery-requested',
   complete: !!list.length && list.every(item => item.state === 'close-acknowledged'), receipts: Object.freeze(list) });
+}
+
+export function createExportDeliveryManifest(entries) {
+  if (!Array.isArray(entries) || entries.length > 64) throw new TypeError('Invalid export delivery group.');
+  const ids = new Set();
+  const files = entries.map(({ artifact, receipts = [] }) => {
+    if (!artifact || typeof artifact.metadata !== 'function' || !Array.isArray(receipts)) throw new TypeError('Invalid export delivery entry.');
+    const source = artifact.metadata();
+    if (ids.has(source.artifactId) || receipts.some(receipt => receipt?.artifactId !== source.artifactId))
+      throw new TypeError('Duplicate artifact or receipt from another source.');
+    ids.add(source.artifactId);
+    const last = receipts.at(-1) || null;
+    return Object.freeze({ artifactId: source.artifactId, immutableSourceRef: source.immutableSourceRef,
+      formatVersion: source.formatVersion, suggestedFilename: source.suggestedFilename,
+      byteLength: source.byteLength, sha256: source.sha256, digestState: source.digestState,
+      state: last?.state || 'ready', completed: last?.state === 'close-acknowledged',
+      attempts: Object.freeze([...receipts]) });
+  });
+  const complete = files.length > 0 && files.every(file => file.completed);
+  return Object.freeze({ schema: 'export-delivery-manifest/v1', state: !files.length ? 'empty' :
+    complete ? 'close-acknowledged' : files.some(file => file.state === 'failed' || file.state === 'canceled') ? 'partial' :
+      'delivery-requested', complete, files: Object.freeze(files) });
 }

@@ -124,7 +124,7 @@ describe('musical span editing and lane rectangles', () => {
     } finally { overlay.dispose(); }
   });
 
-  it('keeps original world and lane coordinates through camera follow, zoom and canvas relocation, canceling on generation reset', () => {
+  it('cancels stale canvas drafts after camera projection or generation changes', () => {
     const document = new TestDocument(), canvas = document.createElement('canvas'); document.registerElement('gameCanvas', canvas);
     canvas.width = 160; canvas.height = 192; let box = { left: 10, top: 20 }, captured = null; canvas.getBoundingClientRect = () => box;
     canvas.setPointerCapture = id => { captured = id; }; canvas.hasPointerCapture = id => captured === id; canvas.releasePointerCapture = () => { captured = null; };
@@ -137,10 +137,11 @@ describe('musical span editing and lane rectangles', () => {
     try {
       overlay.sync(); overlay.setEditing(true); pointer('pointerdown', 30, 50);
       renderer.originX = 700; renderer.originY = 192; renderer.viewWidth = 80; renderer.viewHeight = 96; renderer.window.devicePixelRatio = 2; canvas.width = 320; canvas.height = 384; box = { left: 100, top: 100 };
-      pointer('pointermove', 70, 150); expect(overlay.snapshot().rectangles[0]).to.include({ x: 20, width: 40, y: 0, height: 192 });
-      pointer('pointerup', 70, 150); expect(added).to.have.length(1); expect(added[0]).to.include({ start: 120, duration: 40, laneScope: 'group', laneStart: 1, laneEnd: 2 }); expect(captured).to.equal(null);
+      pointer('pointermove', 70, 150); expect(overlay.snapshot().dragging).to.equal(false);
+      pointer('pointerup', 70, 150); expect(added).to.have.length(0); expect(captured).to.equal(null);
+      renderer.render(); overlay.setEditing(true);
       pointer('pointerdown', 120, 120); pointer('pointermove', 140, 140); expect(captured).to.equal(7);
-      renderer.world.generation++; overlay.sync(); pointer('pointerup', 140, 140); expect(captured).to.equal(null); expect(added).to.have.length(1);
+      renderer.world.generation++; overlay.sync(); pointer('pointerup', 140, 140); expect(captured).to.equal(null); expect(added).to.have.length(0);
     } finally { overlay.dispose(); }
   });
 
@@ -274,6 +275,9 @@ describe('musical span editing and lane rectangles', () => {
       pointer('pointerdown'); pointer('pointermove');
       renderer.workstationLayout = { firstLane: 0, count: 8 }; overlay.sync(); pointer('pointerup');
       expect(added).to.have.length(0); expect(overlay.snapshot().editing).to.equal(false);
+      renderer.workstationLayout = null; expect(overlay.setEditing(true)).to.equal(true);
+      pointer('pointerdown'); pointer('pointermove'); renderer.originX = 40; pointer('pointerup');
+      expect(added).to.have.length(0); expect(overlay.snapshot().dragging).to.equal(false);
     } finally { overlay.dispose(); }
   });
   it('projects only resolved note winners and holds their phase/value while the transport and origin observations advance', () => {

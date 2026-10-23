@@ -16,7 +16,7 @@ const nativeResolution = Object.freeze({
 export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, now, onReceipt = () => {} } = {}) {
   const session = audio?.createSession?.('procgen-physical') || null;
   const backend = session?.createInstrumentBackend?.({ gateMode: 'bounded' }) || null;
-  const clock = createAudioClockBridge({ getContext: () => audio?.getAudioContext?.() || audio?._context, nowMs: now,
+  const clock = createAudioClockBridge({ getContext: () => audio?.getAudioContext?.(), nowMs: now,
     presentationDelayMs: 24, maxHorizonMs: 5000 });
   let disposed = false, prepared = false, enablePromise = null, executionEpoch = null, previousGeneration = null, executionSerial = 0;
   let anchoredEpoch = null, anchoredBpm = null, rejected = 0, accepted = 0;

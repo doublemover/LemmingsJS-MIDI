@@ -32,9 +32,20 @@ gesture, then streams the selected artifact. The compact export details show
 the frozen source reference, format, digest state, size and last delivery
 receipt. **Discard file** releases prepared bytes without changing the source
 project. Streaming encoder integration, persistent staging,
-multiple-stem orchestration and platform-specific picker qualification remain
-separate work under #1046, #1162 and #1171.
+workstation multi-stem orchestration and platform-specific picker qualification
+remain separate work under #1046, #1162 and #1171.
 
 The workstation exposes **Cancel delivery** while the File API write is active.
 That aborts the write and leaves the prepared artifact available for another
 attempt. **Discard file** cancels an active delivery and releases the artifact.
+
+`prepareReplayableExportArtifact` accepts an immutable source reference and a
+fresh async chunk iterator for each delivery attempt. Its file-handle sink
+writes with backpressure and enforces a declared byte count and maximum without
+building a whole-output Blob. Anchor delivery is explicitly unsupported for
+this kind of artifact. Streaming digests are reported as omitted until an
+incremental browser hash is available. `createExportDeliveryManifest` groups
+independent artifacts and all attempts per file; it marks a multi-file export
+complete only when each file's latest attempt has a close acknowledgement.
+The workstation does not yet prepare its project and MIDI files through this
+streaming path, and WAV/stem producers still need to adopt it.
