@@ -1,46 +1,106 @@
 import { ProcgenActorVisibility, registerProcgenActorVisibility } from './ProcgenActorVisibility.js';
 import { ProcgenCctv } from './ProcgenCctv.js';
-import { assemblyPlacementReady } from './ProcgenAssemblyPlacement.js';
-import { procgenObjectImage } from './ProcgenObjectPresentation.js';
 import { DecorationLayer } from '../../decorations/DecorationLayer.js';
 import { createProcgenCameraController } from './ProcgenCameraController.js';
+import { ProcgenRenderResources, MAX_RENDER_DIMENSION } from './ProcgenRenderResources.js';
+import { ProcgenObjectPlacementCache } from './ProcgenObjectPlacementCache.js';
 
 const unprepared = state => state?.complete === false && state.active?.length === 0 && !state.plan;
 
 class ProcgenLaneRenderer {
-  constructor({ canvas, world, assets, windowRef = window }) {
+  constructor({ canvas, world, assets, windowRef = window, renderBudget }) {
     this.actorVisibility = new ProcgenActorVisibility(world);
     registerProcgenActorVisibility(world, this.actorVisibility);
     this.canvas = canvas; this.world = world; this.assets = assets; this.window = windowRef;
-    this.context = canvas.getContext('2d', { alpha: false });
-    this.buffer = canvas.ownerDocument.createElement('canvas'); this.bufferContext = this.buffer.getContext('2d', { alpha: false });
-    this.terrainBuffer = canvas.ownerDocument.createElement('canvas'); this.terrainContext = this.terrainBuffer.getContext('2d', { alpha: false });
-    this.objectBuffer = canvas.ownerDocument.createElement('canvas'); this.objectContext = this.objectBuffer.getContext('2d'); this.lastObjectKey = ''; this.lastPlacementKey = ''; this.objectPlacements = [];
-    this.frames = new WeakMap(); this.objectFrames = new WeakMap();
-    this.dotColors = new WeakMap(); this.actorDots = new Map(); this.objectDots = new Map();
-    this.scale = 3; this.cameraX = 0; this.cameraY = 0; this.follow = true;
-    this.image = null; this.lastTerrainKey = ''; this.lastGeometryKey = ''; this.tileRevisions = new Map(); this.lastFrameMs = 0; this.renderedActors = 0;
-    this.rasterStep = 1; this.viewWidth = 0; this.viewHeight = 0;
-    this.terrainRebuilds = 0; this.terrainCacheHits = 0;
-    this.frameCacheHits = 0; this.lastFrameKey = null; this.lastAppearance = null; this.lastSprites = null; this.lastHud = null; this.lastHudSprites = null; this.lastDecorationLayer = null;
-    this.camera = createProcgenCameraController(this);
-    this.decorationLayer = assets.decorationPack ? new DecorationLayer(canvas.ownerDocument, assets.decorationPack) : null;
-    this.reducedMotion = windowRef.matchMedia?.('(prefers-reduced-motion: reduce)');
-    this.markerDash = [4, 4]; this.markerSolidDash = [];
-    this.cctv = new ProcgenCctv(this);
+    this.surfaceWidth = canvas.width; this.surfaceHeight = canvas.height;
+    this.resources = new ProcgenRenderResources(canvas.ownerDocument, renderBudget);
+    try {
+      this.objectTileCache = new ProcgenObjectPlacementCache(world, this.resources);
+      this.buffer = this.resources.canvas(); this.terrainBuffer = this.resources.canvas(); this.objectBuffer = this.resources.canvas();
+      this.imageKey = {}; this.sceneryImageKey = {}; this.lifecycleState = 'recovering'; this.recoveryAttempts = 0; this.recoveryLimit = 3; this.nextRecoveryMs = 0; this.qualityDivisor = 1;
+      this.contextListeners = [];
+      this.lastObjectKey = ''; this.lastPlacementKey = ''; this.objectPlacements = [];
+      this.frames = new WeakMap(); this.objectFrames = new WeakMap();
+      this.dotColors = new WeakMap(); this.actorDots = new Map(); this.objectDots = new Map();
+      this.scale = 3; this.cameraX = 0; this.cameraY = 0; this.follow = true;
+      this.image = null; this.lastTerrainKey = ''; this.lastGeometryKey = ''; this.tileRevisions = new Map(); this.lastFrameMs = 0; this.renderedActors = 0;
+      this.rasterStep = 1; this.viewWidth = 0; this.viewHeight = 0;
+      this.terrainRebuilds = 0; this.terrainCacheHits = 0;
+      this.frameCacheHits = 0; this.lastFrameKey = null; this.lastAppearance = null; this.lastSprites = null; this.lastHud = null; this.lastHudSprites = null; this.lastDecorationLayer = null;
+      this.camera = createProcgenCameraController(this);
+      this.decorationLayer = assets.decorationPack ? new DecorationLayer(canvas.ownerDocument, assets.decorationPack, this.resources) : null;
+      this.reducedMotion = windowRef.matchMedia?.('(prefers-reduced-motion: reduce)');
+      this.markerDash = [4, 4]; this.markerSolidDash = [];
+      this.cctv = new ProcgenCctv(this);
+      const lost = event => { event.preventDefault?.(); if (this.lifecycleState !== 'disposed') this._failDisplay(new Error('Canvas context lost'), true); };
+      const restored = () => { if (this.lifecycleState !== 'disposed') this.recover(); };
+      this.resources.onContextLost = event => { event.preventDefault?.(); if (this.lifecycleState !== 'disposed') this._failDisplay(new Error('Canvas backing context lost')); };
+      this.resources.onContextRestored = restored;
+      for (const [event, listener] of [['contextlost', lost], ['contextrestored', restored]]) { canvas.addEventListener?.(event, listener); this.contextListeners.push([event, listener]); }
+      this._acquireContexts();
+    } catch (error) {
+      this.actorVisibility.dispose(); this.camera?.dispose(); this.cctv?.dispose(); this.decorationLayer?.dispose(); this.objectTileCache?.dispose(); this.resources.dispose();
+      throw error;
+    }
   }
   get laneHeight() { return this.world.laneHeight || 96; }
-  resize() { this.lastTerrainKey = ''; this.lastGeometryKey = ''; this.render(); }
+  _acquireContexts() {
+    try {
+      for (const [canvas, key, opaque] of [[this.canvas, 'context', true], [this.buffer, 'bufferContext', true], [this.terrainBuffer, 'terrainContext', true], [this.objectBuffer, 'objectContext', false]]) {
+        this[key] = canvas.getContext('2d', { alpha: !opaque });
+        if (!this[key] || this[key].isContextLost?.()) throw new Error('Canvas 2D context unavailable');
+      }
+      this.lifecycleState = 'ready'; return true;
+    } catch (error) { this._failDisplay(error); return false; }
+  }
+  _displayState(state, error = null) {
+    const reason = error ? String(error.message || error) : null, changed = state !== this.lifecycleState || reason !== this.displayError;
+    this.lifecycleState = state; this.displayError = reason;
+    if (this.canvas.dataset) this.canvas.dataset.displayState = state;
+    try { if (changed) this.onDisplayState?.({ state, reason: this.displayError, attempts: this.recoveryAttempts }); } catch { /* Status listeners cannot break the display host. */ }
+  }
+  _releasePresentation() {
+    this.decorationLayer?.reset?.(); this.objectTileCache.clear();
+    this.cctv?.releaseViews(); this.resources.clearCaches();
+    for (const canvas of [this.canvas, this.buffer, this.terrainBuffer, this.objectBuffer, this.sceneryBuffer]) if (canvas) { this.resources.release(canvas); canvas.width = canvas.height = 0; }
+    this.resources.release(this.imageKey); this.resources.release(this.sceneryImageKey);
+    this.image = this.pixels = this.sceneryImage = this.sceneryPixels = null;
+    this.frames = new WeakMap(); this.objectFrames = new WeakMap(); this.dotColors = new WeakMap();
+    this.objectPlacements.length = 0; this.tileRevisions.clear(); this.lastFrameKey = null;
+    this.lastTerrainKey = this.lastGeometryKey = this.lastObjectKey = this.lastPlacementKey = this.lastSceneryKey = '';
+    if (this.sceneryBuffer) this.sceneryBuffer.width = this.sceneryBuffer.height = 0;
+    this.sceneryBuffer = this.sceneryContext = null;
+  }
+  _failDisplay(error, lost = false) {
+    if (this.lifecycleState === 'disposed') return;
+    this._releasePresentation();
+    this.nextRecoveryMs = (this.window.performance?.now?.() ?? Date.now()) + 250 * 2 ** this.recoveryAttempts;
+    this._displayState(lost ? 'lost' : this.recoveryAttempts >= this.recoveryLimit ? 'unavailable' : 'recovering', error);
+  }
+  recover() {
+    if (this.lifecycleState === 'disposed') return false;
+    this.recoveryAttempts = 0; this.qualityDivisor = 1; this.nextRecoveryMs = 0;
+    this._releasePresentation(); this.camera.resetPresentationClock?.();
+    const ready = this._acquireContexts(); if (ready) this._displayState('ready'); return ready;
+  }
+  getDisplayState() { return { state: this.lifecycleState, reason: this.displayError, attempts: this.recoveryAttempts, qualityDivisor: this.qualityDivisor, ...this.resources.getStats() }; }
+  resize() {
+    if (this.lifecycleState === 'disposed') return false;
+    const key = `${this.canvas.width}:${this.canvas.height}:${this.window.devicePixelRatio}:${this.workstationLayout?.firstLane}:${this.workstationLayout?.count}:${this.workstationLayout?.rowHeight}:${this.workstationLayout?.stripHeight}`;
+    if (key === this.lastResizeKey) return false;
+    this.lastResizeKey = key; this.lastTerrainKey = ''; this.lastGeometryKey = ''; return this.render();
+  }
   _drawScenery(terrainKey, width, height) {
     const scenery = this.world.scenery; if (!scenery) return;
     if (!this.sceneryBuffer) {
-      this.sceneryBuffer = this.canvas.ownerDocument.createElement('canvas'); this.sceneryContext = this.sceneryBuffer.getContext('2d');
+      this.sceneryBuffer = this.resources.canvas(); this.sceneryContext = this.sceneryBuffer.getContext('2d');
+      if (!this.sceneryContext) throw new Error('Scenery canvas context unavailable');
     }
     const reducedMotion = !!this.reducedMotion?.matches;
     const key = `${terrainKey}:${scenery.revision}:${reducedMotion}`;
     if (!this.sceneryImage || this.sceneryBuffer.width !== width || this.sceneryBuffer.height !== height) {
-      this.sceneryBuffer.width = width; this.sceneryBuffer.height = height;
-      this.sceneryImage = this.sceneryContext.createImageData(width, height); this.sceneryPixels = new Uint32Array(this.sceneryImage.data.buffer); this.lastSceneryKey = '';
+      this.resources.resize(this.sceneryBuffer, width, height);
+      this.sceneryImage = this.resources.image(this.sceneryContext, width, height, this.sceneryImageKey); this.sceneryPixels = new Uint32Array(this.sceneryImage.data.buffer); this.lastSceneryKey = '';
     }
     if (key !== this.lastSceneryKey) {
       this.sceneryPixels.fill(0);
@@ -57,13 +117,18 @@ class ProcgenLaneRenderer {
   _frameCanvas(frame) {
     let bitmap = this.frames.get(frame);
     if (!bitmap) {
-      bitmap = this.canvas.ownerDocument.createElement('canvas'); bitmap.width = frame.width; bitmap.height = frame.height;
-      const context = bitmap.getContext('2d'), pixels = context.createImageData(frame.width, frame.height);
-      pixels.data.set(frame.getData());
-      const mask = frame.getMask();
-      for (let i = 0; i < mask.length; i++) if (!mask[i]) pixels.data[i * 4 + 3] = 0;
-      context.putImageData(pixels, 0, 0); this.frames.set(frame, bitmap);
+      bitmap = this.resources.canvas(); this.resources.resize(bitmap, frame.width, frame.height, { cache: true,
+        retire: () => { bitmap.width = bitmap.height = 0; this.frames.delete(frame); } });
+      const context = bitmap.getContext('2d'); if (!context) throw new Error('Sprite canvas context unavailable');
+      const key = {}, pixels = this.resources.image(context, frame.width, frame.height, key);
+      try {
+        pixels.data.set(frame.getData());
+        const mask = frame.getMask();
+        for (let i = 0; i < mask.length; i++) if (!mask[i]) pixels.data[i * 4 + 3] = 0;
+        context.putImageData(pixels, 0, 0); this.frames.set(frame, bitmap);
+      } finally { this.resources.release(key); }
     }
+    this.resources.touch(bitmap);
     return bitmap;
   }
   drawFrame(frame, x, y) {
@@ -158,7 +223,7 @@ class ProcgenLaneRenderer {
   }
   _prepareObjectPlacements() {
     const world = this.world, terrain = world.terrain, width = terrain.chunkWidth, step = this.rasterStep;
-    const key = `${this.lastGeometryKey}:${world.frontierRevision}:${world.terrainRevision}:${world.hazards?.revision || 0}`;
+    const key = `${this.lastGeometryKey}:${world.frontierRevision}:${world.terrainRevision}`;
     if (key === this.lastPlacementKey) return;
     this.lastPlacementKey = key; this.objectPlacements.length = 0;
     const bins = new Map();
@@ -167,39 +232,12 @@ class ProcgenLaneRenderer {
     for (let lane = first; lane <= last; lane += laneStride) {
       const end = Math.min(this.originX + this.viewWidth, world.generatedThrough[lane]);
       for (let cx = Math.floor(this.originX / width); cx * width < end; cx += chunkStride) {
-        // Decorative placement must never compose or evict collision chunks.
-        const materialization = world.terrainGrowth?.stateFor?.(lane, cx);
-        if (unprepared(materialization)) continue;
-        const seed = world.laneSeeds[lane], descriptor = terrain.describe(seed, cx);
-        const matchesTerrain = (x, y) => {
-          const edits = world.editChunks.get(world._editKey(x, lane * this.laneHeight + y));
-          return x >= world.leftEdgeX && !edits?.[y * 32 + x % 32] && terrain.solidSample(seed, cx, x - cx * width, y, descriptor, materialization);
-        };
-        for (let objectIndex = 0; objectIndex < descriptor.objects.length; objectIndex++) {
-          const object = descriptor.objects[objectIndex];
-          if (world.terrainGrowth?.objectReady && !world.terrainGrowth.objectReady(lane, cx, objectIndex)) continue;
-          if (object.x + object.piece.image.width + (object.role === 'liquid' ? 1 : 0) > world.generatedThrough[lane]) continue;
-          if (object.assembly && !assemblyPlacementReady(world, lane, object, descriptor)) continue;
-          const hazardEntry = world.hazards?.peek(lane, cx, objectIndex);
-          const hazard = ['trap', 'liquid', 'hazard'].includes(object.role);
-          if (hazard && world.hazards && !world.hazards.placementReady(lane, cx, object, descriptor)) continue;
-          if (object.supportY != null && !hazard) {
-            let supported = true;
-            for (let dx = 0; dx < object.piece.image.width; dx++) if (!matchesTerrain(object.x + dx, object.supportY)) { supported = false; break; }
-            if (!supported) continue;
-          }
-          const image = procgenObjectImage(object), px = (object.x - this.originX) / step, py = (lane * this.laneHeight + object.y - this.originY) / step;
-          const placement = { image, px, py, hazardEntry, phase: object.phase, animation: object.animation, clip: null, clippedFrames: null };
-          if (object.clipToTerrain) {
-            placement.clip = new Uint8Array(image.width * image.height); placement.clippedFrames = new WeakMap();
-            let visible = false;
-            for (let dy = 0; dy < image.height; dy++) for (let dx = 0; dx < image.width; dx++) if (matchesTerrain(object.x + dx, object.y + dy)) {
-              placement.clip[dy * image.width + dx] = 1; visible = true;
-            }
-            if (!visible) continue;
-          }
-          if (image.width < step && image.height < step) {
-            const x = Math.floor(px), y = Math.floor(py);
+        if (unprepared(world.terrainGrowth?.stateFor?.(lane, cx))) continue;
+        const descriptor = terrain.describe(world.laneSeeds[lane], cx);
+        for (const shape of this.objectTileCache.get(lane, cx, descriptor)) {
+          const placement = { ...shape, px: (shape.x - this.originX) / step, py: (shape.y - this.originY) / step };
+          if (shape.image.width < step && shape.image.height < step) {
+            const x = Math.floor(placement.px), y = Math.floor(placement.py);
             if (x >= 0 && y >= 0 && x < this.buffer.width && y < this.buffer.height) bins.set(y * this.buffer.width + x, placement);
           } else this.objectPlacements.push(placement);
         }
@@ -217,7 +255,8 @@ class ProcgenLaneRenderer {
     context.clearRect?.(0, 0, this.objectBuffer.width, this.objectBuffer.height); context.imageSmoothingEnabled = false;
     this.objectDots.clear();
     for (const placement of this.objectPlacements) {
-      const { image, phase, px, py, dot, clip, hazardEntry } = placement;
+      const { image, phase, px, py, dot, clip } = placement;
+      const hazardEntry = world.hazards?.peek(placement.lane, placement.chunk, placement.objectIndex);
       const frame = hazardEntry ? world.hazards.getFrame(hazardEntry, world.tickIndex) : image.frames[placement.animation === 'idle' ? 0 : (Math.floor(world.tickIndex / 4) + phase) % image.frames.length];
       const ownedFrame = !!frame.getMask;
       if (dot != null) {
@@ -234,11 +273,16 @@ class ProcgenLaneRenderer {
       const frameCache = placement.clippedFrames || this.objectFrames;
       let bitmap = frameCache.get(frame);
       if (!bitmap) {
-        bitmap = this.canvas.ownerDocument.createElement('canvas'); bitmap.width = image.width; bitmap.height = image.height;
-        const ctx = bitmap.getContext('2d'), data = ctx.createImageData(image.width, image.height), rgba = new Uint32Array(data.data.buffer);
-        for (let i = 0; i < frame.length; i++) if (!(frame[i] & 128) && (!clip || clip[i])) rgba[i] = image.palette.getColor(frame[i]) | 0xff000000;
-        ctx.putImageData(data, 0, 0); frameCache.set(frame, bitmap);
+        bitmap = this.resources.canvas(); this.resources.resize(bitmap, image.width, image.height, { cache: true,
+          retire: () => { bitmap.width = bitmap.height = 0; frameCache.delete(frame); } });
+        const ctx = bitmap.getContext('2d'); if (!ctx) throw new Error('Object canvas context unavailable');
+        const pixelKey = {}, data = this.resources.image(ctx, image.width, image.height, pixelKey), rgba = new Uint32Array(data.data.buffer);
+        try {
+          for (let i = 0; i < frame.length; i++) if (!(frame[i] & 128) && (!clip || clip[i])) rgba[i] = image.palette.getColor(frame[i]) | 0xff000000;
+          ctx.putImageData(data, 0, 0); frameCache.set(frame, bitmap);
+        } finally { this.resources.release(pixelKey); }
       }
+      this.resources.touch(bitmap);
       context.drawImage(bitmap, px, py, image.width / step, image.height / step);
     }
     this._flushDots(this.objectDots, context); this.bufferContext.drawImage(this.objectBuffer, 0, 0);
@@ -267,13 +311,42 @@ class ProcgenLaneRenderer {
   }
   // Explicit requests redraw; the RAF loop may reuse a fully unchanged frame.
   render(force = true) {
+    if (this.lifecycleState === 'disposed' || this.lifecycleState === 'lost' || this.lifecycleState === 'unavailable') return false;
+    const now = this.window.performance?.now?.() ?? Date.now();
+    if (this.lifecycleState === 'recovering') {
+      if (now < this.nextRecoveryMs) return false;
+      this.recoveryAttempts++; this.qualityDivisor = 2 ** this.recoveryAttempts;
+      if (!this._acquireContexts()) return false;
+    }
+    try {
+      const rendered = this._render(force);
+      if (rendered) this._displayState('ready');
+      return rendered;
+    } catch (error) { this._failDisplay(error); return false; }
+  }
+  _render(force) {
     const start = this.window.performance?.now?.() ?? Date.now();
+    if (this.canvas.width > 0 && this.canvas.height > 0 && (this.canvas.width !== this.managedWidth || this.canvas.height !== this.managedHeight)) { this.surfaceWidth = this.canvas.width; this.surfaceHeight = this.canvas.height; }
+    if (!this.surfaceWidth || !this.surfaceHeight) return false;
+    const mainLimit = Math.min(MAX_RENDER_DIMENSION / this.surfaceWidth, MAX_RENDER_DIMENSION / this.surfaceHeight,
+      Math.sqrt(this.resources.budgetBytes / 3 / (this.surfaceWidth * this.surfaceHeight * 4)), 1);
+    this.resources.resize(this.canvas, Math.max(1, Math.floor(this.surfaceWidth * mainLimit)), Math.max(1, Math.floor(this.surfaceHeight * mainLimit)), { observeContext: false });
+    this.managedWidth = this.canvas.width; this.managedHeight = this.canvas.height;
+    this.presentationDpr = Math.min(2, this.window.devicePixelRatio || 1) * mainLimit;
     this.cctv.prepare(); this.camera.update(false, !force, start);
-    const dpr = Math.min(2, this.window.devicePixelRatio || 1), scale = this.scale * dpr;
+    const dpr = Math.min(2, this.window.devicePixelRatio || 1) * mainLimit, scale = this.scale * dpr;
     const layout = this.workstationLayout;
-    this.rasterStep = layout ? 1 : Math.max(1, 1 / scale);
+    this.rasterStep = (layout ? 1 : Math.max(1, 1 / scale)) * this.qualityDivisor;
     const mainHeight = Math.max(1, this.canvas.height - (this.overviewBandHeight || 0) * dpr);
-    const width = Math.max(1, Math.ceil(this.canvas.width / (layout ? scale : Math.max(1, scale)))), height = layout ? layout.count * this.laneHeight : Math.max(1, Math.ceil(mainHeight / Math.max(1, scale)));
+    let width = Math.max(1, Math.ceil(this.canvas.width / scale / this.rasterStep)), height = layout ? Math.ceil(layout.count * this.laneHeight / this.rasterStep) : Math.max(1, Math.ceil(mainHeight / scale / this.rasterStep));
+    const replacedBytes = this.resources.bytesFor([this.buffer, this.terrainBuffer, this.objectBuffer, this.sceneryBuffer, this.imageKey, this.sceneryImageKey, this.decorationLayer?.canvas, this.decorationLayer?.mask]);
+    const rasterBudget = this.resources.budgetBytes - this.resources.bytes + this.resources.cacheBytes + replacedBytes;
+    const bytesPerPixel = 16 + (this.world.scenery ? 8 : 0) + (this.decorationLayer ? 12 : 0);
+    while ((width > MAX_RENDER_DIMENSION || height > MAX_RENDER_DIMENSION || width * height * bytesPerPixel > rasterBudget) && this.qualityDivisor < 256) {
+      this.qualityDivisor *= 2; this.rasterStep *= 2;
+      width = Math.max(1, Math.ceil(this.canvas.width / scale / this.rasterStep));
+      height = layout ? Math.ceil(layout.count * this.laneHeight / this.rasterStep) : Math.max(1, Math.ceil(mainHeight / scale / this.rasterStep));
+    }
     this.viewWidth = width * this.rasterStep; this.viewHeight = height * this.rasterStep;
     this.originX = Math.floor(this.cameraX / this.rasterStep) * this.rasterStep;
     this.originY = layout ? layout.firstLane * this.laneHeight : Math.floor(this.cameraY / this.rasterStep) * this.rasterStep;
@@ -285,9 +358,9 @@ class ProcgenLaneRenderer {
       return false;
     }
     if (!this.image || this.buffer.width !== width || this.buffer.height !== height) {
-      this.buffer.width = this.terrainBuffer.width = this.objectBuffer.width = width;
-      this.buffer.height = this.terrainBuffer.height = this.objectBuffer.height = height; this.lastObjectKey = ''; this.lastPlacementKey = '';
-      this.image = this.terrainContext.createImageData(width, height); this.pixels = new Uint32Array(this.image.data.buffer); this.lastTerrainKey = ''; this.lastGeometryKey = '';
+      for (const canvas of [this.buffer, this.terrainBuffer, this.objectBuffer]) this.resources.resize(canvas, width, height);
+      this.lastObjectKey = ''; this.lastPlacementKey = '';
+      this.image = this.resources.image(this.terrainContext, width, height, this.imageKey); this.pixels = new Uint32Array(this.image.data.buffer); this.lastTerrainKey = ''; this.lastGeometryKey = '';
     }
     const key = `${geometryKey}:${this.world.terrainRevision}`;
     if (key !== this.lastTerrainKey) {
@@ -326,7 +399,7 @@ class ProcgenLaneRenderer {
         const sourceY = Math.max(0, Math.min(this.laneHeight - crop, focus - crop * 0.6));
         layout.rowSourceY[row] = sourceY;
         this.workstationRows.push({ lane, sourceY: lane * this.laneHeight + sourceY, sourceHeight: crop, destinationY: row * layout.rowHeight, destinationHeight: crop * this.scale });
-        this.context.drawImage(this.buffer, 0, row * this.laneHeight + sourceY, width, crop, 0, row * layout.rowHeight * dpr, this.canvas.width, crop * scale);
+        this.context.drawImage(this.buffer, 0, (row * this.laneHeight + sourceY) / this.rasterStep, width, crop / this.rasterStep, 0, row * layout.rowHeight * dpr, this.canvas.width, crop * scale);
       }
       this.onWorkstationFrame?.();
     } else {
@@ -340,10 +413,16 @@ class ProcgenLaneRenderer {
     this.lastFrameMs = (this.window.performance?.now?.() ?? start) - start;
     return true;
   }
-  dispose() { this.actorVisibility.dispose(); this.objectPlacements.length = 0; this.camera.dispose(); this.cctv.dispose(); this.decorationLayer = null; this.midiSpanOverlay = null; this.frames = new WeakMap(); this.objectFrames = new WeakMap();
+  dispose() { if (this.lifecycleState === 'disposed') return;
+    this._displayState('disposed');
+    for (const [event, listener] of this.contextListeners) this.canvas.removeEventListener?.(event, listener);
+    this.contextListeners.length = 0;
+    this.actorVisibility.dispose(); this.camera.dispose(); this._releasePresentation(); this.cctv.dispose(); this.decorationLayer?.dispose?.(); this.objectTileCache.dispose(); this.resources.dispose(); this.decorationLayer = null; this.midiSpanOverlay = null; this.frames = new WeakMap(); this.objectFrames = new WeakMap();
     this.dotColors = new WeakMap(); this.actorDots = new Map(); this.objectDots = new Map(); this.image = null; this.pixels = null; this.lastFrameKey = null;
     if (this.sceneryBuffer) this.sceneryBuffer.width = this.sceneryBuffer.height = 0;
     this.sceneryBuffer = this.sceneryContext = this.sceneryImage = this.sceneryPixels = null;
-    this.lastAppearance = this.lastSprites = this.lastHud = this.lastHudSprites = this.lastDecorationLayer = null; }
+    this.lastAppearance = this.lastSprites = this.lastHud = this.lastHudSprites = this.lastDecorationLayer = null;
+    this.onWorkstationFrame = this.onDisplayState = this.hud = this.world = this.assets = this.workstationLayout = this.workstationRows = null;
+    this.context = this.bufferContext = this.terrainContext = this.objectContext = null; }
 }
 export { ProcgenLaneRenderer };
