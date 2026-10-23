@@ -13,6 +13,8 @@ describe('browser executable and resource closure inventory', () => {
       'js/leaf.js': 'export const value = 1;', 'js/optional.js': 'export const data = new URL("../assets/data.json", import.meta.url);',
       'js/runtime/ActiveExecutionIdentity.js': 'export const identity = null;',
       'js/runtime/BrowserBuildManifest.js': 'export const schema = "fixture";',
+      'js/runtime/BrowserGenerationService.js': 'export const service = "fixture";',
+      'js/runtime/BrowserGenerationClient.js': 'export const client = "fixture";',
       'css/shell.css': '@import "./panel.css"; .icon { background: url("../assets/icon.svg"); }', 'css/panel.css': '.panel { display: block; }',
       'config.json': '[{"path":"classic"}]', 'keybindings.json': '{}', 'site.webmanifest': '{}', 'provenance/runtime-artifacts.json': '{"version":1}',
       'assets/data.json': '{}', 'assets/icon.svg': '<svg/>', 'classic/MAIN.DAT': 'fixture' };

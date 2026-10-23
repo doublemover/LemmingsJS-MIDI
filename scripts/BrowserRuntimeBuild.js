@@ -7,6 +7,7 @@ import { BUILD_IDENTITY_PATH, BUILD_IDENTITY_SLOT, BUILD_TEMPLATE_PATH, computeB
 const IDENTITY_PATH = BUILD_IDENTITY_PATH, IDENTITY_SLOT = BUILD_IDENTITY_SLOT;
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const inside = (root, target) => { const relative = path.relative(root, target); return relative !== '..' && !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative); };
+const bootstrapPage = (buildId, route) => `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Lemmings application</title><body><main><h1>Lemmings</h1><p id="generation-status" role="status">Preparing application files…</p><noscript>JavaScript is required to open this application.</noscript></main><script type="module">import { startBrowserGenerationEntry } from './${buildId}/js/runtime/BrowserGenerationClient.js'; startBrowserGenerationEntry({route:${JSON.stringify(route)}}).catch(() => {});</script></body></html>\n`;
 
 export async function buildBrowserRuntime({ rootDir, outputDir = null, inventory = null, fsImpl = fs } = {}) {
   const root = path.resolve(rootDir), output = path.resolve(outputDir || path.join(root, 'dist', 'browser'));
@@ -60,6 +61,13 @@ export async function buildBrowserRuntime({ rootDir, outputDir = null, inventory
       if (sha256(await fsImpl.readFile(path.join(finalPath, BUILD_TEMPLATE_PATH))) !== manifest.sourceNormalization.templateSha256) throw new Error('An immutable browser generation has changed template bytes.');
       await cleanup();
     }
-    return { buildId, path: finalPath, manifest, offlineInstallation: 'not-installed', activeExecution: 'entry-not-executed' };
+    const published = { 'service-worker.js': `import { installBrowserGenerationWorker } from './${buildId}/js/runtime/BrowserGenerationService.js';\ninstallBrowserGenerationWorker({buildId:${JSON.stringify(buildId)}});\n` };
+    for (const route of manifest.routes) published[route] = bootstrapPage(buildId, route);
+    for (const [file, source] of Object.entries(published)) {
+      const temporary = path.join(realOutput, `.publish-${buildId}-${file}`);
+      try { await fsImpl.writeFile(temporary, source); await fsImpl.rename(temporary, path.join(realOutput, file)); }
+      finally { await fsImpl.rm(temporary, { force: true }); }
+    }
+    return { buildId, path: finalPath, entryPath: path.join(realOutput, 'index.html'), manifest, offlineInstallation: 'not-installed', activeExecution: 'entry-not-executed' };
   } catch (error) { await cleanup(); throw error; }
 }

@@ -246,7 +246,7 @@ describe('registerServiceWorker', function () {
     const runtime = registerServiceWorker({ profile: 'perf', navigator: { serviceWorker },
       window: { location }, document: { readyState: 'complete' }, location });
     await flush();
-    expect(runtime.getState()).to.deep.equal({ mode: 'bypassed-controlled', controlledByOwnedWorker: true, controlled: true });
+    expect(runtime.getState()).to.deep.equal({ mode: 'bypassed-controlled', offlineInstallation: 'unqualified', controlledByOwnedWorker: true, controlled: true });
     expect(calls).to.deep.equal([]);
     expect(await runtime.removeOwnedAndReload()).to.equal(true);
     expect(calls).to.deep.equal(['unregister', 'reload']);

@@ -6,12 +6,13 @@ const profiles = new Set(['browser-survey-core', 'browser-native-audio', 'browse
 const realmId = globalThis.crypto?.randomUUID?.() ?? null;
 const executingRoot = new URL('../../', import.meta.url);
 const fields = ['buildId', 'closureDigest', 'harnessVersion', 'stateSchema', 'assetDigest', 'capabilityProfile'];
+const inBuildNamespace = () => APPLICATION_BUILD && executingRoot.pathname.endsWith('/' + APPLICATION_BUILD.buildId + '/');
 
 export const getApplicationBuild = () => APPLICATION_BUILD;
-export const getApplicationDeploymentRoot = () => APPLICATION_BUILD ? new URL('../../../', import.meta.url) : null;
+export const getApplicationDeploymentRoot = () => inBuildNamespace() ? new URL('../../../', import.meta.url) : null;
 export const getActiveExecutionIdentity = (capabilityProfile = 'browser-survey-core') => {
   if (!profiles.has(capabilityProfile)) throw new Error('Unsupported executing capability profile.');
-  const immutableNamespace = APPLICATION_BUILD && executingRoot.pathname.endsWith('/' + APPLICATION_BUILD.buildId + '/');
+  const immutableNamespace = inBuildNamespace();
   if (!APPLICATION_BUILD || !realmId || !immutableNamespace) return Object.freeze({ receiptVersion: 3, activeExecution: 'unbound',
     reason: !APPLICATION_BUILD ? 'unbuilt-source-entry' : !immutableNamespace ? 'execution-entry-outside-build-namespace' : 'realm-identity-unavailable', realmId, capabilityProfile });
   return Object.freeze({ receiptVersion: 3, activeExecution: 'bound', ...APPLICATION_BUILD, stateSchema: SURVEY_STATE_SCHEMA,

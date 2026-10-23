@@ -92,8 +92,8 @@ The source checkout's `ActiveExecutionIdentity.js` has no build authority.
 Generated identity is accepted only from its matching immutable URL namespace
 and a distinct runtime realm, with the actual state schema and selected
 capability profile. Report-supplied data cannot set the executing identity.
-Generation installer and replay-handshake integration still need to consume
-this authority; runtime qualification fixtures remain deferred.
+The generation installer consumes this authority. Replay-handshake integration
+and runtime qualification fixtures remain deferred.
 
 The unbuilt service-worker shell now distinguishes its three HTML routes and
 uses exact precached script/style responses on network failure. Resource
@@ -110,3 +110,21 @@ the bound template plus derived build data. Installer consumers must obtain
 `templateVerified: true` before publication; checking only the normalized slot
 would otherwise hide a changed executable carrier. Template bytes are shipped
 as bounded data alongside the generation and checked on repeat staging.
+
+The generated output root contains installer entry pages and a module service
+worker. Serve `dist/browser/` as the application root (HTTPS, or loopback HTTP).
+The entry waits for a matching complete generation before navigating to its
+immutable HTML route. Installation streams and hashes every declared file with
+two bounded copy producers, then writes its completion marker last. Failed
+candidates cannot replace a previous generation. Restart recovery rechecks all
+required bytes; registration alone never means offline readiness. Known build
+namespaces reject undeclared resources and wrong revision queries.
+
+Cache accounting and deletion are scoped to the application path, with a
+512 MiB default admission bound. Active client generation URLs retain their
+previous package during updates. Built tabs retain their executing generation
+when the controller changes; the app does not automatically reload a running
+performance. This installation path does not enable cross-origin isolation or
+claim that a decoder, worklet or audio context was successfully initialized.
+Deterministic interruption, restart, exact-route and retention fixtures are
+added but remain unexecuted during the frontloaded development pass.

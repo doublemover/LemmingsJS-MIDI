@@ -1,6 +1,8 @@
 import { appendRevisionParam, resolveRuntimeRevision } from '../core/cacheBust.js';
 import { getRuntimeDependency } from '../core/dependencies.js';
 import { DEFAULT_RUNTIME_PROFILE, normalizeRuntimeProfile } from '../core/runtimeProfiles.js';
+import { getApplicationBuild, getApplicationDeploymentRoot } from '../runtime/ActiveExecutionIdentity.js';
+import { readBrowserGenerationStatus } from '../runtime/BrowserGenerationClient.js';
 
 const DISABLED_PROFILES = new Set(['dev', 'editor', 'perf', 'e2e']);
 let activeServiceWorkerRuntime = null;
@@ -8,7 +10,8 @@ let activeServiceWorkerRuntime = null;
 const ownedWorkerUrls = location => {
   try {
     const page = new URL(location.href || `${location.protocol}//${location.host || location.hostname}${location.pathname || '/'}`);
-    const scope = new URL('./', page);
+    const deployment = getApplicationDeploymentRoot();
+    const scope = deployment?.origin === page.origin && page.pathname.startsWith(deployment.pathname) ? deployment : new URL('./', page);
     const script = new URL('service-worker.js', scope);
     return { scope: scope.href, script: script.href, tag: encodeURIComponent(scope.pathname) };
   } catch { return null; }
@@ -32,7 +35,8 @@ const isOwnedCache = (key, owner) => {
     return key.startsWith(stem) && /^[0-9]+$/.test(key.slice(stem.length));
   });
   const legacyRoot = /^lemmings-(?:core|runtime)-v[0-9]+$/;
-  return scoped || owner.tag === '%2F' && legacyRoot.test(key);
+  const generations = `lemmings-generation-${owner.tag}-v1-`;
+  return scoped || key.startsWith(generations) && /^[a-f0-9]{64}-[a-f0-9]{32}$/.test(key.slice(generations.length)) || owner.tag === '%2F' && legacyRoot.test(key);
 };
 
 const isTruthyQueryValue = (value) => {
@@ -143,6 +147,10 @@ const registerServiceWorker = (options = {}) => {
   const owner = location && ownedWorkerUrls(location);
   let disposed = false;
   let mode = 'pending';
+  const applicationBuild = getApplicationBuild(), deployment = getApplicationDeploymentRoot();
+  const generated = !!applicationBuild && !!deployment;
+  let offlineInstallation = generated ? 'checking' : 'unqualified', installedBuildId = null;
+  const statusController = new AbortController();
   const cleanup = [];
   let updateIntervalId = null;
   const addCleanup = (fn) => {
@@ -154,7 +162,7 @@ const registerServiceWorker = (options = {}) => {
     addCleanup(() => target.removeEventListener?.(eventName, handler, listenerOptions));
   };
   const runtime = {
-    getState: () => ({ mode, offlineInstallation: 'unqualified', controlledByOwnedWorker: isOwnedScript(nav?.serviceWorker?.controller?.scriptURL, owner),
+    getState: () => ({ mode, offlineInstallation, ...(generated ? { installedBuildId, executingBuildId: applicationBuild.buildId } : {}), controlledByOwnedWorker: isOwnedScript(nav?.serviceWorker?.controller?.scriptURL, owner),
       controlled: !!nav?.serviceWorker?.controller }),
     async removeOwnedAndReload() {
       if (disposed || !isOwnedScript(nav?.serviceWorker?.controller?.scriptURL, owner)) return false;
@@ -167,6 +175,7 @@ const registerServiceWorker = (options = {}) => {
     },
     dispose() {
       disposed = true;
+      statusController.abort();
       mode = 'disposed';
       if (updateIntervalId != null) {
         windowRef?.clearInterval?.(updateIntervalId);
@@ -202,11 +211,23 @@ const registerServiceWorker = (options = {}) => {
         location,
         document: documentRef
       });
-      const workerUrl = appendRevisionParam('service-worker.js', revision);
-      const registration = await serviceWorker.register(workerUrl, { updateViaCache: 'none' });
+      const workerUrl = generated ? new URL('service-worker.js', deployment).href : appendRevisionParam('service-worker.js', revision);
+      const registration = await serviceWorker.register(workerUrl, generated ? { type: 'module', scope: deployment.href, updateViaCache: 'none' } : { updateViaCache: 'none' });
       if (disposed) return;
       mode = 'registered';
       let refreshing = false;
+      let statusPending = false;
+      const refreshStatus = async () => {
+        if (!generated || disposed || statusPending) return;
+        statusPending = true;
+        try {
+          const result = await readBrowserGenerationStatus(serviceWorker.controller || registration.active, { signal: statusController.signal });
+          if (disposed || !result) return;
+          installedBuildId = result.offlineReady && result.status === 'installed' ? result.buildId : null;
+          offlineInstallation = installedBuildId === applicationBuild.buildId ? 'installed' : installedBuildId ? 'different-controller-generation' : result.status;
+        } catch { if (!disposed) offlineInstallation = 'unavailable'; }
+        finally { statusPending = false; }
+      };
       const requestUpdate = () => registration.update?.().catch(() => {});
       const activateWaiting = () => {
         if (registration.waiting) {
@@ -217,6 +238,7 @@ const registerServiceWorker = (options = {}) => {
         if (disposed) return;
         requestUpdate();
         activateWaiting();
+        refreshStatus();
       };
       const onUpdateFound = () => {
         const installing = registration.installing;
@@ -230,6 +252,7 @@ const registerServiceWorker = (options = {}) => {
       };
       addListener(registration, 'updatefound', onUpdateFound);
       const onControllerChange = () => {
+        if (generated) { mode = 'controller-updated'; refreshStatus(); return; }
         if (!hadController || refreshing) return;
         refreshing = true;
         windowRef?.location?.reload?.();

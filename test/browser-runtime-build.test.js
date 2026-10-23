@@ -19,7 +19,8 @@ describe('immutable browser generation staging', () => {
       'config.json': '[{"path":"classic"}]', 'classic/MAIN.DAT': 'fixture', 'keybindings.json': '{}',
       'site.webmanifest': '{}', 'provenance/runtime-artifacts.json': '{}' };
     for (const [file, source] of Object.entries(files)) { await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.writeFile(path.join(root, file), source); }
-    for (const file of ['js/runtime/ActiveExecutionIdentity.js', 'js/runtime/BrowserBuildManifest.js', 'scripts/BrowserRuntimeBuild.js', 'scripts/BrowserRuntimeClosure.js', 'scripts/RuntimeSourceClosure.js']) {
+    for (const file of ['js/runtime/ActiveExecutionIdentity.js', 'js/runtime/BrowserBuildManifest.js', 'js/runtime/BrowserGenerationService.js',
+      'js/runtime/BrowserGenerationClient.js', 'scripts/BrowserRuntimeBuild.js', 'scripts/BrowserRuntimeClosure.js', 'scripts/RuntimeSourceClosure.js']) {
       await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.copyFile(path.join(repo, file), path.join(root, file));
     }
   });
@@ -32,6 +33,8 @@ describe('immutable browser generation staging', () => {
     const first = await build(), repeat = await build();
     expect(repeat.buildId).to.equal(first.buildId); expect(first.path).to.equal(path.join(root, 'dist', 'browser', first.buildId));
     expect(first).to.include({ offlineInstallation: 'not-installed', activeExecution: 'entry-not-executed' });
+    expect(await fs.readFile(path.join(root, 'dist/browser/service-worker.js'), 'utf8')).to.include('./' + first.buildId + '/js/runtime/BrowserGenerationService.js');
+    expect(await fs.readFile(first.entryPath, 'utf8')).to.include('startBrowserGenerationEntry');
     const carrier = await fs.readFile(path.join(first.path, 'js/runtime/ActiveExecutionIdentity.js'));
     const expected = first.manifest.files.find(file => file.path === 'js/runtime/ActiveExecutionIdentity.js');
     expect(createHash('sha256').update(carrier).digest('hex')).to.equal(expected.sha256);
