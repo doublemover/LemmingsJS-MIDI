@@ -100,6 +100,8 @@ const createProcgenLaneRuntime = ({ canvas, resources, resourceLease = null, ren
           { name: 'preview-reference', run: () => { previewRouter = null; view.midiPreviewRouter = null; } },
           { name: 'world', run: () => world.dispose() },
           { name: 'renderer', run: () => renderer.dispose() },
+          { name: 'terrain-assets', run: () => terrain?.dispose?.() },
+          { name: 'display-assets', run: () => assets?.dispose?.() },
           { name: 'asset-provider-lease', run: () => resourceLease?.release() }
         ]);
       },
@@ -110,6 +112,8 @@ const createProcgenLaneRuntime = ({ canvas, resources, resourceLease = null, ren
       { name: 'animation-frame', run: () => { if (constructionFrame != null) windowRef.cancelAnimationFrame(constructionFrame); } },
       { name: 'renderer', run: () => renderer?.dispose() },
       { name: 'world', run: () => world?.dispose() },
+      { name: 'terrain-assets', run: () => terrain?.dispose?.() },
+      { name: 'display-assets', run: () => assets?.dispose?.() },
       { name: 'asset-provider-lease', run: () => resourceLease?.release() }
     ]);
     throw error;

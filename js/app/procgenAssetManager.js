@@ -83,11 +83,12 @@ class ProcgenAssetManager {
   }
 
   dispose() {
-    this.cache.clear();
+    const retirement = this.cache.clear();
     this.assets = null;
     this.terrainPieces = []; this.groundPieces = []; this.decorPieces = [];
     this.gadgetDecor = []; this.gadgetHazards = [];
     this._pickCache = new WeakMap();
+    return retirement;
   }
 
   _buildTerrainCatalog(assets) {

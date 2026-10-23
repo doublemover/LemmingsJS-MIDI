@@ -171,4 +171,19 @@ consume the same boundary through registered pure job kernels. Recovery
 checksums and binary asset hashes now use it as well. Binary hashing stays on
 native WebCrypto, avoiding a worker copy solely for a digest. Recovery has a
 cooperative fallback and cannot relabel a capacity failure as corrupt data.
-Content coalescing and terrain-decode job integration remain pending.
+Pure content jobs coalesce by a versioned digest and resource-budget scope,
+with independent cancellation and publication leases for each consumer. Ground
+decoding copies verified sources only after admission, checks compressed-part,
+image-plane, frame and decoded-byte bounds, and fingerprints the result inside
+the worker. The no-worker path admits only small bounded decodes. Image/palette
+metadata is frozen; shared typed pixels remain owned read-only asset data and
+are never transferred from a performing world. Each terrain instance retains
+separate mutable descriptors, PRNG, edits and hazard state.
+
+Active and candidate asset managers share the decoded result and its reservation.
+Retiring either releases only its consumer lease; the last release retires the
+result. Theme and display managers transfer their leases into the committed
+runtime, with independent cleanup on failed preparation and runtime retirement.
+Warm same-content worlds reuse decode and fingerprint results while a consumer
+still owns that content. No persistent unreferenced decoded cache is retained.
+These paths and their added real-source fixtures remain unexecuted.

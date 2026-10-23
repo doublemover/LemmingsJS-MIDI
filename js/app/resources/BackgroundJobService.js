@@ -86,7 +86,8 @@ export function createBackgroundJobService({ admission = backgroundWorkerAdmissi
               if (message.type === 'progress') { progress(message.progress); return; }
               if (message.type === 'failed') { failed(failure(message.error?.code || 'worker-failed', String(message.error?.message || 'Background worker failed.').slice(0, 512))); return; }
               if (message.type !== 'computed' || !message.result || !Number.isSafeInteger(message.result.inputBytes) || message.result.inputBytes < 0 || message.result.inputBytes > maxBytes ||
-                  !Number.isSafeInteger(message.result.nodes) || message.result.nodes < 1 || message.result.nodes > 4000000) throw failure('invalid-result', 'Background worker result exceeds its admitted protocol.');
+                  !Number.isSafeInteger(message.result.nodes) || message.result.nodes < 1 || message.result.nodes > 4000000 ||
+                  message.result.retainedBytes != null && (!Number.isSafeInteger(message.result.retainedBytes) || message.result.retainedBytes < 0 || message.result.retainedBytes > estimatedPeakBytes)) throw failure('invalid-result', 'Background worker result exceeds its admitted protocol.');
               if (identity.activeExecution === 'bound' && !compareActiveExecutionIdentity(message.executionIdentity, 'browser-background-jobs').matched)
                 throw failure('worker-build-mismatch', 'Background worker executes a different application build.');
               executionIdentity = message.executionIdentity; terminal = true; resolve(message.result);
@@ -103,7 +104,8 @@ export function createBackgroundJobService({ admission = backgroundWorkerAdmissi
         ownedWorkPending = true;
         ownedWork = Promise.resolve().then(yieldTask).then(() => runBackgroundJobKernel(kind, input, { ...limits,
           ...(!['asset-hash', 'recovery-checksum'].includes(kind) ? { maxBytes: Math.min(maxBytes, 128 * 1024), maxNodes: 4096 } : {}),
-          crypto, maxStringBytes: 128 * 1024, signal: controller.signal, current: isCurrent, onProgress: progress, yieldControl: yieldTask })).finally(() => { ownedWorkPending = false; });
+          crypto, maxStringBytes: 128 * 1024, ...(kind === 'asset-decode' ? { maxDecodedBytes: 128 * 1024 } : {}),
+          signal: controller.signal, current: isCurrent, onProgress: progress, yieldControl: yieldTask })).finally(() => { ownedWorkPending = false; });
         result = await interruptible(ownedWork, controller.signal);
       }
       check();
@@ -111,7 +113,7 @@ export function createBackgroundJobService({ admission = backgroundWorkerAdmissi
       ownedWork = null;
       if (!retainInput) { input = null; releaseInput(); }
       const objectResult = result.value != null && typeof result.value === 'object';
-      const retainedBytes = Math.min(estimatedPeakBytes, Math.max(4096, (typeof result.value === 'string' ? result.value.length * 2 : 0) +
+      const retainedBytes = Math.min(estimatedPeakBytes, Math.max(4096, result.retainedBytes ?? 0, (typeof result.value === 'string' ? result.value.length * 2 : 0) +
         (retainInput || objectResult ? result.inputBytes * 2 + result.nodes * 64 : 0)));
       if (!lease.computationFinished({ retainedBytes })) throw failure('ownership-retired', 'Background computation owner retired before publication.');
       const receipt = Object.freeze({ protocol: BACKGROUND_JOB_PROTOCOL, jobId: lease.jobId, kind, ownerId, ownerEpoch, sourceRevision,

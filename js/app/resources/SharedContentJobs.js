@@ -19,6 +19,8 @@ export function createSharedContentJobs({ jobs = backgroundJobService, maxEntrie
       if (entries.size >= maxEntries) throw failure('queue-capacity', 'Shared content job limit reached.');
       entry = { controller: new AbortController(), consumers: new Set(), result: null, promise: null };
       entries.set(key, entry);
+      let prepared = false, inputRetired = false;
+      const releasePreparedInput = () => { if (!inputRetired) { inputRetired = true; specification.releasePreparedInput?.(); } };
       const progress = value => {
         for (const consumer of [...entry.consumers]) {
           if (!consumer.current()) { consumer.cancel(failure('stale-owner', 'Shared content consumer source changed.')); continue; }
@@ -26,11 +28,16 @@ export function createSharedContentJobs({ jobs = backgroundJobService, maxEntrie
         }
       };
       entry.promise = Promise.resolve().then(() => jobs.compute({ ...specification, ownerId: 'content:' + contentHash, ownerEpoch: 0,
-        sourceRevision: decoderVersion + ':' + contentHash, signal: entry.controller.signal, isCurrent: () => !disposed, onProgress: progress }))
+        sourceRevision: decoderVersion + ':' + contentHash, signal: entry.controller.signal, isCurrent: () => !disposed, onProgress: progress,
+        releasePreparedInput, prepareInput: options => { prepared = true; return specification.prepareInput(options); } }))
         .then(result => { entry.result = result; if (!entry.consumers.size) result.release(); return result; })
-        .catch(error => { if (entries.get(key) === entry) entries.delete(key); throw error; });
+        .catch(error => {
+          if (entries.get(key) === entry) entries.delete(key);
+          if (!prepared) releasePreparedInput();
+          throw error;
+        });
       entry.promise.catch(() => {});
-    }
+    } else specification.releasePreparedInput?.();
     return new Promise((resolve, reject) => {
       const controller = new AbortController(); let released = false, delivered = false;
       const current = () => { try { return !disposed && !controller.signal.aborted && isCurrent(); } catch { return false; } };

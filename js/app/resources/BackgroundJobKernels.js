@@ -1,7 +1,8 @@
 import { checksumProcgenRecovery } from '../procgen/workstation/ProcgenRecoveryChecksum.js';
+import { decodeGroundAssetSnapshot } from './GroundAssetDecode.js';
 
 export const BACKGROUND_JOB_PROTOCOL = 1;
-export const BACKGROUND_JOB_KINDS = Object.freeze(['parse-json', 'encode-json', 'recovery-checksum', 'asset-hash']);
+export const BACKGROUND_JOB_KINDS = Object.freeze(['parse-json', 'encode-json', 'recovery-checksum', 'asset-hash', 'asset-decode']);
 const MAX_BYTES = 64 * 1048576, MAX_NODES = 4000000;
 const problem = (code, message) => Object.assign(new Error(message), { code, name: 'BackgroundJobError' });
 const shared = value => typeof globalThis.SharedArrayBuffer === 'function' && (value instanceof globalThis.SharedArrayBuffer || value?.buffer instanceof globalThis.SharedArrayBuffer);
@@ -100,13 +101,14 @@ const inspectValue = async (value, { maxBytes, maxNodes, maxStringBytes, estimat
 };
 
 export async function runBackgroundJobKernel(kind, input, { signal, current, maxBytes = MAX_BYTES, estimatedPeakBytes,
-  maxNodes = MAX_NODES, maxStringBytes = MAX_BYTES, crypto = globalThis.crypto, onProgress = () => {}, yieldControl = yieldTask, expectedInputHash = null } = {}) {
+  maxNodes = MAX_NODES, maxStringBytes = MAX_BYTES, maxDecodedBytes, crypto = globalThis.crypto, onProgress = () => {}, yieldControl = yieldTask, expectedInputHash = null } = {}) {
   if (!BACKGROUND_JOB_KINDS.includes(kind) || !Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > MAX_BYTES ||
       !Number.isSafeInteger(estimatedPeakBytes) || estimatedPeakBytes < 4096 || estimatedPeakBytes > 512 * 1048576 ||
       !Number.isSafeInteger(maxNodes) || maxNodes < 1 || maxNodes > MAX_NODES ||
       !Number.isSafeInteger(maxStringBytes) || maxStringBytes < 1 || maxStringBytes > MAX_BYTES ||
       expectedInputHash != null && !/^[a-f0-9]{64}$/.test(expectedInputHash)) throw problem('invalid-contract', 'Unsupported background job kernel contract.');
   guard(signal, current);
+  if (kind === 'asset-decode') return decodeGroundAssetSnapshot(input, { signal, current, maxBytes, estimatedPeakBytes, maxDecodedBytes, crypto, onProgress, yieldControl });
   if (expectedInputHash != null || kind === 'asset-hash') {
     if (shared(input)) throw problem('shared-live-input', 'Background hash input cannot refer to shared live memory.');
     if (typeof input !== 'string' && !(input instanceof ArrayBuffer) && !ArrayBuffer.isView(input)) throw problem('invalid-data', 'Hash jobs require immutable byte or text input.');

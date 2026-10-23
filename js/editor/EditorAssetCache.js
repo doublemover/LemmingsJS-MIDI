@@ -4,6 +4,8 @@ import { GroundReader, loadSteelSprites } from '../level/GroundReader.js';
 import { getSourceImageGeometry } from '../render/SourceImageGeometry.js';
 import { TriggerTypes } from '../level/TriggerTypes.js';
 import { ResourceLoadError } from '../data/file-provider/ResourceLoadError.js';
+import { acquireSharedGroundAssets } from '../app/resources/GroundAssetRegistry.js';
+import { createProcgenRetirementScope } from '../app/procgen/ProcgenRetirement.js';
 import {
   getDefaultStyle,
   getStyle,
@@ -26,6 +28,7 @@ class EditorAssetCache {
     this.GroundReader = options.GroundReader || GroundReader;
     this.cache = new Map();
     this.pending = new Map();
+    this.resourceLeases = new Map();
     this.epoch = 0;
     this.providerKeys = new WeakMap();
     this.nextProviderKey = 0;
@@ -36,6 +39,8 @@ class EditorAssetCache {
     for (const record of this.pending.values()) record.controller.abort();
     this.pending.clear();
     this.cache.clear();
+    const leases = [...this.resourceLeases.values()].flatMap(value => [...value]); this.resourceLeases.clear();
+    return createProcgenRetirementScope().retire(leases.map((lease, index) => ({ name: 'decoded-ground-' + index, run: () => lease.release() })));
   }
 
   loadStyleAssets(styleName, config, fileProvider, options = {}) {
@@ -50,15 +55,24 @@ class EditorAssetCache {
     if (cached) return Promise.resolve({ ...cached });
     let record = this.pending.get(key);
     if (!record) {
-      record = { controller: new AbortController(), consumers: 0, epoch: this.epoch, promise: null };
+      record = { controller: new AbortController(), consumers: 0, epoch: this.epoch, promise: null, leases: new Set() };
       const canceled = new Promise((resolve, reject) => record.controller.signal.addEventListener('abort', () =>
         reject(new ResourceLoadError('cancelled', resolvedStyle)), { once: true }));
-      record.promise = Promise.race([this._loadStyleAssets(styleName, config, fileProvider, { ...options, signal: record.controller.signal }), canceled])
+      const retainDecodedLease = lease => {
+        if (record.controller.signal.aborted || record.epoch !== this.epoch) { lease.release(); throw new ResourceLoadError('cancelled', resolvedStyle); }
+        record.leases.add(lease);
+      };
+      record.promise = Promise.race([this._loadStyleAssets(styleName, config, fileProvider, { ...options, signal: record.controller.signal, retainDecodedLease }), canceled])
         .then(assets => {
           if (record.controller.signal.aborted || record.epoch !== this.epoch) throw new ResourceLoadError('cancelled', resolvedStyle);
           this.cache.set(key, assets);
+          this.resourceLeases.set(key, record.leases);
           return assets;
-        }).catch(error => { record.controller.abort(); throw error; }).finally(() => { if (this.pending.get(key) === record) this.pending.delete(key); });
+        }).catch(error => {
+          record.controller.abort();
+          createProcgenRetirementScope().retire([...record.leases].map((lease, index) => ({ name: 'decoded-ground-' + index, run: () => lease.release() })));
+          record.leases.clear(); throw error;
+        }).finally(() => { if (this.pending.get(key) === record) this.pending.delete(key); });
       this.pending.set(key, record);
     }
     record.consumers++;
@@ -101,7 +115,7 @@ class EditorAssetCache {
     const groundSet = Number.isInteger(options.groundSet) && options.groundSet >= 0 ? options.groundSet : Number.isFinite(style?.groundSet) ? style.groundSet | 0 : 0;
 
     const assertLive = () => { if (options.signal?.aborted) throw new ResourceLoadError('cancelled', resolvedStyle); };
-    let groundReader, resourceSources = null;
+    let groundReader, decodedAssets = null, resourceSources = null;
     const rawReaders = new Set();
     let readersRetired = false;
     const retainReader = reader => {
@@ -134,21 +148,37 @@ class EditorAssetCache {
     if (resolvedStyle === 'neon-cabaret') {
       groundReader = createNeonCabaretGroundSet();
     } else {
-      let container, terrainReader, objectReader;
+      let container, terrainReader, objectReader, decodeError = null;
       try {
-        await loadSteelSprites();
+        const steelSprites = await loadSteelSprites();
         assertLive();
         const [vgagr, ground] = await Promise.all([loadBinary(`VGAGR${groundSet}.DAT`), loadBinary(`GROUND${groundSet}O.DAT`)]);
         assertLive();
-        container = new this.FileContainer(vgagr.reader);
-        terrainReader = container.getPart(0); objectReader = container.getPart(1);
-        groundReader = new this.GroundReader(ground.reader, terrainReader, objectReader);
+        if (this.FileContainer === FileContainer && this.GroundReader === GroundReader && options.retainDecodedLease &&
+            globalThis.crypto?.subtle && ground.source.sha256 && vgagr.source.sha256) {
+          const lease = await acquireSharedGroundAssets({ ground, vgagr, steelIds: steelSprites[ground.source.root]?.[ground.source.filename] || [],
+            signal: options.signal, budgetAdapter: fileProvider._budgetAdapter, onProgress: options.onProgress });
+          options.retainDecodedLease(lease); decodedAssets = lease.value;
+          groundReader = { getTerrainImages: () => decodedAssets.terrainImages, getObjectImages: () => decodedAssets.gadgetImages };
+        } else {
+          container = new this.FileContainer(vgagr.reader);
+          terrainReader = container.getPart(0); objectReader = container.getPart(1);
+          groundReader = new this.GroundReader(ground.reader, terrainReader, objectReader);
+        }
         resourceSources = Object.freeze({ vgagr: vgagr.source, ground: ground.source });
-      } finally {
+      } catch (error) { decodeError = error; throw error; }
+      finally {
         readersRetired = true;
-        for (const reader of rawReaders) reader.release?.();
-        terrainReader?.release?.(); objectReader?.release?.();
-        container?.dispose?.();
+        const retirement = createProcgenRetirementScope().retire([
+          ...[...rawReaders].map((reader, index) => ({ name: 'raw-ground-source-' + index, run: () => reader.release?.() })),
+          { name: 'decoded-terrain-source', run: () => terrainReader?.release?.() },
+          { name: 'decoded-object-source', run: () => objectReader?.release?.() },
+          { name: 'ground-source-container', run: () => container?.dispose?.() }
+        ]);
+        if (retirement.outcome !== 'complete') {
+          if (decodeError) decodeError.retirement = retirement;
+          else throw Object.assign(new Error('Terrain source retirement was incomplete.'), { retirement });
+        }
       }
     }
 
@@ -202,6 +232,7 @@ class EditorAssetCache {
       styleName: resolvedStyle,
       groundSet,
       resourceSources,
+      ...(decodedAssets ? { assetSha256: decodedAssets.assetSha256, objectSha256: decodedAssets.objectSha256 } : {}),
       terrain,
       gadgets,
       triggers,

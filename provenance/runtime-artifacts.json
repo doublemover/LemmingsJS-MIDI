@@ -108,10 +108,10 @@
       "license": "NOASSERTION",
       "reproductionStatus": "first-party-immutable-module-worker",
       "classification": "source",
-      "entryPoints": ["js/app/procgen/workstation/ProcgenWorkstation.js", "js/app/procgen/workstation/ProcgenSessionStorage.js", "js/data/file-provider/FileProviderFetch.js"],
-      "files": ["js/app/resources/BackgroundWorkerAdmission.js", "js/app/resources/BackgroundJobKernels.js", "js/app/resources/BackgroundJobService.js", "js/app/resources/BackgroundJobWorker.js"],
-      "fileCount": 4,
-      "sha256": "f7e8ed2d9001db088b8ca799085a43ef83ecc6c33f64da9a07f07cc0dcbabc78"
+      "entryPoints": ["js/app/procgen/workstation/ProcgenWorkstation.js", "js/app/procgen/workstation/ProcgenSessionStorage.js", "js/data/file-provider/FileProviderFetch.js", "js/editor/EditorAssetCache.js"],
+      "files": ["js/app/resources/BackgroundWorkerAdmission.js", "js/app/resources/BackgroundJobKernels.js", "js/app/resources/BackgroundJobService.js", "js/app/resources/BackgroundJobWorker.js", "js/app/resources/GroundAssetDecode.js", "js/app/resources/GroundAssetRegistry.js", "js/app/resources/SharedContentJobs.js"],
+      "fileCount": 7,
+      "sha256": "f317e42ac3fe5af7ea8a0b279274dfda526d31e6ce65a0d326015f0ec3f7ebfb"
     },
     {
       "id": "lemmings-timing-worker-source",

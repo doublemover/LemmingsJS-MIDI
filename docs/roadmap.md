@@ -2035,6 +2035,10 @@ not acceptance or acoustic/native-device qualification receipts.
 
 - [ ] Finish shared background job execution for import, export encoding,
   recovery and asset preparation under the shared worker/memory admission owner.
+  Registered import/export/checksum/hash jobs now share admission with exact
+  replay and content-coalesced terrain decode/fingerprinting. Active/candidate
+  decoded consumers retain independent leases through runtime retirement.
+  Combined stress and failure qualification remains deferred with runtime tests.
 - [ ] Complete remaining issue contracts in dependency batches, preserving
   authored sound/content, physical semantics and output ownership requirements.
 - [ ] After implementation, run deferred unit, real-browser, interruption,

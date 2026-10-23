@@ -370,7 +370,7 @@ const initWorkstation = async ({ session, lease } = {}) => {
   const serial = ++workstationInitSerial, canvas = document.getElementById('gameCanvas');
   if (!canvas) return;
   const settings = session ? { ...session.settings, laneCount: session.world.laneCount, laneHeight: session.world.laneHeight, seed: session.world.seed } : { ...procgenStudio.prepareSettings() };
-  const view = new GameView(); let candidate = null, lanes = null, terrain = null, committed = false;
+  const view = new GameView(); let candidate = null, lanes = null, terrain = null, assets = null, committed = false, preparationError = null;
   let fileProvider = null, resourceLease = null, resources = null, resourcePromise = null, candidateBudgetToken = null, candidateBudgetOwner = 'candidate-world';
   const canCommit = () => serial === workstationInitSerial && !lease?.signal?.aborted;
   try {
@@ -390,8 +390,8 @@ const initWorkstation = async ({ session, lease } = {}) => {
       requiredFamilies: session?.world?.assets?.map(asset => asset.family) ?? null,
       signal: lease?.signal, operationId: lease?.id });
     if (!canCommit()) return false;
-    const assets = await new ProcgenAssetManager({ styleName: 'crystal', groundSet: 4, config: configs[0], fileProvider })
-      .load({ signal: lease?.signal, operationId: lease?.id });
+    assets = new ProcgenAssetManager({ styleName: 'crystal', groundSet: 4, config: configs[0], fileProvider });
+    await assets.load({ signal: lease?.signal, operationId: lease?.id });
     if (!canCommit()) return false;
     assets.decorationPack = getDecorationPack(settings.decoration);
     const palette = assets.assets?.gadgetImages?.find(image => image?.palette)?.palette || assets.groundPieces[0].image.palette;
@@ -432,18 +432,26 @@ const initWorkstation = async ({ session, lease } = {}) => {
     if (params.has('e2e')) window.__PROCGEN_LANES__ = { world: candidate, renderer: lanes.renderer, getState: lanes.getDebugState, pause: lanes.pause, resume: lanes.resume, step: lanes.step };
     procgenUi.sync({ charactersReady: true }); procgenStudio.bindRuntime({ session }); resizeCanvas();
     registerServiceWorker({ profile: 'perf' }); return activeProcgenRuntime;
-  } finally {
-    if (!committed) {
-      if (lanes) lanes.stop();
-      else if (candidate) candidate.dispose();
-      else terrain?.reset();
-      if (candidateBudgetToken) procgenResourceBudget.release({ token: candidateBudgetToken, owner: candidateBudgetOwner });
+  } catch (error) { preparationError = error; throw error; }
+  finally {
+    const retirement = createProcgenRetirementScope().retire([
+      ...(!committed ? [
+        { name: 'candidate-runtime', run: () => lanes ? lanes.stop() : candidate?.dispose() },
+        { name: 'candidate-terrain', run: () => terrain?.dispose() },
+        { name: 'candidate-display-assets', run: () => assets?.dispose() },
+        { name: 'candidate-budget', run: () => { if (candidateBudgetToken) procgenResourceBudget.release({ token: candidateBudgetToken, owner: candidateBudgetOwner }); } }
+      ] : []),
+      { name: 'preparation-provider-lease', run: () => resourceLease?.release() },
+      { name: 'preparation-resources', run: () => resources?.dispose?.() },
+      { name: 'late-preparation-resources', run: () => { if (!resources) return resourcePromise?.then(prepared => prepared.dispose?.(), () => {}); } },
+      { name: 'preparation-provider', run: () => { if (fileProvider?.acquireLease) return fileProvider.dispose(); } },
+      { name: 'preparation-view', run: () => view.dispose() }
+    ]);
+    await retirement.completion;
+    if (retirement.outcome !== 'complete') {
+      if (preparationError) preparationError.retirement = retirement;
+      else throw Object.assign(new Error('World preparation could not confirm retirement of every resource.'), { retirement });
     }
-    resourceLease?.release();
-    resources?.dispose?.();
-    if (!resources) void resourcePromise?.then(prepared => prepared.dispose?.(), () => {});
-    if (fileProvider?.acquireLease) fileProvider.dispose();
-    view.dispose();
   }
 };
 
