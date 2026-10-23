@@ -13,6 +13,7 @@ import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 import { resolveProcgenStartupIntent } from './ProcgenStartupIntent.js';
 
 const STORAGE_KEY = 'lemmings.procgen.workstation.v1';
+const MAX_SESSION_FILE_BYTES = 64 * 1048576;
 const clone = value => JSON.parse(JSON.stringify(value));
 const equal = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 
@@ -615,7 +616,17 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       return true;
     }),
     reclaimRecovery: safe(async () => { await storage.removeRecovery?.(); status('Old recovery checkpoint removed. Named projects were kept.'); }),
-    import: safe(async file => { if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.'); const lease = beginOperation('import'); const text = await file.text(); if (!ownsOperation(lease)) return false; const session = JSON.parse(text); if (!ownsOperation(lease)) return false; return loadSession(session, lease); }),
+    import: safe(async file => {
+      if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
+      const lease = beginOperation('import');
+      if (file?.size != null && (!Number.isSafeInteger(file.size) || file.size < 0 || file.size > MAX_SESSION_FILE_BYTES)) throw new Error('Project file exceeds the 64 MiB import limit.');
+      const text = await file.text();
+      if (!ownsOperation(lease)) return false;
+      if (text.length > MAX_SESSION_FILE_BYTES) throw new Error('Project file exceeds the 64 MiB import limit.');
+      const session = JSON.parse(text);
+      if (!ownsOperation(lease)) return false;
+      return loadSession(session, lease);
+    }),
     export: safe(async () => { const session = capture(); download(JSON.stringify(session), savedName.replace(/[^a-z0-9_-]+/gi, '-') + '.procgen.json', 'application/json'); status('Project exported.'); }),
     exportMidi() {
       const state = ports.getState();

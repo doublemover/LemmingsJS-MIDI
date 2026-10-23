@@ -487,6 +487,15 @@ describe('ProcGen workstation orchestration', () => {
     expect(f.restarts).to.have.length(0);
   });
 
+  it('rejects a known oversized project before reading or replacing the live world', async () => {
+    const f = setup(); f.studio.bindRuntime();
+    const original = f.runtime, project = f.studio.getProject(); let reads = 0;
+    expect(await f.studio.handlers.import({ size: 64 * 1048576 + 1, async text() { reads++; return '{}'; } })).to.equal(false);
+    expect(reads).to.equal(0); expect(f.restarts).to.have.length(0);
+    expect(f.runtime).to.equal(original); expect(f.studio.getProject()).to.equal(project);
+    f.studio.dispose();
+  });
+
   it('preserves causal events and queued phrases when resuming a checkpoint ahead of the audible beat', async () => {
     const f = setup({ lookaheadMs: 30 }); f.studio.bindRuntime(); f.enable(); f.time(125);
     for (let i = 0; i < 5; i++) f.runtime.world.soundEvents.onEvent.trigger({ laneIndex: 0, action: 'building' });

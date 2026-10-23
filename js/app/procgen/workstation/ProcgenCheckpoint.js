@@ -7,6 +7,18 @@ const VERSION = 1;
 const OMIT = new Set(['log', 'gameResources', 'render', 'characterParticles', '_collisionSlots', '_collisionIndices', '_laneChunk', '_laneChunkIndex', '_laneEdits', '_laneEditIndex', '_editCache', '_editIndices', '_edgeWallCache', 'challengeCache']);
 const TYPES = { Uint8Array, Uint8ClampedArray, Int8Array, Uint16Array, Int16Array, Uint32Array, Int32Array, Float32Array, Float64Array };
 const forbidden = key => ['__proto__', 'prototype', 'constructor'].includes(key);
+const MAX_GRAPH_BYTES = 128 * 1048576, MAX_GRAPH_SLOTS = 4000000, MAX_GRAPH_STRING_UNITS = 16 * 1048576;
+const LAZY_OWNER_KEYS = new Map([
+  ['world', new Set(['_processingActorId', '_constructionClaim', 'checkpointHazardFixture'])],
+  ['hazardPlanner', new Set(['top', 'through', 'probes', 'exhausted', 'unrevealed'])]
+]);
+const safeProperty = (target, key) => {
+  if (forbidden(key) || OMIT.has(key)) throw new Error('Invalid checkpoint property.');
+  for (let owner = target; owner; owner = Object.getPrototypeOf(owner)) {
+    const descriptor = Object.getOwnPropertyDescriptor(owner, key);
+    if (descriptor && (typeof descriptor.value === 'function' || descriptor.get || descriptor.set)) throw new Error('Checkpoint property would shadow a runtime method.');
+  }
+};
 const assetIdentity = world => (world.terrain?.themes || [{ terrain: world.terrain }]).map(({ styleName, family, terrain }) => ({
   family: family || styleName || terrain?.recipe?.family || null, id: terrain?.recipe?.id || null,
   revision: terrain?.recipe?.assetSha256 || terrain?.sourceDescriptor?.sourceRevision || null
@@ -87,12 +99,90 @@ const captureProcgenCheckpoint = world => ({ version: VERSION, generator: 'procg
   growth: world.terrainGrowth?.exportState?.() || null, scenery: world.scenery?.snapshot?.() || null,
   clock: { speedFactor: world.timer.speedFactor, eventTimeMs: world.eventTimeMs, simulationTimeMs: world.simulationTimeMs } });
 
+function validateCheckpointGraph(graph, bound) {
+  const { nodes, owners } = graph || {};
+  if (!Array.isArray(nodes) || nodes.length > 2000000 || !Array.isArray(owners) || owners.length > bound.owners.size) throw new Error('Invalid checkpoint graph.');
+  let bytes = nodes.length * 96, slots = 0, stringUnits = 0;
+  const text = value => { stringUnits += value.length; if (stringUnits > MAX_GRAPH_STRING_UNITS) throw new Error('Checkpoint string budget exceeded.'); };
+  const slot = value => {
+    if (++slots > MAX_GRAPH_SLOTS) throw new Error('Checkpoint reference budget exceeded.');
+    if (value === null || typeof value === 'boolean') return;
+    if (typeof value === 'number') { if (Number.isFinite(value)) return; throw new Error('Invalid checkpoint number.'); }
+    if (typeof value === 'string') { text(value); return; }
+    if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length !== 1) throw new Error('Invalid checkpoint value.');
+    if (Object.hasOwn(value, 'ref')) { if (!Number.isSafeInteger(value.ref) || value.ref < 0 || value.ref >= nodes.length) throw new Error('Invalid checkpoint reference.'); return; }
+    if (Object.hasOwn(value, 'external')) { if (typeof value.external !== 'string' || !bound.names.has(value.external)) throw new Error('Missing checkpoint resource.'); text(value.external); return; }
+    if (Object.hasOwn(value, 'special') && ['undefined', 'Infinity', '-Infinity', 'NaN'].includes(value.special)) return;
+    throw new Error('Invalid checkpoint value.');
+  };
+  const props = value => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid checkpoint properties.');
+    for (const [key, entry] of Object.entries(value)) {
+      if (forbidden(key) || OMIT.has(key)) throw new Error('Invalid checkpoint property.');
+      text(key); slot(entry);
+    }
+  };
+  for (const entry of nodes) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) throw new Error('Invalid checkpoint node.');
+    const type = entry.type;
+    if (Object.hasOwn(TYPES, type)) {
+      if (!Array.isArray(entry.values)) throw new Error('Invalid checkpoint typed-array payload.');
+      bytes += entry.values.length * TYPES[type].BYTES_PER_ELEMENT;
+      if (bytes > MAX_GRAPH_BYTES) throw new Error('Checkpoint memory budget exceeded.');
+      for (let index = 0; index < entry.values.length; index++) if (!Object.hasOwn(entry.values, index) ||
+          entry.values[index] !== null && (typeof entry.values[index] !== 'number' || !Number.isFinite(entry.values[index]))) throw new Error('Invalid checkpoint typed-array value.');
+    } else if (type === 'Map') {
+      if (!Array.isArray(entry.entries)) throw new Error('Invalid checkpoint map.');
+      for (const pair of entry.entries) { if (!Array.isArray(pair) || pair.length !== 2) throw new Error('Invalid checkpoint map entry.'); slot(pair[0]); slot(pair[1]); }
+    } else if (type === 'Set' || type === 'Array') {
+      if (!Array.isArray(entry.values)) throw new Error('Invalid checkpoint collection.');
+      for (const value of entry.values) slot(value);
+    } else if (!['Object', 'Lemming', 'Trigger', 'Animation', 'MapObject'].includes(type)) throw new Error('Unknown checkpoint node type.');
+    if (entry.props != null) props(entry.props);
+    if (type === 'MapObject') slot(entry.image);
+    if (type === 'Animation' && (!Number.isSafeInteger(entry.lastFrameIndex) || entry.lastFrameIndex < -1)) throw new Error('Invalid checkpoint animation.');
+    if (bytes + slots * 24 + stringUnits * 2 > MAX_GRAPH_BYTES) throw new Error('Checkpoint memory budget exceeded.');
+  }
+  const names = new Set();
+  for (const owner of owners) {
+    if (!owner || typeof owner.name !== 'string' || !bound.owners.has(owner.name) || names.has(owner.name)) throw new Error('Invalid checkpoint owner.');
+    names.add(owner.name); text(owner.name); props(owner.props);
+    const target = bound.owners.get(owner.name);
+    for (const key of Object.keys(owner.props)) {
+      safeProperty(target, key);
+      if (!Object.hasOwn(target, key) && !LAZY_OWNER_KEYS.get(owner.name)?.has(key)) throw new Error('Checkpoint owner property is not part of this runtime: ' + owner.name.slice(0, 80) + '/' + key.slice(0, 80));
+    }
+    if (owner.entries != null) {
+      if (!(bound.owners.get(owner.name) instanceof Map) || !Array.isArray(owner.entries)) throw new Error('Invalid checkpoint owner collection.');
+      for (const pair of owner.entries) { if (!Array.isArray(pair) || pair.length !== 2) throw new Error('Invalid checkpoint owner entry.'); slot(pair[0]); slot(pair[1]); }
+    }
+  }
+  if (names.size !== bound.owners.size || bytes + slots * 24 + stringUnits * 2 > MAX_GRAPH_BYTES) throw new Error('Checkpoint owner or memory budget mismatch.');
+}
+
 function restoreProcgenCheckpoint(world, saved) {
-  if (saved?.version !== VERSION || saved.generator !== 'procgen-workstation-1' || saved.laneCount !== world.laneCount || saved.laneHeight !== world.laneHeight) throw new Error('Incompatible world checkpoint.');
+  if (saved?.version !== VERSION || saved.generator !== 'procgen-workstation-1' || saved.laneCount !== world.laneCount || saved.laneHeight !== world.laneHeight || saved.seed !== world.seed) throw new Error('Incompatible world checkpoint.');
   if (JSON.stringify(saved.assets) !== JSON.stringify(assetIdentity(world))) throw new Error('Checkpoint terrain assets do not match the installed collection.');
+  if (!saved.clock || !Number.isFinite(saved.clock.speedFactor) || saved.clock.speedFactor < 0 ||
+      saved.clock.eventTimeMs != null && (!Number.isFinite(saved.clock.eventTimeMs) || saved.clock.eventTimeMs < 0) ||
+      saved.clock.simulationTimeMs != null && (!Number.isFinite(saved.clock.simulationTimeMs) || saved.clock.simulationTimeMs < 0)) throw new Error('Invalid checkpoint clock.');
   const { nodes, owners } = saved.graph || {};
-  if (!Array.isArray(nodes) || nodes.length > 2000000 || !Array.isArray(owners)) throw new Error('Invalid checkpoint graph.');
-  const bound = bindings(world), values = new Array(nodes.length), pending = new Set();
+  const bound = bindings(world);
+  validateCheckpointGraph(saved.graph, bound);
+  const worldProps = owners.find(entry => entry.name === 'world').props;
+  if (worldProps.seed !== saved.seed || worldProps.laneCount !== saved.laneCount || worldProps.laneHeight !== saved.laneHeight) throw new Error('Checkpoint world envelope does not match its graph.');
+  const values = nodes.map(entry => {
+    if (Object.hasOwn(TYPES, entry.type)) return new TYPES[entry.type](entry.values);
+    if (entry.type === 'Map') return new Map();
+    if (entry.type === 'Set') return new Set();
+    if (entry.type === 'Array') return [];
+    if (entry.type === 'Object') return {};
+    if (entry.type === 'Lemming') return new Lemming(0, 0, 0, world.runtime);
+    if (entry.type === 'Trigger') return new Trigger();
+    if (entry.type === 'Animation') return new Animation();
+    if (entry.type === 'MapObject') return Object.create(MapObject.prototype);
+    throw new Error('Unknown checkpoint node type.');
+  });
   const decode = value => {
     if (!value || typeof value !== 'object') return value;
     if (value.special) {
@@ -102,34 +192,25 @@ function restoreProcgenCheckpoint(world, saved) {
       if (value.special === 'NaN') return NaN;
       throw new Error('Invalid checkpoint number.');
     }
-    if (value.external) { if (!bound.names.has(value.external)) throw new Error('Missing checkpoint resource: ' + value.external); return bound.names.get(value.external); }
-    const index = value.ref;
-    if (!Number.isInteger(index) || index < 0 || index >= nodes.length) throw new Error('Invalid checkpoint reference.');
-    if (values[index]) return values[index];
-    const entry = nodes[index]; let out;
-    if (Object.hasOwn(TYPES, entry.type)) out = new TYPES[entry.type](entry.values);
-    else if (entry.type === 'Map') out = new Map();
-    else if (entry.type === 'Set') out = new Set();
-    else if (entry.type === 'Array') out = [];
-    else if (entry.type === 'Object') out = {};
-    else if (entry.type === 'Lemming') out = new Lemming(0, 0, 0, world.runtime);
-    else if (entry.type === 'Trigger') out = new Trigger();
-    else if (entry.type === 'Animation') out = new Animation();
-    else if (entry.type === 'MapObject') out = Object.create(MapObject.prototype);
-    else throw new Error('Unknown checkpoint node type.');
-    values[index] = out; pending.add(index);
-    if (entry.type === 'Map') for (const [k, v] of entry.entries) out.set(decode(k), decode(v));
-    if (entry.type === 'Set') for (const v of entry.values) out.add(decode(v));
+    if (value.external) return bound.names.get(value.external);
+    return values[value.ref];
+  };
+  const assign = (target, props) => { for (const [key, value] of Object.entries(props)) { safeProperty(target, key); target[key] = decode(value); } };
+  for (let index = 0; index < nodes.length; index++) {
+    const entry = nodes[index], out = values[index];
+    if (entry.type === 'Map') for (const [key, value] of entry.entries) out.set(decode(key), decode(value));
+    if (entry.type === 'Set') for (const value of entry.values) out.add(decode(value));
     if (entry.type === 'Array') for (const value of entry.values) out.push(decode(value));
     if (entry.props) assign(out, entry.props);
     if (entry.type === 'Trigger') out.disabledUntilTick = entry.disabledUntilTick;
-    pending.delete(index); return out;
-  };
-  const assign = (target, props) => { for (const [key, value] of Object.entries(props)) { if (forbidden(key) || OMIT.has(key)) throw new Error('Invalid checkpoint property.'); target[key] = decode(value); } };
+  }
   // Decode before replacing live owners; callers restore into a temporary world.
   const prepared = owners.map(entry => {
-    if (!bound.owners.has(entry.name)) throw new Error('Unknown checkpoint owner.');
-    return { entry, props: Object.fromEntries(Object.entries(entry.props).map(([key, value]) => { if (forbidden(key) || OMIT.has(key)) throw new Error('Invalid checkpoint property.'); return [key, decode(value)]; })), entries: entry.entries?.map(([k, v]) => [decode(k), decode(v)]) };
+    const target = bound.owners.get(entry.name);
+    return { entry, props: Object.fromEntries(Object.entries(entry.props).map(([key, value]) => {
+      safeProperty(target, key);
+      return [key, decode(value)];
+    })), entries: entry.entries?.map(([k, v]) => [decode(k), decode(v)]) };
   });
   for (let index = 0; index < nodes.length; index++) if (nodes[index].type === 'MapObject' && values[index]) {
     const item = values[index], animation = item.animation, rebuilt = new MapObject(item.ob, decode(nodes[index].image), new Animation(), item.triggerType, world.runtime);
