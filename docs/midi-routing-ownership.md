@@ -8,8 +8,13 @@ channel event with an explicit output ID may activate a discovered destination
 that has never been retired. Merely looking up an endpoint grants no routing
 permission. Clock selection remains a separate transport role.
 
-`outputRoutes` reports selected, active, available and discovered states, along
-with the activation epoch and route revision. Optional `channels` restricts the
+`outputRoutes` reports selected, authorized, active, available and discovered
+states, along with the activation epoch and route revision. `authorized` means
+that routing permission exists; `active` additionally requires successful MPE
+setup. A failed setup reports `state: 'setup-rejected'`, `mpeFailure` and optional
+`activationFailure`. `authorizedNoteOutputIds` and `activeNoteOutputIds` expose
+the same distinction without requiring UI code to infer it from device names.
+Optional `channels` restricts the
 allowed MIDI channels. An MPE route must authorize its configured master and
 members before setup. Optional `exclusiveChannels` permits channel resets on
 the raw byte path. Names are labels; duplicate names do not merge identities.
@@ -51,9 +56,44 @@ of the same MIDI 1 channel and pitch without an isolated route.
 
 DIN defaults to 3,125 data bytes per second, including serial framing.
 Endpoint budget profiles can override byte capacity without inferring
-transport from a device name. Pending reservations retain their endpoint and
-connection epoch. Binding a stale or different endpoint reservation is rejected;
+transport from a device name. The default profile reports
+`transport: 'unknown-webmidi'`, `protocol: 'midi1'` and
+`confidence: 'conservative-default'`. A profile is configuration evidence;
+declaring USB or a faster byte rate does not establish receiver capacity.
+Native UMP profiles are refused by this MIDI 1 scheduler.
+
+Configure profiles through `schedulerConfig.limits.endpointProfiles` and
+`linkProfiles`, or an output adapter's `budgetProfile`. Explicit profile IDs
+join endpoints onto a shared physical link:
+
+```js
+{
+  endpointProfiles: {
+    keyboard: { transport: 'usb', linkId: 'rack', maxMessagesPerSecond: 1000 },
+    synth: { transport: 'usb', linkId: 'rack', maxMessagesPerSecond: 500 }
+  },
+  linkProfiles: { rack: { transport: 'din', maxBytesPerSecond: 3125 } }
+}
+```
+
+Endpoint quotas count that endpoint's traffic. Declared link quotas count the
+combined submitted traffic and pending reservations of every endpoint on that
+link. An undeclared endpoint remains independent. `getTransportBudget(id)` and
+route state expose the declared profile; pressure and rate snapshots include
+the separate `sharedLink` totals. `maxPending` bounds each endpoint's planned
+messages (at most 4,096); `queueHorizonMs` bounds future submissions (at most
+60 seconds). Releases remain dispatchable beyond onset quotas.
+
+Pending reservations retain their endpoint, connection epoch and route revision.
+Binding a stale or different endpoint reservation is rejected;
 canceling unused work refunds it without inventing sent traffic.
+Changing route budgets cancels old pending work before accepting a new revision.
+Submitted history survives retirement. The 4,096-entry rolling history compacts
+older messages into conservative endpoint totals rather than dropping their
+cost. An aggregate expires after its latest constituent message. Extremely
+high endpoint identity churn falls back to a bounded conservative charge across
+all routes until expiry. Detailed lane attribution is unavailable for compacted
+rows; `historyDetail` reports `conservative-endpoint-totals`.
 
 Bank selection, program selection and required expression share the note's
 admission plan. Bank changes resend an otherwise unchanged program selection.
@@ -63,6 +103,50 @@ commit requested state or admit its dependent onset. MPE range initialization
 reserves and counts its six RPN control messages plus pitch center per channel;
 an accepted prefix remains charged after a later setup failure. Local audio
 uses its voice/source admission rather than DIN byte or message quotas.
+
+## Explicit MIDI 2 source lowering
+
+The byte backend accepts an explicit MIDI 2 Channel Voice source through
+`sendEvent({ umpWords: [word0, word1], outputId })` only when a lowering policy
+is configured. This remains MIDI 1 delivery. A required `groupMap` assigns each
+source UMP group to a destination channel mapping:
+
+```js
+ports.configure({ protocolLowering: { groupMap: { 0: 'preserve', 1: 5 } } });
+// A lane route may provide its own protocolLowering policy.
+```
+
+`'preserve'` preserves source channels within that explicitly mapped group;
+a number assigns a fixed channel. `{ channels: { 1: 2, 3: 4 } }` maps individual
+source channels. Missing mappings are refused. Optional `noteIndexMode: 'rotating'`
+requires sounding pitch in the source Pitch 7.9 attribute or `soundingPitch`
+event field. Converted source note indices own the regenerated destination
+pitch, so release and poly pressure address that pitch. A policy or route change
+ends old ownership. Channel and policy descriptors are copied at activation.
+
+Resolution conversion follows minimum/center/maximum scaling and the distinct
+zero-extension rules for low-index registered controllers. MIDI 2 Note On at
+zero velocity remains an onset at MIDI 1 velocity one. RPN/NRPN writes admit
+selectors, data entry and optional null selection atomically; accepted prefixes
+remain charged on a later rejection. Packed RPN fields ignore undefined low bits.
+Bank selectors precede their program change.
+
+Fractional pitch, unknown attributes, voice collisions and per-note pitch are
+refused unless an explicit supported approximation is chosen (`pitchPolicy:
+'round'`, `attributePolicy: 'omit'`, `samePitchPolicy: 'retrigger'`, or
+`perNotePolicy: 'shared-channel'`). Approximation losses appear in `lastLowering`
+and retained output records. Relative controllers, per-note sensitivity,
+unsupported per-note messages and MPE source lowering are refused. The original
+UMP words are frozen in the plan and retained as `sourceUmp` without rewriting
+the source representation. `lastLowering` reports mode, reason, losses,
+destination channel and accepted message count; it never claims native MIDI 2
+delivery or per-note isolation on a shared MIDI 1 channel.
+
+Reference vectors follow the MIDI Association / AMEI
+[MIDI 2.0 Bit Scaling and Resolution v1.0.2](https://amei-music.github.io/midi2.0-docs/amei-pdf/M2-115-U_v1-0-2_MIDI%202.0%20Bit%20Scaling%20and%20Resolution.pdf)
+and [UMP and MIDI 2.0 Protocol v1.1.2](https://amei-music.github.io/midi2.0-docs/amei-pdf/M2-104-UM_v1-1-2_UMP_and_MIDI_2-0_Protocol_Specification.pdf).
+Tests validate emitted bytes with the vendored WebMidi message parser and its
+actual output adapter in addition to independent numerical vectors.
 
 ## Capture and input liveness
 
@@ -92,6 +176,7 @@ fixed fake-adapter workload, asserts the 4,096-event capture limit and reports
 throughput and retained heap. Capture appends bounded records during dispatch;
 full trace copies occur only on an explicit inspection request.
 
-These fixtures cover browser MIDI 1 APIs and fake outputs. Native UMP delivery,
-shared physical link budgets, acknowledged MPE negotiation, JR timestamps and
-real cable failure measurements require their native backend qualification.
+These fixtures cover browser MIDI 1 APIs, explicit source lowering and configured
+link budgets using fake outputs. Native UMP delivery, measured physical link
+capacity, acknowledged MPE negotiation, JR timestamps and real cable failure
+measurements require their backend qualification.

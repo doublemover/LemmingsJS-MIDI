@@ -60,6 +60,6 @@ describe('MIDI rate-accounting work removal', () => {
     expect(scheduler._ratePlanned).to.have.length(3);
     expect(scheduler._rateSent.some(row => row.reservationId === reserved.reservationId)).to.equal(false);
     scheduler._releaseReservation(reserved.reservationId);
-    expect(scheduler._ratePlanned).to.deep.equal([entry(3000)]);
+    expect(scheduler._ratePlanned).to.deep.equal([{ ...entry(3000), budgetScope: 'endpoint:local' }]);
   });
 });

@@ -1,4 +1,5 @@
 import { getAppContext } from '../../core/dependencies.js';
+import { midiTransportBudget } from './MidiTransportBudget.js';
 import {
   canMeasurePerformance,
   recordPerformanceMeasure
@@ -39,11 +40,35 @@ const midiSchedulerRateMethods = {
       this._ratePlanned.length = write;
     }
     this._trimRateEntries();
+    if (this._rateSent.length <= MAX_RATE_ENTRIES) this._rateHistorySaturated = false;
   },
 
   _trimRateEntries() {
     if (this._rateSent.length > MAX_RATE_ENTRIES) {
-      this._rateSent.splice(0, this._rateSent.length - MAX_RATE_ENTRIES);
+      const summaries = new Map(), prefix = Math.ceil(MAX_RATE_ENTRIES / 2);
+      for (let index = 0; index < prefix; index++) {
+        const entry = this._rateSent[index], key = `${entry.budgetScope || ''}:${entry.outputId || ''}`;
+        let summary = summaries.get(key);
+        if (!summary) { summary = { ...entry, count: 0, bytes: 0, sfxId: null, trackId: null, laneIndex: 'unknown',
+          token: null, reservationId: null, phase: 'aggregate', aggregated: true }; summaries.set(key, summary); }
+        summary.count += entry.count; summary.bytes += entry.bytes; summary.timeMs = Math.max(summary.timeMs, entry.timeMs);
+      }
+      if (summaries.size < prefix) {
+        this._rateSent.splice(0, prefix, ...summaries.values());
+        this._rateHistoryAggregations = (this._rateHistoryAggregations || 0) + 1;
+      } else {
+        // Unbounded endpoint churn cannot retain unbounded identities. Keep the
+        // full cost as a conservative charge to every route until it expires.
+        const aggregate = { ...this._rateSent[0], count: 0, bytes: 0, timeMs: -Infinity, outputId: null, budgetScope: '*',
+          sfxId: null, trackId: null, laneIndex: 'unknown', token: null, reservationId: null,
+          phase: 'aggregate', aggregated: true, conservativeAllScopes: true };
+        for (let index = 0; index < prefix; index++) {
+          const entry = this._rateSent[index]; aggregate.count += entry.count; aggregate.bytes += entry.bytes;
+          aggregate.timeMs = Math.max(aggregate.timeMs, entry.timeMs);
+        }
+        this._rateSent.splice(0, prefix, aggregate);
+        this._rateHistoryAggregations = (this._rateHistoryAggregations || 0) + 1;
+      }
     }
   },
 
@@ -63,7 +88,7 @@ const midiSchedulerRateMethods = {
       map.set(key, curr);
     };
     for (const entry of entries) {
-      if (outputId !== undefined && entry.outputId !== outputId) continue;
+      if (!entry.conservativeAllScopes && outputId !== undefined && (outputId !== null && typeof outputId === 'object' ? entry.budgetScope !== outputId.scope : entry.outputId !== outputId)) continue;
       if (entry.timeMs < startMs || (entry.timeMs >= endMs && (!includePendingOns || entry.phase !== 'on'))) continue;
       count += entry.count;
       bytes += entry.bytes;
@@ -125,17 +150,24 @@ const midiSchedulerRateMethods = {
   },
 
   _outputRateLimits(outputId, options = {}) {
+    const profile = this.getTransportBudget(outputId, options);
+    return { maxMessages: profile.maxMessagesPerSecond, maxBytes: profile.maxBytesPerSecond };
+  },
+
+  getTransportBudget(outputId = null, options = {}) {
     const output = this._resolveOutput(outputId);
-    if (output?.supportsIndependentNoteGates) return { maxMessages: Number.MAX_SAFE_INTEGER, maxBytes: Number.MAX_SAFE_INTEGER };
-    const profile = options.budgetProfile || this.config.limits?.endpointProfiles?.[outputId] || output?.budgetProfile || {};
-    return {
-      maxMessages: Math.min(toPositiveInt(options.maxMessagesPerSecond ?? profile.maxMessagesPerSecond, this._maxMessagesPerSecond), 1000),
-      maxBytes: toPositiveInt(options.maxBytesPerSecond ?? profile.maxBytesPerSecond, this._maxBytesPerSecond)
-    };
+    return midiTransportBudget(output || { id: outputId }, this.config.limits, options);
+  },
+
+  _rateScopeForOutput(outputId) {
+    if (outputId === undefined) return undefined;
+    const profile = this.getTransportBudget(outputId);
+    return profile.linkId ? { scope: profile.scope } : outputId;
   },
 
   evaluateAndReserve(plan, meta = {}, now = this._nowMs(), options = {}) {
     const outputId = this._resolveOutputId(meta.outputId);
+    const profile = this.getTransportBudget(outputId, options);
     const rateScope = outputId == null ? undefined : outputId;
     const { maxMessages, maxBytes } = this._outputRateLimits(outputId, options);
     const softMaxMessages = this._resolveOutput(outputId)?.supportsIndependentNoteGates ? maxMessages : Math.min(
@@ -156,13 +188,23 @@ const midiSchedulerRateMethods = {
       count: snapshot.past.count + snapshot.next.count + proposed.count,
       bytes: snapshot.past.bytes + snapshot.next.bytes + proposed.bytes
     };
+    const sharedLink = profile.linkId ? {
+      linkId: profile.linkId,
+      past: this._sumRate(this._rateSent, now - this._rateWindowMs, now + 0.001, false, false, { scope: profile.scope }),
+      next: this._sumRate(this._ratePlanned, -Infinity, now + this._rateWindowMs, false, true, { scope: profile.scope }),
+      maxMessagesPerSecond: profile.linkMaxMessagesPerSecond, maxBytesPerSecond: profile.linkMaxBytesPerSecond
+    } : null;
+    if (sharedLink) sharedLink.combined = { count: sharedLink.past.count + sharedLink.next.count + proposed.count,
+      bytes: sharedLink.past.bytes + sharedLink.next.bytes + proposed.bytes };
     const lane = this._evaluateLaneShare({ ...meta, outputId }, now, snapshot, proposed, softMaxMessages, maxBytes);
-    const overMessages = combined.count > maxMessages;
-    const overBytes = combined.bytes > maxBytes;
+    const overMessages = combined.count > (profile.endpointMaxMessagesPerSecond ?? maxMessages) ||
+      !!sharedLink && sharedLink.combined.count > sharedLink.maxMessagesPerSecond;
+    const overBytes = combined.bytes > (profile.endpointMaxBytesPerSecond ?? maxBytes) ||
+      !!sharedLink && sharedLink.combined.bytes > sharedLink.maxBytesPerSecond;
     const softOverMessages = combined.count > softMaxMessages;
     const result = {
       ok: !overMessages && !overBytes && lane.ok,
-      softOk: !softOverMessages && !overBytes && lane.ok,
+      softOk: !softOverMessages && !overMessages && !overBytes && lane.ok,
       reason: overBytes ? 'byte-limit' : (overMessages ? 'count-limit' : lane.reason),
       lane,
       maxMessagesPerSecond: maxMessages,
@@ -172,6 +214,15 @@ const midiSchedulerRateMethods = {
       proposed,
       combined
     };
+    result.sharedLink = sharedLink;
+    if (this._rateHistorySaturated) { result.ok = false; result.softOk = false; result.reason = 'history-cap'; }
+    const pendingCount = this._ratePlanned.reduce((sum, entry) => entry.outputId === outputId ? sum + entry.count : sum, 0);
+    const entries = this._planEntries(plan);
+    const plannedCount = entries.reduce((sum, entry) => sum + Math.max(0, Number(entry.count) || 0), 0);
+    const policyFailure = profile.requestedProtocol && profile.requestedProtocol !== 'midi1' ? 'protocol-budget-unsupported'
+      : entries.some(entry => Number.isFinite(entry.timeMs) && entry.timeMs - now > profile.queueHorizonMs) ? 'queue-horizon'
+        : pendingCount + plannedCount > profile.maxPending ? 'pending-cap' : null;
+    if (policyFailure) { result.ok = false; result.softOk = false; result.reason = policyFailure; }
     if (!result.ok || options.reserve === false) return result;
     return this.reserveEvaluation(result, plan, meta, now, true);
   },
@@ -200,6 +251,7 @@ const midiSchedulerRateMethods = {
         trackId: meta.trackId ?? null,
         outputId: this._resolveOutputId(meta.outputId),
         connectionEpoch: this._outputLeases.get(this._resolveOutput(meta.outputId))?.connectionEpoch ?? null,
+        routeRevision: this._outputLeases.get(this._resolveOutput(meta.outputId))?.routeRevision ?? null,
         voiceBudget: meta.voiceBudget ?? null,
         laneIndex: meta.laneIndex ?? 0,
         laneCount: meta.laneCount ?? 1
@@ -293,21 +345,33 @@ const midiSchedulerRateMethods = {
       dropped: state.dropped, reason: state.reason,
       messages: snapshot.past.count + snapshot.next.count,
       bytes: snapshot.past.bytes + snapshot.next.bytes, maxBytes: snapshot.maxBytesPerSecond,
+      budgetProfile: outputId === undefined ? null : this.getTransportBudget(outputId),
+      sharedLink: snapshot.sharedLink,
+      historyAggregations: this._rateHistoryAggregations || 0,
+      historyDetail: this._rateHistoryAggregations ? 'conservative-endpoint-totals' : 'messages',
       maxMessages: snapshot.maxMessagesPerSecond, laneCount: outputId === undefined ? this._rateLaneCount : this._laneBudgetState(outputId)._rateLaneCount,
       pendingNotes: pending.length, oldestDeadline: pending.length ? Math.min(...pending.map(entry => entry.timeMs)) : null };
   },
 
   getRateSnapshot(now = this._nowMs(), detailed = true, outputId = undefined) {
     this._pruneRateEntries(now);
-    const past = this._sumRate(this._rateSent, now - this._rateWindowMs, now + 0.001, detailed, false, outputId);
-    const next = this._sumRate(this._ratePlanned, -Infinity, now + this._rateWindowMs, detailed, true, outputId);
+    const scope = outputId;
+    const past = this._sumRate(this._rateSent, now - this._rateWindowMs, now + 0.001, detailed, false, scope);
+    const next = this._sumRate(this._ratePlanned, -Infinity, now + this._rateWindowMs, detailed, true, scope);
     const limits = outputId === undefined ? { maxMessages: this._maxMessagesPerSecond, maxBytes: this._maxBytesPerSecond } : this._outputRateLimits(outputId);
     return {
       now,
       past,
       next,
       maxMessagesPerSecond: limits.maxMessages,
-      maxBytesPerSecond: limits.maxBytes
+      maxBytesPerSecond: limits.maxBytes,
+      sharedLink: (() => {
+        const profile = outputId === undefined ? null : this.getTransportBudget(outputId);
+        return profile?.linkId ? { linkId: profile.linkId,
+          past: this._sumRate(this._rateSent, now - this._rateWindowMs, now + 0.001, detailed, false, { scope: profile.scope }),
+          next: this._sumRate(this._ratePlanned, -Infinity, now + this._rateWindowMs, detailed, true, { scope: profile.scope }),
+          maxMessagesPerSecond: profile.linkMaxMessagesPerSecond, maxBytesPerSecond: profile.linkMaxBytesPerSecond } : null;
+      })()
     };
   },
 
@@ -348,7 +412,7 @@ const midiSchedulerRateMethods = {
     const bytes = Math.trunc(toFiniteNumber(entry.bytes, count * MIDI_MESSAGE_BYTES));
     if (bytes <= 0) return;
     if (entry.timeMs < now - this._rateWindowMs) return;
-    const normalized = { ...entry, count, bytes };
+    const normalized = { ...entry, count, bytes, budgetScope: this.getTransportBudget(entry.outputId).scope };
     if (!alreadyPruned) this._pruneRateEntries(now);
     this._ratePlanned.push(normalized);
     this._trimRateEntries();
@@ -371,7 +435,8 @@ const midiSchedulerRateMethods = {
       const lease = this._outputLeases.get(this._resolveOutput(outputId));
       const entries = this._ratePlanned.filter(entry => entry.reservationId === reservationId && entry.token == null);
       if (!entries.length || entries.some(entry => entry.outputId !== outputId ||
-          entry.connectionEpoch != null && entry.connectionEpoch !== lease?.connectionEpoch)) return false;
+          entry.connectionEpoch != null && entry.connectionEpoch !== lease?.connectionEpoch ||
+          entry.routeRevision != null && entry.routeRevision !== lease?.routeRevision)) return false;
     }
     let claimed = false;
     for (let index = this._ratePlanned.length - 1; index >= 0; index--) {
@@ -427,7 +492,7 @@ const midiSchedulerRateMethods = {
     const bytes = Math.trunc(toFiniteNumber(entry.bytes, count * MIDI_MESSAGE_BYTES));
     if (bytes <= 0) return;
     this._pruneRateEntries(now);
-    this._rateSent.push({ ...entry, count, bytes });
+    this._rateSent.push({ ...entry, count, bytes, budgetScope: this.getTransportBudget(entry.outputId).scope });
     this._trimRateEntries();
   },
 

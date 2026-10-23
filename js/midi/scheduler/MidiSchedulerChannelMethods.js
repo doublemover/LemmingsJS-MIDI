@@ -39,8 +39,16 @@ const midiSchedulerChannelMethods = {
       this._expressionByOutput.clear();
     }
     const expressionBinding = JSON.stringify([config?.mpe?.timbreCc, config?.position?.panRange, config?.mpe?.pitchBendRange]);
-    if (expressionBinding !== this._expressionBinding) this._expressionByOutput.clear();
+    const bindingChanged = expressionBinding !== this._expressionBinding;
+    const budgetKey = JSON.stringify(config?.limits), budgetChanged = budgetKey !== this._transportBudgetKey;
+    if (bindingChanged) this._expressionByOutput.clear();
+    if (this.config && (mpeChanged || bindingChanged || budgetChanged)) {
+      for (const [token, voice] of this._activeNotes) if (voice.hasStarted === false) this._stopActiveNoteToken(token, 'route-configuration-changed');
+      this._ratePlanned = this._ratePlanned.filter(entry => entry.token != null);
+      for (const [output, lease] of this._outputLeases) this._outputLeases.set(output, { ...lease, routeRevision: ++this._routeRevision });
+    }
     this._expressionBinding = expressionBinding;
+    this._transportBudgetKey = budgetKey;
     const phraseConfigKey = JSON.stringify([
       config?.enabled, config?.sfx, config?.triggers, config?.scale, config?.noteRange,
       config?.velocityRange, config?.durationTicks, config?.density, config?.envelope,
@@ -139,6 +147,7 @@ const midiSchedulerChannelMethods = {
     const output = this._resolveOutput(outputId), lease = this._outputLeases.get(output);
     return { outputId: this._resolveOutputId(outputId), active: !!lease, available: !!output && output.state !== 'disconnected',
       connectionEpoch: lease?.connectionEpoch ?? null, routeRevision: lease?.routeRevision ?? this._routeRevision,
+      budgetProfile: this.getTransportBudget(outputId),
       mpeReady: output ? this._mpeStatusByOutput.get(output) ?? null : null,
       mpeFailure: output ? this._mpeFailureByOutput.get(output) ?? null : null,
       mpeEvidence: output && this._mpeStatusByOutput.get(output) ? 'manual-zone-api-accepted' : null };
@@ -278,6 +287,7 @@ const midiSchedulerChannelMethods = {
     if (!outputs.length) return;
     const mpe = this.config.mpe;
     if (!mpe?.enabled) return;
+    const setupRevision = this._mpeRevision;
     const bend = mpe.pitchBendRange || { semitones: 2, cents: 0 };
     const master = normalizeChannelNumber(mpe.masterChannel, 1);
     const members = Array.isArray(mpe.memberChannels)
@@ -310,19 +320,28 @@ const midiSchedulerChannelMethods = {
         this.recordThrottle(reservation.reason, timestamp, { outputId }); continue;
       }
       let acceptedBytes = 0;
+      const setupLease = this._outputLeases.get(targetOutput);
+      const stillAuthorized = () => setupRevision === this._mpeRevision && this._outputLeases.get(targetOutput) === setupLease;
       const removeObserver = this.addSubmissionObserver(event => {
         if (event.output !== targetOutput || event.reason !== 'mpe-init' || !event.accepted || !event.midiBytes) return;
         acceptedBytes += event.midiBytes.length;
-        this._commitReservationMessage(reservation.reservationId, 'on', event.midiBytes.length, { outputId }, event.submittedMs);
+        if (!this._commitReservationMessage(reservation.reservationId, 'on', event.midiBytes.length, { outputId }, event.submittedMs)) {
+          this._recordSent({ timeMs: event.submittedMs, count: 1, bytes: event.midiBytes.length, outputId, phase: 'on' }, event.submittedMs);
+        }
       });
       try {
         for (const ch of channels) {
           try {
+            if (!stillAuthorized()) { ready = false; break; }
             const before = acceptedBytes;
             const rangeAccepted = this._sendOutput(targetOutput, ch, 'sendPitchBendRange', [bend.semitones, bend.cents], { reason: 'mpe-init' });
             if (rangeAccepted === false) { ready = false; break; }
-            if (acceptedBytes === before) this._commitReservationCost(reservation.reservationId, 'on', 6, 18, { outputId }, this._nowMs());
+            if (acceptedBytes === before && !this._commitReservationCost(reservation.reservationId, 'on', 6, 18, { outputId }, this._nowMs())) {
+              this._recordSent({ timeMs: this._nowMs(), count: 6, bytes: 18, outputId, phase: 'on' }, this._nowMs());
+            }
+            if (!stillAuthorized()) { ready = false; break; }
             if (this._sendOutput(targetOutput, ch, 'sendPitchBend', [0], { reason: 'mpe-init' }) === false) { ready = false; break; }
+            if (!stillAuthorized()) { ready = false; break; }
             this._expressionState(targetOutput, ch).bend = 0;
             this._expressionState(targetOutput, ch).bindings.set('bend:bend', 0);
           } catch (error) {
@@ -332,11 +351,12 @@ const midiSchedulerChannelMethods = {
           }
         }
       } finally { removeObserver(); this._releaseReservation(reservation.reservationId); }
+      if (setupRevision !== this._mpeRevision) continue;
       this._mpeStatusByOutput.set(targetOutput, ready);
       this._mpeFailureByOutput.set(targetOutput, ready ? null : 'mpe-setup-rejected');
       if (!ready) this._expressionByOutput.delete(targetOutput);
     }
-    this._memberChannels = uniqueMembers.slice();
+    if (setupRevision === this._mpeRevision) this._memberChannels = uniqueMembers.slice();
   },
 
   _stopActiveChannel(channelNumber, outputId = null, reason = 'ownership-release') {
