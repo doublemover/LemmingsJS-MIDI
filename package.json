@@ -7,8 +7,8 @@
     "lib": "lib"
   },
   "scripts": {
-    "start": "http-server --cors=*",
-    "start-https": "http-server --cors=* -S -C certs/localhost.pem -K certs/localhost-key.pem",
+    "start": "http-server -a 127.0.0.1 -p 8080 --cors=*",
+    "start-https": "http-server -a 127.0.0.1 -p 8080 --cors=* -S -C certs/localhost.pem -K certs/localhost-key.pem",
     "mcp": "node mcp/server.js",
     "mcpb:build": "node scripts/build-mcpb-bundle.js",
     "mcpb:build:game": "node scripts/build-mcpb-bundle.js --surface game",
