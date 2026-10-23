@@ -11,6 +11,7 @@ import { freshProcgenSeed, validateProcgenSession } from './procgen/workstation/
 import { loadTerrainRecipeBook } from './procgen/ProcgenTerrainRecipes.js';
 import { createProcgenLaneRuntime } from './procgen/ProcgenLaneRuntime.js';
 import { createProcgenRetirementScope } from './procgen/ProcgenRetirement.js';
+import { createResourceBudget } from './resources/ResourceBudget.js';
 import { GameView } from '../game/GameView.js';
 import { GameTypes } from '../game/GameTypes.js';
 import { EditorLevel } from '../editor/EditorLevel.js';
@@ -62,6 +63,9 @@ const PROCGEN_SKILLS = {
 };
 
 let activeProcgenRuntime = null;
+const procgenResourceBudget = createResourceBudget();
+const renderBudget = { budgetAdapter: procgenResourceBudget };
+procgenResourceBudget.registerEvictor('cold-render-buffers', () => activeProcgenRuntime?.lanes?.renderer?.resources?.clearCaches?.());
 let analytics = null;
 let procgenUi = null;
 let procgenStudio = null;
@@ -148,7 +152,8 @@ const installProcgenBootListeners = () => {
       if (params.get('workstation') !== '0') {
         procgenUi.settings.seed = resolveProcgenSeed(params);
         try {
-          procgenStudio = createProcgenWorkstation({ document, window, legacy: procgenUi, getRuntime: () => activeProcgenRuntime, restart: init });
+          procgenStudio = createProcgenWorkstation({ document, window, legacy: procgenUi, getRuntime: () => activeProcgenRuntime,
+            restart: init, resourceBudget: procgenResourceBudget });
           procgenStudio.prepareSettings();
         } catch (error) {
           const status = document.getElementById('procgenRunStatus');
@@ -326,9 +331,12 @@ const initWorkstation = async ({ session, lease } = {}) => {
     ]);
     if (!canCommit()) return false;
     terrain = await loadProcgenMixedTerrain({ configs, fileProvider, book,
-      laneAssignments: session?.project?.procgen?.lanes?.map(lane => lane.family) || procgenStudio.getLaneAssignments() });
+      laneAssignments: session?.project?.procgen?.lanes?.map(lane => lane.family) || procgenStudio.getLaneAssignments(),
+      requiredFamilies: session?.world?.assets?.map(asset => asset.family) ?? null,
+      signal: lease?.signal, operationId: lease?.id });
     if (!canCommit()) return false;
-    const assets = await new ProcgenAssetManager({ styleName: 'crystal', groundSet: 4, config: configs[0], fileProvider }).load();
+    const assets = await new ProcgenAssetManager({ styleName: 'crystal', groundSet: 4, config: configs[0], fileProvider })
+      .load({ signal: lease?.signal, operationId: lease?.id });
     if (!canCommit()) return false;
     assets.decorationPack = getDecorationPack(settings.decoration);
     const palette = assets.assets?.gadgetImages?.find(image => image?.palette)?.palette || assets.groundPieces[0].image.palette;
@@ -340,7 +348,7 @@ const initWorkstation = async ({ session, lease } = {}) => {
       speed: settings.speed, cohorts: true, workstation: true, hazardSpacing: settings.hazardSpacing,
       previousDistances: readProcgenDistances(), workerLimits: settings.workerLimits, populationPolicy: settings.populationPolicy, particleTable: new ParticleTable(palette) });
     if (session) restoreProcgenCheckpoint(candidate, session.world);
-    lanes = createProcgenLaneRuntime({ canvas, resources, resourceLease, sprites, masks, assets, terrain, initialWorld: candidate, workstation: true,
+    lanes = createProcgenLaneRuntime({ canvas, resources, resourceLease, renderBudget, sprites, masks, assets, terrain, initialWorld: candidate, workstation: true,
       onMetrics: state => procgenUi?.syncMetrics(state), onActiveCount: count => procgenUi?.syncActiveCount(count), windowRef: window });
     resourceLease = null;
     lanes.renderer.hud = new ProcgenBitmapHud({ canvas, sprites: hudSprites });
@@ -451,7 +459,7 @@ const init = async (options = {}) => {
       const palette = assets.assets?.gadgetImages?.find(image => image?.palette)?.palette || assets.groundPieces[0]?.image?.palette;
       const [sprites, masks, hudSprites] = await Promise.all([resources.getLemmingsSprite(palette), resources.getMasks(), resources.getSkillPanelSprite(palette)]);
       if (activeProcgenRuntime !== runtime) { view.dispose(); return; }
-      const lanes = createProcgenLaneRuntime({ canvas, resources, resourceLease: runtime.providerLease, sprites, masks, assets, laneCount, seed: procgenSeed,
+      const lanes = createProcgenLaneRuntime({ canvas, resources, resourceLease: runtime.providerLease, renderBudget, sprites, masks, assets, laneCount, seed: procgenSeed,
         speed: procgenUi.settings.speed, laneHeight: procgenUi.settings.laneHeight, terrain, previousDistances: readProcgenDistances(), workerLimits: procgenUi?.settings.workerLimits, populationPolicy: procgenUi.settings.populationPolicy, onMetrics: state => procgenUi?.syncMetrics(state), onActiveCount: count => procgenUi?.syncActiveCount(count), windowRef: window });
       runtime.lanes = lanes;
       runtime.providerLease = null;

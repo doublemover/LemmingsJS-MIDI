@@ -44,7 +44,7 @@ const waitForSink = (work, signal, timeoutMs = 30000) => new Promise((resolve, r
 
 export function prepareExportArtifact({ bytes, immutableSourceRef, formatVersion, mediaType = 'application/octet-stream',
   suggestedFilename, coverageLossReportRef = null, lifetimeMs = DEFAULT_LIFETIME_MS,
-  maxBytes = MAX_BROWSER_DOWNLOAD_BYTES, clock = Date.now } = {}) {
+  maxBytes = MAX_BROWSER_DOWNLOAD_BYTES, clock = Date.now, budgetAdapter = null } = {}) {
   if (typeof immutableSourceRef !== 'string' || !immutableSourceRef || typeof formatVersion !== 'string' || !formatVersion)
     throw new TypeError('Export source and format version are required.');
   if (coverageLossReportRef != null && typeof coverageLossReportRef !== 'string') throw new TypeError('Coverage report reference must be a string.');
@@ -52,7 +52,17 @@ export function prepareExportArtifact({ bytes, immutableSourceRef, formatVersion
     throw new TypeError('Invalid export filename.');
   if (!Number.isFinite(lifetimeMs) || lifetimeMs <= 0 || lifetimeMs > 24 * 60 * 60 * 1000) throw new RangeError('Invalid artifact lifetime.');
   if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > MAX_BROWSER_DOWNLOAD_BYTES) throw new RangeError('Invalid export staging limit.');
-  let blob = bytesFor(bytes, maxBytes, mediaType);
+  const budgetToken = {};
+  const predictedBytes = Math.min(maxBytes, typeof bytes === 'string' ? bytes.length * 3 :
+    bytes instanceof Blob ? bytes.size : bytes instanceof ArrayBuffer || ArrayBuffer.isView(bytes) ? bytes.byteLength : maxBytes);
+  let blob, budgetHeld = false;
+  try {
+    if (budgetAdapter) { budgetAdapter.reserve({ token: budgetToken, owner: 'export', kind: 'export', bytes: predictedBytes,
+      previousBytes: 0, pinned: true, reloadable: false }); budgetHeld = true; }
+    blob = bytesFor(bytes, maxBytes, mediaType);
+    budgetAdapter?.reserve({ token: budgetToken, owner: 'export', kind: 'export', bytes: blob.size,
+      previousBytes: predictedBytes, pinned: true, reloadable: false });
+  } catch (error) { if (budgetHeld) budgetAdapter?.release({ token: budgetToken, owner: 'export' }); throw error; }
   const artifactId = nextId('artifact'), expiresAt = clock() + lifetimeMs, byteLength = blob.size;
   let discarded = false, leases = 0, digestState = blob.size <= MAX_DIGEST_BYTES ? 'pending' : 'omitted-over-budget', digest = null;
   const discardListeners = new Set();
@@ -76,11 +86,57 @@ export function prepareExportArtifact({ bytes, immutableSourceRef, formatVersion
       if (discarded || clock() >= expiresAt) throw Object.assign(new Error('Prepared export has expired.'), { kind: 'artifact-expired' });
       leases++;
       let released = false;
-      return Object.freeze({ blob, release() { if (!released) { released = true; leases--; if (discarded && leases === 0) blob = null; } } });
+      return Object.freeze({ blob, release() { if (!released) { released = true; leases--; if (discarded && leases === 0) {
+        blob = null; if (budgetHeld) { budgetAdapter.release({ token: budgetToken, owner: 'export' }); budgetHeld = false; }
+      } } } });
     },
     discard() {
       if (!discarded) { discarded = true; for (const listener of discardListeners) { try { listener(); } catch { /* Retirement continues. */ } } discardListeners.clear(); }
-      if (!leases) blob = null;
+      if (!leases) { blob = null; if (budgetHeld) { budgetAdapter.release({ token: budgetToken, owner: 'export' }); budgetHeld = false; } }
+      return metadata();
+    } });
+}
+
+// The caller retains an immutable encoder snapshot and supplies a fresh chunk
+// iterator for every retry. No complete Blob is materialized by this artifact.
+export function prepareReplayableExportArtifact({ openChunks, immutableSourceRef, formatVersion,
+  mediaType = 'application/octet-stream', suggestedFilename, byteLength = null,
+  streamingEstimate = null, coverageLossReportRef = null, lifetimeMs = DEFAULT_LIFETIME_MS,
+  maxDeliveryBytes = 512 * 1048576, clock = Date.now } = {}) {
+  if (typeof openChunks !== 'function' || typeof immutableSourceRef !== 'string' || !immutableSourceRef ||
+      typeof formatVersion !== 'string' || !formatVersion || typeof suggestedFilename !== 'string' ||
+      !suggestedFilename || suggestedFilename.length > 160 || /[\\/\x00-\x1f]/.test(suggestedFilename) ||
+      byteLength != null && (!Number.isSafeInteger(byteLength) || byteLength < 0) ||
+      streamingEstimate != null && (!Number.isSafeInteger(streamingEstimate) || streamingEstimate < 0) ||
+      !Number.isSafeInteger(maxDeliveryBytes) || maxDeliveryBytes < 1 || maxDeliveryBytes > 2 ** 31 ||
+      byteLength != null && byteLength > maxDeliveryBytes ||
+      !Number.isFinite(lifetimeMs) || lifetimeMs <= 0 || lifetimeMs > 24 * 60 * 60 * 1000 ||
+      coverageLossReportRef != null && typeof coverageLossReportRef !== 'string') throw new TypeError('Invalid replayable export artifact.');
+  const artifactId = nextId('artifact'), expiresAt = clock() + lifetimeMs;
+  let discarded = false, leases = 0;
+  const discardListeners = new Set();
+  const metadata = () => Object.freeze({ artifactId, immutableSourceRef, formatVersion, mediaType,
+    suggestedFilename, byteLength, streamingEstimate, maxDeliveryBytes, digestState: 'omitted-streaming',
+    sha256: null, coverageLossReportRef, expiresAt, retained: !discarded, activeLeases: leases });
+  return Object.freeze({ artifactId, metadata, digest: () => Promise.resolve(null),
+    onDiscard(callback) {
+      if (discarded) { callback(); return () => {}; }
+      discardListeners.add(callback); return () => discardListeners.delete(callback);
+    },
+    borrow() {
+      if (discarded || clock() >= expiresAt) throw Object.assign(new Error('Prepared export has expired.'), { kind: 'artifact-expired' });
+      leases++;
+      let released = false, opened = false;
+      return Object.freeze({ openChunks() {
+        if (opened) throw new Error('A delivery lease opens its source only once.');
+        opened = true;
+        const source = openChunks();
+        if (!source || typeof source[Symbol.asyncIterator] !== 'function') throw Object.assign(new Error('Replayable source is not an async iterable.'), { kind: 'invalid-source' });
+        return source;
+      }, release() { if (!released) { released = true; leases--; } } });
+    },
+    discard() {
+      if (!discarded) { discarded = true; for (const listener of discardListeners) { try { listener(); } catch { /* Retirement continues. */ } } discardListeners.clear(); }
       return metadata();
     } });
 }
@@ -90,6 +146,8 @@ export function deliverArtifactToAnchor(artifact, { document, windowRef = global
   let lease;
   try {
     lease = artifact.borrow();
+    if (!lease.blob) return Object.freeze({ deliveryId, artifactId, sinkKind: 'anchor', state: 'unsupported',
+      bytesWritten: 0, errorKind: 'streaming-source-requires-file-handle', evidence: 'no-bounded-blob' });
     const requested = requestBrowserDownload({ document, windowRef, bytes: lease.blob,
       filename: suggestedFilename, mediaType: artifact.metadata().mediaType });
     return Object.freeze({ deliveryId, artifactId, sinkKind: 'anchor', state: requested.state,
@@ -122,7 +180,7 @@ export async function deliverArtifactToFileHandle(artifact, handle, { signal, on
   const unwatch = artifact.onDiscard(forwardAbort);
   if (signal?.aborted) ownerAbort.abort();
   const wait = work => waitForSink(work, ownerAbort.signal, Math.max(1, Math.min(30000, deadline - Date.now())));
-  let lease, writable, reader, bytesWritten = 0, phase = 'opening', abortAttempted = false, abortAcknowledged = false, retired = false;
+  let lease, writable, reader, iterator, bytesWritten = 0, phase = 'opening', abortAttempted = false, abortAcknowledged = false, retired = false;
   let state = 'failed', kind = null, evidence = null;
   try {
     if (ownerAbort.signal.aborted) throw Object.assign(new Error('Export delivery canceled.'), { name: 'AbortError' });
@@ -132,21 +190,28 @@ export async function deliverArtifactToFileHandle(artifact, handle, { signal, on
       if (retired) { try { Promise.resolve(late.abort?.()).catch(() => {}); } catch { /* Late handle remains unacknowledged. */ } }
     }, () => {});
     writable = await wait(opening);
-    reader = lease.blob.stream().getReader();
+    if (lease.blob) reader = lease.blob.stream().getReader();
+    else iterator = lease.openChunks()[Symbol.asyncIterator]();
     phase = 'writing';
     while (true) {
-      const { done, value } = await wait(reader.read());
+      const { done, value } = await wait(reader ? reader.read() : iterator.next());
       if (done) break;
+      if (!(value instanceof Uint8Array)) throw Object.assign(new Error('Export source yielded invalid bytes.'), { kind: 'invalid-source' });
+      if (bytesWritten + value.byteLength > (artifact.metadata().maxDeliveryBytes || MAX_BROWSER_DOWNLOAD_BYTES))
+        throw Object.assign(new Error('Export stream exceeded its declared limit.'), { kind: 'artifact-limit' });
       await wait(writable.write(value));
       bytesWritten += value.byteLength;
-      try { onProgress(bytesWritten, lease.blob.size); } catch { /* Presentation callbacks cannot fail delivery. */ }
+      try { onProgress(bytesWritten, artifact.metadata().byteLength ?? artifact.metadata().streamingEstimate); } catch { /* Presentation callbacks cannot fail delivery. */ }
     }
+    if (artifact.metadata().byteLength != null && bytesWritten !== artifact.metadata().byteLength)
+      throw Object.assign(new Error('Export source length changed.'), { kind: 'source-length-mismatch' });
     phase = 'closing'; await wait(writable.close()); writable = null;
     state = 'close-acknowledged'; evidence = 'writable-close-resolved';
   } catch (error) { kind = error.kind || errorKind(error); state = kind === 'cancelled' ? 'canceled' : 'failed'; evidence = phase; }
   finally {
     retired = true;
     try { if (reader) await waitForSink(reader.cancel(), null, 2000); } catch { /* A released reader may already be closed. */ }
+    try { if (iterator?.return) await waitForSink(iterator.return(), null, 2000); } catch { /* Source cancellation has an unknown outcome. */ }
     if (writable) {
       abortAttempted = true;
       try { if (typeof writable.abort === 'function') { await waitForSink(writable.abort(), null, 2000); abortAcknowledged = true; } }

@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { aggregateExportDeliveries, deliverArtifactToAnchor, deliverArtifactToFileHandle,
-  prepareExportArtifact, requestExportFileHandle } from '../js/app/export/ExportArtifact.js';
+  prepareExportArtifact, prepareReplayableExportArtifact, requestExportFileHandle } from '../js/app/export/ExportArtifact.js';
+import { createResourceBudget, ResourceBudgetError } from '../js/app/resources/ResourceBudget.js';
 
 const prepare = (bytes = Uint8Array.of(1, 2, 3), overrides = {}) => prepareExportArtifact({ bytes,
   immutableSourceRef: 'take:fixture:1', formatVersion: 'midi/v1', suggestedFilename: 'take.mid', ...overrides });
@@ -14,6 +15,43 @@ const anchor = (failClick = false) => {
 };
 
 describe('prepared export artifacts and delivery receipts', () => {
+  it('admits staging before allocation and retains its budget through a borrowed delivery', () => {
+    const budget = createResourceBudget({ limitBytes: 4096 });
+    const artifact = prepare(new Uint8Array(1800), { budgetAdapter: budget });
+    const lease = artifact.borrow();
+    expect(budget.diagnostics()).to.include({ residentBytes: 1800, accountedBytes: 3600 });
+    expect(() => prepare(new Uint8Array(300), { budgetAdapter: budget })).to.throw(ResourceBudgetError);
+    artifact.discard(); expect(budget.diagnostics().accountedBytes).to.equal(3600);
+    lease.release(); expect(budget.diagnostics().accountedBytes).to.equal(0);
+    const retry = prepare(new Uint8Array(300), { budgetAdapter: budget }); retry.discard();
+  });
+  it('reopens a bounded chunk source for retry and reports the failed write without restaging', async () => {
+    let opens = 0;
+    const artifact = prepareReplayableExportArtifact({ immutableSourceRef: 'take:frozen:7',
+      formatVersion: 'pcm/v1', suggestedFilename: 'stem.wav', byteLength: 5, maxDeliveryBytes: 8,
+      openChunks: async function* () { opens++; yield Uint8Array.of(1, 2); yield Uint8Array.of(3, 4, 5); } });
+    expect(deliverArtifactToAnchor(artifact, anchor())).to.include({ state: 'unsupported', errorKind: 'streaming-source-requires-file-handle' });
+    const run = fail => {
+      const bytes = [], handle = { async createWritable() { return { async write(chunk) {
+        if (fail && bytes.length) throw new Error('write failed'); bytes.push(...chunk);
+      }, async close() {}, async abort() {} }; } };
+      return deliverArtifactToFileHandle(artifact, handle).then(receipt => ({ receipt, bytes }));
+    };
+    const first = await run(true); expect(first.receipt).to.include({ state: 'failed', bytesWritten: 2 });
+    const second = await run(false); expect(second.receipt).to.include({ state: 'close-acknowledged', bytesWritten: 5 });
+    expect(second.bytes).to.deep.equal([1, 2, 3, 4, 5]); expect(opens).to.equal(2);
+    artifact.discard(); expect(artifact.metadata().activeLeases).to.equal(0);
+  });
+  it('rejects a streaming source that exceeds or fails its declared byte count', async () => {
+    const make = (chunks, byteLength) => prepareReplayableExportArtifact({ immutableSourceRef: 'take:sealed:8',
+      formatVersion: 'pcm/v1', suggestedFilename: 'stem.wav', byteLength, maxDeliveryBytes: 8,
+      openChunks: async function* () { for (const chunk of chunks) yield chunk; } });
+    const handle = { async createWritable() { return { async write() {}, async close() {}, async abort() {} }; } };
+    expect(await deliverArtifactToFileHandle(make([new Uint8Array(9)], null), handle))
+      .to.include({ state: 'failed', errorKind: 'artifact-limit', bytesWritten: 0 });
+    expect(await deliverArtifactToFileHandle(make([new Uint8Array(2)], 3), handle))
+      .to.include({ state: 'failed', errorKind: 'source-length-mismatch', bytesWritten: 2 });
+  });
   it('preflights bounded byte staging and preserves UTF-8 across chunk boundaries', async () => {
     expect(() => prepare(new Uint8Array(5), { maxBytes: 4 })).to.throw(RangeError);
     expect(() => prepare('éé', { maxBytes: 3 })).to.throw(RangeError);

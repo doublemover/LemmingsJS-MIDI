@@ -1,5 +1,6 @@
 import { createBrowserSurveyTrial } from './ProcgenSurveyBrowserAssets.js';
 import { compareSurveyCompatibilityReplay, firstSurveyDivergence } from './ProcgenSurveyReplay.js';
+import { requestBrowserDownload } from '../../export/BrowserDownload.js';
 
 const renderSurveyPreview = (canvas, telemetry, { cameraX = null, cameraY = 0, width = 512, height = 144 } = {}) => {
   const context = canvas.getContext('2d'), preview = telemetry?.preview || {}, actors = preview.actors || [];
@@ -236,7 +237,15 @@ const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fet
   element('surveyDivergence').addEventListener('click', () => { const result = selected(), pair = baseline(result); const divergence = result && pair && firstSurveyDivergence(pair, result);
     if (!divergence) { status('No physical/event divergence at retained common checkpoints.'); return; }
     cancelReplay(); element('surveyScrub').value = result.milestones.findIndex(entry => entry.tick === divergence.throughTick); publishFocus(); status('First recorded divergence between ticks ' + divergence.fromTick + ' and ' + divergence.throughTick + '. Exact localization needs detailed replay.'); });
-  element('surveyExport').addEventListener('click', () => { if (!report) return; const href = window.URL.createObjectURL(new Blob([JSON.stringify(report)], { type: 'application/json' })); const link = document.createElement('a'); link.href = href; link.download = report.manifest.experimentId + '.json'; link.click(); window.setTimeout(() => window.URL.revokeObjectURL(href), 1000); });
+  element('surveyExport').addEventListener('click', () => {
+    if (!report) return;
+    try {
+      const name = String(report.manifest?.experimentId || 'survey').replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 140);
+      const receipt = requestBrowserDownload({ document, windowRef: window, bytes: JSON.stringify(report),
+        filename: `${name}.json`, mediaType: 'application/json' });
+      status(receipt.state === 'delivery-requested' ? 'Survey report download requested.' : 'Survey report could not be downloaded.');
+    } catch (error) { status(`Survey report download failed: ${error.message}`); }
+  });
   element('surveyReplay').addEventListener('click', async () => {
     const original = selected(); if (disposed || !original?.episodeComplete || replay || replayPending) return;
     const epoch = ++replayEpoch, controller = new AbortController(); replayAbort = controller;

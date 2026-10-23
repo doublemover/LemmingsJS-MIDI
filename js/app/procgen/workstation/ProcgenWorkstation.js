@@ -51,7 +51,8 @@ function rollbackWorldProject(previous, staged, current) {
 
 export function createProcgenWorkstation({ document, window, legacy, getRuntime, restart,
   createView = createProcgenWorkstationView, storage = createProcgenSessionStorage(window.indexedDB),
-  captureCheckpoint = captureProcgenCheckpoint, transportOptions = {}, historyBytesLimit = 32 * 1024 * 1024 }) {
+  captureCheckpoint = captureProcgenCheckpoint, transportOptions = {}, historyBytesLimit = 32 * 1024 * 1024,
+  resourceBudget = null }) {
   if (!Number.isSafeInteger(historyBytesLimit) || historyBytesLimit < 1024) throw new Error('Invalid history byte limit.');
   const now = () => window.performance?.now?.() ?? performance.now();
   let saved = null;
@@ -515,7 +516,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const publishExportState = () => view?.exportState?.(preparedExport?.metadata() || null, lastDelivery);
   const prepareDownload = ({ bytes, filename, type, sourceRef, formatVersion, lossRef = null }) => {
     const artifact = prepareExportArtifact({ bytes, immutableSourceRef: sourceRef, formatVersion,
-      mediaType: type, suggestedFilename: filename, coverageLossReportRef: lossRef });
+      mediaType: type, suggestedFilename: filename, coverageLossReportRef: lossRef, budgetAdapter: resourceBudget });
     preparedExport?.discard(); preparedExport = artifact; lastDelivery = null; publishExportState();
     artifact.digest().then(() => { if (preparedExport === artifact && !disposed) publishExportState(); });
     return artifact;
