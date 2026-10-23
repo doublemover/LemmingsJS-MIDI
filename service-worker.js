@@ -16,12 +16,20 @@ const obsoleteOwnedCache = key => {
 const CORE_PATHS = [
   'index.html',
   'editor.html',
+  'procgen.html',
   'css/game.css',
   'css/editor.css',
+  'css/procgen.css',
+  'css/procgen-workstation.css',
+  'css/procgen-world-inspector.css',
+  'css/character-controls.css',
+  'css/midi-spans.css',
+  'css/icons.css',
   'js/vendor/jquery.js',
   'js/vendor/webmidi.js',
   'js/app/boot.js',
   'js/app/editorBoot.js',
+  'js/app/procgenBoot.js',
   'js/app/registerServiceWorker.js',
   'site.webmanifest',
   'img/favicon.png',
@@ -40,12 +48,11 @@ const isHtmlRequest = (request) => request.mode === 'navigate' ||
 const fetchFresh = (request) => fetch(new Request(request, { cache: 'no-store' }));
 
 const cacheFirst = async (request) => {
-  const cache = await caches.open(RUNTIME_CACHE);
-  const cached = await cache.match(request);
-  if (cached) return cached;
+  let cache;
+  try { cache = await caches.open(RUNTIME_CACHE); const cached = await cache.match(request); if (cached) return cached; } catch { /* Runtime caching is optional. */ }
   const response = await fetch(request);
-  if (response && response.status === 200) {
-    cache.put(request, response.clone());
+  if (cache && response && response.status === 200) {
+    try { cache.put(request, response.clone()).catch(() => {}); } catch { /* Runtime caching is optional. */ }
   }
   return response;
 };
@@ -54,16 +61,17 @@ const networkFirst = async (request, fallbackUrl = null, { bypassCache = false }
   try {
     const response = await (bypassCache ? fetchFresh(request) : fetch(request));
     if (response && response.status === 200) {
-      const cache = await caches.open(RUNTIME_CACHE);
-      cache.put(request, response.clone());
+      try { const cache = await caches.open(RUNTIME_CACHE); cache.put(request, response.clone()).catch(() => {}); } catch { /* Runtime caching is optional. */ }
     }
     return response;
   } catch (error) {
     const cache = await caches.open(RUNTIME_CACHE);
-    const cached = await cache.match(request, { ignoreSearch: true });
+    const cached = await cache.match(request);
     if (cached) return cached;
-    if (fallbackUrl) {
-      const core = await caches.open(CORE_CACHE);
+    const core = await caches.open(CORE_CACHE), exact = await core.match(request);
+    if (exact) return exact;
+    const url = new URL(request.url);
+    if (fallbackUrl && !['rev', 'cb', 'cacheBust'].some(key => url.searchParams.has(key))) {
       const fallback = await core.match(fallbackUrl);
       if (fallback) return fallback;
     }
@@ -111,8 +119,9 @@ self.addEventListener('fetch', (event) => {
   if (!isOwnedUrl(url)) return;
 
   if (isHtmlRequest(request)) {
-    const fallbackPath = url.pathname.endsWith('/editor.html') ? 'editor.html' : 'index.html';
-    const fallbackUrl = toUrl(fallbackPath);
+    const path = url.pathname.slice(SCOPE_URL.pathname.length), fallbackPath = path === '' ? 'index.html' :
+      ['index.html', 'editor.html', 'procgen.html'].includes(path) ? path : null;
+    const fallbackUrl = fallbackPath ? toUrl(fallbackPath) : null;
     event.respondWith(networkFirst(request, fallbackUrl, { bypassCache: true }));
     return;
   }
@@ -131,6 +140,8 @@ self.addEventListener('fetch', (event) => {
 });
 
 self.addEventListener('message', (event) => {
+  if (event?.data?.type === 'OFFLINE_STATUS') event.ports?.[0]?.postMessage({ schemaVersion: 1,
+    status: 'unqualified-shell', offlineReady: false, reason: 'unversioned-shell-cache-is-not-a-complete-runtime-generation' });
   if (event?.data?.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }

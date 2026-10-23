@@ -154,7 +154,7 @@ const registerServiceWorker = (options = {}) => {
     addCleanup(() => target.removeEventListener?.(eventName, handler, listenerOptions));
   };
   const runtime = {
-    getState: () => ({ mode, controlledByOwnedWorker: isOwnedScript(nav?.serviceWorker?.controller?.scriptURL, owner),
+    getState: () => ({ mode, offlineInstallation: 'unqualified', controlledByOwnedWorker: isOwnedScript(nav?.serviceWorker?.controller?.scriptURL, owner),
       controlled: !!nav?.serviceWorker?.controller }),
     async removeOwnedAndReload() {
       if (disposed || !isOwnedScript(nav?.serviceWorker?.controller?.scriptURL, owner)) return false;

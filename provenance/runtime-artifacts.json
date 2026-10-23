@@ -85,7 +85,7 @@
       "entryPoints": ["js/app/registerServiceWorker.js"],
       "files": ["service-worker.js"],
       "fileCount": 1,
-      "sha256": "3e54083c3dd3cb5eac7208f956da8b59becc9283fe28df2647532a134cd20502"
+      "sha256": "7343667833e5eecfb3d291788721678aad563b614728e0e994304538d78615d9"
     },
     {
       "id": "lemmings-timing-worker-source",

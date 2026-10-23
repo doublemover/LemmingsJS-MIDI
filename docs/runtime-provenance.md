@@ -92,5 +92,13 @@ The source checkout's `ActiveExecutionIdentity.js` has no build authority.
 Generated identity is accepted only from its matching immutable URL namespace
 and a distinct runtime realm, with the actual state schema and selected
 capability profile. Report-supplied data cannot set the executing identity.
-Generation installer and replay-handshake integration use this authority;
-runtime qualification fixtures remain deferred.
+Generation installer and replay-handshake integration still need to consume
+this authority; runtime qualification fixtures remain deferred.
+
+The unbuilt service-worker shell now distinguishes its three HTML routes and
+uses exact precached script/style responses on network failure. Resource
+revision/search identity is not ignored. Missing routes cannot substitute the
+game shell at an instrument URL. Its status explicitly remains an unqualified
+shell with `offlineReady: false`; it does not advertise the complete generated
+runtime inventory as installed. Registration exposes a separate unqualified
+installation state. Deterministic fallback fixtures are added but unexecuted.
