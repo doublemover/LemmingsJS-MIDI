@@ -213,3 +213,21 @@ instances produced a record or promote separate policy-validity gates.
 These receipts qualify bounded survey consistency. They do not provide release,
 hardware, physical MIDI or acoustic qualification, and they do not implement a
 reusable branch-prefix cache.
+## Worker ingress failure evidence
+
+Node worker/host envelopes now declare schema version 1. The host validates
+envelope shape, generation, message type and assignment before decoding result
+graphs. A new result requires its worker's transfer reservation; duplicate
+delivery must match the existing assigned receipt. Supported JSON graphs are
+checked for cycles, unsupported values, depth, entry and byte bounds before
+hashing or freezing. Control and telemetry messages have separate 64 KiB limits.
+No process-wide exception handler is installed.
+
+Message, decode, host-send and worker event failures produce bounded structured
+worker-failure receipts and cancel the affected run's admission. The failed
+worker is retired; transfer reservations and control barriers settle through the
+existing owner. Previously committed result bytes/digests remain authoritative.
+New subprocess fixtures cover null/scalar envelopes, unknown and missing fields,
+unreserved and reserved cycles, BigInt, failed host sends and a fault after an
+independent original commit. They are implemented but unexecuted during the
+backlog development pass.

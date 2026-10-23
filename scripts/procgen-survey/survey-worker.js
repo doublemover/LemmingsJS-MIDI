@@ -6,7 +6,7 @@ import { createNodeSurveyTrial, loadProcgenMasks } from './SurveyNodeWorld.js';
 let stopped = false, paused = !!workerData.paused, stepTarget = null, preparedStep = null, preparingJob = null, controlId = 0;
 const resident = [], waiting = workerData.jobs.slice();
 const deliveryWaiters = new Map();
-const post = message => parentPort.postMessage({ ...message, runGeneration: workerData.runGeneration, workerGeneration: workerData.workerGeneration });
+const post = message => parentPort.postMessage({ ...message, schemaVersion: 1, runGeneration: workerData.runGeneration, workerGeneration: workerData.workerGeneration });
 const deliver = async message => {
   const encoded = JSON.stringify(message.result), trialId = message.result.trialId, digest = createHash('sha256').update(encoded).digest('hex');
   const wait = phase => new Promise(resolve => deliveryWaiters.set(trialId, { attemptId: message.attemptId, digest, phase, resolve }));
