@@ -15,11 +15,14 @@ const stableOutcome = result => ({ status: result.status, lastTick: result.lastT
   finalStateHash: result.finalStateHash, eventHash: result.eventHash, initialScenarioStateHash: result.initialScenarioStateHash, accounting: result.accounting, metrics: result.metrics, provenance: result.provenance, episodeComplete: result.episodeComplete });
 const verifiedEpisode = result => ['completed', 'failed', 'timed-out', 'timeout', 'unsupported'].includes(result.status);
 const derivativePath = name => name === 'report.json' || /^verification\/[a-zA-Z0-9_-]+-qualification-summary\.json$/.test(name);
-class SurveyStorageLimitError extends Error {}
-class SurveyWriterLeaseError extends Error {}
-class SurveyDerivativeConflictError extends Error {}
+class SurveyStorageLimitError extends Error { constructor(message) { super(message); this.name = 'SurveyStorageLimitError'; this.kind = 'storage-quota'; } }
+class SurveyWriterLeaseError extends Error { constructor(message) { super(message); this.name = 'SurveyWriterLeaseError'; this.kind = 'writer-lease'; } }
+class SurveyDerivativeConflictError extends Error { constructor(message) { super(message); this.name = 'SurveyDerivativeConflictError'; this.kind = 'derivative-conflict'; } }
 class SurveyEvidenceIntegrityError extends Error {
   constructor(name, reason, options) { super(reason + ': ' + name, options); this.name = 'SurveyEvidenceIntegrityError'; this.kind = 'evidence-integrity'; this.reference = name; }
+}
+class SurveyManifestRecoveryError extends SurveyEvidenceIntegrityError {
+  constructor() { super('manifest.json', 'Original survey manifest is missing; restore its verified report or original backup before writing'); this.name = 'SurveyManifestRecoveryError'; this.kind = 'manifest-recovery-required'; }
 }
 class SurveyImmutableConflictError extends Error {
   constructor(name, originalChecksum, attemptedChecksum, conflictReference = null) {
@@ -33,10 +36,39 @@ class SurveyEvidenceStore {
     this.directory = path.resolve(directory); this.maxBytes = Math.max(32768, Math.min(128 * 1048576, maxBytes));
     this.bytes = 0; this.tail = Promise.resolve();
   }
-  async initialize(manifest) {
+  async initialize(manifest, { signal } = {}) {
+    signal?.throwIfAborted();
     await fs.mkdir(this.directory, { recursive: true });
     for (const name of ['results', 'attempts', 'exemplars', 'verification', 'conflicts']) await fs.mkdir(path.join(this.directory, name), { recursive: true });
-    this.bytes = await this._countBytes(); await this.writeImmutable('manifest.json', manifest); return this;
+    await this._enqueue(async () => {
+      const previous = await this._readEnvelope('manifest.json');
+      if (!previous) {
+        const report = await this._readEnvelope('report.json');
+        if (report || await this._hasOriginalEvidence(signal)) {
+          if (!report?.value?.manifest || digest(report.value.manifest) !== digest(manifest)) throw new SurveyManifestRecoveryError();
+        }
+      }
+      await this._publishImmutable('manifest.json', manifest, signal);
+    }, { signal, allowMissingManifest: true });
+    return this;
+  }
+  async _hasOriginalEvidence(signal) {
+    const visit = async directory => {
+      for (const entry of await fs.readdir(directory, { withFileTypes: true })) {
+        signal?.throwIfAborted();
+        if (entry.isFile() && entry.name.endsWith('.json') || entry.isDirectory() && await visit(path.join(directory, entry.name))) return true;
+      }
+      return false;
+    };
+    for (const name of ['results', 'attempts', 'exemplars', 'verification', 'conflicts']) if (await visit(path.join(this.directory, name))) return true;
+    return false;
+  }
+  _enqueue(action, { signal, allowMissingManifest = false } = {}) {
+    const operation = this.tail.then(() => this._withWriterLease(async () => {
+      if (!allowMissingManifest && !await this._readEnvelope('manifest.json')) throw new SurveyManifestRecoveryError();
+      return action();
+    }, { signal }));
+    this.tail = operation.catch(() => {}); return operation;
   }
   async _countBytes(signal) {
     let bytes = 0;
@@ -155,33 +187,32 @@ class SurveyEvidenceStore {
   }
   writeImmutable(name, value, { signal } = {}) {
     if (derivativePath(name)) throw new SurveyDerivativeConflictError('Derived report path requires generation publication: ' + name);
-    const operation = this.tail.then(() => this._withWriterLease(async () => {
-      signal?.throwIfAborted();
-      const previous = await this._readEnvelope(name);
-      if (previous) { if (previous.checksum !== digest(value)) return this._retainConflict(name, previous, value, signal); return previous.value; }
-      const data = JSON.stringify(createEnvelope(value, 'original')) + '\n';
-      const size = Buffer.byteLength(data);
-      if (this.bytes + size > this.maxBytes) throw new SurveyStorageLimitError('Survey storage cap reached; required originals retained');
-      const file = this._file(name), temporary = file + '.' + randomUUID() + '.tmp';
-      try {
-        await fs.writeFile(temporary, data, { flag: 'wx' });
-        signal?.throwIfAborted();
-        try { await fs.link(temporary, file); this.bytes += size; }
-        catch (error) {
-          if (error.code !== 'EEXIST') throw error;
-          const competing = await this._readEnvelope(name);
-          if (competing?.checksum !== digest(value)) throw new Error('Conflicting immutable survey evidence: ' + name);
-          return competing.value;
-        }
-      } finally { await fs.rm(temporary, { force: true }); }
-      return value;
-    }, { signal }));
-    this.tail = operation.catch(() => {}); return operation;
+    return this._enqueue(() => this._publishImmutable(name, value, signal), { signal });
+  }
+  async _publishImmutable(name, value, signal) {
+    signal?.throwIfAborted();
+    const previous = await this._readEnvelope(name);
+    if (previous) { if (previous.checksum !== digest(value)) return this._retainConflict(name, previous, value, signal); return previous.value; }
+    const data = JSON.stringify(createEnvelope(value, 'original')) + '\n', size = Buffer.byteLength(data);
+    if (this.bytes + size > this.maxBytes) throw new SurveyStorageLimitError('Survey storage cap reached; required originals retained');
+    const file = this._file(name), temporary = file + '.' + randomUUID() + '.tmp';
+    try {
+      await fs.writeFile(temporary, data, { flag: 'wx' }); signal?.throwIfAborted();
+      try { await fs.link(temporary, file); this.bytes += size; }
+      catch (error) {
+        if (error.code !== 'EEXIST') throw error;
+        const competing = await this._readEnvelope(name);
+        if (!competing) throw new SurveyEvidenceIntegrityError(name, 'Concurrent survey publication disappeared; reconcile original identity before retrying');
+        if (competing.checksum !== digest(value)) return this._retainConflict(name, competing, value, signal);
+        return competing.value;
+      }
+    } finally { await fs.rm(temporary, { force: true }); }
+    return value;
   }
   writeDerivative(name, value, { expectedGeneration = null, signal } = {}) {
     if (!derivativePath(name)) throw new SurveyDerivativeConflictError('Original evidence cannot be replaced by a derivative: ' + name);
     if (expectedGeneration !== null && (!Number.isSafeInteger(expectedGeneration) || expectedGeneration < 0)) throw new RangeError('Invalid survey derivative generation');
-    const operation = this.tail.then(() => this._withWriterLease(async () => {
+    return this._enqueue(async () => {
       signal?.throwIfAborted();
       const file = this._file(name), previous = await this._readEnvelope(name);
       if (previous?.kind && previous.kind !== 'derivative') throw new SurveyDerivativeConflictError('Original evidence cannot be replaced by a derivative: ' + name);
@@ -196,8 +227,7 @@ class SurveyEvidenceStore {
       try { await fs.writeFile(temporary, data, { flag: 'wx' }); signal?.throwIfAborted(); await fs.rename(temporary, file); this.bytes += size - previousBytes; }
       finally { await fs.rm(temporary, { force: true }); }
       return value;
-    }, { signal }));
-    this.tail = operation.catch(() => {}); return operation;
+    }, { signal });
   }
   async completed(trialId) {
     const result = await this.read('results/' + trialId + '.json'); return result && verifiedEpisode(result) ? result : null;
@@ -218,4 +248,4 @@ class SurveyEvidenceStore {
   snapshot() { return { bytes: this.bytes, maxBytes: this.maxBytes, remainingBytes: this.maxBytes - this.bytes,
     durability: 'atomic-namespace-publication; no power-loss flush guarantee', publication: 'same-filesystem hard-link no-replace' }; }
 }
-export { SurveyEvidenceStore, SurveyStorageLimitError, SurveyWriterLeaseError, SurveyDerivativeConflictError, SurveyImmutableConflictError, SurveyEvidenceIntegrityError, stableOutcome, verifiedEpisode };
+export { SurveyEvidenceStore, SurveyStorageLimitError, SurveyWriterLeaseError, SurveyDerivativeConflictError, SurveyImmutableConflictError, SurveyEvidenceIntegrityError, SurveyManifestRecoveryError, stableOutcome, verifiedEpisode };

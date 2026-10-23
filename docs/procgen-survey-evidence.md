@@ -80,6 +80,19 @@ Quota includes the old report and its complete staged replacement at their
 peak. Reopening resets accounting and cleans only app-owned UUID staging
 files while holding the lease.
 
+Initialization runs under that same writer owner. Existing originals without
+`manifest.json` cannot be attached silently to a new experiment. A verified
+`report.json` containing the identical manifest can restore that missing
+manifest through ordinary immutable publication. Without that backup, or when
+the backup is corrupt or names a different experiment, the store returns a
+typed recovery-required outcome and preserves the originals for read-only
+review. Later direct writes cannot bypass this check. Restoring a missing
+manifest does not replace or rewrite the report or its original evidence.
+The coordinator also compares its execution declaration with this owned
+manifest before admitting a worker. A changed experiment declaration or an
+explicit legacy state/encoding version fails before simulation; it is never
+normalized silently into current qualification.
+
 This protocol requires local filesystem support for exclusive directory
 creation and atomic same-filesystem hard-link creation. NTFS on Windows and
 ordinary local POSIX filesystems support those primitives; the tests exercise

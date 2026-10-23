@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { runSurveyExperiment } from '../scripts/procgen-survey/SurveyCoordinator.js';
+import { runSurveyExperiment, SurveyExperimentIdentityError } from '../scripts/procgen-survey/SurveyCoordinator.js';
 import { SurveyEvidenceStore } from '../scripts/procgen-survey/SurveyEvidenceStore.js';
 import { normalizeSurveyScenario } from '../js/app/procgen/survey/ProcgenSurveyScenario.js';
 import { generateProcgenSurveyCandidates, createProcgenSurveyExperiment } from '../js/app/procgen/survey/ProcgenSurveyCandidates.js';
@@ -33,6 +33,23 @@ describe('real bounded procgen survey coordination', function() {
     const resumed = await runSurveyExperiment(manifest, store); expect(resumed.status).to.equal('complete'); expect(resumed.execution.admittedTicks).to.equal(0); expect(store.snapshot().bytes).to.equal(firstBytes); expect(resumed.telemetry).to.deep.equal(report.telemetry); expect(resumed.performance).to.deep.equal(report.performance); expect(resumed.priorExecution).to.deep.equal(report.execution);
     expect(resumed.results.map(result => result.finalStateHash)).to.deep.equal(report.results.map(result => result.finalStateHash));
     expect(resumed.admissions).to.deep.equal(report.admissions); expect(resumed.persistenceReceipts).to.deep.equal(report.persistenceReceipts);
+  });
+  it('rejects an execution manifest that differs from the evidence owner before worker admission', async () => {
+    const manifest = declaration(); directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lemmings-survey-coordinator-'));
+    const store = await new SurveyEvidenceStore(directory).initialize(manifest), bytes = store.snapshot().bytes;
+    let admitted = 0, rejected;
+    try { await runSurveyExperiment({ ...manifest, criteria: { ...manifest.criteria, samplingSeed: 9 } }, store, { onControlReady: () => { admitted++; } }); }
+    catch (error) { rejected = error; }
+    expect(rejected).to.be.instanceOf(SurveyExperimentIdentityError); expect(admitted).to.equal(0);
+    expect(await store.read('manifest.json')).to.deep.equal(manifest); expect(store.snapshot().bytes).to.equal(bytes);
+  });
+  it('keeps a legacy declared state schema unqualified instead of normalizing it silently', async () => {
+    const manifest = declaration(), legacy = { ...manifest, scenarios: manifest.scenarios.map(scenario => ({ ...scenario, stateSchema: 2 })) };
+    directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lemmings-survey-coordinator-'));
+    const store = await new SurveyEvidenceStore(directory).initialize(legacy); let admitted = 0, rejected;
+    try { await runSurveyExperiment(legacy, store, { onControlReady: () => { admitted++; } }); } catch (error) { rejected = error; }
+    expect(rejected).to.be.instanceOf(SurveyExperimentIdentityError); expect(rejected.message).to.include('Legacy survey state');
+    expect(admitted).to.equal(0); expect(await store.read('manifest.json')).to.deep.equal(legacy);
   });
   it('reports cancellation as incomplete and retains explicit queued identities', async () => {
     const manifest = declaration(); directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lemmings-survey-coordinator-'));

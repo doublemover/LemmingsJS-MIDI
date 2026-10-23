@@ -3,11 +3,22 @@ import { randomUUID } from 'node:crypto';
 import { runSurveyJobs } from './SurveyWorkerPool.js';
 import { createSurveyTrialId } from '../../js/app/procgen/survey/ProcgenSurveyCore.js';
 import { normalizeSurveyScenario, normalizeSurveyCandidate } from '../../js/app/procgen/survey/ProcgenSurveyScenario.js';
-import { hashSurveyValue } from '../../js/app/procgen/survey/ProcgenSurveyCanonical.js';
+import { hashSurveyValue, canonicalSurveyJson, SURVEY_STATE_SCHEMA, SURVEY_CANONICAL_SCHEMA } from '../../js/app/procgen/survey/ProcgenSurveyCanonical.js';
 import { compareSurveyReplay } from '../../js/app/procgen/survey/ProcgenSurveyReplay.js';
 import { analyzeProcgenSurveyPairs, selectProcgenSurveyExemplars, createProcgenSuccessQualification, summarizeProcgenSuccessQualification } from '../../js/app/procgen/survey/ProcgenSurveyAnalysis.js';
 
+class SurveyExperimentIdentityError extends Error {
+  constructor(message) { super(message); this.name = 'SurveyExperimentIdentityError'; this.kind = 'experiment-identity'; }
+}
+
 const runSurveyExperiment = async (manifest, store, { signal, onTelemetry = () => {}, onResult = () => {}, onState = () => {}, onControlReady = () => {} } = {}) => {
+  const declared = await store.read('manifest.json');
+  if (!declared || canonicalSurveyJson(declared) !== canonicalSurveyJson(manifest)) throw new SurveyExperimentIdentityError('Survey execution must use the evidence owner\'s original manifest');
+  if (!Array.isArray(manifest.scenarios) || !manifest.sourceManifest || typeof manifest.sourceManifest !== 'object') throw new SurveyExperimentIdentityError('Survey execution requires a declared scenario set and source manifest');
+  if (manifest.scenarios.some(scenario => scenario?.stateSchema !== SURVEY_STATE_SCHEMA) ||
+      manifest.sourceManifest.canonicalStateVersion !== undefined && manifest.sourceManifest.canonicalStateVersion !== SURVEY_STATE_SCHEMA ||
+      manifest.sourceManifest.canonicalEncodingVersion !== undefined && manifest.sourceManifest.canonicalEncodingVersion !== SURVEY_CANONICAL_SCHEMA)
+    throw new SurveyExperimentIdentityError('Legacy survey state or canonical encoding requires a separately declared experiment');
   const prior = await store.read('report.json');
   const started = clock.now(), results = [], telemetry = new Map(prior?.telemetry || []), performance = [...(prior?.performance || [])], attempts = [...(prior?.attempts || [])], verification = [], successQualification = [],
     persistenceReceipts = [...(prior?.persistenceReceipts || [])], admissions = [...(prior?.admissions || [])];
@@ -140,4 +151,4 @@ const runSurveyExperiment = async (manifest, store, { signal, onTelemetry = () =
     status: incomplete().length ? 'interrupted' : 'complete', incompleteTrials: incomplete(), verification, persistenceReceipts, admissions, storage: store.snapshot(), rankingsTrusted: false,
     priorExecution: prior?.execution || null, execution: { elapsedMs: clock.now() - started, admittedTicks: executedTicks, memoryScope: 'Worker V8 old heap capped; reported RSS covers the whole Node process.' } };
 };
-export { runSurveyExperiment };
+export { runSurveyExperiment, SurveyExperimentIdentityError };

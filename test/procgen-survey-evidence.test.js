@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { SurveyEvidenceStore, SurveyStorageLimitError, SurveyImmutableConflictError, SurveyEvidenceIntegrityError } from '../scripts/procgen-survey/SurveyEvidenceStore.js';
+import { SurveyEvidenceStore, SurveyStorageLimitError, SurveyImmutableConflictError, SurveyEvidenceIntegrityError, SurveyManifestRecoveryError } from '../scripts/procgen-survey/SurveyEvidenceStore.js';
 import { normalizeSurveyResources } from '../scripts/procgen-survey/SurveyWorkerPool.js';
 
 describe('bounded procgen survey evidence', function() {
@@ -66,6 +66,43 @@ describe('bounded procgen survey evidence', function() {
     try { await store.writeDerivative('report.json', { version: 'stale' }, { expectedGeneration: 0 }); throw new Error('unexpected stale report'); }
     catch (error) { expect(error.message).to.include('Stale survey derivative generation'); }
     expect(await store.read('report.json')).to.deep.equal({ version: 2 });
+  });
+  it('preserves originals without silently replacing a missing manifest or bypassing recovery', async () => {
+    await store.writeImmutable('results/pinned.json', { value: 'original' });
+    await fs.rm(path.join(directory, 'manifest.json'));
+    const reopened = new SurveyEvidenceStore(directory, { maxBytes: 32768 });
+    let rejected;
+    try { await reopened.initialize({ id: 'different-experiment' }); } catch (error) { rejected = error; }
+    expect(rejected).to.be.instanceOf(SurveyManifestRecoveryError); expect(rejected.kind).to.equal('manifest-recovery-required');
+    expect(await reopened.read('results/pinned.json')).to.deep.equal({ value: 'original' }); expect(await reopened.read('manifest.json')).to.equal(null);
+    try { await reopened.writeImmutable('results/bypass.json', { value: 'new' }); throw new Error('unexpected recovery bypass'); }
+    catch (error) { expect(error).to.be.instanceOf(SurveyManifestRecoveryError); }
+    expect(await reopened.read('results/bypass.json')).to.equal(null);
+  });
+  it('restores a missing manifest only from the same manifest in a verified report', async () => {
+    const manifest = await store.read('manifest.json');
+    await store.writeImmutable('results/pinned.json', { value: 'original' });
+    await store.writeDerivative('report.json', { manifest, status: 'interrupted' });
+    const report = await fs.readFile(path.join(directory, 'report.json'), 'utf8');
+    await fs.rm(path.join(directory, 'manifest.json'));
+    const reopened = await new SurveyEvidenceStore(directory, { maxBytes: 32768 }).initialize(manifest);
+    expect(await reopened.read('manifest.json')).to.deep.equal(manifest);
+    expect(await reopened.read('results/pinned.json')).to.deep.equal({ value: 'original' });
+    expect(await fs.readFile(path.join(directory, 'report.json'), 'utf8')).to.equal(report);
+    expect(await reopened.derivativeGeneration('report.json')).to.equal(0);
+  });
+  it('rejects a changed recovery manifest and a corrupt backup report while retaining originals', async () => {
+    const manifest = await store.read('manifest.json');
+    await store.writeImmutable('results/pinned.json', { value: 'original' });
+    await store.writeDerivative('report.json', { manifest }); await fs.rm(path.join(directory, 'manifest.json'));
+    let rejected;
+    try { await new SurveyEvidenceStore(directory).initialize({ ...manifest, id: 'changed' }); } catch (error) { rejected = error; }
+    expect(rejected).to.be.instanceOf(SurveyManifestRecoveryError);
+    const file = path.join(directory, 'report.json'), report = JSON.parse(await fs.readFile(file, 'utf8'));
+    report.value.manifest.id = 'corrupt'; await fs.writeFile(file, JSON.stringify(report));
+    try { await new SurveyEvidenceStore(directory).initialize(manifest); throw new Error('unexpected corrupt recovery'); }
+    catch (error) { expect(error).to.be.instanceOf(SurveyEvidenceIntegrityError); }
+    expect(await store.read('results/pinned.json')).to.deep.equal({ value: 'original' }); expect(await store.read('manifest.json')).to.equal(null);
   });
   it('binds derivative ownership and generation metadata to the intact payload checksum', async () => {
     await store.writeDerivative('report.json', { version: 1 });
