@@ -7,7 +7,7 @@ import { exportProcgenMidi } from './ProcgenMidiExport.js';
 import { createProcgenWorkstationView } from './ProcgenWorkstationView.js';
 import { captureProcgenCheckpoint } from './ProcgenCheckpoint.js';
 import { createProcgenLaneObserver } from './ProcgenLaneObservation.js';
-import { createProcgenSession, validateProcgenSession, createProcgenSessionStorage, freshProcgenSeed } from './ProcgenSessionStorage.js';
+import { createProcgenSession, validateProcgenSession, createProcgenSessionStorage, createProcgenDocumentId, freshProcgenSeed } from './ProcgenSessionStorage.js';
 import { createProcgenPhysicalScoreClock } from './ProcgenPhysicalScoreClock.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 import { resolveProcgenStartupIntent } from './ProcgenStartupIntent.js';
@@ -49,9 +49,10 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   state.recording = false; state.thru = false;
   let view = null, disposed = false, boundRuntime = null, boundSession = null, unhookRouter = null, unhookWorld = null;
   let ports, engine, lastPlaying = false, lastLegacySpeed = legacy.settings.speed, pendingResume = false, lastTempo = null;
-  let savedName = 'Untitled session', clipboard = null, loadSerial = 0, suppressPersistence = false;
+  let savedName = 'Untitled session', documentId = null, documentRevision = 0, clipboard = null, loadSerial = 0, suppressPersistence = false;
   let operationSerial = 0, currentOperation = null;
   let lastRecovery = now(), recoveryPending = false, recoveryTimer = null;
+  let lastRecoveryError = -Infinity;
   let lastBudgetNotice = -Infinity;
   let lastObserverAt = -Infinity, observerCursor = 0;
   let writingLegacy = false;
@@ -64,7 +65,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const retirement = createProcgenRetirementScope();
   let lastHistoryGroup = null, inputGestureSerial = 0;
   let documentGeneration = 1, projectRevision = 0, inputLease = null;
-  let editRevision = 0, savedRevision = -1, lastSavedAt = null, saveInFlight = false;
+  let editRevision = 0, savedRevision = -1, lastSavedAt = null;
+  const pendingSaveGenerations = new Set();
   let transportStopGeneration = 0;
   const historySizes = new WeakMap();
   let historyDropped = 0;
@@ -364,6 +366,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (session) {
       documentGeneration++;
       cancelInputEdits('project loaded');
+      documentId = null; documentRevision = 0;
       savedRevision = -1; lastSavedAt = null; storageStatus();
       suppressPersistence = true;
       syncProject(session.project, { history: false, render: false }); Object.assign(legacy.settings, session.settings, { workstation: true });
@@ -390,8 +393,17 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const recover = async () => {
     if (disposed || worldBusy || recoveryPending || !runtime()?.world) return false;
     recoveryPending = true; lastRecovery = now();
-    try { await storage.save('__recovery__', snapshotSession(savedName + ' (recovery)')); return true; }
-    catch { return false; }
+    try {
+      const session = snapshotSession(savedName + ' (recovery)');
+      if (storage.saveRecovery) await storage.saveRecovery(session); else await storage.save('__recovery__', session);
+      return true;
+    }
+    catch (error) {
+      if (now() - lastRecoveryError >= 60000) {
+        lastRecoveryError = now(); status('Recovery checkpoint was not saved. Export this project if storage remains unavailable. ' + (error?.message || ''));
+      }
+      return false;
+    }
     finally { recoveryPending = false; }
   };
   const capture = (name = savedName, { resume = true } = {}) => {
@@ -448,7 +460,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       engine.reset(); transport.stop(); pendingResume = false;
       if (fresh) documentGeneration++;
       bindRuntime();
-      if (fresh) { savedName = 'Untitled session'; savedRevision = -1; lastSavedAt = null; storageStatus(); }
+      if (fresh) { savedName = 'Untitled session'; documentId = null; documentRevision = 0; savedRevision = -1; lastSavedAt = null; storageStatus(); }
       if (previousTransport.playing) play(); status(fresh ? 'New project ready.' : 'World rebuilt.'); return true;
     } catch (error) {
       if (!ownsOperation(lease)) return false;
@@ -528,34 +540,55 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     thru(value) { state.thru = !!value; ports.configure({ thru: state.thru }); },
     connect: safe(async () => { if (!window.WebMidi) throw new Error('Web MIDI is unavailable in this browser.'); if (!window.WebMidi.enabled) await window.WebMidi.enable({ sysex: false }); syncPorts(); view.renderInspector(); status('MIDI connected. Choose note and clock ports, then press Play.'); }),
     expression(event) { ports.sendEvent({ ...event, type: event.type === 'pitchBend' ? 'bend' : event.type }); },
-    save: safe(async () => {
-      if (saveInFlight) return false;
+    save: safe(async ({ asCopy = false, rename = false } = {}) => {
+      if (pendingSaveGenerations.has(documentGeneration)) return false;
       if (worldBusy) throw new Error('Wait for the world change to finish before saving.');
-      saveInFlight = true;
+      pendingSaveGenerations.add(documentGeneration);
       const wasPlaying = transport.getState().playing; beforeRestart();
       const saveDocumentGeneration = documentGeneration, saveOperationSerial = operationSerial;
       let resumeStopGeneration = transportStopGeneration;
       try {
-        const name = typeof window.prompt === 'function' ? window.prompt('Project name', savedName) : savedName;
+        const promptName = asCopy || rename || !documentId;
+        const name = promptName && typeof window.prompt === 'function' ? window.prompt('Project name', savedName) : savedName;
         if (name == null) return false;
         if (!name.trim()) { status('Enter a project name to save.'); return false; }
         const session = capture(name, { resume: false }), revision = editRevision;
         resumeStopGeneration = transportStopGeneration;
-        await storage.save(name, session);
+        const id = asCopy || !documentId ? createProcgenDocumentId(window.crypto) : documentId;
+        const expectedRevision = asCopy || !documentId ? 0 : documentRevision;
+        const receipt = storage.saveDocument ? await storage.saveDocument(id, expectedRevision, session, createProcgenDocumentId(window.crypto).replace(/^doc:/, 'commit:')) :
+          (await storage.save(name, session), null);
         if (disposed) return false;
         if (documentGeneration !== saveDocumentGeneration || operationSerial !== saveOperationSerial) return true;
+        if (receipt) { documentId = receipt.id; documentRevision = receipt.revision; }
         savedName = name; savedRevision = revision; lastSavedAt = session.savedAt; storageStatus();
         status(editRevision === revision ? 'Saved ' + name + '.' : 'Snapshot saved; newer edits are unsaved.'); return true;
       } catch (error) {
         if (documentGeneration === saveDocumentGeneration && operationSerial === saveOperationSerial) storageStatus(error);
         throw error;
       } finally {
-        saveInFlight = false;
+        pendingSaveGenerations.delete(saveDocumentGeneration);
         if (!disposed && wasPlaying && documentGeneration === saveDocumentGeneration && operationSerial === saveOperationSerial &&
             transportStopGeneration === resumeStopGeneration && !transport.getState().playing) play();
       }
     }),
-    load: safe(async () => { if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.'); const lease = beginOperation('select-session'); const entries = await storage.list(); if (!ownsOperation(lease)) return false; view.showProjects(entries, safe(async id => { if (!ownsOperation(lease)) return false; const session = await storage.load(id); const loaded = await loadSession(session, lease); if (loaded) { savedRevision = editRevision; lastSavedAt = session.savedAt; storageStatus(); } return loaded; })); return true; }),
+    saveAs: safe(() => handlers.save({ asCopy: true })),
+    rename: safe(() => handlers.save({ rename: true })),
+    load: safe(async () => {
+      if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
+      const lease = beginOperation('select-session');
+      const entries = storage.listDocuments ? await storage.listDocuments() : await storage.list();
+      if (!ownsOperation(lease)) return false;
+      view.showProjects(entries, safe(async id => {
+        if (!ownsOperation(lease)) return false;
+        const record = storage.loadDocument ? await storage.loadDocument(id) : { session: await storage.load(id), id: null, revision: 0 };
+        const loaded = await loadSession(record.session, lease);
+        if (loaded) { documentId = record.id; documentRevision = record.revision; savedRevision = editRevision; lastSavedAt = record.session.savedAt; storageStatus(); }
+        return loaded;
+      }));
+      return true;
+    }),
+    reclaimRecovery: safe(async () => { await storage.removeRecovery?.(); status('Old recovery checkpoint removed. Named projects were kept.'); }),
     import: safe(async file => { if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.'); const lease = beginOperation('import'); const text = await file.text(); if (!ownsOperation(lease)) return false; const session = JSON.parse(text); if (!ownsOperation(lease)) return false; return loadSession(session, lease); }),
     export: safe(async () => { const session = capture(); download(JSON.stringify(session), savedName.replace(/[^a-z0-9_-]+/gi, '-') + '.procgen.json', 'application/json'); status('Project exported.'); }),
     exportMidi() {
@@ -603,6 +636,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   listeners.push(() => window.WebMidi?.removeListener?.('connected', connected));
   prepareSettings(); setLegacyProject(project, { persist: false }); legacy.setSpeed(transport.getState().gameSpeed); lastLegacySpeed = legacy.settings.speed; view.render(); view.transport(transport.getState()); storageStatus();
   return { getProject: () => project, getInputEditLease: () => inputLease && Object.freeze({ ...inputLease }),
+    getDocumentState: () => Object.freeze({ id: documentId, revision: documentRevision, editRevision, savedRevision,
+      dirty: editRevision !== savedRevision, savedAt: lastSavedAt }),
     getStartupPlan: () => ({ ...startupPlan, project: clone(startupPlan.project) }), getLaneAssignments: () => project.procgen.lanes.map(lane => lane.family),
     getPlaybackState: () => ({ ...legacy.local.getState(), activeNotes: router()?.scheduler?._activeNotes?.size || 0, pendingNotes: router()?.scheduler?._pendingNoteOns?.size || 0, pressure: router()?.scheduler?.getOutputPressure?.() || ports.getState().pressure }),
     prepareSettings, bindRuntime, beforeRestart, loadSession, capture, recover, dispatch, play, handlers, state, transport, ports, engine,

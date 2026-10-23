@@ -1,26 +1,31 @@
 import { expect } from 'chai';
-import { createProcgenSessionStorage } from '../js/app/procgen/workstation/ProcgenSessionStorage.js';
+import { createProcgenDocumentId, createProcgenSessionStorage } from '../js/app/procgen/workstation/ProcgenSessionStorage.js';
 
 const session = name => ({ format: 'lemmings-procgen-session', version: 1, name, savedAt: '2026-10-22T00:00:00.000Z',
   project: {}, settings: {}, world: { laneCount: 1, seed: 7 } });
 
 function fakeIndexedDb({ failFirst = false, blocked = false, pending = false } = {}) {
-  const records = new Map(), connections = [], requests = [];
+  const records = new Map(), metadata = new Map(), connections = [], requests = [], reads = { sessions: 0, projectMetadata: 0 };
   let opens = 0;
   const newDatabase = () => {
     const db = { closes: 0, objectStoreNames: { contains: () => true }, close() { this.closes++; },
       transaction() {
-        const transaction = { objectStore: () => ({
-          put(record) { const request = { result: record.id }; queueMicrotask(() => { records.set(record.id, record); transaction.oncomplete?.(); }); return request; },
-          get(id) { const request = { result: null }; queueMicrotask(() => { request.result = records.get(id); transaction.oncomplete?.(); }); return request; },
-          getAll() { const request = { result: null }; queueMicrotask(() => { request.result = [...records.values()]; transaction.oncomplete?.(); }); return request; },
-          delete(id) { const request = { result: null }; queueMicrotask(() => { records.delete(id); transaction.oncomplete?.(); }); return request; }
-        }) };
+        let waiting = 0, aborted = false;
+        const schedule = work => { waiting++; queueMicrotask(() => { if (!aborted) work(); waiting--; if (!waiting) queueMicrotask(() => { if (!waiting && !aborted) transaction.oncomplete?.(); }); }); };
+        const transaction = { objectStore: name => {
+          const values = name === 'projectMetadata' ? metadata : records;
+          return {
+            put(record) { const request = { result: record.id }; schedule(() => values.set(record.id, record)); return request; },
+            get(id) { const request = { result: null }; schedule(() => { request.result = values.get(id); request.onsuccess?.(); }); return request; },
+            getAll() { const request = { result: null }; schedule(() => { reads[name]++; request.result = [...values.values()]; }); return request; },
+            delete(id) { const request = { result: null }; schedule(() => values.delete(id)); return request; }
+          };
+        }, abort() { aborted = true; queueMicrotask(() => this.onabort?.()); } };
         return transaction;
       } };
     connections.push(db); return db;
   };
-  return { records, connections, requests, get opens() { return opens; },
+  return { records, metadata, connections, requests, reads, get opens() { return opens; },
     open() {
       opens++; const request = { result: null, error: null }; requests.push(request);
       if (!pending) queueMicrotask(() => {
@@ -72,5 +77,52 @@ describe('ProcGen session storage connection lifecycle', () => {
     expect(adapter.connections[0].closes).to.equal(1);
     expect(adapter.records.size).to.equal(0);
     expect(storage.getState().state).to.equal('closed');
+  });
+
+  it('keeps same-name documents distinct and protects a reserved recovery record', async () => {
+    const adapter = fakeIndexedDb(), storage = createProcgenSessionStorage(adapter);
+    const first = createProcgenDocumentId(), second = createProcgenDocumentId();
+    expect(first).not.to.equal(second);
+    await storage.saveDocument(first, 0, session('__recovery__'), 'commit-1');
+    await storage.saveDocument(second, 0, session('__recovery__'), 'commit-2');
+    await storage.saveRecovery(session('recovery'));
+    expect((await storage.listDocuments()).map(record => record.id)).to.have.members([first, second]);
+    expect((await storage.loadDocument(first)).session.name).to.equal('__recovery__');
+    expect(adapter.records.get('recovery:latest').session.name).to.equal('recovery');
+    storage.close();
+  });
+
+  it('compares revisions atomically and recognizes a repeated uncertain commit', async () => {
+    const adapter = fakeIndexedDb(), storage = createProcgenSessionStorage(adapter), id = createProcgenDocumentId();
+    const first = await storage.saveDocument(id, 0, session('original'), 'commit-1');
+    expect(first).to.include({ revision: 1, repeated: false });
+    expect(await storage.saveDocument(id, 0, session('original'), 'commit-1')).to.include({ revision: 1, repeated: true });
+    let conflict; try { await storage.saveDocument(id, 0, session('stale writer'), 'commit-2'); } catch (error) { conflict = error; }
+    expect(conflict.category).to.equal('conflict');
+    expect((await storage.loadDocument(id)).session.name).to.equal('original');
+    expect((await storage.saveDocument(id, 1, session('renamed'), 'commit-3')).revision).to.equal(2);
+    expect((await storage.loadDocument(id)).session.name).to.equal('renamed');
+    storage.close();
+  });
+
+  it('migrates unusual legacy names and recovery without deleting source records', async () => {
+    const adapter = fakeIndexedDb(), storage = createProcgenSessionStorage(adapter);
+    await storage.save('odd/name% ·', session('same display'));
+    await storage.save('__recovery__', session('old recovery'));
+    const documents = await storage.listDocuments();
+    expect(documents).to.have.length(1);
+    expect(documents[0].id).to.match(/^doc:legacy:[0-9a-f]+$/);
+    expect((await storage.loadDocument(documents[0].id)).session.name).to.equal('same display');
+    expect((await storage.loadRecovery()).name).to.equal('old recovery');
+    expect(adapter.records.has('odd/name% ·')).to.equal(true);
+    expect(adapter.records.has('__recovery__')).to.equal(true);
+    const sessionReads = adapter.reads.sessions;
+    await storage.listDocuments();
+    expect(adapter.reads.sessions).to.equal(sessionReads);
+    storage.close();
+    const reopened = createProcgenSessionStorage(adapter);
+    await reopened.listDocuments();
+    expect(adapter.reads.sessions).to.equal(sessionReads);
+    reopened.close();
   });
 });

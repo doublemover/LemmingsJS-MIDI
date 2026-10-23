@@ -10,7 +10,7 @@ function target() {
   return { addEventListener(type, fn) { if (!events.has(type)) events.set(type, new Set()); events.get(type).add(fn); },
     removeEventListener(type, fn) { events.get(type)?.delete(fn); }, emit(type, event = {}) { for (const fn of events.get(type) || []) fn(event); } };
 }
-function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth', outputId = null, search = '', persisted = null, startupSettings = {} } = {}) {
+function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth', outputId = null, search = '', persisted = null, startupSettings = {}, storageOverride = null } = {}) {
   let time = 0, paused = false, enabled = false;
   const elements = new Map(['procgenPause', 'procgenPanic', 'procgenSpeed', 'procgenSpeedUp', 'procgenSpeedDown', 'procgenSpeedReadout'].map(id => [id, target()]));
   const document = { ...target(), getElementById: id => elements.get(id) || null };
@@ -32,7 +32,7 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
   let viewProps;
   const view = { render() {}, renderInspector() {}, transport() {}, recording() {}, status: value => statuses.push(value), storage: value => storageReceipts.push(value), showProjects() {}, dispose() { this.disposed = true; } };
   let rejectSave = false, saveCalls = 0;
-  const storage = { async save(id, session) { saveCalls++; if (rejectSave) throw new Error('Storage unavailable'); stored.set(id, session); }, async load(id) { return stored.get(id); }, async list() { return [...stored.keys()].map(id => ({ id })); }, close() {} };
+  const storage = storageOverride || { async save(id, session) { saveCalls++; if (rejectSave) throw new Error('Storage unavailable'); stored.set(id, session); }, async load(id) { return stored.get(id); }, async list() { return [...stored.keys()].map(id => ({ id })); }, close() {} };
   let rejectRestart = false, returnFalseRestart = false, restartGate = null;
   const studio = createProcgenWorkstation({ document, window, legacy, getRuntime: () => runtime,
     restart: async request => { restarts.push(request); if (restartGate) await restartGate; if (request.lease?.signal.aborted || returnFalseRestart) return false; if (rejectRestart) throw new Error('Assets unavailable'); runtime = makeRuntime(); runtime.world.laneCount = request.session?.world.laneCount || legacy.settings.laneCount; runtime.world.seed = request.session?.world.seed ?? legacy.settings.seed; },
@@ -292,6 +292,40 @@ describe('ProcGen workstation orchestration', () => {
     expect(f.runtime.lanes.renderer.camera.restored).to.deep.equal({ cameraX: 45 }); f.studio.dispose();
   });
 
+  it('keeps Save, Save As, and Rename on stable identities even with duplicate names', async () => {
+    const documents = new Map(), storage = {
+      async saveDocument(id, expectedRevision, session) {
+        const current = documents.get(id);
+        if ((current?.revision || 0) !== expectedRevision) throw new Error('Revision conflict');
+        const revision = expectedRevision + 1;
+        documents.set(id, { id, revision, session }); return { id, revision };
+      },
+      async listDocuments() { return [...documents.values()].map(({ id, revision, session }) => ({ id, revision, name: session.name, savedAt: session.savedAt })); },
+      async loadDocument(id) { return documents.get(id); },
+      async saveRecovery() {}, close() {}
+    };
+    const f = setup({ storageOverride: storage }); f.studio.bindRuntime();
+    expect(await f.studio.handlers.save()).to.equal(true);
+    const first = f.studio.getDocumentState();
+    expect(await f.studio.handlers.saveAs()).to.equal(true);
+    const second = f.studio.getDocumentState();
+    expect(second.id).not.to.equal(first.id);
+    expect(documents.size).to.equal(2);
+    expect([...documents.values()].map(item => item.session.name)).to.deep.equal(['Test song', 'Test song']);
+    f.window.prompt = () => 'Renamed';
+    expect(await f.studio.handlers.rename()).to.equal(true);
+    expect(f.studio.getDocumentState()).to.include({ id: second.id, revision: 2 });
+    expect(documents.get(first.id).session.name).to.equal('Test song');
+    expect(documents.get(second.id).session.name).to.equal('Renamed');
+    expect(await f.studio.handlers.new()).to.equal(true);
+    f.view.showProjects = (entries, load) => { f.view.entries = entries; f.view.choose = load; };
+    expect(await f.studio.handlers.load()).to.equal(true);
+    expect(f.view.entries.map(entry => entry.id)).to.have.members([first.id, second.id]);
+    expect(await f.view.choose(first.id)).to.equal(true);
+    expect(f.studio.getDocumentState()).to.include({ id: first.id, revision: 1, dirty: false });
+    f.studio.dispose();
+  });
+
   it('keeps the save indicator dirty when edits outlive an in-flight durable snapshot', async () => {
     const f = setup(); f.studio.bindRuntime();
     const originalSave = f.storage.save.bind(f.storage);
@@ -320,6 +354,27 @@ describe('ProcGen workstation orchestration', () => {
     expect(f.studio.transport.getState().playing).to.equal(false);
     expect(f.studio.capture().name).to.equal('Untitled session');
     expect(f.storageReceipts.at(-1).dirty).to.equal(true);
+    f.studio.dispose();
+  });
+
+  it('keeps the newer document selected when two document saves complete in reverse order', async () => {
+    const documents = new Map(); let releaseFirst;
+    const firstGate = new Promise(resolve => { releaseFirst = resolve; });
+    let calls = 0;
+    const storage = { async saveDocument(id, expectedRevision, session) {
+      calls++; if (calls === 1) await firstGate;
+      documents.set(id, { session, revision: expectedRevision + 1 });
+      return { id, revision: expectedRevision + 1 };
+    }, async saveRecovery() {}, close() {} };
+    const f = setup({ storageOverride: storage }); f.studio.bindRuntime();
+    const oldSave = f.studio.handlers.save();
+    await Promise.resolve();
+    expect(await f.studio.handlers.new()).to.equal(true);
+    expect(await f.studio.handlers.save()).to.equal(true);
+    const selectedId = f.studio.getDocumentState().id;
+    releaseFirst(); expect(await oldSave).to.equal(true);
+    expect(documents.size).to.equal(2);
+    expect(f.studio.getDocumentState()).to.include({ id: selectedId, revision: 1, dirty: false });
     f.studio.dispose();
   });
 

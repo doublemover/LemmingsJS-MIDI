@@ -73,7 +73,9 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
   footer.append(button('+ Lane', () => handlers.addLane?.()), button('− Lane', () => handlers.removeLane?.()), button('Duplicate', () => handlers.duplicate?.()), button('Clear', () => handlers.clear?.()), tool,
     button('Copy', () => handlers.copy?.()), button('Paste', () => handlers.paste?.()), button('Undo', () => handlers.undo?.()), button('Redo', () => handlers.redo?.()));
   const records = button('● Record', () => handlers.record?.(!state.recording), 'Record MIDI input into the selected phrase'); records.id = 'studioRecord';
-  footer.append(records, status, storageStatus, button('Save', () => handlers.save?.()), button('Load', () => handlers.load?.()), button('New', () => handlers.new?.()), button('Export', () => handlers.export?.()), button('MIDI', () => handlers.exportMidi?.()));
+  footer.append(records, status, storageStatus, button('Save', () => handlers.save?.()), button('Save As', () => handlers.saveAs?.()),
+    button('Rename', () => handlers.rename?.()), button('Load', () => handlers.load?.()), button('New', () => handlers.new?.()),
+    button('Export', () => handlers.export?.()), button('MIDI', () => handlers.exportMidi?.()));
   const importInput = input('', () => {}, { type: 'file' }); importInput.accept = '.json,.procgen'; importInput.hidden = true; footer.append(importInput);
   on(importInput, 'change', () => { if (importInput.files?.[0]) handlers.import?.(importInput.files[0]); importInput.value = ''; });
   footer.append(button('Import', () => importInput.click()));
@@ -81,7 +83,8 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
   const showProjects = (entries, load) => {
     projectList.replaceChildren(node('h2', 'Saved projects'), button('Close', () => projectList.close()));
     if (!entries.length) projectList.append(node('p', 'No saved projects yet. Save here or import a project file.'));
-    for (const entry of entries) projectList.append(button(`${entry.name} · ${new Date(entry.savedAt).toLocaleString()}`, () => { projectList.close(); load(entry.id); }));
+    for (const entry of entries) projectList.append(button(`${entry.name} · ${new Date(entry.savedAt).toLocaleString()} · ${String(entry.id).slice(-6)}`, () => { projectList.close(); load(entry.id); }));
+    if (handlers.reclaimRecovery) projectList.append(button('Remove recovery checkpoint', () => handlers.reclaimRecovery()));
     projectList.showModal();
   };
   const selected = () => { const project = getProject(), lane = project.procgen.lanes.find(item => item.id === state.laneId) || project.procgen.lanes[0]; state.laneId = lane.id; return lane; };

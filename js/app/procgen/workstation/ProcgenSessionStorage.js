@@ -9,11 +9,21 @@ const createProcgenSession = ({ name = 'Untitled session', project, settings, wo
   format: 'lemmings-procgen-session', version: SESSION_VERSION, name: String(name).slice(0, 120), savedAt: new Date().toISOString(),
   project, settings: { ...settings }, world, transport, patterns, physicalTimeline, camera, ui
 });
+let documentIdSequence = 0;
+const createProcgenDocumentId = (crypto = globalThis.crypto) => {
+  if (crypto?.randomUUID) return 'doc:' + crypto.randomUUID();
+  const bytes = new Uint8Array(16);
+  if (crypto?.getRandomValues) crypto.getRandomValues(bytes);
+  else for (let index = 0; index < bytes.length; index++) bytes[index] = Math.floor(Math.random() * 256);
+  return 'doc:' + [...bytes].map(byte => byte.toString(16).padStart(2, '0')).join('') + '-' + (++documentIdSequence);
+};
+const legacyDocumentId = key => 'doc:legacy:' + String(key).split('').map(unit => unit.charCodeAt(0).toString(16).padStart(4, '0')).join('');
 const storageFailure = (error, fallback = 'Project storage failed.') => {
   const name = error?.name || '';
-  const category = name === 'QuotaExceededError' ? 'quota' : name === 'VersionError' || name === 'NotFoundError' ? 'schema' :
+  const category = name === 'QuotaExceededError' ? 'quota' : name === 'ConflictError' ? 'conflict' : name === 'VersionError' || name === 'NotFoundError' ? 'schema' :
     name === 'AbortError' ? 'transaction-abort' : name === 'SecurityError' || name === 'InvalidStateError' ? 'unavailable' : 'transient';
   const messages = { quota: 'Project storage is full. Export this project or remove an old recovery.',
+    conflict: 'This project changed in another tab. Open the latest version or save a copy.',
     schema: 'Project storage has an incompatible schema. Reload the application before retrying.',
     'transaction-abort': 'Project storage canceled the write. Retry the save; the previous project remains available.',
     unavailable: 'Browser project storage is unavailable. Export a project file to save.', transient: fallback };
@@ -58,8 +68,11 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
     };
     if (!indexedDB) { finish(namedError('SecurityError', 'IndexedDB is unavailable')); return promise; }
     try {
-      request = indexedDB.open('lemmings.procgen.sessions', 1);
-      request.onupgradeneeded = () => { if (!request.result.objectStoreNames.contains('sessions')) request.result.createObjectStore('sessions', { keyPath: 'id' }); };
+      request = indexedDB.open('lemmings.procgen.sessions', 2);
+      request.onupgradeneeded = () => {
+        if (!request.result.objectStoreNames.contains('sessions')) request.result.createObjectStore('sessions', { keyPath: 'id' });
+        if (!request.result.objectStoreNames.contains('projectMetadata')) request.result.createObjectStore('projectMetadata', { keyPath: 'id' });
+      };
       request.onsuccess = () => finish(null, request.result);
       request.onerror = () => finish(request.error || new Error('IndexedDB open failed'));
       request.onblocked = () => report('blocked', storageFailure(null, 'Another tab is using project storage. Close or reload that tab, then retry.'));
@@ -67,22 +80,116 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
     } catch (error) { finish(error); }
     return promise;
   };
-  const operation = async (mode, perform) => {
+  const operation = async (mode, perform, storeName = 'sessions') => {
     const db = await open();
     if (retired || db !== database) throw storageFailure(null, 'Project storage connection changed. Retry the operation.');
     return new Promise((resolve, reject) => {
       let transaction, request, settled = false;
       const fail = error => { if (!settled) { settled = true; reject(storageFailure(error)); } };
       try {
-        transaction = db.transaction('sessions', mode);
-        request = perform(transaction.objectStore('sessions'));
+        transaction = db.transaction(storeName, mode);
+        request = perform(transaction.objectStore(storeName));
         transaction.oncomplete = () => { if (!settled) { settled = true; resolve(request?.result); } };
         transaction.onabort = () => fail(transaction.error || request?.error || namedError('AbortError', 'Transaction aborted'));
       } catch (error) { fail(error); }
     });
   };
+  const saveDocument = async (id, expectedRevision, session, commitId) => {
+    validateProcgenSession(session);
+    if (typeof id !== 'string' || !id.startsWith('doc:') || !Number.isSafeInteger(expectedRevision) || expectedRevision < 0 ||
+        typeof commitId !== 'string' || !commitId) throw new TypeError('Invalid document save identity');
+    const db = await open();
+    if (retired || db !== database) throw storageFailure(null, 'Project storage connection changed. Retry the save.');
+    return new Promise((resolve, reject) => {
+      let transaction, receipt = null, conflict = null;
+      try {
+        transaction = db.transaction(['sessions', 'projectMetadata'], 'readwrite');
+        const store = transaction.objectStore('sessions'), request = store.get(id);
+        request.onsuccess = () => {
+          const current = request.result;
+          if (current && current.kind !== 'document') { conflict = storageFailure(namedError('ConflictError', 'Reserved document ID')); transaction.abort(); return; }
+          if (current?.commitId === commitId) { receipt = { id, revision: current.revision, savedAt: current.savedAt, repeated: true }; return; }
+          if ((current?.revision || 0) !== expectedRevision) { conflict = storageFailure(namedError('ConflictError', 'Document revision changed')); transaction.abort(); return; }
+          receipt = { id, revision: expectedRevision + 1, savedAt: session.savedAt, repeated: false };
+          store.put({ id, kind: 'document', revision: receipt.revision, commitId, name: session.name, savedAt: session.savedAt,
+            createdAt: current?.createdAt || session.savedAt, session });
+          transaction.objectStore('projectMetadata').put({ id, revision: receipt.revision, name: session.name,
+            savedAt: session.savedAt, createdAt: current?.createdAt || session.savedAt });
+        };
+        transaction.oncomplete = () => resolve(receipt);
+        transaction.onabort = () => reject(conflict || storageFailure(transaction.error || request.error || namedError('AbortError', 'Document write aborted')));
+      } catch (error) { reject(storageFailure(error)); }
+    });
+  };
+  const insertIfAbsent = async record => {
+    const db = await open();
+    if (retired || db !== database) throw storageFailure(null, 'Project storage connection changed. Retry migration.');
+    return new Promise((resolve, reject) => {
+      try {
+        const transaction = db.transaction(['sessions', 'projectMetadata'], 'readwrite'), store = transaction.objectStore('sessions');
+        const request = store.get(record.id);
+        request.onsuccess = () => {
+          if (request.result) return;
+          store.put(record);
+          if (record.kind === 'document') transaction.objectStore('projectMetadata').put({ id: record.id, revision: record.revision,
+            name: record.name, savedAt: record.savedAt, createdAt: record.createdAt });
+        };
+        transaction.oncomplete = () => resolve();
+        transaction.onabort = () => reject(storageFailure(transaction.error || request.error));
+      } catch (error) { reject(storageFailure(error)); }
+    });
+  };
+  let migration = null, migrationDone = false;
+  const migrateLegacy = () => {
+    if (migrationDone) return Promise.resolve();
+    if (migration) return migration;
+    migration = (async () => {
+      const marker = await operation('readonly', store => store.get('migration:v1'), 'projectMetadata');
+      if (marker) { migrationDone = true; return; }
+      const records = await operation('readonly', store => store.getAll());
+      for (const record of records) {
+        if (record.kind || !record.session) continue;
+        try { validateProcgenSession(record.session); } catch { continue; }
+        const recovery = record.id === '__recovery__', id = recovery ? 'recovery:latest' : legacyDocumentId(record.id);
+        await insertIfAbsent({ id, kind: recovery ? 'recovery' : 'document', revision: 1,
+          commitId: 'legacy-migration-v1', name: record.name, savedAt: record.savedAt,
+          createdAt: record.savedAt, session: record.session });
+      }
+      await operation('readwrite', store => store.put({ id: 'migration:v1', kind: 'migration' }), 'projectMetadata');
+      migrationDone = true;
+    })().finally(() => { migration = null; });
+    return migration;
+  };
   return {
     getState: () => ({ state, error: lastError, generation, retired }),
+    saveDocument,
+    async loadDocument(id) {
+      const record = await operation('readonly', store => store.get(id));
+      if (!record || record.kind !== 'document') throw new Error('Project not found.');
+      return { id, revision: record.revision, name: record.name, savedAt: record.savedAt, session: validateProcgenSession(record.session) };
+    },
+    async listDocuments() {
+      await migrateLegacy();
+      const records = await operation('readonly', store => store.getAll(), 'projectMetadata');
+      return records.filter(record => record.kind !== 'migration').map(({ id, revision, name, savedAt }) => ({ id, revision, name, savedAt }))
+        .sort((a, b) => b.savedAt.localeCompare(a.savedAt) || a.id.localeCompare(b.id));
+    },
+    async saveRecovery(session) {
+      validateProcgenSession(session);
+      await operation('readwrite', store => store.put({ id: 'recovery:latest', kind: 'recovery', name: session.name,
+        savedAt: session.savedAt, session }));
+      return 'recovery:latest';
+    },
+    async loadRecovery() {
+      await migrateLegacy();
+      const record = await operation('readonly', store => store.get('recovery:latest'));
+      return record ? validateProcgenSession(record.session) : null;
+    },
+    async removeRecovery() { await operation('readwrite', store => store.delete('recovery:latest')); },
+    async estimateUsage() {
+      const estimate = await globalThis.navigator?.storage?.estimate?.();
+      return estimate ? { usage: estimate.usage ?? null, quota: estimate.quota ?? null } : null;
+    },
     async save(id, session) { validateProcgenSession(session); await operation('readwrite', store => store.put({ id, name: session.name, savedAt: session.savedAt, session })); return id; },
     async load(id) { const record = await operation('readonly', store => store.get(id)); if (!record) throw new Error('Project not found.'); return validateProcgenSession(record.session); },
     async list() { return (await operation('readonly', store => store.getAll())).map(({ id, name, savedAt }) => ({ id, name, savedAt })).sort((a, b) => b.savedAt.localeCompare(a.savedAt)); },
@@ -103,4 +210,4 @@ const freshProcgenSeed = (crypto = globalThis.crypto, previous = null) => {
   if (seed === previous) seed = (seed + 0x9e3779b9) >>> 0;
   return seed;
 };
-export { createProcgenSession, validateProcgenSession, createProcgenSessionStorage, freshProcgenSeed };
+export { createProcgenSession, validateProcgenSession, createProcgenSessionStorage, createProcgenDocumentId, freshProcgenSeed };
