@@ -65,7 +65,7 @@ const createProcgenLaneRuntime = ({ canvas, resources, resourceLease = null, ren
       frame = windowRef.requestAnimationFrame(update);
     };
     const visibilityChanged = () => {
-      lastTime = null; renderer.camera.resetPresentationClock();
+      lastTime = null; renderer.camera.resetPresentationClock(); renderer.actorEffects?.setVisible(!windowRef.document.hidden);
       if (!clockDriven && windowRef.document.hidden) previewRouter?.resetClock?.({ preserveGamePhrases: true });
     };
     constructionVisibility = visibilityChanged;

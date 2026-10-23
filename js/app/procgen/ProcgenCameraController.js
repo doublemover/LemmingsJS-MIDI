@@ -1,3 +1,5 @@
+import { readProcgenCanvasRect } from './ProcgenPresentationSnapshot.js';
+
 const PROCGEN_MIN_SCALE = 1 / 256;
 const PROCGEN_MAX_SCALE = 6;
 const FOLLOW_TAU_MS = 130;
@@ -37,6 +39,10 @@ const createProcgenCameraController = renderer => {
     renderer.scale = renderer.overviewActive && !renderer.workstationLayout ? minimumScale() : boundedScale(renderer.scale);
     renderer.cameraX = Math.max(0, renderer.cameraX);
     renderer.cameraY = Math.max(0, Math.min(Math.max(0, world.height - viewport().height), renderer.cameraY));
+  };
+  const pointerDelta = (dx, dy) => {
+    const rect = readProcgenCanvasRect(canvas, windowRef), size = dimensions();
+    return rect ? { x: dx * size.width / rect.width, y: dy * size.fullHeight / rect.height } : null;
   };
   const pan = (dx, dy) => {
     if (disposed) return false;
@@ -94,14 +100,15 @@ const createProcgenCameraController = renderer => {
   };
   listen('wheel', event => {
     event.preventDefault();
-    if (event.shiftKey || Math.abs(event.deltaX || 0) > Math.abs(event.deltaY || 0)) pan(event.deltaX || 0, event.deltaY || 0);
+    if (event.shiftKey || Math.abs(event.deltaX || 0) > Math.abs(event.deltaY || 0)) { const delta = pointerDelta(event.deltaX || 0, event.deltaY || 0); if (delta) pan(delta.x, delta.y); }
     else if (event.deltaY) setZoom(renderer.scale * (event.deltaY > 0 ? 1 / 1.1 : 1.1));
   }, { passive: false });
   let drag = null;
   listen('pointerdown', event => { if (event.button && event.button !== 1) return; canvas.focus?.(); drag = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, startX: event.clientX, startY: event.clientY, moved: false }; canvas.setPointerCapture?.(event.pointerId); });
   listen('pointermove', event => {
     if (!drag || drag.pointerId !== event.pointerId || !drag.moved && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 4) return;
-    if (pan(drag.x - event.clientX, drag.y - event.clientY)) { drag.x = event.clientX; drag.y = event.clientY; drag.moved = true; }
+    const delta = pointerDelta(drag.x - event.clientX, drag.y - event.clientY);
+    if (delta && pan(delta.x, delta.y)) { drag.x = event.clientX; drag.y = event.clientY; drag.moved = true; }
   });
   const finish = event => { if (drag?.pointerId === event.pointerId) drag = null; };
   listen('pointerup', finish); listen('pointercancel', finish); listen('lostpointercapture', finish);

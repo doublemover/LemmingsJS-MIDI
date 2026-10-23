@@ -4,6 +4,8 @@ import { DecorationLayer } from '../../decorations/DecorationLayer.js';
 import { createProcgenCameraController } from './ProcgenCameraController.js';
 import { ProcgenRenderResources, MAX_RENDER_DIMENSION } from './ProcgenRenderResources.js';
 import { ProcgenObjectPlacementCache } from './ProcgenObjectPlacementCache.js';
+import { ProcgenActorEffectDisplay } from './ProcgenActorEffectDisplay.js';
+import { ProcgenActorEffectPass } from './ProcgenActorEffectPass.js';
 import { ProcgenPresentationHost } from './ProcgenPresentationHost.js';
 
 const unprepared = state => state?.complete === false && state.active?.length === 0 && !state.plan;
@@ -18,6 +20,7 @@ class ProcgenLaneRenderer {
     try {
       this.objectTileCache = new ProcgenObjectPlacementCache(world, this.resources);
       this.presentation = new ProcgenPresentationHost(this); this.selectedWorldEntityId = null; this.selectionRevision = 0;
+      this.actorEffects = new ProcgenActorEffectDisplay({ budget: this.resources }); this.actorEffectPass = new ProcgenActorEffectPass(this); this._effectActor = null; this.effectVisibleActors = new Set();
       this.presentedActorBounds = new Map(); this.presentationEntities = []; this._presentationActor = null;
       this.buffer = this.resources.canvas(); this.terrainBuffer = this.resources.canvas(); this.objectBuffer = this.resources.canvas();
       this.imageKey = {}; this.sceneryImageKey = {}; this.lifecycleState = 'recovering'; this.recoveryAttempts = 0; this.recoveryLimit = 3; this.nextRecoveryMs = 0; this.qualityDivisor = 1;
@@ -42,9 +45,14 @@ class ProcgenLaneRenderer {
       for (const [event, listener] of [['contextlost', lost], ['contextrestored', restored]]) { canvas.addEventListener?.(event, listener); this.contextListeners.push([event, listener]); }
       this._acquireContexts();
     } catch (error) {
-      this.actorVisibility.dispose(); this.camera?.dispose(); this.cctv?.dispose(); this.decorationLayer?.dispose(); this.objectTileCache?.dispose(); this.resources.release(canvas); this.resources.dispose();
+      this.actorEffects?.dispose(); this.actorEffectPass?.dispose(); this.actorVisibility.dispose(); this.camera?.dispose(); this.cctv?.dispose(); this.decorationLayer?.dispose(); this.objectTileCache?.dispose(); this.resources.release(canvas); this.resources.dispose();
       throw error;
     }
+  }
+  getPresentationState() {
+    const snapshot = this.presentation.getSnapshot();
+    return Object.freeze({ ...this.presentation.getStatus(), generation: snapshot?.generation ?? null, physicalTick: snapshot?.physicalTick ?? null, projectionRevision: snapshot?.projectionRevision ?? null,
+      contentRect: snapshot?.rect ?? null, logicalSize: snapshot?.logicalSize ?? null, backingSize: snapshot?.backingSize ?? null, capabilities: snapshot?.capabilities ?? Object.freeze({ inspect: false, edit: false }) });
   }
   get laneHeight() { return this.world.laneHeight || 96; }
   _acquireContexts() {
@@ -53,7 +61,7 @@ class ProcgenLaneRenderer {
         this[key] = canvas.getContext('2d', { alpha: !opaque });
         if (!this[key] || this[key].isContextLost?.()) throw new Error('Canvas 2D context unavailable');
       }
-      this.lifecycleState = 'ready'; return true;
+      this.actorEffects?.setVisible(!this.window.document?.hidden); this.lifecycleState = 'ready'; return true;
     } catch (error) { this._failDisplay(error); return false; }
   }
   _displayState(state, error = null) {
@@ -64,10 +72,11 @@ class ProcgenLaneRenderer {
   }
   _releasePresentation() {
     this.presentation?.invalidate('The world display is preparing a new projection.');
+    this.actorEffects?.clear({ profiles: false }); this.actorEffectPass?.reset(); this.effectVisibleActors?.clear();
     for (const release of [() => this.decorationLayer?.reset?.(), () => this.objectTileCache.clear(), () => this.cctv?.releaseViews()]) {
       try { release(); } catch { this.resources.retirementFailures++; }
     }
-    this.resources.clear(); this.resources.release(this.canvas);
+    this.resources.clear({ preserveKinds: ['effect-profile'] }); this.resources.release(this.canvas);
     this.image = this.pixels = this.sceneryImage = this.sceneryPixels = null;
     this.frames = new WeakMap(); this.objectFrames = new WeakMap(); this.dotColors = new WeakMap();
     this.objectPlacements.length = 0; this.tileRevisions.clear(); this.lastFrameKey = null;
@@ -77,7 +86,7 @@ class ProcgenLaneRenderer {
   }
   _failDisplay(error, lost = false) {
     if (this.lifecycleState === 'disposed') return;
-    this._releasePresentation();
+    this.actorEffects?.setVisible(false); this._releasePresentation();
     this.nextRecoveryMs = (this.window.performance?.now?.() ?? Date.now()) + 250 * 2 ** this.recoveryAttempts;
     this._displayState(lost ? 'lost' : this.recoveryAttempts >= this.recoveryLimit ? 'unavailable' : 'recovering', error);
   }
@@ -137,6 +146,13 @@ class ProcgenLaneRenderer {
     this.resources.touch(bitmap);
     return bitmap;
   }
+  beginActorAction(actor) {
+    const previous = this._effectActor;
+    this._effectActor = this.actorEffects?.mailboxes.has(actor.id) && this.actorEffects.getProfile(actor.id, actor.patchId).enabled ? actor : null;
+    if (this._effectActor) this.effectVisibleActors.add(actor.id);
+    return previous;
+  }
+  endActorAction(previous) { this._effectActor = previous; }
   drawFrame(frame, x, y) {
     if (!frame) return;
     const step = this.rasterStep;
@@ -157,8 +173,14 @@ class ProcgenLaneRenderer {
       return;
     }
     const bitmap = this._frameCanvas(frame);
-    this.bufferContext.drawImage(bitmap, Math.round((x + frame.offsetX - this.originX) / step),
-      Math.round((y + frame.offsetY - this.originY) / step), frame.width / step, frame.height / step);
+    let effectDrawn = false;
+    if (this._effectActor && Object.hasOwn(this, 'actorEffects')) {
+      try { effectDrawn = this.actorEffectPass.draw(frame, bitmap, this._effectActor, x, y, this._effectPresentationMs); } catch { this.actorEffectPass.failures++; }
+    }
+    if (!effectDrawn) {
+      this.bufferContext.drawImage(bitmap, Math.round((x + frame.offsetX - this.originX) / step),
+        Math.round((y + frame.offsetY - this.originY) / step), frame.width / step, frame.height / step);
+    }
     if (bitmap.procgenVisiblePixels) this._captureActorFrame(frame, x, y);
   }
   _captureActorFrame(frame, x, y) {
@@ -386,6 +408,9 @@ class ProcgenLaneRenderer {
   }
   _render(force) {
     const start = this.window.performance?.now?.() ?? Date.now();
+    this._effectPresentationMs = start;
+    if (this.actorEffects.epoch && (this.actorEffects.epoch.generation !== this.world.generation || this.actorEffects.epoch.worldId !== this.world.worldId)) this.actorEffects.invalidateEpoch();
+    for (const actorId of this.actorEffects.mailboxes.keys()) if (!this.actorVisibility.actorById(actorId)) this.actorEffects.removeActor(actorId, { profile: true });
     if (this.canvas.width > 0 && this.canvas.height > 0 && (this.canvas.width !== this.managedWidth || this.canvas.height !== this.managedHeight)) { this.surfaceWidth = this.canvas.width; this.surfaceHeight = this.canvas.height; }
     if (!this.surfaceWidth || !this.surfaceHeight) return false;
     const mainLimit = Math.min(MAX_RENDER_DIMENSION / this.surfaceWidth, MAX_RENDER_DIMENSION / this.surfaceHeight,
@@ -412,7 +437,7 @@ class ProcgenLaneRenderer {
     this.originY = layout ? layout.firstLane * this.laneHeight : Math.floor(this.cameraY / this.rasterStep) * this.rasterStep;
     const world = this.world, sprites = world.sprites, appearance = sprites?.activePreference || sprites?.getPreference?.();
     const geometryKey = `${this.originX}:${this.originY}:${width}:${height}:${this.rasterStep}:${world.generation}:${layout?.mode || ''}:${layout?.rowHeight || 0}`;
-    const frameKey = `${geometryKey}:${world.tickIndex}:${world.terrainRevision}:${world.frontierRevision}:${world.hazards?.revision || 0}:${world.scenery?.revision || 0}:${this.canvas.width}:${this.canvas.height}:${dpr}:${this.scale}:${this.cameraY}:${this.follow}:${!!this.reducedMotion?.matches}:${this.cctv.renderKey}:${!!this.overviewActive}:${this.midiSpanOverlay?.revision || 0}:${this.presentation.demandRevision}:${this.presentation.domKey()}:${this.selectionRevision}`;
+    const frameKey = `${geometryKey}:${world.tickIndex}:${world.terrainRevision}:${world.frontierRevision}:${world.hazards?.revision || 0}:${world.scenery?.revision || 0}:${this.canvas.width}:${this.canvas.height}:${dpr}:${this.scale}:${this.cameraY}:${this.follow}:${!!this.reducedMotion?.matches}:${this.cctv.renderKey}:${!!this.overviewActive}:${this.midiSpanOverlay?.revision || 0}:${this.presentation.demandRevision}:${this.presentation.domKey()}:${this.selectionRevision}:${this.actorEffects.frameKey(start, this.effectVisibleActors)}`;
     if (!force && frameKey === this.lastFrameKey && appearance === this.lastAppearance && sprites === this.lastSprites && this.hud === this.lastHud && this.hud?.sprites === this.lastHudSprites && this.decorationLayer === this.lastDecorationLayer) {
       this.frameCacheHits++; this.lastFrameMs = (this.window.performance?.now?.() ?? start) - start;
       return false;
@@ -433,12 +458,13 @@ class ProcgenLaneRenderer {
     this._drawScenery(key, width, height);
     this.decorationLayer?.draw(this, !!this.reducedMotion?.matches);
     this._drawObjects();
-    this.renderedActors = 0; this.actorDots.clear(); this.presentedActorBounds.clear();
-    for (const actor of this.actorVisibility.query(this.originY, this.viewHeight, force)) {
+    this.effectVisibleActors.clear(); this.renderedActors = 0; this.actorDots.clear(); this.presentedActorBounds.clear();
+    const effectPadding = this.actorEffects.mailboxes.size ? 64 : 0;
+    for (const actor of this.actorVisibility.query(this.originY - effectPadding, this.viewHeight + effectPadding * 2, force)) {
       if (actor.failureReason || actor.removed) continue;
       if (actor.y < this.originY - 32 || actor.y > this.originY + this.viewHeight + 32 || actor.x < this.originX - 32 || actor.x >= this.originX + this.viewWidth + 32) {
-        const bounds = this.actorVisibility.bounds.get(actor);
-        if (!bounds || bounds.x >= this.originX + this.viewWidth || bounds.y >= this.originY + this.viewHeight || bounds.x + bounds.width <= this.originX || bounds.y + bounds.height <= this.originY) continue;
+        const bounds = this.actorVisibility.bounds.get(actor), padding = this.actorEffectPass.paddingFor(actor, bounds);
+        if (!bounds || bounds.x - padding >= this.originX + this.viewWidth || bounds.y - padding >= this.originY + this.viewHeight || bounds.x + bounds.width + padding <= this.originX || bounds.y + bounds.height + padding <= this.originY) continue;
       }
       this._presentationActor = this.presentation.demanded ? actor : null;
       try { actor.render(this); this.renderedActors++; } finally { this._presentationActor = null; }
@@ -479,7 +505,7 @@ class ProcgenLaneRenderer {
     this._displayState('disposed');
     for (const [event, listener] of this.contextListeners) this.canvas.removeEventListener?.(event, listener);
     this.contextListeners.length = 0;
-    this.actorVisibility.dispose(); this.camera.dispose(); this._releasePresentation(); this.presentation.dispose(); this.cctv.dispose(); this.decorationLayer?.dispose?.(); this.objectTileCache.dispose(); this.resources.dispose(); this.decorationLayer = null; this.midiSpanOverlay = null; this.frames = new WeakMap(); this.objectFrames = new WeakMap();
+    this.actorVisibility.dispose(); this.camera.dispose(); this._releasePresentation(); this.actorEffects.dispose(); this.actorEffectPass.dispose(); this.presentation.dispose(); this.cctv.dispose(); this.decorationLayer?.dispose?.(); this.objectTileCache.dispose(); this.resources.dispose(); this.decorationLayer = null; this.midiSpanOverlay = null; this.frames = new WeakMap(); this.objectFrames = new WeakMap();
     this.dotColors = new WeakMap(); this.actorDots = new Map(); this.objectDots = new Map(); this.image = null; this.pixels = null; this.lastFrameKey = null;
     this.sceneryBuffer = this.sceneryContext = this.sceneryImage = this.sceneryPixels = null;
     this.lastAppearance = this.lastSprites = this.lastHud = this.lastHudSprites = this.lastDecorationLayer = null;

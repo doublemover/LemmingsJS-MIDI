@@ -175,9 +175,10 @@ class Lemming extends BaseLogger {
     if (this.countdownAction !== null && this.countdownAction !== undefined) {
       this.countdownAction.draw(gameDisplay, this);
     }
-    if (!this.action.spriteProvider?.drawCosmeticTransition?.(gameDisplay, this)) {
-      this.action.draw(gameDisplay, this);
-    }
+    const previousScope = gameDisplay.beginActorAction?.(this);
+    try {
+      if (!this.action.spriteProvider?.drawCosmeticTransition?.(gameDisplay, this)) this.action.draw(gameDisplay, this);
+    } finally { gameDisplay.endActorAction?.(previousScope); }
   }
 
   renderDebug(gameDisplay) {

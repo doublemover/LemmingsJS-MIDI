@@ -11,3 +11,8 @@
 .studio-world-entities button { text-align: left; }
 .studio-world-entities button[aria-pressed="true"] { border-color: #ffe49a; background: #3a3640; }
 .studio-world-paging { margin-top: 8px; font-size: 11px; }
+.studio-effect-look { border-top: 1px solid #344050; margin-top: 14px; padding-top: 10px; }
+.studio-effect-look summary { cursor: pointer; color: #c6d6e3; font-weight: 600; }
+.studio-effect-look-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.studio-effect-look-controls label { display: grid; gap: 3px; min-width: 0; }
+.studio-effect-look-controls select { max-width: 100%; background: #202e40; color: #dce9f4; }

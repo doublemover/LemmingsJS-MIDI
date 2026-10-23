@@ -85,6 +85,14 @@ describe('ProcGen display resource lifecycle', () => {
     expect(canvases.every(surface => surface.width === 0 && surface.height === 0 && surface.listeners.size === 0)).to.equal(true);
   });
 
+  it('preserves accounted visual profile intent through display loss while retiring effect histories', () => {
+    const { renderer, canvas } = fixture(); renderer.actorEffects.setProfile({ version: 1, enabled: true, bindings: [] }); renderer.render();
+    const profile = renderer.actorEffects.getConfiguration(); canvas.listeners.get('contextlost')({ preventDefault() {} });
+    expect(renderer.actorEffects.getConfiguration()).to.deep.equal(profile); expect(renderer.getDisplayState().estimatedBytes).to.equal(4096);
+    expect(renderer.actorEffects.visible).to.equal(false); renderer.recover(); renderer.render();
+    expect(renderer.actorEffects.getConfiguration()).to.deep.equal(profile); expect(renderer.actorEffects.visible).to.equal(true);
+    renderer.dispose(); expect(renderer.getDisplayState().estimatedBytes).to.equal(0);
+  });
   it('keeps live backing estimates bounded through 100 resize and retirement cycles', () => {
     for (let cycle = 0; cycle < 100; cycle++) {
       const { renderer, canvas, canvases, world } = fixture({ renderBudget: { budgetBytes: 512 * 1024, cacheBytes: 128 * 1024 } });

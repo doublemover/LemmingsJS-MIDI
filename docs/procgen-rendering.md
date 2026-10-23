@@ -203,3 +203,12 @@ Suspension immediately cancels gestures and prevents publication until all owner
 release (at most eight holds). `presentation.getSnapshot()` reports unavailable
 until a coherent visible frame is accepted, with its accepted generation/tick,
 projection, content rect, logical/backing sizes and capabilities.
+
+Camera qualification also compares a completed piecewise-constant target trace
+at 30/60/90/144 Hz and irregular intervals at common timestamps (including target
+boundaries): positions agree within 1e-8 world pixel. The fixture caps a one-second
+stall at one 50 ms interval, verifies paused settling, lane/page/selected-lane
+changes, no-target reentry, DPR logical restore and reduced-motion Follow, with
+unchanged world data. CSS-scaled pointer pan uses the shared content rectangle
+and owning pointer ID. These are deterministic controller checks; before/after
+motion clips and the full browser cadence matrix remain unqualified.

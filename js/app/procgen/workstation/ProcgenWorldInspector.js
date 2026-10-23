@@ -1,3 +1,4 @@
+import { createProcgenActorEffectInspector } from './ProcgenActorEffectInspector.js';
 import { getProcgenPresentationEntity } from '../ProcgenPresentationSnapshot.js';
 
 const PAGE_SIZE = 32;
@@ -23,6 +24,7 @@ export function createProcgenWorldInspector({ renderer, document, window, parent
   paging.append(previous, count, next); section.append(title, summary, role, capability, actions, listTitle, list, paging); parent.append(section);
   let disposed = false, selection = null, snapshot = null, draft = null, page = 0, listKey = '', nearestId = null, cycleState = null;
   const buttons = new Map();
+  const effectInspector = createProcgenActorEffectInspector({ renderer, document, parent: section });
   const cancel = () => { draft?.lease.release(); draft = null; };
   const setText = (element, value) => { if (element.textContent !== value) element.textContent = value; };
   const activeActor = () => selection?.actorId == null || !renderer.actorVisibility?.world ? null : renderer.actorVisibility?.actorById(selection.actorId);
@@ -91,7 +93,7 @@ export function createProcgenWorldInspector({ renderer, document, window, parent
     nearestButton.hidden = !nearestId; nearestButton.disabled = !nearestId;
     if (!current) { revealButton.disabled = true; setText(capability, `${reason || 'World inspection is waiting for a presented frame.'} Inspection only; editing is unavailable.`); }
     else setText(capability, 'Inspection only. Terrain, field and gate editing is unavailable here.');
-    renderList();
+    renderList(); effectInspector?.refresh(selection);
   };
   const cycle = (clientX, clientY, lease = null) => {
     const hits = host.pick(clientX, clientY, lease), signature = hits.map(entity => entity.id).join('|');
@@ -132,7 +134,7 @@ export function createProcgenWorldInspector({ renderer, document, window, parent
   const release = host.subscribe(refresh); renderer.render(false); refresh();
   return { select, clear, reveal, cycle, refresh: () => refresh(), getState: () => Object.freeze({ selection, available: !!snapshot, draft: !!draft, visibleEntities: snapshot?.entities.length || 0, page, nearestId }),
     dispose() {
-      if (disposed) return; disposed = true; cancel(); renderer.world?.soundEvents?.onBatch?.off(terminal); release();
+      if (disposed) return; disposed = true; effectInspector?.dispose(); cancel(); renderer.world?.soundEvents?.onBatch?.off(terminal); release();
       for (const stop of listeners) stop(); listeners.length = 0;
       for (const element of buttons.values()) for (const stop of element.inspectorListeners || []) stop(); buttons.clear();
       renderer.setWorldSelection(null, { render: false }); renderer.inspectionRowAnchor = null; selection = snapshot = cycleState = null;

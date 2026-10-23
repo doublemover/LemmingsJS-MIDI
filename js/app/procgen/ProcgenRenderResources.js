@@ -113,7 +113,7 @@ class ProcgenRenderResources {
     this._retirementReservation(key, entry.bytes);
   }
   clearCaches() { for (const [key, entry] of this.entries) if (entry.cache && !this.reservationsInFlight.has(key)) this.release(key); }
-  clear() { for (const key of this.entries.keys()) this.release(key); }
+  clear({ preserveKinds = [] } = {}) { for (const [key, entry] of this.entries) if (!preserveKinds.includes(entry.kind)) this.release(key); }
   getStats() { return { estimatedBytes: this.bytes + this.unreleasedBytes, cachedBitmapBytes: this.cacheBytes, peakEstimatedBytes: this.peakBytes,
     budgetBytes: this.budgetBytes, cacheBudgetBytes: this.cacheLimit, backingStores: this.entries.size,
     allocations: this.allocations, evictions: this.evictions, failures: this.failures, retirementFailures: this.retirementFailures, unreleasedEstimatedBytes: this.unreleasedBytes }; }
