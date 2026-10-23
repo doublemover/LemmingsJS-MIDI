@@ -1,4 +1,5 @@
 import { selectLocalAudioVoice } from '../../midi/scheduler/LocalAudioVoiceBudget.js';
+import { createNativeOscillatorBackend } from './nativeOscillatorBackend.js';
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const finite = (value, fallback) => Number.isFinite(value) ? value : fallback;
 const ATTACK_SECONDS = 0.008;
@@ -82,6 +83,7 @@ class BrowserNotePreview {
     this._message = this._createContext ? 'Browser preview is off.' : 'Browser audio is not supported.';
     this._voices = new Set();
     this._voicesByToken = new Map();
+    this._semanticVoiceOwners = new Map();
     this._previewPending = [];
     this._previewTimer = null;
     this._voiceSequence = 0;
@@ -179,6 +181,7 @@ class BrowserNotePreview {
     };
     session.api = {
       output: this._createOutput(id), getState, enable, stop, panic: stop,
+      createInstrumentBackend: () => createNativeOscillatorBackend(this, id),
       preview: (notes, options) => this.preview(notes, { ...options, owner: id }),
       setMasterVolume: value => this.setMasterVolume(value),
       setCapture: (capture, context) => this.setCapture(capture, context), inspectRender: () => this.inspectRender(),
@@ -711,6 +714,7 @@ class BrowserNotePreview {
 
   _destroyVoice(voice, reason = 'source-ended') {
     if (!voice || !this._voices.delete(voice)) return;
+    voice.onDestroy?.();
     if (voice.token != null && this._voicesByToken.get(this._tokenKey(voice.token, voice.owner)) === voice) this._voicesByToken.delete(this._tokenKey(voice.token, voice.owner));
     this._observe('synth-end', { ...voice.captureMeta, type: 'noteEnd', voiceId: voice.id, channel: voice.number,
       note: voice.note, audioTime: this._context?.currentTime, scheduledMs: voice.startMs + (voice.end - voice.start) * 1000,

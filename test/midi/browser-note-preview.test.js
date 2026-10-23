@@ -53,6 +53,7 @@ class FakeContext {
   constructor(state = 'running') {
     this.state = state;
     this.currentTime = 2;
+    this.sampleRate = 48000;
     this.destination = {};
     this.oscillators = [];
     this.gains = [];
@@ -114,6 +115,74 @@ const setup = (options = {}, context = new FakeContext()) => {
 };
 
 describe('BrowserNotePreview', function() {
+  it('plays independent same-pitch semantic voices with precise per-voice expression in the shared mix', async () => {
+    const { preview, context } = setup();
+    const game = preview.createSession('game'), backend = game.createInstrumentBackend();
+    const resolution = { status: 'ready', patch: { id: 'native-test', revision: 1, engineId: 'native-oscillator', engineVersion: 1,
+      parameters: { waveform: 2, gain01: 0.8, pan01: 0 }, sampleRefs: [], voicePolicy: { maxVoices: 8 },
+      mix: { gain01: 0.6, pan01: 0 } }, receipt: { patchId: 'native-test', revision: 1 } };
+    const intent = (voiceId, cents = 6000.123) => ({ version: 1, kind: 'begin', voiceId, generation: 1,
+      laneId: 0, pitch: { cents, referenceHz: 440 }, velocity01: 0.7001, expression: {}, role: 'lead', sourceEventIds: ['source:1'] });
+    expect(backend.begin(intent('same'), 96000).reason).to.equal('patch-unprepared');
+    expect((await backend.prepare(resolution)).status).to.equal('ready');
+    expect(backend.begin(intent('same'), 96000).reason).to.equal('audio-not-ready');
+    await game.enable();
+    expect(backend.begin(intent('same'), 96000, 'live').status).to.equal('accepted');
+    expect(backend.begin(intent('same'), 96000, 'cue').status).to.equal('accepted');
+    const secondBackend = game.createInstrumentBackend(); await secondBackend.prepare(resolution);
+    expect(secondBackend.begin(intent('same'), 96000, 'live').reason).to.equal('duplicate-owner-voice');
+    expect(context.oscillators).to.have.length(2);
+    expect(context.oscillators[0].frequency.events[0].value).to.be.closeTo(440 * 2 ** ((6000.123 - 6900) / 1200), 1e-10);
+    expect(backend.update('same', { pitchOffsetCents: 0.001, pressure01: 0.5001, pan01: -0.25 }, 96000, 'cue').status).to.equal('accepted');
+    expect(context.oscillators[1].detune.events.at(-1).value).to.equal(0.001);
+    expect(context.oscillators[0].detune.events.at(-1).value).to.equal(0);
+    expect(backend.end('same', { seconds: 0.05 }, 96000, 'cue').status).to.equal('accepted');
+    expect(backend.renderDiagnostics().activeVoices).to.equal(1);
+    expect(backend.end('same', { seconds: 0.05 }, 96000, 'live').status).to.equal('accepted');
+    expect(backend.renderDiagnostics().activeVoices).to.equal(0);
+    expect(backend.begin(intent('strike'), 96000, 'live').status).to.equal('accepted');
+    expect(backend.end('strike', { mode: 'one-shot', tailSeconds: 0.08, seconds: 0.04 }, 96000, 'live').status).to.equal('accepted');
+    const strike = [...preview._voices].find(voice => voice.playback?.voiceId === 'strike');
+    expect(strike.releaseAt).to.be.closeTo(2.08, 1e-10);
+    backend.dispose(); secondBackend.dispose(); await preview.dispose();
+  });
+
+  it('keeps the prepared native patch after a failed replacement and isolates owner Stop', async () => {
+    const { preview } = setup(), game = preview.createSession('game'), audition = preview.createSession('audition');
+    const backend = game.createInstrumentBackend();
+    const resolution = { status: 'ready', patch: { id: 'native-test', revision: 1, engineId: 'native-oscillator', engineVersion: 1,
+      parameters: { waveform: 1 }, sampleRefs: [], voicePolicy: { maxVoices: 8 }, mix: { gain01: 1, pan01: 0 } },
+    receipt: { patchId: 'native-test', revision: 1 } };
+    expect((await backend.prepare(resolution)).status).to.equal('ready');
+    expect((await backend.prepare({ ...resolution, patch: { ...resolution.patch, parameters: { unsupported: 1 } } })).status).to.equal('rejected');
+    await game.enable(); await audition.enable();
+    expect(backend.begin({ version: 1, kind: 'begin', voiceId: 'a', generation: 1, laneId: 0,
+      pitch: { cents: 6000, referenceHz: 440 }, velocity01: 0.5, expression: {}, sourceEventIds: [] }, 96000).status).to.equal('accepted');
+    expect(audition.output.channels[1].sendNoteOn(60)).to.equal(true);
+    expect(preview._voices.size).to.equal(2);
+    game.stop();
+    expect(backend.renderDiagnostics().activeVoices).to.equal(0);
+    expect(preview._voices.size).to.equal(1);
+    backend.dispose(); await preview.dispose();
+  });
+
+  it('cancels only the selected semantic execution generation and reports unsupported expression', async () => {
+    const { preview } = setup(), game = preview.createSession('game'), backend = game.createInstrumentBackend();
+    const resolution = { status: 'ready', patch: { id: 'native-test', revision: 1, engineId: 'native-oscillator', engineVersion: 1,
+      parameters: {}, sampleRefs: [], voicePolicy: { maxVoices: 8 }, mix: { gain01: 1, pan01: 0 } },
+    receipt: { patchId: 'native-test', revision: 1 } };
+    await backend.prepare(resolution); await game.enable();
+    const intent = voiceId => ({ version: 1, kind: 'begin', voiceId, generation: 1, laneId: 0,
+      pitch: { cents: 6000, referenceHz: 440 }, velocity01: 0.5, expression: {}, sourceEventIds: [] });
+    expect(backend.begin(intent('voice'), 96000, 'live').status).to.equal('accepted');
+    expect(backend.begin(intent('voice'), 96000, 'cue').status).to.equal('accepted');
+    expect(backend.update('voice', { timbre01: 0.5 }, 96000, 'live')).to.include({ status: 'degraded', reason: 'unsupported-expression' });
+    expect(backend.cancelGeneration(1, 'cue')).to.equal(1);
+    expect(backend.renderDiagnostics().activeVoices).to.equal(1);
+    expect(backend.end('voice', { seconds: 0.04 }, 96000, 'live').status).to.equal('accepted');
+    backend.dispose(); await preview.dispose();
+  });
+
   it('coalesces owner unlock requests and cancels replaced requests while another owner is waiting', async () => {
     const context = new FakeContext('suspended'), pending = deferred(); context.resumeResult = pending.promise;
     const { preview } = setup({}, context), game = preview.createSession('game'), audition = preview.createSession('audition');
