@@ -7,6 +7,7 @@ const recordPhysicalWork = (level, actor, { operationKind, phase, cycleOrdinal, 
   const facts = actor.runtime?.physicalFacts;
   if (!facts?.enabled?.(actor)) return;
   facts.emit({ kind: 'TerrainWorkCommitted', actorId: actor.id, laneId: actor.laneIndex ?? null,
+    parentCauseIds: actor._physicalInterventionId ? [actor._physicalInterventionId] : [],
     actionInstanceId: actor._physicalActionInstanceId, workOperationId: `${actor.id}:work:${actor._physicalWorkSerial}`,
     operationOrdinal: actor._physicalWorkSerial, operationKind, phase, cycleOrdinal,
     outcome: outcome || (changedSolidCells || changedAppearanceCells ? 'changed' : 'no-change'),

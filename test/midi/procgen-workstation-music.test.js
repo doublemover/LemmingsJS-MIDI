@@ -1,11 +1,14 @@
 import { expect } from 'chai';
 import { createMidiProject, sanitizeMidiProject, reduceMidiProject } from '../../js/midi/project/MidiProject.js';
 import { PROCGEN_SOUND_COLLECTIONS, PROCGEN_ROLES, resolveProcgenSound } from '../../js/app/procgen/workstation/ProcgenSoundCollections.js';
-import { createProcgenWorkstationProject, createProcgenLane } from '../../js/app/procgen/workstation/ProcgenWorkstationProject.js';
+import { createProcgenWorkstationProject, createProcgenLane as createLane } from '../../js/app/procgen/workstation/ProcgenWorkstationProject.js';
 import { createProcgenPatternEngine, procgenStepNotes } from '../../js/app/procgen/workstation/ProcgenPatternEngine.js';
 
+const complementary = { mode: 'pattern', patternPurpose: 'Authored clocked accompaniment to physical gate and work instruments.' };
+const createProcgenLane = (index = 0, overrides = {}) => createLane(index, { ...complementary, ...overrides });
 const setup = (options = {}) => {
-  let project = createProcgenWorkstationProject(createMidiProject({ enabled: true }), options);
+  const lanes = (options.lanes || Array.from({ length: 8 }, () => ({}))).map(lane => ({ ...complementary, ...lane }));
+  let project = createProcgenWorkstationProject(createMidiProject({ enabled: true }), { ...options, lanes });
   const notes = [], launches = [];
   const engine = createProcgenPatternEngine({ getProject: () => project, emit: (spec, meta) => { notes.push({ spec, meta }); return { status: 'accepted', sinkId: 'test' }; }, onLaunch: value => launches.push(value), now: () => 1234 });
   const edit = action => { project = reduceMidiProject(project, action); };
@@ -42,8 +45,8 @@ describe('Procgen workstation musical domain', function() {
     expect(notes.map(item => [item.meta.laneIndex, item.spec.velocity])).to.deep.equal([[0, 60], [1, 20]]);
     notes.length = 0;
     restored.onGameEvent({ laneIndex: 0, type: 'walk', x: 25, y: 100 });
-    const sound = resolveProcgenSound('crystal', 'lead');
-    expect(notes[0].spec.velocity).to.equal(Math.round(100 * project.procgen.lanes[0].eventAccent * sound.eventResponse.velocity));
+    expect(notes).to.have.length(0);
+    expect(restored.snapshot().lanes['lane-1'].observed.action).to.equal('walk');
     expect(project.automation[0].points).to.have.length(3);
   });
 
@@ -116,7 +119,7 @@ describe('Procgen workstation musical domain', function() {
   it('retains canonical workstation data through normal reducer edits and project round trips', function() {
     const run = setup();
     expect(run.project.procgen.lanes.map(lane => `${lane.family}/${lane.role}`)).to.deep.equal(['crystal/lead', 'bubble/arp', 'dirt/bass', 'rock/percussion', 'fire/drums', 'brick/chords', 'snow/melody', 'pillar/texture']);
-    expect(run.project.procgen.lanes.every(lane => lane.mode === 'hybrid' && lane.patterns.length === 4 && lane.patterns[0].steps.length === 16)).to.equal(true);
+    expect(run.project.procgen.lanes.every(lane => lane.mode === 'pattern' && lane.patternPurpose && lane.patterns.length === 4 && lane.patterns[0].steps.length === 16)).to.equal(true);
     const original = run.project.procgen;
     run.edit({ type: 'transport.set', transport: { bpmBase: 133 } });
     expect(run.project.procgen).to.deep.equal(original);
@@ -160,13 +163,13 @@ describe('Procgen workstation musical domain', function() {
     const restored = sanitizeMidiProject(JSON.parse(JSON.stringify(project)));
     expect(restored.procgen.lanes).to.have.length(1000);
     expect(restored.procgen.lanes[999].id).to.equal('voice-999');
-    expect(restored.procgen.lanes[999].mode).to.equal('hybrid');
+    expect(restored.procgen.lanes[999].mode).to.equal('physical');
   });
 
   it('adds and removes lanes through the reducer and keeps seeds and global edits canonical', function() {
     const run = setup();
     run.edit({ type: 'procgen/addLane', lane: { family: 'snow', role: 'chords' } });
-    expect(run.project.procgen.lanes[8].mode).to.equal('hybrid');
+    expect(run.project.procgen.lanes[8].mode).to.equal('physical');
     expect(run.project.procgen.lanes[8].family).to.equal('snow');
     run.edit({ type: 'procgen/removeLane', laneId: 'lane-9' });
     expect(run.project.procgen.lanes).to.have.length(8);
@@ -225,14 +228,14 @@ describe('Procgen workstation authoritative pattern clock', function() {
     expect(reduceMidiProject(project, { type: 'procgen/launchedBatch', launches: batches[0] })).to.equal(project);
   });
 
-  it('filters game, pattern and hybrid routes and applies event accent gain', function() {
-    for (const mode of ['game', 'pattern', 'hybrid']) {
-      const run = setup({ lanes: [{ ...lane(mode), eventAccent: 0.2 }] });
+  it('keeps physical play outside the complementary pattern clock and never event-advances cells', function() {
+    for (const mode of ['physical', 'pattern']) {
+      const instrument = mode === 'physical' ? createLane(0) : lane();
+      const run = setup({ lanes: [instrument] });
       run.beat(0);
-      expect(run.notes.length).to.equal(mode === 'game' ? 0 : 1);
-      expect(run.engine.onGameEvent({ laneIndex: 0, type: 'build' })).to.equal(true);
-      expect(run.notes.filter(note => note.meta.source === 'game').length).to.equal(mode === 'pattern' ? 0 : 1);
-      if (mode !== 'pattern') expect(run.notes.at(-1).spec.velocity).to.be.lessThan(40);
+      expect(run.notes.length).to.equal(mode === 'physical' ? 0 : 1);
+      expect(run.engine.onGameEvent({ laneIndex: 0, type: 'build' })).to.equal(mode === 'pattern');
+      expect(run.notes.filter(note => note.meta.source === 'game')).to.have.length(0);
     }
   });
 
@@ -342,18 +345,19 @@ describe('Procgen workstation authoritative pattern clock', function() {
   });
 
   it('persists bank selection and suppresses disabled action families while observing them', function() {
-    const run = setup({ lanes: [lane('game')] });
+    const run = setup({ lanes: [lane()] });
     run.edit({ type: 'procgen/lane', laneId: 'lane-1', patch: { bankMSB: 4, bankLSB: 32, eventMask: { build: false, mine: true } } });
     run.engine.onGameEvent({ laneIndex: 0, type: 'lemming-build' });
     expect(run.notes).to.have.length(0);
     expect(run.engine.snapshot().lanes['lane-1'].observed.action).to.equal('lemming-build');
     run.engine.onGameEvent({ laneIndex: 0, type: 'lemming-mine' });
+    run.beat(0);
     expect(run.notes).to.have.length(1);
     expect([run.notes[0].spec.bankMSB, run.notes[0].spec.bankLSB]).to.deep.equal([4, 32]);
   });
 
   it('plays and checkpoints deduplicated beat and observed-distance CC curves', function() {
-    const project = createProcgenWorkstationProject(createMidiProject(), { lanes: [{ ...lane('game'), ccAutomation: [
+    const project = createProcgenWorkstationProject(createMidiProject(), { lanes: [{ ...lane(), ccAutomation: [
       { id: 'beat', controller: 74, length: 4, points: [{ beat: 0, value: 0 }, { beat: 4, value: 100 }] },
       { id: 'distance', controller: 1, axis: 'distance', length: 100, points: [{ beat: 0, value: 10 }, { beat: 100, value: 110 }] }
     ] }] });
@@ -370,7 +374,7 @@ describe('Procgen workstation authoritative pattern clock', function() {
   });
 
   it('retries rejected constant CC values and never resumes rejected notes', function() {
-    const project = createProcgenWorkstationProject(createMidiProject(), { lanes: [{ ...lane('game'), ccAutomation: [
+    const project = createProcgenWorkstationProject(createMidiProject(), { lanes: [{ ...lane(), ccAutomation: [
       { id: 'constant', controller: 74, length: 4, points: [{ beat: 0, value: 64 }] }
     ] }] });
     let admit = false, noteAttempts = 0, ccAttempts = 0, route = 'one';
@@ -391,14 +395,15 @@ describe('Procgen workstation authoritative pattern clock', function() {
     expect(ccAttempts).to.equal(2);
     expect(engine.snapshot().lanes['lane-1'].cc['constant:null:1:74']).to.equal(64);
     engine.onGameEvent({ laneIndex: 0, type: 'builder-step' });
+    engine.onBeat({ beat: 0.25, timestamp: 30, bpm: 120 });
     expect(engine.snapshot().active).to.have.length(1);
     route = 'two';
-    engine.onBeat({ beat: 2 / 24, timestamp: 40, bpm: 120 });
+    engine.onBeat({ beat: 7 / 24, timestamp: 40, bpm: 120 });
     expect(ccAttempts).to.equal(3);
   });
 
   it('treats missing, untyped, and throwing sink responses as rejected', function() {
-    const project = createProcgenWorkstationProject(createMidiProject(), { lanes: [lane('game')] });
+    const project = createProcgenWorkstationProject(createMidiProject(), { lanes: [lane()] });
     for (const emit of [undefined, () => 1, () => { throw new Error('sink gone'); }]) {
       const engine = createProcgenPatternEngine({ getProject: () => project, emit });
       engine.onBeat({ beat: 0, timestamp: 0, bpm: 120 });
@@ -422,7 +427,7 @@ describe('Procgen workstation authoritative pattern clock', function() {
   });
 
   it('preserves legacy span source/event counters and actual event distances through a checkpoint', function() {
-    const run = setup({ lanes: [{ ...lane('game'), eventAccent: 1 }] });
+    const run = setup({ lanes: [{ ...lane(), eventAccent: 1 }] });
     run.edit({ type: 'automation.add', automation: { id: 'distance-events', target: 'velocity', min: 30, max: 30,
       span: { domain: 'distance', start: 100, duration: 50, condition: { sfxId: 42, unit: 'event', every: 2, phase: 0 } } } });
     run.engine.onGameEvent({ laneIndex: 0, type: 'walk', sfxId: 42, x: 120 });

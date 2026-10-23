@@ -1,0 +1,168 @@
+# Physical music contracts
+
+The ProcGen project schema is version 2 with `playModel: "physical-v1"`.
+`physicalGraph` contains versioned causal instruments. New projects contain a
+builder work instrument, ordinary wall percussion and a positive crossing at
+world x=40. Physical lanes contain no pattern cells. A complementary pattern
+lane must declare `mode: "pattern"` and a nonempty `patternPurpose`.
+
+Version 1 and unversioned saved projects require explicit conversion.
+`convertLegacyProcgenWorkstationProject(project, {strategy: "physical-default"})`
+returns a candidate project and a report of removed enabled steps and changed
+musical behavior. It does not mutate or save the original. A current project
+missing its graph is invalid; import never silently reconstructs that graph.
+
+## Committed source facts
+
+`ProcgenSoundEventBus` stages facts while the sequential simulation runs. After
+actor processing, lane counts, manual/stall action changes, terrain bookkeeping
+and support observations complete, it publishes one immutable batch and its
+matching observation snapshot. `causalSequence` records mutation order. Callback
+arrival time and interpolated crossing positions cannot change that order.
+
+`getCompletedPhysicalSnapshot()` returns the same frozen view attached to the
+batch. `retainCompletedPhysicalSnapshots()` requests this view when no musical
+batch listener exists and returns an idempotent release function. Actor rows
+contain primitive historical identity, action instance, position, direction,
+spawn metadata and terminal reason; they hold no live actor references. An old
+view remains readable after the next commit. Renderer visibility indexes remain
+independent. This view does not advertise renderer bounds, a spatial query API,
+or an asynchronous buffer lease.
+
+Batch listeners that throw are quarantined until deregistered. Peers still see
+the batch and later ticks. Output callbacks cannot reenter `step`, change an
+action, remove/reset/disable an actor or call the terrain mutation methods during
+delivery. They may enqueue a future intervention. Direct arbitrary writes to
+public actor fields are outside this command contract. A throwing physical
+processor aborts publication and blocks further stepping until checkpoint
+recovery; no rollback or completed tick is invented.
+
+Actor action resets receive new action-instance IDs, including same-action
+resets. Work facts preserve attempted/no-change/protected outcomes, actual edit
+counts and sequential revisions. Wall reversal without displacement remains a
+contact and a direction change. Blocker participant records share one contact
+root. Lifecycle ends are captured before removal clears actor identity. Overflow
+marks source coverage incomplete and the causal engine releases held voices.
+
+## Observed support spans
+
+`ContactSpanBegan`, `ContactSpanUpdated` and `ContactSpanEnded` describe qualified
+support-cell observations for walking, blocking, building, bashing, digging,
+mining and shrugging. They are sampled against completed terrain. A span carries
+its actor/action identity, world-pixel anchor, observed tick and surface revision.
+Consecutive observations establish discrete continuity; pressure, normal and
+terrain component identity remain unknown.
+
+A stationary supported blocker can hold a mapped damper while producing no new
+strike. Action reset, actor termination, support loss, missing observation
+coverage and removal of the previous anchor end the span. Invalidated anchors
+may begin a new explicitly identified span on supported terrain. Unsupported
+climbing/wall/flight contact mechanics never inherit a held touch from their last
+strike. Contact sound generation and release smoothing belong to the backend.
+
+## Travel articulation
+
+`TravelAccumulator` is the single travel state owner for an instrument. Its key
+contains world, generation, actor, instrument, lifetime scope and scope instance.
+`actorJourney` continues across ordinary action changes; `actionInstance` resets
+at an action exit; `contactSpan` requires explicitly qualified contact coverage.
+Action instance remains provenance in every scope.
+
+The graph's optional `articulation` descriptor declares:
+
+- `spacingPixels` from 0.25 to 1,000,000;
+- `metric`: `endpoint-chord`, `segment-path`, or `axis-projection`;
+- `orientation`: `unsigned`, `signedX`, or `signedY`;
+- `phaseMode`: `cumulative`, `direction-reversing`, or `contact-stroke`;
+- `lifetimeScope`, and optional `sustain` for a held phase voice.
+
+Unsigned length and signed axis projection are stored separately. Facing right
+does not give vertical travel an invented sign. Exact segment-path requirements
+are refused when the captured source only contains endpoints. Builder step-up
+publishes its accepted coordinate writes separately: (40,80)→(40,79)→(41,79)→
+(42,79) has three pixels of algorithmic path evidence, distinct from the endpoint
+chord of √5. Other uninstrumented action movement retains endpoint-chord evidence.
+Neither representation claims continuous collision geometry.
+
+Distance thresholds produce bounded causal attacks. Eight pixels at spacing four
+produce two attacks; idle ticks produce none. Crossing positions and fractions
+use declared linear segment interpolation, while source onset time remains tick
+precise. No fractional simulation time is fabricated for coordinate writes with
+unknown sub-tick timing. Held phase voices receive high-resolution distance and
+phase expression updates. A teleport, restored discontinuity or unexpected
+position gap advances a discontinuity epoch and produces no catch-up attacks.
+Near-zero spacing and excessive crossing fanout are rejected before changing
+accumulated state. Mapping revision changes deliberately reset accumulation.
+
+Accumulator checkpoints preserve scope, origin, previous position, path/signed/
+contact distance, direction/discontinuity epochs and ordinal. Contact travel is
+currently admitted only when a motion fact itself carries `contactSpanId` and
+qualified `contactObserved` coverage. A support span alone does not prove that
+all movement in the tick stayed in contact.
+
+## Keyed probability
+
+`CausalRandom` version `fnv1a32-avalanche-v1` hashes a canonical JSON tuple of
+seed, algorithm, namespace, mapping, generation, stable cause and draw purpose.
+Version 1 hashes UTF-16 code units, then performs the declared 32-bit avalanche.
+There is no shared mutable random cursor. Terrain, population, physical-route
+and musical-response namespaces are distinct.
+
+Each physical instrument may declare `probability01`. Its decision cites a real
+source event, and optional travel attacks include their crossing ordinal. Muting
+another instrument or changing output delivery cannot consume these draws.
+Bounded diagnostics retain threshold, exact draw identity and outcome. Explicit
+physical interventions use the physical-route namespace and still run ordinary
+eligibility checks. The uniformity fixture is a deterministic smoke bound, not a
+claim about musical quality or security randomness.
+
+## Intervention boundaries
+
+`world.enqueueIntervention(command)` admits versioned inputs with stable command
+IDs, generation/actor targets, requested time, apply tick, origin, optional
+expected state revision and transaction ID. Supported commands are
+`assign-worker`, `place-blocker`, `release-blocker` and whole-world
+`set-release-policy`. Arbitrary terrain edits, pickup movement, abilities and
+mixed-adapter atomic transactions are not exposed by this adapter.
+
+Commands apply before actor advancement. The versioned ordering is apply tick,
+origin priority, then lexicographic stable command ID. Manual and live-controller
+origins have equal priority; layer/ensemble precede conductor, then auto-assist
+requests. Accepted commands claim an actor or release-policy resource for that
+boundary. Receipts identify conflicts, stale targets/revisions, rejections and
+keyed probability decisions. A stale actor never selects a nearby replacement.
+Existing automatic assistance executes after queued commands through its existing
+eligibility checks; migrating every automatic proposal into the queue remains
+separate work.
+
+Worker claim preparation does not acquire the claim. The real action must accept
+before claim insertion and success statistics. An adapter that rejects or throws
+without mutation leaves no new claim or success. An adapter that mutates then
+rejects aborts the physical tick instead of advertising a safe rollback. Successful
+action and later work facts carry command ancestry; committed command facts list
+the event IDs produced by application.
+
+Optional `coalesceKey` on release-policy samples admits same-boundary last-value
+semantics. Adjacent samples with matching target, transaction, apply tick, origin
+and expected revision coalesce; each replaced command gets an explicit
+`superseded` receipt. The declared error at simulation boundaries is zero. A
+discrete command or different boundary breaks coalescing. This is not a promise
+to reconstruct unobserved sub-tick knob curves. Pending inputs, bounded receipts
+and identity counters use the existing world checkpoint graph. Cancellation,
+generation reset and disposal cancel pending requests.
+
+## Integration and remaining capture boundaries
+
+The workstation observes committed batches with `PhysicalScoreClock.observe`,
+then `CausalMusicEngine.processBatch`. The engine fans immutable begins, updates
+and ends to `CausalIntentDispatcher`; sinks own clocks, admission, precision loss
+and delivery evidence. Old SFX remain available for presentation but never
+advance physical-play pattern cells. Engine checkpoints include active voices
+and travel state; the physical score clock persists its piecewise timeline.
+
+The command receipt buffer, causal trace and output diagnostics are bounded
+inspection state. They are not a durable causal take journal, a complete #1092
+recording store, proof of deterministic re-performance, or acoustic evidence.
+Durable capture, complete reinterpretation requirements, per-sink outcomes and
+portable-time export still require their owning integrations. Support/phase
+capture cannot certify mechanics it did not observe.

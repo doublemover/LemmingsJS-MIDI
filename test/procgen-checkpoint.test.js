@@ -33,6 +33,40 @@ describe('ProcGen world checkpoints', function() {
     }
     finally { world.dispose(); }
   });
+
+  it('restores physical event identities and completed source JSON across continued simulation', () => {
+    const original = new ProcgenLaneWorld({ masks, seed: 42, assists: false });
+    const restored = new ProcgenLaneWorld({ masks, seed: 42, assists: false });
+    const first = [], second = [];
+    original.soundEvents.onBatch.on(batch => first.push(batch));
+    restored.soundEvents.onBatch.on(batch => second.push(batch));
+    try {
+      for (let tick = 0; tick < 40; tick++) original.step(200);
+      const saved = JSON.parse(JSON.stringify(captureProcgenCheckpoint(original)));
+      for (let tick = 0; tick < 7; tick++) restored.step(1000);
+      restoreProcgenCheckpoint(restored, saved);
+      expect(restored.soundEvents.snapshotIdentity()).to.deep.equal(saved.physicalIdentity);
+      first.length = 0; second.length = 0;
+      for (let tick = 0; tick < 1000; tick++) { original.step(400); restored.step(4000); }
+      expect(JSON.stringify(second)).to.equal(JSON.stringify(first));
+      expect(restored.soundEvents.snapshotIdentity()).to.deep.equal(original.soundEvents.snapshotIdentity());
+    } finally { original.dispose(); restored.dispose(); }
+  });
+
+  it('refuses malformed event identity before mutation and labels legacy identity as unavailable', () => {
+    const world = new ProcgenLaneWorld({ masks, assists: false });
+    try {
+      const saved = captureProcgenCheckpoint(world);
+      expect(() => restoreProcgenCheckpoint(world, { ...saved, physicalIdentity: { ...saved.physicalIdentity, causalSequence: NaN } }))
+        .to.throw('physical event identity');
+      expect(world.soundEvents.identityCoverage).to.equal('complete');
+      delete saved.physicalIdentity;
+      restoreProcgenCheckpoint(world, saved);
+      expect(world.soundEvents.identityCoverage).to.equal('legacy-unavailable');
+      world._failedTick = true;
+      expect(() => captureProcgenCheckpoint(world)).to.throw('incomplete physical boundary');
+    } finally { world.dispose(); }
+  });
   it('preserves floating sentinels through JSON and rejects ambiguous legacy numbers', async () => {
     const original = await make(), restored = await make();
     try {

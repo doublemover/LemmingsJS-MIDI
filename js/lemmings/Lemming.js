@@ -23,6 +23,7 @@ class Lemming extends BaseLogger {
    * Reinitialize this instance so managers can reuse pooled objects.
    */
   reset(x = 0, y = 0, id) {
+    if (this.runtime?.physicalFacts?.canMutate?.(this) === false) throw new Error('Physical actor reset requires a future command boundary.');
     if (this.id != null && !this._physicalTerminated) this.endPhysicalLifecycle('pooled-reset');
     const pendingPhysicalTransitions = this._physicalPendingTransitions;
     this.action?.spriteProvider?.resetActor?.(this);
@@ -44,12 +45,15 @@ class Lemming extends BaseLogger {
     this.id = id;
     this._physicalActionSerial = 0;
     this._physicalCommandSerial = 0;
+    this._physicalInterventionId = null;
     this._physicalWorkSerial = 0;
     this._physicalActionInstanceId = null;
     this._physicalActionPublished = false;
     this._physicalPendingTransitions = pendingPhysicalTransitions || null;
     this._physicalTerminated = false;
     this._physicalDirectionFactTick = -1;
+    this._physicalContactSpan = null;
+    this._physicalContactSerial = 0;
   }
 
   getDirection() {
@@ -80,6 +84,8 @@ class Lemming extends BaseLogger {
   }
 
   setAction(action) {
+    if (this.runtime?.physicalFacts?.canMutate?.(this) === false) throw new Error('Physical action mutations require a future command boundary.');
+    this.endPhysicalContactSpan('action-change');
     const previousAction = this.action;
     const previousFrameIndex = this.frameIndex;
     previousAction?.spriteProvider?.resetActor?.(this);
@@ -94,6 +100,7 @@ class Lemming extends BaseLogger {
       this._physicalActionInstanceId = action ? `${this.id}:action:${++this._physicalActionSerial}` : null;
       this._physicalActionPublished = !!action && this._queuePhysicalTransition({ kind: 'ActionEntered', actorId: this.id,
         laneId: this.laneIndex ?? null, action: action.actionName || null, actionInstanceId: this._physicalActionInstanceId,
+        parentCauseIds: this._physicalInterventionId ? [this._physicalInterventionId] : [],
         positionAfter: { x: this.x, y: this.y } });
     }
   }
@@ -120,6 +127,7 @@ class Lemming extends BaseLogger {
 
   endPhysicalLifecycle(reason = 'removed') {
     if (this.id == null || this._physicalTerminated) return;
+    this.endPhysicalContactSpan(reason);
     if (this.runtime?.physicalFacts?.enabled?.(this) || this.runtime?.physicalFacts?.observing?.(this)) {
       if (this.action && this._physicalActionPublished && this._physicalActionInstanceId) this._queuePhysicalTransition({ kind: 'ActionExited', actorId: this.id,
         laneId: this.laneIndex ?? null, action: this.action.actionName || null, actionInstanceId: this._physicalActionInstanceId,
@@ -130,6 +138,16 @@ class Lemming extends BaseLogger {
     this._physicalActionInstanceId = null;
     this._physicalActionPublished = false;
     this._physicalTerminated = true;
+  }
+
+  endPhysicalContactSpan(reason) {
+    const span = this._physicalContactSpan;
+    if (!span) return;
+    this._queuePhysicalTransition({ kind: 'ContactSpanEnded', spanId: span.spanId, actorId: this.id,
+      laneId: this.laneIndex ?? null, actionInstanceId: span.actionInstanceId,
+      anchor: span.anchor, surfaceRevision: span.surfaceRevision, observedTick: span.lastObservedTick,
+      reason, precision: 'tick' });
+    this._physicalContactSpan = null;
   }
 
   setCountDown(action) {
@@ -206,10 +224,12 @@ class Lemming extends BaseLogger {
   }
 
   disable() {
+    if (this.runtime?.physicalFacts?.canMutate?.(this) === false) throw new Error('Physical actor mutation requires a future command boundary.');
     this.disabled = true;
   }
 
   remove() {
+    if (this.runtime?.physicalFacts?.canMutate?.(this) === false) throw new Error('Physical actor removal requires a future command boundary.');
     this.endPhysicalLifecycle(this.terminalReason || 'removed');
     this.action?.spriteProvider?.resetActor?.(this);
     this.action = null;

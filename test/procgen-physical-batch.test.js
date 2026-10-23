@@ -246,5 +246,53 @@ describe('completed physical event batches', () => {
     expect(finalBatch.batchId).not.to.equal(batches[0].batchId);
     expect(finalBatch.facts.filter(fact => fact.kind === 'ActorTerminated').map(fact => fact.actorId)).to.deep.equal(actorIds);
     expect(finalBatch.snapshot.actors).to.have.length(0);
+    expect(finalBatch.snapshot.lanes.every(lane => lane.alive === 0 && lane.buildingCount === 0)).to.equal(true);
+    expect(finalBatch.snapshotRevision).not.to.equal(batches[0].snapshotRevision);
+  });
+
+  it('quarantines a failing batch consumer while peers receive later committed ticks', () => {
+    const world = new ProcgenLaneWorld({ masks, assists: false }), batches = [];
+    let calls = 0;
+    const broken = () => { calls++; throw new Error('bad reducer'); };
+    world.soundEvents.onBatch.on(broken);
+    world.soundEvents.onBatch.on(batch => batches.push(batch));
+    world.step(); world.step();
+    expect(calls).to.equal(1);
+    expect(batches.map(batch => batch.tick)).to.deep.equal([1, 2]);
+    expect(world.soundEvents.deliveryErrors).to.equal(1);
+    world.soundEvents.onBatch.off(broken);
+    expect(world.soundEvents.onBatch.quarantined.size).to.equal(0);
+    world.dispose();
+  });
+
+  it('shares one immutable completed snapshot and retains historical observations by reference', () => {
+    const world = new ProcgenLaneWorld({ masks, assists: false }), batches = [];
+    const release = world.retainCompletedPhysicalSnapshots();
+    world.soundEvents.onBatch.on(batch => batches.push(batch));
+    world.step();
+    const first = world.getCompletedPhysicalSnapshot(), position = first.actors[0].x;
+    expect(first).to.equal(batches[0].snapshot);
+    world.step();
+    expect(first.actors[0].x).to.equal(position);
+    expect(first).not.to.equal(world.getCompletedPhysicalSnapshot());
+    expect(Object.isFrozen(first.actors[0])).to.equal(true);
+    release(); release();
+    expect(world._snapshotRetainers).to.equal(0);
+    world.dispose();
+  });
+
+  it('commits post-nuke action counts and rejects output-callback terrain mutation', () => {
+    const world = new ProcgenLaneWorld({ masks, assists: false }), batches = [];
+    world.actors[0].setAction(world.actions[State.BUILDING]);
+    world.nukeLane(0);
+    world.soundEvents.onBatch.on(batch => {
+      batches.push(batch);
+      expect(() => world.setGroundAt(50, 50)).to.throw('future command boundary');
+    });
+    world.step();
+    expect(batches[0].snapshot.actors[0].action).to.equal('oh-no');
+    expect(batches[0].snapshot.lanes[0].buildingCount).to.equal(0);
+    expect(world.soundEvents.deliveryErrors).to.equal(0);
+    world.dispose();
   });
 });

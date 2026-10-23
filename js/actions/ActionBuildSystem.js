@@ -4,6 +4,7 @@ import { LemmingStateType } from '../lemmings/LemmingStateType.js';
 import { SpriteTypes } from '../lemmings/SpriteTypes.js';
 import { getRuntimeSoundEvents } from '../game/GameRuntime.js';
 import { recordPhysicalWork } from './PhysicalWorkFacts.js';
+import { recordPhysicalMotion } from './PhysicalMotionFacts.js';
 
 class ActionBuildSystem extends ActionBaseSystem {
   constructor(sprites) {
@@ -53,7 +54,9 @@ class ActionBuildSystem extends ActionBaseSystem {
       return LemmingStateType.NO_STATE_TYPE;
     }
     if (lem.frameIndex === 0) {
+      const initialY = lem.y;
       lem.y--;
+      recordPhysicalMotion(level, lem, lem.x, initialY);
       for (let i = 0; i < 2; i++) {
         const nextX = lem.x + (lem.lookRight ? 1 : -1);
         if (!inHorizontalBounds(nextX)) {
@@ -65,7 +68,9 @@ class ActionBuildSystem extends ActionBaseSystem {
           lem.lookRight = !lem.lookRight;
           return LemmingStateType.NO_STATE_TYPE;
         }
+        const previousX = lem.x;
         lem.x = nextX;
+        recordPhysicalMotion(level, lem, previousX, lem.y);
         if (level.hasGroundAt(lem.x, lem.y - 1)) {
           lem.lookRight = !lem.lookRight;
           return LemmingStateType.WALKING;

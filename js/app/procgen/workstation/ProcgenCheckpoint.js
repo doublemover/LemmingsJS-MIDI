@@ -2,6 +2,7 @@ import { Lemming } from '../../../lemmings/Lemming.js';
 import { Trigger } from '../../../level/Trigger.js';
 import { Animation } from '../../../render/Animation.js';
 import { MapObject } from '../../../level/MapObject.js';
+import { validatePhysicalEventIdentity } from '../ProcgenSoundEventBus.js';
 
 const VERSION = 2;
 const OMIT = new Set(['log', 'gameResources', 'render', 'characterParticles', '_collisionSlots', '_collisionIndices', '_laneChunk', '_laneChunkIndex', '_laneEdits', '_laneEditIndex', '_editCache', '_editIndices', '_edgeWallCache', 'challengeCache']);
@@ -91,7 +92,7 @@ function createGraph(world) {
     else if (value instanceof Animation) entry = { type: 'Animation', props: props(value, new Set(['frames', '_lastFrame', 'frameCount'])), lastFrameIndex: value.frames.indexOf(value._lastFrame) };
     else if (value instanceof Trigger) entry = { type: 'Trigger', props: props(value), disabledUntilTick: value.disabledUntilTick };
     else if (value instanceof Lemming) entry = { type: 'Lemming', props: props(value) };
-    else if (Array.isArray(value)) entry = { type: 'Array', values: value.map(encode), props: props(value, new Set(Object.keys(value).filter(k => /^\d+$/.test(k)))) };
+    else if (Array.isArray(value)) entry = { type: 'Array', values: Array.from(value, encode), props: props(value, new Set(Object.keys(value).filter(k => /^\d+$/.test(k)))) };
     else {
       if (![Object.prototype, null].includes(Object.getPrototypeOf(value))) throw new Error('Unsupported checkpoint state: ' + value.constructor?.name);
       entry = { type: 'Object', props: props(value) };
@@ -104,12 +105,16 @@ function createGraph(world) {
   return { nodes, owners };
 }
 
-const captureProcgenCheckpoint = world => ({ version: VERSION, generator: 'procgen-workstation-1', laneCount: world.laneCount, laneHeight: world.laneHeight,
-  seed: world.seed, assets: assetIdentity(world), graph: createGraph(world),
-  terrainAssignments: world.terrain?.exportAssignments?.() || null,
-  terrainSettings: (world.terrain?.themes || [{ terrain: world.terrain }]).map(({ terrain }) => terrain ? { workstation: terrain.workstation, hazardSpacing: terrain.hazardSpacing, laneHeight: terrain.height, sharedSpanBudget: terrain.sharedSpanBudget } : null),
-  growth: world.terrainGrowth?.exportState?.() || null, scenery: world.scenery?.snapshot?.() || null,
-  clock: { speedFactor: world.timer.speedFactor, eventTimeMs: world.eventTimeMs, simulationTimeMs: world.simulationTimeMs } });
+const captureProcgenCheckpoint = world => {
+  if (world._stepping || world._failedTick) throw new Error('Cannot checkpoint an incomplete physical boundary.');
+  return { version: VERSION, generator: 'procgen-workstation-1', laneCount: world.laneCount, laneHeight: world.laneHeight,
+    seed: world.seed, assets: assetIdentity(world), graph: createGraph(world),
+    terrainAssignments: world.terrain?.exportAssignments?.() || null,
+    terrainSettings: (world.terrain?.themes || [{ terrain: world.terrain }]).map(({ terrain }) => terrain ? { workstation: terrain.workstation, hazardSpacing: terrain.hazardSpacing, laneHeight: terrain.height, sharedSpanBudget: terrain.sharedSpanBudget } : null),
+    growth: world.terrainGrowth?.exportState?.() || null, scenery: world.scenery?.snapshot?.() || null,
+    physicalIdentity: world.soundEvents.snapshotIdentity(),
+    clock: { speedFactor: world.timer.speedFactor, eventTimeMs: world.eventTimeMs, simulationTimeMs: world.simulationTimeMs } };
+};
 
 function validateCheckpointGraph(graph, bound, version) {
   const { nodes, owners } = graph || {};
@@ -180,11 +185,13 @@ function validateCheckpointGraph(graph, bound, version) {
 }
 
 function restoreProcgenCheckpoint(world, saved) {
+  if (world._stepping || world.soundEvents._tick) throw new Error('Cannot restore a checkpoint inside a physical tick.');
   if (![1, VERSION].includes(saved?.version) || saved.generator !== 'procgen-workstation-1' || saved.laneCount !== world.laneCount || saved.laneHeight !== world.laneHeight || saved.seed !== world.seed) throw new Error('Incompatible world checkpoint.');
   if (JSON.stringify(saved.assets) !== JSON.stringify(assetIdentity(world))) throw new Error('Checkpoint terrain assets do not match the installed collection.');
   if (!saved.clock || !Number.isFinite(saved.clock.speedFactor) || saved.clock.speedFactor < 0 ||
       saved.clock.eventTimeMs != null && (!Number.isFinite(saved.clock.eventTimeMs) || saved.clock.eventTimeMs < 0) ||
       saved.clock.simulationTimeMs != null && (!Number.isFinite(saved.clock.simulationTimeMs) || saved.clock.simulationTimeMs < 0)) throw new Error('Invalid checkpoint clock.');
+  if (saved.physicalIdentity != null) validatePhysicalEventIdentity(saved.physicalIdentity);
   const { nodes, owners } = saved.graph || {};
   const bound = bindings(world);
   validateCheckpointGraph(saved.graph, bound, saved.version);
@@ -249,6 +256,8 @@ function restoreProcgenCheckpoint(world, saved) {
     if (entries) { Map.prototype.clear.call(target); for (const [key, value] of entries) Map.prototype.set.call(target, key, value); }
   }
   world._authoritativeActors = new WeakSet(world.actors);
+  world.soundEvents.restoreIdentity(saved.physicalIdentity ?? null);
+  world._completedPhysicalSnapshot = null;
   world.timer.speedFactor = saved.clock.speedFactor; world.eventTimeMs = saved.clock.eventTimeMs;
   world.simulationTimeMs = saved.clock.simulationTimeMs ?? world.tickIndex * world.timer.TIME_PER_FRAME_MS;
   const themes = world.terrain?.themes || [{ terrain: world.terrain }];

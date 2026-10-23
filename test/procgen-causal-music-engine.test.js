@@ -9,7 +9,7 @@ const instrument = (id, sourceKind, extra = {}) => ({ id, sourceKind, pitchCents
 const graph = instruments => ({ version: 1, revision: 1, instruments });
 const batch = (tick, facts, generation = 1, completeness = { status: 'complete', dropped: 0 }) => ({
   version: 1, worldId: 'scene', generation, tick, batchId: `scene:${generation}:${tick}:0`, completeness,
-  facts: facts.map((fact, index) => ({ causalSequence: index + 1, eventId: `scene:${generation}:${tick}:${index + 1}`,
+  facts: facts.map((fact, index) => ({ causalSequence: tick * 10000 + index + 1, eventId: `scene:${generation}:${tick}:${index + 1}`,
     subTick: 0, precision: 'tick', ...fact }))
 });
 
@@ -139,5 +139,16 @@ describe('causal musical intent engine', () => {
     expect(() => engine.processBatch(batch(2, []))).to.throw('without a new revision');
     current = original;
     expect(engine.snapshot()).to.deep.equal(saved);
+  });
+
+  it('rejects stale batches after bounded duplicate history eviction and restores its source cursor', () => {
+    const current = graph([]), engine = createCausalMusicEngine({ getGraph: () => current });
+    for (let tick = 1; tick <= 1030; tick++) engine.processBatch(batch(tick, []));
+    expect(() => engine.processBatch(batch(1, []))).to.throw('Stale physical batch');
+    const saved = engine.snapshot(), restored = createCausalMusicEngine({ getGraph: () => current });
+    restored.restore(saved);
+    expect(restored.processBatch(batch(1030, []))).to.have.length(0);
+    expect(() => restored.processBatch(batch(1, []))).to.throw('Stale physical batch');
+    expect(restored.snapshot()).to.deep.equal(saved);
   });
 });

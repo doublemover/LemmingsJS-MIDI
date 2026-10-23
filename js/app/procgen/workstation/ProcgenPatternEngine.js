@@ -205,7 +205,7 @@ const createProcgenPatternEngine = ({ getProject, emit, emitCC, getSinkKey = () 
           if (onLaunchBatch) launches.push(launch); else onLaunch(launch);
         }
       }
-      if (lane.mode === 'game') continue;
+      if (lane.mode !== 'pattern') continue;
       const pattern = lane.patterns[current.slot];
       if (!pattern) continue;
       const absolute = Math.floor((beat - current.origin) * 4 * pattern.rate + 1e-6);
@@ -229,6 +229,9 @@ const createProcgenPatternEngine = ({ getProject, emit, emitCC, getSinkKey = () 
     const laneIndex = Number.isInteger(event?.laneIndex) ? event.laneIndex : 0;
     const lane = project.procgen.lanes[laneIndex];
     if (!lane) return true;
+    // Physical play is consumed by CausalMusicEngine. It can never select the
+    // next pattern cell, even if a caller accidentally forwards a legacy SFX.
+    if (lane.mode !== 'pattern') return false;
     const current = laneState(lane);
     current.events++;
     const source = project.sources?.find(item => event.triggerType != null ? ['trigger', 'midiFlag'].includes(item.kind) && item.sourceKey === String(event.triggerType) : item.kind === 'sfx' && item.sourceKey === String(event.sfxId));

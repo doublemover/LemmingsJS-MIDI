@@ -1,11 +1,20 @@
 import { PROCGEN_ROLES, PROCGEN_SOUND_COLLECTIONS, PROCGEN_DEFAULT_PAIRS, resolveProcgenSound } from './ProcgenSoundCollections.js';
+import { validateCausalInstrumentGraph } from './CausalMusicEngine.js';
 
 const number = (value, fallback, min, max) => Math.max(min, Math.min(max, Number.isFinite(Number(value)) ? Number(value) : fallback));
 const integer = (value, fallback, min, max) => Math.round(number(value, fallback, min, max));
 const string = (value, fallback) => typeof value === 'string' && value.trim() ? value.trim().slice(0, 128) : fallback;
-const MODES = ['game', 'pattern', 'hybrid'];
+const MODES = ['physical', 'pattern'];
+const PROCGEN_PROJECT_VERSION = 2;
+const PROCGEN_PLAY_MODEL = 'physical-v1';
 const CONDITIONS = ['event', 'pass', 'bar', 'terrain', 'action'];
 const MAX_PROCGEN_LANES = 1024;
+const createDefaultPhysicalGraph = (seed = 777) => validateCausalInstrumentGraph({ version: 1, revision: 1, seed,
+  instruments: [
+    { id: 'brick-work', sourceKind: 'TerrainWorkCommitted', operationKind: 'build', pitchCents: 6000, velocity01: 0.75, role: 'percussion', route: 'local' },
+    { id: 'wall-contact', sourceKind: 'ContactResolved', causeKind: 'wall', pitchCents: 6700, velocity01: 0.65, role: 'percussion', route: 'local' },
+    { id: 'first-crossing', sourceKind: 'MotionCommitted', gateX: 40, crossingDirection: 'positive', pitchCents: 7200, velocity01: 0.65, role: 'crossing', route: 'local' }
+  ] });
 const sanitizeProcgenCcAutomation = (value = []) => (Array.isArray(value) ? value : []).slice(0, 16).map((curve, index) => {
   const length = number(curve.length, 4, 0.25, 65536);
   return { id: string(curve.id, `cc-${index + 1}`), controller: integer(curve.controller, 74, 0, 127), enabled: curve.enabled !== false,
@@ -43,13 +52,19 @@ const sanitizePattern = (value, family, role, slot) => {
     steps: Array.from({ length }, (_, index) => sanitizeProcgenStep(value?.steps?.[index] ?? base.steps[index % 16])) };
 };
 const createProcgenLane = (index = 0, overrides = {}) => {
+  if (overrides.mode != null && !MODES.includes(overrides.mode)) throw new Error('Legacy Game/hybrid semantics require explicit physical conversion.');
+  const mode = overrides.mode ?? 'physical';
+  if (mode === 'pattern' && !(typeof overrides.patternPurpose === 'string' && overrides.patternPurpose.trim())) {
+    throw new Error('A complementary pattern instrument needs an explicit physical purpose.');
+  }
+  if (mode === 'physical' && overrides.patterns?.length) throw new Error('Physical lanes do not contain pattern cells. Author a complementary pattern instrument explicitly.');
   const pair = PROCGEN_DEFAULT_PAIRS[index % PROCGEN_DEFAULT_PAIRS.length];
   const family = PROCGEN_SOUND_COLLECTIONS.some(item => item.id === overrides.family) ? overrides.family : pair[0];
   const role = PROCGEN_ROLES.includes(overrides.role) ? overrides.role : pair[1];
   const sound = resolveProcgenSound(family, role, overrides.patch);
   const melodic = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16];
   return { id: string(overrides.id, `lane-${index + 1}`), name: string(overrides.name, `Lane ${index + 1}`), family, role, patch: sound.id,
-    mode: MODES.includes(overrides.mode) ? overrides.mode : 'hybrid',
+    mode, patternPurpose: mode === 'pattern' ? string(overrides.patternPurpose, '') : null,
     channel: role === 'drums' ? 10 : melodic.includes(overrides.channel) ? overrides.channel : melodic[index % melodic.length],
     outputId: overrides.outputId == null ? null : String(overrides.outputId),
     bankMSB: overrides.bankMSB == null ? null : integer(overrides.bankMSB, 0, 0, 127),
@@ -60,22 +75,54 @@ const createProcgenLane = (index = 0, overrides = {}) => {
     eventAccent: number(overrides.eventAccent, 0.65, 0, 2), pan: number(overrides.pan, 0, -127, 127),
     activeSlot: integer(overrides.activeSlot, 0, 0, 3), queuedSlot: overrides.queuedSlot == null ? null : integer(overrides.queuedSlot, 0, 0, 3),
     launchSerial: integer(overrides.launchSerial, 0, 0, Number.MAX_SAFE_INTEGER),
-    patterns: Array.from({ length: 4 }, (_, slot) => sanitizePattern(overrides.patterns?.[slot], family, role, slot)) };
+    patterns: mode === 'pattern' ? Array.from({ length: 4 }, (_, slot) => sanitizePattern(overrides.patterns?.[slot], family, role, slot)) : [] };
 };
 const sanitizeProcgenWorkstation = (value = {}) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid procgen project.');
+  if (value?.version !== PROCGEN_PROJECT_VERSION && Object.keys(value || {}).length) {
+    throw new Error('Legacy procgen project requires explicit physical conversion to version 2.');
+  }
+  if (value?.version === PROCGEN_PROJECT_VERSION && value.playModel !== PROCGEN_PLAY_MODEL) throw new Error('Unsupported procgen physical play model.');
   const lanes = (Array.isArray(value?.lanes) && value.lanes.length ? value.lanes : Array.from({ length: 8 }, () => ({}))).slice(0, MAX_PROCGEN_LANES);
   const ids = new Set();
-  return { version: 1, seed: integer(value?.seed, 777, 0, 0xffffffff), lanes: lanes.map((lane, index) => {
+  const seed = integer(value?.seed, 777, 0, 0xffffffff);
+  const physicalGraph = value.physicalGraph == null ? createDefaultPhysicalGraph(seed) : validateCausalInstrumentGraph(value.physicalGraph);
+  if (value.version === PROCGEN_PROJECT_VERSION && value.physicalGraph == null) throw new Error('A physical project requires its instrument graph.');
+  return { version: PROCGEN_PROJECT_VERSION, playModel: PROCGEN_PLAY_MODEL, seed, physicalGraph, lanes: lanes.map((lane, index) => {
     const clean = createProcgenLane(index, lane || {});
     while (ids.has(clean.id)) clean.id += '-copy';
     ids.add(clean.id); return clean;
   }) };
 };
-const createProcgenWorkstationProject = (project = {}, overrides = {}) => ({ ...project,
-  procgen: sanitizeProcgenWorkstation({ ...project.procgen, ...overrides }) });
+const createProcgenWorkstationProject = (project = {}, overrides = {}) => {
+  const previous = project.procgen ? sanitizeProcgenWorkstation(project.procgen) : null;
+  const seed = integer(overrides.seed ?? previous?.seed, 777, 0, 0xffffffff);
+  return { ...project, procgen: sanitizeProcgenWorkstation({ version: PROCGEN_PROJECT_VERSION, playModel: PROCGEN_PLAY_MODEL,
+    physicalGraph: createDefaultPhysicalGraph(seed), ...previous, ...overrides, seed }) };
+};
+const convertLegacyProcgenWorkstationProject = (project, { strategy } = {}) => {
+  if (strategy !== 'physical-default' || !project?.procgen || ![undefined, 1].includes(project.procgen.version)) {
+    throw new Error('Choose the explicit physical-default conversion for a legacy procgen project.');
+  }
+  const old = project.procgen, lanes = (Array.isArray(old.lanes) && old.lanes.length ? old.lanes : [{}]).slice(0, MAX_PROCGEN_LANES);
+  const discardedEnabledSteps = lanes.reduce((sum, lane) => sum + (Array.isArray(lane.patterns) ? lane.patterns.slice(0, 4) : [])
+    .reduce((count, pattern) => count + (Array.isArray(pattern.steps) ? pattern.steps.slice(0, 64) : []).filter(step => step.enabled === true).length, 0), 0);
+  const converted = createProcgenWorkstationProject({ ...project, procgen: undefined }, { seed: old.seed,
+    lanes: lanes.map(lane => ({ ...lane, mode: 'physical', patterns: [], patternPurpose: null })) });
+  return Object.freeze({ project: converted, report: Object.freeze({ version: 1, strategy, fromVersion: old.version ?? 'unversioned',
+    toVersion: PROCGEN_PROJECT_VERSION, discardedEnabledSteps, laneCount: converted.procgen.lanes.length,
+    changes: Object.freeze(['Physical facts now generate intents directly.', 'Legacy event-advanced phrases were removed.',
+      'Builder work, ordinary wall contacts and the x=40 gate use the declared default mapping.']) }) });
+};
 const sameValue = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 const reduceCanonicalProcgenProject = (project, action) => {
   const procgen = project.procgen, lanes = procgen.lanes;
+  if (action.type === 'procgen/physicalGraph') {
+    const graph = validateCausalInstrumentGraph(action.graph);
+    if (sameValue(graph, procgen.physicalGraph)) return project;
+    if (graph.revision <= procgen.physicalGraph.revision) throw new Error('Physical mapping changes require a newer graph revision.');
+    return { ...project, procgen: { ...procgen, physicalGraph: graph } };
+  }
   if (action.type === 'procgen/seed') {
     const seed = integer(action.seed, procgen.seed, 0, 0xffffffff);
     return seed === procgen.seed ? project : { ...project, procgen: { ...procgen, seed } };
@@ -143,6 +190,7 @@ const reduceCanonicalProcgenProject = (project, action) => {
 };
 const reduceProcgenWorkstationProject = (project, action = {}) => {
   const procgen = sanitizeProcgenWorkstation(project.procgen);
+  if (action.type === 'procgen/physicalGraph') return reduceCanonicalProcgenProject({ ...project, procgen }, action);
   let lanes = procgen.lanes;
   const target = lane => lane.id === action.laneId;
   if (action.type === 'procgen/lane') lanes = lanes.map(lane => target(lane) ? { ...lane, ...action.patch, id: lane.id } : lane);
@@ -159,4 +207,6 @@ const reduceProcgenWorkstationProject = (project, action = {}) => {
   if (action.type === 'procgen/global') return { ...project, global: { ...project.global, ...action.patch }, procgen };
   return { ...project, procgen: sanitizeProcgenWorkstation({ ...procgen, lanes, ...(action.type === 'procgen/seed' ? { seed: action.seed } : {}) }) };
 };
-export { MAX_PROCGEN_LANES, createProcgenLane, createProcgenPattern, createProcgenWorkstationProject, sanitizeProcgenStep, sanitizeProcgenWorkstation, sanitizeProcgenCcAutomation, reduceProcgenWorkstationProject, reduceCanonicalProcgenProject };
+export { MAX_PROCGEN_LANES, PROCGEN_PROJECT_VERSION, PROCGEN_PLAY_MODEL, createDefaultPhysicalGraph, convertLegacyProcgenWorkstationProject,
+  createProcgenLane, createProcgenPattern, createProcgenWorkstationProject, sanitizeProcgenStep, sanitizeProcgenWorkstation,
+  sanitizeProcgenCcAutomation, reduceProcgenWorkstationProject, reduceCanonicalProcgenProject };
