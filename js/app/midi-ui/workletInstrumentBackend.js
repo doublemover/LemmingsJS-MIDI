@@ -1,4 +1,5 @@
 import { createAudioCommandQueue } from './AudioCommandQueue.js';
+import { createInstrumentExecutionLifecycle, isManagedExecutionEpoch } from './InstrumentExecutionLifecycle.js';
 import { createAudioDisplayTelemetry } from './AudioDisplayTelemetry.js';
 import { PROTOCOL, WIDTH, CAPACITY, MAX_VOICES, RECEIPT_WIDTH, BEGIN, UPDATE, END, CANCEL, LEASE,
   SCHEDULED, APPLIED, REJECTED, ENDED, CANCELLED, FAULTED, DISPLAY_PROTOCOL, DISPLAY_WIDTH, DISPLAY_VOICES } from './worklet/OwnedSineProcessor.js';
@@ -27,6 +28,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   let ownerStopped = false;
   let runtimeResourceLease = null;
   let pumpQueued = false;
+  let lifecycle = null;
   const voices = new Map(), epochs = new Map(), leases = new Map(), cancelled = new Set(), inFlight = new Map(), traces = [];
   const pendingInitializations = new Set();
   const kernelQueued = new Set();
@@ -35,6 +37,11 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   const display = createAudioDisplayTelemetry({ owner, getContext: () => context || preview.getAudioContext(), getContextEpoch: () => preview._contextEpoch ?? 0,
     getVoices: () => voices.values(), resources: preview._audioResources, send: message => { if (!node || disposed) return false; node.port.postMessage(message); return true; } });
   let queue = null;
+  const epochSettled = epoch => {
+    if (ownerStopped && node || slots.some(voice => voice?.semanticEpoch === epoch) || queue?.some(item => item.epoch === epoch)) return false;
+    for (const item of inFlight.values()) if (item.epoch === epoch) return false;
+    return true;
+  };
   const frameNow = () => context && context === preview.getAudioContext() ? Math.ceil(context.currentTime * context.sampleRate) : null;
   const record = value => {
     if (traceLimit) { if (traces.length === traceLimit) { traces.shift(); truncated++; } traces.push(Object.freeze({ owner,
@@ -49,6 +56,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     try { node?.port.postMessage({ type: 'panic', protocol: PROTOCOL }); } catch { /* The processor may have failed. */ }
     for (const voice of voices.values()) preview._destroyVoice(voice, 'kernel-fault');
     voices.clear(); slots.fill(null); node?.disconnect(); node?.port.close(); node = null;
+    lifecycle?.invalidate();
     runtimeResourceLease?.release(); runtimeResourceLease = null;
     record({ status: 'faulted', reason, stage: 'runtime', appliedFrame: null });
   };
@@ -154,6 +162,8 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     const candidateContext = preview.getAudioContext();
     if (!candidateContext?.audioWorklet?.addModule) return reject('audio-worklet-unavailable');
     if (context && context !== candidateContext) { onOwnerStop(); node?.disconnect(); node?.port.close(); node = null; ready = false;
+      for (const voice of voices.values()) preview._destroyVoice(voice, 'context-replaced');
+      slots.fill(null); lifecycle?.invalidate();
       runtimeResourceLease?.release(); runtimeResourceLease = null; }
     const revision = ++preparing, generation = preview._generation, ownerGeneration = preview._sessions.get(owner)?.generation;
     let candidate = null, timer = null, cancelInitialization = null, candidateResourceLease = null;
@@ -209,7 +219,8 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   };
   const epochToken = epoch => {
     if (epochs.has(epoch)) return epochs.get(epoch);
-    if (epochs.size >= 64) return null;
+    for (const existing of epochs.keys()) if (epochSettled(existing)) epochs.delete(existing);
+    if (epochs.size >= 64 || nextEpoch === Number.MAX_SAFE_INTEGER) return null;
     const token = ++nextEpoch; epochs.set(epoch, token); return token;
   };
   const renewExecutionLease = (generation, executionEpoch, validUntilFrame) => {
@@ -218,7 +229,8 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (!Number.isSafeInteger(generation) || generation < 0 || typeof executionEpoch !== 'string' || !executionEpoch ||
         !Number.isSafeInteger(validUntilFrame) || validUntilFrame <= now || validUntilFrame - now > context.sampleRate * 120) return reject('invalid-execution-lease');
     const key = keyFor(executionEpoch, generation);
-    if (cancelled.has(key) || cancellationHistoryFull) return reject('generation-cancelled');
+    if (cancelled.has(key)) return reject('generation-cancelled');
+    if (cancellationHistoryFull && !isManagedExecutionEpoch(executionEpoch)) return reject('execution-registration-required');
     const prior = leases.get(key); if (prior && validUntilFrame <= prior) return reject('stale-execution-lease');
     if (!prior && leases.size >= 64) return reject('execution-lease-budget');
     leases.set(key, validUntilFrame);
@@ -245,10 +257,11 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     const frequency = (intent.pitch.referenceHz ?? 440) * 2 ** ((intent.pitch.cents - 6900 + offset) / 1200);
     if (!finite(frequency, 0.1, context.sampleRate / 2 - 1)) return reject('pitch-out-of-range', intent.voiceId);
     const key = keyFor(executionEpoch, intent.voiceId), generationKey = keyFor(executionEpoch, intent.generation);
-    if (cancelled.has(generationKey) || cancellationHistoryFull) return reject('generation-cancelled', intent.voiceId);
+    if (cancelled.has(generationKey)) return reject('generation-cancelled', intent.voiceId);
+    if (cancellationHistoryFull && !isManagedExecutionEpoch(executionEpoch)) return reject('execution-registration-required', intent.voiceId);
     if (voices.has(key) || preview._semanticVoiceOwners.has(JSON.stringify([owner, executionEpoch, intent.voiceId]))) return reject('duplicate-owner-voice', intent.voiceId);
-    const slot = slots.findIndex(voice => voice == null), token = epochToken(executionEpoch);
-    if (slot < 0 || token == null || voices.size >= patch.maxVoices || preview._renderVoiceCount() >= preview._maxScheduledVoices ||
+    const slot = slots.findIndex(voice => voice == null);
+    if (slot < 0 || voices.size >= patch.maxVoices || preview._renderVoiceCount() >= preview._maxScheduledVoices ||
         preview._renderVoiceCount([...preview._voices].filter(voice => !voice.stolen && (voice.renderCost > 1 || voice.start <= targetFrame / context.sampleRate &&
           voice.releaseAt > targetFrame / context.sampleRate))) >= preview._maxVoices) return reject('shared-voice-budget', intent.voiceId);
     if (slotTokens[slot] === 0xffffffff) return reject('voice-slot-generation-exhausted', intent.voiceId);
@@ -257,6 +270,8 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     let resourceLease = null;
     try { resourceLease = preview._audioResources?.reserveWorkletVoice(owner, intent.generation) || null; }
     catch { return reject('audio-resource-budget', intent.voiceId); }
+    const token = epochToken(executionEpoch);
+    if (token == null) { resourceLease?.release(); return reject('execution-identity-capacity', intent.voiceId); }
     const voice = { owner, number: 0, voiceId: intent.voiceId, semanticGeneration: intent.generation, semanticEpoch: executionEpoch,
       resourceLease,
       epochToken: token, slot, slotToken: ++slotTokens[slot], id: ++preview._voiceSequence, start: targetFrame / context.sampleRate,
@@ -287,7 +302,11 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     const result = command(BEGIN, targetFrame, voice, { 6: frequency, 7: voice.peak, 8: pressure, 9: Math.max(-1, Math.min(1, pan + patch.pan01)),
       10: Math.round(parameters.attackSeconds * context.sampleRate), 11: Math.round(parameters.decaySeconds * context.sampleRate),
       12: parameters.sustain01, 13: Math.round(parameters.releaseSeconds * context.sampleRate), 16: endFrame });
-    if (result.status === 'rejected') { resourceLease?.release(); return result; }
+    if (result.status === 'rejected') {
+      resourceLease?.release();
+      if (![...slots].some(existing => existing?.semanticEpoch === executionEpoch)) epochs.delete(executionEpoch);
+      return result;
+    }
     voices.set(key, voice); slots[slot] = voice; preview._voices.add(voice);
     display.admit(voice, intent); display.configure();
     preview._semanticVoiceOwners.set(JSON.stringify([owner, executionEpoch, intent.voiceId]), voice); voice.submitted = inFlight.has(result.sequence);
@@ -325,11 +344,14 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   };
   const cancelGenerationWithReceipt = (generation, executionEpoch = 'live') => {
     const key = keyFor(executionEpoch, generation);
-    if (cancelled.size < 1024) cancelled.add(key); else cancellationHistoryFull = true;
+    if (!isManagedExecutionEpoch(executionEpoch) && !cancelled.has(key)) {
+      if (cancelled.size < 1024) cancelled.add(key); else cancellationHistoryFull = true;
+    }
     leases.delete(key);
     const removed = queue?.invalidate(item => item.generation === generation && item.epoch === executionEpoch) || 0;
     counters.producerCancelled += removed;
-    const outcome = ready ? command(CANCEL, frameNow(), null, { epochToken: epochs.get(executionEpoch) || 0, epoch: executionEpoch, generation }) : null;
+    const token = epochs.get(executionEpoch);
+    const outcome = ready && token != null ? command(CANCEL, frameNow(), null, { epochToken: token, epoch: executionEpoch, generation }) : null;
     let count = 0;
     for (const voice of voices.values()) if (voice.semanticGeneration === generation && voice.semanticEpoch === executionEpoch) {
       if (!voice.submitted) { voice.kernelEnded = true; preview._destroyVoice(voice, 'generation-cancel-before-submission'); slots[voice.slot] = null; count++; continue; }
@@ -360,8 +382,13 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     runtimeResourceLease?.release(); runtimeResourceLease = null;
     display.dispose();
   };
-  return Object.freeze({ capabilities, runtime, prepare, begin, update, end, renewExecutionLease, cancelGenerationWithReceipt,
+  lifecycle = createInstrumentExecutionLifecycle({ capabilities, runtime, prepare, begin, update, end, renewExecutionLease, cancelGenerationWithReceipt,
     cancelGeneration: (generation, epoch) => cancelGenerationWithReceipt(generation, epoch).count,
     setDisplayContext: display.setContext, observeDisplaySamples: display.observe, getDisplaySamples: display.inspect,
-    onOwnerStop, renderDiagnostics, dispose });
+    onOwnerStop, renderDiagnostics, dispose }, {
+    getContext: () => preview.getAudioContext(), getGeneration: () => preview._sessions.get(owner)?.generation ?? preview._generation,
+    isSettled: epochSettled,
+    forget: (epoch, generation) => { epochs.delete(epoch); leases.delete(keyFor(epoch, generation)); }
+  });
+  return lifecycle.api;
 }

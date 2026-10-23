@@ -512,3 +512,34 @@ keeps a stopped owner disarmed until a new playing physical batch requests it.
 Context creation and resume still begin in the original gesture call. Regression
 fixtures for synchronous notification and stop-during-enable are added; execution
 is deferred with the current backlog implementation pass.
+
+## Execution ownership and retirement
+
+All three owned instrument backends expose `registerExecution({ executionEpoch,
+generation })`, returning an opaque `execution` handle. Pass that handle to
+begin/update/end, lease renewal and generation cancellation. A handle belongs to
+one backend and one generation. Copying its fields does not copy its authority.
+`retireExecution(handle)` closes producer admission immediately and requests
+cancellation; it is idempotent. Its state remains `retiring` until producer work,
+submitted work, release tails and acknowledgments have settled. Retired handles
+remain invalid through weak ownership records, without occupying the live map.
+There are at most 64 simultaneous active/retiring registered executions. Numeric
+kernel identities increase monotonically and are never recycled. Faulted kernel
+connections are terminally disconnected before their identities are released.
+Stop and context/owner replacement invalidate handles independently of display
+subscriptions. The dispatcher registers and retires handles at physical playback
+generation, stop/restart, disposal and backend-incarnation boundaries.
+
+Diagnostics expose current active/retiring identities, their peak, completed
+retirements and the incarnation. Capacity pressure reports
+`execution-identity-capacity`; unrelated voice-budget rejection does not consume
+a kernel identity. Callers should retire finished executions and wait for their
+tail acknowledgment before retrying capacity admission.
+
+Legacy string calls remain supported for bounded external fixtures. Arbitrary
+strings cannot safely renew their authority after cancellation, so that path
+retains bounded tombstones and reports `execution-registration-required` when
+its history fills. It cannot block registered executions. New sustained playback
+must use opaque handles. The internal epoch namespace is rejected at the public
+boundary, including strings copied from old receipts. Added lifecycle regression
+fixtures remain unexecuted during the backlog development pass.

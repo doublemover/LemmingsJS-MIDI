@@ -33,7 +33,7 @@ export function createAudioCommandQueue({ capacity = 512, terminalReserve = 64, 
     counters.invalidated += removed; return removed;
   };
   const clear = () => invalidate(() => true);
-  return { enqueue, drainThrough, invalidate, clear,
+  return { enqueue, drainThrough, invalidate, clear, some: predicate => commands.some(predicate),
     firstFrame: () => commands[0]?.frame ?? null,
     diagnostics: () => Object.freeze({ ...counters, queued: commands.length, capacity, terminalReserve, maxHorizonFrames }) };
 }

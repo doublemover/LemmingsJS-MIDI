@@ -22,13 +22,26 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
     if (!routes.has(sink.route)) routes.set(sink.route, []);
     routes.get(sink.route).push(sink);
   }
-  const history = [];
+  const history = [], executions = new Map();
   let disposed = false;
   const record = receipt => {
     const sealed = Object.freeze(receipt);
     if (historyLimit > 0) { history.push(sealed); if (history.length > historyLimit) history.shift(); }
     try { onReceipt(sealed); } catch { /* Diagnostics cannot change admission. */ }
     return sealed;
+  };
+  const executionFor = (sink, epoch, generation) => {
+    if (typeof sink.backend.registerExecution !== 'function') return { execution: epoch };
+    let current = executions.get(sink.id);
+    const incarnation = sink.backend.executionIncarnation?.() ?? 0;
+    if (current && (current.epoch !== epoch || current.generation !== generation || !current.closed && current.incarnation !== incarnation)) {
+      sink.backend.retireExecution(current.execution); executions.delete(sink.id); current = null;
+    }
+    if (current) return current.closed ? { status: 'rejected', reason: 'execution-retired' } : current;
+    const registered = sink.backend.registerExecution({ executionEpoch: epoch, generation });
+    if (registered.status !== 'accepted') return registered;
+    current = { epoch, generation, execution: registered.execution, incarnation, closed: false };
+    executions.set(sink.id, current); return current;
   };
   const dispatch = (intents, batch) => {
     if (disposed) return Object.freeze([]);
@@ -41,7 +54,7 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
           voiceId: intent?.voiceId ?? null, sourceEventIds: Object.freeze(Array.isArray(intent?.sourceEventIds) ? [...intent.sourceEventIds] : []),
           sinkId: sink?.id ?? intent?.route ?? null, executionEpoch: epoch };
         if (!epoch) { receipts.push(record({ ...base, status: 'rejected', stage: 'none', reason: 'execution-epoch-unavailable' })); continue; }
-        if (intent?.version !== 1 || typeof intent.intentId !== 'string' || !intent.intentId ||
+        if (intent?.version !== 1 || intent.generation !== batch.generation || typeof intent.intentId !== 'string' || !intent.intentId ||
             typeof intent.voiceId !== 'string' || !intent.voiceId || !Array.isArray(intent.sourceEventIds)) {
           receipts.push(record({ ...base, status: 'rejected', stage: 'none', reason: 'invalid-intent' })); continue;
         }
@@ -65,11 +78,13 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
         }
         let outcome;
         try {
-          if (intent.kind === 'begin') outcome = sink.backend.begin(intent, frame, epoch);
-          else if (intent.kind === 'update') outcome = sink.backend.update(intent.voiceId, intent.expression, frame, epoch);
+          const identity = executionFor(sink, epoch, intent.generation);
+          if (!identity.execution) outcome = identity;
+          else if (intent.kind === 'begin') outcome = sink.backend.begin(intent, frame, identity.execution);
+          else if (intent.kind === 'update') outcome = sink.backend.update(intent.voiceId, intent.expression, frame, identity.execution);
           else if (intent.kind === 'end') outcome = sink.backend.end(intent.voiceId, intent.terminationReason === 'one-shot'
             ? { mode: 'one-shot', tailSeconds: oneShotTailSeconds, seconds: releaseSeconds }
-            : { seconds: releaseSeconds }, frame, epoch);
+            : { seconds: releaseSeconds }, frame, identity.execution);
           else outcome = { status: 'rejected', reason: 'unsupported-intent-kind' };
         } catch { outcome = { status: 'rejected', reason: 'sink-exception' }; }
         const status = ['accepted', 'rejected', 'degraded'].includes(outcome?.status) ? outcome.status : 'rejected';
@@ -82,11 +97,24 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
   };
   const cancelGeneration = (generation, epoch = executionEpoch()) => {
     for (const sink of sinks) {
-      try { sink.backend.cancelGeneration?.(generation, String(epoch)); } catch { /* One sink cannot prevent other cleanup. */ }
+      try {
+        const current = executions.get(sink.id);
+        if (current?.epoch === epoch && current.generation === generation) {
+          current.closed = true; sink.backend.cancelGeneration?.(generation, current.execution);
+          sink.backend.retireExecution?.(current.execution);
+        } else if (typeof sink.backend.registerExecution !== 'function') sink.backend.cancelGeneration?.(generation, String(epoch));
+      } catch { /* One sink cannot prevent other cleanup. */ }
     }
   };
   const diagnostics = () => Object.freeze({ disposed, receiptCount: history.length, receipts: Object.freeze([...history]) });
-  const dispose = () => { disposed = true; history.length = 0; };
+  const dispose = () => {
+    if (disposed) return; disposed = true;
+    for (const sink of sinks) {
+      const current = executions.get(sink.id);
+      if (current) sink.backend.retireExecution?.(current.execution);
+    }
+    executions.clear(); history.length = 0;
+  };
   return { dispatch, cancelGeneration, diagnostics, dispose };
 };
 

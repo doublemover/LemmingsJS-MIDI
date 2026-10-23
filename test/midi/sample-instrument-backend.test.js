@@ -75,6 +75,23 @@ describe('Owned native sample regions', () => {
     expect(backend.renderDiagnostics({ includeVoices: true }).voices[0]).to.include({ playheadFrame: null, rateEvidence: 'modeled-native-k-rate' });
   });
 
+  for (const engine of ['sample', 'oscillator']) it(`reuses ${engine} execution capacity past 1024 cancellations and rejects retired handles`, async () => {
+    const { backend: sample, session, context } = await setup();
+    const backend = engine === 'sample' ? sample : session.createInstrumentBackend({ gateMode: 'owned' });
+    if (engine === 'oscillator') await backend.prepare(nativePatch);
+    let oldest;
+    for (let index = 0; index < 1100; index++) {
+      const { execution } = backend.registerExecution({ executionEpoch: 'take', generation: 1 }); oldest ??= execution;
+      expect(backend.renewExecutionLease(1, execution, 480000).status).to.equal('accepted');
+      expect(backend.begin(intent(), 480, execution).status).to.equal('accepted');
+      backend.cancelGeneration(1, execution);
+      expect(backend.renderDiagnostics().executions).to.include({ active: 0, retiring: 0 });
+    }
+    expect(backend.begin(intent(), 480, oldest).reason).to.equal('execution-retired');
+    expect(backend.renderDiagnostics().executions).to.include({ retired: 1100, peak: 1 });
+    expect(context.sources.every(source => source.disconnected)).to.equal(true);
+  });
+
   it('changes pitch and pressure on the existing source without retriggering phase or changing ADSR', async () => {
     const { backend, preview, context, selections } = await setup();
     backend.begin(intent(), 480, 'take'); const voice = [...preview._voices][0], envelope = [...voice.gain.gain.events];

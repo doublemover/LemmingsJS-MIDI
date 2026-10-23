@@ -149,6 +149,57 @@ const setupHost = () => {
 };
 
 describe('Owned worklet host lifecycle', () => {
+  it('retires more than 1024 executions without consuming lifetime identity capacity', async () => {
+    const { backend, nodes, patch, intent } = setupHost(); await backend.prepare(patch);
+    let oldest;
+    for (let index = 0; index < 1100; index++) {
+      const { execution } = backend.registerExecution({ executionEpoch: 'reusable-label', generation: 1 });
+      oldest ??= execution;
+      expect(backend.begin(intent('same'), 48000, execution).status).to.equal('accepted');
+      backend.cancelGeneration(1, execution); await Promise.resolve(); nodes[0].render(1);
+      expect(backend.renderDiagnostics().executions).to.include({ active: 0, retiring: 0 });
+    }
+    expect(backend.begin(intent('stale'), 48000, oldest).reason).to.equal('execution-retired');
+    expect(backend.update('same', {}, 48000, oldest).reason).to.equal('execution-retired');
+    expect(backend.end('same', {}, 48000, oldest).reason).to.equal('execution-retired');
+    expect(backend.renderDiagnostics().executions).to.include({ retired: 1100, peak: 1 });
+    backend.dispose();
+  });
+
+  it('holds retiring identities through kernel cancellation and release-tail acknowledgment', async () => {
+    const { backend, nodes, patch, intent, context } = setupHost(); await backend.prepare(patch);
+    const handles = Array.from({ length: 64 }, (_, index) => backend.registerExecution({ executionEpoch: `run-${index}`, generation: 1 }).execution);
+    expect(backend.registerExecution({ executionEpoch: 'overflow', generation: 1 }).reason).to.equal('execution-identity-capacity');
+    backend.begin(intent('tail'), 100, handles[0]); await Promise.resolve(); nodes[0].render(128);
+    context.currentTime = 128 / 48000; backend.retireExecution(handles[0]); await Promise.resolve();
+    expect(backend.renderDiagnostics().executions.retiring).to.equal(1);
+    nodes[0].render(128, 128);
+    expect(backend.renderDiagnostics().executions.retiring).to.equal(1);
+    nodes[0].render(256, 256); context.currentTime = 512 / 48000;
+    expect(backend.registerExecution({ executionEpoch: 'replacement', generation: 1 }).status).to.equal('accepted');
+    expect(backend.begin(intent('tail'), 1000, handles[0]).reason).to.equal('execution-retired');
+    backend.dispose();
+  });
+
+  it('does not spend numeric epoch slots on unrelated rejected voice admissions', async () => {
+    const { backend, patch, intent, preview } = setupHost(); await backend.prepare(patch);
+    const blockers = Array.from({ length: 32 }, () => ({ start: 0, releaseAt: 8, renderCost: 2 }));
+    for (const voice of blockers) preview._voices.add(voice);
+    for (let index = 0; index < 100; index++) expect(backend.begin(intent('budget'), 480, `rejected-${index}`).reason).to.equal('shared-voice-budget');
+    for (const voice of blockers) preview._voices.delete(voice);
+    expect(backend.begin(intent('admitted'), 480, 'fresh').status).to.equal('accepted'); backend.dispose();
+  });
+
+  it('fences a faulted incarnation while allowing its replacement to register the same label', async () => {
+    const { backend, nodes, patch, intent } = setupHost(); await backend.prepare(patch);
+    const old = backend.registerExecution({ executionEpoch: 'live', generation: 1 }).execution;
+    backend.begin(intent('same'), 100, old); nodes[0].onprocessorerror(); await backend.prepare(patch);
+    const next = backend.registerExecution({ executionEpoch: 'live', generation: 1 }).execution;
+    expect(backend.begin(intent('same'), 100, old).reason).to.equal('execution-retired');
+    expect(backend.begin(intent('same'), 100, next).status).to.equal('accepted');
+    backend.cancelGeneration(1, old); expect(backend.renderDiagnostics().activeVoices).to.equal(1); backend.dispose();
+  });
+
   it('counts release layers reserved by another local backend before admitting a worklet source', async () => {
     const { backend, patch, intent, preview } = setupHost(); await backend.prepare(patch);
     for (let n = 0; n < 32; n++) preview._voices.add({ start: 0, releaseAt: 8, renderCost: 2 });

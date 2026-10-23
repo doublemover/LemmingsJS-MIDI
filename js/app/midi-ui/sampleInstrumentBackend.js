@@ -1,4 +1,5 @@
 import { createSmoothedAudioParameter } from './SmoothedAudioParameter.js';
+import { createInstrumentExecutionLifecycle, isManagedExecutionEpoch } from './InstrumentExecutionLifecycle.js';
 
 const plain = value => value != null && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
 const finite = (value, min, max) => Number.isFinite(value) && value >= min && value <= max;
@@ -136,7 +137,8 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     if (disposed || !integer(generation, 0, Number.MAX_SAFE_INTEGER) || !text(executionEpoch) || until == null ||
         !preview._ownerReady(owner) || until <= now || until - now > 120) return reject('invalid-execution-lease');
     const key = generationKey(generation, executionEpoch);
-    if (cancelled.has(key) || cancellationHistoryFull) return reject('generation-cancelled');
+    if (cancelled.has(key)) return reject('generation-cancelled');
+    if (cancellationHistoryFull && !isManagedExecutionEpoch(executionEpoch)) return reject('execution-registration-required');
     for (const [id, value] of leases) if (value.until <= now || value.context !== preview._context || value.ownerGeneration !== preview._sessions.get(owner)?.generation) leases.delete(id);
     if (leases.get(key)?.until >= until || !leases.has(key) && leases.size >= 64) return reject('stale-or-excessive-execution-lease');
     if ([...voices.values()].some(voice => voice.semanticGeneration === generation && voice.semanticEpoch === executionEpoch && !voice.released && voice.releaseAt <= now)) return reject('execution-lease-too-late');
@@ -157,7 +159,8 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
         !finite(intent.velocity01, 0, 1) || !finite(intent.pitch?.cents, -24000, 24000) || !finite(intent.pitch?.referenceHz ?? 440, 0.1, 20000) ||
         start == null || start < context.currentTime - 1 / context.sampleRate || start - context.currentTime > preview._maxNoteSeconds || !validExpression(expression) ||
         intent.sourceEventIds != null && (!Array.isArray(intent.sourceEventIds) || intent.sourceEventIds.length > 8192 || intent.sourceEventIds.some(id => !text(id)))) return reject('invalid-or-late-intent', intent?.voiceId);
-    if (cancelled.has(generationKey(intent.generation, executionEpoch)) || cancellationHistoryFull) return reject('generation-cancelled', intent.voiceId);
+    if (cancelled.has(generationKey(intent.generation, executionEpoch))) return reject('generation-cancelled', intent.voiceId);
+    if (cancellationHistoryFull && !isManagedExecutionEpoch(executionEpoch)) return reject('execution-registration-required', intent.voiceId);
     const identity = keyFor(executionEpoch, intent.voiceId), sharedIdentity = sharedKey(executionEpoch, intent.voiceId);
     if (voices.has(identity) || preview._semanticVoiceOwners.has(sharedIdentity)) return reject('duplicate-owner-voice', intent.voiceId);
     const lease = leases.get(generationKey(intent.generation, executionEpoch));
@@ -343,7 +346,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
   const cancelGenerationWithReceipt = (generation, executionEpoch = 'live') => {
     if (!integer(generation, 0, Number.MAX_SAFE_INTEGER) || !text(executionEpoch)) return reject('invalid-generation');
     const key = generationKey(generation, executionEpoch), frontierFrame = preview._context ? Math.ceil(preview._context.currentTime * preview._context.sampleRate) : null;
-    if (!cancelled.has(key)) { if (cancelled.size < 1024) cancelled.add(key); else cancellationHistoryFull = true; }
+    if (!isManagedExecutionEpoch(executionEpoch) && !cancelled.has(key)) { if (cancelled.size < 1024) cancelled.add(key); else cancellationHistoryFull = true; }
     const outcomes = [];
     for (const voice of voices.values()) if (voice.semanticGeneration === generation && voice.semanticEpoch === executionEpoch) {
       const beforeOnset = voice.start > (preview._context?.currentTime ?? 0); preview._destroyVoice(voice, beforeOnset ? 'generation-cancel-before-onset' : 'generation-cancel');
@@ -371,7 +374,11 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     for (const voice of voices.values()) preview._destroyVoice(voice, 'sample-backend-disposed');
     releasePrepared(prepared); prepared = null;
   };
-  return Object.freeze({ capabilities, prepare, begin, update, end, renewExecutionLease, cancelGenerationWithReceipt,
+  return createInstrumentExecutionLifecycle({ capabilities, prepare, begin, update, end, renewExecutionLease, cancelGenerationWithReceipt,
     cancelGeneration: (generation, executionEpoch = 'live') => cancelGenerationWithReceipt(generation, executionEpoch).count || 0,
-    renderDiagnostics, onOwnerStop, dispose });
+    renderDiagnostics, onOwnerStop, dispose }, {
+    getContext: () => preview.getAudioContext(), getGeneration: () => preview._sessions.get(owner)?.generation ?? preview._generation,
+    isSettled: epoch => ![...voices.values()].some(voice => voice.semanticEpoch === epoch),
+    forget: (epoch, generation) => leases.delete(generationKey(generation, epoch))
+  }).api;
 }

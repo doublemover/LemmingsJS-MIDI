@@ -1,5 +1,6 @@
 import { selectLocalAudioVoice } from '../../midi/scheduler/LocalAudioVoiceBudget.js';
 import { createSmoothedAudioParameter } from './SmoothedAudioParameter.js';
+import { createInstrumentExecutionLifecycle, isManagedExecutionEpoch } from './InstrumentExecutionLifecycle.js';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const parameters = Object.freeze({
@@ -95,7 +96,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
     if (disposed || !Number.isSafeInteger(generation) || generation < 0 || typeof executionEpoch !== 'string' || !executionEpoch ||
         !Number.isSafeInteger(validUntilFrame) || validUntilFrame < 0) return failure('invalid-execution-lease');
     if (cancelledGenerations.has(leaseKey(generation, executionEpoch))) return failure('generation-cancelled');
-    if (cancellationHistoryFull) return failure('cancellation-history-full');
+    if (cancellationHistoryFull && !isManagedExecutionEpoch(executionEpoch)) return failure('execution-registration-required');
     const time = audioTime(validUntilFrame), now = preview._context?.currentTime;
     if (!preview._ownerReady(owner)) return failure('audio-not-ready');
     if (!Number.isFinite(now) || time <= now || time - now > 120) return failure('execution-lease-out-of-range');
@@ -134,7 +135,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
           intent.sourceEventIds.some(id => typeof id !== 'string' || id.length > 256))) ||
         !intent.pitch || frequencyFor(intent.pitch) == null || typeof executionEpoch !== 'string' || !executionEpoch) return failure('invalid-intent', intent);
     if (cancelledGenerations.has(leaseKey(intent.generation, executionEpoch))) return failure('generation-cancelled', intent);
-    if (cancellationHistoryFull) return failure('cancellation-history-full', intent);
+    if (cancellationHistoryFull && !isManagedExecutionEpoch(executionEpoch)) return failure('execution-registration-required', intent);
     const start = audioTime(targetFrame), context = preview._context;
     if (start == null || start - context.currentTime > preview._maxNoteSeconds) return failure('target-frame-out-of-range', intent);
     if (start < context.currentTime - 1 / context.sampleRate) return failure('late-attack', intent);
@@ -289,7 +290,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
   const cancelGenerationWithReceipt = (generation, executionEpoch = 'live') => {
     const outcomes = [], context = preview._context, frontierFrame = context ? Math.ceil(context.currentTime * context.sampleRate) : null;
     const cancelledKey = leaseKey(generation, executionEpoch);
-    if (!cancelledGenerations.has(cancelledKey)) {
+    if (!isManagedExecutionEpoch(executionEpoch) && !cancelledGenerations.has(cancelledKey)) {
       if (cancelledGenerations.size < 1024) cancelledGenerations.add(cancelledKey);
       else cancellationHistoryFull = true;
     }
@@ -328,8 +329,12 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
   const dispose = () => { if (disposed) return; disposed = true; preparationRevision++;
     for (const voice of voices.values()) preview._destroyVoice(voice, 'backend-disposed');
     voices.clear(); leases.clear(); prepared = null; };
-  return Object.freeze({ capabilities, prepare, begin, update, end, renewExecutionLease, cancelGeneration,
-    cancelGenerationWithReceipt, renderDiagnostics, dispose });
+  return createInstrumentExecutionLifecycle({ capabilities, prepare, begin, update, end, renewExecutionLease, cancelGeneration,
+    cancelGenerationWithReceipt, renderDiagnostics, dispose }, {
+    getContext: () => preview.getAudioContext(), getGeneration: () => preview._sessions.get(owner)?.generation ?? preview._generation,
+    isSettled: epoch => ![...voices.values()].some(voice => voice.semanticEpoch === epoch),
+    forget: (epoch, generation) => leases.delete(leaseKey(generation, epoch))
+  }).api;
 };
 
 export { createNativeOscillatorBackend };
