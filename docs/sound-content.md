@@ -123,3 +123,16 @@ The fixed worker resolves renderer descriptors from its own immutable executing
 catalog. Recipe data cannot provide an engine implementation or mint artifact
 authority. Existing shared admission, cancellation and bounded small-input
 fallback rules govern compilation and its retained result.
+
+`SoundContentInstallation` uses a dedicated local audio owner for isolated
+oscillator/worklet control auditions. It pins the staged definition, compares
+the executing engine hashes, prepares the real backend and exercises pressure,
+pan, pitch and release on an owned execution. Installation commits material
+only; Apply requires a separate candidate for that exact locally auditioned
+patch. Copying a receipt cannot grant this local authority.
+
+The built-in audition is labeled an authored control fixture. Command admission
+and an advancing audio clock establish neither physical-take coverage nor
+independent render/listening qualification. Unsupported sample/gesture adapters
+stay explicitly unavailable. Failed native retirement blocks new auditions and
+retains its stage consumer while independent cleanup leaves still run.
