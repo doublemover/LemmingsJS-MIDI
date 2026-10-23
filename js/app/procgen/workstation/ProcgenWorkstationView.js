@@ -80,13 +80,41 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
   on(importInput, 'change', () => { if (importInput.files?.[0]) handlers.import?.(importInput.files[0]); importInput.value = ''; });
   footer.append(button('Import', () => importInput.click()));
   const projectList = node('dialog', null, 'studio-dialog'); projectList.setAttribute('aria-label', 'Saved projects'); document.body.append(projectList);
-  const showProjects = (entries, load) => {
-    projectList.replaceChildren(node('h2', 'Saved projects'), button('Close', () => projectList.close()));
-    if (!entries.length) projectList.append(node('p', 'No saved projects yet. Save here or import a project file.'));
-    for (const entry of entries) projectList.append(button(`${entry.name} · ${new Date(entry.savedAt).toLocaleString()} · ${String(entry.id).slice(-6)}`, () => { projectList.close(); load(entry.id); }));
+  const showProjectPage = (page, load, fetchPage = null) => {
+    const items = node('div', null, 'studio-project-items'), feedback = node('p', '', 'studio-project-feedback');
+    const search = node('input'); search.type = 'search'; search.placeholder = 'Search project names'; search.setAttribute('aria-label', 'Search project names');
+    const more = button('More projects', async () => {
+      if (!page.nextCursor || !fetchPage) return;
+      more.disabled = true; feedback.textContent = 'Loading more projects…';
+      try { const next = await fetchPage(page.nextCursor, search.value); if (!next) return; page = next; append(next.items); feedback.textContent = next.items.length ? '' :
+        next.nextCursor ? 'No matches in this page. Continue the search with More projects.' : 'No matching projects.'; }
+      catch (error) { feedback.textContent = error?.message || 'Could not load more projects. Retry.'; }
+      finally { more.disabled = !page.nextCursor; more.hidden = !page.nextCursor; }
+    });
+    const append = entries => {
+      for (const entry of entries) items.append(button(`${entry.name} · ${new Date(entry.savedAt).toLocaleString()} · ${String(entry.id).slice(-6)}`, async () => {
+        feedback.textContent = 'Opening project…';
+        try {
+          if (await load(entry.id)) projectList.close();
+          else feedback.textContent = 'Project could not be opened. It may have changed or been removed; choose another or retry.';
+        } catch (error) { feedback.textContent = error?.message || 'Project could not be opened.'; }
+      }));
+      if (!items.childElementCount) feedback.textContent = page.nextCursor ? 'No matches in this page. Continue the search with More projects.' :
+        'No matching projects. Save here or import a project file.';
+    };
+    search.addEventListener('change', async () => {
+      if (!fetchPage) return;
+      feedback.textContent = 'Searching projects…';
+      try { const next = await fetchPage(null, search.value); if (!next) return; page = next; items.replaceChildren(); append(next.items); }
+      catch (error) { feedback.textContent = error?.message || 'Project search failed. Retry.'; }
+      more.disabled = !page.nextCursor; more.hidden = !page.nextCursor;
+    });
+    projectList.replaceChildren(node('h2', 'Saved projects'), button('Close', () => { handlers.cancelProjectPicker?.(); projectList.close(); }), search, items, feedback, more);
+    append(page.items); more.hidden = !page.nextCursor;
     if (handlers.reclaimRecovery) projectList.append(button('Remove recovery checkpoint', () => handlers.reclaimRecovery()));
     projectList.showModal();
   };
+  const showProjects = (entries, load) => showProjectPage({ items: entries, nextCursor: null }, load);
   const selected = () => { const project = getProject(), lane = project.procgen.lanes.find(item => item.id === state.laneId) || project.procgen.lanes[0]; state.laneId = lane.id; return lane; };
   const changeLane = patch => dispatch({ type: 'procgen/lane', laneId: selected().id, patch });
   const changePattern = patch => dispatch({ type: 'procgen/pattern', laneId: selected().id, slot: state.slot, patch });
@@ -286,7 +314,7 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
     if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); changeStep({ enabled: false }); }
     else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); const length = selected().patterns[state.slot].length; state.step = (state.step + (event.key === 'ArrowLeft' ? length - 1 : 1)) % length; state.tab = 'Step'; render(); }
   });
-  return { render, layout, renderInspector, showProjects, status: text => { status.textContent = text; },
+  return { render, layout, renderInspector, showProjects, showProjectPage, status: text => { status.textContent = text; },
     storage({ dirty, savedAt, error }) {
       storageStatus.textContent = error ? 'Save failed · Export' : dirty ? 'Unsaved' : 'Saved';
       storageStatus.dataset.state = error ? 'error' : dirty ? 'dirty' : 'saved';

@@ -326,6 +326,28 @@ describe('ProcGen workstation orchestration', () => {
     f.studio.dispose();
   });
 
+  it('loads only a selected checkpoint after browsing compact project pages', async () => {
+    const requests = [], storage = {
+      async listDocumentPage(options = {}) {
+        requests.push(options);
+        return options.cursor ? { items: [{ id: 'doc:chosen', name: 'Chosen', savedAt: '2026-10-22T00:00:00Z', revision: 2 }], nextCursor: null } :
+          { items: [{ id: 'doc:first', name: 'First', savedAt: '2026-10-22T00:00:00Z', revision: 1 }], nextCursor: { savedAt: '2026-10-22T00:00:00Z', id: 'doc:first' } };
+      },
+      async loadDocument(id) { if (id !== 'doc:chosen') throw new Error('Project was removed'); return { id, revision: 2, session: this.saved }; },
+      async saveRecovery() {}, close() {}
+    };
+    const f = setup({ storageOverride: storage }); f.studio.bindRuntime(); storage.saved = f.studio.capture();
+    f.view.showProjectPage = (page, load, more) => { f.view.page = page; f.view.loadChoice = load; f.view.more = more; };
+    expect(await f.studio.handlers.load()).to.equal(true);
+    expect(f.view.page.items).to.have.length(1); expect(requests).to.have.length(1);
+    expect(await f.view.loadChoice('doc:first')).to.equal(false);
+    expect(f.studio.getDocumentState().id).to.equal(null);
+    expect((await f.view.more(f.view.page.nextCursor, '')).items[0].id).to.equal('doc:chosen');
+    expect(await f.view.loadChoice('doc:chosen')).to.equal(true);
+    expect(f.studio.getDocumentState()).to.include({ id: 'doc:chosen', revision: 2, dirty: false });
+    f.studio.dispose();
+  });
+
   it('keeps the save indicator dirty when edits outlive an in-flight durable snapshot', async () => {
     const f = setup(); f.studio.bindRuntime();
     const originalSave = f.storage.save.bind(f.storage);

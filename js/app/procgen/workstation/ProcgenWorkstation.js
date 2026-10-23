@@ -574,18 +574,28 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }),
     saveAs: safe(() => handlers.save({ asCopy: true })),
     rename: safe(() => handlers.save({ rename: true })),
+    cancelProjectPicker() {
+      if (currentOperation?.kind === 'select-session') { currentOperation.controller.abort(); currentOperation = null; }
+    },
     load: safe(async () => {
       if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
       const lease = beginOperation('select-session');
-      const entries = storage.listDocuments ? await storage.listDocuments() : await storage.list();
+      const page = storage.listDocumentPage ? await storage.listDocumentPage() : null;
+      const entries = page ? null : storage.listDocuments ? await storage.listDocuments() : await storage.list();
       if (!ownsOperation(lease)) return false;
-      view.showProjects(entries, safe(async id => {
+      const loadSelected = safe(async id => {
         if (!ownsOperation(lease)) return false;
         const record = storage.loadDocument ? await storage.loadDocument(id) : { session: await storage.load(id), id: null, revision: 0 };
         const loaded = await loadSession(record.session, lease);
         if (loaded) { documentId = record.id; documentRevision = record.revision; savedRevision = editRevision; lastSavedAt = record.session.savedAt; storageStatus(); }
         return loaded;
-      }));
+      });
+      if (page && view.showProjectPage) view.showProjectPage(page, loadSelected, async (cursor, query) => {
+        if (!ownsOperation(lease)) return null;
+        const next = await storage.listDocumentPage({ cursor, query });
+        return ownsOperation(lease) ? next : null;
+      });
+      else view.showProjects(entries || page.items, loadSelected);
       return true;
     }),
     reclaimRecovery: safe(async () => { await storage.removeRecovery?.(); status('Old recovery checkpoint removed. Named projects were kept.'); }),

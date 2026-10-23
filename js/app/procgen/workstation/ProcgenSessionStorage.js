@@ -30,7 +30,7 @@ const storageFailure = (error, fallback = 'Project storage failed.') => {
   const failure = new Error(messages[category], { cause: error }); failure.name = 'ProcgenStorageError'; failure.category = category;
   return failure;
 };
-const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTimeoutMs = 5000, onState = () => {} } = {}) => {
+const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTimeoutMs = 5000, onState = () => {}, keyRange = globalThis.IDBKeyRange } = {}) => {
   if (!Number.isSafeInteger(openTimeoutMs) || openTimeoutMs < 1) throw new RangeError('Invalid project storage open timeout');
   let database = null, opening = null, generation = 0, retired = false, state = 'closed', lastError = null;
   const report = (next, error = null) => { state = next; lastError = error; onState({ state, error, generation }); };
@@ -68,10 +68,12 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
     };
     if (!indexedDB) { finish(namedError('SecurityError', 'IndexedDB is unavailable')); return promise; }
     try {
-      request = indexedDB.open('lemmings.procgen.sessions', 2);
+      request = indexedDB.open('lemmings.procgen.sessions', 3);
       request.onupgradeneeded = () => {
         if (!request.result.objectStoreNames.contains('sessions')) request.result.createObjectStore('sessions', { keyPath: 'id' });
-        if (!request.result.objectStoreNames.contains('projectMetadata')) request.result.createObjectStore('projectMetadata', { keyPath: 'id' });
+        const metadata = request.result.objectStoreNames.contains('projectMetadata') ? request.transaction.objectStore('projectMetadata') :
+          request.result.createObjectStore('projectMetadata', { keyPath: 'id' });
+        if (!metadata.indexNames.contains('byUpdated')) metadata.createIndex('byUpdated', ['savedAt', 'id']);
       };
       request.onsuccess = () => finish(null, request.result);
       request.onerror = () => finish(request.error || new Error('IndexedDB open failed'));
@@ -139,6 +141,29 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
       } catch (error) { reject(storageFailure(error)); }
     });
   };
+  const legacyBatch = async after => {
+    const db = await open();
+    if (retired || db !== database) throw storageFailure(null, 'Project storage connection changed. Retry migration.');
+    return new Promise((resolve, reject) => {
+      try {
+        const transaction = db.transaction('sessions', 'readonly');
+        const range = after == null ? null : keyRange.lowerBound(after, true);
+        const request = transaction.objectStore('sessions').openCursor(range);
+        const records = [];
+        let scanned = 0, nextCursor = null;
+        request.onsuccess = () => {
+          const cursor = request.result;
+          if (!cursor) return;
+          if (records.length === 16 || scanned === 64) { nextCursor = after; return; }
+          scanned++; after = cursor.key;
+          if (!cursor.value.kind && cursor.value.session) records.push(cursor.value);
+          cursor.continue();
+        };
+        transaction.oncomplete = () => resolve({ records, nextCursor });
+        transaction.onabort = () => reject(storageFailure(transaction.error || request.error));
+      } catch (error) { reject(storageFailure(error)); }
+    });
+  };
   let migration = null, migrationDone = false;
   const migrateLegacy = () => {
     if (migrationDone) return Promise.resolve();
@@ -146,14 +171,24 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
     migration = (async () => {
       const marker = await operation('readonly', store => store.get('migration:v1'), 'projectMetadata');
       if (marker) { migrationDone = true; return; }
-      const records = await operation('readonly', store => store.getAll());
-      for (const record of records) {
-        if (record.kind || !record.session) continue;
-        try { validateProcgenSession(record.session); } catch { continue; }
+      const transfer = async record => {
+        try { validateProcgenSession(record.session); } catch { return; }
         const recovery = record.id === '__recovery__', id = recovery ? 'recovery:latest' : legacyDocumentId(record.id);
         await insertIfAbsent({ id, kind: recovery ? 'recovery' : 'document', revision: 1,
           commitId: 'legacy-migration-v1', name: record.name, savedAt: record.savedAt,
           createdAt: record.savedAt, session: record.session });
+      };
+      if (keyRange?.lowerBound) {
+        let after = null;
+        do {
+          const batch = await legacyBatch(after);
+          for (const record of batch.records) await transfer(record);
+          after = batch.nextCursor;
+          if (after != null) await new Promise(resolve => setTimeout(resolve, 0));
+        } while (after != null);
+      } else {
+        const records = await operation('readonly', store => store.getAll());
+        for (const record of records) if (!record.kind && record.session) await transfer(record);
       }
       await operation('readwrite', store => store.put({ id: 'migration:v1', kind: 'migration' }), 'projectMetadata');
       migrationDone = true;
@@ -173,6 +208,37 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
       const records = await operation('readonly', store => store.getAll(), 'projectMetadata');
       return records.filter(record => record.kind !== 'migration').map(({ id, revision, name, savedAt }) => ({ id, revision, name, savedAt }))
         .sort((a, b) => b.savedAt.localeCompare(a.savedAt) || a.id.localeCompare(b.id));
+    },
+    async listDocumentPage({ limit = 40, cursor = null, query = '' } = {}) {
+      if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100 || typeof query !== 'string' || query.length > 120 ||
+          cursor && (typeof cursor.savedAt !== 'string' || typeof cursor.id !== 'string')) throw new TypeError('Invalid project page request');
+      await migrateLegacy();
+      const db = await open();
+      if (retired || db !== database) throw storageFailure(null, 'Project storage connection changed. Retry the project list.');
+      const needle = query.trim().toLocaleLowerCase();
+      return new Promise((resolve, reject) => {
+        try {
+          const transaction = db.transaction('projectMetadata', 'readonly');
+          const index = transaction.objectStore('projectMetadata').index('byUpdated');
+          const range = cursor ? keyRange?.upperBound([cursor.savedAt, cursor.id], true) : null;
+          if (cursor && !range) throw new Error('Project paging key ranges are unavailable');
+          const request = index.openCursor(range, 'prev'), items = [];
+          const scanLimit = Math.max(200, limit * 8);
+          let last = null, lastScanned = null, nextCursor = null, scanned = 0;
+          request.onsuccess = () => {
+            const entry = request.result;
+            if (!entry) return;
+            if (items.length === limit || scanned === scanLimit) { nextCursor = items.length === limit ? last : lastScanned; return; }
+            scanned++; lastScanned = { savedAt: entry.value.savedAt, id: entry.value.id };
+            const value = entry.value;
+            if (value.kind === 'migration' || needle && !String(value.name).toLocaleLowerCase().includes(needle)) { entry.continue(); return; }
+            items.push({ id: value.id, revision: value.revision, name: value.name, savedAt: value.savedAt });
+            last = { savedAt: value.savedAt, id: value.id }; entry.continue();
+          };
+          transaction.oncomplete = () => resolve({ items, nextCursor, storageState: state });
+          transaction.onabort = () => reject(storageFailure(transaction.error || request.error));
+        } catch (error) { reject(storageFailure(error)); }
+      });
     },
     async saveRecovery(session) {
       validateProcgenSession(session);

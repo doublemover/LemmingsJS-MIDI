@@ -18,7 +18,29 @@ function fakeIndexedDb({ failFirst = false, blocked = false, pending = false } =
             put(record) { const request = { result: record.id }; schedule(() => values.set(record.id, record)); return request; },
             get(id) { const request = { result: null }; schedule(() => { request.result = values.get(id); request.onsuccess?.(); }); return request; },
             getAll() { const request = { result: null }; schedule(() => { reads[name]++; request.result = [...values.values()]; }); return request; },
-            delete(id) { const request = { result: null }; schedule(() => values.delete(id)); return request; }
+            delete(id) { const request = { result: null }; schedule(() => values.delete(id)); return request; },
+            openCursor(range) {
+              const ordered = [...values.values()].filter(value => !range || value.id > range.key).sort((a, b) => a.id.localeCompare(b.id));
+              let position = 0; const request = { result: null };
+              const advance = () => schedule(() => {
+                const value = ordered[position++];
+                request.result = value ? { key: value.id, value, continue: advance } : null;
+                request.onsuccess?.();
+              });
+              advance(); return request;
+            },
+            index() { return { openCursor(range) {
+              const ordered = [...values.values()].filter(value => value.savedAt && (!range ||
+                value.savedAt < range.key[0] || value.savedAt === range.key[0] && value.id < range.key[1]))
+                .sort((a, b) => b.savedAt.localeCompare(a.savedAt) || b.id.localeCompare(a.id));
+              let position = 0; const request = { result: null };
+              const advance = () => schedule(() => {
+                const value = ordered[position++];
+                request.result = value ? { value, key: [value.savedAt, value.id], continue: advance } : null;
+                request.onsuccess?.();
+              });
+              advance(); return request;
+            } }; }
           };
         }, abort() { aborted = true; queueMicrotask(() => this.onabort?.()); } };
         return transaction;
@@ -124,5 +146,53 @@ describe('ProcGen session storage connection lifecycle', () => {
     await reopened.listDocuments();
     expect(adapter.reads.sessions).to.equal(sessionReads);
     reopened.close();
+  });
+
+  it('pages compact metadata with stable same-timestamp cursors and bounded search', async () => {
+    const adapter = fakeIndexedDb(), storage = createProcgenSessionStorage(adapter, {
+      keyRange: { upperBound: (key, exclusive) => ({ key, exclusive }) }
+    });
+    for (let index = 0; index < 105; index++) await storage.saveDocument('doc:' + String(index).padStart(3, '0'), 0,
+      session(index === 73 ? 'Find this' : 'Other'), 'commit-' + index);
+    const first = await storage.listDocumentPage({ limit: 40 });
+    const second = await storage.listDocumentPage({ limit: 40, cursor: first.nextCursor });
+    const third = await storage.listDocumentPage({ limit: 40, cursor: second.nextCursor });
+    expect([first.items.length, second.items.length, third.items.length]).to.deep.equal([40, 40, 25]);
+    expect(third.nextCursor).to.equal(null);
+    expect([...first.items, ...second.items, ...third.items].map(item => item.id)).to.deep.equal(
+      Array.from({ length: 105 }, (_, index) => 'doc:' + String(104 - index).padStart(3, '0')));
+    const search = await storage.listDocumentPage({ query: 'find', limit: 10 });
+    expect(search.items.map(item => item.id)).to.deep.equal(['doc:073']);
+    expect(adapter.reads.sessions).to.equal(1);
+    storage.close();
+  });
+
+  it('bounds a sparse metadata search and resumes without skipping its distant match', async () => {
+    const adapter = fakeIndexedDb(), storage = createProcgenSessionStorage(adapter, {
+      keyRange: { upperBound: key => ({ key }) }
+    });
+    for (let index = 0; index < 260; index++) await storage.saveDocument('doc:' + String(index).padStart(3, '0'), 0,
+      session(index === 20 ? 'distant match' : 'other'), 'commit-' + index);
+    const first = await storage.listDocumentPage({ limit: 10, query: 'distant' });
+    expect(first.items).to.have.length(0);
+    expect(first.nextCursor).to.exist;
+    const second = await storage.listDocumentPage({ limit: 10, query: 'distant', cursor: first.nextCursor });
+    expect(second.items.map(item => item.id)).to.deep.equal(['doc:020']);
+    storage.close();
+  });
+
+  it('migrates legacy checkpoints in cursor batches without getAll payload cloning', async () => {
+    const adapter = fakeIndexedDb(), oldStorage = createProcgenSessionStorage(adapter);
+    for (let index = 0; index < 80; index++) await oldStorage.save('legacy-' + index, session('Legacy ' + index));
+    oldStorage.close();
+    const storage = createProcgenSessionStorage(adapter, {
+      keyRange: { lowerBound: (key, exclusive) => ({ key, exclusive }), upperBound: (key, exclusive) => ({ key, exclusive }) }
+    });
+    const page = await storage.listDocumentPage({ limit: 40 });
+    expect(page.items).to.have.length(40);
+    expect(page.nextCursor).to.exist;
+    expect(adapter.reads.sessions).to.equal(0);
+    expect(adapter.records.has('legacy-0')).to.equal(true);
+    storage.close();
   });
 });

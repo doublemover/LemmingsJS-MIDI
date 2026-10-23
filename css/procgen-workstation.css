@@ -112,6 +112,9 @@ body.procgen-workstation {
 .studio-storage-status[data-state="error"] { color: #a3342f; }
 .studio-dialog { min-width: min(480px, 90vw); max-height: 80vh; overflow: auto; color: #2e4556; background: #edf3f8; border: 1px solid white; border-radius: 10px; box-shadow: 0 10px 70px #142d4270; }
 .studio-dialog button { display: block; margin: 8px 0; width: 100%; text-align: left; }
+.studio-dialog input[type="search"] { width: 100%; box-sizing: border-box; }
+.studio-project-items { max-height: 48vh; overflow: auto; }
+.studio-project-feedback { min-height: 1em; font-size: 11px; }
 .studio-dialog::backdrop { background: #20324070; backdrop-filter: blur(3px); }
 .procgen-workstation #procgenPanel { inset: 0 10px auto; z-index: 30; transform: translateY(calc(-100% + 0px)); }
 .procgen-workstation #procgenPanel.is-open { transform: translateY(0); }
