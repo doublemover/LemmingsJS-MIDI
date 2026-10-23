@@ -3,6 +3,7 @@ import { createProcgenMidiPorts, decodeProcgenMidi, encodeProcgenMidi } from '..
 import { exportProcgenMidi } from '../js/app/procgen/workstation/ProcgenMidiExport.js';
 import { MidiScheduler } from '../js/midi/MidiScheduler.js';
 import { withFakeClockAndPerformance } from './support/timers.js';
+import { makeOutput } from './support/midi-output.js';
 
 function fixture() {
   const output = { id: 'notes', messages: [], clears: 0, send(data, timestamp) { this.messages.push({ data, timestamp }); }, clear() { this.clears++; } };
@@ -161,6 +162,91 @@ describe('ProcGen workstation MIDI ports', () => {
         expect(scheduler.getRateSnapshot(0).next.count).to.equal(0);
       } finally { ports.dispose(); scheduler.dispose(); }
     });
+  });
+
+  it('records allocated MPE channels, accepted expression, and release only when submitted', () => {
+    withFakeClockAndPerformance(clock => {
+      const calls = [], scheduler = new MidiScheduler({ mpe: { enabled: true, masterChannel: 1, memberChannels: [2, 3] } });
+      const output = makeOutput([1, 2, 3], calls, 'mpe');
+      const ports = createProcgenMidiPorts({ scheduler, now: () => clock.now, transport: { pause() {}, panic() {}, getState: () => ({ beat: clock.now / 500, bpm: 120 }) } });
+      try {
+        ports.setNoteOutput(output); calls.length = 0; ports.configure({ recording: true });
+        expect(ports.sendNote({ note: 60, velocity: 100, releaseVelocity: 37, pitchBend: 0.6, durationMs: 100, timeMs: 0 })).to.equal(true);
+        expect(ports.sendNote({ note: 64, velocity: 90, durationMs: 100, timeMs: 0 })).to.equal(true);
+        const onset = ports.getRecording().filter(event => event.data[0] >= 0x90 && event.data[0] < 0xa0);
+        expect(onset.map(event => event.data[0])).to.deep.equal([0x91, 0x92]);
+        expect(ports.getRecording().some(event => (event.data[0] & 0xf0) === 0x80)).to.equal(false);
+        expect(ports.getRecording().filter(event => event.evidence === 'api-accepted').every(event => event.submittedMs === 0)).to.equal(true);
+        clock.tick(100);
+        expect(ports.getRecording().filter(event => (event.data[0] & 0xf0) === 0x80).map(event => event.data)).to.deep.equal([
+          [0x81, 60, 37], [0x82, 64, 90]
+        ]);
+        const physical = calls.filter(call => call.type !== 'bendRange');
+        expect(physical.filter(call => call.type === 'noteOn').map(call => call.id)).to.deep.equal([2, 3]);
+      } finally { ports.dispose(); scheduler.dispose(); }
+    });
+  });
+
+  it('does not record canceled or rejected future onsets and preserves reverse attack velocity', () => {
+    withFakeClockAndPerformance(clock => {
+      const calls = [], scheduler = new MidiScheduler({ mpe: { enabled: false }, defaultChannel: 5 });
+      const output = makeOutput([5], calls, 'main');
+      const ports = createProcgenMidiPorts({ scheduler, now: () => clock.now, transport: { pause() {}, panic() {}, getState: () => ({ beat: 0, bpm: 120 }) } });
+      try {
+        ports.setNoteOutput(output); ports.configure({ recording: true });
+        expect(ports.sendNote({ note: 60, velocity: 110, releaseVelocity: 30, reverse: true, durationMs: 20 })).to.equal(true);
+        expect(ports.getRecording().find(event => (event.data[0] & 0xf0) === 0x90).data).to.deep.equal([0x94, 60, 30]);
+        clock.tick(20);
+        expect(ports.getRecording().find(event => (event.data[0] & 0xf0) === 0x80).data).to.deep.equal([0x84, 60, 110]);
+        const beforeFuture = ports.getRecording().length;
+        expect(ports.sendNote({ note: 61, durationMs: 20, timeMs: 100 })).to.equal(true);
+        expect(ports.getRecording()).to.have.length(beforeFuture);
+        scheduler.allNotesOff(); clock.tick(120);
+        expect(ports.getRecording().some(event => event.data[1] === 61 && (event.data[0] & 0xf0) === 0x90)).to.equal(false);
+        output.channels[5].sendNoteOn = () => false;
+        expect(ports.sendNote({ note: 62, durationMs: 20 })).to.equal(false);
+        expect(ports.getRecording().some(event => event.data[1] === 62 && (event.data[0] & 0xf0) === 0x90)).to.equal(false);
+      } finally { ports.dispose(); scheduler.dispose(); }
+    });
+  });
+
+  it('keeps input and Thru observations separate for an output-only export', () => {
+    const f = fixture(); f.ports.configure({ recording: true, thru: true });
+    f.ports.receiveMidi([0x90, 60, 100], 1000);
+    f.ports.receiveMidi([0x80, 60, 0], 1500);
+    expect(f.ports.getRecording()).to.have.length(4);
+    expect(f.ports.getRecording({ direction: 'output' }).map(event => event.data)).to.deep.equal([[0x90, 60, 100], [0x80, 60, 0]]);
+    expect(parseSmf(exportProcgenMidi(f.ports.getRecording({ direction: 'output' }))).filter(event => event.status === 0x90)).to.have.length(1);
+    f.ports.dispose();
+  });
+
+  it('marks a capped or stopped recording incomplete without an orphaned finite rendered onset', () => {
+    const f = fixture(); f.ports.configure({ recording: true }); f.ports.clearRecording();
+    f.ports.recordTempo(120, 0);
+    f.ports.dispose();
+    const capped = createProcgenMidiPorts({ maxRecordedEvents: 2, now: () => 0 });
+    capped.configure({ recording: true }); capped.recordTempo(120, 0);
+    expect(capped.recordOutput({ note: 60, durationMs: 100 })).to.equal(false);
+    expect(capped.getRecording().filter(event => (event.data[0] & 0xf0) === 0x90)).to.have.length(0);
+    expect(capped.getState()).to.include({ recording: false, recordingComplete: false, incompleteReason: 'recording-cap-reached' });
+    capped.dispose();
+    const stopped = createProcgenMidiPorts({ now: () => 0 });
+    stopped.configure({ recording: true }); stopped.receiveMidi([0x90, 60, 100], 0); stopped.configure({ recording: false });
+    expect(stopped.getState()).to.include({ recordingComplete: false, incompleteReason: 'open-notes-at-stop' });
+    stopped.dispose();
+  });
+
+  it('reports zero-cap pressure immediately and flushes without replaying historical records', () => {
+    const states = [], retained = [];
+    const ports = createProcgenMidiPorts({ maxRecordedEvents: 0, onState: state => states.push(state) });
+    ports.configure({ recording: true }); ports.receiveMidi([0x90, 60, 100]);
+    expect(ports.getState()).to.include({ recording: false, recordingComplete: false, droppedRecords: 1, firstLostSequence: 1 });
+    expect(states.at(-1).incompleteReason).to.equal('recording-cap-reached'); ports.dispose();
+    const longTake = createProcgenMidiPorts({ onRecord: event => retained.push(event) });
+    longTake.configure({ recording: true });
+    for (let index = 0; index < 1000; index++) longTake.receiveMidi([0xb0, 1, index % 128]);
+    Object.defineProperty(retained[0], 'data', { get() { throw new Error('historical event replayed'); } });
+    expect(() => longTake.flush()).not.to.throw(); longTake.dispose();
   });
 });
 

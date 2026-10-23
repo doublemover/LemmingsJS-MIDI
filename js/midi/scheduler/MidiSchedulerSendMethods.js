@@ -87,7 +87,7 @@ const midiSchedulerSendMethods = {
       const startedAt = sendTimeMs;
       const token = ++this._noteOffSeq;
       this._claimReservation(meta.reservationId, token, Math.max(1, (meta.reservationPartCount ?? 1) - (meta.reservationPartIndex ?? 0)));
-      const captureMeta = this._captureEnabled() ? { ...this._captureScaleFields(), ...meta, captureScope: this._captureScope, token, note: spec.note, channel: channelNumber, program: spec.program,
+      const captureMeta = (this._captureEnabled() || this._submissionObservers.size > 0) ? { ...this._captureScaleFields(), ...meta, captureScope: this._captureScope, token, note: spec.note, channel: channelNumber, program: spec.program,
         trackId, ensembleRole: spec.ensembleRole, percussion: spec.percussion, velocity: attackVelocity,
         scheduledMs: sendTimeMs, durationMs, held: durationMs === 0 } : null;
       this._observe('scheduled', { ...captureMeta, type: 'noteOn', offScheduledMs: durationMs > 0 ? offTimeMs : null });
@@ -472,6 +472,7 @@ const midiSchedulerSendMethods = {
     }
     this.allNotesOff();
     this._usedOutputChannels.clear();
+    this._submissionObservers.clear();
     this.output = null;
     this._outputsById.clear();
   },

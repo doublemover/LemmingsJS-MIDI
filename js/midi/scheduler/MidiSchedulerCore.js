@@ -8,6 +8,7 @@ import { MidiGamePhraseQueue } from './MidiGamePhraseQueue.js';
 class MidiScheduler {
   constructor(config = {}) {
     this.capture = null;
+    this._submissionObservers = new Set();
     this._disposed = false;
     this._cleanupDepth = 0;
     this._lifecycleVersion = 0;

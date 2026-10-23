@@ -230,7 +230,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (localEnabled()) {
         const scheduler = router()?.scheduler;
         if (scheduler?.sendNote({ ...spec, outputId: null, durationTicks: (spec.durationMs || 0) / (scheduler.tickMs || 60) }, meta)) {
-          ports.recordOutput(spec, meta);
+          ports.recordOutput(spec, { ...meta, source: 'local-preview' });
           return admission('accepted', 'local-preview', spec, meta);
         }
         if (scheduler?.getOutputPressure?.().throttled) budgetNotice();
@@ -248,7 +248,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         const scheduler = router()?.scheduler, channel = scheduler?.output?.channels?.[spec.channel];
         const reservation = scheduler?.evaluateAndReserve?.({ on: { timeMs: spec.timeMs, count: 1, bytes: 3 } }, meta, now());
         if (reservation && !reservation.ok) { scheduler.recordThrottle?.(reservation.reason, now(), meta); budgetNotice(); return admission('rejected', 'local-preview', spec, meta, reservation.reason); }
-        if (channel?.sendControlChange) { channel.sendControlChange(spec.controller, spec.value, { time: spec.timeMs }); ports.recordEvent(event, meta); return admission('accepted', 'local-preview', spec, meta); }
+        if (channel?.sendControlChange) { channel.sendControlChange(spec.controller, spec.value, { time: spec.timeMs }); ports.recordEvent(event, { ...meta, source: 'local-preview' }); return admission('accepted', 'local-preview', spec, meta); }
         return admission('rejected', 'local-preview', spec, meta, 'channel-unavailable');
       }
       if (legacy.local.getState().selectedBackend === 'midi' && legacy.local.getState().enabled) {
@@ -468,7 +468,17 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     load: safe(async () => { if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.'); const lease = beginOperation('select-session'); const entries = await storage.list(); if (!ownsOperation(lease)) return false; view.showProjects(entries, safe(async id => { if (!ownsOperation(lease)) return false; return loadSession(await storage.load(id), lease); })); return true; }),
     import: safe(async file => { if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.'); const lease = beginOperation('import'); const text = await file.text(); if (!ownsOperation(lease)) return false; const session = JSON.parse(text); if (!ownsOperation(lease)) return false; return loadSession(session, lease); }),
     export: safe(async () => { const session = capture(); download(JSON.stringify(session), savedName.replace(/[^a-z0-9_-]+/gi, '-') + '.procgen.json', 'application/json'); status('Project exported.'); }),
-    exportMidi() { download(exportProcgenMidi(ports.getRecording(), { bpm: transport.getState().bpm, beatsPerBar: project.transport?.timeSignature?.beats, beatUnit: project.transport?.timeSignature?.unit }), 'procgen-performance.mid', 'audio/midi'); status('Recorded performance exported.'); },
+    exportMidi() {
+      const state = ports.getState();
+      const submitted = ports.getRecording({ direction: 'output', evidence: 'api-accepted' });
+      const hasSubmitted = submitted.some(event => event.direction === 'output');
+      const events = hasSubmitted ? submitted : ports.getRecording({ direction: 'output', evidence: 'intent-render' });
+      download(exportProcgenMidi(events, { bpm: transport.getState().bpm,
+        beatsPerBar: project.transport?.timeSignature?.beats, beatUnit: project.transport?.timeSignature?.unit }),
+      'procgen-performance.mid', 'audio/midi');
+      const source = hasSubmitted ? 'submitted output' : 'rendered preview intent';
+      status(state.recordingComplete ? `Recorded ${source} exported.` : `Partial ${source} exported: ${state.incompleteReason}.`);
+    },
     new: safe(() => rebuild({ seed: freshProcgenSeed(window.crypto, project.procgen.seed), fresh: true })),
     reroll: safe(() => rebuild({ seed: freshProcgenSeed(window.crypto, project.procgen.seed) })),
     replay: safe(() => rebuild()), rebuild: safe(() => rebuild()), seed: safe(seed => rebuild({ seed: Number(seed) >>> 0 })),
