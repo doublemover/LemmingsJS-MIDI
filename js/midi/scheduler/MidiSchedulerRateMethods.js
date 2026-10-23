@@ -30,12 +30,11 @@ const midiSchedulerRateMethods = {
       let write = 0;
       for (let read = 0; read < this._ratePlanned.length; read += 1) {
         const entry = this._ratePlanned[read];
-        if (entry.timeMs < now) {
-          if (entry.timeMs >= cutoff) this._rateSent.push(entry);
-        } else {
-          this._ratePlanned[write] = entry;
-          write += 1;
-        }
+        // Time passing is not evidence that a device accepted the message.
+        // Owned reservations stay planned until dispatch or cancellation.
+        if (entry.timeMs < cutoff && entry.reservationId == null && entry.token == null) continue;
+        this._ratePlanned[write] = entry;
+        write += 1;
       }
       this._ratePlanned.length = write;
     }
@@ -45,9 +44,6 @@ const midiSchedulerRateMethods = {
   _trimRateEntries() {
     if (this._rateSent.length > MAX_RATE_ENTRIES) {
       this._rateSent.splice(0, this._rateSent.length - MAX_RATE_ENTRIES);
-    }
-    if (this._ratePlanned.length > MAX_RATE_ENTRIES) {
-      this._ratePlanned.splice(0, this._ratePlanned.length - MAX_RATE_ENTRIES);
     }
   },
 
@@ -140,8 +136,8 @@ const midiSchedulerRateMethods = {
     this._pruneRateEntries(now);
     const snapshot = {
       now,
-      past: this._sumRate(this._rateSent, now - this._rateWindowMs, now),
-      next: this._sumRate(this._ratePlanned, now, now + this._rateWindowMs, true, true),
+      past: this._sumRate(this._rateSent, now - this._rateWindowMs, now + 0.001),
+      next: this._sumRate(this._ratePlanned, -Infinity, now + this._rateWindowMs, true, true),
       maxMessagesPerSecond: this._maxMessagesPerSecond,
       maxBytesPerSecond: this._maxBytesPerSecond
     };
@@ -173,6 +169,7 @@ const midiSchedulerRateMethods = {
   reserveEvaluation(evaluation, plan, meta = {}, now = this._nowMs(), alreadyPruned = false) {
     if (!evaluation?.ok) return evaluation || { ok: false, reason: 'count-limit' };
     if (evaluation.reservationId) return evaluation;
+    if (this._ratePlanned.length + this._planEntries(plan).length > MAX_RATE_ENTRIES) return { ...evaluation, ok: false, reason: 'reservation-cap' };
     const reservationId = ++this._reservationSeq;
     if ((meta.laneCount ?? 1) > 1) this._rateLaneLastServed.set(meta.laneIndex ?? 0, now);
     if (!alreadyPruned) this._pruneRateEntries(now);
@@ -269,8 +266,8 @@ const midiSchedulerRateMethods = {
 
   getRateSnapshot(now = this._nowMs(), detailed = true) {
     this._pruneRateEntries(now);
-    const past = this._sumRate(this._rateSent, now - this._rateWindowMs, now, detailed);
-    const next = this._sumRate(this._ratePlanned, now, now + this._rateWindowMs, detailed, true);
+    const past = this._sumRate(this._rateSent, now - this._rateWindowMs, now + 0.001, detailed);
+    const next = this._sumRate(this._ratePlanned, -Infinity, now + this._rateWindowMs, detailed, true);
     return {
       now,
       past,
@@ -319,12 +316,64 @@ const midiSchedulerRateMethods = {
     if (entry.timeMs < now - this._rateWindowMs) return;
     const normalized = { ...entry, count, bytes };
     if (!alreadyPruned) this._pruneRateEntries(now);
-    if (normalized.timeMs < now) {
-      this._rateSent.push(normalized);
-    } else {
-      this._ratePlanned.push(normalized);
-    }
+    this._ratePlanned.push(normalized);
     this._trimRateEntries();
+  },
+
+  _releaseReservation(reservationId, unclaimedOnly = false) {
+    if (reservationId == null) return 0;
+    let write = 0, removed = 0;
+    for (const entry of this._ratePlanned) {
+      if (entry.reservationId === reservationId && (!unclaimedOnly || entry.token == null)) { removed++; continue; }
+      this._ratePlanned[write++] = entry;
+    }
+    this._ratePlanned.length = write;
+    return removed;
+  },
+
+  _claimReservation(reservationId, token, partsRemaining = 1) {
+    if (reservationId == null || token == null) return false;
+    let claimed = false;
+    for (let index = this._ratePlanned.length - 1; index >= 0; index--) {
+      const entry = this._ratePlanned[index];
+      if (entry.reservationId !== reservationId || entry.token != null) continue;
+      const count = Math.ceil(entry.count / Math.max(1, partsRemaining));
+      const bytes = Math.ceil(entry.bytes / Math.max(1, partsRemaining));
+      if (count <= 0 || bytes <= 0) continue;
+      const owned = { ...entry, token, count, bytes };
+      entry.count -= count; entry.bytes -= bytes;
+      if (entry.count <= 0 || entry.bytes <= 0) this._ratePlanned.splice(index, 1, owned);
+      else this._ratePlanned.splice(index + 1, 0, owned);
+      claimed = true;
+    }
+    return claimed;
+  },
+
+  _releaseReservationPart(reservationId, partsRemaining = 1) {
+    if (reservationId == null) return 0;
+    let removed = 0;
+    for (let index = this._ratePlanned.length - 1; index >= 0; index--) {
+      const entry = this._ratePlanned[index];
+      if (entry.reservationId !== reservationId || entry.token != null) continue;
+      entry.count -= Math.ceil(entry.count / Math.max(1, partsRemaining));
+      entry.bytes -= Math.ceil(entry.bytes / Math.max(1, partsRemaining));
+      if (entry.count <= 0 || entry.bytes <= 0) this._ratePlanned.splice(index, 1);
+      removed++;
+    }
+    return removed;
+  },
+
+  _commitReservationMessage(reservationId, phase, bytes, meta = {}, sentAt = this._nowMs()) {
+    const index = this._ratePlanned.findIndex(entry => entry.reservationId === reservationId && entry.token == null && entry.phase === phase);
+    if (index < 0) return false;
+    const entry = this._ratePlanned[index];
+    entry.count -= 1; entry.bytes -= bytes;
+    if (entry.count <= 0 || entry.bytes <= 0) this._ratePlanned.splice(index, 1);
+    this._recordSent({ timeMs: sentAt, count: 1, bytes, phase, reservationId,
+      outputId: meta.outputId ?? entry.outputId, trackId: meta.trackId ?? entry.trackId,
+      laneIndex: meta.laneIndex ?? entry.laneIndex, laneCount: meta.laneCount ?? entry.laneCount,
+      sfxId: meta.sfxId ?? entry.sfxId, priority: meta.priority ?? entry.priority }, sentAt);
+    return true;
   },
 
   _recordSent(entry, now = this._nowMs()) {

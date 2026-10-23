@@ -1,8 +1,7 @@
 export function sendProcgenMidiBytes(port, bytes, timestamp) {
   if (!port || port.state === 'disconnected') return false;
   // WebMidi.js wraps the native MIDIOutput timestamp in an options object.
-  port.send(Array.from(bytes), port.channels ? { time: timestamp } : timestamp);
-  return true;
+  return port.send(Array.from(bytes), port.channels ? { time: timestamp } : timestamp) !== false;
 }
 
 export function clearProcgenMidiQueue(port) {

@@ -94,6 +94,13 @@ const midiSchedulerChannelMethods = {
 
   _retireOutput(output) {
     for (const [token, voice] of this._activeNotes) if (voice.output === output) this._stopActiveNoteToken(token, 'output-retired');
+    const outputId = normalizeOutputId(output?.id);
+    let write = 0;
+    for (const entry of this._ratePlanned) {
+      if (entry.outputId === outputId) continue;
+      this._ratePlanned[write++] = entry;
+    }
+    this._ratePlanned.length = write;
     this._expressionByOutput.delete(output);
   },
 
@@ -376,14 +383,18 @@ const midiSchedulerChannelMethods = {
     this._cleanupDepth++;
     try {
       if (channel && info.hasStarted !== false) {
+        const outputReleaseOptions = releaseOptions ? { ...releaseOptions } : null;
+        if (outputReleaseOptions) delete outputReleaseOptions.dispatchedAtMs;
         const options = releaseOptions || output.supportsIndependentNoteGates
-          ? [{ ...releaseOptions, ...(output.supportsIndependentNoteGates ? { voiceToken: info.token, reason } : {}) }] : [];
-        this._sendOutput(output, info.channel, 'sendNoteOff', [info.note, ...options], { ...info.captureMeta, scheduledMs: releaseOptions?.time ?? this._nowMs(), reason });
-        sentMessages += 1;
+          ? [{ ...outputReleaseOptions, ...(output.supportsIndependentNoteGates ? { voiceToken: info.token, reason } : {}) }] : [];
+        if (typeof channel.sendNoteOff === 'function' &&
+            this._sendOutput(output, info.channel, 'sendNoteOff', [info.note, ...options], { ...info.captureMeta, scheduledMs: releaseOptions?.time ?? this._nowMs(), reason }) !== false) sentMessages += 1;
         if (info.mpe) {
-          this._sendOutput(output, info.channel, 'sendPitchBend', [0, ...(releaseOptions ? [{ time: releaseOptions.time }] : [])], info.captureMeta);
-          this._expressionState(output, info.channel).bend = 0;
-          sentMessages += 1;
+          if (typeof channel.sendPitchBend === 'function' &&
+              this._sendOutput(output, info.channel, 'sendPitchBend', [0, ...(releaseOptions ? [{ time: releaseOptions.time }] : [])], info.captureMeta) !== false) {
+            this._expressionState(output, info.channel).bend = 0;
+            sentMessages += 1;
+          }
         }
       }
     } catch (error) { this.lastOutputError = error?.message || String(error); }
@@ -391,8 +402,11 @@ const midiSchedulerChannelMethods = {
     this._removePlannedRateEntries(oldestToken, 'off');
     if (info.hasStarted === false) this._removePlannedRateEntries(oldestToken, 'on');
     // Normal timed releases already own a reserved rate entry.
-    if (sentMessages > 0 && !releaseOptions) this._recordSent({ timeMs: this._nowMs(), count: sentMessages, bytes: sentMessages * MIDI_MESSAGE_BYTES,
-      token: oldestToken, phase: 'off', laneIndex: info.laneIndex ?? 0, laneCount: info.laneCount ?? 1, sfxId: info.sfxId, priority: info.priority });
+    if (sentMessages > 0) {
+      const sentAt = Number.isFinite(releaseOptions?.dispatchedAtMs) ? releaseOptions.dispatchedAtMs : this._nowMs();
+      this._recordSent({ timeMs: sentAt, count: sentMessages, bytes: sentMessages * MIDI_MESSAGE_BYTES,
+        token: oldestToken, phase: 'off', laneIndex: info.laneIndex ?? 0, laneCount: info.laneCount ?? 1, sfxId: info.sfxId, priority: info.priority }, sentAt);
+    }
   },
 
   _allocateChannel(outputId = null) {

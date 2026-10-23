@@ -482,10 +482,12 @@ describe('MidiScheduler 1', function() {
     scheduler._pruneRateEntries(1000);
 
     expect(scheduler._rateSent).to.include(keptSent);
-    expect(scheduler._rateSent.some(entry => entry.timeMs === 800)).to.equal(true);
-    expect(scheduler._ratePlanned).to.deep.equal([future]);
+    expect(scheduler._rateSent.some(entry => entry.timeMs === 800)).to.equal(false);
+    expect(scheduler._ratePlanned.map(entry => entry.timeMs)).to.deep.equal([800, 1200]);
 
     scheduler._removePlannedRateEntries(7, 'off');
+    expect(scheduler._ratePlanned).to.have.lengthOf(1);
+    scheduler._removePlannedRateEntries(7, 'on');
     expect(scheduler._ratePlanned).to.have.lengthOf(0);
   });
 

@@ -1,6 +1,8 @@
 import { expect } from 'chai';
 import { createProcgenMidiPorts, decodeProcgenMidi, encodeProcgenMidi } from '../js/app/procgen/workstation/ProcgenMidiPorts.js';
 import { exportProcgenMidi } from '../js/app/procgen/workstation/ProcgenMidiExport.js';
+import { MidiScheduler } from '../js/midi/MidiScheduler.js';
+import { withFakeClockAndPerformance } from './support/timers.js';
 
 function fixture() {
   const output = { id: 'notes', messages: [], clears: 0, send(data, timestamp) { this.messages.push({ data, timestamp }); }, clear() { this.clears++; } };
@@ -137,6 +139,28 @@ describe('ProcGen workstation MIDI ports', () => {
     expect(f.ports.sendNote({ note: 60, program: 1, durationMs: 200 })).to.equal(false);
     expect(plan).to.deep.equal({ on: { timeMs: 1000, count: 2, bytes: 5 }, off: { timeMs: 1200, count: 1, bytes: 3 } });
     expect(f.output.messages).to.have.length(0); f.ports.dispose();
+  });
+
+  it('keeps only accepted raw and bank messages after partial device rejection', () => {
+    withFakeClockAndPerformance(clock => {
+      const scheduler = new MidiScheduler({ mpe: { enabled: false } }), accepted = [];
+      const output = { id: 'raw', send(data) {
+        if (data[0] === 0x90 || data[1] === 32) return false;
+        accepted.push(data); return true;
+      } };
+      const transport = { pause() {}, panic() {}, getState: () => ({ beat: 0, bpm: 120 }) };
+      const ports = createProcgenMidiPorts({ scheduler, transport, now: () => clock.now });
+      try {
+        ports.setNoteOutput(output);
+        expect(ports.sendEvent({ type: 'bank', msb: 1, lsb: 2, timestamp: 0 })).to.equal(false);
+        expect(scheduler.getRateSnapshot(0).past.count).to.equal(1);
+        expect(scheduler.getRateSnapshot(0).next.count).to.equal(0);
+        expect(ports.sendNote({ note: 60, program: 8, durationMs: 100 })).to.equal(false);
+        expect(accepted).to.deep.equal([[0xb0, 0, 1], [0xc0, 8]]);
+        expect(scheduler.getRateSnapshot(0).past).to.include({ count: 2, bytes: 5 });
+        expect(scheduler.getRateSnapshot(0).next.count).to.equal(0);
+      } finally { ports.dispose(); scheduler.dispose(); }
+    });
   });
 });
 

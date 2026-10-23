@@ -308,10 +308,12 @@ const midiEventRouterEventMethods = {
         return;
       }
       this._hasTickBudget(tick, event.laneIndex, event.laneCount, true);
-      for (const note of activeNotes) {
-        specWithTime.note = note;
-        this.scheduler.sendNote(specWithTime, meta);
-      }
+      try {
+        for (let index = 0; index < activeNotes.length; index++) {
+          specWithTime.note = activeNotes[index];
+          this.scheduler.sendNote(specWithTime, { ...meta, reservationPartCount: activeNotes.length, reservationPartIndex: index });
+        }
+      } finally { this.scheduler._releaseReservation?.(meta.reservationId, true); }
       this._lastAcceptedBySfx.set(event.sfxId, sendTimeMs);
     } finally {
       if (perfEnabled) {

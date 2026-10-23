@@ -62,18 +62,28 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
   const raw = (data, timestamp = now(), meta = {}, capture = true) => {
     const port = resolveOutput(meta.outputId);
     if (disposed || !port || data[0] >= 0xf0) return false;
+    let ownedReservationId = null;
     try {
       const family = data[0] & 0xf0;
       const release = family === 0x80 || (family === 0x90 && data[2] === 0) || (family === 0xb0 && [64, 120, 123].includes(data[1]) && !data[2]);
-      if (capture && !release) {
+      if (capture && !release && meta.reservationId == null) {
         const reservation = scheduler.evaluateAndReserve?.({ on: { timeMs: timestamp, count: 1, bytes: data.length } }, { ...meta, outputId: port.id }, now());
         if (reservation && !reservation.ok) { scheduler.recordThrottle?.(reservation.reason, now(), meta); return false; }
+        ownedReservationId = reservation?.reservationId ?? null;
       }
-      if (!sendProcgenMidiBytes(port, data, timestamp)) { transport?.pause(); return false; }
+      if (!sendProcgenMidiBytes(port, data, timestamp)) {
+        scheduler._releaseReservation?.(ownedReservationId, true);
+        transport?.pause(); return false;
+      }
+      const sentAt = now(), reservationId = meta.reservationId ?? ownedReservationId;
+      const committed = reservationId != null && scheduler._commitReservationMessage?.(reservationId, meta.reservationPhase ?? 'on', data.length,
+        { ...meta, outputId: port.id }, sentAt);
+      if (!committed) scheduler._recordSent?.({ timeMs: sentAt, count: 1, bytes: data.length, phase: meta.reservationPhase ?? 'on',
+        outputId: port.id, trackId: meta.trackId, laneIndex: meta.laneIndex, laneCount: meta.laneCount, sfxId: meta.sfxId, priority: meta.priority }, sentAt);
       useChannel(port, (data[0] & 15) + 1);
       if (capture) record({ ...meta, ...decodeProcgenMidi(data, timestamp), outputId: port.id || null, direction: 'output', source: meta.source || 'output' });
       return true;
-    } catch { panic('output-error'); return false; }
+    } catch { scheduler._releaseReservation?.(ownedReservationId, true); panic('output-error'); return false; }
   };
   function flushRecording() {
     if (!recording) return;
@@ -92,7 +102,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
   function flush() {
     flushRecording();
     for (const port of new Set([noteOutput, clockOutput, ...noteOutputs.values()])) clearProcgenMidiQueue(port);
-    scheduler.allNotesOff();
+    scheduler.allNotesOff({ preserveRateHistory: true });
     for (const [port, channels] of usedChannels) {
       for (const channel of channels) {
         const base = channel - 1;
@@ -185,7 +195,9 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     sendEvent(event) {
       const timestamp = event.timestamp ?? event.timeMs ?? now();
       const messages = encodeProcgenMidi(event);
-      return !!messages.length && messages.map(data => raw(data, timestamp, event)).every(Boolean);
+      if (!messages.length) return false;
+      for (const data of messages) if (!raw(data, timestamp, event)) return false;
+      return true;
     },
     sendNote(spec, meta = {}) {
       const port = resolveOutput(spec.outputId);
@@ -196,7 +208,9 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
         if (banks.length) {
           const reservation = scheduler.evaluateAndReserve?.({ on: { timeMs: timestamp, count: banks.length, bytes: banks.length * 3 } }, { ...meta, outputId }, now());
           if (reservation && !reservation.ok) { scheduler.recordThrottle?.(reservation.reason, now(), meta); return false; }
-          if (!banks.every(data => raw(data, timestamp, { ...meta, outputId }, false))) return false;
+          try {
+            for (const data of banks) if (!raw(data, timestamp, { ...meta, outputId, reservationId: reservation?.reservationId }, false)) return false;
+          } finally { scheduler._releaseReservation?.(reservation?.reservationId, true); }
         }
         const accepted = scheduler.sendNote({ ...spec, durationTicks: durationMs / (scheduler.tickMs || 60) }, meta);
         if (accepted) {
@@ -208,10 +222,13 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
       const reservation = scheduler.evaluateAndReserve?.({ on: { timeMs: timestamp, count: messages.length, bytes: messages.reduce((sum, data) => sum + data.length, 0) },
         off: { timeMs: timestamp + durationMs, count: durationMs ? 1 : 0, bytes: durationMs ? 3 : 0 } }, { ...meta, outputId }, now());
       if (reservation && !reservation.ok) { scheduler.recordThrottle?.(reservation.reason, now(), meta); return false; }
-      const accepted = messages.every(data => raw(data, timestamp, { ...meta, outputId }, false));
-      if (accepted && durationMs) raw([0x80 | channelByte(spec.channel), byte(spec.note), byte(spec.releaseVelocity)], timestamp + durationMs, { ...meta, outputId }, false);
-      if (accepted) recordOutput(spec, meta);
-      return accepted;
+      try {
+        for (const data of messages) if (!raw(data, timestamp, { ...meta, outputId, reservationId: reservation?.reservationId }, false)) return false;
+        if (durationMs && !raw([0x80 | channelByte(spec.channel), byte(spec.note), byte(spec.releaseVelocity)], timestamp + durationMs,
+          { ...meta, outputId, reservationId: reservation?.reservationId, reservationPhase: 'off' }, false)) return false;
+        recordOutput(spec, meta);
+        return true;
+      } finally { scheduler._releaseReservation?.(reservation?.reservationId, true); }
     },
     getRecording() { return records.map(event => ({ ...event, data: [...event.data] })); },
     recordEvent(event, meta = {}) {
