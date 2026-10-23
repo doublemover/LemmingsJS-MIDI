@@ -304,10 +304,10 @@ const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fet
     let trial = null;
     replayPending = true; delete window.__procgenSurveyReplayReceipt;
     const exact = element('surveyReplayMode')?.value === 'exact';
-    element('surveyReplay').disabled = true; element('surveyReplayStatus').textContent = 'Checking saved source and asset integrity.';
+    element('surveyReplay').disabled = true; element('surveyReplayStatus').textContent = exact ? 'Checking saved source and asset integrity.' : 'Checking saved physical asset integrity.';
     try {
       const options = { scenario: original.scenario, candidate: original.candidate, sourceManifest: report.manifest.sourceManifest, signal: controller.signal };
-      trial = exact ? await createBrowserSurveyReplaySession(options) : await createBrowserSurveyTrial({ ...options, mode: 'compatibility' });
+      trial = exact ? await createBrowserSurveyReplaySession(options) : await createBrowserSurveyTrial({ ...options, mode: 'compatibility', artifactPolicy: 'saved-assets-only' });
       if (!current()) return;
       replay = trial; if (!connected) paused = false; syncPause();
       element('surveyReplayStatus').textContent = exact ? 'Replaying the matching build in an isolated, muted worker.' : 'Comparing with the current runtime in a muted local replay. Execution identity remains unverified.';

@@ -1,5 +1,6 @@
 export const BROWSER_BUILD_SCHEMA = 'lemmings-browser-build/v1';
 export const BROWSER_ENTRY_ROUTES = Object.freeze(['index.html', 'editor.html', 'procgen.html', 'procgen-survey.html']);
+const requiredEntryRoutes = ['index.html', 'editor.html', 'procgen.html'];
 export const BUILD_IDENTITY_PATH = 'js/runtime/ActiveExecutionIdentity.js';
 export const BUILD_IDENTITY_SLOT = 'const APPLICATION_BUILD = null; // IMMUTABLE_APPLICATION_BUILD_SLOT';
 export const BUILD_TEMPLATE_PATH = 'runtime-templates/identity.txt';
@@ -32,8 +33,9 @@ export const verifyBrowserBuildManifest = async (manifest, { expectedBuildId = n
   if (!manifest || manifest.schema !== BROWSER_BUILD_SCHEMA || !hashPattern.test(manifest.buildId) ||
       expectedBuildId != null && manifest.buildId !== expectedBuildId || !Array.isArray(manifest.files) || !manifest.files.length || manifest.files.length > 8192 ||
       !Array.isArray(manifest.recipe) || manifest.recipe.length !== recipePaths.length ||
-      !Array.isArray(manifest.routes) || manifest.routes.length !== BROWSER_ENTRY_ROUTES.length ||
-      BROWSER_ENTRY_ROUTES.some(route => !manifest.routes.includes(route))) throw new Error('Unsupported browser build manifest.');
+      !Array.isArray(manifest.routes) || manifest.routes.length < requiredEntryRoutes.length || manifest.routes.length > BROWSER_ENTRY_ROUTES.length ||
+      new Set(manifest.routes).size !== manifest.routes.length || manifest.routes.some(route => !BROWSER_ENTRY_ROUTES.includes(route)) ||
+      requiredEntryRoutes.some(route => !manifest.routes.includes(route))) throw new Error('Unsupported browser build manifest.');
   const files = [], seen = new Set(); let totalBytes = 0;
   for (const file of manifest.files) {
     if (!validBrowserBuildPath(file?.path) || seen.has(file.path) || !Number.isSafeInteger(file.bytes) || file.bytes < 0 || file.bytes > 16 * 1048576 ||
@@ -43,7 +45,7 @@ export const verifyBrowserBuildManifest = async (manifest, { expectedBuildId = n
     files.push({ path: file.path, bytes: file.bytes, sha256: file.sha256 });
   }
   if (totalBytes !== manifest.sourceBytes || manifest.assetProfile !== 'tracked-bundled-packs' || !seen.has(BUILD_IDENTITY_PATH) ||
-      manifest.routes.some(route => !seen.has(route))) throw new Error('Browser generation has inconsistent required files.');
+      BROWSER_ENTRY_ROUTES.some(route => seen.has(route) !== manifest.routes.includes(route))) throw new Error('Browser generation has inconsistent required files.');
   const recipe = manifest.recipe.map((file, index) => {
     if (file?.path !== recipePaths[index] || !hashPattern.test(file.sha256)) throw new Error('Unsupported browser build recipe.');
     return { path: file.path, sha256: file.sha256 };

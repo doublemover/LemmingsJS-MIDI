@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { buildBrowserRuntime } from '../scripts/BrowserRuntimeBuild.js';
-import { verifyBrowserBuildManifest } from '../js/runtime/BrowserBuildManifest.js';
+import { verifyBrowserBuildManifest, computeBrowserBuildIdentity, renderBrowserBuildIdentity } from '../js/runtime/BrowserBuildManifest.js';
 
 const repo = fileURLToPath(new URL('../', import.meta.url));
 describe('immutable browser generation staging', () => {
@@ -61,5 +61,25 @@ describe('immutable browser generation staging', () => {
     slot.sha256 = 'e'.repeat(64);
     try { await verifyBrowserBuildManifest(forged, { expectedBuildId: first.buildId, template }); } catch (failure) { error = failure; }
     expect(error.message).to.include('carrier does not follow');
+  });
+  it('accepts a pinned three-route v1 generation while binding route claims to its file inventory', async () => {
+    const first = await build(), template = await fs.readFile(path.join(first.path, first.manifest.sourceNormalization.templatePath), 'utf8');
+    const legacy = structuredClone(first.manifest);
+    legacy.files = legacy.files.filter(file => file.path !== 'procgen-survey.html');
+    legacy.routes = legacy.routes.filter(route => route !== 'procgen-survey.html');
+    const normalized = legacy.files.map(file => file.path === legacy.sourceNormalization.path ?
+      { path: file.path, bytes: Buffer.byteLength(template), sha256: legacy.sourceNormalization.templateSha256 } : file);
+    const identity = await computeBrowserBuildIdentity(normalized, legacy.recipe);
+    Object.assign(legacy, identity);
+    const carrier = Buffer.from(renderBrowserBuildIdentity(template, identity));
+    Object.assign(legacy.files.find(file => file.path === legacy.sourceNormalization.path),
+      { bytes: carrier.byteLength, sha256: createHash('sha256').update(carrier).digest('hex') });
+    legacy.sourceBytes = legacy.files.reduce((total, file) => total + file.bytes, 0);
+    expect((await verifyBrowserBuildManifest(legacy, { template })).templateVerified).to.equal(true);
+    for (const routes of [first.manifest.routes.slice(0, 3), [...legacy.routes, 'procgen.html'], [...legacy.routes, 'other.html']]) {
+      const invalid = structuredClone(first.manifest); invalid.routes = routes;
+      let error; try { await verifyBrowserBuildManifest(invalid, { template }); } catch (failure) { error = failure; }
+      expect(error).to.be.instanceOf(Error);
+    }
   });
 });

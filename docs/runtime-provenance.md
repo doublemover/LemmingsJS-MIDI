@@ -139,6 +139,13 @@ source files cannot substitute for the complete executable closure. Imported
 report source remains non-executable data; no report selects a module URL.
 
 The survey offers exact replay separately from a current-runtime comparison.
+Current-runtime comparisons verify the saved physical assets and explicitly
+leave historical code integrity unchecked. They do not request old JavaScript
+from a newer deployment, and matching results remain execution-unbound. The
+lower-level artifact verifier retains its complete source-and-assets default;
+exact replay always requires that complete policy. Version-one generations with
+the original three entry routes remain verifiable by newer installers. Route
+claims must agree exactly with the known entry files in the bound inventory.
 Legacy Node source receipts remain execution-unbound. Exact receipts separate
 artifact integrity, actual execution identity and observed replay consistency.
 One replay worker and one pending command are admitted per application realm,

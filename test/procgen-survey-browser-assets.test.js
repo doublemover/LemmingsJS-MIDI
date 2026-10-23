@@ -53,6 +53,27 @@ describe('verified selected browser survey asset contracts', function() {
       return fileFetch(url);
     } }), 'differs from the saved trial');
   });
+  it('compares saved physical assets under current modules without requiring historical executable files', async () => {
+    const historical = copy(sourceManifest), requested = [];
+    for (const name of Object.keys(historical.codeHashes)) historical.codeHashes[name] = 'a'.repeat(64);
+    historical.codeDigest = await hexSha256(new TextEncoder().encode(JSON.stringify(historical.codeHashes)));
+    const browser = await createBrowserSurveyTrial({ scenario: controlled, sourceManifest: historical, artifactPolicy: 'saved-assets-only', fetchFile: async url => {
+      requested.push(url.pathname); expect(url.pathname).not.to.match(/\.[cm]?js$/); return fileFetch(url);
+    } });
+    const node = await createNodeSurveyTrial({ scenario: controlled });
+    try {
+      browser.step(64); node.step(64); expect(browser.result()).to.deep.equal(node.result());
+      expect(browser.sourceVerification).to.include({ activeExecution: 'unbound', artifactIntegrity: 'assets-verified',
+        codeArtifactIntegrity: 'not-checked', codeFiles: 0, declaredCodeFiles: Object.keys(historical.codeHashes).length });
+      expect(requested).to.have.length(Object.keys(historical.assetHashes).length);
+    } finally { browser.dispose(); node.dispose(); }
+    await rejects(() => createBrowserSurveyTrial({ scenario: controlled, sourceManifest: historical, artifactPolicy: 'saved-assets-only',
+      fetchFile: async () => new globalThis.Response('changed physical asset') }), 'differs from the saved trial');
+    let requests = 0;
+    await rejects(() => createBrowserSurveyTrial({ scenario: controlled, sourceManifest: historical, mode: 'exact', artifactPolicy: 'saved-assets-only',
+      fetchFile: async () => { requests++; } }), 'complete saved source and asset inventory');
+    expect(requests).to.equal(0);
+  });
   it('rejects exact qualification before execution when active modules have no trusted build identity', async () => {
     let requests = 0;
     await rejects(() => createBrowserSurveyTrial({ scenario: controlled, sourceManifest, mode: 'exact',

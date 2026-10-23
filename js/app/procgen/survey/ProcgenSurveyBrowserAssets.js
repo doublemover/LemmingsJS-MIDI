@@ -30,14 +30,17 @@ const sourcePath = (name, code) => {
   if (url.origin !== repoUrl.origin || !url.pathname.startsWith(repoUrl.pathname)) throw new Error('Replay sources must remain in this origin and repository');
   return url;
 };
-const verifiedBrowserFiles = async (rawManifest, fetchRef, externalSignal, { resourceBudget = preparationBudget } = {}) => {
+const verifiedBrowserFiles = async (rawManifest, fetchRef, externalSignal, { resourceBudget = preparationBudget, artifactPolicy = 'saved-source-and-assets' } = {}) => {
   externalSignal?.throwIfAborted();
+  if (!['saved-source-and-assets', 'saved-assets-only'].includes(artifactPolicy)) throw new Error('Unknown replay artifact policy');
+  const verifyCode = artifactPolicy === 'saved-source-and-assets';
   const manifest = cloneJournalData(rawManifest, { maxBytes: 2 * 1048576, maxNodes: 32768 });
   if (![1, 2].includes(manifest?.schemaVersion) || !(manifest.schemaVersion === 2 ? /^[a-f0-9]{64}$/ : /^[a-f0-9]{40}$/).test(manifest.engineCommit || '') ||
       !manifest.codeHashes || !manifest.assetHashes || !/^[a-f0-9]{64}$/.test(manifest.codeDigest || '')) throw new Error('Replay requires the complete original source manifest');
-  const code = Object.entries(manifest.codeHashes), assets = Object.entries(manifest.assetHashes), entries = [...code.map(entry => [...entry, true]), ...assets.map(entry => [...entry, false])];
-  if (!code.length || entries.length > MAX_SOURCE_FILES) throw new Error('Replay source file limit exceeded');
-  for (const [name, expected, isCode] of entries) { sourcePath(name, isCode); if (!/^[a-f0-9]{64}$/.test(expected)) throw new Error(`Missing SHA-256 identity: ${name}`); }
+  const code = Object.entries(manifest.codeHashes), assets = Object.entries(manifest.assetHashes), declared = [...code.map(entry => [...entry, true]), ...assets.map(entry => [...entry, false])];
+  if (!code.length || declared.length > MAX_SOURCE_FILES) throw new Error('Replay source file limit exceeded');
+  for (const [name, expected, isCode] of declared) { sourcePath(name, isCode); if (!/^[a-f0-9]{64}$/.test(expected)) throw new Error(`Missing SHA-256 identity: ${name}`); }
+  const entries = verifyCode ? declared : declared.filter(entry => !entry[2]);
   for (const required of ['js/app/procgen/survey/ProcgenSurveyBrowserAssets.js', 'js/app/procgen/survey/ProcgenSurveyCore.js', 'js/steelSpritesData.js'])
     if (!Object.hasOwn(manifest.codeHashes, required)) throw new Error(`Replay code is missing from provenance: ${required}`);
   if (await hexSha256(new TextEncoder().encode(JSON.stringify(manifest.codeHashes))) !== manifest.codeDigest) throw new Error('Replay source manifest digest mismatch');
@@ -63,16 +66,17 @@ const verifiedBrowserFiles = async (rawManifest, fetchRef, externalSignal, { res
   try {
     const reads = await Promise.allSettled(Array.from({ length: Math.min(4, entries.length) }, read));
     const failed = reads.find(value => value.status === 'rejected'); if (failed) throw failed.reason;
-    for (const [name] of manifest.schemaVersion === 1 ? code : []) {
+    for (const [name] of verifyCode && manifest.schemaVersion === 1 ? code : []) {
       const text = new TextDecoder().decode(bytes.get(name));
       for (const match of text.matchAll(/(?:from\s*|import\s*\(|import\s*)['"](\.[^'"]+)['"]/g)) {
         const dependency = new URL(match[1], sourcePath(name, true)), relative = dependency.pathname.slice(repoUrl.pathname.length);
         if (dependency.origin !== repoUrl.origin || !Object.hasOwn(manifest.codeHashes, relative)) throw new Error(`Replay dependency is missing from provenance: ${relative}`);
       }
     }
-    return { bytes, release, verification: freezeSurveyData({ receiptVersion: 2, scheme: 'same-origin-file-sha256-v1', artifactIntegrity: 'verified',
-      activeExecution: 'unbound', executionReason: 'fetched-source-is-not-the-loaded-module-graph',
-      codeDigest: manifest.codeDigest, codeFiles: code.length, assetFiles: assets.length, totalBytes }) };
+    return { bytes, release, verification: freezeSurveyData({ receiptVersion: 3, scheme: 'same-origin-file-sha256-v1', artifactPolicy,
+      artifactIntegrity: verifyCode ? 'verified' : 'assets-verified', codeArtifactIntegrity: verifyCode ? 'verified' : 'not-checked', assetIntegrity: 'verified',
+      activeExecution: 'unbound', executionReason: verifyCode ? 'fetched-source-is-not-the-loaded-module-graph' : 'explicit-current-runtime-comparison',
+      codeDigest: manifest.codeDigest, codeFiles: verifyCode ? code.length : 0, declaredCodeFiles: code.length, assetFiles: assets.length, totalBytes }) };
   } catch (error) { controller.abort(error); release(); throw error; }
   finally { clearTimeout(deadline); externalSignal?.removeEventListener('abort', cancel); }
 };
@@ -97,9 +101,10 @@ const browserTerrain = async (scenario, files) => {
   const assemblyCatalog = selectAuthoredAssemblyCatalog(book, { packPath: pack, groundSet: scenario.groundSet, assetSha256, objectSha256 });
   return new ProcgenRecipeTerrain({ recipe, terrainPieces, objectPieces, sourceDescriptor, assemblyCatalog, packWidthLimit: getPackTerrainWidthLimit(book, pack) });
 };
-const createBrowserSurveyTrial = async ({ scenario: rawScenario, candidate: rawCandidate, sourceManifest: rawSourceManifest, fetchFile = globalThis.fetch, signal, mode = 'compatibility', executionLease, resourceBudget } = {}) => {
+const createBrowserSurveyTrial = async ({ scenario: rawScenario, candidate: rawCandidate, sourceManifest: rawSourceManifest, fetchFile = globalThis.fetch, signal, mode = 'compatibility', artifactPolicy = 'saved-source-and-assets', executionLease, resourceBudget } = {}) => {
   if (typeof fetchFile !== 'function') throw new Error('Verified replay requires fetch');
   if (!['compatibility', 'exact'].includes(mode)) throw new Error('Unknown replay mode');
+  if (mode === 'exact' && artifactPolicy !== 'saved-source-and-assets') throw new Error('Exact replay requires the complete saved source and asset inventory');
   signal?.throwIfAborted();
   const job = cloneJournalData({ scenario: rawScenario, candidate: rawCandidate || {}, sourceManifest: rawSourceManifest }, { maxBytes: 4 * 1048576, maxNodes: 65536 });
   const scenario = normalizeSurveyScenario(job.scenario), candidate = job.candidate, sourceManifest = job.sourceManifest;
@@ -111,7 +116,7 @@ const createBrowserSurveyTrial = async ({ scenario: rawScenario, candidate: rawC
     active = await requireSurveySourceBuild(sourceManifest, await loadActiveBrowserSurveyBuild({ fetchFile, signal }));
     requireIsolatedBrowserSurveyExecution(executionLease, sourceManifest); signal?.throwIfAborted();
   }
-  const { bytes, verification, release } = await verifiedBrowserFiles(sourceManifest, fetchFile, signal, { resourceBudget });
+  const { bytes, verification, release } = await verifiedBrowserFiles(sourceManifest, fetchFile, signal, { resourceBudget, artifactPolicy });
   try {
     signal?.throwIfAborted();
     const main = bytes.get('lemmings_ohNo/MAIN.DAT'); if (!main) throw new Error('Replay masks are missing from provenance');
