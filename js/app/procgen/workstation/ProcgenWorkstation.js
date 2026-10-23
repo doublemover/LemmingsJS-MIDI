@@ -13,6 +13,7 @@ import { createProcgenPhysicalPlayback } from './ProcgenPhysicalPlayback.js';
 import { createProcgenCausalJournal } from './ProcgenCausalJournal.js';
 import { createCausalTakeRecorder } from './CausalTake.js';
 import { prepareCausalTakeArchive } from './CausalTakeArchive.js';
+import { createPhysicalScoreProjection } from './PhysicalScoreProjection.js';
 import { createProcgenWorldInspector } from './ProcgenWorldInspector.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 import { resolveProcgenStartupIntent } from './ProcgenStartupIntent.js';
@@ -88,6 +89,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let causalTakeArmCanceled = false;
   let lastCausalTake = null, lastCausalInspection = null, physicalReceiptBuffer = null, physicalReceiptBoundary = null, causalTakeErrorReported = false;
   let selectedCausalTakeId = null, causalTakePage = null, causalTakeCursor = null, causalTakeBack = [], causalTakeListSerial = 0;
+  let physicalScoreProjection = null, physicalScore = null, physicalScoreQuery = null, physicalScoreAbort = null, physicalScoreSerial = 0, physicalScoreParent = null;
   let pendingHistory = null;
   const routerRestores = new Map();
   const undo = [], redo = [], listeners = [], noteEntries = new Map();
@@ -389,17 +391,48 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     ports.setInput(selectedInput);
     ports.setClockOutput(selectedClock);
   };
+  const recordCausalControl = (kind, payload) => {
+    if (!causalTake) return;
+    const world = runtime()?.world, tick = Number.isSafeInteger(world?.tickIndex) && world.tickIndex >= 0 ? world.tickIndex : 0;
+    const generation = Number.isSafeInteger(world?.generation) && world.generation >= 0 ? world.generation : 0;
+    const boundary = { tick, generation };
+    try {
+      const receipt = kind === 'timeline' ? causalTake.recordTimeline(payload, boundary) : causalTake.recordInput(payload, boundary);
+      if (receipt.status !== 'accepted') {
+        causalTake.markGap({ kind: 'all', firstTick: tick, lastTick: tick, generation, reason: 'control-record-rejected' });
+        status(`Causal take control record was not admitted: ${receipt.reason}.`);
+      }
+    } catch (error) {
+      try { causalTake.markGap({ kind: 'all', firstTick: tick, lastTick: tick, generation, reason: 'control-record-exception' }); } catch { /* Finalization retains the writer failure. */ }
+      status('Causal take control record failed: ' + error.message);
+    }
+  };
   const play = () => {
     const held = pendingResume ? engine.snapshot().active : null; pendingResume = false;
     transport.play(); if (held) engine.resume({ ...transport.getState(), timestamp: now(), activeNotes: held });
+    if (causalTake) {
+      recordCausalControl('input', { version: 1, kind: 'world-speed', speedFactor: transport.getState().effectiveSpeed });
+      recordCausalControl('input', { version: 1, kind: 'transport-state', playing: true });
+    }
     return transport.getState();
   };
   const configureTransport = patch => {
     const previous = transport.getState(), held = previous.playing ? engine.snapshot().active : null;
     transport.configure(patch);
-    if (held && previous.bpm !== transport.getState().bpm) { pendingResume = false; engine.resume({ ...transport.getState(), timestamp: now(), activeNotes: held }); }
+    const next = transport.getState();
+    if (causalTake && previous.bpm !== next.bpm) recordCausalControl('timeline', { version: 1, kind: 'tempo', bpm: next.bpm });
+    if (causalTake && next.playing && (previous.effectiveSpeed !== next.effectiveSpeed || previous.gameSpeed !== next.gameSpeed))
+      recordCausalControl('input', { version: 1, kind: 'world-speed', speedFactor: next.effectiveSpeed });
+    if (held && previous.bpm !== next.bpm) { pendingResume = false; engine.resume({ ...next, timestamp: now(), activeNotes: held }); }
   };
-  const beforeRestart = () => { transport.pause(); ports.flush(); physicalPlayback?.stop(); return transport.snapshot(); };
+  const beforeRestart = () => {
+    if (causalTake) {
+      const world = runtime()?.world, tick = Number.isSafeInteger(world?.tickIndex) && world.tickIndex >= 0 ? world.tickIndex : 0;
+      const generation = Number.isSafeInteger(world?.generation) && world.generation >= 0 ? world.generation : 0;
+      causalTake.markGap({ kind: 'all', firstTick: tick, lastTick: tick, generation, reason: 'transport-reset-during-take' });
+    }
+    transport.pause(); ports.flush(); physicalPlayback?.stop(); return transport.snapshot();
+  };
   const causalBoundary = () => {
     const physical = physicalPlayback?.engine.snapshot();
     return { voices: physical?.active || [], travel: physical?.travel || null,
@@ -410,7 +443,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     starting: !!causalTakeStart, stopping: !!causalTakeStop,
     active: causalTake?.status() || null, last: lastCausalTake, inspection: lastCausalInspection,
     selectedTakeId: selectedCausalTakeId, takePage: causalTakePage, takePageNumber: causalTakeBack.length + 1,
-    hasPreviousTakePage: causalTakeBack.length > 0 });
+    hasPreviousTakePage: causalTakeBack.length > 0, physicalScore, physicalScoreParent });
   const browseCausalTakes = async (direction = 'first') => {
     if (typeof storage.listCausalTakes !== 'function') throw new Error('Causal take browsing is unavailable in this browser.');
     if (!['first', 'next', 'previous'].includes(direction)) throw new Error('Invalid take page direction.');
@@ -428,17 +461,69 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   const selectCausalTake = takeId => {
     if (!causalTakePage?.items.some(item => item.takeId === takeId)) throw new Error('Choose a take from the current page.');
+    physicalScoreAbort?.abort(); physicalScoreSerial++; physicalScore = physicalScoreQuery = physicalScoreParent = null;
     selectedCausalTakeId = takeId; lastCausalInspection = null; view?.renderInspector?.();
     return takeId;
+  };
+  const readPhysicalScore = async ({ timeDomain = 'physical-source-time', more = false } = {}) => {
+    const takeId = selectedCausalTakeId || lastCausalTake?.takeId;
+    if (!takeId) throw new Error('Select a saved causal take before reading its score.');
+    if (more && (!physicalScore?.continuation || physicalScoreQuery?.takeId !== takeId || physicalScoreQuery.timeDomain !== timeDomain))
+      throw new Error('This score window has no continuation. Start a new reading.');
+    physicalScoreAbort?.abort();
+    const controller = new AbortController(), serial = ++physicalScoreSerial; physicalScoreAbort = controller;
+    const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget });
+    let query = physicalScoreQuery;
+    if (!more) {
+      const manifest = await journal.openTake(takeId);
+      const first = await journal.query({ takeId, kinds: ['physical-batch'], limit: 1, signal: controller.signal });
+      const batch = first.records[0];
+      if (!batch || manifest.coverage?.sourceRange?.firstTick == null || manifest.coverage.sourceRange.lastTick == null)
+        throw new Error('This take has no committed physical score range to read.');
+      query = { takeId, takeRevision: manifest.revision, generation: batch.generation,
+        coverageRange: { firstTick: manifest.coverage.sourceRange.firstTick,
+          lastTick: Math.min(manifest.coverage.sourceRange.lastTick, manifest.coverage.sourceRange.firstTick + 63) },
+        timeDomain, resolution: { mode: 'exact' } };
+    }
+    const projection = physicalScoreProjection ||= createPhysicalScoreProjection({ journal, maxRecords: 512, maxSourceFacts: 1024, maxGlyphs: 64, maxBytes: 1048576 });
+    const result = await projection.queryPhysicalScore({ ...query, cursor: more ? physicalScore.continuation : null,
+      requestId: `workstation-score-${serial}`, signal: controller.signal });
+    if (disposed || controller.signal.aborted || serial !== physicalScoreSerial) return null;
+    physicalScoreQuery = query; physicalScore = result; physicalScoreParent = null;
+    view?.renderInspector?.();
+    status(`Physical score: ${result.counts.glyphs} source glyphs in this bounded window; ${result.unknownRegions.length} uncertain regions.`);
+    return result;
+  };
+  const inspectPhysicalScoreCause = async ({ sourceSequence, eventId } = {}) => {
+    if (!physicalScoreQuery || !physicalScore?.glyphs.some(glyph => glyph.glyphId === eventId && glyph.source.sequence === sourceSequence))
+      throw new Error('Choose a source glyph from the current score window.');
+    const serial = ++physicalScoreSerial, requestId = `workstation-score-parent-${serial}`;
+    const result = await physicalScoreProjection.queryCausalParent({ ...physicalScoreQuery, sourceSequence, eventId, requestId });
+    if (disposed || serial !== physicalScoreSerial) return null;
+    physicalScoreParent = result; view?.renderInspector?.(); return result;
   };
   const stopCausalTake = async ({ reason = 'user-stop' } = {}) => {
     if (causalTakeStart) { try { await causalTakeStart; } catch { if (!causalTake) return lastCausalTake; } }
     if (causalTakeStop) return causalTakeStop;
     if (!causalTake) return lastCausalTake;
     const recorder = causalTake;
-    causalTakeStop = recorder.stop({ boundaryState: causalBoundary(), reason }).then(receipt => {
+    let finalCheckpoint = null;
+    try {
+      const world = runtime()?.world;
+      if (!world) throw new Error('The recorded world is no longer available.');
+      finalCheckpoint = { world: captureCheckpoint(world), engine: physicalPlayback?.engine.snapshot() || null,
+        timeline: physicalScoreClock.snapshot(), replay: { version: 1, bpm: transport.getState().bpm, scoreTimeline: true } };
+    } catch (error) {
+      const world = runtime()?.world, tick = Number.isSafeInteger(world?.tickIndex) && world.tickIndex >= 0 ? world.tickIndex : 0;
+      const generation = Number.isSafeInteger(world?.generation) && world.generation >= 0 ? world.generation : 0;
+      try { recorder.markGap({ kind: 'all', firstTick: tick, lastTick: tick, generation, reason: 'final-checkpoint-unavailable' }); }
+      catch { /* The recorder still owns its pending durable prefix. */ }
+      status('Causal take final checkpoint unavailable: ' + error.message);
+    }
+    causalTakeStop = recorder.stop({ boundaryState: causalBoundary(), finalCheckpoint, reason }).then(receipt => {
       lastCausalTake = receipt;
       selectedCausalTakeId = receipt.takeId;
+      physicalScoreAbort?.abort(); physicalScoreSerial++; physicalScore = physicalScoreQuery = physicalScoreParent = null;
       if (!recorder.canReplaceDocument()) throw new Error('Causal take has an undurable tail. Retry finishing the take before replacing the world.');
       if (causalTake === recorder) causalTake = null;
       status(receipt.complete ? `Causal take ${receipt.takeId} saved.` :
@@ -465,7 +550,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         numericCanonicalization: 'finite-f64-minus-zero-v1', mappingRevision: project.procgen.physicalGraph.revision };
       const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget });
       const pending = createCausalTakeRecorder({ journal, takeId, takeName, documentId: documentId || `unsaved:${takeId}`,
-        sourceVersions, initialCheckpoint: { world: capturedWorld, engine: physical, timeline },
+        sourceVersions, initialCheckpoint: { world: capturedWorld, engine: physical, timeline,
+          replay: { version: 1, bpm: transport.getState().bpm, scoreTimeline: true } },
         mapping: project.procgen.physicalGraph, assetRefs: capturedWorld.assets || [], boundaryState: causalBoundary() });
       causalTakeStart = pending;
       view?.renderInspector?.();
@@ -814,6 +900,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     causalTakeState, startCausalTake: safe(startCausalTake), stopCausalTake: safe(stopCausalTake), cancelCausalTakeArm,
     markCausalTake: safe(markCausalTake), inspectLastCausalTake: safe(inspectLastCausalTake),
     prepareCausalArchive: safe(prepareCausalArchive), browseCausalTakes: safe(browseCausalTakes), selectCausalTake: safe(selectCausalTake),
+    readPhysicalScore: safe(readPhysicalScore), inspectPhysicalScoreCause: safe(inspectPhysicalScoreCause),
     historyBusy: () => pendingHistory !== null,
     historyState: () => Object.freeze({ undo: undo.length, redo: redo.length,
       retainedBytes: retainedHistoryBytes(), byteLimit: historyBytesLimit, dropped: historyDropped }),
@@ -1063,6 +1150,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     get settings() { return legacy.settings; },
     dispose() {
       if (disposed) return retirement.retire();
+      physicalScoreAbort?.abort();
       cancelInputEdits('workstation closed');
       persist({ immediate: true });
       disposed = true; loadSerial++;

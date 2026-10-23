@@ -64,11 +64,14 @@ describe('ProcGen workstation orchestration', () => {
       batchId: 'world:fixture:1:1:0', sourceTimeMs: 20, tickDurationMs: 20,
       completeness: { status: 'complete', dropped: 0 }, facts: [] });
     const receipt = await f.studio.stopCausalTake({ reason: 'test-stop' });
-    expect(receipt).to.include({ takeId, complete: true, durableSequence: 2 });
+    expect(receipt).to.include({ takeId, complete: true, durableSequence: 4 });
     const journal = createProcgenCausalJournal({ storage });
     const records = await journal.query({ takeId });
-    expect(records.records.map(record => record.kind)).to.deep.equal(['physical-batch', 'musical-intents']);
+    expect(records.records.map(record => record.kind)).to.deep.equal(['input-observation', 'input-observation', 'physical-batch', 'musical-intents']);
     expect((await journal.verify(takeId)).status).to.equal('complete');
+    const score = await f.studio.handlers.readPhysicalScore();
+    expect(score).to.include({ takeId, generation: 1, timeDomain: 'physical-source-time' });
+    expect(score.counts.physicalBatches).to.equal(1);
     await f.studio.dispose().completion;
   });
   it('marks failed physical batch processing as partial instead of certifying an empty performance', async () => {
@@ -103,6 +106,18 @@ describe('ProcGen workstation orchestration', () => {
     expect(inspection).to.include({ takeId, takeName: 'A saved performance', paused: true });
     await f.studio.handlers.browseCausalTakes('previous');
     expect(f.studio.handlers.causalTakeState().takePageNumber).to.equal(1);
+    await f.studio.dispose().completion;
+  });
+  it('records tempo and active world-speed changes before the next physical boundary', async () => {
+    const memory = createMemoryCausalStore(), storage = { ...memory.storage, close() {} };
+    const f = setup({ storageOverride: storage }); f.studio.bindRuntime();
+    const takeId = (await f.studio.handlers.startCausalTake()).takeId;
+    f.studio.handlers.transport({ bpm: 180 });
+    await f.studio.stopCausalTake();
+    const records = (await createProcgenCausalJournal({ storage }).query({ takeId })).records;
+    expect(records.map(record => record.kind)).to.deep.equal(['input-observation', 'input-observation', 'timeline', 'input-observation']);
+    expect(records[2].payload).to.deep.equal({ version: 1, kind: 'tempo', bpm: 180 });
+    expect(records[3].payload).to.deep.equal({ version: 1, kind: 'world-speed', speedFactor: 1.5 });
     await f.studio.dispose().completion;
   });
   it('retries the same prepared MIDI bytes after an anchor request fails', async () => {

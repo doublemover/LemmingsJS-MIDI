@@ -199,6 +199,18 @@ describe('procgenBoot helpers', function () {
     expect(calls).to.deep.equal(['lanes', 'view', 'lease', 'provider']);
   });
 
+  it('releases game resource readers before the provider on runtime retirement', function () {
+    const calls = [];
+    procgenBoot.setActiveProcgenRuntimeForTest({
+      game: { stop() { calls.push('game'); } },
+      resources: { dispose() { calls.push('resources'); } },
+      providerLease: { release() { calls.push('lease'); } },
+      fileProvider: { dispose() { calls.push('provider'); } }
+    });
+    procgenBoot.disposeProcgenRuntime();
+    expect(calls).to.deep.equal(['game', 'resources', 'lease', 'provider']);
+  });
+
   it('continues runtime retirement after a throwing early owner', function () {
     const calls = [];
     procgenBoot.setActiveProcgenRuntimeForTest({

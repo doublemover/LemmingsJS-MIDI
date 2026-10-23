@@ -53,8 +53,10 @@ test.describe('procgen survey native boundary', () => {
       await expect(page.locator('#surveyPause')).toHaveText('Resume all'); await page.locator('#surveyPause').click();
       await expect.poll(() => telemetry.size).toBeGreaterThan(0); await page.locator('#surveyPause').click();
       await expect.poll(() => lastState.paused).toBe(true); await page.locator('#surveyStep').click();
-      await expect.poll(() => lastState.reachedCheckpoint).toBeTruthy();
-      expect(lastState.ticks.every(record => record.tick === lastState.reachedCheckpoint)).toBe(true);
+      await expect.poll(() => lastState.stepReceipt?.status).toBe('reached');
+      expect(lastState.stepReceipt.selected.every(record => record.tick === lastState.stepReceipt.reachedCheckpoint)).toBe(true);
+      await expect(page.locator('#surveyStepReceipt')).toContainText(`Reached checkpoint tick ${lastState.stepReceipt.reachedCheckpoint}`);
+      await expect(page.locator('#surveyStepSelection')).toContainText(jobs[0].trialId);
       await page.locator('#surveyCancel').click(); const outcome = await pool; expect(outcome.cancelled).toBe(true); expect(outcome.results).toHaveLength(16);
       expect(outcome.results.every(result => !result.episodeComplete)).toBe(true); expect(states).toEqual(['resume', 'pause', 'step', 'cancel']);
       await testInfo.attach('survey-native-controls.json', { body: JSON.stringify({ states, lastState, statuses: outcome.results.map(result => ({ trialId: result.trialId, status: result.status, lastTick: result.lastTick })) }), contentType: 'application/json' });

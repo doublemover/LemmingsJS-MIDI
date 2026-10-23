@@ -24,13 +24,49 @@ const surveyReviewOutcome = result => {
   const outcome = !result?.episodeComplete ? 'Incomplete episode' : result.status === 'completed' ? 'Goal met at horizon' : ['failed', 'timeout', 'timed-out', 'timed_out'].includes(result.status) ? 'Goal not met at horizon' : 'Outcome unknown';
   return { outcome, validity, deaths: Number.isInteger(result?.accounting?.deaths) && result.accounting.deaths >= 0 ? result.accounting.deaths : null };
 };
+const describeSurveyStep = state => {
+  const receipt = state?.stepReceipt;
+  if (!receipt) return state?.queued || state?.stepPending ? 'Step queued; waiting for worker admission.' : 'No worker step requested.';
+  const selected = Number.isSafeInteger(receipt.selectedCount) ? receipt.selectedCount : receipt.selected?.length || 0;
+  if (receipt.status === 'pending') return receipt.phase === 'preparing' ?
+    `Step preparing across ${receipt.expectedWorkers ?? 'unknown'} worker(s); no checkpoint confirmed.` :
+    `Step in progress for ${selected} selected trial(s); no checkpoint confirmed.`;
+  if (receipt.status === 'reached' && Number.isSafeInteger(receipt.reachedCheckpoint))
+    return `Reached checkpoint tick ${receipt.reachedCheckpoint} for ${selected} selected trial(s).`;
+  if (receipt.status === 'empty') return 'No eligible trial was selected for this step.';
+  if (receipt.status === 'terminal-before-target') return `Selected trial ended before checkpoint tick ${receipt.targetTick ?? 'unknown'}.`;
+  if (receipt.status === 'timed-out') return `Step timed out; ${receipt.unacknowledgedWorkerCount ?? 'some'} worker outcome(s) remain unconfirmed.`;
+  if (receipt.status === 'failed') return 'Step failed before a confirmed checkpoint.';
+  if (receipt.status === 'superseded') return 'Step was superseded before a confirmed checkpoint.';
+  return `Step ${receipt.status || 'outcome unknown'}; no checkpoint confirmed.`;
+};
+const describeSurveyStepSelection = state => {
+  const receipt = state?.stepReceipt;
+  if (!receipt) return 'No trial selection receipt.';
+  const selected = Array.isArray(receipt.selected) ? receipt.selected : [];
+  const rows = selected.slice(0, 32).map(value =>
+    `${String(value?.trialId || 'unknown trial').slice(0, 96)} · attempt ${String(value?.attemptId || 'unknown').slice(0, 96)} · ${String(value?.status || 'unknown progress').slice(0, 64)} · tick ${Number.isSafeInteger(value?.tick) ? value.tick : 'unconfirmed'}`);
+  if (selected.length > 32) rows.push(`${selected.length - 32} more selected trials omitted from this view.`);
+  if (!receipt.selectionComplete) rows.push('Selection is incomplete; some worker progress is unknown.');
+  return rows.join('\n') || 'No eligible trial was selected.';
+};
 const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fetch.bind(window) }) => {
   const element = id => document.getElementById(id), url = new URL(window.location.href), token = url.searchParams.get('token') || new URLSearchParams(url.hash.slice(1)).get('token');
   const tiles = new Map(), disposedTrials = new WeakSet();
   const releaseTrial = trial => { if (trial && !disposedTrials.has(trial)) { disposedTrials.add(trial); trial.dispose(); } };
-  let report = null, selectedId = null, replay = null, disposed = false, polling = null, paused = false, replayPending = false, pausePending = false, connected = !!token, loadEpoch = 0, replayEpoch = 0, replayAbort = null, manifestIdentity = null, filePending = null, preferredTrial = null;
+  let report = null, selectedId = null, replay = null, disposed = false, polling = null, paused = false, replayPending = false, pausePending = false, stepPending = false, connected = !!token, loadEpoch = 0, replayEpoch = 0, replayAbort = null, manifestIdentity = null, filePending = null, preferredTrial = null, displayedStep = null;
   const replayHelp = 'Current-runtime comparison checks recorded physics and events. Active build identity is not yet verified.';
   const status = text => { if (!disposed) element('surveyStatus').textContent = text; };
+  const publishStep = state => {
+    if (disposed) return;
+    const receipt = state?.stepReceipt, prior = displayedStep?.stepReceipt;
+    if (!receipt && prior && connected && !state?.queued) return;
+    if (receipt && prior && receipt.runGeneration === prior.runGeneration &&
+        (receipt.controlId < prior.controlId || receipt.controlId === prior.controlId && prior.status !== 'pending' && receipt.status === 'pending')) return;
+    displayedStep = state;
+    element('surveyStepReceipt').textContent = describeSurveyStep(state);
+    element('surveyStepSelection').textContent = describeSurveyStepSelection(state);
+  };
   const syncPause = () => {
     const button = element('surveyPause');
     button.disabled = disposed || pausePending || (!connected && !replay);
@@ -94,7 +130,8 @@ const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fet
     element('surveyScrub').disabled = !result?.milestones?.length;
     element('surveyReplay').disabled = disposed || replayPending || !!replay || !result?.episodeComplete;
     element('surveyDivergence').disabled = !result || !baseline(result) || baseline(result)?.trialId === result.trialId;
-    element('surveyStep').disabled = !connected && (!result || Number(element('surveyScrub').value) >= Number(element('surveyScrub').max));
+    element('surveyStep').disabled = stepPending || report?.controlState?.stepPending === true ||
+      !connected && (!result || Number(element('surveyScrub').value) >= Number(element('surveyScrub').max));
     if (replay) return;
     if (!result) {
       renderSurveyPreview(element('surveyFocus')); renderSurveyPreview(element('surveyBaseline'));
@@ -198,16 +235,22 @@ const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fet
       connected = false; if (polling) window.clearInterval(polling); polling = null;
     }
     if (!refresh || changed) cancelReplay();
-    if (changed) { for (const tile of tiles.values()) tile.remove(); tiles.clear(); element('surveyScene').replaceChildren(); element('surveyNavigationStatus').textContent = ''; selectedId = null; }
+    if (changed) { for (const tile of tiles.values()) tile.remove(); tiles.clear(); element('surveyScene').replaceChildren(); element('surveyNavigationStatus').textContent = ''; selectedId = null; displayedStep = null; }
     manifestIdentity = identity;
     if (connected && typeof next.controlState?.paused === 'boolean') paused = next.controlState.paused;
+    publishStep(next.controlState);
     syncPause(); element('surveyCancel').disabled = !connected;
     element('surveyMode').textContent = connected ? 'Connected local survey' : 'Saved report review';
     report = next; render(); status('Recorded comparison loaded. Missing validity or truncated evidence stays explicit; no policy winner is claimed.');
   };
   const control = async command => {
     if (!connected) { if (command === 'step') { cancelReplay(); element('surveyScrub').value = Math.min(Number(element('surveyScrub').max), Number(element('surveyScrub').value) + 1); publishFocus(); } return; }
-    const response = await fetchData('/survey-api/control', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Survey-Token': token }, body: JSON.stringify({ command }) }); if (!response.ok) throw new Error('Survey control was rejected');
+    const response = await fetchData('/survey-api/control', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Survey-Token': token }, body: JSON.stringify({ command }) });
+    if (!response.ok) throw new Error('Survey control was rejected');
+    const receipt = await response.json();
+    if (receipt?.accepted !== command) throw new Error('Survey control acknowledgement did not match the command.');
+    if (command === 'step' && receipt?.accepted === 'step') publishStep(receipt.state);
+    return receipt?.state;
   };
   element('surveyFile').addEventListener('change', async event => {
     const file = event.target.files[0]; if (!file) return;
@@ -232,7 +275,12 @@ const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fet
     catch (error) { if (epoch === loadEpoch) status(error.message); }
     finally { pausePending = false; syncPause(); }
   });
-  element('surveyStep').addEventListener('click', () => control('step').catch(error => status(error.message)));
+  element('surveyStep').addEventListener('click', async () => {
+    if (stepPending) return;
+    stepPending = true; element('surveyStep').disabled = true;
+    try { await control('step'); } catch (error) { status(error.message); }
+    finally { stepPending = false; publishFocus(); }
+  });
   element('surveyCancel').disabled = !connected; element('surveyCancel').addEventListener('click', () => control('cancel').catch(error => status(error.message)));
   element('surveyDivergence').addEventListener('click', () => { const result = selected(), pair = baseline(result); const divergence = result && pair && firstSurveyDivergence(pair, result);
     if (!divergence) { status('No physical/event divergence at retained common checkpoints.'); return; }
@@ -301,4 +349,4 @@ const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fet
   return { load, select, render, getReport: () => report, dispose() { disposed = true; loadEpoch++; if (polling) window.clearInterval(polling); cancelReplay(); } };
 };
 if (typeof document !== 'undefined') { const dashboard = createSurveyDashboard({ document, window }); window.__procgenSurveyDashboard = dashboard; window.addEventListener('pagehide', () => dashboard.dispose(), { once: true }); }
-export { createSurveyDashboard, renderSurveyPreview, surveyReviewOutcome };
+export { createSurveyDashboard, renderSurveyPreview, surveyReviewOutcome, describeSurveyStep, describeSurveyStepSelection };

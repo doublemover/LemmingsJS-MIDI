@@ -125,6 +125,7 @@ const disposeProcgenRuntime = () => {
     } },
     { name: 'stage-adapter', run: () => runtime.stageAdapter?.dispose?.() },
     { name: 'game', run: () => runtime.game?.stop?.() },
+    { name: 'game-resources', run: () => runtime.resources?.dispose?.() },
     { name: 'view', run: () => runtime.view?.dispose?.() },
     { name: 'asset-provider-lease', run: () => runtime.providerLease?.release() },
     { name: 'asset-provider', run: () => runtime.fileProvider?.dispose?.() },
@@ -330,17 +331,19 @@ const initWorkstation = async ({ session, lease } = {}) => {
   if (!canvas) return;
   const settings = session ? { ...session.settings, laneCount: session.world.laneCount, laneHeight: session.world.laneHeight, seed: session.world.seed } : { ...procgenStudio.prepareSettings() };
   const view = new GameView(); let candidate = null, lanes = null, terrain = null, committed = false;
-  let fileProvider = null, resourceLease = null, candidateBudgetToken = null, candidateBudgetOwner = 'candidate-world';
+  let fileProvider = null, resourceLease = null, resources = null, resourcePromise = null, candidateBudgetToken = null, candidateBudgetOwner = 'candidate-world';
   const canCommit = () => serial === workstationInitSerial && !lease?.signal?.aborted;
   try {
     const factory = view.gameFactory;
     fileProvider = factory.fileProvider;
     fileProvider?.setBudgetAdapter?.(procgenResourceBudget);
     resourceLease = fileProvider?.acquireLease?.() || null;
-    const [configs, resources, book] = await Promise.all([
+    resourcePromise = factory.getGameResources(GameTypes.LEMMINGS);
+    const [configs, preparedResources, book] = await Promise.all([
       Promise.all([GameTypes.LEMMINGS, GameTypes.OHNO, GameTypes.HOLIDAY94].map(type => factory.getConfig(type))),
-      factory.getGameResources(GameTypes.LEMMINGS), loadTerrainRecipeBook(fileProvider)
+      resourcePromise, loadTerrainRecipeBook(fileProvider)
     ]);
+    resources = preparedResources;
     if (!canCommit()) return false;
     terrain = await loadProcgenMixedTerrain({ configs, fileProvider, book,
       laneAssignments: session?.project?.procgen?.lanes?.map(lane => lane.family) || procgenStudio.getLaneAssignments(),
@@ -397,6 +400,8 @@ const initWorkstation = async ({ session, lease } = {}) => {
       if (candidateBudgetToken) procgenResourceBudget.release({ token: candidateBudgetToken, owner: candidateBudgetOwner });
     }
     resourceLease?.release();
+    resources?.dispose?.();
+    if (!resources) void resourcePromise?.then(prepared => prepared.dispose?.(), () => {});
     if (fileProvider?.acquireLease) fileProvider.dispose();
     view.dispose();
   }
@@ -427,7 +432,8 @@ const init = async (options = {}) => {
     stageAdapter: null,
     focusBlurCleanup: null,
     fileProvider: null,
-    providerLease: null
+    providerLease: null,
+    resources: null
   };
   const canvas = document.getElementById('gameCanvas');
   if (!canvas) return;
@@ -466,6 +472,7 @@ const init = async (options = {}) => {
 
     const config = await view.gameFactory.getConfig(gameType);
     const resources = await view.gameFactory.getGameResources(gameType);
+    runtime.resources = resources;
     view.gameResources = resources;
 
     const styleName = await pickProcgenStyle(
@@ -493,6 +500,7 @@ const init = async (options = {}) => {
       runtime.lanes = lanes;
       runtime.providerLease = null;
       lanes.renderer.hud = new ProcgenBitmapHud({ canvas, sprites: hudSprites });
+      resources.dispose?.(); runtime.resources = null;
       view.dispose();
       runtime.fileProvider.dispose?.(); runtime.fileProvider = null;
       runtime.lanes = lanes; runtime.world = lanes.world; runtime.view = lanes.view; runtime.game = lanes.game;
@@ -596,11 +604,14 @@ const init = async (options = {}) => {
     }
     runtime?.stageAdapter?.dispose?.();
     runtime?.game?.stop?.();
+    runtime?.resources?.dispose?.();
     runtime?.view?.dispose?.();
     runtime?.providerLease?.release?.();
     runtime?.fileProvider?.dispose?.();
     runFocusBlurCleanup(runtime);
     throw err;
+  } finally {
+    if (activeProcgenRuntime !== runtime) runtime.resources?.dispose?.();
   }
 };
 

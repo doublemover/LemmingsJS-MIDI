@@ -233,6 +233,28 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
           controls.append(page);
         }
         if (take.inspection) controls.append(node('p', `${take.inspection.takeName} · ${take.inspection.status} · ticks ${take.inspection.firstTick ?? 'unknown'}–${take.inspection.lastTick ?? 'unknown'} · ${take.inspection.gaps} coverage gaps · opens paused`, 'studio-hint'));
+        if (take.selectedTakeId || take.last) {
+          state.scoreTimeDomain ||= 'physical-source-time';
+          labeled('Score axis', select([['physical-source-time', 'Source time'], ['causal-order', 'Causal order'], ['musical-score-time', 'Musical score time']],
+            state.scoreTimeDomain, timeDomain => { state.scoreTimeDomain = timeDomain; handlers.preferences?.(); handlers.readPhysicalScore?.({ timeDomain }); }, 'Physical score time axis'), controls);
+          controls.append(button('Read causal score', () => handlers.readPhysicalScore?.({ timeDomain: state.scoreTimeDomain }),
+            'Inspect a bounded window of recorded physical facts without playing hardware'));
+        }
+        if (take.physicalScore) {
+          const score = take.physicalScore, scoreList = node('div', null, 'studio-physical-score');
+          scoreList.append(node('p', `${score.counts.glyphs} source glyphs · ${score.counts.physicalBatches} captured batches · ${score.unknownRegions.length} uncertain regions · inspection paused`, 'studio-hint'));
+          for (const glyph of score.glyphs) {
+            const axis = glyph.axis.status === 'known' ? `${glyph.axis.value} ${glyph.axis.unit}` : `${glyph.axis.unit} unavailable`;
+            const outcomes = glyph.intents.flatMap(intent => intent.sinkEvidence);
+            const evidence = outcomes.length ? outcomes.map(outcome => outcome.status).join(', ') : 'output unknown';
+            scoreList.append(button(`Tick ${glyph.source.tick} · ${glyph.factKind} · actor ${glyph.actorId ?? 'world'} · ${axis} · ${glyph.intents.length} intents · ${evidence}`,
+              () => handlers.inspectPhysicalScoreCause?.({ sourceSequence: glyph.source.sequence, eventId: glyph.glyphId }),
+              'Inspect the exact recorded causal parent of this source fact'));
+          }
+          if (score.continuation) scoreList.append(button('More source glyphs', () => handlers.readPhysicalScore?.({ timeDomain: state.scoreTimeDomain, more: true })));
+          if (take.physicalScoreParent) scoreList.append(node('p', `${take.physicalScoreParent.eventId} · parents ${take.physicalScoreParent.parentCauseIds.join(', ') || 'none recorded'} · command ${take.physicalScoreParent.commandId || 'none recorded'}`, 'studio-hint'));
+          controls.append(scoreList);
+        }
         fields.append(controls);
       }
       const graph = getProject().procgen.physicalGraph;
