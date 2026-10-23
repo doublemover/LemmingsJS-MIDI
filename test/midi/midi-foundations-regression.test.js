@@ -116,7 +116,7 @@ describe('MIDI foundations regressions', function() {
     }, { now: 1700000000000, performanceValue: { now: () => 87 } });
   });
 
-  it('panics every used channel on every output, including a replaced default output', function() {
+  it('releases each owned gate on its original output, including a replaced default output', function() {
     const firstCalls = [];
     const secondCalls = [];
     const first = makeOutput([1, 4], firstCalls, 'first');
@@ -128,10 +128,11 @@ describe('MIDI foundations regressions', function() {
     scheduler.setOutputs([second]);
     scheduler.sendNote({ note: 62, channel: 9, durationTicks: 0 });
     scheduler.allNotesOff();
-    expect(firstCalls.filter(call => call.type === 'allNotesOff').map(call => call.id)).to.deep.equal([1, 4]);
-    expect(secondCalls.filter(call => call.type === 'allNotesOff').map(call => call.id)).to.deep.equal([1, 9]);
+    expect(firstCalls.filter(call => call.type === 'noteOff').map(call => call.id)).to.deep.equal([4]);
+    expect(secondCalls.filter(call => call.type === 'noteOff').map(call => call.id)).to.deep.equal([9]);
+    expect([...firstCalls, ...secondCalls].filter(call => call.type === 'allNotesOff')).to.deep.equal([]);
     expect(scheduler._activeNotes.size).to.equal(0);
-    expect(scheduler._usedOutputChannels.size).to.equal(2);
+    expect(scheduler._usedOutputChannels.size).to.equal(0);
     scheduler.dispose();
     expect(scheduler._usedOutputChannels.size).to.equal(0);
   });
@@ -151,7 +152,7 @@ describe('MIDI foundations regressions', function() {
         expect([...fixture.active]).to.deep.equal([]);
         expect(scheduler._pendingNoteOns.size).to.equal(0);
         if (clearMode === 'supported') {
-          expect(fixture.calls.some(call => call.type === 'clear')).to.equal(true);
+          expect(fixture.calls.some(call => call.type === 'clear')).to.equal(false);
           expect(fixture.calls.filter(call => call.type === 'off' && call.time > 0)).to.deep.equal([]);
         } else {
           expect(fixture.calls.filter(call => call.type === 'off' && call.time > 0)).to.deep.equal([]);
@@ -189,8 +190,8 @@ describe('MIDI foundations regressions', function() {
     scheduler.sendNote({ note: 62, channel: 9, outputId: 'live', durationTicks: 0 });
     disconnected.channels[4].sendControlChange = () => { throw new Error('Disconnected'); };
     expect(() => scheduler.allNotesOff()).not.to.throw();
-    expect(calls.some(call => call.type === 'cc' && call.id === 9 && call.cc === 64 && call.value === 0)).to.equal(true);
-    expect(calls.some(call => call.type === 'cc' && call.id === 9 && call.cc === 120 && call.value === 0)).to.equal(true);
+    expect(calls.some(call => call.type === 'noteOff' && call.id === 9 && call.note === 62)).to.equal(true);
+    expect(calls.some(call => call.type === 'cc' && call.id === 9 && [64, 120].includes(call.cc))).to.equal(false);
     expect(scheduler._activeNotes.size).to.equal(0);
   });
 
@@ -201,7 +202,7 @@ describe('MIDI foundations regressions', function() {
       scheduler.setOutput(makeOutput([1, 4], calls));
       scheduler.sendNote({ note: 60, channel: 4, durationTicks: 0 });
       scheduler[method]();
-      expect(calls.some(call => call.type === 'allNotesOff' && call.id === 4)).to.equal(true);
+      expect(calls.some(call => call.type === 'noteOff' && call.id === 4)).to.equal(true);
       expect(scheduler._activeNotes.size).to.equal(0);
     }
   });

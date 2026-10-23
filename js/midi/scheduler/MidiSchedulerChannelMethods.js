@@ -34,9 +34,13 @@ const midiSchedulerChannelMethods = {
     const mpeChanged = JSON.stringify(this.config?.mpe) !== JSON.stringify(config?.mpe) ||
       (this.config?.enabled === false && config?.enabled !== false);
     if (mpeChanged) {
+      this._mpeRevision++;
       for (const [token, voice] of this._activeNotes) if (voice.mpe) this._stopActiveNoteToken(token, 'mpe-zone-changed');
       this._expressionByOutput.clear();
     }
+    const expressionBinding = JSON.stringify([config?.mpe?.timbreCc, config?.position?.panRange, config?.mpe?.pitchBendRange]);
+    if (expressionBinding !== this._expressionBinding) this._expressionByOutput.clear();
+    this._expressionBinding = expressionBinding;
     const phraseConfigKey = JSON.stringify([
       config?.enabled, config?.sfx, config?.triggers, config?.scale, config?.noteRange,
       config?.velocityRange, config?.durationTicks, config?.density, config?.envelope,
@@ -65,25 +69,26 @@ const midiSchedulerChannelMethods = {
     if (next === previous) return;
     this._cleanupDepth++;
     try {
-      this.gamePhrases.clear();
-      if (previous) {
+      if (previous && !this._additionalOutputs.has(previous)) {
         this._retireOutput(previous);
         const id = normalizeOutputId(previous.id);
         if (this._outputsById.get(id) === previous) this._outputsById.delete(id);
       }
       this.output = next;
+      const newlyActivated = next && !this._outputLeases.has(next);
       if (next) this._registerOutput(next);
-      this._initMpe(next);
+      if (newlyActivated) this._initMpe(next);
     } finally { this._cleanupDepth--; }
   },
 
   setOutputs(outputs) {
     if (this._disposed) return;
     const nextOutputs = toOutputList(outputs), previousOutputs = [...this._outputsById.values()];
+    this._additionalOutputs = new Set(nextOutputs);
     this._cleanupDepth++;
     try {
-      for (const output of previousOutputs) if (!nextOutputs.includes(output)) {
-        this.gamePhrases.clear(); this._retireOutput(output);
+      for (const output of previousOutputs) if (!nextOutputs.includes(output) && output !== this.output) {
+        this._retireOutput(output);
       }
       this._outputsById.clear();
       for (const output of nextOutputs) this._registerOutput(output);
@@ -95,6 +100,9 @@ const midiSchedulerChannelMethods = {
   _retireOutput(output) {
     for (const [token, voice] of this._activeNotes) if (voice.output === output) this._stopActiveNoteToken(token, 'output-retired');
     const outputId = normalizeOutputId(output?.id);
+    for (const [key, phrase] of this.gamePhrases.voices) {
+      if (this._resolveOutputId(phrase.spec?.outputId ?? phrase.meta?.outputId) === outputId) this.gamePhrases.voices.delete(key);
+    }
     let write = 0;
     for (const entry of this._ratePlanned) {
       if (entry.outputId === outputId) continue;
@@ -102,7 +110,13 @@ const midiSchedulerChannelMethods = {
     }
     this._ratePlanned.length = write;
     if (outputId != null) this._rateLanesByOutput.delete(outputId);
+    if (outputId != null) this._throttleByOutput.delete(outputId);
     this._expressionByOutput.delete(output);
+    this._mpeStatusByOutput.delete(output);
+    this._mpeFailureByOutput.delete(output);
+    this._usedOutputChannels.delete(output);
+    this._outputLeases.delete(output);
+    this._routeRevision++;
   },
 
   hasAnyOutput() {
@@ -115,7 +129,35 @@ const midiSchedulerChannelMethods = {
 
   _registerOutput(output) {
     const id = normalizeOutputId(output?.id);
+    if (output && !this._outputLeases.has(output)) this._outputLeases.set(output, {
+      connectionEpoch: ++this._connectionSequence, routeRevision: ++this._routeRevision
+    });
     if (id && output) this._outputsById.set(id, output);
+  },
+
+  getOutputRouteState(outputId = null) {
+    const output = this._resolveOutput(outputId), lease = this._outputLeases.get(output);
+    return { outputId: this._resolveOutputId(outputId), active: !!lease, available: !!output && output.state !== 'disconnected',
+      connectionEpoch: lease?.connectionEpoch ?? null, routeRevision: lease?.routeRevision ?? this._routeRevision,
+      mpeReady: output ? this._mpeStatusByOutput.get(output) ?? null : null,
+      mpeFailure: output ? this._mpeFailureByOutput.get(output) ?? null : null,
+      mpeEvidence: output && this._mpeStatusByOutput.get(output) ? 'manual-zone-api-accepted' : null };
+  },
+
+  invalidateOutputState(outputId = null, channel = null) {
+    const output = this._resolveOutput(outputId);
+    if (channel == null) this._expressionByOutput.delete(output);
+    else this._expressionByOutput.get(output)?.delete(channel);
+  },
+
+  rearmOutput(outputId = null) {
+    const output = this._resolveOutput(outputId);
+    if (!output || this._disposed) return false;
+    this.lastOutputError = null;
+    this._cleanupDepth++;
+    try { this._retireOutput(output); this._registerOutput(output); this._initMpe(output); }
+    finally { this._cleanupDepth--; }
+    return this._mpeStatusByOutput.get(output) !== false;
   },
 
   _resolveOutputId(outputId = null) {
@@ -154,7 +196,7 @@ const midiSchedulerChannelMethods = {
     let channels = this._expressionByOutput.get(output);
     if (!channels) { channels = new Map(); this._expressionByOutput.set(output, channels); }
     let state = channels.get(channelNumber);
-    if (!state) { state = {}; channels.set(channelNumber, state); }
+    if (!state) { state = { bindings: new Map() }; channels.set(channelNumber, state); }
     return state;
   },
 
@@ -188,12 +230,17 @@ const midiSchedulerChannelMethods = {
       spanBasePan: Number.isFinite(spec.spanBasePan) ? panValue(spec.spanBasePan) : state.spanPan ? state.spanBasePan : state.pan ?? panValue(0),
       spanBaseTimbre: Number.isFinite(spec.spanBaseTimbre) ? spec.spanBaseTimbre : state.spanTimbre ? state.spanBaseTimbre : state.timbre ?? 64 };
     let coalesced = 0;
-    const add = (key, value, type, cc = null, bytes = MIDI_MESSAGE_BYTES) => {
-      if (uncertain || state[key] !== value) controls.push({ key, value, type, cc, bytes });
+    const add = (key, value, type, cc = null, bytes = MIDI_MESSAGE_BYTES, force = false) => {
+      const binding = `${type}:${cc ?? key}`;
+      if (force || uncertain || state.bindings?.get(binding) !== value) controls.push({ key, value, type, cc, bytes, binding });
       else coalesced += 1;
     };
+    if (!output?.supportsPerNoteInstrument) {
+      if (Number.isInteger(spec.bankMsb) && spec.bankMsb >= 0 && spec.bankMsb <= 127) add('bankMsb', spec.bankMsb, 'cc', 0);
+      if (Number.isInteger(spec.bankLsb) && spec.bankLsb >= 0 && spec.bankLsb <= 127) add('bankLsb', spec.bankLsb, 'cc', 32);
+    }
     if (!output?.supportsPerNoteInstrument && Number.isInteger(spec.program) && spec.program >= 0 && spec.program <= 127) {
-      add('program', spec.program, 'program', null, 2);
+      add('program', spec.program, 'program', null, 2, controls.some(control => control.key === 'bankMsb' || control.key === 'bankLsb'));
     }
     if (this._isMpeNote(spec) || Number.isFinite(spec.pitchBend)) add('bend', clamp(spec.pitchBend ?? 0, -1, 1), 'bend');
     if (Number.isFinite(spec.timbre)) add('timbre', clamp(spec.timbre, 0, 127), 'cc', this.config.mpe?.timbreCc ?? 74);
@@ -239,31 +286,54 @@ const midiSchedulerChannelMethods = {
     const reserved = this._ensembleChannels();
     const uniqueMembers = members
       .filter((channel, index, list) => channel !== master && list.indexOf(channel) === index && !reserved.has(channel));
+    const invalidAddress = (mpe.masterChannel != null && (!Number.isInteger(mpe.masterChannel) || mpe.masterChannel < 1 || mpe.masterChannel > 16)) ||
+      (mpe.memberChannels != null && !Array.isArray(mpe.memberChannels)) ||
+      (Array.isArray(mpe.memberChannels) ? mpe.memberChannels : []).some(channel => !Number.isInteger(channel) || channel < 1 || channel > 16 || channel === master);
+    this._mpeZoneFailure = invalidAddress ? 'invalid-mpe-channel' : !uniqueMembers.length ? 'empty-mpe-zone' : reserved.has(master) || members.some(channel => reserved.has(channel))
+      ? 'reserved-mpe-channel' : null;
     const channels = uniqueMembers.length ? [master, ...uniqueMembers].filter(channel => !reserved.has(channel)) : [];
     for (const targetOutput of outputs) {
-      let ready = channels.length === uniqueMembers.length + 1;
+      let ready = !this._mpeZoneFailure && channels.length === uniqueMembers.length + 1;
       if (ready) ready = channels.every(ch => targetOutput.channels?.[ch] &&
         typeof targetOutput.channels[ch].sendPitchBendRange === 'function' &&
         typeof targetOutput.channels[ch].sendPitchBend === 'function');
       if (!ready) {
         this._mpeStatusByOutput.set(targetOutput, false);
+        this._mpeFailureByOutput.set(targetOutput, this._mpeZoneFailure || 'mpe-channel-unsupported');
         continue;
       }
-      for (const ch of channels) {
-        try {
-          if (this._sendOutput(targetOutput, ch, 'sendPitchBendRange', [bend.semitones, bend.cents], { reason: 'mpe-init' }) === false ||
-              this._sendOutput(targetOutput, ch, 'sendPitchBend', [0], { reason: 'mpe-init' }) === false) {
+      const outputId = this._resolveOutputId(targetOutput.id), timestamp = this._nowMs();
+      const reservation = this.evaluateAndReserve({ on: { timeMs: timestamp, count: channels.length * 7, bytes: channels.length * 21 } },
+        { outputId, source: 'mpe-init' }, timestamp);
+      if (!reservation.ok) {
+        this._mpeStatusByOutput.set(targetOutput, false); this._mpeFailureByOutput.set(targetOutput, 'setup-' + reservation.reason);
+        this.recordThrottle(reservation.reason, timestamp, { outputId }); continue;
+      }
+      let acceptedBytes = 0;
+      const removeObserver = this.addSubmissionObserver(event => {
+        if (event.output !== targetOutput || event.reason !== 'mpe-init' || !event.accepted || !event.midiBytes) return;
+        acceptedBytes += event.midiBytes.length;
+        this._commitReservationMessage(reservation.reservationId, 'on', event.midiBytes.length, { outputId }, event.submittedMs);
+      });
+      try {
+        for (const ch of channels) {
+          try {
+            const before = acceptedBytes;
+            const rangeAccepted = this._sendOutput(targetOutput, ch, 'sendPitchBendRange', [bend.semitones, bend.cents], { reason: 'mpe-init' });
+            if (rangeAccepted === false) { ready = false; break; }
+            if (acceptedBytes === before) this._commitReservationCost(reservation.reservationId, 'on', 6, 18, { outputId }, this._nowMs());
+            if (this._sendOutput(targetOutput, ch, 'sendPitchBend', [0], { reason: 'mpe-init' }) === false) { ready = false; break; }
+            this._expressionState(targetOutput, ch).bend = 0;
+            this._expressionState(targetOutput, ch).bindings.set('bend:bend', 0);
+          } catch (error) {
+            this.lastOutputError = error?.message || String(error);
             ready = false;
             break;
           }
-          this._expressionState(targetOutput, ch).bend = 0;
-        } catch (error) {
-          this.lastOutputError = error?.message || String(error);
-          ready = false;
-          break;
         }
-      }
+      } finally { removeObserver(); this._releaseReservation(reservation.reservationId); }
       this._mpeStatusByOutput.set(targetOutput, ready);
+      this._mpeFailureByOutput.set(targetOutput, ready ? null : 'mpe-setup-rejected');
       if (!ready) this._expressionByOutput.delete(targetOutput);
     }
     this._memberChannels = uniqueMembers.slice();
@@ -380,7 +450,7 @@ const midiSchedulerChannelMethods = {
     this._pendingNoteOns.delete(oldestToken);
     if (info.hasStarted === false) this._observe('cancelled', { ...info.captureMeta, type: 'noteOn', reason: 'pending-note-cancelled' });
     const output = info.output || this._resolveOutput(info.outputId), channel = output?.channels?.[info.channel];
-    let sentMessages = 0;
+    let sentMessages = 0, released = false, cleanupUncertain = false;
     this._cleanupDepth++;
     try {
       if (channel && info.hasStarted !== false) {
@@ -389,16 +459,17 @@ const midiSchedulerChannelMethods = {
         const options = releaseOptions || output.supportsIndependentNoteGates
           ? [{ ...outputReleaseOptions, ...(output.supportsIndependentNoteGates ? { voiceToken: info.token, reason } : {}) }] : [];
         if (typeof channel.sendNoteOff === 'function' &&
-            this._sendOutput(output, info.channel, 'sendNoteOff', [info.note, ...options], { ...info.captureMeta, scheduledMs: releaseOptions?.time ?? this._nowMs(), reason }) !== false) sentMessages += 1;
+            this._sendOutput(output, info.channel, 'sendNoteOff', [info.note, ...options], { ...info.captureMeta, scheduledMs: releaseOptions?.time ?? this._nowMs(), reason }) !== false) { sentMessages += 1; released = true; }
         if (info.mpe) {
           if (typeof channel.sendPitchBend === 'function' &&
               this._sendOutput(output, info.channel, 'sendPitchBend', [0, ...(releaseOptions ? [{ time: releaseOptions.time }] : [])], info.captureMeta) !== false) {
             this._expressionState(output, info.channel).bend = 0;
+            this._expressionState(output, info.channel).bindings.set('bend:bend', 0);
             sentMessages += 1;
-          }
+          } else cleanupUncertain = true;
         }
       }
-    } catch (error) { this.lastOutputError = error?.message || String(error); }
+    } catch (error) { this.lastOutputError = error?.message || String(error); cleanupUncertain = true; }
     finally { this._cleanupDepth--; }
     this._removePlannedRateEntries(oldestToken, 'off');
     if (info.hasStarted === false) this._removePlannedRateEntries(oldestToken, 'on');
@@ -409,6 +480,12 @@ const midiSchedulerChannelMethods = {
         token: oldestToken, phase: 'off', outputId: info.outputId ?? null, laneIndex: info.laneIndex ?? 0,
         laneCount: info.laneCount ?? 1, sfxId: info.sfxId, priority: info.priority }, sentAt);
     }
+    const result = Object.freeze({ token: oldestToken, outputId: info.outputId ?? null, channel: info.channel,
+      connectionEpoch: info.connectionEpoch ?? null, routeRevision: info.routeRevision ?? null, reason,
+      state: info.hasStarted === false ? 'cancelled' : released && !cleanupUncertain ? 'release-submitted' : 'uncertain',
+      evidence: info.hasStarted === false ? 'application-queue-removed' : released ? 'adapter-returned' : 'release-unconfirmed' });
+    this._observe('voice-terminal', { ...info.captureMeta, ...result });
+    return result;
   },
 
   _allocateChannel(outputId = null, reason = 'mpe-channel-steal') {

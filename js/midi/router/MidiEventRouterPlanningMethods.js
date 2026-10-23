@@ -142,7 +142,7 @@ const midiEventRouterPlanningMethods = {
     const maxBytes = limits.maxBytesPerSecond ??
         this.scheduler._maxBytesPerSecond ??
         snapshotForMax?.maxBytesPerSecond ??
-        3906;
+        3125;
     const evaluation = typeof this.scheduler.evaluateAndReserve === 'function'
       ? this.scheduler.evaluateAndReserve(plan, meta, now, {
         softMaxMessagesPerSecond: maxPerSecond,

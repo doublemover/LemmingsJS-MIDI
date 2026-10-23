@@ -20,13 +20,14 @@ const midiSchedulerSendMethods = {
     const externalReservationId = meta.rateReserved === true ? meta.reservationId : null;
     const releaseExternalShare = () => this._releaseReservationPart(externalReservationId,
       Math.max(1, (meta.reservationPartCount ?? 1) - (meta.reservationPartIndex ?? 0)));
-    if (this._disposed || this._cleanupDepth) { releaseExternalShare(); return false; }
+    if (this._disposed || this._cleanupDepth || this._outputCallbackDepth) { releaseExternalShare(); return false; }
     const lifecycle = this._lifecycleVersion;
     const app = this.config?.runtime?.app || getAppContext();
     const perfEnabled = !!app &&
         (app.performanceAPI === true || app.perfMetrics === true) &&
         canMeasurePerformance();
     const perfStart = perfEnabled ? performance.now() : 0;
+    let localReservationId = null, admissionToken = null, reservationClaimed = false;
     try {
       if (!spec || !Number.isFinite(spec.note)) { releaseExternalShare(); return false; }
       spec = { ...spec };
@@ -35,6 +36,7 @@ const midiSchedulerSendMethods = {
       const outputId = this._resolveOutputId?.(spec.outputId) ?? null;
       const output = this._resolveOutput ? this._resolveOutput(outputId) : this.output;
       if (!output) { releaseExternalShare(); return false; }
+      const routeLease = this._outputLeases.get(output), zoneRevision = this._mpeRevision;
 
       const sendTimeMs = Number.isFinite(spec.timeMs) ? spec.timeMs : this._nowMs();
       const durationMs = Number.isFinite(spec.durationTicks)
@@ -60,7 +62,6 @@ const midiSchedulerSendMethods = {
       const now = this._nowMs();
       if (sendTimeMs > now && !mpeEnabled && this._pendingNoteOns.size >= this._maxActiveNotes) { releaseExternalShare(); return false; }
       if (sendTimeMs > now && this._pendingNoteOns.size >= Math.max(32, this._maxActiveNotes * 4)) { releaseExternalShare(); return false; }
-      let localReservationId = null;
       const releaseUnclaimed = () => { if (localReservationId != null) this._releaseReservation(localReservationId); };
       if (meta.rateReserved !== true) {
         const estimate = this.estimateMessages(spec);
@@ -88,10 +89,16 @@ const midiSchedulerSendMethods = {
       if (output.supportsIndependentNoteGates && !this._admitLocalNote(output, meta, trackId, voiceBudget)) { releaseUnclaimed(); releaseExternalShare(); return false; }
       const startedAt = sendTimeMs;
       const token = ++this._noteOffSeq;
-      this._claimReservation(meta.reservationId, token, Math.max(1, (meta.reservationPartCount ?? 1) - (meta.reservationPartIndex ?? 0)));
+      admissionToken = token;
+      reservationClaimed = this._claimReservation(meta.reservationId, token,
+        Math.max(1, (meta.reservationPartCount ?? 1) - (meta.reservationPartIndex ?? 0)), outputId);
+      if (!reservationClaimed) {
+        releaseUnclaimed(); releaseExternalShare(); this.recordThrottle('stale-reservation', now, { ...meta, outputId }); return false;
+      }
       const captureMeta = (this._captureEnabled() || this._submissionObservers.size > 0) ? { ...this._captureScaleFields(), ...meta, captureScope: this._captureScope, token, note: spec.note, channel: channelNumber, program: spec.program,
         trackId, ensembleRole: spec.ensembleRole, percussion: spec.percussion, velocity: attackVelocity,
-        scheduledMs: sendTimeMs, durationMs, held: durationMs === 0 } : null;
+        scheduledMs: sendTimeMs, durationMs, held: durationMs === 0,
+        connectionEpoch: routeLease?.connectionEpoch ?? null, routeRevision: routeLease?.routeRevision ?? null } : null;
       this._observe('scheduled', { ...captureMeta, type: 'noteOn', offScheduledMs: durationMs > 0 ? offTimeMs : null });
       if (
         !deferredMpe && !output.supportsIndependentNoteGates && trackId &&
@@ -117,6 +124,9 @@ const midiSchedulerSendMethods = {
         trackId,
         voiceBudget,
         outputId,
+        connectionEpoch: routeLease?.connectionEpoch ?? null,
+        routeRevision: routeLease?.routeRevision ?? null,
+        zoneRevision,
         mpe: mpeEnabled,
         phraseVoiceKey: spec.phraseVoiceKey ?? null,
         laneIndex: meta.laneIndex ?? 0, laneCount: meta.laneCount ?? 1, lemmingId: meta.lemmingId ?? null, ensembleRole: spec.ensembleRole ?? null, sfxId: meta.sfxId, priority: meta.priority,
@@ -147,7 +157,8 @@ const midiSchedulerSendMethods = {
           this._stopActiveNoteToken(token);
           return;
         }
-        if (this._resolveOutput(outputId) !== output) {
+        if (this._resolveOutput(outputId) !== output || this._outputLeases.get(output) !== routeLease ||
+            (mpeEnabled && (zoneRevision !== this._mpeRevision || this._mpeStatusByOutput.get(output) === false))) {
           this._stopActiveNoteToken(token, 'output-retired');
           return;
         }
@@ -208,6 +219,7 @@ const midiSchedulerSendMethods = {
               laneIndex: meta.laneIndex ?? 0, laneCount: meta.laneCount ?? 1, sfxId: meta.sfxId, priority: meta.priority });
             if (!ownsVoice()) { dispatchFailed = true; return; }
             expression.state[control.key] = control.value;
+            expression.state.bindings.set(control.binding, control.value);
           }
           Object.assign(expression.state, expression.spanState);
 
@@ -236,13 +248,21 @@ const midiSchedulerSendMethods = {
             ...(output.supportsPerNotePan && Number.isFinite(notePan) ? { pan: notePan / 127 } : {}) }], captureMeta);
           if (accepted === false) {
             dispatchFailed = true;
+            active.hasStarted = false;
             this.recordThrottle('local-render-rejected', this._nowMs(), captureMeta);
             this._stopActiveNoteToken(token);
             return;
           }
           this._recordSent({ timeMs: this._nowMs(), count: 1, bytes: MIDI_MESSAGE_BYTES, token, phase: 'on', outputId, trackId,
             laneIndex: meta.laneIndex ?? 0, laneCount: meta.laneCount ?? 1, sfxId: meta.sfxId, priority: meta.priority });
-          if (!ownsVoice()) { dispatchFailed = true; return; }
+          if (!ownsVoice()) {
+            dispatchFailed = true;
+            if (this._sendOutput(output, channelNumber, 'sendNoteOff', [spec.note, { rawRelease: releaseVelocity }],
+              { ...captureMeta, reason: 'onset-retired-during-submission' }) !== false) {
+              this._recordSent({ timeMs: this._nowMs(), count: 1, bytes: MIDI_MESSAGE_BYTES, token, phase: 'off', outputId, trackId }, this._nowMs());
+            }
+            return;
+          }
           if (typeof window !== 'undefined') window.lastMidiOutputMessage = {
             type: 'noteOn', note: spec.note, velocity: attackVelocity, channel: channelNumber, outputId, timeMs: sendTimeMs, program: spec.program, ensembleRole: spec.ensembleRole, laneIndex: meta.laneIndex, lemmingId: meta.lemmingId
           };
@@ -303,6 +323,14 @@ const midiSchedulerSendMethods = {
       }
       this._checkByteRate(now, outputId);
       return !dispatchFailed;
+    } catch (error) {
+      this.lastOutputError = error?.message || String(error);
+      if (this._activeNotes.has(admissionToken)) this._stopActiveNoteToken(admissionToken, 'admission-error');
+      else if (admissionToken != null) this._removePlannedRateEntries(admissionToken);
+      if (localReservationId != null) this._releaseReservation(localReservationId);
+      if (!reservationClaimed) releaseExternalShare();
+      this._observe('drop', { ...meta, type: 'noteOn', reason: 'admission-error' });
+      return false;
     } finally {
       if (perfEnabled) {
         recordPerformanceMeasure('MidiScheduler sendNote', {
@@ -380,67 +408,40 @@ const midiSchedulerSendMethods = {
     return false;
   },
 
-  allNotesOff({ preserveGamePhrases = false, preserveRateHistory = false } = {}) {
+  allNotesOff({ preserveGamePhrases = false, preserveRateHistory = false, wholeDevice = false, reason = 'owned-stop' } = {}) {
     if (this._panicking) return;
     this._panicking = true; this._cleanupDepth++; this._lifecycleVersion++;
     try {
-      this._observe('panic', { type: 'allNotesOff', preserveRateHistory, reason: 'panic-or-lifecycle' });
+      this._observe('panic', { type: 'allNotesOff', preserveRateHistory, wholeDevice, reason });
       if (preserveRateHistory) this._pruneRateEntries(this._nowMs());
       if (!preserveGamePhrases) this.gamePhrases.clear();
-      for (const pending of this._pendingNoteOns.values()) if (pending.timerId != null) clearTimeout(pending.timerId);
-      const mpe = this.config.mpe;
-      let channels;
-      if (mpe?.enabled) {
-        const master = normalizeChannelNumber(mpe.masterChannel, 1);
-        const members = (Array.isArray(mpe.memberChannels) ? mpe.memberChannels : [])
-          .map((channel) => normalizeChannelNumber(channel))
-          .filter((channel, index, list) => channel !== master && list.indexOf(channel) === index);
-        channels = [master, ...members];
-      } else {
-        channels = [normalizeChannelNumber(this.config.defaultChannel, 1)];
+      const cleanup = { reason, wholeDevice, queuedRemoved: 0, releaseSubmitted: 0, uncertain: 0, effectiveBoundary: this._nowMs() };
+      const scopes = new Map();
+      for (const output of this._listOutputs()) if (output.supportsIndependentNoteGates) scopes.set(output, new Set());
+      for (const [output, channels] of this._usedOutputChannels) if (output.supportsIndependentNoteGates) scopes.set(output, new Set(channels));
+      for (const [token, voice] of this._activeNotes) {
+        if (voice.hasStarted) {
+          if (!scopes.has(voice.output)) scopes.set(voice.output, new Set());
+          scopes.get(voice.output).add(voice.channel);
+        }
+        const result = this._stopActiveNoteToken(token, reason);
+        if (result?.state === 'cancelled') cleanup.queuedRemoved++;
+        else if (result?.state === 'release-submitted') cleanup.releaseSubmitted++;
+        else if (result) cleanup.uncertain++;
       }
-      const outputs = new Set([...this._listOutputs(), ...this._usedOutputChannels.keys()]);
-      const now = this._nowMs();
-      for (const output of outputs) {
-        let cleared = false;
-        try {
-        // WebMidi's clear wrapper can silently do nothing when native clear is unavailable.
-          if (typeof output.clear === 'function' && (!output._midiOutput || typeof output._midiOutput.clear === 'function')) {
-            this._sendOutput(output, null, 'clear');
-            cleared = true;
-          }
-        } catch (error) {
-        // Future note-ons still need a paired emergency note-off if clear fails.
-        }
-        const usedChannels = new Set([...channels, ...(this._usedOutputChannels.get(output) || [])]);
-        for (const active of this._activeNotes.values()) {
-          if (this._resolveOutput(active.outputId) === output) usedChannels.add(active.channel);
-        }
-        for (const ch of usedChannels) {
-          const channel = output.channels?.[ch];
-          if (!channel) continue;
+      for (const output of scopes.keys()) if (output.supportsIndependentNoteGates && typeof output.clear === 'function') {
+        try { if (this._sendOutput(output, null, 'clear', [], { reason }) === false) cleanup.uncertain++; } catch { cleanup.uncertain++; }
+      }
+      if (wholeDevice) for (const output of this._listOutputs()) scopes.set(output, new Set(Object.keys(output.channels || {}).map(Number)));
+      for (const [output, channels] of scopes) for (const channel of channels) {
+        if (!wholeDevice && !output.supportsIndependentNoteGates && !output.exclusiveChannels?.includes(channel)) continue;
+        for (const [method, args] of [['sendControlChange', [64, 0]], ['sendControlChange', [120, 0]], ['sendAllNotesOff', []], ['sendPitchBend', [0]]]) {
           try {
-            this._sendOutput(output, ch, 'sendControlChange', [64, 0], { reason: 'panic' });
-            this._sendOutput(output, ch, 'sendControlChange', [120, 0], { reason: 'panic' });
-            this._sendOutput(output, ch, 'sendAllNotesOff', [], { reason: 'panic' });
-            this._sendOutput(output, ch, 'sendPitchBend', [0], { reason: 'panic' });
-          } catch (error) {
-          // A disconnected output must not prevent Panic reaching the other channels.
-          }
-        }
-        if (!cleared) {
-          for (const pending of this._pendingNoteOns.values()) {
-            if (pending.timerId != null || pending.output !== output || pending.timeMs <= now) continue;
-            const channel = output.channels?.[pending.channel];
-            try {
-              this._sendOutput(output, pending.channel, 'sendNoteOff', [pending.note, { time: pending.timeMs + 1 }], { reason: 'panic-future-release' });
-              this._sendOutput(output, pending.channel, 'sendPitchBend', [0, { time: pending.timeMs + 1 }], { reason: 'panic-future-release' });
-            } catch (error) {
-            // Continue silencing other queued notes when an output has disconnected.
-            }
-          }
+            if (this._sendOutput(output, channel, method, args, { reason }) === false) cleanup.uncertain++;
+          } catch { cleanup.uncertain++; }
         }
       }
+      this.lastCleanup = Object.freeze(cleanup);
       this._expressionByOutput.clear();
       this._pendingNoteOns.clear();
       this._noteOffs.length = 0;
@@ -450,6 +451,7 @@ const midiSchedulerSendMethods = {
       }
       this._activeByChannel.clear();
       this._activeNotes.clear();
+      this._usedOutputChannels.clear();
       this._noteOffs.length = 0;
       if (!preserveRateHistory) this._rateSent.length = 0;
       this._ratePlanned.length = 0;
@@ -475,6 +477,10 @@ const midiSchedulerSendMethods = {
     this.allNotesOff();
     this._usedOutputChannels.clear();
     this._submissionObservers.clear();
+    this._outputLeases.clear();
+    this._additionalOutputs.clear();
+    this._rateLanesByOutput.clear();
+    this._throttleByOutput.clear();
     this.output = null;
     this._outputsById.clear();
   },

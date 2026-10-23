@@ -126,11 +126,11 @@ const midiSchedulerRateMethods = {
 
   _outputRateLimits(outputId, options = {}) {
     const output = this._resolveOutput(outputId);
+    if (output?.supportsIndependentNoteGates) return { maxMessages: Number.MAX_SAFE_INTEGER, maxBytes: Number.MAX_SAFE_INTEGER };
     const profile = options.budgetProfile || this.config.limits?.endpointProfiles?.[outputId] || output?.budgetProfile || {};
     return {
       maxMessages: Math.min(toPositiveInt(options.maxMessagesPerSecond ?? profile.maxMessagesPerSecond, this._maxMessagesPerSecond), 1000),
-      maxBytes: output?.supportsIndependentNoteGates ? Number.MAX_SAFE_INTEGER :
-        toPositiveInt(options.maxBytesPerSecond ?? profile.maxBytesPerSecond, this._maxBytesPerSecond)
+      maxBytes: toPositiveInt(options.maxBytesPerSecond ?? profile.maxBytesPerSecond, this._maxBytesPerSecond)
     };
   },
 
@@ -138,7 +138,7 @@ const midiSchedulerRateMethods = {
     const outputId = this._resolveOutputId(meta.outputId);
     const rateScope = outputId == null ? undefined : outputId;
     const { maxMessages, maxBytes } = this._outputRateLimits(outputId, options);
-    const softMaxMessages = Math.min(
+    const softMaxMessages = this._resolveOutput(outputId)?.supportsIndependentNoteGates ? maxMessages : Math.min(
       Math.max(options.softMaxMessagesPerSecond ?? maxMessages, 1),
       maxMessages
     );
@@ -198,7 +198,8 @@ const midiSchedulerRateMethods = {
         priority: meta.priority ?? 1,
         triggerType: meta.triggerType ?? null,
         trackId: meta.trackId ?? null,
-        outputId: meta.outputId ?? null,
+        outputId: this._resolveOutputId(meta.outputId),
+        connectionEpoch: this._outputLeases.get(this._resolveOutput(meta.outputId))?.connectionEpoch ?? null,
         voiceBudget: meta.voiceBudget ?? null,
         laneIndex: meta.laneIndex ?? 0,
         laneCount: meta.laneCount ?? 1
@@ -276,15 +277,24 @@ const midiSchedulerRateMethods = {
     this._throttleState.dropped += 1;
     this._throttleState.lastDropMs = now;
     this._throttleState.reason = reason;
+    const id = this._resolveOutputId(meta?.outputId);
+    if (id != null) {
+      let state = this._throttleByOutput.get(id);
+      if (!state) { state = { dropped: 0, lastDropMs: -Infinity, reason: null }; this._throttleByOutput.set(id, state); }
+      state.dropped++; state.lastDropMs = now; state.reason = reason;
+    }
   },
 
   getOutputPressure(now = this._nowMs(), outputId = undefined) {
     const snapshot = this.getRateSnapshot(now, false, outputId);
-    return { throttled: now - this._throttleState.lastDropMs < 1000,
-      dropped: this._throttleState.dropped, reason: this._throttleState.reason,
+    const state = outputId === undefined ? this._throttleState : this._throttleByOutput.get(this._resolveOutputId(outputId)) || { dropped: 0, lastDropMs: -Infinity, reason: null };
+    const pending = outputId === undefined ? [...this._pendingNoteOns.values()] : [...this._pendingNoteOns.values()].filter(entry => entry.output === this._resolveOutput(outputId));
+    return { throttled: now - state.lastDropMs < 1000,
+      dropped: state.dropped, reason: state.reason,
       messages: snapshot.past.count + snapshot.next.count,
+      bytes: snapshot.past.bytes + snapshot.next.bytes, maxBytes: snapshot.maxBytesPerSecond,
       maxMessages: snapshot.maxMessagesPerSecond, laneCount: outputId === undefined ? this._rateLaneCount : this._laneBudgetState(outputId)._rateLaneCount,
-      pendingNotes: this._pendingNoteOns.size };
+      pendingNotes: pending.length, oldestDeadline: pending.length ? Math.min(...pending.map(entry => entry.timeMs)) : null };
   },
 
   getRateSnapshot(now = this._nowMs(), detailed = true, outputId = undefined) {
@@ -355,8 +365,14 @@ const midiSchedulerRateMethods = {
     return removed;
   },
 
-  _claimReservation(reservationId, token, partsRemaining = 1) {
+  _claimReservation(reservationId, token, partsRemaining = 1, outputId = undefined) {
     if (reservationId == null || token == null) return false;
+    if (outputId !== undefined) {
+      const lease = this._outputLeases.get(this._resolveOutput(outputId));
+      const entries = this._ratePlanned.filter(entry => entry.reservationId === reservationId && entry.token == null);
+      if (!entries.length || entries.some(entry => entry.outputId !== outputId ||
+          entry.connectionEpoch != null && entry.connectionEpoch !== lease?.connectionEpoch)) return false;
+    }
     let claimed = false;
     for (let index = this._ratePlanned.length - 1; index >= 0; index--) {
       const entry = this._ratePlanned[index];
@@ -388,12 +404,16 @@ const midiSchedulerRateMethods = {
   },
 
   _commitReservationMessage(reservationId, phase, bytes, meta = {}, sentAt = this._nowMs()) {
+    return this._commitReservationCost(reservationId, phase, 1, bytes, meta, sentAt);
+  },
+
+  _commitReservationCost(reservationId, phase, count, bytes, meta = {}, sentAt = this._nowMs()) {
     const index = this._ratePlanned.findIndex(entry => entry.reservationId === reservationId && entry.token == null && entry.phase === phase);
     if (index < 0) return false;
     const entry = this._ratePlanned[index];
-    entry.count -= 1; entry.bytes -= bytes;
+    entry.count -= count; entry.bytes -= bytes;
     if (entry.count <= 0 || entry.bytes <= 0) this._ratePlanned.splice(index, 1);
-    this._recordSent({ timeMs: sentAt, count: 1, bytes, phase, reservationId,
+    this._recordSent({ timeMs: sentAt, count, bytes, phase, reservationId,
       outputId: meta.outputId ?? entry.outputId, trackId: meta.trackId ?? entry.trackId,
       laneIndex: meta.laneIndex ?? entry.laneIndex, laneCount: meta.laneCount ?? entry.laneCount,
       sfxId: meta.sfxId ?? entry.sfxId, priority: meta.priority ?? entry.priority }, sentAt);

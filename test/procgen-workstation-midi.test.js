@@ -40,7 +40,7 @@ describe('ProcGen workstation MIDI ports', () => {
   });
 
   it('uses the existing note scheduler for WebMidi outputs and millisecond gates', () => {
-    const f = fixture(); const port = { ...f.output, channels: { 1: {} } }; f.ports.setNoteOutput(port);
+    const f = fixture(); const port = { ...f.output, channels: { 1: {} } }; f.ports.setNoteOutput(port, { rearm: true });
     f.ports.sendNote({ note: 60, velocity: 91, timeMs: 1020, durationMs: 250, channel: 1 }, { beat: 2 });
     expect(f.scheduler.output).to.equal(port); expect(f.scheduler.tickMs).to.equal(60);
     expect(f.scheduler.note.spec).to.include({ durationTicks: 250 / 60, timeMs: 1020 });
@@ -62,14 +62,13 @@ describe('ProcGen workstation MIDI ports', () => {
     expect(bounded.getState()).to.include({ recordedEvents: 1, droppedRecords: 1 }); bounded.dispose();
   });
 
-  it('clears queued data and sustain, notes and bend on replacement or panic', () => {
+  it('releases its owned note and reports a shared sustain instead of resetting the channel', () => {
     const f = fixture(); f.ports.sendEvent({ type: 'noteOn', note: 60, channel: 3 });
     f.ports.sendEvent({ type: 'sustain', value: true, channel: 3 }); f.ports.panic();
-    expect(f.output.messages.slice(-4).map(event => event.data)).to.deep.equal([
-      [0xb2, 64, 0], [0xb2, 123, 0], [0xb2, 120, 0], [0xe2, 0, 64]
-    ]);
-    expect(f.output.clears).to.be.greaterThan(0); expect(f.transport.panics).to.equal(1);
-    f.ports.setNoteOutput(null); expect(f.transport.pauses).to.equal(2); f.ports.dispose();
+    expect(f.output.messages.map(event => event.data)).to.deep.equal([[0x92, 60, 100], [0xb2, 64, 127], [0x82, 60, 0]]);
+    expect(f.ports.getState().lastCleanup).to.include({ sharedPedalHeld: true, uncertain: 1 });
+    expect(f.output.clears).to.equal(0); expect(f.transport.panics).to.equal(1);
+    f.ports.setNoteOutput(null); expect(f.transport.pauses || 0).to.equal(0); f.ports.dispose();
   });
 
   it('detaches input listeners, stops on disconnection, and does not restart on reconnection', () => {
@@ -149,15 +148,15 @@ describe('ProcGen workstation MIDI ports', () => {
     f.ports.sendEvent({ type: 'cc', controller: 74, value: 9, outputId: 'other' });
     expect(other.messages.at(-1).data).to.deep.equal([0xb0, 74, 9]);
     expect(f.ports.sendNote({ note: 60, outputId: 'missing' })).to.equal(false);
-    f.ports.flush(); expect(other.clears).to.be.greaterThan(0); expect(other.messages.at(-1).data).to.deep.equal([0xe0, 0, 64]);
+    f.ports.flush(); expect(other.clears).to.be.greaterThan(0); expect(other.messages.at(-1).data).to.deep.equal([0x80, 60, 0]);
     f.ports.dispose();
   });
 
-  it('retires a disconnected secondary route without panicking the healthy default', () => {
+  it('removes an unused discovered output without reporting active route loss', () => {
     const f = fixture(), other = { ...f.output, id: 'other', state: 'connected', messages: [], clears: 0 };
     f.ports.setNoteOutputs([f.output, other]);
     other.state = 'disconnected';
-    expect(f.ports.checkConnections()).to.equal(false);
+    expect(f.ports.checkConnections()).to.equal(true);
     expect(f.transport.panics || 0).to.equal(0);
     expect(f.ports.getState().noteOutputIds).to.deep.equal(['notes']);
     f.ports.dispose();
@@ -166,7 +165,7 @@ describe('ProcGen workstation MIDI ports', () => {
   it('preserves shared scheduler timing and configuration for per-lane WebMidi destinations', () => {
     const f = fixture(), first = { ...f.output, channels: {} }, second = { ...first, id: 'second' };
     f.scheduler.config = { limits: { maxEventsPerSecond: 99 } };
-    f.ports.setNoteOutputs([first, second]); f.ports.sendNote({ note: 70, outputId: 'second', durationMs: 120 });
+    f.ports.setNoteOutputs([first, second]); f.ports.setNoteOutput(first, { rearm: true }); f.ports.sendNote({ note: 70, outputId: 'second', durationMs: 120 });
     expect(f.scheduler.outputs).to.deep.equal([first, second]);
     expect(f.scheduler.note.spec).to.include({ outputId: 'second', durationTicks: 2 });
     expect(f.scheduler.config.limits.maxEventsPerSecond).to.equal(99); expect(f.scheduler.tickMs).to.equal(60); f.ports.dispose();
@@ -216,6 +215,8 @@ describe('ProcGen workstation MIDI ports', () => {
         expect(ports.sendEvent({ type: 'bank', msb: 1, lsb: 2, timestamp: 0 })).to.equal(false);
         expect(scheduler.getRateSnapshot(0).past.count).to.equal(1);
         expect(scheduler.getRateSnapshot(0).next.count).to.equal(0);
+        expect(ports.getState().activeNoteOutputIds).to.deep.equal([]);
+        ports.setNoteOutput(output, { rearm: true });
         expect(ports.sendNote({ note: 60, program: 8, durationMs: 100 })).to.equal(false);
         expect(accepted).to.deep.equal([[0xb0, 0, 1], [0xc0, 8]]);
         expect(scheduler.getRateSnapshot(0).past).to.include({ count: 2, bytes: 5 });

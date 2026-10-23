@@ -5,7 +5,9 @@ export function sendProcgenMidiBytes(port, bytes, timestamp) {
 }
 
 export function clearProcgenMidiQueue(port) {
-  try { port?.clear?.(); } catch { /* A disconnected port may reject clear. */ }
+  if (!port || port.state === 'disconnected' || typeof port.clear !== 'function' ||
+      (port._midiOutput && typeof port._midiOutput.clear !== 'function')) return false;
+  try { return port.clear() !== false; } catch { return false; }
 }
 
 export function songPositionBytes(beat) {

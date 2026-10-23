@@ -14,12 +14,19 @@ class MidiScheduler {
     this._lifecycleVersion = 0;
     this.output = null;
     this._outputsById = new Map();
+    this._additionalOutputs = new Set();
+    this._outputLeases = new Map();
+    this._connectionSequence = 0;
+    this._routeRevision = 0;
+    this._mpeRevision = 0;
+    this.lastCleanup = null;
     this.tickMs = 60;
     this._activeByChannel = new Map();
     this._activeNotes = new Map();
     this._usedOutputChannels = new Map();
     this._expressionByOutput = new Map();
     this._mpeStatusByOutput = new WeakMap();
+    this._mpeFailureByOutput = new WeakMap();
     this._pendingNoteOns = new Map();
     this.gamePhrases = new MidiGamePhraseQueue();
     this._maxActiveNotes = 32;
@@ -37,6 +44,7 @@ class MidiScheduler {
     this._rateLaneStartMs = null;
     this._rateLaneCount = 1;
     this._throttleState = { dropped: 0, lastDropMs: -Infinity, reason: null };
+    this._throttleByOutput = new Map();
     this._maxMessagesPerSecond = 1000;
     this._maxBytesPerSecond = MIDI_BYTES_PER_SECOND;
     this._lastRateErrorMs = 0;

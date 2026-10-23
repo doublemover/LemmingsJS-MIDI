@@ -71,8 +71,9 @@ describe('MidiScheduler 1', function() {
       scheduler.sendNote({ note: 64, durationTicks: 0 });
       scheduler.sendNote({ note: 65, durationTicks: 0, outputId: 'track-out' });
       scheduler.allNotesOff();
-      expect(projectCalls.some(call => call.type === 'allNotesOff')).to.equal(true);
-      expect(trackCalls.some(call => call.type === 'allNotesOff')).to.equal(true);
+      expect(projectCalls.some(call => call.type === 'noteOff' && call.note === 64)).to.equal(true);
+      expect(trackCalls.some(call => call.type === 'noteOff' && call.note === 65)).to.equal(true);
+      expect([...projectCalls, ...trackCalls].some(call => call.type === 'allNotesOff')).to.equal(false);
     });
   });
 
@@ -250,7 +251,8 @@ describe('MidiScheduler 1', function() {
     scheduler.allNotesOff();
 
     const allNotes = calls.filter(c => c.type === 'allNotesOff').map(c => c.id).sort();
-    expect(allNotes).to.eql([1, 2, 3]);
+    expect(allNotes).to.eql([]);
+    expect(calls.filter(call => call.type === 'noteOff').map(call => call.id)).to.deep.equal([2]);
     expect(scheduler._activeNotes.size).to.equal(0);
     expect(scheduler._activeByChannel.size).to.equal(0);
     expect(scheduler._noteOffTimerId).to.equal(0);

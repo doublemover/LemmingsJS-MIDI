@@ -59,22 +59,22 @@ describe('MidiScheduler coverage: branch paths and fallbacks', function() {
     }
   });
 
-  it('allNotesOff uses default channel when MPE is disabled', function() {
+  it('allNotesOff leaves an unused default channel inert when MPE is disabled', function() {
     const calls = [];
     const scheduler = new MidiScheduler({ mpe: { enabled: false }, defaultChannel: 3 });
     scheduler.setOutput(makeOutput([3], calls));
     scheduler.allNotesOff();
     const allNotes = calls.filter(call => call.type === 'allNotesOff').map(call => call.id);
-    expect(allNotes).to.eql([3]);
+    expect(allNotes).to.eql([]);
   });
 
-  it('allNotesOff falls back to channel 1 when default is falsy', function() {
+  it('allNotesOff does not invent channel ownership when default is falsy', function() {
     const calls = [];
     const scheduler = new MidiScheduler({ mpe: { enabled: false }, defaultChannel: 0 });
     scheduler.setOutput(makeOutput([1], calls));
     scheduler.allNotesOff();
     const allNotes = calls.filter(call => call.type === 'allNotesOff').map(call => call.id);
-    expect(allNotes).to.eql([1]);
+    expect(allNotes).to.eql([]);
   });
 
   it('dispose stops active channels before clearing state', function() {
@@ -268,7 +268,7 @@ describe('MidiScheduler coverage: branch paths and fallbacks', function() {
     scheduler._noteOffs.push({ timeMs: 1, token: 1 });
     scheduler.allNotesOff();
     expect(scheduler._noteOffTimerId).to.equal(0);
-    expect(calls.some(call => call.type === 'allNotesOff')).to.equal(true);
+    expect(calls.some(call => call.type === 'allNotesOff')).to.equal(false);
   });
 
   it('covers allocation fallbacks and rate helpers', function() {

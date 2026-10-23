@@ -141,22 +141,22 @@ describe('MidiScheduler coverage: core behavior', function() {
     expect(scheduler._noteOffTimerId).to.equal(0);
   });
 
-  it('sends all-notes-off using MPE master defaults', function() {
+  it('does not reset an unused MPE master', function() {
     const calls = [];
     const output = makeOutput([1], calls);
     const scheduler = new MidiScheduler({ mpe: { enabled: true, masterChannel: 1 } });
     scheduler.setOutput(output);
     scheduler.allNotesOff();
-    expect(calls.some(call => call.type === 'allNotesOff')).to.equal(true);
+    expect(calls.some(call => call.type === 'allNotesOff')).to.equal(false);
   });
 
-  it('falls back to the MPE master channel when unset', function() {
+  it('does not claim a fallback MPE master when unset', function() {
     const calls = [];
     const output = makeOutput([1], calls);
     const scheduler = new MidiScheduler({ mpe: { enabled: true, masterChannel: 0, memberChannels: [] } });
     scheduler.setOutput(output);
     scheduler.allNotesOff();
-    expect(calls.some(call => call.type === 'allNotesOff')).to.equal(true);
+    expect(calls.some(call => call.type === 'allNotesOff')).to.equal(false);
   });
 
   it('setConfig handles null configs and triggers init with output', function() {
@@ -287,7 +287,7 @@ describe('MidiScheduler coverage: core behavior', function() {
     const scheduler = new MidiScheduler({ mpe: { enabled: true, masterChannel: 1, memberChannels: [2] } });
     scheduler.setOutput(output);
     scheduler.allNotesOff();
-    expect(calls.some(call => call.type === 'allNotesOff')).to.equal(true);
+    expect(calls.some(call => call.type === 'allNotesOff')).to.equal(false);
 
     scheduler._activeByChannel.set(2, { note: 60, token: 1, startedAt: 0 });
     let stopped = false;
