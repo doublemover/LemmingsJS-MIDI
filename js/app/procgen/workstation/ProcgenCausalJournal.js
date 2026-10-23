@@ -219,6 +219,14 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
     return cloneJournalData({ ...manifest, inspection: { paused: true, recording: false, hardware: false, thru: false, physicalLayers: false },
       effectiveStatus: verified.effectiveStatus }, { maxBytes: 8 * 1048576 });
   };
+  const readCheckpoint = async ref => {
+    const checkpoint = await storage.loadCausalCheckpoint(ref.id);
+    if (!checkpoint || typeof checkpoint.canonical !== 'string' || checkpoint.canonical.length > 32 * 1048576 ||
+        await hashJournalText(checkpoint.canonical) !== ref.hash) throw journalError('checkpoint-mismatch', 'A causal component checkpoint is missing or corrupt.', { checkpointId: ref.id, firstSequence: ref.sequence });
+    let value;
+    try { value = JSON.parse(checkpoint.canonical); } catch { throw journalError('checkpoint-mismatch', 'A causal component checkpoint is not JSON.', { checkpointId: ref.id }); }
+    return cloneJournalData(value, { maxBytes: 32 * 1048576, maxNodes: 4000000 });
+  };
   const query = async ({ takeId, takeRevision = null, firstSequence = 1, lastSequence = Number.MAX_SAFE_INTEGER, firstTick = 0,
     lastTick = Number.MAX_SAFE_INTEGER, generation = null, kinds = null, signal, limit = 4096 } = {}) => {
     if (!id(takeId) || !Number.isSafeInteger(firstSequence) || firstSequence < 1 || !Number.isSafeInteger(lastSequence) || lastSequence < firstSequence ||
@@ -300,7 +308,7 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
       captureProfile: parent.captureProfile, boundaryState: parent.boundaryState, initialCheckpoint: JSON.parse(checkpoint.canonical),
       mapping: parent.mapping, assetRefs: parent.assetRefs, prefix });
   };
-  return { createTake, openTake, query, verify, branch, readChunk, seek };
+  return { createTake, openTake, query, verify, branch, readChunk, readCheckpoint, seek };
 };
 
 export { createProcgenCausalJournal, verifyManifestHashes, RECORD_KINDS };

@@ -5,6 +5,13 @@ import { MapObject } from '../../../level/MapObject.js';
 import { validatePhysicalEventIdentity } from '../ProcgenSoundEventBus.js';
 
 const VERSION = 2;
+const CHECKPOINT_COMPONENT_CODECS = Object.freeze({ worldGraph: 2, physicalIdentity: 1, clock: 1,
+  terrainAssignments: 1, terrainGrowth: 1, presentationScenery: 1 });
+const validateCheckpointCodecs = saved => {
+  if (saved.schema != null && saved.schema !== 'lemmings-procgen-checkpoint' || saved.numericEncoding != null && saved.numericEncoding !== 'typed-f64-sentinels-v2') throw new Error('Unsupported checkpoint schema or numeric encoding.');
+  if (saved.componentCodecs != null && (Object.keys(saved.componentCodecs).length !== Object.keys(CHECKPOINT_COMPONENT_CODECS).length ||
+      Object.entries(CHECKPOINT_COMPONENT_CODECS).some(([key, version]) => saved.componentCodecs[key] !== version))) throw new Error('Unsupported checkpoint component codec.');
+};
 const OMIT = new Set(['log', 'gameResources', 'render', 'characterParticles', '_collisionSlots', '_collisionIndices', '_laneChunk', '_laneChunkIndex', '_laneEdits', '_laneEditIndex', '_editCache', '_editIndices', '_edgeWallCache', 'challengeCache']);
 const TYPES = { Uint8Array, Uint8ClampedArray, Int8Array, Uint16Array, Int16Array, Uint32Array, Int32Array, Float32Array, Float64Array };
 const encodeNumber = value => Object.is(value, -0) ? { special: '-0' } : Number.isFinite(value) ? value : { special: String(value) };
@@ -107,7 +114,8 @@ function createGraph(world) {
 
 const captureProcgenCheckpoint = world => {
   if (world._stepping || world._failedTick) throw new Error('Cannot checkpoint an incomplete physical boundary.');
-  return { version: VERSION, generator: 'procgen-workstation-1', laneCount: world.laneCount, laneHeight: world.laneHeight,
+  return { schema: 'lemmings-procgen-checkpoint', version: VERSION, generator: 'procgen-workstation-1',
+    componentCodecs: { ...CHECKPOINT_COMPONENT_CODECS }, numericEncoding: 'typed-f64-sentinels-v2', laneCount: world.laneCount, laneHeight: world.laneHeight,
     seed: world.seed, assets: assetIdentity(world), graph: createGraph(world),
     terrainAssignments: world.terrain?.exportAssignments?.() || null,
     terrainSettings: (world.terrain?.themes || [{ terrain: world.terrain }]).map(({ terrain }) => terrain ? { workstation: terrain.workstation, hazardSpacing: terrain.hazardSpacing, laneHeight: terrain.height, sharedSpanBudget: terrain.sharedSpanBudget } : null),
@@ -187,6 +195,7 @@ function validateCheckpointGraph(graph, bound, version) {
 function restoreProcgenCheckpoint(world, saved) {
   if (world._stepping || world.soundEvents._tick) throw new Error('Cannot restore a checkpoint inside a physical tick.');
   if (![1, VERSION].includes(saved?.version) || saved.generator !== 'procgen-workstation-1' || saved.laneCount !== world.laneCount || saved.laneHeight !== world.laneHeight || saved.seed !== world.seed) throw new Error('Incompatible world checkpoint.');
+  validateCheckpointCodecs(saved);
   if (JSON.stringify(saved.assets) !== JSON.stringify(assetIdentity(world))) throw new Error('Checkpoint terrain assets do not match the installed collection.');
   if (!saved.clock || !Number.isFinite(saved.clock.speedFactor) || saved.clock.speedFactor < 0 ||
       saved.clock.eventTimeMs != null && (!Number.isFinite(saved.clock.eventTimeMs) || saved.clock.eventTimeMs < 0) ||
@@ -273,4 +282,4 @@ function restoreProcgenCheckpoint(world, saved) {
   return world;
 }
 
-export { captureProcgenCheckpoint, restoreProcgenCheckpoint, assetIdentity };
+export { captureProcgenCheckpoint, restoreProcgenCheckpoint, assetIdentity, CHECKPOINT_COMPONENT_CODECS, validateCheckpointCodecs };

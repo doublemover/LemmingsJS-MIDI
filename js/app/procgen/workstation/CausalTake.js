@@ -71,8 +71,13 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
     if (stopped) return Object.freeze({ status: 'rejected', reason: 'take-stopped' });
     return writer.append({ kind, tick, generation, payload });
   };
-  const stop = async ({ boundaryState: finalBoundary = {}, reason = 'user-stop' } = {}) => {
+  const stop = async ({ boundaryState: finalBoundary = {}, finalCheckpoint = null, reason = 'user-stop' } = {}) => {
     stopped = true;
+    if (finalCheckpoint != null) {
+      try { await writer.checkpoint({ value: finalCheckpoint, tick: lastTick ?? 0, generation: lastGeneration ?? 0 }); }
+      catch (error) { addGap({ kind: 'all', firstTick: lastTick ?? 0, lastTick: lastTick ?? 0, generation: lastGeneration ?? 0,
+        reason: 'final-component-checkpoint-failed', detail: String(error.code || error.name || 'checkpoint') }); }
+    }
     return writer.stop({ reason, boundaryState: finalBoundary, coverage: { status: gaps.some(gap => ['physical-facts', 'all'].includes(gap.kind)) ? 'partial' : 'complete',
       sourceRange: { firstTick, lastTick, worldId }, available: { factKinds: profile.factKinds, descriptorKinds: profile.descriptorKinds,
         stateKinds: [...observedStateKinds] }, observedFactKinds: [...observedFactKinds].sort(), intentKinds: [...intentKinds].sort(),

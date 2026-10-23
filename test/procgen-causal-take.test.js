@@ -127,4 +127,28 @@ describe('semantic causal take capture and reinterpretation', function() {
     const active = await createCausalTakeRecorder({ ...metadata('take:invalid-gap'), journal });
     expect(() => active.markGap({ ...gap, firstTick: -1 })).to.throw('coverage gap'); await active.stop();
   });
+
+  it('closes admission synchronously and durably binds the actual final component checkpoint before stop', async () => {
+    const { journal } = setup(), recorder = await createCausalTakeRecorder({ ...metadata('take:final-components'), journal });
+    recorder.recordCommittedBatch({ batch: physical(1), intents: [] });
+    const finalCheckpoint = { world: { tick: 1 }, engine: { version: 1, active: [] }, timeline: null, replay: { version: 1, bpm: 120, scoreTimeline: true } };
+    const pending = recorder.stop({ finalCheckpoint });
+    expect(recorder.recordCommittedBatch({ batch: physical(2), intents: [] })).to.include({ status: 'rejected', reason: 'take-stopped' });
+    expect((await pending).complete).to.equal(true);
+    const manifest = await journal.openTake('take:final-components');
+    expect(manifest.checkpoints.at(-1).sequence).to.equal(manifest.durableSequence);
+    expect(await journal.readCheckpoint(manifest.checkpoints.at(-1))).to.deep.equal(finalCheckpoint);
+    expect((await journal.query({ takeId: manifest.takeId, kinds: ['physical-batch'] })).records).to.have.length(1);
+  });
+
+  it('reports a failed final component checkpoint as partial while preserving the durable source prefix', async () => {
+    const { journal, control } = setup(), recorder = await createCausalTakeRecorder({ ...metadata('take:failed-final'), journal });
+    recorder.recordCommittedBatch({ batch: physical(1), intents: [] }); await recorder.flush();
+    control.failNext = true;
+    const receipt = await recorder.stop({ finalCheckpoint: { world: { tick: 1 } } });
+    expect(receipt).to.include({ complete: false, durableSequence: 2 });
+    const manifest = await journal.openTake('take:failed-final');
+    expect(manifest.coverage.gaps.some(gap => gap.reason === 'final-component-checkpoint-failed')).to.equal(true);
+    expect((await journal.verify(manifest.takeId)).verifiedThroughSequence).to.equal(2);
+  });
 });
