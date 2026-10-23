@@ -265,7 +265,8 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
       const list = Array.isArray(ports) ? ports : Array.from(ports.values());
       const next = new Map(list.filter(port => port?.id).map(port => [String(port.id), port]));
       if (next.size === noteOutputs.size && [...next].every(([id, port]) => noteOutputs.get(id) === port)) return;
-      transport?.pause(); flush(); noteOutputs.clear();
+      for (const [id, port] of noteOutputs) if (next.get(id) !== port) clearProcgenMidiQueue(port);
+      noteOutputs.clear();
       for (const [id, port] of next) noteOutputs.set(id, port);
       scheduler.setOutputs?.(list.filter(port => port.channels)); report();
     },
@@ -337,9 +338,11 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
       intentRenderEntries.clear(); intentExpiry.length = 0; activeTrace.clear(); report();
     },
     checkConnections() {
-      if ([input, noteOutput, clockOutput, ...noteOutputs.values()].some(port => port?.state === 'disconnected')) {
+      if ([input, noteOutput, clockOutput].some(port => port?.state === 'disconnected')) {
         panic(); if (input?.state === 'disconnected') replaceInput(null); report(); return false;
       }
+      const connected = [...noteOutputs.values()].filter(port => port?.state !== 'disconnected');
+      if (connected.length !== noteOutputs.size) { this.setNoteOutputs(connected); report(); return false; }
       return true;
     },
     dispose() {

@@ -1,6 +1,7 @@
 import { ParticleTable } from '../../render/ParticleTable.js';
 import { ProcgenLaneWorld, DEFAULT_LANE_HEIGHT } from './ProcgenLaneWorld.js';
 import { ProcgenLaneRenderer } from './ProcgenLaneRenderer.js';
+import { createProcgenRetirementScope } from './ProcgenRetirement.js';
 
 // Accumulate real time rather than speed-scaled time: even extreme finite
 // multipliers cannot poison the backlog, and slow ticks can span many frames.
@@ -24,6 +25,7 @@ const createProcgenLaneRuntime = ({ canvas, resources, sprites, masks, assets, l
   let paused = false;
   let clockDriven = false, clockTime = null;
   let running = true, frame = null, lastTime = null, elapsed = 0, previewRouter = null, lastMetrics = null, lastMetricTick = 0;
+  const retirement = createProcgenRetirementScope();
   let displayedActiveCount = -1;
   const reportActiveCount = () => {
     const count = world.activeCount ?? world.stall.lanes.reduce((sum, lane) => sum + lane.alive, 0);
@@ -81,7 +83,19 @@ const createProcgenLaneRuntime = ({ canvas, resources, sprites, masks, assets, l
       renderer.render(); reportActiveCount(); onMetrics?.(world.getDebugState());
       lastMetrics = null;
     },
-    stop() { running = false; windowRef.document.removeEventListener?.('visibilitychange', visibilityChanged); if (frame != null) windowRef.cancelAnimationFrame(frame); view.setMidiPreviewRouter(null); world.dispose(); renderer.dispose(); },
+    stop() {
+      if (!running) return retirement.retire();
+      running = false;
+      const pendingFrame = frame; frame = null;
+      return retirement.retire([
+        { name: 'visibility-listener', run: () => windowRef.document.removeEventListener?.('visibilitychange', visibilityChanged) },
+        { name: 'animation-frame', run: () => { if (pendingFrame != null) windowRef.cancelAnimationFrame(pendingFrame); } },
+        { name: 'preview-router', run: () => view.setMidiPreviewRouter(null) },
+        { name: 'preview-reference', run: () => { previewRouter = null; view.midiPreviewRouter = null; } },
+        { name: 'world', run: () => world.dispose() },
+        { name: 'renderer', run: () => renderer.dispose() }
+      ]);
+    },
     resize() { renderer.resize(); } };
 };
 export { createProcgenLaneRuntime, advanceProcgenClock };

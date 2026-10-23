@@ -103,6 +103,16 @@ describe('ProcGen workstation MIDI ports', () => {
     f.ports.dispose();
   });
 
+  it('retires a disconnected secondary route without panicking the healthy default', () => {
+    const f = fixture(), other = { ...f.output, id: 'other', state: 'connected', messages: [], clears: 0 };
+    f.ports.setNoteOutputs([f.output, other]);
+    other.state = 'disconnected';
+    expect(f.ports.checkConnections()).to.equal(false);
+    expect(f.transport.panics || 0).to.equal(0);
+    expect(f.ports.getState().noteOutputIds).to.deep.equal(['notes']);
+    f.ports.dispose();
+  });
+
   it('preserves shared scheduler timing and configuration for per-lane WebMidi destinations', () => {
     const f = fixture(), first = { ...f.output, channels: {} }, second = { ...first, id: 'second' };
     f.scheduler.config = { limits: { maxEventsPerSecond: 99 } };

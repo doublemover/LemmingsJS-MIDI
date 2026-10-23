@@ -9,6 +9,7 @@ import { captureProcgenCheckpoint } from './ProcgenCheckpoint.js';
 import { createProcgenLaneObserver } from './ProcgenLaneObservation.js';
 import { createProcgenSession, validateProcgenSession, createProcgenSessionStorage, freshProcgenSeed } from './ProcgenSessionStorage.js';
 import { createProcgenPhysicalScoreClock } from './ProcgenPhysicalScoreClock.js';
+import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 
 const STORAGE_KEY = 'lemmings.procgen.workstation.v1';
 const clone = value => JSON.parse(JSON.stringify(value));
@@ -55,6 +56,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let pendingHistory = null;
   const routerRestores = new Map();
   const undo = [], redo = [], listeners = [], noteEntries = new Map();
+  const retirement = createProcgenRetirementScope();
   let lastHistoryGroup = null, inputGestureSerial = 0;
   const historySizes = new WeakMap();
   let historyDropped = 0;
@@ -142,7 +144,9 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         status('Undo or Redo is still preparing. Finish it before adding more edits.'); return false;
       }
       pendingHistory.commands.push({ action: JSON.parse(serialized), historyGroup }); pendingHistory.bytes += bytes;
-      return syncProject(next, { history: false });
+      const updated = syncProject(next, { history: false });
+      if (action.type === 'procgen/lane' && action.patch?.outputId !== undefined) syncPorts();
+      return updated;
     }
     if (action.type === 'procgen/palette' && action.family && project.procgen.lanes.find(lane => lane.id === action.laneId)?.family !== action.family) {
       return safe(() => rebuild({ projectNext: reduceMidiProject(project, action) }))();
@@ -151,6 +155,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (equal(reduced, project)) return project;
     const next = syncProject(reduced, { history: action.type !== 'procgen/launched', historyGroup,
       render: action.type !== 'procgen/launched' });
+    if (action.type === 'procgen/lane' && action.patch?.outputId !== undefined) syncPorts();
     if (action.type === 'procgen/launched') view?.launched?.();
     return next;
   };
@@ -260,13 +265,23 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     onLaunch: action => dispatch({ type: 'procgen/launched', ...action })
   });
   const devices = () => ({ inputs: Array.from(window.WebMidi?.inputs || []).filter(port => port.state !== 'disconnected'), outputs: Array.from(window.WebMidi?.outputs || []).filter(port => port.state !== 'disconnected') });
+  let routedPortReferences = [];
   const syncPorts = () => {
-    outputEpoch++;
     const available = devices(), outputState = legacy.local.getState();
-    ports.setNoteOutputs(available.outputs);
-    ports.setNoteOutput(outputState.selectedBackend === 'midi' && outputState.enabled ? available.outputs.find(port => port.id === outputState.outputId) || null : null);
-    ports.setInput(available.inputs.find(port => port.id === state.inputId) || null);
-    ports.setClockOutput(available.outputs.find(port => port.id === state.clockOutputId) || null);
+    const midiEnabled = outputState.selectedBackend === 'midi' && outputState.enabled;
+    const selectedOutput = midiEnabled ? available.outputs.find(port => port.id === outputState.outputId) || null : null;
+    const routedIds = new Set(midiEnabled ? project.procgen.lanes.map(lane => lane.outputId).filter(Boolean) : []);
+    if (selectedOutput) routedIds.add(selectedOutput.id);
+    const routedOutputs = available.outputs.filter(port => routedIds.has(port.id));
+    const selectedInput = available.inputs.find(port => port.id === state.inputId) || null;
+    const selectedClock = available.outputs.find(port => port.id === state.clockOutputId) || null;
+    const references = [selectedOutput, selectedInput, selectedClock, ...routedOutputs];
+    if (references.length !== routedPortReferences.length || references.some((port, index) => port !== routedPortReferences[index])) outputEpoch++;
+    routedPortReferences = references;
+    ports.setNoteOutput(selectedOutput);
+    ports.setNoteOutputs(routedOutputs);
+    ports.setInput(selectedInput);
+    ports.setClockOutput(selectedClock);
   };
   const play = () => {
     const held = pendingResume ? engine.snapshot().active : null; pendingResume = false;
@@ -504,7 +519,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   listen(document, 'keyup', syncLegacyControls);
   listen(window, 'pagehide', () => { persist(); recover(); });
   listen(document.getElementById('procgenPanic'), 'click', () => { ports.panic(); status('All notes stopped.'); });
-  const disconnected = () => { outputEpoch++; ports.checkConnections(); view.renderInspector(); };
+  const disconnected = () => { syncPorts(); view.renderInspector(); };
   const connected = () => { syncPorts(); view.renderInspector(); status('MIDI device connected. Press Play or send MIDI Start/Continue to resume.'); };
   window.WebMidi?.addListener?.('disconnected', disconnected);
   window.WebMidi?.addListener?.('connected', connected);
@@ -517,9 +532,22 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     getPhysicalScoreClock: () => physicalScoreClock,
     get settings() { return legacy.settings; },
     dispose() {
-      if (disposed) return; disposed = true; loadSerial++; currentOperation?.controller.abort(); currentOperation = null; unhookRouter?.(); unhookWorld?.(); transport.dispose(); ports.dispose();
-      if (recoveryTimer != null) window.clearTimeout?.(recoveryTimer);
-      for (const remove of listeners) remove(); view.dispose(); Promise.resolve(storage.close?.()).catch(() => {});
+      if (disposed) return retirement.retire();
+      disposed = true; loadSerial++;
+      const operation = currentOperation; currentOperation = null;
+      const timer = recoveryTimer; recoveryTimer = null;
+      const removeListeners = listeners.splice(0);
+      return retirement.retire([
+        { name: 'operation', run: () => operation?.controller.abort() },
+        { name: 'recovery-timer', run: () => { if (timer != null) window.clearTimeout?.(timer); } },
+        { name: 'router-hook', run: () => unhookRouter?.() },
+        { name: 'world-hook', run: () => unhookWorld?.() },
+        { name: 'transport', run: () => transport.dispose()?.completion },
+        { name: 'midi-ports', run: () => ports.dispose() },
+        ...removeListeners.map((remove, index) => ({ name: `listener-${index}`, run: remove })),
+        { name: 'view', run: () => view.dispose() },
+        { name: 'storage', run: () => storage.close?.() }
+      ]);
     }
   };
 }

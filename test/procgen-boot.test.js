@@ -187,6 +187,22 @@ describe('procgenBoot helpers', function () {
     expect(calls).to.deep.equal(['focusBlur', 'controller', 'stageAdapter', 'game', 'view']);
   });
 
+  it('continues runtime retirement after a throwing early owner', function () {
+    const calls = [];
+    procgenBoot.setActiveProcgenRuntimeForTest({
+      focusBlurCleanup() { calls.push('focusBlur'); throw new Error('detach failed'); },
+      lanes: { stop() { calls.push('lanes'); } },
+      controller: { stop() { calls.push('controller'); } },
+      stageAdapter: { dispose() { calls.push('stageAdapter'); } },
+      game: { stop() { calls.push('game'); } },
+      view: { dispose() { calls.push('view'); } }
+    });
+    const receipt = procgenBoot.disposeProcgenRuntime();
+    expect(procgenBoot.disposeProcgenRuntime()).to.equal(receipt);
+    expect(calls).to.deep.equal(['focusBlur', 'lanes', 'controller', 'stageAdapter', 'game', 'view']);
+    expect(receipt.resources.find(resource => resource.name === 'focus-blur-listener')).to.include({ status: 'failed', error: 'detach failed' });
+  });
+
   it('installs and disposes procgen boot listeners', function () {
     const windowListeners = new Map();
     const documentListeners = new Map();

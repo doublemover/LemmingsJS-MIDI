@@ -1,5 +1,6 @@
 import { createProcgenTimingDriver } from './ProcgenTimingDriver.js';
 import { clearProcgenMidiQueue, sendProcgenMidiBytes, songPositionBytes } from './ProcgenMidiBytes.js';
+import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 
 const finite = (value, fallback, min, max) => Number.isFinite(Number(value)) ? Math.max(min, Math.min(max, Number(value))) : fallback;
 
@@ -18,6 +19,7 @@ export function createProcgenTransport(options = {}) {
   const suspensionMs = finite(options.suspensionMs, 250, 100, 2000);
   const clockLossMs = finite(options.clockLossMs, 750, 100, 5000);
   let playing = false, disposed = false, anchorBeat = 0, anchorMs = now(), nextPulse = 0;
+  const retirement = createProcgenRetirementScope();
   let lastWake = anchorMs, lastClock = null, waitingSince = anchorMs, intervals = [];
   let clockOutput = options.clockOutput || null, reason = 'ready', clockStatus = 'stopped';
   const beatAt = timestamp => playing && clockSource === 'internal'
@@ -150,6 +152,14 @@ export function createProcgenTransport(options = {}) {
       if (clockSource === 'external' && Number.isSafeInteger(state.nextPulse) && state.nextPulse >= nextPulse) nextPulse = state.nextPulse;
       return getState();
     },
-    dispose() { if (disposed) return; halt('disposed'); disposed = true; driver.dispose?.(); clockOutput = null; }
+    dispose() {
+      if (disposed) return retirement.retire();
+      disposed = true;
+      return retirement.retire([
+        { name: 'transport-halt', run: () => halt('disposed') },
+        { name: 'timing-driver', run: () => driver.dispose?.() },
+        { name: 'clock-output', run: () => { clockOutput = null; } }
+      ]);
+    }
   };
 }

@@ -10,6 +10,7 @@ import { restoreProcgenCheckpoint } from './procgen/workstation/ProcgenCheckpoin
 import { freshProcgenSeed, validateProcgenSession } from './procgen/workstation/ProcgenSessionStorage.js';
 import { loadTerrainRecipeBook } from './procgen/ProcgenTerrainRecipes.js';
 import { createProcgenLaneRuntime } from './procgen/ProcgenLaneRuntime.js';
+import { createProcgenRetirementScope } from './procgen/ProcgenRetirement.js';
 import { GameView } from '../game/GameView.js';
 import { GameTypes } from '../game/GameTypes.js';
 import { EditorLevel } from '../editor/EditorLevel.js';
@@ -77,11 +78,12 @@ const saveProcgenDistances = world => {
 };
 let procgenBootListeners = [];
 let procgenBarObserver = null;
+let lastProcgenRuntimeRetirement = null;
 
 const runFocusBlurCleanup = (runtime) => {
   const cleanup = runtime?.focusBlurCleanup;
   if (typeof cleanup === 'function') {
-    cleanup();
+    try { cleanup(); } finally { runtime.focusBlurCleanup = null; }
   }
   if (runtime) {
     runtime.focusBlurCleanup = null;
@@ -95,23 +97,26 @@ const runFocusBlurCleanup = (runtime) => {
  */
 const disposeProcgenRuntime = () => {
   const runtime = activeProcgenRuntime;
-  if (!runtime) return;
+  if (!runtime) return lastProcgenRuntimeRetirement;
   activeProcgenRuntime = null;
-  saveProcgenDistances(runtime.world);
-  runFocusBlurCleanup(runtime);
-  procgenUi?.local.suspendGame();
-  runtime.lanes?.stop();
-  runtime.controller?.stop?.();
-  if (runtime.view && runtime.view.procgenController === runtime.controller) {
-    runtime.view.procgenController = null;
-  }
-  if (typeof window !== 'undefined' && window.procgenDebugState) {
-    window.procgenDebugState = null;
-    window.__PROCGEN_LANES__ = null;
-  }
-  runtime.stageAdapter?.dispose?.();
-  runtime.game?.stop?.();
-  runtime.view?.dispose?.();
+  const scope = createProcgenRetirementScope();
+  lastProcgenRuntimeRetirement = scope.retire([
+    { name: 'save-distances', run: () => saveProcgenDistances(runtime.world) },
+    { name: 'focus-blur-listener', run: () => runFocusBlurCleanup(runtime) },
+    { name: 'local-output', run: () => procgenUi?.local.suspendGame() },
+    { name: 'lanes', run: () => runtime.lanes?.stop()?.completion },
+    { name: 'controller', run: () => runtime.controller?.stop?.() },
+    { name: 'view-controller', run: () => {
+      if (runtime.view && runtime.view.procgenController === runtime.controller) runtime.view.procgenController = null;
+    } },
+    { name: 'debug-state', run: () => {
+      if (typeof window !== 'undefined') { window.procgenDebugState = null; window.__PROCGEN_LANES__ = null; }
+    } },
+    { name: 'stage-adapter', run: () => runtime.stageAdapter?.dispose?.() },
+    { name: 'game', run: () => runtime.game?.stop?.() },
+    { name: 'view', run: () => runtime.view?.dispose?.() }
+  ]);
+  return lastProcgenRuntimeRetirement;
 };
 
 const addProcgenBootListener = (target, eventName, handler, options) => {
@@ -121,10 +126,11 @@ const addProcgenBootListener = (target, eventName, handler, options) => {
 };
 
 const disposeProcgenBootListeners = () => {
-  procgenBarObserver?.disconnect(); procgenBarObserver = null;
+  try { procgenBarObserver?.disconnect(); } catch { /* Remove the remaining listeners. */ }
+  procgenBarObserver = null;
   while (procgenBootListeners.length) {
     const { target, eventName, handler, options } = procgenBootListeners.pop();
-    target?.removeEventListener?.(eventName, handler, options);
+    try { target?.removeEventListener?.(eventName, handler, options); } catch { /* Continue retiring owned listeners. */ }
   }
 };
 

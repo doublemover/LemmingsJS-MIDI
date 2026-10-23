@@ -15,6 +15,13 @@ function fixture(options = {}) {
 }
 
 describe('ProcGen workstation independent transport', () => {
+  it('retires the timing driver after a flushing callback fails', () => {
+    const f = fixture({ onFlush() { throw new Error('flush refused'); } });
+    const receipt = f.transport.dispose();
+    expect(f.driver.disposed).to.equal(true);
+    expect(f.transport.dispose()).to.equal(receipt);
+    expect(receipt.resources.find(resource => resource.name === 'transport-halt')).to.include({ status: 'failed', error: 'flush refused' });
+  });
   it('timestamps a phase-stable 24 PPQN clock separately from physical game speed', () => {
     const f = fixture(); f.transport.play(); f.advance(500);
     const clocks = f.output.messages.filter(event => event.data[0] === 0xf8);

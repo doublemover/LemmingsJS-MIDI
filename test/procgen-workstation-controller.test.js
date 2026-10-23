@@ -3,13 +3,14 @@ import { createProcgenWorkstation } from '../js/app/procgen/workstation/ProcgenW
 import { createProcgenWorkstationProject } from '../js/app/procgen/workstation/ProcgenWorkstationProject.js';
 import { createMidiProject } from '../js/midi/project/MidiProject.js';
 import { EventHandler } from '../js/util/EventHandler.js';
+import { createProcgenRetirementScope } from '../js/app/procgen/ProcgenRetirement.js';
 
 function target() {
   const events = new Map();
   return { addEventListener(type, fn) { if (!events.has(type)) events.set(type, new Set()); events.get(type).add(fn); },
     removeEventListener(type, fn) { events.get(type)?.delete(fn); }, emit(type, event = {}) { for (const fn of events.get(type) || []) fn(event); } };
 }
-function setup({ lookaheadMs = 0, webMidi, historyBytesLimit } = {}) {
+function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth', outputId = null } = {}) {
   let time = 0, paused = false, enabled = false;
   const elements = new Map(['procgenPause', 'procgenPanic', 'procgenSpeed', 'procgenSpeedUp', 'procgenSpeedDown', 'procgenSpeedReadout'].map(id => [id, target()]));
   const document = { ...target(), getElementById: id => elements.get(id) || null };
@@ -26,7 +27,7 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit } = {}) {
   const legacy = { settings: { seed: 7, speed: 1, laneCount: 1 }, getProject: () => project, setProject(value) { project = value; for (const listener of projectListeners) listener(value); },
     subscribeProject(listener) { projectListeners.add(listener); return () => projectListeners.delete(listener); },
     setPaused(value) { paused = value; }, isPaused: () => paused, setSpeed(value) { this.settings.speed = value; },
-    local: { getState: () => ({ enabled, selectedBackend: 'synth' }) } };
+    local: { getState: () => ({ enabled, selectedBackend: backend, outputId }) } };
   let viewProps;
   const view = { render() {}, renderInspector() {}, transport() {}, recording() {}, status: value => statuses.push(value), showProjects() {}, dispose() { this.disposed = true; } };
   let rejectSave = false, saveCalls = 0;
@@ -38,12 +39,63 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit } = {}) {
     captureCheckpoint: world => { captures.push(world); return { version: 1, laneCount: world.laneCount, seed: world.seed, clock: { ...world.timer } }; },
     transportOptions: { driver: { start() {}, stop() {} }, lookaheadMs }, historyBytesLimit
   });
-  return { studio, legacy, view, calls, positions, statuses, restarts, stored, captures, elements, window, get runtime() { return runtime; }, get viewProps() { return viewProps; }, get saveCalls() { return saveCalls; },
+  return { studio, legacy, view, storage, calls, positions, statuses, restarts, stored, captures, elements, window, get runtime() { return runtime; }, get viewProps() { return viewProps; }, get saveCalls() { return saveCalls; },
     enable() { enabled = true; }, time(value) { time = value; studio.transport.pump(); }, failRestart() { rejectRestart = true; }, cancelRestart() { returnFalseRestart = true; }, failSave() { rejectSave = true; },
     holdRestart() { let release; restartGate = new Promise(resolve => { release = resolve; }); return release; } };
 }
 
 describe('ProcGen workstation orchestration', () => {
+  it('keeps discovered unused MIDI outputs inert and ignores their disconnects', () => {
+    const calls = [], listeners = new Map();
+    const makePort = id => ({ id, state: 'connected', channels: { 1: {
+      sendPitchBendRange() { calls.push(id); }, sendPitchBend() { calls.push(id); },
+      sendControlChange() { calls.push(id); }, sendAllNotesOff() { calls.push(id); }
+    } } });
+    const a = makePort('A'), b = makePort('B');
+    const webMidi = { inputs: [], outputs: [a, b], addListener(name, fn) { listeners.set(name, fn); }, removeListener(name) { listeners.delete(name); } };
+    const f = setup({ webMidi, backend: 'midi', outputId: 'A' });
+    f.enable(); f.studio.bindRuntime();
+    expect(calls).not.to.include('B');
+    const before = f.studio.transport.getState().playing;
+    b.state = 'disconnected'; listeners.get('disconnected')();
+    expect(calls).not.to.include('B'); expect(f.studio.transport.getState().playing).to.equal(before);
+    expect(f.studio.ports.getState().noteOutputIds).to.deep.equal(['A']);
+    f.studio.dispose();
+  });
+  it('retires ports, view, and storage after a transport destructor throws', async () => {
+    const f = setup(); let portsDisposed = 0, storageClosed = 0;
+    const originalPortsDispose = f.studio.ports.dispose;
+    f.studio.ports.dispose = () => { portsDisposed++; originalPortsDispose(); };
+    f.studio.transport.dispose = () => { throw new Error('flush refused'); };
+    f.storage.close = () => { storageClosed++; return Promise.reject(new Error('disk closed early')); };
+    const receipt = f.studio.dispose();
+    expect(f.studio.dispose()).to.equal(receipt);
+    expect(portsDisposed).to.equal(1); expect(storageClosed).to.equal(1); expect(f.view.disposed).to.equal(true);
+    await receipt.completion;
+    expect(receipt.state).to.equal('retired');
+    expect(receipt.resources.find(resource => resource.name === 'transport')).to.include({ status: 'failed', error: 'flush refused' });
+    expect(receipt.resources.find(resource => resource.name === 'storage')).to.include({ status: 'failed', error: 'disk closed early' });
+  });
+
+  it('shares one retirement receipt across reentrant callers and awaits async cleanup', async () => {
+    const scope = createProcgenRetirementScope(); let nested, attempts = 0, settle;
+    const receipt = scope.retire([
+      { name: 'first', run: () => { attempts++; nested = scope.retire(); } },
+      { name: 'last', run: () => new Promise(resolve => { settle = resolve; }) }
+    ]);
+    expect(attempts).to.equal(1); expect(nested).to.equal(receipt); expect(receipt.state).to.equal('retiring');
+    settle(); await receipt.completion;
+    expect(receipt.state).to.equal('retired'); expect(scope.retire()).to.equal(receipt);
+  });
+
+  it('bounds an unsettled retirement promise with unknown rather than completed evidence', async () => {
+    const receipt = createProcgenRetirementScope({ deadlineMs: 1 }).retire([
+      { name: 'stuck-storage', run: () => new Promise(() => {}) }
+    ]);
+    await receipt.completion;
+    expect(receipt.resources[0].status).to.equal('unknown');
+    expect(receipt.state).to.equal('retired');
+  });
   it('starts an independent silent transport and routes accepted synth pattern performance only after listening', () => {
     const f = setup(); f.studio.bindRuntime();
     expect(f.runtime.lanes.clockDriven).to.equal(true); expect(f.studio.transport.getState().playing).to.equal(true);
