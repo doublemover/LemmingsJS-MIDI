@@ -15,6 +15,7 @@
     "mcpb:build:editor": "node scripts/build-mcpb-bundle.js --surface editor",
     "mcpb:build:interact": "node scripts/build-mcpb-bundle.js --surface interact",
     "mcpb:validate": "npm run mcpb:build && npx @anthropic-ai/mcpb validate dist/mcpb",
+    "mcpb:qualify": "node scripts/qualify-mcpb-bundle.js",
     "check-undefined": "node scripts/check-undefined.js",
     "typecheck:critical": "tsc -p tsconfig.checkjs.json --pretty false",
     "test": "node scripts/runTests.js",
