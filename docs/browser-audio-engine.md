@@ -503,3 +503,12 @@ Application source hookup and #972 correlation remain with the workstation;
 native/bus/effect feature producers, playback-path underrun observation, visible
 “why silent?” integration and privacy-minimized repro bundles remain open in
 #1081. Telemetry is a bounded diagnostic projection, not the lossless journal.
+
+Session activation installs its promise lease before any status callback or
+AudioContext operation. Reentrant enable calls share that lease; Stop invalidates
+it and resolves cancellation without waiting for a pending context resume.
+The physical player separately guards activation before calling the session and
+keeps a stopped owner disarmed until a new playing physical batch requests it.
+Context creation and resume still begin in the original gesture call. Regression
+fixtures for synchronous notification and stop-during-enable are added; execution
+is deferred with the current backlog implementation pass.

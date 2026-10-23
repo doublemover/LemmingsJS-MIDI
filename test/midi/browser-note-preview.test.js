@@ -13,6 +13,8 @@ import { createMidiOutputCapture } from '../../js/midi/capture/MidiOutputCapture
 import { analyzeMidiOutputCapture } from '../../js/midi/capture/MidiCaptureAnalysis.js';
 import { withFakeClockAndPerformance } from '../support/timers.js';
 import { createResourceBudget } from '../../js/app/resources/ResourceBudget.js';
+import { createProcgenPhysicalPlayback } from '../../js/app/procgen/workstation/ProcgenPhysicalPlayback.js';
+import { createProcgenPhysicalScoreClock } from '../../js/app/procgen/workstation/ProcgenPhysicalScoreClock.js';
 
 const deferred = () => {
   let resolve;
@@ -116,6 +118,30 @@ const setup = (options = {}, context = new FakeContext()) => {
 };
 
 describe('BrowserNotePreview', function() {
+  it('publishes an enable lease before session observers can reenter or cancel activation', async () => {
+    const { preview } = setup(); await preview.enable();
+    const session = preview.createSession('reentrant-enable'); let nested, reports = 0;
+    session.subscribe(() => { reports++; if (!nested) nested = session.enable(); });
+    const pending = session.enable();
+    expect(nested).to.equal(pending); expect(await pending).to.equal(true); expect(reports).to.equal(2);
+    const cancelled = preview.createSession('cancel-enable');
+    cancelled.subscribe(state => { if (state.status === 'unlocking') cancelled.stop(); });
+    expect(await cancelled.enable()).to.equal(false); expect(cancelled.getState().enabled).to.equal(false);
+    expect(session.getState().enabled).to.equal(true); await preview.dispose();
+  });
+
+  it('arms the real physical session once and leaves a stopped owner off during root notifications', async () => {
+    const { preview } = setup(); await preview.enable(); let reports = 0;
+    const release = preview.subscribe(() => { reports++; });
+    const playback = createProcgenPhysicalPlayback({ audio: preview, now: () => 1000,
+      getGraph: () => ({ version: 1, revision: 1, instruments: [] }), scoreTimeline: createProcgenPhysicalScoreClock() });
+    expect(await playback.ready()).to.equal(true); await Promise.resolve();
+    expect(playback.diagnostics().enabled).to.equal(true); expect(reports).to.be.lessThan(8);
+    playback.stop(); preview.setMasterVolume(0.5); await Promise.resolve();
+    expect(playback.diagnostics().enabled).to.equal(false); expect(preview.getState().enabled).to.equal(true);
+    expect(reports).to.be.lessThan(12); release(); await playback.dispose(); await preview.dispose();
+  });
+
   const nativePatch = (revision = 1) => ({ status: 'ready', patch: { id: 'native-lifecycle', revision,
     engineId: 'native-oscillator', engineVersion: 1, parameters: { gain01: 0.8, sustain01: 0.6, pan01: 0 },
     sampleRefs: [], voicePolicy: { maxVoices: 8 }, mix: { gain01: 0.7, pan01: 0.1 } },

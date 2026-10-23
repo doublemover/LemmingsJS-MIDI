@@ -166,7 +166,12 @@ class BrowserNotePreview {
         message: session.disposed ? 'Local audio session is closed.' : session.enabled || session.starting ? state.message : 'Local audio session is off.' };
     };
     session.report = () => { for (const listener of session.listeners) { try { listener(getState()); } catch { /* Session observers do not own audio. */ } } };
-    session.cancel = () => { session.generation++; session.enabled = false; session.starting = false; session.enablePromise = null; for (const cancel of session.pending) cancel(); session.pending.clear(); };
+    session.cancel = () => {
+      session.generation++; session.enabled = false; session.starting = false;
+      const operation = session.enableOperation; session.enableOperation = null; session.enablePromise = null;
+      operation?.resolve(false);
+      for (const cancel of session.pending) cancel(); session.pending.clear();
+    };
     const stop = () => {
       session.cancel(); this._clearVoices(null, id);
       if (!this._hasEnabledOwners()) this.stop(); else session.report();
@@ -174,21 +179,27 @@ class BrowserNotePreview {
     const enable = () => {
       if (session.disposed || this._disposed) return Promise.resolve(false);
       if (session.enablePromise) return session.enablePromise;
-      this._replaceClosedContext();
-      const generation = session.generation; session.starting = true; session.report();
-      const pending = (async () => {
-        try {
-          const ready = await this.enable(id);
-          if (!ready || session.disposed || generation !== session.generation) return false;
-          session.enabled = true; return true;
-        } finally {
-          if (generation === session.generation) { session.starting = false; session.report(); }
-        }
-      })();
-      session.enablePromise = pending;
-      const clear = () => { if (session.enablePromise === pending) session.enablePromise = null; };
-      pending.then(clear, clear);
-      return pending;
+      if (session.enabled && this._ownerReady(id)) return Promise.resolve(true);
+      let resolve;
+      const promise = new Promise(done => { resolve = done; });
+      const operation = { generation: session.generation, promise, resolve };
+      session.enableOperation = operation; session.enablePromise = promise; session.starting = true;
+      const settle = ready => {
+        if (session.enableOperation !== operation) { resolve(false); return; }
+        const accepted = ready === true && !session.disposed && !this._disposed && operation.generation === session.generation;
+        session.enabled = accepted; session.starting = false;
+        // Retain the operation through notification so reentrant callers share it.
+        session.report();
+        if (session.enableOperation === operation) { session.enableOperation = null; session.enablePromise = null; }
+        resolve(accepted && operation.generation === session.generation);
+      };
+      try {
+        session.report();
+        if (session.enableOperation !== operation || session.disposed) { settle(false); return promise; }
+        // Invoke directly: AudioContext creation/resume must retain the caller's gesture.
+        Promise.resolve(this.enable(id)).then(settle, () => settle(false));
+      } catch { settle(false); }
+      return promise;
     };
     session.api = {
       output: this._createOutput(id), getState, enable, stop, panic: stop,

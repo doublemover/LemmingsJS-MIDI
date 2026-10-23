@@ -18,13 +18,14 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
   const backend = session?.createInstrumentBackend?.({ gateMode: 'bounded' }) || null;
   const clock = createAudioClockBridge({ getContext: () => audio?.getAudioContext?.(), nowMs: now,
     presentationDelayMs: 24, maxHorizonMs: 5000 });
-  let disposed = false, prepared = false, enablePromise = null, executionEpoch = null, previousGeneration = null, executionSerial = 0;
+  let disposed = false, prepared = false, armEnabled = true, enableLease = null, executionEpoch = null, previousGeneration = null, executionSerial = 0;
   let anchoredEpoch = null, anchoredBpm = null, rejected = 0, accepted = 0;
   const arm = () => {
-    if (disposed || !prepared || !session || !audio?.getState?.().enabled || session.getState().enabled || enablePromise) return;
-    const pending = session.enable();
-    enablePromise = pending;
-    Promise.resolve(pending).catch(() => false).finally(() => { if (enablePromise === pending) enablePromise = null; });
+    if (disposed || !armEnabled || !prepared || !session || !audio?.getState?.().enabled || session.getState().enabled || enableLease) return;
+    const lease = {}; enableLease = lease;
+    try {
+      Promise.resolve(session.enable()).catch(() => false).finally(() => { if (enableLease === lease) enableLease = null; });
+    } catch { if (enableLease === lease) enableLease = null; }
   };
   const preparedPromise = backend ? Promise.resolve(backend.prepare(nativeResolution)).then(receipt => {
     prepared = receipt?.status === 'ready';
@@ -42,6 +43,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
   const engine = createCausalMusicEngine({ getGraph, scoreTimeline, deliver: (intents, batch) => dispatcher.dispatch(intents, batch) });
   const processBatch = (batch, { bpm, playing = true, position = null } = {}) => {
     if (disposed || !playing) return Object.freeze([]);
+    armEnabled = true;
     const nextEpoch = `${batch.worldId}:${batch.generation}:${executionSerial}`;
     if (previousGeneration !== null && previousGeneration !== batch.generation) {
       dispatcher.cancelGeneration(previousGeneration, executionEpoch);
@@ -62,6 +64,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     return engine.processBatch(batch);
   };
   const stop = () => {
+    armEnabled = false; enableLease = null;
     if (previousGeneration !== null) dispatcher.cancelGeneration(previousGeneration, executionEpoch);
     executionSerial++; previousGeneration = null; executionEpoch = null;
     session?.stop?.(); clock.invalidate(); anchoredEpoch = null; anchoredBpm = null;
