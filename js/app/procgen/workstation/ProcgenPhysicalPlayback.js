@@ -1,6 +1,7 @@
 import { createAudioClockBridge } from './AudioClockBridge.js';
 import { createCausalMusicEngine } from './CausalMusicEngine.js';
 import { createCausalIntentDispatcher, createStrictLiveFramePolicy } from './CausalIntentDispatcher.js';
+import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 
 const nativeResolution = Object.freeze({
   status: 'ready',
@@ -20,6 +21,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     presentationDelayMs: 24, maxHorizonMs: 5000 });
   let disposed = false, prepared = false, armEnabled = true, enableLease = null, executionEpoch = null, previousGeneration = null, executionSerial = 0;
   let anchoredEpoch = null, anchoredBpm = null, rejected = 0, accepted = 0;
+  const retirement = createProcgenRetirementScope();
   const arm = () => {
     if (disposed || !armEnabled || !prepared || !session || !audio?.getState?.().enabled || session.getState().enabled || enableLease) return;
     const lease = {}; enableLease = lease;
@@ -65,14 +67,22 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
   };
   const stop = () => {
     armEnabled = false; enableLease = null;
-    if (previousGeneration !== null) dispatcher.cancelGeneration(previousGeneration, executionEpoch);
+    const generation = previousGeneration, epoch = executionEpoch;
     executionSerial++; previousGeneration = null; executionEpoch = null;
-    session?.stop?.(); clock.invalidate(); anchoredEpoch = null; anchoredBpm = null;
+    return createProcgenRetirementScope().retire([
+      { name: 'dispatch-generation', run: () => { if (generation !== null) return dispatcher.cancelGeneration(generation, epoch); } },
+      { name: 'audio-session', run: () => session?.stop?.() },
+      { name: 'clock', run: () => { clock.invalidate(); anchoredEpoch = null; anchoredBpm = null; } }
+    ]);
   };
   const dispose = () => {
-    if (disposed) return;
-    disposed = true; unsubscribe?.(); stop(); dispatcher.dispose(); backend?.dispose?.();
-    return session?.dispose?.();
+    if (retirement.getReceipt()) return retirement.getReceipt();
+    disposed = true;
+    return retirement.retire([
+      { name: 'audio-state-subscription', run: () => unsubscribe?.() },
+      { name: 'playback-stop', run: stop }, { name: 'dispatcher', run: () => dispatcher.dispose() },
+      { name: 'instrument-backend', run: () => backend?.dispose?.() }, { name: 'audio-session', run: () => session?.dispose?.() }
+    ]);
   };
   return { engine, processBatch, stop, dispose, ready: () => preparedPromise,
     diagnostics: () => Object.freeze({ prepared, enabled: !!session?.getState().enabled, accepted, rejected,

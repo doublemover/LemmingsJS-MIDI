@@ -5,6 +5,18 @@ import { createProcgenPhysicalScoreClock } from '../js/app/procgen/workstation/P
 import { createProcgenPhysicalPlayback } from '../js/app/procgen/workstation/ProcgenPhysicalPlayback.js';
 
 describe('ProcGen physical playback', () => {
+  it('retires the session and backend even when its state subscription and Stop throw', async () => {
+    const project = createProcgenWorkstationProject(createMidiProject()), calls = [];
+    const backend = { prepare: async () => ({ status: 'ready' }), dispose() { calls.push('backend'); } };
+    const session = { getState: () => ({ enabled: false }), enable: async () => false,
+      createInstrumentBackend: () => backend, stop() { calls.push('stop'); throw new Error('Stop failed'); }, dispose() { calls.push('session'); } };
+    const playback = createProcgenPhysicalPlayback({ audio: { createSession: () => session, getState: () => ({ enabled: false }),
+      subscribe: () => () => { calls.push('unsubscribe'); throw new Error('Unsubscribe failed'); } },
+    getGraph: () => project.procgen.physicalGraph, scoreTimeline: createProcgenPhysicalScoreClock(), now: () => 0 });
+    await playback.ready(); const receipt = playback.dispose(); await receipt.completion;
+    expect(receipt.outcome).to.equal('partial'); expect(calls).to.deep.equal(['unsubscribe', 'stop', 'backend', 'session']);
+    expect(playback.dispose()).to.equal(receipt); expect(calls).to.have.length(4);
+  });
   it('routes a committed builder fact to the owned local semantic backend without a phrase cell', async () => {
     const project = createProcgenWorkstationProject(createMidiProject()), timeline = createProcgenPhysicalScoreClock();
     const calls = [], context = { state: 'running', currentTime: 1, sampleRate: 48000 };

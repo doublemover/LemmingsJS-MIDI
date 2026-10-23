@@ -60,6 +60,34 @@ describe('Owned native sample regions', () => {
     expect(backend.renewExecutionLease(1, 'take', 480000).status).to.equal('accepted');
     return { preview, session, context, backend, asset, selections: () => selections };
   };
+  it('releases every rollback pin once and preserves unknown preparation ownership', async () => {
+    const context = makeContext(), preview = new BrowserNotePreview({ createAudioContext: () => context }), session = preview.createSession('pins');
+    cleanups.push(() => preview.dispose()); await session.enable();
+    const backend = await session.createSampleInstrumentBackend(), first = makePin('a'.repeat(64)), second = makePin('b'.repeat(64));
+    const released = [];
+    const supplied = [first, second].map((asset, index) => ({ ...asset.pin, retain(options) {
+      const pin = asset.pin.retain(options);
+      return { ...pin, release() { released.push(index); if (index === 0) throw new Error('pin release failed'); return pin.release(); } };
+    } }));
+    const invalid = patch('c'.repeat(64));
+    const receipt = await backend.prepare(invalid, supplied);
+    expect(receipt.status).to.equal('rejected'); expect(released).to.deep.equal([0, 1]);
+    expect(receipt.retirement.outcome).to.equal('partial');
+    expect((await backend.prepare(patch(), [first.pin])).reason).to.equal('sample-retirement-unknown');
+    const disposed = backend.dispose(); expect(disposed.outcome).to.equal('partial'); expect(released).to.deep.equal([0, 1]);
+    expect(second.shared.pins).to.equal(1); first.pin.release(); second.pin.release();
+  });
+  it('keeps the new prepared patch intact when retiring old prepared pins fails', async () => {
+    const { backend, asset } = await setup();
+    const failing = { ...asset.pin, retain(options) { const pin = asset.pin.retain(options); return { ...pin, release() { throw new Error('old pin cannot retire'); } }; } };
+    expect((await backend.prepare(patch('a'.repeat(64), 2), [failing])).status).to.equal('ready');
+    const replacement = await backend.prepare(patch('a'.repeat(64), 3), [asset.pin]);
+    expect(replacement).to.include({ status: 'ready', patchId: 'sample-fixture', revision: 3 });
+    expect(replacement.retirement.outcome).to.equal('partial');
+    expect(backend.begin(intent('new-patch'), 480, 'take').status).to.equal('accepted');
+    expect(backend.renderDiagnostics().patchRevision).to.equal(3);
+    expect((await backend.prepare(patch('a'.repeat(64), 4), [asset.pin])).reason).to.equal('sample-retirement-unknown');
+  });
 
   it('converts immutable source-frame offsets at the actual decoded rate and preserves fractional pitch', async () => {
     const selected = region({ loop: { mode: 'sustain', startFrame: 8820, endFrame: 26460, crossfadeFrames: 0 } }),

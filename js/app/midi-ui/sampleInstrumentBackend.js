@@ -24,6 +24,10 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
   const voices = new Map(), leases = new Map(), cancelled = new Set(), traces = [];
   const retirement = createProcgenRetirementScope();
   let prepared = null, revision = 0, disposed = false, cancellationHistoryFull = false, errors = 0, sequence = 0, expiryTimer = null, rebuildingChokes = false;
+  let preparationFault = null, pendingPreparations = 0;
+  const retiredPrepared = new Set();
+  const retirementSummary = receipt => receipt ? Object.freeze({ state: receipt.state, outcome: receipt.outcome,
+    failures: Object.freeze(receipt.resources.filter(resource => resource.status !== 'completed').map(resource => Object.freeze({ name: resource.name, status: resource.status, error: resource.error || null }))) }) : null;
   const keyFor = (epoch, id) => JSON.stringify([epoch, id]), generationKey = (generation, epoch) => JSON.stringify([generation, epoch]);
   const sharedKey = (epoch, voiceId) => JSON.stringify([owner, epoch, voiceId]);
   const trace = receipt => {
@@ -49,9 +53,22 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
       armExpiry();
     }, Math.max(1, Math.min(1000, remaining * 1000 + 1)));
   };
-  const releasePrepared = value => { if (value) for (const pin of value.assets.values()) pin.release(); };
+  const releasePrepared = value => {
+    if (!value) return null;
+    if (value.retirement) return value.retirement;
+    value.retirement = createProcgenRetirementScope().retire([...value.assets.values()].map((pin, index) => ({ name: 'sample-pin-' + index, run: () => pin.release() })));
+    if (value.retirement.outcome !== 'complete') {
+      retiredPrepared.add(value); preparationFault = value.retirement;
+      value.retirement.completion.then(receipt => { if (receipt.outcome === 'complete') {
+        retiredPrepared.delete(value); if (preparationFault === receipt) preparationFault = null;
+      } });
+    }
+    return value.retirement;
+  };
   const prepare = async (resolution, assets = []) => {
     if (disposed) return reject('disposed');
+    if (preparationFault) return reject('sample-retirement-unknown');
+    if (pendingPreparations >= 2) return reject('sample-preparation-busy');
     const patch = resolution?.patch;
     if (!['ready', 'degraded'].includes(resolution?.status) || !patch || patch.engineId !== 'native-sample' || patch.engineVersion !== 1 ||
         !text(patch.id, 128) || !integer(patch.revision, 1, 2147483647) || resolution.receipt?.patchId !== patch.id ||
@@ -64,6 +81,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
       const spec = parameterSpecs[name]; if (!spec || !finite(value, spec[0], spec[1])) return reject('unsupported-patch-parameter'); parameters[name] = value;
     }
     const pins = new Map(), request = ++revision, audioGeneration = preview._generation, ownerGeneration = preview._sessions.get(owner)?.generation;
+    pendingPreparations++;
     try {
       for (const pin of assets) {
         const hash = pin?.ref?.contentHash;
@@ -79,10 +97,14 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
         mix: Object.freeze({ gain01: patch.mix.gain01, pan01: patch.mix.pan01 }), maxVoices: patch.voicePolicy.maxVoices,
         receipt: Object.freeze({ patchId: patch.id, revision: patch.revision }), assets: pins };
       await Promise.resolve();
-      if (disposed || request !== revision || audioGeneration !== preview._generation || ownerGeneration !== preview._sessions.get(owner)?.generation) throw new Error('preparation-cancelled');
-      const prior = prepared; prepared = next; releasePrepared(prior);
-      return trace({ status: 'ready', patchId: next.id, revision: next.revision, capabilities });
-    } catch (error) { for (const pin of pins.values()) pin.release(); return reject(error.message); }
+      if (disposed || preparationFault || request !== revision || audioGeneration !== preview._generation || ownerGeneration !== preview._sessions.get(owner)?.generation) throw new Error('preparation-cancelled');
+      const prior = prepared; prepared = next;
+      const retired = releasePrepared(prior);
+      return trace({ status: 'ready', patchId: next.id, revision: next.revision, capabilities, retirement: retirementSummary(retired) });
+    } catch (error) {
+      const retired = releasePrepared({ assets: pins });
+      return trace({ status: 'rejected', reason: error.message, retirement: retirementSummary(retired) });
+    } finally { pendingPreparations--; }
   };
   const snapshotRegion = (input, assets, child = false) => {
     if (!plain(input) || input.domain !== 'source-frames' || !/^[a-f0-9]{64}$/.test(input.assetHash)) throw new Error('invalid-resolved-sample-region');
@@ -369,7 +391,8 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     readiness: disposed ? 'disposed' : !prepared ? 'patch-unprepared' : !preview._ownerReady(owner) ? 'audio-not-ready' : 'ready',
     engineId: 'native-sample', engineVersion: 1, capabilities, gateMode, smoothingSeconds, activeVoices: voices.size,
     reservedSources: [...voices.values()].reduce((sum, voice) => sum + voice.renderCost, 0), patchId: prepared?.id ?? null, patchRevision: prepared?.revision ?? null,
-    deliveryErrors: errors, cancelledGenerations: cancelled.size, cancellationHistoryFull, evidenceClass: 'native-scheduling-api', appliedFrame: null, acousticReceipt: false,
+    deliveryErrors: errors, cancelledGenerations: cancelled.size, cancellationHistoryFull, pendingPreparations, maximumPendingPreparations: 2,
+    preparedResourceRetirement: retirementSummary(preparationFault), evidenceClass: 'native-scheduling-api', appliedFrame: null, acousticReceipt: false,
     ...(includeTraces ? { traces: Object.freeze([...traces]) } : {}),
     ...(includeVoices ? { voices: Object.freeze([...voices.values()].map(voice => Object.freeze({ voiceId: voice.playback.voiceId,
       onsetId: voice.playback.onsetId ?? null, actorId: voice.playback.actorId ?? null, owner, generation: voice.semanticGeneration, executionEpoch: voice.semanticEpoch,
@@ -384,7 +407,8 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     return retirement.retire([
       { name: 'admission', run: () => { disposed = true; } }, { name: 'owner-stop', run: onOwnerStop },
       ...[...voices.values()].map(voice => ({ name: `voice-${voice.id}`, run: () => preview._destroyVoice(voice, 'sample-backend-disposed') })),
-      ...[...(prepared?.assets?.values() || [])].map((pin, index) => ({ name: `prepared-pin-${index}`, run: () => pin.release() })),
+      { name: 'prepared-samples', run: () => releasePrepared(prepared) },
+      ...[...retiredPrepared].map((value, index) => ({ name: 'retired-prepared-samples-' + index, run: () => value.retirement })),
       { name: 'patch', run: () => { prepared = null; } }
     ]);
   };
