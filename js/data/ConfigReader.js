@@ -49,6 +49,10 @@ class ConfigReader extends BaseLogger {
             configData.resourceFallbackPaths.some(root => typeof root !== 'string' || !root.trim())) throw new Error('resourceFallbackPaths must be an array of pack roots');
         newConfig.resourceFallbackPaths = [...configData.resourceFallbackPaths];
       }
+      if (configData.resourcePins != null) {
+        if (typeof configData.resourcePins !== 'object' || Array.isArray(configData.resourcePins)) throw new Error('resourcePins must be a filename map');
+        newConfig.resourcePins = configData.resourcePins;
+      }
       if (configData.spriteSkin != null) {
         if (typeof configData.spriteSkin !== 'string') {
           throw new Error('spriteSkin must be a manifest path');

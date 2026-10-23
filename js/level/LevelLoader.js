@@ -63,6 +63,33 @@ class LevelLoader {
     this.config = config;
     this.levelIndexResolve = new LevelIndexResolve(config);
     this.resourceFallbackPaths = Object.freeze(this.#buildResourceFallbackPaths());
+    const pins = config?.resourcePins || {};
+    if (typeof pins !== 'object' || Array.isArray(pins)) throw new TypeError('resourcePins must be a filename map');
+    this.resourcePins = Object.freeze(Object.setPrototypeOf(Object.fromEntries(Object.entries(pins).map(([filename, pin]) => {
+      if (!filename || filename.includes('/') || filename.includes('\\') || typeof pin?.root !== 'string' || !pin.root ||
+          !/^[a-f0-9]{64}$/i.test(pin.sha256 || '')) throw new TypeError('Invalid pinned resource identity');
+      return [filename, Object.freeze({ root: pin.root, sha256: pin.sha256.toLowerCase() })];
+    })), null));
+  }
+
+  async #loadExactBinary(root, filename) {
+    const pin = this.resourcePins[filename];
+    if (pin && pin.root !== root) throw new ResourceLoadError('integrity', `${root}/${filename}`, {
+      cause: new Error('Pinned resource root differs from requested root')
+    });
+    const reader = await this.fileProvider.loadBinary(root, filename, pin ? { expectedHash: pin.sha256 } : undefined);
+    if (pin) {
+      const subtle = globalThis.crypto?.subtle;
+      const bytes = reader?.data;
+      const start = reader?.hiddenOffset ?? 0, end = start + reader?.length;
+      if (!subtle || !(bytes instanceof Uint8Array) || !Number.isSafeInteger(start) || !Number.isSafeInteger(end) || end > bytes.length) throw new ResourceLoadError('unavailable', `${root}/${filename}`, {
+        cause: new Error('Pinned resource verification is unavailable')
+      });
+      const digest = await subtle.digest('SHA-256', bytes.subarray(start, end));
+      const actual = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+      if (actual !== pin.sha256) throw new ResourceLoadError('integrity', `${root}/${filename}`);
+    }
+    return { reader, root, filename, ...(pin ? { sha256: pin.sha256 } : {}) };
   }
 
   #buildResourceFallbackPaths() {
@@ -88,13 +115,14 @@ class LevelLoader {
    */
   async #loadBinaryWithFallback(filename) {
     let lastMissing = null;
-    const roots = this.resourceFallbackPaths;
+    const pin = this.resourcePins[filename];
+    const roots = pin ? [pin.root] : this.resourceFallbackPaths;
     const attemptedRoots = [];
     for (let i = 0; i < roots.length; i += 1) {
       const root = roots[i];
       attemptedRoots.push(root);
       try {
-        return { reader: await this.fileProvider.loadBinary(root, filename), root, filename };
+        return await this.#loadExactBinary(root, filename);
       } catch (error) {
         if (isMissingResourceError(error)) {
           lastMissing = error;
@@ -122,16 +150,16 @@ class LevelLoader {
     const requireOddTable = useOddTable && this.config.level.oddTableRequired === true;
     const paddedFileId  = ('0000' + levelInfo.fileId).slice(-3);
 
-    const baseLevel     = this.fileProvider.loadBinary(
-      this.config.path,
-      this.config.level.filePrefix + paddedFileId + '.DAT');
+    const baseFileName = this.config.level.filePrefix + paddedFileId + '.DAT';
+    const baseLevel = this.#loadExactBinary(this.config.path, baseFileName);
 
     const oddTableBuf = useOddTable
-      ? Promise.resolve().then(() => this.fileProvider.loadBinary(this.config.path, 'ODDTABLE.DAT'))
-        .catch(error => { if (isMissingResourceError(error) && !requireOddTable) return null; throw error; })
+      ? Promise.resolve().then(() => this.#loadExactBinary(this.config.path, 'ODDTABLE.DAT'))
+        .catch(error => { if (isMissingResourceError(error) && !requireOddTable && !this.resourcePins['ODDTABLE.DAT']) return null; throw error; })
       : null;
 
-    const [levelDat, oddBuf] = await Promise.all([baseLevel, oddTableBuf]);
+    const [levelSource, oddSource] = await Promise.all([baseLevel, oddTableBuf]);
+    const levelDat = levelSource.reader, oddBuf = oddSource?.reader ?? null;
 
     // ----------------------------------------------------------------------- //
     // 2 · Parse header and build Level shell                                  //
@@ -182,11 +210,13 @@ class LevelLoader {
       await Promise.all([vgagrFile, groundFile, vgaspecFile]);
     const vgagrBuf = vgagrSource.reader, groundBuf = groundSource.reader, vgaspecBuf = vgaspecSource?.reader ?? null;
     level.resourceSources = Object.freeze({
-      level: Object.freeze({ root: this.config.path, filename: this.config.level.filePrefix + paddedFileId + '.DAT' }),
-      ...(useOddTable && oddBuf?.length ? { oddTable: Object.freeze({ root: this.config.path, filename: 'ODDTABLE.DAT' }) } : {}),
-      vgagr: Object.freeze({ root: vgagrSource.root, filename: vgagrSource.filename }),
-      ground: Object.freeze({ root: groundSource.root, filename: groundSource.filename }),
-      ...(vgaspecSource ? { vgaspec: Object.freeze({ root: vgaspecSource.root, filename: vgaspecSource.filename }) } : {})
+      level: Object.freeze({ root: levelSource.root, filename: levelSource.filename, ...(levelSource.sha256 ? { sha256: levelSource.sha256 } : {}) }),
+      ...(useOddTable && oddBuf?.length ? { oddTable: Object.freeze({ root: oddSource.root, filename: oddSource.filename,
+        ...(oddSource.sha256 ? { sha256: oddSource.sha256 } : {}) }) } : {}),
+      vgagr: Object.freeze({ root: vgagrSource.root, filename: vgagrSource.filename, ...(vgagrSource.sha256 ? { sha256: vgagrSource.sha256 } : {}) }),
+      ground: Object.freeze({ root: groundSource.root, filename: groundSource.filename, ...(groundSource.sha256 ? { sha256: groundSource.sha256 } : {}) }),
+      ...(vgaspecSource ? { vgaspec: Object.freeze({ root: vgaspecSource.root, filename: vgaspecSource.filename,
+        ...(vgaspecSource.sha256 ? { sha256: vgaspecSource.sha256 } : {}) }) } : {})
     });
 
     // ----------------------------------------------------------------------- //

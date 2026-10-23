@@ -8,6 +8,7 @@ class GameConfig {
     /** Path/Url to the resources */
     this.path = '';
     this.resourceFallbackPaths = [];
+    this.resourcePins = {};
     this.spriteSkin = null;
     this.characterCatalog = null;
     /** unique GameType Name */

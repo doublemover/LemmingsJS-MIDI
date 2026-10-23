@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 import { readFileSync } from 'fs';
+import { createHash } from 'node:crypto';
 import { Lemmings, setDependency, useGlobalLemmings } from './helpers/lemmings.js';
 import '../js/LemmingsBootstrap.js';
 import { __test__ as LevelLoaderTest } from '../js/level/LevelLoader.js';
@@ -350,6 +351,24 @@ describe('LevelLoader', function () {
     }
   });
 
+  it('verifies pinned resource bytes and never substitutes a different root for a pin', async function() {
+    const digest = createHash('sha256').update(readFileSync(new URL('../xmas91/GROUND0O.DAT', import.meta.url))).digest('hex');
+    const config = makeConfig({ path: 'xmas92', gametype: Lemmings.GameTypes.XMAS92,
+      resourcePins: { 'GROUND0O.DAT': { root: 'xmas91', sha256: digest } },
+      level: { filePrefix: 'LEVEL', useOddTable: false, order: [[4]] } });
+    const Provider = makeProvider();
+    const level = await new Lemmings.LevelLoader(new Provider(), config).getLevel(0, 0);
+    expect(level.resourceSources.ground).to.deep.equal({ root: 'xmas91', filename: 'GROUND0O.DAT', sha256: digest });
+    config.resourcePins['GROUND0O.DAT'].sha256 = '0'.repeat(64);
+    const invalid = new Lemmings.LevelLoader(new Provider(), config);
+    try { await invalid.getLevel(0, 0); expect.fail('Expected integrity rejection'); }
+    catch (error) { expect(error.kind).to.equal('integrity'); expect(error.attemptedRoots).to.deep.equal(['xmas91']); }
+    config.resourcePins['GROUND0O.DAT'] = { root: 'xmas92', sha256: digest };
+    const missing = new Lemmings.LevelLoader(new Provider(), config);
+    try { await missing.getLevel(0, 0); expect.fail('Expected pinned absence'); }
+    catch (error) { expect(error.kind).to.equal('not-found'); expect(error.attemptedRoots).to.deep.equal(['xmas92']); }
+  });
+
   it('requires an explicitly strict odd table without hiding absent or empty declared entries', async function() {
     const config = makeConfig({ level: { oddTableRequired: true } });
     const missing = makeProvider(() => Promise.reject(Object.assign(new Error('missing'), { code: 'ENOENT' })));
@@ -358,6 +377,9 @@ describe('LevelLoader', function () {
     const empty = makeProvider(() => Promise.resolve(new Lemmings.BinaryReader(new Uint8Array(0))));
     try { await new Lemmings.LevelLoader(new empty(), config).getLevel(0, 0); expect.fail('Expected required table entry'); }
     catch (error) { expect(error.kind).to.equal('decode'); }
+    const pinned = makeConfig({ resourcePins: { 'ODDTABLE.DAT': { root: 'lemmings', sha256: '0'.repeat(64) } } });
+    try { await new Lemmings.LevelLoader(new missing(), pinned).getLevel(0, 0); expect.fail('Expected pinned table absence'); }
+    catch (error) { expect(error.code).to.equal('ENOENT'); }
   });
 
   it('applies seasonal steel sprite mappings to generate steel masks', async function () {

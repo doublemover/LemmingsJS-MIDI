@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- Classify missing browser and Node pack resources consistently, keep seasonal fallback attempts and source provenance visible, and make strict odd-table requirements explicit.
+- Classify missing browser and Node pack resources consistently, keep seasonal fallback attempts and source provenance visible, verify optional pinned asset hashes, and make strict odd-table requirements explicit.
 
 - Add the ProcGen workstation with eight mixed tileset lanes, Strip/Overlay sequencing, role collections, inspectors, phrase editing, recording, automation and musical Undo.
 - Add a shared BPM/game transport, MIDI clock and transport synchronization, independent clock/note ports, channel conflict reporting and Standard MIDI File performance export.
