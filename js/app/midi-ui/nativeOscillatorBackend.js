@@ -157,25 +157,27 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
     if (activeForBackend.length >= prepared.patch.voicePolicy.maxVoices) return failure('patch-voice-budget', intent);
     for (const voice of preview._voices) if (preview._voiceFinished(voice)) preview._destroyVoice(voice, 'inaudible-voice-reuse');
     if (preview._voices.size >= preview._maxScheduledVoices) return failure('shared-scheduled-voice-budget', intent);
+    let resourceLease;
+    try { resourceLease = preview._audioResources.reserveNativeVoice(owner, intent.generation); }
+    catch { return failure('audio-resource-budget', intent); }
     const incoming = { priority: 1, laneIndex: intent.laneId ?? 0 };
     const simultaneous = [...preview._voices].filter(voice => !voice.stolen && voice.start <= start && voice.releaseAt > start);
+    let victim = null;
     if (simultaneous.length >= preview._maxVoices) {
-      const victim = selectLocalAudioVoice(simultaneous, incoming);
-      if (!victim) return failure('shared-voice-budget', intent);
-      preview._voiceSteals++;
-      preview._release(victim, Math.max(context.currentTime, start - 0.04), true);
+      victim = selectLocalAudioVoice(simultaneous, incoming);
+      if (!victim) { resourceLease.release(); return failure('shared-voice-budget', intent); }
     }
     const values = prepared.values;
     let oscillator, gain, pressureGain, pan, voice;
     try {
       const frequency = frequencyFor(intent.pitch);
+      const channel = preview._channel(0, owner), release = values.releaseSeconds;
       oscillator = context.createOscillator(); gain = context.createGain();
       pressureGain = context.createGain();
       pan = context.createStereoPanner?.() || null;
-      const channel = preview._channel(0, owner), release = values.releaseSeconds;
       const end = gateMode === 'owned' ? leaseEnd : start + preview._maxNoteSeconds;
       const basePeak = intent.velocity01 * values.gain01 * prepared.patch.mix.gain01;
-      voice = { oscillator, gain, pressureGain, pan, owner, number: 0, note: Math.round(intent.pitch.cents / 100),
+      voice = { oscillator, gain, pressureGain, pan, resourceLease, owner, number: 0, note: Math.round(intent.pitch.cents / 100),
         start, end, releaseAt: end - release, released: false, id: ++preview._voiceSequence,
         startMs: preview._nowMs() + (start - context.currentTime) * 1000, token: null,
         basePeak, peak: basePeak,
@@ -215,6 +217,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
         voice.ownedGate && !voice.released ? 'owner-lease-expired' : 'source-ended');
       preview._voices.add(voice); voices.set(identity, voice); preview._semanticVoiceOwners.set(sharedIdentity, voice);
       oscillator.start(start); oscillator.stop(end);
+      if (victim) { preview._voiceSteals++; preview._release(victim, Math.max(context.currentTime, start - 0.04), true); }
       const receipt = Object.freeze({ status: 'accepted', stage: 'scheduled', voiceId: intent.voiceId,
         generation: intent.generation, executionEpoch, targetFrame, patchId: prepared.patch.id, patchRevision: prepared.patch.revision });
       trace({ ...receipt, sourceEventIds: Object.freeze(intent.sourceEventIds?.slice(0, 32) || []),
@@ -223,11 +226,11 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
       preview._observe('synth-scheduled', { ...voice.captureMeta, voiceId: voice.id, targetFrame,
         audioTime: start, endAudioTime: end, patchId: voice.patchId, patchRevision: voice.patchRevision });
       return receipt;
-    } catch {
-      deliveryErrors++;
+    } catch (error) {
+      if (error?.name !== 'ResourceBudgetError') deliveryErrors++;
       if (voice && preview._voices.has(voice)) preview._destroyVoice(voice, 'backend-failure');
-      else { try { oscillator?.stop(); } catch { /* The oscillator may not have started. */ } oscillator?.disconnect(); gain?.disconnect(); pressureGain?.disconnect(); pan?.disconnect(); }
-      return failure('backend-failure', intent);
+      else { resourceLease.release(); try { oscillator?.stop(); } catch { /* The oscillator may not have started. */ } oscillator?.disconnect(); gain?.disconnect(); pressureGain?.disconnect(); pan?.disconnect(); }
+      return failure(error?.name === 'ResourceBudgetError' ? 'audio-resource-budget' : 'backend-failure', intent);
     }
   };
   const update = (voiceId, expression, targetFrame, executionEpoch = 'live') => {

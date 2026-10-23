@@ -24,6 +24,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   let node = null, context = null, ready = false, disposed = false, preparing = 0, patch = null, sequence = 0, packetSequence = 0;
   let pumpTimer = null, fault = null, truncated = 0, nextEpoch = 0, cancellationHistoryFull = false;
   let ownerStopped = false;
+  let runtimeResourceLease = null;
   let pumpQueued = false;
   const voices = new Map(), epochs = new Map(), leases = new Map(), cancelled = new Set(), inFlight = new Map(), traces = [];
   const pendingInitializations = new Set();
@@ -45,6 +46,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     try { node?.port.postMessage({ type: 'panic', protocol: PROTOCOL }); } catch { /* The processor may have failed. */ }
     for (const voice of voices.values()) preview._destroyVoice(voice, 'kernel-fault');
     voices.clear(); slots.fill(null); node?.disconnect(); node?.port.close(); node = null;
+    runtimeResourceLease?.release(); runtimeResourceLease = null;
     record({ status: 'faulted', reason, stage: 'runtime', appliedFrame: null });
   };
   const pump = () => {
@@ -147,14 +149,16 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     const next = validate(resolution); if (!next) return reject('unsupported-patch-or-engine');
     const candidateContext = preview.getAudioContext();
     if (!candidateContext?.audioWorklet?.addModule) return reject('audio-worklet-unavailable');
-    if (context && context !== candidateContext) { onOwnerStop(); node?.disconnect(); node?.port.close(); node = null; ready = false; }
+    if (context && context !== candidateContext) { onOwnerStop(); node?.disconnect(); node?.port.close(); node = null; ready = false;
+      runtimeResourceLease?.release(); runtimeResourceLease = null; }
     const revision = ++preparing, generation = preview._generation, ownerGeneration = preview._sessions.get(owner)?.generation;
-    let candidate = null, timer = null, cancelInitialization = null;
+    let candidate = null, timer = null, cancelInitialization = null, candidateResourceLease = null;
     let interrupt;
     const interrupted = new Promise((_resolve, rejectInterrupted) => { interrupt = rejectInterrupted; });
     cancelInitialization = () => interrupt(new Error('preparation-cancelled')); pendingInitializations.add(cancelInitialization);
     try {
       timer = setTimeout(() => interrupt(new Error('kernel-initialization-timeout')), initializationTimeoutMs);
+      if (!ready) candidateResourceLease = preview._audioResources?.reserveWorkletRuntime(owner, preview._generation) || null;
       if (!modules.has(candidateContext)) {
         const loading = candidateContext.audioWorklet.addModule(runtime.workletUrl);
         modules.set(candidateContext, loading); loading.catch(() => { if (modules.get(candidateContext) === loading) modules.delete(candidateContext); });
@@ -162,6 +166,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       await Promise.race([modules.get(candidateContext), interrupted]);
       if (disposed || revision !== preparing || generation !== preview._generation || ownerGeneration !== preview._sessions.get(owner)?.generation) return reject('preparation-cancelled');
       if (!ready) {
+        const destination = preview._channel(0, owner).gain;
         const create = createWorkletNode || ((audioContext, name, options) => new globalThis.AudioWorkletNode(audioContext, name, options));
         candidate = create(candidateContext, 'lemmings-owned-sine-v1', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2], processorOptions: { maxVoices: MAX_VOICES } });
         await Promise.race([new Promise((resolve, rejectReady) => {
@@ -177,6 +182,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
         if (disposed || revision !== preparing || generation !== preview._generation || ownerGeneration !== preview._sessions.get(owner)?.generation) {
           candidate.disconnect(); candidate.port.close(); return reject('preparation-cancelled');
         }
+        candidate.connect(destination);
         node = candidate; candidate = null; context = candidateContext;
         queue = createAudioCommandQueue({ capacity: CAPACITY, terminalReserve: MAX_VOICES, maxHorizonFrames: Math.ceil(context.sampleRate * 10) });
         const connectedNode = node;
@@ -186,14 +192,14 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
           else if (event.data?.type === 'protocol-error') markFault('kernel-protocol-error');
         };
         node.onprocessorerror = () => { if (node === connectedNode) markFault('processor-error'); };
-        node.connect(preview._channel(0, owner).gain);
+        runtimeResourceLease = candidateResourceLease; candidateResourceLease = null;
         ready = true; fault = null; ownerStopped = false;
       }
       patch = next; return Object.freeze({ status: 'ready', patchId: next.id, revision: next.revision, capabilities, runtime });
     } catch (error) {
       candidate?.disconnect(); candidate?.port.close();
-      return reject(String(error?.message || 'worklet-initialization-failed').slice(0, 160));
-    } finally { if (timer != null) clearTimeout(timer); pendingInitializations.delete(cancelInitialization); }
+      return reject(error?.name === 'ResourceBudgetError' ? 'audio-resource-budget' : String(error?.message || 'worklet-initialization-failed').slice(0, 160));
+    } finally { candidateResourceLease?.release(); if (timer != null) clearTimeout(timer); pendingInitializations.delete(cancelInitialization); }
   };
   const epochToken = epoch => {
     if (epochs.has(epoch)) return epochs.get(epoch);
@@ -242,7 +248,11 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (slotTokens[slot] === 0xffffffff) return reject('voice-slot-generation-exhausted', intent.voiceId);
     const parameters = patch.parameters, endFrame = leases.get(generationKey) ?? targetFrame + Math.ceil(preview._maxNoteSeconds * context.sampleRate);
     if (endFrame <= targetFrame + parameters.releaseSeconds * context.sampleRate) return reject('execution-lease-expired', intent.voiceId);
+    let resourceLease = null;
+    try { resourceLease = preview._audioResources?.reserveWorkletVoice(owner, intent.generation) || null; }
+    catch { return reject('audio-resource-budget', intent.voiceId); }
     const voice = { owner, number: 0, voiceId: intent.voiceId, semanticGeneration: intent.generation, semanticEpoch: executionEpoch,
+      resourceLease,
       epochToken: token, slot, slotToken: ++slotTokens[slot], id: ++preview._voiceSequence, start: targetFrame / context.sampleRate,
       note: Math.round(intent.pitch.cents / 100), velocity: intent.velocity01 * 127,
       startMs: preview._nowMs() + (targetFrame - now) * 1000 / context.sampleRate,
@@ -270,7 +280,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     const result = command(BEGIN, targetFrame, voice, { 6: frequency, 7: voice.peak, 8: pressure, 9: Math.max(-1, Math.min(1, pan + patch.pan01)),
       10: Math.round(parameters.attackSeconds * context.sampleRate), 11: Math.round(parameters.decaySeconds * context.sampleRate),
       12: parameters.sustain01, 13: Math.round(parameters.releaseSeconds * context.sampleRate), 16: endFrame });
-    if (result.status === 'rejected') return result;
+    if (result.status === 'rejected') { resourceLease?.release(); return result; }
     voices.set(key, voice); slots[slot] = voice; preview._voices.add(voice);
     preview._semanticVoiceOwners.set(JSON.stringify([owner, executionEpoch, intent.voiceId]), voice); voice.submitted = inFlight.has(result.sequence);
     return result;
@@ -338,6 +348,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (disposed) return; onOwnerStop(); disposed = true; ready = false;
     for (const voice of voices.values()) preview._destroyVoice(voice, 'backend-disposed'); voices.clear(); slots.fill(null);
     node?.disconnect(); node?.port.close(); node = null; patch = null;
+    runtimeResourceLease?.release(); runtimeResourceLease = null;
   };
   return Object.freeze({ capabilities, runtime, prepare, begin, update, end, renewExecutionLease, cancelGenerationWithReceipt,
     cancelGeneration: (generation, epoch) => cancelGenerationWithReceipt(generation, epoch).count,

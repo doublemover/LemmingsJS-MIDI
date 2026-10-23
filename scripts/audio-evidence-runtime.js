@@ -7,6 +7,7 @@ const LOCAL_AUDIO_SOURCES = Object.freeze([
   'js/app/midi-ui/browserNotePreview.js', 'js/app/midi-ui/nativeOscillatorBackend.js',
   'js/app/midi-ui/TimedControlTimeline.js', 'js/app/midi-ui/SmoothedAudioParameter.js',
   'js/app/midi-ui/AudioObservationLeases.js', 'js/midi/scheduler/LocalAudioVoiceBudget.js',
+  'js/app/midi-ui/AudioResourceLeases.js',
   'js/app/midi-ui/AudioCommandQueue.js', 'js/app/midi-ui/workletInstrumentBackend.js',
   'js/app/midi-ui/worklet/OwnedSineProcessor.js'
 ]);

@@ -192,3 +192,47 @@ nonfinite voice isolation and a static 60-second lease. These establish digital
 offline and fake-control evidence. Realtime deadline/stall qualification,
 worker-to-worklet producers, full engine comparison, spectral residual gates,
 and immutable offline runtime asset packaging remain open.
+
+## Shared resource admission
+
+`new BrowserNotePreview({ resourceBudget })` accepts the application's synchronous
+`ResourceBudget` service. Audio reservations use category `audio` and immutable
+owner tokens. They occur before allocating the context/mix graph, owner channel,
+native voice nodes, deterministic percussion PCM, worklet runtime, or worklet
+voice host record. A denied replacement does not steal the current playing
+voice. Failed construction, processor faults, owner disposal and context
+replacement release the relevant tokens. Disposing audio preserves reservations
+owned by the renderer or other application subsystems.
+
+Accounting separates known typed-array/Float32 bytes from estimates. The worklet
+kernel's fixed storage is 189,536 bytes; its host allowance is a separate
+128 KiB estimate. Native voices have a 16 KiB node/host estimate, and browser
+graph overhead has its own declared allowance. The shared service applies its
+configured audio overhead factor. These are admission costs, not a measurement
+of browser process residency or immediate garbage collection. `getState()`
+returns the adapter's own reservation/denial counters and labels resident bytes
+unknown.
+
+Future decoders can acquire a bound before decoding through the owner session:
+
+```js
+const lease = session.reserveDecodedBuffer({ frames: declaredMaximumFrames,
+  channels: declaredMaximumChannels, sampleRate: expectedSampleRate });
+try {
+  const decoded = await decodeWithinDeclaredBounds();
+  lease.validate(decoded);
+  // Retain the lease for as long as this owner retains the decoded PCM.
+} catch (error) {
+  lease.release();
+  throw error;
+}
+```
+
+The reservation uses `frames * channels * 4` for Float32 PCM, validates finite
+format/frame limits, and rejects excessive declarations before decoding starts.
+The decoder must enforce that declared upper bound; discovering an oversized
+buffer afterward is a validation failure and does not retroactively admit its
+allocation. Encoded bytes, decoder workspace and optional resampled variants
+need their own bounds at their owning loader. Buffer leases remain valid while
+output is disarmed and are revoked when the owner is disposed. Native node
+estimates and the worklet host allowance require device/browser calibration.

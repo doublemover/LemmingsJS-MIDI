@@ -3,6 +3,8 @@ import { OwnedSineKernel, WIDTH, PROTOCOL, RECEIPT_WIDTH, BEGIN, UPDATE, END, CA
   APPLIED, REJECTED, ENDED } from '../../js/app/midi-ui/worklet/OwnedSineProcessor.js';
 import { createWorkletInstrumentBackend } from '../../js/app/midi-ui/workletInstrumentBackend.js';
 import { createAudioCommandQueue } from '../../js/app/midi-ui/AudioCommandQueue.js';
+import { createAudioResourceLeases } from '../../js/app/midi-ui/AudioResourceLeases.js';
+import { createResourceBudget } from '../../js/app/resources/ResourceBudget.js';
 
 const row = (opcode, frame, sequence, slot = 0, token = 1, values = {}) => {
   const data = new Array(WIDTH).fill(0);
@@ -120,7 +122,7 @@ const setupHost = () => {
   const preview = { _generation: 0, _sessions: new Map([['owner', { generation: 0 }]]), _voices: new Set(), _semanticVoiceOwners: new Map(),
     _maxVoices: 64, _maxScheduledVoices: 96, _maxNoteSeconds: 8, _voiceSequence: 0, _nowMs: () => context.currentTime * 1000,
     _ownerReady: () => true, getAudioContext: () => context, _channel: () => ({ gain: {} }), _captureMetadata: fields => fields,
-    _destroyVoice(voice, reason) { if (this._voices.delete(voice)) voice.onDestroy?.(reason); } };
+    _destroyVoice(voice, reason) { if (this._voices.delete(voice)) { voice.onDestroy?.(reason); voice.resourceLease?.release(); } } };
   const createWorkletNode = () => {
     const kernel = new OwnedSineKernel(48000), node = { kernel, disconnected: false, connect() {}, disconnect() { this.disconnected = true; },
       port: { onmessage: null, close() {}, postMessage(data) {
@@ -206,6 +208,30 @@ describe('Owned worklet host lifecycle', () => {
     await Promise.resolve(); expect(nodes[0].kernel.lastPacket).to.equal(1);
     nodes[0].render(1200);
     expect(backend.renderDiagnostics().counters.rejected).to.equal(0);
+    backend.dispose();
+  });
+
+  it('denies fixed runtime storage before loading a module or constructing a worklet node', async () => {
+    const { backend, context, nodes, patch, preview } = setupHost();
+    const budget = createResourceBudget({ limitBytes: 4096 }); preview._audioResources = createAudioResourceLeases({ resourceBudget: budget });
+    let moduleCalls = 0; context.audioWorklet.addModule = async () => { moduleCalls++; };
+    expect((await backend.prepare(patch)).reason).to.equal('audio-resource-budget');
+    expect(moduleCalls).to.equal(0); expect(nodes).to.have.length(0);
+    expect(budget.diagnostics().accountedBytes).to.equal(0); backend.dispose();
+  });
+
+  it('rolls back failed initialization and releases admitted runtime/voice memory on processor failure', async () => {
+    const { backend, context, nodes, patch, preview, intent } = setupHost();
+    const budget = createResourceBudget({ limitBytes: 1024 * 1024 }); preview._audioResources = createAudioResourceLeases({ resourceBudget: budget });
+    context.audioWorklet.addModule = async () => { throw new Error('module-load-failed'); };
+    expect((await backend.prepare(patch)).reason).to.equal('module-load-failed');
+    expect(budget.diagnostics().accountedBytes).to.equal(0);
+    context.audioWorklet.addModule = async () => {};
+    expect((await backend.prepare(patch)).status).to.equal('ready');
+    backend.begin(intent('funded'), 100); await Promise.resolve();
+    expect(preview._audioResources.diagnostics().reservations).to.equal(2);
+    nodes[0].onprocessorerror();
+    expect(preview._voices.size).to.equal(0); expect(budget.diagnostics().accountedBytes).to.equal(0);
     backend.dispose();
   });
 });

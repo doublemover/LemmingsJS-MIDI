@@ -12,6 +12,7 @@ import { MidiScheduler } from '../../js/midi/MidiScheduler.js';
 import { createMidiOutputCapture } from '../../js/midi/capture/MidiOutputCapture.js';
 import { analyzeMidiOutputCapture } from '../../js/midi/capture/MidiCaptureAnalysis.js';
 import { withFakeClockAndPerformance } from '../support/timers.js';
+import { createResourceBudget } from '../../js/app/resources/ResourceBudget.js';
 
 const deferred = () => {
   let resolve;
@@ -122,6 +123,42 @@ describe('BrowserNotePreview', function() {
   const nativeIntent = (voiceId, generation = 1) => ({ version: 1, kind: 'begin', voiceId, generation,
     pitch: { cents: 6000.001, referenceHz: 440 }, velocity01: 0.7501, expression: {},
     sourceEventIds: ['physical:1'], onsetId: 'onset:' + voiceId, actorId: 'actor:' + voiceId });
+
+  it('denies a graph before creating an AudioContext when the shared memory budget is full', async () => {
+    const budget = createResourceBudget({ limitBytes: 4096 }), { preview, creations } = setup({ resourceBudget: budget });
+    expect(await preview.enable()).to.equal(false); expect(creations()).to.equal(0);
+    expect(preview.getState().status).to.equal('resource-limited');
+    expect(budget.diagnostics().accountedBytes).to.equal(0); await preview.dispose();
+  });
+
+  it('denies semantic voice memory before allocation or stealing an already playing voice', async () => {
+    const budget = createResourceBudget({ limitBytes: 144 * 1024 }), { preview, context } = setup({ resourceBudget: budget, maxVoices: 1 });
+    const game = preview.createSession('game'), backend = game.createInstrumentBackend();
+    await backend.prepare(nativePatch()); await game.enable();
+    expect(backend.begin(nativeIntent('first'), 96000).status).to.equal('accepted');
+    const first = [...preview._voices][0];
+    expect(backend.begin(nativeIntent('second'), 96000).reason).to.equal('audio-resource-budget');
+    expect(context.oscillators).to.have.length(1); expect(first.stolen).not.to.equal(true);
+    expect(preview._voices.has(first)).to.equal(true);
+    await preview.dispose(); expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+
+  it('denies a required channel before allocating semantic oscillators and releases the voice reservation', async () => {
+    const budget = createResourceBudget({ limitBytes: 128 * 1024 }), { preview, context } = setup({ resourceBudget: budget });
+    const game = preview.createSession('game'), backend = game.createInstrumentBackend();
+    await backend.prepare(nativePatch()); await game.enable(); const before = budget.diagnostics().accountedBytes;
+    expect(backend.begin(nativeIntent('denied'), 96000).reason).to.equal('audio-resource-budget');
+    expect(context.oscillators).to.have.length(0); expect(budget.diagnostics().accountedBytes).to.equal(before);
+    await preview.dispose();
+  });
+
+  it('revokes decoded buffer leases only when their owning session is disposed', async () => {
+    const budget = createResourceBudget(), { preview } = setup({ resourceBudget: budget });
+    const game = preview.createSession('game'), cue = preview.createSession('cue');
+    const a = game.reserveDecodedBuffer({ frames: 1000, channels: 1 }), b = cue.reserveDecodedBuffer({ frames: 1000, channels: 2 });
+    await game.dispose(); expect(a.isActive()).to.equal(false); expect(b.isActive()).to.equal(true);
+    await preview.dispose(); expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
 
   it('keeps semantic pressure independent from its envelope and MIDI compatibility controls', async () => {
     const { preview, context } = setup(), game = preview.createSession('game'), backend = game.createInstrumentBackend();
@@ -267,7 +304,7 @@ describe('BrowserNotePreview', function() {
     const firstGain = context.gains.length;
     expect(backend.begin(nativeIntent('failed'), 96000).reason).to.equal('backend-failure');
     expect(preview._voices.size).to.equal(0); expect(context.oscillators[0].disconnected).to.equal(true);
-    expect(context.gains.slice(firstGain, firstGain + 2).every(gain => gain.disconnected)).to.equal(true);
+    expect(context.gains.slice(firstGain + 1).every(gain => gain.disconnected)).to.equal(true);
     expect(backend.renderDiagnostics().deliveryErrors).to.equal(1);
     await preview.dispose();
   });
