@@ -14,3 +14,15 @@ The physical event stream uses these clocks. A consumer must keep the domain and
 `AudioClockBridge` adds an explicit presentation delay to known, committed events. Its optional output timestamp and latency values are diagnostic correlations, not proof that the user heard a frame. The strict live delivery policy rejects an attack whose frame has already passed, rejects stale expression, and moves a release to the earliest current frame. Receipts retain both the original and repaired frame. The native oscillator backend also rejects late direct attacks instead of silently clamping them.
 
 The worker timing driver sends at most one unacknowledged wake per epoch. Its `sourceTimeMs` is `performance.timeOrigin + performance.now()` in the worker, so it can be compared with the main thread's monotonic host clock. The transport's existing unsafe-gap stop remains responsible for suspending playback after a long delivery pause.
+# Musical meter presentation
+
+Transport time remains quarter-note time. The header converts it through the
+accepted project's canonical meter and displays `bar : denominator-note beat`:
+6/8 counts six eighth notes, and its bar spans three quarters. Clock-source
+health has a separate label, including when MIDI clock is external. Display
+updates, pause/resume and tempo changes do not move the quarter position.
+Scheduling and presentation share the meter conversion in
+`MidiMusicalPosition.js`. A changed meter keeps the current phrase origin and
+recomputes an unlaunched phrase's next boundary on the next scheduling pulse.
+Regression fixtures cover non-4/4 engine/display agreement; their runtime
+execution is deferred during the backlog development pass.

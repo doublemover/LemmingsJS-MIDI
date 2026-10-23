@@ -3,6 +3,7 @@ import { MidiAutomationSpans } from '../../../midi/router/MidiAutomationSpans.js
 import { applyMidiAutomationSpanValues } from '../../../midi/midi-mapping/MidiAutomationSpanValues.js';
 import { positionCurveValue } from '../../../midi/midi-mapping/PositionCurve.js';
 import { resolveAxisValues, resolveAxisValue } from '../../../midi/midi-mapping/MidiMappingDomain.js';
+import { meterQuarterLength } from '../../../midi/project/MidiMusicalPosition.js';
 
 const clone = value => JSON.parse(JSON.stringify(value));
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -139,7 +140,7 @@ const createProcgenPatternEngine = ({ getProject, emit, emitCC, getSinkKey = () 
       }
     }
   };
-  const barBeats = project => (project.transport?.timeSignature?.beats || 4) * 4 / (project.transport?.timeSignature?.unit || 4);
+  const barBeats = project => meterQuarterLength(project.transport?.timeSignature);
   const automate = (project, lane, laneIndex, current, beat, timestamp) => {
     if (!emitCC || !audible(project, lane)) return;
     const sinkKey = String(getSinkKey(lane));
@@ -193,8 +194,10 @@ const createProcgenPatternEngine = ({ getProject, emit, emitCC, getSinkKey = () 
       const current = laneState(lane);
       automate(project, lane, laneIndex, current, beat, position.timestamp);
       if (lane.queuedSlot != null && lane.launchSerial !== current.launchSerial) {
-        if (current.queuedSerial !== lane.launchSerial) {
+        current.queuedMeter ??= bar;
+        if (current.queuedSerial !== lane.launchSerial || current.queuedMeter !== bar) {
           current.queuedSerial = lane.launchSerial;
+          current.queuedMeter = bar;
           current.launchBeat = Math.ceil((beat - 1e-7) / bar) * bar;
         }
         if (beat + 1e-6 >= current.launchBeat) {

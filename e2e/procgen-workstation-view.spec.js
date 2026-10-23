@@ -23,6 +23,30 @@ const ready = async (page, count = 8, steps = 16) => {
   }, { count, steps });
 };
 
+test('musical header agrees with real phrase launches in canonical non-4/4 meters @boundary', async ({ page }) => {
+  await ready(page, 1);
+  const results = await page.evaluate(async () => {
+    const { createProcgenPatternEngine } = await import('/js/app/procgen/workstation/ProcgenPatternEngine.js');
+    const f = window.workstationViewTest, results = [];
+    for (const [beats, unit] of [[3, 4], [6, 8], [7, 8], [4, 4]]) {
+      f.dispatch({ type: 'transport.set', transport: { timeSignature: { beats, unit } } });
+      f.dispatch({ type: 'procgen/launched', laneId: 'lane-1', slot: 0 });
+      f.dispatch({ type: 'procgen/launch', laneId: 'lane-1', slot: 1 });
+      const engine = createProcgenPatternEngine({ getProject: f.getProject, emit: () => ({ status: 'rejected' }) });
+      const boundary = beats * 4 / unit;
+      engine.onBeat({ beat: 0.25, timestamp: 125, bpm: 120 });
+      engine.onBeat({ beat: boundary, timestamp: boundary * 500, bpm: 120 });
+      f.view.transport({ beat: boundary, bpm: 90, clockSource: 'external', clockStatus: 'locked', linked: true, speedMode: 'bpm' });
+      results.push({ meter: `${beats}/${unit}`, origin: engine.getLanePosition('lane-1').origin, boundary,
+        label: document.querySelector('.studio-clock-status').textContent, health: document.querySelector('.studio-clock-source-status').textContent });
+    }
+    return results;
+  });
+  for (const result of results) {
+    expect(result.origin, result.meter).toBe(result.boundary); expect(result.label).toBe('2 : 1'); expect(result.health).toBe('MIDI clock · locked');
+  }
+});
+
 test('project picker ignores reversed searches and old continuation completions @boundary', async ({ page }) => {
   await ready(page);
   await page.evaluate(() => {

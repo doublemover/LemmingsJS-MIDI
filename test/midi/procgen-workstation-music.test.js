@@ -17,6 +17,15 @@ const setup = (options = {}) => {
 };
 
 describe('Procgen workstation musical domain', function() {
+  it('reanchors a queued launch to the accepted meter without changing the current phrase origin', () => {
+    const run = setup({ lanes: [{}] }); run.beat(0.25);
+    run.edit({ type: 'procgen/launch', laneId: 'lane-1', slot: 1 }); run.beat(0.5);
+    expect(run.engine.snapshot().lanes['lane-1'].launchBeat).to.equal(4);
+    run.edit({ type: 'transport.set', transport: { timeSignature: { beats: 7, unit: 8 } } }); run.beat(0.75);
+    expect(run.engine.getLanePosition('lane-1').origin).to.equal(0);
+    expect(run.engine.snapshot().lanes['lane-1'].launchBeat).to.equal(3.5);
+    run.beat(3.5); expect(run.engine.getLanePosition('lane-1')).to.include({ slot: 1, origin: 3.5 });
+  });
   it('shares untouched lanes, patterns and steps for canonical single-cell edits', () => {
     const project = sanitizeMidiProject(createProcgenWorkstationProject(createMidiProject(),
       { lanes: Array.from({ length: 128 }, (_, index) => createProcgenLane(index)) }));

@@ -2,6 +2,7 @@ import { PROCGEN_SOUND_COLLECTIONS, PROCGEN_ROLES, resolveProcgenSound } from '.
 import { createProcgenLaneProjection } from './ProcgenLaneProjection.js';
 import { procgenStepNotes } from './ProcgenPatternEngine.js';
 import { createProcgenFullscreenSession } from './ProcgenFullscreenSession.js';
+import { quarterMeterPosition } from '../../../midi/project/MidiMusicalPosition.js';
 
 const NOTES = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
 const SCALES = { Major: [0, 2, 4, 5, 7, 9, 11], Minor: [0, 2, 3, 5, 7, 8, 10], Dorian: [0, 2, 3, 5, 7, 9, 10], Lydian: [0, 2, 4, 6, 7, 9, 11], Pentatonic: [0, 2, 4, 7, 9], Chromatic: Array.from({ length: 12 }, (_, i) => i) };
@@ -118,6 +119,8 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
   const scale = select(Object.keys(SCALES), 'Major', value => dispatch({ type: 'procgen/global', patch: { scale: { ...getProject().global.scale, name: value, degrees: SCALES[value] } } }), 'Global scale');
   const clock = select([['internal', 'Internal'], ['external', 'MIDI in']], 'internal', value => handlers.transport?.({ clockSource: value }), 'Clock source');
   const clockStatus = node('output', 'Internal', 'studio-clock-status');
+  clockStatus.setAttribute('aria-label', 'Musical bar and denominator-note beat');
+  const clockHealth = node('output', 'Internal clock', 'studio-clock-source-status'); clockHealth.setAttribute('aria-label', 'Clock source status');
   const displayStatus = node('output', 'Display ready', 'studio-display-status'); displayStatus.setAttribute('aria-live', 'polite');
   const retryDisplay = button('Retry display', () => handlers.retryDisplay?.(), 'Retry canvas display after context loss'); retryDisplay.hidden = true;
   const stopOutput = button('Stop', () => handlers.stopOutput?.(), 'Stop the musical transport and flush pending output'); stopOutput.id = 'studioStopOutput';
@@ -145,7 +148,7 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
   };
   labeled('View', layoutMode, transport); labeled('Speed', speedMode, transport); labeled('BPM', bpm, transport); labeled('Link world', linked, transport);
   labeled('Key', root, transport); labeled('Scale', scale, transport); labeled('Clock', clock, transport);
-  transport.append(stopOutput, clockStatus, displayStatus, retryDisplay, fullscreenMenu, fullscreenExit);
+  transport.append(stopOutput, clockStatus, clockHealth, displayStatus, retryDisplay, fullscreenMenu, fullscreenExit);
   fullscreenSession = createProcgenFullscreenSession({ document, root: presentationRoot, control: fullscreenAction,
     getGeneration: () => handlers.presentationGeneration?.() ?? 0,
     onTransition: () => { beginGeometry(); syncFullscreen(); },
@@ -696,7 +699,16 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
         ? `Last durable edit revision ${recovery.durableRevision}, world tick ${recovery.durableTick ?? 'unknown'}` : 'No recovery checkpoint yet');
     },
     launched: () => renderRows(),
-    transport(position) { state.beat = position.beat; if (document.activeElement !== bpm) bpm.value = String(Math.round(position.bpm * 100) / 100); bpm.disabled = position.clockSource === 'external'; clockStatus.textContent = position.clockSource === 'external' ? position.clockStatus : `${Math.floor(position.beat / 4) + 1} : ${Math.floor(position.beat % 4) + 1}`; linked.checked = position.linked; speedMode.value = position.speedMode; clock.value = position.clockSource; frame(position.beat); },
+    transport(position) {
+      state.beat = position.beat;
+      if (document.activeElement !== bpm) bpm.value = String(Math.round(position.bpm * 100) / 100);
+      bpm.disabled = position.clockSource === 'external';
+      const meter = quarterMeterPosition(position.beat, getProject().transport?.timeSignature);
+      clockStatus.textContent = meter ? `${meter.bar} : ${meter.beat}` : '—';
+      clockStatus.title = meter ? `${meter.beats}/${meter.unit} · bar : denominator-note beat · ${position.beat} quarters` : 'Musical position unavailable';
+      clockHealth.textContent = position.clockSource === 'external' ? `MIDI clock · ${position.clockStatus}` : 'Internal clock';
+      linked.checked = position.linked; speedMode.value = position.speedMode; clock.value = position.clockSource; frame(position.beat);
+    },
     recording(value, midiState = null) {
       state.recording = !!value;
       records.setAttribute('aria-pressed', String(value));
