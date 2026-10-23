@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { createMidiProject } from '../js/midi/project/MidiProject.js';
 import { createProcgenWorkstationProject } from '../js/app/procgen/workstation/ProcgenWorkstationProject.js';
 import { resolveProcgenStartupIntent } from '../js/app/procgen/workstation/ProcgenStartupIntent.js';
-import { createProcgenShareUrl } from '../js/app/procgen/ProcgenUrlConfig.js';
+import { createProcgenRecipeShareDescriptor, createProcgenShareUrl } from '../js/app/procgen/ProcgenUrlConfig.js';
 
 describe('ProcGen startup intent', () => {
   const legacyProject = createProcgenWorkstationProject(createMidiProject(), { seed: 12, lanes: [{}, {}] });
@@ -36,6 +36,8 @@ describe('ProcGen startup intent', () => {
     expect(explicitDefault.worldOptions.laneCount).to.equal(omitted.worldOptions.laneCount);
     expect(explicitDefault.provenance.laneCount).to.equal('recipe-url');
     expect(omitted.provenance.laneCount).to.equal('recipe-v1-default');
+    expect(() => resolveProcgenStartupIntent({ ...base, search: '?recipe=1&extra=' + 'x'.repeat(2050) }))
+      .to.throw('supported size');
   });
   it('round-trips a small recipe without carrying unrelated query or fragment state', () => {
     const url = createProcgenShareUrl({ url: 'https://example.test/procgen.html?debug=1&output=midi#private-draft-marker',
@@ -48,5 +50,18 @@ describe('ProcGen startup intent', () => {
     const opened = resolveProcgenStartupIntent({ ...base, saved, search: target.search });
     expect(opened.worldOptions).to.include({ seed: 999, laneCount: 3, speed: 2, pack: 4, laneHeight: 144 });
     expect(() => resolveProcgenStartupIntent({ ...base, search: '?recipe=2&seed=999' })).to.throw('Unsupported recipe version');
+  });
+  it('describes a starting recipe through the canonical launch plan without truncating fields', () => {
+    const descriptor = createProcgenRecipeShareDescriptor({ url: 'https://example.test/app/procgen.html?output=midi#private',
+      seed: 999, settings: { laneCount: 3, speed: 1.123456789, pack: 4, laneHeight: 144 },
+      camera: { cameraX: 500, cameraY: 20, scale: 2, follow: false }, includeCamera: false });
+    expect(descriptor).to.include({ schema: 'procgen-recipe-share/v1', scope: 'starting-recipe',
+      sourceCompatibility: 'unverified-on-recipient', includesCamera: false });
+    expect(descriptor.worldOptions).to.include({ seed: 999, laneCount: 3, speed: 1.123456789, pack: 4, laneHeight: 144 });
+    expect(descriptor.omitted).to.include('recorded takes and audio');
+    const target = new URL(descriptor.url);
+    expect(target.hash).to.equal(''); expect(target.searchParams.get('output')).to.equal(null);
+    expect(target.searchParams.get('speed')).to.equal('1.123456789');
+    expect(resolveProcgenStartupIntent({ ...base, search: target.search, saved }).worldOptions).to.deep.equal(descriptor.worldOptions);
   });
 });

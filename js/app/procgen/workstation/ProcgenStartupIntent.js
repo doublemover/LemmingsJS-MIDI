@@ -15,8 +15,10 @@ const boundedNumber = (params, key, min, max, integer = false) => {
 };
 const resolveProcgenStartupIntent = ({ search = '', seed, legacyProject, legacySettings = {}, saved = null } = {}) => {
   const params = search instanceof URLSearchParams ? search : new URLSearchParams(search);
+  const hasRecipe = RECIPE_KEYS.some(key => params.has(key));
+  if (hasRecipe && params.toString().length > 2048) throw new Error('Recipe URL exceeds the supported size');
   const legacySaved = saved?.project?.procgen && saved.project.procgen.version !== 2;
-  const mode = RECIPE_KEYS.some(key => params.has(key)) ? 'recipe' : saved?.project && !legacySaved ? 'previous-setup' : 'fresh';
+  const mode = hasRecipe ? 'recipe' : saved?.project && !legacySaved ? 'previous-setup' : 'fresh';
   const baseSeed = normalizeSeed(seed ?? legacySettings.seed ?? 777);
   const provenance = {}, diagnostics = [];
   if (legacySaved) diagnostics.push('legacy-project-requires-explicit-physical-conversion');

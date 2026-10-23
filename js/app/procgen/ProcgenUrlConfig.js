@@ -4,6 +4,7 @@ import { PROCGEN_GAME_EVENT_MIDI_PRESETS } from '../../midi/project/ProcgenMidiD
 import { normalizeLaneCount, normalizeLaneHeight, DEFAULT_LANE_HEIGHT } from './ProcgenLaneWorld.js';
 import { readAudioUrlConfig } from '../StartupUrlConfig.js';
 import { PROCGEN_MIN_SCALE, PROCGEN_MAX_SCALE } from './ProcgenCameraController.js';
+import { resolveProcgenStartupIntent } from './workstation/ProcgenStartupIntent.js';
 
 const enumValue = (params, keys, values) => {
   for (const key of keys) if (params.has(key)) { const value = params.get(key); return values.includes(value) ? value : undefined; }
@@ -47,9 +48,20 @@ const createProcgenShareUrl = ({ url, seed, settings, camera, includeCamera = tr
   const presentation = includeCamera ? { cameraX: camera?.cameraX, cameraY: camera?.cameraY, zoom: camera?.scale, follow: camera?.follow ? '1' : '0' } : {};
   for (const [key, value] of Object.entries({ seed: normalizeSeed(seed), lanes: settings.laneCount, pack: settings.pack, speed: settings.speed, decoration: settings.decoration,
     laneHeight: settings.laneHeight, preset: settings.preset, musicMode: settings.mode, ...presentation })) {
-    if (value !== undefined) params.set(key, String(typeof value === 'number' ? Math.round(value * 1000000) / 1000000 : value));
+    if (value !== undefined) params.set(key, String(value));
   }
   if (result.href.length > 2048) throw new Error('Starting recipe link exceeds the supported URL size');
   return result.href;
 };
-export { readProcgenUrlConfig, createProcgenShareUrl };
+const createProcgenRecipeShareDescriptor = options => {
+  const url = createProcgenShareUrl(options), target = new URL(url);
+  const plan = resolveProcgenStartupIntent({ search: target.search, seed: options.seed,
+    legacyProject: null, legacySettings: {}, saved: null });
+  return Object.freeze({ schema: 'procgen-recipe-share/v1', url, scope: 'starting-recipe',
+    worldOptions: Object.freeze({ ...plan.worldOptions }), sourceCompatibility: 'unverified-on-recipient',
+    includesCamera: options.includeCamera === true, omitted: Object.freeze([
+      'edited terrain and routes', 'current actors', 'instrument patches and external assets',
+      'recorded takes and audio', 'local devices and output permissions'
+    ]) });
+};
+export { readProcgenUrlConfig, createProcgenShareUrl, createProcgenRecipeShareDescriptor };

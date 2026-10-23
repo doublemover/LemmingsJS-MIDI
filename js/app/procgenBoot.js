@@ -157,6 +157,7 @@ const installProcgenBootListeners = () => {
     resizeCanvas();
     if (!procgenUi && document.getElementById('procgenDrawer')) {
       procgenUi = createProcgenUiController({ document, window, getRuntime: () => activeProcgenRuntime, restart: init,
+        resourceBudget: procgenResourceBudget,
         initial: { laneCount: params.get('lanes'), speed: params.get('speed'), pack: params.get('pack') } });
       if (params.get('workstation') !== '0') {
         procgenUi.settings.seed = resolveProcgenSeed(params);
@@ -334,6 +335,7 @@ const initWorkstation = async ({ session, lease } = {}) => {
   try {
     const factory = view.gameFactory;
     fileProvider = factory.fileProvider;
+    fileProvider?.setBudgetAdapter?.(procgenResourceBudget);
     resourceLease = fileProvider?.acquireLease?.() || null;
     const [configs, resources, book] = await Promise.all([
       Promise.all([GameTypes.LEMMINGS, GameTypes.OHNO, GameTypes.HOLIDAY94].map(type => factory.getConfig(type))),
@@ -367,12 +369,19 @@ const initWorkstation = async ({ session, lease } = {}) => {
     resourceLease = null;
     lanes.renderer.hud = new ProcgenBitmapHud({ canvas, sprites: hudSprites });
     if (!canCommit()) return false;
-    if (activeProcgenRuntime) procgenStudio.beforeRestart();
+    if (activeProcgenRuntime) {
+      await procgenStudio.stopCausalTake({ reason: 'world-replacement' });
+      if (!canCommit()) return false;
+      procgenStudio.beforeRestart();
+    }
     disposeProcgenRuntime();
     procgenResourceBudget.transfer({ token: candidateBudgetToken, owner: candidateBudgetOwner,
       generation: serial, toOwner: 'active-world' });
     candidateBudgetOwner = 'active-world';
     activeProcgenRuntime = { lanes, world: candidate, worldBudgetToken: candidateBudgetToken,
+      recipeSettings: Object.freeze({ seed: candidate.seed, laneCount: candidate.laneCount,
+        laneHeight: candidate.laneHeight, pack: settings.pack, decoration: settings.decoration,
+        preset: settings.preset, mode: settings.mode }),
       view: lanes.view, game: lanes.game, stageAdapter: { updateStageSize: () => lanes.resize() }, controller: null, focusBlurCleanup: null };
     committed = true;
     window.procgenSeed = candidate.seed; window.procgenSelectedTheme = 'mixed'; window.procgenDebugState = lanes.getDebugState;
@@ -438,6 +447,7 @@ const init = async (options = {}) => {
     const view = new GameView();
     runtime.view = view;
     runtime.fileProvider = view.gameFactory.fileProvider;
+    runtime.fileProvider?.setBudgetAdapter?.(procgenResourceBudget);
     runtime.providerLease = runtime.fileProvider?.acquireLease?.() || null;
     const gameType = procgenUi?.settings.pack || PROCGEN_GAME_TYPE;
     view.gameType = gameType;

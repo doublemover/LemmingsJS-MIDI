@@ -10,6 +10,10 @@ import { createProcgenLaneObserver } from './ProcgenLaneObservation.js';
 import { createProcgenSession, validateProcgenSession, createProcgenSessionStorage, createProcgenDocumentId, freshProcgenSeed } from './ProcgenSessionStorage.js';
 import { createProcgenPhysicalScoreClock } from './ProcgenPhysicalScoreClock.js';
 import { createProcgenPhysicalPlayback } from './ProcgenPhysicalPlayback.js';
+import { createProcgenCausalJournal } from './ProcgenCausalJournal.js';
+import { createCausalTakeRecorder } from './CausalTake.js';
+import { prepareCausalTakeArchive } from './CausalTakeArchive.js';
+import { createProcgenWorldInspector } from './ProcgenWorldInspector.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 import { resolveProcgenStartupIntent } from './ProcgenStartupIntent.js';
 import { deliverArtifactToAnchor, deliverArtifactToFileHandle, prepareExportArtifact, requestExportFileHandle } from '../../export/ExportArtifact.js';
@@ -79,7 +83,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let writingLegacy = false;
   let worldBusy = false;
   let laneObserver = null;
-  let physicalScoreClock = createProcgenPhysicalScoreClock(), physicalClockError = false, physicalPlayback = null;
+  let physicalScoreClock = createProcgenPhysicalScoreClock(), physicalClockError = false, physicalPlayback = null, worldInspector = null;
+  let causalJournal = null, causalTake = null, causalTakeStart = null, causalTakeStop = null;
+  let causalTakeArmCanceled = false;
+  let lastCausalTake = null, lastCausalInspection = null, physicalReceiptBuffer = null, physicalReceiptBoundary = null, causalTakeErrorReported = false;
+  let selectedCausalTakeId = null, causalTakePage = null, causalTakeCursor = null, causalTakeBack = [], causalTakeListSerial = 0;
   let pendingHistory = null;
   const routerRestores = new Map();
   const undo = [], redo = [], listeners = [], noteEntries = new Map();
@@ -177,6 +185,12 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   const syncProject = (next, { history = true, historyGroup = null, historyCost = null, render = true, renderAction = null, fromLegacy = false } = {}) => {
     const runtimeUnchanged = sameMidiRuntimeInputs(project, next);
+    if (causalTake && !equal(project.procgen.physicalGraph, next.procgen.physicalGraph)) {
+      const cursor = physicalPlayback?.engine.snapshot().physicalCursor;
+      const receipt = causalTake.recordMapping(next.procgen.physicalGraph,
+        { tick: Math.max(0, cursor?.tick ?? 0), generation: cursor?.generation ?? 0 });
+      if (receipt.status !== 'accepted') throw new Error(`Causal take could not admit the mapping change: ${receipt.reason}. Stop the take before editing it.`);
+    }
     if (history) {
       if (historyGroup == null || historyGroup !== lastHistoryGroup) {
         if (historyCost != null) historySizes.set(project, historyCost);
@@ -386,6 +400,119 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (held && previous.bpm !== transport.getState().bpm) { pendingResume = false; engine.resume({ ...transport.getState(), timestamp: now(), activeNotes: held }); }
   };
   const beforeRestart = () => { transport.pause(); ports.flush(); physicalPlayback?.stop(); return transport.snapshot(); };
+  const causalBoundary = () => {
+    const physical = physicalPlayback?.engine.snapshot();
+    return { voices: physical?.active || [], travel: physical?.travel || null,
+      contactSpans: physical?.active?.filter(voice => voice.lifetimeScope === 'contactSpan') || [],
+      timeline: physicalScoreClock.snapshot() };
+  };
+  const causalTakeState = () => Object.freeze({ recording: !!causalTake,
+    starting: !!causalTakeStart, stopping: !!causalTakeStop,
+    active: causalTake?.status() || null, last: lastCausalTake, inspection: lastCausalInspection,
+    selectedTakeId: selectedCausalTakeId, takePage: causalTakePage, takePageNumber: causalTakeBack.length + 1,
+    hasPreviousTakePage: causalTakeBack.length > 0 });
+  const browseCausalTakes = async (direction = 'first') => {
+    if (typeof storage.listCausalTakes !== 'function') throw new Error('Causal take browsing is unavailable in this browser.');
+    if (!['first', 'next', 'previous'].includes(direction)) throw new Error('Invalid take page direction.');
+    if (direction === 'next' && !causalTakePage?.nextCursor || direction === 'previous' && !causalTakeBack.length) return causalTakePage;
+    const cursor = direction === 'first' ? null : direction === 'next' ? causalTakePage.nextCursor : causalTakeBack.at(-1);
+    const serial = ++causalTakeListSerial;
+    const page = await storage.listCausalTakes({ limit: 20, cursor });
+    if (disposed || serial !== causalTakeListSerial) return null;
+    if (direction === 'first') causalTakeBack = [];
+    else if (direction === 'next') causalTakeBack.push(causalTakeCursor);
+    else causalTakeBack.pop();
+    causalTakeCursor = cursor; causalTakePage = page;
+    view?.renderInspector?.();
+    return page;
+  };
+  const selectCausalTake = takeId => {
+    if (!causalTakePage?.items.some(item => item.takeId === takeId)) throw new Error('Choose a take from the current page.');
+    selectedCausalTakeId = takeId; lastCausalInspection = null; view?.renderInspector?.();
+    return takeId;
+  };
+  const stopCausalTake = async ({ reason = 'user-stop' } = {}) => {
+    if (causalTakeStart) { try { await causalTakeStart; } catch { if (!causalTake) return lastCausalTake; } }
+    if (causalTakeStop) return causalTakeStop;
+    if (!causalTake) return lastCausalTake;
+    const recorder = causalTake;
+    causalTakeStop = recorder.stop({ boundaryState: causalBoundary(), reason }).then(receipt => {
+      lastCausalTake = receipt;
+      selectedCausalTakeId = receipt.takeId;
+      if (!recorder.canReplaceDocument()) throw new Error('Causal take has an undurable tail. Retry finishing the take before replacing the world.');
+      if (causalTake === recorder) causalTake = null;
+      status(receipt.complete ? `Causal take ${receipt.takeId} saved.` :
+        `Causal take ${receipt.takeId} saved as partial. Inspect its coverage before relying on it.`);
+      return receipt;
+    }).finally(() => { causalTakeStop = null; view?.renderInspector?.(); });
+    return causalTakeStop;
+  };
+  const startCausalTake = async ({ takeName = 'Untitled take' } = {}) => {
+    if (causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the current causal take first.');
+    if (worldBusy || !runtime()?.world || !physicalPlayback) throw new Error('Wait for the committed world before recording a causal take.');
+    if (!['commitCausalTake', 'loadCausalTake', 'loadCausalChunk', 'loadCausalCheckpoint'].every(key => typeof storage[key] === 'function'))
+      throw new Error('Causal take storage is unavailable in this browser.');
+    const wasPlaying = transport.getState().playing;
+    beforeRestart();
+    causalTakeArmCanceled = false;
+    const sourceRuntime = runtime();
+    try {
+      const capturedWorld = captureCheckpoint(sourceRuntime.world);
+      const physical = physicalPlayback.engine.snapshot(), timeline = physicalScoreClock.snapshot();
+      const takeId = createProcgenDocumentId(window.crypto).replace(/^doc:/, 'take:');
+      const sourceVersions = { generator: 'procgen-workstation-1', worldCheckpoint: capturedWorld.version,
+        physicalBatch: 1, physicalMusic: 1, project: project.procgen.version,
+        numericCanonicalization: 'finite-f64-minus-zero-v1', mappingRevision: project.procgen.physicalGraph.revision };
+      const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget });
+      const pending = createCausalTakeRecorder({ journal, takeId, takeName, documentId: documentId || `unsaved:${takeId}`,
+        sourceVersions, initialCheckpoint: { world: capturedWorld, engine: physical, timeline },
+        mapping: project.procgen.physicalGraph, assetRefs: capturedWorld.assets || [], boundaryState: causalBoundary() });
+      causalTakeStart = pending;
+      view?.renderInspector?.();
+      const recorder = await pending;
+      if (disposed || causalTakeArmCanceled || runtime() !== sourceRuntime) {
+        await recorder.stop({ boundaryState: causalBoundary(), reason: 'source-replaced-during-arm' });
+        throw new Error(causalTakeArmCanceled ? 'Causal take arming was canceled.' : 'The world changed while the causal take was arming.');
+      }
+      causalTake = recorder;
+      lastCausalInspection = null;
+      causalTakeErrorReported = false;
+      status(`Causal take ${takeId} recording committed world facts and musical intents.`);
+      return recorder.status();
+    } finally {
+      causalTakeStart = null;
+      if (wasPlaying && !disposed && runtime() === sourceRuntime) play();
+      view?.renderInspector?.();
+    }
+  };
+  const cancelCausalTakeArm = () => {
+    if (!causalTakeStart) return false;
+    causalTakeArmCanceled = true; status('Canceling causal take preparation after storage responds.');
+    return true;
+  };
+  const markCausalTake = label => {
+    if (!causalTake || causalTakeStop) throw new Error('Arm a causal take before adding a marker.');
+    const cursor = physicalPlayback?.engine.snapshot().physicalCursor;
+    const receipt = causalTake.mark({ label: String(label || 'Marker').slice(0, 120), boundary: 'last-committed-physical-tick' },
+      { tick: Math.max(0, cursor?.tick ?? 0), generation: cursor?.generation ?? 0 });
+    if (receipt.status !== 'accepted') throw new Error(`The causal marker was not admitted: ${receipt.reason}.`);
+    status(`Marker added at committed physical tick ${Math.max(0, cursor?.tick ?? 0)}.`);
+    return receipt;
+  };
+  const inspectLastCausalTake = async () => {
+    const takeId = selectedCausalTakeId || lastCausalTake?.takeId;
+    if (!takeId) throw new Error('Select a causal take before inspecting it.');
+    const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget });
+    const verification = await journal.verify(takeId), manifest = await journal.openTake(takeId);
+    lastCausalInspection = Object.freeze({ takeId, takeName: manifest.takeName, revision: manifest.revision,
+      status: verification.status, durableSequence: manifest.durableSequence,
+      firstTick: manifest.coverage?.sourceRange?.firstTick ?? null,
+      lastTick: manifest.coverage?.sourceRange?.lastTick ?? null,
+      gaps: manifest.coverage?.gaps?.length ?? 0, paused: manifest.inspection.paused });
+    view?.renderInspector?.();
+    status(`Verified ${manifest.takeName}: ${verification.status}, ${manifest.durableSequence} durable records.`);
+    return lastCausalInspection;
+  };
   const prepareSettings = () => {
     Object.assign(legacy.settings, { workstation: true, laneCount: project.procgen.lanes.length, seed: project.procgen.seed,
       hazardSpacing: state.hazardSpacing, laneAssignments: project.procgen.lanes.map(lane => lane.family) });
@@ -401,6 +528,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const bindRuntime = ({ session } = {}) => {
     if (disposed) return null;
     const next = runtime(); if (!next || (next === boundRuntime && session === boundSession)) return next;
+    if (causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the causal take before replacing its world.');
     if (session) recoveryAbort?.abort();
     unhookRouter?.(); unhookWorld?.(); physicalPlayback?.dispose(); physicalPlayback = null; boundRuntime = next; boundSession = session;
     laneObserver = createProcgenLaneObserver(next.world);
@@ -409,16 +537,48 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     physicalScoreClock = createProcgenPhysicalScoreClock(); physicalClockError = false;
     if (session?.physicalTimeline) physicalScoreClock.restore(session.physicalTimeline);
     physicalPlayback = createProcgenPhysicalPlayback({ audio: legacy.local.audio,
-      getGraph: () => project.procgen.physicalGraph, scoreTimeline: physicalScoreClock, now });
+      getGraph: () => project.procgen.physicalGraph, scoreTimeline: physicalScoreClock, now,
+      onReceipt: receipt => {
+        if (physicalReceiptBuffer) physicalReceiptBuffer.push(receipt);
+        else if (causalTake && physicalReceiptBoundary) causalTake.recordSinkOutcome(receipt, physicalReceiptBoundary);
+      } });
     if (session?.physicalState) physicalPlayback.engine.restore(session.physicalState);
     const onGameEvent = event => { if (transport.getState().playing) engine.onGameEvent(event, now()); };
+    const markPhysicalGap = (batch, reason) => {
+      if (!causalTake) return;
+      const tick = Number.isSafeInteger(batch?.tick) && batch.tick >= 0 ? batch.tick : 0;
+      const generation = Number.isSafeInteger(batch?.generation) && batch.generation >= 0 ? batch.generation : 0;
+      try { causalTake.markGap({ kind: 'physical-facts', firstTick: tick, lastTick: tick, generation, reason }); }
+      catch (error) { status('Causal take coverage gap could not be written: ' + error.message); }
+    };
     const onPhysicalBatch = batch => {
+      let position;
       try {
-        const position = physicalScoreClock.observe(batch, transport.getState());
-        physicalPlayback?.processBatch(batch, { bpm: transport.getState().bpm,
-          playing: transport.getState().playing, position });
+        position = physicalScoreClock.observe(batch, transport.getState());
+      } catch (error) {
+        markPhysicalGap(batch, 'clock-observation-failed');
+        if (!physicalClockError) status('Physical score clock: ' + error.message);
+        physicalClockError = true; return;
       }
-      catch (error) { if (!physicalClockError) status('Physical score clock: ' + error.message); physicalClockError = true; }
+      try {
+        physicalReceiptBoundary = { tick: batch.tick, generation: batch.generation };
+        physicalReceiptBuffer = [];
+        const intents = physicalPlayback?.processBatch(batch, { bpm: transport.getState().bpm,
+          playing: transport.getState().playing, position });
+        if (causalTake) {
+          const receipt = causalTake.recordCommittedBatch({ batch, intents: intents || [], deliveryOutcomes: physicalReceiptBuffer });
+          if (receipt.status === 'rejected') markPhysicalGap(batch, 'capture-admission-rejected');
+          if (receipt.status === 'rejected' && !causalTakeErrorReported) {
+            status(`Causal take became partial: ${receipt.reason}. Stop and inspect it.`); causalTakeErrorReported = true;
+          }
+        }
+      }
+      catch (error) {
+        markPhysicalGap(batch, 'capture-exception');
+        if (!causalTakeErrorReported) status('Physical performance capture: ' + error.message);
+        causalTakeErrorReported = true;
+      }
+      finally { physicalReceiptBuffer = null; }
     };
     bus?.on?.(onGameEvent); physicalBus?.on?.(onPhysicalBatch);
     const display = next.lanes?.renderer;
@@ -429,6 +589,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (display) { display.onDisplayState = onDisplayStatus; view?.displayState?.(display.getDisplayState?.()); }
     unhookWorld = () => {
       bus?.off?.(onGameEvent); physicalBus?.off?.(onPhysicalBatch);
+      worldInspector?.dispose(); worldInspector = null;
       physicalPlayback?.dispose(); physicalPlayback = null;
       if (display?.onDisplayState === onDisplayStatus) display.onDisplayState = previousDisplayStatus;
     };
@@ -461,6 +622,9 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     prepareSettings(); legacy.setPaused(!transport.getState().playing); lastPlaying = transport.getState().playing;
     const timer = next.world?.timer; if (timer) timer.speedFactor = transport.getState().effectiveSpeed;
     syncPorts(); view?.render(); view?.transport(transport.getState());
+    worldInspector = createProcgenWorldInspector({ renderer: display, document, window,
+      parent: document.querySelector?.('.studio-inspector'), getLaneInfo: lane => project.procgen.lanes[lane] || null,
+      onRevealLane: lane => { state.firstLane = lane; view?.layout?.(); view?.launched?.(); } });
     if (legacy.local.getState().status === 'suspended') Promise.resolve(legacy.local.resumeGame?.()).catch(error => status(error?.message || 'Reconnect the audio output.'));
     if (!session && !pendingResume) play();
     persist(); return next;
@@ -521,6 +685,17 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     artifact.digest().then(() => { if (preparedExport === artifact && !disposed) publishExportState(); });
     return artifact;
   };
+  const prepareCausalArchive = async () => {
+    if (causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the causal take before preparing its archive.');
+    const takeId = selectedCausalTakeId || lastCausalTake?.takeId;
+    if (!takeId) throw new Error('No finished causal take is selected.');
+    const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget });
+    const prepared = await prepareCausalTakeArchive({ journal, storage, takeId });
+    preparedExport?.discard(); preparedExport = prepared.artifact; lastDelivery = null;
+    publishExportState();
+    status(`Causal take ${prepared.manifest.takeName} archive ready. Use Save file to stream its verified source records.`);
+    return prepared.artifact.metadata();
+  };
   const deliverPrepared = () => {
     if (!preparedExport) return null;
     lastDelivery = deliverArtifactToAnchor(preparedExport, { document, windowRef: window });
@@ -533,6 +708,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   async function loadSession(value, admittedLease = null) {
     if (disposed || (admittedLease && !ownsOperation(admittedLease))) return false;
     if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
+    if (causalTake || causalTakeStart || causalTakeStop) await stopCausalTake({ reason: 'document-replacement' });
     const lease = admittedLease || beginOperation('load');
     let session = validateProcgenSession(value);
     const serial = ++loadSerial;
@@ -571,6 +747,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   async function rebuild({ seed = project.procgen.seed, fresh = false, projectNext = null, history = true } = {}) {
     if (disposed) return false;
     if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
+    if (causalTake || causalTakeStart || causalTakeStop) await stopCausalTake({ reason: 'world-rebuild' });
     const lease = beginOperation('rebuild');
     worldBusy = true;
     const previous = project, oldSettings = { ...legacy.settings }, previousTransport = transport.getState(), previousPatterns = engine.snapshot(), undoLength = undo.length;
@@ -634,6 +811,9 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   const handlers = {
     status, preferences: persist, devices, engineState: () => engine.getState(), playhead: id => engine.getLanePosition?.(id),
+    causalTakeState, startCausalTake: safe(startCausalTake), stopCausalTake: safe(stopCausalTake), cancelCausalTakeArm,
+    markCausalTake: safe(markCausalTake), inspectLastCausalTake: safe(inspectLastCausalTake),
+    prepareCausalArchive: safe(prepareCausalArchive), browseCausalTakes: safe(browseCausalTakes), selectCausalTake: safe(selectCausalTake),
     historyBusy: () => pendingHistory !== null,
     historyState: () => Object.freeze({ undo: undo.length, redo: redo.length,
       retainedBytes: retainedHistoryBytes(), byteLimit: historyBytesLimit, dropped: historyDropped }),
@@ -854,6 +1034,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   listen(document, 'keydown', event => { if (event.key === 'Escape' && inputLease) cancelInputEdits('canceled by user'); });
   listen(window, 'pagehide', () => {
     beforeRestart(); persist({ immediate: true }); recover();
+    if (causalTake || causalTakeStart) void stopCausalTake({ reason: 'pagehide' }).catch(error => status('Causal take finalization: ' + error.message));
     status('Page suspended. Press Play after returning to resume.');
   });
   listen(window, 'pageshow', event => {
@@ -877,8 +1058,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       durableTick: durableRecoveryTick, durableGeneration: durableRecoveryGeneration, error: recoveryError }),
     getStartupPlan: () => ({ ...startupPlan, project: clone(startupPlan.project) }), getLaneAssignments: () => project.procgen.lanes.map(lane => lane.family),
     getPlaybackState: () => ({ ...legacy.local.getState(), activeNotes: router()?.scheduler?._activeNotes?.size || 0, pendingNotes: router()?.scheduler?._pendingNoteOns?.size || 0, pressure: router()?.scheduler?.getOutputPressure?.() || ports.getState().pressure }),
-    prepareSettings, bindRuntime, beforeRestart, loadSession, capture, recover, dispatch, play, handlers, state, transport, ports, engine,
-    getPhysicalScoreClock: () => physicalScoreClock,
+    prepareSettings, bindRuntime, beforeRestart, stopCausalTake, loadSession, capture, recover, dispatch, play, handlers, state, transport, ports, engine,
+    getPhysicalScoreClock: () => physicalScoreClock, getWorldInspector: () => worldInspector,
     get settings() { return legacy.settings; },
     dispose() {
       if (disposed) return retirement.retire();
@@ -889,6 +1070,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       const timer = recoveryTimer; recoveryTimer = null;
       const pendingPersist = persistTimer; persistTimer = null;
       const removeListeners = listeners.splice(0);
+      const pendingCausalStop = causalTake || causalTakeStart || causalTakeStop ? stopCausalTake({ reason: 'workstation-disposed' }) : null;
       return retirement.retire([
         { name: 'operation', run: () => operation?.controller.abort() },
         { name: 'recovery-write', run: () => recoveryAbort?.abort() },
@@ -902,7 +1084,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'midi-ports', run: () => ports.dispose() },
         ...removeListeners.map((remove, index) => ({ name: `listener-${index}`, run: remove })),
         { name: 'view', run: () => view.dispose() },
-        { name: 'storage', run: () => storage.close?.() }
+        { name: 'storage', run: () => pendingCausalStop ? Promise.resolve(pendingCausalStop).finally(() => storage.close?.()) : storage.close?.() }
       ]);
     }
   };

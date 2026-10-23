@@ -405,6 +405,18 @@ describe('compact procgen drawer', () => {
     const f = fixture('?shape=classic&bodyColor=%23ffd447&accessory=crown&eyewear=monocle&speed=150&preset=game-lydian-lanterns&musicMode=phrase');
     expect(f.ui.settings).to.include({ speed: 150, preset: 'game-lydian-lanterns', mode: 'phrase' });
     expect(f.el('procgenPhrases').checked).to.equal(true); expect(f.ui.local.getState().enabled).to.equal(false);
+    expect(() => f.ui.getShareUrl()).to.throw('committed world');
+    f.runtime.world = { seed: 42, laneCount: f.ui.settings.laneCount, laneHeight: f.ui.settings.laneHeight, timer: f.timer };
     expect(new URL(f.ui.getShareUrl()).searchParams.get('shape')).to.equal(null); expect(f.ui.settings).to.include({ output: 'synth', sound: true, laneHeight: 144, pack: 1 }); f.ui.dispose();
+  });
+  it('shares the last committed generation while a replacement is pending', () => {
+    const f = fixture('?seed=42');
+    f.runtime.world = { seed: 42, laneCount: 3, laneHeight: 144, timer: f.timer };
+    f.runtime.recipeSettings = Object.freeze({ laneCount: 3, laneHeight: 144, pack: 2,
+      decoration: 'none', preset: 'game-iron-ensemble', mode: 'steps' });
+    f.ui.settings.laneCount = 8; f.ui.settings.pack = 5;
+    const plan = f.ui.getShareDescriptor().worldOptions;
+    expect(plan).to.include({ seed: 42, laneCount: 3, laneHeight: 144, pack: 2, speed: 3 });
+    f.ui.dispose();
   });
 });

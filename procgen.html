@@ -11,6 +11,7 @@
   <link type="text/css" rel="stylesheet" href="css/midi-spans.css">
   <link type="text/css" rel="stylesheet" href="css/icons.css">
   <link type="text/css" rel="stylesheet" href="css/procgen-workstation.css">
+  <link type="text/css" rel="stylesheet" href="css/procgen-world-inspector.css">
   <script src="js/vendor/webmidi.js"></script>
   <script type="module" src="js/app/procgenBoot.js"></script>
 </head>
@@ -171,7 +172,7 @@
     <div class="procgen-controls-row">
       <button id="procgenShare" type="button">Copy starting recipe link</button>
       <label><input id="procgenShareCamera" type="checkbox"> Include current camera view</label>
-      <p id="procgenShareStatus" role="status">A recipe link starts a new world. Current edits, performers, and recorded takes are not included.</p>
+      <p id="procgenShareStatus" role="status">A recipe link starts a new world. Edits, performers, takes, assets, devices and output permissions are excluded; the recipient must check source compatibility.</p>
       <input id="procgenShareUrl" type="text" readonly hidden aria-label="Shareable run URL">
     </div>
     <p id="procgenMetrics" role="status"></p>

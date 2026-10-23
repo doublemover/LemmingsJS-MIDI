@@ -4,6 +4,8 @@ import { createProcgenWorkstationProject } from '../js/app/procgen/workstation/P
 import { createMidiProject } from '../js/midi/project/MidiProject.js';
 import { EventHandler } from '../js/util/EventHandler.js';
 import { createProcgenRetirementScope } from '../js/app/procgen/ProcgenRetirement.js';
+import { createMemoryCausalStore } from './helpers/causalJournalStore.js';
+import { createProcgenCausalJournal } from '../js/app/procgen/workstation/ProcgenCausalJournal.js';
 
 function target() {
   const events = new Map();
@@ -21,7 +23,7 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
     crypto: { getRandomValues(value) { value[0] = 91; } }, prompt: () => 'Test song' };
   const scheduler = { tickMs: 60, sendNote(spec, meta) { calls.push({ spec, meta }); return true; }, allNotesOff() {}, output: { channels: { 1: { sendControlChange() {} } } } };
   let throwCamera = false;
-  const makeRuntime = () => ({ world: { laneCount, seed: 7, timer: { speedFactor: 1 }, frontiers: [100], soundEvents: { onEvent: new EventHandler() } },
+  const makeRuntime = () => ({ world: { laneCount, seed: 7, timer: { speedFactor: 1 }, frontiers: [100], soundEvents: { onEvent: new EventHandler(), onBatch: new EventHandler() } },
     lanes: { setClockDriven(value) { this.clockDriven = value; }, pump(value) { positions.push(value); }, renderer: { camera: { getState: () => ({ cameraX: 45 }), applyState(value) { if (throwCamera) throw new Error('Camera unavailable'); this.restored = value; } } } },
     view: { midiPreviewRouter: { scheduler, resetClock() {} }, setMidiPreviewRouter(value) { this.midiPreviewRouter = value; } } });
   let runtime = makeRuntime();
@@ -51,6 +53,58 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
 }
 
 describe('ProcGen workstation orchestration', () => {
+  it('records committed physical batches into a durable take and closes it before world replacement', async () => {
+    const memory = createMemoryCausalStore(), storage = { ...memory.storage, close() {} };
+    const f = setup({ storageOverride: storage });
+    f.studio.bindRuntime();
+    const armed = await f.studio.handlers.startCausalTake();
+    expect(armed).to.include({ state: 'recording', durableSequence: 0 });
+    const takeId = armed.takeId;
+    f.runtime.world.soundEvents.onBatch.trigger({ version: 1, worldId: 'world:fixture', generation: 1, tick: 1,
+      batchId: 'world:fixture:1:1:0', sourceTimeMs: 20, tickDurationMs: 20,
+      completeness: { status: 'complete', dropped: 0 }, facts: [] });
+    const receipt = await f.studio.stopCausalTake({ reason: 'test-stop' });
+    expect(receipt).to.include({ takeId, complete: true, durableSequence: 2 });
+    const journal = createProcgenCausalJournal({ storage });
+    const records = await journal.query({ takeId });
+    expect(records.records.map(record => record.kind)).to.deep.equal(['physical-batch', 'musical-intents']);
+    expect((await journal.verify(takeId)).status).to.equal('complete');
+    await f.studio.dispose().completion;
+  });
+  it('marks failed physical batch processing as partial instead of certifying an empty performance', async () => {
+    const memory = createMemoryCausalStore(), storage = { ...memory.storage, close() {} };
+    const f = setup({ storageOverride: storage }); f.studio.bindRuntime();
+    const takeId = (await f.studio.handlers.startCausalTake()).takeId;
+    f.runtime.world.soundEvents.onBatch.trigger({ version: 1, worldId: 'world:fixture', generation: 1, tick: 1 });
+    f.runtime.world.soundEvents.onBatch.trigger({ version: 1, worldId: 'world:fixture', generation: 1, tick: 2,
+      sourceTimeMs: 40, tickDurationMs: 20, facts: null });
+    const stopped = await f.studio.stopCausalTake({ reason: 'test-failed-source' });
+    expect(stopped.complete).to.equal(false);
+    const manifest = await storage.loadCausalTake(takeId);
+    expect(manifest.coverage.status).to.equal('partial');
+    expect(manifest.coverage.gaps.map(gap => gap.reason)).to.include.members(['clock-observation-failed', 'capture-exception']);
+    expect((await createProcgenCausalJournal({ storage }).verify(takeId)).status).to.equal('partial');
+    await f.studio.dispose().completion;
+  });
+  it('pages saved causal takes and inspects a selected take after recording', async () => {
+    const memory = createMemoryCausalStore(), storage = { ...memory.storage, close() {} };
+    const f = setup({ storageOverride: storage }); f.studio.bindRuntime();
+    const takeId = (await f.studio.handlers.startCausalTake({ takeName: 'A saved performance' })).takeId;
+    await f.studio.stopCausalTake();
+    storage.listCausalTakes = async ({ cursor }) => cursor ?
+      { items: [{ takeId, takeName: 'A saved performance', state: 'finalized', durableSequence: 0 }], nextCursor: null } :
+      { items: [{ takeId: 'take:older', takeName: 'Older', state: 'partial', durableSequence: 0 }], nextCursor: 'take:older' };
+    await f.studio.handlers.browseCausalTakes();
+    expect(f.studio.handlers.causalTakeState().takePageNumber).to.equal(1);
+    await f.studio.handlers.browseCausalTakes('next');
+    expect(f.studio.handlers.causalTakeState().takePageNumber).to.equal(2);
+    await f.studio.handlers.selectCausalTake(takeId);
+    const inspection = await f.studio.handlers.inspectLastCausalTake();
+    expect(inspection).to.include({ takeId, takeName: 'A saved performance', paused: true });
+    await f.studio.handlers.browseCausalTakes('previous');
+    expect(f.studio.handlers.causalTakeState().takePageNumber).to.equal(1);
+    await f.studio.dispose().completion;
+  });
   it('retries the same prepared MIDI bytes after an anchor request fails', async () => {
     const f = setup(), blobs = [], calls = [], timers = [];
     let failClick = true;

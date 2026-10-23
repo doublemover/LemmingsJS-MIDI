@@ -155,8 +155,10 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
   const changeStep = patch => { if (selected().mode === 'pattern') dispatch({ type: 'procgen/step', laneId: selected().id, slot: state.slot, index: state.step, patch }); };
   const changePhysicalInstrument = (id, patch) => {
     const graph = getProject().procgen.physicalGraph;
-    dispatch({ type: 'procgen/physicalGraph', graph: { ...graph, revision: graph.revision + 1,
-      instruments: graph.instruments.map(instrument => instrument.id === id ? { ...instrument, ...patch } : instrument) } });
+    try {
+      dispatch({ type: 'procgen/physicalGraph', graph: { ...graph, revision: graph.revision + 1,
+        instruments: graph.instruments.map(instrument => instrument.id === id ? { ...instrument, ...patch } : instrument) } });
+    } catch (error) { handlers.status?.(error.message); renderInspector(); }
   };
   function renderInspector() {
     const lane = selected(); state.slot = Math.max(0, Math.min(3, state.slot));
@@ -189,17 +191,100 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
       fields.append(events);
       if (pattern) fields.append(button('Reset phrase to this sound', () => handlers.resetPattern?.()));
     } else if (state.tab === 'Physical') {
-      fields.append(node('p', 'Physical instruments respond to committed builder work, contacts, and crossings. They do not need phrase cells.', 'studio-hint'));
-      const graph = getProject().procgen.physicalGraph;
-      for (const instrument of graph.instruments) {
-        const group = node('fieldset', null, 'studio-physical-instrument');
-        group.append(node('legend', instrument.id));
-        group.append(node('p', `${instrument.sourceKind}${instrument.operationKind ? ` · ${instrument.operationKind}` : ''}${instrument.causeKind ? ` · ${instrument.causeKind}` : ''}${instrument.gateX != null ? ` · x=${instrument.gateX}` : ''}`, 'studio-hint'));
-        labeled('Enabled', input(!instrument.mute, enabled => changePhysicalInstrument(instrument.id, { mute: !enabled }), { type: 'checkbox' }), group);
-        labeled('Pitch / cents', input(instrument.pitchCents, pitchCents => changePhysicalInstrument(instrument.id, { pitchCents }), { min: -24000, max: 24000 }), group);
-        labeled('Velocity', input(Math.round(instrument.velocity01 * 100), velocity => changePhysicalInstrument(instrument.id, { velocity01: velocity / 100 }), { min: 0, max: 100 }), group);
-        fields.append(group);
+      fields.append(node('p', 'Physical instruments use committed world facts from all actors. Pitch and velocity belong to the physical engine; no preview note is started here.', 'studio-hint'));
+      const take = handlers.causalTakeState?.();
+      if (take) {
+        const controls = node('fieldset', null, 'studio-physical-take');
+        controls.append(node('legend', 'Causal take'));
+        state.takeNameDraft ||= 'Untitled take'; state.takeMarkerDraft ||= 'Marker';
+        labeled('Take name', input(state.takeNameDraft, takeName => {
+          state.takeNameDraft = takeName.slice(0, 120); handlers.preferences?.();
+        }, { type: 'text', max: 120 }), controls);
+        const toggle = button(take.starting ? 'Cancel arming' : take.recording ? 'Stop causal take' : 'Record causal take', () =>
+          take.starting ? handlers.cancelCausalTakeArm?.() : take.recording ? handlers.stopCausalTake?.() :
+            handlers.startCausalTake?.({ takeName: state.takeNameDraft }));
+        toggle.disabled = take.stopping;
+        controls.append(toggle);
+        if (take.recording) {
+          labeled('Marker', input(state.takeMarkerDraft, label => { state.takeMarkerDraft = label.slice(0, 120); }, { type: 'text' }), controls);
+          controls.append(button('Mark latest tick', () => handlers.markCausalTake?.(state.takeMarkerDraft),
+            'Annotate the last committed physical tick without creating a musical onset'));
+        }
+        const receipt = take.active || take.last;
+        const summary = receipt ? `${receipt.state} · ${receipt.durableSequence} durable records${receipt.pendingBytes ? ` · ${receipt.pendingBytes} bytes pending` : ''}${receipt.complete === false && receipt.state !== 'recording' ? ' · partial coverage' : ''}` :
+          take.starting ? 'Preparing a source checkpoint…' : 'No causal take started.';
+        controls.append(node('output', summary, 'studio-physical-take-status'));
+        if ((take.selectedTakeId || take.last) && !take.recording) {
+          controls.append(button('Inspect take', () => handlers.inspectLastCausalTake?.(), 'Verify the stored causal take and show its durable range'));
+          controls.append(button('Prepare take archive', () => handlers.prepareCausalArchive?.(), 'Prepare a verified, replayable causal take file'));
+        }
+        controls.append(button('Browse saved takes', () => handlers.browseCausalTakes?.('first'), 'List saved causal takes from project storage'));
+        if (take.takePage) {
+          const page = node('div', null, 'studio-causal-take-page');
+          page.append(node('p', `Saved takes · page ${take.takePageNumber}`, 'studio-hint'));
+          for (const item of take.takePage.items) {
+            const choose = button(`${item.takeName} · ${item.state} · ${item.durableSequence} records`, () => handlers.selectCausalTake?.(item.takeId));
+            choose.setAttribute('aria-pressed', String(take.selectedTakeId === item.takeId));
+            page.append(choose);
+          }
+          if (!take.takePage.items.length) page.append(node('p', 'No saved takes on this page.', 'studio-hint'));
+          if (take.hasPreviousTakePage) page.append(button('Previous takes', () => handlers.browseCausalTakes?.('previous')));
+          if (take.takePage.nextCursor) page.append(button('More takes', () => handlers.browseCausalTakes?.('next')));
+          controls.append(page);
+        }
+        if (take.inspection) controls.append(node('p', `${take.inspection.takeName} · ${take.inspection.status} · ticks ${take.inspection.firstTick ?? 'unknown'}–${take.inspection.lastTick ?? 'unknown'} · ${take.inspection.gaps} coverage gaps · opens paused`, 'studio-hint'));
+        fields.append(controls);
       }
+      const graph = getProject().procgen.physicalGraph;
+      const search = node('input'); search.type = 'search'; search.placeholder = 'Find a physical instrument';
+      search.value = state.physicalSearch || ''; search.setAttribute('aria-label', 'Find physical instrument');
+      const list = node('div', null, 'studio-physical-list');
+      const sourceChoices = [
+        ['TerrainWorkCommitted', 'Terrain · committed work'], ['ContactResolved', 'Contact · resolved impact'],
+        ['ContactSpanBegan', 'Contact · span began'], ['MotionCommitted', 'Actor · gate crossing'],
+        ['ActionEntered', 'Actor · action entered']
+      ];
+      const sourcePatch = (instrument, sourceKind) => ({ sourceKind, action: sourceKind === 'ActionEntered' ? instrument.action || 'build' : null,
+        operationKind: sourceKind === 'TerrainWorkCommitted' ? instrument.operationKind : null,
+        causeKind: ['ContactResolved', 'ContactSpanBegan'].includes(sourceKind) ? instrument.causeKind : null,
+        gateX: sourceKind === 'MotionCommitted' ? instrument.gateX ?? 40 : null,
+        articulation: sourceKind === 'MotionCommitted' ? instrument.articulation : null });
+      const renderPhysicalList = () => {
+        const needle = (state.physicalSearch || '').trim().toLowerCase();
+        const matching = graph.instruments.filter(instrument => `${instrument.id} ${instrument.sourceKind} ${instrument.role}`.toLowerCase().includes(needle));
+        const visible = matching.slice(0, 40);
+        list.replaceChildren(node('p', `Showing ${visible.length} of ${matching.length} matching instruments${matching.length > visible.length ? ' · refine the search' : ''}.`, 'studio-hint'));
+        for (const instrument of visible) {
+          const group = node('fieldset', null, 'studio-physical-instrument');
+          group.append(node('legend', instrument.id));
+          labeled('Source · all actors', select(sourceChoices, instrument.sourceKind,
+            sourceKind => changePhysicalInstrument(instrument.id, sourcePatch(instrument, sourceKind)), 'Physical source'), group);
+          if (instrument.sourceKind === 'TerrainWorkCommitted') labeled('Work kind', input(instrument.operationKind || '',
+            operationKind => changePhysicalInstrument(instrument.id, { operationKind: operationKind.trim() || null }),
+            { type: 'text' }), group);
+          if (['ContactResolved', 'ContactSpanBegan'].includes(instrument.sourceKind)) labeled('Contact cause', input(instrument.causeKind || '',
+            causeKind => changePhysicalInstrument(instrument.id, { causeKind: causeKind.trim() || null }), { type: 'text' }), group);
+          if (instrument.sourceKind === 'ActionEntered') labeled('Action kind', input(instrument.action || 'build',
+            action => changePhysicalInstrument(instrument.id, { action: action.trim() || 'build' }), { type: 'text' }), group);
+          if (instrument.sourceKind === 'MotionCommitted') {
+            labeled('Crossing x / world px', input(instrument.gateX, gateX => changePhysicalInstrument(instrument.id, { gateX }),
+              { min: -1000000000, max: 1000000000, step: 1 }), group);
+            labeled('Crossing direction', select(['either', 'positive', 'negative'], instrument.crossingDirection,
+              crossingDirection => changePhysicalInstrument(instrument.id, { crossingDirection }), 'Crossing direction'), group);
+          }
+          labeled('Enabled', input(!instrument.mute, enabled => changePhysicalInstrument(instrument.id, { mute: !enabled }), { type: 'checkbox' }), group);
+          labeled('Solo', input(instrument.solo, solo => changePhysicalInstrument(instrument.id, { solo }), { type: 'checkbox' }), group);
+          labeled('Chance / %', input(Math.round(instrument.probability01 * 100), chance => changePhysicalInstrument(instrument.id,
+            { probability01: chance / 100 }), { min: 0, max: 100, step: 1 }), group);
+          labeled('Pitch / cents', input(instrument.pitchCents, pitchCents => changePhysicalInstrument(instrument.id, { pitchCents }),
+            { min: -24000, max: 24000, step: 0.01 }), group);
+          labeled('Velocity / %', input(Math.round(instrument.velocity01 * 100), velocity => changePhysicalInstrument(instrument.id,
+            { velocity01: velocity / 100 }), { min: 0, max: 100, step: 1 }), group);
+          list.append(group);
+        }
+      };
+      search.addEventListener('input', () => { state.physicalSearch = search.value; renderPhysicalList(); });
+      fields.append(search, list); renderPhysicalList();
     } else if (state.tab === 'Step' || state.tab === 'Chord') {
       labeled('Trigger', input(step.enabled, enabled => changeStep({ enabled }), { type: 'checkbox' }), fields);
       labeled('Scale degree', input(step.degree, degree => changeStep({ degree }), { min: -56, max: 56 }), fields);

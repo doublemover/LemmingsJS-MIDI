@@ -19,9 +19,9 @@ import { normalizeWorkerLimits } from './ProcgenWorkerLimits.js';
 import { KeybindingRegistry, DEFAULT_KEYBINDINGS } from '../../input/KeybindingRegistry.js';
 import { normalizeProcgenSpeed, changeProcgenSpeed, renderProcgenSpeedControl } from './ProcgenSpeedControl.js';
 import { normalizeSeed } from '../../core/seededRandom.js';
-import { readProcgenUrlConfig, createProcgenShareUrl } from './ProcgenUrlConfig.js';
+import { readProcgenUrlConfig, createProcgenRecipeShareDescriptor } from './ProcgenUrlConfig.js';
 
-const createProcgenUiController = ({ document, window, getRuntime, restart, initial = {} }) => {
+const createProcgenUiController = ({ document, window, getRuntime, restart, resourceBudget = null, initial = {} }) => {
   const byId = id => document.getElementById(id);
   const listeners = [];
   const projectListeners = new Set();
@@ -77,7 +77,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     if (byId('procgenMidiDevice')) byId('procgenMidiDevice').hidden = !midi;
   };
   let local;
-  const preview = createLocalGamePreview({ getLemmings: () => getRuntime()?.view, getConfig: () => config, immutableConfig: true,
+  const preview = createLocalGamePreview({ getLemmings: () => getRuntime()?.view, getConfig: () => config, immutableConfig: true, resourceBudget,
     onStateChange: () => local?.localStateChanged() });
   local = createProcgenMidiOutput({ local: preview, getView: () => getRuntime()?.view, getConfig: () => config, getWebMidi: () => window.WebMidi,
     backend: settings.output, onStateChange: renderOutput, onDevicesChange: (ports, selectedId) => {
@@ -437,22 +437,28 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     if (handled) event.preventDefault?.();
   };
   listen(window, 'keydown', handleKey);
-  const getShareUrl = () => {
-    const world = getRuntime()?.world;
-    if (world?.laneCount != null && world.laneCount !== settings.laneCount) throw new Error('Wait for the world change to finish before copying a recipe');
-    return createProcgenShareUrl({ url: window.location.href, seed: world?.seed ?? window.procgenSeed ?? settings.seed,
-      settings, camera: camera()?.getState() || { cameraX: 0, cameraY: 0, scale: 3, follow: true },
+  const getShareDescriptor = () => {
+    const runtime = getRuntime(), world = runtime?.world;
+    if (!world) throw new Error('Wait for the committed world before copying a recipe');
+    if (!runtime.recipeSettings && world.laneCount !== settings.laneCount) throw new Error('Wait for the world change to finish before copying a recipe');
+    const committed = runtime.recipeSettings || settings;
+    return createProcgenRecipeShareDescriptor({ url: window.location.href, seed: world.seed,
+      settings: { ...committed, laneCount: world.laneCount, laneHeight: world.laneHeight,
+        speed: world.timer?.speedFactor ?? committed.speed },
+      camera: camera()?.getState() || { cameraX: 0, cameraY: 0, scale: 3, follow: true },
       includeCamera: byId('procgenShareCamera')?.checked === true });
   };
+  const getShareUrl = () => getShareDescriptor().url;
   listen(byId('procgenShare'), 'click', async () => {
     const input = byId('procgenShareUrl'); if (!input) return;
     const status = byId('procgenShareStatus');
     try {
-      input.value = getShareUrl(); input.hidden = false; input.focus?.(); input.select?.();
+      const descriptor = getShareDescriptor();
+      input.value = descriptor.url; input.hidden = false; input.focus?.(); input.select?.();
       if (window.navigator?.clipboard?.writeText) {
         await window.navigator.clipboard.writeText(input.value);
-        if (status) status.textContent = 'Starting recipe link copied. Current edits and takes are not included.';
-      } else if (status) status.textContent = 'Select and copy this starting recipe link. Current edits and takes are not included.';
+        if (status) status.textContent = 'Starting recipe link copied. Source compatibility must be checked by the recipient; edits, takes, assets and devices are excluded.';
+      } else if (status) status.textContent = 'Select and copy this starting recipe link. Source compatibility is unverified; edits, takes, assets and devices are excluded.';
     } catch (error) { if (status) status.textContent = `Could not copy recipe: ${error.message}. Select and copy the visible link if available.`; }
   });
   listen(window, 'blur', () => { if (!settings.workstation) local.suspendGame(); });
@@ -466,7 +472,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     if (byId('procgenBest')) byId('procgenBest').textContent = 'Best ' + Math.max(0, Math.round(best)).toLocaleString();
   };
   const syncActiveCount = count => { if (byId('procgenAliveCount')) byId('procgenAliveCount').textContent = Math.max(0, count).toLocaleString() + ' alive'; };
-  return { settings, local, outputCapture, captureControls, getShareUrl, syncActiveCount,
+  return { settings, local, outputCapture, captureControls, getShareUrl, getShareDescriptor, syncActiveCount,
     getProject: () => project,
     setProject: (next, { persist = true } = {}) => commitAutomation(next, false, persist),
     subscribeProject(listener) { projectListeners.add(listener); return () => projectListeners.delete(listener); },
