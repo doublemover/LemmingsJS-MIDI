@@ -69,6 +69,7 @@ describe('local survey server and atomic live controls', function() {
     try {
       await until(() => !!controls); controls.step(); await until(() => !!receipt);
       expect(receipt.stepStatus).to.equal('reached'); expect(receipt.reachedCheckpoint).to.equal(4);
+      expect(receipt.barrierLatencyMs).to.be.at.least(0); expect(receipt.prepareLatencyMs).to.be.at.most(receipt.barrierLatencyMs);
       expect(receipt.selected).to.have.length(2); expect(receipt.selected.every(value => value.tick === 4)).to.equal(true);
       expect(receipt.queued).to.equal(1); expect(telemetry.some(value => value.tick === 4)).to.equal(true);
       const before = telemetry.length; await delay(75); expect(telemetry.length).to.equal(before);

@@ -9,7 +9,8 @@ import { analyzeProcgenSurveyPairs, selectProcgenSurveyExemplars, createProcgenS
 
 const runSurveyExperiment = async (manifest, store, { signal, onTelemetry = () => {}, onResult = () => {}, onState = () => {}, onControlReady = () => {} } = {}) => {
   const prior = await store.read('report.json');
-  const started = clock.now(), results = [], telemetry = new Map(prior?.telemetry || []), performance = [...(prior?.performance || [])], attempts = [...(prior?.attempts || [])], verification = [], successQualification = [], persistenceReceipts = [];
+  const started = clock.now(), results = [], telemetry = new Map(prior?.telemetry || []), performance = [...(prior?.performance || [])], attempts = [...(prior?.attempts || [])], verification = [], successQualification = [],
+    persistenceReceipts = [...(prior?.persistenceReceipts || [])], admissions = [...(prior?.admissions || [])];
   let stage = 'queued', activeControls = null, paused = false, cancelled = false, controlState = {}, currentExecution = null, executedTicks = 0;
   const jobsFor = (scenarios, candidates) => scenarios.flatMap(scenario => candidates.map(candidate => ({ scenario, candidate,
     trialId: createSurveyTrialId(scenario, candidate), attemptId: randomUUID() })));
@@ -42,12 +43,13 @@ const runSurveyExperiment = async (manifest, store, { signal, onTelemetry = () =
       onControlState: state => { controlState = { ...controlState, ...state }; present(); },
       onTelemetry: (id, value) => { telemetry.set(id, value); onTelemetry(id, value, label); present(); }, onResult: accept });
     persistenceReceipts.push(...(currentExecution.persistence || []).map(receipt => ({ ...receipt, stage: label })));
+    admissions.push(...(currentExecution.admissions || []).map(receipt => ({ ...receipt, stage: label })));
     activeControls = null; return currentExecution;
   };
   const incomplete = () => allJobs.filter(job => !results.some(result => result.trialId === job.trialId && result.episodeComplete)).map(job => ({ trialId: job.trialId, scenarioId: job.scenario.id,
     candidateId: job.candidate.id, status: results.find(result => result.trialId === job.trialId)?.status || 'not-run' }));
   const interrupted = reason => ({ ...publicState(), results, performance, attempts, verification, successQualification, status: 'interrupted', reason,
-    incompleteTrials: incomplete(), storage: store.snapshot(), persistenceReceipts, presentationErrors: currentExecution?.presentationErrors || [] });
+    incompleteTrials: incomplete(), storage: store.snapshot(), persistenceReceipts, admissions, presentationErrors: currentExecution?.presentationErrors || [] });
   const retain = (result, job) => ({ ...result, ...result.provenance, sourceHash: hashSurveyValue({ core: result.provenance?.sourceHash || null, codeDigest: manifest.sourceManifest.codeDigest || null }), environmentSeed: job.scenario.environmentSeed, clusterId: 'world-' + job.scenario.environmentSeed,
     replayManifest: { schemaVersion: 1, scenario: job.scenario, candidate: job.candidate, sourceManifest: { engineCommit: manifest.sourceManifest.engineCommit,
       codeDigest: manifest.sourceManifest.codeDigest, assetHashes: manifest.sourceManifest.assetHashes, harnessVersion: manifest.sourceManifest.harnessVersion, manifestReference: 'manifest.json' },
@@ -135,7 +137,7 @@ const runSurveyExperiment = async (manifest, store, { signal, onTelemetry = () =
   }
   stage = 'complete'; present();
   return { schemaVersion: 1, manifest, results, telemetry: [...telemetry], performance, attempts, analysis, exemplars: { ...selected, selected: archiveSelections }, successQualification,
-    status: incomplete().length ? 'interrupted' : 'complete', incompleteTrials: incomplete(), verification, persistenceReceipts, storage: store.snapshot(), rankingsTrusted: false,
+    status: incomplete().length ? 'interrupted' : 'complete', incompleteTrials: incomplete(), verification, persistenceReceipts, admissions, storage: store.snapshot(), rankingsTrusted: false,
     priorExecution: prior?.execution || null, execution: { elapsedMs: clock.now() - started, admittedTicks: executedTicks, memoryScope: 'Worker V8 old heap capped; reported RSS covers the whole Node process.' } };
 };
 export { runSurveyExperiment };

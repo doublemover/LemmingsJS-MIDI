@@ -21,6 +21,23 @@ a different digest for the same assigned trial and attempt is an infrastructure
 conflict. Every message is bound to its assigned worker, attempt and run and
 worker generations.
 
+Worker readiness is separate from trial admission. `maxStartupMs` bounds module
+loading and shared mask preparation. A generation-qualified readiness receipt
+precedes each trial's `preparing` and `admitted` receipts. `maxTrialMs` also
+bounds per-world asset preparation, and a host watchdog can terminate a worker
+whose physical slice stops cooperating. Failed preparation remains explicitly
+unadmitted. Admission records include the last verified tick, preparation time,
+worker and attempt identities, and deadline cause. Stage-qualified admission
+and persistence receipts survive report resume.
+
+An unexpected worker exit is an infrastructure error even if its last result
+arrived first. That original retains its own committed or unknown persistence
+receipt. Identical repeated delivery commits once; conflicting delivery retains
+both outcome digests. The Node API's optional native `workerFactory` supports
+real-thread diagnostic fixtures with the same production protocol and supplied
+resource limits. Pause/step acknowledgements report barrier and preparation
+latency independently of their actual selected-trial ticks.
+
 The third result-callback argument contains `signal`, `deadline`,
 `runGeneration` and the receipt. Cooperative stores check that signal before
 publication. A callback deadline reports `unknown-after-timeout`: an arbitrary
@@ -31,7 +48,7 @@ Reconcile by the immutable original or attempt identity before retrying.
 Cancellation stops new simulation admission and drains received evidence
 within the persistence and total deadlines. `maxTotalMs` includes asset
 startup, pauses, computation, transfer and storage. `maxTrialMs` measures
-admitted wall time, including pauses and time waiting behind other residents'
+per-world preparation and admitted wall time, including pauses and time waiting behind other residents'
 transfers. Each executing callback has `maxPersistenceMs`, further bounded by
 remaining total time. Callback latency and peak queue count/bytes are reported.
 Presentation callback failures are isolated from physics and storage status.

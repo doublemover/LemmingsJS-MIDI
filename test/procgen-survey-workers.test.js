@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { Worker } from 'node:worker_threads';
 import { runSurveyJobs } from '../scripts/procgen-survey/SurveyWorkerPool.js';
 import { normalizeSurveyScenario, createSurveyTrialId } from '../js/app/procgen/survey/ProcgenSurveyCore.js';
 import { compareSurveyReplay } from '../js/app/procgen/survey/ProcgenSurveyReplay.js';
@@ -8,6 +9,25 @@ const jobs = () => Array.from({ length: 4 }, (_, index) => {
   const candidate = { id: 'baseline-copy-' + index, kind: 'baseline', configuration: {} };
   return { scenario: scene, candidate, trialId: createSurveyTrialId(scene, candidate), attemptId: 'attempt-' + index };
 });
+const instrumentWorker = (mode, retained = []) => (entry, configuration) => {
+  const source = `import { parentPort } from 'node:worker_threads';
+    ${mode === 'delayed-start' ? 'await new Promise(resolve => setTimeout(resolve, 1000));' : ''}
+    const send = parentPort.postMessage.bind(parentPort); let changed = false;
+    parentPort.postMessage = message => {
+      if (${JSON.stringify(mode)} === 'wrong-admission' && message.type === 'started') { send({ ...message, attemptId: 'unassigned' }); return; }
+      send(message);
+      if (${JSON.stringify(mode)} === 'delayed-preparation' && message.type === 'preparing') Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000);
+      if (${JSON.stringify(mode)} === 'blocked-compute' && message.type === 'started') Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000);
+      if (message.type === 'result' && !changed) {
+        changed = true;
+        if (${JSON.stringify(mode)} === 'duplicate') send(message);
+        if (${JSON.stringify(mode)} === 'conflict') send({ ...message, result: { ...message.result, eventHash: 'f'.repeat(16) } });
+        if (${JSON.stringify(mode)} === 'crash-after-result') process.exit(23);
+      }
+    };
+    await import(${JSON.stringify(entry.href)});`;
+  const worker = new Worker(new URL('data:text/javascript,' + encodeURIComponent(source)), configuration); retained.push(worker); return worker;
+};
 describe('real isolated procgen survey workers', function() {
   this.timeout(15000);
   it('matches across CPU worker counts, job order, residency and dashboard polling', async () => {
@@ -43,6 +63,52 @@ describe('real isolated procgen survey workers', function() {
       expect(rejected?.message).to.include('unique trial, attempt, scenario and candidate identities');
     }
     expect(admitted).to.equal(0);
+  });
+  it('supervises a real worker startup deadline without admitting or acknowledging nonexistent progress', async () => {
+    const workers = [], states = [];
+    const started = Date.now(), report = await runSurveyJobs(jobs().slice(0, 1), { paused: true, maxStartupMs: 50, maxTotalMs: 5000,
+      workerFactory: instrumentWorker('delayed-start', workers), onControlReady: controls => controls.step(), onControlState: value => states.push(value) });
+    expect(Date.now() - started).to.be.lessThan(2000); expect(report.reason).to.equal('startup-timeout');
+    expect(report.admissions[0]).to.include({ status: 'not-admitted', failureKind: 'startup-deadline', lastVerifiedTick: 0 });
+    expect(report.admissions[0].workerGeneration).to.be.a('string'); expect(states.some(value => value.reachedCheckpoint != null)).to.equal(false);
+    expect(workers.every(worker => worker.threadId === -1)).to.equal(true);
+  });
+  it('rejects an admission belonging to another attempt and terminates its real worker', async () => {
+    const workers = [], report = await runSurveyJobs(jobs().slice(0, 1), { maxTotalMs: 5000, workerFactory: instrumentWorker('wrong-admission', workers) });
+    expect(report.error).to.equal('Invalid worker admission identity'); expect(report.admissions[0].status).to.equal('preparing');
+    expect(report.admissions[0].admittedMs).to.equal(undefined);
+    expect(report.results[0].episodeComplete).not.to.equal(true); expect(workers.every(worker => worker.threadId === -1)).to.equal(true);
+  });
+  it('bounds per-world preparation after a worker has already loaded its shared masks', async () => {
+    const workers = [], report = await runSurveyJobs(jobs().slice(0, 1), { maxTrialMs: 50, maxTotalMs: 5000,
+      workerFactory: instrumentWorker('delayed-preparation', workers) });
+    expect(report.reason).to.equal('trial-preparation-timeout');
+    expect(report.admissions[0]).to.include({ status: 'preparing', failureKind: 'trial-preparation-deadline', trialLimitMs: 50, lastVerifiedTick: 0 });
+    expect(report.admissions[0].workerReadyMs).to.be.at.least(0); expect(report.admissions[0].admittedMs).to.equal(undefined);
+    expect(workers.every(worker => worker.threadId === -1)).to.equal(true);
+  });
+  it('supervises an admitted worker whose physical slice stops cooperating', async () => {
+    const workers = [], report = await runSurveyJobs(jobs().slice(0, 1), { maxTrialMs: 50, maxTotalMs: 5000,
+      workerFactory: instrumentWorker('blocked-compute', workers) });
+    expect(report.reason).to.equal('trial-wall-time-safety');
+    expect(report.admissions[0]).to.include({ status: 'admitted', failureKind: 'trial-wall-time-deadline', trialLimitMs: 50, lastVerifiedTick: 0 });
+    expect(report.results[0].episodeComplete).not.to.equal(true); expect(workers.every(worker => worker.threadId === -1)).to.equal(true);
+  });
+  it('accepts identical repeated delivery once and preserves conflicting delivery as infrastructure evidence', async () => {
+    let committed = 0;
+    const duplicate = await runSurveyJobs(jobs().slice(0, 1), { maxTotalMs: 5000, workerFactory: instrumentWorker('duplicate'), onResult: () => { committed++; } });
+    expect(duplicate.error).to.equal(null); expect(duplicate.results).to.have.length(1); expect(committed).to.equal(1);
+    expect(duplicate.persistence[0].status).to.equal('committed'); expect(duplicate.admissions[0]).to.include({ status: 'admitted', lastVerifiedTick: 128 });
+    const conflict = await runSurveyJobs(jobs().slice(0, 1), { maxTotalMs: 5000, workerFactory: instrumentWorker('conflict') });
+    expect(conflict.error).to.equal('Conflicting worker result'); expect(conflict.deliveryConflicts).to.have.length(1);
+    expect(conflict.results).to.have.length(1); expect(conflict.results[0].eventHash).not.to.equal('f'.repeat(16));
+  });
+  it('retains a committed original when the real worker crashes immediately after sending it', async () => {
+    const workers = [], report = await runSurveyJobs(jobs().slice(0, 1), { maxTotalMs: 5000,
+      workerFactory: instrumentWorker('crash-after-result', workers), onResult: () => {} });
+    expect(report.error).to.equal('Worker exited unexpectedly: 23'); expect(report.reason).to.equal('infrastructure-error');
+    expect(report.results).to.have.length(1); expect(report.results[0].episodeComplete).to.equal(true);
+    expect(report.persistence[0].status).to.equal('committed'); expect(workers.every(worker => worker.threadId === -1)).to.equal(true);
   });
   it('returns an unknown persistence receipt when the storage callback never settles', async () => {
     const started = Date.now();

@@ -43,14 +43,18 @@ const publish = (entry, final = false) => {
   post({ type: 'telemetry', trialId: entry.job.trialId, value: { ...telemetry, preview: { ...entry.preview, tick: entry.previewTick, stale: entry.previewTick !== telemetry.tick } } });
 };
 const main = async () => {
+  const preparing = performance.now();
   const masks = await loadProcgenMasks();
+  post({ type: 'ready', queued: waiting.length, residentWorldLimit: workerData.residentWorlds, assetPreparationMs: performance.now() - preparing });
   const admit = async (lease = null) => {
     while (!stopped && (!paused || lease?.admit && stepTarget === lease) && waiting.length && resident.length < workerData.residentWorlds) {
       const job = waiting.shift(), start = performance.now();
+      post({ type: 'preparing', trialId: job.trialId, attemptId: job.attemptId, scenarioId: job.scenario.id, candidateId: job.candidate.id });
       try {
         const trial = await createNodeSurveyTrial(job, masks), entry = { job, trial, start, ticks: 0, lastPublished: -Infinity };
-        resident.push(entry); lease?.selected.set(job.trialId, { trialId: job.trialId, tick: 0, status: 'admitted' }); post({ type: 'started', trialId: job.trialId }); publish(entry);
-      } catch (error) { lease?.selected.set(job.trialId, { trialId: job.trialId, tick: 0, status: 'infrastructure-error' }); await deliver({ type: 'result', result: { trialId: job.trialId, scenarioId: job.scenario.id, candidateId: job.candidate.id, status: 'infrastructure-error', lastTick: 0, error: error.message }, attemptId: job.attemptId }); }
+        resident.push(entry); lease?.selected.set(job.trialId, { trialId: job.trialId, tick: 0, status: 'admitted' }); post({ type: 'started', trialId: job.trialId,
+          attemptId: job.attemptId, scenarioId: trial.scenario.id, candidateId: trial.candidate.id, tick: trial.world.tickIndex }); publish(entry);
+      } catch (error) { lease?.selected.set(job.trialId, { trialId: job.trialId, tick: 0, status: 'infrastructure-error' }); await deliver({ type: 'result', result: { trialId: job.trialId, scenarioId: job.scenario.id, candidateId: job.candidate.id, status: 'infrastructure-error', episodeComplete: false, lastTick: 0, error: error.message }, attemptId: job.attemptId }); }
       await yieldTurn();
     }
     if (lease) lease.admit = false;
@@ -80,7 +84,7 @@ const main = async () => {
               performance: { elapsedMs: performance.now() - entry.start, measuredTicks: entry.ticks, rssBytes: process.memoryUsage().rss, rssScope: 'whole-node-process', memoryLimitScope: 'worker-v8-old-generation' } });
           }
         } catch (error) {
-          status = 'infrastructure-error'; await deliver({ type: 'result', result: { trialId: job.trialId, scenarioId: job.scenario.id, candidateId: job.candidate.id, status, lastTick: trial.world.tickIndex, error: error.message }, attemptId: job.attemptId });
+          status = 'infrastructure-error'; await deliver({ type: 'result', result: { trialId: job.trialId, scenarioId: job.scenario.id, candidateId: job.candidate.id, status, episodeComplete: false, lastTick: trial.world.tickIndex, error: error.message }, attemptId: job.attemptId });
         }
         if (stepTarget?.selected.has(job.trialId)) stepTarget.selected.set(job.trialId, { trialId: job.trialId, tick: trial.world.tickIndex, status: status || 'resident' });
         if (status) { trial.dispose(); resident.splice(index, 1); } else index++;
@@ -97,7 +101,7 @@ const main = async () => {
       }
       if (!resident.length && paused && !stopped) await idle();
     }
-    for (const job of waiting) await deliver({ type: 'result', result: { trialId: job.trialId, scenarioId: job.scenario.id, candidateId: job.candidate.id, status: 'cancelled', lastTick: 0, terminationReason: 'not-admitted' }, attemptId: job.attemptId });
+    for (const job of waiting) await deliver({ type: 'result', result: { trialId: job.trialId, scenarioId: job.scenario.id, candidateId: job.candidate.id, status: 'cancelled', episodeComplete: false, lastTick: 0, terminationReason: 'not-admitted' }, attemptId: job.attemptId });
   } finally { for (const entry of resident) entry.trial.dispose(); }
   post({ type: 'done' }); parentPort.close();
 };

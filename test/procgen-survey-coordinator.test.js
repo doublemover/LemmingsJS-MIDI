@@ -26,10 +26,13 @@ describe('real bounded procgen survey coordination', function() {
     expect(report.status).to.equal('complete'); expect(report.results).to.have.length(18); expect(report.verification).to.have.length(4); expect(report.verification.every(check => check.matched)).to.equal(true);
     const finalist = report.results.find(result => result.validity.deterministic === true); expect((await store.completed(finalist.trialId)).validity.deterministic).to.equal(null);
     expect(report.rankingsTrusted).to.equal(false); expect(states).to.include('held-out');
+    expect(report.admissions).to.have.length(report.persistenceReceipts.length);
+    expect(report.admissions.every(receipt => receipt.status === 'admitted' && receipt.stage && receipt.workerGeneration && receipt.runGeneration)).to.equal(true);
     await store.writeDerivative('report.json', report);
     const firstBytes = store.snapshot().bytes;
     const resumed = await runSurveyExperiment(manifest, store); expect(resumed.status).to.equal('complete'); expect(resumed.execution.admittedTicks).to.equal(0); expect(store.snapshot().bytes).to.equal(firstBytes); expect(resumed.telemetry).to.deep.equal(report.telemetry); expect(resumed.performance).to.deep.equal(report.performance); expect(resumed.priorExecution).to.deep.equal(report.execution);
     expect(resumed.results.map(result => result.finalStateHash)).to.deep.equal(report.results.map(result => result.finalStateHash));
+    expect(resumed.admissions).to.deep.equal(report.admissions); expect(resumed.persistenceReceipts).to.deep.equal(report.persistenceReceipts);
   });
   it('reports cancellation as incomplete and retains explicit queued identities', async () => {
     const manifest = declaration(); directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lemmings-survey-coordinator-'));
