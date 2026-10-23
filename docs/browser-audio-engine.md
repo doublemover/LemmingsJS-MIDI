@@ -543,3 +543,12 @@ its history fills. It cannot block registered executions. New sustained playback
 must use opaque handles. The internal epoch namespace is rejected at the public
 boundary, including strings copied from old receipts. Added lifecycle regression
 fixtures remain unexecuted during the backlog development pass.
+
+Audio reservation release now changes local counters only after a synchronous
+adapter acknowledgment. A throwing or explicitly refusing adapter leaves a
+bounded failed-or-unknown reservation in accounting and revokes its usable
+authority. Repeated release reports the retained failure without calling that
+adapter again. Owner retirement attempts all independent reservations, so one
+failed channel release cannot strand unrelated PCM leases. Nested retirement
+receipts propagate partial/unknown outcomes to the enclosing owner; repeated
+retirement retains the same evidence. New adapter-failure fixtures are deferred.

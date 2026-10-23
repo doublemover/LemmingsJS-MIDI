@@ -3,6 +3,23 @@ import { createResourceBudget } from '../../js/app/resources/ResourceBudget.js';
 import { createAudioResourceLeases, KERNEL_TYPED_BYTES, WORKLET_HOST_ESTIMATE } from '../../js/app/midi-ui/AudioResourceLeases.js';
 
 describe('Audio resource admission', () => {
+  it('retains failed adapter accounting while releasing every independent reservation exactly once', async () => {
+    const ledger = new Map(); let attempts = 0;
+    const adapter = { reserve(record) { ledger.set(record.token, record); return { accountedBytes: record.bytes }; },
+      release({ token }) { attempts++; if (ledger.get(token)?.kind === 'channel-graph') throw new Error('release refused'); ledger.delete(token); return true; } };
+    const audio = createAudioResourceLeases({ resourceBudget: adapter });
+    const channel = audio.reserve({ kind: 'channel-graph', owner: 'game', estimateBytes: 8192 });
+    const pcm = audio.reserveDecodedBuffer({ frames: 48000, channels: 2, owner: 'game' });
+    const cue = audio.reserveDecodedBuffer({ frames: 48000, channels: 1, owner: 'cue' });
+    const receipt = audio.retireOwner('game'); await receipt.completion;
+    expect(receipt.outcome).to.equal('partial'); expect(pcm.isActive()).to.equal(false); expect(cue.isActive()).to.equal(true);
+    expect(channel.releaseState()).to.equal('failed-or-unknown'); expect(channel.isActive()).to.equal(false);
+    expect(audio.diagnostics()).to.include({ reservations: 2, exactBytes: 192000, estimatedBytes: 8192, unreconciledReservations: 1 });
+    expect(attempts).to.equal(2); expect(() => channel.release()).to.throw('release refused'); expect(attempts).to.equal(2);
+    const disposed = audio.dispose(); expect(audio.dispose()).to.equal(disposed); await disposed.completion;
+    expect(disposed.outcome).to.equal('partial'); expect(attempts).to.equal(3);
+    expect(ledger.size).to.equal(1); expect(audio.diagnostics()).to.include({ reservations: 1, estimatedBytes: 8192, exactBytes: 0 });
+  });
   it('reserves exact PCM upper bounds before decoding and exposes native costs as estimates', () => {
     const budget = createResourceBudget({ limitBytes: 2 * 1024 * 1024 }), audio = createAudioResourceLeases({ resourceBudget: budget });
     const buffer = audio.reserveDecodedBuffer({ frames: 48000, channels: 2, sampleRate: 48000, owner: 'game' });

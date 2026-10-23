@@ -354,6 +354,16 @@ describe('ProcGen workstation orchestration', () => {
     expect(receipt.resources[0].status).to.equal('unknown');
     expect(receipt.state).to.equal('retired');
   });
+  it('propagates a nested partial retirement while attempting the remaining independent leaves', async () => {
+    const child = createProcgenRetirementScope(), parent = createProcgenRetirementScope(); let remaining = 0;
+    const receipt = parent.retire([{ name: 'audio-owner', run: () => child.retire([
+      { name: 'adapter-release', run: () => { throw new Error('release refused'); } },
+      { name: 'pcm-release', run: () => { remaining++; } }
+    ]) }, { name: 'storage', run: () => { remaining++; } }]);
+    await receipt.completion; expect(remaining).to.equal(2); expect(receipt.outcome).to.equal('partial');
+    expect(receipt.resources[0]).to.include({ status: 'failed', error: 'adapter-release: release refused' });
+    expect(parent.retire()).to.equal(receipt); expect(child.retire().outcome).to.equal('partial');
+  });
   it('starts an independent silent transport and routes accepted synth pattern performance only after listening', () => {
     const f = setup(); f.studio.bindRuntime();
     expect(f.runtime.lanes.clockDriven).to.equal(true); expect(f.studio.transport.getState().playing).to.equal(true);
