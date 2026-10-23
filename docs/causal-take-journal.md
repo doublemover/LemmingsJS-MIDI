@@ -32,6 +32,10 @@ batch is processed; append later backend evidence with `recordSinkOutcome`.
 Inputs, commands, mappings, timeline changes and markers have dedicated methods.
 Neither capture nor journal failure calls a physical or output sink.
 
+`markGap({kind, firstTick, lastTick, generation, reason})` persists a typed gap
+marker and updates `status().coverage` immediately. A missed physical boundary
+cannot later finalize as a complete take; later valid boundaries can still record.
+
 Call `stop({boundaryState, reason})` before replacing the document. A held voice
 or planned future end is boundary state, not a synthetic original note event.
 `status()` separates admitted sequence, durable sequence, pending bytes and
@@ -47,6 +51,12 @@ cycles, sparse arrays, unsupported prototypes and unsafe property keys fail
 admission. SHA-256 binds immutable source metadata, sequential chunk content and
 finalization evidence including chunk indexes, coverage and checkpoints. This
 detects accidental corruption; it does not authenticate an external author.
+
+`storage.listCausalTakes({limit, cursor})` uses the manifest primary-key index
+and returns bounded summary `items`, `nextCursor` and explicit
+`order: "take-id-ascending"`. The default page is 20, capped at 100; it does not
+load every take or reactivate recording. Pass the returned cursor unchanged to
+read the next page after a reload.
 
 Default bounds are 1 MiB per record, 4 MiB per chunk, 64 records per chunk,
 8 MiB pending and 4,096 chunks. Checkpoints are capped at 32 MiB and manifests at
@@ -81,6 +91,24 @@ at sequence zero; a branch must replay its prefix rather than relabeling an old
 checkpoint as state at the fork boundary. Original take records remain intact.
 
 ## Semantic capture preflight
+
+`createPhysicalScoreProjection({journal})` exposes `queryPhysicalScore` and
+`queryCausalParent`. Score queries require take revision, generation, a physical
+tick coverage range and request identity. They return immutable typed glyphs,
+stable actor/voice strands, lane transfers, exact source pointers, cause ancestry,
+captured clock segments and actual per-sink evidence. Actor/role filters and
+generation/kind chunk indexes keep small queries bounded. Physical source time,
+causal order and interpreted musical time are separate axis modes. A fact without
+captured interpreted time has an unknown musical axis; the query never quantizes
+or reruns its mapping.
+
+Dense display aggregation retains exact event counts, first/last source identity,
+precision counts and expansion handles back to the original source selection.
+It creates no new musical event. Results include source gaps, unknown evidence
+and continuation within a dense batch when the bounded window fills. Parent
+lookup uses the glyph's journal sequence pointer rather than scanning a take.
+Cancellation/superseded request IDs and stale take revisions reject explicitly.
+Both query paths remain paused with hardware output disabled.
 
 `planCausalReinterpretation` compares graph requirements to the capture profile,
 actually inventoried state, captured range and typed coverage gaps. Each result

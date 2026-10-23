@@ -108,4 +108,23 @@ describe('semantic causal take capture and reinterpretation', function() {
       sequence: 1, tick: 10, causeId: 'cause:b', expectedKind: 'physical-batch', actualKind: 'physical-batch' } });
     expect(compareCausalRecords(left, structuredClone(left))).to.deep.equal({ equal: true, comparedRecords: 1 });
   });
+
+  it('persists an explicitly missed source boundary and cannot finalize that take as complete', async () => {
+    const { journal } = setup(), recorder = await createCausalTakeRecorder({ ...metadata('take:missed-batch'), journal });
+    recorder.recordCommittedBatch({ batch: physical(1), intents: [] });
+    const gap = { kind: 'physical-facts', firstTick: 2, lastTick: 2, generation: 1, reason: 'batch-processing-failed' };
+    expect(recorder.markGap(gap).status).to.equal('accepted');
+    expect(recorder.status().coverage).to.deep.equal({ status: 'partial', gaps: [
+      { kind: 'movement-path', firstTick: 1, lastTick: 1, generation: 1, reason: 'endpoint-only-evidence' }, gap
+    ] });
+    recorder.recordCommittedBatch({ batch: physical(3), intents: [] });
+    expect((await recorder.stop()).complete).to.equal(false);
+    const manifest = await journal.openTake('take:missed-batch');
+    expect(manifest.coverage.status).to.equal('partial');
+    const rows = await journal.query({ takeId: 'take:missed-batch', kinds: ['marker'] });
+    expect(rows.records[0].payload).to.deep.equal({ type: 'coverage-gap', gap });
+    expect(() => recorder.markGap({ ...gap, firstTick: -1 })).not.to.throw();
+    const active = await createCausalTakeRecorder({ ...metadata('take:invalid-gap'), journal });
+    expect(() => active.markGap({ ...gap, firstTick: -1 })).to.throw('coverage gap'); await active.stop();
+  });
 });

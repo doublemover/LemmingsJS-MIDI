@@ -85,12 +85,22 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
     if (receipt.status === 'accepted') mappingRevisions.add(validated.revision);
     return receipt;
   };
+  const markGap = gap => {
+    if (stopped) return Object.freeze({ status: 'rejected', reason: 'take-stopped' });
+    if (!name(gap?.kind) || !name(gap.reason) || !Number.isSafeInteger(gap.firstTick) || gap.firstTick < 0 ||
+        !Number.isSafeInteger(gap.lastTick) || gap.lastTick < gap.firstTick || !Number.isSafeInteger(gap.generation) || gap.generation < 0) throw new Error('Invalid causal take coverage gap.');
+    const value = { kind: gap.kind, firstTick: gap.firstTick, lastTick: gap.lastTick, generation: gap.generation, reason: gap.reason };
+    addGap(value);
+    return record('marker', { type: 'coverage-gap', gap: value }, { tick: value.firstTick, generation: value.generation });
+  };
+  const status = () => freezeJournalData({ ...writer.status(), coverage: { status: gaps.some(gap => ['physical-facts', 'all'].includes(gap.kind)) ? 'partial' : 'complete',
+    gaps: gaps.map(gap => ({ ...gap })) } });
   return { recordCommittedBatch, recordIntervention: (command, outcome, boundary) => record('intervention', { command, outcome }, boundary),
     recordInput: (observation, boundary) => record('input-observation', observation, boundary),
     recordTimeline: (timeline, boundary) => { const receipt = record('timeline', timeline, boundary); if (receipt.status === 'accepted') observedStateKinds.add('timeline'); return receipt; }, recordMapping,
     recordSinkOutcome: (outcome, boundary) => record('sink-outcome', outcome, boundary),
-    mark: (marker, boundary) => record('marker', marker, boundary), checkpoint: writer.checkpoint,
-    flush: writer.flush, status: writer.status, canReplaceDocument: writer.canReplaceDocument, stop, manifest: writer.manifest,
+    mark: (marker, boundary) => record('marker', marker, boundary), markGap, checkpoint: writer.checkpoint,
+    flush: writer.flush, status, canReplaceDocument: writer.canReplaceDocument, stop, manifest: writer.manifest,
     discardPending: writer.discardPending };
 };
 

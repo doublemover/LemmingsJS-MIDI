@@ -135,7 +135,7 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
           const hash = await hashJournalText(canonical), chunkId = makeChunkId(manifest.takeId, ordinal);
           const ref = { id: chunkId, takeId: manifest.takeId, ordinal, firstSequence, lastSequence, hash,
             firstTick: Math.min(...records.map(record => record.tick)), lastTick: Math.max(...records.map(record => record.tick)),
-            generations: [...new Set(records.map(record => record.generation))] };
+            generations: [...new Set(records.map(record => record.generation))], kinds: [...new Set(records.map(record => record.kind))] };
           const next = { ...manifest, revision: manifest.revision + 1, durableSequence: lastSequence, admittedSequence,
             chunkCount: ordinal, chunks: [...manifest.chunks, ref], canonicalHash: hash, lastCommitId: `${manifest.takeId}:chunk:${ordinal}:${hash}` };
           await commit({ takeId: manifest.takeId, expectedRevision: manifest.revision, manifest: next,
@@ -204,7 +204,11 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
     try { body = JSON.parse(chunk.canonical); } catch { throw journalError('corrupt-chunk', 'A causal take chunk is not JSON.', { chunkId: ref.id }); }
     if (body.version !== 1 || body.takeId !== ref.takeId || body.ordinal !== ref.ordinal || body.firstSequence !== ref.firstSequence || body.lastSequence !== ref.lastSequence ||
         !Array.isArray(body.records) || !body.records.length || body.records.length > maxChunkRecords || body.lastSequence !== body.firstSequence + body.records.length - 1 ||
-        body.records.some((record, index) => record.sequence !== body.firstSequence + index)) {
+        body.records.some((record, index) => record.sequence !== body.firstSequence + index || !RECORD_KINDS.has(record.kind) ||
+          !Number.isSafeInteger(record.tick) || record.tick < 0 || !Number.isSafeInteger(record.generation) || record.generation < 0) ||
+        ref.firstTick !== Math.min(...body.records.map(record => record.tick)) || ref.lastTick !== Math.max(...body.records.map(record => record.tick)) ||
+        canonicalJournalText(ref.generations).text !== canonicalJournalText([...new Set(body.records.map(record => record.generation))]).text ||
+        ref.kinds && canonicalJournalText(ref.kinds).text !== canonicalJournalText([...new Set(body.records.map(record => record.kind))]).text) {
       throw journalError('corrupt-chunk', 'A causal take chunk has inconsistent sequence metadata.', { chunkId: ref.id });
     }
     return freezeJournalData(body);
@@ -216,9 +220,10 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
       effectiveStatus: verified.effectiveStatus }, { maxBytes: 8 * 1048576 });
   };
   const query = async ({ takeId, takeRevision = null, firstSequence = 1, lastSequence = Number.MAX_SAFE_INTEGER, firstTick = 0,
-    lastTick = Number.MAX_SAFE_INTEGER, kinds = null, signal, limit = 4096 } = {}) => {
+    lastTick = Number.MAX_SAFE_INTEGER, generation = null, kinds = null, signal, limit = 4096 } = {}) => {
     if (!id(takeId) || !Number.isSafeInteger(firstSequence) || firstSequence < 1 || !Number.isSafeInteger(lastSequence) || lastSequence < firstSequence ||
         !Number.isSafeInteger(firstTick) || firstTick < 0 || !Number.isSafeInteger(lastTick) || lastTick < firstTick ||
+        generation != null && (!Number.isSafeInteger(generation) || generation < 0) ||
         kinds && (!Array.isArray(kinds) || kinds.length > RECORD_KINDS.size || kinds.some(kind => !RECORD_KINDS.has(kind))) ||
         !Number.isSafeInteger(limit) || limit < 1 || limit > 65536) throw new Error('Invalid causal take query.');
     const manifest = await openTake(takeId), refs = [...(manifest.prefix?.chunks || []), ...manifest.chunks], records = [];
@@ -227,10 +232,12 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
     for (const ref of refs) {
       if (signal?.aborted) throw journalError('cancelled', 'Causal take query canceled.');
       if (ref.lastSequence < firstSequence || ref.firstSequence > lastSequence || ref.lastTick < firstTick || ref.firstTick > lastTick) continue;
+      if (generation != null && !ref.generations.includes(generation) || kinds && ref.kinds && !ref.kinds.some(kind => kinds.includes(kind))) continue;
       const chunk = await readChunk(ref);
       for (const record of chunk.records) {
         if (manifest.prefix && ref.takeId !== takeId && record.sequence > Math.min(manifest.prefix.throughSequence, ref.throughSequence ?? ref.lastSequence)) continue;
-        if (record.sequence < firstSequence || record.sequence > lastSequence || record.tick < firstTick || record.tick > lastTick || kinds && !kinds.includes(record.kind)) continue;
+        if (record.sequence < firstSequence || record.sequence > lastSequence || record.tick < firstTick || record.tick > lastTick ||
+            generation != null && record.generation !== generation || kinds && !kinds.includes(record.kind)) continue;
         const bytes = canonicalJournalText(record, { maxBytes: maxRecordBytes }).bytes.length;
         if (records.length >= limit || resultBytes + bytes > maxPendingBytes) return freezeJournalData({ takeId, takeRevision: manifest.revision, records, nextSequence: record.sequence, coverage: manifest.coverage });
         resultBytes += bytes;

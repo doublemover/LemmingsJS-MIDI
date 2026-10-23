@@ -71,12 +71,19 @@ test('causal take CAS admits one concurrent writer and unfinished finalization r
     await unfinished.flush(); const stop = await unfinished.stop();
     const reopened = await journal.openTake('take:unfinished');
     const prefix = await journal.verify('take:unfinished');
+    const firstPage = await storage.listCausalTakes({ limit: 1 });
+    const secondPage = await storage.listCausalTakes({ limit: 1, cursor: firstPage.nextCursor });
     storage.close();
     return { states, durableRecords: durable.records.length, durableSequence: durable.records[0].sequence,
-      stop, effectiveStatus: reopened.effectiveStatus, prefix };
+      stop, effectiveStatus: reopened.effectiveStatus, prefix, firstPage, secondPage };
   });
   expect(result.states.sort()).toEqual(['partial', 'recording']);
   expect(result.durableRecords).toBe(1); expect(result.durableSequence).toBe(1);
   expect(result.stop.complete).toBe(false); expect(result.effectiveStatus).toBe('partial');
   expect(result.prefix.verifiedThroughSequence).toBe(1);
+  expect(result.firstPage.items.map(item => item.takeId)).toEqual(['take:race']);
+  expect(result.firstPage.nextCursor).toBe('take:race');
+  expect(result.secondPage.items.map(item => item.takeId)).toEqual(['take:unfinished']);
+  expect(result.secondPage.items[0].complete).toBe(false);
+  expect(result.secondPage.nextCursor).toBe(null);
 });

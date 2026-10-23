@@ -68,7 +68,38 @@ const createCausalJournalStorage = ({ open, available, wrapFailure = error => er
       } catch (error) { reject(wrapFailure(error)); }
     });
   };
-  return { commitCausalTake, loadCausalTake: async id => (await read('takeManifests', id))?.manifest ?? null,
+  const listCausalTakes = async ({ limit = 20, cursor = null } = {}) => {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100 || cursor != null &&
+        (typeof cursor !== 'string' || !cursor || cursor.length > 256)) throw new Error('Invalid causal take list window.');
+    const database = await open();
+    if (!available(database)) throw journalError('storage-unavailable', 'Project storage connection changed.');
+    return new Promise((resolve, reject) => {
+      const items = [];
+      let nextCursor = null;
+      try {
+        const transaction = database.transaction('takeManifests', 'readonly');
+        const request = transaction.objectStore('takeManifests').openCursor();
+        request.onsuccess = () => {
+          const entry = request.result;
+          if (!entry) return;
+          if (cursor != null && entry.key < cursor) { entry.continue(cursor); return; }
+          if (cursor != null && entry.key === cursor) { entry.continue(); return; }
+          if (items.length >= limit) { nextCursor = items.at(-1).takeId; return; }
+          const manifest = entry.value.manifest;
+          items.push(Object.freeze({ takeId: manifest.takeId, takeName: manifest.takeName, documentId: manifest.documentId,
+            revision: manifest.revision, state: manifest.state, complete: manifest.state === 'finalized' && manifest.complete === true,
+            durableSequence: manifest.durableSequence, admittedSequence: manifest.admittedSequence,
+            canonicalHash: manifest.canonicalHash, sourceRange: manifest.coverage?.sourceRange
+              ? Object.freeze({ firstTick: manifest.coverage.sourceRange.firstTick, lastTick: manifest.coverage.sourceRange.lastTick,
+                worldId: manifest.coverage.sourceRange.worldId }) : null }));
+          entry.continue();
+        };
+        transaction.oncomplete = () => resolve(Object.freeze({ items: Object.freeze(items), nextCursor, order: 'take-id-ascending' }));
+        transaction.onabort = () => reject(wrapFailure(transaction.error || request.error));
+      } catch (error) { reject(wrapFailure(error)); }
+    });
+  };
+  return { commitCausalTake, listCausalTakes, loadCausalTake: async id => (await read('takeManifests', id))?.manifest ?? null,
     loadCausalChunk: id => read('takeChunks', id), loadCausalCheckpoint: id => read('takeCheckpoints', id) };
 };
 
