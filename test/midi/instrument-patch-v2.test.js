@@ -19,6 +19,26 @@ const patch = () => ({ schemaVersion: 2, id: 'crystal-lead', revision: 7, name: 
   midiFallback: { bankMSB: 0, bankLSB: 0, program: 10, percussionMap: { 36: 38 } } });
 
 describe('versioned causal instrument patches', () => {
+  it('commits a complete bounded batch atomically, deduplicates identical definitions and rejects conflicts', () => {
+    const registry = createInstrumentPatchRegistry({ maxDefinitions: 2 }), first = patch(), second = { ...patch(), id: 'second' };
+    const invalid = { ...second, parameters: { frequency: Infinity } };
+    expect(() => registry.registerBatch([{ patch: first, descriptor: engine() }, { patch: invalid, descriptor: engine() }])).to.throw();
+    expect(registry.inspect(first.id, first.revision)).to.equal(null);
+    const registered = registry.registerBatch([{ patch: first, descriptor: engine() }, { patch: second, descriptor: engine() }]);
+    expect(registry.registerBatch([{ patch: first, descriptor: engine() }])[0]).to.equal(registered[0]);
+    expect(() => registry.registerBatch([{ patch: { ...first, name: 'changed' }, descriptor: engine() }])).to.throw('immutable identity');
+    expect(() => registry.registerBatch([{ patch: { ...first, id: 'third' }, descriptor: engine() }])).to.throw('capacity');
+    expect(registry.diagnostics().definitions).to.equal(2);
+  });
+  it('pins the engine artifact at registration and preserves conflicting unsupported archives', () => {
+    const registry = createInstrumentPatchRegistry(); registry.register(patch(), engine());
+    const changed = engine(); changed.artifactHash = 'f'.repeat(64);
+    expect(registry.resolve('crystal-lead', 7, { engineDescriptors: [changed] }).status).to.equal('engine-revision-mismatch');
+    const original = registry.retainUnsupportedJson('{"id":"future","revision":1,"source":{"value":2}}');
+    expect(registry.retainUnsupportedJson('{"revision":1,"source":{"value":2},"id":"future"}')).to.equal(original);
+    expect(() => registry.retainUnsupportedJson('{"id":"future","revision":1,"source":{"value":3}}')).to.throw('conflicting immutable bytes');
+    expect(registry.inspect('future', 1)).to.equal(original);
+  });
   it('resolves an immutable local patch and keeps its MIDI fallback separate', () => {
     const registry = createInstrumentPatchRegistry(), descriptor = engine();
     const definition = registry.register(patch(), descriptor);

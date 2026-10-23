@@ -27,3 +27,11 @@ export delivery are distinct boundaries. These APIs do not certify a renderer,
 claim legal clearance, change a performing lane, fetch declared source URLs,
 or install content into a project. Their fixtures remain unexecuted during the
 frontloaded backlog implementation pass.
+
+The existing instrument-patch registry now admits whole bounded batches before
+publishing any definitions. Identical pinned definitions deduplicate; a reused
+ID/revision with different definition or engine hashes conflicts. Future
+read-only archives retain the same immutable conflict rule. Resolution compares
+the current application engine with its registered artifact/schema requirements
+instead of silently accepting a changed engine under the same version label.
+Registry limits count canonical archive bytes separately from actual heap use.

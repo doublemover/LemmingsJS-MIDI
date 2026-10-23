@@ -1,3 +1,5 @@
+import { canonicalDataText, cloneData } from '../../core/CanonicalData.js';
+
 const plain = value => value !== null && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
 const id = value => typeof value === 'string' && /^[a-z][a-z0-9._:-]{0,127}$/i.test(value) &&
   !['__proto__', 'constructor', 'prototype'].includes(value);
@@ -146,9 +148,37 @@ const migrateInstrumentPatchParameters = (source, descriptor, renames, nextRevis
     renamed: Object.freeze(Object.entries(renames).map(([from, to]) => Object.freeze({ from, to }))) }) });
 };
 
-const createInstrumentPatchRegistry = () => {
-  const definitions = new Map(), unsupported = new Map();
+const createInstrumentPatchRegistry = ({ maxDefinitions = 1024, maxUnsupported = 256, maxArchiveBytes = 16 * 1048576 } = {}) => {
+  if (!integer(maxDefinitions, 1, 4096) || !integer(maxUnsupported, 0, 1024) || !integer(maxArchiveBytes, 65536, 64 * 1048576)) throw new Error('Invalid patch registry limits.');
+  const definitions = new Map(), unsupported = new Map(), requirements = new Map(), identities = new Map();
+  let archiveBytes = 0;
   const key = (patchId, revision) => `${patchId}@${revision}`;
+  const encode = value => canonicalDataText(value, { maxBytes: 65536, maxNodes: 8192, domain: 'Instrument patch' });
+  const registerBatch = (entries, { allowIdentical = true } = {}) => {
+    if (!Array.isArray(entries) || !entries.length || entries.length > 256) throw new Error('Invalid patch registration batch.');
+    const staged = [], seen = new Set(); let bytes = archiveBytes, added = 0;
+    for (const entry of entries) {
+      const descriptor = validateEngineDescriptor(entry?.descriptor), validated = validateInstrumentPatchV2(cloneData(entry.patch,
+          { maxBytes: 65536, maxNodes: 8192, domain: 'Instrument patch' }), descriptor), identity = key(validated.id, validated.revision);
+      if (seen.has(identity) || unsupported.has(identity)) throw new Error('Patch revision conflicts with an existing archive or batch.');
+      seen.add(identity);
+      const requirement = Object.freeze({ engineId: descriptor.engineId, engineVersion: descriptor.engineVersion,
+        artifactHash: descriptor.artifactHash, parameterSchemaHash: descriptor.parameterSchemaHash });
+      const encoded = encode({ definition: validated, engineRequirement: requirement }), previous = identities.get(identity);
+      if (previous) {
+        if (!allowIdentical || previous !== encoded.text) throw new Error('Patch revision is already registered with an immutable identity.');
+        staged.push({ identity, definition: definitions.get(identity), existing: true }); continue;
+      }
+      bytes += encoded.bytes.byteLength;
+      if (++added + definitions.size > maxDefinitions || bytes > maxArchiveBytes) throw new Error('Patch registry capacity exceeded.');
+      staged.push({ identity, definition: validated, requirement, encoded });
+    }
+    for (const entry of staged) if (!entry.existing) {
+      definitions.set(entry.identity, entry.definition); requirements.set(entry.identity, entry.requirement); identities.set(entry.identity, entry.encoded.text);
+    }
+    archiveBytes = bytes;
+    return Object.freeze(staged.map(entry => entry.definition));
+  };
   const readOnlyJson = json => {
     if (typeof json !== 'string' || json.length > 65536) throw new Error('Unsupported patch archive exceeds its size limit.');
     const parsed = JSON.parse(json), budget = { remaining: 2048 };
@@ -167,18 +197,26 @@ const createInstrumentPatchRegistry = () => {
   };
   return {
     register(patch, descriptor) {
-      const validated = validateInstrumentPatchV2(patch, descriptor), identity = key(validated.id, validated.revision);
-      if (definitions.has(identity)) throw new Error('Patch revision is already registered.');
-      definitions.set(identity, validated); return validated;
+      return registerBatch([{ patch, descriptor }], { allowIdentical: false })[0];
     },
+    registerBatch,
     retainUnsupportedJson(json) {
       const archived = readOnlyJson(json);
       if (!plain(archived) || !id(archived.id) || !integer(archived.revision, 1, 2147483647)) throw new Error('Invalid archived patch identity.');
       const identity = key(archived.id, archived.revision);
       if (definitions.has(identity)) throw new Error('A playable patch revision is already registered.');
-      unsupported.set(identity, archived); return archived;
+      const encoded = encode(archived), previous = identities.get(identity);
+      if (previous) {
+        if (previous !== encoded.text) throw new Error('Archived patch revision has conflicting immutable bytes.');
+        return unsupported.get(identity);
+      }
+      if (unsupported.size >= maxUnsupported || archiveBytes + encoded.bytes.byteLength > maxArchiveBytes) throw new Error('Patch registry capacity exceeded.');
+      unsupported.set(identity, archived); identities.set(identity, encoded.text); archiveBytes += encoded.bytes.byteLength; return archived;
     },
     inspect(patchId, revision) { return definitions.get(key(patchId, revision)) || unsupported.get(key(patchId, revision)) || null; },
+    inspectEngineRequirement(patchId, revision) { return requirements.get(key(patchId, revision)) || null; },
+    diagnostics: () => Object.freeze({ definitions: definitions.size, unsupported: unsupported.size, archiveBytes, maxDefinitions, maxUnsupported, maxArchiveBytes,
+      accounting: 'canonical-archive-bytes-not-heap-measurement' }),
     resolve(patchId, revision, { engineDescriptors = [], assetHashes = [], qualityTier = 'full', mappingRevision = 0 } = {}) {
       if (!id(qualityTier) || !integer(mappingRevision, 0, 2147483647) || !Array.isArray(engineDescriptors) || engineDescriptors.length > 256 ||
           !Array.isArray(assetHashes) || assetHashes.length > 512 || assetHashes.some(value => !hash(value))) throw new Error('Invalid patch resolution context.');
@@ -190,6 +228,9 @@ const createInstrumentPatchRegistry = () => {
       let descriptor;
       try { descriptor = validateEngineDescriptor(engine); validateInstrumentPatchV2(patch, descriptor); }
       catch (error) { return Object.freeze({ status: 'engine-rejected', patchId, revision, patch, reason: String(error.message) }); }
+      const pinned = requirements.get(key(patchId, revision));
+      if (pinned.artifactHash !== descriptor.artifactHash || pinned.parameterSchemaHash !== descriptor.parameterSchemaHash)
+        return Object.freeze({ status: 'engine-revision-mismatch', patchId, revision, patch, requiredEngine: pinned });
       const available = new Set(assetHashes.map(value => value.toLowerCase())), missing = patch.sampleRefs.filter(sample => sample.required && !available.has(sample.sha256));
       if (missing.length) return Object.freeze({ status: 'asset-missing', patchId, revision, patch,
         missingHashes: Object.freeze(missing.map(sample => sample.sha256)) });
