@@ -14,14 +14,28 @@ const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-b
   descriptorKinds: ['movement-path'], stateKinds: ['voices', 'travel', 'contactSpans', 'timeline'] });
 
 const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId, sourceVersions, captureProfile = PHYSICAL_CAPTURE_PROFILE,
-  boundaryState = {}, initialCheckpoint, mapping, assetRefs = [] } = {}) => {
+  boundaryState = {}, initialCheckpoint, mapping, assetRefs = [], existingWriter = null, prefixCoverage = null, sourceCursor = null } = {}) => {
   const profile = validateCaptureProfile(captureProfile), graph = validateCausalInstrumentGraph(mapping);
-  const writer = await journal.createTake({ takeId, takeName, documentId, sourceVersions, captureProfile: profile, boundaryState,
+  if (existingWriter && (!['appendMany', 'append', 'manifest', 'status', 'checkpoint', 'stop'].every(key => typeof existingWriter[key] === 'function') ||
+      existingWriter.status().state !== 'recording' || existingWriter.manifest().takeId !== takeId || !existingWriter.manifest().prefix ||
+      existingWriter.status().admittedSequence !== existingWriter.manifest().prefix.throughSequence ||
+      sourceCursor?.journalSequence !== existingWriter.manifest().prefix.throughSequence || !name(sourceCursor.worldId) ||
+      !Number.isSafeInteger(sourceCursor.tick) || sourceCursor.tick < 0 || !Number.isSafeInteger(sourceCursor.generation) || sourceCursor.generation < 0 ||
+      !Number.isSafeInteger(sourceCursor.lastCausalSequence) || sourceCursor.lastCausalSequence < 0 ||
+      !Array.isArray(prefixCoverage?.gaps) || prefixCoverage.gaps.length > 4096 || !boundedKinds(prefixCoverage.observedFactKinds) ||
+      !boundedKinds(prefixCoverage.intentKinds) || !Array.isArray(prefixCoverage.mappingRevisions) || prefixCoverage.mappingRevisions.length > 4096 ||
+      prefixCoverage.mappingRevisions.some(revision => !Number.isSafeInteger(revision) || revision < 0) ||
+      canonicalJournalText(existingWriter.manifest().captureProfile).text !== canonicalJournalText(profile).text)) throw new Error('A branch recorder requires its admitted writer and qualified clipped prefix cursor.');
+  if (!existingWriter && (prefixCoverage || sourceCursor)) throw new Error('Inherited take coverage requires an existing branch writer.');
+  const writer = existingWriter || await journal.createTake({ takeId, takeName, documentId, sourceVersions, captureProfile: profile, boundaryState,
     initialCheckpoint, mapping: graph, assetRefs });
-  const observedFactKinds = new Set(), intentKinds = new Set(), mappingRevisions = new Set([graph.revision]);
+  const observedFactKinds = new Set(prefixCoverage?.observedFactKinds || []), intentKinds = new Set(prefixCoverage?.intentKinds || []),
+    mappingRevisions = new Set([...(prefixCoverage?.mappingRevisions || []), graph.revision]);
   const observedStateKinds = new Set(profile.stateKinds.filter(kind => Object.hasOwn(boundaryState, kind) && boundaryState[kind] != null));
-  const gaps = [], batches = new Set(), order = [];
-  let firstTick = null, lastTick = null, lastGeneration = null, nextGenerationBoundary = null, lastSequence = -1, worldId = null, stopped = false;
+  const gaps = (prefixCoverage?.gaps || []).map(gap => ({ ...gap })), batches = new Set(), order = [];
+  let firstTick = prefixCoverage?.sourceRange?.firstTick ?? null, lastTick = sourceCursor?.tick ?? null,
+    lastGeneration = sourceCursor?.generation ?? null, nextGenerationBoundary = null, lastSequence = sourceCursor?.lastCausalSequence ?? -1,
+    worldId = sourceCursor?.worldId ?? null, stopped = false;
   const addGap = gap => {
     const prior = gaps.at(-1);
     if (prior && prior.kind === gap.kind && prior.reason === gap.reason && prior.generation === gap.generation && prior.lastTick + 1 === gap.firstTick) prior.lastTick = gap.lastTick;

@@ -301,15 +301,18 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
       checkpoint: JSON.parse(checkpoint.canonical), checkpointSequence: ref.sequence, targetSequence: sequence,
       records: result.records, nextSequence: result.nextSequence, inspection: manifest.inspection });
   };
-  const branch = async ({ parentTakeId, throughSequence, takeId, takeName, documentId } = {}) => {
+  const branch = async ({ parentTakeId, parentRevision = null, throughSequence, takeId, takeName, documentId, boundaryQualification = null } = {}) => {
     const parent = await openTake(parentTakeId);
+    if (parentRevision != null && parent.revision !== parentRevision) throw journalError('stale-revision', 'The branch parent changed after boundary qualification.');
     if (!Number.isSafeInteger(throughSequence) || throughSequence < 0 || throughSequence > parent.durableSequence) throw new Error('Branch boundary is outside the durable prefix.');
     await verify(parentTakeId);
     const chunks = [...(parent.prefix?.chunks || []), ...parent.chunks].filter(ref => ref.firstSequence <= throughSequence)
       .map(ref => ({ ...ref, throughSequence: Math.min(throughSequence, ref.throughSequence ?? ref.lastSequence) }));
     if (chunks.length > maxChunks) throw new Error('Branch prefix index exceeds its budget.');
     const checkpoint = await storage.loadCausalCheckpoint(parent.initialCheckpoint.id);
-    const prefix = { takeId: parentTakeId, revision: parent.revision, throughSequence, chunks,
+    if (boundaryQualification && (boundaryQualification.sourceTakeId !== parentTakeId || boundaryQualification.sourceCanonicalHash !== parent.canonicalHash ||
+        boundaryQualification.sourceTakeRevision !== parent.revision || boundaryQualification.throughSequence !== throughSequence)) throw journalError('qualification-mismatch', 'Branch qualification does not bind this parent prefix.');
+    const prefix = { takeId: parentTakeId, revision: parent.revision, throughSequence, chunks, boundaryQualification,
       parentHash: parent.canonicalHash, mode: 'immutable-prefix' };
     return createTake({ takeId, takeName: takeName || `${(parent.takeName || 'Take').slice(0, 113)} branch`, documentId: documentId || parent.documentId, sourceVersions: parent.sourceVersions,
       captureProfile: parent.captureProfile, boundaryState: parent.boundaryState, initialCheckpoint: JSON.parse(checkpoint.canonical),

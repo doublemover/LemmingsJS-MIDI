@@ -30,14 +30,20 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
     let released = false;
     return () => { if (!released) { released = true; resourceBudget?.release({ token, owner }); } };
   };
-  const inspectTake = async ({ takeId, mode = 'compatibility', signal } = {}) => {
+  const inspectTake = async ({ takeId, throughSequence = null, mode = 'compatibility', signal } = {}) => {
     if (!id(takeId) || !['compatibility', 'exact'].includes(mode)) throw new Error('Invalid re-performance request.');
     check(signal);
     const manifest = await journal.openTake(takeId), reasons = [];
     if (!equal(manifest.sourceVersions, runtimeVersions)) reasons.push('source-version-mismatch');
     if (!equal(manifest.assetRefs, runtimeAssets)) reasons.push('asset-identity-mismatch');
-    if (manifest.coverage?.gaps?.some(gap => ['all', 'physical-facts'].includes(gap.kind))) reasons.push('incomplete-physical-source');
     const initial = await journal.readCheckpoint(manifest.initialCheckpoint);
+    const target = throughSequence ?? manifest.durableSequence;
+    if (!Number.isSafeInteger(target) || target < 0 || target > manifest.durableSequence) throw new Error('Re-performance target is outside the durable prefix.');
+    const boundary = target ? await journal.query({ takeId, takeRevision: manifest.revision, firstSequence: target, lastSequence: target, limit: 1, signal }) : null;
+    const throughTick = target ? boundary?.records[0]?.tick : worldTick(initial.world);
+    if (!Number.isSafeInteger(throughTick)) reasons.push('missing-replay-boundary');
+    if (manifest.coverage?.gaps?.some(gap => ['all', 'physical-facts'].includes(gap.kind) &&
+        (gap.firstSequence != null ? gap.firstSequence <= target : gap.firstTick <= throughTick && gap.lastTick >= worldTick(initial.world)))) reasons.push('incomplete-physical-source');
     const checkpoint = inspectProcgenCheckpoint(initial.world, { assetRefs: runtimeAssets, generator: runtimeVersions.generator });
     if (checkpoint.continuation === 'unsupported') reasons.push(...checkpoint.reasons);
     if (initial.engine?.version !== 1) reasons.push('missing-semantic-engine-checkpoint');
@@ -47,7 +53,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
     check(signal);
     return cloneJournalData({ schema: 'lemmings-reperformance-preflight', version: 1, takeId, takeRevision: manifest.revision,
       status: reasons.length ? 'unsupported' : 'compatible-current-runtime', reasons, mode, exactQualified: false,
-      executionIdentity: EXECUTION_IDENTITY, sourceCanonicalHash: manifest.canonicalHash, checkpoint,
+      executionIdentity: EXECUTION_IDENTITY, sourceCanonicalHash: manifest.canonicalHash, checkpoint, targetSequence: target, throughTick,
       artifactIntegrity: 'checkpoint-hash-verified; chunk-chain-verification-required',
       sourceVersions: manifest.sourceVersions, assetRefs: manifest.assetRefs });
   };
@@ -58,7 +64,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
   const runReperformance = async ({ takeId, throughSequence = null, executionEpoch, mode = 'compatibility', signal,
     retainWorld = false, useValidatedCheckpoint = true, onProgress = () => {} } = {}, releaseWorkspace = () => {}) => {
     if (!id(executionEpoch) || typeof onProgress !== 'function') throw new Error('Re-performance requires a separate execution epoch.');
-    const qualification = await inspectTake({ takeId, mode, signal });
+    const qualification = await inspectTake({ takeId, throughSequence, mode, signal });
     if (qualification.status === 'unsupported') return { receipt: qualification, session: null };
     const manifest = await journal.openTake(takeId), verified = await journal.verify(takeId);
     const target = throughSequence ?? manifest.durableSequence;
@@ -72,6 +78,11 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
     let lastSequence = ref.sequence, ticks = 0, comparedBatches = 0, comparedIntents = 0, lastComparedTick = worldTick(initial.world),
       physicalHash = qualified?.physicalHash || null, checkpointComparisons = [], divergence = null, lastYieldTicks = 0;
     const generated = [], expectedIntents = new Map();
+    const observedFacts = new Set(qualified?.inventory?.observedFactKinds || []), observedIntents = new Set(qualified?.inventory?.intentKinds || []),
+      mappingRevisions = new Set(qualified?.inventory?.mappingRevisions || [current.graph.revision]);
+    let firstSourceTick = qualified?.inventory?.sourceRange?.firstTick ?? null, sourceWorldId = qualified?.inventory?.sourceRange?.worldId ?? null;
+    const inventory = () => ({ observedFactKinds: [...observedFacts].sort(), intentKinds: [...observedIntents].sort(),
+      mappingRevisions: [...mappingRevisions], sourceRange: { firstTick: firstSourceTick, lastTick: lastComparedTick, worldId: sourceWorldId } });
     const release = () => {
       if (released) return; released = true;
       if (listener) world?.soundEvents?.onBatch?.off(listener);
@@ -90,7 +101,8 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
       checkpointComparisons.push(result);
       if (!matched) return { sequence: checkpointRef.sequence, tick: world.tickIndex, causeId: null, kind: 'component-checkpoint', detail: result };
       const key = scope + checkpointRef.id;
-      checkpointQualifications.delete(key); checkpointQualifications.set(key, { scope, ref: checkpointRef, graph: current.graph, physicalHash: actualHash });
+      if (generated.length || expectedIntents.size) return null;
+      checkpointQualifications.delete(key); checkpointQualifications.set(key, { scope, ref: checkpointRef, graph: current.graph, physicalHash: actualHash, inventory: inventory() });
       if (checkpointQualifications.size > maxQualifiedCheckpoints) checkpointQualifications.delete(checkpointQualifications.keys().next().value);
       return null;
     };
@@ -137,7 +149,9 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
             if (!actual) throw journalError('missing-replay-batch', 'Physical stepping produced no committed batch.', { firstSequence: record.sequence, tick: record.tick });
             const comparison = compareCausalRecords([record], [{ ...record, payload: actual.batch }]);
             if (!comparison.equal) { divergence = { ...comparison.firstDivergence, kind: 'physical-batch' }; break; }
-            comparedBatches++; lastComparedTick = record.tick; expectedIntents.set(actual.batch.batchId, actual.intents);
+            comparedBatches++; lastComparedTick = record.tick; firstSourceTick ??= record.tick; sourceWorldId = actual.batch.worldId;
+            for (const fact of actual.batch.facts) if (fact.kind) observedFacts.add(fact.kind);
+            expectedIntents.set(actual.batch.batchId, actual.intents);
             if (expectedIntents.size > 8) throw journalError('replay-overflow', 'Musical intent companion records are missing.');
           } else if (record.kind === 'musical-intents') {
             const actual = expectedIntents.get(record.payload.batchId);
@@ -147,7 +161,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
               divergence = { sequence: record.sequence, tick: record.tick, causeId: original?.sourceEventIds?.[0] || replayed?.sourceEventIds?.[0] || null,
                 intentId: original?.intentId || replayed?.intentId || null, kind: 'musical-intents' }; break;
             }
-            comparedIntents += actual.length; expectedIntents.delete(record.payload.batchId);
+            comparedIntents += actual.length; for (const intent of actual) observedIntents.add(intent.kind); expectedIntents.delete(record.payload.batchId);
           } else if (record.kind === 'intervention') {
             if (record.tick !== world.tickIndex || record.generation !== world.generation) throw journalError('input-boundary-mismatch', 'Intervention was not captured at the current replay boundary.', { firstSequence: record.sequence, tick: record.tick });
             const outcome = world.enqueueIntervention(record.payload.command);
@@ -156,6 +170,8 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
           } else if (record.kind === 'mapping') {
             if (record.tick !== world.tickIndex || record.generation !== world.generation) throw journalError('input-boundary-mismatch', 'Mapping changed outside its recorded source boundary.', { firstSequence: record.sequence });
             current.graph = validateCausalInstrumentGraph(record.payload);
+            mappingRevisions.add(current.graph.revision);
+            if (mappingRevisions.size > 4096) throw journalError('replay-capacity', 'Mapping revision inventory reached its bound.', { firstSequence: record.sequence });
           }
           else if (record.kind === 'timeline') {
             if (record.tick !== world.tickIndex || record.generation !== world.generation) throw journalError('input-boundary-mismatch', 'Tempo changed outside its recorded source boundary.', { firstSequence: record.sequence });
@@ -187,12 +203,22 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
         firstDivergence: divergence, verifiedDurableSequence: verified.verifiedThroughSequence, fromCheckpointSequence: ref.sequence,
         throughSequence: lastSequence, targetSequence: target, tick: lastComparedTick, ticksExecuted: ticks, comparedBatches, comparedIntents,
         physicsStateSchema: 2, actualPhysicsHash: physicalHash, finalWorldParity: finalQualified && !divergence ? 'matched-at-captured-component-checkpoint' : 'unknown-no-validated-final-component-checkpoint',
-        checkpointComparisons, boundaryComplete, sourceVersions: runtimeVersions, assetRefs: runtimeAssets,
+        checkpointComparisons, boundaryComplete, captureInventory: inventory(), sourceVersions: runtimeVersions, assetRefs: runtimeAssets,
         artifactIntegrity: { status: 'verified-durable-chain', initialCheckpointHash: manifest.initialCheckpoint.hash, canonicalHash: verified.canonicalHash },
         inspection: { paused: true, recording: false, hardware: false, thru: false, physicalLayers: false } });
       if (!retainWorld || divergence) { release(); return { receipt, session: null }; }
       if (listener) world.soundEvents.onBatch.off(listener); listener = null;
       return { receipt, session: { world, engine, clock, executionEpoch, graph: () => current.graph,
+        replayState: () => ({ version: 1, bpm: current.bpm, scoreTimeline: initial.replay.scoreTimeline }),
+        configureMapping: graph => {
+          const nextGraph = validateCausalInstrumentGraph(graph);
+          if (nextGraph.revision <= current.graph.revision) throw new Error('A physical branch mapping needs a new revision.');
+          current.graph = nextGraph;
+        },
+        configureTempo: bpm => {
+          if (!Number.isFinite(bpm) || bpm <= 0 || bpm > 1000000) throw new Error('Invalid physical branch tempo.');
+          current.bpm = bpm;
+        },
         snapshot: () => {
           if (released) throw journalError('session-released', 'The re-performance world has been released.');
           return { world: captureProcgenCheckpoint(world), engine: engine.snapshot(), timeline: initial.replay.scoreTimeline ? clock.snapshot() : null,

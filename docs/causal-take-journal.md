@@ -135,6 +135,28 @@ Each ancestor cutoff survives subsequent branches. The initial checkpoint stays
 at sequence zero; a branch must replay its prefix rather than relabeling an old
 checkpoint as state at the fork boundary. Original take records remain intact.
 
+`createCausalPhysicalBranch({journal, reperformance, parentTakeId,
+throughSequence, takeId, takeName, executionEpoch})` coordinates physical
+continuation. It re-performs the selected prefix, requires a complete batch and
+intent boundary, stores the compared boundary qualification in immutable lineage,
+and writes a genuinely computed component checkpoint. The parent revision/hash
+must still match. Original source/event/voice IDs remain historical identity;
+the new execution epoch is separate sink ownership. Exact mode remains refused
+while active execution identity is unbound.
+
+The returned branch starts paused without output sinks. `advance({ticks, signal})`
+executes a bounded number of ordinary world steps. Commands, tempo, speed, mapping
+changes and markers go through its dedicated methods into the same semantic
+recorder. Prefix capture inventory comes from actually compared records: later
+parent mapping revisions and gaps are clipped out of an earlier fork. Repeated
+forks preserve every ancestor chunk cutoff. `stop()` persists final component
+state; `dispose()` releases the isolated world and workspace after finalization.
+An undurable active tail requires an explicit discard reason before ownership
+can be released. Failed preparation has not activated physical continuation and
+releases only its unperformed provisional metadata. Cancellation retains the
+last committed source boundary, and runtime retirement is never captured as an
+observed musical release.
+
 ## Semantic capture preflight
 
 `createPhysicalScoreProjection({journal})` exposes `queryPhysicalScore` and
