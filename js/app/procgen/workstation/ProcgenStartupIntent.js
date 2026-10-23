@@ -37,23 +37,36 @@ export async function loadProcgenStartupSource(intent, { storage, signal, timeou
   signal?.throwIfAborted();
   if (!['document', 'recovery'].includes(intent?.mode)) return { session: null, documentIdentity: null };
   if (!storage || !Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 120000) throw new Error('Invalid startup source owner');
-  let timer, rejectInterrupted;
+  const controller = new AbortController();
+  let timer, rejectInterrupted, handedOff = false;
   const interrupted = new Promise((_resolve, reject) => { rejectInterrupted = reject; });
-  const abort = () => rejectInterrupted(signal.reason || new Error('Startup source loading canceled'));
+  const abort = () => controller.abort(signal.reason || new Error('Startup source loading canceled'));
+  controller.signal.addEventListener('abort', () => rejectInterrupted(controller.signal.reason), { once: true });
   signal?.addEventListener('abort', abort, { once: true });
-  timer = setTimeout(() => rejectInterrupted(new Error('Startup source loading deadline exceeded')), timeoutMs);
-  try {
-    const source = await Promise.race([Promise.resolve().then(async () => {
-      signal?.throwIfAborted();
+  const cleanup = () => { clearTimeout(timer); signal?.removeEventListener('abort', abort); };
+  timer = setTimeout(() => controller.abort(new Error('Startup source loading deadline exceeded')), timeoutMs);
+  const work = Promise.resolve().then(async () => {
+    controller.signal.throwIfAborted(); let owner = null;
+    try {
       if (intent.mode === 'document') {
-        const record = await storage.loadDocument(intent.documentId);
-        return { session: record.session, documentIdentity: { id: record.id, revision: record.revision } };
-      }
-      const session = await storage.loadRecovery({ requireVerified: true, signal }); if (!session) throw new Error('No verified recovery is available');
-      return { session, documentIdentity: null };
-    }), interrupted]);
-    signal?.throwIfAborted(); return source;
-  } finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); }
+        owner = storage.loadDocumentOwned ? await storage.loadDocumentOwned(intent.documentId, { signal: controller.signal }) : await storage.loadDocument(intent.documentId);
+      } else if (storage.loadRecoveryOwned) owner = await storage.loadRecoveryOwned({ requireVerified: true, signal: controller.signal });
+      else { const session = await storage.loadRecovery({ requireVerified: true, signal: controller.signal }); owner = session && { session }; }
+      if (!owner) throw new Error('No verified recovery is available');
+      controller.signal.throwIfAborted();
+      let captured = owner; owner = null;
+      const ownedSignal = captured.signal, ownerAborted = () => controller.abort(ownedSignal.reason);
+      ownedSignal?.addEventListener('abort', ownerAborted, { once: true }); if (ownedSignal?.aborted) ownerAborted();
+      return { get session() { controller.signal.throwIfAborted(); if (!captured) throw new Error('Startup source was released'); return captured.session; }, signal: controller.signal,
+        documentIdentity: intent.mode === 'document' ? { id: captured.id, revision: captured.revision } : null,
+        release() { if (!captured) return; const previous = captured; captured = null; ownedSignal?.removeEventListener('abort', ownerAborted); try { previous.release?.(); } finally { cleanup(); } } };
+    } finally { owner?.release?.(); }
+  });
+  work.then(source => { if (controller.signal.aborted) source.release(); }, () => {});
+  try {
+    const source = await Promise.race([work, interrupted]);
+    controller.signal.throwIfAborted(); handedOff = true; clearTimeout(timer); return source;
+  } finally { if (!handedOff) { controller.abort(new Error('Startup source owner retired')); cleanup(); } }
 }
 const boundedNumber = (params, key, min, max, integer = false) => {
   if (!params.has(key)) return null;

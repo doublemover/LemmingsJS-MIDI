@@ -108,10 +108,10 @@
       "license": "NOASSERTION",
       "reproductionStatus": "first-party-immutable-module-worker",
       "classification": "source",
-      "entryPoints": ["js/app/procgen/workstation/ProcgenWorkstation.js"],
+      "entryPoints": ["js/app/procgen/workstation/ProcgenWorkstation.js", "js/app/procgen/workstation/ProcgenSessionStorage.js", "js/data/file-provider/FileProviderFetch.js"],
       "files": ["js/app/resources/BackgroundWorkerAdmission.js", "js/app/resources/BackgroundJobKernels.js", "js/app/resources/BackgroundJobService.js", "js/app/resources/BackgroundJobWorker.js"],
       "fileCount": 4,
-      "sha256": "1662277b4d60e1f6db6f88b21207d4bdbf0cf1a55a9f1a1bbccb974587bbdf10"
+      "sha256": "f7e8ed2d9001db088b8ca799085a43ef83ecc6c33f64da9a07f07cc0dcbabc78"
     },
     {
       "id": "lemmings-timing-worker-source",

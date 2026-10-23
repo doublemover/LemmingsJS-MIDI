@@ -50,15 +50,24 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
     signal?.addEventListener('abort', cancel, { once: true }); lifetime.signal.addEventListener('abort', cancel, { once: true });
     if (signal?.aborted || lifetime.signal.aborted) cancel();
     let computed = null, snapshot = null;
-    const release = () => { signal?.removeEventListener('abort', cancel); lifetime.signal.removeEventListener('abort', cancel); computed?.release(); snapshot = null; };
+    const jobAborted = () => controller.abort(computed?.signal?.reason);
+    const release = () => { signal?.removeEventListener('abort', cancel); lifetime.signal.removeEventListener('abort', cancel); computed?.signal?.removeEventListener('abort', jobAborted); computed?.release(); snapshot = null; };
     try {
       if (checksumSequence === Number.MAX_SAFE_INTEGER) throw new Error('Recovery checksum operation identity exhausted.');
       computed = await backgroundJobs.compute({ kind: 'recovery-checksum', ownerId: 'procgen-recovery-storage', ownerEpoch: generation,
         sourceRevision: `recovery:${++checksumSequence}`, inputBytes: 0, estimatedPeakBytes: 128 * 1048576 + Math.max(1, Math.min(1024, laneCount || 1024)) * 131072,
-        priority: 'recovery', budgetAdapter, signal: controller.signal, isCurrent: () => !retired,
-        prepareInput: async () => { snapshot = await prepareSnapshot(); validateProcgenSession(snapshot); return snapshot; } });
-      return { checksum: computed.value, snapshot, signal: controller.signal, release };
+        priority: 'recovery', budgetAdapter, signal: controller.signal, retainInput: true, isCurrent: () => !retired,
+        prepareInput: async () => { snapshot = await prepareSnapshot(); validateProcgenSession(snapshot); return snapshot; }, releasePreparedInput: () => { snapshot = null; } });
+      computed.signal?.addEventListener('abort', jobAborted, { once: true }); if (computed.signal?.aborted) jobAborted();
+      controller.signal.throwIfAborted();
+      return { checksum: computed.value, get snapshot() { controller.signal.throwIfAborted(); if (!snapshot) throw namedError('AbortError', 'Checkpoint source was released'); return snapshot; }, signal: controller.signal, release };
     } catch (error) { release(); throw error; }
+  };
+  const ownedSource = (computed, metadata) => {
+    let owner = computed;
+    return Object.freeze({ schema: 'procgen-owned-source/v1', ...metadata, signal: computed.signal,
+      get session() { if (!owner) throw namedError('AbortError', 'Checkpoint source was released'); return owner.snapshot; },
+      release() { if (!owner) return; const previous = owner; owner = null; previous.release(); } });
   };
   const report = (next, error = null) => { state = next; lastError = error; onState({ state, error, generation }); };
   const invalidate = (db, reason) => {
@@ -234,6 +243,19 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
       if (!record || record.kind !== 'document') throw new Error('Project not found.');
       return { id, revision: record.revision, name: record.name, savedAt: record.savedAt, session: validateProcgenSession(record.session) };
     },
+    async loadDocumentOwned(id, { signal } = {}) {
+      let record, computed;
+      try {
+        computed = await checksumSnapshot(async () => {
+          record = await operation('readonly', store => store.get(id));
+          if (!record || record.kind !== 'document') throw new Error('Project not found.');
+          return record.session;
+        }, { signal });
+        const result = ownedSource(computed, { kind: 'document', id, revision: record.revision, name: record.name, savedAt: record.savedAt,
+          checksum: computed.checksum, verification: 'stored-document-snapshot' });
+        record = null; computed = null; return result;
+      } finally { computed?.release(); }
+    },
     async listDocuments() {
       await migrateLegacy();
       const records = await operation('readonly', store => store.getAll(), 'projectMetadata');
@@ -272,6 +294,7 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
       });
     },
     async saveRecovery(source, { signal, documentRevision = null, tick = null, laneCount = source?.world?.laneCount, snapshotMetadata = null } = {}) {
+      if (typeof globalThis.structuredClone !== 'function') throw new Error('This browser cannot create an isolated recovery snapshot. Export the project to keep a copy.');
       if (typeof source !== 'function') validateProcgenSession(source);
       if (snapshotMetadata != null && typeof snapshotMetadata !== 'function') throw new TypeError('Recovery metadata requires an owned snapshot callback.');
       const computed = await checksumSnapshot(async () => {
@@ -309,7 +332,7 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
         });
       } finally { computed.release(); }
     },
-    async loadRecovery({ requireVerified = false, signal } = {}) {
+    async loadRecovery({ requireVerified = false, signal, owned = false } = {}) {
       await migrateLegacy();
       const head = await operation('readonly', store => store.get('recovery:head'));
       const slots = head && Number.isSafeInteger(head.generation) && head.generation >= 0 ? [head.generation % 2, 1 - head.generation % 2] : [];
@@ -323,15 +346,26 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
             try { validateProcgenSession(record.session); } catch { throw namedError('RecoveryCandidateError', 'Recovery candidate has an unsupported session header.'); }
             return record.session;
           }, { signal });
-          if (computed.checksum === record.checksum) return validateProcgenSession(record.session);
+          if (computed.checksum === record.checksum) {
+            if (owned) {
+              const result = ownedSource(computed, { kind: 'recovery', generation: record.generation, checksum: record.checksum, verification: 'checksum-verified-recovery' });
+              record = null; computed = null; return result;
+            }
+            return validateProcgenSession(record.session);
+          }
         } catch (error) {
           if (retired || signal?.aborted || error.name !== 'RecoveryCandidateError' && !(error.name === 'BackgroundJobError' && error.code === 'invalid-data')) throw error;
         } finally { computed?.release(); }
       }
+      if (requireVerified || owned) {
+        const legacyCount = await operation('readonly', store => store.count('recovery:latest'));
+        if (legacyCount) throw new Error('Legacy recovery has no checksum; open it explicitly as a legacy project.');
+        return null;
+      }
       const legacy = await operation('readonly', store => store.get('recovery:latest'));
-      if (legacy && requireVerified) throw new Error('Legacy recovery has no checksum; open it explicitly as a legacy project.');
       return legacy ? validateProcgenSession(legacy.session) : null;
     },
+    loadRecoveryOwned(options = {}) { return this.loadRecovery({ ...options, requireVerified: true, owned: true }); },
     async removeRecovery() { await operation('readwrite', store => {
       for (const id of ['recovery:latest', 'recovery:head', 'recovery:slot:0']) store.delete(id);
       return store.delete('recovery:slot:1');

@@ -14,9 +14,17 @@ describe('owned pure background computations', () => {
     const result = await jobs.compute(specification());
     expect(result.value).to.deep.equal({ value: 12 }); expect(result.receipt).to.include({ state: 'computed', publication: 'not-committed', method: 'bounded-main-thread-fallback' });
     expect(admission.diagnostics()).to.include({ activeWorkers: 0, retainedResults: 1 });
+    expect(result.receipt.retainedBytes).to.be.lessThan(1048576);
     expect(admission.diagnostics().memory.accountedBytes).to.be.greaterThan(0);
     result.release(); result.release(); expect(admission.diagnostics().memory.accountedBytes).to.equal(0);
     expect(() => result.value).to.throw('released'); jobs.dispose(); admission.dispose();
+  });
+  it('invalidates a canceled computed result while retaining its memory until the consumer acknowledges release', async () => {
+    const admission = createBackgroundWorkerAdmission(), jobs = createBackgroundJobService({ admission, Worker: null, yieldTask: async () => {} }), canceled = new AbortController();
+    const result = await jobs.compute(specification({ signal: canceled.signal, retainInput: true })); canceled.abort();
+    expect(result.signal.aborted).to.equal(true); expect(() => result.value).to.throw();
+    expect(admission.diagnostics().memory.accountedBytes).to.be.greaterThan(0);
+    result.release(); expect(admission.diagnostics().memory.accountedBytes).to.equal(0); jobs.dispose(); admission.dispose();
   });
   it('reserves before preparing input and rejects worker-free oversized parsing honestly', async () => {
     const admission = createBackgroundWorkerAdmission({ maxWorkers: 1 }), jobs = createBackgroundJobService({ admission, Worker: null }); let prepared = 0;

@@ -174,7 +174,7 @@ const installProcgenBootListeners = () => {
   };
   const boot = async () => {
     const controller = new AbortController(); startupController?.abort(); startupController = controller;
-    startupPending = true; startupBlocked = null; let startupStorage = null, storageTransferred = false;
+    startupPending = true; startupBlocked = null; let startupStorage = null, startupSource = null, storageTransferred = false;
     try {
       const params = new URLSearchParams(window.location.search);
       const startupIntent = parseProcgenStartupIntent(params);
@@ -189,15 +189,15 @@ const installProcgenBootListeners = () => {
           procgenUi.settings.seed = resolveProcgenSeed(params);
           try {
             startupStorage = createProcgenSessionStorage(window.indexedDB, { budgetAdapter: procgenResourceBudget });
-            const startupSource = await loadProcgenStartupSource(startupIntent, { storage: startupStorage, signal: controller.signal });
+            startupSource = await loadProcgenStartupSource(startupIntent, { storage: startupStorage, signal: controller.signal });
             controller.signal.throwIfAborted();
             procgenStudio = createProcgenWorkstation({ document, window, legacy: procgenUi, getRuntime: () => activeProcgenRuntime,
-              restart: init, resourceBudget: procgenResourceBudget, startupIntent, startupSource, storage: startupStorage });
+              restart: options => init({ ...options, startupOwner: controller.signal }), resourceBudget: procgenResourceBudget, startupIntent, startupSource, storage: startupStorage });
             storageTransferred = true;
             procgenStudio.prepareSettings();
-            startupPending = false;
-            if (startupSource.session) await procgenStudio.loadSession(startupSource.session);
-            else await init();
+            if (startupSource.session) await procgenStudio.loadSession(startupSource.session, null, { signal: startupSource.signal || controller.signal });
+            else await init({ startupOwner: controller.signal, lease: { signal: controller.signal } });
+            controller.signal.throwIfAborted(); startupSource.signal?.throwIfAborted();
           } catch (error) {
             if (!controller.signal.aborted) reportStartupFailure(error);
             return;
@@ -213,6 +213,7 @@ const installProcgenBootListeners = () => {
     } catch (error) {
       if (!controller.signal.aborted) reportStartupFailure(error);
     } finally {
+      startupSource?.release?.(); startupSource = null;
       if (!storageTransferred) startupStorage?.close();
       if (startupController === controller) { startupController = null; startupPending = false; }
     }
@@ -447,7 +448,7 @@ const initWorkstation = async ({ session, lease } = {}) => {
 };
 
 const init = async (options = {}) => {
-  if (startupPending || startupBlocked) throw startupBlocked || new Error('Wait for the startup plan to finish preparing.');
+  if (startupPending && options.startupOwner !== startupController?.signal || startupBlocked) throw startupBlocked || new Error('Wait for the startup plan to finish preparing.');
   if (procgenStudio) return initWorkstation(options);
   disposeProcgenRuntime();
   analytics = createAnalyticsService({

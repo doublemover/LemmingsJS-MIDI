@@ -67,6 +67,17 @@ describe('ProcGen startup intent', () => {
     expect(error.name).to.equal('AbortError'); resolve({ id: 'doc:fixture', revision: 1, session: {} });
     expect(reads).to.equal(1);
   });
+  it('carries owned startup source lifetime through handoff and releases a late canceled read', async () => {
+    const intent = parseProcgenStartupIntent('?startup=document&document=doc%3Afixture'); let released = 0;
+    const handle = { id: 'doc:fixture', revision: 1, session: { name: 'owned' }, release() { released++; } };
+    const source = await loadProcgenStartupSource(intent, { storage: { loadDocumentOwned: async () => handle } });
+    expect(source.session.name).to.equal('owned'); expect(released).to.equal(0); source.release(); source.release(); expect(released).to.equal(1);
+    expect(() => source.session).to.throw('released');
+    const canceled = new AbortController(); let resolve;
+    const pending = loadProcgenStartupSource(intent, { signal: canceled.signal, storage: { loadDocumentOwned: () => new Promise(done => { resolve = done; }) } });
+    await Promise.resolve(); canceled.abort(); let error; try { await pending; } catch (failure) { error = failure; }
+    expect(error.name).to.equal('AbortError'); resolve(handle); await new Promise(done => setTimeout(done, 0)); expect(released).to.equal(2);
+  });
   it('rejects malformed physical recipe values instead of quietly blending preferences', () => {
     for (const search of ['?lanes=3.5', '?lanes=0', '?lanes=', '?speed=not-a-number', '?pack=7', '?seed=', '?laneHeight=nope', '?musicMode=weird', '?preset=unknown'])
       expect(() => resolveProcgenStartupIntent({ ...base, search, saved })).to.throw('Invalid recipe');

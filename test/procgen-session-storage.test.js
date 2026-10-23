@@ -22,6 +22,7 @@ function fakeIndexedDb({ failFirst = false, blocked = false, pending = false } =
           return {
             put(record) { const request = { result: record.id }; schedule(() => values.set(record.id, record)); return request; },
             get(id) { const request = { result: null }; schedule(() => { request.result = values.get(id); request.onsuccess?.(); }); return request; },
+            count(id) { const request = { result: null }; schedule(() => { request.result = values.has(id) ? 1 : 0; request.onsuccess?.(); }); return request; },
             getAll() { const request = { result: null }; schedule(() => { reads[name]++; request.result = [...values.values()]; }); return request; },
             delete(id) { const request = { result: null }; schedule(() => values.delete(id)); return request; },
             openCursor(range) {
@@ -66,6 +67,18 @@ function fakeIndexedDb({ failFirst = false, blocked = false, pending = false } =
 }
 
 describe('ProcGen session storage connection lifecycle', () => {
+  it('keeps an owned document or recovery source charged until its caller releases publication ownership', async () => {
+    const adapter = fakeIndexedDb(), budget = createResourceBudget(), admission = createBackgroundWorkerAdmission(), jobs = createBackgroundJobService({ admission, Worker: null });
+    const storage = createProcgenSessionStorage(adapter, { budgetAdapter: budget, backgroundJobs: jobs });
+    await storage.saveDocument('doc:owned', 0, session('owned'), 'owned-commit');
+    const document = await storage.loadDocumentOwned('doc:owned');
+    expect(document.session.name).to.equal('owned'); expect(budget.diagnostics().accountedBytes).to.be.greaterThan(0);
+    document.release(); expect(budget.diagnostics().accountedBytes).to.equal(0); expect(() => document.session).to.throw('released');
+    await storage.saveRecovery(session('recovery'));
+    const recovery = await storage.loadRecoveryOwned(); expect(recovery.verification).to.equal('checksum-verified-recovery');
+    expect(budget.diagnostics().accountedBytes).to.be.greaterThan(0); storage.close(); expect(() => recovery.session).to.throw();
+    recovery.release(); expect(budget.diagnostics().accountedBytes).to.equal(0); jobs.dispose(); admission.dispose();
+  });
   it('reserves recovery capacity before calling the snapshot factory or opening storage', async () => {
     const adapter = fakeIndexedDb(), budget = createResourceBudget({ limitBytes: 4096 }), storage = createProcgenSessionStorage(adapter, { budgetAdapter: budget });
     let captures = 0, error;

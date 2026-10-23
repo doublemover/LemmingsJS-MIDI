@@ -53,6 +53,12 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
 }
 
 describe('ProcGen workstation orchestration', () => {
+  it('cancels an externally retired document source before its candidate can publish', async () => {
+    const f = setup(); f.studio.bindRuntime(); const session = f.studio.capture(), previous = f.runtime, source = new AbortController();
+    const release = f.holdRestart(), pending = f.studio.loadSession(session, null, { signal: source.signal });
+    await Promise.resolve(); source.abort(); release(); expect(await pending).to.equal(false);
+    expect(f.runtime).to.equal(previous); f.studio.dispose();
+  });
   it('records committed physical batches into a durable take and closes it before world replacement', async () => {
     const memory = createMemoryCausalStore(), storage = { ...memory.storage, close() {} };
     const f = setup({ storageOverride: storage });

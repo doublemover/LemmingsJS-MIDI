@@ -68,6 +68,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const initialSeed = legacy.settings.seed ?? freshProcgenSeed(window.crypto);
   const startupPlan = resolveProcgenStartupIntent({ search: window.location?.search || '', ...(startupIntent ? { intent: startupIntent } : {}), seed: initialSeed,
     legacyProject: legacy.getProject(), legacySettings: legacy.settings, saved, session: startupSource?.session, documentIdentity: startupSource?.documentIdentity });
+  startupSource = null;
   Object.assign(legacy.settings, startupPlan.worldOptions);
   let project = markCanonicalMidiProject(startupPlan.project);
   const state = { laneId: project.procgen.lanes[0].id, slot: 0, step: 0, tab: 'Lane', tool: 'select', layout: 'strip',
@@ -76,6 +77,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   state.recording = false; state.thru = false; state.inputId = null; state.clockOutputId = null;
   let startupCommitted = false, deferredPersist = false;
   let view = null, disposed = false, boundRuntime = null, boundSession = null, unhookRouter = null, unhookWorld = null;
+  const sessionIdentities = new WeakMap();
   let ports, engine, lastPlaying = false, lastLegacySpeed = legacy.settings.speed, pendingResume = false, lastTempo = null;
   let savedName = 'Untitled session', documentId = null, documentRevision = 0, clipboard = null, loadSerial = 0, suppressPersistence = false;
   let operationSerial = 0, currentOperation = null;
@@ -638,10 +640,12 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   const bindRuntime = ({ session } = {}) => {
     if (disposed) return null;
-    const next = runtime(); if (!next || (next === boundRuntime && session === boundSession)) return next;
+    let sessionIdentity = null;
+    if (session) { sessionIdentity = sessionIdentities.get(session); if (!sessionIdentity) { sessionIdentity = Object.freeze({}); sessionIdentities.set(session, sessionIdentity); } }
+    const next = runtime(); if (!next || (next === boundRuntime && sessionIdentity === boundSession)) return next;
     if (causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the causal take before replacing its world.');
     recoveryAbort?.abort();
-    unhookRouter?.(); unhookWorld?.(); physicalPlayback?.dispose(); physicalPlayback = null; boundRuntime = next; boundSession = session;
+    unhookRouter?.(); unhookWorld?.(); physicalPlayback?.dispose(); physicalPlayback = null; boundRuntime = next; boundSession = sessionIdentity;
     laneObserver = createProcgenLaneObserver(next.world);
     const bus = next.world?.soundEvents?.onEvent;
     const physicalBus = next.world?.soundEvents?.onBatch;
@@ -828,10 +832,12 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     return lastDelivery;
   };
   const safe = fn => async (...args) => { try { return await fn(...args); } catch (error) { status(error?.message || String(error)); return false; } };
-  async function loadSession(value, admittedLease = null) {
+  async function loadSession(value, admittedLease = null, { signal } = {}) {
+    signal?.throwIfAborted();
     if (disposed || (admittedLease && !ownsOperation(admittedLease))) return false;
     if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
     if (causalTake || causalTakeStart || causalTakeStop) await stopCausalTake({ reason: 'document-replacement' });
+    signal?.throwIfAborted();
     const lease = admittedLease || beginOperation('load');
     let session = validateProcgenSession(value);
     const serial = ++loadSerial;
@@ -847,6 +853,9 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const preparedEngine = createProcgenPatternEngine({ getProject: () => validatedProject, now });
     if (session.patterns) preparedEngine.restore(session.patterns);
     else session = { ...session, patterns: preparedEngine.snapshot() };
+    signal?.throwIfAborted();
+    const cancel = () => lease.controller.abort(signal.reason);
+    signal?.addEventListener('abort', cancel, { once: true });
     worldBusy = true;
     const previous = transport.getState(), oldSettings = { ...legacy.settings };
     const previousRuntime = runtime();
@@ -866,7 +875,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         throw error;
       }
       Object.assign(legacy.settings, oldSettings); lastLegacySpeed = legacy.settings.speed; if (previous.playing) play(); throw error;
-    } finally { worldBusy = false; finishOperation(lease); if (deferredPersist && startupCommitted && (loaded || runtime() === previousRuntime)) persist(); }
+    } finally { signal?.removeEventListener('abort', cancel); worldBusy = false; finishOperation(lease); if (deferredPersist && startupCommitted && (loaded || runtime() === previousRuntime)) persist(); }
   }
   async function rebuild({ seed = project.procgen.seed, fresh = false, projectNext = null, history = true } = {}) {
     if (disposed) return false;
@@ -1033,10 +1042,13 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (!ownsOperation(lease)) return false;
       const loadSelected = safe(async id => {
         if (!ownsOperation(lease)) return false;
-        const record = storage.loadDocument ? await storage.loadDocument(id) : { session: await storage.load(id), id: null, revision: 0 };
-        const loaded = await loadSession(record.session, lease);
-        if (loaded) { documentId = record.id; documentRevision = record.revision; savedRevision = editRevision; lastSavedAt = record.session.savedAt; storageStatus(); }
-        return loaded;
+        const record = storage.loadDocumentOwned ? await storage.loadDocumentOwned(id, { signal: lease.signal }) : storage.loadDocument ? await storage.loadDocument(id) : { session: await storage.load(id), id: null, revision: 0 };
+        try {
+          if (!ownsOperation(lease)) return false;
+          const loaded = await loadSession(record.session, lease, { signal: record.signal });
+          if (loaded) { documentId = record.id; documentRevision = record.revision; savedRevision = editRevision; lastSavedAt = record.session.savedAt; storageStatus(); }
+          return loaded;
+        } finally { record.release?.(); }
       });
       if (page && view.showProjectPage) view.showProjectPage(page, loadSelected, async (cursor, query) => {
         if (!ownsOperation(lease)) return null;
@@ -1069,17 +1081,20 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     export: safe(async () => {
       if (worldBusy) throw new Error('Wait for the world change to finish before exporting.');
       const lease = beginOperation('export'), generation = documentGeneration, revision = editRevision, id = documentId, name = savedName;
-      let computed = null, session = null;
+      let computed = null, sourceTick = null, sourceGeneration = null;
       try {
         computed = await backgroundJobs.compute({ kind: 'encode-json', ownerId: 'procgen-export', ownerEpoch: generation,
           sourceRevision: `${generation}:${revision}`, inputBytes: 0, estimatedPeakBytes: 128 * 1048576 + project.procgen.lanes.length * 131072,
           signal: lease.signal, budgetAdapter: resourceBudget, isCurrent: () => ownsOperation(lease) && documentGeneration === generation && editRevision === revision,
-          prepareInput: () => { session = capture(); return session; }, onProgress: phase => status(`Preparing project file: ${phase.phase}.`) });
+          prepareInput: () => {
+            const snapshot = capture(), world = snapshot.world?.graph?.owners?.find(owner => owner.name === 'world')?.props;
+            sourceTick = world?.tickIndex ?? snapshot.world?.tickIndex ?? null; sourceGeneration = world?.generation ?? null; return snapshot;
+          }, onProgress: phase => status(`Preparing project file: ${phase.phase}.`) });
         if (!ownsOperation(lease)) return false;
         prepareDownload({ bytes: computed.value, filename: name.replace(/[^a-z0-9_-]+/gi, '-') + '.procgen.json', type: 'application/json',
-          sourceRef: `project:${id}:${revision}:${session.world?.tickIndex ?? 'unknown'}`, formatVersion: 'procgen-session/v1' });
+          sourceRef: `project:${id}:${revision}:${sourceGeneration ?? 'unknown'}:${sourceTick ?? 'unknown'}`, formatVersion: 'procgen-session/v1' });
         if (deliverPrepared()?.state === 'delivery-requested') status('Project download requested. Check your browser downloads. Retry file uses the same prepared project.');
-      } finally { computed?.release(); session = null; finishOperation(lease); }
+      } finally { computed?.release(); finishOperation(lease); }
     }),
     exportMidi: safe(() => {
       const state = ports.getState();

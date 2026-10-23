@@ -364,8 +364,10 @@ const fileProviderFetchMethods = {
     let actual;
     try { actual = await hash; }
     catch (cause) {
-      if (cause?.name === 'ResourceBudgetError') throw new ResourceLoadError('budget', url, { cause });
-      throw cause;
+      if (cause?.name === 'ResourceBudgetError' || cause?.name === 'BackgroundJobAdmissionError' || cause?.code === 'memory-capacity') throw new ResourceLoadError('budget', url, { cause });
+      if (cause?.name === 'AbortError' || ['cancelled', 'stale-owner', 'service-retired', 'ownership-retired'].includes(cause?.code)) throw new ResourceLoadError('cancelled', url, { cause });
+      if (cause?.code === 'input-capacity') throw new ResourceLoadError('too-large', url, { cause });
+      throw new ResourceLoadError('unavailable', url, { cause });
     }
     if (!actual) throw new ResourceLoadError('unavailable', url);
     if (actual.toLowerCase() !== String(expectedHash).toLowerCase()) throw new ResourceLoadError('integrity', url);

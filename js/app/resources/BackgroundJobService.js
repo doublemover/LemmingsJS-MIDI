@@ -15,7 +15,7 @@ export function createBackgroundJobService({ admission = backgroundWorkerAdmissi
   const owners = new Set(); let disposed = false;
   const compute = async ({ kind, ownerId, ownerEpoch, sourceRevision, inputBytes = 0, estimatedPeakBytes, priority = 'interactive',
     prepareInput, releasePreparedInput = null, signal, budgetAdapter, isCurrent = () => true, onProgress = () => {}, maxBytes = 64 * 1048576,
-    expectedInputHash = null, deadlineMs = 180000, crypto = globalThis.crypto } = {}) => {
+    expectedInputHash = null, deadlineMs = 180000, crypto = globalThis.crypto, retainInput = false } = {}) => {
     signal?.throwIfAborted();
     if (disposed || !BACKGROUND_JOB_KINDS.includes(kind) || typeof prepareInput !== 'function' || typeof isCurrent !== 'function' || typeof onProgress !== 'function' ||
         !Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > 64 * 1048576 || releasePreparedInput != null && typeof releasePreparedInput !== 'function') throw failure('invalid-contract', 'Invalid background computation request.');
@@ -23,7 +23,7 @@ export function createBackgroundJobService({ admission = backgroundWorkerAdmissi
     if (typeof Worker !== 'function' && !['asset-hash', 'recovery-checksum'].includes(kind) && inputBytes > 128 * 1024)
       throw failure('worker-required', 'This computation needs a worker; only small bounded fallback work is supported.');
     const controller = new AbortController(), identity = getActiveExecutionIdentity('browser-background-jobs'), startedAt = now();
-    let lease = null, worker = null, input = null, result = null, retained = false, released = false, workerFailedRetirement = false;
+    let lease = null, worker = null, input = null, result = null, released = false, workerFailedRetirement = false;
     let ownedWork = null, ownedWorkPending = false, lastProgressAt = -Infinity, progressSequence = 0, rejectWorker = null, preparedInputReleased = false;
     const releaseInput = () => {
       if (preparedInputReleased) return;
@@ -47,7 +47,7 @@ export function createBackgroundJobService({ admission = backgroundWorkerAdmissi
     };
     const retire = reason => {
       if (!controller.signal.aborted) controller.abort(reason);
-      terminate(); rejectWorker?.(reason); if (retained) release();
+      terminate(); rejectWorker?.(reason);
     };
     const cancel = () => retire(aborted(signal));
     const check = () => { controller.signal.throwIfAborted(); if (disposed || !isCurrent()) throw failure('stale-owner', 'Background result no longer belongs to this document revision.'); };
@@ -108,13 +108,16 @@ export function createBackgroundJobService({ admission = backgroundWorkerAdmissi
       }
       check();
       if (!terminate()) throw failure('worker-retirement-unknown', 'Background worker retirement could not be confirmed.');
-      input = null; ownedWork = null; releaseInput();
-      if (!lease.computationFinished()) throw failure('ownership-retired', 'Background computation owner retired before publication.');
-      retained = true;
+      ownedWork = null;
+      if (!retainInput) { input = null; releaseInput(); }
+      const objectResult = result.value != null && typeof result.value === 'object';
+      const retainedBytes = Math.min(estimatedPeakBytes, Math.max(4096, (typeof result.value === 'string' ? result.value.length * 2 : 0) +
+        (retainInput || objectResult ? result.inputBytes * 2 + result.nodes * 64 : 0)));
+      if (!lease.computationFinished({ retainedBytes })) throw failure('ownership-retired', 'Background computation owner retired before publication.');
       const receipt = Object.freeze({ protocol: BACKGROUND_JOB_PROTOCOL, jobId: lease.jobId, kind, ownerId, ownerEpoch, sourceRevision,
         state: 'computed', publication: 'not-committed', method, elapsedMs: Math.max(0, now() - startedAt),
-        inputBytes: result.inputBytes, nodes: result.nodes, executionIdentity });
-      return Object.freeze({ get value() { check(); if (released) throw failure('result-retired', 'Background result was released.'); return result.value; }, receipt, release });
+        inputBytes: result.inputBytes, nodes: result.nodes, retainedBytes, executionIdentity });
+      return Object.freeze({ get value() { check(); if (released) throw failure('result-retired', 'Background result was released.'); return result.value; }, signal: controller.signal, receipt, release });
     } catch (error) { retire(error); release(); throw error; }
   };
   return Object.freeze({ compute, diagnostics: () => admission.diagnostics(), dispose() { if (disposed) return; disposed = true; for (const retire of [...owners]) retire(failure('service-retired', 'Background job service retired.')); } });

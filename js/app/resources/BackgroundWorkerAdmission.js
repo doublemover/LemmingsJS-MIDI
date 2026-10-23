@@ -86,12 +86,20 @@ export function createBackgroundWorkerAdmission({ maxWorkers = 2, maxQueuedJobs 
     record.lease = Object.freeze({ jobId: `background-${record.sequence}`, kind, ownerId, ownerEpoch, sourceRevision,
       release: () => finish(), retainUnknown: unknown,
       confirmRetirement() { if (record.phase === 'failed-or-unknown') record.phase = 'canceling'; return finish(); },
-      computationFinished() {
+      computationFinished({ retainedBytes = estimatedPeakBytes } = {}) {
         if (record.phase !== 'running') return false;
+        if (!Number.isSafeInteger(retainedBytes) || retainedBytes < 0 || retainedBytes > estimatedPeakBytes) throw invalid('Invalid retained background result estimate.');
+        if (!retainedBytes) return finish();
+        try {
+          for (const budget of record.reservedBudgets) budget.reserve({ token: record.token, owner: record.owner, generation: ownerEpoch,
+            category: 'candidate', bytes: retainedBytes, pinned: true, reloadable: false });
+        } catch (error) { unknown(error); return false; }
+        record.retainedBytes = retainedBytes;
+        clearTimeout(record.timer); record.timer = null;
         record.phase = 'computed'; active.delete(record); retained.add(record); drain(); return true;
       },
       getState: () => Object.freeze({ jobId: `background-${record.sequence}`, kind, phase: record.phase, ownerEpoch, sourceRevision,
-        estimatedPeakBytes, inputBytes, reason: record.reason || null }) });
+        estimatedPeakBytes, retainedBytes: record.retainedBytes ?? null, inputBytes, reason: record.reason || null }) });
     signal?.addEventListener('abort', abort, { once: true });
     record.timer = setTimeout(() => record.cancel(invalid('Background job admission deadline exceeded.')), deadlineMs);
     queue.push(record); queuedBytes += inputBytes; if (signal?.aborted) abort(); else drain();

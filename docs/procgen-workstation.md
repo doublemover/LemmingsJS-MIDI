@@ -211,6 +211,20 @@ coalescing across independent jobs, broader terrain decode execution and
 measured live-load qualification remain follow-through work. New fixtures are
 unexecuted.
 
+Document selection and startup recovery use owned source handles. Their
+checkpoint payload remains reserved through validation, asset preparation and
+world publication; canceled or late reads release their own handle. Navigation
+cancellation also reaches the initial world's preparation lease. Once restored,
+the workstation keeps a weak session identity marker rather than a second
+strong checkpoint reference. Convenience storage reads remain available for
+explicit legacy consumers; primary application flows use the owned interface.
+At computation completion, conservative retained-payload estimates replace
+temporary worker/staging peaks. A canceled computed result remains charged until
+its consumer acknowledges release; cancellation cannot free memory that a world
+load still owns. Source revocation reaches the candidate world's cancellation
+signal. Compute deadlines end at the computed boundary; source publication has
+its own explicit lifetime.
+
 The World inspector controls trap spacing and display row height. Playable terrain
 assembles near approaching actors; camera movement does not build distant terrain.
 Farther scenery is visual only and uses staggered, world-anchored dithering.
