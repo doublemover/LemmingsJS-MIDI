@@ -187,3 +187,9 @@ runtime, with independent cleanup on failed preparation and runtime retirement.
 Warm same-content worlds reuse decode and fingerprint results while a consumer
 still owns that content. No persistent unreferenced decoded cache is retained.
 These paths and their added real-source fixtures remain unexecuted.
+
+Collection preparation keeps actual producer promises separate from canceled
+consumer waits. Failure aborts siblings, independently retires all registered
+resources and reconciles late acquisitions within a bounded cleanup deadline.
+Failures retain a retirement receipt and a late-reconciliation promise; an
+expired deadline records unknown ownership instead of a successful release.

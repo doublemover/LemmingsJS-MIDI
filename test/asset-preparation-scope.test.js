@@ -31,10 +31,14 @@ describe('asset preparation acquisition scope', () => {
         return 'too late';
       } },
       { id: 'missing', prepare: async () => { throw new ResourceLoadError('not-found', 'required-file'); } }
-    ], { concurrency: 3 });
-    await assert.rejects(pending, error => error.kind === 'not-found' && error.collection === 'missing');
+    ], { concurrency: 3, cleanupDeadlineMs: 5 });
+    let failure;
+    await assert.rejects(pending, error => { failure = error; return error.kind === 'not-found' && error.collection === 'missing'; });
+    assert.equal(failure.retirement.outcome, 'partial');
+    assert.equal(failure.retirement.resources.find(resource => resource.name === 'late-asset-acquisitions').status, 'unknown');
     assert.equal(siblingSignal.aborted, true); assert.equal(cleanedReady, 1);
     finishLate(); await settle(); assert.equal(cleanedLate, 1);
+    assert.equal((await failure.retirementReconciliation).outcome, 'complete');
   });
 
   it('allows an optional failure while preserving required work and its transferred resource', async () => {
@@ -60,6 +64,21 @@ describe('asset preparation acquisition scope', () => {
     ]).catch(error => { rejected = true; throw error; });
     await settle(); assert.equal(cleanupStarted, true); assert.equal(rejected, false);
     finishCleanup(); await assert.rejects(pending, error => error.collection === 'failed');
+  });
+  it('reconciles a late producer before the cleanup deadline and records independent throwing cleanup failures', async () => {
+    let finishLate, rejected = false, independent = 0, late = 0;
+    const pending = prepareAssetCollections([
+      { id: 'owned', prepare: async ({ registerCleanup }) => {
+        registerCleanup(() => { throw new Error('Broken cleanup'); }); registerCleanup(() => { independent++; }); return 'owned';
+      } },
+      { id: 'late', prepare: async ({ registerCleanup }) => { await new Promise(resolve => { finishLate = resolve; }); registerCleanup(() => { late++; }); } },
+      { id: 'failed', prepare: async () => { throw new Error('Required failure'); } }
+    ], { concurrency: 3, cleanupDeadlineMs: 1000 }).catch(error => { rejected = true; throw error; });
+    await settle(); assert.equal(rejected, false); assert.equal(independent, 1); finishLate();
+    await assert.rejects(pending, error => {
+      assert.equal(late, 1); assert.equal(error.retirement.outcome, 'partial');
+      assert.equal(error.retirement.resources.some(resource => resource.status === 'failed'), true); return true;
+    });
   });
 
   it('cancels before any acquisition and prevents progress observers from owning the operation', async () => {
