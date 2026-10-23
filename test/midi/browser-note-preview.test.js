@@ -205,6 +205,17 @@ describe('BrowserNotePreview', function() {
     await preview.dispose();
   });
 
+  it('keeps a cancelled generation immutable while a separate execution can replay its historical intent', async () => {
+    const { preview } = setup(), game = preview.createSession('game'), backend = game.createInstrumentBackend();
+    await backend.prepare(nativePatch()); await game.enable();
+    expect(preview.getAudioContext()).to.equal(preview._context);
+    backend.begin(nativeIntent('a'), 100800, 'live'); backend.cancelGeneration(1, 'live');
+    expect(backend.begin(nativeIntent('a'), 100800, 'live').reason).to.equal('generation-cancelled');
+    expect(backend.renewExecutionLease(1, 'live', 70 * 48000).reason).to.equal('generation-cancelled');
+    expect(backend.begin(nativeIntent('a'), 100800, 'replay').status).to.equal('accepted');
+    await preview.dispose();
+  });
+
   it('keeps owner capture leases private while a separate mix observer sees both owners', async () => {
     const { preview } = setup(), game = preview.createSession('game'), cue = preview.createSession('cue');
     const a = [], b = [], mix = []; let project = 'A';

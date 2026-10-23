@@ -221,6 +221,8 @@ class BrowserNotePreview {
     };
   }
 
+  getAudioContext() { return this._context; }
+
   setMasterVolume(value) {
     if (this._disposed) return this._masterVolume;
     const next = clamp(finite(value, this._masterVolume), 0, MAX_MASTER_VOLUME);

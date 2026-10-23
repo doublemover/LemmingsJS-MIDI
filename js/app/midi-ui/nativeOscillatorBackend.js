@@ -32,6 +32,8 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
   let prepared = null, disposed = false, deliveryErrors = 0, preparationRevision = 0, traceSequence = 0, truncatedTraces = 0;
   const voices = new Map();
   const leases = new Map(), traces = [], decisions = Object.create(null);
+  const cancelledGenerations = new Set();
+  let cancellationHistoryFull = false;
   const keyFor = (epoch, voiceId) => JSON.stringify([epoch, voiceId]);
   const sharedKeyFor = (epoch, voiceId) => JSON.stringify([owner, epoch, voiceId]);
   const trace = fields => {
@@ -92,6 +94,8 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
   const renewExecutionLease = (generation, executionEpoch, validUntilFrame) => {
     if (disposed || !Number.isSafeInteger(generation) || generation < 0 || typeof executionEpoch !== 'string' || !executionEpoch ||
         !Number.isSafeInteger(validUntilFrame) || validUntilFrame < 0) return failure('invalid-execution-lease');
+    if (cancelledGenerations.has(leaseKey(generation, executionEpoch))) return failure('generation-cancelled');
+    if (cancellationHistoryFull) return failure('cancellation-history-full');
     const time = audioTime(validUntilFrame), now = preview._context?.currentTime;
     if (!preview._ownerReady(owner)) return failure('audio-not-ready');
     if (!Number.isFinite(now) || time <= now || time - now > 120) return failure('execution-lease-out-of-range');
@@ -129,6 +133,8 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
         (intent.sourceEventIds != null && (!Array.isArray(intent.sourceEventIds) || intent.sourceEventIds.length > 8192 ||
           intent.sourceEventIds.some(id => typeof id !== 'string' || id.length > 256))) ||
         !intent.pitch || frequencyFor(intent.pitch) == null || typeof executionEpoch !== 'string' || !executionEpoch) return failure('invalid-intent', intent);
+    if (cancelledGenerations.has(leaseKey(intent.generation, executionEpoch))) return failure('generation-cancelled', intent);
+    if (cancellationHistoryFull) return failure('cancellation-history-full', intent);
     const start = audioTime(targetFrame), context = preview._context;
     if (start == null || start - context.currentTime > preview._maxNoteSeconds) return failure('target-frame-out-of-range', intent);
     if (start < context.currentTime - 1 / context.sampleRate) return failure('late-attack', intent);
@@ -279,6 +285,11 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
   };
   const cancelGenerationWithReceipt = (generation, executionEpoch = 'live') => {
     const outcomes = [], context = preview._context, frontierFrame = context ? Math.ceil(context.currentTime * context.sampleRate) : null;
+    const cancelledKey = leaseKey(generation, executionEpoch);
+    if (!cancelledGenerations.has(cancelledKey)) {
+      if (cancelledGenerations.size < 1024) cancelledGenerations.add(cancelledKey);
+      else cancellationHistoryFull = true;
+    }
     for (const voice of voices.values()) if (voice.semanticGeneration === generation && voice.semanticEpoch === executionEpoch) {
       const beforeOnset = voice.start > (context?.currentTime ?? 0);
       if (beforeOnset) preview._destroyVoice(voice, 'generation-cancel-before-onset');
@@ -299,6 +310,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
       patchId: prepared?.patch.id ?? null, patchRevision: prepared?.patch.revision ?? null,
       readiness: disposed ? 'disposed' : !prepared ? 'patch-unprepared' : !preview._ownerReady(owner) ? 'audio-not-ready' : 'ready',
       decisions: Object.freeze({ ...decisions }), traceCount: traces.length, traceLimit, truncatedTraces,
+      cancelledGenerations: cancelledGenerations.size, cancellationHistoryFull,
       evidenceClass: 'native-scheduling-api', appliedFrame: null, acousticReceipt: false,
       ...(includeTraces ? { traces: Object.freeze([...traces]) } : {}),
       ...(includeVoices ? { voices: Object.freeze([...voices.values()].map(voice => Object.freeze({
