@@ -55,7 +55,9 @@ const verifiedBrowserFiles = async (manifest, fetchRef, signal) => {
       if (dependency.origin !== repoUrl.origin || !Object.hasOwn(manifest.codeHashes, relative)) throw new Error(`Replay dependency is missing from provenance: ${relative}`);
     }
   }
-  return { bytes, verification: freezeSurveyData({ scheme: 'same-origin-file-sha256-v1', codeDigest: manifest.codeDigest, codeFiles: code.length, assetFiles: assets.length, totalBytes }) };
+  return { bytes, verification: freezeSurveyData({ receiptVersion: 2, scheme: 'same-origin-file-sha256-v1', artifactIntegrity: 'verified',
+    activeExecution: 'unbound', executionReason: 'fetched-source-is-not-the-loaded-module-graph',
+    codeDigest: manifest.codeDigest, codeFiles: code.length, assetFiles: assets.length, totalBytes }) };
 };
 const browserTerrain = async (scenario, files) => {
   const pack = scenario.pack, groundName = `GROUND${scenario.groundSet}O.DAT`, vgaName = `VGAGR${scenario.groundSet}.DAT`;
@@ -78,11 +80,13 @@ const browserTerrain = async (scenario, files) => {
   const assemblyCatalog = selectAuthoredAssemblyCatalog(book, { packPath: pack, groundSet: scenario.groundSet, assetSha256, objectSha256 });
   return new ProcgenRecipeTerrain({ recipe, terrainPieces, objectPieces, sourceDescriptor, assemblyCatalog, packWidthLimit: getPackTerrainWidthLimit(book, pack) });
 };
-const createBrowserSurveyTrial = async ({ scenario: rawScenario, candidate, sourceManifest, fetchFile = globalThis.fetch, signal } = {}) => {
+const createBrowserSurveyTrial = async ({ scenario: rawScenario, candidate, sourceManifest, fetchFile = globalThis.fetch, signal, mode = 'compatibility' } = {}) => {
   if (typeof fetchFile !== 'function') throw new Error('Verified replay requires fetch');
+  if (!['compatibility', 'exact'].includes(mode)) throw new Error('Unknown replay mode');
   const scenario = normalizeSurveyScenario(rawScenario);
   if (!/^[A-Za-z0-9_-]+$/.test(scenario.pack)) throw new Error('Browser survey supports one local source pack');
   if (scenario.engineCommit !== sourceManifest?.engineCommit || canonicalSurveyJson(scenario.assetHashes) !== canonicalSurveyJson(sourceManifest?.assetHashes)) throw new Error('Scenario source identity differs from its manifest');
+  if (mode === 'exact') throw new Error('Active execution identity is unbound; use an explicitly labeled current-runtime comparison or a trusted matching build');
   const { bytes, verification } = await verifiedBrowserFiles(sourceManifest, fetchFile, signal);
   signal?.throwIfAborted();
   const main = bytes.get('lemmings_ohNo/MAIN.DAT'); if (!main) throw new Error('Replay masks are missing from provenance');

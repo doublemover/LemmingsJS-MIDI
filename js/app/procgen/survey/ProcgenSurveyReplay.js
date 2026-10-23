@@ -40,6 +40,16 @@ const compareSurveyReplay = (original, replay, { scope = 'exact deterministic re
     originalFinalStateHash: original?.finalStateHash, replayFinalStateHash: replay?.finalStateHash,
     independentSample: false, scope };
 };
+const compareSurveyCompatibilityReplay = (original, replay, sourceVerification) => {
+  const comparison = compareSurveyReplay(original, replay);
+  const compatibilityMatch = comparison.matched;
+  return { ...comparison, schemaVersion: 3, matched: false, compatibilityMatch,
+    validity: compatibilityMatch ? 'execution-unbound' : comparison.validity,
+    reasons: [...comparison.reasons, 'active-execution-unbound'], scope: 'current-runtime-compatibility',
+    artifactIntegrity: { status: sourceVerification?.artifactIntegrity || 'unknown', codeDigest: sourceVerification?.codeDigest || null },
+    executionIdentity: { status: 'unbound', reason: sourceVerification?.executionReason || 'active-module-graph-not-proven' },
+    replayConsistency: { status: compatibilityMatch ? 'matched' : 'mismatch', coverage: comparison.coverage } };
+};
 const firstSurveyDivergence = (baseline, candidate) => {
   const other = new Map((candidate.milestones || []).map(entry => [entry.tick, entry])); let previousTick = 0;
   for (const entry of baseline.milestones || []) {
@@ -51,4 +61,4 @@ const firstSurveyDivergence = (baseline, candidate) => {
   }
   return null;
 };
-export { compareSurveyReplay, firstSurveyDivergence };
+export { compareSurveyReplay, compareSurveyCompatibilityReplay, firstSurveyDivergence };

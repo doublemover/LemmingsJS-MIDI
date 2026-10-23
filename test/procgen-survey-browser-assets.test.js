@@ -28,6 +28,7 @@ describe('verified selected browser survey asset contracts', function() {
     browser.step(64); node.step(64);
     expect(browser.result()).to.deep.equal(node.result()); expect(browser.sourceVerification.codeDigest).to.equal(sourceManifest.codeDigest);
     expect(browser.sourceVerification.codeFiles).to.equal(Object.keys(sourceManifest.codeHashes).length);
+    expect(browser.sourceVerification).to.include({ artifactIntegrity: 'verified', activeExecution: 'unbound' });
     browser.dispose(); node.dispose();
   });
   it('uses fresh exact source terrain with the same generated ownership, physics and events as Node', async () => {
@@ -47,6 +48,12 @@ describe('verified selected browser survey asset contracts', function() {
       if (url.pathname.endsWith('/ProcgenSurveyCore.js')) return { ok: true, arrayBuffer: async () => new TextEncoder().encode('stale code').buffer };
       return fileFetch(url);
     } }), 'differs from the saved trial');
+  });
+  it('rejects exact qualification before execution when active modules have no trusted build identity', async () => {
+    let requests = 0;
+    await rejects(() => createBrowserSurveyTrial({ scenario: controlled, sourceManifest, mode: 'exact',
+      fetchFile: async () => { requests++; return fileFetch(); } }), 'Active execution identity is unbound');
+    expect(requests).to.equal(0);
   });
   it('requires a complete relative module closure and refuses external or traversing source paths', async () => {
     const incomplete = copy(sourceManifest); delete incomplete.codeHashes['js/app/procgen/ProcgenLanePolicy.js'];

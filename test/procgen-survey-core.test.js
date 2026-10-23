@@ -5,7 +5,7 @@ import { normalizeProcgenPolicyConfig, DEFAULT_PROCGEN_POLICY_CONFIG } from '../
 import { createSurveyTrial, createSurveyTrialId, normalizeSurveyScenario } from '../js/app/procgen/survey/ProcgenSurveyCore.js';
 import { ProcgenSurveyTerrain } from '../js/app/procgen/survey/ProcgenSurveyTerrain.js';
 import { canonicalSurveyJson, hashSurveyValue, semanticSurveyRandom } from '../js/app/procgen/survey/ProcgenSurveyCanonical.js';
-import { compareSurveyReplay } from '../js/app/procgen/survey/ProcgenSurveyReplay.js';
+import { compareSurveyReplay, compareSurveyCompatibilityReplay } from '../js/app/procgen/survey/ProcgenSurveyReplay.js';
 import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
 
 const scene = (overrides = {}) => ({ id: 'flat-eight', horizonTicks: 220, checkpointEvery: 32, environmentSeed: 42,
@@ -163,6 +163,10 @@ describe('isolated deterministic real procgen survey core', function() {
     expect(compareSurveyReplay({}, {}).matched).to.equal(false);
     const complete = finalReplay(masks);
     expect(compareSurveyReplay(complete, complete).matched).to.equal(true);
+    const compatible = compareSurveyCompatibilityReplay(complete, complete, { artifactIntegrity: 'verified', codeDigest: 'a'.repeat(64) });
+    expect(compatible).to.include({ matched: false, compatibilityMatch: true, validity: 'execution-unbound', independentSample: false });
+    expect(compatible.artifactIntegrity.status).to.equal('verified');
+    expect(compatible.executionIdentity.status).to.equal('unbound');
     expect(compareSurveyReplay(complete, { ...complete, provenance: { ...complete.provenance, stateSchema: 1 } }).matched).to.equal(false);
     expect(compareSurveyReplay(complete, { ...complete, evidence: { ...complete.evidence, truncated: true } }).matched).to.equal(false);
     expect(compareSurveyReplay(complete, { ...complete, milestones: [] }).matched).to.equal(false);

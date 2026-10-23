@@ -1,5 +1,5 @@
 import { createBrowserSurveyTrial } from './ProcgenSurveyBrowserAssets.js';
-import { compareSurveyReplay, firstSurveyDivergence } from './ProcgenSurveyReplay.js';
+import { compareSurveyCompatibilityReplay, firstSurveyDivergence } from './ProcgenSurveyReplay.js';
 
 const renderSurveyPreview = (canvas, telemetry, { cameraX = null, cameraY = 0, width = 512, height = 144 } = {}) => {
   const context = canvas.getContext('2d'), preview = telemetry?.preview || {}, actors = preview.actors || [];
@@ -28,7 +28,7 @@ const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fet
   const tiles = new Map(), disposedTrials = new WeakSet();
   const releaseTrial = trial => { if (trial && !disposedTrials.has(trial)) { disposedTrials.add(trial); trial.dispose(); } };
   let report = null, selectedId = null, replay = null, disposed = false, polling = null, paused = false, replayPending = false, pausePending = false, connected = !!token, loadEpoch = 0, replayEpoch = 0, replayAbort = null, manifestIdentity = null, filePending = null, preferredTrial = null;
-  const replayHelp = 'Exact replay verifies implementation consistency. It is not an independent reliability sample.';
+  const replayHelp = 'Current-runtime comparison checks recorded physics and events. Active build identity is not yet verified.';
   const status = text => { if (!disposed) element('surveyStatus').textContent = text; };
   const syncPause = () => {
     const button = element('surveyPause');
@@ -59,7 +59,8 @@ const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fet
     const gate = value => value === true ? 'Passed' : value === false ? 'Failed' : 'Unknown';
     const replayState = trial => {
       const receipt = window.__procgenSurveyReplayReceipt?.originalTrialId === trial.trialId ? window.__procgenSurveyReplayReceipt : report.verification?.find(entry => entry.originalTrialId === trial.trialId);
-      return receipt?.matched === true ? 'Matched · consistency only' : receipt?.matched === false ? 'Mismatch' : 'Not recorded';
+      if (receipt?.executionIdentity?.status === 'unbound') return receipt.compatibilityMatch ? 'Fields match · build unverified' : 'Comparison mismatch · build unverified';
+      return receipt?.matched === true ? 'Archived match · build unverified' : receipt?.matched === false ? 'Mismatch' : 'Not recorded';
     };
     const measures = [
       ['Candidate / policy seed', trial => trial.candidateId + ' / ' + (trial.policySeed ?? 'Unknown')],
@@ -242,12 +243,12 @@ const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fet
     const current = () => !disposed && epoch === replayEpoch;
     let trial = null;
     replayPending = true; delete window.__procgenSurveyReplayReceipt;
-    element('surveyReplay').disabled = true; element('surveyReplayStatus').textContent = 'Checking exact source and assets.';
+    element('surveyReplay').disabled = true; element('surveyReplayStatus').textContent = 'Checking saved source and asset integrity.';
     try {
-      trial = await createBrowserSurveyTrial({ scenario: original.scenario, candidate: original.candidate, sourceManifest: report.manifest.sourceManifest, signal: controller.signal });
+      trial = await createBrowserSurveyTrial({ scenario: original.scenario, candidate: original.candidate, sourceManifest: report.manifest.sourceManifest, signal: controller.signal, mode: 'compatibility' });
       if (!current()) return;
       replay = trial; if (!connected) paused = false; syncPause();
-      element('surveyReplayStatus').textContent = 'Verifying the selected trial in a muted local replay.';
+      element('surveyReplayStatus').textContent = 'Comparing with the current runtime in a muted local replay. Execution identity remains unverified.';
       while (current() && !trial.done && trial.world.tickIndex < original.scenario.horizonTicks) {
         if (!paused) trial.step(Math.min(16, original.scenario.horizonTicks - trial.world.tickIndex));
         const tick = trial.world.tickIndex, pair = baseline(original), pairedTelemetry = milestoneAt(pair, tick);
@@ -257,7 +258,13 @@ const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fet
         element('surveyBaselineStatus').textContent = pairedTelemetry ? 'Recorded baseline at or before replay tick ' + tick + '.' : 'No baseline checkpoint is retained at or before replay tick ' + tick + '.';
         await new Promise(resolve => window.setTimeout(resolve, paused ? 30 : 0));
       }
-      if (current()) { const receipt = compareSurveyReplay(original, trial.result()); element('surveyReplayStatus').textContent = receipt.matched ? 'Exact physics and event hashes match. This rerun is not an independent sample.' : 'Replay mismatch: ' + [...receipt.reasons, ...receipt.differences].join(', '); window.__procgenSurveyReplayReceipt = receipt; }
+      if (current()) {
+        const receipt = compareSurveyCompatibilityReplay(original, trial.result(), trial.sourceVerification);
+        element('surveyReplayStatus').textContent = receipt.compatibilityMatch ?
+          'Recorded fields match under the current runtime. The active build is unverified; this is not an exact replay receipt or independent sample.' :
+          'Current-runtime comparison differs: ' + [...receipt.reasons, ...receipt.differences].join(', ');
+        window.__procgenSurveyReplayReceipt = receipt;
+      }
     } catch (error) { if (current()) element('surveyReplayStatus').textContent = 'Could not verify: ' + error.message; }
     finally {
       releaseTrial(trial);

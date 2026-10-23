@@ -25,7 +25,8 @@ test.describe('procgen survey native boundary', () => {
       const original = report.results.find(result => result.scenarioId === scene && result.candidate.kind === 'baseline');
       await page.evaluate(id => { delete window.__procgenSurveyReplayReceipt; window.__procgenSurveyDashboard.select(id); }, original.trialId);
       await page.locator('#surveyReplay').click(); await expect.poll(() => page.evaluate(() => window.__procgenSurveyReplayReceipt), { timeout: 30000 }).toBeTruthy();
-      const receipt = await page.evaluate(() => window.__procgenSurveyReplayReceipt); expect(receipt.matched).toBe(true); expect(receipt.independentSample).toBe(false); replays.push(receipt);
+      const receipt = await page.evaluate(() => window.__procgenSurveyReplayReceipt); expect(receipt.matched).toBe(false); expect(receipt.compatibilityMatch).toBe(true);
+      expect(receipt.executionIdentity.status).toBe('unbound'); expect(receipt.independentSample).toBe(false); replays.push(receipt);
     }
     await expect(page.locator('.survey-tile:visible')).toHaveCount(2);
     const candidates = generateProcgenSurveyCandidates({ count: 64 }), scenario = report.manifest.scenarios[0];
@@ -283,7 +284,8 @@ test('saved exact-source reports replay muted controlled and generated trials an
     await page.locator('#surveyReplay').click();
     await expect.poll(() => page.evaluate(() => window.__procgenSurveyReplayReceipt), { timeout: 30000 }).toBeTruthy();
     const receipt = await page.evaluate(() => window.__procgenSurveyReplayReceipt);
-    expect(receipt.matched).toBe(true); expect(receipt.independentSample).toBe(false); receipts.push(receipt);
+    expect(receipt.matched).toBe(false); expect(receipt.compatibilityMatch).toBe(true);
+    expect(receipt.executionIdentity.status).toBe('unbound'); expect(receipt.independentSample).toBe(false); receipts.push(receipt);
   }
   await page.route('**/js/app/procgen/survey/ProcgenSurveyCore.js', route => route.fulfill({ contentType: 'text/javascript', body: '// changed source bytes' }));
   await page.locator('#surveyReplay').click();
