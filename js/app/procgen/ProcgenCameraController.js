@@ -59,10 +59,14 @@ const createProcgenCameraController = renderer => {
     const firstLane = projection ? selected ?? projection.firstLane : 0, lastLane = projection ? selected == null ? firstLane + projection.count : selected + 1 : world.laneCount ?? Infinity;
     const visibleWindow = `${firstLane}:${lastLane}`;
     if (!reuseLeader || cachedLeader?.failureReason || cachedLeader?.removed || leaderTick !== world.tickIndex || leaderGeneration !== world.generation || leaderActors !== world.actors || leaderCount !== world.actors.length || leaderWindow !== visibleWindow) {
-      cachedLeader = null;
-      for (const actor of world.actors) {
-        const lane = Math.floor(actor.y / (renderer.laneHeight || world.laneHeight || 96));
-        if (!actor.failureReason && !actor.removed && Number.isFinite(actor.x) && Number.isFinite(actor.y) && lane >= firstLane && lane < lastLane && (!cachedLeader || actor.x > cachedLeader.x)) cachedLeader = actor;
+      if (renderer.actorVisibility?.physicalLeader) cachedLeader = renderer.actorVisibility.physicalLeader(firstLane, lastLane, immediate);
+      else {
+        cachedLeader = null;
+        for (const actor of world.actors) {
+          const lane = Math.floor(actor.y / (renderer.laneHeight || world.laneHeight || 96));
+          if (!actor.failureReason && !actor.removed && Number.isFinite(actor.x) && Number.isFinite(actor.y) && lane >= firstLane && lane < lastLane &&
+              (!cachedLeader || actor.x > cachedLeader.x || actor.x === cachedLeader.x && actor.id < cachedLeader.id)) cachedLeader = actor;
+        }
       }
       leaderTick = world.tickIndex; leaderGeneration = world.generation; leaderActors = world.actors; leaderCount = world.actors.length;
       leaderWindow = visibleWindow;

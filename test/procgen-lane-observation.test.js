@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { createProcgenLaneObserver } from '../js/app/procgen/workstation/ProcgenLaneObservation.js';
 import { LemmingStateType as State } from '../js/lemmings/LemmingStateType.js';
+import { ProcgenActorVisibility, registerProcgenActorVisibility, getProcgenActorVisibility, publishProcgenActorVisibility } from '../js/app/procgen/ProcgenActorVisibility.js';
 
 describe('ProcGen current lane conditions', () => {
   const fixture = () => {
@@ -27,5 +28,24 @@ describe('ProcGen current lane conditions', () => {
     f.world.actors[0].laneIndex = 1; f.world.actors[1].failureReason = 'lost'; f.world.tickIndex++;
     expect(f.observe(0)).to.deep.equal({ action: '', terrain: '' }); expect(f.observe(1).action).to.equal('walk');
     expect(f.observe(-1)).to.deep.equal({ action: '', terrain: '' });
+  });
+  it('uses the published lane index and refreshes it once per completed tick', () => {
+    const f = fixture(), index = new ProcgenActorVisibility(f.world);
+    f.world.actors[0].id = 9; f.world.actors[1].id = 2; f.world.actors[1].x = 40;
+    registerProcgenActorVisibility(f.world, index); publishProcgenActorVisibility(f.world);
+    expect(index.getStats()).to.include({ publications: 1, rebuilds: 0, actorScans: 2, retainedActors: 2 });
+    expect(index.physicalLeader(1, 2)).to.equal(f.world.actors[1]);
+    expect(f.observe(0).action).to.equal('walk build');
+    expect(f.observe(0).action).to.equal('walk build');
+    expect(index.getStats().actorScans).to.equal(2);
+    f.world.actors[0].laneIndex = 1; f.world.tickIndex++;
+    publishProcgenActorVisibility(f.world);
+    expect(index.getStats().actorScans).to.equal(4);
+    expect(f.observe(1).action).to.equal('walk');
+    expect(f.observe(0).action).to.equal('build');
+    f.world.actors[0].removed = true; f.world.tickIndex++;
+    publishProcgenActorVisibility(f.world);
+    expect(f.observe(1)).to.deep.equal({ action: '', terrain: '' });
+    index.dispose(); expect(getProcgenActorVisibility(f.world)).to.equal(null);
   });
 });

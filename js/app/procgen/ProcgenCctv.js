@@ -61,15 +61,20 @@ class ProcgenCctv {
     const ranked = rankCctvLanes(world);
     this.slots = this.director.mode === 'director' ? this.director.select(world, ranked, this.slots, now) : selectCctvLanes(world, this.slots);
     const selected = new Set(this.slots), leaders = new Map(), actorsByLane = new Map();
-    for (const actor of world.actors) {
+    const visit = actor => {
       this.actorScans++;
       const lane = actor.laneIndex ?? Math.floor(actor.y / (world.laneHeight || 96));
-      if (!selected.has(lane) || actor.failureReason || actor.removed || !Number.isFinite(actor.x) || !Number.isFinite(actor.y)) continue;
+      if (!selected.has(lane) || actor.failureReason || actor.removed || !Number.isFinite(actor.x) || !Number.isFinite(actor.y)) return;
       const previous = leaders.get(lane);
       if (!previous || actor.x > previous.x || actor.x === previous.x && actor.id < previous.id) leaders.set(lane, actor);
       let actors = actorsByLane.get(lane);
       if (!actors) { actors = []; actorsByLane.set(lane, actors); }
       actors.push(actor);
+    };
+    if (this.renderer.actorVisibility) {
+      for (const lane of selected) for (const actor of this.renderer.actorVisibility.semanticActors(lane)) visit(actor);
+    } else {
+      for (const actor of world.actors) visit(actor);
     }
     const ranks = new Map(ranked.map((lane, index) => [lane, index + 1]));
     for (const lane of this.slots) this.refresh(lane, leaders.get(lane), actorsByLane.get(lane) || [], ranks.get(lane));

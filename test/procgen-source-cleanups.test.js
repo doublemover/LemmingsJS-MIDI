@@ -124,8 +124,8 @@ describe('source-level procgen work removal', function() {
     renderer.camera.update(false, true);
     expect(visits).to.equal(4); expect(renderer.cameraX).to.be.greaterThan(firstX);
     world.tickIndex++; renderer.camera.update(false, true); expect(visits).to.equal(8);
-    world.actors[0].failureReason = 'test'; renderer.camera.update(); expect(visits).to.equal(12);
-    world._spawn(0, false); renderer.camera.update(false, true); expect(visits).to.equal(17);
+    world.actors[0].failureReason = 'test'; renderer.camera.update(); expect(visits).to.equal(8);
+    world._spawn(0, false); renderer.camera.update(false, true); expect(visits).to.equal(13);
     renderer.camera.followFrontier(); expect(renderer.follow).to.equal(true);
     renderer.dispose(); world.dispose();
   });

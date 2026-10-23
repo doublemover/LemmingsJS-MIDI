@@ -1,4 +1,4 @@
-import { ProcgenActorVisibility } from './ProcgenActorVisibility.js';
+import { ProcgenActorVisibility, registerProcgenActorVisibility } from './ProcgenActorVisibility.js';
 import { ProcgenCctv } from './ProcgenCctv.js';
 import { assemblyPlacementReady } from './ProcgenAssemblyPlacement.js';
 import { procgenObjectImage } from './ProcgenObjectPresentation.js';
@@ -10,6 +10,7 @@ const unprepared = state => state?.complete === false && state.active?.length ==
 class ProcgenLaneRenderer {
   constructor({ canvas, world, assets, windowRef = window }) {
     this.actorVisibility = new ProcgenActorVisibility(world);
+    registerProcgenActorVisibility(world, this.actorVisibility);
     this.canvas = canvas; this.world = world; this.assets = assets; this.window = windowRef;
     this.context = canvas.getContext('2d', { alpha: false });
     this.buffer = canvas.ownerDocument.createElement('canvas'); this.bufferContext = this.buffer.getContext('2d', { alpha: false });
@@ -32,11 +33,11 @@ class ProcgenLaneRenderer {
   resize() { this.lastTerrainKey = ''; this.lastGeometryKey = ''; this.render(); }
   _drawScenery(terrainKey, width, height) {
     const scenery = this.world.scenery; if (!scenery) return;
-    scenery.reducedMotion = !!this.reducedMotion?.matches;
     if (!this.sceneryBuffer) {
       this.sceneryBuffer = this.canvas.ownerDocument.createElement('canvas'); this.sceneryContext = this.sceneryBuffer.getContext('2d');
     }
-    const key = `${terrainKey}:${scenery.revision}`;
+    const reducedMotion = !!this.reducedMotion?.matches;
+    const key = `${terrainKey}:${scenery.revision}:${reducedMotion}`;
     if (!this.sceneryImage || this.sceneryBuffer.width !== width || this.sceneryBuffer.height !== height) {
       this.sceneryBuffer.width = width; this.sceneryBuffer.height = height;
       this.sceneryImage = this.sceneryContext.createImageData(width, height); this.sceneryPixels = new Uint32Array(this.sceneryImage.data.buffer); this.lastSceneryKey = '';
@@ -48,7 +49,7 @@ class ProcgenLaneRenderer {
         const px = Math.floor((x - this.originX) / this.rasterStep), py = Math.floor((y - this.originY) / this.rasterStep), index = py * width + px;
         if (px >= 0 && py >= 0 && px < width && py < height && this.pixels[index] === 0xff0e0807) this.sceneryPixels[index] = color;
       };
-      for (let lane = first; lane < last; lane++) scenery.drawLane({ lane, left: this.originX, right: this.originX + this.viewWidth, top: this.originY, bottom: this.originY + this.viewHeight, drawPixel });
+      for (let lane = first; lane < last; lane++) scenery.drawLane({ lane, left: this.originX, right: this.originX + this.viewWidth, top: this.originY, bottom: this.originY + this.viewHeight, drawPixel, reducedMotion });
       this.sceneryContext.putImageData(this.sceneryImage, 0, 0); this.lastSceneryKey = key;
     }
     this.bufferContext.drawImage(this.sceneryBuffer, 0, 0);
@@ -301,7 +302,7 @@ class ProcgenLaneRenderer {
     this._drawObjects();
     this.renderedActors = 0; this.actorDots.clear();
     for (const actor of this.actorVisibility.query(this.originY, this.viewHeight, force)) {
-      if (actor.failureReason) continue;
+      if (actor.failureReason || actor.removed) continue;
       if (actor.y < this.originY - 32 || actor.y > this.originY + this.viewHeight + 32 || actor.x < this.originX - 32 || actor.x >= this.originX + this.viewWidth + 32) {
         const bounds = this.actorVisibility.bounds.get(actor);
         if (!bounds || bounds.x >= this.originX + this.viewWidth || bounds.y >= this.originY + this.viewHeight || bounds.x + bounds.width <= this.originX || bounds.y + bounds.height <= this.originY) continue;
@@ -315,10 +316,9 @@ class ProcgenLaneRenderer {
       this.context.fillStyle = '#101927'; this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
       layout.scale = this.scale; layout.rowSourceY = []; this.workstationRows = [];
       const leaders = new Array(layout.count);
-      for (const actor of this.world.actors) {
-        const row = Math.floor(actor.y / this.laneHeight) - layout.firstLane;
-        if (row < 0 || row >= layout.count || actor.removed || actor.failureReason || actor.x < this.originX || actor.x >= this.originX + this.viewWidth) continue;
-        if (!leaders[row] || leaders[row].x < actor.x) leaders[row] = actor;
+      for (let row = 0; row < layout.count; row++) for (const actor of this.actorVisibility.physicalActors(layout.firstLane + row)) {
+        if (actor.failureReason || actor.removed || actor.x < this.originX || actor.x >= this.originX + this.viewWidth) continue;
+        if (!leaders[row] || leaders[row].x < actor.x || leaders[row].x === actor.x && actor.id < leaders[row].id) leaders[row] = actor;
       }
       for (let row = 0; row < layout.count; row++) {
         const available = layout.rowHeight - layout.stripHeight, crop = Math.min(this.laneHeight, available / this.scale), lane = layout.firstLane + row;

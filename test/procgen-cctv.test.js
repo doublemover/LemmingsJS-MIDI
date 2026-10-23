@@ -21,6 +21,15 @@ describe('bounded live procgen CCTV', () => {
     renderer.cctv.setPins([3]); renderer.cctv.setEnabled(true); expect(renderer.cctv.views.size).to.equal(8);
     renderer.cctv.setEnabled(false); expect(renderer.overviewBandHeight).to.equal(0); expect(renderer.cctv.getState().pins).to.deep.equal([3]); renderer.dispose();
   });
+  it('visits only selected semantic lanes in a 1024-lane world', () => {
+    const { renderer, world, advance } = fixture(1024);
+    renderer.camera.setZoom(0);
+    const before = renderer.cctv.actorScans;
+    world.tickIndex++; advance(100); renderer.render(false);
+    expect(renderer.cctv.actorScans - before).to.be.at.most(8);
+    expect(renderer.actorVisibility.getStats().retainedActors).to.equal(1024);
+    renderer.dispose();
+  });
   it('keeps deterministic ranks and stable slots until an outsider establishes a lead', () => {
     const { world, renderer } = fixture(10);
     const initial = selectCctvLanes(world); expect(initial).to.deep.equal([9, 8, 7, 6, 5, 4, 3, 2]);

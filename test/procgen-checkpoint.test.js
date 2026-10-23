@@ -25,14 +25,19 @@ describe('ProcGen world checkpoints', function() {
   });
   it('rejects incompatible assets before restoring', async () => {
     const world = await make();
-    try { const saved = captureProcgenCheckpoint(world); saved.assets[0].revision = 'different'; expect(() => restoreProcgenCheckpoint(world, saved)).to.throw('assets'); }
+    try {
+      const saved = captureProcgenCheckpoint(world), revision = saved.assets[0].revision;
+      saved.assets[0].revision = 'different'; expect(() => restoreProcgenCheckpoint(world, saved)).to.throw('assets');
+      saved.assets[0].revision = revision;
+      saved.seed++; expect(() => restoreProcgenCheckpoint(world, saved)).to.throw('Incompatible world checkpoint');
+    }
     finally { world.dispose(); }
   });
   it('continues the same automatic reset seeds and terrain after a saved real cascade', async () => {
     const makeResetWorld = async seed => new ProcgenLaneWorld({ masks, terrain: await loadProcgenTerrain('lemmings', 0),
       laneCount: 2, seed, cohorts: true, workstation: true, spawnSpreadTicks: 0,
       stallPolicy: { secondsWithoutProgress: 0, baseSpawnAllowance: 0, transitSafetyFactor: 0, workGraceSeconds: -1, pendingWorkGraceSeconds: -1 } });
-    const original = await makeResetWorld(42), restored = await makeResetWorld(999);
+    const original = await makeResetWorld(42), restored = await makeResetWorld(42);
     try {
       for (let tick = 0; tick < 60 && original.stall.phase !== 'cascade'; tick++) original.step();
       expect(original.stall.phase).to.equal('cascade');

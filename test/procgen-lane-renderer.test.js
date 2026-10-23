@@ -13,6 +13,18 @@ const canvasFixture = () => {
     addEventListener: (event, fn) => listeners.set(event, fn), removeEventListener: event => listeners.delete(event), listeners };
 };
 describe('bounded shared-lane renderer', () => {
+  it('publishes a completed actor index before drawing without running sprite bounds in the physical tick', async () => {
+    const world = new ProcgenLaneWorld({ masks: await loadProcgenMasks(), laneCount: 8 });
+    const renderer = new ProcgenLaneRenderer({ canvas: canvasFixture(), world, assets: { groundPieces: [] }, windowRef: { devicePixelRatio: 1, performance } });
+    const before = renderer.actorVisibility.getStats();
+    world.step();
+    const published = renderer.actorVisibility.getStats();
+    expect(published.publications).to.equal(before.publications + 1);
+    expect(published.rebuilds).to.equal(before.rebuilds);
+    renderer.render(false);
+    expect(renderer.actorVisibility.getStats().rebuilds).to.equal(before.rebuilds + 1);
+    renderer.dispose(); world.dispose();
+  });
   it('allocates only a visible buffer and does not draw 1024 offscreen actors', async () => {
     const world = new ProcgenLaneWorld({ masks: await loadProcgenMasks(), laneCount: 1024 });
     const canvas = canvasFixture();

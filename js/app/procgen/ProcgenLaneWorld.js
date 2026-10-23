@@ -38,6 +38,7 @@ import { ProcgenSoundEventBus } from './ProcgenSoundEventBus.js';
 import { EventHandler } from '../../util/EventHandler.js';
 import { normalizeSeed, deriveSeed } from '../../core/seededRandom.js';
 import { ProcgenScenery } from './ProcgenScenery.js';
+import { publishProcgenActorVisibility } from './ProcgenActorVisibility.js';
 
 const MAX_PROCGEN_LANES = 1024;
 const LANE_HEIGHT = 96;
@@ -926,7 +927,7 @@ class ProcgenLaneWorld {
       }
       this._processingLane = null; this._processingActorId = null; this.activeCount = activeCount;
       this.terrainGrowth?.update({ through: this.generatedThrough, frontiers: this.frontiers, lanes: this.stall.lanes, prepare: this._prepareGrowthChunk, reveal: this._revealGrowth });
-      this.scenery?.update({ frontiers: this.frontiers, tick: this.tickIndex, reducedMotion: this.scenery.reducedMotion });
+      this.scenery?.update({ frontiers: this.frontiers, tick: this.tickIndex });
       for (let laneIndex = 0; laneIndex < this.laneCount; laneIndex++) {
         const lane = this.stall.lanes[laneIndex]; lane.peakAlive = Math.max(lane.peakAlive, lane.alive);
         lane.populationPeak = Math.max(lane.populationPeak || 0, lane.alive);
@@ -955,6 +956,7 @@ class ProcgenLaneWorld {
       if (this.tickIndex % 32 === 0) this._retainTerrainDescriptors();
       if (this.tickIndex % 128 === 0) this._pruneEdits();
       this._musicCompletedSlot = nextMusicSlot; this._musicCompletedTick = this.tickIndex;
+      publishProcgenActorVisibility(this);
       this.soundEvents.laneIndex = 0;
       this.soundEvents.commitTick(this._physicalSnapshot(), this.terrainRevision);
       this.timer.onGameTick.trigger(this.tickIndex);

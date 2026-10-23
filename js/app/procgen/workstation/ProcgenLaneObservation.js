@@ -1,4 +1,5 @@
 import { LemmingStateType as State } from '../../../lemmings/LemmingStateType.js';
+import { getProcgenActorVisibility } from '../ProcgenActorVisibility.js';
 
 const ACTIONS = { WALKING: 'walk', FALLING: 'fall', JUMPING: 'jump', DIGGING: 'dig', CLIMBING: 'climb', HOISTING: 'climb',
   BUILDING: 'build', BLOCKING: 'block', BASHING: 'bash', FLOATING: 'float', MINING: 'mine', SHRUG: 'idle' };
@@ -8,11 +9,14 @@ const EMPTY = Object.freeze({ action: '', terrain: '' });
 // Actor indexing runs once per tick, and contact samples only run for requested lanes.
 export function createProcgenLaneObserver(world) {
   let tick = -1, generation = -1, revision = -1, leaders = [], actions = [], observations = [];
+  let projection = null;
   const names = new Map(Object.entries(ACTIONS).map(([state, name]) => [world.actions?.[State[state]], name]));
   const index = () => {
     if (tick === world.tickIndex && generation === world.generation && revision === world.terrainRevision) return;
     tick = world.tickIndex; generation = world.generation; revision = world.terrainRevision;
     leaders = new Array(world.laneCount); actions = new Array(world.laneCount); observations = new Array(world.laneCount);
+    projection = getProcgenActorVisibility(world);
+    if (projection) { projection.publish(); return; }
     for (const actor of world.actors || []) {
       const lane = actor.laneIndex;
       if (actor.failureReason || actor.removed || !actor.action || lane < 0 || lane >= world.laneCount) continue;
@@ -25,7 +29,16 @@ export function createProcgenLaneObserver(world) {
     if (!Number.isInteger(lane) || lane < 0 || lane >= world.laneCount) return EMPTY;
     index();
     if (observations[lane]) return observations[lane];
-    const actor = leaders[lane];
+    let actor = leaders[lane];
+    if (projection) {
+      const observedActions = new Set(); actor = null;
+      for (const candidate of projection.semanticActors(lane)) {
+        if (!candidate.action || candidate.failureReason || candidate.removed) continue;
+        if (!actor || candidate.x > actor.x || candidate.x === actor.x && candidate.id < actor.id) actor = candidate;
+        const name = names.get(candidate.action); if (name) observedActions.add(name);
+      }
+      actions[lane] = observedActions;
+    }
     if (!actor) return observations[lane] = EMPTY;
     const x = Math.floor(actor.x), y = Math.floor(actor.y), direction = actor.lookRight === false ? -1 : 1;
     const tags = [], ahead = x + direction * 4;
