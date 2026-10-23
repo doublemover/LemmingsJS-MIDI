@@ -8,6 +8,19 @@ import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
 describe('causal intent sink dispatch', () => {
   let masks;
   before(async () => { masks = await loadProcgenMasks(); });
+  it('retires every execution and preserves cancellation failures across independent sinks', () => {
+    const calls = [], intent = { version: 1, intentId: 'i', kind: 'begin', voiceId: 'v', generation: 1, route: 'main', sourceEventIds: [], scoreTime: {} };
+    const backend = id => ({ registerExecution: () => ({ status: 'accepted', execution: { id } }),
+      begin: () => ({ status: 'accepted' }), cancelGenerationWithReceipt() { calls.push(id + '-cancel'); if (id === 'bad') throw new Error('cancel failed'); },
+      retireExecution() { calls.push(id + '-retire'); if (id === 'bad') throw new Error('retire failed'); } });
+    const dispatcher = createCausalIntentDispatcher({ sinks: ['bad', 'good'].map(id => ({ id, route: 'main', backend: backend(id) })),
+      executionEpoch: () => 'take', toTargetFrame: () => 100 });
+    dispatcher.dispatch([intent], { batchId: 'batch', generation: 1 });
+    const cancellation = dispatcher.cancelGeneration(1, 'take');
+    expect(cancellation.outcome).to.equal('partial'); expect(calls).to.deep.equal(['bad-cancel', 'bad-retire', 'good-cancel', 'good-retire']);
+    const disposed = dispatcher.dispose(); expect(disposed.outcome).to.equal('partial'); expect(calls).to.have.length(4);
+    expect(dispatcher.dispose()).to.equal(disposed); expect(dispatcher.diagnostics().receiptCount).to.equal(0);
+  });
 
   it('carries a real builder work cause through the batch, graph and sink receipt', () => {
     const world = new ProcgenLaneWorld({ masks, assists: false }), calls = [], receipts = [];

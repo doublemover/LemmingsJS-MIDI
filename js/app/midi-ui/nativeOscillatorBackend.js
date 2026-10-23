@@ -296,17 +296,25 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
       if (cancelledGenerations.size < 1024) cancelledGenerations.add(cancelledKey);
       else cancellationHistoryFull = true;
     }
-    for (const voice of voices.values()) if (voice.semanticGeneration === generation && voice.semanticEpoch === executionEpoch) {
+    const selected = [...voices.values()].filter(voice => voice.semanticGeneration === generation && voice.semanticEpoch === executionEpoch);
+    const retirement = createProcgenRetirementScope().retire(selected.map(voice => ({ name: 'voice-' + voice.id, run: () => {
       const beforeOnset = voice.start > (context?.currentTime ?? 0);
-      if (beforeOnset) preview._destroyVoice(voice, 'generation-cancel-before-onset');
-      else if (!voice.released) preview._release(voice, context?.currentTime || 0, true, 'generation-cancel');
-      const outcome = Object.freeze({ status: 'accepted', stage: 'scheduled-cancellation-requested',
-        voiceId: voice.playback.voiceId, generation, executionEpoch, frontierFrame, beforeOnset,
-        appliedFrame: null, renderedStatus: 'unknown', acousticReceipt: false });
-      outcomes.push(outcome); trace(outcome);
-    }
+      try {
+        const result = beforeOnset ? preview._destroyVoice(voice, 'generation-cancel-before-onset') :
+          !voice.released ? preview._release(voice, context?.currentTime || 0, true, 'generation-cancel') : null;
+        const outcome = Object.freeze({ status: result?.outcome === 'partial' ? 'rejected' : 'accepted', stage: 'scheduled-cancellation-requested',
+          voiceId: voice.playback.voiceId, generation, executionEpoch, frontierFrame, beforeOnset,
+          appliedFrame: null, renderedStatus: 'unknown', acousticReceipt: false });
+        outcomes.push(outcome); trace(outcome); return result;
+      } catch (error) {
+        const outcome = Object.freeze({ status: 'rejected', reason: 'voice-cancellation-failed', voiceId: voice.playback.voiceId,
+          generation, executionEpoch, frontierFrame, appliedFrame: null, renderedStatus: 'unknown', acousticReceipt: false });
+        outcomes.push(outcome); trace(outcome); throw error;
+      }
+    } })));
     leases.delete(leaseKey(generation, executionEpoch));
-    return Object.freeze({ generation, executionEpoch, frontierFrame, count: outcomes.length, outcomes: Object.freeze(outcomes) });
+    return Object.freeze({ generation, executionEpoch, frontierFrame, count: outcomes.filter(outcome => outcome.status === 'accepted').length,
+      requestedCount: selected.length, outcomes: Object.freeze(outcomes), retirement });
   };
   const cancelGeneration = (generation, executionEpoch = 'live') => cancelGenerationWithReceipt(generation, executionEpoch).count;
   const renderDiagnostics = ({ includeVoices = false, includeTraces = false } = {}) => {

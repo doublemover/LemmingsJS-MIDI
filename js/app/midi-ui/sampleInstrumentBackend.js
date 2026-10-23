@@ -380,12 +380,21 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     const key = generationKey(generation, executionEpoch), frontierFrame = preview._context ? Math.ceil(preview._context.currentTime * preview._context.sampleRate) : null;
     if (!isManagedExecutionEpoch(executionEpoch) && !cancelled.has(key)) { if (cancelled.size < 1024) cancelled.add(key); else cancellationHistoryFull = true; }
     const outcomes = [];
-    for (const voice of voices.values()) if (voice.semanticGeneration === generation && voice.semanticEpoch === executionEpoch) {
-      const beforeOnset = voice.start > (preview._context?.currentTime ?? 0); preview._destroyVoice(voice, beforeOnset ? 'generation-cancel-before-onset' : 'generation-cancel');
-      outcomes.push(trace({ status: 'accepted', stage: 'scheduled-cancellation-requested', voiceId: voice.playback.voiceId, generation, executionEpoch, beforeOnset, frontierFrame,
-        appliedFrame: null, renderedStatus: 'unknown', acousticReceipt: false }));
-    }
-    leases.delete(key); return Object.freeze({ generation, executionEpoch, frontierFrame, count: outcomes.length, outcomes: Object.freeze(outcomes) });
+    const selected = [...voices.values()].filter(voice => voice.semanticGeneration === generation && voice.semanticEpoch === executionEpoch);
+    const retirement = createProcgenRetirementScope().retire(selected.map(voice => ({ name: 'voice-' + voice.id, run: () => {
+      const beforeOnset = voice.start > (preview._context?.currentTime ?? 0);
+      try {
+        const result = preview._destroyVoice(voice, beforeOnset ? 'generation-cancel-before-onset' : 'generation-cancel');
+        outcomes.push(trace({ status: result?.outcome === 'partial' ? 'rejected' : 'accepted', stage: 'scheduled-cancellation-requested', voiceId: voice.playback.voiceId,
+          generation, executionEpoch, beforeOnset, frontierFrame, appliedFrame: null, renderedStatus: 'unknown', acousticReceipt: false }));
+        return result;
+      } catch (error) {
+        outcomes.push(trace({ status: 'rejected', reason: 'voice-cancellation-failed', voiceId: voice.playback.voiceId, generation, executionEpoch,
+          frontierFrame, appliedFrame: null, renderedStatus: 'unknown', acousticReceipt: false })); throw error;
+      }
+    } })));
+    leases.delete(key); return Object.freeze({ generation, executionEpoch, frontierFrame, count: outcomes.filter(outcome => outcome.status === 'accepted').length,
+      requestedCount: selected.length, outcomes: Object.freeze(outcomes), retirement });
   };
   const renderDiagnostics = ({ includeVoices = false, includeTraces = false } = {}) => Object.freeze({
     readiness: disposed ? 'disposed' : !prepared ? 'patch-unprepared' : !preview._ownerReady(owner) ? 'audio-not-ready' : 'ready',

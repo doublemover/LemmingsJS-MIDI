@@ -1,3 +1,5 @@
+import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
+
 const createStrictLiveFramePolicy = ({ nowFrame } = {}) => {
   if (typeof nowFrame !== 'function') throw new Error('A sink frame clock is required.');
   return ({ intent, targetFrame, sink }) => {
@@ -24,18 +26,32 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
   }
   const history = [], executions = new Map();
   let disposed = false;
+  const retirement = createProcgenRetirementScope();
   const record = receipt => {
     const sealed = Object.freeze(receipt);
     if (historyLimit > 0) { history.push(sealed); if (history.length > historyLimit) history.shift(); }
     try { onReceipt(sealed); } catch { /* Diagnostics cannot change admission. */ }
     return sealed;
   };
+  const retireCurrent = (sink, current, cancel = false) => {
+    current.closed = true;
+    current.retirementScope ||= createProcgenRetirementScope();
+    return current.retirementScope.retire([
+      ...(cancel ? [{ name: sink.id + '-cancel', run: () => {
+        const result = sink.backend.cancelGenerationWithReceipt ? sink.backend.cancelGenerationWithReceipt(current.generation, current.execution) :
+          sink.backend.cancelGeneration?.(current.generation, current.execution);
+        return result?.retirement?.schema === 'lemmings-retirement/v1' ? result.retirement : result;
+      } }] : []),
+      { name: sink.id + '-execution', run: () => sink.backend.retireExecution?.(current.execution) }
+    ]);
+  };
   const executionFor = (sink, epoch, generation) => {
     if (typeof sink.backend.registerExecution !== 'function') return { execution: epoch };
     let current = executions.get(sink.id);
     const incarnation = sink.backend.executionIncarnation?.() ?? 0;
     if (current && (current.epoch !== epoch || current.generation !== generation || !current.closed && current.incarnation !== incarnation)) {
-      sink.backend.retireExecution(current.execution); executions.delete(sink.id); current = null;
+      if (retireCurrent(sink, current).outcome !== 'complete') return { status: 'rejected', reason: 'sink-retirement-unknown' };
+      executions.delete(sink.id); current = null;
     }
     if (current) return current.closed ? { status: 'rejected', reason: 'execution-retired' } : current;
     const registered = sink.backend.registerExecution({ executionEpoch: epoch, generation });
@@ -96,24 +112,22 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
     return Object.freeze(receipts);
   };
   const cancelGeneration = (generation, epoch = executionEpoch()) => {
+    const actions = [];
     for (const sink of sinks) {
-      try {
-        const current = executions.get(sink.id);
-        if (current?.epoch === epoch && current.generation === generation) {
-          current.closed = true; sink.backend.cancelGeneration?.(generation, current.execution);
-          sink.backend.retireExecution?.(current.execution);
-        } else if (typeof sink.backend.registerExecution !== 'function') sink.backend.cancelGeneration?.(generation, String(epoch));
-      } catch { /* One sink cannot prevent other cleanup. */ }
+      const current = executions.get(sink.id);
+      if (current?.epoch === epoch && current.generation === generation) {
+        actions.push({ name: sink.id, run: () => retireCurrent(sink, current, true) });
+      } else if (typeof sink.backend.registerExecution !== 'function') actions.push({ name: sink.id + '-cancel', run: () => sink.backend.cancelGeneration?.(generation, String(epoch)) });
     }
+    return createProcgenRetirementScope().retire(actions);
   };
   const diagnostics = () => Object.freeze({ disposed, receiptCount: history.length, receipts: Object.freeze([...history]) });
   const dispose = () => {
-    if (disposed) return; disposed = true;
-    for (const sink of sinks) {
+    if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true;
+    return retirement.retire(sinks.flatMap(sink => {
       const current = executions.get(sink.id);
-      if (current) sink.backend.retireExecution?.(current.execution);
-    }
-    executions.clear(); history.length = 0;
+      return current ? [{ name: sink.id + '-execution', run: () => retireCurrent(sink, current) }] : [];
+    }).concat({ name: 'dispatch-state', run: () => { executions.clear(); history.length = 0; } }));
   };
   return { dispatch, cancelGeneration, diagnostics, dispose };
 };
