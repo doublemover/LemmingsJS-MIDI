@@ -100,3 +100,24 @@ disposed renderer ignored late recovery while all owned surfaces stayed zeroed.
 The tests attach hash/ownership receipts to Playwright results. These are fault
 injection tests, not evidence of an operating-system GPU reset or support across
 other browsers. The bundled Playwright Chromium executable was unavailable.
+
+## Completed lane action facts
+
+The existing completed actor publication now includes pooled per-lane action
+masks, counts and numeric first-seen label order. Eleven action labels use 54
+bytes per lane for these typed arrays, with no new arrays per completed tick.
+Musical observations reuse the semantic leader and action facts, keeping contact
+sampling lazy and reusing observation slots. Terrain-only edits do not rebuild
+the fallback actor index. Label order matches the previous actor traversal order.
+
+Renderer, camera and musical observation entry points defer an unfinished
+physical tick. A previously returned lane observation is frozen and remains
+unchanged while that tick runs. Tests compare indexed leaders/order/counts with
+reference traversal over deterministic transfers, removals and equal-X ties at
+8/128/1024 lanes, and cover same-tick generation/action-owner replacement.
+
+This does not yet provide leased immutable render buffers for workers, nor
+remove the full draw-bounds pass recorded above. Contact queries still use the
+world's authoritative terrain reads, which can recompose an evicted collision
+cache entry; an explicit read-only residency/unknown API is a separate remaining
+part of the shared projection work.

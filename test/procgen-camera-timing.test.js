@@ -24,4 +24,11 @@ describe('monotonic ProcGen camera presentation time', () => {
     expect(Object.keys(camera.getState())).to.deep.equal(['cameraX', 'cameraY', 'scale', 'follow']);
     camera.dispose(); expect(() => camera.update(false, true, 10032)).not.to.throw(); expect(camera.pan(10, 10)).to.equal(false);
   });
+  it('defers follow targets until the current physical tick is complete', () => {
+    const { renderer, camera } = fixture(); renderer.world.tickIndex = 1; camera.update(true, true, 0);
+    const completedX = renderer.cameraX;
+    renderer.world._stepping = true; renderer.world._musicCompletedTick = 1; renderer.world.tickIndex = 2; renderer.world.actors[0].x = 1600;
+    camera.update(true, true, 16); expect(renderer.cameraX).to.equal(completedX);
+    renderer.world._musicCompletedTick = 2; camera.update(true, true, 32); expect(renderer.cameraX).to.equal(1480); camera.dispose();
+  });
 });

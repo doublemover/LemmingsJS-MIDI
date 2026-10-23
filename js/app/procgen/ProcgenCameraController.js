@@ -59,6 +59,7 @@ const createProcgenCameraController = renderer => {
   const followFrontier = () => { renderer.follow = true; update(true); renderer.render(false); };
   const update = (immediate = false, reuseLeader = false, presentationMs = windowRef.performance?.now?.() ?? Date.now()) => {
     if (disposed) return;
+    if (world._stepping && world._musicCompletedTick !== world.tickIndex) return;
     clamp();
     if (!renderer.follow) { lastFollowMs = null; return; }
     const projection = renderer.workstationLayout, selected = Number.isInteger(renderer.followLaneIndex) ? renderer.followLaneIndex : null;

@@ -48,4 +48,43 @@ describe('ProcGen current lane conditions', () => {
     expect(f.observe(1)).to.deep.equal({ action: '', terrain: '' });
     index.dispose(); expect(getProcgenActorVisibility(f.world)).to.equal(null);
   });
+
+  it('reads numeric completed action masks without walking lane buckets and reuses observation slots', () => {
+    const f = fixture(), index = new ProcgenActorVisibility(f.world);
+    registerProcgenActorVisibility(f.world, index); index.publish();
+    const masks = index.actionMasks, counts = index.actionCounts;
+    index.semanticActors = () => { throw new Error('Observers must use the completed action index'); };
+    expect(f.observe(0).action).to.equal('walk build');
+    expect(index.semanticActionCount(0, 'walk')).to.equal(1); expect(index.semanticActionCount(0, 'build')).to.equal(1);
+    const reads = index.getStats().actorScans, slots = f.observe.getStats().observationAllocations;
+    for (let tick = 0; tick < 20; tick++) {
+      f.world.tickIndex++; index.publish(); expect(f.observe(0).action).to.equal('walk build');
+    }
+    expect(index.actionMasks).to.equal(masks); expect(index.actionCounts).to.equal(counts);
+    expect(index.getStats().actorScans - reads).to.equal(40);
+    expect(f.observe.getStats()).to.include({ actorVisits: 0, observationAllocations: slots, indexAllocations: 1 });
+    const publications = index.getStats().publications; f.world.terrainRevision++; f.observe(0);
+    expect(index.getStats().publications).to.equal(publications); index.dispose();
+  });
+
+  it('keeps the last completed immutable observation while a physical tick is unfinished', () => {
+    const f = fixture(), index = new ProcgenActorVisibility(f.world);
+    registerProcgenActorVisibility(f.world, index); index.publish(); const completed = f.observe(0), reads = f.queries();
+    expect(Object.isFrozen(completed)).to.equal(true);
+    f.world._musicCompletedTick = f.world.tickIndex; f.world.tickIndex++; f.world._stepping = true;
+    f.world.actors[0].x = 90; f.world.actors[0].action = f.world.actions[State.MINING];
+    expect(index.publish(true)).to.equal(false); expect(f.observe(0)).to.equal(completed);
+    expect(f.observe(1)).to.deep.equal({ action: '', terrain: '' }); expect(f.queries()).to.equal(reads);
+    f.world._musicCompletedTick = f.world.tickIndex; index.publish();
+    expect(f.observe(0)).to.include({ x: 90, action: 'mine build' }); index.dispose();
+  });
+
+  it('avoids fallback reindexing for terrain-only edits and preserves first-seen label ordering', () => {
+    const f = fixture(); expect(f.observe(0).action).to.equal('walk build');
+    expect(f.observe.getStats()).to.include({ fallbackBuilds: 1, actorVisits: 2, indexAllocations: 1, observationAllocations: 1 });
+    for (let revision = 1; revision <= 10; revision++) { f.world.terrainRevision = revision; f.observe(0); }
+    expect(f.observe.getStats()).to.include({ fallbackBuilds: 1, actorVisits: 2, indexAllocations: 1, observationAllocations: 1 });
+    f.world.actors[0].action = f.world.actions[State.MINING]; f.world.tickIndex++;
+    expect(f.observe(0).action).to.equal('mine build');
+  });
 });

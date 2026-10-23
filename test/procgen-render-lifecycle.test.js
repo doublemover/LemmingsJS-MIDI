@@ -146,4 +146,11 @@ describe('ProcGen display resource lifecycle', () => {
     runtime.renderer.render(); expect([...reservations.values()].reduce((sum, bytes) => sum + bytes, 0)).to.be.greaterThan(0);
     runtime.stop(); expect(reservations.size).to.equal(0);
   });
+
+  it('preserves the last presented frame until a physical tick finishes', () => {
+    const { renderer, world } = fixture(); renderer.render(); const frame = renderer.lastFrameKey, allocations = renderer.resources.allocations;
+    world._musicCompletedTick = world.tickIndex; world.tickIndex++; world._stepping = true;
+    expect(renderer.render()).to.equal(false); expect(renderer.lastFrameKey).to.equal(frame); expect(renderer.resources.allocations).to.equal(allocations);
+    world._musicCompletedTick = world.tickIndex; expect(renderer.render()).to.equal(true); renderer.dispose();
+  });
 });

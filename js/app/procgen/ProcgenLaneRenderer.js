@@ -311,6 +311,7 @@ class ProcgenLaneRenderer {
   // Explicit requests redraw; the RAF loop may reuse a fully unchanged frame.
   render(force = true) {
     if (this.lifecycleState === 'disposed' || this.lifecycleState === 'lost' || this.lifecycleState === 'unavailable') return false;
+    if (this.world._stepping && this.world._musicCompletedTick !== this.world.tickIndex) return false;
     const now = this.window.performance?.now?.() ?? Date.now();
     if (this.lifecycleState === 'recovering') {
       if (now < this.nextRecoveryMs) return false;
