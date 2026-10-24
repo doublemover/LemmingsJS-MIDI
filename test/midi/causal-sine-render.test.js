@@ -74,6 +74,14 @@ describe('journal-backed causal sine PCM rendering', () => {
     for (let frame = 0; frame < Math.round(0.203 * 48000); frame++) expect(second.getFloat32(frame * 8, true)).to.equal(0);
     for (let frame = Math.round(0.203 * 48000); frame < result.manifest.frames; frame++) expect(first.getFloat32(frame * 8, true)).to.equal(0);
   });
+  it('admits a complete fractional-time voice set independently of its source actor traversal order', async () => {
+    const phase = (kind, voice, fraction) => { const value = intent(1, 100, kind, voice, voice === 'a' ? 0 : 1);
+      value.scoreTime = { ...value.scoreTime, subTick: fraction, sourceTickDurationMs: 50 }; return value; };
+    const { revoice } = await source([[phase('begin', 'a', 0.9), phase('end', 'a', 0.95), phase('begin', 'b', 0.1), phase('end', 'b', 0.2)]]);
+    const patch = { ...definition, parameters: { ...definition.parameters, releaseSeconds: 0.002 }, voicePolicy: { ...definition.voicePolicy, maxVoices: 1 } };
+    const result = await renderCausalSineTake({ revoice, definition: patch, descriptor, endSeconds: 0.5 }, { yieldControl: async () => {} });
+    expect(result.manifest.commands).to.include({ capturedBegins: 2, peakVoices: 1 }); expect(result.manifest.timing.fractionalIntents).to.equal(4);
+  });
   it('distinguishes unknown natural release, deliberate boundary release, missing ancestry, memory denial and cancellation', async () => {
     const { revoice } = await source([[intent(1, 100, 'begin', 'a', 0)]]), input = { revoice, definition, descriptor, sampleRate: 48000, endSeconds: 0.5 };
     await rejectCode(planCausalSineRender({ ...input, tail: { mode: 'bounded-natural' } }), 'unknown-natural-release');

@@ -705,7 +705,8 @@ reconstruct live admission choices, native/hardware timbre or the protected live
 master. New capture boundaries include the actual simulation source clock. Older
 takes without that clock or with initially held voices need qualified history;
 the adapter refuses them rather than inventing attacks. Fractional-tick timing
-requires a further timeline adapter. Histories are limited to 8,192 intent records,
+uses an actual captured tick duration or a qualified captured source timeline;
+duration/score-time disagreements are refused. Histories are limited to 8,192 intent records,
 32,768 intents and a bounded source snapshot; no continuation is silently omitted.
 
 The worker reconstructs silently from capture zero before emitting a crop. Exact
@@ -728,6 +729,15 @@ Download requests and acknowledged file-handle saves have distinct status; Close
 cancels active preparation/delivery while retaining valid prepared files. Reopen
 can retry a file without rendering again. Browser coverage for a real physical
 phrase through an immutable worker is authored and remains unexecuted.
+
+New intents retain the actual source tick duration. The render timing adapter
+checks captured timeline epochs and score beats across tempo/rate changes, rounds
+only at the selected output sample rate, and subtracts the source origin before
+adding fractional time. It never substitutes one current BPM for the take's
+history. Voice-capacity planning orders the complete captured onset set by its
+actual frame with stable source-order ties, independently of actor traversal.
+Timing provenance and the captured timeline hash accompany the render. Numeric,
+rate-change and fractional-order regression fixtures remain unexecuted.
 Global stop fences reentrant enable requests and requests source cancellation;
 source/backend ownership remains visible until actual retirement. Master capture
 excludes the separate cue bus and explicitly includes live-output rehearsal.

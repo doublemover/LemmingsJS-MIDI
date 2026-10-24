@@ -6,6 +6,7 @@ import { getNativeInstrumentCatalog } from './NativeInstrumentSchema.js';
 import { canonicalDataText, cloneData, freezeData, hashData } from '../../core/CanonicalData.js';
 import { prepareExportArtifact } from '../export/ExportArtifact.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
+import { createCausalRenderTiming } from './CausalRenderTiming.js';
 
 export const CAUSAL_RENDER_SINE = freezeData({ schemaVersion: 2, id: 'causal-render.sine', revision: 1, name: 'Sine revoice', author: 'LemmingsJS-MIDI', tags: ['revoice'],
   engineId: 'worklet-sine', engineVersion: 1, parameters: { attackSeconds: 0.008, decaySeconds: 0.05, sustain01: 0.7, releaseSeconds: 0.04, gain01: 0.5, pan01: 0 },
@@ -66,8 +67,8 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
         revoice = operation.source.value;
         if (revoice.nextSequence != null) throw failure('render-source-capacity', 'This take exceeds the bounded source window. Prepare a shorter qualified take instead of silently dropping later intent pages.');
         if (includeAllLaneStems) {
-          const origin = revoice.boundary.state?.sourceTimeMs, cutoff = Math.round(endSeconds * sampleRate);
-          lanes = Object.freeze([...new Set(revoice.intents.filter(intent => intent.kind === 'begin' && Math.round((intent.scoreTime.sourceTimeMs - origin) * sampleRate / 1000) < cutoff)
+          const timing = createCausalRenderTiming(revoice, sampleRate), cutoff = Math.round(endSeconds * sampleRate);
+          lanes = Object.freeze([...new Set(revoice.intents.filter(intent => intent.kind === 'begin' && timing.frameFor(intent) < cutoff)
             .map(intent => String(intent.laneId ?? 'unassigned')))].sort());
           if (lanes.length > 16) throw failure('stem-capacity', 'This range contains more than sixteen captured lanes. Render the complete graph without all-lane stems or select fewer lanes.');
         }

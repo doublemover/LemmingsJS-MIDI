@@ -2,6 +2,7 @@ import { OwnedSineKernel, WIDTH, MAX_VOICES, RECEIPT_WIDTH, BEGIN, UPDATE, END, 
 import { NATIVE_WORKLET_FIELDS } from './NativeInstrumentSchema.js';
 import { validateInstrumentPatchV2 } from '../../midi/content/InstrumentPatchV2.js';
 import { canonicalDataText, hashData } from '../../core/CanonicalData.js';
+import { createCausalRenderTiming } from './CausalRenderTiming.js';
 
 const MAX_SECONDS = 120, MAX_INTENTS = 32768, MAX_OUTPUT_BYTES = 64 * 1048576;
 const failure = (code, message, detail = {}) => Object.assign(new Error(message), { name: 'CausalRenderError', code, ...detail });
@@ -52,6 +53,7 @@ export async function planCausalSineRender({ revoice, definition, descriptor, sa
     throw failure('unsupported-patch', 'This render requires a realized asset-free sine patch with reject admission.');
   const parameters = Object.fromEntries(Object.entries(NATIVE_WORKLET_FIELDS).map(([key, spec]) => [key, patch.parameters[key] ?? spec[2]]));
   const sourceOriginMs = revoice.boundary.state.sourceTimeMs, sourceEndSeconds = (revoice.finalBoundaryState.sourceTimeMs - sourceOriginMs) / 1000;
+  const timing = createCausalRenderTiming(revoice, sampleRate);
   if (endSeconds > sourceEndSeconds + 0.5 / sampleRate) throw failure('uncovered-range', 'The requested render extends beyond the captured source-clock boundary.');
   const firstFrame = Math.round(startSeconds * sampleRate), endFrame = Math.round(endSeconds * sampleRate), releaseFrames = Math.max(1, Math.round(parameters.releaseSeconds * sampleRate));
   if (endFrame <= firstFrame) throw failure('empty-range', 'The selected range contains no output frames.');
@@ -63,8 +65,7 @@ export async function planCausalSineRender({ revoice, definition, descriptor, sa
         !finite(intent.scoreTime.subTick ?? 0, 0, 1) || (intent.scoreTime.subTick ?? 0) >= 1)
       throw failure('invalid-intent-history', 'Captured intent identity, ordering or source time is invalid.', { intentId: intent?.intentId ?? null });
     sourceIds.add(intent.intentId); lastSourceMs = intent.scoreTime.sourceTimeMs;
-    if ((intent.scoreTime.subTick ?? 0) !== 0) throw failure('subtick-timeline-required', 'This source has fractional-tick intent timing and needs its qualified score-timeline adapter.');
-    const frame = Math.round((intent.scoreTime.sourceTimeMs - sourceOriginMs) * sampleRate / 1000), order = ++ordinal;
+    const frame = timing.frameFor(intent), order = ++ordinal;
     if (frame >= endFrame) continue;
     const key = identity(intent), expression = expressionFor(intent.expression || {}); let voice = voices.get(key);
     if (intent.kind === 'begin') {
@@ -72,13 +73,14 @@ export async function planCausalSineRender({ revoice, definition, descriptor, sa
         throw failure('invalid-voice-history', 'Captured voice onsets are repeated or malformed.', { intentId: intent.intentId });
       const laneId = String(intent.laneId ?? 'unassigned'); lanes.add(laneId);
       const frequency = frequencyFor(intent.pitch, expression.pitchOffsetCents ?? 0, sampleRate);
-      voice = { key, laneId, start: frame, releaseAt: null, end: null, slot: -1, token: 0, begin: intent, baseFrequency: frequency / 2 ** ((expression.pitchOffsetCents ?? 0) / 1200), events: [] };
+      voice = { key, laneId, start: frame, order, releaseAt: null, end: null, slot: -1, token: 0, begin: intent, baseFrequency: frequency / 2 ** ((expression.pitchOffsetCents ?? 0) / 1200), events: [] };
       voices.set(key, voice); capturedBegins++;
       voice.events.push({ kind: 'begin', frame, order, intentId: intent.intentId, values: { 6: frequency, 7: intent.velocity01 * parameters.gain01 * patch.mix.gain01,
         8: expression.pressure01 ?? 1, 9: Math.max(-1, Math.min(1, (expression.pan01 ?? parameters.pan01) + patch.mix.pan01)),
         10: Math.round(parameters.attackSeconds * sampleRate), 11: Math.round(parameters.decaySeconds * sampleRate), 12: parameters.sustain01, 13: releaseFrames } });
     } else {
       if (!voice || voice.end != null) throw failure('missing-voice-history', 'A captured control or end has no still-owned original onset.', { intentId: intent.intentId });
+      if (frame < voice.start) throw failure('invalid-voice-time', 'A captured control precedes its own original onset.', { intentId: intent.intentId });
       if (intent.kind === 'end') {
         const at = intent.terminationReason === 'one-shot' ? Math.max(frame, voice.start + Math.round(0.08 * sampleRate)) : frame;
         voice.releaseAt = at; voice.end = at + releaseFrames; capturedEnds++;
@@ -108,7 +110,7 @@ export async function planCausalSineRender({ revoice, definition, descriptor, sa
   const outputFrames = outputEnd - firstFrame, pcmBytes = outputFrames * 8 * (stemLaneIds.length + 1);
   if (!natural(pcmBytes) || pcmBytes + 262208 * (stemLaneIds.length + 1) > MAX_OUTPUT_BYTES) throw failure('render-capacity', 'This render/stem set exceeds 64 MiB; choose a shorter range or fewer stems.');
   const slots = new Array(patch.voicePolicy.maxVoices).fill(null), tokens = new Uint32Array(MAX_VOICES); let peakVoices = 0;
-  for (const voice of voices.values()) {
+  for (const voice of [...voices.values()].sort((left, right) => left.start - right.start || left.order - right.order)) {
     let occupied = 0, selected = -1;
     for (let slot = 0; slot < slots.length; slot++) { if (slots[slot]?.end <= voice.start) slots[slot] = null; if (slots[slot]) occupied++; else if (selected < 0) selected = slot; }
     if (selected < 0) throw failure('intent-voice-capacity', 'The selected patch cannot realize every captured onset without dropping a voice.', { intentId: voice.begin.intentId });
@@ -117,6 +119,7 @@ export async function planCausalSineRender({ revoice, definition, descriptor, sa
   events.sort((left, right) => left.frame - right.frame || left.order - right.order);
   return { patch, parameters, events, voices, source: revoice, descriptor, applicationBuildId, sampleRate, firstFrame, endFrame, outputEnd, outputFrames,
     sourceOriginMs, startSeconds, endSeconds, tail, releaseFrames, derivedReleases, capturedBegins, capturedUpdates, capturedEnds, peakVoices, stemLaneIds, lanes, pcmBytes,
+    timing: { ...timing.receipt(), sourceTimelineHash: timing.sourceTimeline ? await hashData(timing.sourceTimeline, { maxBytes: 1048576, maxNodes: 65536 }) : null },
     definitionHash: await hashData(definition), intentHash: await hashData(revoice.intents, { maxBytes: 8 * 1048576, maxNodes: 1000000 }) };
 }
 
@@ -163,6 +166,7 @@ export async function renderCausalSineTake(input, { signal, yieldControl = () =>
   const common = { schema: 'lemmings-causal-audio-render/v1', mode: 'intent-render', operation: 'sound-only-revoice', takeId: plan.source.takeId,
     takeRevision: plan.source.takeRevision, sourceCanonicalHash: plan.source.sourceCanonicalHash, sourceVersions: plan.source.sourceVersions, intentHash: plan.intentHash,
     sourceEvidence: 'provided-covered-semantic-snapshot', sourceOriginMs: plan.sourceOriginMs, timeDomain: 'captured-source-time', inputRange: { startSeconds: plan.startSeconds, endSeconds: plan.endSeconds },
+    timing: plan.timing,
     sampleRate, channels: 2, sampleFormat: 'ieee-float32-le', frames: outputFrames, timelineZeroSourceFrame: firstFrame, exactEndSourceFrame: endFrame, renderedEndSourceFrame: outputEnd,
     restoration: { mode: 'deterministic-preroll', fromSourceFrame: 0, prerollFrames: firstFrame, initialVoices: 0, maxHistorySeconds: MAX_SECONDS },
     tail: { mode: plan.tail.mode, maxSeconds: plan.tail.maxSeconds ?? 4, derivedBoundaryReleases: plan.derivedReleases, truncated: kernel.active.some(Boolean) },

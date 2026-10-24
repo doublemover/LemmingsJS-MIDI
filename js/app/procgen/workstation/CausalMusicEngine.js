@@ -56,7 +56,8 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     actionInstanceId: fact?.actionInstanceId ?? null,
     scoreTime: Object.freeze({ ...(scoreTimeline?.map({ simTick: batch.tick, subTick: fact?.subTick ?? 0,
       precision: fact?.precision ?? 'tick' }) || { simTick: batch.tick, subTick: fact?.subTick ?? 0,
-      precision: fact?.precision ?? 'tick' }), sourceTimeMs: batch.sourceTimeMs ?? null }),
+      precision: fact?.precision ?? 'tick' }), sourceTimeMs: batch.sourceTimeMs ?? null,
+    sourceTickDurationMs: Number.isFinite(batch.tickDurationMs) && batch.tickDurationMs > 0 ? batch.tickDurationMs : null }),
     pitch: Object.freeze({ cents: instrument.pitchCents, referenceHz: 440 }), velocity01: instrument.velocity01,
     expression: Object.freeze(expression), role: instrument.role, route: instrument.route, terminationReason: reason
   });

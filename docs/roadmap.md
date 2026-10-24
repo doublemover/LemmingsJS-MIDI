@@ -2079,9 +2079,9 @@ The new causal sine render core consumes bounded covered intent snapshots in an
 explicit new local realization, with captured source-clock boundaries, immutable
 intent/source hashes, silent preroll, exact crop or declared bounded/derived tails,
 and simultaneous dry lane taps from one graph. It rejects unknown held ancestry,
-unsupported expression/subtick timing and capacity rather than inventing attacks
+unsupported expression, unqualified timing and capacity rather than inventing attacks
 or replaying current physics. The fixed worker requires immutable engine identity
-and admits PCM/encoding/transfer overlap. Host/UI integration follows; authored
+and admits PCM/encoding/transfer overlap. Host/UI integration is connected; authored
 PCM/stem/crop/cancellation fixtures remain unexecuted.
 The causal render host retains exact source and computation ownership through
 publication of checked master/stem export artifacts. The saved-take inspector now
@@ -2092,6 +2092,12 @@ clock/held ancestry is shown before enabling render. Component fixtures use a
 declared test adapter and do not stand in for immutable-build worker/browser
 qualification. General engines, admission-history reconstruction and physical
 master/cue equivalence remain outside this first adapter.
+New intents retain their actual source tick duration. The shared render timing
+adapter validates captured tempo/rate epochs and beat consistency, qualifies
+fractional-tick placement, and removes the source origin before adding fractional
+time. Complete onset-set capacity planning uses frame/source-order ties rather
+than actor traversal order. The worker manifest records timing provenance/hash;
+timing, numeric-origin and fractional-order fixtures remain unexecuted.
 
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
