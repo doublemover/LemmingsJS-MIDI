@@ -1,3 +1,4 @@
+import { prepareNativeImpulseMaterial } from './NativeImpulseMaterial.js';
 import { getActiveExecutionIdentity } from '../../runtime/ActiveExecutionIdentity.js';
 import { createSmoothedAudioParameter } from './SmoothedAudioParameter.js';
 import { prepareEffectGraphRevision, effectGraphHash } from '../../midi/content/EffectGraphRevision.js';
@@ -12,7 +13,7 @@ const failure = (code, message) => Object.assign(new Error(message), { name: 'Ef
 // A prepared graph has no connection to a live destination. The owner decides
 // when inputs/outputs become audible and owns all transition/tail overlap.
 export async function prepareNativeEffectGraph(definition, { context, resources, owner, generation = 0, signal, isCurrent = () => true,
-  createWorkletNode = (ctx, name, options) => new globalThis.AudioWorkletNode(ctx, name, options), onFault = () => {}, initializationTimeoutMs = 5000 } = {}) {
+  getMaterialProvider = null, jobs, createWorkletNode = (ctx, name, options) => new globalThis.AudioWorkletNode(ctx, name, options), onFault = () => {}, initializationTimeoutMs = 5000 } = {}) {
   const guard = () => { signal?.throwIfAborted(); if (!isCurrent() || context?.state === 'closed') throw failure('stale-effect-graph', 'The effect graph request no longer belongs to this context.'); };
   guard();
   if (!context?.createGain || !resources?.reserve || typeof createWorkletNode !== 'function' || typeof onFault !== 'function' ||
@@ -28,7 +29,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     { name: 'unused-effect-graph-reservation', run: () => { if (preparationError || preparationScope.getReceipt().resources[0].status !== 'completed') return storage?.release(); } }]);
   if (prepared.outcome !== 'complete') throw Object.assign(failure('effect-preparation-retirement', 'Effect metadata preparation retirement is unresolved.'), { cause: preparationError, retirement: prepared });
   if (preparationError) throw preparationError;
-  const scope = createProcgenRetirementScope({ deadlineMs: initializationTimeoutMs + 1000 }), nodes = [], delays = [], instances = new Map(), inputs = new Map(), outputs = new Map();
+  const scope = createProcgenRetirementScope({ deadlineMs: initializationTimeoutMs + 1000 }), nodes = [], delays = [], impulses = [], instances = new Map(), nodeOutputs = new Map(), inputs = new Map(), outputs = new Map();
   let disposed = false, fault = null, controlSequence = 0;
   const controls = new Map(), gainControls = new Map(), execution = getActiveExecutionIdentity('browser-native-audio');
   const node = value => { nodes.push(value); return value; };
@@ -40,8 +41,14 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
         entry.node.port.postMessage({ type: 'dispose' }); await entry.waitDisposed();
       }));
       const rejected = results.find(result => result.status === 'rejected'); if (rejected) throw rejected.reason;
-      for (const value of nodes) value.disconnect();
-      for (const entry of delays) { entry.cleanup(); entry.node.port.onmessage = null; entry.node.onprocessorerror = null; entry.node.port.close(); }
+      const native = createProcgenRetirementScope().retire([
+        ...impulses.map((entry, i) => ({ name: 'convolver-buffer-' + i, run: () => { if (entry.convolver) entry.convolver.buffer = null; } })),
+        ...nodes.map((value, i) => ({ name: 'effect-node-' + i, run: () => value.disconnect() })),
+        ...delays.map((entry, i) => ({ name: 'delay-port-' + i, run: () => { entry.cleanup(); entry.node.port.onmessage = null; entry.node.onprocessorerror = null; entry.node.port.close(); } }))
+      ]); await native.completion;
+      if (native.outcome !== 'complete') throw failure('effect-retirement-unknown', 'Native effect nodes did not retire completely; impulse pins remain owned.');
+      const materials = impulses.map(entry => entry.material.release()); await Promise.all(materials.map(receipt => receipt.completion));
+      if (materials.some(receipt => receipt.outcome !== 'complete')) throw failure('effect-retirement-unknown', 'Impulse material remains owned after native retirement.');
       storage.release();
     } catch (error) { storage.retainUnknown(error); throw error; }
   } }]);
@@ -49,8 +56,19 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
   try {
     if (plan.nodes.some(entry => entry.kind === 'feedback-delay')) { await loadOwnedWorkletModule(context, delayModule, resources); guard(); }
     for (const entry of plan.nodes) {
-      guard(); let value;
-      if (entry.kind === 'feedback-delay') {
+      guard(); let value, outputValue = null;
+      if (entry.kind === 'convolution-native') {
+        if (typeof getMaterialProvider !== 'function' || typeof context.createConvolver !== 'function') throw failure('convolution-unavailable', 'This owner cannot prepare its exact native impulse response.');
+        const material = await prepareNativeImpulseMaterial(entry.impulse, { provider: getMaterialProvider(), resources, context, owner, generation, signal, isCurrent, jobs });
+        const record = { material, convolver: null, nodeId: entry.id }; impulses.push(record); guard();
+        value = node(context.createGain()); value.gain.setValueAtTime(entry.impulse.referenceGain01, context.currentTime);
+        const convolver = node(context.createConvolver()); record.convolver = convolver;
+        convolver.channelCount = 2; convolver.channelCountMode = 'clamped-max'; convolver.channelInterpretation = 'speakers';
+        convolver.normalize = entry.impulse.normalizationMode === 'native-rms'; convolver.buffer = material.pin.buffer;
+        if (entry.impulse.predelaySeconds) { const predelay = node(context.createDelay(0.1)); predelay.delayTime.setValueAtTime(entry.impulse.predelaySeconds, context.currentTime); value.connect(predelay); predelay.connect(convolver); }
+        else value.connect(convolver);
+        outputValue = convolver;
+      } else if (entry.kind === 'feedback-delay') {
         const p = entry.parameters;
         value = node(createWorkletNode(context, 'lemmings-bounded-delay-v1', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: 'explicit',
           parameterData: { delayFrames: p.delaySeconds * context.sampleRate, feedback: p.feedback, wet: p.wet01 },
@@ -75,19 +93,20 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
           if (data?.type === 'ready') {
             if (data.revision !== DELAY_KERNEL_REVISION || data.sampleRate !== context.sampleRate || data.stateBytes !== entry.stateBytes) rejectReady(failure('effect-abi-mismatch', 'The delay effect runtime differs from its admitted graph.'));
             else resolveReady();
+          } else if (data?.type === 'delay-fault' && data.revision === DELAY_KERNEL_REVISION) { fault ||= failure('effect-state-containment', 'The delay branch cleared excessive or nonfinite internal state.'); try { onFault(fault); } catch {}
           } else if (data?.type === 'delay-health') delay.health = Object.freeze({ ...data });
         };
         value.onprocessorerror = () => { const error = failure('effect-processor-fault', 'The creative delay processor failed.'); fault = error; rejectReady(error); rejectDisposed(error); try { onFault(error); } catch { /* UI cannot own graph retirement. */ } };
         timer = setTimeout(timeout, initializationTimeoutMs); await ready; clearTimeout(timer); timer = null; signal?.removeEventListener('abort', abort); guard();
 
       } else { value = node(context.createGain()); value.gain.setValueAtTime(entry.kind === 'gain' ? entry.parameters.gain01 : 1, context.currentTime); }
-      instances.set(entry.id, value); controls.set(entry.id, Object.freeze({ ...entry.parameters }));
+      instances.set(entry.id, value); nodeOutputs.set(entry.id, outputValue || value); controls.set(entry.id, Object.freeze({ ...entry.parameters }));
       if (entry.kind === 'gain') gainControls.set(entry.id, createSmoothedAudioParameter({ param: value.gain, initialValue: entry.parameters.gain01, startTime: context.currentTime, smoothingSeconds: 0.008, maxEvents: 128 }));
       if (entry.kind === 'bus-in') inputs.set(entry.id, value); if (entry.kind === 'bus-out') outputs.set(entry.id, value);
     }
     for (const edge of plan.edges) {
       const gain = node(context.createGain()); gain.gain.setValueAtTime(edge.gain01, context.currentTime);
-      instances.get(edge.from.nodeId).connect(gain);
+      nodeOutputs.get(edge.from.nodeId).connect(gain);
       if (edge.alignmentFrames) { const align = node(context.createDelay(edge.alignmentFrames / context.sampleRate)); align.delayTime.setValueAtTime(edge.alignmentFrames / context.sampleRate, context.currentTime); gain.connect(align); align.connect(instances.get(edge.to.nodeId)); }
       else gain.connect(instances.get(edge.to.nodeId));
     }
@@ -119,9 +138,10 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     return Object.freeze({ status: 'accepted', stage: 'native-control-submitted', nodeId, targetFrame, sequence: ++controlSequence, graphDefinitionHash: hash, appliedFrame: null, acousticReceipt: false });
   };
   return Object.freeze({ plan, hash, update, getInput: id => disposed ? null : inputs.get(id) || null, getOutput: id => disposed ? null : outputs.get(id) || null,
-    panic() { for (const entry of delays) entry.node.port.postMessage({ type: 'panic' }); },
+    panic() { for (const entry of delays) entry.node.port.postMessage({ type: 'panic' }); for (const entry of impulses) if (entry.convolver) entry.convolver.buffer = null; },
     diagnostics: () => Object.freeze({ hash, graphId: plan.definition.id, revision: plan.definition.revision, sampleRate: plan.sampleRate, disposed, fault: fault?.code || null,
-      runtime: { revision: DELAY_KERNEL_REVISION, applicationBuildId: execution.buildId || null, activeExecution: execution.activeExecution },
+      runtime: { hostRevision: 'owned-native-effect-host-v1', delayRevision: delays.length ? DELAY_KERNEL_REVISION : null, convolution: impulses.length ? 'browser-native-unpinned-dsp' : null, applicationBuildId: execution.buildId || null, activeExecution: execution.activeExecution },
+      impulses: impulses.map(entry => ({ nodeId: entry.nodeId, descriptor: entry.material.descriptor, analysis: entry.material.analysis })),
       controls: Object.fromEntries(controls), controlSequence, controlEvidence: 'native-control-submission-not-applied-acknowledgment',
       latencyFrames: plan.latencyFrames, maximumTailFrames: plan.maximumTailFrames, stateBytes: plan.stateBytes, protection: 'external-shared-master', qualification: 'implementation-awaiting-full-graph-qualification' }),
     dispose });

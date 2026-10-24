@@ -575,3 +575,19 @@ not enable audio; Prepare is explicit. Live effect gestures are currently outsid
 causal-take persistence; use master audio capture for the played output. Complete
 gesture replay, actor-specific send attribution, AGE/coloration, spring bodies,
 matched A/B and effect-aware offline export remain implementation work.
+
+Native convolution graph nodes consume `lemmings-impulse-response/v1` descriptors.
+They identify exact encoded assets, mono/stereo/native true-stereo layout,
+normalization mode, authored calibration gain and a conservative maximum linear
+gain. The shared material cache supports four channels specifically for IRs.
+Worker analysis verifies the actual decoded PCM gain bound before activation;
+normalization is set before assigning a native buffer. Every body owns an
+independent pin until the native convolver has been cleared and disconnected.
+
+Unmeasured native latency is null. Such graphs require the explicit
+`uncompensated-native` policy; a parallel dry path is not labeled delay-aligned.
+Predelay is an authored creative delay. Native internal copy/algorithm storage
+remains an estimate separate from decoded PCM, with at most four bodies and
+64 MiB decoded IR per graph before shared-budget admission. Replacement overlap
+uses the same two-revision owner. Convolution PCM/latency/listening acceptance,
+offline convolution output and authored original body selection remain pending.

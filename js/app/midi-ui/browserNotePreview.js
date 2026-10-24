@@ -313,7 +313,7 @@ class BrowserNotePreview {
         if (session.disposed || generation !== session.generation || context !== this._context) throw new Error('Effect owner changed during preparation.');
         const channel = this._channel(0, id);
         channel.effects ||= createOwnerEffectGraphHost({ context, input: channel.effectInput, dry: channel.effectDry, destination: channel.destination,
-          resources: this._audioResources, owner: id, generation, isCurrent: () => !session.disposed && context === this._context,
+          resources: this._audioResources, owner: id, generation, getMaterialProvider: () => this.getSoundMaterialProvider(), isCurrent: () => !session.disposed && context === this._context,
           onChange: () => session.report() });
         return channel.effects.prepare(definition, { ...options, isCurrent: () => generation === session.generation && !session.disposed && (!options.isCurrent || options.isCurrent()) });
       },

@@ -100,7 +100,7 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
       const bytes = new Uint8Array(await source.blob.arrayBuffer()); operation.check();
       result = await jobs.compute({ kind: 'inspect-wave-asset', ownerId: 'sound-material-wave', ownerEpoch: operation.id,
         sourceRevision: file.sha256, signal: operation.controller.signal, isCurrent: operation.current, inputBytes: file.bytes, maxBytes: file.bytes,
-        estimatedPeakBytes: Math.max(16 * 1048576, file.bytes * 8 + 1048576), deadlineMs: 60000, prepareInput: () => ({ bytes, contentHash: file.sha256 }) });
+        estimatedPeakBytes: Math.max(16 * 1048576, file.bytes * 8 + 1048576), deadlineMs: 60000, prepareInput: () => ({ bytes, contentHash: file.sha256, assetKind: file.kind }) });
       operation.check(); const value = result.value;
       if (value.contentHash !== file.sha256 || value.bytes !== file.bytes || value.verifiedContainer !== 'riff-wave-complete') throw failure('content-mismatch', 'WAV inspection identity changed.');
       format = Object.freeze({ ...value });
@@ -176,7 +176,39 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
     operation.completion = work; pending.add(operation);
     try { return await work; } finally { pending.delete(operation); }
   };
-  return Object.freeze({ acquire, borrowEncoded: (file, { signal } = {}) => borrowBlob(file, null, signal),
+  const acquireImpulse = async (input, { owner = 'impulse-material', generation = 0, signal, isCurrent = () => true, decodeContext = null } = {}) => {
+    const ref = validateAudioAssetRef(input);
+    if (ref.kind !== 'impulse-response' || disposed || faults.size || pending.size >= 2 || loans.size >= 32 || !Number.isSafeInteger(generation) || generation < 0 || typeof isCurrent !== 'function') throw failure('material-preparation-capacity', 'Impulse material preparation is unavailable or busy.');
+    signal?.throwIfAborted();
+    const operation = { id: ++sequence, controller: new AbortController(), completion: null };
+    operation.current = () => !disposed && !operation.controller.signal.aborted && isCurrent();
+    operation.check = () => { operation.controller.signal.throwIfAborted(); if (!operation.current()) throw failure('stale-owner', 'Impulse material source changed.'); };
+    const abort = () => operation.controller.abort(signal.reason); signal?.addEventListener('abort', abort, { once: true }); if (signal?.aborted) abort();
+    const file = { path: ref.path, sha256: ref.contentHash, bytes: ref.bytes, kind: ref.kind, mediaType: ref.mime, rights: { licenseId: ref.licenseId, attribution: ref.attribution } };
+    const entry = { stage: null, file, signal: operation.controller.signal }; let entries = sources.get(ref.contentHash);
+    if (!entries) { entries = new Set(); sources.set(ref.contentHash, entries); } entries.add(entry);
+    let pin = null;
+    operation.completion = (async () => {
+      try {
+        const format = await inspect(file, null, operation); operation.check();
+        if (format.channels !== ref.channels || format.frames !== ref.frames || format.sourceSampleRate !== ref.sourceSampleRate) throw failure('content-mismatch', 'Impulse WAV layout differs from its exact source descriptor.');
+        const context = decodeContext || getContext();
+        if (!context || context.state === 'closed') throw failure('audio-context-unavailable', 'Impulse decoding requires its existing live or offline owner context.');
+        pin = await loader.acquire(ref, { owner, generation, signal: operation.controller.signal, isCurrent: operation.current, decodeProfile: 'native-context', decodeContext: context, joinCancellation: true }); operation.check();
+        const scope = createProcgenRetirementScope(), loan = Object.freeze({ assets: Object.freeze([pin]), release() {
+          const receipt = scope.retire([{ name: 'impulse-buffer-pin', run: () => pin.release() }]);
+          if (receipt.outcome === 'complete') loans.delete(loan); else faults.add(receipt); return receipt;
+        } }); loans.add(loan); return loan;
+      } catch (error) {
+        const receipt = createProcgenRetirementScope().retire([{ name: 'failed-impulse-pin', run: () => pin?.release() }]);
+        await receipt.completion; if (receipt.outcome !== 'complete') { faults.add(receipt); error.retirement = receipt; } throw error;
+      } finally {
+        signal?.removeEventListener('abort', abort); entries.delete(entry); if (!entries.size && sources.get(ref.contentHash) === entries) sources.delete(ref.contentHash);
+      }
+    })(); pending.add(operation);
+    try { return await operation.completion; } finally { pending.delete(operation); }
+  };
+  return Object.freeze({ acquire, acquireImpulse, borrowEncoded: (file, { signal } = {}) => borrowBlob(file, null, signal),
     diagnostics: () => Object.freeze({ pending: pending.size, loans: loans.size, encodedLoans: encodedLoans.size, formats: formats.size, faults: faults.size, loader: loader.diagnostics(), resources: resources.diagnostics(), disposed }),
     dispose() {
       if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true;

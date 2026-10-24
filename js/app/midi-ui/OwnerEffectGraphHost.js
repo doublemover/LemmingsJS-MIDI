@@ -6,7 +6,7 @@ const failure = (code, message) => Object.assign(new Error(message), { name: 'Ef
 const summary = receipt => receipt ? { state: receipt.state, outcome: receipt.outcome } : null;
 
 export function createOwnerEffectGraphHost({ context, input, dry, destination, resources, owner, generation = 0, isCurrent = () => true,
-  onChange = () => {}, prepareGraph = prepareNativeEffectGraph, transitionSeconds = 0.02 } = {}) {
+  onChange = () => {}, getMaterialProvider = null, prepareGraph = prepareNativeEffectGraph, transitionSeconds = 0.02 } = {}) {
   if (!context?.createGain || !input?.connect || !dry?.gain || !destination || !resources?.reserve || typeof isCurrent !== 'function' ||
       typeof onChange !== 'function' || typeof prepareGraph !== 'function' || !Number.isFinite(transitionSeconds) || transitionSeconds < 0.005 || transitionSeconds > 0.2)
     throw new TypeError('An owner effect host needs the existing source, dry route, destination and shared resource owner.');
@@ -51,7 +51,7 @@ export function createOwnerEffectGraphHost({ context, input, dry, destination, r
     const check = () => { guard(); controller.signal.throwIfAborted(); if (request !== serial || !requestCurrent()) throw failure('stale-effect-graph', 'A later effect request superseded this preparation.'); };
     operation.promise = (async () => {
       try {
-        graph = await prepareGraph(definition, { context, resources, owner, generation, signal: controller.signal, isCurrent: () => !disposed && isCurrent() && requestCurrent() && request === serial,
+        graph = await prepareGraph(definition, { context, resources, owner, generation, getMaterialProvider, signal: controller.signal, isCurrent: () => !disposed && isCurrent() && requestCurrent() && request === serial,
           onFault: caught => {
             error = caught.message;
             for (const member of arms) if (member.graph === ownedGraph) { if (current === member) { current = null; dryAutomation.insert(1, context.currentTime, context.currentTime); mode = 'neutral'; revision++; } retireArm(member); }

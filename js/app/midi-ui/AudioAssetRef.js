@@ -6,11 +6,11 @@ export class AudioAssetError extends Error {
   constructor(reason, contentHash = null) { super(reason); this.name = 'AudioAssetError'; this.reason = reason; this.contentHash = contentHash; }
 }
 
-export function validateAudioAssetRef(input, { maxAssetBytes = 16 * 1024 * 1024, maxChannels = 2,
+export function validateAudioAssetRef(input, { maxAssetBytes = 16 * 1024 * 1024, maxChannels = input?.kind === 'impulse-response' ? 4 : 2,
   maxSourceFrames = 8000000, maxDurationSeconds = 180, maxImpulseSeconds = 30 } = {}) {
   if (!plain(input) || typeof input.contentHash !== 'string' || !/^[a-f0-9]{64}$/i.test(input.contentHash) ||
       !integer(input.bytes, 44, maxAssetBytes) || !['audio/wav', 'audio/x-wav'].includes(input.mime) ||
-      !integer(input.channels, 1, maxChannels) || !integer(input.sourceSampleRate, 8000, 192000) ||
+      !integer(input.channels, 1, maxChannels) || !(input.kind === 'impulse-response' ? [1, 2, 4] : [1, 2]).includes(input.channels) || !integer(input.sourceSampleRate, 8000, 192000) ||
       !integer(input.frames, 1, maxSourceFrames) || input.decodeVersion !== DECODER_VERSION ||
       typeof input.licenseId !== 'string' || !input.licenseId || input.licenseId.length > 128 ||
       typeof input.attribution !== 'string' || input.attribution.length > 4096 ||
@@ -32,7 +32,7 @@ export function validateAudioAssetRef(input, { maxAssetBytes = 16 * 1024 * 1024,
     licenseId: input.licenseId, attribution: input.attribution, decodeVersion: DECODER_VERSION, loopMarkers });
 }
 
-export function inspectWaveContainer(bytes, { contentHash = null, maxBytes = 16 * 1048576 } = {}) {
+export function inspectWaveContainer(bytes, { contentHash = null, maxBytes = 16 * 1048576, maxChannels = 2 } = {}) {
   const fail = reason => { throw new AudioAssetError(reason, contentHash); };
   if (!(bytes instanceof Uint8Array) || !(bytes.buffer instanceof ArrayBuffer) || bytes.byteLength < 44 || bytes.byteLength > maxBytes) fail('encoded-byte-count-mismatch');
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -47,7 +47,7 @@ export function inspectWaveContainer(bytes, { contentHash = null, maxBytes = 16 
       if (format || length < 16) fail('invalid-wave-format');
       const encoding = view.getUint16(start, true), channels = view.getUint16(start + 2, true),
         sampleRate = view.getUint32(start + 4, true), blockAlign = view.getUint16(start + 12, true), bits = view.getUint16(start + 14, true);
-      if (!integer(channels, 1, 2) || !integer(sampleRate, 8000, 192000) || ![1, 3].includes(encoding) || ![8, 16, 24, 32].includes(bits) || encoding === 3 && bits !== 32 ||
+      if (!integer(channels, 1, maxChannels) || ![1, 2, 4].includes(channels) || !integer(sampleRate, 8000, 192000) || ![1, 3].includes(encoding) || ![8, 16, 24, 32].includes(bits) || encoding === 3 && bits !== 32 ||
           blockAlign !== channels * bits / 8 || view.getUint32(start + 8, true) !== sampleRate * blockAlign) fail('unsupported-wave-layout');
       format = { encoding, channels, sampleRate, blockAlign, bits };
     } else if (name === 'data') {
@@ -63,7 +63,7 @@ export function inspectWaveContainer(bytes, { contentHash = null, maxBytes = 16 
 
 export function inspectWaveAudio(bytes, ref) {
   if (bytes?.byteLength !== ref.bytes) throw new AudioAssetError('encoded-byte-count-mismatch', ref.contentHash);
-  const format = inspectWaveContainer(bytes, { contentHash: ref.contentHash });
+  const format = inspectWaveContainer(bytes, { contentHash: ref.contentHash, maxChannels: ref.kind === 'impulse-response' ? 4 : 2 });
   if (format.channels !== ref.channels || format.sampleRate !== ref.sourceSampleRate || format.frames !== ref.frames) throw new AudioAssetError('asset-source-metadata-mismatch', ref.contentHash);
   return format;
 }

@@ -1,3 +1,4 @@
+import { analyzeImpulseResponse } from './ImpulseResponseAnalysis.js';
 import { encodeNativeOfflineRender } from './NativeOfflineEncoding.js';
 import { decodeWaveSource } from './WaveSourceDecode.js';
 import { computeOwnedSourceBank } from './OwnedSourceBankComputation.js';
@@ -14,7 +15,7 @@ import { getOwnedSourceBankIdentity } from '../midi-ui/OwnedSourceBank.js';
 import { renderCausalOwnedTake } from '../midi-ui/CausalOwnedRender.js';
 
 export const BACKGROUND_JOB_PROTOCOL = 1;
-export const BACKGROUND_JOB_KINDS = Object.freeze(['encode-native-render', 'decode-wave-source', 'generate-procedural-sound', 'inspect-wave-asset', 'prepare-owned-source-bank', 'parse-json', 'verify-causal-source', 'snapshot-canonical-data', 'inspect-causal-archive-entry', 'render-sound-controls', 'render-causal-sine-take', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'asset-hash', 'asset-decode']);
+export const BACKGROUND_JOB_KINDS = Object.freeze(['analyze-native-impulse', 'encode-native-render', 'decode-wave-source', 'generate-procedural-sound', 'inspect-wave-asset', 'prepare-owned-source-bank', 'parse-json', 'verify-causal-source', 'snapshot-canonical-data', 'inspect-causal-archive-entry', 'render-sound-controls', 'render-causal-sine-take', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'asset-hash', 'asset-decode']);
 const MAX_BYTES = 64 * 1048576, MAX_NODES = 4000000;
 const problem = (code, message) => Object.assign(new Error(message), { code, name: 'BackgroundJobError' });
 const shared = value => typeof globalThis.SharedArrayBuffer === 'function' && (value instanceof globalThis.SharedArrayBuffer || value?.buffer instanceof globalThis.SharedArrayBuffer);
@@ -120,6 +121,10 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
       !Number.isSafeInteger(maxStringBytes) || maxStringBytes < 1 || maxStringBytes > MAX_BYTES ||
       expectedInputHash != null && !/^[a-f0-9]{64}$/.test(expectedInputHash)) throw problem('invalid-contract', 'Unsupported background job kernel contract.');
   guard(signal, current);
+  if (kind === 'analyze-native-impulse') {
+    const value = await analyzeImpulseResponse(input, { signal, current, yieldControl, crypto, estimatedPeakBytes }); guard(signal, current);
+    return { value, inputBytes: metadata.bytes, nodes: metadata.nodes, retainedBytes: 65536 };
+  }
   if (kind === 'decode-wave-source') return decodeWaveSource(input, { signal, current, maxBytes, estimatedPeakBytes, crypto, yieldControl });
   if (kind === 'generate-procedural-sound') {
     if (!input || Object.keys(input).length !== 1 || typeof input.id !== 'string') throw problem('invalid-contract', 'Invalid original procedural sound request.');
@@ -134,10 +139,11 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     return { value: { id: expected.id, hash, bytes }, inputBytes: 128, nodes: 16, retainedBytes: expected.bytes + 16384 };
   }
   if (kind === 'inspect-wave-asset') {
-    if (!input || Object.keys(input).some(key => !['bytes', 'contentHash'].includes(key)) || !/^[a-f0-9]{64}$/.test(input.contentHash) ||
+    if (!input || Object.keys(input).some(key => !['bytes', 'contentHash', 'assetKind'].includes(key)) || !/^[a-f0-9]{64}$/.test(input.contentHash) ||
         !(input.bytes instanceof Uint8Array) || shared(input.bytes) || input.bytes.byteLength > maxBytes || input.bytes.byteLength * 8 + 1048576 > estimatedPeakBytes)
       throw problem('invalid-contract', 'WAV inspection requires immutable bytes and their expected hash.');
-    const format = inspectWaveContainer(input.bytes, { contentHash: input.contentHash, maxBytes });
+    if (input.assetKind != null && !['sample', 'impulse-response'].includes(input.assetKind)) throw problem('invalid-contract', 'Unknown native WAV asset kind.');
+    const format = inspectWaveContainer(input.bytes, { contentHash: input.contentHash, maxBytes, maxChannels: input.assetKind === 'impulse-response' ? 4 : 2 });
     const digest = await crypto.subtle.digest('SHA-256', input.bytes); guard(signal, current);
     const hash = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
     if (hash !== input.contentHash) throw problem('content-mismatch', 'WAV bytes differ from their immutable reference.');

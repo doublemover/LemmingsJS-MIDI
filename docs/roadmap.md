@@ -2571,6 +2571,31 @@ still remain work. The UI explicitly identifies the current gesture-recording
 limit; master PCM capture can retain actual played output. Schema, headroom,
 project roundtrip and stale-gesture ownership fixtures are authored and unrun.
 
+Native convolution bodies now have a bounded immutable IR descriptor, explicit
+mono/stereo/native-true-stereo layout and shared native decode ownership. Four
+channels are admitted only for IR assets; sample voices keep their two-channel
+limit. The same encoded/decoded cache verifies actual WAV kind/layout/rate/frames
+and joins accepted native decoding before cancellation releases an owner. Each
+convolver retains an independent graph pin through the final native buffer clear
+and disconnect, even when its material provider retires its own reader loan.
+
+Admitted worker analysis scans copied native PCM for finite coefficients, RMS,
+absolute coefficient sums and normalization/headroom bounds. Native RMS scaling
+and separate calibration gain are explicit; four-channel bounds conservatively
+sum all matrix paths. Source plane hashes identify the analyzed host byte order;
+no acoustic, room, latency or cross-browser equivalence evidence is inferred.
+The graph host sets normalization before assigning the buffer, prepares new
+convolvers for replacement, and reserves decoded material plus separate native
+copy/algorithm estimates. Four bodies and 64 MiB decoded IR inventory are graph
+ceilings, subject to the shared budget and two-revision overlap admission.
+Unknown native latency propagates as null and requires the explicit uncompensated
+policy; it never becomes a zero-latency alignment claim. Native disposal precedes
+IR pin retirement. Delay-state containment also reports an owned fault so the host
+can name and bypass its branch. Source/layout/normalization/gain/assignment-order/
+pin-lifetime fixtures are authored. Original procedural bodies, their focused UI,
+convolution offline output, measured latency and all runtime qualification remain
+work; no tests, native renders or content builds ran in this implementation pass.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical

@@ -63,7 +63,7 @@ export class BoundedDelayProcessor extends ProcessorBase {
     { name: 'feedback', defaultValue: 0.3, minValue: -0.7, maxValue: 0.7, automationRate: 'a-rate' }, { name: 'wet', defaultValue: 0.2, minValue: 0, maxValue: 1, automationRate: 'a-rate' }]; }
   constructor(options) {
     super(); this.kernel = new BoundedDelayKernel({ ...options?.processorOptions, sampleRate: globalThis.sampleRate });
-    this.lastRequestedDelay = this.kernel.targetDelay; this.disposed = false; this.lastInspect = -Infinity; this.port.onmessage = event => {
+    this.reportedFaults = 0; this.faultMessage = { type: 'delay-fault', revision: DELAY_KERNEL_REVISION, frame: 0, faults: 0 }; this.lastRequestedDelay = this.kernel.targetDelay; this.disposed = false; this.lastInspect = -Infinity; this.port.onmessage = event => {
       const data = event.data;
       if (data?.type === 'dispose') { this.kernel.panic(); this.disposed = true; this.port.postMessage({ type: 'disposed', frame: this.kernel.frame }); }
       else if (this.disposed) return;
@@ -88,6 +88,7 @@ export class BoundedDelayProcessor extends ProcessorBase {
       kernel.sample(left?.[i] ?? 0, right?.[i] ?? 0, parameters.feedback.length === 1 ? parameters.feedback[0] : parameters.feedback[i], parameters.wet.length === 1 ? parameters.wet[0] : parameters.wet[i]);
       output[0][i] = kernel.leftSample; if (output[1]) output[1][i] = kernel.rightSample;
     }
+    if (kernel.faults !== this.reportedFaults) { this.reportedFaults = kernel.faults; this.faultMessage.frame = globalThis.currentFrame + output[0].length; this.faultMessage.faults = kernel.faults; this.port.postMessage(this.faultMessage); }
     return true;
   }
 }
