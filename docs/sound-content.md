@@ -183,3 +183,11 @@ The bounded native URL inventory counts pending sources and failed revocations;
 an unacknowledged revoke keeps ownership instead of freeing its budget early.
 The delivery receipt still records only an anchor request, independently of
 whether a browser ultimately saves the file.
+
+File delivery has bounded native owners. Cancellation/deadline settlement does
+not release an accepted open, write, close or source-read promise. Late opened
+writables are aborted under the same owner. Source storage retires after actual
+native settlement and a terminal close/abort acknowledgment. A failed cleanup
+keeps its owner visible and consumes capacity. Delivery receipts include the
+native-retirement snapshot; a known close acknowledgment remains authoritative
+even when cancellation or a deadline raced it.

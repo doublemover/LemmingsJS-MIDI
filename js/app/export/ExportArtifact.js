@@ -1,4 +1,5 @@
 import { MAX_BROWSER_DOWNLOAD_BYTES, requestBrowserDownload } from './BrowserDownload.js';
+import { acquireNativeExportDeliveryOwner } from './NativeExportDeliveryOwner.js';
 
 let nextArtifact = 0, nextDelivery = 0;
 const MAX_DIGEST_BYTES = 8 * 1048576;
@@ -175,8 +176,11 @@ export function prepareReplayableExportArtifact({ openChunks, immutableSourceRef
       if (leases >= MAX_ARTIFACT_LEASES) throw Object.assign(new Error('Prepared export consumer capacity reached.'), { kind: 'artifact-capacity' });
       leases++;
       let released = false, opened = false, retired = false, source = null, iterator = null, pending = 0, ended = false, returnPromise = null, sourceError = null;
-      let opener = sourceOpener;
-      const acknowledge = () => { if (!retired && released && !pending && (!opened || ended) && !sourceError) { retired = true; source = null; iterator = null; opener = null; leases--; retireSource(); } };
+      let opener = sourceOpener, complete;
+      const settlement = new Promise(resolve => { complete = resolve; });
+      const acknowledge = () => { if (!retired && released && !pending && (!opened || ended) && !sourceError) {
+        retired = true; source = null; iterator = null; opener = null; leases--; retireSource(); complete();
+      } };
       const invoke = (method, value) => {
         pending++; const target = iterator;
         const result = Promise.resolve().then(() => target[method](value));
@@ -191,19 +195,20 @@ export function prepareReplayableExportArtifact({ openChunks, immutableSourceRef
         if (typeof iterator?.return !== 'function') { if (!sourceError) { sourceError = new Error('Replayable source cannot acknowledge cancellation.'); unknownSources++; } return Promise.reject(sourceError); }
         returnPromise = invoke('return'); returnPromise.catch(() => {}); return returnPromise;
       };
-      return Object.freeze({ openChunks() {
-        if (released || !lifetime.check()) throw Object.assign(new Error('Replayable delivery lease is retired.'), { kind: 'artifact-expired' });
-        if (opened) throw new Error('A delivery lease opens its source only once.');
-        opened = true;
-        source = opener();
-        if (!source || typeof source[Symbol.asyncIterator] !== 'function') throw Object.assign(new Error('Replayable source is not an async iterable.'), { kind: 'invalid-source' });
-        iterator = source[Symbol.asyncIterator]();
-        if (!iterator || typeof iterator.next !== 'function') throw Object.assign(new Error('Replayable source has no iterator.'), { kind: 'invalid-source' });
-        return Object.freeze({ [Symbol.asyncIterator]() { return this; }, next(value) {
-          if (released || !lifetime.check()) return Promise.reject(Object.assign(new Error('Replayable delivery lease is retired.'), { kind: 'artifact-expired' }));
-          if (pending) return Promise.reject(new Error('Replayable delivery reads must be sequential.')); return invoke('next', value);
-        }, return: closeSource });
-      }, release() { if (!released) { released = true; if (opened && !ended) closeSource().catch(() => {}); acknowledge(); } } });
+      return Object.freeze({ settlement, releaseState: () => retired ? 'released' : sourceError ? 'failed-or-unknown' : released ? 'pending-native-settlement' : 'borrowed',
+        openChunks() {
+          if (released || !lifetime.check()) throw Object.assign(new Error('Replayable delivery lease is retired.'), { kind: 'artifact-expired' });
+          if (opened) throw new Error('A delivery lease opens its source only once.');
+          opened = true;
+          source = opener();
+          if (!source || typeof source[Symbol.asyncIterator] !== 'function') throw Object.assign(new Error('Replayable source is not an async iterable.'), { kind: 'invalid-source' });
+          iterator = source[Symbol.asyncIterator]();
+          if (!iterator || typeof iterator.next !== 'function') throw Object.assign(new Error('Replayable source has no iterator.'), { kind: 'invalid-source' });
+          return Object.freeze({ [Symbol.asyncIterator]() { return this; }, next(value) {
+            if (released || !lifetime.check()) return Promise.reject(Object.assign(new Error('Replayable delivery lease is retired.'), { kind: 'artifact-expired' }));
+            if (pending) return Promise.reject(new Error('Replayable delivery reads must be sequential.')); return invoke('next', value);
+          }, return: closeSource });
+        }, release() { if (!released) { released = true; if (opened && !ended) closeSource().catch(() => {}); acknowledge(); } } });
     },
     discard() {
       lifetime.discard(); retireSource();
@@ -247,42 +252,56 @@ export async function deliverArtifactToFileHandle(artifact, handle, { signal, on
   clock = () => globalThis.performance?.now?.() ?? Date.now() } = {}) {
   if (!Number.isFinite(maxDeliveryMs) || maxDeliveryMs < 1 || maxDeliveryMs > 900000) throw new RangeError('Invalid export delivery deadline.');
   if (typeof clock !== 'function') throw new TypeError('Invalid export delivery clock.');
+  if (typeof onProgress !== 'function' || !artifact?.metadata || !artifact?.borrow || !artifact?.onDiscard ||
+      signal != null && (typeof signal.addEventListener !== 'function' || typeof signal.removeEventListener !== 'function' || typeof signal.aborted !== 'boolean')) throw new TypeError('Invalid export delivery owner.');
   const deliveryId = nextId('delivery'), { artifactId } = artifact.metadata();
   let observedTime = clock();
   if (!Number.isFinite(observedTime)) throw new TypeError('Invalid export delivery clock reading.');
   const startedAt = observedTime, deadline = startedAt + maxDeliveryMs;
+  const nativeOwner = acquireNativeExportDeliveryOwner();
+  if (!nativeOwner) return Object.freeze({ deliveryId, artifactId, sinkKind: 'file-handle', state: 'unsupported', bytesWritten: 0,
+    errorKind: 'native-delivery-capacity', evidence: 'no-native-admission', abortAttempted: false, abortAcknowledged: false, deadlineExceeded: false,
+    elapsedMs: 0, nativeRetirement: 'not-admitted', nativePendingCalls: 0 });
   const ownerAbort = new AbortController();
   const forwardAbort = () => { const reason = artifact.metadata().retirementReason;
     ownerAbort.abort(reason === 'expired' ? Object.assign(new Error('Prepared export expired during delivery.'), { kind: 'artifact-expired' }) :
       reason === 'clock-unavailable' ? Object.assign(new Error('Prepared export clock became unavailable.'), { kind: 'artifact-clock-unavailable' }) : Object.assign(new Error('Export delivery canceled.'), { name: 'AbortError' }));
   };
-  signal?.addEventListener('abort', forwardAbort, { once: true });
-  const unwatch = artifact.onDiscard(forwardAbort);
-  if (signal?.aborted) ownerAbort.abort();
+  let unwatch = () => {};
+  try { signal?.addEventListener('abort', forwardAbort, { once: true }); unwatch = artifact.onDiscard(forwardAbort);
+    if (typeof unwatch !== 'function') throw new TypeError('Invalid artifact observer release.');
+    if (signal?.aborted) ownerAbort.abort();
+  } catch (error) { nativeOwner.close(); signal?.removeEventListener('abort', forwardAbort); throw error; }
   const preflight = () => {
     if (!artifact.metadata().retained) forwardAbort();
     if (ownerAbort.signal.aborted) throw ownerAbort.signal.reason || Object.assign(new Error('Export delivery canceled.'), { name: 'AbortError' });
     const reading = clock();
-    if (!Number.isFinite(reading)) throw new TypeError('Invalid export delivery clock reading.');
+    if (!Number.isFinite(reading)) throw Object.assign(new TypeError('Invalid export delivery clock reading.'), { kind: 'delivery-clock-unavailable' });
     observedTime = Math.max(observedTime, reading);
     if (observedTime >= deadline) throw Object.assign(new Error('Export delivery deadline exceeded.'), { name: 'TimeoutError' });
     return Math.min(30000, deadline - observedTime);
   };
-  const wait = start => {
+  const wait = (start, options) => {
     const remaining = preflight();
-    return waitForSink(start(), ownerAbort.signal, remaining);
+    return waitForSink(nativeOwner.track(() => { preflight(); return start(); }, options), ownerAbort.signal, remaining);
   };
   let lease, writable, reader, iterator, bytesWritten = 0, phase = 'opening', abortAttempted = false, abortAcknowledged = false, retired = false;
   let state = 'failed', kind = null, evidence = null;
   try {
     preflight();
     lease = artifact.borrow();
+    nativeOwner.attachLease(lease);
     writable = await wait(() => {
       const opening = Promise.resolve(handle.createWritable({ keepExistingData: false }));
-      opening.then(late => {
-        if (retired) { try { Promise.resolve(late.abort?.()).catch(() => {}); } catch { /* Late handle remains unacknowledged. */ } }
-      }, () => {});
-      return opening;
+      return opening.then(async opened => {
+        nativeOwner.acquireWriter(opened);
+        if (retired || ownerAbort.signal.aborted) {
+          if (typeof opened.abort !== 'function') { nativeOwner.unknown(new Error('Late native writable cannot acknowledge abort.')); throw new Error('Late native writable cannot acknowledge abort.'); }
+          await nativeOwner.track(() => opened.abort(), { terminal: 'aborted' });
+          throw ownerAbort.signal.reason || Object.assign(new Error('Export delivery retired before opening completed.'), { name: 'AbortError' });
+        }
+        return opened;
+      });
     });
     preflight();
     if (lease.blob) reader = lease.blob.stream().getReader();
@@ -302,26 +321,32 @@ export async function deliverArtifactToFileHandle(artifact, handle, { signal, on
     }
     if (artifact.metadata().byteLength != null && bytesWritten !== artifact.metadata().byteLength)
       throw Object.assign(new Error('Export source length changed.'), { kind: 'source-length-mismatch' });
-    phase = 'closing'; await wait(() => writable.close()); writable = null;
+    phase = 'closing'; await wait(() => writable.close(), { terminal: 'closed' }); writable = null;
     state = 'close-acknowledged'; evidence = 'writable-close-resolved';
   } catch (error) { kind = error.kind || errorKind(error); state = kind === 'cancelled' ? 'canceled' : 'failed'; evidence = phase; }
   finally {
     retired = true;
-    try { if (reader) await waitForSink(reader.cancel(), null, 2000); } catch { /* A released reader may already be closed. */ }
-    try { if (iterator?.return) await waitForSink(iterator.return(), null, 2000); } catch { /* Source cancellation has an unknown outcome. */ }
+    try { if (reader) await waitForSink(nativeOwner.track(async () => { try { await reader.cancel(); } finally { reader.releaseLock(); } }), null, 2000); } catch { /* Accepted cleanup remains owned until actual settlement. */ }
+    try { if (iterator?.return) await waitForSink(nativeOwner.track(() => iterator.return()), null, 2000); } catch { /* Accepted source cancellation remains inventoried. */ }
     if (writable) {
       abortAttempted = true;
-      try { if (typeof writable.abort === 'function') { await waitForSink(writable.abort(), null, 2000); abortAcknowledged = true; } }
-      catch { /* An external write may have an unknown outcome. */ }
+      try { if (typeof writable.abort === 'function') { await waitForSink(nativeOwner.track(() => writable.abort(), { terminal: 'aborted' }), null, 2000); abortAcknowledged = true; }
+      else nativeOwner.unknown(new Error('Native writable has no abort acknowledgment.')); }
+      catch (error) { nativeOwner.unknown(error); }
     }
-    lease?.release();
+    nativeOwner.close();
     unwatch(); signal?.removeEventListener('abort', forwardAbort);
   }
-  const finalTime = clock();
+  let finalTime;
+  try { finalTime = clock(); } catch { kind ||= 'delivery-clock-unavailable'; }
+  if (!Number.isFinite(finalTime)) kind ||= 'delivery-clock-unavailable';
   if (Number.isFinite(finalTime)) observedTime = Math.max(observedTime, finalTime);
+  const native = nativeOwner.inspect();
+  if (native.terminal === 'closed') { state = 'close-acknowledged'; evidence = 'writable-close-resolved'; }
   return Object.freeze({ deliveryId, artifactId, sinkKind: 'file-handle', state, bytesWritten,
     errorKind: kind, evidence, abortAttempted, abortAcknowledged,
-    deadlineExceeded: kind === 'timeout' || observedTime >= deadline, elapsedMs: observedTime - startedAt });
+    deadlineExceeded: kind === 'timeout' || observedTime >= deadline, elapsedMs: observedTime - startedAt,
+    nativeRetirement: native.state, nativePendingCalls: native.pendingCalls, cancelRequested: ownerAbort.signal.aborted });
 }
 
 export function aggregateExportDeliveries(receipts) {

@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import { aggregateExportDeliveries, createExportDeliveryManifest, deliverArtifactToAnchor, deliverArtifactToFileHandle,
   prepareExportArtifact, prepareReplayableExportArtifact, requestExportFileHandle } from '../js/app/export/ExportArtifact.js';
 import { createResourceBudget, ResourceBudgetError } from '../js/app/resources/ResourceBudget.js';
+import { nativeExportDeliveryDiagnostics } from '../js/app/export/NativeExportDeliveryOwner.js';
 
 const prepare = (bytes = Uint8Array.of(1, 2, 3), overrides = {}) => prepareExportArtifact({ bytes,
   immutableSourceRef: 'take:fixture:1', formatVersion: 'midi/v1', suggestedFilename: 'take.mid', ...overrides });
@@ -145,6 +146,28 @@ describe('prepared export artifacts and delivery receipts', () => {
     expect(artifact.metadata().activeLeases).to.equal(1); expect(budget.diagnostics().accountedBytes).to.be.greaterThan(0);
     delivery.timers[0](); expect(artifact.metadata().activeLeases).to.equal(0); expect(budget.diagnostics().accountedBytes).to.equal(0);
     delivery.timers[0](); expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+  it('holds a canceled native write through actual promise settlement after abort acknowledgment', async () => {
+    const before = nativeExportDeliveryDiagnostics().activeOwners, budget = createResourceBudget(); let finishWrite, started;
+    const writing = new Promise(resolve => { started = resolve; }), artifact = prepare(Uint8Array.of(1, 2, 3), { budgetAdapter: budget });
+    const pending = deliverArtifactToFileHandle(artifact, { async createWritable() { return {
+      write() { started(); return new Promise(resolve => { finishWrite = resolve; }); }, async close() {}, async abort() {}
+    }; } }, { maxDeliveryMs: 20 });
+    await writing; const receipt = await pending; artifact.discard(); await artifact.digest();
+    expect(receipt).to.include({ state: 'failed', errorKind: 'timeout', abortAcknowledged: true, nativeRetirement: 'pending-native-settlement' });
+    expect(artifact.metadata().activeLeases).to.equal(1); expect(budget.diagnostics().accountedBytes).to.be.greaterThan(0);
+    finishWrite(); await new Promise(resolve => setTimeout(resolve, 0));
+    expect(artifact.metadata().activeLeases).to.equal(0); expect(budget.diagnostics().accountedBytes).to.equal(0);
+    expect(nativeExportDeliveryDiagnostics().activeOwners).to.equal(before);
+  });
+  it('owns a late opened writer until its actual abort settles', async () => {
+    const before = nativeExportDeliveryDiagnostics().activeOwners, budget = createResourceBudget(); let finishOpen, finishAbort;
+    const artifact = prepare(Uint8Array.of(1), { budgetAdapter: budget });
+    const receipt = await deliverArtifactToFileHandle(artifact, { createWritable: () => new Promise(resolve => { finishOpen = resolve; }) }, { maxDeliveryMs: 10 });
+    artifact.discard(); await artifact.digest(); expect(receipt.nativeRetirement).to.equal('pending-native-settlement');
+    finishOpen({ abort: () => new Promise(resolve => { finishAbort = resolve; }) }); await new Promise(resolve => setTimeout(resolve, 0));
+    expect(budget.diagnostics().accountedBytes).to.be.greaterThan(0); finishAbort(); await new Promise(resolve => setTimeout(resolve, 0));
+    expect(budget.diagnostics().accountedBytes).to.equal(0); expect(nativeExportDeliveryDiagnostics().activeOwners).to.equal(before);
   });
 
   it('distinguishes a completed file close from failed writes and unknown close outcomes', async () => {
