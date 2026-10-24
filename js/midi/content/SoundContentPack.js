@@ -1,5 +1,6 @@
 import { canonicalDataText, cloneData, freezeData, hashData, hashDataText } from '../../core/CanonicalData.js';
 import { validateEngineDescriptor, validateInstrumentPatchV2 } from './InstrumentPatchV2.js';
+import { validateSampleInstrumentMap } from './SampleInstrumentMap.js';
 
 export const SOUND_CONTENT_SCHEMA = 'lemmings-sound-content/v1';
 const LIMITS = Object.freeze({ maxBytes: 4 * 1048576, maxNodes: 100000, domain: 'Sound content' });
@@ -21,10 +22,26 @@ const conversionRecord = (value, path) => {
   keysOnly(value, ['kind', 'to', 'inputMin', 'inputMax', 'outputMin', 'outputMax'], path);
   assertContent(text(value.kind, 64) && text(value.to, 32) && ['inputMin', 'inputMax', 'outputMin', 'outputMax'].every(key => value[key] == null || Number.isFinite(value[key])), path, 'invalid explicit conversion');
 };
-const compilerArtifact = (artifact, patch) => {
+const compilerArtifact = (artifact, patch, compilerRevision) => {
   const path = 'compilation.artifacts.' + artifact.id;
-  keysOnly(artifact.display, ['name', 'author', 'tags'], path + '.display');
+  const sampleMetadata = compilerRevision === 'typed-recipes-v11';
+  keysOnly(artifact.display, ['name', 'author', 'tags', ...(sampleMetadata ? ['sampleMap'] : [])], path + '.display');
   assertContent(text(artifact.display.name, 160) && text(artifact.display.author, 160) && Array.isArray(artifact.display.tags) && artifact.display.tags.length <= 16 && artifact.display.tags.every(id), path, 'invalid compiler display metadata');
+  let map = null;
+  if (patch.archivedDefinition.sampleMap != null) {
+    assertContent(sampleMetadata, path, 'sample maps require typed-recipes-v11 compilation metadata');
+    try { map = validateSampleInstrumentMap(patch.archivedDefinition.sampleMap, patch.archivedDefinition.sampleRefs); }
+    catch (error) { throw fail('invalid-content', path + '.display.sampleMap: ' + error.message, { path: path + '.display.sampleMap' }); }
+    const display = artifact.display.sampleMap;
+    keysOnly(display, ['articulations', 'normalizationRef'], path + '.display.sampleMap');
+    assertContent(Array.isArray(display.articulations) && display.articulations.length > 0 && display.articulations.length <= 16 &&
+      new Set(display.articulations.map(entry => entry?.id)).size === display.articulations.length && Object.hasOwn(display, 'normalizationRef') &&
+      (display.normalizationRef === null || hash(display.normalizationRef)), path + '.display.sampleMap', 'invalid bounded sample-map display metadata');
+    for (const articulation of display.articulations) { keysOnly(articulation, ['id', 'name'], path + '.display.sampleMap.articulations');
+      assertContent(id(articulation.id) && text(articulation.name, 80), path + '.display.sampleMap.articulations', 'invalid articulation display'); }
+    assertContent(canonicalDataText(display).text === canonicalDataText({ articulations: map.articulations, normalizationRef: map.normalizationRef }).text,
+      path + '.display.sampleMap', 'sample-map display differs from its archived definition');
+  } else assertContent(!Object.hasOwn(artifact.display, 'sampleMap'), path + '.display.sampleMap', 'non-sample-map patches cannot declare sample-map display metadata');
   keysOnly(artifact.engineRequirement, ['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'], path + '.engineRequirement');
   assertContent(canonicalDataText(artifact.engineRequirement).text === canonicalDataText(patch.engineRequirement).text, path, 'explanation engine requirement differs from the patch');
   for (const parameter of artifact.parameters) {
@@ -50,9 +67,12 @@ const compilerArtifact = (artifact, patch) => {
     assertContent(id(modulation.id) && text(modulation.sourceUnit, 32) && text(modulation.bounds.unit, 32) &&
       Number.isFinite(modulation.bounds.minimum) && Number.isFinite(modulation.bounds.maximum), path, 'invalid modulation bounds');
   }
-  keysOnly(artifact.cost, ['maxVoices', 'componentCount', 'assetCount', 'modulationEdges', 'estimateClass'], path + '.cost');
+  keysOnly(artifact.cost, ['maxVoices', 'componentCount', 'assetCount', 'modulationEdges', 'estimateClass', ...(sampleMetadata ? ['sampleZones'] : [])], path + '.cost');
   assertContent(natural(artifact.cost.maxVoices, 1024) && natural(artifact.cost.componentCount, 32) && natural(artifact.cost.assetCount, 512) && natural(artifact.cost.modulationEdges, 64) &&
     artifact.cost.estimateClass === 'declared-structure-not-measured-cpu', path, 'invalid declared cost');
+  // Legacy compiler artifacts have no sample-map capability and an implicit
+  // zero zone count. Keep their archived bytes/hash unchanged on read.
+  if (sampleMetadata) assertContent(Object.hasOwn(artifact.cost, 'sampleZones') && natural(artifact.cost.sampleZones, 128) && artifact.cost.sampleZones === (map?.zones.length || 0), path + '.cost.sampleZones', 'sample zone count differs from the bounded archived map');
   keysOnly(artifact.audition, ['kind', 'effectivePatchHash', 'renderEvidence'], path + '.audition');
   assertContent(artifact.audition.kind === 'real-causal-take-required' && artifact.audition.effectivePatchHash === artifact.renderKey && artifact.audition.renderEvidence === 'not-produced', path, 'imported compilation cannot supply trusted render qualification');
 };
@@ -157,7 +177,7 @@ export async function prepareSoundContentPack(raw, { engineDescriptors = [], sig
         artifact.inheritance.length <= 33 && artifact.inheritance.every(id) && Array.isArray(artifact.overrides) && artifact.overrides.length <= 128 && artifact.overrides.every(value => text(value, 256)) &&
         Array.isArray(artifact.parameters) && artifact.parameters.length <= 128 && Array.isArray(artifact.macros) && artifact.macros.length <= 4 &&
         Array.isArray(artifact.modulationBounds) && artifact.modulationBounds.length <= 64, 'compilation.artifacts', 'invalid compiler explanation bounds');
-      compilerArtifact(artifact, patches.find(patch => patch.identity === artifact.id + '@' + artifact.revision));
+      compilerArtifact(artifact, patches.find(patch => patch.identity === artifact.id + '@' + artifact.revision), compilation.compilerRevision);
     }
   }
   const normalized = { ...pack, files: pack.files.map(file => ({ ...file, parents: [...file.parents].sort() })).sort((a, b) => before(a.path, b.path)),

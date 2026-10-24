@@ -23,6 +23,7 @@ describe('typed declarative sound authoring', () => {
       sampleRefs: [{ id: 'material', sha256: hash, bytes: 128, required: true }], sampleMap: singleSampleMap(hash), dependencies: [hash],
       voicePolicy: { maxVoices: 8, steal: 'reject' }, mix: { gain01: 0.5, pan01: 0 }, rights }];
     const first = await compile(raw); expect(first.prepared.patches[0].state).to.equal('definition-admitted');
+    expect(first.artifacts[0].cost.sampleZones).to.equal(1); expect(first.artifacts[0].display.sampleMap).to.deep.equal({ articulations: first.prepared.patches[0].definition.sampleMap.articulations, normalizationRef: null });
     expect(first.prepared.patches[0].definition.sampleMap.zones).to.have.length(1);
     raw.recipes[0].sampleMap.articulations[0].name = 'New gesture label'; raw.recipes[0].sampleMap.normalizationRef = 'b'.repeat(64);
     expect(reviewSoundContentChanges(first, await compile(raw))[0]).to.include({ state: 'render-equivalent', metadataChanged: true });

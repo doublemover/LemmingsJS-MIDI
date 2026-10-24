@@ -2645,6 +2645,16 @@ Controlled actual-E2E/TimeTravelController integration fixtures are authored,
 including failed/incomplete seeks and originally paused state; no browser run,
 benchmark, runtime test or throughput result is claimed.
 
+The #1131 v11 artifact producer/consumer regression now admits the emitted
+`cost.sampleZones` and nested `display.sampleMap` with strict type, inventory,
+unknown-field and archived-map consistency checks. V11 counts must be explicit
+and equal the actual zone count; non-map counts are zero. Earlier supported
+compiler artifacts retain their exact archived bytes with an implicit zero
+count and cannot claim the v11 sample-map capability. Whole-family compile/
+readmission, malformed-count/display, legacy-read and existing display-versus-
+render-identity fixtures are authored. CLI/background compilation share this
+validator; build/publication and runtime acceptance remain deferred.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical

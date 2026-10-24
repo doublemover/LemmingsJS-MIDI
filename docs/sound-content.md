@@ -645,3 +645,18 @@ and [Julius O. Smith, FIR window design](https://www.dsprelated.com/freebooks/sa
 This is original JS code/data, not imported Faust/WASM. Native shaper comparison,
 ADAA2, spectral/passband/latency/cost/listening gates and full-effect offline
 rendering remain outstanding.
+
+### Compiler v11 explanation admission
+
+The pack reader validates both fields emitted by `typed-recipes-v11`: explicit
+`cost.sampleZones` (integer 0–128, exactly the archived map zone count) and
+`display.sampleMap` for mapped patches. The latter contains 1–16 unique bounded
+articulation IDs/names and an explicit null-or-SHA256 normalization reference,
+matching the archived map exactly. Unknown nested fields, contradictory metadata,
+missing v11 counts, and sample metadata on an unmapped patch are rejected.
+
+Supported v1–v10 compiler artifacts remain readable with an implicit zero sample
+zone count; reading does not insert fields or alter their immutable bytes/hash.
+Those revisions cannot declare the later sample-map capability. Display labels
+and normalization evidence remain outside the render key; operative zone gain
+and selection data remain inside. Reader admission is not DSP qualification.
