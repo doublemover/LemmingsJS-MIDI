@@ -1,5 +1,6 @@
 import { createAudioClockBridge } from './AudioClockBridge.js';
 import { createCausalMusicEngine } from './CausalMusicEngine.js';
+import { captureCausalPerformanceState } from './CausalPerformanceState.js';
 import { createCausalIntentDispatcher, createStrictLiveFramePolicy } from './CausalIntentDispatcher.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 import { createRoutedInstrumentBackend } from '../../midi-ui/RoutedInstrumentBackend.js';
@@ -74,6 +75,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     onReceipt: receipt => { if (receipt.status === 'accepted') accepted++; else rejected++; onReceipt(receipt); }
   });
   const engine = createCausalMusicEngine({ getGraph, scoreTimeline,
+    getPerformanceState: () => captureCausalPerformanceState(getLanes()),
     getOnsetControls: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentControls,
     getPhysicalControlKinds: laneId => [...new Set(((typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentRef?.definition?.causalBindings || [])
       .filter(binding => binding.mode === 'continuous').map(binding => binding.sourceKind))],

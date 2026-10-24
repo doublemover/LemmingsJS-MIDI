@@ -1,6 +1,7 @@
 import { validateInstrumentControls, captureInstrumentCause, INSTRUMENT_PHYSICAL_SOURCE_KINDS } from '../../../midi/content/InstrumentPerformance.js';
 import { causalRandomDecision } from './CausalRandom.js';
 import { createTravelAccumulator, validateArticulationField } from './TravelAccumulator.js';
+import { validateCausalPerformanceState } from './CausalPerformanceState.js';
 
 const SOURCE_KINDS = new Set(['TerrainWorkCommitted', 'ContactResolved', 'MotionCommitted', 'ActionEntered', 'ContactSpanBegan']);
 const plain = value => value && typeof value === 'object' && !Array.isArray(value) && [Object.prototype, null].includes(Object.getPrototypeOf(value));
@@ -40,7 +41,8 @@ const validateCausalInstrumentGraph = value => {
 };
 
 const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline = null,
-  getOnsetControls = () => undefined, getPhysicalControlKinds = () => [], maxBeginsPerBatch = 512, maxVoices = 512, maxPhysicalUpdatesPerBatch = 2048, traceLimit = 1024 } = {}) => {
+  getOnsetControls = () => undefined, getPhysicalControlKinds = () => [], getPerformanceState = () => null,
+  maxBeginsPerBatch = 512, maxVoices = 512, maxPhysicalUpdatesPerBatch = 2048, traceLimit = 1024 } = {}) => {
   if (typeof getGraph !== 'function' || (scoreTimeline && typeof scoreTimeline.map !== 'function')) throw new Error('A causal graph provider and valid score timeline are required.');
   if (!Number.isSafeInteger(maxPhysicalUpdatesPerBatch) || maxPhysicalUpdatesPerBatch < 0 || maxPhysicalUpdatesPerBatch > 4096) throw new Error('Invalid physical control budget.');
   const active = new Map(), byActor = new Map(), seen = new Set(), seenOrder = [], trace = [];
@@ -237,7 +239,8 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     }
     return publish(batch, output);
   };
-  const snapshot = () => { getCurrentGraph(); return Object.freeze({ version: 1, generation, graphRevision: graph.revision, travel: travel.snapshot(), physicalCursor: Object.freeze({ ...cursor }),
+  const snapshot = () => { getCurrentGraph(); const performance = getPerformanceState(); return Object.freeze({ version: 1, generation, graphRevision: graph.revision, travel: travel.snapshot(), physicalCursor: Object.freeze({ ...cursor }),
+    ...(performance ? { performanceInputs: validateCausalPerformanceState(performance) } : {}),
     active: Object.freeze([...active.values()].map(record => Object.freeze({ voiceId: record.voiceId,
       instrumentId: record.instrument.id, graphRevision: record.graphRevision, generation: record.generation, actorId: record.actorId,
       laneId: record.laneId, actionInstanceId: record.actionInstanceId,
@@ -245,6 +248,8 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
       ...(record.lifetimeScope ? { lifetimeScope: record.lifetimeScope, scopeInstanceId: record.scopeInstanceId } : {}) }))) }); };
   const restore = value => {
     const current = getCurrentGraph();
+    if (value?.performanceInputs && JSON.stringify(validateCausalPerformanceState(value.performanceInputs)) !== JSON.stringify(validateCausalPerformanceState(getPerformanceState())))
+      throw new Error('Causal performance inputs differ from the checkpoint.');
     if (value?.version !== 1 || value.graphRevision !== current.revision || !Array.isArray(value.active) || value.active.length > maxVoices) throw new Error('Incompatible causal engine checkpoint.');
     const nextCursor = value.physicalCursor ?? { worldId: null, generation: value.generation, tick: -1, lastSequence: -1, batchId: null };
     if (!plain(nextCursor) || (nextCursor.worldId != null && !nonempty(nextCursor.worldId)) ||

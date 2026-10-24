@@ -7,6 +7,7 @@ import { compareCausalRecords } from './CausalTake.js';
 import { queryCausalCoverage } from './CausalCoverage.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 import { borrowCausalCheckpoint, borrowCausalPage, retireCausalRead } from './CausalReadLeases.js';
+import { createCausalPerformanceState, validateCausalPerformanceState } from './CausalPerformanceState.js';
 
 const id = value => typeof value === 'string' && value.length > 0 && value.length <= 512;
 const equal = (left, right) => canonicalJournalText(left, { maxBytes: 32 * 1048576, maxNodes: 4000000 }).text ===
@@ -66,6 +67,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
       const checkpoint = inspectProcgenCheckpoint(initial.world, { assetRefs: runtimeAssets, generator: runtimeVersions.generator });
       if (checkpoint.continuation === 'unsupported') reasons.push(...checkpoint.reasons);
       if (initial.engine?.version !== 1) reasons.push('missing-semantic-engine-checkpoint');
+      if (initial.engine?.performanceInputs) { try { validateCausalPerformanceState(initial.engine.performanceInputs); } catch { reasons.push('invalid-lane-performance-inputs'); } }
       if (![1, 2].includes(initial.replay?.version) || initial.replay.version === 2 && typeof initial.replay.playing !== 'boolean' || typeof initial.replay.scoreTimeline !== 'boolean' ||
         !Number.isFinite(initial.replay.bpm) || initial.replay.bpm <= 0 || initial.replay.bpm > 1000000) reasons.push('missing-replay-clock-settings');
       if (mode === 'exact') reasons.push('active-execution-unbound');
@@ -95,7 +97,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
     const ref = qualified?.ref || manifest.initialCheckpoint;
     let initial = null, initialSource = null, initialProducer = null, initialProducerPending = false;
     const current = { graph: qualified?.graph || validateCausalInstrumentGraph(manifest.mapping), bpm: null, playing: true };
-    let world = null, engine = null, clock = null, listener = null, callbackError = null, released = false, worldOwned = false, disposeWorld = null;
+    let world = null, engine = null, clock = null, performance = null, listener = null, callbackError = null, released = false, worldOwned = false, disposeWorld = null;
     let worldProducer = null, worldProducerPending = false;
     let actualDisposal = null, synchronousDisposal = false, listenerFailure = null;
     let actualSourceDisposal = Promise.resolve(), synchronousSourceDisposal = false;
@@ -132,7 +134,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
           } }
         ]) },
         { name: 'checkpoint-source', run: () => {
-          const closeSource = () => { retireCausalRead(initialSource); initialSource = null; initial = null; };
+          const closeSource = () => { retireCausalRead(initialSource); initialSource = null; initial = null; performance = null; };
           if (!initialProducerPending && synchronousDisposal && !processing) {
             try { closeSource(); synchronousSourceDisposal = true; return; }
             catch (error) { actualSourceDisposal = Promise.reject(error); actualSourceDisposal.catch(() => {}); throw error; }
@@ -194,7 +196,9 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
       physicalHash = restoredHash;
       clock = createProcgenPhysicalScoreClock();
       if (initial.timeline) clock.restore(initial.timeline);
-      engine = createCausalMusicEngine({ getGraph: () => current.graph, scoreTimeline: initial.replay.scoreTimeline ? clock : null, traceLimit: 0 });
+      performance = initial.engine.performanceInputs ? createCausalPerformanceState(initial.engine.performanceInputs) : null;
+      engine = createCausalMusicEngine({ getGraph: () => current.graph, scoreTimeline: initial.replay.scoreTimeline ? clock : null, traceLimit: 0,
+        getPerformanceState: () => performance?.snapshot() || null, getOnsetControls: source => performance?.getControls(source), getPhysicalControlKinds: source => performance?.getPhysicalControlKinds(source) || [] });
       engine.restore(initial.engine);
       listener = batch => {
         if (released || disposed || world?._disposed) return;
@@ -260,6 +264,12 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
               const input = record.payload;
               if (record.tick !== world.tickIndex || record.generation !== world.generation || input?.version !== 1) throw journalError('input-boundary-mismatch', 'External input was not captured at a qualified boundary.', { firstSequence: record.sequence });
               if (input.kind === 'world-speed' && Number.isFinite(input.speedFactor) && input.speedFactor > 0 && input.speedFactor <= 1000000) world.timer.speedFactor = input.speedFactor;
+              else if (input.kind === 'instrument-performance' && performance) {
+                const mapping = input.mapping ? validateCausalInstrumentGraph(input.mapping) : null;
+                if (mapping && (mapping.revision <= current.graph.revision || mappingRevisions.size >= 4096)) throw journalError('unsupported-recorded-input', 'Performance mapping revision is stale or exceeds capacity.');
+                performance.apply(input.change);
+                if (mapping) { current.graph = mapping; mappingRevisions.add(mapping.revision); }
+              }
               else if (input.kind === 'transport-state' && typeof input.playing === 'boolean' && initial.replay.version === 2) current.playing = input.playing;
               else if (!(input.kind === 'transport-state' && typeof input.playing === 'boolean' ||
                 input.kind === 'external-observation' && input.effect === 'observation-only' && id(input.sourceId))) throw journalError('unsupported-recorded-input', 'Unknown external input effect cannot be guessed during replay.', { firstSequence: record.sequence });

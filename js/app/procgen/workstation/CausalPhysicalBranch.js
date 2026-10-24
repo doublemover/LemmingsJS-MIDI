@@ -35,6 +35,7 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
     const boundary = () => {
       const snapshot = session.engine.snapshot();
       return { voices: snapshot.active, travel: snapshot.travel, contactSpans: snapshot.active.filter(voice => voice.lifetimeScope === 'contactSpan'),
+        ...(snapshot.performanceInputs ? { 'instrument-performance': snapshot.performanceInputs } : {}),
         timeline: session.replayState().scoreTimeline ? session.clock.snapshot() : null };
     };
     recorder = await createCausalTakeRecorder({ journal, existingWriter: writer, takeId, documentId: parent.documentId,

@@ -360,5 +360,8 @@ No future position is predicted. Held identities retain their captured source
 kinds across patch replacement and semantic checkpoints. The per-batch bound is
 2048 physical updates; overflow releases the affected held owner explicitly.
 Native renderers without continuous mappings record semantic observations only.
-Take capture/re-performance must retain the lane performance inputs before this
-new control path can claim deterministic replay acceptance.
+Take checkpoints now retain bounded lane performance inputs separately from DSP
+state, and committed edits record changed lanes at the actual world boundary.
+Re-performance restores numeric/stable lane addressing and applies those edits
+before subsequent onsets. A combined mapping/control edit has one journal
+admission record. Runtime replay acceptance remains deferred.

@@ -11,6 +11,7 @@ import { captureProcgenCheckpoint } from '../js/app/procgen/workstation/ProcgenC
 import { inspectProcgenCheckpoint, hashProcgenPhysicsCheckpoint, migrateProcgenCheckpoint } from '../js/app/procgen/workstation/ProcgenCheckpointProvenance.js';
 import { createMemoryCausalStore } from './helpers/causalJournalStore.js';
 import { createResourceBudget } from '../js/app/resources/ResourceBudget.js';
+import { captureCausalPerformanceState, createCausalPerformanceState, diffCausalPerformanceState } from '../js/app/procgen/workstation/CausalPerformanceState.js';
 
 const sourceVersions = { generator: 'procgen-workstation-1', worldCheckpoint: 2, physicalBatch: 1, physicalMusic: 1, numericCanonicalization: 'finite-f64-minus-zero-v1' };
 const mapping = { version: 1, revision: 1, instruments: [
@@ -23,10 +24,12 @@ describe('isolated causal re-performance and checkpoint provenance', function() 
   let masks;
   before(async () => { masks = await loadProcgenMasks(); });
   const make = () => new ProcgenLaneWorld({ masks, laneCount: 2, seed: 42, assists: false });
-  const record = async ({ ticks = 40, unknownInput = false, forgedCheckpoint = false, final = true, playbackAdmission = false } = {}) => {
+  const record = async ({ ticks = 40, unknownInput = false, forgedCheckpoint = false, final = true, playbackAdmission = false, performanceInputs = false } = {}) => {
     const store = createMemoryCausalStore(), journal = createProcgenCausalJournal({ storage: store.storage }), world = make();
     let bpm = 120, playing = !playbackAdmission; const versions = { ...sourceVersions, ...(playbackAdmission ? { physicalPlaybackAdmission: 1 } : {}) };
-    const clock = createProcgenPhysicalScoreClock(), engine = createCausalMusicEngine({ getGraph: () => mapping, scoreTimeline: clock, traceLimit: 0 });
+    const performance = performanceInputs ? createCausalPerformanceState(captureCausalPerformanceState([{ id: 'lane-a', instrumentControls: { macros: { hardness: 0.2 } } }, { id: 'lane-b' }])) : null;
+    const clock = createProcgenPhysicalScoreClock(), engine = createCausalMusicEngine({ getGraph: () => mapping, scoreTimeline: clock, traceLimit: 0,
+      getPerformanceState: () => performance?.snapshot() || null, getOnsetControls: source => performance?.getControls(source) });
     const actor = world.actors[1]; actor.y = world.surfaceAt(1, actor.x); actor.setAction(world.actions[State.WALKING]);
     world.actors[0].y = world.laneHeight - 1; world.actors[0].setAction(world.actions[State.FALLING]);
     const snapshot = () => ({ world: captureProcgenCheckpoint(world), engine: engine.snapshot(), timeline: clock.snapshot(), replay: { version: playbackAdmission ? 2 : 1, bpm, scoreTimeline: true, ...(playbackAdmission ? { playing } : {}) } });
@@ -41,6 +44,10 @@ describe('isolated causal re-performance and checkpoint provenance', function() 
       const boundary = { tick: world.tickIndex, generation: world.generation };
       if (tick === 10) { bpm = 90; recorder.recordTimeline({ version: 1, kind: 'tempo', bpm }, boundary); }
       if (tick === 12) { world.timer.speedFactor = 6; recorder.recordInput({ version: 1, kind: 'world-speed', speedFactor: 6 }, boundary); }
+      if (tick === 15 && performance) {
+        const next = captureCausalPerformanceState([{ id: 'lane-a', instrumentControls: { macros: { hardness: 0.8 }, variationSeed: 19 } }, { id: 'lane-b' }]);
+        const change = diffCausalPerformanceState(performance.snapshot(), next); expect(recorder.recordPerformance(change, boundary).status).to.equal('accepted'); performance.apply(change);
+      }
       if (tick === 13) { recorder.recordInput({ version: 1, kind: 'transport-state', playing: false }, boundary); recorder.recordInput({ version: 1, kind: 'transport-state', playing: true }, boundary); if (playbackAdmission) playing = true; }
       if (tick === 14) recorder.recordInput(unknownInput ? { version: 1, kind: 'live-device-unknown', bytes: [0x90, 60, 1] }
         : { version: 1, kind: 'external-observation', sourceId: 'recorded-midi-port', effect: 'observation-only', timestamp: 1234.567, bytes: [0x90, 60, 1] }, boundary);
@@ -57,6 +64,13 @@ describe('isolated causal re-performance and checkpoint provenance', function() 
     world.dispose();
     return { ...store, journal, source, stopped, finalHash, runtime: options => createCausalReperformance({ journal, createWorld: make, sourceVersions: versions, assetRefs, ...options }) };
   };
+
+  it('re-performs captured macro/seed edits and performance checkpoints at their actual physical boundaries', async () => {
+    const { runtime, source } = await record({ performanceInputs: true }), service = runtime();
+    const result = await service.reperform({ takeId: source.takeId, executionEpoch: 'performance-inputs' });
+    expect(result.receipt, JSON.stringify(result.receipt)).to.include({ compatibilityMatch: true, status: 'matched-current-runtime', exactQualified: false });
+    await service.dispose().completion;
+  });
 
   it('re-performs 10000 ticks, transfers, terrain work, tempo/speed and external inputs with exact retained state/fact/intent parity', async () => {
     const { runtime, source, finalHash, journal } = await record({ ticks: 10000 });

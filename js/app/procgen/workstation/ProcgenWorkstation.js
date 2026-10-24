@@ -14,6 +14,7 @@ import { createProcgenPhysicalScoreClock } from './ProcgenPhysicalScoreClock.js'
 import { createProcgenPhysicalPlayback } from './ProcgenPhysicalPlayback.js';
 import { createProcgenCausalJournal } from './ProcgenCausalJournal.js';
 import { createCausalTakeRecorder } from './CausalTake.js';
+import { captureCausalPerformanceState, diffCausalPerformanceState } from './CausalPerformanceState.js';
 import { prepareCausalTakeArchive } from './CausalTakeArchive.js';
 import { createPhysicalScoreProjection } from './PhysicalScoreProjection.js';
 import { createProcgenWorldInspector } from './ProcgenWorldInspector.js';
@@ -220,11 +221,14 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const instrumentRefsChanged = project.procgen.lanes.some((lane, index) => lane.instrumentRef !== next.procgen.lanes[index]?.instrumentRef &&
       !equal(lane.instrumentRef ?? null, next.procgen.lanes[index]?.instrumentRef ?? null)) || next.procgen.lanes.some((lane, index) => lane.instrumentRef && !project.procgen.lanes[index]);
     if ((causalTake || causalTakeStart || causalTakeStop) && instrumentRefsChanged) throw new Error('Finish the causal take before changing its pinned lane instrument.');
-    if (causalTake && !equal(project.procgen.physicalGraph, next.procgen.physicalGraph)) {
-      const cursor = physicalPlayback?.engine.snapshot().physicalCursor;
-      const receipt = causalTake.recordMapping(next.procgen.physicalGraph,
-        { tick: Math.max(0, cursor?.tick ?? 0), generation: cursor?.generation ?? 0 });
-      if (receipt.status !== 'accepted') throw new Error(`Causal take could not admit the mapping change: ${receipt.reason}. Stop the take before editing it.`);
+    const performanceChange = causalTake || causalTakeStart || causalTakeStop ? diffCausalPerformanceState(captureCausalPerformanceState(project.procgen.lanes), captureCausalPerformanceState(next.procgen.lanes)) : null;
+    if ((causalTakeStart || causalTakeStop) && performanceChange) throw new Error('Wait for causal take arming or saving before changing instrument controls.');
+    const mappingChanged = causalTake && !equal(project.procgen.physicalGraph, next.procgen.physicalGraph);
+    if (causalTake && (mappingChanged || performanceChange)) {
+      const world = runtime()?.world, boundary = { tick: world?.tickIndex ?? 0, generation: world?.generation ?? 0 };
+      const receipt = performanceChange ? causalTake.recordPerformance(performanceChange, boundary, mappingChanged ? next.procgen.physicalGraph : null)
+        : causalTake.recordMapping(next.procgen.physicalGraph, boundary);
+      if (receipt.status !== 'accepted') throw new Error(`Causal take could not admit the performance change: ${receipt.reason}. Stop the take before editing it.`);
     }
     if (history) {
       if (historyGroup == null || historyGroup !== lastHistoryGroup) {
@@ -480,6 +484,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const physical = physicalPlayback?.engine.snapshot();
     return { sourceTimeMs: runtime()?.world?.simulationTimeMs ?? null, voices: physical?.active || [], travel: physical?.travel || null,
       contactSpans: physical?.active?.filter(voice => voice.lifetimeScope === 'contactSpan') || [],
+      ...(physical?.performanceInputs ? { 'instrument-performance': physical.performanceInputs } : {}),
       timeline: physicalScoreClock.snapshot() };
   };
   const causalTakeState = () => Object.freeze({ recording: !!causalTake && !causalTake.status().captureStopped,

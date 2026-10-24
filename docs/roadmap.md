@@ -2203,8 +2203,14 @@ qualified value. Captured source-kind subscriptions survive semantic checkpoints
 and old renderer ownership survives lane replacement. Update overflow releases
 affected owners rather than leaving stale sound. Contact-anchor metadata now
 uses articulationState, consistent with travel metadata. Compiler v8 retains
-the continuous declarations; replay capture of lane performance inputs is the
-next required integration before replay qualification. Runtime fixtures remain
+the continuous declarations. Take checkpoints now retain at most 1024 lane
+performance inputs (typed macro/variation controls and continuous source kinds)
+without copying full patch definitions. Changes retain only modified lane
+entries and are admitted at the current world boundary, including one atomic
+record for a combined mapping/control edit. Re-performance restores that
+provider before the semantic engine, retains held subscriptions, and compares
+performance metadata at component checkpoints. The new capture profile declares
+instrument-performance state explicitly. Runtime replay and DSP fixtures remain
 authored and unexecuted.
 
 Committed interval admission now checks future overlaps and lease extensions

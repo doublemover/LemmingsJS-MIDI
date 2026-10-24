@@ -3,6 +3,7 @@ import { validateCausalInstrumentGraph } from './CausalMusicEngine.js';
 import { createCausalCoverageIndex, queryCausalCoverage } from './CausalCoverage.js';
 import { createCausalViewWorkspace } from './CausalViewWorkspace.js';
 import { retireCausalRead } from './CausalReadLeases.js';
+import { validateCausalPerformanceChange, validateCausalPerformanceState } from './CausalPerformanceState.js';
 
 const name = value => typeof value === 'string' && value.length > 0 && value.length <= 128;
 const boundedKinds = value => Array.isArray(value) && value.length <= 128 && value.every(name) && new Set(value).size === value.length;
@@ -11,14 +12,15 @@ const validateCaptureProfile = value => {
       !boundedKinds(value.stateKinds)) throw new Error('A bounded, explicit causal capture profile is required.');
   return cloneJournalData(value);
 };
-const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-basic-v1',
+const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-basic-v2',
   factKinds: ['MotionCommitted', 'DirectionChanged', 'ContactResolved', 'ActionEntered', 'ActionExited', 'AbilityChanged',
     'ActorTerminated', 'TerrainWorkCommitted', 'CommandApplied', 'CommandRejected', 'ContactSpanBegan', 'ContactSpanUpdated', 'ContactSpanEnded'],
-  descriptorKinds: ['movement-path'], stateKinds: ['voices', 'travel', 'contactSpans', 'timeline'] });
+  descriptorKinds: ['movement-path'], stateKinds: ['voices', 'travel', 'contactSpans', 'timeline', 'instrument-performance'] });
 
 const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId, sourceVersions, captureProfile = PHYSICAL_CAPTURE_PROFILE,
   boundaryState = {}, initialCheckpoint, mapping, assetRefs = [], existingWriter = null, prefixCoverage = null, sourceCursor = null } = {}) => {
   const profile = validateCaptureProfile(captureProfile), graph = validateCausalInstrumentGraph(mapping);
+  const initialPerformance = initialCheckpoint?.engine?.performanceInputs ? validateCausalPerformanceState(initialCheckpoint.engine.performanceInputs) : null;
   if (existingWriter && (!['appendMany', 'append', 'manifest', 'status', 'checkpoint', 'stop'].every(key => typeof existingWriter[key] === 'function') ||
       existingWriter.status().state !== 'recording' || existingWriter.manifest().takeId !== takeId || !existingWriter.manifest().prefix ||
       existingWriter.status().admittedSequence !== existingWriter.manifest().prefix.throughSequence ||
@@ -35,6 +37,7 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
   const observedFactKinds = new Set(prefixCoverage?.observedFactKinds || []), intentKinds = new Set(prefixCoverage?.intentKinds || []),
     mappingRevisions = new Set([...(prefixCoverage?.mappingRevisions || []), graph.revision]);
   const observedStateKinds = new Set(profile.stateKinds.filter(kind => Object.hasOwn(boundaryState, kind) && boundaryState[kind] != null));
+  if (initialPerformance && profile.stateKinds.includes('instrument-performance')) observedStateKinds.add('instrument-performance');
   const coverageIndex = createCausalCoverageIndex({ gaps: prefixCoverage?.gaps || [] }), batches = new Set(), order = [];
   let firstTick = prefixCoverage?.sourceRange?.firstTick ?? null, lastTick = sourceCursor?.tick ?? null,
     lastGeneration = sourceCursor?.generation ?? null, nextGenerationBoundary = null, lastSequence = sourceCursor?.lastCausalSequence ?? -1,
@@ -113,6 +116,13 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
   const status = () => { const gaps = coverageIndex.snapshot(); return freezeJournalData({ ...writer.status(), sourceBoundary: { worldId, tick: lastTick, generation: lastGeneration }, coverage: {
     status: gaps.some(gap => ['physical-facts', 'all'].includes(gap.kind)) ? 'partial' : 'complete', gaps, index: coverageIndex.diagnostics() } }); };
   return { recordCommittedBatch, recordIntervention: (command, outcome, boundary) => record('intervention', { command, outcome }, boundary),
+    recordPerformance: (change, boundary, nextMapping = null) => {
+      if (!profile.stateKinds.includes('instrument-performance')) return Object.freeze({ status: 'rejected', reason: 'performance-inputs-not-in-capture-profile' });
+      const validated = validateCausalPerformanceChange(change), mapping = nextMapping ? validateCausalInstrumentGraph(nextMapping) : null;
+      if (mapping && mapping.revision <= Math.max(...mappingRevisions)) throw new Error('A take mapping change needs a new revision.');
+      const receipt = record('input-observation', { version: 1, kind: 'instrument-performance', change: validated, ...(mapping ? { mapping } : {}) }, boundary);
+      if (receipt.status === 'accepted') { observedStateKinds.add('instrument-performance'); if (mapping) mappingRevisions.add(mapping.revision); } return receipt;
+    },
     recordInput: (observation, boundary) => record('input-observation', observation, boundary),
     recordTimeline: (timeline, boundary) => { const receipt = record('timeline', timeline, boundary); if (receipt.status === 'accepted') observedStateKinds.add('timeline'); return receipt; }, recordMapping,
     recordSinkOutcome: (outcome, boundary) => record('sink-outcome', outcome, boundary),
