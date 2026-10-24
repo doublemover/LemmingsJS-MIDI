@@ -60,7 +60,7 @@ const inspectText = async (text, { maxBytes, maxNodes, estimatedPeakBytes, signa
   return { bytes, nodes };
 };
 const inspectValue = async (value, { maxBytes, maxNodes, maxStringBytes, estimatedPeakBytes, signal, current, onProgress, yieldControl }, { allowBinary = false } = {}) => {
-  const stack = [{ value, depth: 0 }], active = new WeakSet(); let units = 0, bytes = 0, nodes = 0;
+  const stack = [{ value, depth: 0 }], active = new WeakSet(); let units = 0, bytes = 0, nodes = 0, binaryBytes = 0;
   while (stack.length) {
     const item = stack.pop();
     if (item.leave) { active.delete(item.value); continue; }
@@ -80,7 +80,7 @@ const inspectValue = async (value, { maxBytes, maxNodes, maxStringBytes, estimat
     else if (type === 'undefined') bytes += 4;
     else if (type !== 'object' || active.has(input)) throw problem('invalid-data', 'Background input must contain only acyclic snapshot data.');
     else if (shared(input)) throw problem('shared-live-input', 'Background jobs require owned snapshot buffers, not shared live memory.');
-    else if (allowBinary && (input instanceof ArrayBuffer || ArrayBuffer.isView(input))) bytes += input.byteLength;
+    else if (allowBinary && (input instanceof ArrayBuffer || ArrayBuffer.isView(input))) { bytes += input.byteLength; binaryBytes += input.byteLength; }
     else {
       if (!Array.isArray(input) && ![Object.prototype, null].includes(Object.getPrototypeOf(input))) throw problem('invalid-data', 'Unsupported background snapshot object.');
       active.add(input); stack.push({ value: input, leave: true });
@@ -108,7 +108,7 @@ const inspectValue = async (value, { maxBytes, maxNodes, maxStringBytes, estimat
     if (bytes > maxBytes || bytes * 6 + nodes * 32 > estimatedPeakBytes) throw problem('memory-capacity', 'Background input exceeds its admitted representation bound.');
     if (++units % 2048 === 0) { guard(signal, current); onProgress({ phase: 'validating-snapshot', completedUnits: units, totalUnits: null }); await yieldControl(); }
   }
-  guard(signal, current); return { bytes, nodes };
+  guard(signal, current); return { bytes, nodes, binaryBytes };
 };
 
 export async function runBackgroundJobKernel(kind, input, { signal, current, maxBytes = MAX_BYTES, estimatedPeakBytes,
@@ -233,7 +233,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     }
     return { value, inputBytes: metadata.bytes, nodes: metadata.nodes };
   }
-  const metadata = await inspectValue(input, options, { allowBinary: kind === 'recovery-checksum' });
+  const metadata = await inspectValue(input, options, { allowBinary: ['recovery-checksum', 'render-sound-controls', 'render-causal-sine-take'].includes(kind) });
   if (kind === 'snapshot-canonical-data') {
     const encoded = canonicalDataText(input, { maxBytes, maxNodes }); guard(signal, current);
     if (encoded.bytes.byteLength * 8 + encoded.nodes * 192 > estimatedPeakBytes) throw problem('memory-capacity', 'Snapshot source exceeds its declared clone overlap.');
@@ -241,24 +241,24 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     return { value, inputBytes: metadata.bytes, nodes: encoded.nodes, retainedBytes: encoded.bytes.byteLength * 2 + encoded.nodes * 64 + 4096 };
   }
   if (kind === 'render-sound-controls') {
-    if (!input || Object.keys(input).some(key => !['definition', 'engineRequirement', 'sampleRate', 'source'].includes(key)) || estimatedPeakBytes < 32 * 1048576)
+    if (!input || Object.keys(input).some(key => !['definition', 'engineRequirement', 'sampleRate', 'source', 'pcm'].includes(key)) || estimatedPeakBytes < 32 * 1048576)
       throw problem('invalid-contract', 'Sound control rendering requires its bounded fixed-job contract.');
     const catalog = await getNativeInstrumentCatalog(), descriptor = catalog.descriptors.find(engine => engine.engineId === input.engineRequirement?.engineId); guard(signal, current);
     if (catalog.state !== 'bound-application-engines' || !descriptor || !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => input.engineRequirement?.[key] === descriptor[key]))
       throw problem('engine-identity-unbound', 'Sound control rendering requires its exact executing source artifact.');
-    const value = await renderOwnedSourceControls({ definition: input.definition, descriptor, sampleRate: input.sampleRate, source: input.source,
+    const value = await renderOwnedSourceControls({ definition: input.definition, descriptor, sampleRate: input.sampleRate, source: input.source, pcm: input.pcm,
       applicationBuildId: catalog.executionIdentity.buildId }, { signal, yieldControl, onProgress }); guard(signal, current);
     const retainedBytes = value.bytes.byteLength * 2 + 65536;
     if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Rendered control reference exceeds admitted output storage.');
     return { value, inputBytes: metadata.bytes, nodes: metadata.nodes, retainedBytes };
   }
   if (kind === 'render-causal-sine-take') {
-    if (!input || Object.keys(input).some(key => !['revoice', 'definition', 'engineRequirement', 'sampleRate', 'startSeconds', 'endSeconds', 'tail', 'stemLaneIds'].includes(key)) || estimatedPeakBytes < 8 * 1048576)
+    if (!input || Object.keys(input).some(key => !['revoice', 'definition', 'engineRequirement', 'sampleRate', 'startSeconds', 'endSeconds', 'tail', 'stemLaneIds', 'pcm'].includes(key)) || estimatedPeakBytes < 8 * 1048576)
       throw problem('invalid-contract', 'Causal audio rendering requires a bounded semantic-source request.');
     const catalog = await getNativeInstrumentCatalog(), descriptor = catalog.descriptors.find(engine => engine.engineId === input.engineRequirement?.engineId); guard(signal, current);
     if (catalog.state !== 'bound-application-engines' || !descriptor || !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => input.engineRequirement?.[key] === descriptor[key]))
       throw problem('engine-identity-unbound', 'Causal audio rendering requires its exact executing source artifact.');
-    const sourceFootprint = metadata.bytes * 12 + metadata.nodes * 192;
+    const sourceFootprint = (metadata.bytes - metadata.binaryBytes) * 12 + metadata.nodes * 192 + metadata.binaryBytes * 2;
     if (sourceFootprint + 8 * 1048576 > estimatedPeakBytes) throw problem('memory-capacity', 'Causal render source exceeds its admitted object and clone footprint.');
     const value = await renderCausalOwnedTake({ ...input, descriptor, applicationBuildId: catalog.executionIdentity.buildId },
       { signal, yieldControl, onProgress, maxWorkingBytes: estimatedPeakBytes - sourceFootprint }); guard(signal, current);

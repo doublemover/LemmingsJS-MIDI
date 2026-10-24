@@ -26,7 +26,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
   const reader = createSoundContentReader({ resourceBudget, jobs }), archiver = createSoundContentArchiver({ resourceBudget, jobs });
   const registry = createSoundContentRegistry({ indexedDB: window.indexedDB, keyRange: window.IDBKeyRange, resourceBudget });
   const installation = createSoundContentInstallation({ audio, registry, onReveal: () => { if (!disposed && !dialog.open) { monitor?.mount(dialog); dialog.showModal(); } } });
-  const renderReferences = createSoundContentRenderReferences({ resourceBudget, jobs });
+  const renderReferences = createSoundContentRenderReferences({ resourceBudget, jobs, getMaterialProvider: () => audio.getSoundMaterialProvider() });
   const retirement = createProcgenRetirementScope(), listeners = [], factoryFaults = new Map();
   let stage = null, current = null, disposed = false, selection = null, artifact = null, pageCursor = null, installed = false, sequence = 0;
   const node = (tag, text) => { const element = document.createElement(tag); if (text != null) element.textContent = text; return element; };
@@ -246,7 +246,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-granular') {
         const parameters = patch.definition.parameters;
         modelInfo.textContent = 'Patch model: one pinned local WAV per cloud · ' + parameters.grainMilliseconds + ' ms Hann grains at ' + parameters.densityHz +
-          '/s · source position hold ' + (parameters.freezePosition ? 'on' : 'off') + '. Eight clouds, 16 grain slots per cloud, 32 births per 128 audio frames. Shared source quotas apply. Linear resampling, stereo and dense scenes await qualification; exact restore and offline granular output are unavailable.';
+          '/s · source position hold ' + (parameters.freezePosition ? 'on' : 'off') + '. Eight clouds, 16 grain slots per cloud, 32 births per 128 audio frames. Shared source quotas apply. Linear resampling, stereo and dense scenes await qualification; exact restore is unavailable. Fixed control WAVs use the same pinned source; causal rendering requires its saved material reference.';
       }
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-spectrum') {
         const parameters = patch.definition.parameters;
@@ -260,7 +260,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     stop.disabled = !current; install.disabled = busy || !auditioned; referenceInstall.disabled = busy || !ready;
     apply.disabled = busy || !installed || !auditioned; referenceExport.disabled = busy || !ready;
     portableExport.disabled = busy || !ready || plan.portability === 'reference-only' || !!plan.unavailableEngines.length;
-    renderAudio.disabled = busy || !renderable || !!plan?.missingReferences.length || !!plan?.missingAssetBytes.length; renderRate.disabled = busy || !renderable;
+    renderAudio.disabled = busy || !renderable || !!plan?.missingReferences.length || !!plan?.missingAssetBytes.length && !localProceduralMaterial && !installed; renderRate.disabled = busy || !renderable;
     download.disabled = busy || !artifact?.metadata().retained; save.disabled = download.disabled || typeof window.showSaveFilePicker !== 'function';
     more.hidden = !pageCursor; close.disabled = false; credits.replaceChildren();
     if (plan) for (const entry of plan.credits) credits.append(node('li', entry.subject + ' · ' + (entry.rights.creator || 'creator unknown') + ' · ' + entry.rights.licenseId + ' · redistribution ' + entry.redistribution));

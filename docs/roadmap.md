@@ -2365,7 +2365,14 @@ preparation verifies the decoded PCM digest as well as the encoded asset hash.
 Background cancellation exposes producer quiescence so temporary input retirement
 is joined before caller workspaces are released; unknown producers stay charged.
 Source-rate conversion in the grain kernel remains linear and unqualified for
-alias safety. Offline granular handoff is the next consumer of this cache path.
+alias safety. Granular control-reference WAVs and causal render APIs now consume this path
+through owned PCM bank loans. The render worker verifies actual planar bytes,
+peak and the complete bank metadata hash before constructing the same grain
+kernel. Its manifest retains encoded/source/decoded identities and the explicit
+linear resampling profile. Main input copies remain reserved until the render
+producer has retired; cleanup joins copies, original banks and decoded pins
+before publishing files. The take dialog still needs its saved lane-material
+selection wired before this asset-backed API is exposed there.
 
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail

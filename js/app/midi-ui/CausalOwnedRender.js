@@ -1,4 +1,5 @@
 import { RECEIPT_WIDTH, BEGIN, UPDATE, END, APPLIED, REJECTED, FAULTED, CANCELLED } from './worklet/OwnedSineProcessor.js';
+import { verifyOwnedPcmPayload } from '../resources/OwnedPcmVerification.js';
 import { getOwnedSourceProfile, OWNED_SOURCE_IDS } from './OwnedSourceProfiles.js';
 import { ownedSourceSeed } from './OwnedSourceSeed.js';
 import { compileInstrumentPerformance, retainInstrumentCause } from '../../midi/content/InstrumentPerformance.js';
@@ -13,6 +14,7 @@ const failure = (code, message, detail = {}) => Object.assign(new Error(message)
 const text = (value, max = 512) => typeof value === 'string' && value.length > 0 && value.length <= max;
 const natural = value => Number.isSafeInteger(value) && value >= 0;
 const finite = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;
+const integerPcmBytes = value => Number.isSafeInteger(value) && value > 0 && value <= 16 * 1048576;
 const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const identity = intent => JSON.stringify([intent.worldId ?? null, intent.generation, intent.voiceId]);
 const expressionFor = expression => {
@@ -40,7 +42,7 @@ const encodeWav = (pcm, frames, rate, manifest) => {
 };
 
 export async function planCausalOwnedRender({ revoice, definition, descriptor, sampleRate = 48000, startSeconds = 0, endSeconds,
-  tail = { mode: 'exact-crop' }, stemLaneIds = [], applicationBuildId = null, maxPlanningBytes = 128 * 1048576 } = {}) {
+  tail = { mode: 'exact-crop' }, stemLaneIds = [], applicationBuildId = null, pcm = null, signal = null, yieldControl, maxPlanningBytes = 128 * 1048576 } = {}) {
   if (revoice?.operation !== 'sound-only-revoice' || revoice.version !== 1 || !text(revoice.takeId, 256) || !hash(revoice.sourceCanonicalHash) ||
       !natural(revoice.takeRevision) || revoice.takeRevision < 1 || !['finalized', 'partial'].includes(revoice.sourceState) || revoice.nextSequence != null ||
       revoice.coverage?.status !== 'known-covered' || !Array.isArray(revoice.intents) || revoice.intents.length > MAX_INTENTS ||
@@ -53,10 +55,14 @@ export async function planCausalOwnedRender({ revoice, definition, descriptor, s
       !finite(tail.maxSeconds ?? 4, 0, 4) || !Array.isArray(stemLaneIds) || stemLaneIds.length > 16 || stemLaneIds.some(id => !text(id, 128)) || new Set(stemLaneIds).size !== stemLaneIds.length)
     throw failure('render-preflight', 'Choose a bounded owned-source render, supported sample rate, range, tail policy and at most sixteen captured lane stems.');
   const owned = getOwnedSourceProfile(descriptor.engineId), patch = validateInstrumentPatchV2(definition, descriptor);
-  if (patch.sampleRefs.length || patch.modulations.length || !owned.extended && (patch.macros.length || patch.causalBindings.length || patch.variation) || patch.voicePolicy.steal !== 'reject' || patch.voicePolicy.maxVoices > owned.voices)
-    throw failure('unsupported-patch', 'This render requires a realized asset-free owned source with reject admission.');
-  const planningBytes = revoice.intents.length * Math.max(1024, Object.keys(owned.fields).length * 256);
+  if ((owned.requiresPCM ? patch.sampleRefs.length !== 1 : patch.sampleRefs.length !== 0) || patch.modulations.length || !owned.extended && (patch.macros.length || patch.causalBindings.length || patch.variation) || patch.voicePolicy.steal !== 'reject' || patch.voicePolicy.maxVoices > owned.voices)
+    throw failure('unsupported-patch', 'This render requires a realized owned source with complete material and reject admission.');
+  const pcmBytesEstimate = owned.requiresPCM && integerPcmBytes(pcm?.descriptor?.bytes) ? pcm.descriptor.bytes : 0;
+  const planningBytes = revoice.intents.length * Math.max(1024, Object.keys(owned.fields).length * 256) + pcmBytesEstimate * 3;
   if (!natural(maxPlanningBytes) || planningBytes > maxPlanningBytes) throw failure('render-memory-capacity', 'Source control and voice histories exceed their admitted planning workspace.');
+  const sourcePCM = owned.requiresPCM ? await verifyOwnedPcmPayload(pcm, patch.sampleRefs[0], { signal, yieldControl }) : null;
+  if (!owned.requiresPCM && pcm != null) throw failure('unsupported-patch', 'This target does not consume PCM material.');
+  const pcmDescriptor = sourcePCM?.descriptor || null;
   const parameters = Object.fromEntries(Object.entries(owned.fields).map(([key, spec]) => [key, patch.parameters[key] ?? spec[2]]));
   const performancePlan = owned.extended ? compileInstrumentPerformance(patch, owned.parameters) : null;
   const articulation = resolveOwnedArticulationPolicy({ engineId: owned.id, parameters });
@@ -87,9 +93,9 @@ export async function planCausalOwnedRender({ revoice, definition, descriptor, s
       const values = performance?.values || parameters;
       if (!owned.acceptsParameters(values)) throw failure('unsupported-source-layout', 'New target controls request an unrealized source layout.');
       const frequency = frequencyFor(intent.pitch, expression.pitchOffsetCents ?? 0, sampleRate);
-      if (Math.abs(expression.pitchOffsetCents ?? 0) > owned.bendCents || !finite(frequency, owned.minHz, Math.min(owned.maxHz ?? Infinity, sampleRate / 2 - 1)) || !owned.acceptsOnset(values, frequency, null))
+      if (Math.abs(expression.pitchOffsetCents ?? 0) > owned.bendCents || !finite(frequency, owned.minHz, Math.min(owned.maxHz ?? Infinity, sampleRate / 2 - 1)) || !owned.acceptsOnset(values, frequency, pcmDescriptor))
         throw failure('unsupported-pitch', 'Captured onset exceeds this source profile.', { intentId: intent.intentId, engineId: owned.id, minimumHz: owned.minHz, maximumHz: owned.maxHz });
-      const seed = ownedSourceSeed(owned, patch, intent, performance), sourceFields = owned.beginFields(values, seed, null);
+      const seed = ownedSourceSeed(owned, patch, intent, performance), sourceFields = owned.beginFields(values, seed, pcmDescriptor);
       const ownReleaseFrames = Math.max(1, Math.round(values.releaseSeconds * sampleRate));
       voice = { key, laneId, start: frame, order, releaseAt: null, end: null, slot: -1, token: 0, begin: intent, baseFrequency: frequency / 2 ** ((expression.pitchOffsetCents ?? 0) / 1200), events: [],
         parameters: values, releaseFrames: ownReleaseFrames, articulation: resolveOwnedArticulationPolicy({ engineId: owned.id, parameters: values }),
@@ -154,19 +160,19 @@ export async function planCausalOwnedRender({ revoice, definition, descriptor, s
     voice.slot = selected; voice.token = ++tokens[selected]; slots[selected] = voice; peakVoices = Math.max(peakVoices, occupied + 1);
   }
   events.sort((left, right) => left.frame - right.frame || left.order - right.order);
-  return { owned, planningBytes, sourceControls, patch, parameters, events, voices, source: revoice, descriptor, applicationBuildId, sampleRate, firstFrame, endFrame, outputEnd, outputFrames,
+  return { owned, sourcePCM, pcmDescriptor, planningBytes, sourceControls, patch, parameters, events, voices, source: revoice, descriptor, applicationBuildId, sampleRate, firstFrame, endFrame, outputEnd, outputFrames,
     sourceOriginMs, startSeconds, endSeconds, tail, releaseFrames, articulation, derivedReleases, capturedBegins, capturedUpdates, capturedEnds, peakVoices, stemLaneIds, lanes, pcmBytes,
     timing: { ...timing.receipt(), sourceTimelineHash: timing.sourceTimeline ? await hashData(timing.sourceTimeline, { maxBytes: 1048576, maxNodes: 65536 }) : null },
     definitionHash: await hashData(definition), intentHash: await hashData(revoice.intents, { maxBytes: 8 * 1048576, maxNodes: 1000000 }) };
 }
 
 export async function renderCausalOwnedTake(input, { signal, yieldControl = () => new Promise(resolve => setTimeout(resolve, 0)), onProgress = () => {}, maxWorkingBytes = 512 * 1048576 } = {}) {
-  signal?.throwIfAborted(); const plan = await planCausalOwnedRender({ ...input, maxPlanningBytes: maxWorkingBytes }); signal?.throwIfAborted();
+  signal?.throwIfAborted(); const plan = await planCausalOwnedRender({ ...input, maxPlanningBytes: maxWorkingBytes, signal, yieldControl }); signal?.throwIfAborted();
   const requiredBytes = plan.pcmBytes * 4 + plan.planningBytes + 24 * 1048576;
   if (!natural(maxWorkingBytes) || requiredBytes > maxWorkingBytes) throw failure('render-memory-capacity', 'PCM, encoding, command and transfer overlap exceed the admitted render workspace.');
   const { sampleRate, outputFrames, outputEnd, firstFrame, endFrame, events, stemLaneIds } = plan;
   const WIDTH = plan.owned.width;
-  const kernel = await createOwnedControlKernel(plan.owned, sampleRate, plan.patch.voicePolicy.maxVoices, { signal, yieldControl }), pcm = Array.from({ length: stemLaneIds.length + 1 }, () => new Uint8Array(outputFrames * 8));
+  const kernel = await createOwnedControlKernel(plan.owned, sampleRate, plan.patch.voicePolicy.maxVoices, { signal, yieldControl, pcm: plan.sourcePCM }), pcm = Array.from({ length: stemLaneIds.length + 1 }, () => new Uint8Array(outputFrames * 8));
   const views = pcm.map(bytes => new DataView(bytes.buffer)), left = new Float32Array(128), right = new Float32Array(128);
   const stemChannels = stemLaneIds.map(() => [new Float32Array(128), new Float32Array(128)]), routes = new Int8Array(plan.owned.voices); routes.fill(-1);
   const statistics = pcm.map(() => ({ peak: 0, squares: 0, overFullScaleSamples: 0 }));
@@ -215,6 +221,7 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
       smoothingSeconds: 0.008, articulationPolicy: plan.articulation.policy, oneShotHoldSeconds: plan.owned.extended ? null : plan.articulation.oneShotTailSeconds, oneShotHoldPolicy: 'per-onset-effective-source-parameters',
       sourcePerformanceControls: plan.owned.id === 'worklet-sine' ? 'retained-in-source-intents-replaced-by-explicit-new-sine-patch' : 'captured-controls-retained-new-target-defaults-and-recorded-physical-causes-applied',
       sourceControls: { ...plan.sourceControls, observedKinds: [...plan.sourceControls.observedKinds].sort(), missingPhysicalObservations: 'held-or-no-qualified-source-no-invented-facts' },
+      sourceBank: plan.pcmDescriptor, sourceResampling: plan.owned.requiresPCM ? 'source-rate-pcm-linear-read-resampling' : 'none',
       fixedBank: kernel.source?.bank ? { id: kernel.source.bank.id, hash: kernel.source.bank.hash, bytes: kernel.source.bank.bytes } : null,
       normalization: 'none', integerClipping: 'not-applicable', dither: 'none-float-output', sharedMasterAndLimiter: 'excluded' },
     stems: { mode: 'simultaneous-dry-lane-taps', laneIds: stemLaneIds, allCapturedLanesIncluded: [...plan.lanes].every(lane => stemLaneIds.includes(lane)),

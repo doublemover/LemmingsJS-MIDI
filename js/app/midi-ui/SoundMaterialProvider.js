@@ -153,6 +153,8 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
           const entry = { stage, file, signal: operation.controller.signal }; let entries = sources.get(file.sha256);
           if (!entries) { entries = new Set(); sources.set(file.sha256, entries); } entries.add(entry); registration.push([file.sha256, entry]);
           const format = await inspect(file, stage, operation); operation.check();
+          if (patch.definition.engineId === 'worklet-granular' && (format.frames > 4194304 || format.frames * format.channels * 4 > 16 * 1048576))
+            throw failure('source-pcm-capacity', 'This cloud source exceeds the 16 MiB PCM or 4,194,304 source-frame profile.');
           const assetRef = validateAudioAssetRef({ contentHash: file.sha256, bytes: file.bytes, path: file.path, mime: file.mediaType, kind: file.kind,
             channels: format.channels, sourceSampleRate: format.sourceSampleRate, frames: format.frames, decodeVersion: DECODER_VERSION,
             licenseId: file.rights.licenseId, attribution: file.rights.attribution });
