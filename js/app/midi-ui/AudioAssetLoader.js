@@ -69,14 +69,19 @@ export function createAudioAssetLoader({ getContext, resolveAssetUrl, fetchAsset
     stats.failures++; entry.state = 'failed'; retire(map, key, entry, kind);
   };
   const unregister = resourceBudget?.registerEvictor?.(ownerPrefix, () => { evict(decoded, 'decoded', 0, maxDecodedBytes, true); evict(raw, 'raw', 0, maxRawBytes, true); });
-  const subscribe = (entry, { signal, isCurrent = () => true } = {}, handle) => new Promise((resolve, reject) => {
+  const subscribe = (entry, { signal, isCurrent = () => true, joinCancellation = false } = {}, handle) => new Promise((resolve, reject) => {
     let settled = false;
     entry.waiters++;
     const finish = () => {
       settled = true; signal?.removeEventListener('abort', cancel); entry.waiters--;
       if (!entry.waiters && entry.state === 'pending') entry.controller.abort();
     };
-    const cancel = () => { if (settled) return; stats.cancellations++; finish(); reject(fail('asset-request-cancelled', entry.ref)); };
+    const cancel = () => {
+      if (settled) return; stats.cancellations++; finish();
+      const cancelled = fail('asset-request-cancelled', entry.ref);
+      if (joinCancellation) Promise.resolve(entry.promise).then(() => reject(cancelled), error => reject(entry.state === 'retirement-failed' ? error : cancelled));
+      else reject(cancelled);
+    };
     if (signal?.aborted) { cancel(); return; }
     signal?.addEventListener('abort', cancel, { once: true });
     entry.promise.then(() => {
@@ -171,12 +176,14 @@ export function createAudioAssetLoader({ getContext, resolveAssetUrl, fetchAsset
     } };
     return Object.freeze(lease);
   };
-  const acquire = (input, { owner = 'anonymous', generation = 0, signal, isCurrent = () => true, decodeProfile = 'native-context' } = {}) => {
+  const acquire = (input, { owner = 'anonymous', generation = 0, signal, isCurrent = () => true, decodeProfile = 'native-context',
+    decodeContext = null, joinCancellation = false } = {}) => {
     let ref, context, sampleRate, decoderVersion;
     try {
       ref = validateAudioAssetRef(input, assetLimits);
       if (!WAVE_DECODE_PROFILES.includes(decodeProfile)) throw fail('decode-profile-unavailable', ref);
-      context = decodeProfile === 'native-context' ? getContext() : null;
+      if (typeof joinCancellation !== 'boolean' || decodeContext != null && (decodeProfile !== 'native-context' || !joinCancellation)) throw fail('decode-context-owner-required', ref);
+      context = decodeProfile === 'native-context' ? decodeContext ?? getContext() : null;
       sampleRate = decodeProfile === 'source-pcm' ? ref.sourceSampleRate : context?.sampleRate; decoderVersion = decodeProfile === 'source-pcm' ? WAVE_SOURCE_DECODER_VERSION : DECODER_VERSION;
       if (disposed) throw fail('asset-loader-disposed', ref);
       if (typeof owner !== 'string' || !owner || !Number.isSafeInteger(generation) || generation < 0 ||
@@ -254,7 +261,7 @@ export function createAudioAssetLoader({ getContext, resolveAssetUrl, fetchAsset
       }, entry.controller.signal);
       entry.promise.catch(() => failed(decoded, key, entry, 'decoded'));
     } else stats.decodedHits++;
-    return subscribe(entry, { signal, isCurrent }, value => decodedHandle(value, owner, generation, ref));
+    return subscribe(entry, { signal, isCurrent, joinCancellation }, value => decodedHandle(value, owner, generation, ref));
   };
   const downloadPack = async (packId, inputs, { signal, onProgress = () => {} } = {}) => {
     if (!rawStore?.put || typeof packId !== 'string' || !packId || packId.length > 128 || !Array.isArray(inputs) || inputs.length > maxEntries) throw fail('invalid-or-unavailable-pack-download');

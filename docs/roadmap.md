@@ -2417,6 +2417,17 @@ scheduler, preserving attack/decay even when a lease tail begins inside them.
 New API-double ownership, analytical envelope and real ConstantSource browser
 fixtures are authored for the later consolidated pass, not executed evidence.
 
+The shared asset cache now accepts an explicitly owned offline native decode
+context without opening the live context. Its native rate/decoder cache identity
+is shared with live consumers; borrowed context requests must join cancellation
+through the accepted decode producer. Material preparation forwards this lifetime
+contract. A private native-render material adapter uses a one-frame silent
+OfflineAudioContext to decode through the same provider, then drains that context
+before lending native buffer pins. Native render batches also check current
+request ownership at each scheduling frontier. Sample-map content and native
+sample product rendering remain implementation work. Ownership fixtures are
+authored; no runtime decode, native render or tests were executed in this pass.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical

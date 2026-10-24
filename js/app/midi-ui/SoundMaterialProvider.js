@@ -125,7 +125,8 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
     if (error) throw error;
     if (formats.size >= maxEntries) formats.delete(formats.keys().next().value); formats.set(file.sha256, format); return format;
   };
-  const acquire = async ({ stage = null, patchIdentity = null, reference = null, engineDescriptors = [], owner = 'sound-material', generation = 0, signal, isCurrent = () => true, decodeProfile = null } = {}) => {
+  const acquire = async ({ stage = null, patchIdentity = null, reference = null, engineDescriptors = [], owner = 'sound-material', generation = 0, signal, isCurrent = () => true,
+    decodeProfile = null, decodeContext = null, joinCancellation = false } = {}) => {
     signal?.throwIfAborted();
     if (disposed || faults.size || pending.size >= 2 || loans.size >= 32 || !Number.isSafeInteger(generation) || generation < 0) throw failure('material-preparation-capacity', 'Sound material preparation is unavailable or busy.');
     const operation = { id: ++sequence, controller: new AbortController(), completion: null };
@@ -158,7 +159,8 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
           const assetRef = validateAudioAssetRef({ contentHash: file.sha256, bytes: file.bytes, path: file.path, mime: file.mediaType, kind: file.kind,
             channels: format.channels, sourceSampleRate: format.sourceSampleRate, frames: format.frames, decodeVersion: DECODER_VERSION,
             licenseId: file.rights.licenseId, attribution: file.rights.attribution });
-          assets.push(await loader.acquire(assetRef, { owner, generation, signal: operation.controller.signal, isCurrent: operation.current, decodeProfile: decodeProfile || (patch.definition.engineId === 'worklet-granular' ? 'source-pcm' : 'native-context') })); operation.check();
+          assets.push(await loader.acquire(assetRef, { owner, generation, signal: operation.controller.signal, isCurrent: operation.current,
+            decodeProfile: decodeProfile || (patch.definition.engineId === 'worklet-granular' ? 'source-pcm' : 'native-context'), decodeContext, joinCancellation })); operation.check();
         }
         releaseSource();
         const captured = Object.freeze([...assets]), loan = Object.freeze({ assets: captured, availableHashes: Object.freeze(refs.map(ref => ref.sha256)),

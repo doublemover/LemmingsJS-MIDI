@@ -33,6 +33,31 @@ const rejection = async (promise, reason) => {
 };
 
 describe('Content addressed audio asset admission', () => {
+  it('decodes through an explicit offline owner without opening live audio and shares its native rate variant', async () => {
+    const item = fixture(), offline = context(96000); offline.state = 'suspended'; let liveOpens = 0;
+    const live = context(96000, () => { throw new Error('The matching native cache variant should be shared.'); });
+    const loader = makeLoader(item, { getContext: () => { liveOpens++; return live; } });
+    const first = await loader.acquire(item.ref, { decodeContext: offline, joinCancellation: true });
+    expect(liveOpens).to.equal(0); expect(first.variant).to.include({ targetSampleRate: 96000, decoderVersion: DECODER_VERSION, frames: 128 });
+    const next = await loader.acquire(item.ref); expect(next.buffer).to.equal(first.buffer); expect(liveOpens).to.equal(1);
+    first.release(); next.release(); await loader.dispose().completion;
+  });
+  it('joins an explicit native decode producer after cancellation before retiring its owner', async () => {
+    const item = fixture(), pending = deferred(), started = deferred(), budget = createResourceBudget();
+    const loader = makeLoader(item, { resourceBudget: budget, getContext: () => { throw new Error('Live context access is forbidden.'); } });
+    const controller = new AbortController(), offline = context(48000, () => { started.resolve(); return pending.promise; });
+    const work = loader.acquire(item.ref, { decodeContext: offline, joinCancellation: true, signal: controller.signal });
+    let completed = false; work.then(() => { completed = true; }, () => { completed = true; }); await started.promise;
+    controller.abort(); await settle(); expect(completed).to.equal(false); expect(loader.diagnostics().decodedBytes).to.be.greaterThan(0);
+    pending.resolve(await context().decodeAudioData(item.bytes.buffer)); await rejection(work, 'asset-request-cancelled');
+    expect(loader.diagnostics().decodedBytes).to.equal(0); await loader.dispose().completion; expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+  it('requires explicit cancellation joining for a borrowed native context', async () => {
+    const item = fixture(), loader = makeLoader(item);
+    await rejection(loader.acquire(item.ref, { decodeContext: context() }), 'decode-context-owner-required');
+    await rejection(loader.acquire(item.ref, { decodeProfile: 'source-pcm', decodeContext: context(), joinCancellation: true }), 'decode-context-owner-required');
+    expect(loader.diagnostics().fetches).to.equal(0); await loader.dispose().completion;
+  });
   it('preserves failed cache retirement accounting while disposing every independent entry', async () => {
     const first = fixture(), second = fixture({ marker: 9 }), budget = createResourceBudget(), records = new Map();
     let failed = false;

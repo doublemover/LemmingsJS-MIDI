@@ -15,14 +15,14 @@ let nextOwner = 0;
 // and the master are rendered together; no live output or solo bounce is used.
 export async function renderNativeOfflineGraph({ patch, events, frames, sampleRate, stemLaneIds = [] },
   { resources, signal: externalSignal, admission = backgroundWorkerAdmission, resourceBudget = null,
-    OfflineAudioContext = globalThis.OfflineAudioContext, onProgress = () => {} } = {}) {
+    OfflineAudioContext = globalThis.OfflineAudioContext, onProgress = () => {}, isCurrent = () => true } = {}) {
   externalSignal?.throwIfAborted();
   const channels = 2 + stemLaneIds.length * 2, nativeBytes = frames * channels * 4;
   if (!NATIVE_OFFLINE_SOURCE_IDS.includes(patch?.engineId) || ![44100, 48000, 96000].includes(sampleRate) ||
       !natural(frames) || frames < 1 || frames > sampleRate * 124 || !natural(nativeBytes) || nativeBytes > 256 * 1048576 ||
       !Array.isArray(events) || events.length > 32768 || !Array.isArray(stemLaneIds) || stemLaneIds.length > 15 ||
       new Set(stemLaneIds).size !== stemLaneIds.length || stemLaneIds.some(id => typeof id !== 'string' || !id || id.length > 128) ||
-      typeof OfflineAudioContext !== 'function' || typeof resources?.reserve !== 'function' || typeof admission?.acquire !== 'function' || typeof onProgress !== 'function')
+      typeof OfflineAudioContext !== 'function' || typeof resources?.reserve !== 'function' || typeof admission?.acquire !== 'function' || typeof onProgress !== 'function' || typeof isCurrent !== 'function')
     throw failure('native-render-preflight', 'Native offline rendering requires a bounded native source, available OfflineAudioContext and at most fifteen stereo lane taps.');
   let prior = -1;
   for (const event of events) {
@@ -41,7 +41,7 @@ export async function renderNativeOfflineGraph({ patch, events, frames, sampleRa
   let context = null, host = null, backend = null, rendered = null, nativeWork = null, suspension = null;
   let execution = null;
   let nativeSettled = false, nativeFailed = false, originalError = null, cursor = 0, batches = 0, submitted = 0, pcmLease = null, graphLease = null;
-  const guard = () => signal?.throwIfAborted();
+  const guard = () => { signal.throwIfAborted(); if (!isCurrent()) throw failure('stale-native-render', 'The native offline render no longer belongs to the selected request.'); };
   const node = value => { nodes.push(value); return value; };
   const accept = (receipt, event) => {
     if (receipt?.status !== 'accepted') throw failure('native-command-rejected', 'The native engine could not realize every captured command.',
