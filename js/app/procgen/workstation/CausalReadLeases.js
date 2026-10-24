@@ -9,6 +9,8 @@ export const borrowCausalCheckpoint = async (journal, ref, options) => typeof jo
   ? journal.readCheckpointOwned(ref, options) : legacyLease(await journal.readCheckpoint(ref));
 export const borrowCausalPage = async (journal, options) => typeof journal.queryOwned === 'function'
   ? journal.queryOwned(options) : legacyLease(await journal.query(options));
+export const borrowCausalTake = async (journal, takeId, options) => typeof journal.openTakeOwned === 'function'
+  ? journal.openTakeOwned(takeId, options) : legacyLease(await journal.openTake(takeId, options));
 
 export const retireCausalRead = source => {
   if (!source) return;

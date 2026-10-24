@@ -1,5 +1,7 @@
-import { canonicalJournalText, cloneJournalData, journalError } from './CausalJournalCanonical.js';
+import { canonicalJournalText, journalError } from './CausalJournalCanonical.js';
 import { queryCausalCoverage } from './CausalCoverage.js';
+import { createCausalViewWorkspace } from './CausalViewWorkspace.js';
+import { retireCausalRead } from './CausalReadLeases.js';
 
 const boundedId = value => typeof value === 'string' && value.length > 0 && value.length <= 512;
 const tick = value => Number.isSafeInteger(value) && value >= 0;
@@ -29,10 +31,12 @@ const axisValue = (domain, fact, batch, intents) => {
 };
 
 const createPhysicalScoreProjection = ({ journal, maxRecords = 4096, maxSourceFacts = 16384, maxGlyphs = 2048,
-  maxStrands = 512, maxEvidence = 4096, maxBytes = 4194304, maxJoinRecords = 4096 } = {}) => {
+  maxStrands = 512, maxEvidence = 4096, maxBytes = 4194304, maxJoinRecords = 4096,
+  maxCauseLinks = Math.min(1048576, maxSourceFacts * 32), resourceBudget = null, jobs } = {}) => {
   if (!journal || typeof journal.openTake !== 'function' || typeof journal.query !== 'function' ||
       ![maxRecords, maxSourceFacts, maxGlyphs, maxStrands, maxEvidence, maxBytes, maxJoinRecords].every(value => Number.isSafeInteger(value) && value > 0) ||
-      maxRecords > 65536 || maxSourceFacts > 262144 || maxGlyphs > 16384 || maxStrands > 4096 || maxEvidence > 65536 || maxJoinRecords > 65536 || maxBytes > 32 * 1048576) throw new Error('Invalid PhysicalScore projection bounds.');
+      maxRecords > 65536 || maxSourceFacts > 262144 || maxGlyphs > 16384 || maxStrands > 4096 || maxEvidence > 65536 || maxJoinRecords > 65536 || maxBytes > 32 * 1048576 ||
+      !Number.isSafeInteger(maxCauseLinks) || maxCauseLinks < 1 || maxCauseLinks > 1048576) throw new Error('Invalid PhysicalScore projection bounds.');
   const requests = new Map();
   const begin = (requestId, signal) => {
     if (!boundedId(requestId) || !requests.has(requestId) && requests.size >= 64) throw new Error('A bounded PhysicalScore request identity is required.');
@@ -42,7 +46,7 @@ const createPhysicalScoreProjection = ({ journal, maxRecords = 4096, maxSourceFa
       if (signal?.aborted || requests.get(requestId) !== token) throw journalError('cancelled', 'PhysicalScore request canceled or superseded.', { requestId });
     }, close: () => { if (requests.get(requestId) === token) requests.delete(requestId); } };
   };
-  const queryPhysicalScore = async ({ takeId, takeRevision, generation, coverageRange, timeDomain = 'physical-source-time',
+  const queryPhysicalScoreOwned = async ({ takeId, takeRevision, generation, coverageRange, timeDomain = 'physical-source-time',
     actorOrRoleFilter = {}, glyphKinds = [], sourceSelection = null, resolution = { mode: 'exact' }, requestId, signal, cursor = null } = {}) => {
     const range = coverageRange, actors = actorOrRoleFilter.actorIds || [], roles = actorOrRoleFilter.roles || [];
     if (!boundedId(takeId) || !Number.isSafeInteger(takeRevision) || takeRevision < 1 || !tick(generation) ||
@@ -58,15 +62,19 @@ const createPhysicalScoreProjection = ({ journal, maxRecords = 4096, maxSourceFa
           sourceSelection.last.sequence < sourceSelection.first.sequence || !tick(sourceSelection.last.factOffset) ||
           sourceSelection.first.sequence === sourceSelection.last.sequence && sourceSelection.last.factOffset < sourceSelection.first.factOffset)) throw new Error('Invalid PhysicalScore query.');
     const request = begin(requestId, signal);
-    const queryKey = JSON.stringify([takeId, takeRevision, generation, range, timeDomain, actors, roles, glyphKinds, sourceSelection, resolution]);
+    let workspace = null, operationError = null;
     try {
+      workspace = createCausalViewWorkspace({ journal, resourceBudget, jobs, ownerId: 'physical-score', signal, check: request.check,
+        baseBytes: 65536 + (maxRecords + maxJoinRecords) * 128 + maxSourceFacts * 256 + maxGlyphs * 512 + maxStrands * 256 + maxEvidence * 256 + maxBytes * 4,
+        maxLinks: maxCauseLinks });
+      const queryKey = JSON.stringify([takeId, takeRevision, generation, range, timeDomain, actors, roles, glyphKinds, sourceSelection, resolution]);
       request.check();
       if (cursor && (cursor.version !== 1 || cursor.takeId !== takeId || cursor.takeRevision !== takeRevision || cursor.queryKey !== queryKey))
         throw journalError('stale-cursor', 'PhysicalScore continuation belongs to another take revision or query.', { requestId });
-      const manifest = await journal.openTake(takeId);
+      const manifest = await workspace.take(takeId);
       request.check();
       if (manifest.revision !== takeRevision) throw journalError('stale-revision', 'PhysicalScore request refers to a stale take revision.', { requestId });
-      const page = await journal.query({ takeId, takeRevision, generation, firstTick: range.firstTick, lastTick: range.lastTick,
+      const page = await workspace.page({ takeId, takeRevision, generation, firstTick: range.firstTick, lastTick: range.lastTick,
         firstSequence: cursor?.sequence || sourceSelection?.first.sequence || 1, lastSequence: sourceSelection?.last.sequence ?? Number.MAX_SAFE_INTEGER,
         kinds: SCORE_KINDS, limit: maxRecords, signal });
       request.check();
@@ -84,20 +92,22 @@ const createPhysicalScoreProjection = ({ journal, maxRecords = 4096, maxSourceFa
           throw journalError('score-join-invalid', 'A captured semantic admission group is malformed.', { sourceSequence: record.sequence });
         const remaining = maxJoinRecords - companionRecordsRead;
         if (remaining < 1) throw journalError('score-join-capacity', 'PhysicalScore companion-read capacity reached; narrow the window.', { sourceSequence: record.sequence });
-        const companion = await journal.query({ takeId, takeRevision, generation, firstTick: record.tick, lastTick: record.tick,
+        const companion = await workspace.page({ takeId, takeRevision, generation, firstTick: record.tick, lastTick: record.tick,
           firstSequence: group?.firstSequence ?? record.sequence + 1, lastSequence: group?.lastSequence ?? Number.MAX_SAFE_INTEGER,
           kinds: ['musical-intents', 'sink-outcome'], limit: remaining, signal });
         request.check(); companionRecordsRead += companion.records.length;
         if (companion.nextSequence != null) throw journalError('score-join-capacity', 'A semantic companion lookup exceeded its bounded read window.', { sourceSequence: record.sequence });
-        for (const extra of companion.records) {
+        for (let index = 0; index < companion.records.length; index++) {
+          const extra = companion.records[index];
           if (extra.kind === 'musical-intents') capturedBatches.add(extra.payload.batchId);
           if (joinRecords.has(extra.sequence)) continue;
-          companionBytes += canonicalJournalText(extra, { maxBytes }).bytes.length;
+          companionBytes += companion.recordBytes?.[index] ?? canonicalJournalText(extra, { maxBytes }).bytes.length;
           if (companionBytes > maxBytes) throw journalError('score-join-capacity', 'PhysicalScore companion workspace exceeded its byte budget.', { sourceSequence: record.sequence });
           joinRecords.set(extra.sequence, extra);
         }
       }
-      const intentsByCause = new Map(), evidenceByIntent = new Map(), allIntents = [], timelines = [], interventions = [];
+      const intentsByCause = new Map(), evidenceByIntent = new Map(), timelines = [], interventions = [];
+      let causeLinks = 0, intentCount = 0;
       let evidenceCount = 0, missingEvidenceCount = 0;
       const addEvidence = outcome => {
         if (!boundedId(outcome?.intentId)) { missingEvidenceCount++; return; }
@@ -108,9 +118,9 @@ const createPhysicalScoreProjection = ({ journal, maxRecords = 4096, maxSourceFa
       for (const record of [...joinRecords.values()].sort((left, right) => left.sequence - right.sequence)) {
         request.check();
         if (record.kind === 'musical-intents') for (const intent of record.payload.intents || []) {
-          if (allIntents.length >= maxSourceFacts) throw journalError('score-capacity', 'PhysicalScore intent window is too dense; request a smaller source range.', { requestId });
-          allIntents.push(intent);
+          if (intentCount++ >= maxSourceFacts) throw journalError('score-capacity', 'PhysicalScore intent window is too dense; request a smaller source range.', { requestId });
           for (const causeId of intent.sourceEventIds || []) {
+            workspace.reserveLinks(++causeLinks);
             if (!intentsByCause.has(causeId)) intentsByCause.set(causeId, []);
             intentsByCause.get(causeId).push(intent);
           }
@@ -197,36 +207,49 @@ const createPhysicalScoreProjection = ({ journal, maxRecords = 4096, maxSourceFa
         if (voices.size >= maxSourceFacts) throw journalError('score-capacity', 'PhysicalScore voice strand capacity reached.', { requestId });
         if (!voices.has(voiceId)) voices.set(voiceId, { voiceId, actorStrandId: strand.strandId, generation });
       }
-      const result = { schema: 'lemmings-physical-score', version: 1, takeId, takeRevision, requestId, generation, timeDomain,
+      const result = { schema: 'lemmings-physical-score', version: 1, takeId, takeRevision, requestId, generation, timeDomain, sourceCanonicalHash: manifest.canonicalHash,
         requestedCoverage: range, sourceCoverage: manifest.coverage, unknownRegions, resolution, glyphs,
         actorStrands: [...strands.values()].map(strand => ({ ...strand, voiceIds: [...strand.voiceIds], roles: [...strand.roles] })),
         voiceStrands: [...voices.values()], clockSegments: { boundary: manifest.boundaryState?.timeline || null, observedWindow: timelines,
           coverage: 'captured-boundary-and-query-window' }, interventions, evidenceCoverage: { scope: 'query-window', observed: evidenceCount, unjoinable: missingEvidenceCount },
-        joinWork: { companionRecordsRead, companionBytes, maxJoinRecords },
+        joinWork: { companionRecordsRead, companionBytes, maxJoinRecords, causeLinks, maxCauseLinks },
         counts: { physicalBatches, sourceFacts, selectedFacts, glyphs: glyphs.length,
           representedEvents: glyphs.reduce((sum, glyph) => sum + (glyph.eventCount || 1), 0) }, continuation,
         inspection: { paused: true, hardware: false, recording: false, thru: false, physicalLayers: false } };
       request.check();
-      try { return cloneJournalData(result, { maxBytes, maxNodes: 1000000 }); }
-      catch (error) { throw journalError('score-capacity', 'PhysicalScore result exceeds its bounded data window; request a smaller range.', { requestId, detail: error.message }); }
-    } finally { request.close(); }
+      try { return await workspace.publish(result, { sourceRevision: manifest.canonicalHash, maxBytes }); }
+      catch (error) {
+        if (resourceBudget || error.code) throw error;
+        throw journalError('score-capacity', 'PhysicalScore result exceeds its bounded data window; request a smaller range.', { requestId, detail: error.message });
+      }
+    } catch (error) { operationError = error; throw error; }
+    finally { request.close(); const receipt = workspace?.dispose(); await receipt?.completion;
+      if (receipt && receipt.outcome !== 'complete') throw journalError('score-retirement-unknown', 'PhysicalScore source retirement is unresolved.', { cause: operationError, retirement: receipt }); }
   };
-  const queryCausalParent = async ({ takeId, takeRevision, generation, sourceSequence, eventId, requestId, signal } = {}) => {
+  const queryCausalParentOwned = async ({ takeId, takeRevision, generation, sourceSequence, eventId, requestId, signal } = {}) => {
     if (!boundedId(eventId) || !tick(generation) || !Number.isSafeInteger(sourceSequence) || sourceSequence < 1) throw new Error('Causal lookup requires an indexed source pointer.');
     const request = begin(requestId, signal);
+    let workspace = null, operationError = null;
     try {
+      workspace = createCausalViewWorkspace({ journal, resourceBudget, jobs, ownerId: 'causal-parent', baseBytes: 65536 + maxBytes * 8, signal, check: request.check });
       request.check();
-      const page = await journal.query({ takeId, takeRevision, generation, firstSequence: sourceSequence, lastSequence: sourceSequence,
+      const manifest = await workspace.take(takeId);
+      if (manifest.revision !== takeRevision) throw journalError('stale-revision', 'Causal parent refers to a stale take revision.');
+      const page = await workspace.page({ takeId, takeRevision, generation, firstSequence: sourceSequence, lastSequence: sourceSequence,
         kinds: ['physical-batch'], limit: 1, signal });
       request.check();
       const record = page.records[0], fact = record?.payload.facts.find(value => value.eventId === eventId);
-      return cloneJournalData({ schema: 'lemmings-causal-parent', version: 1, takeId, takeRevision: page.takeRevision, eventId,
+      return await workspace.publish({ schema: 'lemmings-causal-parent', version: 1, takeId, takeRevision: page.takeRevision, eventId, sourceCanonicalHash: manifest.canonicalHash,
         status: fact ? 'found' : 'unavailable-at-pointer', sourceSequence, fact: fact || null,
         parentCauseIds: fact?.parentCauseIds || [], commandId: fact?.commandId || null,
-        inspection: { paused: true, hardware: false, recording: false } }, { maxBytes });
-    } finally { request.close(); }
+        inspection: { paused: true, hardware: false, recording: false } }, { sourceRevision: manifest.canonicalHash, maxBytes });
+    } catch (error) { operationError = error; throw error; }
+    finally { request.close(); const receipt = workspace?.dispose(); await receipt?.completion;
+      if (receipt && receipt.outcome !== 'complete') throw journalError('score-retirement-unknown', 'Causal parent source retirement is unresolved.', { cause: operationError, retirement: receipt }); }
   };
-  return { queryPhysicalScore, queryCausalParent, cancel: requestId => requests.delete(requestId) };
+  const legacy = method => async options => { const result = await method(options); try { return result.value; } finally { retireCausalRead(result); } };
+  return { queryPhysicalScore: legacy(queryPhysicalScoreOwned), queryCausalParent: legacy(queryCausalParentOwned), queryPhysicalScoreOwned, queryCausalParentOwned,
+    cancel: requestId => requests.delete(requestId) };
 };
 
 export { createPhysicalScoreProjection };

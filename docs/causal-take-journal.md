@@ -349,3 +349,19 @@ prior bound on ordinary capacity denial, and cache unknown bookkeeping outcomes.
 Background jobs also clear acknowledged producer callbacks instead of retaining
 their captured input graphs after computation. Snapshot and refusal fixtures are
 authored and unexecuted; score-view adoption follows.
+
+PhysicalScore and causal-parent lookups now adopt owned query records under a
+bounded view workspace, then publish an independent worker-prepared snapshot.
+Cause-to-intent links reserve ahead in small blocks and have an explicit limit;
+duplicate source references never become an excuse to deduplicate musical
+intents. Companion byte counts come from worker inventories. Main-thread score
+construction no longer re-encodes each companion or deep-clones its whole result.
+Take metadata has an independent reader lease, and cached metadata/index estimates
+include object counts plus bounded tick-tree capacity before building those trees.
+
+The workstation keeps the displayed snapshot until a replacement succeeds, and
+retires it on replacement, take selection or teardown. Canceled/stale results are
+retired independently. A completed result survives cancellation of its original
+preparation request. Cleanup faults remain charged, are shown explicitly, and do
+not change the durable take. Owned score/cancellation and cause-link limit fixtures
+are authored and unexecuted.

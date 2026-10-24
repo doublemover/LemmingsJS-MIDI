@@ -11,11 +11,17 @@ const RECORD_KINDS = new Set(['physical-batch', 'musical-intents', 'intervention
 const validRange = value => value && Number.isSafeInteger(value.firstSequence) && Number.isSafeInteger(value.lastSequence) &&
   value.firstSequence > 0 && value.lastSequence >= value.firstSequence;
 const makeChunkId = (takeId, ordinal) => JSON.stringify([takeId, 'chunk', ordinal]);
-const ownedQueryResult = (value, sources, releaseIndex) => {
+const readAuthorities = new WeakMap();
+const inspectCausalReadOwnership = (handle, resourceBudget) => {
+  const authority = readAuthorities.get(handle);
+  return authority?.budget === resourceBudget && resourceBudget ? Object.freeze({ active: authority.isActive(), ...authority.receipt }) : null;
+};
+const ownedQueryResult = (value, sources, releaseIndex, { kind = 'causal-query-page', metadataBytes = 0, resourceBudget = null } = {}) => {
   const retirement = createProcgenRetirementScope(); let released = false, releaseError = null;
   const dataBytes = sources.reduce((sum, source) => sum + (source.receipt?.retainedBytes || 0), 0);
-  return Object.freeze({ get value() { if (released) throw journalError('query-retired', 'The causal query reader has retired.'); return value; },
-    receipt: Object.freeze({ kind: 'causal-query-page', retainedDataBytes: dataBytes }),
+  const receipt = Object.freeze({ kind, retainedDataBytes: dataBytes + metadataBytes, resourceAccountingEnabled: !!resourceBudget });
+  const handle = Object.freeze({ get value() { if (released) throw journalError('query-retired', 'The causal query reader has retired.'); return value; },
+    receipt,
     release() {
       if (released) { if (releaseError) throw releaseError; return false; } released = true; value = null;
       const receipt = retirement.retire([...sources.map((source, index) => ({ name: 'chunk-source-' + index, run: () => source.release() })),
@@ -23,6 +29,7 @@ const ownedQueryResult = (value, sources, releaseIndex) => {
       if (receipt.outcome !== 'complete') { releaseError = journalError('query-retirement-unknown', 'Causal query resource retirement is unresolved.', { retirement: receipt }); throw releaseError; }
       sources.length = 0; return true;
     }, retirementState: () => retirement.getReceipt() });
+  readAuthorities.set(handle, { budget: resourceBudget, receipt, isActive: () => !released }); return handle;
 };
 
 const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChunkBytes = 4194304,
@@ -273,8 +280,9 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
       manifest.prefix = { ...lineage, chunks: refs };
     }
     const verified = await verifyManifestHashes(manifest, { maxChunks });
-    const bytes = canonicalJournalText(manifest, { maxBytes: 8 * 1048576 }).bytes.length;
-    const entry = { fingerprint, bytes: bytes * 3, manifest: freezeJournalData({ ...manifest,
+    const encoded = canonicalJournalText(manifest, { maxBytes: 8 * 1048576 });
+    const indexCount = (manifest.prefix?.chunks?.length || 0) + manifest.chunks.length;
+    const entry = { fingerprint, bytes: encoded.bytes.byteLength * 2 + encoded.nodes * 64 + indexCount * (8 * 96 + 16) + 65536, manifest: freezeJournalData({ ...manifest,
       inspection: { paused: true, recording: false, hardware: false, thru: false, physicalLayers: false }, effectiveStatus: verified.effectiveStatus }),
     refs: [...(manifest.prefix?.chunks || []), ...manifest.chunks], tickTrees: new Map() };
     if (fingerprint && manifest.state !== 'recording' && entry.bytes <= 16 * 1048576) {
@@ -366,17 +374,19 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
         kinds && (!Array.isArray(kinds) || kinds.length > RECORD_KINDS.size || kinds.some(kind => !RECORD_KINDS.has(kind))) ||
         !Number.isSafeInteger(limit) || limit < 1 || limit > 65536) throw new Error('Invalid causal take query.');
     const qualifiedTake = await qualifyTake(takeId, { signal }), manifest = qualifiedTake.manifest;
-    const refs = selectRefs(qualifiedTake, firstSequence, lastSequence, firstTick, lastTick, generation), records = [];
+    const records = [], recordBytes = [];
     if (takeRevision != null && takeRevision !== manifest.revision) throw journalError('stale-revision', 'The requested take revision is no longer current.');
-    const sources = [], releaseIndex = reserve(1048576 + qualifiedTake.bytes + refs.length * 32 + limit * 32);
-    const result = { takeId, takeRevision: manifest.revision, records, nextSequence: null, coverage: null };
+    const sources = [], releaseIndex = reserve(1048576 + qualifiedTake.bytes + qualifiedTake.refs.length * 32 + limit * 32);
+    const result = { takeId, takeRevision: manifest.revision, records, recordBytes, nextSequence: null, coverage: null };
     let resultBytes = 0, completed = false;
     const finish = async nextSequence => {
       await checkQualifiedRevision(qualifiedTake, signal); result.nextSequence = nextSequence;
       result.coverage = cloneJournalData(manifest.coverage, { maxBytes: 65536, maxNodes: 8192 });
-      Object.freeze(records); Object.freeze(result); completed = true; return ownedQueryResult(result, sources, releaseIndex);
+      Object.freeze(records); Object.freeze(recordBytes); Object.freeze(result); completed = true;
+      return ownedQueryResult(result, sources, releaseIndex, { resourceBudget });
     };
     try {
+      const refs = selectRefs(qualifiedTake, firstSequence, lastSequence, firstTick, lastTick, generation);
       for (const ref of refs) {
         if (signal?.aborted) throw journalError('cancelled', 'Causal take query canceled.');
         if (ref.lastSequence < firstSequence || ref.firstSequence > lastSequence || ref.lastTick < firstTick || ref.firstTick > lastTick) continue;
@@ -386,7 +396,7 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
             throughSequence: manifest.prefix && ref.takeId !== takeId ? Math.min(manifest.prefix.throughSequence, ref.throughSequence ?? ref.lastSequence) : ref.lastSequence,
             limit: Math.max(1, limit - records.length), maxBytes: records.length >= limit ? 1 : Math.max(1, maxPendingBytes - resultBytes), maxRecordBytes } });
           sources.push(source); const selected = source.value;
-          if (selected.records.length) { records.push(...selected.records); resultBytes += selected.bytes; }
+          if (selected.records.length) { records.push(...selected.records); recordBytes.push(...selected.recordBytes); resultBytes += selected.bytes; }
           else { source.release(); sources.pop(); }
           if (selected.nextSequence != null) return await finish(selected.nextSequence);
           continue;
@@ -401,7 +411,7 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
             return await finish(record.sequence);
           }
           resultBytes += bytes;
-          records.push(record);
+          records.push(record); recordBytes.push(bytes);
         }
       }
       return await finish(null);
@@ -473,10 +483,14 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
       mapping: parent.mapping, assetRefs: parent.assetRefs, prefix });
   };
   return { createTake, openTake, query, queryOwned, verify, branch, readChunk, readCheckpoint, seek,
+    openTakeOwned: async (takeId, options) => {
+      const entry = await qualifyTake(takeId, options);
+      return ownedQueryResult(entry.manifest, [], reserve(entry.bytes), { kind: 'causal-take-metadata', metadataBytes: entry.bytes, resourceBudget });
+    },
     readChunkOwned: (ref, options) => readSourceOwned('chunk', ref, options),
     readCheckpointOwned: (ref, options) => readSourceOwned('checkpoint', ref, options),
     releaseQualifications: () => createProcgenRetirementScope().retire([...qualified.keys()].map(takeId => ({ name: 'take-qualification-' + takeId, run: () => forgetQualification(takeId) }))),
     qualificationDiagnostics: () => Object.freeze({ retained: qualified.size, estimatedBytes: qualifiedBytes, maximumBytes: 16 * 1048576 }) };
 };
 
-export { createProcgenCausalJournal, verifyManifestHashes, RECORD_KINDS };
+export { createProcgenCausalJournal, verifyManifestHashes, RECORD_KINDS, inspectCausalReadOwnership };

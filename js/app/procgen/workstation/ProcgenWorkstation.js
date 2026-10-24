@@ -7,6 +7,7 @@ import { exportProcgenMidi, selectBalancedProcgenRecording } from './ProcgenMidi
 import { createProcgenWorkstationView } from './ProcgenWorkstationView.js';
 import { captureProcgenCheckpoint, assetIdentity } from './ProcgenCheckpoint.js';
 import { causalRuntimeSourceVersions } from './CausalRuntimeIdentity.js';
+import { borrowCausalPage, borrowCausalTake, retireCausalRead } from './CausalReadLeases.js';
 import { createProcgenLaneObserver } from './ProcgenLaneObservation.js';
 import { createProcgenSession, validateProcgenSession, createProcgenSessionStorage, createProcgenDocumentId, freshProcgenSeed } from './ProcgenSessionStorage.js';
 import { createProcgenPhysicalScoreClock } from './ProcgenPhysicalScoreClock.js';
@@ -101,6 +102,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let lastCausalTake = null, lastCausalInspection = null, physicalReceiptBuffer = null, physicalReceiptBoundary = null, causalTakeErrorReported = false;
   let selectedCausalTakeId = null, causalTakePage = null, causalTakeCursor = null, causalTakeBack = [], causalTakeListSerial = 0;
   let physicalScoreProjection = null, physicalScore = null, physicalScoreQuery = null, physicalScoreAbort = null, physicalScoreSerial = 0, physicalScoreParent = null;
+  let physicalScoreLease = null, physicalScoreParentLease = null, scoreViewRetirement = null;
   let soundLibrary = null;
   let masterCapture = null;
   let prelistenMonitor = null;
@@ -129,6 +131,13 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }
   };
   const status = text => { if (!disposed) view?.status(text); };
+  const retirePhysicalScoreViews = ({ parentOnly = false } = {}) => {
+    physicalScoreParent = null; if (!parentOnly) { physicalScore = null; physicalScoreQuery = null; }
+    scoreViewRetirement = createProcgenRetirementScope().retire([
+      ...(!parentOnly ? [{ name: 'physical-score-view', run: () => { if (physicalScoreLease) { retireCausalRead(physicalScoreLease); physicalScoreLease = null; } } }] : []),
+      { name: 'causal-parent-view', run: () => { if (physicalScoreParentLease) { retireCausalRead(physicalScoreParentLease); physicalScoreParentLease = null; } } }
+    ]); return scoreViewRetirement;
+  };
   const storageStatus = error => view?.storage?.({ dirty: editRevision !== savedRevision, savedAt: lastSavedAt, error,
     recovery: { state: recoveryState, durableRevision: durableRecoveryRevision, durableTick: durableRecoveryTick,
       pendingRevision: editRevision, error: recoveryError } });
@@ -477,6 +486,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     active: causalTake?.status() || null, last: lastCausalTake, inspection: lastCausalInspection,
     selectedTakeId: selectedCausalTakeId, takePage: causalTakePage, takePageNumber: causalTakeBack.length + 1,
     hasPreviousTakePage: causalTakeBack.length > 0, physicalScore, physicalScoreParent,
+    scoreRetirement: scoreViewRetirement?.outcome === 'partial' ? { state: scoreViewRetirement.state, outcome: scoreViewRetirement.outcome } : null,
     branchAvailable: typeof prepareInspectionWorld === 'function' && !!resourceBudget,
     workbench: causalWorkbench?.state() || (causalWorkbenchLoading ? { phase: 'loading', busy: true } : null) });
   const getCausalWorkbench = async () => {
@@ -511,7 +521,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (discard && !window.confirm?.('Permanently discard only the unsaved branch tail? The durable prefix and omitted range will remain recorded.')) return false;
     const result = await causalWorkbench.finish({ discardPendingReason: discard ? 'performer-discarded-undurable-branch-tail' : null });
     selectedCausalTakeId = result.takeId; lastCausalTake = result; lastCausalInspection = null;
-    physicalScoreAbort?.abort(); physicalScoreSerial++; physicalScore = physicalScoreQuery = physicalScoreParent = null;
+    physicalScoreAbort?.abort(); physicalScoreSerial++; retirePhysicalScoreViews();
     status(result.complete ? 'Physical branch saved. The current live project is unchanged.' : 'Physical branch saved as partial. Inspect its recorded coverage.');
     view?.renderInspector?.(); return result;
   };
@@ -534,7 +544,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (!causalTakePage?.items.some(item => item.takeId === takeId)) throw new Error('Choose a take from the current page.');
     causalWorkbenchSourceSerial++;
     if (causalWorkbench?.state().busy && !causalWorkbench.state().active) causalWorkbench.cancel();
-    physicalScoreAbort?.abort(); physicalScoreSerial++; physicalScore = physicalScoreQuery = physicalScoreParent = null;
+    physicalScoreAbort?.abort(); physicalScoreSerial++; retirePhysicalScoreViews();
     selectedCausalTakeId = takeId; lastCausalInspection = null; view?.renderInspector?.();
     return takeId;
   };
@@ -548,32 +558,53 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs });
     let query = physicalScoreQuery;
     if (!more) {
-      const manifest = await journal.openTake(takeId);
-      const first = await journal.query({ takeId, kinds: ['physical-batch'], limit: 1, signal: controller.signal });
-      const batch = first.records[0];
-      if (!batch || manifest.coverage?.sourceRange?.firstTick == null || manifest.coverage.sourceRange.lastTick == null)
-        throw new Error('This take has no committed physical score range to read.');
-      query = { takeId, takeRevision: manifest.revision, generation: batch.generation,
-        coverageRange: { firstTick: manifest.coverage.sourceRange.firstTick,
-          lastTick: Math.min(manifest.coverage.sourceRange.lastTick, manifest.coverage.sourceRange.firstTick + 63) },
-        timeDomain, resolution: { mode: 'exact' } };
+      const metadata = await borrowCausalTake(journal, takeId, { signal: controller.signal });
+      try {
+        const manifest = metadata.value;
+        const source = await borrowCausalPage(journal, { takeId, takeRevision: manifest.revision, kinds: ['physical-batch'], limit: 1, signal: controller.signal });
+        try {
+          const first = source.value;
+          const batch = first.records[0];
+          if (!batch || manifest.coverage?.sourceRange?.firstTick == null || manifest.coverage.sourceRange.lastTick == null)
+            throw new Error('This take has no committed physical score range to read.');
+          query = { takeId, takeRevision: manifest.revision, generation: batch.generation,
+            coverageRange: { firstTick: manifest.coverage.sourceRange.firstTick,
+              lastTick: Math.min(manifest.coverage.sourceRange.lastTick, manifest.coverage.sourceRange.firstTick + 63) },
+            timeDomain, resolution: { mode: 'exact' } };
+        } finally { retireCausalRead(source); }
+      } finally { retireCausalRead(metadata); }
     }
-    const projection = physicalScoreProjection ||= createPhysicalScoreProjection({ journal, maxRecords: 512, maxSourceFacts: 1024, maxGlyphs: 64, maxBytes: 1048576 });
-    const result = await projection.queryPhysicalScore({ ...query, cursor: more ? physicalScore.continuation : null,
+    const projection = physicalScoreProjection ||= createPhysicalScoreProjection({ journal, resourceBudget, jobs: backgroundJobs, maxRecords: 512, maxSourceFacts: 1024, maxGlyphs: 64, maxBytes: 1048576 });
+    const prepared = await projection.queryPhysicalScoreOwned({ ...query, cursor: more ? physicalScore.continuation : null,
       requestId: `workstation-score-${serial}`, signal: controller.signal });
-    if (disposed || controller.signal.aborted || serial !== physicalScoreSerial) return null;
-    physicalScoreQuery = query; physicalScore = result; physicalScoreParent = null;
-    view?.renderInspector?.();
-    status(`Physical score: ${result.counts.glyphs} source glyphs in this bounded window; ${result.unknownRegions.length} uncertain regions.`);
-    return result;
+    let adopted = false;
+    try {
+      if (disposed || controller.signal.aborted || serial !== physicalScoreSerial) return null;
+      const cleanup = retirePhysicalScoreViews();
+      if (cleanup.outcome !== 'complete') throw Object.assign(new Error('The previous score view has unresolved resource retirement.'), { retirement: cleanup });
+      if (disposed || controller.signal.aborted || serial !== physicalScoreSerial) return null;
+      const result = prepared.value; physicalScoreLease = prepared; adopted = true;
+      physicalScoreQuery = query; physicalScore = result;
+      view?.renderInspector?.();
+      status(`Physical score: ${result.counts.glyphs} source glyphs in this bounded window; ${result.unknownRegions.length} uncertain regions.`);
+      return result;
+    } finally { if (!adopted) retireCausalRead(prepared); }
   };
   const inspectPhysicalScoreCause = async ({ sourceSequence, eventId } = {}) => {
     if (!physicalScoreQuery || !physicalScore?.glyphs.some(glyph => glyph.glyphId === eventId && glyph.source.sequence === sourceSequence))
       throw new Error('Choose a source glyph from the current score window.');
+    physicalScoreAbort?.abort(); const controller = new AbortController(); physicalScoreAbort = controller;
     const serial = ++physicalScoreSerial, requestId = `workstation-score-parent-${serial}`;
-    const result = await physicalScoreProjection.queryCausalParent({ ...physicalScoreQuery, sourceSequence, eventId, requestId });
-    if (disposed || serial !== physicalScoreSerial) return null;
-    physicalScoreParent = result; view?.renderInspector?.(); return result;
+    const prepared = await physicalScoreProjection.queryCausalParentOwned({ ...physicalScoreQuery, sourceSequence, eventId, requestId, signal: controller.signal });
+    let adopted = false;
+    try {
+      if (disposed || controller.signal.aborted || serial !== physicalScoreSerial) return null;
+      const cleanup = retirePhysicalScoreViews({ parentOnly: true });
+      if (cleanup.outcome !== 'complete') throw Object.assign(new Error('The previous causal parent view has unresolved resource retirement.'), { retirement: cleanup });
+      if (disposed || controller.signal.aborted || serial !== physicalScoreSerial) return null;
+      const result = prepared.value; physicalScoreParentLease = prepared; adopted = true;
+      physicalScoreParent = result; view?.renderInspector?.(); return result;
+    } finally { if (!adopted) retireCausalRead(prepared); }
   };
   const stopCausalTake = async ({ reason = 'user-stop' } = {}) => {
     if (causalTakeStart) { try { await causalTakeStart; } catch { if (!causalTake) return lastCausalTake; } }
@@ -596,7 +627,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     causalTakeStop = recorder.stop({ boundaryState: causalBoundary(), finalCheckpoint, reason }).then(receipt => {
       lastCausalTake = receipt;
       selectedCausalTakeId = receipt.takeId;
-      physicalScoreAbort?.abort(); physicalScoreSerial++; physicalScore = physicalScoreQuery = physicalScoreParent = null;
+      physicalScoreAbort?.abort(); physicalScoreSerial++; retirePhysicalScoreViews();
       if (!recorder.canReplaceDocument()) throw new Error('Causal take saving needs recovery. Retry saving, or explicitly discard the unsaved tail before replacing the world.');
       if (causalTake === recorder) causalTake = null;
       status(receipt.complete ? `Causal take ${receipt.takeId} saved.` :
@@ -1344,6 +1375,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'router-hook', run: () => unhookRouter?.() },
         { name: 'world-hook', run: () => unhookWorld?.() },
         { name: 'physical-playback', run: () => physicalPlayback?.dispose() },
+        { name: 'physical-score-views', run: () => retirePhysicalScoreViews() },
         { name: 'causal-workbench', run: () => pendingWorkbenchStop },
         { name: 'sound-library', run: () => soundLibrary?.dispose() },
         { name: 'master-capture', run: () => masterCapture?.dispose() },

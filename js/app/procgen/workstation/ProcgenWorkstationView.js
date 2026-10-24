@@ -362,6 +362,7 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
           controls.append(branchControls);
         }
         if (take.selectedTakeId || take.last) {
+          if (take.scoreRetirement) controls.append(node('p', 'Score view resource retirement is unresolved. The stored take is unchanged.', 'studio-hint'));
           state.scoreTimeDomain ||= 'physical-source-time';
           labeled('Score axis', select([['physical-source-time', 'Source time'], ['causal-order', 'Causal order'], ['musical-score-time', 'Musical score time']],
             state.scoreTimeDomain, timeDomain => { state.scoreTimeDomain = timeDomain; handlers.preferences?.(); handlers.readPhysicalScore?.({ timeDomain }); }, 'Physical score time axis'), controls);

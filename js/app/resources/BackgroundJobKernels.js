@@ -155,7 +155,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
           !bounded(selected.maxBytes, 1) || selected.maxBytes > MAX_BYTES || !bounded(selected.maxRecordBytes, 1) || selected.maxRecordBytes > MAX_BYTES ||
           selected.kinds != null && (!Array.isArray(selected.kinds) || selected.kinds.length > 8 || selected.kinds.some(kind => typeof kind !== 'string' || kind.length > 64)))
         throw problem('invalid-contract', 'Invalid causal chunk query selection.');
-      const records = []; let selectedBytes = 0, selectedNodes = 0, nextSequence = null;
+      const records = [], recordBytes = []; let selectedBytes = 0, selectedNodes = 0, nextSequence = null;
       for (const record of body.records) {
         if (record.sequence < selected.firstSequence || record.sequence > Math.min(selected.lastSequence, selected.throughSequence) ||
             record.tick < selected.firstTick || record.tick > selected.lastTick || selected.generation != null && record.generation !== selected.generation ||
@@ -163,9 +163,9 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
         if (records.length === selected.limit) { nextSequence = record.sequence; break; }
         const representation = canonicalDataText(record, { maxBytes: selected.maxRecordBytes, maxNodes });
         if (selectedBytes + representation.bytes.byteLength > selected.maxBytes) { nextSequence = record.sequence; break; }
-        records.push(record); selectedBytes += representation.bytes.byteLength; selectedNodes += representation.nodes;
+        records.push(record); recordBytes.push(representation.bytes.byteLength); selectedBytes += representation.bytes.byteLength; selectedNodes += representation.nodes;
       }
-      value = { records, bytes: selectedBytes, nodes: selectedNodes, nextSequence };
+      value = { records, recordBytes, bytes: selectedBytes, nodes: selectedNodes, nextSequence };
       retainedBytes = selectedBytes * 2 + selectedNodes * 64 + records.length * 256 + 4096;
     }
     if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Verified source exceeds its result reservation.');

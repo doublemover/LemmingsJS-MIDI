@@ -3,6 +3,9 @@ import { createProcgenCausalJournal } from '../js/app/procgen/workstation/Procge
 import { createCausalTakeRecorder } from '../js/app/procgen/workstation/CausalTake.js';
 import { createPhysicalScoreProjection } from '../js/app/procgen/workstation/PhysicalScoreProjection.js';
 import { createMemoryCausalStore } from './helpers/causalJournalStore.js';
+import { createResourceBudget } from '../js/app/resources/ResourceBudget.js';
+import { createBackgroundWorkerAdmission } from '../js/app/resources/BackgroundWorkerAdmission.js';
+import { createBackgroundJobService } from '../js/app/resources/BackgroundJobService.js';
 
 const graph = { version: 1, revision: 1, instruments: [
   { id: 'work', sourceKind: 'TerrainWorkCommitted', pitchCents: 6000, velocity01: 1, role: 'builder', route: 'local' }
@@ -19,7 +22,7 @@ const intents = tick => [{ version: 1, kind: 'begin', intentId: `intent:${tick}`
   actorId: 7, role: 'builder', mappingId: 'work', generation: 1, batchId: `batch:${tick}`,
   scoreTime: { beat: tick / 8, epoch: 'score:1', simTick: tick, subTick: 0, precision: 'tick', sourceTimeMs: tick * 20 } }];
 const fixture = async ({ ticks = 10, gaps = false, sparse = false, ...bounds } = {}) => {
-  const store = createMemoryCausalStore(), journal = createProcgenCausalJournal({ storage: store.storage });
+  const store = createMemoryCausalStore(), journal = createProcgenCausalJournal({ storage: store.storage, resourceBudget: bounds.resourceBudget, jobs: bounds.jobs });
   const recorder = await createCausalTakeRecorder({ journal, takeId: 'take:score', documentId: 'doc:score', sourceVersions: { physicalBatch: 1 },
     mapping: graph, initialCheckpoint: { tick: 0 }, boundaryState: { voices: [], timeline: { epoch: 'score:1', segments: [{ simTickOrigin: 0, tempoBpm: 120 }] } } });
   for (let tick = 1; tick <= ticks; tick++) recorder.recordCommittedBatch({ batch: source(tick), intents: sparse && tick !== ticks ? [] : intents(tick),
@@ -32,6 +35,35 @@ const fixture = async ({ ticks = 10, gaps = false, sparse = false, ...bounds } =
 };
 
 describe('read-only PhysicalScore projection', () => {
+  it('retains a published score through replacement cancellation and releases all owned source views', async () => {
+    const resourceBudget = createResourceBudget(), admission = createBackgroundWorkerAdmission(), jobs = createBackgroundJobService({ admission, Worker: null });
+    const { journal, manifest, request, queryPhysicalScoreOwned } = await fixture({ ticks: 3, resourceBudget, jobs, maxBytes: 32768,
+      maxRecords: 32, maxJoinRecords: 32, maxEvidence: 32, maxSourceFacts: 32, maxStrands: 32, maxGlyphs: 16, maxCauseLinks: 128 });
+    const baseline = resourceBudget.diagnostics().accountedBytes, controller = new AbortController();
+    const view = await queryPhysicalScoreOwned({ ...request, signal: controller.signal });
+    expect(view.value.sourceCanonicalHash).to.equal(manifest.canonicalHash); expect(view.value.counts.sourceFacts).to.equal(6);
+    expect(view.value.joinWork.causeLinks).to.equal(3); expect(admission.diagnostics().retainedResults).to.equal(1);
+    expect(resourceBudget.diagnostics().accountedBytes).to.be.greaterThan(baseline); controller.abort(new Error('replacement requested'));
+    expect(view.value.glyphs).to.have.length(6); view.release(); expect(resourceBudget.diagnostics().accountedBytes).to.equal(baseline);
+    await journal.releaseQualifications().completion; expect(resourceBudget.diagnostics().accountedBytes).to.equal(0); jobs.dispose(); admission.dispose();
+  });
+
+  it('refuses excessive cause-to-intent joins before publishing a partial ownership claim', async () => {
+    const { journal, request, queryPhysicalScoreOwned } = await fixture({ ticks: 3, maxCauseLinks: 1 });
+    try { await queryPhysicalScoreOwned(request); expect.fail('join capacity must reject'); }
+    catch (error) { expect(error.code).to.equal('score-link-capacity'); }
+    const first = await journal.query({ takeId: request.takeId, kinds: ['musical-intents'], limit: 1 }); expect(first.records[0].payload.intents).to.have.length(1);
+  });
+
+  it('does not accept copied bookkeeping fields as metadata-reader authority', async () => {
+    const resourceBudget = createResourceBudget(), admission = createBackgroundWorkerAdmission(), jobs = createBackgroundJobService({ admission, Worker: null });
+    const { journal, request } = await fixture({ ticks: 1, resourceBudget, jobs });
+    const proxy = { ...journal, async openTakeOwned(takeId, options) { return { ...await journal.openTakeOwned(takeId, options) }; } };
+    const projection = createPhysicalScoreProjection({ journal: proxy, resourceBudget, jobs, maxBytes: 32768 });
+    try { await projection.queryPhysicalScoreOwned(request); expect.fail('copied source authority must reject'); }
+    catch (error) { expect(error.code).to.equal('unowned-view-source'); }
+    await journal.releaseQualifications().completion; expect(resourceBudget.diagnostics().accountedBytes).to.equal(0); jobs.dispose(); admission.dispose();
+  });
   it('preserves captured roles, score times and immediate evidence across every semantic page split', async () => {
     for (const maxRecords of [1, 2, 3, 4, 512, 513]) {
       const ticks = maxRecords >= 512 ? 256 : 4;
