@@ -2387,7 +2387,13 @@ graph. Complete terminal intervals are scheduled with each onset; dense windows
 are bounded before continuing. Cancellation disconnects owned sources and joins
 the bounded native producer instead of assuming every browser implements
 OfflineAudioContext.close(). Native PCM stays reserved through its consumer.
-Public control/take render integration and runtime qualification remain work.
+Native oscillator/FM/modal control-reference preparation now drives this
+adapter without enabling live audio, then lends its native planar PCM to an
+admitted immutable-build worker for float WAV encoding and hashing. Encoding
+checks complete channel lengths and finiteness, preserves float headroom and
+crops simultaneous taps at shared frame zero. Producer and consumer retirement
+both precede release. Causal-take integration and all runtime qualification
+remain work; the new encoder fixtures have been authored but not executed.
 
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail

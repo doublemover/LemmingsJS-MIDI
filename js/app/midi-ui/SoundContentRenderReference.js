@@ -1,3 +1,6 @@
+import { prepareNativeControlRenderInput } from './NativeControlRender.js';
+import { NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineDriver.js';
+import { getNativeInstrumentCatalog } from './NativeInstrumentSchema.js';
 import { prepareOwnedRenderMaterial } from './OwnedRenderMaterial.js';
 import { createAudioResourceLeases } from './AudioResourceLeases.js';
 import { getOwnedSourceProfile, OWNED_SOURCE_IDS } from './OwnedSourceProfiles.js';
@@ -16,7 +19,7 @@ export function createSoundContentRenderReferences({ resourceBudget, jobs = back
   const prepare = (stage, patchIdentity, { signal: externalSignal, sampleRate = 48000, isCurrent = () => true, onProgress = () => {} } = {}) => {
     externalSignal?.throwIfAborted();
     if (disposed || active || unknown.size || ![44100, 48000, 96000].includes(sampleRate) || typeof isCurrent !== 'function') return Promise.reject(failure('Rendered reference preparation is unavailable.'));
-    const source = borrowSoundContentStage(stage), controller = new AbortController(), operation = { controller, source, job: null, material: null, producerState: null, promise: null };
+    const source = borrowSoundContentStage(stage), controller = new AbortController(), operation = { controller, source, job: null, material: null, native: null, producerState: null, promise: null };
     const cancel = () => controller.abort(externalSignal?.aborted ? externalSignal.reason : source.signal.reason);
     externalSignal?.addEventListener('abort', cancel, { once: true }); source.signal.addEventListener('abort', cancel, { once: true });
     if (externalSignal?.aborted || source.signal.aborted) cancel(); active = operation;
@@ -25,24 +28,31 @@ export function createSoundContentRenderReferences({ resourceBudget, jobs = back
       let artifact = null;
       try {
         check(); const patch = source.prepared.patches.find(entry => entry.identity === patchIdentity);
-        if (!patch || patch.state !== 'definition-admitted' || !OWNED_SOURCE_IDS.includes(patch.definition.engineId) || !getOwnedSourceProfile(patch.definition.engineId).controlReferenceRender || (getOwnedSourceProfile(patch.definition.engineId).requiresPCM ? patch.definition.sampleRefs.length !== 1 : patch.definition.sampleRefs.length !== 0) ||
+        const native = NATIVE_OFFLINE_SOURCE_IDS.includes(patch?.definition.engineId), owned = OWNED_SOURCE_IDS.includes(patch?.definition.engineId) ? getOwnedSourceProfile(patch.definition.engineId) : null;
+        if (!patch || patch.state !== 'definition-admitted' || !native && !owned?.controlReferenceRender || (owned?.requiresPCM ? patch.definition.sampleRefs.length !== 1 : patch.definition.sampleRefs.length !== 0) ||
             patch.definition.modulations.length) throw failure('This reference requires an available owned renderer with its required material.');
         const plan = planSoundContentSelection(source.prepared, [patchIdentity], { availableHashes: source.metadata.assetHashes });
-        if (plan.missingReferences.length || plan.missingAssetBytes.length && !getOwnedSourceProfile(patch.definition.engineId).requiresPCM) throw failure('Rendered reference material is incomplete.');
+        if (plan.missingReferences.length || plan.missingAssetBytes.length && !owned?.requiresPCM) throw failure('Rendered reference material is incomplete.');
         const input = { definition: patch.archivedDefinition, engineRequirement: patch.engineRequirement, sampleRate,
           source: { packId: source.prepared.pack.id, packVersion: source.prepared.pack.version, contentHash: source.prepared.contentHash,
             patchIdentity, definitionHash: patch.definitionHash, attribution: plan.credits.map(entry => entry.subject + ': ' + entry.rights.attribution).join('\n') } };
-        if (getOwnedSourceProfile(patch.definition.engineId).requiresPCM) {
+        if (owned?.requiresPCM) {
           if (!getMaterialProvider) throw failure('Pinned local source material is unavailable for this render.');
           operation.material = await prepareOwnedRenderMaterial({ provider: getMaterialProvider(), resources, definition: patch.definition, stage, patchIdentity,
             engineDescriptors: [patch.engineRequirement], owner: 'sound-control-render', generation: serial + 1, signal: controller.signal, isCurrent: () => !disposed && isCurrent() }); check();
         }
         const encoded = canonicalDataText(input, { maxBytes: 128 * 1024, maxNodes: 8192 });
+        if (native) {
+          const catalog = await getNativeInstrumentCatalog(), descriptor = catalog.descriptors.find(entry => entry.engineId === patch.definition.engineId); check();
+          if (catalog.state !== 'bound-application-engines' || !descriptor || !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => descriptor[key] === patch.engineRequirement[key])) throw failure('Native offline source differs from this immutable application.');
+          operation.native = await prepareNativeControlRenderInput({ definition: patch.archivedDefinition, descriptor, sampleRate, source: input.source,
+            applicationBuildId: catalog.executionIdentity.buildId }, { resources, signal: controller.signal, onProgress }); check();
+        }
         if (operation.material) input.pcm = operation.material.payload;
-        operation.job = await jobs.compute({ kind: 'render-sound-controls', ownerId: 'sound-render-reference', ownerEpoch: ++serial,
-          sourceRevision: patch.definitionHash, inputBytes: encoded.bytes.byteLength + (operation.material?.descriptor.bytes || 0), estimatedPeakBytes: 32 * 1048576 + (operation.material?.descriptor.bytes || 0) * 10, maxBytes: 128 * 1024 + (operation.material?.descriptor.bytes || 0),
+        operation.job = await jobs.compute({ kind: native ? 'encode-native-render' : 'render-sound-controls', ownerId: 'sound-render-reference', ownerEpoch: ++serial,
+          sourceRevision: patch.definitionHash, inputBytes: encoded.bytes.byteLength + (operation.native?.bytes || 0) + (operation.material?.descriptor.bytes || 0), estimatedPeakBytes: 32 * 1048576 + (operation.native?.bytes || 0) * 4 + (operation.material?.descriptor.bytes || 0) * 10, maxBytes: 128 * 1024 + (operation.native?.bytes || 0) + (operation.material?.descriptor.bytes || 0),
           priority: 'background', budgetAdapter: resourceBudget, signal: controller.signal, isCurrent: () => !disposed && isCurrent(), onProgress,
-          prepareInput: () => input }); check();
+          prepareInput: () => operation.native?.input || input }); check();
         const value = operation.job.value, manifest = value?.manifest;
         if (!(value?.bytes instanceof Uint8Array) || value.bytes.byteLength > 8 * 1048576 || manifest?.schema !== 'lemmings-rendered-audition/v1' ||
             manifest.source?.definitionHash !== patch.definitionHash || manifest.source?.contentHash !== source.prepared.contentHash || manifest.sampleRate !== sampleRate ||
@@ -64,6 +74,7 @@ export function createSoundContentRenderReferences({ resourceBudget, jobs = back
             if (phase && phase !== 'released' && phase !== 'canceled') throw failure('Rendered computation retirement is unresolved.'); } },
           { name: 'material-preparation-fault', run: () => operation.preparationFault },
           { name: 'render-material', run: () => { if (operation.producerState && !['released', 'canceled'].includes(operation.producerState.phase)) throw failure('Render source producer retirement is unknown.'); return operation.material?.release(); } },
+          { name: 'native-pcm', run: () => { if (operation.producerState && !['released', 'canceled'].includes(operation.producerState.phase)) throw failure('Native PCM consumer retirement is unknown.'); return operation.native?.release(); } },
           { name: 'staged-source', run: () => source.release() }
         ]);
         await receipt.completion;

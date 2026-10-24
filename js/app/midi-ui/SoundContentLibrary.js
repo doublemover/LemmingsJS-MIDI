@@ -1,3 +1,4 @@
+import { NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineDriver.js';
 import { getOwnedSourceProfile, OWNED_SOURCE_IDS } from './OwnedSourceProfiles.js';
 import { getProceduralBiomeMaterial } from '../../midi/content/ProceduralBiomeMaterial.js';
 import { prepareSoundContentPack, planSoundContentSelection } from '../../midi/content/SoundContentPack.js';
@@ -59,7 +60,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     stage?.discard(); stage = next; installed = false; rights.checked = false; selection = null; select.replaceChildren();
     const lease = stage.borrow();
     try { for (const patch of lease.prepared.patches) { const name = patch.archivedDefinition.name;
-      const option = node('option', typeof name === 'string' ? name + ' · ' + patch.identity : patch.identity); option.value = patch.identity; select.append(option); }
+      const option = node('option', typeof name === 'string' ? name + ' Â· ' + patch.identity : patch.identity); option.value = patch.identity; select.append(option); }
     } finally { lease.release(); }
     selection = select.value || null; render();
   };
@@ -78,7 +79,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     }
   };
   const prepareFactory = (source, name) => run(async operation => {
-    let parsed = null, compiled = null, next = null; setStatus('Compiling ' + name + ' recipes…');
+    let parsed = null, compiled = null, next = null; setStatus('Compiling ' + name + ' recipesâ€¦');
     try {
       const catalog = await getNativeInstrumentCatalog(); check(operation);
       if (!catalog.descriptors.length) throw failure('Factory compilation needs an immutable browser build with pinned renderer artifacts.');
@@ -109,7 +110,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
   const spectrumFactory = button('Prepare liquid tables / drawbars', () => prepareFactory(SPECTRUM_SOURCE, 'Liquid tables and additive drawbars'));
   const importInput = node('input'); importInput.type = 'file'; importInput.accept = '.lemmings-sound,application/vnd.lemmings.sound-pack'; importInput.setAttribute('aria-label', 'Import sound archive');
   on(importInput, 'change', () => { const file = importInput.files?.[0]; importInput.value = ''; if (!file) return;
-    void run(async operation => { const catalog = await getNativeInstrumentCatalog(); check(operation); setStatus('Verifying local sound archive…');
+    void run(async operation => { const catalog = await getNativeInstrumentCatalog(); check(operation); setStatus('Verifying local sound archiveâ€¦');
       const next = await reader.stageArchive(file, { engineDescriptors: catalog.descriptors, signal: operation.controller.signal, isCurrent: () => !disposed });
       publish(next, operation); setStatus('Archive staged. Inspect requirements and credits before audition or installation.'); });
   });
@@ -117,7 +118,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     if (current || factoryFaults.size || !stage || !selection) return;
     const operation = { controller: new AbortController(), sequence: ++sequence }; current = operation; render();
     // Invoke before yielding so the explicit click reaches AudioContext creation/resume.
-    setStatus('Preparing the selected instrument and local source for control audition…');
+    setStatus('Preparing the selected instrument and local source for control auditionâ€¦');
     operation.promise = installation.audition(stage, selection, { signal: operation.controller.signal }).then(() =>
       setStatus('Control audition completed. Physical-take and listening qualification remain separate.')).catch(error => setStatus(error.message))
       .finally(() => { if (current === operation) current = null; render(); });
@@ -125,7 +126,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
   const compareSource = mode => {
     if (current || factoryFaults.size || !stage || !selection) return;
     const operation = { controller: new AbortController(), sequence: ++sequence }; current = operation; render();
-    setStatus('Preparing dry ' + mode + ' source comparison locally…');
+    setStatus('Preparing dry ' + mode + ' source comparison locallyâ€¦');
     operation.promise = installation.audition(stage, selection, { signal: operation.controller.signal, sourceMode: mode }).then(receipt =>
       setStatus('Dry ' + mode + ' source comparison completed' + (receipt.sourceComparison.truncated ? ' (first 8 seconds)' : '') + '. Audition instrument controls before Apply.'))
       .catch(error => setStatus(error.message)).finally(() => { if (current === operation) current = null; render(); });
@@ -179,7 +180,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     catch (error) { result.artifact.discard(); throw error; }
   }));
   const download = button('Download prepared file', () => { try { const receipt = deliverArtifactToAnchor(artifact, { document, windowRef: window }); setStatus(receipt.state === 'delivery-requested' ? 'Download requested; completion is not acknowledged by this browser action.' : 'Download: ' + receipt.state); } catch (error) { setStatus(error.message); } });
-  const save = button('Save prepared file…', () => {
+  const save = button('Save prepared fileâ€¦', () => {
     if (!artifact || current) return;
     const pending = requestExportFileHandle(artifact, { windowRef: window });
     void run(async operation => { const handle = await pending; check(operation); const receipt = await deliverArtifactToFileHandle(artifact, handle, { signal: operation.controller.signal }); setStatus('File delivery: ' + receipt.state + '.'); });
@@ -191,7 +192,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
   const refresh = after => run(async operation => {
     const page = await registry.listPacks({ after, includeArchived: archivedToggle.checked, signal: operation.controller.signal }); check(operation); pageCursor = page.next; list.replaceChildren();
     for (const entry of page.entries) {
-      const row = node('p'), choose = node('button', entry.name + ' · ' + entry.version + (entry.archived ? ' · archived' : '')); choose.type = 'button';
+      const row = node('p'), choose = node('button', entry.name + ' Â· ' + entry.version + (entry.archived ? ' Â· archived' : '')); choose.type = 'button';
       choose.addEventListener('click', () => run(async sourceOperation => { const lease = await registry.loadPack(entry.id, { engineDescriptors: (await getNativeInstrumentCatalog()).descriptors, signal: sourceOperation.controller.signal });
         if (!lease) throw failure('Installed sound manifest is missing.');
         try { const next = await stageDefinitions(lease.prepared, sourceOperation); publish(next, sourceOperation);
@@ -200,7 +201,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
       }));
       const archive = node('button', entry.archived ? 'Restore' : 'Archive'); archive.type = 'button'; archive.addEventListener('click', () => run(async sourceOperation => {
         await registry.setArchived(entry.id, !entry.archived, { signal: sourceOperation.controller.signal }); check(sourceOperation);
-        choose.disabled = !entry.archived; archive.disabled = true; choose.textContent = entry.name + ' · ' + entry.version + (entry.archived ? ' · restored' : ' · archived');
+        choose.disabled = !entry.archived; archive.disabled = true; choose.textContent = entry.name + ' Â· ' + entry.version + (entry.archived ? ' Â· restored' : ' Â· archived');
         setStatus(entry.archived ? 'Pack restored to browsing.' : 'Pack archived. Project material is retained and recoverable.');
       })); row.append(choose, archive); list.append(row);
     }
@@ -212,7 +213,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
   function render() {
     if (disposed) return; const busy = !!current || !!factoryFaults.size; let plan = null;
     try { plan = selectedPlan(); } catch { /* Expired stages expose their unavailable state through controls. */ }
-    const metadata = stage?.metadata(); summary.textContent = metadata ? metadata.retained ? metadata.name + ' · ' + metadata.patches.length + ' saved revisions · ' + metadata.assetHashes.length + ' included assets' :
+    const metadata = stage?.metadata(); summary.textContent = metadata ? metadata.retained ? metadata.name + ' Â· ' + metadata.patches.length + ' saved revisions Â· ' + metadata.assetHashes.length + ' included assets' :
       'Stage expired. Import or prepare the instrument again.' : 'No instrument staged.';
     if (plan?.unavailableEngines.length) summary.textContent += ' Required renderer: ' + plan.unavailableEngines.map(entry => entry.state).join(', ') + '.';
     if (plan?.missingReferences.length || plan?.missingAssetBytes.length) summary.textContent += ' Missing material: ' + (plan.missingReferences.length + plan.missingAssetBytes.length) + ' references.';
@@ -221,38 +222,38 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     if (ready) { const lease = stage.borrow(); try { const patch = lease.prepared.patches.find(entry => entry.identity === selection);
       sourceComparable = patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-granular' && patch.definition.sampleRefs.length === 1;
       localProceduralMaterial = !!patch?.definition?.sampleRefs?.length && patch.definition.sampleRefs.every(ref => lease.prepared.pack.files.some(file => file.sha256 === ref.sha256 && getProceduralBiomeMaterial(file)));
-      renderable = patch?.state === 'definition-admitted' && OWNED_SOURCE_IDS.includes(patch.definition.engineId) && getOwnedSourceProfile(patch.definition.engineId).controlReferenceRender;
+      renderable = patch?.state === 'definition-admitted' && (NATIVE_OFFLINE_SOURCE_IDS.includes(patch.definition.engineId) || OWNED_SOURCE_IDS.includes(patch.definition.engineId) && getOwnedSourceProfile(patch.definition.engineId).controlReferenceRender);
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'native-fm') {
         const parameters = Object.fromEntries(Object.entries(NATIVE_FM_PARAMETERS).map(([id, parameter]) => [id, parameter.default])); Object.assign(parameters, patch.definition.parameters);
-        modelInfo.textContent = 'Patch model: ' + (parameters.dualPair ? 'four' : 'two') + ' operator sources · carrier/modulator ' + parameters.carrierRatio + ':' + parameters.modulatorRatio +
-          ' · index ' + parameters.indexStart + ' → ' + parameters.indexEnd + ' over ' + parameters.indexSeconds + ' s · bend ±' + parameters.maxBendCents +
+        modelInfo.textContent = 'Patch model: ' + (parameters.dualPair ? 'four' : 'two') + ' operator sources Â· carrier/modulator ' + parameters.carrierRatio + ':' + parameters.modulatorRatio +
+          ' Â· index ' + parameters.indexStart + ' â†’ ' + parameters.indexEnd + ' over ' + parameters.indexSeconds + ' s Â· bend Â±' + parameters.maxBendCents +
           ' cents. Register limits are estimates; spectral/listening qualification is pending. Feedback and effect sends are unavailable.';
       }
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'native-modal') {
         const parameters = patch.definition.parameters;
-        modelInfo.textContent = 'Patch model: ' + (parameters.modeCount ?? 4) + ' authored damped-sine modes · body T60 ' + (parameters.bodyT60Seconds ?? 0.5) +
-          ' s · site gain blend ' + (parameters.strikePosition01 ?? 0) + '. This is an original musical impulse-response design. Material tags, geometric pickup and PCM/listening qualification remain separate.';
+        modelInfo.textContent = 'Patch model: ' + (parameters.modeCount ?? 4) + ' authored damped-sine modes Â· body T60 ' + (parameters.bodyT60Seconds ?? 0.5) +
+          ' s Â· site gain blend ' + (parameters.strikePosition01 ?? 0) + '. This is an original musical impulse-response design. Material tags, geometric pickup and PCM/listening qualification remain separate.';
       }
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-pluck') {
         const parameters = patch.definition.parameters;
-        modelInfo.textContent = 'Patch model: seeded fractional-delay string · pick ' + parameters.pluckPosition01 + ' · target string T60 ' + parameters.stringT60Seconds +
-          ' s · body mix ' + parameters.bodyMix01 + '. Live profile: 50–2000 Hz onset, ±200 cent bends, 44.1/48/96 kHz. Pitch/decay/listening qualification is pending; exact restore is unavailable. Fixed control WAVs and causal revoice use this same kernel.';
+        modelInfo.textContent = 'Patch model: seeded fractional-delay string Â· pick ' + parameters.pluckPosition01 + ' Â· target string T60 ' + parameters.stringT60Seconds +
+          ' s Â· body mix ' + parameters.bodyMix01 + '. Live profile: 50â€“2000 Hz onset, Â±200 cent bends, 44.1/48/96 kHz. Pitch/decay/listening qualification is pending; exact restore is unavailable. Fixed control WAVs and causal revoice use this same kernel.';
       }
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-choir') {
         const parameters = patch.definition.parameters;
-        modelInfo.textContent = 'Patch model: artificial three-band formants · vowel ' + parameters.vowel01 + ' · size ' + parameters.sizeRatio +
-          ' · breath ' + parameters.breath01 + '. Actor-seeded breath and a phase-aligned harmonic bank share one owned gate. Live profile: eight voices, 50–2000 Hz onset, ±200 cent bends, 44.1/48/96 kHz. Spectral/listening qualification is pending; exact restore is unavailable. Fixed control WAVs and causal revoice use this same kernel.';
+        modelInfo.textContent = 'Patch model: artificial three-band formants Â· vowel ' + parameters.vowel01 + ' Â· size ' + parameters.sizeRatio +
+          ' Â· breath ' + parameters.breath01 + '. Actor-seeded breath and a phase-aligned harmonic bank share one owned gate. Live profile: eight voices, 50â€“2000 Hz onset, Â±200 cent bends, 44.1/48/96 kHz. Spectral/listening qualification is pending; exact restore is unavailable. Fixed control WAVs and causal revoice use this same kernel.';
       }
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-granular') {
         const parameters = patch.definition.parameters;
-        modelInfo.textContent = 'Patch model: one pinned local WAV per cloud · ' + parameters.grainMilliseconds + ' ms Hann grains at ' + parameters.densityHz +
-          '/s · source position hold ' + (parameters.freezePosition ? 'on' : 'off') + '. Eight clouds, 16 grain slots per cloud, 32 births per 128 audio frames. Shared source quotas apply. Linear resampling, stereo and dense scenes await qualification; exact restore is unavailable. Fixed control WAVs use the same pinned source; causal rendering requires its saved material reference.';
+        modelInfo.textContent = 'Patch model: one pinned local WAV per cloud Â· ' + parameters.grainMilliseconds + ' ms Hann grains at ' + parameters.densityHz +
+          '/s Â· source position hold ' + (parameters.freezePosition ? 'on' : 'off') + '. Eight clouds, 16 grain slots per cloud, 32 births per 128 audio frames. Shared source quotas apply. Linear resampling, stereo and dense scenes await qualification; exact restore is unavailable. Fixed control WAVs use the same pinned source; causal rendering requires its saved material reference.';
       }
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-spectrum') {
         const parameters = patch.definition.parameters;
         modelInfo.textContent = 'Patch model: ' + (parameters.sourceMode ? parameters.partialCount + ' authored additive partials' : '16 phase-aligned spectral frames') +
-          ' · FLOW ' + parameters.scan01 + ' · BODY ' + parameters.body01 + ' · EDGE ' + parameters.edge01 +
-          '. Live profile: eight slots, 20–2000 Hz onset, ±200 cent bends, 44.1/48/96 kHz; shared source quotas also apply. Completed world height offsets FLOW over the declared 0–512 pixel domain. Dry source only: shared SPACE sends, resonance/drive, PWM and exact restore are unavailable. Fixed control WAVs and causal revoice use this same kernel. Spectral/alias/listening qualification is pending.';
+          ' Â· FLOW ' + parameters.scan01 + ' Â· BODY ' + parameters.body01 + ' Â· EDGE ' + parameters.edge01 +
+          '. Live profile: eight slots, 20â€“2000 Hz onset, Â±200 cent bends, 44.1/48/96 kHz; shared source quotas also apply. Completed world height offsets FLOW over the declared 0â€“512 pixel domain. Dry source only: shared SPACE sends, resonance/drive, PWM and exact restore are unavailable. Fixed control WAVs and causal revoice use this same kernel. Spectral/alias/listening qualification is pending.';
       } } finally { lease.release(); } }
     for (const element of [factory, fmFactory, materialFactory, pluckFactory, choirFactory, spectrumFactory, biomeFactory, importInput, select, rights, browse, more, archivedToggle]) element.disabled = busy;
     audition.disabled = busy || !ready || !!plan?.missingReferences.length || !!plan?.unavailableEngines.length || !!plan?.missingAssetBytes.length && !installed && !localProceduralMaterial;
@@ -263,7 +264,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     renderAudio.disabled = busy || !renderable || !!plan?.missingReferences.length || !!plan?.missingAssetBytes.length && !localProceduralMaterial && !installed; renderRate.disabled = busy || !renderable;
     download.disabled = busy || !artifact?.metadata().retained; save.disabled = download.disabled || typeof window.showSaveFilePicker !== 'function';
     more.hidden = !pageCursor; close.disabled = false; credits.replaceChildren();
-    if (plan) for (const entry of plan.credits) credits.append(node('li', entry.subject + ' · ' + (entry.rights.creator || 'creator unknown') + ' · ' + entry.rights.licenseId + ' · redistribution ' + entry.redistribution));
+    if (plan) for (const entry of plan.credits) credits.append(node('li', entry.subject + ' Â· ' + (entry.rights.creator || 'creator unknown') + ' Â· ' + entry.rights.licenseId + ' Â· redistribution ' + entry.redistribution));
   }
   render();
   return Object.freeze({ open() { if (!disposed && !dialog.open) { monitor?.mount(dialog); render(); dialog.showModal(); } },
