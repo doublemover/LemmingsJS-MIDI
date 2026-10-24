@@ -2299,8 +2299,12 @@ main page to read constants; explicit worklet URL literals preserve static
 artifact discovery. Module heap estimates are retained once per context until
 its actual closed state, including canceled or failed preparation, rather than
 being freed with the last node while the module remains resident. Native heap
-sizes remain estimates. Worklet table parsing itself still needs a prepared
-off-thread bank handoff before the final live source-loading qualification.
+sizes remain estimates. Fixed table preparation now runs in an admitted dedicated worker, with exact
+Float32 byte identities, bounded startup/copy estimates and processor handoff
+acknowledgment before audible publication. The audio realm adopts prepared
+arrays; it no longer parses the large numeric source modules. Cancellation and
+producer retirement stay charged until acknowledged. Final live source-loading
+qualification is deferred.
 Module-lifetime fixtures are authored and unexecuted.
 
 Committed interval admission now checks future overlaps and lease extensions

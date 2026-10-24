@@ -1,5 +1,5 @@
 import { OwnedSineKernel, OwnedSineProcessor } from './OwnedSineProcessor.js';
-import { CHOIR_EXCITER_TABLE, CHOIR_EXCITER_HARMONICS } from './ChoirExciterTable.js';
+import { validateOwnedSourceBank, CHOIR_HARMONICS as CHOIR_EXCITER_HARMONICS } from '../OwnedSourceBank.js';
 import { CHOIR_LAYOUT, choirSourceBytes, CHOIR_SOURCE_HEAP_ESTIMATE } from '../OwnedSourceLayout.js';
 
 export const CHOIR_WIDTH = CHOIR_LAYOUT.width, CHOIR_VOICES = CHOIR_LAYOUT.voices, CHOIR_MIN_HZ = 50, CHOIR_MAX_HZ = 2000, CHOIR_BEND_CENTS = 200;
@@ -10,11 +10,10 @@ const bandwidths = Object.freeze([70, 110, 160]);
 const valid = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;
 
 export class OwnedChoirSource {
-  constructor(rate, voices = CHOIR_VOICES) {
+  constructor(rate, voices = CHOIR_VOICES, sourceBank = null) {
     choirSourceBytes(rate, voices); this.rate = rate; this.voices = voices; this.maxUpdateMask = 511;
-    if (CHOIR_EXCITER_TABLE.length !== CHOIR_LAYOUT.tableSamples) throw new Error('Choir bank storage differs from its source layout.');
-    this.state = new Float64Array(voices * STATE_WIDTH); this.bands = new Float64Array(voices * 3 * BAND_WIDTH); this.table = new Float32Array(CHOIR_EXCITER_TABLE.length);
-    this.table.set(CHOIR_EXCITER_TABLE);
+    this.bank = validateOwnedSourceBank(sourceBank, 'choir-v1');
+    this.state = new Float64Array(voices * STATE_WIDTH); this.bands = new Float64Array(voices * 3 * BAND_WIDTH); this.table = this.bank.planes[0];
   }
   begin(slot, frequency, command) {
     if (!Number.isInteger(slot) || slot < 0 || slot >= this.voices || !valid(frequency, CHOIR_MIN_HZ, CHOIR_MAX_HZ) ||
@@ -99,10 +98,10 @@ export class OwnedChoirSource {
 }
 
 export class OwnedChoirKernel extends OwnedSineKernel {
-  constructor(rate, voices = CHOIR_VOICES) { super(rate, voices, { width: CHOIR_WIDTH, source: new OwnedChoirSource(rate, voices) }); }
+  constructor(rate, voices = CHOIR_VOICES, sourceBank = null) { super(rate, voices, { width: CHOIR_WIDTH, source: new OwnedChoirSource(rate, voices, sourceBank) }); }
 }
 export class OwnedChoirProcessor extends OwnedSineProcessor {
-  createKernel(rate, voices) { return new OwnedChoirKernel(rate, Math.min(voices, CHOIR_VOICES)); }
-  runtimeIdentity() { return { engineId: 'worklet-choir', engineVersion: 1, runtimeABI: 'owned-choir-f64-command-v1', buildId: 'owned-choir-v1' }; }
+  createKernel(rate, voices, options) { return new OwnedChoirKernel(rate, Math.min(voices, CHOIR_VOICES), options?.sourceBank); }
+  runtimeIdentity() { return { engineId: 'worklet-choir', engineVersion: 1, runtimeABI: 'owned-choir-f64-command-v1', buildId: 'owned-choir-v1', sourceBankHash: this.kernel.source.bank.hash }; }
 }
 if (typeof globalThis.registerProcessor === 'function') globalThis.registerProcessor('lemmings-owned-choir-v1', OwnedChoirProcessor);

@@ -3,9 +3,9 @@ export const PLUCK_LAYOUT = Object.freeze({ width: 24, voices: 16, state: 28, de
 export const CHOIR_LAYOUT = Object.freeze({ width: 26, voices: 8, state: 40, bands: 3, bandState: 8, tableLength: 2048, tableSamples: 8 * 2049 });
 export const SPECTRUM_LAYOUT = Object.freeze({ width: 73, voices: 8, state: 24, partialState: 6, partials: 16, tableLength: 2048, tableSamples: 16 * 5 * 2049, sineSamples: 2049, frameSamples: 256 });
 export const GRANULAR_LAYOUT = Object.freeze({ width: 33, voices: 8, cloudState: 44, grainState: 14, grains: 16, windowSamples: 2049, birthsPerBucket: 32 });
-export const CHOIR_SOURCE_HEAP_ESTIMATE = CHOIR_LAYOUT.tableSamples * 8 + 4096;
-export const SPECTRUM_SOURCE_HEAP_ESTIMATE = (SPECTRUM_LAYOUT.tableSamples + SPECTRUM_LAYOUT.sineSamples + SPECTRUM_LAYOUT.frameSamples) * 16 + 16384;
-export const GRANULAR_SOURCE_HEAP_ESTIMATE = GRANULAR_LAYOUT.windowSamples * 16 + 8192;
+export const CHOIR_SOURCE_HEAP_ESTIMATE = 65536;
+export const SPECTRUM_SOURCE_HEAP_ESTIMATE = 65536;
+export const GRANULAR_SOURCE_HEAP_ESTIMATE = 65536;
 const check = (rate, voices, maximum, maxRate = 384000) => {
   if (!Number.isFinite(rate) || rate < 8000 || rate > maxRate || !Number.isInteger(voices) || voices < 1 || voices > maximum) throw new RangeError('Invalid owned source storage profile.');
 };

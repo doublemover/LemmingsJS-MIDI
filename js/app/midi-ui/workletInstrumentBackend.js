@@ -1,4 +1,6 @@
 import { getOwnedSourceProfile } from './OwnedSourceProfiles.js';
+import { prepareOwnedSourceBank } from './OwnedSourceBankPreparation.js';
+import { getOwnedSourceBankIdentity } from './OwnedSourceBank.js';
 import { prepareOwnedPcmBank } from './OwnedPcmBank.js';
 import { loadOwnedWorkletModule, inspectOwnedWorkletModule } from './OwnedWorkletModuleCache.js';
 import { createAudioCommandQueue } from './AudioCommandQueue.js';
@@ -22,7 +24,7 @@ const kernelReasons = Object.freeze({ 1: 'invalid-command', 2: 'kernel-queue-ful
   5: 'kernel-voice-budget-or-range', 6: 'stale-voice-slot', 7: 'owner-lease-expired', 8: 'nonfinite-dsp', 9: 'pending-onset-cancelled', 10: 'kernel-excitation-budget' });
 
 export function createWorkletInstrumentBackend(preview, owner = null, { leadSeconds = 0.25, smoothingSeconds = 0.008,
-  traceLimit = 128, createWorkletNode = null, initializationTimeoutMs = 5000, engineId = 'worklet-sine' } = {}) {
+  traceLimit = 128, createWorkletNode = null, initializationTimeoutMs = 5000, engineId = 'worklet-sine', prepareSourceBank = prepareOwnedSourceBank } = {}) {
   const source = getOwnedSourceProfile(engineId), WIDTH = source.width, MAX_VOICES = source.voices, fields = source.fields, isExtended = source.extended;
   const performanceParameters = source.parameters, liveSourceIds = source.liveIds;
   const expressionIds = new Set(['pressure01', 'pan01', 'pitchOffsetCents', ...liveSourceIds]);
@@ -218,7 +220,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (ready && source.requiresPCM && pcmDescriptor?.assetHash !== next.sampleRef.sha256) return reject('source-requires-new-renderer');
     for (const cancel of pendingInitializations) cancel();
     const revision = ++preparing, generation = preview._generation, ownerGeneration = preview._sessions.get(owner)?.generation;
-    let candidate = null, timer = null, cancelInitialization = null, candidateResourceLease = null, bank = null, inputCopy = null, candidatePcm = pcmDescriptor, sourceFailureRetirement = null;
+    let candidate = null, timer = null, cancelInitialization = null, candidateResourceLease = null, bank = null, inputCopy = null, candidatePcm = pcmDescriptor, sourceFailureRetirement = null, fixedBank = null;
     const assetController = new AbortController(), current = () => !disposed && revision === preparing && generation === preview._generation && ownerGeneration === preview._sessions.get(owner)?.generation && preview.getAudioContext() === candidateContext;
     let interrupt;
     const interrupted = new Promise((_resolve, rejectInterrupted) => { interrupt = rejectInterrupted; });
@@ -226,6 +228,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     const abortPreparation = error => { assetController.abort(error); interrupt(error); };
     cancelInitialization = () => abortPreparation(new Error('preparation-cancelled')); pendingInitializations.add(cancelInitialization);
     try {
+      if (!ready && source.bankId) fixedBank = await prepareSourceBank(source.bankId, { resources: preview._audioResources, owner, generation, signal: assetController.signal, isCurrent: current });
       if (!ready && source.requiresPCM) {
         bank = await prepareOwnedPcmBank(assets[0], { resources: preview._audioResources, owner: owner ?? 'unscoped-source', generation,
           signal: assetController.signal, isCurrent: current });
@@ -241,7 +244,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
         const destination = preview._channel(0, owner).gain;
         const create = createWorkletNode || ((audioContext, name, options) => new globalThis.AudioWorkletNode(audioContext, name, options));
         candidate = create(candidateContext, 'lemmings-owned-' + engineId.slice('worklet-'.length) + '-v1', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2],
-          processorOptions: { maxVoices: MAX_VOICES, ...(inputCopy ? { pcm: inputCopy.payload } : {}) } });
+          processorOptions: { maxVoices: MAX_VOICES, ...(fixedBank ? { sourceBank: fixedBank.payload } : {}), ...(inputCopy ? { pcm: inputCopy.payload } : {}) } });
         await Promise.race([new Promise((resolve, rejectReady) => {
           candidate.onprocessorerror = () => rejectReady(new Error('processor-error-during-prepare'));
           candidate.port.onmessage = event => {
@@ -250,15 +253,15 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
                 data.runtimeABI !== runtime.runtimeABI || data.buildId !== runtime.buildId || data.maxVoices !== MAX_VOICES ||
                 data.sampleRate !== candidateContext.sampleRate || data.width !== WIDTH || data.capacity !== CAPACITY ||
                 data.displayProtocol !== DISPLAY_PROTOCOL || data.displayWidth !== DISPLAY_WIDTH || data.displayVoices !== DISPLAY_VOICES ||
-                source.requiresPCM && data.pcmBankHash !== candidatePcm?.bankHash) return rejectReady(new Error('kernel-abi-mismatch'));
+                source.requiresPCM && data.pcmBankHash !== candidatePcm?.bankHash || source.bankId && data.sourceBankHash !== getOwnedSourceBankIdentity(source.bankId).hash) return rejectReady(new Error('kernel-abi-mismatch'));
             resolve();
           };
         }), interrupted]);
-        if (inputCopy || bank) {
-          const sourceRetirement = createProcgenRetirementScope().retire([{ name: 'pcm-processor-input', run: () => inputCopy?.release() }, { name: 'pcm-preparation-bank', run: () => bank?.discard() }]);
+        if (inputCopy || bank || fixedBank) {
+          const sourceRetirement = createProcgenRetirementScope().retire([{ name: 'fixed-source-bank', run: () => fixedBank?.release() }, { name: 'pcm-processor-input', run: () => inputCopy?.release() }, { name: 'pcm-preparation-bank', run: () => bank?.discard() }]);
           await sourceRetirement.completion;
           if (sourceRetirement.outcome !== 'complete') throw Object.assign(new Error('pcm-source-retirement-unknown'), { retirement: sourceRetirement });
-          inputCopy = null; bank = null;
+          inputCopy = null; bank = null; fixedBank = null;
         }
         assetController.signal.throwIfAborted();
         if (!current()) {
@@ -285,6 +288,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     } finally {
       const cleanup = createProcgenRetirementScope().retire([
         { name: 'pcm-producer-retirement', run: () => sourceFailureRetirement },
+        { name: 'fixed-source-bank', run: () => fixedBank?.release() },
         { name: 'pcm-processor-input', run: () => inputCopy?.release() },
         { name: 'pcm-preparation-bank', run: () => bank?.discard() },
         { name: 'pcm-preparation-source', run: () => assetController.abort(new Error('Source preparation finished.')) },

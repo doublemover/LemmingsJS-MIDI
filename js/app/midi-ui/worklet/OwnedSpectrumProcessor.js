@@ -1,5 +1,5 @@
 import { OwnedSineKernel, OwnedSineProcessor } from './OwnedSineProcessor.js';
-import { SPECTRUM_TABLES, SPECTRUM_LEVELS, SPECTRUM_SINE, SPECTRUM_FRAME_GAINS } from './SpectrumSourceTables.js';
+import { validateOwnedSourceBank, SPECTRUM_HARMONICS as SPECTRUM_LEVELS } from '../OwnedSourceBank.js';
 import { SPECTRUM_LAYOUT, spectrumSourceBytes, SPECTRUM_SOURCE_HEAP_ESTIMATE } from '../OwnedSourceLayout.js';
 
 export const SPECTRUM_WIDTH = SPECTRUM_LAYOUT.width, SPECTRUM_VOICES = SPECTRUM_LAYOUT.voices, SPECTRUM_MIN_HZ = 20, SPECTRUM_MAX_HZ = 2000, SPECTRUM_BEND_CENTS = 200;
@@ -7,11 +7,11 @@ export { SPECTRUM_SOURCE_HEAP_ESTIMATE, spectrumSourceBytes };
 const STATE = SPECTRUM_LAYOUT.state, PARTIAL = SPECTRUM_LAYOUT.partialState, LENGTH = SPECTRUM_LAYOUT.tableLength, STRIDE = LENGTH + 1, LN1000 = Math.log(1000);
 const valid = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;
 export class OwnedSpectrumSource {
-  constructor(rate, voices = SPECTRUM_VOICES) {
+  constructor(rate, voices = SPECTRUM_VOICES, sourceBank = null) {
     spectrumSourceBytes(rate, voices); this.rate = rate; this.voices = voices; this.maxUpdateMask = 63;
-    if (SPECTRUM_TABLES.length !== SPECTRUM_LAYOUT.tableSamples || SPECTRUM_SINE.length !== SPECTRUM_LAYOUT.sineSamples || SPECTRUM_FRAME_GAINS.length !== SPECTRUM_LAYOUT.frameSamples) throw new Error('Spectrum bank storage differs from its source layout.');
+    this.bank = validateOwnedSourceBank(sourceBank, 'spectrum-v1');
     this.state = new Float64Array(voices * STATE); this.partials = new Float64Array(voices * 16 * PARTIAL);
-    this.tables = new Float32Array(SPECTRUM_TABLES); this.sine = new Float32Array(SPECTRUM_SINE); this.frames = new Float32Array(SPECTRUM_FRAME_GAINS);
+    [this.tables, this.sine, this.frames] = this.bank.planes;
   }
   begin(slot, frequency, command) {
     if (!Number.isInteger(slot) || slot < 0 || slot >= this.voices || !valid(frequency, SPECTRUM_MIN_HZ, SPECTRUM_MAX_HZ) || !Number.isInteger(command[18]) || !valid(command[18], 0, 0xffffffff) ||
@@ -84,10 +84,10 @@ export class OwnedSpectrumSource {
   }
 }
 export class OwnedSpectrumKernel extends OwnedSineKernel {
-  constructor(rate, voices = SPECTRUM_VOICES) { super(rate, voices, { width: SPECTRUM_WIDTH, source: new OwnedSpectrumSource(rate, voices) }); }
+  constructor(rate, voices = SPECTRUM_VOICES, sourceBank = null) { super(rate, voices, { width: SPECTRUM_WIDTH, source: new OwnedSpectrumSource(rate, voices, sourceBank) }); }
 }
 export class OwnedSpectrumProcessor extends OwnedSineProcessor {
-  createKernel(rate, voices) { return new OwnedSpectrumKernel(rate, Math.min(voices, SPECTRUM_VOICES)); }
-  runtimeIdentity() { return { engineId: 'worklet-spectrum', engineVersion: 1, runtimeABI: 'owned-spectrum-f64-command-v1', buildId: 'owned-spectrum-v1' }; }
+  createKernel(rate, voices, options) { return new OwnedSpectrumKernel(rate, Math.min(voices, SPECTRUM_VOICES), options?.sourceBank); }
+  runtimeIdentity() { return { engineId: 'worklet-spectrum', engineVersion: 1, runtimeABI: 'owned-spectrum-f64-command-v1', buildId: 'owned-spectrum-v1', sourceBankHash: this.kernel.source.bank.hash }; }
 }
 if (typeof globalThis.registerProcessor === 'function') globalThis.registerProcessor('lemmings-owned-spectrum-v1', OwnedSpectrumProcessor);

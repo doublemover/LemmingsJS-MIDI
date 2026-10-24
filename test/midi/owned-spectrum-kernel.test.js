@@ -1,7 +1,11 @@
+import { fixedSourceBank } from './fixed-source-bank-fixture.js';
 import { expect } from 'chai';
-import { OwnedSpectrumKernel, OwnedSpectrumSource, SPECTRUM_WIDTH, spectrumSourceBytes } from '../../js/app/midi-ui/worklet/OwnedSpectrumProcessor.js';
+import { OwnedSpectrumKernel as RealSpectrumKernel, OwnedSpectrumSource as RealSpectrumSource, SPECTRUM_WIDTH, spectrumSourceBytes } from '../../js/app/midi-ui/worklet/OwnedSpectrumProcessor.js';
 import { SPECTRUM_TABLES, SPECTRUM_FRAME_GAINS, SPECTRUM_LEVELS } from '../../js/app/midi-ui/worklet/SpectrumSourceTables.js';
 import { BEGIN, UPDATE, PANIC } from '../../js/app/midi-ui/worklet/OwnedSineProcessor.js';
+
+class OwnedSpectrumKernel extends RealSpectrumKernel { constructor(rate, voices) { super(rate, voices, fixedSourceBank('spectrum-v1')); } }
+class OwnedSpectrumSource extends RealSpectrumSource { constructor(rate, voices) { super(rate, voices, fixedSourceBank('spectrum-v1')); } }
 
 const begin = (mode = 0, rate = 48000, seed = 193) => {
   const command = new Float64Array(SPECTRUM_WIDTH);

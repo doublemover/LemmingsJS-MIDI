@@ -1,6 +1,10 @@
+import { fixedSourceBank } from './fixed-source-bank-fixture.js';
 import { expect } from 'chai';
-import { OwnedGranularKernel, OwnedGranularSource, GRANULAR_WIDTH, granularSourceBytes } from '../../js/app/midi-ui/worklet/OwnedGranularProcessor.js';
+import { OwnedGranularKernel as RealGranularKernel, OwnedGranularSource as RealGranularSource, GRANULAR_WIDTH, granularSourceBytes } from '../../js/app/midi-ui/worklet/OwnedGranularProcessor.js';
 import { BEGIN, UPDATE, PANIC, MAX_VOICES } from '../../js/app/midi-ui/worklet/OwnedSineProcessor.js';
+
+class OwnedGranularKernel extends RealGranularKernel { constructor(rate, pcm, voices) { super(rate, pcm, voices, fixedSourceBank('grain-window-v1')); } }
+class OwnedGranularSource extends RealGranularSource { constructor(rate, pcm, voices) { super(rate, pcm, voices, fixedSourceBank('grain-window-v1')); } }
 
 const pcm = (rate = 48000, channels = 1) => {
   const frames = rate, left = Float32Array.from({ length: frames }, (_, frame) => Math.sin(frame / rate * Math.PI * 440) * 0.5);

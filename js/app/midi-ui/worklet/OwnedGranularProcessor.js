@@ -1,5 +1,5 @@
 import { OwnedSineKernel, OwnedSineProcessor } from './OwnedSineProcessor.js';
-import { GRAIN_WINDOW } from './GrainWindow.js';
+import { validateOwnedSourceBank } from '../OwnedSourceBank.js';
 import { GRANULAR_LAYOUT, granularSourceBytes, GRANULAR_SOURCE_HEAP_ESTIMATE } from '../OwnedSourceLayout.js';
 
 export const GRANULAR_WIDTH = GRANULAR_LAYOUT.width, GRANULAR_VOICES = GRANULAR_LAYOUT.voices, GRAINS_PER_VOICE = GRANULAR_LAYOUT.grains, GRANULAR_BIRTHS_PER_BUCKET = GRANULAR_LAYOUT.birthsPerBucket;
@@ -9,16 +9,16 @@ const valid = (value, low, high) => Number.isFinite(value) && value >= low && va
 const integer = (value, low, high) => Number.isSafeInteger(value) && valid(value, low, high);
 const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
 export class OwnedGranularSource {
-  constructor(rate, pcm, voices = GRANULAR_VOICES) {
+  constructor(rate, pcm, voices = GRANULAR_VOICES, sourceBank = null) {
     granularSourceBytes(rate, voices); const descriptor = pcm?.descriptor;
-    if (GRAIN_WINDOW.length !== GRANULAR_LAYOUT.windowSamples) throw new Error('Grain window storage differs from its source layout.');
+    this.bank = validateOwnedSourceBank(sourceBank, 'grain-window-v1');
     if (descriptor?.schema !== 'lemmings-owned-pcm-bank/v1' || descriptor.format !== 'float32-planar-le' || !/^[a-f0-9]{64}$/.test(descriptor.bankHash) ||
         !/^[a-f0-9]{64}$/.test(descriptor.pcmHash) || !/^[a-f0-9]{64}$/.test(descriptor.assetHash) || !integer(descriptor.sampleRate, 8000, 192000) ||
         !integer(descriptor.channels, 1, 2) || !integer(descriptor.frames, 2, 4194304) || descriptor.bytes !== descriptor.frames * descriptor.channels * 4 || descriptor.bytes > 16 * 1048576 ||
         !integer(descriptor.sourceFrames, 2, 8000000) || !integer(descriptor.sourceSampleRate, 8000, 192000) || !valid(descriptor.peak, 0, 16) ||
         !Array.isArray(pcm.planes) || pcm.planes.length !== descriptor.channels || pcm.planes.some(plane => !(plane instanceof Float32Array) || !(plane.buffer instanceof ArrayBuffer) || plane.length !== descriptor.frames)) throw new TypeError('Granular source needs a prepared PCM bank.');
     this.rate = rate; this.voices = voices; this.descriptor = Object.freeze({ ...descriptor }); this.pcm = Object.freeze([...pcm.planes]); this.stereo = descriptor.channels === 2;
-    this.state = new Float64Array(voices * CLOUD); this.grains = new Float64Array(voices * GRAINS_PER_VOICE * GRAIN); this.window = new Float32Array(GRAIN_WINDOW);
+    this.state = new Float64Array(voices * CLOUD); this.grains = new Float64Array(voices * GRAINS_PER_VOICE * GRAIN); this.window = this.bank.planes[0];
     this.maxUpdateMask = 1023; this.leftSample = 0; this.rightSample = 0; this.birthBucket = -1; this.bucketBirths = 0;
     this.sourceGain = 0.9 / Math.max(1, descriptor.peak) / 4;
   }
@@ -124,10 +124,10 @@ export class OwnedGranularSource {
   }
 }
 export class OwnedGranularKernel extends OwnedSineKernel {
-  constructor(rate, pcm, voices = GRANULAR_VOICES) { super(rate, voices, { width: GRANULAR_WIDTH, source: new OwnedGranularSource(rate, pcm, voices) }); }
+  constructor(rate, pcm, voices = GRANULAR_VOICES, sourceBank = null) { super(rate, voices, { width: GRANULAR_WIDTH, source: new OwnedGranularSource(rate, pcm, voices, sourceBank) }); }
 }
 export class OwnedGranularProcessor extends OwnedSineProcessor {
-  createKernel(rate, voices, options) { return new OwnedGranularKernel(rate, options?.pcm, Math.min(voices, GRANULAR_VOICES)); }
-  runtimeIdentity() { return { engineId: 'worklet-granular', engineVersion: 1, runtimeABI: 'owned-granular-f64-command-v1', buildId: 'owned-granular-v1', pcmBankHash: this.kernel.source.descriptor.bankHash }; }
+  createKernel(rate, voices, options) { return new OwnedGranularKernel(rate, options?.pcm, Math.min(voices, GRANULAR_VOICES), options?.sourceBank); }
+  runtimeIdentity() { return { engineId: 'worklet-granular', engineVersion: 1, runtimeABI: 'owned-granular-f64-command-v1', buildId: 'owned-granular-v1', sourceBankHash: this.kernel.source.bank.hash, pcmBankHash: this.kernel.source.descriptor.bankHash }; }
 }
 if (typeof globalThis.registerProcessor === 'function') globalThis.registerProcessor('lemmings-owned-granular-v1', OwnedGranularProcessor);

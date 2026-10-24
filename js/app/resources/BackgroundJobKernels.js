@@ -5,10 +5,11 @@ import { compileSoundContent } from '../../midi/content/SoundContentCompiler.js'
 import { getNativeInstrumentCatalog } from '../midi-ui/NativeInstrumentSchema.js';
 import { inspectCausalArchiveEntry, validateCausalChunk } from '../procgen/workstation/CausalArchiveEntry.js';
 import { renderOwnedSineControls } from '../midi-ui/OwnedSineOfflineRender.js';
+import { getOwnedSourceBankIdentity, OWNED_SOURCE_BANK_SCHEMA } from '../midi-ui/OwnedSourceBank.js';
 import { renderCausalSineTake } from '../midi-ui/CausalSineRender.js';
 
 export const BACKGROUND_JOB_PROTOCOL = 1;
-export const BACKGROUND_JOB_KINDS = Object.freeze(['parse-json', 'verify-causal-source', 'snapshot-canonical-data', 'inspect-causal-archive-entry', 'render-sound-controls', 'render-causal-sine-take', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'asset-hash', 'asset-decode']);
+export const BACKGROUND_JOB_KINDS = Object.freeze(['prepare-owned-source-bank', 'parse-json', 'verify-causal-source', 'snapshot-canonical-data', 'inspect-causal-archive-entry', 'render-sound-controls', 'render-causal-sine-take', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'asset-hash', 'asset-decode']);
 const MAX_BYTES = 64 * 1048576, MAX_NODES = 4000000;
 const problem = (code, message) => Object.assign(new Error(message), { code, name: 'BackgroundJobError' });
 const shared = value => typeof globalThis.SharedArrayBuffer === 'function' && (value instanceof globalThis.SharedArrayBuffer || value?.buffer instanceof globalThis.SharedArrayBuffer);
@@ -114,6 +115,22 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
       !Number.isSafeInteger(maxStringBytes) || maxStringBytes < 1 || maxStringBytes > MAX_BYTES ||
       expectedInputHash != null && !/^[a-f0-9]{64}$/.test(expectedInputHash)) throw problem('invalid-contract', 'Unsupported background job kernel contract.');
   guard(signal, current);
+  if (kind === 'prepare-owned-source-bank') {
+    if (!input || Object.keys(input).length !== 1 || typeof input.id !== 'string') throw problem('invalid-contract', 'Invalid fixed source bank request.');
+    const expected = getOwnedSourceBankIdentity(input.id);
+    if (estimatedPeakBytes < 16 * 1048576 || maxBytes < expected.bytes) throw problem('memory-capacity', 'Fixed bank preparation needs its worker startup and copy reservation.');
+    const { createOwnedSourceBankPlanes } = await import('./OwnedSourceBankData.js'); guard(signal, current);
+    const planes = createOwnedSourceBankPlanes(input.id), encoded = new Uint8Array(expected.bytes), view = new DataView(encoded.buffer); let offset = 0;
+    for (const plane of planes) for (let index = 0; index < plane.length; index++) {
+      if (!Number.isFinite(plane[index]) || Math.abs(plane[index]) > 2) throw problem('invalid-data', 'Invalid fixed source bank value.');
+      view.setFloat32(offset, plane[index], true); offset += 4;
+      if ((index & 16383) === 16383) { guard(signal, current); await yieldControl(); }
+    }
+    const digest = await crypto.subtle.digest('SHA-256', encoded); guard(signal, current);
+    const hash = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+    if (offset !== expected.bytes || hash !== expected.hash) throw problem('content-mismatch', 'Fixed source bank differs from its build identity.');
+    return { value: { schema: OWNED_SOURCE_BANK_SCHEMA, id: input.id, hash, bytes: expected.bytes, planes }, inputBytes: 128, nodes: 16, retainedBytes: expected.bytes + 16384 };
+  }
   if (kind === 'asset-decode') return decodeGroundAssetSnapshot(input, { signal, current, maxBytes, estimatedPeakBytes, maxDecodedBytes, crypto, onProgress, yieldControl });
   if (expectedInputHash != null || kind === 'asset-hash') {
     if (shared(input)) throw problem('shared-live-input', 'Background hash input cannot refer to shared live memory.');

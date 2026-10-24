@@ -1,3 +1,4 @@
+import { fixedSourceBank } from './fixed-source-bank-fixture.js';
 import { expect } from 'chai';
 import { OwnedSineKernel, WIDTH, PROTOCOL, RECEIPT_WIDTH, BEGIN, UPDATE, END, CANCEL, LEASE,
   APPLIED, REJECTED, ENDED, DISPLAY_PROTOCOL, DISPLAY_WIDTH, DISPLAY_VOICES } from '../../js/app/midi-ui/worklet/OwnedSineProcessor.js';
@@ -139,7 +140,7 @@ const setupHost = (engineId = 'worklet-sine') => {
     _destroyVoice(voice, reason) { if (this._voices.delete(voice)) { voice.onDestroy?.(reason); voice.resourceLease?.release(); } } };
   if (granular) preview._audioResources = createAudioResourceLeases();
   const createWorkletNode = (_context, _name, options) => {
-    const kernel = granular ? new OwnedGranularKernel(48000, structuredClone(options.processorOptions.pcm)) : new actualSource[0](48000), node = { kernel, disconnected: false, connect() {}, disconnect() { this.disconnected = true; },
+    const kernel = granular ? new OwnedGranularKernel(48000, structuredClone(options.processorOptions.pcm), undefined, structuredClone(options.processorOptions.sourceBank)) : new actualSource[0](48000, undefined, options.processorOptions.sourceBank ? structuredClone(options.processorOptions.sourceBank) : undefined), node = { kernel, disconnected: false, connect() {}, disconnect() { this.disconnected = true; },
       port: { onmessage: null, close() {}, postMessage(data) {
         if (data.type === 'commands') kernel.accept(data.data, data.count, data.packetSequence);
         else if (data.type === 'panic') kernel.panicPending = true;
@@ -150,11 +151,11 @@ const setupHost = (engineId = 'worklet-sine') => {
         kernel.receiptCount = 0;
       }, render(frames, start = 0) { const result = render(kernel, frames, start); this.flush(); return result; } };
     nodes.push(node); queueMicrotask(() => node.port.onmessage?.({ data: { type: 'ready', protocol: PROTOCOL, engineId, engineVersion: 1,
-      runtimeABI: actualSource[4], buildId: actualSource[3], maxVoices: actualSource[2], ...(granular ? { pcmBankHash: kernel.source.descriptor.bankHash } : {}),
+      runtimeABI: actualSource[4], buildId: actualSource[3], maxVoices: actualSource[2], ...(kernel.source?.bank ? { sourceBankHash: kernel.source.bank.hash } : {}), ...(granular ? { pcmBankHash: kernel.source.descriptor.bankHash } : {}),
       displayProtocol: DISPLAY_PROTOCOL, displayWidth: DISPLAY_WIDTH, displayVoices: DISPLAY_VOICES,
       sampleRate: 48000, width: actualSource[1], capacity: 512 } })); return node;
   };
-  const backend = createWorkletInstrumentBackend(preview, 'owner', { createWorkletNode, engineId });
+  const backend = createWorkletInstrumentBackend(preview, 'owner', { createWorkletNode, engineId, prepareSourceBank: async id => ({ payload: fixedSourceBank(id), release() {} }) });
   const patch = { status: 'ready', patch: { id: 'worklet-test', revision: 1, engineId, engineVersion: 1,
     parameters: {}, sampleRefs: [], voicePolicy: { maxVoices: actualSource[2] }, mix: { gain01: 0.5, pan01: 0 } }, receipt: { patchId: 'worklet-test', revision: 1 } };
   const intent = voiceId => ({ version: 1, kind: 'begin', voiceId, generation: 1, velocity01: 0.8,

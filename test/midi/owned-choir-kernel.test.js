@@ -1,7 +1,11 @@
+import { fixedSourceBank } from './fixed-source-bank-fixture.js';
 import { expect } from 'chai';
-import { OwnedChoirKernel, OwnedChoirSource, CHOIR_WIDTH, choirSourceBytes } from '../../js/app/midi-ui/worklet/OwnedChoirProcessor.js';
+import { OwnedChoirKernel as RealChoirKernel, OwnedChoirSource as RealChoirSource, CHOIR_WIDTH, choirSourceBytes } from '../../js/app/midi-ui/worklet/OwnedChoirProcessor.js';
 import { BEGIN, UPDATE, PANIC } from '../../js/app/midi-ui/worklet/OwnedSineProcessor.js';
 import { CHOIR_EXCITER_HARMONICS, CHOIR_EXCITER_TABLE } from '../../js/app/midi-ui/worklet/ChoirExciterTable.js';
+
+class OwnedChoirKernel extends RealChoirKernel { constructor(rate, voices) { super(rate, voices, fixedSourceBank('choir-v1')); } }
+class OwnedChoirSource extends RealChoirSource { constructor(rate, voices) { super(rate, voices, fixedSourceBank('choir-v1')); } }
 
 const begin = (rate = 48000, seed = 191) => {
   const command = new Float64Array(CHOIR_WIDTH);
