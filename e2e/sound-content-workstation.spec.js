@@ -8,6 +8,31 @@ test.use({ permissions: [] });
 test.setTimeout(120000);
 test.beforeAll(async () => { await buildBrowserRuntime({ rootDir: fileURLToPath(new URL('../', import.meta.url)) }); });
 
+test('FM Forge stages original source recipes and only applies the auditioned installed revision', async ({ page }) => {
+  await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=911&lanes=2');
+  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__);
+  const before = await page.evaluate(() => {
+    window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause();
+    return { project: JSON.stringify(window.__PROCGEN_STUDIO__.getProject()), tick: window.__PROCGEN_LANES__.world.tickIndex };
+  });
+  await page.getByRole('button', { name: 'Sound library…', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Sound library', exact: true });
+  await dialog.getByRole('button', { name: 'Prepare FM Forge', exact: true }).click();
+  const revisions = dialog.getByLabel('Saved instrument revision'); await expect(revisions.locator('option')).toHaveCount(4, { timeout: 30000 });
+  await revisions.selectOption('forge.glass-rivet@1'); await expect(dialog.getByLabel('Instrument source model')).toContainText('1:2.71');
+  await expect(dialog.getByRole('button', { name: 'Apply to selected lane', exact: true })).toBeDisabled();
+  await dialog.getByRole('button', { name: 'Rehearsal on live output', exact: true }).click();
+  await expect(dialog.getByLabel('Prelisten route')).toContainText('ready');
+  await dialog.getByRole('button', { name: 'Audition controls', exact: true }).click();
+  await expect(dialog.getByLabel('Sound library status')).toContainText('Control audition completed', { timeout: 15000 });
+  await dialog.getByRole('button', { name: 'Install auditioned pack', exact: true }).click();
+  await expect(dialog.getByLabel('Sound library status')).toContainText('Pack installed');
+  expect(await page.evaluate(() => ({ project: JSON.stringify(window.__PROCGEN_STUDIO__.getProject()), tick: window.__PROCGEN_LANES__.world.tickIndex }))).toEqual(before);
+  await dialog.getByRole('button', { name: 'Apply to selected lane', exact: true }).click();
+  await expect(dialog.getByLabel('Sound library status')).toContainText('Instrument applied');
+  expect(await page.evaluate(() => JSON.stringify(window.__PROCGEN_STUDIO__.getProject()))).toContain('native-fm');
+});
+
 test('built sound library keeps world/project state unchanged through staging, audition and installation, then applies a pinned revision', async ({ page }) => {
   await page.addInitScript(() => {
     window.soundLibraryMidiRequests = 0;

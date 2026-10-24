@@ -3,9 +3,9 @@ import { prepareSoundContentPack, planSoundContentSelection, SOUND_CONTENT_SCHEM
 import { validateEngineDescriptor, validateInstrumentPatchV2 } from './InstrumentPatchV2.js';
 
 export const SOUND_RECIPE_SCHEMA = 'lemmings-sound-recipes/v1';
-export const SOUND_COMPILER_REVISION = 'typed-recipes-v1';
+export const SOUND_COMPILER_REVISION = 'typed-recipes-v2';
 const limits = { maxBytes: 8 * 1048576, maxNodes: 200000, domain: 'Sound recipes' };
-const units = new Set(['Hz', 'cents', 'ratio', 's', 'ms', 'amplitude-linear', 'dB', 'normalized', 'enum', 'world-pixel']);
+const units = new Set(['Hz', 'cents', 'ratio', 'dimensionless', 's', 'ms', 'amplitude-linear', 'dB', 'normalized', 'enum', 'world-pixel']);
 const id = value => typeof value === 'string' && /^[a-z][a-z0-9._:-]{0,127}$/i.test(value) && !['__proto__', 'constructor', 'prototype'].includes(value);
 const finite = value => Number.isFinite(value) && Math.abs(value) <= 1000000000;
 const object = value => value && typeof value === 'object' && !Array.isArray(value);
@@ -35,8 +35,12 @@ export function convertSoundQuantity(quantity, targetUnit, path = 'quantity') {
 }
 
 const nativeComponents = descriptor => {
-  const roles = { exciter: ['waveform'], envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01'] };
-  if (!['native-oscillator', 'native-sample', 'worklet-sine'].includes(descriptor.engineId)) return null;
+  const roles = descriptor.engineId === 'native-fm' ? {
+    exciter: ['carrierRatio', 'modulatorRatio', 'dualPair', 'secondaryCarrierRatio', 'secondaryModulatorRatio', 'pitchSettleCents', 'pitchSettleSeconds', 'maxBendCents'],
+    modulation: ['indexStart', 'indexEnd', 'indexSeconds', 'secondaryIndexStart', 'secondaryIndexEnd'],
+    envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01', 'secondaryMix01']
+  } : { exciter: ['waveform'], envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01'] };
+  if (!['native-oscillator', 'native-fm', 'native-sample', 'worklet-sine'].includes(descriptor.engineId)) return null;
   return Object.entries(roles).map(([role, parameters]) => ({ id: role, role, parameters: parameters.filter(name => descriptor.parameters.some(spec => spec.id === name)) }));
 };
 

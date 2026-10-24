@@ -147,7 +147,7 @@ export async function prepareSoundContentPack(raw, { engineDescriptors = [], sig
   }
   if (pack.compilation != null) {
     const compilation = pack.compilation; keysOnly(compilation, ['compilerRevision', 'sourceHash', 'schemaRevision', 'artifacts'], 'compilation');
-    assertContent(compilation.compilerRevision === 'typed-recipes-v1' && compilation.schemaRevision === 'lemmings-sound-recipes/v1' && hash(compilation.sourceHash) &&
+    assertContent(['typed-recipes-v1', 'typed-recipes-v2'].includes(compilation.compilerRevision) && compilation.schemaRevision === 'lemmings-sound-recipes/v1' && hash(compilation.sourceHash) &&
       Array.isArray(compilation.artifacts) && compilation.artifacts.length === patches.length && compilation.artifacts.every(artifact => artifact && typeof artifact === 'object' && !Array.isArray(artifact)) &&
       new Set(compilation.artifacts.map(artifact => artifact.id + '@' + artifact.revision)).size === patches.length,
     'compilation', 'unsupported compilation inventory');

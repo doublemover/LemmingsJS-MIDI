@@ -2110,8 +2110,12 @@ voices, library audition and pinned-lane preparation. Index-to-Hz conversion,
 independent envelopes, bounded pitch settling and child source accounting are
 explicit. Register-based index reduction is labeled an estimate, not a spectral
 qualification. Native hidden DSP state/offline/receipt limits stay explicit.
-Authored FM recipes and full spectral/listening gates follow; adapter fixtures
-remain unexecuted with the consolidated validation pass.
+FM Forge now supplies Glass Rivet, Copper Tine, Alarm Bloom and Rubber Bolt as
+typed source recipes through staged library compilation/audition/install/Apply.
+Selected ratios/index timing remain visible. The compiler distinguishes index
+from Hz and retains archived v1 explanations. Full physical/macro bindings,
+feedback/sends and spectral/listening gates remain; content, adapter and browser
+fixtures are authored and unexecuted with the consolidated validation pass.
 
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail

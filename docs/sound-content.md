@@ -216,7 +216,7 @@ Decoding begins after shared job admission, supports cancellation, and keeps
 the source-line reservation through conversion. An entry that exceeds available
 shared parsing capacity is explicitly rejected without changing stored work.
 
-Native engine schemas bind their actual 64-voice capacity and supported
+Native oscillator/sample schemas bind their actual 64-voice capacity and supported
 `reject` policy. Definitions requesting unimplemented stealing, macros,
 modulation graphs or causal bindings remain unavailable instead of silently
 losing those behaviors. Direct renderer preparation enforces the same boundary.
@@ -237,3 +237,16 @@ redistribution rights. Source and output memory overlap are admitted before
 rendering; cancellation retires the worker and staged consumer, and the result
 uses the existing expiring artifact/delivery owners. Listening, device output
 and a real physical gesture remain separate qualifications.
+
+**Prepare FM Forge** compiles four original data recipes through the same staged
+archive, audition, installation and explicit Apply flow: Glass Rivet, Copper Tine,
+Alarm Bloom and Rubber Bolt. The fixed native FM adapter owns two/four operator
+sources per voice, plus a pitch-settle source where requested. The selected model
+shows authored ratios and index timing. Index is dimensionless; deviation is Hz.
+Compiler revision `typed-recipes-v2` adds that unit and the fixed FM template;
+archived v1 explanation data remains readable without executing an old compiler.
+
+These recipes remain unqualified. Register-dependent index reduction is a
+conservative sideband estimate, and feedback/effect sends are unavailable. This
+pass has not produced PCM, spectral, dense-mix or listening qualification. Source
+rights are `NOASSERTION` with redistribution unknown; a recipe is not a rights grant.

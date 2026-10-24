@@ -4,13 +4,14 @@ import { createSoundContentReader } from './SoundContentReader.js';
 import { createSoundContentRegistry } from './SoundContentRegistry.js';
 import { createSoundContentInstallation } from './SoundContentInstallation.js';
 import { createSoundContentRenderReferences } from './SoundContentRenderReference.js';
-import { getNativeInstrumentCatalog } from './NativeInstrumentSchema.js';
+import { getNativeInstrumentCatalog, NATIVE_FM_PARAMETERS } from './NativeInstrumentSchema.js';
 import { backgroundJobService } from '../resources/BackgroundJobService.js';
 import { readBrowserBuildResponse } from '../../runtime/BrowserGenerationService.js';
 import { deliverArtifactToAnchor, requestExportFileHandle, deliverArtifactToFileHandle } from '../export/ExportArtifact.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 
 const FACTORY_SOURCE = new URL('../../../content/sounds/native.json', import.meta.url);
+const FM_FORGE_SOURCE = new URL('../../../content/sounds/fm-forge.json', import.meta.url);
 const failure = message => Object.assign(new Error(message), { name: 'SoundContentError' });
 
 export function createSoundContentLibrary({ document, window, audio, resourceBudget, jobs = backgroundJobService, onApply, onStatus = () => {}, monitor = null } = {}) {
@@ -19,14 +20,15 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
   const registry = createSoundContentRegistry({ indexedDB: window.indexedDB, keyRange: window.IDBKeyRange, resourceBudget });
   const installation = createSoundContentInstallation({ audio, registry, onReveal: () => { if (!disposed && !dialog.open) { monitor?.mount(dialog); dialog.showModal(); } } });
   const renderReferences = createSoundContentRenderReferences({ resourceBudget, jobs });
-  const retirement = createProcgenRetirementScope(), listeners = [];
+  const retirement = createProcgenRetirementScope(), listeners = [], factoryFaults = new Map();
   let stage = null, current = null, disposed = false, selection = null, artifact = null, pageCursor = null, installed = false, sequence = 0;
   const node = (tag, text) => { const element = document.createElement(tag); if (text != null) element.textContent = text; return element; };
   const on = (element, event, callback) => { element.addEventListener(event, callback); listeners.push(() => element.removeEventListener(event, callback)); };
   const dialog = node('dialog'); dialog.className = 'studio-sound-library'; dialog.setAttribute('aria-labelledby', 'soundLibraryTitle');
   const title = node('h2', 'Sound library'); title.id = 'soundLibraryTitle';
   const status = node('p', 'Import an instrument or prepare the original oscillator recipes.'); status.setAttribute('role', 'status'); status.setAttribute('aria-label', 'Sound library status');
-  const summary = node('p'), select = node('select'); select.setAttribute('aria-label', 'Saved instrument revision');
+  const summary = node('p'), modelInfo = node('p'), select = node('select'); select.setAttribute('aria-label', 'Saved instrument revision');
+  modelInfo.setAttribute('aria-label', 'Instrument source model');
   const credits = node('ul'), rights = node('input'); rights.type = 'checkbox';
   const reviewLabel = node('label'); reviewLabel.append(rights, document.createTextNode(' I reviewed redistribution permission for these exact listed dependencies.'));
   const controls = node('div'); controls.className = 'studio-sound-actions';
@@ -34,7 +36,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
   const setStatus = message => { if (!disposed) { status.textContent = message; try { onStatus(message); } catch { /* Status does not own content. */ } } };
   const check = operation => { operation.controller.signal.throwIfAborted(); if (disposed || current !== operation) throw failure('Sound library operation source changed.'); };
   const run = work => {
-    if (disposed || current) return Promise.resolve(null);
+    if (disposed || current || factoryFaults.size) return Promise.resolve(null);
     const operation = { controller: new AbortController(), sequence: ++sequence }; current = operation; render();
     operation.promise = Promise.resolve().then(() => work(operation)).catch(error => { setStatus(error?.message || 'Sound library operation failed.'); return null; })
       .finally(() => { if (current === operation) current = null; render(); }); return operation.promise;
@@ -61,26 +63,38 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     try { next = await reader.stageArchive(lease.blob, { engineDescriptors: (await getNativeInstrumentCatalog()).descriptors,
       signal: operation.controller.signal, isCurrent: () => !disposed }); return next; }
     catch (error) { next?.discard(); throw error; }
-    finally { lease.release(); result.artifact.discard(); await result.artifact.digest(); }
+    finally {
+      const receipt = createProcgenRetirementScope().retire([{ name: 'factory-export-reader', run: () => lease.release() },
+        { name: 'factory-export-artifact', run: () => result.artifact.discard() }, { name: 'factory-export-digest', run: () => result.artifact.digest() }]);
+      await receipt.completion;
+      if (receipt.outcome !== 'complete') { next?.discard(); throw Object.assign(failure('Factory archive source retirement is unresolved.'), { retirement: receipt }); }
+    }
   };
-  const factory = button('Prepare factory instruments', () => run(async operation => {
-    let parsed = null, compiled = null; setStatus('Compiling the original oscillator recipes…');
+  const prepareFactory = (source, name) => run(async operation => {
+    let parsed = null, compiled = null, next = null; setStatus('Compiling ' + name + ' recipes…');
     try {
       const catalog = await getNativeInstrumentCatalog(); check(operation);
       if (!catalog.descriptors.length) throw failure('Factory compilation needs an immutable browser build with pinned renderer artifacts.');
-      parsed = await jobs.compute({ kind: 'parse-json', ownerId: 'sound-library-source', ownerEpoch: operation.sequence, sourceRevision: FACTORY_SOURCE.href,
+      parsed = await jobs.compute({ kind: 'parse-json', ownerId: 'sound-library-source', ownerEpoch: operation.sequence, sourceRevision: source.href,
         inputBytes: 128 * 1024, maxBytes: 128 * 1024, estimatedPeakBytes: 32 * 1048576, deadlineMs: 15000,
         signal: operation.controller.signal, budgetAdapter: resourceBudget, isCurrent: () => current === operation && !disposed,
-        prepareInput: async () => new TextDecoder('utf-8', { fatal: true }).decode(await readBrowserBuildResponse(await window.fetch(FACTORY_SOURCE,
+        prepareInput: async () => new TextDecoder('utf-8', { fatal: true }).decode(await readBrowserBuildResponse(await window.fetch(source,
           { signal: operation.controller.signal, credentials: 'same-origin' }), 128 * 1024, operation.controller.signal)) });
-      compiled = await jobs.compute({ kind: 'compile-sound-content', ownerId: 'sound-library-compile', ownerEpoch: operation.sequence, sourceRevision: FACTORY_SOURCE.href,
+      compiled = await jobs.compute({ kind: 'compile-sound-content', ownerId: 'sound-library-compile', ownerEpoch: operation.sequence, sourceRevision: source.href,
         inputBytes: parsed.receipt.inputBytes, maxBytes: 4 * 1048576, estimatedPeakBytes: 64 * 1048576, deadlineMs: 30000,
         signal: operation.controller.signal, budgetAdapter: resourceBudget, isCurrent: () => current === operation && !disposed, prepareInput: () => parsed.value });
       check(operation); const prepared = await prepareSoundContentPack(compiled.value.pack, { engineDescriptors: catalog.descriptors, signal: operation.controller.signal });
       if (prepared.contentHash !== compiled.value.contentHash) throw failure('Compiled factory content changed before staging.');
-      const next = await stageDefinitions(prepared, operation); publish(next, operation); setStatus('Factory definitions staged. Audition a revision before installing or applying it.');
-    } finally { compiled?.release(); parsed?.release(); }
-  }));
+      next = await stageDefinitions(prepared, operation);
+    } finally {
+      const releaseJob = job => { if (!job) return; job.release(); if (!['released', 'canceled'].includes(job.retirementState().phase)) throw failure('Factory computation retirement is unresolved.'); };
+      const receipt = createProcgenRetirementScope().retire([{ name: 'compiled-factory', run: () => releaseJob(compiled) }, { name: 'parsed-factory', run: () => releaseJob(parsed) }]);
+      if (receipt.outcome !== 'complete') { factoryFaults.set(operation.sequence, { receipt, parsed, compiled }); next?.discard(); throw Object.assign(failure('Factory source retirement is unresolved.'), { retirement: receipt }); }
+    }
+    publish(next, operation); setStatus(name + ' definitions staged. Audition a revision before installing or applying it.');
+  });
+  const factory = button('Prepare factory instruments', () => prepareFactory(FACTORY_SOURCE, 'Factory'));
+  const fmFactory = button('Prepare FM Forge', () => prepareFactory(FM_FORGE_SOURCE, 'FM Forge'));
   const importInput = node('input'); importInput.type = 'file'; importInput.accept = '.lemmings-sound,application/vnd.lemmings.sound-pack'; importInput.setAttribute('aria-label', 'Import sound archive');
   on(importInput, 'change', () => { const file = importInput.files?.[0]; importInput.value = ''; if (!file) return;
     void run(async operation => { const catalog = await getNativeInstrumentCatalog(); check(operation); setStatus('Verifying local sound archive…');
@@ -88,7 +102,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
       publish(next, operation); setStatus('Archive staged. Inspect requirements and credits before audition or installation.'); });
   });
   const audition = button('Audition controls', () => {
-    if (current || !stage || !selection) return;
+    if (current || factoryFaults.size || !stage || !selection) return;
     const operation = { controller: new AbortController(), sequence: ++sequence }; current = operation; render();
     // Invoke before yielding so the explicit click reaches AudioContext creation/resume.
     operation.promise = installation.audition(stage, selection, { signal: operation.controller.signal }).then(() =>
@@ -170,21 +184,27 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
   const close = button('Close', () => dialog.close());
   on(dialog, 'close', () => { current?.controller.abort(failure('Sound library closed.')); installation.stop(); monitor?.mountHome(); });
   on(select, 'change', () => { selection = select.value; rights.checked = false; render(); }); on(rights, 'change', () => render());
-  dialog.append(title, status, importInput, summary, select, reviewLabel, credits, controls, archivedLabel, list); document.body.append(dialog);
+  dialog.append(title, status, importInput, summary, select, modelInfo, reviewLabel, credits, controls, archivedLabel, list); document.body.append(dialog);
   function render() {
-    if (disposed) return; const busy = !!current; let plan = null;
+    if (disposed) return; const busy = !!current || !!factoryFaults.size; let plan = null;
     try { plan = selectedPlan(); } catch { /* Expired stages expose their unavailable state through controls. */ }
     const metadata = stage?.metadata(); summary.textContent = metadata ? metadata.retained ? metadata.name + ' · ' + metadata.patches.length + ' saved revisions · ' + metadata.assetHashes.length + ' included assets' :
       'Stage expired. Import or prepare the instrument again.' : 'No instrument staged.';
     if (plan?.unavailableEngines.length) summary.textContent += ' Required renderer: ' + plan.unavailableEngines.map(entry => entry.state).join(', ') + '.';
     if (plan?.missingReferences.length || plan?.missingAssetBytes.length) summary.textContent += ' Missing material: ' + (plan.missingReferences.length + plan.missingAssetBytes.length) + ' references.';
     const ready = !!plan, auditioned = ready && !!installation.getAudition(stage, selection);
-    let renderable = false;
+    let renderable = false; modelInfo.textContent = '';
     if (ready) { const lease = stage.borrow(); try { const patch = lease.prepared.patches.find(entry => entry.identity === selection);
-      renderable = patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-sine'; } finally { lease.release(); } }
-    for (const element of [factory, importInput, select, rights, browse, more, archivedToggle]) element.disabled = busy;
+      renderable = patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-sine';
+      if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'native-fm') {
+        const parameters = Object.fromEntries(Object.entries(NATIVE_FM_PARAMETERS).map(([id, parameter]) => [id, parameter.default])); Object.assign(parameters, patch.definition.parameters);
+        modelInfo.textContent = 'Patch model: ' + (parameters.dualPair ? 'four' : 'two') + ' operator sources · carrier/modulator ' + parameters.carrierRatio + ':' + parameters.modulatorRatio +
+          ' · index ' + parameters.indexStart + ' → ' + parameters.indexEnd + ' over ' + parameters.indexSeconds + ' s · bend ±' + parameters.maxBendCents +
+          ' cents. Register limits are estimates; spectral/listening qualification is pending. Feedback and effect sends are unavailable.';
+      } } finally { lease.release(); } }
+    for (const element of [factory, fmFactory, importInput, select, rights, browse, more, archivedToggle]) element.disabled = busy;
     audition.disabled = busy || !ready || !!plan?.missingReferences.length || !!plan?.unavailableEngines.length || !!plan?.missingAssetBytes.length;
-    stop.disabled = !busy; install.disabled = busy || !auditioned; referenceInstall.disabled = busy || !ready;
+    stop.disabled = !current; install.disabled = busy || !auditioned; referenceInstall.disabled = busy || !ready;
     apply.disabled = busy || !installed || !auditioned; referenceExport.disabled = busy || !ready;
     portableExport.disabled = busy || !ready || plan.portability === 'reference-only' || !!plan.unavailableEngines.length;
     renderAudio.disabled = busy || !renderable || !!plan?.missingReferences.length || !!plan?.missingAssetBytes.length; renderRate.disabled = busy || !renderable;
@@ -194,14 +214,15 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
   }
   render();
   return Object.freeze({ open() { if (!disposed && !dialog.open) { monitor?.mount(dialog); render(); dialog.showModal(); } },
-    state: () => Object.freeze({ staged: stage?.metadata() || null, selection, busy: !!current, installed, artifact: artifact?.metadata() || null }),
+    state: () => Object.freeze({ staged: stage?.metadata() || null, selection, busy: !!current, factoryRetirementUnknown: factoryFaults.size, installed, artifact: artifact?.metadata() || null }),
     dispose() { if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; const pending = current?.promise; current?.controller.abort(failure('Sound library retired.'));
       return retirement.retire([{ name: 'audition', run: () => installation.dispose() }, { name: 'archive-owner', run: () => archiver.dispose() },
         { name: 'render-reference-owner', run: () => renderReferences.dispose() },
+        ...[...factoryFaults].map(([id, fault]) => ({ name: 'factory-retirement-' + id, run: () => fault.receipt })),
         { name: 'reader-owner', run: () => reader.dispose() }, { name: 'stage', run: () => stage?.discard() }, { name: 'artifact', run: () => artifact?.discard() },
         { name: 'artifact-digest', run: () => artifact?.digest() },
         { name: 'current-source', run: async () => { await pending;
-          if (reader.diagnostics().unknownRetirement || archiver.diagnostics().unknownRetirement || registry.diagnostics().unknownRetirement) throw failure('Sound library source ownership is still unresolved.'); } },
+          if (factoryFaults.size || reader.diagnostics().unknownRetirement || archiver.diagnostics().unknownRetirement || registry.diagnostics().unknownRetirement) throw failure('Sound library source ownership is still unresolved.'); } },
         { name: 'registry', run: () => registry.close() }, ...listeners.map((remove, index) => ({ name: 'listener-' + index, run: remove })),
         { name: 'surface', run: () => { monitor?.mountHome(); dialog.remove(); } }]); }
   });
