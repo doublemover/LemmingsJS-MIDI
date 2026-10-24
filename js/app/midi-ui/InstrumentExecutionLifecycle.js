@@ -31,7 +31,8 @@ export function createInstrumentExecutionLifecycle(backend, { isSettled, isVoice
   };
   const retireDisplays = entry => {
     entry.displayRetirement ||= createProcgenRetirementScope();
-    return entry.displayRetirement.retire([...(entry.displays || [])].map((release, index) => ({ name: 'observer-' + index, run: release })));
+    return entry.displayRetirement.retire([...(entry.displays || [])].map((release, index) => ({ name: 'observer-' + index, run: release }))
+      .concat([...(entry.commands || [])].map((release, index) => ({ name: 'command-observer-' + index, run: release }))));
   };
   const invalidate = () => {
     incarnation++;
@@ -100,6 +101,27 @@ export function createInstrumentExecutionLifecycle(backend, { isSettled, isVoice
       recovery: live.size >= capacity ? 'retire-executions-and-await-settlement' : null });
   };
   const api = Object.freeze({ ...backend, registerExecution, retireExecution,
+    ...(typeof backend.observeCommandOutcomes === 'function' ? { observeCommandOutcomes(listener, { execution } = {}) {
+      const resolved = resolve(execution);
+      if (resolved.error || !resolved.entry || typeof listener !== 'function') throw new TypeError('Command observation requires the active owned execution handle.');
+      const entry = resolved.entry, contextAtOpen = getContext(), generationAtOpen = getGeneration();
+      if ((entry.commands?.size || 0) >= 8) throw new RangeError('Execution command observation capacity reached.');
+      let active = true, attempted = false, releaseError = null;
+      const stop = backend.observeCommandOutcomes(value => {
+        if (active && entry.state === 'active' && getContext() === contextAtOpen && getGeneration() === generationAtOpen && value?.executionEpoch === entry.epoch)
+          listener(Object.freeze({ ...value, executionEpoch: execution.executionEpoch }));
+      });
+      if (typeof stop !== 'function') throw new TypeError('Command observation did not return a retirement function.');
+      const release = () => {
+        if (attempted) { if (releaseError) throw releaseError; return; } attempted = true; active = false;
+        try { const ack = stop(); if (ack === false || ack && typeof ack.then === 'function') {
+          if (ack?.then) Promise.resolve(ack).catch(() => {}); throw new Error('Command observation retirement is unresolved.');
+        } entry.commands.delete(release); } catch (error) { releaseError = error instanceof Error ? error : new Error('Command observation retirement failed.'); throw releaseError; }
+      };
+      (entry.commands ||= new Set()).add(release);
+      if (entry.state !== 'active' || getContext() !== contextAtOpen || getGeneration() !== generationAtOpen) { release(); throw new Error('Command execution changed during observation setup.'); }
+      return release;
+    } } : {}),
     ...(typeof backend.observeDisplaySamples === 'function' ? { observeDisplaySamples(listener, options = {}) {
       const { execution, identity, ...selection } = options, resolved = resolve(execution);
       if (resolved.error || !resolved.entry || typeof listener !== 'function' || identity?.executionEpoch !== execution.executionEpoch || identity?.generation !== execution.generation)

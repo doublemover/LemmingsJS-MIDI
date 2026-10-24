@@ -2056,6 +2056,11 @@ single foreground audition owner and shared PRELISTEN rail connect sound-library
 auditions, route changes, capture inclusion and actual source retirement. Physical
 device separation, multichannel identification, latency and combined workload
 qualification remain deferred; the UI does not claim private headphone routing.
+Native cue errors are reduced to fixed public classifications before reaching
+status or capture manifests. Worklet control auditions require scoped actual
+application receipts and clock progress; admission alone cannot authorize Apply.
+Native scheduling remains labeled as API evidence. Receipt/privacy fixtures are
+authored and await the deferred validation pass.
 
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail

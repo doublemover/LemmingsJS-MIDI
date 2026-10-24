@@ -1,7 +1,13 @@
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 import { releaseAudioResourceAfterRetirement } from './AudioResourceLeases.js';
 
-const failure = message => Object.assign(new Error(message), { name: 'CueRouteError' });
+const routeFailures = new WeakSet();
+const failure = message => { const error = Object.assign(new Error(message), { name: 'CueRouteError' }); routeFailures.add(error); return error; };
+const publicFailure = error => routeFailures.has(error) ? error : failure({
+  NotAllowedError: 'Cue output permission was declined. Choose the device again when ready.',
+  AbortError: 'Cue output selection was canceled.', NotFoundError: 'The selected cue output is no longer available.',
+  NotSupportedError: 'The selected cue output is unsupported by this browser.', SecurityError: 'Browser policy blocked the selected cue output.'
+}[error?.name] || 'Selected cue output failed. Choose the device again or use an explicit rehearsal route.');
 const summary = receipt => receipt ? Object.freeze({ state: receipt.state, outcome: receipt.outcome }) : null;
 let cueRouteSerial = 0;
 
@@ -109,9 +115,10 @@ export function createOwnedCueRouting({ context, masterInput, resources, createE
           cueIncludedInMasterCapture: mode === 'rehearsal', physicalSeparation: mode === 'separate-device' ? 'selected-device-unverified-acoustics' : 'not-claimed' });
       } catch (error) {
         const retired = retireRoute(candidate);
-        if (!disposed && generation === epoch) { message = error.message; if (current) current.invalid = true; }
+        const safe = publicFailure(error);
+        if (!disposed && generation === epoch) { message = safe.message; if (current) current.invalid = true; }
         if (retired?.outcome !== 'complete' && retired) uncertain.add(candidate);
-        throw error;
+        throw safe;
       } finally { pending.delete(operation); report(); }
     })(); return operation.promise;
   };

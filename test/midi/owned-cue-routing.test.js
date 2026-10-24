@@ -31,8 +31,9 @@ describe('owned nondefault prelisten routing', () => {
     expect(f.tracks.every(track => track.stopped)).to.equal(true); expect(f.budget.diagnostics().accountedBytes).to.equal(0);
   });
   it('rejects failed native playback without falling back to room output', async () => {
-    const f = fixture({ play: async () => { throw new Error('permission denied'); } });
-    try { await f.route.prepare({ mode: 'separate-device' }); expect.fail('native play must reject'); } catch (error) { expect(error.message).to.equal('permission denied'); }
+    const f = fixture({ play: async () => { throw new Error('permission denied for private-fixture-id'); } });
+    try { await f.route.prepare({ mode: 'separate-device' }); expect.fail('native play must reject'); } catch (error) { expect(error.message).to.include('Selected cue output failed'); expect(String(error)).not.to.include('private-fixture-id'); }
+    expect(JSON.stringify(f.route.state())).not.to.include('private-fixture-id');
     expect(f.route.state().muted).to.equal(true); expect(f.nodes.every(node => !node.connections.has(f.master))).to.equal(true);
     expect(f.tracks.every(track => track.stopped)).to.equal(true); await f.route.dispose().completion;
     expect(f.budget.diagnostics().accountedBytes).to.equal(0);

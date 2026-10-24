@@ -2,6 +2,29 @@ import { expect } from 'chai';
 import { createInstrumentExecutionLifecycle } from '../../js/app/midi-ui/InstrumentExecutionLifecycle.js';
 
 describe('opaque instrument execution ownership', () => {
+  it('scopes actual command receipts to the opaque execution and fences them before retiring observers', () => {
+    const context = {}, received = []; let receive, privateEpoch, releases = 0;
+    const raw = { observeCommandOutcomes(listener) { receive = listener; return () => { releases++; }; },
+      begin(_intent, _frame, epoch) { privateEpoch = epoch; return { status: 'accepted', sequence: 3 }; },
+      cancelGenerationWithReceipt: () => ({ status: 'accepted' }), renderDiagnostics: () => ({}), dispose() {} };
+    const api = createInstrumentExecutionLifecycle(raw, { getContext: () => context, getGeneration: () => 0, isSettled: () => true, forget() {} }).api;
+    const execution = api.registerExecution({ executionEpoch: 'public-commands', generation: 7 }).execution;
+    expect(() => api.observeCommandOutcomes(() => {}, { execution: { ...execution } })).to.throw('owned execution');
+    api.observeCommandOutcomes(value => received.push(value), { execution }); api.begin({ generation: 7 }, 100, execution);
+    receive({ executionEpoch: 'unrelated', stage: 'render-kernel-applied', sequence: 3, appliedFrame: 100 }); expect(received).to.have.length(0);
+    receive({ executionEpoch: privateEpoch, stage: 'render-kernel-applied', sequence: 3, appliedFrame: 101 });
+    expect(received[0]).to.include({ executionEpoch: 'public-commands', stage: 'render-kernel-applied', sequence: 3, appliedFrame: 101 });
+    api.retireExecution(execution); expect(releases).to.equal(1); receive({ executionEpoch: privateEpoch }); expect(received).to.have.length(1); api.dispose();
+  });
+  it('keeps failed command-observer retirement charged without retrying its callback', () => {
+    let releases = 0; const context = {};
+    const api = createInstrumentExecutionLifecycle({ observeCommandOutcomes: () => () => { releases++; throw null; },
+      cancelGenerationWithReceipt: () => ({ status: 'accepted' }), renderDiagnostics: () => ({}), dispose() {} },
+    { getContext: () => context, getGeneration: () => 0, isSettled: () => true, forget() {}, capacity: 1 }).api;
+    const execution = api.registerExecution({ executionEpoch: 'commands', generation: 1 }).execution;
+    const stop = api.observeCommandOutcomes(() => {}, { execution }); expect(stop).to.throw('retirement failed'); api.retireExecution(execution);
+    expect(releases).to.equal(1); expect(api.registerExecution({ executionEpoch: 'next', generation: 1 }).reason).to.equal('execution-identity-capacity'); api.dispose();
+  });
   it('translates display identities only through an active owned handle and retires observers with that handle', () => {
     const context = {}, requests = [], received = []; let receive, releases = 0;
     const raw = { observeDisplaySamples(listener, options) { receive = listener; requests.push(options); return () => { releases++; }; },

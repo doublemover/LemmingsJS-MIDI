@@ -36,6 +36,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   const retirement = createProcgenRetirementScope();
   const voices = new Map(), epochs = new Map(), leases = new Map(), cancelled = new Set(), inFlight = new Map(), traces = [];
   const pendingInitializations = new Set();
+  const commandObservers = new Set(); let commandObservationFailures = 0, commandObserverSequence = 0;
   const kernelQueued = new Set();
   const slots = new Array(MAX_VOICES).fill(null), slotTokens = new Uint32Array(MAX_VOICES);
   const counters = { queued: 0, applied: 0, late: 0, rejected: 0, faults: 0, ended: 0, producerCancelled: 0, kernelCancelled: 0, stopRequests: 0, stopQueued: 0 };
@@ -51,9 +52,12 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   };
   const frameNow = () => context && context === preview.getAudioContext() ? Math.ceil(context.currentTime * context.sampleRate) : null;
   const record = value => {
+    const outcome = Object.freeze(value);
     if (traceLimit) { if (traces.length === traceLimit) { traces.shift(); truncated++; } traces.push(Object.freeze({ owner,
       engineId: runtime.engineId, engineVersion: 1, acousticReceipt: false, ...value })); }
-    return Object.freeze(value);
+    const cutoff = commandObserverSequence;
+    for (const observer of commandObservers) if (observer.id <= cutoff) { try { observer.listener(outcome); } catch { commandObservationFailures++; } }
+    return outcome;
   };
   const reject = (reason, voiceId = null) => { counters.rejected++; return record({ status: 'rejected', reason, voiceId, stage: 'none' }); };
   const clearTimer = () => { if (pumpTimer != null) clearTimeout(pumpTimer); pumpTimer = null; };
@@ -436,6 +440,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     activeVoices: voices.size, queued: queue?.diagnostics() || null, inFlight: inFlight.size, counters: Object.freeze({ ...counters }),
     awaitingKernelAdmission: inFlight.size - kernelQueued.size,
     traceCount: traces.length, truncatedTraces: truncated, cancellationHistoryFull, display: display.diagnostics(),
+    commandObservers: commandObservers.size, commandObservationFailures,
     retirement: faultRetirement ? Object.freeze({ state: faultRetirement.state, outcome: faultRetirement.outcome }) : null,
     ...(includeTraces ? { traces: Object.freeze([...traces]) } : {}) });
   const dispose = () => {
@@ -447,6 +452,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       ...[...voices.values()].map(voice => ({ name: `voice-${voice.id}`, run: () => preview._destroyVoice(voice, 'backend-disposed') })),
       { name: 'native-runtime', run: () => retireNode(retiringNode, runtimeResourceLease) },
       { name: 'display', run: () => display.dispose() },
+      { name: 'command-observers', run: () => commandObservers.clear() },
       { name: 'identities', run: () => { slots.fill(null); patch = null; } }
     ]);
     if (receipt.outcome === 'complete') node = null;
@@ -454,6 +460,11 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     return receipt;
   };
   lifecycle = createInstrumentExecutionLifecycle({ capabilities, runtime, prepare, begin, update, end, renewExecutionLease, cancelGenerationWithReceipt,
+    observeCommandOutcomes(listener) {
+      if (disposed || typeof listener !== 'function' || commandObservers.size >= 8 || commandObserverSequence === Number.MAX_SAFE_INTEGER) throw new Error('Command observation is unavailable.');
+      const observer = { id: ++commandObserverSequence, listener }; commandObservers.add(observer); let active = true;
+      return () => { if (!active) return; active = false; commandObservers.delete(observer); };
+    },
     cancelGeneration: (generation, epoch) => cancelGenerationWithReceipt(generation, epoch).count,
     setDisplayContext: display.setContext, observeDisplaySamples: display.observe, getDisplaySamples: display.inspect,
     onOwnerStop, renderDiagnostics, dispose }, {

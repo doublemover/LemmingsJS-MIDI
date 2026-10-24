@@ -81,6 +81,16 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
         if (context?.state !== 'running' || !Number.isFinite(rate) || rate < 8000 || rate > 384000) throw failure('audio-unavailable', 'Audition audio clock is unavailable.');
         const registered = operation.backend.registerExecution({ executionEpoch: 'sound-audition:' + number, generation: number });
         if (registered.status !== 'accepted') throw failure('audition-admission', 'Audition execution could not be registered.'); operation.execution = registered.execution;
+        const requiresApplication = patch.definition.engineId === 'worklet-sine', applications = new Map(); let commandFailure = null;
+        if (requiresApplication) {
+          if (typeof operation.backend.observeCommandOutcomes !== 'function') throw failure('application-evidence-unavailable', 'This renderer cannot provide owned command-application receipts.');
+          operation.stopObservation = operation.backend.observeCommandOutcomes(value => {
+            if (['rejected', 'faulted', 'cancelled'].includes(value.status)) commandFailure = value;
+            const command = applications.get(value.sequence);
+            if (command && value.stage === 'render-kernel-applied' && value.status === 'accepted' && Number.isSafeInteger(value.appliedFrame))
+              command.appliedFrame = value.appliedFrame;
+          }, { execution: operation.execution });
+        }
         const base = Math.ceil(context.currentTime * rate) + Math.ceil(0.15 * rate), releaseSeconds = patch.definition.parameters.releaseSeconds ?? 0.04;
         const endFrame = base + Math.ceil((1 + releaseSeconds + 0.15) * rate), outcomes = [];
         const leaseReceipt = operation.backend.renewExecutionLease(number, operation.execution, endFrame + Math.ceil(rate));
@@ -93,22 +103,35 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
           else if (event.kind === 'update') outcome = operation.backend.update('control-fixture', event.expression, frame, operation.execution);
           else outcome = operation.backend.end('control-fixture', { seconds: releaseSeconds }, frame, operation.execution);
           outcomes.push(outcome); if (outcome?.status !== 'accepted') throw failure('audition-command-rejected', 'Audition command was rejected: ' + outcome?.reason);
+          if (requiresApplication) {
+            if (!Number.isSafeInteger(outcome.sequence) || applications.has(outcome.sequence)) throw failure('application-evidence-unavailable', 'Renderer command identity is unavailable or repeated.');
+            applications.set(outcome.sequence, { sequence: outcome.sequence, kind: event.kind, targetFrame: frame, appliedFrame: null });
+          }
         }
-        operation.auditionLease?.markPlaying();
-        while (Math.floor(context.currentTime * rate) < endFrame) {
-          check(); if (context !== audio.getAudioContext() || context.state !== 'running') throw failure('audio-interrupted', 'Audition audio clock was interrupted.'); await delay(30, signal);
+        let markedPlaying = false;
+        while (true) {
+          check(); if (context !== audio.getAudioContext() || context.state !== 'running') throw failure('audio-interrupted', 'Audition audio clock was interrupted.');
+          if (commandFailure) throw failure('audition-command-not-applied', 'The renderer rejected or canceled an audition command: ' + commandFailure.reason);
+          const now = Math.floor(context.currentTime * rate), applied = !requiresApplication || [...applications.values()].every(value => value.appliedFrame != null);
+          const onsetApplied = !requiresApplication || [...applications.values()].some(value => value.kind === 'begin' && value.appliedFrame != null);
+          if (!markedPlaying && now >= base && onsetApplied) { operation.auditionLease?.markPlaying(); markedPlaying = true; }
+          if (now >= endFrame && applied) break;
+          if (now > endFrame + 2 * rate) throw failure('application-evidence-unavailable', 'Audition finished its clock range without complete command-application evidence.');
+          await delay(30, signal);
         }
         check(); const fixtureHash = await hashData(fixture); check();
         receipt = freezeData({ schema: 'lemmings-isolated-sound-audition/v1', contentHash: lease.metadata.contentHash, patchIdentity,
           definitionHash: patch.definitionHash, engineRequirement: patch.engineRequirement, fixtureHash, fixtureId: fixture.id,
           sampleRate: rate, targetFrame: base, endFrame, commandsAccepted: outcomes.length, source: fixture.source,
-          status: 'control-fixture-completed', evidenceClass: 'backend-api-command-admission-and-running-clock', physicalTakeEvidence: false,
+          commandsApplied: requiresApplication ? applications.size : null, applications: [...applications.values()],
+          status: 'control-fixture-completed', evidenceClass: requiresApplication ? 'render-kernel-command-application-and-running-clock' : 'backend-api-command-admission-and-running-clock', physicalTakeEvidence: false,
           renderQualification: 'not-independently-qualified', acousticReceipt: false, monitorRoute: audio.getMonitorRouteState?.() || null,
           auditionLease: operation.auditionLease?.snapshot() || null });
       } catch (failure) { error = failure; operation.controller.abort(failure); }
       finally {
         clearTimeout(deadline); externalSignal?.removeEventListener('abort', cancel); lease.signal.removeEventListener('abort', cancel); signal.removeEventListener('abort', stop);
         operation.retirement = createProcgenRetirementScope().retire([
+          { name: 'command-observation', run: () => operation.stopObservation?.() },
           { name: 'audition-stop', run: stop },
           { name: 'execution', run: () => { if (operation.execution) return operation.backend.retireExecution(operation.execution); } },
           { name: 'backend', run: () => operation.backend?.dispose() }, { name: 'audio-session', run: () => operation.session?.dispose() }
