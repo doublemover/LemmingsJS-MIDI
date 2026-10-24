@@ -1,7 +1,7 @@
 import { planCausalSourceRender } from './CausalOwnedRender.js';
 import { renderNativeOfflineGraph, NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineDriver.js';
 
-export async function prepareCausalNativeRenderInput(input, { resources, signal, onProgress = () => {}, OfflineAudioContext,
+export async function prepareCausalNativeRenderInput(input, { resources, signal, onProgress = () => {}, OfflineAudioContext, resourceBudget, admission,
   maxWorkingBytes = 512 * 1048576 } = {}) {
   if (!NATIVE_OFFLINE_SOURCE_IDS.includes(input?.descriptor?.engineId)) throw new Error('Choose an available native causal render source.');
   signal?.throwIfAborted();
@@ -21,7 +21,7 @@ export async function prepareCausalNativeRenderInput(input, { resources, signal,
       releaseFrame: voice.releaseAt ?? plan.outputEnd + 1, releaseSeconds: voice.parameters.releaseSeconds });
   }
   const { sampleRate, outputFrames, outputEnd, firstFrame, endFrame, stemLaneIds } = plan;
-  const native = await renderNativeOfflineGraph({ patch: plan.patch, events, frames: outputEnd, sampleRate, stemLaneIds }, { resources, signal, onProgress, OfflineAudioContext });
+  const native = await renderNativeOfflineGraph({ patch: plan.patch, events, frames: outputEnd, sampleRate, stemLaneIds }, { resources, signal, onProgress, OfflineAudioContext, resourceBudget, admission });
   try {
     const manifest = { schema: 'lemmings-causal-audio-render/v1', mode: 'intent-render', operation: 'sound-only-revoice', takeId: plan.source.takeId,
       takeRevision: plan.source.takeRevision, sourceCanonicalHash: plan.source.sourceCanonicalHash, sourceVersions: plan.source.sourceVersions, intentHash: plan.intentHash,

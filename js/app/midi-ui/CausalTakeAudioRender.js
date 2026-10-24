@@ -108,7 +108,7 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
         phase = native ? 'rendering-native' : 'rendering'; report();
         if (native) {
           operation.native = await prepareCausalNativeRenderInput({ ...input, descriptor, applicationBuildId: catalog.executionIdentity.buildId },
-            { resources: materialResources, signal: controller.signal, maxWorkingBytes: 512 * 1048576 - sourceFootprint * 6,
+            { resources: materialResources, resourceBudget, signal: controller.signal, maxWorkingBytes: 512 * 1048576 - sourceFootprint * 6,
               onProgress: value => { if (!disposed && active === operation) { progress = Object.freeze(value); report(); } } }); check();
           estimatedPeakBytes = operation.native.estimatedPeakBytes; input = operation.native.input;
           phase = 'encoding-native'; report();

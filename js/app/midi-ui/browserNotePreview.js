@@ -1,3 +1,4 @@
+import { scheduleNativeHeldEnvelope } from './NativeAdsrEnvelope.js';
 import { workloadVoiceCount, inspectVoiceInterval, inspectVoiceExtensions } from './AudioVoiceAdmission.js';
 import { nativeVoiceFinished, nativeRenderVoiceCount, releaseNativeVoice, destroyNativeVoice } from './NativeVoiceLifetime.js';
 import { selectLocalAudioVoice } from '../../midi/scheduler/LocalAudioVoiceBudget.js';
@@ -830,14 +831,7 @@ class BrowserNotePreview {
     voice.peak = voice.velocity / 127 * profile.gain;
     voice.attack = profile.attack; voice.decay = profile.decay; voice.sustain = profile.sustain; voice.release = profile.release;
     voice.releaseAt = voice.end - voice.release;
-    const param = voice.gain.gain;
-    param.cancelScheduledValues(voice.start);
-    param.setValueAtTime(source.resumed === true ? voice.peak * voice.sustain : 0, voice.start);
-    if (source.resumed !== true) param.linearRampToValueAtTime(voice.peak, voice.start + voice.attack);
-    const sustainAt = Math.min(voice.end - voice.release, voice.start + voice.attack + voice.decay);
-    if (voice.decay > 0) param.linearRampToValueAtTime(voice.peak * voice.sustain, sustainAt);
-    param.setValueAtTime(voice.peak * voice.sustain, voice.end - voice.release);
-    param.linearRampToValueAtTime(0, voice.end);
+    scheduleNativeHeldEnvelope(voice);
     this._observe('synth-revised', { ...voice.captureMeta, type: 'noteOn', voiceId: voice.id,
       channel: voice.number, note: voice.note, program, waveform: profile.waveform, audioTime: voice.start });
   }
@@ -942,12 +936,7 @@ class BrowserNotePreview {
         if (profile.endFrequency) oscillator.frequency.linearRampToValueAtTime(profile.endFrequency, start + profile.decay);
       }
       this._scheduleBend(channel, voice);
-      gain.gain.setValueAtTime(resumed ? voice.peak * voice.sustain : 0, start);
-      if (!resumed) gain.gain.linearRampToValueAtTime(voice.peak, start + voice.attack);
-      const sustainAt = Math.min(voice.end - voice.release, start + voice.attack + voice.decay);
-      if (voice.decay > 0) gain.gain.linearRampToValueAtTime(voice.peak * voice.sustain, sustainAt);
-      gain.gain.setValueAtTime(voice.peak * voice.sustain, voice.end - voice.release);
-      gain.gain.linearRampToValueAtTime(0, voice.end);
+      scheduleNativeHeldEnvelope(voice);
       oscillator.connect(gain);
       if (Number.isFinite(options.pan) && context.createStereoPanner) {
         voice.pan = context.createStereoPanner();

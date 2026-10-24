@@ -46,7 +46,7 @@ export function createSoundContentRenderReferences({ resourceBudget, jobs = back
           const catalog = await getNativeInstrumentCatalog(), descriptor = catalog.descriptors.find(entry => entry.engineId === patch.definition.engineId); check();
           if (catalog.state !== 'bound-application-engines' || !descriptor || !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => descriptor[key] === patch.engineRequirement[key])) throw failure('Native offline source differs from this immutable application.');
           operation.native = await prepareNativeControlRenderInput({ definition: patch.archivedDefinition, descriptor, sampleRate, source: input.source,
-            applicationBuildId: catalog.executionIdentity.buildId }, { resources, signal: controller.signal, onProgress }); check();
+            applicationBuildId: catalog.executionIdentity.buildId }, { resources, resourceBudget, signal: controller.signal, onProgress }); check();
         }
         if (operation.material) input.pcm = operation.material.payload;
         operation.job = await jobs.compute({ kind: native ? 'encode-native-render' : 'render-sound-controls', ownerId: 'sound-render-reference', ownerEpoch: ++serial,

@@ -1,6 +1,6 @@
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 import { releaseAudioResourceAfterRetirement } from './AudioResourceLeases.js';
-const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+import { truncateNativeEnvelope } from './NativeAdsrEnvelope.js';
 export function nativeVoiceFinished(voice) {
   const now = this._context?.currentTime ?? 0;
   if (voice.isFinished) return voice.isFinished(now);
@@ -17,14 +17,8 @@ export function releaseNativeVoice(voice, time, force = false, reason = 'note-of
   const releaseAt = Math.max(voice.start, Math.min(time, voice.end - voice.release));
   const end = Math.min(voice.end, releaseAt + voice.release);
   const param = voice.gain.gain;
-  param.cancelScheduledValues(releaseAt);
-  const elapsed = releaseAt - voice.start;
-  const level = elapsed < voice.attack ? clamp(elapsed / voice.attack, 0, 1)
-    : voice.decay > 0 && elapsed < voice.attack + voice.decay
-      ? 1 - (1 - voice.sustain) * (elapsed - voice.attack) / voice.decay : voice.sustain;
-  const attackLevel = voice.peak * level;
+  const attackLevel = truncateNativeEnvelope(voice, releaseAt);
   voice.releaseLevel = attackLevel;
-  param.setValueAtTime(attackLevel, releaseAt);
   param.linearRampToValueAtTime(0, end);
   voice.oscillator.stop(end);
   voice.end = end;

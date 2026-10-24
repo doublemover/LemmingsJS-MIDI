@@ -2405,6 +2405,18 @@ Native sample material, shared effect returns and arbitrary held-state restorati
 remain implementation work. All runtime qualification remains deferred; new
 encoder and native causal-preflight fixtures have been authored but not executed.
 
+Native offline rendering now acquires the shared background execution slot
+before creating its context or PCM. Its existing audio leases account for PCM
+and graph storage; the queue reservation covers dispatch metadata. Cancellation
+and deadlines retain the slot through actual native producer drainage, including
+confirmation after an interim unknown cancellation. The latest issue refresh
+adds #1256 (289 inventoried issues). Its shared native ADSR repair reconstructs
+truncated ramp endpoints, including zero attack/decay and earlier repeated
+releases. Initial envelopes and lease renewal use the same bounded linear
+scheduler, preserving attack/decay even when a lease tail begins inside them.
+New API-double ownership, analytical envelope and real ConstantSource browser
+fixtures are authored for the later consolidated pass, not executed evidence.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical

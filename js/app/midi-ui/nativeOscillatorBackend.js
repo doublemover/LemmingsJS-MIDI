@@ -1,3 +1,4 @@
+import { scheduleNativeHeldEnvelope } from './NativeAdsrEnvelope.js';
 export { nativeVoiceFinished, nativeRenderVoiceCount, releaseNativeVoice, destroyNativeVoice } from './NativeVoiceLifetime.js';
 export { workloadVoiceCount, inspectVoiceInterval, inspectVoiceExtensions } from './AudioVoiceAdmission.js';
 import { createSmoothedAudioParameter } from './SmoothedAudioParameter.js';
@@ -125,14 +126,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
         voice.ownedGate && !voice.released) {
       if (voice.end <= now) { preview._destroyVoice(voice, 'owner-lease-expired'); continue; }
       voice.end = time; voice.releaseAt = time - voice.release;
-      voice.gain.gain.cancelScheduledValues(now);
-      const elapsed = Math.max(0, now - voice.start), level = elapsed < voice.attack ? elapsed / voice.attack :
-        voice.decay > 0 && elapsed < voice.attack + voice.decay ? 1 - (1 - voice.sustain) * (elapsed - voice.attack) / voice.decay : voice.sustain;
-      voice.gain.gain.setValueAtTime(voice.peak * level, Math.max(now, voice.start));
-      if (now < voice.start + voice.attack) voice.gain.gain.linearRampToValueAtTime(voice.peak, voice.start + voice.attack);
-      if (now < voice.start + voice.attack + voice.decay) voice.gain.gain.linearRampToValueAtTime(voice.peak * voice.sustain, voice.start + voice.attack + voice.decay);
-      voice.gain.gain.setValueAtTime(voice.peak * voice.sustain, voice.releaseAt);
-      voice.gain.gain.linearRampToValueAtTime(0, voice.end); voice.oscillator.stop(voice.end);
+      scheduleNativeHeldEnvelope(voice, Math.max(now, voice.start)); voice.oscillator.stop(voice.end);
     }
     return Object.freeze({ status: 'accepted', generation, executionEpoch, validUntilFrame,
       policy: 'authoritative-execution-liveness', stage: 'scheduled' });
@@ -218,11 +212,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
       oscillator.frequency.setValueAtTime(frequency, start);
       voice.pitchAutomation = createSmoothedAudioParameter({ param: oscillator.detune, initialValue: offset, startTime: start, smoothingSeconds, maxEvents: maxControlEvents });
       voice.pressureAutomation = createSmoothedAudioParameter({ param: pressureGain.gain, initialValue: pressure, startTime: start, smoothingSeconds, maxEvents: maxControlEvents });
-      gain.gain.setValueAtTime(0, start);
-      gain.gain.linearRampToValueAtTime(voice.peak, start + voice.attack);
-      gain.gain.linearRampToValueAtTime(voice.peak * voice.sustain, start + voice.attack + voice.decay);
-      gain.gain.setValueAtTime(voice.peak * voice.sustain, end - release);
-      gain.gain.linearRampToValueAtTime(0, end);
+      scheduleNativeHeldEnvelope(voice);
       oscillator.connect(gain);
       gain.connect(pressureGain);
       if (pan) {
