@@ -1,6 +1,6 @@
 import { NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineDriver.js';
 import { getOwnedSourceProfile, OWNED_SOURCE_IDS } from './OwnedSourceProfiles.js';
-import { getProceduralBiomeMaterial } from '../../midi/content/ProceduralBiomeMaterial.js';
+import { getProceduralSoundMaterial } from '../../midi/content/ProceduralSoundMaterial.js';
 import { prepareSoundContentPack, planSoundContentSelection } from '../../midi/content/SoundContentPack.js';
 import { createSoundContentArchiver } from './SoundContentArchive.js';
 import { createSoundContentReader } from './SoundContentReader.js';
@@ -19,6 +19,7 @@ const MATERIAL_SOURCE = new URL('../../../content/sounds/struck-materials.json',
 const PLUCK_SOURCE = new URL('../../../content/sounds/plucked-garden.json', import.meta.url);
 const CHOIR_SOURCE = new URL('../../../content/sounds/artificial-choir.json', import.meta.url);
 const BIOME_SOURCE = new URL('../../../content/sounds/granular-biomes.json', import.meta.url);
+const TACTILE_SOURCE = new URL('../../../content/sounds/tactile-contacts.json', import.meta.url);
 const SPECTRUM_SOURCE = new URL('../../../content/sounds/liquid-drawbars.json', import.meta.url);
 const failure = message => Object.assign(new Error(message), { name: 'SoundContentError' });
 
@@ -108,6 +109,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
   const materialFactory = button('Prepare struck materials', () => prepareFactory(MATERIAL_SOURCE, 'Struck materials'));
   const pluckFactory = button('Prepare plucked garden', () => prepareFactory(PLUCK_SOURCE, 'Plucked garden'));
   const biomeFactory = button('Prepare synthetic granular biomes', () => prepareFactory(BIOME_SOURCE, 'Synthetic granular biomes'));
+  const tactileFactory = button('Prepare original tactile contacts', () => prepareFactory(TACTILE_SOURCE, 'Original tactile contacts'));
   const choirFactory = button('Prepare artificial choir', () => prepareFactory(CHOIR_SOURCE, 'Artificial choir'));
   const spectrumFactory = button('Prepare liquid tables / drawbars', () => prepareFactory(SPECTRUM_SOURCE, 'Liquid tables and additive drawbars'));
   const importInput = node('input'); importInput.type = 'file'; importInput.accept = '.lemmings-sound,application/vnd.lemmings.sound-pack'; importInput.setAttribute('aria-label', 'Import sound archive');
@@ -151,7 +153,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     } };
     try {
       let blob = source.assetBlob(file.sha256) || (encoded = await registry.loadAsset(file.sha256, file.bytes, { signal }))?.blob;
-      if (!blob && getProceduralBiomeMaterial(file)) { encoded = await audio.getSoundMaterialProvider().borrowEncoded(file, { signal }); blob = encoded.blob; }
+      if (!blob && getProceduralSoundMaterial(file)) { encoded = await audio.getSoundMaterialProvider().borrowEncoded(file, { signal }); blob = encoded.blob; }
       signal.throwIfAborted(); if (!blob) throw failure('Required material is unavailable locally: ' + file.path);
       assetReader = blob.stream().getReader();
       const body = new globalThis.ReadableStream({
@@ -223,7 +225,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     let renderable = false, localProceduralMaterial = false, sourceComparable = false, sampleMap = null, sampleMapSource = null; modelInfo.textContent = '';
     if (ready) { const lease = stage.borrow(); try { const patch = lease.prepared.patches.find(entry => entry.identity === selection);
       sourceComparable = patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-granular' && patch.definition.sampleRefs.length === 1;
-      localProceduralMaterial = !!patch?.definition?.sampleRefs?.length && patch.definition.sampleRefs.every(ref => lease.prepared.pack.files.some(file => file.sha256 === ref.sha256 && getProceduralBiomeMaterial(file)));
+      localProceduralMaterial = !!patch?.definition?.sampleRefs?.length && patch.definition.sampleRefs.every(ref => lease.prepared.pack.files.some(file => file.sha256 === ref.sha256 && getProceduralSoundMaterial(file)));
       renderable = patch?.state === 'definition-admitted' && (NATIVE_OFFLINE_SOURCE_IDS.includes(patch.definition.engineId) || OWNED_SOURCE_IDS.includes(patch.definition.engineId) && getOwnedSourceProfile(patch.definition.engineId).controlReferenceRender);
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'native-sample') {
         const map = patch.definition.sampleMap, chosen = installation.getAudition(stage, selection)?.sourceSelections?.[0]?.selection;
@@ -264,7 +266,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
           ' · FLOW ' + parameters.scan01 + ' · BODY ' + parameters.body01 + ' · EDGE ' + parameters.edge01 +
           '. Live profile: eight slots, 20–2000 Hz onset, ±200 cent bends, 44.1/48/96 kHz; shared source quotas also apply. Completed world height offsets FLOW over the declared 0–512 pixel domain. Dry source only: shared SPACE sends, resonance/drive, PWM and exact restore are unavailable. Fixed control WAVs and causal revoice use this same kernel. Spectral/alias/listening qualification is pending.';
       } } finally { lease.release(); } }
-    for (const element of [factory, fmFactory, materialFactory, pluckFactory, choirFactory, spectrumFactory, biomeFactory, importInput, select, rights, browse, more, archivedToggle]) element.disabled = busy;
+    for (const element of [factory, fmFactory, materialFactory, pluckFactory, choirFactory, spectrumFactory, biomeFactory, tactileFactory, importInput, select, rights, browse, more, archivedToggle]) element.disabled = busy;
     if (gestureSource !== sampleMapSource) {
       gestureSource = sampleMapSource; gesture.replaceChildren();
       for (const entry of sampleMap?.articulations || []) { const option = node('option', entry.name); option.value = entry.id; gesture.append(option); }

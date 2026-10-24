@@ -8,13 +8,13 @@ import { compileSoundContent } from '../../midi/content/SoundContentCompiler.js'
 import { getNativeInstrumentCatalog } from '../midi-ui/NativeInstrumentSchema.js';
 import { inspectCausalArchiveEntry, validateCausalChunk } from '../procgen/workstation/CausalArchiveEntry.js';
 import { renderOwnedSourceControls } from '../midi-ui/OwnedSourceControlRender.js';
-import { getProceduralBiomeById } from '../../midi/content/ProceduralBiomeMaterial.js';
+import { getProceduralSoundById } from '../../midi/content/ProceduralSoundMaterial.js';
 import { inspectWaveContainer } from '../midi-ui/AudioAssetRef.js';
 import { getOwnedSourceBankIdentity } from '../midi-ui/OwnedSourceBank.js';
 import { renderCausalOwnedTake } from '../midi-ui/CausalOwnedRender.js';
 
 export const BACKGROUND_JOB_PROTOCOL = 1;
-export const BACKGROUND_JOB_KINDS = Object.freeze(['encode-native-render', 'decode-wave-source', 'generate-procedural-biome', 'inspect-wave-asset', 'prepare-owned-source-bank', 'parse-json', 'verify-causal-source', 'snapshot-canonical-data', 'inspect-causal-archive-entry', 'render-sound-controls', 'render-causal-sine-take', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'asset-hash', 'asset-decode']);
+export const BACKGROUND_JOB_KINDS = Object.freeze(['encode-native-render', 'decode-wave-source', 'generate-procedural-sound', 'inspect-wave-asset', 'prepare-owned-source-bank', 'parse-json', 'verify-causal-source', 'snapshot-canonical-data', 'inspect-causal-archive-entry', 'render-sound-controls', 'render-causal-sine-take', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'asset-hash', 'asset-decode']);
 const MAX_BYTES = 64 * 1048576, MAX_NODES = 4000000;
 const problem = (code, message) => Object.assign(new Error(message), { code, name: 'BackgroundJobError' });
 const shared = value => typeof globalThis.SharedArrayBuffer === 'function' && (value instanceof globalThis.SharedArrayBuffer || value?.buffer instanceof globalThis.SharedArrayBuffer);
@@ -121,12 +121,12 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
       expectedInputHash != null && !/^[a-f0-9]{64}$/.test(expectedInputHash)) throw problem('invalid-contract', 'Unsupported background job kernel contract.');
   guard(signal, current);
   if (kind === 'decode-wave-source') return decodeWaveSource(input, { signal, current, maxBytes, estimatedPeakBytes, crypto, yieldControl });
-  if (kind === 'generate-procedural-biome') {
-    if (!input || Object.keys(input).length !== 1 || typeof input.id !== 'string') throw problem('invalid-contract', 'Invalid procedural biome source request.');
-    const expected = getProceduralBiomeById(input.id);
+  if (kind === 'generate-procedural-sound') {
+    if (!input || Object.keys(input).length !== 1 || typeof input.id !== 'string') throw problem('invalid-contract', 'Invalid original procedural sound request.');
+    const expected = getProceduralSoundById(input.id);
     if (estimatedPeakBytes < 16 * 1048576 || maxBytes < expected.bytes) throw problem('memory-capacity', 'Procedural source needs its worker startup and copy reservation.');
-    const { generateProceduralBiomeSource } = await import('../../midi/content/ProceduralBiomeSources.js'); guard(signal, current);
-    const bytes = generateProceduralBiomeSource(input.id), format = inspectWaveContainer(bytes);
+    const { generateProceduralSoundSource } = await import('../../midi/content/ProceduralSoundSources.js'); guard(signal, current);
+    const bytes = generateProceduralSoundSource(expected), format = inspectWaveContainer(bytes);
     const digest = await crypto.subtle.digest('SHA-256', bytes); guard(signal, current);
     const hash = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
     if (hash !== expected.sha256 || bytes.byteLength !== expected.bytes || format.frames !== expected.frames || format.channels !== expected.channels || format.sampleRate !== expected.sampleRate)

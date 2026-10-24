@@ -1,4 +1,4 @@
-import { getProceduralBiomeMaterial } from '../../midi/content/ProceduralBiomeMaterial.js';
+import { getProceduralSoundMaterial } from '../../midi/content/ProceduralSoundMaterial.js';
 import { createAudioAssetLoader } from './AudioAssetLoader.js';
 import { validateAudioAssetRef, DECODER_VERSION } from './AudioAssetRef.js';
 import { createSoundContentRegistry } from './SoundContentRegistry.js';
@@ -19,8 +19,8 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
   const formats = new Map(), sources = new Map(), pending = new Set(), loans = new Set(), encodedLoans = new Set(), faults = new Set();
   const retirement = createProcgenRetirementScope(); let disposed = false, sequence = 0;
   const generateSource = async (file, signal) => {
-    const original = getProceduralBiomeMaterial(file); if (!original) return null;
-    const workspace = resources.reserve({ kind: 'procedural-biome-material', estimateBytes: 16 * 1048576, consumerOwned: true });
+    const original = getProceduralSoundMaterial(file); if (!original) return null;
+    const workspace = resources.reserve({ kind: 'procedural-sound-material', estimateBytes: 16 * 1048576, consumerOwned: true });
     let result = null, receipt = null, storage = null, blob = null;
     const release = () => {
       receipt ||= createProcgenRetirementScope().retire([{ name: 'original-source-worker', run: () => {
@@ -34,7 +34,7 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
       return receipt;
     };
     try {
-      result = await jobs.compute({ kind: 'generate-procedural-biome', ownerId: 'sound-original:' + original.id, ownerEpoch: 0,
+      result = await jobs.compute({ kind: 'generate-procedural-sound', ownerId: 'sound-original:' + original.id, ownerEpoch: 0,
         sourceRevision: original.sha256, inputBytes: 128, maxBytes: 1048576, estimatedPeakBytes: 16 * 1048576, signal,
         isCurrent: () => !disposed, deadlineMs: 60000, prepareInput: () => ({ id: original.id }) });
       signal?.throwIfAborted();
@@ -70,7 +70,7 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
       loan = stage ? borrowSoundContentStage(stage) : null; blob = loan?.assetBlob(file.sha256);
       if (!blob) {
         loan?.release(); loan = null;
-        loan = getProceduralBiomeMaterial(file) ? await generateSource(file, signal) : await registry.loadAsset(file.sha256, file.bytes, { signal }); blob = loan?.blob;
+        loan = getProceduralSoundMaterial(file) ? await generateSource(file, signal) : await registry.loadAsset(file.sha256, file.bytes, { signal }); blob = loan?.blob;
       }
       if (!blob || blob.size !== file.bytes) throw failure('asset-missing', 'Exact local sound material is unavailable: ' + file.path);
       return reader;
@@ -85,7 +85,7 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
       finally { loan.release(); }
     } });
   const inspect = async (file, stage, operation) => {
-    const original = getProceduralBiomeMaterial(file);
+    const original = getProceduralSoundMaterial(file);
     if (original) return { bytes: original.bytes, channels: original.channels, sourceSampleRate: original.sampleRate, frames: original.frames };
     let format = formats.get(file.sha256);
     if (format) {

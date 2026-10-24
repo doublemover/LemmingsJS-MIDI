@@ -489,3 +489,30 @@ a new realization's choke reject explicitly. The render manifest retains at
 most 64 actual selected-zone API receipts with selected/retained/omitted counts;
 this summary is separate from immutable intent history and rendered PCM. Exact
 native playhead snapshots and cross-browser bit identity are unavailable.
+
+### Original tactile contacts
+
+`content/sounds/tactile-contacts.json` authors one C4 root, two discrete intensity
+layers and two semantic-onset alternates for open/muted contacts. Eight original
+integer-DDS/noise sources each contain independently faded center, edge and brush
+regions. The map exposes six gesture labels and 24 zones; the neutral fallback
+is open center. All zones declare a maximum plus/minus six-semitone varispeed
+range; out-of-range requests reject. A 0.5 velocity selects the firm layer.
+
+Choose **Prepare original tactile contacts** in the existing sound library, then
+choose the authored audition gesture. Physical rules retain the corresponding
+`sampleGesture` and `sampleKitId` tags. Same-kit body chokes share exact map and
+execution ownership; other kit instances survive independently. No automatic
+physical gesture classification is inferred from those tags.
+
+The checked-in authoring script generates identities and recipes, not binary
+recordings. The admitted material worker regenerates the fixed source on demand
+and verifies its SHA-256, complete WAV layout and source bounds. The publisher
+uses the same generator. Encoded inventory totals 384,352 bytes. Eight mono
+sources hold 768,000 decoded float bytes at their 32 kHz source rate, or 2,304,000
+at 96 kHz native decode, before cache metadata and native graph estimates.
+These are declared storage counts, not measured browser capacity. Sixteen frames
+of pre-silence and 256-frame region fades remain part of the authored source.
+Gain trims are authored; pitch/transient error, resampling aliases, combined
+resource behavior and listening remain unqualified. The three-root extension,
+loop crossfades and release-trigger sample content await their specific work.

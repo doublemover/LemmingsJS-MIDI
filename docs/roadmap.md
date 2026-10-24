@@ -2480,6 +2480,20 @@ Original tactile proof material and advanced sample traversal still remain;
 all runtime, PCM, resource and browser fixtures stay unexecuted until the final
 consolidated validation pass.
 
+The original tactile proof pack now authors eight procedural sources (one C4
+root, two intensity layers, two alternates and open/muted contacts). Three actual
+source regions per file expose center/edge/brush through six gesture labels and
+24 zones, with exact half-open velocity layers and a plus/minus six-semitone
+varispeed range. Its existing library preparation/audition/render path shares the
+same source provider and admitted material generation worker as synthetic biomes.
+Generation dispatch is now explicit by pinned original generator revision; native
+or pure-source decoding uses the shared asset cache. The publisher materializes
+the same fixed hashes without checked-in binaries. Metadata reports authored
+trims and unmeasured normalization; no recording or acoustic evidence is invented.
+Source identities/recipes were authored; compiler, unit, browser, PCM, pitch,
+listening and memory qualification stay deferred. Three-root expansion, advanced
+loops, source traversal and exact DSP-state restoration remain work.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical
