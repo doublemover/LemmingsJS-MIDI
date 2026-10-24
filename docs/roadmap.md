@@ -2655,6 +2655,17 @@ readmission, malformed-count/display, legacy-read and existing display-versus-
 render-identity fixtures are authored. CLI/background compilation share this
 validator; build/publication and runtime acceptance remain deferred.
 
+The bounded creative delay now has a complete kernel-owned state transfer:
+immutable rate/configuration identity, independent stereo ring/filter storage,
+write/frame cursors, glide/jump frontier, feedback/wet/tone smoothing, fault and
+Panic flags. The shared little-endian effect-state helper validates CRC, layout
+and every domain before mutating DSP. Transfer buffers are exact/exclusive and
+retain their full cost; no checkpoint work or allocation enters sample().
+Forward-continuation, corruption/foreign-state, alias refusal and Panic fixtures
+are authored at all supported rates/modes. Host-wide capture/queue cuts and
+full-graph offline restoration remain work; these kernel APIs are unqualified
+and no runtime/DSP tests ran.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical

@@ -8,6 +8,27 @@ const graph = () => ({ schema: 'lemmings-effect-graph/v1', id: 'fixture.echo', r
 const kernel = (rate, options = {}) => new BoundedDelayKernel({ sampleRate: rate, maxDelayFrames: 128, delayFrames: 10.5, feedback: 0, wet: 1, ...options });
 
 describe('bounded creative delay and graph contracts (qualification deferred)', () => {
+  it('restores delay/filter/transition/tone histories with exact forward continuation at each supported rate', () => {
+    for (const rate of [44100, 48000, 96000]) for (const mode of ['glide', 'jump']) {
+      const options = { mode, delayFrames: 20.25, feedback: 0.4, wet: 0.7, transitionFrames: 32 }, forward = kernel(rate, options), staged = kernel(rate, options);
+      for (let i = 0; i < 300; i++) { if (i === 291) { forward.setDelay(43.75); forward.setFeedbackLowpassHz(1700); } forward.sample(Math.sin(i * 0.17) * 0.1, Math.cos(i * 0.13) * 0.1, 0.6, 0.8); }
+      const bytes = new Uint8Array(forward.stateByteLength()), receipt = forward.snapshotInto(bytes); expect(receipt.frame).to.equal(300);
+      staged.restoreFrom(bytes); expect(staged.diagnostics()).to.deep.equal(forward.diagnostics()); expect(staged.buffer).not.to.equal(forward.buffer);
+      for (let i = 300; i < 1000; i++) {
+        if (i === 451) { forward.setDelay(13.5); staged.setDelay(13.5); forward.setFeedbackLowpassHz(5000); staged.setFeedbackLowpassHz(5000); }
+        const left = i < 600 ? Math.sin(i * 0.17) * 0.1 : 0, right = i < 600 ? Math.cos(i * 0.13) * 0.1 : 0;
+        forward.sample(left, right, 0.3, 1); staged.sample(left, right, 0.3, 1); expect(staged.leftSample).to.equal(forward.leftSample); expect(staged.rightSample).to.equal(forward.rightSample);
+      }
+    }
+  });
+  it('refuses foreign/corrupt/aliased state without changing the active delay and retains panic silence', () => {
+    const source = kernel(48000, { feedback: 0.4 }), bytes = new Uint8Array(source.stateByteLength()); for (let i = 0; i < 40; i++) source.sample(i === 0 ? 1 : 0, 0);
+    source.snapshotInto(bytes); const bad = bytes.slice(); bad[bad.length - 1] ^= 1;
+    expect(() => source.restoreFrom(bad)).to.throw('state'); const after = new Uint8Array(source.stateByteLength()); source.snapshotInto(after); expect(after).to.deep.equal(bytes);
+    const foreign = kernel(48000, { feedback: 0.3 }); expect(() => foreign.restoreFrom(bytes)).to.throw('another processor');
+    expect(() => source.snapshotInto(new Uint8Array(source.buffer.buffer))).to.throw('exclusively');
+    source.panic(); source.snapshotInto(bytes); const staged = kernel(48000, { feedback: 0.4 }); staged.restoreFrom(bytes); staged.sample(1, 1); expect(staged.leftSample).to.equal(0); expect(staged.rightSample).to.equal(0);
+  });
   for (const rate of [44100, 48000, 96000]) it('retains exact two-tap fractional impulse timing and independent stereo at ' + rate, () => {
     const source = kernel(rate), left = [], right = [];
     for (let frame = 0; frame < 32; frame++) { source.sample(frame === 0 ? 1 : 0, frame === 1 ? -1 : 0); left.push(source.leftSample); right.push(source.rightSample); }

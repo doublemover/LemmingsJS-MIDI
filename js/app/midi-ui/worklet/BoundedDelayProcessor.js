@@ -1,4 +1,5 @@
 import './NonlinearChainProcessor.js';
+import { createOwnedEffectState } from './OwnedEffectState.js';
 
 const finite = (v, lo, hi) => Number.isFinite(v) && v >= lo && v <= hi;
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -17,7 +18,24 @@ export class BoundedDelayKernel {
     this.feedbackMaximum = feedbackMaximum; this.feedback = feedback; this.wet = wet; this.slew = 1 - Math.exp(-1 / (0.008 * sampleRate));
     this.feedbackLowpassHz = feedbackLowpassHz; this.lp = this.targetLowpass = 1 - Math.exp(-2 * Math.PI * feedbackLowpassHz / sampleRate); this.hp = Math.exp(-2 * Math.PI * feedbackHighpassHz / sampleRate);
     this.faults = 0; this.rejectedTransitions = 0; this.leftSample = 0; this.rightSample = 0; this.muted = false; this.inputEnabled = true;
+    const configuration = { revision: DELAY_KERNEL_REVISION, sampleRate, maxDelayFrames, delayFrames, mode, transitionFrames, maximumSlew, feedback, feedbackMaximum, feedbackLowpassHz, feedbackHighpassHz, wet };
+    this.stateIdentity = JSON.stringify(configuration);
+    const numberFields = ['write', 'frame', 'delay', 'targetDelay', 'oldDelay', 'transition', 'feedback', 'wet', 'lp', 'targetLowpass', 'feedbackLowpassHz', 'faults', 'rejectedTransitions', 'leftSample', 'rightSample'];
+    this.stateTransfer = createOwnedEffectState({ kernel: this, identity: this.stateIdentity, arrays: [this.buffer, this.filter],
+      scalars: [...numberFields.map(name => ({ name, type: 'number' })), ...['muted', 'inputEnabled'].map(name => ({ name, type: 'boolean' }))],
+      validate: ({ named, planes }) => {
+        const integer = (name, lo, hi = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(named(name)) && finite(named(name), lo, hi);
+        if (!integer('write', 0, this.stride - 1) || !integer('frame', 0) || !integer('transition', 0, this.transitionFrames) || !integer('faults', 0) || !integer('rejectedTransitions', 0) ||
+            !['delay', 'targetDelay', 'oldDelay'].every(name => finite(named(name), 1, this.maxDelayFrames)) || !finite(named('feedback'), -this.feedbackMaximum, this.feedbackMaximum) || !finite(named('wet'), 0, 1) ||
+            !finite(named('lp'), 0, 1) || !finite(named('targetLowpass'), 0, 1) || !finite(named('feedbackLowpassHz'), 200, this.sampleRate * 0.4) ||
+            Math.abs(named('targetLowpass') - (1 - Math.exp(-2 * Math.PI * named('feedbackLowpassHz') / this.sampleRate))) > Number.EPSILON * 4 ||
+            !finite(named('leftSample'), -64, 64) || !finite(named('rightSample'), -64, 64) || this.mode === 'glide' && named('transition') !== 0) throw new TypeError('Invalid delay state frontier.');
+        for (const plane of planes) for (let i = 0; i < plane.array.length; i++) if (Math.abs(plane.read(i)) > 32) throw new TypeError('Delay history exceeds its containment domain.');
+      } });
   }
+  stateByteLength() { return this.stateTransfer.byteLength; }
+  snapshotInto(bytes) { return this.stateTransfer.write(bytes); }
+  restoreFrom(bytes) { return this.stateTransfer.restore(bytes); }
   setDelay(value) {
     if (!finite(value, 1, this.maxDelayFrames)) return false;
     if (value === this.targetDelay) return true;
