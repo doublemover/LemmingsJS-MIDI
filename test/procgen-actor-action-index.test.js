@@ -29,13 +29,14 @@ describe('completed numeric actor action indexes', () => {
           if (leading(leader, actor)) leader = actor;
           const label = labels.get(actor.action); expectedActions.add(label); expectedCounts.set(label, (expectedCounts.get(label) || 0) + 1);
         }
-        expect(index.semanticObservationLeader(lane)).to.equal(leader);
+        expect(index.semanticObservationLeader(lane)?.id ?? null).to.equal(leader?.id ?? null);
         expect(formatProcgenActionMask(index.semanticActionMask(lane), index.semanticActionOrder(lane))).to.equal([...expectedActions].join(' '));
         for (const label of PROCGEN_ACTION_LABELS) expect(index.semanticActionCount(lane, label)).to.equal(expectedCounts.get(label) || 0);
       }
     }
     expect(index.getStats().actorScans - visits).to.equal(64 * actors.length);
-    expect(index.actionMasks).to.equal(masks); expect(index.actionOrders).to.equal(orders); expect(index.actionCounts).to.equal(counts);
+    expect(index.actionMasks).not.to.equal(masks); expect(index.actionOrders).not.to.equal(orders); expect(index.actionCounts).not.to.equal(counts);
+    expect(Object.isFrozen(masks)).to.equal(true);
     expect(index.getStats().actionIndexBytes).to.equal(laneCount * (2 + 8 + 4 * PROCGEN_ACTION_LABELS.length));
     world.generation++; world.actors = []; index.publish();
     expect(index.semanticActionMask(0)).to.equal(0); expect(index.semanticObservationLeader(0)).to.equal(null);

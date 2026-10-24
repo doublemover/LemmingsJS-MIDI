@@ -1034,17 +1034,19 @@
       "requirementUpdatedAt": "2026-10-23T12:27:26Z",
       "requirementSha256": "82d2a234df2f85223ffabbd11768731522d56995a1edd5ce61441b0e0df6db82",
       "initialGap": "Prepare/commit runtime transaction and recoverable presentation failure exist. Latest accepted-settings/physical-graph rollback gaps remain: UI mutates spacing before rebuild, snapshotSession calls mutating prepareSettings, rollbackWorldProject rebases only lanes not physicalGraph and truncates history.",
-      "state": "in-progress",
+      "state": "implemented-validation-deferred",
       "source": [
+        "js/app/procgen/workstation/ProcgenWorkstation.js",
         "js/app/procgen/workstation/ProcgenWorkstation.js"
       ],
-      "regressions": [],
+      "regressions": [
+        "test/procgen-workstation-controller.test.js"
+      ],
       "commits": [
         "d7a2a95289548ff7097403178a5310fc72790e98"
       ],
       "validation": "deferred-by-request",
-      "increment": "causal-boundary-and-publication-integrity",
-      "remaining": "World rollback now preserves concurrent physicalGraph; staged settings and history rollback remain."
+      "increment": "accepted-recipes-and-leased-projections"
     },
     {
       "number": 1049,
@@ -1088,11 +1090,20 @@
       "requirementUpdatedAt": "2026-10-22T09:23:33Z",
       "requirementSha256": "09e05c90a07fd116762119475b9fcd0b9fae9c59d635da09526eae23c5fc03c3",
       "initialGap": "One shared completed-tick visibility index now feeds camera, CCTV and lane observations with row/semantic buckets and counters. Publication retains mutable actor objects and reuses the same arrays without reader leases/double buffering; requested immutable leased snapshot/event-boundary payload is not complete.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "implemented-validation-deferred",
+      "source": [
+        "js/app/procgen/ProcgenActorProjection.js",
+        "js/app/procgen/ProcgenActorVisibility.js",
+        "scripts/bench-actor-projections.js"
+      ],
+      "regressions": [
+        "test/procgen-actor-projection.test.js",
+        "test/procgen-actor-action-index.test.js",
+        "test/procgen-lane-observation.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "accepted-recipes-and-leased-projections"
     },
     {
       "number": 1054,

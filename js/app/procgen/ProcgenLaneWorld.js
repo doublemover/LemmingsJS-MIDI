@@ -1028,9 +1028,10 @@ class ProcgenLaneWorld {
       if (this.tickIndex % 128 === 0) this._pruneEdits();
       this._musicCompletedSlot = nextMusicSlot; this._musicCompletedTick = this.tickIndex;
       if (observePhysical) for (const actor of this.actors) observePhysicalSupport(this, actor);
-      publishProcgenActorVisibility(this);
       this.soundEvents.laneIndex = 0;
       this._completedPhysicalSnapshot = this._physicalSnapshot();
+      this._completedPhysicalBatchId = this.soundEvents.pendingBatchIdentity();
+      publishProcgenActorVisibility(this);
       this.soundEvents.commitTick(this._completedPhysicalSnapshot, this.terrainRevision);
       this.timer.onGameTick.trigger(this.tickIndex);
     } catch (error) {

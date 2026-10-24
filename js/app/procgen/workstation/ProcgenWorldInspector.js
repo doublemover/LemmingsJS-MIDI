@@ -2,7 +2,7 @@ import { createProcgenActorEffectInspector } from './ProcgenActorEffectInspector
 import { getProcgenPresentationEntity } from '../ProcgenPresentationSnapshot.js';
 
 const PAGE_SIZE = 32;
-const actionName = actor => actor?.action?.actionName || actor?.action?.getActionName?.() || 'Moving';
+const actionName = actor => actor?.actionName || actor?.action?.actionName || actor?.action?.getActionName?.() || 'Moving';
 
 // Owns presentation selection only. Musical and terrain edits remain engine commands.
 export function createProcgenWorldInspector({ renderer, document, window, parent, getLaneInfo = () => null, onRevealLane = () => {} }) {

@@ -544,7 +544,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     } else if (state.tab === 'World') {
       fields.append(button('Reroll world', () => handlers.reroll?.()), button('Replay seed', () => handlers.replay?.()));
       labeled('Seed', input(getRuntime()?.world?.seed || 0, seed => handlers.seed?.(seed), { min: 0, max: 4294967295 }), fields);
-      labeled('Trap spacing / pixels', input(state.hazardSpacing, value => { state.hazardSpacing = value; handlers.rebuild?.(); }, { min: 80, max: 1024, step: 16 }), fields);
+      labeled('Trap spacing / pixels', input(state.hazardSpacing, value => { handlers.rebuild?.({ hazardSpacing: value }); }, { min: 80, max: 1024, step: 16 }), fields);
       labeled('Minimum display row', input(state.minimumRow, value => { state.minimumRow = value; layout(); renderRows(); }, { min: 56, max: 220, step: 4 }), fields);
       const observe = patch => { Object.assign(state, { observerMode: patch.mode ?? state.observerMode, observerLane: patch.laneId ?? state.observerLane, observerHold: patch.holdSeconds ?? state.observerHold }); handlers.observe?.(patch); handlers.preferences?.(); };
       labeled('Observer', select([['overview', 'Overview'], ['follow', 'Follow lane'], ['director', 'Automatic director']], state.observerMode || 'overview', mode => observe({ mode }), 'Observer mode'), fields);

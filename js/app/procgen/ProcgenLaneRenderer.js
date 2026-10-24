@@ -12,7 +12,7 @@ const unprepared = state => state?.complete === false && state.active?.length ==
 
 class ProcgenLaneRenderer {
   constructor({ canvas, world, assets, windowRef = window, renderBudget }) {
-    this.actorVisibility = new ProcgenActorVisibility(world);
+    this.actorVisibility = new ProcgenActorVisibility(world, { budgetAdapter: renderBudget?.budgetAdapter });
     registerProcgenActorVisibility(world, this.actorVisibility);
     this.canvas = canvas; this.world = world; this.assets = assets; this.window = windowRef;
     this.surfaceWidth = canvas.width; this.surfaceHeight = canvas.height;
@@ -466,15 +466,18 @@ class ProcgenLaneRenderer {
     this._drawObjects();
     this.effectVisibleActors.clear(); this.effectTelemetryActors.clear(); this.renderedActors = 0; this.actorDots.clear(); this.presentedActorBounds.clear();
     const effectPadding = this.actorEffects.mailboxes.size ? 64 : 0;
-    for (const actor of this.actorVisibility.query(this.originY - effectPadding, this.viewHeight + effectPadding * 2, force)) {
-      if (actor.failureReason || actor.removed) continue;
-      if (actor.y < this.originY - 32 || actor.y > this.originY + this.viewHeight + 32 || actor.x < this.originX - 32 || actor.x >= this.originX + this.viewWidth + 32) {
-        const bounds = this.actorVisibility.bounds.get(actor), padding = this.actorEffectPass.paddingFor(actor, bounds);
-        if (!bounds || bounds.x - padding >= this.originX + this.viewWidth || bounds.y - padding >= this.originY + this.viewHeight || bounds.x + bounds.width + padding <= this.originX || bounds.y + bounds.height + padding <= this.originY) continue;
+    const actorLease = this.actorVisibility.acquireSnapshot();
+    try {
+      for (const actor of this.actorVisibility.query(this.originY - effectPadding, this.viewHeight + effectPadding * 2, false)) {
+        if (actor.failureReason || actor.removed) continue;
+        if (actor.y < this.originY - 32 || actor.y > this.originY + this.viewHeight + 32 || actor.x < this.originX - 32 || actor.x >= this.originX + this.viewWidth + 32) {
+          const bounds = this.actorVisibility.bounds.get(actor), padding = this.actorEffectPass.paddingFor(actor, bounds);
+          if (!bounds || bounds.x - padding >= this.originX + this.viewWidth || bounds.y - padding >= this.originY + this.viewHeight || bounds.x + bounds.width + padding <= this.originX || bounds.y + bounds.height + padding <= this.originY) continue;
+        }
+        this._presentationActor = this.presentation.demanded ? actor : null;
+        try { actor.render(this); this.renderedActors++; } finally { this._presentationActor = null; }
       }
-      this._presentationActor = this.presentation.demanded ? actor : null;
-      try { actor.render(this); this.renderedActors++; } finally { this._presentationActor = null; }
-    }
+    } finally { actorLease?.release(); }
     this._flushDots(this.actorDots);
     this.world.characterParticles?.render(this);
     this.context.imageSmoothingEnabled = false;

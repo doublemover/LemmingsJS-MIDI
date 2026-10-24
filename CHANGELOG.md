@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Commit accepted world recipes independently of UI drafts, preserve each concurrent musical Undo boundary on terrain rollback, and publish immutable batch-identified actor snapshots with bounded reader leases.
+
 - Add typed transactional knob controls, shared pointer ownership across canvas and sound editors, inline validated project naming, and bounded paged project selection.
 
 - Hold bounded worklet credits through terminal acknowledgment, admit renderer replacement peaks before allocation, preflight aggregate object masks, and keep hidden/BFCache worlds explicitly paused without overdue clock bursts.

@@ -57,3 +57,20 @@ Live Chromium/Playwright QA was blocked by cloud execution restrictions, and the
 available cloud browser rejected loopback navigation. No restrictions were
 bypassed. The updated E2E and capture targets still need a permitted preview
 run; screenshots, audible listening and live frame times remain unverified.
+
+### Completed actor publication
+
+The shared actor projection publishes immutable scalar DTOs with separate physical
+rows and musical lane membership, stable identity, numeric actions, draw bounds,
+and the exact pending physical batch identity. Live render objects remain private
+and may be resolved only against the current completed revision. Camera, CCTV,
+observation and drawing readers use explicit leases. A retired version stays
+charged until its last lease releases, including renderer disposal. Four versions,
+16 readers and a 16 MiB local ceiling bound retention; admission failures are
+reported as dropped publications, never as a partially updated frame.
+
+`scripts/bench-actor-projections.js` contains deterministic 8/128/1024-lane
+reference/indexed comparisons and a dirty-row candidate measurement. It reports
+p50/p95/p99 and owner counters; it does not select a production algorithm or
+qualify browser pixels, physical-event equivalence or acoustic behavior. The
+harness and new lease regressions have been written but not executed.

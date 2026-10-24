@@ -154,6 +154,7 @@ class ProcgenSoundEventBus extends SoundEventBus {
       terrainRevisionBefore: terrainRevisionAfter, sourceTimeMs: current.sourceTimeMs,
       tickDurationMs: current.tickDurationMs, facts: [], terminalFacts: [], dropped: 0, ordinal: current.ordinal + 1 };
   }
+  pendingBatchIdentity() { const tick = this._tick; return tick ? `${tick.worldId}:${tick.generation}:${tick.tick}:${tick.ordinal}` : null; }
   commitTick(snapshot, terrainRevisionAfter) {
     this._seal(snapshot, terrainRevisionAfter);
     const sealed = this._sealed;

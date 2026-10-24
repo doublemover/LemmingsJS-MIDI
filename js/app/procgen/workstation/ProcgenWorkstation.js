@@ -85,6 +85,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const state = { laneId: project.procgen.lanes[0].id, slot: 0, step: 0, tab: 'Lane', tool: 'select', layout: 'strip',
     inspectorWidth: 304, firstLane: 0, minimumRow: 64, hazardSpacing: 160, observerMode: 'overview', observerLane: null, observerHold: 6,
     inputId: null, clockOutputId: null, thru: false, recording: false, lastMidi: '', ...(startupPlan.mode === 'previous-setup' ? saved?.ui || {} : {}) };
+  let acceptedWorldSettings = { ...legacy.settings, hazardSpacing: legacy.settings.hazardSpacing ?? state.hazardSpacing };
+  state.hazardSpacing = acceptedWorldSettings.hazardSpacing;
   state.recording = false; state.thru = false; state.inputId = null; state.clockOutputId = null;
   let startupCommitted = false, deferredPersist = false;
   let view = null, disposed = false, boundRuntime = null, boundSession = null, unhookRouter = null, unhookWorld = null;
@@ -200,7 +202,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (suppressPersistence || disposed) return;
     if (!startupCommitted) return;
     if (worldBusy) { deferredPersist = true; return; }
-    try { window.localStorage?.setItem(STORAGE_KEY, JSON.stringify({ version: 1, project, ui: { ...state, recording: false, thru: false, lastMidi: '' }, transport: transport.snapshot() })); }
+    try { window.localStorage?.setItem(STORAGE_KEY, JSON.stringify({ version: 1, project, ui: { ...state, hazardSpacing: acceptedWorldSettings.hazardSpacing, recording: false, thru: false, lastMidi: '' }, transport: transport.snapshot() })); }
     catch { status('Project preferences could not be stored. Export a project file to save.'); }
   };
   const persist = ({ immediate = false } = {}) => {
@@ -734,10 +736,13 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     status(`Verified ${manifest.takeName}: ${verification.status}, ${manifest.durableSequence} durable records.`);
     return lastCausalInspection;
   };
-  const prepareSettings = () => {
-    Object.assign(legacy.settings, { workstation: true, laneCount: project.procgen.lanes.length, seed: project.procgen.seed,
-      hazardSpacing: state.hazardSpacing, laneAssignments: project.procgen.lanes.map(lane => lane.family) });
-    return legacy.settings;
+  const settingsFor = (source = project, patch = {}) => ({ ...acceptedWorldSettings, ...patch, workstation: true,
+    speed: transport.getState().gameSpeed, laneCount: source.procgen.lanes.length, seed: source.procgen.seed,
+    laneAssignments: source.procgen.lanes.map(lane => lane.family) });
+  const prepareSettings = () => { Object.assign(legacy.settings, settingsFor()); return legacy.settings; };
+  const acceptWorldSettings = settings => {
+    acceptedWorldSettings = { ...settings, laneAssignments: [...(settings.laneAssignments || [])] };
+    state.hazardSpacing = acceptedWorldSettings.hazardSpacing;
   };
   const attachRouter = next => {
     if (!next) return;
@@ -837,8 +842,9 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       suppressPersistence = true;
       try {
         syncProject(session.project, { history: false, render: false }); Object.assign(legacy.settings, session.settings, { workstation: true });
+        acceptWorldSettings(legacy.settings);
         lastLegacySpeed = legacy.settings.speed;
-        Object.assign(state, session.ui || {}, { recording: false, thru: false, inputId: null, clockOutputId: null }); savedName = session.name;
+        Object.assign(state, session.ui || {}, { hazardSpacing: acceptedWorldSettings.hazardSpacing, recording: false, thru: false, inputId: null, clockOutputId: null }); savedName = session.name;
         transport.restore(session.transport); engine.restore(session.patterns); pendingResume = true;
         if (session.camera) renderer()?.camera?.applyState?.(session.camera);
       } finally { suppressPersistence = false; }
@@ -862,10 +868,10 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const snapshotSession = name => {
     if (worldBusy) throw new Error('Wait for the world change to finish before saving.');
     syncWorldSeed();
-    return createProcgenSession({ name, project: clone(project), settings: clone(prepareSettings()), world: captureCheckpoint(runtime().world),
+    return createProcgenSession({ name, project: clone(project), settings: clone(settingsFor()), world: captureCheckpoint(runtime().world),
       transport: transport.snapshot(), patterns: engine.snapshot(), physicalTimeline: physicalScoreClock.snapshot(),
       physicalState: physicalPlayback?.engine.snapshot() || null,
-      camera: renderer()?.camera?.getState?.(), ui: { ...state, recording: false, thru: false, lastMidi: '' } });
+      camera: renderer()?.camera?.getState?.(), ui: { ...state, hazardSpacing: acceptedWorldSettings.hazardSpacing, recording: false, thru: false, lastMidi: '' } });
   };
   const recover = async () => {
     if (disposed || worldBusy || recoveryPending || !runtime()?.world) return false;
@@ -993,26 +999,31 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       Object.assign(legacy.settings, oldSettings); lastLegacySpeed = legacy.settings.speed; if (previous.playing) play(); throw error;
     } finally { signal?.removeEventListener('abort', cancel); worldBusy = false; finishOperation(lease); if (deferredPersist && startupCommitted && (loaded || runtime() === previousRuntime)) persist(); }
   }
-  async function rebuild({ seed = project.procgen.seed, fresh = false, projectNext = null, history = true } = {}) {
+  async function rebuild({ seed = project.procgen.seed, fresh = false, projectNext = null, history = true, worldSettings = {} } = {}) {
     if (disposed) return false;
     if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
     if (causalTake || causalTakeStart || causalTakeStop) await stopCausalTake({ reason: 'world-rebuild' });
     const lease = beginOperation('rebuild');
     worldBusy = true;
-    const previous = project, oldSettings = { ...legacy.settings }, previousTransport = transport.getState(), previousPatterns = engine.snapshot(), undoLength = undo.length;
+    const previous = project, oldSettings = settingsFor(), previousTransport = transport.getState(), previousPatterns = engine.snapshot();
+    const priorHistory = new Set(undo), previousRedo = [...redo];
     const previousRuntime = runtime();
-    let completed = false, rolledBack = false;
-    beforeRestart();
-    const source = projectNext || project;
-    const freshPlan = fresh ? resolveProcgenStartupIntent({ search: '?startup=fresh', seed }) : null;
-    const next = freshPlan?.project || { ...source, procgen: { ...source.procgen, seed } };
-    if (fresh) { Object.assign(legacy.settings, freshPlan.worldOptions); transport.configure({ ...freshPlan.transport, baseBpm: 120 }); legacy.setSpeed(freshPlan.worldOptions.speed); lastLegacySpeed = legacy.settings.speed; }
-    syncProject(next, { history }); prepareSettings();
-    const staged = project;
+    let completed = false, rolledBack = false, staged = previous, candidateSettings = oldSettings;
     try {
+      beforeRestart();
+      if (Object.keys(worldSettings).some(key => key !== 'hazardSpacing') || worldSettings.hazardSpacing != null &&
+      (!Number.isFinite(worldSettings.hazardSpacing) || worldSettings.hazardSpacing < 80 || worldSettings.hazardSpacing > 1024)) throw new Error('Invalid world recipe patch.');
+      const source = projectNext || project;
+      const freshPlan = fresh ? resolveProcgenStartupIntent({ search: '?startup=fresh', seed }) : null;
+      const next = freshPlan?.project || { ...source, procgen: { ...source.procgen, seed } };
+      if (fresh) { Object.assign(legacy.settings, freshPlan.worldOptions); transport.configure({ ...freshPlan.transport, baseBpm: 120 }); legacy.setSpeed(freshPlan.worldOptions.speed); lastLegacySpeed = legacy.settings.speed; }
+      candidateSettings = settingsFor(next, { ...(freshPlan?.worldOptions || {}), ...worldSettings });
+      syncProject(next, { history }); staged = project;
+      Object.assign(legacy.settings, candidateSettings);
       const restarted = await restart({ lease });
       if (!ownsOperation(lease)) return false;
       if (restarted === false) throw new Error('World preparation was canceled.');
+      acceptWorldSettings(candidateSettings);
       engine.reset(); transport.stop(); pendingResume = false;
       if (fresh) documentGeneration++;
       bindRuntime();
@@ -1022,17 +1033,30 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (!ownsOperation(lease)) return false;
       if (runtime() !== previousRuntime) {
         transport.pause(); ports.flush(); suppressPersistence = false;
+        acceptWorldSettings(candidateSettings);
         status('The rebuilt world is paused after a presentation error. Export a recovery copy before continuing.');
         throw error;
       }
       const restored = rollbackWorldProject(previous, staged, project);
-      syncProject(restored, { history: false }); undo.length = undoLength;
-      if (!equal(restored, previous)) undo.push(previous);
-      Object.assign(legacy.settings, oldSettings);
+      // Remove only this terrain transaction. Rebase every later accepted edit
+      // independently, retaining its Undo boundary instead of collapsing history.
+      const rebased = undo.filter(entry => priorHistory.has(entry) || entry !== previous).map(entry => {
+        if (priorHistory.has(entry)) return entry;
+        const value = rollbackWorldProject(previous, staged, entry);
+        historySizes.set(value, historyBytes(entry)); return value;
+      });
+      const hadConcurrentHistory = undo.some(entry => !priorHistory.has(entry) && entry !== previous);
+      syncProject(restored, { history: false, render: false });
+      undo.splice(0, undo.length, ...rebased);
+      if (!hadConcurrentHistory) redo.splice(0, redo.length, ...previousRedo);
+      trimHistory();
+      acceptWorldSettings(oldSettings); Object.assign(legacy.settings, oldSettings);
       lastLegacySpeed = legacy.settings.speed;
       transport.restore(previousTransport); engine.restore(previousPatterns); pendingResume = true;
       rolledBack = true;
-      if (previousTransport.playing) play(); throw error;
+      if (previousTransport.playing) play();
+      try { view?.render(); } catch { /* Rollback authority remains recoverable without its presentation. */ }
+      throw error;
     } finally { worldBusy = false; finishOperation(lease); if (deferredPersist && startupCommitted && (completed || rolledBack)) persist(); }
   }
   const changesWorld = next => next.procgen.seed !== project.procgen.seed || next.procgen.lanes.length !== project.procgen.lanes.length || next.procgen.lanes.some((lane, index) => lane.family !== project.procgen.lanes[index]?.family);
@@ -1343,7 +1367,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     },
     new: safe(() => rebuild({ seed: freshProcgenSeed(window.crypto, project.procgen.seed), fresh: true })),
     reroll: safe(() => rebuild({ seed: freshProcgenSeed(window.crypto, project.procgen.seed) })),
-    replay: safe(() => rebuild()), rebuild: safe(() => rebuild()), seed: safe(seed => rebuild({ seed: Number(seed) >>> 0 })),
+    replay: safe(() => rebuild()), rebuild: safe(worldSettings => rebuild({ worldSettings })), seed: safe(seed => rebuild({ seed: Number(seed) >>> 0 })),
     observe(patch) {
       state.observerMode = patch.mode ?? state.observerMode; state.observerLane = patch.laneId ?? state.observerLane; state.observerHold = patch.holdSeconds ?? state.observerHold;
       const render = renderer(), index = project.procgen.lanes.findIndex(lane => lane.id === state.observerLane);

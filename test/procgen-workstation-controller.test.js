@@ -841,6 +841,34 @@ describe('ProcGen workstation orchestration', () => {
     f.studio.dispose();
   });
 
+  it('never promotes a rejected spacing draft during Save or Recovery', async () => {
+    const f = setup(); f.studio.bindRuntime(); f.failRestart(); const previous = f.runtime;
+    expect(await f.studio.handlers.rebuild({ hazardSpacing: 256 })).to.equal(false);
+    expect(f.runtime).to.equal(previous); expect(f.studio.state.hazardSpacing).to.equal(160);
+    f.studio.state.hazardSpacing = 512; // A stale legacy UI reference is not recipe authority.
+    const captured = f.studio.capture();
+    expect(captured.settings.hazardSpacing).to.equal(160); expect(f.legacy.settings.hazardSpacing).to.equal(160);
+    f.studio.dispose();
+  });
+  it('accepts spacing only at world commit and rejects a busy second draft', async () => {
+    const f = setup(); f.studio.bindRuntime(); const release = f.holdRestart();
+    const pending = f.studio.handlers.rebuild({ hazardSpacing: 256 });
+    expect(f.studio.state.hazardSpacing).to.equal(160);
+    expect(await f.studio.handlers.rebuild({ hazardSpacing: 384 })).to.equal(false);
+    release(); expect(await pending).to.equal(true);
+    expect(f.studio.state.hazardSpacing).to.equal(256); expect(f.studio.capture().settings.hazardSpacing).to.equal(256);
+    f.studio.dispose();
+  });
+  it('retains each accepted sound Undo boundary after a failed terrain transaction', async () => {
+    const f = setup(); f.studio.bindRuntime(); const release = f.holdRestart(); f.failRestart();
+    const pending = f.studio.handlers.addLane();
+    for (const note of [72, 84]) f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note } });
+    release(); expect(await pending).to.equal(false);
+    const note = () => f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note;
+    expect(note()).to.equal(84); await f.studio.handlers.undo(); expect(note()).to.equal(72);
+    await f.studio.handlers.undo(); expect(note()).to.equal(60); f.studio.dispose();
+  });
+
   it('keeps concurrent musical edits when a candidate world fails', async () => {
     const f = setup(); f.studio.bindRuntime(); const release = f.holdRestart(); f.failRestart();
     const pending = f.studio.handlers.addLane();
