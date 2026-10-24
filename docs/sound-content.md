@@ -684,3 +684,11 @@ defaults are an explicit new revoice, not reconstruction of live effect gestures
 Source-only state cuts retain the continued preroll effect graph and do not
 claim an exported full-graph checkpoint. Public owner/dialog wiring and all
 live/offline PCM/listening qualification remain pending.
+
+The take-render dialog now exposes the owned-effect path as an explicit new
+realization: choose dry, Quarry Echo, Quarry Tape or compatible active saved
+defaults, set a constant source send, and optionally export the shared return.
+It never edits the saved rack or claims live gesture replay. The public owner
+admits complete graph/tap PCM, verifies graph definition/hash/revisions and
+per-file tap identity, and retains the prior bundle if any replacement fails.
+Native source postprocessing and native IR bodies still need their adapters.

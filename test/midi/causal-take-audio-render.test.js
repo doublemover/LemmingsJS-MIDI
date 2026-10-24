@@ -9,18 +9,22 @@ import { createBackgroundWorkerAdmission } from '../../js/app/resources/Backgrou
 import { createProcgenCausalJournal } from '../../js/app/procgen/workstation/ProcgenCausalJournal.js';
 import { createCausalTakeRecorder } from '../../js/app/procgen/workstation/CausalTake.js';
 import { createMemoryCausalStore } from '../helpers/causalJournalStore.js';
+import { createQuarryEcho, createQuarryTape, createQuarryBody } from '../../js/midi/content/DubQuarryRack.js';
+import { prepareCausalEffectSelection } from '../../js/app/midi-ui/CausalEffectSelection.js';
 
 // The render adapter below exercises host ownership, not real-worker/build qualification.
 const setup = async () => {
   const budget = createResourceBudget(), admission = createBackgroundWorkerAdmission(), fallback = createBackgroundJobService({ admission, Worker: null });
   const descriptors = await describeNativeInstrumentEngines([{ engineId: 'worklet-sine', engineVersion: 1, artifactHash: 'a'.repeat(64) }]), descriptor = descriptors[0];
-  const buildId = 'b'.repeat(64), switches = { wrongSource: false, deny: false }, jobs = { async compute(request) {
+  const buildId = 'b'.repeat(64), switches = { wrongSource: false, wrongEffect: false, wrongReturn: false, deny: false }, jobs = { async compute(request) {
     if (request.kind !== 'render-causal-sine-take') return fallback.compute(request);
     if (switches.deny) throw new ResourceBudgetError('offline-render', request.estimatedPeakBytes, 0);
     const held = createOwnedResourceReservation({ budget, owner: 'component-render', kind: 'component-render', bytes: request.estimatedPeakBytes });
     let value, phase = 'retained-result';
     try { const input = request.prepareInput(); value = await renderCausalSineTake({ ...input, descriptor, applicationBuildId: buildId }, { yieldControl: async () => {}, maxWorkingBytes: request.estimatedPeakBytes });
       if (switches.wrongSource) value.manifest = { ...value.manifest, sourceCanonicalHash: 'c'.repeat(64) };
+      if (switches.wrongEffect) value.manifest = { ...value.manifest, effectGraph: { ...value.manifest.effectGraph, hash: 'c'.repeat(64) } };
+      if (switches.wrongReturn) value.files.at(-1).manifest = { ...value.files.at(-1).manifest, returnNodeId: 'wrong-return' };
     } catch (error) { held.release(); throw error; } finally { request.releasePreparedInput(); }
     return Object.freeze({ get value() { if (!value) throw new Error('retired'); return value; },
       receipt: Object.freeze({ kind: request.kind, method: 'dedicated-worker', executionIdentity: { activeExecution: 'bound', buildId } }),
@@ -46,6 +50,26 @@ const setup = async () => {
 const denied = async (work, code) => { let error; try { await work; } catch (caught) { error = caught; } expect(error).to.be.instanceOf(Error); if (code) expect(error.code).to.equal(code); return error; };
 
 describe('owned causal render host and prepared file bundles', () => {
+  it('binds simultaneous effect files and preserves the previous complete bundle on graph/tap mismatch', async () => {
+    const owner = await setup(), request = { takeId: owner.manifest.takeId, endSeconds: 0.5, includeAllLaneStems: true,
+      effectGraph: createQuarryEcho({ send01: 0.4 }), effectReturnNodeIds: ['return'] };
+    const first = await owner.renderer.prepare(request); expect(first.bundle.files).to.have.length(3); expect(first.bundle.files[2].label).to.include('Shared effect return');
+    expect(first.bundle.manifest.stems.sharedReturns).to.deep.equal(['return']); expect(first.bundle.manifest.effectGraph.controls).to.include('not-replayed-live-gestures');
+    owner.switches.wrongEffect = true; await denied(owner.renderer.prepare(request), 'render-effect-mismatch'); expect(owner.renderer.getPrepared()).to.equal(first.bundle);
+    owner.switches.wrongEffect = false; owner.switches.wrongReturn = true; await denied(owner.renderer.prepare(request), 'render-result-mismatch'); expect(owner.renderer.getPrepared()).to.equal(first.bundle);
+    expect(first.bundle.files.every(file => file.artifact.metadata().retained)).to.equal(true);
+    await denied(owner.renderer.prepare({ ...request, effectReturnNodeIds: Array.from({ length: 9 }, (_, index) => 'tap-' + index) }), 'render-unavailable');
+    await owner.dispose(); expect(owner.budget.diagnostics().accountedBytes).to.equal(0);
+  });
+  it('selects explicit new authored effects without mutating saved defaults or silently activating bypassed/native bodies', () => {
+    const rack = { schema: 'lemmings-owner-effect-rack/v1', graph: createQuarryTape({ revision: 12 }), bypass: 'active' };
+    const selected = prepareCausalEffectSelection({ preset: 'saved-owner', rack, send01: 0.2 });
+    expect(selected.effectGraph.nodes.find(node => node.id === 'send').parameters.gain01).to.equal(0.2); expect(rack.graph.nodes.find(node => node.id === 'send').parameters.gain01).to.equal(0);
+    expect(selected.effectReturnNodeIds).to.deep.equal(['return']); expect(Object.isFrozen(selected.effectGraph)).to.equal(true);
+    expect(prepareCausalEffectSelection({ preset: 'none' })).to.deep.equal({ effectGraph: null, effectReturnNodeIds: [] });
+    expect(() => prepareCausalEffectSelection({ preset: 'saved-owner', rack: { ...rack, bypass: 'neutral' } })).to.throw('not activated implicitly');
+    expect(() => prepareCausalEffectSelection({ preset: 'saved-owner', rack: { ...rack, graph: createQuarryBody() } })).to.throw('native convolution');
+  });
   it('retains prepared WAVs after request cancellation and retires source/computation separately', async () => {
     const owner = await setup(), controller = new AbortController();
     const result = await owner.renderer.prepare({ takeId: owner.manifest.takeId, takeRevision: owner.manifest.revision, endSeconds: 0.5, signal: controller.signal });

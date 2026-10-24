@@ -8,9 +8,11 @@ import { borrowCausalTake, retireCausalRead } from '../procgen/workstation/Causa
 import { requestExportFileHandle, deliverArtifactToFileHandle, deliverArtifactToAnchor } from '../export/ExportArtifact.js';
 import { createInstrumentDisplayScheduler } from '../resources/InstrumentDisplayScheduler.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
+import { prepareCausalEffectSelection } from './CausalEffectSelection.js';
 
-export function createCausalTakeAudioRenderView({ document, window, journal, resourceBudget, jobs, getMaterialProvider = null, displayScheduler = null, onStatus = () => {} } = {}) {
-  let instrumentWorkspace = null;
+export function createCausalTakeAudioRenderView({ document, window, journal, resourceBudget, jobs, getMaterialProvider = null, getSavedRack = () => null, displayScheduler = null, onStatus = () => {} } = {}) {
+  if (typeof getSavedRack !== 'function') throw new TypeError('Saved effect defaults need a project reader.');
+  let instrumentWorkspace = null, effectWorkspace = null;
   const retirement = createProcgenRetirementScope(), listeners = [], reads = new Set(), readFaults = new Set();
   const scheduler = displayScheduler || createInstrumentDisplayScheduler({ document, window, resourceBudget });
   let instrumentReference = null, instrumentSupported = false, instrumentError = null;
@@ -53,6 +55,10 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
   const rate = select('Render sample rate', [['44100', '44.1 kHz'], ['48000', '48 kHz'], ['96000', '96 kHz']]); rate.value = '48000';
   const tail = select('Render end policy', [['exact-crop', 'Exact crop'], ['bounded-natural', 'Captured releases with bounded tails'], ['boundary-release', 'Derive releases at the end boundary']]);
   const stems = node('input'); stems.type = 'checkbox'; stems.setAttribute('aria-label', 'Include all captured dry lane stems'); label('Include all captured dry lane stems (native: 15; owned: 16)', stems);
+  const effect = select('New render effect', [['none', 'Dry source graph'], ['quarry-echo', 'Quarry Echo · authored static send'], ['quarry-tape', 'Quarry Tape · authored static send'], ['saved-owner', 'Saved owner rack · new send amount']]);
+  const effectSend = number('New render source send', 0.35, 0.65); effectSend.step = '0.01';
+  const effectReturn = node('input'); effectReturn.type = 'checkbox'; effectReturn.checked = true; label('Include the simultaneous shared return WAV', effectReturn);
+  const effectInfo = node('p'); effectInfo.setAttribute('aria-label', 'Effect render scope'); fields.append(effectInfo);
   const restore = select('Range reconstruction', [['forward-preroll', 'Forward captured history'], ['owned-state-cut', 'Restore source state at range start (experimental)']]);
   const status = node('output', 'Idle'); status.setAttribute('role', 'status'); const details = node('p'), deliveryStatus = node('output'); deliveryStatus.setAttribute('aria-label', 'Rendered file delivery');
   const file = node('select'); file.setAttribute('aria-label', 'Prepared rendered file');
@@ -64,8 +70,10 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
     if (!source || loading) return;
     const saved = sourceModel.value === 'saved-instrument', model = CAUSAL_RENDER_SOURCES.find(model => model.id === sourceModel.value);
     if (saved ? !instrumentReference || !instrumentSupported : !model) throw new Error('Choose an available render source.');
+    if (effect.value !== 'none') effectWorkspace ||= createOwnedResourceReservation({ budget: resourceBudget, owner: 'causal-render-effect-selection', kind: 'render-effect-selection', category: 'audio', bytes: 512 * 1024 });
+    const effects = prepareCausalEffectSelection({ preset: effect.value, send01: Number(effectSend.value), includeReturn: effectReturn.checked, rack: effect.value === 'saved-owner' ? getSavedRack() : null, sampleRate: Number(rate.value) });
     await owner.prepare({ definition: saved ? instrumentReference.definition : model.definition, materialReference: saved ? instrumentReference : null, takeId: source.takeId, takeRevision: source.revision, sampleRate: Number(rate.value), startSeconds: Number(first.value), endSeconds: Number(last.value),
-      tail: { mode: tail.value, maxSeconds: Number(tailSeconds.value) }, includeAllLaneStems: stems.checked, restorationMode: restore.value });
+      tail: { mode: tail.value, maxSeconds: Number(tailSeconds.value) }, includeAllLaneStems: stems.checked, restorationMode: restore.value, ...effects });
     say('Rendered WAV files are prepared. Choose a file and a delivery action; the original take is unchanged.');
   }));
   const cancelRender = button('Cancel render', () => owner.cancel());
@@ -105,6 +113,11 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
     cancelRender.disabled = !busy; first.disabled = last.disabled = sourceModel.disabled = rate.disabled = tail.disabled = stems.disabled = busy || loading;
     const selectedEngine = sourceModel.value === 'saved-instrument' ? instrumentReference?.engineRequirement.engineId : sourceModel.value;
     const nativeRestore = NATIVE_OFFLINE_SOURCE_IDS.includes(selectedEngine);
+    const hasEffects = effect.value !== 'none'; renderButton.disabled ||= hasEffects && nativeRestore;
+    effect.disabled = busy || loading; effectSend.disabled = effectReturn.disabled = busy || loading || !hasEffects;
+    effectInfo.textContent = !hasEffects ? 'Dry source graph. No creative effect graph is added.' : nativeRestore ? 'Full effects currently require an owned source. Choose Sine, Seeded pluck, Artificial formants or Spectral frames, or select Dry source graph.' :
+      'Creates a new realization with a constant authored send. Live effect gestures are not replayed. Dry lanes and shared return come from one full graph; final protection is excluded. Native convolution bodies require their offline adapter.';
+    tailSeconds.max = hasEffects ? '30' : '4'; if (Number(tailSeconds.value) > Number(tailSeconds.max)) tailSeconds.value = tailSeconds.max;
     restore.disabled = busy || loading || nativeRestore; if (nativeRestore) restore.value = 'forward-preroll';
     tailSeconds.disabled = busy || loading || tail.value === 'exact-crop'; file.disabled = busy || picker || !!delivery || !bundle;
     const ready = !!(artifact || chosen()?.metadata())?.retained;
@@ -113,7 +126,7 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
   }
   const surface = scheduler.register({ id: 'causal-render-dialog', element: dialog, intervalMs: 50, write: paint, onError: say });
   owner = createCausalTakeAudioRenderer({ journal, resourceBudget, jobs, getMaterialProvider, onState: () => surface.invalidate() });
-  listen(sourceModel, 'change', paint);
+  listen(sourceModel, 'change', paint); listen(effect, 'change', paint);
   listen(file, 'change', paint); listen(tail, 'change', paint);
   dialog.append(title, description, sourceText, limits, fields, instrumentInfo, status, details, file, deliveryStatus, actions);
   (document.getElementById('procgenPresentationRoot') || document.body).append(dialog);
@@ -137,7 +150,7 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
     })(); reads.add(work);
     try { await work; } catch (error) { if (!disposed && serial === loadSerial && !controller.signal.aborted) say(error.message); }
     finally { reads.delete(work); if (serial === loadSerial) { loading = false; paint(); } }
-  }, state: () => Object.freeze({ render: owner.state(), selectedTake: source, sourceModel: sourceModel.value, delivery: lastDelivery, pickingFile: picker, writing: !!delivery, unresolvedMetadata: readFaults.size, instrument: instrumentReference ? { patchId: instrumentReference.patchId, revision: instrumentReference.revision, engineId: instrumentReference.engineRequirement.engineId, supported: instrumentSupported } : null }),
+  }, state: () => Object.freeze({ render: owner.state(), selectedTake: source, sourceModel: sourceModel.value, effectPreset: effect.value, delivery: lastDelivery, pickingFile: picker, writing: !!delivery, unresolvedMetadata: readFaults.size, instrument: instrumentReference ? { patchId: instrumentReference.patchId, revision: instrumentReference.revision, engineId: instrumentReference.engineRequirement.engineId, supported: instrumentSupported } : null }),
   suspend() { readController?.abort(); owner.cancel(); delivery?.abort(); },
   dispose() {
     if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; loadSerial++; readController?.abort(); delivery?.abort();
@@ -148,6 +161,7 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
       { name: 'render-display-scheduler', run: () => { if (!displayScheduler) return scheduler.dispose(); } },
       ...listeners.splice(0).map((remove, index) => ({ name: 'render-view-listener-' + index, run: remove })),
       { name: 'render-instrument-reference', run: () => { instrumentReference = null; instrumentWorkspace?.release(); } },
+      { name: 'render-effect-selection', run: async () => { const receipt = owner.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw new Error('Effect selection remains owned by an unresolved render.'); effectWorkspace?.release(); effectWorkspace = null; } },
       { name: 'render-dialog', run: () => { dialog.close(); dialog.remove(); } }]);
   }
   });

@@ -1046,6 +1046,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs });
       causalAudioRender ||= createCausalTakeAudioRenderView({ document, window, journal, resourceBudget, jobs: backgroundJobs,
         getMaterialProvider: () => legacy.local.audio?.getSoundMaterialProvider(),
+        getSavedRack: () => project.procgen.effectRack || null,
         displayScheduler: view?.displayScheduler, onStatus: status }); await causalAudioRender.open({ takeId, instrumentRef: selected().instrumentRef || null });
     }),
     openPrelistenMonitor() {

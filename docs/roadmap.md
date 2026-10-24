@@ -2689,6 +2689,17 @@ wiring, host-wide state cuts and all runtime qualification remain work.
 Arithmetic/shared-nonlinearity, simultaneous tap and crop fixtures are authored
 but unexecuted; no tests, native renders or content builds ran.
 
+The public causal render owner and dialog now select explicit dry, Quarry
+Echo/Tape or compatible saved owner defaults, with a separate new source-send
+amount and optional simultaneous shared-return WAV. They retain exact graph/
+processor/tap identity through worker admission, complete memory/output bounds
+and per-file artifact validation. A mismatched/failed candidate preserves the
+prior complete bundle. Saved defaults remain unchanged and bypassed/native-body
+racks are not silently activated. The UI identifies static new realization
+versus unreplayed live gestures. Owned sources are wired; native source/effect
+postprocessing and convolution adapters, graph-wide cuts, gesture capture/replay
+and all runtime/PCM/listening acceptance remain work. No runtime tests ran.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical
