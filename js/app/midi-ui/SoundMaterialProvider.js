@@ -43,6 +43,7 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
       blob = new Blob([result.value.bytes], { type: file.mediaType });
       return { get blob() { if (!blob || receipt) throw failure('owner-retired', 'Original source loan is retired.'); return blob; }, release };
     } catch (error) {
+      if (error.backgroundRetirementCompletion) error.backgroundRetirement = await error.backgroundRetirementCompletion;
       if (error.backgroundRetirement && !['released', 'canceled'].includes(error.backgroundRetirement.phase)) {
         workspace.retainUnknown(error); const failed = createProcgenRetirementScope().retire([{ name: 'original-source-worker', run: () => { throw error; } }]); faults.add(failed); error.retirement = failed;
       } else { const retired = release(); if (retired.outcome !== 'complete') error.retirement = retired; }
@@ -75,7 +76,7 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
       return reader;
     } catch (error) { reader.release(); throw error; }
   };
-  const loader = createAudioAssetLoader({ getContext, resourceBudget: budget, maxEntries,
+  const loader = createAudioAssetLoader({ getContext, resourceBudget: budget, jobs, maxEntries,
     fetchAsset: async (ref, { signal }) => {
       const source = [...(sources.get(ref.contentHash) || [])].find(entry => !entry.signal.aborted);
       const file = source?.file || { sha256: ref.contentHash, bytes: ref.bytes, path: ref.path };
@@ -103,7 +104,10 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
       operation.check(); const value = result.value;
       if (value.contentHash !== file.sha256 || value.bytes !== file.bytes || value.verifiedContainer !== 'riff-wave-complete') throw failure('content-mismatch', 'WAV inspection identity changed.');
       format = Object.freeze({ ...value });
-    } catch (caught) { error = caught; }
+    } catch (caught) {
+      if (caught.backgroundRetirementCompletion) caught.backgroundRetirement = await caught.backgroundRetirementCompletion;
+      error = caught;
+    }
     finally {
       const receipt = createProcgenRetirementScope().retire([
         { name: 'wave-worker', run: () => {
@@ -121,7 +125,7 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
     if (error) throw error;
     if (formats.size >= maxEntries) formats.delete(formats.keys().next().value); formats.set(file.sha256, format); return format;
   };
-  const acquire = async ({ stage = null, patchIdentity = null, reference = null, engineDescriptors = [], owner = 'sound-material', generation = 0, signal, isCurrent = () => true } = {}) => {
+  const acquire = async ({ stage = null, patchIdentity = null, reference = null, engineDescriptors = [], owner = 'sound-material', generation = 0, signal, isCurrent = () => true, decodeProfile = null } = {}) => {
     signal?.throwIfAborted();
     if (disposed || faults.size || pending.size >= 2 || loans.size >= 32 || !Number.isSafeInteger(generation) || generation < 0) throw failure('material-preparation-capacity', 'Sound material preparation is unavailable or busy.');
     const operation = { id: ++sequence, controller: new AbortController(), completion: null };
@@ -152,7 +156,7 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
           const assetRef = validateAudioAssetRef({ contentHash: file.sha256, bytes: file.bytes, path: file.path, mime: file.mediaType, kind: file.kind,
             channels: format.channels, sourceSampleRate: format.sourceSampleRate, frames: format.frames, decodeVersion: DECODER_VERSION,
             licenseId: file.rights.licenseId, attribution: file.rights.attribution });
-          assets.push(await loader.acquire(assetRef, { owner, generation, signal: operation.controller.signal, isCurrent: operation.current })); operation.check();
+          assets.push(await loader.acquire(assetRef, { owner, generation, signal: operation.controller.signal, isCurrent: operation.current, decodeProfile: decodeProfile || (patch.definition.engineId === 'worklet-granular' ? 'source-pcm' : 'native-context') })); operation.check();
         }
         releaseSource();
         const captured = Object.freeze([...assets]), loan = Object.freeze({ assets: captured, availableHashes: Object.freeze(refs.map(ref => ref.sha256)),

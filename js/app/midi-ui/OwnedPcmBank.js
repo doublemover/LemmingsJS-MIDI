@@ -59,6 +59,7 @@ export async function prepareOwnedPcmBank(pin, { resources, owner, generation = 
     const peak = await copyPlanes(inputs, planes, () => { check(); if (!retained.isActive() || retained.buffer !== buffer) throw fail('Decoded PCM source retired during copy.'); }, yieldTask);
     check(); pendingDigest = Promise.resolve(digest(new Uint8Array(data))); const pcmHash = await pendingDigest; check();
     if (!/^[a-f0-9]{64}$/.test(pcmHash)) throw fail('PCM digest is invalid.');
+    if (pin.variant.pcmHash != null && pcmHash !== pin.variant.pcmHash) throw fail('Decoded PCM differs from its verified source variant.');
     const metadata = { schema: 'lemmings-owned-pcm-bank/v1', assetHash: pin.ref.contentHash, pcmHash, format: 'float32-planar-le',
       sourceFrames: pin.ref.frames, sourceSampleRate: pin.ref.sourceSampleRate, frames, sampleRate: rate, channels, bytes, decoderVersion: pin.variant.decoderVersion,
       peak, sampleMagnitudeLimit: 16, evidence: 'copied-decoded-pcm-not-acoustic-qualification' };

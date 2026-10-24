@@ -1,3 +1,5 @@
+import { DECODER_VERSION } from '../../js/app/midi-ui/AudioAssetRef.js';
+import { WAVE_SOURCE_DECODER_VERSION } from '../../js/app/midi-ui/WaveSourceProfile.js';
 import { expect } from 'chai';
 import { BrowserNotePreview } from '../../js/app/midi-ui/browserNotePreview.js';
 import { createResourceBudget } from '../../js/app/resources/ResourceBudget.js';
@@ -30,7 +32,7 @@ const makePin = (hash = 'a'.repeat(64), rate = 48000) => {
   const ref = Object.freeze({ contentHash: hash, kind: 'sample', bytes: 96044, frames: 44100, sourceSampleRate: 44100 });
   const create = () => {
     shared.pins++; let active = true;
-    return Object.freeze({ ref, variant: Object.freeze({ contentHash: hash, targetSampleRate: rate }),
+    return Object.freeze({ ref, variant: Object.freeze({ contentHash: hash, targetSampleRate: rate, decoderVersion: DECODER_VERSION }),
       get buffer() { if (!active) throw new Error('released'); return buffer; }, isActive: () => active,
       retain: () => { if (!active) throw new Error('released'); return create(); },
       release: () => { if (!active) return false; active = false; shared.pins--; return true; } });
@@ -60,6 +62,12 @@ describe('Owned native sample regions', () => {
     expect(backend.renewExecutionLease(1, 'take', 480000).status).to.equal('accepted');
     return { preview, session, context, backend, asset, selections: () => selections };
   };
+  it('refuses source-rate PCM cache buffers even when their rate matches the native audio context', async () => {
+    const { backend, asset } = await setup();
+    const incompatible = { ...asset.pin, variant: { ...asset.pin.variant, decoderVersion: WAVE_SOURCE_DECODER_VERSION } };
+    expect((await backend.prepare(patch(), [incompatible])).reason).to.equal('invalid-prepared-sample-pin');
+    expect(asset.shared.pins).to.equal(2);
+  });
   it('releases every rollback pin once and preserves unknown preparation ownership', async () => {
     const context = makeContext(), preview = new BrowserNotePreview({ createAudioContext: () => context }), session = preview.createSession('pins');
     cleanups.push(() => preview.dispose()); await session.enable();

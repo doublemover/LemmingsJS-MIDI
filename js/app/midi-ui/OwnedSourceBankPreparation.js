@@ -23,6 +23,7 @@ export async function prepareOwnedSourceBank(id, { resources, owner = null, gene
     validateOwnedSourceBank(result.value, id);
     return Object.freeze({ get payload() { if (released || signal?.aborted || !isCurrent()) throw new Error('Fixed source bank is retired.'); return result.value; }, release });
   } catch (error) {
+    if (error.backgroundRetirementCompletion) error.backgroundRetirement = await error.backgroundRetirementCompletion;
     if (error.backgroundRetirement && !['released', 'canceled'].includes(error.backgroundRetirement.phase)) {
       failure = error; workspace?.retainUnknown(error);
     } else release();

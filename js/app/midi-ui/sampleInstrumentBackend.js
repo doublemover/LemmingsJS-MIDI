@@ -1,3 +1,4 @@
+import { DECODER_VERSION } from './AudioAssetRef.js';
 import { createSmoothedAudioParameter } from './SmoothedAudioParameter.js';
 import { createInstrumentExecutionLifecycle, isManagedExecutionEpoch } from './InstrumentExecutionLifecycle.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
@@ -112,7 +113,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
       for (const pin of assets) {
         const hash = pin?.ref?.contentHash;
         if (!pin?.isActive?.() || typeof pin.retain !== 'function' || !/^[a-f0-9]{64}$/.test(hash) || pins.has(hash) ||
-            pin.ref.kind !== 'sample' || pin.variant?.contentHash !== hash || pin.variant.targetSampleRate !== preview._context?.sampleRate) throw new Error('invalid-prepared-sample-pin');
+            pin.ref.kind !== 'sample' || pin.variant?.decoderVersion !== DECODER_VERSION || pin.variant?.contentHash !== hash || pin.variant.targetSampleRate !== preview._context?.sampleRate) throw new Error('invalid-prepared-sample-pin');
         pins.set(hash, pin.retain({ owner, generation: audioGeneration }));
       }
       for (const ref of patch.sampleRefs) {

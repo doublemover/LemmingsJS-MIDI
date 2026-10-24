@@ -9,6 +9,19 @@ const rejects = async (work, text) => { let error; try { await work; } catch (fa
 describe('owned pure background computations', () => {
   const specification = extra => ({ kind: 'parse-json', ownerId: 'import', ownerEpoch: 1, sourceRevision: 'doc:1', inputBytes: 100,
     estimatedPeakBytes: 1048576, prepareInput: () => '{"value":12}', ...extra });
+  it('exposes actual input-producer quiescence after cancellation, including a frozen cancellation reason', async () => {
+    const admission = createBackgroundWorkerAdmission(), jobs = createBackgroundJobService({ admission, Worker: null });
+    let accepted, releaseInput, retired = 0;
+    const started = new Promise(resolve => { accepted = resolve; }), input = new Promise(resolve => { releaseInput = resolve; }), controller = new AbortController();
+    const work = jobs.compute(specification({ signal: controller.signal, prepareInput: () => { accepted(); return input; }, releasePreparedInput: () => { retired++; } }));
+    await started; controller.abort(Object.freeze(new Error('source-canceled')));
+    const error = await rejects(work, 'source-canceled'); let quiescent = false;
+    error.backgroundRetirementCompletion.then(() => { quiescent = true; }); await Promise.resolve();
+    expect(quiescent).to.equal(false); expect(retired).to.equal(0); expect(admission.diagnostics().memory.accountedBytes).to.be.greaterThan(0);
+    releaseInput('{"value":12}'); const receipt = await error.backgroundRetirementCompletion;
+    expect(['released', 'canceled']).to.include(receipt.phase); expect(retired).to.equal(1); expect(admission.diagnostics().memory.accountedBytes).to.equal(0);
+    jobs.dispose(); admission.dispose();
+  });
   it('keeps a computed result charged until publication releases it, independently of runnable worker slots', async () => {
     const admission = createBackgroundWorkerAdmission({ maxWorkers: 1 }), jobs = createBackgroundJobService({ admission, Worker: null, yieldTask: async () => {} });
     const result = await jobs.compute(specification());

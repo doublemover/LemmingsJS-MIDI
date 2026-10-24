@@ -1,3 +1,5 @@
+import { WAVE_SOURCE_DECODER_VERSION, WAVE_DECODE_PROFILES } from './WaveSourceProfile.js';
+import { backgroundJobService } from '../resources/BackgroundJobService.js';
 import { AudioAssetError, validateAudioAssetRef, inspectWaveAudio, DECODER_VERSION } from './AudioAssetRef.js';
 import { createAudioResourceLeases } from './AudioResourceLeases.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
@@ -26,10 +28,10 @@ const makeGate = (concurrency, capacity) => {
 
 export function createAudioAssetLoader({ getContext, resolveAssetUrl, fetchAsset = null, rawStore = null, resourceBudget = null,
   maxRawBytes = 32 * 1024 * 1024, maxDecodedBytes = 64 * 1024 * 1024, maxDecodedAssetBytes = 32 * 1024 * 1024,
-  maxEntries = 128, fetchConcurrency = 2, decodeConcurrency = 2, assetLimits = {},
+  jobs = backgroundJobService, maxEntries = 128, fetchConcurrency = 2, decodeConcurrency = 2, assetLimits = {},
   digest = async bytes => Array.from(new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', bytes))).map(value => value.toString(16).padStart(2, '0')).join(''),
   yieldTask = () => new Promise(resolve => setTimeout(resolve, 0)) } = {}) {
-  if (typeof getContext !== 'function' || typeof digest !== 'function' || typeof yieldTask !== 'function' ||
+  if (typeof jobs?.compute !== 'function' || typeof getContext !== 'function' || typeof digest !== 'function' || typeof yieldTask !== 'function' ||
       fetchAsset == null && typeof resolveAssetUrl !== 'function' ||
       [maxRawBytes, maxDecodedBytes, maxDecodedAssetBytes].some(value => !Number.isSafeInteger(value) || value < 4096 || value > 512 * 1024 * 1024) ||
       !Number.isSafeInteger(maxEntries) || maxEntries < 1 || maxEntries > 4096 ||
@@ -156,7 +158,7 @@ export function createAudioAssetLoader({ getContext, resolveAssetUrl, fetchAsset
     if (disposed || entry.state !== 'ready') throw fail('decoded-asset-unavailable', ref);
     entry.pins++; entry.used = ++useSequence; let active = true;
     const lease = { ref, get buffer() { if (!active || !entry.value) throw fail('asset-pin-released', ref); return entry.value; }, variant: Object.freeze({ contentHash: ref.contentHash, targetSampleRate: entry.sampleRate,
-      decoderVersion: DECODER_VERSION, frames: entry.value.length, channels: entry.value.numberOfChannels }), owner, generation,
+      decoderVersion: entry.decoderVersion, ...(entry.pcmHash ? { pcmHash: entry.pcmHash } : {}), frames: entry.value.length, channels: entry.value.numberOfChannels }), owner, generation,
     isActive: () => active && entry.value != null,
     retain: (next = {}) => {
       if (!active || disposed) throw fail('asset-pin-released', ref);
@@ -169,36 +171,52 @@ export function createAudioAssetLoader({ getContext, resolveAssetUrl, fetchAsset
     } };
     return Object.freeze(lease);
   };
-  const acquire = (input, { owner = 'anonymous', generation = 0, signal, isCurrent = () => true } = {}) => {
-    let ref, context;
+  const acquire = (input, { owner = 'anonymous', generation = 0, signal, isCurrent = () => true, decodeProfile = 'native-context' } = {}) => {
+    let ref, context, sampleRate, decoderVersion;
     try {
-      ref = validateAudioAssetRef(input, assetLimits); context = getContext();
+      ref = validateAudioAssetRef(input, assetLimits);
+      if (!WAVE_DECODE_PROFILES.includes(decodeProfile)) throw fail('decode-profile-unavailable', ref);
+      context = decodeProfile === 'native-context' ? getContext() : null;
+      sampleRate = decodeProfile === 'source-pcm' ? ref.sourceSampleRate : context?.sampleRate; decoderVersion = decodeProfile === 'source-pcm' ? WAVE_SOURCE_DECODER_VERSION : DECODER_VERSION;
       if (disposed) throw fail('asset-loader-disposed', ref);
       if (typeof owner !== 'string' || !owner || !Number.isSafeInteger(generation) || generation < 0 ||
-          !context?.decodeAudioData || !Number.isSafeInteger(context.sampleRate) || context.sampleRate < 8000 || context.sampleRate > 192000 || context.state === 'closed') throw fail('decode-context-unavailable', ref);
+          decodeProfile === 'source-pcm' && ref.kind !== 'sample' || decodeProfile === 'native-context' && (!context?.decodeAudioData || !Number.isSafeInteger(sampleRate) || sampleRate < 8000 || sampleRate > 192000 || context.state === 'closed')) throw fail('decode-context-unavailable', ref);
     } catch (error) { return Promise.reject(error); }
-    const key = ref.contentHash + ':' + context.sampleRate + ':' + DECODER_VERSION;
+    const key = ref.contentHash + ':' + sampleRate + ':' + decoderVersion;
     let entry = decoded.get(key);
     if (entry?.state === 'retirement-failed') return Promise.reject(fail('asset-retirement-unknown', ref));
     if (entry && entry.fingerprint !== fingerprint(ref)) return Promise.reject(fail('asset-source-metadata-mismatch', ref));
     if (!entry) {
-      const maximumFrames = Math.ceil(ref.frames * context.sampleRate / ref.sourceSampleRate) + 1, maximumBytes = maximumFrames * ref.channels * 4;
+      const maximumFrames = decodeProfile === 'source-pcm' ? ref.frames : Math.ceil(ref.frames * sampleRate / ref.sourceSampleRate) + 1, maximumBytes = maximumFrames * ref.channels * 4;
       if (maximumBytes > maxDecodedAssetBytes) return Promise.reject(fail('decoded-asset-byte-limit', ref));
       try { evict(decoded, 'decoded', maximumBytes); } catch (error) { return Promise.reject(error); }
       entry = { key, ref, fingerprint: fingerprint(ref), state: 'pending', pins: 0, waiters: 0, used: ++useSequence,
-        sampleRate: context.sampleRate, bytes: maximumBytes, controller: new AbortController(), resource: null, value: null, promise: null };
+        sampleRate, decoderVersion, pcmHash: null, bytes: maximumBytes, controller: new AbortController(), resource: null, value: null, promise: null };
       decoded.set(key, entry);
       entry.promise = decodeGate.run(async () => {
-        let encoded = null, workspace = null;
+        let encoded = null, workspace = null, job = null, producerUnknown = false;
         try {
           aborted(entry.controller.signal); encoded = await acquireRaw(ref, { signal: entry.controller.signal });
           evict(decoded, 'decoded', maximumBytes, maxDecodedBytes, false, true);
-          entry.resource = resources.reserveDecodedBuffer({ frames: maximumFrames, channels: ref.channels, sampleRate: context.sampleRate }); decodedBytes += maximumBytes;
-          workspace = resources.reserve({ kind: 'decode-input-and-workspace', bytes: ref.bytes, estimateBytes: maximumBytes });
-          const input = encoded.bytes.slice().buffer; stats.decodes++; aborted(entry.controller.signal);
-          const buffer = await context.decodeAudioData(input);
+          entry.resource = resources.reserveDecodedBuffer({ frames: maximumFrames, channels: ref.channels, sampleRate }); decodedBytes += maximumBytes;
+          const estimate = decodeProfile === 'source-pcm' ? Math.max(16 * 1048576, ref.bytes * 8 + maximumBytes * 4 + 1048576) : maximumBytes;
+          workspace = resources.reserve({ kind: 'decode-input-and-workspace', bytes: ref.bytes, estimateBytes: estimate });
+          stats.decodes++; aborted(entry.controller.signal); let buffer;
+          if (decodeProfile === 'source-pcm') {
+            job = await jobs.compute({ kind: 'decode-wave-source', ownerId: ownerPrefix + '-source', ownerEpoch: 0, sourceRevision: ref.contentHash,
+              inputBytes: ref.bytes, maxBytes: ref.bytes, estimatedPeakBytes: estimate, signal: entry.controller.signal, isCurrent: () => !disposed,
+              deadlineMs: 60000, prepareInput: () => ({ bytes: encoded.bytes, ref }) });
+            const value = job.value;
+            if (value.contentHash !== ref.contentHash || value.decoderVersion !== decoderVersion || !/^[a-f0-9]{64}$/.test(value.pcmHash) || value.sampleRate !== sampleRate ||
+                value.frames !== ref.frames || value.channels !== ref.channels || !Array.isArray(value.planes) || value.planes.length !== ref.channels ||
+                value.planes.some(plane => !(plane instanceof Float32Array) || !(plane.buffer instanceof ArrayBuffer) || plane.length !== ref.frames)) throw fail('decoded-source-format-mismatch', ref);
+            const planes = Object.freeze([...value.planes]); entry.pcmHash = value.pcmHash;
+            buffer = Object.freeze({ length: ref.frames, numberOfChannels: ref.channels, sampleRate, getChannelData(channel) {
+              if (!Number.isInteger(channel) || channel < 0 || channel >= planes.length) throw new RangeError('Invalid source channel.'); return planes[channel];
+            } });
+          } else buffer = await context.decodeAudioData(encoded.bytes.slice().buffer);
           entry.resource.validate(buffer);
-          if (buffer.numberOfChannels !== ref.channels || Math.abs(buffer.length - ref.frames * context.sampleRate / ref.sourceSampleRate) > 1) throw fail('decoded-source-format-mismatch', ref);
+          if (buffer.numberOfChannels !== ref.channels || Math.abs(buffer.length - ref.frames * sampleRate / ref.sourceSampleRate) > 1) throw fail('decoded-source-format-mismatch', ref);
           for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
             const samples = buffer.getChannelData(channel);
             for (let first = 0; first < samples.length; first += 65536) {
@@ -209,11 +227,30 @@ export function createAudioAssetLoader({ getContext, resolveAssetUrl, fetchAsset
           }
           aborted(entry.controller.signal); entry.resource.reconcile(buffer);
           const actualBytes = buffer.length * buffer.numberOfChannels * 4; decodedBytes += actualBytes - entry.bytes; entry.bytes = actualBytes;
-          entry.value = buffer; entry.state = 'ready'; return entry;
+          entry.value = buffer; return entry;
         } catch (error) {
+          if (error.backgroundRetirementCompletion) error.backgroundRetirement = await error.backgroundRetirementCompletion;
+          if (error.backgroundRetirement && !['released', 'canceled'].includes(error.backgroundRetirement.phase)) {
+            producerUnknown = true; entry.state = 'retirement-failed'; entry.resource?.retainUnknown(error); workspace?.retainUnknown(error);
+          }
           failed(decoded, key, entry, 'decoded');
           throw error;
-        } finally { workspace?.release(); encoded?.release(); }
+        } finally {
+          let cleanupError = null;
+          try {
+            job?.release();
+            if (job && !['released', 'canceled'].includes(job.retirementState().phase)) throw fail('asset-retirement-unknown', ref);
+          } catch (error) { producerUnknown = true; cleanupError = error; }
+          if (!producerUnknown) {
+            try { workspace?.release(); } catch (error) { cleanupError = error; }
+            try { encoded?.release(); } catch (error) { cleanupError ||= error; }
+          }
+          if (producerUnknown || cleanupError) {
+            const error = cleanupError || fail('asset-retirement-unknown', ref); entry.state = 'retirement-failed';
+            entry.resource?.retainUnknown(error); workspace?.retainUnknown(error); throw error;
+          }
+          if (entry.state === 'pending') entry.state = 'ready';
+        }
       }, entry.controller.signal);
       entry.promise.catch(() => failed(decoded, key, entry, 'decoded'));
     } else stats.decodedHits++;

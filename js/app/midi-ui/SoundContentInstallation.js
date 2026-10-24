@@ -79,7 +79,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
         if (patch.definition.sampleRefs.length) {
           if (!audio.getSoundMaterialProvider) throw failure('material-adapter-unavailable', 'Local sound material preparation is unavailable.');
           operation.material = await audio.getSoundMaterialProvider().acquire({ stage, patchIdentity, engineDescriptors: catalog.descriptors,
-            owner: 'sound-audition', generation: number, signal, isCurrent: () => !disposed && active === operation }); check();
+            owner: 'sound-audition', generation: number, decodeProfile: sourceMode ? 'native-context' : null, signal, isCurrent: () => !disposed && active === operation }); check();
         }
         let resolution;
         if (sourceMode) {

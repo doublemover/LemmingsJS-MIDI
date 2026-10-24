@@ -1,3 +1,4 @@
+import { decodeWaveSource } from './WaveSourceDecode.js';
 import { computeOwnedSourceBank } from './OwnedSourceBankComputation.js';
 import { checksumProcgenRecovery } from '../procgen/workstation/ProcgenRecoveryChecksum.js';
 import { decodeGroundAssetSnapshot } from './GroundAssetDecode.js';
@@ -12,7 +13,7 @@ import { getOwnedSourceBankIdentity } from '../midi-ui/OwnedSourceBank.js';
 import { renderCausalOwnedTake } from '../midi-ui/CausalOwnedRender.js';
 
 export const BACKGROUND_JOB_PROTOCOL = 1;
-export const BACKGROUND_JOB_KINDS = Object.freeze(['generate-procedural-biome', 'inspect-wave-asset', 'prepare-owned-source-bank', 'parse-json', 'verify-causal-source', 'snapshot-canonical-data', 'inspect-causal-archive-entry', 'render-sound-controls', 'render-causal-sine-take', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'asset-hash', 'asset-decode']);
+export const BACKGROUND_JOB_KINDS = Object.freeze(['decode-wave-source', 'generate-procedural-biome', 'inspect-wave-asset', 'prepare-owned-source-bank', 'parse-json', 'verify-causal-source', 'snapshot-canonical-data', 'inspect-causal-archive-entry', 'render-sound-controls', 'render-causal-sine-take', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'asset-hash', 'asset-decode']);
 const MAX_BYTES = 64 * 1048576, MAX_NODES = 4000000;
 const problem = (code, message) => Object.assign(new Error(message), { code, name: 'BackgroundJobError' });
 const shared = value => typeof globalThis.SharedArrayBuffer === 'function' && (value instanceof globalThis.SharedArrayBuffer || value?.buffer instanceof globalThis.SharedArrayBuffer);
@@ -118,6 +119,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
       !Number.isSafeInteger(maxStringBytes) || maxStringBytes < 1 || maxStringBytes > MAX_BYTES ||
       expectedInputHash != null && !/^[a-f0-9]{64}$/.test(expectedInputHash)) throw problem('invalid-contract', 'Unsupported background job kernel contract.');
   guard(signal, current);
+  if (kind === 'decode-wave-source') return decodeWaveSource(input, { signal, current, maxBytes, estimatedPeakBytes, crypto, yieldControl });
   if (kind === 'generate-procedural-biome') {
     if (!input || Object.keys(input).length !== 1 || typeof input.id !== 'string') throw problem('invalid-contract', 'Invalid procedural biome source request.');
     const expected = getProceduralBiomeById(input.id);

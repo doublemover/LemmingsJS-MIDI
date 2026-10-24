@@ -2356,6 +2356,17 @@ cuts or reconstruct missing held ancestry. Granular asset render handoff and
 native offline engines remain separate implementation work. Runtime, PCM and
 cross-browser qualification is deferred until the implementation pass is complete.
 
+Granular material now has a source-rate PCM decoder variant within the same
+encoded/decoded asset cache. A worker validates WAV identity and decodes 8/16/24/32
+bit integer or 32 bit float samples to pinned planar Float32 at the original rate,
+without a live AudioContext or native resampling. Native sample voices and dry
+source comparisons keep the native-context AudioBuffer variant. Cloud bank
+preparation verifies the decoded PCM digest as well as the encoded asset hash.
+Background cancellation exposes producer quiescence so temporary input retirement
+is joined before caller workspaces are released; unknown producers stay charged.
+Source-rate conversion in the grain kernel remains linear and unqualified for
+alias safety. Offline granular handoff is the next consumer of this cache path.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical
