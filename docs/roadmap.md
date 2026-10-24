@@ -2124,6 +2124,15 @@ are captured on semantic onsets and do not mutate held voices or physical RNG.
 One-shot release policy follows the actual onset envelope. Continuous controls,
 identity/physical composition, momentary/controller pickup and audio/listening
 qualification remain; the new macro fixtures have not run.
+Native onset performance now composes keyed actor/event variation and typed
+completed-fact bindings between macros and the final safety clamp. Variation
+uses versioned ordered encoding, bounded named latent factors, no mutable RNG
+or identity cache, and an explicit event-only fallback. Amount/Reroll timbre
+are separate saved musical controls captured on onsets. FM Forge revision 3
+authors small correlated ratio/decay variation and work-cell-driven color;
+cells/pixels are not force or energy. Missing measured fields skip the binding
+with a receipt. Continuous bindings, actor locks, noise-state support and the
+deferred PCM/listening/physical qualification remain outstanding.
 
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail

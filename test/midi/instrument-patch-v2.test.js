@@ -16,7 +16,8 @@ const patch = () => ({ schemaVersion: 2, id: 'crystal-lead', revision: 7, name: 
   macros: [{ id: 'shimmer', name: 'Shimmer', mode: 'onset-only', default01: 0.5, smoothingMs: 0, perceptualDirection: 'Increase spectral brightness.',
     targets: [{ parameter: 'brightness', unit: 'normalized', minimum: 0, maximum: 1, curve: 'linear', composition: 'replace', clamp: true }] }],
   causalBindings: [{ id: 'impact', sourceKind: 'TerrainWorkCommitted', payloadField: 'changedSolidCells', target: 'brightness',
-    unit: 'cells', curve: 'linear', inputMin: 0, inputMax: 6, smoothingMs: 5 }],
+    unit: 'cells', curve: 'linear', inputMin: 0, inputMax: 6, mode: 'onset-only', smoothingMs: 0,
+    outputUnit: 'normalized', outputMin: 0, outputMax: 1, composition: 'replace' }],
   midiFallback: { bankMSB: 0, bankLSB: 0, program: 10, percussionMap: { 36: 38 } } });
 
 describe('versioned causal instrument patches', () => {

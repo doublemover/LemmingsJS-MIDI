@@ -26,7 +26,8 @@ export const NATIVE_SAMPLE_FIELDS = freezeData(Object.fromEntries(schemas['nativ
 const capabilities = id => Object.freeze({ samples: id === 'native-sample', independentSamePitch: true, perVoicePitch: true,
   perVoicePressure: true, perVoicePan: true, perVoiceTimbre: false, ownedGates: true, releaseVelocity: id === 'native-sample',
   forwardLoops: id === 'native-sample', displayTelemetry: id === 'worklet-sine', renderAcknowledgment: id === 'worklet-sine', offlineRender: id === 'worklet-sine',
-  modulationGraph: false, macroPerformance: ['native-oscillator', 'native-fm'].includes(id), continuousMacroPerformance: false, causalBindings: false });
+  modulationGraph: false, macroPerformance: ['native-oscillator', 'native-fm'].includes(id), continuousMacroPerformance: false,
+  identityVariation: ['native-oscillator', 'native-fm'].includes(id), causalBindings: ['native-oscillator', 'native-fm'].includes(id) });
 let catalogPromise = null;
 
 export async function describeNativeInstrumentEngines(artifacts) {

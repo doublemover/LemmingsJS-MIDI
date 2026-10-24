@@ -2,7 +2,7 @@
   "schema": "lemmings-sound-recipes/v1",
   "pack": {
     "id": "lemmings.fm-forge",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "name": "FM Forge",
     "author": "LemmingsJS-MIDI contributors",
     "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
@@ -17,7 +17,7 @@
   "recipes": [
     {
       "id": "forge.base",
-      "revision": 2,
+      "revision": 3,
       "abstract": true,
       "author": "LemmingsJS-MIDI contributors",
       "tags": [
@@ -153,11 +153,82 @@
         "gain01": 0.6,
         "pan01": 0
       },
-      "dependencies": []
+      "dependencies": [],
+      "variation": {
+        "algorithmVersion": "fnv1a32-utf16-le-latents-v1",
+        "seed": 731,
+        "identityScope": "execution-birth",
+        "amount01": 1,
+        "targets": [
+          {
+            "id": "alloy-sibling",
+            "parameter": "modulatorRatio",
+            "unit": "ratio",
+            "composition": "scale",
+            "amount": 0.004,
+            "factors": [
+              {
+                "id": "sibling",
+                "weight": 1
+              }
+            ]
+          },
+          {
+            "id": "ring-sibling",
+            "parameter": "decaySeconds",
+            "unit": "ratio",
+            "composition": "scale",
+            "amount": 0.08,
+            "factors": [
+              {
+                "id": "sibling",
+                "weight": 0.7
+              },
+              {
+                "id": "ring",
+                "weight": 0.3
+              }
+            ]
+          }
+        ],
+        "eventTargets": [
+          {
+            "id": "strike-color",
+            "parameter": "indexStart",
+            "unit": "ratio",
+            "composition": "scale",
+            "amount": 0.05,
+            "factors": [
+              {
+                "id": "strike",
+                "weight": 1
+              }
+            ]
+          }
+        ]
+      },
+      "causalBindings": [
+        {
+          "id": "completed-work-color",
+          "sourceKind": "TerrainWorkCommitted",
+          "payloadField": "changedSolidCells",
+          "target": "indexStart",
+          "unit": "cells",
+          "curve": "linear",
+          "inputMin": 0,
+          "inputMax": 32,
+          "outputUnit": "ratio",
+          "outputMin": 0.7,
+          "outputMax": 1.3,
+          "composition": "scale",
+          "mode": "onset-only",
+          "smoothingMs": 0
+        }
+      ]
     },
     {
       "id": "forge.glass-rivet",
-      "revision": 2,
+      "revision": 3,
       "extends": "forge.base",
       "name": "Glass Rivet",
       "components": [
@@ -267,7 +338,7 @@
     },
     {
       "id": "forge.copper-tine",
-      "revision": 2,
+      "revision": 3,
       "extends": "forge.base",
       "name": "Copper Tine",
       "components": [
@@ -401,7 +472,7 @@
     },
     {
       "id": "forge.alarm-bloom",
-      "revision": 2,
+      "revision": 3,
       "extends": "forge.base",
       "name": "Alarm Bloom",
       "components": [
@@ -539,7 +610,7 @@
     },
     {
       "id": "forge.rubber-bolt",
-      "revision": 2,
+      "revision": 3,
       "extends": "forge.base",
       "name": "Rubber Bolt",
       "components": [

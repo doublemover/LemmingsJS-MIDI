@@ -97,7 +97,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     const patch = resolution?.patch;
     if (!['ready', 'degraded'].includes(resolution?.status) || !patch || patch.engineId !== 'native-sample' || patch.engineVersion !== 1 ||
         !text(patch.id, 128) || !integer(patch.revision, 1, 2147483647) || resolution.receipt?.patchId !== patch.id ||
-        resolution.receipt?.revision !== patch.revision || !plain(patch.parameters) || patch.modulations?.length || patch.macros?.length || patch.causalBindings?.length ||
+        resolution.receipt?.revision !== patch.revision || !plain(patch.parameters) || patch.modulations?.length || patch.macros?.length || patch.causalBindings?.length || patch.variation ||
         !finite(patch.mix?.gain01, 0, 1) || !finite(patch.mix?.pan01, -1, 1) || !integer(patch.voicePolicy?.maxVoices, 1, 64) ||
         patch.voicePolicy.steal != null && patch.voicePolicy.steal !== 'reject' ||
         !Array.isArray(patch.sampleRefs) || patch.sampleRefs.length > 32 || !Array.isArray(assets) || assets.length > 32) return reject('unsupported-patch-or-engine');
@@ -208,7 +208,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     armExpiry(); return trace({ status: 'accepted', stage: 'scheduled', generation, executionEpoch, validUntilFrame });
   };
   const begin = (intent, targetFrame, executionEpoch = 'live') => {
-    if (Object.keys(intent?.performanceControls?.macros || {}).length) return reject('performance-controls-unavailable', intent?.voiceId);
+    if (Object.keys(intent?.performanceControls?.macros || {}).length || Object.keys(intent?.performanceControls || {}).some(key => key !== 'macros')) return reject('performance-controls-unavailable', intent?.voiceId);
     if (disposed || !prepared || !preview._ownerReady(owner)) return reject(disposed ? 'disposed' : !prepared ? 'patch-unprepared' : 'audio-not-ready', intent?.voiceId);
     const context = preview._context, start = timeFor(targetFrame), expression = intent?.expression ?? {};
     if (intent?.version !== 1 || intent.kind !== 'begin' || !text(intent.voiceId) || !text(executionEpoch) || !integer(intent.generation, 0, Number.MAX_SAFE_INTEGER) ||

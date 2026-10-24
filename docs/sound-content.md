@@ -260,3 +260,21 @@ receipts report effective values and their frame; this is not a PCM receipt.
 FM Forge revision 2 adds HARDNESS, RING and ALLOY. Saved lane overrides affect
 the next causal onset and enter captured intent data. Existing voices retain
 their authored excitation and envelope; continuous macros are unavailable.
+
+Compiler `typed-recipes-v4` preserves bounded identity/event variation and typed
+onset physical bindings. Composition is base → macros → identity/event variation
+→ completed-fact mapping → final engine clamp. Variation algorithm
+`fnv1a32-utf16-le-latents-v1` hashes an ordered JSON array as UTF-16 little-endian
+code units, then avalanches its 32-bit result. Keys include patch revision,
+musical seed, captured world/generation/actor identity or stable onset identity,
+purpose and named latent factor. Bounded factor weights express correlation.
+There is no simulation RNG consumption or retained identity cache. Missing actor
+identity uses a named event-only fallback; missing both identities is rejected.
+
+FM Forge revision 3 adds slight ratio/decay siblings, per-strike index variation
+and an onset scale driven by actual `changedSolidCells`. The physical input
+allowlist includes committed cell counts, motion distance and observed wall-step
+height with explicit units. No force/energy estimate is inferred. Missing source
+measurements leave the prior composition intact with `no-qualified-source`.
+Lane Amount/Reroll changes only future musical controls and records one normal
+history action. Actor-specific locks and continuous control/noise remain pending.

@@ -59,7 +59,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
   const validatePatch = resolution => {
     if (!resolution || !['ready', 'degraded'].includes(resolution.status) || !resolution.patch ||
         resolution.patch.engineId !== engineId || resolution.patch.engineVersion !== 1 ||
-        resolution.patch.sampleRefs?.length || resolution.patch.modulations?.length || resolution.patch.causalBindings?.length || resolution.receipt?.patchId !== resolution.patch.id ||
+        resolution.patch.sampleRefs?.length || resolution.patch.modulations?.length || resolution.receipt?.patchId !== resolution.patch.id ||
         resolution.receipt?.revision !== resolution.patch.revision) return null;
     const values = Object.fromEntries(Object.entries(parameters).map(([id, spec]) => [id, spec.default]));
     for (const [name, value] of Object.entries(resolution.patch.parameters || {})) {
@@ -156,7 +156,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
         Object.keys(intent.expression || {}).some(name => !['pressure01', 'pan01', 'pitchOffsetCents'].includes(name))) return failure('unsupported-expression', intent);
     if (!validCents(offset)) return failure('invalid-expression', intent);
     let controls;
-    try { controls = prepared.performance.resolve(intent.performanceControls, targetFrame); } catch { return failure('unsupported-performance-controls', intent); }
+    try { controls = prepared.performance.resolve(intent.performanceControls, targetFrame, intent); } catch { return failure('unsupported-performance-controls', intent); }
     const values = controls.values;
     let fmPlan = null;
     if (engineId === 'native-fm') { try { fmPlan = planNativeFmSource({ fundamentalHz: frequencyFor(intent.pitch), sampleRate: context.sampleRate, parameters: values, pitchOffsetCents: offset }); }
@@ -233,7 +233,11 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
         generation: intent.generation, executionEpoch, targetFrame, patchId: prepared.patch.id, patchRevision: prepared.patch.revision,
         performance: controls, articulation: resolveOwnedArticulationPolicy({ parameters: values }),
         ...(fmPlan ? { sourceCost, quality: fmPlan.quality, indexLimited: fmPlan.indexLimited, fmPlan } : {}) });
-      trace({ ...receipt, sourceEventIds: Object.freeze(intent.sourceEventIds?.slice(0, 32) || []),
+      const { performance: effectivePerformance, ...traceReceipt } = receipt;
+      trace({ ...traceReceipt, effectiveValues: effectivePerformance.values, performanceRevision: effectivePerformance.revision,
+        variation: effectivePerformance.variation, effectiveTargetCount: effectivePerformance.deltas.length,
+        appliedPhysicalBindings: effectivePerformance.bindingOutcomes.filter(binding => binding.state === 'applied').length,
+        sourceEventIds: Object.freeze(intent.sourceEventIds?.slice(0, 32) || []),
         omittedSourceEventIds: Math.max(0, (intent.sourceEventIds?.length || 0) - 32), intentId: intent.intentId ?? null,
         onsetId: intent.onsetId ?? null, actorId: intent.actorId ?? null });
       preview._observe('synth-scheduled', { ...voice.captureMeta, voiceId: voice.id, targetFrame,

@@ -1,4 +1,5 @@
-import { validateInstrumentMacros } from './InstrumentPerformance.js';
+import { validateInstrumentMacros, validateInstrumentBindings } from './InstrumentPerformance.js';
+import { validateInstrumentVariation } from './InstrumentIdentityVariation.js';
 import { canonicalDataText, cloneData } from '../../core/CanonicalData.js';
 
 const plain = value => value !== null && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
@@ -103,17 +104,10 @@ const validateInstrumentPatchV2 = (input, descriptor) => {
   const macros = validateInstrumentMacros(input.macros, engine.parameters);
   if (engine.capabilities.continuousMacroPerformance === false && macros.some(macro => macro.mode === 'continuous')) throw new Error('Continuous macros are unavailable on this engine.');
   if (macros.some(macro => macro.targets.some(target => schema.get(target.parameter).capability && !engine.capabilities[schema.get(target.parameter).capability]))) throw new Error('Unsupported macro target capability.');
-  const bindingIds = new Set();
-  const causalBindings = input.causalBindings.map(binding => {
-    if (!plain(binding) || !id(binding.id) || bindingIds.has(binding.id) || !id(binding.sourceKind) || !id(binding.payloadField) || !id(binding.target) ||
-        !schema.has(binding.target) || (schema.get(binding.target).capability && !engine.capabilities[schema.get(binding.target).capability]) ||
-        !text(binding.unit, 32) || !['linear', 'logarithmic', 'step'].includes(binding.curve) ||
-        !finite(binding.inputMin, -1000000000, 1000000000) || !finite(binding.inputMax, -1000000000, 1000000000) ||
-        binding.inputMin >= binding.inputMax || !finite(binding.smoothingMs, 0, 60000)) throw new Error('Invalid causal binding.');
-    bindingIds.add(binding.id);
-    return { id: binding.id, sourceKind: binding.sourceKind, payloadField: binding.payloadField, target: binding.target,
-      unit: binding.unit, curve: binding.curve, inputMin: binding.inputMin, inputMax: binding.inputMax, smoothingMs: binding.smoothingMs };
-  });
+  const causalBindings = validateInstrumentBindings(input.causalBindings, engine.parameters);
+  if (causalBindings.some(binding => schema.get(binding.target).capability && !engine.capabilities[schema.get(binding.target).capability])) throw new Error('Unsupported physical target capability.');
+  const variation = validateInstrumentVariation(input.variation, engine.parameters);
+  if (variation && engine.capabilities.identityVariation !== true) throw new Error('Identity variation is not realized by this engine.');
   if (!integer(input.voicePolicy.maxVoices, 1, 1024) || !['oldest', 'quietest', 'reject'].includes(input.voicePolicy.steal) ||
       !finite(input.mix.gain01, 0, 1) || !finite(input.mix.pan01, -1, 1)) throw new Error('Invalid patch voice or mix policy.');
   if (engine.maximumVoices != null && input.voicePolicy.maxVoices > engine.maximumVoices || engine.voicePolicies && !engine.voicePolicies.includes(input.voicePolicy.steal))
@@ -126,7 +120,7 @@ const validateInstrumentPatchV2 = (input, descriptor) => {
   return freeze({ schemaVersion: 2, id: input.id, revision: input.revision, name: input.name, author: input.author,
     tags: input.tags, engineId: input.engineId, engineVersion: input.engineVersion, parameters,
     modulations, sampleRefs, voicePolicy: { maxVoices: input.voicePolicy.maxVoices, steal: input.voicePolicy.steal },
-    mix: { gain01: input.mix.gain01, pan01: input.mix.pan01 }, macros, causalBindings,
+    mix: { gain01: input.mix.gain01, pan01: input.mix.pan01 }, macros, causalBindings, ...(variation ? { variation } : {}),
     midiFallback: midiFallback && { bankMSB: midiFallback.bankMSB, bankLSB: midiFallback.bankLSB,
       program: midiFallback.program, percussionMap: midiFallback.percussionMap || {} } });
 };
@@ -146,7 +140,9 @@ const migrateInstrumentPatchParameters = (source, descriptor, renames, nextRevis
       source: modulation.source.startsWith('parameter:') ? `parameter:${rename(modulation.source.slice('parameter:'.length))}` : modulation.source,
       target: rename(modulation.target) })),
     macros: source.macros.map(macro => ({ ...macro, targets: macro.targets.map(target => ({ ...target, parameter: rename(target.parameter) })) })),
-    causalBindings: source.causalBindings.map(binding => ({ ...binding, target: rename(binding.target) })) }, descriptor);
+    causalBindings: source.causalBindings.map(binding => ({ ...binding, target: rename(binding.target) })),
+    ...(source.variation ? { variation: { ...source.variation, targets: source.variation.targets.map(target => ({ ...target, parameter: rename(target.parameter) })),
+      eventTargets: source.variation.eventTargets.map(target => ({ ...target, parameter: rename(target.parameter) })) } } : {}) }, descriptor);
   return Object.freeze({ patch: migrated, report: Object.freeze({ kind: 'parameter-rename', patchId: source.id,
     fromRevision: source.revision, toRevision: nextRevision,
     renamed: Object.freeze(Object.entries(renames).map(([from, to]) => Object.freeze({ from, to }))) }) });

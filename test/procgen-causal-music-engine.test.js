@@ -14,6 +14,15 @@ const batch = (tick, facts, generation = 1, completeness = { status: 'complete',
 });
 
 describe('causal musical intent engine', () => {
+  it('captures copied performer controls and measured work inputs without changing onset truth', () => {
+    const current = graph([instrument('brick', 'TerrainWorkCommitted')]), controls = { macros: { hardness: 0.7 }, variationSeed: 91 };
+    const engine = createCausalMusicEngine({ getGraph: () => current, getOnsetControls: () => controls });
+    const physical = batch(1, [{ kind: 'TerrainWorkCommitted', actorId: 7, laneId: 0, physicalPayload: { changedSolidCells: 6, pressure: 99 } }]);
+    const intents = engine.processBatch(physical); controls.macros.hardness = 0;
+    expect(intents.map(intent => intent.kind)).to.deep.equal(['begin', 'end']); expect(intents[0].performanceControls.macros.hardness).to.equal(0.7);
+    expect(intents[0].performanceCause.values).to.deep.equal({ changedSolidCells: { value: 6, unit: 'cells' } });
+    expect(intents[0].sourceEventIds).to.deep.equal([physical.facts[0].eventId]); expect(intents[1].performanceControls).to.equal(undefined);
+  });
   let masks;
   before(async () => { masks = await loadProcgenMasks(); });
 

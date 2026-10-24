@@ -32,7 +32,7 @@ describe('typed effective onset controls', () => {
     const content = await compileSoundContent(source, { targets });
     for (const entry of content.prepared.patches) {
       const plan = compileInstrumentPerformance(entry.definition, Object.values(NATIVE_FM_PARAMETERS));
-      const base = plan.resolve({}, 100), low = plan.resolve({ macros: { hardness: 0, ring: 0, alloy: 0 } }, 100), high = plan.resolve({ macros: { hardness: 1, ring: 1, alloy: 1 } }, 100);
+      const base = plan.resolve({ variationAmount01: 0 }, 100), low = plan.resolve({ macros: { hardness: 0, ring: 0, alloy: 0 }, variationAmount01: 0 }, 100), high = plan.resolve({ macros: { hardness: 1, ring: 1, alloy: 1 }, variationAmount01: 0 }, 100);
       expect(base.values.indexStart).to.be.closeTo(entry.definition.parameters.indexStart, 1e-12);
       expect(high.values.indexStart).to.be.greaterThan(low.values.indexStart); expect(high.values.decaySeconds).to.be.greaterThan(low.values.decaySeconds);
       expect(high.values.modulatorRatio).not.to.equal(low.values.modulatorRatio); expect(base.deltas.every(delta => delta.interpolation === 'onset-only')).to.equal(true);

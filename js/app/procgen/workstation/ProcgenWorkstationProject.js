@@ -161,7 +161,7 @@ const reduceCanonicalProcgenProject = (project, action) => {
     if (action.patch.patterns === undefined) next.patterns = lane.patterns;
   } else if (action.type === 'procgen/palette') {
     next = createProcgenLane(index, { ...lane, family: action.family ?? lane.family, role: action.role ?? lane.role,
-      patch: action.patch ?? null, instrumentRef: null, patterns: action.resetPatterns ? undefined : lane.patterns });
+      patch: action.patch ?? null, instrumentRef: null, instrumentControls: { macros: {} }, patterns: action.resetPatterns ? undefined : lane.patterns });
     if (!action.resetPatterns) next.patterns = lane.patterns;
   } else if (action.type === 'procgen/step' || action.type === 'procgen/pattern') {
     const slot = action.slot ?? lane.activeSlot, pattern = lane.patterns[slot];

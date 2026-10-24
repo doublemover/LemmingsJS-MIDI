@@ -1,4 +1,4 @@
-import { validateInstrumentControls } from '../../../midi/content/InstrumentPerformance.js';
+import { validateInstrumentControls, captureInstrumentCause } from '../../../midi/content/InstrumentPerformance.js';
 import { causalRandomDecision } from './CausalRandom.js';
 import { createTravelAccumulator, validateArticulationField } from './TravelAccumulator.js';
 
@@ -61,7 +61,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     sourceTickDurationMs: Number.isFinite(batch.tickDurationMs) && batch.tickDurationMs > 0 ? batch.tickDurationMs : null }),
     pitch: Object.freeze({ cents: instrument.pitchCents, referenceHz: 440 }), velocity01: instrument.velocity01,
     expression: Object.freeze(expression), role: instrument.role, route: instrument.route, terminationReason: reason,
-    ...(kind === 'begin' ? { performanceControls: validateInstrumentControls(getOnsetControls(fact?.laneId)) } : {})
+    ...(kind === 'begin' ? { performanceControls: validateInstrumentControls(getOnsetControls(fact?.laneId)), performanceCause: captureInstrumentCause(fact) } : {})
   });
   const publish = (batch, intents) => {
     const sealed = Object.freeze(intents);

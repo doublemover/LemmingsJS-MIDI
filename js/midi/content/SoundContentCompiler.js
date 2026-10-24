@@ -4,7 +4,7 @@ import { validateEngineDescriptor, validateInstrumentPatchV2 } from './Instrumen
 import { validateInstrumentMacros } from './InstrumentPerformance.js';
 
 export const SOUND_RECIPE_SCHEMA = 'lemmings-sound-recipes/v1';
-export const SOUND_COMPILER_REVISION = 'typed-recipes-v3';
+export const SOUND_COMPILER_REVISION = 'typed-recipes-v4';
 const limits = { maxBytes: 8 * 1048576, maxNodes: 200000, domain: 'Sound recipes' };
 const units = new Set(['Hz', 'cents', 'ratio', 'dimensionless', 's', 'ms', 'amplitude-linear', 'dB', 'normalized', 'enum', 'world-pixel']);
 const id = value => typeof value === 'string' && /^[a-z][a-z0-9._:-]{0,127}$/i.test(value) && !['__proto__', 'constructor', 'prototype'].includes(value);
@@ -136,15 +136,18 @@ export async function compileSoundContent(raw, { targets = [], signal } = {}) {
     let effectiveMacros;
     try { effectiveMacros = validateInstrumentMacros(explanations.map(({ mappings, ...macro }) => ({ ...macro, targets: mappings.map(({ conversion, ...mapping }) => mapping) })), descriptor.parameters); }
     catch (error) { fail(path + '.macros', error.message); }
-    const definition = validateInstrumentPatchV2({ schemaVersion: 2, id: recipe.id, revision: recipe.revision, name: recipe.name, author: recipe.author, tags: recipe.tags || [],
+    let definition;
+    try { definition = validateInstrumentPatchV2({ schemaVersion: 2, id: recipe.id, revision: recipe.revision, name: recipe.name, author: recipe.author, tags: recipe.tags || [],
       engineId: descriptor.engineId, engineVersion: descriptor.engineVersion, parameters, modulations, causalBindings,
+      ...(recipe.variation ? { variation: recipe.variation } : {}),
       macros: effectiveMacros,
-      sampleRefs: recipe.sampleRefs || [], voicePolicy: recipe.voicePolicy, mix: recipe.mix, midiFallback: recipe.midiFallback }, descriptor);
+      sampleRefs: recipe.sampleRefs || [], voicePolicy: recipe.voicePolicy, mix: recipe.mix, midiFallback: recipe.midiFallback }, descriptor); }
+    catch (error) { fail(path + '.definition', error.message); }
     requireValue(!nativeComponents(descriptor) || definition.voicePolicy.maxVoices <= 64, path + '.voicePolicy', 'native renderer supports at most 64 owned voices');
     const engineRequirement = { engineId: descriptor.engineId, engineVersion: descriptor.engineVersion, artifactHash: descriptor.artifactHash, parameterSchemaHash: descriptor.parameterSchemaHash };
     const dependencies = recipe.dependencies || []; requireValue(Array.isArray(dependencies) && dependencies.length <= 512, path + '.dependencies', 'invalid asset dependency closure');
-    const effective = { engineRequirement, parameters: definition.parameters, modulations, causalBindings, sampleRefs: definition.sampleRefs, dependencies: [...dependencies].sort(),
-      macros: definition.macros.map(({ name, perceptualDirection, ...macro }) => macro), voicePolicy: definition.voicePolicy, mix: definition.mix };
+    const effective = { engineRequirement, parameters: definition.parameters, modulations, causalBindings: definition.causalBindings, sampleRefs: definition.sampleRefs, dependencies: [...dependencies].sort(),
+      macros: definition.macros.map(({ name, perceptualDirection, ...macro }) => macro), variation: definition.variation || null, voicePolicy: definition.voicePolicy, mix: definition.mix };
     const reachable = new Set(dependencies), fileMap = new Map(source.files.map(file => [file.sha256, file]));
     for (const dependency of reachable) { requireValue(reachable.size <= 512, path + '.dependencies', 'asset ancestry exceeds its bounds');
       for (const parent of fileMap.get(dependency)?.parents || []) reachable.add(parent); }
