@@ -191,7 +191,8 @@ const querySoundOnlyRevoiceOwned = async ({ journal, takeId, takeRevision, sound
     for (const record of slice.records) for (const intent of record.payload.intents) intents[offset++] = intent;
     const initialBoundary = firstSequence === 1 && generation == null && !manifest.prefix && range.firstTick === manifest.coverage?.sourceRange?.firstTick;
     return await workspace.publish({ version: 1, operation: 'sound-only-revoice', takeId, takeRevision: slice.takeRevision,
-      sourceCanonicalHash: manifest.canonicalHash, sourceVersions: manifest.sourceVersions, executionEpoch, soundPatch: patch,
+      sourceCanonicalHash: manifest.canonicalHash, sourceVersions: manifest.sourceVersions, sourceState: manifest.state, sourceComplete: manifest.complete,
+      finalBoundaryState: manifest.stopBoundaryState || null, executionEpoch, soundPatch: patch,
       intents, intentCount: count, nextSequence: slice.nextSequence, range, generation: generation ?? null, coverage,
       boundary: { status: initialBoundary ? 'captured-initial-state' : 'requires-state-reconstruction',
         state: initialBoundary ? manifest.boundaryState : null, sourceOnsetsSynthesized: false },

@@ -476,7 +476,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   const causalBoundary = () => {
     const physical = physicalPlayback?.engine.snapshot();
-    return { voices: physical?.active || [], travel: physical?.travel || null,
+    return { sourceTimeMs: runtime()?.world?.simulationTimeMs ?? null, voices: physical?.active || [], travel: physical?.travel || null,
       contactSpans: physical?.active?.filter(voice => voice.lifetimeScope === 'contactSpan') || [],
       timeline: physicalScoreClock.snapshot() };
   };

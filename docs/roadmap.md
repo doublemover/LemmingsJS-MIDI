@@ -2075,6 +2075,14 @@ engine/patch/graph/rate/profile identities, including future controls and ramps.
 This prepares restoration and chunked/cropped rendering; live restoration/UI and
 continuity qualification remain outstanding. Audio evidence tooling now derives
 its server/hash inventory from the complete static module closure.
+The new causal sine render core consumes bounded covered intent snapshots in an
+explicit new local realization, with captured source-clock boundaries, immutable
+intent/source hashes, silent preroll, exact crop or declared bounded/derived tails,
+and simultaneous dry lane taps from one graph. It rejects unknown held ancestry,
+unsupported expression/subtick timing and capacity rather than inventing attacks
+or replaying current physics. The fixed worker requires immutable engine identity
+and admits PCM/encoding/transfer overlap. Host/UI integration follows; authored
+PCM/stem/crop/cancellation fixtures remain unexecuted.
 
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail

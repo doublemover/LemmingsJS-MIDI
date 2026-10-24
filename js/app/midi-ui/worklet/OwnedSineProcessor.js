@@ -17,6 +17,7 @@ class OwnedSineKernel {
     this.voice = new Float64Array(MAX_VOICES * 28); this.active = new Uint8Array(MAX_VOICES);
     this.receipts = new Float64Array(2048 * RECEIPT_WIDTH); this.receiptCount = 0;
     this.counters = new Uint32Array(8); this.panicPending = false;
+    this.stemSums = new Float64Array(32);
     this.lastPacket = 0; this.lastFrame = 0; this.nonfinite = 0;
     this.displayTokens = new Uint32Array(MAX_VOICES); this.displayState = new Float64Array(MAX_VOICES * DISPLAY_STATE_WIDTH);
     this.displayData = new Float64Array(DISPLAY_VOICES * DISPLAY_WIDTH); this.displayCount = 0;
@@ -195,7 +196,11 @@ class OwnedSineKernel {
     this.receipt(APPLIED, sequence, slot, token, frame);
   }
 
-  render(left, right, frameStart) {
+  render(left, right, frameStart, stems = null) {
+    if (stems && (!(stems.routes instanceof Int8Array) || stems.routes.length !== MAX_VOICES ||
+        !Array.isArray(stems.channels) || stems.channels.length < 1 || stems.channels.length > 16 ||
+        stems.channels.some(channels => !Array.isArray(channels) || channels.length !== 2 || channels.some(channel => !(channel instanceof Float32Array) || channel.length !== left.length)) ||
+        stems.routes.some(route => route < -1 || route >= stems.channels.length))) throw new TypeError('Invalid bounded sine stem taps.');
     this.lastFrame = frameStart;
     if (this.panicPending) {
       this.panicPending = false;
@@ -213,6 +218,7 @@ class OwnedSineKernel {
         this.apply(frame); this.pop();
       }
       let sumLeft = 0, sumRight = 0;
+      if (stems) this.stemSums.fill(0);
       for (let slot = 0; slot < this.maxVoices; slot++) {
         if (!this.active[slot]) continue;
         const at = slot * 28, voices = this.voice, age = frame - voices[at + 15];
@@ -238,9 +244,12 @@ class OwnedSineKernel {
         }
         const angle = (voices[at + 10] + 1) * Math.PI / 4;
         if (this.displayEnabled) this.measureDisplay(slot, sample, frame, phase, voices[at + 18] ? 1 : 0);
-        sumLeft += sample * Math.cos(angle); sumRight += sample * Math.sin(angle);
+        const voiceLeft = sample * Math.cos(angle), voiceRight = sample * Math.sin(angle);
+        sumLeft += voiceLeft; sumRight += voiceRight;
+        if (stems && stems.routes[slot] >= 0) { const stem = stems.routes[slot] * 2; this.stemSums[stem] += voiceLeft; this.stemSums[stem + 1] += voiceRight; }
       }
       left[offset] = sumLeft; if (right) right[offset] = sumRight;
+      if (stems) for (let stem = 0; stem < stems.channels.length; stem++) { stems.channels[stem][0][offset] = this.stemSums[stem * 2]; stems.channels[stem][1][offset] = this.stemSums[stem * 2 + 1]; }
       if (this.displayEnabled && frame + 1 >= this.displayNext) this.finishDisplay(frame + 1);
     }
     this.lastFrame = frameStart + left.length;
