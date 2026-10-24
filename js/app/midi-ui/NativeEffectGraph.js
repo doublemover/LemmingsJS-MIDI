@@ -1,3 +1,4 @@
+import { VOCODER_BANK_REVISION, vocoderBankIdentity, vocoderRealizationKey } from '../../midi/content/VocoderBankProfile.js';
 import { ENVELOPE_DETECTOR_REVISION, envelopeDetectorIdentity } from '../../midi/content/EnvelopeDetectorProfile.js';
 import { ENVELOPE_MAPPING_REVISION, envelopeMappingIdentity } from '../../midi/content/EnvelopeMappingProfile.js';
 import { validateOfflineEffectCompletion, OFFLINE_EFFECT_COMPLETION_REVISION } from './worklet/OfflineEffectCompletion.js';
@@ -82,9 +83,9 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     } catch (error) { storage.retainUnknown(error); throw error; }
   } }]);
 
-  const prepareProcessor = async (entry, { processorName, parameterData = {}, processorOptions = {}, revision, configurationKey = null, inputChannels = 2, outputChannels = 2 }) => {
+  const prepareProcessor = async (entry, { processorName, parameterData = {}, processorOptions = {}, revision, configurationKey = null, inputChannels = 2, outputChannels = 2, numberOfInputs = 1, realizationKey = null }) => {
     guard();
-    const value = node(createWorkletNode(context, processorName, { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [outputChannels], channelCount: inputChannels, channelCountMode: 'explicit', parameterData,
+    const value = node(createWorkletNode(context, processorName, { numberOfInputs, numberOfOutputs: 1, outputChannelCount: [outputChannels], channelCount: inputChannels, channelCountMode: 'explicit', parameterData,
       processorOptions: { ...processorOptions, ...(offline ? { offlineEndFrame } : {}) } }));
     let resolveReady, rejectReady, resolveDisposed, rejectDisposed, resolveComplete, rejectComplete;
     let readyTimer = null, completeTimer = null, retireTimer = null, readySettled = false, completeSettled = false;
@@ -101,7 +102,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
       if (!readySettled) failReady(failure('effect-retired-before-ready', 'Effect initialization retired before its acknowledgment.'));
       if (!completeSettled) { completeSettled = true; rejectComplete(failure('effect-retired-before-complete', 'Effect completion retired before publication.')); }
     };
-    const processor = { node: value, nodeId: entry.id, kind: entry.kind, profile: entry.nonlinear || null, revision, configurationKey, stateBytes: entry.stateBytes,
+    const processor = { node: value, nodeId: entry.id, kind: entry.kind, profile: entry.nonlinear || null, vocoderProfile: entry.vocoder || null, revision, configurationKey, stateBytes: entry.stateBytes,
       ready: false, completion: null, offlineActive: entry.offlineActive ?? audible.has(entry.id), cleanup, health: null,
       awaitReady: () => { if (!readySettled && readyTimer === null) readyTimer = setTimeout(() => failReady(failure('effect-initialization-timeout', 'Effect initialization did not acknowledge its source profile.')), initializationTimeoutMs); return ready; },
       awaitComplete: () => { if (!completeSettled && completeTimer === null) completeTimer = setTimeout(() => failComplete(failure('effect-completion-timeout', 'Offline effect omitted its terminal frame and fault receipt.')), initializationTimeoutMs); return terminal; },
@@ -112,7 +113,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
       const data = event.data;
       if (data?.type === 'disposed') { resolveDisposed(); return; }
       if (data?.type === 'ready') {
-        if (data.revision !== revision || data.sampleRate !== context.sampleRate || data.stateBytes !== entry.stateBytes || configurationKey != null && data.configurationKey !== configurationKey) failReady(failure('effect-abi-mismatch', 'The effect runtime differs from its admitted graph.'));
+        if (data.revision !== revision || data.sampleRate !== context.sampleRate || data.stateBytes !== entry.stateBytes || configurationKey != null && data.configurationKey !== configurationKey || realizationKey !== null && data.realizationKey !== realizationKey) failReady(failure('effect-abi-mismatch', 'The effect runtime differs from its admitted graph.'));
         else if (!readySettled) { readySettled = true; processor.ready = true; clearTimeout(readyTimer); readyTimer = null; resolveReady(); }
       } else if (data?.type === 'offline-complete' && offline) {
         try { processor.completion = validateOfflineEffectCompletion(data, { revision, sampleRate: context.sampleRate, stateBytes: entry.stateBytes, configurationKey, endFrame: offlineEndFrame });
@@ -138,7 +139,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
   };
 
   try {
-    if (plan.alignmentStateBytes || plan.nodes.some(entry => ['feedback-delay', 'nonlinear-chain', 'envelope-detector', 'envelope-mapping'].includes(entry.kind))) { await loadOwnedWorkletModule(context, delayModule, resources); guard(); }
+    if (plan.alignmentStateBytes || plan.nodes.some(entry => ['feedback-delay', 'nonlinear-chain', 'envelope-detector', 'envelope-mapping', 'multiband-vocoder'].includes(entry.kind))) { await loadOwnedWorkletModule(context, delayModule, resources); guard(); }
     for (const entry of plan.nodes) {
       guard(); let value, outputValue = null;
       if (entry.kind === 'convolution-native') {
@@ -152,6 +153,9 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
         if (entry.impulse.predelaySeconds) { const predelay = node(context.createDelay(0.1)); predelay.delayTime.setValueAtTime(entry.impulse.predelaySeconds, context.currentTime); value.connect(predelay); predelay.connect(convolver); }
         else value.connect(convolver);
         outputValue = convolver;
+      } else if (entry.kind === 'multiband-vocoder') {
+        value = await prepareProcessor(entry, { processorName: 'lemmings-multiband-vocoder-v1', revision: VOCODER_BANK_REVISION, configurationKey: vocoderBankIdentity(entry.vocoder), realizationKey: vocoderRealizationKey(entry.vocoder),
+          numberOfInputs: 2, inputChannels: 2, outputChannels: 2, processorOptions: { parameters: entry.parameters, sourceEpoch: generation } });
       } else if (entry.kind === 'envelope-detector' || entry.kind === 'envelope-mapping') {
         const detector = entry.kind === 'envelope-detector';
         value = await prepareProcessor(entry, { processorName: detector ? 'lemmings-envelope-follower-v1' : 'lemmings-envelope-gain-map-v1',
@@ -252,14 +256,14 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     getNodeOutput: id => disposed ? null : nodeOutputs.get(id) || null, getSidechainInput: id => disposed ? null : sidechainInputs.get(id) || null,
     panic() { for (const entry of processors) entry.node.port.postMessage({ type: 'panic' }); for (const entry of impulses) if (entry.convolver) entry.convolver.buffer = null; },
     diagnostics: () => Object.freeze({ hash, graphId: plan.definition.id, revision: plan.definition.revision, sampleRate: plan.sampleRate, disposed, fault: fault?.code || null,
-      runtime: { hostRevision: 'owned-native-effect-host-v2', alignmentRevision: plan.processingRevisions.alignment, delayRevision: processors.some(entry => entry.kind === 'feedback-delay') ? DELAY_KERNEL_REVISION : null, nonlinearRevision: processors.some(entry => entry.kind === 'nonlinear-chain') ? NONLINEAR_KERNEL_REVISION : null, detectorRevision: processors.some(entry => entry.kind === 'envelope-detector') ? ENVELOPE_DETECTOR_REVISION : null, envelopeMappingRevision: processors.some(entry => entry.kind === 'envelope-mapping') ? ENVELOPE_MAPPING_REVISION : null, convolution: impulses.length ? 'browser-native-unpinned-dsp' : null, applicationBuildId: execution.buildId || null, activeExecution: execution.activeExecution },
+      runtime: { hostRevision: 'owned-native-effect-host-v2', alignmentRevision: plan.processingRevisions.alignment, delayRevision: processors.some(entry => entry.kind === 'feedback-delay') ? DELAY_KERNEL_REVISION : null, nonlinearRevision: processors.some(entry => entry.kind === 'nonlinear-chain') ? NONLINEAR_KERNEL_REVISION : null, detectorRevision: processors.some(entry => entry.kind === 'envelope-detector') ? ENVELOPE_DETECTOR_REVISION : null, envelopeMappingRevision: processors.some(entry => entry.kind === 'envelope-mapping') ? ENVELOPE_MAPPING_REVISION : null, vocoderRevision: processors.some(entry => entry.kind === 'multiband-vocoder') ? VOCODER_BANK_REVISION : null, convolution: impulses.length ? 'browser-native-unpinned-dsp' : null, applicationBuildId: execution.buildId || null, activeExecution: execution.activeExecution },
       initialization: { mode: offline ? 'offline-before-publication' : 'live-before-route', confirmed: offline ? initializationConfirmed : processors.every(entry => entry.ready),
         offlineEndFrame, completionConfirmed: offlineCompletionConfirmed, completionProtocol: offline ? OFFLINE_EFFECT_COMPLETION_REVISION : null },
       processors: processors.map(entry => ({ nodeId: entry.nodeId, kind: entry.kind, revision: entry.revision, stateBytes: entry.stateBytes, configurationKey: entry.configurationKey, ready: entry.ready,
-        offlineActive: entry.offlineActive, completion: entry.completion, nonlinearProfile: entry.profile, health: entry.health })),
+        offlineActive: entry.offlineActive, completion: entry.completion, nonlinearProfile: entry.profile, vocoderProfile: entry.vocoderProfile, health: entry.health })),
       sidechains: plan.sidechainInputs.map(id => ({ id, ...plan.nodes.find(entry => entry.id === id).parameters, status: sidechainBindings.get(id).status, connected: sidechainBindings.get(id).connected, missingPolicy: 'zero-input-detector-release-to-neutral' })),
       impulses: impulses.map(entry => ({ nodeId: entry.nodeId, descriptor: entry.material.descriptor, analysis: entry.material.analysis })),
       controls: Object.fromEntries(controls), controlSequence, controlEvidence: 'native-control-submission-not-applied-acknowledgment',
-      latencyFrames: plan.latencyFrames, maximumTailFrames: plan.maximumTailFrames, stateBytes: plan.stateBytes, protection: 'external-shared-master', qualification: 'implementation-awaiting-full-graph-qualification' }),
+      processingCost: plan.processingCost, latencyFrames: plan.latencyFrames, maximumTailFrames: plan.maximumTailFrames, stateBytes: plan.stateBytes, protection: 'external-shared-master', qualification: 'implementation-awaiting-full-graph-qualification' }),
     dispose });
 }

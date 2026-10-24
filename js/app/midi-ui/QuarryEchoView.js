@@ -93,6 +93,8 @@ export function createQuarryEchoView({ document, window, getPlayback, getSavedRa
     const state = getPlayback()?.inspectEffectGraph?.({ requestHealth: true }), graph = state?.activeGraph;
     const detectors = graph?.processors?.filter(entry => entry.kind === 'envelope-detector') || [];
     activity.textContent = detectors.map(entry => entry.nodeId + ': ' + (!entry.health ? 'awaiting detector receipt' : entry.health.muted ? 'quarantined' : entry.health.sourceAvailable === false ? 'no donor input; releasing' : 'donor connected, envelope ' + entry.health.output.toFixed(3))).join(' · ');
+    const banks = graph?.processors?.filter(entry => entry.kind === 'multiband-vocoder') || [];
+    if (banks.length) activity.textContent += ' ' + banks.map(entry => { const health = entry.health; return entry.nodeId + ': ' + (!health ? 'awaiting bank receipt' : health.muted ? 'bank quarantined' : !health.donorAvailable ? 'no donor; releasing' : !health.carrierAvailable ? 'no carrier' : 'donor ' + health.donorPeak.toFixed(3) + ', carrier ' + health.carrierPeak.toFixed(3) + ', envelope ' + health.envelopePeak.toFixed(3)); }).join(' · ');
     const routes = graph?.sidechains || []; if (routes.length) activity.textContent += ' ' + routes.map(route => route.sourceBusId + ' ' + route.tap + ' → ' + route.id + ': ' + route.status).join(' · ');
   };
   dialog.append(title, description, qualification, fields, actions, activity, status); (document.getElementById('procgenPresentationRoot') || document.body).append(dialog);

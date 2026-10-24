@@ -1,3 +1,4 @@
+import { vocoderBankIdentity, vocoderRealizationKey } from '../../midi/content/VocoderBankProfile.js';
 import { envelopeDetectorIdentity } from '../../midi/content/EnvelopeDetectorProfile.js';
 import { envelopeMappingIdentity } from '../../midi/content/EnvelopeMappingProfile.js';
 import { nonlinearChainIdentity } from '../../midi/content/NonlinearChainProfile.js';
@@ -32,15 +33,15 @@ export function validateNativeConvolutionRenderReceipt(plan, receipt, graphHash,
       canonicalDataText(body.returnNodeIds).text !== canonicalDataText(returnNodeIds).text ||
       actual?.hash !== graphHash || actual.sampleRate !== plan.sampleRate || actual.fault || actual.disposed !== false ||
       actual.stateBytes !== plan.stateBytes || actual.latencyFrames !== plan.latencyFrames || actual.maximumTailFrames !== plan.maximumTailFrames ||
-      actual.runtime?.delayRevision !== plan.processingRevisions.delay || actual.runtime?.nonlinearRevision !== plan.processingRevisions.nonlinear || actual.runtime?.alignmentRevision !== plan.processingRevisions.alignment || actual.runtime?.detectorRevision !== (plan.processingRevisions.detector || null) || actual.runtime?.envelopeMappingRevision !== (plan.processingRevisions.envelopeMapping || null) || actual.runtime?.hostRevision !== 'owned-native-effect-host-v2' || actual.initialization?.mode !== 'offline-before-publication' || actual.initialization.confirmed !== true || actual.initialization.completionConfirmed !== true ||
+      actual.runtime?.delayRevision !== plan.processingRevisions.delay || actual.runtime?.nonlinearRevision !== plan.processingRevisions.nonlinear || actual.runtime?.alignmentRevision !== plan.processingRevisions.alignment || actual.runtime?.detectorRevision !== (plan.processingRevisions.detector || null) || actual.runtime?.envelopeMappingRevision !== (plan.processingRevisions.envelopeMapping || null) || actual.runtime?.vocoderRevision !== (plan.processingRevisions.vocoder || null) || actual.runtime?.hostRevision !== 'owned-native-effect-host-v2' || actual.initialization?.mode !== 'offline-before-publication' || actual.initialization.confirmed !== true || actual.initialization.completionConfirmed !== true ||
       actual.initialization.completionProtocol !== OFFLINE_EFFECT_COMPLETION_REVISION || !Number.isSafeInteger(receipt.frames) || receipt.frames < 1 || receipt.frames > plan.sampleRate * 150 || actual.initialization.offlineEndFrame !== receipt.frames ||
       actual.runtime?.convolution !== 'browser-native-unpinned-dsp' || !Array.isArray(actual.impulses) || actual.impulses.length !== plan.impulseCount)
     fail('native-convolution-receipt-mismatch', 'Native convolution output omitted its exact graph, tap or execution binding.');
   const audible = new Set([...plan.outputs, ...returnNodeIds]);
   for (let changed = true; changed;) { changed = false; for (const edge of plan.edges) if (audible.has(edge.to.nodeId) && !audible.has(edge.from.nodeId)) { audible.add(edge.from.nodeId); changed = true; } }
-  const expectedProcessors = plan.nodes.filter(node => ['feedback-delay', 'nonlinear-chain', 'envelope-detector', 'envelope-mapping'].includes(node.kind)).map(node => ({ nodeId: node.id, kind: node.kind,
-    revision: node.kind === 'feedback-delay' ? plan.processingRevisions.delay : node.kind === 'envelope-detector' ? plan.processingRevisions.detector : node.kind === 'envelope-mapping' ? plan.processingRevisions.envelopeMapping : plan.processingRevisions.nonlinear, stateBytes: node.stateBytes,
-    configurationKey: node.kind === 'nonlinear-chain' ? nonlinearChainIdentity(node.nonlinear) : node.kind === 'envelope-detector' ? envelopeDetectorIdentity(node.detector) : node.kind === 'envelope-mapping' ? envelopeMappingIdentity(node.mapping, plan.sampleRate) : null, offlineActive: audible.has(node.id) }));
+  const expectedProcessors = plan.nodes.filter(node => ['feedback-delay', 'nonlinear-chain', 'envelope-detector', 'envelope-mapping', 'multiband-vocoder'].includes(node.kind)).map(node => ({ nodeId: node.id, kind: node.kind,
+    revision: node.kind === 'multiband-vocoder' ? plan.processingRevisions.vocoder : node.kind === 'feedback-delay' ? plan.processingRevisions.delay : node.kind === 'envelope-detector' ? plan.processingRevisions.detector : node.kind === 'envelope-mapping' ? plan.processingRevisions.envelopeMapping : plan.processingRevisions.nonlinear, stateBytes: node.stateBytes,
+    configurationKey: node.kind === 'multiband-vocoder' ? vocoderBankIdentity(node.vocoder) : node.kind === 'nonlinear-chain' ? nonlinearChainIdentity(node.nonlinear) : node.kind === 'envelope-detector' ? envelopeDetectorIdentity(node.detector) : node.kind === 'envelope-mapping' ? envelopeMappingIdentity(node.mapping, plan.sampleRate) : null, offlineActive: audible.has(node.id) }));
   for (const [index, edge] of plan.edges.entries()) if (edge.alignmentFrames) expectedProcessors.push({ nodeId: '@alignment:' + index, kind: 'fixed-fractional-delay', revision: plan.processingRevisions.alignment,
     stateBytes: (Math.ceil(edge.alignmentFrames) + 2) * 8, configurationKey: fixedFractionalDelayIdentity(plan.sampleRate, edge.alignmentFrames), offlineActive: audible.has(edge.to.nodeId) });
   if (!Array.isArray(actual.processors) || actual.processors.length !== expectedProcessors.length || new Set(actual.processors.map(entry => entry.nodeId)).size !== actual.processors.length)
@@ -48,6 +49,8 @@ export function validateNativeConvolutionRenderReceipt(plan, receipt, graphHash,
   for (const expected of expectedProcessors) {
     const processor = actual.processors.find(entry => entry.nodeId === expected.nodeId);
     if (!processor || processor.ready !== true || ['kind', 'revision', 'stateBytes', 'configurationKey', 'offlineActive'].some(key => processor[key] !== expected[key])) fail('native-convolution-processor-mismatch', 'Mixed effect processor initialization differs from its admitted profile.');
+    const vocoder = plan.nodes.find(node => node.id === expected.nodeId)?.vocoder;
+    if (vocoder && (!processor.vocoderProfile || vocoderRealizationKey(processor.vocoderProfile) !== vocoderRealizationKey(vocoder))) fail('native-vocoder-bank-mismatch', 'The native processor differs from its exact admitted digital filterbank.');
     if (expected.offlineActive) validateOfflineEffectCompletion(processor.completion, { ...expected, sampleRate: plan.sampleRate, endFrame: actual.initialization.offlineEndFrame });
   }
   const seen = new Set();

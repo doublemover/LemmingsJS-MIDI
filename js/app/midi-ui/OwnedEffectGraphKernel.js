@@ -1,3 +1,4 @@
+import { VocoderBankKernel } from './worklet/VocoderBankKernel.js';
 import { EnvelopeFollowerKernel } from './worklet/EnvelopeFollowerKernel.js';
 import { EnvelopeMappingKernel } from './worklet/EnvelopeMappingKernel.js';
 import { isAudioEffectPort } from '../../midi/content/EffectPorts.js';
@@ -22,10 +23,11 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
         transitionFrames: Math.max(2, Math.round(p.transitionSeconds * sampleRate)), maximumSlew: p.maximumSlew, feedback: p.feedback, feedbackMaximum: p.feedbackMaximum,
         feedbackLowpassHz: p.feedbackLowpassHz, feedbackHighpassHz: p.feedbackHighpassHz, wet: p.wet01 });
     } else if (entry.kind === 'nonlinear-chain') { controls.set([p.driveDb, p.outputTrim01, 0, 0], at); kernel = new NonlinearChainKernel({ sampleRate, parameters: p }); }
+    else if (entry.kind === 'multiband-vocoder') kernel = new VocoderBankKernel({ sampleRate, parameters: p });
     else if (entry.kind === 'envelope-detector') kernel = new EnvelopeFollowerKernel({ sampleRate, parameters: p });
     else if (entry.kind === 'envelope-mapping') kernel = new EnvelopeMappingKernel({ sampleRate, parameters: p });
     else if (entry.kind === 'gain') { gain[index * 3] = gain[index * 3 + 1] = p.gain01; controls[at] = p.gain01; }
-    const incoming = plan.edges.filter(edge => edge.to.nodeId === entry.id).map(edge => ({ source: indices.get(edge.from.nodeId) * 2, gain01: edge.gain01, port: edge.to.port, audio: isAudioEffectPort(entry.ports.inputs[edge.to.port]),
+    const incoming = plan.edges.filter(edge => edge.to.nodeId === entry.id).map(edge => ({ source: indices.get(edge.from.nodeId) * 2, gain01: edge.gain01, port: edge.to.port, audio: isAudioEffectPort(entry.ports.inputs[edge.to.port]), donor: edge.to.port === 'donorAudio',
       align: edge.alignmentFrames ? new FixedFractionalDelayKernel({ sampleRate, delayFrames: edge.alignmentFrames }) : null }));
     return { entry, index, kernel, incoming, at };
   });
@@ -62,18 +64,20 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
     if (muted) { leftSample = rightSample = 0; tapSamples.fill(0); frame++; return; }
     if (!Number.isFinite(left) || !Number.isFinite(right) || Math.abs(left) > 32 || Math.abs(right) > 32) quarantine('effect-input-headroom', 'Owned effect input is nonfinite or exceeds its declared absolute-32 bus profile.');
     for (const record of records) {
-      let a = record.index === inputIndex ? Math.fround(left) : 0, b = record.index === inputIndex ? Math.fround(right) : 0, modulation = 0;
+      let a = record.index === inputIndex ? Math.fround(left) : 0, b = record.index === inputIndex ? Math.fround(right) : 0, modulation = 0, donorLeft = 0, donorRight = 0;
       for (const edge of record.incoming) {
         let x = Math.fround(values[edge.source] * edge.gain01), y = Math.fround(values[edge.source + 1] * edge.gain01);
         if (edge.align) { edge.align.sample(x, y); if (edge.align.faults) quarantine('effect-state-containment', 'The alignment branch quarantined invalid state.'); x = Math.fround(edge.align.leftSample); y = Math.fround(edge.align.rightSample); }
-        if (edge.audio) { a = Math.fround(a + x); b = Math.fround(b + y); }
+        if (edge.donor) { donorLeft = Math.fround(donorLeft + x); donorRight = Math.fround(donorRight + y); }
+        else if (edge.audio) { a = Math.fround(a + x); b = Math.fround(b + y); }
         else modulation = Math.fround(modulation + x);
       }
       const { entry, index, kernel, at } = record;
       if (entry.kind === 'sidechain-in') {
         const input = sidechainIndices.get(entry.id) * 2; a = sidechainSamples?.[input] ?? 0; b = entry.parameters.inputLayout === 'audioMono' ? 0 : sidechainSamples?.[input + 1] ?? 0;
         if (!Number.isFinite(a) || !Number.isFinite(b) || Math.abs(a) > 32 || Math.abs(b) > 32) quarantine('sidechain-input-headroom', 'Sidechain input is nonfinite or exceeds its admitted audio domain.');
-      } else if (entry.kind === 'envelope-detector') { kernel.sample(a, b, true); a = kernel.output; b = 0; }
+      } else if (entry.kind === 'multiband-vocoder') { kernel.sample(donorLeft, donorRight, a, b); a = kernel.leftSample; b = kernel.rightSample; }
+      else if (entry.kind === 'envelope-detector') { kernel.sample(a, b, true); a = kernel.output; b = 0; }
       else if (entry.kind === 'envelope-mapping') { kernel.sample(modulation); a = kernel.output; b = 0; }
       else if (entry.kind === 'modulated-gain') { a *= modulation; b *= modulation; }
       else if (entry.kind === 'mono-to-stereo') b = a;
@@ -94,6 +98,6 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
   return Object.freeze({ plan, hash, sample, update, tapSamples, returnNodeIds: Object.freeze([...returnNodeIds]), get frame() { return frame; }, get leftSample() { return leftSample; }, get rightSample() { return rightSample; },
     stateBytes: plan.stateBytes + values.byteLength + controls.byteLength + gain.byteLength + tapSamples.byteLength,
     panic,
-    diagnostics: () => Object.freeze({ hash, frame, muted, processingRevisions: plan.processingRevisions, graphScope: 'one-full-shared-owner-sum', sidechainInputs: plan.sidechainInputs, stemScope: 'simultaneous-node-output-taps',
-      summation: 'canonical-edge-order-float32-node-boundaries', restoration: 'deterministic-preroll', outputProtection: 'external-excluded', qualification: 'implementation-awaiting-live-offline-pcm-equivalence' }) });
+    diagnostics: () => Object.freeze({ hash, frame, muted, processingRevisions: plan.processingRevisions, processingCost: plan.processingCost, graphScope: 'one-full-shared-owner-sum', sidechainInputs: plan.sidechainInputs, stemScope: 'simultaneous-node-output-taps',
+      summation: 'canonical-edge-order-float32-node-boundaries', restoration: 'deterministic-preroll', vocoderBanks: records.filter(record => record.entry.vocoder).map(record => ({ nodeId: record.entry.id, profile: record.kernel.profile, donorAvailable: record.kernel.donorAvailable, carrierAvailable: record.kernel.carrierAvailable, donorPeak: record.kernel.donorPeak, carrierPeak: record.kernel.carrierPeak, envelopePeak: record.kernel.envelopePeak })), outputProtection: 'external-excluded', qualification: 'implementation-awaiting-live-offline-pcm-equivalence' }) });
 }

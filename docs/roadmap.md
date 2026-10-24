@@ -2910,3 +2910,43 @@ recording and delta application. They compare complete mask/RGBA snapshots throu
 warm spans, sentinel-backed cold decode, thaw and legacy index logs. Actual
 TimeTravelController fixtures rewind, replay and branch from restored ground.
 Execution remains deferred with all other acceptance tests as requested.
+
+
+### Continuation 147 — actual configurable multiband vocoder (#1185, dependency of #1165)
+
+The effect graph now registers a true donor/carrier vocoder with separate typed
+inputs, immutable 8/12/16/32-band topology and the original configurable geometric
+bank. Defaults span 120–6000 Hz by geometric cell boundaries. Receipts retain every
+actual centre, nominal bandwidth, Q, digital coefficient, pole radius and filter
+realization. This uses the RBJ constant-zero-dB-peak bandpass equations documented
+in the [W3C Audio EQ Cookbook](https://www.w3.org/TR/audio-eq-cookbook/), not the
+stock Faust bank with a fixed 12800 Hz upper centre. Nominal bandwidth is named
+explicitly; measured digital reconstruction/coloration remains unqualified.
+
+A preallocated binary64 kernel filters mono or linked stereo donor bands and an
+independent stereo carrier, then applies signal-rate amplitude 1/e followers and
+fixed reference/depth/baseline/per-band gain/sum trim. There is no instantaneous
+AGC. Stable complex poles and an analytic absolute impulse-sum bound constrain
+filter state and complete summed headroom before admission; nonfinite/excessive
+state quarantines the processor. Missing input feeds zero, lets stored filter
+energy decay and releases to the authored baseline. Filter phase remains frequency
+dependent; the mode is reactive with no lookahead. Typed graph timing aligns the
+carrier route without silently delaying the donor to create lookahead.
+
+The same kernel runs inside the actual two-input Worklet and owned offline graph.
+Ready receipts compare the resolved bank as well as the immutable configuration;
+full-bank coefficients participate in the SHA-256 graph identity. State-cut
+compatibility uses a separate explicitly named coefficient fingerprint. Native
+mixed-convolution receipts retain and check the bank alongside terminal frame/fault
+fences. Kernel snapshots preserve every filter/envelope history; whole graph state
+still uses preroll. Graph diagnostics count actual filters and followers, separately
+from unmeasured CPU/deadline capacity. Focused inspection distinguishes donor/carrier
+availability, levels and envelope activity.
+
+Authored fixtures cover rates/band counts, real owned-graph parity, mono donor order,
+linked antiphase energy, spectral band selection, dry preservation, missing donor,
+nonfinite containment, topology/state incompatibility and exact state continuation.
+They remain unrun. Tools Talk stays unavailable until its resolved 12-band bank,
+listening, spectral transfer and device cost are qualified. Live/offline cross-lane
+bus realization is the next routing dependency; neither a kernel foundation nor
+an unexecuted fixture completes #1185 or #1165 acceptance.

@@ -1,3 +1,5 @@
+import { VocoderBankKernel } from './VocoderBankKernel.js';
+import { VOCODER_BANK_REVISION, vocoderRealizationKey } from '../../../midi/content/VocoderBankProfile.js';
 import { EnvelopeFollowerKernel } from './EnvelopeFollowerKernel.js';
 import { EnvelopeMappingKernel } from './EnvelopeMappingKernel.js';
 import { ENVELOPE_DETECTOR_REVISION } from '../../../midi/content/EnvelopeDetectorProfile.js';
@@ -41,7 +43,42 @@ class SidechainProcessorBase extends ProcessorBase {
 }
 export class EnvelopeFollowerProcessor extends SidechainProcessorBase { constructor(options) { super(); this.initialize(options, false); } }
 export class EnvelopeMappingProcessor extends SidechainProcessorBase { constructor(options) { super(); this.initialize(options, true); } }
+export class VocoderBankProcessor extends ProcessorBase {
+  constructor(options) {
+    super(); this.kernel = new VocoderBankKernel({ sampleRate: globalThis.sampleRate, parameters: options?.processorOptions?.parameters });
+    this.revision = VOCODER_BANK_REVISION; this.disposed = false; this.sourceEpoch = options?.processorOptions?.sourceEpoch ?? 0; this.donorOverride = this.carrierOverride = null;
+    this.lastInspect = -Infinity; this.reportedFaults = 0; this.faultMessage = { type: 'effect-fault', revision: this.revision, frame: 0, faults: 0 };
+    this.offlineCompletion = new OfflineEffectCompletion({ endFrame: options?.processorOptions?.offlineEndFrame ?? null, sampleRate: globalThis.sampleRate,
+      revision: this.revision, stateBytes: this.kernel.profile.stateBytes, configurationKey: this.kernel.identity, port: this.port });
+    this.port.onmessage = event => {
+      const data = event.data;
+      if (data?.type === 'dispose') { this.kernel.panic(); this.disposed = true; this.port.postMessage({ type: 'disposed', frame: this.kernel.frame }); }
+      else if (this.disposed) return;
+      else if (data?.type === 'panic') this.kernel.panic();
+      else if (data?.type === 'source-status' && data.sourceEpoch === this.sourceEpoch && typeof data.present === 'boolean') {
+        if (data.role === 'donor') this.donorOverride = data.present; else if (data.role === 'carrier') this.carrierOverride = data.present;
+      } else if (data?.type === 'inspect' && this.kernel.frame - this.lastInspect >= globalThis.sampleRate / 4) {
+        this.lastInspect = this.kernel.frame; const kernel = this.kernel;
+        this.port.postMessage({ type: 'effect-health', revision: this.revision, frame: kernel.frame, faults: kernel.faults, muted: kernel.muted,
+          donorAvailable: kernel.donorAvailable, carrierAvailable: kernel.carrierAvailable, donorPeak: kernel.donorPeak, carrierPeak: kernel.carrierPeak,
+          envelopePeak: kernel.envelopePeak, bandEnvelopes: Array.from({ length: kernel.parameters.bands }, (_, i) => kernel.state[i * 9 + 8]) });
+      }
+    };
+    this.port.postMessage({ type: 'ready', revision: this.revision, sampleRate: globalThis.sampleRate, stateBytes: this.kernel.profile.stateBytes,
+      configurationKey: this.kernel.identity, realizationKey: vocoderRealizationKey(this.kernel.profile) });
+  }
+  process(inputs, outputs) {
+    const left = outputs[0]?.[0], right = outputs[0]?.[1]; if (!left || !right) return true;
+    if (this.disposed) { left.fill(0); right.fill(0); return false; }
+    const dl = inputs[0]?.[0], dr = inputs[0]?.[1] || dl, cl = inputs[1]?.[0], cr = inputs[1]?.[1] || cl;
+    const donorAvailable = this.donorOverride ?? Boolean(dl), carrierAvailable = this.carrierOverride ?? Boolean(cl);
+    for (let i = 0; i < left.length; i++) { this.kernel.sample(dl?.[i] ?? 0, dr?.[i] ?? 0, cl?.[i] ?? 0, cr?.[i] ?? 0, donorAvailable, carrierAvailable); left[i] = this.kernel.leftSample; right[i] = this.kernel.rightSample; }
+    if (this.kernel.faults !== this.reportedFaults) { this.reportedFaults = this.kernel.faults; this.faultMessage.frame = globalThis.currentFrame + left.length; this.faultMessage.faults = this.kernel.faults; this.port.postMessage(this.faultMessage); }
+    this.offlineCompletion.observe(globalThis.currentFrame, left.length, this.kernel.faults, this.kernel.muted); return true;
+  }
+}
 if (typeof globalThis.registerProcessor === 'function') {
+  globalThis.registerProcessor('lemmings-multiband-vocoder-v1', VocoderBankProcessor);
   globalThis.registerProcessor('lemmings-envelope-follower-v1', EnvelopeFollowerProcessor);
   globalThis.registerProcessor('lemmings-envelope-gain-map-v1', EnvelopeMappingProcessor);
 }
