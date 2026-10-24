@@ -1,4 +1,5 @@
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
+import { retainSampleSelectionReceipt } from '../../../midi/content/SampleInstrumentMap.js';
 
 const createStrictLiveFramePolicy = ({ nowFrame } = {}) => {
   if (typeof nowFrame !== 'function') throw new Error('A sink frame clock is required.');
@@ -109,9 +110,10 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
           else outcome = { status: 'rejected', reason: 'unsupported-intent-kind' };
         } catch { outcome = { status: 'rejected', reason: 'sink-exception' }; }
         const status = ['accepted', 'rejected', 'degraded'].includes(outcome?.status) ? outcome.status : 'rejected';
+        const selectedSource = intent.kind === 'begin' && status === 'accepted' ? retainSampleSelectionReceipt(outcome) : null;
         receipts.push(record({ ...base, status, stage: status === 'rejected' ? 'none' : outcome.stage || 'accepted',
           reason: status === 'accepted' ? null : outcome?.reason || 'invalid-sink-receipt', targetFrame: frame,
-          sourceTargetFrame, repair, ...(outcome?.outputRequested === false ? { outputRequested: false } : {}) }));
+          sourceTargetFrame, repair, ...(selectedSource ? { selectedSource } : {}), ...(outcome?.outputRequested === false ? { outputRequested: false } : {}) }));
       }
     }
     return Object.freeze(receipts);

@@ -4,6 +4,8 @@ import { createInstrumentExecutionLifecycle, isManagedExecutionEpoch } from './I
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 import { releaseAudioResourceAfterRetirement } from './AudioResourceLeases.js';
 import { NATIVE_SAMPLE_FIELDS as parameterSpecs } from './NativeInstrumentSchema.js';
+import { createSampleMapResolver, validateSampleMapAssets } from '../../midi/content/SampleInstrumentMap.js';
+import { nativeHeldEnvelopeLevel, scheduleNativeHeldEnvelope, truncateNativeEnvelope } from './NativeAdsrEnvelope.js';
 
 const plain = value => value != null && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
 const finite = (value, min, max) => Number.isFinite(value) && value >= min && value <= max;
@@ -11,16 +13,16 @@ const integer = (value, min, max) => Number.isSafeInteger(value) && value >= min
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const text = (value, max = 256) => typeof value === 'string' && value.length > 0 && value.length <= max;
 const capabilities = Object.freeze({ independentSamePitch: true, perVoicePitch: true, perVoicePressure: true,
-  perVoicePan: true, ownedGates: true, releaseVelocity: true, releaseRegion: true, forwardLoops: true,
+  perVoicePan: true, ownedGates: true, sampleMaps: true, releaseVelocity: true, releaseRegion: true, forwardLoops: true,
   crossfadeLoops: false, reverse: false, positionDriven: false, independentTimeStretch: false,
   renderAcknowledgment: false, offlineRender: false, maximumVoices: 64, latencyFrames: 0,
   supportedParameterIds: Object.freeze(['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds', 'gain01', 'pan01']) });
 
 // Region selection belongs to the content map. This renderer snapshots exactly
 // one resolved source-frame region at onset and never rerolls it at release.
-export function createSampleInstrumentBackend(preview, owner = null, { resolveRegion, gateMode = 'owned',
+export function createSampleInstrumentBackend(preview, owner = null, { resolveRegion = null, gateMode = 'owned', clockMode = 'realtime',
   smoothingSeconds = 0.008, maxControlEvents = 128, traceLimit = 128 } = {}) {
-  if (typeof resolveRegion !== 'function' || !['owned', 'bounded'].includes(gateMode) || !finite(smoothingSeconds, 0, 1) ||
+  if (resolveRegion != null && typeof resolveRegion !== 'function' || !['owned', 'bounded'].includes(gateMode) || !['realtime', 'offline'].includes(clockMode) || !finite(smoothingSeconds, 0, 1) ||
       !integer(maxControlEvents, 1, 4096) || !integer(traceLimit, 0, 4096)) throw new TypeError('Invalid sample audio backend options.');
   const voices = new Map(), leases = new Map(), cancelled = new Set(), traces = [];
   const retirement = createProcgenRetirementScope();
@@ -46,7 +48,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     (expression.pitchOffsetCents == null || finite(expression.pitchOffsetCents, -24000, 24000));
   const armExpiry = () => {
     if (expiryTimer != null) clearTimeout(expiryTimer); expiryTimer = null;
-    if (disposed || !voices.size) return;
+    if (disposed || !voices.size || clockMode === 'offline') return;
     const remaining = Math.min(...[...voices.values()].map(voice => voice.end)) - (preview._context?.currentTime ?? 0);
     expiryTimer = setTimeout(() => {
       expiryTimer = null;
@@ -57,7 +59,8 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
   const releasePrepared = value => {
     if (!value) return null;
     if (value.retirement) return value.retirement;
-    value.retirement = createProcgenRetirementScope().retire([...value.assets.values()].map((pin, index) => ({ name: 'sample-pin-' + index, run: () => pin.release() })));
+    value.retirement = createProcgenRetirementScope().retire([...value.assets.values()].map((pin, index) => ({ name: 'sample-pin-' + index, run: () => pin.release() }))
+      .concat({ name: 'sample-map-metadata', run: () => { value.mapResolver = null; return value.mapLease?.release(); } }));
     if (value.retirement.outcome !== 'complete') {
       retiredPrepared.add(value); preparationFault = value.retirement;
       value.retirement.completion.then(receipt => { if (receipt.outcome === 'complete') {
@@ -108,6 +111,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
       const spec = parameterSpecs[name]; if (!spec || !finite(value, spec[0], spec[1])) return reject('unsupported-patch-parameter'); parameters[name] = value;
     }
     const pins = new Map(), request = ++revision, audioGeneration = preview._generation, ownerGeneration = preview._sessions.get(owner)?.generation;
+    let mapLease = null, mapResolver = null;
     pendingPreparations++;
     try {
       for (const pin of assets) {
@@ -120,16 +124,22 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
         const pin = pins.get(ref.sha256);
         if (!pin && ref.required !== false || pin && pin.ref.bytes !== ref.bytes) throw new Error('required-sample-unavailable');
       }
+      if (patch.sampleMap) {
+        mapLease = preview._audioResources.reserve({ kind: 'sample-map-metadata', owner, generation: audioGeneration, estimateBytes: 1048576, consumerOwned: true });
+        mapResolver = createSampleMapResolver(patch.sampleMap, patch.sampleRefs, { patchId: patch.id, patchRevision: patch.revision });
+      }
+      if (!mapResolver && !resolveRegion) throw new Error('sample-map-required');
+      if (mapResolver) validateSampleMapAssets(mapResolver.map, [...pins.values()]);
       const next = { id: patch.id, revision: patch.revision, parameters: Object.freeze(parameters),
         mix: Object.freeze({ gain01: patch.mix.gain01, pan01: patch.mix.pan01 }), maxVoices: patch.voicePolicy.maxVoices,
-        receipt: Object.freeze({ patchId: patch.id, revision: patch.revision }), assets: pins };
+        receipt: Object.freeze({ patchId: patch.id, revision: patch.revision }), assets: pins, mapResolver, mapLease };
       await Promise.resolve();
       if (disposed || preparationFault || request !== revision || audioGeneration !== preview._generation || ownerGeneration !== preview._sessions.get(owner)?.generation) throw new Error('preparation-cancelled');
       const prior = prepared; prepared = next;
       const retired = releasePrepared(prior);
       return trace({ status: 'ready', patchId: next.id, revision: next.revision, capabilities, retirement: retirementSummary(retired) });
     } catch (error) {
-      const retired = releasePrepared({ assets: pins });
+      const retired = releasePrepared({ assets: pins, mapResolver, mapLease });
       return trace({ status: 'rejected', reason: error.message, retirement: retirementSummary(retired) });
     } finally { pendingPreparations--; }
   };
@@ -138,7 +148,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     const pin = assets.get(input.assetHash), ref = pin?.ref;
     if (!pin?.isActive() || !ref || !integer(input.onsetFrame, 0, ref.frames - 1) || !integer(input.endFrame, input.onsetFrame + 1, ref.frames) ||
         !finite(input.rootCents, -24000, 24000) || !finite(input.gain01 ?? 1, 0, 1) || !finite(input.tuningCents ?? 0, -1200, 1200) ||
-        input.chokeGroup != null && !text(input.chokeGroup, 128) || input.chokeScope != null && !text(input.chokeScope, 128) ||
+        input.chokeGroup != null && !text(input.chokeGroup, 128) || input.chokeScope != null && !text(input.chokeScope, 1024) ||
         input.selectionSeed != null && !integer(input.selectionSeed, 0, 0xffffffff)) throw new Error('invalid-resolved-sample-region');
     if (input.playbackMode != null && input.playbackMode !== 'forward' || input.positionDriven != null || input.reverse === true) throw new Error('unsupported-sample-playback-mode');
     let loop = null, releaseRegion = null, pitchRange = null;
@@ -160,7 +170,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     }
     return Object.freeze({ domain: 'source-frames', assetHash: input.assetHash, onsetFrame: input.onsetFrame, endFrame: input.endFrame,
       rootCents: input.rootCents, gain01: input.gain01 ?? 1, tuningCents: input.tuningCents ?? 0, loop, releaseRegion, pitchRange,
-      chokeGroup: input.chokeGroup ?? null, chokeScope: input.chokeScope ?? null, selectionSeed: input.selectionSeed ?? null });
+      chokeGroup: input.chokeGroup ?? null, chokeScope: input.chokeScope ?? null, selectionSeed: input.selectionSeed ?? null, selection: !child && prepared?.mapResolver ? input.selection : null });
   };
   const rateFor = (region, pitch, offset) => {
     const cents = pitch.cents + offset + 1200 * Math.log2((pitch.referenceHz ?? 440) / 440);
@@ -168,20 +178,11 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     const ratio = 2 ** ((cents - region.rootCents + region.tuningCents) / 1200);
     return finite(ratio, 1 / 16, 16) ? ratio : null;
   };
-  const levelAt = (voice, time) => {
-    const elapsed = Math.max(0, time - voice.start);
-    return elapsed < voice.attack ? elapsed / voice.attack : voice.decay > 0 && elapsed < voice.attack + voice.decay
-      ? 1 - (1 - voice.sustain) * (elapsed - voice.attack) / voice.decay : voice.sustain;
-  };
   const scheduleHeldEnvelope = (voice, until) => {
-    const at = Math.max(voice.start, preview._context.currentTime), releaseAt = Math.max(at, until - voice.release), gain = voice.gain.gain;
-    gain.cancelScheduledValues(at); gain.setValueAtTime(voice.peak * levelAt(voice, at), at);
-    for (const time of [voice.start + voice.attack, voice.start + voice.attack + voice.decay]) {
-      if (time > at && time < releaseAt) gain.linearRampToValueAtTime(voice.peak * levelAt(voice, time), time);
-    }
-    gain.linearRampToValueAtTime(voice.peak * levelAt(voice, releaseAt), releaseAt); gain.linearRampToValueAtTime(0, until);
+    const at = Math.max(voice.start, preview._context.currentTime);
+    voice.end = until; voice.hardEnd = until; voice.releaseAt = Math.max(at, until - voice.release);
+    scheduleNativeHeldEnvelope(voice, at);
     if (!voice.main.ended) voice.main.source.stop(until);
-    voice.end = until; voice.hardEnd = until; voice.releaseAt = releaseAt;
   };
   const renewExecutionLease = (generation, executionEpoch, validUntilFrame) => {
     const until = timeFor(validUntilFrame), now = preview._context?.currentTime;
@@ -212,7 +213,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     if (Object.keys(intent?.performanceControls?.macros || {}).length || Object.keys(intent?.performanceControls || {}).some(key => key !== 'macros')) return reject('performance-controls-unavailable', intent?.voiceId);
     if (disposed || !prepared || !preview._ownerReady(owner)) return reject(disposed ? 'disposed' : !prepared ? 'patch-unprepared' : 'audio-not-ready', intent?.voiceId);
     const context = preview._context, start = timeFor(targetFrame), expression = intent?.expression ?? {};
-    if (intent?.version !== 1 || intent.kind !== 'begin' || !text(intent.voiceId) || !text(executionEpoch) || !integer(intent.generation, 0, Number.MAX_SAFE_INTEGER) ||
+    if (intent?.version !== 1 || intent.kind !== 'begin' || !text(intent.voiceId, 512) || !text(executionEpoch) || !integer(intent.generation, 0, Number.MAX_SAFE_INTEGER) ||
         !finite(intent.velocity01, 0, 1) || !finite(intent.pitch?.cents, -24000, 24000) || !finite(intent.pitch?.referenceHz ?? 440, 0.1, 20000) ||
         start == null || start < context.currentTime - 1 / context.sampleRate || start - context.currentTime > preview._maxNoteSeconds || !validExpression(expression) ||
         intent.sourceEventIds != null && (!Array.isArray(intent.sourceEventIds) || intent.sourceEventIds.length > 8192 || intent.sourceEventIds.some(id => !text(id)))) return reject('invalid-or-late-intent', intent?.voiceId);
@@ -225,16 +226,23 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
       gateMode === 'bounded' ? start + preview._maxNoteSeconds : null;
     if (hardEnd == null || hardEnd <= start + prepared.parameters.releaseSeconds) return reject('execution-lease-required', intent.voiceId);
     let region; const selectedPatch = prepared;
-    try { region = snapshotRegion(resolveRegion(intent, selectedPatch.receipt), selectedPatch.assets); } catch (error) { return reject(error.message || 'sample-region-unavailable', intent.voiceId); }
+    try { region = snapshotRegion(selectedPatch.mapResolver ? selectedPatch.mapResolver(intent) : resolveRegion(intent, selectedPatch.receipt), selectedPatch.assets); } catch (error) { return reject(error.message || 'sample-region-unavailable', intent.voiceId); }
     if (disposed || prepared !== selectedPatch || context !== preview._context || !preview._ownerReady(owner)) return reject('sample-selection-cancelled', intent.voiceId);
     const rate = rateFor(region, intent.pitch, expression.pitchOffsetCents ?? 0), childRate = region.releaseRegion ? rateFor(region.releaseRegion, intent.pitch, expression.pitchOffsetCents ?? 0) : null;
     if (rate == null || region.releaseRegion && childRate == null) return reject('sample-pitch-out-of-range', intent.voiceId);
     const renderCost = region.releaseRegion ? 2 : 1;
     if (hardEnd - start <= prepared.parameters.releaseSeconds) return reject('bounded-envelope-out-of-range', intent.voiceId);
     for (const voice of preview._voices) if (preview._voiceFinished(voice)) preview._destroyVoice(voice, 'inaudible-voice-reuse');
-    if (voices.size >= prepared.maxVoices ||
-        preview._renderVoiceCount() + renderCost > preview._maxScheduledVoices) return reject('shared-sample-source-budget', intent.voiceId);
-    const admission = preview._inspectVoiceInterval(owner, { start, end: hardEnd, releaseAt: hardEnd - prepared.parameters.releaseSeconds,
+    if (preview._renderVoiceCount() + renderCost > preview._maxScheduledVoices) return reject('shared-sample-source-budget', intent.voiceId);
+    const overrides = new Map(); let nextChoke = Infinity;
+    if (region.chokeGroup) for (const member of voices.values()) {
+      if (member.region.chokeGroup !== region.chokeGroup || member.region.chokeScope !== region.chokeScope) continue;
+      const later = member.start > start || member.start === start && member.playback.voiceId > intent.voiceId;
+      if (later) nextChoke = Math.min(nextChoke, member.start);
+      else overrides.set(member, { releaseAt: Math.min(member.releaseAt, start), end: Math.min(member.end, start + 0.005) });
+    }
+    const admission = preview._inspectVoiceInterval(owner, { start, end: Math.min(hardEnd, nextChoke + 0.005),
+      releaseAt: Math.min(hardEnd - prepared.parameters.releaseSeconds, nextChoke), overrides,
       cost: renderCost, patchVoices: voices.values(), patchLimit: prepared.maxVoices });
     if (!admission.accepted) return reject(admission.reason, intent.voiceId);
     const allocations = [], components = []; let pressureGain, pan, voice;
@@ -300,7 +308,10 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
       main.started = true; scheduleHeldEnvelope(voice, hardEnd); armExpiry();
       if (region.chokeGroup) rebuildChokes(region.chokeGroup, region.chokeScope);
       return trace({ status: 'accepted', stage: 'scheduled', voiceId: intent.voiceId, generation: intent.generation, executionEpoch, targetFrame,
-        assetHash: region.assetHash, selectionSeed: region.selectionSeed, region, rateRatio: rate, renderCost, patchId: prepared.id, patchRevision: prepared.revision });
+        assetHash: region.assetHash, selectionSeed: region.selectionSeed, region, rateRatio: rate, renderCost, patchId: prepared.id, patchRevision: prepared.revision,
+        articulation: Object.freeze({ version: 1, releaseSeconds: values.releaseSeconds,
+          oneShotTailSeconds: Math.min(4, Math.max(0.04, (region.endFrame - region.onsetFrame) / main.pin.ref.sourceSampleRate / rate)),
+          policy: 'selected-region-varispeed-duration-capped-at-four-seconds' }) });
     } catch (error) {
       errors++;
       if (voice && preview._voices.has(voice)) preview._destroyVoice(voice, 'sample-construction-failure');
@@ -324,16 +335,21 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     }
   };
   const scheduleReleaseChild = (voice, at, velocity) => {
+    if (voice.child.completed) return;
     const child = voice.child, selected = child.region,
       ratio = voice.rateAutomation.valueAt(at) * 2 ** ((voice.region.rootCents - selected.rootCents + selected.tuningCents - voice.region.tuningCents) / 1200);
     const duration = (selected.endFrame - selected.onsetFrame) / child.pin.ref.sourceSampleRate;
     const childEnd = Math.min(voice.hardEnd, at + duration / ratio, at + 4), peak = velocity * selected.gain01 * voice.patchGain,
       attackEnd = at + Math.min(0.005, (childEnd - at) / 3), releaseStart = Math.max(attackEnd, childEnd - 0.005);
-    child.source.playbackRate.setValueAtTime(ratio, at); child.gain.gain.cancelScheduledValues(at); child.gain.gain.setValueAtTime(0, at);
-    child.gain.gain.linearRampToValueAtTime(peak, attackEnd); child.gain.gain.setValueAtTime(peak, releaseStart);
-    child.gain.gain.linearRampToValueAtTime(0, childEnd);
+    const from = Math.max(at, preview._context.currentTime);
+    child.source.playbackRate.setValueAtTime(ratio, from);
+    truncateNativeEnvelope({ gain: child.gain, start: at, attack: attackEnd - at, decay: 0, sustain: 1, peak,
+      released: true, releaseAt: releaseStart, releaseLevel: peak, end: childEnd }, from);
+    if (attackEnd > from) child.gain.gain.linearRampToValueAtTime(peak, attackEnd);
+    if (releaseStart > from) child.gain.gain.setValueAtTime(peak, releaseStart);
+    child.gain.gain.linearRampToValueAtTime(0, Math.max(from, childEnd));
     if (!child.started) { child.source.start(at, selected.onsetFrame / child.pin.ref.sourceSampleRate, duration); child.started = true; }
-    child.source.stop(childEnd); child.envelope = { at, attackEnd, releaseStart, end: childEnd, peak };
+    child.source.stop(Math.max(from, childEnd)); child.envelope = { at, attackEnd, releaseStart, end: childEnd, peak };
     voice.end = Math.max(voice.mainReleaseEnd, childEnd);
   };
   const releaseVoice = (voice, requested, force, reason, velocity = 1, restoring = false) => {
@@ -343,9 +359,14 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     if (at >= voice.hardEnd) return;
     const beforeOnsetChoke = force && reason === 'sample-choke' && at <= voice.start;
     const until = Math.min(voice.hardEnd, at + (beforeOnsetChoke ? 0 : force ? 0.005 : voice.release)), gain = voice.gain.gain;
-    const level = beforeOnsetChoke ? 0 : voice.released && at >= voice.releaseAt ? voice.releaseLevel * Math.max(0, 1 - (at - voice.releaseAt) / Math.max(1e-9, voice.mainReleaseEnd - voice.releaseAt)) : voice.peak * levelAt(voice, at);
-    voice.releaseLevel = level; gain.cancelScheduledValues(at); gain.setValueAtTime(level, at); gain.linearRampToValueAtTime(0, Math.max(at, until));
-    if (!voice.main.ended) voice.main.source.stop(Math.max(at, until));
+    let level = 0;
+    if (restoring && at < context.currentTime) {
+      level = nativeHeldEnvelopeLevel(voice, at); voice.releaseLevel = level; voice.releaseAt = at; voice.released = true;
+      truncateNativeEnvelope(voice, context.currentTime, until);
+    } else if (beforeOnsetChoke) { gain.cancelScheduledValues(at); gain.setValueAtTime(0, at); }
+    else level = truncateNativeEnvelope(voice, at, voice.mainReleaseEnd ?? voice.end);
+    voice.releaseLevel = level; gain.linearRampToValueAtTime(0, Math.max(at, until, context.currentTime));
+    if (!voice.main.ended) voice.main.source.stop(Math.max(at, until, context.currentTime));
     voice.released = true; voice.releaseAt = at; voice.end = Math.max(at, until); voice.mainReleaseEnd = voice.end;
     voice.releaseVelocity = velocity; voice.stolen = force; voice.terminationCause = reason;
     if (voice.child && !force && at < voice.hardEnd) {
@@ -355,7 +376,10 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
       if (child.started && !child.ended) {
         const childLevel = !envelope || at < envelope.at || at >= envelope.end ? 0 : at < envelope.attackEnd ? envelope.peak * (at - envelope.at) / (envelope.attackEnd - envelope.at) :
           at < envelope.releaseStart ? envelope.peak : envelope.peak * (envelope.end - at) / Math.max(1e-9, envelope.end - envelope.releaseStart);
-        child.gain.gain.cancelScheduledValues(at); child.gain.gain.setValueAtTime(childLevel, at); child.gain.gain.linearRampToValueAtTime(0, until);
+        child.gain.gain.cancelScheduledValues(at);
+        if (envelope && at > envelope.at && (at <= envelope.attackEnd || at >= envelope.releaseStart)) child.gain.gain.linearRampToValueAtTime(childLevel, at);
+        else child.gain.gain.setValueAtTime(childLevel, at);
+        child.gain.gain.linearRampToValueAtTime(0, until);
         child.source.stop(childLevel === 0 ? at : until); if (childLevel === 0) child.ended = true;
       } else child.ended = true;
     }
@@ -376,7 +400,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
         const terminal = voice.semanticRelease;
         voice.released = false; voice.stolen = false; voice.releaseLevel = null;
         if (voice.child) voice.child.ended = !!voice.child.completed;
-        scheduleHeldEnvelope(voice, voice.hardEnd);
+        if (!terminal || terminal.at >= now) scheduleHeldEnvelope(voice, voice.hardEnd);
         if (terminal) { voice.release = terminal.seconds; releaseVoice(voice, terminal.at, false, 'semantic-end', terminal.velocity, true); }
         if (next && next.start < voice.end) releaseVoice(voice, next.start, true, 'sample-choke');
       }
@@ -441,7 +465,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
   };
   const renderDiagnostics = ({ includeVoices = false, includeTraces = false } = {}) => Object.freeze({
     readiness: disposed ? 'disposed' : !prepared ? 'patch-unprepared' : !preview._ownerReady(owner) ? 'audio-not-ready' : 'ready',
-    engineId: 'native-sample', engineVersion: 1, capabilities, gateMode, smoothingSeconds, activeVoices: voices.size,
+    engineId: 'native-sample', engineVersion: 1, capabilities, gateMode, clockMode, smoothingSeconds, sampleMap: prepared?.mapResolver ? { mapId: prepared.mapResolver.map.mapId, revision: prepared.mapResolver.map.revision, zones: prepared.mapResolver.map.zones.length } : null, activeVoices: voices.size,
     reservedSources: [...voices.values()].reduce((sum, voice) => sum + voice.renderCost, 0), patchId: prepared?.id ?? null, patchRevision: prepared?.revision ?? null,
     deliveryErrors: errors, cancelledGenerations: cancelled.size, cancellationHistoryFull, pendingPreparations, maximumPendingPreparations: 2,
     preparedResourceRetirement: retirementSummary(preparationFault), evidenceClass: 'native-scheduling-api', appliedFrame: null, acousticReceipt: false,
@@ -451,7 +475,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
       assetHash: voice.region.assetHash, region: voice.region, selectedSeed: voice.region.selectionSeed, rootCents: voice.region.rootCents,
       sourceSampleRate: voice.main.pin.ref.sourceSampleRate, decodedSampleRate: voice.main.pin.variant.targetSampleRate, decodedFrames: voice.main.pin.buffer.length,
       rateRatio: voice.rateAutomation.valueAt(preview._context.currentTime), rateEvidence: 'modeled-native-k-rate', playheadFrame: null,
-      state: voice.released ? 'release' : preview._context.currentTime < voice.start ? 'scheduled' : 'held',
+      state: voice.end <= preview._context.currentTime ? 'ended' : preview._context.currentTime < voice.start ? 'scheduled' : voice.releaseAt <= preview._context.currentTime ? 'release' : 'held',
       targetFrame: Math.round(voice.start * preview._context.sampleRate), endFrame: Math.ceil(voice.end * preview._context.sampleRate), renderCost: voice.renderCost }))) } : {}) });
   const onOwnerStop = () => { revision++; leases.clear(); if (expiryTimer != null) clearTimeout(expiryTimer); expiryTimer = null; };
   const dispose = () => {

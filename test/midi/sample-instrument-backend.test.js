@@ -4,6 +4,7 @@ import { expect } from 'chai';
 import { BrowserNotePreview } from '../../js/app/midi-ui/browserNotePreview.js';
 import { createResourceBudget } from '../../js/app/resources/ResourceBudget.js';
 import { withFakeClock } from '../support/timers.js';
+import { singleSampleMap } from '../helpers/sampleMap.js';
 
 class Param {
   constructor() { this.events = []; }
@@ -29,7 +30,7 @@ const makeContext = () => ({ state: 'running', sampleRate: 48000, currentTime: 0
   resume: async () => {}, close: async () => {} });
 const makePin = (hash = 'a'.repeat(64), rate = 48000) => {
   const shared = { pins: 0 }, buffer = { length: rate, numberOfChannels: 1, sampleRate: rate, duration: 1 };
-  const ref = Object.freeze({ contentHash: hash, kind: 'sample', bytes: 96044, frames: 44100, sourceSampleRate: 44100 });
+  const ref = Object.freeze({ contentHash: hash, kind: 'sample', bytes: 96044, frames: 44100, sourceSampleRate: 44100, channels: 1 });
   const create = () => {
     shared.pins++; let active = true;
     return Object.freeze({ ref, variant: Object.freeze({ contentHash: hash, targetSampleRate: rate, decoderVersion: DECODER_VERSION }),
@@ -62,6 +63,38 @@ describe('Owned native sample regions', () => {
     expect(backend.renewExecutionLease(1, 'take', 480000).status).to.equal('accepted');
     return { preview, session, context, backend, asset, selections: () => selections };
   };
+  it('prepares the immutable authored map directly and retains its actual region selection and one-shot duration', async () => {
+    const fixture = await setup(), backend = await fixture.session.createSampleInstrumentBackend({ clockMode: 'offline' }), resolution = patch();
+    resolution.patch.sampleMap = singleSampleMap(fixture.asset.pin.ref.contentHash, { frames: 44100 });
+    resolution.patch.parameters = { attackSeconds: 0.1, decaySeconds: 0.1, sustain01: 0.5 };
+    expect((await backend.prepare(resolution, [fixture.asset.pin])).status).to.equal('ready');
+    expect(backend.renewExecutionLease(1, 'mapped', 480000).status).to.equal('accepted');
+    const accepted = backend.begin(intent('mapped', { worldId: 'world', laneId: 1, sampleKitId: 'drum', sampleGesture: 'center' }), 48000, 'mapped');
+    expect(accepted.status).to.equal('accepted'); expect(accepted.region.selection).to.include({ zoneId: 'center-0', alternateIndex: 0 });
+    expect(accepted.articulation.oneShotTailSeconds).to.equal(1);
+    expect(backend.end('mapped', { seconds: 0.1 }, 50400, 'mapped').status).to.equal('accepted');
+    const source = fixture.context.sources.find(source => source.buffer === fixture.asset.buffer), envelope = source.connections[0].gain.events;
+    expect(envelope.some(event => event.type === 'ramp' && event.time === 1.05 && event.value > 0)).to.equal(true);
+    expect(backend.renderDiagnostics().clockMode).to.equal('offline');
+  });
+  it('admits an authored same-kit choke at a one-gate limit without exceeding the source budget', async () => {
+    const fixture = await setup(), backend = await fixture.session.createSampleInstrumentBackend({ clockMode: 'offline' }), resolution = patch();
+    resolution.patch.sampleMap = singleSampleMap(fixture.asset.pin.ref.contentHash, { frames: 44100 }); resolution.patch.voicePolicy.maxVoices = 1;
+    expect((await backend.prepare(resolution, [fixture.asset.pin])).status).to.equal('ready'); backend.renewExecutionLease(1, 'mapped', 480000);
+    const mapped = id => intent(id, { worldId: 'world', laneId: 0, sampleKitId: 'drum' });
+    expect(backend.begin(mapped('A'), 48000, 'mapped').status).to.equal('accepted');
+    expect(backend.begin(mapped('B'), 72000, 'mapped').status).to.equal('accepted');
+    const voices = backend.renderDiagnostics({ includeVoices: true }).voices;
+    expect(voices.find(voice => voice.voiceId === 'A').endFrame).to.equal(Math.ceil(1.505 * 48000));
+    expect(voices.find(voice => voice.voiceId === 'B').region.chokeScope).to.equal(voices[0].region.chokeScope);
+  });
+  it('rejects every mapped source bound during preparation before creating native sample nodes', async () => {
+    const fixture = await setup(), backend = await fixture.session.createSampleInstrumentBackend({ clockMode: 'offline' }), resolution = patch();
+    resolution.patch.sampleMap = singleSampleMap(fixture.asset.pin.ref.contentHash, { frames: 44101 });
+    const pins = fixture.asset.shared.pins, sources = fixture.context.sources.length, rejected = await backend.prepare(resolution, [fixture.asset.pin]);
+    expect(rejected.status).to.equal('rejected'); expect(rejected.reason).to.include('actual pinned source');
+    expect(fixture.asset.shared.pins).to.equal(pins); expect(fixture.context.sources.length).to.equal(sources);
+  });
   it('refuses source-rate PCM cache buffers even when their rate matches the native audio context', async () => {
     const { backend, asset } = await setup();
     const incompatible = { ...asset.pin, variant: { ...asset.pin.variant, decoderVersion: WAVE_SOURCE_DECODER_VERSION } };
@@ -314,6 +347,8 @@ describe('Owned native sample regions', () => {
     context.currentTime = 0.26; backend.cancelGeneration(2, 'take');
     expect(a.releaseAt).to.equal(0.2); expect(a.mainReleaseEnd).to.equal(0.4); expect(a.main.source.stops.at(-1)).to.equal(0.4);
     expect(a.child.source.starts).to.have.length(1); expect(backend.update('A', { pressure01: 1 }, 13000, 'take').reason).to.equal('voice-not-active');
+    expect(a.child.gain.gain.events.some(event => event.time === 0.26 && event.value === 0)).to.equal(false);
+    expect(a.gain.gain.events.some(event => event.time === 0.26 && event.type === 'ramp' && event.value > 0 && event.value < a.releaseLevel)).to.equal(true);
   });
 
   it('rejects advanced loops, reverse/scrub, malformed regions and unsupported authored pitch ranges explicitly', async () => {

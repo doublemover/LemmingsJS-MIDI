@@ -455,6 +455,10 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
             { min: -24000, max: 24000, step: 0.01 }), group);
           labeled('Velocity / %', input(Math.round(instrument.velocity01 * 100), velocity => changePhysicalInstrument(instrument.id,
             { velocity01: velocity / 100 }), { min: 0, max: 100, step: 1 }), group);
+          labeled('Sample gesture', input(instrument.sampleGesture || '', value => changePhysicalInstrument(instrument.id, { sampleGesture: value.trim() || null }),
+            { type: 'text' }), group);
+          labeled('Sample kit', input(instrument.sampleKitId || '', value => changePhysicalInstrument(instrument.id, { sampleKitId: value.trim() || null }),
+            { type: 'text' }), group);
           list.append(group);
         }
       };

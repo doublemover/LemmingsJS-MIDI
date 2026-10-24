@@ -356,8 +356,8 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
       ...(includeVoices ? { voices: Object.freeze([...voices.values()].map(voice => Object.freeze({
         voiceId: voice.playback.voiceId, onsetId: voice.onsetId, actorId: voice.actorId, owner,
         generation: voice.semanticGeneration, executionEpoch: voice.semanticEpoch, patchRevision: voice.patchRevision, sourceCost: voice.renderCost, fmPlan: voice.fmPlan, modalPlan: voice.modalPlan,
-        state: voice.end <= now ? 'ended' : voice.stolen ? 'stolen' : voice.released || voice.releaseAt <= now ? 'release' :
-          now < voice.start ? 'scheduled' : now < voice.start + voice.attack ? 'attack' : 'held',
+        state: voice.end <= now ? 'ended' : now < voice.start ? 'scheduled' : voice.releaseAt <= now ? voice.stolen ? 'stolen' : 'release' :
+          now < voice.start + voice.attack ? 'attack' : 'held',
         targetFrame: Math.round(voice.start * preview._context.sampleRate),
         endFrame: Math.round(voice.end * preview._context.sampleRate),
         modeledPressure01: voice.pressureAutomation.valueAt(now), modeledParameters: true }))) } : {}) });

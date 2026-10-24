@@ -1,5 +1,5 @@
 import { planSoundSourceComparison } from './SoundSourceComparison.js';
-import { SOUND_CONTENT_CONTROL_FIXTURE as fixture } from '../../midi/content/SoundContentControlFixture.js';
+import { SOUND_CONTENT_CONTROL_FIXTURE as fixture, sampleMapControlFixture } from '../../midi/content/SoundContentControlFixture.js';
 import { freezeData, hashData } from '../../core/CanonicalData.js';
 import { createInstrumentPatchRegistry } from '../../midi/content/InstrumentPatchV2.js';
 import { planSoundContentSelection } from '../../midi/content/SoundContentPack.js';
@@ -32,18 +32,21 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
   let active = null, disposed = false, ordinal = 0;
   const retirement = createProcgenRetirementScope();
   const stageReceipts = new WeakMap(), installed = new WeakMap(), unknown = new Set();
-  const audition = (stage, patchIdentity, { signal: externalSignal, sourceMode = null } = {}) => {
+  const audition = (stage, patchIdentity, { signal: externalSignal, sourceMode = null, sampleGesture = null } = {}) => {
     externalSignal?.throwIfAborted();
     if (disposed || active || unknown.size) return Promise.reject(failure('audition-busy', 'Sound audition is unavailable or has unresolved retirement.'));
     let lease;
     try { lease = borrowSoundContentStage(stage); } catch (error) { return Promise.reject(error); }
     const patch = lease.prepared.patches.find(entry => entry.identity === patchIdentity);
-    if (!patch || patch.state !== 'definition-admitted' || !['native-oscillator', 'native-fm', 'native-modal', 'worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(patch.definition.engineId) ||
-        patch.definition.sampleRefs.length && patch.definition.engineId !== 'worklet-granular' || patch.definition.modulations.length || patch.definition.engineId === 'worklet-sine' && (patch.definition.macros.length || patch.definition.causalBindings.length || patch.definition.variation)) {
+    if (!patch || patch.state !== 'definition-admitted' || !['native-oscillator', 'native-fm', 'native-modal', 'native-sample', 'worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(patch.definition.engineId) ||
+        patch.definition.sampleRefs.length && !['worklet-granular', 'native-sample'].includes(patch.definition.engineId) || patch.definition.modulations.length || patch.definition.engineId === 'worklet-sine' && (patch.definition.macros.length || patch.definition.causalBindings.length || patch.definition.variation)) {
       lease.release(); return Promise.reject(failure('audition-requirements-unmet', 'This instrument needs an available renderer and a realized gesture/material adapter.'));
     }
     if (sourceMode !== null && (!['original', 'region'].includes(sourceMode) || patch.definition.engineId !== 'worklet-granular' || patch.definition.sampleRefs.length !== 1)) {
       lease.release(); return Promise.reject(failure('source-comparison-unavailable', 'Select a granular instrument with one local source to compare.'));
+    }
+    if (sampleGesture !== null && (patch.definition.engineId !== 'native-sample' || !patch.definition.sampleMap?.articulations?.some(entry => entry.id === sampleGesture))) {
+      lease.release(); return Promise.reject(failure('sample-gesture-unavailable', 'Choose an authored gesture for this sample instrument.'));
     }
     const plan = planSoundContentSelection(lease.prepared, [patchIdentity], { availableHashes: lease.metadata.assetHashes });
     if (plan.missingReferences.length || plan.missingAssetBytes.length && !audio.getSoundMaterialProvider) { lease.release(); return Promise.reject(failure('audition-requirements-unmet', 'Sound material required for this audition is missing.')); }
@@ -65,6 +68,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
     operation.promise = (async () => {
       let error = null, receipt = null, comparison = null, auditionFixture = fixture, comparisonEngineRequirement = null;
       try {
+        if (patch.definition.engineId === 'native-sample') auditionFixture = sampleMapControlFixture(patch.definition.sampleMap, sampleGesture ?? patch.definition.sampleMap.neutralArticulationId);
         if (audio.acquireAudition) operation.auditionLease = await audio.acquireAudition({
           source: { name: patchIdentity, kind: sourceMode ? 'authored-source-comparison' : 'authored-control-fixture', revision: patchIdentity, sourceRef: lease.metadata.contentHash },
           routeRevision: audio.getMonitorRouteState().revision, signal, onReveal,
@@ -93,7 +97,10 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
         } else {
           const definitions = createInstrumentPatchRegistry(); definitions.register(patch.definition, descriptor);
           resolution = definitions.resolve(patch.definition.id, patch.definition.revision, { engineDescriptors: [descriptor], assetHashes: operation.material?.availableHashes || lease.metadata.assetHashes });
-          operation.backend = ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(patch.definition.engineId) ? await operation.session.createWorkletInstrumentBackend({ engineId: patch.definition.engineId }) : operation.session.createInstrumentBackend({ gateMode: 'owned', engineId: patch.definition.engineId }); check();
+          if (patch.definition.engineId === 'native-sample') {
+            if (!operation.session.createSampleInstrumentBackend) throw failure('sample-adapter-unavailable', 'This audio session cannot prepare mapped samples.');
+            operation.backend = await operation.session.createSampleInstrumentBackend({ gateMode: 'owned' });
+          } else operation.backend = ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(patch.definition.engineId) ? await operation.session.createWorkletInstrumentBackend({ engineId: patch.definition.engineId }) : operation.session.createInstrumentBackend({ gateMode: 'owned', engineId: patch.definition.engineId }); check();
         }
         const prepared = await interruptible(operation.backend.prepare(resolution, operation.material?.assets || []), signal); check();
         if (prepared.status !== 'ready') throw failure('preparation-rejected', 'Audition renderer rejected the effective patch: ' + prepared.reason);
@@ -117,14 +124,16 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
           }, { execution: operation.execution });
         }
         const base = Math.ceil(context.currentTime * rate) + Math.ceil(0.15 * rate), releaseSeconds = comparison?.releaseSeconds ?? patch.definition.parameters.releaseSeconds ?? 0.04;
-        const endFrame = base + Math.ceil(((comparison?.seconds ?? 1) + releaseSeconds + 0.15) * rate), outcomes = [];
+        const fixtureEndSeconds = Math.max(...auditionFixture.events.map(event => event.seconds));
+        const endFrame = base + Math.ceil((fixtureEndSeconds + releaseSeconds + 0.15) * rate), outcomes = [];
         const leaseReceipt = operation.backend.renewExecutionLease(number, operation.execution, endFrame + Math.ceil(rate));
         if (leaseReceipt.status !== 'accepted') throw failure('audition-admission', 'Audition voice lifetime could not be admitted.');
         operation.auditionLease?.markReady();
         for (const event of auditionFixture.events) {
           check(); const frame = base + Math.round(event.seconds * rate); let outcome;
           if (event.kind === 'begin') outcome = operation.backend.begin({ version: 1, kind: 'begin', generation: number, voiceId: 'control-fixture', onsetId: 'control-fixture', actorId: null, laneId: 0,
-            intentId: 'sound-audition:' + number, sourceEventIds: [], pitch: { cents: event.pitchCents, referenceHz: 440 }, velocity01: event.velocity01, expression: event.expression }, frame, operation.execution);
+            intentId: 'sound-audition:' + number, sourceEventIds: [], pitch: { cents: event.pitchCents, referenceHz: 440 }, velocity01: event.velocity01, expression: event.expression,
+            ...(event.sampleGesture ? { sampleGesture: event.sampleGesture } : {}) }, frame, operation.execution);
           else if (event.kind === 'update') outcome = operation.backend.update('control-fixture', event.expression, frame, operation.execution);
           else outcome = operation.backend.end('control-fixture', { seconds: releaseSeconds }, frame, operation.execution);
           outcomes.push(outcome); if (outcome?.status !== 'accepted') throw failure('audition-command-rejected', 'Audition command was rejected: ' + outcome?.reason);
@@ -149,6 +158,8 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
           definitionHash: patch.definitionHash, engineRequirement: patch.engineRequirement, fixtureHash, fixtureId: auditionFixture.id, ...(comparison ? { sourceComparison: comparison.source, sourceMode, comparisonEngineRequirement } : {}),
           sampleRate: rate, targetFrame: base, endFrame, commandsAccepted: outcomes.length, source: auditionFixture.source,
           commandsApplied: requiresApplication ? applications.size : null, applications: [...applications.values()],
+          sourceSelections: outcomes.filter(outcome => outcome.region?.selection).map(outcome => ({ targetFrame: outcome.targetFrame, assetHash: outcome.assetHash,
+            onsetFrame: outcome.region.onsetFrame, endFrame: outcome.region.endFrame, rootCents: outcome.region.rootCents, rateRatio: outcome.rateRatio, selectionSeed: outcome.selectionSeed, selection: outcome.region.selection })),
           status: sourceMode ? 'source-comparison-completed' : 'control-fixture-completed', evidenceClass: requiresApplication ? 'render-kernel-command-application-and-running-clock' : 'backend-api-command-admission-and-running-clock', physicalTakeEvidence: false,
           renderQualification: 'not-independently-qualified', acousticReceipt: false, monitorRoute: audio.getMonitorRouteState?.() || null,
           auditionLease: operation.auditionLease?.snapshot() || null });

@@ -24,6 +24,13 @@ describe('bounded committed audio intervals', () => {
     expect(index.inspect({ voices: [source, voice(0, 5, 2, 'cue')], first: 2, last: 4, limit: 2, workload: 'live' }).peak).to.equal(2);
     expect(index.inspect({ voices: [source], first: 1, last: 4, limit: 1, semantic: true }).peak).to.equal(1);
   });
+  it('does not reopen an ended semantic gate when a later choke shortens its remaining source tail', () => {
+    const index = createAudioIntervalAdmission({ maxIntervals: 4 }), source = { ...voice(1, 5, 2), releaseAt: 3, semanticRelease: { at: 2 } };
+    expect(index.inspect({ voices: [source], first: 2.1, last: 2.9, cost: 1, limit: 1, mode: 'gate' }).accepted).to.equal(true);
+    expect(index.inspect({ voices: [source], first: 2.1, last: 2.9, cost: 1, limit: 2 }).accepted).to.equal(false);
+    expect(index.inspect({ voices: [source], first: 2.1, last: 2.9, cost: 1, limit: 1, mode: 'gate',
+      overrides: new Map([[source, { end: 6, releaseAt: 5 }]]) }).accepted).to.equal(true);
+  });
   it('preflights extension replacements without changing committed voice records', () => {
     const index = createAudioIntervalAdmission({ maxIntervals: 4 }), held = voice(0, 2), future = voice(3, 6), records = [held, future];
     const result = index.inspect({ voices: records, first: 1, last: 7, limit: 1, mode: 'gate',

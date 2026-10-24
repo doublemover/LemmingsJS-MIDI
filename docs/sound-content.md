@@ -433,7 +433,9 @@ unknown-gesture policy of `neutral` or `reject`. Each alternate group has contig
 indexes from zero. Selection hashes the original world/generation/actor/onset,
 map/patch revisions and candidate sample identities. It stores no acceptance or
 browsing counter. Rejection, rewind and actor-array traversal do not change the
-selected region for that original onset. This is deterministic alternate selection,
+selected region for that original onset. Event-only fixtures use their stable onset
+identity rather than a fresh playback execution generation; kit ownership remains
+scoped to that execution. This is deterministic alternate selection,
 not a promise to cycle through every alternate before repeating.
 
 Causal instrument rules may explicitly author `sampleGesture` and `sampleKitId`.
@@ -454,9 +456,17 @@ inferred. Gesture display labels and evidence/credit references stay separate fr
 the effective render key, while trims, source regions and selection policies
 participate in that identity.
 
-The compiler/selector contract is implemented. Product lane/audition sample-map
-wiring, the original tactile proof pack and native sample offline output are still
-in development. Source/selection metadata fixtures are authored and unexecuted.
+The compiler/selector contract is implemented. Mapped sample lane preparation and library audition use the actual sample
+backend. Preparation checks all regions against pinned source frames and reserves
+map metadata until retirement. The library's gesture selector auditions an authored
+articulation with an explicit 200 ms control fixture; physical rule controls persist the gesture and explicit kit tag.
+Audition and causal sink receipts name the actual zone, layer, alternate and seed
+as selection-API evidence, without claiming an applied sample or acoustic receipt. Authored chokes are
+included in interval admission before changing an existing voice. One-shot hold
+uses selected-region duration at the onset varispeed ratio, capped at four seconds;
+held gestures retain their owned gate policy. Sample loops/releases, UI and combined
+resource behavior remain subject to qualification. The original tactile proof pack
+and native sample offline output are still in development. Source/selection metadata fixtures are authored and unexecuted.
 
 Causal take rendering currently supports the five owned sources and three native
 sources listed above. It preserves immutable intent times and identities, with

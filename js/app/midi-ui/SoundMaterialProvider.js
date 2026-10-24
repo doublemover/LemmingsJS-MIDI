@@ -147,8 +147,8 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
         const prepared = source.prepared, patch = prepared.patches.find(entry => reference ? entry.definitionHash === reference.definitionHash && entry.identity === reference.patchId + '@' + reference.revision : entry.identity === patchIdentity);
         if (!patch || patch.state !== 'definition-admitted' || reference && prepared.contentHash !== reference.packHash) throw failure('content-mismatch', 'Pinned sound material definition is unavailable.');
         const refs = patch.definition.sampleRefs;
-        if (refs.length > 1 || patch.dependencies.some(hash => !refs.some(ref => ref.sha256 === hash))) throw failure('material-adapter-unavailable', 'This material needs a supported single-source adapter.');
-        for (const ref of refs) {
+        if (refs.length > (patch.definition.engineId === 'native-sample' ? 32 : 1) || patch.dependencies.some(hash => !refs.some(ref => ref.sha256 === hash))) throw failure('material-adapter-unavailable', 'This material needs a supported source-only adapter within its declared asset limit.');
+        for (const ref of new Map(refs.map(ref => [ref.sha256, ref])).values()) {
           const file = prepared.pack.files.find(entry => entry.sha256 === ref.sha256);
           if (!file || file.bytes !== ref.bytes || file.kind !== 'sample') throw failure('asset-missing', 'The exact WAV source inventory is unavailable.');
           const entry = { stage, file, signal: operation.controller.signal }; let entries = sources.get(file.sha256);
@@ -163,7 +163,7 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
             decodeProfile: decodeProfile || (patch.definition.engineId === 'worklet-granular' ? 'source-pcm' : 'native-context'), decodeContext, joinCancellation })); operation.check();
         }
         releaseSource();
-        const captured = Object.freeze([...assets]), loan = Object.freeze({ assets: captured, availableHashes: Object.freeze(refs.map(ref => ref.sha256)),
+        const captured = Object.freeze([...assets]), loan = Object.freeze({ assets: captured, availableHashes: Object.freeze([...new Set(refs.map(ref => ref.sha256))]),
           release() { const receipt = releaseAssets(); if (receipt.outcome === 'complete') loans.delete(loan); else faults.add(receipt); return receipt; } });
         loans.add(loan); return loan;
       } catch (error) { const receipt = releaseAssets(); await receipt.completion; if (receipt.outcome !== 'complete') { faults.add(receipt); error.retirement = receipt; } throw error; }

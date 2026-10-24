@@ -7,3 +7,9 @@ export const SOUND_CONTENT_CONTROL_FIXTURE = freezeData({ schema: 'lemmings-cont
     { kind: 'update', seconds: 0.7, expression: { pressure01: 0.5, pan01: 0.5, pitchOffsetCents: 100 } },
     { kind: 'end', seconds: 1 }
   ] });
+
+export function sampleMapControlFixture(map, gesture = map?.neutralArticulationId) {
+  if (!map?.articulations?.some(entry => entry.id === gesture)) throw new Error('Choose an authored sample gesture for the control fixture.');
+  return freezeData({ ...SOUND_CONTENT_CONTROL_FIXTURE, id: 'pressure-pan-pitch-sample-gesture-v1', durationScale: 0.2, events: SOUND_CONTENT_CONTROL_FIXTURE.events.map(event =>
+    ({ ...event, seconds: event.seconds * 0.2, ...(event.kind === 'begin' ? { sampleGesture: gesture } : {}) })) });
+}

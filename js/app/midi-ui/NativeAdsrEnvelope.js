@@ -8,10 +8,10 @@ export function nativeHeldEnvelopeLevel(voice, at) {
 
 // Removing a future linear endpoint also removes the interpolation before it.
 // Recreate its truncated endpoint; AudioParam.value cannot predict that value.
-export function truncateNativeEnvelope(voice, at) {
+export function truncateNativeEnvelope(voice, at, releaseEnd = voice.end) {
   const param = voice.gain.gain, attackEnd = voice.start + voice.attack, decayEnd = attackEnd + voice.decay;
   const releasing = voice.released && at >= voice.releaseAt;
-  const level = releasing ? voice.releaseLevel * clamp01((voice.end - at) / Math.max(Number.EPSILON, voice.end - voice.releaseAt)) : nativeHeldEnvelopeLevel(voice, at);
+  const level = releasing ? voice.releaseLevel * clamp01((releaseEnd - at) / Math.max(Number.EPSILON, releaseEnd - voice.releaseAt)) : nativeHeldEnvelopeLevel(voice, at);
   param.cancelScheduledValues(at);
   if (at > voice.start && !releasing && voice.attack > 0 && at === attackEnd && voice.decay === 0) {
     param.linearRampToValueAtTime(voice.peak, at); param.setValueAtTime(level, at);

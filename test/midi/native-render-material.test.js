@@ -11,7 +11,7 @@ const hash = 'a'.repeat(64), definition = { engineId: 'native-sample', sampleRef
 describe('isolated native render decode material (ownership doubles)', () => {
   it('retires the one-frame decode context before lending the shared native buffer pin', async () => {
     const resources = createAudioResourceLeases(), events = []; let active = true;
-    const pin = { isActive: () => active, ref: { contentHash: hash, bytes: 128 }, variant: { decoderVersion: DECODER_VERSION, targetSampleRate: 48000 },
+    const pin = { isActive: () => active, ref: { contentHash: hash, bytes: 128, frames: 64, sourceSampleRate: 48000, channels: 1, kind: 'sample' }, variant: { decoderVersion: DECODER_VERSION, targetSampleRate: 48000 },
       buffer: { sampleRate: 48000, length: 64, numberOfChannels: 1 } };
     class OfflineDouble {
       constructor(options) { Object.assign(this, options); this.state = 'suspended'; }

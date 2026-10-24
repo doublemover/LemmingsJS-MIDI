@@ -1,6 +1,9 @@
 import { expect } from 'chai';
-import { createSampleMapResolver, validateSampleInstrumentMap, validateSampleMapAssets, sampleMapRenderIdentity } from '../../js/midi/content/SampleInstrumentMap.js';
+import { createSampleMapResolver, validateSampleInstrumentMap, validateSampleMapAssets, sampleMapRenderIdentity, retainSampleSelectionReceipt } from '../../js/midi/content/SampleInstrumentMap.js';
+import { createCausalIntentDispatcher } from '../../js/app/procgen/workstation/CausalIntentDispatcher.js';
 import { singleSampleMap } from '../helpers/sampleMap.js';
+import { sampleMapControlFixture } from '../../js/midi/content/SoundContentControlFixture.js';
+import { hashData } from '../../js/core/CanonicalData.js';
 
 const hash = 'a'.repeat(64), refs = [{ id: 'material', sha256: hash, bytes: 128, required: true }];
 const onset = overrides => ({ version: 1, kind: 'begin', voiceId: 'v', onsetId: 'original-onset', worldId: 'world', generation: 1, actorId: 7, laneId: 1,
@@ -13,6 +16,21 @@ const layered = () => {
   return map;
 };
 describe('authored immutable sample instrument maps', () => {
+  it('records bounded actual selection evidence through dispatch without claiming applied samples', () => {
+    const region = resolver(layered())(onset()), outcome = { status: 'accepted', stage: 'scheduled', region, rateRatio: 1 };
+    const dispatcher = createCausalIntentDispatcher({ sinks: [{ id: 'local', route: 'local', backend: { begin: () => outcome } }], toTargetFrame: () => 48000 });
+    const [receipt] = dispatcher.dispatch([{ ...onset(), route: 'local', intentId: 'onset-dispatch', sourceEventIds: [] }], { generation: 1, batchId: 'batch' });
+    expect(receipt.selectedSource).to.include({ zoneId: region.selection.zoneId, assetHash: hash, evidenceClass: 'native-source-selection-api', appliedFrame: null, acousticReceipt: false });
+    expect(Object.isFrozen(receipt.selectedSource)).to.equal(true);
+    expect(retainSampleSelectionReceipt({ ...outcome, region: { ...region, onsetFrame: NaN } })).to.equal(null);
+  });
+  it('includes the audition gesture in the immutable fixture identity without altering control timing', async () => {
+    const map = singleSampleMap(hash); map.articulations.push({ id: 'muted', name: 'Muted' });
+    const neutral = sampleMapControlFixture(map), muted = sampleMapControlFixture(map, 'muted');
+    expect(neutral.events.map(event => event.seconds)).to.deep.equal(muted.events.map(event => event.seconds));
+    expect(muted.events[0].sampleGesture).to.equal('muted'); expect(await hashData(neutral)).not.to.equal(await hashData(muted));
+    expect(muted.physicalTakeEvidence).to.equal(false);
+  });
   it('resolves discrete velocity boundaries without interpolating or adding another logical onset', () => {
     const select = resolver(layered());
     for (const velocity01 of [0, 0.499999, 0.5, 1]) {
@@ -28,6 +46,12 @@ describe('authored immutable sample instrument maps', () => {
     for (const intent of captured.slice().reverse()) expect(restored(intent)).to.deep.equal(baseline.get(intent.onsetId));
     expect(select(captured[0])).to.deep.equal(baseline.get(captured[0].onsetId));
     expect(new Set([...baseline.values()].map(region => region.selection.alternateIndex)).size).to.equal(2);
+  });
+  it('keeps an authored event-only fixture selection stable across fresh playback execution generations', () => {
+    const select = resolver(layered()), request = onset({ worldId: null, actorId: null, onsetId: 'control-fixture' });
+    const a = select(request), b = select({ ...request, generation: 99 });
+    expect(a.selectionSeed).to.equal(b.selectionSeed); expect(a.selection).to.deep.equal(b.selection);
+    expect(a.selection.identityScope).to.equal('event-only-fallback'); expect(a.chokeScope).not.to.equal(b.chokeScope);
   });
   it('names neutral fallback and isolates exact kit ownership without hashed scope collisions', () => {
     const select = resolver(singleSampleMap(hash)), a = select(onset({ sampleGesture: 'brush' }));

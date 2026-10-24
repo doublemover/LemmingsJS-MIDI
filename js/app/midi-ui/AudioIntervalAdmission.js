@@ -14,7 +14,7 @@ export function createAudioIntervalAdmission({ maxIntervals = 128 } = {}) {
     const add = (time, delta) => { times[count] = time; deltas[count] = delta; order[count] = count; count++; };
     for (const voice of voices) {
       if (workload && (voice.workloadClass || 'live') !== workload) continue;
-      const change = overrides?.get(voice), start = voice.start, end = mode === 'gate' ? change?.releaseAt ?? voice.releaseAt : change?.end ?? voice.end;
+      const change = overrides?.get(voice), start = voice.start, end = mode === 'gate' ? Math.min(change?.releaseAt ?? voice.releaseAt, voice.semanticRelease?.at ?? Infinity) : change?.end ?? voice.end;
       const units = semantic ? 1 : voice.renderCost || 1;
       if (!Number.isFinite(start) || start < 0 || !Number.isFinite(end) || !Number.isSafeInteger(units) || units < 1 || units > 1024)
         return Object.freeze({ accepted: false, peak: null, limit, first, last, intervals, reason: 'unknown-source-interval' });

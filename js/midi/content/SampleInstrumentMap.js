@@ -16,6 +16,25 @@ export const sampleMapRenderIdentity = map => map ? { schema: map.schema, mapId:
   articulationIds: map.articulations.map(entry => entry.id), neutralArticulationId: map.neutralArticulationId, selectionPolicy: map.selectionPolicy,
   releasePolicy: map.releasePolicy, zones: map.zones } : null;
 
+export function retainSampleSelectionReceipt(outcome) {
+  try {
+    const region = outcome?.region, selection = region?.selection;
+    if (outcome?.status !== 'accepted' || !selection || region.domain !== 'source-frames' || !/^[a-f0-9]{64}$/.test(region.assetHash) ||
+        !integer(region.onsetFrame, 0, 7999999) || !integer(region.endFrame, region.onsetFrame + 1, 8000000) || !finite(region.rootCents, -24000, 24000) ||
+        !finite(outcome.rateRatio, 1 / 16, 16) || !integer(region.selectionSeed, 0, 0xffffffff) || !id(selection.mapId) || !integer(selection.mapRevision, 1, 2147483647) ||
+        !id(selection.zoneId) || !id(selection.articulationId) || !id(selection.requestedArticulationId) || !id(selection.roundRobinGroup) ||
+        !integer(selection.alternates, 1, 32) || !integer(selection.alternateIndex, 0, selection.alternates - 1) ||
+        !finite(selection.velocityMin01, 0, 1) || !finite(selection.velocityMax01, selection.velocityMin01, 1) || typeof selection.neutralFallback !== 'boolean' ||
+        !['execution-birth', 'event-only-fallback'].includes(selection.identityScope) || selection.algorithmVersion !== SAMPLE_SELECTION_ALGORITHM) return null;
+    return freezeData({ schema: 'lemmings-native-sample-selection/v1', assetHash: region.assetHash, onsetFrame: region.onsetFrame, endFrame: region.endFrame,
+      rootCents: region.rootCents, rateRatio: outcome.rateRatio, selectionSeed: region.selectionSeed, mapId: selection.mapId, mapRevision: selection.mapRevision,
+      zoneId: selection.zoneId, articulationId: selection.articulationId, requestedArticulationId: selection.requestedArticulationId, neutralFallback: selection.neutralFallback,
+      roundRobinGroup: selection.roundRobinGroup, alternateIndex: selection.alternateIndex, alternates: selection.alternates, velocityMin01: selection.velocityMin01,
+      velocityMax01: selection.velocityMax01, identityScope: selection.identityScope, algorithmVersion: SAMPLE_SELECTION_ALGORITHM,
+      evidenceClass: 'native-source-selection-api', appliedFrame: null, acousticReceipt: false });
+  } catch { return null; }
+}
+
 export function validateSampleInstrumentMap(input, sampleRefs) {
   keys(input, ['schema', 'mapId', 'revision', 'articulations', 'neutralArticulationId', 'selectionPolicy', 'releasePolicy', 'normalizationRef', 'rightsRef', 'zones']);
   if (input.schema !== SAMPLE_MAP_SCHEMA || !id(input.mapId) || !integer(input.revision, 1, 2147483647) ||
@@ -104,7 +123,7 @@ export function createSampleMapResolver(input, sampleRefs, { patchId, patchRevis
     group.alternates.push(zone);
   }
   for (const group of groups.values()) group.alternates.sort((a, b) => a.alternateIndex - b.alternateIndex);
-  return intent => {
+  const select = intent => {
     if (intent?.version !== 1 || intent.kind !== 'begin' || !text(intent.onsetId ?? intent.voiceId, 512) ||
         !integer(intent.generation, 0, Number.MAX_SAFE_INTEGER) || !finite(intent.velocity01, 0, 1) || !finite(intent.pitch?.cents, -24000, 24000) ||
         !finite(intent.pitch.referenceHz ?? 440, 0.1, 20000) || !finite(intent.expression?.pitchOffsetCents ?? 0, -24000, 24000) ||
@@ -126,8 +145,9 @@ export function createSampleMapResolver(input, sampleRefs, { patchId, patchRevis
       if (!selected || distance < Math.abs(cents - previous.rootCents) || distance === Math.abs(cents - previous.rootCents) && zone.rootCents < previous.rootCents) selected = group;
     }
     if (!selected) fail('no authored zone covers this gesture, velocity and pitch');
+    const actorIdentity = intent.worldId != null && intent.actorId != null ? [intent.worldId, intent.generation, intent.actorId] : null;
     const seed = Math.min(0xffffffff, Math.floor((instrumentVariationValue([SAMPLE_SELECTION_ALGORITHM, map.mapId, map.revision, patchId, patchRevision, map.selectionPolicy.seed,
-      intent.worldId ?? null, intent.generation, intent.actorId ?? null, intent.onsetId ?? intent.voiceId,
+      actorIdentity || ['event-only', intent.onsetId ?? intent.voiceId], intent.onsetId ?? intent.voiceId,
       selected.alternates.map(zone => [zone.id, zone.assetHash])]) + 1) * 2147483648));
     const zone = selected.alternates[seed % selected.alternates.length];
     const toRegion = entry => ({ domain: 'source-frames', assetHash: entry.assetHash, onsetFrame: entry.onsetFrame, endFrame: entry.endFrame, rootCents: entry.rootCents,
@@ -138,6 +158,8 @@ export function createSampleMapResolver(input, sampleRefs, { patchId, patchRevis
       chokeGroup: zone.chokeGroup, chokeScope: scope, selectionSeed: seed,
       selection: { mapId: map.mapId, mapRevision: map.revision, zoneId: zone.id, articulationId: gesture, requestedArticulationId: requested, neutralFallback: fallback,
         roundRobinGroup: zone.roundRobinGroup, alternateIndex: zone.alternateIndex, alternates: selected.alternates.length, velocityMin01: zone.velocityMin01,
-        velocityMax01: zone.velocityMax01, algorithmVersion: SAMPLE_SELECTION_ALGORITHM, advanceOn: 'semantic-onset', counterState: 'none', normalization: 'authored-trim-no-per-hit-normalization' } });
+        velocityMax01: zone.velocityMax01, algorithmVersion: SAMPLE_SELECTION_ALGORITHM, advanceOn: 'semantic-onset', identityScope: actorIdentity ? 'execution-birth' : 'event-only-fallback',
+        counterState: 'none', normalization: 'authored-trim-no-per-hit-normalization' } });
   };
+  Object.defineProperty(select, 'map', { value: map }); return Object.freeze(select);
 }
