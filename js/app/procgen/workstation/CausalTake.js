@@ -1,6 +1,8 @@
 import { cloneJournalData, canonicalJournalText, freezeJournalData, journalError } from './CausalJournalCanonical.js';
 import { validateCausalInstrumentGraph } from './CausalMusicEngine.js';
 import { createCausalCoverageIndex, queryCausalCoverage } from './CausalCoverage.js';
+import { createCausalViewWorkspace } from './CausalViewWorkspace.js';
+import { retireCausalRead } from './CausalReadLeases.js';
 
 const name = value => typeof value === 'string' && value.length > 0 && value.length <= 128;
 const boundedKinds = value => Array.isArray(value) && value.length <= 128 && value.every(name) && new Set(value).size === value.length;
@@ -162,13 +164,51 @@ const planCausalReinterpretation = ({ manifest, graph, range = null, verifiedRec
     originalRecordMutated: false });
 };
 
-const querySoundOnlyRevoice = async ({ journal, takeId, soundPatch, firstTick = 0, lastTick = Number.MAX_SAFE_INTEGER,
-  firstSequence = 1, limit = 4096, executionEpoch } = {}) => {
-  if (!name(executionEpoch) || !soundPatch || typeof soundPatch !== 'object') throw new Error('Revoice needs a sound patch and a fresh playback execution epoch.');
-  const slice = await journal.query({ takeId, firstTick, lastTick, firstSequence, kinds: ['musical-intents'], limit });
-  return freezeJournalData({ version: 1, operation: 'sound-only-revoice', takeId, takeRevision: slice.takeRevision, executionEpoch,
-    soundPatch: cloneJournalData(soundPatch), intents: slice.records.flatMap(record => record.payload.intents),
-    nextSequence: slice.nextSequence, inspection: { paused: true, hardware: false, recording: false, thru: false } });
+const querySoundOnlyRevoiceOwned = async ({ journal, takeId, takeRevision, soundPatch, firstTick, lastTick, generation,
+  firstSequence = 1, limit = 4096, maxIntents = 65536, maxBytes = 4194304, executionEpoch, resourceBudget = null, jobs, signal } = {}) => {
+  if (!name(executionEpoch) || typeof takeId !== 'string' || !takeId || takeId.length > 256 || !soundPatch || typeof soundPatch !== 'object' || Array.isArray(soundPatch) ||
+      !Number.isSafeInteger(firstSequence) || firstSequence < 1 || !Number.isSafeInteger(limit) || limit < 1 || limit > 65536 ||
+      !Number.isSafeInteger(maxIntents) || maxIntents < 1 || maxIntents > 262144 || !Number.isSafeInteger(maxBytes) || maxBytes < 4096 || maxBytes > 32 * 1048576 ||
+      takeRevision != null && (!Number.isSafeInteger(takeRevision) || takeRevision < 1) || generation != null && (!Number.isSafeInteger(generation) || generation < 0))
+    throw new Error('Revoice needs bounded source, intent and sound-patch identities with a fresh playback execution epoch.');
+  let workspace = null, operationError = null;
+  try {
+    workspace = createCausalViewWorkspace({ journal, resourceBudget, jobs, signal, ownerId: 'sound-only-revoice',
+      baseBytes: 65536 + limit * 128 + maxIntents * 32 + maxBytes * 4 });
+    const patch = cloneJournalData(soundPatch, { maxBytes: Math.min(maxBytes, 262144), maxNodes: 16384 });
+    const manifest = await workspace.take(takeId);
+    if (takeRevision != null && manifest.revision !== takeRevision) throw journalError('stale-revision', 'Revoice source revision has changed.');
+    const range = { firstTick: firstTick ?? manifest.coverage?.sourceRange?.firstTick, lastTick: lastTick ?? manifest.coverage?.sourceRange?.lastTick };
+    const coverage = queryCausalCoverage({ coverage: manifest.coverage, range, kind: 'musical-intents', generation });
+    const slice = await workspace.page({ takeId, takeRevision: manifest.revision, ...range, generation, firstSequence, kinds: ['musical-intents'], limit, signal });
+    let count = 0;
+    for (const record of slice.records) {
+      if (!Array.isArray(record.payload?.intents) || record.payload.intents.length > 8192) throw journalError('invalid-intent-source', 'The captured intent record is malformed.');
+      count += record.payload.intents.length;
+      if (count > maxIntents) throw journalError('revoice-capacity', 'This revoice window contains too many intents; narrow its source range or page size.');
+    }
+    const intents = new Array(count); let offset = 0;
+    for (const record of slice.records) for (const intent of record.payload.intents) intents[offset++] = intent;
+    const initialBoundary = firstSequence === 1 && generation == null && !manifest.prefix && range.firstTick === manifest.coverage?.sourceRange?.firstTick;
+    return await workspace.publish({ version: 1, operation: 'sound-only-revoice', takeId, takeRevision: slice.takeRevision,
+      sourceCanonicalHash: manifest.canonicalHash, sourceVersions: manifest.sourceVersions, executionEpoch, soundPatch: patch,
+      intents, intentCount: count, nextSequence: slice.nextSequence, range, generation: generation ?? null, coverage,
+      boundary: { status: initialBoundary ? 'captured-initial-state' : 'requires-state-reconstruction',
+        state: initialBoundary ? manifest.boundaryState : null, sourceOnsetsSynthesized: false },
+      sourceRecords: { firstSequence: slice.records[0]?.sequence ?? null, lastSequence: slice.records.at(-1)?.sequence ?? null, count: slice.records.length },
+      originalRecordMutated: false, inspection: { paused: true, hardware: false, recording: false, thru: false } },
+    { sourceRevision: manifest.canonicalHash, maxBytes });
+  } catch (error) { operationError = error; throw error; }
+  finally {
+    if (workspace) {
+      const receipt = workspace.dispose(); await receipt.completion;
+      if (receipt.outcome !== 'complete') throw journalError('view-retirement-unknown', 'Revoice source cleanup is unresolved.', { cause: operationError, retirement: receipt });
+    }
+  }
+};
+const querySoundOnlyRevoice = async options => {
+  const loan = await querySoundOnlyRevoiceOwned(options);
+  try { return loan.value; } finally { retireCausalRead(loan); }
 };
 const compareCausalRecords = (expected, actual) => {
   const length = Math.max(expected.length, actual.length);
@@ -189,4 +229,4 @@ const compareCausalRecords = (expected, actual) => {
 };
 
 export { PHYSICAL_CAPTURE_PROFILE, validateCaptureProfile, createCausalTakeRecorder, graphCaptureRequirements,
-  planCausalReinterpretation, querySoundOnlyRevoice, compareCausalRecords };
+  planCausalReinterpretation, querySoundOnlyRevoice, querySoundOnlyRevoiceOwned, compareCausalRecords };

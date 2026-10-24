@@ -2070,8 +2070,10 @@ and explicit legacy bounds. Owned queries now select records in the worker and
 retain result/index reservations through reader retirement. Detached replay owns
 its checkpoint/page loans through actual source/world retirement. Score projection
 and causal-parent views now adopt owned pages and publish retained worker snapshots
-with bounded cause links. Revoice consumers are being migrated next, before
-complete acceptance qualification.
+with bounded cause links. Sound-only revoice now retains a bounded independent
+snapshot with exact source hash, coverage and explicit boundary-state limits;
+it preserves captured intent identity without synthesizing attacks or rerunning
+physics. Full playback/render integration and acceptance qualification remain.
 
 - [ ] Finish shared background job execution for import, export encoding,
   recovery and asset preparation under the shared worker/memory admission owner.

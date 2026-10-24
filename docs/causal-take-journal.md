@@ -365,3 +365,15 @@ retired independently. A completed result survives cancellation of its original
 preparation request. Cleanup faults remain charged, are shown explicitly, and do
 not change the durable take. Owned score/cancellation and cause-link limit fixtures
 are authored and unexecuted.
+
+Sound-only revoice exposes an owned result API using the same page/workspace
+contract. It pins the source revision/hash, caps intent count before flattening,
+and publishes a worker-owned snapshot independently of request cancellation.
+The requested patch is bounded and copied before asynchronous reads. Captured
+intent times, causes and voice IDs are unchanged. Coverage and source-record
+ranges accompany the result; generation-filtered, paged, cropped and inherited
+prefix windows explicitly require boundary-state reconstruction. No attack is
+invented to make a partial window playable. Reader authority is private and tied
+to the same root budget; copied receipt fields cannot qualify an unowned source.
+This prepares data for playback/rendering; it does not itself audition or prove
+rendered PCM. Ownership, identity and capacity fixtures remain unexecuted.

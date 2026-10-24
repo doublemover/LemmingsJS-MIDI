@@ -1,12 +1,15 @@
 import { expect } from 'chai';
 import { createProcgenCausalJournal } from '../js/app/procgen/workstation/ProcgenCausalJournal.js';
-import { createCausalTakeRecorder, planCausalReinterpretation, querySoundOnlyRevoice, compareCausalRecords } from '../js/app/procgen/workstation/CausalTake.js';
+import { createCausalTakeRecorder, planCausalReinterpretation, querySoundOnlyRevoice, querySoundOnlyRevoiceOwned, compareCausalRecords } from '../js/app/procgen/workstation/CausalTake.js';
 import { createCausalMusicEngine } from '../js/app/procgen/workstation/CausalMusicEngine.js';
 import { createMemoryCausalStore } from './helpers/causalJournalStore.js';
 import { ProcgenLaneWorld } from '../js/app/procgen/ProcgenLaneWorld.js';
 import { LemmingStateType as State } from '../js/lemmings/LemmingStateType.js';
 import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
 import { captureProcgenCheckpoint } from '../js/app/procgen/workstation/ProcgenCheckpoint.js';
+import { createResourceBudget } from '../js/app/resources/ResourceBudget.js';
+import { createBackgroundWorkerAdmission } from '../js/app/resources/BackgroundWorkerAdmission.js';
+import { createBackgroundJobService } from '../js/app/resources/BackgroundJobService.js';
 
 const graph = (sourceKind = 'MotionCommitted', extra = {}) => ({ version: 1, revision: 1, instruments: [
   { id: 'instrument', sourceKind, pitchCents: 6012.3456789, velocity01: 0.75, role: 'physical', route: 'local',
@@ -19,8 +22,8 @@ const physical = (tick, extra = {}) => ({ version: 1, worldId: 'world', generati
   sourceTimeMs: tick * 60, tickDurationMs: 20, completeness: { status: 'complete', dropped: 0 }, facts: [{ kind: 'MotionCommitted',
     actorId: 7, eventId: `cause:${tick}`, causalSequence: tick, actionInstanceId: '7:action:1', precision: 'endpoint',
     positionBefore: { x: tick - 1, y: 10 }, positionAfter: { x: tick, y: 10 }, physicalPayload: { pathEvidence: 'endpoint-chord' }, ...extra }] });
-const setup = () => {
-  const store = createMemoryCausalStore(), journal = createProcgenCausalJournal({ storage: store.storage });
+const setup = (options = {}) => {
+  const store = createMemoryCausalStore(), journal = createProcgenCausalJournal({ storage: store.storage, ...options });
   return { ...store, journal };
 };
 
@@ -64,6 +67,37 @@ describe('semantic causal take capture and reinterpretation', function() {
     expect(first.intents).to.deep.equal(intents); expect(second.intents).to.deep.equal(intents);
     expect(first.executionEpoch).not.to.equal(second.executionEpoch);
     expect(first.inspection.hardware).to.equal(false);
+  });
+
+  it('owns revoice source reads and a result snapshot independently of the preparation request', async () => {
+    const resourceBudget = createResourceBudget(), admission = createBackgroundWorkerAdmission(), jobs = createBackgroundJobService({ admission, Worker: null });
+    const { journal } = setup({ resourceBudget, jobs }), mapping = graph(), engine = createCausalMusicEngine({ getGraph: () => mapping });
+    const recorder = await createCausalTakeRecorder({ ...metadata('take:owned-revoice', mapping), journal });
+    const batch = physical(40), intents = engine.processBatch(batch);
+    recorder.recordCommittedBatch({ batch, intents }); await recorder.stop();
+    const original = await journal.openTake('take:owned-revoice'), baseline = resourceBudget.diagnostics().accountedBytes, controller = new AbortController();
+    const result = await querySoundOnlyRevoiceOwned({ journal, resourceBudget, jobs, takeId: original.takeId,
+      takeRevision: original.revision, soundPatch: { id: 'bells', revision: 1 }, executionEpoch: 'revoice:owned',
+      maxBytes: 32768, maxIntents: 32, limit: 32, signal: controller.signal });
+    expect(result.value.intents).to.deep.equal(intents); expect(result.value.sourceCanonicalHash).to.equal(original.canonicalHash);
+    expect(result.value.boundary).to.include({ status: 'captured-initial-state', sourceOnsetsSynthesized: false });
+    expect(admission.diagnostics().retainedResults).to.equal(1); controller.abort(); expect(result.value.intents).to.deep.equal(intents);
+    expect(await journal.openTake(original.takeId)).to.deep.equal(original);
+    result.release(); expect(() => result.value).to.throw('retired'); expect(resourceBudget.diagnostics().accountedBytes).to.equal(baseline);
+    await journal.releaseQualifications().completion; expect(resourceBudget.diagnostics().accountedBytes).to.equal(0); jobs.dispose(); admission.dispose();
+  });
+
+  it('refuses an overfull intent window without modifying the source or inventing boundary attacks', async () => {
+    const { journal } = setup(), mapping = graph(), engine = createCausalMusicEngine({ getGraph: () => mapping });
+    const recorder = await createCausalTakeRecorder({ ...metadata('take:revoice-bounds', mapping), journal });
+    const batch = physical(40), intents = engine.processBatch(batch);
+    recorder.recordCommittedBatch({ batch, intents: [...intents, { ...intents[0], intentId: 'second:voice', voiceId: 'second:voice' }] }); await recorder.stop();
+    const original = await journal.openTake('take:revoice-bounds');
+    try { await querySoundOnlyRevoiceOwned({ journal, takeId: original.takeId, soundPatch: { id: 'bells' }, maxIntents: 1, executionEpoch: 'revoice:too-many' }); expect.fail('intent capacity must reject'); }
+    catch (error) { expect(error.code).to.equal('revoice-capacity'); }
+    const selected = await querySoundOnlyRevoiceOwned({ journal, takeId: original.takeId, generation: 1, soundPatch: { id: 'bells' }, executionEpoch: 'revoice:selected' });
+    expect(selected.value.boundary).to.deep.equal({ status: 'requires-state-reconstruction', state: null, sourceOnsetsSynthesized: false }); selected.release();
+    expect(await journal.openTake(original.takeId)).to.deep.equal(original);
   });
 
   it('refuses new contact/path requirements not captured by the chosen graph profile', async () => {
