@@ -1,9 +1,11 @@
 import './NonlinearChainProcessor.js';
+import './FixedFractionalDelayProcessor.js';
 import { createOwnedEffectState } from './OwnedEffectState.js';
+import { DELAY_KERNEL_REVISION } from '../../../midi/content/EffectRuntimeRevisions.js';
+export { DELAY_KERNEL_REVISION } from '../../../midi/content/EffectRuntimeRevisions.js';
 
 const finite = (v, lo, hi) => Number.isFinite(v) && v >= lo && v <= hi;
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-export const DELAY_KERNEL_REVISION = 'bounded-linear-delay-v2';
 
 export class BoundedDelayKernel {
   constructor({ sampleRate, maxDelayFrames, delayFrames, mode = 'glide', transitionFrames = 128, maximumSlew = 0.25, feedback = 0.3,

@@ -2666,6 +2666,16 @@ are authored at all supported rates/modes. Host-wide capture/queue cuts and
 full-graph offline restoration remain work; these kernel APIs are unqualified
 and no runtime/DSP tests ran.
 
+Graph dry/parallel alignment now uses an owned fixed stereo fractional-delay
+kernel with exact reserved ring storage, including sub-sample delays below one
+frame. It shares code/state transfer with the planned offline graph path and
+loads in the existing single effect module. Native graph preparation shares one
+ABI/configuration/ACK/fault/retirement adapter for all owned processors. Used
+delay/nonlinear/alignment revisions now bind graph identity. Linear two-tap
+alignment remains frequency-dependent and is not a broadband phase-null claim.
+Impulse, state and actual-kernel host/resource fixtures are authored; full-graph
+render integration and all execution qualification remain pending.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical

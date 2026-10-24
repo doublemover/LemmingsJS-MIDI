@@ -4,6 +4,8 @@ import { createSmoothedAudioParameter } from './SmoothedAudioParameter.js';
 import { prepareEffectGraphRevision, effectGraphHash } from '../../midi/content/EffectGraphRevision.js';
 import { loadOwnedWorkletModule } from './OwnedWorkletModuleCache.js';
 import { DELAY_KERNEL_REVISION } from './worklet/BoundedDelayProcessor.js';
+import { ALIGNMENT_KERNEL_REVISION } from '../../midi/content/EffectRuntimeRevisions.js';
+import { fixedFractionalDelayIdentity } from './worklet/FixedFractionalDelayProcessor.js';
 import { NONLINEAR_KERNEL_REVISION, nonlinearChainIdentity } from '../../midi/content/NonlinearChainProfile.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 
@@ -30,14 +32,14 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     { name: 'unused-effect-graph-reservation', run: () => { if (preparationError || preparationScope.getReceipt().resources[0].status !== 'completed') return storage?.release(); } }]);
   if (prepared.outcome !== 'complete') throw Object.assign(failure('effect-preparation-retirement', 'Effect metadata preparation retirement is unresolved.'), { cause: preparationError, retirement: prepared });
   if (preparationError) throw preparationError;
-  const scope = createProcgenRetirementScope({ deadlineMs: initializationTimeoutMs + 1000 }), nodes = [], delays = [], impulses = [], instances = new Map(), nodeOutputs = new Map(), inputs = new Map(), outputs = new Map();
+  const scope = createProcgenRetirementScope({ deadlineMs: initializationTimeoutMs + 1000 }), nodes = [], processors = [], impulses = [], instances = new Map(), nodeOutputs = new Map(), inputs = new Map(), outputs = new Map();
   let disposed = false, fault = null, controlSequence = 0;
   const controls = new Map(), gainControls = new Map(), parameterControls = new Map(), execution = getActiveExecutionIdentity('browser-native-audio');
   const node = value => { nodes.push(value); return value; };
   const dispose = () => scope.retire([{ name: 'effect-native-retirement', run: async () => {
     disposed = true;
     try {
-      const results = await Promise.allSettled(delays.map(async entry => {
+      const results = await Promise.allSettled(processors.map(async entry => {
         if (context.state === 'closed') return;
         entry.node.port.postMessage({ type: 'dispose' }); await entry.waitDisposed();
       }));
@@ -45,7 +47,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
       const native = createProcgenRetirementScope().retire([
         ...impulses.map((entry, i) => ({ name: 'convolver-buffer-' + i, run: () => { if (entry.convolver) entry.convolver.buffer = null; } })),
         ...nodes.map((value, i) => ({ name: 'effect-node-' + i, run: () => value.disconnect() })),
-        ...delays.map((entry, i) => ({ name: 'delay-port-' + i, run: () => { entry.cleanup(); entry.node.port.onmessage = null; entry.node.onprocessorerror = null; entry.node.port.close(); } }))
+        ...processors.map((entry, i) => ({ name: 'delay-port-' + i, run: () => { entry.cleanup(); entry.node.port.onmessage = null; entry.node.onprocessorerror = null; entry.node.port.close(); } }))
       ]); await native.completion;
       if (native.outcome !== 'complete') throw failure('effect-retirement-unknown', 'Native effect nodes did not retire completely; impulse pins remain owned.');
       const materials = impulses.map(entry => entry.material.release()); await Promise.all(materials.map(receipt => receipt.completion));
@@ -54,8 +56,43 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     } catch (error) { storage.retainUnknown(error); throw error; }
   } }]);
 
+  const prepareProcessor = async (entry, { processorName, parameterData = {}, processorOptions = {}, revision, configurationKey = null }) => {
+    guard();
+    const value = node(createWorkletNode(context, processorName, { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: 'explicit', parameterData, processorOptions }));
+    let resolveReady, rejectReady, resolveDisposed, rejectDisposed, timer = null;
+    const ready = new Promise((resolve, reject) => { resolveReady = resolve; rejectReady = reject; });
+    const retired = new Promise((resolve, reject) => { resolveDisposed = resolve; rejectDisposed = reject; }); retired.catch(() => {});
+    const closed = () => { if (context.state === 'closed') resolveDisposed(); };
+    const timeout = () => { const error = failure('effect-initialization-timeout', 'Effect initialization did not acknowledge its source profile.'); rejectReady(error); };
+    const abort = () => rejectReady(signal.reason);
+    const cleanup = () => { if (timer != null) clearTimeout(timer); context.removeEventListener?.('statechange', closed); signal?.removeEventListener('abort', abort); };
+    const delay = { node: value, nodeId: entry.id, kind: entry.kind, profile: entry.nonlinear || null, revision, cleanup, health: null, waitDisposed: () => {
+      if (timer != null) clearTimeout(timer);
+      return Promise.race([retired, new Promise((_, reject) => { timer = setTimeout(() => reject(failure('effect-retirement-timeout', 'The effect processor did not acknowledge retirement.')), initializationTimeoutMs); })]);
+    } }; processors.push(delay);
+    context.addEventListener?.('statechange', closed); signal?.addEventListener('abort', abort, { once: true });
+    value.port.onmessage = event => {
+      const data = event.data;
+      if (data?.type === 'disposed') { resolveDisposed(); return; }
+      if (data?.type === 'ready') {
+        if (data.revision !== revision || data.sampleRate !== context.sampleRate || data.stateBytes !== entry.stateBytes || configurationKey != null && data.configurationKey !== configurationKey) rejectReady(failure('effect-abi-mismatch', 'The effect runtime differs from its admitted graph.'));
+        else resolveReady();
+      } else if (['delay-fault', 'effect-fault'].includes(data?.type) && data.revision === revision) { fault ||= failure('effect-state-containment', 'The ' + entry.kind + ' branch cleared excessive or nonfinite internal state.'); try { onFault(fault); } catch {}
+      } else if (['delay-health', 'effect-health'].includes(data?.type) && data.revision === revision) delay.health = Object.freeze({ ...data });
+    };
+    value.onprocessorerror = () => { const error = failure('effect-processor-fault', 'The owned effect processor failed.'); fault = error; rejectReady(error); rejectDisposed(error); try { onFault(error); } catch { /* UI cannot own graph retirement. */ } };
+    timer = setTimeout(timeout, initializationTimeoutMs); await ready; clearTimeout(timer); timer = null; signal?.removeEventListener('abort', abort); guard();
+    const adapters = new Map(), initial = parameterData;
+    for (const [name, initialValue] of Object.entries(initial)) {
+      const param = value.parameters.get(name); if (!param?.setValueAtTime || !param.cancelScheduledValues) throw failure('effect-control-unavailable', 'Effect automation lacks bounded native queue replacement.');
+      adapters.set(name, createSmoothedAudioParameter({ param, initialValue, startTime: context.currentTime, smoothingSeconds: 0, maxEvents: 128 }));
+    } parameterControls.set(entry.id, adapters);
+
+    return value;
+  };
+
   try {
-    if (plan.nodes.some(entry => ['feedback-delay', 'nonlinear-chain'].includes(entry.kind))) { await loadOwnedWorkletModule(context, delayModule, resources); guard(); }
+    if (plan.alignmentStateBytes || plan.nodes.some(entry => ['feedback-delay', 'nonlinear-chain'].includes(entry.kind))) { await loadOwnedWorkletModule(context, delayModule, resources); guard(); }
     for (const entry of plan.nodes) {
       guard(); let value, outputValue = null;
       if (entry.kind === 'convolution-native') {
@@ -70,56 +107,33 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
         else value.connect(convolver);
         outputValue = convolver;
       } else if (['feedback-delay', 'nonlinear-chain'].includes(entry.kind)) {
-        const p = entry.parameters, nonlinear = entry.kind === 'nonlinear-chain', revision = nonlinear ? NONLINEAR_KERNEL_REVISION : DELAY_KERNEL_REVISION;
-        value = node(createWorkletNode(context, nonlinear ? 'lemmings-nonlinear-chain-v1' : 'lemmings-bounded-delay-v1', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: 'explicit',
+        const p = entry.parameters, nonlinear = entry.kind === 'nonlinear-chain';
+        value = await prepareProcessor(entry, { processorName: nonlinear ? 'lemmings-nonlinear-chain-v1' : 'lemmings-bounded-delay-v1', revision: nonlinear ? NONLINEAR_KERNEL_REVISION : DELAY_KERNEL_REVISION,
+          configurationKey: nonlinear ? nonlinearChainIdentity(entry.nonlinear) : null,
           parameterData: nonlinear ? { driveDb: p.driveDb, outputTrim01: p.outputTrim01 } : { delayFrames: p.delaySeconds * context.sampleRate, feedback: p.feedback, wet: p.wet01, feedbackLowpassHz: p.feedbackLowpassHz },
           processorOptions: nonlinear ? { parameters: p } : { maxDelayFrames: Math.ceil(p.maxDelaySeconds * context.sampleRate), delayFrames: p.delaySeconds * context.sampleRate,
             transitionFrames: Math.max(2, Math.round(p.transitionSeconds * context.sampleRate)), mode: p.mode, maximumSlew: p.maximumSlew,
-            feedback: p.feedback, feedbackMaximum: p.feedbackMaximum, feedbackLowpassHz: p.feedbackLowpassHz, feedbackHighpassHz: p.feedbackHighpassHz, wet: p.wet01 } }));
-        let resolveReady, rejectReady, resolveDisposed, rejectDisposed, timer = null;
-        const ready = new Promise((resolve, reject) => { resolveReady = resolve; rejectReady = reject; });
-        const retired = new Promise((resolve, reject) => { resolveDisposed = resolve; rejectDisposed = reject; }); retired.catch(() => {});
-        const closed = () => { if (context.state === 'closed') resolveDisposed(); };
-        const timeout = () => { const error = failure('effect-initialization-timeout', 'Effect initialization did not acknowledge its source profile.'); rejectReady(error); };
-        const abort = () => rejectReady(signal.reason);
-        const cleanup = () => { if (timer != null) clearTimeout(timer); context.removeEventListener?.('statechange', closed); signal?.removeEventListener('abort', abort); };
-        const delay = { node: value, nodeId: entry.id, kind: entry.kind, profile: entry.nonlinear || null, revision, cleanup, health: null, waitDisposed: () => {
-          if (timer != null) clearTimeout(timer);
-          return Promise.race([retired, new Promise((_, reject) => { timer = setTimeout(() => reject(failure('effect-retirement-timeout', 'The delay processor did not acknowledge retirement.')), initializationTimeoutMs); })]);
-        } }; delays.push(delay);
-        context.addEventListener?.('statechange', closed); signal?.addEventListener('abort', abort, { once: true });
-        value.port.onmessage = event => {
-          const data = event.data;
-          if (data?.type === 'disposed') { resolveDisposed(); return; }
-          if (data?.type === 'ready') {
-            if (data.revision !== revision || data.sampleRate !== context.sampleRate || data.stateBytes !== entry.stateBytes || nonlinear && data.configurationKey !== nonlinearChainIdentity(entry.nonlinear)) rejectReady(failure('effect-abi-mismatch', 'The effect runtime differs from its admitted graph.'));
-            else resolveReady();
-          } else if (['delay-fault', 'effect-fault'].includes(data?.type) && data.revision === revision) { fault ||= failure('effect-state-containment', 'The ' + entry.kind + ' branch cleared excessive or nonfinite internal state.'); try { onFault(fault); } catch {}
-          } else if (['delay-health', 'effect-health'].includes(data?.type) && data.revision === revision) delay.health = Object.freeze({ ...data });
-        };
-        value.onprocessorerror = () => { const error = failure('effect-processor-fault', 'The creative delay processor failed.'); fault = error; rejectReady(error); rejectDisposed(error); try { onFault(error); } catch { /* UI cannot own graph retirement. */ } };
-        timer = setTimeout(timeout, initializationTimeoutMs); await ready; clearTimeout(timer); timer = null; signal?.removeEventListener('abort', abort); guard();
-        const adapters = new Map(), initial = nonlinear ? { driveDb: p.driveDb, outputTrim01: p.outputTrim01 } : { delayFrames: p.delaySeconds * context.sampleRate, feedback: p.feedback, wet: p.wet01, feedbackLowpassHz: p.feedbackLowpassHz };
-        for (const [name, initialValue] of Object.entries(initial)) {
-          const param = value.parameters.get(name); if (!param?.setValueAtTime || !param.cancelScheduledValues) throw failure('effect-control-unavailable', 'Effect automation lacks bounded native queue replacement.');
-          adapters.set(name, createSmoothedAudioParameter({ param, initialValue, startTime: context.currentTime, smoothingSeconds: 0, maxEvents: 128 }));
-        } parameterControls.set(entry.id, adapters);
-
+            feedback: p.feedback, feedbackMaximum: p.feedbackMaximum, feedbackLowpassHz: p.feedbackLowpassHz, feedbackHighpassHz: p.feedbackHighpassHz, wet: p.wet01 } });
       } else { value = node(context.createGain()); value.gain.setValueAtTime(entry.kind === 'gain' ? entry.parameters.gain01 : 1, context.currentTime); }
       instances.set(entry.id, value); nodeOutputs.set(entry.id, outputValue || value); controls.set(entry.id, Object.freeze({ ...entry.parameters }));
       if (entry.kind === 'gain') gainControls.set(entry.id, createSmoothedAudioParameter({ param: value.gain, initialValue: entry.parameters.gain01, startTime: context.currentTime, smoothingSeconds: 0.008, maxEvents: 128 }));
       if (entry.kind === 'bus-in') inputs.set(entry.id, value); if (entry.kind === 'bus-out') outputs.set(entry.id, value);
     }
-    for (const edge of plan.edges) {
+    for (const [edgeIndex, edge] of plan.edges.entries()) {
       const gain = node(context.createGain()); gain.gain.setValueAtTime(edge.gain01, context.currentTime);
       nodeOutputs.get(edge.from.nodeId).connect(gain);
-      if (edge.alignmentFrames) { const align = node(context.createDelay(edge.alignmentFrames / context.sampleRate)); align.delayTime.setValueAtTime(edge.alignmentFrames / context.sampleRate, context.currentTime); gain.connect(align); align.connect(instances.get(edge.to.nodeId)); }
+      if (edge.alignmentFrames) {
+        const align = await prepareProcessor({ id: 'alignment-' + edgeIndex, kind: 'fixed-fractional-delay', stateBytes: (Math.ceil(edge.alignmentFrames) + 2) * 8 }, {
+          processorName: 'lemmings-fixed-fractional-delay-v1', revision: ALIGNMENT_KERNEL_REVISION, processorOptions: { delayFrames: edge.alignmentFrames },
+          configurationKey: fixedFractionalDelayIdentity(context.sampleRate, edge.alignmentFrames) });
+        gain.connect(align); align.connect(instances.get(edge.to.nodeId));
+      }
       else gain.connect(instances.get(edge.to.nodeId));
     }
     guard();
   } catch (error) {
     const receipt = dispose(); await receipt.completion;
-    if (receipt.outcome !== 'complete') throw Object.assign(failure('effect-retirement-unknown', 'Prepared effect cleanup is unresolved.'), { cause: error, retirement: receipt, retainedGraph: { nodes, delays, context } });
+    if (receipt.outcome !== 'complete') throw Object.assign(failure('effect-retirement-unknown', 'Prepared effect cleanup is unresolved.'), { cause: error, retirement: receipt, retainedGraph: { nodes, processors, context } });
     throw error;
   }
   const update = (nodeId, values, targetFrame = null) => {
@@ -142,15 +156,15 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     try {
       if (entry.kind === 'gain') { if (!gainControls.get(nodeId).insert(next.gain01, time, now)) throw failure('effect-control-capacity', 'Effect gain automation could not be admitted.'); }
       else for (const [adapter, amount] of changes) if (!adapter.insert(amount, time, now)) throw failure('effect-control-capacity', 'Effect automation could not be admitted.');
-    } catch (caught) { fault = caught; for (const entry of delays) entry.node.port.postMessage({ type: 'panic' }); try { onFault(caught); } catch {} throw failure('effect-control-failed', 'Native effect control scheduling failed.'); }
+    } catch (caught) { fault = caught; for (const entry of processors) entry.node.port.postMessage({ type: 'panic' }); try { onFault(caught); } catch {} throw failure('effect-control-failed', 'Native effect control scheduling failed.'); }
     controls.set(nodeId, Object.freeze(next));
     return Object.freeze({ status: 'accepted', stage: 'native-control-submitted', nodeId, targetFrame, sequence: ++controlSequence, graphDefinitionHash: hash, appliedFrame: null, acousticReceipt: false });
   };
   return Object.freeze({ plan, hash, update, getInput: id => disposed ? null : inputs.get(id) || null, getOutput: id => disposed ? null : outputs.get(id) || null,
-    panic() { for (const entry of delays) entry.node.port.postMessage({ type: 'panic' }); for (const entry of impulses) if (entry.convolver) entry.convolver.buffer = null; },
+    panic() { for (const entry of processors) entry.node.port.postMessage({ type: 'panic' }); for (const entry of impulses) if (entry.convolver) entry.convolver.buffer = null; },
     diagnostics: () => Object.freeze({ hash, graphId: plan.definition.id, revision: plan.definition.revision, sampleRate: plan.sampleRate, disposed, fault: fault?.code || null,
-      runtime: { hostRevision: 'owned-native-effect-host-v1', delayRevision: delays.some(entry => entry.kind === 'feedback-delay') ? DELAY_KERNEL_REVISION : null, nonlinearRevision: delays.some(entry => entry.kind === 'nonlinear-chain') ? NONLINEAR_KERNEL_REVISION : null, convolution: impulses.length ? 'browser-native-unpinned-dsp' : null, applicationBuildId: execution.buildId || null, activeExecution: execution.activeExecution },
-      processors: delays.map(entry => ({ nodeId: entry.nodeId, kind: entry.kind, revision: entry.revision, nonlinearProfile: entry.profile, health: entry.health })),
+      runtime: { hostRevision: 'owned-native-effect-host-v1', alignmentRevision: plan.processingRevisions.alignment, delayRevision: processors.some(entry => entry.kind === 'feedback-delay') ? DELAY_KERNEL_REVISION : null, nonlinearRevision: processors.some(entry => entry.kind === 'nonlinear-chain') ? NONLINEAR_KERNEL_REVISION : null, convolution: impulses.length ? 'browser-native-unpinned-dsp' : null, applicationBuildId: execution.buildId || null, activeExecution: execution.activeExecution },
+      processors: processors.map(entry => ({ nodeId: entry.nodeId, kind: entry.kind, revision: entry.revision, nonlinearProfile: entry.profile, health: entry.health })),
       impulses: impulses.map(entry => ({ nodeId: entry.nodeId, descriptor: entry.material.descriptor, analysis: entry.material.analysis })),
       controls: Object.fromEntries(controls), controlSequence, controlEvidence: 'native-control-submission-not-applied-acknowledgment',
       latencyFrames: plan.latencyFrames, maximumTailFrames: plan.maximumTailFrames, stateBytes: plan.stateBytes, protection: 'external-shared-master', qualification: 'implementation-awaiting-full-graph-qualification' }),

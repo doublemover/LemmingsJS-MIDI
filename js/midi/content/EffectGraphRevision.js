@@ -1,5 +1,6 @@
 import { validateImpulseResponseDescriptor } from './ImpulseResponseDescriptor.js';
-import { prepareNonlinearChainProfile } from './NonlinearChainProfile.js';
+import { prepareNonlinearChainProfile, NONLINEAR_KERNEL_REVISION } from './NonlinearChainProfile.js';
+import { DELAY_KERNEL_REVISION, ALIGNMENT_KERNEL_REVISION } from './EffectRuntimeRevisions.js';
 import { cloneData, freezeData, canonicalDataText, hashData } from '../../core/CanonicalData.js';
 
 export const EFFECT_GRAPH_SCHEMA = 'lemmings-effect-graph/v1';
@@ -82,17 +83,18 @@ export function prepareEffectGraphRevision(raw, { sampleRate = 48000, maxStateBy
   }
   const inputs = [...nodes.values()].filter(node => node.kind === 'bus-in').map(node => node.id).sort(before), outputs = [...nodes.values()].filter(node => node.kind === 'bus-out').map(node => node.id).sort(before);
   const outputLatencies = outputs.map(key => latency.get(key)), latencyFrames = outputLatencies.includes(null) ? null : Math.max(0, ...outputLatencies), maximumTailFrames = Math.max(0, ...outputs.map(key => tails.get(key)));
-  const nativeAlignmentEstimateBytes = edges.reduce((sum, edge) => sum + (edge.alignmentFrames ? (Math.ceil(edge.alignmentFrames) + 128) * 16 : 0), 0);
-  if (stateBytes + nativeAlignmentEstimateBytes > maxStateBytes) fail('Complete effect state and native alignment storage exceeds the admitted graph profile.');
+  const alignmentStateBytes = edges.reduce((sum, edge) => sum + (edge.alignmentFrames ? (Math.ceil(edge.alignmentFrames) + 2) * 8 : 0), 0); stateBytes += alignmentStateBytes;
+  if (stateBytes > maxStateBytes) fail('Complete effect and alignment storage exceeds the admitted graph profile.');
   if (!inputs.length || !outputs.length || outputs.some(key => !reachable.has(key)) || latencyFrames != null && graph.maximumLatencyFrames != null && latencyFrames > graph.maximumLatencyFrames || maximumTailFrames > graph.maximumTailSeconds * sampleRate)
     fail('Effect route is unreachable or exceeds its complete latency/tail budget.');
   const definition = { ...graph, nodes: [...nodes.values()].sort((a, b) => before(a.id, b.id)).map(({ id, kind, parameters, impulse }) => ({ id, kind, parameters, ...(impulse ? { impulse } : {}) })),
     edges: edges.map(({ from, to, gain01 }) => ({ from, to, gain01 })).sort((a, b) => before(JSON.stringify(a), JSON.stringify(b))) };
   canonicalDataText(definition, { maxBytes: 65536, maxNodes: 8192 });
-  return freezeData({ schema: 'lemmings-effect-plan/v1', definition, sampleRate, order, nodes: order.map(key => nodes.get(key)), edges: edges.sort((a, b) => before(JSON.stringify(a), JSON.stringify(b))), inputs, outputs, latencyFrames, maximumTailFrames, stateBytes, impulseCount, impulseDecodedBytes, nonlinearCount, nativeAlignmentEstimateBytes,
-    nativeNodeEstimateBytes: (nodes.size * 4 + edges.length) * 8192 + impulseNativeEstimateBytes + nativeAlignmentEstimateBytes, feedbackPolicy: 'only-inside-bounded-delay-operator', alignment: graph.latencyPolicy === 'align-declared' ? 'declared-processing-latency-only-creative-delay-preserved' : 'disabled-unknown-native-latency',
+  return freezeData({ schema: 'lemmings-effect-plan/v1', definition, sampleRate, order, nodes: order.map(key => nodes.get(key)), edges: edges.sort((a, b) => before(JSON.stringify(a), JSON.stringify(b))), inputs, outputs, latencyFrames, maximumTailFrames, stateBytes, impulseCount, impulseDecodedBytes, nonlinearCount, alignmentStateBytes,
+    processingRevisions: { delay: [...nodes.values()].some(node => node.kind === 'feedback-delay') ? DELAY_KERNEL_REVISION : null, nonlinear: nonlinearCount ? NONLINEAR_KERNEL_REVISION : null, alignment: alignmentStateBytes ? ALIGNMENT_KERNEL_REVISION : null },
+    nativeNodeEstimateBytes: (nodes.size * 4 + edges.length) * 8192 + impulseNativeEstimateBytes, feedbackPolicy: 'only-inside-bounded-delay-operator', alignment: graph.latencyPolicy === 'align-declared' ? 'declared-processing-latency-only-linear-fractional-creative-delay-preserved' : 'disabled-unknown-native-latency',
     tailPolicy: 'hard-owned-deadline-with-conservative-feedback-decay-model', maximumGraphGainBound: Math.max(...amplitude.values()),
     outputProtection: 'required-shared-owner-master-external-to-creative-graph' });
 }
 
-export const effectGraphHash = plan => hashData({ schema: plan.schema, definition: plan.definition, sampleRate: plan.sampleRate });
+export const effectGraphHash = plan => hashData({ schema: plan.schema, definition: plan.definition, sampleRate: plan.sampleRate, processingRevisions: plan.processingRevisions });

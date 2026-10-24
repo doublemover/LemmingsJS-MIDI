@@ -56,7 +56,7 @@ describe('shared nonlinear chain arithmetic and history (deferred qualification)
     const graph = createQuarryTape({ age01: 1 }), plan = prepareEffectGraphRevision(graph), preamp = plan.nodes.find(node => node.id === 'preamp');
     expect(preamp.nonlinear.parameters).to.include({ driveDb: 12, inputHighpassHz: 100, oversample: 2 }); expect(plan.latencyFrames).to.equal(16.25);
     expect(plan.edges.find(edge => edge.from.nodeId === 'dry' && edge.to.nodeId === 'output').alignmentFrames).to.equal(16.25);
-    expect(plan.nativeAlignmentEstimateBytes).to.be.greaterThan(0); expect(plan.outputProtection).to.include('external');
+    expect(plan.alignmentStateBytes).to.be.greaterThan(0); expect(plan.outputProtection).to.include('external');
     expect(plan.nodes.find(node => node.id === 'echo').parameters.feedbackLowpassHz).to.equal(1500);
     expect(() => createQuarryTape({ age01: 2 })).to.throw(); expect(() => createQuarryTape({ delaySeconds: 0.07 })).to.throw();
     expect(() => prepareNonlinearChainProfile({ antialiasMode: 'adaa2' })).to.throw(); expect(() => prepareNonlinearChainProfile({ oversample: 8 })).to.throw();
