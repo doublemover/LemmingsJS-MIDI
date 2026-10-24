@@ -16,7 +16,7 @@ globalThis.addEventListener('message', async event => {
     const result = await runBackgroundJobKernel(request.kind, request.input, { ...request.limits,
       onProgress: progress => respond({ type: 'progress', progress }) });
     const transfers = request.kind === 'prepare-owned-source-bank' && Array.isArray(result.value?.planes) ? result.value.planes.map(plane => plane.buffer) :
-      request.kind === 'render-sound-controls' && result.value?.bytes instanceof Uint8Array ? [result.value.bytes.buffer] :
+      ['render-sound-controls', 'generate-procedural-biome'].includes(request.kind) && result.value?.bytes instanceof Uint8Array ? [result.value.bytes.buffer] :
         request.kind === 'render-causal-sine-take' && Array.isArray(result.value?.files) && result.value.files.length <= 17 ? result.value.files.map(file => file.bytes.buffer) : [];
     respond({ type: 'computed', result, executionIdentity: getActiveExecutionIdentity('browser-background-jobs') }, transfers);
   } catch (error) { respond({ type: 'failed', error: { code: String(error.code || error.name).slice(0, 64), message: String(error.message || error).slice(0, 512) } }); }

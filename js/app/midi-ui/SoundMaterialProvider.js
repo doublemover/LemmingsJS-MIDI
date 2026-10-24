@@ -1,3 +1,4 @@
+import { getProceduralBiomeMaterial } from '../../midi/content/ProceduralBiomeMaterial.js';
 import { createAudioAssetLoader } from './AudioAssetLoader.js';
 import { validateAudioAssetRef, DECODER_VERSION } from './AudioAssetRef.js';
 import { createSoundContentRegistry } from './SoundContentRegistry.js';
@@ -15,17 +16,64 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
   registry ||= createSoundContentRegistry({ resourceBudget: budget });
   const resources = createAudioResourceLeases({ resourceBudget: budget, ownerPrefix: 'sound-material-' + (++nextProvider) });
   const metadata = resources.reserve({ kind: 'wave-metadata-cache', bytes: maxEntries * 1024 });
-  const formats = new Map(), sources = new Map(), pending = new Set(), loans = new Set(), faults = new Set();
+  const formats = new Map(), sources = new Map(), pending = new Set(), loans = new Set(), encodedLoans = new Set(), faults = new Set();
   const retirement = createProcgenRetirementScope(); let disposed = false, sequence = 0;
+  const generateSource = async (file, signal) => {
+    const original = getProceduralBiomeMaterial(file); if (!original) return null;
+    const workspace = resources.reserve({ kind: 'procedural-biome-material', estimateBytes: 16 * 1048576, consumerOwned: true });
+    let result = null, receipt = null, storage = null, blob = null;
+    const release = () => {
+      receipt ||= createProcgenRetirementScope().retire([{ name: 'original-source-worker', run: () => {
+        result?.release(); if (result && !['released', 'canceled'].includes(result.retirementState().phase)) throw failure('retirement-unknown', 'Original source producer retirement is unknown.');
+      } }]);
+      if (receipt.outcome === 'complete') {
+        storage ||= createProcgenRetirementScope().retire([{ name: 'original-source-storage', run: () => workspace.release() }]);
+        if (storage.outcome !== 'complete') { faults.add(storage); return storage; }
+      } else { workspace.retainUnknown(new Error('Original source retirement is unknown.')); faults.add(receipt); }
+      if (receipt.outcome === 'complete' && storage?.outcome === 'complete') { result = null; blob = null; }
+      return receipt;
+    };
+    try {
+      result = await jobs.compute({ kind: 'generate-procedural-biome', ownerId: 'sound-original:' + original.id, ownerEpoch: 0,
+        sourceRevision: original.sha256, inputBytes: 128, maxBytes: 1048576, estimatedPeakBytes: 16 * 1048576, signal,
+        isCurrent: () => !disposed, deadlineMs: 60000, prepareInput: () => ({ id: original.id }) });
+      signal?.throwIfAborted();
+      if (!(result.value.bytes instanceof Uint8Array) || result.value.bytes.byteLength !== original.bytes || result.value.hash !== original.sha256 || result.value.id !== original.id)
+        throw failure('content-mismatch', 'Original source generation returned a different immutable asset.');
+      blob = new Blob([result.value.bytes], { type: file.mediaType });
+      return { get blob() { if (!blob || receipt) throw failure('owner-retired', 'Original source loan is retired.'); return blob; }, release };
+    } catch (error) {
+      if (error.backgroundRetirement && !['released', 'canceled'].includes(error.backgroundRetirement.phase)) {
+        workspace.retainUnknown(error); const failed = createProcgenRetirementScope().retire([{ name: 'original-source-worker', run: () => { throw error; } }]); faults.add(failed); error.retirement = failed;
+      } else { const retired = release(); if (retired.outcome !== 'complete') error.retirement = retired; }
+      throw error;
+    }
+  };
   const borrowBlob = async (file, stage, signal) => {
     signal?.throwIfAborted();
-    let loan = stage ? borrowSoundContentStage(stage) : null;
+    if (disposed || faults.size || encodedLoans.size >= 64) throw failure('material-preparation-capacity', 'Encoded sound readers are unavailable or busy.');
+    const readerStorage = resources.reserve({ kind: 'encoded-material-reader', bytes: 4096, consumerOwned: true });
+    let loan = null, blob = null, receipt = null, storageRetirement = null;
+    const reader = { get blob() { if (!blob || receipt) throw failure('owner-retired', 'Encoded material loan is retired.'); return blob; }, release: () => {
+      receipt ||= createProcgenRetirementScope().retire([{ name: 'encoded-material-reader', run: () => loan?.release() }]);
+      if (receipt.outcome !== 'complete') {
+        faults.add(receipt); readerStorage.retainUnknown(new Error('Encoded material retirement is unknown.'));
+        throw Object.assign(failure('retirement-unknown', 'Encoded material retirement is unknown.'), { retirement: receipt });
+      }
+      storageRetirement ||= createProcgenRetirementScope().retire([{ name: 'encoded-reader-storage', run: () => readerStorage.release() }]);
+      if (storageRetirement.outcome !== 'complete') { faults.add(storageRetirement); throw Object.assign(failure('retirement-unknown', 'Encoded reader storage is unresolved.'), { retirement: storageRetirement }); }
+      blob = null; loan = null; encodedLoans.delete(reader); return receipt;
+    } };
+    encodedLoans.add(reader);
     try {
-      let blob = loan?.assetBlob(file.sha256);
-      if (!blob) { loan?.release(); loan = await registry.loadAsset(file.sha256, file.bytes, { signal }); blob = loan?.blob; }
+      loan = stage ? borrowSoundContentStage(stage) : null; blob = loan?.assetBlob(file.sha256);
+      if (!blob) {
+        loan?.release(); loan = null;
+        loan = getProceduralBiomeMaterial(file) ? await generateSource(file, signal) : await registry.loadAsset(file.sha256, file.bytes, { signal }); blob = loan?.blob;
+      }
       if (!blob || blob.size !== file.bytes) throw failure('asset-missing', 'Exact local sound material is unavailable: ' + file.path);
-      return { blob, release: () => loan?.release() };
-    } catch (error) { loan?.release(); throw error; }
+      return reader;
+    } catch (error) { reader.release(); throw error; }
   };
   const loader = createAudioAssetLoader({ getContext, resourceBudget: budget, maxEntries,
     fetchAsset: async (ref, { signal }) => {
@@ -36,6 +84,8 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
       finally { loan.release(); }
     } });
   const inspect = async (file, stage, operation) => {
+    const original = getProceduralBiomeMaterial(file);
+    if (original) return { bytes: original.bytes, channels: original.channels, sourceSampleRate: original.sampleRate, frames: original.frames };
     let format = formats.get(file.sha256);
     if (format) {
       if (format.bytes !== file.bytes) throw failure('content-mismatch', 'Sound material byte inventory changed.');
@@ -118,8 +168,8 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
     operation.completion = work; pending.add(operation);
     try { return await work; } finally { pending.delete(operation); }
   };
-  return Object.freeze({ acquire,
-    diagnostics: () => Object.freeze({ pending: pending.size, loans: loans.size, formats: formats.size, faults: faults.size, loader: loader.diagnostics(), resources: resources.diagnostics(), disposed }),
+  return Object.freeze({ acquire, borrowEncoded: (file, { signal } = {}) => borrowBlob(file, null, signal),
+    diagnostics: () => Object.freeze({ pending: pending.size, loans: loans.size, encodedLoans: encodedLoans.size, formats: formats.size, faults: faults.size, loader: loader.diagnostics(), resources: resources.diagnostics(), disposed }),
     dispose() {
       if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true;
       for (const operation of pending) operation.controller.abort(failure('owner-retired', 'Sound material owner retired.'));

@@ -5,12 +5,13 @@ import { compileSoundContent } from '../../midi/content/SoundContentCompiler.js'
 import { getNativeInstrumentCatalog } from '../midi-ui/NativeInstrumentSchema.js';
 import { inspectCausalArchiveEntry, validateCausalChunk } from '../procgen/workstation/CausalArchiveEntry.js';
 import { renderOwnedSineControls } from '../midi-ui/OwnedSineOfflineRender.js';
+import { getProceduralBiomeById } from '../../midi/content/ProceduralBiomeMaterial.js';
 import { inspectWaveContainer } from '../midi-ui/AudioAssetRef.js';
 import { getOwnedSourceBankIdentity, OWNED_SOURCE_BANK_SCHEMA } from '../midi-ui/OwnedSourceBank.js';
 import { renderCausalSineTake } from '../midi-ui/CausalSineRender.js';
 
 export const BACKGROUND_JOB_PROTOCOL = 1;
-export const BACKGROUND_JOB_KINDS = Object.freeze(['inspect-wave-asset', 'prepare-owned-source-bank', 'parse-json', 'verify-causal-source', 'snapshot-canonical-data', 'inspect-causal-archive-entry', 'render-sound-controls', 'render-causal-sine-take', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'asset-hash', 'asset-decode']);
+export const BACKGROUND_JOB_KINDS = Object.freeze(['generate-procedural-biome', 'inspect-wave-asset', 'prepare-owned-source-bank', 'parse-json', 'verify-causal-source', 'snapshot-canonical-data', 'inspect-causal-archive-entry', 'render-sound-controls', 'render-causal-sine-take', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'asset-hash', 'asset-decode']);
 const MAX_BYTES = 64 * 1048576, MAX_NODES = 4000000;
 const problem = (code, message) => Object.assign(new Error(message), { code, name: 'BackgroundJobError' });
 const shared = value => typeof globalThis.SharedArrayBuffer === 'function' && (value instanceof globalThis.SharedArrayBuffer || value?.buffer instanceof globalThis.SharedArrayBuffer);
@@ -116,6 +117,18 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
       !Number.isSafeInteger(maxStringBytes) || maxStringBytes < 1 || maxStringBytes > MAX_BYTES ||
       expectedInputHash != null && !/^[a-f0-9]{64}$/.test(expectedInputHash)) throw problem('invalid-contract', 'Unsupported background job kernel contract.');
   guard(signal, current);
+  if (kind === 'generate-procedural-biome') {
+    if (!input || Object.keys(input).length !== 1 || typeof input.id !== 'string') throw problem('invalid-contract', 'Invalid procedural biome source request.');
+    const expected = getProceduralBiomeById(input.id);
+    if (estimatedPeakBytes < 16 * 1048576 || maxBytes < expected.bytes) throw problem('memory-capacity', 'Procedural source needs its worker startup and copy reservation.');
+    const { generateProceduralBiomeSource } = await import('../../midi/content/ProceduralBiomeSources.js'); guard(signal, current);
+    const bytes = generateProceduralBiomeSource(input.id), format = inspectWaveContainer(bytes);
+    const digest = await crypto.subtle.digest('SHA-256', bytes); guard(signal, current);
+    const hash = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+    if (hash !== expected.sha256 || bytes.byteLength !== expected.bytes || format.frames !== expected.frames || format.channels !== expected.channels || format.sampleRate !== expected.sampleRate)
+      throw problem('content-mismatch', 'Procedural source differs from its original immutable identity.');
+    return { value: { id: expected.id, hash, bytes }, inputBytes: 128, nodes: 16, retainedBytes: expected.bytes + 16384 };
+  }
   if (kind === 'inspect-wave-asset') {
     if (!input || Object.keys(input).some(key => !['bytes', 'contentHash'].includes(key)) || !/^[a-f0-9]{64}$/.test(input.contentHash) ||
         !(input.bytes instanceof Uint8Array) || shared(input.bytes) || input.bytes.byteLength > maxBytes || input.bytes.byteLength * 8 + 1048576 > estimatedPeakBytes)

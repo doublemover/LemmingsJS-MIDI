@@ -7,6 +7,8 @@ import { compileSoundContent, reviewSoundContentChanges } from '../js/midi/conte
 import { describeNativeInstrumentEngines } from '../js/app/midi-ui/NativeInstrumentSchema.js';
 import { collectInstrumentArtifactProfiles } from './InstrumentArtifactClosure.js';
 import { computeInstrumentArtifacts } from '../js/runtime/InstrumentArtifactManifest.js';
+import { getProceduralBiomeMaterial } from '../js/midi/content/ProceduralBiomeMaterial.js';
+import { generateProceduralBiomeSource } from '../js/midi/content/ProceduralBiomeSources.js';
 import { extendSoundIdentityLedger, loadSoundIdentityLedger } from './SoundContentIdentityLedger.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url)), args = process.argv.slice(2), options = {};
@@ -100,11 +102,15 @@ try {
       if (stagedMetadataBytes > 64 * 1048576) throw new Error('Compiled sound metadata exceeds the catalog byte budget.');
       await fs.writeFile(path.join(folder, 'pack.json'), packText); await fs.writeFile(path.join(folder, 'artifacts.json'), artifactText);
       for (const file of content.prepared.pack.files) {
-        const source = await fs.realpath(path.resolve(input, 'assets', file.path));
-        if (!inside(path.join(inputReal, 'assets'), source)) throw new Error('Sound material escapes the authoring asset directory.');
-        const stat = await fs.stat(source); if (!stat.isFile() || stat.size !== file.bytes) throw new Error('Sound material byte inventory changed: ' + file.path);
+        const original = getProceduralBiomeMaterial(file); let bytes;
+        if (original) bytes = generateProceduralBiomeSource(original.id);
+        else {
+          const source = await fs.realpath(path.resolve(input, 'assets', file.path));
+          if (!inside(path.join(inputReal, 'assets'), source)) throw new Error('Sound material escapes the authoring asset directory.');
+          const stat = await fs.stat(source); if (!stat.isFile() || stat.size !== file.bytes) throw new Error('Sound material byte inventory changed: ' + file.path);
+          bytes = await fs.readFile(source);
+        }
         stagedMaterialBytes += file.bytes; if (stagedMaterialBytes > 256 * 1048576) throw new Error('Compiled sound material exceeds the catalog byte budget.');
-        const bytes = await fs.readFile(source);
         if (bytes.byteLength !== file.bytes || createHash('sha256').update(bytes).digest('hex') !== file.sha256) throw new Error('Sound material content hash changed: ' + file.path);
         const destination = path.join(folder, 'assets', file.sha256); await fs.mkdir(path.dirname(destination), { recursive: true }); await fs.writeFile(destination, bytes);
       }

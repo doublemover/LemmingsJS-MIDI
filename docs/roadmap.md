@@ -2313,8 +2313,14 @@ and finite float samples before native decoding. Library auditions and pinned
 lane preparation use the same bounded encoded/decoded cache and hand pins to
 the granular host; missing material keeps publication unavailable. Blob readers,
 worker results, native decode and copied PCM keep independent lifetime joins.
-Multi-source/derived adapters, source-region comparison and authored biome assets
-remain implementation work. Runtime, cancellation and audible checks are deferred.
+Four original integer-arithmetic synthetic biome sources now have pinned WAV
+identities, source seeds and generator ancestry, with Rain Glass, Gravel Choir,
+Water Lens and Rust Breath recipes. Their held-action gates own bounded clouds;
+completed motion/height controls density and scan. CROWD/SCALE/SCAN/WEATHER are
+explicit onset controls. Private local regeneration runs in an admitted worker
+and the final content publisher writes the same source bytes. These are synthetic
+textures, not field recordings. Multi-source/derived adapters and source-region
+comparison remain implementation work. Runtime, cancellation and audible checks are deferred.
 
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
