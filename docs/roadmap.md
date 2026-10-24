@@ -2392,8 +2392,18 @@ adapter without enabling live audio, then lends its native planar PCM to an
 admitted immutable-build worker for float WAV encoding and hashing. Encoding
 checks complete channel lengths and finiteness, preserves float headroom and
 crops simultaneous taps at shared frame zero. Producer and consumer retirement
-both precede release. Causal-take integration and all runtime qualification
-remain work; the new encoder fixtures have been authored but not executed.
+both precede release. Causal-take rendering now includes oscillator, native FM and modal bodies
+through this same backend. A shared preflight retains original world/actor/voice
+identity, source-clock timing, per-onset variation and recorded onset physical
+causes. Native terminal intervals use the actual source release duration and
+modal register plan. Each voice gets a separate execution identity without
+rewriting its musical identity. Full forward preroll and all simultaneous native
+taps are admitted before PCM allocation; the portable native limit is fifteen
+stereo lane stems, versus sixteen for owned kernels. The dialog offers native
+presets and exact saved native references when OfflineAudioContext is available.
+Native sample material, shared effect returns and arbitrary held-state restoration
+remain implementation work. All runtime qualification remains deferred; new
+encoder and native causal-preflight fixtures have been authored but not executed.
 
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail

@@ -50,7 +50,7 @@ export function createSoundContentRenderReferences({ resourceBudget, jobs = back
         }
         if (operation.material) input.pcm = operation.material.payload;
         operation.job = await jobs.compute({ kind: native ? 'encode-native-render' : 'render-sound-controls', ownerId: 'sound-render-reference', ownerEpoch: ++serial,
-          sourceRevision: patch.definitionHash, inputBytes: encoded.bytes.byteLength + (operation.native?.bytes || 0) + (operation.material?.descriptor.bytes || 0), estimatedPeakBytes: 32 * 1048576 + (operation.native?.bytes || 0) * 4 + (operation.material?.descriptor.bytes || 0) * 10, maxBytes: 128 * 1024 + (operation.native?.bytes || 0) + (operation.material?.descriptor.bytes || 0),
+          sourceRevision: patch.definitionHash, inputBytes: encoded.bytes.byteLength + (operation.native?.bytes || 0) + (operation.material?.descriptor.bytes || 0), estimatedPeakBytes: 32 * 1048576 + (operation.native?.bytes || 0) * 8 + (operation.material?.descriptor.bytes || 0) * 10, maxBytes: 128 * 1024 + (operation.native?.bytes || 0) + (operation.material?.descriptor.bytes || 0),
           priority: 'background', budgetAdapter: resourceBudget, signal: controller.signal, isCurrent: () => !disposed && isCurrent(), onProgress,
           prepareInput: () => operation.native?.input || input }); check();
         const value = operation.job.value, manifest = value?.manifest;

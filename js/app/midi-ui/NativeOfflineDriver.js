@@ -1,10 +1,11 @@
+import { NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineProfile.js';
+export { NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineProfile.js';
 import { createNativeOscillatorBackend } from './nativeOscillatorBackend.js';
 import { nativeVoiceFinished, nativeRenderVoiceCount, releaseNativeVoice, destroyNativeVoice } from './NativeVoiceLifetime.js';
 import { workloadVoiceCount, inspectVoiceInterval, inspectVoiceExtensions } from './AudioVoiceAdmission.js';
 import { createAudioIntervalAdmission, audioIntervalStorageBytes } from './AudioIntervalAdmission.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 
-export const NATIVE_OFFLINE_SOURCE_IDS = Object.freeze(['native-oscillator', 'native-fm', 'native-modal']);
 const failure = (code, message, detail = {}) => Object.assign(new Error(message), { name: 'NativeOfflineRenderError', code, ...detail });
 const natural = value => Number.isSafeInteger(value) && value >= 0;
 let nextOwner = 0;
@@ -25,6 +26,7 @@ export async function renderNativeOfflineGraph({ patch, events, frames, sampleRa
   for (const event of events) {
     if (!natural(event?.frame) || event.frame < prior || event.frame >= frames || !['begin', 'update', 'end'].includes(event.kind) ||
         typeof event.voiceId !== 'string' || !event.voiceId || event.voiceId.length > 512 ||
+        event.executionEpoch != null && (typeof event.executionEpoch !== 'string' || !event.executionEpoch || event.executionEpoch.length > 256) ||
         event.kind === 'begin' && (!natural(event.releaseFrame) || event.releaseFrame < event.frame ||
           !Number.isFinite(event.releaseSeconds) || event.releaseSeconds < 0.002 || event.releaseSeconds > 4))
       throw failure('native-event-preflight', 'Native scheduling needs ordered explicit frame targets and the complete release interval for every onset.');
@@ -84,10 +86,10 @@ export async function renderNativeOfflineGraph({ patch, events, frames, sampleRa
         guard(); const event = events[cursor++];
         if (event.kind === 'begin') {
           currentLane = event.laneId;
-          accept(backend.begin({ ...event.intent, voiceId: event.voiceId, performanceControls: {} }, event.frame, 'offline-render'), event);
-          accept(backend.end(event.voiceId, { seconds: event.releaseSeconds }, event.releaseFrame, 'offline-render'), event);
+          accept(backend.begin({ ...event.intent, voiceId: event.voiceId, performanceControls: {} }, event.frame, event.executionEpoch || 'offline-render'), event);
+          accept(backend.end(event.voiceId, { seconds: event.releaseSeconds }, event.releaseFrame, event.executionEpoch || 'offline-render'), event);
         } else if (event.kind === 'update' && Object.keys(event.expression || {}).length)
-          accept(backend.update(event.voiceId, event.expression, event.frame, 'offline-render'), event);
+          accept(backend.update(event.voiceId, event.expression, event.frame, event.executionEpoch || 'offline-render'), event);
       }
       if (host._retirementFaults.size) throw failure('native-voice-retirement', 'A native voice failed to retire completely.');
     };
@@ -121,8 +123,8 @@ export async function renderNativeOfflineGraph({ patch, events, frames, sampleRa
     // Older OfflineAudioContext implementations have no close(). Cancellation
     // drains the bounded disconnected graph and keeps all PCM storage charged.
     if (nativeWork && !nativeSettled) {
-      try { if (suspension) await suspension; if (context.state === 'suspended') await context.resume(); await nativeWork; }
-      catch (error) { originalError ||= error; }
+      try { if (suspension) await suspension; } catch (error) { originalError ||= error; }
+      try { if (context.state === 'suspended') await context.resume(); await nativeWork; } catch (error) { originalError ||= error; }
     }
     const receipt = scope.retire([
       { name: 'native-producer', run: () => { if (nativeWork && (!nativeSettled || nativeFailed && context.state !== 'closed')) throw failure('native-producer-unknown', 'Offline producer retirement could not be confirmed.'); } },

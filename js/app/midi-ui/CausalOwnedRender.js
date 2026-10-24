@@ -1,3 +1,4 @@
+import { getNativeOfflineProfile, NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineProfile.js';
 import { RECEIPT_WIDTH, BEGIN, UPDATE, END, APPLIED, REJECTED, FAULTED, CANCELLED } from './worklet/OwnedSineProcessor.js';
 import { verifyOwnedPcmPayload } from '../resources/OwnedPcmVerification.js';
 import { getOwnedSourceProfile, OWNED_SOURCE_IDS } from './OwnedSourceProfiles.js';
@@ -41,7 +42,7 @@ const encodeWav = (pcm, frames, rate, manifest) => {
   const at = 56 + pcm.length; ascii(view, at, 'lmjs'); view.setUint32(at + 4, metadata.length, true); bytes.set(metadata, at + 8); return bytes;
 };
 
-export async function planCausalOwnedRender({ revoice, definition, descriptor, sampleRate = 48000, startSeconds = 0, endSeconds,
+export async function planCausalSourceRender({ revoice, definition, descriptor, sampleRate = 48000, startSeconds = 0, endSeconds,
   tail = { mode: 'exact-crop' }, stemLaneIds = [], applicationBuildId = null, pcm = null, signal = null, yieldControl, maxPlanningBytes = 128 * 1048576 } = {}) {
   if (revoice?.operation !== 'sound-only-revoice' || revoice.version !== 1 || !text(revoice.takeId, 256) || !hash(revoice.sourceCanonicalHash) ||
       !natural(revoice.takeRevision) || revoice.takeRevision < 1 || !['finalized', 'partial'].includes(revoice.sourceState) || revoice.nextSequence != null ||
@@ -49,12 +50,12 @@ export async function planCausalOwnedRender({ revoice, definition, descriptor, s
       revoice.boundary?.status !== 'captured-initial-state' || !Array.isArray(revoice.boundary.state?.voices) || revoice.boundary.state.voices.length ||
       !finite(revoice.boundary.state.sourceTimeMs, 0, Number.MAX_SAFE_INTEGER) || !finite(revoice.finalBoundaryState?.sourceTimeMs, revoice.boundary.state.sourceTimeMs, Number.MAX_SAFE_INTEGER))
     throw failure('source-preflight', 'Rendering requires a finalized, covered intent history with an exact capture clock and an empty initial voice boundary. Missing held ancestry needs reconstruction.');
-  if (![44100, 48000, 96000].includes(sampleRate) || !OWNED_SOURCE_IDS.includes(descriptor?.engineId) || !getOwnedSourceProfile(descriptor.engineId).controlReferenceRender || descriptor.engineVersion !== 1 || !hash(descriptor.artifactHash) ||
+  if (![44100, 48000, 96000].includes(sampleRate) || ![...OWNED_SOURCE_IDS, ...NATIVE_OFFLINE_SOURCE_IDS].includes(descriptor?.engineId) || !(NATIVE_OFFLINE_SOURCE_IDS.includes(descriptor.engineId) ? getNativeOfflineProfile(descriptor.engineId) : getOwnedSourceProfile(descriptor.engineId)).controlReferenceRender || descriptor.engineVersion !== 1 || !hash(descriptor.artifactHash) ||
       applicationBuildId != null && !hash(applicationBuildId) || !finite(startSeconds, 0, MAX_SECONDS) || !finite(endSeconds, startSeconds, MAX_SECONDS) || endSeconds <= startSeconds ||
       !tail || !['exact-crop', 'bounded-natural', 'boundary-release'].includes(tail.mode) || Object.keys(tail).some(key => !['mode', 'maxSeconds'].includes(key)) ||
-      !finite(tail.maxSeconds ?? 4, 0, 4) || !Array.isArray(stemLaneIds) || stemLaneIds.length > 16 || stemLaneIds.some(id => !text(id, 128)) || new Set(stemLaneIds).size !== stemLaneIds.length)
-    throw failure('render-preflight', 'Choose a bounded owned-source render, supported sample rate, range, tail policy and at most sixteen captured lane stems.');
-  const owned = getOwnedSourceProfile(descriptor.engineId), patch = validateInstrumentPatchV2(definition, descriptor);
+      !finite(tail.maxSeconds ?? 4, 0, 4) || !Array.isArray(stemLaneIds) || stemLaneIds.length > (NATIVE_OFFLINE_SOURCE_IDS.includes(descriptor?.engineId) ? 15 : 16) || stemLaneIds.some(id => !text(id, 128)) || new Set(stemLaneIds).size !== stemLaneIds.length)
+    throw failure('render-preflight', 'Choose a bounded owned-source render, supported sample rate, range, tail policy and the source-specific captured lane stem limit.');
+  const owned = NATIVE_OFFLINE_SOURCE_IDS.includes(descriptor.engineId) ? getNativeOfflineProfile(descriptor.engineId) : getOwnedSourceProfile(descriptor.engineId), patch = validateInstrumentPatchV2(definition, descriptor);
   if ((owned.requiresPCM ? patch.sampleRefs.length !== 1 : patch.sampleRefs.length !== 0) || patch.modulations.length || !owned.extended && (patch.macros.length || patch.causalBindings.length || patch.variation) || patch.voicePolicy.steal !== 'reject' || patch.voicePolicy.maxVoices > owned.voices)
     throw failure('unsupported-patch', 'This render requires a realized owned source with complete material and reject admission.');
   const pcmBytesEstimate = owned.requiresPCM && integerPcmBytes(pcm?.descriptor?.bytes) ? pcm.descriptor.bytes : 0;
@@ -95,10 +96,15 @@ export async function planCausalOwnedRender({ revoice, definition, descriptor, s
       const frequency = frequencyFor(intent.pitch, expression.pitchOffsetCents ?? 0, sampleRate);
       if (Math.abs(expression.pitchOffsetCents ?? 0) > owned.bendCents || !finite(frequency, owned.minHz, Math.min(owned.maxHz ?? Infinity, sampleRate / 2 - 1)) || !owned.acceptsOnset(values, frequency, pcmDescriptor))
         throw failure('unsupported-pitch', 'Captured onset exceeds this source profile.', { intentId: intent.intentId, engineId: owned.id, minimumHz: owned.minHz, maximumHz: owned.maxHz });
-      const seed = ownedSourceSeed(owned, patch, intent, performance), sourceFields = owned.beginFields(values, seed, pcmDescriptor);
+      let nativeSourcePlan = null;
+      if (owned.planOnset) {
+        try { nativeSourcePlan = owned.planOnset({ fundamentalHz: frequency / 2 ** ((expression.pitchOffsetCents ?? 0) / 1200), sampleRate, parameters: values, pitchOffsetCents: expression.pitchOffsetCents ?? 0 }); }
+        catch { throw failure('native-source-preflight', 'Captured onset exceeds the native source register or bend profile.', { intentId: intent.intentId }); }
+      }
+      const seed = owned.native ? null : ownedSourceSeed(owned, patch, intent, performance), sourceFields = owned.beginFields(values, seed, pcmDescriptor);
       const ownReleaseFrames = Math.max(1, Math.round(values.releaseSeconds * sampleRate));
       voice = { key, laneId, start: frame, order, releaseAt: null, end: null, slot: -1, token: 0, begin: intent, baseFrequency: frequency / 2 ** ((expression.pitchOffsetCents ?? 0) / 1200), events: [],
-        parameters: values, releaseFrames: ownReleaseFrames, articulation: resolveOwnedArticulationPolicy({ engineId: owned.id, parameters: values }),
+        parameters: values, nativeSourcePlan, releaseFrames: ownReleaseFrames, articulation: { ...resolveOwnedArticulationPolicy({ engineId: owned.id, parameters: values }), ...(nativeSourcePlan?.oneShotHoldSeconds != null ? { oneShotTailSeconds: nativeSourcePlan.oneShotHoldSeconds } : {}) },
         continuousBase: performance?.continuousBase, physicalCauses: new Map(initialCause ? [[initialCause.sourceKind, initialCause]] : []), sourceValues: values,
         stringT60Seconds: values.stringT60Seconds, bodyT60Seconds: values.bodyT60Seconds };
       sourceControls.minimumHoldSeconds = Math.min(sourceControls.minimumHoldSeconds ?? 4, voice.articulation.oneShotTailSeconds);
@@ -113,12 +119,12 @@ export async function planCausalOwnedRender({ revoice, definition, descriptor, s
       if (frame < voice.start) throw failure('invalid-voice-time', 'A captured control precedes its own original onset.', { intentId: intent.intentId });
       if (intent.kind === 'end') {
         const at = intent.terminationReason === 'one-shot' ? Math.max(frame, voice.start + Math.round(voice.articulation.oneShotTailSeconds * sampleRate)) : frame;
-        voice.releaseAt = at; voice.end = at + voice.releaseFrames; capturedEnds++;
+        voice.releaseAt = at; voice.end = at + (owned.native ? voice.parameters.releaseSeconds * sampleRate : voice.releaseFrames); capturedEnds++;
         voice.events.push({ kind: 'end', frame: at, order, intentId: intent.intentId, values: { 13: voice.releaseFrames } });
       } else {
         let mask = 0; const values = { 14: Math.ceil(0.008 * sampleRate) };
         if (expression.pitchOffsetCents != null) { const frequency = voice.baseFrequency * 2 ** (expression.pitchOffsetCents / 1200);
-          if (!finite(frequency, 0.1, sampleRate / 2 - 1) || Math.abs(expression.pitchOffsetCents) > owned.bendCents) throw failure('unsupported-pitch', 'Captured expression exceeds this source profile.'); values[6] = frequency; mask |= 1; }
+          if (!finite(frequency, 0.1, sampleRate / 2 - 1) || Math.abs(expression.pitchOffsetCents) > (voice.nativeSourcePlan?.maxBendCents ?? owned.bendCents)) throw failure('unsupported-pitch', 'Captured expression exceeds this source profile.'); values[6] = frequency; mask |= 1; }
         if (expression.pressure01 != null) { values[8] = expression.pressure01; mask |= 2; }
         if (expression.pan01 != null) { values[9] = Math.max(-1, Math.min(1, expression.pan01 + patch.mix.pan01)); mask |= 4; }
         if (intent.performanceCause) {
@@ -142,14 +148,14 @@ export async function planCausalOwnedRender({ revoice, definition, descriptor, s
   for (const voice of voices.values()) {
     if (voice.end == null) {
       if (tail.mode === 'bounded-natural') throw failure('unknown-natural-release', 'A held voice has no captured release before this boundary. Choose exact crop or an explicit derived boundary release.');
-      if (tail.mode === 'boundary-release') { voice.releaseAt = endFrame; voice.end = endFrame + voice.releaseFrames; derivedReleases++;
+      if (tail.mode === 'boundary-release') { voice.releaseAt = endFrame; voice.end = endFrame + (owned.native ? voice.parameters.releaseSeconds * sampleRate : voice.releaseFrames); derivedReleases++;
         voice.events.push({ kind: 'end', frame: endFrame, order: ++ordinal, intentId: null, values: { 13: voice.releaseFrames } }); }
       else voice.end = endFrame + voice.releaseFrames + 128;
     }
     if (tail.mode !== 'exact-crop') naturalEnd = Math.max(naturalEnd, voice.end);
     events.push(...voice.events.map(event => ({ ...event, voice })));
   }
-  const outputEnd = tail.mode === 'exact-crop' ? endFrame : Math.min(naturalEnd, endFrame + Math.round((tail.maxSeconds ?? 4) * sampleRate));
+  const outputEnd = tail.mode === 'exact-crop' ? endFrame : Math.min(Math.ceil(naturalEnd), endFrame + Math.round((tail.maxSeconds ?? 4) * sampleRate));
   const outputFrames = outputEnd - firstFrame, pcmBytes = outputFrames * 8 * (stemLaneIds.length + 1);
   if (!natural(pcmBytes) || pcmBytes + 262208 * (stemLaneIds.length + 1) > MAX_OUTPUT_BYTES) throw failure('render-capacity', 'This render/stem set exceeds 64 MiB; choose a shorter range or fewer stems.');
   const slots = new Array(patch.voicePolicy.maxVoices).fill(null), tokens = new Uint32Array(owned.voices); let peakVoices = 0;
@@ -164,6 +170,11 @@ export async function planCausalOwnedRender({ revoice, definition, descriptor, s
     sourceOriginMs, startSeconds, endSeconds, tail, releaseFrames, articulation, derivedReleases, capturedBegins, capturedUpdates, capturedEnds, peakVoices, stemLaneIds, lanes, pcmBytes,
     timing: { ...timing.receipt(), sourceTimelineHash: timing.sourceTimeline ? await hashData(timing.sourceTimeline, { maxBytes: 1048576, maxNodes: 65536 }) : null },
     definitionHash: await hashData(definition), intentHash: await hashData(revoice.intents, { maxBytes: 8 * 1048576, maxNodes: 1000000 }) };
+}
+
+export async function planCausalOwnedRender(input = {}) {
+  if (!OWNED_SOURCE_IDS.includes(input.descriptor?.engineId)) throw failure('unsupported-owned-source', 'Choose a realized owned source for this kernel render.');
+  return planCausalSourceRender(input);
 }
 
 export async function renderCausalOwnedTake(input, { signal, yieldControl = () => new Promise(resolve => setTimeout(resolve, 0)), onProgress = () => {}, maxWorkingBytes = 512 * 1048576 } = {}) {

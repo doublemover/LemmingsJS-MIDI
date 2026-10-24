@@ -1,3 +1,5 @@
+export { nativeVoiceFinished, nativeRenderVoiceCount, releaseNativeVoice, destroyNativeVoice } from './NativeVoiceLifetime.js';
+export { workloadVoiceCount, inspectVoiceInterval, inspectVoiceExtensions } from './AudioVoiceAdmission.js';
 import { createSmoothedAudioParameter } from './SmoothedAudioParameter.js';
 import { createInstrumentExecutionLifecycle, isManagedExecutionEpoch } from './InstrumentExecutionLifecycle.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
@@ -11,7 +13,7 @@ import { resolveOwnedArticulationPolicy } from './OwnedArticulationPolicy.js';
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const waveforms = Object.freeze(['sine', 'triangle', 'sawtooth', 'square']);
 const baseCapabilities = Object.freeze({ independentSamePitch: true, perVoicePitch: true, perVoicePressure: true,
-  perVoicePan: true, perVoiceTimbre: false, offlineRender: false,
+  perVoicePan: true, perVoiceTimbre: false, offlineRender: true,
   ownedGates: true, sustainPedal: false, sostenuto: false, releaseVelocity: false,
   renderAcknowledgment: false, latencyFrames: 0 });
 const validCents = value => Number.isFinite(value) && value >= -24000 && value <= 24000;

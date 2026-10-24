@@ -1,3 +1,4 @@
+import { NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineProfile.js';
 import { validateSoundContentReference } from '../../midi/content/SoundContentReference.js';
 import { canonicalDataText } from '../../core/CanonicalData.js';
 import { getOwnedSourceProfile, OWNED_SOURCE_IDS } from './OwnedSourceProfiles.js';
@@ -37,11 +38,11 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
         instrumentReference = validateSoundContentReference(raw);
         const inventory = canonicalDataText(instrumentReference, { maxBytes: 65536, maxNodes: 8192 });
         instrumentWorkspace.resize(4096 + inventory.bytes.byteLength * 2 + inventory.nodes * 64);
-        instrumentSupported = OWNED_SOURCE_IDS.includes(instrumentReference.engineRequirement.engineId) && getOwnedSourceProfile(instrumentReference.engineRequirement.engineId).offlineRender;
+        instrumentSupported = NATIVE_OFFLINE_SOURCE_IDS.includes(instrumentReference.engineRequirement.engineId) ? typeof globalThis.OfflineAudioContext === 'function' : OWNED_SOURCE_IDS.includes(instrumentReference.engineRequirement.engineId) && getOwnedSourceProfile(instrumentReference.engineRequirement.engineId).offlineRender;
       } catch (error) { instrumentReference = null; instrumentWorkspace.resize(4096); instrumentError = error.message; }
     }
     const previous = sourceModel.value; sourceModel.replaceChildren();
-    for (const model of CAUSAL_RENDER_SOURCES) { const option = node('option', model.label); option.value = model.id; sourceModel.append(option); }
+    for (const model of CAUSAL_RENDER_SOURCES) { const option = node('option', model.label); option.value = model.id; option.disabled = NATIVE_OFFLINE_SOURCE_IDS.includes(model.id) && typeof globalThis.OfflineAudioContext !== 'function'; sourceModel.append(option); }
     if (instrumentReference) {
       const definition = instrumentReference.definition, name = typeof definition.name === 'string' ? definition.name : instrumentReference.patchId;
       const option = node('option', 'Saved instrument · ' + name + ' @' + instrumentReference.revision + (instrumentSupported ? '' : ' · renderer unavailable'));
@@ -51,7 +52,7 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
   };
   const rate = select('Render sample rate', [['44100', '44.1 kHz'], ['48000', '48 kHz'], ['96000', '96 kHz']]); rate.value = '48000';
   const tail = select('Render end policy', [['exact-crop', 'Exact crop'], ['bounded-natural', 'Captured releases with bounded tails'], ['boundary-release', 'Derive releases at the end boundary']]);
-  const stems = node('input'); stems.type = 'checkbox'; stems.setAttribute('aria-label', 'Include all captured dry lane stems'); label('Include all captured dry lane stems (up to 16)', stems);
+  const stems = node('input'); stems.type = 'checkbox'; stems.setAttribute('aria-label', 'Include all captured dry lane stems'); label('Include all captured dry lane stems (native: 15; owned: 16)', stems);
   const status = node('output', 'Idle'); status.setAttribute('role', 'status'); const details = node('p'), deliveryStatus = node('output'); deliveryStatus.setAttribute('aria-label', 'Rendered file delivery');
   const file = node('select'); file.setAttribute('aria-label', 'Prepared rendered file');
   const say = text => { if (!disposed) { deliveryStatus.textContent = text; try { onStatus(text); } catch { /* Status does not own a prepared render. */ } } };
@@ -96,7 +97,7 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
     sourceText.textContent = source ? `${source.takeName} · revision ${source.revision} · ${source.hash.slice(0, 16)} · ${source.seconds == null ? 'capture clock unavailable' : source.seconds.toFixed(3) + ' captured seconds'}` : loading ? 'Reading saved take boundaries…' : 'No selected saved take.';
     if (bundle !== displayedBundle) { displayedBundle = bundle; file.replaceChildren(); for (const entry of bundle?.files || []) { const option = node('option', entry.label); option.value = entry.id; file.append(option); } }
     status.textContent = loading ? 'Reading take' : `${current.phase}${current.progress ? ` · ${current.progress.completedUnits.toLocaleString()} / ${current.progress.totalUnits.toLocaleString()} frames` : ''}`;
-    instrumentInfo.textContent = instrumentError || (instrumentReference ? 'Saved instrument ' + instrumentReference.patchId + ' @' + instrumentReference.revision + ' · ' + instrumentReference.assetHashes.length + ' local source references. ' + (sourceModel.value === 'saved-instrument' ? 'The next render uses its saved defaults and available recorded physical controls.' : 'Select Saved instrument to use this revision; the current source choice uses its own default controls.') : 'Open this dialog with a saved lane instrument to use its exact revision.');
+    instrumentInfo.textContent = instrumentError || (instrumentReference ? 'Saved instrument ' + instrumentReference.patchId + ' @' + instrumentReference.revision + ' · ' + instrumentReference.assetHashes.length + ' local source references. ' + (!instrumentSupported ? 'Its offline renderer is unavailable in this browser or source profile.' : sourceModel.value === 'saved-instrument' ? 'The next render uses its saved defaults and available recorded physical controls.' : 'Select Saved instrument to use this revision; the current source choice uses its own default controls.') : 'Open this dialog with a saved lane instrument to use its exact revision.');
     details.textContent = current.error || source?.unavailable || (bundle ? `Prepared ${bundle.manifest.engineRequirement.engineId} from ${bundle.manifest.takeId} · ${bundle.manifest.frames.toLocaleString()} stereo frames at ${bundle.manifest.sampleRate} Hz · ${bundle.manifest.tail.mode} · ${bundle.files.length} file(s). Master protection is excluded.` :
       'Choose a range and prepare. Rendering does not enable live audio or audition the result.');
     renderButton.disabled = loading || busy || !source || !!source.unavailable || !!current.unresolvedRetirement || sourceModel.value === 'saved-instrument' && !instrumentSupported || picker || !!delivery;

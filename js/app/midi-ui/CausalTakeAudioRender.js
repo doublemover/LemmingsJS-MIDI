@@ -1,3 +1,5 @@
+import { prepareCausalNativeRenderInput } from './CausalNativeRender.js';
+import { getNativeOfflineProfile, NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineProfile.js';
 import { prepareOwnedRenderMaterial } from './OwnedRenderMaterial.js';
 import { createAudioResourceLeases } from './AudioResourceLeases.js';
 import { validateSoundContentReference } from '../../midi/content/SoundContentReference.js';
@@ -17,8 +19,8 @@ export const CAUSAL_RENDER_SINE = freezeData({ schemaVersion: 2, id: 'causal-ren
   modulations: [], sampleRefs: [], macros: [], causalBindings: [], voicePolicy: { maxVoices: 64, steal: 'reject' }, mix: { gain01: 0.6, pan01: 0 } });
 export const CAUSAL_RENDER_SOURCES = Object.freeze([
   Object.freeze({ id: 'worklet-sine', label: 'Sine', definition: CAUSAL_RENDER_SINE }),
-  ...[['worklet-pluck', 'Seeded pluck'], ['worklet-choir', 'Artificial formants'], ['worklet-spectrum', 'Spectral frames']].map(([id, label]) => {
-    const profile = getOwnedSourceProfile(id), parameters = Object.fromEntries(Object.entries(profile.fields).map(([name, spec]) => [name, spec[2]]));
+  ...[['worklet-pluck', 'Seeded pluck'], ['worklet-choir', 'Artificial formants'], ['worklet-spectrum', 'Spectral frames'], ['native-oscillator', 'Native oscillator'], ['native-fm', 'Native FM'], ['native-modal', 'Native modal body']].map(([id, label]) => {
+    const profile = NATIVE_OFFLINE_SOURCE_IDS.includes(id) ? getNativeOfflineProfile(id) : getOwnedSourceProfile(id), parameters = Object.fromEntries(Object.entries(profile.fields).map(([name, spec]) => [name, spec[2]]));
     return Object.freeze({ id, label, definition: freezeData({ schemaVersion: 2, id: 'causal-render.' + id, revision: 1, name: label + ' revoice', author: 'LemmingsJS-MIDI', tags: ['revoice'],
       engineId: id, engineVersion: 1, parameters, modulations: [], sampleRefs: [], macros: [], causalBindings: [], voicePolicy: { maxVoices: profile.voices, steal: 'reject' }, mix: { gain01: 0.6, pan01: 0 } }) });
   })
@@ -37,7 +39,7 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
   let disposed = false, active = null, prepared = null, serial = 0, phase = 'idle', progress = null, lastError = null;
   const state = () => Object.freeze({ schema: 'lemmings-causal-render-state/v1', phase, disposed, active: !!active, progress,
     prepared: prepared?.metadata() || null, materialResources: materialResources.diagnostics(), unresolvedRetirement: unresolved.size, error: lastError,
-    capabilities: Object.freeze({ intentSine: true, intentOwnedSources: Object.freeze(['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular']), capturedPcm: false, admissionHistory: false, arbitraryOfflineEngines: false, maxSeconds: 120, maxOutputBytes: 64 * 1048576 }) });
+    capabilities: Object.freeze({ intentSine: true, intentOwnedSources: Object.freeze(['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular']), intentNativeSources: NATIVE_OFFLINE_SOURCE_IDS, nativeOfflineAvailable: typeof globalThis.OfflineAudioContext === 'function', capturedPcm: false, admissionHistory: false, arbitraryOfflineEngines: false, maxSeconds: 120, maxOutputBytes: 64 * 1048576 }) });
   const report = () => { try { onState(state()); } catch { /* Rendering ownership does not depend on view callbacks. */ } };
   const makeBundle = (entries, manifest) => {
     const scope = createProcgenRetirementScope(); let discarded = false;
@@ -58,7 +60,7 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
         !Array.isArray(stemLaneIds) || stemLaneIds.length > 16 || stemLaneIds.some(lane => typeof lane !== 'string' || !lane || lane.length > 128) ||
         new Set(stemLaneIds).size !== stemLaneIds.length || typeof includeAllLaneStems !== 'boolean' || typeof isCurrent !== 'function') return Promise.reject(failure('render-unavailable', 'Choose a bounded causal render range and available renderer owner.'));
     const ordinal = ++serial, controller = new AbortController(), operation = { controller, source: null, job: null, sourceHanded: false, sourceSettled: null,
-      workspace: null, material: null, producerState: null, promise: null, retirement: null };
+      workspace: null, material: null, native: null, producerState: null, promise: null, retirement: null };
     let settleSource, rejectSource; operation.sourceSettled = new Promise((resolve, reject) => { settleSource = resolve; rejectSource = reject; }); operation.sourceSettled.catch(() => {});
     const cancel = () => { controller.abort(externalSignal.reason); phase = 'retiring'; report(); };
     externalSignal?.addEventListener('abort', cancel, { once: true }); if (externalSignal?.aborted) cancel();
@@ -72,11 +74,12 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
         const patch = cloneData(definition || reference?.definition || CAUSAL_RENDER_SINE, { maxBytes: 262144, maxNodes: 16384 }), policy = cloneData(tail, { maxBytes: 1024, maxNodes: 32 }); let lanes = Object.freeze(stemLaneIds.slice());
         const definitionHash = await hashData(patch), catalog = await getCatalog(); check();
         const descriptor = catalog.descriptors.find(entry => entry.engineId === patch.engineId && entry.engineVersion === patch.engineVersion);
-        if (catalog.state !== 'bound-application-engines' || !OWNED_SOURCE_IDS.includes(patch.engineId) || !getOwnedSourceProfile(patch.engineId).controlReferenceRender || !descriptor || !HASH.test(descriptor.artifactHash))
+        const native = NATIVE_OFFLINE_SOURCE_IDS.includes(patch.engineId), profile = native ? getNativeOfflineProfile(patch.engineId) : OWNED_SOURCE_IDS.includes(patch.engineId) ? getOwnedSourceProfile(patch.engineId) : null;
+        if (catalog.state !== 'bound-application-engines' || !profile?.controlReferenceRender || !descriptor || !HASH.test(descriptor.artifactHash))
           throw failure('engine-identity-unbound', 'Prepare this render from an immutable application build with the selected owned source.');
         if (reference && (reference.definitionHash !== definitionHash || !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => reference.engineRequirement[key] === descriptor[key])))
           throw failure('engine-revision-mismatch', 'The selected immutable instrument definition or renderer differs from the saved reference.');
-        if (getOwnedSourceProfile(patch.engineId).requiresPCM) {
+        if (profile.requiresPCM) {
           if (!reference || !getMaterialProvider) throw failure('material-reference-required', 'Choose a pinned installed source for this granular render.');
           phase = 'preparing-material'; report();
           operation.material = await prepareOwnedRenderMaterial({ provider: getMaterialProvider(), resources: materialResources, definition: patch, reference,
@@ -92,19 +95,27 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
           const timing = createCausalRenderTiming(revoice, sampleRate), cutoff = Math.round(endSeconds * sampleRate);
           lanes = Object.freeze([...new Set(revoice.intents.filter(intent => intent.kind === 'begin' && timing.frameFor(intent) < cutoff)
             .map(intent => String(intent.laneId ?? 'unassigned')))].sort());
-          if (lanes.length > 16) throw failure('stem-capacity', 'This range contains more than sixteen captured lanes. Render the complete graph without all-lane stems or select fewer lanes.');
+          if (lanes.length > (native ? 15 : 16)) throw failure('stem-capacity', 'This range exceeds the selected engine stem limit (' + (native ? 15 : 16) + '). Render the complete graph or select fewer lanes.');
         }
         const frames = Math.round((endSeconds - startSeconds + (policy.mode === 'exact-crop' ? 0 : policy.maxSeconds ?? 4)) * sampleRate);
         const pcmBytes = frames * 8 * (lanes.length + 1), sourceFootprint = operation.source.receipt.retainedBytes;
-        operation.workspace.resize(2 * 1048576 + sourceFootprint);
+        operation.workspace.resize(2 * 1048576 + sourceFootprint + (native ? revoice.intents.length * Math.max(1024, Object.keys(profile.fields).length * 256) : 0));
         const binding = { takeRevision: revoice.takeRevision, sourceCanonicalHash: revoice.sourceCanonicalHash };
-        const estimatedPeakBytes = sourceFootprint * 6 + pcmBytes * 4 + revoice.intents.length * Math.max(1024, Object.keys(getOwnedSourceProfile(patch.engineId).fields).length * 256) + 32 * 1048576 + (operation.material?.descriptor.bytes || 0) * 6;
+        let estimatedPeakBytes = sourceFootprint * 6 + pcmBytes * 4 + revoice.intents.length * Math.max(1024, Object.keys(profile.fields).length * 256) + 32 * 1048576 + (operation.material?.descriptor.bytes || 0) * 6;
         if (!Number.isSafeInteger(pcmBytes) || pcmBytes > 64 * 1048576 || !Number.isSafeInteger(estimatedPeakBytes) || estimatedPeakBytes > 512 * 1048576)
           throw failure('render-memory-capacity', 'Choose a shorter output range or fewer stems to fit source, PCM, encoding and transfer overlap.');
         input = { revoice, definition: patch, engineRequirement, sampleRate, startSeconds, endSeconds, tail: policy, stemLaneIds: lanes, ...(operation.material ? { pcm: operation.material.payload } : {}) };
-        phase = 'rendering'; report();
-        operation.job = await jobs.compute({ kind: 'render-causal-sine-take', ownerId, ownerEpoch: ordinal, sourceRevision: revoice.sourceCanonicalHash,
-          inputBytes: sourceMaxBytes + 262144 + (operation.material?.descriptor.bytes || 0), maxBytes: sourceMaxBytes + 262144 + (operation.material?.descriptor.bytes || 0), estimatedPeakBytes, priority: 'background', budgetAdapter: resourceBudget,
+        phase = native ? 'rendering-native' : 'rendering'; report();
+        if (native) {
+          operation.native = await prepareCausalNativeRenderInput({ ...input, descriptor, applicationBuildId: catalog.executionIdentity.buildId },
+            { resources: materialResources, signal: controller.signal, maxWorkingBytes: 512 * 1048576 - sourceFootprint * 6,
+              onProgress: value => { if (!disposed && active === operation) { progress = Object.freeze(value); report(); } } }); check();
+          estimatedPeakBytes = operation.native.estimatedPeakBytes; input = operation.native.input;
+          phase = 'encoding-native'; report();
+        }
+        const workerMaxBytes = native ? operation.native.bytes + 262144 : sourceMaxBytes + 262144 + (operation.material?.descriptor.bytes || 0);
+        operation.job = await jobs.compute({ kind: native ? 'encode-native-render' : 'render-causal-sine-take', ownerId, ownerEpoch: ordinal, sourceRevision: revoice.sourceCanonicalHash,
+          inputBytes: workerMaxBytes, maxBytes: workerMaxBytes, estimatedPeakBytes, priority: 'background', budgetAdapter: resourceBudget,
           signal: controller.signal, isCurrent: () => !disposed && isCurrent(), deadlineMs: 180000,
           prepareInput: () => { operation.sourceHanded = true; return input; },
           releasePreparedInput: () => { try { retireCausalRead(operation.source); operation.source = null; settleSource(); return true; }
@@ -126,7 +137,7 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
               (totalBytes += file.bytes.byteLength) > 64 * 1048576) throw failure('render-result-mismatch', 'A rendered PCM file omitted its exact frame/source/tap inventory.');
           const label = index ? 'Captured lane ' + lanes[index - 1] + ' · dry' : 'Complete ' + patch.engineId + ' graph · pre-master';
           const artifact = prepareExportArtifact({ bytes: file.bytes, immutableSourceRef: [binding.sourceCanonicalHash, definitionHash, sampleRate, startSeconds, endSeconds, policy.mode, file.manifest.pcmHash].join(':'),
-            formatVersion: manifest.schema, mediaType: 'audio/wav', suggestedFilename: 'take-' + binding.sourceCanonicalHash.slice(0, 12) + '-' + (index ? 'lane-' + index : 'sine-master') + '.wav',
+            formatVersion: manifest.schema, mediaType: 'audio/wav', suggestedFilename: 'take-' + binding.sourceCanonicalHash.slice(0, 12) + '-' + (index ? 'lane-' + index : 'master') + '.wav',
             coverageLossReportRef: 'embedded-lmjs-render-manifest', maxBytes: 64 * 1048576, budgetAdapter: resourceBudget }); candidates.push({ id: String(index), label, artifact });
         }
         check(); bundle = makeBundle(candidates, manifest); result = Object.freeze({ bundle, receipt: operation.job.receipt });
@@ -144,6 +155,7 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
             if (operation.producerState && !['released', 'canceled'].includes(operation.producerState.phase)) throw failure('render-retirement-unknown', 'Render input is still owned by its producer.');
             return operation.material?.release();
           } },
+          { name: 'native-pcm', run: () => { if (operation.producerState && !['released', 'canceled'].includes(operation.producerState.phase)) throw failure('render-retirement-unknown', 'Native PCM is still owned by its consumer.'); return operation.native?.release(); } },
           { name: 'render-source', run: () => { if (operation.sourceHanded) return operation.sourceSettled;
             if (operation.source) { retireCausalRead(operation.source); operation.source = null; } settleSource(); } },
           { name: 'render-input-workspace', run: async () => { if (operation.sourceHanded) await operation.sourceSettled; operation.workspace?.release(); } }

@@ -34,7 +34,7 @@ export async function prepareNativeControlRenderInput({ definition, descriptor, 
       tail: { releaseFrames, extraFrames: 128, state: 'bounded-fixture-release-completed' }, qualification: 'rendered-controls-not-physical-take-or-listening-or-cross-browser-qualified',
       rights: 'reference-render-grants-no-new-redistribution-rights', acousticReceipt: false };
     const planes = [native.buffer.getChannelData(0), native.buffer.getChannelData(1)];
-    return Object.freeze({ input: { mode: 'controls', manifest, planes, firstFrame: 0, endFrame: frames, stemLaneIds: [] },
-      bytes: frames * 8, release: () => native.release() });
+    let payload = { mode: 'controls', manifest, planes, firstFrame: 0, endFrame: frames, stemLaneIds: [] };
+    return Object.freeze({ get input() { return payload; }, bytes: frames * 8, release() { const released = native.release(); payload = null; return released; } });
   } catch (error) { native.release(); throw error; }
 }
