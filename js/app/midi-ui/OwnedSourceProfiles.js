@@ -20,7 +20,7 @@ const createProfile = ({ id, width, voices, fields, parameters = null, buildId, 
     ...(rateLimit ? { supportedSampleRates: Object.freeze([44100, 48000, 96000]) } : {}) });
   return Object.freeze({ id, width, voices, fields, parameters: parameters ? Object.freeze(Object.values(parameters)) : null, seedDomain, runtime,
     minHz, maxHz, bendCents, heapEstimate, sourceBytes, cost, acceptsParameters, acceptsOnset, beginFields, liveIds, damping, requiresPCM, bankId,
-    controlReferenceRender: id !== 'worklet-granular', extended: parameters !== null, perVoiceTimbre: slots.length > 0, offlineRender: id === 'worklet-sine',
+    controlReferenceRender: id !== 'worklet-granular', extended: parameters !== null, perVoiceTimbre: slots.length > 0, offlineRender: id !== 'worklet-granular',
     writeUpdate(expression, voice, values) {
       let mask = 0;
       for (const [name, bit, field] of slots) {

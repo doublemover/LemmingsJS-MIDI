@@ -2343,6 +2343,19 @@ while preserving live quotas and denying cue theft of live voices. Cue gate and
 lease-extension checks enforce both bounds. These are declared cost estimates;
 combined device/workload qualification remains deferred.
 
+Causal revoice now offers sine, seeded pluck, artificial formants and spectral
+frames through the same audio-frame kernels, range/preroll, source-clock timing,
+release policies and simultaneous lane stems. Source-specific width, voice limits,
+seeds, macro defaults, identity variation and retained completed physical updates
+share the live source profiles. A new target uses its own macro defaults;
+captured physical observations drive its bindings only when present in the source.
+Missing observations are reported, never invented. Planning accounts for retained
+per-voice control state before allocating long histories. Empty initial voice
+boundaries still apply: this forward render does not add arbitrary new DSP state
+cuts or reconstruct missing held ancestry. Granular asset render handoff and
+native offline engines remain separate implementation work. Runtime, PCM and
+cross-browser qualification is deferred until the implementation pass is complete.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical

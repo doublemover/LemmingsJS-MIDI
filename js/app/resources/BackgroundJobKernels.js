@@ -9,7 +9,7 @@ import { renderOwnedSourceControls } from '../midi-ui/OwnedSourceControlRender.j
 import { getProceduralBiomeById } from '../../midi/content/ProceduralBiomeMaterial.js';
 import { inspectWaveContainer } from '../midi-ui/AudioAssetRef.js';
 import { getOwnedSourceBankIdentity } from '../midi-ui/OwnedSourceBank.js';
-import { renderCausalSineTake } from '../midi-ui/CausalSineRender.js';
+import { renderCausalOwnedTake } from '../midi-ui/CausalOwnedRender.js';
 
 export const BACKGROUND_JOB_PROTOCOL = 1;
 export const BACKGROUND_JOB_KINDS = Object.freeze(['generate-procedural-biome', 'inspect-wave-asset', 'prepare-owned-source-bank', 'parse-json', 'verify-causal-source', 'snapshot-canonical-data', 'inspect-causal-archive-entry', 'render-sound-controls', 'render-causal-sine-take', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'asset-hash', 'asset-decode']);
@@ -253,12 +253,12 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
   if (kind === 'render-causal-sine-take') {
     if (!input || Object.keys(input).some(key => !['revoice', 'definition', 'engineRequirement', 'sampleRate', 'startSeconds', 'endSeconds', 'tail', 'stemLaneIds'].includes(key)) || estimatedPeakBytes < 8 * 1048576)
       throw problem('invalid-contract', 'Causal audio rendering requires a bounded semantic-source request.');
-    const catalog = await getNativeInstrumentCatalog(), descriptor = catalog.descriptors.find(engine => engine.engineId === 'worklet-sine'); guard(signal, current);
+    const catalog = await getNativeInstrumentCatalog(), descriptor = catalog.descriptors.find(engine => engine.engineId === input.engineRequirement?.engineId); guard(signal, current);
     if (catalog.state !== 'bound-application-engines' || !descriptor || !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => input.engineRequirement?.[key] === descriptor[key]))
-      throw problem('engine-identity-unbound', 'Causal audio rendering requires its exact executing sine artifact.');
+      throw problem('engine-identity-unbound', 'Causal audio rendering requires its exact executing source artifact.');
     const sourceFootprint = metadata.bytes * 12 + metadata.nodes * 192;
     if (sourceFootprint + 8 * 1048576 > estimatedPeakBytes) throw problem('memory-capacity', 'Causal render source exceeds its admitted object and clone footprint.');
-    const value = await renderCausalSineTake({ ...input, descriptor, applicationBuildId: catalog.executionIdentity.buildId },
+    const value = await renderCausalOwnedTake({ ...input, descriptor, applicationBuildId: catalog.executionIdentity.buildId },
       { signal, yieldControl, onProgress, maxWorkingBytes: estimatedPeakBytes - sourceFootprint }); guard(signal, current);
     const retainedBytes = value.files.reduce((sum, file) => sum + file.bytes.byteLength * 2 + 262144, 262144);
     if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Causal audio artifacts exceed admitted result storage.');

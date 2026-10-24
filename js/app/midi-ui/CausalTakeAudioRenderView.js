@@ -1,4 +1,4 @@
-import { createCausalTakeAudioRenderer } from './CausalTakeAudioRender.js';
+import { createCausalTakeAudioRenderer, CAUSAL_RENDER_SOURCES } from './CausalTakeAudioRender.js';
 import { borrowCausalTake, retireCausalRead } from '../procgen/workstation/CausalReadLeases.js';
 import { requestExportFileHandle, deliverArtifactToFileHandle, deliverArtifactToAnchor } from '../export/ExportArtifact.js';
 import { createInstrumentDisplayScheduler } from '../resources/InstrumentDisplayScheduler.js';
@@ -10,14 +10,15 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
   let disposed = false, owner = null, source = null, loading = false, loadSerial = 0, readController = null, picker = false, delivery = null, deliveryTask = null, lastDelivery = null, displayedBundle = null;
   const node = (tag, text) => { const element = document.createElement(tag); if (text != null) element.textContent = text; return element; };
   const listen = (element, event, callback) => { element.addEventListener(event, callback); listeners.push(() => element.removeEventListener(event, callback)); };
-  const dialog = node('dialog'); dialog.className = 'studio-dialog studio-causal-render'; dialog.setAttribute('aria-label', 'Render causal take sine revoice');
-  const title = node('h2', 'Render take · sine revoice'), description = node('p', 'Creates a new local sine realization of immutable captured intent. Live admission decisions, hardware timbre and the protected live master are outside this render. The live world and external MIDI stay under their existing owners.');
+  const dialog = node('dialog'); dialog.className = 'studio-dialog studio-causal-render'; dialog.setAttribute('aria-label', 'Render causal take owned-source revoice');
+  const title = node('h2', 'Render take · owned source revoice'), description = node('p', 'Creates a new local realization of immutable captured intent using default controls for the selected source. Live admission decisions, hardware timbre and the protected live master are outside this render. The live world and external MIDI stay under their existing owners.');
   const sourceText = node('p', 'Choose a saved causal take.'), limits = node('p', 'Up to 120 seconds of captured history and 64 MiB across files. Mid-held capture and missing source clocks require qualified reconstruction. A crop silently reconstructs earlier captured intents before emitting frame zero.');
   const fields = node('div'), actions = node('div'); actions.className = 'studio-sound-actions';
   const label = (text, input) => { const wrap = node('label', text); wrap.className = 'studio-field'; wrap.append(input); fields.append(wrap); return input; };
   const number = (name, value, max) => { const input = node('input'); input.type = 'number'; input.min = '0'; input.max = String(max); input.step = '0.001'; input.value = String(value); input.setAttribute('aria-label', name); return label(name, input); };
   const first = number('Start seconds from capture', 0, 120), last = number('End seconds from capture', 1, 120), tailSeconds = number('Maximum tail seconds', 4, 4);
   const select = (name, choices) => { const element = node('select'); element.setAttribute('aria-label', name); for (const [value, text] of choices) { const option = node('option', text); option.value = value; element.append(option); } return label(name, element); };
+  const sourceModel = select('Render source model', CAUSAL_RENDER_SOURCES.map(source => [source.id, source.label]));
   const rate = select('Render sample rate', [['44100', '44.1 kHz'], ['48000', '48 kHz'], ['96000', '96 kHz']]); rate.value = '48000';
   const tail = select('Render end policy', [['exact-crop', 'Exact crop'], ['bounded-natural', 'Captured releases with bounded tails'], ['boundary-release', 'Derive releases at the end boundary']]);
   const stems = node('input'); stems.type = 'checkbox'; stems.setAttribute('aria-label', 'Include all captured dry lane stems'); label('Include all captured dry lane stems (up to 16)', stems);
@@ -27,9 +28,9 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
   const run = action => async () => { try { await action(); } catch (error) { say(error.message); } paint(); };
   const button = (text, callback) => { const element = node('button', text); element.type = 'button'; listen(element, 'click', callback); actions.append(element); return element; };
   const chosen = () => owner?.getPrepared()?.files.find(entry => entry.id === file.value)?.artifact || null;
-  const renderButton = button('Prepare sine revoice WAV', run(async () => {
+  const renderButton = button('Prepare revoice WAV', run(async () => {
     if (!source || loading) return;
-    await owner.prepare({ takeId: source.takeId, takeRevision: source.revision, sampleRate: Number(rate.value), startSeconds: Number(first.value), endSeconds: Number(last.value),
+    await owner.prepare({ definition: CAUSAL_RENDER_SOURCES.find(model => model.id === sourceModel.value)?.definition, takeId: source.takeId, takeRevision: source.revision, sampleRate: Number(rate.value), startSeconds: Number(first.value), endSeconds: Number(last.value),
       tail: { mode: tail.value, maxSeconds: Number(tailSeconds.value) }, includeAllLaneStems: stems.checked });
     say('Rendered WAV files are prepared. Choose a file and a delivery action; the original take is unchanged.');
   }));
@@ -66,7 +67,7 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
     details.textContent = current.error || source?.unavailable || (bundle ? `Prepared source ${bundle.manifest.takeId} · ${bundle.manifest.frames.toLocaleString()} stereo frames at ${bundle.manifest.sampleRate} Hz · ${bundle.manifest.tail.mode} · ${bundle.files.length} file(s). Master protection is excluded.` :
       'Choose a range and prepare. Rendering does not enable live audio or audition the result.');
     renderButton.disabled = loading || busy || !source || !!source.unavailable || !!current.unresolvedRetirement || picker || !!delivery;
-    cancelRender.disabled = !busy; first.disabled = last.disabled = rate.disabled = tail.disabled = stems.disabled = busy || loading;
+    cancelRender.disabled = !busy; first.disabled = last.disabled = sourceModel.disabled = rate.disabled = tail.disabled = stems.disabled = busy || loading;
     tailSeconds.disabled = busy || loading || tail.value === 'exact-crop'; file.disabled = busy || picker || !!delivery || !bundle;
     const ready = !!(artifact || chosen()?.metadata())?.retained;
     download.disabled = !ready || busy || picker || !!delivery; save.disabled = download.disabled || typeof window.showSaveFilePicker !== 'function';

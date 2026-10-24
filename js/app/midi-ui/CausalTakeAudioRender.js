@@ -1,3 +1,4 @@
+import { getOwnedSourceProfile, OWNED_SOURCE_IDS } from './OwnedSourceProfiles.js';
 import { querySoundOnlyRevoiceOwned } from '../procgen/workstation/CausalTake.js';
 import { retireCausalRead } from '../procgen/workstation/CausalReadLeases.js';
 import { createOwnedResourceReservation } from '../resources/OwnedResourceReservation.js';
@@ -11,6 +12,14 @@ import { createCausalRenderTiming } from './CausalRenderTiming.js';
 export const CAUSAL_RENDER_SINE = freezeData({ schemaVersion: 2, id: 'causal-render.sine', revision: 1, name: 'Sine revoice', author: 'LemmingsJS-MIDI', tags: ['revoice'],
   engineId: 'worklet-sine', engineVersion: 1, parameters: { attackSeconds: 0.008, decaySeconds: 0.05, sustain01: 0.7, releaseSeconds: 0.04, gain01: 0.5, pan01: 0 },
   modulations: [], sampleRefs: [], macros: [], causalBindings: [], voicePolicy: { maxVoices: 64, steal: 'reject' }, mix: { gain01: 0.6, pan01: 0 } });
+export const CAUSAL_RENDER_SOURCES = Object.freeze([
+  Object.freeze({ id: 'worklet-sine', label: 'Sine', definition: CAUSAL_RENDER_SINE }),
+  ...[['worklet-pluck', 'Seeded pluck'], ['worklet-choir', 'Artificial formants'], ['worklet-spectrum', 'Spectral frames']].map(([id, label]) => {
+    const profile = getOwnedSourceProfile(id), parameters = Object.fromEntries(Object.entries(profile.fields).map(([name, spec]) => [name, spec[2]]));
+    return Object.freeze({ id, label, definition: freezeData({ schemaVersion: 2, id: 'causal-render.' + id, revision: 1, name: label + ' revoice', author: 'LemmingsJS-MIDI', tags: ['revoice'],
+      engineId: id, engineVersion: 1, parameters, modulations: [], sampleRefs: [], macros: [], causalBindings: [], voicePolicy: { maxVoices: profile.voices, steal: 'reject' }, mix: { gain01: 0.6, pan01: 0 } }) });
+  })
+]);
 const failure = (code, message, detail = {}) => Object.assign(new Error(message), { name: 'CausalRenderError', code, ...detail });
 const HASH = /^[a-f0-9]{64}$/;
 let nextOwner = 0;
@@ -24,7 +33,7 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
   let disposed = false, active = null, prepared = null, serial = 0, phase = 'idle', progress = null, lastError = null;
   const state = () => Object.freeze({ schema: 'lemmings-causal-render-state/v1', phase, disposed, active: !!active, progress,
     prepared: prepared?.metadata() || null, unresolvedRetirement: unresolved.size, error: lastError,
-    capabilities: Object.freeze({ intentSine: true, capturedPcm: false, admissionHistory: false, arbitraryOfflineEngines: false, maxSeconds: 120, maxOutputBytes: 64 * 1048576 }) });
+    capabilities: Object.freeze({ intentSine: true, intentOwnedSources: Object.freeze(['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum']), capturedPcm: false, admissionHistory: false, arbitraryOfflineEngines: false, maxSeconds: 120, maxOutputBytes: 64 * 1048576 }) });
   const report = () => { try { onState(state()); } catch { /* Rendering ownership does not depend on view callbacks. */ } };
   const makeBundle = (entries, manifest) => {
     const scope = createProcgenRetirementScope(); let discarded = false;
@@ -58,8 +67,8 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
         const patch = cloneData(definition, { maxBytes: 262144, maxNodes: 16384 }), policy = cloneData(tail, { maxBytes: 1024, maxNodes: 32 }); let lanes = Object.freeze(stemLaneIds.slice());
         const definitionHash = await hashData(patch), catalog = await getCatalog(); check();
         const descriptor = catalog.descriptors.find(entry => entry.engineId === patch.engineId && entry.engineVersion === patch.engineVersion);
-        if (catalog.state !== 'bound-application-engines' || patch.engineId !== 'worklet-sine' || !descriptor || !HASH.test(descriptor.artifactHash))
-          throw failure('engine-identity-unbound', 'Prepare this render from an immutable application build with the selected sine engine.');
+        if (catalog.state !== 'bound-application-engines' || !OWNED_SOURCE_IDS.includes(patch.engineId) || !getOwnedSourceProfile(patch.engineId).controlReferenceRender || !descriptor || !HASH.test(descriptor.artifactHash))
+          throw failure('engine-identity-unbound', 'Prepare this render from an immutable application build with the selected owned source.');
         const engineRequirement = Object.fromEntries(['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].map(key => [key, descriptor[key]]));
         operation.source = await querySoundOnlyRevoiceOwned({ journal, resourceBudget, jobs, takeId, takeRevision,
           soundPatch: { id: patch.id, revision: patch.revision, definitionHash, engineRequirement }, executionEpoch: ownerId + ':' + ordinal,
@@ -76,7 +85,7 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
         const pcmBytes = frames * 8 * (lanes.length + 1), sourceFootprint = operation.source.receipt.retainedBytes;
         operation.workspace.resize(2 * 1048576 + sourceFootprint);
         const binding = { takeRevision: revoice.takeRevision, sourceCanonicalHash: revoice.sourceCanonicalHash };
-        const estimatedPeakBytes = sourceFootprint * 6 + pcmBytes * 4 + 32768 * 512 + 12 * 1048576;
+        const estimatedPeakBytes = sourceFootprint * 6 + pcmBytes * 4 + revoice.intents.length * Math.max(1024, Object.keys(getOwnedSourceProfile(patch.engineId).fields).length * 256) + 24 * 1048576;
         if (!Number.isSafeInteger(pcmBytes) || pcmBytes > 64 * 1048576 || !Number.isSafeInteger(estimatedPeakBytes) || estimatedPeakBytes > 512 * 1048576)
           throw failure('render-memory-capacity', 'Choose a shorter output range or fewer stems to fit source, PCM, encoding and transfer overlap.');
         input = { revoice, definition: patch, engineRequirement, sampleRate, startSeconds, endSeconds, tail: policy, stemLaneIds: lanes };
