@@ -199,3 +199,11 @@ through shared background admission before its private storage read, then stays
 leased through encoding. New chunk indexes include exact canonical byte sizes;
 older indexes use a conservative bounded admission. Returning a replayable
 iterator aborts its source signal, including queued record-hash work.
+
+The offline sound publisher retains a bounded, content-addressed identity
+ledger independently of the current catalog. Removed packs and patch revisions
+remain protected against changed bytes. Effective compiler render mappings are
+part of patch identity. Initial adoption checks every retained immutable catalog;
+unreadable or conflicting history blocks publication. Concurrent publications
+share an exclusive output lock, and the new catalog and ledger must both exist
+before the atomic head update. A crashed lock requires explicit recovery.
