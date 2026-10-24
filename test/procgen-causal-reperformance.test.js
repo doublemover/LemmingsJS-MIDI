@@ -23,25 +23,25 @@ describe('isolated causal re-performance and checkpoint provenance', function() 
   let masks;
   before(async () => { masks = await loadProcgenMasks(); });
   const make = () => new ProcgenLaneWorld({ masks, laneCount: 2, seed: 42, assists: false });
-  const record = async ({ ticks = 40, unknownInput = false, forgedCheckpoint = false, final = true } = {}) => {
+  const record = async ({ ticks = 40, unknownInput = false, forgedCheckpoint = false, final = true, playbackAdmission = false } = {}) => {
     const store = createMemoryCausalStore(), journal = createProcgenCausalJournal({ storage: store.storage }), world = make();
-    let bpm = 120;
+    let bpm = 120, playing = !playbackAdmission; const versions = { ...sourceVersions, ...(playbackAdmission ? { physicalPlaybackAdmission: 1 } : {}) };
     const clock = createProcgenPhysicalScoreClock(), engine = createCausalMusicEngine({ getGraph: () => mapping, scoreTimeline: clock, traceLimit: 0 });
     const actor = world.actors[1]; actor.y = world.surfaceAt(1, actor.x); actor.setAction(world.actions[State.WALKING]);
     world.actors[0].y = world.laneHeight - 1; world.actors[0].setAction(world.actions[State.FALLING]);
-    const snapshot = () => ({ world: captureProcgenCheckpoint(world), engine: engine.snapshot(), timeline: clock.snapshot(), replay: { version: 1, bpm, scoreTimeline: true } });
+    const snapshot = () => ({ world: captureProcgenCheckpoint(world), engine: engine.snapshot(), timeline: clock.snapshot(), replay: { version: playbackAdmission ? 2 : 1, bpm, scoreTimeline: true, ...(playbackAdmission ? { playing } : {}) } });
     const initialCheckpoint = snapshot(), assetRefs = initialCheckpoint.world.assets;
     const recorder = await createCausalTakeRecorder({ journal, takeId: 'take:reperform', documentId: 'doc:reperform', mapping,
-      sourceVersions, assetRefs, initialCheckpoint, boundaryState: { voices: [], timeline: null } });
+      sourceVersions: versions, assetRefs, initialCheckpoint, boundaryState: { voices: [], timeline: null } });
     const command = { id: 'builder:recorded', kind: 'assign-worker', origin: 'manual', target: { generation: world.generation, actorId: actor.id }, parameters: { workerKind: 'builders' } };
     recorder.recordIntervention(command, world.enqueueIntervention(command), { tick: 0, generation: 1 });
-    world.soundEvents.onBatch.on(batch => { clock.observe(batch, { bpm }); recorder.recordCommittedBatch({ batch, intents: engine.processBatch(batch) }); });
+    world.soundEvents.onBatch.on(batch => { clock.observe(batch, { bpm }); recorder.recordCommittedBatch({ batch, intents: playing ? engine.processBatch(batch) : [] }); });
     for (let tick = 1; tick <= ticks; tick++) {
       world.step(tick % 3 ? 1000 : 9000);
       const boundary = { tick: world.tickIndex, generation: world.generation };
       if (tick === 10) { bpm = 90; recorder.recordTimeline({ version: 1, kind: 'tempo', bpm }, boundary); }
       if (tick === 12) { world.timer.speedFactor = 6; recorder.recordInput({ version: 1, kind: 'world-speed', speedFactor: 6 }, boundary); }
-      if (tick === 13) { recorder.recordInput({ version: 1, kind: 'transport-state', playing: false }, boundary); recorder.recordInput({ version: 1, kind: 'transport-state', playing: true }, boundary); }
+      if (tick === 13) { recorder.recordInput({ version: 1, kind: 'transport-state', playing: false }, boundary); recorder.recordInput({ version: 1, kind: 'transport-state', playing: true }, boundary); if (playbackAdmission) playing = true; }
       if (tick === 14) recorder.recordInput(unknownInput ? { version: 1, kind: 'live-device-unknown', bytes: [0x90, 60, 1] }
         : { version: 1, kind: 'external-observation', sourceId: 'recorded-midi-port', effect: 'observation-only', timestamp: 1234.567, bytes: [0x90, 60, 1] }, boundary);
       if (tick === 20 || tick % 2500 === 0) {
@@ -55,7 +55,7 @@ describe('isolated causal re-performance and checkpoint provenance', function() 
     const stopped = await recorder.stop({ ...(final ? { finalCheckpoint } : {}), boundaryState: { voices: engine.snapshot().active, timeline: clock.snapshot() } });
     const source = await journal.openTake('take:reperform');
     world.dispose();
-    return { ...store, journal, source, stopped, finalHash, runtime: options => createCausalReperformance({ journal, createWorld: make, sourceVersions, assetRefs, ...options }) };
+    return { ...store, journal, source, stopped, finalHash, runtime: options => createCausalReperformance({ journal, createWorld: make, sourceVersions: versions, assetRefs, ...options }) };
   };
 
   it('re-performs 10000 ticks, transfers, terrain work, tempo/speed and external inputs with exact retained state/fact/intent parity', async () => {
@@ -176,6 +176,35 @@ describe('isolated causal re-performance and checkpoint provenance', function() 
     expect(result.receipt.compatibilityMatch).to.equal(true); expect(admittedBudget.diagnostics().accountedBytes).to.be.greaterThan(0);
     admitted.dispose(); expect(admittedBudget.diagnostics().accountedBytes).to.equal(0);
     expect(() => result.session.snapshot()).to.throw('released'); denied.dispose();
+  });
+  it('replays paused single-stepping and the recorded resumption of musical interpretation', async () => {
+    const { runtime, source, journal } = await record({ ticks: 40, playbackAdmission: true }), service = runtime();
+    const initial = await journal.readCheckpoint(source.initialCheckpoint); expect(initial.replay).to.include({ version: 2, playing: false });
+    const result = await service.reperform({ takeId: source.takeId, executionEpoch: 'playback-admission' });
+    expect(result.receipt, JSON.stringify(result.receipt)).to.include({ compatibilityMatch: true, finalWorldParity: 'matched-at-captured-component-checkpoint' });
+    expect(result.receipt.checkpointComparisons.every(checkpoint => checkpoint.replaySettingsMatch)).to.equal(true); await service.dispose().completion;
+  });
+
+  it('keeps replay workspace until an accepted asynchronous world disposer actually settles', async () => {
+    const { runtime, source } = await record({ ticks: 4 }), budget = createResourceBudget(); let acknowledge, disposed = 0;
+    const gate = new Promise(resolve => { acknowledge = resolve; });
+    const service = runtime({ resourceBudget: budget, createWorld: () => { const world = make(); return { world, dispose() { disposed++; world.dispose(); return gate; } }; } });
+    const result = await service.reperform({ takeId: source.takeId, executionEpoch: 'async-disposal', retainWorld: true });
+    expect(result.receipt.compatibilityMatch).to.equal(true); const receipt = result.session.dispose();
+    expect(disposed).to.equal(1); expect(budget.diagnostics().accountedBytes).to.be.greaterThan(0); expect(receipt.state).to.equal('retiring');
+    acknowledge(); await receipt.completion; expect(receipt.outcome).to.equal('complete'); expect(budget.diagnostics().accountedBytes).to.equal(0);
+    await service.dispose().completion;
+  });
+
+  it('retires a world that arrives after its replay owner was disposed without releasing the source early', async () => {
+    const { runtime, source } = await record({ ticks: 4 }), budget = createResourceBudget(); let provide, entered, disposed = 0;
+    const started = new Promise(resolve => { entered = resolve; }), gate = new Promise(resolve => { provide = resolve; });
+    const service = runtime({ resourceBudget: budget, createWorld: () => { entered(); return gate; } });
+    const running = service.reperform({ takeId: source.takeId, executionEpoch: 'late-world' }).catch(error => error);
+    await started; const retirement = service.dispose(); expect(budget.diagnostics().accountedBytes).to.be.greaterThan(0);
+    const world = make(); provide({ world, dispose() { disposed++; world.dispose(); } });
+    expect((await running).code).to.equal('cancelled'); await retirement.completion;
+    expect(disposed).to.equal(1); expect(budget.diagnostics().accountedBytes).to.equal(0);
   });
 
   it('re-performs a mid-held capture without inventing an onset at Record or a release at Stop', async () => {

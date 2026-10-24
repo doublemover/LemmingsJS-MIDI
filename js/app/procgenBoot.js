@@ -4,7 +4,7 @@ import { ProcgenBitmapHud } from './procgen/ProcgenBitmapHud.js';
 import { createProcgenUiController } from './procgen/ProcgenUiController.js';
 import { loadProcgenPackTerrain, loadProcgenMixedTerrain } from './procgen/ProcgenPackTerrain.js';
 import { ProcgenLaneWorld, normalizeLaneHeight } from './procgen/ProcgenLaneWorld.js';
-import { PROCGEN_TRIGGER_INDEX_BYTES_PER_ACTOR } from './procgen/ProcgenTriggerManager.js';
+import { estimateProcgenCandidateBytes as estimateCandidateWorldBytes } from './procgen/ProcgenCandidateBudget.js';
 import { ParticleTable } from '../render/ParticleTable.js';
 import { createProcgenWorkstation } from './procgen/workstation/ProcgenWorkstation.js';
 import { restoreProcgenCheckpoint } from './procgen/workstation/ProcgenCheckpoint.js';
@@ -68,13 +68,7 @@ let activeProcgenRuntime = null;
 const procgenResourceBudget = createResourceBudget();
 const renderBudget = { budgetAdapter: procgenResourceBudget };
 procgenResourceBudget.registerEvictor('cold-render-buffers', () => activeProcgenRuntime?.lanes?.renderer?.resources?.clearCaches?.());
-const estimateCandidateWorldBytes = ({ laneCount, laneHeight }) => {
-  const lanes = Math.max(1, Math.min(1024, Math.trunc(Number(laneCount)) || 1));
-  const height = normalizeLaneHeight(laneHeight);
-  // An initial terrain chunk, collision/edit indexes, lane planners, and
-  // actor headroom. Future growth is still reported by the world subsystem.
-  return lanes * (65536 + height * 384) + 16384 * (128 + PROCGEN_TRIGGER_INDEX_BYTES_PER_ACTOR);
-};
+
 let analytics = null;
 let procgenUi = null;
 let procgenStudio = null;
@@ -192,7 +186,8 @@ const installProcgenBootListeners = () => {
             startupSource = await loadProcgenStartupSource(startupIntent, { storage: startupStorage, signal: controller.signal });
             controller.signal.throwIfAborted();
             procgenStudio = createProcgenWorkstation({ document, window, legacy: procgenUi, getRuntime: () => activeProcgenRuntime,
-              restart: options => init({ ...options, startupOwner: controller.signal }), resourceBudget: procgenResourceBudget, startupIntent, startupSource, storage: startupStorage });
+              restart: options => init({ ...options, startupOwner: controller.signal }),
+              prepareInspectionWorld: request => import('./procgen/workstation/ProcgenInspectionWorld.js').then(module => module.prepareProcgenInspectionWorld({ ...request, rootPath: activeProcgenRuntime?.assetRootPath, resourceBudget: procgenResourceBudget })), resourceBudget: procgenResourceBudget, startupIntent, startupSource, storage: startupStorage });
             storageTransferred = true;
             procgenStudio.prepareSettings();
             if (startupSource.session) await procgenStudio.loadSession(startupSource.session, null, { signal: startupSource.signal || controller.signal });
@@ -421,7 +416,7 @@ const initWorkstation = async ({ session, lease } = {}) => {
     procgenResourceBudget.transfer({ token: candidateBudgetToken, owner: candidateBudgetOwner,
       generation: serial, toOwner: 'active-world' });
     candidateBudgetOwner = 'active-world';
-    activeProcgenRuntime = { lanes, world: candidate, worldBudgetToken: candidateBudgetToken,
+    activeProcgenRuntime = { lanes, world: candidate, assetRootPath: factory.rootPath, worldBudgetToken: candidateBudgetToken,
       recipeSettings: Object.freeze({ seed: candidate.seed, laneCount: candidate.laneCount,
         laneHeight: candidate.laneHeight, pack: settings.pack, decoration: settings.decoration,
         preset: settings.preset, mode: settings.mode }),

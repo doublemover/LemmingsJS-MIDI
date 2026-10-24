@@ -8,6 +8,7 @@ import { createCausalMusicEngine } from '../js/app/procgen/workstation/CausalMus
 import { createProcgenPhysicalScoreClock } from '../js/app/procgen/workstation/ProcgenPhysicalScoreClock.js';
 import { createCausalReperformance } from '../js/app/procgen/workstation/CausalReperformance.js';
 import { createCausalPhysicalBranch } from '../js/app/procgen/workstation/CausalPhysicalBranch.js';
+import { createCausalTakeWorkbench } from '../js/app/procgen/workstation/CausalTakeWorkbench.js';
 import { captureProcgenCheckpoint } from '../js/app/procgen/workstation/ProcgenCheckpoint.js';
 import { createResourceBudget } from '../js/app/resources/ResourceBudget.js';
 import { createMemoryCausalStore } from './helpers/causalJournalStore.js';
@@ -45,6 +46,20 @@ describe('replay-qualified physical branch orchestration', function() {
       open: options => createCausalPhysicalBranch({ journal, reperformance, parentTakeId: 'take:parent', throughSequence: fork,
         takeId: 'take:branch', takeName: 'Alternate route', executionEpoch: 'branch:execution:1', ...options }) };
   };
+
+  it('compares and steps an isolated workbench branch while preserving the original take', async () => {
+    const { journal, budget, fork } = await fixture(), parent = await journal.openTake('take:parent'), original = JSON.stringify(parent), states = [];
+    const workbench = createCausalTakeWorkbench({ journal, createWorld: make, resourceBudget: budget,
+      getRuntimeIdentity: () => ({ sourceVersions: versions, assetRefs: parent.assetRefs }), onState: state => states.push(state.phase) });
+    expect((await workbench.open({ takeId: parent.takeId, throughSequence: fork })).receipt.compatibilityMatch).to.equal(true);
+    const branch = await workbench.open({ takeId: parent.takeId, throughSequence: fork, branchTakeId: 'take:workbench', takeName: 'Workbench branch' });
+    expect(branch).to.include({ phase: 'branch-paused', audio: false, hardware: false }); expect(branch.active.tick).to.equal(6);
+    expect((await workbench.advance({ ticks: 3 })).tick).to.equal(9);
+    const finished = await workbench.finish(); expect(finished.takeId).to.equal('take:workbench'); expect(workbench.state().active).to.equal(null);
+    expect(JSON.stringify(await journal.openTake(parent.takeId))).to.equal(original);
+    expect((await journal.verify('take:workbench')).verifiedThroughSequence).to.be.greaterThan(fork);
+    expect(states).to.include.members(['comparing', 'preparing-branch', 'stepping', 'saving-branch']); await workbench.dispose();
+  });
 
   it('starts paused from a replayed marker, clips future gaps/revisions and replays the continued branch without altering its parent', async () => {
     const { journal, reperformance, fork, open, budget } = await fixture({ futureGap: true });

@@ -5,7 +5,8 @@ import { createProcgenTransport } from './ProcgenTransport.js';
 import { createProcgenMidiPorts } from './ProcgenMidiPorts.js';
 import { exportProcgenMidi, selectBalancedProcgenRecording } from './ProcgenMidiExport.js';
 import { createProcgenWorkstationView } from './ProcgenWorkstationView.js';
-import { captureProcgenCheckpoint } from './ProcgenCheckpoint.js';
+import { captureProcgenCheckpoint, assetIdentity } from './ProcgenCheckpoint.js';
+import { causalRuntimeSourceVersions } from './CausalRuntimeIdentity.js';
 import { createProcgenLaneObserver } from './ProcgenLaneObservation.js';
 import { createProcgenSession, validateProcgenSession, createProcgenSessionStorage, createProcgenDocumentId, freshProcgenSeed } from './ProcgenSessionStorage.js';
 import { createProcgenPhysicalScoreClock } from './ProcgenPhysicalScoreClock.js';
@@ -61,7 +62,7 @@ function rollbackWorldProject(previous, staged, current) {
 export function createProcgenWorkstation({ document, window, legacy, getRuntime, restart,
   createView = createProcgenWorkstationView, storage = createProcgenSessionStorage(window.indexedDB),
   captureCheckpoint = captureProcgenCheckpoint, transportOptions = {}, historyBytesLimit = 32 * 1024 * 1024,
-  resourceBudget = null, startupIntent, startupSource = null, backgroundJobs = backgroundJobService }) {
+  resourceBudget = null, startupIntent, startupSource = null, backgroundJobs = backgroundJobService, prepareInspectionWorld = null }) {
   if (!Number.isSafeInteger(historyBytesLimit) || historyBytesLimit < 1024) throw new Error('Invalid history byte limit.');
   const now = () => window.performance?.now?.() ?? performance.now();
   let saved = null;
@@ -93,6 +94,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let laneObserver = null;
   let physicalScoreClock = createProcgenPhysicalScoreClock(), physicalClockError = false, physicalPlayback = null, worldInspector = null;
   let causalJournal = null, causalTake = null, causalTakeStart = null, causalTakeStop = null;
+  let causalWorkbench = null, causalWorkbenchLoading = null, causalWorkbenchSourceSerial = 0;
   let causalTakeArmCanceled = false;
   let lastCausalTake = null, lastCausalInspection = null, physicalReceiptBuffer = null, physicalReceiptBoundary = null, causalTakeErrorReported = false;
   let selectedCausalTakeId = null, causalTakePage = null, causalTakeCursor = null, causalTakeBack = [], causalTakeListSerial = 0;
@@ -470,7 +472,45 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     starting: !!causalTakeStart, stopping: !!causalTakeStop,
     active: causalTake?.status() || null, last: lastCausalTake, inspection: lastCausalInspection,
     selectedTakeId: selectedCausalTakeId, takePage: causalTakePage, takePageNumber: causalTakeBack.length + 1,
-    hasPreviousTakePage: causalTakeBack.length > 0, physicalScore, physicalScoreParent });
+    hasPreviousTakePage: causalTakeBack.length > 0, physicalScore, physicalScoreParent,
+    branchAvailable: typeof prepareInspectionWorld === 'function' && !!resourceBudget,
+    workbench: causalWorkbench?.state() || (causalWorkbenchLoading ? { phase: 'loading', busy: true } : null) });
+  const getCausalWorkbench = async () => {
+    if (disposed || typeof prepareInspectionWorld !== 'function' || !resourceBudget) throw new Error('Isolated take worlds are unavailable.');
+    if (causalWorkbench?.state().phase === 'disposed') causalWorkbench = null;
+    if (causalWorkbench) return causalWorkbench;
+    if (!causalWorkbenchLoading) {
+      causalWorkbenchLoading = import('./CausalTakeWorkbench.js').then(({ createCausalTakeWorkbench }) => {
+        if (disposed) throw new Error('The workstation closed before take preparation.');
+        return causalWorkbench = createCausalTakeWorkbench({ journal: causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget }),
+          createWorld: prepareInspectionWorld, resourceBudget, getRuntimeIdentity: manifest => {
+            const world = runtime()?.world; if (disposed || !world || worldBusy) throw new Error('Wait for a committed current world before comparing a take.');
+            return { sourceVersions: causalRuntimeSourceVersions(world, manifest.mapping.revision), assetRefs: assetIdentity(world), liveWorld: world };
+          }, onState: () => view?.renderInspector?.() });
+      }).finally(() => { causalWorkbenchLoading = null; view?.renderInspector?.(); }); view?.renderInspector?.();
+    }
+    return causalWorkbenchLoading;
+  };
+  const openCausalWorkbench = async ({ throughSequence = null, branch = false, takeName = null } = {}) => {
+    if (causalTake || causalTakeStart || causalTakeStop || worldBusy) throw new Error('Finish the current take and world operation before comparing a stored take.');
+    const takeId = selectedCausalTakeId || lastCausalTake?.takeId; if (!takeId) throw new Error('Select a stored take first.');
+    beforeRestart(); const sourceSerial = causalWorkbenchSourceSerial, owner = await getCausalWorkbench();
+    if (disposed || sourceSerial !== causalWorkbenchSourceSerial) throw new Error('The selected take changed before comparison began.');
+    const result = await owner.open({ takeId, throughSequence, takeName, branchTakeId: branch ? createProcgenDocumentId(window.crypto).replace(/^doc:/, 'take:') : null });
+    status(result.active ? 'Physical branch prepared paused. Step explicitly; the current project remains unchanged.' :
+      result.receipt?.compatibilityMatch ? 'Stored take matches this current runtime. Exact archived execution and listening are separate qualifications.' :
+        'Stored take comparison: ' + (result.receipt?.status || 'unavailable') + (result.receipt?.failure?.message ? ' · ' + result.receipt.failure.message : ''));
+    return result;
+  };
+  const finishCausalBranch = async ({ discard = false } = {}) => {
+    if (!causalWorkbench?.state().active) throw new Error('No physical branch is open.');
+    if (discard && !window.confirm?.('Permanently discard only the unsaved branch tail? The durable prefix and omitted range will remain recorded.')) return false;
+    const result = await causalWorkbench.finish({ discardPendingReason: discard ? 'performer-discarded-undurable-branch-tail' : null });
+    selectedCausalTakeId = result.takeId; lastCausalTake = result; lastCausalInspection = null;
+    physicalScoreAbort?.abort(); physicalScoreSerial++; physicalScore = physicalScoreQuery = physicalScoreParent = null;
+    status(result.complete ? 'Physical branch saved. The current live project is unchanged.' : 'Physical branch saved as partial. Inspect its recorded coverage.');
+    view?.renderInspector?.(); return result;
+  };
   const browseCausalTakes = async (direction = 'first') => {
     if (typeof storage.listCausalTakes !== 'function') throw new Error('Causal take browsing is unavailable in this browser.');
     if (!['first', 'next', 'previous'].includes(direction)) throw new Error('Invalid take page direction.');
@@ -488,6 +528,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   const selectCausalTake = takeId => {
     if (!causalTakePage?.items.some(item => item.takeId === takeId)) throw new Error('Choose a take from the current page.');
+    causalWorkbenchSourceSerial++;
+    if (causalWorkbench?.state().busy && !causalWorkbench.state().active) causalWorkbench.cancel();
     physicalScoreAbort?.abort(); physicalScoreSerial++; physicalScore = physicalScoreQuery = physicalScoreParent = null;
     selectedCausalTakeId = takeId; lastCausalInspection = null; view?.renderInspector?.();
     return takeId;
@@ -539,7 +581,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       const world = runtime()?.world;
       if (!world) throw new Error('The recorded world is no longer available.');
       if (!recorder.status().captureStopped) finalCheckpoint = { world: captureCheckpoint(world), engine: physicalPlayback?.engine.snapshot() || null,
-        timeline: physicalScoreClock.snapshot(), replay: { version: 1, bpm: transport.getState().bpm, scoreTimeline: true } };
+        timeline: physicalScoreClock.snapshot(), replay: { version: 2, bpm: transport.getState().bpm, scoreTimeline: true, playing: transport.getState().playing } };
     } catch (error) {
       const world = runtime()?.world, tick = Number.isSafeInteger(world?.tickIndex) && world.tickIndex >= 0 ? world.tickIndex : 0;
       const generation = Number.isSafeInteger(world?.generation) && world.generation >= 0 ? world.generation : 0;
@@ -578,14 +620,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       const capturedWorld = captureCheckpoint(sourceRuntime.world);
       const physical = physicalPlayback.engine.snapshot(), timeline = physicalScoreClock.snapshot();
       const takeId = createProcgenDocumentId(window.crypto).replace(/^doc:/, 'take:');
-      const sourceVersions = { generator: 'procgen-workstation-1', worldCheckpoint: capturedWorld.version,
-        stallCascade: capturedWorld.physicsAlgorithms.stallCascade,
-        physicalBatch: 1, physicalMusic: 1, project: project.procgen.version,
-        numericCanonicalization: 'finite-f64-minus-zero-v1', mappingRevision: project.procgen.physicalGraph.revision };
+      const sourceVersions = causalRuntimeSourceVersions(sourceRuntime.world, project.procgen.physicalGraph.revision, capturedWorld.version);
       const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget });
       const pending = createCausalTakeRecorder({ journal, takeId, takeName, documentId: documentId || `unsaved:${takeId}`,
         sourceVersions, initialCheckpoint: { world: capturedWorld, engine: physical, timeline,
-          replay: { version: 1, bpm: transport.getState().bpm, scoreTimeline: true } },
+          replay: { version: 2, bpm: transport.getState().bpm, scoreTimeline: true, playing: wasPlaying } },
         mapping: project.procgen.physicalGraph, assetRefs: capturedWorld.assets || [], boundaryState: causalBoundary() });
       causalTakeStart = pending;
       view?.renderInspector?.();
@@ -612,7 +651,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   const markCausalTake = label => {
     if (!causalTake || causalTakeStop) throw new Error('Arm a causal take before adding a marker.');
-    const cursor = physicalPlayback?.engine.snapshot().physicalCursor;
+    const cursor = causalTake.status().sourceBoundary;
+    if (!Number.isSafeInteger(cursor?.tick) || !Number.isSafeInteger(cursor?.generation)) throw new Error('Record a committed physical batch before marking its boundary.');
     const receipt = causalTake.mark({ label: String(label || 'Marker').slice(0, 120), boundary: 'last-committed-physical-tick' },
       { tick: Math.max(0, cursor?.tick ?? 0), generation: cursor?.generation ?? 0 });
     if (receipt.status !== 'accepted') throw new Error(`The causal marker was not admitted: ${receipt.reason}.`);
@@ -658,7 +698,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const physicalBus = next.world?.soundEvents?.onBatch;
     physicalScoreClock = createProcgenPhysicalScoreClock(); physicalClockError = false;
     if (session?.physicalTimeline) physicalScoreClock.restore(session.physicalTimeline);
-    physicalPlayback = createProcgenPhysicalPlayback({ audio: legacy.local.audio, renderer: next.renderer,
+    physicalPlayback = createProcgenPhysicalPlayback({ audio: legacy.local.audio, renderer: next.lanes?.renderer,
       getGraph: () => project.procgen.physicalGraph, getLanes: () => project.procgen.lanes, isPlaybackEnabled: localEnabled, scoreTimeline: physicalScoreClock, now,
       onInstrumentState: event => { if (event.state === 'unavailable' || event.state === 'retirement-unknown') status('Lane ' + event.laneId + ' instrument: ' + event.code); },
       onReceipt: receipt => {
@@ -983,6 +1023,10 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     markCausalTake: safe(markCausalTake), inspectLastCausalTake: safe(inspectLastCausalTake),
     prepareCausalArchive: safe(prepareCausalArchive), browseCausalTakes: safe(browseCausalTakes), selectCausalTake: safe(selectCausalTake),
     readPhysicalScore: safe(readPhysicalScore), inspectPhysicalScoreCause: safe(inspectPhysicalScoreCause),
+    compareCausalTake: safe(options => openCausalWorkbench(options)), prepareCausalBranch: safe(options => openCausalWorkbench({ ...options, branch: true })),
+    advanceCausalBranch: safe(options => { if (!causalWorkbench) throw new Error('Prepare a physical branch first.'); return causalWorkbench.advance(options); }),
+    setCausalBranchPlayback: safe(playing => { if (!causalWorkbench) throw new Error('Prepare a physical branch first.'); return causalWorkbench.setPlayback(playing); }),
+    cancelCausalWorkbench: () => causalWorkbench?.cancel(), finishCausalBranch: safe(finishCausalBranch),
     historyBusy: () => pendingHistory !== null,
     historyState: () => Object.freeze({ undo: undo.length, redo: redo.length,
       retainedBytes: retainedHistoryBytes(), byteLimit: historyBytesLimit, dropped: historyDropped }),
@@ -1233,6 +1277,9 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   listen(document, 'keyup', syncLegacyControls);
   listen(document, 'keydown', event => { if (event.key === 'Escape' && inputLease) cancelInputEdits('canceled by user'); });
   listen(window, 'pagehide', () => {
+    causalWorkbenchSourceSerial++;
+    const workbench = causalWorkbench;
+    if (workbench) void workbench.dispose().then(() => { if (causalWorkbench === workbench) causalWorkbench = null; }, error => status('Branch recovery: ' + error.message));
     beforeRestart(); persist({ immediate: true }); recover();
     if (causalTake || causalTakeStart) void stopCausalTake({ reason: 'pagehide' }).catch(error => status('Causal take finalization: ' + error.message));
     status('Page suspended. Press Play after returning to resume.');
@@ -1272,6 +1319,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       const pendingPersist = persistTimer; persistTimer = null;
       const removeListeners = listeners.splice(0);
       const pendingCausalStop = causalTake || causalTakeStart || causalTakeStop ? stopCausalTake({ reason: 'workstation-disposed' }) : null;
+      const pendingWorkbenchStop = causalWorkbench?.dispose();
       return retirement.retire([
         { name: 'operation', run: () => operation?.controller.abort() },
         { name: 'recovery-write', run: () => recoveryAbort?.abort() },
@@ -1281,6 +1329,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'router-hook', run: () => unhookRouter?.() },
         { name: 'world-hook', run: () => unhookWorld?.() },
         { name: 'physical-playback', run: () => physicalPlayback?.dispose() },
+        { name: 'causal-workbench', run: () => pendingWorkbenchStop },
         { name: 'sound-library', run: () => soundLibrary?.dispose() },
         { name: 'transport', run: () => transport.dispose()?.completion },
         { name: 'midi-ports', run: () => ports.dispose() },
@@ -1288,7 +1337,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'view', run: () => view.dispose() },
         { name: 'storage', run: () => {
           const close = () => { causalJournal?.releaseQualifications(); return storage.close?.(); };
-          return pendingCausalStop ? Promise.resolve(pendingCausalStop).finally(close) : close();
+          return pendingCausalStop || pendingWorkbenchStop ? Promise.all([pendingCausalStop, pendingWorkbenchStop]).then(close) : close();
         } }
       ]);
     }

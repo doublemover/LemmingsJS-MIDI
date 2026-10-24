@@ -2033,6 +2033,16 @@ recovery and previous-setup modes through the existing load transaction and
 publishes preferences after world commit. These are implementation statements,
 not acceptance or acoustic/native-device qualification receipts.
 
+Subsequent implementation batches add bounded sound manifests, typed compilation,
+immutable renderer pins, staged rights-aware archives, durable registry ownership,
+isolated audition, exact lane references and the sound library. Streaming causal
+archive inspection uses admitted worker verification. Physical playback connects
+actual worklet reductions to actor presentation through owned execution and clock
+correlation; control-reference WAV rendering uses the same sine kernel. The take
+workbench compares detached worlds and owns explicitly stepped, recoverable
+branches. These implementations still require the deferred acceptance matrix;
+advanced sound families, real-take audio, native device and listening work remain.
+
 - [ ] Finish shared background job execution for import, export encoding,
   recovery and asset preparation under the shared worker/memory admission owner.
   Registered import/export/checksum/hash jobs now share admission with exact

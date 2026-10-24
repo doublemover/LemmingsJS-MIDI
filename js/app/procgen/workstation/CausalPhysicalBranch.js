@@ -1,6 +1,7 @@
 import { createCausalTakeRecorder } from './CausalTake.js';
 import { validateCausalInstrumentGraph } from './CausalMusicEngine.js';
 import { cloneJournalData, journalError } from './CausalJournalCanonical.js';
+import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 
 const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId, throughSequence, takeId, takeName,
   executionEpoch, mode = 'compatibility', signal, maxAdvanceTicks = 256, yieldEveryTicks = 32,
@@ -12,9 +13,11 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
     retainWorld: true, useValidatedCheckpoint: false });
   if (!replay.session || !replay.receipt.compatibilityMatch || !replay.receipt.boundaryComplete) return { receipt: replay.receipt, branch: null };
   const session = replay.session, world = session.world;
+  const check = () => signal?.throwIfAborted();
   let writer = null, recorder = null;
   try {
     const parent = await journal.openTake(parentTakeId);
+    check();
     if (parent.revision !== replay.receipt.takeRevision || parent.canonicalHash !== replay.receipt.sourceCanonicalHash) throw journalError('stale-revision', 'The parent changed after its branch boundary was compared.');
     const target = replay.receipt.targetSequence;
     const qualification = cloneJournalData({ schema: 'lemmings-physical-branch-boundary', version: 1, sourceTakeId: parentTakeId,
@@ -24,7 +27,7 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
       status: 'validated-by-current-runtime-reperformance', exactQualified: false });
     writer = await journal.branch({ parentTakeId, parentRevision: parent.revision, throughSequence: target, takeId, takeName,
       documentId: parent.documentId, boundaryQualification: qualification });
-    if (target > 0) await writer.checkpoint({ value: session.snapshot(), tick: world.tickIndex, generation: world.generation });
+    check(); if (target > 0) await writer.checkpoint({ value: session.snapshot(), tick: world.tickIndex, generation: world.generation }); check();
     const inventory = replay.receipt.captureInventory;
     const gaps = (parent.coverage?.gaps || []).filter(gap => gap.firstSequence != null ? gap.firstSequence <= target
       : gap.firstTick <= world.tickIndex && gap.lastTick >= (inventory.sourceRange.firstTick ?? world.tickIndex + 1))
@@ -39,13 +42,15 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
       mapping: session.graph(), boundaryState: boundary(), prefixCoverage: { ...inventory, gaps },
       sourceCursor: { journalSequence: target, worldId: world.worldId, tick: world.tickIndex, generation: world.generation,
         lastCausalSequence: world.soundEvents.snapshotIdentity().causalSequence } });
+    check();
     const boundaryMarker = recorder.mark({ type: 'physical-branch-boundary', qualification }, { tick: world.tickIndex, generation: world.generation });
     if (boundaryMarker.status !== 'accepted') throw journalError('branch-admission', 'The branch boundary marker was not admitted.');
-    let phase = 'paused', failure = null, disposed = false, stopPromise = null, completedBatches = 0, lastIntents = [];
+    let phase = 'paused', failure = null, disposed = false, stopPromise = null, disposePromise = null, completedBatches = 0, lastIntents = [];
     const sourceBoundary = () => ({ tick: world.tickIndex, generation: world.generation });
     const status = () => cloneJournalData({ schema: 'lemmings-physical-branch', version: 1, takeId, parentTakeId,
       executionEpoch, phase, tick: world.tickIndex, generation: world.generation, completedBatches, recording: recorder.status(),
-      qualification, failure, inspection: { paused: phase !== 'advancing', hardware: false, thru: false, physicalLayers: false } });
+      qualification, failure, interpretationPlaying: session.replayState().playing ?? true, playbackAdmission: session.replayState().version === 2,
+      inspection: { paused: phase !== 'advancing', hardware: false, thru: false, physicalLayers: false } });
     const writable = () => {
       if (disposed || world._disposed || phase !== 'paused' || world._failedTick) throw journalError('branch-state', 'The physical branch is not at a writable paused boundary.');
     };
@@ -54,7 +59,7 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
       try {
         const replayState = session.replayState();
         if (replayState.scoreTimeline) session.clock.observe(batch, { bpm: replayState.bpm });
-        lastIntents = session.engine.processBatch(batch);
+        lastIntents = replayState.version === 2 && !replayState.playing ? [] : session.engine.processBatch(batch);
         const receipt = recorder.recordCommittedBatch({ batch, intents: lastIntents });
         completedBatches++;
         if (receipt.status === 'rejected') failure = { code: 'capture-admission', reason: receipt.reason, tick: batch.tick };
@@ -99,6 +104,11 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
       const receipt = recorder.recordInput({ version: 1, kind: 'world-speed', speedFactor }, sourceBoundary());
       if (receipt.status === 'accepted') world.timer.speedFactor = speedFactor; return receipt;
     };
+    const setPlayback = playing => {
+      writable(); if (typeof playing !== 'boolean' || session.replayState().version !== 2) throw new Error('This branch has no versioned playback admission.');
+      const receipt = recorder.recordInput({ version: 1, kind: 'transport-state', playing }, sourceBoundary());
+      if (receipt.status === 'accepted') session.configurePlayback(playing); return receipt;
+    };
     const setMapping = graph => {
       writable(); const next = validateCausalInstrumentGraph(graph), receipt = recorder.recordMapping(next, sourceBoundary());
       if (receipt.status === 'accepted') session.configureMapping(next); return receipt;
@@ -114,31 +124,41 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
       }).finally(() => { if (!recorder.canReplaceDocument()) stopPromise = null; });
       return stopPromise;
     };
-    const dispose = async ({ discardPendingReason = null } = {}) => {
-      if (disposed) return;
-      await stop({ reason: 'physical-branch-disposed' });
-      if (!recorder.canReplaceDocument()) {
-        if (!discardPendingReason) throw journalError('undurable-branch-tail', 'Keep the physical branch until its pending data is durable or explicitly discarded.');
-        recorder.discardPending({ reason: discardPendingReason });
-        await stop({ reason: 'physical-branch-discarded-tail' });
-        if (!recorder.canReplaceDocument()) throw journalError('undurable-branch-finalization', 'The discarded branch prefix still needs a durable finalization receipt.');
-      }
-      disposed = true; phase = 'disposed'; world.soundEvents.onBatch.off(onBatch); session.dispose();
+    const dispose = ({ discardPendingReason = null } = {}) => {
+      if (disposePromise) return disposePromise;
+      disposePromise = (async () => {
+        if (disposed) return;
+        await stop({ reason: 'physical-branch-disposed' });
+        if (!recorder.canReplaceDocument()) {
+          if (!discardPendingReason) throw journalError('undurable-branch-tail', 'Keep the physical branch until its pending data is durable or explicitly discarded.');
+          recorder.discardPending({ reason: discardPendingReason });
+          await stop({ reason: 'physical-branch-discarded-tail' });
+          if (!recorder.canReplaceDocument()) throw journalError('undurable-branch-finalization', 'The discarded branch prefix still needs a durable finalization receipt.');
+        }
+        phase = 'retiring';
+        const retirement = createProcgenRetirementScope().retire([
+          { name: 'branch-listener', run: () => world.soundEvents.onBatch.off(onBatch) },
+          { name: 'reperformance-world', run: () => session.dispose() }
+        ]); await retirement.completion;
+        if (retirement.outcome !== 'complete') { phase = 'retirement-unknown'; throw Object.assign(journalError('retirement-unknown', 'Branch world retirement is unresolved.'), { retirement }); }
+        disposed = true; phase = 'disposed';
+      })().catch(error => { if (!recorder.canReplaceDocument()) disposePromise = null; throw error; }); return disposePromise;
     };
-    return { receipt: qualification, branch: { status, advance, enqueueIntervention, setTempo, setSpeed, setMapping,
+    return { receipt: qualification, branch: { status, advance, enqueueIntervention, setTempo, setSpeed, setPlayback, setMapping,
       mark: marker => { writable(); return recorder.mark(marker, sourceBoundary()); }, flush: recorder.flush,
       checkpoint: () => { writable(); return recorder.checkpoint({ value: session.snapshot(), ...sourceBoundary() }); },
       stop, dispose } };
   } catch (error) {
-    if (writer) {
+    const retirement = createProcgenRetirementScope().retire([{ name: 'provisional-branch', run: async () => { if (writer) {
       await writer.stop({ coverage: { status: 'partial', gaps: [{ kind: 'all', reason: 'branch-preparation-failed', firstTick: world.tickIndex, lastTick: world.tickIndex, generation: world.generation }] }, reason: 'branch-preparation-failed' }).catch(() => {});
       if (!writer.canReplaceDocument()) {
         writer.discardPending({ reason: 'preparation-failed-before-branch-activation' });
         await writer.stop().catch(() => {});
       }
       error.provisionalTakeId = takeId;
-    }
-    session.dispose(); throw error;
+      if (!writer.canReplaceDocument()) throw journalError('undurable-branch-finalization', 'Provisional branch finalization is unresolved.');
+    } } }, { name: 'reperformance-session', run: () => session.dispose() }]);
+    await retirement.completion; if (retirement.outcome !== 'complete') error.retirement = retirement; throw error;
   }
 };
 

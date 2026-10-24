@@ -267,3 +267,32 @@ and versioned continuation. Seed replay starts policy 2 and is not a claim of
 byte-identical continuation of an older policy. The source audit found the cascade
 modulo as the lifetime-ID-dependent procedural choice; lane policy exploration
 already uses birth lane/ordinal, and other actor-ID uses retain ownership/order.
+
+## Isolated take workbench
+
+The Physical inspector offers current-runtime comparison and a paused branch
+from an explicit record boundary (or the durable end). Re-performance compares
+real physical batches, semantic companions and component checkpoints before a
+branch is writable. Source versions and installed terrain identities must match.
+This is current-runtime compatibility evidence; exact archived execution remains
+unqualified. Inspection and branch stepping enable neither browser audio nor
+hardware output, and do not replace or edit the live project.
+
+Inspection worlds own fresh terrain, sprite/mask resources, provider leases and
+candidate memory. They share immutable asset jobs while retaining separate
+mutable readers and world state. Accepted asynchronous construction/disposal
+holds replay workspace until actual settlement. Cleanup attempts independent
+owners and keeps failed reservations counted. Store closure waits for branch
+finalization. A stopped branch with an undurable tail remains retryable; discarding
+that tail is a separate confirmed action preserving its omitted range.
+
+New replay checkpoints use version 2, with explicit musical playback admission.
+Paused manual world steps can therefore retain physical facts with no musical
+intents; recorded resume/pause decisions are replayed at their source boundary.
+Branches can explicitly enable or pause interpretation while output remains off.
+Version-1 component fixtures retain their declared always-interpreting semantics.
+The current workstation source contract names playback-admission version 1;
+older incompatible source contracts are reported instead of silently relabeled.
+Markers use the recorder's actual last committed physical boundary, independently
+of whether its musical engine advanced. New workflow and retirement regressions
+are authored but unexecuted during the frontloaded implementation pass.

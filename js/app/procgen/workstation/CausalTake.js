@@ -108,7 +108,7 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
     addGap(value);
     return record('marker', { type: 'coverage-gap', gap: value }, { tick: value.firstTick, generation: value.generation });
   };
-  const status = () => { const gaps = coverageIndex.snapshot(); return freezeJournalData({ ...writer.status(), coverage: {
+  const status = () => { const gaps = coverageIndex.snapshot(); return freezeJournalData({ ...writer.status(), sourceBoundary: { worldId, tick: lastTick, generation: lastGeneration }, coverage: {
     status: gaps.some(gap => ['physical-facts', 'all'].includes(gap.kind)) ? 'partial' : 'complete', gaps, index: coverageIndex.diagnostics() } }); };
   return { recordCommittedBatch, recordIntervention: (command, outcome, boundary) => record('intervention', { command, outcome }, boundary),
     recordInput: (observation, boundary) => record('input-observation', observation, boundary),

@@ -335,6 +335,30 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
           controls.append(page);
         }
         if (take.inspection) controls.append(node('p', `${take.inspection.takeName} · ${take.inspection.status} · ticks ${take.inspection.firstTick ?? 'unknown'}–${take.inspection.lastTick ?? 'unknown'} · ${take.inspection.gaps} coverage gaps · opens paused`, 'studio-hint'));
+        if (take.branchAvailable && !take.recording && !take.recovering && (take.selectedTakeId || take.last)) {
+          const branch = take.workbench, branchControls = node('fieldset', null, 'studio-causal-branch'); branchControls.append(node('legend', 'Take comparison and branch'));
+          const boundary = input(state.branchSequenceDraft ?? '', value => { state.branchSequenceDraft = value; }, { type: 'number', min: 0, step: 1, nullable: true });
+          boundary.disabled = branch?.busy || !!branch?.active; labeled('Through record (empty = durable end)', boundary, branchControls);
+          const options = () => ({ throughSequence: state.branchSequenceDraft === '' || state.branchSequenceDraft == null ? null : Number(state.branchSequenceDraft),
+            takeName: (state.takeNameDraft || 'Untitled take').slice(0, 110) + ' branch' });
+          if (!branch?.active) {
+            const compare = button('Compare in isolated world', () => handlers.compareCausalTake?.(options())); compare.disabled = !!branch?.busy;
+            const prepare = button('Prepare physical branch', () => handlers.prepareCausalBranch?.(options())); prepare.disabled = !!branch?.busy; branchControls.append(compare, prepare);
+          } else {
+            const step = button('Step branch 32 ticks', () => handlers.advanceCausalBranch?.({ ticks: 32 })); step.disabled = !branch.canStep;
+            const finish = button('Save and close branch', () => handlers.finishCausalBranch?.()); finish.disabled = !!branch.busy; branchControls.append(step, finish);
+            if (branch.active.playbackAdmission) {
+              const interpretation = button(branch.active.interpretationPlaying ? 'Pause branch interpretation' : 'Enable branch interpretation', () => handlers.setCausalBranchPlayback?.(!branch.active.interpretationPlaying));
+              interpretation.disabled = !branch.canStep; branchControls.append(interpretation);
+            }
+            if (branch.phase === 'recovery-required') branchControls.append(button('Discard unsaved branch tail', () => handlers.finishCausalBranch?.({ discard: true })));
+          }
+          if (branch?.busy) branchControls.append(button('Cancel comparison / step', () => handlers.cancelCausalWorkbench?.()));
+          branchControls.append(node('p', branch?.active ? `${branch.active.takeId} · ${branch.phase} · tick ${branch.active.tick} · ${branch.active.completedBatches} new physical batches · output off` :
+            `${branch?.phase || 'idle'} · isolated current-runtime comparison · current project unchanged · output off`, 'studio-hint'));
+          if (branch?.receipt?.firstDivergence) branchControls.append(node('p', 'First recorded divergence: ' + JSON.stringify(branch.receipt.firstDivergence).slice(0, 1024), 'studio-hint'));
+          controls.append(branchControls);
+        }
         if (take.selectedTakeId || take.last) {
           state.scoreTimeDomain ||= 'physical-source-time';
           labeled('Score axis', select([['physical-source-time', 'Source time'], ['causal-order', 'Causal order'], ['musical-score-time', 'Musical score time']],
