@@ -47,8 +47,8 @@ export async function prepareOwnedPcmBank(pin, { resources, owner, generation = 
         !integer(pin.ref.frames, 1, 8000000) || !integer(pin.ref.sourceSampleRate, 8000, 192000)) throw fail('Unsupported PCM bank format or source metadata.');
     if (new Uint8Array(new Uint16Array([1]).buffer)[0] !== 1) throw fail('This PCM bank profile requires a little-endian host.');
     const bytes = channels * frames * 4;
-    storage = resources.reserve({ kind: 'owned-pcm-bank', owner, generation, bytes, estimateBytes: 4096 });
-    workspace = resources.reserve({ kind: 'pcm-digest-workspace', owner, generation, estimateBytes: bytes + 16384 });
+    storage = resources.reserve({ kind: 'owned-pcm-bank', owner, generation, bytes, estimateBytes: 4096, consumerOwned: true });
+    workspace = resources.reserve({ kind: 'pcm-digest-workspace', owner, generation, estimateBytes: bytes + 16384, consumerOwned: true });
     check(); retained = pin.retain({ owner, generation });
     if (!retained?.isActive?.() || typeof retained.release !== 'function' || retained.buffer !== buffer) throw fail('Decoded PCM ownership changed.');
     const inputs = [];
@@ -96,7 +96,7 @@ function createBank(descriptor, initialData, resource, { resources, owner, gener
         const time = now(); if (!Number.isFinite(time) || time < previousTime || time - started >= maxCopyMs) throw fail('PCM processor copy deadline exceeded.'); previousTime = time;
         if (discarded || !data || !isCurrent()) throw fail('PCM processor source changed.');
       };
-      check(); const copyResource = resources.reserve({ kind: 'pcm-processor-input', owner, generation, bytes: descriptor.bytes, estimateBytes: 2048 });
+      check(); const copyResource = resources.reserve({ kind: 'pcm-processor-input', owner, generation, bytes: descriptor.bytes, estimateBytes: 2048, consumerOwned: true });
       const record = { controller, ready: false }, close = createProcgenRetirementScope(); let payload = null;
       readers.add(record); signal?.addEventListener('abort', cancel, { once: true });
       const release = () => close.retire([{ name: 'processor-input', run: () => {

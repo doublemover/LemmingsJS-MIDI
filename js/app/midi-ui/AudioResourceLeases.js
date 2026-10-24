@@ -13,17 +13,25 @@ export function createAudioResourceLeases({ resourceBudget = null, ownerPrefix =
   const leases = new Map();
   const retirement = createProcgenRetirementScope();
   let disposed = false, exactBytes = 0, estimatedBytes = 0, peakDeclaredBytes = 0, denials = 0;
-  const reserve = ({ kind, owner = null, generation = 0, bytes = 0, estimateBytes = 0 } = {}) => {
+  const reserve = ({ kind, owner = null, generation = 0, bytes = 0, estimateBytes = 0, consumerOwned = false } = {}) => {
     if (disposed) throw new Error('Audio resource owner is disposed.');
     if (typeof kind !== 'string' || !kind || !Number.isSafeInteger(generation) || generation < 0 ||
         !Number.isSafeInteger(bytes) || bytes < 0 || !Number.isSafeInteger(estimateBytes) || estimateBytes < 0 ||
-        bytes + estimateBytes > MAX_BYTES || leases.size >= maxReservations) throw new RangeError('Invalid or excessive audio reservation.');
+        bytes + estimateBytes > MAX_BYTES || leases.size >= maxReservations || typeof consumerOwned !== 'boolean') throw new RangeError('Invalid or excessive audio reservation.');
     const token = {}, budgetOwner = ownerPrefix + ':' + (owner ?? 'default');
     let receipt = null;
     try { receipt = resourceBudget?.reserve({ token, owner: budgetOwner, generation, category: 'audio', kind,
       bytes: bytes + estimateBytes, pinned: true, cache: false, reloadable: false }) || null; }
     catch (error) { denials++; throw error; }
-    const lease = { owner, kind, budgetOwner, bytes, estimateBytes, receipt, released: false, releaseError: null, releaseAttempted: false, blocked: null };
+    let acknowledge, rejectConsumer;
+    const consumerCompletion = consumerOwned ? new Promise((resolve, reject) => { acknowledge = resolve; rejectConsumer = reject; }) : null;
+    consumerCompletion?.catch(() => {});
+    const lease = { owner, kind, budgetOwner, bytes, estimateBytes, receipt, consumerOwned, released: false, releaseError: null, releaseAttempted: false, blocked: null };
+    lease.retire = () => {
+      if (!consumerOwned) return release();
+      if (lease.blocked || lease.releaseAttempted && !lease.released) throw lease.blocked || lease.releaseError;
+      return consumerCompletion;
+    };
     leases.set(token, lease); exactBytes += bytes; estimatedBytes += estimateBytes;
     peakDeclaredBytes = Math.max(peakDeclaredBytes, exactBytes + estimatedBytes);
     const release = () => {
@@ -39,14 +47,15 @@ export function createAudioResourceLeases({ resourceBudget = null, ownerPrefix =
           Promise.resolve(acknowledged).catch(() => {});
           throw new Error('Audio resource adapter release must acknowledge synchronously.');
         }
-      } catch (error) { lease.releaseError = error; throw error; }
+      } catch (error) { lease.releaseError = error; rejectConsumer?.(error); throw error; }
       lease.released = true; lease.releaseError = null; leases.delete(token); exactBytes -= bytes; estimatedBytes -= estimateBytes;
-      return true;
+      acknowledge?.(); return true;
     };
     lease.release = release;
     const retainUnknown = reason => {
       if (lease.released) return false;
       lease.blocked ||= reason instanceof Error ? reason : new Error('Native audio resource retirement is unknown.');
+      rejectConsumer?.(lease.blocked);
       try { resourceBudget?.reserve({ token, owner: budgetOwner, generation, category: 'audio', kind,
         previousBytes: bytes + estimateBytes, bytes: bytes + estimateBytes, pinned: true, cache: false, reloadable: false, unreleased: true }); }
       catch { /* The existing reservation still covers this unknown resource. */ }
@@ -84,18 +93,19 @@ export function createAudioResourceLeases({ resourceBudget = null, ownerPrefix =
       reconcile: buffer => { validate(buffer); return lease.shrink(buffer.length * buffer.numberOfChannels * 4); }, frames, channels, sampleRate });
   };
   const retireOwner = owner => createProcgenRetirementScope().retire([...leases.values()].filter(lease => lease.owner === owner)
-    .map((lease, index) => ({ name: `reservation-${index}`, run: lease.release })));
+    .map((lease, index) => ({ name: `reservation-${index}`, run: lease.retire })));
   const releaseOwner = owner => {
     const receipt = retireOwner(owner), failed = receipt.resources.filter(resource => resource.status !== 'completed');
-    if (failed.length) throw Object.assign(new Error('Audio owner has failed or unknown reservation releases.'), { retirement: receipt });
+    if (failed.length || receipt.outcome !== 'complete') throw Object.assign(new Error('Audio owner has pending, failed or unknown reservation releases.'), { retirement: receipt });
     return receipt.resources.length;
   };
   const diagnostics = () => Object.freeze({ enabled: !!resourceBudget, reservations: leases.size, exactBytes, estimatedBytes,
-    peakDeclaredBytes, denials, maxReservations, unreconciledReservations: [...leases.values()].filter(lease => lease.releaseAttempted || lease.blocked).length,
+    peakDeclaredBytes, denials, maxReservations, consumerOwnedReservations: [...leases.values()].filter(lease => lease.consumerOwned).length,
+    unreconciledReservations: [...leases.values()].filter(lease => lease.releaseAttempted || lease.blocked).length,
     browserResidentBytes: null, evidenceClass: 'declared-storage-and-native-estimates' });
   const dispose = () => {
     disposed = true;
-    return retirement.retire([...leases.values()].map((lease, index) => ({ name: `reservation-${index}`, run: lease.release })));
+    return retirement.retire([...leases.values()].map((lease, index) => ({ name: `reservation-${index}`, run: lease.retire })));
   };
   const confirmClosedContext = () => createProcgenRetirementScope().retire([...leases.values()].filter(lease => lease.blocked &&
     ['native-voice', 'worklet-voice-host', 'worklet-runtime', 'pcm-capture-runtime', 'channel-graph', 'mix-graph'].includes(lease.kind))
@@ -109,9 +119,9 @@ export function createAudioResourceLeases({ resourceBudget = null, ownerPrefix =
       if (!Number.isSafeInteger(extraEstimateBytes) || extraEstimateBytes < 0 || extraEstimateBytes > 65536) throw new RangeError('Invalid worklet voice state estimate.');
       return reserve({ kind: 'worklet-voice-host', owner, generation, estimateBytes: 1536 + extraEstimateBytes });
     },
-    reserveWorkletRuntime: (owner, generation = 0, extraBytes = 0, extraEstimateBytes = 0) => {
+    reserveWorkletRuntime: (owner, generation = 0, extraBytes = 0, extraEstimateBytes = 0, consumerOwned = false) => {
       if (![extraBytes, extraEstimateBytes].every(value => Number.isSafeInteger(value) && value >= 0 && value <= 32 * 1048576)) throw new RangeError('Invalid source storage inventory.');
-      return reserve({ kind: 'worklet-runtime', owner, generation, bytes: KERNEL_TYPED_BYTES + extraBytes, estimateBytes: WORKLET_HOST_ESTIMATE + extraEstimateBytes });
+      return reserve({ kind: 'worklet-runtime', owner, generation, bytes: KERNEL_TYPED_BYTES + extraBytes, estimateBytes: WORKLET_HOST_ESTIMATE + extraEstimateBytes, consumerOwned });
     } };
 }
 

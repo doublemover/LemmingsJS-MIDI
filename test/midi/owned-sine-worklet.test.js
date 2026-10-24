@@ -8,6 +8,7 @@ import { createResourceBudget } from '../../js/app/resources/ResourceBudget.js';
 import { OwnedChoirKernel, CHOIR_WIDTH, CHOIR_VOICES } from '../../js/app/midi-ui/worklet/OwnedChoirProcessor.js';
 import { OwnedPluckKernel, PLUCK_WIDTH, PLUCK_VOICES } from '../../js/app/midi-ui/worklet/OwnedPluckProcessor.js';
 import { OwnedSpectrumKernel, SPECTRUM_WIDTH, SPECTRUM_VOICES } from '../../js/app/midi-ui/worklet/OwnedSpectrumProcessor.js';
+import { OwnedGranularKernel, GRANULAR_WIDTH, GRANULAR_VOICES } from '../../js/app/midi-ui/worklet/OwnedGranularProcessor.js';
 
 const row = (opcode, frame, sequence, slot = 0, token = 1, values = {}) => {
   const data = new Array(WIDTH).fill(0);
@@ -125,15 +126,17 @@ const setupHost = (engineId = 'worklet-sine') => {
     'worklet-choir': [OwnedChoirKernel, CHOIR_WIDTH, CHOIR_VOICES, 'owned-choir-v1', 'owned-choir-f64-command-v1'],
     'worklet-pluck': [OwnedPluckKernel, PLUCK_WIDTH, PLUCK_VOICES, 'owned-pluck-v1', 'owned-pluck-f64-command-v1'],
     'worklet-spectrum': [OwnedSpectrumKernel, SPECTRUM_WIDTH, SPECTRUM_VOICES, 'owned-spectrum-v1', 'owned-spectrum-f64-command-v1'] }[engineId];
+  const granular = engineId === 'worklet-granular', actualSource = granular ? [OwnedGranularKernel, GRANULAR_WIDTH, GRANULAR_VOICES, 'owned-granular-v1', 'owned-granular-f64-command-v1'] : source;
   const nodes = [], context = { state: 'running', sampleRate: 48000, currentTime: 0, audioWorklet: { async addModule() {} } };
   const preview = { _generation: 0, _sessions: new Map([['owner', { generation: 0 }]]), _voices: new Set(), _semanticVoiceOwners: new Map(),
     _maxVoices: 64, _maxScheduledVoices: 96, _maxNoteSeconds: 8, _voiceSequence: 0, _nowMs: () => context.currentTime * 1000,
-    _ownerReady: () => true, getAudioContext: () => context, _channel: () => ({ gain: {} }), _captureMetadata: fields => fields,
+    _ownerReady: () => true, _workloadClass: () => 'live', getAudioContext: () => context, _channel: () => ({ gain: {} }), _captureMetadata: fields => fields,
     _inspectVoiceInterval: () => ({ accepted: true }), _inspectVoiceExtensions: () => ({ accepted: true }),
     _renderVoiceCount(voices = this._voices) { return [...voices].reduce((sum, voice) => sum + (voice.renderCost || 1), 0); },
     _destroyVoice(voice, reason) { if (this._voices.delete(voice)) { voice.onDestroy?.(reason); voice.resourceLease?.release(); } } };
-  const createWorkletNode = () => {
-    const kernel = new source[0](48000), node = { kernel, disconnected: false, connect() {}, disconnect() { this.disconnected = true; },
+  if (granular) preview._audioResources = createAudioResourceLeases();
+  const createWorkletNode = (_context, _name, options) => {
+    const kernel = granular ? new OwnedGranularKernel(48000, structuredClone(options.processorOptions.pcm)) : new actualSource[0](48000), node = { kernel, disconnected: false, connect() {}, disconnect() { this.disconnected = true; },
       port: { onmessage: null, close() {}, postMessage(data) {
         if (data.type === 'commands') kernel.accept(data.data, data.count, data.packetSequence);
         else if (data.type === 'panic') kernel.panicPending = true;
@@ -144,19 +147,34 @@ const setupHost = (engineId = 'worklet-sine') => {
         kernel.receiptCount = 0;
       }, render(frames, start = 0) { const result = render(kernel, frames, start); this.flush(); return result; } };
     nodes.push(node); queueMicrotask(() => node.port.onmessage?.({ data: { type: 'ready', protocol: PROTOCOL, engineId, engineVersion: 1,
-      runtimeABI: source[4], buildId: source[3], maxVoices: source[2],
+      runtimeABI: actualSource[4], buildId: actualSource[3], maxVoices: actualSource[2], ...(granular ? { pcmBankHash: kernel.source.descriptor.bankHash } : {}),
       displayProtocol: DISPLAY_PROTOCOL, displayWidth: DISPLAY_WIDTH, displayVoices: DISPLAY_VOICES,
-      sampleRate: 48000, width: source[1], capacity: 512 } })); return node;
+      sampleRate: 48000, width: actualSource[1], capacity: 512 } })); return node;
   };
   const backend = createWorkletInstrumentBackend(preview, 'owner', { createWorkletNode, engineId });
   const patch = { status: 'ready', patch: { id: 'worklet-test', revision: 1, engineId, engineVersion: 1,
-    parameters: {}, sampleRefs: [], voicePolicy: { maxVoices: source[2] }, mix: { gain01: 0.5, pan01: 0 } }, receipt: { patchId: 'worklet-test', revision: 1 } };
+    parameters: {}, sampleRefs: [], voicePolicy: { maxVoices: actualSource[2] }, mix: { gain01: 0.5, pan01: 0 } }, receipt: { patchId: 'worklet-test', revision: 1 } };
   const intent = voiceId => ({ version: 1, kind: 'begin', voiceId, generation: 1, velocity01: 0.8,
     pitch: { cents: 6000.001, referenceHz: 440 }, expression: {}, sourceEventIds: ['physical:1'] });
   return { preview, context, nodes, backend, patch, intent };
 };
 
 describe('Owned worklet host lifecycle', () => {
+  it('prepares a verified PCM clone for the real granular kernel and retains it through parent release', async () => {
+    const { backend, nodes, patch, preview, intent } = setupHost('worklet-granular'), samples = Float32Array.from({ length: 4800 }, (_, frame) => Math.sin(frame * 0.03) * 0.5),
+      ref = { contentHash: 'a'.repeat(64), bytes: 19244, kind: 'sample', frames: samples.length, sourceSampleRate: 48000 },
+      variant = { contentHash: ref.contentHash, frames: samples.length, channels: 1, targetSampleRate: 48000, decoderVersion: 'explicit-test-decoded-pcm-v1' },
+      buffer = { length: samples.length, numberOfChannels: 1, sampleRate: 48000, getChannelData: () => samples };
+    const pin = () => { let active = true; return { ref, variant, buffer, isActive: () => active, retain: pin, release: () => { if (!active) return false; active = false; return true; } }; };
+    patch.patch.sampleRefs = [{ id: 'source', sha256: ref.contentHash, bytes: ref.bytes, required: true }]; patch.patch.parameters.motionRequired = 0;
+    const prepared = await backend.prepare(patch, [pin()]); expect(prepared.status).to.equal('ready'); expect(prepared.sourceBank.bankHash).to.match(/^[a-f0-9]{64}$/);
+    expect(preview._audioResources.diagnostics().consumerOwnedReservations).to.equal(1);
+    const execution = backend.registerExecution({ executionEpoch: 'granular-source', generation: 1 }).execution;
+    expect(backend.begin(intent('cloud'), 128, execution)).to.include({ status: 'accepted', stage: 'queued' }); await Promise.resolve(); const rendered = nodes[0].render(4096);
+    expect(rendered.left.some(value => Math.abs(value) > 1e-5)).to.equal(true); expect(nodes[0].kernel.source.inspect().clouds[0].admittedGrains).to.be.greaterThan(0);
+    backend.cancelGeneration(1, execution); await Promise.resolve(); nodes[0].render(2048, 4096); expect(nodes[0].kernel.source.inspect().activeGrains).to.equal(0);
+    await backend.dispose().completion; expect(preview._audioResources.diagnostics().reservations).to.equal(0);
+  });
   it('rejects unsupported table layouts before constructing a kernel or allocating a voice', async () => {
     const { backend, nodes, patch, preview } = setupHost('worklet-spectrum'); patch.patch.parameters.partialCount = 4;
     expect((await backend.prepare(patch)).status).to.equal('rejected'); expect(nodes).to.have.length(0); expect(preview._voices.size).to.equal(0); await backend.dispose().completion;

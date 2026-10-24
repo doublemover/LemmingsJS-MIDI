@@ -1,4 +1,5 @@
 import { getOwnedSourceProfile } from './OwnedSourceProfiles.js';
+import { prepareOwnedPcmBank } from './OwnedPcmBank.js';
 import { createAudioCommandQueue } from './AudioCommandQueue.js';
 import { createInstrumentExecutionLifecycle, isManagedExecutionEpoch } from './InstrumentExecutionLifecycle.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
@@ -33,7 +34,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   let node = null, context = null, ready = false, disposed = false, preparing = 0, patch = null, sequence = 0, packetSequence = 0;
   let pumpTimer = null, fault = null, truncated = 0, nextEpoch = 0, cancellationHistoryFull = false;
   let ownerStopped = false;
-  let runtimeResourceLease = null;
+  let runtimeResourceLease = null, pcmDescriptor = null;
   let pumpQueued = false;
   let lifecycle = null;
   let faultRetirement = null;
@@ -41,7 +42,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   const nodeRetirements = new WeakMap();
   const retirement = createProcgenRetirementScope();
   const voices = new Map(), epochs = new Map(), leases = new Map(), cancelled = new Set(), inFlight = new Map(), traces = [];
-  const pendingInitializations = new Set();
+  const pendingInitializations = new Set(), pendingPreparations = new Set();
   const commandObservers = new Set(); let commandObservationFailures = 0, commandObserverSequence = 0;
   const kernelQueued = new Set();
   const slots = new Array(MAX_VOICES).fill(null), slotTokens = new Uint32Array(MAX_VOICES);
@@ -183,7 +184,9 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     const input = resolution?.patch;
     if (!['ready', 'degraded'].includes(resolution?.status) || input?.engineId !== runtime.engineId || input.engineVersion !== 1 ||
         typeof input.id !== 'string' || !input.id || !Number.isSafeInteger(input.revision) || input.revision < 1 ||
-        resolution.receipt?.patchId !== input.id || resolution.receipt?.revision !== input.revision || input.sampleRefs?.length || input.modulations?.length || !isExtended && (input.macros?.length || input.causalBindings?.length || input.variation) ||
+        resolution.receipt?.patchId !== input.id || resolution.receipt?.revision !== input.revision || !Array.isArray(input.sampleRefs) ||
+        (source.requiresPCM ? input.sampleRefs.length !== 1 || !/^[a-f0-9]{64}$/.test(input.sampleRefs[0]?.sha256) || !Number.isSafeInteger(input.sampleRefs[0]?.bytes) || input.sampleRefs[0].bytes < 44 || input.sampleRefs[0].bytes > 16 * 1048576 : input.sampleRefs.length !== 0) ||
+        input.modulations?.length || !isExtended && (input.macros?.length || input.causalBindings?.length || input.variation) ||
         !Number.isSafeInteger(input.voicePolicy?.maxVoices) || input.voicePolicy.maxVoices < 1 || input.voicePolicy.maxVoices > MAX_VOICES ||
         input.voicePolicy.steal != null && input.voicePolicy.steal !== 'reject' ||
         !finite(input.mix?.gain01, 0, 1) || !finite(input.mix?.pan01, -1, 1)) return null;
@@ -195,29 +198,42 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     let performance = null;
     if (isExtended) { try { performance = compileInstrumentPerformance(input, performanceParameters); } catch { return null; } }
     return Object.freeze({ id: input.id, revision: input.revision, parameters: Object.freeze(parameters), performance,
-      maxVoices: input.voicePolicy.maxVoices, gain01: input.mix.gain01, pan01: input.mix.pan01 });
+      maxVoices: input.voicePolicy.maxVoices, gain01: input.mix.gain01, pan01: input.mix.pan01, sampleRef: source.requiresPCM ? Object.freeze({ ...input.sampleRefs[0] }) : null });
   };
-  const prepare = async (resolution, assets = []) => {
+  const prepareSource = async (resolution, assets = []) => {
     if (disposed) return reject('disposed');
     if (faultRetirement?.outcome === 'partial' && (retirementContext || context)?.state !== 'closed') return reject('audio-retirement-unknown');
-    if (!Array.isArray(assets) || assets.length) return reject('assets-unsupported');
+    if (pendingInitializations.size >= 2) return reject('source-preparation-capacity');
+    if (!Array.isArray(assets) || assets.length !== (source.requiresPCM ? 1 : 0)) return reject('required-source-assets-unavailable');
     const next = validate(resolution); if (!next) return reject('unsupported-patch-or-engine');
+    if (source.requiresPCM && (!preview._audioResources || !assets[0]?.isActive?.() || assets[0].ref?.contentHash !== next.sampleRef.sha256 || assets[0].ref?.bytes !== next.sampleRef.bytes)) return reject('required-pcm-source-unavailable');
     const candidateContext = preview.getAudioContext();
     if (!candidateContext?.audioWorklet?.addModule) return reject('audio-worklet-unavailable');
     if (runtime.supportedSampleRates && !runtime.supportedSampleRates.includes(candidateContext.sampleRate)) return reject('source-sample-rate-unavailable');
     if (context && context !== candidateContext) {
-      if (context.state === 'closed') { node = null; ready = false; voices.clear(); slots.fill(null); runtimeResourceLease = null; }
+      if (context.state === 'closed') { node = null; ready = false; voices.clear(); slots.fill(null); runtimeResourceLease = null; pcmDescriptor = null; }
       else { markFault('context-replaced'); if (faultRetirement?.outcome !== 'complete') return reject('audio-retirement-unknown'); }
     }
+    if (ready && source.requiresPCM && pcmDescriptor?.assetHash !== next.sampleRef.sha256) return reject('source-requires-new-renderer');
+    for (const cancel of pendingInitializations) cancel();
     const revision = ++preparing, generation = preview._generation, ownerGeneration = preview._sessions.get(owner)?.generation;
-    let candidate = null, timer = null, cancelInitialization = null, candidateResourceLease = null;
+    let candidate = null, timer = null, cancelInitialization = null, candidateResourceLease = null, bank = null, inputCopy = null, candidatePcm = pcmDescriptor, sourceFailureRetirement = null;
+    const assetController = new AbortController(), current = () => !disposed && revision === preparing && generation === preview._generation && ownerGeneration === preview._sessions.get(owner)?.generation && preview.getAudioContext() === candidateContext;
     let interrupt;
     const interrupted = new Promise((_resolve, rejectInterrupted) => { interrupt = rejectInterrupted; });
-    cancelInitialization = () => interrupt(new Error('preparation-cancelled')); pendingInitializations.add(cancelInitialization);
+    interrupted.catch(() => {});
+    const abortPreparation = error => { assetController.abort(error); interrupt(error); };
+    cancelInitialization = () => abortPreparation(new Error('preparation-cancelled')); pendingInitializations.add(cancelInitialization);
     try {
-      timer = setTimeout(() => interrupt(new Error('kernel-initialization-timeout')), initializationTimeoutMs);
+      if (!ready && source.requiresPCM) {
+        bank = await prepareOwnedPcmBank(assets[0], { resources: preview._audioResources, owner: owner ?? 'unscoped-source', generation,
+          signal: assetController.signal, isCurrent: current });
+        inputCopy = await bank.copyForProcessor({ signal: assetController.signal, isCurrent: current }); candidatePcm = bank.descriptor;
+      }
+      assetController.signal.throwIfAborted(); if (!current()) return reject('preparation-cancelled');
+      timer = setTimeout(() => abortPreparation(new Error('kernel-initialization-timeout')), initializationTimeoutMs);
       if (!ready) candidateResourceLease = preview._audioResources?.reserveWorkletRuntime(owner, preview._generation,
-        source.sourceBytes(candidateContext.sampleRate) + CAPACITY * (WIDTH - SINE_WIDTH) * 8, source.heapEstimate) || null;
+        source.sourceBytes(candidateContext.sampleRate, candidatePcm) + CAPACITY * (WIDTH - SINE_WIDTH) * 8, source.heapEstimate, true) || null;
       let contextModules = modules.get(candidateContext);
       if (!contextModules) { contextModules = new Map(); modules.set(candidateContext, contextModules); }
       if (!contextModules.has(runtime.workletUrl)) {
@@ -225,11 +241,12 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
         loading.catch(() => { if (contextModules.get(runtime.workletUrl) === loading) contextModules.delete(runtime.workletUrl); });
       }
       await Promise.race([contextModules.get(runtime.workletUrl), interrupted]);
-      if (disposed || revision !== preparing || generation !== preview._generation || ownerGeneration !== preview._sessions.get(owner)?.generation) return reject('preparation-cancelled');
+      if (!current()) return reject('preparation-cancelled');
       if (!ready) {
         const destination = preview._channel(0, owner).gain;
         const create = createWorkletNode || ((audioContext, name, options) => new globalThis.AudioWorkletNode(audioContext, name, options));
-        candidate = create(candidateContext, 'lemmings-owned-' + engineId.slice('worklet-'.length) + '-v1', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2], processorOptions: { maxVoices: MAX_VOICES } });
+        candidate = create(candidateContext, 'lemmings-owned-' + engineId.slice('worklet-'.length) + '-v1', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2],
+          processorOptions: { maxVoices: MAX_VOICES, ...(inputCopy ? { pcm: inputCopy.payload } : {}) } });
         await Promise.race([new Promise((resolve, rejectReady) => {
           candidate.onprocessorerror = () => rejectReady(new Error('processor-error-during-prepare'));
           candidate.port.onmessage = event => {
@@ -237,11 +254,19 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
             if (data?.type !== 'ready' || data.protocol !== PROTOCOL || data.engineId !== runtime.engineId || data.engineVersion !== 1 ||
                 data.runtimeABI !== runtime.runtimeABI || data.buildId !== runtime.buildId || data.maxVoices !== MAX_VOICES ||
                 data.sampleRate !== candidateContext.sampleRate || data.width !== WIDTH || data.capacity !== CAPACITY ||
-                data.displayProtocol !== DISPLAY_PROTOCOL || data.displayWidth !== DISPLAY_WIDTH || data.displayVoices !== DISPLAY_VOICES) return rejectReady(new Error('kernel-abi-mismatch'));
+                data.displayProtocol !== DISPLAY_PROTOCOL || data.displayWidth !== DISPLAY_WIDTH || data.displayVoices !== DISPLAY_VOICES ||
+                source.requiresPCM && data.pcmBankHash !== candidatePcm?.bankHash) return rejectReady(new Error('kernel-abi-mismatch'));
             resolve();
           };
         }), interrupted]);
-        if (disposed || revision !== preparing || generation !== preview._generation || ownerGeneration !== preview._sessions.get(owner)?.generation) {
+        if (inputCopy || bank) {
+          const sourceRetirement = createProcgenRetirementScope().retire([{ name: 'pcm-processor-input', run: () => inputCopy?.release() }, { name: 'pcm-preparation-bank', run: () => bank?.discard() }]);
+          await sourceRetirement.completion;
+          if (sourceRetirement.outcome !== 'complete') throw Object.assign(new Error('pcm-source-retirement-unknown'), { retirement: sourceRetirement });
+          inputCopy = null; bank = null;
+        }
+        assetController.signal.throwIfAborted();
+        if (!current()) {
           return reject('preparation-cancelled');
         }
         candidate.connect(destination);
@@ -255,20 +280,31 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
           else if (event.data?.type === 'protocol-error') markFault('kernel-protocol-error');
         };
         node.onprocessorerror = () => { if (node === connectedNode) markFault('processor-error'); };
-        runtimeResourceLease = candidateResourceLease; candidateResourceLease = null;
+        runtimeResourceLease = candidateResourceLease; candidateResourceLease = null; pcmDescriptor = candidatePcm;
         ready = true; fault = null; faultRetirement = null; retirementContext = null; ownerStopped = false; display.configure(true);
       }
-      patch = next; return Object.freeze({ status: 'ready', patchId: next.id, revision: next.revision, capabilities, runtime });
+      patch = next; return Object.freeze({ status: 'ready', patchId: next.id, revision: next.revision, capabilities, runtime, ...(pcmDescriptor ? { sourceBank: pcmDescriptor } : {}) });
     } catch (error) {
+      sourceFailureRetirement = error?.retirement || null;
       return reject(error?.name === 'ResourceBudgetError' ? 'audio-resource-budget' : String(error?.message || 'worklet-initialization-failed').slice(0, 160));
     } finally {
       const cleanup = createProcgenRetirementScope().retire([
+        { name: 'pcm-producer-retirement', run: () => sourceFailureRetirement },
+        { name: 'pcm-processor-input', run: () => inputCopy?.release() },
+        { name: 'pcm-preparation-bank', run: () => bank?.discard() },
+        { name: 'pcm-preparation-source', run: () => assetController.abort(new Error('Source preparation finished.')) },
         { name: 'candidate-runtime', run: () => retireNode(candidate, candidateResourceLease) },
-        { name: 'initialization-timer', run: () => { if (timer != null) clearTimeout(timer); } },
-        { name: 'initialization-owner', run: () => pendingInitializations.delete(cancelInitialization) }
+        { name: 'initialization-timer', run: () => { if (timer != null) clearTimeout(timer); } }
       ]);
-      if (cleanup.outcome !== 'complete') { faultRetirement = cleanup; retirementContext = candidateContext; fault = 'preparation-retirement-unknown'; ready = false; preview._retirementFaults?.add(owner); }
+      await cleanup.completion;
+      pendingInitializations.delete(cancelInitialization);
+      if (cleanup.outcome !== 'complete') { faultRetirement = cleanup; retirementContext = candidateContext; fault = 'preparation-retirement-unknown'; ready = false; preview._retirementFaults?.add(owner); return reject('preparation-retirement-unknown'); }
     }
+  };
+  const prepare = (...args) => {
+    if (pendingPreparations.size >= 2) return Promise.resolve(reject('source-preparation-capacity'));
+    const work = prepareSource(...args); pendingPreparations.add(work);
+    work.then(() => pendingPreparations.delete(work), () => pendingPreparations.delete(work)); return work;
   };
   const epochToken = epoch => {
     if (epochs.has(epoch)) return epochs.get(epoch);
@@ -331,6 +367,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
         Object.keys(expression).some(id => !['pressure01', 'pan01', 'pitchOffsetCents'].includes(id))) return reject('unsupported-expression', intent.voiceId);
     const frequency = (intent.pitch.referenceHz ?? 440) * 2 ** ((intent.pitch.cents - 6900 + offset) / 1200);
     if (!finite(frequency, source.minHz, Math.min(source.maxHz ?? Infinity, context.sampleRate / 2 - 1)) || Math.abs(offset) > source.bendCents) return reject('pitch-out-of-range', intent.voiceId);
+    if (!source.acceptsOnset(parameters, frequency, pcmDescriptor)) return reject('source-region-or-pitch-out-of-range', intent.voiceId);
     const key = keyFor(executionEpoch, intent.voiceId), generationKey = keyFor(executionEpoch, intent.generation);
     if (cancelled.has(generationKey)) return reject('generation-cancelled', intent.voiceId);
     if (cancellationHistoryFull && !isManagedExecutionEpoch(executionEpoch)) return reject('execution-registration-required', intent.voiceId);
@@ -361,6 +398,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       peak: intent.velocity01 * parameters.gain01 * patch.gain01, priority: 1, laneIndex: intent.laneId ?? 0,
       baseFrequency: frequency / 2 ** (offset / 1200), mixPan: patch.pan01, patchRevision: patch.revision, patchId: patch.id,
       stringT60Seconds: parameters.stringT60Seconds, bodyT60Seconds: parameters.bodyT60Seconds, sourceParameters: parameters,
+      sourceChannels: pcmDescriptor?.channels || 1,
       performancePlan: patch.performance, continuousBase: performance?.continuousBase,
       physicalCauses: isExtended ? new Map(initialCause ? [[initialCause.sourceKind, initialCause]] : []) : null, physicalFrame: targetFrame,
       startedAt: targetFrame / context.sampleRate, requestRelease: (time, force, reason) => {
@@ -379,10 +417,10 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
         record({ status: 'ended', stage: voice.kernelEnded ? 'render-kernel-ended' : 'stop-requested', voiceId: intent.voiceId, executionEpoch,
           generation: intent.generation, reason, appliedFrame: voice.kernelEnded ? voice.appliedFrame : null });
       } };
-    const excitationSeed = isExtended ? Math.floor((instrumentVariationValue([source.seedDomain, patch.id, patch.revision,
+    const excitationSeed = isExtended ? Math.min(0xffffffff, Math.floor((instrumentVariationValue([source.seedDomain, patch.id, patch.revision,
       intent.actorId == null ? ['event-only', intent.onsetId ?? intent.voiceId] : [intent.worldId, intent.generation, intent.actorId],
-      intent.onsetId ?? intent.voiceId, performance.variation?.seed ?? 0]) + 1) * 2147483648) : 0;
-    const sourceFields = source.beginFields(parameters, excitationSeed);
+      intent.onsetId ?? intent.voiceId, performance.variation?.seed ?? 0]) + 1) * 2147483648)) : 0;
+    const sourceFields = source.beginFields(parameters, excitationSeed, pcmDescriptor);
     const result = command(BEGIN, targetFrame, voice, { 6: frequency, 7: voice.peak, 8: pressure, 9: Math.max(-1, Math.min(1, pan + patch.pan01)),
       10: Math.round(parameters.attackSeconds * context.sampleRate), 11: Math.round(parameters.decaySeconds * context.sampleRate),
       12: parameters.sustain01, 13: Math.round(parameters.releaseSeconds * context.sampleRate), 16: endFrame, ...sourceFields });
@@ -394,7 +432,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     voices.set(key, voice); slots[slot] = voice; preview._voices.add(voice);
     display.admit(voice, intent); display.configure();
     preview._semanticVoiceOwners.set(JSON.stringify([owner, executionEpoch, intent.voiceId]), voice); voice.submitted = inFlight.has(result.sequence);
-    return isExtended ? Object.freeze({ ...result, performance, articulation: resolveOwnedArticulationPolicy({ engineId, parameters }) }) : result;
+    return isExtended ? Object.freeze({ ...result, performance, articulation: resolveOwnedArticulationPolicy({ engineId, parameters }), ...(pcmDescriptor ? { sourceBank: pcmDescriptor } : {}) }) : result;
   };
   const update = (voiceId, expression, targetFrame, executionEpoch = 'live', rampSeconds = smoothingSeconds) => {
     const voice = voices.get(keyFor(executionEpoch, voiceId)), now = frameNow();
@@ -492,7 +530,8 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   };
   const renderDiagnostics = ({ includeTraces = false } = {}) => Object.freeze({ engineId: runtime.engineId, runtime, capabilities,
     readiness: disposed ? 'disposed' : fault || !ready ? fault || 'runtime-unprepared' : ownerStopped ? 'kernel-stop-pending' : !preview._ownerReady(owner) ? 'audio-not-ready' : 'ready',
-    activeVoices: voices.size, queued: queue?.diagnostics() || null, inFlight: inFlight.size, counters: Object.freeze({ ...counters }),
+    activeVoices: voices.size, queued: queue?.diagnostics() || null, inFlight: inFlight.size, counters: Object.freeze({ ...counters }), pendingPreparations: pendingPreparations.size,
+    ...(pcmDescriptor ? { sourceBank: pcmDescriptor } : {}),
     awaitingKernelAdmission: inFlight.size - kernelQueued.size,
     traceCount: traces.length, truncatedTraces: truncated, cancellationHistoryFull, display: display.diagnostics(),
     commandObservers: commandObservers.size, commandObservationFailures,
@@ -504,6 +543,9 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     const receipt = retirement.retire([
       { name: 'admission', run: () => { disposed = true; ready = false; } },
       { name: 'kernel-stop', run: onOwnerStop },
+      { name: 'pending-source-preparation', run: async () => {
+        await Promise.allSettled([...pendingPreparations]); if (faultRetirement?.outcome === 'partial') return faultRetirement;
+      } },
       ...[...voices.values()].map(voice => ({ name: `voice-${voice.id}`, run: () => preview._destroyVoice(voice, 'backend-disposed') })),
       { name: 'native-runtime', run: () => retireNode(retiringNode, runtimeResourceLease) },
       { name: 'display', run: () => display.dispose() },

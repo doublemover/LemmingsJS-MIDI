@@ -4,6 +4,18 @@ import { createAudioResourceLeases, releaseAudioResourceAfterRetirement, KERNEL_
 import { createProcgenRetirementScope } from '../../js/app/procgen/ProcgenRetirement.js';
 
 describe('Audio resource admission', () => {
+  it('joins consumer-owned buffers during bulk teardown and keeps them charged until actual release', async () => {
+    const audio = createAudioResourceLeases(), lease = audio.reserve({ kind: 'pcm-copy', owner: 'game', bytes: 64, consumerOwned: true });
+    const owner = audio.retireOwner('game'), all = audio.dispose(); expect(owner.outcome).not.to.equal('complete'); expect(all.outcome).not.to.equal('complete');
+    expect(audio.diagnostics()).to.include({ exactBytes: 64, consumerOwnedReservations: 1 }); expect(lease.release()).to.equal(true);
+    await owner.completion; await all.completion; expect(owner.outcome).to.equal('complete'); expect(all.outcome).to.equal('complete'); expect(audio.diagnostics().reservations).to.equal(0);
+  });
+  it('preserves a failed consumer release without turning bulk disposal into another native attempt', async () => {
+    let attempts = 0; const audio = createAudioResourceLeases({ resourceBudget: { reserve: () => ({}), release: () => { attempts++; throw new Error('unknown'); } } }),
+      lease = audio.reserve({ kind: 'pcm-copy', bytes: 64, consumerOwned: true }), retirement = audio.dispose();
+    expect(() => lease.release()).to.throw('unknown'); await retirement.completion;
+    expect(retirement.outcome).to.equal('partial'); expect(attempts).to.equal(1); expect(audio.diagnostics().exactBytes).to.equal(64);
+  });
   it('holds uncertain native retirement through owner disposal until the closed context acknowledges it', () => {
     const budget = createResourceBudget(), audio = createAudioResourceLeases({ resourceBudget: budget });
     const voice = audio.reserveNativeVoice('game'), cue = audio.reserveNativeVoice('cue');

@@ -10,7 +10,7 @@ const validIdentity = value => value && text(value.worldId) && natural(value.gen
 // The host allocates bounded presentation objects only for active observers.
 // Musical receipts and commands never wait for this latest-wins mailbox.
 export function createAudioDisplayTelemetry({ owner, engineId = 'worklet-sine', getContext, getContextEpoch, getVoices, getRouteState = null, send, resources } = {}) {
-  if (!['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum'].includes(engineId)) throw new TypeError('Unknown audio display source.');
+  if (!['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(engineId)) throw new TypeError('Unknown audio display source.');
   const sinePhase = engineId === 'worklet-sine';
   const observers = new Set(), routes = new Map(), latest = new Map();
   let contextStamp = null, resourceLease = null, tokens = null, sentTokens = null, sentInterval = 0, revision = 0, selected = 0, eligible = 0, stopped = false;
@@ -108,7 +108,8 @@ export function createAudioDisplayTelemetry({ owner, engineId = 'worklet-sine', 
           quantities: Object.freeze(quantities), processingState: Object.freeze({ bypassed: false, tail: !!(flags & 1), ended: !!(flags & 2), faulted: !!(flags & 4), pending: false, unsupported: false }),
           routeState, coverage: 'complete',
           selectionCoverage: Object.freeze({ eligible, selected, omitted: Math.max(0, eligible - selected), droppedWindows: stats.droppedWindows }),
-          detector: Object.freeze({ tap: 'voice-pre-pan-pre-owner-bus', channels: 1, sampledFrames: frames, window: 'half-open-output-frames',
+          detector: Object.freeze({ tap: 'voice-pre-pan-pre-owner-bus', channels: route.voice.sourceChannels || 1,
+            channelReduction: route.voice.sourceChannels === 2 ? 'mean-channel-power-and-max-peak' : 'mono-source', sampledFrames: frames, window: 'half-open-output-frames',
             normalization: 'unity-full-scale', envelope: sinePhase ? 'window-peak' : 'clamped-window-peak', responseDelayFrames: last - first, detectorDelayFrames: last - first }), acousticReceipt: false });
         latest.set(key, sample); while (latest.size > DISPLAY_VOICES) latest.delete(latest.keys().next().value); stats.samples++;
         for (const observer of observers) if (observers.has(observer) && matches(observer, route.identity) && last > observer.sinceFrame &&

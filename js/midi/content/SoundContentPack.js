@@ -147,7 +147,7 @@ export async function prepareSoundContentPack(raw, { engineDescriptors = [], sig
   }
   if (pack.compilation != null) {
     const compilation = pack.compilation; keysOnly(compilation, ['compilerRevision', 'sourceHash', 'schemaRevision', 'artifacts'], 'compilation');
-    assertContent(['typed-recipes-v1', 'typed-recipes-v2', 'typed-recipes-v3', 'typed-recipes-v4', 'typed-recipes-v5', 'typed-recipes-v6', 'typed-recipes-v7', 'typed-recipes-v8', 'typed-recipes-v9'].includes(compilation.compilerRevision) && compilation.schemaRevision === 'lemmings-sound-recipes/v1' && hash(compilation.sourceHash) &&
+    assertContent(['typed-recipes-v1', 'typed-recipes-v2', 'typed-recipes-v3', 'typed-recipes-v4', 'typed-recipes-v5', 'typed-recipes-v6', 'typed-recipes-v7', 'typed-recipes-v8', 'typed-recipes-v9', 'typed-recipes-v10'].includes(compilation.compilerRevision) && compilation.schemaRevision === 'lemmings-sound-recipes/v1' && hash(compilation.sourceHash) &&
       Array.isArray(compilation.artifacts) && compilation.artifacts.length === patches.length && compilation.artifacts.every(artifact => artifact && typeof artifact === 'object' && !Array.isArray(artifact)) &&
       new Set(compilation.artifacts.map(artifact => artifact.id + '@' + artifact.revision)).size === patches.length,
     'compilation', 'unsupported compilation inventory');

@@ -2278,6 +2278,21 @@ control/pool fixtures are authored and unexecuted. This source is not yet
 advertised in the catalog: PCM preparation, profile/host handoff, asset staging
 and the family UI must be connected next.
 
+The ninth renderer now connects that pool to the owned host: one validated
+decoded sample pin becomes a hashed PCM bank and an independently reserved
+processor clone. Ready publication verifies the actual worklet bank hash and
+retires preparation readers before connecting audio. Changed source assets
+require another prepared renderer, preserving old held PCM. Root ratio/region
+limits are checked before voice allocation; each cloud charges its full 16-child
+budget. Compiler v10, schema/catalog/artifact identity, stereo measurement metadata
+and one-shot duration cover the source. Consumer-owned audio reservations now
+join producer retirement instead of being freed by bulk session cleanup while
+copying/hashing; backend disposal joins bounded pending preparations. The rare
+maximum hash-derived seed is clamped into uint32. Host/kernel handoff and resource
+failure fixtures remain unexecuted. Sound-archive asset materialization, shared
+WAV metadata inspection and granular family/library controls remain next; linear
+resampling, offline/exact-state and measured capacity/listening are unqualified.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical
