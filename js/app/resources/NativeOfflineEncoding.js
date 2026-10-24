@@ -1,4 +1,5 @@
-import { prepareEffectRenderPlan, validateNativeConvolutionRenderReceipt, validateOwnedConvolutionSourceReceipt } from '../midi-ui/EffectRenderPlan.js';
+import { validateEffectSourceBindings } from '../midi-ui/EffectSourceBindings.js';
+import { prepareEffectRenderPlan, validateNativeEffectRenderReceipt, validateOwnedConvolutionSourceReceipt } from '../midi-ui/EffectRenderPlan.js';
 import { canonicalDataText } from '../../core/CanonicalData.js';
 import { createOwnedEffectGraphKernel } from '../midi-ui/OwnedEffectGraphKernel.js';
 import { effectGraphHash } from '../../midi/content/EffectGraphRevision.js';
@@ -27,11 +28,16 @@ export async function encodeNativeOfflineRender({ mode, manifest, planes, firstF
         requested.latencyFrames !== effectPlan.latencyFrames || requested.maximumTailFrames !== effectPlan.maximumTailFrames || requested.controls !== 'explicit-authored-defaults-not-replayed-live-gestures' || requested.scope !== 'one-full-shared-owner-sum')
       throw failure('Native effect manifest differs from the exact executing graph.');
   }
-  const nativeEffects = !!effectPlan?.impulseCount;
-  if (nativeEffects) validateNativeConvolutionRenderReceipt(effectPlan, manifest.nativeScheduling, requested.hash, returns);
+  const nativeEffects = !!effectPlan && (!!effectPlan.impulseCount || !!manifest.nativeScheduling?.effectGraph);
+  if (nativeEffects) validateNativeEffectRenderReceipt(effectPlan, manifest.nativeScheduling, requested.hash, returns);
   if (['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(manifest?.engineRequirement?.engineId)) {
     if (!nativeEffects) throw failure('Owned-source native encoding requires its exact convolution execution.');
     validateOwnedConvolutionSourceReceipt(manifest);
+  }
+  if (effectPlan?.sidechainInputs.length) {
+    const bindings = validateEffectSourceBindings(effectPlan, requested.sourceBindings);
+    if (!nativeEffects) throw failure('External donor rendering requires the actual simultaneous native graph, not missing donor planes.');
+    if (canonicalDataText(bindings).text !== canonicalDataText(manifest.nativeScheduling.effectGraph.sourceBindings).text) throw failure('Native sidechain realization differs from its declared donor routes.');
   }
   const nativeFrames = planes?.[0]?.length, frames = endFrame - firstFrame;
   if (!['controls', 'causal-take'].includes(mode) || !Array.isArray(stemLaneIds) || !Array.isArray(planes) || planes.length !== 2 + (stemLaneIds.length + (nativeEffects ? returns.length : 0)) * 2 || planes.length > 32 ||

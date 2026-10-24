@@ -11,7 +11,7 @@ class SidechainProcessorBase extends ProcessorBase {
   initialize(options, mapping) {
     this.mapping = mapping; this.revision = mapping ? ENVELOPE_MAPPING_REVISION : ENVELOPE_DETECTOR_REVISION;
     this.kernel = mapping ? new EnvelopeMappingKernel({ sampleRate: globalThis.sampleRate, parameters: options?.processorOptions?.parameters }) : new EnvelopeFollowerKernel({ sampleRate: globalThis.sampleRate, parameters: options?.processorOptions?.parameters });
-    this.disposed = false; this.sourceOverride = null; this.sourceEpoch = options?.processorOptions?.sourceEpoch ?? 0;
+    this.disposed = false; this.sourceOverride = options?.processorOptions?.sourceAvailable ?? null; this.sourceEpoch = options?.processorOptions?.sourceEpoch ?? 0;
     this.lastInspect = -Infinity; this.reportedFaults = 0; this.faultMessage = { type: 'effect-fault', revision: this.revision, frame: 0, faults: 0 };
     const stateBytes = this.kernel.state.byteLength + (this.kernel.lookup?.byteLength || 0);
     this.offlineCompletion = new OfflineEffectCompletion({ endFrame: options?.processorOptions?.offlineEndFrame ?? null,
@@ -46,7 +46,7 @@ export class EnvelopeMappingProcessor extends SidechainProcessorBase { construct
 export class VocoderBankProcessor extends ProcessorBase {
   constructor(options) {
     super(); this.kernel = new VocoderBankKernel({ sampleRate: globalThis.sampleRate, parameters: options?.processorOptions?.parameters });
-    this.revision = VOCODER_BANK_REVISION; this.disposed = false; this.sourceEpoch = options?.processorOptions?.sourceEpoch ?? 0; this.donorOverride = this.carrierOverride = null;
+    this.revision = VOCODER_BANK_REVISION; this.disposed = false; this.sourceEpoch = options?.processorOptions?.sourceEpoch ?? 0; this.donorOverride = options?.processorOptions?.donorAvailable ?? null; this.carrierOverride = options?.processorOptions?.carrierAvailable ?? null;
     this.lastInspect = -Infinity; this.reportedFaults = 0; this.faultMessage = { type: 'effect-fault', revision: this.revision, frame: 0, faults: 0 };
     this.offlineCompletion = new OfflineEffectCompletion({ endFrame: options?.processorOptions?.offlineEndFrame ?? null, sampleRate: globalThis.sampleRate,
       revision: this.revision, stateBytes: this.kernel.profile.stateBytes, configurationKey: this.kernel.identity, port: this.port });

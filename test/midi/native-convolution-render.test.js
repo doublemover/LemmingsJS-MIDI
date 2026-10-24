@@ -171,6 +171,26 @@ describe('native shared convolution rendering (API/codec fixtures, no acoustic q
     expect(() => validateOwnedConvolutionSourceReceipt(wrong)).to.throw('input hashes');
     prepared.release(); expect(owner.budget.diagnostics().accountedBytes).to.equal(0); await owner.resources.dispose().completion; owner.admission.dispose();
   });
+  for (const available of [false, true]) it('stages a donor lane independently of WAV selection, available=' + available, async () => {
+    const owner = makeOwner(2, 48000), definition = CAUSAL_RENDER_SOURCES.find(source => source.id === 'worklet-sine').definition;
+    owner.definition.nodes.push({ id: 'donor', kind: 'sidechain-in', parameters: { sourceBusId: 'lane:tools', tap: 'pre-fader' } });
+    owner.definition.edges[0].gain01 = 0.5; owner.definition.edges.push({ from: { nodeId: 'donor', port: 'audio' }, to: { nodeId: 'body', port: 'audio' }, gain01: 0.5 });
+    const [descriptor] = await describeNativeInstrumentEngines([{ engineId: 'worklet-sine', engineVersion: 1, artifactHash: 'a'.repeat(64) }]), build = 'd'.repeat(64), sourceHash = 'b'.repeat(64);
+    const intents = available ? ['begin', 'end'].map((kind, index) => ({ version: 1, kind, worldId: 'fixture.world', generation: 1, actorId: 1, voiceId: 'tool-voice', onsetId: 'tool-onset', intentId: 'tool-' + index,
+      laneId: 'tools', sourceEventIds: ['contact-' + index], scoreTime: { sourceTimeMs: index ? 1 : 0, subTick: 0, simTick: index }, pitch: { cents: 6000, referenceHz: 440 }, velocity01: 0.8, expression: {} })) : [];
+    const revoice = { operation: 'sound-only-revoice', version: 1, takeId: 'take:donor-source', takeRevision: 1, sourceCanonicalHash: sourceHash, sourceState: 'finalized', sourceVersions: {}, coverage: { status: 'known-covered' },
+      boundary: { status: 'captured-initial-state', state: { sourceTimeMs: 0, voices: [] } }, finalBoundaryState: { sourceTimeMs: 1000 }, intents };
+    const raw = await renderCausalOwnedTake({ definition, descriptor, revoice, applicationBuildId: build, sampleRate: 48000, endSeconds: 128 / 48000, outputMode: 'source-pcm', effectGraph: owner.definition, effectReturnNodeIds: ['body'] }, { yieldControl: immediate });
+    expect(raw.channels).to.equal(4); expect(raw.laneIds).to.deep.equal(['tools']); expect(raw.manifest.stems.laneIds).to.deep.equal([]);
+    const receipt = { method: 'dedicated-worker', kind: 'render-causal-source-pcm', sourceRevision: sourceHash, executionIdentity: { activeExecution: 'bound', buildId: build } };
+    const prepared = await prepareCausalOwnedConvolutionInput(raw, receipt, definition, { resources: owner.resources, resourceBudget: owner.budget, getMaterialProvider: () => owner.provider, jobs: owner.jobs, admission: owner.admission, OfflineAudioContext: owner.OfflineDouble });
+    expect(prepared.input.planes).to.have.length(4); expect(prepared.input.manifest.nativeScheduling.effectGraph.realization.sidechains[0].connected).to.equal(available);
+    expect(validateOwnedConvolutionSourceReceipt(prepared.input.manifest).laneIds).to.deep.equal(['tools']);
+    const encoded = await encodeNativeOfflineRender(prepared.input, { yieldControl: immediate }); expect(encoded.files).to.have.length(2); expect(encoded.manifest.stems.laneIds).to.deep.equal([]);
+    const wrong = structuredClone(prepared.input.manifest); wrong.nativeScheduling.effectGraph.sourceBindings.routes[0].tap = 'post-fader';
+    let error; try { await encodeNativeOfflineRender({ ...prepared.input, manifest: wrong }, { yieldControl: immediate }); } catch (caught) { error = caught; } expect(error).to.be.instanceOf(Error);
+    prepared.release(); expect(owner.budget.diagnostics().accountedBytes).to.equal(0); await owner.resources.dispose().completion; owner.admission.dispose();
+  });
   it('admits authored body recipes and requires the explicit native render profile', () => {
     for (const preset of ['quarry-hollow-spring', 'quarry-stone-courtyard', 'quarry-crossed-gallery']) {
       const selected = prepareCausalEffectSelection({ preset });

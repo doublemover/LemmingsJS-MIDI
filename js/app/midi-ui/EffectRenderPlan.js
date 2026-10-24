@@ -1,3 +1,4 @@
+import { validateEffectSourceBindings } from './EffectSourceBindings.js';
 import { vocoderBankIdentity, vocoderRealizationKey } from '../../midi/content/VocoderBankProfile.js';
 import { envelopeDetectorIdentity } from '../../midi/content/EnvelopeDetectorProfile.js';
 import { envelopeMappingIdentity } from '../../midi/content/EnvelopeMappingProfile.js';
@@ -26,16 +27,16 @@ export function prepareEffectRenderPlan(definition, sampleRate = 48000, returnNo
 
 // An API execution receipt binds PCM to the same graph and analyzed IR revisions.
 // It does not establish measured latency, acoustic output or browser bit identity.
-export function validateNativeConvolutionRenderReceipt(plan, receipt, graphHash, returnNodeIds) {
+export function validateNativeEffectRenderReceipt(plan, receipt, graphHash, returnNodeIds) {
   const body = receipt?.effectGraph, actual = body?.realization;
-  if (!plan?.impulseCount || receipt?.method !== 'native-offline-audio-context' || body?.hash !== graphHash || !Array.isArray(body.returnNodeIds) ||
+  if (!plan || receipt?.method !== 'native-offline-audio-context' || body?.hash !== graphHash || !Array.isArray(body.returnNodeIds) ||
       body.controls !== 'explicit-authored-defaults-not-replayed-live-gestures' || body.scope !== 'one-full-shared-owner-sum' ||
       canonicalDataText(body.returnNodeIds).text !== canonicalDataText(returnNodeIds).text ||
       actual?.hash !== graphHash || actual.sampleRate !== plan.sampleRate || actual.fault || actual.disposed !== false ||
       actual.stateBytes !== plan.stateBytes || actual.latencyFrames !== plan.latencyFrames || actual.maximumTailFrames !== plan.maximumTailFrames ||
       actual.runtime?.delayRevision !== plan.processingRevisions.delay || actual.runtime?.nonlinearRevision !== plan.processingRevisions.nonlinear || actual.runtime?.alignmentRevision !== plan.processingRevisions.alignment || actual.runtime?.detectorRevision !== (plan.processingRevisions.detector || null) || actual.runtime?.envelopeMappingRevision !== (plan.processingRevisions.envelopeMapping || null) || actual.runtime?.vocoderRevision !== (plan.processingRevisions.vocoder || null) || actual.runtime?.hostRevision !== 'owned-native-effect-host-v2' || actual.initialization?.mode !== 'offline-before-publication' || actual.initialization.confirmed !== true || actual.initialization.completionConfirmed !== true ||
       actual.initialization.completionProtocol !== OFFLINE_EFFECT_COMPLETION_REVISION || !Number.isSafeInteger(receipt.frames) || receipt.frames < 1 || receipt.frames > plan.sampleRate * 150 || actual.initialization.offlineEndFrame !== receipt.frames ||
-      actual.runtime?.convolution !== 'browser-native-unpinned-dsp' || !Array.isArray(actual.impulses) || actual.impulses.length !== plan.impulseCount)
+      actual.runtime?.convolution !== (plan.impulseCount ? 'browser-native-unpinned-dsp' : null) || !Array.isArray(actual.impulses) || actual.impulses.length !== plan.impulseCount)
     fail('native-convolution-receipt-mismatch', 'Native convolution output omitted its exact graph, tap or execution binding.');
   const audible = new Set([...plan.outputs, ...returnNodeIds]);
   for (let changed = true; changed;) { changed = false; for (const edge of plan.edges) if (audible.has(edge.to.nodeId) && !audible.has(edge.from.nodeId)) { audible.add(edge.from.nodeId); changed = true; } }
@@ -52,6 +53,14 @@ export function validateNativeConvolutionRenderReceipt(plan, receipt, graphHash,
     const vocoder = plan.nodes.find(node => node.id === expected.nodeId)?.vocoder;
     if (vocoder && (!processor.vocoderProfile || vocoderRealizationKey(processor.vocoderProfile) !== vocoderRealizationKey(vocoder))) fail('native-vocoder-bank-mismatch', 'The native processor differs from its exact admitted digital filterbank.');
     if (expected.offlineActive) validateOfflineEffectCompletion(processor.completion, { ...expected, sampleRate: plan.sampleRate, endFrame: actual.initialization.offlineEndFrame });
+  }
+  if (plan.sidechainInputs.length) {
+    const bindings = validateEffectSourceBindings(plan, body.sourceBindings);
+    if (!Array.isArray(actual.sidechains) || actual.sidechains.length !== bindings.routes.length) fail('native-sidechain-receipt-mismatch', 'Native rendering omitted its external detector source inventory.');
+    for (const route of bindings.routes) {
+      const actualRoute = actual.sidechains.find(entry => entry.id === route.nodeId);
+      if (!actualRoute || actualRoute.sourceBusId !== route.sourceBusId || actualRoute.tap !== route.tap || actualRoute.inputLayout !== route.layout || actualRoute.connected !== route.available || actualRoute.status !== (route.available ? 'connected' : 'missing')) fail('native-sidechain-receipt-mismatch', 'An external detector source differs from the admitted lane/tap or missing-source policy.');
+    }
   }
   const seen = new Set();
   for (const entry of actual.impulses) {
@@ -75,21 +84,30 @@ export function validateNativeConvolutionRenderReceipt(plan, receipt, graphHash,
   return body;
 }
 
+export const validateNativeConvolutionRenderReceipt = validateNativeEffectRenderReceipt;
+
 export function validateOwnedConvolutionSourceReceipt(manifest) {
   const source = manifest?.sourcePcmProducer, native = manifest?.nativeScheduling?.sourcePcm;
   if (source?.schema !== 'lemmings-causal-source-pcm-receipt/v1' || source.scope !== 'same-owned-source-kernel-full-history-before-native-body-and-crop' ||
       !Number.isSafeInteger(source.frames) || source.frames < 1 || !Number.isSafeInteger(source.channels) || source.channels < 2 || source.channels > 32 || ![44100, 48000, 96000].includes(source.sampleRate) ||
       !Array.isArray(manifest.stems?.laneIds) || !/^[a-f0-9]{64}$/.test(source.applicationBuildId) || !/^[a-f0-9]{64}$/.test(source.sourceCanonicalHash) ||
       source.engineRequirement?.engineVersion !== 1 || !/^[a-f0-9]{64}$/.test(source.engineRequirement?.artifactHash) || !/^[a-f0-9]{64}$/.test(source.engineRequirement?.parameterSchemaHash) || manifest.nativeScheduling?.nativeSourceBackend !== source.engineRequirement?.engineId ||
-      source.frames !== manifest.renderedEndSourceFrame || source.channels !== 2 + manifest.stems.laneIds.length * 2 || source.sampleRate !== manifest.sampleRate ||
+      source.laneIds != null && (!Array.isArray(source.laneIds) || source.laneIds.length > 15 || source.laneIds.some(id => typeof id !== 'string' || !id || id.length > 128) || new Set(source.laneIds).size !== source.laneIds.length || manifest.stems.laneIds.some(id => !source.laneIds.includes(id))) ||
+      source.frames !== manifest.renderedEndSourceFrame || source.channels !== 2 + (source.laneIds || manifest.stems.laneIds).length * 2 || source.sampleRate !== manifest.sampleRate ||
       source.sourceCanonicalHash !== manifest.sourceCanonicalHash || source.applicationBuildId !== manifest.applicationBuildId ||
       canonicalDataText(source.engineRequirement).text !== canonicalDataText(manifest.engineRequirement).text ||
       source.worker?.method !== 'dedicated-worker' || source.worker.kind !== 'render-causal-source-pcm' || source.worker.sourceRevision !== manifest.sourceCanonicalHash ||
       source.worker.executionIdentity?.activeExecution !== 'bound' || source.worker.executionIdentity.buildId !== manifest.applicationBuildId ||
       !Array.isArray(source.planeByteHashes) || source.planeByteHashes.length !== source.channels || source.planeByteHashes.some(hash => !/^[a-f0-9]{64}$/.test(hash)) ||
       !['little-endian', 'big-endian'].includes(source.planeHashByteOrder) || native?.scope !== 'whole-dry-source-history-before-crop' ||
+      source.laneIds != null && canonicalDataText(native.laneIds).text !== canonicalDataText(source.laneIds).text ||
+      source.sourceLaneIds != null && canonicalDataText(native.sourceLaneIds).text !== canonicalDataText(source.sourceLaneIds).text ||
       native.frames !== source.frames || native.channels !== source.channels || native.bytes !== source.frames * source.channels * 4 || native.planeHashByteOrder !== source.planeHashByteOrder ||
       !Array.isArray(native.planeByteHashes) || canonicalDataText(native.planeByteHashes).text !== canonicalDataText(source.planeByteHashes).text)
     fail('owned-convolution-source-receipt-mismatch', 'Native convolution PCM differs from its bound owned-source worker and complete-history input hashes.');
+  if (manifest.effectGraph?.definition && manifest.effectGraph.sourceBindings) {
+    const bindings = manifest.effectGraph.sourceBindings;
+    if (source.sourceLaneIds && canonicalDataText(source.sourceLaneIds).text !== canonicalDataText(bindings.sourceLaneIds).text || bindings.laneIds?.some(id => !(source.laneIds || manifest.stems.laneIds).includes(id))) fail('owned-convolution-sidechain-source-mismatch', 'The owned source receipt omitted or changed its detector source lanes.');
+  }
   return source;
 }

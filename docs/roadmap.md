@@ -2950,3 +2950,38 @@ They remain unrun. Tools Talk stays unavailable until its resolved 12-band bank,
 listening, spectral transfer and device cost are qualified. Live/offline cross-lane
 bus realization is the next routing dependency; neither a kernel foundation nor
 an unexecuted fixture completes #1185 or #1165 acceptance.
+
+
+### Continuation 148 — simultaneous causal donor lane realization (#1163, #1185, #1046)
+
+Causal source planning now separates exported dry stems from internal detector lane
+taps. The owned source pass captures their bounded union once, feeds preallocated
+sidechain samples into the complete shared effect graph, and exports only selected
+stems/returns. Missing and connected-silent sources carry different presence bits;
+followers and vocoder donor/carrier diagnostics retain that distinction. Stored
+filter energy can decay after its input disappears. An explicit stereo-to-mono
+operator supports mono donor banks without silently casting typed ports.
+
+Native source renders now execute every selected effect graph in the actual same
+OfflineAudioContext, including graphs with only owned processors. Trusted upstream
+owner/lane pins activate before native rendering and remain owned through producer
+retirement. For owned-source/native-body staging, source PCM carries a separate
+exact lane-plane inventory including unexported donors. Native analysis taps receive
+those planes without adding another audible lane sum to the already complete master.
+The final native channel budget covers selected WAV stems and shared returns, while
+source history/copy/transfer preflight accounts for internal donor planes separately.
+
+Receipts record the actual source/tap membership, missing status, same-frame clock
+and full-history-before-crop policy. The new sound-only realization has a unity
+owner fader, making its declared pre/post owner taps equivalent; historical live
+mute/solo and effect gestures are explicitly not recreated. The encoding worker
+checks source-plane inventories/hashes, donor membership, native initialization,
+terminal fences and the same immutable application build for all native effects.
+Live owner/cross-lane pre/post tap realization remains separate outstanding work.
+
+Authored production-kernel fixtures compare full causal renders, dry stems, unexported
+donor effects and exact cropped preroll, with no additional semantic onsets. API
+staging fixtures check donor planes independent of exported stems, missing sources,
+route receipt tampering and resource retirement. Additional typed mono-adapter and
+connected-silent/absent source fixtures are authored. All remain unrun, along with
+browser, spectral/listening and performance qualification for the complete backlog.

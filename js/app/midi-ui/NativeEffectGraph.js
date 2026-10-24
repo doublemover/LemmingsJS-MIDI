@@ -1,3 +1,4 @@
+import { validateEffectSourceBindings } from './EffectSourceBindings.js';
 import { VOCODER_BANK_REVISION, vocoderBankIdentity, vocoderRealizationKey } from '../../midi/content/VocoderBankProfile.js';
 import { ENVELOPE_DETECTOR_REVISION, envelopeDetectorIdentity } from '../../midi/content/EnvelopeDetectorProfile.js';
 import { ENVELOPE_MAPPING_REVISION, envelopeMappingIdentity } from '../../midi/content/EnvelopeMappingProfile.js';
@@ -20,7 +21,7 @@ const failure = (code, message) => Object.assign(new Error(message), { name: 'Ef
 // A prepared graph has no connection to a live destination. The owner decides
 // when inputs/outputs become audible and owns all transition/tail overlap.
 export async function prepareNativeEffectGraph(definition, { context, resources, owner, generation = 0, signal, isCurrent = () => true,
-  getMaterialProvider = null, resolveSidechainSource = null, jobs, createWorkletNode = (ctx, name, options) => new globalThis.AudioWorkletNode(ctx, name, options), onFault = () => {}, initializationTimeoutMs = 5000, offlineEndFrame = null, offlineReturnNodeIds = [], retireOfflineContext = null } = {}) {
+  getMaterialProvider = null, resolveSidechainSource = null, jobs, createWorkletNode = (ctx, name, options) => new globalThis.AudioWorkletNode(ctx, name, options), onFault = () => {}, initializationTimeoutMs = 5000, offlineEndFrame = null, offlineReturnNodeIds = [], offlineSourceBindings = null, retireOfflineContext = null } = {}) {
   const guard = () => { signal?.throwIfAborted(); if (!isCurrent() || context?.state === 'closed') throw failure('stale-effect-graph', 'The effect graph request no longer belongs to this context.'); };
   guard();
   if (!context?.createGain || !resources?.reserve || typeof createWorkletNode !== 'function' || typeof onFault !== 'function' || resolveSidechainSource !== null && typeof resolveSidechainSource !== 'function' ||
@@ -32,6 +33,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
   let plan, hash, storage = null, preparationError = null;
   try {
     plan = prepareEffectGraphRevision(definition, { sampleRate: context.sampleRate }); hash = await effectGraphHash(plan); guard();
+    if (offline && plan.sidechainInputs.length) validateEffectSourceBindings(plan, offlineSourceBindings);
     storage = resources.reserve({ kind: 'effects-graph', owner, generation, bytes: plan.stateBytes, estimateBytes: plan.nativeNodeEstimateBytes + 1048576, consumerOwned: true });
   } catch (caught) { preparationError = caught; }
   const preparationScope = createProcgenRetirementScope();
@@ -40,7 +42,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
   if (prepared.outcome !== 'complete') throw Object.assign(failure('effect-preparation-retirement', 'Effect metadata preparation retirement is unresolved.'), { cause: preparationError, retirement: prepared });
   if (preparationError) throw preparationError;
   const scope = createProcgenRetirementScope({ deadlineMs: offline ? 180000 + initializationTimeoutMs : initializationTimeoutMs + 1000 }), nodes = [], processors = [], impulses = [], instances = new Map(), nodeOutputs = new Map(), inputs = new Map(), outputs = new Map(), sidechainInputs = new Map();
-  let disposed = false, fault = null, controlSequence = 0, initializationConfirmed = false, offlineCompletionConfirmed = false, sidechainsActivated = false, lastInspectionTime = -Infinity;
+  let disposed = false, fault = null, controlSequence = 0, initializationConfirmed = false, offlineCompletionConfirmed = false, sidechainsActivated = false, lastInspectionTime = -Infinity, refreshSourcePresence = () => {};
   const audible = new Set([...plan.outputs, ...offlineReturnNodeIds]);
   for (let changed = true; changed;) { changed = false; for (const edge of plan.edges) if (audible.has(edge.to.nodeId) && !audible.has(edge.from.nodeId)) { audible.add(edge.from.nodeId); changed = true; } }
   const sidechainBindings = new Map(plan.sidechainInputs.map(id => [id, { id, pin: null, unsubscribe: null, connected: false, status: 'unbound' }]));
@@ -48,8 +50,19 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     if (binding.connected) { binding.pin.node.disconnect(sidechainInputs.get(binding.id)); binding.connected = false; }
     binding.status = 'disconnected';
   };
-  const deactivateSidechains = () => { for (const binding of sidechainBindings.values()) disconnectSidechain(binding); sidechainsActivated = false; };
+  const deactivateSidechains = () => { for (const binding of sidechainBindings.values()) disconnectSidechain(binding); sidechainsActivated = false; refreshSourcePresence(); };
   const controls = new Map(), gainControls = new Map(), parameterControls = new Map(), execution = getActiveExecutionIdentity('browser-native-audio');
+  const initialPresence = new Map();
+  if (offline) for (const entry of plan.nodes) {
+    const has = port => plan.edges.some(edge => edge.to.nodeId === entry.id && (!port || edge.to.port === port) && initialPresence.get(edge.from.nodeId));
+    initialPresence.set(entry.id, entry.kind === 'bus-in' || entry.kind === 'sidechain-in' ? entry.kind === 'bus-in' || offlineSourceBindings.routes.find(route => route.nodeId === entry.id).available :
+      ['feedback-delay', 'nonlinear-chain', 'convolution-native', 'multiband-vocoder'].includes(entry.kind) || has(null));
+  }
+  const sourceSeed = entry => {
+    if (!offline) return {};
+    const has = port => plan.edges.some(edge => edge.to.nodeId === entry.id && edge.to.port === port && initialPresence.get(edge.from.nodeId));
+    return entry.kind === 'envelope-detector' ? { sourceAvailable: has('audio') } : entry.kind === 'multiband-vocoder' ? { donorAvailable: has('donorAudio'), carrierAvailable: has('carrierAudio') } : {};
+  };
   const node = value => { nodes.push(value); return value; };
   const dispose = () => scope.retire([{ name: 'effect-native-retirement', run: async () => {
     disposed = true;
@@ -86,7 +99,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
   const prepareProcessor = async (entry, { processorName, parameterData = {}, processorOptions = {}, revision, configurationKey = null, inputChannels = 2, outputChannels = 2, numberOfInputs = 1, realizationKey = null }) => {
     guard();
     const value = node(createWorkletNode(context, processorName, { numberOfInputs, numberOfOutputs: 1, outputChannelCount: [outputChannels], channelCount: inputChannels, channelCountMode: 'explicit', parameterData,
-      processorOptions: { ...processorOptions, ...(offline ? { offlineEndFrame } : {}) } }));
+      processorOptions: { ...processorOptions, ...sourceSeed(entry), ...(offline ? { offlineEndFrame } : {}) } }));
     let resolveReady, rejectReady, resolveDisposed, rejectDisposed, resolveComplete, rejectComplete;
     let readyTimer = null, completeTimer = null, retireTimer = null, readySettled = false, completeSettled = false;
     const ready = new Promise((resolve, reject) => { resolveReady = resolve; rejectReady = reject; }); ready.catch(() => {});
@@ -163,6 +176,8 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
           configurationKey: detector ? envelopeDetectorIdentity(entry.detector) : envelopeMappingIdentity(entry.mapping, context.sampleRate),
           inputChannels: detector && entry.parameters.inputLayout === 'audioStereo' ? 2 : 1, outputChannels: 1,
           processorOptions: { parameters: entry.parameters, sourceEpoch: generation } });
+      } else if (entry.kind === 'stereo-to-mono') {
+        value = node(context.createGain()); value.channelCount = 1; value.channelCountMode = 'explicit'; value.channelInterpretation = 'speakers';
       } else if (entry.kind === 'mono-to-stereo') {
         value = node(context.createGain()); value.channelCount = 1; value.channelCountMode = 'explicit'; value.channelInterpretation = 'discrete';
         const copy = node(context.createChannelMerger(2)); value.connect(copy, 0, 0); value.connect(copy, 0, 1); outputValue = copy;
@@ -225,6 +240,18 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     controls.set(nodeId, Object.freeze(next));
     return Object.freeze({ status: 'accepted', stage: 'native-control-submitted', nodeId, targetFrame, sequence: ++controlSequence, graphDefinitionHash: hash, appliedFrame: null, acousticReceipt: false });
   };
+  refreshSourcePresence = () => {
+    const present = new Map();
+    for (const entry of plan.nodes) {
+      const incoming = plan.edges.filter(edge => edge.to.nodeId === entry.id), has = port => incoming.some(edge => (!port || edge.to.port === port) && present.get(edge.from.nodeId));
+      if (entry.kind === 'envelope-detector') processors.find(processor => processor.nodeId === entry.id).node.port.postMessage({ type: 'source-status', sourceEpoch: generation, present: has('audio') });
+      if (entry.kind === 'multiband-vocoder') for (const [port, role] of [['donorAudio', 'donor'], ['carrierAudio', 'carrier']])
+        processors.find(processor => processor.nodeId === entry.id).node.port.postMessage({ type: 'source-status', sourceEpoch: generation, role, present: has(port) });
+      present.set(entry.id, entry.kind === 'bus-in' || entry.kind === 'sidechain-in' ? entry.kind === 'bus-in' || sidechainBindings.get(entry.id).connected :
+        ['feedback-delay', 'nonlinear-chain', 'convolution-native', 'multiband-vocoder'].includes(entry.kind) || has(null));
+    }
+  };
+  if (!offline) refreshSourcePresence();
   const activateSidechains = async () => {
     guard(); if (disposed || sidechainsActivated) return;
     for (const binding of sidechainBindings.values()) {
@@ -239,16 +266,16 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
       if (!pin.isActive()) { binding.status = 'stale'; continue; }
       pin.node.connect(sidechainInputs.get(binding.id)); binding.connected = true; binding.status = 'connected';
       binding.unsubscribe = pin.onUnavailable?.(() => {
-        if (!disposed && binding.pin === pin) { try { disconnectSidechain(binding); binding.status = 'missing'; } catch (caught) { fault ||= caught; try { onFault(caught); } catch {} } }
+        if (!disposed && binding.pin === pin) { try { disconnectSidechain(binding); binding.status = 'missing'; refreshSourcePresence(); } catch (caught) { fault ||= caught; try { onFault(caught); } catch {} } }
       }) || null;
       if (!pin.isActive()) { disconnectSidechain(binding); binding.status = 'stale'; }
     }
-    sidechainsActivated = true;
+    sidechainsActivated = true; refreshSourcePresence();
   };
   const requestInspection = () => {
     if (disposed || context.state !== 'running' || context.currentTime - lastInspectionTime < 0.25) return false;
     lastInspectionTime = context.currentTime;
-    for (const binding of sidechainBindings.values()) if (binding.connected && !binding.pin.isActive()) { disconnectSidechain(binding); binding.status = 'stale'; }
+    for (const binding of sidechainBindings.values()) if (binding.connected && !binding.pin.isActive()) { disconnectSidechain(binding); binding.status = 'stale'; refreshSourcePresence(); }
     for (const entry of processors) entry.node.port.postMessage({ type: 'inspect' });
     return true;
   };

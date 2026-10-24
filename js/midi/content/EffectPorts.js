@@ -11,6 +11,7 @@ export function describeEffectNodePorts(kind, parameters = {}) {
   else if (kind === 'envelope-detector') { inputs = { audio: audio(parameters.inputLayout) }; outputs = { envelope: envelope() }; }
   else if (kind === 'envelope-mapping') { inputs = { envelope: envelope() }; outputs = { modulation: modulation() }; }
   else if (kind === 'modulated-gain') inputs = { audio: audio(), gain: modulation() };
+  else if (kind === 'stereo-to-mono') outputs = { audio: audio('audioMono') };
   else if (kind === 'mono-to-stereo') inputs = { audio: audio('audioMono') };
   const legacy = ports => { const port = Object.values(ports)[0]; return !port ? null : port.type; };
   return { input: legacy(inputs), output: legacy(outputs), inputs, outputs };

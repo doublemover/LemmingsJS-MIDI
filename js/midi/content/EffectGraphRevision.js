@@ -27,7 +27,7 @@ export function prepareEffectGraphRevision(raw, { sampleRate = 48000, maxStateBy
   const nodes = new Map(), incoming = new Map(), outgoing = new Map(); let stateBytes = 0, impulseCount = 0, impulseDecodedBytes = 0, impulseNativeEstimateBytes = 0, nonlinearCount = 0;
   for (const entry of graph.nodes) {
     keys(entry, ['id', 'kind', 'parameters', 'impulse']);
-    if (!id(entry.id) || nodes.has(entry.id) || !['bus-in', 'bus-out', 'gain', 'feedback-delay', 'convolution-native', 'nonlinear-chain', 'sidechain-in', 'envelope-detector', 'envelope-mapping', 'modulated-gain', 'mono-to-stereo', 'multiband-vocoder'].includes(entry.kind)) fail('Unknown, duplicate or unsupported effect processor.');
+    if (!id(entry.id) || nodes.has(entry.id) || !['bus-in', 'bus-out', 'gain', 'feedback-delay', 'convolution-native', 'nonlinear-chain', 'sidechain-in', 'envelope-detector', 'envelope-mapping', 'modulated-gain', 'mono-to-stereo', 'stereo-to-mono', 'multiband-vocoder'].includes(entry.kind)) fail('Unknown, duplicate or unsupported effect processor.');
     if (entry.kind !== 'convolution-native' && entry.impulse != null) fail('Only a convolution processor accepts an impulse descriptor.');
     let parameters, impulse = null, nonlinear = null, detector = null, mapping = null, vocoder = null, maximumTailFrames = 0, bytes = 0, processingLatencyFrames = 0;
     if (entry.kind === 'sidechain-in') {

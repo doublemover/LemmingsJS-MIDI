@@ -1,3 +1,4 @@
+import { prepareEffectSourceBindings, createEffectSourceSampler } from './EffectSourceBindings.js';
 import { prepareNativeSamplePlan, sampleRegionRate, nativeSampleReleaseFrames } from './NativeSamplePlan.js';
 import { getNativeOfflineProfile, NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineProfile.js';
 import { RECEIPT_WIDTH, BEGIN, UPDATE, END, APPLIED, REJECTED, FAULTED, CANCELLED } from './worklet/OwnedSineProcessor.js';
@@ -203,10 +204,13 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
     if (selected < 0) throw failure('intent-voice-capacity', 'The selected patch cannot realize every captured onset without dropping a voice.', { intentId: voice.begin.intentId });
     voice.slot = selected; voice.token = ++tokens[selected]; slots[selected] = voice; peakVoices = Math.max(peakVoices, occupied + 1);
   }
+  const effectSourceBindings = effectPlan ? prepareEffectSourceBindings(effectPlan, [...lanes]) : null;
+  const captureLaneIds = Object.freeze([...new Set([...stemLaneIds, ...(effectSourceBindings?.laneIds || [])])]);
+  if (!NATIVE_OFFLINE_SOURCE_IDS.includes(owned.id) && captureLaneIds.length > 16) throw failure('sidechain-tap-capacity', 'Choose at most sixteen combined exported and detector source lanes.');
   events.sort((left, right) => left.frame - right.frame || left.order - right.order);
   return { owned, sourcePCM, pcmDescriptor, planningBytes, sourceControls, patch, parameters, events, voices, source: revoice, descriptor, applicationBuildId, sampleRate, firstFrame, endFrame, outputEnd, outputFrames,
     sourceOriginMs, startSeconds, endSeconds, tail, releaseFrames, articulation, derivedReleases, capturedBegins, capturedUpdates, capturedEnds, peakVoices, stemLaneIds, lanes, pcmBytes,
-    effectPlan, effectReturnNodeIds, effectHash: effectPlan ? await effectGraphHash(effectPlan) : null, effectTailTruncated: !!effectPlan && tail.mode !== 'exact-crop' && naturalEnd > outputEnd,
+    effectPlan, effectSourceBindings, captureLaneIds, effectReturnNodeIds, effectHash: effectPlan ? await effectGraphHash(effectPlan) : null, effectTailTruncated: !!effectPlan && tail.mode !== 'exact-crop' && naturalEnd > outputEnd,
     timing: { ...timing.receipt(), sourceTimelineHash: timing.sourceTimeline ? await hashData(timing.sourceTimeline, { maxBytes: 1048576, maxNodes: 65536 }) : null },
     definitionHash: await hashData(definition), intentHash: await hashData(revoice.intents, { maxBytes: 8 * 1048576, maxNodes: 1000000 }) };
 }
@@ -220,8 +224,8 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
   const sourcePhase = input.outputMode === 'source-pcm';
   if (input.outputMode != null && !sourcePhase) throw failure('render-output-mode', 'Choose an explicit supported source output phase.');
   signal?.throwIfAborted(); const plan = await planCausalOwnedRender({ ...input, maxPlanningBytes: maxWorkingBytes, signal, yieldControl }, { nativeConvolution: sourcePhase, nativeOwnedProcessors: sourcePhase }); signal?.throwIfAborted();
-  if (sourcePhase && (!plan.effectPlan?.impulseCount || plan.stemLaneIds.length + plan.effectReturnNodeIds.length > 15)) throw failure('native-convolution-source-profile', 'A source PCM stage requires an actual native body and at most fifteen combined stereo taps.');
-  const sourcePcmBytes = sourcePhase ? plan.outputEnd * (1 + plan.stemLaneIds.length) * 8 : 0;
+  if (sourcePhase && (!plan.effectPlan?.impulseCount || plan.stemLaneIds.length + plan.effectReturnNodeIds.length > 15 || plan.captureLaneIds.length > 15)) throw failure('native-convolution-source-profile', 'A source PCM stage requires an actual native body and at most fifteen combined stereo taps.');
+  const sourcePcmBytes = sourcePhase ? plan.outputEnd * (1 + plan.captureLaneIds.length) * 8 : 0;
   if (sourcePhase && (!natural(sourcePcmBytes) || sourcePcmBytes > 56 * 1048576)) throw failure('source-pcm-capacity', 'Complete source history exceeds the bounded native convolution PCM profile.');
   const stateCut = input.restorationMode === 'owned-state-cut';
   if (input.restorationMode != null && !['forward-preroll', 'owned-state-cut'].includes(input.restorationMode)) throw failure('restore-mode-unavailable', 'Choose a supported owned-source restoration mode.');
@@ -229,7 +233,8 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
   const effectWorkspace = plan.effectPlan && !sourcePhase ? plan.effectPlan.stateBytes + 4 * 1048576 : 0;
   const requiredBytes = (sourcePhase ? sourcePcmBytes : plan.pcmBytes) * 4 + plan.planningBytes + 24 * 1048576 + cutWorkspace + effectWorkspace;
   if (!natural(maxWorkingBytes) || requiredBytes > maxWorkingBytes) throw failure('render-memory-capacity', 'PCM, encoding, command and transfer overlap exceed the admitted render workspace.');
-  const { sampleRate, outputFrames, outputEnd, firstFrame, endFrame, events, stemLaneIds } = plan;
+  const { sampleRate, outputFrames, outputEnd, firstFrame, endFrame, events, stemLaneIds, captureLaneIds } = plan;
+  const renderedLaneIds = sourcePhase ? captureLaneIds : stemLaneIds;
   const WIDTH = plan.owned.width;
   let kernel = await createOwnedControlKernel(plan.owned, sampleRate, plan.patch.voicePolicy.maxVoices, { signal, yieldControl, pcm: plan.sourcePCM });
   const effects = plan.effectPlan && !sourcePhase ? await createOwnedEffectGraphKernel({ definition: plan.effectPlan.definition, sampleRate, returnNodeIds: plan.effectReturnNodeIds }) : null;
@@ -237,10 +242,12 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
   let transfer = stateCut ? new Uint8Array(kernel.stateByteLength()) : null, stateReceipt = null;
   if (transfer && transfer.byteLength * 2 > cutWorkspace) throw failure('restore-memory-capacity', 'The exact source cut exceeds its admitted transfer and clone workspace.');
   const captureFirstFrame = sourcePhase ? 0 : firstFrame;
-  const planes = sourcePhase ? Array.from({ length: 2 + stemLaneIds.length * 2 }, () => new Float32Array(outputEnd)) : null;
-  const pcm = Array.from({ length: stemLaneIds.length + (sourcePhase ? 0 : plan.effectReturnNodeIds.length) + 1 }, () => sourcePhase ? null : new Uint8Array(outputFrames * 8));
+  const planes = sourcePhase ? Array.from({ length: 2 + captureLaneIds.length * 2 }, () => new Float32Array(outputEnd)) : null;
+  const pcm = Array.from({ length: renderedLaneIds.length + (sourcePhase ? 0 : plan.effectReturnNodeIds.length) + 1 }, () => sourcePhase ? null : new Uint8Array(outputFrames * 8));
   const views = sourcePhase ? null : pcm.map(bytes => new DataView(bytes.buffer)), left = new Float32Array(128), right = new Float32Array(128);
-  const stemChannels = stemLaneIds.map(() => [new Float32Array(128), new Float32Array(128)]), routes = new Int8Array(plan.owned.voices); routes.fill(-1);
+  const stemChannels = captureLaneIds.map(() => [new Float32Array(128), new Float32Array(128)]), routes = new Int8Array(plan.owned.voices); routes.fill(-1);
+  const selectedStemChannels = renderedLaneIds.map(id => stemChannels[captureLaneIds.indexOf(id)]);
+  const sourceSampler = effects && plan.effectSourceBindings.routes.length ? createEffectSourceSampler(plan.effectSourceBindings, captureLaneIds, stemChannels) : null;
   const returnChannels = (sourcePhase ? [] : plan.effectReturnNodeIds).map(() => [new Float32Array(128), new Float32Array(128)]);
   const statistics = pcm.map(() => ({ peak: 0, squares: 0, overFullScaleSamples: 0 }));
   const packet = new Float64Array(WIDTH); let cursor = 0, sequence = 0, applied = 0, blocks = 0, packetSequence = 0;
@@ -263,7 +270,7 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
     while (cursor < events.length && events[cursor].frame <= frame) {
       const event = events[cursor++], voice = event.voice;
       if (event.frame >= outputEnd) break;
-      if (event.kind === 'begin') routes[voice.slot] = stemLaneIds.indexOf(voice.laneId);
+      if (event.kind === 'begin') routes[voice.slot] = captureLaneIds.indexOf(voice.laneId);
       packet.fill(0); packet[0] = 1; packet[1] = event.frame; packet[2] = ++sequence; packet[3] = event.kind === 'begin' ? BEGIN : event.kind === 'update' ? UPDATE : END;
       packet[4] = voice.slot; packet[5] = voice.token; packet[17] = 1;
       for (const [field, value] of Object.entries(event.values)) packet[Number(field)] = value;
@@ -275,11 +282,11 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
     const taps = stemChannels.length ? { routes, channels: count === 128 ? stemChannels : stemChannels.map(channels => channels.map(channel => channel.subarray(0, count))) } : null;
     kernel.render(a, b, frame, taps); checkReceipts();
     if (effects) for (let index = 0; index < count; index++) {
-      effects.sample(a[index], b[index]); a[index] = effects.leftSample; b[index] = effects.rightSample;
+      effects.sample(a[index], b[index], sourceSampler?.fill(a[index], b[index], index) ?? null, sourceSampler?.present ?? null); a[index] = effects.leftSample; b[index] = effects.rightSample;
       for (let tap = 0; tap < returnChannels.length; tap++) { returnChannels[tap][0][index] = effects.tapSamples[tap * 2]; returnChannels[tap][1][index] = effects.tapSamples[tap * 2 + 1]; }
     }
     for (let index = Math.max(0, captureFirstFrame - frame); index < count; index++) for (let file = 0; file < pcm.length; file++) for (let channel = 0; channel < 2; channel++) {
-      const value = file === 0 ? channel ? b[index] : a[index] : file <= stemLaneIds.length ? stemChannels[file - 1][channel][index] : returnChannels[file - 1 - stemLaneIds.length][channel][index];
+      const value = file === 0 ? channel ? b[index] : a[index] : file <= renderedLaneIds.length ? selectedStemChannels[file - 1][channel][index] : returnChannels[file - 1 - renderedLaneIds.length][channel][index];
       if (!Number.isFinite(value)) throw failure('nonfinite-pcm', 'The render produced a nonfinite sample.');
       const stats = statistics[file]; stats.peak = Math.max(stats.peak, Math.abs(value)); stats.squares += value * value; if (Math.abs(value) > 1) stats.overFullScaleSamples++;
       if (sourcePhase) planes[file * 2 + channel][frame + index] = value;
@@ -297,7 +304,7 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
     restoration: { mode: stateCut ? 'forward-preroll-and-owned-state-cut' : 'deterministic-preroll', stateCut: stateReceipt, fromSourceFrame: 0, prerollFrames: firstFrame, initialVoices: 0, maxHistorySeconds: MAX_SECONDS },
     tail: { mode: plan.tail.mode, maxSeconds: plan.tail.maxSeconds ?? 4, derivedBoundaryReleases: plan.derivedReleases, truncated: kernel.active.some(Boolean) || plan.effectTailTruncated, effectTailBoundFrames: plan.effectPlan?.maximumTailFrames ?? 0 },
     effectGraph: plan.effectPlan ? { definition: plan.effectPlan.definition, hash: plan.effectHash, processingRevisions: plan.effectPlan.processingRevisions, latencyFrames: plan.effectPlan.latencyFrames,
-      maximumTailFrames: plan.effectPlan.maximumTailFrames, controls: 'explicit-authored-defaults-not-replayed-live-gestures', scope: 'one-full-shared-owner-sum', ...(effects ? { realization: effects.diagnostics() } : {}) } : null,
+      maximumTailFrames: plan.effectPlan.maximumTailFrames, sourceBindings: plan.effectSourceBindings, controls: 'explicit-authored-defaults-not-replayed-live-gestures', scope: 'one-full-shared-owner-sum', ...(effects ? { realization: effects.diagnostics() } : {}) } : null,
     definitionHash: plan.definitionHash, patchId: plan.patch.id, patchRevision: plan.patch.revision, engineRequirement: { engineId: plan.descriptor.engineId,
       engineVersion: plan.descriptor.engineVersion, artifactHash: plan.descriptor.artifactHash, parameterSchemaHash: plan.descriptor.parameterSchemaHash }, applicationBuildId: plan.applicationBuildId,
     commands: { capturedBegins: plan.capturedBegins, capturedUpdates: plan.capturedUpdates, capturedEnds: plan.capturedEnds, derivedReleases: plan.derivedReleases, submitted: sequence, applied, peakVoices: plan.peakVoices },
@@ -316,7 +323,7 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
     for (const [index, plane] of planes.entries()) { signal?.throwIfAborted(); planeByteHashes.push(await digest(new Uint8Array(plane.buffer)));
       onProgress({ phase: 'hashing-causal-source-pcm', completedUnits: index + 1, totalUnits: planes.length }); await yieldControl(); }
     const endian = new Uint32Array([0x01020304]);
-    return { schema: 'lemmings-causal-source-pcm/v1', manifest: common, frames: outputEnd, channels: planes.length, sampleRate, planes,
+    return { schema: 'lemmings-causal-source-pcm/v1', manifest: common, frames: outputEnd, channels: planes.length, sampleRate, planes, laneIds: captureLaneIds, sourceLaneIds: Object.freeze([...plan.lanes].sort()),
       planeByteHashes, planeHashByteOrder: new Uint8Array(endian.buffer)[0] === 4 ? 'little-endian' : 'big-endian',
       scope: 'complete-dry-owned-source-history-awaiting-native-body-not-a-final-render' };
   }

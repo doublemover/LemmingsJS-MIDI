@@ -255,10 +255,10 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     if (catalog.state !== 'bound-application-engines' || !descriptor || !(['native-oscillator', 'native-fm', 'native-modal', 'native-sample'].includes(descriptor.engineId) || input.mode === 'causal-take' && ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(descriptor.engineId)) ||
         !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => requirement?.[key] === descriptor[key]) || input.manifest.applicationBuildId !== catalog.executionIdentity.buildId)
       throw problem('engine-identity-unbound', 'Native encoding requires the same immutable application and source artifact.');
-    if (input.manifest.effectGraph?.definition?.nodes?.some(node => node.kind === 'convolution-native')) {
+    if (input.manifest.nativeScheduling?.effectGraph || input.manifest.effectGraph?.definition?.nodes?.some(node => node.kind === 'convolution-native')) {
       const host = input.manifest.nativeScheduling?.effectGraph?.realization?.runtime;
       if (host?.activeExecution !== 'bound' || host.applicationBuildId !== catalog.executionIdentity.buildId || host.hostRevision !== 'owned-native-effect-host-v2')
-        throw problem('engine-identity-unbound', 'Native convolution preparation must execute the same immutable application as its encoding worker.');
+        throw problem('engine-identity-unbound', 'Native effect preparation must execute the same immutable application as its encoding worker.');
     }
     const value = await encodeNativeOfflineRender(input, { signal, yieldControl, onProgress, maxWorkingBytes: estimatedPeakBytes }); guard(signal, current);
     const retainedBytes = value.files ? value.files.reduce((sum, file) => sum + file.bytes.byteLength * 2 + 262144, 262144) : value.bytes.byteLength * 2 + 262144;

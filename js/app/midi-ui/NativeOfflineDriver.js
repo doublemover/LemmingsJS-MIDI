@@ -1,3 +1,4 @@
+import { prepareEffectSourceBindings } from './EffectSourceBindings.js';
 import { OWNED_SOURCE_IDS } from './OwnedSourceProfiles.js';
 import { NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineProfile.js';
 export { NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineProfile.js';
@@ -9,7 +10,7 @@ import { workloadVoiceCount, inspectVoiceInterval, inspectVoiceExtensions } from
 import { createAudioIntervalAdmission, audioIntervalStorageBytes } from './AudioIntervalAdmission.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 import { prepareNativeEffectGraph } from './NativeEffectGraph.js';
-import { prepareEffectRenderPlan, validateNativeConvolutionRenderReceipt } from './EffectRenderPlan.js';
+import { prepareEffectRenderPlan, validateNativeEffectRenderReceipt } from './EffectRenderPlan.js';
 import { backgroundWorkerAdmission } from '../resources/BackgroundWorkerAdmission.js';
 
 const failure = (code, message, detail = {}) => Object.assign(new Error(message), { name: 'NativeOfflineRenderError', code, ...detail });
@@ -24,12 +25,14 @@ export async function renderNativeOfflineGraph({ patch, events, frames, sampleRa
   externalSignal?.throwIfAborted();
   if (!Array.isArray(effectReturnNodeIds)) throw failure('native-effect-profile', 'Native effect taps must be an explicit bounded array.');
   const effectPlan = effectGraph ? prepareEffectRenderPlan(effectGraph, sampleRate, effectReturnNodeIds, { nativeConvolution: true, nativeOwnedProcessors: true }) : null;
-  if (effectPlan && !effectPlan.impulseCount || !effectPlan && effectReturnNodeIds.length) throw failure('native-effect-profile', 'This native source adapter expects an explicit convolution graph or no native effects.');
+  if (!effectPlan && effectReturnNodeIds.length) throw failure('native-effect-profile', 'Native effect return taps require an explicit effect graph.');
+  const sourcePcmLaneIds = sourcePcm?.laneIds ?? stemLaneIds;
   const sourceBytes = Array.isArray(sourcePcm?.planes) && sourcePcm.planes.length <= 32 ? sourcePcm.planes.reduce((sum, plane) => sum + (plane?.byteLength || 0), 0) : 0;
   if (sourcePcm != null) {
     if (!OWNED_SOURCE_IDS.includes(patch?.engineId) || !effectPlan?.impulseCount || !sourcePcm || Object.getPrototypeOf(sourcePcm) !== Object.prototype ||
-        Object.keys(sourcePcm).some(key => !['planes', 'frames', 'channels', 'sampleRate', 'planeByteHashes', 'planeHashByteOrder'].includes(key)) ||
-        sourcePcm.frames !== frames || sourcePcm.sampleRate !== sampleRate || sourcePcm.channels !== 2 + stemLaneIds.length * 2 ||
+        Object.keys(sourcePcm).some(key => !['planes', 'frames', 'channels', 'sampleRate', 'planeByteHashes', 'planeHashByteOrder', 'laneIds', 'sourceLaneIds'].includes(key)) ||
+        sourcePcm.frames !== frames || sourcePcm.sampleRate !== sampleRate || !Array.isArray(sourcePcmLaneIds) || sourcePcmLaneIds.length > 15 || new Set(sourcePcmLaneIds).size !== sourcePcmLaneIds.length || sourcePcmLaneIds.some(id => typeof id !== 'string' || !id || id.length > 128) ||
+        stemLaneIds.some(id => !sourcePcmLaneIds.includes(id)) || sourcePcm.channels !== 2 + sourcePcmLaneIds.length * 2 ||
         !Array.isArray(sourcePcm.planes) || sourcePcm.planes.length > 32 || sourcePcm.planes.length !== sourcePcm.channels || sourcePcm.planes.some(plane => !(plane instanceof Float32Array) || !(plane.buffer instanceof ArrayBuffer) || plane.length !== frames || plane.byteOffset || plane.buffer.byteLength !== plane.byteLength) ||
         new Set(sourcePcm.planes.map(plane => plane.buffer)).size !== sourcePcm.channels || !natural(sourceBytes) || sourceBytes < 1 || sourceBytes > 56 * 1048576 ||
         !Array.isArray(sourcePcm.planeByteHashes) || sourcePcm.planeByteHashes.length !== sourcePcm.channels || sourcePcm.planeByteHashes.some(hash => !/^[a-f0-9]{64}$/.test(hash)) ||
@@ -54,6 +57,8 @@ export async function renderNativeOfflineGraph({ patch, events, frames, sampleRa
       throw failure('native-event-preflight', 'Native scheduling needs ordered explicit frame targets and the complete release interval for every onset.');
     prior = event.frame;
   }
+  const sourceLaneIds = sourcePcm ? sourcePcm.sourceLaneIds ?? sourcePcmLaneIds : [...new Set(events.filter(event => event.kind === 'begin').map(event => String(event.laneId ?? 'unassigned')))];
+  const effectSourceBindings = prepareEffectSourceBindings(effectPlan, sourceLaneIds);
   const sourceSelections = [], selectionLimit = 64; let selectedOnsets = 0;
   const owner = 'native-offline-' + (++nextOwner), nodes = [], scope = createProcgenRetirementScope();
   const controller = new AbortController(), signal = controller.signal;
@@ -113,7 +118,12 @@ export async function renderNativeOfflineGraph({ patch, events, frames, sampleRa
     const merger = node(context.createChannelMerger(channels)), master = node(context.createGain()), splitter = node(context.createChannelSplitter(2));
     merger.channelInterpretation = 'discrete'; merger.connect(context.destination);
     if (effectPlan) {
-      effects = await prepareNativeEffectGraph(effectPlan.definition, { context, resources, owner, signal, isCurrent, getMaterialProvider, jobs, offlineEndFrame: frames, offlineReturnNodeIds: effectReturnNodeIds, retireOfflineContext, createWorkletNode, initializationTimeoutMs: effectInitializationTimeoutMs }); guard();
+      effects = await prepareNativeEffectGraph(effectPlan.definition, { resolveSidechainSource: request => {
+        const route = effectSourceBindings.routes.find(route => route.sourceBusId === request.sourceBusId && route.tap === request.tap);
+        if (!route?.available) return null;
+        return { node: route.laneId === null ? master : channelFor(route.laneId).gain, context, owner, generation: request.generation, sourceBusId: request.sourceBusId, tap: request.tap, layout: request.inputLayout, stage: 'upstream-owner-effects',
+          isActive: () => context.state !== 'closed' && !signal.aborted, release() {} };
+      }, context, resources, owner, signal, isCurrent, getMaterialProvider, jobs, offlineEndFrame: frames, offlineReturnNodeIds: effectReturnNodeIds, offlineSourceBindings: effectSourceBindings, retireOfflineContext, createWorkletNode, initializationTimeoutMs: effectInitializationTimeoutMs }); guard();
       master.connect(effects.getInput(effectPlan.inputs[0])); effects.getOutput(effectPlan.outputs[0]).connect(splitter);
       for (const [index, id] of effectReturnNodeIds.entries()) {
         const tap = node(context.createChannelSplitter(2)), output = effects.getNodeOutput(id);
@@ -126,7 +136,7 @@ export async function renderNativeOfflineGraph({ patch, events, frames, sampleRa
     const channelFor = lane => {
       const id = String(lane ?? 'unassigned'); if (laneNodes.has(id)) return laneNodes.get(id);
       if (laneNodes.size >= 128) throw failure('native-lane-capacity', 'The native graph exceeds 128 captured lane owners.');
-      const gain = node(context.createGain()); gain.connect(master);
+      const gain = node(context.createGain()); if (!sourcePcm) gain.connect(master);
       const index = stemLaneIds.indexOf(id);
       if (index >= 0) { const tap = node(context.createChannelSplitter(2)); gain.connect(tap); tap.connect(merger, 0, 2 + index * 2); tap.connect(merger, 1, 3 + index * 2); }
       const channel = { gain }; laneNodes.set(id, channel); return channel;
@@ -166,12 +176,15 @@ export async function renderNativeOfflineGraph({ patch, events, frames, sampleRa
       const split = node(context.createChannelSplitter(sourcePcm.channels)), stereo = node(context.createChannelMerger(2));
       sourceNode.channelInterpretation = 'discrete'; split.channelInterpretation = 'discrete'; stereo.channelInterpretation = 'discrete';
       sourceNode.connect(split); split.connect(stereo, 0, 0); split.connect(stereo, 1, 1); stereo.connect(master);
-      for (let tap = 0; tap < stemLaneIds.length; tap++) { split.connect(merger, 2 + tap * 2, 2 + tap * 2); split.connect(merger, 3 + tap * 2, 3 + tap * 2); }
+      for (let tap = 0; tap < sourcePcmLaneIds.length; tap++) {
+        const lane = node(context.createChannelMerger(2)); lane.channelInterpretation = 'discrete'; split.connect(lane, 2 + tap * 2, 0); split.connect(lane, 3 + tap * 2, 1); lane.connect(channelFor(sourcePcmLaneIds[tap]).gain);
+      }
       sourceNode.start(0); sourceStarted = true;
     }
     // IR analysis is a separate admitted worker operation. Acquire native
     // execution only after preparation so two native renders cannot occupy
     // every shared worker slot while waiting for their own analysis jobs.
+    await effects?.activateSidechains(); guard();
     if (!execution) await acquireExecution();
     signal?.addEventListener('abort', cancel, { once: true }); guard();
     const schedule = until => {
@@ -215,8 +228,8 @@ export async function renderNativeOfflineGraph({ patch, events, frames, sampleRa
     if (effects) {
       await effects.confirmOfflineCompletion(); guard();
       effectReceipt = Object.freeze({ hash: effects.hash, controls: 'explicit-authored-defaults-not-replayed-live-gestures',
-        scope: 'one-full-shared-owner-sum', returnNodeIds: Object.freeze(effectReturnNodeIds.slice()), realization: effects.diagnostics() });
-      validateNativeConvolutionRenderReceipt(effectPlan, { method: 'native-offline-audio-context', frames, effectGraph: effectReceipt }, effects.hash, effectReturnNodeIds);
+        scope: 'one-full-shared-owner-sum', sourceBindings: effectSourceBindings, returnNodeIds: Object.freeze(effectReturnNodeIds.slice()), realization: effects.diagnostics() });
+      validateNativeEffectRenderReceipt(effectPlan, { method: 'native-offline-audio-context', frames, effectGraph: effectReceipt }, effects.hash, effectReturnNodeIds);
     }
   } catch (error) { originalError = error; }
   finally {
@@ -252,7 +265,7 @@ export async function renderNativeOfflineGraph({ patch, events, frames, sampleRa
     nodes.length = 0; context = host = backend = effects = sourceNode = sourceBuffer = nativeWork = suspension = null;
   }
   if (originalError) throw originalError;
-  const inputReceipt = sourcePcm ? Object.freeze({ frames, channels: sourcePcm.channels, bytes: sourceBytes, planeByteHashes: Object.freeze(sourcePcm.planeByteHashes.slice()), planeHashByteOrder: sourcePcm.planeHashByteOrder, scope: 'whole-dry-source-history-before-crop' }) : null;
+  const inputReceipt = sourcePcm ? Object.freeze({ frames, channels: sourcePcm.channels, bytes: sourceBytes, laneIds: Object.freeze(sourcePcmLaneIds.slice()), sourceLaneIds: Object.freeze(sourceLaneIds.slice()), planeByteHashes: Object.freeze(sourcePcm.planeByteHashes.slice()), planeHashByteOrder: sourcePcm.planeHashByteOrder, scope: 'whole-dry-source-history-before-crop' }) : null;
   sourcePcm = null;
   let released = false;
   return Object.freeze({ get buffer() { return rendered; }, frames, sampleRate, channels, stemLaneIds: Object.freeze(stemLaneIds.slice()),
