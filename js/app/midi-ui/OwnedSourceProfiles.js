@@ -13,13 +13,22 @@ const acceptsSpectrum = parameters => {
 };
 const createProfile = ({ id, width, voices, fields, parameters = null, buildId, abi, workletUrl, rateLimit = false,
   seedDomain = null, minHz = 0.1, maxHz = null, bendCents = 24000, minimumControlSeconds = 0, heapEstimate = 0,
-  sourceBytes = () => 0, cost = () => 1, acceptsParameters = () => true, acceptsOnset = () => true, beginFields = () => ({}), expressions = [], damping = false, requiresPCM = false, bankId = null, controlReferenceRender = false }) => {
+  storageBytes = () => 0, cost = () => 1, acceptsParameters = () => true, acceptsOnset = () => true, beginFields = () => ({}), expressions = [], damping = false, requiresPCM = false, bankId = null, controlReferenceRender = false }) => {
   const slots = Object.freeze(expressions.map(entry => Object.freeze([...entry]))), liveIds = Object.freeze([...slots.map(([name]) => name), ...(damping ? ['damping01'] : [])]);
   const runtime = Object.freeze({ engineId: id, engineVersion: 1, buildId, runtimeABI: abi, workletUrl,
     sharedMemory: false, transport: 'batched-transferable-message-port', minimumControlSeconds,
     ...(rateLimit ? { supportedSampleRates: Object.freeze([44100, 48000, 96000]) } : {}) });
   return Object.freeze({ id, width, voices, fields, parameters: parameters ? Object.freeze(Object.values(parameters)) : null, seedDomain, runtime,
-    minHz, maxHz, bendCents, heapEstimate, sourceBytes, cost, acceptsParameters, acceptsOnset, beginFields, liveIds, damping, requiresPCM, bankId,
+    minHz, maxHz, bendCents, heapEstimate, sourceBytes(options = {}) {
+      if (!options || Object.getPrototypeOf(options) !== Object.prototype || Object.keys(options).some(key => !['sampleRate', 'voices', 'pcm'].includes(key))) throw new TypeError('Owned source footprint requires named rate, voice capacity and PCM fields.');
+      const { sampleRate, voices: capacity = voices, pcm = null } = options;
+      if (!Number.isSafeInteger(sampleRate) || !finite(sampleRate, 8000, 384000) || rateLimit && ![44100, 48000, 96000].includes(sampleRate) ||
+          !Number.isSafeInteger(capacity) || capacity < 1 || capacity > voices) throw new RangeError('Invalid owned source footprint rate or voice capacity.');
+      if (requiresPCM ? !pcm || pcm.schema !== 'lemmings-owned-pcm-bank/v1' || !Number.isSafeInteger(pcm.frames) || pcm.frames < 1 || ![1, 2].includes(pcm.channels) ||
+          !Number.isSafeInteger(pcm.sampleRate) || !finite(pcm.sampleRate, 8000, 192000) || !Number.isSafeInteger(pcm.bytes) || pcm.bytes !== pcm.frames * pcm.channels * 4 || pcm.bytes > 16 * 1048576 : pcm != null)
+        throw new TypeError('Owned source footprint PCM does not match this source profile.');
+      return storageBytes(sampleRate, capacity) + (requiresPCM ? pcm.bytes : 0);
+    }, footprintContract: 'named-rate-voice-pcm-v1', cost, acceptsParameters, acceptsOnset, beginFields, liveIds, damping, requiresPCM, bankId,
     controlReferenceRender, extended: parameters !== null, perVoiceTimbre: slots.length > 0, offlineRender: controlReferenceRender,
     writeUpdate(expression, voice, values) {
       let mask = 0;
@@ -40,7 +49,7 @@ const createProfile = ({ id, width, voices, fields, parameters = null, buildId, 
 const profiles = Object.freeze({
   'worklet-granular': createProfile({ id: 'worklet-granular', controlReferenceRender: true, bankId: 'grain-window-v1', width: GRANULAR_LAYOUT.width, voices: GRANULAR_LAYOUT.voices, fields: NATIVE_GRANULAR_FIELDS, parameters: NATIVE_GRANULAR_PARAMETERS,
     buildId: 'owned-granular-v1', abi: 'owned-granular-f64-command-v1', workletUrl: new URL('./worklet/OwnedGranularProcessor.js', import.meta.url).href, rateLimit: true, seedDomain: 'grain-choices-v1', minHz: 20, maxHz: 2000, bendCents: 200,
-    sourceBytes: (rate, pcm) => granularSourceBytes(rate) + (pcm?.bytes || 0), heapEstimate: GRANULAR_SOURCE_HEAP_ESTIMATE, cost: () => 16, minimumControlSeconds: 0.008, requiresPCM: true,
+    storageBytes: granularSourceBytes, heapEstimate: GRANULAR_SOURCE_HEAP_ESTIMATE, cost: () => 16, minimumControlSeconds: 0.008, requiresPCM: true,
     acceptsParameters: parameters => parameters.regionStart01 < parameters.regionEnd01,
     acceptsOnset: (parameters, frequency, pcm) => {
       if (!pcm || !finite(frequency / parameters.rootHz * parameters.pitchRatio, 0.25, 4)) return false;
@@ -55,18 +64,18 @@ const profiles = Object.freeze({
     buildId: 'owned-sine-v2-display', abi: 'owned-sine-f64-command-v1', workletUrl: new URL('./worklet/OwnedSineProcessor.js', import.meta.url).href }),
   'worklet-pluck': createProfile({ id: 'worklet-pluck', controlReferenceRender: true, width: PLUCK_LAYOUT.width, voices: PLUCK_LAYOUT.voices, fields: NATIVE_PLUCK_FIELDS, parameters: NATIVE_PLUCK_PARAMETERS,
     buildId: 'owned-pluck-v1', abi: 'owned-pluck-f64-command-v1', workletUrl: new URL('./worklet/OwnedPluckProcessor.js', import.meta.url).href, rateLimit: true, seedDomain: 'pluck-excitation-v1', minHz: 50, maxHz: 2000, bendCents: 200,
-    sourceBytes: pluckSourceBytes, cost: parameters => parameters.bodyMix01 > 0 ? 3 : 1, damping: true,
+    storageBytes: pluckSourceBytes, cost: parameters => parameters.bodyMix01 > 0 ? 3 : 1, damping: true,
     beginFields: (parameters, seed) => ({ 18: seed, 19: parameters.pluckPosition01, 20: Math.max(0.02, parameters.stringT60Seconds * (1 - 0.95 * parameters.damping01)),
       21: parameters.excitationBrightness01, 22: parameters.bodyMix01, 23: Math.max(0.02, parameters.bodyT60Seconds * (1 - 0.95 * parameters.damping01)) }) }),
   'worklet-choir': createProfile({ id: 'worklet-choir', controlReferenceRender: true, bankId: 'choir-v1', width: CHOIR_LAYOUT.width, voices: CHOIR_LAYOUT.voices, fields: NATIVE_CHOIR_FIELDS, parameters: NATIVE_CHOIR_PARAMETERS,
     buildId: 'owned-choir-v1', abi: 'owned-choir-f64-command-v1', workletUrl: new URL('./worklet/OwnedChoirProcessor.js', import.meta.url).href, rateLimit: true, seedDomain: 'choir-excitation-v1', minHz: 50, maxHz: 2000, bendCents: 200,
-    sourceBytes: choirSourceBytes, heapEstimate: CHOIR_SOURCE_HEAP_ESTIMATE, cost: () => 3, minimumControlSeconds: 0.008,
+    storageBytes: choirSourceBytes, heapEstimate: CHOIR_SOURCE_HEAP_ESTIMATE, cost: () => 3, minimumControlSeconds: 0.008,
     expressions: [['vowel01', 8, 19], ['breath01', 16, 20], ['sizeRatio', 32, 21], ['chorusCents', 64, 22], ['vibratoCents', 128, 23], ['bandwidthScale', 256, 25]],
     beginFields: (parameters, seed) => ({ 18: seed, 19: parameters.vowel01, 20: parameters.breath01, 21: parameters.sizeRatio, 22: parameters.chorusCents,
       23: parameters.vibratoCents, 24: parameters.vowelStep, 25: parameters.bandwidthScale }) }),
   'worklet-spectrum': createProfile({ id: 'worklet-spectrum', controlReferenceRender: true, bankId: 'spectrum-v1', width: SPECTRUM_LAYOUT.width, voices: SPECTRUM_LAYOUT.voices, fields: NATIVE_SPECTRUM_FIELDS, parameters: NATIVE_SPECTRUM_PARAMETERS,
     buildId: 'owned-spectrum-v1', abi: 'owned-spectrum-f64-command-v1', workletUrl: new URL('./worklet/OwnedSpectrumProcessor.js', import.meta.url).href, rateLimit: true, seedDomain: 'spectrum-phase-v1', minHz: 20, maxHz: 2000, bendCents: 200,
-    sourceBytes: spectrumSourceBytes, heapEstimate: SPECTRUM_SOURCE_HEAP_ESTIMATE, acceptsParameters: acceptsSpectrum,
+    storageBytes: spectrumSourceBytes, heapEstimate: SPECTRUM_SOURCE_HEAP_ESTIMATE, acceptsParameters: acceptsSpectrum,
     cost: parameters => parameters.sourceMode ? parameters.partialCount : 4, minimumControlSeconds: 0.008, expressions: [['scan01', 8, 21], ['body01', 16, 22], ['edge01', 32, 23]],
     beginFields: (parameters, seed) => {
       const fields = { 18: seed, 19: parameters.sourceMode, 20: parameters.partialCount, 21: parameters.scan01, 22: parameters.body01, 23: parameters.edge01, 24: parameters.partialDecaySeconds };

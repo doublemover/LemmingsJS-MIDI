@@ -3,6 +3,10 @@ import fs from 'node:fs/promises';
 import { compileSoundContent } from '../../js/midi/content/SoundContentCompiler.js';
 import { describeNativeInstrumentEngines } from '../../js/app/midi-ui/NativeInstrumentSchema.js';
 import { planCausalOwnedRender, renderCausalOwnedTake } from '../../js/app/midi-ui/CausalOwnedRender.js';
+import { CAUSAL_RENDER_SOURCES } from '../../js/app/midi-ui/CausalTakeAudioRender.js';
+import { renderOwnedSourceControls } from '../../js/app/midi-ui/OwnedSourceControlRender.js';
+import { getOwnedSourceProfile } from '../../js/app/midi-ui/OwnedSourceProfiles.js';
+import { hashData } from '../../js/core/CanonicalData.js';
 
 const cause = (id, displacement, height) => ({ sourceKind: 'MotionCommitted', eventId: id, evidence: 'completed-world-fact', values: {
   displacementPixels: { value: displacement, unit: 'world-pixel' }, positionYWorldPixels: { value: height, unit: 'world-pixel' }
@@ -20,6 +24,18 @@ const pcm = file => {
 };
 // Authored for the final runtime pass, with source ownership tested separately.
 describe('owned-source causal revoice rendering', () => {
+  it('admits non-PCM null descriptors in direct default control/state-cut renders independently of the content compiler', async () => {
+    for (const engineId of ['worklet-pluck', 'worklet-choir', 'worklet-spectrum']) {
+      const definition = structuredClone(CAUSAL_RENDER_SOURCES.find(source => source.id === engineId).definition); definition.voicePolicy.maxVoices = 2;
+      const [descriptor] = await describeNativeInstrumentEngines([{ engineId, engineVersion: 1, artifactHash: 'a'.repeat(64) }]);
+      const definitionHash = await hashData(definition), result = await renderOwnedSourceControls({ definition, descriptor, pcm: null,
+        source: { packId: 'fixture.footprint', packVersion: '1.0.0', contentHash: 'b'.repeat(64), patchIdentity: definition.id + '@' + definition.revision, definitionHash, attribution: 'Direct source-footprint regression fixture.' } }, { yieldControl: async () => {} });
+      expect(result.manifest.sourceTypedBytes).to.equal(getOwnedSourceProfile(engineId).sourceBytes({ sampleRate: 48000, pcm: null, voices: 2 }));
+      const cropped = await renderCausalOwnedTake({ definition, descriptor, revoice: revoice(), pcm: null, sampleRate: 48000, startSeconds: 0.303, endSeconds: 1, restorationMode: 'owned-state-cut' }, { yieldControl: async () => {} });
+      expect(cropped.manifest.restoration.stateCut).to.include({ frame: 14544, mutableState: 'independent-staged-copy' });
+      expect(cropped.files[0].manifest.statistics.peak).to.be.greaterThan(0);
+    }
+  });
   for (const [file, engineId] of [['plucked-garden.json', 'worklet-pluck'], ['artificial-choir.json', 'worklet-choir'], ['liquid-drawbars.json', 'worklet-spectrum']]) {
     it('retains source timing and physical updates for ' + engineId + ' with simultaneous dry stems and exact crop preroll', async () => {
       const descriptors = await describeNativeInstrumentEngines([{ engineId, engineVersion: 1, artifactHash: 'a'.repeat(64) }]);

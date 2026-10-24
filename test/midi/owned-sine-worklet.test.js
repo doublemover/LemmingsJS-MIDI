@@ -10,6 +10,7 @@ import { OwnedChoirKernel, CHOIR_WIDTH, CHOIR_VOICES } from '../../js/app/midi-u
 import { OwnedPluckKernel, PLUCK_WIDTH, PLUCK_VOICES } from '../../js/app/midi-ui/worklet/OwnedPluckProcessor.js';
 import { OwnedSpectrumKernel, SPECTRUM_WIDTH, SPECTRUM_VOICES } from '../../js/app/midi-ui/worklet/OwnedSpectrumProcessor.js';
 import { OwnedGranularKernel, GRANULAR_WIDTH, GRANULAR_VOICES } from '../../js/app/midi-ui/worklet/OwnedGranularProcessor.js';
+import { getOwnedSourceProfile } from '../../js/app/midi-ui/OwnedSourceProfiles.js';
 
 const row = (opcode, frame, sequence, slot = 0, token = 1, values = {}) => {
   const data = new Array(WIDTH).fill(0);
@@ -164,6 +165,16 @@ const setupHost = (engineId = 'worklet-sine') => {
 };
 
 describe('Owned worklet host lifecycle', () => {
+  it('prepares every non-PCM source with the real resource owner and retains runtime storage through disposal', async () => {
+    for (const engineId of ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum']) {
+      const { backend, nodes, patch, preview, context } = setupHost(engineId), resources = createAudioResourceLeases(); preview._audioResources = resources;
+      expect((await backend.prepare(patch)).status).to.equal('ready'); expect(nodes).to.have.length(1);
+      const profile = getOwnedSourceProfile(engineId); expect(resources.diagnostics().exactBytes).to.be.at.least(profile.sourceBytes({ sampleRate: 48000, pcm: null }));
+      const receipt = backend.dispose(); await receipt.completion; expect(receipt.outcome).to.equal('complete');
+      // Module code is a separate context-lifetime estimate.
+      context.state = 'closed'; resources.confirmClosedContext(); expect(resources.diagnostics().reservations).to.equal(0); await resources.dispose().completion;
+    }
+  });
   it('prepares a verified PCM clone for the real granular kernel and retains it through parent release', async () => {
     const { backend, nodes, patch, preview, intent, context } = setupHost('worklet-granular'), samples = Float32Array.from({ length: 4800 }, (_, frame) => Math.sin(frame * 0.03) * 0.5),
       ref = { contentHash: 'a'.repeat(64), bytes: 19244, kind: 'sample', frames: samples.length, sourceSampleRate: 48000 },

@@ -2624,6 +2624,15 @@ Native WaveShaper comparison, ADAA2/WASM precision variants, host-wide state cut
 offline full-effect rendering, alias/cost/latency/level/listening qualification
 and the remaining effect recipes/causal gestures are still required.
 
+Issue #1258 now has one owned-profile footprint interface with named
+`{ sampleRate, voices, pcm }` fields. All five source adapters distinguish PCM
+from capacity; low-level voice validation stays strict. Live admission uses the
+actual full processor capacity, while control/causal/state-cut renders use the
+actual configured capacity and exact PCM bytes. Non-PCM null/undefined material
+no longer enters a low-level voice argument. Resource-present live preparation,
+all-rate capacity/storage parity and direct control/state-cut regressions are
+authored for the deferred acceptance pass; no runtime tests have run.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical

@@ -237,7 +237,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       assetController.signal.throwIfAborted(); if (!current()) return reject('preparation-cancelled');
       timer = setTimeout(() => abortPreparation(new Error('kernel-initialization-timeout')), initializationTimeoutMs);
       if (!ready) candidateResourceLease = preview._audioResources?.reserveWorkletRuntime(owner, preview._generation,
-        source.sourceBytes(candidateContext.sampleRate, candidatePcm) + CAPACITY * (WIDTH - SINE_WIDTH) * 8, 0, true) || null;
+        source.sourceBytes({ sampleRate: candidateContext.sampleRate, pcm: candidatePcm, voices: MAX_VOICES }) + CAPACITY * (WIDTH - SINE_WIDTH) * 8, 0, true) || null;
       await Promise.race([loadOwnedWorkletModule(candidateContext, source, preview._audioResources), interrupted]);
       if (!current()) return reject('preparation-cancelled');
       if (!ready) {

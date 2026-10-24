@@ -211,7 +211,7 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
   signal?.throwIfAborted(); const plan = await planCausalOwnedRender({ ...input, maxPlanningBytes: maxWorkingBytes, signal, yieldControl }); signal?.throwIfAborted();
   const stateCut = input.restorationMode === 'owned-state-cut';
   if (input.restorationMode != null && !['forward-preroll', 'owned-state-cut'].includes(input.restorationMode)) throw failure('restore-mode-unavailable', 'Choose a supported owned-source restoration mode.');
-  const cutWorkspace = stateCut ? 2 * plan.owned.sourceBytes(plan.sampleRate, plan.pcmDescriptor) + 4 * 1048576 : 0;
+  const cutWorkspace = stateCut ? 2 * plan.owned.sourceBytes({ sampleRate: plan.sampleRate, pcm: plan.pcmDescriptor, voices: plan.patch.voicePolicy.maxVoices }) + 4 * 1048576 : 0;
   const requiredBytes = plan.pcmBytes * 4 + plan.planningBytes + 24 * 1048576 + cutWorkspace;
   if (!natural(maxWorkingBytes) || requiredBytes > maxWorkingBytes) throw failure('render-memory-capacity', 'PCM, encoding, command and transfer overlap exceed the admitted render workspace.');
   const { sampleRate, outputFrames, outputEnd, firstFrame, endFrame, events, stemLaneIds } = plan;
