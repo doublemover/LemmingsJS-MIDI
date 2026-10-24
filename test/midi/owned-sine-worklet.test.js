@@ -157,6 +157,10 @@ const setupHost = (engineId = 'worklet-sine') => {
 };
 
 describe('Owned worklet host lifecycle', () => {
+  it('rejects unsupported table layouts before constructing a kernel or allocating a voice', async () => {
+    const { backend, nodes, patch, preview } = setupHost('worklet-spectrum'); patch.patch.parameters.partialCount = 4;
+    expect((await backend.prepare(patch)).status).to.equal('rejected'); expect(nodes).to.have.length(0); expect(preview._voices.size).to.equal(0); await backend.dispose().completion;
+  });
   it('carries completed physical controls through the real host queue into each owned source without a new attack', async () => {
     for (const [engineId, target, stateIndex, expected] of [['worklet-choir', 'breath01', 9, 0.9], ['worklet-pluck', 'damping01', 3, 0.9 * (1 - 0.95 * 0.9)], ['worklet-spectrum', 'scan01', 8, 0.9]]) {
       const { backend, nodes, patch, intent, context } = setupHost(engineId), observed = [];

@@ -2241,6 +2241,16 @@ these semantics. Source/host-queue fixtures cover actual choir/pluck/spectrum
 control application, missing observations and independent attack identity;
 they remain authored and unexecuted.
 
+Owned source wire layouts, sample-rate/register limits, seeded birth fields,
+continuous controls and resource/source-cost estimates now live in fixed
+source profiles shared by preparation and onset admission. The host retains
+one queue/execution/lease/retirement implementation for all four owned sources.
+Spectrum table-layout checks use precomputed field IDs before allocation;
+expression membership is retained per backend instead of rebuilding arrays in
+the control hot path. Choir admission now conservatively includes immutable
+table heap estimates in both host and worklet realms. Existing actual-kernel
+host fixtures cover the extracted path and remain unexecuted.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical
