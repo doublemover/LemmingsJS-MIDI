@@ -64,7 +64,7 @@ const createMixCompressor = context => {
 /** A local tone monitor. It owns its audio context and never opens a MIDI device. */
 class BrowserNotePreview {
   constructor({ createAudioContext, nowMs, onStateChange, onPlayback, maxVoices = 32, maxNoteSeconds = 8,
-    volume = 0.15, masterVolume = 0.7, resourceBudget = null, cueVoices = 0,
+    volume = 0.15, masterVolume = 0.7, resourceBudget = null, cueVoices = 0, cueCostUnits = cueVoices, maxInstrumentBackends = 20,
     createMediaElement = tag => globalThis.document?.createElement(tag), mediaDevices = globalThis.navigator?.mediaDevices } = {}) {
     const AudioContextType = globalThis.AudioContext || globalThis.webkitAudioContext;
     this._createContext = createAudioContext === undefined
@@ -74,10 +74,13 @@ class BrowserNotePreview {
     this._listeners = new Set();
     if (typeof onStateChange === 'function') this._listeners.add(onStateChange);
     this._maxVoices = clamp(Math.trunc(finite(maxVoices, 32)), 1, MAX_RENDER_VOICES);
-    if (!Number.isSafeInteger(cueVoices) || cueVoices < 0 || cueVoices > 8 || this._maxVoices + cueVoices > MAX_RENDER_VOICES) throw new RangeError('Cue workload requires an explicit spare voice quota.');
+    if (!Number.isSafeInteger(cueVoices) || cueVoices < 0 || cueVoices > 8 || !Number.isSafeInteger(cueCostUnits) || cueCostUnits < cueVoices ||
+        !cueVoices && cueCostUnits !== 0 || this._maxVoices + cueCostUnits > MAX_RENDER_VOICES) throw new RangeError('Cue workload requires an explicit spare voice quota.');
+    if (!Number.isSafeInteger(maxInstrumentBackends) || maxInstrumentBackends < 1 || maxInstrumentBackends > 65) throw new RangeError('Invalid instrument backend bound.');
+    this._maxInstrumentBackends = maxInstrumentBackends; this._maxCueCostUnits = cueCostUnits;
     this._maxCueVoices = cueVoices;
     this._maxLiveScheduledVoices = Math.max(MAX_SCHEDULED_VOICES, this._maxVoices + MAX_RELEASE_TAILS);
-    this._maxCueScheduledVoices = cueVoices * 2;
+    this._maxCueScheduledVoices = cueCostUnits * 2;
     this._maxScheduledVoices = this._maxLiveScheduledVoices + this._maxCueScheduledVoices;
     this._cueRouting = null; this._createMediaElement = createMediaElement; this._mediaDevices = mediaDevices;
     this._intervalAdmission = null;
@@ -178,9 +181,13 @@ class BrowserNotePreview {
 
   _inspectVoiceInterval(owner, { start, end, releaseAt, cost = 1, overrides = null, patchVoices = null, patchLimit = null } = {}) {
     if (!this._intervalAdmission) return Object.freeze({ accepted: false, reason: 'interval-owner-unavailable' });
-    const workload = this._workloadClass(owner), limit = workload === 'cue' ? this._maxCueVoices : this._maxVoices;
+    const workload = this._workloadClass(owner), limit = workload === 'cue' ? this._maxCueCostUnits : this._maxVoices;
     const sourceLimit = workload === 'cue' ? this._maxCueScheduledVoices : this._maxLiveScheduledVoices;
     if (this._workloadVoiceCount(owner) + cost > sourceLimit) return Object.freeze({ accepted: false, reason: 'workload-source-reservations' });
+    if (workload === 'cue') {
+      const logical = this._intervalAdmission.inspect({ voices: this._voices, first: start, last: Math.max(start, releaseAt), cost: 1, limit: this._maxCueVoices, mode: 'gate', semantic: true, workload, overrides });
+      if (!logical.accepted) return logical;
+    }
     const gate = this._intervalAdmission.inspect({ voices: this._voices, first: start, last: Math.max(start, releaseAt), cost, limit, mode: 'gate', workload, overrides });
     if (!gate.accepted) return gate;
     const sources = this._intervalAdmission.inspect({ voices: this._voices, first: start, last: end, cost, limit: this._maxScheduledVoices, overrides });
@@ -200,7 +207,11 @@ class BrowserNotePreview {
     }
     if (last === first) return Object.freeze({ accepted: true, reason: null });
     for (const workload of workloads) {
-      const gate = this._intervalAdmission.inspect({ voices: this._voices, first, last, cost: 0, limit: workload === 'cue' ? this._maxCueVoices : this._maxVoices,
+      if (workload === 'cue') {
+        const logical = this._intervalAdmission.inspect({ voices: this._voices, first, last, cost: 0, limit: this._maxCueVoices, mode: 'gate', semantic: true, workload, overrides: changes });
+        if (!logical.accepted) return logical;
+      }
+      const gate = this._intervalAdmission.inspect({ voices: this._voices, first, last, cost: 0, limit: workload === 'cue' ? this._maxCueCostUnits : this._maxVoices,
         mode: 'gate', workload, overrides: changes });
       if (!gate.accepted) return gate;
     }
@@ -374,8 +385,9 @@ class BrowserNotePreview {
       resourceAccounting: this._audioResources.diagnostics(),
       retirement: retirementState(this._retirement.getReceipt()), retiredVoices: this._retiredVoices.size, unclosedContext: !!this._retiringContext,
       activeVoices: this._voices.size, sharedMix: this._sessions.size > 0, sessionCount: this._sessions.size,
+      instrumentBackends: this._instrumentBackends.size, maxInstrumentBackends: this._maxInstrumentBackends,
       maxVoices: this._maxVoices, maxScheduledVoices: this._maxScheduledVoices,
-      workload: { liveVoices: this._maxVoices, cueVoices: this._maxCueVoices, aggregateVoices: this._maxVoices + this._maxCueVoices,
+      workload: { liveCostUnits: this._maxVoices, cueCostUnits: this._maxCueCostUnits, aggregateCostUnits: this._maxVoices + this._maxCueCostUnits, liveVoices: this._maxVoices, cueVoices: this._maxCueVoices, aggregateVoices: this._maxVoices + this._maxCueVoices,
         liveSourceReservations: this._maxLiveScheduledVoices, cueSourceReservations: this._maxCueScheduledVoices,
         cueCanStealLive: false }, monitorRoute: this.getMonitorRouteState(),
       audition: this.getAuditionState(),
@@ -411,11 +423,15 @@ class BrowserNotePreview {
   }
 
   _registerInstrumentBackend(backend, owner) {
-    if (this._disposed || this._instrumentBackends.size >= 8) { backend.dispose(); throw new RangeError('Local audio backend limit reached.'); }
+    if (this._disposed || this._instrumentBackends.size >= this._maxInstrumentBackends) { backend.dispose(); throw new RangeError('Local audio backend limit reached.'); }
+    let metadata;
+    try { metadata = this._audioResources.reserve({ kind: 'instrument-backend-host', owner, generation: this._generation, estimateBytes: 4096, consumerOwned: true }); }
+    catch (error) { backend.dispose(); throw error; }
     const entry = { owner, backend: null };
     const retirement = createProcgenRetirementScope();
     entry.backend = Object.freeze({ ...backend, dispose: () => {
-      const receipt = retirement.retire([{ name: 'backend', run: () => backend.dispose() }]);
+      let native;
+      const receipt = retirement.retire([{ name: 'backend', run: () => native = backend.dispose() }, { name: 'backend-host-storage', run: () => releaseAudioResourceAfterRetirement(metadata, native) }]);
       receipt.completion.then(value => { if (value.outcome === 'complete') this._instrumentBackends.delete(entry); });
       return receipt;
     } });

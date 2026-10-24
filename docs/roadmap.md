@@ -2334,6 +2334,15 @@ from silence and records the output tap before the shared owner/master graph.
 This extends control references; causal-take/offline-state support for the newer
 sources remains separate work. All runtime renders and PCM comparisons are deferred.
 
+The local host now admits 20 bounded renderer owners, covering the 17-child lane
+router, two preparing candidates and one foreground cue owner. Each retained
+backend has its own metadata reservation joined through actual retirement.
+Cue logical voices and source cost units are now separate: the workstation keeps
+four cue gates with 16 reserved source units, enough for one granular cloud,
+while preserving live quotas and denying cue theft of live voices. Cue gate and
+lease-extension checks enforce both bounds. These are declared cost estimates;
+combined device/workload qualification remains deferred.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical

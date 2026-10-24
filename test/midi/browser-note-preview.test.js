@@ -52,6 +52,27 @@ describe('separate cue workload and graph admission', () => {
   });
 });
 
+describe('renderer owners and explicit cue source costs', () => {
+  it('retains enough bounded backend owners for the lane router, two candidates and one cue', async () => {
+    const preview = new BrowserNotePreview({ createAudioContext: () => new FakeContext() }), session = preview.createSession('renderers');
+    const backends = Array.from({ length: 20 }, () => session.createInstrumentBackend());
+    expect(() => session.createInstrumentBackend()).to.throw('backend limit'); expect(preview.getState().instrumentBackends).to.equal(20);
+    await Promise.all(backends.map(backend => backend.dispose().completion));
+    expect(preview.getState().instrumentBackends).to.equal(0); await preview.dispose();
+  });
+  it('admits one 16-unit cue cloud while enforcing four logical cue gates', async () => {
+    const preview = new BrowserNotePreview({ createAudioContext: () => new FakeContext(), maxVoices: 32, cueVoices: 4, cueCostUnits: 16 });
+    await preview.enable(); await preview.prepareCueRoute({ mode: 'rehearsal' }); preview.createSession('cloud-cue', { workloadClass: 'cue' });
+    const owner = [...preview._sessions.values()].find(session => session.workloadClass === 'cue').id;
+    const request = { start: 1, releaseAt: 2, end: 3, cost: 16 };
+    expect(preview._inspectVoiceInterval(owner, request).accepted).to.equal(true);
+    expect(preview._inspectVoiceInterval(owner, { ...request, cost: 17 }).accepted).to.equal(false);
+    for (let index = 0; index < 4; index++) preview._voices.add({ owner, workloadClass: 'cue', start: 1, releaseAt: 2, end: 3, renderCost: 1 });
+    expect(preview._inspectVoiceInterval(owner, { ...request, cost: 1 }).accepted).to.equal(false);
+    preview._voices.clear(); await preview.dispose();
+  });
+});
+
 class FakeParam {
   constructor() { this.value = 1; this.events = []; }
   setValueAtTime(value, time) { this.events.push({ type: 'set', value, time }); }
