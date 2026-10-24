@@ -2043,6 +2043,13 @@ workbench compares detached worlds and owns explicitly stepped, recoverable
 branches. These implementations still require the deferred acceptance matrix;
 advanced sound families, real-take audio, native device and listening work remain.
 
+The browser-master capture now has a bounded stereo PCM processor, admitted host
+storage, explicit frame gaps/interruption evidence and a workstation save dialog.
+Its streamed WAV includes the tap and coverage manifest. Memory-backed PCM is
+retained for retry until discard/expiry; this does not provide browser-crash
+recovery, physical-take rendering, private cue exclusion or acoustic evidence.
+Capture ownership fixtures are authored and await the deferred validation pass.
+
 - [ ] Finish shared background job execution for import, export encoding,
   recovery and asset preparation under the shared worker/memory admission owner.
   Registered import/export/checksum/hash jobs now share admission with exact

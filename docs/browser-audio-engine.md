@@ -605,4 +605,9 @@ owned across cancellation. Finalized PCM remains pinned until artifact expiry or
 discard and settlement of its delivery reader. Streaming delivery avoids making
 a full WAV copy; a full artifact digest is explicitly omitted. These host fixtures
 are authored and unexecuted. Capture is memory-backed and cannot promise recovery
-after browser termination. Workstation controls are subsequent work.
+after browser termination. The workstation's **Record audio…** dialog starts and
+stops capture independently of causal recording, shows actual source/received
+frame counts, and saves the retained WAV through the existing owned file writer.
+Canceling or retrying delivery leaves PCM intact. Capture needs browser audio
+already enabled; streaming file saves require `showSaveFilePicker`. Closing the
+dialog stops recording and keeps its artifact; discard is a separate action.

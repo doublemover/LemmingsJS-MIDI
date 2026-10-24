@@ -116,3 +116,44 @@ test('selected control WAV rendering uses a real immutable worker without enabli
     audioOpens: window.renderAudioOpens, hardwareRequests: window.renderMidiRequests }));
   expect(after).toEqual({ ...before, audioOpens: 0, hardwareRequests: 0 });
 });
+
+test('master recording uses the real capture worklet and keeps PCM after a canceled file save', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.captureMidiRequests = 0; window.capturePickerCount = 0; window.captureFileChunks = []; window.captureFileClosed = false;
+    Object.defineProperty(navigator, 'requestMIDIAccess', { configurable: true, value: async () => { window.captureMidiRequests++; throw new Error('Unexpected MIDI request'); } });
+    window.showSaveFilePicker = async () => {
+      if (++window.capturePickerCount === 1) throw new window.DOMException('Canceled by fixture', 'AbortError');
+      return { createWritable: async () => ({ write: async bytes => { window.captureFileChunks.push(Array.from(bytes)); },
+        close: async () => { window.captureFileClosed = true; }, abort: async () => {} }) };
+    };
+  });
+  await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=911&lanes=2');
+  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__);
+  await page.getByRole('button', { name: 'Record audio…', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Record browser master', exact: true });
+  await expect(dialog.getByRole('button', { name: 'Start master capture', exact: true })).toBeDisabled();
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click(); await page.locator('#procgenListen').click();
+  await page.evaluate(() => window.__PROCGEN_STUDIO__.play());
+  await page.getByRole('button', { name: 'Record audio…', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Start master capture', exact: true }).click();
+  await expect(dialog.getByRole('status')).toContainText('recording', { timeout: 15000 });
+  await expect.poll(async () => {
+    const text = await dialog.getByRole('status').textContent(); return Number(text.match(/([\d,]+) received frames/)?.[1].replaceAll(',', '') || 0);
+  }, { timeout: 15000 }).toBeGreaterThan(24000);
+  await dialog.getByRole('button', { name: 'Stop capture', exact: true }).click();
+  await expect(dialog.getByRole('status')).toContainText(/ready|partial/);
+  await dialog.getByRole('button', { name: 'Save captured WAV', exact: true }).click(); await expect(dialog).toContainText('Save canceled. Captured PCM remains available.');
+  await dialog.getByRole('button', { name: 'Save captured WAV', exact: true }).click(); await expect(dialog).toContainText('WAV stream closed successfully.');
+  const receipt = await page.evaluate(() => ({ chunks: window.captureFileChunks, fileClosed: window.captureFileClosed, hardwareRequests: window.captureMidiRequests }));
+  const bytes = Buffer.concat(receipt.chunks.map(chunk => Buffer.from(chunk))); let manifest, samples;
+  for (let offset = 12; offset < bytes.length;) {
+    const id = bytes.toString('ascii', offset, offset + 4), length = bytes.readUInt32LE(offset + 4), body = bytes.subarray(offset + 8, offset + 8 + length);
+    if (id === 'lmjs') manifest = JSON.parse(body.toString('utf8')); if (id === 'data') samples = body; offset += 8 + length + length % 2;
+  }
+  expect(receipt.fileClosed).toBe(true); expect(receipt.hardwareRequests).toBe(0); expect(samples.length).toBe(manifest.timelineFrames * 8);
+  expect(manifest).toMatchObject({ schema: 'lemmings-master-pcm/v1', tap: 'post-protection-shared-browser-master', channels: 2,
+    includesCurrentMasterOwnersAndAuditions: true, acousticEvidence: false, terminalAcknowledged: true, format: 'float32-le' });
+  let peak = 0; for (let at = 0; at < samples.length; at += 4) { const sample = samples.readFloatLE(at); expect(Number.isFinite(sample)).toBe(true); peak = Math.max(peak, Math.abs(sample)); }
+  expect(peak).toBeGreaterThan(0);
+  await dialog.getByRole('button', { name: 'Discard captured PCM', exact: true }).click(); await expect(dialog.getByRole('button', { name: 'Save captured WAV', exact: true })).toBeDisabled();
+});

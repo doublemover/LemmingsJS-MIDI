@@ -62,12 +62,13 @@ export function createOwnedMasterCapture({ preview, resourceBudget, AudioWorklet
   if (!preview?.getAudioContext || !preview?.getState || !preview?.acquireMasterCaptureTap || !resourceBudget?.reserve ||
       !resourceBudget?.release || typeof onChange !== 'function') throw new TypeError('Master capture requires an owned browser master and shared storage admission.');
   const resources = createAudioResourceLeases({ resourceBudget, ownerPrefix: 'master-pcm', maxReservations: 8 });
-  const retirement = createProcgenRetirementScope(); let current = null, disposed = false, unknown = false;
+  const retirement = createProcgenRetirementScope(), uncertain = new Set(); let current = null, disposed = false, ownershipFault = false;
+  const hasUnknownOwnership = () => ownershipFault || uncertain.size > 0;
   const state = () => Object.freeze({ state: current?.phase ?? (disposed ? 'disposed' : 'idle'), ownerId: current?.ownerId ?? null,
     sampleRate: current?.sampleRate ?? null, frames: current?.frames ?? 0, maxFrames: current?.maxFrames ?? 0,
     capturedFrames: current?.capturedFrames ?? 0, manifest: current?.manifest ?? null, artifact: current?.artifact ?? null,
     error: current?.error?.message ?? null, nativeRetirement: current?.nativeReceipt?.outcome ?? null,
-    unresolvedOwnership: unknown, resourceAccounting: resources.diagnostics() });
+    unresolvedOwnership: hasUnknownOwnership(), resourceAccounting: resources.diagnostics() });
   const report = () => { try { onChange(state()); } catch { /* Presentation cannot change capture ownership. */ } };
   const checkContext = operation => !disposed && preview.getAudioContext() === operation.context &&
     preview.getState().contextEpoch === operation.contextEpoch && operation.context.state === 'running';
@@ -84,15 +85,19 @@ export function createOwnedMasterCapture({ preview, resourceBudget, AudioWorklet
     ]);
     operation.nativeReceipt = receipt;
     try { releaseAudioResourceAfterRetirement(operation.nativeLease, receipt); }
-    catch (error) { unknown = true; operation.error ||= error; }
-    if (receipt.outcome !== 'complete') unknown = true;
+    catch (error) { uncertain.add(operation); operation.error ||= error; }
+    if (receipt.outcome !== 'complete') uncertain.add(operation);
     if (operation.nativeLease.releaseState() === 'failed-or-unknown' && operation.context.state !== 'closed') {
       operation.onClosed = () => {
         if (operation.context.state !== 'closed') return;
-        resources.confirmClosedContext(); operation.context.removeEventListener?.('statechange', operation.onClosed); report();
+        resources.confirmClosedContext();
+        if (operation.nativeLease.releaseState() === 'released') uncertain.delete(operation);
+        operation.context.removeEventListener?.('statechange', operation.onClosed); report();
       };
       operation.context.addEventListener?.('statechange', operation.onClosed);
-    } else if (operation.context.state === 'closed') resources.confirmClosedContext();
+    } else if (operation.context.state === 'closed') {
+      resources.confirmClosedContext(); if (operation.nativeLease.releaseState() === 'released') uncertain.delete(operation);
+    }
     return receipt;
   };
   const finish = (operation, terminal = null, reason = null) => {
@@ -152,7 +157,7 @@ export function createOwnedMasterCapture({ preview, resourceBudget, AudioWorklet
       if (timelineFrames) operation.artifact = captureArtifact({ storage: operation.storage, manifest: operation.manifest, storageLease: operation.storageLease, ownerId: operation.ownerId });
       else operation.storageLease.release();
       operation.storage = null;
-    } catch (error) { operation.error = error; operation.phase = 'failed'; unknown = true; }
+    } catch (error) { operation.error = error; operation.phase = 'failed'; ownershipFault = true; }
     operation.complete(operation.manifest); report();
   };
   const stop = (reason = 'user-stop') => {
@@ -173,7 +178,7 @@ export function createOwnedMasterCapture({ preview, resourceBudget, AudioWorklet
     report(); return operation.completion;
   };
   const start = async ({ seconds = 60 } = {}) => {
-    if (disposed || unknown || current && !current.finished || current?.artifact?.metadata().retained ||
+    if (disposed || hasUnknownOwnership() || current && !current.finished || current?.artifact?.metadata().retained ||
         typeof AudioWorkletNodeType !== 'function' || !Number.isFinite(seconds) || seconds <= 0 || seconds > 300) throw fail('Master capture is unavailable; finish and discard the previous capture first.');
     const context = preview.getAudioContext(), source = preview.getState(), sampleRate = context?.sampleRate;
     if (!source.enabled || context?.state !== 'running' || !context.audioWorklet?.addModule || !integer(sampleRate) || sampleRate < 8000 || sampleRate > 192000) throw fail('Enable browser audio before starting capture.');
@@ -182,7 +187,7 @@ export function createOwnedMasterCapture({ preview, resourceBudget, AudioWorklet
       bytes: 2 * CHUNK_FRAMES * CHANNELS * 4 + MAX_GAPS * 3 * 8, estimateBytes: 256 * 1024 });
     let storageLease;
     try { storageLease = resources.reserve({ kind: 'captured-pcm-f32', owner: ownerId, generation: contextEpoch, bytes: maxFrames * CHANNELS * 4 + 512 * 1024 }); }
-    catch (error) { nativeLease.release(); throw error; }
+    catch (error) { try { nativeLease.release(); } catch { ownershipFault = true; } throw error; }
     const operation = { ownerId, context, contextEpoch, sampleRate, maxFrames, nativeLease, storageLease, storage: null, phase: 'preparing',
       frames: 0, capturedFrames: 0, sequence: 0, tokens: new Uint32Array(2), sourceStartFrame: null, lastFrame: null, packetGaps: [], finished: false,
       complete: null, completion: null, targetStartFrame: 0, error: null };
@@ -247,6 +252,6 @@ export function createOwnedMasterCapture({ preview, resourceBudget, AudioWorklet
     if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true;
     const pending = stop('owner-retired');
     return retirement.retire([{ name: 'capture-finalization', run: () => pending },
-      { name: 'ownership', run: async () => { await pending; if (unknown) throw fail('Capture native ownership remains unresolved.'); } }]);
+      { name: 'ownership', run: async () => { await pending; if (hasUnknownOwnership()) throw fail('Capture native ownership remains unresolved.'); } }]);
   } });
 }
