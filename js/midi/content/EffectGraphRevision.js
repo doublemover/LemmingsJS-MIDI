@@ -22,7 +22,7 @@ export function prepareEffectGraphRevision(raw, { sampleRate = 48000, maxStateBy
     keys(entry, ['id', 'kind', 'parameters']);
     if (!id(entry.id) || nodes.has(entry.id) || !['bus-in', 'bus-out', 'gain', 'feedback-delay'].includes(entry.kind)) fail('Unknown, duplicate or unsupported effect processor.');
     let parameters, maximumTailFrames = 0, bytes = 0;
-    if (entry.kind === 'gain') { keys(entry.parameters, ['gain01']); if (!finite(entry.parameters.gain01, 0, 2)) fail('Effect gain exceeds its linear amplitude domain.'); parameters = entry.parameters; }
+    if (entry.kind === 'gain') { keys(entry.parameters, ['gain01', 'gainMaximum01']); if (!finite(entry.parameters.gainMaximum01 ?? 2, 0, 2) || !finite(entry.parameters.gain01, 0, entry.parameters.gainMaximum01 ?? 2)) fail('Effect gain exceeds its linear amplitude domain.'); parameters = { gain01: entry.parameters.gain01, gainMaximum01: entry.parameters.gainMaximum01 ?? 2 }; }
     else if (entry.kind === 'feedback-delay') {
       keys(entry.parameters, Object.keys(delayDefaults)); parameters = { ...delayDefaults, ...entry.parameters };
       if (!finite(parameters.maxDelaySeconds, 2 / sampleRate, 3) || !finite(parameters.delaySeconds, 1 / sampleRate, parameters.maxDelaySeconds) ||
@@ -62,7 +62,7 @@ export function prepareEffectGraphRevision(raw, { sampleRate = 48000, maxStateBy
     const arrival = Math.max(0, ...inputs.map(edge => latency.get(edge.from.nodeId)));
     for (const edge of inputs) edge.alignmentFrames = arrival - latency.get(edge.from.nodeId);
     const inputBound = node.kind === 'bus-in' ? 1 : inputs.reduce((sum, edge) => sum + amplitude.get(edge.from.nodeId) * edge.gain01, 0);
-    const gainBound = node.kind === 'gain' ? node.parameters.gain01 : node.kind === 'feedback-delay' ? 1 / (1 - node.parameters.feedbackMaximum * 1.1) : 1;
+    const gainBound = node.kind === 'gain' ? node.parameters.gainMaximum01 : node.kind === 'feedback-delay' ? 1 / (1 - node.parameters.feedbackMaximum * 1.1) : 1;
     amplitude.set(key, inputBound * gainBound); if (amplitude.get(key) > 16) fail('Compounded effect route gain exceeds its admitted headroom.');
     latency.set(key, arrival + node.processingLatencyFrames); tails.set(key, Math.max(0, ...inputs.map(edge => tails.get(edge.from.nodeId))) + node.maximumTailFrames);
     if (node.kind === 'bus-in' || inputs.some(edge => reachable.has(edge.from.nodeId))) reachable.add(key);

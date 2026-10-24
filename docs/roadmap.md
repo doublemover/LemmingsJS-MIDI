@@ -2550,6 +2550,27 @@ remain implementation work. Routing, fractional impulse, transition refusal and
 producer-ownership fixtures are authored; runtime and DSP qualification stay
 postponed with the consolidated validation pass.
 
+Quarry Echo now has an original source/dry/send/delay/return topology and an
+existing-workstation dialog. Momentary THROW changes only the source-send gain;
+release leaves the existing return connected, while TIME, FEEDBACK and RETURN
+request bounded native controls. Gain nodes declare a maximum amplitude envelope
+used for graph headroom admission. A control receipt includes graph definition
+hash and owner route revision; releasing a gesture from an older route cannot
+change a replacement rack. Native control submission and actual render application
+remain separate. Runtime diagnostics retain the immutable application identity
+and requested parameter state. No control enables audio or opens MIDI output.
+
+Optional saved owner-rack defaults are validated in procgen projects and use a
+newer graph revision for each edit. They preserve physical mapping and lane
+identities, roundtrip through project sanitization, and participate in history.
+The dialog loads/saves defaults separately from live control gestures. Saved
+rack edits are blocked during an active causal take until their journal contract
+is implemented. Effect gesture persistence/replay, causal per-voice throws,
+input coloration/AGE/spring recipes, matched A/B and offline effect-return taps
+still remain work. The UI explicitly identifies the current gesture-recording
+limit; master PCM capture can retain actual played output. Schema, headroom,
+project roundtrip and stale-gesture ownership fixtures are authored and unrun.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical

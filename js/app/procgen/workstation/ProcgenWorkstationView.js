@@ -185,6 +185,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   footer.append(records, status, storageStatus, recoveryStatus, button('Save', () => handlers.save?.()), button('Save As', () => handlers.saveAs?.()),
     button('Rename', () => handlers.rename?.()), button('Load', () => handlers.load?.()), button('New', () => handlers.new?.()),
     button('Export', () => handlers.export?.()), button('MIDI', () => handlers.exportMidi?.()),
+    button('Quarry Echo…', () => handlers.openQuarryEcho?.(), 'Prepare an original echo rack for the physical audio owner'),
     button('Record audio…', () => handlers.openMasterCapture?.(), 'Capture the running shared browser master as a bounded stereo WAV'),
     button('Prelisten', () => handlers.openPrelistenMonitor?.(), 'Choose cue routing and stop the foreground preview'), exportDesk);
   const importInput = input('', () => {}, { type: 'file' }); importInput.accept = '.json,.procgen'; importInput.hidden = true; footer.append(importInput);

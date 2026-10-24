@@ -1,3 +1,5 @@
+import { getActiveExecutionIdentity } from '../../runtime/ActiveExecutionIdentity.js';
+import { createSmoothedAudioParameter } from './SmoothedAudioParameter.js';
 import { prepareEffectGraphRevision, effectGraphHash } from '../../midi/content/EffectGraphRevision.js';
 import { loadOwnedWorkletModule } from './OwnedWorkletModuleCache.js';
 import { DELAY_KERNEL_REVISION } from './worklet/BoundedDelayProcessor.js';
@@ -27,7 +29,8 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
   if (prepared.outcome !== 'complete') throw Object.assign(failure('effect-preparation-retirement', 'Effect metadata preparation retirement is unresolved.'), { cause: preparationError, retirement: prepared });
   if (preparationError) throw preparationError;
   const scope = createProcgenRetirementScope({ deadlineMs: initializationTimeoutMs + 1000 }), nodes = [], delays = [], instances = new Map(), inputs = new Map(), outputs = new Map();
-  let disposed = false, fault = null;
+  let disposed = false, fault = null, controlSequence = 0;
+  const controls = new Map(), gainControls = new Map(), execution = getActiveExecutionIdentity('browser-native-audio');
   const node = value => { nodes.push(value); return value; };
   const dispose = () => scope.retire([{ name: 'effect-native-retirement', run: async () => {
     disposed = true;
@@ -78,7 +81,8 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
         timer = setTimeout(timeout, initializationTimeoutMs); await ready; clearTimeout(timer); timer = null; signal?.removeEventListener('abort', abort); guard();
 
       } else { value = node(context.createGain()); value.gain.setValueAtTime(entry.kind === 'gain' ? entry.parameters.gain01 : 1, context.currentTime); }
-      instances.set(entry.id, value);
+      instances.set(entry.id, value); controls.set(entry.id, Object.freeze({ ...entry.parameters }));
+      if (entry.kind === 'gain') gainControls.set(entry.id, createSmoothedAudioParameter({ param: value.gain, initialValue: entry.parameters.gain01, startTime: context.currentTime, smoothingSeconds: 0.008, maxEvents: 128 }));
       if (entry.kind === 'bus-in') inputs.set(entry.id, value); if (entry.kind === 'bus-out') outputs.set(entry.id, value);
     }
     for (const edge of plan.edges) {
@@ -93,9 +97,32 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     if (receipt.outcome !== 'complete') throw Object.assign(failure('effect-retirement-unknown', 'Prepared effect cleanup is unresolved.'), { cause: error, retirement: receipt, retainedGraph: { nodes, delays, context } });
     throw error;
   }
-  return Object.freeze({ plan, hash, getInput: id => disposed ? null : inputs.get(id) || null, getOutput: id => disposed ? null : outputs.get(id) || null,
+  const update = (nodeId, values, targetFrame = Math.ceil(context.currentTime * context.sampleRate)) => {
+    const now = context.currentTime; guard(); if (disposed || fault || !Number.isSafeInteger(targetFrame) || targetFrame < Math.floor(now * context.sampleRate) || targetFrame > (now + 1) * context.sampleRate ||
+        !values || Object.getPrototypeOf(values) !== Object.prototype || !Object.keys(values).length || Object.keys(values).length > 3) throw failure('invalid-effect-control', 'Effect controls require a bounded owned native frame target.');
+    const entry = plan.nodes.find(entry => entry.id === nodeId), value = instances.get(nodeId), next = { ...controls.get(nodeId), ...values }, changes = [];
+    if (entry?.kind === 'gain') {
+      if (Object.keys(values).some(key => key !== 'gain01') || !Number.isFinite(next.gain01) || next.gain01 < 0 || next.gain01 > entry.parameters.gainMaximum01 || !gainControls.get(nodeId).canInsert(now)) throw failure('invalid-effect-control', 'Gain control exceeds its admitted amplitude or queue domain.');
+    } else if (entry?.kind === 'feedback-delay') {
+      if (Object.keys(values).some(key => !['delaySeconds', 'feedback', 'wet01'].includes(key)) || !Number.isFinite(next.delaySeconds) || next.delaySeconds < 1 / context.sampleRate || next.delaySeconds > entry.parameters.maxDelaySeconds ||
+          !Number.isFinite(next.feedback) || Math.abs(next.feedback) > entry.parameters.feedbackMaximum || !Number.isFinite(next.wet01) || next.wet01 < 0 || next.wet01 > 1) throw failure('invalid-effect-control', 'Delay control exceeds its admitted range.');
+      for (const [key, parameter, factor] of [['delaySeconds', 'delayFrames', context.sampleRate], ['feedback', 'feedback', 1], ['wet01', 'wet', 1]]) if (values[key] != null) {
+        const param = value.parameters.get(parameter); if (!param?.setValueAtTime) throw failure('effect-control-unavailable', 'This effect runtime lacks the selected parameter.'); changes.push([param, next[key] * factor]);
+      }
+    } else throw failure('effect-control-unavailable', 'This graph node has no live control adapter.');
+    const time = targetFrame / context.sampleRate;
+    try {
+      if (entry.kind === 'gain') gainControls.get(nodeId).insert(next.gain01, time, now);
+      else for (const [param, amount] of changes) param.setValueAtTime(amount, time);
+    } catch (caught) { fault = caught; for (const entry of delays) entry.node.port.postMessage({ type: 'panic' }); try { onFault(caught); } catch {} throw failure('effect-control-failed', 'Native effect control scheduling failed.'); }
+    controls.set(nodeId, Object.freeze(next));
+    return Object.freeze({ status: 'accepted', stage: 'native-control-submitted', nodeId, targetFrame, sequence: ++controlSequence, graphDefinitionHash: hash, appliedFrame: null, acousticReceipt: false });
+  };
+  return Object.freeze({ plan, hash, update, getInput: id => disposed ? null : inputs.get(id) || null, getOutput: id => disposed ? null : outputs.get(id) || null,
     panic() { for (const entry of delays) entry.node.port.postMessage({ type: 'panic' }); },
     diagnostics: () => Object.freeze({ hash, graphId: plan.definition.id, revision: plan.definition.revision, sampleRate: plan.sampleRate, disposed, fault: fault?.code || null,
+      runtime: { revision: DELAY_KERNEL_REVISION, applicationBuildId: execution.buildId || null, activeExecution: execution.activeExecution },
+      controls: Object.fromEntries(controls), controlSequence, controlEvidence: 'native-control-submission-not-applied-acknowledgment',
       latencyFrames: plan.latencyFrames, maximumTailFrames: plan.maximumTailFrames, stateBytes: plan.stateBytes, protection: 'external-shared-master', qualification: 'implementation-awaiting-full-graph-qualification' }),
     dispose });
 }

@@ -79,13 +79,19 @@ export function createOwnerEffectGraphHost({ context, input, dry, destination, r
     if (!['neutral', 'tail', 'mute', 'panic'].includes(selected)) throw new TypeError('Unknown effect bypass mode.');
     if (disposed) throw failure('effect-owner-disposed', 'The effect owner is closed.');
     serial++; for (const operation of pending) operation.controller.abort(failure('effect-preparation-canceled', 'Effect bypass canceled the pending preparation.'));
+    if (selected === 'mute') {
+      dryAutomation.insert(0, context.currentTime, context.currentTime);
+      for (const arm of arms) { arm.output.gain.cancelScheduledValues(context.currentTime); arm.output.gain.setValueAtTime(0, context.currentTime); }
+      mode = 'mute'; report(); return state();
+    }
     const previous = current; current = null;
-    dryAutomation.insert(selected === 'mute' ? 0 : 1, context.currentTime, context.currentTime);
+    dryAutomation.insert(1, context.currentTime, context.currentTime);
     if (selected === 'tail') tail(previous);
-    else for (const arm of arms) { arm.graph.panic(); retireArm(arm); }
+    else for (const arm of arms) { arm.graph.panic(); arm.inAutomation.insert(0, context.currentTime, context.currentTime); arm.retireAt = context.currentTime + transitionSeconds; }
     mode = selected; revision++; poll(); report(); return state();
   };
-  return Object.freeze({ prepare, bypass, panic: () => bypass('panic'), state,
+  return Object.freeze({ prepare, bypass,
+    update(nodeId, values, targetFrame, expected = null) { guard(); if (expected && (expected.ownerRouteRevision !== revision || expected.graphDefinitionHash !== current?.graph.hash)) throw failure('stale-effect-control', 'The effect control belongs to an earlier owner route.'); if (!current || !['active', 'mute'].includes(mode)) throw failure('effect-not-active', 'Prepare an active owner rack before performing its controls.'); return Object.freeze({ ...current.graph.update(nodeId, values, targetFrame), ownerRouteRevision: revision }); }, panic: () => bypass('panic'), state,
     dispose() {
       return retirement.retire([{ name: 'effect-host-retirement', run: async () => {
         disposed = true; serial++; if (timer != null) clearTimeout(timer); timer = null;

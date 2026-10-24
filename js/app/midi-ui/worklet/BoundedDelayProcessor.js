@@ -63,7 +63,7 @@ export class BoundedDelayProcessor extends ProcessorBase {
     { name: 'feedback', defaultValue: 0.3, minValue: -0.7, maxValue: 0.7, automationRate: 'a-rate' }, { name: 'wet', defaultValue: 0.2, minValue: 0, maxValue: 1, automationRate: 'a-rate' }]; }
   constructor(options) {
     super(); this.kernel = new BoundedDelayKernel({ ...options?.processorOptions, sampleRate: globalThis.sampleRate });
-    this.disposed = false; this.lastInspect = -Infinity; this.port.onmessage = event => {
+    this.lastRequestedDelay = this.kernel.targetDelay; this.disposed = false; this.lastInspect = -Infinity; this.port.onmessage = event => {
       const data = event.data;
       if (data?.type === 'dispose') { this.kernel.panic(); this.disposed = true; this.port.postMessage({ type: 'disposed', frame: this.kernel.frame }); }
       else if (this.disposed) return;
@@ -83,7 +83,8 @@ export class BoundedDelayProcessor extends ProcessorBase {
     if (this.disposed) { for (const channel of output) channel.fill(0); return false; }
     const input = inputs[0], left = input?.[0], right = input?.[1] || left, kernel = this.kernel;
     for (let i = 0; i < output[0].length; i++) {
-      kernel.setDelay(parameters.delayFrames.length === 1 ? parameters.delayFrames[0] : parameters.delayFrames[i]);
+      const requestedDelay = parameters.delayFrames.length === 1 ? parameters.delayFrames[0] : parameters.delayFrames[i];
+      if (requestedDelay !== this.lastRequestedDelay) { kernel.setDelay(requestedDelay); this.lastRequestedDelay = requestedDelay; }
       kernel.sample(left?.[i] ?? 0, right?.[i] ?? 0, parameters.feedback.length === 1 ? parameters.feedback[0] : parameters.feedback[i], parameters.wet.length === 1 ? parameters.wet[0] : parameters.wet[i]);
       output[0][i] = kernel.leftSample; if (output[1]) output[1][i] = kernel.rightSample;
     }

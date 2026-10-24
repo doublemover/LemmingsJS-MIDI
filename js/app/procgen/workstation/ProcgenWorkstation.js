@@ -25,13 +25,14 @@ import { backgroundJobService } from '../../resources/BackgroundJobService.js';
 import { readBrowserBuildResponse } from '../../../runtime/BrowserGenerationService.js';
 import { validateSoundContentReference } from '../../../midi/content/SoundContentReference.js';
 import { createSoundContentLibrary } from '../../midi-ui/SoundContentLibrary.js';
+import { createQuarryEchoView } from '../../midi-ui/QuarryEchoView.js';
 import { createMasterCaptureView } from '../../midi-ui/MasterCaptureView.js';
 import { createPrelistenMonitor } from '../../midi-ui/PrelistenMonitor.js';
 import { createCausalTakeAudioRenderView } from '../../midi-ui/CausalTakeAudioRenderView.js';
 
 const STORAGE_KEY = 'lemmings.procgen.workstation.v1';
 const MAX_SESSION_FILE_BYTES = 64 * 1048576;
-const FAST_PROCGEN_ACTIONS = new Set(['procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
+const FAST_PROCGEN_ACTIONS = new Set(['procgen/effectRack', 'procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
   'procgen/step', 'procgen/pattern', 'procgen/launch', 'procgen/launched', 'procgen/launchedBatch']);
 const clone = value => JSON.parse(JSON.stringify(value));
 const equal = (left, right) => JSON.stringify(left) === JSON.stringify(right);
@@ -107,6 +108,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let physicalScoreLease = null, physicalScoreParentLease = null, scoreViewRetirement = null;
   let soundLibrary = null;
   let masterCapture = null;
+  let quarryEchoView = null;
   let prelistenMonitor = null;
   let causalAudioRender = null;
   let pendingHistory = null;
@@ -221,6 +223,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const instrumentRefsChanged = project.procgen.lanes.some((lane, index) => lane.instrumentRef !== next.procgen.lanes[index]?.instrumentRef &&
       !equal(lane.instrumentRef ?? null, next.procgen.lanes[index]?.instrumentRef ?? null)) || next.procgen.lanes.some((lane, index) => lane.instrumentRef && !project.procgen.lanes[index]);
     if ((causalTake || causalTakeStart || causalTakeStop) && instrumentRefsChanged) throw new Error('Finish the causal take before changing its pinned lane instrument.');
+    if ((causalTake || causalTakeStart || causalTakeStop) && !equal(project.procgen.effectRack ?? null, next.procgen.effectRack ?? null)) throw new Error('Finish the causal take before changing its saved effect defaults.');
     const performanceChange = causalTake || causalTakeStart || causalTakeStop ? diffCausalPerformanceState(captureCausalPerformanceState(project.procgen.lanes), captureCausalPerformanceState(next.procgen.lanes)) : null;
     if ((causalTakeStart || causalTakeStop) && performanceChange) throw new Error('Wait for causal take arming or saving before changing instrument controls.');
     const mappingChanged = causalTake && !equal(project.procgen.physicalGraph, next.procgen.physicalGraph);
@@ -1051,6 +1054,12 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         home: document.getElementById('procgenStudioFooter') || document.body, onStatus: status });
       prelistenMonitor.mountHome(); return prelistenMonitor;
     },
+    openQuarryEcho() {
+      if (disposed || !physicalPlayback) { status('Physical owner effects are unavailable.'); return; }
+      quarryEchoView ||= createQuarryEchoView({ document, window, getPlayback: () => physicalPlayback, getSavedRack: () => project.procgen.effectRack || null,
+        saveRack: rack => { if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the current world or take operation before saving effect defaults.'); dispatch({ type: 'procgen/effectRack', rack }); }, onStatus: status });
+      quarryEchoView.open();
+    },
     openMasterCapture() {
       if (disposed || !resourceBudget || !legacy.local.audio) { status('Browser master capture is unavailable.'); return; }
       masterCapture ||= createMasterCaptureView({ document, window, preview: legacy.local.audio, resourceBudget, onStatus: status });
@@ -1338,6 +1347,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   listen(document, 'keyup', syncLegacyControls);
   listen(document, 'keydown', event => { if (event.key === 'Escape' && inputLease) cancelInputEdits('canceled by user'); });
   listen(window, 'pagehide', () => {
+    quarryEchoView?.suspend();
     void masterCapture?.suspend();
     causalAudioRender?.suspend();
     causalWorkbenchSourceSerial++;
@@ -1396,6 +1406,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'physical-score-views', run: () => retirePhysicalScoreViews() },
         { name: 'causal-workbench', run: () => pendingWorkbenchStop },
         { name: 'sound-library', run: () => soundLibrary?.dispose() },
+        { name: 'quarry-echo-view', run: () => quarryEchoView?.dispose() },
         { name: 'master-capture', run: () => masterCapture?.dispose() },
         { name: 'causal-audio-render', run: () => causalAudioRender?.dispose() },
         { name: 'prelisten-monitor', run: () => prelistenMonitor?.dispose() },

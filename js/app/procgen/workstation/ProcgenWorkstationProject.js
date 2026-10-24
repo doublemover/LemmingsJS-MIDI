@@ -1,3 +1,4 @@
+import { validateOwnerEffectRack } from '../../../midi/content/DubQuarryRack.js';
 import { PROCGEN_ROLES, PROCGEN_SOUND_COLLECTIONS, PROCGEN_DEFAULT_PAIRS, resolveProcgenSound } from './ProcgenSoundCollections.js';
 import { validateCausalInstrumentGraph } from './CausalMusicEngine.js';
 import { validateSoundContentReference } from '../../../midi/content/SoundContentReference.js';
@@ -92,7 +93,7 @@ const sanitizeProcgenWorkstation = (value = {}) => {
   const seed = integer(value?.seed, 777, 0, 0xffffffff);
   const physicalGraph = value.physicalGraph == null ? createDefaultPhysicalGraph(seed) : validateCausalInstrumentGraph(value.physicalGraph);
   if (value.version === PROCGEN_PROJECT_VERSION && value.physicalGraph == null) throw new Error('A physical project requires its instrument graph.');
-  return { version: PROCGEN_PROJECT_VERSION, playModel: PROCGEN_PLAY_MODEL, seed, physicalGraph, lanes: lanes.map((lane, index) => {
+  return { version: PROCGEN_PROJECT_VERSION, playModel: PROCGEN_PLAY_MODEL, seed, physicalGraph, ...(value.effectRack == null ? {} : { effectRack: validateOwnerEffectRack(value.effectRack) }), lanes: lanes.map((lane, index) => {
     const clean = createProcgenLane(index, lane || {});
     while (ids.has(clean.id)) clean.id += '-copy';
     ids.add(clean.id); return clean;
@@ -121,6 +122,13 @@ const convertLegacyProcgenWorkstationProject = (project, { strategy } = {}) => {
 const sameValue = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 const reduceCanonicalProcgenProject = (project, action) => {
   const procgen = project.procgen, lanes = procgen.lanes;
+  if (action.type === 'procgen/effectRack') {
+    const rack = validateOwnerEffectRack(action.rack);
+    if (sameValue(rack, procgen.effectRack || null)) return project;
+    if (rack && procgen.effectRack?.graph.id === rack.graph.id && rack.graph.revision <= procgen.effectRack.graph.revision) throw new Error('Effect defaults require a newer graph revision.');
+    if (!rack) { const remaining = { ...procgen }; delete remaining.effectRack; return { ...project, procgen: remaining }; }
+    return { ...project, procgen: { ...procgen, effectRack: rack } };
+  }
   if (action.type === 'procgen/physicalGraph') {
     const graph = validateCausalInstrumentGraph(action.graph);
     if (sameValue(graph, procgen.physicalGraph)) return project;
@@ -194,7 +202,7 @@ const reduceCanonicalProcgenProject = (project, action) => {
 };
 const reduceProcgenWorkstationProject = (project, action = {}) => {
   const procgen = sanitizeProcgenWorkstation(project.procgen);
-  if (action.type === 'procgen/physicalGraph') return reduceCanonicalProcgenProject({ ...project, procgen }, action);
+  if (['procgen/physicalGraph', 'procgen/effectRack'].includes(action.type)) return reduceCanonicalProcgenProject({ ...project, procgen }, action);
   let lanes = procgen.lanes;
   const target = lane => lane.id === action.laneId;
   if (action.type === 'procgen/lane') lanes = lanes.map(lane => target(lane) ? { ...lane, ...action.patch, id: lane.id } : lane);

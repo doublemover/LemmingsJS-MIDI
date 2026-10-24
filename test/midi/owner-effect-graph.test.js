@@ -10,11 +10,12 @@ describe('owner effect transitions and producer lifetime (API doubles)', () => {
     const resources = createAudioResourceLeases(), context = { sampleRate: 48000, currentTime: 0, state: 'running', createGain: node }, producers = [];
     const prepareGraph = async definition => {
       let release; const complete = new Promise(resolve => { release = resolve; }), scope = createProcgenRetirementScope(); producers.push(release);
-      return { plan: { inputs: ['input'], outputs: ['output'], maximumTailFrames: 48000 }, diagnostics: () => ({ id: definition.id }),
+      return { hash: definition.id, update: (nodeId, values) => ({ status: 'accepted', graphDefinitionHash: definition.id, nodeId, values, appliedFrame: null }), plan: { inputs: ['input'], outputs: ['output'], maximumTailFrames: 48000 }, diagnostics: () => ({ id: definition.id }),
         getInput: node, getOutput: node, panic() {}, dispose: () => scope.retire([{ name: 'producer', run: () => complete }]) };
     };
     const host = createOwnerEffectGraphHost({ context, input: node(), dry: node(), destination: node(), resources, owner: 'owner-a', prepareGraph });
-    await host.prepare({ id: 'first' }); await host.prepare({ id: 'second' });
+    await host.prepare({ id: 'first' }); const oldGesture = host.update('send', { gain01: 0.3 }); await host.prepare({ id: 'second' });
+    expect(() => host.update('send', { gain01: 0 }, undefined, oldGesture)).to.throw('earlier owner route');
     expect(host.state()).to.include({ retiringGraphs: 1, maximumConcurrentGraphs: 2 });
     let error; try { await host.prepare({ id: 'third' }); } catch (value) { error = value; } expect(error.code).to.equal('effect-transition-capacity');
     const receipt = host.dispose(); await turn(); expect(receipt.outcome).to.equal('pending'); expect(resources.diagnostics().reservations).to.be.greaterThan(0);

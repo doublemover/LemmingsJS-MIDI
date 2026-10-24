@@ -561,3 +561,17 @@ creates or enables another AudioContext. Current physical playback APIs expose
 this owner rack; persisted UI controls, content recipes, shared convolution,
 sidechain detectors and offline effect integration remain in development. Native
 source outputs and existing dry stem manifests do not yet claim effect returns.
+
+The workstation's **Quarry Echo…** dialog prepares the physical owner's original
+source/dry/send/echo/return graph. Hold THROW to admit source audio, then release
+to stop new excitation while the return decays. TIME chooses a bounded delay,
+FEEDBACK stays inside its admitted ceiling and RETURN has its own gain. Neutral,
+tail bypass, owner mute and tail clear remain explicit. Gain and delay controls
+return native scheduling receipts with a route revision; an old gesture release
+cannot modify a new rack. Requested values are not native applied-frame proof.
+
+Saved owner-rack defaults roundtrip in procgen projects. Loading defaults does
+not enable audio; Prepare is explicit. Live effect gestures are currently outside
+causal-take persistence; use master audio capture for the played output. Complete
+gesture replay, actor-specific send attribution, AGE/coloration, spring bodies,
+matched A/B and effect-aware offline export remain implementation work.
