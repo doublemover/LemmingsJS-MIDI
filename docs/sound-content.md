@@ -660,3 +660,27 @@ zone count; reading does not insert fields or alter their immutable bytes/hash.
 Those revisions cannot declare the later sample-map capability. Display labels
 and normalization evidence remain outside the render key; operative zone gain
 and selection data remain inside. Reader admission is not DSP qualification.
+
+### Shared owned-effect render path
+
+`OwnedEffectGraphKernel` evaluates one complete stereo owner DAG with canonical
+float32 signal boundaries, the actual delay/nonlinear kernels and owned linear
+fractional alignment. Causal rendering feeds every preroll/source frame through
+this graph once. Lane files remain original dry taps; shared effect node files
+are simultaneous output taps of the same run. Nonlinear/shared returns cannot
+be recreated by solo-rendering and summing processed lanes.
+
+The admitted workspace includes graph state, tap PCM, encoding and metadata
+overlap. Exact crops retain earlier effect input; bounded tails include the
+whole path and record conservative truncation. A nonfinite/excessive source or
+internal fault quarantines this graph and fails the new export. The previous
+prepared artifact remains a separate owner. Graph manifests contain definition,
+processor revisions/hash, latency/tail bounds and explicit source/tap scope.
+
+This path currently accepts declarative owned gain/delay/nonlinear graphs with
+one stereo input/output and up to eight unique node taps. Native source/effect
+and IR adapters are explicitly refused pending integration. Static authored
+defaults are an explicit new revoice, not reconstruction of live effect gestures.
+Source-only state cuts retain the continued preroll effect graph and do not
+claim an exported full-graph checkpoint. Public owner/dialog wiring and all
+live/offline PCM/listening qualification remain pending.

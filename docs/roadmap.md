@@ -2676,6 +2676,19 @@ alignment remains frequency-dependent and is not a broadband phase-null claim.
 Impulse, state and actual-kernel host/resource fixtures are authored; full-graph
 render integration and all execution qualification remain pending.
 
+The owned causal renderer now has a full shared effect DAG path using the
+same delay/nonlinear/fractional-alignment kernels as live graph hosting. Every
+source aggregate/preroll frame passes through that single graph; dry lane taps
+and up to eight actual shared node-output taps are captured simultaneously.
+Ranges retain prior effect excitation, and bounded tail/output/worker storage
+include the complete graph and tap set. Manifests bind graph definition, used
+processor revisions, exact graph hash and source/tap scope. Authored static
+defaults are explicitly a new realization, not replay of unstored live gestures.
+Native convolution/native source full-effect adapters, public render-owner/UI
+wiring, host-wide state cuts and all runtime qualification remain work.
+Arithmetic/shared-nonlinearity, simultaneous tap and crop fixtures are authored
+but unexecuted; no tests, native renders or content builds ran.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical
