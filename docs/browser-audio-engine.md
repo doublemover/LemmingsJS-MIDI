@@ -580,3 +580,14 @@ retire. Cache entries with failed release remain inventoried and charged rather
 than disappearing before accounting acknowledges retirement. Causal dispatch
 also retains independent cancellation/execution receipts across sinks. These
 failure-path fixtures are implemented and unexecuted.
+
+## Bounded PCM capture processor
+
+`OwnedPcmCaptureProcessor` provides a stereo Float32 capture primitive with two
+preallocated transfer buffers, exact source-frame intervals and a bounded gap
+index. Buffer pressure records missing frames rather than allocating a growing
+queue. Mono input is duplicated; a valid disconnected input records digital
+silence. Nonfinite input, clock discontinuities and unsupported layouts stop the
+capture with a finite prefix. Its output is zero so a pull connection cannot
+double the audible master. Processor fixtures are authored and unexecuted; host
+ownership, artifact finalization and workstation controls are subsequent work.
