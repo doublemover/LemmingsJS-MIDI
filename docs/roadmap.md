@@ -2213,6 +2213,18 @@ performance metadata at component checkpoints. The new capture profile declares
 instrument-performance state explicitly. Runtime replay and DSP fixtures remain
 authored and unexecuted.
 
+The new owned spectral oscillator source supplies the shared kernel for #1041/
+#1202: 16 original phase-aligned frames, five harmonic levels with bounded
+pitch-dependent blending, and a separate 16-partial additive mode with authored
+ratios, gains and per-partial T60 scales. Scan/body/edge controls retain phase
+and use the existing audio-domain ramps. Table mode rejects unused additive
+layout edits; additive mode tapers/omits out-of-register components. Fixed typed
+storage, immutable bank heap estimates and per-voice source costs enter shared
+admission. Compiler v9/catalog/artifact/runtime preparation and real application
+receipts support the eighth engine. The six family recipes/library integration
+are next; source fixtures remain unexecuted. PWM/distortion/sync, exact state,
+offline spectrum output and measured capacity/alias/listening acceptance remain.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical

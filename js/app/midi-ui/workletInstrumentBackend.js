@@ -1,10 +1,11 @@
 import { CHOIR_WIDTH, CHOIR_VOICES, CHOIR_SOURCE_HEAP_ESTIMATE, choirSourceBytes } from './worklet/OwnedChoirProcessor.js';
+import { SPECTRUM_WIDTH, SPECTRUM_VOICES, SPECTRUM_MIN_HZ, SPECTRUM_SOURCE_HEAP_ESTIMATE, spectrumSourceBytes } from './worklet/OwnedSpectrumProcessor.js';
 import { createAudioCommandQueue } from './AudioCommandQueue.js';
 import { createInstrumentExecutionLifecycle, isManagedExecutionEpoch } from './InstrumentExecutionLifecycle.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 import { releaseAudioResourceAfterRetirement } from './AudioResourceLeases.js';
 import { createAudioDisplayTelemetry } from './AudioDisplayTelemetry.js';
-import { NATIVE_WORKLET_FIELDS, NATIVE_PLUCK_FIELDS, NATIVE_PLUCK_PARAMETERS, NATIVE_CHOIR_FIELDS, NATIVE_CHOIR_PARAMETERS } from './NativeInstrumentSchema.js';
+import { NATIVE_WORKLET_FIELDS, NATIVE_PLUCK_FIELDS, NATIVE_PLUCK_PARAMETERS, NATIVE_CHOIR_FIELDS, NATIVE_CHOIR_PARAMETERS, NATIVE_SPECTRUM_FIELDS, NATIVE_SPECTRUM_PARAMETERS } from './NativeInstrumentSchema.js';
 import { compileInstrumentPerformance, retainInstrumentCause } from '../../midi/content/InstrumentPerformance.js';
 import { instrumentVariationValue } from '../../midi/content/InstrumentIdentityVariation.js';
 import { resolveOwnedArticulationPolicy } from './OwnedArticulationPolicy.js';
@@ -27,15 +28,19 @@ const kernelReasons = Object.freeze({ 1: 'invalid-command', 2: 'kernel-queue-ful
 
 export function createWorkletInstrumentBackend(preview, owner = null, { leadSeconds = 0.25, smoothingSeconds = 0.008,
   traceLimit = 128, createWorkletNode = null, initializationTimeoutMs = 5000, engineId = 'worklet-sine' } = {}) {
-  if (!['worklet-sine', 'worklet-pluck', 'worklet-choir'].includes(engineId)) throw new Error('Unsupported worklet source.');
-  const isPluck = engineId === 'worklet-pluck', isChoir = engineId === 'worklet-choir', isExtended = isPluck || isChoir;
-  const WIDTH = isChoir ? CHOIR_WIDTH : isPluck ? PLUCK_WIDTH : SINE_WIDTH, MAX_VOICES = isChoir ? CHOIR_VOICES : isPluck ? PLUCK_VOICES : SINE_MAX_VOICES;
-  const fields = isChoir ? NATIVE_CHOIR_FIELDS : isPluck ? NATIVE_PLUCK_FIELDS : NATIVE_WORKLET_FIELDS;
-  const performanceParameters = isExtended ? Object.values(isChoir ? NATIVE_CHOIR_PARAMETERS : NATIVE_PLUCK_PARAMETERS) : null;
-  const runtime = isChoir ? Object.freeze({ ...sineRuntime, engineId, buildId: 'owned-choir-v1', runtimeABI: 'owned-choir-f64-command-v1',
+  if (!['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum'].includes(engineId)) throw new Error('Unsupported worklet source.');
+  const isPluck = engineId === 'worklet-pluck', isChoir = engineId === 'worklet-choir', isSpectrum = engineId === 'worklet-spectrum', isExtended = isPluck || isChoir || isSpectrum;
+  const WIDTH = isSpectrum ? SPECTRUM_WIDTH : isChoir ? CHOIR_WIDTH : isPluck ? PLUCK_WIDTH : SINE_WIDTH, MAX_VOICES = isSpectrum ? SPECTRUM_VOICES : isChoir ? CHOIR_VOICES : isPluck ? PLUCK_VOICES : SINE_MAX_VOICES;
+  const fields = isSpectrum ? NATIVE_SPECTRUM_FIELDS : isChoir ? NATIVE_CHOIR_FIELDS : isPluck ? NATIVE_PLUCK_FIELDS : NATIVE_WORKLET_FIELDS;
+  const performanceParameters = isExtended ? Object.values(isSpectrum ? NATIVE_SPECTRUM_PARAMETERS : isChoir ? NATIVE_CHOIR_PARAMETERS : NATIVE_PLUCK_PARAMETERS) : null;
+  const sourceExpressions = isSpectrum ? [['scan01', 8, 21], ['body01', 16, 22], ['edge01', 32, 23]] : isChoir ?
+    [['vowel01', 8, 19], ['breath01', 16, 20], ['sizeRatio', 32, 21], ['chorusCents', 64, 22], ['vibratoCents', 128, 23], ['bandwidthScale', 256, 25]] : [];
+  const liveSourceIds = sourceExpressions.map(([id]) => id); if (isPluck) liveSourceIds.push('damping01');
+  const runtime = isSpectrum ? Object.freeze({ ...sineRuntime, engineId, buildId: 'owned-spectrum-v1', runtimeABI: 'owned-spectrum-f64-command-v1',
+    workletUrl: new URL('./worklet/OwnedSpectrumProcessor.js', import.meta.url).href, supportedSampleRates: Object.freeze([44100, 48000, 96000]), minimumControlSeconds: 0.008 }) : isChoir ? Object.freeze({ ...sineRuntime, engineId, buildId: 'owned-choir-v1', runtimeABI: 'owned-choir-f64-command-v1',
     workletUrl: new URL('./worklet/OwnedChoirProcessor.js', import.meta.url).href, supportedSampleRates: Object.freeze([44100, 48000, 96000]), minimumControlSeconds: 0.008 }) : isPluck ? Object.freeze({ ...sineRuntime, engineId, buildId: 'owned-pluck-v1', runtimeABI: 'owned-pluck-f64-command-v1',
     workletUrl: new URL('./worklet/OwnedPluckProcessor.js', import.meta.url).href, supportedSampleRates: Object.freeze([44100, 48000, 96000]) }) : sineRuntime;
-  const capabilities = Object.freeze({ ...sineCapabilities, maximumVoices: MAX_VOICES, offlineRender: !isExtended, continuousPhysicalBindings: isExtended, perVoiceDamping: isPluck, perVoiceTimbre: isChoir, supportedParameterIds: Object.freeze(Object.keys(fields)) });
+  const capabilities = Object.freeze({ ...sineCapabilities, maximumVoices: MAX_VOICES, offlineRender: !isExtended, continuousPhysicalBindings: isExtended, perVoiceDamping: isPluck, perVoiceTimbre: isChoir || isSpectrum, supportedParameterIds: Object.freeze(Object.keys(fields)) });
   if (!finite(leadSeconds, 0.01, 2) || !finite(smoothingSeconds, 0, 1) || !Number.isSafeInteger(traceLimit) || traceLimit < 0 || traceLimit > 4096 ||
       !finite(initializationTimeoutMs, 1, 30000)) throw new Error('Invalid worklet backend options.');
   let node = null, context = null, ready = false, disposed = false, preparing = 0, patch = null, sequence = 0, packetSequence = 0;
@@ -199,6 +204,8 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     for (const [id, value] of Object.entries(input.parameters || {})) {
       if (!fields[id] || !finite(value, fields[id][0], fields[id][1])) return null; parameters[id] = value;
     }
+    if (isSpectrum && !parameters.sourceMode && (parameters.partialCount !== 16 || Array.from({ length: 16 }, (_, index) => index).some(index =>
+      ['Ratio', 'Gain', 'T60Scale'].some(suffix => parameters['partial' + index + suffix] !== fields['partial' + index + suffix][2])))) return null;
     let performance = null;
     if (isExtended) { try { performance = compileInstrumentPerformance(input, performanceParameters); } catch { return null; } }
     return Object.freeze({ id: input.id, revision: input.revision, parameters: Object.freeze(parameters), performance,
@@ -224,8 +231,8 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     try {
       timer = setTimeout(() => interrupt(new Error('kernel-initialization-timeout')), initializationTimeoutMs);
       if (!ready) candidateResourceLease = preview._audioResources?.reserveWorkletRuntime(owner, preview._generation,
-        isExtended ? (isChoir ? choirSourceBytes(candidateContext.sampleRate) : pluckSourceBytes(candidateContext.sampleRate)) + CAPACITY * (WIDTH - SINE_WIDTH) * 8 : 0,
-        isChoir ? CHOIR_SOURCE_HEAP_ESTIMATE : 0) || null;
+        isExtended ? (isSpectrum ? spectrumSourceBytes(candidateContext.sampleRate) : isChoir ? choirSourceBytes(candidateContext.sampleRate) : pluckSourceBytes(candidateContext.sampleRate)) + CAPACITY * (WIDTH - SINE_WIDTH) * 8 : 0,
+        isSpectrum ? SPECTRUM_SOURCE_HEAP_ESTIMATE : isChoir ? CHOIR_SOURCE_HEAP_ESTIMATE : 0) || null;
       let contextModules = modules.get(candidateContext);
       if (!contextModules) { contextModules = new Map(); modules.set(candidateContext, contextModules); }
       if (!contextModules.has(runtime.workletUrl)) {
@@ -237,7 +244,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       if (!ready) {
         const destination = preview._channel(0, owner).gain;
         const create = createWorkletNode || ((audioContext, name, options) => new globalThis.AudioWorkletNode(audioContext, name, options));
-        candidate = create(candidateContext, isChoir ? 'lemmings-owned-choir-v1' : isPluck ? 'lemmings-owned-pluck-v1' : 'lemmings-owned-sine-v1', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2], processorOptions: { maxVoices: MAX_VOICES } });
+        candidate = create(candidateContext, isSpectrum ? 'lemmings-owned-spectrum-v1' : isChoir ? 'lemmings-owned-choir-v1' : isPluck ? 'lemmings-owned-pluck-v1' : 'lemmings-owned-sine-v1', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2], processorOptions: { maxVoices: MAX_VOICES } });
         await Promise.race([new Promise((resolve, rejectReady) => {
           candidate.onprocessorerror = () => rejectReady(new Error('processor-error-during-prepare'));
           candidate.port.onmessage = event => {
@@ -331,19 +338,21 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       performance = patch.performance.resolve(intent.performanceControls, targetFrame, { ...intent, performanceCause: initialCause });
     } catch { return reject('unsupported-performance-controls', intent.voiceId); } }
     const parameters = performance?.values || patch.parameters;
+    if (isSpectrum && !parameters.sourceMode && (parameters.partialCount !== 16 || Array.from({ length: 16 }, (_, index) => index).some(index =>
+      ['Ratio', 'Gain', 'T60Scale'].some(suffix => parameters['partial' + index + suffix] !== fields['partial' + index + suffix][2])))) return reject('unsupported-table-partial-layout', intent.voiceId);
     const expression = intent.expression || {}, pressure = expression.pressure01 ?? 1, pan = expression.pan01 ?? parameters.pan01,
       offset = expression.pitchOffsetCents ?? 0;
     if (typeof expression !== 'object' || Array.isArray(expression) || Object.getPrototypeOf(expression) !== Object.prototype ||
         !finite(pressure, 0, 1) || !finite(pan, -1, 1) || !finite(offset, -24000, 24000) ||
         Object.keys(expression).some(id => !['pressure01', 'pan01', 'pitchOffsetCents'].includes(id))) return reject('unsupported-expression', intent.voiceId);
     const frequency = (intent.pitch.referenceHz ?? 440) * 2 ** ((intent.pitch.cents - 6900 + offset) / 1200);
-    if (!finite(frequency, 0.1, context.sampleRate / 2 - 1) || isExtended && (!finite(frequency, PLUCK_MIN_HZ, PLUCK_MAX_HZ) || Math.abs(offset) > PLUCK_BEND_CENTS)) return reject('pitch-out-of-range', intent.voiceId);
+    if (!finite(frequency, 0.1, context.sampleRate / 2 - 1) || isExtended && (!finite(frequency, isSpectrum ? SPECTRUM_MIN_HZ : PLUCK_MIN_HZ, PLUCK_MAX_HZ) || Math.abs(offset) > PLUCK_BEND_CENTS)) return reject('pitch-out-of-range', intent.voiceId);
     const key = keyFor(executionEpoch, intent.voiceId), generationKey = keyFor(executionEpoch, intent.generation);
     if (cancelled.has(generationKey)) return reject('generation-cancelled', intent.voiceId);
     if (cancellationHistoryFull && !isManagedExecutionEpoch(executionEpoch)) return reject('execution-registration-required', intent.voiceId);
     if (voices.has(key) || preview._semanticVoiceOwners.has(JSON.stringify([owner, executionEpoch, intent.voiceId]))) return reject('duplicate-owner-voice', intent.voiceId);
     const slot = slots.findIndex(voice => voice == null);
-    const renderCost = isChoir ? 3 : isPluck && parameters.bodyMix01 > 0 ? 3 : 1;
+    const renderCost = isSpectrum ? parameters.sourceMode ? parameters.partialCount : 4 : isChoir ? 3 : isPluck && parameters.bodyMix01 > 0 ? 3 : 1;
     if (slot < 0 || voices.size >= patch.maxVoices || preview._renderVoiceCount() + renderCost > preview._maxScheduledVoices) return reject('shared-voice-budget', intent.voiceId);
     if (slotTokens[slot] === 0xffffffff) return reject('voice-slot-generation-exhausted', intent.voiceId);
     const endFrame = leases.get(generationKey) ?? targetFrame + Math.ceil(preview._maxNoteSeconds * context.sampleRate);
@@ -386,13 +395,16 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
         record({ status: 'ended', stage: voice.kernelEnded ? 'render-kernel-ended' : 'stop-requested', voiceId: intent.voiceId, executionEpoch,
           generation: intent.generation, reason, appliedFrame: voice.kernelEnded ? voice.appliedFrame : null });
       } };
-    const excitationSeed = isExtended ? Math.floor((instrumentVariationValue([isChoir ? 'choir-excitation-v1' : 'pluck-excitation-v1', patch.id, patch.revision,
+    const excitationSeed = isExtended ? Math.floor((instrumentVariationValue([isSpectrum ? 'spectrum-phase-v1' : isChoir ? 'choir-excitation-v1' : 'pluck-excitation-v1', patch.id, patch.revision,
       intent.actorId == null ? ['event-only', intent.onsetId ?? intent.voiceId] : [intent.worldId, intent.generation, intent.actorId],
       intent.onsetId ?? intent.voiceId, performance.variation?.seed ?? 0]) + 1) * 2147483648) : 0;
-    const sourceFields = isChoir ? { 18: excitationSeed, 19: parameters.vowel01, 20: parameters.breath01, 21: parameters.sizeRatio,
+    const sourceFields = isSpectrum ? { 18: excitationSeed, 19: parameters.sourceMode, 20: parameters.partialCount, 21: parameters.scan01, 22: parameters.body01, 23: parameters.edge01, 24: parameters.partialDecaySeconds } : isChoir ? { 18: excitationSeed, 19: parameters.vowel01, 20: parameters.breath01, 21: parameters.sizeRatio,
       22: parameters.chorusCents, 23: parameters.vibratoCents, 24: parameters.vowelStep, 25: parameters.bandwidthScale } : isPluck ? {
       18: excitationSeed, 19: parameters.pluckPosition01, 20: Math.max(0.02, parameters.stringT60Seconds * (1 - 0.95 * parameters.damping01)),
       21: parameters.excitationBrightness01, 22: parameters.bodyMix01, 23: Math.max(0.02, parameters.bodyT60Seconds * (1 - 0.95 * parameters.damping01)) } : {};
+    if (isSpectrum) for (let index = 0; index < 16; index++) {
+      sourceFields[25 + index] = parameters['partial' + index + 'Ratio']; sourceFields[41 + index] = parameters['partial' + index + 'Gain']; sourceFields[57 + index] = parameters['partial' + index + 'T60Scale'];
+    }
     const result = command(BEGIN, targetFrame, voice, { 6: frequency, 7: voice.peak, 8: pressure, 9: Math.max(-1, Math.min(1, pan + patch.pan01)),
       10: Math.round(parameters.attackSeconds * context.sampleRate), 11: Math.round(parameters.decaySeconds * context.sampleRate),
       12: parameters.sustain01, 13: Math.round(parameters.releaseSeconds * context.sampleRate), 16: endFrame, ...sourceFields });
@@ -410,7 +422,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     const voice = voices.get(keyFor(executionEpoch, voiceId)), now = frameNow();
     if (!ready || !voice || voice.released && voice.releaseAt <= context.currentTime || !preview._ownerReady(owner)) return reject('voice-not-active', voiceId);
     if (!expression || typeof expression !== 'object' || Array.isArray(expression) || Object.getPrototypeOf(expression) !== Object.prototype ||
-        Object.keys(expression).some(id => !['pressure01', 'pan01', 'pitchOffsetCents', ...(isPluck ? ['damping01'] : []), ...(isChoir ? ['vowel01', 'breath01', 'sizeRatio', 'chorusCents', 'vibratoCents', 'bandwidthScale'] : [])].includes(id))) return reject('unsupported-expression', voiceId);
+        Object.keys(expression).some(id => !['pressure01', 'pan01', 'pitchOffsetCents', ...liveSourceIds].includes(id))) return reject('unsupported-expression', voiceId);
     if (!Number.isSafeInteger(targetFrame) || targetFrame < Math.max(now, Math.round(voice.start * context.sampleRate)) || targetFrame >= voice.releaseAt * context.sampleRate) return reject('stale-or-outside-gate-expression', voiceId);
     if (!finite(rampSeconds, 0, 60)) return reject('invalid-control-ramp', voiceId);
     let mask = 0; const values = { 14: Math.ceil(Math.max(smoothingSeconds, runtime.minimumControlSeconds || 0, rampSeconds) * context.sampleRate) };
@@ -424,7 +436,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (isPluck && expression.damping01 != null) { if (!finite(expression.damping01, 0, 1)) return reject('invalid-expression', voiceId);
       mask |= 8; values[20] = Math.max(0.02, voice.stringT60Seconds * (1 - 0.95 * expression.damping01));
       values[23] = Math.max(0.02, voice.bodyT60Seconds * (1 - 0.95 * expression.damping01)); }
-    if (isChoir) for (const [name, bit, field] of [['vowel01', 8, 19], ['breath01', 16, 20], ['sizeRatio', 32, 21], ['chorusCents', 64, 22], ['vibratoCents', 128, 23], ['bandwidthScale', 256, 25]]) {
+    for (const [name, bit, field] of sourceExpressions) {
       if (expression[name] == null) continue;
       if (!finite(expression[name], fields[name][0], fields[name][1])) return reject('invalid-expression', voiceId); mask |= bit; values[field] = expression[name];
     }
@@ -445,7 +457,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       return Object.freeze({ status: 'accepted', stage: 'semantic-observation', outputRequested: false, reason: 'no-qualified-control-measurement', performance });
     const expression = {};
     for (const delta of performance.deltas) {
-      if (!(isChoir && ['vowel01', 'breath01', 'sizeRatio', 'chorusCents', 'vibratoCents', 'bandwidthScale'].includes(delta.parameterId) || isPluck && delta.parameterId === 'damping01'))
+      if (!liveSourceIds.includes(delta.parameterId))
         return reject('unsupported-continuous-target', voiceId);
       expression[delta.parameterId] = performance.values[delta.parameterId];
     }

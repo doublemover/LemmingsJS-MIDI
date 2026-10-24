@@ -365,3 +365,26 @@ state, and committed edits record changed lanes at the actual world boundary.
 Re-performance restores numeric/stable lane addressing and applies those edits
 before subsequent onsets. A combined mapping/control edit has one journal
 admission record. Runtime replay acceptance remains deferred.
+
+The `worklet-spectrum` source provides 16 original phase-aligned Fourier frames
+with five harmonic-limited levels (1/2/4/8/16 harmonics), and a separate additive
+mode with 1–16 ratios/gains/T60 scales. The offline generator pins the source
+coefficients, common table normalization and 2048-sample linear interpolation.
+FLOW blends neighboring frames; adjacent harmonic levels blend under the current
+0.4-sample-rate pitch limit. Additive partials taper above 0.36 sample rate and
+are omitted at 0.4; their decay and phase stay independent under one parent gate.
+BODY weights lower components, EDGE applies spectral tilt/additive weighting
+and a bounded one-pole low-pass, and scan/body/edge update over at least 8 ms.
+
+The declared live profile is eight logical slots, 20–2000 Hz onsets, ±200 cent
+bends, and 44.1/48/96 kHz. Admission charges four source units for table blending
+or the declared partial count for additive mode, before allocating the voice.
+Table mode rejects customized additive layouts. Typed bank/voice/queue bytes
+and conservative JavaScript bank/state estimates are reserved before construction.
+Oscillators use actor/event-seeded double-precision phase accumulation. Arbitrary
+reset, negative frequency, PWM, phase distortion, sync, complete DSP state cuts
+and offline spectrum output remain unavailable. Spectral/alias, register, long
+hold, CPU and listening qualification remain deferred. The design uses original
+Fourier data; the [Web Audio specification](https://webaudio.github.io/web-audio-api/#PeriodicWave)
+and [Faust oscillator documentation](https://faustlibraries.grame.fr/libs/oscillators/)
+provide algorithm context, without importing their complete instruments.

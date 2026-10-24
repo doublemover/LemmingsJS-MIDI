@@ -25,6 +25,10 @@ const schemas = freezeData({
   'worklet-pluck': [parameter('pluckPosition01', 0.05, 0.45, 0.28, 'normalized'), parameter('stringT60Seconds', 0.1, 4, 0.9, 's'),
     parameter('excitationBrightness01', 0, 1, 0.5, 'normalized'), parameter('bodyMix01', 0, 0.3, 0, 'ratio'), parameter('bodyT60Seconds', 0.05, 2, 0.3, 's')]
     .map(spec => Object.freeze({ ...spec, liveSafe: false })).concat(Object.freeze({ ...parameter('damping01', 0, 1, 0, 'normalized'), causalLiveSafe: true }), envelope(0.002, 0, 1, 0.5)),
+  'worklet-spectrum': [parameter('sourceMode', 0, 1, 0, 'enum', true), parameter('partialCount', 1, 16, 16, 'enum', true), parameter('partialDecaySeconds', 0, 4, 0, 's'),
+    ...Array.from({ length: 16 }, (_, index) => [parameter('partial' + index + 'Ratio', 0.125, 32, index + 1, 'ratio'), parameter('partial' + index + 'Gain', 0, 1, 1 / (index + 1), 'amplitude-linear'),
+      parameter('partial' + index + 'T60Scale', 0.01, 1, 1, 'ratio')]).flat()].map(spec => Object.freeze({ ...spec, liveSafe: false })).concat(
+    ['scan01', 'body01', 'edge01'].map(name => Object.freeze({ ...parameter(name, 0, 1, name === 'scan01' ? 0 : 0.5, 'normalized'), causalLiveSafe: true })), envelope(0.008, 0.1, 0.7, 0.5)),
   'worklet-choir': [parameter('vowel01', 0, 1, 0, 'normalized'), parameter('breath01', 0, 1, 0.1, 'normalized'), parameter('sizeRatio', 0.5, 2, 1, 'ratio'),
     parameter('chorusCents', 0, 12, 3, 'cents'), parameter('vibratoCents', 0, 12, 2, 'cents'), parameter('vowelStep', 0, 1, 0, 'enum', true), parameter('bandwidthScale', 0.5, 2, 1, 'ratio')]
     .map(spec => Object.freeze({ ...spec, liveSafe: !spec.discrete, causalLiveSafe: !spec.discrete })).concat(envelope(0.025, 0.1, 0.8, 0.5)),
@@ -37,25 +41,27 @@ export const NATIVE_PLUCK_FIELDS = freezeData(Object.fromEntries(schemas['workle
 export const NATIVE_PLUCK_PARAMETERS = freezeData(Object.fromEntries(schemas['worklet-pluck'].map(spec => [spec.id, { ...spec, integer: spec.discrete }])));
 export const NATIVE_CHOIR_FIELDS = freezeData(Object.fromEntries(schemas['worklet-choir'].map(spec => [spec.id, [spec.min, spec.max, spec.default]])));
 export const NATIVE_CHOIR_PARAMETERS = freezeData(Object.fromEntries(schemas['worklet-choir'].map(spec => [spec.id, { ...spec, integer: spec.discrete }])));
+export const NATIVE_SPECTRUM_FIELDS = freezeData(Object.fromEntries(schemas['worklet-spectrum'].map(spec => [spec.id, [spec.min, spec.max, spec.default]])));
+export const NATIVE_SPECTRUM_PARAMETERS = freezeData(Object.fromEntries(schemas['worklet-spectrum'].map(spec => [spec.id, { ...spec, integer: spec.discrete }])));
 export const NATIVE_FM_PARAMETERS = freezeData(Object.fromEntries(schemas['native-fm'].map(spec => [spec.id, { ...spec, integer: spec.discrete }])));
 export const NATIVE_MODAL_PARAMETERS = freezeData(Object.fromEntries(schemas['native-modal'].map(spec => [spec.id, { ...spec, integer: spec.discrete }])));
 export const NATIVE_SAMPLE_FIELDS = freezeData(Object.fromEntries(schemas['native-sample'].map(spec => [spec.id, [spec.min, spec.max, spec.default]])));
 const capabilities = id => Object.freeze({ samples: id === 'native-sample', independentSamePitch: true, perVoicePitch: true,
-  perVoicePressure: true, perVoicePan: true, perVoiceTimbre: id === 'worklet-choir', perVoiceDamping: id === 'worklet-pluck', ownedGates: true, releaseVelocity: id === 'native-sample',
-  forwardLoops: id === 'native-sample', displayTelemetry: ['worklet-sine', 'worklet-pluck', 'worklet-choir'].includes(id), renderAcknowledgment: ['worklet-sine', 'worklet-pluck', 'worklet-choir'].includes(id), offlineRender: id === 'worklet-sine',
-  modulationGraph: false, macroPerformance: ['native-oscillator', 'native-fm', 'native-modal', 'worklet-pluck', 'worklet-choir'].includes(id), continuousMacroPerformance: false,
-  identityVariation: ['native-oscillator', 'native-fm', 'native-modal', 'worklet-pluck', 'worklet-choir'].includes(id),
-  continuousPhysicalBindings: ['worklet-pluck', 'worklet-choir'].includes(id),
-  causalBindings: ['native-oscillator', 'native-fm', 'native-modal', 'worklet-pluck', 'worklet-choir'].includes(id) });
+  perVoicePressure: true, perVoicePan: true, perVoiceTimbre: ['worklet-choir', 'worklet-spectrum'].includes(id), perVoiceDamping: id === 'worklet-pluck', ownedGates: true, releaseVelocity: id === 'native-sample',
+  forwardLoops: id === 'native-sample', displayTelemetry: ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum'].includes(id), renderAcknowledgment: ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum'].includes(id), offlineRender: id === 'worklet-sine',
+  modulationGraph: false, macroPerformance: ['native-oscillator', 'native-fm', 'native-modal', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum'].includes(id), continuousMacroPerformance: false,
+  identityVariation: ['native-oscillator', 'native-fm', 'native-modal', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum'].includes(id),
+  continuousPhysicalBindings: ['worklet-pluck', 'worklet-choir', 'worklet-spectrum'].includes(id),
+  causalBindings: ['native-oscillator', 'native-fm', 'native-modal', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum'].includes(id) });
 let catalogPromise = null;
 
 export async function describeNativeInstrumentEngines(artifacts) {
-  if (!Array.isArray(artifacts) || artifacts.length > 7) throw new TypeError('Invalid native engine artifact inventory.');
+  if (!Array.isArray(artifacts) || artifacts.length > 8) throw new TypeError('Invalid native engine artifact inventory.');
   const descriptors = [];
   for (const [engineId, parameters] of Object.entries(schemas)) {
     const engineCapabilities = capabilities(engineId), artifactHash = artifacts.find(artifact => artifact.engineId === engineId && artifact.engineVersion === 1)?.artifactHash;
     if (!artifactHash) continue;
-    const maximumVoices = engineId === 'worklet-choir' ? 8 : ['native-modal', 'worklet-pluck'].includes(engineId) ? 16 : engineId === 'native-fm' ? 32 : 64, voicePolicies = ['reject'];
+    const maximumVoices = ['worklet-choir', 'worklet-spectrum'].includes(engineId) ? 8 : ['native-modal', 'worklet-pluck'].includes(engineId) ? 16 : engineId === 'native-fm' ? 32 : 64, voicePolicies = ['reject'];
     const parameterSchemaHash = await hashData({ version: 1, parameters, capabilities: engineCapabilities, maximumVoices, voicePolicies });
     descriptors.push(validateEngineDescriptor({ engineId, engineVersion: 1, artifactHash, parameterSchemaHash, parameters, capabilities: engineCapabilities, maximumVoices, voicePolicies }));
   }

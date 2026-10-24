@@ -4,6 +4,11 @@ export function resolveOwnedArticulationPolicy(patch) {
   const releaseSeconds = parameters.releaseSeconds ?? 0.04, attack = parameters.attackSeconds ?? 0.008, decay = parameters.decaySeconds ?? 0.05;
   if (![releaseSeconds, attack, decay].every(value => Number.isFinite(value) && value >= 0 && value <= 4)) throw new RangeError('Patch articulation exceeds the owned local profile.');
   let holdSeconds = attack + decay;
+  if (patch.engineId === 'worklet-spectrum') {
+    const t60 = parameters.partialDecaySeconds ?? 0;
+    if (!Number.isFinite(t60) || t60 < 0 || t60 > 4) throw new RangeError('Invalid partial decay profile.');
+    holdSeconds = Math.max(holdSeconds, t60 * 1.5);
+  }
   if (patch.engineId === 'worklet-pluck') {
     const stringT60 = parameters.stringT60Seconds ?? 0.9, bodyT60 = parameters.bodyT60Seconds ?? 0.3;
     if (!Number.isFinite(stringT60) || stringT60 < 0.1 || stringT60 > 4 || !Number.isFinite(bodyT60) || bodyT60 < 0.05 || bodyT60 > 2) throw new RangeError('Invalid pluck articulation profile.');
