@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { planCausalSourceRender } from '../../js/app/midi-ui/CausalOwnedRender.js';
 import { CAUSAL_RENDER_SOURCES } from '../../js/app/midi-ui/CausalTakeAudioRender.js';
 import { describeNativeInstrumentEngines } from '../../js/app/midi-ui/NativeInstrumentSchema.js';
-import { createQuarryTape } from '../../js/midi/content/DubQuarryRack.js';
+import { createQuarryTape, createQuarryBody } from '../../js/midi/content/DubQuarryRack.js';
 
 const intent = (kind, milliseconds, worldId = 'world-a') => ({ version: 1, kind, intentId: worldId + ':' + kind, voiceId: 'reused-id', generation: 1, actorId: 7,
   worldId, sourceEventIds: [], laneId: worldId, scoreTime: { sourceTimeMs: milliseconds, subTick: 0 }, pitch: { cents: 6000.12345 }, velocity01: 0.6, expression: {} });
@@ -18,6 +18,15 @@ describe('native causal source preflight', () => {
       const plan = await planCausalSourceRender({ ...input, effectGraph: createQuarryTape({ send01: 0.3 }), effectReturnNodeIds: ['return'], tail: { mode: 'bounded-natural', maxSeconds: 30 } });
       expect(plan.effectPlan.processingRevisions.alignment).to.equal('fixed-linear-fractional-delay-v1'); expect(plan.effectHash).to.match(/^[a-f0-9]{64}$/);
       expect(plan.effectReturnNodeIds).to.deep.equal(['return']); expect(plan.outputEnd).to.be.greaterThan(plan.endFrame); expect(plan.capturedBegins).to.equal(1);
+    }
+  });
+  it('plans exact native convolution revision, unknown algorithmic latency and shared tail for every native tone source', async () => {
+    for (const engineId of ['native-oscillator', 'native-fm', 'native-modal']) for (const sampleRate of [44100, 48000, 96000]) {
+      const input = await request(engineId, [intent('begin', 100), intent('end', 500)]);
+      const plan = await planCausalSourceRender({ ...input, sampleRate, effectGraph: createQuarryBody({ send01: 0.3 }), effectReturnNodeIds: ['return'], tail: { mode: 'bounded-natural', maxSeconds: 3 } });
+      expect(plan.effectPlan.impulseCount).to.equal(1); expect(plan.effectPlan.latencyFrames).to.equal(null);
+      expect(plan.effectHash).to.match(/^[a-f0-9]{64}$/); expect(plan.outputEnd).to.be.greaterThan(plan.endFrame);
+      expect(plan.effectReturnNodeIds).to.deep.equal(['return']);
     }
   });
   it('retains original world and event identities for reused voice IDs and high resolution pitch', async () => {

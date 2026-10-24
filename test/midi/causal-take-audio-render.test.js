@@ -61,14 +61,14 @@ describe('owned causal render host and prepared file bundles', () => {
     await denied(owner.renderer.prepare({ ...request, effectReturnNodeIds: Array.from({ length: 9 }, (_, index) => 'tap-' + index) }), 'render-unavailable');
     await owner.dispose(); expect(owner.budget.diagnostics().accountedBytes).to.equal(0);
   });
-  it('selects explicit new authored effects without mutating saved defaults or silently activating bypassed/native bodies', () => {
+  it('selects explicit new authored effects and native bodies without mutating saved defaults or activating bypassed racks', () => {
     const rack = { schema: 'lemmings-owner-effect-rack/v1', graph: createQuarryTape({ revision: 12 }), bypass: 'active' };
     const selected = prepareCausalEffectSelection({ preset: 'saved-owner', rack, send01: 0.2 });
     expect(selected.effectGraph.nodes.find(node => node.id === 'send').parameters.gain01).to.equal(0.2); expect(rack.graph.nodes.find(node => node.id === 'send').parameters.gain01).to.equal(0);
     expect(selected.effectReturnNodeIds).to.deep.equal(['return']); expect(Object.isFrozen(selected.effectGraph)).to.equal(true);
     expect(prepareCausalEffectSelection({ preset: 'none' })).to.deep.equal({ effectGraph: null, effectReturnNodeIds: [] });
     expect(() => prepareCausalEffectSelection({ preset: 'saved-owner', rack: { ...rack, bypass: 'neutral' } })).to.throw('not activated implicitly');
-    expect(() => prepareCausalEffectSelection({ preset: 'saved-owner', rack: { ...rack, graph: createQuarryBody() } })).to.throw('native convolution');
+    expect(prepareCausalEffectSelection({ preset: 'saved-owner', rack: { ...rack, graph: createQuarryBody() } }).effectGraph.nodes.some(node => node.kind === 'convolution-native')).to.equal(true);
   });
   it('retains prepared WAVs after request cancellation and retires source/computation separately', async () => {
     const owner = await setup(), controller = new AbortController();

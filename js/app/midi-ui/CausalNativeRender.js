@@ -1,15 +1,18 @@
 import { planCausalSourceRender } from './CausalOwnedRender.js';
 import { renderNativeOfflineGraph, NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineDriver.js';
 
-export async function prepareCausalNativeRenderInput(input, { resources, signal, onProgress = () => {}, OfflineAudioContext, resourceBudget, admission, isCurrent = () => true,
+export async function prepareCausalNativeRenderInput(input, { resources, signal, onProgress = () => {}, OfflineAudioContext, resourceBudget, admission, getMaterialProvider, jobs, isCurrent = () => true,
   maxWorkingBytes = 512 * 1048576 } = {}) {
   if (!NATIVE_OFFLINE_SOURCE_IDS.includes(input?.descriptor?.engineId)) throw new Error('Choose an available native causal render source.');
   signal?.throwIfAborted();
   const plan = await planCausalSourceRender({ ...input, signal, maxPlanningBytes: maxWorkingBytes }); signal?.throwIfAborted();
-  const nativeBytes = plan.outputEnd * (2 + plan.stemLaneIds.length * 2) * 4;
+  const nativeBodies = !!plan.effectPlan?.impulseCount, nativeReturns = nativeBodies ? plan.effectReturnNodeIds.length : 0;
+  if (plan.stemLaneIds.length + nativeReturns > 15) throw Object.assign(new Error('Native convolution shares a 32-channel simultaneous tap budget: choose at most fifteen dry lanes plus shared returns.'), { code: 'native-convolution-tap-capacity' });
+  const nativeBytes = plan.outputEnd * (2 + (plan.stemLaneIds.length + nativeReturns) * 2) * 4;
+  const nativeEffectWorkspace = nativeBodies ? plan.effectPlan.impulseDecodedBytes * 6 + plan.effectPlan.nativeNodeEstimateBytes + plan.effectPlan.stateBytes + 18 * 1048576 : 0;
   const estimatedPeakBytes = nativeBytes * 8 + 32 * 1048576 + (plan.effectPlan ? plan.pcmBytes * 4 + plan.effectPlan.stateBytes + 4 * 1048576 : 0);
   if (!Number.isSafeInteger(nativeBytes) || nativeBytes > 56 * 1048576 || !Number.isSafeInteger(estimatedPeakBytes) ||
-      Math.max(nativeBytes + 16 * 1048576, nativeBytes + estimatedPeakBytes) + plan.planningBytes > maxWorkingBytes) throw Object.assign(new Error('Native preroll, retained PCM, simultaneous taps and encoding overlap exceed the admitted workspace. Choose a shorter history or fewer stems.'), { code: 'native-render-memory-capacity' });
+      Math.max(nativeBytes + 16 * 1048576 + nativeEffectWorkspace, nativeBytes + estimatedPeakBytes) + plan.planningBytes > maxWorkingBytes) throw Object.assign(new Error('Native preroll, retained PCM, simultaneous taps and encoding overlap exceed the admitted workspace. Choose a shorter history or fewer stems.'), { code: 'native-render-memory-capacity' });
   const originals = new Map(input.revoice.intents.map(intent => [intent.intentId, intent])), events = [];
   let indexLimitedOnsets = 0, omittedModes = 0;
   for (const voice of plan.voices.values()) { if (voice.nativeSourcePlan?.indexLimited) indexLimitedOnsets++; omittedModes += voice.nativeSourcePlan?.omittedModes?.length || 0; }
@@ -21,7 +24,9 @@ export async function prepareCausalNativeRenderInput(input, { resources, signal,
       releaseFrame: voice.releaseAt ?? plan.outputEnd + 1, releaseSeconds: voice.parameters.releaseSeconds });
   }
   const { sampleRate, outputFrames, outputEnd, firstFrame, endFrame, stemLaneIds } = plan;
-  const native = await renderNativeOfflineGraph({ patch: plan.patch, events, frames: outputEnd, sampleRate, stemLaneIds, assets: input.nativeAssets || [] }, { resources, signal, onProgress, OfflineAudioContext, resourceBudget, admission, isCurrent });
+  const native = await renderNativeOfflineGraph({ patch: plan.patch, events, frames: outputEnd, sampleRate, stemLaneIds, assets: input.nativeAssets || [],
+    ...(nativeBodies ? { effectGraph: plan.effectPlan.definition, effectReturnNodeIds: plan.effectReturnNodeIds } : {}) },
+  { resources, signal, onProgress, OfflineAudioContext, resourceBudget, admission, getMaterialProvider, jobs, isCurrent });
   try {
     const manifest = { schema: 'lemmings-causal-audio-render/v1', mode: 'intent-render', operation: 'sound-only-revoice', takeId: plan.source.takeId,
       takeRevision: plan.source.takeRevision, sourceCanonicalHash: plan.source.sourceCanonicalHash, sourceVersions: plan.source.sourceVersions, intentHash: plan.intentHash,

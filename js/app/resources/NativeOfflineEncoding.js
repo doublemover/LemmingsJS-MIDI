@@ -1,5 +1,6 @@
+import { prepareEffectRenderPlan, validateNativeConvolutionRenderReceipt } from '../midi-ui/EffectRenderPlan.js';
 import { canonicalDataText } from '../../core/CanonicalData.js';
-import { prepareOwnedEffectGraphPlan, createOwnedEffectGraphKernel } from '../midi-ui/OwnedEffectGraphKernel.js';
+import { createOwnedEffectGraphKernel } from '../midi-ui/OwnedEffectGraphKernel.js';
 import { effectGraphHash } from '../../midi/content/EffectGraphRevision.js';
 
 const failure = message => Object.assign(new Error(message), { name: 'NativeOfflineEncodingError' });
@@ -18,8 +19,18 @@ const encode = (pcm, manifest) => {
 
 export async function encodeNativeOfflineRender({ mode, manifest, planes, firstFrame = 0, endFrame, stemLaneIds = [] } = {},
   { signal, yieldControl = () => new Promise(resolve => setTimeout(resolve, 0)), onProgress = () => {}, maxWorkingBytes = 512 * 1048576 } = {}) {
+  const requested = manifest?.effectGraph; let effectPlan = null, returns = [];
+  if (requested != null) {
+    if (!requested || Object.getPrototypeOf(requested) !== Object.prototype || !requested.definition || !requested.processingRevisions || !Array.isArray(manifest.stems?.sharedReturns)) throw failure('Native effect manifest omitted its graph and simultaneous return inventory.');
+    returns = [...manifest.stems.sharedReturns]; effectPlan = prepareEffectRenderPlan(requested.definition, manifest.sampleRate, returns, { nativeConvolution: true });
+    if (requested.hash !== await effectGraphHash(effectPlan) || canonicalDataText(requested.processingRevisions).text !== canonicalDataText(effectPlan.processingRevisions).text ||
+        requested.latencyFrames !== effectPlan.latencyFrames || requested.maximumTailFrames !== effectPlan.maximumTailFrames || requested.controls !== 'explicit-authored-defaults-not-replayed-live-gestures' || requested.scope !== 'one-full-shared-owner-sum')
+      throw failure('Native effect manifest differs from the exact executing graph.');
+  }
+  const nativeEffects = !!effectPlan?.impulseCount;
+  if (nativeEffects) validateNativeConvolutionRenderReceipt(effectPlan, manifest.nativeScheduling, requested.hash, returns);
   const nativeFrames = planes?.[0]?.length, frames = endFrame - firstFrame;
-  if (!['controls', 'causal-take'].includes(mode) || !Array.isArray(stemLaneIds) || !Array.isArray(planes) || planes.length !== 2 + stemLaneIds.length * 2 || planes.length > 32 ||
+  if (!['controls', 'causal-take'].includes(mode) || !Array.isArray(stemLaneIds) || !Array.isArray(planes) || planes.length !== 2 + (stemLaneIds.length + (nativeEffects ? returns.length : 0)) * 2 || planes.length > 32 ||
       stemLaneIds.length > 15 || new Set(stemLaneIds).size !== stemLaneIds.length || stemLaneIds.some(id => typeof id !== 'string' || !id || id.length > 128) ||
       !Number.isSafeInteger(nativeFrames) || nativeFrames < 1 || planes.some(plane => !(plane instanceof Float32Array) || plane.length !== nativeFrames) ||
       !Number.isSafeInteger(firstFrame) || firstFrame < 0 || !Number.isSafeInteger(endFrame) || endFrame <= firstFrame || endFrame > nativeFrames ||
@@ -27,14 +38,6 @@ export async function encodeNativeOfflineRender({ mode, manifest, planes, firstF
       manifest.sampleFormat !== 'ieee-float32-le' || manifest.schema !== (mode === 'controls' ? 'lemmings-rendered-audition/v1' : 'lemmings-causal-audio-render/v1') ||
       mode === 'controls' && (firstFrame !== 0 || endFrame !== nativeFrames || stemLaneIds.length || manifest.effectGraph != null)) throw failure('Native PCM, frame interval or stereo tap inventory differs from its admitted manifest.');
   canonicalDataText(manifest, { maxBytes: 262144, maxNodes: 32768 });
-  const requested = manifest.effectGraph; let effectPlan = null, returns = [];
-  if (requested != null) {
-    if (!requested || Object.getPrototypeOf(requested) !== Object.prototype || !requested.definition || !requested.processingRevisions || !Array.isArray(manifest.stems?.sharedReturns)) throw failure('Native effect manifest omitted its graph and simultaneous return inventory.');
-    returns = [...manifest.stems.sharedReturns]; effectPlan = prepareOwnedEffectGraphPlan(requested.definition, manifest.sampleRate, returns);
-    if (requested.hash !== await effectGraphHash(effectPlan) || canonicalDataText(requested.processingRevisions).text !== canonicalDataText(effectPlan.processingRevisions).text ||
-        requested.latencyFrames !== effectPlan.latencyFrames || requested.maximumTailFrames !== effectPlan.maximumTailFrames || requested.controls !== 'explicit-authored-defaults-not-replayed-live-gestures' || requested.scope !== 'one-full-shared-owner-sum')
-      throw failure('Native effect manifest differs from the exact executing graph.');
-  }
   const tapCount = stemLaneIds.length + returns.length + 1, outputBytes = frames * 8 * tapCount;
   const workingBytes = nativeFrames * planes.length * 16 + outputBytes * 4 + 16 * 1048576 + (effectPlan ? effectPlan.stateBytes + 4 * 1048576 : 0);
   if (!Number.isSafeInteger(outputBytes) || outputBytes + 262208 * tapCount > 64 * 1048576 || !Number.isSafeInteger(maxWorkingBytes) || workingBytes > maxWorkingBytes)
@@ -44,7 +47,7 @@ export async function encodeNativeOfflineRender({ mode, manifest, planes, firstF
     for (const plane of planes) for (let index = first; index < end; index++) if (!Number.isFinite(plane[index])) throw failure('The native producer returned a nonfinite PCM sample.');
     await yieldControl();
   }
-  const effects = effectPlan ? await createOwnedEffectGraphKernel({ definition: effectPlan.definition, sampleRate: manifest.sampleRate, returnNodeIds: returns }) : null;
+  const effects = effectPlan && !nativeEffects ? await createOwnedEffectGraphKernel({ definition: effectPlan.definition, sampleRate: manifest.sampleRate, returnNodeIds: returns }) : null;
   const processed = effects ? Array.from({ length: returns.length + 1 }, () => new Uint8Array(frames * 8)) : null;
   if (effects) {
     const views = processed.map(bytes => new DataView(bytes.buffer));
@@ -58,7 +61,7 @@ export async function encodeNativeOfflineRender({ mode, manifest, planes, firstF
       onProgress({ phase: 'rendering-native-shared-effects', completedUnits: end, totalUnits: endFrame }); await yieldControl();
     }
   }
-  const renderedManifest = effects ? { ...manifest, effectGraph: { ...requested, realization: effects.diagnostics() } } : manifest;
+  const renderedManifest = effects || nativeEffects ? { ...manifest, effectGraph: { ...requested, realization: nativeEffects ? manifest.nativeScheduling.effectGraph.realization : effects.diagnostics() } } : manifest;
   const files = []; let totalBytes = 0;
   for (let tap = 0; tap < tapCount; tap++) {
     const lane = tap > 0 && tap <= stemLaneIds.length, returnNodeId = tap > stemLaneIds.length ? returns[tap - 1 - stemLaneIds.length] ?? null : null;
@@ -74,7 +77,7 @@ export async function encodeNativeOfflineRender({ mode, manifest, planes, firstF
       }
       onProgress({ phase: 'encoding-native-pcm', completedUnits: tap * frames + end, totalUnits: frames * tapCount }); await yieldControl();
     }
-    const result = { ...renderedManifest, ...(mode === 'causal-take' ? { tap: lane ? 'captured-lane-dry' : returnNodeId ? 'shared-effect-node-output' : effects ? 'complete-owned-effect-graph-pre-master' : 'complete-native-source-graph-pre-master', laneId: lane ? stemLaneIds[tap - 1] : null, returnNodeId } : {}),
+    const result = { ...renderedManifest, ...(mode === 'causal-take' ? { tap: lane ? 'captured-lane-dry' : returnNodeId ? 'shared-effect-node-output' : effects || nativeEffects ? 'complete-owned-effect-graph-pre-master' : 'complete-native-source-graph-pre-master', laneId: lane ? stemLaneIds[tap - 1] : null, returnNodeId } : {}),
       pcmHash: await digest(pcm), statistics: { peak, rms: Math.sqrt(squares / (frames * 2)), overFullScaleSamples } };
     signal?.throwIfAborted(); const bytes = encode(pcm, result); totalBytes += bytes.byteLength;
     if (totalBytes > 64 * 1048576) throw failure('Native encoded files exceed their combined admitted bound.');

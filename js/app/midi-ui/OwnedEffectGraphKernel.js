@@ -1,16 +1,12 @@
-import { prepareEffectGraphRevision, effectGraphHash } from '../../midi/content/EffectGraphRevision.js';
+import { prepareEffectRenderPlan } from './EffectRenderPlan.js';
+import { effectGraphHash } from '../../midi/content/EffectGraphRevision.js';
 import { BoundedDelayKernel } from './worklet/BoundedDelayProcessor.js';
 import { NonlinearChainKernel } from './worklet/NonlinearChainKernel.js';
 import { FixedFractionalDelayKernel } from './worklet/FixedFractionalDelayProcessor.js';
 
 const fail = (code, message) => { throw Object.assign(new Error(message), { name: 'EffectRenderError', code }); };
 export function prepareOwnedEffectGraphPlan(definition, sampleRate = 48000, returnNodeIds = []) {
-  const plan = prepareEffectGraphRevision(definition, { sampleRate });
-  if (plan.impulseCount) fail('native-impulse-render-required', 'This graph requires its exact native convolution render adapter.');
-  if (plan.inputs.length !== 1 || plan.outputs.length !== 1) fail('unsupported-effect-owner-buses', 'This owned render profile requires one complete stereo owner input and output.');
-  if (!Array.isArray(returnNodeIds) || returnNodeIds.length > 8 || new Set(returnNodeIds).size !== returnNodeIds.length || returnNodeIds.some(id => !plan.nodes.some(node => node.id === id && !['bus-in', 'bus-out'].includes(node.kind))))
-    fail('invalid-effect-taps', 'Choose at most eight unique actual effect node outputs.');
-  return plan;
+  return prepareEffectRenderPlan(definition, sampleRate, returnNodeIds);
 }
 export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48000, returnNodeIds = [] } = {}) {
   const plan = prepareOwnedEffectGraphPlan(definition, sampleRate, returnNodeIds), hash = await effectGraphHash(plan);

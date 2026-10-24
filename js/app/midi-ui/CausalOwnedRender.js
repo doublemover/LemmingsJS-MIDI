@@ -10,7 +10,8 @@ import { validateInstrumentPatchV2 } from '../../midi/content/InstrumentPatchV2.
 import { canonicalDataText, hashData } from '../../core/CanonicalData.js';
 import { createCausalRenderTiming } from './CausalRenderTiming.js';
 import { resolveOwnedArticulationPolicy } from './OwnedArticulationPolicy.js';
-import { prepareOwnedEffectGraphPlan, createOwnedEffectGraphKernel } from './OwnedEffectGraphKernel.js';
+import { createOwnedEffectGraphKernel } from './OwnedEffectGraphKernel.js';
+import { prepareEffectRenderPlan } from './EffectRenderPlan.js';
 import { effectGraphHash } from '../../midi/content/EffectGraphRevision.js';
 
 const MAX_SECONDS = 120, MAX_INTENTS = 32768, MAX_OUTPUT_BYTES = 64 * 1048576;
@@ -61,7 +62,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
     throw failure('render-preflight', 'Choose a bounded owned-source render, supported sample rate, range, tail policy and the source-specific captured lane stem limit.');
   const owned = NATIVE_OFFLINE_SOURCE_IDS.includes(descriptor.engineId) ? getNativeOfflineProfile(descriptor.engineId) : getOwnedSourceProfile(descriptor.engineId), patch = validateInstrumentPatchV2(definition, descriptor);
   if (!Array.isArray(effectReturnNodeIds) || !effectGraph && effectReturnNodeIds.length) throw failure('effect-render-preflight', 'Shared effect taps require an explicit graph realization.');
-  const effectPlan = effectGraph ? prepareOwnedEffectGraphPlan(effectGraph, sampleRate, effectReturnNodeIds) : null;
+  const effectPlan = effectGraph ? prepareEffectRenderPlan(effectGraph, sampleRate, effectReturnNodeIds, { nativeConvolution: NATIVE_OFFLINE_SOURCE_IDS.includes(descriptor.engineId) }) : null;
   effectReturnNodeIds = Object.freeze([...effectReturnNodeIds]);
   if ((owned.requiresNativeAssets ? patch.sampleRefs.length < 1 || patch.sampleRefs.length > 32 : owned.requiresPCM ? patch.sampleRefs.length !== 1 : patch.sampleRefs.length !== 0) || patch.modulations.length || !owned.extended && (patch.macros.length || patch.causalBindings.length || patch.variation) || patch.voicePolicy.steal !== 'reject' || patch.voicePolicy.maxVoices > owned.voices)
     throw failure('unsupported-patch', 'This render requires a realized owned source with complete material and reject admission.');

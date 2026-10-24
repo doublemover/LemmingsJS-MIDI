@@ -2775,3 +2775,30 @@ Actual manager/MiniMap/history, solver-island, shared-action budget and survey
 coordinator/evidence-store regression fixtures are authored. Their execution and
 all runtime/PCM/browser qualification remain deferred until implementation of all
 open-issue code. These reports remain open pending complete acceptance evidence.
+
+### Continuation 142 — native-source convolution export (#1012, #1015, #1070, #1155)
+
+Native oscillator/FM/modal/sample causal rendering can now prepare the same native
+convolution graph, material pins and normalization used live. One offline context
+captures the complete processed owner, selected dry lanes and actual shared node
+returns simultaneously; the aggregate native output has at most fifteen stereo
+taps beyond the master. No per-lane or per-actor convolution rerender is used.
+The encoding worker verifies graph, IR identity/layout, decoded coefficient
+hashes, normalization and gain bounds before accepting native processed channels.
+It does not run those channels through the graph a second time. Unknown native
+algorithmic latency remains null, separately from authored predelay.
+
+IR analysis completes before native execution admission, avoiding nested worker
+slot deadlock. Ordinary dry-source renders retain admission-before-allocation.
+Native producer completion and graph disconnection/buffer clearing precede IR pin
+and storage retirement; unresolved preparation custody keeps reservations held.
+The render surface offers Hollow Spring, Stone Courtyard and Crossed Gallery for
+native sources and active compatible saved body defaults. This first native
+profile supports gain/bus/convolution graphs. Owned-source convolution staging
+and graphs mixing convolution with owned delay/nonlinear processors remain to be
+implemented; those combinations currently return named refusals before output.
+
+API/codec and source-planning fixtures cover all supported IR layouts and sample
+rates, normalization ordering, receipt tampering, simultaneous tap channel order
+and material retirement. All execution, real-browser PCM/latency, listening and
+performance qualification remain deferred with the rest of the backlog.

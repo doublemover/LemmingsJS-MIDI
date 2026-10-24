@@ -161,6 +161,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     return Object.freeze({ status: 'accepted', stage: 'native-control-submitted', nodeId, targetFrame, sequence: ++controlSequence, graphDefinitionHash: hash, appliedFrame: null, acousticReceipt: false });
   };
   return Object.freeze({ plan, hash, update, getInput: id => disposed ? null : inputs.get(id) || null, getOutput: id => disposed ? null : outputs.get(id) || null,
+    getNodeOutput: id => disposed ? null : nodeOutputs.get(id) || null,
     panic() { for (const entry of processors) entry.node.port.postMessage({ type: 'panic' }); for (const entry of impulses) if (entry.convolver) entry.convolver.buffer = null; },
     diagnostics: () => Object.freeze({ hash, graphId: plan.definition.id, revision: plan.definition.revision, sampleRate: plan.sampleRate, disposed, fault: fault?.code || null,
       runtime: { hostRevision: 'owned-native-effect-host-v1', alignmentRevision: plan.processingRevisions.alignment, delayRevision: processors.some(entry => entry.kind === 'feedback-delay') ? DELAY_KERNEL_REVISION : null, nonlinearRevision: processors.some(entry => entry.kind === 'nonlinear-chain') ? NONLINEAR_KERNEL_REVISION : null, convolution: impulses.length ? 'browser-native-unpinned-dsp' : null, applicationBuildId: execution.buildId || null, activeExecution: execution.activeExecution },

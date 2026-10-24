@@ -55,7 +55,7 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
   const rate = select('Render sample rate', [['44100', '44.1 kHz'], ['48000', '48 kHz'], ['96000', '96 kHz']]); rate.value = '48000';
   const tail = select('Render end policy', [['exact-crop', 'Exact crop'], ['bounded-natural', 'Captured releases with bounded tails'], ['boundary-release', 'Derive releases at the end boundary']]);
   const stems = node('input'); stems.type = 'checkbox'; stems.setAttribute('aria-label', 'Include all captured dry lane stems'); label('Include all captured dry lane stems (native: 15; owned: 16)', stems);
-  const effect = select('New render effect', [['none', 'Dry source graph'], ['quarry-echo', 'Quarry Echo · authored static send'], ['quarry-tape', 'Quarry Tape · authored static send'], ['saved-owner', 'Saved owner rack · new send amount']]);
+  const effect = select('New render effect', [['none', 'Dry source graph'], ['quarry-echo', 'Quarry Echo · authored static send'], ['quarry-tape', 'Quarry Tape · authored static send'], ['quarry-hollow-spring', 'Hollow Spring · native source'], ['quarry-stone-courtyard', 'Stone Courtyard · native source'], ['quarry-crossed-gallery', 'Crossed Gallery · native source'], ['saved-owner', 'Saved owner rack · new send amount']]);
   const effectSend = number('New render source send', 0.35, 0.65); effectSend.step = '0.01';
   const effectReturn = node('input'); effectReturn.type = 'checkbox'; effectReturn.checked = true; label('Include the simultaneous shared return WAV', effectReturn);
   const effectInfo = node('p'); effectInfo.setAttribute('aria-label', 'Effect render scope'); fields.append(effectInfo);
