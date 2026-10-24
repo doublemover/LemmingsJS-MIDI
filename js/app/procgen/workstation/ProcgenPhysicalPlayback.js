@@ -32,7 +32,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
   catch { routingUnavailable = 'audio-routing-resource-unavailable'; try { onInstrumentState({ laneId: 'all', state: 'unavailable', code: routingUnavailable }); } catch { /* Audio admission cannot stop the world. */ } }
   const backend = routingUnavailable ? null : routed?.backend || nativeBackend;
   let laneInstruments = null;
-  try { if (routed) laneInstruments = createLaneInstrumentPreparation({ session, routed, onState: onInstrumentState, resourceBudget }); }
+  try { if (routed) laneInstruments = createLaneInstrumentPreparation({ session, routed, onState: onInstrumentState, resourceBudget, getMaterialProvider: () => audio.getSoundMaterialProvider() }); }
   catch { routingUnavailable = 'audio-preparation-resource-unavailable'; try { onInstrumentState({ laneId: 'all', state: 'unavailable', code: routingUnavailable }); } catch { /* Preparation cannot stop physics. */ } }
   const clock = createAudioClockBridge({ getContext: () => audio?.getAudioContext?.(), nowMs: now,
     presentationDelayMs: 24, maxHorizonMs: 5000 });

@@ -8,7 +8,7 @@ const failure = (code, message) => Object.assign(new Error(message), { name: 'So
 const keyFor = reference => reference.packHash + ':' + reference.definitionHash;
 let nextPreparationOwner = 0;
 
-export function createLaneInstrumentPreparation({ session, routed, getCatalog = getNativeInstrumentCatalog, onState = () => {}, maxLanes = 1024, resourceBudget = null } = {}) {
+export function createLaneInstrumentPreparation({ session, routed, getCatalog = getNativeInstrumentCatalog, onState = () => {}, maxLanes = 1024, resourceBudget = null, getMaterialProvider = null } = {}) {
   if (!session?.createInstrumentBackend || !routed?.assign || typeof getCatalog !== 'function' || typeof onState !== 'function' || !Number.isSafeInteger(maxLanes) || maxLanes < 1 || maxLanes > 1024) throw new TypeError('Invalid lane preparation owner.');
   const pending = new Set(), laneRequests = new Map(), observed = new Map(), observedReferences = new Map(), failures = new Map(), unknown = new Set(), queued = new Map();
   const metadata = createOwnedResourceReservation({ budget: resourceBudget, owner: 'lane-instruments-' + (++nextPreparationOwner), kind: 'lane-instrument-inputs', category: 'audio', bytes: 4096 });
@@ -26,7 +26,7 @@ export function createLaneInstrumentPreparation({ session, routed, getCatalog = 
     const key = keyFor(reference);
     if (!routed.canAssign(key)) throw failure('instrument-retirement-capacity', 'Prior held voices still occupy renderer capacity.');
     let complete;
-    const operation = { id: ++serial, laneId, referenceKey: key, controller: new AbortController(), backend: null, pin: routed.retain(key), committed: false,
+    const operation = { id: ++serial, laneId, referenceKey: key, controller: new AbortController(), backend: null, material: null, pin: routed.retain(key), committed: false,
       retired: false, preparing: true, retirement: null, nativeRetirement: null, completion: new Promise(resolve => { complete = resolve; }) };
     const signal = operation.controller.signal, cancel = () => operation.controller.abort(externalSignal.reason);
     const check = () => { signal.throwIfAborted(); if (disposed || laneRequests.get(laneId) !== operation) throw failure('stale-owner', 'Lane instrument preparation source changed.'); };
@@ -37,6 +37,7 @@ export function createLaneInstrumentPreparation({ session, routed, getCatalog = 
       operation.retirementScope = createProcgenRetirementScope();
       operation.retirement = operation.retirementScope.retire([
         { name: 'candidate-pin', run: () => operation.pin?.release() },
+        { name: 'decoded-material', run: () => operation.material?.release() },
         { name: 'unpublished-renderer', run: () => { if (!operation.committed && !operation.pin) return operation.nativeRetirement || operation.backend?.dispose(); } }
       ]);
       const settle = receipt => { if (receipt.outcome !== 'complete') { unknown.add(operation); report(laneId, 'retirement-unknown', 'retirement-unknown'); }
@@ -53,14 +54,24 @@ export function createLaneInstrumentPreparation({ session, routed, getCatalog = 
     if (externalSignal?.aborted) cancel(); report(laneId, 'preparing');
     try {
       check(); const catalog = await getCatalog(); check();
-      const resolution = await resolveSoundContentReference(reference, { engineDescriptors: catalog.descriptors, availableHashes: [], signal }); check();
+      if (reference.assetHashes.length) {
+        if (typeof getMaterialProvider !== 'function') throw failure('material-adapter-unavailable', 'Local sound material preparation is unavailable.');
+        operation.material = await getMaterialProvider().acquire({ reference, engineDescriptors: catalog.descriptors,
+          owner: 'lane:' + laneId, generation: operation.id, signal, isCurrent: () => !disposed && laneRequests.get(laneId) === operation }); check();
+      }
+      const resolution = await resolveSoundContentReference(reference, { engineDescriptors: catalog.descriptors, availableHashes: operation.material?.availableHashes || [], signal }); check();
       if (resolution.status !== 'ready') throw failure(resolution.status, 'Pinned lane instrument requirement is unavailable: ' + resolution.status);
-      if (!['native-oscillator', 'native-fm', 'native-modal', 'worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum'].includes(resolution.patch.engineId) || resolution.patch.modulations.length ||
-          resolution.patch.engineId === 'worklet-sine' && (resolution.patch.macros.length || resolution.patch.causalBindings.length || resolution.patch.variation) || reference.assetHashes.length) throw failure('instrument-adapter-unavailable', 'This lane instrument needs a realized material or gesture adapter.');
+      if (!['native-oscillator', 'native-fm', 'native-modal', 'worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(resolution.patch.engineId) || resolution.patch.modulations.length ||
+          resolution.patch.engineId === 'worklet-sine' && (resolution.patch.macros.length || resolution.patch.causalBindings.length || resolution.patch.variation) || reference.assetHashes.length && resolution.patch.engineId !== 'worklet-granular') throw failure('instrument-adapter-unavailable', 'This lane instrument needs a realized material or gesture adapter.');
       if (!operation.pin) {
-        operation.backend = ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum'].includes(resolution.patch.engineId) ? await session.createWorkletInstrumentBackend({ engineId: resolution.patch.engineId }) : session.createInstrumentBackend({ gateMode: 'owned', engineId: resolution.patch.engineId }); check();
+        operation.backend = ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(resolution.patch.engineId) ? await session.createWorkletInstrumentBackend({ engineId: resolution.patch.engineId }) : session.createInstrumentBackend({ gateMode: 'owned', engineId: resolution.patch.engineId }); check();
       } else operation.backend = operation.pin.backend;
-      const ready = await operation.backend.prepare(resolution); check(); if (ready?.status !== 'ready') throw failure(ready?.reason || 'preparation-rejected', 'Lane renderer rejected the pinned patch.');
+      const ready = await operation.backend.prepare(resolution, operation.material?.assets || []); check(); if (ready?.status !== 'ready') throw failure(ready?.reason || 'preparation-rejected', 'Lane renderer rejected the pinned patch.');
+      if (operation.material) {
+        const materialRetirement = operation.material.release(); await materialRetirement.completion; check();
+        if (materialRetirement.outcome !== 'complete') throw Object.assign(failure('retirement-unknown', 'Lane material retirement is unknown.'), { retirement: materialRetirement });
+        operation.material = null;
+      }
       check(); operation.preparing = false;
       const { releaseSeconds, oneShotTailSeconds } = resolveOwnedArticulationPolicy(resolution.patch);
       return Object.freeze({ reference,

@@ -4,6 +4,7 @@ import { createTimedControlTimeline } from './TimedControlTimeline.js';
 import { createAudioObservationLeases } from './AudioObservationLeases.js';
 import { createAudioResourceLeases, releaseAudioResourceAfterRetirement } from './AudioResourceLeases.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
+import { createSoundMaterialProvider } from './SoundMaterialProvider.js';
 import { createOwnedCueRouting } from './OwnedCueRouting.js';
 import { createForegroundAuditionOwner } from './ForegroundAuditionOwner.js';
 import { createAudioIntervalAdmission, audioIntervalStorageBytes } from './AudioIntervalAdmission.js';
@@ -116,6 +117,7 @@ class BrowserNotePreview {
     this._captureReleases = new Map();
     this._captureScope = 'audio-' + (++captureScopeSequence);
     this._audioResources = createAudioResourceLeases({ resourceBudget, ownerPrefix: this._captureScope });
+    this._soundMaterialBudget = resourceBudget; this._soundMaterialProvider = null;
     this._graphResourceLease = null; this._noiseResourceLease = null;
     this._captureContext = null;
     this._captureAnalyser = null;
@@ -386,6 +388,11 @@ class BrowserNotePreview {
 
   getAudioContext() { return this._context; }
 
+  getSoundMaterialProvider() {
+    if (this._disposed) throw new Error('Local sound material owner is closed.');
+    return this._soundMaterialProvider ||= createSoundMaterialProvider({ getContext: () => this._context, resourceBudget: this._soundMaterialBudget });
+  }
+
   acquireMasterCaptureTap({ context, contextEpoch, node, onRetire } = {}) {
     if (!this._ready() || context !== this._context || contextEpoch !== this._contextEpoch || !node ||
         typeof onRetire !== 'function' || this._pcmCaptureTaps.size) throw new Error('The browser master capture tap is unavailable.');
@@ -634,6 +641,7 @@ class BrowserNotePreview {
       { name: 'stop', run: () => this.stop() },
       { name: 'cue-routing', run: () => this._cueRouting?.dispose() },
       { name: 'foreground-auditions', run: () => this._foregroundAuditions.dispose() },
+      { name: 'sound-material', run: () => this._soundMaterialProvider?.dispose() },
       { name: 'context-listener', run: () => context?.removeEventListener?.('statechange', this._onContextState) },
       ...[...this._channels].map(([key, channel]) => ({ name: `channel-${key}`, run: () => this._retireChannel(key, channel) })),
       ...['_master', '_limiter', '_compressor', '_compressorOutput', '_captureAnalyser'].map(field => ({ name: field, run: () => { this[field]?.disconnect(); this[field] = null; } })),

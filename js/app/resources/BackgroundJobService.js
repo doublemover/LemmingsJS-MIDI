@@ -20,7 +20,7 @@ export function createBackgroundJobService({ admission = backgroundWorkerAdmissi
     if (disposed || !BACKGROUND_JOB_KINDS.includes(kind) || typeof prepareInput !== 'function' || typeof isCurrent !== 'function' || typeof onProgress !== 'function' ||
         !Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > 64 * 1048576 || releasePreparedInput != null && typeof releasePreparedInput !== 'function') throw failure('invalid-contract', 'Invalid background computation request.');
     if (!isCurrent()) throw failure('stale-owner', 'Background job source ownership changed.');
-    if (['render-sound-controls', 'render-causal-sine-take', 'prepare-owned-source-bank'].includes(kind) && typeof Worker !== 'function') throw failure('worker-required', 'Offline sound rendering requires its admitted worker.');
+    if (['render-sound-controls', 'render-causal-sine-take', 'prepare-owned-source-bank', 'inspect-wave-asset'].includes(kind) && typeof Worker !== 'function') throw failure('worker-required', 'Offline sound rendering requires its admitted worker.');
     if (typeof Worker !== 'function' && !['asset-hash', 'recovery-checksum'].includes(kind) && inputBytes > 128 * 1024)
       throw failure('worker-required', 'This computation needs a worker; only small bounded fallback work is supported.');
     const controller = new AbortController(), identity = getActiveExecutionIdentity('browser-background-jobs'), startedAt = now();

@@ -2307,6 +2307,15 @@ producer retirement stay charged until acknowledged. Final live source-loading
 qualification is deferred.
 Module-lifetime fixtures are authored and unexecuted.
 
+Staged and installed single-WAV material now has a shared browser-audio owner.
+An admitted worker verifies complete RIFF layout, source rates/frames, hashes
+and finite float samples before native decoding. Library auditions and pinned
+lane preparation use the same bounded encoded/decoded cache and hand pins to
+the granular host; missing material keeps publication unavailable. Blob readers,
+worker results, native decode and copied PCM keep independent lifetime joins.
+Multi-source/derived adapters, source-region comparison and authored biome assets
+remain implementation work. Runtime, cancellation and audible checks are deferred.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical

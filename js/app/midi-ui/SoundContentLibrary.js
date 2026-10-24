@@ -225,6 +225,11 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
         modelInfo.textContent = 'Patch model: artificial three-band formants · vowel ' + parameters.vowel01 + ' · size ' + parameters.sizeRatio +
           ' · breath ' + parameters.breath01 + '. Actor-seeded breath and a phase-aligned harmonic bank share one owned gate. Live profile: eight voices, 50–2000 Hz onset, ±200 cent bends, 44.1/48/96 kHz. Spectral/listening qualification is pending; exact restore and offline choir rendering are unavailable.';
       }
+      if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-granular') {
+        const parameters = patch.definition.parameters;
+        modelInfo.textContent = 'Patch model: one pinned local WAV per cloud · ' + parameters.grainMilliseconds + ' ms Hann grains at ' + parameters.densityHz +
+          '/s · source position hold ' + (parameters.freezePosition ? 'on' : 'off') + '. Eight clouds, 16 grain slots per cloud, 32 births per 128 audio frames. Shared source quotas apply. Linear resampling, stereo and dense scenes await qualification; exact restore and offline granular output are unavailable.';
+      }
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-spectrum') {
         const parameters = patch.definition.parameters;
         modelInfo.textContent = 'Patch model: ' + (parameters.sourceMode ? parameters.partialCount + ' authored additive partials' : '16 phase-aligned spectral frames') +
@@ -232,7 +237,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
           '. Live profile: eight slots, 20–2000 Hz onset, ±200 cent bends, 44.1/48/96 kHz; shared source quotas also apply. Completed world height offsets FLOW over the declared 0–512 pixel domain. Dry source only: shared SPACE sends, resonance/drive, PWM, exact restore and offline spectrum output are unavailable. Spectral/alias/listening qualification is pending.';
       } } finally { lease.release(); } }
     for (const element of [factory, fmFactory, materialFactory, pluckFactory, choirFactory, spectrumFactory, importInput, select, rights, browse, more, archivedToggle]) element.disabled = busy;
-    audition.disabled = busy || !ready || !!plan?.missingReferences.length || !!plan?.unavailableEngines.length || !!plan?.missingAssetBytes.length;
+    audition.disabled = busy || !ready || !!plan?.missingReferences.length || !!plan?.unavailableEngines.length || !!plan?.missingAssetBytes.length && !installed;
     stop.disabled = !current; install.disabled = busy || !auditioned; referenceInstall.disabled = busy || !ready;
     apply.disabled = busy || !installed || !auditioned; referenceExport.disabled = busy || !ready;
     portableExport.disabled = busy || !ready || plan.portability === 'reference-only' || !!plan.unavailableEngines.length;

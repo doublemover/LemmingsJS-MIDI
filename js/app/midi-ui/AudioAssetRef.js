@@ -32,13 +32,13 @@ export function validateAudioAssetRef(input, { maxAssetBytes = 16 * 1024 * 1024,
     licenseId: input.licenseId, attribution: input.attribution, decodeVersion: DECODER_VERSION, loopMarkers });
 }
 
-export function inspectWaveAudio(bytes, ref) {
-  const fail = reason => { throw new AudioAssetError(reason, ref.contentHash); };
-  if (!(bytes instanceof Uint8Array) || bytes.byteLength !== ref.bytes) fail('encoded-byte-count-mismatch');
+export function inspectWaveContainer(bytes, { contentHash = null, maxBytes = 16 * 1048576 } = {}) {
+  const fail = reason => { throw new AudioAssetError(reason, contentHash); };
+  if (!(bytes instanceof Uint8Array) || !(bytes.buffer instanceof ArrayBuffer) || bytes.byteLength < 44 || bytes.byteLength > maxBytes) fail('encoded-byte-count-mismatch');
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const four = at => String.fromCharCode(bytes[at], bytes[at + 1], bytes[at + 2], bytes[at + 3]);
   if (four(0) !== 'RIFF' || four(8) !== 'WAVE' || view.getUint32(4, true) + 8 !== bytes.byteLength) fail('corrupt-or-truncated-wave');
-  let format = null, dataBytes = null, offset = 12, chunks = 0;
+  let format = null, dataBytes = null, dataOffset = null, offset = 12, chunks = 0;
   while (offset + 8 <= bytes.length) {
     if (++chunks > 1024) fail('wave-chunk-limit');
     const name = four(offset), length = view.getUint32(offset + 4, true), start = offset + 8;
@@ -47,17 +47,25 @@ export function inspectWaveAudio(bytes, ref) {
       if (format || length < 16) fail('invalid-wave-format');
       const encoding = view.getUint16(start, true), channels = view.getUint16(start + 2, true),
         sampleRate = view.getUint32(start + 4, true), blockAlign = view.getUint16(start + 12, true), bits = view.getUint16(start + 14, true);
-      if (![1, 3].includes(encoding) || ![8, 16, 24, 32].includes(bits) || encoding === 3 && bits !== 32 ||
+      if (!integer(channels, 1, 2) || !integer(sampleRate, 8000, 192000) || ![1, 3].includes(encoding) || ![8, 16, 24, 32].includes(bits) || encoding === 3 && bits !== 32 ||
           blockAlign !== channels * bits / 8 || view.getUint32(start + 8, true) !== sampleRate * blockAlign) fail('unsupported-wave-layout');
       format = { encoding, channels, sampleRate, blockAlign, bits };
     } else if (name === 'data') {
-      if (dataBytes != null) fail('multiple-wave-data-regions'); dataBytes = length;
+      if (dataBytes != null) fail('multiple-wave-data-regions'); dataBytes = length; dataOffset = start;
     }
     offset = start + length + (length & 1);
   }
-  if (!format || dataBytes == null || offset !== bytes.length || !dataBytes || dataBytes % format.blockAlign ||
-      format.channels !== ref.channels || format.sampleRate !== ref.sourceSampleRate || dataBytes / format.blockAlign !== ref.frames) fail('asset-source-metadata-mismatch');
-  return Object.freeze({ ...format, frames: ref.frames, verifiedContainer: 'riff-wave-complete' });
+  if (!format || dataBytes == null || offset !== bytes.length || !dataBytes || dataBytes % format.blockAlign) fail('asset-source-metadata-mismatch');
+  const frames = dataBytes / format.blockAlign;
+  if (frames > 8000000 || frames / format.sampleRate > 180) fail('asset-duration-limit');
+  return Object.freeze({ ...format, frames, dataOffset, dataBytes, verifiedContainer: 'riff-wave-complete' });
+}
+
+export function inspectWaveAudio(bytes, ref) {
+  if (bytes?.byteLength !== ref.bytes) throw new AudioAssetError('encoded-byte-count-mismatch', ref.contentHash);
+  const format = inspectWaveContainer(bytes, { contentHash: ref.contentHash });
+  if (format.channels !== ref.channels || format.sampleRate !== ref.sourceSampleRate || format.frames !== ref.frames) throw new AudioAssetError('asset-source-metadata-mismatch', ref.contentHash);
+  return format;
 }
 
 export { DECODER_VERSION };

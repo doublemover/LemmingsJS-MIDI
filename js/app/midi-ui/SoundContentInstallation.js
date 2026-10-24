@@ -37,13 +37,13 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
     let lease;
     try { lease = borrowSoundContentStage(stage); } catch (error) { return Promise.reject(error); }
     const patch = lease.prepared.patches.find(entry => entry.identity === patchIdentity);
-    if (!patch || patch.state !== 'definition-admitted' || !['native-oscillator', 'native-fm', 'native-modal', 'worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum'].includes(patch.definition.engineId) ||
-        patch.definition.sampleRefs.length || patch.definition.modulations.length || patch.definition.engineId === 'worklet-sine' && (patch.definition.macros.length || patch.definition.causalBindings.length || patch.definition.variation)) {
+    if (!patch || patch.state !== 'definition-admitted' || !['native-oscillator', 'native-fm', 'native-modal', 'worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(patch.definition.engineId) ||
+        patch.definition.sampleRefs.length && patch.definition.engineId !== 'worklet-granular' || patch.definition.modulations.length || patch.definition.engineId === 'worklet-sine' && (patch.definition.macros.length || patch.definition.causalBindings.length || patch.definition.variation)) {
       lease.release(); return Promise.reject(failure('audition-requirements-unmet', 'This instrument needs an available renderer and a realized gesture/material adapter.'));
     }
     const plan = planSoundContentSelection(lease.prepared, [patchIdentity], { availableHashes: lease.metadata.assetHashes });
-    if (plan.missingReferences.length || plan.missingAssetBytes.length) { lease.release(); return Promise.reject(failure('audition-requirements-unmet', 'Sound material required for this audition is missing.')); }
-    const operation = { controller: new AbortController(), lease, session: null, backend: null, execution: null, context: null, retirement: null, stopReceipt: null };
+    if (plan.missingReferences.length || plan.missingAssetBytes.length && !audio.getSoundMaterialProvider) { lease.release(); return Promise.reject(failure('audition-requirements-unmet', 'Sound material required for this audition is missing.')); }
+    const operation = { controller: new AbortController(), lease, session: null, backend: null, material: null, execution: null, context: null, retirement: null, stopReceipt: null };
     active = operation; const number = ++ordinal, signal = operation.controller.signal;
     const stop = () => operation.stopReceipt ||= createProcgenRetirementScope().retire([
       { name: 'audition-session-stop', run: () => operation.session?.stop() }
@@ -72,16 +72,26 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
         const descriptor = catalog.descriptors.find(entry => entry.engineId === patch.definition.engineId && entry.engineVersion === patch.definition.engineVersion);
         if (catalog.state !== 'bound-application-engines' || !descriptor || descriptor.artifactHash !== patch.engineRequirement.artifactHash ||
             descriptor.parameterSchemaHash !== patch.engineRequirement.parameterSchemaHash) throw failure('engine-revision-mismatch', 'The executing renderer differs from the staged immutable requirement.');
+        if (patch.definition.sampleRefs.length) {
+          if (!audio.getSoundMaterialProvider) throw failure('material-adapter-unavailable', 'Local sound material preparation is unavailable.');
+          operation.material = await audio.getSoundMaterialProvider().acquire({ stage, patchIdentity, engineDescriptors: catalog.descriptors,
+            owner: 'sound-audition', generation: number, signal, isCurrent: () => !disposed && active === operation }); check();
+        }
         const definitions = createInstrumentPatchRegistry(); definitions.register(patch.definition, descriptor);
-        const resolution = definitions.resolve(patch.definition.id, patch.definition.revision, { engineDescriptors: [descriptor], assetHashes: lease.metadata.assetHashes });
-        operation.backend = ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum'].includes(patch.definition.engineId) ? await operation.session.createWorkletInstrumentBackend({ engineId: patch.definition.engineId }) : operation.session.createInstrumentBackend({ gateMode: 'owned', engineId: patch.definition.engineId }); check();
-        const prepared = await interruptible(operation.backend.prepare(resolution), signal); check();
+        const resolution = definitions.resolve(patch.definition.id, patch.definition.revision, { engineDescriptors: [descriptor], assetHashes: operation.material?.availableHashes || lease.metadata.assetHashes });
+        operation.backend = ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(patch.definition.engineId) ? await operation.session.createWorkletInstrumentBackend({ engineId: patch.definition.engineId }) : operation.session.createInstrumentBackend({ gateMode: 'owned', engineId: patch.definition.engineId }); check();
+        const prepared = await interruptible(operation.backend.prepare(resolution, operation.material?.assets || []), signal); check();
         if (prepared.status !== 'ready') throw failure('preparation-rejected', 'Audition renderer rejected the effective patch: ' + prepared.reason);
+        if (operation.material) {
+          const materialRetirement = operation.material.release(); await materialRetirement.completion;
+          if (materialRetirement.outcome !== 'complete') throw Object.assign(failure('retirement-unknown', 'Audition material retirement is unknown.'), { retirement: materialRetirement });
+          operation.material = null;
+        }
         const context = operation.context = audio.getAudioContext(), rate = context?.sampleRate;
         if (context?.state !== 'running' || !Number.isFinite(rate) || rate < 8000 || rate > 384000) throw failure('audio-unavailable', 'Audition audio clock is unavailable.');
         const registered = operation.backend.registerExecution({ executionEpoch: 'sound-audition:' + number, generation: number });
         if (registered.status !== 'accepted') throw failure('audition-admission', 'Audition execution could not be registered.'); operation.execution = registered.execution;
-        const requiresApplication = ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum'].includes(patch.definition.engineId), applications = new Map(); let commandFailure = null;
+        const requiresApplication = ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(patch.definition.engineId), applications = new Map(); let commandFailure = null;
         if (requiresApplication) {
           if (typeof operation.backend.observeCommandOutcomes !== 'function') throw failure('application-evidence-unavailable', 'This renderer cannot provide owned command-application receipts.');
           operation.stopObservation = operation.backend.observeCommandOutcomes(value => {
@@ -134,7 +144,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
           { name: 'command-observation', run: () => operation.stopObservation?.() },
           { name: 'audition-stop', run: stop },
           { name: 'execution', run: () => { if (operation.execution) return operation.backend.retireExecution(operation.execution); } },
-          { name: 'backend', run: () => operation.backend?.dispose() }, { name: 'audio-session', run: () => operation.session?.dispose() }
+          { name: 'backend', run: () => operation.backend?.dispose() }, { name: 'decoded-material', run: () => operation.material?.release() }, { name: 'audio-session', run: () => operation.session?.dispose() }
         ]);
         await operation.retirement.completion;
         let finalReceipt = operation.retirement;

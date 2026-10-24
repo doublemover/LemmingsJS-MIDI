@@ -5,11 +5,12 @@ import { compileSoundContent } from '../../midi/content/SoundContentCompiler.js'
 import { getNativeInstrumentCatalog } from '../midi-ui/NativeInstrumentSchema.js';
 import { inspectCausalArchiveEntry, validateCausalChunk } from '../procgen/workstation/CausalArchiveEntry.js';
 import { renderOwnedSineControls } from '../midi-ui/OwnedSineOfflineRender.js';
+import { inspectWaveContainer } from '../midi-ui/AudioAssetRef.js';
 import { getOwnedSourceBankIdentity, OWNED_SOURCE_BANK_SCHEMA } from '../midi-ui/OwnedSourceBank.js';
 import { renderCausalSineTake } from '../midi-ui/CausalSineRender.js';
 
 export const BACKGROUND_JOB_PROTOCOL = 1;
-export const BACKGROUND_JOB_KINDS = Object.freeze(['prepare-owned-source-bank', 'parse-json', 'verify-causal-source', 'snapshot-canonical-data', 'inspect-causal-archive-entry', 'render-sound-controls', 'render-causal-sine-take', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'asset-hash', 'asset-decode']);
+export const BACKGROUND_JOB_KINDS = Object.freeze(['inspect-wave-asset', 'prepare-owned-source-bank', 'parse-json', 'verify-causal-source', 'snapshot-canonical-data', 'inspect-causal-archive-entry', 'render-sound-controls', 'render-causal-sine-take', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'asset-hash', 'asset-decode']);
 const MAX_BYTES = 64 * 1048576, MAX_NODES = 4000000;
 const problem = (code, message) => Object.assign(new Error(message), { code, name: 'BackgroundJobError' });
 const shared = value => typeof globalThis.SharedArrayBuffer === 'function' && (value instanceof globalThis.SharedArrayBuffer || value?.buffer instanceof globalThis.SharedArrayBuffer);
@@ -115,6 +116,25 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
       !Number.isSafeInteger(maxStringBytes) || maxStringBytes < 1 || maxStringBytes > MAX_BYTES ||
       expectedInputHash != null && !/^[a-f0-9]{64}$/.test(expectedInputHash)) throw problem('invalid-contract', 'Unsupported background job kernel contract.');
   guard(signal, current);
+  if (kind === 'inspect-wave-asset') {
+    if (!input || Object.keys(input).some(key => !['bytes', 'contentHash'].includes(key)) || !/^[a-f0-9]{64}$/.test(input.contentHash) ||
+        !(input.bytes instanceof Uint8Array) || shared(input.bytes) || input.bytes.byteLength > maxBytes || input.bytes.byteLength * 8 + 1048576 > estimatedPeakBytes)
+      throw problem('invalid-contract', 'WAV inspection requires immutable bytes and their expected hash.');
+    const format = inspectWaveContainer(input.bytes, { contentHash: input.contentHash, maxBytes });
+    const digest = await crypto.subtle.digest('SHA-256', input.bytes); guard(signal, current);
+    const hash = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+    if (hash !== input.contentHash) throw problem('content-mismatch', 'WAV bytes differ from their immutable reference.');
+    if (format.encoding === 3) {
+      const view = new DataView(input.bytes.buffer, input.bytes.byteOffset, input.bytes.byteLength);
+      for (let index = 0; index < format.dataBytes; index += 4) {
+        const value = view.getFloat32(format.dataOffset + index, true);
+        if (!Number.isFinite(value) || Math.abs(value) > 16) throw problem('invalid-data', 'Float WAV has nonfinite or excessive source samples.');
+        if ((index & 65535) === 65532) { guard(signal, current); await yieldControl(); }
+      }
+    }
+    return { value: { contentHash: hash, bytes: input.bytes.byteLength, channels: format.channels, sourceSampleRate: format.sampleRate, frames: format.frames,
+      encoding: format.encoding, bits: format.bits, verifiedContainer: format.verifiedContainer }, inputBytes: input.bytes.byteLength, nodes: 16, retainedBytes: 4096 };
+  }
   if (kind === 'prepare-owned-source-bank') {
     if (!input || Object.keys(input).length !== 1 || typeof input.id !== 'string') throw problem('invalid-contract', 'Invalid fixed source bank request.');
     const expected = getOwnedSourceBankIdentity(input.id);
