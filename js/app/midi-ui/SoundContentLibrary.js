@@ -13,6 +13,7 @@ import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 const FACTORY_SOURCE = new URL('../../../content/sounds/native.json', import.meta.url);
 const FM_FORGE_SOURCE = new URL('../../../content/sounds/fm-forge.json', import.meta.url);
 const MATERIAL_SOURCE = new URL('../../../content/sounds/struck-materials.json', import.meta.url);
+const PLUCK_SOURCE = new URL('../../../content/sounds/plucked-garden.json', import.meta.url);
 const failure = message => Object.assign(new Error(message), { name: 'SoundContentError' });
 
 export function createSoundContentLibrary({ document, window, audio, resourceBudget, jobs = backgroundJobService, onApply, onStatus = () => {}, monitor = null } = {}) {
@@ -97,6 +98,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
   const factory = button('Prepare factory instruments', () => prepareFactory(FACTORY_SOURCE, 'Factory'));
   const fmFactory = button('Prepare FM Forge', () => prepareFactory(FM_FORGE_SOURCE, 'FM Forge'));
   const materialFactory = button('Prepare struck materials', () => prepareFactory(MATERIAL_SOURCE, 'Struck materials'));
+  const pluckFactory = button('Prepare plucked garden', () => prepareFactory(PLUCK_SOURCE, 'Plucked garden'));
   const importInput = node('input'); importInput.type = 'file'; importInput.accept = '.lemmings-sound,application/vnd.lemmings.sound-pack'; importInput.setAttribute('aria-label', 'Import sound archive');
   on(importInput, 'change', () => { const file = importInput.files?.[0]; importInput.value = ''; if (!file) return;
     void run(async operation => { const catalog = await getNativeInstrumentCatalog(); check(operation); setStatus('Verifying local sound archive…');
@@ -208,8 +210,13 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
         const parameters = patch.definition.parameters;
         modelInfo.textContent = 'Patch model: ' + (parameters.modeCount ?? 4) + ' authored damped-sine modes · body T60 ' + (parameters.bodyT60Seconds ?? 0.5) +
           ' s · site gain blend ' + (parameters.strikePosition01 ?? 0) + '. This is an original musical impulse-response design. Material tags, geometric pickup and PCM/listening qualification remain separate.';
+      }
+      if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-pluck') {
+        const parameters = patch.definition.parameters;
+        modelInfo.textContent = 'Patch model: seeded fractional-delay string · pick ' + parameters.pluckPosition01 + ' · target string T60 ' + parameters.stringT60Seconds +
+          ' s · body mix ' + parameters.bodyMix01 + '. Live profile: 50–2000 Hz onset, ±200 cent bends, 44.1/48/96 kHz. Pitch/decay/listening qualification is pending; exact restore and offline pluck rendering are unavailable.';
       } } finally { lease.release(); } }
-    for (const element of [factory, fmFactory, materialFactory, importInput, select, rights, browse, more, archivedToggle]) element.disabled = busy;
+    for (const element of [factory, fmFactory, materialFactory, pluckFactory, importInput, select, rights, browse, more, archivedToggle]) element.disabled = busy;
     audition.disabled = busy || !ready || !!plan?.missingReferences.length || !!plan?.unavailableEngines.length || !!plan?.missingAssetBytes.length;
     stop.disabled = !current; install.disabled = busy || !auditioned; referenceInstall.disabled = busy || !ready;
     apply.disabled = busy || !installed || !auditioned; referenceExport.disabled = busy || !ready;

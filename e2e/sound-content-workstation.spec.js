@@ -8,6 +8,24 @@ test.use({ permissions: [] });
 test.setTimeout(120000);
 test.beforeAll(async () => { await buildBrowserRuntime({ rootDir: fileURLToPath(new URL('../', import.meta.url)) }); });
 
+test('Plucked Garden requires real worklet application before Install and Apply', async ({ page }) => {
+  await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=911&lanes=1');
+  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__);
+  await page.evaluate(() => { window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); });
+  await page.getByRole('button', { name: 'Sound library…', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Sound library', exact: true });
+  await dialog.getByRole('button', { name: 'Prepare plucked garden', exact: true }).click();
+  const revisions = dialog.getByLabel('Saved instrument revision'); await expect(revisions.locator('option')).toHaveCount(4, { timeout: 30000 });
+  await revisions.selectOption('pluck.wire-ladder@1'); await expect(dialog.getByLabel('Instrument source model')).toContainText('seeded fractional-delay string');
+  await expect(dialog.getByRole('button', { name: 'Install auditioned pack', exact: true })).toBeDisabled();
+  await dialog.getByRole('button', { name: 'Rehearsal on live output', exact: true }).click(); await expect(dialog.getByLabel('Prelisten route')).toContainText('ready');
+  await dialog.getByRole('button', { name: 'Audition controls', exact: true }).click();
+  await expect(dialog.getByLabel('Sound library status')).toContainText('Control audition completed', { timeout: 15000 });
+  await dialog.getByRole('button', { name: 'Install auditioned pack', exact: true }).click(); await expect(dialog.getByLabel('Sound library status')).toContainText('Pack installed');
+  await dialog.getByRole('button', { name: 'Apply to selected lane', exact: true }).click(); await expect(dialog.getByLabel('Sound library status')).toContainText('Instrument applied');
+  expect(await page.evaluate(() => JSON.stringify(window.__PROCGEN_STUDIO__.getProject()))).toContain('worklet-pluck');
+});
+
 test('struck materials audition real native mode children and expose saved onset controls after Apply', async ({ page }) => {
   await page.addInitScript(() => {
     window.materialSourcesStarted = 0; window.materialSourcesEnded = 0; const native = window.AudioContext.prototype.createOscillator;

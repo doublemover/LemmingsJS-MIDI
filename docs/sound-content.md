@@ -296,3 +296,30 @@ Onset attack and host release remain separate. The upper register tapers/omits
 modes under the declared bend profile; this is not a measured alias gate.
 MASS scales authored body frequency, HARDNESS changes onset time, DAMPING changes
 T60 and HOLLOW blends gain sites. No current PCM or listening result is claimed.
+
+**Prepare plucked garden** stages Burrow Thumb, Wire Ladder, Moss Nylon and
+Suspended Zither through compile/audition/install/Apply. BODY blends two bounded
+body modes, PICK changes virtual excitation position, DAMP changes target decay
+and SPARK changes excitation bandwidth. They are onset controls. Noise is keyed
+by patch, actor/event and saved musical seed, and normalized once under a bounded
+energy/peak law before excitation. It does not consume physics RNG.
+
+The first-party worklet uses preallocated fractional-delay feedback strings and
+an allpass interpolator with fundamental phase/loss compensation. Model target
+T60 is not a measured decay guarantee. See [first-order allpass interpolation](https://www.dsprelated.com/freebooks/pasp/First_Order_Allpass_Interpolation.html)
+for the reference structure; no external executable DSP is imported. The shared
+command ABI, application receipts, owned release, Panic and measured display
+transport remain authoritative. Six registered engine profiles are now allowed.
+
+The live pluck profile admits 50–2000 Hz onsets, ±200-cent expression and
+44.1/48/96 kHz contexts. Sixteen logical slots are an upper structural limit;
+shared quotas and a 65,536-operation excitation budget per absolute 128-frame
+bucket can reject a request with an actual kernel receipt. Optional body modes
+add declared source cost. Delay/scratch/state and enlarged command storage are
+reserved before construction. Exact pluck restore/offline output are unavailable.
+
+For an already owned pluck, `damping01` updates string/body loss over the shared
+control ramp without a new note, new seed or reset delay line. The current sound
+macro panel still labels DAMP as a next-onset control; physical damping gestures
+need their separate causal mapping. Pitch, tail, spectral, dense-mix, CPU and
+listening fixtures remain unexecuted with the consolidated validation pass.

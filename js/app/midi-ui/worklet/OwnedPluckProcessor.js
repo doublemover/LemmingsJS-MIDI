@@ -1,7 +1,7 @@
 import { OwnedSineKernel, OwnedSineProcessor } from './OwnedSineProcessor.js';
 
 export const PLUCK_WIDTH = 24, PLUCK_VOICES = 16, PLUCK_MIN_HZ = 50, PLUCK_MAX_HZ = 2000, PLUCK_BEND_CENTS = 200;
-const LN1000 = Math.log(1000), PITCH_RANGE = 2 ** (PLUCK_BEND_CENTS / 1200), STATE_WIDTH = 24;
+const LN1000 = Math.log(1000), PITCH_RANGE = 2 ** (PLUCK_BEND_CENTS / 1200), STATE_WIDTH = 28;
 export const pluckSourceBytes = (rate, voices = PLUCK_VOICES) => {
   if (!Number.isFinite(rate) || rate < 8000 || rate > 384000 || !Number.isInteger(voices) || voices < 1 || voices > PLUCK_VOICES) throw new RangeError('Invalid pluck storage profile.');
   const stride = Math.ceil(rate / 32) + 4; return stride * voices * 4 + stride * 8 + voices * STATE_WIDTH * 8;
@@ -11,7 +11,7 @@ export class OwnedPluckSource {
   constructor(rate, voices = PLUCK_VOICES) {
     pluckSourceBytes(rate, voices); this.rate = rate; this.voices = voices; this.stride = Math.ceil(rate / 32) + 4;
     this.buffer = new Float32Array(this.stride * voices); this.scratch = new Float64Array(this.stride); this.state = new Float64Array(voices * STATE_WIDTH);
-    this.initializationWrites = 0; this.initializationDenials = 0; this.maxInitializationWrites = 65536; this.initializationBucket = -1;
+    this.initializationWrites = 0; this.initializationDenials = 0; this.maxInitializationWrites = 65536; this.initializationBucket = -1; this.maxUpdateMask = 15;
   }
   validFrequency(slot, frequency) { const at = slot * STATE_WIDTH;
     return Number.isFinite(frequency) && frequency >= this.state[at + 4] && frequency <= this.state[at + 5]; }
@@ -35,7 +35,11 @@ export class OwnedPluckSource {
       previous += (noise - previous) * smoothing; this.scratch[index] = previous;
     }
     const pickOffset = Math.max(1, Math.round(this.rate / frequency * position)), base = slot * this.stride;
-    for (let index = 0; index < length; index++) this.buffer[base + index] = (this.scratch[index] - this.scratch[(index + pickOffset) % length]) * 0.5;
+    let squares = 0, peak = 0;
+    for (let index = 0; index < length; index++) { const value = (this.scratch[index] - this.scratch[(index + pickOffset) % length]) * 0.5;
+      this.buffer[base + index] = value; squares += value * value; peak = Math.max(peak, Math.abs(value)); }
+    const normalization = squares > 1e-16 && peak > 0 ? Math.min(4, 0.18 / Math.sqrt(squares / length), 0.9 / peak) : 1;
+    for (let index = 0; index < length; index++) this.buffer[base + index] *= normalization;
     const at = slot * STATE_WIDTH;
     this.state[at] = length; this.state[at + 1] = 0; this.state[at + 2] = 0; this.state[at + 3] = t60;
     this.state[at + 4] = frequency / (PITCH_RANGE * PITCH_RANGE); this.state[at + 5] = frequency * PITCH_RANGE * PITCH_RANGE;
@@ -44,7 +48,17 @@ export class OwnedPluckSource {
     this.state[at + 13] = Math.exp(-LN1000 / (bodyT60 * this.rate)); this.state[at + 14] = 1;
     this.state[at + 15] = Math.max(0, Math.min(2, Math.floor(this.rate * 0.4 / (frequency * PITCH_RANGE * 1.6))));
     for (let field = 16; field < STATE_WIDTH; field++) this.state[at + field] = 0;
+    this.state[at + 21] = t60; this.state[at + 25] = this.state[at + 13];
     return 1;
+  }
+  validUpdate(_slot, mask, command) {
+    return !(mask & 8) || Number.isFinite(command[20]) && command[20] >= 0.02 && command[20] <= 4 &&
+      Number.isFinite(command[23]) && command[23] >= 0.02 && command[23] <= 2;
+  }
+  applyUpdate(slot, mask, command) {
+    if (!(mask & 8)) return;
+    const at = slot * STATE_WIDTH; this.state[at + 21] = command[20]; this.state[at + 22] = Math.max(1, Math.round(command[14]));
+    this.state[at + 25] = Math.exp(-LN1000 / (command[23] * this.rate));
   }
   tune(at, frequency) {
     const omega = 2 * Math.PI * frequency / this.rate, wantedGain = Math.exp(-LN1000 / (this.state[at + 3] * frequency));
@@ -60,6 +74,9 @@ export class OwnedPluckSource {
   sample(slot, frequency) {
     const at = slot * STATE_WIDTH, length = this.state[at], write = this.state[at + 1], base = slot * this.stride;
     if (!this.validFrequency(slot, frequency)) return NaN;
+    if (this.state[at + 22] > 0) { const remaining = this.state[at + 22];
+      this.state[at + 3] += (this.state[at + 21] - this.state[at + 3]) / remaining;
+      this.state[at + 13] += (this.state[at + 25] - this.state[at + 13]) / remaining; this.state[at + 22]--; this.state[at + 8] = -1; }
     if (frequency !== this.state[at + 8]) this.tune(at, frequency);
     let read = write - this.state[at + 7]; if (read < 0) read += length;
     const input = this.buffer[base + read], coefficient = this.state[at + 16];

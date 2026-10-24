@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { OwnedPluckKernel, OwnedPluckSource, PLUCK_WIDTH, pluckSourceBytes } from '../../js/app/midi-ui/worklet/OwnedPluckProcessor.js';
-import { BEGIN, PANIC, APPLIED, REJECTED, RECEIPT_WIDTH } from '../../js/app/midi-ui/worklet/OwnedSineProcessor.js';
+import { BEGIN, UPDATE, PANIC, APPLIED, REJECTED, RECEIPT_WIDTH } from '../../js/app/midi-ui/worklet/OwnedSineProcessor.js';
 
 const begin = ({ slot = 0, token = 1, seed = 191, frame = 0, rate = 48000 } = {}) => {
   const data = new Float64Array(PLUCK_WIDTH); data.set([1, frame, token, BEGIN, slot, token, 130.8127826503, 0.4, 1, 0, 0, 0, 1, rate * 0.005, 0, 0, rate / 2, 1,
@@ -13,6 +13,19 @@ const render = (seed, blockSize) => {
   return { kernel, output };
 };
 describe('owned preallocated plucked-string kernel', () => {
+  it('damps an existing string/body smoothly without another excitation or voice token', () => {
+    const baseline = new OwnedPluckKernel(48000), damped = new OwnedPluckKernel(48000), event = begin(); event[22] = 0.3;
+    for (const kernel of [baseline, damped]) { kernel.accept(event, 1, 1); for (let frame = 0; frame < 4096; frame += 128) kernel.render(new Float32Array(128), null, frame); }
+    const writes = damped.source.initializationWrites, control = new Float64Array(PLUCK_WIDTH);
+    control.set([1, 4096, 2, UPDATE, 0, 1]); control[14] = 240; control[15] = 8; control[20] = 0.02; control[23] = 0.02;
+    damped.accept(control, 1, 2); const energy = [0, 0];
+    for (let frame = 4096; frame < 18432; frame += 128) for (const [index, kernel] of [baseline, damped].entries()) {
+      const output = new Float32Array(128); kernel.render(output, null, frame); if (frame >= 16384) for (const sample of output) energy[index] += sample * sample;
+    }
+    expect(energy[0]).to.be.greaterThan(0); expect(energy[1]).to.be.lessThan(energy[0] * 0.01);
+    expect(damped.source.initializationWrites).to.equal(writes); expect(damped.voice[2]).to.equal(1); expect(damped.active[0]).to.equal(1);
+    expect([...damped.receipts.subarray(0, damped.receiptCount * RECEIPT_WIDTH)].filter((value, index) => index % RECEIPT_WIDTH === 0 && value === REJECTED)).to.have.length(0);
+  });
   it('preserves seeded excitation across render block sizes and distinguishes same-pitch actors', () => {
     const a = render(191, 64), b = render(191, 257), other = render(192, 128);
     expect([...a.output]).to.deep.equal([...b.output]); expect([...other.output]).not.to.deep.equal([...a.output]);

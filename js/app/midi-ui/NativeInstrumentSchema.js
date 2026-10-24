@@ -36,7 +36,7 @@ export const NATIVE_FM_PARAMETERS = freezeData(Object.fromEntries(schemas['nativ
 export const NATIVE_MODAL_PARAMETERS = freezeData(Object.fromEntries(schemas['native-modal'].map(spec => [spec.id, { ...spec, integer: spec.discrete }])));
 export const NATIVE_SAMPLE_FIELDS = freezeData(Object.fromEntries(schemas['native-sample'].map(spec => [spec.id, [spec.min, spec.max, spec.default]])));
 const capabilities = id => Object.freeze({ samples: id === 'native-sample', independentSamePitch: true, perVoicePitch: true,
-  perVoicePressure: true, perVoicePan: true, perVoiceTimbre: false, ownedGates: true, releaseVelocity: id === 'native-sample',
+  perVoicePressure: true, perVoicePan: true, perVoiceTimbre: false, perVoiceDamping: id === 'worklet-pluck', ownedGates: true, releaseVelocity: id === 'native-sample',
   forwardLoops: id === 'native-sample', displayTelemetry: ['worklet-sine', 'worklet-pluck'].includes(id), renderAcknowledgment: ['worklet-sine', 'worklet-pluck'].includes(id), offlineRender: id === 'worklet-sine',
   modulationGraph: false, macroPerformance: ['native-oscillator', 'native-fm', 'native-modal', 'worklet-pluck'].includes(id), continuousMacroPerformance: false,
   identityVariation: ['native-oscillator', 'native-fm', 'native-modal', 'worklet-pluck'].includes(id), causalBindings: ['native-oscillator', 'native-fm', 'native-modal', 'worklet-pluck'].includes(id) });

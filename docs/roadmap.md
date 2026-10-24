@@ -2160,6 +2160,13 @@ phase delay removed at the fundamental and its attenuation included in the
 bounded target loss. This avoids treating a linear-interpolated delay's extra
 loss as the authored T60. These are model equations, not measured tuning/decay.
 Reference: https://www.dsprelated.com/freebooks/pasp/First_Order_Allpass_Interpolation.html
+Plucked Garden now stages four original recipes through the same library flow,
+with BODY/PICK/DAMP/SPARK, deterministic siblings/strikes and typed work-strength
+inputs. A distinct held-voice damping control ramps string/body loss without
+retriggering excitation. Live contexts are explicitly limited to44.1/48/96kHz.
+The macro panel remains next-onset; physical continuous-damping mapping is still
+outstanding. Content, actual-kernel damping and immutable-browser fixtures are
+authored and unexecuted. No pitch/decay, listening or hardware result is claimed.
 
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail

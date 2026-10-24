@@ -12,7 +12,7 @@ class OwnedSineKernel {
   constructor(sampleRate, maxVoices = MAX_VOICES, { source = null, width = WIDTH } = {}) {
     if (!Number.isFinite(sampleRate) || sampleRate < 8000 || sampleRate > 384000 ||
         !Number.isSafeInteger(maxVoices) || maxVoices < 1 || maxVoices > MAX_VOICES) throw new Error('Invalid sine kernel limits.');
-    if (![18, 24].includes(width) || width === 24 && !source || source && (width !== 24 || typeof source.begin !== 'function' || typeof source.sample !== 'function' || typeof source.validFrequency !== 'function')) throw new Error('Invalid owned source profile.');
+    if (![18, 24].includes(width) || width === 24 && !source || source && (width !== 24 || ['begin', 'sample', 'validFrequency', 'validUpdate', 'applyUpdate'].some(method => typeof source[method] !== 'function'))) throw new Error('Invalid owned source profile.');
     this.width = width; this.source = source;
     this.sampleRate = sampleRate; this.maxVoices = maxVoices;
     this.queue = new Float64Array(CAPACITY * this.width); this.queueLength = 0;
@@ -186,14 +186,15 @@ class OwnedSineKernel {
     } else if (opcode === UPDATE) {
       if (target < frame) { this.counters[2]++; this.receipt(REJECTED, sequence, slot, token, frame, 4); return; }
       const mask = queue[15];
-      if (!Number.isInteger(mask) || mask < 0 || mask > 7 || queue[14] < 0 || queue[14] > this.sampleRate ||
+      if (!Number.isInteger(mask) || mask < 0 || mask > (this.source?.maxUpdateMask ?? 7) || queue[14] < 0 || queue[14] > this.sampleRate ||
           (mask & 1) && (queue[6] <= 0 || queue[6] >= this.sampleRate / 2 || this.source && !this.source.validFrequency(slot, queue[6])) ||
-          (mask & 2) && (queue[8] < 0 || queue[8] > 1) || (mask & 4) && (queue[9] < -1 || queue[9] > 1)) {
+          (mask & 2) && (queue[8] < 0 || queue[8] > 1) || (mask & 4) && (queue[9] < -1 || queue[9] > 1) || this.source && !this.source.validUpdate(slot, mask, queue)) {
         this.receipt(REJECTED, sequence, slot, token, frame, 1); return;
       }
       if (mask & 1) { voices[at + 6] = queue[6]; voices[at + 23] = Math.max(1, Math.round(queue[14])); }
       if (mask & 2) { voices[at + 9] = queue[8]; voices[at + 24] = Math.max(1, Math.round(queue[14])); }
       if (mask & 4) { voices[at + 11] = queue[9]; voices[at + 25] = Math.max(1, Math.round(queue[14])); }
+      this.source?.applyUpdate(slot, mask, queue);
     } else if (opcode === END) this.release(slot, Math.max(1, queue[13]), frame, 1);
     else if (opcode === LEASE) voices[at + 16] = Math.max(voices[at + 16], queue[16]);
     voices[at + 26] = frame; voices[at + 27] = sequence;
