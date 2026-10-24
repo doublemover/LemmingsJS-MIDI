@@ -387,3 +387,21 @@ describe('HistoryStore cold blocks', function() {
     expect(after).to.equal(baseline);
   });
 });
+
+
+describe('terminal compaction retirement accounting', () => {
+  it('counts a previously compacted block exactly once after a replay thaw and terminal prune', () => {
+    const { history, timer, manager } = createHistoryFixture();
+    history.configureRetention({ deltaBlockSizeTicks: 4, coldBlockAgeTicks: 1, coldCompactionIntervalTicks: 1, coldCompactionMaxBlocksPerSweep: 64 });
+    for (let tick = 0; tick < 20; tick++) recordTick(history, timer, tick, () => { manager.lemmings[0].x = tick; });
+    const block = [...history._deltaBlocks.values()].find(entry => entry.cold); expect(block).to.exist;
+    history.getDelta(block.startTick); const before = history._coldBlocksRetired;
+    history._thawDeltaBlock(block.startTick); expect(history._coldBlocksRetired).to.equal(before);
+    const last = history.deltas[block.endTick];
+    for (let tick = block.startTick; tick < block.endTick; tick++) history.deltas[tick] = undefined;
+    history._cleanupDeltaBlock(block.startTick); expect(history._coldBlocksRetired).to.equal(before); expect(last).to.exist;
+    history.deltas[block.endTick] = undefined; history._cleanupDeltaBlock(block.startTick);
+    expect(history._coldBlocksRetired).to.equal(before + 1); history._cleanupDeltaBlock(block.startTick); expect(history._coldBlocksRetired).to.equal(before + 1);
+    history.detach();
+  });
+});

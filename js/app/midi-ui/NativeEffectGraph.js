@@ -22,7 +22,8 @@ const failure = (code, message) => Object.assign(new Error(message), { name: 'Ef
 // when inputs/outputs become audible and owns all transition/tail overlap.
 export async function prepareNativeEffectGraph(definition, { context, resources, owner, generation = 0, signal, isCurrent = () => true,
   getMaterialProvider = null, resolveSidechainSource = null, jobs, createWorkletNode = (ctx, name, options) => new globalThis.AudioWorkletNode(ctx, name, options), onFault = () => {}, initializationTimeoutMs = 5000, offlineEndFrame = null, offlineReturnNodeIds = [], offlineSourceBindings = null, retireOfflineContext = null } = {}) {
-  const guard = () => { signal?.throwIfAborted(); if (!isCurrent() || context?.state === 'closed') throw failure('stale-effect-graph', 'The effect graph request no longer belongs to this context.'); };
+  let fault = null;
+  const guard = () => { signal?.throwIfAborted(); if (fault) throw fault; if (!isCurrent() || context?.state === 'closed') throw failure('stale-effect-graph', 'The effect graph request no longer belongs to this context.'); };
   guard();
   if (!context?.createGain || !resources?.reserve || typeof createWorkletNode !== 'function' || typeof onFault !== 'function' || resolveSidechainSource !== null && typeof resolveSidechainSource !== 'function' ||
       !Number.isSafeInteger(initializationTimeoutMs) || initializationTimeoutMs < 1 || initializationTimeoutMs > 30000) throw new TypeError('Effect graphs need an owned native context and resource budget.');
@@ -42,7 +43,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
   if (prepared.outcome !== 'complete') throw Object.assign(failure('effect-preparation-retirement', 'Effect metadata preparation retirement is unresolved.'), { cause: preparationError, retirement: prepared });
   if (preparationError) throw preparationError;
   const scope = createProcgenRetirementScope({ deadlineMs: offline ? 180000 + initializationTimeoutMs : initializationTimeoutMs + 1000 }), nodes = [], processors = [], impulses = [], instances = new Map(), nodeOutputs = new Map(), inputs = new Map(), outputs = new Map(), sidechainInputs = new Map();
-  let disposed = false, fault = null, controlSequence = 0, initializationConfirmed = false, offlineCompletionConfirmed = false, sidechainsActivated = false, lastInspectionTime = -Infinity, refreshSourcePresence = () => {};
+  let disposed = false, controlSequence = 0, initializationConfirmed = false, offlineCompletionConfirmed = false, sidechainsActivated = false, lastInspectionTime = -Infinity, refreshSourcePresence = () => {};
   const audible = new Set([...plan.outputs, ...offlineReturnNodeIds]);
   for (let changed = true; changed;) { changed = false; for (const edge of plan.edges) if (audible.has(edge.to.nodeId) && !audible.has(edge.from.nodeId)) { audible.add(edge.from.nodeId); changed = true; } }
   const sidechainBindings = new Map(plan.sidechainInputs.map(id => [id, { id, pin: null, unsubscribe: null, connected: false, status: 'unbound' }]));
@@ -144,7 +145,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     } parameterControls.set(entry.id, adapters);
     return value;
   };
-  const checkPublication = () => { signal?.throwIfAborted(); if (disposed || !isCurrent() || fault) throw fault || failure('stale-effect-publication', 'Prepared effect publication no longer belongs to its owner.'); };
+  const checkPublication = () => { signal?.throwIfAborted(); if (disposed || context.state === 'closed' || !isCurrent() || fault) throw fault || failure('stale-effect-publication', 'Prepared effect publication no longer belongs to its owner.'); };
   const confirmReady = async () => { await Promise.all(processors.map(entry => entry.awaitReady())); checkPublication(); initializationConfirmed = true; };
   const confirmOfflineCompletion = async () => {
     if (!offline) throw failure('offline-completion-unavailable', 'This effect graph has no offline completion boundary.');
@@ -279,7 +280,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     for (const entry of processors) entry.node.port.postMessage({ type: 'inspect' });
     return true;
   };
-  return Object.freeze({ plan, hash, update, confirmReady, confirmOfflineCompletion, activateSidechains, deactivateSidechains, requestInspection, getInput: id => disposed ? null : inputs.get(id) || null, getOutput: id => disposed ? null : outputs.get(id) || null,
+  return Object.freeze({ plan, hash, update, checkPublication, confirmReady, confirmOfflineCompletion, activateSidechains, deactivateSidechains, requestInspection, getInput: id => disposed ? null : inputs.get(id) || null, getOutput: id => disposed ? null : outputs.get(id) || null,
     getNodeOutput: id => disposed ? null : nodeOutputs.get(id) || null, getSidechainInput: id => disposed ? null : sidechainInputs.get(id) || null,
     panic() { for (const entry of processors) entry.node.port.postMessage({ type: 'panic' }); for (const entry of impulses) if (entry.convolver) entry.convolver.buffer = null; },
     diagnostics: () => Object.freeze({ hash, graphId: plan.definition.id, revision: plan.definition.revision, sampleRate: plan.sampleRate, disposed, fault: fault?.code || null,

@@ -62,13 +62,14 @@ export function createOwnerEffectGraphHost({ context, input, dry, destination, r
           for (const member of arms) if (member.graph === ownedGraph) { if (current === member) { current = null; dryAutomation.insert(1, context.currentTime, context.currentTime); mode = 'neutral'; revision++; } retireArm(member); }
           report();
         } }); ownedGraph = graph; check();
+        await graph.confirmReady(); check(); graph.checkPublication?.();
         if (graph.plan.inputs.length !== 1 || graph.plan.outputs.length !== 1) throw failure('effect-route-boundary', 'This owner rack requires exactly one stereo source bus and one output bus.');
         lease = resources.reserve({ kind: 'effect-route-arm', owner, generation, estimateBytes: 16384, consumerOwned: true });
         arm = { graph, input: null, output: null, lease, retireAt: Infinity, retirement: null, connectedSource: false, inAutomation: null }; arms.add(arm);
         arm.input = context.createGain(); arm.output = context.createGain(); arm.input.gain.setValueAtTime(0, context.currentTime); arm.output.gain.setValueAtTime(1, context.currentTime);
         arm.inAutomation = createSmoothedAudioParameter({ param: arm.input.gain, initialValue: 0, startTime: context.currentTime, smoothingSeconds: transitionSeconds, maxEvents: 32 });
         input.connect(arm.input); arm.connectedSource = true; arm.input.connect(graph.getInput(graph.plan.inputs[0])); graph.getOutput(graph.plan.outputs[0]).connect(arm.output); arm.output.connect(destination); check();
-        await graph.activateSidechains?.(); check();
+        await graph.activateSidechains?.(); check(); graph.checkPublication?.();
         const previous = current; tail(previous); current = arm;
         arm.inAutomation.insert(1, context.currentTime, context.currentTime); dryAutomation.insert(0, context.currentTime, context.currentTime);
         mode = 'active'; error = null; revision++; graph = null; arm = null; lease = null; poll(); report(); return state();

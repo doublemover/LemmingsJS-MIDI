@@ -231,3 +231,35 @@ describe('Content addressed audio asset admission', () => {
     await rejection(store.get('../recordings'), 'invalid-asset-store-key');
   });
 });
+
+
+describe('audio asset retiring and pack publication owners', () => {
+  it('lets a replacement wait for canceled decode retirement without inheriting cancellation', async () => {
+    const item = fixture(), pending = deferred(), started = deferred(), budget = createResourceBudget(); let decodes = 0;
+    const ctx = context(48000, async input => { if (++decodes === 1) { started.resolve(); await pending.promise; } return context().decodeAudioData(input); });
+    const loader = makeLoader(item, { getContext: () => ctx, resourceBudget: budget }), set = createAudioAssetSet({ loader, owner: 'overlap' });
+    const first = set.replace([item.ref]); first.catch(() => {}); await started.promise;
+    const second = set.replace([item.ref]); expect(loader.diagnostics().decodedBytes).to.be.greaterThan(0);
+    pending.resolve(); await rejection(first, 'asset-preparation-cancelled');
+    expect((await second).status).to.equal('ready'); expect(set.snapshot()).to.have.length(1); expect(decodes).to.equal(2);
+    await set.dispose().completion; await loader.dispose().completion; expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+  it('does not publish an offline pack after disposal while retaining its unavoidable write', async () => {
+    const item = fixture(), write = deferred(), started = deferred(), budget = createResourceBudget();
+    const loader = makeLoader(item, { resourceBudget: budget, rawStore: { get: async () => null, put: async () => { started.resolve(); await write.promise; }, has: async () => true } });
+    const task = loader.downloadPack('retired', [item.ref]); task.catch(() => {}); await started.promise;
+    const receipt = loader.dispose(); expect(loader.diagnostics().pendingPackOperations).to.equal(1);
+    write.resolve(); await rejection(task, 'pack-operation-superseded'); await receipt.completion;
+    expect((await loader.inspectPack('retired')).status).to.equal('disposed'); expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+  it('keeps only the newest same-pack revision and serializes remove against storage writes', async () => {
+    const a = fixture(), b = fixture({ frames: 128 }), write = deferred(), started = deferred(), storage = new Map(); let first = true;
+    const loader = makeLoader(a, { fetchAsset: ref => ref.contentHash === a.ref.contentHash ? a.bytes : b.bytes,
+      rawStore: { get: async key => storage.get(key), has: async key => storage.has(key), remove: async key => storage.delete(key),
+        put: async (key, value) => { if (first) { first = false; started.resolve(); await write.promise; } storage.set(key, value); } } });
+    const old = loader.downloadPack('same', [a.ref]); old.catch(() => {}); await started.promise;
+    const current = loader.downloadPack('same', [b.ref]); write.resolve(); await rejection(old, 'pack-operation-superseded');
+    expect((await current).bytes).to.equal(b.ref.bytes); expect((await loader.inspectPack('same')).bytes).to.equal(b.ref.bytes);
+    await loader.removePack('same'); expect((await loader.inspectPack('same')).status).to.equal('unknown-pack'); await loader.dispose().completion;
+  });
+});

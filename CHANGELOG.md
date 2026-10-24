@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Fence staged effect and cue-route failures, rearm physical audio correlations after interruptions, serialize offline pack ownership, and preserve cold-history retirement evidence.
+
 - Retain bounded prepared ProcGen project and MIDI exports for exact retry, with separate anchor-request and writable-close delivery receipts.
 - Classify missing browser and Node pack resources consistently, keep seasonal fallback attempts and source provenance visible, verify optional pinned asset hashes, and make strict odd-table requirements explicit.
 

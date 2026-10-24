@@ -37,7 +37,7 @@ export function createAudioAssetLoader({ getContext, resolveAssetUrl, fetchAsset
       !Number.isSafeInteger(maxEntries) || maxEntries < 1 || maxEntries > 4096 ||
       [fetchConcurrency, decodeConcurrency].some(value => !Number.isSafeInteger(value) || value < 1 || value > 16)) throw new TypeError('Invalid audio asset loader.');
   const ownerPrefix = 'audio-assets-' + (++loaderSequence), resources = createAudioResourceLeases({ resourceBudget, ownerPrefix, maxReservations: maxEntries * 8 });
-  const raw = new Map(), decoded = new Map(), packs = new Map(), fetchGate = makeGate(fetchConcurrency, maxEntries), decodeGate = makeGate(decodeConcurrency, maxEntries);
+  const raw = new Map(), decoded = new Map(), packs = new Map(), packOperations = new Map(), packTasks = new Set(), storeGate = makeGate(1, maxEntries), fetchGate = makeGate(fetchConcurrency, maxEntries), decodeGate = makeGate(decodeConcurrency, maxEntries);
   const fetchBytes = fetchAsset || ((ref, options) => globalThis.fetch(resolveAssetUrl(ref), { signal: options.signal }));
   let disposed = false, rawBytes = 0, decodedBytes = 0, useSequence = 0;
   const retirement = createProcgenRetirementScope();
@@ -68,7 +68,28 @@ export function createAudioAssetLoader({ getContext, resolveAssetUrl, fetchAsset
     if (entry.state !== 'pending') return;
     stats.failures++; entry.state = 'failed'; retire(map, key, entry, kind);
   };
-  const unregister = resourceBudget?.registerEvictor?.(ownerPrefix, () => { evict(decoded, 'decoded', 0, maxDecodedBytes, true); evict(raw, 'raw', 0, maxRawBytes, true); });
+  const unregister = resourceBudget?.registerEvictor?.(ownerPrefix, ({ neededBytes }) => {
+    const before = resourceBudget.diagnostics().accountedBytes;
+    const candidates = [[decoded, 'decoded'], [raw, 'raw']].flatMap(([map, kind]) => [...map].filter(([, entry]) =>
+      entry.state === 'ready' && entry.pins === 0 && entry.waiters === 0).map(([key, entry]) => ({ map, kind, key, entry }))).sort((a, b) => a.entry.used - b.entry.used);
+    for (const { map, kind, key, entry } of candidates) {
+      if (before - resourceBudget.diagnostics().accountedBytes >= neededBytes) break;
+      if (retire(map, key, entry, kind).outcome === 'complete') stats.evictions++;
+    }
+  });
+  const afterRetirement = (entry, options, retry) => new Promise((resolve, reject) => {
+    const signal = options.signal; let settled = false;
+    const finish = action => { if (settled) return; settled = true; signal?.removeEventListener('abort', cancel); action(); };
+    const cancel = () => finish(() => reject(fail('asset-request-cancelled', entry.ref)));
+    if (signal?.aborted) { cancel(); return; }
+    signal?.addEventListener('abort', cancel, { once: true });
+    const resume = () => finish(() => {
+      if (disposed || signal?.aborted || options.isCurrent && !options.isCurrent()) reject(fail('asset-request-cancelled', entry.ref));
+      else if (entry.state === 'retirement-failed') reject(fail('asset-retirement-unknown', entry.ref));
+      else { try { resolve(retry()); } catch (error) { reject(error); } }
+    });
+    entry.promise.then(resume, resume);
+  });
   const subscribe = (entry, { signal, isCurrent = () => true, joinCancellation = false } = {}, handle) => new Promise((resolve, reject) => {
     let settled = false;
     entry.waiters++;
@@ -129,6 +150,7 @@ export function createAudioAssetLoader({ getContext, resolveAssetUrl, fetchAsset
   const acquireRaw = (ref, options = {}) => {
     if (disposed) return Promise.reject(fail('asset-loader-disposed', ref));
     let entry = raw.get(ref.contentHash);
+    if (entry?.state === 'pending' && entry.controller.signal.aborted) return afterRetirement(entry, options, () => acquireRaw(ref, options));
     if (entry?.state === 'retirement-failed') return Promise.reject(fail('asset-retirement-unknown', ref));
     if (entry && entry.fingerprint !== fingerprint(ref)) return Promise.reject(fail('asset-source-metadata-mismatch', ref));
     if (!entry) {
@@ -191,6 +213,8 @@ export function createAudioAssetLoader({ getContext, resolveAssetUrl, fetchAsset
     } catch (error) { return Promise.reject(error); }
     const key = ref.contentHash + ':' + sampleRate + ':' + decoderVersion;
     let entry = decoded.get(key);
+    if (entry?.state === 'pending' && entry.controller.signal.aborted) return afterRetirement(entry, { signal, isCurrent }, () =>
+      acquire(input, { owner, generation, signal, isCurrent, decodeProfile, decodeContext, joinCancellation }));
     if (entry?.state === 'retirement-failed') return Promise.reject(fail('asset-retirement-unknown', ref));
     if (entry && entry.fingerprint !== fingerprint(ref)) return Promise.reject(fail('asset-source-metadata-mismatch', ref));
     if (!entry) {
@@ -263,44 +287,82 @@ export function createAudioAssetLoader({ getContext, resolveAssetUrl, fetchAsset
     } else stats.decodedHits++;
     return subscribe(entry, { signal, isCurrent, joinCancellation }, value => decodedHandle(value, owner, generation, ref));
   };
-  const downloadPack = async (packId, inputs, { signal, onProgress = () => {} } = {}) => {
-    if (!rawStore?.put || typeof packId !== 'string' || !packId || packId.length > 128 || !Array.isArray(inputs) || inputs.length > maxEntries) throw fail('invalid-or-unavailable-pack-download');
-    const refs = [...new Map(inputs.map(input => { const ref = validateAudioAssetRef(input, assetLimits); return [ref.contentHash, ref]; })).values()];
-    if (!packs.has(packId) && packs.size >= 64) throw fail('pack-count-limit');
-    let completedBytes = 0;
-    for (const ref of refs) {
-      const handle = await acquireRaw(ref, { signal }); let copy = null;
-      try {
-        aborted(signal); copy = resources.reserve({ kind: 'persistent-audio-write-copy', bytes: ref.bytes });
-        await rawStore.put(ref.contentHash, handle.bytes); aborted(signal);
-        const cached = raw.get(ref.contentHash); if (cached) cached.persisted = true; completedBytes += ref.bytes;
-        try { onProgress(Object.freeze({ packId, completedBytes, totalBytes: refs.reduce((sum, item) => sum + item.bytes, 0) })); } catch { /* Progress is observation. */ }
-      } finally { copy?.release(); handle.release(); }
-    }
-    packs.set(packId, Object.freeze(refs)); return Object.freeze({ status: 'offline-ready', packId, bytes: completedBytes, assets: refs.length });
+  const beginPackOperation = (packId, refs, signal) => {
+    if (disposed) throw fail('asset-loader-disposed');
+    aborted(signal);
+    if (typeof packId !== 'string' || !packId || packId.length > 128) throw fail('invalid-pack-id');
+    if (!packs.has(packId) && !packOperations.has(packId) && new Set([...packs.keys(), ...packOperations.keys()]).size >= 64) throw fail('pack-count-limit');
+    const operation = { packId, refs, signal };
+    packOperations.set(packId, operation);
+    operation.check = () => { aborted(signal); if (disposed || packOperations.get(packId) !== operation) throw fail('pack-operation-superseded'); };
+    return operation;
+  };
+  const trackPack = (operation, action) => {
+    const task = Promise.resolve().then(action); packTasks.add(task);
+    return task.finally(() => { packTasks.delete(task); if (packOperations.get(operation.packId) === operation) packOperations.delete(operation.packId); });
+  };
+  const downloadPack = (packId, inputs, { signal, onProgress = () => {} } = {}) => {
+    try {
+      if (!rawStore?.put || !Array.isArray(inputs) || inputs.length > maxEntries) throw fail('invalid-or-unavailable-pack-download');
+      const refs = Object.freeze([...new Map(inputs.map(input => { const ref = validateAudioAssetRef(input, assetLimits); return [ref.contentHash, ref]; })).values()]);
+      const operation = beginPackOperation(packId, refs, signal), totalBytes = refs.reduce((sum, ref) => sum + ref.bytes, 0);
+      return trackPack(operation, async () => {
+        let completedBytes = 0;
+        for (const ref of refs) {
+          operation.check(); const handle = await acquireRaw(ref, { signal, isCurrent: () => packOperations.get(packId) === operation });
+          try {
+            operation.check();
+            await storeGate.run(async () => {
+              operation.check(); const copy = resources.reserve({ kind: 'persistent-audio-write-copy', bytes: ref.bytes });
+              try { await rawStore.put(ref.contentHash, handle.bytes); operation.check(); const cached = raw.get(ref.contentHash); if (cached) cached.persisted = true; }
+              finally { copy.release(); }
+            }, signal);
+            operation.check(); completedBytes += ref.bytes;
+            try { onProgress(Object.freeze({ packId, completedBytes, totalBytes })); } catch { /* Progress is observation. */ }
+          } finally { handle.release(); }
+        }
+        operation.check(); packs.set(packId, refs);
+        return Object.freeze({ status: 'offline-ready', packId, bytes: completedBytes, assets: refs.length });
+      });
+    } catch (error) { return Promise.reject(error); }
   };
   const inspectPack = async (packId, inputs = packs.get(packId)) => {
-    if (!Array.isArray(inputs)) return Object.freeze({ status: 'unknown-pack', packId });
+    if (disposed || !Array.isArray(inputs)) return Object.freeze({ status: disposed ? 'disposed' : 'unknown-pack', packId });
+    const published = packs.get(packId), operation = packOperations.get(packId);
     const refs = inputs.map(ref => validateAudioAssetRef(ref, assetLimits)), missingHashes = [];
-    for (const ref of refs) if (!rawStore?.has || !await rawStore.has(ref.contentHash)) missingHashes.push(ref.contentHash);
+    for (const ref of refs) {
+      if (!rawStore?.has || !await rawStore.has(ref.contentHash)) missingHashes.push(ref.contentHash);
+      if (disposed || packs.get(packId) !== published || packOperations.get(packId) !== operation) return Object.freeze({ status: 'superseded', packId });
+    }
     return Object.freeze({ status: missingHashes.length ? 'missing-assets' : 'offline-ready', packId,
       bytes: refs.reduce((sum, item) => sum + item.bytes, 0), missingHashes: Object.freeze(missingHashes), integrity: 'verified-on-read' });
   };
-  const removePack = async (packId, { referencedBy = [], confirmReferenced = false } = {}) => {
-    const refs = packs.get(packId); if (!refs) return Object.freeze({ status: 'unknown-pack', packId });
-    if (referencedBy.length && !confirmReferenced) return Object.freeze({ status: 'referenced-by-project', packId,
-      consequence: 'Future playback/export requires these exact assets to be downloaded again.', referencedBy: Object.freeze(referencedBy.slice(0, 32)) });
-    let removedBytes = 0;
-    for (const ref of refs) if (![...packs.entries()].some(([id, pack]) => id !== packId && pack.some(item => item.contentHash === ref.contentHash))) {
-      await rawStore?.remove(ref.contentHash); const cached = raw.get(ref.contentHash); if (cached) cached.persisted = false; removedBytes += ref.bytes;
-    }
-    packs.delete(packId);
-    return Object.freeze({ status: 'removed', packId, removedBytes, activePinsPreserved: true });
+  const removePack = (packId, { referencedBy = [], confirmReferenced = false } = {}) => {
+    try {
+      const refs = packs.get(packId) || packOperations.get(packId)?.refs;
+      if (!refs) return Promise.resolve(Object.freeze({ status: 'unknown-pack', packId }));
+      if (referencedBy.length && !confirmReferenced) return Promise.resolve(Object.freeze({ status: 'referenced-by-project', packId,
+        consequence: 'Future playback/export requires these exact assets to be downloaded again.', referencedBy: Object.freeze(referencedBy.slice(0, 32)) }));
+      const operation = beginPackOperation(packId, [], null);
+      return trackPack(operation, async () => {
+        let removedBytes = 0;
+        for (const ref of refs) await storeGate.run(async () => {
+          operation.check();
+          const shared = [...packs].some(([id, pack]) => id !== packId && pack.some(item => item.contentHash === ref.contentHash)) ||
+            [...packOperations].some(([id, work]) => id !== packId && work.refs.some(item => item.contentHash === ref.contentHash));
+          if (shared) return;
+          await rawStore?.remove(ref.contentHash); operation.check();
+          const cached = raw.get(ref.contentHash); if (cached) cached.persisted = false; removedBytes += ref.bytes;
+        });
+        operation.check(); packs.delete(packId);
+        return Object.freeze({ status: 'removed', packId, removedBytes, activePinsPreserved: true });
+      });
+    } catch (error) { return Promise.reject(error); }
   };
   const purge = () => { evict(decoded, 'decoded', 0, maxDecodedBytes, true); evict(raw, 'raw', 0, maxRawBytes, true); };
   const diagnostics = () => Object.freeze({ ...stats, rawBytes, decodedBytes, rawEntries: raw.size, decodedEntries: decoded.size,
     activePins: [...decoded.values()].reduce((sum, entry) => sum + entry.pins, 0), fetch: fetchGate.diagnostics(), decode: decodeGate.diagnostics(),
-    resources: resources.diagnostics(), maxRawBytes, maxDecodedBytes, maxEntries, disposed });
+    resources: resources.diagnostics(), pendingPackOperations: packTasks.size, maxRawBytes, maxDecodedBytes, maxEntries, disposed });
   const dispose = () => {
     if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true;
     const entries = [...raw.values(), ...decoded.values()], pending = entries.filter(entry => entry.state === 'pending');
@@ -312,7 +374,8 @@ export function createAudioAssetLoader({ getContext, resolveAssetUrl, fetchAsset
       ...entries.map((entry, index) => ({ name: 'request-' + index, run: () => entry.controller.abort() })),
       { name: 'unpinned-assets', run: retireUnpinned },
       ...(pending.length ? [{ name: 'pending-native-assets', run: () => Promise.allSettled(pending.map(entry => entry.promise)).then(retireUnpinned) }] : []),
-      { name: 'pack-index', run: () => packs.clear() }
+      { name: 'pack-index', run: () => { packs.clear(); packOperations.clear(); } },
+      { name: 'pending-pack-storage', run: () => Promise.allSettled([...packTasks]) }
     ]);
   };
   return Object.freeze({ acquire, downloadPack, inspectPack, removePack, purge, diagnostics, dispose });

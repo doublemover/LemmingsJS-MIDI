@@ -46,6 +46,9 @@ export function createResourceBudget({ limitBytes = DEFAULT_LIMIT_BYTES, costFac
         }
       } finally { evicting = false; }
     }
+    if (retired) throw new Error('Resource budget retired during eviction.');
+    if (old && old.owner !== owner) throw new Error('Resource token changed owner during eviction.');
+    if (previousBytes != null && (old?.bytes ?? 0) !== previousBytes) throw new Error('Stale resource replacement size after eviction.');
     if (accountedBytes + delta > limitBytes) {
       denials++;
       throw new ResourceBudgetError(category, cost, Math.max(0, limitBytes - (accountedBytes - (old?.cost || 0))));

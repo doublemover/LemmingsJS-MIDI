@@ -41,3 +41,18 @@ describe('shared resource budget', () => {
     expect(budget.diagnostics().categories.canvas.pinned).to.equal(1);
   });
 });
+
+
+describe('resource reservation eviction reentrancy', () => {
+  for (const mutation of ['transfer', 'resize', 'retire']) it('rechecks ' + mutation + ' before replacement publication', () => {
+    const budget = createResourceBudget({ limitBytes: 4096 }), token = {}, occupied = {};
+    budget.reserve({ token, owner: 'a', bytes: 2000 }); budget.reserve({ token: occupied, owner: 'b', bytes: 2000 });
+    budget.registerEvictor('racer', () => {
+      if (mutation === 'transfer') budget.transfer({ token, owner: 'a', generation: 0, toOwner: 'other' });
+      else if (mutation === 'resize') budget.reserve({ token, owner: 'a', bytes: 1000 }); else budget.retire();
+      budget.release({ token: occupied, owner: 'b' });
+    });
+    expect(() => budget.reserve({ token, owner: 'a', bytes: 3000, previousBytes: 2000 })).to.throw();
+    expect(budget.diagnostics().residentBytes).to.be.at.most(2000);
+  });
+});

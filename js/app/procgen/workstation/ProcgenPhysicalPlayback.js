@@ -65,7 +65,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
   const unsubscribe = audio?.subscribe?.(state => {
     const context = audio?.getAudioContext?.();
     if (state.enabled) { arm(); if (!lastAudioEnabled || context !== lastAudioContext) laneInstruments?.retry(getLanes()).catch(() => {}); }
-    else clock.invalidate(); lastAudioEnabled = !!state.enabled; lastAudioContext = context;
+    else { clock.invalidate(); anchoredEpoch = null; anchoredBpm = null; } lastAudioEnabled = !!state.enabled; lastAudioContext = context;
   }) || null;
   const dispatcher = createCausalIntentDispatcher({
     sinks: backend ? [{ id: 'physical-browser-audio', route: 'local', backend }] : [],
@@ -114,7 +114,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     arm();
     const score = position || scoreTimeline.map({ simTick: batch.tick });
     if (prepared && permitted() && session?.getState().enabled &&
-        (anchoredEpoch !== score.epoch || anchoredBpm !== bpm)) {
+        (!clock.isAnchored(executionEpoch, score.epoch, bpm) || anchoredEpoch !== score.epoch || anchoredBpm !== bpm)) {
       try {
         clock.rebase({ executionEpoch, scoreEpoch: score.epoch, beat: score.beat, hostMs: now(), bpm,
           reason: anchoredEpoch === null ? 'start' : 'source-change' });

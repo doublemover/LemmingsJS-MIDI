@@ -170,6 +170,7 @@ const historyStoreColdBlockStorageMethods = {
       this._coldBlockBytes += encodedBytes.length;
     }
     block.cold = true;
+    block.wasCompacted = true;
     block.encoding = encoding;
     block.encodedBytes = sharedBytes;
     block.encodedStoreKey = storeKey;
@@ -229,8 +230,8 @@ const historyStoreColdBlockStorageMethods = {
         this._coldBlockBytes -= block.encodedBytes.length;
       }
       this._coldBlockCount = Math.max(0, this._coldBlockCount - 1);
-      this._coldBlocksRetired++;
     }
+    if (block.wasCompacted) this._coldBlocksRetired++;
     this._deltaBlocks.delete(blockStart);
   },
 
