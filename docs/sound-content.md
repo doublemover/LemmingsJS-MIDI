@@ -144,3 +144,18 @@ voices and tails. Candidate pins protect asynchronous replacement preparation;
 bounded retained-renderer capacity rejects excess work without cutting held
 voices. A lane with missing pinned requirements rejects new attacks explicitly.
 Execution inspection reports settlement without disclosing internal epoch keys.
+
+Saved lane instrument references include the exact definition, its hash, pack
+hash, engine/schema requirements and dependency hashes. Reopen verifies those
+bytes before renderer admission. Missing engines, future patch schemas and
+missing material remain explicit lane requirements. Choosing a factory palette
+clears the installed reference as an explicit sound change.
+
+Physical playback now owns routed lane renderers. Saved references prepare in a
+bounded queue that coalesces superseded lane requests; held voices keep their
+original renderer while future attacks use the committed selection. Periodic
+execution-lease renewal sustains legitimate physical actions without creating
+new attacks. Authored release times follow their voice owner. The workstation
+Apply handler checks the selected lane and project revision before publishing
+the prepared change and preserving Undo. Instrument changes during causal-take
+capture/arming are rejected until effective-patch changes can be journaled.

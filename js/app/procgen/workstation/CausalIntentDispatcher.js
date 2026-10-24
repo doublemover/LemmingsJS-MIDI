@@ -122,6 +122,16 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
     return createProcgenRetirementScope().retire(actions);
   };
   const diagnostics = () => Object.freeze({ disposed, receiptCount: history.length, receipts: Object.freeze([...history]) });
+  const renewExecutionLease = (generation, epoch, untilFrame) => {
+    if (disposed || !Number.isSafeInteger(untilFrame) || untilFrame < 0) return Object.freeze({ status: 'rejected', reason: 'invalid-execution-lease' });
+    const outcomes = [];
+    for (const sink of sinks) {
+      try { const identity = executionFor(sink, epoch, generation); outcomes.push(identity.execution && sink.backend.renewExecutionLease ?
+        sink.backend.renewExecutionLease(generation, identity.execution, untilFrame) : { status: 'rejected', reason: identity.reason || 'sink-lease-unavailable' }); }
+      catch { outcomes.push({ status: 'rejected', reason: 'sink-lease-failed' }); }
+    }
+    return Object.freeze({ status: outcomes.every(outcome => outcome?.status === 'accepted') ? 'accepted' : 'rejected', outcomes: Object.freeze(outcomes) });
+  };
   const dispose = () => {
     if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true;
     return retirement.retire(sinks.flatMap(sink => {
@@ -129,7 +139,7 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
       return current ? [{ name: sink.id + '-execution', run: () => retireCurrent(sink, current) }] : [];
     }).concat({ name: 'dispatch-state', run: () => { executions.clear(); history.length = 0; } }));
   };
-  return { dispatch, cancelGeneration, diagnostics, dispose };
+  return { dispatch, cancelGeneration, renewExecutionLease, diagnostics, dispose };
 };
 
 export { createCausalIntentDispatcher, createStrictLiveFramePolicy };

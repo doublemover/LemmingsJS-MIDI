@@ -2,6 +2,8 @@ import { createAudioClockBridge } from './AudioClockBridge.js';
 import { createCausalMusicEngine } from './CausalMusicEngine.js';
 import { createCausalIntentDispatcher, createStrictLiveFramePolicy } from './CausalIntentDispatcher.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
+import { createRoutedInstrumentBackend } from '../../midi-ui/RoutedInstrumentBackend.js';
+import { createLaneInstrumentPreparation } from '../../midi-ui/LaneInstrumentPreparation.js';
 
 const nativeResolution = Object.freeze({
   status: 'ready',
@@ -14,13 +16,20 @@ const nativeResolution = Object.freeze({
 
 // Owns only the physical voice session. The ordinary game preview and MIDI
 // router keep their independent leases on the shared output graph.
-export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, now, onReceipt = () => {} } = {}) {
+export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getLanes = () => [], onInstrumentState = () => {}, onReceipt = () => {} } = {}) {
   const session = audio?.createSession?.('procgen-physical') || null;
-  const backend = session?.createInstrumentBackend?.({ gateMode: 'bounded' }) || null;
+  const nativeBackend = session?.createInstrumentBackend?.({ gateMode: 'owned' }) || null;
+  const routed = nativeBackend?.inspectExecution ? createRoutedInstrumentBackend({ defaultBackend: nativeBackend, getContext: () => audio.getAudioContext(),
+    getGeneration: () => nativeBackend.executionIncarnation?.() ?? 0, defaultReleaseSeconds: nativeResolution.patch.parameters.releaseSeconds, defaultOneShotTailSeconds: 0.08,
+    resolveLane: laneId => typeof laneId === 'number' ? getLanes()[laneId]?.id || String(laneId) : String(laneId) }) : null;
+  const backend = routed?.backend || nativeBackend;
+  const laneInstruments = routed ? createLaneInstrumentPreparation({ session, routed, onState: onInstrumentState }) : null;
   const clock = createAudioClockBridge({ getContext: () => audio?.getAudioContext?.(), nowMs: now,
     presentationDelayMs: 24, maxHorizonMs: 5000 });
   let disposed = false, prepared = false, armEnabled = true, enableLease = null, executionEpoch = null, previousGeneration = null, executionSerial = 0;
-  let anchoredEpoch = null, anchoredBpm = null, rejected = 0, accepted = 0;
+  let anchoredEpoch = null, anchoredBpm = null, rejected = 0, accepted = 0, leaseFailures = 0;
+  let leaseUntil = null, leaseEpoch = null, leaseContext = null;
+  let lastAudioEnabled = false, lastAudioContext = null;
   const retirement = createProcgenRetirementScope();
   const arm = () => {
     if (disposed || !armEnabled || !prepared || !session || !audio?.getState?.().enabled || session.getState().enabled || enableLease) return;
@@ -29,12 +38,16 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
       Promise.resolve(session.enable()).catch(() => false).finally(() => { if (enableLease === lease) enableLease = null; });
     } catch { if (enableLease === lease) enableLease = null; }
   };
-  const preparedPromise = backend ? Promise.resolve(backend.prepare(nativeResolution)).then(receipt => {
+  const preparedPromise = nativeBackend ? Promise.resolve(nativeBackend.prepare(nativeResolution)).then(receipt => {
     prepared = receipt?.status === 'ready';
     arm();
     return prepared;
   }).catch(() => false) : Promise.resolve(false);
-  const unsubscribe = audio?.subscribe?.(state => { if (state.enabled) arm(); else clock.invalidate(); }) || null;
+  const unsubscribe = audio?.subscribe?.(state => {
+    const context = audio?.getAudioContext?.();
+    if (state.enabled) { arm(); if (!lastAudioEnabled || context !== lastAudioContext) laneInstruments?.retry(getLanes()).catch(() => {}); }
+    else clock.invalidate(); lastAudioEnabled = !!state.enabled; lastAudioContext = context;
+  }) || null;
   const dispatcher = createCausalIntentDispatcher({
     sinks: backend ? [{ id: 'physical-browser-audio', route: 'local', backend }] : [],
     executionEpoch: () => executionEpoch,
@@ -63,12 +76,21 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
         anchoredEpoch = score.epoch; anchoredBpm = bpm;
       } catch { clock.invalidate(); anchoredEpoch = null; }
     }
+    if (routed && prepared && session?.getState().enabled) {
+      const frame = clock.currentFrame(), context = audio.getAudioContext(), rate = context?.sampleRate;
+      if (Number.isSafeInteger(frame) && Number.isFinite(rate) && (leaseEpoch !== executionEpoch || leaseContext !== context || leaseUntil == null || frame + rate * 4 >= leaseUntil)) {
+        const until = frame + Math.ceil(rate * 10);
+        if (dispatcher.renewExecutionLease(batch.generation, executionEpoch, until).status === 'accepted') { leaseUntil = until; leaseEpoch = executionEpoch; leaseContext = context; }
+        else leaseFailures++;
+      }
+    }
     return engine.processBatch(batch);
   };
   const stop = () => {
     armEnabled = false; enableLease = null;
     const generation = previousGeneration, epoch = executionEpoch;
     executionSerial++; previousGeneration = null; executionEpoch = null;
+    leaseUntil = null; leaseEpoch = null; leaseContext = null;
     return createProcgenRetirementScope().retire([
       { name: 'dispatch-generation', run: () => { if (generation !== null) return dispatcher.cancelGeneration(generation, epoch); } },
       { name: 'audio-session', run: () => session?.stop?.() },
@@ -81,10 +103,15 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     return retirement.retire([
       { name: 'audio-state-subscription', run: () => unsubscribe?.() },
       { name: 'playback-stop', run: stop }, { name: 'dispatcher', run: () => dispatcher.dispose() },
+      { name: 'lane-instrument-preparation', run: () => laneInstruments?.dispose() },
       { name: 'instrument-backend', run: () => backend?.dispose?.() }, { name: 'audio-session', run: () => session?.dispose?.() }
     ]);
   };
   return { engine, processBatch, stop, dispose, ready: () => preparedPromise,
+    prepareLaneInstrument: (laneId, reference, options) => laneInstruments ? laneInstruments.prepare(laneId, reference, options) : Promise.reject(new Error('Lane instrument routing is unavailable.')),
+    synchronizeLaneInstruments: lanes => laneInstruments?.synchronize(lanes) || Promise.resolve([]),
+    retryLaneInstruments: () => laneInstruments?.retry(getLanes()) || Promise.resolve([]),
     diagnostics: () => Object.freeze({ prepared, enabled: !!session?.getState().enabled, accepted, rejected,
-      clock: clock.diagnostics(), causal: engine.diagnostics(), dispatch: dispatcher.diagnostics() }) };
+      clock: clock.diagnostics(), causal: engine.diagnostics(), dispatch: dispatcher.diagnostics(), leaseFailures,
+      instruments: laneInstruments?.diagnostics() || null, renderers: routed?.backend.renderDiagnostics() || null }) };
 }

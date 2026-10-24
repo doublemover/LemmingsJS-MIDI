@@ -5,10 +5,13 @@ const reject = reason => Object.freeze({ status: 'rejected', reason, stage: 'non
 const keyFor = (epoch, voiceId) => JSON.stringify([epoch, voiceId]);
 const validLane = lane => typeof lane === 'string' && lane.length > 0 && lane.length <= 160;
 
-export function createRoutedInstrumentBackend({ defaultBackend, getContext, getGeneration, resolveLane = value => String(value), maxChildren = 17, maxVoices = 512 } = {}) {
+export function createRoutedInstrumentBackend({ defaultBackend, getContext, getGeneration, resolveLane = value => String(value), maxChildren = 17, maxVoices = 512,
+  defaultReleaseSeconds = null, defaultOneShotTailSeconds = null } = {}) {
   if (!defaultBackend?.registerExecution || !defaultBackend?.inspectExecution || typeof getContext !== 'function' || typeof getGeneration !== 'function' || typeof resolveLane !== 'function' ||
       !Number.isInteger(maxChildren) || maxChildren < 2 || maxChildren > 65 || !Number.isInteger(maxVoices) || maxVoices < 1 || maxVoices > 2048) throw new TypeError('Invalid routed instrument owner.');
-  const defaults = { key: 'default', backend: defaultBackend, retirement: null }, children = new Map([['default', defaults]]), assignments = new Map(), executions = new Map(), voices = new Map();
+  if ([defaultReleaseSeconds, defaultOneShotTailSeconds].some(value => value != null && (!Number.isFinite(value) || value < 0 || value > 4))) throw new TypeError('Invalid default release policy.');
+  const defaults = { key: 'default', backend: defaultBackend, retirement: null, releaseSeconds: defaultReleaseSeconds, oneShotTailSeconds: defaultOneShotTailSeconds },
+    children = new Map([['default', defaults]]), assignments = new Map(), executions = new Map(), voices = new Map();
   const retirement = createProcgenRetirementScope(); let disposed = false, voiceCursor = voices.entries(), collected = 0;
   const stateFor = (child, execution, voiceId = null) => {
     try { const result = child.backend.inspectExecution(execution, voiceId); return result?.status === 'accepted' ? result : null; } catch { return null; }
@@ -28,9 +31,10 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     return true;
   };
   const retireChild = child => {
-    if (child.retirement) return child.retirement;
+    if (child.retirementScope) return child.retirementScope.getReceipt();
+    child.retirementScope = createProcgenRetirementScope();
     const handles = [...executions.values()].filter(execution => execution.children.has(child));
-    child.retirement = createProcgenRetirementScope().retire([
+    child.retirement = child.retirementScope.retire([
       ...handles.map((execution, index) => ({ name: 'execution-' + index, run: () => child.backend.retireExecution(execution.children.get(child)) })),
       { name: 'renderer', run: () => child.backend.dispose() }
     ]);
@@ -40,12 +44,12 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
   };
   const collect = () => {
     collectVoices(); const assigned = new Set(assignments.values());
-    for (const child of children.values()) if (child !== defaults && !child.pins && !assigned.has(child) && !child.retirement && childSettled(child)) retireChild(child);
+    for (const child of children.values()) if (child !== defaults && !child.pins && !assigned.has(child) && !child.retirementScope && childSettled(child)) retireChild(child);
   };
   const executionFor = (child, epoch, generation) => {
     let execution = executions.get(epoch);
     if (!execution) { if (executions.size >= 64) return null; execution = { generation, children: new Map(), leaseUntil: null }; executions.set(epoch, execution); }
-    if (execution.generation !== generation || child.retirement) return null;
+    if (execution.generation !== generation || child.retirementScope) return null;
     if (!execution.children.has(child)) {
       const registered = child.backend.registerExecution({ executionEpoch: epoch, generation }); if (registered?.status !== 'accepted') return null;
       execution.children.set(child, registered.execution);
@@ -54,7 +58,9 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     return execution.children.get(child);
   };
   const begin = (intent, targetFrame, epoch) => {
-    if (disposed) return reject('disposed'); collectVoices();
+    if (disposed) return reject('disposed');
+    if (!Number.isSafeInteger(intent?.generation) || intent.generation < 0 || typeof intent.voiceId !== 'string' || !intent.voiceId || intent.voiceId.length > 512) return reject('invalid-intent');
+    collectVoices();
     if (voices.size >= maxVoices) collectVoices(voices.size);
     if (voices.size >= maxVoices || voices.has(keyFor(epoch, intent?.voiceId))) return reject('routed-voice-capacity-or-duplicate');
     let lane; try { lane = resolveLane(intent.laneId); } catch { return reject('lane-unavailable'); }
@@ -66,7 +72,10 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
   };
   const voiceCall = (method, voiceId, value, frame, epoch) => {
     if (disposed) return reject('disposed'); const voice = voices.get(keyFor(epoch, voiceId));
-    if (!voice) return reject('voice-unavailable'); return voice.child.backend[method](voiceId, value, frame, voice.execution);
+    if (!voice) return reject('voice-unavailable');
+    if (method === 'end' && voice.child.releaseSeconds != null) value = { ...value, seconds: voice.child.releaseSeconds,
+      ...(value?.mode === 'one-shot' && voice.child.oneShotTailSeconds != null ? { tailSeconds: voice.child.oneShotTailSeconds } : {}) };
+    return voice.child.backend[method](voiceId, value, frame, voice.execution);
   };
   const cancelGenerationWithReceipt = (generation, epoch) => {
     const execution = executions.get(epoch), outcomes = [];
@@ -77,7 +86,7 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     return Object.freeze({ status: receipt.outcome === 'partial' ? 'degraded' : 'accepted', count: outcomes.reduce((sum, outcome) => sum + (outcome?.count || 0), 0), retirement: receipt });
   };
   const renewExecutionLease = (generation, epoch, until) => {
-    if (disposed || !Number.isSafeInteger(until) || until < 0) return reject('invalid-execution-lease');
+    if (disposed || !Number.isSafeInteger(generation) || generation < 0 || !Number.isSafeInteger(until) || until < 0) return reject('invalid-execution-lease');
     let execution = executions.get(epoch); if (!execution) { if (executions.size >= 64) return reject('execution-identity-capacity'); execution = { generation, children: new Map(), leaseUntil: null }; executions.set(epoch, execution); }
     if (execution.generation !== generation || execution.leaseUntil != null && until <= execution.leaseUntil) return reject('stale-execution-lease');
     const outcomes = [...execution.children].map(([child, handle]) => child.backend.renewExecutionLease(generation, handle, until));
@@ -85,7 +94,7 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
   };
   const backend = { begin, update: (...args) => voiceCall('update', ...args), end: (...args) => voiceCall('end', ...args), renewExecutionLease,
     cancelGenerationWithReceipt, cancelGeneration: (...args) => cancelGenerationWithReceipt(...args).count,
-    capabilities: Object.freeze({ routedInstruments: true, independentSamePitch: true, renderAcknowledgment: false }),
+    capabilities: Object.freeze({ routedInstruments: true, independentSamePitch: true, ownedGates: true, renderAcknowledgment: false }),
     renderDiagnostics: () => { collect(); return Object.freeze({ children: children.size, assignments: assignments.size, retainedVoices: voices.size,
       collectedVoices: collected, unknownRetirement: [...children.values()].filter(child => child.retirement?.outcome === 'partial').length,
       renderers: Object.freeze([...children.values()].map(child => Object.freeze({ key: child.key, retirement: child.retirement?.outcome || null,
@@ -106,15 +115,16 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     }
   });
   return Object.freeze({ backend: lifecycle.api,
-    canAssign(key) { collect(); const child = children.get(key); return !disposed && (child ? !child.retirement : children.size < maxChildren); },
-    assign(lane, key, renderer) {
+    canAssign(key) { collect(); const child = children.get(key); return !disposed && (child ? !child.retirementScope : children.size < maxChildren); },
+    assign(lane, key, renderer, { releaseSeconds = null, oneShotTailSeconds = null } = {}) {
       if (!validLane(lane) || typeof key !== 'string' || !key || key.length > 256 || key === 'default' || disposed || !renderer?.inspectExecution) throw new TypeError('Invalid lane instrument assignment.');
+      if ([releaseSeconds, oneShotTailSeconds].some(value => value != null && (!Number.isFinite(value) || value < 0 || value > 4))) throw new TypeError('Invalid authored release policy.');
       collect(); if (!assignments.has(lane) && assignments.size >= 64) throw new Error('Routed lane capacity exceeded.'); let child = children.get(key);
-      if (child && (child.backend !== renderer || child.retirement) || !child && children.size >= maxChildren) throw new Error('Lane instrument replacement exceeds retained renderer capacity.');
-      if (!child) { child = { key, backend: renderer, retirement: null, pins: 0 }; children.set(key, child); } assignments.set(lane, child);
+      if (child && (child.backend !== renderer || child.retirementScope) || !child && children.size >= maxChildren) throw new Error('Lane instrument replacement exceeds retained renderer capacity.');
+      if (!child) { child = { key, backend: renderer, retirement: null, pins: 0, releaseSeconds, oneShotTailSeconds }; children.set(key, child); } assignments.set(lane, child);
     },
-    find: key => children.get(key)?.retirement ? null : children.get(key)?.backend || null,
-    retain(key) { const child = children.get(key); if (!child || child.retirement || disposed) return null; child.pins = (child.pins || 0) + 1; let released = false;
+    find: key => children.get(key)?.retirementScope ? null : children.get(key)?.backend || null,
+    retain(key) { const child = children.get(key); if (!child || child.retirementScope || disposed) return null; child.pins = (child.pins || 0) + 1; let released = false;
       return Object.freeze({ backend: child.backend, release() { if (!released) { released = true; child.pins--; collect(); } } }); },
     assignment: lane => assignments.get(lane)?.key || null,
     unassign(lane) { assignments.delete(lane); collect(); },

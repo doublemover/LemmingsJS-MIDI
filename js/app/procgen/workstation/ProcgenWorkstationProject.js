@@ -1,5 +1,6 @@
 import { PROCGEN_ROLES, PROCGEN_SOUND_COLLECTIONS, PROCGEN_DEFAULT_PAIRS, resolveProcgenSound } from './ProcgenSoundCollections.js';
 import { validateCausalInstrumentGraph } from './CausalMusicEngine.js';
+import { validateSoundContentReference } from '../../../midi/content/SoundContentReference.js';
 
 const number = (value, fallback, min, max) => Math.max(min, Math.min(max, Number.isFinite(Number(value)) ? Number(value) : fallback));
 const integer = (value, fallback, min, max) => Math.round(number(value, fallback, min, max));
@@ -64,6 +65,7 @@ const createProcgenLane = (index = 0, overrides = {}) => {
   const sound = resolveProcgenSound(family, role, overrides.patch);
   const melodic = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16];
   return { id: string(overrides.id, `lane-${index + 1}`), name: string(overrides.name, `Lane ${index + 1}`), family, role, patch: sound.id,
+    instrumentRef: validateSoundContentReference(overrides.instrumentRef),
     mode, patternPurpose: mode === 'pattern' ? string(overrides.patternPurpose, '') : null,
     channel: role === 'drums' ? 10 : melodic.includes(overrides.channel) ? overrides.channel : melodic[index % melodic.length],
     outputId: overrides.outputId == null ? null : String(overrides.outputId),
@@ -157,7 +159,7 @@ const reduceCanonicalProcgenProject = (project, action) => {
     if (action.patch.patterns === undefined) next.patterns = lane.patterns;
   } else if (action.type === 'procgen/palette') {
     next = createProcgenLane(index, { ...lane, family: action.family ?? lane.family, role: action.role ?? lane.role,
-      patch: action.patch ?? null, patterns: action.resetPatterns ? undefined : lane.patterns });
+      patch: action.patch ?? null, instrumentRef: null, patterns: action.resetPatterns ? undefined : lane.patterns });
     if (!action.resetPatterns) next.patterns = lane.patterns;
   } else if (action.type === 'procgen/step' || action.type === 'procgen/pattern') {
     const slot = action.slot ?? lane.activeSlot, pattern = lane.patterns[slot];

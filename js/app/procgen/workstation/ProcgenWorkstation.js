@@ -20,6 +20,7 @@ import { resolveProcgenStartupIntent } from './ProcgenStartupIntent.js';
 import { deliverArtifactToAnchor, deliverArtifactToFileHandle, prepareExportArtifact, requestExportFileHandle } from '../../export/ExportArtifact.js';
 import { backgroundJobService } from '../../resources/BackgroundJobService.js';
 import { readBrowserBuildResponse } from '../../../runtime/BrowserGenerationService.js';
+import { validateSoundContentReference } from '../../../midi/content/SoundContentReference.js';
 
 const STORAGE_KEY = 'lemmings.procgen.workstation.v1';
 const MAX_SESSION_FILE_BYTES = 64 * 1048576;
@@ -197,6 +198,9 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   const syncProject = (next, { history = true, historyGroup = null, historyCost = null, render = true, renderAction = null, fromLegacy = false } = {}) => {
     const runtimeUnchanged = sameMidiRuntimeInputs(project, next);
+    const instrumentRefsChanged = project.procgen.lanes.some((lane, index) => lane.instrumentRef !== next.procgen.lanes[index]?.instrumentRef &&
+      !equal(lane.instrumentRef ?? null, next.procgen.lanes[index]?.instrumentRef ?? null)) || next.procgen.lanes.some((lane, index) => lane.instrumentRef && !project.procgen.lanes[index]);
+    if ((causalTake || causalTakeStart || causalTakeStop) && instrumentRefsChanged) throw new Error('Finish the causal take before changing its pinned lane instrument.');
     if (causalTake && !equal(project.procgen.physicalGraph, next.procgen.physicalGraph)) {
       const cursor = physicalPlayback?.engine.snapshot().physicalCursor;
       const receipt = causalTake.recordMapping(next.procgen.physicalGraph,
@@ -214,6 +218,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     lastHistoryGroup = history ? historyGroup : null;
     project = isCanonicalMidiProject(next) ? next : markCanonicalMidiProject(createProcgenWorkstationProject(sanitizeMidiProject(next)));
     projectRevision++;
+    if (instrumentRefsChanged) void physicalPlayback?.synchronizeLaneInstruments(project.procgen.lanes).catch(error => status('Lane instrument requirements: ' + error.message));
     editRevision++; storageStatus();
     if (inputLease && !inputTarget(inputLease)) cancelInputEdits('target was removed');
     if (!project.procgen.lanes.some(lane => lane.id === state.laneId)) state.laneId = project.procgen.lanes[0].id;
@@ -652,11 +657,13 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     physicalScoreClock = createProcgenPhysicalScoreClock(); physicalClockError = false;
     if (session?.physicalTimeline) physicalScoreClock.restore(session.physicalTimeline);
     physicalPlayback = createProcgenPhysicalPlayback({ audio: legacy.local.audio,
-      getGraph: () => project.procgen.physicalGraph, scoreTimeline: physicalScoreClock, now,
+      getGraph: () => project.procgen.physicalGraph, getLanes: () => project.procgen.lanes, scoreTimeline: physicalScoreClock, now,
+      onInstrumentState: event => { if (event.state === 'unavailable' || event.state === 'retirement-unknown') status('Lane ' + event.laneId + ' instrument: ' + event.code); },
       onReceipt: receipt => {
         if (physicalReceiptBuffer) physicalReceiptBuffer.push(receipt);
         else if (causalTake && physicalReceiptBoundary) causalTake.recordSinkOutcome(receipt, physicalReceiptBoundary);
       } });
+    void physicalPlayback.synchronizeLaneInstruments(project.procgen.lanes).catch(error => status('Saved lane instruments: ' + error.message));
     if (session?.physicalState) physicalPlayback.engine.restore(session.physicalState);
     const onGameEvent = event => { if (transport.getState().playing) engine.onGameEvent(event, now()); };
     const markPhysicalGap = (batch, reason) => {
@@ -946,6 +953,20 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     return committed;
   };
   const handlers = {
+    async applyInstalledInstrument(candidate) {
+      if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop || !physicalPlayback) throw new Error('Finish the current world/history/take operation before applying an instrument.');
+      const laneId = selected().id, generation = documentGeneration, revision = projectRevision, playback = physicalPlayback;
+      const reference = validateSoundContentReference({ ...candidate.reference, definition: candidate.definition });
+      const prepared = await playback.prepareLaneInstrument(laneId, reference);
+      try {
+        if (disposed || playback !== physicalPlayback || generation !== documentGeneration || revision !== projectRevision || selected().id !== laneId || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop)
+          throw new Error('Instrument Apply canceled because its lane or project changed.');
+        prepared.commit();
+        try { dispatch({ type: 'procgen/lane', laneId, patch: { instrumentRef: reference } }); }
+        catch (error) { void playback.synchronizeLaneInstruments(project.procgen.lanes); throw error; }
+        status('Installed instrument applied to ' + selected().name + '. Held voices retain their prior renderer.'); return reference;
+      } finally { prepared.release(); }
+    },
     status, preferences: persist, presentationGeneration: () => documentGeneration,
     devices, engineState: () => engine.getState(), playhead: id => engine.getLanePosition?.(id),
     causalTakeState, startCausalTake: safe(startCausalTake), stopCausalTake: safe(stopCausalTake), discardCausalTail: safe(discardCausalTail), cancelCausalTakeArm,

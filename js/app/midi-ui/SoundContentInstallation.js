@@ -133,7 +133,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
       const patch = lease.prepared.patches.find(entry => entry.identity === patchIdentity);
       return freezeData({ reference: { schema: 'lemmings-sound-reference/v1', packHash: metadata.contentHash, patchId: patch.definition.id,
         revision: patch.definition.revision, definitionHash: patch.definitionHash, engineRequirement: patch.engineRequirement, assetHashes: [...patch.dependencies].sort() },
-      definition: patch.definition, audition: receipt, laneApplication: 'not-requested' });
+      definition: patch.archivedDefinition, audition: receipt, laneApplication: 'not-requested' });
     } finally { lease.release(); }
   };
   return Object.freeze({ audition, install, applyCandidate, fixture, stop() { active?.controller.abort(failure('cancelled', 'Sound audition stopped.')); },
