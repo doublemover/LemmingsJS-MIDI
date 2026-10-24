@@ -1,3 +1,4 @@
+import { recordProcgenProjectChange } from '../../app/procgen/workstation/ProcgenProjectIndex.js';
 import { sanitizeClipVoices, sanitizeClipTransformLayers } from './MidiClipTransforms.js';
 import { sanitizeMidiAutomationSpan, clampMidiAutomationSpanValue, MAX_MIDI_AUTOMATION_SPANS } from './MidiAutomationSpan.js';
 import { sanitizeMidiEnsemble, buildMidiEnsembleConfig } from './MidiEnsemble.js';
@@ -988,10 +989,10 @@ const updateAutomationLane = (automation, automationId, patch, tracks) => {
 };
 
 function reduceMidiProject(project, intent = {}) {
-  if (isCanonicalMidiProject(project) && ['procgen/effectRack', 'procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
+  if (isCanonicalMidiProject(project) && ['procgen/physicalGraph', 'procgen/effectRack', 'procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
     'procgen/step', 'procgen/pattern', 'procgen/launch', 'procgen/launched', 'procgen/launchedBatch'].includes(intent.type)) {
     const next = reduceCanonicalProcgenProject(project, intent);
-    return next === project ? project : markCanonicalMidiProject(touchProject(next));
+    return next === project ? project : recordProcgenProjectChange(project, markCanonicalMidiProject(touchProject(next)), intent);
   }
   const current = sanitizeMidiProject(project);
   if (intent.type?.startsWith('procgen/')) return sanitizeMidiProject(touchProject(reduceProcgenWorkstationProject(current, intent)));

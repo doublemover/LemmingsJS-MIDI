@@ -1,3 +1,5 @@
+import { createProcgenPreferenceWriter } from './ProcgenPreferenceWriter.js';
+import { procgenLane, procgenProjectChange } from './ProcgenProjectIndex.js';
 import { createProcgenPageLifecycle } from './ProcgenPageLifecycle.js';
 import { sanitizeMidiProject, reduceMidiProject, projectToMidiConfig, isCanonicalMidiProject, markCanonicalMidiProject, sameMidiRuntimeInputs } from '../../../midi/project/MidiProject.js';
 import { createProcgenWorkstationProject, createProcgenPattern, convertLegacyProcgenWorkstationProject } from './ProcgenWorkstationProject.js';
@@ -15,7 +17,7 @@ import { createProcgenPhysicalScoreClock } from './ProcgenPhysicalScoreClock.js'
 import { createProcgenPhysicalPlayback } from './ProcgenPhysicalPlayback.js';
 import { createProcgenCausalJournal } from './ProcgenCausalJournal.js';
 import { createCausalTakeRecorder } from './CausalTake.js';
-import { captureCausalPerformanceState, diffCausalPerformanceState } from './CausalPerformanceState.js';
+import { captureCausalPerformanceState, diffCausalPerformanceState, diffCausalLanePerformance } from './CausalPerformanceState.js';
 import { prepareCausalTakeArchive } from './CausalTakeArchive.js';
 import { createPhysicalScoreProjection } from './PhysicalScoreProjection.js';
 import { createProcgenWorldInspector } from './ProcgenWorldInspector.js';
@@ -33,20 +35,21 @@ import { createCausalTakeAudioRenderView } from '../../midi-ui/CausalTakeAudioRe
 
 const STORAGE_KEY = 'lemmings.procgen.workstation.v1';
 const MAX_SESSION_FILE_BYTES = 64 * 1048576;
-const FAST_PROCGEN_ACTIONS = new Set(['procgen/effectRack', 'procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
+const FAST_PROCGEN_ACTIONS = new Set(['procgen/physicalGraph', 'procgen/effectRack', 'procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
   'procgen/step', 'procgen/pattern', 'procgen/launch', 'procgen/launched', 'procgen/launchedBatch']);
 const clone = value => JSON.parse(JSON.stringify(value));
 const equal = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 const historyPatchBytes = (before, after, action) => {
   const commandBytes = JSON.stringify(action).length * 2;
   const structuralBytes = before.procgen.lanes.length * 8 + 1024;
-  const lane = before.procgen.lanes.find(item => item.id === action.laneId);
+  const lane = procgenLane(before.procgen.lanes, action.laneId);
   if (action.type === 'procgen/step') {
     const pattern = lane?.patterns[action.slot ?? lane.activeSlot];
     return commandBytes + JSON.stringify(pattern?.steps[action.index] ?? null).length * 2 + structuralBytes;
   }
   if (action.type === 'procgen/pattern') return commandBytes + JSON.stringify(lane?.patterns[action.slot ?? lane.activeSlot] ?? null).length * 2 + structuralBytes;
-  if (action.type === 'procgen/lane' || action.type === 'procgen/palette' || action.type === 'procgen/removeLane')
+  if (action.type === 'procgen/lane') return commandBytes + JSON.stringify(Object.fromEntries(Object.keys(action.patch || {}).map(key => [key, lane?.[key]]))).length * 2 + structuralBytes;
+  if (action.type === 'procgen/palette' || action.type === 'procgen/removeLane')
     return commandBytes + JSON.stringify(lane ?? null).length * 2 + structuralBytes;
   if (action.type === 'procgen/addLane') return commandBytes + JSON.stringify(after.procgen.lanes.at(-1)).length * 2 + structuralBytes;
   return commandBytes + structuralBytes;
@@ -173,7 +176,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const runtime = () => getRuntime?.();
   const renderer = () => runtime()?.lanes?.renderer;
   const router = () => runtime()?.view?.midiPreviewRouter;
-  const selected = () => project.procgen.lanes.find(lane => lane.id === state.laneId) || project.procgen.lanes[0];
+  const selected = () => procgenLane(project.procgen.lanes, state.laneId) || project.procgen.lanes[0];
   const setLegacyProject = (next, options = { persist: false }) => { writingLegacy = true; try { legacy.setProject(next, options); } finally { writingLegacy = false; } };
   const budgetNotice = () => { if (now() - lastBudgetNotice > 1000) { lastBudgetNotice = now(); status('Output budget reached; some notes or CC were thinned. The musical clock continues.'); } };
   const reportRouting = () => {
@@ -198,11 +201,18 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const count = Math.min(8, ranked.length), selectedLane = ranked[observerCursor++ % count];
     if (selectedLane) { state.firstLane = selectedLane.index; render.followLaneIndex = selectedLane.index; render.camera?.followFrontier?.(); view?.layout?.(); view?.launched?.(); }
   };
+  const preferenceWriter = window.setTimeout ? createProcgenPreferenceWriter({ jobs: backgroundJobs, resourceBudget,
+    storage: window.localStorage, key: STORAGE_KEY, getGeneration: () => documentGeneration,
+    onState: result => { if (result.error) status('Project preferences could not be stored. Export a project file to save.'); } }) : null;
   const writePersist = () => {
     if (suppressPersistence || disposed) return;
     if (!startupCommitted) return;
     if (worldBusy) { deferredPersist = true; return; }
-    try { window.localStorage?.setItem(STORAGE_KEY, JSON.stringify({ version: 1, project, ui: { ...state, hazardSpacing: acceptedWorldSettings.hazardSpacing, recording: false, thru: false, lastMidi: '' }, transport: transport.snapshot() })); }
+    try {
+      const value = { version: 1, documentRevision: editRevision, project, ui: { ...state, hazardSpacing: acceptedWorldSettings.hazardSpacing, recording: false, thru: false, lastMidi: '' }, transport: transport.snapshot() };
+      if (preferenceWriter) preferenceWriter.request(value, editRevision);
+      else window.localStorage?.setItem(STORAGE_KEY, JSON.stringify(value));
+    }
     catch { status('Project preferences could not be stored. Export a project file to save.'); }
   };
   const persist = ({ immediate = false } = {}) => {
@@ -210,7 +220,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (!startupCommitted) return;
     if (worldBusy) { deferredPersist = true; return; }
     deferredPersist = false;
-    if (immediate || project.procgen.lanes.length <= 64 || !window.setTimeout) {
+    if (immediate || !window.setTimeout) {
       if (persistTimer != null) { window.clearTimeout?.(persistTimer); persistTimer = null; }
       writePersist(); return;
     }
@@ -223,14 +233,20 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     recoveryTimer = window.setTimeout(() => { recoveryTimer = null; void recover(); }, delay);
   };
   const syncProject = (next, { history = true, historyGroup = null, historyCost = null, render = true, renderAction = null, fromLegacy = false } = {}) => {
+    const change = procgenProjectChange(project, next);
     const runtimeUnchanged = sameMidiRuntimeInputs(project, next);
-    const instrumentRefsChanged = project.procgen.lanes.some((lane, index) => lane.instrumentRef !== next.procgen.lanes[index]?.instrumentRef &&
+    const instrumentRefsChanged = change && !change.structural ? change.laneIds.some(id => {
+      const before = procgenLane(project.procgen.lanes, id)?.instrumentRef, after = procgenLane(next.procgen.lanes, id)?.instrumentRef;
+      return before !== after && !equal(before ?? null, after ?? null);
+    }) : project.procgen.lanes.some((lane, index) => lane.instrumentRef !== next.procgen.lanes[index]?.instrumentRef &&
       !equal(lane.instrumentRef ?? null, next.procgen.lanes[index]?.instrumentRef ?? null)) || next.procgen.lanes.some((lane, index) => lane.instrumentRef && !project.procgen.lanes[index]);
     if ((causalTake || causalTakeStart || causalTakeStop) && instrumentRefsChanged) throw new Error('Finish the causal take before changing its pinned lane instrument.');
     if ((causalTake || causalTakeStart || causalTakeStop) && !equal(project.procgen.effectRack ?? null, next.procgen.effectRack ?? null)) throw new Error('Finish the causal take before changing its saved effect defaults.');
-    const performanceChange = causalTake || causalTakeStart || causalTakeStop ? diffCausalPerformanceState(captureCausalPerformanceState(project.procgen.lanes), captureCausalPerformanceState(next.procgen.lanes)) : null;
+    const performanceChange = causalTake || causalTakeStart || causalTakeStop ? change && !change.structural
+      ? diffCausalLanePerformance(project.procgen.lanes, next.procgen.lanes, change.fields.some(key => ['instrumentControls', 'instrumentRef'].includes(key)) ? change.laneIds : [])
+      : diffCausalPerformanceState(captureCausalPerformanceState(project.procgen.lanes), captureCausalPerformanceState(next.procgen.lanes)) : null;
     if ((causalTakeStart || causalTakeStop) && performanceChange) throw new Error('Wait for causal take arming or saving before changing instrument controls.');
-    const graphChanged = !equal(project.procgen.physicalGraph, next.procgen.physicalGraph);
+    const graphChanged = project.procgen.physicalGraph !== next.procgen.physicalGraph && !equal(project.procgen.physicalGraph, next.procgen.physicalGraph);
     if (graphChanged && next.procgen.physicalGraph.revision <= project.procgen.physicalGraph.revision) {
       if (!Number.isSafeInteger(project.procgen.physicalGraph.revision + 1)) throw new Error('Physical mapping revision exhausted.');
       next = { ...next, procgen: { ...next.procgen, physicalGraph: { ...next.procgen.physicalGraph, revision: project.procgen.physicalGraph.revision + 1 } } };
@@ -256,14 +272,18 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (instrumentRefsChanged) void physicalPlayback?.synchronizeLaneInstruments(project.procgen.lanes).catch(error => status('Lane instrument requirements: ' + error.message));
     editRevision++; storageStatus();
     if (inputLease && !inputTarget(inputLease)) cancelInputEdits('target was removed');
-    if (!project.procgen.lanes.some(lane => lane.id === state.laneId)) state.laneId = project.procgen.lanes[0].id;
+    if (!procgenLane(project.procgen.lanes, state.laneId)) state.laneId = project.procgen.lanes[0].id;
     state.slot = Math.max(0, Math.min(3, state.slot || 0));
     state.step = Math.max(0, Math.min((selected().patterns?.[state.slot]?.length || 1) - 1, state.step || 0));
     if (!fromLegacy) setLegacyProject(project);
     if (!runtimeUnchanged) ports?.configure({ schedulerConfig: projectToMidiConfig(project) });
     persist();
     if (!transport.getState().playing) scheduleRecovery();
-    if (render) { if (renderAction?.type === 'procgen/step' && view?.patchStep) view.patchStep(renderAction); else view?.render(); reportRouting(); } return project;
+    if (render) {
+      if (change && view?.patchProject) view.patchProject(renderAction, change);
+      else if (renderAction?.type === 'procgen/step' && view?.patchStep) view.patchStep(renderAction); else view?.render();
+      if (!change || change.structural || change.fields.some(key => ['ccAutomation', 'mute', 'channel', 'outputId'].includes(key))) reportRouting();
+    } return project;
   };
   const dispatch = (action, { historyGroup = null } = {}) => {
     if (disposed) return project;
@@ -1441,6 +1461,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   return { getProject: () => project, getInputEditLease: () => inputLease && Object.freeze({ ...inputLease }),
     getExportState: () => Object.freeze({ artifact: preparedExport?.metadata() || null, delivery: lastDelivery }),
     getDisplayDiagnostics: () => view.displayScheduler?.diagnostics() || null,
+    getPreferenceState: () => preferenceWriter?.state() || null,
     getDocumentState: () => Object.freeze({ id: documentId, revision: documentRevision, editRevision, savedRevision,
       dirty: editRevision !== savedRevision, savedAt: lastSavedAt }),
     getRecoveryState: () => Object.freeze({ state: recoveryState, pendingRevision: editRevision, durableRevision: durableRecoveryRevision,
@@ -1463,6 +1484,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       const pendingCausalStop = causalTake || causalTakeStart || causalTakeStop ? stopCausalTake({ reason: 'workstation-disposed' }) : null;
       const pendingWorkbenchStop = causalWorkbench?.dispose();
       return retirement.retire([
+        { name: 'preference-writer', run: () => preferenceWriter?.dispose({ flush: true }) },
         { name: 'operation', run: () => operation?.controller.abort() },
         { name: 'recovery-write', run: () => recoveryAbort?.abort() },
         { name: 'recovery-timer', run: () => { if (timer != null) window.clearTimeout?.(timer); } },

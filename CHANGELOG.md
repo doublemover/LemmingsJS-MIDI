@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Propagate typed lane deltas through shared ID indexes, sparse performance journals and targeted visible controls; coalesce authored preference encoding in an admitted background worker with document-fenced publication.
+
 - Commit accepted world recipes independently of UI drafts, preserve each concurrent musical Undo boundary on terrain rollback, and publish immutable batch-identified actor snapshots with bounded reader leases.
 
 - Add typed transactional knob controls, shared pointer ownership across canvas and sound editors, inline validated project naming, and bounded paged project selection.

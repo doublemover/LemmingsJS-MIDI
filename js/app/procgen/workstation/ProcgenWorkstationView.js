@@ -1,3 +1,4 @@
+import { procgenLane } from './ProcgenProjectIndex.js';
 import { createProjectNameDialog } from '../../controls/ProjectNameDialog.js';
 import { createParameterKnob } from '../../controls/ParameterKnob.js';
 import { getPointerGestureArbiter } from '../../controls/PointerGestureArbiter.js';
@@ -40,9 +41,9 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     }); return el;
   };
   const parameter = (value, changed, descriptor) => {
-    const source = getProject(), laneId = state.laneId, tab = state.tab;
+    const laneId = state.laneId, tab = state.tab, source = procgenLane(getProject().procgen.lanes, laneId);
     const control = createParameterKnob({ document, window, value, descriptor,
-      getIdentity: () => getProject() === source && state.laneId === laneId && state.tab === tab ? source : null,
+      getIdentity: () => procgenLane(getProject().procgen.lanes, laneId) === source && state.laneId === laneId && state.tab === tab ? source : null,
       commit: changed }); parameterControls.push(control); return control.element;
   };
   const labeled = (label, control, parent) => { control.dataset.fieldKey = state.tab + ':' + (control.dataset.parameterId || label); const wrap = node('label', null, 'studio-field'); wrap.append(node('span', label), control); parent.append(wrap); return control; };
@@ -75,12 +76,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const legacyNotice = node('div', null, 'studio-legacy-conversion'); legacyNotice.hidden = true;
   footer.append(legacyNotice);
   let projection, dragging = null, stroke = null, suppressClickUntil = 0, layoutKey = null, queuedBeat = null;
-  let indexedLanes = null, laneIndex = new Map();
-  const currentLaneIndex = () => {
-    const source = getProject().procgen.lanes;
-    if (source !== indexedLanes) { indexedLanes = source; laneIndex = new Map(source.map(lane => [lane.id, lane])); }
-    return laneIndex;
-  };
+  const currentLaneIndex = () => ({ get: id => procgenLane(getProject().procgen.lanes, id) });
   let attachedRenderer = null, disposed = false, superseded = false, composing = false, pendingInspectorRender = false;
   let geometryPending = false, geometryRelease = null, geometryUnsubscribe = null;
   const owner = {};
@@ -604,23 +600,26 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     }
     return changed || rendererChanged;
   }
-  function renderRows() {
+  function renderRows({ laneIds = null } = {}) {
     if (!projection) return;
     queuedBeat = null; playheadSurface.invalidate();
-    lanes.replaceChildren(); grid.replaceChildren(); const project = getProject();
+    if (!laneIds) { lanes.replaceChildren(); grid.replaceChildren(); }
+    const place = (parent, child) => { const previous = laneIds && [...parent.children].find(item => item.dataset.laneId === child.dataset.laneId); if (previous) previous.replaceWith(child); else parent.append(child); };
+    const project = getProject();
     laneRange.textContent = `${projection.firstLane + 1}–${projection.firstLane + projection.count} of ${project.procgen.lanes.length}`;
     previousLanes.disabled = projection.firstLane === 0; nextLanes.disabled = projection.firstLane + projection.count >= project.procgen.lanes.length;
     for (let row = 0; row < projection.count; row++) {
       const laneIndex = projection.firstLane + row, lane = project.procgen.lanes[laneIndex], displaySlot = state.laneId === lane.id ? state.slot : lane.activeSlot, pattern = lane.mode === 'pattern' ? lane.patterns[displaySlot] : null;
+      if (laneIds && !laneIds.includes(lane.id)) continue;
       const header = node('section', null, 'studio-lane-header'); header.dataset.laneId = lane.id; header.style.setProperty('--lane-color', COLORS[laneIndex % 8]); header.classList.toggle('selected', state.laneId === lane.id);
       const label = button(`${laneIndex + 1}  ${lane.family.toUpperCase()}`, () => { state.laneId = lane.id; state.slot = lane.activeSlot; state.tab = 'Lane'; render(); }); label.className = 'studio-lane-title';
       const role = node('span', lane.role, 'studio-role');
       const controls = node('div', null, 'studio-lane-mini');
-      for (const [key, text] of [['solo', 'S'], ['mute', 'M']]) { const el = button(text, () => dispatch({ type: 'procgen/lane', laneId: lane.id, patch: { [key]: !lane[key] } }), `${key} ${lane.name}`); el.setAttribute('aria-pressed', String(lane[key])); controls.append(el); }
+      for (const [key, text] of [['solo', 'S'], ['mute', 'M']]) { const el = button(text, () => dispatch({ type: 'procgen/lane', laneId: lane.id, patch: { [key]: !procgenLane(getProject().procgen.lanes, lane.id)?.[key] } }), `${key} ${lane.name}`); el.dataset.laneControl = key; el.setAttribute('aria-pressed', String(lane[key])); controls.append(el); }
       const slots = node('div', null, 'studio-slots');
       if (pattern) for (let slot = 0; slot < 4; slot++) { const el = button(String(slot + 1), () => { state.laneId = lane.id; state.slot = slot; dispatch({ type: 'procgen/launch', laneId: lane.id, slot }); }, `Launch phrase ${slot + 1} on next bar`); el.setAttribute('aria-pressed', String(lane.activeSlot === slot)); el.classList.toggle('queued', lane.queuedSlot === slot); slots.append(el); }
       else slots.append(node('span', 'LIVE', 'studio-physical-badge'));
-      header.append(label, role, controls, slots); lanes.append(header);
+      header.append(label, role, controls, slots); place(lanes, header);
       const sequence = node('div', null, 'studio-sequence'); sequence.dataset.laneId = lane.id; sequence.dataset.slot = displaySlot; sequence.style.setProperty('--lane-color', COLORS[laneIndex % 8]); sequence.style.gridTemplateColumns = `repeat(${pattern?.length || 1}, minmax(0, 1fr))`;
       sequence.style.top = (row * projection.rowHeight + projection.rowHeight - (state.layout === 'strip' ? 25 : Math.min(44, projection.rowHeight * 0.48))) + 'px';
       sequence.style.height = (state.layout === 'strip' ? 25 : Math.min(44, projection.rowHeight * 0.48)) + 'px';
@@ -628,13 +627,13 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         sequence.classList.add('studio-physical-row');
         sequence.style.gridTemplateColumns = '1fr';
         sequence.append(node('span', 'Physical causes · live world', 'studio-physical-label'));
-        grid.append(sequence);
+        place(grid, sequence);
         continue;
       }
       for (let index = 0; index < pattern.length; index++) {
         const step = pattern.steps[index], cell = button(step.tie ? '―' : step.enabled ? step.chord ? '◆' : '●' : '·', () => {
           if (window.performance.now() < suppressClickUntil) return;
-          state.laneId = lane.id; state.step = index; state.slot = displaySlot; state.tab = step.chord ? 'Chord' : 'Step';
+          state.laneId = lane.id; state.step = index; state.slot = displaySlot; state.tab = procgenLane(getProject().procgen.lanes, lane.id)?.patterns[displaySlot]?.steps[index]?.chord ? 'Chord' : 'Step';
           if (state.tool !== 'select') dispatch({ type: 'procgen/step', laneId: lane.id, slot: state.slot, index, patch: { enabled: state.tool === 'draw' } }); else render();
         }, `${lane.role}, step ${index + 1}, ${step.enabled ? 'on' : 'off'}, probability ${Math.round(step.probability * 100)}%`);
         cell.className = 'studio-cell'; cell.dataset.index = index; cell.classList.toggle('enabled', step.enabled); cell.classList.toggle('conditional', !!step.condition || step.probability < 1); cell.classList.toggle('selected', state.laneId === lane.id && state.step === index); cell.setAttribute('aria-pressed', String(step.enabled));
@@ -645,7 +644,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         });
         sequence.append(cell);
       }
-      grid.append(sequence);
+      place(grid, sequence);
     }
   }
   function frame(beat = state.beat || 0) {
@@ -709,7 +708,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   }
   function patchStep(action) {
     if (disposed) return;
-    const lane = getProject().procgen.lanes.find(item => item.id === action.laneId);
+    const lane = procgenLane(getProject().procgen.lanes, action.laneId);
     const slot = action.slot ?? lane?.activeSlot;
     const row = [...grid.children].find(item => item.dataset.laneId === action.laneId && Number(item.dataset.slot) === slot);
     const step = lane?.patterns[slot]?.steps[action.index], cell = row?.children[action.index];
@@ -722,7 +721,22 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     }
     for (const selectedCell of grid.querySelectorAll('.studio-cell.selected')) selectedCell.classList.remove('selected');
     if (state.laneId === action.laneId && state.slot === slot) row?.children[state.step]?.classList.add('selected');
-    render({ partial: true });
+    if (state.laneId === action.laneId) render({ partial: true });
+  }
+  function patchProject(action, change) {
+    if (disposed || !action) return;
+    if (action.type === 'procgen/step') { patchStep(action); return; }
+    if (change.structural || action.type === 'procgen/seed') { render(); return; }
+    if (['procgen/palette', 'procgen/pattern'].includes(action.type) || change.fields.some(key => ['family', 'role', 'mode', 'patterns'].includes(key))) renderRows({ laneIds: change.laneIds });
+    else for (const id of change.laneIds) {
+      const lane = procgenLane(getProject().procgen.lanes, id), header = [...lanes.children].find(item => item.dataset.laneId === id);
+      if (!lane || !header) continue;
+      for (const control of header.querySelectorAll('[data-lane-control]')) control.setAttribute('aria-pressed', String(lane[control.dataset.laneControl]));
+      for (const [slot, control] of [...header.querySelector('.studio-slots').children].entries()) {
+        control.setAttribute('aria-pressed', String(slot === lane.activeSlot)); control.classList.toggle('queued', slot === lane.queuedSlot);
+      }
+    }
+    if (!change.laneIds.length || change.laneIds.includes(state.laneId)) render({ partial: true });
   }
   on(lanes, 'wheel', event => { if (getProject().procgen.lanes.length <= projection.count) return; event.preventDefault(); state.firstLane += Math.sign(event.deltaY); layout(); renderRows(); }, { passive: false });
   on(lanes, 'keydown', event => {
@@ -792,7 +806,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); changeStep({ enabled: false }); }
     else if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && selected().mode === 'pattern') { event.preventDefault(); const length = selected().patterns[state.slot].length; state.step = (state.step + (event.key === 'ArrowLeft' ? length - 1 : 1)) % length; state.tab = 'Step'; render(); }
   });
-  return { render, patchStep, layout, renderInspector: render, requestProjectName: nameDialog.request, showProjects, showProjectPage, displayScheduler, status: text => { status.textContent = text; },
+  return { render, patchStep, patchProject, layout, renderInspector: render, requestProjectName: nameDialog.request, showProjects, showProjectPage, displayScheduler, status: text => { status.textContent = text; },
     offerLegacyConversion(report, convert) {
       legacyNotice.replaceChildren(node('span', `Previous setup uses legacy phrases. Physical conversion will discard ${report.discardedEnabledSteps} enabled steps across ${report.laneCount} lanes.`),
         button('Convert previous setup', () => convert?.(), 'Replace the previous setup with a physical instrument graph'));

@@ -194,7 +194,9 @@
       "regressions": [
         "test/parameter-controls.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "1337b809df9ca3e46ac0f5d56387e52ae645d6f1"
+      ],
       "validation": "deferred-by-request",
       "increment": "typed-control-and-gesture-ownership"
     },
@@ -223,11 +225,23 @@
       "requirementUpdatedAt": "2026-10-22T08:41:12Z",
       "requirementSha256": "5b6595592471bb576424fb76953247195bfb9e9dbea3e90a1af6f46152f29a84",
       "initialGap": "Structural sharing, batched acknowledgements and patch-byte history exist. syncProject still scans all lanes for instrument changes/runtime equality and synchronously serializes the whole project for <=64 lanes; ordinary edits/render paths remain whole-view rather than fully changed-data proportional.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "implemented-validation-deferred",
+      "source": [
+        "js/app/procgen/workstation/ProcgenProjectIndex.js",
+        "js/app/procgen/workstation/ProcgenPreferenceWriter.js",
+        "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "js/app/procgen/workstation/ProcgenWorkstationView.js",
+        "js/app/procgen/workstation/ProcgenPatternEngine.js",
+        "scripts/profile-procgen-editing.mjs"
+      ],
+      "regressions": [
+        "test/procgen-project-index.test.js",
+        "test/procgen-preference-writer.test.js",
+        "test/procgen-workstation-controller.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "changed-data-edit-propagation"
     },
     {
       "number": 986,
@@ -358,7 +372,9 @@
       "regressions": [
         "test/parameter-controls.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "1337b809df9ca3e46ac0f5d56387e52ae645d6f1"
+      ],
       "validation": "deferred-by-request",
       "increment": "typed-control-and-gesture-ownership",
       "remaining": "Typed knob integrated into lane gain/pan/accent and patch macros; relative hardware mutation and device observation adapters remain."
@@ -436,7 +452,9 @@
       "regressions": [
         "test/midi/midi-instrument-workbench.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "1337b809df9ca3e46ac0f5d56387e52ae645d6f1"
+      ],
       "validation": "deferred-by-request",
       "increment": "typed-control-and-gesture-ownership",
       "remaining": "Shared owner now spans knobs, sound dials, clip painting, workstation painting, resize, camera and span editing. Gate/field/temporary-audition integration follows their owners."
@@ -514,7 +532,9 @@
       "regressions": [
         "e2e/procgen-workstation-view.spec.js"
       ],
-      "commits": [],
+      "commits": [
+        "1337b809df9ca3e46ac0f5d56387e52ae645d6f1"
+      ],
       "validation": "deferred-by-request",
       "increment": "typed-control-and-gesture-ownership"
     },
@@ -1043,7 +1063,8 @@
         "test/procgen-workstation-controller.test.js"
       ],
       "commits": [
-        "d7a2a95289548ff7097403178a5310fc72790e98"
+        "d7a2a95289548ff7097403178a5310fc72790e98",
+        "77007152d1efa66ddba20c45cb3e171167992298"
       ],
       "validation": "deferred-by-request",
       "increment": "accepted-recipes-and-leased-projections"
@@ -1101,7 +1122,9 @@
         "test/procgen-actor-action-index.test.js",
         "test/procgen-lane-observation.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "77007152d1efa66ddba20c45cb3e171167992298"
+      ],
       "validation": "deferred-by-request",
       "increment": "accepted-recipes-and-leased-projections"
     },

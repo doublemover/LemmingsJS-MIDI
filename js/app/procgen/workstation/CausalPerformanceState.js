@@ -1,3 +1,4 @@
+import { procgenLane, procgenLaneIndex } from './ProcgenProjectIndex.js';
 import { INSTRUMENT_PHYSICAL_SOURCE_KINDS, validateInstrumentControls } from '../../../midi/content/InstrumentPerformance.js';
 
 const plain = value => value && Object.getPrototypeOf(value) === Object.prototype;
@@ -20,6 +21,20 @@ export function captureCausalPerformanceState(lanes) {
   if (!Array.isArray(lanes) || lanes.length > 1024) fail();
   return validateCausalPerformanceState({ version: 1, lanes: lanes.map((entry, sourceIndex) => ({ id: entry.id, sourceIndex, controls: entry.instrumentControls || {},
     physicalSourceKinds: [...new Set((entry.instrumentRef?.definition?.causalBindings || []).filter(binding => binding.mode === 'continuous').map(binding => binding.sourceKind))] })) });
+}
+export function diffCausalLanePerformance(before, after, ids) {
+  const capture = (lanes, id) => {
+    const entry = procgenLane(lanes, id); if (!entry) return null;
+    return lane({ id, sourceIndex: procgenLaneIndex(lanes).get(id), controls: entry.instrumentControls || {},
+      physicalSourceKinds: [...new Set((entry.instrumentRef?.definition?.causalBindings || []).filter(binding => binding.mode === 'continuous').map(binding => binding.sourceKind))] });
+  };
+  const upserts = [], removed = [];
+  for (const id of ids) {
+    const previous = capture(before, id), next = capture(after, id);
+    if (JSON.stringify(previous) === JSON.stringify(next)) continue;
+    if (next) upserts.push(next); else if (previous) removed.push(id);
+  }
+  return upserts.length || removed.length ? validateCausalPerformanceChange({ version: 1, upserts, removed }) : null;
 }
 export function diffCausalPerformanceState(previous, next) {
   const before = validateCausalPerformanceState(previous), after = validateCausalPerformanceState(next), old = new Map(before.lanes.map(entry => [entry.id, entry])), ids = new Set(after.lanes.map(entry => entry.id));

@@ -74,3 +74,27 @@ reference/indexed comparisons and a dirty-row candidate measurement. It reports
 p50/p95/p99 and owner counters; it does not select a production algorithm or
 qualify browser pixels, physical-event equivalence or acoustic behavior. The
 harness and new lease regressions have been written but not executed.
+
+### Authored edit propagation
+
+Canonical commands carry non-retaining source identity and changed-lane metadata.
+ID-to-position indexes survive nonstructural lane-array replacements; document
+and touched-lane revisions advance independently. Scalar edits preserve pattern,
+instrument and automation identity, and semantic no-ops retain the original
+project. Pattern derivation updates solo state and routing only for relevant
+changes; causal performance recording builds sparse lane upserts. Visible row
+patching leaves unrelated controls and gestures mounted.
+
+The plain lane-array container still copies up to 1024 references per edit. It is
+not a persistent-vector implementation or a measured constant-time guarantee.
+Import, structural edits, history movement and explicit full exports intentionally
+retain whole-document validation. Ordinary preferences coalesce at 250 ms and
+encode through admitted background jobs; one active revision and the latest
+pending revision are retained. Worker structured-clone and localStorage native
+write costs remain measurable boundaries, not claimed zero-cost operations.
+
+`scripts/profile-procgen-editing.mjs` measures 8/128/1024 lanes with 64-step
+patterns, 120 Hz scalar/cell input, actual MIDI ingress/capture and batched launch
+acknowledgments. Reports separate latency percentiles, long tasks, heap observations,
+index counters and preference durability. This harness is implemented but has not
+been run; no 16 ms reference-machine qualification is asserted.

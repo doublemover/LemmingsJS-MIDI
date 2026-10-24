@@ -13,7 +13,7 @@ function target() {
     removeEventListener(type, fn) { events.get(type)?.delete(fn); }, emit(type, event = {}) { for (const fn of events.get(type) || []) fn(event); } };
 }
 function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth', outputId = null, search = '', persisted = null, startupSettings = {}, storageOverride = null,
-  laneCount = 1, windowTimers = {} } = {}) {
+  laneCount = 1, windowTimers = {}, backgroundJobs } = {}) {
   let time = 0, paused = false, enabled = false;
   const elements = new Map(['procgenPause', 'procgenPanic', 'procgenSpeed', 'procgenSpeedUp', 'procgenSpeedDown', 'procgenSpeedReadout'].map(id => [id, target()]));
   const document = { ...target(), getElementById: id => elements.get(id) || null };
@@ -45,7 +45,7 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
     restart: async request => { restarts.push(request); if (restartGate) await restartGate; if (request.lease?.signal.aborted || returnFalseRestart) return false; if (rejectRestart) throw new Error('Assets unavailable'); runtime = makeRuntime(); runtime.world.laneCount = request.session?.world.laneCount || legacy.settings.laneCount; runtime.world.seed = request.session?.world.seed ?? legacy.settings.seed; },
     createView: props => { viewProps = props; return view; }, storage,
     captureCheckpoint: world => { captures.push(world); return { version: 1, laneCount: world.laneCount, seed: world.seed, clock: { ...world.timer } }; },
-    transportOptions: { driver: { start() {}, stop() {} }, lookaheadMs }, historyBytesLimit
+    transportOptions: { driver: { start() {}, stop() {} }, lookaheadMs }, historyBytesLimit, ...(backgroundJobs ? { backgroundJobs } : {})
   });
   return { studio, legacy, view, storage, calls, positions, statuses, storageReceipts, exportStates, restarts, stored, captures, elements, document, window, get runtime() { return runtime; }, get viewProps() { return viewProps; }, get saveCalls() { return saveCalls; },
     enable() { enabled = true; }, time(value) { time = value; studio.transport.pump(); }, failRestart() { rejectRestart = true; }, cancelRestart() { returnFalseRestart = true; }, failSave() { rejectSave = true; },
@@ -282,17 +282,18 @@ describe('ProcGen workstation orchestration', () => {
     expect(f.storageReceipts.at(-1).recovery.state).to.equal('unavailable');
     f.studio.dispose();
   });
-  it('coalesces large-project preference writes while edits stay in the canonical project', () => {
-    const timers = [], f = setup({ laneCount: 128, windowTimers: {
+  for (const laneCount of [8, 128]) it(`coalesces ${laneCount}-lane preference writes while edits stay in the canonical project`, async () => {
+    const timers = [], f = setup({ laneCount, backgroundJobs: { async compute(request) { return { value: JSON.stringify(await request.prepareInput()), release() { request.releasePreparedInput(); } }; } }, windowTimers: {
       setTimeout(callback) { timers.push(callback); return timers.length; },
       clearTimeout(id) { timers[id - 1] = null; }
     } });
+    f.studio.bindRuntime();
     const key = 'lemmings.procgen.workstation.v1', original = f.window.localStorage.getItem(key);
     f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 45 } });
     f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 1, patch: { note: 46 } });
     expect(f.window.localStorage.getItem(key)).to.equal(original);
     expect(timers.filter(Boolean)).to.have.length(1);
-    timers[0]();
+    timers[0](); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
     const durable = JSON.parse(f.window.localStorage.getItem(key));
     expect(durable.project.procgen.lanes[0].patterns[0].steps.slice(0, 2).map(step => step.note)).to.deep.equal([45, 46]);
     f.studio.dispose();
