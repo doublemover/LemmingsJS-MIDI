@@ -1042,7 +1042,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (disposed || !resourceBudget || !takeId || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish and select a saved causal take before rendering its intent.');
       const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs });
       causalAudioRender ||= createCausalTakeAudioRenderView({ document, window, journal, resourceBudget, jobs: backgroundJobs,
-        displayScheduler: view?.displayScheduler, onStatus: status }); await causalAudioRender.open({ takeId });
+        getMaterialProvider: () => legacy.local.audio?.getSoundMaterialProvider(),
+        displayScheduler: view?.displayScheduler, onStatus: status }); await causalAudioRender.open({ takeId, instrumentRef: selected().instrumentRef || null });
     }),
     openPrelistenMonitor() {
       if (disposed || !legacy.local.audio) return;

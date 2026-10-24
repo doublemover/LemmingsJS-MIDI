@@ -2371,8 +2371,13 @@ peak and the complete bank metadata hash before constructing the same grain
 kernel. Its manifest retains encoded/source/decoded identities and the explicit
 linear resampling profile. Main input copies remain reserved until the render
 producer has retired; cleanup joins copies, original banks and decoded pins
-before publishing files. The take dialog still needs its saved lane-material
-selection wired before this asset-backed API is exposed there.
+before publishing files. The take dialog now captures the selected lane
+instrument reference on open, offers its exact revision beside the four generic
+source presets, and resolves its pinned material through the shared cache without
+enabling live audio. The reference has its own retained metadata reservation.
+Changing lane selection does not replace the captured render target; reopening
+can select a new revision. Unavailable native offline engines stay visible as
+unsupported choices.
 
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
