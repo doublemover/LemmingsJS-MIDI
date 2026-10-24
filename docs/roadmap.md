@@ -2251,6 +2251,18 @@ the control hot path. Choir admission now conservatively includes immutable
 table heap estimates in both host and worklet realms. Existing actual-kernel
 host fixtures cover the extracted path and remain unexecuted.
 
+PCM source preparation now owns bounded immutable planar Float32 banks before
+the upcoming sample/granular worklet adapters. It retains a decoded asset pin
+through chunked copying, reserves exact source/copy storage and an explicit
+native digest workspace estimate, rejects nonfinite or magnitude-over-16 data,
+and pins the actual decoded PCM SHA-256 separately from its encoded asset hash.
+At most two independent processor-input copies can be outstanding. Source
+discard cancels unfinished copies and holds storage until readers actually
+retire; unknown pin/resource release remains explicit. Absolute monotonic
+deadlines are checked between cooperative chunks. This is source preparation,
+not an exposed granular instrument or runtime/audio qualification; adapter,
+asset-stage/library integration and granular rendering remain next.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical
