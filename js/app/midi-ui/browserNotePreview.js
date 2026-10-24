@@ -1,3 +1,5 @@
+import { workloadVoiceCount, inspectVoiceInterval, inspectVoiceExtensions } from './AudioVoiceAdmission.js';
+import { nativeVoiceFinished, nativeRenderVoiceCount, releaseNativeVoice, destroyNativeVoice } from './NativeVoiceLifetime.js';
 import { selectLocalAudioVoice } from '../../midi/scheduler/LocalAudioVoiceBudget.js';
 import { createNativeOscillatorBackend } from './nativeOscillatorBackend.js';
 import { createTimedControlTimeline } from './TimedControlTimeline.js';
@@ -173,54 +175,11 @@ class BrowserNotePreview {
 
   _workloadClass(owner) { return this._sessions.get(owner)?.workloadClass || 'live'; }
 
-  _workloadVoiceCount(owner, voices = this._voices) {
-    const workload = this._workloadClass(owner); let count = 0;
-    for (const voice of voices) if ((voice.workloadClass || 'live') === workload) count += voice.renderCost || 1;
-    return count;
-  }
+  _workloadVoiceCount(owner, voices = this._voices) { return workloadVoiceCount.call(this, owner, voices); }
 
-  _inspectVoiceInterval(owner, { start, end, releaseAt, cost = 1, overrides = null, patchVoices = null, patchLimit = null } = {}) {
-    if (!this._intervalAdmission) return Object.freeze({ accepted: false, reason: 'interval-owner-unavailable' });
-    const workload = this._workloadClass(owner), limit = workload === 'cue' ? this._maxCueCostUnits : this._maxVoices;
-    const sourceLimit = workload === 'cue' ? this._maxCueScheduledVoices : this._maxLiveScheduledVoices;
-    if (this._workloadVoiceCount(owner) + cost > sourceLimit) return Object.freeze({ accepted: false, reason: 'workload-source-reservations' });
-    if (workload === 'cue') {
-      const logical = this._intervalAdmission.inspect({ voices: this._voices, first: start, last: Math.max(start, releaseAt), cost: 1, limit: this._maxCueVoices, mode: 'gate', semantic: true, workload, overrides });
-      if (!logical.accepted) return logical;
-    }
-    const gate = this._intervalAdmission.inspect({ voices: this._voices, first: start, last: Math.max(start, releaseAt), cost, limit, mode: 'gate', workload, overrides });
-    if (!gate.accepted) return gate;
-    const sources = this._intervalAdmission.inspect({ voices: this._voices, first: start, last: end, cost, limit: this._maxScheduledVoices, overrides });
-    if (!sources.accepted) return sources;
-    if (patchVoices && patchLimit != null) return this._intervalAdmission.inspect({ voices: patchVoices, first: start, last: Math.max(start, releaseAt), cost: 1,
-      limit: patchLimit, mode: 'gate', semantic: true, overrides });
-    return gate;
-  }
+  _inspectVoiceInterval(owner, options = {}) { return inspectVoiceInterval.call(this, owner, options); }
 
-  _inspectVoiceExtensions(changes, { patchVoices = null, patchLimit = null } = {}) {
-    if (!this._intervalAdmission) return Object.freeze({ accepted: false, reason: 'interval-owner-unavailable' });
-    const first = this._context.currentTime, workloads = new Set(); let last = first;
-    for (const [voice, interval] of changes) {
-      if (!this._voices.has(voice) || !Number.isFinite(interval.end) || !Number.isFinite(interval.releaseAt) || interval.end < voice.start ||
-          interval.releaseAt < voice.start || interval.releaseAt > interval.end) return Object.freeze({ accepted: false, reason: 'invalid-extended-interval' });
-      last = Math.max(last, voice.end, interval.end); workloads.add(voice.workloadClass || 'live');
-    }
-    if (last === first) return Object.freeze({ accepted: true, reason: null });
-    for (const workload of workloads) {
-      if (workload === 'cue') {
-        const logical = this._intervalAdmission.inspect({ voices: this._voices, first, last, cost: 0, limit: this._maxCueVoices, mode: 'gate', semantic: true, workload, overrides: changes });
-        if (!logical.accepted) return logical;
-      }
-      const gate = this._intervalAdmission.inspect({ voices: this._voices, first, last, cost: 0, limit: workload === 'cue' ? this._maxCueCostUnits : this._maxVoices,
-        mode: 'gate', workload, overrides: changes });
-      if (!gate.accepted) return gate;
-    }
-    const sources = this._intervalAdmission.inspect({ voices: this._voices, first, last, cost: 0, limit: this._maxScheduledVoices, overrides: changes });
-    if (!sources.accepted) return sources;
-    if (patchVoices && patchLimit != null) return this._intervalAdmission.inspect({ voices: patchVoices, first, last, cost: 0, limit: patchLimit,
-      mode: 'gate', semantic: true, overrides: changes });
-    return sources;
-  }
+  _inspectVoiceExtensions(changes, options = {}) { return inspectVoiceExtensions.call(this, changes, options); }
 
   getMonitorRouteState() { return this._cueRouting?.state() || Object.freeze({ state: 'muted', mode: 'muted', muted: true, revision: 0,
     cueIncludedInMasterCapture: false, physicalSeparation: 'not-claimed', cueGain: 0.5, message: 'Choose an explicit prelisten route.' }); }
@@ -537,7 +496,7 @@ class BrowserNotePreview {
       }
       const context = this._context;
       if (context.state !== 'running') {
-        this._setStatus('unlocking', 'Starting browser audio…');
+        this._setStatus('unlocking', 'Starting browser audioâ€¦');
         if (!this._resumePromise) {
           const resumed = Promise.resolve(context.resume());
           this._resumePromise = resumed;
@@ -904,15 +863,9 @@ class BrowserNotePreview {
     return buffer;
   }
 
-  _voiceFinished(voice) {
-    const now = this._context?.currentTime ?? 0;
-    if (voice.isFinished) return voice.isFinished(now);
-    return voice.end <= now || (voice.released && voice.releaseLevel === 0 && voice.releaseAt <= now) || (voice.sustain === 0 && now >= voice.start + voice.attack + voice.decay);
-  }
+  _voiceFinished(voice) { return nativeVoiceFinished.call(this, voice); }
 
-  _renderVoiceCount(voices = this._voices) {
-    let count = 0; for (const voice of voices) count += voice.renderCost || 1; return count;
-  }
+  _renderVoiceCount(voices = this._voices) { return nativeRenderVoiceCount.call(this, voices); }
 
   _isVoiceActive(token, owner = null) {
     const voice = this._voicesByToken.get(this._tokenKey(token, owner)), now = this._context?.currentTime ?? 0;
@@ -1033,33 +986,7 @@ class BrowserNotePreview {
     }
   }
 
-  _release(voice, time, force = false, reason = 'note-off') {
-    if (voice.requestRelease) { voice.requestRelease(time, force, reason); return; }
-    if (!this._voices.has(voice) || (!force && voice.released && time >= voice.releaseAt)) return;
-    const releaseAt = Math.max(voice.start, Math.min(time, voice.end - voice.release));
-    const end = Math.min(voice.end, releaseAt + voice.release);
-    const param = voice.gain.gain;
-    param.cancelScheduledValues(releaseAt);
-    const elapsed = releaseAt - voice.start;
-    const level = elapsed < voice.attack ? clamp(elapsed / voice.attack, 0, 1)
-      : voice.decay > 0 && elapsed < voice.attack + voice.decay
-        ? 1 - (1 - voice.sustain) * (elapsed - voice.attack) / voice.decay : voice.sustain;
-    const attackLevel = voice.peak * level;
-    voice.releaseLevel = attackLevel;
-    param.setValueAtTime(attackLevel, releaseAt);
-    param.linearRampToValueAtTime(0, end);
-    voice.oscillator.stop(end);
-    voice.end = end;
-    voice.releaseAt = releaseAt;
-    voice.released = true;
-    voice.terminationCause = force && reason === 'note-off' ? 'voice-budget' : reason;
-    if (force && reason === 'note-off') voice.stolen = true;
-    this._observe('synth-release', { ...voice.captureMeta, type: 'noteOff', voiceId: voice.id, channel: voice.number,
-      note: voice.note, scheduledMs: voice.startMs + (releaseAt - voice.start) * 1000, audioTime: releaseAt,
-      endAudioTime: end, reason: voice.terminationCause });
-    this._emitPlayback(voice, 'release', releaseAt);
-    if (force && attackLevel === 0) this._destroyVoice(voice, 'inaudible-voice-reuse');
-  }
+  _release(voice, time, force = false, reason = 'note-off') { return releaseNativeVoice.call(this, voice, time, force, reason); }
 
   _noteOff(number, note, options = {}) {
     if (!this._ready() || !this._validNote(note)) return false;
@@ -1083,34 +1010,7 @@ class BrowserNotePreview {
     return candidates.length > 0;
   }
 
-  _destroyVoice(voice, reason = 'source-ended') {
-    if (!voice) return;
-    if (voice.retirement) return voice.retirement.getReceipt();
-    if (!this._voices.delete(voice)) return;
-    voice.retirement = createProcgenRetirementScope();
-    voice.nativeContext ||= this._context;
-    let nativeRetirement;
-    const receipt = voice.retirement.retire([
-      { name: 'token', run: () => { if (voice.token != null && this._voicesByToken.get(this._tokenKey(voice.token, voice.owner)) === voice) this._voicesByToken.delete(this._tokenKey(voice.token, voice.owner)); } },
-      { name: 'native-voice', run: () => { nativeRetirement = createProcgenRetirementScope().retire([
-        { name: 'backend-voice', run: () => voice.onDestroy?.(reason) },
-        { name: 'source-stop', run: () => { if (voice.oscillator && !voice.nativeNodesOwnedByBackend) { voice.oscillator.onended = null;
-          try { voice.oscillator.stop(); } catch (error) { if (error.name !== 'InvalidStateError') throw error; } } } },
-        { name: 'source-disconnect', run: () => { if (!voice.nativeNodesOwnedByBackend) voice.oscillator?.disconnect(); } },
-        { name: 'gain', run: () => { if (!voice.nativeNodesOwnedByBackend) voice.gain?.disconnect(); } },
-        { name: 'pan', run: () => { if (!voice.nativeNodesOwnedByBackend) voice.pan?.disconnect(); } }
-      ]); return nativeRetirement; } },
-      { name: 'reservation', run: () => releaseAudioResourceAfterRetirement(voice.resourceLease, nativeRetirement) },
-      { name: 'observation', run: () => this._observe('synth-end', { ...voice.captureMeta, type: 'noteEnd', voiceId: voice.id, channel: voice.number,
-        note: voice.note, audioTime: this._context?.currentTime, scheduledMs: voice.startMs + (voice.end - voice.start) * 1000,
-        matchedDurationMs: Math.max(0, ((this._context?.currentTime ?? voice.start) - voice.start) * 1000), reason }) },
-      { name: 'playback-observer', run: () => this._emitPlayback(voice, 'end') },
-      { name: 'status', run: () => this._setStatus(this._status, this._message) }
-    ]);
-    const retainFailure = value => { if (value.outcome !== 'complete') { this._retiredVoices.set(voice.id, voice); this._retirementFaults.add(voice.owner); } };
-    if (receipt.state === 'retired') retainFailure(receipt); else receipt.completion.then(retainFailure);
-    return receipt;
-  }
+  _destroyVoice(voice, reason = 'source-ended') { return destroyNativeVoice.call(this, voice, reason); }
 
   _emitPlayback(voice, phase, releaseAt = voice.end - voice.release) {
     const callback = voice.owner == null ? this._onPlayback : this._sessions.get(voice.owner)?.onPlayback;

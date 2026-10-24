@@ -41,11 +41,11 @@ When a milestone replaces an old path, remove the old path in the same phase.
 
 Implementation milestones:
 
-1. **Session and lane foundation — implemented.** The canonical MIDI project now carries lane identity, four phrases, step expressions, roles and routing. The versioned session wraps music, transport and a graph checkpoint preserving actor/action frames, terrain edits, growth, scenery and crew ownership. Tests compare continued real simulations after JSON round trips, including active building, bashing, mining and mixed-theme assignments.
-2. **Transport and MIDI — implemented and browser verified.** A worker wakeup driver advances one musical authority separately from physical simulation. It handles internal/external clocks, 24 PPQN, Start/Stop/Continue/SPP, timestamped output, loss/suspension cleanup, recording, CC and SMF export. Timely incoming clock pulses refresh scheduling activity; genuine missed deadlines still stop playback. Character previews finish preparing before the new runtime is published. Port fixtures and browser clock input do not establish physical MIDI jitter or audible quality.
-3. **Workstation and music — implemented and browser verified.** Persistent silver/glass transport, virtualized lane headers, Strip/Overlay steps, resizable inspector, project workflows and editing use one project model. Ten collections each provide eight roles, including articulation, register, dynamics, patterns and event responses. Soft patches alter playback dynamics without replacing edited steps. Existing spatial curves and bounded automation spans remain active. Input monitoring and explicit Thru are separate from clock output.
-4. **Terrain and reveal — implemented.** Mixed classic families, variable composition, actor-led piece assembly, wider hazard corridors and bounded distant scenery replace uniform visual chunk cadence. Scenery is non-colliding and dithered; reduced motion and checkpoint restoration are covered. Three seeded eight-lane runs and a sixteen-lane run each completed 3,000 ticks with bounded residency.
-5. **Solver and automated acceptance — implemented and verified.** Real action-system fixtures exercise build→bash, bash→build, mine→build, repeated building, three-stage and four-stage routes, worker loss, guarded followers and reservations. A discovered four-stage route consumes 996 of the existing 1,024 proof-work budget. Sixteen-lane fixtures preserve waiting chains through service rotation using real blockers, then revalidate before assignment. Immediate contact observation uses at most eleven reads per walking actor per tick; broader proof retains eight serviced lanes per tick and the existing work budget. Successful cases require ordinary followers crossing the route. Physical MIDI and subjective listening acceptance remain manual.
+1. **Session and lane foundation â€” implemented.** The canonical MIDI project now carries lane identity, four phrases, step expressions, roles and routing. The versioned session wraps music, transport and a graph checkpoint preserving actor/action frames, terrain edits, growth, scenery and crew ownership. Tests compare continued real simulations after JSON round trips, including active building, bashing, mining and mixed-theme assignments.
+2. **Transport and MIDI â€” implemented and browser verified.** A worker wakeup driver advances one musical authority separately from physical simulation. It handles internal/external clocks, 24 PPQN, Start/Stop/Continue/SPP, timestamped output, loss/suspension cleanup, recording, CC and SMF export. Timely incoming clock pulses refresh scheduling activity; genuine missed deadlines still stop playback. Character previews finish preparing before the new runtime is published. Port fixtures and browser clock input do not establish physical MIDI jitter or audible quality.
+3. **Workstation and music â€” implemented and browser verified.** Persistent silver/glass transport, virtualized lane headers, Strip/Overlay steps, resizable inspector, project workflows and editing use one project model. Ten collections each provide eight roles, including articulation, register, dynamics, patterns and event responses. Soft patches alter playback dynamics without replacing edited steps. Existing spatial curves and bounded automation spans remain active. Input monitoring and explicit Thru are separate from clock output.
+4. **Terrain and reveal â€” implemented.** Mixed classic families, variable composition, actor-led piece assembly, wider hazard corridors and bounded distant scenery replace uniform visual chunk cadence. Scenery is non-colliding and dithered; reduced motion and checkpoint restoration are covered. Three seeded eight-lane runs and a sixteen-lane run each completed 3,000 ticks with bounded residency.
+5. **Solver and automated acceptance â€” implemented and verified.** Real action-system fixtures exercise buildâ†’bash, bashâ†’build, mineâ†’build, repeated building, three-stage and four-stage routes, worker loss, guarded followers and reservations. A discovered four-stage route consumes 996 of the existing 1,024 proof-work budget. Sixteen-lane fixtures preserve waiting chains through service rotation using real blockers, then revalidate before assignment. Immediate contact observation uses at most eleven reads per walking actor per tick; broader proof retains eight serviced lanes per tick and the existing work budget. Successful cases require ordinary followers crossing the route. Physical MIDI and subjective listening acceptance remain manual.
 
 Scoped coverage: 111 workstation/checkpoint/music/solver tests passed, measuring 84.27% lines and 84.12% branches across the selected owners. The chain proof measured 100% lines and 91.25% branches; checkpoint serialization measured 97.48% lines and 90.62% branches. Changed terrain modules separately measured 98.19% lines and 87.2% branches. Node coverage does not exercise most DOM rendering or IndexedDB implementation paths; real browser workflows cover those separately. Coverage follow-up: collect browser V8 coverage and add explicit IndexedDB quota/transaction-abort cases.
 
@@ -53,7 +53,7 @@ Final unit evidence (October 13): the complete suite passed 3,642 cases in 187.7
 
 Final browser evidence (October 13): all fifteen workstation cases passed together in 41 seconds after fixing external-clock activity tracking and late character-preview preparation. Twelve retained legacy ProcGen browser cases also passed. New checkpoint regressions cover automatic reset continuation and reproducing terrain, spawn order and later reset seeds from the displayed seed. Saved internal and measured external tempo survive subsequent control events. The 250 ms suspension and 750 ms clock-loss guards were not relaxed.
 
-Live Edge profiling at 1440×1000, 3× visual zoom, sound enabled, eight visible rows, after a 1,200-tick warmup:
+Live Edge profiling at 1440Ã—1000, 3Ã— visual zoom, sound enabled, eight visible rows, after a 1,200-tick warmup:
 
 | Session / view | Render p50 | Render p95 | Render p99 |
 | --- | --- | --- | --- |
@@ -62,12 +62,12 @@ Live Edge profiling at 1440×1000, 3× visual zoom, sound enabled, eight visible
 | 16 lanes / Strip | 7.7 ms | 13.9 ms | 14.9 ms |
 | 16 lanes / Overlay | 2.3 ms | 10.2 ms | 12.2 ms |
 
-Each sample ran six seconds, advancing 100 physical ticks. All p95 render costs were below the 16.7 ms desktop target. Headless Edge's animation callback cadence was approximately 240 Hz; these timings measure render cost, not a promise of display refresh or device latency. Terrain residency stayed approximately 18.6–18.8 MB for eight lanes and 20.3–20.7 MB for sixteen; scenery stayed at 112–116 / 230–236 pieces. A paused 100,000-pixel camera pan generated no terrain descriptors and preserved reveal progress. Reduced-motion scenery completed statically. The user explicitly deferred physical MIDI synchronization to manual device testing; acoustic palette approval also remains outside the measured signal test.
+Each sample ran six seconds, advancing 100 physical ticks. All p95 render costs were below the 16.7 ms desktop target. Headless Edge's animation callback cadence was approximately 240 Hz; these timings measure render cost, not a promise of display refresh or device latency. Terrain residency stayed approximately 18.6â€“18.8 MB for eight lanes and 20.3â€“20.7 MB for sixteen; scenery stayed at 112â€“116 / 230â€“236 pieces. A paused 100,000-pixel camera pan generated no terrain descriptors and preserved reveal progress. Reduced-motion scenery completed statically. The user explicitly deferred physical MIDI synchronization to manual device testing; acoustic palette approval also remains outside the measured signal test.
 
 ### Music workspace and deeper source checkpoint (October 11, 2026)
 
 - **Outcome:** One discoverable musical workspace, saved lane orchestration, and better crew survival beyond the introductory skill stretch.
-- **Scope:** Global root/scale, 0–48 semitone total lane spread, local stereo width, six event-driven percussion schemes, ordered inclusive lane ranges, shared Undo and source-terrain reliability.
+- **Scope:** Global root/scale, 0â€“48 semitone total lane spread, local stereo width, six event-driven percussion schemes, ordered inclusive lane ranges, shared Undo and source-terrain reliability.
 - **Workflow Coverage:** Muted desktop/mobile musical edits, range precedence/reordering, Undo/reload, explicit survey evidence, real source crews and shared builder/basher actions.
 - **Deliverables:** `ProcgenMusicControls`, `ProcgenMusicProject`, `MidiLaneMusic`, `MidiLaneSchemes`, `ProcgenDrumSchemes`, integrated project persistence and regression cases.
 - **Acceptance:** Bounded affected tests and unchanged physical work limits; retain incomplete routes and aggregate-gate uncertainty explicitly.
@@ -100,14 +100,14 @@ evidence review, not automatic policy promotion.
 Fresh finite cases used 16 original ordinary births, six ticks apart, for 3,000
 ticks, without replacement, special abilities or increased work budgets:
 
-| Lemmings ground / seed | Alive before → after | Physical arrivals at x1024 after | Physical arrivals at x1536 after |
+| Lemmings ground / seed | Alive before â†’ after | Physical arrivals at x1024 after | Physical arrivals at x1536 after |
 | --- | --- | --- | --- |
-| Fire / 7 | 16 → 16 | 16 | 0 |
-| Fire / 19 | 16 → 16 | 16 | 0 |
-| Fire / 73 | 15 → 16 | 16 | 0 |
-| Fire / 113 | 0 → 16 | 15 | 0 |
-| Dirt / 7 | 0 → 16 | 16 | 0 |
-| Crystal / 19 | 16 → 16 | 15 | 0 |
+| Fire / 7 | 16 â†’ 16 | 16 | 0 |
+| Fire / 19 | 16 â†’ 16 | 16 | 0 |
+| Fire / 73 | 15 â†’ 16 | 16 | 0 |
+| Fire / 113 | 0 â†’ 16 | 15 | 0 |
+| Dirt / 7 | 0 â†’ 16 | 16 | 0 |
+| Crystal / 19 | 16 â†’ 16 | 15 | 0 |
 
 All final cases had zero hazard contacts and at most 1,024 charged lane probes.
 These are survival improvements, **not completed deeper routes**. Dirt seed 7
@@ -2133,7 +2133,7 @@ authors small correlated ratio/decay variation and work-cell-driven color;
 cells/pixels are not force or energy. Missing measured fields skip the binding
 with a receipt. Continuous bindings, actor locks, noise-state support and the
 deferred PCM/listening/physical qualification remain outstanding.
-The native modal adapter now realizes 4–8 authored damped-sine modes inside one
+The native modal adapter now realizes 4â€“8 authored damped-sine modes inside one
 owned voice, with explicit T60 seconds, two authored strike-gain sites, bounded
 register taper/omissions, onset L1 normalization and all-child source accounting.
 Modal body decay, onset envelope and host release are separate; one-shot holds
@@ -2187,7 +2187,7 @@ are authored and unexecuted. Mathematical reference: Andrew Simper's
 https://cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf ; no external DSP runtime
 or complete MIDI wrapper is imported. Source-specific telemetry now names pluck/
 choir correctly, preserves float headroom and omits their unsupported sine phase.
-The eight-level (1–128 harmonics) exciter bank is authored offline as a pinned
+The eight-level (1â€“128 harmonics) exciter bank is authored offline as a pinned
 first-party source module; worklet construction copies it without generation
 trig. Phase-aligned adjacent levels blend under the pitch/chorus/vibrato limit;
 typed table bytes and the separate immutable JavaScript table heap estimate are
@@ -2265,7 +2265,7 @@ asset-stage/library integration and granular rendering remain next.
 
 The bounded granular source kernel now has eight parent clouds with 16 fixed
 grain slots each, an absolute 128-frame birth budget, xorshift content RNG,
-20–140 ms precomputed Hann windows and coherent per-grain pitch/duration/position
+20â€“140 ms precomputed Hann windows and coherent per-grain pitch/duration/position
 snapshots. Scan and pitch are separate; source-position hold is distinct from
 PCM/field freeze. A motion-gated mode stops replenishment at zero activity;
 held-action mode is explicit. Source edges fade and clip without invented wrap
@@ -2378,6 +2378,16 @@ enabling live audio. The reference has its own retained metadata reservation.
 Changing lane selection does not replace the captured render target; reopening
 can select a new revision. Unavailable native offline engines stay visible as
 unsupported choices.
+
+Native oscillator/FM/modal offline driving now shares the live host's voice
+lifetime and interval admission code. Its private driver owns an isolated native
+OfflineAudioContext, schedules explicit frame targets in suspended quantum
+windows and taps the master plus at most fifteen stereo lane stems from one
+graph. Complete terminal intervals are scheduled with each onset; dense windows
+are bounded before continuing. Cancellation disconnects owned sources and joins
+the bounded native producer instead of assuming every browser implements
+OfflineAudioContext.close(). Native PCM stays reserved through its consumer.
+Public control/take render integration and runtime qualification remain work.
 
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail

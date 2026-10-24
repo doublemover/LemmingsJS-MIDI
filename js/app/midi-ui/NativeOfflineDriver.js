@@ -1,0 +1,145 @@
+import { createNativeOscillatorBackend } from './nativeOscillatorBackend.js';
+import { nativeVoiceFinished, nativeRenderVoiceCount, releaseNativeVoice, destroyNativeVoice } from './NativeVoiceLifetime.js';
+import { workloadVoiceCount, inspectVoiceInterval, inspectVoiceExtensions } from './AudioVoiceAdmission.js';
+import { createAudioIntervalAdmission, audioIntervalStorageBytes } from './AudioIntervalAdmission.js';
+import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
+
+export const NATIVE_OFFLINE_SOURCE_IDS = Object.freeze(['native-oscillator', 'native-fm', 'native-modal']);
+const failure = (code, message, detail = {}) => Object.assign(new Error(message), { name: 'NativeOfflineRenderError', code, ...detail });
+const natural = value => Number.isSafeInteger(value) && value >= 0;
+let nextOwner = 0;
+
+// The destination belongs exclusively to an OfflineAudioContext. Every lane tap
+// and the master are rendered together; no live output or solo bounce is used.
+export async function renderNativeOfflineGraph({ patch, events, frames, sampleRate, stemLaneIds = [] },
+  { resources, signal, OfflineAudioContext = globalThis.OfflineAudioContext, onProgress = () => {} } = {}) {
+  signal?.throwIfAborted();
+  const channels = 2 + stemLaneIds.length * 2, nativeBytes = frames * channels * 4;
+  if (!NATIVE_OFFLINE_SOURCE_IDS.includes(patch?.engineId) || ![44100, 48000, 96000].includes(sampleRate) ||
+      !natural(frames) || frames < 1 || frames > sampleRate * 124 || !natural(nativeBytes) || nativeBytes > 256 * 1048576 ||
+      !Array.isArray(events) || events.length > 32768 || !Array.isArray(stemLaneIds) || stemLaneIds.length > 15 ||
+      new Set(stemLaneIds).size !== stemLaneIds.length || stemLaneIds.some(id => typeof id !== 'string' || !id || id.length > 128) ||
+      typeof OfflineAudioContext !== 'function' || typeof resources?.reserve !== 'function' || typeof onProgress !== 'function')
+    throw failure('native-render-preflight', 'Native offline rendering requires a bounded native source, available OfflineAudioContext and at most fifteen stereo lane taps.');
+  let prior = -1;
+  for (const event of events) {
+    if (!natural(event?.frame) || event.frame < prior || event.frame >= frames || !['begin', 'update', 'end'].includes(event.kind) ||
+        typeof event.voiceId !== 'string' || !event.voiceId || event.voiceId.length > 512 ||
+        event.kind === 'begin' && (!natural(event.releaseFrame) || event.releaseFrame < event.frame ||
+          !Number.isFinite(event.releaseSeconds) || event.releaseSeconds < 0.002 || event.releaseSeconds > 4))
+      throw failure('native-event-preflight', 'Native scheduling needs ordered explicit frame targets and the complete release interval for every onset.');
+    prior = event.frame;
+  }
+  const owner = 'native-offline-' + (++nextOwner), nodes = [], scope = createProcgenRetirementScope();
+  let context = null, host = null, backend = null, rendered = null, nativeWork = null, suspension = null;
+  let nativeSettled = false, nativeFailed = false, originalError = null, cursor = 0, batches = 0, submitted = 0, pcmLease = null, graphLease = null;
+  const guard = () => signal?.throwIfAborted();
+  const node = value => { nodes.push(value); return value; };
+  const accept = (receipt, event) => {
+    if (receipt?.status !== 'accepted') throw failure('native-command-rejected', 'The native engine could not realize every captured command.',
+      { reason: receipt?.reason || 'missing-receipt', intentId: event?.intent?.intentId || null, frame: event?.frame ?? null });
+    submitted++; return receipt;
+  };
+  const cancel = () => {
+    try { backend?.dispose(); } catch (error) { originalError ||= error; }
+  };
+  try {
+    pcmLease = resources.reserve({ kind: 'native-offline-pcm', owner, bytes: nativeBytes, consumerOwned: true });
+    graphLease = resources.reserve({ kind: 'native-offline-graph', owner, bytes: audioIntervalStorageBytes(513), estimateBytes: 16 * 1048576, consumerOwned: true });
+    context = new OfflineAudioContext({ numberOfChannels: channels, length: frames, sampleRate });
+    if (context.sampleRate !== sampleRate || typeof context.suspend !== 'function' || typeof context.resume !== 'function' ||
+        typeof context.createStereoPanner !== 'function') throw failure('native-api-unavailable', 'This browser lacks the required native offline scheduling or stereo panning API.');
+    const quantum = context.renderQuantumSize ?? 128;
+    if (!Number.isSafeInteger(quantum) || quantum < 1 || quantum > 2048) throw failure('native-quantum-unavailable', 'The offline render quantum is outside the supported bounded profile.');
+    const merger = node(context.createChannelMerger(channels)), master = node(context.createGain()), splitter = node(context.createChannelSplitter(2));
+    merger.channelInterpretation = 'discrete'; merger.connect(context.destination); master.connect(splitter);
+    splitter.connect(merger, 0, 0); splitter.connect(merger, 1, 1);
+    const laneNodes = new Map();
+    const channelFor = lane => {
+      const id = String(lane ?? 'unassigned'); if (laneNodes.has(id)) return laneNodes.get(id);
+      if (laneNodes.size >= 128) throw failure('native-lane-capacity', 'The native graph exceeds 128 captured lane owners.');
+      const gain = node(context.createGain()); gain.connect(master);
+      const index = stemLaneIds.indexOf(id);
+      if (index >= 0) { const tap = node(context.createChannelSplitter(2)); gain.connect(tap); tap.connect(merger, 0, 2 + index * 2); tap.connect(merger, 1, 3 + index * 2); }
+      const channel = { gain }; laneNodes.set(id, channel); return channel;
+    };
+    let currentLane = null;
+    host = { _context: context, _generation: 1, _sessions: new Map([[owner, { generation: 1 }]]), _voices: new Set(),
+      _semanticVoiceOwners: new Map(), _voicesByToken: new Map(), _retiredVoices: new Map(), _retirementFaults: new Set(),
+      _maxNoteSeconds: 124, _maxScheduledVoices: 512, _maxLiveScheduledVoices: 512, _maxVoices: 256, _voiceSequence: 0,
+      _audioResources: resources, _intervalAdmission: createAudioIntervalAdmission({ maxIntervals: 513 }),
+      _ownerReady: () => context.state !== 'closed' && !signal?.aborted, getAudioContext: () => context,
+      _channel: () => channelFor(currentLane), _workloadClass: () => 'live', _nowMs: () => context.currentTime * 1000,
+      _captureMetadata: fields => fields, _observe() {}, _emitPlayback() {}, _setStatus() {},
+      _voiceFinished: nativeVoiceFinished, _renderVoiceCount: nativeRenderVoiceCount, _release: releaseNativeVoice,
+      _destroyVoice: destroyNativeVoice, _workloadVoiceCount: workloadVoiceCount,
+      _inspectVoiceInterval: inspectVoiceInterval, _inspectVoiceExtensions: inspectVoiceExtensions };
+    backend = createNativeOscillatorBackend(host, owner, { engineId: patch.engineId, gateMode: 'bounded', traceLimit: 0 });
+    const preparation = await backend.prepare({ status: 'ready', patch, receipt: { patchId: patch.id, revision: patch.revision } });
+    if (preparation.status !== 'ready') throw failure('native-patch-unavailable', 'The live native source backend rejected this exact offline definition.');
+    signal?.addEventListener('abort', cancel, { once: true }); guard();
+    const schedule = until => {
+      for (const voice of host._voices) if (host._voiceFinished(voice)) host._destroyVoice(voice, 'offline-finished-voice');
+      while (cursor < events.length && events[cursor].frame < until) {
+        guard(); const event = events[cursor++];
+        if (event.kind === 'begin') {
+          currentLane = event.laneId;
+          accept(backend.begin({ ...event.intent, voiceId: event.voiceId, performanceControls: {} }, event.frame, 'offline-render'), event);
+          accept(backend.end(event.voiceId, { seconds: event.releaseSeconds }, event.releaseFrame, 'offline-render'), event);
+        } else if (event.kind === 'update' && Object.keys(event.expression || {}).length)
+          accept(backend.update(event.voiceId, event.expression, event.frame, 'offline-render'), event);
+      }
+      if (host._retirementFaults.size) throw failure('native-voice-retirement', 'A native voice failed to retire completely.');
+    };
+    let frontier = 0;
+    while (frontier < frames) {
+      guard();
+      const horizon = Math.min(frames, frontier + Math.max(quantum, Math.floor(sampleRate / 2 / quantum) * quantum));
+      const dense = events[Math.min(events.length - 1, cursor + 31)];
+      const next = dense ? Math.min(horizon, Math.max(frontier + quantum, Math.ceil((dense.frame + 1) / quantum) * quantum)) : horizon;
+      schedule(Math.min(next, frames)); batches++;
+      if (next < frames) {
+        // suspend() rounds UP to a render quantum. Stay inside the preceding
+        // sample to avoid a floating point quotient moving one quantum later.
+        suspension = context.suspend((next - 0.25) / sampleRate); suspension.catch(() => {});
+      }
+      if (!nativeWork) { nativeWork = Promise.resolve(context.startRendering()).then(buffer => { nativeSettled = true; return buffer; }, error => { nativeSettled = true; nativeFailed = true; throw error; }); nativeWork.catch(() => {}); }
+      else await context.resume();
+      if (next < frames) {
+        await suspension; suspension = null;
+        if (Math.round(context.currentTime * sampleRate) !== next) throw failure('native-suspend-frame', 'The browser suspended at a different native frame frontier.');
+      } else rendered = await nativeWork;
+      frontier = Math.min(next, frames); guard();
+      try { onProgress({ phase: 'rendering-native-offline', completedUnits: frontier, totalUnits: frames }); } catch { /* Progress observers do not own native processing. */ }
+    }
+    if (rendered?.length !== frames || rendered.sampleRate !== sampleRate || rendered.numberOfChannels !== channels)
+      throw failure('native-output-mismatch', 'The browser returned a different offline PCM layout.');
+  } catch (error) { originalError = error; }
+  finally {
+    signal?.removeEventListener('abort', cancel);
+    if (originalError) cancel();
+    // Older OfflineAudioContext implementations have no close(). Cancellation
+    // drains the bounded disconnected graph and keeps all PCM storage charged.
+    if (nativeWork && !nativeSettled) {
+      try { if (suspension) await suspension; if (context.state === 'suspended') await context.resume(); await nativeWork; }
+      catch (error) { originalError ||= error; }
+    }
+    const receipt = scope.retire([
+      { name: 'native-producer', run: () => { if (nativeWork && (!nativeSettled || nativeFailed && context.state !== 'closed')) throw failure('native-producer-unknown', 'Offline producer retirement could not be confirmed.'); } },
+      { name: 'native-voices', run: () => backend?.dispose() },
+      { name: 'native-graph', run: () => { for (const value of nodes) value.disconnect(); } }
+    ]); await receipt.completion;
+    if (receipt.outcome !== 'complete') {
+      const error = failure('native-retirement-unknown', 'Native offline resources remain reserved.', { cause: originalError, retirement: receipt });
+      pcmLease?.retainUnknown(error); graphLease?.retainUnknown(error); originalError = error;
+    } else { graphLease?.release(); if (originalError) pcmLease?.release(); }
+    nodes.length = 0; context = host = backend = nativeWork = suspension = null;
+  }
+  if (originalError) throw originalError;
+  let released = false;
+  return Object.freeze({ get buffer() { return rendered; }, frames, sampleRate, channels, stemLaneIds: Object.freeze(stemLaneIds.slice()),
+    receipt: Object.freeze({ method: 'native-offline-audio-context', nativeSourceBackend: patch.engineId, batches, submitted,
+      scheduling: 'explicit-native-frames-with-quantum-suspension', gates: 'bounded-offline-with-preflighted-terminal-intervals',
+      renderTap: 'simultaneous-native-source-graph-before-live-master', crossBrowserBitIdentity: false }),
+    release() { if (released) return false; pcmLease.release(); released = true; rendered = null; return true; } });
+}
