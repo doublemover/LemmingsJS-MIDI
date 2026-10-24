@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import { createRoutedInstrumentBackend } from '../../js/app/midi-ui/RoutedInstrumentBackend.js';
 import { createInstrumentExecutionLifecycle } from '../../js/app/midi-ui/InstrumentExecutionLifecycle.js';
 import { createProcgenRetirementScope } from '../../js/app/procgen/ProcgenRetirement.js';
+import { createResourceBudget } from '../../js/app/resources/ResourceBudget.js';
 
 describe('voice-owned lane instrument replacement', () => {
   const context = {};
@@ -25,6 +26,21 @@ describe('voice-owned lane instrument replacement', () => {
   };
   const root = (backend, options = {}) => createRoutedInstrumentBackend({ defaultBackend: backend, getContext: () => context, getGeneration: () => 0, ...options });
   const onset = voiceId => ({ generation: 1, voiceId, laneId: 'lane-1' });
+  it('shares one prepared renderer across 1024 lane assignments while retaining an explicit route bound', async () => {
+    const budget = createResourceBudget(), fallback = renderer(), child = renderer(), router = root(fallback.backend, { resourceBudget: budget });
+    for (let lane = 0; lane < 1024; lane++) router.assign('lane-' + lane, 'shared', child.backend);
+    const diagnostics = router.backend.renderDiagnostics(); expect(diagnostics).to.include({ assignments: 1024, maxLanes: 1024, children: 2 });
+    expect(diagnostics.metadata.enabled).to.equal(true); expect(() => router.assign('overflow', 'shared', child.backend)).to.throw('capacity');
+    await router.dispose().completion; expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+  it('does not fall back to a basic renderer when a project requires an unprepared pinned instrument', async () => {
+    const fallback = renderer(), child = renderer(); let desired = 'pinned';
+    const router = root(fallback.backend, { requiredInstrumentKey: () => desired }), execution = router.backend.registerExecution({ generation: 1, executionEpoch: 'pinned' }).execution;
+    expect(router.backend.begin(onset('missing'), 100, execution)).to.include({ status: 'rejected', reason: 'pinned-instrument-not-prepared' });
+    router.assign('lane-1', 'pinned', child.backend); expect(router.backend.begin(onset('ready'), 101, execution).status).to.equal('accepted'); desired = 'different-revision';
+    expect(router.backend.begin(onset('stale'), 102, execution).reason).to.equal('pinned-instrument-not-prepared');
+    expect(router.backend.end('ready', { seconds: 0.1 }, 103, execution).status).to.equal('accepted'); expect(fallback.calls).to.have.length(0); await router.dispose().completion;
+  });
   it('connects observers to later renderer children and translates both execution layers', () => {
     const fallback = renderer(), child = renderer(), router = root(fallback.backend), received = [];
     const execution = router.backend.registerExecution({ generation: 1, executionEpoch: 'public-route' }).execution;

@@ -735,7 +735,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const physicalBus = next.world?.soundEvents?.onBatch;
     physicalScoreClock = createProcgenPhysicalScoreClock(); physicalClockError = false;
     if (session?.physicalTimeline) physicalScoreClock.restore(session.physicalTimeline);
-    physicalPlayback = createProcgenPhysicalPlayback({ audio: legacy.local.audio, renderer: next.lanes?.renderer,
+    physicalPlayback = createProcgenPhysicalPlayback({ audio: legacy.local.audio, renderer: next.lanes?.renderer, resourceBudget,
       getGraph: () => project.procgen.physicalGraph, getLanes: () => project.procgen.lanes, isPlaybackEnabled: localEnabled, scoreTimeline: physicalScoreClock, now,
       onInstrumentState: event => { if (event.state === 'unavailable' || event.state === 'retirement-unknown') status('Lane ' + event.laneId + ' instrument: ' + event.code); },
       onReceipt: receipt => {

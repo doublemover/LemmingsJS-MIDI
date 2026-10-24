@@ -3,6 +3,7 @@ import { NATIVE_WORKLET_FIELDS } from './NativeInstrumentSchema.js';
 import { validateInstrumentPatchV2 } from '../../midi/content/InstrumentPatchV2.js';
 import { canonicalDataText, hashData } from '../../core/CanonicalData.js';
 import { createCausalRenderTiming } from './CausalRenderTiming.js';
+import { resolveOwnedArticulationPolicy } from './OwnedArticulationPolicy.js';
 
 const MAX_SECONDS = 120, MAX_INTENTS = 32768, MAX_OUTPUT_BYTES = 64 * 1048576;
 const failure = (code, message, detail = {}) => Object.assign(new Error(message), { name: 'CausalRenderError', code, ...detail });
@@ -52,6 +53,7 @@ export async function planCausalSineRender({ revoice, definition, descriptor, sa
   if (patch.sampleRefs.length || patch.modulations.length || patch.macros.length || patch.causalBindings.length || patch.voicePolicy.steal !== 'reject')
     throw failure('unsupported-patch', 'This render requires a realized asset-free sine patch with reject admission.');
   const parameters = Object.fromEntries(Object.entries(NATIVE_WORKLET_FIELDS).map(([key, spec]) => [key, patch.parameters[key] ?? spec[2]]));
+  const articulation = resolveOwnedArticulationPolicy({ parameters });
   const sourceOriginMs = revoice.boundary.state.sourceTimeMs, sourceEndSeconds = (revoice.finalBoundaryState.sourceTimeMs - sourceOriginMs) / 1000;
   const timing = createCausalRenderTiming(revoice, sampleRate);
   if (endSeconds > sourceEndSeconds + 0.5 / sampleRate) throw failure('uncovered-range', 'The requested render extends beyond the captured source-clock boundary.');
@@ -82,7 +84,7 @@ export async function planCausalSineRender({ revoice, definition, descriptor, sa
       if (!voice || voice.end != null) throw failure('missing-voice-history', 'A captured control or end has no still-owned original onset.', { intentId: intent.intentId });
       if (frame < voice.start) throw failure('invalid-voice-time', 'A captured control precedes its own original onset.', { intentId: intent.intentId });
       if (intent.kind === 'end') {
-        const at = intent.terminationReason === 'one-shot' ? Math.max(frame, voice.start + Math.round(0.08 * sampleRate)) : frame;
+        const at = intent.terminationReason === 'one-shot' ? Math.max(frame, voice.start + Math.round(articulation.oneShotTailSeconds * sampleRate)) : frame;
         voice.releaseAt = at; voice.end = at + releaseFrames; capturedEnds++;
         voice.events.push({ kind: 'end', frame: at, order, intentId: intent.intentId, values: { 13: releaseFrames } });
       } else {
@@ -118,7 +120,7 @@ export async function planCausalSineRender({ revoice, definition, descriptor, sa
   }
   events.sort((left, right) => left.frame - right.frame || left.order - right.order);
   return { patch, parameters, events, voices, source: revoice, descriptor, applicationBuildId, sampleRate, firstFrame, endFrame, outputEnd, outputFrames,
-    sourceOriginMs, startSeconds, endSeconds, tail, releaseFrames, derivedReleases, capturedBegins, capturedUpdates, capturedEnds, peakVoices, stemLaneIds, lanes, pcmBytes,
+    sourceOriginMs, startSeconds, endSeconds, tail, releaseFrames, articulation, derivedReleases, capturedBegins, capturedUpdates, capturedEnds, peakVoices, stemLaneIds, lanes, pcmBytes,
     timing: { ...timing.receipt(), sourceTimelineHash: timing.sourceTimeline ? await hashData(timing.sourceTimeline, { maxBytes: 1048576, maxNodes: 65536 }) : null },
     definitionHash: await hashData(definition), intentHash: await hashData(revoice.intents, { maxBytes: 8 * 1048576, maxNodes: 1000000 }) };
 }
@@ -174,7 +176,8 @@ export async function renderCausalSineTake(input, { signal, yieldControl = () =>
       engineVersion: plan.descriptor.engineVersion, artifactHash: plan.descriptor.artifactHash, parameterSchemaHash: plan.descriptor.parameterSchemaHash }, applicationBuildId: plan.applicationBuildId,
     commands: { capturedBegins: plan.capturedBegins, capturedUpdates: plan.capturedUpdates, capturedEnds: plan.capturedEnds, derivedReleases: plan.derivedReleases, submitted: sequence, applied, peakVoices: plan.peakVoices },
     realization: { scope: 'new-local-sine-realization-of-immutable-intents', liveAdmissionHistoryRecreated: false, historicalHardwareTimbreRecreated: false,
-      smoothingSeconds: 0.008, oneShotHoldSeconds: 0.08, normalization: 'none', integerClipping: 'not-applicable', dither: 'none-float-output', sharedMasterAndLimiter: 'excluded' },
+      smoothingSeconds: 0.008, articulationPolicy: plan.articulation.policy, oneShotHoldSeconds: plan.articulation.oneShotTailSeconds,
+      normalization: 'none', integerClipping: 'not-applicable', dither: 'none-float-output', sharedMasterAndLimiter: 'excluded' },
     stems: { mode: 'simultaneous-dry-lane-taps', laneIds: stemLaneIds, allCapturedLanesIncluded: [...plan.lanes].every(lane => stemLaneIds.includes(lane)),
       sharedReturns: 'none-in-selected-graph', recombination: 'linear-dry-sum-with-float32-rounding', nonlinearMaster: 'excluded' },
     acousticReceipt: false, qualification: 'rendered-pcm-not-listening-or-cross-browser-qualified', originalRecordMutated: false };

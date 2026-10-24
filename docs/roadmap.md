@@ -2098,6 +2098,13 @@ fractional-tick placement, and removes the source origin before adding fractiona
 time. Complete onset-set capacity planning uses frame/source-order ties rather
 than actor traversal order. The worker manifest records timing provenance/hash;
 timing, numeric-origin and fractional-order fixtures remain unexecuted.
+Pinned instrument preparation/routing now follows the 1,024-lane project bound
+while keeping renderer children and candidate preparation separately capped.
+Routing metadata and active candidate input overlap grow through shared admission;
+unknown renderer cleanup retains accounting. A required pinned revision cannot
+silently fall back to the basic oscillator when preparation is absent or stale.
+Live lane and offline sine adapters share one authored hold/release policy.
+Large-lane and policy fixtures are authored and unexecuted.
 
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail

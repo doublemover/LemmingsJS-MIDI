@@ -17,16 +17,22 @@ const nativeResolution = Object.freeze({
 
 // Owns only the physical voice session. The ordinary game preview and MIDI
 // router keep their independent leases on the shared output graph.
-export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, now, renderer = null, getLanes = () => [], isPlaybackEnabled = () => !!audio?.getState?.().enabled,
+export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, now, renderer = null, resourceBudget = null, getLanes = () => [], isPlaybackEnabled = () => !!audio?.getState?.().enabled,
   onInstrumentState = () => {}, onReceipt = () => {} } = {}) {
   const permitted = () => { try { return isPlaybackEnabled() === true; } catch { return false; } };
   const session = audio?.createSession?.('procgen-physical') || null;
   const nativeBackend = session?.createInstrumentBackend?.({ gateMode: 'owned' }) || null;
-  const routed = nativeBackend?.inspectExecution ? createRoutedInstrumentBackend({ defaultBackend: nativeBackend, getContext: () => audio.getAudioContext(),
+  let routed = null, routingUnavailable = null;
+  try { if (nativeBackend?.inspectExecution) routed = createRoutedInstrumentBackend({ defaultBackend: nativeBackend, resourceBudget, getContext: () => audio.getAudioContext(),
     getGeneration: () => nativeBackend.executionIncarnation?.() ?? 0, defaultReleaseSeconds: nativeResolution.patch.parameters.releaseSeconds, defaultOneShotTailSeconds: 0.08,
-    resolveLane: laneId => typeof laneId === 'number' ? getLanes()[laneId]?.id || String(laneId) : String(laneId) }) : null;
-  const backend = routed?.backend || nativeBackend;
-  const laneInstruments = routed ? createLaneInstrumentPreparation({ session, routed, onState: onInstrumentState }) : null;
+    resolveLane: laneId => typeof laneId === 'number' ? getLanes()[laneId]?.id || String(laneId) : String(laneId),
+    requiredInstrumentKey: (laneId, sourceId) => { const lane = typeof sourceId === 'number' ? getLanes()[sourceId] : getLanes().find(entry => entry.id === laneId), reference = lane?.instrumentRef;
+      return reference ? reference.packHash + ':' + reference.definitionHash : null; } }); }
+  catch { routingUnavailable = 'audio-routing-resource-unavailable'; try { onInstrumentState({ laneId: 'all', state: 'unavailable', code: routingUnavailable }); } catch { /* Audio admission cannot stop the world. */ } }
+  const backend = routingUnavailable ? null : routed?.backend || nativeBackend;
+  let laneInstruments = null;
+  try { if (routed) laneInstruments = createLaneInstrumentPreparation({ session, routed, onState: onInstrumentState, resourceBudget }); }
+  catch { routingUnavailable = 'audio-preparation-resource-unavailable'; try { onInstrumentState({ laneId: 'all', state: 'unavailable', code: routingUnavailable }); } catch { /* Preparation cannot stop physics. */ } }
   const clock = createAudioClockBridge({ getContext: () => audio?.getAudioContext?.(), nowMs: now,
     presentationDelayMs: 24, maxHorizonMs: 5000 });
   let disposed = false, prepared = false, armEnabled = true, enableLease = null, executionEpoch = null, previousGeneration = null, executionSerial = 0;
@@ -51,7 +57,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     } catch { if (enableLease === lease) enableLease = null; }
   };
   const preparedPromise = nativeBackend ? Promise.resolve(nativeBackend.prepare(nativeResolution)).then(receipt => {
-    prepared = receipt?.status === 'ready';
+    prepared = receipt?.status === 'ready' && !routingUnavailable;
     arm();
     return prepared;
   }).catch(() => false) : Promise.resolve(false);
@@ -70,7 +76,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
   const engine = createCausalMusicEngine({ getGraph, scoreTimeline, deliver: (intents, batch) => dispatcher.dispatch(intents, batch) });
   const refreshDisplay = batch => {
     const manager = renderer?.actorEffects, state = audio?.getState?.(), owner = session?.getState?.().ownerId;
-    if (!manager || manager.retired || !manager.visible || !permitted() || !state?.enabled || !session?.getState().enabled) { if (displayKey) stopDisplay(); return; }
+    if (!backend || !manager || manager.retired || !manager.visible || !permitted() || !state?.enabled || !session?.getState().enabled) { if (displayKey) stopDisplay(); return; }
     if (displayBlocked) return;
     const graphRevision = getGraph()?.revision, routeRevision = routed?.routeRevision() ?? 0, contextEpoch = state.contextEpoch;
     if (!Number.isSafeInteger(contextEpoch) || !Number.isSafeInteger(graphRevision) || typeof owner !== 'string') return;
@@ -139,14 +145,14 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
       { name: 'audio-state-subscription', run: () => unsubscribe?.() },
       { name: 'playback-stop', run: stop }, { name: 'dispatcher', run: () => dispatcher.dispose() },
       { name: 'lane-instrument-preparation', run: () => laneInstruments?.dispose() },
-      { name: 'instrument-backend', run: () => backend?.dispose?.() }, { name: 'audio-session', run: () => session?.dispose?.() }
+      { name: 'instrument-backend', run: () => (backend || nativeBackend)?.dispose?.() }, { name: 'audio-session', run: () => session?.dispose?.() }
     ]);
   };
   return { engine, processBatch, stop, dispose, ready: () => preparedPromise,
     prepareLaneInstrument: (laneId, reference, options) => laneInstruments ? laneInstruments.prepare(laneId, reference, options) : Promise.reject(new Error('Lane instrument routing is unavailable.')),
     synchronizeLaneInstruments: lanes => laneInstruments?.synchronize(lanes) || Promise.resolve([]),
     retryLaneInstruments: () => laneInstruments?.retry(getLanes()) || Promise.resolve([]),
-    diagnostics: () => Object.freeze({ prepared, enabled: !!session?.getState().enabled, accepted, rejected,
+    diagnostics: () => Object.freeze({ prepared, routingUnavailable, enabled: !!session?.getState().enabled, accepted, rejected,
       clock: clock.diagnostics(), causal: engine.diagnostics(), dispatch: dispatcher.diagnostics(), leaseFailures, display: Object.freeze({ connected: !!releaseDisplay, errors: displayErrors, retirementBlocked: displayBlocked }),
       instruments: laneInstruments?.diagnostics() || null, renderers: routed?.backend.renderDiagnostics() || null }) };
 }
