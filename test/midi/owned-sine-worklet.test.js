@@ -5,6 +5,9 @@ import { createWorkletInstrumentBackend } from '../../js/app/midi-ui/workletInst
 import { createAudioCommandQueue } from '../../js/app/midi-ui/AudioCommandQueue.js';
 import { createAudioResourceLeases } from '../../js/app/midi-ui/AudioResourceLeases.js';
 import { createResourceBudget } from '../../js/app/resources/ResourceBudget.js';
+import { OwnedChoirKernel, CHOIR_WIDTH, CHOIR_VOICES } from '../../js/app/midi-ui/worklet/OwnedChoirProcessor.js';
+import { OwnedPluckKernel, PLUCK_WIDTH, PLUCK_VOICES } from '../../js/app/midi-ui/worklet/OwnedPluckProcessor.js';
+import { OwnedSpectrumKernel, SPECTRUM_WIDTH, SPECTRUM_VOICES } from '../../js/app/midi-ui/worklet/OwnedSpectrumProcessor.js';
 
 const row = (opcode, frame, sequence, slot = 0, token = 1, values = {}) => {
   const data = new Array(WIDTH).fill(0);
@@ -117,15 +120,20 @@ describe('Owned sine worklet kernel', () => {
   });
 });
 
-const setupHost = () => {
+const setupHost = (engineId = 'worklet-sine') => {
+  const source = { 'worklet-sine': [OwnedSineKernel, WIDTH, 64, 'owned-sine-v2-display', 'owned-sine-f64-command-v1'],
+    'worklet-choir': [OwnedChoirKernel, CHOIR_WIDTH, CHOIR_VOICES, 'owned-choir-v1', 'owned-choir-f64-command-v1'],
+    'worklet-pluck': [OwnedPluckKernel, PLUCK_WIDTH, PLUCK_VOICES, 'owned-pluck-v1', 'owned-pluck-f64-command-v1'],
+    'worklet-spectrum': [OwnedSpectrumKernel, SPECTRUM_WIDTH, SPECTRUM_VOICES, 'owned-spectrum-v1', 'owned-spectrum-f64-command-v1'] }[engineId];
   const nodes = [], context = { state: 'running', sampleRate: 48000, currentTime: 0, audioWorklet: { async addModule() {} } };
   const preview = { _generation: 0, _sessions: new Map([['owner', { generation: 0 }]]), _voices: new Set(), _semanticVoiceOwners: new Map(),
     _maxVoices: 64, _maxScheduledVoices: 96, _maxNoteSeconds: 8, _voiceSequence: 0, _nowMs: () => context.currentTime * 1000,
     _ownerReady: () => true, getAudioContext: () => context, _channel: () => ({ gain: {} }), _captureMetadata: fields => fields,
+    _inspectVoiceInterval: () => ({ accepted: true }), _inspectVoiceExtensions: () => ({ accepted: true }),
     _renderVoiceCount(voices = this._voices) { return [...voices].reduce((sum, voice) => sum + (voice.renderCost || 1), 0); },
     _destroyVoice(voice, reason) { if (this._voices.delete(voice)) { voice.onDestroy?.(reason); voice.resourceLease?.release(); } } };
   const createWorkletNode = () => {
-    const kernel = new OwnedSineKernel(48000), node = { kernel, disconnected: false, connect() {}, disconnect() { this.disconnected = true; },
+    const kernel = new source[0](48000), node = { kernel, disconnected: false, connect() {}, disconnect() { this.disconnected = true; },
       port: { onmessage: null, close() {}, postMessage(data) {
         if (data.type === 'commands') kernel.accept(data.data, data.count, data.packetSequence);
         else if (data.type === 'panic') kernel.panicPending = true;
@@ -135,20 +143,38 @@ const setupHost = () => {
           count: Math.min(64, kernel.receiptCount - index), data: kernel.receipts.slice(index * RECEIPT_WIDTH, (index + 64) * RECEIPT_WIDTH) } });
         kernel.receiptCount = 0;
       }, render(frames, start = 0) { const result = render(kernel, frames, start); this.flush(); return result; } };
-    nodes.push(node); queueMicrotask(() => node.port.onmessage?.({ data: { type: 'ready', protocol: PROTOCOL, engineId: 'worklet-sine', engineVersion: 1,
-      runtimeABI: 'owned-sine-f64-command-v1', buildId: 'owned-sine-v2-display', maxVoices: 64,
+    nodes.push(node); queueMicrotask(() => node.port.onmessage?.({ data: { type: 'ready', protocol: PROTOCOL, engineId, engineVersion: 1,
+      runtimeABI: source[4], buildId: source[3], maxVoices: source[2],
       displayProtocol: DISPLAY_PROTOCOL, displayWidth: DISPLAY_WIDTH, displayVoices: DISPLAY_VOICES,
-      sampleRate: 48000, width: WIDTH, capacity: 512 } })); return node;
+      sampleRate: 48000, width: source[1], capacity: 512 } })); return node;
   };
-  const backend = createWorkletInstrumentBackend(preview, 'owner', { createWorkletNode });
-  const patch = { status: 'ready', patch: { id: 'worklet-test', revision: 1, engineId: 'worklet-sine', engineVersion: 1,
-    parameters: {}, sampleRefs: [], voicePolicy: { maxVoices: 64 }, mix: { gain01: 0.5, pan01: 0 } }, receipt: { patchId: 'worklet-test', revision: 1 } };
+  const backend = createWorkletInstrumentBackend(preview, 'owner', { createWorkletNode, engineId });
+  const patch = { status: 'ready', patch: { id: 'worklet-test', revision: 1, engineId, engineVersion: 1,
+    parameters: {}, sampleRefs: [], voicePolicy: { maxVoices: source[2] }, mix: { gain01: 0.5, pan01: 0 } }, receipt: { patchId: 'worklet-test', revision: 1 } };
   const intent = voiceId => ({ version: 1, kind: 'begin', voiceId, generation: 1, velocity01: 0.8,
     pitch: { cents: 6000.001, referenceHz: 440 }, expression: {}, sourceEventIds: ['physical:1'] });
   return { preview, context, nodes, backend, patch, intent };
 };
 
 describe('Owned worklet host lifecycle', () => {
+  it('carries completed physical controls through the real host queue into each owned source without a new attack', async () => {
+    for (const [engineId, target, stateIndex, expected] of [['worklet-choir', 'breath01', 9, 0.9], ['worklet-pluck', 'damping01', 3, 0.9 * (1 - 0.95 * 0.9)], ['worklet-spectrum', 'scan01', 8, 0.9]]) {
+      const { backend, nodes, patch, intent, context } = setupHost(engineId), observed = [];
+      patch.patch.causalBindings = [{ id: 'movement', sourceKind: 'MotionCommitted', payloadField: 'displacementPixels', unit: 'world-pixel', target,
+        inputMin: 0, inputMax: 8, outputMin: 0.1, outputMax: 0.9, outputUnit: 'normalized', curve: 'linear', composition: 'replace', mode: 'continuous', smoothingMs: 8 }];
+      expect((await backend.prepare(patch)).status).to.equal('ready'); const execution = backend.registerExecution({ executionEpoch: 'physical-source', generation: 1 }).execution;
+      const stop = backend.observeCommandOutcomes(outcome => observed.push(outcome), { execution });
+      expect(backend.begin(intent('held'), 128, execution).status).to.equal('accepted');
+      const cause = { sourceKind: 'MotionCommitted', eventId: 'motion:one', evidence: 'completed-world-fact', values: { displacementPixels: { value: 8, unit: 'world-pixel' } } };
+      expect(backend.updatePhysical('held', cause, 256, execution)).to.include({ status: 'accepted', stage: 'queued' });
+      expect(backend.updatePhysical('held', cause, 255, execution).reason).to.equal('out-of-order-physical-control');
+      await Promise.resolve(); nodes[0].render(1024); context.currentTime = 1024 / 48000;
+      expect(nodes[0].kernel.source.state[stateIndex]).to.be.closeTo(expected, 1e-9); expect(nodes[0].kernel.voice[2]).to.equal(1);
+      expect(observed.filter(outcome => outcome.stage === 'render-kernel-applied')).to.have.length(2);
+      expect(backend.updatePhysical('held', { ...cause, eventId: 'motion:missing', values: {} }, 1152, execution)).to.include({ outputRequested: false, reason: 'no-qualified-control-measurement' });
+      stop(); backend.cancelGeneration(1, execution); await Promise.resolve(); nodes[0].render(1024, 1024); await backend.dispose().completion;
+    }
+  });
   it('retires more than 1024 executions without consuming lifetime identity capacity', async () => {
     const { backend, nodes, patch, intent } = setupHost(); await backend.prepare(patch);
     let oldest;

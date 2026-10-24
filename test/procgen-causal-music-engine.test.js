@@ -14,6 +14,18 @@ const batch = (tick, facts, generation = 1, completeness = { status: 'complete',
 });
 
 describe('causal musical intent engine', () => {
+  it('suppresses an overloaded held scope until its causal boundary and uses fresh identities after mapping changes', () => {
+    let current = graph([instrument('held-travel', 'MotionCommitted', { articulation: { spacingPixels: 1000, sustain: true, lifetimeScope: 'actorJourney' } })]);
+    const create = budget => createCausalMusicEngine({ getGraph: () => current, getPhysicalControlKinds: () => ['MotionCommitted'], maxPhysicalUpdatesPerBatch: budget });
+    const motion = x => ({ kind: 'MotionCommitted', actorId: 7, laneId: 0, positionBefore: { x: x - 1, y: 0 }, positionAfter: { x, y: 0 }, physicalPayload: { displacementPixels: 1 } });
+    const engine = create(0), [begin] = engine.processBatch(batch(1, [motion(1)])), ended = engine.processBatch(batch(2, [motion(2)]));
+    expect(ended.map(intent => intent.kind)).to.deep.equal(['end']); expect(ended[0].terminationReason).to.equal('physical-control-budget');
+    expect(engine.diagnostics()).to.include({ activeVoices: 0, suppressedVoices: 1 }); expect(engine.processBatch(batch(3, [motion(3)]))).to.have.length(0);
+    const restored = create(2048); restored.restore(engine.snapshot()); expect(restored.processBatch(batch(4, [motion(4)]))).to.have.length(0);
+    current = { ...current, revision: 2 }; const revised = restored.processBatch(batch(5, [motion(5)]));
+    expect(revised.filter(intent => intent.kind === 'begin')).to.have.length(1); expect(revised.find(intent => intent.kind === 'begin').voiceId).not.to.equal(begin.voiceId);
+    restored.processBatch(batch(6, [{ kind: 'ActorTerminated', actorId: 7, laneId: 0 }])); expect(restored.diagnostics()).to.include({ activeVoices: 0, suppressedVoices: 0 });
+  });
   it('addresses held observations by actor without new onsets, restores that index and ends it on loss or update overflow', () => {
     const current = graph([instrument('voice', 'ActionEntered', { action: 'walking' })]);
     const create = extra => createCausalMusicEngine({ getGraph: () => current, getPhysicalControlKinds: () => ['MotionCommitted'], ...extra });

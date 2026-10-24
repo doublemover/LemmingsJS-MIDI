@@ -359,6 +359,9 @@ the shared audio-frame command queue and at least the source minimum smoothing.
 No future position is predicted. Held identities retain their captured source
 kinds across patch replacement and semantic checkpoints. The per-batch bound is
 2048 physical updates; overflow releases the affected held owner explicitly.
+That scope remains suppressed through later motion/control observations until
+its lifecycle or mapping/source boundary, including after semantic restore.
+Active plus suppressed scope records share the held-owner capacity bound.
 Native renderers without continuous mappings record semantic observations only.
 Take checkpoints now retain bounded lane performance inputs separately from DSP
 state, and committed edits record changed lanes at the actual world boundary.

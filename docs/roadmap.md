@@ -2231,6 +2231,16 @@ remain unavailable, with those limits shown in the library. Fixtures remain
 unexecuted. PWM/distortion/sync, exact state,
 offline spectrum output and measured capacity/alias/listening acceptance remain.
 
+Control-budget retirement now suppresses the same held physical scope instead
+of allowing the travel path to reopen it on that observation or a later tick.
+Suppressed scopes share the held-owner capacity, retire at causal lifecycle/
+mapping/source boundaries and persist in semantic checkpoints. New mapping
+revisions use distinct voice IDs so old release tails cannot collide with a
+new mapping's owned gate. Physical music/performance source versions record
+these semantics. Source/host-queue fixtures cover actual choir/pluck/spectrum
+control application, missing observations and independent attack identity;
+they remain authored and unexecuted.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical

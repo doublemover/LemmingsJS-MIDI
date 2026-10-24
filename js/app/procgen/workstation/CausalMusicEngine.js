@@ -45,7 +45,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
   maxBeginsPerBatch = 512, maxVoices = 512, maxPhysicalUpdatesPerBatch = 2048, traceLimit = 1024 } = {}) => {
   if (typeof getGraph !== 'function' || (scoreTimeline && typeof scoreTimeline.map !== 'function')) throw new Error('A causal graph provider and valid score timeline are required.');
   if (!Number.isSafeInteger(maxPhysicalUpdatesPerBatch) || maxPhysicalUpdatesPerBatch < 0 || maxPhysicalUpdatesPerBatch > 4096) throw new Error('Invalid physical control budget.');
-  const active = new Map(), byActor = new Map(), seen = new Set(), seenOrder = [], trace = [];
+  const active = new Map(), suppressed = new Map(), byActor = new Map(), seen = new Set(), seenOrder = [], trace = [];
   const validControlKinds = kinds => Array.isArray(kinds) && kinds.length <= INSTRUMENT_PHYSICAL_SOURCE_KINDS.length && new Set(kinds).size === kinds.length && kinds.every(kind => INSTRUMENT_PHYSICAL_SOURCE_KINDS.includes(kind));
   const addVoice = (voiceId, record, restoring = false) => {
     const kinds = restoring ? record.physicalSourceKinds || [] : getPhysicalControlKinds(record.laneId);
@@ -89,6 +89,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
   };
   const endMatching = (batch, predicate, fact, reason, output) => {
     for (const record of [...active.values()]) if (predicate(record)) endVoice(batch, record, fact, reason, output);
+    for (const record of suppressed.values()) if (predicate(record)) suppressed.delete(record.voiceId);
   };
   const getCurrentGraph = () => {
     const source = getGraph();
@@ -169,7 +170,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
       const cause = byActor.has(fact.actorId) ? captureInstrumentCause(fact) : null;
       if (cause) for (const record of [...byActor.get(fact.actorId)]) {
         if (!record.physicalSourceKinds.includes(cause.sourceKind)) continue;
-        if (physicalUpdates >= maxPhysicalUpdatesPerBatch) { endVoice(batch, record, fact, 'physical-control-budget', output); continue; }
+        if (physicalUpdates >= maxPhysicalUpdatesPerBatch) { suppressed.set(record.voiceId, record); endVoice(batch, record, fact, 'physical-control-budget', output); continue; }
         const intent = intentFor(batch, fact, record.instrument, 'update', record.voiceId, null, batch.generation);
         output.push(Object.freeze({ ...intent, intentId: intent.intentId + ':physical', performanceCause: cause })); physicalUpdates++;
       }
@@ -191,10 +192,10 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
           const articulationState = Object.freeze({ travelPhase01: result.phase01, pathDistancePixels: state.pathDistancePixels,
             signedDistancePixels: state.signedDistancePixels, contactPathDistancePixels: state.contactPathDistancePixels });
           if (instrument.articulation.sustain && result.distancePixels > 0) {
-            const voiceId = `${batch.worldId}:${batch.generation}:${instrument.id}:travel:${state.scopeInstanceId}`;
+            const voiceId = `${batch.worldId}:${batch.generation}:${instrument.id}:r${current.revision}:travel:${state.scopeInstanceId}`;
             const existing = active.get(voiceId);
             if (existing) output.push(intentFor(batch, fact, instrument, 'update', voiceId, null, batch.generation, {}, articulationState));
-            else if (begins < maxBeginsPerBatch && active.size < maxVoices && responds(instrument, fact, `${fact.eventId}:sustain`)) {
+            else if (!suppressed.has(voiceId) && begins < maxBeginsPerBatch && active.size + suppressed.size < maxVoices && responds(instrument, fact, `${fact.eventId}:sustain`)) {
               output.push(intentFor(batch, fact, instrument, 'begin', voiceId, null, batch.generation, {}, articulationState)); begins++;
               addVoice(voiceId, { voiceId, instrument, graphRevision: current.revision, generation: batch.generation,
                 actorId: fact.actorId, laneId: fact.laneId, actionInstanceId: fact.actionInstanceId,
@@ -204,7 +205,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
           for (const crossing of result.crossings) {
             if (!responds(instrument, fact, `${fact.eventId}:travel:${crossing.ordinal}`)) continue;
             if (begins >= maxBeginsPerBatch) { reject(instrument); continue; }
-            const voiceId = `${batch.worldId}:${batch.generation}:${instrument.id}:${fact.eventId}:travel:${crossing.ordinal}`;
+            const voiceId = `${batch.worldId}:${batch.generation}:${instrument.id}:r${current.revision}:${fact.eventId}:travel:${crossing.ordinal}`;
             const crossingState = { ...articulationState, crossing: Object.freeze(crossing) };
             output.push(intentFor(batch, fact, instrument, 'begin', voiceId, null, batch.generation, {}, crossingState));
             output.push(intentFor(batch, fact, instrument, 'end', voiceId, 'one-shot')); begins++;
@@ -220,13 +221,13 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
         }
         if (instrument.changedOnly && !((fact.physicalPayload?.changedSolidCells || 0) > 0 || (fact.physicalPayload?.changedAppearanceCells || 0) > 0)) continue;
         if (!responds(instrument, fact)) continue;
-        if (begins >= maxBeginsPerBatch || (['ActionEntered', 'ContactSpanBegan'].includes(fact.kind) && active.size >= maxVoices)) {
+        if (begins >= maxBeginsPerBatch || (['ActionEntered', 'ContactSpanBegan'].includes(fact.kind) && active.size + suppressed.size >= maxVoices)) {
           rejected++; rejectedByInstrument.set(instrument.id, (rejectedByInstrument.get(instrument.id) || 0) + 1); continue;
         }
         const sourceId = fact.kind === 'ActionEntered' ? fact.actionInstanceId : fact.kind === 'ContactSpanBegan' ? fact.spanId : fact.eventId;
         if (!nonempty(sourceId)) continue;
-        const voiceId = `${batch.worldId}:${batch.generation}:${instrument.id}:${sourceId}`;
-        if (active.has(voiceId)) continue;
+        const voiceId = `${batch.worldId}:${batch.generation}:${instrument.id}:r${current.revision}:${sourceId}`;
+        if (active.has(voiceId) || suppressed.has(voiceId)) continue;
         output.push(intentFor(batch, fact, instrument, 'begin', voiceId, null, batch.generation, {},
           fact.kind === 'ContactSpanBegan' ? { contactAnchor: Object.freeze({ ...fact.anchor }), surfaceRevision: fact.surfaceRevision,
             observedTick: fact.observedTick } : null)); begins++;
@@ -239,38 +240,43 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     }
     return publish(batch, output);
   };
+  const serializeVoices = records => Object.freeze([...records.values()].map(record => Object.freeze({ voiceId: record.voiceId,
+    instrumentId: record.instrument.id, graphRevision: record.graphRevision, generation: record.generation, actorId: record.actorId,
+    laneId: record.laneId, actionInstanceId: record.actionInstanceId,
+    ...(record.physicalSourceKinds.length ? { physicalSourceKinds: record.physicalSourceKinds } : {}),
+    ...(record.lifetimeScope ? { lifetimeScope: record.lifetimeScope, scopeInstanceId: record.scopeInstanceId } : {}) })));
   const snapshot = () => { getCurrentGraph(); const performance = getPerformanceState(); return Object.freeze({ version: 1, generation, graphRevision: graph.revision, travel: travel.snapshot(), physicalCursor: Object.freeze({ ...cursor }),
     ...(performance ? { performanceInputs: validateCausalPerformanceState(performance) } : {}),
-    active: Object.freeze([...active.values()].map(record => Object.freeze({ voiceId: record.voiceId,
-      instrumentId: record.instrument.id, graphRevision: record.graphRevision, generation: record.generation, actorId: record.actorId,
-      laneId: record.laneId, actionInstanceId: record.actionInstanceId,
-      ...(record.physicalSourceKinds.length ? { physicalSourceKinds: record.physicalSourceKinds } : {}),
-      ...(record.lifetimeScope ? { lifetimeScope: record.lifetimeScope, scopeInstanceId: record.scopeInstanceId } : {}) }))) }); };
+    active: serializeVoices(active), ...(suppressed.size ? { suppressed: serializeVoices(suppressed) } : {}) }); };
   const restore = value => {
     const current = getCurrentGraph();
     if (value?.performanceInputs && JSON.stringify(validateCausalPerformanceState(value.performanceInputs)) !== JSON.stringify(validateCausalPerformanceState(getPerformanceState())))
       throw new Error('Causal performance inputs differ from the checkpoint.');
-    if (value?.version !== 1 || value.graphRevision !== current.revision || !Array.isArray(value.active) || value.active.length > maxVoices) throw new Error('Incompatible causal engine checkpoint.');
+    if (value?.version !== 1 || value.graphRevision !== current.revision || !Array.isArray(value.active) || !Array.isArray(value.suppressed ?? []) || value.active.length + (value.suppressed?.length || 0) > maxVoices) throw new Error('Incompatible causal engine checkpoint.');
     const nextCursor = value.physicalCursor ?? { worldId: null, generation: value.generation, tick: -1, lastSequence: -1, batchId: null };
     if (!plain(nextCursor) || (nextCursor.worldId != null && !nonempty(nextCursor.worldId)) ||
         !Number.isSafeInteger(nextCursor.tick) || nextCursor.tick < -1 || !Number.isSafeInteger(nextCursor.lastSequence) || nextCursor.lastSequence < -1 ||
         nextCursor.generation !== value.generation || (nextCursor.batchId != null && !nonempty(nextCursor.batchId))) throw new Error('Invalid causal source cursor checkpoint.');
-    const next = new Map();
-    for (const record of value.active) {
-      const instrument = current.instruments.find(item => item.id === record.instrumentId);
-      if (!plain(record) || !instrument || !voiceIdentity(record.voiceId) || (!record.lifetimeScope && !nonempty(record.actionInstanceId)) || next.has(record.voiceId) ||
+    const seenVoices = new Set(), readVoices = records => {
+      const next = new Map();
+      for (const record of records) {
+        const instrument = plain(record) ? current.instruments.find(item => item.id === record.instrumentId) : null;
+        if (!plain(record) || !instrument || !voiceIdentity(record.voiceId) || (!record.lifetimeScope && !nonempty(record.actionInstanceId)) || seenVoices.has(record.voiceId) ||
           record.lifetimeScope && (!nonempty(record.scopeInstanceId) || record.lifetimeScope !== (instrument.articulation?.lifetimeScope ??
             (instrument.sourceKind === 'ContactSpanBegan' ? 'contactSpan' : null))) ||
           !Number.isSafeInteger(record.actorId) || !Number.isSafeInteger(record.generation) || record.generation !== value.generation ||
           record.graphRevision !== current.revision || !validControlKinds(record.physicalSourceKinds || [])) throw new Error('Invalid causal voice checkpoint.');
-      next.set(record.voiceId, { ...record, instrument });
-    }
+        seenVoices.add(record.voiceId); next.set(record.voiceId, { ...record, instrument, physicalSourceKinds: Object.freeze([...(record.physicalSourceKinds || [])].sort()) });
+      } return next;
+    };
+    const next = readVoices(value.active), nextSuppressed = readVoices(value.suppressed || []);
     if (value.travel) travel.restore(value.travel); else travel.reset();
-    active.clear(); byActor.clear(); for (const [id, record] of next) addVoice(id, record, true);
+    active.clear(); byActor.clear(); suppressed.clear(); for (const [id, record] of next) addVoice(id, record, true);
+    for (const [id, record] of nextSuppressed) suppressed.set(id, record);
     seen.clear(); seenOrder.length = 0; generation = value.generation; cursor = { ...nextCursor };
     if (cursor.batchId) { seen.add(cursor.batchId); seenOrder.push(cursor.batchId); }
   };
-  const diagnostics = () => Object.freeze({ activeVoices: active.size, deliveryErrors: errors, rejectedBegins: rejected,
+  const diagnostics = () => Object.freeze({ activeVoices: active.size, suppressedVoices: suppressed.size, deliveryErrors: errors, rejectedBegins: rejected,
     accepted: Object.freeze(Object.fromEntries(accepted)), rejected: Object.freeze(Object.fromEntries(rejectedByInstrument)),
     trace: Object.freeze([...trace]), decisions: Object.freeze([...decisions]) });
   return { processBatch, snapshot, restore, diagnostics };
