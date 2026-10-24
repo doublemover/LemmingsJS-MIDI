@@ -15,8 +15,10 @@ const before = (left, right) => left < right ? -1 : left > right ? 1 : 0;
 
 export function convertSoundQuantity(quantity, targetUnit, path = 'quantity') {
   requireValue(object(quantity) && finite(quantity.value) && units.has(quantity.unit) && units.has(targetUnit), path, 'expected a finite typed quantity');
+  requireValue(Object.keys(quantity).every(key => ['value', 'unit', 'conversion'].includes(key)), path, 'unknown typed-quantity field');
   if (quantity.unit === targetUnit) { requireValue(quantity.conversion == null, path, 'same-unit values cannot hide a conversion'); return quantity.value; }
   const conversion = quantity.conversion; requireValue(object(conversion) && conversion.to === targetUnit, path, 'explicit conversion required from ' + quantity.unit + ' to ' + targetUnit);
+  requireValue(Object.keys(conversion).every(key => ['kind', 'to', 'inputMin', 'inputMax', 'outputMin', 'outputMax'].includes(key)), path, 'unknown conversion field');
   let result;
   if (conversion.kind === 'db-amplitude' && quantity.unit === 'dB' && targetUnit === 'amplitude-linear') result = 10 ** (quantity.value / 20);
   else if (conversion.kind === 'amplitude-db' && quantity.unit === 'amplitude-linear' && targetUnit === 'dB' && quantity.value > 0) result = 20 * Math.log10(quantity.value);

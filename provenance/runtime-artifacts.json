@@ -108,10 +108,10 @@
       "license": "NOASSERTION",
       "reproductionStatus": "first-party-immutable-module-worker-and-complete-static-job-closure",
       "classification": "source",
-      "entryPoints": ["js/app/procgen/workstation/ProcgenWorkstation.js", "js/app/procgen/workstation/ProcgenSessionStorage.js", "js/data/file-provider/FileProviderFetch.js", "js/editor/EditorAssetCache.js", "js/app/midi-ui/SoundContentArchive.js", "js/app/midi-ui/SoundContentReader.js"],
+      "entryPoints": ["js/app/procgen/workstation/ProcgenWorkstation.js", "js/app/procgen/workstation/ProcgenSessionStorage.js", "js/data/file-provider/FileProviderFetch.js", "js/editor/EditorAssetCache.js", "js/app/midi-ui/SoundContentArchive.js", "js/app/midi-ui/SoundContentReader.js", "js/app/midi-ui/SoundContentLibrary.js"],
       "files": ["js/app/midi-ui/NativeInstrumentSchema.js", "js/app/procgen/ProcgenAuthoredAssemblies.js", "js/app/procgen/ProcgenTerrainDescriptors.js", "js/app/procgen/survey/ProcgenSurveyCanonical.js", "js/app/procgen/workstation/ProcgenRecoveryChecksum.js", "js/app/resources/BackgroundJobKernels.js", "js/app/resources/BackgroundJobService.js", "js/app/resources/BackgroundJobWorker.js", "js/app/resources/BackgroundWorkerAdmission.js", "js/app/resources/GroundAssetDecode.js", "js/app/resources/GroundAssetRegistry.js", "js/app/resources/ResourceBudget.js", "js/app/resources/SharedContentJobs.js", "js/core/CanonicalData.js", "js/core/dependencies.js", "js/data/BinaryReader.js", "js/data/BitReader.js", "js/data/BitWriter.js", "js/data/FileContainer.js", "js/data/UnpackFilePart.js", "js/lemmings/CharacterHazardTypes.js", "js/level/GroundReader.js", "js/level/ObjectImageInfo.js", "js/midi/content/InstrumentPatchV2.js", "js/midi/content/SoundContentCompiler.js", "js/midi/content/SoundContentPack.js", "js/render/BaseImageInfo.js", "js/render/ColorPalette.js", "js/render/Frame.js", "js/render/PaletteImage.js", "js/render/TerrainImageInfo.js", "js/runtime/ActiveExecutionIdentity.js", "js/steelSprites.json", "js/steelSpritesData.js", "js/util/LogHandler.js", "js/util/performanceInstrumentation.js"],
       "fileCount": 36,
-      "sha256": "8387c203dbfa67e34d4f8e350b2601810409b98ef52f55f2d7c438d583e5a697"
+      "sha256": "f457beee15f2d17f52ae1e67c83d9539c2b0b8d3bbb6afbed27cf3ced27f9fce"
     },
     {
       "id": "lemmings-timing-worker-source",

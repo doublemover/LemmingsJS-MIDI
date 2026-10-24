@@ -93,10 +93,13 @@ export function createSoundContentArchiver({ resourceBudget, jobs = backgroundJo
       operation.budgetHeld = true;
       const selectionHash = await hashData({ source: prepared.contentHash, selection: [...selection].sort() }); check();
       const source = prepared.pack, licenses = new Set(plan.credits.map(entry => entry.rights.licenseTextHash).filter(Boolean));
-      const pack = { schema: source.schema, id: source.id.slice(0, 64) + '.selection.' + selectionHash.slice(0, 24), version: source.version,
+      const complete = selection.length === source.patches.length && plan.files.length === source.files.length && licenses.size === source.licenses.length;
+      const pack = complete ? source : { schema: source.schema, id: source.id.slice(0, 64) + '.selection.' + selectionHash.slice(0, 24), version: source.version,
         name: source.name, author: source.author, sourceUrl: source.sourceUrl ?? null, licenseId: source.licenseId, licenseUrl: source.licenseUrl ?? null,
         attribution: source.attribution, modifications: source.modifications, redistributionPolicy: source.redistributionPolicy,
-        origin: { id: source.id, version: source.version, contentHash: prepared.contentHash },
+        origin: source.origin || { id: source.id, version: source.version, contentHash: prepared.contentHash },
+        ...(source.compilation ? { compilation: { compilerRevision: source.compilation.compilerRevision, sourceHash: source.compilation.sourceHash,
+          schemaRevision: source.compilation.schemaRevision, artifacts: source.compilation.artifacts.filter(artifact => selection.includes(artifact.id + '@' + artifact.revision)) } } : {}),
         files: plan.files, patches: source.patches.filter(entry => selection.includes(entry.definition.id + '@' + entry.definition.revision)),
         licenses: source.licenses.filter(license => licenses.has(license.sha256)) };
       const selected = await own(() => prepareSoundContentPack(pack, { signal })); check();

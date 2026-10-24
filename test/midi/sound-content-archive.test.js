@@ -51,6 +51,17 @@ describe('selected sound material archive preparation', () => {
     const result = await owner.archiver.prepareExport(request({ mode: 'reference-only', reviewRights: undefined, readAsset: async () => { opened++; } }));
     expect(opened).to.equal(0); expect(result.mode).to.equal('reference-only'); result.artifact.discard(); await result.artifact.digest(); owner.dispose();
   });
+  it('preserves the immutable pack identity when exporting its complete already-minimal inventory', async () => {
+    const owner = setup(), requirement = prepared.pack.patches[0].engineRequirement;
+    const minimal = await prepareSoundContentPack({ ...prepared.pack, files: prepared.pack.files.filter(file => file.sha256 === sha256(bytes)) },
+      { engineDescriptors: [{ ...requirement, parameters: [], capabilities: {} }] });
+    const result = await owner.archiver.prepareExport(request({ prepared: minimal, mode: 'reference-only' }));
+    expect(result.selectedPackHash).to.equal(minimal.contentHash);
+    const lease = result.artifact.borrow(), archive = new Uint8Array(await lease.blob.arrayBuffer()); lease.release();
+    const size = new DataView(archive.buffer).getUint32(8, false), header = JSON.parse(new TextDecoder().decode(archive.subarray(12, 12 + size)));
+    expect(header.pack.id).to.equal(minimal.pack.id); expect(header.contentHash).to.equal(minimal.contentHash);
+    result.artifact.discard(); await result.artifact.digest(); owner.dispose();
+  });
   it('rejects missing rights, copied preparation labels and changed payload bytes before publication', async () => {
     const owner = setup(); let opened = 0;
     await rejects(owner.archiver.prepareExport(request({ reviewRights: undefined, readAsset: async () => { opened++; } })), 'reference-only-required'); expect(opened).to.equal(0);

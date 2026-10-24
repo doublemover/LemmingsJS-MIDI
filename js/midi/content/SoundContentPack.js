@@ -11,12 +11,54 @@ const localPath = value => text(value, 512) && /^[A-Za-z0-9_./@-]+$/.test(value)
 const sourceUrl = value => value == null || text(value, 2048) && /^(?:https:\/\/[^\s]+|urn:[A-Za-z0-9][^\s]*)$/.test(value);
 const fail = (code, message, detail = {}) => Object.assign(new Error(message), { name: 'SoundContentError', code, ...detail });
 const assertContent = (condition, path, message) => { if (!condition) throw fail('invalid-content', path + ': ' + message, { path }); };
+const keysOnly = (value, keys, path) => assertContent(value && Object.keys(value).every(key => keys.includes(key)), path, 'unknown field in this content schema');
 const kinds = ['engine-code', 'patch-recipe', 'sample-recording', 'demo-composition', 'derived-data'];
 const fileKinds = ['sample', 'impulse-response', 'wavetable', 'body-table', 'tuning', 'spectrum', 'generated-data'];
 const before = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 const preparedPacks = new WeakMap();
+const conversionRecord = (value, path) => {
+  if (value == null) return;
+  keysOnly(value, ['kind', 'to', 'inputMin', 'inputMax', 'outputMin', 'outputMax'], path);
+  assertContent(text(value.kind, 64) && text(value.to, 32) && ['inputMin', 'inputMax', 'outputMin', 'outputMax'].every(key => value[key] == null || Number.isFinite(value[key])), path, 'invalid explicit conversion');
+};
+const compilerArtifact = (artifact, patch) => {
+  const path = 'compilation.artifacts.' + artifact.id;
+  keysOnly(artifact.display, ['name', 'author', 'tags'], path + '.display');
+  assertContent(text(artifact.display.name, 160) && text(artifact.display.author, 160) && Array.isArray(artifact.display.tags) && artifact.display.tags.length <= 16 && artifact.display.tags.every(id), path, 'invalid compiler display metadata');
+  keysOnly(artifact.engineRequirement, ['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'], path + '.engineRequirement');
+  assertContent(canonicalDataText(artifact.engineRequirement).text === canonicalDataText(patch.engineRequirement).text, path, 'explanation engine requirement differs from the patch');
+  for (const parameter of artifact.parameters) {
+    keysOnly(parameter, ['component', 'parameter', 'authored', 'effectiveValue', 'unit', 'minimum', 'maximum', 'default', 'liveSafe'], path + '.parameters');
+    keysOnly(parameter.authored, ['value', 'unit', 'conversion'], path + '.parameters.authored');
+    assertContent(id(parameter.component) && id(parameter.parameter) && [parameter.authored.value, parameter.effectiveValue, parameter.minimum, parameter.maximum, parameter.default].every(Number.isFinite) &&
+      text(parameter.unit, 32) && text(parameter.authored.unit, 32) && typeof parameter.liveSafe === 'boolean', path, 'invalid typed parameter explanation');
+    conversionRecord(parameter.authored.conversion, path + '.conversion');
+  }
+  for (const macro of artifact.macros) {
+    keysOnly(macro, ['id', 'name', 'mode', 'perceptualDirection', 'mappings'], path + '.macros');
+    assertContent(id(macro.id) && text(macro.name, 80) && ['onset-only', 'continuous'].includes(macro.mode) && text(macro.perceptualDirection, 256) &&
+      Array.isArray(macro.mappings) && macro.mappings.length <= 16, path, 'invalid macro explanation');
+    for (const mapping of macro.mappings) {
+      keysOnly(mapping, ['parameter', 'minimum', 'maximum', 'unit', 'conversion', 'clamp'], path + '.macroMappings');
+      keysOnly(mapping.conversion, ['minimum', 'maximum'], path + '.macroConversion');
+      assertContent(id(mapping.parameter) && Number.isFinite(mapping.minimum) && Number.isFinite(mapping.maximum) && text(mapping.unit, 32) && typeof mapping.clamp === 'boolean', path, 'invalid macro mapping');
+      conversionRecord(mapping.conversion.minimum, path + '.macroMinimum'); conversionRecord(mapping.conversion.maximum, path + '.macroMaximum');
+    }
+  }
+  for (const modulation of artifact.modulationBounds) {
+    keysOnly(modulation, ['id', 'sourceUnit', 'bounds'], path + '.modulationBounds'); keysOnly(modulation.bounds, ['minimum', 'maximum', 'unit'], path + '.modulationRange');
+    assertContent(id(modulation.id) && text(modulation.sourceUnit, 32) && text(modulation.bounds.unit, 32) &&
+      Number.isFinite(modulation.bounds.minimum) && Number.isFinite(modulation.bounds.maximum), path, 'invalid modulation bounds');
+  }
+  keysOnly(artifact.cost, ['maxVoices', 'componentCount', 'assetCount', 'modulationEdges', 'estimateClass'], path + '.cost');
+  assertContent(natural(artifact.cost.maxVoices, 1024) && natural(artifact.cost.componentCount, 32) && natural(artifact.cost.assetCount, 512) && natural(artifact.cost.modulationEdges, 64) &&
+    artifact.cost.estimateClass === 'declared-structure-not-measured-cpu', path, 'invalid declared cost');
+  keysOnly(artifact.audition, ['kind', 'effectivePatchHash', 'renderEvidence'], path + '.audition');
+  assertContent(artifact.audition.kind === 'real-causal-take-required' && artifact.audition.effectivePatchHash === artifact.renderKey && artifact.audition.renderEvidence === 'not-produced', path, 'imported compilation cannot supply trusted render qualification');
+};
 
 const rights = (value, path, licenses) => {
+  keysOnly(value, ['kind', 'creator', 'sourceUrl', 'licenseId', 'licenseUrl', 'attribution', 'modifications', 'declaredUse', 'licenseTextHash'], path);
   assertContent(value && kinds.includes(value.kind) && (value.creator == null || text(value.creator, 160)) && sourceUrl(value.sourceUrl) &&
     text(value.licenseId, 128) && sourceUrl(value.licenseUrl) && text(value.attribution, 4096, true) &&
     Array.isArray(value.modifications) && value.modifications.length <= 32 && value.modifications.every(item => text(item, 1024)) &&
@@ -27,6 +69,8 @@ const rights = (value, path, licenses) => {
 export async function prepareSoundContentPack(raw, { engineDescriptors = [], signal } = {}) {
   signal?.throwIfAborted();
   const pack = cloneData(raw, LIMITS);
+  keysOnly(pack, ['schema', 'id', 'version', 'name', 'author', 'sourceUrl', 'licenseId', 'licenseUrl', 'attribution', 'modifications', 'redistributionPolicy',
+    'files', 'patches', 'licenses', 'origin', 'compilation'], 'pack');
   assertContent(pack?.schema === SOUND_CONTENT_SCHEMA && id(pack.id) && text(pack.version, 64) && /^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/.test(pack.version) &&
     text(pack.name, 160) && text(pack.author, 160) && sourceUrl(pack.sourceUrl) && text(pack.licenseId, 128) && sourceUrl(pack.licenseUrl) &&
     text(pack.attribution, 4096, true) && Array.isArray(pack.modifications) && pack.modifications.length <= 32 && pack.modifications.every(item => text(item, 1024)) &&
@@ -35,6 +79,7 @@ export async function prepareSoundContentPack(raw, { engineDescriptors = [], sig
     Array.isArray(pack.licenses) && pack.licenses.length <= 128 && Array.isArray(engineDescriptors) && engineDescriptors.length <= 256, 'pack', 'inventory exceeds its bounds');
   const licenses = new Map();
   for (const license of pack.licenses) {
+    keysOnly(license, ['id', 'sha256', 'text', 'url'], 'licenses');
     signal?.throwIfAborted();
     assertContent(license && text(license.id, 128) && hash(license.sha256) && text(license.text, 32768) && sourceUrl(license.url) && !licenses.has(license.sha256), 'licenses', 'invalid license snapshot');
     assertContent(await hashDataText(license.text) === license.sha256, 'licenses.' + license.id, 'license snapshot hash mismatch'); licenses.set(license.sha256, license);
@@ -48,6 +93,7 @@ export async function prepareSoundContentPack(raw, { engineDescriptors = [], sig
   };
   for (const file of pack.files) {
     signal?.throwIfAborted();
+    keysOnly(file, ['path', 'sha256', 'bytes', 'kind', 'mediaType', 'parents', 'rights'], 'files');
     assertContent(file && localPath(file.path) && !paths.has(file.path) && hash(file.sha256) && !files.has(file.sha256) && natural(file.bytes, 16 * 1048576) &&
       fileKinds.includes(file.kind) && !/\.(?:[cm]?js|wasm|html|svg)$/i.test(file.path) &&
       (['sample', 'impulse-response'].includes(file.kind) ? ['audio/wav', 'audio/x-wav'].includes(file.mediaType) : ['application/json', 'application/octet-stream'].includes(file.mediaType)) &&
@@ -71,7 +117,11 @@ export async function prepareSoundContentPack(raw, { engineDescriptors = [], sig
   const patches = [], identities = new Set();
   for (const entry of pack.patches) {
     signal?.throwIfAborted();
+    keysOnly(entry, ['definition', 'engineRequirement', 'dependencies', 'rights'], 'patches');
     const patch = entry?.definition, requirement = entry?.engineRequirement, identity = patch?.id + '@' + patch?.revision;
+    keysOnly(requirement, ['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'], 'patches.engineRequirement');
+    if (patch?.schemaVersion === 2) keysOnly(patch, ['schemaVersion', 'id', 'revision', 'name', 'author', 'tags', 'engineId', 'engineVersion', 'parameters',
+      'modulations', 'sampleRefs', 'macros', 'causalBindings', 'voicePolicy', 'mix', 'midiFallback'], 'patches.definition');
     assertContent(patch && id(patch.id) && natural(patch.revision, 2147483647) && patch.revision > 0 && !identities.has(identity) &&
       requirement && id(requirement.engineId) && natural(requirement.engineVersion, 65535) && requirement.engineVersion > 0 &&
       hash(requirement.artifactHash) && hash(requirement.parameterSchemaHash) && patch.engineId === requirement.engineId && patch.engineVersion === requirement.engineVersion &&
@@ -91,6 +141,25 @@ export async function prepareSoundContentPack(raw, { engineDescriptors = [], sig
       engineRequirement: requirement, rights: entry.rights, rightsHash: await rightsDigest(entry.rights), state, reason });
   }
   signal?.throwIfAborted();
+  if (pack.origin != null) {
+    keysOnly(pack.origin, ['id', 'version', 'contentHash'], 'origin');
+    assertContent(id(pack.origin.id) && text(pack.origin.version, 64) && hash(pack.origin.contentHash), 'origin', 'invalid immutable source reference');
+  }
+  if (pack.compilation != null) {
+    const compilation = pack.compilation; keysOnly(compilation, ['compilerRevision', 'sourceHash', 'schemaRevision', 'artifacts'], 'compilation');
+    assertContent(compilation.compilerRevision === 'typed-recipes-v1' && compilation.schemaRevision === 'lemmings-sound-recipes/v1' && hash(compilation.sourceHash) &&
+      Array.isArray(compilation.artifacts) && compilation.artifacts.length === patches.length && compilation.artifacts.every(artifact => artifact && typeof artifact === 'object' && !Array.isArray(artifact)) &&
+      new Set(compilation.artifacts.map(artifact => artifact.id + '@' + artifact.revision)).size === patches.length,
+    'compilation', 'unsupported compilation inventory');
+    for (const artifact of compilation.artifacts) {
+      keysOnly(artifact, ['id', 'revision', 'display', 'renderKey', 'rightsHash', 'engineRequirement', 'inheritance', 'overrides', 'parameters', 'macros', 'modulationBounds', 'cost', 'audition'], 'compilation.artifacts');
+      assertContent(identities.has(artifact.id + '@' + artifact.revision) && hash(artifact.renderKey) && hash(artifact.rightsHash) && Array.isArray(artifact.inheritance) &&
+        artifact.inheritance.length <= 33 && artifact.inheritance.every(id) && Array.isArray(artifact.overrides) && artifact.overrides.length <= 128 && artifact.overrides.every(value => text(value, 256)) &&
+        Array.isArray(artifact.parameters) && artifact.parameters.length <= 128 && Array.isArray(artifact.macros) && artifact.macros.length <= 4 &&
+        Array.isArray(artifact.modulationBounds) && artifact.modulationBounds.length <= 64, 'compilation.artifacts', 'invalid compiler explanation bounds');
+      compilerArtifact(artifact, patches.find(patch => patch.identity === artifact.id + '@' + artifact.revision));
+    }
+  }
   const normalized = { ...pack, files: pack.files.map(file => ({ ...file, parents: [...file.parents].sort() })).sort((a, b) => before(a.path, b.path)),
     licenses: [...pack.licenses].sort((a, b) => before(a.sha256, b.sha256)),
     patches: pack.patches.map(entry => ({ ...entry, dependencies: [...entry.dependencies].sort() })).sort((a, b) => before(a.definition.id + '@' + a.definition.revision, b.definition.id + '@' + b.definition.revision)) };

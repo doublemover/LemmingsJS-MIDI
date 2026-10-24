@@ -1,4 +1,5 @@
 const UNSAFE_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
+const ownedFrozenGraphs = new WeakSet();
 const plain = value => Array.isArray(value) ? Object.getPrototypeOf(value) === Array.prototype : [Object.prototype, null].includes(Object.getPrototypeOf(value));
 const ownValue = (value, key, domain) => {
   const descriptor = Object.getOwnPropertyDescriptor(value, key);
@@ -70,7 +71,9 @@ export function canonicalDataText(value, { maxBytes = 1048576, maxNodes = 200000
 }
 
 export const freezeData = value => {
-  if (value && typeof value === 'object') { for (const child of Object.values(value)) freezeData(child); Object.freeze(value); }
+  if (value && typeof value === 'object' && !ownedFrozenGraphs.has(value)) {
+    for (const child of Object.values(value)) freezeData(child); Object.freeze(value); ownedFrozenGraphs.add(value);
+  }
   return value;
 };
 export const cloneData = (value, options) => freezeData(JSON.parse(canonicalDataText(value, options).text));

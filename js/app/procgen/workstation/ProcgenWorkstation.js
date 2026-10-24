@@ -21,6 +21,7 @@ import { deliverArtifactToAnchor, deliverArtifactToFileHandle, prepareExportArti
 import { backgroundJobService } from '../../resources/BackgroundJobService.js';
 import { readBrowserBuildResponse } from '../../../runtime/BrowserGenerationService.js';
 import { validateSoundContentReference } from '../../../midi/content/SoundContentReference.js';
+import { createSoundContentLibrary } from '../../midi-ui/SoundContentLibrary.js';
 
 const STORAGE_KEY = 'lemmings.procgen.workstation.v1';
 const MAX_SESSION_FILE_BYTES = 64 * 1048576;
@@ -96,6 +97,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let lastCausalTake = null, lastCausalInspection = null, physicalReceiptBuffer = null, physicalReceiptBoundary = null, causalTakeErrorReported = false;
   let selectedCausalTakeId = null, causalTakePage = null, causalTakeCursor = null, causalTakeBack = [], causalTakeListSerial = 0;
   let physicalScoreProjection = null, physicalScore = null, physicalScoreQuery = null, physicalScoreAbort = null, physicalScoreSerial = 0, physicalScoreParent = null;
+  let soundLibrary = null;
   let pendingHistory = null;
   const routerRestores = new Map();
   const undo = [], redo = [], listeners = [], noteEntries = new Map();
@@ -657,7 +659,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     physicalScoreClock = createProcgenPhysicalScoreClock(); physicalClockError = false;
     if (session?.physicalTimeline) physicalScoreClock.restore(session.physicalTimeline);
     physicalPlayback = createProcgenPhysicalPlayback({ audio: legacy.local.audio,
-      getGraph: () => project.procgen.physicalGraph, getLanes: () => project.procgen.lanes, scoreTimeline: physicalScoreClock, now,
+      getGraph: () => project.procgen.physicalGraph, getLanes: () => project.procgen.lanes, isPlaybackEnabled: localEnabled, scoreTimeline: physicalScoreClock, now,
       onInstrumentState: event => { if (event.state === 'unavailable' || event.state === 'retirement-unknown') status('Lane ' + event.laneId + ' instrument: ' + event.code); },
       onReceipt: receipt => {
         if (physicalReceiptBuffer) physicalReceiptBuffer.push(receipt);
@@ -953,12 +955,20 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     return committed;
   };
   const handlers = {
-    async applyInstalledInstrument(candidate) {
+    openSoundLibrary() {
+      if (disposed || !resourceBudget || !legacy.local.audio) { status('Sound library resource ownership is unavailable.'); return; }
+      soundLibrary ||= createSoundContentLibrary({ document, window, audio: legacy.local.audio, resourceBudget, jobs: backgroundJobs,
+        onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onStatus: status });
+      soundLibrary.open();
+    },
+    async applyInstalledInstrument(candidate, { signal } = {}) {
+      signal?.throwIfAborted();
       if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop || !physicalPlayback) throw new Error('Finish the current world/history/take operation before applying an instrument.');
       const laneId = selected().id, generation = documentGeneration, revision = projectRevision, playback = physicalPlayback;
       const reference = validateSoundContentReference({ ...candidate.reference, definition: candidate.definition });
-      const prepared = await playback.prepareLaneInstrument(laneId, reference);
+      const prepared = await playback.prepareLaneInstrument(laneId, reference, { signal });
       try {
+        signal?.throwIfAborted();
         if (disposed || playback !== physicalPlayback || generation !== documentGeneration || revision !== projectRevision || selected().id !== laneId || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop)
           throw new Error('Instrument Apply canceled because its lane or project changed.');
         prepared.commit();
@@ -1271,6 +1281,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'router-hook', run: () => unhookRouter?.() },
         { name: 'world-hook', run: () => unhookWorld?.() },
         { name: 'physical-playback', run: () => physicalPlayback?.dispose() },
+        { name: 'sound-library', run: () => soundLibrary?.dispose() },
         { name: 'transport', run: () => transport.dispose()?.completion },
         { name: 'midi-ports', run: () => ports.dispose() },
         ...removeListeners.map((remove, index) => ({ name: `listener-${index}`, run: remove })),

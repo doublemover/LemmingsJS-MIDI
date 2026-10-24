@@ -1,0 +1,22 @@
+.studio-sound-library {
+  box-sizing: border-box;
+  width: min(760px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 24px;
+  border: 1px solid #71838d;
+  border-radius: 12px;
+  color: #eef4f6;
+  background: #202b34;
+  font: 14px/1.5 system-ui, sans-serif;
+}
+.studio-sound-library::backdrop { background: #07111acc; }
+.studio-sound-library h2 { margin: 0 0 12px; }
+.studio-sound-library select,
+.studio-sound-library input[type="file"] { max-width: 100%; margin: 8px 0; }
+.studio-sound-library label { display: block; margin: 12px 0; }
+.studio-sound-library ul { max-height: 190px; overflow: auto; padding-left: 24px; overflow-wrap: anywhere; }
+.studio-sound-library button { min-height: 38px; padding: 6px 10px; margin: 4px; }
+.studio-sound-library button:disabled { opacity: 0.5; }
+.studio-sound-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.studio-sound-library [role="status"] { min-height: 42px; color: #b9e1f5; }

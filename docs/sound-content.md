@@ -159,3 +159,14 @@ new attacks. Authored release times follow their voice owner. The workstation
 Apply handler checks the selected lane and project revision before publishing
 the prepared change and preserving Undo. Instrument changes during causal-take
 capture/arming are rejected until effective-patch changes can be journaled.
+
+The workstation Lane inspector opens a persistent Sound library dialog. It
+stages local imports, compiles the original recipes in the fixed worker,
+auditions, installs, applies and prepares selected exports through the same
+owners. Reviewing credits grants no permission when provenance is incomplete.
+Anchor delivery remains a request; file-handle delivery reports acknowledged
+close separately. Installed packs can be archived and restored without deleting
+project material. Reopening an already-minimal complete pack preserves its
+immutable ID/hash, and subset exports preserve only selected compilation data.
+The v1 inventory rejects unrelated opaque fields instead of bundling private
+project state inside a nominal sound pack.

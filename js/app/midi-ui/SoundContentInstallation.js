@@ -137,6 +137,16 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
     } finally { lease.release(); }
   };
   return Object.freeze({ audition, install, applyCandidate, fixture, stop() { active?.controller.abort(failure('cancelled', 'Sound audition stopped.')); },
+    async acknowledgeInstalled(stage, { signal } = {}) {
+      if (disposed) throw failure('owner-retired', 'Sound installation owner retired.');
+      const lease = borrowSoundContentStage(stage);
+      try { const saved = await registry.loadPack(lease.metadata.contentHash, { signal, engineDescriptors: (await getCatalog()).descriptors });
+        if (!saved) throw failure('installation-required', 'The exact staged sound pack is not installed.');
+        try { if (saved.prepared.contentHash !== lease.metadata.contentHash) throw failure('content-mismatch', 'Installed content identity changed.');
+          lease.prepared; const receipt = Object.freeze({ state: 'already-installed', contentHash: saved.prepared.contentHash }); installed.set(stage, receipt); return receipt;
+        } finally { saved.release(); }
+      } finally { lease.release(); }
+    },
     getAudition: (stage, identity) => stageReceipts.get(stage)?.get(identity) || null,
     diagnostics: () => Object.freeze({ active: !!active, unknownRetirement: unknown.size, disposed }),
     dispose() { if (retirement.getReceipt()) return retirement.getReceipt();

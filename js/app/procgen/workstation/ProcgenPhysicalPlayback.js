@@ -16,7 +16,9 @@ const nativeResolution = Object.freeze({
 
 // Owns only the physical voice session. The ordinary game preview and MIDI
 // router keep their independent leases on the shared output graph.
-export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getLanes = () => [], onInstrumentState = () => {}, onReceipt = () => {} } = {}) {
+export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getLanes = () => [], isPlaybackEnabled = () => !!audio?.getState?.().enabled,
+  onInstrumentState = () => {}, onReceipt = () => {} } = {}) {
+  const permitted = () => { try { return isPlaybackEnabled() === true; } catch { return false; } };
   const session = audio?.createSession?.('procgen-physical') || null;
   const nativeBackend = session?.createInstrumentBackend?.({ gateMode: 'owned' }) || null;
   const routed = nativeBackend?.inspectExecution ? createRoutedInstrumentBackend({ defaultBackend: nativeBackend, getContext: () => audio.getAudioContext(),
@@ -32,7 +34,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
   let lastAudioEnabled = false, lastAudioContext = null;
   const retirement = createProcgenRetirementScope();
   const arm = () => {
-    if (disposed || !armEnabled || !prepared || !session || !audio?.getState?.().enabled || session.getState().enabled || enableLease) return;
+    if (disposed || !armEnabled || !prepared || !session || !permitted() || !audio?.getState?.().enabled || session.getState().enabled || enableLease) return;
     const lease = {}; enableLease = lease;
     try {
       Promise.resolve(session.enable()).catch(() => false).finally(() => { if (enableLease === lease) enableLease = null; });
@@ -51,13 +53,14 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
   const dispatcher = createCausalIntentDispatcher({
     sinks: backend ? [{ id: 'physical-browser-audio', route: 'local', backend }] : [],
     executionEpoch: () => executionEpoch,
-    toTargetFrame: scoreTime => clock.toTargetFrame(scoreTime, executionEpoch),
+    toTargetFrame: scoreTime => permitted() ? clock.toTargetFrame(scoreTime, executionEpoch) : null,
     latePolicy: createStrictLiveFramePolicy({ nowFrame: () => clock.currentFrame() }),
     onReceipt: receipt => { if (receipt.status === 'accepted') accepted++; else rejected++; onReceipt(receipt); }
   });
   const engine = createCausalMusicEngine({ getGraph, scoreTimeline, deliver: (intents, batch) => dispatcher.dispatch(intents, batch) });
   const processBatch = (batch, { bpm, playing = true, position = null } = {}) => {
     if (disposed || !playing) return Object.freeze([]);
+    if (!permitted() && session?.getState().enabled) stop();
     armEnabled = true;
     const nextEpoch = `${batch.worldId}:${batch.generation}:${executionSerial}`;
     if (previousGeneration !== null && previousGeneration !== batch.generation) {
@@ -68,7 +71,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     executionEpoch = nextEpoch;
     arm();
     const score = position || scoreTimeline.map({ simTick: batch.tick });
-    if (prepared && session?.getState().enabled &&
+    if (prepared && permitted() && session?.getState().enabled &&
         (anchoredEpoch !== score.epoch || anchoredBpm !== bpm)) {
       try {
         clock.rebase({ executionEpoch, scoreEpoch: score.epoch, beat: score.beat, hostMs: now(), bpm,
@@ -76,7 +79,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
         anchoredEpoch = score.epoch; anchoredBpm = bpm;
       } catch { clock.invalidate(); anchoredEpoch = null; }
     }
-    if (routed && prepared && session?.getState().enabled) {
+    if (routed && prepared && permitted() && session?.getState().enabled) {
       const frame = clock.currentFrame(), context = audio.getAudioContext(), rate = context?.sampleRate;
       if (Number.isSafeInteger(frame) && Number.isFinite(rate) && (leaseEpoch !== executionEpoch || leaseContext !== context || leaseUntil == null || frame + rate * 4 >= leaseUntil)) {
         const until = frame + Math.ceil(rate * 10);

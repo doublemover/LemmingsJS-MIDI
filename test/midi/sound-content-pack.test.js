@@ -63,6 +63,7 @@ describe('canonical sound material and rights closure', () => {
     const cycle = copy(pack); cycle.files[0].parents = [b]; await rejects(prepare(cycle), 'cyclic');
     const mismatch = copy(pack); mismatch.patches[0].definition.sampleRefs[0].bytes = 900; await rejects(prepare(mismatch), 'byte count differs');
     const future = copy(pack); future.schema = 'lemmings-sound-content/v99'; await rejects(prepare(future), 'unsupported pack header');
+    const hidden = copy(pack); hidden.privateRecording = { world: 'unrelated project data' }; await rejects(prepare(hidden), 'unknown field');
     const abort = new AbortController(); abort.abort(); await rejects(prepareSoundContentPack(pack, { signal: abort.signal }), 'aborted');
   });
   it('uses bounded canonical own-data encoding without invoking imported accessors', () => {
