@@ -611,3 +611,37 @@ source bounds and authored gains are not listening or native-rate acceptance.
 The source metadata remains `NOASSERTION`; no clearance or publication claim
 is inferred. These fixed original assets do not yet constitute a separately
 compiled effect-content pack or implement causal gesture replay/offline effects.
+
+### Original nonlinear chain and Quarry Tape
+
+`NonlinearChainKernel` executes ordered cubic saturation/fold stages in JS
+binary64 arithmetic/state with float32 worklet I/O. It supports direct or
+first-order ADAA and real local 1x/2x/4x rate domains. The 2x/4x modes use pinned
+33/65-tap Hann-windowed sinc filters for both zero-insertion interpolation and
+phase-zero decimation. `author-nonlinear-filters.mjs` authors coefficient data,
+not a render qualification. The exact coefficient hash/configuration must match
+the live worklet ready message. Fixed filter-pair group delay is 16 output
+frames, plus the nominal small-signal half internal sample per ADAA stage.
+Frequency-dependent ADAA droop and HP phase remain; dry alignment does not
+claim a broadband null or measured native compensation.
+
+Each transfer clamps its declared input domain and subtracts its bias response,
+so bias is not an independent zero-input sound source. Equal/near-equal ADAA
+inputs use stable limits and factored polynomial differences. Drive is dB input
+gain with an 8 ms one-pole slew in linear amplitude. Input highpass, output DC
+block, trim and final output protection are separate stages. Corrupt/excessive
+state quarantines this owned branch. The exclusive little-endian state buffer
+retains all polyphase cursors, FIR/ADAA/filter histories and drive frontier with
+an exact profile identity and CRC32; graph-wide host capture is still preroll.
+
+Quarry Tape sends into a 100 Hz input-highpass/2x cubic ADAA preamp, then the
+creative feedback delay. AGE requests 2–12 dB drive and 7–1.5 kHz feedback LP.
+Tone coefficients slew over 8 ms; mode/filter changes require prepared graph
+replacement. The authored 0.7 preamp trim is not a measured level match, and
+there is no claim of tape hardware emulation or alias qualification.
+
+Design references: [ADAA definitions and conditioning](https://faustlibraries.grame.fr/libs/aanl/)
+and [Julius O. Smith, FIR window design](https://www.dsprelated.com/freebooks/sasp/Window_Method_FIR_Filter.html).
+This is original JS code/data, not imported Faust/WASM. Native shaper comparison,
+ADAA2, spectral/passband/latency/cost/listening gates and full-effect offline
+rendering remain outstanding.

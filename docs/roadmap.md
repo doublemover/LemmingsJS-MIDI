@@ -2609,6 +2609,21 @@ Source-data authoring wrote identity metadata only; no binary is committed.
 Native latency, offline convolution, source-bound throws, listening and all
 remaining acceptance gates are still pending. No runtime tests ran.
 
+The shared effect runtime now implements an original bounded nonlinear chain:
+ordered cubic/fold transfers, direct or stable first-order ADAA, real local 2x/4x
+polyphase up/down filters with pinned source coefficients, explicit HP/DC stages
+and a kernel-owned binary64 state transfer. Native graph preparation verifies
+the exact configuration identity and reserves full state/alignment estimates;
+four nonlinear islands is the current unqualified graph limit. Fractional FIR/
+small-signal ADAA group delay and frequency-dependent phase/droop are explicit.
+Native parameter queues are bounded and refusals cannot become accepted receipts.
+Quarry Tape adds the shared cubic preamp and AGE drive/feedback-darkening control
+without replacing final protection. Quality changes prepare another graph.
+Arithmetic, restoration, silence and graph fixtures are authored, not executed.
+Native WaveShaper comparison, ADAA2/WASM precision variants, host-wide state cuts,
+offline full-effect rendering, alias/cost/latency/level/listening qualification
+and the remaining effect recipes/causal gestures are still required.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical

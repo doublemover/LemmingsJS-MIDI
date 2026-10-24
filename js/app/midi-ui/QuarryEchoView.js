@@ -1,4 +1,4 @@
-import { createQuarryEcho, createQuarryBody, validateOwnerEffectRack } from '../../midi/content/DubQuarryRack.js';
+import { createQuarryEcho, createQuarryTape, createQuarryBody, validateOwnerEffectRack } from '../../midi/content/DubQuarryRack.js';
 import { ORIGINAL_IMPULSE_PRESETS } from '../../midi/content/ProceduralImpulseMaterial.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 
@@ -22,12 +22,13 @@ export function createQuarryEchoView({ document, window, getPlayback, getSavedRa
   };
   const time = slider('TIME · milliseconds', 70, 750, 1, 240, value => live('echo', { delaySeconds: value / 1000 }));
   const feedback = slider('FEEDBACK', 0, 0.7, 0.01, 0.3, value => live('echo', { feedback: value }));
+  const age = slider('AGE · drive and feedback damping', 0, 1, 0.01, 0.35, value => { const receipt = live('preamp', { driveDb: 2 + value * 10 }); live('echo', { feedbackLowpassHz: 7000 - value * 5500 }, receipt); });
   const level = slider('SPACE · return', 0, 0.35, 0.01, 0.2, value => live('return', { gain01: value }));
   const amount = slider('THROW amount', 0, 0.65, 0.01, 0.35);
   const mode = node('select'); mode.setAttribute('aria-label', 'Delay time transition');
   for (const [value, text] of [['glide', 'Tape glide · changes pitch'], ['jump', 'Two-tap jump crossfade']]) { const option = node('option', text); option.value = value; mode.append(option); } fields.append(mode);
   const preset = node('select'); preset.setAttribute('aria-label', 'Quarry effect recipe');
-  for (const [value, text] of [['echo', 'Quarry Echo · bounded delay'], ...ORIGINAL_IMPULSE_PRESETS.map(entry => [entry.id, entry.name + ' · ' + entry.layout + ' · ' + entry.durationSeconds + ' s'])]) {
+  for (const [value, text] of [['echo', 'Quarry Echo · bounded delay'], ['tape', 'Quarry Tape · original cubic preamp and darkening echo'], ...ORIGINAL_IMPULSE_PRESETS.map(entry => [entry.id, entry.name + ' · ' + entry.layout + ' · ' + entry.durationSeconds + ' s'])]) {
     const option = node('option', text); option.value = value; preset.append(option);
   }
   fields.prepend(preset);
@@ -35,11 +36,12 @@ export function createQuarryEchoView({ document, window, getPlayback, getSavedRa
   const showPreset = () => {
     const body = ORIGINAL_IMPULSE_PRESETS.find(entry => entry.id === preset.value);
     time.label.hidden = feedback.label.hidden = mode.hidden = Boolean(body);
+    age.label.hidden = preset.value !== 'tape'; time.input.min = preset.value === 'tape' ? 160 : 70; if (time.value() < Number(time.input.min)) time.set(Number(time.input.min));
     level.input.max = body ? 0.3 : 0.35; if (level.value() > Number(level.input.max)) level.set(Number(level.input.max));
-    bodyDetails.textContent = body ? 'Fixed original ' + body.durationSeconds + ' s body; explicit native RMS normalization and authored reference gain. Algorithm latency is unknown. Preparing a replacement crossfades input and retains the old bounded tail.' : 'TIME is an audio delay in milliseconds. It does not represent an actor journey.';
+    bodyDetails.textContent = body ? 'Fixed original ' + body.durationSeconds + ' s body; explicit native RMS normalization and authored reference gain. Algorithm latency is unknown. Preparing a replacement crossfades input and retains the old bounded tail.' : preset.value === 'tape' ? 'Original 2× cubic preamp with first-order ADAA, 100 Hz input highpass and 20 Hz DC block. AGE adds drive and darkens the feedback filter. Filter/ADAA delay is declared; spectral and level matching qualification is pending. This is not a hardware emulation.' : 'TIME is an audio delay in milliseconds. It does not represent an actor journey.';
   };
   const model = () => { revision = Math.max(revision + 1, (getSavedRack()?.graph.revision || 0) + 1);
-    return preset.value === 'echo' ? createQuarryEcho({ revision, delaySeconds: time.value() / 1000, feedback: feedback.value(), return01: level.value(), send01: 0, mode: mode.value }) :
+    return ['echo', 'tape'].includes(preset.value) ? (preset.value === 'tape' ? createQuarryTape : createQuarryEcho)({ revision, delaySeconds: time.value() / 1000, feedback: feedback.value(), return01: level.value(), send01: 0, mode: mode.value, ...(preset.value === 'tape' ? { age01: age.value() } : {}) }) :
       createQuarryBody({ revision, bodyId: preset.value, return01: level.value(), send01: 0 });
   };
   const release = () => {
@@ -59,7 +61,7 @@ export function createQuarryEchoView({ document, window, getPlayback, getSavedRa
   const prepare = button('Prepare effect', run(async () => {
     release(); const playback = getPlayback(); if (!playback?.prepareEffectGraph) throw new Error('The physical owner is unavailable.');
     const controller = new AbortController(), operation = { controller, promise: null }; pending = operation; prepare.disabled = true;
-    const controls = [preset, mode, time.input, feedback.input, level.input, amount.input]; for (const control of controls) control.disabled = true;
+    const controls = [preset, mode, time.input, feedback.input, age.input, level.input, amount.input]; for (const control of controls) control.disabled = true;
     try { operation.promise = playback.prepareEffectGraph(model(), { signal: controller.signal, isCurrent: () => !disposed && pending === operation && getPlayback() === playback });
       const state = await operation.promise; if (!disposed && pending === operation) say('Quarry effect prepared at owner route ' + state.revision + '. Hold THROW when physical voices are playing.'); }
     finally { if (pending === operation) pending = null; prepare.disabled = false; for (const control of controls) control.disabled = false; }
@@ -68,10 +70,12 @@ export function createQuarryEchoView({ document, window, getPlayback, getSavedRa
   const load = () => {
     const rack = getSavedRack(); if (!rack) return;
     const body = ORIGINAL_IMPULSE_PRESETS.find(entry => rack.graph.id === 'dub-quarry.body.' + entry.id);
-    if (rack.graph.id !== 'dub-quarry.echo' && !body) { say('The saved owner rack uses another graph.'); return; }
+    const tape = rack.graph.id === 'dub-quarry.tape';
+    if (rack.graph.id !== 'dub-quarry.echo' && !tape && !body) { say('The saved owner rack uses another graph.'); return; }
     const echo = rack.graph.nodes.find(entry => entry.id === 'echo'), output = rack.graph.nodes.find(entry => entry.id === 'return');
     if (!output || !body && !echo) { say('The saved Quarry topology is unavailable.'); return; }
-    preset.value = body?.id || 'echo'; showPreset(); level.set(output.parameters.gain01);
+    const preamp = rack.graph.nodes.find(entry => entry.id === 'preamp'); if (tape && !preamp) { say('The saved Quarry Tape preamp is unavailable.'); return; }
+    preset.value = body?.id || (tape ? 'tape' : 'echo'); showPreset(); level.set(output.parameters.gain01); if (tape) age.set((preamp.parameters.driveDb - 2) / 10);
     if (echo) { time.set(echo.parameters.delaySeconds * 1000); feedback.set(echo.parameters.feedback); mode.value = echo.parameters.mode; }
     revision = Math.max(revision, rack.graph.revision);
   };

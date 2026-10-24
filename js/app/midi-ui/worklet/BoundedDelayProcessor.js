@@ -1,6 +1,8 @@
+import './NonlinearChainProcessor.js';
+
 const finite = (v, lo, hi) => Number.isFinite(v) && v >= lo && v <= hi;
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-export const DELAY_KERNEL_REVISION = 'bounded-linear-delay-v1';
+export const DELAY_KERNEL_REVISION = 'bounded-linear-delay-v2';
 
 export class BoundedDelayKernel {
   constructor({ sampleRate, maxDelayFrames, delayFrames, mode = 'glide', transitionFrames = 128, maximumSlew = 0.25, feedback = 0.3,
@@ -13,7 +15,7 @@ export class BoundedDelayKernel {
     this.stride = maxDelayFrames + 4; this.buffer = new Float32Array(this.stride * 2); this.filter = new Float64Array(6);
     this.write = 0; this.frame = 0; this.delay = delayFrames; this.targetDelay = delayFrames; this.oldDelay = delayFrames; this.transition = 0;
     this.feedbackMaximum = feedbackMaximum; this.feedback = feedback; this.wet = wet; this.slew = 1 - Math.exp(-1 / (0.008 * sampleRate));
-    this.lp = 1 - Math.exp(-2 * Math.PI * feedbackLowpassHz / sampleRate); this.hp = Math.exp(-2 * Math.PI * feedbackHighpassHz / sampleRate);
+    this.feedbackLowpassHz = feedbackLowpassHz; this.lp = this.targetLowpass = 1 - Math.exp(-2 * Math.PI * feedbackLowpassHz / sampleRate); this.hp = Math.exp(-2 * Math.PI * feedbackHighpassHz / sampleRate);
     this.faults = 0; this.rejectedTransitions = 0; this.leftSample = 0; this.rightSample = 0; this.muted = false; this.inputEnabled = true;
   }
   setDelay(value) {
@@ -24,6 +26,10 @@ export class BoundedDelayKernel {
     if (this.mode === 'jump') { this.oldDelay = this.delay; this.transition = this.transitionFrames; }
     return true;
   }
+  setFeedbackLowpassHz(value) {
+    if (!finite(value, 200, this.sampleRate * 0.4)) return false;
+    if (value !== this.feedbackLowpassHz) { this.feedbackLowpassHz = value; this.targetLowpass = 1 - Math.exp(-2 * Math.PI * value / this.sampleRate); } return true;
+  }
   read(channel, delay) {
     let cursor = this.write - delay; if (cursor < 0) cursor += this.stride;
     const first = Math.floor(cursor), fraction = cursor - first, base = channel * this.stride, second = first + 1 === this.stride ? 0 : first + 1;
@@ -33,7 +39,7 @@ export class BoundedDelayKernel {
   panic() { this.clear(); this.muted = true; this.inputEnabled = false; }
   sample(left, right, feedback = this.feedback, wet = this.wet) {
     if (!Number.isFinite(left) || !Number.isFinite(right) || !finite(feedback, -this.feedbackMaximum, this.feedbackMaximum) || !finite(wet, 0, 1)) { this.faults++; this.panic(); this.frame++; return; }
-    this.feedback += (feedback - this.feedback) * this.slew; this.wet += (wet - this.wet) * this.slew;
+    this.feedback += (feedback - this.feedback) * this.slew; this.wet += (wet - this.wet) * this.slew; this.lp += (this.targetLowpass - this.lp) * this.slew;
     if (this.mode === 'glide') this.delay += clamp(this.targetDelay - this.delay, -this.maximumSlew, this.maximumSlew);
     const blend = this.transition ? (this.transitionFrames - this.transition + 1) / this.transitionFrames : 1;
     for (let channel = 0; channel < 2; channel++) {
@@ -54,13 +60,15 @@ export class BoundedDelayKernel {
     transitionRemainingFrames: this.transition, transitionGainLaw: 'linear-correlated-unity-sum', maximumDelaySlewFramesPerSample: this.maximumSlew,
     interpolation: 'linear-two-sample', feedbackBound: this.feedbackMaximum, stateAmplitudeFaultBound: 32, stateBytes: this.buffer.byteLength + this.filter.byteLength,
     processingLatencyFrames: 0, intentionalDelayFrames: this.delay, faults: this.faults, rejectedTransitions: this.rejectedTransitions,
+    feedbackLowpassHz: this.feedbackLowpassHz, feedbackToneSmoothing: '8ms-one-pole-in-coefficient-domain',
     muted: this.muted, inputEnabled: this.inputEnabled, quality: 'implementation-awaiting-alias-impulse-and-cost-qualification' }; }
 }
 
 const ProcessorBase = globalThis.AudioWorkletProcessor || class {};
 export class BoundedDelayProcessor extends ProcessorBase {
   static get parameterDescriptors() { return [{ name: 'delayFrames', defaultValue: 9600, minValue: 1, maxValue: 576000, automationRate: 'a-rate' },
-    { name: 'feedback', defaultValue: 0.3, minValue: -0.7, maxValue: 0.7, automationRate: 'a-rate' }, { name: 'wet', defaultValue: 0.2, minValue: 0, maxValue: 1, automationRate: 'a-rate' }]; }
+    { name: 'feedback', defaultValue: 0.3, minValue: -0.7, maxValue: 0.7, automationRate: 'a-rate' }, { name: 'wet', defaultValue: 0.2, minValue: 0, maxValue: 1, automationRate: 'a-rate' },
+    { name: 'feedbackLowpassHz', defaultValue: 6000, minValue: 200, maxValue: 76800, automationRate: 'k-rate' }]; }
   constructor(options) {
     super(); this.kernel = new BoundedDelayKernel({ ...options?.processorOptions, sampleRate: globalThis.sampleRate });
     this.reportedFaults = 0; this.faultMessage = { type: 'delay-fault', revision: DELAY_KERNEL_REVISION, frame: 0, faults: 0 }; this.lastRequestedDelay = this.kernel.targetDelay; this.disposed = false; this.lastInspect = -Infinity; this.port.onmessage = event => {
@@ -82,6 +90,7 @@ export class BoundedDelayProcessor extends ProcessorBase {
     const output = outputs[0]; if (!output?.[0]) return true;
     if (this.disposed) { for (const channel of output) channel.fill(0); return false; }
     const input = inputs[0], left = input?.[0], right = input?.[1] || left, kernel = this.kernel;
+    if (parameters.feedbackLowpassHz && !kernel.setFeedbackLowpassHz(parameters.feedbackLowpassHz[0])) { kernel.faults++; kernel.panic(); }
     for (let i = 0; i < output[0].length; i++) {
       const requestedDelay = parameters.delayFrames.length === 1 ? parameters.delayFrames[0] : parameters.delayFrames[i];
       if (requestedDelay !== this.lastRequestedDelay) { kernel.setDelay(requestedDelay); this.lastRequestedDelay = requestedDelay; }

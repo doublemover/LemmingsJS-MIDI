@@ -1,4 +1,5 @@
 import { validateImpulseResponseDescriptor } from './ImpulseResponseDescriptor.js';
+import { prepareNonlinearChainProfile } from './NonlinearChainProfile.js';
 import { cloneData, freezeData, canonicalDataText, hashData } from '../../core/CanonicalData.js';
 
 export const EFFECT_GRAPH_SCHEMA = 'lemmings-effect-graph/v1';
@@ -18,12 +19,12 @@ export function prepareEffectGraphRevision(raw, { sampleRate = 48000, maxStateBy
       !Array.isArray(graph.nodes) || !graph.nodes.length || graph.nodes.length > 64 || !Array.isArray(graph.edges) || graph.edges.length > 256 ||
       !['align-declared', 'uncompensated-native'].includes(graph.latencyPolicy) || !(graph.maximumLatencyFrames === null && graph.latencyPolicy === 'uncompensated-native' || Number.isSafeInteger(graph.maximumLatencyFrames) && finite(graph.maximumLatencyFrames, 0, sampleRate)) ||
       !finite(graph.maximumTailSeconds, 0, 30)) fail('Effect graph identity, inventory, latency or tail policy is invalid.');
-  const nodes = new Map(), incoming = new Map(), outgoing = new Map(); let stateBytes = 0, impulseCount = 0, impulseDecodedBytes = 0, impulseNativeEstimateBytes = 0;
+  const nodes = new Map(), incoming = new Map(), outgoing = new Map(); let stateBytes = 0, impulseCount = 0, impulseDecodedBytes = 0, impulseNativeEstimateBytes = 0, nonlinearCount = 0;
   for (const entry of graph.nodes) {
     keys(entry, ['id', 'kind', 'parameters', 'impulse']);
-    if (!id(entry.id) || nodes.has(entry.id) || !['bus-in', 'bus-out', 'gain', 'feedback-delay', 'convolution-native'].includes(entry.kind)) fail('Unknown, duplicate or unsupported effect processor.');
+    if (!id(entry.id) || nodes.has(entry.id) || !['bus-in', 'bus-out', 'gain', 'feedback-delay', 'convolution-native', 'nonlinear-chain'].includes(entry.kind)) fail('Unknown, duplicate or unsupported effect processor.');
     if (entry.kind !== 'convolution-native' && entry.impulse != null) fail('Only a convolution processor accepts an impulse descriptor.');
-    let parameters, impulse = null, maximumTailFrames = 0, bytes = 0, processingLatencyFrames = 0;
+    let parameters, impulse = null, nonlinear = null, maximumTailFrames = 0, bytes = 0, processingLatencyFrames = 0;
     if (entry.kind === 'gain') { keys(entry.parameters, ['gain01', 'gainMaximum01']); if (!finite(entry.parameters.gainMaximum01 ?? 2, 0, 2) || !finite(entry.parameters.gain01, 0, entry.parameters.gainMaximum01 ?? 2)) fail('Effect gain exceeds its linear amplitude domain.'); parameters = { gain01: entry.parameters.gain01, gainMaximum01: entry.parameters.gainMaximum01 ?? 2 }; }
     else if (entry.kind === 'feedback-delay') {
       keys(entry.parameters, Object.keys(delayDefaults)); parameters = { ...delayDefaults, ...entry.parameters };
@@ -34,6 +35,9 @@ export function prepareEffectGraphRevision(raw, { sampleRate = 48000, maxStateBy
       const repeats = parameters.feedbackMaximum === 0 ? 1 : Math.ceil(Math.log(0.001) / Math.log(parameters.feedbackMaximum)) + 1;
       maximumTailFrames = Math.ceil((repeats * parameters.maxDelaySeconds + 1) * sampleRate);
       bytes = (Math.ceil(parameters.maxDelaySeconds * sampleRate) + 4) * 8 + 6 * 8;
+    } else if (entry.kind === 'nonlinear-chain') {
+      nonlinear = prepareNonlinearChainProfile(entry.parameters, sampleRate); parameters = nonlinear.parameters; processingLatencyFrames = nonlinear.processingLatencyFrames; maximumTailFrames = nonlinear.maximumTailFrames; bytes = nonlinear.stateBytes;
+      if (++nonlinearCount > 4) fail('This graph profile admits at most four shared nonlinear processing islands.');
     } else if (entry.kind === 'convolution-native') {
       keys(entry.parameters, []); parameters = {}; impulse = validateImpulseResponseDescriptor(entry.impulse); processingLatencyFrames = null;
       if (graph.latencyPolicy !== 'uncompensated-native') fail('Unmeasured native convolution latency requires an explicit uncompensated graph policy.');
@@ -43,9 +47,9 @@ export function prepareEffectGraphRevision(raw, { sampleRate = 48000, maxStateBy
       maximumTailFrames = Math.ceil((impulse.asset.frames / impulse.asset.sourceSampleRate + impulse.predelaySeconds) * sampleRate);
     } else { keys(entry.parameters, []); parameters = {}; }
     stateBytes += bytes;
-    nodes.set(entry.id, { id: entry.id, kind: entry.kind, parameters, ...(impulse ? { impulse } : {}), ports: { input: entry.kind === 'bus-in' ? null : 'audioStereo', output: entry.kind === 'bus-out' ? null : 'audioStereo' },
-      processingLatencyFrames, maximumTailFrames, stateBytes: bytes, stateCapability: ['feedback-delay', 'convolution-native'].includes(entry.kind) ? 'deterministic-preroll' : 'stateless',
-      costClass: entry.kind === 'feedback-delay' ? 'fixed-stereo-two-tap-delay' : entry.kind === 'convolution-native' ? 'shared-native-convolution' : 'native-gain-routing', qualification: 'implementation-awaiting-full-graph-qualification' });
+    nodes.set(entry.id, { id: entry.id, kind: entry.kind, parameters, ...(impulse ? { impulse } : {}), ...(nonlinear ? { nonlinear } : {}), ports: { input: entry.kind === 'bus-in' ? null : 'audioStereo', output: entry.kind === 'bus-out' ? null : 'audioStereo' },
+      processingLatencyFrames, maximumTailFrames, stateBytes: bytes, stateCapability: ['feedback-delay', 'convolution-native', 'nonlinear-chain'].includes(entry.kind) ? 'deterministic-preroll' : 'stateless',
+      costClass: entry.kind === 'feedback-delay' ? 'fixed-stereo-two-tap-delay' : entry.kind === 'convolution-native' ? 'shared-native-convolution' : entry.kind === 'nonlinear-chain' ? 'bounded-polyphase-nonlinear-chain' : 'native-gain-routing', qualification: 'implementation-awaiting-full-graph-qualification' });
     incoming.set(entry.id, []); outgoing.set(entry.id, []);
   }
   if (stateBytes > maxStateBytes) fail('Effect graph exceeds the admitted delay storage.');
@@ -72,19 +76,21 @@ export function prepareEffectGraphRevision(raw, { sampleRate = 48000, maxStateBy
     for (const edge of inputs) edge.alignmentFrames = graph.latencyPolicy === 'align-declared' ? arrival - latency.get(edge.from.nodeId) : 0;
     const inputBound = node.kind === 'bus-in' ? 1 : inputs.reduce((sum, edge) => sum + amplitude.get(edge.from.nodeId) * edge.gain01, 0);
     const gainBound = node.kind === 'gain' ? node.parameters.gainMaximum01 : node.kind === 'feedback-delay' ? 1 / (1 - node.parameters.feedbackMaximum * 1.1) : node.kind === 'convolution-native' ? node.impulse.maximumLinearGain : 1;
-    amplitude.set(key, inputBound * gainBound); if (amplitude.get(key) > 16) fail('Compounded effect route gain exceeds its admitted headroom.');
-    latency.set(key, arrival === null || node.processingLatencyFrames === null ? null : arrival + node.processingLatencyFrames); tails.set(key, Math.max(0, ...inputs.map(edge => tails.get(edge.from.nodeId))) + node.maximumTailFrames);
+    amplitude.set(key, node.nonlinear ? Math.min(inputBound * node.nonlinear.maximumLinearGain, node.nonlinear.maximumOutputAmplitude) : inputBound * gainBound); if (amplitude.get(key) > 16) fail('Compounded effect route gain exceeds its admitted headroom.');
+    latency.set(key, arrival === null || node.processingLatencyFrames === null ? null : arrival + node.processingLatencyFrames); tails.set(key, Math.max(0, ...inputs.map(edge => tails.get(edge.from.nodeId) + edge.alignmentFrames)) + node.maximumTailFrames);
     if (node.kind === 'bus-in' || inputs.some(edge => reachable.has(edge.from.nodeId))) reachable.add(key);
   }
   const inputs = [...nodes.values()].filter(node => node.kind === 'bus-in').map(node => node.id).sort(before), outputs = [...nodes.values()].filter(node => node.kind === 'bus-out').map(node => node.id).sort(before);
   const outputLatencies = outputs.map(key => latency.get(key)), latencyFrames = outputLatencies.includes(null) ? null : Math.max(0, ...outputLatencies), maximumTailFrames = Math.max(0, ...outputs.map(key => tails.get(key)));
+  const nativeAlignmentEstimateBytes = edges.reduce((sum, edge) => sum + (edge.alignmentFrames ? (Math.ceil(edge.alignmentFrames) + 128) * 16 : 0), 0);
+  if (stateBytes + nativeAlignmentEstimateBytes > maxStateBytes) fail('Complete effect state and native alignment storage exceeds the admitted graph profile.');
   if (!inputs.length || !outputs.length || outputs.some(key => !reachable.has(key)) || latencyFrames != null && graph.maximumLatencyFrames != null && latencyFrames > graph.maximumLatencyFrames || maximumTailFrames > graph.maximumTailSeconds * sampleRate)
     fail('Effect route is unreachable or exceeds its complete latency/tail budget.');
   const definition = { ...graph, nodes: [...nodes.values()].sort((a, b) => before(a.id, b.id)).map(({ id, kind, parameters, impulse }) => ({ id, kind, parameters, ...(impulse ? { impulse } : {}) })),
     edges: edges.map(({ from, to, gain01 }) => ({ from, to, gain01 })).sort((a, b) => before(JSON.stringify(a), JSON.stringify(b))) };
   canonicalDataText(definition, { maxBytes: 65536, maxNodes: 8192 });
-  return freezeData({ schema: 'lemmings-effect-plan/v1', definition, sampleRate, order, nodes: order.map(key => nodes.get(key)), edges: edges.sort((a, b) => before(JSON.stringify(a), JSON.stringify(b))), inputs, outputs, latencyFrames, maximumTailFrames, stateBytes, impulseCount, impulseDecodedBytes,
-    nativeNodeEstimateBytes: (nodes.size * 4 + edges.length) * 8192 + impulseNativeEstimateBytes, feedbackPolicy: 'only-inside-bounded-delay-operator', alignment: graph.latencyPolicy === 'align-declared' ? 'declared-processing-latency-only-creative-delay-preserved' : 'disabled-unknown-native-latency',
+  return freezeData({ schema: 'lemmings-effect-plan/v1', definition, sampleRate, order, nodes: order.map(key => nodes.get(key)), edges: edges.sort((a, b) => before(JSON.stringify(a), JSON.stringify(b))), inputs, outputs, latencyFrames, maximumTailFrames, stateBytes, impulseCount, impulseDecodedBytes, nonlinearCount, nativeAlignmentEstimateBytes,
+    nativeNodeEstimateBytes: (nodes.size * 4 + edges.length) * 8192 + impulseNativeEstimateBytes + nativeAlignmentEstimateBytes, feedbackPolicy: 'only-inside-bounded-delay-operator', alignment: graph.latencyPolicy === 'align-declared' ? 'declared-processing-latency-only-creative-delay-preserved' : 'disabled-unknown-native-latency',
     tailPolicy: 'hard-owned-deadline-with-conservative-feedback-decay-model', maximumGraphGainBound: Math.max(...amplitude.values()),
     outputProtection: 'required-shared-owner-master-external-to-creative-graph' });
 }
