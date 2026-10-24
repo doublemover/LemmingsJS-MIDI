@@ -1,3 +1,4 @@
+import { getPointerGestureArbiter } from '../controls/PointerGestureArbiter.js';
 import { readProcgenCanvasRect } from './ProcgenPresentationSnapshot.js';
 
 const PROCGEN_MIN_SCALE = 1 / 256;
@@ -7,7 +8,7 @@ const MAX_FOLLOW_DELTA_MS = 50;
 
 const createProcgenCameraController = renderer => {
   let { canvas, window: windowRef, world } = renderer;
-  const listeners = [];
+  const listeners = [], pointerArbiter = getPointerGestureArbiter(canvas.ownerDocument || windowRef.document || canvas);
   const listen = (event, handler, options) => { canvas.addEventListener(event, handler, options); listeners.push([event, handler, options]); };
   const dimensions = () => {
     if (!canvas) return { width: 0, height: 0, fullHeight: 0, bandHeight: 0 };
@@ -104,14 +105,24 @@ const createProcgenCameraController = renderer => {
     else if (event.deltaY) setZoom(renderer.scale * (event.deltaY > 0 ? 1 / 1.1 : 1.1));
   }, { passive: false });
   let drag = null;
-  listen('pointerdown', event => { if (event.button && event.button !== 1) return; canvas.focus?.(); drag = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, startX: event.clientX, startY: event.clientY, moved: false }; canvas.setPointerCapture?.(event.pointerId); });
+  listen('pointerdown', event => {
+    if (event.button && event.button !== 1) return;
+    const generation = world.generation, identity = world, delta = pointerDelta(1, 1);
+    const lease = pointerArbiter.acquire({ pointerId: event.pointerId, targetKey: 'camera-pan', identity,
+      getIdentity: () => !disposed && world === identity && world.generation === generation ? identity : null, onCancel: () => { drag = null; } });
+    if (!lease || !delta) { lease?.cancel('projection-unavailable'); return; }
+    canvas.focus?.(); drag = { lease, delta, pointerId: event.pointerId, x: event.clientX, y: event.clientY, startX: event.clientX, startY: event.clientY, moved: false }; canvas.setPointerCapture?.(event.pointerId);
+  });
   listen('pointermove', event => {
-    if (!drag || drag.pointerId !== event.pointerId || !drag.moved && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 4) return;
-    const delta = pointerDelta(drag.x - event.clientX, drag.y - event.clientY);
+    if (!drag?.lease.owns(event) || !drag.moved && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 4) return;
+    const delta = { x: (drag.x - event.clientX) * drag.delta.x, y: (drag.y - event.clientY) * drag.delta.y };
     if (delta && pan(delta.x, delta.y)) { drag.x = event.clientX; drag.y = event.clientY; drag.moved = true; }
   });
-  const finish = event => { if (drag?.pointerId === event.pointerId) drag = null; };
-  listen('pointerup', finish); listen('pointercancel', finish); listen('lostpointercapture', finish);
+  const finish = event => { if (drag?.lease.finish(event)) drag = null; };
+  listen('pointerup', finish);
+  for (const type of ['pointercancel', 'lostpointercapture']) listen(type, event => { if (drag?.lease.owns(event)) drag.lease.cancel(type); });
+  listen('blur', () => drag?.lease.cancel('blur'));
+  listen('keydown', event => { if (event.key === 'Escape') drag?.lease.cancel('escape'); });
   listen('dblclick', followFrontier);
   const getState = () => ({ cameraX: renderer.cameraX, cameraY: renderer.cameraY, scale: renderer.scale, follow: renderer.follow });
   const applyState = state => {
@@ -123,7 +134,7 @@ const createProcgenCameraController = renderer => {
   };
   return { pan: (...args) => !disposed && pan(...args), setZoom: (...args) => !disposed && setZoom(...args), followFrontier: () => !disposed && followFrontier(), update, getState, applyState: state => !disposed && applyState(state), viewport, minimumScale,
     resetPresentationClock() { lastFollowMs = null; },
-    dispose() { for (const [event, handler, options] of listeners) canvas.removeEventListener(event, handler, options);
+    dispose() { drag?.lease.cancel('disposed'); for (const [event, handler, options] of listeners) canvas.removeEventListener(event, handler, options);
       listeners.length = 0; disposed = true; drag = null; cachedLeader = null; leaderActors = null; lastFollowMs = null; world = canvas = windowRef = null; } };
 };
 export { createProcgenCameraController, PROCGEN_MIN_SCALE, PROCGEN_MAX_SCALE };

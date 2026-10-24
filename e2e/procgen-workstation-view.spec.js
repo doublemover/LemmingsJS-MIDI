@@ -302,3 +302,40 @@ test('benchmark 64-step edit and simultaneous launch latency @benchmark', async 
   console.log('ProcGen browser edit benchmark:', JSON.stringify(results));
   expect(results.map(result => result.lanes)).toEqual([8, 128, 1024]);
 });
+
+test('project pages replace bounded DOM and return through cursor history @boundary', async ({ page }) => {
+  await ready(page, 1);
+  await page.evaluate(() => {
+    const f = window.workstationViewTest;
+    const batch = index => ({ items: Array.from({ length: 24 }, (_, row) => ({ id: `page-${index}-${row}`, name: `Page ${index} item ${row}`, savedAt: '2026-10-24' })), nextCursor: index < 99 ? String(index + 1) : null });
+    f.view.showProjectPage(batch(0), async () => false, async cursor => batch(Number(cursor || 0)));
+  });
+  for (let index = 1; index <= 8; index++) {
+    await page.getByRole('button', { name: 'More projects' }).click();
+    await expect(page.locator('.studio-project-items button')).toHaveCount(24);
+    await expect(page.locator('.studio-project-items button').first()).toContainText(`Page ${index} item 0`);
+  }
+  await page.getByRole('button', { name: 'Previous projects' }).click();
+  await expect(page.locator('.studio-project-items button').first()).toContainText('Page 7 item 0');
+});
+
+test('project naming retains invalid draft and keyboard cancellation returns no name @boundary', async ({ page }) => {
+  await ready(page, 1);
+  await page.evaluate(() => { const f = window.workstationViewTest; f.nameResult = 'pending'; f.view.requestProjectName({ value: '' }).then(value => { f.nameResult = value; }); });
+  const dialog = page.getByRole('dialog', { name: 'Project name' });
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(dialog).toBeVisible(); await expect(dialog.locator('output')).toContainText('Enter a project name');
+  await dialog.getByRole('textbox').fill('Retained draft'); await page.keyboard.press('Escape'); await expect(dialog).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => window.workstationViewTest.nameResult)).toBe(null);
+});
+
+test('foreign pointer release cannot commit pattern painting and owner cancellation leaves zero edits @boundary', async ({ page }) => {
+  await ready(page, 1); await page.getByLabel('Step editing tool').selectOption('draw');
+  await page.evaluate(() => { const f = window.workstationViewTest; f.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { enabled: false } }); f.actions.length = 0;
+    document.querySelector('.studio-sequences').addEventListener('pointerdown', event => { f.pointerId = event.pointerId; }, { once: true }); });
+  const box = await page.locator('.studio-cell').first().boundingBox(); await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.down();
+  await page.evaluate(() => window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 99 })));
+  expect(await page.evaluate(() => window.workstationViewTest.actions.length)).toBe(0);
+  await page.evaluate(() => window.dispatchEvent(new PointerEvent('pointercancel', { pointerId: window.workstationViewTest.pointerId })));
+  await page.mouse.up(); expect(await page.evaluate(() => window.workstationViewTest.actions.length)).toBe(0);
+});

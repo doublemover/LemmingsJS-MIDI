@@ -103,7 +103,9 @@
       "regressions": [
         "test/midi/owned-sine-worklet.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "90ff49f579c2f2bce24d006e51dc01c5f921dcab"
+      ],
       "validation": "deferred-by-request",
       "increment": "bounded-command-and-render-staging"
     },
@@ -185,11 +187,16 @@
       "requirementUpdatedAt": "2026-10-22T08:41:03Z",
       "requirementSha256": "b5986a1fd1b7c43ffaf9781d13032a5817dfc887318860bf50fe6df30a3ea4b3",
       "initialGap": "Explicit null Cancel is now checked before capture/storage and transport restoration is guarded. Empty name still exits the native prompt and returns an external status rather than remaining editable with inline validation as specified; no compact project-name dialog exists.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "implemented-validation-deferred",
+      "source": [
+        "js/app/controls/ProjectNameDialog.js"
+      ],
+      "regressions": [
+        "test/parameter-controls.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "typed-control-and-gesture-ownership"
     },
     {
       "number": 984,
@@ -344,11 +351,17 @@
       "requirementUpdatedAt": "2026-10-22T11:42:32Z",
       "requirementSha256": "32d968393d64cdef57c278899376d497d03f3966fa78aa04970d88d71507bdc6",
       "initialGap": "No reusable typed ParameterGesture rotary control exists; production helper creates native input controls with change-only commits and resize/paint use separate handlers.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/controls/ParameterKnob.js"
+      ],
+      "regressions": [
+        "test/parameter-controls.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "typed-control-and-gesture-ownership",
+      "remaining": "Typed knob integrated into lane gain/pan/accent and patch macros; relative hardware mutation and device observation adapters remain."
     },
     {
       "number": 995,
@@ -416,11 +429,17 @@
       "requirementUpdatedAt": "2026-10-23T16:00:15Z",
       "requirementSha256": "b9c69aee618e7857f006c700dfa5669f2148ead23977e6b0d887cf4542121d21",
       "initialGap": "Some owned clip gestures exist, but no common pointer arbiter is installed; inspector move ignores pointer identity and sound dials begin unbound global history gestures whose apply resolves current source, preserving the reported cross-source retarget/grouped-Undo defect.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/controls/PointerGestureArbiter.js"
+      ],
+      "regressions": [
+        "test/midi/midi-instrument-workbench.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "typed-control-and-gesture-ownership",
+      "remaining": "Shared owner now spans knobs, sound dials, clip painting, workstation painting, resize, camera and span editing. Gate/field/temporary-audition integration follows their owners."
     },
     {
       "number": 1001,
@@ -488,11 +507,16 @@
       "requirementUpdatedAt": "2026-10-22T08:45:43Z",
       "requirementSha256": "8ee4bedd77aac490dff8c8afe6391ae9d44ca1ed2f0492efec19c9f03ed18fc5",
       "initialGap": "Metadata store/index and deterministic bounded search/page cursors are implemented, including batched source-preserving migration and owner-checked picker cancellation. UI append() retains every fetched project button rather than rendering only the visible portion/bounding the long picker DOM as specified.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "implemented-validation-deferred",
+      "source": [
+        "js/app/procgen/workstation/ProcgenWorkstationView.js"
+      ],
+      "regressions": [
+        "e2e/procgen-workstation-view.spec.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "typed-control-and-gesture-ownership"
     },
     {
       "number": 1009,
@@ -507,7 +531,9 @@
       "regressions": [
         "test/procgen-page-lifecycle.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "90ff49f579c2f2bce24d006e51dc01c5f921dcab"
+      ],
       "validation": "deferred-by-request",
       "increment": "bounded-command-and-render-staging"
     },
@@ -1093,7 +1119,9 @@
       "regressions": [
         "test/procgen-object-placement-cache.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "90ff49f579c2f2bce24d006e51dc01c5f921dcab"
+      ],
       "validation": "deferred-by-request",
       "increment": "bounded-command-and-render-staging"
     },
@@ -1130,7 +1158,9 @@
       "regressions": [
         "test/procgen-render-lifecycle.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "90ff49f579c2f2bce24d006e51dc01c5f921dcab"
+      ],
       "validation": "deferred-by-request",
       "increment": "bounded-command-and-render-staging"
     },
@@ -2357,7 +2387,9 @@
         "test/resource-budget.test.js",
         "test/procgen-render-lifecycle.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "90ff49f579c2f2bce24d006e51dc01c5f921dcab"
+      ],
       "validation": "deferred-by-request",
       "increment": "bounded-command-and-render-staging"
     },

@@ -1,3 +1,4 @@
+import { getPointerGestureArbiter } from '../controls/PointerGestureArbiter.js';
 import { reduceMidiProject } from '../../midi/project/MidiProject.js';
 import { getMidiClipVoices, MAX_CLIP_CELL_VOICES, MAX_CLIP_TRANSFORM_LAYERS } from '../../midi/project/MidiClipTransforms.js';
 import { describeMidiClipPlayback } from '../../midi/project/MidiClipPlayback.js';
@@ -37,7 +38,7 @@ const getMidiClipCellHelp = clip => {
 };
 
 const createMidiEventClipEditor = ({ document, bind, getProject, getSource, commitProject, dispatch, history, setStatus }) => {
-  const byId = id => document?.getElementById(id);
+  const byId = id => document?.getElementById(id), pointerArbiter = getPointerGestureArbiter(document);
   let selected = 0, selectedClip = null, selectedSource = null, brush = 60, gesture = null, replaceFieldValues = false, updatingGesture = false;
   const clip = () => getSource()?.mode === 'clip' ? getProject().clips.find(item => item.id === getSource()?.clipId) : null;
   const input = (id, value) => { const element = byId(id); if (element && (replaceFieldValues || element.tagName === 'SELECT' || element !== document.activeElement)) element.value = String(value ?? ''); };
@@ -130,7 +131,7 @@ const createMidiEventClipEditor = ({ document, bind, getProject, getSource, comm
   };
   const finish = event => {
     if (!gesture || event?.pointerId != null && gesture.pointerId != null && event.pointerId !== gesture.pointerId) return;
-    const pointerId = gesture.pointerId; gesture = null; history.endGesture();
+    const previous = gesture, pointerId = gesture.pointerId; gesture = null; previous.lease?.cancel('ended'); history.endGesture();
     const root = byId('midiEventClipGrid'); if (root?.hasPointerCapture?.(pointerId)) root.releasePointerCapture?.(pointerId);
   };
   const ownsGesture = current => current?.id === gesture?.clipId && getSource()?.id === gesture?.sourceId && (updatingGesture || getProject() === gesture.project);
@@ -216,8 +217,12 @@ const createMidiEventClipEditor = ({ document, bind, getProject, getSource, comm
       const target = event.target.closest?.('[data-cell-index]'), original = clip(), sourceId = getSource()?.id; if (!target || !original || event.button !== 0) return;
       finish(); target.focus?.({ preventScroll: true });
       const current = clip(); if (current?.id !== original.id || getSource()?.id !== sourceId) return;
-      selected = Number(target.dataset.cellIndex); const root = byId('midiEventClipGrid');
-      gesture = { project: getProject(), clipId: current.id, sourceId: getSource()?.id, pointerId: event.pointerId, rect: root.getBoundingClientRect(), startY: event.clientY, note: current.steps[selected].note === brush ? null : brush, last: '' };
+      selected = Number(target.dataset.cellIndex); const root = byId('midiEventClipGrid'), identity = getProject();
+      const lease = pointerArbiter.acquire({ pointerId: event.pointerId, targetKey: 'clip:' + current.id, identity,
+        getIdentity: () => !gesture ? getProject() === identity ? identity : null : ownsGesture(clip()) ? identity : null,
+        onCancel: () => finish() });
+      if (!lease) return;
+      gesture = { lease, project: getProject(), clipId: current.id, sourceId: getSource()?.id, pointerId: event.pointerId, rect: root.getBoundingClientRect(), startY: event.clientY, note: current.steps[selected].note === brush ? null : brush, last: '' };
       history.beginGesture(); root.setPointerCapture?.(event.pointerId); event.preventDefault();
       updateGesture({ note: gesture.note });
     });

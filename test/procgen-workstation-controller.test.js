@@ -36,7 +36,7 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
     setPaused(value) { paused = value; }, isPaused: () => paused, setSpeed(value) { this.settings.speed = value; },
     local: { getState: () => ({ enabled, selectedBackend: backend, outputId }) } };
   let viewProps;
-  const view = { render() {}, renderInspector() {}, transport() {}, recording() {}, status: value => statuses.push(value), storage: value => storageReceipts.push(value),
+  const view = { requestProjectName: async () => window.prompt(), render() {}, renderInspector() {}, transport() {}, recording() {}, status: value => statuses.push(value), storage: value => storageReceipts.push(value),
     exportState: (artifact, delivery) => exportStates.push({ artifact, delivery }), showProjects() {}, dispose() { this.disposed = true; } };
   let rejectSave = false, saveCalls = 0;
   const storage = storageOverride || { async save(id, session) { saveCalls++; if (rejectSave) throw new Error('Storage unavailable'); stored.set(id, session); }, async load(id) { return stored.get(id); }, async list() { return [...stored.keys()].map(id => ({ id })); }, close() {} };

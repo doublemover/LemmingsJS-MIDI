@@ -1,3 +1,6 @@
+import { createProjectNameDialog } from '../../controls/ProjectNameDialog.js';
+import { createParameterKnob } from '../../controls/ParameterKnob.js';
+import { getPointerGestureArbiter } from '../../controls/PointerGestureArbiter.js';
 import { PROCGEN_SOUND_COLLECTIONS, PROCGEN_ROLES, resolveProcgenSound } from './ProcgenSoundCollections.js';
 import { createProcgenLaneProjection } from './ProcgenLaneProjection.js';
 import { procgenStepNotes } from './ProcgenPatternEngine.js';
@@ -13,7 +16,8 @@ const rendererLeases = new WeakMap();
 
 function createProcgenWorkstationView({ document, window, resourceBudget = null, getProject, getRuntime, dispatch, handlers = {}, state = {} }) {
   for (const [key, value] of Object.entries({ slot: 0, step: 0, tab: 'Lane', tool: 'select', layout: 'strip', firstLane: 0, minimumRow: 64, inspectorWidth: 304, hazardSpacing: 160 })) if (state[key] == null) state[key] = value;
-  const listeners = [];
+  const listeners = [], parameterControls = [];
+  const pointerArbiter = getPointerGestureArbiter(document), nameDialog = createProjectNameDialog({ document, window });
   const retirement = createProcgenRetirementScope(), displayScheduler = createInstrumentDisplayScheduler({ document, window, resourceBudget });
   const on = (element, event, handler, options) => { element.addEventListener(event, handler, options); listeners.push(() => element.removeEventListener(event, handler, options)); };
   const node = (tag, text, cls) => { const el = document.createElement(tag); if (text != null) el.textContent = text; if (cls) el.className = cls; return el; };
@@ -35,7 +39,13 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       changed(el.type === 'checkbox' ? el.checked : el.type === 'text' ? el.value : options.nullable && el.value === '' ? null : Number(el.value));
     }); return el;
   };
-  const labeled = (label, control, parent) => { const wrap = node('label', null, 'studio-field'); wrap.append(node('span', label), control); parent.append(wrap); return control; };
+  const parameter = (value, changed, descriptor) => {
+    const source = getProject(), laneId = state.laneId, tab = state.tab;
+    const control = createParameterKnob({ document, window, value, descriptor,
+      getIdentity: () => getProject() === source && state.laneId === laneId && state.tab === tab ? source : null,
+      commit: changed }); parameterControls.push(control); return control.element;
+  };
+  const labeled = (label, control, parent) => { control.dataset.fieldKey = state.tab + ':' + (control.dataset.parameterId || label); const wrap = node('label', null, 'studio-field'); wrap.append(node('span', label), control); parent.append(wrap); return control; };
   const byId = id => document.getElementById(id);
   const topbar = byId('procgenTopbar'), topbarParent = topbar.parentNode, topbarSibling = topbar.nextSibling;
   const presentationRoot = node('div', null, 'procgen-presentation-root'); presentationRoot.id = 'procgenPresentationRoot';
@@ -114,11 +124,19 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     getRuntime()?.lanes?.renderer?.render?.(false);
     finishGeometry();
   };
-  on(resize, 'pointerdown', event => { dragging = event.pointerId; resize.setPointerCapture(event.pointerId); });
+  let resizeLease = null, resizeStartWidth = null;
+  on(resize, 'pointerdown', event => {
+    if ((event.button ?? 0) !== 0) return;
+    const identity = getProject(); resizeStartWidth = state.inspectorWidth;
+    resizeLease = pointerArbiter.acquire({ pointerId: event.pointerId, targetKey: 'inspector-resize', identity, getIdentity: getProject,
+      onCancel: () => { dragging = null; resizeLease = null; setInspectorWidth(resizeStartWidth); } });
+    if (resizeLease) { dragging = event.pointerId; resize.setPointerCapture(event.pointerId); }
+  });
   const setInspectorWidth = width => { state.inspectorWidth = Math.max(250, Math.min(480, width)); resize.setAttribute('aria-valuenow', String(state.inspectorWidth)); shell.style.setProperty('--inspector-width', state.inspectorWidth + 'px'); layout(); };
-  on(resize, 'pointermove', event => { if (dragging != null) setInspectorWidth(window.innerWidth - event.clientX); });
-  on(resize, 'pointerup', () => { dragging = null; handlers.preferences?.(); });
-  on(resize, 'pointercancel', () => { dragging = null; });
+  on(resize, 'pointermove', event => { if (dragging === event.pointerId && resizeLease?.owns(event)) setInspectorWidth(window.innerWidth - event.clientX); });
+  on(resize, 'pointerup', event => { if (!resizeLease?.finish(event)) return; dragging = null; resizeLease = null; handlers.preferences?.(); });
+  for (const type of ['pointercancel', 'lostpointercapture']) on(resize, type, event => { if (resizeLease?.owns(event)) resizeLease.cancel(type); });
+  on(window, 'blur', () => resizeLease?.cancel('blur'));
   on(resize, 'keydown', event => { if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return; event.preventDefault(); event.stopPropagation(); setInspectorWidth(state.inspectorWidth + (event.key === 'ArrowLeft' ? 16 : -16)); });
   const layoutMode = select([['strip', 'Strip'], ['overlay', 'Overlay']], state.layout, value => { state.layout = value; render(); handlers.preferences?.(); }, 'Sequencer layout');
   const bpm = input(120, value => handlers.transport?.({ bpm: value, baseBpm: value }), { min: 20, max: 400, step: 1 }); bpm.setAttribute('aria-label', 'BPM');
@@ -210,7 +228,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const showProjectPage = (page, load, fetchPage = null) => {
     if (disposed) return;
     retirePicker(pickerOwner);
-    const owner = { generation: 0, closed: false, loading: false, query: '' }; pickerOwner = owner;
+    const owner = { generation: 0, closed: false, loading: false, query: '', cursor: null, back: [] }; pickerOwner = owner;
     const current = generation => !disposed && pickerOwner === owner && !owner.closed && owner.generation === generation;
     const items = node('div', null, 'studio-project-items'), feedback = node('p', '', 'studio-project-feedback');
     const search = node('input'); search.type = 'search'; search.placeholder = 'Search project names'; search.setAttribute('aria-label', 'Search project names');
@@ -222,12 +240,21 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       try {
         const next = await fetchPage(cursor, query);
         if (!current(generation) || owner.query !== query || page.nextCursor !== cursor || !next) return;
-        page = next; append(next.items); feedback.textContent = next.items.length ? '' : next.nextCursor ?
+        owner.back.push(owner.cursor); owner.cursor = cursor; page = next; append(next.items); feedback.textContent = next.items.length ? '' : next.nextCursor ?
           'No matches in this page. Continue the search with More projects.' : 'No more matching projects.';
       } catch (error) { if (current(generation)) feedback.textContent = error?.message || 'Could not load more projects. Retry.'; }
       finally { if (current(generation)) { owner.loading = false; more.disabled = !page.nextCursor; more.hidden = !page.nextCursor; } }
     });
+    const previous = button('Previous projects', async () => {
+      if (!fetchPage || owner.loading || !owner.back.length || !current(owner.generation)) return;
+      const generation = owner.generation, cursor = owner.back.at(-1); owner.loading = true;
+      try { const next = await fetchPage(cursor, owner.query); if (!current(generation) || !next) return;
+        owner.back.pop(); owner.cursor = cursor; page = next; append(next.items); more.disabled = !page.nextCursor; more.hidden = !page.nextCursor;
+      } catch (error) { if (current(generation)) feedback.textContent = error.message; }
+      finally { if (current(generation)) owner.loading = false; }
+    });
     const append = entries => {
+      items.replaceChildren(); previous.hidden = !owner.back.length;
       for (const entry of entries) items.append(button(`${entry.name} · ${new Date(entry.savedAt).toLocaleString()} · ${String(entry.id).slice(-6)}`, async () => {
         if (!current(owner.generation) || owner.loading) return;
         const generation = owner.generation; owner.loading = true; search.disabled = true; more.disabled = true;
@@ -245,7 +272,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     search.addEventListener('change', async () => {
       if (!fetchPage || !current(owner.generation) || search.disabled) return;
       const generation = ++owner.generation, query = search.value.trim(); owner.query = query; owner.loading = true;
-      page = { items: [], nextCursor: null }; items.replaceChildren(); more.disabled = true; more.hidden = true;
+      owner.cursor = null; owner.back.length = 0; previous.hidden = true; page = { items: [], nextCursor: null }; items.replaceChildren(); more.disabled = true; more.hidden = true;
       feedback.textContent = 'Searching projects…';
       try {
         const next = await fetchPage(null, query); if (!current(generation) || !next) return;
@@ -253,7 +280,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       } catch (error) { if (current(generation)) feedback.textContent = error?.message || 'Project search failed. Retry.'; }
       finally { if (current(generation)) { owner.loading = false; more.disabled = !page.nextCursor; more.hidden = !page.nextCursor; } }
     });
-    projectList.replaceChildren(node('h2', 'Saved projects'), button('Close', () => retirePicker(owner, { cancel: true, close: true })), search, items, feedback, more);
+    projectList.replaceChildren(node('h2', 'Saved projects'), button('Close', () => retirePicker(owner, { cancel: true, close: true })), search, items, feedback, previous, more);
     append(page.items); more.hidden = !page.nextCursor;
     if (handlers.reclaimRecovery) projectList.append(button('Remove recovery checkpoint', () => handlers.reclaimRecovery()));
     projectList.showModal();
@@ -271,6 +298,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     } catch (error) { handlers.status?.(error.message); renderInspector(); }
   };
   function renderInspector() {
+    for (const control of parameterControls.splice(0)) control.dispose();
     const lane = selected(); state.slot = Math.max(0, Math.min(3, state.slot));
     const pattern = lane.mode === 'pattern' ? lane.patterns[state.slot] : null;
     state.step = pattern ? Math.max(0, Math.min(state.step, pattern.length - 1)) : 0;
@@ -287,8 +315,8 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       labeled('Patch', select(collection.patches.map(p => [p.id, p.name]), lane.patch, patch => dispatch({ type: 'procgen/palette', laneId: lane.id, patch }), 'Sound patch'), fields);
       if (lane.instrumentRef) fields.append(node('p', `${lane.instrumentRef.definition.name || lane.instrumentRef.patchId} · saved revision ${lane.instrumentRef.revision}`, 'studio-hint'));
       for (const macro of lane.instrumentRef?.definition?.macros || []) {
-        const control = input(lane.instrumentControls?.macros?.[macro.id] ?? macro.default01, value => changeLane({ instrumentControls: { ...lane.instrumentControls,
-          macros: { ...lane.instrumentControls?.macros, [macro.id]: value } } }), { type: 'range', min: 0, max: 1, step: 0.01 });
+        const control = parameter(lane.instrumentControls?.macros?.[macro.id] ?? macro.default01, value => changeLane({ instrumentControls: { ...lane.instrumentControls,
+          macros: { ...lane.instrumentControls?.macros, [macro.id]: value } } }), { id: 'macro:' + macro.id, name: macro.name, quantity: 'authored-performance-macro', unit: 'normalized', min: 0, max: 1, step: 0.01, fineStep: 0.001, defaultValue: macro.default01, detents: macro.bipolar ? [0.5] : [] });
         control.title = macro.perceptualDirection; control.setAttribute('aria-label', macro.name + ' · next onset');
         labeled(macro.name + ' · next onset', control, fields);
         fields.append(node('p', macro.perceptualDirection, 'studio-hint'));
@@ -309,9 +337,9 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         labeled('Pattern length', input(pattern.length, length => changePattern({ length }), { min: 1, max: 64 }), fields);
         labeled('Playback rate', select([0.125, 0.25, 0.5, 1, 2, 4, 8].map(v => [v, v + '×']), pattern.rate, value => changePattern({ rate: Number(value) }), 'Lane playback rate'), fields);
       } else fields.append(node('p', 'This lane follows committed world causes. The Physical tab edits the live instrument mapping.', 'studio-hint'));
-      labeled('Level', input(lane.gain, gain => changeLane({ gain }), { type: 'range', min: 0, max: 2, step: 0.01 }), fields);
-      labeled('Game accent', input(lane.eventAccent, eventAccent => changeLane({ eventAccent }), { type: 'range', min: 0, max: 2, step: 0.01 }), fields);
-      labeled('Pan', input(lane.pan, pan => changeLane({ pan }), { type: 'range', min: -127, max: 127 }), fields);
+      labeled('Level', parameter(lane.gain, gain => changeLane({ gain }), { id: 'lane-gain', name: 'Level', quantity: 'lane-gain', unit: '×', min: 0, max: 2, step: 0.01, defaultValue: 1 }), fields);
+      labeled('Game accent', parameter(lane.eventAccent, eventAccent => changeLane({ eventAccent }), { id: 'event-accent', name: 'Game accent', quantity: 'event-velocity-multiplier', unit: '×', min: 0, max: 2, step: 0.01, defaultValue: 1 }), fields);
+      labeled('Pan', parameter(lane.pan, pan => changeLane({ pan }), { id: 'lane-pan', name: 'Pan', quantity: 'stereo-position', unit: 'pan units', min: -127, max: 127, step: 1, fineStep: 1, defaultValue: 0, detents: [0] }), fields);
       const events = node('fieldset', null, 'studio-event-mask'); events.append(node('legend', 'Game events'));
       for (const action of ['build', 'bash', 'mine', 'dig', 'fall', 'land', 'spawn']) labeled(action, input(lane.eventMask?.[action] !== false, enabled => changeLane({ eventMask: { ...lane.eventMask, [action]: enabled } }), { type: 'checkbox' }), events);
       fields.append(events);
@@ -715,17 +743,25 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     event.preventDefault();
     const lane = getProject().procgen.lanes.find(item => item.id === row.dataset.laneId), slot = Number(row.dataset.slot);
     if (!lane?.patterns?.[slot]) return;
-    stroke = { laneId: lane.id, slot, steps: lane.patterns[slot].steps.slice(), enabled: state.tool === 'draw', changed: false };
+    const source = getProject(), transform = projection;
+    const lease = pointerArbiter.acquire({ pointerId: event.pointerId, targetKey: `pattern:${lane.id}:${slot}`, identity: source,
+      getIdentity: () => getProject() === source && projection === transform ? source : null,
+      onCancel: () => { stroke = null; if (!disposed) renderRows(); } });
+    if (!lease) return;
+    stroke = { lease, pointerId: event.pointerId, laneId: lane.id, slot, steps: lane.patterns[slot].steps.slice(), enabled: state.tool === 'draw', changed: false };
+    grid.setPointerCapture?.(event.pointerId);
     state.laneId = lane.id; state.slot = slot; state.tab = 'Step'; paint(cell);
   });
-  on(window, 'pointermove', event => { if (stroke) paint(document.elementFromPoint(event.clientX, event.clientY)?.closest?.('.studio-cell')); });
-  on(window, 'pointerup', () => {
-    if (!stroke) return;
+  on(window, 'pointermove', event => { if (stroke?.lease.owns(event)) paint(document.elementFromPoint(event.clientX, event.clientY)?.closest?.('.studio-cell')); });
+  on(window, 'pointerup', event => {
+    if (!stroke?.lease.finish(event)) return;
     const completed = stroke; stroke = null; suppressClickUntil = window.performance.now() + 100;
     if (completed.changed) dispatch({ type: 'procgen/pattern', laneId: completed.laneId, slot: completed.slot, patch: { steps: completed.steps } });
     else render();
   });
-  on(window, 'pointercancel', () => { if (stroke) { stroke = null; renderRows(); } });
+  for (const type of ['pointercancel', 'lostpointercapture']) on(window, type, event => { if (stroke?.lease.owns(event)) stroke.lease.cancel(type); });
+  on(window, 'blur', () => stroke?.lease.cancel('blur'));
+  on(document, 'keydown', event => { if (event.key === 'Escape') stroke?.lease.cancel('escape'); });
   const layoutSurface = displayScheduler.register({ id: 'workstation-layout', element: stage, intervalMs: 0,
     read: () => ({ width: stage.clientWidth, height: stage.clientHeight }), write: measured => { if (layout(measured)) renderRows(); },
     onError: message => { displayStatus.textContent = message; } });
@@ -756,7 +792,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); changeStep({ enabled: false }); }
     else if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && selected().mode === 'pattern') { event.preventDefault(); const length = selected().patterns[state.slot].length; state.step = (state.step + (event.key === 'ArrowLeft' ? length - 1 : 1)) % length; state.tab = 'Step'; render(); }
   });
-  return { render, patchStep, layout, renderInspector: render, showProjects, showProjectPage, displayScheduler, status: text => { status.textContent = text; },
+  return { render, patchStep, layout, renderInspector: render, requestProjectName: nameDialog.request, showProjects, showProjectPage, displayScheduler, status: text => { status.textContent = text; },
     offerLegacyConversion(report, convert) {
       legacyNotice.replaceChildren(node('span', `Previous setup uses legacy phrases. Physical conversion will discard ${report.discardedEnabledSteps} enabled steps across ${report.laneCount} lanes.`),
         button('Convert previous setup', () => convert?.(), 'Replace the previous setup with a physical instrument graph'));
@@ -815,7 +851,8 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       return retirement.retire([
         { name: 'project-picker', run: () => retirePicker(pickerOwner, { cancel: true, close: true }) }, { name: 'fullscreen', run: () => fullscreenSession.dispose() },
         { name: 'geometry-subscription', run: () => geometryUnsubscribe?.() }, { name: 'geometry-transition', run: () => { geometryRelease?.(); state.presentationTransition = false; } },
-        { name: 'resize-observer', run: () => resizeObserver?.disconnect() }, { name: 'display-scheduler', run: () => displayScheduler.dispose() },
+        { name: 'resize-observer', run: () => resizeObserver?.disconnect() }, { name: 'name-dialog', run: () => nameDialog.dispose() }, { name: 'parameter-gestures', run: () => { stroke?.lease.cancel('disposed'); resizeLease?.cancel('disposed'); for (const control of parameterControls.splice(0)) control.dispose(); } },
+        { name: 'display-scheduler', run: () => displayScheduler.dispose() },
         { name: 'renderer', run: detachRenderer }, ...listeners.map((unlisten, index) => ({ name: 'view-listener-' + index, run: unlisten })),
         { name: 'canvas', run: () => { if (canvasParent) canvasParent.insertBefore(canvas, canvasSibling?.parentNode === canvasParent ? canvasSibling : null); } },
         ...[projectList, shell, footer, transport, heading].map((element, index) => ({ name: 'view-element-' + index, run: () => element.remove() })),

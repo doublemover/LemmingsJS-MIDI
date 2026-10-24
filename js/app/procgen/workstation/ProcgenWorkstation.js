@@ -1179,8 +1179,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       let resumeStopGeneration = transportStopGeneration;
       try {
         const promptName = asCopy || rename || !documentId;
-        const name = promptName && typeof window.prompt === 'function' ? window.prompt('Project name', savedName) : savedName;
-        if (name == null) return false;
+        const name = promptName ? await view.requestProjectName({ value: savedName, title: asCopy ? 'Save project copy' : rename ? 'Rename project' : 'Project name' }) : savedName;
+        if (name == null || disposed || documentGeneration !== saveDocumentGeneration || operationSerial !== saveOperationSerial) return false;
         if (!name.trim()) { status('Enter a project name to save.'); return false; }
         const session = capture(name, { resume: false }), revision = editRevision;
         resumeStopGeneration = transportStopGeneration;

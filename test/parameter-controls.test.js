@@ -1,0 +1,44 @@
+import { expect } from 'chai';
+import { normalizeParameterDescriptor, parameterUnitPosition, parameterValueAt, parseParameterValue } from '../js/app/controls/ParameterDescriptor.js';
+import { createParameterKnob } from '../js/app/controls/ParameterKnob.js';
+import { getPointerGestureArbiter } from '../js/app/controls/PointerGestureArbiter.js';
+import { createProjectNameDialog } from '../js/app/controls/ProjectNameDialog.js';
+import { TestDocument } from './helpers/test-dom.js';
+const descriptor = { id: 'pitch', name: 'Pitch', quantity: 'pitch-offset', unit: 'cents', min: -1200, max: 1200, step: 10, fineStep: 1, defaultValue: 0, detents: [0] };
+const event = (type, extra = {}) => ({ type, preventDefault() {}, stopPropagation() {}, ...extra });
+describe('typed parameter control transactions', () => {
+  it('round-trips logarithmic positions and refuses empty/nonfinite values without inventing zero', () => {
+    const value = normalizeParameterDescriptor({ ...descriptor, min: 20, max: 20000, defaultValue: 440, unit: 'Hz', scale: 'logarithmic', detents: [] });
+    for (const fraction of [0, 0.1, 0.5, 1]) expect(parameterUnitPosition(value, parameterValueAt(value, fraction))).to.be.closeTo(fraction, 1e-12);
+    for (const text of ['', ' ', 'Infinity', 'NaN', '20001 Hz']) expect(() => parseParameterValue(value, text)).to.throw();
+    expect(parseParameterValue(value, '440 Hz')).to.equal(440);
+  });
+  it('admits one target owner, ignores foreign pointers and cancels on identity replacement', () => {
+    const arbiter = getPointerGestureArbiter({}), first = {}, cancelled = []; let identity = first;
+    const lease = arbiter.acquire({ pointerId: 1, targetKey: 'gain', identity, getIdentity: () => identity, onCancel: reason => cancelled.push(reason) });
+    expect(arbiter.acquire({ targetKey: 'pan', identity, getIdentity: () => identity })).to.equal(null);
+    expect(lease.finish({ pointerId: 2 })).to.equal(false); expect(arbiter.inspect().pointerId).to.equal(1);
+    identity = {}; expect(lease.owns({ pointerId: 1 })).to.equal(false); expect(cancelled).to.deep.equal(['target-replaced']); expect(arbiter.inspect()).to.equal(null);
+  });
+  it('previews many pointer samples but commits once, and canceled keyboard repeats commit nothing', () => {
+    const document = new TestDocument(), window = {}, commits = [], previews = []; let identity = {};
+    const knob = createParameterKnob({ document, window, descriptor, value: 0, getIdentity: () => identity, commit: value => commits.push(value), preview: value => previews.push(value) });
+    const cap = knob.element.children[1]; cap.dispatchEvent(event('pointerdown', { pointerId: 7, clientY: 160, button: 0 }));
+    for (let y = 159; y >= 80; y--) cap.dispatchEvent(event('pointermove', { pointerId: 7, clientY: y }));
+    expect(commits).to.have.length(0); cap.dispatchEvent(event('pointerup', { pointerId: 8 })); expect(commits).to.have.length(0);
+    cap.dispatchEvent(event('pointerup', { pointerId: 7 })); expect(commits).to.deep.equal([1200]); expect(previews.length).to.be.greaterThan(1);
+    cap.dispatchEvent(event('keydown', { key: 'ArrowDown' })); cap.dispatchEvent(event('keydown', { key: 'ArrowDown', repeat: true }));
+    cap.dispatchEvent(event('keydown', { key: 'Escape' })); cap.dispatchEvent(event('keyup', { key: 'ArrowDown' })); expect(commits).to.have.length(1);
+    cap.dispatchEvent(event('pointerdown', { pointerId: 1, clientY: 0 })); identity = {}; cap.dispatchEvent(event('pointermove', { pointerId: 1, clientY: 100 }));
+    expect(knob.inspect().gestureId).to.equal(null); knob.dispose();
+  });
+  it('keeps invalid project names editable inline and resolves explicit cancellation without saving', async () => {
+    const document = new TestDocument(), create = document.createElement.bind(document); document.body = create('body');
+    document.createElement = tag => { const element = create(tag); if (tag === 'dialog') { element.showModal = () => {}; element.close = () => element.dispatchEvent(event('close')); element.remove = () => document.body.removeChild(element); } return element; };
+    const owner = createProjectNameDialog({ document }), pending = owner.request({ value: '' });
+    const dialog = document.body.children[0], form = dialog.children[0], input = form.children[0].children[0];
+    form.dispatchEvent(event('submit')); expect(form.children[1].textContent).to.include('Enter a project name'); expect(document.body.children).to.have.length(1);
+    input.value = '  A named world  '; form.dispatchEvent(event('submit')); expect(await pending).to.equal('A named world');
+    const cancelled = owner.request({ value: 'Unsaved' }); owner.dispose(); expect(await cancelled).to.equal(null);
+  });
+});
