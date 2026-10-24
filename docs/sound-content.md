@@ -207,3 +207,11 @@ part of patch identity. Initial adoption checks every retained immutable catalog
 unreadable or conflicting history blocks publication. Concurrent publications
 share an exclusive output lock, and the new catalog and ledger must both exist
 before the atomic head update. A crashed lock requires explicit recovery.
+
+Causal archive inspection copies bounded byte-line fragments without repeated
+carry-string scans. A registered worker verifies manifests, source hashes,
+canonical byte inventories and chunk record indexes. Only compact verified
+metadata returns to the UI; checkpoint and chunk bodies remain in the worker.
+Decoding begins after shared job admission, supports cancellation, and keeps
+the source-line reservation through conversion. An entry that exceeds available
+shared parsing capacity is explicitly rejected without changing stored work.

@@ -1,6 +1,6 @@
 import { prepareReplayableExportArtifact } from '../../export/ExportArtifact.js';
-import { canonicalJournalText, cloneJournalData, hashJournalText } from './CausalJournalCanonical.js';
-import { verifyManifestHashes } from './ProcgenCausalJournal.js';
+import { canonicalJournalText, cloneJournalData, freezeJournalData } from './CausalJournalCanonical.js';
+import { readOwnedNdjsonLines } from '../../resources/OwnedNdjsonReader.js';
 import { encodeOwnedJsonLine } from '../../resources/OwnedJsonByteStream.js';
 import { backgroundJobService } from '../../resources/BackgroundJobService.js';
 
@@ -97,25 +97,22 @@ const prepareCausalTakeArchive = async ({ journal, storage, takeId, maxDeliveryB
 // Validate a streamed archive without concatenating the entire performance.
 // The caller may hand the verified records to an explicit import transaction;
 // inspection alone never arms output or changes the live document.
-const inspectCausalTakeArchive = async (source, { maxBytes = MAX_ARCHIVE_BYTES } = {}) => {
+const inspectCausalTakeArchive = async (source, { maxBytes = MAX_ARCHIVE_BYTES, resourceBudget = null, jobs = backgroundJobService, signal } = {}) => {
   if (!source?.[Symbol.asyncIterator] && !source?.[Symbol.iterator] ||
       !Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > MAX_ARCHIVE_BYTES) throw new Error('Invalid causal archive source or byte limit.');
-  const decoder = new TextDecoder('utf-8', { fatal: true });
-  let carry = '', byteCount = 0, manifest = null, checkpoints = [], chunks = [], nextCheckpoint = 0, nextChunk = 0;
-  let previousHash = null, previousSequence = 0, ended = false;
+  let byteCount = 0, manifest = null, checkpoints = [], chunks = [], nextCheckpoint = 0, nextChunk = 0;
+  let previousHash = null, previousSequence = 0, ended = false, ownedChunks = null;
   const sameRef = (left, right) => canonicalJournalText(left, { maxBytes: 16384 }).text ===
     canonicalJournalText(right, { maxBytes: 16384 }).text;
-  const readLine = async line => {
+  const readEntry = entry => {
     if (ended) throw new Error('Causal archive has data after its footer.');
-    let entry;
-    try { entry = JSON.parse(line); } catch { throw new Error('Causal archive has invalid JSON.'); }
     if (!manifest) {
       if (entry?.schema !== ARCHIVE_SCHEMA || entry.kind !== 'manifest') throw new Error('Causal archive has no versioned manifest.');
-      manifest = cloneJournalData(entry.manifest, { maxBytes: 8 * 1048576 });
+      manifest = freezeJournalData(entry.manifest);
       if (!['finalized', 'partial'].includes(manifest.state)) throw new Error('Causal archive contains an unfinalized take.');
-      await verifyManifestHashes(manifest);
       checkpoints = uniqueRefs([manifest.initialCheckpoint, ...(manifest.checkpoints || [])]);
       chunks = uniqueRefs([...(manifest.prefix?.chunks || []), ...(manifest.chunks || [])]);
+      ownedChunks = new Set(manifest.chunks.map(ref => ref.id));
       if (checkpoints.length + chunks.length > MAX_ARCHIVE_ENTRIES) throw new Error('Causal archive entry limit exceeded.');
       if (manifest.prefix) {
         let prefixSequence = 0;
@@ -133,21 +130,15 @@ const inspectCausalTakeArchive = async (source, { maxBytes = MAX_ARCHIVE_BYTES }
     }
     if (entry?.kind === 'checkpoint') {
       const ref = checkpoints[nextCheckpoint++];
-      if (!ref || nextChunk || !sameRef(entry.ref, ref) || typeof entry.canonical !== 'string' ||
-          await hashJournalText(entry.canonical) !== ref.hash) throw new Error('Causal archive checkpoint is missing, reordered or corrupt.');
+      if (!ref || nextChunk || !sameRef(entry.ref, ref)) throw new Error('Causal archive checkpoint is missing, reordered or corrupt.');
       return;
     }
     if (entry?.kind === 'chunk') {
       const ref = chunks[nextChunk++];
-      if (nextCheckpoint !== checkpoints.length || !ref || !sameRef(entry.ref, ref) ||
-          typeof entry.canonical !== 'string' || await hashJournalText(entry.canonical) !== ref.hash)
+      if (nextCheckpoint !== checkpoints.length || !ref || !sameRef(entry.ref, ref))
         throw new Error('Causal archive chunk is missing, reordered or corrupt.');
-      let body;
-      try { body = JSON.parse(entry.canonical); } catch { throw new Error('Causal archive chunk is not canonical JSON.'); }
-      if (body.takeId !== ref.takeId || body.ordinal !== ref.ordinal || body.firstSequence !== ref.firstSequence ||
-          body.lastSequence !== ref.lastSequence || !Array.isArray(body.records) ||
-          body.records.length !== ref.lastSequence - ref.firstSequence + 1) throw new Error('Causal archive chunk identity does not match its index.');
-      if (manifest.chunks.some(owned => owned.id === ref.id)) {
+      const body = entry.body;
+      if (ownedChunks.has(ref.id)) {
         if (body.previousHash !== previousHash || body.firstSequence !== previousSequence + 1)
           throw new Error('Causal archive owned chunk chain diverges.');
         previousHash = ref.hash; previousSequence = body.lastSequence;
@@ -165,21 +156,18 @@ const inspectCausalTakeArchive = async (source, { maxBytes = MAX_ARCHIVE_BYTES }
     }
     throw new Error('Causal archive entry kind is unsupported.');
   };
-  for await (const part of source) {
-    if (!(part instanceof Uint8Array)) throw new Error('Causal archive source must yield bytes.');
-    byteCount += part.byteLength;
-    if (byteCount > maxBytes) throw new Error('Causal archive exceeds its byte limit.');
-    carry += decoder.decode(part, { stream: true });
-    if (carry.length > MAX_ARCHIVE_LINE_BYTES) throw new Error('Causal archive entry exceeds its size limit.');
-    for (let newline = carry.indexOf('\n'); newline >= 0; newline = carry.indexOf('\n')) {
-      const line = carry.slice(0, newline);
-      carry = carry.slice(newline + 1);
-      if (!line) throw new Error('Causal archive has an empty entry.');
-      await readLine(line);
-    }
+  for await (const line of readOwnedNdjsonLines(source, { maxBytes, maxLineBytes: Math.min(maxBytes, MAX_ARCHIVE_LINE_BYTES), resourceBudget, signal })) {
+    if (ended) throw new Error('Causal archive has data after its footer.');
+    const peak = line.byteLength * 8 + 1048576;
+    if (line.byteLength > 64 * 1048576 || peak > 512 * 1048576) throw new Error('Causal archive entry exceeds shared parsing admission.');
+    const lease = await jobs.compute({ kind: 'inspect-causal-archive-entry', ownerId: 'causal-archive-inspect', ownerEpoch: 0,
+      sourceRevision: 'archive-line-' + line.totalBytes, inputBytes: line.byteLength, estimatedPeakBytes: Math.max(4096, peak),
+      maxBytes: line.byteLength, priority: 'background', budgetAdapter: resourceBudget, signal, prepareInput: () => {
+        try { return line.takeText(); } finally { line.release(); }
+      } });
+    try { readEntry(lease.value); byteCount = line.totalBytes; } finally { lease.release(); }
   }
-  carry += decoder.decode();
-  if (carry || !ended) throw new Error('Causal archive ended before its verified footer.');
+  if (!ended) throw new Error('Causal archive ended before its verified footer.');
   return Object.freeze({ schema: ARCHIVE_SCHEMA, takeId: manifest.takeId, takeName: manifest.takeName,
     revision: manifest.revision, complete: manifest.complete, canonicalHash: manifest.canonicalHash,
     coverage: manifest.coverage, checkpoints: checkpoints.length, chunks: chunks.length, bytes: byteCount,

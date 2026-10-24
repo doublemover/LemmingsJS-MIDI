@@ -3,9 +3,10 @@ import { decodeGroundAssetSnapshot } from './GroundAssetDecode.js';
 import { canonicalDataText } from '../../core/CanonicalData.js';
 import { compileSoundContent } from '../../midi/content/SoundContentCompiler.js';
 import { getNativeInstrumentCatalog } from '../midi-ui/NativeInstrumentSchema.js';
+import { inspectCausalArchiveEntry } from '../procgen/workstation/CausalArchiveEntry.js';
 
 export const BACKGROUND_JOB_PROTOCOL = 1;
-export const BACKGROUND_JOB_KINDS = Object.freeze(['parse-json', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'asset-hash', 'asset-decode']);
+export const BACKGROUND_JOB_KINDS = Object.freeze(['parse-json', 'inspect-causal-archive-entry', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'asset-hash', 'asset-decode']);
 const MAX_BYTES = 64 * 1048576, MAX_NODES = 4000000;
 const problem = (code, message) => Object.assign(new Error(message), { code, name: 'BackgroundJobError' });
 const shared = value => typeof globalThis.SharedArrayBuffer === 'function' && (value instanceof globalThis.SharedArrayBuffer || value?.buffer instanceof globalThis.SharedArrayBuffer);
@@ -124,9 +125,22 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     if (kind === 'asset-hash') return { value: hash, inputBytes: count, nodes: 1 };
   }
   const options = { maxBytes, maxNodes, maxStringBytes, estimatedPeakBytes, signal, current, onProgress, yieldControl };
-  if (kind === 'parse-json') {
+  if (kind === 'parse-json' || kind === 'inspect-causal-archive-entry') {
     const metadata = await inspectText(input, options); guard(signal, current);
-    const value = JSON.parse(input); guard(signal, current); return { value, inputBytes: metadata.bytes, nodes: metadata.nodes };
+    let value = JSON.parse(input); guard(signal, current);
+    if (kind === 'inspect-causal-archive-entry') {
+      value = await inspectCausalArchiveEntry(value, { signal, parse: async text => {
+        await inspectText(text, options); guard(signal, current); const parsed = JSON.parse(text); guard(signal, current); return parsed;
+      }, hash: async text => {
+        const counted = encodedLength(text); if (counted > maxBytes) throw problem('input-capacity', 'Causal archive source exceeds its admitted byte bound.');
+        const encoded = new TextEncoder().encode(text), digest = await crypto.subtle.digest('SHA-256', encoded); guard(signal, current);
+        return { hash: [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join(''), bytes: counted };
+      } });
+      const retainedBytes = canonicalDataText(value, { maxBytes: Math.min(maxBytes, 8 * 1048576), maxNodes }).bytes.byteLength * 4;
+      if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Causal archive inspection result exceeds its admitted representation bound.');
+      return { value, inputBytes: metadata.bytes, nodes: metadata.nodes, retainedBytes };
+    }
+    return { value, inputBytes: metadata.bytes, nodes: metadata.nodes };
   }
   const metadata = await inspectValue(input, options, { allowBinary: kind === 'recovery-checksum' });
   if (kind === 'compile-sound-content') {
