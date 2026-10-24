@@ -40,8 +40,8 @@ const makeOwner = (channels, sampleRate, { mixed = false, processorMode = 'valid
     definition.maximumTailSeconds = 30;
     const colour = structuredClone(createQuarryTape().nodes.find(node => node.kind === 'nonlinear-chain')); colour.id = 'colour';
     definition.nodes.push(colour, { id: 'echo', kind: 'feedback-delay', parameters: {} });
-    const edge = (from, to) => ({ from: { nodeId: from, port: 'audio' }, to: { nodeId: to, port: 'audio' }, gain01: 1 });
-    definition.edges = [edge('source', 'colour'), edge('colour', 'echo'), edge('echo', 'body'), edge('body', 'output')];
+    const edge = (from, to, gain01 = 1) => ({ from: { nodeId: from, port: 'audio' }, to: { nodeId: to, port: 'audio' }, gain01 });
+    definition.edges = [edge('source', 'colour'), edge('colour', 'echo'), edge('echo', 'body', 1 / definition.nodes[1].impulse.maximumLinearGain), edge('body', 'output')];
   }
   let pins = 0, convolver; const processors = [];
   const pcm = Array.from({ length: channels }, (_, i) => new Float32Array(Array.from({ length: frames }, (__, f) => f ? 0 : i % 2 ? -1 : 1)));

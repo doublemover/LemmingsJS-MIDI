@@ -1,10 +1,10 @@
-import { createQuarryEcho, createQuarryTape, createQuarryTapeSpring, createQuarryBody, validateOwnerEffectRack } from '../../midi/content/DubQuarryRack.js';
+import { createQuarryEcho, createQuarryDuck, createQuarryTape, createQuarryTapeSpring, createQuarryBody, validateOwnerEffectRack } from '../../midi/content/DubQuarryRack.js';
 import { ORIGINAL_IMPULSE_PRESETS } from '../../midi/content/ProceduralImpulseMaterial.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 
 export function createQuarryEchoView({ document, window, getPlayback, getSavedRack, saveRack, onStatus = () => {} } = {}) {
   if (!document?.createElement || typeof getPlayback !== 'function' || typeof getSavedRack !== 'function' || typeof saveRack !== 'function') throw new TypeError('Quarry Echo needs the physical owner and saved project settings.');
-  const listeners = [], retirement = createProcgenRetirementScope(); let disposed = false, pending = null, held = null, revision = 0, springBlend01 = 0.15;
+  const listeners = [], retirement = createProcgenRetirementScope(); let disposed = false, pending = null, held = null, revision = 0, springBlend01 = 0.15, inspectionTimer = null;
   const node = (tag, text) => { const value = document.createElement(tag); if (text != null) value.textContent = text; return value; };
   const listen = (target, event, callback) => { target.addEventListener(event, callback); listeners.push(() => target.removeEventListener(event, callback)); };
   const dialog = node('dialog'); dialog.className = 'studio-dialog studio-echo-rack'; dialog.setAttribute('aria-labelledby', 'quarryEchoTitle');
@@ -28,7 +28,7 @@ export function createQuarryEchoView({ document, window, getPlayback, getSavedRa
   const mode = node('select'); mode.setAttribute('aria-label', 'Delay time transition');
   for (const [value, text] of [['glide', 'Tape glide · changes pitch'], ['jump', 'Two-tap jump crossfade']]) { const option = node('option', text); option.value = value; mode.append(option); } fields.append(mode);
   const preset = node('select'); preset.setAttribute('aria-label', 'Quarry effect recipe');
-  for (const [value, text] of [['echo', 'Quarry Echo · bounded delay'], ['tape', 'Quarry Tape · original cubic preamp and darkening echo'], ['tape-spring', 'Quarry Tape + Spring · one shared echo and body'], ...ORIGINAL_IMPULSE_PRESETS.map(entry => [entry.id, entry.name + ' · ' + entry.layout + ' · ' + entry.durationSeconds + ' s'])]) {
+  for (const [value, text] of [['echo', 'Quarry Echo · bounded delay'], ['duck', 'Quarry Duck · source-shaped echo return'], ['tape', 'Quarry Tape · original cubic preamp and darkening echo'], ['tape-spring', 'Quarry Tape + Spring · one shared echo and body'], ...ORIGINAL_IMPULSE_PRESETS.map(entry => [entry.id, entry.name + ' · ' + entry.layout + ' · ' + entry.durationSeconds + ' s'])]) {
     const option = node('option', text); option.value = value; preset.append(option);
   }
   fields.prepend(preset);
@@ -38,10 +38,10 @@ export function createQuarryEchoView({ document, window, getPlayback, getSavedRa
     time.label.hidden = feedback.label.hidden = mode.hidden = Boolean(body);
     age.label.hidden = !['tape', 'tape-spring'].includes(preset.value); time.input.min = ['tape', 'tape-spring'].includes(preset.value) ? 160 : 70; if (time.value() < Number(time.input.min)) time.set(Number(time.input.min));
     level.input.max = body ? 0.3 : 0.35; if (level.value() > Number(level.input.max)) level.set(Number(level.input.max));
-    bodyDetails.textContent = body ? 'Fixed original ' + body.durationSeconds + ' s body; explicit native RMS normalization and authored reference gain. Algorithm latency is unknown. Preparing a replacement crossfades input and retains the old bounded tail.' : preset.value === 'tape-spring' ? 'Original cubic preamp and dark echo feeding a shared Hollow Spring blend. Native body latency is unknown; its authored predelay is retained.' : preset.value === 'tape' ? 'Original 2× cubic preamp with first-order ADAA, 100 Hz input highpass and 20 Hz DC block. AGE adds drive and darkens the feedback filter. Filter/ADAA delay is declared; spectral and level matching qualification is pending. This is not a hardware emulation.' : 'TIME is an audio delay in milliseconds. It does not represent an actor journey.';
+    bodyDetails.textContent = body ? 'Fixed original ' + body.durationSeconds + ' s body; explicit native RMS normalization and authored reference gain. Algorithm latency is unknown. Preparing a replacement crossfades input and retains the old bounded tail.' : preset.value === 'tape-spring' ? 'Original cubic preamp and dark echo feeding a shared Hollow Spring blend. Native body latency is unknown; its authored predelay is retained.' : preset.value === 'tape' ? 'Original 2× cubic preamp with first-order ADAA, 100 Hz input highpass and 20 Hz DC block. AGE adds drive and darkens the feedback filter. Filter/ADAA delay is declared; spectral and level matching qualification is pending. This is not a hardware emulation.' : preset.value === 'duck' ? 'The physical owner controls only the echo return: 3 ms attack, 150 ms release, fixed reference 0.25 and a 0.25 gain floor. Reactive detector with no lookahead; the dry attack stays independent.' : 'TIME is an audio delay in milliseconds. It does not represent an actor journey.';
   };
   const model = () => { revision = Math.max(revision + 1, (getSavedRack()?.graph.revision || 0) + 1);
-    return ['echo', 'tape', 'tape-spring'].includes(preset.value) ? (preset.value === 'tape-spring' ? createQuarryTapeSpring : preset.value === 'tape' ? createQuarryTape : createQuarryEcho)({ revision, delaySeconds: time.value() / 1000, feedback: feedback.value(), return01: level.value(), send01: 0, mode: mode.value, ...(['tape', 'tape-spring'].includes(preset.value) ? { age01: age.value() } : {}), ...(preset.value === 'tape-spring' ? { springBlend01 } : {}) }) :
+    return ['echo', 'duck', 'tape', 'tape-spring'].includes(preset.value) ? (preset.value === 'tape-spring' ? createQuarryTapeSpring : preset.value === 'tape' ? createQuarryTape : preset.value === 'duck' ? createQuarryDuck : createQuarryEcho)({ revision, delaySeconds: time.value() / 1000, feedback: feedback.value(), return01: level.value(), send01: 0, mode: mode.value, ...(['tape', 'tape-spring'].includes(preset.value) ? { age01: age.value() } : {}), ...(preset.value === 'tape-spring' ? { springBlend01 } : {}) }) :
       createQuarryBody({ revision, bodyId: preset.value, return01: level.value(), send01: 0 });
   };
   const release = () => {
@@ -70,23 +70,32 @@ export function createQuarryEchoView({ document, window, getPlayback, getSavedRa
   const load = () => {
     const rack = getSavedRack(); if (!rack) return;
     const body = ORIGINAL_IMPULSE_PRESETS.find(entry => rack.graph.id === 'dub-quarry.body.' + entry.id);
+    const duck = rack.graph.id === 'dub-quarry.duck';
     const spring = rack.graph.id === 'dub-quarry.tape-spring', tape = spring || rack.graph.id === 'dub-quarry.tape';
-    if (rack.graph.id !== 'dub-quarry.echo' && !tape && !body) { say('The saved owner rack uses another graph.'); return; }
+    if (rack.graph.id !== 'dub-quarry.echo' && !tape && !body && !duck) { say('The saved owner rack uses another graph.'); return; }
     if (spring) { const edge = rack.graph.edges.find(edge => edge.from.nodeId === 'spring' && edge.to.nodeId === 'wet-sum');
       if (!edge || !Number.isFinite(edge.gain01) || edge.gain01 < 0 || edge.gain01 > 0.3) { say('The saved spring blend is unavailable.'); return; } springBlend01 = edge.gain01; }
     const echo = rack.graph.nodes.find(entry => entry.id === 'echo'), output = rack.graph.nodes.find(entry => entry.id === 'return');
     if (!output || !body && !echo) { say('The saved Quarry topology is unavailable.'); return; }
     const preamp = rack.graph.nodes.find(entry => entry.id === 'preamp'); if (tape && !preamp) { say('The saved Quarry Tape preamp is unavailable.'); return; }
-    preset.value = body?.id || (spring ? 'tape-spring' : tape ? 'tape' : 'echo'); showPreset(); level.set(output.parameters.gain01); if (tape) age.set((preamp.parameters.driveDb - 2) / 10);
+    preset.value = body?.id || (spring ? 'tape-spring' : tape ? 'tape' : duck ? 'duck' : 'echo'); showPreset(); level.set(output.parameters.gain01); if (tape) age.set((preamp.parameters.driveDb - 2) / 10);
     if (echo) { time.set(echo.parameters.delaySeconds * 1000); feedback.set(echo.parameters.feedback); mode.value = echo.parameters.mode; }
     revision = Math.max(revision, rack.graph.revision);
   };
   button('Load saved defaults', load);
   for (const [value, label] of [['neutral', 'Neutral dry'], ['tail', 'Bypass with tail'], ['mute', 'Mute owner rack'], ['panic', 'Clear echo tails']]) button(label, run(() => { release(); const result = getPlayback()?.setEffectBypass?.(value); if (!result) throw new Error('Prepare an owner rack before changing its bypass state.'); say(label + ' requested for the physical owner.'); }));
-  const close = () => { release(); pending?.controller.abort(new Error('Echo preparation canceled.')); if (dialog.open) dialog.close(); };
+  const close = () => { if (inspectionTimer !== null) clearInterval(inspectionTimer); inspectionTimer = null; release(); pending?.controller.abort(new Error('Echo preparation canceled.')); if (dialog.open) dialog.close(); };
   listen(preset, 'change', () => { release(); springBlend01 = 0.15; showPreset(); say('Recipe selected. Prepare effect to replace the running graph.'); }); showPreset();
   button('Close', close); listen(dialog, 'cancel', event => { event.preventDefault(); close(); });
-  dialog.append(title, description, qualification, fields, actions, status); (document.getElementById('procgenPresentationRoot') || document.body).append(dialog);
-  return Object.freeze({ open() { if (!disposed) { load(); if (!dialog.open) dialog.showModal(); } }, suspend: close,
-    dispose() { return retirement.retire([{ name: 'quarry-echo-view', run: async () => { disposed = true; release(); const operation = pending; operation?.controller.abort(new Error('Echo view retired.')); await operation?.promise?.catch(() => {}); for (const remove of listeners) remove(); dialog.remove(); } }]); } });
+  const activity = node('output'); activity.setAttribute('aria-label', 'Focused detector activity');
+  const inspect = () => {
+    if (!dialog.open || document.hidden) return;
+    const state = getPlayback()?.inspectEffectGraph?.({ requestHealth: true }), graph = state?.activeGraph;
+    const detectors = graph?.processors?.filter(entry => entry.kind === 'envelope-detector') || [];
+    activity.textContent = detectors.map(entry => entry.nodeId + ': ' + (!entry.health ? 'awaiting detector receipt' : entry.health.muted ? 'quarantined' : entry.health.sourceAvailable === false ? 'no donor input; releasing' : 'donor connected, envelope ' + entry.health.output.toFixed(3))).join(' · ');
+    const routes = graph?.sidechains || []; if (routes.length) activity.textContent += ' ' + routes.map(route => route.sourceBusId + ' ' + route.tap + ' → ' + route.id + ': ' + route.status).join(' · ');
+  };
+  dialog.append(title, description, qualification, fields, actions, activity, status); (document.getElementById('procgenPresentationRoot') || document.body).append(dialog);
+  return Object.freeze({ open() { if (!disposed) { load(); if (!dialog.open) dialog.showModal(); if (inspectionTimer === null) inspectionTimer = setInterval(inspect, 250); inspect(); } }, suspend: close,
+    dispose() { return retirement.retire([{ name: 'quarry-echo-view', run: async () => { disposed = true; if (inspectionTimer !== null) clearInterval(inspectionTimer); inspectionTimer = null; release(); const operation = pending; operation?.controller.abort(new Error('Echo view retired.')); await operation?.promise?.catch(() => {}); for (const remove of listeners) remove(); dialog.remove(); } }]); } });
 }

@@ -34,4 +34,17 @@ describe('owner effect transitions and producer lifetime (API doubles)', () => {
     expect(host.state().activeGraph.id).to.equal('working'); expect(host.state().mode).to.equal('active');
     await host.dispose().completion; expect(resources.diagnostics().reservations).to.equal(0); await resources.dispose().completion;
   });
+  it('activates candidate sources before replacing the committed graph and detaches them before tailing', async () => {
+    const resources = createAudioResourceLeases(), context = { sampleRate: 48000, currentTime: 0, state: 'running', createGain: node }, events = [];
+    const host = createOwnerEffectGraphHost({ context, input: node(), dry: node(), destination: node(), resources, owner: 'owner', prepareGraph: async definition => ({
+      plan: { inputs: ['input'], outputs: ['output'], maximumTailFrames: 0 }, diagnostics: () => ({ id: definition.id }), getInput: node, getOutput: node, panic() {},
+      activateSidechains() { events.push('activate-' + definition.id); if (definition.id === 'invalid-source') throw new Error('foreign owner'); },
+      deactivateSidechains() { events.push('detach-' + definition.id); }, dispose: () => createProcgenRetirementScope().retire() }) });
+    await host.prepare({ id: 'old' });
+    let error; try { await host.prepare({ id: 'invalid-source' }); } catch (caught) { error = caught; }
+    expect(error.message).to.equal('foreign owner'); expect(host.state().activeGraph.id).to.equal('old'); expect(events).not.to.include('detach-old');
+    await host.prepare({ id: 'new' }); expect(events.indexOf('activate-new')).to.be.lessThan(events.indexOf('detach-old'));
+    await host.dispose().completion; expect(resources.diagnostics().reservations).to.equal(0); await resources.dispose().completion;
+  });
+
 });

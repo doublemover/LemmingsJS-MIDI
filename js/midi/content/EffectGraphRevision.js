@@ -1,3 +1,6 @@
+import { describeEffectNodePorts, isAudioEffectPort } from './EffectPorts.js';
+import { prepareEnvelopeDetectorProfile, ENVELOPE_DETECTOR_REVISION } from './EnvelopeDetectorProfile.js';
+import { prepareEnvelopeMappingProfile, ENVELOPE_MAPPING_REVISION } from './EnvelopeMappingProfile.js';
 import { validateImpulseResponseDescriptor } from './ImpulseResponseDescriptor.js';
 import { prepareNonlinearChainProfile, NONLINEAR_KERNEL_REVISION } from './NonlinearChainProfile.js';
 import { DELAY_KERNEL_REVISION, ALIGNMENT_KERNEL_REVISION } from './EffectRuntimeRevisions.js';
@@ -23,10 +26,17 @@ export function prepareEffectGraphRevision(raw, { sampleRate = 48000, maxStateBy
   const nodes = new Map(), incoming = new Map(), outgoing = new Map(); let stateBytes = 0, impulseCount = 0, impulseDecodedBytes = 0, impulseNativeEstimateBytes = 0, nonlinearCount = 0;
   for (const entry of graph.nodes) {
     keys(entry, ['id', 'kind', 'parameters', 'impulse']);
-    if (!id(entry.id) || nodes.has(entry.id) || !['bus-in', 'bus-out', 'gain', 'feedback-delay', 'convolution-native', 'nonlinear-chain'].includes(entry.kind)) fail('Unknown, duplicate or unsupported effect processor.');
+    if (!id(entry.id) || nodes.has(entry.id) || !['bus-in', 'bus-out', 'gain', 'feedback-delay', 'convolution-native', 'nonlinear-chain', 'sidechain-in', 'envelope-detector', 'envelope-mapping', 'modulated-gain', 'mono-to-stereo'].includes(entry.kind)) fail('Unknown, duplicate or unsupported effect processor.');
     if (entry.kind !== 'convolution-native' && entry.impulse != null) fail('Only a convolution processor accepts an impulse descriptor.');
-    let parameters, impulse = null, nonlinear = null, maximumTailFrames = 0, bytes = 0, processingLatencyFrames = 0;
-    if (entry.kind === 'gain') { keys(entry.parameters, ['gain01', 'gainMaximum01']); if (!finite(entry.parameters.gainMaximum01 ?? 2, 0, 2) || !finite(entry.parameters.gain01, 0, entry.parameters.gainMaximum01 ?? 2)) fail('Effect gain exceeds its linear amplitude domain.'); parameters = { gain01: entry.parameters.gain01, gainMaximum01: entry.parameters.gainMaximum01 ?? 2 }; }
+    let parameters, impulse = null, nonlinear = null, detector = null, mapping = null, maximumTailFrames = 0, bytes = 0, processingLatencyFrames = 0;
+    if (entry.kind === 'sidechain-in') {
+      keys(entry.parameters, ['sourceBusId', 'tap', 'inputLayout']); parameters = { tap: 'pre-fader', inputLayout: 'audioStereo', ...entry.parameters };
+      if (typeof parameters.sourceBusId !== 'string' || !/^(?:owner|lane:[a-zA-Z0-9._:-]{1,96})$/.test(parameters.sourceBusId) || !['pre-fader', 'post-fader'].includes(parameters.tap) || !['audioMono', 'audioStereo'].includes(parameters.inputLayout)) fail('Sidechain buses require a bounded same-owner source identity, tap and explicit audio layout.');
+    } else if (entry.kind === 'envelope-detector') {
+      detector = prepareEnvelopeDetectorProfile(entry.parameters, sampleRate); parameters = detector.parameters; bytes = detector.stateBytes; maximumTailFrames = detector.maximumTailFrames;
+    } else if (entry.kind === 'envelope-mapping') {
+      mapping = prepareEnvelopeMappingProfile(entry.parameters); parameters = mapping.parameters; bytes = mapping.stateBytes + mapping.lookupBytes;
+    } else if (entry.kind === 'gain') { keys(entry.parameters, ['gain01', 'gainMaximum01']); if (!finite(entry.parameters.gainMaximum01 ?? 2, 0, 2) || !finite(entry.parameters.gain01, 0, entry.parameters.gainMaximum01 ?? 2)) fail('Effect gain exceeds its linear amplitude domain.'); parameters = { gain01: entry.parameters.gain01, gainMaximum01: entry.parameters.gainMaximum01 ?? 2 }; }
     else if (entry.kind === 'feedback-delay') {
       keys(entry.parameters, Object.keys(delayDefaults)); parameters = { ...delayDefaults, ...entry.parameters };
       if (!finite(parameters.maxDelaySeconds, 2 / sampleRate, 3) || !finite(parameters.delaySeconds, 1 / sampleRate, parameters.maxDelaySeconds) ||
@@ -48,9 +58,9 @@ export function prepareEffectGraphRevision(raw, { sampleRate = 48000, maxStateBy
       maximumTailFrames = Math.ceil((impulse.asset.frames / impulse.asset.sourceSampleRate + impulse.predelaySeconds) * sampleRate);
     } else { keys(entry.parameters, []); parameters = {}; }
     stateBytes += bytes;
-    nodes.set(entry.id, { id: entry.id, kind: entry.kind, parameters, ...(impulse ? { impulse } : {}), ...(nonlinear ? { nonlinear } : {}), ports: { input: entry.kind === 'bus-in' ? null : 'audioStereo', output: entry.kind === 'bus-out' ? null : 'audioStereo' },
-      processingLatencyFrames, maximumTailFrames, stateBytes: bytes, stateCapability: ['feedback-delay', 'convolution-native', 'nonlinear-chain'].includes(entry.kind) ? 'deterministic-preroll' : 'stateless',
-      costClass: entry.kind === 'feedback-delay' ? 'fixed-stereo-two-tap-delay' : entry.kind === 'convolution-native' ? 'shared-native-convolution' : entry.kind === 'nonlinear-chain' ? 'bounded-polyphase-nonlinear-chain' : 'native-gain-routing', qualification: 'implementation-awaiting-full-graph-qualification' });
+    nodes.set(entry.id, { id: entry.id, kind: entry.kind, parameters, ...(impulse ? { impulse } : {}), ...(nonlinear ? { nonlinear } : {}), ...(detector ? { detector } : {}), ...(mapping ? { mapping } : {}), ports: describeEffectNodePorts(entry.kind, parameters),
+      processingLatencyFrames, maximumTailFrames, stateBytes: bytes, stateCapability: ['feedback-delay', 'convolution-native', 'nonlinear-chain', 'envelope-detector', 'envelope-mapping'].includes(entry.kind) ? 'deterministic-preroll' : 'stateless',
+      costClass: entry.kind === 'envelope-detector' ? 'fixed-window-linked-envelope' : entry.kind === 'envelope-mapping' ? 'prepared-signal-rate-gain-mapping' : entry.kind === 'modulated-gain' ? 'audio-rate-external-gain-control' : entry.kind === 'feedback-delay' ? 'fixed-stereo-two-tap-delay' : entry.kind === 'convolution-native' ? 'shared-native-convolution' : entry.kind === 'nonlinear-chain' ? 'bounded-polyphase-nonlinear-chain' : 'native-gain-routing', qualification: 'implementation-awaiting-full-graph-qualification' });
     incoming.set(entry.id, []); outgoing.set(entry.id, []);
   }
   if (stateBytes > maxStateBytes) fail('Effect graph exceeds the admitted delay storage.');
@@ -58,8 +68,9 @@ export function prepareEffectGraphRevision(raw, { sampleRate = 48000, maxStateBy
   for (const entry of graph.edges) {
     keys(entry, ['from', 'to', 'gain01']); keys(entry.from, ['nodeId', 'port']); keys(entry.to, ['nodeId', 'port']);
     const source = nodes.get(entry.from.nodeId), target = nodes.get(entry.to.nodeId), key = JSON.stringify([entry.from.nodeId, entry.from.port, entry.to.nodeId, entry.to.port]);
-    if (!source || !target || entry.from.port !== 'audio' || entry.to.port !== 'audio' || !source.ports.output || !target.ports.input ||
-        source.ports.output !== target.ports.input || !finite(entry.gain01, 0, 1) || edgeKeys.has(key) || source.id === target.id) fail('Effect edge is missing, duplicated, cyclic or has incompatible typed ports.');
+    const sourcePort = source?.ports.outputs[entry.from.port], targetPort = target?.ports.inputs[entry.to.port];
+    if (!source || !target || !sourcePort || !targetPort || sourcePort.type !== targetPort.type || sourcePort.unit !== targetPort.unit ||
+        !finite(entry.gain01, 0, 1) || !isAudioEffectPort(sourcePort) && entry.gain01 !== 1 || edgeKeys.has(key) || source.id === target.id) fail('Effect edge is missing, duplicated, cyclic or has incompatible typed ports/units.');
     edgeKeys.add(key); const edge = { from: entry.from, to: entry.to, gain01: entry.gain01, alignmentFrames: 0 };
     edges.push(edge); incoming.get(target.id).push(edge); outgoing.get(source.id).push(edge);
   }
@@ -72,15 +83,24 @@ export function prepareEffectGraphRevision(raw, { sampleRate = 48000, maxStateBy
   const latency = new Map(), tails = new Map(), reachable = new Set(), amplitude = new Map();
   for (const key of order) {
     const node = nodes.get(key), inputs = incoming.get(key);
-    if (node.kind !== 'bus-in' && !inputs.length || node.kind !== 'bus-out' && !outgoing.get(key).length) fail('Every effect node must belong to a complete source-to-output route.');
-    const inputLatencies = inputs.map(edge => latency.get(edge.from.nodeId)), arrival = inputLatencies.includes(null) ? null : Math.max(0, ...inputLatencies);
-    for (const edge of inputs) edge.alignmentFrames = graph.latencyPolicy === 'align-declared' ? arrival - latency.get(edge.from.nodeId) : 0;
-    const inputBound = node.kind === 'bus-in' ? 1 : inputs.reduce((sum, edge) => sum + amplitude.get(edge.from.nodeId) * edge.gain01, 0);
+    const sourceNode = node.kind === 'bus-in' || node.kind === 'sidechain-in';
+    if (!sourceNode && !inputs.length || node.kind !== 'bus-out' && !outgoing.get(key).length) fail('Every effect node must belong to a complete source-to-output route.');
+    for (const [port, descriptor] of Object.entries(node.ports.inputs)) {
+      const count = inputs.filter(edge => edge.to.port === port).length;
+      if (!count || !descriptor.multiple && count !== 1) fail('Effect input port is missing or has ambiguous control membership.');
+    }
+    const signalInputs = inputs.filter(edge => isAudioEffectPort(node.ports.inputs[edge.to.port]));
+    const timingInputs = Object.keys(node.ports.outputs).some(port => isAudioEffectPort(node.ports.outputs[port])) || node.kind === 'bus-out' ? signalInputs : inputs;
+    const inputLatencies = timingInputs.map(edge => latency.get(edge.from.nodeId)), arrival = inputLatencies.includes(null) ? null : Math.max(0, ...inputLatencies);
+    for (const edge of inputs) edge.alignmentFrames = graph.latencyPolicy === 'align-declared' && isAudioEffectPort(node.ports.inputs[edge.to.port]) ? arrival - latency.get(edge.from.nodeId) : 0;
+    const inputBound = sourceNode ? 1 : signalInputs.reduce((sum, edge) => sum + amplitude.get(edge.from.nodeId) * edge.gain01, 0);
     const gainBound = node.kind === 'gain' ? node.parameters.gainMaximum01 : node.kind === 'feedback-delay' ? 1 / (1 - node.parameters.feedbackMaximum * 1.1) : node.kind === 'convolution-native' ? node.impulse.maximumLinearGain : 1;
-    amplitude.set(key, node.nonlinear ? Math.min(inputBound * node.nonlinear.maximumLinearGain, node.nonlinear.maximumOutputAmplitude) : inputBound * gainBound); if (amplitude.get(key) > 16) fail('Compounded effect route gain exceeds its admitted headroom.');
+    amplitude.set(key, ['envelope-detector', 'envelope-mapping'].includes(node.kind) ? 1 : node.nonlinear ? Math.min(inputBound * node.nonlinear.maximumLinearGain, node.nonlinear.maximumOutputAmplitude) : inputBound * gainBound); if (amplitude.get(key) > 16) fail('Compounded effect route gain exceeds its admitted headroom.');
     latency.set(key, arrival === null || node.processingLatencyFrames === null ? null : arrival + node.processingLatencyFrames); tails.set(key, Math.max(0, ...inputs.map(edge => tails.get(edge.from.nodeId) + edge.alignmentFrames)) + node.maximumTailFrames);
-    if (node.kind === 'bus-in' || inputs.some(edge => reachable.has(edge.from.nodeId))) reachable.add(key);
+    if (sourceNode || inputs.some(edge => reachable.has(edge.from.nodeId))) reachable.add(key);
   }
+  const sidechainInputs = [...nodes.values()].filter(node => node.kind === 'sidechain-in').map(node => node.id).sort(before);
+  if (sidechainInputs.length > 8 || [...nodes.values()].filter(node => node.detector).length > 16 || [...nodes.values()].filter(node => node.mapping).length > 16) fail('Sidechain bus, detector or mapping count exceeds its prepared profile.');
   const inputs = [...nodes.values()].filter(node => node.kind === 'bus-in').map(node => node.id).sort(before), outputs = [...nodes.values()].filter(node => node.kind === 'bus-out').map(node => node.id).sort(before);
   const outputLatencies = outputs.map(key => latency.get(key)), latencyFrames = outputLatencies.includes(null) ? null : Math.max(0, ...outputLatencies), maximumTailFrames = Math.max(0, ...outputs.map(key => tails.get(key)));
   const alignmentStateBytes = edges.reduce((sum, edge) => sum + (edge.alignmentFrames ? (Math.ceil(edge.alignmentFrames) + 2) * 8 : 0), 0); stateBytes += alignmentStateBytes;
@@ -90,8 +110,9 @@ export function prepareEffectGraphRevision(raw, { sampleRate = 48000, maxStateBy
   const definition = { ...graph, nodes: [...nodes.values()].sort((a, b) => before(a.id, b.id)).map(({ id, kind, parameters, impulse }) => ({ id, kind, parameters, ...(impulse ? { impulse } : {}) })),
     edges: edges.map(({ from, to, gain01 }) => ({ from, to, gain01 })).sort((a, b) => before(JSON.stringify(a), JSON.stringify(b))) };
   canonicalDataText(definition, { maxBytes: 65536, maxNodes: 8192 });
-  return freezeData({ schema: 'lemmings-effect-plan/v1', definition, sampleRate, order, nodes: order.map(key => nodes.get(key)), edges: edges.sort((a, b) => before(JSON.stringify(a), JSON.stringify(b))), inputs, outputs, latencyFrames, maximumTailFrames, stateBytes, impulseCount, impulseDecodedBytes, nonlinearCount, alignmentStateBytes,
-    processingRevisions: { delay: [...nodes.values()].some(node => node.kind === 'feedback-delay') ? DELAY_KERNEL_REVISION : null, nonlinear: nonlinearCount ? NONLINEAR_KERNEL_REVISION : null, alignment: alignmentStateBytes ? ALIGNMENT_KERNEL_REVISION : null },
+  return freezeData({ schema: 'lemmings-effect-plan/v1', definition, sampleRate, order, nodes: order.map(key => nodes.get(key)), edges: edges.sort((a, b) => before(JSON.stringify(a), JSON.stringify(b))), inputs, outputs, sidechainInputs, latencyFrames, maximumTailFrames, stateBytes, impulseCount, impulseDecodedBytes, nonlinearCount, alignmentStateBytes,
+    processingRevisions: { delay: [...nodes.values()].some(node => node.kind === 'feedback-delay') ? DELAY_KERNEL_REVISION : null, nonlinear: nonlinearCount ? NONLINEAR_KERNEL_REVISION : null, alignment: alignmentStateBytes ? ALIGNMENT_KERNEL_REVISION : null,
+      ...([...nodes.values()].some(node => node.detector) ? { detector: ENVELOPE_DETECTOR_REVISION } : {}), ...([...nodes.values()].some(node => node.mapping) ? { envelopeMapping: ENVELOPE_MAPPING_REVISION } : {}) },
     nativeNodeEstimateBytes: (nodes.size * 4 + edges.length) * 8192 + impulseNativeEstimateBytes, feedbackPolicy: 'only-inside-bounded-delay-operator', alignment: graph.latencyPolicy === 'align-declared' ? 'declared-processing-latency-only-linear-fractional-creative-delay-preserved' : 'disabled-unknown-native-latency',
     tailPolicy: 'hard-owned-deadline-with-conservative-feedback-decay-model', maximumGraphGainBound: Math.max(...amplitude.values()),
     outputProtection: 'required-shared-owner-master-external-to-creative-graph' });

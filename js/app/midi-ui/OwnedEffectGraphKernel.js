@@ -1,3 +1,6 @@
+import { EnvelopeFollowerKernel } from './worklet/EnvelopeFollowerKernel.js';
+import { EnvelopeMappingKernel } from './worklet/EnvelopeMappingKernel.js';
+import { isAudioEffectPort } from '../../midi/content/EffectPorts.js';
 import { prepareEffectRenderPlan } from './EffectRenderPlan.js';
 import { effectGraphHash } from '../../midi/content/EffectGraphRevision.js';
 import { BoundedDelayKernel } from './worklet/BoundedDelayProcessor.js';
@@ -19,11 +22,14 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
         transitionFrames: Math.max(2, Math.round(p.transitionSeconds * sampleRate)), maximumSlew: p.maximumSlew, feedback: p.feedback, feedbackMaximum: p.feedbackMaximum,
         feedbackLowpassHz: p.feedbackLowpassHz, feedbackHighpassHz: p.feedbackHighpassHz, wet: p.wet01 });
     } else if (entry.kind === 'nonlinear-chain') { controls.set([p.driveDb, p.outputTrim01, 0, 0], at); kernel = new NonlinearChainKernel({ sampleRate, parameters: p }); }
+    else if (entry.kind === 'envelope-detector') kernel = new EnvelopeFollowerKernel({ sampleRate, parameters: p });
+    else if (entry.kind === 'envelope-mapping') kernel = new EnvelopeMappingKernel({ sampleRate, parameters: p });
     else if (entry.kind === 'gain') { gain[index * 3] = gain[index * 3 + 1] = p.gain01; controls[at] = p.gain01; }
-    const incoming = plan.edges.filter(edge => edge.to.nodeId === entry.id).map(edge => ({ source: indices.get(edge.from.nodeId) * 2, gain01: edge.gain01,
+    const incoming = plan.edges.filter(edge => edge.to.nodeId === entry.id).map(edge => ({ source: indices.get(edge.from.nodeId) * 2, gain01: edge.gain01, port: edge.to.port, audio: isAudioEffectPort(entry.ports.inputs[edge.to.port]),
       align: edge.alignmentFrames ? new FixedFractionalDelayKernel({ sampleRate, delayFrames: edge.alignmentFrames }) : null }));
     return { entry, index, kernel, incoming, at };
   });
+  const sidechainIndices = new Map(plan.sidechainInputs.map((id, index) => [id, index]));
   const inputIndex = indices.get(plan.inputs[0]), outputIndex = indices.get(plan.outputs[0]) * 2, taps = returnNodeIds.map(id => indices.get(id) * 2), tapSamples = new Float32Array(taps.length * 2);
   let frame = 0, leftSample = 0, rightSample = 0, muted = false;
   const panic = () => { muted = true; for (const record of records) { record.kernel?.panic(); for (const edge of record.incoming) edge.align?.panic(); } values.fill(0); tapSamples.fill(0); leftSample = rightSample = 0; };
@@ -51,24 +57,34 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
     } else fail('effect-control-unavailable', 'This routing node has no live parameter adapter.');
     return Object.freeze({ status: 'applied-to-owned-render', nodeId, frame, graphDefinitionHash: hash, acousticReceipt: false });
   };
-  const sample = (left, right) => {
+  const sample = (left, right, sidechainSamples = null) => {
+    if (sidechainSamples !== null && (!(sidechainSamples instanceof Float32Array) || sidechainSamples.length !== plan.sidechainInputs.length * 2)) quarantine('sidechain-input-layout', 'Sidechain input must match its prepared stereo slot inventory.');
     if (muted) { leftSample = rightSample = 0; tapSamples.fill(0); frame++; return; }
     if (!Number.isFinite(left) || !Number.isFinite(right) || Math.abs(left) > 32 || Math.abs(right) > 32) quarantine('effect-input-headroom', 'Owned effect input is nonfinite or exceeds its declared absolute-32 bus profile.');
     for (const record of records) {
-      let a = record.index === inputIndex ? Math.fround(left) : 0, b = record.index === inputIndex ? Math.fround(right) : 0;
+      let a = record.index === inputIndex ? Math.fround(left) : 0, b = record.index === inputIndex ? Math.fround(right) : 0, modulation = 0;
       for (const edge of record.incoming) {
         let x = Math.fround(values[edge.source] * edge.gain01), y = Math.fround(values[edge.source + 1] * edge.gain01);
         if (edge.align) { edge.align.sample(x, y); if (edge.align.faults) quarantine('effect-state-containment', 'The alignment branch quarantined invalid state.'); x = Math.fround(edge.align.leftSample); y = Math.fround(edge.align.rightSample); }
-        a = Math.fround(a + x); b = Math.fround(b + y);
+        if (edge.audio) { a = Math.fround(a + x); b = Math.fround(b + y); }
+        else modulation = Math.fround(modulation + x);
       }
       const { entry, index, kernel, at } = record;
-      if (entry.kind === 'gain') {
+      if (entry.kind === 'sidechain-in') {
+        const input = sidechainIndices.get(entry.id) * 2; a = sidechainSamples?.[input] ?? 0; b = entry.parameters.inputLayout === 'audioMono' ? 0 : sidechainSamples?.[input + 1] ?? 0;
+        if (!Number.isFinite(a) || !Number.isFinite(b) || Math.abs(a) > 32 || Math.abs(b) > 32) quarantine('sidechain-input-headroom', 'Sidechain input is nonfinite or exceeds its admitted audio domain.');
+      } else if (entry.kind === 'envelope-detector') { kernel.sample(a, b, true); a = kernel.output; b = 0; }
+      else if (entry.kind === 'envelope-mapping') { kernel.sample(modulation); a = kernel.output; b = 0; }
+      else if (entry.kind === 'modulated-gain') { a *= modulation; b *= modulation; }
+      else if (entry.kind === 'mono-to-stereo') b = a;
+      else if (entry.kind === 'gain') {
         const g = index * 3; a *= gain[g]; b *= gain[g];
         if (gain[g + 2] > 0) { gain[g] += (gain[g + 1] - gain[g]) / gain[g + 2]; gain[g + 2]--; }
       } else if (kernel) {
         if (entry.kind === 'feedback-delay') kernel.sample(a, b, controls[at + 1], controls[at + 2]); else kernel.sample(a, b, controls[at], controls[at + 1]);
         if (kernel.faults) quarantine('effect-state-containment', 'The ' + entry.kind + ' branch quarantined invalid state.'); a = kernel.leftSample; b = kernel.rightSample;
       }
+      if (kernel?.faults) quarantine('effect-state-containment', 'The ' + entry.kind + ' branch quarantined invalid state.');
       if (!Number.isFinite(a) || !Number.isFinite(b)) quarantine('nonfinite-effect-output', 'The full owned effect graph produced nonfinite output.');
       values[index * 2] = Math.fround(a); values[index * 2 + 1] = Math.fround(b);
     }
@@ -78,6 +94,6 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
   return Object.freeze({ plan, hash, sample, update, tapSamples, returnNodeIds: Object.freeze([...returnNodeIds]), get frame() { return frame; }, get leftSample() { return leftSample; }, get rightSample() { return rightSample; },
     stateBytes: plan.stateBytes + values.byteLength + controls.byteLength + gain.byteLength + tapSamples.byteLength,
     panic,
-    diagnostics: () => Object.freeze({ hash, frame, muted, processingRevisions: plan.processingRevisions, graphScope: 'one-full-shared-owner-sum', stemScope: 'simultaneous-node-output-taps',
+    diagnostics: () => Object.freeze({ hash, frame, muted, processingRevisions: plan.processingRevisions, graphScope: 'one-full-shared-owner-sum', sidechainInputs: plan.sidechainInputs, stemScope: 'simultaneous-node-output-taps',
       summation: 'canonical-edge-order-float32-node-boundaries', restoration: 'deterministic-preroll', outputProtection: 'external-excluded', qualification: 'implementation-awaiting-live-offline-pcm-equivalence' }) });
 }

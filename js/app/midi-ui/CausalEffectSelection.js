@@ -1,12 +1,13 @@
 import { cloneData } from '../../core/CanonicalData.js';
-import { createQuarryEcho, createQuarryTape, createQuarryTapeSpring, createQuarryBody, validateOwnerEffectRack } from '../../midi/content/DubQuarryRack.js';
+import { createQuarryEcho, createQuarryDuck, createQuarryTape, createQuarryTapeSpring, createQuarryBody, validateOwnerEffectRack } from '../../midi/content/DubQuarryRack.js';
 import { prepareEffectRenderPlan } from './EffectRenderPlan.js';
 
 export function prepareCausalEffectSelection({ preset = 'none', send01 = 0.35, includeReturn = true, rack = null, sampleRate = 48000 } = {}) {
-  if (!['none', 'quarry-echo', 'quarry-tape', 'quarry-tape-spring', 'quarry-hollow-spring', 'quarry-stone-courtyard', 'quarry-crossed-gallery', 'saved-owner'].includes(preset) || !Number.isFinite(send01) || send01 < 0 || send01 > 0.65 || typeof includeReturn !== 'boolean') throw new TypeError('Choose a bounded authored render effect and source send.');
+  if (!['none', 'quarry-echo', 'quarry-duck', 'quarry-tape', 'quarry-tape-spring', 'quarry-hollow-spring', 'quarry-stone-courtyard', 'quarry-crossed-gallery', 'saved-owner'].includes(preset) || !Number.isFinite(send01) || send01 < 0 || send01 > 0.65 || typeof includeReturn !== 'boolean') throw new TypeError('Choose a bounded authored render effect and source send.');
   if (preset === 'none') return Object.freeze({ effectGraph: null, effectReturnNodeIds: Object.freeze([]) });
   let graph;
   if (preset === 'quarry-echo' || preset === 'quarry-tape') graph = (preset === 'quarry-tape' ? createQuarryTape : createQuarryEcho)({ send01 });
+  else if (preset === 'quarry-duck') graph = createQuarryDuck({ send01 });
   else if (preset === 'quarry-tape-spring') graph = createQuarryTapeSpring({ send01 });
   else if (['quarry-hollow-spring', 'quarry-stone-courtyard', 'quarry-crossed-gallery'].includes(preset)) graph = createQuarryBody({ bodyId: preset, send01 });
   else {

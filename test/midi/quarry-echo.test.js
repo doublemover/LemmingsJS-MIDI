@@ -6,6 +6,7 @@ import { createProcgenWorkstationProject, reduceCanonicalProcgenProject, sanitiz
 describe('original Quarry Echo defaults and project ownership (deferred)', () => {
   it('authors a shared original Tape + Spring with one nonlinear preamp, one delay, one body and a combined return', () => {
     const graph = createQuarryTapeSpring({ send01: 0.3, springBlend01: 0.15 });
+    expect(graph.edges.find(edge => edge.to.nodeId === 'spring').gain01).to.equal(1 / graph.nodes.find(node => node.id === 'spring').impulse.maximumLinearGain);
     expect(graph.id).to.equal('dub-quarry.tape-spring'); expect(graph.latencyPolicy).to.equal('uncompensated-native');
     expect(graph.nodes.filter(node => node.kind === 'nonlinear-chain')).to.have.length(1);
     expect(graph.nodes.filter(node => node.kind === 'feedback-delay')).to.have.length(1);

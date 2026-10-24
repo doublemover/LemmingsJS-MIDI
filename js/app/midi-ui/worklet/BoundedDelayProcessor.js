@@ -1,3 +1,4 @@
+import './SidechainProcessors.js';
 import { OfflineEffectCompletion } from './OfflineEffectCompletion.js';
 import './NonlinearChainProcessor.js';
 import './FixedFractionalDelayProcessor.js';

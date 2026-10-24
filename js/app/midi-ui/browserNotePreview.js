@@ -322,7 +322,7 @@ class BrowserNotePreview {
         const host = this._channels.get(id + ':0')?.effects; if (!host) throw new Error('Prepare an owner effect rack first.'); return host.update(nodeId, values, frame, expected);
       },
       setEffectBypass: mode => this._channels.get(id + ':0')?.effects?.bypass(mode) || null,
-      inspectEffectGraph: () => this._channels.get(id + ':0')?.effects?.state() || null,
+      inspectEffectGraph: ({ requestHealth = false } = {}) => { const effects = this._channels.get(id + ':0')?.effects; if (requestHealth) effects?.requestInspection(); return effects?.state() || null; },
       preview: (notes, options) => this.preview(notes, { ...options, owner: id }),
       setMasterVolume: value => this.setMasterVolume(value),
       setCapture: (capture, context) => { if (!session.disposed) this.setCapture(capture, context, id); },

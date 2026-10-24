@@ -12,6 +12,18 @@ export function createQuarryEcho({ revision = 1, delaySeconds = 0.24, feedback =
     edges: [edge('source', 'dry'), edge('dry', 'output'), edge('source', 'send'), edge('send', 'echo'), edge('echo', 'return'), edge('return', 'output')] }).definition;
 }
 
+export function createQuarryDuck(options = {}) {
+  const echo = createQuarryEcho(options);
+  const edge = (from, fromPort, to, toPort) => ({ from: { nodeId: from, port: fromPort }, to: { nodeId: to, port: toPort }, gain01: 1 });
+  return prepareEffectGraphRevision({ ...echo, id: 'dub-quarry.duck',
+    nodes: [...echo.nodes, { id: 'detector', kind: 'envelope-detector', parameters: { kind: 'peak', attackSeconds: 0.003, releaseSeconds: 0.15, referenceAmplitude: 0.25 } },
+      { id: 'duck-map', kind: 'envelope-mapping', parameters: { mapping: 'linear-amplitude', neutral01: 1, depth01: 0.75, polarity: -1 } },
+      { id: 'duck-return', kind: 'modulated-gain', parameters: {} }],
+    edges: [...echo.edges.filter(value => !(value.from.nodeId === 'echo' && value.to.nodeId === 'return')),
+      edge('source', 'audio', 'detector', 'audio'), edge('detector', 'envelope', 'duck-map', 'envelope'),
+      edge('duck-map', 'modulation', 'duck-return', 'gain'), edge('echo', 'audio', 'duck-return', 'audio'), edge('duck-return', 'audio', 'return', 'audio')] }).definition;
+}
+
 export function createQuarryTape({ age01 = 0.35, ...options } = {}) {
   if (!Number.isFinite(age01) || age01 < 0 || age01 > 1 || options.delaySeconds != null && (options.delaySeconds < 0.16 || options.delaySeconds > 0.75)) throw new TypeError('Quarry Tape requires bounded AGE and a 160–750 ms delay.');
   const graph = createQuarryEcho({ ...options, feedbackLowpassHz: 7000 - age01 * 5500 });
@@ -24,12 +36,13 @@ export function createQuarryTape({ age01 = 0.35, ...options } = {}) {
 
 export function createQuarryTapeSpring({ springBlend01 = 0.15, ...options } = {}) {
   if (!Number.isFinite(springBlend01) || springBlend01 < 0 || springBlend01 > 0.3) throw new TypeError('The shared spring blend must remain between zero and 0.3.');
-  const tape = createQuarryTape(options), edge = (from, to, gain01 = 1) => ({ from: { nodeId: from, port: 'audio' }, to: { nodeId: to, port: 'audio' }, gain01 });
+  const tape = createQuarryTape(options), impulse = createOriginalImpulseDescriptor('quarry-hollow-spring'), edge = (from, to, gain01 = 1) => ({ from: { nodeId: from, port: 'audio' }, to: { nodeId: to, port: 'audio' }, gain01 });
   return prepareEffectGraphRevision({ ...tape, id: 'dub-quarry.tape-spring', latencyPolicy: 'uncompensated-native', maximumLatencyFrames: null,
-    nodes: [...tape.nodes, { id: 'spring', kind: 'convolution-native', parameters: {}, impulse: createOriginalImpulseDescriptor('quarry-hollow-spring') },
+    nodes: [...tape.nodes, { id: 'spring', kind: 'convolution-native', parameters: {}, impulse },
       { id: 'wet-sum', kind: 'gain', parameters: { gain01: 1, gainMaximum01: 1 } }],
     edges: [...tape.edges.filter(edge => !(edge.from.nodeId === 'echo' && edge.to.nodeId === 'return')),
-      edge('echo', 'spring'), edge('echo', 'wet-sum', 1 - springBlend01), edge('spring', 'wet-sum', springBlend01), edge('wet-sum', 'return')] }).definition;
+      // Keep the parallel body within the echo branch's declared gain bound.
+      edge('echo', 'spring', 1 / Math.max(1, impulse.maximumLinearGain)), edge('echo', 'wet-sum', 1 - springBlend01), edge('spring', 'wet-sum', springBlend01), edge('wet-sum', 'return')] }).definition;
 }
 
 export function createQuarryBody({ revision = 1, bodyId = 'quarry-hollow-spring', return01 = 0.15, send01 = 0 } = {}) {

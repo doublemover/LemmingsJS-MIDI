@@ -1,3 +1,5 @@
+import { envelopeDetectorIdentity } from '../../midi/content/EnvelopeDetectorProfile.js';
+import { envelopeMappingIdentity } from '../../midi/content/EnvelopeMappingProfile.js';
 import { nonlinearChainIdentity } from '../../midi/content/NonlinearChainProfile.js';
 import { fixedFractionalDelayIdentity } from './worklet/FixedFractionalDelayProcessor.js';
 import { validateOfflineEffectCompletion, OFFLINE_EFFECT_COMPLETION_REVISION } from './worklet/OfflineEffectCompletion.js';
@@ -9,7 +11,7 @@ const fail = (code, message) => { throw Object.assign(new Error(message), { name
 export function prepareEffectRenderPlan(definition, sampleRate = 48000, returnNodeIds = [], { nativeConvolution = false, nativeOwnedProcessors = false } = {}) {
   const plan = prepareEffectGraphRevision(definition, { sampleRate });
   if (plan.inputs.length !== 1 || plan.outputs.length !== 1) fail('unsupported-effect-owner-buses', 'Rendering requires one complete stereo owner input and output.');
-  if (!Array.isArray(returnNodeIds) || returnNodeIds.length > 8 || new Set(returnNodeIds).size !== returnNodeIds.length || returnNodeIds.some(id => !plan.nodes.some(node => node.id === id && !['bus-in', 'bus-out'].includes(node.kind))))
+  if (!Array.isArray(returnNodeIds) || returnNodeIds.length > 8 || new Set(returnNodeIds).size !== returnNodeIds.length || returnNodeIds.some(id => !plan.nodes.some(node => node.id === id && !['bus-in', 'bus-out'].includes(node.kind) && node.ports.outputs.audio?.type === 'audioStereo')))
     fail('invalid-effect-taps', 'Choose at most eight unique actual effect node outputs.');
   if (plan.impulseCount) {
     if (!nativeConvolution) fail('native-impulse-render-required', 'This graph requires its exact native convolution render adapter.');
@@ -30,15 +32,15 @@ export function validateNativeConvolutionRenderReceipt(plan, receipt, graphHash,
       canonicalDataText(body.returnNodeIds).text !== canonicalDataText(returnNodeIds).text ||
       actual?.hash !== graphHash || actual.sampleRate !== plan.sampleRate || actual.fault || actual.disposed !== false ||
       actual.stateBytes !== plan.stateBytes || actual.latencyFrames !== plan.latencyFrames || actual.maximumTailFrames !== plan.maximumTailFrames ||
-      actual.runtime?.delayRevision !== plan.processingRevisions.delay || actual.runtime?.nonlinearRevision !== plan.processingRevisions.nonlinear || actual.runtime?.alignmentRevision !== plan.processingRevisions.alignment || actual.runtime?.hostRevision !== 'owned-native-effect-host-v2' || actual.initialization?.mode !== 'offline-before-publication' || actual.initialization.confirmed !== true || actual.initialization.completionConfirmed !== true ||
+      actual.runtime?.delayRevision !== plan.processingRevisions.delay || actual.runtime?.nonlinearRevision !== plan.processingRevisions.nonlinear || actual.runtime?.alignmentRevision !== plan.processingRevisions.alignment || actual.runtime?.detectorRevision !== (plan.processingRevisions.detector || null) || actual.runtime?.envelopeMappingRevision !== (plan.processingRevisions.envelopeMapping || null) || actual.runtime?.hostRevision !== 'owned-native-effect-host-v2' || actual.initialization?.mode !== 'offline-before-publication' || actual.initialization.confirmed !== true || actual.initialization.completionConfirmed !== true ||
       actual.initialization.completionProtocol !== OFFLINE_EFFECT_COMPLETION_REVISION || !Number.isSafeInteger(receipt.frames) || receipt.frames < 1 || receipt.frames > plan.sampleRate * 150 || actual.initialization.offlineEndFrame !== receipt.frames ||
       actual.runtime?.convolution !== 'browser-native-unpinned-dsp' || !Array.isArray(actual.impulses) || actual.impulses.length !== plan.impulseCount)
     fail('native-convolution-receipt-mismatch', 'Native convolution output omitted its exact graph, tap or execution binding.');
   const audible = new Set([...plan.outputs, ...returnNodeIds]);
   for (let changed = true; changed;) { changed = false; for (const edge of plan.edges) if (audible.has(edge.to.nodeId) && !audible.has(edge.from.nodeId)) { audible.add(edge.from.nodeId); changed = true; } }
-  const expectedProcessors = plan.nodes.filter(node => ['feedback-delay', 'nonlinear-chain'].includes(node.kind)).map(node => ({ nodeId: node.id, kind: node.kind,
-    revision: node.kind === 'feedback-delay' ? plan.processingRevisions.delay : plan.processingRevisions.nonlinear, stateBytes: node.stateBytes,
-    configurationKey: node.kind === 'nonlinear-chain' ? nonlinearChainIdentity(node.nonlinear) : null, offlineActive: audible.has(node.id) }));
+  const expectedProcessors = plan.nodes.filter(node => ['feedback-delay', 'nonlinear-chain', 'envelope-detector', 'envelope-mapping'].includes(node.kind)).map(node => ({ nodeId: node.id, kind: node.kind,
+    revision: node.kind === 'feedback-delay' ? plan.processingRevisions.delay : node.kind === 'envelope-detector' ? plan.processingRevisions.detector : node.kind === 'envelope-mapping' ? plan.processingRevisions.envelopeMapping : plan.processingRevisions.nonlinear, stateBytes: node.stateBytes,
+    configurationKey: node.kind === 'nonlinear-chain' ? nonlinearChainIdentity(node.nonlinear) : node.kind === 'envelope-detector' ? envelopeDetectorIdentity(node.detector) : node.kind === 'envelope-mapping' ? envelopeMappingIdentity(node.mapping, plan.sampleRate) : null, offlineActive: audible.has(node.id) }));
   for (const [index, edge] of plan.edges.entries()) if (edge.alignmentFrames) expectedProcessors.push({ nodeId: '@alignment:' + index, kind: 'fixed-fractional-delay', revision: plan.processingRevisions.alignment,
     stateBytes: (Math.ceil(edge.alignmentFrames) + 2) * 8, configurationKey: fixedFractionalDelayIdentity(plan.sampleRate, edge.alignmentFrames), offlineActive: audible.has(edge.to.nodeId) });
   if (!Array.isArray(actual.processors) || actual.processors.length !== expectedProcessors.length || new Set(actual.processors.map(entry => entry.nodeId)).size !== actual.processors.length)

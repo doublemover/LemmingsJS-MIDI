@@ -2859,3 +2859,38 @@ Deferred API fixtures cover readiness emitted only after render start, terminal
 receipt omission, late faults, bad ABI and preparation failure cleanup. Terminal
 protocol and combined-rack fixtures are authored. No runtime/browser/PCM/listening
 or performance qualification has been run during this continuation.
+
+
+### Continuation 145 — typed envelope/control graph and reactive return ducking (#1163)
+
+Effect ports now distinguish mono/stereo audio, normalized detector envelopes and
+linear gain modulation. Invalid casts, ambiguous control fan-in, implicit master
+sources and graph cycles fail preparation. Shared detectors can feed independently
+configured depth/polarity mappings without making their source audio audible.
+Original peak and trailing RMS kernels use fixed reference normalization, linked
+stereo energy, bounded preallocated state and explicit amplitude 1/e time constants.
+The RMS sum is updated in constant time with compensated arithmetic and exact
+silence drain. Mapping uses either linear amplitude or a prepared dB lookup; native
+AudioParam modulation and owned offline rendering use the same typed graph.
+Followers declare reactive zero-lookahead timing and separate RMS window age.
+Kernel snapshots retain window, accumulator, envelope and frame frontier; complete
+graph restoration still requires deterministic preroll.
+
+External source activation checks context, owner, generation, tap, channel layout
+and an upstream source pin before committing the candidate. Disconnecting a route
+feeds zero and releases toward the authored neutral mapping. Source pins remain
+owned until graph producer retirement. The existing live owner offers its actual
+post-fader upstream bus; arbitrary cross-lane and pre-fader source realization
+remain outstanding. Focused rack diagnostics request bounded DSP activity receipts,
+separate from the signal-rate modulation clock. The original Quarry Duck recipe
+shapes only the echo return from the owner source, preserving its separate dry path.
+Live and causal revoice selectors expose the same authored recipe. The parallel
+Tape + Spring branch also now attenuates its IR input by the declared body gain
+bound, keeping its convex blend within the echo branch headroom.
+
+Step/RMS/time-constant, stereo antiphase, state continuation, typed port rejection,
+shared detector, inaudible donor, depth/polarity, missing-input release and candidate
+activation isolation fixtures are authored but unrun. Cross-lane bus realization,
+true multiband vocoder, live gesture journaling and source-bound throws remain
+outstanding. All runtime/browser/PCM/listening/performance qualification remains
+deferred until implementation of all open issue code.
