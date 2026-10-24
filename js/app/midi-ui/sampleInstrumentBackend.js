@@ -97,8 +97,9 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     const patch = resolution?.patch;
     if (!['ready', 'degraded'].includes(resolution?.status) || !patch || patch.engineId !== 'native-sample' || patch.engineVersion !== 1 ||
         !text(patch.id, 128) || !integer(patch.revision, 1, 2147483647) || resolution.receipt?.patchId !== patch.id ||
-        resolution.receipt?.revision !== patch.revision || !plain(patch.parameters) || patch.modulations?.length ||
+        resolution.receipt?.revision !== patch.revision || !plain(patch.parameters) || patch.modulations?.length || patch.macros?.length || patch.causalBindings?.length ||
         !finite(patch.mix?.gain01, 0, 1) || !finite(patch.mix?.pan01, -1, 1) || !integer(patch.voicePolicy?.maxVoices, 1, 64) ||
+        patch.voicePolicy.steal != null && patch.voicePolicy.steal !== 'reject' ||
         !Array.isArray(patch.sampleRefs) || patch.sampleRefs.length > 32 || !Array.isArray(assets) || assets.length > 32) return reject('unsupported-patch-or-engine');
     const parameters = {};
     for (const [name, spec] of Object.entries(parameterSpecs)) parameters[name] = spec[2];

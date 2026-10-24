@@ -172,8 +172,9 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     const input = resolution?.patch;
     if (!['ready', 'degraded'].includes(resolution?.status) || input?.engineId !== runtime.engineId || input.engineVersion !== 1 ||
         typeof input.id !== 'string' || !input.id || !Number.isSafeInteger(input.revision) || input.revision < 1 ||
-        resolution.receipt?.patchId !== input.id || resolution.receipt?.revision !== input.revision || input.sampleRefs?.length || input.modulations?.length ||
+        resolution.receipt?.patchId !== input.id || resolution.receipt?.revision !== input.revision || input.sampleRefs?.length || input.modulations?.length || input.macros?.length || input.causalBindings?.length ||
         !Number.isSafeInteger(input.voicePolicy?.maxVoices) || input.voicePolicy.maxVoices < 1 || input.voicePolicy.maxVoices > MAX_VOICES ||
+        input.voicePolicy.steal != null && input.voicePolicy.steal !== 'reject' ||
         !finite(input.mix?.gain01, 0, 1) || !finite(input.mix?.pan01, -1, 1)) return null;
     const parameters = Object.fromEntries(Object.entries(fields).map(([id, spec]) => [id, spec[2]]));
     for (const [id, value] of Object.entries(input.parameters || {})) {

@@ -56,7 +56,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
   const validatePatch = resolution => {
     if (!resolution || !['ready', 'degraded'].includes(resolution.status) || !resolution.patch ||
         resolution.patch.engineId !== 'native-oscillator' || resolution.patch.engineVersion !== 1 ||
-        resolution.patch.sampleRefs?.length || resolution.patch.modulations?.length || resolution.receipt?.patchId !== resolution.patch.id ||
+        resolution.patch.sampleRefs?.length || resolution.patch.modulations?.length || resolution.patch.macros?.length || resolution.patch.causalBindings?.length || resolution.receipt?.patchId !== resolution.patch.id ||
         resolution.receipt?.revision !== resolution.patch.revision) return null;
     const values = Object.fromEntries(Object.entries(parameters).map(([id, spec]) => [id, spec.default]));
     for (const [name, value] of Object.entries(resolution.patch.parameters || {})) {
@@ -67,7 +67,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
     if (!Number.isFinite(resolution.patch.mix?.gain01) || resolution.patch.mix.gain01 < 0 || resolution.patch.mix.gain01 > 1 ||
         !Number.isFinite(resolution.patch.mix?.pan01) || resolution.patch.mix.pan01 < -1 || resolution.patch.mix.pan01 > 1 ||
         !Number.isSafeInteger(resolution.patch.voicePolicy?.maxVoices) || resolution.patch.voicePolicy.maxVoices < 1 ||
-        resolution.patch.voicePolicy.maxVoices > 1024) return null;
+        resolution.patch.voicePolicy.maxVoices > 64 || resolution.patch.voicePolicy.steal != null && resolution.patch.voicePolicy.steal !== 'reject') return null;
     if (typeof resolution.patch.id !== 'string' || !resolution.patch.id || resolution.patch.id.length > 128 ||
         !Number.isSafeInteger(resolution.patch.revision) || resolution.patch.revision < 1) return null;
     const patch = Object.freeze({ id: resolution.patch.id, revision: resolution.patch.revision,

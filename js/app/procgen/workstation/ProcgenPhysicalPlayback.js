@@ -10,7 +10,7 @@ const nativeResolution = Object.freeze({
   patch: Object.freeze({ id: 'procgen-physical-default', revision: 1, engineId: 'native-oscillator', engineVersion: 1,
     parameters: Object.freeze({ waveform: 1, gain01: 0.8, attackSeconds: 0.004, decaySeconds: 0.06,
       sustain01: 0.55, releaseSeconds: 0.08 }), sampleRefs: Object.freeze([]),
-    voicePolicy: Object.freeze({ maxVoices: 64 }), mix: Object.freeze({ gain01: 0.6, pan01: 0 }) }),
+    voicePolicy: Object.freeze({ maxVoices: 64, steal: 'reject' }), mix: Object.freeze({ gain01: 0.6, pan01: 0 }) }),
   receipt: Object.freeze({ patchId: 'procgen-physical-default', revision: 1 })
 });
 

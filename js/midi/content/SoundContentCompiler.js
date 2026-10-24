@@ -123,6 +123,8 @@ export async function compileSoundContent(raw, { targets = [], signal } = {}) {
         ['linear', 'logarithmic', 'step'].includes(modulation.curve) && finite(modulation.smoothingMs) && modulation.smoothingMs >= 0, path + '.modulations', 'modulation requires bounded engine-unit output and smoothing');
       return { ...modulation, amount: convertSoundQuantity(modulation.amount, spec.unit, path + '.modulations.' + modulation.id + '.amount') };
     });
+    requireValue(recipe.voicePolicy && (!descriptor.maximumVoices || recipe.voicePolicy.maxVoices <= descriptor.maximumVoices) &&
+      (!descriptor.voicePolicies || descriptor.voicePolicies.includes(recipe.voicePolicy.steal)), path + '.voicePolicy', 'voice capacity or stealing policy is not realized by this engine');
     const definition = validateInstrumentPatchV2({ schemaVersion: 2, id: recipe.id, revision: recipe.revision, name: recipe.name, author: recipe.author, tags: recipe.tags || [],
       engineId: descriptor.engineId, engineVersion: descriptor.engineVersion, parameters, modulations, causalBindings,
       macros: explanations.map(macro => ({ id: macro.id, name: macro.name, targets: macro.mappings.map(mapping => mapping.parameter) })),

@@ -19,7 +19,9 @@ const freeze = value => {
 const validateEngineDescriptor = input => {
   if (!plain(input) || !id(input.engineId) || !integer(input.engineVersion, 1, 65535) || !hash(input.artifactHash) ||
       !hash(input.parameterSchemaHash) || !Array.isArray(input.parameters) || input.parameters.length > 128 ||
-      !plain(input.capabilities)) throw new Error('Invalid instrument engine descriptor.');
+      !plain(input.capabilities) || input.maximumVoices != null && !integer(input.maximumVoices, 1, 1024) ||
+      input.voicePolicies != null && (!Array.isArray(input.voicePolicies) || !input.voicePolicies.length || input.voicePolicies.length > 3 ||
+        new Set(input.voicePolicies).size !== input.voicePolicies.length || input.voicePolicies.some(policy => !['reject', 'oldest', 'quietest'].includes(policy)))) throw new Error('Invalid instrument engine descriptor.');
   const ids = new Set();
   const parameters = input.parameters.map(parameter => {
     if (!plain(parameter) || !id(parameter.id) || ids.has(parameter.id) || !text(parameter.unit, 32) ||
@@ -41,7 +43,7 @@ const validateEngineDescriptor = input => {
   }
   return freeze({ engineId: input.engineId, engineVersion: input.engineVersion, artifactHash: input.artifactHash.toLowerCase(),
     parameterSchemaHash: input.parameterSchemaHash.toLowerCase(),
-    parameters, capabilities });
+    parameters, capabilities, maximumVoices: input.maximumVoices ?? null, voicePolicies: input.voicePolicies == null ? null : [...input.voicePolicies] });
 };
 
 const validateInstrumentPatchV2 = (input, descriptor) => {
@@ -56,6 +58,9 @@ const validateInstrumentPatchV2 = (input, descriptor) => {
       !plain(input.voicePolicy) || !plain(input.mix)) throw new Error('Invalid InstrumentPatchV2.');
   const engine = validateEngineDescriptor(descriptor);
   if (input.engineId !== engine.engineId || input.engineVersion !== engine.engineVersion) throw new Error('Patch engine revision is unavailable.');
+  if (engine.capabilities.modulationGraph === false && input.modulations.length || engine.capabilities.macroPerformance === false && input.macros.length ||
+      engine.capabilities.causalBindings === false && input.causalBindings.length || engine.capabilities.samples === false && input.sampleRefs.length)
+    throw new Error('Patch mappings or samples are not realized by this engine.');
   const schema = new Map(engine.parameters.map(parameter => [parameter.id, parameter]));
   const parameters = {};
   for (const [key, value] of Object.entries(input.parameters)) {
@@ -114,6 +119,8 @@ const validateInstrumentPatchV2 = (input, descriptor) => {
   });
   if (!integer(input.voicePolicy.maxVoices, 1, 1024) || !['oldest', 'quietest', 'reject'].includes(input.voicePolicy.steal) ||
       !finite(input.mix.gain01, 0, 1) || !finite(input.mix.pan01, -1, 1)) throw new Error('Invalid patch voice or mix policy.');
+  if (engine.maximumVoices != null && input.voicePolicy.maxVoices > engine.maximumVoices || engine.voicePolicies && !engine.voicePolicies.includes(input.voicePolicy.steal))
+    throw new Error('Patch voice policy is not realized by this engine.');
   const midiFallback = input.midiFallback == null ? null : input.midiFallback;
   if (midiFallback && (!plain(midiFallback) || !integer(midiFallback.bankMSB, 0, 127) ||
       !integer(midiFallback.bankLSB, 0, 127) || !integer(midiFallback.program, 0, 127) ||

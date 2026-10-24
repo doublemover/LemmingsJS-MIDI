@@ -21,7 +21,7 @@ test('built sound library keeps world/project state unchanged through staging, a
   const dialog = page.getByRole('dialog', { name: 'Sound library', exact: true });
   await dialog.getByRole('button', { name: 'Prepare factory instruments', exact: true }).click();
   const revisions = dialog.getByLabel('Saved instrument revision');
-  await expect(revisions.locator('option')).toHaveCount(4, { timeout: 30000 }); await revisions.selectOption('foundation.soft-triangle@1');
+  await expect(revisions.locator('option')).toHaveCount(4, { timeout: 30000 }); await revisions.selectOption('foundation.soft-triangle@2');
   await expect(dialog.getByRole('button', { name: 'Apply to selected lane', exact: true })).toBeDisabled();
   await dialog.getByRole('button', { name: 'Audition controls', exact: true }).click();
   await expect(dialog.getByRole('status')).toContainText('Control audition completed', { timeout: 15000 });
@@ -33,7 +33,7 @@ test('built sound library keeps world/project state unchanged through staging, a
   await expect(dialog.getByRole('status')).toContainText('Instrument applied');
   const applied = await page.evaluate(() => ({ reference: window.__PROCGEN_STUDIO__.getProject().procgen.lanes[0].instrumentRef,
     tick: window.__PROCGEN_LANES__.world.tickIndex, hardwareRequests: window.soundLibraryMidiRequests }));
-  expect(applied.reference).toMatchObject({ schema: 'lemmings-sound-reference/v1', patchId: 'foundation.soft-triangle', revision: 1 });
+  expect(applied.reference).toMatchObject({ schema: 'lemmings-sound-reference/v1', patchId: 'foundation.soft-triangle', revision: 2 });
   expect(applied.reference.definitionHash).toMatch(/^[a-f0-9]{64}$/); expect(applied.tick).toBe(before.tick); expect(applied.hardwareRequests).toBe(0);
   await dialog.getByRole('button', { name: 'Prepare reference export', exact: true }).click();
   await expect(dialog.getByRole('button', { name: 'Download prepared file', exact: true })).toBeEnabled();

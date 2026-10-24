@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import fs from 'node:fs/promises';
 import { compileSoundContent, convertSoundQuantity, reviewSoundContentChanges } from '../../js/midi/content/SoundContentCompiler.js';
 import { describeNativeInstrumentEngines } from '../../js/app/midi-ui/NativeInstrumentSchema.js';
+import { validateInstrumentPatchV2 } from '../../js/midi/content/InstrumentPatchV2.js';
 
 const rejects = async (promise, field) => { let error; try { await promise; } catch (failure) { error = failure; } expect(error?.name).to.equal('SoundContentCompileError'); expect(error.message).to.include(field); };
 describe('typed declarative sound authoring', () => {
@@ -13,7 +14,7 @@ describe('typed declarative sound authoring', () => {
   });
   const compile = input => compileSoundContent(input, { targets });
   it('compiles actual inherited oscillator parameters and preserves visible overrides', async () => {
-    const output = await compile(source), triangle = output.prepared.patches.find(patch => patch.identity === 'foundation.soft-triangle@1');
+    const output = await compile(source), triangle = output.prepared.patches.find(patch => patch.identity === 'foundation.soft-triangle@2');
     expect(output.prepared.patches).to.have.length(4); expect(triangle.definition.parameters).to.include({ waveform: 1, attackSeconds: 0.04, gain01: 0.55 });
     expect(output.artifacts.find(artifact => artifact.id === triangle.definition.id).overrides).to.include('envelope.attackSeconds');
     expect(output.qualification).to.equal('compiled-data-not-render-qualified');
@@ -41,5 +42,24 @@ describe('typed declarative sound authoring', () => {
     const excessive = structuredClone(source); excessive.recipes[1].components[0].parameters.waveform.value = 4; await rejects(compile(excessive), 'exceeds engine domain');
     const modulation = structuredClone(source); modulation.recipes[1].modulations = [{}]; await rejects(compile(modulation), 'does not realize');
     const missing = structuredClone(source); missing.recipes[1].dependencies = ['b'.repeat(64)]; await rejects(compile(missing), 'required immutable assets');
+  });
+  it('rejects voice policies and capacities that the actual renderer does not execute', async () => {
+    for (const steal of ['oldest', 'quietest']) {
+      const input = structuredClone(source); input.recipes[0].voicePolicy.steal = steal;
+      await rejects(compile(input), 'voicePolicy');
+    }
+    const input = structuredClone(source); input.recipes[0].voicePolicy.maxVoices = 65;
+    await rejects(compile(input), 'voicePolicy');
+  });
+  it('applies native capability boundaries to imported definitions as well as authored recipes', async () => {
+    const output = await compile(source), entry = output.prepared.patches.find(patch => patch.identity === 'foundation.soft-triangle@2');
+    const descriptor = targets.find(target => target.descriptor.engineId === 'native-oscillator').descriptor;
+    expect(descriptor.maximumVoices).to.equal(64); expect(descriptor.voicePolicies).to.deep.equal(['reject']);
+    for (const change of [patch => { patch.voicePolicy.steal = 'oldest'; }, patch => { patch.voicePolicy.maxVoices = 65; },
+      patch => { patch.macros = [{ id: 'ignored', name: 'Ignored', targets: ['gain01'] }]; },
+      patch => { patch.causalBindings = [{}]; }, patch => { patch.modulations = [{}]; }, patch => { patch.sampleRefs = [{}]; }]) {
+      const patch = structuredClone(entry.definition); change(patch);
+      expect(() => validateInstrumentPatchV2(patch, descriptor)).to.throw(/not realized/);
+    }
   });
 });

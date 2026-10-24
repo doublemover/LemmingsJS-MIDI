@@ -2,7 +2,7 @@
   "schema": "lemmings-sound-recipes/v1",
   "pack": {
     "id": "lemmings.native-foundation",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "name": "Native oscillator foundation",
     "author": "LemmingsJS-MIDI contributors",
     "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
@@ -17,7 +17,7 @@
   "recipes": [
     {
       "id": "foundation.base",
-      "revision": 1,
+      "revision": 2,
       "abstract": true,
       "author": "LemmingsJS-MIDI contributors",
       "tags": ["oscillator", "physical-facts"],
@@ -44,13 +44,13 @@
           "pan01": { "value": 0, "unit": "normalized" }
         } }
       ],
-      "voicePolicy": { "maxVoices": 16, "steal": "oldest" },
+      "voicePolicy": { "maxVoices": 16, "steal": "reject" },
       "mix": { "gain01": 0.6, "pan01": 0 },
       "dependencies": []
     },
     {
       "id": "foundation.soft-triangle",
-      "revision": 1,
+      "revision": 2,
       "extends": "foundation.base",
       "name": "Soft triangle",
       "components": [
@@ -60,7 +60,7 @@
     },
     {
       "id": "foundation.short-sine",
-      "revision": 1,
+      "revision": 2,
       "extends": "foundation.base",
       "name": "Short sine",
       "components": [
@@ -75,7 +75,7 @@
     },
     {
       "id": "foundation.held-sine",
-      "revision": 1,
+      "revision": 2,
       "extends": "foundation.base",
       "name": "Held worklet sine",
       "engine": { "id": "worklet-sine", "version": 1 },
@@ -89,7 +89,7 @@
     },
     {
       "id": "foundation.short-square",
-      "revision": 1,
+      "revision": 2,
       "extends": "foundation.base",
       "name": "Short square",
       "components": [

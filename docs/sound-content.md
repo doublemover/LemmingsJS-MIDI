@@ -215,3 +215,10 @@ metadata returns to the UI; checkpoint and chunk bodies remain in the worker.
 Decoding begins after shared job admission, supports cancellation, and keeps
 the source-line reservation through conversion. An entry that exceeds available
 shared parsing capacity is explicitly rejected without changing stored work.
+
+Native engine schemas bind their actual 64-voice capacity and supported
+`reject` policy. Definitions requesting unimplemented stealing, macros,
+modulation graphs or causal bindings remain unavailable instead of silently
+losing those behaviors. Direct renderer preparation enforces the same boundary.
+The native foundation pack is now version 1.1.0 with patch revisions 2; its
+explicit rejection policy replaces the earlier unrealized stealing declaration.

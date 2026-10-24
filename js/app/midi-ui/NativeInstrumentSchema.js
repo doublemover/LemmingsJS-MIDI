@@ -28,8 +28,9 @@ export async function describeNativeInstrumentEngines(artifacts) {
   for (const [engineId, parameters] of Object.entries(schemas)) {
     const engineCapabilities = capabilities(engineId), artifactHash = artifacts.find(artifact => artifact.engineId === engineId && artifact.engineVersion === 1)?.artifactHash;
     if (!artifactHash) continue;
-    const parameterSchemaHash = await hashData({ version: 1, parameters, capabilities: engineCapabilities });
-    descriptors.push(validateEngineDescriptor({ engineId, engineVersion: 1, artifactHash, parameterSchemaHash, parameters, capabilities: engineCapabilities }));
+    const maximumVoices = 64, voicePolicies = ['reject'];
+    const parameterSchemaHash = await hashData({ version: 1, parameters, capabilities: engineCapabilities, maximumVoices, voicePolicies });
+    descriptors.push(validateEngineDescriptor({ engineId, engineVersion: 1, artifactHash, parameterSchemaHash, parameters, capabilities: engineCapabilities, maximumVoices, voicePolicies }));
   }
   return Object.freeze(descriptors);
 }
