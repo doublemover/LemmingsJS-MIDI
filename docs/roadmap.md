@@ -2177,7 +2177,7 @@ unchanged. Real strict-adapter and dispatcher regression fixtures are authored
 and await the consolidated validation pass.
 The new artificial choir kernel shares owned commands, leases, measured display
 and source retirement. Eight bounded voice slots each retain independent seeded
-breath, a three-harmonic voiced table/chorus and three double-precision trapezoidal
+breath, a harmonic-bank voiced table/chorus and three double-precision trapezoidal
 SVF formants. Original vowel landmarks morph in log frequency; SIZE moves the
 formants without rewriting pitch. Live vowel/breath/size/chorus/vibrato/bandwidth
 controls use audio-domain ramps with an 8 ms minimum and bounded coefficient cadence.
@@ -2187,8 +2187,14 @@ are authored and unexecuted. Mathematical reference: Andrew Simper's
 https://cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf ; no external DSP runtime
 or complete MIDI wrapper is imported. Source-specific telemetry now names pluck/
 choir correctly, preserves float headroom and omits their unsupported sine phase.
-The three-harmonic exciter table is authored offline as a pinned first-party
-source module; worklet construction copies it without table-generation trig.
+The eight-level (1–128 harmonics) exciter bank is authored offline as a pinned
+first-party source module; worklet construction copies it without generation
+trig. Phase-aligned adjacent levels blend under the pitch/chorus/vibrato limit;
+typed table bytes and the separate immutable JavaScript table heap estimate are
+admitted before construction. Artificial Choir now stages four original recipes
+through the existing compile/archive/audition/install/apply transaction, with
+executable onset macros and seeded variation. Runtime and listening fixtures
+remain unexecuted; causal continuous bindings and full scene integration remain.
 
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail

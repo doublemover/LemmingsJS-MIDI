@@ -1,20 +1,21 @@
 import { OwnedSineKernel, OwnedSineProcessor } from './OwnedSineProcessor.js';
-import { CHOIR_EXCITER_TABLE } from './ChoirExciterTable.js';
+import { CHOIR_EXCITER_TABLE, CHOIR_EXCITER_HARMONICS } from './ChoirExciterTable.js';
 
 export const CHOIR_WIDTH = 26, CHOIR_VOICES = 8, CHOIR_MIN_HZ = 50, CHOIR_MAX_HZ = 2000, CHOIR_BEND_CENTS = 200;
+export const CHOIR_SOURCE_HEAP_ESTIMATE = CHOIR_EXCITER_TABLE.length * 8 + 4096;
 const STATE_WIDTH = 40, BAND_WIDTH = 8, TABLE_LENGTH = 2048, TWO_PI = 2 * Math.PI;
 const landmarks = Object.freeze([350, 900, 2200, 700, 1200, 2600, 300, 2200, 3000]);
 const bandwidths = Object.freeze([70, 110, 160]);
 const valid = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;
 export const choirSourceBytes = (rate, voices = CHOIR_VOICES) => {
   if (!valid(rate, 8000, 384000) || !Number.isInteger(voices) || voices < 1 || voices > CHOIR_VOICES) throw new RangeError('Invalid choir source profile.');
-  return (TABLE_LENGTH + 1) * 4 + voices * (STATE_WIDTH + 3 * BAND_WIDTH) * 8;
+  return CHOIR_EXCITER_TABLE.length * 4 + voices * (STATE_WIDTH + 3 * BAND_WIDTH) * 8;
 };
 
 export class OwnedChoirSource {
   constructor(rate, voices = CHOIR_VOICES) {
     choirSourceBytes(rate, voices); this.rate = rate; this.voices = voices; this.maxUpdateMask = 511;
-    this.state = new Float64Array(voices * STATE_WIDTH); this.bands = new Float64Array(voices * 3 * BAND_WIDTH); this.table = new Float32Array(TABLE_LENGTH + 1);
+    this.state = new Float64Array(voices * STATE_WIDTH); this.bands = new Float64Array(voices * 3 * BAND_WIDTH); this.table = new Float32Array(CHOIR_EXCITER_TABLE.length);
     this.table.set(CHOIR_EXCITER_TABLE);
   }
   begin(slot, frequency, command) {
@@ -59,8 +60,12 @@ export class OwnedChoirSource {
     }
     this.state[at + 26] = vowel; this.state[at + 27] = this.state[at + 10]; this.state[at + 28] = this.state[at + 14];
   }
-  tableAt(phase) { const position = phase * TABLE_LENGTH, index = Math.floor(position), fraction = position - index;
+  tableAt(phase, level) { const position = phase * TABLE_LENGTH, first = Math.floor(position), index = level * (TABLE_LENGTH + 1) + first, fraction = position - first;
     return this.table[index] + (this.table[index + 1] - this.table[index]) * fraction; }
+  excitationAt(phase, level, blend) {
+    if (!level) return this.tableAt(phase, 0);
+    return this.tableAt(phase, level - 1) * (1 - blend) + this.tableAt(phase, level) * blend;
+  }
   sample(slot, frequency) {
     const at = slot * STATE_WIDTH;
     if (!this.validFrequency(slot, frequency)) return NaN;
@@ -71,10 +76,15 @@ export class OwnedChoirSource {
       if (vowel !== this.state[at + 26] || this.state[at + 10] !== this.state[at + 27] || this.state[at + 14] !== this.state[at + 28]) this.tune(slot); this.state[at + 25] = 7; }
     const chorus = this.state[at + 11], vibrato = this.state[at + 12];
     if (chorus !== this.state[at + 31]) { this.state[at + 30] = 2 ** (chorus * this.state[at + 29] / 1200); this.state[at + 31] = chorus; }
+    if (vibrato !== this.state[at + 34]) { this.state[at + 35] = 2 ** (vibrato / 1200); this.state[at + 34] = vibrato; }
+    const harmonicLimit = this.rate * 0.4 / (frequency * Math.max(1, this.state[at + 30]) * Math.max(1, this.state[at + 35]));
+    let level = 0; while (level + 1 < CHOIR_EXCITER_HARMONICS.length && CHOIR_EXCITER_HARMONICS[level + 1] <= harmonicLimit) level++;
+    const blend = Math.max(0, Math.min(1, (harmonicLimit / CHOIR_EXCITER_HARMONICS[level] - 1) * 4));
+    this.state[at + 36] = level; this.state[at + 37] = blend;
     const vibPhase = this.state[at + 3], ratio = vibrato ? 2 ** (Math.sin(vibPhase * TWO_PI) * vibrato / 1200) : 1;
     this.state[at + 3] = vibPhase + 5.1 / this.rate; if (this.state[at + 3] >= 1) this.state[at + 3]--;
     const phase = this.state[at], otherPhase = this.state[at + 1], chorusMix = Math.min(1, chorus / 4) * 0.5,
-      voiced = this.tableAt(phase) * (1 - chorusMix) + (chorusMix ? this.tableAt(otherPhase) * chorusMix : 0);
+      voiced = this.excitationAt(phase, level, blend) * (1 - chorusMix) + (chorusMix ? this.excitationAt(otherPhase, level, blend) * chorusMix : 0);
     this.state[at] = phase + frequency * ratio / this.rate; if (this.state[at] >= 1) this.state[at]--;
     this.state[at + 1] = otherPhase + frequency * ratio * this.state[at + 30] / this.rate; if (this.state[at + 1] >= 1) this.state[at + 1]--;
     let noise = this.state[at + 2]; noise ^= noise << 13; noise ^= noise >>> 17; noise ^= noise << 5; this.state[at + 2] = noise >>> 0;

@@ -14,6 +14,7 @@ const FACTORY_SOURCE = new URL('../../../content/sounds/native.json', import.met
 const FM_FORGE_SOURCE = new URL('../../../content/sounds/fm-forge.json', import.meta.url);
 const MATERIAL_SOURCE = new URL('../../../content/sounds/struck-materials.json', import.meta.url);
 const PLUCK_SOURCE = new URL('../../../content/sounds/plucked-garden.json', import.meta.url);
+const CHOIR_SOURCE = new URL('../../../content/sounds/artificial-choir.json', import.meta.url);
 const failure = message => Object.assign(new Error(message), { name: 'SoundContentError' });
 
 export function createSoundContentLibrary({ document, window, audio, resourceBudget, jobs = backgroundJobService, onApply, onStatus = () => {}, monitor = null } = {}) {
@@ -99,6 +100,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
   const fmFactory = button('Prepare FM Forge', () => prepareFactory(FM_FORGE_SOURCE, 'FM Forge'));
   const materialFactory = button('Prepare struck materials', () => prepareFactory(MATERIAL_SOURCE, 'Struck materials'));
   const pluckFactory = button('Prepare plucked garden', () => prepareFactory(PLUCK_SOURCE, 'Plucked garden'));
+  const choirFactory = button('Prepare artificial choir', () => prepareFactory(CHOIR_SOURCE, 'Artificial choir'));
   const importInput = node('input'); importInput.type = 'file'; importInput.accept = '.lemmings-sound,application/vnd.lemmings.sound-pack'; importInput.setAttribute('aria-label', 'Import sound archive');
   on(importInput, 'change', () => { const file = importInput.files?.[0]; importInput.value = ''; if (!file) return;
     void run(async operation => { const catalog = await getNativeInstrumentCatalog(); check(operation); setStatus('Verifying local sound archive…');
@@ -215,8 +217,13 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
         const parameters = patch.definition.parameters;
         modelInfo.textContent = 'Patch model: seeded fractional-delay string · pick ' + parameters.pluckPosition01 + ' · target string T60 ' + parameters.stringT60Seconds +
           ' s · body mix ' + parameters.bodyMix01 + '. Live profile: 50–2000 Hz onset, ±200 cent bends, 44.1/48/96 kHz. Pitch/decay/listening qualification is pending; exact restore and offline pluck rendering are unavailable.';
+      }
+      if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-choir') {
+        const parameters = patch.definition.parameters;
+        modelInfo.textContent = 'Patch model: artificial three-band formants · vowel ' + parameters.vowel01 + ' · size ' + parameters.sizeRatio +
+          ' · breath ' + parameters.breath01 + '. Actor-seeded breath and a phase-aligned harmonic bank share one owned gate. Live profile: eight voices, 50–2000 Hz onset, ±200 cent bends, 44.1/48/96 kHz. Spectral/listening qualification is pending; exact restore and offline choir rendering are unavailable.';
       } } finally { lease.release(); } }
-    for (const element of [factory, fmFactory, materialFactory, pluckFactory, importInput, select, rights, browse, more, archivedToggle]) element.disabled = busy;
+    for (const element of [factory, fmFactory, materialFactory, pluckFactory, choirFactory, importInput, select, rights, browse, more, archivedToggle]) element.disabled = busy;
     audition.disabled = busy || !ready || !!plan?.missingReferences.length || !!plan?.unavailableEngines.length || !!plan?.missingAssetBytes.length;
     stop.disabled = !current; install.disabled = busy || !auditioned; referenceInstall.disabled = busy || !ready;
     apply.disabled = busy || !installed || !auditioned; referenceExport.disabled = busy || !ready;

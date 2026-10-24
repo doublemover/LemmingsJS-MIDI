@@ -8,6 +8,30 @@ test.use({ permissions: [] });
 test.setTimeout(120000);
 test.beforeAll(async () => { await buildBrowserRuntime({ rootDir: fileURLToPath(new URL('../', import.meta.url)) }); });
 
+test('Artificial Choir stages four recipes and only applies a real auditioned worklet revision', async ({ page }) => {
+  await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=911&lanes=1');
+  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__);
+  const before = await page.evaluate(() => {
+    window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause();
+    return { project: JSON.stringify(window.__PROCGEN_STUDIO__.getProject()), tick: window.__PROCGEN_LANES__.world.tickIndex };
+  });
+  await page.getByRole('button', { name: 'Sound library…', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Sound library', exact: true });
+  await dialog.getByRole('button', { name: 'Prepare artificial choir', exact: true }).click();
+  const revisions = dialog.getByLabel('Saved instrument revision'); await expect(revisions.locator('option')).toHaveCount(4, { timeout: 30000 });
+  await revisions.selectOption('choir.hollow-ooh@1'); await expect(dialog.getByLabel('Instrument source model')).toContainText('artificial three-band formants');
+  await expect(dialog.getByRole('button', { name: 'Install auditioned pack', exact: true })).toBeDisabled();
+  await dialog.getByRole('button', { name: 'Rehearsal on live output', exact: true }).click(); await expect(dialog.getByLabel('Prelisten route')).toContainText('ready');
+  await dialog.getByRole('button', { name: 'Audition controls', exact: true }).click();
+  await expect(dialog.getByLabel('Sound library status')).toContainText('Control audition completed', { timeout: 15000 });
+  await dialog.getByRole('button', { name: 'Install auditioned pack', exact: true }).click(); await expect(dialog.getByLabel('Sound library status')).toContainText('Pack installed');
+  expect(await page.evaluate(() => ({ project: JSON.stringify(window.__PROCGEN_STUDIO__.getProject()), tick: window.__PROCGEN_LANES__.world.tickIndex }))).toEqual(before);
+  await dialog.getByRole('button', { name: 'Apply to selected lane', exact: true }).click(); await expect(dialog.getByLabel('Sound library status')).toContainText('Instrument applied');
+  expect(await page.evaluate(() => JSON.stringify(window.__PROCGEN_STUDIO__.getProject()))).toContain('worklet-choir');
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+  for (const name of ['VOWEL', 'BREATH', 'SIZE', 'CHORUS']) await expect(page.getByLabel(name + ' · next onset', { exact: true })).toBeVisible();
+});
+
 test('Plucked Garden requires real worklet application before Install and Apply', async ({ page }) => {
   await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=911&lanes=1');
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__);
@@ -46,7 +70,7 @@ test('struck materials audition real native mode children and expose saved onset
   await dialog.getByRole('button', { name: 'Audition controls', exact: true }).click();
   await expect(dialog.getByLabel('Sound library status')).toContainText('Control audition completed', { timeout: 15000 });
   const children = await page.evaluate(() => ({ started: window.materialSourcesStarted, ended: window.materialSourcesEnded }));
-  expect(children.started).toBe(4); expect(children.ended).toBe(4);
+  expect(children.started).toBe(4); await expect.poll(() => page.evaluate(() => window.materialSourcesEnded)).toBe(4);
   await dialog.getByRole('button', { name: 'Install auditioned pack', exact: true }).click(); await expect(dialog.getByLabel('Sound library status')).toContainText('Pack installed');
   await dialog.getByRole('button', { name: 'Apply to selected lane', exact: true }).click(); await expect(dialog.getByLabel('Sound library status')).toContainText('Instrument applied');
   await dialog.getByRole('button', { name: 'Close', exact: true }).click();

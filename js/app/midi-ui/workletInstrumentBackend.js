@@ -1,4 +1,4 @@
-import { CHOIR_WIDTH, CHOIR_VOICES, choirSourceBytes } from './worklet/OwnedChoirProcessor.js';
+import { CHOIR_WIDTH, CHOIR_VOICES, CHOIR_SOURCE_HEAP_ESTIMATE, choirSourceBytes } from './worklet/OwnedChoirProcessor.js';
 import { createAudioCommandQueue } from './AudioCommandQueue.js';
 import { createInstrumentExecutionLifecycle, isManagedExecutionEpoch } from './InstrumentExecutionLifecycle.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
@@ -223,7 +223,9 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     cancelInitialization = () => interrupt(new Error('preparation-cancelled')); pendingInitializations.add(cancelInitialization);
     try {
       timer = setTimeout(() => interrupt(new Error('kernel-initialization-timeout')), initializationTimeoutMs);
-      if (!ready) candidateResourceLease = preview._audioResources?.reserveWorkletRuntime(owner, preview._generation, isExtended ? (isChoir ? choirSourceBytes(candidateContext.sampleRate) : pluckSourceBytes(candidateContext.sampleRate)) + CAPACITY * (WIDTH - SINE_WIDTH) * 8 : 0) || null;
+      if (!ready) candidateResourceLease = preview._audioResources?.reserveWorkletRuntime(owner, preview._generation,
+        isExtended ? (isChoir ? choirSourceBytes(candidateContext.sampleRate) : pluckSourceBytes(candidateContext.sampleRate)) + CAPACITY * (WIDTH - SINE_WIDTH) * 8 : 0,
+        isChoir ? CHOIR_SOURCE_HEAP_ESTIMATE : 0) || null;
       let contextModules = modules.get(candidateContext);
       if (!contextModules) { contextModules = new Map(); modules.set(candidateContext, contextModules); }
       if (!contextModules.has(runtime.workletUrl)) {

@@ -329,7 +329,11 @@ source layers per voice: voiced table, optional detuned sibling and seeded
 breath. Three formant filters use original landmarks [350,900,2200],
 [700,1200,2600], [300,2200,3000] Hz, logarithmic vowel interpolation and nominal
 bandwidths [70,110,160] Hz scaled by SIZE. These are musical choices. The voiced
-exciter contains three authored harmonics; no voice recordings are loaded.
+exciter selects and blends eight phase-aligned harmonic levels (1–128 harmonics)
+under a pitch-dependent 0.4-sample-rate limit that includes chorus/vibrato range.
+The pinned table generator uses common normalization across levels; no voice
+recordings are loaded. The four original recipes are staged with Prepare
+artificial choir; VOWEL, BREATH, SIZE and CHORUS currently affect the next onset.
 
 The filter equations follow the trapezoidal SVF derivation in
 [Andrew Simper's technical paper](https://cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf).

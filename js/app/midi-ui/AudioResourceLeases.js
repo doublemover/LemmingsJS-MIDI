@@ -106,9 +106,9 @@ export function createAudioResourceLeases({ resourceBudget = null, ownerPrefix =
       return reserve({ kind: 'native-voice', owner, generation, estimateBytes: NATIVE_VOICE_ESTIMATE * sourceCost });
     },
     reserveWorkletVoice: (owner, generation = 0) => reserve({ kind: 'worklet-voice-host', owner, generation, estimateBytes: 1536 }),
-    reserveWorkletRuntime: (owner, generation = 0, extraBytes = 0) => {
-      if (!Number.isSafeInteger(extraBytes) || extraBytes < 0 || extraBytes > 32 * 1048576) throw new RangeError('Invalid source storage inventory.');
-      return reserve({ kind: 'worklet-runtime', owner, generation, bytes: KERNEL_TYPED_BYTES + extraBytes, estimateBytes: WORKLET_HOST_ESTIMATE });
+    reserveWorkletRuntime: (owner, generation = 0, extraBytes = 0, extraEstimateBytes = 0) => {
+      if (![extraBytes, extraEstimateBytes].every(value => Number.isSafeInteger(value) && value >= 0 && value <= 32 * 1048576)) throw new RangeError('Invalid source storage inventory.');
+      return reserve({ kind: 'worklet-runtime', owner, generation, bytes: KERNEL_TYPED_BYTES + extraBytes, estimateBytes: WORKLET_HOST_ESTIMATE + extraEstimateBytes });
     } };
 }
 

@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { OwnedChoirKernel, OwnedChoirSource, CHOIR_WIDTH, choirSourceBytes } from '../../js/app/midi-ui/worklet/OwnedChoirProcessor.js';
 import { BEGIN, UPDATE, PANIC } from '../../js/app/midi-ui/worklet/OwnedSineProcessor.js';
+import { CHOIR_EXCITER_HARMONICS, CHOIR_EXCITER_TABLE } from '../../js/app/midi-ui/worklet/ChoirExciterTable.js';
 
 const begin = (rate = 48000, seed = 191) => {
   const command = new Float64Array(CHOIR_WIDTH);
@@ -12,6 +13,19 @@ const render = (seed, blockSize) => {
   return { kernel, output };
 };
 describe('owned artificial formant choir', () => {
+  it('retains phase-aligned closed table levels and selects bounded harmonics for fixed pitches', () => {
+    expect(CHOIR_EXCITER_HARMONICS).to.deep.equal([1, 2, 4, 8, 16, 32, 64, 128]);
+    expect(CHOIR_EXCITER_TABLE).to.have.length(2049 * 8);
+    for (let level = 0; level < 8; level++) {
+      expect(CHOIR_EXCITER_TABLE[level * 2049]).to.equal(0); expect(CHOIR_EXCITER_TABLE[level * 2049 + 2048]).to.equal(0);
+    }
+    for (const rate of [44100, 48000, 96000]) for (const frequency of [50, 220, 2000]) {
+      const source = new OwnedChoirSource(rate), command = begin(rate); command[6] = frequency; command[22] = 12; command[23] = 12;
+      expect(source.begin(0, frequency, command)).to.equal(1); source.sample(0, frequency);
+      const limit = rate * 0.4 / (frequency * Math.max(1, source.state[30]) * Math.max(1, source.state[35]));
+      expect(CHOIR_EXCITER_HARMONICS[source.state[36]]).to.be.at.most(limit); expect(source.state[37]).to.be.within(0, 1);
+    }
+  });
   it('keeps deterministic independent breath and oscillator state across render block sizes', () => {
     const a = render(191, 64), b = render(191, 257), other = render(192, 128);
     expect([...a.output]).to.deep.equal([...b.output]); expect([...other.output]).not.to.deep.equal([...a.output]);
