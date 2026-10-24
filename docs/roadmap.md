@@ -2428,6 +2428,22 @@ request ownership at each scheduling frontier. Sample-map content and native
 sample product rendering remain implementation work. Ownership fixtures are
 authored; no runtime decode, native render or tests were executed in this pass.
 
+Authored sample maps now have a bounded immutable schema and stateless semantic
+onset selector in the existing sound-content compiler (typed-recipes-v11).
+Maps declare gesture layers, half-open velocity intervals, nearest-root ranges,
+contiguous alternates, source-frame regions, explicit forward/sustain loops,
+owned release children and authored gain/tuning trims. Native seam crossfades
+remain rejected. Selection uses original onset/actor/asset revision identity,
+never playback acceptance or actor traversal counters. Exact world/lane/kit
+scope distinguishes choke ownership; missing gestures use only the declared
+neutral policy and report that fallback. Captured causal mapping rules can
+retain explicit sampleGesture/sampleKitId tags without adding physical events.
+Compiler render identity excludes display labels/evidence references and includes
+the effective map; source credits and measurement references remain separate.
+Decoded asset admission verifies every mapped region before activation. Product
+sample-backend wiring, the original proof pack and offline sample rendering
+remain work; selector and metadata fixtures are authored and unexecuted.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical

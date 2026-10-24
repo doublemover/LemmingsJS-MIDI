@@ -27,6 +27,7 @@ const validateCausalInstrumentGraph = value => {
     if (input.probability01 != null && (!Number.isFinite(input.probability01) || input.probability01 < 0 || input.probability01 > 1)) throw new Error('Invalid response probability.');
     if (input.sourceKind === 'TerrainWorkCommitted' && input.operationKind != null && !nonempty(input.operationKind)) throw new Error('Invalid work operation.');
     if (['ContactResolved', 'ContactSpanBegan'].includes(input.sourceKind) && input.causeKind != null && !nonempty(input.causeKind)) throw new Error('Invalid contact cause.');
+    if ([input.sampleGesture, input.sampleKitId].some(value => value != null && (typeof value !== 'string' || !/^[a-z][a-z0-9._:-]{0,127}$/i.test(value) || ['__proto__', 'constructor', 'prototype'].includes(value)))) throw new Error('Invalid authored sample gesture or kit identity.');
     return Object.freeze({ id: input.id, sourceKind: input.sourceKind, action: input.action ?? null,
       operationKind: input.operationKind ?? null, causeKind: input.causeKind ?? null,
       gateX: input.sourceKind === 'MotionCommitted' ? input.gateX : null,
@@ -34,6 +35,7 @@ const validateCausalInstrumentGraph = value => {
       probability01: input.probability01 ?? 1,
       crossingDirection: input.crossingDirection ?? 'either',
       changedOnly: input.changedOnly === true, pitchCents: input.pitchCents, velocity01: input.velocity01,
+      ...(input.sampleGesture != null ? { sampleGesture: input.sampleGesture } : {}), ...(input.sampleKitId != null ? { sampleKitId: input.sampleKitId } : {}),
       route: input.route, role: input.role, mute: input.mute === true, solo: input.solo === true });
   });
   if (value.seed != null && !Number.isSafeInteger(value.seed)) throw new Error('Invalid causal graph seed.');
@@ -73,6 +75,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     sourceTickDurationMs: Number.isFinite(batch.tickDurationMs) && batch.tickDurationMs > 0 ? batch.tickDurationMs : null }),
     pitch: Object.freeze({ cents: instrument.pitchCents, referenceHz: 440 }), velocity01: instrument.velocity01,
     expression: Object.freeze(expression), role: instrument.role, route: instrument.route, terminationReason: reason,
+    ...(instrument.sampleGesture != null ? { sampleGesture: instrument.sampleGesture } : {}), ...(instrument.sampleKitId != null ? { sampleKitId: instrument.sampleKitId } : {}),
     ...(articulationState ? { articulationState: Object.freeze(articulationState) } : {}),
     ...(kind === 'begin' ? { performanceControls: validateInstrumentControls(getOnsetControls(fact?.laneId)), performanceCause: captureInstrumentCause(fact) } : {})
   });

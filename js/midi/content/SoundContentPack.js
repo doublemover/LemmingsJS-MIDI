@@ -121,7 +121,7 @@ export async function prepareSoundContentPack(raw, { engineDescriptors = [], sig
     const patch = entry?.definition, requirement = entry?.engineRequirement, identity = patch?.id + '@' + patch?.revision;
     keysOnly(requirement, ['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'], 'patches.engineRequirement');
     if (patch?.schemaVersion === 2) keysOnly(patch, ['schemaVersion', 'id', 'revision', 'name', 'author', 'tags', 'engineId', 'engineVersion', 'parameters',
-      'modulations', 'sampleRefs', 'macros', 'causalBindings', 'variation', 'voicePolicy', 'mix', 'midiFallback'], 'patches.definition');
+      'modulations', 'sampleRefs', 'sampleMap', 'macros', 'causalBindings', 'variation', 'voicePolicy', 'mix', 'midiFallback'], 'patches.definition');
     assertContent(patch && id(patch.id) && natural(patch.revision, 2147483647) && patch.revision > 0 && !identities.has(identity) &&
       requirement && id(requirement.engineId) && natural(requirement.engineVersion, 65535) && requirement.engineVersion > 0 &&
       hash(requirement.artifactHash) && hash(requirement.parameterSchemaHash) && patch.engineId === requirement.engineId && patch.engineVersion === requirement.engineVersion &&
@@ -147,7 +147,7 @@ export async function prepareSoundContentPack(raw, { engineDescriptors = [], sig
   }
   if (pack.compilation != null) {
     const compilation = pack.compilation; keysOnly(compilation, ['compilerRevision', 'sourceHash', 'schemaRevision', 'artifacts'], 'compilation');
-    assertContent(['typed-recipes-v1', 'typed-recipes-v2', 'typed-recipes-v3', 'typed-recipes-v4', 'typed-recipes-v5', 'typed-recipes-v6', 'typed-recipes-v7', 'typed-recipes-v8', 'typed-recipes-v9', 'typed-recipes-v10'].includes(compilation.compilerRevision) && compilation.schemaRevision === 'lemmings-sound-recipes/v1' && hash(compilation.sourceHash) &&
+    assertContent(['typed-recipes-v1', 'typed-recipes-v2', 'typed-recipes-v3', 'typed-recipes-v4', 'typed-recipes-v5', 'typed-recipes-v6', 'typed-recipes-v7', 'typed-recipes-v8', 'typed-recipes-v9', 'typed-recipes-v10', 'typed-recipes-v11'].includes(compilation.compilerRevision) && compilation.schemaRevision === 'lemmings-sound-recipes/v1' && hash(compilation.sourceHash) &&
       Array.isArray(compilation.artifacts) && compilation.artifacts.length === patches.length && compilation.artifacts.every(artifact => artifact && typeof artifact === 'object' && !Array.isArray(artifact)) &&
       new Set(compilation.artifacts.map(artifact => artifact.id + '@' + artifact.revision)).size === patches.length,
     'compilation', 'unsupported compilation inventory');

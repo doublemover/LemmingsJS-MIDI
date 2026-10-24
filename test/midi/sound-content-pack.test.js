@@ -1,3 +1,4 @@
+import { singleSampleMap } from '../helpers/sampleMap.js';
 import { expect } from 'chai';
 import { canonicalDataText, hashDataText } from '../../js/core/CanonicalData.js';
 import { SOUND_CONTENT_SCHEMA, prepareSoundContentPack, planSoundContentSelection } from '../../js/midi/content/SoundContentPack.js';
@@ -13,9 +14,9 @@ describe('canonical sound material and rights closure', () => {
     const rights = (kind, declaredUse = 'redistributable') => ({ kind, creator: 'Fixture Author', sourceUrl: 'urn:fixture:original', licenseId: 'fixture-terms',
       licenseUrl: license.url, attribution: 'Fixture Author', modifications: [], declaredUse, licenseTextHash: license.sha256 });
     const file = (path, sha256, parents = [], declaredUse) => ({ path, sha256, bytes: 46, mediaType: 'audio/wav', kind: 'sample', parents, rights: rights('sample-recording', declaredUse) });
-    engine = { engineId: 'native-sample', engineVersion: 1, artifactHash: 'd'.repeat(64), parameterSchemaHash: 'e'.repeat(64), parameters: [], capabilities: { samples: true } };
+    engine = { engineId: 'native-sample', engineVersion: 1, artifactHash: 'd'.repeat(64), parameterSchemaHash: 'e'.repeat(64), parameters: [], capabilities: { samples: true, sampleMaps: true } };
     const definition = (id, sha256) => ({ schemaVersion: 2, id, revision: 1, name: id, author: 'Fixture Author', tags: [], engineId: engine.engineId, engineVersion: 1,
-      parameters: {}, modulations: [], macros: [], causalBindings: [], sampleRefs: [{ id: 'material', sha256, bytes: 46, required: true }],
+      parameters: {}, modulations: [], macros: [], causalBindings: [], sampleRefs: [{ id: 'material', sha256, bytes: 46, required: true }], sampleMap: singleSampleMap(sha256, { frames: 1, id: id + '-map' }),
       voicePolicy: { maxVoices: 8, steal: 'reject' }, mix: { gain01: 0.5, pan01: 0 } });
     const patch = (id, sha256) => ({ definition: definition(id, sha256), dependencies: [sha256], engineRequirement: {
       engineId: engine.engineId, engineVersion: 1, artifactHash: engine.artifactHash, parameterSchemaHash: engine.parameterSchemaHash }, rights: rights('patch-recipe') });

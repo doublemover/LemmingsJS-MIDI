@@ -14,6 +14,15 @@ const batch = (tick, facts, generation = 1, completeness = { status: 'complete',
 });
 
 describe('causal musical intent engine', () => {
+  it('captures authored sample gesture and kit tags without adding physical or musical onsets', () => {
+    const current = graph([instrument('mapped-contact', 'TerrainWorkCommitted', { sampleGesture: 'brush', sampleKitId: 'tactile-kit' })]);
+    const engine = createCausalMusicEngine({ getGraph: () => current });
+    const intents = engine.processBatch(batch(1, [{ kind: 'TerrainWorkCommitted', actorId: 7, laneId: 0, physicalPayload: { changedSolidCells: 6 } }]));
+    expect(intents.map(intent => intent.kind)).to.deep.equal(['begin', 'end']);
+    expect(intents[0]).to.include({ sampleGesture: 'brush', sampleKitId: 'tactile-kit', mappingId: 'mapped-contact' });
+    expect(validateCausalInstrumentGraph(current).instruments[0]).to.include({ sampleGesture: 'brush', sampleKitId: 'tactile-kit' });
+    expect(() => validateCausalInstrumentGraph(graph([instrument('bad', 'TerrainWorkCommitted', { sampleGesture: '__proto__' })]))).to.throw('sample gesture');
+  });
   it('suppresses an overloaded held scope until its causal boundary and uses fresh identities after mapping changes', () => {
     let current = graph([instrument('held-travel', 'MotionCommitted', { articulation: { spacingPixels: 1000, sustain: true, lifetimeScope: 'actorJourney' } })]);
     const create = budget => createCausalMusicEngine({ getGraph: () => current, getPhysicalControlKinds: () => ['MotionCommitted'], maxPhysicalUpdatesPerBatch: budget });

@@ -1,5 +1,6 @@
 import { validateInstrumentMacros, validateInstrumentBindings } from './InstrumentPerformance.js';
 import { validateInstrumentVariation } from './InstrumentIdentityVariation.js';
+import { validateSampleInstrumentMap } from './SampleInstrumentMap.js';
 import { canonicalDataText, cloneData } from '../../core/CanonicalData.js';
 
 const plain = value => value !== null && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
@@ -101,6 +102,9 @@ const validateInstrumentPatchV2 = (input, descriptor) => {
     sampleIds.add(sample.id);
     return { id: sample.id, sha256: sample.sha256.toLowerCase(), bytes: sample.bytes, required: sample.required !== false };
   });
+  if (input.sampleMap != null && engine.capabilities.sampleMaps !== true || input.engineId === 'native-sample' && input.sampleMap == null)
+    throw new Error('An authored resolved sample map is required for this engine capability.');
+  const sampleMap = input.sampleMap == null ? null : validateSampleInstrumentMap(input.sampleMap, sampleRefs);
   const macros = validateInstrumentMacros(input.macros, engine.parameters);
   if (engine.capabilities.continuousMacroPerformance === false && macros.some(macro => macro.mode === 'continuous')) throw new Error('Continuous macros are unavailable on this engine.');
   if (macros.some(macro => macro.targets.some(target => schema.get(target.parameter).capability && !engine.capabilities[schema.get(target.parameter).capability]))) throw new Error('Unsupported macro target capability.');
@@ -120,7 +124,7 @@ const validateInstrumentPatchV2 = (input, descriptor) => {
     !integer(Number(key), 0, 127) || !integer(value, 0, 127)))) throw new Error('Invalid MIDI fallback.');
   return freeze({ schemaVersion: 2, id: input.id, revision: input.revision, name: input.name, author: input.author,
     tags: input.tags, engineId: input.engineId, engineVersion: input.engineVersion, parameters,
-    modulations, sampleRefs, voicePolicy: { maxVoices: input.voicePolicy.maxVoices, steal: input.voicePolicy.steal },
+    modulations, sampleRefs, ...(sampleMap ? { sampleMap } : {}), voicePolicy: { maxVoices: input.voicePolicy.maxVoices, steal: input.voicePolicy.steal },
     mix: { gain01: input.mix.gain01, pan01: input.mix.pan01 }, macros, causalBindings, ...(variation ? { variation } : {}),
     midiFallback: midiFallback && { bankMSB: midiFallback.bankMSB, bankLSB: midiFallback.bankLSB,
       program: midiFallback.program, percussionMap: midiFallback.percussionMap || {} } });

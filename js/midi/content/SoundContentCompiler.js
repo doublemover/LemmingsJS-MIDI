@@ -2,9 +2,10 @@ import { cloneData, freezeData, hashData } from '../../core/CanonicalData.js';
 import { prepareSoundContentPack, planSoundContentSelection, SOUND_CONTENT_SCHEMA } from './SoundContentPack.js';
 import { validateEngineDescriptor, validateInstrumentPatchV2 } from './InstrumentPatchV2.js';
 import { validateInstrumentMacros } from './InstrumentPerformance.js';
+import { sampleMapRenderIdentity } from './SampleInstrumentMap.js';
 
 export const SOUND_RECIPE_SCHEMA = 'lemmings-sound-recipes/v1';
-export const SOUND_COMPILER_REVISION = 'typed-recipes-v10';
+export const SOUND_COMPILER_REVISION = 'typed-recipes-v11';
 const limits = { maxBytes: 8 * 1048576, maxNodes: 200000, domain: 'Sound recipes' };
 const units = new Set(['Hz', 'cents', 'ratio', 'dimensionless', 's', 'ms', 'amplitude-linear', 'dB', 'normalized', 'enum', 'world-pixel']);
 const id = value => typeof value === 'string' && /^[a-z][a-z0-9._:-]{0,127}$/i.test(value) && !['__proto__', 'constructor', 'prototype'].includes(value);
@@ -156,25 +157,27 @@ export async function compileSoundContent(raw, { targets = [], signal } = {}) {
     try { definition = validateInstrumentPatchV2({ schemaVersion: 2, id: recipe.id, revision: recipe.revision, name: recipe.name, author: recipe.author, tags: recipe.tags || [],
       engineId: descriptor.engineId, engineVersion: descriptor.engineVersion, parameters, modulations, causalBindings,
       ...(recipe.variation ? { variation: recipe.variation } : {}),
+      ...(recipe.sampleMap ? { sampleMap: recipe.sampleMap } : {}),
       macros: effectiveMacros,
       sampleRefs: recipe.sampleRefs || [], voicePolicy: recipe.voicePolicy, mix: recipe.mix, midiFallback: recipe.midiFallback }, descriptor); }
     catch (error) { fail(path + '.definition', error.message); }
     requireValue(!nativeComponents(descriptor) || definition.voicePolicy.maxVoices <= 64, path + '.voicePolicy', 'native renderer supports at most 64 owned voices');
     const engineRequirement = { engineId: descriptor.engineId, engineVersion: descriptor.engineVersion, artifactHash: descriptor.artifactHash, parameterSchemaHash: descriptor.parameterSchemaHash };
     const dependencies = recipe.dependencies || []; requireValue(Array.isArray(dependencies) && dependencies.length <= 512, path + '.dependencies', 'invalid asset dependency closure');
-    const effective = { engineRequirement, parameters: definition.parameters, modulations, causalBindings: definition.causalBindings, sampleRefs: definition.sampleRefs, dependencies: [...dependencies].sort(),
+    const effective = { engineRequirement, parameters: definition.parameters, modulations, causalBindings: definition.causalBindings, sampleRefs: definition.sampleRefs, sampleMap: sampleMapRenderIdentity(definition.sampleMap), dependencies: [...dependencies].sort(),
       macros: definition.macros.map(({ name, perceptualDirection, ...macro }) => macro), variation: definition.variation || null, voicePolicy: definition.voicePolicy, mix: definition.mix };
     const reachable = new Set(dependencies), fileMap = new Map(source.files.map(file => [file.sha256, file]));
     for (const dependency of reachable) { requireValue(reachable.size <= 512, path + '.dependencies', 'asset ancestry exceeds its bounds');
       for (const parent of fileMap.get(dependency)?.parents || []) reachable.add(parent); }
-    const renderKey = await hashData(effective, limits), rightsHash = await hashData({ recipe: recipe.rights,
+    const renderKey = await hashData(effective, limits), rightsHash = await hashData({ recipe: recipe.rights, sampleMapRightsRef: definition.sampleMap?.rightsRef || null,
       files: [...reachable].sort().map(sha256 => ({ sha256, rights: fileMap.get(sha256)?.rights || null })) }, limits);
     const cost = { maxVoices: definition.voicePolicy.maxVoices, componentCount: recipe.components.length, assetCount: new Set(dependencies).size,
-      modulationEdges: modulations.length, estimateClass: 'declared-structure-not-measured-cpu' };
-    artifacts.push({ id: recipe.id, revision: recipe.revision, display: { name: recipe.name, author: recipe.author, tags: recipe.tags || [] },
-      renderKey, rightsHash, engineRequirement, inheritance, overrides, parameters: docs,
-      macros: explanations, modulationBounds: modulations.map(modulation => ({ id: modulation.id, sourceUnit: modulation.sourceUnit, bounds: modulation.bounds })),
-      cost, audition: { kind: 'real-causal-take-required', effectivePatchHash: renderKey, renderEvidence: 'not-produced' } });
+      modulationEdges: modulations.length, sampleZones: definition.sampleMap?.zones.length || 0, estimateClass: 'declared-structure-not-measured-cpu' };
+    artifacts.push({ id: recipe.id, revision: recipe.revision, display: { name: recipe.name, author: recipe.author, tags: recipe.tags || [],
+      ...(definition.sampleMap ? { sampleMap: { articulations: definition.sampleMap.articulations, normalizationRef: definition.sampleMap.normalizationRef } } : {}) },
+    renderKey, rightsHash, engineRequirement, inheritance, overrides, parameters: docs,
+    macros: explanations, modulationBounds: modulations.map(modulation => ({ id: modulation.id, sourceUnit: modulation.sourceUnit, bounds: modulation.bounds })),
+    cost, audition: { kind: 'real-causal-take-required', effectivePatchHash: renderKey, renderEvidence: 'not-produced' } });
     patches.push({ definition, engineRequirement, dependencies, rights: recipe.rights });
   }
   requireValue(patches.length > 0, 'recipes', 'no concrete instrument recipes');

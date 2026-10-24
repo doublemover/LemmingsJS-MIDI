@@ -223,18 +223,24 @@ losing those behaviors. Direct renderer preparation enforces the same boundary.
 The native foundation pack is now version 1.1.0 with patch revisions 2; its
 explicit rejection policy replaces the earlier unrealized stealing declaration.
 
-The sound library offers **Render controls WAV** for the pinned sine renderer
-at 44.1, 48 or 96 kHz. It runs the actual worklet kernel in an admitted fixed
-worker without opening audio or hardware output. The source is the same
+The sound library offers **Render controls WAV** for the five owned sources
+(sine, pluck, choir, spectrum and granular) and the three asset-free native
+sources (oscillator, FM and modal) at 44.1, 48 or 96 kHz. Owned sources run their
+actual kernels in an admitted worker. Native sources run the live backend in an
+isolated OfflineAudioContext and lend its PCM to the admitted encoding worker.
+Neither path enables live audio or hardware output. The source is the same
 pressure/pan/pitch control fixture used for isolated audition. This is an audio
 reference, not an editable replacement or physical-take audition.
 
 The float32 stereo WAV includes a canonical `lmjs` RIFF chunk naming the exact
 pack/definition/engine/build, fixture, PCM hash, sample rate, signal statistics,
 finished release tail and render tap. The tap precedes the shared owner master
-and limiter; normalization and resampling are absent. The render grants no new
+and limiter; normalization is absent and the manifest names the source-specific
+resampling profile. Granular playback retains its explicit linear source-rate
+conversion; it does not claim qualified alias rejection. The render grants no new
 redistribution rights. Source and output memory overlap are admitted before
-rendering; cancellation retires the worker and staged consumer, and the result
+rendering; cancellation joins the worker, any accepted native producer and staged
+consumer before releasing their reservations, and the result
 uses the existing expiring artifact/delivery owners. Listening, device output
 and a real physical gesture remain separate qualifications.
 
@@ -385,8 +391,9 @@ or the declared partial count for additive mode, before allocating the voice.
 Table mode rejects customized additive layouts. Typed bank/voice/queue bytes
 and conservative JavaScript bank/state estimates are reserved before construction.
 Oscillators use actor/event-seeded double-precision phase accumulation. Arbitrary
-reset, negative frequency, PWM, phase distortion, sync, complete DSP state cuts
-and offline spectrum output remain unavailable. Spectral/alias, register, long
+reset, negative frequency, PWM, phase distortion, sync and complete spectrum DSP
+state cuts remain unavailable. Control-reference and causal-take spectrum output
+use the same kernel with forward reconstruction from a covered silent boundary. Spectral/alias, register, long
 hold, CPU and listening qualification remain deferred. The design uses original
 Fourier data; the [Web Audio specification](https://webaudio.github.io/web-audio-api/#PeriodicWave)
 and [Faust oscillator documentation](https://faustlibraries.grame.fr/libs/oscillators/)
@@ -402,3 +409,63 @@ position and substitute payload coordinates are excluded. The source bank pins
 a SHA-256 over generator metadata and little-endian Float32 frame coefficients,
 sine samples and normalized tables, in that order. All generated source data
 and new recipe/browser fixtures remain unqualified by runtime/listening tests.
+
+
+## Authored sample maps
+
+Compiler `typed-recipes-v11` accepts an immutable `sampleMap` on a native-sample
+patch. The map uses schema `lemmings-sample-instrument-map/v1`, has its own ID and
+revision, and names declared required sample hashes. It admits at most 128 zones,
+16 gesture labels and 32 source assets, within 48 KiB and 6,144 metadata nodes.
+These limits preserve the existing patch/reference archive bounds.
+
+Zones declare source-frame onset/end, root cents, supported pitch range and
+maximum transposition, velocity bounds, alternate group/index, gain trim and
+tuning correction. Velocity intervals include their lower edge and exclude their
+upper edge, except that a final upper edge of 1 includes full velocity. Pitch
+selection chooses the nearest authored root and the lower root on an exact tie.
+An out-of-range onset is unsupported. Playback-rate transposition changes both
+pitch and duration; independent time stretching is not part of this map.
+
+`selectionPolicy` declares algorithm `stable-semantic-onset-fnv32-v1`, an explicit
+seed, `advanceOn: semantic-onset`, `rootSelection: nearest-lower-tie`, and an
+unknown-gesture policy of `neutral` or `reject`. Each alternate group has contiguous
+indexes from zero. Selection hashes the original world/generation/actor/onset,
+map/patch revisions and candidate sample identities. It stores no acceptance or
+browsing counter. Rejection, rewind and actor-array traversal do not change the
+selected region for that original onset. This is deterministic alternate selection,
+not a promise to cycle through every alternate before repeating.
+
+Causal instrument rules may explicitly author `sampleGesture` and `sampleKitId`.
+The emitted intent retains those mapping tags without claiming a newly measured
+physical gesture. Missing tags select the declared neutral gesture. A requested
+unknown gesture either rejects or records the declared neutral fallback; a known
+gesture with no covering zone rejects. Choke ownership includes exact world,
+generation, lane, kit and map identities; different rules share a kit only through
+an explicit common kit tag. Release consumes the onset's selected immutable region
+and optional release child, rather than selecting another attack.
+
+Native maps accept forward/sustain loops with `crossfadeFrames: 0`. Advanced seam
+crossfades, reverse and position-driven traversal require their own renderer
+implementation and qualification. Every mapped region must fit the actual pinned
+source before activation. Trims are authored values, with an optional immutable
+normalization evidence reference; no per-hit normalization or listening result is
+inferred. Gesture display labels and evidence/credit references stay separate from
+the effective render key, while trims, source regions and selection policies
+participate in that identity.
+
+The compiler/selector contract is implemented. Product lane/audition sample-map
+wiring, the original tactile proof pack and native sample offline output are still
+in development. Source/selection metadata fixtures are authored and unexecuted.
+
+Causal take rendering currently supports the five owned sources and three native
+sources listed above. It preserves immutable intent times and identities, with
+forward preroll from a known empty boundary. Dry lane taps are simultaneous with
+the full graph: native rendering supports fifteen stereo lane taps within the
+portable 32-channel graph, and owned kernels support sixteen. Protected live master
+processing and shared effect returns are excluded. Native producer cancellation
+retains the shared background execution slot until bounded rendering has actually
+settled. Native sample preparation can borrow an explicitly owned offline decode
+context through the shared asset cache; joined cancellation prevents its owner
+from retiring while an accepted decode still runs. These implementation contracts
+remain subject to the deferred runtime, browser, PCM and listening acceptance pass.

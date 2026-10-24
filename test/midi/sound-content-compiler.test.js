@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import { compileSoundContent, convertSoundQuantity, reviewSoundContentChanges } from '../../js/midi/content/SoundContentCompiler.js';
 import { describeNativeInstrumentEngines } from '../../js/app/midi-ui/NativeInstrumentSchema.js';
 import { validateInstrumentPatchV2 } from '../../js/midi/content/InstrumentPatchV2.js';
+import { singleSampleMap } from '../helpers/sampleMap.js';
 
 const rejects = async (promise, field) => { let error; try { await promise; } catch (failure) { error = failure; } expect(error?.name).to.equal('SoundContentCompileError'); expect(error.message).to.include(field); };
 describe('typed declarative sound authoring', () => {
@@ -13,6 +14,21 @@ describe('typed declarative sound authoring', () => {
       ({ engineId, engineVersion: 1, artifactHash: 'a'.repeat(64) })))).map(descriptor => ({ descriptor }));
   });
   const compile = input => compileSoundContent(input, { targets });
+  it('pins authored sample selection while keeping gesture labels and evidence references outside its render key', async () => {
+    const raw = structuredClone(source), hash = 'a'.repeat(64), rights = structuredClone(source.recipes.find(recipe => recipe.rights).rights);
+    raw.files = [{ path: 'samples/fixture.wav', sha256: hash, bytes: 128, mediaType: 'audio/wav', kind: 'sample', parents: [], rights: { ...rights, kind: 'derived-data' } }];
+    raw.recipes = [{ id: 'sample-map-fixture', revision: 1, name: 'Sample map fixture', author: 'Fixture', tags: ['test'], engine: { id: 'native-sample', version: 1 },
+      components: [{ id: 'envelope', role: 'envelope', parameters: { attackSeconds: { value: 0.005, unit: 's' } } },
+        { id: 'output', role: 'output', parameters: { gain01: { value: 0.7, unit: 'amplitude-linear' } } }],
+      sampleRefs: [{ id: 'material', sha256: hash, bytes: 128, required: true }], sampleMap: singleSampleMap(hash), dependencies: [hash],
+      voicePolicy: { maxVoices: 8, steal: 'reject' }, mix: { gain01: 0.5, pan01: 0 }, rights }];
+    const first = await compile(raw); expect(first.prepared.patches[0].state).to.equal('definition-admitted');
+    expect(first.prepared.patches[0].definition.sampleMap.zones).to.have.length(1);
+    raw.recipes[0].sampleMap.articulations[0].name = 'New gesture label'; raw.recipes[0].sampleMap.normalizationRef = 'b'.repeat(64);
+    expect(reviewSoundContentChanges(first, await compile(raw))[0]).to.include({ state: 'render-equivalent', metadataChanged: true });
+    raw.recipes[0].sampleMap.zones[0].gain01 = 0.6;
+    expect(reviewSoundContentChanges(first, await compile(raw))[0].state).to.equal('effective-render-change');
+  });
   it('compiles actual inherited oscillator parameters and preserves visible overrides', async () => {
     const output = await compile(source), triangle = output.prepared.patches.find(patch => patch.identity === 'foundation.soft-triangle@2');
     expect(output.prepared.patches).to.have.length(4); expect(triangle.definition.parameters).to.include({ waveform: 1, attackSeconds: 0.04, gain01: 0.55 });
