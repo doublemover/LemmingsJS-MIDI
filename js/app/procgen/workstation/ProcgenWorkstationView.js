@@ -3,15 +3,18 @@ import { createProcgenLaneProjection } from './ProcgenLaneProjection.js';
 import { procgenStepNotes } from './ProcgenPatternEngine.js';
 import { createProcgenFullscreenSession } from './ProcgenFullscreenSession.js';
 import { quarterMeterPosition } from '../../../midi/project/MidiMusicalPosition.js';
+import { createInstrumentDisplayScheduler } from '../../resources/InstrumentDisplayScheduler.js';
+import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 
 const NOTES = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
 const SCALES = { Major: [0, 2, 4, 5, 7, 9, 11], Minor: [0, 2, 3, 5, 7, 8, 10], Dorian: [0, 2, 3, 5, 7, 9, 10], Lydian: [0, 2, 4, 6, 7, 9, 11], Pentatonic: [0, 2, 4, 7, 9], Chromatic: Array.from({ length: 12 }, (_, i) => i) };
 const COLORS = ['#289fd1', '#6daa43', '#9362c9', '#ac855a', '#ef7440', '#dc639e', '#58aec6', '#99ac37'];
 const rendererLeases = new WeakMap();
 
-function createProcgenWorkstationView({ document, window, getProject, getRuntime, dispatch, handlers = {}, state = {} }) {
+function createProcgenWorkstationView({ document, window, resourceBudget = null, getProject, getRuntime, dispatch, handlers = {}, state = {} }) {
   for (const [key, value] of Object.entries({ slot: 0, step: 0, tab: 'Lane', tool: 'select', layout: 'strip', firstLane: 0, minimumRow: 64, inspectorWidth: 304, hazardSpacing: 160 })) if (state[key] == null) state[key] = value;
   const listeners = [];
+  const retirement = createProcgenRetirementScope(), displayScheduler = createInstrumentDisplayScheduler({ document, window, resourceBudget });
   const on = (element, event, handler, options) => { element.addEventListener(event, handler, options); listeners.push(() => element.removeEventListener(event, handler, options)); };
   const node = (tag, text, cls) => { const el = document.createElement(tag); if (text != null) el.textContent = text; if (cls) el.className = cls; return el; };
   const button = (text, action, title = text) => { const el = node('button', text); el.type = 'button'; el.title = title; el.addEventListener('click', action); return el; };
@@ -61,7 +64,13 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
   const recoveryStatus = node('output', 'Recovery unsaved', 'studio-recovery-status'); recoveryStatus.setAttribute('aria-label', 'Crash recovery status');
   const legacyNotice = node('div', null, 'studio-legacy-conversion'); legacyNotice.hidden = true;
   footer.append(legacyNotice);
-  let projection, dragging = null, lastFrame = 0, lastMidiFrame = 0, stroke = null, suppressClickUntil = 0;
+  let projection, dragging = null, stroke = null, suppressClickUntil = 0, layoutKey = null, queuedBeat = null;
+  let indexedLanes = null, laneIndex = new Map();
+  const currentLaneIndex = () => {
+    const source = getProject().procgen.lanes;
+    if (source !== indexedLanes) { indexedLanes = source; laneIndex = new Map(source.map(lane => [lane.id, lane])); }
+    return laneIndex;
+  };
   let attachedRenderer = null, disposed = false, superseded = false, composing = false, pendingInspectorRender = false;
   let geometryPending = false, geometryRelease = null, geometryUnsubscribe = null;
   const owner = {};
@@ -82,7 +91,7 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
   };
   const finishGeometry = () => {
     if (!geometryPending || disposed) return;
-    const renderer = getRuntime()?.lanes?.renderer;
+    const renderer = getRuntime()?.lanes?.renderer || null;
     if (renderer?.presentation?.demanded && !renderer.presentation.getSnapshot()) return;
     geometryPending = false; state.presentationTransition = false; grid.inert = false;
     delete stage.dataset.presentation;
@@ -513,16 +522,23 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
       fields.append(button('Record MIDI CC', () => { handlers.record?.(true); handlers.status?.('MIDI recording armed. CC events are captured with the performance.'); }));
     }
   }
-  function layout() {
+  function layout(measured = null) {
     if (disposed) return;
-    const width = Math.max(1, stage.clientWidth), height = Math.max(1, stage.clientHeight);
-    projection = createProcgenLaneProjection({ laneCount: getProject().procgen.lanes.length, height, firstLane: state.firstLane, mode: state.layout, physicalHeight: getRuntime()?.world?.laneHeight || 144, minimumRow: state.minimumRow });
-    state.firstLane = projection.firstLane;
-    shell.dataset.layout = state.layout; shell.style.setProperty('--row-height', projection.rowHeight + 'px'); shell.style.setProperty('--inspector-width', state.inspectorWidth + 'px');
+    const width = Math.max(1, measured?.width ?? stage.clientWidth), height = Math.max(1, measured?.height ?? stage.clientHeight);
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    if (canvas.width !== Math.floor(width * dpr) || canvas.height !== Math.floor(height * dpr)) { canvas.width = Math.floor(width * dpr); canvas.height = Math.floor(height * dpr); }
-    canvas.style.width = width + 'px'; canvas.style.height = height + 'px';
-    const renderer = getRuntime()?.lanes?.renderer;
+    const laneCount = getProject().procgen.lanes.length, physicalHeight = getRuntime()?.world?.laneHeight || 144;
+    const key = JSON.stringify([width, height, dpr, laneCount, state.firstLane, state.layout, physicalHeight, state.minimumRow, state.inspectorWidth]);
+    const changed = key !== layoutKey;
+    if (changed) {
+      projection = createProcgenLaneProjection({ laneCount, height, firstLane: state.firstLane, mode: state.layout, physicalHeight, minimumRow: state.minimumRow });
+      state.firstLane = projection.firstLane;
+      layoutKey = JSON.stringify([width, height, dpr, laneCount, state.firstLane, state.layout, physicalHeight, state.minimumRow, state.inspectorWidth]);
+      shell.dataset.layout = state.layout; shell.style.setProperty('--row-height', projection.rowHeight + 'px'); shell.style.setProperty('--inspector-width', state.inspectorWidth + 'px');
+      if (canvas.width !== Math.floor(width * dpr) || canvas.height !== Math.floor(height * dpr)) { canvas.width = Math.floor(width * dpr); canvas.height = Math.floor(height * dpr); }
+      canvas.style.width = width + 'px'; canvas.style.height = height + 'px';
+    }
+    const renderer = getRuntime()?.lanes?.renderer || null;
+    const rendererChanged = renderer !== attachedRenderer;
     if (renderer !== attachedRenderer) detachRenderer();
     if (renderer && !superseded) {
       if (!attachedRenderer) {
@@ -532,11 +548,13 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
           baseFrame: previous ? previous.baseFrame : renderer.onWorkstationFrame, relinquish: () => { attachedRenderer = null; superseded = true; } });
         attachedRenderer = renderer;
       }
-      renderer.workstationLayout = projection; renderer.onWorkstationFrame = frame; renderer.resize();
+      renderer.workstationLayout = projection; renderer.onWorkstationFrame = frame; if (changed || rendererChanged) renderer.resize();
     }
+    return changed || rendererChanged;
   }
   function renderRows() {
     if (!projection) return;
+    queuedBeat = null; playheadSurface.invalidate();
     lanes.replaceChildren(); grid.replaceChildren(); const project = getProject();
     laneRange.textContent = `${projection.firstLane + 1}–${projection.firstLane + projection.count} of ${project.procgen.lanes.length}`;
     previousLanes.disabled = projection.firstLane === 0; nextLanes.disabled = projection.firstLane + projection.count >= project.procgen.lanes.length;
@@ -580,9 +598,14 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
   }
   function frame(beat = state.beat || 0) {
     if (disposed || superseded) return;
-    const now = window.performance.now(); if (now - lastFrame < 32) return; lastFrame = now;
+    if (beat === queuedBeat) return; queuedBeat = beat;
+    playheadSurface.publish(Object.freeze({ beat }));
+  }
+  function paintPlayheads(_measured, packet) {
+    if (disposed || superseded) return;
+    const beat = packet.value?.beat ?? state.beat ?? 0, byId = currentLaneIndex();
     for (const row of grid.children) {
-      const lane = getProject().procgen.lanes.find(l => l.id === row.dataset.laneId); if (!lane) continue;
+      const lane = byId.get(row.dataset.laneId); if (!lane) continue;
       const playhead = handlers.playhead?.(lane.id), slot = playhead?.slot ?? lane.activeSlot;
       if (String(slot) !== row.dataset.slot) { row.querySelector('.playing')?.classList.remove('playing'); delete row.dataset.playing; continue; }
       const pattern = lane.patterns?.[slot]; if (!pattern) continue;
@@ -679,7 +702,26 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
     else render();
   });
   on(window, 'pointercancel', () => { if (stroke) { stroke = null; renderRows(); } });
-  on(window, 'resize', render);
+  const layoutSurface = displayScheduler.register({ id: 'workstation-layout', element: stage, intervalMs: 0,
+    read: () => ({ width: stage.clientWidth, height: stage.clientHeight }), write: measured => { if (layout(measured)) renderRows(); },
+    onError: message => { displayStatus.textContent = message; } });
+  const playheadSurface = displayScheduler.register({ id: 'workstation-playheads', element: grid, intervalMs: 32, write: paintPlayheads });
+  const midiSurface = displayScheduler.register({ id: 'workstation-midi', element: fields, intervalMs: 50, write: () => {
+    const monitor = fields.querySelector('.studio-midi-monitor'); if (monitor && monitor.textContent !== state.lastMidi) monitor.textContent = state.lastMidi;
+  } });
+  const paintTransport = position => {
+    if (!position || disposed) return;
+    if (document.activeElement !== bpm) bpm.value = String(Math.round(position.bpm * 100) / 100);
+    bpm.disabled = position.clockSource === 'external';
+    const meter = quarterMeterPosition(position.beat, getProject().transport?.timeSignature);
+    const text = meter ? `${meter.bar} : ${meter.beat}` : '—'; if (clockStatus.textContent !== text) clockStatus.textContent = text;
+    clockStatus.title = meter ? `${meter.beats}/${meter.unit} · bar : denominator-note beat · ${position.beat} quarters` : 'Musical position unavailable';
+    clockHealth.textContent = position.clockSource === 'external' ? `MIDI clock · ${position.clockStatus}` : 'Internal clock';
+    linked.checked = position.linked; speedMode.value = position.speedMode; clock.value = position.clockSource;
+  };
+  const transportSurface = displayScheduler.register({ id: 'workstation-transport', element: transport, intervalMs: 50, write: (_measured, packet) => paintTransport(packet.value) });
+  const resizeObserver = typeof window.ResizeObserver === 'function' ? new window.ResizeObserver(() => layoutSurface.invalidate()) : null;
+  resizeObserver?.observe(stage); on(window, 'resize', () => layoutSurface.invalidate());
   on(window, 'keydown', event => {
     if (event.defaultPrevented || event.isComposing || event.key === 'Dead' || projectList.open || document.querySelector?.('dialog[open]') ||
         event.target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'SUMMARY', 'A'].includes(event.target?.tagName) ||
@@ -690,7 +732,7 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
     if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); changeStep({ enabled: false }); }
     else if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && selected().mode === 'pattern') { event.preventDefault(); const length = selected().patterns[state.slot].length; state.step = (state.step + (event.key === 'ArrowLeft' ? length - 1 : 1)) % length; state.tab = 'Step'; render(); }
   });
-  return { render, patchStep, layout, renderInspector: render, showProjects, showProjectPage, status: text => { status.textContent = text; },
+  return { render, patchStep, layout, renderInspector: render, showProjects, showProjectPage, displayScheduler, status: text => { status.textContent = text; },
     offerLegacyConversion(report, convert) {
       legacyNotice.replaceChildren(node('span', `Previous setup uses legacy phrases. Physical conversion will discard ${report.discardedEnabledSteps} enabled steps across ${report.laneCount} lanes.`),
         button('Convert previous setup', () => convert?.(), 'Replace the previous setup with a physical instrument graph'));
@@ -730,13 +772,8 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
     launched: () => renderRows(),
     transport(position) {
       state.beat = position.beat;
-      if (document.activeElement !== bpm) bpm.value = String(Math.round(position.bpm * 100) / 100);
-      bpm.disabled = position.clockSource === 'external';
-      const meter = quarterMeterPosition(position.beat, getProject().transport?.timeSignature);
-      clockStatus.textContent = meter ? `${meter.bar} : ${meter.beat}` : '—';
-      clockStatus.title = meter ? `${meter.beats}/${meter.unit} · bar : denominator-note beat · ${position.beat} quarters` : 'Musical position unavailable';
-      clockHealth.textContent = position.clockSource === 'external' ? `MIDI clock · ${position.clockStatus}` : 'Internal clock';
-      linked.checked = position.linked; speedMode.value = position.speedMode; clock.value = position.clockSource; frame(position.beat);
+      transportSurface.publish(Object.freeze({ beat: position.beat, bpm: position.bpm, clockSource: position.clockSource,
+        clockStatus: position.clockStatus, linked: position.linked, speedMode: position.speedMode })); frame(position.beat);
     },
     recording(value, midiState = null) {
       state.recording = !!value;
@@ -748,17 +785,20 @@ function createProcgenWorkstationView({ document, window, getProject, getRuntime
           : 'Record MIDI input into the selected phrase';
       records.dataset.state = partial ? 'partial' : midiState?.recordingPressure >= 0.8 ? 'near-cap' : value ? 'recording' : 'idle';
     },
-    midi(text) { state.lastMidi = text; const time = window.performance.now(); if (time - lastMidiFrame < 50) return; lastMidiFrame = time; const monitor = fields.querySelector('.studio-midi-monitor'); if (monitor && monitor.textContent !== text) monitor.textContent = text; },
+    midi(text) { state.lastMidi = text; midiSurface.invalidate(); },
     dispose() {
-      if (disposed) return; disposed = true;
-      retirePicker(pickerOwner, { cancel: true, close: true });
-      fullscreenSession.dispose(); geometryUnsubscribe?.(); geometryRelease?.(); state.presentationTransition = false;
-      detachRenderer(); for (const unlisten of listeners) unlisten();
-      if (canvasParent) canvasParent.insertBefore(canvas, canvasSibling?.parentNode === canvasParent ? canvasSibling : null);
-      projectList.remove(); shell.remove(); footer.remove(); transport.remove(); heading.remove();
-      if (panelParent) panelParent.insertBefore(panel, panelSibling?.parentNode === panelParent ? panelSibling : null);
-      topbarParent.insertBefore(topbar, topbarSibling?.parentNode === topbarParent ? topbarSibling : null);
-      presentationRoot.remove();
+      if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true;
+      return retirement.retire([
+        { name: 'project-picker', run: () => retirePicker(pickerOwner, { cancel: true, close: true }) }, { name: 'fullscreen', run: () => fullscreenSession.dispose() },
+        { name: 'geometry-subscription', run: () => geometryUnsubscribe?.() }, { name: 'geometry-transition', run: () => { geometryRelease?.(); state.presentationTransition = false; } },
+        { name: 'resize-observer', run: () => resizeObserver?.disconnect() }, { name: 'display-scheduler', run: () => displayScheduler.dispose() },
+        { name: 'renderer', run: detachRenderer }, ...listeners.map((unlisten, index) => ({ name: 'view-listener-' + index, run: unlisten })),
+        { name: 'canvas', run: () => { if (canvasParent) canvasParent.insertBefore(canvas, canvasSibling?.parentNode === canvasParent ? canvasSibling : null); } },
+        ...[projectList, shell, footer, transport, heading].map((element, index) => ({ name: 'view-element-' + index, run: () => element.remove() })),
+        { name: 'legacy-panel', run: () => { if (panelParent) panelParent.insertBefore(panel, panelSibling?.parentNode === panelParent ? panelSibling : null); } },
+        { name: 'topbar', run: () => topbarParent.insertBefore(topbar, topbarSibling?.parentNode === topbarParent ? topbarSibling : null) },
+        { name: 'presentation-root', run: () => presentationRoot.remove() }
+      ]);
     },
     getProjection: () => projection,
     getFullscreenState: () => fullscreenSession.getState()

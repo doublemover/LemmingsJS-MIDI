@@ -1032,7 +1032,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const handlers = {
     openPrelistenMonitor() {
       if (disposed || !legacy.local.audio) return;
-      prelistenMonitor ||= createPrelistenMonitor({ document, audio: legacy.local.audio, home: document.getElementById('procgenStudioFooter') || document.body, onStatus: status });
+      prelistenMonitor ||= createPrelistenMonitor({ document, audio: legacy.local.audio, displayScheduler: view?.displayScheduler,
+        home: document.getElementById('procgenStudioFooter') || document.body, onStatus: status });
       prelistenMonitor.mountHome(); return prelistenMonitor;
     },
     openMasterCapture() {
@@ -1299,7 +1300,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       persist();
     }
   };
-  view = createView({ document, window, getProject: () => project, getRuntime, dispatch, handlers, state });
+  view = createView({ document, window, resourceBudget, getProject: () => project, getRuntime, dispatch, handlers, state });
   if (saved?.project?.procgen?.version !== 2 && saved?.project?.procgen) {
     try {
       const conversion = convertLegacyProcgenWorkstationProject(saved.project, { strategy: 'physical-default' });
@@ -1345,6 +1346,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   prepareSettings(); setLegacyProject(project, { persist: false }); legacy.setSpeed(transport.getState().gameSpeed); lastLegacySpeed = legacy.settings.speed; view.render(); view.transport(transport.getState()); storageStatus();
   return { getProject: () => project, getInputEditLease: () => inputLease && Object.freeze({ ...inputLease }),
     getExportState: () => Object.freeze({ artifact: preparedExport?.metadata() || null, delivery: lastDelivery }),
+    getDisplayDiagnostics: () => view.displayScheduler?.diagnostics() || null,
     getDocumentState: () => Object.freeze({ id: documentId, revision: documentRevision, editRevision, savedRevision,
       dirty: editRevision !== savedRevision, savedAt: lastSavedAt }),
     getRecoveryState: () => Object.freeze({ state: recoveryState, pendingRevision: editRevision, durableRevision: durableRecoveryRevision,

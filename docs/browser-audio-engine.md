@@ -648,6 +648,29 @@ completed; superseded preparation loses authority immediately. Stop callbacks
 request cancellation synchronously; the source separately closes its opaque
 lease with its actual retirement receipt. Failed/unknown ownership prevents new
 auditions. Sound-library control auditions use this owner and the cue workload.
+
+### Display update ownership
+
+The workstation and PRELISTEN share one admitted `InstrumentDisplayScheduler`.
+Each registered surface retains one latest frozen publication or one dirty pull
+request. The scheduler batches layout reads before writes, bounds timing history,
+and stops scheduling when clean, document-hidden or offscreen. Returning to the
+foreground refreshes current state once. It never queues missed display frames
+or changes the audio/simulation clocks. Errors remain latched separately from
+ordinary coalesced samples until explicitly cleared.
+
+Playheads use a stable lane-ID index per lane-array revision. Renderer resizing
+is skipped when geometry and renderer ownership are unchanged. ResizeObserver,
+visibility observers, callbacks and reservations retire with the view, and a
+failed native display-source teardown retains its accounting. Interactive DOM
+control changes can still provide immediate local feedback.
+
+`getDisplayDiagnostics()` reports bounded rolling UI cost distributions plus
+registered, dirty, coalesced, skipped and failed surfaces. The workstation profile
+script now authors 8/64/1024-lane scenarios with source revision and browser/device
+context, keeping visible rows bounded. Its rolling distribution is labeled as
+such. These paths and fixtures have not yet been executed in this implementation
+pass; they are not a claim that the proposed p95 target or idle-soak gates pass.
 Global stop fences reentrant enable requests and requests source cancellation;
 source/backend ownership remains visible until actual retirement. Master capture
 excludes the separate cue bus and explicitly includes live-output rehearsal.

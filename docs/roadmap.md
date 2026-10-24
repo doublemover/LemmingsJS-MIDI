@@ -2062,6 +2062,15 @@ application receipts and clock progress; admission alone cannot authorize Apply.
 Native scheduling remains labeled as API evidence. Receipt/privacy fixtures are
 authored and await the deferred validation pass.
 
+The workstation now shares an admitted InstrumentDisplayScheduler with PRELISTEN.
+Bounded per-surface mailboxes coalesce transport, playheads, MIDI text and monitor
+updates; resize reads precede scheduled writes. Hidden/offscreen surfaces suspend
+and resume from their latest snapshot. Visible lane lookups use one stable-ID
+index per lane-array revision, and unchanged geometry does not resize the renderer.
+Bounded UI cost distributions and coalesced/skipped/error counters are inspectable.
+No timing target, idle soak or audio-independence result is claimed before the
+deferred browser/profile pass; scheduler fixtures are authored and unexecuted.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical

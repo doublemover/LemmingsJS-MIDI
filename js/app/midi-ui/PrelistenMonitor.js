@@ -1,8 +1,10 @@
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
+import { createInstrumentDisplayScheduler } from '../resources/InstrumentDisplayScheduler.js';
 
-export function createPrelistenMonitor({ document, audio, home, onStatus = () => {} } = {}) {
+export function createPrelistenMonitor({ document, audio, home, displayScheduler = null, onStatus = () => {} } = {}) {
   if (!document?.createElement || !audio?.getMonitorRouteState || !audio?.getAuditionState || !home) throw new TypeError('Invalid shared prelisten monitor.');
   const retirement = createProcgenRetirementScope(), listeners = []; let disposed = false, operation = 0, preparing = 0;
+  const scheduler = displayScheduler || createInstrumentDisplayScheduler({ document });
   const node = (tag, text) => { const element = document.createElement(tag); if (text != null) element.textContent = text; return element; };
   const rail = node('section'); rail.className = 'studio-prelisten'; rail.setAttribute('aria-label', 'PRELISTEN monitor');
   const title = node('strong', 'PRELISTEN'), source = node('output'), route = node('output'), notice = node('output');
@@ -26,23 +28,25 @@ export function createPrelistenMonitor({ document, audio, home, onStatus = () =>
   const onGain = () => audio.setCueGain(Number(gain.value) / 100); gain.addEventListener('input', onGain); listeners.push(() => gain.removeEventListener('input', onGain));
   const render = () => {
     if (disposed) return;
-    const routing = audio.getMonitorRouteState(), audition = audio.getAuditionState(), current = audition.foreground, workload = audio.getState().workload;
+    const audioState = audio.getState(), routing = audioState.monitorRoute || audio.getMonitorRouteState(), audition = audioState.audition || audio.getAuditionState(), current = audition.foreground, workload = audioState.workload;
     source.textContent = current ? `${current.source.name} · ${current.source.kind} · revision ${current.source.revision} · ${current.state}` : 'No foreground source';
     const mode = routing.mode === 'rehearsal' ? 'Rehearsal on live output' : routing.mode === 'separate-device' ? 'Selected separate device' : 'Route not selected';
     route.textContent = `${mode} · ${routing.state} · ${routing.muted ? 'muted' : 'route open'} · master capture: ${routing.cueIncludedInMasterCapture ? 'included' : 'cue excluded'}` +
       (routing.mode === 'separate-device' ? ' · asynchronous buffering · physical isolation unverified' : '') +
       (workload ? ` · cue quota ${workload.cueVoices}, live quota ${workload.liveVoices}` : '');
-    enable.disabled = !!audio.getState().enabled || !!preparing;
-    separate.disabled = !audio.getState().enabled || preparing > 1 || routing.capabilities?.separateDevice === false;
+    enable.disabled = !!audioState.enabled || !!preparing;
+    separate.disabled = !audioState.enabled || preparing > 1 || routing.capabilities?.separateDevice === false;
     rehearsal.disabled = preparing > 1 || audition.unresolvedOwnership;
     stop.disabled = !audition.active && routing.muted; reveal.disabled = !audition.active || !current?.canRevealSource;
     gain.disabled = routing.mode === 'muted'; gain.value = String(Math.round(routing.cueGain * 100));
   };
-  const unhook = audio.subscribe(render); rail.append(title, source, route, gain, actions, notice); home.append(rail); render();
+  const surface = scheduler.register({ id: 'prelisten-monitor', element: rail, intervalMs: 50, write: render, onError: report });
+  const unhook = audio.subscribe(() => surface.invalidate()); rail.append(title, source, route, gain, actions, notice); home.append(rail); render();
   return Object.freeze({ mount(parent) { if (!disposed && parent) { parent.append(rail); render(); } },
     mountHome() { if (!disposed) home.append(rail); }, state: () => ({ route: audio.getMonitorRouteState(), audition: audio.getAuditionState() }),
     dispose() { if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; operation++;
       return retirement.retire([{ name: 'prelisten-stop', run: () => audio.stopCue() }, { name: 'audio-subscription', run: unhook },
+        { name: 'monitor-mailbox', run: () => surface.dispose() }, { name: 'monitor-scheduler', run: () => { if (!displayScheduler) return scheduler.dispose(); } },
         ...listeners.map((remove, index) => ({ name: 'monitor-listener-' + index, run: remove })), { name: 'monitor-surface', run: () => rail.remove() }]); }
   });
 }
