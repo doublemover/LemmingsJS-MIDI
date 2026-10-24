@@ -26,7 +26,7 @@ export class OwnedSpectrumSource {
     const at = slot * STATE, phase = command[18] / 4294967296;
     for (let field = 0; field < STATE; field++) this.state[at + field] = 0;
     this.state[at] = phase; this.state[at + 1] = command[19]; this.state[at + 2] = command[20]; this.state[at + 3] = frequency;
-    this.state[at + 4] = frequency * 2 ** (-SPECTRUM_BEND_CENTS / 1200); this.state[at + 5] = frequency * 2 ** (SPECTRUM_BEND_CENTS / 1200);
+    this.state[at + 4] = frequency * 2 ** (-SPECTRUM_BEND_CENTS * 2 / 1200); this.state[at + 5] = frequency * 2 ** (SPECTRUM_BEND_CENTS * 2 / 1200);
     for (let parameter = 0; parameter < 3; parameter++) { this.state[at + 8 + parameter] = command[21 + parameter]; this.state[at + 12 + parameter] = command[21 + parameter]; }
     let totalGain = 0;
     for (let index = 0; index < 16; index++) {

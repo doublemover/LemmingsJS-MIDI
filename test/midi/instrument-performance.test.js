@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { compileInstrumentPerformance, validateInstrumentControls, validateInstrumentMacros } from '../../js/midi/content/InstrumentPerformance.js';
+import { compileInstrumentPerformance, validateInstrumentControls, validateInstrumentMacros, captureInstrumentCause } from '../../js/midi/content/InstrumentPerformance.js';
 import { compileSoundContent } from '../../js/midi/content/SoundContentCompiler.js';
 import { NATIVE_FM_PARAMETERS, describeNativeInstrumentEngines } from '../../js/app/midi-ui/NativeInstrumentSchema.js';
 import { readFile } from 'node:fs/promises';
@@ -9,6 +9,12 @@ const macro = (id, composition, minimum, maximum) => ({ id, name: id, default01:
   perceptualDirection: 'Change excitation spectrum.', targets: [{ parameter: 'frequency', unit: composition === 'scale' ? 'ratio' : 'Hz',
     minimum, maximum, composition, curve: 'linear', clamp: true }] });
 describe('typed effective onset controls', () => {
+  it('takes world height only from the completed position and excludes camera or substitute payload coordinates', () => {
+    const cause = captureInstrumentCause({ kind: 'MotionCommitted', eventId: 'motion:height', positionAfter: { x: 4, y: 27.5 }, cameraY: 900,
+      physicalPayload: { displacementPixels: 3, positionYWorldPixels: 999 } });
+    expect(cause.values).to.deep.equal({ displacementPixels: { value: 3, unit: 'world-pixel' }, positionYWorldPixels: { value: 27.5, unit: 'world-pixel' } });
+    expect(captureInstrumentCause({ kind: 'MotionCommitted', eventId: 'missing', physicalPayload: { positionYWorldPixels: 999 } }).values).to.deep.equal({});
+  });
   it('recomputes continuous observations from the onset baseline with stable cross-source composition and no cumulative drift', () => {
     const parameters = [{ id: 'brightness', unit: 'normalized', min: 0, max: 1, default: 0.4, discrete: false, liveSafe: true, causalLiveSafe: true }];
     const binding = (id, sourceKind, payloadField, unit, composition, outputMin, outputMax) => ({ id, sourceKind, payloadField, unit, composition, outputMin, outputMax,

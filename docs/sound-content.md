@@ -388,3 +388,14 @@ hold, CPU and listening qualification remain deferred. The design uses original
 Fourier data; the [Web Audio specification](https://webaudio.github.io/web-audio-api/#PeriodicWave)
 and [Faust oscillator documentation](https://faustlibraries.grame.fr/libs/oscillators/)
 provide algorithm context, without importing their complete instruments.
+
+Prepare liquid tables / drawbars stages Bubble Reed, Prism Pad, Acid Current
+(dry table), Pipe Crew, Glass Drawbars and Falling Stars. BODY, EDGE, FLOW and
+RING are executable onset controls; RING changes dry release. SPACE/shared sends
+and Acid Current resonance/drive are not implemented. Completed motion supplies
+world height directly from `positionAfter.y`; the authored 0–512 world-pixel
+domain contributes a clamped ±0.2 FLOW offset to already held actors. Camera
+position and substitute payload coordinates are excluded. The source bank pins
+a SHA-256 over generator metadata and little-endian Float32 frame coefficients,
+sine samples and normalized tables, in that order. All generated source data
+and new recipe/browser fixtures remain unqualified by runtime/listening tests.

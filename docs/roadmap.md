@@ -2221,8 +2221,14 @@ and use the existing audio-domain ramps. Table mode rejects unused additive
 layout edits; additive mode tapers/omits out-of-register components. Fixed typed
 storage, immutable bank heap estimates and per-voice source costs enter shared
 admission. Compiler v9/catalog/artifact/runtime preparation and real application
-receipts support the eighth engine. The six family recipes/library integration
-are next; source fixtures remain unexecuted. PWM/distortion/sync, exact state,
+receipts support the eighth engine. Six family recipes now stage through the
+shared library and audition/install/apply transaction: Bubble Reed, Prism Pad,
+Acid Current (dry table), Pipe Crew, Glass Drawbars and Falling Stars. BODY/EDGE/
+FLOW/RING affect actual onset values; completed world height contributes an
+explicit calibrated FLOW offset to held actors. Source data pins its generator
+metadata/Float32 SHA-256. Shared SPACE sends and Acid Current resonance/drive
+remain unavailable, with those limits shown in the library. Fixtures remain
+unexecuted. PWM/distortion/sync, exact state,
 offline spectrum output and measured capacity/alias/listening acceptance remain.
 
 Committed interval admission now checks future overlaps and lease extensions

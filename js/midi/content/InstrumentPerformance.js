@@ -47,14 +47,16 @@ export function validateInstrumentControls(input = {}) {
 }
 
 const physicalInputs = Object.freeze({ TerrainWorkCommitted: Object.freeze({ attemptedCells: 'cells', changedSolidCells: 'cells', changedAppearanceCells: 'cells' }),
-  MotionCommitted: Object.freeze({ displacementPixels: 'world-pixel' }), ContactResolved: Object.freeze({ stepHeightPixels: 'world-pixel' }) });
+  MotionCommitted: Object.freeze({ displacementPixels: 'world-pixel', positionYWorldPixels: 'world-pixel' }), ContactResolved: Object.freeze({ stepHeightPixels: 'world-pixel' }) });
 export const INSTRUMENT_PHYSICAL_SOURCE_KINDS = Object.freeze(Object.keys(physicalInputs));
 
 export function captureInstrumentCause(fact) {
   if (!Object.hasOwn(physicalInputs, fact?.kind)) return null;
   const values = {};
   for (const [field, unit] of Object.entries(physicalInputs[fact.kind])) { const value = fact.physicalPayload?.[field];
+    if (fact.kind === 'MotionCommitted' && field === 'positionYWorldPixels') continue;
     if (finite(value, -1000000000, 1000000000)) values[field] = Object.freeze({ value, unit }); }
+  if (fact.kind === 'MotionCommitted' && finite(fact.positionAfter?.y, -1000000000, 1000000000)) values.positionYWorldPixels = Object.freeze({ value: fact.positionAfter.y, unit: 'world-pixel' });
   return Object.freeze({ sourceKind: fact.kind, eventId: fact.eventId, evidence: 'completed-world-fact', values: Object.freeze(values) });
 }
 
