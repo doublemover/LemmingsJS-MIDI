@@ -540,3 +540,24 @@ ABI, state hash and planner cursor. Its transfer plus temporary second kernel
 are admitted before rendering. Native sources retain forward history. This
 worker-local path does not capture unsent live-host controls or publish a
 portable persisted checkpoint, and PCM equivalence remains unqualified.
+
+### Owner effect graphs
+
+The source implementation now admits a bounded stereo `lemmings-effect-graph/v1`
+DAG with source/output buses, explicit gain edges and a feedback-delay operator.
+Creative delay remains distinct from declared fixed processing latency. Complete
+path tails, buffer storage and compounded gain are checked before preparation.
+Arbitrary graph feedback and unsupported audio/control port conversions reject.
+The original delay kernel uses bounded linear fractional taps and either causal
+tape glide or a two-tap linear jump crossfade; it makes no qualified alias or
+pitch-preserving time-stretch claim. A jump during an existing jump refuses.
+
+One prepared owner graph feeds the existing protected master or explicit cue
+route. Input crossfades preserve old bounded tails; neutral, tail bypass, mute and
+Panic remain distinct. At most two graph revisions own transition/tail resources.
+Native producer acknowledgment precedes graph/route/channel resource retirement;
+missing acknowledgment remains unknown and charged. Session preparation never
+creates or enables another AudioContext. Current physical playback APIs expose
+this owner rack; persisted UI controls, content recipes, shared convolution,
+sidechain detectors and offline effect integration remain in development. Native
+source outputs and existing dry stem manifests do not yet claim effect returns.

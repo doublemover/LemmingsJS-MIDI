@@ -306,6 +306,19 @@ class BrowserNotePreview {
         if (session.disposed || this._disposed || generation !== session.generation) throw new Error('Audio backend selection was cancelled.');
         return this._registerInstrumentBackend(createSampleInstrumentBackend(this, id, options), id);
       },
+      prepareEffectGraph: async (definition, options = {}) => {
+        const generation = session.generation, context = this._context;
+        if (session.disposed || !this._ownerReady(id)) throw new Error('Enable this local audio owner before preparing its effect rack.');
+        const { createOwnerEffectGraphHost } = await import('./OwnerEffectGraphHost.js');
+        if (session.disposed || generation !== session.generation || context !== this._context) throw new Error('Effect owner changed during preparation.');
+        const channel = this._channel(0, id);
+        channel.effects ||= createOwnerEffectGraphHost({ context, input: channel.effectInput, dry: channel.effectDry, destination: channel.destination,
+          resources: this._audioResources, owner: id, generation, isCurrent: () => !session.disposed && context === this._context,
+          onChange: () => session.report() });
+        return channel.effects.prepare(definition, { ...options, isCurrent: () => generation === session.generation && !session.disposed && (!options.isCurrent || options.isCurrent()) });
+      },
+      setEffectBypass: mode => this._channels.get(id + ':0')?.effects?.bypass(mode) || null,
+      inspectEffectGraph: () => this._channels.get(id + ':0')?.effects?.state() || null,
       preview: (notes, options) => this.preview(notes, { ...options, owner: id }),
       setMasterVolume: value => this.setMasterVolume(value),
       setCapture: (capture, context) => { if (!session.disposed) this.setCapture(capture, context, id); },
@@ -642,15 +655,24 @@ class BrowserNotePreview {
   }
 
   _retireChannel(key, channel) {
-    channel.retirement ||= createProcgenRetirementScope();
-    let nativeRetirement;
-    const receipt = channel.retirement.retire([
-      { name: 'native-channel', run: () => { nativeRetirement = createProcgenRetirementScope().retire([
-        { name: 'gain', run: () => channel.gain.disconnect() }, { name: 'pan', run: () => channel.pan?.disconnect() }
-      ]); return nativeRetirement; } },
-      { name: 'reservation', run: () => releaseAudioResourceAfterRetirement(channel.resourceLease, nativeRetirement) }
-    ]);
-    if (receipt.outcome === 'complete' && this._channels.get(key) === channel) this._channels.delete(key);
+    channel.retirement ||= createProcgenRetirementScope({ deadlineMs: 16000 });
+    const receipt = channel.retirement.retire([{ name: 'channel-lifetime', run: () => {
+      const effects = channel.effects?.dispose();
+      const finish = () => {
+        if (effects && effects.outcome !== 'complete') {
+          const error = new Error('Effect graph retirement remains unresolved.'); channel.resourceLease.retainUnknown(error); throw error;
+        }
+        const native = createProcgenRetirementScope().retire([
+          { name: 'gain', run: () => channel.gain.disconnect() }, { name: 'pan', run: () => channel.pan?.disconnect() },
+          { name: 'effect-input', run: () => channel.effectInput?.disconnect() }, { name: 'effect-dry', run: () => channel.effectDry?.disconnect() }
+        ]);
+        const released = releaseAudioResourceAfterRetirement(channel.resourceLease, native);
+        return released?.then ? released.then(() => native) : native;
+      };
+      return effects && effects.state !== 'retired' ? effects.completion.then(finish) : finish();
+    } }]);
+    const settle = value => { if (value.outcome === 'complete' && this._channels.get(key) === channel) this._channels.delete(key); };
+    if (receipt.state === 'retired') settle(receipt); else receipt.completion.then(settle);
     return receipt;
   }
 
@@ -778,22 +800,28 @@ class BrowserNotePreview {
     let channel = this._channels.get(key);
     if (channel) return channel;
     if (this._channels.size >= 128) throw new RangeError('Audio channel retirement capacity reached.');
-    const resourceLease = this._audioResources.reserve({ kind: 'channel-graph', owner, generation: this._generation, estimateBytes: 8192 });
+    const resourceLease = this._audioResources.reserve({ kind: 'channel-graph', owner, generation: this._generation, estimateBytes: 24576, consumerOwned: true });
     let gain;
     let pan;
+    let effectInput;
+    let effectDry;
+    let destination;
     try {
       gain = this._context.createGain();
       pan = this._context.createStereoPanner?.() || null;
-      const destination = this._workloadClass(owner) === 'cue' ? this._cueRouting?.getInput() : this._master;
+      destination = this._workloadClass(owner) === 'cue' ? this._cueRouting?.getInput() : this._master;
       if (!destination) throw new Error('Cue input is unavailable.');
-      gain.connect(pan || destination);
-      pan?.connect(destination);
+      effectInput = this._context.createGain(); effectDry = this._context.createGain(); effectDry.gain.value = 1;
+      gain.connect(pan || effectInput); pan?.connect(effectInput); effectInput.connect(effectDry); effectDry.connect(destination);
     } catch (error) {
-      resourceLease.release(); gain?.disconnect();
-      pan?.disconnect();
+      const native = createProcgenRetirementScope().retire([
+        { name: 'channel-gain', run: () => gain?.disconnect() }, { name: 'channel-pan', run: () => pan?.disconnect() },
+        { name: 'effect-input', run: () => effectInput?.disconnect() }, { name: 'effect-dry', run: () => effectDry?.disconnect() }
+      ]);
+      try { releaseAudioResourceAfterRetirement(resourceLease, native); } catch (retirementError) { this._retirementFaults.add(owner); error.retirement = retirementError.retirement || native; }
       throw error;
     }
-    channel = { owner, number, gain, pan, resourceLease, bendRange: 2, volume: 1, expression: 1, program: null,
+    channel = { owner, number, gain, pan, effectInput, effectDry, destination, effects: null, resourceLease, bendRange: 2, volume: 1, expression: 1, program: null,
       controls: createTimedControlTimeline({ maxEvents: MAX_CONTROL_EVENTS }) };
     this._channels.set(key, channel);
     return channel;
@@ -1028,6 +1056,7 @@ class BrowserNotePreview {
         { ...entry.spec.capture, owner: entry.spec.owner, type: 'noteOn', reason: 'audition-stop' }) })),
       ...[...this._voices].filter(owns).map(voice => ({ name: `voice-${voice.id}`, run: () => this._destroyVoice(voice, 'panic-or-stop') })),
       ...[...this._channels.values()].filter(owns).map(channel => ({ name: `channel-state-${channel.number}`, run: () => {
+        channel.effects?.panic();
         channel.gain.gain.cancelScheduledValues(0); channel.gain.gain.value = 1;
         channel.volume = 1; channel.expression = 1; channel.program = null; channel.bendRange = 2; channel.controls.clear();
         if (channel.pan) { channel.pan.pan.cancelScheduledValues(0); channel.pan.pan.value = 0; }

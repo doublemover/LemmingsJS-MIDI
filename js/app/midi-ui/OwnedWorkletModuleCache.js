@@ -14,13 +14,15 @@ export function loadOwnedWorkletModule(context, source, resources = null) {
     context.addEventListener?.('statechange', cache.close); contexts.set(context, cache);
   }
   const url = source.runtime.workletUrl, known = cache.entries.get(url); if (known) return known.promise;
-  if (cache.entries.size >= 5) return Promise.reject(new Error('Owned source module capacity reached.'));
+  const moduleClass = source.moduleClass === 'effect' ? 'effect' : 'source';
+  const classCount = [...cache.entries.values()].filter(entry => entry.moduleClass === moduleClass).length;
+  if (cache.entries.size >= 6 || classCount >= (moduleClass === 'effect' ? 1 : 5)) return Promise.reject(new Error('Owned source module capacity reached.'));
   if (source.heapEstimate && resources && typeof context.addEventListener !== 'function') return Promise.reject(new Error('Source module lifetime observation is unavailable.'));
   let resource = null;
   try { if (source.heapEstimate) resource = resources?.reserve({ kind: 'worklet-module-cache', owner: null, bytes: 0, estimateBytes: source.heapEstimate, consumerOwned: true }) || null; }
   catch (error) { return Promise.reject(error); }
   if (context.state === 'closed') { resource?.release(); return Promise.reject(new Error('Owned source context closed during admission.')); }
-  const entry = { id: source.id, state: 'loading', resource, promise: null, estimatedBytes: source.heapEstimate }; cache.entries.set(url, entry);
+  const entry = { id: source.id, moduleClass, state: 'loading', resource, promise: null, estimatedBytes: source.heapEstimate }; cache.entries.set(url, entry);
   try { entry.promise = Promise.resolve(context.audioWorklet.addModule(url)); } catch (error) { entry.promise = Promise.reject(error); }
   entry.promise.then(() => { if (entry.state !== 'closed') entry.state = 'ready'; }, () => { if (entry.state !== 'closed') entry.state = 'failed'; });
   return entry.promise;

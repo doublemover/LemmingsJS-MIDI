@@ -154,7 +154,9 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
       { name: 'instrument-backend', run: () => (backend || nativeBackend)?.dispose?.() }, { name: 'audio-session', run: () => session?.dispose?.() }
     ]);
   };
-  return { engine, processBatch, stop, dispose, ready: () => preparedPromise,
+  return { engine, processBatch, stop, dispose,
+    prepareEffectGraph: (definition, options) => session?.prepareEffectGraph ? session.prepareEffectGraph(definition, options) : Promise.reject(new Error('Physical owner effect routing is unavailable.')),
+    setEffectBypass: mode => session?.setEffectBypass?.(mode), inspectEffectGraph: () => session?.inspectEffectGraph?.() || null, ready: () => preparedPromise,
     prepareLaneInstrument: (laneId, reference, options) => laneInstruments ? laneInstruments.prepare(laneId, reference, options) : Promise.reject(new Error('Lane instrument routing is unavailable.')),
     synchronizeLaneInstruments: lanes => laneInstruments?.synchronize(lanes) || Promise.resolve([]),
     retryLaneInstruments: () => laneInstruments?.retry(getLanes()) || Promise.resolve([]),

@@ -2525,6 +2525,31 @@ capture, a persisted take checkpoint or a qualified exact scrub claim. Deferred
 PCM fixtures compare full graph and simultaneous stems across a cut inside a
 control ramp. Live block transport and canonical cursor/sink replacement remain.
 
+Owner-local creative effect hosting now prepares immutable typed stereo graphs
+with bounded nodes/edges, stable DAG order, complete-path tail/latency/storage
+admission and compounded gain bounds. Arbitrary cycles reject; feedback is owned
+inside one explicit bounded stereo delay operator. Its preallocated ring supports
+two-sample linear fractional taps, causal bounded tape glide or a fixed two-tap
+linear jump crossfade. A second jump during transition explicitly refuses. The
+feedback path has lowpass/DC-block state, a declared gain ceiling and nonfinite/
+state-amplitude containment. Continuous wet/feedback use an explicit 8 ms time
+constant. These are unqualified creative processors, not a final output limiter.
+
+The shared browser channel now has an owned insertion/dry point before its
+existing master or explicit cue destination. Session and physical playback APIs
+prepare a graph without enabling audio, preserve the committed graph on candidate
+failure, and admit at most two current/tailing revisions. Input crossfades leave
+old owned energy until its hard audio-clock deadline; neutral, tail, mute and
+Panic have separate transitions. Native graph retirement waits for processor
+acknowledgment before releasing graph/route/channel storage. An unavailable or
+failed producer keeps an explicit unknown reservation. Context module ownership
+allows five source modules plus one effect module, held until context closure.
+The graph/control UI, authored Dub Quarry rack, convolution, typed detector paths,
+shared nonlinear/spectral/body processing, offline effect taps and full acceptance
+remain implementation work. Routing, fractional impulse, transition refusal and
+producer-ownership fixtures are authored; runtime and DSP qualification stay
+postponed with the consolidated validation pass.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical

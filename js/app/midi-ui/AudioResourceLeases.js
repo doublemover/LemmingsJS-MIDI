@@ -108,7 +108,7 @@ export function createAudioResourceLeases({ resourceBudget = null, ownerPrefix =
     return retirement.retire([...leases.values()].map((lease, index) => ({ name: `reservation-${index}`, run: lease.retire })));
   };
   const confirmClosedContext = () => createProcgenRetirementScope().retire([...leases.values()].filter(lease => lease.blocked &&
-    ['native-voice', 'worklet-voice-host', 'worklet-runtime', 'pcm-capture-runtime', 'channel-graph', 'mix-graph'].includes(lease.kind))
+    ['native-voice', 'worklet-voice-host', 'worklet-runtime', 'pcm-capture-runtime', 'channel-graph', 'mix-graph', 'effects-graph', 'effect-route-arm', 'effect-host-metadata'].includes(lease.kind))
     .map((lease, index) => ({ name: 'closed-context-resource-' + index, run: lease.confirmRetirement })));
   return { reserve, reserveDecodedBuffer, releaseOwner, retireOwner, confirmClosedContext, diagnostics, dispose,
     reserveNativeVoice: (owner, generation = 0, sourceCost = 1) => {
