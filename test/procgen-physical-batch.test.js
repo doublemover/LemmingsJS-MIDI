@@ -11,6 +11,18 @@ describe('completed physical event batches', () => {
   let masks;
   before(async () => { masks = await loadProcgenMasks(); });
 
+  it('joins candidate contact motion only to matching completed support evidence', () => {
+    for (const valid of [false, true]) {
+      const bus = new ProcgenSoundEventBus({ getGameTime: () => 0 }, 1), batches = [];
+      bus.onBatch.on(value => batches.push(value)); bus.beginTick({ worldId: 'world', generation: 1, tick: 2, terrainRevisionBefore: 1 });
+      bus.emitPhysicalFact({ kind: 'MotionCommitted', actorId: 7, actionInstanceId: 'walk:7', contactSpanId: 'span:7', physicalPayload: { contactObserved: true } });
+      bus.emitPhysicalFact({ kind: 'ContactSpanUpdated', actorId: 7, actionInstanceId: valid ? 'walk:7' : 'changed:7', spanId: 'span:7', observedTick: 2, surfaceRevision: 3 });
+      bus.commitTick({ revision: 2 }, 3);
+      const motion = batches[0].facts[0]; expect(motion.physicalPayload.contactObserved).to.equal(valid);
+      expect(motion.contactSpanId).to.equal(valid ? 'span:7' : null); bus.dispose();
+    }
+  });
+
   it('publishes two builder strikes after both actors and lane counts complete', () => {
     const world = new ProcgenLaneWorld({ masks, laneCount: 2, assists: false });
     for (const actor of world.actors) { actor.setAction(world.actions[State.BUILDING]); actor.frameIndex = 8; }

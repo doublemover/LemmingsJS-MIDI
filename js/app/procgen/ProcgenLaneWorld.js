@@ -1,3 +1,4 @@
+import { physicalContactForMotion } from '../../actions/PhysicalMotionFacts.js';
 import { ProcgenTerrainEdits, ProcgenTerrainRevisions } from './ProcgenTerrainRetention.js';
 import { ProcgenTunnelCrewRoutes } from './ProcgenTunnelCrewRoutes.js';
 import { ProcgenBasinCrewRoutes } from './ProcgenBasinCrewRoutes.js';
@@ -39,7 +40,7 @@ import { EventHandler } from '../../util/EventHandler.js';
 import { normalizeSeed, deriveSeed } from '../../core/seededRandom.js';
 import { ProcgenScenery } from './ProcgenScenery.js';
 import { publishProcgenActorVisibility } from './ProcgenActorVisibility.js';
-import { createInterventionState, enqueueIntervention, cancelIntervention, cancelPendingInterventions, applyInterventions } from './ProcgenInterventionCommands.js';
+import { createInterventionState, prepareIntervention, enqueueIntervention, cancelIntervention, cancelPendingInterventions, applyInterventions } from './ProcgenInterventionCommands.js';
 import { observePhysicalSupport } from '../../actions/PhysicalContactFacts.js';
 
 const MAX_PROCGEN_LANES = 1024;
@@ -173,6 +174,7 @@ class ProcgenLaneWorld {
 
   _spawn(lane, emit = true) {
     this.soundEvents.laneIndex = lane;
+    if (!Number.isSafeInteger(this.nextActorId) || this.nextActorId < 0 || !Number.isSafeInteger(this.nextActorId + 1)) throw new RangeError('Actor identity exhausted.');
     const actor = new Lemming(36, lane * this.laneHeight + this.laneHeight - LANE_HEIGHT + 42, this.nextActorId++, this.runtime);
     this._authoritativeActors.add(actor);
     actor.appearanceIndex = lane; actor._musicPositionId = actor.id;
@@ -263,6 +265,7 @@ class ProcgenLaneWorld {
   }
 
   // Requests enter the existing simulation pass; pause never advances OHNO.
+  prepareIntervention(command) { return prepareIntervention(this, command); }
   enqueueIntervention(command) { return enqueueIntervention(this, command); }
   cancelIntervention(commandId) { return cancelIntervention(this, commandId); }
   nukeLane(lane) {
@@ -900,6 +903,7 @@ class ProcgenLaneWorld {
   step(eventTimeMs = null) {
     if (this._stepping) throw new Error('A physical tick cannot be reentered.');
     if (this._failedTick) throw new Error('The previous physical tick was incomplete; restore a checkpoint before stepping.');
+    if (!Number.isSafeInteger(this.tickIndex + 1)) throw new RangeError('Physical tick identity exhausted.');
     this._stepping = true;
     try {
       const generation = this.generation, terrainRevisionBefore = this.terrainRevision;
@@ -934,11 +938,12 @@ class ProcgenLaneWorld {
         this._synchronizeLane(actor);
         this.soundEvents.laneIndex = actor.laneIndex;
         if (observePhysical && (actor.x !== previousX || actor.y !== previousY) && actor._physicalMotionFactTick !== this.tickIndex) {
-          this.soundEvents.emitPhysicalFact({ kind: 'MotionCommitted', actorId: initialId,
+          const contactSpanId = physicalContactForMotion(this, actor, previousX, previousY);
+          this.soundEvents.emitPhysicalFact({ kind: 'MotionCommitted', contactSpanId, actorId: initialId,
             laneId: actor.laneIndex, positionBefore: { x: previousX, y: previousY }, positionAfter: { x: actor.x, y: actor.y },
             action: previousAction?.actionName || null, actionInstanceId: motionActionInstanceId,
             parentCauseIds: actor._physicalInterventionId ? [actor._physicalInterventionId] : [],
-            precision: 'endpoint', physicalPayload: { displacementPixels: Math.hypot(actor.x - previousX, actor.y - previousY), pathEvidence: 'endpoint-chord' } });
+            precision: 'endpoint', physicalPayload: { displacementPixels: Math.hypot(actor.x - previousX, actor.y - previousY), pathEvidence: 'endpoint-chord', contactObserved: contactSpanId !== null, contactEvidence: contactSpanId ? 'consecutive-support-endpoints' : 'unknown' } });
         }
         this.terrainGrowth?.observe(actor.laneIndex, actor.x - previousX);
         this._assistedColumn.valid = false;

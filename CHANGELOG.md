@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Preserve independent physical mapping lifetimes and qualified contact travel; journal manual interventions before mutation, disarm incomplete-source music until explicit recovery, fence stale inspection/export publication, and enforce per-observer telemetry budgets. Runtime and acoustic qualification deferred.
+
 - Fence staged effect and cue-route failures, rearm physical audio correlations after interruptions, serialize offline pack ownership, and preserve cold-history retirement evidence.
 
 - Retain bounded prepared ProcGen project and MIDI exports for exact retry, with separate anchor-request and writable-close delivery receipts.

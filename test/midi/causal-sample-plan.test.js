@@ -18,6 +18,14 @@ const request = async intents => ({ descriptor: (await describeNativeInstrumentE
     finalBoundaryState: { sourceTimeMs: 1000 }, intents }, sampleRate: 48000, endSeconds: 1 });
 
 describe('mapped native sample causal planning (not PCM qualification)', () => {
+  it('does not allocate a slot to a same-frame choke loser in reverse captured order', async () => {
+    const input = await request([intent('begin', 100, 'voice-z'), intent('begin', 100, 'voice-a'), intent('end', 700, 'voice-z'), intent('end', 800, 'voice-a')]);
+    const plan = await planCausalSourceRender(input);
+    expect(plan.peakVoices).to.equal(1);
+    const silent = [...plan.voices.values()].filter(voice => voice.silentChoke); expect(silent).to.have.length(1);
+    expect(plan.events.some(event => event.voice === silent[0])).to.equal(false);
+  });
+
   it('uses source frames and the selected onset ratio for one-shot hold across output rates', async () => {
     const input = await request([intent('begin', 100), intent('end', 150, 'voice-a', { terminationReason: 'one-shot' })]);
     for (const sampleRate of [44100, 48000, 96000]) {

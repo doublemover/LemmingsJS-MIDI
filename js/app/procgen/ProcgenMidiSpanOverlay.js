@@ -97,7 +97,7 @@ const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDom
   });
   listen('pointermove', event => {
     api.sync();
-    if (!drag) return; stop(event);
+    if (!drag || drag.pointerId !== event.pointerId) return; stop(event);
     if (drag.projectionKey !== projectionKey(drag.domain)) { cancelDrag(); onStatus('The canvas view changed; the span draft was canceled.'); return; }
     const next = position(event, drag.domain, drag.transform), quantum = drag.domain === 'distance' ? 1 : 0.25, snap = value => Math.round(value / quantum) * quantum;
     const entries = drag.entries.length ? drag.entries : [{ id: 'draft', name: getTarget() + ' span', target: getTarget(), min: 48, max: 110, enabled: true, span: createMidiSpan(drag.domain) }];
@@ -121,7 +121,7 @@ const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDom
   });
   listen('pointerup', event => {
     api.sync();
-    if (!drag) return; stop(event);
+    if (!drag || drag.pointerId !== event.pointerId) return; stop(event);
     const ready = drafts, entries = drag.entries, entry = drag.entry;
     const current = getProject().automation;
     const stale = entries.some(original => JSON.stringify(current.find(candidate => candidate.id === original.id)?.span) !== JSON.stringify(original.span));
@@ -138,7 +138,7 @@ const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDom
     else if (!presentationValid) onStatus('The span draft was canceled because its presentation is no longer current.');
     changed();
   });
-  listen('pointercancel', event => { if (drag) { stop(event); cancelDrag(); changed(); } });
+  listen('pointercancel', event => { if (drag && drag.pointerId === event.pointerId) { stop(event); cancelDrag(); changed(); } });
   listen('dblclick', event => { if (editing) stop(event); });
   const api = {
     get revision() { return revision; },

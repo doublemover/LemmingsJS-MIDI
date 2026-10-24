@@ -58,7 +58,8 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
       qualification, failure, interpretationPlaying: replayState().playing ?? true, playbackAdmission: replayState().version === 2,
       inspection: { paused: phase !== 'advancing', hardware: false, thru: false, physicalLayers: false } });
     const writable = () => {
-      if (disposed || world._disposed || phase !== 'paused' || world._failedTick) throw journalError('branch-state', 'The physical branch is not at a writable paused boundary.');
+      const recording = recorder.status();
+      if (disposed || world._disposed || phase !== 'paused' || world._failedTick || failure || recording.state !== 'recording' || recording.failure || recording.coverage?.status !== 'complete') throw journalError('branch-state', 'The physical branch is not at a writable paused boundary.');
     };
     const onBatch = batch => {
       if (disposed || world._disposed || phase !== 'advancing') return;
@@ -82,6 +83,8 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
       try {
         for (let index = 0; index < ticks; index++) {
           if (disposed || world._disposed || phase !== 'advancing' || advanceSignal?.aborted || signal?.aborted) throw journalError('cancelled', 'Physical branch stepping canceled.');
+          const recording = recorder.status();
+          if (failure || recording.state !== 'recording' || recording.failure || recording.coverage?.status !== 'complete') throw journalError('branch-capture-failed', 'Recording admission must recover before any branch step.');
           world.step();
           if (world._failedTick) throw journalError('physical-tick-failed', 'A physical branch tick did not commit.');
           if (failure) break;
@@ -93,12 +96,13 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
           recorder.markGap({ kind: 'physical-facts', firstTick: world.tickIndex, lastTick: world.tickIndex, generation: world.generation, reason: 'branch-physical-tick-failed' });
         }
         throw error;
-      } finally { if (!disposed && phase === 'advancing') phase = world._failedTick ? 'failed' : 'paused'; }
+      } finally { if (!disposed && phase === 'advancing') phase = world._failedTick || failure ? 'failed' : 'paused'; }
       return cloneJournalData({ ...status(), lastIntents });
     };
     const enqueueIntervention = command => {
-      writable(); const outcome = world.enqueueIntervention(command);
-      return { outcome, recording: recorder.recordIntervention(command, outcome, sourceBoundary()) };
+      writable(); const proposal = world.prepareIntervention(command), recording = recorder.recordIntervention(command, proposal.outcome, sourceBoundary());
+      if (recording.status !== 'accepted') { failure = { code: 'capture-admission', reason: recording.reason, tick: world.tickIndex }; phase = 'failed'; return { outcome: { status: 'rejected', reason: 'recording-admission' }, recording }; }
+      return { outcome: proposal.commit(), recording };
     };
     const setTempo = bpm => {
       writable(); if (!Number.isFinite(bpm) || bpm <= 0 || bpm > 1000000) throw new Error('Invalid physical branch tempo.');

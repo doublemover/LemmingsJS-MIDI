@@ -9,7 +9,8 @@ const variable = value => {
 const word = value => [(value >> 8) & 255, value & 255];
 const long = value => [(value >>> 24) & 255, (value >>> 16) & 255, (value >>> 8) & 255, value & 255];
 const tempo = bpm => {
-  const microseconds = Math.max(1, Math.min(0xffffff, Math.round(60000000 / (Number(bpm) > 0 ? Number(bpm) : 120))));
+  const microseconds = Math.round(60000000 / bpm);
+  if (!Number.isFinite(bpm) || bpm <= 0 || microseconds < 1 || microseconds > 0xffffff) throw new RangeError('Tempo is outside the representable SMF range; export was not retimed.');
   return [0xff, 0x51, 3, (microseconds >> 16) & 255, (microseconds >> 8) & 255, microseconds & 255];
 };
 

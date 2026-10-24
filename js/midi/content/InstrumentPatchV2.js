@@ -78,13 +78,18 @@ const validateInstrumentPatchV2 = (input, descriptor) => {
         (schema.get(item.target).capability && !engine.capabilities[schema.get(item.target).capability]) ||
         !text(item.source, 128) || !finite(item.amount, -1000000, 1000000) ||
         !finite(item.smoothingMs, 0, 60000) || !['linear', 'logarithmic', 'step'].includes(item.curve)) throw new Error('Invalid patch modulation.');
+    const target = schema.get(item.target), mode = item.mode ?? 'onset-only';
+    if (!['onset-only', 'continuous'].includes(mode) || mode === 'continuous' && !target.liveSafe || mode === 'onset-only' && item.smoothingMs !== 0 ||
+        target.discrete && (item.curve !== 'step' || !Number.isInteger(item.amount))) throw new Error('Invalid modulation application semantics.');
     modulationIds.add(item.id);
     if (item.source.startsWith('parameter:')) {
       const sourceId = item.source.slice('parameter:'.length);
-      if (!schema.has(sourceId)) throw new Error('Unknown modulation source parameter.');
+      const source = schema.get(sourceId);
+      if (!source || source.capability && !engine.capabilities[source.capability]) throw new Error('Unknown or unavailable modulation source parameter.');
+      if (item.mode === 'continuous' && !source.liveSafe) throw new Error('Init-only modulation source cannot drive continuous modulation.');
       (dependencies.get(sourceId) || (dependencies.set(sourceId, []), dependencies.get(sourceId))).push(item.target);
     } else if (!item.source.startsWith('physical:') || !id(item.source.slice('physical:'.length))) throw new Error('Unsupported modulation source.');
-    return { id: item.id, source: item.source, target: item.target, amount: item.amount, smoothingMs: item.smoothingMs, curve: item.curve };
+    return { id: item.id, source: item.source, target: item.target, mode, amount: item.amount, smoothingMs: item.smoothingMs, curve: item.curve };
   });
   const visited = new Set(), visiting = new Set();
   const visit = source => {

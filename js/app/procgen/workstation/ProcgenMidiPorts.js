@@ -597,11 +597,14 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
   const duration = spec => Math.max(0, spec.durationMs ?? (spec.durationTicks || 0) * (scheduler.tickMs || 60));
   function sendLoweredEvent(event) {
     const id = String(event.outputId ?? noteOutput?.id ?? ''), existing = activeOutputs.get(id);
+    const eventTime = event.timestamp ?? event.timeMs ?? now(), observedTime = now();
+    if (existing) for (const [key, voice] of existing.loweredVoices) if (voice.endAt != null && voice.endAt <= observedTime) existing.loweredVoices.delete(key);
     const policy = existing?.intent.protocolLowering || protocolLowering;
     const words = event.umpWords, first = words?.[0] || 0;
     const sourceKey = `${(first >>> 24) & 15}:${((first >>> 16) & 15) + 1}:${(first >>> 8) & 255}`;
     const ownedAddress = existing?.loweredVoices.get(sourceKey);
     let plan = lowerMidi2ChannelVoice(words, policy || {}, { ownedAddress, soundingPitch: event.soundingPitch });
+    if (plan.ok && plan.action !== 'begin' && ownedAddress && (eventTime < ownedAddress.startAt || ownedAddress.endAt != null && eventTime >= ownedAddress.endAt)) plan = { ...plan, ok: false, reason: 'outside-owned-voice-interval', messages: [] };
     if (!policy) plan = { ...plan, ok: false, reason: 'lowering-policy-required', messages: [] };
     if (scheduler.config?.mpe?.enabled) plan = { ...plan, ok: false, reason: 'mpe-ump-lowering-unavailable', messages: [] };
     let victimKey = null;
@@ -631,8 +634,8 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
         submittedMessages++;
         if (victimKey != null && submittedMessages === 1) route.loweredVoices.delete(victimKey);
       }
-      if (plan.action === 'begin') route.loweredVoices.set(sourceKey, { note: plan.note, channel: plan.address.channel, soundingPitch: plan.soundingPitch });
-      else if (plan.action === 'end') route.loweredVoices.delete(sourceKey);
+      if (plan.action === 'begin') route.loweredVoices.set(sourceKey, { note: plan.note, channel: plan.address.channel, soundingPitch: plan.soundingPitch, startAt: timestamp, endAt: null });
+      else if (plan.action === 'end') { const voice = route.loweredVoices.get(sourceKey); if (voice) voice.endAt = timestamp; if (timestamp <= now()) route.loweredVoices.delete(sourceKey); }
       return true;
     } finally {
       scheduler._releaseReservation?.(reservation?.reservationId, true);

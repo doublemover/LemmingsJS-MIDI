@@ -2,7 +2,7 @@ import { LemmingStateType as State } from '../../lemmings/LemmingStateType.js';
 import { causalRandomDecision } from './workstation/CausalRandom.js';
 
 const ORIGIN_PRIORITY = Object.freeze({ manual: 0, 'live-controller': 0, replay: 0, layer: 1, ensemble: 1, conductor: 2, 'auto-assist': 3 });
-const KINDS = new Set(['assign-worker', 'place-blocker', 'release-blocker', 'set-release-policy']);
+const KINDS = new Set(['assign-worker', 'place-blocker', 'release-blocker', 'set-release-policy', 'nuke-lane', 'nuke-all']);
 const boundedId = value => typeof value === 'string' && value.length > 0 && value.length <= 128;
 const plain = value => value && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype;
 const createInterventionState = () => ({ version: 1, pending: [], receipts: [], recentIds: [], sequence: 0 });
@@ -33,12 +33,16 @@ const enqueueIntervention = (world, command) => {
     parameters[key] = value;
   }
   const target = { generation: command.target.generation };
-  if (command.kind === 'set-release-policy') {
+  if (['set-release-policy', 'nuke-all'].includes(command.kind)) {
     if (command.target.laneId != null) throw new Error('Release policy currently targets the whole world.');
+  } else if (command.kind === 'nuke-lane') {
+    if (!Number.isSafeInteger(command.target.laneId) || command.target.laneId < 0 || command.target.laneId >= world.laneCount) throw new Error('Invalid nuke lane.');
+    target.laneId = command.target.laneId;
   } else {
     if (!Number.isSafeInteger(command.target.actorId) || command.target.actorId < 0) throw new Error('Intervention needs a stable actor ID.');
     target.actorId = command.target.actorId;
   }
+  if (!Number.isSafeInteger(state.sequence + 1)) throw new RangeError('Intervention sequence exhausted.');
   const entry = Object.freeze({ version: 1, id: command.id, kind: command.kind, target: Object.freeze(target),
     parameters: Object.freeze(parameters), requestedAt: command.requestedAt ?? world.simulationTimeMs,
     applyAtTick: command.applyAtTick ?? world.tickIndex + 1, origin: command.origin ?? 'manual',
@@ -86,11 +90,11 @@ const applyInterventions = world => {
   if (!due.length) return;
   const actors = new Map(world.actors.map(actor => [actor.id, actor])), claimed = new Map();
   for (const command of due) {
-    const actor = actors.get(command.target.actorId), resource = actor ? `actor:${actor.id}` : 'release-policy';
+    const actor = actors.get(command.target.actorId), resource = actor ? `actor:${actor.id}` : command.kind.startsWith('nuke') ? 'nuke:' + (command.target.laneId ?? 'all') : 'release-policy';
     let status = 'rejected', reason = null, conflictCommandId = null, decision = null;
     if (command.target.generation !== world.generation) { status = 'stale'; reason = 'stale-generation'; }
     else if (command.expectedStateRevision && command.expectedStateRevision !== boundaryRevision) { status = 'stale'; reason = 'stale-state-revision'; }
-    else if (command.kind !== 'set-release-policy' && (!actor || actor.removed || actor.disabled || actor.failureReason || actor.terminalReason)) {
+    else if (!['set-release-policy', 'nuke-lane', 'nuke-all'].includes(command.kind) && (!actor || actor.removed || actor.disabled || actor.failureReason || actor.terminalReason)) {
       status = 'stale'; reason = 'stale-target';
     } else if (claimed.has(resource)) { reason = 'conflicting-command'; conflictCommandId = claimed.get(resource); }
     else {
@@ -116,13 +120,15 @@ const applyInterventions = world => {
             if (actor.action === world.actions[State.BLOCKING]) {
               actor.setAction(world.actions[State.WALKING]); world._syncTriggerOwner(actor); accepted = true;
             }
-          } else {
+          } else if (command.kind === 'nuke-lane') { world._manualNukeLanes[command.target.laneId] = 1; accepted = true; }
+          else if (command.kind === 'nuke-all') { world._manualNukeLanes.fill(1); accepted = true; }
+          else {
             const params = command.parameters;
             if ((params.spawnBeatTicks == null || Number.isFinite(params.spawnBeatTicks) && params.spawnBeatTicks >= 0 && params.spawnBeatTicks <= 4096) &&
                 (params.spawnSpreadTicks == null || Number.isSafeInteger(params.spawnSpreadTicks) && params.spawnSpreadTicks >= 0 && params.spawnSpreadTicks <= 53) &&
                 (params.spawnBeatTicks != null || params.spawnSpreadTicks != null)) {
-              if (params.spawnBeatTicks != null) world.population.settings.spawnBeatTicks = params.spawnBeatTicks;
-              if (params.spawnSpreadTicks != null) { world.population.settings.spawnSpreadTicks = params.spawnSpreadTicks; world.spawnSpreadTicks = params.spawnSpreadTicks; }
+              world.population.setSettings(params);
+              if (params.spawnSpreadTicks != null) world.spawnSpreadTicks = params.spawnSpreadTicks;
               accepted = true;
             }
           }
@@ -148,4 +154,17 @@ const applyInterventions = world => {
   }
 };
 
-export { ORIGIN_PRIORITY, createInterventionState, enqueueIntervention, cancelIntervention, cancelPendingInterventions, applyInterventions };
+const prepareIntervention = (world, command) => {
+  const original = world.interventionState, tick = world.tickIndex, generation = world.generation;
+  const sequence = original.sequence, pending = [...original.pending], receipts = [...original.receipts], recentIds = [...original.recentIds];
+  const same = (left, right) => left.length === right.length && left.every((entry, index) => entry === right[index]);
+  const staged = { ...original, pending: [...original.pending], receipts: [...original.receipts], recentIds: [...original.recentIds] };
+  const outcome = enqueueIntervention({ ...world, interventionState: staged }, command); let committed = false;
+  return Object.freeze({ outcome, commit() {
+    if (committed) return outcome;
+    if (world._disposed || world.interventionState !== original || original.sequence !== sequence || !same(original.pending, pending) || !same(original.receipts, receipts) || !same(original.recentIds, recentIds) || world.tickIndex !== tick || world.generation !== generation) throw new Error('Intervention proposal is stale.');
+    committed = true; world.interventionState = staged; return outcome;
+  } });
+};
+
+export { prepareIntervention, ORIGIN_PRIORITY, createInterventionState, enqueueIntervention, cancelIntervention, cancelPendingInterventions, applyInterventions };

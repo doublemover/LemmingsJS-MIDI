@@ -55,6 +55,7 @@ const historyPatchBytes = (before, after, action) => {
 function rollbackWorldProject(previous, staged, current) {
   const restored = { ...previous, procgen: { ...previous.procgen } };
   for (const key of Object.keys(current)) if (key !== 'procgen' && !equal(current[key], staged[key])) restored[key] = current[key];
+  for (const key of Object.keys(current.procgen)) if (!['lanes', 'seed'].includes(key) && !equal(current.procgen[key], staged.procgen[key])) restored.procgen[key] = current.procgen[key];
   restored.procgen.lanes = previous.procgen.lanes.map(lane => {
     const before = staged.procgen.lanes.find(value => value.id === lane.id), after = current.procgen.lanes.find(value => value.id === lane.id);
     if (!before || !after) return lane;
@@ -226,7 +227,12 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if ((causalTake || causalTakeStart || causalTakeStop) && !equal(project.procgen.effectRack ?? null, next.procgen.effectRack ?? null)) throw new Error('Finish the causal take before changing its saved effect defaults.');
     const performanceChange = causalTake || causalTakeStart || causalTakeStop ? diffCausalPerformanceState(captureCausalPerformanceState(project.procgen.lanes), captureCausalPerformanceState(next.procgen.lanes)) : null;
     if ((causalTakeStart || causalTakeStop) && performanceChange) throw new Error('Wait for causal take arming or saving before changing instrument controls.');
-    const mappingChanged = causalTake && !equal(project.procgen.physicalGraph, next.procgen.physicalGraph);
+    const graphChanged = !equal(project.procgen.physicalGraph, next.procgen.physicalGraph);
+    if (graphChanged && next.procgen.physicalGraph.revision <= project.procgen.physicalGraph.revision) {
+      if (!Number.isSafeInteger(project.procgen.physicalGraph.revision + 1)) throw new Error('Physical mapping revision exhausted.');
+      next = { ...next, procgen: { ...next.procgen, physicalGraph: { ...next.procgen.physicalGraph, revision: project.procgen.physicalGraph.revision + 1 } } };
+    }
+    const mappingChanged = causalTake && graphChanged;
     if (causalTake && (mappingChanged || performanceChange)) {
       const world = runtime()?.world, boundary = { tick: world?.tickIndex ?? 0, generation: world?.generation ?? 0 };
       const receipt = performanceChange ? causalTake.recordPerformance(performanceChange, boundary, mappingChanged ? next.procgen.physicalGraph : null)
@@ -493,6 +499,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const causalTakeState = () => Object.freeze({ recording: !!causalTake && !causalTake.status().captureStopped,
     recovering: !!causalTake?.status().captureStopped && !causalTake.canReplaceDocument(),
     starting: !!causalTakeStart, stopping: !!causalTakeStop,
+    physicalRecoveryRequired: physicalPlayback?.engine.diagnostics().recoveryRequired === true,
     active: causalTake?.status() || null, last: lastCausalTake, inspection: lastCausalInspection,
     selectedTakeId: selectedCausalTakeId, takePage: causalTakePage, takePageNumber: causalTakeBack.length + 1,
     hasPreviousTakePage: causalTakeBack.length > 0, physicalScore, physicalScoreParent,
@@ -704,11 +711,17 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     status(`Marker added at committed physical tick ${Math.max(0, cursor?.tick ?? 0)}.`);
     return receipt;
   };
+  let causalInspectionRevision = 0;
   const inspectLastCausalTake = async () => {
+    const request = ++causalInspectionRevision, ownerGeneration = documentGeneration;
     const takeId = selectedCausalTakeId || lastCausalTake?.takeId;
     if (!takeId) throw new Error('Select a causal take before inspecting it.');
     const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs });
-    const verification = await journal.verify(takeId), manifest = await journal.openTake(takeId);
+    const current = () => !disposed && request === causalInspectionRevision && documentGeneration === ownerGeneration && takeId === (selectedCausalTakeId || lastCausalTake?.takeId);
+    const verification = await journal.verify(takeId);
+    if (!current()) return Object.freeze({ status: 'superseded', takeId });
+    const manifest = await journal.openTake(takeId);
+    if (!current()) return Object.freeze({ status: 'superseded', takeId });
     lastCausalInspection = Object.freeze({ takeId, takeName: manifest.takeName, revision: manifest.revision,
       status: verification.status, durableSequence: manifest.durableSequence,
       firstTick: manifest.coverage?.sourceRange?.firstTick ?? null,
@@ -897,9 +910,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       return snapshotSession(name);
     } finally { if (resume && wasPlaying) play(); }
   };
-  let preparedExport = null, lastDelivery = null, activeExportAbort = null;
+  let preparedExport = null, lastDelivery = null, activeExportAbort = null, exportPreparationRevision = 0;
   const publishExportState = () => view?.exportState?.(preparedExport?.metadata() || null, lastDelivery);
   const prepareDownload = ({ bytes, filename, type, sourceRef, formatVersion, lossRef = null }) => {
+    if (disposed) throw new Error('The export owner is retired.');
+    ++exportPreparationRevision;
     const artifact = prepareExportArtifact({ bytes, immutableSourceRef: sourceRef, formatVersion,
       mediaType: type, suggestedFilename: filename, coverageLossReportRef: lossRef, budgetAdapter: resourceBudget });
     preparedExport?.discard(); preparedExport = artifact; lastDelivery = null; publishExportState();
@@ -907,11 +922,15 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     return artifact;
   };
   const prepareCausalArchive = async () => {
+    const request = ++exportPreparationRevision, ownerGeneration = documentGeneration;
     if (causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the causal take before preparing its archive.');
     const takeId = selectedCausalTakeId || lastCausalTake?.takeId;
     if (!takeId) throw new Error('No finished causal take is selected.');
     const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs });
     const prepared = await prepareCausalTakeArchive({ journal, storage, takeId, resourceBudget, jobs: backgroundJobs });
+    if (disposed || request !== exportPreparationRevision || ownerGeneration !== documentGeneration || takeId !== (selectedCausalTakeId || lastCausalTake?.takeId)) {
+      prepared.artifact.discard(); return Object.freeze({ status: 'superseded', takeId });
+    }
     preparedExport?.discard(); preparedExport = prepared.artifact; lastDelivery = null;
     publishExportState();
     status(`Causal take ${prepared.manifest.takeName} archive ready. Use Save file to stream its verified source records.`);
@@ -1090,6 +1109,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     },
     status, preferences: persist, presentationGeneration: () => documentGeneration,
     devices, engineState: () => engine.getState(), playhead: id => engine.getLanePosition?.(id),
+    rearmPhysicalMusic: safe(() => {
+      if (disposed || worldBusy || causalTake || causalTakeStart) throw new Error('Stop recording and finish world operations before discarding unknown held state.');
+      physicalPlayback?.engine.rearm({ discardUnknownHeldState: true });
+      status('Physical music rearmed at the next complete boundary; unknown held state was discarded.'); view.renderInspector();
+    }),
     causalTakeState, startCausalTake: safe(startCausalTake), stopCausalTake: safe(stopCausalTake), discardCausalTail: safe(discardCausalTail), cancelCausalTakeArm,
     markCausalTake: safe(markCausalTake), inspectLastCausalTake: safe(inspectLastCausalTake),
     prepareCausalArchive: safe(prepareCausalArchive), browseCausalTakes: safe(browseCausalTakes), selectCausalTake: safe(selectCausalTake),
@@ -1107,7 +1131,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       status('Transport stopped and output flushed.');
       return transport.getState();
     },
-    transport(patch) { configureTransport(patch); if (patch.gameSpeed != null) legacy.setSpeed(patch.gameSpeed); editRevision++; storageStatus(); persist(); if (!transport.getState().playing) scheduleRecovery(); },
+    transport(patch) { configureTransport(patch); if (patch.gameSpeed != null) legacy.setSpeed(patch.gameSpeed, { owned: true }); editRevision++; storageStatus(); persist(); if (!transport.getState().playing) scheduleRecovery(); },
     addLane: safe(async () => { if (!await rebuild({ projectNext: reduceMidiProject(project, { type: 'procgen/addLane' }) })) return false; state.laneId = project.procgen.lanes.at(-1).id; view.render(); return true; }),
     removeLane: safe(async () => { await rebuild({ projectNext: reduceMidiProject(project, { type: 'procgen/removeLane', laneId: selected().id }) }); }),
     duplicate() { const lane = selected(), pattern = lane.patterns?.[state.slot]; if (!pattern) return false; const slot = (state.slot + 1) % 4; dispatch({ type: 'procgen/pattern', laneId: lane.id, slot, patch: clone(pattern) }); state.slot = slot; view.render(); return true; },
@@ -1273,6 +1297,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       return receipt;
     },
     discardExport() {
+      ++exportPreparationRevision;
       if (!preparedExport) return false;
       preparedExport.discard(); preparedExport = null; lastDelivery = null;
       publishExportState(); status('Prepared file discarded. The source project is unchanged.'); return true;
@@ -1370,6 +1395,21 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   window.WebMidi?.addListener?.('connected', connected);
   listeners.push(() => window.WebMidi?.removeListener?.('disconnected', disconnected));
   listeners.push(() => window.WebMidi?.removeListener?.('connected', connected));
+  let interventionSerial = 0;
+  const releasePhysicalControls = legacy.setPhysicalControlOwner?.({
+    speed(value) { configureTransport({ gameSpeed: value }); legacy.setSpeed(value, { owned: true }); lastLegacySpeed = legacy.settings.speed; persist(); return value; },
+    nuke(laneId) {
+      const world = runtime()?.world; if (!world || worldBusy || causalTakeStart || causalTakeStop) return false;
+      const command = { id: `manual-nuke:${world.generation}:${world.tickIndex}:${++interventionSerial}`, kind: laneId == null ? 'nuke-all' : 'nuke-lane',
+        origin: 'manual', target: { generation: world.generation, ...(laneId == null ? {} : { laneId }) }, applyAtTick: world.tickIndex + 1 };
+      const proposal = world.prepareIntervention(command);
+      if (causalTake) {
+        const receipt = causalTake.recordIntervention(command, proposal.outcome, { tick: world.tickIndex, generation: world.generation });
+        if (receipt.status !== 'accepted') { status('Nuke was not applied: take input admission failed.'); return false; }
+      }
+      return proposal.commit().status === 'queued';
+    }
+  });
   prepareSettings(); setLegacyProject(project, { persist: false }); legacy.setSpeed(transport.getState().gameSpeed); lastLegacySpeed = legacy.settings.speed; view.render(); view.transport(transport.getState()); storageStatus();
   return { getProject: () => project, getInputEditLease: () => inputLease && Object.freeze({ ...inputLease }),
     getExportState: () => Object.freeze({ artifact: preparedExport?.metadata() || null, delivery: lastDelivery }),
@@ -1400,6 +1440,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'recovery-write', run: () => recoveryAbort?.abort() },
         { name: 'recovery-timer', run: () => { if (timer != null) window.clearTimeout?.(timer); } },
         { name: 'persist-timer', run: () => { if (pendingPersist != null) window.clearTimeout?.(pendingPersist); } },
+        { name: 'physical-control-owner', run: () => releasePhysicalControls?.() },
         { name: 'prepared-export', run: () => { activeExportAbort?.abort(); preparedExport?.discard(); } },
         { name: 'router-hook', run: () => unhookRouter?.() },
         { name: 'world-hook', run: () => unhookWorld?.() },

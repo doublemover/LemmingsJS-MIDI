@@ -322,6 +322,11 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       if (take) {
         const controls = node('fieldset', null, 'studio-physical-take');
         controls.append(node('legend', 'Causal take'));
+        if (take.physicalRecoveryRequired) {
+          controls.append(node('p', 'Physical source coverage was lost. Held voices remain disarmed until you explicitly discard unknown state.', 'studio-hint'));
+          const rearm = button('Discard unknown held state and rearm', () => handlers.rearmPhysicalMusic?.());
+          rearm.disabled = take.recording || take.starting || take.recovering; controls.append(rearm);
+        }
         state.takeNameDraft ||= 'Untitled take'; state.takeMarkerDraft ||= 'Marker';
         labeled('Take name', input(state.takeNameDraft, takeName => {
           state.takeNameDraft = takeName.slice(0, 120); handlers.preferences?.();

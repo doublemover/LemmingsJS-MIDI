@@ -6,7 +6,7 @@ const EMPTY = Object.freeze({ state: 'unknown', x: 0, y: 0, scale: 1, inner: 0, 
 const string = value => typeof value === 'string' && value.length > 0 && value.length <= 160;
 const natural = value => Number.isSafeInteger(value) && value >= 0;
 const epochId = value => natural(value) || string(value);
-const keyFor = sample => `${sample.effectId}:${sample.quantity}`;
+const keyFor = sample => JSON.stringify([sample.effectId, sample.quantity, sample.voiceId, sample.onsetId, sample.tapId ?? null]);
 const shape = (value, curve) => Math.sign(value) * (curve === 'square' ? value * value : curve === 'sqrt' ? Math.sqrt(Math.abs(value)) : Math.abs(value));
 
 // A renderer-side admission boundary for a future AudioDisplaySample adapter.
@@ -127,7 +127,9 @@ class ProcgenActorEffectDisplay {
     if (box.resultMs === resultKey) return box.result;
     const target = { x: 0, y: 0, scale: 1, inner: 0, outer: 0 }, sources = [], trails = []; let state = 'unknown';
     for (const binding of profile.bindings) {
-      const source = box.sources.get(`${binding.effectId}:${binding.quantity}`); if (!source) continue;
+      const matches = [...box.sources.values()].filter(source => source.effectId === binding.effectId && source.quantity === binding.quantity);
+      const source = matches.sort((a, b) => Number(b.muted === false && !b.rejected && now <= b.validUntilMs) - Number(a.muted === false && !a.rejected && now <= a.validUntilMs) ||
+        Math.abs(b.value) - Math.abs(a.value) || b.presentationMs - a.presentationMs || a.voiceId.localeCompare(b.voiceId))[0]; if (!source) continue;
       const age = now - source.presentationMs, strength = age < -50 || now > source.validUntilMs ? 0 : Math.max(0, Math.min(1, 1 - Math.max(0, age - profile.holdMs) / profile.decayMs));
       const blocked = source.pending || source.rejected || source.muted || source.bypassed && !source.tail || source.coverage !== 'complete';
       const configured = source.evidenceClass === 'configured-parameter';
@@ -135,7 +137,7 @@ class ProcgenActorEffectDisplay {
       const qualified = binding.channel === 'scale' ? ['measured', 'admitted-onset'].includes(source.evidenceClass) && (['amplitude-envelope', 'onset-envelope'].includes(source.quantity) && source.units === 'normalized' && source.value >= 0 && source.value <= 1 || ['rms', 'peak'].includes(source.quantity) && source.units === 'linear-amplitude' && source.value >= 0) :
         ['x', 'y'].includes(binding.channel) ? ['measured', 'kernel-state'].includes(source.evidenceClass) && source.units === 'normalized-signed' : binding.channel === 'trail' ? source.evidenceClass === 'measured' && source.units === 'normalized' && source.tapId && source.sourcePosition : source.quantity === 'wet-tail-envelope' ? source.evidenceClass === 'measured' && source.units === 'normalized' : true;
       const status = blocked ? source.rejected ? 'rejected' : source.pending ? 'pending' : source.muted ? 'muted' : source.bypassed ? 'bypassed' : 'unknown' : strength <= 0 ? 'stale' : routeUnknown ? 'route-unknown' : configured ? 'configured' : !qualified ? 'unqualified' : source.tail ? 'tail' : 'applied';
-      sources.push(Object.freeze({ effectId: source.effectId, quantity: source.quantity, channel: binding.channel, value: source.value, units: source.units, evidenceClass: source.evidenceClass, routeMuted: source.muted, tap: source.tap, windowFirstFrame: source.windowFirstFrame, windowLastFrame: source.windowLastFrame, detectorDelayFrames: source.detectorDelayFrames, state: status }));
+      sources.push(Object.freeze({ voiceId: source.voiceId, onsetId: source.onsetId, reduction: 'maximum-magnitude-qualified-voice', contributors: matches.length, effectId: source.effectId, quantity: source.quantity, channel: binding.channel, value: source.value, units: source.units, evidenceClass: source.evidenceClass, routeMuted: source.muted, tap: source.tap, windowFirstFrame: source.windowFirstFrame, windowLastFrame: source.windowLastFrame, detectorDelayFrames: source.detectorDelayFrames, state: status }));
       if (blocked || !qualified || strength <= 0 || (configured || routeUnknown) && moving) { if (state === 'unknown') state = status; continue; }
       state = routeUnknown ? 'route-unknown' : configured ? 'configured' : source.tail ? 'tail' : 'applied';
       const min = binding.inputMin, max = binding.inputMax > min ? binding.inputMax : min + 1;

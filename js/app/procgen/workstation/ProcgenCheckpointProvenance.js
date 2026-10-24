@@ -80,7 +80,7 @@ const projectProcgenPhysicsCheckpoint = saved => {
     generator: saved.generator, seed: saved.seed, laneCount: saved.laneCount, laneHeight: saved.laneHeight, assets: saved.assets,
     physicsAlgorithms: saved.physicsAlgorithms ?? { stallCascade: 1 },
     graph: { nodes: projected, owners }, terrainAssignments: saved.terrainAssignments, terrainSettings: saved.terrainSettings,
-    growth: saved.growth, physicalIdentity: saved.physicalIdentity,
+    growth: saved.growth, physicalIdentity: saved.physicalIdentity ? { version: saved.physicalIdentity.version, causalSequence: saved.physicalIdentity.causalSequence, coverage: saved.physicalIdentity.coverage } : null,
     clock: { speedFactor: saved.clock.speedFactor, simulationTimeMs: saved.clock.simulationTimeMs } };
 };
 const hashProcgenPhysicsCheckpoint = saved => hashJournalData(projectProcgenPhysicsCheckpoint(saved), { maxBytes: 32 * 1048576, maxNodes: 4000000 });

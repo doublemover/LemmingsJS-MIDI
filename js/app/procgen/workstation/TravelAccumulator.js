@@ -121,7 +121,7 @@ const createTravelAccumulator = ({ maxEntries = 16384, maxCrossingsPerFact = 128
     }
     entries = next;
   };
-  return { consume, observeLifecycle, snapshot, restore, release, reset: () => entries.clear() };
+  return { consume, observeLifecycle, snapshot, restore, release, rebaseGraph(revision, predicate) { for (const state of entries.values()) if (predicate(state)) state.graphRevision = revision; }, reset: () => entries.clear() };
 };
 const freezeState = state => Object.freeze({ ...state, origin: Object.freeze({ ...state.origin }), previousPosition: Object.freeze({ ...state.previousPosition }) });
 

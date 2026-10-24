@@ -214,7 +214,10 @@ function restoreProcgenCheckpoint(world, saved) {
   validateCheckpointGraph(saved.graph, bound, saved.version);
   const worldProps = owners.find(entry => entry.name === 'world').props;
   if (worldProps.seed !== saved.seed || worldProps.laneCount !== saved.laneCount || worldProps.laneHeight !== saved.laneHeight ||
-      !Number.isSafeInteger(worldProps.tickIndex) || worldProps.tickIndex < 0) throw new Error('Checkpoint world envelope does not match its graph.');
+      !Number.isSafeInteger(worldProps.tickIndex) || worldProps.tickIndex < 0 || worldProps.tickIndex >= Number.MAX_SAFE_INTEGER) throw new Error('Checkpoint world envelope does not match its graph.');
+  if (!Number.isSafeInteger(worldProps.nextActorId) || worldProps.nextActorId < 0 || worldProps.nextActorId >= Number.MAX_SAFE_INTEGER ||
+      nodes.some(entry => entry.type === 'Lemming' && (!Number.isSafeInteger(entry.props?.id) || entry.props.id < 0 || entry.props.id >= worldProps.nextActorId)))
+    throw new Error('Checkpoint actor identity frontier is invalid or exhausted.');
   const values = nodes.map(entry => {
     if (Object.hasOwn(TYPES, entry.type)) return new TYPES[entry.type](entry.values.map(decodeNumber));
     if (entry.type === 'Map') return new Map();

@@ -4,8 +4,8 @@ import { EventHandler } from '../../util/EventHandler.js';
 
 const TERMINAL_TYPES = new Set(['lemming-exit', 'lemming-splat', 'lemming-explode', 'lemming-drown', 'lemming-fire', 'lemming-fell-off', 'ActorTerminated', 'ActionExited', 'ContactSpanEnded']);
 const validatePhysicalEventIdentity = value => {
-  if (value?.version !== 1 || !Number.isSafeInteger(value.causalSequence) || value.causalSequence < 0 ||
-      !Number.isSafeInteger(value.legacySequence) || value.legacySequence < 0 ||
+  if (value?.version !== 1 || !Number.isSafeInteger(value.causalSequence) || value.causalSequence < 0 || value.causalSequence >= Number.MAX_SAFE_INTEGER ||
+      !Number.isSafeInteger(value.legacySequence) || value.legacySequence < 0 || value.legacySequence >= Number.MAX_SAFE_INTEGER ||
       !['complete', 'legacy-unavailable'].includes(value.coverage)) throw new Error('Invalid physical event identity checkpoint.');
   return value;
 };
@@ -94,6 +94,7 @@ class ProcgenSoundEventBus extends SoundEventBus {
   _stage(event, legacy) {
     if (this._tick) {
       const current = this._tick;
+      if (!Number.isSafeInteger(this._causalSequence + 1)) throw new RangeError('Physical event sequence exhausted.');
       const causalSequence = ++this._causalSequence;
       let copied;
       try { copied = copyFact(event); } catch { current.dropped++; return null; }
@@ -115,8 +116,25 @@ class ProcgenSoundEventBus extends SoundEventBus {
     const identified = facts.map(({ fact }) => ({ ...fact, worldId: current.worldId,
       generation: current.generation, batchId, eventId: `${batchId}:${fact.causalSequence}`,
       simTick: current.tick, subTick: 0, precision: fact.precision || 'tick' }));
+    // A motion's earlier support query is only a candidate. Join it to the
+    // completed terrain observation after every actor has had a chance to edit
+    // support. This is discrete endpoint evidence, never swept contact.
+    const contacts = new Map();
+    for (const fact of identified) if (['ContactSpanBegan', 'ContactSpanUpdated'].includes(fact.kind)) contacts.set(fact.spanId, fact);
+    for (const fact of identified) if (fact.kind === 'MotionCommitted' && fact.contactSpanId) {
+      const contact = contacts.get(fact.contactSpanId);
+      const qualified = contact && contact.actorId === fact.actorId && contact.actionInstanceId === fact.actionInstanceId && contact.observedTick === current.tick;
+      fact.physicalPayload = Object.freeze({ ...fact.physicalPayload, contactObserved: !!qualified,
+        contactEvidence: qualified ? 'consecutive-support-endpoints-and-completed-terrain' : 'unknown',
+        contactSurfaceRevision: qualified ? contact.surfaceRevision : null, contactObservedTick: qualified ? contact.observedTick : null });
+      if (!qualified) fact.contactSpanId = null;
+    }
+    const byCommand = new Map();
+    for (const fact of identified) if (fact.commandId && !['CommandApplied', 'CommandRejected'].includes(fact.kind)) {
+      if (!byCommand.has(fact.commandId)) byCommand.set(fact.commandId, []); byCommand.get(fact.commandId).push(fact.eventId);
+    }
     const sealedFacts = Object.freeze(identified.map(fact => Object.freeze(fact.kind === 'CommandApplied' || fact.kind === 'CommandRejected'
-      ? { ...fact, physicalEventIds: Object.freeze(identified.filter(other => other !== fact && other.commandId === fact.commandId).map(other => other.eventId)) }
+      ? { ...fact, physicalEventIds: Object.freeze(byCommand.get(fact.commandId) || []) }
       : fact)));
     const batch = Object.freeze({ version: 1, worldId: current.worldId, generation: current.generation,
       tick: current.tick, batchId, physicsOrderVersion: 1,

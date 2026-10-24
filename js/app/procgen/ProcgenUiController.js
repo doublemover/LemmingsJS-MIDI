@@ -340,7 +340,9 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
   listen(byId('procgenCctvClear'), 'click', () => { cctv()?.setPins([]); syncCctv(cctv()?.getState()); });
   for (let index = 0; index < 8; index++) listen(byId('procgenCctvSlot' + index), 'click', event => toggleCctvPin(Number(event.currentTarget?.dataset.lane ?? byId('procgenCctvSlot' + index)?.dataset.lane)));
 
-  const setSpeed = value => {
+  let physicalControlOwner = null;
+  const setSpeed = (value, { owned = false } = {}) => {
+    if (!owned && physicalControlOwner?.speed) return physicalControlOwner.speed(normalizeProcgenSpeed(value, settings.speed));
     settings.speed = normalizeProcgenSpeed(value, settings.speed);
     if (byId('procgenSpeed')) byId('procgenSpeed').value = settings.speed;
     const runtime = getRuntime(); if (runtime?.view) runtime.view.gameSpeedFactor = settings.speed;
@@ -403,7 +405,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
     const projection = renderer.workstationLayout;
     if (cssY < 0 || cssY >= (projection ? rect.height : height * renderer.scale)) return;
     const lane = projection ? projection.laneAt(cssY) : Math.floor((renderer.cameraY + cssY / renderer.scale) / world.laneHeight);
-    if (world.nukeLane(lane)) { event.preventDefault?.(); event.stopImmediatePropagation?.(); setNukeArmed(false); }
+    if (physicalControlOwner?.nuke ? physicalControlOwner.nuke(lane) : world.nukeLane(lane)) { event.preventDefault?.(); event.stopImmediatePropagation?.(); setNukeArmed(false); }
   }, { capture: true });
   const handleKey = event => {
     if (event.defaultPrevented || event.isComposing || event.key === 'Dead' || isEditing(event) ||
@@ -432,7 +434,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
       else if (action === 'toggleShortcutOverlay') { showHelp(); handled = true; }
       else if (action === 'restartLevel' && !event.repeat) { doRestart(); handled = true; }
       else if (action === 'nuke') { setNukeArmed(!nukeArmed); handled = true; }
-      else if (action === 'nukeInstant') { setSpanEditing(false); getRuntime()?.world?.nukeAll?.(); setNukeArmed(false); handled = true; }
+      else if (action === 'nukeInstant') { setSpanEditing(false); physicalControlOwner?.nuke ? physicalControlOwner.nuke(null) : getRuntime()?.world?.nukeAll?.(); setNukeArmed(false); handled = true; }
     }
     if (handled) event.preventDefault?.();
   };
@@ -476,6 +478,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
     getProject: () => project,
     setProject: (next, { persist = true } = {}) => commitAutomation(next, false, persist),
     subscribeProject(listener) { projectListeners.add(listener); return () => projectListeners.delete(listener); },
+    setPhysicalControlOwner(owner) { physicalControlOwner = owner; return () => { if (physicalControlOwner === owner) physicalControlOwner = null; }; },
     setPaused, setSpeed, restart: doRestart,
     isPaused: () => paused,
     syncMetrics(state) {

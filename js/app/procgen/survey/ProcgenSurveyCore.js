@@ -14,7 +14,7 @@ const ignoredKeys = new Set(['world', 'runtime', 'sprites', 'spriteProvider', 'c
   'particleTable', 'timer', 'soundEvents', 'onEvent', 'onGameTick', 'generationSamples', 'generationSampleCount', 'generationMs', 'maxGenerationMs', 'elapsedMs',
   'recipe', 'patterns', 'ingredients', 'pieces', 'objects', 'compiledAssemblies', 'sourceGroups', 'wideSourceGroups', 'assemblySources', 'sourceRegions',
   'sourceDescriptor', 'assemblyCatalog', 'wordPlanner', 'descriptor', 'groups', 'groupsByRole', 'pairs', 'rasters']);
-const stateOwners = ['tickIndex', 'generation', 'generationStartTick', 'seed', 'laneSeeds', 'laneCount', 'laneHeight', 'eventTimeMs', 'nextActorId',
+const stateOwners = ['tickIndex', 'generation', 'generationStartTick', 'seed', 'laneSeeds', 'laneCount', 'laneHeight', 'eventTimeMs', 'simulationTimeMs', 'interventionState', 'nextActorId',
   'spawnedTotal', 'activeCount', 'admissionPaused', 'frontiers', 'generatedThrough', 'terrainRevision', 'frontierRevision', 'terrainActivityTicks',
   'pendingTerrainWork', '_effectiveTerrainWork', '_manualNukeLanes', '_spawnPhases', '_spawnPhaseRanks', '_laneAdmissionCohorts', '_spawnPhaseCohortTick',
   'accessTasks', 'edgeBlockers', 'failureReasons', 'stats', 'population', 'stall', 'terrainGrowth', 'lanePolicy', 'hazardPlanner', 'tunnelRoutes', 'basinRoutes',
@@ -39,7 +39,7 @@ const captureState = (world, records, eventHash, { physicalOnly = false } = {}) 
       properties: Object.fromEntries(Object.keys(value).filter(key => !/^\d+$/.test(key)).sort().map(key => [key, encode(Object.getOwnPropertyDescriptor(value, key)?.value, `${path}.${key}`)])) };
     const out = {};
     for (const key of Object.keys(value).sort()) {
-      if (ignoredKeys.has(key)) continue;
+      if (ignoredKeys.has(key) || physicalOnly && ['stats', 'groundQueries', 'interests', '_lastIndex', '_lastChunk', '_lastRevision'].includes(key)) continue;
       const descriptor = Object.getOwnPropertyDescriptor(value, key);
       if (!descriptor || !Object.hasOwn(descriptor, 'value') || typeof descriptor.value === 'function') continue;
       if (key === 'piece' || key === 'image' || key === 'composite') { out[key] = { assetId: descriptor.value?.id ?? null, width: descriptor.value?.width ?? null, height: descriptor.value?.height ?? null }; continue; }
@@ -52,16 +52,17 @@ const captureState = (world, records, eventHash, { physicalOnly = false } = {}) 
     current: record.actor ? encode(record.actor, `actors.${record.id}`) : record.terminal,
     arrivalTick: record.arrivalTick, deathTick: record.deathTick, retired: record.retired })) };
   for (const key of stateOwners) {
-    if (physicalOnly && ['lanePolicy', 'hazardPlanner', 'tunnelRoutes', 'basinRoutes', 'challengeCache'].includes(key)) continue;
+    if (physicalOnly && ['eventTimeMs', 'stats', 'challengeCache', '_edgeWallCache', '_edgeWallRevisions', '_edgeWallHazards'].includes(key)) continue;
     out[key] = encode(world[key], key);
   }
   out.edits = { resident: encode(new Map(Map.prototype.entries.call(world.editChunks)), 'edits.resident'), cold: encode(world.editChunks.cold, 'edits.cold') };
-  out.revisions = { epochs: encode(world.terrainTileRevisions.epochs, 'revisions.epochs'), interests: encode(world.terrainTileRevisions.interests, 'revisions.interests') };
+  out.revisions = { epochs: encode(world.terrainTileRevisions.epochs, 'revisions.epochs'), ...(physicalOnly ? {} : { interests: encode(world.terrainTileRevisions.interests, 'revisions.interests') }) };
+  out.clock = { speedFactor: world.timer.speedFactor, simulationTimeMs: world.simulationTimeMs };
   const terrain = world.terrain;
   out.terrain = encode({ descriptions: terrain?.descriptions, collision: terrain?.collision, growthPlans: terrain?.growthPlans,
-    descriptorResidency: terrain?.descriptorResidency, zoneCache: terrain?.zonePlanner?.cache, wideZoneCache: terrain?.wideZonePlanner?.cache,
+    ...(physicalOnly ? {} : { descriptorResidency: terrain?.descriptorResidency, zoneCache: terrain?.zonePlanner?.cache, wideZoneCache: terrain?.wideZonePlanner?.cache }),
     selectedTerrainIds: terrain?.selectedTerrainIds, selectedObjectIds: terrain?.selectedObjectIds }, 'terrain');
-  out.eventHash = eventHash;
+  if (!physicalOnly) out.eventHash = eventHash;
   return out;
 };
 

@@ -39,10 +39,11 @@ export function createAudioDisplayTelemetry({ owner, engineId = 'worklet-sine', 
         .sort((a, b) => a.identity.actorId - b.identity.actorId || (a.identity.voiceId < b.identity.voiceId ? -1 : a.identity.voiceId > b.identity.voiceId ? 1 : 0));
       eligible = candidates.length;
       for (const observer of observers) {
-        let count = 0;
+        let count = 0; observer.admitted.clear(); observer.eligible = candidates.filter(route => matches(observer, route.identity)).length;
         for (const route of candidates) if (matches(observer, route.identity)) {
           if (count++ >= observer.maxVoices) break;
           if (!tokens[route.voice.slot] && selected < DISPLAY_VOICES) { tokens[route.voice.slot] = route.voice.slotToken; selected++; }
+          if (tokens[route.voice.slot] === route.voice.slotToken) observer.admitted.add(keyFor(route.voice.slot, route.voice.slotToken));
         }
       }
     }
@@ -64,7 +65,7 @@ export function createAudioDisplayTelemetry({ owner, engineId = 'worklet-sine', 
     }
     const observer = { listener, identity: Object.freeze(Object.fromEntries(identityKeys.map(key => [key, identity[key]]))),
       actorIds: actorIds ? new Set(actorIds) : null, voiceIds: voiceIds ? new Set(voiceIds) : null, maxVoices, rateHz,
-      sinceFrame: Math.ceil((getContext()?.currentTime || 0) * (getContext()?.sampleRate || 48000)), last: new Map() };
+      sinceFrame: Math.ceil((getContext()?.currentTime || 0) * (getContext()?.sampleRate || 48000)), last: new Map(), admitted: new Set(), eligible: 0 };
     observers.add(observer); configure(); let active = true;
     const release = () => {
       if (!active) return; active = false; observers.delete(observer); configure();
@@ -112,10 +113,10 @@ export function createAudioDisplayTelemetry({ owner, engineId = 'worklet-sine', 
             channelReduction: route.voice.sourceChannels === 2 ? 'mean-channel-power-and-max-peak' : 'mono-source', sampledFrames: frames, window: 'half-open-output-frames',
             normalization: 'unity-full-scale', envelope: sinePhase ? 'window-peak' : 'clamped-window-peak', responseDelayFrames: last - first, detectorDelayFrames: last - first }), acousticReceipt: false });
         latest.set(key, sample); while (latest.size > DISPLAY_VOICES) latest.delete(latest.keys().next().value); stats.samples++;
-        for (const observer of observers) if (observers.has(observer) && matches(observer, route.identity) && last > observer.sinceFrame &&
+        for (const observer of observers) if (observers.has(observer) && observer.admitted.has(key) && matches(observer, route.identity) && last > observer.sinceFrame &&
             last - (observer.last.get(key) ?? -Infinity) >= context.sampleRate / observer.rateHz) {
           observer.last.set(key, last); while (observer.last.size > DISPLAY_VOICES) observer.last.delete(observer.last.keys().next().value);
-          try { observer.listener(sample); } catch { stats.observerErrors++; }
+          try { observer.listener(Object.freeze({ ...sample, selectionCoverage: Object.freeze({ eligible: observer.eligible, selected: observer.admitted.size, omitted: Math.max(0, observer.eligible - observer.admitted.size), droppedWindows: stats.droppedWindows }) })); } catch { stats.observerErrors++; }
         }
       }
     } finally { if (natural(serial) && serial > 0) post({ type: 'display-ack', protocol: PROTOCOL, sequence: serial }); }

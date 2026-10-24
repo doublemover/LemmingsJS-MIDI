@@ -199,6 +199,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
   if (!natural(pcmBytes) || pcmBytes + 262208 * fileCount > MAX_OUTPUT_BYTES) throw failure('render-capacity', 'This render/stem/return set exceeds 64 MiB; choose a shorter range or fewer taps.');
   const slots = new Array(patch.voicePolicy.maxVoices).fill(null), tokens = new Uint32Array(owned.voices); let peakVoices = 0;
   for (const voice of [...voices.values()].sort((left, right) => left.start - right.start || left.order - right.order)) {
+    if (selectSample && voice.admissionEnd <= voice.start) { voice.silentChoke = true; continue; }
     let occupied = 0, selected = -1;
     for (let slot = 0; slot < slots.length; slot++) { if ((selectSample ? slots[slot]?.admissionEnd : slots[slot]?.end) <= voice.start) slots[slot] = null; if (slots[slot]) occupied++; else if (selected < 0) selected = slot; }
     if (selected < 0) throw failure('intent-voice-capacity', 'The selected patch cannot realize every captured onset without dropping a voice.', { intentId: voice.begin.intentId });
@@ -207,6 +208,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
   const effectSourceBindings = effectPlan ? prepareEffectSourceBindings(effectPlan, [...lanes]) : null;
   const captureLaneIds = Object.freeze([...new Set([...stemLaneIds, ...(effectSourceBindings?.laneIds || [])])]);
   if (!NATIVE_OFFLINE_SOURCE_IDS.includes(owned.id) && captureLaneIds.length > 16) throw failure('sidechain-tap-capacity', 'Choose at most sixteen combined exported and detector source lanes.');
+  for (let index = events.length - 1; index >= 0; index--) if (events[index].voice?.silentChoke) events.splice(index, 1);
   events.sort((left, right) => left.frame - right.frame || left.order - right.order);
   return { owned, sourcePCM, pcmDescriptor, planningBytes, sourceControls, patch, parameters, events, voices, source: revoice, descriptor, applicationBuildId, sampleRate, firstFrame, endFrame, outputEnd, outputFrames,
     sourceOriginMs, startSeconds, endSeconds, tail, releaseFrames, articulation, derivedReleases, capturedBegins, capturedUpdates, capturedEnds, peakVoices, stemLaneIds, lanes, pcmBytes,

@@ -22,11 +22,16 @@
       "requirementUpdatedAt": "2026-10-23T14:16:41Z",
       "requirementSha256": "0436fd08182c167a4b7f0af91d7748c016ff60ff4915cf4a06c31141e69924e6",
       "initialGap": "Versioned immutable registry/definitions and archive conflict protection exist. Modulation parameter sources still only check schema.has, unlike target capabilities, and lack explicit init-only/discrete application semantics required by the latest complete comment.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "implemented-validation-deferred",
+      "source": [
+        "js/midi/content/InstrumentPatchV2.js"
+      ],
+      "regressions": [
+        "test/midi/instrument-patch-v2.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "causal-boundary-and-publication-integrity"
     },
     {
       "number": 970,
@@ -65,7 +70,9 @@
       "regressions": [
         "test/procgen-physical-playback.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "21d9237d15f5920d3276ef59f0139a2048710324"
+      ],
       "validation": "deferred-by-request",
       "increment": "owner-publication-and-retirement"
     },
@@ -183,11 +190,16 @@
       "requirementUpdatedAt": "2026-10-23T10:57:00Z",
       "requirementSha256": "2cfbe8cd3197a5d37e2f21bd9d4567e835cb11f607de27e51a9befaec278d555",
       "initialGap": "World-changing history snapshots/queues preserve concurrent edits. Non-world Undo still passes an old physicalGraph revision directly to syncProject; active causalTake.recordMapping requires a strictly newer revision, so the latest reported edit\u2192Undo while recording conflict remains implemented incorrectly.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "implemented-validation-deferred",
+      "source": [
+        "js/app/procgen/workstation/ProcgenWorkstation.js"
+      ],
+      "regressions": [
+        "test/procgen-causal-music-engine.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "causal-boundary-and-publication-integrity"
     },
     {
       "number": 985,
@@ -207,11 +219,16 @@
       "requirementUpdatedAt": "2026-10-23T12:10:22Z",
       "requirementSha256": "aa3fb5eeb6476fae436bce6ce2326271d1e78b57e9253a591034b2530ca6f583",
       "initialGap": "Piecewise source timing exists, but legacy speed keydown mutates the timer synchronously and workstation reconciles/records only on document keyup; affected ticks can precede their recorded speed input.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "implemented-validation-deferred",
+      "source": [
+        "js/app/procgen/ProcgenUiController.js"
+      ],
+      "regressions": [
+        "test/procgen-intervention-commands.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "causal-boundary-and-publication-integrity"
     },
     {
       "number": 987,
@@ -219,11 +236,16 @@
       "requirementUpdatedAt": "2026-10-23T13:33:23Z",
       "requirementSha256": "2edeba4110f87615cb955902d34f02ce1aba87d8ab3052447342943ce887344f",
       "initialGap": "Import worker/byte budgets, iterative graph decoding and owner checks exist. tickIndex/nextActorId/causalSequence still increment unchecked; admission accepts MAX_SAFE_INTEGER and does not enforce checked successors or existing-actor counter coherence.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "implemented-validation-deferred",
+      "source": [
+        "js/app/procgen/workstation/ProcgenCheckpoint.js"
+      ],
+      "regressions": [
+        "test/procgen-checkpoint-validation.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "causal-boundary-and-publication-integrity"
     },
     {
       "number": 988,
@@ -231,11 +253,15 @@
       "requirementUpdatedAt": "2026-10-23T11:42:23Z",
       "requirementSha256": "19026f5f523d92d04da1700814d0cdaca197ea51a6042a01e2dae683cd89d8e6",
       "initialGap": "V2 numeric/component/source manifests exist, but physicalIdentity still includes observer-dependent legacySequence and physics projection hashes it wholesale. Passive legacy observers can therefore alter authoritative parity; active-execution compatibility remains separately incomplete.",
-      "state": "pending-implementation",
-      "source": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/procgen/workstation/ProcgenCheckpointProvenance.js"
+      ],
       "regressions": [],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "causal-boundary-and-publication-integrity",
+      "remaining": "Active-execution compatibility review still required."
     },
     {
       "number": 989,
@@ -502,7 +528,9 @@
       "regressions": [
         "test/midi/audio-asset-loader.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "21d9237d15f5920d3276ef59f0139a2048710324"
+      ],
       "validation": "deferred-by-request",
       "increment": "owner-publication-and-retirement"
     },
@@ -543,7 +571,9 @@
       "regressions": [
         "test/midi/owner-effect-graph.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "21d9237d15f5920d3276ef59f0139a2048710324"
+      ],
       "validation": "deferred-by-request",
       "increment": "owner-publication-and-retirement"
     },
@@ -584,7 +614,9 @@
       "regressions": [
         "test/midi/sample-instrument-backend.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "21d9237d15f5920d3276ef59f0139a2048710324"
+      ],
       "validation": "deferred-by-request",
       "increment": "owner-publication-and-retirement"
     },
@@ -846,11 +878,16 @@
       "requirementUpdatedAt": "2026-10-23T15:53:47Z",
       "requirementSha256": "aa402ba706aa1b6b8cebf425e5aef4384ed8b391d7f03130d18e154add4fbdbd",
       "initialGap": "InstrumentDisplayScheduler, latest-wins telemetry and effect-dirty pass exist. AudioDisplayTelemetry still computes a global union without per-observer admitted subset and consumes every matching union voice, allowing another observer to widen maxVoices work/coverage.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "implemented-validation-deferred",
+      "source": [
+        "js/app/midi-ui/AudioDisplayTelemetry.js"
+      ],
+      "regressions": [
+        "test/midi/audio-display-telemetry.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "causal-boundary-and-publication-integrity"
     },
     {
       "number": 1041,
@@ -918,11 +955,16 @@
       "requirementUpdatedAt": "2026-10-24T14:21:19Z",
       "requirementSha256": "d8be5a8f42bad0404409c23c746adb950ffd04704cc2d20babe489d303f4e89a",
       "initialGap": "Journal-owned offline render, WAV/stems, bounded tail/memory and export ownership implemented. Latest same-frame sample-choke blocker persists: zero-duration loser still occupies a slot in captured-order allocation, so one-voice admission may reject a valid same-kit winner.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "implemented-validation-deferred",
+      "source": [
+        "js/app/midi-ui/CausalOwnedRender.js"
+      ],
+      "regressions": [
+        "test/midi/causal-sample-plan.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "causal-boundary-and-publication-integrity"
     },
     {
       "number": 1047,
@@ -942,11 +984,15 @@
       "requirementUpdatedAt": "2026-10-23T12:27:26Z",
       "requirementSha256": "82d2a234df2f85223ffabbd11768731522d56995a1edd5ce61441b0e0df6db82",
       "initialGap": "Prepare/commit runtime transaction and recoverable presentation failure exist. Latest accepted-settings/physical-graph rollback gaps remain: UI mutates spacing before rebuild, snapshotSession calls mutating prepareSettings, rollbackWorldProject rebases only lanes not physicalGraph and truncates history.",
-      "state": "pending-implementation",
-      "source": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/procgen/workstation/ProcgenWorkstation.js"
+      ],
       "regressions": [],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "causal-boundary-and-publication-integrity",
+      "remaining": "World rollback now preserves concurrent physicalGraph; staged settings and history rollback remain."
     },
     {
       "number": 1049,
@@ -1026,11 +1072,17 @@
       "requirementUpdatedAt": "2026-10-24T13:11:02Z",
       "requirementSha256": "2acae70cf821e17430bec2243a6369c3908bcde2b829d3838f7ead7ca52057a6",
       "initialGap": "Typed intervention queue/receipts implemented. Latest source gaps remain: release adapter writes settings directly rather than rescheduling next cohort; manual nuke controls bypass recorded commands; seal joins all facts anew per command receipt.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/procgen/ProcgenInterventionCommands.js"
+      ],
+      "regressions": [
+        "test/procgen-intervention-commands.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "causal-boundary-and-publication-integrity",
+      "remaining": "Linear command ancestry and transactional nuke path added; full intervention contract review remains."
     },
     {
       "number": 1057,
@@ -1110,11 +1162,14 @@
       "requirementUpdatedAt": "2026-10-23T12:49:07Z",
       "requirementSha256": "5f041d3165e2a676be6beb6f43b4134dfc68af205ea5cf45e84bd608229b83be",
       "initialGap": "Substantial loss-aware scaling/group mapping/sounding pitch/MPE support implemented. Latest non-MPE lowering bug remains: submitting a future end immediately deletes loweredVoices address lease, rejecting in-lifetime expression and allowing overlapping collision reuse.",
-      "state": "pending-implementation",
-      "source": [],
+      "state": "implemented-validation-deferred",
+      "source": [
+        "js/app/procgen/workstation/ProcgenMidiPorts.js"
+      ],
       "regressions": [],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "causal-boundary-and-publication-integrity"
     },
     {
       "number": 1064,
@@ -1458,11 +1513,14 @@
       "requirementUpdatedAt": "2026-10-24T13:26:23Z",
       "requirementSha256": "6503e5ac3029b0a870955106c37835dffe0b8f7cbb63e8b3247408fdf42fbc3a",
       "initialGap": "Chunk/checkpoint/branch journal, shared semantic archive validators and recorded take infrastructure implemented. Latest valid compact numeric checkpoint round-trip mismatch persists: archive parse reserves line.byteLength*8+1MiB while kernel charges nodes*32 too.",
-      "state": "pending-implementation",
-      "source": [],
+      "state": "implemented-validation-deferred",
+      "source": [
+        "js/app/procgen/workstation/CausalTakeArchive.js"
+      ],
       "regressions": [],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "causal-boundary-and-publication-integrity"
     },
     {
       "number": 1093,
@@ -1470,11 +1528,17 @@
       "requirementUpdatedAt": "2026-10-23T14:26:59Z",
       "requirementSha256": "15d14399dd423ff20d5d34a12d232e28753ea09b87b9d7f107a0e6728c47859d",
       "initialGap": "Balanced selected-output SMF and completeness metadata exist. No standards MIDI2 Clip reader/writer or explicit multi-endpoint export plan; slow supported transport tempo is still silently clamped to 24-bit SMF maximum.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/procgen/workstation/ProcgenMidiExport.js"
+      ],
+      "regressions": [
+        "test/procgen-workstation-midi.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "causal-boundary-and-publication-integrity",
+      "remaining": "SMF out-of-range tempo now rejects; native MIDI2 clip export remains."
     },
     {
       "number": 1094,
@@ -1590,11 +1654,17 @@
       "requirementUpdatedAt": "2026-10-22T12:10:22Z",
       "requirementSha256": "749386e9ad396c2983e94e4e42fec7ee0376e63d78052cfcb93863abfc746491",
       "initialGap": "Canonical typed takes, capture profiles/requirements-aware reinterpretation, immutable-intent revoice, boundary inventory, coverage and re-performance services implemented. Complete physical-input capture is not guaranteed: ordinary manual nuke bypasses command recording without marking coverage unknown; re-performance diverges while take can finalize complete.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/procgen/ProcgenInterventionCommands.js"
+      ],
+      "regressions": [
+        "test/procgen-intervention-commands.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "causal-boundary-and-publication-integrity",
+      "remaining": "Manual nuke is captured before mutation; broader replay boundary contract remains."
     },
     {
       "number": 1105,
@@ -1638,11 +1708,16 @@
       "requirementUpdatedAt": "2026-10-23T10:56:06Z",
       "requirementSha256": "a932b50c636634215709217b0bff5b44eb3f75a0af265c1cb77857b48f765df6",
       "initialGap": "Validated indexed causal instrument list and requirements extractor exist, not typed DAG node/edge compiler. Latest unchanged-owner swap bug remains: global graph revision mismatch ends every active owner and travel accumulator even when only another instrument changed.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "implemented-validation-deferred",
+      "source": [
+        "js/app/procgen/workstation/CausalMusicEngine.js"
+      ],
+      "regressions": [
+        "test/procgen-causal-music-engine.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "causal-boundary-and-publication-integrity"
     },
     {
       "number": 1109,
@@ -1698,11 +1773,16 @@
       "requirementUpdatedAt": "2026-10-23T11:27:31Z",
       "requirementSha256": "4b11148eb953546ee5fa9bb1bced9b6882db5001bca40d1e68ab97632da99c99",
       "initialGap": "Atomic immutable completed batches, frozen snapshot and subscriber quarantine implemented. Latest overflow continuation gap remains: incomplete batch tears down and returns; later complete Motion/ContactSpanUpdated batches do not reestablish held action state or expose mandatory recover/rearm.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "implemented-validation-deferred",
+      "source": [
+        "js/app/procgen/workstation/CausalMusicEngine.js"
+      ],
+      "regressions": [
+        "test/procgen-causal-music-engine.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "causal-boundary-and-publication-integrity"
     },
     {
       "number": 1115,
@@ -1710,11 +1790,16 @@
       "requirementUpdatedAt": "2026-10-23T11:28:58Z",
       "requirementSha256": "f9da149ffc1b8927aacb1e683fe7e1622d39466aa7eb5af94c308e3d7ead7930",
       "initialGap": "Lifetime-aware signed/path TravelAccumulator and builder accepted-coordinate facts implemented. Real motion still has no contactSpanId/contactObserved relation, while contact-span accumulator requires both; accepted contact-travel mappings cannot consume actual producer output.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "implemented-validation-deferred",
+      "source": [
+        "js/actions/PhysicalMotionFacts.js"
+      ],
+      "regressions": [
+        "test/procgen-contact-spans.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "causal-boundary-and-publication-integrity"
     },
     {
       "number": 1117,
@@ -1950,11 +2035,17 @@
       "requirementUpdatedAt": "2026-10-23T11:48:20Z",
       "requirementSha256": "13959c3c5ffd19727b072f836f9ff32b93ccd54ecb6a9d497f41124d5d31ffbd",
       "initialGap": "Isolated exact-boundary physical branch continuation exists. Latest failure-state bug remains: writable ignores recorder partial/failure, enqueue mutates before record admission and advance checks failure only after stepping, allowing repeated unrecorded branch mutation. No paired counterfactual cause-diff/audition/commit workflow.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/procgen/workstation/CausalPhysicalBranch.js"
+      ],
+      "regressions": [
+        "test/procgen-intervention-commands.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "causal-boundary-and-publication-integrity",
+      "remaining": "Failure-gated advance and journal-first proposal commit added; paired cause-diff/audition remains."
     },
     {
       "number": 1141,
@@ -2227,7 +2318,9 @@
       "regressions": [
         "test/midi/owner-effect-graph.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "21d9237d15f5920d3276ef59f0139a2048710324"
+      ],
       "validation": "deferred-by-request",
       "increment": "owner-publication-and-retirement"
     },
@@ -2297,11 +2390,14 @@
       "requirementUpdatedAt": "2026-10-22T11:08:48Z",
       "requirementSha256": "0a5e45b583e8124cf96db2abdca86358a2e8c5a2a5098cf9241c3a2a73859fd4",
       "initialGap": "Invisible workstation editing is now blocked and presentation identity must match. Required owning-pointer arbitration still missing in retained overlay: pointermove/up/cancel accept any pointer despite stored pointerId, so another pointer can commit/cancel the active gesture.",
-      "state": "pending-implementation",
-      "source": [],
+      "state": "implemented-validation-deferred",
+      "source": [
+        "js/app/procgen/ProcgenMidiSpanOverlay.js"
+      ],
       "regressions": [],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "causal-boundary-and-publication-integrity"
     },
     {
       "number": 1170,
@@ -2496,7 +2592,9 @@
       "regressions": [
         "test/midi/owner-effect-graph.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "21d9237d15f5920d3276ef59f0139a2048710324"
+      ],
       "validation": "deferred-by-request",
       "increment": "owner-publication-and-retirement"
     },
@@ -2525,7 +2623,9 @@
       "regressions": [
         "test/midi/owned-cue-routing.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "21d9237d15f5920d3276ef59f0139a2048710324"
+      ],
       "validation": "deferred-by-request",
       "increment": "owner-publication-and-retirement"
     },
@@ -2691,11 +2791,14 @@
       "requirementUpdatedAt": "2026-10-23T10:45:34Z",
       "requirementSha256": "388605c710d370128fb6cd6b5a1dac7135bcfb6eeb02944a8808ff12541c5f2a",
       "initialGap": "Shared immutable export artifacts and delivery receipts exist. prepareTakeArchive still awaits preparation then unconditionally discards/replaces preparedExport, with no preparation lease or disposed/current-source publication check; late archive can replace newer artifact or publish after retirement.",
-      "state": "pending-implementation",
-      "source": [],
+      "state": "implemented-validation-deferred",
+      "source": [
+        "js/app/procgen/workstation/ProcgenWorkstation.js"
+      ],
       "regressions": [],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "causal-boundary-and-publication-integrity"
     },
     {
       "number": 1208,
@@ -2710,7 +2813,9 @@
       "regressions": [
         "test/midi/owned-cue-routing.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "21d9237d15f5920d3276ef59f0139a2048710324"
+      ],
       "validation": "deferred-by-request",
       "increment": "owner-publication-and-retirement"
     },
@@ -2828,11 +2933,15 @@
       "requirementUpdatedAt": "2026-10-23T11:48:23Z",
       "requirementSha256": "c55ec75b45362799891b7d9089fbf8316075da46fdabe5ca97266f26fa9ad408",
       "initialGap": "Canonical numeric v2 distinguishes typed nonfinite/signed zero and replay validation exists. Survey physical projection still includes stats/observer caches and omits interventionState, simulationTimeMs and timer speed; passive ground query changes physical hash while supported pending command/speed changes do not.",
-      "state": "pending-implementation",
-      "source": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/procgen/survey/ProcgenSurveyCore.js"
+      ],
       "regressions": [],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "causal-boundary-and-publication-integrity",
+      "remaining": "Physics-only state now includes behavior owners and excludes query caches; full projection audit remains."
     },
     {
       "number": 1224,
@@ -2876,11 +2985,17 @@
       "requirementUpdatedAt": "2026-10-23T13:08:30Z",
       "requirementSha256": "4e7a11ab0de3d58a14ea39843c972ecdcb822a52f4df660db288096f90a961c0",
       "initialGap": "Actor-effect profile/mailboxes/render pass and real telemetry adapter exist; detector provenance now normalizes sample.detector. Source key remains effectId+quantity, so two voices on same actor/node/packet still compete on one sequence and first row can mask another. Full compact mapping editor also absent.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/procgen/ProcgenActorEffectDisplay.js"
+      ],
+      "regressions": [
+        "test/procgen-actor-effects.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "causal-boundary-and-publication-integrity",
+      "remaining": "Independent voice mailboxes and explicit reduction added; mapping editor integration remains."
     },
     {
       "number": 1228,
@@ -2924,11 +3039,14 @@
       "requirementUpdatedAt": "2026-10-23T10:49:12Z",
       "requirementSha256": "327629acbbf4175b8960ff2d7682a9d1e5987512ebc1fa7fd277fc3e6bb9d9aa",
       "initialGap": "Named durable take browsing and recording controls exist. inspectLastCausalTake still awaits verify/open then publishes inspection/status without selected-take identity/epoch/disposal checks, so late A inspection can replace B visible receipt.",
-      "state": "pending-implementation",
-      "source": [],
+      "state": "implemented-validation-deferred",
+      "source": [
+        "js/app/procgen/workstation/ProcgenWorkstation.js"
+      ],
       "regressions": [],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "causal-boundary-and-publication-integrity"
     },
     {
       "number": 1232,
@@ -3027,7 +3145,9 @@
       "regressions": [
         "test/history-store.cold-blocks.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "21d9237d15f5920d3276ef59f0139a2048710324"
+      ],
       "validation": "deferred-by-request",
       "increment": "owner-publication-and-retirement"
     }
