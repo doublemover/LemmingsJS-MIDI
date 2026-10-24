@@ -590,4 +590,19 @@ queue. Mono input is duplicated; a valid disconnected input records digital
 silence. Nonfinite input, clock discontinuities and unsupported layouts stop the
 capture with a finite prefix. Its output is zero so a pull connection cannot
 double the audible master. Processor fixtures are authored and unexecuted; host
-ownership, artifact finalization and workstation controls are subsequent work.
+ownership and artifact finalization are implemented in `OwnedMasterCapture`.
+
+The host reserves its full duration and sample rate before allocating PCM. It
+captures the post-protection shared master, including auditions currently routed
+through that master. It opens neither microphones nor MIDI devices. WAV export
+uses stereo float samples at the original rate, without resampling, normalization
+or an acoustic claim. The inaudible pull branch outputs zeros. A bounded manifest
+records source frames, interruptions and gaps; zeros substituted for missing
+frames are explicitly placeholders, never measured silence. A missing terminal
+receipt preserves only the received prefix and retains the uncertain processor
+reservation until confirmed context closure. Accepted module loading remains
+owned across cancellation. Finalized PCM remains pinned until artifact expiry or
+discard and settlement of its delivery reader. Streaming delivery avoids making
+a full WAV copy; a full artifact digest is explicitly omitted. These host fixtures
+are authored and unexecuted. Capture is memory-backed and cannot promise recovery
+after browser termination. Workstation controls are subsequent work.

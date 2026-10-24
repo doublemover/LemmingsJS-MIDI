@@ -124,6 +124,23 @@
       "files": ["js/app/procgen/workstation/ProcgenTimingDriver.js"],
       "fileCount": 1,
       "sha256": "b60fa0011a6f0f62db23aa2f193b3e9609b6184c576f197d3d81c1cf50cc6718"
+    },
+    {
+      "id": "lemmings-master-pcm-capture",
+      "upstream": "https://github.com/doublemover/LemmingsJS-MIDI",
+      "upstreamVersion": "source-bound",
+      "license": "NOASSERTION",
+      "reproductionStatus": "first-party-bounded-audio-worklet-and-host",
+      "classification": "source",
+      "entryPoints": [
+        "js/app/midi-ui/OwnedMasterCapture.js"
+      ],
+      "files": [
+        "js/app/midi-ui/OwnedMasterCapture.js",
+        "js/app/midi-ui/worklet/OwnedPcmCaptureProcessor.js"
+      ],
+      "fileCount": 2,
+      "sha256": "684a455a8a40710a2eb89e23aed133ee4505d0bed3235d7d0a98ba9a74700a49"
     }
   ]
 }

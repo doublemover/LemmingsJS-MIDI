@@ -111,6 +111,7 @@ class BrowserNotePreview {
     this._captureSamples = null;
     this._channels = new Map();
     this._sessions = new Map();
+    this._pcmCaptureTaps = new Set();
     this._sessionSequence = 0;
     this._defaultEnabled = false;
     this._defaultEnableRequests = 0;
@@ -280,6 +281,23 @@ class BrowserNotePreview {
 
   getAudioContext() { return this._context; }
 
+  acquireMasterCaptureTap({ context, contextEpoch, node, onRetire } = {}) {
+    if (!this._ready() || context !== this._context || contextEpoch !== this._contextEpoch || !node ||
+        typeof onRetire !== 'function' || this._pcmCaptureTaps.size) throw new Error('The browser master capture tap is unavailable.');
+    const tap = this._limiter, entry = { onRetire, context }, retirement = createProcgenRetirementScope();
+    this._pcmCaptureTaps.add(entry);
+    try { tap.connect(node); }
+    catch (error) {
+      try { tap.disconnect(node); this._pcmCaptureTaps.delete(entry); } catch { /* An uncertain native connection keeps its tap slot. */ }
+      throw error;
+    }
+    return Object.freeze({ release: () => {
+      const receipt = retirement.retire([{ name: 'master-capture-tap', run: () => { tap.disconnect(node); this._pcmCaptureTaps.delete(entry); } }]);
+      if (receipt.outcome !== 'complete') throw Object.assign(new Error('Master capture tap retirement is unresolved.'), { retirement: receipt });
+      return true;
+    } });
+  }
+
   _registerInstrumentBackend(backend, owner) {
     if (this._disposed || this._instrumentBackends.size >= 8) { backend.dispose(); throw new RangeError('Local audio backend limit reached.'); }
     const entry = { owner, backend: null };
@@ -447,6 +465,7 @@ class BrowserNotePreview {
 
   _reconcileClosedContext(context) {
     if (context?.state !== 'closed') throw new Error('Native audio retirement needs a closed context acknowledgment.');
+    for (const tap of this._pcmCaptureTaps) if (tap.context === context) this._pcmCaptureTaps.delete(tap);
     const retired = [...this._retiredVoices.values()].filter(voice => voice.nativeContext === context);
     const receipt = createProcgenRetirementScope().retire([
       ...retired.map(voice => ({ name: 'closed-voice-' + voice.id, run: () => {
@@ -480,6 +499,7 @@ class BrowserNotePreview {
     this._pendingEnables.clear();
     this._resumePromise = null;
     return createProcgenRetirementScope().retire([
+      ...[...this._pcmCaptureTaps].map((tap, index) => ({ name: 'pcm-capture-' + index, run: () => tap.onRetire(this._disposed ? 'owner-retired' : 'panic') })),
       ...sessions.map(session => ({ name: `session-${session.name}`, run: session.cancel })),
       { name: 'mute-mix', run: () => this._setMixEnabled(false) },
       ...pending.map((cancel, index) => ({ name: `pending-enable-${index}`, run: cancel })),
