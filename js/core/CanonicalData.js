@@ -67,7 +67,7 @@ export function canonicalDataText(value, { maxBytes = 1048576, maxNodes = 200000
   };
   const text = encode(value, 0), bytes = new TextEncoder().encode(text);
   if (bytes.length > maxBytes) throw new Error(domain + ' record exceeds its byte budget.');
-  return { text, bytes };
+  return { text, bytes, nodes };
 }
 
 export const freezeData = value => {

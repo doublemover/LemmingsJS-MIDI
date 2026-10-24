@@ -486,7 +486,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (!causalWorkbenchLoading) {
       causalWorkbenchLoading = import('./CausalTakeWorkbench.js').then(({ createCausalTakeWorkbench }) => {
         if (disposed) throw new Error('The workstation closed before take preparation.');
-        return causalWorkbench = createCausalTakeWorkbench({ journal: causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget }),
+        return causalWorkbench = createCausalTakeWorkbench({ journal: causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs }),
           createWorld: prepareInspectionWorld, resourceBudget, getRuntimeIdentity: manifest => {
             const world = runtime()?.world; if (disposed || !world || worldBusy) throw new Error('Wait for a committed current world before comparing a take.');
             return { sourceVersions: causalRuntimeSourceVersions(world, manifest.mapping.revision), assetRefs: assetIdentity(world), liveWorld: world };
@@ -545,7 +545,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       throw new Error('This score window has no continuation. Start a new reading.');
     physicalScoreAbort?.abort();
     const controller = new AbortController(), serial = ++physicalScoreSerial; physicalScoreAbort = controller;
-    const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget });
+    const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs });
     let query = physicalScoreQuery;
     if (!more) {
       const manifest = await journal.openTake(takeId);
@@ -625,7 +625,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       const physical = physicalPlayback.engine.snapshot(), timeline = physicalScoreClock.snapshot();
       const takeId = createProcgenDocumentId(window.crypto).replace(/^doc:/, 'take:');
       const sourceVersions = causalRuntimeSourceVersions(sourceRuntime.world, project.procgen.physicalGraph.revision, capturedWorld.version);
-      const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget });
+      const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs });
       const pending = createCausalTakeRecorder({ journal, takeId, takeName, documentId: documentId || `unsaved:${takeId}`,
         sourceVersions, initialCheckpoint: { world: capturedWorld, engine: physical, timeline,
           replay: { version: 2, bpm: transport.getState().bpm, scoreTimeline: true, playing: wasPlaying } },
@@ -666,7 +666,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const inspectLastCausalTake = async () => {
     const takeId = selectedCausalTakeId || lastCausalTake?.takeId;
     if (!takeId) throw new Error('Select a causal take before inspecting it.');
-    const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget });
+    const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs });
     const verification = await journal.verify(takeId), manifest = await journal.openTake(takeId);
     lastCausalInspection = Object.freeze({ takeId, takeName: manifest.takeName, revision: manifest.revision,
       status: verification.status, durableSequence: manifest.durableSequence,
@@ -869,7 +869,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the causal take before preparing its archive.');
     const takeId = selectedCausalTakeId || lastCausalTake?.takeId;
     if (!takeId) throw new Error('No finished causal take is selected.');
-    const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget });
+    const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs });
     const prepared = await prepareCausalTakeArchive({ journal, storage, takeId, resourceBudget, jobs: backgroundJobs });
     preparedExport?.discard(); preparedExport = prepared.artifact; lastDelivery = null;
     publishExportState();

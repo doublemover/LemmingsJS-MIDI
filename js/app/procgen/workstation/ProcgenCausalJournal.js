@@ -2,6 +2,7 @@ import { metadataFor, finalizationEvidence, verifyManifestHashes } from './Causa
 import { validateCausalChunk } from './CausalArchiveEntry.js';
 import { canonicalJournalText, estimateJournalBytes, cloneJournalData, freezeJournalData, hashJournalText, hashJournalData, journalError } from './CausalJournalCanonical.js';
 import { compactCausalCommit, causalTakeHead } from './CausalJournalLayout.js';
+import { createCausalSourceJobs } from './CausalSourceJobs.js';
 
 const id = value => typeof value === 'string' && value.length > 0 && value.length <= 256;
 const nameReason = value => typeof value === 'string' && value.length > 0 && value.length <= 128;
@@ -11,7 +12,7 @@ const validRange = value => value && Number.isSafeInteger(value.firstSequence) &
 const makeChunkId = (takeId, ordinal) => JSON.stringify([takeId, 'chunk', ordinal]);
 
 const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChunkBytes = 4194304,
-  maxChunkRecords = 64, maxPendingBytes = 8388608, maxChunks = 4096, resourceBudget = null, onState = () => {} } = {}) => {
+  maxChunkRecords = 64, maxPendingBytes = 8388608, maxChunks = 4096, resourceBudget = null, onState = () => {}, jobs } = {}) => {
   if (!storage || ['commitCausalTake', 'loadCausalTake', 'loadCausalChunk', 'loadCausalCheckpoint'].some(key => typeof storage[key] !== 'function') ||
       ![maxRecordBytes, maxChunkBytes, maxChunkRecords, maxPendingBytes, maxChunks].every(value => Number.isSafeInteger(value) && value > 0) ||
       maxChunkRecords > 1024 || maxChunks > 65536 || maxRecordBytes > maxChunkBytes || maxChunkBytes > maxPendingBytes) throw new Error('Invalid causal journal storage or budgets.');
@@ -22,6 +23,7 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
     return () => { if (!released) { released = true; resourceBudget?.release({ token, owner }); } };
   };
   const publish = update => storage.commitCausalTake(storage.causalIndexVersion === 2 ? compactCausalCommit(update) : update);
+  const sourceJobs = resourceBudget ? createCausalSourceJobs({ storage, resourceBudget, jobs, maxChunkBytes, maxChunkRecords }) : null;
   const qualified = new Map();
   let qualifiedBytes = 0;
   const forgetQualification = takeId => {
@@ -39,7 +41,7 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
       const checkpointHash = await hashJournalText(checkpointText), checkpointId = JSON.stringify([takeId, 'checkpoint', 0]);
       const metadata = cloneJournalData({ schema: 'lemmings-causal-take', version: 1, takeId, takeName: takeName.trim(), documentId, sourceVersions,
         captureProfile, boundaryState, mapping, assetRefs, prefix,
-        initialCheckpoint: { id: checkpointId, sequence: 0, hash: checkpointHash, bytes: encodedCheckpoint.bytes.length } }, { maxBytes: 8 * 1048576 });
+        initialCheckpoint: { id: checkpointId, sequence: 0, hash: checkpointHash, bytes: encodedCheckpoint.bytes.length, nodes: encodedCheckpoint.nodes } }, { maxBytes: 8 * 1048576 });
       const rootHash = await hashJournalData(metadata, { maxBytes: 8 * 1048576 });
       const start = prefix?.throughSequence ?? 0;
       const manifest = { ...metadata, revision: 1, state: 'recording', complete: false, durableSequence: start,
@@ -126,7 +128,7 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
         try {
           const encoded = canonicalJournalText(body, { maxBytes: maxChunkBytes + 4096 }), canonical = encoded.text;
           const hash = await hashJournalText(canonical), chunkId = makeChunkId(manifest.takeId, ordinal);
-          const ref = { id: chunkId, takeId: manifest.takeId, ordinal, firstSequence, lastSequence, hash, bytes: encoded.bytes.byteLength,
+          const ref = { id: chunkId, takeId: manifest.takeId, ordinal, firstSequence, lastSequence, hash, bytes: encoded.bytes.byteLength, nodes: encoded.nodes,
             firstTick: Math.min(...records.map(record => record.tick)), lastTick: Math.max(...records.map(record => record.tick)),
             generations: [...new Set(records.map(record => record.generation))], kinds: [...new Set(records.map(record => record.kind))] };
           const next = { ...manifest, revision: manifest.revision + 1, durableSequence: lastSequence, admittedSequence,
@@ -173,13 +175,13 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
     const checkpoint = ({ value, tick, generation, finalBoundary = false } = {}) => {
       if (manifest.state !== 'recording' || finishing && !finalBoundary || checkpointing || !Number.isSafeInteger(tick) || tick < 0 || !Number.isSafeInteger(generation) || generation < 0) throw new Error('Invalid or busy causal checkpoint boundary.');
       const release = reserve(estimateJournalBytes(value, { maxBytes: 32 * 1048576, maxNodes: 4000000 }) * 4, generation);
-      let canonical, checkpointBytes;
-      try { const encoded = canonicalJournalText(value, { maxBytes: 32 * 1048576, maxNodes: 4000000 }); canonical = encoded.text; checkpointBytes = encoded.bytes.length; } catch (error) { release(); throw error; }
+      let canonical, checkpointBytes, checkpointNodes;
+      try { const encoded = canonicalJournalText(value, { maxBytes: 32 * 1048576, maxNodes: 4000000 }); canonical = encoded.text; checkpointBytes = encoded.bytes.length; checkpointNodes = encoded.nodes; } catch (error) { release(); throw error; }
       const sequence = admittedSequence, existingFlush = flush();
       const work = (async () => {
         await existingFlush;
         const hash = await hashJournalText(canonical);
-        const ref = { id: JSON.stringify([manifest.takeId, 'checkpoint', sequence]), sequence, hash, tick, generation, bytes: checkpointBytes };
+        const ref = { id: JSON.stringify([manifest.takeId, 'checkpoint', sequence]), sequence, hash, tick, generation, bytes: checkpointBytes, nodes: checkpointNodes };
         const existing = manifest.checkpoints.find(item => item.sequence === sequence);
         if (existing) {
           if (existing.hash !== hash) throw journalError('checkpoint-conflict', 'A different component checkpoint already owns this source sequence.', { firstSequence: sequence });
@@ -303,6 +305,28 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
     try { value = JSON.parse(checkpoint.canonical); } catch { throw journalError('checkpoint-mismatch', 'A causal component checkpoint is not JSON.', { checkpointId: ref.id }); }
     return cloneJournalData(value, { maxBytes: 32 * 1048576, maxNodes: 4000000 });
   };
+  const readSourceOwned = async (kind, ref, options) => {
+    if (sourceJobs) {
+      try { return await sourceJobs.read(kind, ref, options); }
+      catch (error) {
+        if (error.code !== 'content-mismatch') throw error;
+        throw journalError(kind === 'chunk' ? 'corrupt-chunk' : 'checkpoint-mismatch', 'The causal source failed its immutable hash or object inventory.',
+          { sourceId: ref.id, firstSequence: ref.firstSequence ?? ref.sequence, cause: error });
+      }
+    }
+    let value = kind === 'chunk' ? await readChunk(ref) : await readCheckpoint(ref), released = false;
+    return Object.freeze({ get value() { if (released) throw journalError('source-retired', 'Causal source read has retired.'); return value; },
+      receipt: Object.freeze({ method: 'legacy-bounded-unadmitted-reader' }),
+      release() { if (released) return false; released = true; value = null; return true; } });
+  };
+  const inspectSource = async (kind, ref, options) => {
+    const source = await readSourceOwned(kind, ref, { ...options, metadataOnly: true });
+    try {
+      if (sourceJobs) return freezeJournalData(source.value);
+      const value = source.value;
+      return kind === 'chunk' ? { previousHash: value.previousHash, firstSequence: value.firstSequence, lastSequence: value.lastSequence } : { kind: 'checkpoint', ref };
+    } finally { source.release(); }
+  };
   const checkQualifiedRevision = async (entry, signal) => {
     if (signal?.aborted) throw journalError('cancelled', 'Causal take query canceled.');
     if (!entry.fingerprint || !storage.loadCausalTakeHead) return;
@@ -342,12 +366,12 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
     await checkQualifiedRevision(qualifiedTake, signal);
     return freezeJournalData({ takeId, takeRevision: manifest.revision, records, nextSequence: null, coverage: manifest.coverage });
   };
-  const verify = async takeId => {
-    const manifest = await openTake(takeId, { force: true }), checkpoint = await storage.loadCausalCheckpoint(manifest.initialCheckpoint.id);
-    if (!checkpoint || await hashJournalText(checkpoint.canonical) !== manifest.initialCheckpoint.hash) throw journalError('checkpoint-mismatch', 'The causal take initial checkpoint is missing or corrupt.');
+  const verify = async (takeId, { signal } = {}) => {
+    const qualification = await qualifyTake(takeId, { force: true, signal }), manifest = qualification.manifest;
+    await inspectSource('checkpoint', manifest.initialCheckpoint, { signal });
     let previousHash = manifest.rootHash, sequence = manifest.prefix?.throughSequence ?? 0;
     for (const ref of manifest.chunks) {
-      const chunk = await readChunk(ref);
+      signal?.throwIfAborted(); const chunk = await inspectSource('chunk', ref, { signal });
       if (!validRange(ref) || chunk.previousHash !== previousHash || chunk.firstSequence !== sequence + 1) throw journalError('chain-divergence', 'The causal take diverges at a chunk boundary.', { firstSequence: ref.firstSequence, chunkId: ref.id });
       sequence = chunk.lastSequence; previousHash = ref.hash;
     }
@@ -355,7 +379,7 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
     if (manifest.prefix) {
       let prefixSequence = 0;
       for (const ref of manifest.prefix.chunks) {
-        await readChunk(ref);
+        signal?.throwIfAborted(); await inspectSource('chunk', ref, { signal });
         const through = Math.min(manifest.prefix.throughSequence, ref.throughSequence ?? ref.lastSequence);
         if (!validRange(ref) || ref.firstSequence !== prefixSequence + 1 || through < ref.firstSequence || through > ref.lastSequence) {
           throw journalError('prefix-divergence', 'The shared causal prefix has a gap or overlapping source range.', { firstSequence: prefixSequence + 1, chunkId: ref.id });
@@ -364,12 +388,13 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
       }
       if (prefixSequence !== manifest.prefix.throughSequence) throw journalError('prefix-divergence', 'The shared causal prefix is incomplete.', { firstSequence: prefixSequence + 1 });
     }
+    await checkQualifiedRevision(qualification, signal);
     return freezeJournalData({ takeId, revision: manifest.revision, verifiedThroughSequence: sequence,
       canonicalHash: previousHash, status: manifest.effectiveStatus, coverage: manifest.coverage });
   };
   const seek = async ({ takeId, sequence, sourceVersions = null, assetRefs = null, signal } = {}) => {
     const manifest = await openTake(takeId);
-    await verify(takeId);
+    await verify(takeId, { signal });
     if (!Number.isSafeInteger(sequence) || sequence < 0 || sequence > manifest.durableSequence) throw new Error('Seek is outside the durable causal prefix.');
     if (sourceVersions && canonicalJournalText(sourceVersions).text !== canonicalJournalText(manifest.sourceVersions).text ||
         assetRefs && canonicalJournalText(assetRefs).text !== canonicalJournalText(manifest.assetRefs).text) throw journalError('source-incompatible', 'Take replay requires its original source and assets.');
@@ -401,6 +426,8 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
       mapping: parent.mapping, assetRefs: parent.assetRefs, prefix });
   };
   return { createTake, openTake, query, verify, branch, readChunk, readCheckpoint, seek,
+    readChunkOwned: (ref, options) => readSourceOwned('chunk', ref, options),
+    readCheckpointOwned: (ref, options) => readSourceOwned('checkpoint', ref, options),
     releaseQualifications: () => { for (const takeId of qualified.keys()) forgetQualification(takeId); },
     qualificationDiagnostics: () => Object.freeze({ retained: qualified.size, estimatedBytes: qualifiedBytes, maximumBytes: 16 * 1048576 }) };
 };

@@ -3,11 +3,11 @@ import { decodeGroundAssetSnapshot } from './GroundAssetDecode.js';
 import { canonicalDataText } from '../../core/CanonicalData.js';
 import { compileSoundContent } from '../../midi/content/SoundContentCompiler.js';
 import { getNativeInstrumentCatalog } from '../midi-ui/NativeInstrumentSchema.js';
-import { inspectCausalArchiveEntry } from '../procgen/workstation/CausalArchiveEntry.js';
+import { inspectCausalArchiveEntry, validateCausalChunk } from '../procgen/workstation/CausalArchiveEntry.js';
 import { renderOwnedSineControls } from '../midi-ui/OwnedSineOfflineRender.js';
 
 export const BACKGROUND_JOB_PROTOCOL = 1;
-export const BACKGROUND_JOB_KINDS = Object.freeze(['parse-json', 'inspect-causal-archive-entry', 'render-sound-controls', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'asset-hash', 'asset-decode']);
+export const BACKGROUND_JOB_KINDS = Object.freeze(['parse-json', 'verify-causal-source', 'inspect-causal-archive-entry', 'render-sound-controls', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'asset-hash', 'asset-decode']);
 const MAX_BYTES = 64 * 1048576, MAX_NODES = 4000000;
 const problem = (code, message) => Object.assign(new Error(message), { code, name: 'BackgroundJobError' });
 const shared = value => typeof globalThis.SharedArrayBuffer === 'function' && (value instanceof globalThis.SharedArrayBuffer || value?.buffer instanceof globalThis.SharedArrayBuffer);
@@ -126,6 +126,29 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     if (kind === 'asset-hash') return { value: hash, inputBytes: count, nodes: 1 };
   }
   const options = { maxBytes, maxNodes, maxStringBytes, estimatedPeakBytes, signal, current, onProgress, yieldControl };
+  if (kind === 'verify-causal-source') {
+    if (!input || Object.keys(input).some(key => !['kind', 'ref', 'canonical', 'metadataOnly', 'maxRecords'].includes(key)) ||
+        !['chunk', 'checkpoint'].includes(input.kind) || typeof input.metadataOnly !== 'boolean' || !input.ref ||
+        typeof input.ref.id !== 'string' || input.ref.id.length > 256 || !/^[a-f0-9]{64}$/.test(input.ref.hash) ||
+        !Number.isSafeInteger(input.maxRecords) || input.maxRecords < 1 || input.maxRecords > 1024) throw problem('invalid-contract', 'Invalid causal source verification request.');
+    canonicalDataText(input.ref, { maxBytes: 16384, maxNodes: 4096 });
+    const metadata = await inspectText(input.canonical, options); guard(signal, current);
+    if (input.ref.bytes != null && metadata.bytes !== input.ref.bytes || metadata.bytes * 12 + metadata.nodes * 96 + 65536 > estimatedPeakBytes)
+      throw problem('memory-capacity', 'Causal source byte or structure inventory exceeds its admitted representation.');
+    const bytes = new TextEncoder().encode(input.canonical), digest = await crypto.subtle.digest('SHA-256', bytes); guard(signal, current);
+    const hash = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+    if (hash !== input.ref.hash) throw problem('content-mismatch', 'Causal source differs from its immutable reference.');
+    const body = JSON.parse(input.canonical); guard(signal, current);
+    const encoded = canonicalDataText(body, { maxBytes, maxNodes });
+    if (encoded.text !== input.canonical || input.ref.nodes != null && encoded.nodes !== input.ref.nodes) throw problem('content-mismatch', 'Causal source is not the declared canonical object inventory.');
+    if (input.kind === 'chunk') validateCausalChunk(body, input.ref, input.maxRecords);
+    else if (!body || typeof body !== 'object' || Array.isArray(body)) throw problem('invalid-data', 'Causal checkpoint is not a component snapshot.');
+    const value = input.metadataOnly ? { kind: input.kind, ref: input.ref, bytes: metadata.bytes, nodes: encoded.nodes,
+      ...(input.kind === 'chunk' ? { previousHash: body.previousHash, firstSequence: body.firstSequence, lastSequence: body.lastSequence } : {}) } : body;
+    const retainedBytes = input.metadataOnly ? 32768 : metadata.bytes * 2 + metadata.nodes * 64;
+    if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Verified source exceeds its result reservation.');
+    return { value, inputBytes: metadata.bytes, nodes: encoded.nodes, retainedBytes };
+  }
   if (kind === 'parse-json' || kind === 'inspect-causal-archive-entry') {
     const metadata = await inspectText(input, options); guard(signal, current);
     let value = JSON.parse(input); guard(signal, current);

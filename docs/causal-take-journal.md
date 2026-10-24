@@ -296,3 +296,21 @@ older incompatible source contracts are reported instead of silently relabeled.
 Markers use the recorder's actual last committed physical boundary, independently
 of whether its musical engine advanced. New workflow and retirement regressions
 are authored but unexecuted during the frontloaded implementation pass.
+
+Journal verification now uses the shared fixed `verify-causal-source` job before
+loading each checkpoint or chunk. New references include exact UTF-8 bytes and
+canonical object counts so admission can reserve parsing, hash and transfer
+overlap without guessing from a filename. Legacy references use a conservative
+bound and can be refused when it cannot fit the selected memory profile. The
+worker verifies hash, canonical encoding, object inventory and chunk metadata;
+verification receives compact chain receipts. The take head is rechecked after
+asynchronous source verification to reject a changed revision.
+
+`readChunkOwned` and `readCheckpointOwned` expose exclusive parsed snapshots with
+explicit retirement. Their reservations survive cancellation of an accepted
+storage read until that native operation actually settles. Old convenience reads
+remain available for existing callers; replay/query adoption of owned readers is
+the next integration step. The stored source is immutable; the exclusive parsed
+copy does not grant authority to modify it. Storage-side native delivery overhead
+remains an estimate, and malformed oversized stored records are rejected. New
+admission, inventory and late-storage fixtures are authored and unexecuted.

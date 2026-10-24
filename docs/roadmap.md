@@ -2064,6 +2064,11 @@ admission and actual kernel application remain separate receipts. Measured cost
 profiles, request-set canonicalization and combined device stress still require
 the deferred qualification pass.
 
+Journal verification now admits checkpoint/chunk loading, canonical validation
+and hashing through the shared worker owner, using exact new byte/object counts
+and explicit legacy bounds. Owned source readers are implemented; query and
+reperformance integration follows before their complete acceptance qualification.
+
 - [ ] Finish shared background job execution for import, export encoding,
   recovery and asset preparation under the shared worker/memory admission owner.
   Registered import/export/checksum/hash jobs now share admission with exact
