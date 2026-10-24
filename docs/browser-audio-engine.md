@@ -671,6 +671,24 @@ script now authors 8/64/1024-lane scenarios with source revision and browser/dev
 context, keeping visible rows bounded. Its rolling distribution is labeled as
 such. These paths and fixtures have not yet been executed in this implementation
 pass; they are not a claim that the proposed p95 target or idle-soak gates pass.
+
+### Owned sine state cuts
+
+The sine kernel can write/restore a fixed 186,592-byte little-endian state into
+caller-owned exclusive storage at a completed render boundary. The cut includes
+the voice phases/envelopes, interrupted parameter ramps, release progress, owner
+lease deadlines, future command heap, pending receipts, packet/frame frontiers,
+panic state and counters. Engine artifact hash, patch definition hash, graph
+revision, sample rate, maximum voices and state ABI must all match.
+
+Restore validates the complete cut before mutating a staged destination. Mutable
+buffers are copied; display subscriptions are cleared and require a new observer.
+Native AudioNodes are not serialized. This low-level path does not yet expose a
+live seek/scrub control or transplant execution identities into a running graph.
+The caller must admit source, destination and transfer overlap before allocation.
+Authored continuity/corruption fixtures cover attack, held, release and interrupted
+ramps at 44.1/48/96 kHz; they remain unexecuted. Same-artifact state equivalence is
+a contract awaiting those gates, not a cross-browser bit-identity qualification.
 Global stop fences reentrant enable requests and requests source cancellation;
 source/backend ownership remains visible until actual retirement. Master capture
 excludes the separate cue bus and explicitly includes live-output rehearsal.

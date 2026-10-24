@@ -2,8 +2,10 @@ import { chromium, firefox, webkit } from '@playwright/test';
 import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { collectRuntimeSourceClosure } from './RuntimeSourceClosure.js';
 
-const LOCAL_AUDIO_SOURCES = Object.freeze([
+const LOCAL_AUDIO_ENTRIES = Object.freeze([
   'js/app/midi-ui/browserNotePreview.js', 'js/app/midi-ui/nativeOscillatorBackend.js',
   'js/app/midi-ui/TimedControlTimeline.js', 'js/app/midi-ui/SmoothedAudioParameter.js',
   'js/app/midi-ui/AudioObservationLeases.js', 'js/midi/scheduler/LocalAudioVoiceBudget.js',
@@ -14,6 +16,9 @@ const LOCAL_AUDIO_SOURCES = Object.freeze([
   'js/app/midi-ui/AudioCommandQueue.js', 'js/app/midi-ui/workletInstrumentBackend.js',
   'js/app/midi-ui/worklet/OwnedSineProcessor.js'
 ]);
+const sourceClosure = await collectRuntimeSourceClosure({ rootDir: fileURLToPath(new URL('../', import.meta.url)), entries: LOCAL_AUDIO_ENTRIES, maxFiles: 256, maxBytes: 16 * 1048576 });
+if (sourceClosure.dependencies.length) throw new Error('Audio evidence requires a complete local module closure.');
+const LOCAL_AUDIO_SOURCES = Object.freeze(sourceClosure.files.map(file => file.path));
 const readAudioEvidenceOptions = (args = process.argv.slice(2)) => {
   const value = name => args.find(arg => arg.startsWith('--' + name + '='))?.slice(name.length + 3);
   const browserName = value('browser') || 'chromium', channel = value('channel') || null, executablePath = value('executable') || null;

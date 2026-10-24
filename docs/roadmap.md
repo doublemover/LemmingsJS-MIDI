@@ -2070,6 +2070,11 @@ index per lane-array revision, and unchanged geometry does not resize the render
 Bounded UI cost distributions and coalesced/skipped/error counters are inspectable.
 No timing target, idle soak or audio-independence result is claimed before the
 deferred browser/profile pass; scheduler fixtures are authored and unexecuted.
+The owned sine kernel now supports fixed-size complete state cuts bound to exact
+engine/patch/graph/rate/profile identities, including future controls and ramps.
+This prepares restoration and chunked/cropped rendering; live restoration/UI and
+continuity qualification remain outstanding. Audio evidence tooling now derives
+its server/hash inventory from the complete static module closure.
 
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
