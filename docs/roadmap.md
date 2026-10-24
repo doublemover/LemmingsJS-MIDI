@@ -2167,6 +2167,14 @@ retriggering excitation. Live contexts are explicitly limited to44.1/48/96kHz.
 The macro panel remains next-onset; physical continuous-damping mapping is still
 outstanding. Content, actual-kernel damping and immutable-browser fixtures are
 authored and unexecuted. No pitch/decay, listening or hardware result is claimed.
+Travel phase, committed distances and crossing positions now live in a distinct
+immutable articulationState field. DSP expression contains only actual engine
+controls, so strict native/worklet adapters no longer reject distance-derived
+onsets for carrying geometric metadata. A metadata-only held update is recorded
+as a semantic observation without queueing a DSP command or claiming application.
+The original completed-fact timestamps and interpolated-position evidence remain
+unchanged. Real strict-adapter and dispatcher regression fixtures are authored
+and await the consolidated validation pass.
 
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail

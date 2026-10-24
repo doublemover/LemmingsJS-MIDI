@@ -20,7 +20,8 @@ describe('physical travel articulation', () => {
     const output = [...engine.processBatch(source(1, 0, 24))];
     for (let tick = 2; tick <= 7; tick++) output.push(...engine.processBatch(source(tick, 24, 24)));
     expect(output.filter(intent => intent.kind === 'begin')).to.have.length(6);
-    expect(output.filter(intent => intent.kind === 'begin').map(intent => intent.expression.crossing.position.x)).to.deep.equal([4, 8, 12, 16, 20, 24]);
+    expect(output.filter(intent => intent.kind === 'begin').map(intent => intent.articulationState.crossing.position.x)).to.deep.equal([4, 8, 12, 16, 20, 24]);
+    expect(output.every(intent => Object.keys(intent.expression).length === 0)).to.equal(true);
     expect(engine.snapshot().travel.entries[0]).to.include({ pathDistancePixels: 24, signedDistancePixels: 24 });
   });
 
@@ -110,6 +111,6 @@ describe('physical travel articulation', () => {
     next.facts.unshift({ kind: 'ActionExited', actorId: 7, actionInstanceId: '7:action:1', eventId: 'exit:2', causalSequence: 2 });
     const updates = restored.processBatch(next);
     expect(updates.map(intent => intent.kind)).to.deep.equal(['update']);
-    expect(updates[0].expression.pathDistancePixels).to.equal(2);
+    expect(updates[0].articulationState.pathDistancePixels).to.equal(2); expect(updates[0].expression).to.deep.equal({});
   });
 });

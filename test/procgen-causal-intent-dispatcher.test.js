@@ -6,6 +6,17 @@ import { LemmingStateType as State } from '../js/lemmings/LemmingStateType.js';
 import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
 
 describe('causal intent sink dispatch', () => {
+  it('retains travel-only observations without claiming or queueing a DSP application', () => {
+    let calls = 0;
+    const dispatcher = createCausalIntentDispatcher({ sinks: [{ id: 'local', route: 'local', backend: { update() { calls++; return { status: 'accepted', stage: 'queued' }; } } }],
+      toTargetFrame: () => 100 });
+    const intent = { version: 1, kind: 'update', voiceId: 'v', intentId: 'travel-phase', generation: 1, route: 'local', sourceEventIds: ['fact'], scoreTime: {},
+      expression: {}, articulationState: { travelPhase01: 0.5, pathDistancePixels: 2 } };
+    const [observation] = dispatcher.dispatch([intent], { generation: 1, batchId: 'batch' });
+    expect(observation).to.include({ status: 'accepted', stage: 'semantic-observation', outputRequested: false }); expect(calls).to.equal(0);
+    const [control] = dispatcher.dispatch([{ ...intent, intentId: 'pressure', expression: { pressure01: 0.5 } }], { generation: 1, batchId: 'batch' });
+    expect(control.stage).to.equal('queued'); expect(calls).to.equal(1);
+  });
   let masks;
   before(async () => { masks = await loadProcgenMasks(); });
   it('retires every execution and preserves cancellation failures across independent sinks', () => {

@@ -48,7 +48,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
   let cursor = { worldId: null, generation: null, tick: -1, lastSequence: -1, batchId: null };
   const accepted = new Map(), rejectedByInstrument = new Map();
   const remember = intent => { if (traceLimit > 0) { trace.push(intent); if (trace.length > traceLimit) trace.shift(); } };
-  const intentFor = (batch, fact, instrument, kind, voiceId, reason = null, voiceGeneration = batch.generation, expression = {}) => Object.freeze({
+  const intentFor = (batch, fact, instrument, kind, voiceId, reason = null, voiceGeneration = batch.generation, expression = {}, articulationState = null) => Object.freeze({
     version: 1, intentId: `${batch.batchId}:${instrument.id}:${voiceId}:${fact?.eventId || 'boundary'}:${kind}`,
     worldId: batch.worldId, batchId: batch.batchId, generation: voiceGeneration,
     kind, onsetId: voiceId, voiceId, actorId: fact?.actorId ?? null, laneId: fact?.laneId ?? null,
@@ -61,6 +61,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     sourceTickDurationMs: Number.isFinite(batch.tickDurationMs) && batch.tickDurationMs > 0 ? batch.tickDurationMs : null }),
     pitch: Object.freeze({ cents: instrument.pitchCents, referenceHz: 440 }), velocity01: instrument.velocity01,
     expression: Object.freeze(expression), role: instrument.role, route: instrument.route, terminationReason: reason,
+    ...(articulationState ? { articulationState: Object.freeze(articulationState) } : {}),
     ...(kind === 'begin' ? { performanceControls: validateInstrumentControls(getOnsetControls(fact?.laneId)), performanceCause: captureInstrumentCause(fact) } : {})
   });
   const publish = (batch, intents) => {
@@ -167,14 +168,14 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
             continue;
           }
           const state = result.state;
-          const expression = Object.freeze({ travelPhase01: result.phase01, pathDistancePixels: state.pathDistancePixels,
+          const articulationState = Object.freeze({ travelPhase01: result.phase01, pathDistancePixels: state.pathDistancePixels,
             signedDistancePixels: state.signedDistancePixels, contactPathDistancePixels: state.contactPathDistancePixels });
           if (instrument.articulation.sustain && result.distancePixels > 0) {
             const voiceId = `${batch.worldId}:${batch.generation}:${instrument.id}:travel:${state.scopeInstanceId}`;
             const existing = active.get(voiceId);
-            if (existing) output.push(intentFor(batch, fact, instrument, 'update', voiceId, null, batch.generation, expression));
+            if (existing) output.push(intentFor(batch, fact, instrument, 'update', voiceId, null, batch.generation, {}, articulationState));
             else if (begins < maxBeginsPerBatch && active.size < maxVoices && responds(instrument, fact, `${fact.eventId}:sustain`)) {
-              output.push(intentFor(batch, fact, instrument, 'begin', voiceId, null, batch.generation, expression)); begins++;
+              output.push(intentFor(batch, fact, instrument, 'begin', voiceId, null, batch.generation, {}, articulationState)); begins++;
               active.set(voiceId, { voiceId, instrument, graphRevision: current.revision, generation: batch.generation,
                 actorId: fact.actorId, laneId: fact.laneId, actionInstanceId: fact.actionInstanceId,
                 lifetimeScope: state.lifetimeScope, scopeInstanceId: state.scopeInstanceId });
@@ -184,8 +185,8 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
             if (!responds(instrument, fact, `${fact.eventId}:travel:${crossing.ordinal}`)) continue;
             if (begins >= maxBeginsPerBatch) { reject(instrument); continue; }
             const voiceId = `${batch.worldId}:${batch.generation}:${instrument.id}:${fact.eventId}:travel:${crossing.ordinal}`;
-            const crossingExpression = { ...expression, crossing: Object.freeze(crossing) };
-            output.push(intentFor(batch, fact, instrument, 'begin', voiceId, null, batch.generation, crossingExpression));
+            const crossingState = { ...articulationState, crossing: Object.freeze(crossing) };
+            output.push(intentFor(batch, fact, instrument, 'begin', voiceId, null, batch.generation, {}, crossingState));
             output.push(intentFor(batch, fact, instrument, 'end', voiceId, 'one-shot')); begins++;
             accepted.set(instrument.id, (accepted.get(instrument.id) || 0) + 1);
           }

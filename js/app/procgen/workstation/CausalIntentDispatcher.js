@@ -97,7 +97,9 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
           const identity = executionFor(sink, epoch, intent.generation);
           if (!identity.execution) outcome = identity;
           else if (intent.kind === 'begin') outcome = sink.backend.begin(intent, frame, identity.execution);
-          else if (intent.kind === 'update') outcome = sink.backend.update(intent.voiceId, intent.expression, frame, identity.execution);
+          else if (intent.kind === 'update') outcome = intent.expression && Object.getPrototypeOf(intent.expression) === Object.prototype && Object.keys(intent.expression).length === 0 && intent.articulationState
+            ? { status: 'accepted', stage: 'semantic-observation', outputRequested: false }
+            : sink.backend.update(intent.voiceId, intent.expression, frame, identity.execution);
           else if (intent.kind === 'end') outcome = sink.backend.end(intent.voiceId, intent.terminationReason === 'one-shot'
             ? { mode: 'one-shot', tailSeconds: oneShotTailSeconds, seconds: releaseSeconds }
             : { seconds: releaseSeconds }, frame, identity.execution);
@@ -106,7 +108,7 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
         const status = ['accepted', 'rejected', 'degraded'].includes(outcome?.status) ? outcome.status : 'rejected';
         receipts.push(record({ ...base, status, stage: status === 'rejected' ? 'none' : outcome.stage || 'accepted',
           reason: status === 'accepted' ? null : outcome?.reason || 'invalid-sink-receipt', targetFrame: frame,
-          sourceTargetFrame, repair }));
+          sourceTargetFrame, repair, ...(outcome?.outputRequested === false ? { outputRequested: false } : {}) }));
       }
     }
     return Object.freeze(receipts);

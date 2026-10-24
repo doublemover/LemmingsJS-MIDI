@@ -15,6 +15,7 @@ import { withFakeClockAndPerformance } from '../support/timers.js';
 import { createResourceBudget } from '../../js/app/resources/ResourceBudget.js';
 import { createProcgenPhysicalPlayback } from '../../js/app/procgen/workstation/ProcgenPhysicalPlayback.js';
 import { createProcgenPhysicalScoreClock } from '../../js/app/procgen/workstation/ProcgenPhysicalScoreClock.js';
+import { createCausalMusicEngine } from '../../js/app/procgen/workstation/CausalMusicEngine.js';
 
 const deferred = () => {
   let resolve;
@@ -221,6 +222,22 @@ describe('BrowserNotePreview', function() {
   const nativeIntent = (voiceId, generation = 1) => ({ version: 1, kind: 'begin', voiceId, generation,
     pitch: { cents: 6000.001, referenceHz: 440 }, velocity01: 0.7501, expression: {},
     sourceEventIds: ['physical:1'], onsetId: 'onset:' + voiceId, actorId: 'actor:' + voiceId });
+
+  it('schedules actual travel-derived voices through the strict expression adapter', async () => {
+    const { preview, context } = setup({ maxVoices: 8 }), session = preview.createSession('travel'), backend = session.createInstrumentBackend({ gateMode: 'owned' });
+    expect((await backend.prepare(nativePatch())).status).to.equal('ready'); await session.enable();
+    const execution = backend.registerExecution({ executionEpoch: 'travel:strict', generation: 1 }).execution;
+    expect(backend.renewExecutionLease(1, execution, 336000).status).to.equal('accepted');
+    const engine = createCausalMusicEngine({ getGraph: () => ({ version: 1, revision: 1, instruments: [{ id: 'spacing', sourceKind: 'MotionCommitted',
+      articulation: { spacingPixels: 4, metric: 'endpoint-chord', orientation: 'signedX', lifetimeScope: 'actorJourney' }, pitchCents: 6000, velocity01: 0.6, role: 'texture', route: 'local' }] }) });
+    const intents = engine.processBatch({ version: 1, worldId: 'travel', generation: 1, tick: 1, batchId: 'travel:1:1:0', completeness: { status: 'complete', dropped: 0 },
+      facts: [{ kind: 'MotionCommitted', actorId: 7, laneId: 0, eventId: 'motion:1', causalSequence: 1, actionInstanceId: '7:action:1',
+        positionBefore: { x: 0, y: 10 }, positionAfter: { x: 24, y: 10 }, precision: 'endpoint' }] });
+    const attacks = intents.filter(intent => intent.kind === 'begin'); expect(attacks).to.have.length(6);
+    expect(attacks.map(intent => backend.begin(intent, 98000, execution).status)).to.deep.equal(Array(6).fill('accepted'));
+    expect(context.oscillators).to.have.length(6); expect(attacks.map(intent => intent.articulationState.crossing.position.x)).to.deep.equal([4, 8, 12, 16, 20, 24]);
+    await preview.dispose();
+  });
 
   it('owns native FM children under independent same-pitch voices and charges all operator intervals', async () => {
     const budget = createResourceBudget(), { preview, context } = setup({ resourceBudget: budget, maxVoices: 4 });
