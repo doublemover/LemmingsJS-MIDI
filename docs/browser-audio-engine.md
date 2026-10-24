@@ -689,6 +689,36 @@ The caller must admit source, destination and transfer overlap before allocation
 Authored continuity/corruption fixtures cover attack, held, release and interrupted
 ramps at 44.1/48/96 kHz; they remain unexecuted. Same-artifact state equivalence is
 a contract awaiting those gates, not a cross-browser bit-identity qualification.
+
+### Causal take sine revoice files
+
+`CausalTakeAudioRender` owns preparation from a covered immutable intent snapshot
+through a dedicated fixed worker to retained export artifacts. It checks take
+revision/hash, selected definition/engine, application build, rate, range, frame
+count and each requested stem before publication. Source loans, input overlap,
+computation and files have separate retirement. A failed replacement preserves
+the previous prepared files. Canceling delivery does not rerun a valid render.
+
+This first adapter is explicitly a new asset-free sine realization of captured
+intent, with the original cause/voice/pitch/source times retained. It does not
+reconstruct live admission choices, native/hardware timbre or the protected live
+master. New capture boundaries include the actual simulation source clock. Older
+takes without that clock or with initially held voices need qualified history;
+the adapter refuses them rather than inventing attacks. Fractional-tick timing
+requires a further timeline adapter. Histories are limited to 8,192 intent records,
+32,768 intents and a bounded source snapshot; no continuation is silently omitted.
+
+The worker reconstructs silently from capture zero before emitting a crop. Exact
+crop, capped natural tails and explicitly derived boundary releases are separate
+choices. The entire sine graph renders once; optional dry lane files tap it
+simultaneously with aligned frame zero. No shared return exists in this graph;
+the protected nonlinear master is excluded. Complete dry stems recombine within
+float32 rounding. Stereo float WAVs preserve headroom, include exact frame counts,
+PCM hashes and bounded manifests, and use the common export-delivery owner.
+Output is capped at 120 seconds of history and 64 MiB across master/stems, with
+source/PCM/encoding/transfer overlap admitted first. Runtime, decoder and listening
+qualification remain deferred. These capabilities do not qualify other engines,
+general shared-effect stems or a real-time print path.
 Global stop fences reentrant enable requests and requests source cancellation;
 source/backend ownership remains visible until actual retirement. Master capture
 excludes the separate cue bus and explicitly includes live-output rehearsal.

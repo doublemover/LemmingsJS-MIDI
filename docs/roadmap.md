@@ -2083,6 +2083,11 @@ unsupported expression/subtick timing and capacity rather than inventing attacks
 or replaying current physics. The fixed worker requires immutable engine identity
 and admits PCM/encoding/transfer overlap. Host/UI integration follows; authored
 PCM/stem/crop/cancellation fixtures remain unexecuted.
+The causal render host now retains exact source and computation ownership through
+publication of checked master/stem export artifacts. Replacement failure preserves
+the previous bundle; cancellation and unknown cleanup remain explicit. A product
+dialog is being connected next. Component ownership fixtures use a declared test
+adapter and do not stand in for immutable-build real-worker qualification.
 
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail

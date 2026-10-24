@@ -1,0 +1,141 @@
+import { querySoundOnlyRevoiceOwned } from '../procgen/workstation/CausalTake.js';
+import { retireCausalRead } from '../procgen/workstation/CausalReadLeases.js';
+import { createOwnedResourceReservation } from '../resources/OwnedResourceReservation.js';
+import { backgroundJobService } from '../resources/BackgroundJobService.js';
+import { getNativeInstrumentCatalog } from './NativeInstrumentSchema.js';
+import { canonicalDataText, cloneData, freezeData, hashData } from '../../core/CanonicalData.js';
+import { prepareExportArtifact } from '../export/ExportArtifact.js';
+import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
+
+export const CAUSAL_RENDER_SINE = freezeData({ schemaVersion: 2, id: 'causal-render.sine', revision: 1, name: 'Sine revoice', author: 'LemmingsJS-MIDI', tags: ['revoice'],
+  engineId: 'worklet-sine', engineVersion: 1, parameters: { attackSeconds: 0.008, decaySeconds: 0.05, sustain01: 0.7, releaseSeconds: 0.04, gain01: 0.5, pan01: 0 },
+  modulations: [], sampleRefs: [], macros: [], causalBindings: [], voicePolicy: { maxVoices: 64, steal: 'reject' }, mix: { gain01: 0.6, pan01: 0 } });
+const failure = (code, message, detail = {}) => Object.assign(new Error(message), { name: 'CausalRenderError', code, ...detail });
+const HASH = /^[a-f0-9]{64}$/;
+let nextOwner = 0;
+
+export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = backgroundJobService, getCatalog = getNativeInstrumentCatalog,
+  sourceMaxBytes = 4194304, onState = () => {} } = {}) {
+  if (!journal?.queryOwned || !journal?.openTakeOwned || !resourceBudget?.reserve || !resourceBudget?.release || typeof jobs?.compute !== 'function' ||
+      typeof getCatalog !== 'function' || typeof onState !== 'function' || !Number.isSafeInteger(sourceMaxBytes) || sourceMaxBytes < 32768 || sourceMaxBytes > 8 * 1048576)
+    throw new TypeError('Causal rendering requires owned journal sources, shared budgets and worker execution.');
+  const ownerId = 'causal-audio-render-' + (++nextOwner), retirement = createProcgenRetirementScope(), unresolved = new Set(), bundles = new Set();
+  let disposed = false, active = null, prepared = null, serial = 0, phase = 'idle', progress = null, lastError = null;
+  const state = () => Object.freeze({ schema: 'lemmings-causal-render-state/v1', phase, disposed, active: !!active, progress,
+    prepared: prepared?.metadata() || null, unresolvedRetirement: unresolved.size, error: lastError,
+    capabilities: Object.freeze({ intentSine: true, capturedPcm: false, admissionHistory: false, arbitraryOfflineEngines: false, maxSeconds: 120, maxOutputBytes: 64 * 1048576 }) });
+  const report = () => { try { onState(state()); } catch { /* Rendering ownership does not depend on view callbacks. */ } };
+  const makeBundle = (entries, manifest) => {
+    const scope = createProcgenRetirementScope(); let discarded = false;
+    const bundle = Object.freeze({ files: Object.freeze(entries.map(entry => Object.freeze(entry))), manifest: freezeData(manifest),
+      metadata: () => Object.freeze({ sourceTakeId: manifest.takeId, sourceCanonicalHash: manifest.sourceCanonicalHash, sampleRate: manifest.sampleRate,
+        frames: manifest.frames, mode: manifest.mode, discarded, files: Object.freeze(entries.map(entry => Object.freeze({ id: entry.id, label: entry.label, artifact: entry.artifact.metadata() }))) }),
+      discard() {
+        if (scope.getReceipt()) return scope.getReceipt(); discarded = true; if (prepared === bundle) prepared = null;
+        const receipt = scope.retire(entries.map(entry => ({ name: 'render-file-' + entry.id, run: () => entry.artifact.discard() })));
+        if (receipt.outcome === 'complete') bundles.delete(bundle); report(); return receipt;
+      }, retirementState: () => scope.getReceipt() }); bundles.add(bundle); return bundle;
+  };
+  const prepare = ({ takeId, takeRevision, definition = CAUSAL_RENDER_SINE, sampleRate = 48000, startSeconds = 0, endSeconds,
+    tail = { mode: 'exact-crop' }, stemLaneIds = [], signal: externalSignal, isCurrent = () => true } = {}) => {
+    externalSignal?.throwIfAborted();
+    if (disposed || active || unresolved.size || typeof takeId !== 'string' || !takeId || takeId.length > 256 || ![44100, 48000, 96000].includes(sampleRate) ||
+        !Number.isFinite(startSeconds) || startSeconds < 0 || startSeconds >= 120 || !Number.isFinite(endSeconds) || endSeconds <= startSeconds || endSeconds > 120 ||
+        !Array.isArray(stemLaneIds) || stemLaneIds.length > 16 || stemLaneIds.some(lane => typeof lane !== 'string' || !lane || lane.length > 128) ||
+        new Set(stemLaneIds).size !== stemLaneIds.length || typeof isCurrent !== 'function') return Promise.reject(failure('render-unavailable', 'Choose a bounded causal render range and available renderer owner.'));
+    const ordinal = ++serial, controller = new AbortController(), operation = { controller, source: null, job: null, sourceHanded: false, sourceSettled: null,
+      workspace: null, promise: null, retirement: null };
+    let settleSource, rejectSource; operation.sourceSettled = new Promise((resolve, reject) => { settleSource = resolve; rejectSource = reject; }); operation.sourceSettled.catch(() => {});
+    const cancel = () => { controller.abort(externalSignal.reason); phase = 'retiring'; report(); };
+    externalSignal?.addEventListener('abort', cancel, { once: true }); if (externalSignal?.aborted) cancel();
+    active = operation; phase = 'preparing-source'; progress = null; lastError = null; report();
+    const check = () => { controller.signal.throwIfAborted(); if (disposed || !isCurrent()) throw failure('stale-render-source', 'The selected render request has changed.'); };
+    operation.promise = (async () => {
+      const candidates = []; let bundle = null, result = null, originalError = null, input = null, revoice = null;
+      try {
+        operation.workspace = createOwnedResourceReservation({ budget: resourceBudget, owner: ownerId + ':' + ordinal, kind: 'causal-render-input', bytes: 2 * 1048576 });
+        const patch = cloneData(definition, { maxBytes: 262144, maxNodes: 16384 }), policy = cloneData(tail, { maxBytes: 1024, maxNodes: 32 }), lanes = Object.freeze(stemLaneIds.slice());
+        const definitionHash = await hashData(patch), catalog = await getCatalog(); check();
+        const descriptor = catalog.descriptors.find(entry => entry.engineId === patch.engineId && entry.engineVersion === patch.engineVersion);
+        if (catalog.state !== 'bound-application-engines' || patch.engineId !== 'worklet-sine' || !descriptor || !HASH.test(descriptor.artifactHash))
+          throw failure('engine-identity-unbound', 'Prepare this render from an immutable application build with the selected sine engine.');
+        const engineRequirement = Object.fromEntries(['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].map(key => [key, descriptor[key]]));
+        operation.source = await querySoundOnlyRevoiceOwned({ journal, resourceBudget, jobs, takeId, takeRevision,
+          soundPatch: { id: patch.id, revision: patch.revision, definitionHash, engineRequirement }, executionEpoch: ownerId + ':' + ordinal,
+          limit: 8192, maxIntents: 32768, maxBytes: sourceMaxBytes, signal: controller.signal }); check();
+        revoice = operation.source.value;
+        if (revoice.nextSequence != null) throw failure('render-source-capacity', 'This take exceeds the bounded source window. Prepare a shorter qualified take instead of silently dropping later intent pages.');
+        const frames = Math.round((endSeconds - startSeconds + (policy.mode === 'exact-crop' ? 0 : policy.maxSeconds ?? 4)) * sampleRate);
+        const pcmBytes = frames * 8 * (lanes.length + 1), sourceFootprint = operation.source.receipt.retainedBytes;
+        operation.workspace.resize(2 * 1048576 + sourceFootprint);
+        const binding = { takeRevision: revoice.takeRevision, sourceCanonicalHash: revoice.sourceCanonicalHash };
+        const estimatedPeakBytes = sourceFootprint * 6 + pcmBytes * 4 + 32768 * 512 + 12 * 1048576;
+        if (!Number.isSafeInteger(pcmBytes) || pcmBytes > 64 * 1048576 || !Number.isSafeInteger(estimatedPeakBytes) || estimatedPeakBytes > 512 * 1048576)
+          throw failure('render-memory-capacity', 'Choose a shorter output range or fewer stems to fit source, PCM, encoding and transfer overlap.');
+        input = { revoice, definition: patch, engineRequirement, sampleRate, startSeconds, endSeconds, tail: policy, stemLaneIds: lanes };
+        phase = 'rendering'; report();
+        operation.job = await jobs.compute({ kind: 'render-causal-sine-take', ownerId, ownerEpoch: ordinal, sourceRevision: revoice.sourceCanonicalHash,
+          inputBytes: sourceMaxBytes + 262144, maxBytes: sourceMaxBytes + 262144, estimatedPeakBytes, priority: 'background', budgetAdapter: resourceBudget,
+          signal: controller.signal, isCurrent: () => !disposed && isCurrent(), deadlineMs: 180000,
+          prepareInput: () => { operation.sourceHanded = true; return input; },
+          releasePreparedInput: () => { try { retireCausalRead(operation.source); operation.source = null; settleSource(); return true; }
+          catch (error) { rejectSource(error); throw error; } },
+          onProgress: value => { if (!disposed && active === operation) { progress = Object.freeze({ phase: value.phase, completedUnits: value.completedUnits, totalUnits: value.totalUnits }); report(); } }
+        }); input = null; revoice = null; check();
+        const value = operation.job.value, manifest = value?.manifest;
+        if (operation.job.receipt.method !== 'dedicated-worker' || operation.job.receipt.executionIdentity?.activeExecution !== 'bound' || manifest?.schema !== 'lemmings-causal-audio-render/v1' ||
+            manifest.applicationBuildId !== operation.job.receipt.executionIdentity.buildId || manifest.takeId !== takeId || manifest.takeRevision !== binding.takeRevision ||
+            manifest.sourceCanonicalHash !== binding.sourceCanonicalHash || manifest.definitionHash !== definitionHash || manifest.sampleRate !== sampleRate ||
+            manifest.timelineZeroSourceFrame !== Math.round(startSeconds * sampleRate) || manifest.exactEndSourceFrame !== Math.round(endSeconds * sampleRate) ||
+            !Array.isArray(value.files) || value.files.length !== lanes.length + 1 || !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => manifest.engineRequirement?.[key] === engineRequirement[key]))
+          throw failure('render-result-mismatch', 'The worker result differs from the selected immutable source, range or renderer.');
+        let totalBytes = 0;
+        for (let index = 0; index < value.files.length; index++) {
+          const file = value.files[index];
+          if (!(file.bytes instanceof Uint8Array) || !HASH.test(file.manifest?.pcmHash) || file.manifest.sourceCanonicalHash !== manifest.sourceCanonicalHash ||
+              file.manifest.frames !== manifest.frames || file.manifest.sampleRate !== sampleRate || file.manifest.laneId !== (index ? lanes[index - 1] : null) ||
+              (totalBytes += file.bytes.byteLength) > 64 * 1048576) throw failure('render-result-mismatch', 'A rendered PCM file omitted its exact frame/source/tap inventory.');
+          const label = index ? 'Captured lane ' + lanes[index - 1] + ' · dry' : 'Complete sine graph · pre-master';
+          const artifact = prepareExportArtifact({ bytes: file.bytes, immutableSourceRef: [binding.sourceCanonicalHash, definitionHash, sampleRate, startSeconds, endSeconds, policy.mode, file.manifest.pcmHash].join(':'),
+            formatVersion: manifest.schema, mediaType: 'audio/wav', suggestedFilename: 'take-' + binding.sourceCanonicalHash.slice(0, 12) + '-' + (index ? 'lane-' + index : 'sine-master') + '.wav',
+            coverageLossReportRef: 'embedded-lmjs-render-manifest', maxBytes: 64 * 1048576, budgetAdapter: resourceBudget }); candidates.push({ id: String(index), label, artifact });
+        }
+        check(); bundle = makeBundle(candidates, manifest); result = Object.freeze({ bundle, receipt: operation.job.receipt });
+      } catch (error) { originalError = error; lastError = String(error?.message || 'Causal render failed.').slice(0, 512); }
+      finally {
+        input = revoice = null;
+        externalSignal?.removeEventListener('abort', cancel); phase = 'retiring'; report();
+        operation.retirement = createProcgenRetirementScope().retire([
+          { name: 'render-result', run: () => { operation.job?.release(); const current = operation.job?.retirementState?.();
+            if (current && !['released', 'canceled'].includes(current.phase)) throw failure('render-retirement-unknown', 'Rendered computation retirement is unresolved.'); } },
+          { name: 'render-source', run: () => { if (operation.sourceHanded) return operation.sourceSettled;
+            if (operation.source) { retireCausalRead(operation.source); operation.source = null; } settleSource(); } },
+          { name: 'render-input-workspace', run: async () => { if (operation.sourceHanded) await operation.sourceSettled; operation.workspace?.release(); } }
+        ]);
+        await operation.retirement.completion;
+        if (operation.retirement.outcome !== 'complete') { unresolved.add(operation); originalError = failure('render-retirement-unknown', 'Causal render ownership is unresolved.', { cause: originalError, retirement: operation.retirement }); }
+        if (active === operation) active = null;
+      }
+      if (!originalError) { try { check(); } catch (error) { originalError = error; } }
+      if (originalError) {
+        const cleanup = bundle ? bundle.discard() : createProcgenRetirementScope().retire(candidates.map(entry => ({ name: 'candidate-' + entry.id, run: () => entry.artifact.discard() })));
+        if (cleanup.outcome !== 'complete') { unresolved.add(operation); originalError = failure('render-retirement-unknown', 'Prepared render file cleanup is unresolved.', { cause: originalError, retirement: cleanup }); }
+        phase = controller.signal.aborted ? 'canceled' : 'failed'; lastError = originalError.message; report(); throw originalError;
+      }
+      const previous = prepared; prepared = bundle;
+      const old = previous?.discard(); if (old && old.outcome !== 'complete') { unresolved.add(operation); lastError = 'The previous render has unresolved file retirement.'; }
+      phase = 'prepared'; progress = null; lastError ||= null; report(); return result;
+    })(); return operation.promise;
+  };
+  return Object.freeze({ prepare, state, getPrepared: () => prepared,
+    cancel() { if (!active) return false; active.controller.abort(failure('render-canceled', 'Causal audio render canceled.')); phase = 'retiring'; report(); return true; },
+    dispose() {
+      if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; const pending = active;
+      pending?.controller.abort(failure('owner-retired', 'Causal audio render owner retired.')); phase = 'disposed'; report();
+      return retirement.retire([{ name: 'accepted-render', run: async () => { await pending?.promise.catch(() => {}); if (pending?.retirement?.outcome !== 'complete') {
+        if (pending) throw failure('render-retirement-unknown', 'Accepted render ownership is unresolved.'); } } },
+      ...[...bundles].map((bundle, index) => ({ name: 'prepared-render-' + index, run: () => bundle.discard() })),
+      { name: 'retained-render-faults', run: () => { if (unresolved.size) throw failure('render-retirement-unknown', 'A causal render still has unresolved resources.'); } }]);
+    }
+  });
+}
