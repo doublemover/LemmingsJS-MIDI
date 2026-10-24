@@ -187,6 +187,46 @@ describe('procgenBoot helpers', function () {
     expect(calls).to.deep.equal(['focusBlur', 'controller', 'stageAdapter', 'game', 'view']);
   });
 
+  it('retires the asset provider only after the active runtime releases its resources', function () {
+    const calls = [];
+    procgenBoot.setActiveProcgenRuntimeForTest({
+      lanes: { stop() { calls.push('lanes'); } },
+      view: { dispose() { calls.push('view'); } },
+      providerLease: { release() { calls.push('lease'); } },
+      fileProvider: { dispose() { calls.push('provider'); } }
+    });
+    procgenBoot.disposeProcgenRuntime();
+    expect(calls).to.deep.equal(['lanes', 'view', 'lease', 'provider']);
+  });
+
+  it('releases game resource readers before the provider on runtime retirement', function () {
+    const calls = [];
+    procgenBoot.setActiveProcgenRuntimeForTest({
+      game: { stop() { calls.push('game'); } },
+      resources: { dispose() { calls.push('resources'); } },
+      providerLease: { release() { calls.push('lease'); } },
+      fileProvider: { dispose() { calls.push('provider'); } }
+    });
+    procgenBoot.disposeProcgenRuntime();
+    expect(calls).to.deep.equal(['game', 'resources', 'lease', 'provider']);
+  });
+
+  it('continues runtime retirement after a throwing early owner', function () {
+    const calls = [];
+    procgenBoot.setActiveProcgenRuntimeForTest({
+      focusBlurCleanup() { calls.push('focusBlur'); throw new Error('detach failed'); },
+      lanes: { stop() { calls.push('lanes'); } },
+      controller: { stop() { calls.push('controller'); } },
+      stageAdapter: { dispose() { calls.push('stageAdapter'); } },
+      game: { stop() { calls.push('game'); } },
+      view: { dispose() { calls.push('view'); } }
+    });
+    const receipt = procgenBoot.disposeProcgenRuntime();
+    expect(procgenBoot.disposeProcgenRuntime()).to.equal(receipt);
+    expect(calls).to.deep.equal(['focusBlur', 'lanes', 'controller', 'stageAdapter', 'game', 'view']);
+    expect(receipt.resources.find(resource => resource.name === 'focus-blur-listener')).to.include({ status: 'failed', error: 'detach failed' });
+  });
+
   it('installs and disposes procgen boot listeners', function () {
     const windowListeners = new Map();
     const documentListeners = new Map();
@@ -210,7 +250,9 @@ describe('procgenBoot helpers', function () {
 
     procgenBoot.installProcgenBootListeners();
     expect(windowListeners.has('resize')).to.equal(true);
-    expect(windowListeners.has('beforeunload')).to.equal(true);
+    expect(windowListeners.has('beforeunload')).to.equal(false);
+    expect(windowListeners.has('pagehide')).to.equal(true);
+    expect(windowListeners.has('pageshow')).to.equal(true);
     expect(documentListeners.has('DOMContentLoaded')).to.equal(true);
 
     procgenBoot.disposeProcgenBootListeners();

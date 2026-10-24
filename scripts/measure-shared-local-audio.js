@@ -1,12 +1,13 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { chromium } from '@playwright/test';
+import { LOCAL_AUDIO_SOURCES, launchAudioEvidenceBrowser } from './audio-evidence-runtime.js';
 
 const root = process.cwd(), directory = path.resolve(root, 'temp/shared-local-audio-evidence');
-const sources = ['js/app/midi-ui/browserNotePreview.js', 'js/midi/scheduler/LocalAudioVoiceBudget.js'];
-const browser = await chromium.launch({ channel: 'msedge', headless: true, args: ['--mute-audio'] });
-const context = await browser.newContext({ viewport: { width: 1440, height: 960 }, permissions: [] });
+const sources = LOCAL_AUDIO_SOURCES;
+const { browser, environment } = await launchAudioEvidenceBrowser();
+const context = await browser.newContext({ viewport: { width: 1440, height: 960 }, permissions: [] })
+  .catch(async error => { await browser.close(); throw error; });
 const page = await context.newPage(), errors = [];
 page.on('pageerror', error => errors.push(error.message));
 // Fulfilled loopback URLs load the real modules without a server or external request.
@@ -74,6 +75,7 @@ try {
       limits: { cases: 2, framesPerCase: 40800, channels: 12, voices: 24, configuredSimultaneousCap: 32, pendingCap: 64, sessions: 4 }, reports };
   }, browserModuleUrl);
   evidence.errors = errors;
+  evidence.environment = environment;
   evidence.sourceHashes = Object.fromEntries(await Promise.all(sources.map(async file => [file, createHash('sha256').update(await fs.readFile(path.join(root, file))).digest('hex')])));
   await fs.mkdir(directory, { recursive: true });
   await fs.writeFile(path.join(directory, 'shared-mix.json'), JSON.stringify(evidence, null, 2) + '\n');

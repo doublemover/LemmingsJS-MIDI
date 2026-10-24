@@ -73,4 +73,23 @@ describe('FileContainer', function () {
     assert.strictEqual(bad.length, 0);
     assert.strictEqual(bad2.length, 0);
   });
+
+  it('owns its source cursor and keeps cached unpacked readers private', function () {
+    const { buffer } = buildBuffer(false);
+    const source = new Lemmings.BinaryReader(buffer, 0, buffer.length, 'owned.dat', 'fixtures');
+    source.setOffset(2);
+    const identity = Object.freeze({ contentHash: 'raw-archive' });
+    Object.defineProperty(source, 'sourceIdentity', { value: identity });
+    const container = new FileContainer(source);
+    assert.strictEqual(source.getOffset(), 2);
+    source.release();
+    const first = container.getPart(0); assert.strictEqual(first.readByte(), 8); first.release();
+    const second = container.getPart(0); assert.strictEqual(second.readByte(), 8);
+    assert.strictEqual(second.filename, 'owned.dat[0]');
+    assert.strictEqual(second.foldername, 'fixtures'); assert.strictEqual(second.sourceIdentity, identity);
+    const part = container.parts[0]; container.dispose(); container.dispose();
+    assert.strictEqual(second.readByte(), 16); second.release();
+    assert.throws(() => part.unpack(), /disposed/);
+    assert.strictEqual(container.count(), 0);
+  });
 });

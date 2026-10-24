@@ -60,6 +60,13 @@ class BitReader {
     return this.#checksum;
   }
 
+  /** Retire the private input cursor after decompression has finished. */
+  release() {
+    this.#binReader?.release();
+    this.#binReader = null;
+    this.#pos = -1; this.#bufferLen = 0; this.#buffer = 0;
+  }
+
   /**
    * Read an arbitrary number of bits (up to 32) from the stream (in reverse).
    * Extremely hot path: written for maximum performance.

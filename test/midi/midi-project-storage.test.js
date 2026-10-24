@@ -6,12 +6,16 @@ import {
   clearMidiProjectStorage,
   loadMidiProject,
   readStoredMidiProjectTemplates,
+  readStoredMidiProjectOutcome,
+  readStoredMidiProjectTemplatesOutcome,
+  resetProtectedMidiStorage,
   resetMidiProjectStorage,
   saveMidiProject,
   saveMidiProjectTemplate,
   saveMidiProjectWithOutcome,
   saveMidiProjectTemplateWithOutcome
 } from '../../js/midi/project/MidiProjectStorage.js';
+import { createMidiProject, createMidiProjectTemplate, importMidiProjectPayload } from '../../js/midi/project/MidiProject.js';
 
 const createStorage = () => {
   const backing = new Map();
@@ -35,6 +39,38 @@ const createStorage = () => {
 };
 
 describe('MidiProjectStorage', function() {
+  it('preserves mixed valid and unsupported template bytes until an explicit identity-checked reset', () => {
+    const storage = createStorage(), project = createMidiProject();
+    const valid = createMidiProjectTemplate(project, { id: 'valid-a' }), legacy = createMidiProjectTemplate(project, { id: 'legacy-b' });
+    legacy.project.procgen = { version: 1, seed: 777, lanes: [{}] };
+    const original = JSON.stringify({ version: 1, templates: [valid, legacy] }); storage.backing.set(TEMPLATE_STORAGE_KEY, original);
+    const read = readStoredMidiProjectTemplatesOutcome(storage);
+    expect(read.state).to.equal('unsupported'); expect(read.templates.map(entry => entry.id)).to.deep.equal(['valid-a']);
+    expect(read.rejected[0].rawPayload).to.deep.equal(legacy);
+    expect(saveMidiProjectTemplateWithOutcome(storage, project, { asNew: true, id: 'new-c' })).to.include({ persisted: false, reason: 'protected-storage' });
+    expect(storage.backing.get(TEMPLATE_STORAGE_KEY)).to.equal(original); expect(storage.calls.set).to.have.length(0);
+    expect(resetProtectedMidiStorage(storage, { key: TEMPLATE_STORAGE_KEY, expectedRaw: original + ' ' }).reset).to.equal(false);
+    expect(resetProtectedMidiStorage(storage, { key: TEMPLATE_STORAGE_KEY, expectedRaw: original }).reset).to.equal(true);
+    expect(saveMidiProjectTemplateWithOutcome(storage, project, { asNew: true, id: 'new-c' }).persisted).to.equal(true);
+  });
+
+  it('keeps durable and imported future project versions rejected without any replacement write', () => {
+    const storage = createStorage(), future = { ...createMidiProject(), version: 999, futureField: { retain: true } };
+    const original = JSON.stringify(future); storage.backing.set(PROJECT_STORAGE_KEY, original);
+    expect(readStoredMidiProjectOutcome(storage).state).to.equal('unsupported');
+    expect(() => importMidiProjectPayload(future)).to.throw('Unsupported MIDI project version');
+    expect(saveMidiProjectWithOutcome(storage, createMidiProject())).to.include({ persisted: false, reason: 'protected-storage' });
+    expect(storage.backing.get(PROJECT_STORAGE_KEY)).to.equal(original); expect(storage.calls.set).to.have.length(0);
+  });
+
+  it('distinguishes absent, corrupt, unsupported and inaccessible durable records', () => {
+    const storage = createStorage(); expect(readStoredMidiProjectOutcome(storage).state).to.equal('absent');
+    storage.backing.set(PROJECT_STORAGE_KEY, '{'); expect(readStoredMidiProjectOutcome(storage)).to.include({ state: 'corrupt', raw: '{' });
+    storage.backing.set(TEMPLATE_STORAGE_KEY, '{"version":999,"templates":[]}');
+    expect(readStoredMidiProjectTemplatesOutcome(storage).state).to.equal('unsupported');
+    expect(readStoredMidiProjectOutcome({ getItem() { throw new Error('denied'); } }).state).to.equal('unavailable');
+    expect(readStoredMidiProjectOutcome(null).state).to.equal('unavailable');
+  });
   it('reports durable write failures separately from usable sanitized session state', () => {
     const storage = { setItem() { throw new Error('quota'); }, getItem() { return null; } };
     const saved = saveMidiProjectWithOutcome(storage, { name: 'Session', tracks: [{ id: 'a', channel: 99 }] });
@@ -128,6 +164,8 @@ describe('MidiProjectStorage', function() {
       sources: [{ id: 'sfx-old', kind: 'sfx', sourceKey: 'old', mapping: { note: 1 } }]
     }));
 
+    const original = storage.backing.get(PROJECT_STORAGE_KEY);
+    expect(resetProtectedMidiStorage(storage, { key: PROJECT_STORAGE_KEY, expectedRaw: original }).reset).to.equal(true);
     const project = resetMidiProjectStorage(storage, {
       enabled: true,
       input: { channel: 'omni' },

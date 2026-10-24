@@ -131,7 +131,8 @@ const findSurfaceAt = (surfaces, x, y, radius) => {
     const dy = Math.abs(surface.y - y);
     if (dx > radius || dy > radius) continue;
     const score = dx * 4 + dy;
-    if (score < bestScore) {
+    // Prefer the lower stable surface ID when weighted distances tie.
+    if (score < bestScore || score === bestScore && surface.id < best.id) {
       best = surface;
       bestScore = score;
     }
@@ -348,20 +349,21 @@ const buildRouteEdges = (surfaces, gaps, cliffs, options) => {
   return edges;
 };
 
-const resolveEndpointSurfaceIds = (rects, surfaces, radius) => rects
-  .map(rect => {
-    const anchor = rectAnchor(rect);
-    return findSurfaceAt(surfaces, anchor.x, anchor.y, radius)?.id ?? null;
-  })
-  .filter(id => id != null);
+// Preserve unresolved endpoints and their snapshot identity. Aggregated IDs
+// describe any-entrance continuity, never bindings for a named route.
+const resolveEndpointBindings = (rects, surfaces, radius) => rects.map(rect => {
+  const anchor = rectAnchor(rect);
+  return { endpointIndex: rect.index, anchor, snapRadius: radius,
+    surfaceId: findSurfaceAt(surfaces, anchor.x, anchor.y, radius)?.id ?? null };
+});
 
 const traverseRoute = (surfaceIds, exitIds, surfaces, edges) => {
-  const exitSet = new Set(exitIds);
+  const exitSet = new Set(exitIds), surfaceById = new Map(surfaces.map(surface => [surface.id, surface]));
   const blockedHazards = [];
   const queue = [];
   const visited = new Set();
   for (const id of surfaceIds) {
-    const surface = surfaces[id];
+    const surface = surfaceById.get(id);
     if (!surface || surface.hasHazard) {
       if (surface?.hasHazard) blockedHazards.push(id);
       continue;
@@ -379,7 +381,7 @@ const traverseRoute = (surfaceIds, exitIds, surfaces, edges) => {
       };
     }
     for (const edge of edges.get(current) ?? []) {
-      const surface = surfaces[edge.to];
+      const surface = surfaceById.get(edge.to);
       if (!surface || visited.has(edge.to)) continue;
       if (surface.hasHazard) {
         blockedHazards.push(edge.to);
@@ -397,22 +399,27 @@ const traverseRoute = (surfaceIds, exitIds, surfaces, edges) => {
 };
 
 const buildRouteContinuity = (snapshot, surfaces, gaps, cliffs, options) => {
-  const entranceSurfaceIds = resolveEndpointSurfaceIds(
+  const entranceBindings = resolveEndpointBindings(
     snapshot.entrances,
     surfaces,
     options.entranceSnapRadius
   );
-  const exitSurfaceIds = resolveEndpointSurfaceIds(
+  const exitBindings = resolveEndpointBindings(
     snapshot.exits,
     surfaces,
     options.exitSnapRadius
   );
+  const entranceSurfaceIds = entranceBindings.map(binding => binding.surfaceId).filter(id => id != null);
+  const exitSurfaceIds = exitBindings.map(binding => binding.surfaceId).filter(id => id != null);
   const edges = buildRouteEdges(surfaces, gaps, cliffs, options);
   const route = traverseRoute(entranceSurfaceIds, exitSurfaceIds, surfaces, edges);
   return {
     continuous: route.continuous,
     entranceSurfaceIds,
     exitSurfaceIds,
+    entranceBindings,
+    exitBindings,
+    endpointSnapPolicy: 'within-axis-radius; minimum horizontal-distance * 4 + vertical-distance; lowest surface ID on ties',
     reachableSurfaceIds: route.reachableSurfaceIds,
     blockedHazardSurfaceIds: route.blockedHazardSurfaceIds,
     edgeCount: Array.from(edges.values()).reduce((sum, bucket) => sum + bucket.length, 0),

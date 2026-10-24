@@ -3,46 +3,385 @@ import { createProcgenWorkstation } from '../js/app/procgen/workstation/ProcgenW
 import { createProcgenWorkstationProject } from '../js/app/procgen/workstation/ProcgenWorkstationProject.js';
 import { createMidiProject } from '../js/midi/project/MidiProject.js';
 import { EventHandler } from '../js/util/EventHandler.js';
+import { createProcgenRetirementScope } from '../js/app/procgen/ProcgenRetirement.js';
+import { createMemoryCausalStore } from './helpers/causalJournalStore.js';
+import { createProcgenCausalJournal } from '../js/app/procgen/workstation/ProcgenCausalJournal.js';
 
 function target() {
   const events = new Map();
   return { addEventListener(type, fn) { if (!events.has(type)) events.set(type, new Set()); events.get(type).add(fn); },
     removeEventListener(type, fn) { events.get(type)?.delete(fn); }, emit(type, event = {}) { for (const fn of events.get(type) || []) fn(event); } };
 }
-function setup({ lookaheadMs = 0, webMidi } = {}) {
+function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth', outputId = null, search = '', persisted = null, startupSettings = {}, storageOverride = null,
+  laneCount = 1, windowTimers = {} } = {}) {
   let time = 0, paused = false, enabled = false;
   const elements = new Map(['procgenPause', 'procgenPanic', 'procgenSpeed', 'procgenSpeedUp', 'procgenSpeedDown', 'procgenSpeedReadout'].map(id => [id, target()]));
   const document = { ...target(), getElementById: id => elements.get(id) || null };
-  const values = new Map(), stored = new Map(), calls = [], positions = [], statuses = [], restarts = [];
-  const window = { WebMidi: webMidi, performance: { now: () => time }, localStorage: { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value) },
+  const values = new Map(), stored = new Map(), calls = [], positions = [], statuses = [], storageReceipts = [], exportStates = [], restarts = [], captures = [];
+  if (persisted) values.set('lemmings.procgen.workstation.v1', JSON.stringify(persisted));
+  const window = { ...target(), ...windowTimers, WebMidi: webMidi, location: { search }, performance: { now: () => time }, localStorage: { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value) },
     crypto: { getRandomValues(value) { value[0] = 91; } }, prompt: () => 'Test song' };
   const scheduler = { tickMs: 60, sendNote(spec, meta) { calls.push({ spec, meta }); return true; }, allNotesOff() {}, output: { channels: { 1: { sendControlChange() {} } } } };
-  const makeRuntime = () => ({ world: { laneCount: 1, seed: 7, timer: { speedFactor: 1 }, frontiers: [100], soundEvents: { onEvent: new EventHandler() } },
-    lanes: { setClockDriven(value) { this.clockDriven = value; }, pump(value) { positions.push(value); }, renderer: { camera: { getState: () => ({ cameraX: 45 }), applyState(value) { this.restored = value; } } } },
+  let throwCamera = false;
+  const makeRuntime = () => ({ world: { laneCount, seed: 7, timer: { speedFactor: 1 }, frontiers: [100], soundEvents: { onEvent: new EventHandler(), onBatch: new EventHandler() } },
+    lanes: { setClockDriven(value) { this.clockDriven = value; }, pump(value) { positions.push(value); }, renderer: { camera: { getState: () => ({ cameraX: 45 }), applyState(value) { if (throwCamera) throw new Error('Camera unavailable'); this.restored = value; } } } },
     view: { midiPreviewRouter: { scheduler, resetClock() {} }, setMidiPreviewRouter(value) { this.midiPreviewRouter = value; } } });
   let runtime = makeRuntime();
-  let project = createProcgenWorkstationProject(createMidiProject(), { seed: 7, lanes: [{ mode: 'hybrid', patterns: [{ length: 4, steps: Array.from({ length: 4 }, () => ({ enabled: true, note: 60, duration: 1 })) }] }] });
+  let project = createProcgenWorkstationProject(createMidiProject(), { seed: 7, lanes: Array.from({ length: laneCount }, (_, index) => index ? {} :
+    { mode: 'pattern', patternPurpose: 'Complementary transport test fixture',
+      patterns: [{ length: 4, steps: Array.from({ length: 4 }, () => ({ enabled: true, note: 60, duration: 1 })) }] }) });
   const projectListeners = new Set();
-  const legacy = { settings: { seed: 7, speed: 1, laneCount: 1 }, getProject: () => project, setProject(value) { project = value; for (const listener of projectListeners) listener(value); },
+  const legacy = { settings: { seed: 7, speed: 1, laneCount, ...startupSettings }, getProject: () => project, setProject(value) { project = value; for (const listener of projectListeners) listener(value); },
     subscribeProject(listener) { projectListeners.add(listener); return () => projectListeners.delete(listener); },
     setPaused(value) { paused = value; }, isPaused: () => paused, setSpeed(value) { this.settings.speed = value; },
-    local: { getState: () => ({ enabled, selectedBackend: 'synth' }) } };
+    local: { getState: () => ({ enabled, selectedBackend: backend, outputId }) } };
   let viewProps;
-  const view = { render() {}, renderInspector() {}, transport() {}, recording() {}, status: value => statuses.push(value), showProjects() {}, dispose() { this.disposed = true; } };
-  const storage = { async save(id, session) { stored.set(id, session); }, async load(id) { return stored.get(id); }, async list() { return [...stored.keys()].map(id => ({ id })); }, close() {} };
-  let rejectRestart = false, restartGate = null;
+  const view = { render() {}, renderInspector() {}, transport() {}, recording() {}, status: value => statuses.push(value), storage: value => storageReceipts.push(value),
+    exportState: (artifact, delivery) => exportStates.push({ artifact, delivery }), showProjects() {}, dispose() { this.disposed = true; } };
+  let rejectSave = false, saveCalls = 0;
+  const storage = storageOverride || { async save(id, session) { saveCalls++; if (rejectSave) throw new Error('Storage unavailable'); stored.set(id, session); }, async load(id) { return stored.get(id); }, async list() { return [...stored.keys()].map(id => ({ id })); }, close() {} };
+  let rejectRestart = false, returnFalseRestart = false, restartGate = null;
   const studio = createProcgenWorkstation({ document, window, legacy, getRuntime: () => runtime,
-    restart: async request => { restarts.push(request); if (restartGate) await restartGate; if (rejectRestart) throw new Error('Assets unavailable'); runtime = makeRuntime(); runtime.world.laneCount = request.session?.world.laneCount || legacy.settings.laneCount; runtime.world.seed = request.session?.world.seed ?? legacy.settings.seed; },
+    restart: async request => { restarts.push(request); if (restartGate) await restartGate; if (request.lease?.signal.aborted || returnFalseRestart) return false; if (rejectRestart) throw new Error('Assets unavailable'); runtime = makeRuntime(); runtime.world.laneCount = request.session?.world.laneCount || legacy.settings.laneCount; runtime.world.seed = request.session?.world.seed ?? legacy.settings.seed; },
     createView: props => { viewProps = props; return view; }, storage,
-    captureCheckpoint: world => ({ version: 1, laneCount: world.laneCount, seed: world.seed, clock: { ...world.timer } }),
-    transportOptions: { driver: { start() {}, stop() {} }, lookaheadMs }
+    captureCheckpoint: world => { captures.push(world); return { version: 1, laneCount: world.laneCount, seed: world.seed, clock: { ...world.timer } }; },
+    transportOptions: { driver: { start() {}, stop() {} }, lookaheadMs }, historyBytesLimit
   });
-  return { studio, legacy, view, calls, positions, statuses, restarts, stored, elements, window, get runtime() { return runtime; }, get viewProps() { return viewProps; },
-    enable() { enabled = true; }, time(value) { time = value; studio.transport.pump(); }, failRestart() { rejectRestart = true; },
-    holdRestart() { let release; restartGate = new Promise(resolve => { release = resolve; }); return release; } };
+  return { studio, legacy, view, storage, calls, positions, statuses, storageReceipts, exportStates, restarts, stored, captures, elements, document, window, get runtime() { return runtime; }, get viewProps() { return viewProps; }, get saveCalls() { return saveCalls; },
+    enable() { enabled = true; }, time(value) { time = value; studio.transport.pump(); }, failRestart() { rejectRestart = true; }, cancelRestart() { returnFalseRestart = true; }, failSave() { rejectSave = true; },
+    holdRestart() { let release; restartGate = new Promise(resolve => { release = resolve; }); return release; }, failCamera() { throwCamera = true; } };
 }
 
 describe('ProcGen workstation orchestration', () => {
+  it('cancels an externally retired document source before its candidate can publish', async () => {
+    const f = setup(); f.studio.bindRuntime(); const session = f.studio.capture(), previous = f.runtime, source = new AbortController();
+    const release = f.holdRestart(), pending = f.studio.loadSession(session, null, { signal: source.signal });
+    await Promise.resolve(); source.abort(); release(); expect(await pending).to.equal(false);
+    expect(f.runtime).to.equal(previous); f.studio.dispose();
+  });
+  it('records committed physical batches into a durable take and closes it before world replacement', async () => {
+    const memory = createMemoryCausalStore(), storage = { ...memory.storage, close() {} };
+    const f = setup({ storageOverride: storage });
+    f.studio.bindRuntime();
+    const armed = await f.studio.handlers.startCausalTake();
+    expect(armed).to.include({ state: 'recording', durableSequence: 0 });
+    const takeId = armed.takeId;
+    f.runtime.world.soundEvents.onBatch.trigger({ version: 1, worldId: 'world:fixture', generation: 1, tick: 1,
+      batchId: 'world:fixture:1:1:0', sourceTimeMs: 20, tickDurationMs: 20,
+      completeness: { status: 'complete', dropped: 0 }, facts: [] });
+    const receipt = await f.studio.stopCausalTake({ reason: 'test-stop' });
+    expect(receipt).to.include({ takeId, complete: true, durableSequence: 4 });
+    const journal = createProcgenCausalJournal({ storage });
+    const records = await journal.query({ takeId });
+    expect(records.records.map(record => record.kind)).to.deep.equal(['input-observation', 'input-observation', 'physical-batch', 'musical-intents']);
+    expect((await journal.verify(takeId)).status).to.equal('complete');
+    const score = await f.studio.handlers.readPhysicalScore();
+    expect(score).to.include({ takeId, generation: 1, timeDomain: 'physical-source-time' });
+    expect(score.counts.physicalBatches).to.equal(1);
+    await f.studio.dispose().completion;
+  });
+  it('marks failed physical batch processing as partial instead of certifying an empty performance', async () => {
+    const memory = createMemoryCausalStore(), storage = { ...memory.storage, close() {} };
+    const f = setup({ storageOverride: storage }); f.studio.bindRuntime();
+    const takeId = (await f.studio.handlers.startCausalTake()).takeId;
+    f.runtime.world.soundEvents.onBatch.trigger({ version: 1, worldId: 'world:fixture', generation: 1, tick: 1 });
+    f.runtime.world.soundEvents.onBatch.trigger({ version: 1, worldId: 'world:fixture', generation: 1, tick: 2,
+      sourceTimeMs: 40, tickDurationMs: 20, facts: null });
+    const stopped = await f.studio.stopCausalTake({ reason: 'test-failed-source' });
+    expect(stopped.complete).to.equal(false);
+    const manifest = await storage.loadCausalTake(takeId);
+    expect(manifest.coverage.status).to.equal('partial');
+    expect(manifest.coverage.gaps.map(gap => gap.reason)).to.include.members(['clock-observation-failed', 'capture-exception']);
+    expect((await createProcgenCausalJournal({ storage }).verify(takeId)).status).to.equal('partial');
+    await f.studio.dispose().completion;
+  });
+  it('pages saved causal takes and inspects a selected take after recording', async () => {
+    const memory = createMemoryCausalStore(), storage = { ...memory.storage, close() {} };
+    const f = setup({ storageOverride: storage }); f.studio.bindRuntime();
+    const takeId = (await f.studio.handlers.startCausalTake({ takeName: 'A saved performance' })).takeId;
+    await f.studio.stopCausalTake();
+    storage.listCausalTakes = async ({ cursor }) => cursor ?
+      { items: [{ takeId, takeName: 'A saved performance', state: 'finalized', durableSequence: 0 }], nextCursor: null } :
+      { items: [{ takeId: 'take:older', takeName: 'Older', state: 'partial', durableSequence: 0 }], nextCursor: 'take:older' };
+    await f.studio.handlers.browseCausalTakes();
+    expect(f.studio.handlers.causalTakeState().takePageNumber).to.equal(1);
+    await f.studio.handlers.browseCausalTakes('next');
+    expect(f.studio.handlers.causalTakeState().takePageNumber).to.equal(2);
+    await f.studio.handlers.selectCausalTake(takeId);
+    const inspection = await f.studio.handlers.inspectLastCausalTake();
+    expect(inspection).to.include({ takeId, takeName: 'A saved performance', paused: true });
+    await f.studio.handlers.browseCausalTakes('previous');
+    expect(f.studio.handlers.causalTakeState().takePageNumber).to.equal(1);
+    await f.studio.dispose().completion;
+  });
+  it('records tempo and active world-speed changes before the next physical boundary', async () => {
+    const memory = createMemoryCausalStore(), storage = { ...memory.storage, close() {} };
+    const f = setup({ storageOverride: storage }); f.studio.bindRuntime();
+    const takeId = (await f.studio.handlers.startCausalTake()).takeId;
+    f.studio.handlers.transport({ bpm: 180 });
+    await f.studio.stopCausalTake();
+    const records = (await createProcgenCausalJournal({ storage }).query({ takeId })).records;
+    expect(records.map(record => record.kind)).to.deep.equal(['input-observation', 'input-observation', 'timeline', 'input-observation']);
+    expect(records[2].payload).to.deep.equal({ version: 1, kind: 'tempo', bpm: 180 });
+    expect(records[3].payload).to.deep.equal({ version: 1, kind: 'world-speed', speedFactor: 1.5 });
+    await f.studio.dispose().completion;
+  });
+  it('commits and releases local CC reservations after channel submission', async () => {
+    const f = setup(); f.studio.bindRuntime(); f.enable();
+    const scheduler = f.runtime.view.midiPreviewRouter.scheduler, ledger = [];
+    scheduler.output.id = 'local-cc';
+    scheduler.evaluateAndReserve = (_plan, meta) => { ledger.push(['reserve', meta.outputId]); return { ok: true, reservationId: 8 }; };
+    scheduler._resolveOutputId = () => 'local-cc';
+    scheduler._commitReservationMessage = (id, phase, bytes, meta) => { ledger.push(['commit', id, phase, bytes, meta.outputId]); return true; };
+    scheduler._releaseReservation = (id, unclaimedOnly) => { ledger.push(['release', id, unclaimedOnly]); return 0; };
+    scheduler.output.channels[1].sendControlChange = () => ledger.push(['send']);
+    const lane = f.studio.getProject().procgen.lanes[0];
+    f.studio.dispatch({ type: 'procgen/lane', laneId: lane.id, patch: { ccAutomation: [{ id: 'cc-test', enabled: true,
+      controller: 74, axis: 'beat', length: 4, mode: 'step', points: [{ beat: 0, value: 40 }] }] } });
+    f.studio.play(); f.studio.engine.onBeat({ beat: 0.25, timestamp: 100, bpm: 120 });
+    expect(ledger).to.deep.include(['reserve', 'local-cc']);
+    expect(ledger).to.deep.include(['commit', 8, 'on', 3, 'local-cc']);
+    expect(ledger).to.deep.include(['release', 8, true]);
+    expect(ledger.findIndex(entry => entry[0] === 'send')).to.be.lessThan(ledger.findIndex(entry => entry[0] === 'commit'));
+    await f.studio.dispose().completion;
+  });
+  it('stops the musical transport and flushes output without replacing the world', async () => {
+    const f = setup(); f.studio.bindRuntime(); f.studio.play();
+    const world = f.runtime.world;
+    const stopped = f.studio.handlers.stopOutput();
+    expect(stopped).to.include({ playing: false, beat: 0, reason: 'stopped' });
+    expect(f.runtime.world).to.equal(world);
+    expect(f.statuses.at(-1)).to.include('output flushed');
+    await f.studio.dispose().completion;
+  });
+  it('retries the same prepared MIDI bytes after an anchor request fails', async () => {
+    const f = setup(), blobs = [], calls = [], timers = [];
+    let failClick = true;
+    f.document.body = { append() { calls.push('append'); } };
+    f.document.createElement = () => ({ click() { calls.push('click'); if (failClick) throw new Error('blocked'); }, remove() { calls.push('remove'); } });
+    f.window.Blob = Blob;
+    f.window.URL = { createObjectURL(blob) { blobs.push(blob); return `blob:fixture-${blobs.length}`; }, revokeObjectURL() { calls.push('revoke'); } };
+    f.window.setTimeout = callback => { timers.push(callback); return timers.length; };
+    await f.studio.handlers.exportMidi();
+    const prepared = f.studio.getExportState();
+    expect(prepared.artifact).to.include({ retained: true, activeLeases: 0 });
+    expect(prepared.delivery.state).to.equal('failed');
+    expect(calls.at(-1)).to.equal('revoke');
+    failClick = false;
+    const retried = f.studio.handlers.retryExport();
+    expect(retried).to.include({ artifactId: prepared.artifact.artifactId, state: 'delivery-requested' });
+    expect(new Uint8Array(await blobs[0].arrayBuffer())).to.deep.equal(new Uint8Array(await blobs[1].arrayBuffer()));
+    let pickerCalls = 0, written = 0, closed = false;
+    f.window.showSaveFilePicker = () => { pickerCalls++; return Promise.resolve({ createWritable() { return Promise.resolve({
+      write(chunk) { written += chunk.byteLength; }, close() { closed = true; }, abort() {}
+    }); } }); };
+    const saving = f.studio.handlers.savePreparedExport();
+    expect(pickerCalls).to.equal(1);
+    const saved = await saving;
+    expect(saved).to.include({ artifactId: prepared.artifact.artifactId, state: 'close-acknowledged' });
+    expect(written).to.equal(prepared.artifact.byteLength); expect(closed).to.equal(true);
+    timers.at(-1)();
+    const retired = f.studio.dispose(); await retired.completion;
+    expect(f.studio.getExportState().artifact.retained).to.equal(false);
+  });
+  it('never writes a newer artifact to a picker opened for an older export', async () => {
+    const f = setup(); let resolvePicker, opened = 0;
+    f.document.body = { append() {} };
+    f.document.createElement = () => ({ click() {}, remove() {} });
+    f.window.URL = { createObjectURL() { return 'blob:fixture'; }, revokeObjectURL() {} };
+    f.window.setTimeout = () => 1;
+    await f.studio.handlers.exportMidi();
+    const originalId = f.studio.getExportState().artifact.artifactId;
+    f.window.showSaveFilePicker = () => new Promise(resolve => { resolvePicker = resolve; });
+    const saving = f.studio.handlers.savePreparedExport();
+    await f.studio.handlers.exportMidi();
+    expect(f.studio.getExportState().artifact.artifactId).not.to.equal(originalId);
+    resolvePicker({ createWritable() { opened++; return Promise.resolve({ write() {}, close() {} }); } });
+    expect(await saving).to.include({ state: 'canceled', errorKind: 'source-replaced' });
+    expect(opened).to.equal(0);
+    await f.studio.dispose().completion;
+  });
+  it('shows source and delivery receipts separately and discards only prepared bytes', async () => {
+    const f = setup(), before = f.studio.getProject();
+    f.document.body = { append() {} };
+    f.document.createElement = () => ({ click() {}, remove() {} });
+    f.window.URL = { createObjectURL() { return 'blob:fixture'; }, revokeObjectURL() {} };
+    f.window.setTimeout = () => 1;
+    await f.studio.handlers.exportMidi();
+    const shown = f.exportStates.at(-1);
+    expect(shown.artifact).to.include({ retained: true, formatVersion: 'smf1/v1' });
+    expect(shown.delivery).to.include({ state: 'delivery-requested', sinkKind: 'anchor' });
+    expect(f.studio.handlers.discardExport()).to.equal(true);
+    expect(f.studio.getExportState()).to.include({ artifact: null, delivery: null });
+    expect(f.exportStates.at(-1)).to.deep.equal({ artifact: null, delivery: null });
+    expect(f.studio.getProject()).to.equal(before);
+    await f.studio.dispose().completion;
+  });
+  it('cancels a file write while retaining the prepared artifact for another delivery', async () => {
+    const f = setup();
+    f.document.body = { append() {} };
+    f.document.createElement = () => ({ click() {}, remove() {} });
+    f.window.URL = { createObjectURL() { return 'blob:fixture'; }, revokeObjectURL() {} };
+    f.window.setTimeout = () => 1;
+    await f.studio.handlers.exportMidi();
+    const originalId = f.studio.getExportState().artifact.artifactId;
+    let started, aborted = 0;
+    const writing = new Promise(resolve => { started = resolve; });
+    f.window.showSaveFilePicker = () => Promise.resolve({ createWritable() { return Promise.resolve({
+      write() { started(); return new Promise(() => {}); }, close() {}, abort() { aborted++; }
+    }); } });
+    const pending = f.studio.handlers.savePreparedExport();
+    await writing;
+    expect(f.studio.getExportState().delivery.state).to.equal('writing');
+    expect(f.studio.handlers.cancelExportDelivery()).to.equal(true);
+    expect(await pending).to.include({ state: 'canceled', artifactId: originalId });
+    expect(aborted).to.equal(1);
+    expect(f.studio.getExportState().artifact).to.include({ artifactId: originalId, retained: true, activeLeases: 0 });
+    expect(f.studio.handlers.retryExport()).to.include({ artifactId: originalId, state: 'delivery-requested' });
+    await f.studio.dispose().completion;
+  });
+  it('schedules recovery after paused edits and reports the durable revision', async () => {
+    const timers = [], f = setup({ windowTimers: {
+      setTimeout(callback) { timers.push(callback); return timers.length; },
+      clearTimeout(id) { timers[id - 1] = null; }
+    } });
+    f.studio.bindRuntime(); f.studio.transport.pause();
+    f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 45 } });
+    f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 1, patch: { note: 46 } });
+    expect(timers.filter(Boolean)).to.have.length(1);
+    expect(f.studio.getRecoveryState().state).to.equal('pending');
+    const tick = timers.find(Boolean); tick();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const recovery = f.studio.getRecoveryState();
+    expect(recovery.state).to.equal('saved');
+    expect(recovery.durableRevision).to.equal(recovery.pendingRevision);
+    expect(f.stored.get('__recovery__').project.procgen.lanes[0].patterns[0].steps.slice(0, 2).map(step => step.note)).to.deep.equal([45, 46]);
+    f.studio.dispose();
+  });
+  it('coalesces edits made during recovery and never reports a failed write as durable', async () => {
+    const timers = [], writes = []; let finishFirst;
+    const f = setup({ windowTimers: {
+      setTimeout(callback) { timers.push(callback); return timers.length; },
+      clearTimeout(id) { timers[id - 1] = null; }
+    }, storageOverride: {
+      saveRecovery(session) { writes.push(session); return writes.length === 1 ? new Promise(resolve => { finishFirst = resolve; }) : Promise.reject(new Error('Quota unavailable')); },
+      close() {}
+    } });
+    f.studio.bindRuntime(); f.studio.transport.pause();
+    f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 45 } });
+    const first = f.studio.recover();
+    f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 1, patch: { note: 46 } });
+    finishFirst(); await first;
+    expect(f.studio.getRecoveryState()).to.include({ state: 'pending', durableRevision: 1, pendingRevision: 2 });
+    expect(timers.filter(Boolean)).to.have.length(1);
+    timers.find(Boolean)(); await new Promise(resolve => setTimeout(resolve, 0));
+    const recovery = f.studio.getRecoveryState();
+    expect(recovery.state).to.equal('unavailable');
+    expect(recovery.durableRevision).to.equal(1);
+    expect(recovery.error.message).to.equal('Quota unavailable');
+    expect(f.storageReceipts.at(-1).recovery.state).to.equal('unavailable');
+    f.studio.dispose();
+  });
+  it('coalesces large-project preference writes while edits stay in the canonical project', () => {
+    const timers = [], f = setup({ laneCount: 128, windowTimers: {
+      setTimeout(callback) { timers.push(callback); return timers.length; },
+      clearTimeout(id) { timers[id - 1] = null; }
+    } });
+    const key = 'lemmings.procgen.workstation.v1', original = f.window.localStorage.getItem(key);
+    f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 45 } });
+    f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 1, patch: { note: 46 } });
+    expect(f.window.localStorage.getItem(key)).to.equal(original);
+    expect(timers.filter(Boolean)).to.have.length(1);
+    timers[0]();
+    const durable = JSON.parse(f.window.localStorage.getItem(key));
+    expect(durable.project.procgen.lanes[0].patterns[0].steps.slice(0, 2).map(step => step.note)).to.deep.equal([45, 46]);
+    f.studio.dispose();
+  });
+  it('prepares a recipe with declared lanes and speed without inheriting a saved project', () => {
+    const savedProject = createProcgenWorkstationProject(createMidiProject(), { seed: 12, lanes: [{}, {}] });
+    const persisted = { version: 1, project: savedProject, transport: { bpm: 60, gameSpeed: 0.5, speedMode: 'bpm' }, ui: { slot: 2 } };
+    const f = setup({ search: '?seed=999&lanes=3&speed=2', persisted, startupSettings: { seed: 999, laneCount: 3, speed: 2 } });
+    expect(f.studio.getStartupPlan().mode).to.equal('recipe');
+    expect(f.studio.getProject().procgen.lanes).to.have.length(3);
+    expect(f.studio.prepareSettings()).to.include({ laneCount: 3, seed: 999 });
+    expect(f.studio.transport.getState()).to.include({ bpm: 240, gameSpeed: 2 });
+    expect(f.studio.state.slot).to.equal(0);
+    expect(f.window.localStorage.getItem('lemmings.procgen.workstation.v1')).to.equal(JSON.stringify(persisted));
+    f.studio.dispose();
+  });
+  it('defers startup and candidate preferences until a coherent world is committed', async () => {
+    const f = setup(), key = 'lemmings.procgen.workstation.v1';
+    expect(f.window.localStorage.getItem(key)).to.equal(undefined);
+    f.studio.handlers.preferences(); expect(f.window.localStorage.getItem(key)).to.equal(undefined);
+    f.studio.bindRuntime(); const previous = f.window.localStorage.getItem(key);
+    const release = f.holdRestart(), rebuilding = f.studio.handlers.reroll();
+    await Promise.resolve(); expect(f.window.localStorage.getItem(key)).to.equal(previous);
+    release(); expect(await rebuilding).to.equal(true);
+    const committed = JSON.parse(f.window.localStorage.getItem(key));
+    expect(committed.project.procgen.seed).to.equal(f.runtime.world.seed);
+    f.studio.dispose();
+  });
+  it('keeps discovered unused MIDI outputs inert and ignores their disconnects', () => {
+    const calls = [], listeners = new Map();
+    const makePort = id => ({ id, state: 'connected', channels: { 1: {
+      sendPitchBendRange() { calls.push(id); }, sendPitchBend() { calls.push(id); },
+      sendControlChange() { calls.push(id); }, sendAllNotesOff() { calls.push(id); }
+    } } });
+    const a = makePort('A'), b = makePort('B');
+    const webMidi = { inputs: [], outputs: [a, b], addListener(name, fn) { listeners.set(name, fn); }, removeListener(name) { listeners.delete(name); } };
+    const f = setup({ webMidi, backend: 'midi', outputId: 'A' });
+    f.enable(); f.studio.bindRuntime();
+    expect(calls).not.to.include('B');
+    const before = f.studio.transport.getState().playing;
+    b.state = 'disconnected'; listeners.get('disconnected')();
+    expect(calls).not.to.include('B'); expect(f.studio.transport.getState().playing).to.equal(before);
+    expect(f.studio.ports.getState().noteOutputIds).to.deep.equal(['A']);
+    f.studio.dispose();
+  });
+  it('retires ports, view, and storage after a transport destructor throws', async () => {
+    const f = setup(); let portsDisposed = 0, storageClosed = 0;
+    const originalPortsDispose = f.studio.ports.dispose;
+    f.studio.ports.dispose = () => { portsDisposed++; originalPortsDispose(); };
+    f.studio.transport.dispose = () => { throw new Error('flush refused'); };
+    f.storage.close = () => { storageClosed++; return Promise.reject(new Error('disk closed early')); };
+    const receipt = f.studio.dispose();
+    expect(f.studio.dispose()).to.equal(receipt);
+    expect(portsDisposed).to.equal(1); expect(storageClosed).to.equal(1); expect(f.view.disposed).to.equal(true);
+    await receipt.completion;
+    expect(receipt.state).to.equal('retired');
+    expect(receipt.resources.find(resource => resource.name === 'transport')).to.include({ status: 'failed', error: 'flush refused' });
+    expect(receipt.resources.find(resource => resource.name === 'storage')).to.include({ status: 'failed', error: 'disk closed early' });
+  });
+
+  it('shares one retirement receipt across reentrant callers and awaits async cleanup', async () => {
+    const scope = createProcgenRetirementScope(); let nested, attempts = 0, settle;
+    const receipt = scope.retire([
+      { name: 'first', run: () => { attempts++; nested = scope.retire(); } },
+      { name: 'last', run: () => new Promise(resolve => { settle = resolve; }) }
+    ]);
+    expect(attempts).to.equal(1); expect(nested).to.equal(receipt); expect(receipt.state).to.equal('retiring');
+    settle(); await receipt.completion;
+    expect(receipt.state).to.equal('retired'); expect(scope.retire()).to.equal(receipt);
+  });
+
+  it('bounds an unsettled retirement promise with unknown rather than completed evidence', async () => {
+    const receipt = createProcgenRetirementScope({ deadlineMs: 1 }).retire([
+      { name: 'stuck-storage', run: () => new Promise(() => {}) }
+    ]);
+    await receipt.completion;
+    expect(receipt.resources[0].status).to.equal('unknown');
+    expect(receipt.state).to.equal('retired');
+  });
+  it('propagates a nested partial retirement while attempting the remaining independent leaves', async () => {
+    const child = createProcgenRetirementScope(), parent = createProcgenRetirementScope(); let remaining = 0;
+    const receipt = parent.retire([{ name: 'audio-owner', run: () => child.retire([
+      { name: 'adapter-release', run: () => { throw new Error('release refused'); } },
+      { name: 'pcm-release', run: () => { remaining++; } }
+    ]) }, { name: 'storage', run: () => { remaining++; } }]);
+    await receipt.completion; expect(remaining).to.equal(2); expect(receipt.outcome).to.equal('partial');
+    expect(receipt.resources[0]).to.include({ status: 'failed', error: 'adapter-release: release refused' });
+    expect(parent.retire()).to.equal(receipt); expect(child.retire().outcome).to.equal('partial');
+  });
   it('starts an independent silent transport and routes accepted synth pattern performance only after listening', () => {
     const f = setup(); f.studio.bindRuntime();
     expect(f.runtime.lanes.clockDriven).to.equal(true); expect(f.studio.transport.getState().playing).to.equal(true);
@@ -52,7 +391,7 @@ describe('ProcGen workstation orchestration', () => {
     expect(f.positions).to.include(125); f.studio.dispose(); expect(f.view.disposed).to.equal(true);
   });
 
-  it('hooks replacement routers so game events use the canonical hybrid lane engine', () => {
+  it('hooks replacement routers while keeping game events out of the complementary pattern lane', () => {
     const f = setup(); f.studio.bindRuntime(); f.enable();
     const fresh = { scheduler: f.runtime.view.midiPreviewRouter.scheduler, resetClock() {} };
     f.runtime.view.setMidiPreviewRouter(fresh);
@@ -60,7 +399,7 @@ describe('ProcGen workstation orchestration', () => {
     expect(fresh.workstationEventHandler({ laneIndex: 0, action: 'building' })).to.equal(true);
     expect(f.calls).to.have.length(0);
     f.runtime.world.soundEvents.onEvent.trigger({ laneIndex: 0, action: 'building' });
-    expect(f.calls.some(call => call.meta.source === 'game')).to.equal(true); f.studio.dispose();
+    expect(f.calls.some(call => call.meta.source === 'game')).to.equal(false); f.studio.dispose();
   });
 
   it('observes game conditions before listening without double-counting router events', () => {
@@ -78,11 +417,94 @@ describe('ProcGen workstation orchestration', () => {
     expect(step).to.include({ enabled: true, note: 67, velocity: 97, duration: 0.25 }); f.studio.dispose();
   });
 
+  it('cancels an armed MIDI Learn when a different session loads', async () => {
+    const f = setup(); f.studio.bindRuntime();
+    f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 55 } });
+    const saved = f.studio.capture();
+    f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 60 } });
+    expect(f.studio.handlers.learn()).to.equal(true);
+    expect(await f.studio.loadSession(saved)).to.equal(true);
+    f.studio.ports.receiveMidi([0x90, 81, 100], 0);
+    expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(55);
+    expect(f.studio.getInputEditLease()).to.equal(null);
+    expect(f.studio.ports.getState().learning).to.equal(false);
+    f.studio.dispose();
+  });
+
+  it('learns into the armed step even if selection changes, then offers one Undo', async () => {
+    const f = setup(); f.studio.bindRuntime();
+    expect(f.studio.handlers.learn()).to.equal(true);
+    const lease = f.studio.getInputEditLease();
+    expect(lease).to.include({ laneId: 'lane-1', slot: 0, index: 0, policy: 'fixed-target' });
+    f.studio.state.step = 1;
+    f.studio.ports.receiveMidi([0x90, 81, 100], 0);
+    const steps = f.studio.getProject().procgen.lanes[0].patterns[0].steps;
+    expect(steps[0].note).to.equal(81); expect(steps[1].note).to.equal(60);
+    expect(await f.studio.handlers.undo()).to.equal(true);
+    expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(60);
+    f.studio.dispose();
+  });
+
+  it('cancels MIDI Learn on target removal, input replacement, and explicit cancellation', () => {
+    const f = setup(); f.studio.bindRuntime();
+    f.studio.state.step = 3;
+    f.studio.handlers.learn();
+    f.studio.dispatch({ type: 'procgen/pattern', laneId: 'lane-1', slot: 0, patch: { length: 2 } });
+    expect(f.studio.getInputEditLease()).to.equal(null);
+    f.studio.state.step = 0;
+    f.studio.handlers.learn();
+    f.studio.ports.setInput({ id: 'keys', ...target() });
+    expect(f.studio.getInputEditLease()).to.equal(null);
+    expect(f.studio.ports.getState().learning).to.equal(false);
+    f.studio.handlers.learn(); f.studio.handlers.cancelLearn();
+    expect(f.studio.getInputEditLease()).to.equal(null);
+    f.studio.dispose();
+  });
+
+  it('keeps a rejected session load from leaving MIDI Learn armed', async () => {
+    const f = setup(); f.studio.bindRuntime(); f.studio.handlers.learn();
+    try { await f.studio.loadSession({ invalid: true }); } catch { /* Rejection is expected. */ }
+    expect(f.studio.getInputEditLease()).to.equal(null);
+    expect(f.studio.ports.getState().learning).to.equal(false);
+    f.studio.dispose();
+  });
+
   it('supports phrase editing undo and redo without a second project model', () => {
     const f = setup(); f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 1, patch: { note: 72 } });
     expect(f.legacy.getProject().procgen.lanes[0].patterns[0].steps[1].note).to.equal(72);
     f.studio.handlers.undo(); expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[1].note).to.equal(60);
     f.studio.handlers.redo(); expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[1].note).to.equal(72); f.studio.dispose();
+  });
+
+  it('replays edits made during a world-changing Undo and invalidates its Redo branch', async () => {
+    const f = setup(); f.studio.bindRuntime();
+    expect(await f.studio.handlers.addLane()).to.equal(true);
+    const release = f.holdRestart(), pending = f.studio.handlers.undo();
+    expect(f.studio.handlers.historyBusy()).to.equal(true);
+    f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 81 } });
+    expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(81);
+    release(); expect(await pending).to.equal(true);
+    expect(f.studio.handlers.historyBusy()).to.equal(false);
+    expect(f.studio.getProject().procgen.lanes).to.have.length(1);
+    expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(81);
+    expect(await f.studio.handlers.redo()).to.equal(false);
+    expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(81);
+    expect(await f.studio.handlers.undo()).to.equal(true);
+    expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(60);
+    f.studio.dispose();
+  });
+
+  it('keeps concurrent edits undoable when a history rebuild fails', async () => {
+    const f = setup(); f.studio.bindRuntime();
+    expect(await f.studio.handlers.addLane()).to.equal(true);
+    const release = f.holdRestart(), pending = f.studio.handlers.undo();
+    f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 81 } });
+    f.failRestart(); release(); expect(await pending).to.equal(false);
+    expect(f.studio.getProject().procgen.lanes).to.have.length(2);
+    expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(81);
+    expect(await f.studio.handlers.undo()).to.equal(true);
+    expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(60);
+    f.studio.dispose();
   });
 
   it('quantizes consecutive recorded notes into different cells and captures simultaneous notes as a chord', () => {
@@ -93,6 +515,43 @@ describe('ProcGen workstation orchestration', () => {
     const steps = f.studio.getProject().procgen.lanes[0].patterns[0].steps;
     expect(steps[0]).to.include({ note: 60, duration: 0.2 }); expect(steps[0].chord.degrees).to.deep.equal([0, 4]);
     expect(steps[1]).to.include({ note: 72, velocity: 95 }); expect(steps[1].duration).to.be.closeTo(0.1, 1e-8); f.studio.dispose();
+  });
+
+  it('groups a captured chord and its note-off duration into one Undo gesture', async () => {
+    const f = setup(); f.studio.bindRuntime(); f.studio.handlers.record(true);
+    f.studio.ports.receiveMidi([0x90, 60, 90], 0); f.studio.ports.receiveMidi([0x90, 64, 90], 0);
+    f.time(100); f.studio.ports.receiveMidi([0x80, 60, 0], 100); f.studio.ports.receiveMidi([0x80, 64, 0], 100);
+    expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].chord.degrees).to.deep.equal([0, 4]);
+    expect(await f.studio.handlers.undo()).to.equal(true);
+    const restored = f.studio.getProject().procgen.lanes[0].patterns[0].steps[0];
+    expect(restored.chord).to.equal(null); expect(restored.note).to.equal(60);
+    f.studio.dispose();
+  });
+
+  it('does not store no-op edits and keeps retained history within its byte budget', () => {
+    const f = setup({ historyBytesLimit: 4096 });
+    f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 60 } });
+    expect(f.studio.handlers.historyState().undo).to.equal(0);
+    for (let note = 61; note < 75; note++) f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note } });
+    expect(f.studio.handlers.historyState().retainedBytes).to.be.at.most(4096);
+    expect(f.studio.handlers.historyState().dropped).to.be.greaterThan(0);
+    f.studio.dispose();
+  });
+
+  it('retains many structurally shared edits and accounts for redo by patch size', async () => {
+    const f = setup({ laneCount: 128 });
+    for (let note = 1; note <= 30; note++) f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1',
+      slot: 0, index: 0, patch: { note } });
+    const before = f.studio.handlers.historyState();
+    expect(before.undo).to.equal(30);
+    expect(before.retainedBytes).to.be.lessThan(100000);
+    expect(await f.studio.handlers.undo()).to.equal(true);
+    const after = f.studio.handlers.historyState();
+    expect(after.redo).to.equal(1);
+    expect(after.retainedBytes).to.be.lessThan(100000);
+    expect(await f.studio.handlers.redo()).to.equal(true);
+    expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(30);
+    f.studio.dispose();
   });
 
   it('accepts legacy music changes without a subscription echo or a stale second project', () => {
@@ -120,6 +579,209 @@ describe('ProcGen workstation orchestration', () => {
     expect(f.studio.transport.getState()).to.include({ playing: false, beat: 0.25 });
     expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(60);
     expect(f.runtime.lanes.renderer.camera.restored).to.deep.equal({ cameraX: 45 }); f.studio.dispose();
+  });
+
+  it('keeps Save, Save As, and Rename on stable identities even with duplicate names', async () => {
+    const documents = new Map(), storage = {
+      async saveDocument(id, expectedRevision, session) {
+        const current = documents.get(id);
+        if ((current?.revision || 0) !== expectedRevision) throw new Error('Revision conflict');
+        const revision = expectedRevision + 1;
+        documents.set(id, { id, revision, session }); return { id, revision };
+      },
+      async listDocuments() { return [...documents.values()].map(({ id, revision, session }) => ({ id, revision, name: session.name, savedAt: session.savedAt })); },
+      async loadDocument(id) { return documents.get(id); },
+      async saveRecovery() {}, close() {}
+    };
+    const f = setup({ storageOverride: storage }); f.studio.bindRuntime();
+    expect(await f.studio.handlers.save()).to.equal(true);
+    const first = f.studio.getDocumentState();
+    expect(await f.studio.handlers.saveAs()).to.equal(true);
+    const second = f.studio.getDocumentState();
+    expect(second.id).not.to.equal(first.id);
+    expect(documents.size).to.equal(2);
+    expect([...documents.values()].map(item => item.session.name)).to.deep.equal(['Test song', 'Test song']);
+    f.window.prompt = () => 'Renamed';
+    expect(await f.studio.handlers.rename()).to.equal(true);
+    expect(f.studio.getDocumentState()).to.include({ id: second.id, revision: 2 });
+    expect(documents.get(first.id).session.name).to.equal('Test song');
+    expect(documents.get(second.id).session.name).to.equal('Renamed');
+    expect(await f.studio.handlers.new()).to.equal(true);
+    f.view.showProjects = (entries, load) => { f.view.entries = entries; f.view.choose = load; };
+    expect(await f.studio.handlers.load()).to.equal(true);
+    expect(f.view.entries.map(entry => entry.id)).to.have.members([first.id, second.id]);
+    expect(await f.view.choose(first.id)).to.equal(true);
+    expect(f.studio.getDocumentState()).to.include({ id: first.id, revision: 1, dirty: false });
+    f.studio.dispose();
+  });
+
+  it('loads only a selected checkpoint after browsing compact project pages', async () => {
+    const requests = [], storage = {
+      async listDocumentPage(options = {}) {
+        requests.push(options);
+        return options.cursor ? { items: [{ id: 'doc:chosen', name: 'Chosen', savedAt: '2026-10-22T00:00:00Z', revision: 2 }], nextCursor: null } :
+          { items: [{ id: 'doc:first', name: 'First', savedAt: '2026-10-22T00:00:00Z', revision: 1 }], nextCursor: { savedAt: '2026-10-22T00:00:00Z', id: 'doc:first' } };
+      },
+      async loadDocument(id) { if (id !== 'doc:chosen') throw new Error('Project was removed'); return { id, revision: 2, session: this.saved }; },
+      async saveRecovery() {}, close() {}
+    };
+    const f = setup({ storageOverride: storage }); f.studio.bindRuntime(); storage.saved = f.studio.capture();
+    f.view.showProjectPage = (page, load, more) => { f.view.page = page; f.view.loadChoice = load; f.view.more = more; };
+    expect(await f.studio.handlers.load()).to.equal(true);
+    expect(f.view.page.items).to.have.length(1); expect(requests).to.have.length(1);
+    expect(await f.view.loadChoice('doc:first')).to.equal(false);
+    expect(f.studio.getDocumentState().id).to.equal(null);
+    expect((await f.view.more(f.view.page.nextCursor, '')).items[0].id).to.equal('doc:chosen');
+    expect(await f.view.loadChoice('doc:chosen')).to.equal(true);
+    expect(f.studio.getDocumentState()).to.include({ id: 'doc:chosen', revision: 2, dirty: false });
+    f.studio.dispose();
+  });
+
+  it('keeps the save indicator dirty when edits outlive an in-flight durable snapshot', async () => {
+    const f = setup(); f.studio.bindRuntime();
+    const originalSave = f.storage.save.bind(f.storage);
+    let release; const gate = new Promise(resolve => { release = resolve; });
+    f.storage.save = async (...args) => { await gate; return originalSave(...args); };
+    const saving = f.studio.handlers.save();
+    await Promise.resolve();
+    f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 81 } });
+    release(); expect(await saving).to.equal(true);
+    expect(f.storageReceipts.at(-1)).to.include({ dirty: true, savedAt: f.stored.get('Test song').savedAt });
+    expect(f.statuses.at(-1)).to.include('newer edits are unsaved');
+    f.studio.dispose();
+  });
+
+  it('does not rename or resume a new document when an older save completes late', async () => {
+    const f = setup(); f.studio.bindRuntime();
+    const originalSave = f.storage.save.bind(f.storage);
+    let release; const gate = new Promise(resolve => { release = resolve; });
+    f.storage.save = async (...args) => { await gate; return originalSave(...args); };
+    const saving = f.studio.handlers.save();
+    await Promise.resolve();
+    expect(await f.studio.handlers.new()).to.equal(true);
+    f.studio.transport.pause();
+    release(); expect(await saving).to.equal(true);
+    expect(f.stored.get('Test song')).to.exist;
+    expect(f.studio.transport.getState().playing).to.equal(false);
+    expect(f.studio.capture().name).to.equal('Untitled session');
+    expect(f.storageReceipts.at(-1).dirty).to.equal(true);
+    f.studio.dispose();
+  });
+
+  it('keeps the newer document selected when two document saves complete in reverse order', async () => {
+    const documents = new Map(); let releaseFirst;
+    const firstGate = new Promise(resolve => { releaseFirst = resolve; });
+    let calls = 0;
+    const storage = { async saveDocument(id, expectedRevision, session) {
+      calls++; if (calls === 1) await firstGate;
+      documents.set(id, { session, revision: expectedRevision + 1 });
+      return { id, revision: expectedRevision + 1 };
+    }, async saveRecovery() {}, close() {} };
+    const f = setup({ storageOverride: storage }); f.studio.bindRuntime();
+    const oldSave = f.studio.handlers.save();
+    await Promise.resolve();
+    expect(await f.studio.handlers.new()).to.equal(true);
+    expect(await f.studio.handlers.save()).to.equal(true);
+    const selectedId = f.studio.getDocumentState().id;
+    releaseFirst(); expect(await oldSave).to.equal(true);
+    expect(documents.size).to.equal(2);
+    expect(f.studio.getDocumentState()).to.include({ id: selectedId, revision: 1, dirty: false });
+    f.studio.dispose();
+  });
+
+  it('does not override an explicit pause after Save began', async () => {
+    const f = setup(); f.studio.bindRuntime();
+    const originalSave = f.storage.save.bind(f.storage);
+    let release; const gate = new Promise(resolve => { release = resolve; });
+    f.storage.save = async (...args) => { await gate; return originalSave(...args); };
+    const saving = f.studio.handlers.save();
+    await Promise.resolve(); f.studio.transport.pause();
+    release(); expect(await saving).to.equal(true);
+    expect(f.studio.transport.getState().playing).to.equal(false);
+    f.studio.dispose();
+  });
+
+  it('cancels Save before checkpoint capture or storage writes and restores playback', async () => {
+    const f = setup(); f.studio.bindRuntime(); f.time(125);
+    f.window.prompt = () => null;
+    const project = f.studio.getProject(), before = f.studio.transport.getState(), captures = f.captures.length;
+    expect(await f.studio.handlers.save()).to.equal(false);
+    expect(f.captures).to.have.length(captures);
+    expect(f.stored.size).to.equal(0);
+    expect(f.studio.getProject()).to.equal(project);
+    expect(f.studio.transport.getState()).to.include({ playing: before.playing, beat: before.beat });
+    f.studio.dispose();
+  });
+
+  it('preserves a paused session on Cancel and leaves the old saved record on a storage error', async () => {
+    const f = setup(); f.studio.bindRuntime();
+    expect(await f.studio.handlers.save()).to.equal(true);
+    const original = f.stored.get('Test song');
+    f.studio.transport.pause(); f.window.prompt = () => null;
+    const beforeCalls = f.saveCalls;
+    expect(await f.studio.handlers.save()).to.equal(false);
+    expect(f.saveCalls).to.equal(beforeCalls);
+    expect(f.studio.transport.getState().playing).to.equal(false);
+    f.window.prompt = () => 'Test song'; f.failSave();
+    expect(await f.studio.handlers.save()).to.equal(false);
+    expect(f.stored.get('Test song')).to.equal(original);
+    expect(f.studio.transport.getState().playing).to.equal(false);
+    f.studio.dispose();
+  });
+
+  it('does not publish a pending world after workstation disposal', async () => {
+    const f = setup(); f.studio.bindRuntime(); const previous = f.runtime, release = f.holdRestart();
+    const pending = f.studio.handlers.addLane(), statusCount = f.statuses.length;
+    f.studio.dispose(); release();
+    expect(await pending).to.equal(false);
+    expect(f.runtime).to.equal(previous);
+    expect(f.statuses).to.have.length(statusCount);
+    expect(f.view.disposed).to.equal(true);
+  });
+
+  it('rolls back a canceled world preparation while its workstation still owns the operation', async () => {
+    const f = setup(); f.studio.bindRuntime(); const previous = f.studio.getProject(), original = f.runtime;
+    f.cancelRestart();
+    expect(await f.studio.handlers.addLane()).to.equal(false);
+    expect(f.studio.getProject().procgen.lanes).to.have.length(previous.procgen.lanes.length);
+    expect(f.runtime).to.equal(original);
+    expect(f.studio.transport.getState().playing).to.equal(true);
+    f.studio.dispose();
+  });
+
+  it('admits only the latest selected import before reading and parsing', async () => {
+    const f = setup(); f.studio.bindRuntime();
+    const first = f.studio.capture(), second = f.studio.capture();
+    first.project.procgen.lanes[0].patterns[0].steps[0].note = 60;
+    second.project.procgen.lanes[0].patterns[0].steps[0].note = 81;
+    let finishFirst;
+    const old = f.studio.handlers.import({ text: () => new Promise(resolve => { finishFirst = resolve; }) });
+    const recent = f.studio.handlers.import({ text: async () => JSON.stringify(second) });
+    expect(await recent).to.equal(true);
+    finishFirst(JSON.stringify(first));
+    expect(await old).to.equal(false);
+    expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(81);
+    expect(f.restarts).to.have.length(1);
+    f.studio.dispose();
+  });
+
+  it('does not parse or restart an imported file that completes after disposal', async () => {
+    const f = setup(); f.studio.bindRuntime();
+    let finishRead;
+    const pending = f.studio.handlers.import({ text: () => new Promise(resolve => { finishRead = resolve; }) });
+    f.studio.dispose();
+    finishRead('{invalid JSON');
+    expect(await pending).to.equal(false);
+    expect(f.restarts).to.have.length(0);
+  });
+
+  it('rejects a known oversized project before reading or replacing the live world', async () => {
+    const f = setup(); f.studio.bindRuntime();
+    const original = f.runtime, project = f.studio.getProject(); let reads = 0;
+    expect(await f.studio.handlers.import({ size: 64 * 1048576 + 1, async text() { reads++; return '{}'; } })).to.equal(false);
+    expect(reads).to.equal(0); expect(f.restarts).to.have.length(0);
+    expect(f.runtime).to.equal(original); expect(f.studio.getProject()).to.equal(project);
+    f.studio.dispose();
   });
 
   it('preserves causal events and queued phrases when resuming a checkpoint ahead of the audible beat', async () => {
@@ -154,6 +816,31 @@ describe('ProcGen workstation orchestration', () => {
     expect(f.studio.getProject()).to.equal(project); expect(f.studio.transport.getState().playing).to.equal(true); f.studio.dispose();
   });
 
+  it('loads a legacy session without optional camera data and rejects malformed patterns before restart', async () => {
+    const f = setup(); f.studio.bindRuntime(); const saved = f.studio.capture();
+    const oldRuntime = f.runtime, oldProject = f.studio.getProject();
+    const malformed = { ...saved, patterns: { ...saved.patterns, pending: null } };
+    let error; try { await f.studio.loadSession(malformed); } catch (value) { error = value; }
+    expect(error.message).to.include('pattern state is incomplete');
+    expect(f.restarts).to.have.length(0);
+    expect(f.runtime).to.equal(oldRuntime); expect(f.studio.getProject()).to.equal(oldProject);
+    expect(await f.studio.loadSession({ ...saved, camera: undefined })).to.equal(true);
+    expect(f.studio.transport.getState().playing).to.equal(false);
+    f.studio.dispose();
+  });
+
+  it('keeps a post-commit presentation failure paused and restores persistence admission', async () => {
+    const f = setup(); f.studio.bindRuntime(); const saved = f.studio.capture(), oldRuntime = f.runtime;
+    f.failCamera();
+    let error; try { await f.studio.loadSession(saved); } catch (value) { error = value; }
+    expect(error.message).to.equal('Camera unavailable');
+    expect(f.runtime).not.to.equal(oldRuntime);
+    expect(f.studio.transport.getState().playing).to.equal(false);
+    f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 81 } });
+    expect(JSON.parse(f.window.localStorage.getItem('lemmings.procgen.workstation.v1')).project.procgen.lanes[0].patterns[0].steps[0].note).to.equal(81);
+    f.studio.dispose();
+  });
+
   it('keeps concurrent musical edits when a candidate world fails', async () => {
     const f = setup(); f.studio.bindRuntime(); const release = f.holdRestart(); f.failRestart();
     const pending = f.studio.handlers.addLane();
@@ -162,6 +849,20 @@ describe('ProcGen workstation orchestration', () => {
     expect(f.studio.getProject().procgen.lanes).to.have.length(1);
     expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(84);
     await f.studio.handlers.undo(); expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(60); f.studio.dispose();
+  });
+
+  it('captures recovery before page suspension and leaves BFCache restoration paused', () => {
+    const f = setup(); f.studio.bindRuntime();
+    const world = f.runtime.world;
+    expect(f.studio.transport.getState().playing).to.equal(true);
+    f.window.emit('pagehide', { persisted: true });
+    expect(f.runtime.world).to.equal(world);
+    expect(f.studio.transport.getState().playing).to.equal(false);
+    expect(f.stored.get('__recovery__').world.seed).to.equal(world.seed);
+    f.window.emit('pageshow', { persisted: true });
+    expect(f.studio.transport.getState().playing).to.equal(false);
+    expect(f.statuses.at(-1)).to.include('restored paused');
+    f.studio.dispose();
   });
 
   it('does not treat a restored legacy speed as a new tempo edit on the next control event', async () => {
@@ -177,11 +878,13 @@ describe('ProcGen workstation orchestration', () => {
     const listeners = new Map(), input = { id: 'keys', state: 'connected', addListener() {}, removeListener() {} };
     const webMidi = { enabled: true, inputs: [input], outputs: [], addListener: (type, fn) => listeners.set(type, fn), removeListener: type => listeners.delete(type) };
     const f = setup({ webMidi }); f.studio.bindRuntime(); f.studio.handlers.input('keys');
+    const playing = f.studio.transport.getState().playing;
     input.state = 'disconnected'; listeners.get('disconnected')();
-    expect(f.studio.transport.getState().playing).to.equal(false);
+    expect(f.studio.transport.getState().playing).to.equal(playing);
+    expect(f.studio.ports.getState().inputLiveness.mode).to.equal('unobserved');
     let attached = 0;
     webMidi.inputs = [{ ...input, state: 'connected', addListener() { attached++; } }]; listeners.get('connected')();
-    expect(attached).to.be.greaterThan(0); expect(f.studio.transport.getState().playing).to.equal(false);
+    expect(attached).to.be.greaterThan(0); expect(f.studio.transport.getState().playing).to.equal(playing);
     f.studio.dispose(); expect(listeners.size).to.equal(0);
   });
 

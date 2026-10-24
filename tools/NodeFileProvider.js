@@ -4,6 +4,7 @@ import path from 'path';
 import AdmZip from 'adm-zip';
 import * as tar from 'tar';
 import { createExtractorFromFile, createExtractorFromData } from 'node-unrar-js';
+import { ResourceLoadError } from '../js/data/file-provider/ResourceLoadError.js';
 
 const DEFAULT_MAX_ARCHIVE_CACHE_ENTRIES = 8;
 const DEFAULT_MAX_ARCHIVE_CACHE_BYTES = 64 * 1024 * 1024;
@@ -348,38 +349,44 @@ class NodeFileProvider {
   async loadBinary(dir = '.', filename) {
     filename = this._validateEntry(filename);
     const sourcePath = this._trimTrailingSeparators(this._normalizeArchivePath(dir));
-    if (/\.zip$/i.test(sourcePath)) {
-      const zip = this._getZip(sourcePath);
-      const entry = this._findZipEntry(zip, filename);
-      if (!entry) throw new Error(`File ${filename} not found in ${sourcePath}`);
-      const buffer = entry.getData();
+    const requestedUrl = `${sourcePath}/${filename}`;
+    try {
+      if (/\.zip$/i.test(sourcePath)) {
+        const zip = this._getZip(sourcePath);
+        const entry = this._findZipEntry(zip, filename);
+        if (!entry) throw new ResourceLoadError('not-found', requestedUrl);
+        const buffer = entry.getData();
+        const arr = new Uint8Array(buffer);
+        return new Lemmings.BinaryReader(arr, 0, arr.length, filename, sourcePath);
+      } else if (/(\.tar\.gz|\.tgz|\.tar)$/i.test(sourcePath)) {
+        const map = await this._getTar(sourcePath);
+        const buf = this._findEntry(map, filename);
+        if (!buf) throw new ResourceLoadError('not-found', requestedUrl);
+        const arr = new Uint8Array(buf);
+        return new Lemmings.BinaryReader(arr, 0, arr.length, filename, sourcePath);
+      } else if (/\.rar$/i.test(sourcePath)) {
+        const map = await this._getRar(sourcePath);
+        const buf = this._findEntry(map, filename);
+        if (!buf) throw new ResourceLoadError('not-found', requestedUrl);
+        const arr = new Uint8Array(buf);
+        return new Lemmings.BinaryReader(arr, 0, arr.length, filename, sourcePath);
+      } else if (/\.nxp$/i.test(sourcePath)) {
+        const map = this._getNxp(sourcePath);
+        const buf = this._findEntry(map, filename);
+        if (!buf) throw new ResourceLoadError('not-found', requestedUrl);
+        const arr = new Uint8Array(buf);
+        return new Lemmings.BinaryReader(arr, 0, arr.length, filename, sourcePath);
+      }
+      const fullPath = path.isAbsolute(sourcePath)
+        ? path.join(sourcePath, filename)
+        : path.join(this.rootPath, sourcePath, filename);
+      const buffer = fs.readFileSync(fullPath);
       const arr = new Uint8Array(buffer);
       return new Lemmings.BinaryReader(arr, 0, arr.length, filename, sourcePath);
-    } else if (/(\.tar\.gz|\.tgz|\.tar)$/i.test(sourcePath)) {
-      const map = await this._getTar(sourcePath);
-      const buf = this._findEntry(map, filename);
-      if (!buf) throw new Error(`File ${filename} not found in ${sourcePath}`);
-      const arr = new Uint8Array(buf);
-      return new Lemmings.BinaryReader(arr, 0, arr.length, filename, sourcePath);
-    } else if (/\.rar$/i.test(sourcePath)) {
-      const map = await this._getRar(sourcePath);
-      const buf = this._findEntry(map, filename);
-      if (!buf) throw new Error(`File ${filename} not found in ${sourcePath}`);
-      const arr = new Uint8Array(buf);
-      return new Lemmings.BinaryReader(arr, 0, arr.length, filename, sourcePath);
-    } else if (/\.nxp$/i.test(sourcePath)) {
-      const map = this._getNxp(sourcePath);
-      const buf = this._findEntry(map, filename);
-      if (!buf) throw new Error(`File ${filename} not found in ${sourcePath}`);
-      const arr = new Uint8Array(buf);
-      return new Lemmings.BinaryReader(arr, 0, arr.length, filename, sourcePath);
+    } catch (error) {
+      if (error?.code === 'ENOENT') throw new ResourceLoadError('not-found', requestedUrl, { cause: error });
+      throw error;
     }
-    const fullPath = path.isAbsolute(sourcePath)
-      ? path.join(sourcePath, filename)
-      : path.join(this.rootPath, sourcePath, filename);
-    const buffer = fs.readFileSync(fullPath);
-    const arr = new Uint8Array(buffer);
-    return new Lemmings.BinaryReader(arr, 0, arr.length, filename, sourcePath);
   }
 
   /**
@@ -392,36 +399,41 @@ class NodeFileProvider {
       throw new Error(`Invalid file path ${file}`);
     }
     file = file.replace(/\\/g, '/');
-    const m = file.match(/^(.*\.(?:zip|tar(?:\.gz)?|tgz|rar|nxp))\/(.+)$/i);
-    if (m) {
-      const archive = this._normalizeArchivePath(m[1]);
-      const entryName = this._validateEntry(m[2]);
-      if (/\.zip$/i.test(archive)) {
-        const zip = this._getZip(archive);
-        const entry = this._findZipEntry(zip, entryName);
-        if (!entry) throw new Error(`File ${entryName} not found in ${archive}`);
-        return entry.getData().toString('utf8');
-      } else if (/(\.tar\.gz|\.tgz|\.tar)$/i.test(archive)) {
-        const map = await this._getTar(archive);
-        const buf = this._findEntry(map, entryName);
-        if (!buf) throw new Error(`File ${entryName} not found in ${archive}`);
-        return Buffer.from(buf).toString('utf8');
-      } else if (/\.rar$/i.test(archive)) {
-        const map = await this._getRar(archive);
-        const buf = this._findEntry(map, entryName);
-        if (!buf) throw new Error(`File ${entryName} not found in ${archive}`);
-        return Buffer.from(buf).toString('utf8');
-      } else if (/\.nxp$/i.test(archive)) {
-        const map = this._getNxp(archive);
-        const buf = this._findEntry(map, entryName);
-        if (!buf) throw new Error(`File ${entryName} not found in ${archive}`);
-        return Buffer.from(buf).toString('utf8');
+    try {
+      const m = file.match(/^(.*\.(?:zip|tar(?:\.gz)?|tgz|rar|nxp))\/(.+)$/i);
+      if (m) {
+        const archive = this._normalizeArchivePath(m[1]);
+        const entryName = this._validateEntry(m[2]);
+        if (/\.zip$/i.test(archive)) {
+          const zip = this._getZip(archive);
+          const entry = this._findZipEntry(zip, entryName);
+          if (!entry) throw new ResourceLoadError('not-found', file);
+          return entry.getData().toString('utf8');
+        } else if (/(\.tar\.gz|\.tgz|\.tar)$/i.test(archive)) {
+          const map = await this._getTar(archive);
+          const buf = this._findEntry(map, entryName);
+          if (!buf) throw new ResourceLoadError('not-found', file);
+          return Buffer.from(buf).toString('utf8');
+        } else if (/\.rar$/i.test(archive)) {
+          const map = await this._getRar(archive);
+          const buf = this._findEntry(map, entryName);
+          if (!buf) throw new ResourceLoadError('not-found', file);
+          return Buffer.from(buf).toString('utf8');
+        } else if (/\.nxp$/i.test(archive)) {
+          const map = this._getNxp(archive);
+          const buf = this._findEntry(map, entryName);
+          if (!buf) throw new ResourceLoadError('not-found', file);
+          return Buffer.from(buf).toString('utf8');
+        }
       }
+      const fullPath = path.isAbsolute(file)
+        ? file
+        : path.join(this.rootPath, this._validateEntry(file));
+      return fs.readFileSync(fullPath, 'utf8');
+    } catch (error) {
+      if (error?.code === 'ENOENT') throw new ResourceLoadError('not-found', file, { cause: error });
+      throw error;
     }
-    const fullPath = path.isAbsolute(file)
-      ? file
-      : path.join(this.rootPath, this._validateEntry(file));
-    return fs.readFileSync(fullPath, 'utf8');
   }
 }
 

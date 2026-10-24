@@ -159,7 +159,7 @@ describe('FileProvider', function () {
   const cacheKey = (url) => `lem-cache:${url}`;
 
   const setCacheEntry = (url, entry) => {
-    global.localStorage.setItem(cacheKey(url), JSON.stringify(entry));
+    global.localStorage.setItem(cacheKey(url), JSON.stringify({ formatVersion: 2, ...entry }));
   };
 
   const setCacheRaw = (url, raw) => {
@@ -205,7 +205,7 @@ describe('FileProvider', function () {
     origIndexedDb = global.indexedDB;
     setDependency('BinaryReader', MockBinaryReader);
     setDependency('LogHandler', MockLogHandler);
-    provider = new FileProvider(rootPath);
+    provider = new FileProvider(rootPath, { cacheLockManager: { request: async (name, options, callback) => callback({ name }) } });
     global.localStorage = new (class {
       constructor() { this.store = new Map(); }
       getItem(k) { return this.store.has(k) ? this.store.get(k) : null; }
@@ -256,7 +256,7 @@ describe('FileProvider', function () {
     if (origFetch) {
       global.fetch = origFetch;
     }
-    provider.clearCache();
+    provider.dispose();
     setDependency('BinaryReader', origBR);
     setDependency('LogHandler', origLog);
   });
@@ -277,9 +277,9 @@ describe('FileProvider', function () {
           oncomplete: null,
           onabort: null,
           onerror: null,
-          objectStore() {
+          objectStore(name) {
             return {
-              get() { return request(null); },
+              get() { return request(name === 'meta' ? { accountingVersion: 2, value: 0 } : null); },
               put() {}
             };
           }
@@ -304,35 +304,12 @@ describe('FileProvider', function () {
     assert.ok(provider.getCacheStats().indexedDbBytes > 0);
   });
 
-  it('triggers indexedDB pruning after oversized writes', async function () {
-    let pruneCalls = 0;
+  it('bypasses oversized indexedDB entries before opening or evicting the cache', async function () {
+    let opens = 0;
     provider._estimateEntrySize = () => 60 * 1024 * 1024;
-    let idbCalls = 0;
-    provider._idbRequest = async () => {
-      idbCalls++;
-      if (idbCalls === 1) return null;
-      return { value: 0 };
-    };
-    provider._openIndexedDb = async () => ({
-      transaction() {
-        const tx = {
-          objectStore() {
-            return {
-              get() { return {}; },
-              put() {}
-            };
-          }
-        };
-        setTimeout(() => tx.oncomplete?.(), 0);
-        return tx;
-      }
-    });
-    provider._pruneIndexedDb = () => { pruneCalls++; };
-
-    const stored = await provider._storeInIndexedDb('url', { type: 'text', data: 'x' });
-    assert.strictEqual(stored, true);
-    await new Promise(resolve => setTimeout(resolve, 10));
-    assert.strictEqual(pruneCalls, 1);
+    provider._openIndexedDb = async () => { opens++; return null; };
+    assert.strictEqual(await provider._storeInIndexedDb('url', { type: 'text', data: 'x' }), false);
+    assert.strictEqual(opens, 0);
   });
 
   it('prunes indexedDB only when over the limit', async function () {
@@ -341,7 +318,7 @@ describe('FileProvider', function () {
 
     const idb = createIndexedDb();
     global.indexedDB = idb;
-    provider = new FileProvider(rootPath);
+    provider = new FileProvider(rootPath, { cacheLockManager: { request: async (name, options, callback) => callback({ name }) } });
     await provider._openIndexedDb();
     await provider._pruneIndexedDb(1024);
   });

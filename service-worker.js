@@ -1,15 +1,35 @@
-const CACHE_VERSION = 'v1';
-const CORE_CACHE = `lemmings-core-${CACHE_VERSION}`;
-const RUNTIME_CACHE = `lemmings-runtime-${CACHE_VERSION}`;
+const CACHE_VERSION = 1;
+const SCOPE_URL = new URL(self.registration.scope);
+const CACHE_SCOPE = encodeURIComponent(SCOPE_URL.pathname);
+const CORE_CACHE = `lemmings-core-${CACHE_SCOPE}-v${CACHE_VERSION}`;
+const RUNTIME_CACHE = `lemmings-runtime-${CACHE_SCOPE}-v${CACHE_VERSION}`;
+const obsoleteOwnedCache = key => {
+  for (const prefix of ['lemmings-core-', 'lemmings-runtime-']) {
+    const stem = `${prefix}${CACHE_SCOPE}-v`;
+    if (key.startsWith(stem)) {
+      const version = key.slice(stem.length);
+      return /^[0-9]+$/.test(version) && Number(version) < CACHE_VERSION;
+    }
+  }
+  return false;
+};
 const CORE_PATHS = [
   'index.html',
   'editor.html',
+  'procgen.html',
   'css/game.css',
   'css/editor.css',
+  'css/procgen.css',
+  'css/procgen-workstation.css',
+  'css/procgen-world-inspector.css',
+  'css/character-controls.css',
+  'css/midi-spans.css',
+  'css/icons.css',
   'js/vendor/jquery.js',
   'js/vendor/webmidi.js',
   'js/app/boot.js',
   'js/app/editorBoot.js',
+  'js/app/procgenBoot.js',
   'js/app/registerServiceWorker.js',
   'site.webmanifest',
   'img/favicon.png',
@@ -21,19 +41,18 @@ const CORE_PATHS = [
 const toUrl = (path) => new URL(path, self.registration.scope).toString();
 const CORE_ASSETS = CORE_PATHS.map(toUrl);
 
-const isSameOrigin = (url) => url.origin === self.location.origin;
+const isOwnedUrl = url => url.origin === self.location.origin && url.pathname.startsWith(SCOPE_URL.pathname);
 const isHtmlRequest = (request) => request.mode === 'navigate' ||
   (request.headers.get('accept') || '').includes('text/html');
 
 const fetchFresh = (request) => fetch(new Request(request, { cache: 'no-store' }));
 
 const cacheFirst = async (request) => {
-  const cache = await caches.open(RUNTIME_CACHE);
-  const cached = await cache.match(request);
-  if (cached) return cached;
+  let cache;
+  try { cache = await caches.open(RUNTIME_CACHE); const cached = await cache.match(request); if (cached) return cached; } catch { /* Runtime caching is optional. */ }
   const response = await fetch(request);
-  if (response && response.status === 200) {
-    cache.put(request, response.clone());
+  if (cache && response && response.status === 200) {
+    try { cache.put(request, response.clone()).catch(() => {}); } catch { /* Runtime caching is optional. */ }
   }
   return response;
 };
@@ -42,16 +61,17 @@ const networkFirst = async (request, fallbackUrl = null, { bypassCache = false }
   try {
     const response = await (bypassCache ? fetchFresh(request) : fetch(request));
     if (response && response.status === 200) {
-      const cache = await caches.open(RUNTIME_CACHE);
-      cache.put(request, response.clone());
+      try { const cache = await caches.open(RUNTIME_CACHE); cache.put(request, response.clone()).catch(() => {}); } catch { /* Runtime caching is optional. */ }
     }
     return response;
   } catch (error) {
     const cache = await caches.open(RUNTIME_CACHE);
-    const cached = await cache.match(request, { ignoreSearch: true });
+    const cached = await cache.match(request);
     if (cached) return cached;
-    if (fallbackUrl) {
-      const core = await caches.open(CORE_CACHE);
+    const core = await caches.open(CORE_CACHE), exact = await core.match(request);
+    if (exact) return exact;
+    const url = new URL(request.url);
+    if (fallbackUrl && !['rev', 'cb', 'cacheBust'].some(key => url.searchParams.has(key))) {
       const fallback = await core.match(fallbackUrl);
       if (fallback) return fallback;
     }
@@ -82,12 +102,12 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
-    const keys = await caches.keys();
-    await Promise.all(
-      keys
-        .filter(key => ![CORE_CACHE, RUNTIME_CACHE].includes(key))
-        .map(key => caches.delete(key))
-    );
+    // A newer candidate may already be installing. Its versioned cache must
+    // survive activation of this worker, as must sibling applications' caches.
+    if (!self.registration.installing && !self.registration.waiting) {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter(obsoleteOwnedCache).map(key => caches.delete(key)));
+    }
     await self.clients.claim();
   })());
 });
@@ -96,11 +116,12 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
-  if (!isSameOrigin(url)) return;
+  if (!isOwnedUrl(url)) return;
 
   if (isHtmlRequest(request)) {
-    const fallbackPath = url.pathname.endsWith('/editor.html') ? 'editor.html' : 'index.html';
-    const fallbackUrl = toUrl(fallbackPath);
+    const path = url.pathname.slice(SCOPE_URL.pathname.length), fallbackPath = path === '' ? 'index.html' :
+      ['index.html', 'editor.html', 'procgen.html'].includes(path) ? path : null;
+    const fallbackUrl = fallbackPath ? toUrl(fallbackPath) : null;
     event.respondWith(networkFirst(request, fallbackUrl, { bypassCache: true }));
     return;
   }
@@ -119,6 +140,8 @@ self.addEventListener('fetch', (event) => {
 });
 
 self.addEventListener('message', (event) => {
+  if (event?.data?.type === 'OFFLINE_STATUS') event.ports?.[0]?.postMessage({ schemaVersion: 1,
+    status: 'unqualified-shell', offlineReady: false, reason: 'unversioned-shell-cache-is-not-a-complete-runtime-generation' });
   if (event?.data?.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }

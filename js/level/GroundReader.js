@@ -59,7 +59,7 @@ class GroundReader extends BaseLogger {
    * @param {BinaryReader} vgaTerrain  - slice of VGAGx.DAT (terrain)
    * @param {BinaryReader} vgaObject   - slice of VGAGx.DAT (objects)
    */
-  constructor (groundFile, vgaTerrain, vgaObject) {
+  constructor (groundFile, vgaTerrain, vgaObject, options = {}) {
     super();
     // ---------------------------------------------------------------------
     //  Pre‑allocate fixed‑length arrays so their shape never changes, which
@@ -83,7 +83,7 @@ class GroundReader extends BaseLogger {
 
     this._readPalettes(groundFile, paletteOffset);
     this._readObjectImages(groundFile, /*offset=*/0, this.colorPalette);
-    this._readTerrainImages(groundFile, BYTE_SIZE_OF_OBJECTS, this.groundPalette);
+    this._readTerrainImages(groundFile, BYTE_SIZE_OF_OBJECTS, this.groundPalette, options.steelSprites ?? steelSprites);
 
     // Decode bitmaps – these calls can be parallelised in WebWorkers later.
     this._readImages(this.imgObjects, vgaObject, /*bpp=*/4);
@@ -198,7 +198,7 @@ class GroundReader extends BaseLogger {
     }
   }
 
-  _readTerrainImages (fr, offset, palette) {
+  _readTerrainImages (fr, offset, palette, sourceSteelSprites = steelSprites) {
     fr.setOffset(offset);
 
     for (let i = 0; i < TERRAIN_COUNT; ++i) {
@@ -216,7 +216,7 @@ class GroundReader extends BaseLogger {
       if (foldername === '[unknown]') {
         this.log.log('folder name for ' + filename + ' is unknown, unable to use magic numbers to make perfect steel');
       } else {
-        const sprites = steelSprites ?? {};
+        const sprites = sourceSteelSprites ?? {};
         const gameData = sprites[foldername];
         const steelList = gameData ? gameData[filename] : null;
         if (steelList && steelList.includes(i)) {

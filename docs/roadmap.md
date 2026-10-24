@@ -2014,3 +2014,848 @@ Receipts: `temp/procgen-surveys/acceptance/survey-16e82578ac28bafc/report.json`,
 - [ ] Before any 64-world campaign, review the measured resource checkpoint, reserve storage for required comparisons and add compressed trace export. Never delete pinned originals to admit more diagnostics.
 - [ ] Cover fatal worker exit, HTTP disconnect and conditional qualification/storage exhaustion branches with narrow faults; preserve the existing coverage thresholds.
 - [ ] Investigate the retained wall guard timeouts and real gap counterexample as bounded routing work, preserving the original predicates and source semantics. Unknown validity remains an exclusion, not a favorable result.
+
+## Open-issue implementation continuation (October 23, 2026)
+
+The current inventory contains 288 open issues. Continue implementation solo on
+`codex/all-open-issues-20261022`, commit and push complete batches, and refresh
+draft PR #1243 after every 20 continuation commits. The owner requested runtime
+tests only after all open-issue code is implemented. Formatting and static
+dependency analysis continue; newly authored runtime fixtures are unexecuted.
+Earlier measurements above apply only to their recorded revisions.
+
+Recent foundations include opaque audio execution retirement, append-only
+causal journal indexes, cross-page score joins, recoverable stopped take tails,
+bounded coverage uncertainty, scoped MIDI route grants, independent teardown,
+immutable browser generations, complete offline installation and fresh-worker
+survey execution identity. Startup now resolves fresh, recipe, document,
+recovery and previous-setup modes through the existing load transaction and
+publishes preferences after world commit. These are implementation statements,
+not acceptance or acoustic/native-device qualification receipts.
+
+Subsequent implementation batches add bounded sound manifests, typed compilation,
+immutable renderer pins, staged rights-aware archives, durable registry ownership,
+isolated audition, exact lane references and the sound library. Streaming causal
+archive inspection uses admitted worker verification. Physical playback connects
+actual worklet reductions to actor presentation through owned execution and clock
+correlation; control-reference WAV rendering uses the same sine kernel. The take
+workbench compares detached worlds and owns explicitly stepped, recoverable
+branches. These implementations still require the deferred acceptance matrix;
+advanced sound families, real-take audio, native device and listening work remain.
+
+The browser-master capture now has a bounded stereo PCM processor, admitted host
+storage, explicit frame gaps/interruption evidence and a workstation save dialog.
+Its streamed WAV includes the tap and coverage manifest. Memory-backed PCM is
+retained for retry until discard/expiry; this does not provide browser-crash
+recovery, physical-take rendering, private cue exclusion or acoustic evidence.
+Capture ownership fixtures are authored and await the deferred validation pass.
+
+Cue routing now separates a deliberately selected media-element output from
+live-output rehearsal, with explicit quotas that cannot steal live voices. The
+single foreground audition owner and shared PRELISTEN rail connect sound-library
+auditions, route changes, capture inclusion and actual source retirement. Physical
+device separation, multichannel identification, latency and combined workload
+qualification remain deferred; the UI does not claim private headphone routing.
+Native cue errors are reduced to fixed public classifications before reaching
+status or capture manifests. Worklet control auditions require scoped actual
+application receipts and clock progress; admission alone cannot authorize Apply.
+Native scheduling remains labeled as API evidence. Receipt/privacy fixtures are
+authored and await the deferred validation pass.
+
+The workstation now shares an admitted InstrumentDisplayScheduler with PRELISTEN.
+Bounded per-surface mailboxes coalesce transport, playheads, MIDI text and monitor
+updates; resize reads precede scheduled writes. Hidden/offscreen surfaces suspend
+and resume from their latest snapshot. Visible lane lookups use one stable-ID
+index per lane-array revision, and unchanged geometry does not resize the renderer.
+Bounded UI cost distributions and coalesced/skipped/error counters are inspectable.
+No timing target, idle soak or audio-independence result is claimed before the
+deferred browser/profile pass; scheduler fixtures are authored and unexecuted.
+The owned sine kernel now supports fixed-size complete state cuts bound to exact
+engine/patch/graph/rate/profile identities, including future controls and ramps.
+This prepares restoration and chunked/cropped rendering; live restoration/UI and
+continuity qualification remain outstanding. Audio evidence tooling now derives
+its server/hash inventory from the complete static module closure.
+The new causal sine render core consumes bounded covered intent snapshots in an
+explicit new local realization, with captured source-clock boundaries, immutable
+intent/source hashes, silent preroll, exact crop or declared bounded/derived tails,
+and simultaneous dry lane taps from one graph. It rejects unknown held ancestry,
+unsupported expression, unqualified timing and capacity rather than inventing attacks
+or replaying current physics. The fixed worker requires immutable engine identity
+and admits PCM/encoding/transfer overlap. Host/UI integration is connected; authored
+PCM/stem/crop/cancellation fixtures remain unexecuted.
+The causal render host retains exact source and computation ownership through
+publication of checked master/stem export artifacts. The saved-take inspector now
+opens a sine-revoice dialog with range/rate/tail/all-lane-stem choices, bounded
+progress, cancellation and separate download/save/retry/discard. Replacement
+failure preserves the previous bundle; unknown cleanup remains explicit. Missing
+clock/held ancestry is shown before enabling render. Component fixtures use a
+declared test adapter and do not stand in for immutable-build worker/browser
+qualification. General engines, admission-history reconstruction and physical
+master/cue equivalence remain outside this first adapter.
+New intents retain their actual source tick duration. The shared render timing
+adapter validates captured tempo/rate epochs and beat consistency, qualifies
+fractional-tick placement, and removes the source origin before adding fractional
+time. Complete onset-set capacity planning uses frame/source-order ties rather
+than actor traversal order. The worker manifest records timing provenance/hash;
+timing, numeric-origin and fractional-order fixtures remain unexecuted.
+Pinned instrument preparation/routing now follows the 1,024-lane project bound
+while keeping renderer children and candidate preparation separately capped.
+Routing metadata and active candidate input overlap grow through shared admission;
+unknown renderer cleanup retains accounting. A required pinned revision cannot
+silently fall back to the basic oscillator when preparation is absent or stale.
+Live lane and offline sine adapters share one authored hold/release policy.
+Large-lane and policy fixtures are authored and unexecuted.
+The new native FM adapter connects two/four-operator graphs to existing owned
+voices, library audition and pinned-lane preparation. Index-to-Hz conversion,
+independent envelopes, bounded pitch settling and child source accounting are
+explicit. Register-based index reduction is labeled an estimate, not a spectral
+qualification. Native hidden DSP state/offline/receipt limits stay explicit.
+FM Forge now supplies Glass Rivet, Copper Tine, Alarm Bloom and Rubber Bolt as
+typed source recipes through staged library compilation/audition/install/Apply.
+Selected ratios/index timing remain visible. The compiler distinguishes index
+from Hz and retains archived v1 explanations. Full physical/macro bindings,
+feedback/sends and spectral/listening gates remain; content, adapter and browser
+fixtures are authored and unexecuted with the consolidated validation pass.
+Typed macro curves now survive into executable patch data and native onset
+planning. A deterministic replace/add/scale order precedes the final domain
+clamp; receipts carry effective targets. FM Forge authors onset HARDNESS, RING
+and stepped ALLOY. Separate lane overrides use one committed control gesture,
+are captured on semantic onsets and do not mutate held voices or physical RNG.
+One-shot release policy follows the actual onset envelope. Continuous controls,
+identity/physical composition, momentary/controller pickup and audio/listening
+qualification remain; the new macro fixtures have not run.
+Native onset performance now composes keyed actor/event variation and typed
+completed-fact bindings between macros and the final safety clamp. Variation
+uses versioned ordered encoding, bounded named latent factors, no mutable RNG
+or identity cache, and an explicit event-only fallback. Amount/Reroll timbre
+are separate saved musical controls captured on onsets. FM Forge revision 3
+authors small correlated ratio/decay variation and work-cell-driven color;
+cells/pixels are not force or energy. Missing measured fields skip the binding
+with a receipt. Continuous bindings, actor locks, noise-state support and the
+deferred PCM/listening/physical qualification remain outstanding.
+The native modal adapter now realizes 4–8 authored damped-sine modes inside one
+owned voice, with explicit T60 seconds, two authored strike-gain sites, bounded
+register taper/omissions, onset L1 normalization and all-child source accounting.
+Modal body decay, onset envelope and host release are separate; one-shot holds
+follow the selected body's actual longest mode. The library prepares Timber,
+Slate, Glass, Sheet metal and Unclassified source recipes with MASS/HARDNESS/
+DAMPING/HOLLOW, identity variation and typed work-strength bindings. This is a
+musical impulse-response adapter, not a feedback resonator/FEM pickup or verified
+terrain-material resolver. Source/model/content/browser fixtures remain deferred
+with real PCM, spectral, listening and combined cost qualification.
+The new owned pluck source shares the existing command/receipt/lease lifecycle
+with sine and has a separate fixed 24-field ABI. Delay, excitation scratch and
+per-voice state are preallocated and admitted before worklet construction.
+Actor/event-seeded comb-shaped noise initializes a bounded fractional-delay
+feedback string; two optional damped body modes share the same logical voice.
+An absolute 128-frame excitation-write budget reports actual kernel rejection
+without shifting onsets. The host advertises the bounded pitch/bend profile and
+accounts optional body complexity. Exact pluck DSP restore and offline rendering
+are unavailable; pitch/decay/quality and workload fixtures are authored, unrun.
+Source design context: https://faustlibraries.grame.fr/libs/physmodels/ documents
+waveguide/termination/exciter building blocks. This first-party loop does not
+compile or wrap a Faust MIDI instrument and makes no library qualification claim.
+Pluck tuning uses a first-order allpass fractional delay, with the loop filter's
+phase delay removed at the fundamental and its attenuation included in the
+bounded target loss. This avoids treating a linear-interpolated delay's extra
+loss as the authored T60. These are model equations, not measured tuning/decay.
+Reference: https://www.dsprelated.com/freebooks/pasp/First_Order_Allpass_Interpolation.html
+Plucked Garden now stages four original recipes through the same library flow,
+with BODY/PICK/DAMP/SPARK, deterministic siblings/strikes and typed work-strength
+inputs. A distinct held-voice damping control ramps string/body loss without
+retriggering excitation. Live contexts are explicitly limited to 44.1/48/96 kHz.
+The macro panel remains next-onset; physical continuous-damping mapping is still
+outstanding. Content, actual-kernel damping and immutable-browser fixtures are
+authored and unexecuted. No pitch/decay, listening or hardware result is claimed.
+Travel phase, committed distances and crossing positions now live in a distinct
+immutable articulationState field. DSP expression contains only actual engine
+controls, so strict native/worklet adapters no longer reject distance-derived
+onsets for carrying geometric metadata. A metadata-only held update is recorded
+as a semantic observation without queueing a DSP command or claiming application.
+The original completed-fact timestamps and interpolated-position evidence remain
+unchanged. Real strict-adapter and dispatcher regression fixtures are authored
+and await the consolidated validation pass.
+The new artificial choir kernel shares owned commands, leases, measured display
+and source retirement. Eight bounded voice slots each retain independent seeded
+breath, a harmonic-bank voiced table/chorus and three double-precision trapezoidal
+SVF formants. Original vowel landmarks morph in log frequency; SIZE moves the
+formants without rewriting pitch. Live vowel/breath/size/chorus/vibrato/bandwidth
+controls use audio-domain ramps with an 8 ms minimum and bounded coefficient cadence.
+No recordings, anatomical model, words or person imitation are involved. Exact
+choir state cuts/offline output remain unavailable; held/ramp/determinism fixtures
+are authored and unexecuted. Mathematical reference: Andrew Simper's
+https://cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf ; no external DSP runtime
+or complete MIDI wrapper is imported. Source-specific telemetry now names pluck/
+choir correctly, preserves float headroom and omits their unsupported sine phase.
+The eight-level (1–128 harmonics) exciter bank is authored offline as a pinned
+first-party source module; worklet construction copies it without generation
+trig. Phase-aligned adjacent levels blend under the pitch/chorus/vibrato limit;
+typed table bytes and the separate immutable JavaScript table heap estimate are
+admitted before construction. Artificial Choir now stages four original recipes
+through the existing compile/archive/audition/install/apply transaction, with
+executable onset macros and seeded variation. Runtime and listening fixtures
+remain unexecuted; full scene integration remains.
+Continuous completed-fact bindings now recompute choir timbre and held-pluck
+damping from an immutable onset baseline, with source-specific safe targets,
+bounded audio-domain slew and no new notes or simulation RNG. Actor indexes
+avoid scanning unrelated held voices; missing measurements hold their previous
+qualified value. Captured source-kind subscriptions survive semantic checkpoints
+and old renderer ownership survives lane replacement. Update overflow releases
+affected owners rather than leaving stale sound. Contact-anchor metadata now
+uses articulationState, consistent with travel metadata. Compiler v8 retains
+the continuous declarations. Take checkpoints now retain at most 1024 lane
+performance inputs (typed macro/variation controls and continuous source kinds)
+without copying full patch definitions. Changes retain only modified lane
+entries and are admitted at the current world boundary, including one atomic
+record for a combined mapping/control edit. Re-performance restores that
+provider before the semantic engine, retains held subscriptions, and compares
+performance metadata at component checkpoints. The new capture profile declares
+instrument-performance state explicitly. Runtime replay and DSP fixtures remain
+authored and unexecuted.
+
+The new owned spectral oscillator source supplies the shared kernel for #1041/
+#1202: 16 original phase-aligned frames, five harmonic levels with bounded
+pitch-dependent blending, and a separate 16-partial additive mode with authored
+ratios, gains and per-partial T60 scales. Scan/body/edge controls retain phase
+and use the existing audio-domain ramps. Table mode rejects unused additive
+layout edits; additive mode tapers/omits out-of-register components. Fixed typed
+storage, immutable bank heap estimates and per-voice source costs enter shared
+admission. Compiler v9/catalog/artifact/runtime preparation and real application
+receipts support the eighth engine. Six family recipes now stage through the
+shared library and audition/install/apply transaction: Bubble Reed, Prism Pad,
+Acid Current (dry table), Pipe Crew, Glass Drawbars and Falling Stars. BODY/EDGE/
+FLOW/RING affect actual onset values; completed world height contributes an
+explicit calibrated FLOW offset to held actors. Source data pins its generator
+metadata/Float32 SHA-256. Shared SPACE sends and Acid Current resonance/drive
+remain unavailable, with those limits shown in the library. Fixtures remain
+unexecuted. PWM/distortion/sync, exact state,
+offline spectrum output and measured capacity/alias/listening acceptance remain.
+
+Control-budget retirement now suppresses the same held physical scope instead
+of allowing the travel path to reopen it on that observation or a later tick.
+Suppressed scopes share the held-owner capacity, retire at causal lifecycle/
+mapping/source boundaries and persist in semantic checkpoints. New mapping
+revisions use distinct voice IDs so old release tails cannot collide with a
+new mapping's owned gate. Physical music/performance source versions record
+these semantics. Source/host-queue fixtures cover actual choir/pluck/spectrum
+control application, missing observations and independent attack identity;
+they remain authored and unexecuted.
+
+Owned source wire layouts, sample-rate/register limits, seeded birth fields,
+continuous controls and resource/source-cost estimates now live in fixed
+source profiles shared by preparation and onset admission. The host retains
+one queue/execution/lease/retirement implementation for all four owned sources.
+Spectrum table-layout checks use precomputed field IDs before allocation;
+expression membership is retained per backend instead of rebuilding arrays in
+the control hot path. Choir admission now conservatively includes immutable
+table heap estimates in both host and worklet realms. Existing actual-kernel
+host fixtures cover the extracted path and remain unexecuted.
+
+PCM source preparation now owns bounded immutable planar Float32 banks before
+the upcoming sample/granular worklet adapters. It retains a decoded asset pin
+through chunked copying, reserves exact source/copy storage and an explicit
+native digest workspace estimate, rejects nonfinite or magnitude-over-16 data,
+and pins the actual decoded PCM SHA-256 separately from its encoded asset hash.
+At most two independent processor-input copies can be outstanding. Source
+discard cancels unfinished copies and holds storage until readers actually
+retire; unknown pin/resource release remains explicit. Absolute monotonic
+deadlines are checked between cooperative chunks. This is source preparation,
+not an exposed granular instrument or runtime/audio qualification; adapter,
+asset-stage/library integration and granular rendering remain next.
+
+The bounded granular source kernel now has eight parent clouds with 16 fixed
+grain slots each, an absolute 128-frame birth budget, xorshift content RNG,
+20–140 ms precomputed Hann windows and coherent per-grain pitch/duration/position
+snapshots. Scan and pitch are separate; source-position hold is distinct from
+PCM/field freeze. A motion-gated mode stops replenishment at zero activity;
+held-action mode is explicit. Source edges fade and clip without invented wrap
+samples. Both native source rate and decoded rate enter cursor conversion.
+Linear-resampling quality is unqualified. The common owned kernel now preserves
+stereo source channels with a declared balance pan law, measures pre-pan stereo
+RMS/peak, and calls source release/retirement hooks so Panic cannot orphan grain
+children. Grain-state inspection is bounded and on request. Kernel/stereo/
+control/pool fixtures are authored and unexecuted. This source is not yet
+advertised in the catalog: PCM preparation, profile/host handoff, asset staging
+and the family UI must be connected next.
+
+The ninth renderer now connects that pool to the owned host: one validated
+decoded sample pin becomes a hashed PCM bank and an independently reserved
+processor clone. Ready publication verifies the actual worklet bank hash and
+retires preparation readers before connecting audio. Changed source assets
+require another prepared renderer, preserving old held PCM. Root ratio/region
+limits are checked before voice allocation; each cloud charges its full 16-child
+budget. Compiler v10, schema/catalog/artifact identity, stereo measurement metadata
+and one-shot duration cover the source. Consumer-owned audio reservations now
+join producer retirement instead of being freed by bulk session cleanup while
+copying/hashing; backend disposal joins bounded pending preparations. The rare
+maximum hash-derived seed is clamped into uint32. Host/kernel handoff and resource
+failure fixtures remain unexecuted. Sound-archive asset materialization, shared
+WAV metadata inspection and granular family/library controls remain next; linear
+resampling, offline/exact-state and measured capacity/listening are unqualified.
+
+Source dimensions/storage formulas now live in a small shared layout module.
+The host no longer eagerly executes choir/spectrum/window data modules on the
+main page to read constants; explicit worklet URL literals preserve static
+artifact discovery. Module heap estimates are retained once per context until
+its actual closed state, including canceled or failed preparation, rather than
+being freed with the last node while the module remains resident. Native heap
+sizes remain estimates. Fixed table preparation now runs in an admitted dedicated worker, with exact
+Float32 byte identities, bounded startup/copy estimates and processor handoff
+acknowledgment before audible publication. The audio realm adopts prepared
+arrays; it no longer parses the large numeric source modules. Cancellation and
+producer retirement stay charged until acknowledged. Final live source-loading
+qualification is deferred.
+Module-lifetime fixtures are authored and unexecuted.
+
+Staged and installed single-WAV material now has a shared browser-audio owner.
+An admitted worker verifies complete RIFF layout, source rates/frames, hashes
+and finite float samples before native decoding. Library auditions and pinned
+lane preparation use the same bounded encoded/decoded cache and hand pins to
+the granular host; missing material keeps publication unavailable. Blob readers,
+worker results, native decode and copied PCM keep independent lifetime joins.
+Four original integer-arithmetic synthetic biome sources now have pinned WAV
+identities, source seeds and generator ancestry, with Rain Glass, Gravel Choir,
+Water Lens and Rust Breath recipes. Their held-action gates own bounded clouds;
+completed motion/height controls density and scan. CROWD/SCALE/SCAN/WEATHER are
+explicit onset controls. Private local regeneration runs in an admitted worker
+and the final content publisher writes the same source bytes. These are synthetic
+textures, not field recordings. Dry original-source and permitted-region
+comparisons now use the same pinned decoded source, foreground audition lease
+and native sample owner. They preserve source-frame identity and forward rate,
+limit preview to eight seconds, and have separate receipts that cannot authorize
+Apply or replace the actual instrument control audition. Multi-source/derived
+adapters remain implementation work. Runtime, cancellation and audible checks are deferred.
+
+Fixed control-reference WAV preparation now uses the actual sine, pluck, choir
+and spectrum kernels, including the shared seed derivation, default macro and
+variation composition, source-specific command width and fixed bank verification.
+Missing physical observations stay explicit in the manifest. Rendering begins
+from silence and records the output tap before the shared owner/master graph.
+This extends control references; causal-take/offline-state support for the newer
+sources remains separate work. All runtime renders and PCM comparisons are deferred.
+
+The local host now admits 20 bounded renderer owners, covering the 17-child lane
+router, two preparing candidates and one foreground cue owner. Each retained
+backend has its own metadata reservation joined through actual retirement.
+Cue logical voices and source cost units are now separate: the workstation keeps
+four cue gates with 16 reserved source units, enough for one granular cloud,
+while preserving live quotas and denying cue theft of live voices. Cue gate and
+lease-extension checks enforce both bounds. These are declared cost estimates;
+combined device/workload qualification remains deferred.
+
+Causal revoice now offers sine, seeded pluck, artificial formants and spectral
+frames through the same audio-frame kernels, range/preroll, source-clock timing,
+release policies and simultaneous lane stems. Source-specific width, voice limits,
+seeds, macro defaults, identity variation and retained completed physical updates
+share the live source profiles. A new target uses its own macro defaults;
+captured physical observations drive its bindings only when present in the source.
+Missing observations are reported, never invented. Planning accounts for retained
+per-voice control state before allocating long histories. Empty initial voice
+boundaries still apply: this forward render does not add arbitrary new DSP state
+cuts or reconstruct missing held ancestry. Granular asset render handoff and
+native offline engines remain separate implementation work. Runtime, PCM and
+cross-browser qualification is deferred until the implementation pass is complete.
+
+Granular material now has a source-rate PCM decoder variant within the same
+encoded/decoded asset cache. A worker validates WAV identity and decodes 8/16/24/32
+bit integer or 32 bit float samples to pinned planar Float32 at the original rate,
+without a live AudioContext or native resampling. Native sample voices and dry
+source comparisons keep the native-context AudioBuffer variant. Cloud bank
+preparation verifies the decoded PCM digest as well as the encoded asset hash.
+Background cancellation exposes producer quiescence so temporary input retirement
+is joined before caller workspaces are released; unknown producers stay charged.
+Source-rate conversion in the grain kernel remains linear and unqualified for
+alias safety. Granular control-reference WAVs and causal render APIs now consume this path
+through owned PCM bank loans. The render worker verifies actual planar bytes,
+peak and the complete bank metadata hash before constructing the same grain
+kernel. Its manifest retains encoded/source/decoded identities and the explicit
+linear resampling profile. Main input copies remain reserved until the render
+producer has retired; cleanup joins copies, original banks and decoded pins
+before publishing files. The take dialog now captures the selected lane
+instrument reference on open, offers its exact revision beside the four generic
+source presets, and resolves its pinned material through the shared cache without
+enabling live audio. The reference has its own retained metadata reservation.
+Changing lane selection does not replace the captured render target; reopening
+can select a new revision. Unavailable native offline engines stay visible as
+unsupported choices.
+
+Native oscillator/FM/modal offline driving now shares the live host's voice
+lifetime and interval admission code. Its private driver owns an isolated native
+OfflineAudioContext, schedules explicit frame targets in suspended quantum
+windows and taps the master plus at most fifteen stereo lane stems from one
+graph. Complete terminal intervals are scheduled with each onset; dense windows
+are bounded before continuing. Cancellation disconnects owned sources and joins
+the bounded native producer instead of assuming every browser implements
+OfflineAudioContext.close(). Native PCM stays reserved through its consumer.
+Native oscillator/FM/modal control-reference preparation now drives this
+adapter without enabling live audio, then lends its native planar PCM to an
+admitted immutable-build worker for float WAV encoding and hashing. Encoding
+checks complete channel lengths and finiteness, preserves float headroom and
+crops simultaneous taps at shared frame zero. Producer and consumer retirement
+both precede release. Causal-take rendering now includes oscillator, native FM and modal bodies
+through this same backend. A shared preflight retains original world/actor/voice
+identity, source-clock timing, per-onset variation and recorded onset physical
+causes. Native terminal intervals use the actual source release duration and
+modal register plan. Each voice gets a separate execution identity without
+rewriting its musical identity. Full forward preroll and all simultaneous native
+taps are admitted before PCM allocation; the portable native limit is fifteen
+stereo lane stems, versus sixteen for owned kernels. The dialog offers native
+presets and exact saved native references when OfflineAudioContext is available.
+Native sample material, shared effect returns and arbitrary held-state restoration
+remain implementation work. All runtime qualification remains deferred; new
+encoder and native causal-preflight fixtures have been authored but not executed.
+
+Native offline rendering now acquires the shared background execution slot
+before creating its context or PCM. Its existing audio leases account for PCM
+and graph storage; the queue reservation covers dispatch metadata. Cancellation
+and deadlines retain the slot through actual native producer drainage, including
+confirmation after an interim unknown cancellation. The latest issue refresh
+adds #1256 (289 inventoried issues). Its shared native ADSR repair reconstructs
+truncated ramp endpoints, including zero attack/decay and earlier repeated
+releases. Initial envelopes and lease renewal use the same bounded linear
+scheduler, preserving attack/decay even when a lease tail begins inside them.
+New API-double ownership, analytical envelope and real ConstantSource browser
+fixtures are authored for the later consolidated pass, not executed evidence.
+
+The shared asset cache now accepts an explicitly owned offline native decode
+context without opening the live context. Its native rate/decoder cache identity
+is shared with live consumers; borrowed context requests must join cancellation
+through the accepted decode producer. Material preparation forwards this lifetime
+contract. A private native-render material adapter uses a one-frame silent
+OfflineAudioContext to decode through the same provider, then drains that context
+before lending native buffer pins. Native render batches also check current
+request ownership at each scheduling frontier. Sample-map content and native
+sample product rendering remain implementation work. Ownership fixtures are
+authored; no runtime decode, native render or tests were executed in this pass.
+
+Authored sample maps now have a bounded immutable schema and stateless semantic
+onset selector in the existing sound-content compiler (typed-recipes-v11).
+Maps declare gesture layers, half-open velocity intervals, nearest-root ranges,
+contiguous alternates, source-frame regions, explicit forward/sustain loops,
+owned release children and authored gain/tuning trims. Native seam crossfades
+remain rejected. Selection uses original onset/actor/asset revision identity,
+never playback acceptance or actor traversal counters. Exact world/lane/kit
+scope distinguishes choke ownership; missing gestures use only the declared
+neutral policy and report that fallback. Captured causal mapping rules can
+retain explicit sampleGesture/sampleKitId tags without adding physical events.
+Compiler render identity excludes display labels/evidence references and includes
+the effective map; source credits and measurement references remain separate.
+Decoded asset admission verifies every mapped region before activation. Product
+sample-backend wiring, the original proof pack and offline sample rendering
+remain work; selector and metadata fixtures are authored and unexecuted.
+
+Mapped native samples now use the actual sample backend in library audition
+and saved lane preparation. The shared material cache pins up to 32 unique
+sources, and backend preparation validates all map regions against real source
+bounds before admitting a voice. Each prepared map has a conservative metadata
+reservation joined through its retirement. Selection receipts retain the map,
+zone, velocity layer, alternate and seed without PCM. The chosen authored gesture
+is part of the immutable control fixture hash; it cannot share another gesture's
+fixture identity merely because timing and expression are the same. The library offers authored
+gesture audition choices and the physical-rule editor captures gesture/kit tags.
+Same-kit choke intervals are preflighted before admission, retaining source-tail
+quotas and kit isolation. Later tail chokes cannot reopen a captured ended gate.
+Causal sink receipts retain bounded actual map-selection evidence, separately
+from kernel application or audible output. Sample main/child release scheduling preserves truncated
+ramps and an already playing original release when a future choke is canceled; selected-region duration informs bounded one-shot hold. Offline clock mode
+uses render-frontier/source retirement instead of expiry timers. The native render
+material helper now lends up to 32 pinned native source buffers. Two earlier text
+encoding conversions in library labels and this roadmap are repaired. Original
+tactile proof material and native sample control/take export remain work; runtime,
+UI, source-pitch/loop and resource qualification remain deferred.
+
+Mapped native samples now render controls and causal takes through the same
+sample backend, using isolated offline material decoding and the shared cache.
+Native buffers never pass through the encoding worker: the main-thread offline
+producer supplies planar PCM after quantum-bounded scheduling and joined
+retirement. The saved-instrument option supports the exact installed sample map;
+control WAVs retain their selected gesture fixture hash. Source-rate regions,
+relative varispeed pitch, per-onset hold and conservative release-child bounds
+share live definitions. Causal preflight models exact kit-scoped chokes before
+logical gate capacity and explicitly rejects controls after a newly realized
+choke. Bounded selection API receipts expose their retained/omitted coverage;
+they do not certify native applied frames, acoustic output or prior admission
+history. Five owned and four native sources now have implementation paths.
+Original tactile proof material and advanced sample traversal still remain;
+all runtime, PCM, resource and browser fixtures stay unexecuted until the final
+consolidated validation pass.
+
+The original tactile proof pack now authors eight procedural sources (one C4
+root, two intensity layers, two alternates and open/muted contacts). Three actual
+source regions per file expose center/edge/brush through six gesture labels and
+24 zones, with exact half-open velocity layers and a plus/minus six-semitone
+varispeed range. Its existing library preparation/audition/render path shares the
+same source provider and admitted material generation worker as synthetic biomes.
+Generation dispatch is now explicit by pinned original generator revision; native
+or pure-source decoding uses the shared asset cache. The publisher materializes
+the same fixed hashes without checked-in binaries. Metadata reports authored
+trims and unmeasured normalization; no recording or acoustic evidence is invented.
+Source identities/recipes were authored; compiler, unit, browser, PCM, pitch,
+listening and memory qualification stay deferred. Three-root expansion, advanced
+loops, source traversal and exact DSP-state restoration remain work.
+
+The custom-source kernel state adapters now capture pluck delay/allpass/body
+memory, choir phase/noise/filter memory, spectrum partial/filter memory and
+complete granular cloud/grain/birth state. They include the committed future
+command heap, gate/envelope/interpolation state and receipt frontier at the
+kernel's declared output frame. Extended core widths use an explicit format
+version while the existing sine byte ABI remains unchanged. Source cuts bind
+exact engine, patch, graph, rate, slot profile and immutable fixed/PCM bank
+hashes. Little-endian transfer buffers are bounded, exclusive and preallocated;
+checksum/shape/state validation precedes destination mutation. Mutable DSP memory
+is copied independently and display subscriptions require new observation.
+These are concrete kernel adapters, not a qualified live scrub/restore claim:
+block-boundary transport, journal-cursor custody and staged sink replacement still
+need integration. Uninterrupted/chunked PCM, attack/held/release/future-control,
+asset mismatch, corrupt state and independent memory fixtures are authored for
+all source rates and remain unexecuted with runtime testing deferred.
+
+Causal owned-source output can now stage a fresh kernel from a complete source
+cut at the chosen range boundary after covered silent preroll. The render loop
+splits exactly at that frame, keeps the immutable plan/cursor and slot-to-stem
+routes, and restores independent mutable memory before output continues. The
+transfer is preallocated and included with the temporary second kernel in the
+worker's admitted workspace. Fixed banks and PCM stay shared read-only; source
+state bytes receive a SHA-256 and an explicit planner frontier in the manifest.
+Cancellation checks bracket staging, restore and hashing, and successful staging
+clears the temporary transfer. The existing take-render dialog offers this as an
+experimental owned-source reconstruction choice. Native sources explicitly keep
+forward history. This is worker-local range reconstruction, not live-host queue
+capture, a persisted take checkpoint or a qualified exact scrub claim. Deferred
+PCM fixtures compare full graph and simultaneous stems across a cut inside a
+control ramp. Live block transport and canonical cursor/sink replacement remain.
+
+Owner-local creative effect hosting now prepares immutable typed stereo graphs
+with bounded nodes/edges, stable DAG order, complete-path tail/latency/storage
+admission and compounded gain bounds. Arbitrary cycles reject; feedback is owned
+inside one explicit bounded stereo delay operator. Its preallocated ring supports
+two-sample linear fractional taps, causal bounded tape glide or a fixed two-tap
+linear jump crossfade. A second jump during transition explicitly refuses. The
+feedback path has lowpass/DC-block state, a declared gain ceiling and nonfinite/
+state-amplitude containment. Continuous wet/feedback use an explicit 8 ms time
+constant. These are unqualified creative processors, not a final output limiter.
+
+The shared browser channel now has an owned insertion/dry point before its
+existing master or explicit cue destination. Session and physical playback APIs
+prepare a graph without enabling audio, preserve the committed graph on candidate
+failure, and admit at most two current/tailing revisions. Input crossfades leave
+old owned energy until its hard audio-clock deadline; neutral, tail, mute and
+Panic have separate transitions. Native graph retirement waits for processor
+acknowledgment before releasing graph/route/channel storage. An unavailable or
+failed producer keeps an explicit unknown reservation. Context module ownership
+allows five source modules plus one effect module, held until context closure.
+The graph/control UI, authored Dub Quarry rack, convolution, typed detector paths,
+shared nonlinear/spectral/body processing, offline effect taps and full acceptance
+remain implementation work. Routing, fractional impulse, transition refusal and
+producer-ownership fixtures are authored; runtime and DSP qualification stay
+postponed with the consolidated validation pass.
+
+Quarry Echo now has an original source/dry/send/delay/return topology and an
+existing-workstation dialog. Momentary THROW changes only the source-send gain;
+release leaves the existing return connected, while TIME, FEEDBACK and RETURN
+request bounded native controls. Gain nodes declare a maximum amplitude envelope
+used for graph headroom admission. A control receipt includes graph definition
+hash and owner route revision; releasing a gesture from an older route cannot
+change a replacement rack. Native control submission and actual render application
+remain separate. Runtime diagnostics retain the immutable application identity
+and requested parameter state. No control enables audio or opens MIDI output.
+
+Optional saved owner-rack defaults are validated in procgen projects and use a
+newer graph revision for each edit. They preserve physical mapping and lane
+identities, roundtrip through project sanitization, and participate in history.
+The dialog loads/saves defaults separately from live control gestures. Saved
+rack edits are blocked during an active causal take until their journal contract
+is implemented. Effect gesture persistence/replay, causal per-voice throws,
+input coloration/AGE/spring recipes, matched A/B and offline effect-return taps
+still remain work. The UI explicitly identifies the current gesture-recording
+limit; master PCM capture can retain actual played output. Schema, headroom,
+project roundtrip and stale-gesture ownership fixtures are authored and unrun.
+
+Native convolution bodies now have a bounded immutable IR descriptor, explicit
+mono/stereo/native-true-stereo layout and shared native decode ownership. Four
+channels are admitted only for IR assets; sample voices keep their two-channel
+limit. The same encoded/decoded cache verifies actual WAV kind/layout/rate/frames
+and joins accepted native decoding before cancellation releases an owner. Each
+convolver retains an independent graph pin through the final native buffer clear
+and disconnect, even when its material provider retires its own reader loan.
+
+Admitted worker analysis scans copied native PCM for finite coefficients, RMS,
+absolute coefficient sums and normalization/headroom bounds. Native RMS scaling
+and separate calibration gain are explicit; four-channel bounds conservatively
+sum all matrix paths. Source plane hashes identify the analyzed host byte order;
+no acoustic, room, latency or cross-browser equivalence evidence is inferred.
+The graph host sets normalization before assigning the buffer, prepares new
+convolvers for replacement, and reserves decoded material plus separate native
+copy/algorithm estimates. Four bodies and 64 MiB decoded IR inventory are graph
+ceilings, subject to the shared budget and two-revision overlap admission.
+Unknown native latency propagates as null and requires the explicit uncompensated
+policy; it never becomes a zero-latency alignment claim. Native disposal precedes
+IR pin retirement. Delay-state containment also reports an owned fault so the host
+can name and bypass its branch. Source/layout/normalization/gain/assignment-order/
+pin-lifetime fixtures are authored. Original procedural bodies, their focused UI,
+convolution offline output, measured latency and all runtime qualification remain
+work; no tests, native renders or content builds ran in this implementation pass.
+
+Original convolution bodies now include reproducible mono Hollow Spring,
+stereo Stone Courtyard and four-channel Crossed Gallery source data. The shared
+material provider generates and verifies their encoded identities through its
+existing admitted worker, then uses the same native decode/cache/analysis path.
+The Quarry dialog selects these bodies, saves their exact graph/asset defaults,
+performs momentary source sends and SPACE return changes, and preserves prior
+tails across prepared replacements. Controls are locked during preparation.
+These are original synthetic bodies with explicit native RMS normalization and
+reference gain, not measured hardware/room responses or qualified level matches.
+Source-data authoring wrote identity metadata only; no binary is committed.
+Native latency, offline convolution, source-bound throws, listening and all
+remaining acceptance gates are still pending. No runtime tests ran.
+
+The shared effect runtime now implements an original bounded nonlinear chain:
+ordered cubic/fold transfers, direct or stable first-order ADAA, real local 2x/4x
+polyphase up/down filters with pinned source coefficients, explicit HP/DC stages
+and a kernel-owned binary64 state transfer. Native graph preparation verifies
+the exact configuration identity and reserves full state/alignment estimates;
+four nonlinear islands is the current unqualified graph limit. Fractional FIR/
+small-signal ADAA group delay and frequency-dependent phase/droop are explicit.
+Native parameter queues are bounded and refusals cannot become accepted receipts.
+Quarry Tape adds the shared cubic preamp and AGE drive/feedback-darkening control
+without replacing final protection. Quality changes prepare another graph.
+Arithmetic, restoration, silence and graph fixtures are authored, not executed.
+Native WaveShaper comparison, ADAA2/WASM precision variants, host-wide state cuts,
+offline full-effect rendering, alias/cost/latency/level/listening qualification
+and the remaining effect recipes/causal gestures are still required.
+
+Issue #1258 now has one owned-profile footprint interface with named
+`{ sampleRate, voices, pcm }` fields. All five source adapters distinguish PCM
+from capacity; low-level voice validation stays strict. Live admission uses the
+actual full processor capacity, while control/causal/state-cut renders use the
+actual configured capacity and exact PCM bytes. Non-PCM null/undefined material
+no longer enters a low-level voice argument. Resource-present live preparation,
+all-rate capacity/storage parity and direct control/state-cut regressions are
+authored for the deferred acceptance pass; no runtime tests have run.
+
+Issue #1257 now gives each classic long-session replay probe explicit
+transport ownership. It waits for meaningful retained history, verifies both
+seeks and the restored tick/exposed physical projection/history before resuming
+only a previously running workload. Failed restoration invalidates and stops
+the run. Required raw telemetry, completed forward ticks, sustained progress,
+sampled active/paused/probe time, complete replay receipts and profile-specific
+history turnover gates prevent a tiny initial advance from passing an idle
+window. Cold compaction/thaw/retirement counters report actual owner operations.
+Controlled actual-E2E/TimeTravelController integration fixtures are authored,
+including failed/incomplete seeks and originally paused state; no browser run,
+benchmark, runtime test or throughput result is claimed.
+
+The #1131 v11 artifact producer/consumer regression now admits the emitted
+`cost.sampleZones` and nested `display.sampleMap` with strict type, inventory,
+unknown-field and archived-map consistency checks. V11 counts must be explicit
+and equal the actual zone count; non-map counts are zero. Earlier supported
+compiler artifacts retain their exact archived bytes with an implicit zero
+count and cannot claim the v11 sample-map capability. Whole-family compile/
+readmission, malformed-count/display, legacy-read and existing display-versus-
+render-identity fixtures are authored. CLI/background compilation share this
+validator; build/publication and runtime acceptance remain deferred.
+
+The bounded creative delay now has a complete kernel-owned state transfer:
+immutable rate/configuration identity, independent stereo ring/filter storage,
+write/frame cursors, glide/jump frontier, feedback/wet/tone smoothing, fault and
+Panic flags. The shared little-endian effect-state helper validates CRC, layout
+and every domain before mutating DSP. Transfer buffers are exact/exclusive and
+retain their full cost; no checkpoint work or allocation enters sample().
+Forward-continuation, corruption/foreign-state, alias refusal and Panic fixtures
+are authored at all supported rates/modes. Host-wide capture/queue cuts and
+full-graph offline restoration remain work; these kernel APIs are unqualified
+and no runtime/DSP tests ran.
+
+Graph dry/parallel alignment now uses an owned fixed stereo fractional-delay
+kernel with exact reserved ring storage, including sub-sample delays below one
+frame. It shares code/state transfer with the planned offline graph path and
+loads in the existing single effect module. Native graph preparation shares one
+ABI/configuration/ACK/fault/retirement adapter for all owned processors. Used
+delay/nonlinear/alignment revisions now bind graph identity. Linear two-tap
+alignment remains frequency-dependent and is not a broadband phase-null claim.
+Impulse, state and actual-kernel host/resource fixtures are authored; full-graph
+render integration and all execution qualification remain pending.
+
+The owned causal renderer now has a full shared effect DAG path using the
+same delay/nonlinear/fractional-alignment kernels as live graph hosting. Every
+source aggregate/preroll frame passes through that single graph; dry lane taps
+and up to eight actual shared node-output taps are captured simultaneously.
+Ranges retain prior effect excitation, and bounded tail/output/worker storage
+include the complete graph and tap set. Manifests bind graph definition, used
+processor revisions, exact graph hash and source/tap scope. Authored static
+defaults are explicitly a new realization, not replay of unstored live gestures.
+Native convolution/native source full-effect adapters, public render-owner/UI
+wiring, host-wide state cuts and all runtime qualification remain work.
+Arithmetic/shared-nonlinearity, simultaneous tap and crop fixtures are authored
+but unexecuted; no tests, native renders or content builds ran.
+
+The public causal render owner and dialog now select explicit dry, Quarry
+Echo/Tape or compatible saved owner defaults, with a separate new source-send
+amount and optional simultaneous shared-return WAV. They retain exact graph/
+processor/tap identity through worker admission, complete memory/output bounds
+and per-file artifact validation. A mismatched/failed candidate preserves the
+prior complete bundle. Saved defaults remain unchanged and bypassed/native-body
+racks are not silently activated. The UI identifies static new realization
+versus unreplayed live gestures. Owned sources are wired; native source/effect
+postprocessing and convolution adapters, graph-wide cuts, gesture capture/replay
+and all runtime/PCM/listening acceptance remain work. No runtime tests ran.
+
+All four native source profiles now feed the same owned effect graph in the
+admitted encoding worker, after their actual source-only OfflineAudioContext
+completes. Full preroll excitation is retained; processed master/shared returns
+come from one graph and original dry planes remain unchanged. Graph/hash/ABI/
+tap manifests and worker transfers cover the complete 25-file owned profile
+(24 for native sources). Native sample decoded-byte footprints and retained
+native PCM are included before source/worker admission. The dialog supports
+these explicit effect revoices for all nine implemented source profiles. No
+additional context is created by the effect pass. Native IR offline processing,
+recorded effect gestures/causal voice sends, graph-wide state cuts, remaining
+DSP/content/world features and all deferred acceptance still remain. No runtime
+unit/browser/PCM/performance/listening tests or content builds ran.
+
+The latest repository refresh adds #1259–#1263 to the inventory (296 known
+issues). Next correctness work is the held-out exemplar/report contradiction,
+shared WALK read/action accounting, per-endpoint solver surface bindings, and
+finite multi-entrance birth/minimap-death lifecycle ownership. Their reported
+producer/consumer paths are reviewed before further new DSP work.
+
+Committed interval admission now checks future overlaps and lease extensions
+across native, sample and worklet voices, with separate live/cue source and tail
+quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical
+admission and actual kernel application remain separate receipts. Measured cost
+profiles, request-set canonicalization and combined device stress still require
+the deferred qualification pass.
+
+Journal verification now admits checkpoint/chunk loading, canonical validation
+and hashing through the shared worker owner, using exact new byte/object counts
+and explicit legacy bounds. Owned queries now select records in the worker and
+retain result/index reservations through reader retirement. Detached replay owns
+its checkpoint/page loans through actual source/world retirement. Score projection
+and causal-parent views now adopt owned pages and publish retained worker snapshots
+with bounded cause links. Sound-only revoice now retains a bounded independent
+snapshot with exact source hash, coverage and explicit boundary-state limits;
+it preserves captured intent identity without synthesizing attacks or rerunning
+physics. Full playback/render integration and acceptance qualification remain.
+
+- [ ] Finish shared background job execution for import, export encoding,
+  recovery and asset preparation under the shared worker/memory admission owner.
+  Registered import/export/checksum/hash jobs now share admission with exact
+  replay and content-coalesced terrain decode/fingerprinting. Active/candidate
+  decoded consumers retain independent leases through runtime retirement.
+  Combined stress and failure qualification remains deferred with runtime tests.
+- [ ] Complete remaining issue contracts in dependency batches, preserving
+  authored sound/content, physical semantics and output ownership requirements.
+- [ ] After implementation, run deferred unit, real-browser, interruption,
+  performance and artifact qualification gates; repair failures and record their
+  exact revisions. Keep unsupported hardware/listening evidence explicit.
+- [ ] Reconcile every open issue against its complete acceptance requirements
+  before closure. No issue is closed merely for adding a schema or fixture.
+
+### Continuation 141 — newest correctness reports (#1259–#1263)
+
+Finite gameplay entrance batches now recheck admission before opening an entrance,
+allocating an actor identity or publishing spawn effects. Final non-exit removal
+is the only minimap death-marker boundary: drowning, splatting, oh-no, frying,
+explosion, missing-action and off-world producers no longer publish duplicate
+markers. Explosion markers therefore appear on final removal after its particle
+animation; rendering and replay drawing are presentation only.
+
+Solver geometry retains each endpoint index, anchor, snap radius and unresolved
+binding. Named spawn/exit graph edges use those bindings exclusively, with an
+explicit weighted-distance and stable-ID tie policy; aggregate continuity remains
+an any-entrance diagnostic, and route skeletons remain unverified until replay.
+Passive WALK proofs debit one local ledger before every unique terrain read or
+shared action advance; every caller adds the returned action steps before an
+admission early return. Selected holdout successes retain reproducibility and
+sensitivity evidence, but explicitly defer independent qualification when no
+unseen corpus was declared. The final report and immutable exemplar archive can
+complete without relabelling observed worlds or declaring an improvement.
+
+Actual manager/MiniMap/history, solver-island, shared-action budget and survey
+coordinator/evidence-store regression fixtures are authored. Their execution and
+all runtime/PCM/browser qualification remain deferred until implementation of all
+open-issue code. These reports remain open pending complete acceptance evidence.
+
+### Continuation 142 — native-source convolution export (#1012, #1015, #1070, #1155)
+
+Native oscillator/FM/modal/sample causal rendering can now prepare the same native
+convolution graph, material pins and normalization used live. One offline context
+captures the complete processed owner, selected dry lanes and actual shared node
+returns simultaneously; the aggregate native output has at most fifteen stereo
+taps beyond the master. No per-lane or per-actor convolution rerender is used.
+The encoding worker verifies graph, IR identity/layout, decoded coefficient
+hashes, normalization and gain bounds before accepting native processed channels.
+It does not run those channels through the graph a second time. Unknown native
+algorithmic latency remains null, separately from authored predelay.
+
+IR analysis completes before native execution admission, avoiding nested worker
+slot deadlock. Ordinary dry-source renders retain admission-before-allocation.
+Native producer completion and graph disconnection/buffer clearing precede IR pin
+and storage retirement; unresolved preparation custody keeps reservations held.
+The render surface offers Hollow Spring, Stone Courtyard and Crossed Gallery for
+native sources and active compatible saved body defaults. This first native
+profile supports gain/bus/convolution graphs. Owned-source convolution staging
+and graphs mixing convolution with owned delay/nonlinear processors remain to be
+implemented; those combinations currently return named refusals before output.
+
+API/codec and source-planning fixtures cover all supported IR layouts and sample
+rates, normalization ordering, receipt tampering, simultaneous tap channel order
+and material retirement. All execution, real-browser PCM/latency, listening and
+performance qualification remain deferred with the rest of the backlog.
+
+### Continuation 143 — owned-source convolution staging (#1012, #1015, #1046, #1155)
+
+All five owned source kernels can now supply complete dry master/lane PCM history
+through a separate admitted worker stage. Independent full-plane buffers carry
+source/artifact identity, sample rate, frame coverage and byte hashes. Their
+computed-result lease remains held while a native body graph verifies and copies
+the data. One bounded OfflineAudioContext plays that exact PCM at the same rate,
+applies the shared native body, and captures master/dry lanes/returns together.
+Hash validation precedes native copying; chunked copies yield to the UI. The
+requested crop is applied only after the complete source and body history has
+run. Owned source state cuts remain distinct from hidden native convolution state.
+
+The foreground owner now supports native body presets with every realized source,
+keeps source PCM and native output loans through their respective producer
+retirement, and retains unresolved custody on failure. Final encoding checks the
+owned-source worker receipt against the native input hashes and application
+revision. No temporary WAV, decode roundtrip, separate lane bounce or additional
+live AudioContext is introduced. Native input copies and complete preroll output
+are included in preflight alongside IR, source-material and encoding overlap.
+Mixed convolution/owned-processor graphs still require their separate adapter.
+
+Direct kernel full-history/crop/state-cut fixtures and staged native API/codec
+fixtures are authored. Their execution, real-browser PCM equivalence and all
+remaining acceptance qualification stay deferred until all open-issue code is
+implemented.
+
+### Continuation 144 — complete mixed native/worklet effect graphs (#1015, #1070, #1155, #1218)
+
+Convolution can now share the actual native graph and OfflineAudioContext with
+owned delay, nonlinear and fractional alignment processors. Preparation loads and
+connects trusted processors without waiting for an offline render thread that has
+not started. Private rendering then verifies each initialization ABI before
+publication. Every processor on an output/selected-return path emits a terminal
+receipt binding its configuration, contiguous frame-zero history, final padded
+quantum, state bytes and zero fault/Panic state. The encoder verifies the complete
+processor inventory and those terminal receipts with the IR analysis; a late fault,
+missing acknowledgment or mismatched ABI cannot become a published WAV.
+
+Preparation failure retires the private context through a bounded admitted drain,
+so module lifetime estimates and processor disposal do not depend on messages from
+an unstarted thread. Context closure is explicitly reconciled with the module
+cache before storage retirement. Unknown custody retains reservations. Internal
+alignment processor identities use a namespace unavailable to authored node IDs.
+Owned and native sources use the same complete graph, shared input sum and
+simultaneous dry/return taps. Native convolution latency stays unmeasured; no
+physical timestamps or scheduling horizons are moved to compensate for it.
+
+An original Tape + Spring rack now combines the existing preamp, dark echo and
+one shared Hollow Spring with a restrained fixed blend into the common return.
+The live controls and causal revoice selector expose the same authored topology.
+Live effect gesture journaling and source-bound throws remain outstanding.
+
+Deferred API fixtures cover readiness emitted only after render start, terminal
+receipt omission, late faults, bad ABI and preparation failure cleanup. Terminal
+protocol and combined-rack fixtures are authored. No runtime/browser/PCM/listening
+or performance qualification has been run during this continuation.

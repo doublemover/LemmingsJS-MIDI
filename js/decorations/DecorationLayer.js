@@ -6,21 +6,27 @@ function* sampledIndices(first, last, stride) {
 }
 
 class DecorationLayer {
-  constructor(document, pack) {
-    this.pack = pack; this.document = document;
-    this.canvas = document.createElement('canvas'); this.context = this.canvas.getContext('2d');
-    this.mask = document.createElement('canvas'); this.maskContext = this.mask.getContext('2d');
+  constructor(document, pack, resources = null) {
+    this.pack = pack; this.document = document; this.resources = resources; this.bitmaps = new Set();
+    this.canvas = resources?.canvas() || document.createElement('canvas'); this.context = this.canvas.getContext('2d');
+    this.mask = resources?.canvas() || document.createElement('canvas'); this.maskContext = this.mask.getContext('2d');
     this.frames = new WeakMap(); this.dotColors = new WeakMap(); this.key = ''; this.maskKey = '';
     this.lastPack = null; this.placementKey = ''; this.placements = []; this.trims = [];
   }
   bitmap(image, frame) {
     let bitmap = this.frames.get(frame);
     if (!bitmap) {
-      bitmap = this.document.createElement('canvas'); bitmap.width = image.width; bitmap.height = image.height;
-      const context = bitmap.getContext('2d'), data = context.createImageData(image.width, image.height), pixels = new Uint32Array(data.data.buffer);
-      for (let i = 0; i < frame.length; i++) if (!(frame[i] & 128)) pixels[i] = image.palette.getColor(frame[i]) | 0xff000000;
-      context.putImageData(data, 0, 0); this.frames.set(frame, bitmap);
+      bitmap = this.resources?.canvas() || this.document.createElement('canvas');
+      if (this.resources) this.resources.resize(bitmap, image.width, image.height, { cache: true, retire: () => { this.frames.delete(frame); this.bitmaps.delete(bitmap); } });
+      else { bitmap.width = image.width; bitmap.height = image.height; }
+      this.bitmaps.add(bitmap);
+      const context = bitmap.getContext('2d'), key = {}, data = this.resources ? this.resources.image(context, image.width, image.height, key) : context.createImageData(image.width, image.height), pixels = new Uint32Array(data.data.buffer);
+      try {
+        for (let i = 0; i < frame.length; i++) if (!(frame[i] & 128)) pixels[i] = image.palette.getColor(frame[i]) | 0xff000000;
+        context.putImageData(data, 0, 0); this.frames.set(frame, bitmap);
+      } finally { this.resources?.release(key); }
     }
+    this.resources?.touch(bitmap);
     return bitmap;
   }
   dotColor(image, frame) {
@@ -79,7 +85,7 @@ class DecorationLayer {
   draw(renderer, reducedMotion = false) {
     const { world, buffer, rasterStep: step, originX, originY, viewWidth, viewHeight } = renderer;
     if (this.pack !== this.lastPack) {
-      this.lastPack = this.pack; this.frames = new WeakMap(); this.dotColors = new WeakMap(); this.key = ''; this.placementKey = '';
+      this.reset(); this.lastPack = this.pack;
       this.maxWidth = 0; this.maxHeight = 0;
       for (const { image } of this.pack.pieces) {
         this.maxWidth = Math.max(this.maxWidth, image.width); this.maxHeight = Math.max(this.maxHeight, image.height);
@@ -92,12 +98,16 @@ class DecorationLayer {
     const key = `${maskKey}:${phase}:${!!reducedMotion}:${world.frontierRevision}`;
     if (key !== this.key) {
       if (this.canvas.width !== buffer.width || this.canvas.height !== buffer.height) {
-        this.canvas.width = this.mask.width = buffer.width; this.canvas.height = this.mask.height = buffer.height; this.maskKey = '';
+        if (this.resources) { this.resources.resize(this.canvas, buffer.width, buffer.height); this.resources.resize(this.mask, buffer.width, buffer.height); }
+        else { this.canvas.width = this.mask.width = buffer.width; this.canvas.height = this.mask.height = buffer.height; }
+        this.maskKey = '';
       }
       if (maskKey !== this.maskKey) {
-        const data = this.maskContext.createImageData(buffer.width, buffer.height), pixels = new Uint32Array(data.data.buffer);
-        for (let i = 0; i < pixels.length; i++) if (renderer.pixels[i] !== 0xff0e0807) pixels[i] = 0xff000000;
-        this.maskContext.putImageData(data, 0, 0); this.maskKey = maskKey;
+        const key = {}, data = this.resources ? this.resources.image(this.maskContext, buffer.width, buffer.height, key) : this.maskContext.createImageData(buffer.width, buffer.height), pixels = new Uint32Array(data.data.buffer);
+        try {
+          for (let i = 0; i < pixels.length; i++) if (renderer.pixels[i] !== 0xff0e0807) pixels[i] = 0xff000000;
+          this.maskContext.putImageData(data, 0, 0); this.maskKey = maskKey;
+        } finally { this.resources?.release(key); }
       }
       const context = this.context;
       context.clearRect(0, 0, buffer.width, buffer.height); context.imageSmoothingEnabled = false;
@@ -109,5 +119,16 @@ class DecorationLayer {
     }
     renderer.bufferContext.drawImage(this.canvas, 0, 0);
   }
+  reset() {
+    const retire = canvas => {
+      if (this.resources) this.resources.release(canvas);
+      else for (const dimension of ['width', 'height']) { try { canvas[dimension] = 0; } catch { /* Continue through the other dimension and remaining surfaces. */ } }
+    };
+    for (const bitmap of this.bitmaps) retire(bitmap);
+    this.bitmaps.clear();
+    for (const canvas of [this.canvas, this.mask]) retire(canvas);
+    this.frames = new WeakMap(); this.dotColors = new WeakMap(); this.key = this.maskKey = this.placementKey = ''; this.placements.length = this.trims.length = 0;
+  }
+  dispose() { this.reset(); this.pack = this.document = this.resources = this.context = this.maskContext = this.lastPack = null; }
 }
 export { DecorationLayer };

@@ -1,27 +1,34 @@
 # ProcGen workstation
 
 Open `procgen.html` through the local web server (`npm start`). Eight lanes share
-one physical world. Each starts with its own classic tileset and musical role:
+one physical world. Each starts with its own classic tileset and visual role:
 Crystal/Lead, Bubble/Arp, Dirt/Bass, Rock/Percussion, Fire/Drums, Brick/Chords,
 Snow/Melody and Pillar/Texture. Sound remains off until **Listen locally**.
 
+New projects play from committed physical facts. Builder work, ordinary wall
+contacts, and the first crossing of x=40 have explicit instrument mappings;
+none requires a phrase cell. The **Physical** inspector lists each mapping and
+lets you change its pitch, velocity, or mute state. Changes carry a graph
+revision and affect later facts. **Listen locally** enables the owned browser
+audio voice session; game preview, MIDI routing, and physical voices share the
+audio graph without sharing note ownership.
+
 ## Editing
 
-Choose **Strip** to place the steps below the terrain, or **Overlay** to place
-translucent steps over it. Both edit the same project. Select a lane header or
-step to open its inspector. Double-click toggles a trigger; Draw and Erase apply
-their respective tools. Arrow keys move step selection, Delete clears a step,
-and Ctrl/Cmd+C, V, Z and Shift+Z copy, paste, undo and redo musical edits.
+Choose **Strip** or **Overlay** to position lane controls around the terrain.
+Physical lanes show a live cause strip. Select a lane header to edit its
+collection, role, routing, and physical mapping. Mute and Solo remain lane
+controls. Global key and scale are in the transport header.
 
-The lane inspector selects collection, role, patch, Game/Pattern/Hybrid mode,
-pattern length, playback rate, level, pan and game accents. Every collection
-contains all eight roles. Global key and scale are in the transport header and
-remain independent of sound selection. A fixed MIDI note overrides a step's
-scale degree; leave it empty to follow the global key. Drums use General MIDI
-drum note numbers.
+Use **Complementary pattern** only when you want an authored clocked layer.
+Each such lane records its physical purpose and has four phrase slots. Draw and
+Erase edit cells; double-click toggles a trigger. Arrow keys move step
+selection, Delete clears a step, and Ctrl/Cmd+C, V, Z and Shift+Z copy, paste,
+undo, and redo phrase edits. A fixed MIDI note overrides a step's scale degree;
+leave it empty to follow the global key. Drums use General MIDI drum notes.
 
-Four phrase buttons select and queue phrases for the next bar. Duplicate copies
-the selected phrase into the following slot. Step and Chord inspectors expose
+For a complementary lane, phrase buttons queue playback for the next bar.
+Duplicate copies the selected phrase into the following slot. Step and Chord inspectors expose
 velocity, gate duration, probability, conditions, repeats, tie/hold, chord
 degrees, inversion and spread. Probability uses a deterministic musical stream.
 Terrain/action conditions use observations from the selected lane.
@@ -30,8 +37,7 @@ living actor's support and nearby contacts. Unbuilt terrain is not classified as
 a gap. Available matches are labeled in the inspector.
 
 The Automation inspector edits controller curves as `position:value` points,
-with beat or world-distance positioning. Mute and Solo operate on whole lanes;
-Hybrid mode combines the clocked pattern with separately adjustable game accents.
+with beat or world-distance positioning. Mute and Solo operate on whole lanes.
 Imported spatial curves retain their normalized physical-world coordinates.
 The endless world's horizontal extent is very large, so use distance spans or
 distance-based CC curves for changes over a short terrain run.
@@ -61,6 +67,25 @@ and [Web MIDI API](https://www.w3.org/TR/webmidi/) for protocol details.
 Record captures input and accepted output. Input notes edit the selected phrase;
 MIDI export saves the recorded performance as a Standard MIDI File. The inspector
 also exposes bank selection, sustain, pitch bend, pressure and MIDI learn.
+The recording buffer stops accepting events at its capacity while playback
+continues. The Record control marks a partial take, and MIDI export names it
+`procgen-performance-partial.mid`. Export includes a small MIDI text manifest
+with the retained sequence/time range, first lost sequence, drop categories,
+capture evidence and unmatched note counts. Unmatched Note Ons and Note Offs
+are omitted from the exported window; the exporter does not invent releases.
+Stopping while input or output notes remain open likewise marks the take
+incomplete. A near-cap state appears on the Record control at 80% capacity.
+Project and MIDI export show “Download requested” after the browser anchor
+clicks. The app cannot tell whether the browser saved the file; check the
+browser's downloads before relying on a local copy.
+The footer's **Retry file** button requests the same prepared bytes again after
+an export. On browsers with a file picker, **Save file** streams those same
+bytes to the selected handle and reports when the writable stream closes. It
+does not prove physical disk durability. Neither action recaptures the world
+or changes the MIDI take. Preparing a
+new export replaces the previous one; closing the workstation discards it.
+Prepared browser exports have a 128 MiB staging limit and expire after ten
+minutes. A failed download request leaves the file ready to retry.
 Conflicting programs or controllers on a shared output/channel are reported.
 Panic clears queued output and releases active notes.
 
@@ -96,19 +121,109 @@ projects and the latest recovery checkpoint. **Export** writes a portable
 current origin, so export important projects before changing server ports or
 clearing site data.
 
+Version 1 Game/Hybrid setups are never silently interpreted as physical
+projects. A previous local setup shows a conversion button with the number of
+enabled phrase steps it would discard. Importing or loading a legacy session
+asks for the same explicit physical conversion; the source file or saved
+record is left untouched. The converted project declares schema version 2 and
+contains the default physical graph. Complementary pattern lanes can then be
+authored separately.
+
 A project includes music, automation, mix, routing choices, transport, camera,
 actors and current action frames, edited terrain, generation/reveal progress,
 crew plans and random state. Capture occurs between completed simulation ticks.
 Load validates a temporary world before replacing the open one, restores paused,
 and leaves output silent until playback resumes. Timers, render caches and device
 connections are rebuilt. Missing or incompatible terrain assets reject the load.
+Checkpoint graph version 2 preserves signed zero and nonfinite floating values
+through JSON export. Older browser checkpoints with intact numeric values remain
+readable; an older JSON export that converted a typed value to `null` is rejected
+because its exact simulation state cannot be recovered. The footer reports crash
+recovery separately from named Save, including the last durable edit revision.
+Recovery writes rotate two checksum-verified generations with an atomic head
+record. Opening recovery chooses the newest valid committed generation and falls
+back to the previous one if the latest payload is corrupt. Checksumming the
+detached snapshot yields between bounded slices; capture of the live world graph
+still runs on the main thread and can cost more than one frame for large worlds.
 
-**New** creates a default composition and a fresh world. **Reroll world** keeps
+**New** creates a default composition and a fresh world through the same
+versioned fresh-start resolver used by `?startup=fresh`. **Reroll world** keeps
 the composition and changes the seed. **Replay seed** rebuilds the current seed's
 starting world. Explicit seed URLs remain reproducible; ordinary visits and new
 runs receive fresh seeds. Play resumes the existing world.
 Automatic run resets derive a different seed from the saved run state, so a
 loaded checkpoint continues through the same subsequent worlds.
+
+Startup resolves one immutable plan before asset preparation. Shared recipes
+use versioned defaults for omitted fields, including decoration, population and
+worker policy; unrelated previous setup preferences cannot fill those gaps.
+Explicit physical recipe fields conflict with document/recovery launch modes
+and duplicate launch fields are rejected. The plan exposes presence, source and
+field provenance separately from live output ownership.
+
+`?startup=document&document=<id>&documentRevision=<revision>` opens that local
+document revision; an omitted revision opens its current stored revision.
+`?startup=recovery` opens a checksum-verified recovery, or reports that none is
+available. Both use the existing validated load transaction and restore paused.
+They reject conflicting seed/lane overrides. `?startup=previous-setup`
+deliberately reuses a compatible musical setup with a new physical seed.
+Document IDs address this browser's local store; they are not portable recipes.
+Input selection, clock output, recording and thru are reset on document load.
+
+Initial preference writes wait for a committed world. Later world candidates
+also defer preference publication until commit or a completed rollback. An
+invalid source, canceled startup or rejected recipe cannot overwrite the prior
+recoverable setup while assets prepare. Startup source reads have a bounded
+deadline and navigation cancellation. Added resolver/controller/browser
+fixtures remain unexecuted during the frontloaded implementation pass.
+An invalid startup offers an explicit **Start fresh** action. That action opens
+the versioned fresh defaults and removes the failed recipe/document query;
+there is no automatic fallback that could be mistaken for a restored source.
+
+Project import parsing and export JSON encoding use registered background jobs.
+Admission reserves estimated source, staging and result overlap before reading
+an import or capturing an export snapshot. Jobs carry the document generation
+and edit revision; an obsolete result cannot publish into a replacement
+document. Computed results release their worker slot while retaining their
+memory lease through load/artifact publication. Data is copied as an owned
+snapshot; this path never transfers or detaches live world buffers.
+
+The job protocol registers JSON parsing, JSON encoding, recovery checksums and
+asset hashes. Worker jobs are bound to the executing build when generated
+application identity exists. Without workers, only small bounded JSON jobs and
+native byte hashing are admitted; a large synchronous parse is not described
+as cancellable. Recovery checksumming also has a bounded cooperative fallback.
+Snapshot capture itself still runs at a completed main-thread boundary.
+
+Recovery uses the same admission owner before invoking its snapshot factory.
+The checksum and atomic generation write use one private snapshot. Its revision
+and completed simulation tick are captured when the admitted snapshot is taken.
+Closing storage cancels owned checksum/commit work. Recovery reads inspect one
+candidate generation at a time, admitting its payload before checksum work;
+temporary worker or capacity failures are not reported as corrupt recovery.
+Automatic recovery startup requires a checksum; legacy source records remain
+available through explicit legacy loading.
+
+FileProvider binary verification uses the same boundary before copying hash
+input. It keeps WebCrypto native, retains raw-byte leases until digest work
+settles and shares an immutable generation's existing hash promise. Content
+coalescing across independent jobs, broader terrain decode execution and
+measured live-load qualification remain follow-through work. New fixtures are
+unexecuted.
+
+Document selection and startup recovery use owned source handles. Their
+checkpoint payload remains reserved through validation, asset preparation and
+world publication; canceled or late reads release their own handle. Navigation
+cancellation also reaches the initial world's preparation lease. Once restored,
+the workstation keeps a weak session identity marker rather than a second
+strong checkpoint reference. Convenience storage reads remain available for
+explicit legacy consumers; primary application flows use the owned interface.
+At computation completion, conservative retained-payload estimates replace
+temporary worker/staging peaks. A canceled computed result remains charged until
+its consumer acknowledges release; cancellation cannot free memory that a world
+load still owns. Source revocation reaches the candidate world's cancellation
+signal. Compute deadlines end at the computed boundary; source publication has
+its own explicit lifetime.
 
 The World inspector controls trap spacing and display row height. Playable terrain
 assembles near approaching actors; camera movement does not build distant terrain.

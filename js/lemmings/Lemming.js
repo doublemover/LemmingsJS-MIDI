@@ -1,12 +1,8 @@
 import { LemmingStateType } from './LemmingStateType.js';
 import { BaseLogger } from '../util/LogHandler.js';
 import { SoundEventTypes, SoundEffectIds } from '../game/SoundEvents.js';
-import { getRuntimeMiniMap, getRuntimeSoundEvents } from '../game/GameRuntime.js';
+import { getRuntimeSoundEvents } from '../game/GameRuntime.js';
 import { TriggerTypes } from '../level/TriggerTypes.js';
-
-const addMiniMapDeath = (runtime, x, y) => {
-  getRuntimeMiniMap(runtime)?.addDeath(x, y);
-};
 
 class Lemming extends BaseLogger {
   constructor(x = 0, y = 0, id, runtime = null) {
@@ -23,6 +19,9 @@ class Lemming extends BaseLogger {
    * Reinitialize this instance so managers can reuse pooled objects.
    */
   reset(x = 0, y = 0, id) {
+    if (this.runtime?.physicalFacts?.canMutate?.(this) === false) throw new Error('Physical actor reset requires a future command boundary.');
+    if (this.id != null && !this._physicalTerminated) this.endPhysicalLifecycle('pooled-reset');
+    const pendingPhysicalTransitions = this._physicalPendingTransitions;
     this.action?.spriteProvider?.resetActor?.(this);
     this.lookRight = true;
     this.frameIndex = 0;
@@ -40,6 +39,17 @@ class Lemming extends BaseLogger {
     this.x = x;
     this.y = y;
     this.id = id;
+    this._physicalActionSerial = 0;
+    this._physicalCommandSerial = 0;
+    this._physicalInterventionId = null;
+    this._physicalWorkSerial = 0;
+    this._physicalActionInstanceId = null;
+    this._physicalActionPublished = false;
+    this._physicalPendingTransitions = pendingPhysicalTransitions || null;
+    this._physicalTerminated = false;
+    this._physicalDirectionFactTick = -1;
+    this._physicalContactSpan = null;
+    this._physicalContactSerial = 0;
   }
 
   getDirection() {
@@ -50,6 +60,14 @@ class Lemming extends BaseLogger {
     const turns = walker && (trigger.type === TriggerTypes.BLOCKER_LEFT && walker.lookRight ||
       trigger.type === TriggerTypes.BLOCKER_RIGHT && !walker.lookRight);
     if (!turns || walker === this) return;
+    const facts = this.runtime?.physicalFacts;
+    if (facts?.enabled?.(walker) && facts?.enabled?.(this)) {
+      const contactId = `${walker.id}:${this.id}:${_tick}:blocker`;
+      walker._physicalPendingBlockerContact = { contactId, blockerId: this.id };
+      facts.emit({ kind: 'ContactResolved', contactId, actorId: walker.id, otherActorId: this.id,
+        laneId: walker.laneIndex ?? null, causeKind: 'blocker', participantRoles: { actor: 'walker', otherActor: 'blocker' },
+        positionBefore: { x: walker.x, y: walker.y }, positionAfter: { x: walker.x, y: walker.y } });
+    }
     const bus = getRuntimeSoundEvents(this.runtime);
     bus?.emitSfx?.(SoundEventTypes.BLOCKER_TURN, SoundEffectIds.BLOCKER_TURN,
       { lemmingId: walker.id, blockerId: this.id, x: walker.x, y: walker.y });
@@ -62,6 +80,8 @@ class Lemming extends BaseLogger {
   }
 
   setAction(action) {
+    if (this.runtime?.physicalFacts?.canMutate?.(this) === false) throw new Error('Physical action mutations require a future command boundary.');
+    this.endPhysicalContactSpan('action-change');
     const previousAction = this.action;
     const previousFrameIndex = this.frameIndex;
     previousAction?.spriteProvider?.resetActor?.(this);
@@ -69,6 +89,61 @@ class Lemming extends BaseLogger {
     this.frameIndex = 0;
     this.state = 0;
     action?.spriteProvider?.onActionChange?.(this, previousAction, previousFrameIndex);
+    if (this.id != null) {
+      if (previousAction && this._physicalActionPublished && this._physicalActionInstanceId) this._queuePhysicalTransition({ kind: 'ActionExited', actorId: this.id,
+        laneId: this.laneIndex ?? null, action: previousAction.actionName || null, actionInstanceId: this._physicalActionInstanceId,
+        positionBefore: { x: this.x, y: this.y }, terminationReason: 'action-change' });
+      this._physicalActionInstanceId = action ? `${this.id}:action:${++this._physicalActionSerial}` : null;
+      this._physicalActionPublished = !!action && this._queuePhysicalTransition({ kind: 'ActionEntered', actorId: this.id,
+        laneId: this.laneIndex ?? null, action: action.actionName || null, actionInstanceId: this._physicalActionInstanceId,
+        parentCauseIds: this._physicalInterventionId ? [this._physicalInterventionId] : [],
+        positionAfter: { x: this.x, y: this.y } });
+    }
+  }
+
+  _queuePhysicalTransition(fact) {
+    const facts = this.runtime?.physicalFacts;
+    if (facts?.enabled?.(this)) { facts.emit(fact); return true; }
+    if (facts?.observing?.(this)) { (this._physicalPendingTransitions ||= []).push(fact); return true; }
+    return false;
+  }
+
+  flushPhysicalTransitions() {
+    const facts = this.runtime?.physicalFacts;
+    if (!facts?.enabled?.(this)) return;
+    for (const fact of this._physicalPendingTransitions || []) facts.emit(fact);
+    this._physicalPendingTransitions = null;
+    if (!this._physicalTerminated && this.action && !this._physicalActionPublished) {
+      this._physicalActionPublished = true;
+      facts.emit({ kind: 'ActionEntered', actorId: this.id, laneId: this.laneIndex ?? null,
+        action: this.action.actionName || null, actionInstanceId: this._physicalActionInstanceId,
+        positionAfter: { x: this.x, y: this.y } });
+    }
+  }
+
+  endPhysicalLifecycle(reason = 'removed') {
+    if (this.id == null || this._physicalTerminated) return;
+    this.endPhysicalContactSpan(reason);
+    if (this.runtime?.physicalFacts?.enabled?.(this) || this.runtime?.physicalFacts?.observing?.(this)) {
+      if (this.action && this._physicalActionPublished && this._physicalActionInstanceId) this._queuePhysicalTransition({ kind: 'ActionExited', actorId: this.id,
+        laneId: this.laneIndex ?? null, action: this.action.actionName || null, actionInstanceId: this._physicalActionInstanceId,
+        positionBefore: { x: this.x, y: this.y }, terminationReason: reason });
+      this._queuePhysicalTransition({ kind: 'ActorTerminated', actorId: this.id, laneId: this.laneIndex ?? null,
+        actionInstanceId: this._physicalActionInstanceId, positionBefore: { x: this.x, y: this.y }, terminationReason: reason });
+    }
+    this._physicalActionInstanceId = null;
+    this._physicalActionPublished = false;
+    this._physicalTerminated = true;
+  }
+
+  endPhysicalContactSpan(reason) {
+    const span = this._physicalContactSpan;
+    if (!span) return;
+    this._queuePhysicalTransition({ kind: 'ContactSpanEnded', spanId: span.spanId, actorId: this.id,
+      laneId: this.laneIndex ?? null, actionInstanceId: span.actionInstanceId,
+      anchor: span.anchor, surfaceRevision: span.surfaceRevision, observedTick: span.lastObservedTick,
+      reason, precision: 'tick' });
+    this._physicalContactSpan = null;
   }
 
   setCountDown(action) {
@@ -96,9 +171,10 @@ class Lemming extends BaseLogger {
     if (this.countdownAction !== null && this.countdownAction !== undefined) {
       this.countdownAction.draw(gameDisplay, this);
     }
-    if (!this.action.spriteProvider?.drawCosmeticTransition?.(gameDisplay, this)) {
-      this.action.draw(gameDisplay, this);
-    }
+    const previousScope = gameDisplay.beginActorAction?.(this);
+    try {
+      if (!this.action.spriteProvider?.drawCosmeticTransition?.(gameDisplay, this)) this.action.draw(gameDisplay, this);
+    } finally { gameDisplay.endActorAction?.(previousScope); }
   }
 
   renderDebug(gameDisplay) {
@@ -120,12 +196,10 @@ class Lemming extends BaseLogger {
         SoundEffectIds.FELL_OFF,
         { lemmingId: this.id, x: lemX, y: newY }
       );
-      addMiniMapDeath(this.runtime, lemX, newY);
       return LemmingStateType.OUT_OF_LEVEL;
     }
     // run main action
     if (!this.action) {
-      addMiniMapDeath(this.runtime, lemX, this.y);
       return LemmingStateType.OUT_OF_LEVEL;
     }
     // run secondary action
@@ -145,10 +219,13 @@ class Lemming extends BaseLogger {
   }
 
   disable() {
+    if (this.runtime?.physicalFacts?.canMutate?.(this) === false) throw new Error('Physical actor mutation requires a future command boundary.');
     this.disabled = true;
   }
 
   remove() {
+    if (this.runtime?.physicalFacts?.canMutate?.(this) === false) throw new Error('Physical actor removal requires a future command boundary.');
+    this.endPhysicalLifecycle(this.terminalReason || 'removed');
     this.action?.spriteProvider?.resetActor?.(this);
     this.action = null;
     this.countdownAction = null;

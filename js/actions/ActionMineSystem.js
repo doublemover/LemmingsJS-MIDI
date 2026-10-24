@@ -4,6 +4,7 @@ import { LemmingStateType } from '../lemmings/LemmingStateType.js';
 import { MaskTypes } from '../render/MaskTypes.js';
 import { SpriteTypes } from '../lemmings/SpriteTypes.js';
 import { getRuntimeSoundEvents } from '../game/GameRuntime.js';
+import { recordPhysicalWork } from './PhysicalWorkFacts.js';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const countClearable = (mask) => {
@@ -42,6 +43,8 @@ class ActionMineSystem extends ActionBaseSystem {
       let maskIndex = lem.frameIndex - 1;
       let subMask   = mask.GetMask(maskIndex);
       if (level.hasSteelUnderMask(subMask, lem.x, lem.y)) {
+        recordPhysicalWork(level, lem, { operationKind: 'mine', phase: 'steel', cycleOrdinal: lem.frameIndex,
+          attemptedCells: countClearable(subMask), outcome: 'protected', revisionBefore: Number.isFinite(level.terrainRevision) ? level.terrainRevision : null });
         const soundBus = getRuntimeSoundEvents(this.runtime);
         soundBus?.emitSfx?.(
           SoundEventTypes.STEEL_HIT,
@@ -51,14 +54,21 @@ class ActionMineSystem extends ActionBaseSystem {
         return LemmingStateType.SHRUG;
       }
       if (level.hasArrowUnderMask(subMask, lem.x, lem.y, lem.lookRight)) {
+        recordPhysicalWork(level, lem, { operationKind: 'mine', phase: 'arrow', cycleOrdinal: lem.frameIndex,
+          attemptedCells: countClearable(subMask), outcome: 'protected', revisionBefore: Number.isFinite(level.terrainRevision) ? level.terrainRevision : null });
         return LemmingStateType.SHRUG;
       }
       this.characterParticles?.sampleMask(level, subMask, lem.x, lem.y, lem);
+      const revisionBefore = Number.isFinite(level.terrainRevision) ? level.terrainRevision : null;
       const removed = typeof level.clearGroundWithMaskCount === 'function'
         ? level.clearGroundWithMaskCount(subMask, lem.x, lem.y)
         : (level.clearGroundWithMask(subMask, lem.x, lem.y), 0);
+      const clearable = countClearable(subMask);
+      recordPhysicalWork(level, lem, { operationKind: 'mine', phase: 'mask', cycleOrdinal: lem.frameIndex,
+        attemptedCells: clearable, changedSolidCells: removed, changedAppearanceCells: removed, revisionBefore,
+        targetX: lem.x + (subMask?.offsetX ?? 0), targetY: lem.y + (subMask?.offsetY ?? 0) });
       this.characterParticles?.emitTerrain(lem, 'mining');
-      const intensity = scaleIntensity(removed, countClearable(subMask));
+      const intensity = scaleIntensity(removed, clearable);
       if (removed > 0) {
         const soundBus = getRuntimeSoundEvents(this.runtime);
         soundBus?.emitSfx?.(

@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { createProcgenTransport } from '../js/app/procgen/workstation/ProcgenTransport.js';
 import { createProcgenTimingDriver } from '../js/app/procgen/workstation/ProcgenTimingDriver.js';
+import { runInNewContext } from 'node:vm';
 
 function fixture(options = {}) {
   let time = 0, callback = null;
@@ -14,6 +15,13 @@ function fixture(options = {}) {
 }
 
 describe('ProcGen workstation independent transport', () => {
+  it('retires the timing driver after a flushing callback fails', () => {
+    const f = fixture({ onFlush() { throw new Error('flush refused'); } });
+    const receipt = f.transport.dispose();
+    expect(f.driver.disposed).to.equal(true);
+    expect(f.transport.dispose()).to.equal(receipt);
+    expect(receipt.resources.find(resource => resource.name === 'transport-halt')).to.include({ status: 'failed', error: 'flush refused' });
+  });
   it('timestamps a phase-stable 24 PPQN clock separately from physical game speed', () => {
     const f = fixture(); f.transport.play(); f.advance(500);
     const clocks = f.output.messages.filter(event => event.data[0] === 0xf8);
@@ -176,14 +184,23 @@ describe('ProcGen workstation independent transport', () => {
 });
 
 describe('ProcGen background timing driver', () => {
-  it('uses a Worker, detects worker failure, and revokes its Blob URL', () => {
+  it('acknowledges a single worker wake, detects failure, and revokes its Blob URL', () => {
     const created = [], revoked = [], signals = [];
-    class FakeWorker { constructor(url) { this.url = url; created.push(this); } postMessage(value) { this.interval = value; } terminate() { this.terminated = true; } }
-    const host = { Worker: FakeWorker, Blob: class {}, URL: { createObjectURL: () => 'blob:clock', revokeObjectURL: value => revoked.push(value) } };
+    class FakeWorker { constructor(url) { this.url = url; this.messages = []; created.push(this); } postMessage(value) { this.messages.push(value); } terminate() { this.terminated = true; } }
+    const host = { Worker: FakeWorker, Blob: class {}, performance: { now: () => 30 },
+      URL: { createObjectURL: () => 'blob:clock', revokeObjectURL: value => revoked.push(value) } };
     const driver = createProcgenTimingDriver({ host }); driver.start(value => signals.push(value));
-    created[0].onmessage(); created[0].onerror();
-    expect(created[0].interval).to.equal(10); expect(created[0].terminated).to.equal(true);
-    expect(signals).to.deep.equal([undefined, { suspended: true }]); expect(revoked).to.deep.equal(['blob:clock']);
+    const start = created[0].messages[0];
+    created[0].onmessage({ data: { epoch: start.epoch, sequence: 1, sourceTimeMs: 0 } });
+    created[0].onmessage({ data: { epoch: start.epoch, sequence: 1, sourceTimeMs: 0 } });
+    expect(start).to.include({ kind: 'start', intervalMs: 10 });
+    expect(created[0].messages[1]).to.deep.equal({ kind: 'ack', epoch: start.epoch, sequence: 1 });
+    expect(driver.diagnostics()).to.include({ mode: 'worker', wakes: 1, lateWakes: 1 });
+    created[0].onerror();
+    expect(created[0].terminated).to.equal(true);
+    expect(signals).to.deep.equal([{ epoch: start.epoch, sequence: 1, sourceTimeMs: 0 },
+      { suspended: true, reason: 'worker-runtime-failure', epoch: start.epoch }]);
+    expect(revoked).to.deep.equal(['blob:clock']);
   });
 
   it('falls back to interval wakeups and clears them on stop', () => {
@@ -191,5 +208,49 @@ describe('ProcGen background timing driver', () => {
     const driver = createProcgenTimingDriver({ host: { setInterval(fn) { wake = fn; return 7; }, clearInterval(id) { cleared.push(id); } } });
     let calls = 0; driver.start(() => calls++); wake(); driver.stop();
     expect(calls).to.equal(1); expect(cleared).to.deep.equal([7]);
+  });
+  it('rejects retired worker messages and errors after rapid restart', () => {
+    const workers = [], signals = [];
+    class FakeWorker { constructor() { workers.push(this); this.messages = []; } postMessage(value) { this.messages.push(value); } terminate() { this.terminated = true; } }
+    const host = { Worker: FakeWorker, Blob: class {}, performance: { now: () => 200 },
+      URL: { createObjectURL: () => 'blob:clock', revokeObjectURL() {} } };
+    const driver = createProcgenTimingDriver({ host });
+    driver.start(value => signals.push(['old', value]));
+    const oldEpoch = workers[0].messages[0].epoch;
+    driver.start(value => signals.push(['new', value]));
+    const newEpoch = workers[1].messages[0].epoch;
+    workers[0].onmessage({ data: { epoch: oldEpoch, sequence: 1, sourceTimeMs: 100 } });
+    workers[0].onerror();
+    workers[1].onmessage({ data: { epoch: newEpoch, sequence: 1, sourceTimeMs: 190 } });
+    expect(signals).to.deep.equal([['new', { epoch: newEpoch, sequence: 1, sourceTimeMs: 190 }]]);
+    expect(driver.diagnostics()).to.include({ mode: 'worker', wakes: 1 });
+    driver.stop(); workers[1].onmessage({ data: { epoch: newEpoch, sequence: 2, sourceTimeMs: 200 } });
+    expect(signals).to.have.length(1);
+  });
+  it('keeps only one unacknowledged wake during a long main-thread stall', () => {
+    let blob, workerTick, worker;
+    const queued = [], delivered = [];
+    class FakeBlob { constructor(parts) { blob = parts.join(''); } }
+    class FakeWorker {
+      constructor() {
+        worker = this;
+        const workerHost = { performance: { now: () => 100 }, postMessage: value => queued.push(value),
+          setInterval: callback => { workerTick = callback; return 1; }, clearInterval() {} };
+        runInNewContext(blob, workerHost);
+        this.workerHost = workerHost;
+      }
+      postMessage(value) { this.workerHost.onmessage({ data: value }); }
+      terminate() {}
+    }
+    const host = { Worker: FakeWorker, Blob: FakeBlob, performance: { now: () => 150 },
+      URL: { createObjectURL: () => 'blob:clock', revokeObjectURL() {} } };
+    const driver = createProcgenTimingDriver({ host }); driver.start(value => delivered.push(value.sequence));
+    for (let i = 0; i < 100; i++) workerTick();
+    expect(queued).to.have.length(1);
+    worker.onmessage({ data: queued.shift() });
+    workerTick(); expect(queued).to.have.length(1);
+    worker.onmessage({ data: queued.shift() });
+    expect(delivered).to.deep.equal([1, 2]);
+    driver.dispose();
   });
 });

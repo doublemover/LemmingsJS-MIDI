@@ -12,6 +12,10 @@ import { MidiScheduler } from '../../js/midi/MidiScheduler.js';
 import { createMidiOutputCapture } from '../../js/midi/capture/MidiOutputCapture.js';
 import { analyzeMidiOutputCapture } from '../../js/midi/capture/MidiCaptureAnalysis.js';
 import { withFakeClockAndPerformance } from '../support/timers.js';
+import { createResourceBudget } from '../../js/app/resources/ResourceBudget.js';
+import { createProcgenPhysicalPlayback } from '../../js/app/procgen/workstation/ProcgenPhysicalPlayback.js';
+import { createProcgenPhysicalScoreClock } from '../../js/app/procgen/workstation/ProcgenPhysicalScoreClock.js';
+import { createCausalMusicEngine } from '../../js/app/procgen/workstation/CausalMusicEngine.js';
 
 const deferred = () => {
   let resolve;
@@ -19,6 +23,55 @@ const deferred = () => {
   const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
   return { promise, resolve, reject };
 };
+
+describe('separate cue workload and graph admission', () => {
+  it('rejects an earlier onset that would overlap a committed future note in a one-voice workload', async () => {
+    const context = new FakeContext(); context.currentTime = 0;
+    const preview = new BrowserNotePreview({ createAudioContext: () => context, nowMs: () => 0, maxVoices: 1 }); await preview.enable();
+    expect(preview.output.channels[1].sendNoteOn(60, { rawAttack: 100, time: 2000 })).to.equal(true);
+    expect(preview.output.channels[1].sendNoteOn(64, { rawAttack: 100, time: 1000 })).to.equal(false);
+    expect([...preview._voices].map(value => value.note)).to.deep.equal([60]); expect(preview.getState().voiceSteals).to.equal(0); await preview.dispose();
+  });
+  it('cannot use a one-voice live workload for cue without an explicit additional quota', async () => {
+    const context = new FakeContext(), preview = new BrowserNotePreview({ createAudioContext: () => context, maxVoices: 1 });
+    await preview.enable(); preview.output.channels[1].sendNoteOn(60, { rawAttack: 100 });
+    const live = [...preview._voices][0], cue = preview.createSession('cue', { workloadClass: 'cue' });
+    expect(await cue.enable()).to.equal(false); expect(cue.output.channels[1].sendNoteOn(60, { rawAttack: 100 })).to.equal(false);
+    expect(preview._voices.has(live)).to.equal(true); expect(preview.getState().voiceSteals).to.equal(0); await preview.dispose();
+  });
+  it('partitions explicit cue capacity, preserves same-pitch live ownership and stops cue independently', async () => {
+    const context = new FakeContext(), preview = new BrowserNotePreview({ createAudioContext: () => context, maxVoices: 1, cueVoices: 1 });
+    await preview.enable(); preview.output.channels[1].sendNoteOn(60, { rawAttack: 100 }); const live = [...preview._voices][0];
+    await preview.prepareCueRoute({ mode: 'rehearsal' }); const cue = preview.createSession('cue', { workloadClass: 'cue' });
+    expect(await cue.enable()).to.equal(true); cue.output.channels[1].sendNoteOn(60, { rawAttack: 100 });
+    expect([...preview._voices].filter(voice => voice.workloadClass === 'cue')).to.have.length(1);
+    cue.output.channels[1].sendNoteOn(61, { rawAttack: 100 }); expect(preview._voices.has(live)).to.equal(true);
+    expect(live.stolen).not.to.equal(true); preview.stopCue(); expect(preview._voices.has(live)).to.equal(true);
+    expect(preview.getMonitorRouteState()).to.include({ muted: true, mode: 'rehearsal', cueIncludedInMasterCapture: true });
+    await preview.dispose();
+  });
+});
+
+describe('renderer owners and explicit cue source costs', () => {
+  it('retains enough bounded backend owners for the lane router, two candidates and one cue', async () => {
+    const preview = new BrowserNotePreview({ createAudioContext: () => new FakeContext() }), session = preview.createSession('renderers');
+    const backends = Array.from({ length: 20 }, () => session.createInstrumentBackend());
+    expect(() => session.createInstrumentBackend()).to.throw('backend limit'); expect(preview.getState().instrumentBackends).to.equal(20);
+    await Promise.all(backends.map(backend => backend.dispose().completion));
+    expect(preview.getState().instrumentBackends).to.equal(0); await preview.dispose();
+  });
+  it('admits one 16-unit cue cloud while enforcing four logical cue gates', async () => {
+    const preview = new BrowserNotePreview({ createAudioContext: () => new FakeContext(), maxVoices: 32, cueVoices: 4, cueCostUnits: 16 });
+    await preview.enable(); await preview.prepareCueRoute({ mode: 'rehearsal' }); preview.createSession('cloud-cue', { workloadClass: 'cue' });
+    const owner = [...preview._sessions.values()].find(session => session.workloadClass === 'cue').id;
+    const request = { start: 1, releaseAt: 2, end: 3, cost: 16 };
+    expect(preview._inspectVoiceInterval(owner, request).accepted).to.equal(true);
+    expect(preview._inspectVoiceInterval(owner, { ...request, cost: 17 }).accepted).to.equal(false);
+    for (let index = 0; index < 4; index++) preview._voices.add({ owner, workloadClass: 'cue', start: 1, releaseAt: 2, end: 3, renderCost: 1 });
+    expect(preview._inspectVoiceInterval(owner, { ...request, cost: 1 }).accepted).to.equal(false);
+    preview._voices.clear(); await preview.dispose();
+  });
+});
 
 class FakeParam {
   constructor() { this.value = 1; this.events = []; }
@@ -53,6 +106,7 @@ class FakeContext {
   constructor(state = 'running') {
     this.state = state;
     this.currentTime = 2;
+    this.sampleRate = 48000;
     this.destination = {};
     this.oscillators = [];
     this.gains = [];
@@ -114,6 +168,463 @@ const setup = (options = {}, context = new FakeContext()) => {
 };
 
 describe('BrowserNotePreview', function() {
+  for (const boundary of ['channel-release', 'channel-disconnect', 'backend-stop', 'backend-dispose', 'observer-revoke'])
+    it(`retires every independent session leaf after ${boundary} fails`, async () => {
+      const context = new FakeContext(), ledger = new Map(); let refused = false, releaseAttempts = 0;
+      const resourceBudget = { reserve(record) { ledger.set(record.token, record); return { accountedBytes: record.bytes }; },
+        release({ token }) {
+          if (boundary === 'channel-release' && ledger.get(token)?.kind === 'channel-graph' && !refused) { refused = true; releaseAttempts++; throw new Error('release refused'); }
+          ledger.delete(token); return true;
+        } };
+      const preview = new BrowserNotePreview({ createAudioContext: () => context, resourceBudget });
+      const owner = preview.createSession('retired'), cue = preview.createSession('cue'); await owner.enable(); await cue.enable();
+      const pcm = owner.reserveDecodedBuffer({ frames: 48000, channels: 2, sampleRate: 48000 });
+      owner.output.channels[1].sendProgramChange(8);
+      const ownerId = owner.getState().ownerId, channel = [...preview._channels.values()].find(value => value.owner === ownerId);
+      if (boundary === 'channel-disconnect') channel.gain.disconnect = () => { throw new Error('disconnect refused'); };
+      if (boundary.startsWith('backend')) preview._registerInstrumentBackend({
+        onOwnerStop() { if (boundary === 'backend-stop') throw new Error('stop refused'); },
+        dispose() { if (boundary === 'backend-dispose') throw new Error('backend disposal refused'); }
+      }, ownerId);
+      if (boundary === 'observer-revoke') preview._observers.revokeOwner = () => { throw new Error('observer revoke refused'); };
+      const first = owner.dispose(); expect(owner.dispose()).to.equal(first);
+      const receipt = await first;
+      expect(receipt.outcome).to.equal('partial'); expect(pcm.isActive()).to.equal(false);
+      expect(cue.getState().enabled).to.equal(true); expect(owner.getState().status).to.equal('disposed');
+      expect(owner.getState().retirement.outcome).to.equal('partial');
+      if (boundary === 'channel-release') {
+        expect(releaseAttempts).to.equal(1);
+        expect(preview.getState().resourceAccounting.unreconciledReservations).to.equal(1);
+        expect([...ledger.values()].some(value => value.kind === 'channel-graph')).to.equal(true);
+      }
+      await preview.dispose();
+      if (boundary === 'channel-release') expect(releaseAttempts).to.equal(1);
+    });
+
+  it('retains a shared root receipt and closes unrelated leaves when context close rejects', async () => {
+    const context = new FakeContext(), preview = new BrowserNotePreview({ createAudioContext: () => context });
+    const owner = preview.createSession('owner'); await owner.enable();
+    const pcm = owner.reserveDecodedBuffer({ frames: 48000, channels: 2 });
+    context.close = () => { context.closeCalls++; return Promise.reject(new Error('close refused')); };
+    const first = preview.dispose(); expect(preview.dispose()).to.equal(first);
+    const receipt = await first;
+    expect(receipt.outcome).to.equal('partial'); expect(pcm.isActive()).to.equal(false);
+    expect(context.closeCalls).to.equal(1); expect(preview.getState()).to.include({ status: 'disposed', unclosedContext: true });
+    expect(receipt.resources.find(resource => resource.name === 'context')).to.include({ status: 'failed', error: 'close refused' });
+  });
+  it('publishes an enable lease before session observers can reenter or cancel activation', async () => {
+    const { preview } = setup(); await preview.enable();
+    const session = preview.createSession('reentrant-enable'); let nested, reports = 0;
+    session.subscribe(() => { reports++; if (!nested) nested = session.enable(); });
+    const pending = session.enable();
+    expect(nested).to.equal(pending); expect(await pending).to.equal(true); expect(reports).to.equal(2);
+    const cancelled = preview.createSession('cancel-enable');
+    cancelled.subscribe(state => { if (state.status === 'unlocking') cancelled.stop(); });
+    expect(await cancelled.enable()).to.equal(false); expect(cancelled.getState().enabled).to.equal(false);
+    expect(session.getState().enabled).to.equal(true); await preview.dispose();
+  });
+
+  it('arms the real physical session once and leaves a stopped owner off during root notifications', async () => {
+    const { preview } = setup(); await preview.enable(); let reports = 0;
+    const release = preview.subscribe(() => { reports++; });
+    const playback = createProcgenPhysicalPlayback({ audio: preview, now: () => 1000,
+      getGraph: () => ({ version: 1, revision: 1, instruments: [] }), scoreTimeline: createProcgenPhysicalScoreClock() });
+    expect(await playback.ready()).to.equal(true); await Promise.resolve();
+    expect(playback.diagnostics().enabled).to.equal(true); expect(reports).to.be.lessThan(8);
+    playback.stop(); preview.setMasterVolume(0.5); await Promise.resolve();
+    expect(playback.diagnostics().enabled).to.equal(false); expect(preview.getState().enabled).to.equal(true);
+    expect(reports).to.be.lessThan(12); release(); await playback.dispose(); await preview.dispose();
+  });
+
+  const nativePatch = (revision = 1) => ({ status: 'ready', patch: { id: 'native-lifecycle', revision,
+    engineId: 'native-oscillator', engineVersion: 1, parameters: { gain01: 0.8, sustain01: 0.6, pan01: 0 },
+    sampleRefs: [], voicePolicy: { maxVoices: 8 }, mix: { gain01: 0.7, pan01: 0.1 } },
+  receipt: { patchId: 'native-lifecycle', revision } });
+  const nativeIntent = (voiceId, generation = 1) => ({ version: 1, kind: 'begin', voiceId, generation,
+    pitch: { cents: 6000.001, referenceHz: 440 }, velocity01: 0.7501, expression: {},
+    sourceEventIds: ['physical:1'], onsetId: 'onset:' + voiceId, actorId: 'actor:' + voiceId });
+
+  it('schedules actual travel-derived voices through the strict expression adapter', async () => {
+    const { preview, context } = setup({ maxVoices: 8 }), session = preview.createSession('travel'), backend = session.createInstrumentBackend({ gateMode: 'owned' });
+    expect((await backend.prepare(nativePatch())).status).to.equal('ready'); await session.enable();
+    const execution = backend.registerExecution({ executionEpoch: 'travel:strict', generation: 1 }).execution;
+    expect(backend.renewExecutionLease(1, execution, 336000).status).to.equal('accepted');
+    const engine = createCausalMusicEngine({ getGraph: () => ({ version: 1, revision: 1, instruments: [{ id: 'spacing', sourceKind: 'MotionCommitted',
+      articulation: { spacingPixels: 4, metric: 'endpoint-chord', orientation: 'signedX', lifetimeScope: 'actorJourney' }, pitchCents: 6000, velocity01: 0.6, role: 'texture', route: 'local' }] }) });
+    const intents = engine.processBatch({ version: 1, worldId: 'travel', generation: 1, tick: 1, batchId: 'travel:1:1:0', completeness: { status: 'complete', dropped: 0 },
+      facts: [{ kind: 'MotionCommitted', actorId: 7, laneId: 0, eventId: 'motion:1', causalSequence: 1, actionInstanceId: '7:action:1',
+        positionBefore: { x: 0, y: 10 }, positionAfter: { x: 24, y: 10 }, precision: 'endpoint' }] });
+    const attacks = intents.filter(intent => intent.kind === 'begin'); expect(attacks).to.have.length(6);
+    expect(attacks.map(intent => backend.begin(intent, 98000, execution).status)).to.deep.equal(Array(6).fill('accepted'));
+    expect(context.oscillators).to.have.length(6); expect(attacks.map(intent => intent.articulationState.crossing.position.x)).to.deep.equal([4, 8, 12, 16, 20, 24]);
+    await preview.dispose();
+  });
+
+  it('owns native FM children under independent same-pitch voices and charges all operator intervals', async () => {
+    const budget = createResourceBudget(), { preview, context } = setup({ resourceBudget: budget, maxVoices: 4 });
+    const game = preview.createSession('fm'), backend = game.createInstrumentBackend({ engineId: 'native-fm', gateMode: 'owned' });
+    const resolution = nativePatch(); resolution.patch = { ...resolution.patch, engineId: 'native-fm', parameters: { modulatorRatio: 2.71, indexStart: 3.5, indexEnd: 0.15 } };
+    expect((await backend.prepare(resolution)).status).to.equal('ready'); await game.enable();
+    const execution = backend.registerExecution({ executionEpoch: 'fm:independent', generation: 1 }).execution;
+    expect(backend.renewExecutionLease(1, execution, 336000).status).to.equal('accepted');
+    expect(backend.begin(nativeIntent('a'), 96000, execution)).to.include({ status: 'accepted', sourceCost: 2 });
+    expect(backend.begin(nativeIntent('b'), 96000, execution).status).to.equal('accepted'); expect(context.oscillators).to.have.length(4);
+    expect(backend.begin(nativeIntent('over-capacity'), 96000, execution).status).to.equal('rejected'); expect(context.oscillators).to.have.length(4);
+    expect(backend.update('a', { pitchOffsetCents: 100.001, pressure01: 0.1234 }, 97000, execution).status).to.equal('accepted');
+    expect(context.oscillators[0].detune.events.some(event => event.value === 100.001)).to.equal(true);
+    expect(context.oscillators[1].detune.events.some(event => event.value === 100.001)).to.equal(true);
+    expect(context.oscillators[2].detune.events.some(event => event.value === 100.001)).to.equal(false);
+    expect(backend.update('a', { pitchOffsetCents: 300 }, 98000, execution).reason).to.equal('fm-bend-profile-exceeded');
+    game.stop(); expect(context.oscillators.every(node => node.disconnected)).to.equal(true); await preview.dispose(); expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+
+  it('denies a graph before creating an AudioContext when the shared memory budget is full', async () => {
+    const budget = createResourceBudget({ limitBytes: 4096 }), { preview, creations } = setup({ resourceBudget: budget });
+    expect(await preview.enable()).to.equal(false); expect(creations()).to.equal(0);
+    expect(preview.getState().status).to.equal('resource-limited');
+    expect(budget.diagnostics().accountedBytes).to.equal(0); await preview.dispose();
+  });
+
+  it('denies semantic voice memory before allocation or stealing an already playing voice', async () => {
+    const budget = createResourceBudget({ limitBytes: 144 * 1024 }), { preview, context } = setup({ resourceBudget: budget, maxVoices: 1 });
+    const game = preview.createSession('game'), backend = game.createInstrumentBackend();
+    await backend.prepare(nativePatch()); await game.enable();
+    expect(backend.begin(nativeIntent('first'), 96000).status).to.equal('accepted');
+    const first = [...preview._voices][0];
+    expect(backend.begin(nativeIntent('second'), 96000).reason).to.equal('audio-resource-budget');
+    expect(context.oscillators).to.have.length(1); expect(first.stolen).not.to.equal(true);
+    expect(preview._voices.has(first)).to.equal(true);
+    await preview.dispose(); expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+
+  it('denies a required channel before allocating semantic oscillators and releases the voice reservation', async () => {
+    const budget = createResourceBudget({ limitBytes: 128 * 1024 }), { preview, context } = setup({ resourceBudget: budget });
+    const game = preview.createSession('game'), backend = game.createInstrumentBackend();
+    await backend.prepare(nativePatch()); await game.enable(); const before = budget.diagnostics().accountedBytes;
+    expect(backend.begin(nativeIntent('denied'), 96000).reason).to.equal('audio-resource-budget');
+    expect(context.oscillators).to.have.length(0); expect(budget.diagnostics().accountedBytes).to.equal(before);
+    await preview.dispose();
+  });
+
+  it('revokes decoded buffer leases only when their owning session is disposed', async () => {
+    const budget = createResourceBudget(), { preview } = setup({ resourceBudget: budget });
+    const game = preview.createSession('game'), cue = preview.createSession('cue');
+    const a = game.reserveDecodedBuffer({ frames: 1000, channels: 1 }), b = cue.reserveDecodedBuffer({ frames: 1000, channels: 2 });
+    await game.dispose(); expect(a.isActive()).to.equal(false); expect(b.isActive()).to.equal(true);
+    await preview.dispose(); expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+
+  it('keeps semantic pressure independent from its envelope and MIDI compatibility controls', async () => {
+    const { preview, context } = setup(), game = preview.createSession('game'), backend = game.createInstrumentBackend();
+    await backend.prepare(nativePatch()); await game.enable();
+    backend.begin(nativeIntent('a'), 96000);
+    const voice = [...preview._voices][0], envelope = [...voice.gain.gain.events];
+    expect(backend.update('a', { pressure01: 0.5001, pitchOffsetCents: 100.001, pan01: -0.2 }, 98400).status).to.equal('accepted');
+    expect(voice.gain.gain.events).to.deep.equal(envelope);
+    expect(voice.pressureGain.gain.events.at(-1)).to.include({ type: 'ramp', value: 0.5001 });
+    expect(voice.pressureGain.gain.events.at(-1).time).to.be.closeTo(2.058, 1e-12);
+    const pitch = [...voice.oscillator.detune.events];
+    game.output.channels[1].sendPitchBend(-1); game.output.channels[1].sendControlChange(11, 0);
+    expect(voice.oscillator.detune.events).to.deep.equal(pitch);
+    expect(voice.pan.pan.events.at(-1).value).to.be.closeTo(-0.1, 1e-12);
+    expect(backend.end('a', { seconds: 0.04 }, 100800).status).to.equal('accepted');
+    expect(voice.gain.gain.events.at(-1)).to.include({ type: 'ramp', value: 0 });
+    expect(context.oscillators[0].stops.at(-1)).to.be.closeTo(2.14, 1e-12);
+    await preview.dispose();
+  });
+
+  it('rejects an overflowing expression batch without applying its other controls', async () => {
+    const { preview } = setup(), game = preview.createSession('game'), backend = game.createInstrumentBackend({ maxControlEvents: 1 });
+    await backend.prepare(nativePatch()); await game.enable(); backend.begin(nativeIntent('a'), 96000);
+    backend.update('a', { pressure01: 0.5 }, 98400);
+    const voice = [...preview._voices][0], pitch = [...voice.oscillator.detune.events];
+    expect(backend.update('a', { pressure01: 0.25, pitchOffsetCents: 20 }, 100800).reason).to.equal('expression-queue-full');
+    expect(voice.oscillator.detune.events).to.deep.equal(pitch);
+    expect(backend.end('a', { seconds: 0.04 }, 100800).status).to.equal('accepted');
+    await preview.dispose();
+  });
+
+  it('holds a stationary owned voice for 60 seconds using authoritative liveness without expression updates', async () => {
+    const { preview, context } = setup(), game = preview.createSession('game'), backend = game.createInstrumentBackend({ gateMode: 'owned' });
+    await backend.prepare(nativePatch()); await game.enable();
+    expect(backend.begin(nativeIntent('drone'), 96000).reason).to.equal('execution-lease-required');
+    expect(backend.renewExecutionLease(1, 'live', 70 * 48000).status).to.equal('accepted');
+    expect(backend.begin(nativeIntent('drone'), 96000).status).to.equal('accepted');
+    const voice = [...preview._voices][0]; context.currentTime = 62;
+    expect(preview._voiceFinished(voice)).to.equal(false);
+    expect(backend.renderDiagnostics({ includeVoices: true }).voices[0]).to.include({ state: 'held', voiceId: 'drone', modeledParameters: true });
+    expect(backend.end('drone', { seconds: 0.04 }, 62 * 48000).status).to.equal('accepted');
+    voice.oscillator.end(); expect(backend.renderDiagnostics().activeVoices).to.equal(0);
+    expect(voice.pressureGain.disconnected).to.equal(true);
+    await preview.dispose();
+  });
+
+  it('renews only the matching owner execution lease and reports watchdog termination as a sink outcome', async () => {
+    const { preview, context } = setup(), game = preview.createSession('game'), backend = game.createInstrumentBackend({ gateMode: 'owned' });
+    await backend.prepare(nativePatch()); await game.enable();
+    backend.renewExecutionLease(1, 'live', 4 * 48000); backend.renewExecutionLease(1, 'cue', 5 * 48000);
+    backend.begin(nativeIntent('same'), 96000, 'live'); backend.begin(nativeIntent('same'), 96000, 'cue');
+    context.currentTime = 3; backend.renewExecutionLease(1, 'live', 70 * 48000);
+    const voices = [...preview._voices]; expect(voices.map(voice => voice.end)).to.deep.equal([70, 5]);
+    context.currentTime = 5; voices[1].oscillator.end();
+    expect(backend.renderDiagnostics().activeVoices).to.equal(1);
+    expect(backend.renderDiagnostics({ includeTraces: true }).traces.at(-1)).to.include({ executionEpoch: 'cue', reason: 'owner-lease-expired' });
+    await preview.dispose();
+  });
+
+  it('snapshots patch revisions, cancels stale preparations and retains the previous sound', async () => {
+    const { preview } = setup(), game = preview.createSession('game'), backend = game.createInstrumentBackend();
+    const resolution = nativePatch(); await backend.prepare(resolution); resolution.patch.mix.gain01 = 0;
+    await game.enable(); backend.begin(nativeIntent('old'), 96000);
+    expect([...preview._voices][0].basePeak).to.be.closeTo(0.7501 * 0.8 * 0.7, 1e-12);
+    const replacement = backend.prepare(nativePatch(2)); game.stop();
+    expect((await replacement).reason).to.equal('preparation-cancelled');
+    expect(backend.renderDiagnostics().patchRevision).to.equal(1);
+    await preview.dispose();
+  });
+
+  it('bounds semantic traces and keeps scheduled cancellation separate from rendering acknowledgment', async () => {
+    const { preview } = setup(), game = preview.createSession('game'), backend = game.createInstrumentBackend({ traceLimit: 2 });
+    await backend.prepare(nativePatch()); await game.enable(); backend.begin(nativeIntent('a'), 100800);
+    backend.update('a', { pressure01: 0.7 }, 101280);
+    const cancellation = backend.cancelGenerationWithReceipt(1, 'live');
+    expect(cancellation.outcomes[0]).to.include({ stage: 'scheduled-cancellation-requested', beforeOnset: true,
+      appliedFrame: null, renderedStatus: 'unknown', acousticReceipt: false });
+    const diagnostics = backend.renderDiagnostics({ includeTraces: true });
+    expect(diagnostics.traceCount).to.equal(2); expect(diagnostics.truncatedTraces).to.be.greaterThan(0);
+    expect(diagnostics.activeVoices).to.equal(0);
+    await preview.dispose();
+  });
+
+  it('keeps a cancelled generation immutable while a separate execution can replay its historical intent', async () => {
+    const { preview } = setup(), game = preview.createSession('game'), backend = game.createInstrumentBackend();
+    await backend.prepare(nativePatch()); await game.enable();
+    expect(preview.getAudioContext()).to.equal(preview._context);
+    backend.begin(nativeIntent('a'), 100800, 'live'); backend.cancelGeneration(1, 'live');
+    expect(backend.begin(nativeIntent('a'), 100800, 'live').reason).to.equal('generation-cancelled');
+    expect(backend.renewExecutionLease(1, 'live', 70 * 48000).reason).to.equal('generation-cancelled');
+    expect(backend.begin(nativeIntent('a'), 100800, 'replay').status).to.equal('accepted');
+    await preview.dispose();
+  });
+
+  it('keeps owner capture leases private while a separate mix observer sees both owners', async () => {
+    const { preview } = setup(), game = preview.createSession('game'), cue = preview.createSession('cue');
+    const a = [], b = [], mix = []; let project = 'A';
+    game.setCapture({ record(stage, fields) { a.push({ stage, ...fields }); } }, () => ({ projectId: project }));
+    cue.setCapture({ record(stage, fields) { b.push({ stage, ...fields }); } }, { projectId: 'B' });
+    const detachMix = preview.observeMix({ record(stage, fields) { mix.push({ stage, ...fields }); } });
+    await game.enable(); await cue.enable(); game.output.channels[1].sendNoteOn(60, { voiceToken: 1 });
+    project = 'replacement'; cue.setCapture(null);
+    const voice = [...preview._voices][0]; voice.oscillator.end();
+    expect(a.filter(record => record.stage === 'synth-end')[0]).to.include({ projectId: 'A', owner: game.getState().ownerId });
+    expect(b).to.have.length(0); expect(mix.map(record => record.stage)).to.include('synth-end');
+    expect(a.every(record => record.projectId === 'A')).to.equal(true);
+    detachMix(); await game.dispose(); expect(preview._observers.diagnostics().leases).to.equal(0);
+    await preview.dispose();
+  });
+
+  it('replaces a closed context on the next explicit enable and invalidates old execution leases', async () => {
+    const first = new FakeContext(), second = new FakeContext(), contexts = [first, second];
+    first.resume = () => Promise.reject(new Error('A closed context cannot resume.'));
+    const preview = createBrowserNotePreview({ createAudioContext: () => contexts.shift(), nowMs: () => 1000 });
+    const game = preview.createSession('game'), backend = game.createInstrumentBackend({ gateMode: 'owned' });
+    await backend.prepare(nativePatch()); expect(await game.enable()).to.equal(true);
+    backend.renewExecutionLease(1, 'live', 70 * 48000); backend.begin(nativeIntent('old'), 96000);
+    await first.close(); expect(await game.enable()).to.equal(true);
+    expect(preview.getState().contextEpoch).to.equal(2); expect(first.oscillators[0].disconnected).to.equal(true);
+    expect(backend.begin(nativeIntent('new'), 96000).reason).to.equal('execution-lease-required');
+    expect(backend.renewExecutionLease(1, 'live', 70 * 48000).status).to.equal('accepted');
+    expect(backend.begin(nativeIntent('new'), 96000).status).to.equal('accepted');
+    expect(second.oscillators).to.have.length(1);
+    await preview.dispose();
+  });
+
+  it('does not renew an owned gate after its safety release has already started', async () => {
+    const { preview, context } = setup(), game = preview.createSession('game'), backend = game.createInstrumentBackend({ gateMode: 'owned' });
+    await backend.prepare(nativePatch()); await game.enable(); backend.renewExecutionLease(1, 'live', 3 * 48000);
+    backend.begin(nativeIntent('held'), 96000); context.currentTime = 2.99;
+    expect(backend.renewExecutionLease(1, 'live', 70 * 48000).reason).to.equal('execution-lease-too-late');
+    expect([...preview._voices][0].end).to.equal(3);
+    await preview.dispose();
+  });
+
+  it('cleans every partially initialized semantic component when scheduling fails before registration', async () => {
+    const { preview, context } = setup(), game = preview.createSession('game'), backend = game.createInstrumentBackend();
+    await backend.prepare(nativePatch()); await game.enable();
+    const create = context.createOscillator.bind(context);
+    context.createOscillator = () => {
+      const oscillator = create(); oscillator.frequency.setValueAtTime = () => { throw new Error('AudioParam failure'); }; return oscillator;
+    };
+    const firstGain = context.gains.length;
+    expect(backend.begin(nativeIntent('failed'), 96000).reason).to.equal('backend-failure');
+    expect(preview._voices.size).to.equal(0); expect(context.oscillators[0].disconnected).to.equal(true);
+    expect(context.gains.slice(firstGain + 1).every(gain => gain.disconnected)).to.equal(true);
+    expect(backend.renderDiagnostics().deliveryErrors).to.equal(1);
+    await preview.dispose();
+  });
+
+  it('terminates only the failed admitted voice when continuous automation throws', async () => {
+    const { preview } = setup(), game = preview.createSession('game'), backend = game.createInstrumentBackend();
+    await backend.prepare(nativePatch()); await game.enable(); backend.begin(nativeIntent('a'), 96000); backend.begin(nativeIntent('b'), 96000);
+    const [a, b] = [...preview._voices];
+    a.pressureGain.gain.setValueAtTime = () => { throw new Error('AudioParam failure'); };
+    expect(backend.update('a', { pressure01: 0.5 }, 98400).reason).to.equal('backend-failure-after-acceptance');
+    expect(preview._voices.has(a)).to.equal(false); expect(preview._voices.has(b)).to.equal(true);
+    expect(backend.renderDiagnostics().activeVoices).to.equal(1);
+    expect(backend.renderDiagnostics({ includeTraces: true }).traces.some(trace => trace.reason === 'backend-failure-after-acceptance')).to.equal(true);
+    await preview.dispose();
+  });
+
+  it('plays independent same-pitch semantic voices with precise per-voice expression in the shared mix', async () => {
+    const { preview, context } = setup();
+    const game = preview.createSession('game'), backend = game.createInstrumentBackend();
+    const resolution = { status: 'ready', patch: { id: 'native-test', revision: 1, engineId: 'native-oscillator', engineVersion: 1,
+      parameters: { waveform: 2, gain01: 0.8, pan01: 0 }, sampleRefs: [], voicePolicy: { maxVoices: 8 },
+      mix: { gain01: 0.6, pan01: 0 } }, receipt: { patchId: 'native-test', revision: 1 } };
+    const intent = (voiceId, cents = 6000.123) => ({ version: 1, kind: 'begin', voiceId, generation: 1,
+      laneId: 0, pitch: { cents, referenceHz: 440 }, velocity01: 0.7001, expression: {}, role: 'lead', sourceEventIds: ['source:1'] });
+    expect(backend.begin(intent('same'), 96000).reason).to.equal('patch-unprepared');
+    expect((await backend.prepare(resolution)).status).to.equal('ready');
+    expect(backend.begin(intent('same'), 96000).reason).to.equal('audio-not-ready');
+    await game.enable();
+    expect(backend.begin(intent('same'), 96000, 'live').status).to.equal('accepted');
+    expect(backend.begin(intent('same'), 96000, 'cue').status).to.equal('accepted');
+    const secondBackend = game.createInstrumentBackend(); await secondBackend.prepare(resolution);
+    expect(secondBackend.begin(intent('same'), 96000, 'live').reason).to.equal('duplicate-owner-voice');
+    expect(context.oscillators).to.have.length(2);
+    expect(context.oscillators[0].frequency.events[0].value).to.be.closeTo(440 * 2 ** ((6000.123 - 6900) / 1200), 1e-10);
+    expect(backend.update('same', { pitchOffsetCents: 0.001, pressure01: 0.5001, pan01: -0.25 }, 96000, 'cue').status).to.equal('accepted');
+    expect(context.oscillators[1].detune.events.at(-1).value).to.equal(0.001);
+    expect(context.oscillators[0].detune.events.at(-1).value).to.equal(0);
+    expect(backend.end('same', { seconds: 0.05 }, 96000, 'cue').status).to.equal('accepted');
+    expect(backend.renderDiagnostics().activeVoices).to.equal(1);
+    expect(backend.end('same', { seconds: 0.05 }, 96000, 'live').status).to.equal('accepted');
+    expect(backend.renderDiagnostics().activeVoices).to.equal(0);
+    expect(backend.begin(intent('strike'), 96000, 'live').status).to.equal('accepted');
+    expect(backend.end('strike', { mode: 'one-shot', tailSeconds: 0.08, seconds: 0.04 }, 96000, 'live').status).to.equal('accepted');
+    const strike = [...preview._voices].find(voice => voice.playback?.voiceId === 'strike');
+    expect(strike.releaseAt).to.be.closeTo(2.08, 1e-10);
+    backend.dispose(); secondBackend.dispose(); await preview.dispose();
+  });
+
+  it('keeps the prepared native patch after a failed replacement and isolates owner Stop', async () => {
+    const { preview } = setup(), game = preview.createSession('game'), audition = preview.createSession('audition');
+    const backend = game.createInstrumentBackend();
+    const resolution = { status: 'ready', patch: { id: 'native-test', revision: 1, engineId: 'native-oscillator', engineVersion: 1,
+      parameters: { waveform: 1 }, sampleRefs: [], voicePolicy: { maxVoices: 8 }, mix: { gain01: 1, pan01: 0 } },
+    receipt: { patchId: 'native-test', revision: 1 } };
+    expect((await backend.prepare(resolution)).status).to.equal('ready');
+    expect((await backend.prepare({ ...resolution, patch: { ...resolution.patch, parameters: { unsupported: 1 } } })).status).to.equal('rejected');
+    await game.enable(); await audition.enable();
+    expect(backend.begin({ version: 1, kind: 'begin', voiceId: 'a', generation: 1, laneId: 0,
+      pitch: { cents: 6000, referenceHz: 440 }, velocity01: 0.5, expression: {}, sourceEventIds: [] }, 96000).status).to.equal('accepted');
+    expect(audition.output.channels[1].sendNoteOn(60)).to.equal(true);
+    expect(preview._voices.size).to.equal(2);
+    game.stop();
+    expect(backend.renderDiagnostics().activeVoices).to.equal(0);
+    expect(preview._voices.size).to.equal(1);
+    backend.dispose(); await preview.dispose();
+  });
+
+  it('reports late semantic attacks instead of silently clamping their render time', async () => {
+    const { preview, context } = setup(), game = preview.createSession('game'), backend = game.createInstrumentBackend();
+    const resolution = { status: 'ready', patch: { id: 'late-test', revision: 1, engineId: 'native-oscillator', engineVersion: 1,
+      parameters: {}, sampleRefs: [], voicePolicy: { maxVoices: 8 }, mix: { gain01: 1, pan01: 0 } },
+    receipt: { patchId: 'late-test', revision: 1 } };
+    await backend.prepare(resolution); await game.enable();
+    const intent = voiceId => ({ version: 1, kind: 'begin', voiceId, generation: 1, laneId: 0,
+      pitch: { cents: 6000, referenceHz: 440 }, velocity01: 0.5, expression: {}, sourceEventIds: [] });
+    expect(backend.begin(intent('expired'), 90000).reason).to.equal('late-attack');
+    expect(context.oscillators).to.have.length(0);
+    expect(backend.begin(intent('held'), 96000).status).to.equal('accepted');
+    context.currentTime = 2.1;
+    expect(backend.update('held', { pressure01: 0.5 }, 96000).reason).to.equal('stale-expression');
+    expect(backend.end('held', { seconds: 0.04 }, 96000)).to.include({ status: 'accepted', repair: 'late-release' });
+    backend.dispose(); await preview.dispose();
+  });
+
+  it('resolves future volume and expression by event time regardless of submission order', async () => {
+    const run = async reversed => {
+      const { preview } = setup(); await preview.enable();
+      const channel = preview.output.channels[1];
+      const events = [{ control: 7, value: 63.5, time: 2000 }, { control: 11, value: 63.5, time: 1000 }];
+      for (const event of reversed ? events.reverse() : events) expect(channel.sendControlChange(event.control, event.value, { time: event.time })).to.equal(true);
+      const scheduled = preview._channels.get(1).gain.gain.events.filter(event => event.type === 'set' && event.time >= 2);
+      await preview.dispose(); return scheduled;
+    };
+    const forward = await run(false), reverse = await run(true);
+    expect(forward).to.deep.equal(reverse);
+    expect(forward.slice(-2).map(event => [event.time, event.value])).to.deep.equal([[2, 0.5], [3, 0.25]]);
+  });
+
+  it('uses the program and bend effective at a future note onset even when controls arrive later', async () => {
+    const { preview, context } = setup(); await preview.enable();
+    const channel = preview.output.channels[1];
+    channel.sendProgramChange(38, { time: 2000 });
+    expect(channel.sendNoteOn(60, { time: 1000, instrument: { legacy: false } })).to.equal(true);
+    expect(channel.sendNoteOn(62, { time: 2000, instrument: { legacy: false } })).to.equal(true);
+    expect(context.oscillators[0].type).to.equal('triangle');
+    expect(context.oscillators[1].type).to.equal('sine');
+    channel.sendNoteOn(64, { time: 2000 });
+    channel.sendPitchBend(1, { time: 1000 });
+    expect(context.oscillators[2].detune.events[0]).to.deep.equal({ type: 'set', value: 200, time: 3 });
+    await preview.dispose();
+  });
+
+  it('revises an already queued future note when an earlier program arrives afterward', async () => {
+    const run = async noteFirst => {
+      const { preview, context } = setup(); await preview.enable();
+      const channel = preview.output.channels[1];
+      const note = () => channel.sendNoteOn(60, { time: 2000, instrument: { legacy: false } });
+      const program = () => channel.sendProgramChange(38, { time: 1000 });
+      if (noteFirst) { note(); program(); } else { program(); note(); }
+      const result = { waveform: context.oscillators[0].type,
+        envelope: [...context.gains.at(-1).gain.events] };
+      await preview.dispose(); return result;
+    };
+    expect(await run(true)).to.deep.equal(await run(false));
+  });
+
+  it('schedules future all-notes-off without cutting a voice at call time', async () => {
+    const { preview, context } = setup(); await preview.enable();
+    const channel = preview.output.channels[1];
+    expect(channel.sendNoteOn(60, { time: 1000 })).to.equal(true);
+    const first = [...preview._voices][0];
+    expect(channel.sendControlChange(123, 0, { time: 2000 })).to.equal(true);
+    expect(first.releaseAt).to.be.greaterThan(context.currentTime);
+    expect(first.releaseAt).to.be.closeTo(3, 1e-9);
+    expect(channel.sendNoteOn(62, { time: 1000 })).to.equal(true);
+    expect([...preview._voices].find(voice => voice.note === 62).releaseAt).to.be.closeTo(3, 1e-9);
+    await preview.dispose();
+  });
+
+  it('recomputes future bend events when bend range arrives out of order', async () => {
+    const { preview, context } = setup(); await preview.enable();
+    const channel = preview.output.channels[1];
+    channel.sendNoteOn(60, { time: 2000 });
+    channel.sendPitchBend(1, { time: 1000 });
+    channel.sendPitchBendRange(3, 50, { time: 1500 });
+    expect(context.oscillators[0].detune.events).to.deep.equal([{ type: 'set', value: 350, time: 3 }]);
+    await preview.dispose();
+  });
+
+  it('cancels only the selected semantic execution generation and reports unsupported expression', async () => {
+    const { preview } = setup(), game = preview.createSession('game'), backend = game.createInstrumentBackend();
+    const resolution = { status: 'ready', patch: { id: 'native-test', revision: 1, engineId: 'native-oscillator', engineVersion: 1,
+      parameters: {}, sampleRefs: [], voicePolicy: { maxVoices: 8 }, mix: { gain01: 1, pan01: 0 } },
+    receipt: { patchId: 'native-test', revision: 1 } };
+    await backend.prepare(resolution); await game.enable();
+    const intent = voiceId => ({ version: 1, kind: 'begin', voiceId, generation: 1, laneId: 0,
+      pitch: { cents: 6000, referenceHz: 440 }, velocity01: 0.5, expression: {}, sourceEventIds: [] });
+    expect(backend.begin(intent('voice'), 96000, 'live').status).to.equal('accepted');
+    expect(backend.begin(intent('voice'), 96000, 'cue').status).to.equal('accepted');
+    expect(backend.update('voice', { timbre01: 0.5 }, 96000, 'live')).to.include({ status: 'degraded', reason: 'unsupported-expression' });
+    expect(backend.cancelGeneration(1, 'cue')).to.equal(1);
+    expect(backend.renderDiagnostics().activeVoices).to.equal(1);
+    expect(backend.end('voice', { seconds: 0.04 }, 96000, 'live').status).to.equal('accepted');
+    backend.dispose(); await preview.dispose();
+  });
+
   it('coalesces owner unlock requests and cancels replaced requests while another owner is waiting', async () => {
     const context = new FakeContext('suspended'), pending = deferred(); context.resumeResult = pending.promise;
     const { preview } = setup({}, context), game = preview.createSession('game'), audition = preview.createSession('audition');
@@ -974,7 +1485,11 @@ describe('BrowserNotePreview', function() {
       { type: 'set', value: 0, time: 2.5 }
     ]);
     channel.sendPitchBend(-1, { time: 1300 });
-    expect(context.oscillators[0].detune.events.at(-1)).to.eql({ type: 'set', value: -350, time: 2.3 });
+    expect(context.oscillators[0].detune.events).to.eql([
+      { type: 'set', value: 175, time: 2.2 },
+      { type: 'set', value: -350, time: 2.3 },
+      { type: 'set', value: 0, time: 2.5 }
+    ]);
     channel.sendControlChange(7, 100);
     channel.sendControlChange(11, 64);
     expect(preview._channels.get(3).gain.gain.events.at(-1).value).to.be.closeTo(100 * 64 / (127 * 127), 0.00001);

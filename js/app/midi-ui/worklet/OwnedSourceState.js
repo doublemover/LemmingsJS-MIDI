@@ -1,0 +1,142 @@
+import { ownedKernelStateBytes, writeOwnedKernelState, restoreOwnedKernelState } from './OwnedSineState.js';
+import { PLUCK_LAYOUT, CHOIR_LAYOUT, SPECTRUM_LAYOUT, GRANULAR_LAYOUT } from '../OwnedSourceLayout.js';
+
+export const OWNED_SOURCE_STATE_ABI = 'owned-source-state-le-v1';
+const HEADER = 256, MAX_BYTES = 16 * 1048576;
+const profiles = Object.freeze({
+  24: { id: 'worklet-pluck', kind: 1, layout: PLUCK_LAYOUT, arrays: ['state', 'buffer', 'scratch'], scalars: ['initializationWrites', 'initializationDenials', 'initializationBucket'] },
+  26: { id: 'worklet-choir', kind: 2, layout: CHOIR_LAYOUT, arrays: ['state', 'bands'], scalars: [] },
+  73: { id: 'worklet-spectrum', kind: 3, layout: SPECTRUM_LAYOUT, arrays: ['state', 'partials'], scalars: [] },
+  33: { id: 'worklet-granular', kind: 4, layout: GRANULAR_LAYOUT, arrays: ['state', 'grains'], scalars: ['birthBucket', 'bucketBirths', 'leftSample', 'rightSample'] }
+});
+const fail = message => { throw Object.assign(new Error(message), { name: 'AudioRestoreError', code: 'incompatible-owned-source-state' }); };
+const integer = (v, lo, hi = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(v) && v >= lo && v <= hi;
+const finite = (v, lo = -1000000, hi = 1000000) => Number.isFinite(v) && v >= lo && v <= hi;
+const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
+const crcTable = new Uint32Array(256);
+for (let i = 0; i < 256; i++) { let value = i; for (let b = 0; b < 8; b++) value = value >>> 1 ^ (value & 1 ? 0xedb88320 : 0); crcTable[i] = value >>> 0; }
+const checksum = bytes => {
+  let value = 0xffffffff;
+  for (let i = 0; i < bytes.length; i++) value = value >>> 8 ^ crcTable[(value ^ (i >= 252 && i < 256 ? 0 : bytes[i])) & 255];
+  return (value ^ 0xffffffff) >>> 0;
+};
+const profileFor = kernel => {
+  const profile = profiles[kernel?.width], source = kernel?.source;
+  if (!profile || !source || source.rate !== kernel.sampleRate || source.voices !== kernel.maxVoices ||
+      !integer(source.voices, 1, profile.layout.voices)) fail('Unknown source or incompatible owned voice profile.');
+  const expected = profile.kind === 1 ? [source.voices * PLUCK_LAYOUT.state, source.voices * source.stride, source.stride] :
+    profile.kind === 2 ? [source.voices * CHOIR_LAYOUT.state, source.voices * 3 * CHOIR_LAYOUT.bandState] :
+      profile.kind === 3 ? [source.voices * SPECTRUM_LAYOUT.state, source.voices * 16 * SPECTRUM_LAYOUT.partialState] :
+        [source.voices * GRANULAR_LAYOUT.cloudState, source.voices * GRANULAR_LAYOUT.grains * GRANULAR_LAYOUT.grainState];
+  for (let i = 0; i < profile.arrays.length; i++) {
+    const array = source[profile.arrays[i]], type = profile.kind === 1 && i === 1 ? Float32Array : Float64Array;
+    if (!(array instanceof type) || array.length !== expected[i] || !(array.buffer instanceof ArrayBuffer)) fail('Owned source storage differs from its state ABI.');
+  }
+  if (profile.kind === 1 && (source.stride !== Math.ceil(kernel.sampleRate / PLUCK_LAYOUT.delayFloorHz) + PLUCK_LAYOUT.delayMargin || source.maxInitializationWrites !== 65536))
+    fail('Pluck storage or initialization budget differs from its state profile.');
+  if (profile.kind !== 1 && !hash(source.bank?.hash) || profile.kind === 4 && (!hash(source.descriptor?.bankHash) ||
+      source.sourceGain !== 0.9 / Math.max(1, source.descriptor.peak) / 4)) fail('Source asset identity or derived gain is unavailable.');
+  return profile;
+};
+const sizeFor = (kernel, profile) => HEADER + ownedKernelStateBytes(kernel) + profile.scalars.length * 8 +
+  profile.arrays.reduce((sum, key) => sum + kernel.source[key].byteLength, 0);
+export function ownedSourceStateBytes(kernel) {
+  const bytes = sizeFor(kernel, profileFor(kernel)); if (!integer(bytes, HEADER, MAX_BYTES)) fail('Owned state exceeds its bounded transfer profile.'); return bytes;
+}
+const viewFor = (kernel, bytes, profile) => {
+  if (!(bytes instanceof Uint8Array) || !(bytes.buffer instanceof ArrayBuffer) || bytes.length !== sizeFor(kernel, profile) || bytes.length > MAX_BYTES)
+    fail('Owned state requires one exclusively owned exact-size transfer buffer.');
+  const arrays = [kernel.queue, kernel.voice, kernel.active, kernel.receipts, kernel.counters, ...profile.arrays.map(key => kernel.source[key]),
+    ...(kernel.source.bank?.planes || []), ...(kernel.source.pcm || [])];
+  if (arrays.some(array => array.buffer === bytes.buffer)) fail('State transfer buffer aliases active DSP or immutable source storage.');
+  return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+};
+const identities = (view, source, writing) => {
+  for (const [field, value] of [[64, source.bank?.hash], [96, source.descriptor?.bankHash]]) for (let i = 0; i < 32; i++) {
+    const expected = value ? parseInt(value.slice(i * 2, i * 2 + 2), 16) : 0;
+    if (writing) view.setUint8(field + i, expected); else if (view.getUint8(field + i) !== expected) fail('Immutable source bank or PCM hash differs from the state cut.');
+  }
+};
+const accessors = (kernel, profile, view) => {
+  let offset = HEADER + ownedKernelStateBytes(kernel);
+  const scalars = profile.scalars.map((_, i) => view.getFloat64(offset + i * 8, true)); offset += scalars.length * 8;
+  const arrays = profile.arrays.map(key => { const target = kernel.source[key], at = offset; offset += target.byteLength;
+    return { target, at, get: index => target instanceof Float32Array ? view.getFloat32(at + index * 4, true) : view.getFloat64(at + index * 8, true) }; });
+  return { scalars, arrays };
+};
+const inspectSource = (kernel, profile, view) => {
+  const data = accessors(kernel, profile, view), source = kernel.source, state = data.arrays[0].get;
+  for (const array of data.arrays) for (let i = 0; i < array.target.length; i++) if (!finite(array.get(i), -Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER)) fail('Source memory contains nonfinite or excessive state.');
+  if (data.scalars.some(value => !Number.isFinite(value))) fail('Source scalar state is nonfinite.');
+  if (profile.kind === 1 && (!integer(data.scalars[0], 0, 65536) || !integer(data.scalars[1], 0) || !integer(data.scalars[2], -1))) fail('Pluck initialization frontier is invalid.');
+  if (profile.kind === 4 && (!integer(data.scalars[0], -1) || !integer(data.scalars[1], 0, GRANULAR_LAYOUT.birthsPerBucket) ||
+      !finite(data.scalars[2]) || !finite(data.scalars[3]))) fail('Granular birth frontier is invalid.');
+  const core = HEADER, width = kernel.width, voiceOffset = core + 128 + 512 * width * 8, activeOffset = voiceOffset + 64 * 28 * 8;
+  for (let slot = 0; slot < source.voices; slot++) {
+    if (!view.getUint8(activeOffset + slot)) continue;
+    const at = slot * (profile.layout.state || profile.layout.cloudState), get = field => state(at + field),
+      frequency = view.getFloat64(voiceOffset + (slot * 28 + 5) * 8, true), target = view.getFloat64(voiceOffset + (slot * 28 + 6) * 8, true);
+    const low = get(profile.kind === 4 ? 25 : 4), high = get(profile.kind === 4 ? 26 : 5);
+    if (!finite(low, Number.MIN_VALUE, kernel.sampleRate / 2) || !finite(high, low, kernel.sampleRate / 2) ||
+        !finite(frequency, low, high) || !finite(target, low, high)) fail('Source pitch state disagrees with its owned gate.');
+    if (profile.kind === 1 && (!integer(get(0), 2, source.stride) || !integer(get(1), 0, get(0) - 1) ||
+        !integer(get(6), 0, 0xffffffff) || !integer(get(7), 0, get(0) - 1) || !finite(get(16), -1, 1))) fail('Pluck fractional delay or seed state is invalid.');
+    if (profile.kind === 2 && (!finite(get(0), 0, 1) || !finite(get(1), 0, 1) || !integer(get(2), 0, 0xffffffff))) fail('Choir phase or PRNG state is invalid.');
+    if (profile.kind === 3) {
+      if (!finite(get(0), 0, 1) || ![0, 1].includes(get(1)) || !integer(get(2), 1, 16)) fail('Spectrum phase or partial topology is invalid.');
+      const partial = data.arrays[1].get;
+      for (let p = 0; p < 16; p++) { const offset = (slot * 16 + p) * SPECTRUM_LAYOUT.partialState;
+        if (!finite(partial(offset), 0.125, 32) || !finite(partial(offset + 2), 0, 1) || !finite(partial(offset + 4), 0, 1)) fail('Spectrum partial phase or decay state is invalid.');
+      }
+    }
+    if (profile.kind === 4) {
+      if (!integer(get(0), 0, 0xffffffff) || ![0, 1].includes(get(15)) || ![0, 1].includes(get(17)) || ![0, 1].includes(get(18)) ||
+          !integer(get(22), 0, source.descriptor.frames - 2) || !integer(get(23), get(22) + 2, source.descriptor.frames) ||
+          !integer(get(27), 0, GRANULAR_LAYOUT.grains) || !integer(get(38), -1)) fail('Granular region, seed or time frontier is invalid.');
+      const grains = data.arrays[1].get; let active = 0;
+      for (let g = 0; g < GRANULAR_LAYOUT.grains; g++) { const offset = (slot * GRANULAR_LAYOUT.grains + g) * GRANULAR_LAYOUT.grainState, remaining = grains(offset);
+        if (!integer(remaining, 0, Math.ceil(kernel.sampleRate * 0.14))) fail('Grain lifetime is invalid.');
+        if (!remaining) continue; active++;
+        if (!integer(grains(offset + 1), remaining, Math.ceil(kernel.sampleRate * 0.14)) || !integer(grains(offset + 7), 1) ||
+            !integer(grains(offset + 8), 1) || !integer(grains(offset + 9), 0)) fail('Grain birth identity is invalid.');
+      }
+      if (active !== get(27)) fail('Granular child membership differs from its cloud state.');
+    }
+  }
+  return data;
+};
+const verify = (kernel, bytes, profile) => {
+  const view = viewFor(kernel, bytes, profile), coreBytes = ownedKernelStateBytes(kernel);
+  if (view.getUint32(0, true) !== 0x3153444c || view.getUint32(4, true) !== 1 || view.getUint32(8, true) !== bytes.length ||
+      view.getUint32(12, true) !== coreBytes || view.getUint32(16, true) !== profile.kind || view.getUint32(20, true) !== kernel.width ||
+      view.getUint32(24, true) !== profile.arrays.length || view.getUint32(28, true) !== profile.scalars.length || view.getUint32(252, true) !== checksum(bytes)) fail('Source state ABI, profile, size or checksum differs.');
+  for (let i = 0; i < 3; i++) if (view.getUint32(32 + i * 4, true) !== (kernel.source[profile.arrays[i]]?.byteLength || 0)) fail('Source memory shape differs.');
+  for (let i = 44; i < 252; i++) if (!(i >= 64 && i < 128) && bytes[i]) fail('Source state reserved header is noncanonical.');
+  identities(view, kernel.source, false); return { view, data: inspectSource(kernel, profile, view), coreBytes };
+};
+
+export function writeOwnedSourceState(kernel, destination, identity) {
+  const profile = profileFor(kernel), view = viewFor(kernel, destination, profile), coreBytes = ownedKernelStateBytes(kernel);
+  destination.fill(0); const cut = writeOwnedKernelState(kernel, destination.subarray(HEADER, HEADER + coreBytes), identity);
+  for (const [at, value] of [[0, 0x3153444c], [4, 1], [8, destination.length], [12, coreBytes], [16, profile.kind], [20, kernel.width], [24, profile.arrays.length], [28, profile.scalars.length]]) view.setUint32(at, value, true);
+  for (let i = 0; i < profile.arrays.length; i++) view.setUint32(32 + i * 4, kernel.source[profile.arrays[i]].byteLength, true);
+  identities(view, kernel.source, true); let offset = HEADER + coreBytes;
+  for (const key of profile.scalars) { view.setFloat64(offset, kernel.source[key], true); offset += 8; }
+  for (const key of profile.arrays) { const array = kernel.source[key];
+    for (let i = 0; i < array.length; i++) if (array instanceof Float32Array) view.setFloat32(offset + i * 4, array[i], true); else view.setFloat64(offset + i * 8, array[i], true);
+    offset += array.byteLength;
+  }
+  view.setUint32(252, checksum(destination), true); verify(kernel, destination, profile);
+  return Object.freeze({ ...cut, abi: OWNED_SOURCE_STATE_ABI, engineId: profile.id, bytes: destination.length,
+    immutableAssets: 'pinned-exact-bank-hashes-not-copied', qualification: 'state-contract-awaiting-pcm-equivalence' });
+}
+
+export function restoreOwnedSourceState(kernel, source, identity) {
+  const profile = profileFor(kernel), { view, data, coreBytes } = verify(kernel, source, profile);
+  // All source validation precedes mutation. The core adapter independently
+  // validates its identities, heap, frontiers and receipts before committing.
+  const cut = restoreOwnedKernelState(kernel, source.subarray(HEADER, HEADER + coreBytes), identity);
+  for (let i = 0; i < profile.scalars.length; i++) kernel.source[profile.scalars[i]] = data.scalars[i];
+  for (const array of data.arrays) for (let i = 0; i < array.target.length; i++) array.target[i] = array.get(i);
+  return Object.freeze({ ...cut, abi: OWNED_SOURCE_STATE_ABI, engineId: profile.id, sourceMemory: 'independent-mutable-copy', checksum: view.getUint32(252, true) });
+}

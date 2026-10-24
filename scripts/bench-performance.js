@@ -1,6 +1,7 @@
 import { chromium } from '@playwright/test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createBenchmarkReceipt } from './BenchmarkReceipt.js';
 
 const DEFAULT_BASE_URL = 'https://localhost:8080/?e2e=1';
 const VALID_MODES = new Set(['sequence', 'bench', 'reverse']);
@@ -434,6 +435,7 @@ const run = async (config = createPerformanceBenchConfig()) => {
     const filteredSamples = flaggedSamples.filter(sample => !sample.outlier);
 
     const summary = {
+      receipt: createBenchmarkReceipt('performance', requestedProfile, [`${mode}:entrances:${entrances}`]),
       profile: requestedProfile,
       mode,
       durationMs,

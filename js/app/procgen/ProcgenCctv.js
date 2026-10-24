@@ -44,7 +44,7 @@ class ProcgenCctv {
   setPins(lanes) { if (this.director.setPins(lanes, this.renderer.world.laneCount)) { this.lastStateKey = ''; this.renderer.render(); } }
   togglePin(lane) { const changed = this.director.togglePin(lane, this.renderer.world.laneCount); if (changed) { this.lastStateKey = ''; this.renderer.render(); } return changed; }
   prepare() {
-    const r = this.renderer, dpr = Math.min(2, r.window.devicePixelRatio || 1);
+    const r = this.renderer, dpr = r.presentationDpr || Math.min(2, r.window.devicePixelRatio || 1);
     const width = r.canvas.width / dpr, height = r.canvas.height / dpr;
     const count = Math.min(CCTV_MAX_WINDOWS, r.world.laneCount);
     if (this.layoutWidth !== width || this.layoutHeight !== height || this.layoutCount !== count) {
@@ -57,33 +57,43 @@ class ProcgenCctv {
     const resized = this.width !== width || this.height !== height || this.lastAppearance !== world.sprites?.activePreference || this.lastSprites !== world.sprites;
     const controlsChanged = this.lastDirectorRevision !== this.director.revision;
     if (!controlsChanged && (!resized && key === this.lastStateKey || !resized && now - this.lastUpdateMs < CCTV_INTERVAL_MS)) return;
-    if (this.generation !== world.generation) { this.slots = []; this.views.clear(); this.generation = world.generation; }
+    if (this.generation !== world.generation) { this.slots = []; this.releaseViews(); this.generation = world.generation; }
     const ranked = rankCctvLanes(world);
     this.slots = this.director.mode === 'director' ? this.director.select(world, ranked, this.slots, now) : selectCctvLanes(world, this.slots);
     const selected = new Set(this.slots), leaders = new Map(), actorsByLane = new Map();
-    for (const actor of world.actors) {
+    const visit = actor => {
       this.actorScans++;
       const lane = actor.laneIndex ?? Math.floor(actor.y / (world.laneHeight || 96));
-      if (!selected.has(lane) || actor.failureReason || actor.removed || !Number.isFinite(actor.x) || !Number.isFinite(actor.y)) continue;
+      if (!selected.has(lane) || actor.failureReason || actor.removed || !Number.isFinite(actor.x) || !Number.isFinite(actor.y)) return;
       const previous = leaders.get(lane);
       if (!previous || actor.x > previous.x || actor.x === previous.x && actor.id < previous.id) leaders.set(lane, actor);
       let actors = actorsByLane.get(lane);
       if (!actors) { actors = []; actorsByLane.set(lane, actors); }
       actors.push(actor);
+    };
+    if (this.renderer.actorVisibility) {
+      for (const lane of selected) for (const actor of this.renderer.actorVisibility.semanticActors(lane)) visit(actor);
+    } else {
+      for (const actor of world.actors) visit(actor);
     }
     const ranks = new Map(ranked.map((lane, index) => [lane, index + 1]));
     for (const lane of this.slots) this.refresh(lane, leaders.get(lane), actorsByLane.get(lane) || [], ranks.get(lane));
-    for (const lane of this.views.keys()) if (!selected.has(lane)) this.views.delete(lane);
+    for (const lane of this.views.keys()) if (!selected.has(lane)) this.releaseView(lane);
     this.width = width; this.height = height; this.lastAppearance = world.sprites?.activePreference; this.lastSprites = world.sprites; this.lastUpdateMs = now; this.lastStateKey = key;
     this.renderKey = key; this.refreshes++; this.lastDirectorRevision = this.director.revision;
     const state = this.getState(), selectionKey = JSON.stringify(state);
     if (selectionKey !== this.lastSelectionKey) { this.lastSelectionKey = selectionKey; try { this.onChange?.(state); } catch { /* Controls cannot interrupt rendering. */ } }
   }
   createView() {
-    const r = this.renderer, document = r.canvas.ownerDocument, view = Object.create(r);
-    view.buffer = document.createElement('canvas'); view.bufferContext = view.buffer.getContext('2d', { alpha: false });
-    view.terrainBuffer = document.createElement('canvas'); view.terrainContext = view.terrainBuffer.getContext('2d', { alpha: false });
-    view.objectBuffer = document.createElement('canvas'); view.objectContext = view.objectBuffer.getContext('2d');
+    const r = this.renderer, view = Object.create(r);
+    view.buffer = r.resources.canvas(); view.bufferContext = view.buffer.getContext('2d', { alpha: false });
+    view.terrainBuffer = r.resources.canvas(); view.terrainContext = view.terrainBuffer.getContext('2d', { alpha: false });
+    view.objectBuffer = r.resources.canvas(); view.objectContext = view.objectBuffer.getContext('2d');
+    if (!view.bufferContext || !view.terrainContext || !view.objectContext) {
+      for (const canvas of [view.buffer, view.terrainBuffer, view.objectBuffer]) r.resources.release(canvas);
+      throw new Error('CCTV canvas context unavailable');
+    }
+    view.imageKey = {}; view.sceneryImageKey = {};
     view.tileRevisions = new Map(); view.actorDots = new Map(); view.objectDots = new Map(); view.objectPlacements = [];
     view.rasterStep = 1; view.image = null; view.lastTerrainKey = ''; view.lastGeometryKey = ''; view.lastPlacementKey = ''; view.lastObjectKey = '';
     view.terrainRebuilds = view.terrainCacheHits = 0;
@@ -96,9 +106,8 @@ class ProcgenCctv {
     const width = 128, imageWidth = Math.max(1, this.layout.tileWidth - 8), imageHeight = Math.max(1, this.layout.tileHeight - 30);
     const height = Math.max(32, Math.min(64, Math.round(width * imageHeight / imageWidth)));
     if (!view.image || view.buffer.width !== width || view.buffer.height !== height) {
-      view.buffer.width = view.terrainBuffer.width = view.objectBuffer.width = width;
-      view.buffer.height = view.terrainBuffer.height = view.objectBuffer.height = height;
-      view.image = view.terrainContext.createImageData(width, height); view.pixels = new Uint32Array(view.image.data.buffer); view.lastTerrainKey = '';
+      for (const canvas of [view.buffer, view.terrainBuffer, view.objectBuffer]) r.resources.resize(canvas, width, height);
+      view.image = r.resources.image(view.terrainContext, width, height, view.imageKey); view.pixels = new Uint32Array(view.image.data.buffer); view.lastTerrainKey = '';
     }
     view.viewWidth = width; view.viewHeight = height;
     view.originX = Math.max(0, Math.floor((leader?.x ?? world.stall.lanes[lane].maxX ?? 36) - width * 0.55));
@@ -137,6 +146,14 @@ class ProcgenCctv {
     }
     context.restore?.();
   }
-  dispose() { this.onChange = null; this.views.clear(); this.slots = []; this.director.reset(); }
+  releaseView(lane) {
+    const view = this.views.get(lane); if (!view) return;
+    for (const canvas of [view.buffer, view.terrainBuffer, view.objectBuffer]) this.renderer.resources.release(canvas);
+    this.renderer.resources.release(view.imageKey); this.renderer.resources.release(view.sceneryImageKey);
+    view.image = view.pixels = view.bufferContext = view.terrainContext = view.objectContext = null;
+    view.objectPlacements.length = 0; view.tileRevisions.clear(); this.views.delete(lane);
+  }
+  releaseViews() { for (const lane of this.views.keys()) this.releaseView(lane); this.lastStateKey = this.renderKey = ''; this.lastUpdateMs = -Infinity; }
+  dispose() { this.onChange = null; this.releaseViews(); this.slots = []; this.director.reset(); }
 }
 export { ProcgenCctv, rankCctvLanes, selectCctvLanes, cctvLayout, CCTV_INTERVAL_MS, CCTV_MAX_WINDOWS };

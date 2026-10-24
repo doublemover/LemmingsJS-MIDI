@@ -159,7 +159,7 @@ describe('FileProvider', function () {
   const cacheKey = (url) => `lem-cache:${url}`;
 
   const setCacheEntry = (url, entry) => {
-    global.localStorage.setItem(cacheKey(url), JSON.stringify(entry));
+    global.localStorage.setItem(cacheKey(url), JSON.stringify({ formatVersion: 2, ...entry }));
   };
 
   const setCacheRaw = (url, raw) => {
@@ -205,7 +205,7 @@ describe('FileProvider', function () {
     origIndexedDb = global.indexedDB;
     setDependency('BinaryReader', MockBinaryReader);
     setDependency('LogHandler', MockLogHandler);
-    provider = new FileProvider(rootPath);
+    provider = new FileProvider(rootPath, { cacheLockManager: { request: async (name, options, callback) => callback({ name }) } });
     global.localStorage = new (class {
       constructor() { this.store = new Map(); }
       getItem(k) { return this.store.has(k) ? this.store.get(k) : null; }
@@ -256,7 +256,7 @@ describe('FileProvider', function () {
     if (origFetch) {
       global.fetch = origFetch;
     }
-    provider.clearCache();
+    provider.dispose();
     setDependency('BinaryReader', origBR);
     setDependency('LogHandler', origLog);
   });
@@ -270,7 +270,10 @@ describe('FileProvider', function () {
 
     provider._fetchHead = async () => ({ etag: 'other', lastModified: 'match' });
     await provider._verifyCache('url', { type: 'binary', lastModified: 'match' });
-    assert.strictEqual(fetchCalls, 0);
+    assert.strictEqual(fetchCalls, 1, 'a newly supplied ETag requires a fresh representation');
+    provider._fetchHead = async () => ({ etag: null, lastModified: 'match' });
+    await provider._verifyCache('url', { type: 'binary', lastModified: 'match' });
+    assert.strictEqual(fetchCalls, 1);
   });
 
   it('_verifyCache swallows update errors', async function () {
@@ -289,7 +292,7 @@ describe('FileProvider', function () {
   });
 
   it('_hashBuffer rejects when web crypto is missing', async function () {
-    provider = new FileProvider(rootPath);
+    provider = new FileProvider(rootPath, { cacheLockManager: { request: async (name, options, callback) => callback({ name }) } });
     const buf = Uint8Array.from([1,2,3]).buffer;
     const orig = global.crypto;
     delete global.crypto;
@@ -298,7 +301,7 @@ describe('FileProvider', function () {
   });
 
   it('_tryHashBuffer returns null when web crypto is missing', async function () {
-    provider = new FileProvider(rootPath);
+    provider = new FileProvider(rootPath, { cacheLockManager: { request: async (name, options, callback) => callback({ name }) } });
     const buf = Uint8Array.from([1, 2, 3]).buffer;
     const orig = global.crypto;
     delete global.crypto;
@@ -331,7 +334,7 @@ describe('FileProvider', function () {
   });
 
   it('base64 conversion roundtrips', function () {
-    provider = new FileProvider(rootPath);
+    provider = new FileProvider(rootPath, { cacheLockManager: { request: async (name, options, callback) => callback({ name }) } });
     const buf = Uint8Array.from([65,66,67]).buffer;
     const b64 = provider._arrayBufferToBase64(buf);
     const out = provider._base64ToArrayBuffer(b64);
@@ -344,6 +347,7 @@ describe('FileProvider', function () {
     const promise = provider._fetchText(url);
     requests[0].respond(200, 'hi');
     const result = await promise;
+    await provider.waitForCacheWrites();
     assert.strictEqual(result, 'hi');
     const entry = JSON.parse(global.localStorage.getItem(cacheKey(url)));
     assert.strictEqual(entry.type, 'text');

@@ -5,13 +5,23 @@ browser-based Lemmings port with optional MIDI control and a standalone editor.
 
 ## Quick start
 
-- Install Node.js 20+.
-- `npm install`
+- Install Node.js 20.19+ (20.x) or 22.12+. Package engines: `^20.19.0 || >=22.12.0`.
+- `npm ci`
 - `npm start`
 - Open `http://127.0.0.1:8080`
 - Editor: `http://127.0.0.1:8080/editor.html`
-- HTTPS test server: `npm run start-https`, served at
-  `https://127.0.0.1:8080`.
+
+## Optional HTTPS and automation
+
+The HTTP command binds to loopback port 8080. HTTPS is a separate command:
+`npm run start-https` serves `https://127.0.0.1:8080` and
+`https://127.0.0.1:8080/editor.html`. It requires `certs/localhost.pem` and
+`certs/localhost-key.pem`, with the certificate trusted locally and valid for
+`127.0.0.1`. Stop the HTTP listener before starting HTTPS on the same port.
+
+MCP and Playwright setup are optional contributor/automation workflows; see the
+README's MCP section. Set their base URL to the exact protocol of the running
+server. A successful HTTP run does not qualify an unconfigured HTTPS route.
 
 ## Saved levels
 

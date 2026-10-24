@@ -51,7 +51,7 @@ const midiEventRouterPhraseMethods = {
     } catch (error) {
       this.scheduler.gamePhrases?.clear();
       this.scheduler.allNotesOff();
-    }
+    } finally { this.scheduler._releaseReservation?.(currentMeta.reservationId, true); }
     if (sent) {
       this._lastAcceptedBySfx.set(meta.sfxId, now);
       this.musicDirector?.admitted(ready.phraseVoiceKey, this._directionPosition(tick));

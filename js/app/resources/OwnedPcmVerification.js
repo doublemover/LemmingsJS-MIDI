@@ -1,0 +1,34 @@
+const failure = message => Object.assign(new Error(message), { name: 'CausalRenderError', code: 'pcm-identity-mismatch' });
+const integer = (value, low, high) => Number.isSafeInteger(value) && value >= low && value <= high;
+const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
+export async function verifyOwnedPcmPayload(payload, expected, { signal, yieldControl = () => new Promise(resolve => setTimeout(resolve, 0)), crypto = globalThis.crypto } = {}) {
+  const descriptor = payload?.descriptor;
+  if (!descriptor || descriptor.schema !== 'lemmings-owned-pcm-bank/v1' || descriptor.format !== 'float32-planar-le' || descriptor.assetHash !== expected?.sha256 ||
+      !hash(descriptor.assetHash) || !hash(descriptor.pcmHash) || !hash(descriptor.bankHash) || !integer(descriptor.frames, 2, 4194304) || !integer(descriptor.channels, 1, 2) ||
+      !integer(descriptor.sampleRate, 8000, 192000) || !integer(descriptor.sourceSampleRate, 8000, 192000) || !integer(descriptor.sourceFrames, 2, 8000000) ||
+      descriptor.bytes !== descriptor.frames * descriptor.channels * 4 || descriptor.bytes > 16 * 1048576 || typeof descriptor.decoderVersion !== 'string' ||
+      !/^[A-Za-z0-9._-]{1,128}$/.test(descriptor.decoderVersion) || !Number.isFinite(descriptor.peak) || descriptor.peak < 0 || descriptor.peak > 16 || descriptor.sampleMagnitudeLimit !== 16 ||
+      descriptor.evidence !== 'copied-decoded-pcm-not-acoustic-qualification' || Math.abs(descriptor.frames - descriptor.sourceFrames * descriptor.sampleRate / descriptor.sourceSampleRate) > 1 ||
+      !Array.isArray(payload.planes) || payload.planes.length !== descriptor.channels || payload.planes.some(plane => !(plane instanceof Float32Array) || !(plane.buffer instanceof ArrayBuffer) || plane.length !== descriptor.frames) ||
+      new Uint8Array(new Uint16Array([1]).buffer)[0] !== 1) throw failure('Granular render requires a complete matching immutable PCM bank.');
+  signal?.throwIfAborted(); const bytes = new Uint8Array(descriptor.bytes); let offset = 0, peak = 0;
+  for (const plane of payload.planes) {
+    for (let first = 0; first < plane.length; first += 16384) {
+      signal?.throwIfAborted();
+      for (let index = first; index < Math.min(plane.length, first + 16384); index++) {
+        const value = plane[index]; if (!Number.isFinite(value) || Math.abs(value) > 16) throw failure('Render PCM contains nonfinite or excessive samples.'); peak = Math.max(peak, Math.abs(value));
+      }
+      await yieldControl();
+    }
+    bytes.set(new Uint8Array(plane.buffer, plane.byteOffset, plane.byteLength), offset); offset += plane.byteLength;
+  }
+  const hex = data => [...new Uint8Array(data)].map(value => value.toString(16).padStart(2, '0')).join('');
+  const pcmHash = hex(await crypto.subtle.digest('SHA-256', bytes)); signal?.throwIfAborted();
+  if (pcmHash !== descriptor.pcmHash || peak !== descriptor.peak) throw failure('Render PCM differs from its retained hash or peak.');
+  const metadata = { schema: descriptor.schema, assetHash: descriptor.assetHash, pcmHash, format: descriptor.format, sourceFrames: descriptor.sourceFrames,
+    sourceSampleRate: descriptor.sourceSampleRate, frames: descriptor.frames, sampleRate: descriptor.sampleRate, channels: descriptor.channels, bytes: descriptor.bytes,
+    decoderVersion: descriptor.decoderVersion, peak, sampleMagnitudeLimit: 16, evidence: descriptor.evidence };
+  const bankHash = hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(metadata)))); signal?.throwIfAborted();
+  if (bankHash !== descriptor.bankHash) throw failure('Render PCM metadata differs from its immutable bank identity.');
+  return Object.freeze({ descriptor: Object.freeze({ ...metadata, bankHash }), planes: Object.freeze([...payload.planes]) });
+}

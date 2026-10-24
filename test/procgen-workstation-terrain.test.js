@@ -6,6 +6,7 @@ import { ProcgenTerrainGrowth } from '../js/app/procgen/ProcgenTerrainGrowth.js'
 import { NodeFileProvider } from '../tools/NodeFileProvider.js';
 import { ProcgenLaneWorld } from '../js/app/procgen/ProcgenLaneWorld.js';
 import { ProcgenLaneRenderer } from '../js/app/procgen/ProcgenLaneRenderer.js';
+import { ProcgenRenderResources } from '../js/app/procgen/ProcgenRenderResources.js';
 import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
 import { captureProcgenCheckpoint, restoreProcgenCheckpoint } from '../js/app/procgen/workstation/ProcgenCheckpoint.js';
 import { createProcgenLaneProjection } from '../js/app/procgen/workstation/ProcgenLaneProjection.js';
@@ -69,7 +70,7 @@ describe('workstation mixed source terrain', function() {
     const fresh = await loadProcgenMixedTerrain({ configs: ['lemmings', 'lemmings_ohNo', 'holiday94'].map(path => ({ path })), fileProvider: provider, book: await loadTerrainRecipeBook(provider) });
     terrain.setLaneAssignments([...DEFAULT_PROCGEN_LANE_THEMES].reverse());
     const original = new ProcgenLaneWorld({ terrain, masks, seed: 42, laneCount: 8, laneHeight: 144, workstation: true, hazardSpacing: 256, cohorts: true });
-    const restored = new ProcgenLaneWorld({ terrain: fresh, masks, seed: 999, laneCount: 8, laneHeight: 144, workstation: true, cohorts: true });
+    const restored = new ProcgenLaneWorld({ terrain: fresh, masks, seed: 42, laneCount: 8, laneHeight: 144, workstation: true, cohorts: true });
     const state = world => ({ seeds: [...world.laneSeeds], actors: world.actors.map(actor => [actor.id, actor.x, actor.y, actor.frameIndex, actor.action.actionName]), frontiers: [...world.frontiers], growth: world.terrainGrowth.exportState(), scenery: world.scenery.snapshot() });
     try {
       for (let tick = 0; tick < 240; tick++) original.step();
@@ -116,6 +117,8 @@ describe('just ahead source publication and scenery', () => {
     const create = () => new ProcgenScenery({ terrain, laneSeeds: Uint32Array.of(42), laneHeight: 144, solidLead: 84 });
     const scenery = create(), draw = (left = 0, right = 400) => { const pixels = []; scenery.drawLane({ lane: 0, left, right, drawPixel: (...pixel) => pixels.push(pixel) }); return pixels; };
     scenery.update({ frontiers: [80], tick: 1 }); const initial = scenery.snapshot();
+    const stillPixels = []; scenery.drawLane({ lane: 0, reducedMotion: true, drawPixel: (...pixel) => stillPixels.push(pixel) });
+    assert.ok(stillPixels.length > draw().length); assert.deepEqual(scenery.snapshot(), initial);
     scenery.update({ frontiers: [500], tick: 500, paused: true }); assert.deepEqual(scenery.snapshot(), initial);
     scenery.update({ frontiers: [80], tick: 25 }); const saved = scenery.snapshot(), before = draw(); assert.ok(before.length);
     assert.deepEqual(draw(80, 160), before.filter(([x]) => x >= 80 && x < 160)); assert.deepEqual(scenery.snapshot(), saved);
@@ -126,17 +129,21 @@ describe('just ahead source publication and scenery', () => {
     restored.update({ frontiers: [400], tick: 42, reducedMotion: true }); assert.ok(restored.entries[0].every(entry => entry.progress === 8));
   });
   it('uploads scenery once per changed image and clips it behind solid terrain without per-pixel canvas calls', () => {
-    let uploads = 0, draws = 0, samples = 0;
+    let uploads = 0, draws = 0, samples = 0, lastReducedMotion = null;
     const context = { createImageData: (width, height) => ({ data: new Uint8ClampedArray(width * height * 4) }), putImageData() { uploads++; }, drawImage() { draws++; }, fillRect() { throw new Error('Per-pixel canvas calls'); } };
     const renderer = Object.create(ProcgenLaneRenderer.prototype);
     Object.assign(renderer, { canvas: { ownerDocument: { createElement: () => ({ width: 0, height: 0, getContext: () => context }) } }, bufferContext: context,
       originX: 0, originY: 0, viewWidth: 8, viewHeight: 8, rasterStep: 1, pixels: new Uint32Array(64).fill(0xff0e0807),
-      world: { laneCount: 1, laneHeight: 8, scenery: { revision: 1, drawLane({ drawPixel }) { samples++; drawPixel(1, 1, 0xff0000ff); drawPixel(2, 1, 0xff0000ff); } } } });
+      world: { laneCount: 1, laneHeight: 8, scenery: { revision: 1, drawLane({ drawPixel, reducedMotion }) { samples++; lastReducedMotion = reducedMotion; drawPixel(1, 1, 0xff0000ff); drawPixel(2, 1, 0xff0000ff); } } } });
+    renderer.resources = new ProcgenRenderResources(renderer.canvas.ownerDocument); renderer.sceneryImageKey = {};
     renderer.pixels[10] = 0xffabcdef;
     renderer._drawScenery('terrain:0', 8, 8); renderer._drawScenery('terrain:0', 8, 8);
     assert.equal(uploads, 1); assert.equal(samples, 1); assert.equal(draws, 2);
     assert.equal(renderer.sceneryPixels[9], 0xff0000ff); assert.equal(renderer.sceneryPixels[10], 0);
     renderer.world.scenery.revision++; renderer._drawScenery('terrain:0', 8, 8); assert.equal(uploads, 2);
     renderer._drawScenery('terrain:1', 8, 8); assert.equal(uploads, 3);
+    renderer.reducedMotion = { matches: true }; renderer._drawScenery('terrain:1', 8, 8);
+    assert.equal(uploads, 4); assert.equal(lastReducedMotion, true); assert.equal(renderer.world.scenery.reducedMotion, undefined);
+    renderer.resources.dispose();
   });
 });

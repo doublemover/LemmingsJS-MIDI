@@ -1,0 +1,769 @@
+{
+  "schema": "lemmings-sound-recipes/v1",
+  "pack": {
+    "id": "lemmings.plucked-garden",
+    "version": "0.1.0",
+    "name": "Plucked garden",
+    "author": "LemmingsJS-MIDI contributors",
+    "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+    "licenseId": "NOASSERTION",
+    "licenseUrl": null,
+    "attribution": "Original first-party plucked-string working recipes. Pitch, decay, spectral and listening qualification remains pending.",
+    "modifications": [],
+    "redistributionPolicy": "unknown",
+    "licenses": []
+  },
+  "files": [],
+  "recipes": [
+    {
+      "id": "pluck.base",
+      "revision": 1,
+      "abstract": true,
+      "author": "LemmingsJS-MIDI contributors",
+      "tags": [
+        "plucked-string",
+        "unqualified-content"
+      ],
+      "engine": {
+        "id": "worklet-pluck",
+        "version": 1
+      },
+      "rights": {
+        "kind": "patch-recipe",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original first-party plucked-string working recipes. Pitch, decay, spectral and listening qualification remains pending.",
+        "modifications": [],
+        "declaredUse": "unknown"
+      },
+      "components": [
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.002,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.04,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.5,
+              "unit": "amplitude-linear"
+            },
+            "pan01": {
+              "value": 0,
+              "unit": "normalized"
+            }
+          }
+        }
+      ],
+      "voicePolicy": {
+        "maxVoices": 16,
+        "steal": "reject"
+      },
+      "mix": {
+        "gain01": 0.6,
+        "pan01": 0
+      },
+      "dependencies": [],
+      "variation": {
+        "algorithmVersion": "fnv1a32-utf16-le-latents-v1",
+        "seed": 1741,
+        "identityScope": "execution-birth",
+        "amount01": 1,
+        "targets": [
+          {
+            "id": "pick-sibling",
+            "parameter": "pluckPosition01",
+            "unit": "normalized",
+            "composition": "add",
+            "amount": 0.015,
+            "factors": [
+              {
+                "id": "picker",
+                "weight": 1
+              }
+            ]
+          },
+          {
+            "id": "ring-sibling",
+            "parameter": "stringT60Seconds",
+            "unit": "ratio",
+            "composition": "scale",
+            "amount": 0.08,
+            "factors": [
+              {
+                "id": "picker",
+                "weight": 0.5
+              },
+              {
+                "id": "ring",
+                "weight": 0.5
+              }
+            ]
+          }
+        ],
+        "eventTargets": [
+          {
+            "id": "strike-spark",
+            "parameter": "excitationBrightness01",
+            "unit": "normalized",
+            "composition": "add",
+            "amount": 0.03,
+            "factors": [
+              {
+                "id": "strike",
+                "weight": 1
+              }
+            ]
+          }
+        ]
+      },
+      "causalBindings": [
+        {
+          "id": "completed-work-strength",
+          "sourceKind": "TerrainWorkCommitted",
+          "payloadField": "changedSolidCells",
+          "target": "gain01",
+          "unit": "cells",
+          "inputMin": 0,
+          "inputMax": 32,
+          "outputUnit": "ratio",
+          "outputMin": 0.6,
+          "outputMax": 1.3,
+          "curve": "linear",
+          "composition": "scale",
+          "mode": "onset-only",
+          "smoothingMs": 0
+        },
+        {
+          "id": "held-motion-damping",
+          "sourceKind": "MotionCommitted",
+          "payloadField": "displacementPixels",
+          "target": "damping01",
+          "unit": "world-pixel",
+          "inputMin": 0,
+          "inputMax": 8,
+          "outputUnit": "normalized",
+          "outputMin": 0.85,
+          "outputMax": 0,
+          "curve": "linear",
+          "composition": "replace",
+          "mode": "continuous",
+          "smoothingMs": 24
+        }
+      ]
+    },
+    {
+      "id": "pluck.burrow-thumb",
+      "revision": 1,
+      "extends": "pluck.base",
+      "name": "Burrow Thumb",
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "pluckPosition01": {
+              "value": 0.28,
+              "unit": "normalized"
+            },
+            "excitationBrightness01": {
+              "value": 0.2,
+              "unit": "normalized"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "stringT60Seconds": {
+              "value": 0.65,
+              "unit": "s"
+            },
+            "bodyMix01": {
+              "value": 0.12,
+              "unit": "ratio"
+            },
+            "bodyT60Seconds": {
+              "value": 0.3,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.002,
+              "unit": "s"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "body",
+          "name": "BODY",
+          "mode": "onset-only",
+          "default01": 0.4,
+          "smoothingMs": 0,
+          "perceptualDirection": "Blend two bounded sympathetic body modes excited by the same pluck; no extra notes are created.",
+          "targets": [
+            {
+              "parameter": "bodyMix01",
+              "minimum": {
+                "value": 0,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 0.3,
+                "unit": "ratio"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "pick",
+          "name": "PICK",
+          "mode": "onset-only",
+          "default01": 0.5750000000000001,
+          "smoothingMs": 0,
+          "perceptualDirection": "Move the virtual excitation comb position for the next string onset.",
+          "targets": [
+            {
+              "parameter": "pluckPosition01",
+              "minimum": {
+                "value": 0.05,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.45,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "damp",
+          "name": "DAMP",
+          "mode": "onset-only",
+          "default01": 0.5534108966243612,
+          "smoothingMs": 0,
+          "perceptualDirection": "Shorten the target fundamental decay for a new pluck; held-voice damping is a separate control.",
+          "targets": [
+            {
+              "parameter": "stringT60Seconds",
+              "minimum": {
+                "value": 4,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 0.15,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "spark",
+          "name": "SPARK",
+          "mode": "onset-only",
+          "default01": 0.15789473684210528,
+          "smoothingMs": 0,
+          "perceptualDirection": "Brighten the initial seeded excitation under bounded onset-energy normalization.",
+          "targets": [
+            {
+              "parameter": "excitationBrightness01",
+              "minimum": {
+                "value": 0.05,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pluck.wire-ladder",
+      "revision": 1,
+      "extends": "pluck.base",
+      "name": "Wire Ladder",
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "pluckPosition01": {
+              "value": 0.12,
+              "unit": "normalized"
+            },
+            "excitationBrightness01": {
+              "value": 0.95,
+              "unit": "normalized"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "stringT60Seconds": {
+              "value": 1.6,
+              "unit": "s"
+            },
+            "bodyMix01": {
+              "value": 0.05,
+              "unit": "ratio"
+            },
+            "bodyT60Seconds": {
+              "value": 0.45,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.002,
+              "unit": "s"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "body",
+          "name": "BODY",
+          "mode": "onset-only",
+          "default01": 0.16666666666666669,
+          "smoothingMs": 0,
+          "perceptualDirection": "Blend two bounded sympathetic body modes excited by the same pluck; no extra notes are created.",
+          "targets": [
+            {
+              "parameter": "bodyMix01",
+              "minimum": {
+                "value": 0,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 0.3,
+                "unit": "ratio"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "pick",
+          "name": "PICK",
+          "mode": "onset-only",
+          "default01": 0.17499999999999996,
+          "smoothingMs": 0,
+          "perceptualDirection": "Move the virtual excitation comb position for the next string onset.",
+          "targets": [
+            {
+              "parameter": "pluckPosition01",
+              "minimum": {
+                "value": 0.05,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.45,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "damp",
+          "name": "DAMP",
+          "mode": "onset-only",
+          "default01": 0.27906643369235745,
+          "smoothingMs": 0,
+          "perceptualDirection": "Shorten the target fundamental decay for a new pluck; held-voice damping is a separate control.",
+          "targets": [
+            {
+              "parameter": "stringT60Seconds",
+              "minimum": {
+                "value": 4,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 0.15,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "spark",
+          "name": "SPARK",
+          "mode": "onset-only",
+          "default01": 0.9473684210526315,
+          "smoothingMs": 0,
+          "perceptualDirection": "Brighten the initial seeded excitation under bounded onset-energy normalization.",
+          "targets": [
+            {
+              "parameter": "excitationBrightness01",
+              "minimum": {
+                "value": 0.05,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pluck.moss-nylon",
+      "revision": 1,
+      "extends": "pluck.base",
+      "name": "Moss Nylon",
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "pluckPosition01": {
+              "value": 0.35,
+              "unit": "normalized"
+            },
+            "excitationBrightness01": {
+              "value": 0.15,
+              "unit": "normalized"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "stringT60Seconds": {
+              "value": 0.9,
+              "unit": "s"
+            },
+            "bodyMix01": {
+              "value": 0.08,
+              "unit": "ratio"
+            },
+            "bodyT60Seconds": {
+              "value": 0.2,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.005,
+              "unit": "s"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "body",
+          "name": "BODY",
+          "mode": "onset-only",
+          "default01": 0.26666666666666666,
+          "smoothingMs": 0,
+          "perceptualDirection": "Blend two bounded sympathetic body modes excited by the same pluck; no extra notes are created.",
+          "targets": [
+            {
+              "parameter": "bodyMix01",
+              "minimum": {
+                "value": 0,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 0.3,
+                "unit": "ratio"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "pick",
+          "name": "PICK",
+          "mode": "onset-only",
+          "default01": 0.7499999999999999,
+          "smoothingMs": 0,
+          "perceptualDirection": "Move the virtual excitation comb position for the next string onset.",
+          "targets": [
+            {
+              "parameter": "pluckPosition01",
+              "minimum": {
+                "value": 0.05,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.45,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "damp",
+          "name": "DAMP",
+          "mode": "onset-only",
+          "default01": 0.4542999206275304,
+          "smoothingMs": 0,
+          "perceptualDirection": "Shorten the target fundamental decay for a new pluck; held-voice damping is a separate control.",
+          "targets": [
+            {
+              "parameter": "stringT60Seconds",
+              "minimum": {
+                "value": 4,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 0.15,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "spark",
+          "name": "SPARK",
+          "mode": "onset-only",
+          "default01": 0.10526315789473684,
+          "smoothingMs": 0,
+          "perceptualDirection": "Brighten the initial seeded excitation under bounded onset-energy normalization.",
+          "targets": [
+            {
+              "parameter": "excitationBrightness01",
+              "minimum": {
+                "value": 0.05,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pluck.suspended-zither",
+      "revision": 1,
+      "extends": "pluck.base",
+      "name": "Suspended Zither",
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "pluckPosition01": {
+              "value": 0.18,
+              "unit": "normalized"
+            },
+            "excitationBrightness01": {
+              "value": 0.7,
+              "unit": "normalized"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "stringT60Seconds": {
+              "value": 3.2,
+              "unit": "s"
+            },
+            "bodyMix01": {
+              "value": 0.28,
+              "unit": "ratio"
+            },
+            "bodyT60Seconds": {
+              "value": 0.9,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.001,
+              "unit": "s"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "body",
+          "name": "BODY",
+          "mode": "onset-only",
+          "default01": 0.9333333333333335,
+          "smoothingMs": 0,
+          "perceptualDirection": "Blend two bounded sympathetic body modes excited by the same pluck; no extra notes are created.",
+          "targets": [
+            {
+              "parameter": "bodyMix01",
+              "minimum": {
+                "value": 0,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 0.3,
+                "unit": "ratio"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "pick",
+          "name": "PICK",
+          "mode": "onset-only",
+          "default01": 0.325,
+          "smoothingMs": 0,
+          "perceptualDirection": "Move the virtual excitation comb position for the next string onset.",
+          "targets": [
+            {
+              "parameter": "pluckPosition01",
+              "minimum": {
+                "value": 0.05,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.45,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "damp",
+          "name": "DAMP",
+          "mode": "onset-only",
+          "default01": 0.06796082607900546,
+          "smoothingMs": 0,
+          "perceptualDirection": "Shorten the target fundamental decay for a new pluck; held-voice damping is a separate control.",
+          "targets": [
+            {
+              "parameter": "stringT60Seconds",
+              "minimum": {
+                "value": 4,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 0.15,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "spark",
+          "name": "SPARK",
+          "mode": "onset-only",
+          "default01": 0.6842105263157894,
+          "smoothingMs": 0,
+          "perceptualDirection": "Brighten the initial seeded excitation under bounded onset-energy normalization.",
+          "targets": [
+            {
+              "parameter": "excitationBrightness01",
+              "minimum": {
+                "value": 0.05,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

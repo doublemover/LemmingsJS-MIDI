@@ -1,21 +1,98 @@
 import { expect, test } from '@playwright/test';
 
-const ready = async (page, count = 8) => {
+const ready = async (page, count = 8, steps = 16) => {
   await page.goto('/README.md');
   await page.setContent('<style>.studio-stage{position:relative;width:800px;height:608px}.studio-cell{min-width:24px}.studio-sequences{position:absolute;inset:0}.studio-sequence{position:absolute;display:grid;width:100%}</style><header id="procgenTopbar"></header><canvas id="gameCanvas"></canvas>');
-  await page.evaluate(async count => {
+  await page.evaluate(async ({ count, steps }) => {
     const { createProcgenWorkstationView } = await import('/js/app/procgen/workstation/ProcgenWorkstationView.js');
     const { createProcgenWorkstationProject, createProcgenLane } = await import('/js/app/procgen/workstation/ProcgenWorkstationProject.js');
     const { createMidiProject, reduceMidiProject } = await import('/js/midi/project/MidiProject.js');
-    let project = createProcgenWorkstationProject(createMidiProject(), { lanes: Array.from({ length: count }, (_, index) => createProcgenLane(index)) });
+    let project = createProcgenWorkstationProject(createMidiProject(), { lanes: Array.from({ length: count }, (_, index) =>
+      createProcgenLane(index, { mode: 'pattern', patternPurpose: 'Complement the physical world in this view fixture',
+        ...(steps === 16 ? {} : { patterns: Array.from({ length: 4 }, () => ({ length: steps })) }) })) });
     const state = { laneId: 'lane-1', slot: 0, step: 0 }, calls = [], actions = [];
+    const runtime = {};
     const handlers = Object.fromEntries(['copy', 'paste', 'undo', 'redo', 'observe', 'record'].map(name => [name, value => calls.push({ name, value })]));
-    const view = createProcgenWorkstationView({ document, window, getProject: () => project, getRuntime: () => ({}), state, handlers,
-      dispatch: action => { actions.push(action); project = reduceMidiProject(project, action); view.render(); } });
+    const dispatch = action => { actions.push(action); project = reduceMidiProject(project, action);
+      if (action.type === 'procgen/step') view.patchStep(action);
+      else if (action.type === 'procgen/launchedBatch') view.launched();
+      else view.render(); };
+    const view = createProcgenWorkstationView({ document, window, getProject: () => project, getRuntime: () => runtime, state, handlers, dispatch });
     view.render();
-    window.workstationViewTest = { view, state, calls, actions, getProject: () => project };
-  }, count);
+    window.workstationViewTest = { view, state, calls, actions, runtime, dispatch, handlers, getProject: () => project };
+  }, { count, steps });
 };
+
+test('musical header agrees with real phrase launches in canonical non-4/4 meters @boundary', async ({ page }) => {
+  await ready(page, 1);
+  const results = await page.evaluate(async () => {
+    const { createProcgenPatternEngine } = await import('/js/app/procgen/workstation/ProcgenPatternEngine.js');
+    const f = window.workstationViewTest, results = [];
+    for (const [beats, unit] of [[3, 4], [6, 8], [7, 8], [4, 4]]) {
+      f.dispatch({ type: 'transport.set', transport: { timeSignature: { beats, unit } } });
+      f.dispatch({ type: 'procgen/launched', laneId: 'lane-1', slot: 0 });
+      f.dispatch({ type: 'procgen/launch', laneId: 'lane-1', slot: 1 });
+      const engine = createProcgenPatternEngine({ getProject: f.getProject, emit: () => ({ status: 'rejected' }) });
+      const boundary = beats * 4 / unit;
+      engine.onBeat({ beat: 0.25, timestamp: 125, bpm: 120 });
+      engine.onBeat({ beat: boundary, timestamp: boundary * 500, bpm: 120 });
+      f.view.transport({ beat: boundary, bpm: 90, clockSource: 'external', clockStatus: 'locked', linked: true, speedMode: 'bpm' });
+      results.push({ meter: `${beats}/${unit}`, origin: engine.getLanePosition('lane-1').origin, boundary,
+        label: document.querySelector('.studio-clock-status').textContent, health: document.querySelector('.studio-clock-source-status').textContent });
+    }
+    return results;
+  });
+  for (const result of results) {
+    expect(result.origin, result.meter).toBe(result.boundary); expect(result.label).toBe('2 : 1'); expect(result.health).toBe('MIDI clock · locked');
+  }
+});
+
+test('project picker ignores reversed searches and old continuation completions @boundary', async ({ page }) => {
+  await ready(page);
+  await page.evaluate(() => {
+    const f = window.workstationViewTest; f.requests = [];
+    f.view.showProjectPage({ items: [], nextCursor: null }, async () => false,
+      (cursor, query) => new Promise((resolve, reject) => f.requests.push({ cursor, query, resolve, reject })));
+  });
+  const search = page.getByRole('searchbox', { name: 'Search project names' });
+  for (const query of ['alpha', 'beta']) { await search.fill(query); await search.dispatchEvent('change'); }
+  await page.evaluate(() => window.workstationViewTest.requests[1].resolve({ items: [{ id: 'beta', name: 'Beta', savedAt: '2026-10-22' }], nextCursor: null }));
+  await expect(page.locator('.studio-project-items')).toHaveText(/Beta/);
+  await expect(page.locator('.studio-project-feedback')).toHaveText('');
+  await page.evaluate(() => window.workstationViewTest.requests[0].resolve({ items: [{ id: 'alpha', name: 'Alpha', savedAt: '2026-10-22' }], nextCursor: 'alpha-next' }));
+  await expect(page.locator('.studio-project-items')).toHaveText(/Beta/);
+  await expect(page.getByRole('button', { name: 'More projects' })).toBeHidden();
+  await search.fill('alpha'); await search.dispatchEvent('change');
+  await page.evaluate(() => window.workstationViewTest.requests[2].resolve({ items: [{ id: 'alpha', name: 'Alpha', savedAt: '2026-10-22' }], nextCursor: 'alpha-next' }));
+  await page.getByRole('button', { name: 'More projects' }).click();
+  await search.fill('beta'); await search.dispatchEvent('change');
+  await page.evaluate(() => window.workstationViewTest.requests[4].resolve({ items: [{ id: 'beta-new', name: 'Beta new', savedAt: '2026-10-22' }], nextCursor: null }));
+  await page.evaluate(() => window.workstationViewTest.requests[3].resolve({ items: [{ id: 'alpha-next', name: 'Alpha next', savedAt: '2026-10-22' }], nextCursor: 'alpha-later' }));
+  await expect(page.locator('.studio-project-items')).toHaveText(/Beta new/);
+  await expect(page.locator('.studio-project-items')).not.toHaveText(/Alpha/);
+  await expect(page.getByRole('button', { name: 'More projects' })).toBeHidden();
+});
+
+test('Escape cancels the picker once and late loads cannot close a newer picker @boundary', async ({ page }) => {
+  await ready(page);
+  await page.evaluate(() => {
+    const f = window.workstationViewTest; f.cancelCount = 0; f.handlers.cancelProjectPicker = () => f.cancelCount++;
+    f.view.showProjectPage({ items: [{ id: 'target', name: 'Target', savedAt: '2026-10-22' }], nextCursor: null },
+      () => new Promise(resolve => { f.finishLoad = resolve; }));
+  });
+  await page.getByRole('button', { name: /Target ·/ }).click(); await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Saved projects' })).not.toBeVisible();
+  expect(await page.evaluate(() => window.workstationViewTest.cancelCount)).toBe(1);
+  await page.evaluate(() => {
+    const f = window.workstationViewTest;
+    f.view.showProjectPage({ items: [{ id: 'new', name: 'New owner', savedAt: '2026-10-22' }], nextCursor: null }, async () => false);
+    f.finishLoad(true);
+  });
+  await expect(page.getByRole('dialog', { name: 'Saved projects' })).toBeVisible();
+  await expect(page.locator('.studio-project-items')).toHaveText(/New owner/);
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  expect(await page.evaluate(() => window.workstationViewTest.cancelCount)).toBe(2);
+});
 
 test('selecting another lane edits its displayed phrase and supports fixed note zero', async ({ page }) => {
   await ready(page);
@@ -57,6 +134,77 @@ test('keyboard editing excludes text inputs and transport pulses keep existing r
   })).toBe(true);
 });
 
+test('project renders retain the focused field buffer, caret and selected edit target', async ({ page }) => {
+  await ready(page);
+  const name = page.getByLabel('Name', { exact: true });
+  await name.fill('Uncommitted lane');
+  await name.evaluate(input => { input.focus(); input.setSelectionRange(4, 4); });
+  await page.evaluate(() => window.workstationViewTest.view.render());
+  expect(await page.evaluate(() => ({ value: document.activeElement.value, caret: document.activeElement.selectionStart,
+    lane: window.workstationViewTest.state.laneId, label: document.activeElement.closest('label')?.textContent }))).toEqual({
+    value: 'Uncommitted lane', caret: 4, lane: 'lane-1', label: 'Name'
+  });
+  await page.setViewportSize({ width: 1100, height: 720 });
+  await expect(page.getByLabel('Name', { exact: true })).toBeFocused();
+  await page.evaluate(() => window.workstationViewTest.view.renderInspector());
+  await expect(page.getByLabel('Name', { exact: true })).toBeFocused();
+  await page.getByLabel('Name', { exact: true }).fill('Committed lane');
+  await page.getByLabel('Name', { exact: true }).dispatchEvent('change');
+  await expect(page.getByLabel('Name', { exact: true })).toBeFocused();
+  expect(await page.evaluate(() => window.workstationViewTest.getProject().procgen.lanes[0].name)).toBe('Committed lane');
+});
+
+test('fullscreen keeps the same instrument root, numeric draft and emergency controls', async ({ page }) => {
+  await ready(page);
+  const name = page.getByLabel('Name', { exact: true });
+  await name.fill('Uncommitted draft');
+  await page.locator('.studio-transport-overflow summary').click();
+  await page.getByRole('button', { name: 'Expand fullscreen' }).click();
+  await expect.poll(() => page.evaluate(() => document.fullscreenElement?.id)).toBe('procgenPresentationRoot');
+  expect(await page.evaluate(() => ({ draft: document.activeElement.value, changes: window.workstationViewTest.actions.length,
+    canvasCount: document.querySelectorAll('#gameCanvas').length, stop: !!document.getElementById('studioStopOutput'),
+    rootCount: document.querySelectorAll('#procgenPresentationRoot').length }))).toEqual({
+    draft: 'Uncommitted draft', changes: 0, canvasCount: 1, stop: true, rootCount: 1
+  });
+  await page.locator('#studioFullscreenExit').click();
+  await expect.poll(() => page.evaluate(() => document.fullscreenElement)).toBeNull();
+  await expect(name).toHaveValue('Uncommitted draft');
+  await page.evaluate(() => window.workstationViewTest.view.dispose());
+  await expect(page.locator('#procgenPresentationRoot')).toHaveCount(0);
+  await expect(page.locator('#gameCanvas')).toHaveCount(1);
+});
+
+test('single-step edits keep visible rows and other cells mounted', async ({ page }) => {
+  await ready(page, 1024);
+  await page.locator('.studio-sequence').first().locator('.studio-cell').nth(3).click();
+  await page.evaluate(() => {
+    window.editRow = document.querySelector('.studio-sequence');
+    window.otherCell = window.editRow.children[2];
+  });
+  const note = page.getByLabel('Fixed MIDI note');
+  await note.fill('64'); await note.dispatchEvent('change');
+  expect(await page.evaluate(() => ({ row: window.editRow === document.querySelector('.studio-sequence'),
+    cell: window.otherCell === document.querySelector('.studio-sequence').children[2],
+    note: window.workstationViewTest.getProject().procgen.lanes[0].patterns[0].steps[3].note }))).toEqual({ row: true, cell: true, note: 64 });
+  await expect(note).toBeFocused();
+});
+
+test('inspector arrow keys resize only the inspector and view disposal detaches its renderer callback', async ({ page }) => {
+  await ready(page);
+  const separator = page.getByRole('separator', { name: 'Resize inspector' });
+  await separator.focus(); await page.keyboard.press('ArrowRight');
+  expect(await page.evaluate(() => ({ width: window.workstationViewTest.state.inspectorWidth,
+    step: window.workstationViewTest.state.step, tab: window.workstationViewTest.state.tab }))).toEqual({ width: 288, step: 0, tab: 'Lane' });
+  expect(await separator.getAttribute('aria-valuenow')).toBe('288');
+  expect(await page.evaluate(() => {
+    const { view, runtime } = window.workstationViewTest;
+    const renderer = { resize() {} }; runtime.lanes = { renderer }; view.render();
+    const attached = !!renderer.workstationLayout && typeof renderer.onWorkstationFrame === 'function';
+    view.dispose(); view.dispose();
+    return { attached, detached: renderer.workstationLayout == null && renderer.onWorkstationFrame == null };
+  })).toEqual({ attached: true, detached: true });
+});
+
 test('virtualizes 1024 lanes and exposes observer controls without losing the canvas on disposal', async ({ page }) => {
   await ready(page, 1024);
   await expect(page.locator('.studio-lane-header')).toHaveCount(8);
@@ -91,4 +239,66 @@ test('draw and erase gestures commit one reducer action for an entire stroke', a
   await stroke('erase');
   expect(await page.evaluate(() => window.workstationViewTest.getProject().procgen.lanes[0].patterns[0].steps.slice(0, 4).every(step => !step.enabled))).toBe(true);
   expect(await page.evaluate(() => window.workstationViewTest.actions.length)).toBe(2);
+});
+
+test('benchmark 64-step edit and simultaneous launch latency @benchmark', async ({ page }) => {
+  test.skip(!process.env.LEMMINGS_BENCH, 'Run explicitly with LEMMINGS_BENCH=1');
+  const results = [];
+  for (const laneCount of [8, 128, 1024]) {
+    await ready(page, laneCount, 64);
+    results.push(await page.evaluate(async () => {
+      const fixture = window.workstationViewTest, samples = [], launchSamples = [];
+      const percentile = (values, fraction) => [...values].sort((a, b) => a - b)[Math.min(values.length - 1, Math.floor(values.length * fraction))];
+      for (let index = 0; index < 20; index++) fixture.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: index % 2 ? 60 : 61 } });
+      const before = performance.memory?.usedJSHeapSize ?? null;
+      for (let index = 0; index < 120; index++) {
+        const start = performance.now();
+        fixture.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: index % 2 ? 60 : 61 } });
+        samples.push(performance.now() - start);
+      }
+      const after = performance.memory?.usedJSHeapSize ?? null;
+      for (let index = 0; index < 120; index++) {
+        const launches = fixture.getProject().procgen.lanes.map(lane => ({ laneId: lane.id, slot: index % 2 ? 1 : 0 }));
+        const start = performance.now(); fixture.dispatch({ type: 'procgen/launchedBatch', launches });
+        launchSamples.push(performance.now() - start);
+      }
+      const result = { lanes: fixture.getProject().procgen.lanes.length, steps: 64, scope: 'browser reducer/view and synthetic workstation host; no audio or IndexedDB',
+        editMs: { p50: percentile(samples, 0.5), p95: percentile(samples, 0.95), p99: percentile(samples, 0.99), over16: samples.filter(value => value > 16).length },
+        launchMs: { p50: percentile(launchSamples, 0.5), p95: percentile(launchSamples, 0.95), p99: percentile(launchSamples, 0.99), over16: launchSamples.filter(value => value > 16).length },
+        heapDeltaBytes: before == null || after == null || after === before ? null : after - before };
+      const project = fixture.getProject(); fixture.view.dispose();
+      window.localStorage.removeItem('lemmings.procgen.workstation.v1');
+      const { createProcgenWorkstation } = await import('/js/app/procgen/workstation/ProcgenWorkstation.js');
+      let legacyProject = project;
+      const listeners = new Set(), runtime = { world: { laneCount: result.lanes, seed: 7, timer: { speedFactor: 1 }, frontiers: [100] }, lanes: { renderer: null }, view: {} };
+      const legacy = { settings: { seed: 7, speed: 1, laneCount: result.lanes }, getProject: () => legacyProject,
+        setProject(value) { legacyProject = value; for (const listener of listeners) listener(value); },
+        subscribeProject(listener) { listeners.add(listener); return () => listeners.delete(listener); },
+        setPaused() {}, setSpeed() {}, local: { getState: () => ({ enabled: false, selectedBackend: 'synth' }) } };
+      const studio = createProcgenWorkstation({ document, window, legacy, getRuntime: () => runtime, restart: async () => {},
+        storage: { close() {} }, captureCheckpoint: () => ({ version: 1, laneCount: result.lanes, seed: 7 }),
+        transportOptions: { driver: { start() {}, stop() {} }, lookaheadMs: 0 } });
+      const controller = [];
+      for (let index = 0; index < 20; index++) studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: index % 2 ? 60 : 61 } });
+      for (let index = 0; index < 120; index++) {
+        const start = performance.now();
+        studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: index % 2 ? 60 : 61 } });
+        controller.push(performance.now() - start);
+      }
+      result.controllerMs = { p50: percentile(controller, 0.5), p95: percentile(controller, 0.95), p99: percentile(controller, 0.99), over16: controller.filter(value => value > 16).length };
+      studio.handlers.record(true);
+      const captures = [];
+      for (let index = 0; index < 120; index++) {
+        const timestamp = performance.now(), start = timestamp;
+        studio.ports.receiveMidi([0x90, 60 + index % 2, 90], timestamp);
+        studio.ports.receiveMidi([0x80, 60 + index % 2, 0], timestamp + 10);
+        captures.push(performance.now() - start);
+      }
+      result.captureMs = { p50: percentile(captures, 0.5), p95: percentile(captures, 0.95), p99: percentile(captures, 0.99), over16: captures.filter(value => value > 16).length };
+      studio.dispose();
+      return result;
+    }));
+  }
+  console.log('ProcGen browser edit benchmark:', JSON.stringify(results));
+  expect(results.map(result => result.lanes)).toEqual([8, 128, 1024]);
 });

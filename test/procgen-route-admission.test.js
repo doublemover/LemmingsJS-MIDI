@@ -5,14 +5,14 @@ import { MAX_LOCAL_ROUTE_DISTANCE, MAX_ROUTE_PROBES, ROUTE_LANES_PER_TICK } from
 import { LemmingStateType as State } from '../js/lemmings/LemmingStateType.js';
 import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
 
-const terrainFor = (blocked = false) => {
+const terrainFor = (blocked = false, flat = false) => {
   const collision = new Map();
   return { chunkWidth: 128, configure() {}, describe: () => ({ objects: [] }), reset() { collision.clear(); },
     getChunk(seed, chunk) {
       const key = seed + ':' + chunk; if (collision.has(key)) return collision.get(key);
       const solid = new Uint32Array(384), steel = new Uint32Array(384), topProfile = new Int16Array(128);
       for (let x = 0; x < 128; x++) {
-        const wx = chunk * 128 + x, wall = blocked && wx >= 142 && wx < 200, floor = wall ? 20 : wx === 12 ? 56 : wx >= 80 ? 64 : 72;
+        const wx = chunk * 128 + x, wall = blocked && wx >= 142 && wx < 200, floor = flat ? 72 : wall ? 20 : wx === 12 ? 56 : wx >= 80 ? 64 : 72;
         topProfile[x] = floor;
         for (let y = floor; y < 96; y++) { const at = y * 128 + x; solid[at >>> 5] |= 1 << (at & 31); if (wall) steel[at >>> 5] |= 1 << (at & 31); }
       }
@@ -23,6 +23,26 @@ const terrainFor = (blocked = false) => {
 const at = (world, actor, x, y = actor.laneIndex * 96 + 72) => { Object.assign(actor, { x, y, lookRight: true, scout: false }); actor.setAction(world.actions[State.WALKING]); return actor; };
 describe('bounded useful procgen workfront admission', () => {
   let masks; before(async () => { masks = await loadProcgenMasks(); });
+  it('charges actual passive steps before repeated safe actors can reuse a lane budget', () => {
+    const world = new ProcgenLaneWorld({ masks, terrain: terrainFor(false, true), laneCount: 64, workstation: false, assists: false });
+    const planner = world.hazardPlanner, actors = [];
+    for (let lane = 0; lane < 8; lane++) {
+      const first = world.actors.find(actor => actor.laneIndex === lane); actors.push(at(world, first, 64));
+      for (let i = 1; i < 16; i++) actors.push(at(world, world._spawn(lane, false), 64));
+    }
+    world.hazards.nearby = (lane, x, options, out) => { out.length = 0; out.push({ lane, chunk: 0, objectIndex: lane, x1: 90, x2: 91, y1: lane * 96 + 70, y2: lane * 96 + 73 }); return out; };
+    let reads = 0, steps = 0; const ground = world.hasGroundAt.bind(world);
+    world.hasGroundAt = (...args) => { reads++; return ground(...args); };
+    const actions = new Set();
+    for (const owner of Object.values(planner)) if (owner?.actions) for (const action of Object.values(owner.actions)) if (typeof action?.process === 'function') actions.add(action);
+    for (const action of actions) { const original = action.process; action.process = function(...args) { steps++; return original.apply(this, args); }; }
+    for (const actor of actors) planner.plan(actor);
+    // Tick zero services lanes 0 and 8,16,... in the fixed eight-lane rotation.
+    expect(reads + steps).to.be.at.most(MAX_ROUTE_PROBES);
+    expect(steps).to.be.greaterThan(0); expect(planner.admission.lanes[0].probes).to.be.at.most(MAX_ROUTE_PROBES);
+    expect(planner.stats.probes).to.be.at.least(reads + steps); expect(planner.stats.admission.screened).to.be.greaterThan(1);
+    world.dispose();
+  });
   it('keeps the harmless older walker moving and admits the later real staircase in the same World tick', () => {
     const world = new ProcgenLaneWorld({ masks, terrain: terrainFor(), assists: true, populationPolicy: { scoutsEvery: 0 } });
     const first = at(world, world.actors[0], 20), later = at(world, world._spawn(0, false), 64);

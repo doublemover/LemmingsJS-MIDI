@@ -1,0 +1,26 @@
+export const SINE_LAYOUT = Object.freeze({ width: 18, voices: 64 });
+export const PLUCK_LAYOUT = Object.freeze({ width: 24, voices: 16, state: 28, delayFloorHz: 32, delayMargin: 4 });
+export const CHOIR_LAYOUT = Object.freeze({ width: 26, voices: 8, state: 40, bands: 3, bandState: 8, tableLength: 2048, tableSamples: 8 * 2049 });
+export const SPECTRUM_LAYOUT = Object.freeze({ width: 73, voices: 8, state: 24, partialState: 6, partials: 16, tableLength: 2048, tableSamples: 16 * 5 * 2049, sineSamples: 2049, frameSamples: 256 });
+export const GRANULAR_LAYOUT = Object.freeze({ width: 33, voices: 8, cloudState: 44, grainState: 14, grains: 16, windowSamples: 2049, birthsPerBucket: 32 });
+export const CHOIR_SOURCE_HEAP_ESTIMATE = 65536;
+export const SPECTRUM_SOURCE_HEAP_ESTIMATE = 65536;
+export const GRANULAR_SOURCE_HEAP_ESTIMATE = 65536;
+const check = (rate, voices, maximum, maxRate = 384000) => {
+  if (!Number.isFinite(rate) || rate < 8000 || rate > maxRate || !Number.isInteger(voices) || voices < 1 || voices > maximum) throw new RangeError('Invalid owned source storage profile.');
+};
+export function pluckSourceBytes(rate, voices = PLUCK_LAYOUT.voices) {
+  check(rate, voices, PLUCK_LAYOUT.voices); const stride = Math.ceil(rate / PLUCK_LAYOUT.delayFloorHz) + PLUCK_LAYOUT.delayMargin;
+  return stride * voices * 4 + stride * 8 + voices * PLUCK_LAYOUT.state * 8;
+}
+export function choirSourceBytes(rate, voices = CHOIR_LAYOUT.voices) {
+  check(rate, voices, CHOIR_LAYOUT.voices); return CHOIR_LAYOUT.tableSamples * 4 + voices * (CHOIR_LAYOUT.state + CHOIR_LAYOUT.bands * CHOIR_LAYOUT.bandState) * 8;
+}
+export function spectrumSourceBytes(rate, voices = SPECTRUM_LAYOUT.voices) {
+  check(rate, voices, SPECTRUM_LAYOUT.voices);
+  return (SPECTRUM_LAYOUT.tableSamples + SPECTRUM_LAYOUT.sineSamples + SPECTRUM_LAYOUT.frameSamples) * 4 + voices * (SPECTRUM_LAYOUT.state + SPECTRUM_LAYOUT.partials * SPECTRUM_LAYOUT.partialState) * 8;
+}
+export function granularSourceBytes(rate, voices = GRANULAR_LAYOUT.voices) {
+  check(rate, voices, GRANULAR_LAYOUT.voices, 192000); if (!Number.isInteger(rate)) throw new RangeError('Invalid granular source rate.');
+  return GRANULAR_LAYOUT.windowSamples * 4 + voices * (GRANULAR_LAYOUT.cloudState + GRANULAR_LAYOUT.grains * GRANULAR_LAYOUT.grainState) * 8;
+}

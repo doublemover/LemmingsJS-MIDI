@@ -159,7 +159,7 @@ describe('FileProvider', function () {
   const cacheKey = (url) => `lem-cache:${url}`;
 
   const setCacheEntry = (url, entry) => {
-    global.localStorage.setItem(cacheKey(url), JSON.stringify(entry));
+    global.localStorage.setItem(cacheKey(url), JSON.stringify({ formatVersion: 2, ...entry }));
   };
 
   const setCacheRaw = (url, raw) => {
@@ -205,7 +205,7 @@ describe('FileProvider', function () {
     origIndexedDb = global.indexedDB;
     setDependency('BinaryReader', MockBinaryReader);
     setDependency('LogHandler', MockLogHandler);
-    provider = new FileProvider(rootPath);
+    provider = new FileProvider(rootPath, { cacheLockManager: { request: async (name, options, callback) => callback({ name }) } });
     global.localStorage = new (class {
       constructor() { this.store = new Map(); }
       getItem(k) { return this.store.has(k) ? this.store.get(k) : null; }
@@ -256,7 +256,7 @@ describe('FileProvider', function () {
     if (origFetch) {
       global.fetch = origFetch;
     }
-    provider.clearCache();
+    provider.dispose();
     setDependency('BinaryReader', origBR);
     setDependency('LogHandler', origLog);
   });
@@ -264,7 +264,7 @@ describe('FileProvider', function () {
   it('prunes indexedDB entries with missing size metadata', async function () {
     const idb = createIndexedDb();
     global.indexedDB = idb;
-    provider = new FileProvider(rootPath);
+    provider = new FileProvider(rootPath, { cacheLockManager: { request: async (name, options, callback) => callback({ name }) } });
     await provider._openIndexedDb();
     const entries = idb._stores.get('entries');
     const payloads = idb._stores.get('payloads');
@@ -288,11 +288,12 @@ describe('FileProvider', function () {
   it('falls back to localStorage when indexedDB misses', async function () {
     const idb = createIndexedDb();
     global.indexedDB = idb;
-    provider = new FileProvider(rootPath);
+    provider = new FileProvider(rootPath, { cacheLockManager: { request: async (name, options, callback) => callback({ name }) } });
 
     const binUrl = provider._buildUrl('data', 'fallback.bin');
     const buf = Uint8Array.from([1]).buffer;
     setBinaryCache(binUrl, buf);
+    provider._scheduleCacheValidation = () => {};
 
     const bin = await provider.loadBinary('data', 'fallback.bin');
     assert.ok(bin instanceof MockBinaryReader);
@@ -338,7 +339,7 @@ describe('FileProvider', function () {
         return request;
       }
     };
-    provider = new FileProvider(rootPath);
+    provider = new FileProvider(rootPath, { cacheLockManager: { request: async (name, options, callback) => callback({ name }) } });
     const db = await provider._openIndexedDb();
     db.onversionchange();
     assert.strictEqual(closeCalls.length, 1);
@@ -361,7 +362,7 @@ describe('FileProvider', function () {
   it('updates indexedDB sizes when entries already exist', async function () {
     const idb = createIndexedDb();
     global.indexedDB = idb;
-    provider = new FileProvider(rootPath);
+    provider = new FileProvider(rootPath, { cacheLockManager: { request: async (name, options, callback) => callback({ name }) } });
     await provider._openIndexedDb();
     const entries = idb._stores.get('entries');
     const meta = idb._stores.get('meta');

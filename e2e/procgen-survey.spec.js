@@ -25,7 +25,8 @@ test.describe('procgen survey native boundary', () => {
       const original = report.results.find(result => result.scenarioId === scene && result.candidate.kind === 'baseline');
       await page.evaluate(id => { delete window.__procgenSurveyReplayReceipt; window.__procgenSurveyDashboard.select(id); }, original.trialId);
       await page.locator('#surveyReplay').click(); await expect.poll(() => page.evaluate(() => window.__procgenSurveyReplayReceipt), { timeout: 30000 }).toBeTruthy();
-      const receipt = await page.evaluate(() => window.__procgenSurveyReplayReceipt); expect(receipt.matched).toBe(true); expect(receipt.independentSample).toBe(false); replays.push(receipt);
+      const receipt = await page.evaluate(() => window.__procgenSurveyReplayReceipt); expect(receipt.matched).toBe(false); expect(receipt.compatibilityMatch).toBe(true);
+      expect(receipt.executionIdentity.status).toBe('unbound'); expect(receipt.independentSample).toBe(false); replays.push(receipt);
     }
     await expect(page.locator('.survey-tile:visible')).toHaveCount(2);
     const candidates = generateProcgenSurveyCandidates({ count: 64 }), scenario = report.manifest.scenarios[0];
@@ -52,8 +53,10 @@ test.describe('procgen survey native boundary', () => {
       await expect(page.locator('#surveyPause')).toHaveText('Resume all'); await page.locator('#surveyPause').click();
       await expect.poll(() => telemetry.size).toBeGreaterThan(0); await page.locator('#surveyPause').click();
       await expect.poll(() => lastState.paused).toBe(true); await page.locator('#surveyStep').click();
-      await expect.poll(() => lastState.reachedCheckpoint).toBeTruthy();
-      expect(lastState.ticks.every(record => record.tick === lastState.reachedCheckpoint)).toBe(true);
+      await expect.poll(() => lastState.stepReceipt?.status).toBe('reached');
+      expect(lastState.stepReceipt.selected.every(record => record.tick === lastState.stepReceipt.reachedCheckpoint)).toBe(true);
+      await expect(page.locator('#surveyStepReceipt')).toContainText(`Reached checkpoint tick ${lastState.stepReceipt.reachedCheckpoint}`);
+      await expect(page.locator('#surveyStepSelection')).toContainText(jobs[0].trialId);
       await page.locator('#surveyCancel').click(); const outcome = await pool; expect(outcome.cancelled).toBe(true); expect(outcome.results).toHaveLength(16);
       expect(outcome.results.every(result => !result.episodeComplete)).toBe(true); expect(states).toEqual(['resume', 'pause', 'step', 'cancel']);
       await testInfo.attach('survey-native-controls.json', { body: JSON.stringify({ states, lastState, statuses: outcome.results.map(result => ({ trialId: result.trialId, status: result.status, lastTick: result.lastTick })) }), contentType: 'application/json' });
@@ -283,7 +286,8 @@ test('saved exact-source reports replay muted controlled and generated trials an
     await page.locator('#surveyReplay').click();
     await expect.poll(() => page.evaluate(() => window.__procgenSurveyReplayReceipt), { timeout: 30000 }).toBeTruthy();
     const receipt = await page.evaluate(() => window.__procgenSurveyReplayReceipt);
-    expect(receipt.matched).toBe(true); expect(receipt.independentSample).toBe(false); receipts.push(receipt);
+    expect(receipt.matched).toBe(false); expect(receipt.compatibilityMatch).toBe(true);
+    expect(receipt.executionIdentity.status).toBe('unbound'); expect(receipt.independentSample).toBe(false); receipts.push(receipt);
   }
   await page.route('**/js/app/procgen/survey/ProcgenSurveyCore.js', route => route.fulfill({ contentType: 'text/javascript', body: '// changed source bytes' }));
   await page.locator('#surveyReplay').click();

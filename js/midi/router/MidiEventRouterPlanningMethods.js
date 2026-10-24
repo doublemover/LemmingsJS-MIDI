@@ -120,9 +120,9 @@ const midiEventRouterPlanningMethods = {
     const onMessages = Math.max(estimate.messages - offMessages, 0);
     const offBytes = offMessages * 3;
     const onBytes = Math.max(0, estimate.bytes - offBytes);
-    const sharedControllers = !mpeEnabled;
-    const count = sharedControllers ? noteCount + Math.max(0, onMessages - 1) : onMessages * noteCount;
-    const bytes = sharedControllers ? noteCount * 3 + Math.max(0, onBytes - 3) : onBytes * noteCount;
+    // A queued chord may need setup on every note before the first has dispatched.
+    const count = onMessages * noteCount;
+    const bytes = onBytes * noteCount;
     return {
       on: { timeMs: sendTimeMs, count, bytes },
       off: { timeMs: offTimeMs, count: offMessages * noteCount, bytes: offBytes * noteCount }
@@ -142,7 +142,7 @@ const midiEventRouterPlanningMethods = {
     const maxBytes = limits.maxBytesPerSecond ??
         this.scheduler._maxBytesPerSecond ??
         snapshotForMax?.maxBytesPerSecond ??
-        3906;
+        3125;
     const evaluation = typeof this.scheduler.evaluateAndReserve === 'function'
       ? this.scheduler.evaluateAndReserve(plan, meta, now, {
         softMaxMessagesPerSecond: maxPerSecond,

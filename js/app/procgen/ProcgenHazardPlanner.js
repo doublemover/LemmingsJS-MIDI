@@ -328,6 +328,9 @@ class ProcgenHazardPlanner {
     }
     if (!proposal && (threat || cliff || gap)) {
       const walking = !bypass.failure ? this.walking.prove(actor, (x, y) => this._ground(x, y), this.observations, MAX_ROUTE_PROBES - this.probes) : null;
+      // Reads debit _ground immediately; include every action advance before
+      // a safe-screen early return or another proof can reuse this lane budget.
+      this.probes += walking?.actionSteps || 0; this.stats.probes += walking?.actionSteps || 0;
       if (walking?.failure === 'unrevealed') this.unrevealed = true;
       if (walking?.safe && !this.exhausted && !this.unrevealed) { this.admission.screened(actor, this.probes); return null; }
       const build = this._builder(actor);

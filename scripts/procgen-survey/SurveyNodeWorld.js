@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { loadProcgenMasks, loadProcgenTerrain } from '../bench-procgen-lanes.js';
 import { createSurveyTrial } from '../../js/app/procgen/survey/ProcgenSurveyCore.js';
+import { SURVEY_STATE_SCHEMA, SURVEY_CANONICAL_SCHEMA } from '../../js/app/procgen/survey/ProcgenSurveyCanonical.js';
 
 const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
 const assetPaths = scenario => ['lemmings_ohNo/MAIN.DAT', 'assets/procgen/terrain-recipes.json', ...(scenario.mode === 'generated' ?
@@ -27,7 +28,8 @@ const createSurveySourceManifest = async scenarios => {
   const assetHashes = {};
   for (const name of [...new Set(scenarios.flatMap(assetPaths))].sort()) assetHashes[name] = sha256(await fs.readFile(new URL('../../' + name, import.meta.url)));
   return { schemaVersion: 1, engineCommit, sourceKind: 'commit-plus-file-sha256', codeHashes: orderedHashes, codeDigest: sha256(JSON.stringify(orderedHashes)), assetHashes, nodeVersion: process.version, v8Version: process.versions.v8,
-    harnessVersion: 'procgen-survey-v1', canonicalStateVersion: 1 };
+    harnessVersion: 'procgen-survey-v1', canonicalStateVersion: SURVEY_STATE_SCHEMA, canonicalEncodingVersion: SURVEY_CANONICAL_SCHEMA,
+    executionIdentity: { status: 'unbound', reason: 'filesystem-manifest-does-not-attest-loaded-module-instances' } };
 };
 const createNodeSurveyTrial = async (job, masks) => {
   const scenario = job.scenario;

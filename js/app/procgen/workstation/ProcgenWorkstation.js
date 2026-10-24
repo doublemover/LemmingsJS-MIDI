@@ -1,17 +1,55 @@
-import { createMidiProject, sanitizeMidiProject, reduceMidiProject, projectToMidiConfig } from '../../../midi/project/MidiProject.js';
-import { createProcgenWorkstationProject, createProcgenPattern } from './ProcgenWorkstationProject.js';
+import { sanitizeMidiProject, reduceMidiProject, projectToMidiConfig, isCanonicalMidiProject, markCanonicalMidiProject, sameMidiRuntimeInputs } from '../../../midi/project/MidiProject.js';
+import { createProcgenWorkstationProject, createProcgenPattern, convertLegacyProcgenWorkstationProject } from './ProcgenWorkstationProject.js';
 import { createProcgenPatternEngine } from './ProcgenPatternEngine.js';
 import { createProcgenTransport } from './ProcgenTransport.js';
 import { createProcgenMidiPorts } from './ProcgenMidiPorts.js';
-import { exportProcgenMidi } from './ProcgenMidiExport.js';
+import { exportProcgenMidi, selectBalancedProcgenRecording } from './ProcgenMidiExport.js';
 import { createProcgenWorkstationView } from './ProcgenWorkstationView.js';
-import { captureProcgenCheckpoint } from './ProcgenCheckpoint.js';
+import { captureProcgenCheckpoint, assetIdentity } from './ProcgenCheckpoint.js';
+import { causalRuntimeSourceVersions } from './CausalRuntimeIdentity.js';
+import { borrowCausalPage, borrowCausalTake, retireCausalRead } from './CausalReadLeases.js';
 import { createProcgenLaneObserver } from './ProcgenLaneObservation.js';
-import { createProcgenSession, validateProcgenSession, createProcgenSessionStorage, freshProcgenSeed } from './ProcgenSessionStorage.js';
+import { createProcgenSession, validateProcgenSession, createProcgenSessionStorage, createProcgenDocumentId, freshProcgenSeed } from './ProcgenSessionStorage.js';
+import { createProcgenPhysicalScoreClock } from './ProcgenPhysicalScoreClock.js';
+import { createProcgenPhysicalPlayback } from './ProcgenPhysicalPlayback.js';
+import { createProcgenCausalJournal } from './ProcgenCausalJournal.js';
+import { createCausalTakeRecorder } from './CausalTake.js';
+import { captureCausalPerformanceState, diffCausalPerformanceState } from './CausalPerformanceState.js';
+import { prepareCausalTakeArchive } from './CausalTakeArchive.js';
+import { createPhysicalScoreProjection } from './PhysicalScoreProjection.js';
+import { createProcgenWorldInspector } from './ProcgenWorldInspector.js';
+import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
+import { resolveProcgenStartupIntent } from './ProcgenStartupIntent.js';
+import { deliverArtifactToAnchor, deliverArtifactToFileHandle, prepareExportArtifact, requestExportFileHandle } from '../../export/ExportArtifact.js';
+import { backgroundJobService } from '../../resources/BackgroundJobService.js';
+import { readBrowserBuildResponse } from '../../../runtime/BrowserGenerationService.js';
+import { validateSoundContentReference } from '../../../midi/content/SoundContentReference.js';
+import { createSoundContentLibrary } from '../../midi-ui/SoundContentLibrary.js';
+import { createQuarryEchoView } from '../../midi-ui/QuarryEchoView.js';
+import { createMasterCaptureView } from '../../midi-ui/MasterCaptureView.js';
+import { createPrelistenMonitor } from '../../midi-ui/PrelistenMonitor.js';
+import { createCausalTakeAudioRenderView } from '../../midi-ui/CausalTakeAudioRenderView.js';
 
 const STORAGE_KEY = 'lemmings.procgen.workstation.v1';
+const MAX_SESSION_FILE_BYTES = 64 * 1048576;
+const FAST_PROCGEN_ACTIONS = new Set(['procgen/effectRack', 'procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
+  'procgen/step', 'procgen/pattern', 'procgen/launch', 'procgen/launched', 'procgen/launchedBatch']);
 const clone = value => JSON.parse(JSON.stringify(value));
 const equal = (left, right) => JSON.stringify(left) === JSON.stringify(right);
+const historyPatchBytes = (before, after, action) => {
+  const commandBytes = JSON.stringify(action).length * 2;
+  const structuralBytes = before.procgen.lanes.length * 8 + 1024;
+  const lane = before.procgen.lanes.find(item => item.id === action.laneId);
+  if (action.type === 'procgen/step') {
+    const pattern = lane?.patterns[action.slot ?? lane.activeSlot];
+    return commandBytes + JSON.stringify(pattern?.steps[action.index] ?? null).length * 2 + structuralBytes;
+  }
+  if (action.type === 'procgen/pattern') return commandBytes + JSON.stringify(lane?.patterns[action.slot ?? lane.activeSlot] ?? null).length * 2 + structuralBytes;
+  if (action.type === 'procgen/lane' || action.type === 'procgen/palette' || action.type === 'procgen/removeLane')
+    return commandBytes + JSON.stringify(lane ?? null).length * 2 + structuralBytes;
+  if (action.type === 'procgen/addLane') return commandBytes + JSON.stringify(after.procgen.lanes.at(-1)).length * 2 + structuralBytes;
+  return commandBytes + structuralBytes;
+};
 
 // Keep musical edits made while assets were loading if the candidate world fails.
 function rollbackWorldProject(previous, staged, current) {
@@ -29,34 +67,110 @@ function rollbackWorldProject(previous, staged, current) {
 
 export function createProcgenWorkstation({ document, window, legacy, getRuntime, restart,
   createView = createProcgenWorkstationView, storage = createProcgenSessionStorage(window.indexedDB),
-  captureCheckpoint = captureProcgenCheckpoint, transportOptions = {} }) {
+  captureCheckpoint = captureProcgenCheckpoint, transportOptions = {}, historyBytesLimit = 32 * 1024 * 1024,
+  resourceBudget = null, startupIntent, startupSource = null, backgroundJobs = backgroundJobService, prepareInspectionWorld = null }) {
+  if (!Number.isSafeInteger(historyBytesLimit) || historyBytesLimit < 1024) throw new Error('Invalid history byte limit.');
   const now = () => window.performance?.now?.() ?? performance.now();
   let saved = null;
   try { saved = JSON.parse(window.localStorage?.getItem(STORAGE_KEY) || 'null'); } catch { /* Keep the default project. */ }
+  if (saved?.version !== 1 || !saved.project || typeof saved.project !== 'object') saved = null;
   const initialSeed = legacy.settings.seed ?? freshProcgenSeed(window.crypto);
-  let project = createProcgenWorkstationProject(sanitizeMidiProject(saved?.project || legacy.getProject()), { seed: initialSeed });
+  const startupPlan = resolveProcgenStartupIntent({ search: window.location?.search || '', ...(startupIntent ? { intent: startupIntent } : {}), seed: initialSeed,
+    legacyProject: legacy.getProject(), legacySettings: legacy.settings, saved, session: startupSource?.session, documentIdentity: startupSource?.documentIdentity });
+  startupSource = null;
+  Object.assign(legacy.settings, startupPlan.worldOptions);
+  let project = markCanonicalMidiProject(startupPlan.project);
   const state = { laneId: project.procgen.lanes[0].id, slot: 0, step: 0, tab: 'Lane', tool: 'select', layout: 'strip',
     inspectorWidth: 304, firstLane: 0, minimumRow: 64, hazardSpacing: 160, observerMode: 'overview', observerLane: null, observerHold: 6,
-    inputId: null, clockOutputId: null, thru: false, recording: false, lastMidi: '', ...(saved?.ui || {}) };
-  state.recording = false; state.thru = false;
+    inputId: null, clockOutputId: null, thru: false, recording: false, lastMidi: '', ...(startupPlan.mode === 'previous-setup' ? saved?.ui || {} : {}) };
+  state.recording = false; state.thru = false; state.inputId = null; state.clockOutputId = null;
+  let startupCommitted = false, deferredPersist = false;
   let view = null, disposed = false, boundRuntime = null, boundSession = null, unhookRouter = null, unhookWorld = null;
+  const sessionIdentities = new WeakMap();
   let ports, engine, lastPlaying = false, lastLegacySpeed = legacy.settings.speed, pendingResume = false, lastTempo = null;
-  let savedName = 'Untitled session', clipboard = null, loadSerial = 0, suppressPersistence = false;
-  let lastRecovery = now(), recoveryPending = false, recoveryTimer = null;
+  let savedName = 'Untitled session', documentId = null, documentRevision = 0, clipboard = null, loadSerial = 0, suppressPersistence = false;
+  let operationSerial = 0, currentOperation = null;
+  let lastRecovery = now(), recoveryPending = false, recoveryTimer = null, persistTimer = null, recoveryAbort = null;
+  let recoveryState = 'unsaved', recoveryError = null, durableRecoveryRevision = -1, durableRecoveryTick = null, durableRecoveryGeneration = null;
+  let lastRecoveryError = -Infinity;
   let lastBudgetNotice = -Infinity;
   let lastObserverAt = -Infinity, observerCursor = 0;
   let writingLegacy = false;
   let worldBusy = false;
   let laneObserver = null;
+  let physicalScoreClock = createProcgenPhysicalScoreClock(), physicalClockError = false, physicalPlayback = null, worldInspector = null;
+  let causalJournal = null, causalTake = null, causalTakeStart = null, causalTakeStop = null;
+  let causalWorkbench = null, causalWorkbenchLoading = null, causalWorkbenchSourceSerial = 0;
+  let causalTakeArmCanceled = false;
+  let lastCausalTake = null, lastCausalInspection = null, physicalReceiptBuffer = null, physicalReceiptBoundary = null, causalTakeErrorReported = false;
+  let selectedCausalTakeId = null, causalTakePage = null, causalTakeCursor = null, causalTakeBack = [], causalTakeListSerial = 0;
+  let physicalScoreProjection = null, physicalScore = null, physicalScoreQuery = null, physicalScoreAbort = null, physicalScoreSerial = 0, physicalScoreParent = null;
+  let physicalScoreLease = null, physicalScoreParentLease = null, scoreViewRetirement = null;
+  let soundLibrary = null;
+  let masterCapture = null;
+  let quarryEchoView = null;
+  let prelistenMonitor = null;
+  let causalAudioRender = null;
+  let pendingHistory = null;
   const routerRestores = new Map();
   const undo = [], redo = [], listeners = [], noteEntries = new Map();
-  const status = text => view?.status(text);
+  const retirement = createProcgenRetirementScope();
+  let lastHistoryGroup = null, inputGestureSerial = 0;
+  let documentGeneration = 1, projectRevision = 0, inputLease = null;
+  let editRevision = 0, savedRevision = -1, lastSavedAt = null;
+  const pendingSaveGenerations = new Set();
+  let transportStopGeneration = 0;
+  const historySizes = new WeakMap();
+  let historyDropped = 0;
+  const historyBytes = value => {
+    let bytes = historySizes.get(value);
+    if (bytes == null) { bytes = JSON.stringify(value).length * 2; historySizes.set(value, bytes); }
+    return bytes;
+  };
+  const retainedHistoryBytes = () => [...undo, ...redo].reduce((sum, entry) => sum + historyBytes(entry), 0);
+  const trimHistory = () => {
+    let bytes = retainedHistoryBytes();
+    while (bytes > historyBytesLimit && (undo.length || redo.length)) {
+      const entry = undo.length ? undo.shift() : redo.shift();
+      bytes -= historyBytes(entry); historyDropped++;
+    }
+  };
+  const status = text => { if (!disposed) view?.status(text); };
+  const retirePhysicalScoreViews = ({ parentOnly = false } = {}) => {
+    physicalScoreParent = null; if (!parentOnly) { physicalScore = null; physicalScoreQuery = null; }
+    scoreViewRetirement = createProcgenRetirementScope().retire([
+      ...(!parentOnly ? [{ name: 'physical-score-view', run: () => { if (physicalScoreLease) { retireCausalRead(physicalScoreLease); physicalScoreLease = null; } } }] : []),
+      { name: 'causal-parent-view', run: () => { if (physicalScoreParentLease) { retireCausalRead(physicalScoreParentLease); physicalScoreParentLease = null; } } }
+    ]); return scoreViewRetirement;
+  };
+  const storageStatus = error => view?.storage?.({ dirty: editRevision !== savedRevision, savedAt: lastSavedAt, error,
+    recovery: { state: recoveryState, durableRevision: durableRecoveryRevision, durableTick: durableRecoveryTick,
+      pendingRevision: editRevision, error: recoveryError } });
+  const inputTarget = lease => {
+    const lane = project.procgen.lanes.find(item => item.id === lease.laneId);
+    const pattern = lane?.patterns?.[lease.slot];
+    return pattern && lease.index < pattern.length && pattern.steps?.[lease.index] ? { lane, pattern } : null;
+  };
+  const cancelInputEdits = reason => {
+    if (inputLease) { inputLease = null; ports?.cancelLearn(); status(`MIDI Learn canceled: ${reason}.`); }
+    noteEntries.clear();
+  };
+  const beginOperation = kind => {
+    cancelInputEdits('project transition');
+    currentOperation?.controller.abort();
+    const lease = { ownerId: 'procgen-workstation', generation: ++operationSerial, kind, controller: new AbortController() };
+    lease.signal = lease.controller.signal;
+    currentOperation = lease;
+    return lease;
+  };
+  const ownsOperation = lease => !disposed && currentOperation === lease && !lease.signal.aborted;
+  const finishOperation = lease => { if (currentOperation === lease) currentOperation = null; };
   const listen = (target, event, handler) => { target?.addEventListener?.(event, handler); listeners.push(() => target?.removeEventListener?.(event, handler)); };
   const runtime = () => getRuntime?.();
   const renderer = () => runtime()?.lanes?.renderer;
   const router = () => runtime()?.view?.midiPreviewRouter;
   const selected = () => project.procgen.lanes.find(lane => lane.id === state.laneId) || project.procgen.lanes[0];
-  const setLegacyProject = next => { writingLegacy = true; try { legacy.setProject(next); } finally { writingLegacy = false; } };
+  const setLegacyProject = (next, options = { persist: false }) => { writingLegacy = true; try { legacy.setProject(next, options); } finally { writingLegacy = false; } };
   const budgetNotice = () => { if (now() - lastBudgetNotice > 1000) { lastBudgetNotice = now(); status('Output budget reached; some notes or CC were thinned. The musical clock continues.'); } };
   const reportRouting = () => {
     const addresses = new Map();
@@ -70,41 +184,111 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const syncWorldSeed = () => {
     if (worldBusy) return;
     const seed = runtime()?.world?.seed;
-    if (Number.isFinite(seed) && seed !== project.procgen.seed) { project = { ...project, procgen: { ...project.procgen, seed } }; legacy.settings.seed = seed; setLegacyProject(project); persist(); }
+    if (Number.isFinite(seed) && seed !== project.procgen.seed) { project = markCanonicalMidiProject({ ...project, procgen: { ...project.procgen, seed } }); legacy.settings.seed = seed; setLegacyProject(project); persist(); }
   };
   const observeFrame = timestamp => {
-    if (state.observerMode !== 'director' || timestamp - lastObserverAt < Math.max(2, Number(state.observerHold) || 6) * 1000) return;
+    if (state.presentationTransition || state.observerMode !== 'director' || timestamp - lastObserverAt < Math.max(2, Number(state.observerHold) || 6) * 1000) return;
     lastObserverAt = timestamp;
     const world = runtime()?.world, render = renderer(); if (!world || !render) return;
     const ranked = project.procgen.lanes.map((lane, index) => ({ index, distance: world.stall?.lanes?.[index]?.maxX || world.frontiers?.[index] || 0 })).sort((a, b) => b.distance - a.distance || a.index - b.index);
     const count = Math.min(8, ranked.length), selectedLane = ranked[observerCursor++ % count];
     if (selectedLane) { state.firstLane = selectedLane.index; render.followLaneIndex = selectedLane.index; render.camera?.followFrontier?.(); view?.layout?.(); view?.launched?.(); }
   };
-  const persist = () => {
+  const writePersist = () => {
     if (suppressPersistence || disposed) return;
+    if (!startupCommitted) return;
+    if (worldBusy) { deferredPersist = true; return; }
     try { window.localStorage?.setItem(STORAGE_KEY, JSON.stringify({ version: 1, project, ui: { ...state, recording: false, thru: false, lastMidi: '' }, transport: transport.snapshot() })); }
     catch { status('Project preferences could not be stored. Export a project file to save.'); }
   };
-  const syncProject = (next, { history = true, render = true, fromLegacy = false } = {}) => {
-    if (history) { undo.push(project); if (undo.length > 20) undo.shift(); redo.length = 0; }
-    project = createProcgenWorkstationProject(sanitizeMidiProject(next));
-    if (!project.procgen.lanes.some(lane => lane.id === state.laneId)) state.laneId = project.procgen.lanes[0].id;
-    state.slot = Math.max(0, Math.min(3, state.slot || 0)); state.step = Math.max(0, Math.min(selected().patterns[state.slot].length - 1, state.step || 0));
-    if (!fromLegacy) setLegacyProject(project); ports?.configure({ schedulerConfig: projectToMidiConfig(project) });
-    persist(); if (render) { view?.render(); reportRouting(); } return project;
+  const persist = ({ immediate = false } = {}) => {
+    if (suppressPersistence || disposed) return;
+    if (!startupCommitted) return;
+    if (worldBusy) { deferredPersist = true; return; }
+    deferredPersist = false;
+    if (immediate || project.procgen.lanes.length <= 64 || !window.setTimeout) {
+      if (persistTimer != null) { window.clearTimeout?.(persistTimer); persistTimer = null; }
+      writePersist(); return;
+    }
+    if (persistTimer == null) persistTimer = window.setTimeout(() => { persistTimer = null; writePersist(); }, 250);
   };
-  const dispatch = action => {
+  const scheduleRecovery = (delay = 2000) => {
+    if (disposed || suppressPersistence || !boundRuntime || !window.setTimeout) return;
+    if (recoveryTimer != null) window.clearTimeout?.(recoveryTimer);
+    recoveryState = 'pending'; storageStatus();
+    recoveryTimer = window.setTimeout(() => { recoveryTimer = null; void recover(); }, delay);
+  };
+  const syncProject = (next, { history = true, historyGroup = null, historyCost = null, render = true, renderAction = null, fromLegacy = false } = {}) => {
+    const runtimeUnchanged = sameMidiRuntimeInputs(project, next);
+    const instrumentRefsChanged = project.procgen.lanes.some((lane, index) => lane.instrumentRef !== next.procgen.lanes[index]?.instrumentRef &&
+      !equal(lane.instrumentRef ?? null, next.procgen.lanes[index]?.instrumentRef ?? null)) || next.procgen.lanes.some((lane, index) => lane.instrumentRef && !project.procgen.lanes[index]);
+    if ((causalTake || causalTakeStart || causalTakeStop) && instrumentRefsChanged) throw new Error('Finish the causal take before changing its pinned lane instrument.');
+    if ((causalTake || causalTakeStart || causalTakeStop) && !equal(project.procgen.effectRack ?? null, next.procgen.effectRack ?? null)) throw new Error('Finish the causal take before changing its saved effect defaults.');
+    const performanceChange = causalTake || causalTakeStart || causalTakeStop ? diffCausalPerformanceState(captureCausalPerformanceState(project.procgen.lanes), captureCausalPerformanceState(next.procgen.lanes)) : null;
+    if ((causalTakeStart || causalTakeStop) && performanceChange) throw new Error('Wait for causal take arming or saving before changing instrument controls.');
+    const mappingChanged = causalTake && !equal(project.procgen.physicalGraph, next.procgen.physicalGraph);
+    if (causalTake && (mappingChanged || performanceChange)) {
+      const world = runtime()?.world, boundary = { tick: world?.tickIndex ?? 0, generation: world?.generation ?? 0 };
+      const receipt = performanceChange ? causalTake.recordPerformance(performanceChange, boundary, mappingChanged ? next.procgen.physicalGraph : null)
+        : causalTake.recordMapping(next.procgen.physicalGraph, boundary);
+      if (receipt.status !== 'accepted') throw new Error(`Causal take could not admit the performance change: ${receipt.reason}. Stop the take before editing it.`);
+    }
+    if (history) {
+      if (historyGroup == null || historyGroup !== lastHistoryGroup) {
+        if (historyCost != null) historySizes.set(project, historyCost);
+        undo.push(project); if (undo.length > 1000) { undo.shift(); historyDropped++; }
+      }
+      redo.length = 0;
+      trimHistory();
+    }
+    lastHistoryGroup = history ? historyGroup : null;
+    project = isCanonicalMidiProject(next) ? next : markCanonicalMidiProject(createProcgenWorkstationProject(sanitizeMidiProject(next)));
+    projectRevision++;
+    if (instrumentRefsChanged) void physicalPlayback?.synchronizeLaneInstruments(project.procgen.lanes).catch(error => status('Lane instrument requirements: ' + error.message));
+    editRevision++; storageStatus();
+    if (inputLease && !inputTarget(inputLease)) cancelInputEdits('target was removed');
+    if (!project.procgen.lanes.some(lane => lane.id === state.laneId)) state.laneId = project.procgen.lanes[0].id;
+    state.slot = Math.max(0, Math.min(3, state.slot || 0));
+    state.step = Math.max(0, Math.min((selected().patterns?.[state.slot]?.length || 1) - 1, state.step || 0));
+    if (!fromLegacy) setLegacyProject(project);
+    if (!runtimeUnchanged) ports?.configure({ schedulerConfig: projectToMidiConfig(project) });
+    persist();
+    if (!transport.getState().playing) scheduleRecovery();
+    if (render) { if (renderAction?.type === 'procgen/step' && view?.patchStep) view.patchStep(renderAction); else view?.render(); reportRouting(); } return project;
+  };
+  const dispatch = (action, { historyGroup = null } = {}) => {
     if (disposed) return project;
+    if (pendingHistory) {
+      if (['procgen/palette', 'procgen/addLane', 'procgen/removeLane', 'procgen/seed'].includes(action.type) ||
+          action.type === 'procgen/lane' && (action.patch?.family || action.patch?.role)) {
+        status('Wait for Undo or Redo to finish before changing the world.'); return false;
+      }
+      const next = reduceMidiProject(project, action);
+      if (equal(next, project)) return project;
+      const serialized = JSON.stringify(action), bytes = serialized.length;
+      if (pendingHistory.bytes + bytes > 1048576 || pendingHistory.commands.length >= 256) {
+        status('Undo or Redo is still preparing. Finish it before adding more edits.'); return false;
+      }
+      pendingHistory.commands.push({ action: JSON.parse(serialized), historyGroup }); pendingHistory.bytes += bytes;
+      const updated = syncProject(next, { history: false, renderAction: action });
+      if (action.type === 'procgen/lane' && action.patch?.outputId !== undefined) syncPorts({ rearm: true });
+      return updated;
+    }
     if (action.type === 'procgen/palette' && action.family && project.procgen.lanes.find(lane => lane.id === action.laneId)?.family !== action.family) {
       return safe(() => rebuild({ projectNext: reduceMidiProject(project, action) }))();
     }
-    const next = syncProject(reduceMidiProject(project, action), { history: action.type !== 'procgen/launched', render: action.type !== 'procgen/launched' });
-    if (action.type === 'procgen/launched') view?.launched?.();
+    const reduced = reduceMidiProject(project, action);
+    if (reduced === project || !FAST_PROCGEN_ACTIONS.has(action.type) && equal(reduced, project)) return project;
+    const historyCost = isCanonicalMidiProject(project) && FAST_PROCGEN_ACTIONS.has(action.type) ?
+      historyPatchBytes(project, reduced, action) : null;
+    const launchAcknowledgment = action.type === 'procgen/launched' || action.type === 'procgen/launchedBatch';
+    const next = syncProject(reduced, { history: !launchAcknowledgment, historyGroup, historyCost,
+      render: !launchAcknowledgment, renderAction: action });
+    if (action.type === 'procgen/lane' && action.patch?.outputId !== undefined) syncPorts({ rearm: true });
+    if (launchAcknowledgment) view?.launched?.();
     return next;
   };
-  const explicitSpeed = new URLSearchParams(window.location?.search || '').has('speed');
-  const transport = createProcgenTransport({ now, bpm: 120, gameSpeed: explicitSpeed ? legacy.settings.speed || 1 : 1,
-    speedMode: 'bpm', ...(saved?.transport || {}), ...transportOptions,
+  const transport = createProcgenTransport({ now, ...startupPlan.transport, ...transportOptions,
     onBeat: position => {
       const held = position.source === 'external' && pendingResume ? engine?.snapshot().active : null;
       if (held) pendingResume = false;
@@ -114,10 +298,12 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     onSpeed(speed) { const timer = runtime()?.world?.timer; if (timer) timer.speedFactor = speed; },
     onFlush(reason) {
       ports?.flush(); router()?.scheduler?.allNotesOff?.();
+      physicalPlayback?.stop();
       if (['seek', 'stopped', 'midi-start', 'restored'].includes(reason)) engine?.reset();
       else pendingResume = (engine?.getState().beat ?? -1) >= 0;
     },
     onStop(reason) {
+      transportStopGeneration++;
       if (!disposed && ['clock-lost', 'suspended', 'clock-overload', 'output-disconnected'].includes(reason)) status('Transport stopped: ' + reason.replaceAll('-', ' ') + '. Press Play or send MIDI Start/Continue to resume.');
     },
     onPosition(position) {
@@ -129,35 +315,56 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       view?.transport(position);
       if (position.playing && position.timestamp - lastRecovery >= 30000 && !recoveryPending && recoveryTimer == null) {
         lastRecovery = position.timestamp;
-        recoveryTimer = window.setTimeout?.(() => { recoveryTimer = null; recover(); }, 0) ?? null;
+        scheduleRecovery(0);
       }
     }
   });
-  const inputStep = (event, learned = false) => {
+  const inputStep = (event, learned = false, target = null) => {
     if (event.type !== 'noteOn' && event.type !== 'noteOff') return;
     const key = `${event.channel}:${event.note}`;
     if (event.type === 'noteOn') {
-      const lane = selected(), laneId = lane.id, slot = state.slot, pattern = lane.patterns[slot], position = transport.getState(), beat = event.beat ?? position.beat;
-      const index = !learned && state.recording && position.playing
+      const lane = target ? project.procgen.lanes.find(item => item.id === target.laneId) : selected();
+      const laneId = lane?.id, slot = target?.slot ?? state.slot, pattern = lane?.patterns?.[slot], position = transport.getState(), beat = event.beat ?? position.beat;
+      if (!pattern) return false;
+      const index = target ? target.index : !learned && state.recording && position.playing
         ? ((Math.floor((beat - (engine.getLanePosition(laneId)?.origin || 0)) * 4 * pattern.rate + 1e-7) % pattern.length) + pattern.length) % pattern.length : state.step;
-      const chord = [...noteEntries.values()].filter(entry => entry.laneId === laneId && entry.slot === slot && entry.index === index && Math.abs(entry.beat - beat) < 0.25 / pattern.rate);
-      const notes = [...new Set([...chord.map(entry => entry.note), event.note])].sort((a, b) => a - b), group = chord[0]?.group || { duration: 0 };
+      if (index < 0 || index >= pattern.length || !pattern.steps[index]) return false;
+      const chord = learned ? [] : [...noteEntries.values()].filter(entry => entry.laneId === laneId && entry.slot === slot && entry.index === index && Math.abs(entry.beat - beat) < 0.25 / pattern.rate);
+      const notes = [...new Set([...chord.map(entry => entry.note), event.note])].sort((a, b) => a - b),
+        group = chord[0]?.group || { duration: 0, historyGroup: ++inputGestureSerial };
       dispatch({ type: 'procgen/step', laneId, slot, index, patch: { enabled: true, note: notes[0], velocity: event.velocity,
-        chord: notes.length > 1 ? { degrees: notes.map(note => note - notes[0]), inversion: 0, spread: 0 } : null } });
+        chord: notes.length > 1 ? { degrees: notes.map(note => note - notes[0]), inversion: 0, spread: 0 } : null } },
+      { historyGroup: group.historyGroup });
       if (!learned) noteEntries.set(key, { laneId, slot, index, beat, note: event.note, group });
       status(`Recorded note ${event.note} into step ${index + 1}.`);
+      return true;
     } else {
       const start = noteEntries.get(key); if (!start) return;
       noteEntries.delete(key); start.group.duration = Math.max(start.group.duration, 1 / 96, (event.beat ?? transport.getState().beat) - start.beat);
-      dispatch({ type: 'procgen/step', laneId: start.laneId, slot: start.slot, index: start.index, patch: { duration: start.group.duration } });
+      dispatch({ type: 'procgen/step', laneId: start.laneId, slot: start.slot, index: start.index, patch: { duration: start.group.duration } },
+        { historyGroup: start.group.historyGroup });
     }
   };
   ports = createProcgenMidiPorts({ transport, now, schedulerConfig: projectToMidiConfig(project),
     onMonitor(event) { state.lastMidi = event.type === 'system' ? `MIDI ${event.data[0].toString(16).toUpperCase()}` : `${event.type} · ch ${event.channel} · ${event.note ?? event.controller ?? ''} ${event.velocity ?? event.value ?? ''}`; view?.midi?.(state.lastMidi); },
-    onLearn: event => inputStep(event, true), onRecord: event => { if (event.source === 'input') inputStep(event); }
+    onState(midiState) {
+      if (inputLease && midiState.inputLiveness.connectionEpoch !== inputLease.inputEndpointEpoch) cancelInputEdits('input changed');
+      const wasRecording = state.recording;
+      state.recording = midiState.recording;
+      view?.recording?.(midiState.recording, midiState);
+      if (wasRecording && !midiState.recording && midiState.incompleteReasons.includes('recording-cap-reached'))
+        status('Recording storage full. Performance continues; export is labeled partial.');
+    },
+    onRecord: event => { if (event.source === 'input' && !inputLease) inputStep(event); }
   });
   const localEnabled = () => legacy.local.getState().enabled && legacy.local.getState().selectedBackend !== 'midi';
+  let outputEpoch = 0;
+  const admission = (status, sinkId, spec, meta, reason = null) => ({ status, reason, sinkId,
+    eventId: meta?.eventId ?? meta?.automationEventId ?? null, voiceId: meta?.voiceId ?? null,
+    connectionEpoch: outputEpoch, targetTime: spec?.timeMs ?? null, timeDomain: 'performance-ms',
+    ackState: status === 'accepted' ? 'scheduled' : 'none' });
   engine = createProcgenPatternEngine({ getProject: () => project, now,
+    getSinkKey: () => { const output = legacy.local.getState(); return `${output.selectedBackend}:${output.outputId || ''}:${output.enabled}:${outputEpoch}`; },
     getLaneDistance: index => runtime()?.world?.frontiers?.[index] || 0,
     getLaneObservation: index => laneObserver?.(index),
     getLaneSpatialPosition: index => {
@@ -165,43 +372,352 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       return { x: observed?.x, y: observed?.y, levelWidth: world?.width, levelHeight: world?.height };
     },
     emit(spec, meta) {
-      if (!transport.getState().playing) return;
+      if (!transport.getState().playing) return admission('rejected', null, spec, meta, 'transport-stopped');
       if (localEnabled()) {
         const scheduler = router()?.scheduler;
-        if (scheduler?.sendNote({ ...spec, outputId: null, durationTicks: (spec.durationMs || 0) / (scheduler.tickMs || 60) }, meta)) ports.recordOutput(spec, meta);
-        else if (scheduler?.getOutputPressure?.().throttled) budgetNotice();
-      } else if (legacy.local.getState().selectedBackend === 'midi' && legacy.local.getState().enabled && !ports.sendNote(spec, meta)) budgetNotice();
+        if (scheduler?.sendNote({ ...spec, outputId: null, durationTicks: (spec.durationMs || 0) / (scheduler.tickMs || 60) }, meta)) {
+          ports.recordOutput(spec, { ...meta, source: 'local-preview' });
+          return admission('accepted', 'local-preview', spec, meta);
+        }
+        if (scheduler?.getOutputPressure?.().throttled) budgetNotice();
+        return admission('rejected', 'local-preview', spec, meta, 'scheduler-rejected');
+      }
+      if (legacy.local.getState().selectedBackend === 'midi' && legacy.local.getState().enabled) {
+        if (ports.sendNote(spec, meta)) return admission('accepted', spec.outputId || 'midi-default', spec, meta);
+        budgetNotice(); return admission('rejected', spec.outputId || 'midi-default', spec, meta, 'output-rejected');
+      }
+      return admission('rejected', null, spec, meta, 'no-enabled-sink');
     },
     emitCC(spec, meta) {
       const event = { ...spec, type: 'cc', timestamp: spec.timeMs };
       if (localEnabled()) {
         const scheduler = router()?.scheduler, channel = scheduler?.output?.channels?.[spec.channel];
-        const reservation = scheduler?.evaluateAndReserve?.({ on: { timeMs: spec.timeMs, count: 1, bytes: 3 } }, meta, now());
-        if (reservation && !reservation.ok) { scheduler.recordThrottle?.(reservation.reason, now(), meta); budgetNotice(); return; }
-        if (channel?.sendControlChange) { channel.sendControlChange(spec.controller, spec.value, { time: spec.timeMs }); ports.recordEvent(event, meta); }
-      } else if (legacy.local.getState().selectedBackend === 'midi' && legacy.local.getState().enabled && !ports.sendEvent(event)) budgetNotice();
+        const localMeta = { ...meta, outputId: scheduler?._resolveOutputId?.(null) ?? scheduler?.output?.id ?? null };
+        const reservation = scheduler?.evaluateAndReserve?.({ on: { timeMs: spec.timeMs, count: 1, bytes: 3 } }, localMeta, now());
+        if (reservation && !reservation.ok) { scheduler.recordThrottle?.(reservation.reason, now(), meta); budgetNotice(); return admission('rejected', 'local-preview', spec, meta, reservation.reason); }
+        let submitted = false;
+        try {
+          if (!channel?.sendControlChange) return admission('rejected', 'local-preview', spec, meta, 'channel-unavailable');
+          channel.sendControlChange(spec.controller, spec.value, { time: spec.timeMs });
+          submitted = true;
+          if (reservation?.reservationId != null) scheduler._commitReservationMessage(reservation.reservationId, 'on', 3, localMeta, now());
+          ports.recordEvent(event, { ...meta, source: 'local-preview' });
+          return admission('accepted', 'local-preview', spec, meta);
+        } catch (error) { return admission(submitted ? 'accepted' : 'rejected', 'local-preview', spec, meta, error?.message || 'channel-unavailable'); }
+        finally { scheduler?._releaseReservation?.(reservation?.reservationId, true); }
+      }
+      if (legacy.local.getState().selectedBackend === 'midi' && legacy.local.getState().enabled) {
+        if (ports.sendEvent(event)) return admission('accepted', spec.outputId || 'midi-default', spec, meta);
+        budgetNotice(); return admission('rejected', spec.outputId || 'midi-default', spec, meta, 'output-rejected');
+      }
+      return admission('rejected', null, spec, meta, 'no-enabled-sink');
     },
-    onLaunch: action => dispatch({ type: 'procgen/launched', ...action })
+    onLaunchBatch: launches => dispatch({ type: 'procgen/launchedBatch', launches })
   });
   const devices = () => ({ inputs: Array.from(window.WebMidi?.inputs || []).filter(port => port.state !== 'disconnected'), outputs: Array.from(window.WebMidi?.outputs || []).filter(port => port.state !== 'disconnected') });
-  const syncPorts = () => {
+  let routedPortReferences = [];
+  const syncPorts = ({ rearm = false, rearmDefault = false } = {}) => {
     const available = devices(), outputState = legacy.local.getState();
+    const midiEnabled = outputState.selectedBackend === 'midi' && outputState.enabled;
+    const selectedOutput = midiEnabled ? available.outputs.find(port => port.id === outputState.outputId) || null : null;
+    const routedIds = new Set(midiEnabled ? project.procgen.lanes.map(lane => lane.outputId).filter(Boolean) : []);
+    if (selectedOutput) routedIds.add(selectedOutput.id);
+    const routedOutputs = available.outputs.filter(port => routedIds.has(port.id));
+    const selectedInput = available.inputs.find(port => port.id === state.inputId) || null;
+    const selectedClock = available.outputs.find(port => port.id === state.clockOutputId) || null;
+    const references = [selectedOutput, selectedInput, selectedClock, ...routedOutputs];
+    if (references.length !== routedPortReferences.length || references.some((port, index) => port !== routedPortReferences[index])) outputEpoch++;
+    routedPortReferences = references;
+    const laneRoutes = new Map();
+    if (midiEnabled) project.procgen.lanes.forEach((lane, index) => {
+      if (!lane.outputId) return;
+      if (!laneRoutes.has(lane.outputId)) laneRoutes.set(lane.outputId, []);
+      laneRoutes.get(lane.outputId).push(index);
+    });
     ports.setNoteOutputs(available.outputs);
-    ports.setNoteOutput(outputState.selectedBackend === 'midi' && outputState.enabled ? available.outputs.find(port => port.id === outputState.outputId) || null : null);
-    ports.setInput(available.inputs.find(port => port.id === state.inputId) || null);
-    ports.setClockOutput(available.outputs.find(port => port.id === state.clockOutputId) || null);
+    ports.setNoteOutput(selectedOutput, rearmDefault ? { rearm: true } : undefined);
+    ports.setActiveNoteOutputs?.([...laneRoutes].map(([outputId, laneIndices]) => ({ outputId, laneIndices, role: 'lane-note' })),
+      rearm ? { rearm: true } : undefined);
+    ports.setInput(selectedInput);
+    ports.setClockOutput(selectedClock);
+  };
+  const recordCausalControl = (kind, payload) => {
+    if (!causalTake) return;
+    const world = runtime()?.world, tick = Number.isSafeInteger(world?.tickIndex) && world.tickIndex >= 0 ? world.tickIndex : 0;
+    const generation = Number.isSafeInteger(world?.generation) && world.generation >= 0 ? world.generation : 0;
+    const boundary = { tick, generation };
+    try {
+      const receipt = kind === 'timeline' ? causalTake.recordTimeline(payload, boundary) : causalTake.recordInput(payload, boundary);
+      if (receipt.status !== 'accepted') {
+        causalTake.markGap({ kind: 'all', firstTick: tick, lastTick: tick, generation, reason: 'control-record-rejected' });
+        status(`Causal take control record was not admitted: ${receipt.reason}.`);
+      }
+    } catch (error) {
+      try { causalTake.markGap({ kind: 'all', firstTick: tick, lastTick: tick, generation, reason: 'control-record-exception' }); } catch { /* Finalization retains the writer failure. */ }
+      status('Causal take control record failed: ' + error.message);
+    }
   };
   const play = () => {
     const held = pendingResume ? engine.snapshot().active : null; pendingResume = false;
     transport.play(); if (held) engine.resume({ ...transport.getState(), timestamp: now(), activeNotes: held });
+    if (causalTake) {
+      recordCausalControl('input', { version: 1, kind: 'world-speed', speedFactor: transport.getState().effectiveSpeed });
+      recordCausalControl('input', { version: 1, kind: 'transport-state', playing: true });
+    }
     return transport.getState();
   };
   const configureTransport = patch => {
     const previous = transport.getState(), held = previous.playing ? engine.snapshot().active : null;
     transport.configure(patch);
-    if (held && previous.bpm !== transport.getState().bpm) { pendingResume = false; engine.resume({ ...transport.getState(), timestamp: now(), activeNotes: held }); }
+    const next = transport.getState();
+    if (causalTake && previous.bpm !== next.bpm) recordCausalControl('timeline', { version: 1, kind: 'tempo', bpm: next.bpm });
+    if (causalTake && next.playing && (previous.effectiveSpeed !== next.effectiveSpeed || previous.gameSpeed !== next.gameSpeed))
+      recordCausalControl('input', { version: 1, kind: 'world-speed', speedFactor: next.effectiveSpeed });
+    if (held && previous.bpm !== next.bpm) { pendingResume = false; engine.resume({ ...next, timestamp: now(), activeNotes: held }); }
   };
-  const beforeRestart = () => { transport.pause(); ports.flush(); return transport.snapshot(); };
+  const beforeRestart = () => {
+    if (causalTake) {
+      const world = runtime()?.world, tick = Number.isSafeInteger(world?.tickIndex) && world.tickIndex >= 0 ? world.tickIndex : 0;
+      const generation = Number.isSafeInteger(world?.generation) && world.generation >= 0 ? world.generation : 0;
+      causalTake.markGap({ kind: 'all', firstTick: tick, lastTick: tick, generation, reason: 'transport-reset-during-take' });
+    }
+    transport.pause(); ports.flush(); physicalPlayback?.stop(); return transport.snapshot();
+  };
+  const causalBoundary = () => {
+    const physical = physicalPlayback?.engine.snapshot();
+    return { sourceTimeMs: runtime()?.world?.simulationTimeMs ?? null, voices: physical?.active || [], travel: physical?.travel || null,
+      contactSpans: physical?.active?.filter(voice => voice.lifetimeScope === 'contactSpan') || [],
+      ...(physical?.performanceInputs ? { 'instrument-performance': physical.performanceInputs } : {}),
+      timeline: physicalScoreClock.snapshot() };
+  };
+  const causalTakeState = () => Object.freeze({ recording: !!causalTake && !causalTake.status().captureStopped,
+    recovering: !!causalTake?.status().captureStopped && !causalTake.canReplaceDocument(),
+    starting: !!causalTakeStart, stopping: !!causalTakeStop,
+    active: causalTake?.status() || null, last: lastCausalTake, inspection: lastCausalInspection,
+    selectedTakeId: selectedCausalTakeId, takePage: causalTakePage, takePageNumber: causalTakeBack.length + 1,
+    hasPreviousTakePage: causalTakeBack.length > 0, physicalScore, physicalScoreParent,
+    scoreRetirement: scoreViewRetirement?.outcome === 'partial' ? { state: scoreViewRetirement.state, outcome: scoreViewRetirement.outcome } : null,
+    branchAvailable: typeof prepareInspectionWorld === 'function' && !!resourceBudget,
+    workbench: causalWorkbench?.state() || (causalWorkbenchLoading ? { phase: 'loading', busy: true } : null) });
+  const getCausalWorkbench = async () => {
+    if (disposed || typeof prepareInspectionWorld !== 'function' || !resourceBudget) throw new Error('Isolated take worlds are unavailable.');
+    if (causalWorkbench?.state().phase === 'disposed') causalWorkbench = null;
+    if (causalWorkbench) return causalWorkbench;
+    if (!causalWorkbenchLoading) {
+      causalWorkbenchLoading = import('./CausalTakeWorkbench.js').then(({ createCausalTakeWorkbench }) => {
+        if (disposed) throw new Error('The workstation closed before take preparation.');
+        return causalWorkbench = createCausalTakeWorkbench({ journal: causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs }),
+          createWorld: prepareInspectionWorld, resourceBudget, getRuntimeIdentity: manifest => {
+            const world = runtime()?.world; if (disposed || !world || worldBusy) throw new Error('Wait for a committed current world before comparing a take.');
+            return { sourceVersions: causalRuntimeSourceVersions(world, manifest.mapping.revision), assetRefs: assetIdentity(world), liveWorld: world };
+          }, onState: () => view?.renderInspector?.() });
+      }).finally(() => { causalWorkbenchLoading = null; view?.renderInspector?.(); }); view?.renderInspector?.();
+    }
+    return causalWorkbenchLoading;
+  };
+  const openCausalWorkbench = async ({ throughSequence = null, branch = false, takeName = null } = {}) => {
+    if (causalTake || causalTakeStart || causalTakeStop || worldBusy) throw new Error('Finish the current take and world operation before comparing a stored take.');
+    const takeId = selectedCausalTakeId || lastCausalTake?.takeId; if (!takeId) throw new Error('Select a stored take first.');
+    beforeRestart(); const sourceSerial = causalWorkbenchSourceSerial, owner = await getCausalWorkbench();
+    if (disposed || sourceSerial !== causalWorkbenchSourceSerial) throw new Error('The selected take changed before comparison began.');
+    const result = await owner.open({ takeId, throughSequence, takeName, branchTakeId: branch ? createProcgenDocumentId(window.crypto).replace(/^doc:/, 'take:') : null });
+    status(result.active ? 'Physical branch prepared paused. Step explicitly; the current project remains unchanged.' :
+      result.receipt?.compatibilityMatch ? 'Stored take matches this current runtime. Exact archived execution and listening are separate qualifications.' :
+        'Stored take comparison: ' + (result.receipt?.status || 'unavailable') + (result.receipt?.failure?.message ? ' · ' + result.receipt.failure.message : ''));
+    return result;
+  };
+  const finishCausalBranch = async ({ discard = false } = {}) => {
+    if (!causalWorkbench?.state().active) throw new Error('No physical branch is open.');
+    if (discard && !window.confirm?.('Permanently discard only the unsaved branch tail? The durable prefix and omitted range will remain recorded.')) return false;
+    const result = await causalWorkbench.finish({ discardPendingReason: discard ? 'performer-discarded-undurable-branch-tail' : null });
+    selectedCausalTakeId = result.takeId; lastCausalTake = result; lastCausalInspection = null;
+    physicalScoreAbort?.abort(); physicalScoreSerial++; retirePhysicalScoreViews();
+    status(result.complete ? 'Physical branch saved. The current live project is unchanged.' : 'Physical branch saved as partial. Inspect its recorded coverage.');
+    view?.renderInspector?.(); return result;
+  };
+  const browseCausalTakes = async (direction = 'first') => {
+    if (typeof storage.listCausalTakes !== 'function') throw new Error('Causal take browsing is unavailable in this browser.');
+    if (!['first', 'next', 'previous'].includes(direction)) throw new Error('Invalid take page direction.');
+    if (direction === 'next' && !causalTakePage?.nextCursor || direction === 'previous' && !causalTakeBack.length) return causalTakePage;
+    const cursor = direction === 'first' ? null : direction === 'next' ? causalTakePage.nextCursor : causalTakeBack.at(-1);
+    const serial = ++causalTakeListSerial;
+    const page = await storage.listCausalTakes({ limit: 20, cursor });
+    if (disposed || serial !== causalTakeListSerial) return null;
+    if (direction === 'first') causalTakeBack = [];
+    else if (direction === 'next') causalTakeBack.push(causalTakeCursor);
+    else causalTakeBack.pop();
+    causalTakeCursor = cursor; causalTakePage = page;
+    view?.renderInspector?.();
+    return page;
+  };
+  const selectCausalTake = takeId => {
+    if (!causalTakePage?.items.some(item => item.takeId === takeId)) throw new Error('Choose a take from the current page.');
+    causalWorkbenchSourceSerial++;
+    if (causalWorkbench?.state().busy && !causalWorkbench.state().active) causalWorkbench.cancel();
+    physicalScoreAbort?.abort(); physicalScoreSerial++; retirePhysicalScoreViews();
+    selectedCausalTakeId = takeId; lastCausalInspection = null; view?.renderInspector?.();
+    return takeId;
+  };
+  const readPhysicalScore = async ({ timeDomain = 'physical-source-time', more = false } = {}) => {
+    const takeId = selectedCausalTakeId || lastCausalTake?.takeId;
+    if (!takeId) throw new Error('Select a saved causal take before reading its score.');
+    if (more && (!physicalScore?.continuation || physicalScoreQuery?.takeId !== takeId || physicalScoreQuery.timeDomain !== timeDomain))
+      throw new Error('This score window has no continuation. Start a new reading.');
+    physicalScoreAbort?.abort();
+    const controller = new AbortController(), serial = ++physicalScoreSerial; physicalScoreAbort = controller;
+    const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs });
+    let query = physicalScoreQuery;
+    if (!more) {
+      const metadata = await borrowCausalTake(journal, takeId, { signal: controller.signal });
+      try {
+        const manifest = metadata.value;
+        const source = await borrowCausalPage(journal, { takeId, takeRevision: manifest.revision, kinds: ['physical-batch'], limit: 1, signal: controller.signal });
+        try {
+          const first = source.value;
+          const batch = first.records[0];
+          if (!batch || manifest.coverage?.sourceRange?.firstTick == null || manifest.coverage.sourceRange.lastTick == null)
+            throw new Error('This take has no committed physical score range to read.');
+          query = { takeId, takeRevision: manifest.revision, generation: batch.generation,
+            coverageRange: { firstTick: manifest.coverage.sourceRange.firstTick,
+              lastTick: Math.min(manifest.coverage.sourceRange.lastTick, manifest.coverage.sourceRange.firstTick + 63) },
+            timeDomain, resolution: { mode: 'exact' } };
+        } finally { retireCausalRead(source); }
+      } finally { retireCausalRead(metadata); }
+    }
+    const projection = physicalScoreProjection ||= createPhysicalScoreProjection({ journal, resourceBudget, jobs: backgroundJobs, maxRecords: 512, maxSourceFacts: 1024, maxGlyphs: 64, maxBytes: 1048576 });
+    const prepared = await projection.queryPhysicalScoreOwned({ ...query, cursor: more ? physicalScore.continuation : null,
+      requestId: `workstation-score-${serial}`, signal: controller.signal });
+    let adopted = false;
+    try {
+      if (disposed || controller.signal.aborted || serial !== physicalScoreSerial) return null;
+      const cleanup = retirePhysicalScoreViews();
+      if (cleanup.outcome !== 'complete') throw Object.assign(new Error('The previous score view has unresolved resource retirement.'), { retirement: cleanup });
+      if (disposed || controller.signal.aborted || serial !== physicalScoreSerial) return null;
+      const result = prepared.value; physicalScoreLease = prepared; adopted = true;
+      physicalScoreQuery = query; physicalScore = result;
+      view?.renderInspector?.();
+      status(`Physical score: ${result.counts.glyphs} source glyphs in this bounded window; ${result.unknownRegions.length} uncertain regions.`);
+      return result;
+    } finally { if (!adopted) retireCausalRead(prepared); }
+  };
+  const inspectPhysicalScoreCause = async ({ sourceSequence, eventId } = {}) => {
+    if (!physicalScoreQuery || !physicalScore?.glyphs.some(glyph => glyph.glyphId === eventId && glyph.source.sequence === sourceSequence))
+      throw new Error('Choose a source glyph from the current score window.');
+    physicalScoreAbort?.abort(); const controller = new AbortController(); physicalScoreAbort = controller;
+    const serial = ++physicalScoreSerial, requestId = `workstation-score-parent-${serial}`;
+    const prepared = await physicalScoreProjection.queryCausalParentOwned({ ...physicalScoreQuery, sourceSequence, eventId, requestId, signal: controller.signal });
+    let adopted = false;
+    try {
+      if (disposed || controller.signal.aborted || serial !== physicalScoreSerial) return null;
+      const cleanup = retirePhysicalScoreViews({ parentOnly: true });
+      if (cleanup.outcome !== 'complete') throw Object.assign(new Error('The previous causal parent view has unresolved resource retirement.'), { retirement: cleanup });
+      if (disposed || controller.signal.aborted || serial !== physicalScoreSerial) return null;
+      const result = prepared.value; physicalScoreParentLease = prepared; adopted = true;
+      physicalScoreParent = result; view?.renderInspector?.(); return result;
+    } finally { if (!adopted) retireCausalRead(prepared); }
+  };
+  const stopCausalTake = async ({ reason = 'user-stop' } = {}) => {
+    if (causalTakeStart) { try { await causalTakeStart; } catch { if (!causalTake) return lastCausalTake; } }
+    if (causalTakeStop) return causalTakeStop;
+    if (!causalTake) return lastCausalTake;
+    const recorder = causalTake;
+    let finalCheckpoint = null;
+    try {
+      const world = runtime()?.world;
+      if (!world) throw new Error('The recorded world is no longer available.');
+      if (!recorder.status().captureStopped) finalCheckpoint = { world: captureCheckpoint(world), engine: physicalPlayback?.engine.snapshot() || null,
+        timeline: physicalScoreClock.snapshot(), replay: { version: 2, bpm: transport.getState().bpm, scoreTimeline: true, playing: transport.getState().playing } };
+    } catch (error) {
+      const world = runtime()?.world, tick = Number.isSafeInteger(world?.tickIndex) && world.tickIndex >= 0 ? world.tickIndex : 0;
+      const generation = Number.isSafeInteger(world?.generation) && world.generation >= 0 ? world.generation : 0;
+      try { recorder.markGap({ kind: 'all', firstTick: tick, lastTick: tick, generation, reason: 'final-checkpoint-unavailable' }); }
+      catch { /* The recorder still owns its pending durable prefix. */ }
+      status('Causal take final checkpoint unavailable: ' + error.message);
+    }
+    causalTakeStop = recorder.stop({ boundaryState: causalBoundary(), finalCheckpoint, reason }).then(receipt => {
+      lastCausalTake = receipt;
+      selectedCausalTakeId = receipt.takeId;
+      physicalScoreAbort?.abort(); physicalScoreSerial++; retirePhysicalScoreViews();
+      if (!recorder.canReplaceDocument()) throw new Error('Causal take saving needs recovery. Retry saving, or explicitly discard the unsaved tail before replacing the world.');
+      if (causalTake === recorder) causalTake = null;
+      status(receipt.complete ? `Causal take ${receipt.takeId} saved.` :
+        `Causal take ${receipt.takeId} saved as partial. Inspect its coverage before relying on it.`);
+      return receipt;
+    }).finally(() => { causalTakeStop = null; view?.renderInspector?.(); });
+    return causalTakeStop;
+  };
+  const discardCausalTail = async () => {
+    if (!causalTake?.status().captureStopped || causalTakeStop) throw new Error('Finish the current saving attempt before discarding its unsaved tail.');
+    if (!window.confirm?.('Permanently discard the unsaved causal take tail? The saved prefix and exact omitted range will remain inspectable.')) return false;
+    causalTake.discardPending({ reason: 'performer-discarded-undurable-tail' });
+    return stopCausalTake({ reason: 'explicit-tail-discard' });
+  };
+  const startCausalTake = async ({ takeName = 'Untitled take' } = {}) => {
+    if (causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the current causal take first.');
+    if (worldBusy || !runtime()?.world || !physicalPlayback) throw new Error('Wait for the committed world before recording a causal take.');
+    if (!['commitCausalTake', 'loadCausalTake', 'loadCausalChunk', 'loadCausalCheckpoint'].every(key => typeof storage[key] === 'function'))
+      throw new Error('Causal take storage is unavailable in this browser.');
+    const wasPlaying = transport.getState().playing;
+    beforeRestart();
+    causalTakeArmCanceled = false;
+    const sourceRuntime = runtime();
+    try {
+      const capturedWorld = captureCheckpoint(sourceRuntime.world);
+      const physical = physicalPlayback.engine.snapshot(), timeline = physicalScoreClock.snapshot();
+      const takeId = createProcgenDocumentId(window.crypto).replace(/^doc:/, 'take:');
+      const sourceVersions = causalRuntimeSourceVersions(sourceRuntime.world, project.procgen.physicalGraph.revision, capturedWorld.version);
+      const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs });
+      const pending = createCausalTakeRecorder({ journal, takeId, takeName, documentId: documentId || `unsaved:${takeId}`,
+        sourceVersions, initialCheckpoint: { world: capturedWorld, engine: physical, timeline,
+          replay: { version: 2, bpm: transport.getState().bpm, scoreTimeline: true, playing: wasPlaying } },
+        mapping: project.procgen.physicalGraph, assetRefs: capturedWorld.assets || [], boundaryState: causalBoundary() });
+      causalTakeStart = pending;
+      view?.renderInspector?.();
+      const recorder = await pending;
+      if (disposed || causalTakeArmCanceled || runtime() !== sourceRuntime) {
+        await recorder.stop({ boundaryState: causalBoundary(), reason: 'source-replaced-during-arm' });
+        throw new Error(causalTakeArmCanceled ? 'Causal take arming was canceled.' : 'The world changed while the causal take was arming.');
+      }
+      causalTake = recorder;
+      lastCausalInspection = null;
+      causalTakeErrorReported = false;
+      status(`Causal take ${takeId} recording committed world facts and musical intents.`);
+      return recorder.status();
+    } finally {
+      causalTakeStart = null;
+      if (wasPlaying && !disposed && runtime() === sourceRuntime) play();
+      view?.renderInspector?.();
+    }
+  };
+  const cancelCausalTakeArm = () => {
+    if (!causalTakeStart) return false;
+    causalTakeArmCanceled = true; status('Canceling causal take preparation after storage responds.');
+    return true;
+  };
+  const markCausalTake = label => {
+    if (!causalTake || causalTakeStop) throw new Error('Arm a causal take before adding a marker.');
+    const cursor = causalTake.status().sourceBoundary;
+    if (!Number.isSafeInteger(cursor?.tick) || !Number.isSafeInteger(cursor?.generation)) throw new Error('Record a committed physical batch before marking its boundary.');
+    const receipt = causalTake.mark({ label: String(label || 'Marker').slice(0, 120), boundary: 'last-committed-physical-tick' },
+      { tick: Math.max(0, cursor?.tick ?? 0), generation: cursor?.generation ?? 0 });
+    if (receipt.status !== 'accepted') throw new Error(`The causal marker was not admitted: ${receipt.reason}.`);
+    status(`Marker added at committed physical tick ${Math.max(0, cursor?.tick ?? 0)}.`);
+    return receipt;
+  };
+  const inspectLastCausalTake = async () => {
+    const takeId = selectedCausalTakeId || lastCausalTake?.takeId;
+    if (!takeId) throw new Error('Select a causal take before inspecting it.');
+    const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs });
+    const verification = await journal.verify(takeId), manifest = await journal.openTake(takeId);
+    lastCausalInspection = Object.freeze({ takeId, takeName: manifest.takeName, revision: manifest.revision,
+      status: verification.status, durableSequence: manifest.durableSequence,
+      firstTick: manifest.coverage?.sourceRange?.firstTick ?? null,
+      lastTick: manifest.coverage?.sourceRange?.lastTick ?? null,
+      gaps: manifest.coverage?.gaps?.length ?? 0, paused: manifest.inspection.paused });
+    view?.renderInspector?.();
+    status(`Verified ${manifest.takeName}: ${verification.status}, ${manifest.durableSequence} durable records.`);
+    return lastCausalInspection;
+  };
   const prepareSettings = () => {
     Object.assign(legacy.settings, { workstation: true, laneCount: project.procgen.lanes.length, seed: project.procgen.seed,
       hazardSpacing: state.hazardSpacing, laneAssignments: project.procgen.lanes.map(lane => lane.family) });
@@ -215,12 +731,77 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     next.resetClock?.({ preserveGamePhrases: true });
   };
   const bindRuntime = ({ session } = {}) => {
-    const next = runtime(); if (!next || (next === boundRuntime && session === boundSession)) return next;
-    unhookRouter?.(); unhookWorld?.(); boundRuntime = next; boundSession = session;
+    if (disposed) return null;
+    let sessionIdentity = null;
+    if (session) { sessionIdentity = sessionIdentities.get(session); if (!sessionIdentity) { sessionIdentity = Object.freeze({}); sessionIdentities.set(session, sessionIdentity); } }
+    const next = runtime(); if (!next || (next === boundRuntime && sessionIdentity === boundSession)) return next;
+    if (causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the causal take before replacing its world.');
+    recoveryAbort?.abort();
+    unhookRouter?.(); unhookWorld?.(); physicalPlayback?.dispose(); physicalPlayback = null; boundRuntime = next; boundSession = sessionIdentity;
     laneObserver = createProcgenLaneObserver(next.world);
     const bus = next.world?.soundEvents?.onEvent;
+    const physicalBus = next.world?.soundEvents?.onBatch;
+    physicalScoreClock = createProcgenPhysicalScoreClock(); physicalClockError = false;
+    if (session?.physicalTimeline) physicalScoreClock.restore(session.physicalTimeline);
+    physicalPlayback = createProcgenPhysicalPlayback({ audio: legacy.local.audio, renderer: next.lanes?.renderer, resourceBudget,
+      getGraph: () => project.procgen.physicalGraph, getLanes: () => project.procgen.lanes, isPlaybackEnabled: localEnabled, scoreTimeline: physicalScoreClock, now,
+      onInstrumentState: event => { if (event.state === 'unavailable' || event.state === 'retirement-unknown') status('Lane ' + event.laneId + ' instrument: ' + event.code); },
+      onReceipt: receipt => {
+        if (physicalReceiptBuffer) physicalReceiptBuffer.push(receipt);
+        else if (causalTake && physicalReceiptBoundary) causalTake.recordSinkOutcome(receipt, physicalReceiptBoundary);
+      } });
+    void physicalPlayback.synchronizeLaneInstruments(project.procgen.lanes).catch(error => status('Saved lane instruments: ' + error.message));
+    if (session?.physicalState) physicalPlayback.engine.restore(session.physicalState);
     const onGameEvent = event => { if (transport.getState().playing) engine.onGameEvent(event, now()); };
-    bus?.on?.(onGameEvent); unhookWorld = () => bus?.off?.(onGameEvent);
+    const markPhysicalGap = (batch, reason) => {
+      if (!causalTake) return;
+      const tick = Number.isSafeInteger(batch?.tick) && batch.tick >= 0 ? batch.tick : 0;
+      const generation = Number.isSafeInteger(batch?.generation) && batch.generation >= 0 ? batch.generation : 0;
+      try { causalTake.markGap({ kind: 'physical-facts', firstTick: tick, lastTick: tick, generation, reason }); }
+      catch (error) { status('Causal take coverage gap could not be written: ' + error.message); }
+    };
+    const onPhysicalBatch = batch => {
+      let position;
+      try {
+        position = physicalScoreClock.observe(batch, transport.getState());
+      } catch (error) {
+        markPhysicalGap(batch, 'clock-observation-failed');
+        if (!physicalClockError) status('Physical score clock: ' + error.message);
+        physicalClockError = true; return;
+      }
+      try {
+        physicalReceiptBoundary = { tick: batch.tick, generation: batch.generation };
+        physicalReceiptBuffer = [];
+        const intents = physicalPlayback?.processBatch(batch, { bpm: transport.getState().bpm,
+          playing: transport.getState().playing, position });
+        if (causalTake) {
+          const receipt = causalTake.recordCommittedBatch({ batch, intents: intents || [], deliveryOutcomes: physicalReceiptBuffer });
+          if (receipt.status === 'rejected') markPhysicalGap(batch, 'capture-admission-rejected');
+          if (receipt.status === 'rejected' && !causalTakeErrorReported) {
+            status(`Causal take became partial: ${receipt.reason}. Stop and inspect it.`); causalTakeErrorReported = true;
+          }
+        }
+      }
+      catch (error) {
+        markPhysicalGap(batch, 'capture-exception');
+        if (!causalTakeErrorReported) status('Physical performance capture: ' + error.message);
+        causalTakeErrorReported = true;
+      }
+      finally { physicalReceiptBuffer = null; }
+    };
+    bus?.on?.(onGameEvent); physicalBus?.on?.(onPhysicalBatch);
+    const display = next.lanes?.renderer;
+    const previousDisplayStatus = display?.onDisplayState;
+    const onDisplayStatus = receipt => {
+      try { previousDisplayStatus?.call(display, receipt); } finally { view?.displayState?.(receipt); }
+    };
+    if (display) { display.onDisplayState = onDisplayStatus; view?.displayState?.(display.getDisplayState?.()); }
+    unhookWorld = () => {
+      bus?.off?.(onGameEvent); physicalBus?.off?.(onPhysicalBatch);
+      worldInspector?.dispose(); worldInspector = null;
+      physicalPlayback?.dispose(); physicalPlayback = null;
+      if (display?.onDisplayState === onDisplayStatus) display.onDisplayState = previousDisplayStatus;
+    };
     next.lanes?.setClockDriven?.(true);
     if (next.view?.setMidiPreviewRouter) {
       const owner = next.view, original = owner.setMidiPreviewRouter;
@@ -233,33 +814,80 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }
     attachRouter(next.view?.midiPreviewRouter);
     if (session) {
+      documentGeneration++;
+      cancelInputEdits('project loaded');
+      documentId = null; documentRevision = 0;
+      savedRevision = -1; lastSavedAt = null; storageStatus();
       suppressPersistence = true;
-      syncProject(session.project, { history: false, render: false }); Object.assign(legacy.settings, session.settings, { workstation: true });
-      lastLegacySpeed = legacy.settings.speed;
-      Object.assign(state, session.ui || {}, { recording: false, thru: false }); savedName = session.name;
-      transport.restore(session.transport || {}); engine.restore(session.patterns); pendingResume = true;
-      renderer()?.camera?.applyState?.(session.camera); suppressPersistence = false;
+      try {
+        syncProject(session.project, { history: false, render: false }); Object.assign(legacy.settings, session.settings, { workstation: true });
+        lastLegacySpeed = legacy.settings.speed;
+        Object.assign(state, session.ui || {}, { recording: false, thru: false, inputId: null, clockOutputId: null }); savedName = session.name;
+        transport.restore(session.transport); engine.restore(session.patterns); pendingResume = true;
+        if (session.camera) renderer()?.camera?.applyState?.(session.camera);
+      } finally { suppressPersistence = false; }
       ports.configure({ recording: false, thru: false }); undo.length = 0; redo.length = 0; status('Project loaded paused. Press Play to resume.');
     }
     prepareSettings(); legacy.setPaused(!transport.getState().playing); lastPlaying = transport.getState().playing;
     const timer = next.world?.timer; if (timer) timer.speedFactor = transport.getState().effectiveSpeed;
     syncPorts(); view?.render(); view?.transport(transport.getState());
+    worldInspector = createProcgenWorldInspector({ renderer: display, document, window,
+      parent: document.querySelector?.('.studio-inspector'), getLaneInfo: lane => project.procgen.lanes[lane] || null,
+      onRevealLane: lane => { state.firstLane = lane; view?.layout?.(); view?.launched?.(); } });
     if (legacy.local.getState().status === 'suspended') Promise.resolve(legacy.local.resumeGame?.()).catch(error => status(error?.message || 'Reconnect the audio output.'));
     if (!session && !pendingResume) play();
+    if (!startupCommitted && startupPlan.mode === 'document') {
+      documentId = startupPlan.sourceIdentity.id; documentRevision = startupPlan.sourceIdentity.revision;
+      savedRevision = editRevision; lastSavedAt = session?.savedAt || null;
+    }
+    startupCommitted = true;
     persist(); return next;
   };
   const snapshotSession = name => {
     if (worldBusy) throw new Error('Wait for the world change to finish before saving.');
     syncWorldSeed();
     return createProcgenSession({ name, project: clone(project), settings: clone(prepareSettings()), world: captureCheckpoint(runtime().world),
-      transport: transport.snapshot(), patterns: engine.snapshot(), camera: renderer()?.camera?.getState?.(), ui: { ...state, recording: false, thru: false, lastMidi: '' } });
+      transport: transport.snapshot(), patterns: engine.snapshot(), physicalTimeline: physicalScoreClock.snapshot(),
+      physicalState: physicalPlayback?.engine.snapshot() || null,
+      camera: renderer()?.camera?.getState?.(), ui: { ...state, recording: false, thru: false, lastMidi: '' } });
   };
   const recover = async () => {
     if (disposed || worldBusy || recoveryPending || !runtime()?.world) return false;
-    recoveryPending = true; lastRecovery = now();
-    try { await storage.save('__recovery__', snapshotSession(savedName + ' (recovery)')); return true; }
-    catch { return false; }
-    finally { recoveryPending = false; }
+    if (recoveryTimer != null) { window.clearTimeout?.(recoveryTimer); recoveryTimer = null; }
+    recoveryPending = true; lastRecovery = now(); recoveryState = 'saving'; recoveryError = null; storageStatus();
+    const controller = new AbortController(); recoveryAbort = controller;
+    const sourceDocumentGeneration = documentGeneration;
+    let capturedRevision = editRevision, capturedTick = runtime().world.tickIndex ?? null;
+    try {
+      const captureRecovery = () => {
+        if (disposed || documentGeneration !== sourceDocumentGeneration) throw new Error('Recovery document changed before snapshot admission.');
+        const session = snapshotSession(savedName + ' (recovery)');
+        capturedRevision = editRevision; capturedTick = runtime().world.tickIndex ?? null; return session;
+      };
+      const source = storage.supportsRecoveryFactory ? captureRecovery : captureRecovery();
+      const receipt = storage.saveRecovery ? await storage.saveRecovery(source, { signal: controller.signal, documentRevision: capturedRevision, tick: capturedTick,
+        laneCount: runtime().world.laneCount, snapshotMetadata: () => ({ documentRevision: capturedRevision, tick: capturedTick }) }) : await storage.save('__recovery__', source);
+      if (disposed) return false;
+      if (controller.signal.aborted || documentGeneration !== sourceDocumentGeneration) { recoveryState = 'pending'; storageStatus(); return false; }
+      durableRecoveryRevision = capturedRevision; durableRecoveryTick = capturedTick;
+      durableRecoveryGeneration = receipt?.generation ?? durableRecoveryGeneration;
+      recoveryState = editRevision === capturedRevision ? 'saved' : 'pending'; storageStatus();
+      return true;
+    }
+    catch (error) {
+      if (disposed) return false;
+      if (controller.signal.aborted) { recoveryState = 'pending'; storageStatus(); return false; }
+      recoveryState = 'unavailable'; recoveryError = error; storageStatus();
+      if (now() - lastRecoveryError >= 60000) {
+        lastRecoveryError = now(); status('Recovery checkpoint was not saved. Export this project if storage remains unavailable. ' + (error?.message || ''));
+      }
+      return false;
+    }
+    finally {
+      if (recoveryAbort === controller) recoveryAbort = null;
+      recoveryPending = false;
+      if (!disposed && recoveryState === 'pending' && !transport.getState().playing) scheduleRecovery();
+    }
   };
   const capture = (name = savedName, { resume = true } = {}) => {
     if (worldBusy) throw new Error('Wait for the world change to finish before saving.');
@@ -269,88 +897,422 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       return snapshotSession(name);
     } finally { if (resume && wasPlaying) play(); }
   };
-  const download = (bytes, filename, type) => {
-    const url = window.URL.createObjectURL(new window.Blob([bytes], { type })), link = document.createElement('a');
-    link.href = url; link.download = filename; document.body.append(link); link.click(); link.remove(); window.setTimeout(() => window.URL.revokeObjectURL(url), 0);
+  let preparedExport = null, lastDelivery = null, activeExportAbort = null;
+  const publishExportState = () => view?.exportState?.(preparedExport?.metadata() || null, lastDelivery);
+  const prepareDownload = ({ bytes, filename, type, sourceRef, formatVersion, lossRef = null }) => {
+    const artifact = prepareExportArtifact({ bytes, immutableSourceRef: sourceRef, formatVersion,
+      mediaType: type, suggestedFilename: filename, coverageLossReportRef: lossRef, budgetAdapter: resourceBudget });
+    preparedExport?.discard(); preparedExport = artifact; lastDelivery = null; publishExportState();
+    artifact.digest().then(() => { if (preparedExport === artifact && !disposed) publishExportState(); });
+    return artifact;
+  };
+  const prepareCausalArchive = async () => {
+    if (causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the causal take before preparing its archive.');
+    const takeId = selectedCausalTakeId || lastCausalTake?.takeId;
+    if (!takeId) throw new Error('No finished causal take is selected.');
+    const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs });
+    const prepared = await prepareCausalTakeArchive({ journal, storage, takeId, resourceBudget, jobs: backgroundJobs });
+    preparedExport?.discard(); preparedExport = prepared.artifact; lastDelivery = null;
+    publishExportState();
+    status(`Causal take ${prepared.manifest.takeName} archive ready. Use Save file to stream its verified source records.`);
+    return prepared.artifact.metadata();
+  };
+  const deliverPrepared = () => {
+    if (!preparedExport) return null;
+    lastDelivery = deliverArtifactToAnchor(preparedExport, { document, windowRef: window });
+    if (lastDelivery.errorKind === 'artifact-expired') { preparedExport.discard(); status('Prepared file expired. Export again.'); }
+    else if (lastDelivery.state === 'failed') status('File is prepared, but the browser download request failed. Use Retry file.');
+    publishExportState();
+    return lastDelivery;
   };
   const safe = fn => async (...args) => { try { return await fn(...args); } catch (error) { status(error?.message || String(error)); return false; } };
-  async function loadSession(value) {
+  async function loadSession(value, admittedLease = null, { signal } = {}) {
+    signal?.throwIfAborted();
+    if (disposed || (admittedLease && !ownsOperation(admittedLease))) return false;
     if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
-    const session = validateProcgenSession(value), serial = ++loadSerial;
+    if (causalTake || causalTakeStart || causalTakeStop) await stopCausalTake({ reason: 'document-replacement' });
+    signal?.throwIfAborted();
+    const lease = admittedLease || beginOperation('load');
+    let session = validateProcgenSession(value);
+    const serial = ++loadSerial;
+    if (session.project?.procgen?.version !== 2) {
+      const conversion = convertLegacyProcgenWorkstationProject(session.project, { strategy: 'physical-default' });
+      const summary = `Convert this legacy project to physical playback? ${conversion.report.discardedEnabledSteps} enabled phrase steps will be removed across ${conversion.report.laneCount} lanes. The imported source will not be overwritten.`;
+      if (typeof window.confirm !== 'function' || !window.confirm(summary)) return false;
+      session = { ...session, project: conversion.project, patterns: null, physicalTimeline: null, physicalState: null };
+    }
+    if (session.physicalTimeline) createProcgenPhysicalScoreClock().restore(session.physicalTimeline);
     const validatedProject = createProcgenWorkstationProject(sanitizeMidiProject(session.project));
     if (validatedProject.procgen.lanes.length !== session.world.laneCount) throw new Error('Project lanes and world checkpoint do not match.');
+    const preparedEngine = createProcgenPatternEngine({ getProject: () => validatedProject, now });
+    if (session.patterns) preparedEngine.restore(session.patterns);
+    else session = { ...session, patterns: preparedEngine.snapshot() };
+    signal?.throwIfAborted();
+    const cancel = () => lease.controller.abort(signal.reason);
+    signal?.addEventListener('abort', cancel, { once: true });
     worldBusy = true;
     const previous = transport.getState(), oldSettings = { ...legacy.settings };
-    const prepared = { ...session, project: validatedProject };
+    const previousRuntime = runtime();
+    let loaded = false;
+    const prepared = { ...session, project: validatedProject, camera: session.camera || null, ui: session.ui || {} };
     beforeRestart();
     try {
-      await restart({ session: prepared });
-      if (disposed || serial !== loadSerial) return false;
-      bindRuntime({ session: prepared }); return true;
+      const restarted = await restart({ session: prepared, lease });
+      if (!ownsOperation(lease) || serial !== loadSerial) return false;
+      if (restarted === false) throw new Error('World preparation was canceled.');
+      bindRuntime({ session: prepared }); loaded = true; return true;
     } catch (error) {
+      if (!ownsOperation(lease)) return false;
+      if (runtime() !== previousRuntime) {
+        transport.pause(); ports.flush(); suppressPersistence = false;
+        status('The new world is paused after a presentation error. Export a recovery copy before continuing.');
+        throw error;
+      }
       Object.assign(legacy.settings, oldSettings); lastLegacySpeed = legacy.settings.speed; if (previous.playing) play(); throw error;
-    } finally { worldBusy = false; }
+    } finally { signal?.removeEventListener('abort', cancel); worldBusy = false; finishOperation(lease); if (deferredPersist && startupCommitted && (loaded || runtime() === previousRuntime)) persist(); }
   }
   async function rebuild({ seed = project.procgen.seed, fresh = false, projectNext = null, history = true } = {}) {
+    if (disposed) return false;
     if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
+    if (causalTake || causalTakeStart || causalTakeStop) await stopCausalTake({ reason: 'world-rebuild' });
+    const lease = beginOperation('rebuild');
     worldBusy = true;
     const previous = project, oldSettings = { ...legacy.settings }, previousTransport = transport.getState(), previousPatterns = engine.snapshot(), undoLength = undo.length;
+    const previousRuntime = runtime();
+    let completed = false, rolledBack = false;
     beforeRestart();
     const source = projectNext || project;
-    const next = fresh ? createProcgenWorkstationProject(createMidiProject(), { seed }) : { ...source, procgen: { ...source.procgen, seed } };
-    if (fresh) { transport.configure({ baseBpm: 120, bpm: 120, gameSpeed: 1, speedMode: 'bpm', linked: true, clockSource: 'internal' }); legacy.setSpeed(1); lastLegacySpeed = 1; }
+    const freshPlan = fresh ? resolveProcgenStartupIntent({ search: '?startup=fresh', seed }) : null;
+    const next = freshPlan?.project || { ...source, procgen: { ...source.procgen, seed } };
+    if (fresh) { Object.assign(legacy.settings, freshPlan.worldOptions); transport.configure({ ...freshPlan.transport, baseBpm: 120 }); legacy.setSpeed(freshPlan.worldOptions.speed); lastLegacySpeed = legacy.settings.speed; }
     syncProject(next, { history }); prepareSettings();
     const staged = project;
     try {
-      await restart({}); engine.reset(); transport.stop(); pendingResume = false; bindRuntime();
-      if (previousTransport.playing) play(); status(fresh ? 'New project ready.' : 'World rebuilt.'); return true;
+      const restarted = await restart({ lease });
+      if (!ownsOperation(lease)) return false;
+      if (restarted === false) throw new Error('World preparation was canceled.');
+      engine.reset(); transport.stop(); pendingResume = false;
+      if (fresh) documentGeneration++;
+      bindRuntime();
+      if (fresh) { savedName = 'Untitled session'; documentId = null; documentRevision = 0; savedRevision = -1; lastSavedAt = null; storageStatus(); }
+      if (previousTransport.playing) play(); status(fresh ? 'New project ready.' : 'World rebuilt.'); completed = true; return true;
     } catch (error) {
+      if (!ownsOperation(lease)) return false;
+      if (runtime() !== previousRuntime) {
+        transport.pause(); ports.flush(); suppressPersistence = false;
+        status('The rebuilt world is paused after a presentation error. Export a recovery copy before continuing.');
+        throw error;
+      }
       const restored = rollbackWorldProject(previous, staged, project);
       syncProject(restored, { history: false }); undo.length = undoLength;
       if (!equal(restored, previous)) undo.push(previous);
       Object.assign(legacy.settings, oldSettings);
       lastLegacySpeed = legacy.settings.speed;
       transport.restore(previousTransport); engine.restore(previousPatterns); pendingResume = true;
+      rolledBack = true;
       if (previousTransport.playing) play(); throw error;
-    } finally { worldBusy = false; }
+    } finally { worldBusy = false; finishOperation(lease); if (deferredPersist && startupCommitted && (completed || rolledBack)) persist(); }
   }
   const changesWorld = next => next.procgen.seed !== project.procgen.seed || next.procgen.lanes.length !== project.procgen.lanes.length || next.procgen.lanes.some((lane, index) => lane.family !== project.procgen.lanes[index]?.family);
   const historyMove = async (from, to) => {
-    if (!from.length) return;
-    const previous = project, next = from.at(-1);
-    if (changesWorld(next)) await rebuild({ projectNext: next, seed: next.procgen.seed, history: false });
-    else syncProject(next, { history: false });
-    from.pop(); to.push(previous);
+    if (!from.length || pendingHistory || worldBusy) return false;
+    cancelInputEdits('history changed');
+    const previous = project, next = from.at(-1), movedCost = historyBytes(next);
+    if (!changesWorld(next)) {
+      syncProject(next, { history: false }); from.pop(); historySizes.set(previous, movedCost); to.push(previous); trimHistory(); return true;
+    }
+    const undoBefore = [...undo], redoBefore = [...redo];
+    const transaction = { commands: [], bytes: 0 }; pendingHistory = transaction;
+    let committed = false, failure = null;
+    try { committed = !!await rebuild({ projectNext: next, seed: next.procgen.seed, history: false }); }
+    catch (error) { failure = error; }
+    if (disposed) { pendingHistory = null; return false; }
+    undo.splice(0, undo.length, ...undoBefore); redo.splice(0, redo.length, ...redoBefore);
+    if (committed) { from.pop(); historySizes.set(previous, movedCost); to.push(previous); trimHistory(); }
+    syncProject(committed ? next : previous, { history: false, render: false });
+    pendingHistory = null;
+    for (const { action, historyGroup } of transaction.commands) {
+      const reduced = reduceMidiProject(project, action);
+      if (!equal(reduced, project)) syncProject(reduced, { historyGroup, render: false });
+    }
+    view?.render();
+    if (failure) throw failure;
+    return committed;
   };
   const handlers = {
-    status, preferences: persist, devices, engineState: () => engine.getState(), playhead: id => engine.getLanePosition?.(id),
-    transport(patch) { configureTransport(patch); if (patch.gameSpeed != null) legacy.setSpeed(patch.gameSpeed); persist(); },
-    addLane: safe(async () => { await rebuild({ projectNext: reduceMidiProject(project, { type: 'procgen/addLane' }) }); state.laneId = project.procgen.lanes.at(-1).id; view.render(); }),
+    openCausalAudioRender: safe(async () => {
+      const takeId = selectedCausalTakeId || lastCausalTake?.takeId;
+      if (disposed || !resourceBudget || !takeId || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish and select a saved causal take before rendering its intent.');
+      const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs });
+      causalAudioRender ||= createCausalTakeAudioRenderView({ document, window, journal, resourceBudget, jobs: backgroundJobs,
+        getMaterialProvider: () => legacy.local.audio?.getSoundMaterialProvider(),
+        getSavedRack: () => project.procgen.effectRack || null,
+        displayScheduler: view?.displayScheduler, onStatus: status }); await causalAudioRender.open({ takeId, instrumentRef: selected().instrumentRef || null });
+    }),
+    openPrelistenMonitor() {
+      if (disposed || !legacy.local.audio) return;
+      prelistenMonitor ||= createPrelistenMonitor({ document, audio: legacy.local.audio, displayScheduler: view?.displayScheduler,
+        home: document.getElementById('procgenStudioFooter') || document.body, onStatus: status });
+      prelistenMonitor.mountHome(); return prelistenMonitor;
+    },
+    openQuarryEcho() {
+      if (disposed || !physicalPlayback) { status('Physical owner effects are unavailable.'); return; }
+      quarryEchoView ||= createQuarryEchoView({ document, window, getPlayback: () => physicalPlayback, getSavedRack: () => project.procgen.effectRack || null,
+        saveRack: rack => { if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the current world or take operation before saving effect defaults.'); dispatch({ type: 'procgen/effectRack', rack }); }, onStatus: status });
+      quarryEchoView.open();
+    },
+    openMasterCapture() {
+      if (disposed || !resourceBudget || !legacy.local.audio) { status('Browser master capture is unavailable.'); return; }
+      masterCapture ||= createMasterCaptureView({ document, window, preview: legacy.local.audio, resourceBudget, onStatus: status });
+      masterCapture.open();
+    },
+    openSoundLibrary() {
+      if (disposed || !resourceBudget || !legacy.local.audio) { status('Sound library resource ownership is unavailable.'); return; }
+      soundLibrary ||= createSoundContentLibrary({ document, window, audio: legacy.local.audio, resourceBudget, jobs: backgroundJobs,
+        onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onStatus: status, monitor: handlers.openPrelistenMonitor() });
+      soundLibrary.open();
+    },
+    async applyInstalledInstrument(candidate, { signal } = {}) {
+      signal?.throwIfAborted();
+      if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop || !physicalPlayback) throw new Error('Finish the current world/history/take operation before applying an instrument.');
+      const laneId = selected().id, generation = documentGeneration, revision = projectRevision, playback = physicalPlayback;
+      const reference = validateSoundContentReference({ ...candidate.reference, definition: candidate.definition });
+      const prepared = await playback.prepareLaneInstrument(laneId, reference, { signal });
+      try {
+        signal?.throwIfAborted();
+        if (disposed || playback !== physicalPlayback || generation !== documentGeneration || revision !== projectRevision || selected().id !== laneId || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop)
+          throw new Error('Instrument Apply canceled because its lane or project changed.');
+        prepared.commit();
+        try { dispatch({ type: 'procgen/lane', laneId, patch: { instrumentRef: reference, instrumentControls: { macros: {} } } }); }
+        catch (error) { void playback.synchronizeLaneInstruments(project.procgen.lanes); throw error; }
+        status('Installed instrument applied to ' + selected().name + '. Held voices retain their prior renderer.'); return reference;
+      } finally { prepared.release(); }
+    },
+    status, preferences: persist, presentationGeneration: () => documentGeneration,
+    devices, engineState: () => engine.getState(), playhead: id => engine.getLanePosition?.(id),
+    causalTakeState, startCausalTake: safe(startCausalTake), stopCausalTake: safe(stopCausalTake), discardCausalTail: safe(discardCausalTail), cancelCausalTakeArm,
+    markCausalTake: safe(markCausalTake), inspectLastCausalTake: safe(inspectLastCausalTake),
+    prepareCausalArchive: safe(prepareCausalArchive), browseCausalTakes: safe(browseCausalTakes), selectCausalTake: safe(selectCausalTake),
+    readPhysicalScore: safe(readPhysicalScore), inspectPhysicalScoreCause: safe(inspectPhysicalScoreCause),
+    compareCausalTake: safe(options => openCausalWorkbench(options)), prepareCausalBranch: safe(options => openCausalWorkbench({ ...options, branch: true })),
+    advanceCausalBranch: safe(options => { if (!causalWorkbench) throw new Error('Prepare a physical branch first.'); return causalWorkbench.advance(options); }),
+    setCausalBranchPlayback: safe(playing => { if (!causalWorkbench) throw new Error('Prepare a physical branch first.'); return causalWorkbench.setPlayback(playing); }),
+    cancelCausalWorkbench: () => causalWorkbench?.cancel(), finishCausalBranch: safe(finishCausalBranch),
+    historyBusy: () => pendingHistory !== null,
+    historyState: () => Object.freeze({ undo: undo.length, redo: redo.length,
+      retainedBytes: retainedHistoryBytes(), byteLimit: historyBytesLimit, dropped: historyDropped }),
+    stopOutput() {
+      transport.stop(); pendingResume = false;
+      recordCausalControl('input', { version: 1, kind: 'transport-state', playing: false });
+      status('Transport stopped and output flushed.');
+      return transport.getState();
+    },
+    transport(patch) { configureTransport(patch); if (patch.gameSpeed != null) legacy.setSpeed(patch.gameSpeed); editRevision++; storageStatus(); persist(); if (!transport.getState().playing) scheduleRecovery(); },
+    addLane: safe(async () => { if (!await rebuild({ projectNext: reduceMidiProject(project, { type: 'procgen/addLane' }) })) return false; state.laneId = project.procgen.lanes.at(-1).id; view.render(); return true; }),
     removeLane: safe(async () => { await rebuild({ projectNext: reduceMidiProject(project, { type: 'procgen/removeLane', laneId: selected().id }) }); }),
-    duplicate() { const lane = selected(), slot = (state.slot + 1) % 4; dispatch({ type: 'procgen/pattern', laneId: lane.id, slot, patch: clone(lane.patterns[state.slot]) }); state.slot = slot; view.render(); },
-    clear() { const lane = selected(); dispatch({ type: 'procgen/pattern', laneId: lane.id, slot: state.slot, patch: { steps: lane.patterns[state.slot].steps.map(step => ({ ...step, enabled: false, tie: false })) } }); },
-    copy() { clipboard = clone(selected().patterns[state.slot]); status('Phrase copied.'); },
-    paste() { if (clipboard) dispatch({ type: 'procgen/pattern', laneId: selected().id, slot: state.slot, patch: clone(clipboard) }); },
+    duplicate() { const lane = selected(), pattern = lane.patterns?.[state.slot]; if (!pattern) return false; const slot = (state.slot + 1) % 4; dispatch({ type: 'procgen/pattern', laneId: lane.id, slot, patch: clone(pattern) }); state.slot = slot; view.render(); return true; },
+    clear() { const lane = selected(), pattern = lane.patterns?.[state.slot]; if (!pattern) return false; dispatch({ type: 'procgen/pattern', laneId: lane.id, slot: state.slot, patch: { steps: pattern.steps.map(step => ({ ...step, enabled: false, tie: false })) } }); return true; },
+    copy() { const pattern = selected().patterns?.[state.slot]; if (!pattern) return false; clipboard = clone(pattern); status('Phrase copied.'); return true; },
+    paste() { if (!clipboard || !selected().patterns?.[state.slot]) return false; dispatch({ type: 'procgen/pattern', laneId: selected().id, slot: state.slot, patch: clone(clipboard) }); return true; },
     undo: safe(() => historyMove(undo, redo)),
     redo: safe(() => historyMove(redo, undo)),
-    resetPattern() { dispatch({ type: 'procgen/pattern', laneId: selected().id, slot: state.slot, patch: createProcgenPattern(selected().family, selected().role, state.slot) }); },
-    record(value) { state.recording = !!value; ports.configure({ recording: state.recording }); noteEntries.clear(); view.recording(state.recording); if (state.recording) ports.recordTempo(transport.getState().bpm, transport.getState().beat); },
-    learn() { const accept = event => { if (event.type === 'noteOn') inputStep(event, true); else ports.learnNext(accept); }; ports.learnNext(accept); status('Play a MIDI note to learn this step.'); },
-    input(id) { state.inputId = id || null; syncPorts(); view.renderInspector(); persist(); },
+    resetPattern() { if (!selected().patterns?.[state.slot]) return false; dispatch({ type: 'procgen/pattern', laneId: selected().id, slot: state.slot, patch: createProcgenPattern(selected().family, selected().role, state.slot) }); return true; },
+    record(value) { const midiState = ports.configure({ recording: !!value }); state.recording = midiState.recording; noteEntries.clear(); view.recording(state.recording, midiState); if (state.recording) ports.recordTempo(transport.getState().bpm, transport.getState().beat); },
+    learn() {
+      if (inputLease) { cancelInputEdits('canceled by user'); return false; }
+      const lane = selected(), lease = { id: ++inputGestureSerial, documentGeneration, projectRevision,
+        laneId: lane.id, slot: state.slot, index: state.step,
+        inputEndpointEpoch: ports.getState().inputLiveness.connectionEpoch, armedAt: now(), policy: 'fixed-target' };
+      if (!inputTarget(lease)) return false;
+      inputLease = lease;
+      const accept = event => {
+        if (inputLease !== lease || lease.documentGeneration !== documentGeneration ||
+            lease.inputEndpointEpoch !== ports.getState().inputLiveness.connectionEpoch || !inputTarget(lease)) {
+          if (inputLease === lease) cancelInputEdits('target or input changed');
+          return;
+        }
+        if (event.type !== 'noteOn') { ports.learnNext(accept); return; }
+        inputLease = null;
+        inputStep(event, true, lease);
+      };
+      ports.learnNext(accept); status('Play a MIDI note to learn this step.'); return true;
+    },
+    cancelLearn() { cancelInputEdits('canceled by user'); },
+    input(id) { cancelInputEdits('input changed'); state.inputId = id || null; syncPorts(); view.renderInspector(); persist(); },
     clockOutput(id) { state.clockOutputId = id || null; syncPorts(); persist(); },
     thru(value) { state.thru = !!value; ports.configure({ thru: state.thru }); },
-    connect: safe(async () => { if (!window.WebMidi) throw new Error('Web MIDI is unavailable in this browser.'); if (!window.WebMidi.enabled) await window.WebMidi.enable({ sysex: false }); syncPorts(); view.renderInspector(); status('MIDI connected. Choose note and clock ports, then press Play.'); }),
+    connect: safe(async () => { if (!window.WebMidi) throw new Error('Web MIDI is unavailable in this browser.'); if (!window.WebMidi.enabled) await window.WebMidi.enable({ sysex: false }); syncPorts({ rearmDefault: true }); view.renderInspector(); status('MIDI connected. Choose note and clock ports, then press Play.'); }),
     expression(event) { ports.sendEvent({ ...event, type: event.type === 'pitchBend' ? 'bend' : event.type }); },
-    save: safe(async () => {
+    save: safe(async ({ asCopy = false, rename = false } = {}) => {
+      if (pendingSaveGenerations.has(documentGeneration)) return false;
       if (worldBusy) throw new Error('Wait for the world change to finish before saving.');
+      pendingSaveGenerations.add(documentGeneration);
       const wasPlaying = transport.getState().playing; beforeRestart();
-      try { const name = window.prompt?.('Project name', savedName) ?? savedName; if (!name) return false; const session = capture(name, { resume: false }); await storage.save(name, session); savedName = name; status('Saved ' + name + '.'); return true; }
-      finally { if (wasPlaying) play(); }
+      const saveDocumentGeneration = documentGeneration, saveOperationSerial = operationSerial;
+      let resumeStopGeneration = transportStopGeneration;
+      try {
+        const promptName = asCopy || rename || !documentId;
+        const name = promptName && typeof window.prompt === 'function' ? window.prompt('Project name', savedName) : savedName;
+        if (name == null) return false;
+        if (!name.trim()) { status('Enter a project name to save.'); return false; }
+        const session = capture(name, { resume: false }), revision = editRevision;
+        resumeStopGeneration = transportStopGeneration;
+        const id = asCopy || !documentId ? createProcgenDocumentId(window.crypto) : documentId;
+        const expectedRevision = asCopy || !documentId ? 0 : documentRevision;
+        const receipt = storage.saveDocument ? await storage.saveDocument(id, expectedRevision, session, createProcgenDocumentId(window.crypto).replace(/^doc:/, 'commit:')) :
+          (await storage.save(name, session), null);
+        if (disposed) return false;
+        if (documentGeneration !== saveDocumentGeneration || operationSerial !== saveOperationSerial) return true;
+        if (receipt) { documentId = receipt.id; documentRevision = receipt.revision; }
+        savedName = name; savedRevision = revision; lastSavedAt = session.savedAt; storageStatus();
+        status(editRevision === revision ? 'Saved ' + name + '.' : 'Snapshot saved; newer edits are unsaved.'); return true;
+      } catch (error) {
+        if (documentGeneration === saveDocumentGeneration && operationSerial === saveOperationSerial) storageStatus(error);
+        throw error;
+      } finally {
+        pendingSaveGenerations.delete(saveDocumentGeneration);
+        if (!disposed && wasPlaying && documentGeneration === saveDocumentGeneration && operationSerial === saveOperationSerial &&
+            transportStopGeneration === resumeStopGeneration && !transport.getState().playing) play();
+      }
     }),
-    load: safe(async () => view.showProjects(await storage.list(), safe(async id => loadSession(await storage.load(id))))),
-    import: safe(async file => loadSession(JSON.parse(await file.text()))),
-    export: safe(async () => { const session = capture(); download(JSON.stringify(session), savedName.replace(/[^a-z0-9_-]+/gi, '-') + '.procgen.json', 'application/json'); status('Project exported.'); }),
-    exportMidi() { download(exportProcgenMidi(ports.getRecording(), { bpm: transport.getState().bpm, beatsPerBar: project.transport?.timeSignature?.beats, beatUnit: project.transport?.timeSignature?.unit }), 'procgen-performance.mid', 'audio/midi'); status('Recorded performance exported.'); },
+    saveAs: safe(() => handlers.save({ asCopy: true })),
+    rename: safe(() => handlers.save({ rename: true })),
+    cancelProjectPicker() {
+      if (currentOperation?.kind === 'select-session') { currentOperation.controller.abort(); currentOperation = null; }
+    },
+    load: safe(async () => {
+      if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
+      const lease = beginOperation('select-session');
+      const page = storage.listDocumentPage ? await storage.listDocumentPage() : null;
+      const entries = page ? null : storage.listDocuments ? await storage.listDocuments() : await storage.list();
+      if (!ownsOperation(lease)) return false;
+      const loadSelected = safe(async id => {
+        if (!ownsOperation(lease)) return false;
+        const record = storage.loadDocumentOwned ? await storage.loadDocumentOwned(id, { signal: lease.signal }) : storage.loadDocument ? await storage.loadDocument(id) : { session: await storage.load(id), id: null, revision: 0 };
+        try {
+          if (!ownsOperation(lease)) return false;
+          const loaded = await loadSession(record.session, lease, { signal: record.signal });
+          if (loaded) { documentId = record.id; documentRevision = record.revision; savedRevision = editRevision; lastSavedAt = record.session.savedAt; storageStatus(); }
+          return loaded;
+        } finally { record.release?.(); }
+      });
+      if (page && view.showProjectPage) view.showProjectPage(page, loadSelected, async (cursor, query) => {
+        if (!ownsOperation(lease)) return null;
+        const next = await storage.listDocumentPage({ cursor, query });
+        return ownsOperation(lease) ? next : null;
+      });
+      else view.showProjects(entries || page.items, loadSelected);
+      return true;
+    }),
+    reclaimRecovery: safe(async () => { await storage.removeRecovery?.(); status('Old recovery checkpoint removed. Named projects were kept.'); }),
+    import: safe(async file => {
+      if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
+      const lease = beginOperation('import');
+      if (file?.size != null && (!Number.isSafeInteger(file.size) || file.size < 0 || file.size > MAX_SESSION_FILE_BYTES)) throw new Error('Project file exceeds the 64 MiB import limit.');
+      const generation = documentGeneration, revision = editRevision, inputBytes = file.size ?? 0;
+      let computed = null;
+      try {
+        computed = await backgroundJobs.compute({ kind: 'parse-json', ownerId: 'procgen-import', ownerEpoch: generation,
+          sourceRevision: `${generation}:${revision}`, inputBytes, estimatedPeakBytes: Math.min(400 * 1048576, 64 * 1048576 + inputBytes * 24),
+          signal: lease.signal, budgetAdapter: resourceBudget, isCurrent: () => ownsOperation(lease) && documentGeneration === generation && editRevision === revision,
+          prepareInput: async ({ signal }) => {
+            if (typeof file.stream !== 'function') return file.text();
+            const bytes = await readBrowserBuildResponse(new globalThis.Response(file.stream()), MAX_SESSION_FILE_BYTES, signal);
+            return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+          }, onProgress: phase => status(`Preparing project: ${phase.phase}.`) });
+        if (!ownsOperation(lease)) return false;
+        return await loadSession(computed.value, lease);
+      } finally { computed?.release(); finishOperation(lease); }
+    }),
+    export: safe(async () => {
+      if (worldBusy) throw new Error('Wait for the world change to finish before exporting.');
+      const lease = beginOperation('export'), generation = documentGeneration, revision = editRevision, id = documentId, name = savedName;
+      let computed = null, sourceTick = null, sourceGeneration = null;
+      try {
+        computed = await backgroundJobs.compute({ kind: 'encode-json', ownerId: 'procgen-export', ownerEpoch: generation,
+          sourceRevision: `${generation}:${revision}`, inputBytes: 0, estimatedPeakBytes: 128 * 1048576 + project.procgen.lanes.length * 131072,
+          signal: lease.signal, budgetAdapter: resourceBudget, isCurrent: () => ownsOperation(lease) && documentGeneration === generation && editRevision === revision,
+          prepareInput: () => {
+            const snapshot = capture(), world = snapshot.world?.graph?.owners?.find(owner => owner.name === 'world')?.props;
+            sourceTick = world?.tickIndex ?? snapshot.world?.tickIndex ?? null; sourceGeneration = world?.generation ?? null; return snapshot;
+          }, onProgress: phase => status(`Preparing project file: ${phase.phase}.`) });
+        if (!ownsOperation(lease)) return false;
+        prepareDownload({ bytes: computed.value, filename: name.replace(/[^a-z0-9_-]+/gi, '-') + '.procgen.json', type: 'application/json',
+          sourceRef: `project:${id}:${revision}:${sourceGeneration ?? 'unknown'}:${sourceTick ?? 'unknown'}`, formatVersion: 'procgen-session/v1' });
+        if (deliverPrepared()?.state === 'delivery-requested') status('Project download requested. Check your browser downloads. Retry file uses the same prepared project.');
+      } finally { computed?.release(); finishOperation(lease); }
+    }),
+    exportMidi: safe(() => {
+      const state = ports.getState();
+      const submitted = ports.getRecording({ direction: 'output', evidence: 'api-accepted' });
+      const hasSubmitted = submitted.some(event => event.direction === 'output');
+      const captured = hasSubmitted ? submitted : ports.getRecording({ direction: 'output', evidence: 'intent-render' });
+      const balanced = selectBalancedProcgenRecording(captured);
+      const complete = state.recordingComplete && !balanced.omittedOnsets && !balanced.omittedReleases;
+      const reason = state.incompleteReason || (complete ? null : 'unpaired-note-boundary');
+      const manifest = { schema: 'procgen-recording-window/v1', complete, reason, reasons: state.incompleteReasons,
+        evidence: hasSubmitted ? 'api-accepted' : 'intent-render',
+        retainedRange: state.retainedRange, firstLostSequence: state.firstLostSequence,
+        droppedRecords: state.droppedRecords, droppedCategories: state.droppedCategories,
+        omittedOnsets: balanced.omittedOnsets, omittedReleases: balanced.omittedReleases };
+      prepareDownload({ bytes: exportProcgenMidi(balanced.events, { bpm: transport.getState().bpm,
+        beatsPerBar: project.transport?.timeSignature?.beats, beatUnit: project.transport?.timeSignature?.unit, manifest }),
+      filename: complete ? 'procgen-performance.mid' : 'procgen-performance-partial.mid', type: 'audio/midi',
+      sourceRef: `recording:${documentId}:${state.retainedRange.firstSequence ?? 0}:${state.retainedRange.lastSequence ?? 0}`,
+      formatVersion: 'smf1/v1', lossRef: 'embedded-midi-manifest' });
+      if (deliverPrepared()?.state !== 'delivery-requested') return;
+      const source = hasSubmitted ? 'submitted output' : 'rendered preview intent';
+      const reasons = state.incompleteReasons.length ? state.incompleteReasons.join(', ') : reason;
+      status(complete ? `Recorded ${source} download requested. Check your browser downloads.` :
+        `Partial ${source} download requested: ${reasons}; ${balanced.omittedOnsets} unmatched onset(s) omitted.`);
+    }),
+    retryExport() {
+      const receipt = deliverPrepared();
+      if (!receipt) { status('No prepared file is available to retry.'); return null; }
+      if (receipt.state === 'delivery-requested') status('Prepared file download requested again. Check your browser downloads.');
+      return receipt;
+    },
+    discardExport() {
+      if (!preparedExport) return false;
+      preparedExport.discard(); preparedExport = null; lastDelivery = null;
+      publishExportState(); status('Prepared file discarded. The source project is unchanged.'); return true;
+    },
+    cancelExportDelivery() {
+      if (!activeExportAbort) return false;
+      activeExportAbort.abort(); status('Canceling file delivery. The prepared file remains ready.'); return true;
+    },
+    retryDisplay() { return renderer()?.recover?.() || false; },
+    async savePreparedExport() {
+      if (!preparedExport) { status('Prepare a project or MIDI export first.'); return null; }
+      if (activeExportAbort) { status('A file delivery is already in progress.'); return null; }
+      const artifact = preparedExport;
+      const selected = await requestExportFileHandle(artifact, { windowRef: window });
+      if (disposed || preparedExport !== artifact) return Object.freeze({ deliveryId: null, artifactId: artifact.artifactId,
+        sinkKind: 'file-picker', state: 'canceled', bytesWritten: 0, errorKind: 'source-replaced', evidence: 'artifact-retired-before-delivery' });
+      if (selected.state !== 'selected') {
+        if (selected.errorKind === 'artifact-expired') artifact.discard();
+        lastDelivery = Object.freeze({ deliveryId: null, artifactId: artifact.artifactId, sinkKind: 'file-picker',
+          state: selected.state, bytesWritten: 0, errorKind: selected.errorKind, evidence: 'picker-result' });
+        status(selected.state === 'canceled' ? 'File picker canceled. The prepared file remains ready.' :
+          `Save file unavailable: ${selected.errorKind}. The prepared file remains ready.`);
+        publishExportState();
+        return lastDelivery;
+      }
+      const controller = new AbortController(); activeExportAbort = controller;
+      lastDelivery = Object.freeze({ deliveryId: null, artifactId: artifact.artifactId, sinkKind: 'file-handle',
+        state: 'writing', bytesWritten: 0, errorKind: null, evidence: 'delivery-in-progress' });
+      publishExportState();
+      let delivery;
+      try { delivery = await deliverArtifactToFileHandle(artifact, selected.handle, { signal: controller.signal }); }
+      finally { if (activeExportAbort === controller) activeExportAbort = null; }
+      if (!disposed && preparedExport === artifact) {
+        lastDelivery = delivery;
+        status(delivery.state === 'close-acknowledged' ? 'File stream closed successfully. Verify the saved file before relying on it.' :
+          `File delivery ${delivery.state}: ${delivery.errorKind}. The prepared file remains ready.`);
+        publishExportState();
+      }
+      return delivery;
+    },
     new: safe(() => rebuild({ seed: freshProcgenSeed(window.crypto, project.procgen.seed), fresh: true })),
     reroll: safe(() => rebuild({ seed: freshProcgenSeed(window.crypto, project.procgen.seed) })),
     replay: safe(() => rebuild()), rebuild: safe(() => rebuild()), seed: safe(seed => rebuild({ seed: Number(seed) >>> 0 })),
@@ -363,7 +1325,17 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       persist();
     }
   };
-  view = createView({ document, window, getProject: () => project, getRuntime, dispatch, handlers, state });
+  view = createView({ document, window, resourceBudget, getProject: () => project, getRuntime, dispatch, handlers, state });
+  if (saved?.project?.procgen?.version !== 2 && saved?.project?.procgen) {
+    try {
+      const conversion = convertLegacyProcgenWorkstationProject(saved.project, { strategy: 'physical-default' });
+      view.offerLegacyConversion?.(conversion.report, safe(async () => {
+        if (!await rebuild({ projectNext: conversion.project })) return false;
+        view.clearLegacyConversion?.(); status('Previous setup converted to the physical play model.');
+        return true;
+      }));
+    } catch (error) { status(error?.message || 'Previous setup requires an explicit physical conversion.'); }
+  }
   const unsubscribeProject = legacy.subscribeProject?.(next => { if (!disposed && !writingLegacy && next !== project) syncProject(next, { fromLegacy: true }); });
   if (unsubscribeProject) listeners.push(unsubscribeProject);
   const syncLegacyControls = () => {
@@ -374,23 +1346,82 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const el = document.getElementById(id); listen(el, 'click', syncLegacyControls); listen(el, 'change', syncLegacyControls); listen(el, 'contextmenu', syncLegacyControls);
   }
   listen(document, 'keyup', syncLegacyControls);
-  listen(window, 'pagehide', () => { persist(); recover(); });
+  listen(document, 'keydown', event => { if (event.key === 'Escape' && inputLease) cancelInputEdits('canceled by user'); });
+  listen(window, 'pagehide', () => {
+    quarryEchoView?.suspend();
+    void masterCapture?.suspend();
+    causalAudioRender?.suspend();
+    causalWorkbenchSourceSerial++;
+    const workbench = causalWorkbench;
+    if (workbench) void workbench.dispose().then(() => { if (causalWorkbench === workbench) causalWorkbench = null; }, error => status('Branch recovery: ' + error.message));
+    beforeRestart(); persist({ immediate: true }); recover();
+    if (causalTake || causalTakeStart) void stopCausalTake({ reason: 'pagehide' }).catch(error => status('Causal take finalization: ' + error.message));
+    status('Page suspended. Press Play after returning to resume.');
+  });
+  listen(window, 'pageshow', event => {
+    if (!event.persisted) return;
+    transport.pause(); ports.flush(); view?.transport(transport.getState());
+    status('Page restored paused. Press Play to resume.');
+  });
   listen(document.getElementById('procgenPanic'), 'click', () => { ports.panic(); status('All notes stopped.'); });
-  const disconnected = () => { ports.checkConnections(); view.renderInspector(); };
+  const disconnected = () => { syncPorts(); view.renderInspector(); };
   const connected = () => { syncPorts(); view.renderInspector(); status('MIDI device connected. Press Play or send MIDI Start/Continue to resume.'); };
   window.WebMidi?.addListener?.('disconnected', disconnected);
   window.WebMidi?.addListener?.('connected', connected);
   listeners.push(() => window.WebMidi?.removeListener?.('disconnected', disconnected));
   listeners.push(() => window.WebMidi?.removeListener?.('connected', connected));
-  prepareSettings(); setLegacyProject(project); legacy.setSpeed(transport.getState().gameSpeed); lastLegacySpeed = legacy.settings.speed; view.render(); view.transport(transport.getState());
-  return { getProject: () => project, getLaneAssignments: () => project.procgen.lanes.map(lane => lane.family),
+  prepareSettings(); setLegacyProject(project, { persist: false }); legacy.setSpeed(transport.getState().gameSpeed); lastLegacySpeed = legacy.settings.speed; view.render(); view.transport(transport.getState()); storageStatus();
+  return { getProject: () => project, getInputEditLease: () => inputLease && Object.freeze({ ...inputLease }),
+    getExportState: () => Object.freeze({ artifact: preparedExport?.metadata() || null, delivery: lastDelivery }),
+    getDisplayDiagnostics: () => view.displayScheduler?.diagnostics() || null,
+    getDocumentState: () => Object.freeze({ id: documentId, revision: documentRevision, editRevision, savedRevision,
+      dirty: editRevision !== savedRevision, savedAt: lastSavedAt }),
+    getRecoveryState: () => Object.freeze({ state: recoveryState, pendingRevision: editRevision, durableRevision: durableRecoveryRevision,
+      durableTick: durableRecoveryTick, durableGeneration: durableRecoveryGeneration, error: recoveryError }),
+    getStartupPlan: () => ({ ...startupPlan, project: clone(startupPlan.project) }), getLaneAssignments: () => project.procgen.lanes.map(lane => lane.family),
     getPlaybackState: () => ({ ...legacy.local.getState(), activeNotes: router()?.scheduler?._activeNotes?.size || 0, pendingNotes: router()?.scheduler?._pendingNoteOns?.size || 0, pressure: router()?.scheduler?.getOutputPressure?.() || ports.getState().pressure }),
-    prepareSettings, bindRuntime, beforeRestart, loadSession, capture, recover, dispatch, play, handlers, state, transport, ports, engine,
+    prepareSettings, bindRuntime, beforeRestart, stopCausalTake, loadSession, capture, recover, dispatch, play, handlers, state, transport, ports, engine,
+    getPhysicalScoreClock: () => physicalScoreClock, getWorldInspector: () => worldInspector,
     get settings() { return legacy.settings; },
     dispose() {
-      if (disposed) return; disposed = true; loadSerial++; unhookRouter?.(); unhookWorld?.(); transport.dispose(); ports.dispose();
-      if (recoveryTimer != null) window.clearTimeout?.(recoveryTimer);
-      for (const remove of listeners) remove(); view.dispose(); Promise.resolve(storage.close?.()).catch(() => {});
+      if (disposed) return retirement.retire();
+      physicalScoreAbort?.abort();
+      cancelInputEdits('workstation closed');
+      persist({ immediate: true });
+      disposed = true; loadSerial++;
+      const operation = currentOperation; currentOperation = null;
+      const timer = recoveryTimer; recoveryTimer = null;
+      const pendingPersist = persistTimer; persistTimer = null;
+      const removeListeners = listeners.splice(0);
+      const pendingCausalStop = causalTake || causalTakeStart || causalTakeStop ? stopCausalTake({ reason: 'workstation-disposed' }) : null;
+      const pendingWorkbenchStop = causalWorkbench?.dispose();
+      return retirement.retire([
+        { name: 'operation', run: () => operation?.controller.abort() },
+        { name: 'recovery-write', run: () => recoveryAbort?.abort() },
+        { name: 'recovery-timer', run: () => { if (timer != null) window.clearTimeout?.(timer); } },
+        { name: 'persist-timer', run: () => { if (pendingPersist != null) window.clearTimeout?.(pendingPersist); } },
+        { name: 'prepared-export', run: () => { activeExportAbort?.abort(); preparedExport?.discard(); } },
+        { name: 'router-hook', run: () => unhookRouter?.() },
+        { name: 'world-hook', run: () => unhookWorld?.() },
+        { name: 'physical-playback', run: () => physicalPlayback?.dispose() },
+        { name: 'physical-score-views', run: () => retirePhysicalScoreViews() },
+        { name: 'causal-workbench', run: () => pendingWorkbenchStop },
+        { name: 'sound-library', run: () => soundLibrary?.dispose() },
+        { name: 'quarry-echo-view', run: () => quarryEchoView?.dispose() },
+        { name: 'master-capture', run: () => masterCapture?.dispose() },
+        { name: 'causal-audio-render', run: () => causalAudioRender?.dispose() },
+        { name: 'prelisten-monitor', run: () => prelistenMonitor?.dispose() },
+        { name: 'transport', run: () => transport.dispose()?.completion },
+        { name: 'midi-ports', run: () => ports.dispose() },
+        ...removeListeners.map((remove, index) => ({ name: `listener-${index}`, run: remove })),
+        { name: 'view', run: () => view.dispose() },
+        { name: 'storage', run: () => {
+          const close = () => createProcgenRetirementScope().retire([
+            { name: 'journal-qualifications', run: () => causalJournal?.releaseQualifications() }, { name: 'database', run: () => storage.close?.() }
+          ]);
+          return pendingCausalStop || pendingWorkbenchStop ? Promise.all([pendingCausalStop, pendingWorkbenchStop]).then(close) : close();
+        } }
+      ]);
     }
   };
 }

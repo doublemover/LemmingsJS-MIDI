@@ -12,16 +12,16 @@ import { DECORATION_CHOICES } from '../../decorations/ProcgenDecorationPacks.js'
 import { createCharacterUiController, mountCharacterControls } from '../characterUiController.js';
 import { createProcgenMidiOutput } from './ProcgenMidiOutput.js';
 import { createLocalGamePreview } from '../midi-ui/localGamePreview.js';
-import { createMidiProjectFromMidiConfig, projectToMidiConfig, reduceMidiProject, sanitizeMidiProject } from '../../midi/project/MidiProject.js';
+import { createMidiProjectFromMidiConfig, projectToMidiConfig, reduceMidiProject, sanitizeMidiProject, isCanonicalMidiProject, sameMidiRuntimeInputs } from '../../midi/project/MidiProject.js';
 import { PROCGEN_GAME_EVENT_MIDI_PRESETS, applyProcgenGameEventMidiPreset, getProcgenSpawnPriority, setProcgenSpawnPriority, getProcgenMusicBeatTicks } from '../../midi/project/ProcgenMidiDefaults.js';
 import { normalizeLaneCount, normalizeLaneHeight, DEFAULT_LANE_HEIGHT, normalizePopulationPolicy } from './ProcgenLaneWorld.js';
 import { normalizeWorkerLimits } from './ProcgenWorkerLimits.js';
 import { KeybindingRegistry, DEFAULT_KEYBINDINGS } from '../../input/KeybindingRegistry.js';
 import { normalizeProcgenSpeed, changeProcgenSpeed, renderProcgenSpeedControl } from './ProcgenSpeedControl.js';
 import { normalizeSeed } from '../../core/seededRandom.js';
-import { readProcgenUrlConfig, createProcgenShareUrl } from './ProcgenUrlConfig.js';
+import { readProcgenUrlConfig, createProcgenRecipeShareDescriptor } from './ProcgenUrlConfig.js';
 
-const createProcgenUiController = ({ document, window, getRuntime, restart, initial = {} }) => {
+const createProcgenUiController = ({ document, window, getRuntime, restart, resourceBudget = null, initial = {} }) => {
   const byId = id => document.getElementById(id);
   const listeners = [];
   const projectListeners = new Set();
@@ -77,7 +77,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     if (byId('procgenMidiDevice')) byId('procgenMidiDevice').hidden = !midi;
   };
   let local;
-  const preview = createLocalGamePreview({ getLemmings: () => getRuntime()?.view, getConfig: () => config, immutableConfig: true,
+  const preview = createLocalGamePreview({ getLemmings: () => getRuntime()?.view, getConfig: () => config, immutableConfig: true, resourceBudget,
     onStateChange: () => local?.localStateChanged() });
   local = createProcgenMidiOutput({ local: preview, getView: () => getRuntime()?.view, getConfig: () => config, getWebMidi: () => window.WebMidi,
     backend: settings.output, onStateChange: renderOutput, onDevicesChange: (ports, selectedId) => {
@@ -124,11 +124,15 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     if (byId('procgenSpanRedo')) byId('procgenSpanRedo').disabled = !state.canRedo;
     if (byId('procgenSpanHistoryStatus')) byId('procgenSpanHistoryStatus').textContent = automationStatus;
   };
-  const commitAutomation = (next, record = true) => {
-    next = sanitizeMidiProject(next);
+  const commitAutomation = (next, record = true, persist = true) => {
+    next = isCanonicalMidiProject(next) ? next : sanitizeMidiProject(next);
+    const runtimeUnchanged = sameMidiRuntimeInputs(project, next);
     if (record) automationHistory.record(project, next);
-    project = next; config = projectToMidiConfig(project); local.syncConfig(); spanControls.render(); spanOverlay.changed(); musicDirection?.sync(); syncMusic(); syncPopulation();
-    automationStatus = saveProcgenAutomation(automationStorage(), project) ? '' : 'Music edits kept for this session; browser storage is unavailable.';
+    project = next;
+    if (!runtimeUnchanged) {
+      config = projectToMidiConfig(project); local.syncConfig(); spanControls.render(); spanOverlay.changed(); musicDirection?.sync(); syncMusic(); syncPopulation();
+    }
+    if (persist) automationStatus = saveProcgenAutomation(automationStorage(), project) ? '' : 'Music edits kept for this session; browser storage is unavailable.';
     syncAutomationHistory();
     for (const listener of projectListeners) listener(project);
   };
@@ -155,14 +159,22 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   musicControls = createProcgenMusicControls({ document, getState: () => procgenMusicState(project, settings),
     onChange: command => commitAutomation(editProcgenMusicProject(project, settings, command)) });
   syncTargetHelp = () => spanControls.syncTargetHelp();
+  const syncSpanTool = () => {
+    const control = byId('procgenSpanEdit'), visibleControl = byId('procgenSpanVisible'), status = byId('procgenSpanToolStatus');
+    const reason = spanOverlay.presentationStatus();
+    const unavailable = !!getRuntime()?.lanes?.renderer?.workstationLayout;
+    if (control) { control.disabled = unavailable; control.checked = spanOverlay.snapshot().editing; }
+    if (visibleControl) visibleControl.disabled = unavailable;
+    if (status) status.textContent = reason;
+  };
   const setSpanEditing = enabled => {
-    if (enabled) setNukeArmed(false);
-    spanOverlay.setEditing(enabled);
-    if (byId('procgenSpanEdit')) byId('procgenSpanEdit').checked = enabled;
-    if (enabled && byId('procgenSpanVisible')) byId('procgenSpanVisible').checked = true;
+    const active = spanOverlay.setEditing(enabled);
+    if (active) setNukeArmed(false);
+    syncSpanTool();
+    if (active && byId('procgenSpanVisible')) byId('procgenSpanVisible').checked = true;
   };
   listen(byId('procgenSpanEdit'), 'change', event => setSpanEditing(event.target.checked));
-  listen(byId('procgenSpanVisible'), 'change', event => { spanOverlay.setVisible(event.target.checked); if (!event.target.checked && byId('procgenSpanEdit')) byId('procgenSpanEdit').checked = false; });
+  listen(byId('procgenSpanVisible'), 'change', event => { spanOverlay.setVisible(event.target.checked); syncSpanTool(); });
   const syncWorkerLimits = () => {
     getRuntime()?.world?.setWorkerLimits?.(settings.workerLimits);
     for (const [key, suffix] of [['bashers', 'Bashers'], ['diggers', 'Diggers'], ['builders', 'Builders']]) if (byId('procgenWorker' + suffix)) byId('procgenWorker' + suffix).value = String(settings.workerLimits[key]);
@@ -340,12 +352,31 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   for (const [id, direction] of [['procgenSpeedDown', -1], ['procgenSpeedUp', 1]]) {
     listen(byId(id), 'click', event => setSpeed(changeProcgenSpeed(settings.speed, direction, { panel: true, fast: event.shiftKey })));
   }
-  const supportedKeys = new Set(['panLeft', 'panRight', 'panUp', 'panDown', 'zoomIn', 'zoomOut', 'zoomReset', 'speedDown', 'speedDownFast', 'speedUp', 'speedUpFast', 'togglePause', 'stepForward', 'restartLevel']);
+  const supportedKeys = new Set(['panLeft', 'panRight', 'panUp', 'panDown', 'zoomIn', 'zoomOut', 'zoomReset', 'speedDown', 'speedDownFast', 'speedUp', 'speedUpFast', 'togglePause', 'stepForward', 'restartLevel', 'nuke', 'nukeInstant']);
   const keyConfig = config => ({ bindings: { ...Object.fromEntries(Object.entries(DEFAULT_KEYBINDINGS.bindings).map(([action, bindings]) =>
     [action, supportedKeys.has(action) ? config?.bindings?.[action] ?? bindings : []])), followFrontier: config?.bindings?.followFrontier || ['KeyF'], toggleShortcutOverlay: config?.bindings?.toggleShortcutOverlay || ['F1', 'Shift+Slash'] } });
   const keybindings = new KeybindingRegistry(keyConfig());
+  const shortcutLabel = action => {
+    const binding = keybindings.getBindingsForAction(action)[0];
+    if (!binding) return '';
+    const key = binding.code.startsWith('Key') ? binding.code.slice(3) : binding.code.startsWith('Digit') ? binding.code.slice(5) : binding.code;
+    return [binding.ctrl && 'Ctrl', binding.alt && 'Alt', binding.shift && 'Shift', binding.meta && 'Meta', key].filter(Boolean).join('+');
+  };
+  const updateShortcutHints = () => {
+    for (const [id, action, label] of [['procgenZoomOut', 'zoomOut', 'Zoom out'], ['procgenZoomIn', 'zoomIn', 'Zoom in'], ['procgenFollow', 'followFrontier', 'Follow the leading living lemming']]) {
+      const control = byId(id), shortcut = shortcutLabel(action);
+      if (control) control.title = shortcut ? `${label} (${shortcut})` : label;
+    }
+    const help = byId('procgenShortcutHelp');
+    if (help) help.textContent = 'Drag to pan; wheel to zoom; Shift+wheel pans. Double-click follows the leading living actor. ' +
+      [['panLeft', 'Pan left'], ['panRight', 'Pan right'], ['zoomIn', 'Zoom in'], ['zoomOut', 'Zoom out'],
+        ['followFrontier', 'Follow'], ['togglePause', 'Pause'], ['stepForward', 'Step'], ['restartLevel', 'Regenerate'],
+        ['speedDown', 'Slower'], ['speedUp', 'Faster'], ['nuke', 'Arm nuke'], ['nukeInstant', 'Nuke all'],
+        ['toggleShortcutOverlay', 'Help']].map(([action, label]) => `${label}: ${shortcutLabel(action) || 'unbound'}`).join('; ') + '.';
+  };
+  updateShortcutHints();
   window?.fetch?.('keybindings.json').then(response => response.ok ? response.json() : null).then(config => {
-    if (config && !disposed) keybindings.setConfig(keyConfig(config));
+    if (config && !disposed) { keybindings.setConfig(keyConfig(config)); updateShortcutHints(); }
   }).catch(() => {});
   let paused = false;
   const setPaused = next => {
@@ -375,12 +406,10 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     if (world.nukeLane(lane)) { event.preventDefault?.(); event.stopImmediatePropagation?.(); setNukeArmed(false); }
   }, { capture: true });
   const handleKey = event => {
-    if (event.defaultPrevented || isEditing(event)) return;
+    if (event.defaultPrevented || event.isComposing || event.key === 'Dead' || isEditing(event) ||
+        document.querySelector?.('dialog[open]') || event.composedPath?.().some(node => node?.tagName === 'DIALOG' && node.open)) return;
     if (settings.workstation && ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;
-    if (!event.ctrlKey && !event.altKey && !event.metaKey && (event.code === 'KeyT' || event.key?.toLowerCase() === 't')) {
-      if (!event.repeat) { if (event.shiftKey) { setSpanEditing(false); getRuntime()?.world?.nukeAll?.(); setNukeArmed(false); } else setNukeArmed(!nukeArmed); }
-      event.preventDefault?.(); return;
-    }
+    if (['separator', 'slider', 'tab', 'menuitem'].includes(event.target?.getAttribute?.('role')) && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return;
     if (event.key === 'Escape') { setNukeArmed(false); setSpanEditing(false); return; }
     if (event.repeat) return;
     if (event.target?.type === 'range' && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(event.key)) return;
@@ -402,15 +431,35 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
       else if (action === 'stepForward') { stepOnce(); handled = true; }
       else if (action === 'toggleShortcutOverlay') { showHelp(); handled = true; }
       else if (action === 'restartLevel' && !event.repeat) { doRestart(); handled = true; }
+      else if (action === 'nuke') { setNukeArmed(!nukeArmed); handled = true; }
+      else if (action === 'nukeInstant') { setSpanEditing(false); getRuntime()?.world?.nukeAll?.(); setNukeArmed(false); handled = true; }
     }
     if (handled) event.preventDefault?.();
   };
   listen(window, 'keydown', handleKey);
-  const getShareUrl = () => createProcgenShareUrl({ url: window.location.href, seed: window.procgenSeed,
-    settings, camera: camera()?.getState() || { cameraX: 0, cameraY: 0, scale: 3, follow: true } });
-  listen(byId('procgenShare'), 'click', () => {
+  const getShareDescriptor = () => {
+    const runtime = getRuntime(), world = runtime?.world;
+    if (!world) throw new Error('Wait for the committed world before copying a recipe');
+    if (!runtime.recipeSettings && world.laneCount !== settings.laneCount) throw new Error('Wait for the world change to finish before copying a recipe');
+    const committed = runtime.recipeSettings || settings;
+    return createProcgenRecipeShareDescriptor({ url: window.location.href, seed: world.seed,
+      settings: { ...committed, laneCount: world.laneCount, laneHeight: world.laneHeight,
+        speed: world.timer?.speedFactor ?? committed.speed },
+      camera: camera()?.getState() || { cameraX: 0, cameraY: 0, scale: 3, follow: true },
+      includeCamera: byId('procgenShareCamera')?.checked === true });
+  };
+  const getShareUrl = () => getShareDescriptor().url;
+  listen(byId('procgenShare'), 'click', async () => {
     const input = byId('procgenShareUrl'); if (!input) return;
-    input.value = getShareUrl(); input.hidden = false; input.focus?.(); input.select?.();
+    const status = byId('procgenShareStatus');
+    try {
+      const descriptor = getShareDescriptor();
+      input.value = descriptor.url; input.hidden = false; input.focus?.(); input.select?.();
+      if (window.navigator?.clipboard?.writeText) {
+        await window.navigator.clipboard.writeText(input.value);
+        if (status) status.textContent = 'Starting recipe link copied. Source compatibility must be checked by the recipient; edits, takes, assets and devices are excluded.';
+      } else if (status) status.textContent = 'Select and copy this starting recipe link. Source compatibility is unverified; edits, takes, assets and devices are excluded.';
+    } catch (error) { if (status) status.textContent = `Could not copy recipe: ${error.message}. Select and copy the visible link if available.`; }
   });
   listen(window, 'blur', () => { if (!settings.workstation) local.suspendGame(); });
   listen(window, 'focus', () => { if (!settings.workstation && !document.hidden) local.resumeGame(); });
@@ -423,9 +472,9 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     if (byId('procgenBest')) byId('procgenBest').textContent = 'Best ' + Math.max(0, Math.round(best)).toLocaleString();
   };
   const syncActiveCount = count => { if (byId('procgenAliveCount')) byId('procgenAliveCount').textContent = Math.max(0, count).toLocaleString() + ' alive'; };
-  return { settings, local, outputCapture, captureControls, getShareUrl, syncActiveCount,
+  return { settings, local, outputCapture, captureControls, getShareUrl, getShareDescriptor, syncActiveCount,
     getProject: () => project,
-    setProject: next => commitAutomation(next, false),
+    setProject: (next, { persist = true } = {}) => commitAutomation(next, false, persist),
     subscribeProject(listener) { projectListeners.add(listener); return () => projectListeners.delete(listener); },
     setPaused, setSpeed, restart: doRestart,
     isPaused: () => paused,
@@ -446,7 +495,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     prepareCharacters: sprites => characters.sync(sprites),
     sync({ charactersReady = false } = {}) {
       if (!charactersReady) characters.sync();
-      syncProgress(); musicDirection.sync(); syncMusic(); spanControls.render(); spanOverlay.sync(); syncWorkerLimits(); syncPopulation();
+      syncProgress(); musicDirection.sync(); syncMusic(); spanControls.render(); spanOverlay.sync(); syncSpanTool(); syncWorkerLimits(); syncPopulation();
       setPaused(paused); setNukeArmed(false);
       if (byId('procgenSeed')) byId('procgenSeed').value = String(settings.seed ?? window.procgenSeed ?? '');
       camera()?.applyState(settings.camera || urlConfig.camera);

@@ -47,8 +47,8 @@ describe('procgen selected audible destination', () => {
       expect([...scheduler._activeNotes.values()][0]).to.equal(gate); expect(scheduler._rateSent).to.deep.equal(history);
       expect(scheduler.gamePhrases.voices.size).to.equal(0);
       source.disabled = true; expect(f.output.syncConfig()).to.equal(true);
-      expect(scheduler._activeNotes.size).to.equal(0); expect(scheduler._rateSent).to.deep.equal(history);
-      expect(f.calls.some(call => call.type === 'cc' && call.cc === 120)).to.equal(true); f.output.dispose();
+      expect(scheduler._activeNotes.size).to.equal(0); expect(scheduler._rateSent.slice(0, history.length)).to.deep.equal(history);
+      expect(f.calls.some(call => call.type === 'noteOff')).to.equal(true); f.output.dispose();
     });
   });
 
@@ -96,7 +96,7 @@ describe('procgen selected audible destination', () => {
       expect(f.output.getState()).to.include({ backend: 'web-midi', outputId: 'second', outputName: 'Second device' }); expect(f.local.starts).to.equal(0);
       const scheduler = f.view.midiPreviewRouter.scheduler;
       f.output.stop(); expect(f.view.midiPreviewRouter).to.equal(null); expect(f.output.getState().backend).to.equal('no-active-output');
-      expect(f.secondCalls.some(call => call.type === 'cc' && call.cc === 120 && call.value === 0)).to.equal(true);
+      expect(f.secondCalls.some(call => call.type === 'noteOff' && call.note === 61)).to.equal(true);
       expect(scheduler._activeNotes.size).to.equal(0); expect(scheduler._pendingNoteOns.size).to.equal(0); f.output.dispose();
     });
   });

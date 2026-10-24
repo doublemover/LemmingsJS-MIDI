@@ -100,6 +100,8 @@ const summarizeSamples = (samplesMs, iterations) => {
   const worst = percentile(clean, 1);
   return {
     samplesMs: clean.map((value) => Number(value.toFixed(2))),
+    sampleCount: clean.length,
+    workIterations: iterations,
     avgMs: Number(avg.toFixed(2)),
     p50Ms: Number(p50.toFixed(2)),
     p95Ms: Number(p95.toFixed(2)),

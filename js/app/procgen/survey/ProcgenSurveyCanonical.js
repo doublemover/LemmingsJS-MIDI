@@ -1,4 +1,7 @@
-const SURVEY_STATE_SCHEMA = 1;
+const SURVEY_STATE_SCHEMA = 3;
+const SURVEY_CANONICAL_SCHEMA = 2;
+const SUPPORTED_VIEWS = new Set(['Int8Array', 'Uint8Array', 'Uint8ClampedArray', 'Int16Array', 'Uint16Array',
+  'Int32Array', 'Uint32Array', 'Float32Array', 'Float64Array', 'BigInt64Array', 'BigUint64Array']);
 const compareText = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 const canonicalSurveyJson = value => {
   const encode = item => {
@@ -8,7 +11,15 @@ const canonicalSurveyJson = value => {
       if (typeof item === 'function' || typeof item === 'symbol' || typeof item === 'bigint') throw new Error('Unsupported canonical value');
       return item === null ? ['null'] : [typeof item, item];
     }
-    if (ArrayBuffer.isView(item)) return ['typed', item.constructor.name, Array.from(item)];
+    if (item instanceof DataView) return ['data-view', item.byteOffset, item.byteLength,
+      Array.from(new Uint8Array(item.buffer, item.byteOffset, item.byteLength))];
+    if (ArrayBuffer.isView(item)) {
+      const type = item.constructor.name;
+      if (!SUPPORTED_VIEWS.has(type)) throw new Error(`Unsupported canonical view: ${type}`);
+      return ['typed-v2', type, item.byteOffset, item.byteLength, item.length,
+        Array.from(item, value => typeof value === 'bigint' ? ['bigint', value.toString()] : encode(value))];
+    }
+    if (item instanceof ArrayBuffer) return ['array-buffer', item.byteLength, Array.from(new Uint8Array(item))];
     if (Array.isArray(item)) return ['array', item.map(encode)];
     if (item instanceof Map) return ['map', [...item].map(([key, entry]) => [encode(key), encode(entry)]).sort((a, b) => compareText(JSON.stringify(a[0]), JSON.stringify(b[0])))];
     if (item instanceof Set) return ['set', [...item].map(encode).sort((a, b) => compareText(JSON.stringify(a), JSON.stringify(b)))];
@@ -35,4 +46,4 @@ const freezeSurveyData = value => {
   if (value && typeof value === 'object' && !Object.isFrozen(value)) { for (const entry of Object.values(value)) freezeSurveyData(entry); Object.freeze(value); }
   return value;
 };
-export { SURVEY_STATE_SCHEMA, canonicalSurveyJson, hashSurveyValue, semanticSurveyRandom, freezeSurveyData };
+export { SURVEY_STATE_SCHEMA, SURVEY_CANONICAL_SCHEMA, canonicalSurveyJson, hashSurveyValue, semanticSurveyRandom, freezeSurveyData };

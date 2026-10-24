@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { collectMcpRuntimeClosure } from './McpRuntimeClosure.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, '..');
@@ -170,6 +171,8 @@ const buildBundle = async (
     ? path.join(rootDir, 'dist', `mcpb-${options.surface}`)
     : path.join(rootDir, 'dist', 'mcpb');
   const copyList = createCopyList(options.surface);
+  const closure = await collectMcpRuntimeClosure({ rootDir, fsImpl });
+  if (!path.relative(path.resolve(rootDir), path.resolve(distDir)).startsWith('dist' + path.sep)) throw new Error('Unexpected MCP staging directory.');
 
   await fsImpl.rm(distDir, { recursive: true, force: true });
   await fsImpl.mkdir(distDir, { recursive: true });
@@ -177,11 +180,30 @@ const buildBundle = async (
     await copyFile(entry, { distDir, rootDir, fsImpl });
   }
   await copyDirectory(path.join(rootDir, 'mcp'), path.join(distDir, 'mcp'), fsImpl);
+  for (const file of closure.files) {
+    const destination = path.join(distDir, file.path); await ensureDir(destination, fsImpl);
+    await fsImpl.copyFile(path.join(rootDir, file.path), destination);
+  }
+  let resolvedDependencies = {};
+  if (closure.dependencies.length) {
+    const sourcePackage = JSON.parse(await fsImpl.readFile(path.join(rootDir, 'package.json'), 'utf8'));
+    const stagedPackage = JSON.parse(await fsImpl.readFile(path.join(distDir, 'package.json'), 'utf8'));
+    for (const dependency of closure.dependencies) {
+      const version = sourcePackage.dependencies?.[dependency] || sourcePackage.devDependencies?.[dependency];
+      if (!version) throw new Error(`MCP runtime dependency is not declared: ${dependency}`);
+      resolvedDependencies[dependency] = version;
+    }
+    stagedPackage.dependencies = resolvedDependencies;
+    stagedPackage.engines = sourcePackage.engines;
+    await fsImpl.writeFile(path.join(distDir, 'package.json'), JSON.stringify(stagedPackage, null, 2) + '\n');
+  }
+  await fsImpl.writeFile(path.join(distDir, 'runtime-closure.json'), JSON.stringify({ ...closure, surface: options.surface,
+    dependencyVersions: resolvedDependencies }, null, 2) + '\n');
 
   const relative = path.relative(rootDir, distDir);
   const suffix = options.surface ? ` (surface: ${options.surface})` : '';
   log.log(`MCPB bundle staged at ${relative}${suffix}`);
-  return { distDir, surface: options.surface };
+  return { distDir, surface: options.surface, closure };
 };
 
 const isMainModule = (() => {
