@@ -255,7 +255,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     if (catalog.state !== 'bound-application-engines' || !descriptor || !['native-oscillator', 'native-fm', 'native-modal', 'native-sample'].includes(descriptor.engineId) ||
         !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => requirement?.[key] === descriptor[key]) || input.manifest.applicationBuildId !== catalog.executionIdentity.buildId)
       throw problem('engine-identity-unbound', 'Native encoding requires the same immutable application and source artifact.');
-    const value = await encodeNativeOfflineRender(input, { signal, yieldControl, onProgress }); guard(signal, current);
+    const value = await encodeNativeOfflineRender(input, { signal, yieldControl, onProgress, maxWorkingBytes: estimatedPeakBytes }); guard(signal, current);
     const retainedBytes = value.files ? value.files.reduce((sum, file) => sum + file.bytes.byteLength * 2 + 262144, 262144) : value.bytes.byteLength * 2 + 262144;
     if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Native encoded files exceed their admitted retained storage.');
     return { value, inputBytes: metadata.bytes, nodes: metadata.nodes, retainedBytes };

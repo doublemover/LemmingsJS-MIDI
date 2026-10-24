@@ -113,9 +113,9 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
     cancelRender.disabled = !busy; first.disabled = last.disabled = sourceModel.disabled = rate.disabled = tail.disabled = stems.disabled = busy || loading;
     const selectedEngine = sourceModel.value === 'saved-instrument' ? instrumentReference?.engineRequirement.engineId : sourceModel.value;
     const nativeRestore = NATIVE_OFFLINE_SOURCE_IDS.includes(selectedEngine);
-    const hasEffects = effect.value !== 'none'; renderButton.disabled ||= hasEffects && nativeRestore;
+    const hasEffects = effect.value !== 'none';
     effect.disabled = busy || loading; effectSend.disabled = effectReturn.disabled = busy || loading || !hasEffects;
-    effectInfo.textContent = !hasEffects ? 'Dry source graph. No creative effect graph is added.' : nativeRestore ? 'Full effects currently require an owned source. Choose Sine, Seeded pluck, Artificial formants or Spectral frames, or select Dry source graph.' :
+    effectInfo.textContent = !hasEffects ? 'Dry source graph. No creative effect graph is added.' :
       'Creates a new realization with a constant authored send. Live effect gestures are not replayed. Dry lanes and shared return come from one full graph; final protection is excluded. Native convolution bodies require their offline adapter.';
     tailSeconds.max = hasEffects ? '30' : '4'; if (Number(tailSeconds.value) > Number(tailSeconds.max)) tailSeconds.value = tailSeconds.max;
     restore.disabled = busy || loading || nativeRestore; if (nativeRestore) restore.value = 'forward-preroll';

@@ -2700,6 +2700,25 @@ versus unreplayed live gestures. Owned sources are wired; native source/effect
 postprocessing and convolution adapters, graph-wide cuts, gesture capture/replay
 and all runtime/PCM/listening acceptance remain work. No runtime tests ran.
 
+All four native source profiles now feed the same owned effect graph in the
+admitted encoding worker, after their actual source-only OfflineAudioContext
+completes. Full preroll excitation is retained; processed master/shared returns
+come from one graph and original dry planes remain unchanged. Graph/hash/ABI/
+tap manifests and worker transfers cover the complete 25-file owned profile
+(24 for native sources). Native sample decoded-byte footprints and retained
+native PCM are included before source/worker admission. The dialog supports
+these explicit effect revoices for all nine implemented source profiles. No
+additional context is created by the effect pass. Native IR offline processing,
+recorded effect gestures/causal voice sends, graph-wide state cuts, remaining
+DSP/content/world features and all deferred acceptance still remain. No runtime
+unit/browser/PCM/performance/listening tests or content builds ran.
+
+The latest repository refresh adds #1259–#1263 to the inventory (296 known
+issues). Next correctness work is the held-out exemplar/report contradiction,
+shared WALK read/action accounting, per-endpoint solver surface bindings, and
+finite multi-entrance birth/minimap-death lifecycle ownership. Their reported
+producer/consumer paths are reviewed before further new DSP work.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical

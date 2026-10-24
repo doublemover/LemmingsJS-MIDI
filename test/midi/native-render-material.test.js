@@ -24,7 +24,7 @@ describe('isolated native render decode material (ownership doubles)', () => {
     } };
     const material = await prepareNativeRenderMaterial({ provider, resources, definition, reference: {}, owner: 'fixture', OfflineAudioContext: OfflineDouble });
     expect(events).to.deep.equal(['decoded-pin', 'native-retirement']); expect(resources.diagnostics().reservations).to.equal(0);
-    expect(material.assets[0]).to.equal(pin); expect(material.descriptor.nativeContextRetired).to.equal(true);
+    expect(material.assets[0]).to.equal(pin); expect(material.descriptor.nativeContextRetired).to.equal(true); expect(material.descriptor.bytes).to.equal(256);
     await material.release().completion; expect(active).to.equal(false); expect(() => material.assets).to.throw('retired'); await resources.dispose().completion;
   });
   it('joins canceled decoding and native context retirement before releasing their declared storage', async () => {

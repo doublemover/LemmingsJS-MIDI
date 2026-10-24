@@ -61,7 +61,6 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
     throw failure('render-preflight', 'Choose a bounded owned-source render, supported sample rate, range, tail policy and the source-specific captured lane stem limit.');
   const owned = NATIVE_OFFLINE_SOURCE_IDS.includes(descriptor.engineId) ? getNativeOfflineProfile(descriptor.engineId) : getOwnedSourceProfile(descriptor.engineId), patch = validateInstrumentPatchV2(definition, descriptor);
   if (!Array.isArray(effectReturnNodeIds) || !effectGraph && effectReturnNodeIds.length) throw failure('effect-render-preflight', 'Shared effect taps require an explicit graph realization.');
-  if (effectGraph && owned.native) throw failure('native-effect-render-required', 'This source requires the native full-effect render adapter.');
   const effectPlan = effectGraph ? prepareOwnedEffectGraphPlan(effectGraph, sampleRate, effectReturnNodeIds) : null;
   effectReturnNodeIds = Object.freeze([...effectReturnNodeIds]);
   if ((owned.requiresNativeAssets ? patch.sampleRefs.length < 1 || patch.sampleRefs.length > 32 : owned.requiresPCM ? patch.sampleRefs.length !== 1 : patch.sampleRefs.length !== 0) || patch.modulations.length || !owned.extended && (patch.macros.length || patch.causalBindings.length || patch.variation) || patch.voicePolicy.steal !== 'reject' || patch.voicePolicy.maxVoices > owned.voices)

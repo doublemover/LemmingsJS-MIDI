@@ -678,12 +678,13 @@ prepared artifact remains a separate owner. Graph manifests contain definition,
 processor revisions/hash, latency/tail bounds and explicit source/tap scope.
 
 This path currently accepts declarative owned gain/delay/nonlinear graphs with
-one stereo input/output and up to eight unique node taps. Native source/effect
-and IR adapters are explicitly refused pending integration. Static authored
+one stereo input/output and up to eight unique node taps. Native oscillator/FM/
+modal/sample PCM also uses this same effect path in the encoding worker. Native
+IR body graphs remain explicitly refused pending their adapter. Static authored
 defaults are an explicit new revoice, not reconstruction of live effect gestures.
 Source-only state cuts retain the continued preroll effect graph and do not
-claim an exported full-graph checkpoint. Public owner/dialog wiring and all
-live/offline PCM/listening qualification remain pending.
+claim an exported full-graph checkpoint. All live/offline PCM/listening
+qualification remains pending.
 
 The take-render dialog now exposes the owned-effect path as an explicit new
 realization: choose dry, Quarry Echo, Quarry Tape or compatible active saved
@@ -691,4 +692,19 @@ defaults, set a constant source send, and optionally export the shared return.
 It never edits the saved rack or claims live gesture replay. The public owner
 admits complete graph/tap PCM, verifies graph definition/hash/revisions and
 per-file tap identity, and retains the prior bundle if any replacement fails.
-Native source postprocessing and native IR bodies still need their adapters.
+Native source postprocessing now uses the same owned graph kernels. Native IR
+bodies still need their offline adapter.
+
+Native source rendering retains the original full preroll master/dry planes,
+then processes the complete master once in the admitted encoding worker. It
+captures cropped processed master/shared returns simultaneously and preserves
+the dry planes. No extra AudioContext is created for this effect pass. The
+manifest verifies the executing graph/revisions and records actual processor
+continuation, with final protection excluded.
+
+Preflight includes native PCM retained across worker encoding, all output taps,
+processing state and transfer/metadata overlap. Native sample material now
+reports exact aggregate decoded bytes for this admission. The output context
+allows up to 120 s of captured history plus 30 s of explicitly bounded effect
+tail, subject to the existing memory/work limits. These are implementation
+bounds, not measured device/browser throughput or listening qualification.

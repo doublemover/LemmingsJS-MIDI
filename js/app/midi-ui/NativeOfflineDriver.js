@@ -21,7 +21,7 @@ export async function renderNativeOfflineGraph({ patch, events, frames, sampleRa
   externalSignal?.throwIfAborted();
   const channels = 2 + stemLaneIds.length * 2, nativeBytes = frames * channels * 4;
   if (!NATIVE_OFFLINE_SOURCE_IDS.includes(patch?.engineId) || ![44100, 48000, 96000].includes(sampleRate) ||
-      !natural(frames) || frames < 1 || frames > sampleRate * 124 || !natural(nativeBytes) || nativeBytes > 256 * 1048576 ||
+      !natural(frames) || frames < 1 || frames > sampleRate * 150 || !natural(nativeBytes) || nativeBytes > 256 * 1048576 ||
       !Array.isArray(assets) || assets.length > 32 || patch.engineId !== 'native-sample' && assets.length || !Array.isArray(events) || events.length > 32768 || !Array.isArray(stemLaneIds) || stemLaneIds.length > 15 ||
       new Set(stemLaneIds).size !== stemLaneIds.length || stemLaneIds.some(id => typeof id !== 'string' || !id || id.length > 128) ||
       typeof OfflineAudioContext !== 'function' || typeof resources?.reserve !== 'function' || typeof admission?.acquire !== 'function' || typeof onProgress !== 'function' || typeof isCurrent !== 'function')
@@ -81,7 +81,7 @@ export async function renderNativeOfflineGraph({ patch, events, frames, sampleRa
     let currentLane = null;
     host = { _context: context, _generation: 1, _sessions: new Map([[owner, { generation: 1 }]]), _voices: new Set(),
       _semanticVoiceOwners: new Map(), _voicesByToken: new Map(), _retiredVoices: new Map(), _retirementFaults: new Set(),
-      _maxNoteSeconds: 124, _maxScheduledVoices: 512, _maxLiveScheduledVoices: 512, _maxVoices: 256, _voiceSequence: 0,
+      _maxNoteSeconds: 150, _maxScheduledVoices: 512, _maxLiveScheduledVoices: 512, _maxVoices: 256, _voiceSequence: 0,
       _audioResources: resources, _intervalAdmission: createAudioIntervalAdmission({ maxIntervals: 513 }),
       _ownerReady: () => context.state !== 'closed' && !signal?.aborted, getAudioContext: () => context,
       _channel: () => channelFor(currentLane), _workloadClass: () => 'live', _nowMs: () => context.currentTime * 1000,

@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import { planCausalSourceRender } from '../../js/app/midi-ui/CausalOwnedRender.js';
 import { CAUSAL_RENDER_SOURCES } from '../../js/app/midi-ui/CausalTakeAudioRender.js';
 import { describeNativeInstrumentEngines } from '../../js/app/midi-ui/NativeInstrumentSchema.js';
+import { createQuarryTape } from '../../js/midi/content/DubQuarryRack.js';
 
 const intent = (kind, milliseconds, worldId = 'world-a') => ({ version: 1, kind, intentId: worldId + ':' + kind, voiceId: 'reused-id', generation: 1, actorId: 7,
   worldId, sourceEventIds: [], laneId: worldId, scoreTime: { sourceTimeMs: milliseconds, subTick: 0 }, pitch: { cents: 6000.12345 }, velocity01: 0.6, expression: {} });
@@ -11,6 +12,14 @@ const source = intents => ({ operation: 'sound-only-revoice', version: 1, takeId
 const request = async (engineId, intents) => ({ definition: CAUSAL_RENDER_SOURCES.find(entry => entry.id === engineId).definition,
   descriptor: (await describeNativeInstrumentEngines([{ engineId, engineVersion: 1, artifactHash: 'a'.repeat(64) }]))[0], revoice: source(intents), endSeconds: 1 });
 describe('native causal source preflight', () => {
+  it('admits the same shared owned effects and independent return taps for native oscillator/FM/modal sources', async () => {
+    for (const engineId of ['native-oscillator', 'native-fm', 'native-modal']) {
+      const input = await request(engineId, [intent('begin', 100), intent('end', 500)]);
+      const plan = await planCausalSourceRender({ ...input, effectGraph: createQuarryTape({ send01: 0.3 }), effectReturnNodeIds: ['return'], tail: { mode: 'bounded-natural', maxSeconds: 30 } });
+      expect(plan.effectPlan.processingRevisions.alignment).to.equal('fixed-linear-fractional-delay-v1'); expect(plan.effectHash).to.match(/^[a-f0-9]{64}$/);
+      expect(plan.effectReturnNodeIds).to.deep.equal(['return']); expect(plan.outputEnd).to.be.greaterThan(plan.endFrame); expect(plan.capturedBegins).to.equal(1);
+    }
+  });
   it('retains original world and event identities for reused voice IDs and high resolution pitch', async () => {
     const a = intent('begin', 100), b = intent('begin', 100, 'world-b');
     const plan = await planCausalSourceRender(await request('native-oscillator', [a, b, intent('end', 500), intent('end', 500, 'world-b')]));

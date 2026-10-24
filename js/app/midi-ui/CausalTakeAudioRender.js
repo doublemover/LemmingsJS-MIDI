@@ -42,7 +42,7 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
   let disposed = false, active = null, prepared = null, serial = 0, phase = 'idle', progress = null, lastError = null;
   const state = () => Object.freeze({ schema: 'lemmings-causal-render-state/v1', phase, disposed, active: !!active, progress,
     prepared: prepared?.metadata() || null, materialResources: materialResources.diagnostics(), unresolvedRetirement: unresolved.size, error: lastError,
-    capabilities: Object.freeze({ intentSine: true, intentOwnedSources: Object.freeze(['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular']), intentNativeSources: NATIVE_OFFLINE_SOURCE_IDS, nativeOfflineAvailable: typeof globalThis.OfflineAudioContext === 'function', ownedEffects: Object.freeze(['gain', 'feedback-delay', 'nonlinear-chain']), nativeEffects: false, maxSharedEffectTaps: 8, capturedPcm: false, admissionHistory: false, arbitraryOfflineEngines: false, maxSeconds: 120, maxOutputBytes: 64 * 1048576 }) });
+    capabilities: Object.freeze({ intentSine: true, intentOwnedSources: Object.freeze(['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular']), intentNativeSources: NATIVE_OFFLINE_SOURCE_IDS, nativeOfflineAvailable: typeof globalThis.OfflineAudioContext === 'function', ownedEffects: Object.freeze(['gain', 'feedback-delay', 'nonlinear-chain']), nativeEffects: true, nativeConvolution: false, maxSharedEffectTaps: 8, capturedPcm: false, admissionHistory: false, arbitraryOfflineEngines: false, maxSeconds: 120, maxOutputBytes: 64 * 1048576 }) });
   const report = () => { try { onState(state()); } catch { /* Rendering ownership does not depend on view callbacks. */ } };
   const makeBundle = (entries, manifest) => {
     const scope = createProcgenRetirementScope(); let discarded = false;
@@ -86,7 +86,6 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
         if (catalog.state !== 'bound-application-engines' || !profile?.controlReferenceRender || !descriptor || !HASH.test(descriptor.artifactHash))
           throw failure('engine-identity-unbound', 'Prepare this render from an immutable application build with the selected owned source.');
         if (native && restorationMode !== 'forward-preroll') throw failure('restore-mode-unavailable', 'Native sources reconstruct from covered history; their hidden DSP state cannot use an owned state cut.');
-        if (native && graph) throw failure('native-effect-render-required', 'Choose an owned source for this full-effect render; the native effect adapter is unavailable.');
         const effectPlan = graph ? prepareOwnedEffectGraphPlan(graph, sampleRate, returns) : null, effectHash = effectPlan ? await effectGraphHash(effectPlan) : null;
         const effectDefinitionHash = effectPlan ? await hashData(effectPlan.definition) : null; check();
         if (reference && (reference.definitionHash !== definitionHash || !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => reference.engineRequirement[key] === descriptor[key])))
@@ -121,7 +120,7 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
         phase = native ? 'rendering-native' : 'rendering'; report();
         if (native) {
           operation.native = await prepareCausalNativeRenderInput({ ...input, descriptor, applicationBuildId: catalog.executionIdentity.buildId, ...(profile.requiresNativeAssets ? { nativeAssets: operation.material.assets, materialDescriptor: operation.material.descriptor } : {}) },
-            { resources: materialResources, resourceBudget, signal: controller.signal, isCurrent: () => !disposed && isCurrent(), maxWorkingBytes: 512 * 1048576 - sourceFootprint * 6,
+            { resources: materialResources, resourceBudget, signal: controller.signal, isCurrent: () => !disposed && isCurrent(), maxWorkingBytes: 512 * 1048576 - sourceFootprint * 6 - (operation.material?.descriptor.bytes || 0),
               onProgress: value => { if (!disposed && active === operation) { progress = Object.freeze(value); report(); } } }); check();
           estimatedPeakBytes = operation.native.estimatedPeakBytes; input = operation.native.input;
           phase = 'encoding-native'; report();

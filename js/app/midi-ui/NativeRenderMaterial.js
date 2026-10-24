@@ -55,6 +55,7 @@ export async function prepareNativeRenderMaterial({ provider, resources, definit
   let released = false; const scope = createProcgenRetirementScope();
   return Object.freeze({ get assets() { if (released) throw new Error('Native render material was retired.'); return material.assets; },
     descriptor: Object.freeze({ encodedHash: material.assets.length === 1 ? material.assets[0].ref.contentHash : null, decoderVersion: DECODER_VERSION, sampleRate,
+      bytes: material.assets.reduce((sum, pin) => sum + pin.buffer.length * pin.buffer.numberOfChannels * 4, 0),
       assets: Object.freeze(material.assets.map(pin => Object.freeze({ encodedHash: pin.ref.contentHash, sourceFrames: pin.ref.frames, sourceSampleRate: pin.ref.sourceSampleRate,
         frames: pin.buffer.length, channels: pin.buffer.numberOfChannels }))), nativeContext: 'isolated-one-frame-decode-owner', nativeContextRetired: true }),
     release() { return scope.retire([{ name: 'native-render-material', run: () => { const receipt = material.release();

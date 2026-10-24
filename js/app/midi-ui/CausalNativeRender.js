@@ -7,9 +7,9 @@ export async function prepareCausalNativeRenderInput(input, { resources, signal,
   signal?.throwIfAborted();
   const plan = await planCausalSourceRender({ ...input, signal, maxPlanningBytes: maxWorkingBytes }); signal?.throwIfAborted();
   const nativeBytes = plan.outputEnd * (2 + plan.stemLaneIds.length * 2) * 4;
-  const estimatedPeakBytes = nativeBytes * 8 + 32 * 1048576;
+  const estimatedPeakBytes = nativeBytes * 8 + 32 * 1048576 + (plan.effectPlan ? plan.pcmBytes * 4 + plan.effectPlan.stateBytes + 4 * 1048576 : 0);
   if (!Number.isSafeInteger(nativeBytes) || nativeBytes > 56 * 1048576 || !Number.isSafeInteger(estimatedPeakBytes) ||
-      estimatedPeakBytes + plan.planningBytes > maxWorkingBytes) throw Object.assign(new Error('Native preroll, simultaneous taps and encoding overlap exceed the admitted workspace. Choose a shorter history or fewer stems.'), { code: 'native-render-memory-capacity' });
+      Math.max(nativeBytes + 16 * 1048576, nativeBytes + estimatedPeakBytes) + plan.planningBytes > maxWorkingBytes) throw Object.assign(new Error('Native preroll, retained PCM, simultaneous taps and encoding overlap exceed the admitted workspace. Choose a shorter history or fewer stems.'), { code: 'native-render-memory-capacity' });
   const originals = new Map(input.revoice.intents.map(intent => [intent.intentId, intent])), events = [];
   let indexLimitedOnsets = 0, omittedModes = 0;
   for (const voice of plan.voices.values()) { if (voice.nativeSourcePlan?.indexLimited) indexLimitedOnsets++; omittedModes += voice.nativeSourcePlan?.omittedModes?.length || 0; }
@@ -30,7 +30,9 @@ export async function prepareCausalNativeRenderInput(input, { resources, signal,
       exactEndSourceFrame: endFrame, renderedEndSourceFrame: outputEnd,
       restoration: { mode: 'forward-native-preroll', fromSourceFrame: 0, prerollFrames: firstFrame, initialVoices: 0, maxHistorySeconds: 120, exactNativeStateExport: false },
       tail: { mode: plan.tail.mode, maxSeconds: plan.tail.maxSeconds ?? 4, derivedBoundaryReleases: plan.derivedReleases,
-        truncated: [...plan.voices.values()].some(voice => voice.end > outputEnd) },
+        truncated: [...plan.voices.values()].some(voice => voice.end > outputEnd) || plan.effectTailTruncated, effectTailBoundFrames: plan.effectPlan?.maximumTailFrames ?? 0 },
+      effectGraph: plan.effectPlan ? { definition: plan.effectPlan.definition, hash: plan.effectHash, processingRevisions: plan.effectPlan.processingRevisions, latencyFrames: plan.effectPlan.latencyFrames,
+        maximumTailFrames: plan.effectPlan.maximumTailFrames, controls: 'explicit-authored-defaults-not-replayed-live-gestures', scope: 'one-full-shared-owner-sum' } : null,
       definitionHash: plan.definitionHash, patchId: plan.patch.id, patchRevision: plan.patch.revision,
       engineRequirement: Object.fromEntries(['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].map(key => [key, plan.descriptor[key]])), applicationBuildId: plan.applicationBuildId,
       commands: { capturedBegins: plan.capturedBegins, capturedUpdates: plan.capturedUpdates, capturedEnds: plan.capturedEnds, derivedReleases: plan.derivedReleases,
@@ -43,8 +45,8 @@ export async function prepareCausalNativeRenderInput(input, { resources, signal,
         nativeSourceProfile: { indexLimitedOnsets, omittedModes, qualification: 'native-source-register-plans-not-measured-alias-or-listening-evidence' } },
       nativeScheduling: native.receipt,
       sampleTailPlanning: plan.owned.requiresNativeAssets ? { mode: 'conservative-release-child-duration-from-minimum-captured-rate', sameKitChokes: [...plan.voices.values()].filter(voice => voice.chokeFrame != null).length, exactPlayheadExport: false } : null,
-      stems: { mode: 'simultaneous-dry-lane-taps', laneIds: stemLaneIds, allCapturedLanesIncluded: [...plan.lanes].every(lane => stemLaneIds.includes(lane)),
-        sharedReturns: 'none-in-selected-graph', recombination: 'linear-dry-sum-with-float32-rounding', nonlinearMaster: 'excluded' },
+      stems: { mode: plan.effectPlan ? 'simultaneous-dry-lane-and-shared-effect-node-taps' : 'simultaneous-dry-lane-taps', laneIds: stemLaneIds, allCapturedLanesIncluded: [...plan.lanes].every(lane => stemLaneIds.includes(lane)),
+        sharedReturns: plan.effectPlan ? plan.effectReturnNodeIds : 'none-in-selected-graph', recombination: plan.effectPlan ? 'dry-lanes-and-shared-node-taps-from-one-render-not-isolated-nonlinear-lane-renders' : 'linear-dry-sum-with-float32-rounding', nonlinearMaster: plan.effectPlan ? 'creative-graph-included-final-protection-excluded' : 'excluded' },
       acousticReceipt: false, qualification: 'native-pcm-not-listening-or-cross-browser-qualified', originalRecordMutated: false };
     const planes = Array.from({ length: native.channels }, (_, index) => native.buffer.getChannelData(index));
     let payload = { mode: 'causal-take', manifest, planes, firstFrame, endFrame: outputEnd, stemLaneIds };
