@@ -1,4 +1,3 @@
-import { selectLocalAudioVoice } from '../../midi/scheduler/LocalAudioVoiceBudget.js';
 import { createSmoothedAudioParameter } from './SmoothedAudioParameter.js';
 import { createInstrumentExecutionLifecycle, isManagedExecutionEpoch } from './InstrumentExecutionLifecycle.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
@@ -159,13 +158,8 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
     let resourceLease;
     try { resourceLease = preview._audioResources.reserveNativeVoice(owner, intent.generation); }
     catch { return failure('audio-resource-budget', intent); }
-    const incoming = { priority: 1, laneIndex: intent.laneId ?? 0 };
     const simultaneous = [...preview._voices].filter(voice => !voice.stolen && (voice.renderCost > 1 || voice.start <= start && voice.releaseAt > start));
-    let victim = null;
-    if (preview._renderVoiceCount(simultaneous) >= preview._maxVoices) {
-      victim = selectLocalAudioVoice(simultaneous, incoming);
-      if (!victim) { resourceLease.release(); return failure('shared-voice-budget', intent); }
-    }
+    if (!preview._hasWorkloadVoiceCapacity(owner, 1, simultaneous)) { resourceLease.release(); return failure('shared-voice-budget', intent); }
     const values = prepared.values;
     let oscillator, gain, pressureGain, pan, voice;
     try {
@@ -176,13 +170,13 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
       pan = context.createStereoPanner?.() || null;
       const end = gateMode === 'owned' ? leaseEnd : start + preview._maxNoteSeconds;
       const basePeak = intent.velocity01 * values.gain01 * prepared.patch.mix.gain01;
-      voice = { oscillator, gain, pressureGain, pan, resourceLease, owner, number: 0, note: Math.round(intent.pitch.cents / 100),
+      voice = { oscillator, gain, pressureGain, pan, resourceLease, owner, workloadClass: preview._workloadClass(owner), number: 0, note: Math.round(intent.pitch.cents / 100),
         start, end, releaseAt: end - release, released: false, id: ++preview._voiceSequence,
         startMs: preview._nowMs() + (start - context.currentTime) * 1000, token: null,
         basePeak, peak: basePeak,
         attack: values.attackSeconds, decay: values.decaySeconds, sustain: values.sustain01, release,
         velocity: intent.velocity01 * 127, instrument: prepared.patch,
-        priority: incoming.priority, laneIndex: incoming.laneIndex, startedAt: start,
+        priority: 1, laneIndex: intent.laneId ?? 0, startedAt: start,
         semanticKey: identity, semanticGeneration: intent.generation, semanticEpoch: executionEpoch,
         ownedGate: gateMode === 'owned', patchRevision: prepared.patch.revision, patchId: prepared.patch.id,
         mixPan: prepared.patch.mix.pan01, onsetId: intent.onsetId ?? null, actorId: intent.actorId ?? null,
@@ -216,7 +210,6 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
         voice.ownedGate && !voice.released ? 'owner-lease-expired' : 'source-ended');
       preview._voices.add(voice); voices.set(identity, voice); preview._semanticVoiceOwners.set(sharedIdentity, voice);
       oscillator.start(start); oscillator.stop(end);
-      if (victim) { preview._voiceSteals++; preview._release(victim, Math.max(context.currentTime, start - 0.04), true); }
       const receipt = Object.freeze({ status: 'accepted', stage: 'scheduled', voiceId: intent.voiceId,
         generation: intent.generation, executionEpoch, targetFrame, patchId: prepared.patch.id, patchRevision: prepared.patch.revision });
       trace({ ...receipt, sourceEventIds: Object.freeze(intent.sourceEventIds?.slice(0, 32) || []),

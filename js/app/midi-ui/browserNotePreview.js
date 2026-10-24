@@ -4,6 +4,7 @@ import { createTimedControlTimeline } from './TimedControlTimeline.js';
 import { createAudioObservationLeases } from './AudioObservationLeases.js';
 import { createAudioResourceLeases, releaseAudioResourceAfterRetirement } from './AudioResourceLeases.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
+import { createOwnedCueRouting } from './OwnedCueRouting.js';
 const retirementState = receipt => receipt ? { state: receipt.state, outcome: receipt.outcome,
   failures: receipt.resources.filter(resource => ['failed', 'unknown'].includes(resource.status)).map(resource => ({ name: resource.name, status: resource.status, error: resource.error })) } : null;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -60,7 +61,8 @@ const createMixCompressor = context => {
 /** A local tone monitor. It owns its audio context and never opens a MIDI device. */
 class BrowserNotePreview {
   constructor({ createAudioContext, nowMs, onStateChange, onPlayback, maxVoices = 32, maxNoteSeconds = 8,
-    volume = 0.15, masterVolume = 0.7, resourceBudget = null } = {}) {
+    volume = 0.15, masterVolume = 0.7, resourceBudget = null, cueVoices = 0,
+    createMediaElement = tag => globalThis.document?.createElement(tag), mediaDevices = globalThis.navigator?.mediaDevices } = {}) {
     const AudioContextType = globalThis.AudioContext || globalThis.webkitAudioContext;
     this._createContext = createAudioContext === undefined
       ? (AudioContextType ? () => new AudioContextType({ sampleRate: 48000 }) : null)
@@ -69,7 +71,10 @@ class BrowserNotePreview {
     this._listeners = new Set();
     if (typeof onStateChange === 'function') this._listeners.add(onStateChange);
     this._maxVoices = clamp(Math.trunc(finite(maxVoices, 32)), 1, MAX_RENDER_VOICES);
-    this._maxScheduledVoices = Math.max(MAX_SCHEDULED_VOICES, this._maxVoices + MAX_RELEASE_TAILS);
+    if (!Number.isSafeInteger(cueVoices) || cueVoices < 0 || cueVoices > 8 || this._maxVoices + cueVoices > MAX_RENDER_VOICES) throw new RangeError('Cue workload requires an explicit spare voice quota.');
+    this._maxCueVoices = cueVoices;
+    this._maxScheduledVoices = Math.max(MAX_SCHEDULED_VOICES, this._maxVoices + cueVoices + MAX_RELEASE_TAILS);
+    this._cueRouting = null; this._createMediaElement = createMediaElement; this._mediaDevices = mediaDevices;
     this._voiceSteals = 0;
     this._voiceDrops = 0;
     this._maxNoteSeconds = clamp(finite(maxNoteSeconds, 8), 0.1, 16);
@@ -151,19 +156,59 @@ class BrowserNotePreview {
     });
   }
 
-  _ownerReady(owner) { return this._ready() && !this._retirementFaults.has(owner) && (owner == null || this._sessions.get(owner)?.enabled === true); }
+  _ownerReady(owner) { return this._ready() && !this._retirementFaults.has(owner) && (owner == null || this._sessions.get(owner)?.enabled === true) &&
+    (this._workloadClass(owner) !== 'cue' || this._cueRouting?.state().state === 'playing-route'); }
+
+  _workloadClass(owner) { return this._sessions.get(owner)?.workloadClass || 'live'; }
+
+  _workloadVoiceCount(owner, voices = this._voices) {
+    const workload = this._workloadClass(owner); let count = 0;
+    for (const voice of voices) if ((voice.workloadClass || 'live') === workload) count += voice.renderCost || 1;
+    return count;
+  }
+
+  _hasWorkloadVoiceCapacity(owner, cost = 1, voices = this._voices) {
+    return this._workloadVoiceCount(owner, voices) + cost <= (this._workloadClass(owner) === 'cue' ? this._maxCueVoices : this._maxVoices);
+  }
+
+  getMonitorRouteState() { return this._cueRouting?.state() || Object.freeze({ state: 'muted', mode: 'muted', muted: true, revision: 0,
+    cueIncludedInMasterCapture: false, physicalSeparation: 'not-claimed', cueGain: 0.5, message: 'Choose an explicit prelisten route.' }); }
+
+  prepareCueRoute(options) {
+    if (!this._maxCueVoices) return Promise.reject(new Error('The current workload has no reserved cue voices.'));
+    if (options?.mode === 'separate-device' && !this._ready()) return Promise.reject(new Error('Enable browser audio before selecting a separate output.'));
+    const prepare = () => {
+      if (!this._cueRouting) this._cueRouting = createOwnedCueRouting({ context: this._context, masterInput: this._master, resources: this._audioResources,
+        createElement: this._createMediaElement, mediaDevices: this._mediaDevices, onChange: () => this._setStatus(this._status, this._message) });
+      return this._cueRouting.prepare(options);
+    };
+    return this._ready() ? prepare() : this.enable().then(ready => { if (!ready) throw new Error('Browser audio is unavailable.'); return prepare(); });
+  }
+
+  stopCue() {
+    const receipt = createProcgenRetirementScope().retire([
+      { name: 'cue-route-mute', run: () => this._cueRouting?.stop() },
+      ...[...this._sessions.values()].filter(session => session.workloadClass === 'cue').map(session => ({ name: session.id, run: () => session.api.stop() }))
+    ]);
+    return receipt;
+  }
+
+  setCueGain(value) { this._cueRouting?.setLevel(value); }
   _tokenKey(token, owner = null) { return owner == null ? token : owner + ':' + token; }
   _hasEnabledOwners() { return this._defaultEnabled || this._defaultEnableRequests > 0 || [...this._sessions.values()].some(session => session.enabled || session.starting); }
 
   // Sessions partition controls/gates, but all voices use this graph's one budget and final mix.
-  createSession(name, { onStateChange, onPlayback } = {}) {
+  createSession(name, { onStateChange, onPlayback, workloadClass = 'live' } = {}) {
     const label = String(name || '').trim().slice(0, 48);
-    if (!label || this._disposed) return null;
+    if (!label || this._disposed || !['live', 'cue'].includes(workloadClass)) return null;
     if (this._retiredVoices.size >= MAX_RENDER_VOICES + MAX_RELEASE_TAILS) throw new RangeError('Unresolved audio retirement capacity reached.');
-    for (const session of this._sessions.values()) if (session.name === label) return session.api;
+    for (const session of this._sessions.values()) {
+      if (session.name === label) { if (session.workloadClass !== workloadClass) throw new Error('Session workload cannot change.'); return session.api; }
+      if (workloadClass === 'cue' && session.workloadClass === 'cue') throw new Error('Another foreground prelisten session still owns cue.');
+    }
     if (this._sessions.size >= MAX_AUDIO_SESSIONS) throw new RangeError('Local audio supports at most four owner sessions.');
     const id = label + '#' + (++this._sessionSequence);
-    const session = { id, name: label, enabled: false, starting: false, disposed: false, generation: 0, pending: new Set(), listeners: new Set(), onPlayback };
+    const session = { id, name: label, workloadClass, enabled: false, starting: false, disposed: false, generation: 0, pending: new Set(), listeners: new Set(), onPlayback };
     const retirement = createProcgenRetirementScope();
     if (typeof onStateChange === 'function') session.listeners.add(onStateChange);
     const getState = () => {
@@ -183,16 +228,23 @@ class BrowserNotePreview {
       for (const cancel of session.pending) cancel(); session.pending.clear();
     };
     const stop = () => {
-      return createProcgenRetirementScope().retire([
+      if (session.stopping) return session.stopReceipt;
+      session.stopping = true;
+      try { return session.stopReceipt = createProcgenRetirementScope().retire([
+        { name: 'cue-mute', run: () => { if (workloadClass === 'cue') this._cueRouting?.stop(); } },
         { name: 'session-admission', run: () => session.cancel() },
         { name: 'owned-voices', run: () => this._clearVoices(null, id) },
         { name: 'mix-state', run: () => { if (!this._hasEnabledOwners()) return this.stop(); session.report(); } }
-      ]);
+      ]); } finally { session.stopping = false; }
     };
     const enable = () => {
-      if (session.disposed || this._disposed || this._retirementFaults.has(id)) return Promise.resolve(false);
+      if (session.disposed || session.stopping || this._disposed || this._retirementFaults.has(id)) return Promise.resolve(false);
       if (session.enablePromise) return session.enablePromise;
       if (session.enabled && this._ownerReady(id)) return Promise.resolve(true);
+      if (workloadClass === 'cue') {
+        if (!this._maxCueVoices || !this._cueRouting) return Promise.resolve(false);
+        try { this._cueRouting.getInput(); } catch { return Promise.resolve(false); }
+      }
       let resolve;
       const promise = new Promise(done => { resolve = done; });
       const operation = { generation: session.generation, promise, resolve };
@@ -207,6 +259,7 @@ class BrowserNotePreview {
         resolve(accepted && operation.generation === session.generation);
       };
       try {
+        if (workloadClass === 'cue') this._cueRouting.activate();
         session.report();
         if (session.enableOperation !== operation || session.disposed) { settle(false); return promise; }
         // Invoke directly: AudioContext creation/resume must retain the caller's gesture.
@@ -272,6 +325,8 @@ class BrowserNotePreview {
       retirement: retirementState(this._retirement.getReceipt()), retiredVoices: this._retiredVoices.size, unclosedContext: !!this._retiringContext,
       activeVoices: this._voices.size, sharedMix: this._sessions.size > 0, sessionCount: this._sessions.size,
       maxVoices: this._maxVoices, maxScheduledVoices: this._maxScheduledVoices,
+      workload: { liveVoices: this._maxVoices, cueVoices: this._maxCueVoices, aggregateVoices: this._maxVoices + this._maxCueVoices,
+        cueCanStealLive: false }, monitorRoute: this.getMonitorRouteState(),
       voiceSteals: this._voiceSteals, voiceDrops: this._voiceDrops,
       mixCompression: !!this._compressor, mixLatencyMs: this._compressor ? MIX_LOOKAHEAD_SECONDS * 1000 : 0, mixMakeupCompensation: this._compressor ? MIX_MAKEUP_COMPENSATION : 1, mixReductionDb: finite(this._compressor?.reduction, 0),
       pendingNotes: this._previewPending.length,
@@ -448,6 +503,7 @@ class BrowserNotePreview {
     let acknowledgment = null;
     this._lastClosedContextRetirement = createProcgenRetirementScope().retire([
       { name: 'stop', run: () => this.stop() },
+      { name: 'cue-routing', run: () => this._cueRouting?.dispose() },
       { name: 'context-listener', run: () => context.removeEventListener?.('statechange', this._onContextState) },
       ...[...this._channels].map(([key, channel]) => ({ name: 'channel-' + key, run: () => this._retireChannel(key, channel) })),
       ...['_master', '_limiter', '_compressor', '_compressorOutput', '_captureAnalyser'].map(field => ({ name: field, run: () => this[field]?.disconnect() })),
@@ -456,7 +512,7 @@ class BrowserNotePreview {
       { name: 'closed-context-acknowledgment', run: () => { acknowledgment = this._reconcileClosedContext(context); return acknowledgment; } },
       { name: 'context-references', run: () => {
         this._channels.clear(); this._noiseBuffer = null; this._master = null; this._limiter = null; this._compressor = null; this._compressorOutput = null;
-        this._captureAnalyser = null; this._captureSamples = null; this._context = null; this._graphResourceLease = null; this._noiseResourceLease = null;
+        this._captureAnalyser = null; this._captureSamples = null; this._context = null; this._graphResourceLease = null; this._noiseResourceLease = null; this._cueRouting = null;
         if (acknowledgment?.outcome === 'complete') this._retirementFaults.clear();
       } }
     ]);
@@ -500,6 +556,7 @@ class BrowserNotePreview {
     this._resumePromise = null;
     return createProcgenRetirementScope().retire([
       ...[...this._pcmCaptureTaps].map((tap, index) => ({ name: 'pcm-capture-' + index, run: () => tap.onRetire(this._disposed ? 'owner-retired' : 'panic') })),
+      { name: 'cue-mute', run: () => this._cueRouting?.stop() },
       ...sessions.map(session => ({ name: `session-${session.name}`, run: session.cancel })),
       { name: 'mute-mix', run: () => this._setMixEnabled(false) },
       ...pending.map((cancel, index) => ({ name: `pending-enable-${index}`, run: cancel })),
@@ -519,6 +576,7 @@ class BrowserNotePreview {
       ...[...this._sessions.values()].map(session => ({ name: `session-${session.name}`, run: () => session.api.dispose() })),
       ...[...this._instrumentBackends].map((entry, index) => ({ name: `backend-${index}`, run: () => entry.backend.dispose() })),
       { name: 'stop', run: () => this.stop() },
+      { name: 'cue-routing', run: () => this._cueRouting?.dispose() },
       { name: 'context-listener', run: () => context?.removeEventListener?.('statechange', this._onContextState) },
       ...[...this._channels].map(([key, channel]) => ({ name: `channel-${key}`, run: () => this._retireChannel(key, channel) })),
       ...['_master', '_limiter', '_compressor', '_compressorOutput', '_captureAnalyser'].map(field => ({ name: field, run: () => { this[field]?.disconnect(); this[field] = null; } })),
@@ -685,8 +743,10 @@ class BrowserNotePreview {
     try {
       gain = this._context.createGain();
       pan = this._context.createStereoPanner?.() || null;
-      gain.connect(pan || this._master);
-      pan?.connect(this._master);
+      const destination = this._workloadClass(owner) === 'cue' ? this._cueRouting?.getInput() : this._master;
+      if (!destination) throw new Error('Cue input is unavailable.');
+      gain.connect(pan || destination);
+      pan?.connect(destination);
     } catch (error) {
       resourceLease.release(); gain?.disconnect();
       pan?.disconnect();
@@ -800,8 +860,8 @@ class BrowserNotePreview {
     catch { return drop('audio-resource-budget'); }
     const simultaneous = [...this._voices].filter(voice => !voice.stolen && (voice.renderCost > 1 || voice.start <= start && voice.releaseAt > start));
     let victim = null;
-    if (this._renderVoiceCount(simultaneous) >= this._maxVoices) {
-      victim = selectLocalAudioVoice(simultaneous, incoming);
+    if (!this._hasWorkloadVoiceCapacity(options.owner, 1, simultaneous)) {
+      victim = selectLocalAudioVoice(simultaneous.filter(voice => (voice.workloadClass || 'live') === this._workloadClass(options.owner)), incoming);
       if (!victim) { resourceLease.release(); return drop('local-voice-priority'); }
     }
     let voice;
@@ -822,7 +882,7 @@ class BrowserNotePreview {
       oscillator = noise ? context.createBufferSource() : context.createOscillator();
       if (noise) { oscillator.buffer = noise; oscillator.loop = true; }
       gain = context.createGain();
-      voice = { oscillator, gain, resourceLease, number, owner: options.owner ?? null, note, start, id: ++this._voiceSequence, playback: options.playback, startMs: this._nowMs() + (start - context.currentTime) * 1000, end: start + Math.min(this._maxNoteSeconds, profile.seconds || this._maxNoteSeconds), released: false, captureMeta: this._captureMetadata(options.capture, options.owner ?? null),
+      voice = { oscillator, gain, resourceLease, number, owner: options.owner ?? null, workloadClass: this._workloadClass(options.owner), note, start, id: ++this._voiceSequence, playback: options.playback, startMs: this._nowMs() + (start - context.currentTime) * 1000, end: start + Math.min(this._maxNoteSeconds, profile.seconds || this._maxNoteSeconds), released: false, captureMeta: this._captureMetadata(options.capture, options.owner ?? null),
         ...incoming, startedAt: start,
         token: Number.isInteger(options.voiceToken) && options.voiceToken > 0 ? options.voiceToken : null,
         implicitProgram: options.instrument?.program == null, programAtStart: controlState.program, timbreAtStart: controlState.timbre,

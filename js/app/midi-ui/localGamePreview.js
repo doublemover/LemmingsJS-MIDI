@@ -17,7 +17,7 @@ const localConfig = (source) => {
 };
 
 const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({}), immutableConfig = false,
-  onStateChange, resourceBudget = null, audio = createBrowserNotePreview({ resourceBudget }) } = {}) => {
+  onStateChange, resourceBudget = null, audio = createBrowserNotePreview({ resourceBudget, cueVoices: resourceBudget ? 4 : 0 }) } = {}) => {
   let router = null, capture = null;
   let attachedView = null;
   let generation = 0;

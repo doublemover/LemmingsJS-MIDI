@@ -53,7 +53,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
     signal.addEventListener('abort', stop, { once: true }); if (lease.signal.aborted || externalSignal?.aborted) cancel();
     const check = () => { signal.throwIfAborted(); if (disposed) throw failure('owner-retired', 'Sound installation owner retired.'); };
     let enabling;
-    try { check(); operation.session = audio.createSession('sound-content-audition'); enabling = operation.session.enable(); }
+    try { check(); operation.session = audio.createSession('sound-content-audition', { workloadClass: 'cue' }); enabling = operation.session.enable(); }
     catch (error) { enabling = Promise.reject(error); }
     const deadline = setTimeout(() => operation.controller.abort(failure('deadline', 'Sound audition deadline exceeded.')), timeoutMs);
     operation.promise = (async () => {
@@ -93,7 +93,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
           definitionHash: patch.definitionHash, engineRequirement: patch.engineRequirement, fixtureHash, fixtureId: fixture.id,
           sampleRate: rate, targetFrame: base, endFrame, commandsAccepted: outcomes.length, source: fixture.source,
           status: 'control-fixture-completed', evidenceClass: 'backend-api-command-admission-and-running-clock', physicalTakeEvidence: false,
-          renderQualification: 'not-independently-qualified', acousticReceipt: false });
+          renderQualification: 'not-independently-qualified', acousticReceipt: false, monitorRoute: audio.getMonitorRouteState?.() || null });
       } catch (failure) { error = failure; operation.controller.abort(failure); }
       finally {
         clearTimeout(deadline); externalSignal?.removeEventListener('abort', cancel); lease.signal.removeEventListener('abort', cancel); signal.removeEventListener('abort', stop);

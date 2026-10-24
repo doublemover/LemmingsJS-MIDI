@@ -224,7 +224,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     if (rate == null || region.releaseRegion && childRate == null) return reject('sample-pitch-out-of-range', intent.voiceId);
     const renderCost = region.releaseRegion ? 2 : 1;
     for (const voice of preview._voices) if (preview._voiceFinished(voice)) preview._destroyVoice(voice, 'inaudible-voice-reuse');
-    if (voices.size >= prepared.maxVoices || preview._renderVoiceCount() + renderCost > preview._maxVoices ||
+    if (voices.size >= prepared.maxVoices || !preview._hasWorkloadVoiceCapacity(owner, renderCost) ||
         preview._renderVoiceCount() + renderCost > preview._maxScheduledVoices) return reject('shared-sample-source-budget', intent.voiceId);
     const allocations = [], components = []; let pressureGain, pan, voice;
     try {
@@ -245,7 +245,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
       pressureGain = context.createGain(); pan = context.createStereoPanner?.() || null;
       for (const component of components) component.gain.connect(pressureGain);
       pressureGain.connect(pan || channel.gain); pan?.connect(channel.gain);
-      voice = { owner, number: 0, note: Math.round(intent.pitch.cents / 100), velocity: intent.velocity01 * 127, id: ++preview._voiceSequence,
+      voice = { owner, workloadClass: preview._workloadClass(owner), number: 0, note: Math.round(intent.pitch.cents / 100), velocity: intent.velocity01 * 127, id: ++preview._voiceSequence,
         start, end: hardEnd, hardEnd, releaseAt: hardEnd - values.releaseSeconds, released: false, renderCost, startedAt: start, priority: 1, laneIndex: intent.laneId ?? 0,
         main: components[0], child: components[1] || null, components, gain: components[0].gain, pressureGain, pan, nativeNodesOwnedByBackend: true,
         onContextClosed: () => reconcileComponents(components),

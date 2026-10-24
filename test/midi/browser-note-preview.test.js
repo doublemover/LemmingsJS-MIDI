@@ -23,6 +23,27 @@ const deferred = () => {
   return { promise, resolve, reject };
 };
 
+describe('separate cue workload and graph admission', () => {
+  it('cannot use a one-voice live workload for cue without an explicit additional quota', async () => {
+    const context = new FakeContext(), preview = new BrowserNotePreview({ createAudioContext: () => context, maxVoices: 1 });
+    await preview.enable(); preview.output.channels[1].sendNoteOn(60, { rawAttack: 100 });
+    const live = [...preview._voices][0], cue = preview.createSession('cue', { workloadClass: 'cue' });
+    expect(await cue.enable()).to.equal(false); expect(cue.output.channels[1].sendNoteOn(60, { rawAttack: 100 })).to.equal(false);
+    expect(preview._voices.has(live)).to.equal(true); expect(preview.getState().voiceSteals).to.equal(0); await preview.dispose();
+  });
+  it('partitions explicit cue capacity, preserves same-pitch live ownership and stops cue independently', async () => {
+    const context = new FakeContext(), preview = new BrowserNotePreview({ createAudioContext: () => context, maxVoices: 1, cueVoices: 1 });
+    await preview.enable(); preview.output.channels[1].sendNoteOn(60, { rawAttack: 100 }); const live = [...preview._voices][0];
+    await preview.prepareCueRoute({ mode: 'rehearsal' }); const cue = preview.createSession('cue', { workloadClass: 'cue' });
+    expect(await cue.enable()).to.equal(true); cue.output.channels[1].sendNoteOn(60, { rawAttack: 100 });
+    expect([...preview._voices].filter(voice => voice.workloadClass === 'cue')).to.have.length(1);
+    cue.output.channels[1].sendNoteOn(61, { rawAttack: 100 }); expect(preview._voices.has(live)).to.equal(true);
+    expect(live.stolen).not.to.equal(true); preview.stopCue(); expect(preview._voices.has(live)).to.equal(true);
+    expect(preview.getMonitorRouteState()).to.include({ muted: true, mode: 'rehearsal', cueIncludedInMasterCapture: true });
+    await preview.dispose();
+  });
+});
+
 class FakeParam {
   constructor() { this.value = 1; this.events = []; }
   setValueAtTime(value, time) { this.events.push({ type: 'set', value, time }); }

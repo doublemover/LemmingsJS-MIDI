@@ -298,8 +298,8 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (voices.has(key) || preview._semanticVoiceOwners.has(JSON.stringify([owner, executionEpoch, intent.voiceId]))) return reject('duplicate-owner-voice', intent.voiceId);
     const slot = slots.findIndex(voice => voice == null);
     if (slot < 0 || voices.size >= patch.maxVoices || preview._renderVoiceCount() >= preview._maxScheduledVoices ||
-        preview._renderVoiceCount([...preview._voices].filter(voice => !voice.stolen && (voice.renderCost > 1 || voice.start <= targetFrame / context.sampleRate &&
-          voice.releaseAt > targetFrame / context.sampleRate))) >= preview._maxVoices) return reject('shared-voice-budget', intent.voiceId);
+        !preview._hasWorkloadVoiceCapacity(owner, 1, [...preview._voices].filter(voice => !voice.stolen && (voice.renderCost > 1 || voice.start <= targetFrame / context.sampleRate &&
+          voice.releaseAt > targetFrame / context.sampleRate)))) return reject('shared-voice-budget', intent.voiceId);
     if (slotTokens[slot] === 0xffffffff) return reject('voice-slot-generation-exhausted', intent.voiceId);
     const parameters = patch.parameters, endFrame = leases.get(generationKey) ?? targetFrame + Math.ceil(preview._maxNoteSeconds * context.sampleRate);
     if (endFrame <= targetFrame + parameters.releaseSeconds * context.sampleRate) return reject('execution-lease-expired', intent.voiceId);
@@ -308,7 +308,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     catch { return reject('audio-resource-budget', intent.voiceId); }
     const token = epochToken(executionEpoch);
     if (token == null) { resourceLease?.release(); return reject('execution-identity-capacity', intent.voiceId); }
-    const voice = { owner, number: 0, voiceId: intent.voiceId, semanticGeneration: intent.generation, semanticEpoch: executionEpoch,
+    const voice = { owner, workloadClass: preview._workloadClass(owner), number: 0, voiceId: intent.voiceId, semanticGeneration: intent.generation, semanticEpoch: executionEpoch,
       resourceLease,
       epochToken: token, slot, slotToken: ++slotTokens[slot], id: ++preview._voiceSequence, start: targetFrame / context.sampleRate,
       note: Math.round(intent.pitch.cents / 100), velocity: intent.velocity01 * 127,

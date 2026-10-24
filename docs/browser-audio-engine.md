@@ -611,3 +611,31 @@ frame counts, and saves the retained WAV through the existing owned file writer.
 Canceling or retrying delivery leaves PCM intact. Capture needs browser audio
 already enabled; streaming file saves require `showSaveFilePicker`. Closing the
 dialog stops recording and keeps its artifact; discard is a separate action.
+
+## Prelisten routing and workload
+
+The cue graph owns a separate gain and safety ceiling. It starts muted and needs
+an explicit route selection. Separate-device routing uses a selected nondefault
+media-element sink; it never changes the context's destination or asks for a
+microphone. Its buffering is asynchronous, and physical socket isolation remains
+unverified. Device-change notification mutes cue and requires revalidation.
+Rehearsal on the live output is a separate deliberate mode and enters master
+capture. There is no automatic speaker fallback after denied selection/playback.
+Accepted native selection/sink/play promises remain owned until they settle.
+
+The workstation profile reserves four cue voices in addition to its existing
+32 live voices, within the authored 64-voice aggregate ceiling. Other callers
+default to zero cue capacity and must request an explicit quota. Live and cue
+capacity are counted separately across native, sample and worklet renderers;
+legacy stealing stays inside its workload. The native typed renderer now also
+honors its declared reject policy at shared capacity. Cue graphs and simultaneous
+prepared instances still require shared memory admission. The quota is a declared
+resource policy; real-device CPU/concurrency qualification remains deferred.
+One cue session can own output at a time; global Panic reaches live and cue,
+whereas cue Stop preserves live owners. Routing and ownership fixtures are
+authored and unexecuted. Shared prelisten presentation and tool handoff follow.
+
+The separate sink API and its permission/scope constraints follow
+[media-element setSinkId](https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/setSinkId)
+and [selectAudioOutput](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/selectAudioOutput).
+No multichannel socket mapping is claimed from channel-count capability alone.
