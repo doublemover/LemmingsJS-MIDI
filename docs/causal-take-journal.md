@@ -338,3 +338,14 @@ Late-read, asynchronous-world and refused-release fixtures remain unexecuted.
 Cancellation also waits for the replay loop to quiesce before retiring its source
 and workspace. This covers a pending page, checkpoint comparison or native hash
 that still has access to those objects after the world has stopped.
+
+Owned data snapshots provide a fixed shared-worker path for publishing a bounded
+canonical result independently of its preparation request. The producer declares
+its held input footprint before clone/encoding overlap is admitted. Successful
+publication detaches request cancellation; a canceled replacement therefore does
+not retire an already published snapshot. Result lifetime ends at explicit reader
+retirement. Shared resource reservations can grow before adoption, preserve their
+prior bound on ordinary capacity denial, and cache unknown bookkeeping outcomes.
+Background jobs also clear acknowledged producer callbacks instead of retaining
+their captured input graphs after computation. Snapshot and refusal fixtures are
+authored and unexecuted; score-view adoption follows.

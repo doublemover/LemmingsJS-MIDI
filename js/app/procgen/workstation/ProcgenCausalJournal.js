@@ -13,7 +13,9 @@ const validRange = value => value && Number.isSafeInteger(value.firstSequence) &
 const makeChunkId = (takeId, ordinal) => JSON.stringify([takeId, 'chunk', ordinal]);
 const ownedQueryResult = (value, sources, releaseIndex) => {
   const retirement = createProcgenRetirementScope(); let released = false, releaseError = null;
+  const dataBytes = sources.reduce((sum, source) => sum + (source.receipt?.retainedBytes || 0), 0);
   return Object.freeze({ get value() { if (released) throw journalError('query-retired', 'The causal query reader has retired.'); return value; },
+    receipt: Object.freeze({ kind: 'causal-query-page', retainedDataBytes: dataBytes }),
     release() {
       if (released) { if (releaseError) throw releaseError; return false; } released = true; value = null;
       const receipt = retirement.retire([...sources.map((source, index) => ({ name: 'chunk-source-' + index, run: () => source.release() })),

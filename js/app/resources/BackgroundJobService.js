@@ -29,7 +29,15 @@ export function createBackgroundJobService({ admission = backgroundWorkerAdmissi
     const releaseInput = () => {
       if (preparedInputReleased) return;
       preparedInputReleased = true;
-      try { releasePreparedInput?.(); } catch (error) { workerFailedRetirement = true; lease?.retainUnknown(error); throw error; }
+      try {
+        const acknowledged = releasePreparedInput?.();
+        if (acknowledged === false || acknowledged && typeof acknowledged.then === 'function') {
+          if (acknowledged?.then) Promise.resolve(acknowledged).catch(() => {});
+          throw failure('input-retirement-unknown', 'Prepared input retirement must acknowledge synchronously.');
+        }
+        prepareInput = null; releasePreparedInput = null;
+      }
+      catch (error) { workerFailedRetirement = true; lease?.retainUnknown(error); throw error; }
     };
     const terminate = () => {
       if (workerFailedRetirement) return false;

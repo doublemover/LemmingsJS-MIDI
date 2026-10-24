@@ -7,7 +7,7 @@ import { inspectCausalArchiveEntry, validateCausalChunk } from '../procgen/works
 import { renderOwnedSineControls } from '../midi-ui/OwnedSineOfflineRender.js';
 
 export const BACKGROUND_JOB_PROTOCOL = 1;
-export const BACKGROUND_JOB_KINDS = Object.freeze(['parse-json', 'verify-causal-source', 'inspect-causal-archive-entry', 'render-sound-controls', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'asset-hash', 'asset-decode']);
+export const BACKGROUND_JOB_KINDS = Object.freeze(['parse-json', 'verify-causal-source', 'snapshot-canonical-data', 'inspect-causal-archive-entry', 'render-sound-controls', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'asset-hash', 'asset-decode']);
 const MAX_BYTES = 64 * 1048576, MAX_NODES = 4000000;
 const problem = (code, message) => Object.assign(new Error(message), { code, name: 'BackgroundJobError' });
 const shared = value => typeof globalThis.SharedArrayBuffer === 'function' && (value instanceof globalThis.SharedArrayBuffer || value?.buffer instanceof globalThis.SharedArrayBuffer);
@@ -189,6 +189,12 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     return { value, inputBytes: metadata.bytes, nodes: metadata.nodes };
   }
   const metadata = await inspectValue(input, options, { allowBinary: kind === 'recovery-checksum' });
+  if (kind === 'snapshot-canonical-data') {
+    const encoded = canonicalDataText(input, { maxBytes, maxNodes }); guard(signal, current);
+    if (encoded.bytes.byteLength * 8 + encoded.nodes * 192 > estimatedPeakBytes) throw problem('memory-capacity', 'Snapshot source exceeds its declared clone overlap.');
+    const value = JSON.parse(encoded.text); guard(signal, current);
+    return { value, inputBytes: metadata.bytes, nodes: encoded.nodes, retainedBytes: encoded.bytes.byteLength * 2 + encoded.nodes * 64 + 4096 };
+  }
   if (kind === 'render-sound-controls') {
     if (!input || Object.keys(input).some(key => !['definition', 'engineRequirement', 'sampleRate', 'source'].includes(key)) || estimatedPeakBytes < 32 * 1048576)
       throw problem('invalid-contract', 'Sound control rendering requires its bounded fixed-job contract.');
