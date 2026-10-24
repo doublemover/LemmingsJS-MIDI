@@ -176,7 +176,7 @@ export function prepareReplayableExportArtifact({ openChunks, immutableSourceRef
       if (leases >= MAX_ARTIFACT_LEASES) throw Object.assign(new Error('Prepared export consumer capacity reached.'), { kind: 'artifact-capacity' });
       leases++;
       let released = false, opened = false, retired = false, source = null, iterator = null, pending = 0, ended = false, returnPromise = null, sourceError = null;
-      let opener = sourceOpener, complete;
+      let opener = sourceOpener, complete; const sourceController = new AbortController();
       const settlement = new Promise(resolve => { complete = resolve; });
       const acknowledge = () => { if (!retired && released && !pending && (!opened || ended) && !sourceError) {
         retired = true; source = null; iterator = null; opener = null; leases--; retireSource(); complete();
@@ -190,6 +190,7 @@ export function prepareReplayableExportArtifact({ openChunks, immutableSourceRef
           .finally(() => { pending--; acknowledge(); });
       };
       const closeSource = () => {
+        sourceController.abort(Object.assign(new Error('Replayable export source retired.'), { name: 'AbortError' }));
         if (returnPromise) return returnPromise;
         if (!opened || ended) { ended = true; acknowledge(); return Promise.resolve({ done: true }); }
         if (typeof iterator?.return !== 'function') { if (!sourceError) { sourceError = new Error('Replayable source cannot acknowledge cancellation.'); unknownSources++; } return Promise.reject(sourceError); }
@@ -200,7 +201,7 @@ export function prepareReplayableExportArtifact({ openChunks, immutableSourceRef
           if (released || !lifetime.check()) throw Object.assign(new Error('Replayable delivery lease is retired.'), { kind: 'artifact-expired' });
           if (opened) throw new Error('A delivery lease opens its source only once.');
           opened = true;
-          source = opener();
+          source = opener({ signal: sourceController.signal });
           if (!source || typeof source[Symbol.asyncIterator] !== 'function') throw Object.assign(new Error('Replayable source is not an async iterable.'), { kind: 'invalid-source' });
           iterator = source[Symbol.asyncIterator]();
           if (!iterator || typeof iterator.next !== 'function') throw Object.assign(new Error('Replayable source has no iterator.'), { kind: 'invalid-source' });

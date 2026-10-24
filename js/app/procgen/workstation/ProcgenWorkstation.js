@@ -826,7 +826,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const takeId = selectedCausalTakeId || lastCausalTake?.takeId;
     if (!takeId) throw new Error('No finished causal take is selected.');
     const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget });
-    const prepared = await prepareCausalTakeArchive({ journal, storage, takeId });
+    const prepared = await prepareCausalTakeArchive({ journal, storage, takeId, resourceBudget, jobs: backgroundJobs });
     preparedExport?.discard(); preparedExport = prepared.artifact; lastDelivery = null;
     publishExportState();
     status(`Causal take ${prepared.manifest.takeName} archive ready. Use Save file to stream its verified source records.`);

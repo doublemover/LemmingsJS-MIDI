@@ -160,9 +160,9 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
         const body = { version: 1, takeId: manifest.takeId, ordinal, firstSequence, lastSequence, previousHash: manifest.canonicalHash, records };
         const release = reserve((bytes + 4096) * 5, records[0].generation);
         try {
-          const canonical = canonicalJournalText(body, { maxBytes: maxChunkBytes + 4096 }).text;
+          const encoded = canonicalJournalText(body, { maxBytes: maxChunkBytes + 4096 }), canonical = encoded.text;
           const hash = await hashJournalText(canonical), chunkId = makeChunkId(manifest.takeId, ordinal);
-          const ref = { id: chunkId, takeId: manifest.takeId, ordinal, firstSequence, lastSequence, hash,
+          const ref = { id: chunkId, takeId: manifest.takeId, ordinal, firstSequence, lastSequence, hash, bytes: encoded.bytes.byteLength,
             firstTick: Math.min(...records.map(record => record.tick)), lastTick: Math.max(...records.map(record => record.tick)),
             generations: [...new Set(records.map(record => record.generation))], kinds: [...new Set(records.map(record => record.kind))] };
           const next = { ...manifest, revision: manifest.revision + 1, durableSequence: lastSequence, admittedSequence,

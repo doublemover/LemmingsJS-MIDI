@@ -191,3 +191,11 @@ native settlement and a terminal close/abort acknowledgment. A failed cleanup
 keeps its owner visible and consumes capacity. Delivery receipts include the
 native-retirement snapshot; a known close acknowledgment remains authoritative
 even when cancellation or a deadline raced it.
+
+Causal archive output encodes owned, frozen JSON in bounded UTF-8 chunks with
+cooperative yield points. It preserves Unicode, escaped strings and negative
+zero without a complete encoded checkpoint line. Each source record is hashed
+through shared background admission before its private storage read, then stays
+leased through encoding. New chunk indexes include exact canonical byte sizes;
+older indexes use a conservative bounded admission. Returning a replayable
+iterator aborts its source signal, including queued record-hash work.
