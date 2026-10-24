@@ -43,6 +43,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     getVoices: () => voices.values(), resources: preview._audioResources, send: message => { if (!node || disposed) return false; node.port.postMessage(message); return true; } });
   let queue = null;
   const epochSettled = epoch => {
+    if (faultRetirement?.outcome === 'partial' || preview._retirementFaults?.has(owner)) return false;
     if (ownerStopped && node || slots.some(voice => voice?.semanticEpoch === epoch) || queue?.some(item => item.epoch === epoch)) return false;
     for (const item of inFlight.values()) if (item.epoch === epoch) return false;
     return true;
@@ -436,6 +437,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     onOwnerStop, renderDiagnostics, dispose }, {
     getContext: () => preview.getAudioContext(), getGeneration: () => preview._sessions.get(owner)?.generation ?? preview._generation,
     isSettled: epochSettled,
+    isVoiceSettled: (voiceId, epoch) => faultRetirement?.outcome !== 'partial' && !voices.has(keyFor(epoch, voiceId)),
     forget: (epoch, generation) => { epochs.delete(epoch); leases.delete(keyFor(epoch, generation)); }
   });
   return lifecycle.api;

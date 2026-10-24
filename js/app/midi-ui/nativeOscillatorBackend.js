@@ -354,7 +354,8 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
   return createInstrumentExecutionLifecycle({ capabilities, prepare, begin, update, end, renewExecutionLease, cancelGeneration,
     cancelGenerationWithReceipt, renderDiagnostics, dispose }, {
     getContext: () => preview.getAudioContext(), getGeneration: () => preview._sessions.get(owner)?.generation ?? preview._generation,
-    isSettled: epoch => ![...voices.values()].some(voice => voice.semanticEpoch === epoch),
+    isSettled: epoch => !preview._retirementFaults?.has(owner) && ![...voices.values()].some(voice => voice.semanticEpoch === epoch),
+    isVoiceSettled: (voiceId, epoch) => !preview._retirementFaults?.has(owner) && !voices.has(keyFor(epoch, voiceId)),
     forget: (epoch, generation) => leases.delete(leaseKey(generation, epoch))
   }).api;
 };

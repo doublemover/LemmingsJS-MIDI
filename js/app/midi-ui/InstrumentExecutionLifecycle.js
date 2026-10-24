@@ -7,7 +7,7 @@ export const isManagedExecutionEpoch = epoch => typeof epoch === 'string' && epo
 
 // Opaque handles retain their own invalid state weakly. Only live/retiring
 // executions occupy the bounded registry; numeric identities are never reused.
-export function createInstrumentExecutionLifecycle(backend, { isSettled, forget, getContext, getGeneration, capacity = 64 }) {
+export function createInstrumentExecutionLifecycle(backend, { isSettled, isVoiceSettled = null, forget, getContext, getGeneration, capacity = 64 }) {
   const handles = new WeakMap(), live = new Map();
   const backendId = ++backendSequence;
   const retirement = createProcgenRetirementScope();
@@ -89,6 +89,12 @@ export function createInstrumentExecutionLifecycle(backend, { isSettled, forget,
       recovery: live.size >= capacity ? 'retire-executions-and-await-settlement' : null });
   };
   const api = Object.freeze({ ...backend, registerExecution, retireExecution,
+    inspectExecution(execution, voiceId = null) {
+      sync(); const entry = execution && typeof execution === 'object' ? handles.get(execution) : null;
+      if (!entry || voiceId != null && (typeof voiceId !== 'string' || !voiceId || voiceId.length > 512)) return rejected('invalid-execution-handle');
+      return Object.freeze({ status: 'accepted', state: entry.state, settled: isSettled(entry.epoch),
+        voiceSettled: voiceId == null ? null : isVoiceSettled ? isVoiceSettled(voiceId, entry.epoch) : isSettled(entry.epoch) });
+    },
     executionIncarnation: () => { sync(); return incarnation; },
     begin: (...args) => call('begin', args, 2, args[0]?.generation),
     update: (...args) => call('update', args, 3), end: (...args) => call('end', args, 3),

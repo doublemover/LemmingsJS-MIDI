@@ -31,6 +31,7 @@ export function createAudioResourceLeases({ resourceBudget = null, ownerPrefix =
       if (lease.blocked) throw lease.blocked;
       if (lease.releaseAttempted) throw lease.releaseError;
       lease.releaseAttempted = true;
+      lease.releaseError = new Error('Audio reservation release is already retiring or failed.');
       try {
         const acknowledged = resourceBudget?.release({ token, owner: budgetOwner });
         if (acknowledged === false) throw new Error('Audio resource adapter did not acknowledge release.');
@@ -39,7 +40,7 @@ export function createAudioResourceLeases({ resourceBudget = null, ownerPrefix =
           throw new Error('Audio resource adapter release must acknowledge synchronously.');
         }
       } catch (error) { lease.releaseError = error; throw error; }
-      lease.released = true; leases.delete(token); exactBytes -= bytes; estimatedBytes -= estimateBytes;
+      lease.released = true; lease.releaseError = null; leases.delete(token); exactBytes -= bytes; estimatedBytes -= estimateBytes;
       return true;
     };
     lease.release = release;

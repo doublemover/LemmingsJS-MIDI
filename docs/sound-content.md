@@ -136,3 +136,11 @@ and an advancing audio clock establish neither physical-take coverage nor
 independent render/listening qualification. Unsupported sample/gesture adapters
 stay explicitly unavailable. Failed native retirement blocks new auditions and
 retains its stage consumer while independent cleanup leaves still run.
+
+`RoutedInstrumentBackend` assigns future lane attacks to prepared renderers.
+Each admitted voice keeps its original renderer and opaque child execution for
+updates and release. An unassigned renderer remains owned through its actual
+voices and tails. Candidate pins protect asynchronous replacement preparation;
+bounded retained-renderer capacity rejects excess work without cutting held
+voices. A lane with missing pinned requirements rejects new attacks explicitly.
+Execution inspection reports settlement without disclosing internal epoch keys.

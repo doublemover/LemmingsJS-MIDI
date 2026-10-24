@@ -456,7 +456,8 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     cancelGeneration: (generation, executionEpoch = 'live') => cancelGenerationWithReceipt(generation, executionEpoch).count || 0,
     renderDiagnostics, onOwnerStop, dispose }, {
     getContext: () => preview.getAudioContext(), getGeneration: () => preview._sessions.get(owner)?.generation ?? preview._generation,
-    isSettled: epoch => ![...voices.values()].some(voice => voice.semanticEpoch === epoch),
+    isSettled: epoch => !preview._retirementFaults?.has(owner) && ![...voices.values()].some(voice => voice.semanticEpoch === epoch),
+    isVoiceSettled: (voiceId, epoch) => !preview._retirementFaults?.has(owner) && !voices.has(keyFor(epoch, voiceId)),
     forget: (epoch, generation) => leases.delete(generationKey(generation, epoch))
   }).api;
 }
