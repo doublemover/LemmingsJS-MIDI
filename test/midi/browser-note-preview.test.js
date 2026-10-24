@@ -52,6 +52,28 @@ describe('separate cue workload and graph admission', () => {
   });
 });
 
+describe('live owner source taps and effect epochs (API fixtures; execution deferred)', () => {
+  const sourceGraph = tap => ({ schema: 'lemmings-effect-graph/v1', id: 'fixture.owner-source.' + tap, revision: 1, latencyPolicy: 'align-declared', maximumLatencyFrames: 0, maximumTailSeconds: 0,
+    nodes: [{ id: 'source', kind: 'bus-in', parameters: {} }, { id: 'quiet', kind: 'gain', parameters: { gain01: 0, gainMaximum01: 0 } },
+      { id: 'donor', kind: 'sidechain-in', parameters: { sourceBusId: 'owner', tap } }, { id: 'return', kind: 'gain', parameters: { gain01: 0.2, gainMaximum01: 0.2 } }, { id: 'output', kind: 'bus-out', parameters: {} }],
+    edges: [['source', 'quiet'], ['quiet', 'output'], ['donor', 'return'], ['return', 'output']].map(([from, to]) => ({ from: { nodeId: from, port: 'audio' }, to: { nodeId: to, port: 'audio' }, gain01: 1 })) });
+  for (const tap of ['pre-fader', 'post-fader']) it('pins the actual ' + tap + ' source upstream of effects without replacing the dry source route', async () => {
+    const context = new FakeContext(), preview = new BrowserNotePreview({ createAudioContext: () => context }), session = preview.createSession('source-tap'); await session.enable();
+    const channel = preview._channel(0, session.ownerId || [...preview._sessions.keys()][0]);
+    expect(channel.sourceInput.connections).to.deep.equal([channel.gain]); expect(channel.gain.connections).to.deep.equal([channel.pan]);
+    const state = await session.prepareEffectGraph(sourceGraph(tap)); expect(state.activeGraph.sidechains[0]).to.include({ sourceBusId: 'owner', tap, connected: true, status: 'connected' });
+    const source = tap === 'pre-fader' ? channel.sourceInput : channel.effectInput; expect(source.connections.length).to.be.greaterThan(1);
+    session.setEffectBypass('neutral'); expect(source.connections).to.have.length(1); expect(channel.sourceInput.connections).to.deep.equal([channel.gain]);
+    await session.dispose(); expect(channel.sourceInput.disconnected).to.equal(true); await preview.dispose();
+  });
+  it('retires an earlier host epoch before preparing new owner sources after stop/re-enable', async () => {
+    const context = new FakeContext(), preview = new BrowserNotePreview({ createAudioContext: () => context }), session = preview.createSession('source-epoch'); await session.enable();
+    const first = await session.prepareEffectGraph(sourceGraph('pre-fader')); await session.stop()?.completion; await session.enable();
+    const second = await session.prepareEffectGraph(sourceGraph('post-fader')); expect(second.generation).to.be.greaterThan(first.generation); expect(second.activeGraph.sidechains[0].tap).to.equal('post-fader');
+    await session.dispose(); await preview.dispose();
+  });
+});
+
 describe('renderer owners and explicit cue source costs', () => {
   it('retains enough bounded backend owners for the lane router, two candidates and one cue', async () => {
     const preview = new BrowserNotePreview({ createAudioContext: () => new FakeContext() }), session = preview.createSession('renderers');
@@ -85,7 +107,7 @@ class FakeParam {
 class FakeNode {
   constructor() { this.connections = []; this.disconnected = false; }
   connect(target) { this.connections.push(target); }
-  disconnect() { this.disconnected = true; this.connections = []; }
+  disconnect(target) { if (arguments.length) this.connections = this.connections.filter(value => value !== target); else { this.disconnected = true; this.connections = []; } }
 }
 
 class FakeOscillator extends FakeNode {

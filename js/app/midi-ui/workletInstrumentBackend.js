@@ -241,7 +241,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       await Promise.race([loadOwnedWorkletModule(candidateContext, source, preview._audioResources), interrupted]);
       if (!current()) return reject('preparation-cancelled');
       if (!ready) {
-        const destination = preview._channel(0, owner).gain;
+        const channel = preview._channel(0, owner), destination = channel.sourceInput || channel.gain;
         const create = createWorkletNode || ((audioContext, name, options) => new globalThis.AudioWorkletNode(audioContext, name, options));
         candidate = create(candidateContext, 'lemmings-owned-' + engineId.slice('worklet-'.length) + '-v1', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2],
           processorOptions: { maxVoices: MAX_VOICES, ...(fixedBank ? { sourceBank: fixedBank.payload } : {}), ...(inputCopy ? { pcm: inputCopy.payload } : {}) } });

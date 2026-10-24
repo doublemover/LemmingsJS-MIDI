@@ -258,7 +258,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
       const channel = preview._channel(0, owner), values = prepared.parameters;
       pressureGain = context.createGain(); pan = context.createStereoPanner?.() || null;
       for (const component of components) component.gain.connect(pressureGain);
-      pressureGain.connect(pan || channel.gain); pan?.connect(channel.gain);
+      pressureGain.connect(pan || channel.sourceInput || channel.gain); pan?.connect(channel.sourceInput || channel.gain);
       voice = { owner, workloadClass: preview._workloadClass(owner), number: 0, note: Math.round(intent.pitch.cents / 100), velocity: intent.velocity01 * 127, id: ++preview._voiceSequence,
         start, end: hardEnd, hardEnd, releaseAt: hardEnd - values.releaseSeconds, released: false, renderCost, startedAt: start, priority: 1, laneIndex: intent.laneId ?? 0,
         main: components[0], child: components[1] || null, components, gain: components[0].gain, pressureGain, pan, nativeNodesOwnedByBackend: true,

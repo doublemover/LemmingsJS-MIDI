@@ -2985,3 +2985,23 @@ staging fixtures check donor planes independent of exported stems, missing sourc
 route receipt tampering and resource retirement. Additional typed mono-adapter and
 connected-silent/absent source fixtures are authored. All remain unrun, along with
 browser, spectral/listening and performance qualification for the complete backlog.
+
+
+### Continuation 149 — real live owner pre/post-fader taps and epoch replacement (#1163)
+
+Live channels now have an explicit unity source-input node before owner volume,
+expression and pan, alongside the existing post-fader/pre-effect input. Classic
+preview voices and all nine native/owned instrument producers enter that source
+node. Same-owner sidechain pins select the actual requested pre/post tap with the
+same context and session generation; master returns and cue destinations cannot
+be used as upstream sources. Both taps retain per-voice source envelopes and pan;
+owner fader/expression/pan affect only the post tap. Channel resource estimates and
+failure/normal retirement include the new native node.
+
+An effect host from an earlier stopped session generation must retire completely
+before the next enabled generation prepares another graph. Preparation and source
+pins also reject stale session generations. This prevents reusing an old host and
+resource epoch after stop/re-enable. API fixtures check both tap connection points,
+retained dry routing, source disconnection and subsequent epoch preparation. They
+remain unrun. Live cross-lane taps and their owned Worklet producer buses are still
+outstanding; this continuation does not claim full #1163 acceptance.

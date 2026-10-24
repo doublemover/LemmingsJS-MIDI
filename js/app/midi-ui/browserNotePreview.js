@@ -312,8 +312,19 @@ class BrowserNotePreview {
         const { createOwnerEffectGraphHost } = await import('./OwnerEffectGraphHost.js');
         if (session.disposed || generation !== session.generation || context !== this._context) throw new Error('Effect owner changed during preparation.');
         const channel = this._channel(0, id);
+        if (channel.effects && channel.effects.state().generation !== generation) {
+          const previous = channel.effects, receipt = previous.dispose(); await receipt.completion;
+          if (receipt.outcome !== 'complete') throw new Error('The previous effect epoch has unresolved producer retirement.');
+          if (channel.effects === previous) channel.effects = null;
+          if (session.disposed || generation !== session.generation || context !== this._context) throw new Error('Effect owner changed during retirement.');
+        }
         channel.effects ||= createOwnerEffectGraphHost({ context, input: channel.effectInput, dry: channel.effectDry, destination: channel.destination,
-          resources: this._audioResources, owner: id, generation, getMaterialProvider: () => this.getSoundMaterialProvider(), isCurrent: () => !session.disposed && context === this._context,
+          resources: this._audioResources, owner: id, generation, getMaterialProvider: () => this.getSoundMaterialProvider(), isCurrent: () => !session.disposed && generation === session.generation && context === this._context,
+          resolveSidechainSource: request => {
+            if (request.sourceBusId !== 'owner' || request.inputLayout !== 'audioStereo') return null;
+            return { node: request.tap === 'pre-fader' ? channel.sourceInput : channel.effectInput, context, owner: id, generation, sourceBusId: 'owner', tap: request.tap,
+              layout: 'audioStereo', stage: 'upstream-owner-effects', isActive: () => !session.disposed && generation === session.generation && context === this._context && context.state !== 'closed', release() {} };
+          },
           onChange: () => session.report() });
         return channel.effects.prepare(definition, { ...options, isCurrent: () => generation === session.generation && !session.disposed && (!options.isCurrent || options.isCurrent()) });
       },
@@ -667,7 +678,7 @@ class BrowserNotePreview {
           const error = new Error('Effect graph retirement remains unresolved.'); channel.resourceLease.retainUnknown(error); throw error;
         }
         const native = createProcgenRetirementScope().retire([
-          { name: 'gain', run: () => channel.gain.disconnect() }, { name: 'pan', run: () => channel.pan?.disconnect() },
+          { name: 'source-input', run: () => channel.sourceInput?.disconnect() }, { name: 'gain', run: () => channel.gain.disconnect() }, { name: 'pan', run: () => channel.pan?.disconnect() },
           { name: 'effect-input', run: () => channel.effectInput?.disconnect() }, { name: 'effect-dry', run: () => channel.effectDry?.disconnect() }
         ]);
         const released = releaseAudioResourceAfterRetirement(channel.resourceLease, native);
@@ -804,14 +815,15 @@ class BrowserNotePreview {
     let channel = this._channels.get(key);
     if (channel) return channel;
     if (this._channels.size >= 128) throw new RangeError('Audio channel retirement capacity reached.');
-    const resourceLease = this._audioResources.reserve({ kind: 'channel-graph', owner, generation: this._generation, estimateBytes: 24576, consumerOwned: true });
+    const resourceLease = this._audioResources.reserve({ kind: 'channel-graph', owner, generation: this._generation, estimateBytes: 40960, consumerOwned: true });
     let gain;
+    let sourceInput;
     let pan;
     let effectInput;
     let effectDry;
     let destination;
     try {
-      gain = this._context.createGain();
+      gain = this._context.createGain(); sourceInput = this._context.createGain(); sourceInput.connect(gain);
       pan = this._context.createStereoPanner?.() || null;
       destination = this._workloadClass(owner) === 'cue' ? this._cueRouting?.getInput() : this._master;
       if (!destination) throw new Error('Cue input is unavailable.');
@@ -819,13 +831,13 @@ class BrowserNotePreview {
       gain.connect(pan || effectInput); pan?.connect(effectInput); effectInput.connect(effectDry); effectDry.connect(destination);
     } catch (error) {
       const native = createProcgenRetirementScope().retire([
-        { name: 'channel-gain', run: () => gain?.disconnect() }, { name: 'channel-pan', run: () => pan?.disconnect() },
+        { name: 'channel-source-input', run: () => sourceInput?.disconnect() }, { name: 'channel-gain', run: () => gain?.disconnect() }, { name: 'channel-pan', run: () => pan?.disconnect() },
         { name: 'effect-input', run: () => effectInput?.disconnect() }, { name: 'effect-dry', run: () => effectDry?.disconnect() }
       ]);
       try { releaseAudioResourceAfterRetirement(resourceLease, native); } catch (retirementError) { this._retirementFaults.add(owner); error.retirement = retirementError.retirement || native; }
       throw error;
     }
-    channel = { owner, number, gain, pan, effectInput, effectDry, destination, effects: null, resourceLease, bendRange: 2, volume: 1, expression: 1, program: null,
+    channel = { owner, number, sourceInput, gain, pan, effectInput, effectDry, destination, effects: null, resourceLease, bendRange: 2, volume: 1, expression: 1, program: null,
       controls: createTimedControlTimeline({ maxEvents: MAX_CONTROL_EVENTS }) };
     this._channels.set(key, channel);
     return channel;
@@ -974,9 +986,9 @@ class BrowserNotePreview {
         voice.pan = context.createStereoPanner();
         voice.pan.pan.setValueAtTime(clamp(options.pan, -1, 1), start);
         gain.connect(voice.pan);
-        voice.pan.connect(channel.gain);
+        voice.pan.connect(channel.sourceInput || channel.gain);
       } else {
-        gain.connect(channel.gain);
+        gain.connect(channel.sourceInput || channel.gain);
       }
       oscillator.onended = () => this._destroyVoice(voice);
       oscillator.start(start);

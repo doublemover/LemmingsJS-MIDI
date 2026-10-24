@@ -218,8 +218,8 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
       if (pan) {
         voice.panAutomation = createSmoothedAudioParameter({ param: pan.pan,
           initialValue: clamp((intent.expression?.pan01 ?? values.pan01) + prepared.patch.mix.pan01, -1, 1), startTime: start, smoothingSeconds, maxEvents: maxControlEvents });
-        pressureGain.connect(pan); pan.connect(channel.gain);
-      } else pressureGain.connect(channel.gain);
+        pressureGain.connect(pan); pan.connect(channel.sourceInput || channel.gain);
+      } else pressureGain.connect(channel.sourceInput || channel.gain);
       oscillator.onended = () => preview._destroyVoice(voice,
         voice.ownedGate && !voice.released ? 'owner-lease-expired' : 'source-ended');
       preview._voices.add(voice); voices.set(identity, voice); preview._semanticVoiceOwners.set(sharedIdentity, voice);
