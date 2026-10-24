@@ -111,6 +111,7 @@ const historyStoreStatsMethods = {
       spanTicks: span,
       coldBlockCount: this._coldBlockCount,
       coldBlockBytes: this._coldBlockBytes,
+      coldBlocksCreated: this._coldBlocksCreated, coldBlocksThawed: this._coldBlocksThawed, coldBlocksRetired: this._coldBlocksRetired,
       retention: this.getRetentionPolicy()
     };
   },

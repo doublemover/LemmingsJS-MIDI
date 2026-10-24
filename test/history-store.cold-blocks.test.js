@@ -199,6 +199,7 @@ describe('HistoryStore cold blocks', function() {
     history._maybeCompactDeltaBlocks();
     history._maybeCompactDeltaBlocks();
     expect(history._coldBlockCount).to.equal(5);
+    expect(history.getHistoryStats()).to.include({ coldBlocksCreated: 5, coldBlocksThawed: 0, coldBlocksRetired: 0 });
     expect(history.deltas[4]).to.equal(1);
     expect(history.deltas[5]).to.not.equal(1);
   });

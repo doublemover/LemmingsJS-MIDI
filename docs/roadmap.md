@@ -2633,6 +2633,18 @@ no longer enters a low-level voice argument. Resource-present live preparation,
 all-rate capacity/storage parity and direct control/state-cut regressions are
 authored for the deferred acceptance pass; no runtime tests have run.
 
+Issue #1257 now gives each classic long-session replay probe explicit
+transport ownership. It waits for meaningful retained history, verifies both
+seeks and the restored tick/exposed physical projection/history before resuming
+only a previously running workload. Failed restoration invalidates and stops
+the run. Required raw telemetry, completed forward ticks, sustained progress,
+sampled active/paused/probe time, complete replay receipts and profile-specific
+history turnover gates prevent a tiny initial advance from passing an idle
+window. Cold compaction/thaw/retirement counters report actual owner operations.
+Controlled actual-E2E/TimeTravelController integration fixtures are authored,
+including failed/incomplete seeks and originally paused state; no browser run,
+benchmark, runtime test or throughput result is claimed.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical
