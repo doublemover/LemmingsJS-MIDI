@@ -222,6 +222,24 @@ describe('BrowserNotePreview', function() {
     pitch: { cents: 6000.001, referenceHz: 440 }, velocity01: 0.7501, expression: {},
     sourceEventIds: ['physical:1'], onsetId: 'onset:' + voiceId, actorId: 'actor:' + voiceId });
 
+  it('owns native FM children under independent same-pitch voices and charges all operator intervals', async () => {
+    const budget = createResourceBudget(), { preview, context } = setup({ resourceBudget: budget, maxVoices: 4 });
+    const game = preview.createSession('fm'), backend = game.createInstrumentBackend({ engineId: 'native-fm', gateMode: 'owned' });
+    const resolution = nativePatch(); resolution.patch = { ...resolution.patch, engineId: 'native-fm', parameters: { modulatorRatio: 2.71, indexStart: 3.5, indexEnd: 0.15 } };
+    expect((await backend.prepare(resolution)).status).to.equal('ready'); await game.enable();
+    const execution = backend.registerExecution({ executionEpoch: 'fm:independent', generation: 1 }).execution;
+    expect(backend.renewExecutionLease(1, execution, 336000).status).to.equal('accepted');
+    expect(backend.begin(nativeIntent('a'), 96000, execution)).to.include({ status: 'accepted', sourceCost: 2 });
+    expect(backend.begin(nativeIntent('b'), 96000, execution).status).to.equal('accepted'); expect(context.oscillators).to.have.length(4);
+    expect(backend.begin(nativeIntent('over-capacity'), 96000, execution).status).to.equal('rejected'); expect(context.oscillators).to.have.length(4);
+    expect(backend.update('a', { pitchOffsetCents: 100.001, pressure01: 0.1234 }, 97000, execution).status).to.equal('accepted');
+    expect(context.oscillators[0].detune.events.some(event => event.value === 100.001)).to.equal(true);
+    expect(context.oscillators[1].detune.events.some(event => event.value === 100.001)).to.equal(true);
+    expect(context.oscillators[2].detune.events.some(event => event.value === 100.001)).to.equal(false);
+    expect(backend.update('a', { pitchOffsetCents: 300 }, 98000, execution).reason).to.equal('fm-bend-profile-exceeded');
+    game.stop(); expect(context.oscillators.every(node => node.disconnected)).to.equal(true); await preview.dispose(); expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+
   it('denies a graph before creating an AudioContext when the shared memory budget is full', async () => {
     const budget = createResourceBudget({ limitBytes: 4096 }), { preview, creations } = setup({ resourceBudget: budget });
     expect(await preview.enable()).to.equal(false); expect(creations()).to.equal(0);

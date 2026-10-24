@@ -9,12 +9,19 @@ const envelope = (attack, decay, sustain, gain) => [parameter('attackSeconds', 0
   parameter('gain01', 0, 1, gain, 'amplitude-linear'), parameter('pan01', -1, 1, 0, 'normalized')];
 const schemas = freezeData({
   'native-oscillator': [parameter('waveform', 0, 3, 1, 'enum', true), ...envelope(0.008, 0.05, 0.7, 0.5)],
+  'native-fm': [parameter('carrierRatio', 0.125, 8, 1, 'ratio'), parameter('modulatorRatio', 0.125, 12, 2, 'ratio'),
+    parameter('indexStart', 0, 8, 1, 'dimensionless'), parameter('indexEnd', 0, 8, 0.1, 'dimensionless'), parameter('indexSeconds', 0.001, 4, 0.3, 's'),
+    parameter('dualPair', 0, 1, 0, 'enum', true), parameter('secondaryCarrierRatio', 0.125, 8, 1, 'ratio'), parameter('secondaryModulatorRatio', 0.125, 12, 1, 'ratio'),
+    parameter('secondaryIndexStart', 0, 8, 0, 'dimensionless'), parameter('secondaryIndexEnd', 0, 8, 0, 'dimensionless'), parameter('secondaryMix01', 0, 1, 0, 'ratio'),
+    parameter('pitchSettleCents', -1200, 1200, 0, 'cents'), parameter('pitchSettleSeconds', 0.001, 1, 0.035, 's'), parameter('maxBendCents', 0, 1200, 200, 'cents')]
+    .map(spec => Object.freeze({ ...spec, liveSafe: false })).concat(envelope(0.002, 1.4, 0, 0.4)),
   'worklet-sine': envelope(0.008, 0.05, 0.7, 0.5),
   'native-sample': envelope(0.005, 0, 1, 0.7)
 });
 export const NATIVE_OSCILLATOR_PARAMETERS = freezeData(Object.fromEntries(schemas['native-oscillator'].map(spec =>
   [spec.id, { min: spec.min, max: spec.max, integer: spec.discrete, default: spec.default }])));
 export const NATIVE_WORKLET_FIELDS = freezeData(Object.fromEntries(schemas['worklet-sine'].map(spec => [spec.id, [spec.min, spec.max, spec.default]])));
+export const NATIVE_FM_PARAMETERS = freezeData(Object.fromEntries(schemas['native-fm'].map(spec => [spec.id, { min: spec.min, max: spec.max, integer: spec.discrete, default: spec.default }])));
 export const NATIVE_SAMPLE_FIELDS = freezeData(Object.fromEntries(schemas['native-sample'].map(spec => [spec.id, [spec.min, spec.max, spec.default]])));
 const capabilities = id => Object.freeze({ samples: id === 'native-sample', independentSamePitch: true, perVoicePitch: true,
   perVoicePressure: true, perVoicePan: true, perVoiceTimbre: false, ownedGates: true, releaseVelocity: id === 'native-sample',
@@ -23,12 +30,12 @@ const capabilities = id => Object.freeze({ samples: id === 'native-sample', inde
 let catalogPromise = null;
 
 export async function describeNativeInstrumentEngines(artifacts) {
-  if (!Array.isArray(artifacts) || artifacts.length > 3) throw new TypeError('Invalid native engine artifact inventory.');
+  if (!Array.isArray(artifacts) || artifacts.length > 4) throw new TypeError('Invalid native engine artifact inventory.');
   const descriptors = [];
   for (const [engineId, parameters] of Object.entries(schemas)) {
     const engineCapabilities = capabilities(engineId), artifactHash = artifacts.find(artifact => artifact.engineId === engineId && artifact.engineVersion === 1)?.artifactHash;
     if (!artifactHash) continue;
-    const maximumVoices = 64, voicePolicies = ['reject'];
+    const maximumVoices = engineId === 'native-fm' ? 32 : 64, voicePolicies = ['reject'];
     const parameterSchemaHash = await hashData({ version: 1, parameters, capabilities: engineCapabilities, maximumVoices, voicePolicies });
     descriptors.push(validateEngineDescriptor({ engineId, engineVersion: 1, artifactHash, parameterSchemaHash, parameters, capabilities: engineCapabilities, maximumVoices, voicePolicies }));
   }

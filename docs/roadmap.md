@@ -2105,6 +2105,13 @@ unknown renderer cleanup retains accounting. A required pinned revision cannot
 silently fall back to the basic oscillator when preparation is absent or stale.
 Live lane and offline sine adapters share one authored hold/release policy.
 Large-lane and policy fixtures are authored and unexecuted.
+The new native FM adapter connects two/four-operator graphs to existing owned
+voices, library audition and pinned-lane preparation. Index-to-Hz conversion,
+independent envelopes, bounded pitch settling and child source accounting are
+explicit. Register-based index reduction is labeled an estimate, not a spectral
+qualification. Native hidden DSP state/offline/receipt limits stay explicit.
+Authored FM recipes and full spectral/listening gates follow; adapter fixtures
+remain unexecuted with the consolidated validation pass.
 
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail

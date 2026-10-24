@@ -738,6 +738,34 @@ history. Voice-capacity planning orders the complete captured onset set by its
 actual frame with stable source-order ties, independently of actor traversal.
 Timing provenance and the captured timeline hash accompany the render. Numeric,
 rate-change and fractional-order regression fixtures remain unexecuted.
+
+### Native FM engine adapter
+
+The versioned `native-fm` adapter uses the existing preview context, sessions,
+mix/protection, interval admission and opaque execution handles. One logical
+voice owns a two-operator pair or two mixed pairs, plus an optional bounded pitch
+settle source. All children start/stop together, lease extensions reschedule every
+source, and teardown attempts all nodes even after a child fails. Child generator
+counts enter interval and memory admission before allocation. Failed preparation
+preserves the previous pinned instrument.
+
+Modulation index is dimensionless; `fmIndexToDeviation` converts it to Hz using
+the modulator frequency. Amplitude and modulation envelopes are independent.
+All pitched operators share the owned detune curve. The native compound
+frequency/detune ordering follows the
+[Web Audio OscillatorNode contract](https://www.w3.org/TR/webaudio-1.0/#OscillatorNode).
+The graph has no feedback path. Two/four-operator topology, ratios, index envelope,
+second-pair mix, pitch settling and the declared bend range are immutable patch
+data; unsupported controls remain explicit.
+
+A per-onset register calculation limits index over the declared bend/settle range
+and refuses out-of-register ratios. This is a conservative sideband estimate,
+not measured alias suppression. Diagnostics expose requested/effective indices,
+ratios, source units and the exact quality limitation. This native adapter does
+not advertise exact snapshots, measured render acknowledgment or product offline
+rendering. Numeric, same-pitch isolation, cost and child-retirement fixtures are
+authored and unexecuted; spectral/PCM/real-time/listening qualification and authored
+FM content remain pending.
 Global stop fences reentrant enable requests and requests source cancellation;
 source/backend ownership remains visible until actual retirement. Master capture
 excludes the separate cue bus and explicitly includes live-output rehearsal.

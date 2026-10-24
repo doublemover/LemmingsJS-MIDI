@@ -101,7 +101,10 @@ export function createAudioResourceLeases({ resourceBudget = null, ownerPrefix =
     ['native-voice', 'worklet-voice-host', 'worklet-runtime', 'pcm-capture-runtime', 'channel-graph', 'mix-graph'].includes(lease.kind))
     .map((lease, index) => ({ name: 'closed-context-resource-' + index, run: lease.confirmRetirement })));
   return { reserve, reserveDecodedBuffer, releaseOwner, retireOwner, confirmClosedContext, diagnostics, dispose,
-    reserveNativeVoice: (owner, generation = 0) => reserve({ kind: 'native-voice', owner, generation, estimateBytes: NATIVE_VOICE_ESTIMATE }),
+    reserveNativeVoice: (owner, generation = 0, sourceCost = 1) => {
+      if (!Number.isSafeInteger(sourceCost) || sourceCost < 1 || sourceCost > 8) throw new RangeError('Invalid native source cost.');
+      return reserve({ kind: 'native-voice', owner, generation, estimateBytes: NATIVE_VOICE_ESTIMATE * sourceCost });
+    },
     reserveWorkletVoice: (owner, generation = 0) => reserve({ kind: 'worklet-voice-host', owner, generation, estimateBytes: 1536 }),
     reserveWorkletRuntime: (owner, generation = 0) => reserve({ kind: 'worklet-runtime', owner, generation,
       bytes: KERNEL_TYPED_BYTES, estimateBytes: WORKLET_HOST_ESTIMATE }) };

@@ -37,7 +37,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
     let lease;
     try { lease = borrowSoundContentStage(stage); } catch (error) { return Promise.reject(error); }
     const patch = lease.prepared.patches.find(entry => entry.identity === patchIdentity);
-    if (!patch || patch.state !== 'definition-admitted' || !['native-oscillator', 'worklet-sine'].includes(patch.definition.engineId) ||
+    if (!patch || patch.state !== 'definition-admitted' || !['native-oscillator', 'native-fm', 'worklet-sine'].includes(patch.definition.engineId) ||
         patch.definition.sampleRefs.length || patch.definition.modulations.length || patch.definition.causalBindings.length || patch.definition.macros.length) {
       lease.release(); return Promise.reject(failure('audition-requirements-unmet', 'This instrument needs an available renderer and a realized gesture/material adapter.'));
     }
@@ -74,7 +74,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
             descriptor.parameterSchemaHash !== patch.engineRequirement.parameterSchemaHash) throw failure('engine-revision-mismatch', 'The executing renderer differs from the staged immutable requirement.');
         const definitions = createInstrumentPatchRegistry(); definitions.register(patch.definition, descriptor);
         const resolution = definitions.resolve(patch.definition.id, patch.definition.revision, { engineDescriptors: [descriptor], assetHashes: lease.metadata.assetHashes });
-        operation.backend = patch.definition.engineId === 'worklet-sine' ? await operation.session.createWorkletInstrumentBackend() : operation.session.createInstrumentBackend({ gateMode: 'owned' }); check();
+        operation.backend = patch.definition.engineId === 'worklet-sine' ? await operation.session.createWorkletInstrumentBackend() : operation.session.createInstrumentBackend({ gateMode: 'owned', engineId: patch.definition.engineId }); check();
         const prepared = await interruptible(operation.backend.prepare(resolution), signal); check();
         if (prepared.status !== 'ready') throw failure('preparation-rejected', 'Audition renderer rejected the effective patch: ' + prepared.reason);
         const context = operation.context = audio.getAudioContext(), rate = context?.sampleRate;
