@@ -21,7 +21,7 @@ export async function prepareCausalNativeRenderInput(input, { resources, signal,
       releaseFrame: voice.releaseAt ?? plan.outputEnd + 1, releaseSeconds: voice.parameters.releaseSeconds });
   }
   const { sampleRate, outputFrames, outputEnd, firstFrame, endFrame, stemLaneIds } = plan;
-  const native = await renderNativeOfflineGraph({ patch: plan.patch, events, frames: outputEnd, sampleRate, stemLaneIds }, { resources, signal, onProgress, OfflineAudioContext, resourceBudget, admission, isCurrent });
+  const native = await renderNativeOfflineGraph({ patch: plan.patch, events, frames: outputEnd, sampleRate, stemLaneIds, assets: input.nativeAssets || [] }, { resources, signal, onProgress, OfflineAudioContext, resourceBudget, admission, isCurrent });
   try {
     const manifest = { schema: 'lemmings-causal-audio-render/v1', mode: 'intent-render', operation: 'sound-only-revoice', takeId: plan.source.takeId,
       takeRevision: plan.source.takeRevision, sourceCanonicalHash: plan.source.sourceCanonicalHash, sourceVersions: plan.source.sourceVersions, intentHash: plan.intentHash,
@@ -36,12 +36,13 @@ export async function prepareCausalNativeRenderInput(input, { resources, signal,
       commands: { capturedBegins: plan.capturedBegins, capturedUpdates: plan.capturedUpdates, capturedEnds: plan.capturedEnds, derivedReleases: plan.derivedReleases,
         scheduledNativeCalls: native.receipt.submitted, nativeAppliedFrames: 'not-reported-by-native-api', peakVoices: plan.peakVoices },
       realization: { scope: 'new-local-native-source-realization-of-immutable-intents', liveAdmissionHistoryRecreated: false, historicalHardwareTimbreRecreated: false,
-        smoothingSeconds: 0.008, articulationPolicy: plan.articulation.policy, oneShotHoldPolicy: 'per-onset-effective-native-source-parameters',
+        smoothingSeconds: 0.008, articulationPolicy: plan.articulation.policy, oneShotHoldPolicy: plan.owned.requiresNativeAssets ? 'selected-region-varispeed-duration-capped-at-four-seconds' : 'per-onset-effective-native-source-parameters',
         sourcePerformanceControls: 'captured-controls-retained-new-target-defaults-and-recorded-onset-physical-causes-applied',
         sourceControls: { ...plan.sourceControls, observedKinds: [...plan.sourceControls.observedKinds].sort(), continuousPhysicalBindings: 'not-supported-by-these-native-sources' },
-        sourceBank: null, sourceResampling: 'none', normalization: 'none', integerClipping: 'not-applicable', dither: 'none-float-output', sharedMasterAndLimiter: 'excluded',
+        sourceBank: input.materialDescriptor || null, sourceResampling: plan.owned.requiresNativeAssets ? 'native-varispeed-source-rate-conversion' : 'none', normalization: 'none', integerClipping: 'not-applicable', dither: 'none-float-output', sharedMasterAndLimiter: 'excluded',
         nativeSourceProfile: { indexLimitedOnsets, omittedModes, qualification: 'native-source-register-plans-not-measured-alias-or-listening-evidence' } },
       nativeScheduling: native.receipt,
+      sampleTailPlanning: plan.owned.requiresNativeAssets ? { mode: 'conservative-release-child-duration-from-minimum-captured-rate', sameKitChokes: [...plan.voices.values()].filter(voice => voice.chokeFrame != null).length, exactPlayheadExport: false } : null,
       stems: { mode: 'simultaneous-dry-lane-taps', laneIds: stemLaneIds, allCapturedLanesIncluded: [...plan.lanes].every(lane => stemLaneIds.includes(lane)),
         sharedReturns: 'none-in-selected-graph', recombination: 'linear-dry-sum-with-float32-rounding', nonlinearMaster: 'excluded' },
       acousticReceipt: false, qualification: 'native-pcm-not-listening-or-cross-browser-qualified', originalRecordMutated: false };

@@ -2464,6 +2464,22 @@ encoding conversions in library labels and this roadmap are repaired. Original
 tactile proof material and native sample control/take export remain work; runtime,
 UI, source-pitch/loop and resource qualification remain deferred.
 
+Mapped native samples now render controls and causal takes through the same
+sample backend, using isolated offline material decoding and the shared cache.
+Native buffers never pass through the encoding worker: the main-thread offline
+producer supplies planar PCM after quantum-bounded scheduling and joined
+retirement. The saved-instrument option supports the exact installed sample map;
+control WAVs retain their selected gesture fixture hash. Source-rate regions,
+relative varispeed pitch, per-onset hold and conservative release-child bounds
+share live definitions. Causal preflight models exact kit-scoped chokes before
+logical gate capacity and explicitly rejects controls after a newly realized
+choke. Bounded selection API receipts expose their retained/omitted coverage;
+they do not certify native applied frames, acoustic output or prior admission
+history. Five owned and four native sources now have implementation paths.
+Original tactile proof material and advanced sample traversal still remain;
+all runtime, PCM, resource and browser fixtures stay unexecuted until the final
+consolidated validation pass.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical

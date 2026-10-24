@@ -466,9 +466,9 @@ included in interval admission before changing an existing voice. One-shot hold
 uses selected-region duration at the onset varispeed ratio, capped at four seconds;
 held gestures retain their owned gate policy. Sample loops/releases, UI and combined
 resource behavior remain subject to qualification. The original tactile proof pack
-and native sample offline output are still in development. Source/selection metadata fixtures are authored and unexecuted.
+remains in development. Native sample control and causal-take output now use the same mapped backend and pinned material through an isolated OfflineAudioContext. Source/selection metadata fixtures are authored and unexecuted.
 
-Causal take rendering currently supports the five owned sources and three native
+Causal take rendering currently supports the five owned sources and four native
 sources listed above. It preserves immutable intent times and identities, with
 forward preroll from a known empty boundary. Dry lane taps are simultaneous with
 the full graph: native rendering supports fifteen stereo lane taps within the
@@ -479,3 +479,13 @@ settled. Native sample preparation can borrow an explicitly owned offline decode
 context through the shared asset cache; joined cancellation prevents its owner
 from retiring while an accepted decode still runs. These implementation contracts
 remain subject to the deferred runtime, browser, PCM and listening acceptance pass.
+
+Mapped sample offline output uses source-frame regions and native varispeed,
+including per-onset region-duration hold and owned release children. Causal
+planning bounds a child tail using the minimum captured pitch ratio; it may
+include conservative trailing silence. Same-kit chokes shorten the planned
+gate/source intervals without changing the captured end intent. Controls after
+a new realization's choke reject explicitly. The render manifest retains at
+most 64 actual selected-zone API receipts with selected/retained/omitted counts;
+this summary is separate from immutable intent history and rendered PCM. Exact
+native playhead snapshots and cross-browser bit identity are unavailable.

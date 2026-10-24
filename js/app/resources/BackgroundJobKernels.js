@@ -246,7 +246,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
         metadata.bytes * 4 + 16 * 1048576 > estimatedPeakBytes) throw problem('invalid-contract', 'Native encoding requires its admitted PCM and representation overlap.');
     const catalog = await getNativeInstrumentCatalog(), requirement = input.manifest?.engineRequirement;
     const descriptor = catalog.descriptors.find(engine => engine.engineId === requirement?.engineId); guard(signal, current);
-    if (catalog.state !== 'bound-application-engines' || !descriptor || !['native-oscillator', 'native-fm', 'native-modal'].includes(descriptor.engineId) ||
+    if (catalog.state !== 'bound-application-engines' || !descriptor || !['native-oscillator', 'native-fm', 'native-modal', 'native-sample'].includes(descriptor.engineId) ||
         !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => requirement?.[key] === descriptor[key]) || input.manifest.applicationBuildId !== catalog.executionIdentity.buildId)
       throw problem('engine-identity-unbound', 'Native encoding requires the same immutable application and source artifact.');
     const value = await encodeNativeOfflineRender(input, { signal, yieldControl, onProgress }); guard(signal, current);

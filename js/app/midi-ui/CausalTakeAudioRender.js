@@ -1,5 +1,6 @@
 import { prepareCausalNativeRenderInput } from './CausalNativeRender.js';
 import { getNativeOfflineProfile, NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineProfile.js';
+import { prepareNativeRenderMaterial } from './NativeRenderMaterial.js';
 import { prepareOwnedRenderMaterial } from './OwnedRenderMaterial.js';
 import { createAudioResourceLeases } from './AudioResourceLeases.js';
 import { validateSoundContentReference } from '../../midi/content/SoundContentReference.js';
@@ -79,11 +80,11 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
           throw failure('engine-identity-unbound', 'Prepare this render from an immutable application build with the selected owned source.');
         if (reference && (reference.definitionHash !== definitionHash || !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => reference.engineRequirement[key] === descriptor[key])))
           throw failure('engine-revision-mismatch', 'The selected immutable instrument definition or renderer differs from the saved reference.');
-        if (profile.requiresPCM) {
-          if (!reference || !getMaterialProvider) throw failure('material-reference-required', 'Choose a pinned installed source for this granular render.');
+        if (profile.requiresPCM || profile.requiresNativeAssets) {
+          if (!reference || !getMaterialProvider) throw failure('material-reference-required', 'Choose a pinned installed sample source for this render.');
           phase = 'preparing-material'; report();
-          operation.material = await prepareOwnedRenderMaterial({ provider: getMaterialProvider(), resources: materialResources, definition: patch, reference,
-            engineDescriptors: catalog.descriptors, owner: ownerId, generation: ordinal, signal: controller.signal, isCurrent: () => !disposed && isCurrent() }); check();
+          operation.material = await (profile.requiresNativeAssets ? prepareNativeRenderMaterial : prepareOwnedRenderMaterial)({ provider: getMaterialProvider(), resources: materialResources, definition: patch, reference,
+            engineDescriptors: catalog.descriptors, sampleRate, owner: ownerId, generation: ordinal, signal: controller.signal, isCurrent: () => !disposed && isCurrent() }); check();
         }
         const engineRequirement = Object.fromEntries(['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].map(key => [key, descriptor[key]]));
         operation.source = await querySoundOnlyRevoiceOwned({ journal, resourceBudget, jobs, takeId, takeRevision,
@@ -104,10 +105,10 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
         let estimatedPeakBytes = sourceFootprint * 6 + pcmBytes * 4 + revoice.intents.length * Math.max(1024, Object.keys(profile.fields).length * 256) + 32 * 1048576 + (operation.material?.descriptor.bytes || 0) * 6;
         if (!Number.isSafeInteger(pcmBytes) || pcmBytes > 64 * 1048576 || !Number.isSafeInteger(estimatedPeakBytes) || estimatedPeakBytes > 512 * 1048576)
           throw failure('render-memory-capacity', 'Choose a shorter output range or fewer stems to fit source, PCM, encoding and transfer overlap.');
-        input = { revoice, definition: patch, engineRequirement, sampleRate, startSeconds, endSeconds, tail: policy, stemLaneIds: lanes, ...(operation.material ? { pcm: operation.material.payload } : {}) };
+        input = { revoice, definition: patch, engineRequirement, sampleRate, startSeconds, endSeconds, tail: policy, stemLaneIds: lanes, ...(operation.material && !native ? { pcm: operation.material.payload } : {}) };
         phase = native ? 'rendering-native' : 'rendering'; report();
         if (native) {
-          operation.native = await prepareCausalNativeRenderInput({ ...input, descriptor, applicationBuildId: catalog.executionIdentity.buildId },
+          operation.native = await prepareCausalNativeRenderInput({ ...input, descriptor, applicationBuildId: catalog.executionIdentity.buildId, ...(profile.requiresNativeAssets ? { nativeAssets: operation.material.assets, materialDescriptor: operation.material.descriptor } : {}) },
             { resources: materialResources, resourceBudget, signal: controller.signal, isCurrent: () => !disposed && isCurrent(), maxWorkingBytes: 512 * 1048576 - sourceFootprint * 6,
               onProgress: value => { if (!disposed && active === operation) { progress = Object.freeze(value); report(); } } }); check();
           estimatedPeakBytes = operation.native.estimatedPeakBytes; input = operation.native.input;
@@ -126,7 +127,7 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
         if (operation.job.receipt.method !== 'dedicated-worker' || operation.job.receipt.executionIdentity?.activeExecution !== 'bound' || manifest?.schema !== 'lemmings-causal-audio-render/v1' ||
             manifest.applicationBuildId !== operation.job.receipt.executionIdentity.buildId || manifest.takeId !== takeId || manifest.takeRevision !== binding.takeRevision ||
             manifest.sourceCanonicalHash !== binding.sourceCanonicalHash || manifest.definitionHash !== definitionHash || manifest.sampleRate !== sampleRate ||
-            manifest.timelineZeroSourceFrame !== Math.round(startSeconds * sampleRate) || manifest.exactEndSourceFrame !== Math.round(endSeconds * sampleRate) || operation.material && manifest.realization?.sourceBank?.bankHash !== operation.material.descriptor.bankHash ||
+            manifest.timelineZeroSourceFrame !== Math.round(startSeconds * sampleRate) || manifest.exactEndSourceFrame !== Math.round(endSeconds * sampleRate) || operation.material && (profile.requiresNativeAssets ? await hashData(manifest.realization?.sourceBank) !== await hashData(operation.material.descriptor) : manifest.realization?.sourceBank?.bankHash !== operation.material.descriptor.bankHash) ||
             !Array.isArray(value.files) || value.files.length !== lanes.length + 1 || !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => manifest.engineRequirement?.[key] === engineRequirement[key]))
           throw failure('render-result-mismatch', 'The worker result differs from the selected immutable source, range or renderer.');
         let totalBytes = 0;

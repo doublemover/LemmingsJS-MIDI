@@ -175,7 +175,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
   for (const rate of [44100, 48000, 96000]) { const option = node('option', rate + ' Hz'); option.value = String(rate); renderRate.append(option); }
   renderRate.value = '48000'; controls.append(renderRate);
   const renderAudio = button('Render controls WAV', () => run(async operation => {
-    const result = await renderReferences.prepare(stage, selection, { sampleRate: Number(renderRate.value), signal: operation.controller.signal,
+    const result = await renderReferences.prepare(stage, selection, { sampleRate: Number(renderRate.value), sampleGesture: gestureLabel.hidden ? null : gesture.value, signal: operation.controller.signal,
       isCurrent: () => current === operation && !disposed });
     try { check(operation); artifact?.discard(); artifact = result.artifact;
       setStatus('Control reference WAV prepared at ' + result.manifest.sampleRate + ' Hz. Source, engine and tails are embedded; this is not a physical-take or listening qualification.'); }

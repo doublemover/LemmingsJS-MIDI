@@ -1,3 +1,4 @@
+import { sampleRegionRate as rateFor, sampleRegionArticulation } from './NativeSamplePlan.js';
 import { DECODER_VERSION } from './AudioAssetRef.js';
 import { createSmoothedAudioParameter } from './SmoothedAudioParameter.js';
 import { createInstrumentExecutionLifecycle, isManagedExecutionEpoch } from './InstrumentExecutionLifecycle.js';
@@ -15,7 +16,7 @@ const text = (value, max = 256) => typeof value === 'string' && value.length > 0
 const capabilities = Object.freeze({ independentSamePitch: true, perVoicePitch: true, perVoicePressure: true,
   perVoicePan: true, ownedGates: true, sampleMaps: true, releaseVelocity: true, releaseRegion: true, forwardLoops: true,
   crossfadeLoops: false, reverse: false, positionDriven: false, independentTimeStretch: false,
-  renderAcknowledgment: false, offlineRender: false, maximumVoices: 64, latencyFrames: 0,
+  renderAcknowledgment: false, offlineRender: true, maximumVoices: 64, latencyFrames: 0,
   supportedParameterIds: Object.freeze(['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds', 'gain01', 'pan01']) });
 
 // Region selection belongs to the content map. This renderer snapshots exactly
@@ -172,12 +173,6 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
       rootCents: input.rootCents, gain01: input.gain01 ?? 1, tuningCents: input.tuningCents ?? 0, loop, releaseRegion, pitchRange,
       chokeGroup: input.chokeGroup ?? null, chokeScope: input.chokeScope ?? null, selectionSeed: input.selectionSeed ?? null, selection: !child && prepared?.mapResolver ? input.selection : null });
   };
-  const rateFor = (region, pitch, offset) => {
-    const cents = pitch.cents + offset + 1200 * Math.log2((pitch.referenceHz ?? 440) / 440);
-    if (region.pitchRange && !finite(cents, region.pitchRange.minCents, region.pitchRange.maxCents)) return null;
-    const ratio = 2 ** ((cents - region.rootCents + region.tuningCents) / 1200);
-    return finite(ratio, 1 / 16, 16) ? ratio : null;
-  };
   const scheduleHeldEnvelope = (voice, until) => {
     const at = Math.max(voice.start, preview._context.currentTime);
     voice.end = until; voice.hardEnd = until; voice.releaseAt = Math.max(at, until - voice.release);
@@ -309,9 +304,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
       if (region.chokeGroup) rebuildChokes(region.chokeGroup, region.chokeScope);
       return trace({ status: 'accepted', stage: 'scheduled', voiceId: intent.voiceId, generation: intent.generation, executionEpoch, targetFrame,
         assetHash: region.assetHash, selectionSeed: region.selectionSeed, region, rateRatio: rate, renderCost, patchId: prepared.id, patchRevision: prepared.revision,
-        articulation: Object.freeze({ version: 1, releaseSeconds: values.releaseSeconds,
-          oneShotTailSeconds: Math.min(4, Math.max(0.04, (region.endFrame - region.onsetFrame) / main.pin.ref.sourceSampleRate / rate)),
-          policy: 'selected-region-varispeed-duration-capped-at-four-seconds' }) });
+        articulation: sampleRegionArticulation(region, main.pin.ref.sourceSampleRate, rate, values.releaseSeconds) });
     } catch (error) {
       errors++;
       if (voice && preview._voices.has(voice)) preview._destroyVoice(voice, 'sample-construction-failure');
