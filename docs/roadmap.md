@@ -2133,6 +2133,16 @@ authors small correlated ratio/decay variation and work-cell-driven color;
 cells/pixels are not force or energy. Missing measured fields skip the binding
 with a receipt. Continuous bindings, actor locks, noise-state support and the
 deferred PCM/listening/physical qualification remain outstanding.
+The native modal adapter now realizes 4–8 authored damped-sine modes inside one
+owned voice, with explicit T60 seconds, two authored strike-gain sites, bounded
+register taper/omissions, onset L1 normalization and all-child source accounting.
+Modal body decay, onset envelope and host release are separate; one-shot holds
+follow the selected body's actual longest mode. The library prepares Timber,
+Slate, Glass, Sheet metal and Unclassified source recipes with MASS/HARDNESS/
+DAMPING/HOLLOW, identity variation and typed work-strength bindings. This is a
+musical impulse-response adapter, not a feedback resonator/FEM pickup or verified
+terrain-material resolver. Source/model/content/browser fixtures remain deferred
+with real PCM, spectral, listening and combined cost qualification.
 
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail

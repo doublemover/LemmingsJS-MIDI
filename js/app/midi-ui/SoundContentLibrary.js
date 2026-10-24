@@ -12,6 +12,7 @@ import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 
 const FACTORY_SOURCE = new URL('../../../content/sounds/native.json', import.meta.url);
 const FM_FORGE_SOURCE = new URL('../../../content/sounds/fm-forge.json', import.meta.url);
+const MATERIAL_SOURCE = new URL('../../../content/sounds/struck-materials.json', import.meta.url);
 const failure = message => Object.assign(new Error(message), { name: 'SoundContentError' });
 
 export function createSoundContentLibrary({ document, window, audio, resourceBudget, jobs = backgroundJobService, onApply, onStatus = () => {}, monitor = null } = {}) {
@@ -95,6 +96,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
   });
   const factory = button('Prepare factory instruments', () => prepareFactory(FACTORY_SOURCE, 'Factory'));
   const fmFactory = button('Prepare FM Forge', () => prepareFactory(FM_FORGE_SOURCE, 'FM Forge'));
+  const materialFactory = button('Prepare struck materials', () => prepareFactory(MATERIAL_SOURCE, 'Struck materials'));
   const importInput = node('input'); importInput.type = 'file'; importInput.accept = '.lemmings-sound,application/vnd.lemmings.sound-pack'; importInput.setAttribute('aria-label', 'Import sound archive');
   on(importInput, 'change', () => { const file = importInput.files?.[0]; importInput.value = ''; if (!file) return;
     void run(async operation => { const catalog = await getNativeInstrumentCatalog(); check(operation); setStatus('Verifying local sound archive…');
@@ -201,8 +203,13 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
         modelInfo.textContent = 'Patch model: ' + (parameters.dualPair ? 'four' : 'two') + ' operator sources · carrier/modulator ' + parameters.carrierRatio + ':' + parameters.modulatorRatio +
           ' · index ' + parameters.indexStart + ' → ' + parameters.indexEnd + ' over ' + parameters.indexSeconds + ' s · bend ±' + parameters.maxBendCents +
           ' cents. Register limits are estimates; spectral/listening qualification is pending. Feedback and effect sends are unavailable.';
+      }
+      if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'native-modal') {
+        const parameters = patch.definition.parameters;
+        modelInfo.textContent = 'Patch model: ' + (parameters.modeCount ?? 4) + ' authored damped-sine modes · body T60 ' + (parameters.bodyT60Seconds ?? 0.5) +
+          ' s · site gain blend ' + (parameters.strikePosition01 ?? 0) + '. This is an original musical impulse-response design. Material tags, geometric pickup and PCM/listening qualification remain separate.';
       } } finally { lease.release(); } }
-    for (const element of [factory, fmFactory, importInput, select, rights, browse, more, archivedToggle]) element.disabled = busy;
+    for (const element of [factory, fmFactory, materialFactory, importInput, select, rights, browse, more, archivedToggle]) element.disabled = busy;
     audition.disabled = busy || !ready || !!plan?.missingReferences.length || !!plan?.unavailableEngines.length || !!plan?.missingAssetBytes.length;
     stop.disabled = !current; install.disabled = busy || !auditioned; referenceInstall.disabled = busy || !ready;
     apply.disabled = busy || !installed || !auditioned; referenceExport.disabled = busy || !ready;

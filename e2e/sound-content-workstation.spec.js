@@ -8,6 +8,33 @@ test.use({ permissions: [] });
 test.setTimeout(120000);
 test.beforeAll(async () => { await buildBrowserRuntime({ rootDir: fileURLToPath(new URL('../', import.meta.url)) }); });
 
+test('struck materials audition real native mode children and expose saved onset controls after Apply', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.materialSourcesStarted = 0; window.materialSourcesEnded = 0; const native = window.AudioContext.prototype.createOscillator;
+    window.AudioContext.prototype.createOscillator = function() {
+      const source = native.call(this), start = source.start.bind(source); source.start = (...args) => { window.materialSourcesStarted++; return start(...args); };
+      source.addEventListener('ended', () => { window.materialSourcesEnded++; }, { once: true }); return source;
+    };
+  });
+  await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=911&lanes=1');
+  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__);
+  await page.evaluate(() => { window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); });
+  await page.getByRole('button', { name: 'Sound library…', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Sound library', exact: true });
+  await dialog.getByRole('button', { name: 'Prepare struck materials', exact: true }).click();
+  const revisions = dialog.getByLabel('Saved instrument revision'); await expect(revisions.locator('option')).toHaveCount(5, { timeout: 30000 });
+  await revisions.selectOption('material.timber@1'); await expect(dialog.getByLabel('Instrument source model')).toContainText('4 authored damped-sine modes');
+  await dialog.getByRole('button', { name: 'Rehearsal on live output', exact: true }).click(); await expect(dialog.getByLabel('Prelisten route')).toContainText('ready');
+  await dialog.getByRole('button', { name: 'Audition controls', exact: true }).click();
+  await expect(dialog.getByLabel('Sound library status')).toContainText('Control audition completed', { timeout: 15000 });
+  const children = await page.evaluate(() => ({ started: window.materialSourcesStarted, ended: window.materialSourcesEnded }));
+  expect(children.started).toBe(4); expect(children.ended).toBe(4);
+  await dialog.getByRole('button', { name: 'Install auditioned pack', exact: true }).click(); await expect(dialog.getByLabel('Sound library status')).toContainText('Pack installed');
+  await dialog.getByRole('button', { name: 'Apply to selected lane', exact: true }).click(); await expect(dialog.getByLabel('Sound library status')).toContainText('Instrument applied');
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+  for (const name of ['MASS', 'HARDNESS', 'DAMPING', 'HOLLOW']) await expect(page.getByLabel(name + ' · next onset', { exact: true })).toBeVisible();
+});
+
 test('FM Forge stages original source recipes and only applies the auditioned installed revision', async ({ page }) => {
   await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=911&lanes=2');
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__);

@@ -15,6 +15,12 @@ const schemas = freezeData({
     parameter('secondaryIndexStart', 0, 8, 0, 'dimensionless'), parameter('secondaryIndexEnd', 0, 8, 0, 'dimensionless'), parameter('secondaryMix01', 0, 1, 0, 'ratio'),
     parameter('pitchSettleCents', -1200, 1200, 0, 'cents'), parameter('pitchSettleSeconds', 0.001, 1, 0.035, 's'), parameter('maxBendCents', 0, 1200, 200, 'cents')]
     .map(spec => Object.freeze({ ...spec, liveSafe: false })).concat(envelope(0.002, 1.4, 0, 0.4)),
+  'native-modal': [parameter('modeCount', 4, 8, 4, 'enum', true), parameter('bodyT60Seconds', 0.02, 2.5, 0.5, 's'), parameter('bodySizeRatio', 0.5, 2, 1, 'ratio'),
+    parameter('strikePosition01', 0, 1, 0, 'normalized'), parameter('maxBendCents', 0, 1200, 200, 'cents'),
+    ...Array.from({ length: 8 }, (_, index) => [parameter('mode' + index + 'Ratio', 0.125, 16, index + 1, 'ratio'),
+      parameter('mode' + index + 'T60Scale', 0.01, 1, 1, 'ratio'), parameter('mode' + index + 'GainA', 0, 1, index < 4 ? 1 / (index + 1) : 0, 'amplitude-linear'),
+      parameter('mode' + index + 'GainB', 0, 1, index < 4 ? 1 / (index + 1) : 0, 'amplitude-linear')]).flat()]
+    .map(spec => Object.freeze({ ...spec, liveSafe: false })).concat(envelope(0.002, 0, 1, 0.4)),
   'worklet-sine': envelope(0.008, 0.05, 0.7, 0.5),
   'native-sample': envelope(0.005, 0, 1, 0.7)
 });
@@ -22,21 +28,22 @@ export const NATIVE_OSCILLATOR_PARAMETERS = freezeData(Object.fromEntries(schema
   [spec.id, { ...spec, integer: spec.discrete }])));
 export const NATIVE_WORKLET_FIELDS = freezeData(Object.fromEntries(schemas['worklet-sine'].map(spec => [spec.id, [spec.min, spec.max, spec.default]])));
 export const NATIVE_FM_PARAMETERS = freezeData(Object.fromEntries(schemas['native-fm'].map(spec => [spec.id, { ...spec, integer: spec.discrete }])));
+export const NATIVE_MODAL_PARAMETERS = freezeData(Object.fromEntries(schemas['native-modal'].map(spec => [spec.id, { ...spec, integer: spec.discrete }])));
 export const NATIVE_SAMPLE_FIELDS = freezeData(Object.fromEntries(schemas['native-sample'].map(spec => [spec.id, [spec.min, spec.max, spec.default]])));
 const capabilities = id => Object.freeze({ samples: id === 'native-sample', independentSamePitch: true, perVoicePitch: true,
   perVoicePressure: true, perVoicePan: true, perVoiceTimbre: false, ownedGates: true, releaseVelocity: id === 'native-sample',
   forwardLoops: id === 'native-sample', displayTelemetry: id === 'worklet-sine', renderAcknowledgment: id === 'worklet-sine', offlineRender: id === 'worklet-sine',
-  modulationGraph: false, macroPerformance: ['native-oscillator', 'native-fm'].includes(id), continuousMacroPerformance: false,
-  identityVariation: ['native-oscillator', 'native-fm'].includes(id), causalBindings: ['native-oscillator', 'native-fm'].includes(id) });
+  modulationGraph: false, macroPerformance: ['native-oscillator', 'native-fm', 'native-modal'].includes(id), continuousMacroPerformance: false,
+  identityVariation: ['native-oscillator', 'native-fm', 'native-modal'].includes(id), causalBindings: ['native-oscillator', 'native-fm', 'native-modal'].includes(id) });
 let catalogPromise = null;
 
 export async function describeNativeInstrumentEngines(artifacts) {
-  if (!Array.isArray(artifacts) || artifacts.length > 4) throw new TypeError('Invalid native engine artifact inventory.');
+  if (!Array.isArray(artifacts) || artifacts.length > 5) throw new TypeError('Invalid native engine artifact inventory.');
   const descriptors = [];
   for (const [engineId, parameters] of Object.entries(schemas)) {
     const engineCapabilities = capabilities(engineId), artifactHash = artifacts.find(artifact => artifact.engineId === engineId && artifact.engineVersion === 1)?.artifactHash;
     if (!artifactHash) continue;
-    const maximumVoices = engineId === 'native-fm' ? 32 : 64, voicePolicies = ['reject'];
+    const maximumVoices = engineId === 'native-modal' ? 16 : engineId === 'native-fm' ? 32 : 64, voicePolicies = ['reject'];
     const parameterSchemaHash = await hashData({ version: 1, parameters, capabilities: engineCapabilities, maximumVoices, voicePolicies });
     descriptors.push(validateEngineDescriptor({ engineId, engineVersion: 1, artifactHash, parameterSchemaHash, parameters, capabilities: engineCapabilities, maximumVoices, voicePolicies }));
   }

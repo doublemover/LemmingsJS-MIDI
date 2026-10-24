@@ -278,3 +278,21 @@ height with explicit units. No force/energy estimate is inferred. Missing source
 measurements leave the prior composition intact with `no-qualified-source`.
 Lane Amount/Reroll changes only future musical controls and records one normal
 history action. Actor-specific locks and continuous control/noise remain pending.
+
+**Prepare struck materials** stages Timber, Slate, Glass, Sheet metal and an
+explicit Unclassified recipe. Compiler `typed-recipes-v5` adds the fixed
+`native-modal` template. One logical voice owns 4–8 native damped sine modes;
+every actual oscillator is charged before allocation. At onset, two authored
+gain-site vectors interpolate, then fixed L1 normalization bounds their sum.
+This is a musical impulse-response design without continuous force input,
+feedback, geometric pickup, exact native DSP snapshots or material-tag inference.
+
+Each actual mode receipt states frequency, gain and `modeT60Seconds`.
+Amplitude decays as `exp(-ln(1000) * seconds / modeT60Seconds)`: T60 is −60 dB
+amplitude, independent of frequency. Native gain scheduling reaches −120 dB at
+two T60s and holds that declared floor until host release. A one-shot holds for
+1.5 times the longest selected mode, bounded to four seconds, then releases.
+Onset attack and host release remain separate. The upper register tapers/omits
+modes under the declared bend profile; this is not a measured alias gate.
+MASS scales authored body frequency, HARDNESS changes onset time, DAMPING changes
+T60 and HOLLOW blends gain sites. No current PCM or listening result is claimed.

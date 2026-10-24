@@ -2,8 +2,9 @@ import { createSmoothedAudioParameter } from './SmoothedAudioParameter.js';
 import { createInstrumentExecutionLifecycle, isManagedExecutionEpoch } from './InstrumentExecutionLifecycle.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 import { releaseAudioResourceAfterRetirement } from './AudioResourceLeases.js';
-import { NATIVE_OSCILLATOR_PARAMETERS, NATIVE_FM_PARAMETERS } from './NativeInstrumentSchema.js';
+import { NATIVE_OSCILLATOR_PARAMETERS, NATIVE_FM_PARAMETERS, NATIVE_MODAL_PARAMETERS } from './NativeInstrumentSchema.js';
 import { planNativeFmSource, createNativeFmSourceOwner } from './NativeFmSource.js';
+import { planNativeModalSource, createNativeModalSourceOwner } from './NativeModalSource.js';
 import { compileInstrumentPerformance } from '../../midi/content/InstrumentPerformance.js';
 import { resolveOwnedArticulationPolicy } from './OwnedArticulationPolicy.js';
 
@@ -28,9 +29,9 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
   maxControlEvents = 128, traceLimit = 128, engineId = 'native-oscillator' } = {}) => {
   if (!['bounded', 'owned'].includes(gateMode) || !Number.isFinite(smoothingSeconds) || smoothingSeconds < 0 || smoothingSeconds > 1 ||
       !Number.isSafeInteger(maxControlEvents) || maxControlEvents < 1 || maxControlEvents > 4096 ||
-      !Number.isSafeInteger(traceLimit) || traceLimit < 0 || traceLimit > 4096 || !['native-oscillator', 'native-fm'].includes(engineId)) throw new Error('Invalid native audio backend options.');
-  const parameters = engineId === 'native-fm' ? NATIVE_FM_PARAMETERS : NATIVE_OSCILLATOR_PARAMETERS;
-  const capabilities = Object.freeze({ ...baseCapabilities, maximumVoices: engineId === 'native-fm' ? 32 : 64, supportedParameterIds: Object.freeze(Object.keys(parameters)) });
+      !Number.isSafeInteger(traceLimit) || traceLimit < 0 || traceLimit > 4096 || !['native-oscillator', 'native-fm', 'native-modal'].includes(engineId)) throw new Error('Invalid native audio backend options.');
+  const parameters = engineId === 'native-modal' ? NATIVE_MODAL_PARAMETERS : engineId === 'native-fm' ? NATIVE_FM_PARAMETERS : NATIVE_OSCILLATOR_PARAMETERS;
+  const capabilities = Object.freeze({ ...baseCapabilities, maximumVoices: engineId === 'native-modal' ? 16 : engineId === 'native-fm' ? 32 : 64, supportedParameterIds: Object.freeze(Object.keys(parameters)) });
   let prepared = null, disposed = false, deliveryErrors = 0, preparationRevision = 0, traceSequence = 0, truncatedTraces = 0;
   const voices = new Map();
   const retirement = createProcgenRetirementScope();
@@ -158,10 +159,12 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
     let controls;
     try { controls = prepared.performance.resolve(intent.performanceControls, targetFrame, intent); } catch { return failure('unsupported-performance-controls', intent); }
     const values = controls.values;
-    let fmPlan = null;
+    let fmPlan = null, modalPlan = null;
     if (engineId === 'native-fm') { try { fmPlan = planNativeFmSource({ fundamentalHz: frequencyFor(intent.pitch), sampleRate: context.sampleRate, parameters: values, pitchOffsetCents: offset }); }
     catch { return failure('fm-register-or-bend-unavailable', intent); } }
-    const sourceCost = fmPlan?.sourceCost ?? 1;
+    if (engineId === 'native-modal') { try { modalPlan = planNativeModalSource({ fundamentalHz: frequencyFor(intent.pitch), sampleRate: context.sampleRate, parameters: values, pitchOffsetCents: offset }); }
+    catch { return failure('modal-register-or-body-unavailable', intent); } }
+    const sourcePlan = fmPlan || modalPlan, sourceCost = sourcePlan?.sourceCost ?? 1;
     const lease = leases.get(leaseKey(intent.generation, executionEpoch));
     const leaseEnd = lease?.context === context && lease?.generation === preview._generation &&
       lease?.ownerGeneration === preview._sessions.get(owner)?.generation ? lease?.until : null;
@@ -184,12 +187,12 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
     try {
       const frequency = frequencyFor(intent.pitch);
       const channel = preview._channel(0, owner), release = values.releaseSeconds;
-      oscillator = fmPlan ? createNativeFmSourceOwner(context, fmPlan, start) : context.createOscillator();
-      if (fmPlan) oscillator.prepare(); gain = context.createGain();
+      oscillator = fmPlan ? createNativeFmSourceOwner(context, fmPlan, start) : modalPlan ? createNativeModalSourceOwner(context, modalPlan, start) : context.createOscillator();
+      if (sourcePlan) oscillator.prepare(); gain = context.createGain();
       pressureGain = context.createGain();
       pan = context.createStereoPanner?.() || null;
       const basePeak = intent.velocity01 * values.gain01 * prepared.patch.mix.gain01;
-      voice = { oscillator, gain, pressureGain, pan, resourceLease, owner, renderCost: sourceCost, fmPlan, workloadClass: preview._workloadClass(owner), number: 0, note: Math.round(intent.pitch.cents / 100),
+      voice = { oscillator, gain, pressureGain, pan, resourceLease, owner, renderCost: sourceCost, fmPlan, modalPlan, sourcePlan, workloadClass: preview._workloadClass(owner), number: 0, note: Math.round(intent.pitch.cents / 100),
         start, end, releaseAt: end - release, released: false, id: ++preview._voiceSequence,
         startMs: preview._nowMs() + (start - context.currentTime) * 1000, token: null,
         basePeak, peak: basePeak,
@@ -209,7 +212,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
           trace({ status: 'ended', stage: 'native-source-ended', voiceId: intent.voiceId, executionEpoch,
             generation: intent.generation, targetFrame, reason, patchRevision: voice.patchRevision });
         } };
-      if (!fmPlan) oscillator.type = waveforms[values.waveform];
+      if (!sourcePlan) oscillator.type = waveforms[values.waveform];
       oscillator.frequency.setValueAtTime(frequency, start);
       voice.pitchAutomation = createSmoothedAudioParameter({ param: oscillator.detune, initialValue: offset, startTime: start, smoothingSeconds, maxEvents: maxControlEvents });
       voice.pressureAutomation = createSmoothedAudioParameter({ param: pressureGain.gain, initialValue: pressure, startTime: start, smoothingSeconds, maxEvents: maxControlEvents });
@@ -231,8 +234,10 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
       oscillator.start(start); oscillator.stop(end);
       const receipt = Object.freeze({ status: 'accepted', stage: 'scheduled', voiceId: intent.voiceId,
         generation: intent.generation, executionEpoch, targetFrame, patchId: prepared.patch.id, patchRevision: prepared.patch.revision,
-        performance: controls, articulation: resolveOwnedArticulationPolicy({ parameters: values }),
-        ...(fmPlan ? { sourceCost, quality: fmPlan.quality, indexLimited: fmPlan.indexLimited, fmPlan } : {}) });
+        performance: controls, articulation: Object.freeze({ ...resolveOwnedArticulationPolicy({ engineId, parameters: values }),
+          ...(modalPlan ? { oneShotTailSeconds: modalPlan.oneShotHoldSeconds } : {}) }),
+        ...(fmPlan ? { sourceCost, quality: fmPlan.quality, indexLimited: fmPlan.indexLimited, fmPlan } : {}),
+        ...(modalPlan ? { sourceCost, quality: modalPlan.quality, modalPlan } : {}) });
       const { performance: effectivePerformance, ...traceReceipt } = receipt;
       trace({ ...traceReceipt, effectiveValues: effectivePerformance.values, performanceRevision: effectivePerformance.revision,
         variation: effectivePerformance.variation, effectiveTargetCount: effectivePerformance.deltas.length,
@@ -281,7 +286,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
     if (expression.pitchOffsetCents != null && !validCents(expression.pitchOffsetCents) ||
         expression.pressure01 != null && (!Number.isFinite(expression.pressure01) || expression.pressure01 < 0 || expression.pressure01 > 1) ||
         expression.pan01 != null && (!Number.isFinite(expression.pan01) || expression.pan01 < -1 || expression.pan01 > 1)) return failure('invalid-expression', { voiceId });
-    if (voice.fmPlan && expression.pitchOffsetCents != null && Math.abs(expression.pitchOffsetCents) > voice.fmPlan.maxBendCents) return failure('fm-bend-profile-exceeded', { voiceId });
+    if (voice.sourcePlan && expression.pitchOffsetCents != null && Math.abs(expression.pitchOffsetCents) > voice.sourcePlan.maxBendCents) return failure('source-bend-profile-exceeded', { voiceId });
     const now = preview._context.currentTime, at = Math.max(time, now);
     const changes = [[voice.pitchAutomation, expression.pitchOffsetCents], [voice.pressureAutomation, expression.pressure01],
       [voice.panAutomation, expression.pan01 == null ? null : clamp(expression.pan01 + voice.mixPan, -1, 1)]];
@@ -358,7 +363,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
       ...(includeTraces ? { traces: Object.freeze([...traces]) } : {}),
       ...(includeVoices ? { voices: Object.freeze([...voices.values()].map(voice => Object.freeze({
         voiceId: voice.playback.voiceId, onsetId: voice.onsetId, actorId: voice.actorId, owner,
-        generation: voice.semanticGeneration, executionEpoch: voice.semanticEpoch, patchRevision: voice.patchRevision, sourceCost: voice.renderCost, fmPlan: voice.fmPlan,
+        generation: voice.semanticGeneration, executionEpoch: voice.semanticEpoch, patchRevision: voice.patchRevision, sourceCost: voice.renderCost, fmPlan: voice.fmPlan, modalPlan: voice.modalPlan,
         state: voice.end <= now ? 'ended' : voice.stolen ? 'stolen' : voice.released || voice.releaseAt <= now ? 'release' :
           now < voice.start ? 'scheduled' : now < voice.start + voice.attack ? 'attack' : 'held',
         targetFrame: Math.round(voice.start * preview._context.sampleRate),
