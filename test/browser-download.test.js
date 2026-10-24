@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { requestBrowserDownload } from '../js/app/export/BrowserDownload.js';
+import { requestBrowserDownload, browserDownloadDiagnostics } from '../js/app/export/BrowserDownload.js';
 import { downloadBinaryFile, downloadTextFile } from '../js/app/editor-ui/editorUiFiles.js';
 
 const fixture = ({ failAt = null } = {}) => {
@@ -35,6 +35,21 @@ describe('browser download delivery evidence', () => {
     const f = fixture();
     expect(() => requestBrowserDownload({ document: f.document, windowRef: f.windowRef, bytes: 'abc', filename: '../take.mid' })).to.throw(TypeError);
     expect(f.calls).to.deep.equal([]);
+  });
+  it('reports one failed native revocation without claiming source retirement or retrying the failed callback', () => {
+    const f = fixture(), before = browserDownloadDiagnostics(), receipts = []; let attempts = 0;
+    f.windowRef.URL.revokeObjectURL = () => { attempts++; throw new Error('native revocation refused'); };
+    requestBrowserDownload({ document: f.document, windowRef: f.windowRef, bytes: 'abc', filename: 'take.mid', onURLRetired: receipt => receipts.push(receipt) });
+    f.timers[0].fn(); f.timers[0].fn(); expect(attempts).to.equal(1); expect(receipts).to.have.length(1); expect(receipts[0].state).to.equal('failed-or-unknown');
+    expect(browserDownloadDiagnostics().unknownRetirement).to.equal(before.unknownRetirement + 1); expect(browserDownloadDiagnostics().sourceBytes).to.equal(before.sourceBytes + 3);
+  });
+  it('preserves the actual click receipt and independently retires the URL when anchor removal fails', () => {
+    const f = fixture(), create = f.document.createElement, ownership = [];
+    f.document.createElement = () => { const element = create(); element.remove = () => { throw new Error('remove failed'); }; return element; };
+    const receipt = requestBrowserDownload({ document: f.document, windowRef: f.windowRef, bytes: 'abc', filename: 'take.mid',
+      onURLAcquired: () => ownership.push('acquired'), onURLRetired: value => ownership.push(value.state) });
+    expect(receipt).to.include({ state: 'delivery-requested', evidence: 'anchor-click-returned', cleanupState: 'failed-or-unknown' });
+    expect(ownership).to.deep.equal(['acquired']); f.timers[0].fn(); expect(ownership).to.deep.equal(['acquired', 'revoked']);
   });
 
   it('shares the same request semantics with text and binary editor downloads', () => {

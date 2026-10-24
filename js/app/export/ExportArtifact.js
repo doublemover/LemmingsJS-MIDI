@@ -3,6 +3,7 @@ import { MAX_BROWSER_DOWNLOAD_BYTES, requestBrowserDownload } from './BrowserDow
 let nextArtifact = 0, nextDelivery = 0;
 const MAX_DIGEST_BYTES = 8 * 1048576;
 const DEFAULT_LIFETIME_MS = 10 * 60 * 1000;
+const MAX_ARTIFACT_LEASES = 32;
 const bytesFor = (value, maxBytes, mediaType) => {
   if (value instanceof Blob) {
     if (value.size > maxBytes) throw new RangeError('Prepared export exceeds its staging limit.');
@@ -124,12 +125,13 @@ export function prepareExportArtifact({ bytes, immutableSourceRef, formatVersion
   })() : Promise.resolve(null);
   const metadata = () => { const retained = lifetime.check(); return Object.freeze({ artifactId, immutableSourceRef, formatVersion, mediaType, suggestedFilename,
     byteLength, deliveryModes: Object.freeze(['anchor', 'file-handle']), digestState, sha256: digest,
-    coverageLossReportRef, expiresAt: lifetime.expiresAt, retained, retirementReason: lifetime.reason(), activeLeases: leases,
+    coverageLossReportRef, expiresAt: lifetime.expiresAt, retained, retirementReason: lifetime.reason(), activeLeases: leases, maxConsumerLeases: MAX_ARTIFACT_LEASES,
     budgetState: releaseError ? 'failed-or-unknown' : budgetHeld ? !retained ? 'waiting-for-leases-or-digest' : 'retained' : budgetAdapter ? 'released' : 'unbudgeted' }); };
   return Object.freeze({ artifactId, metadata, digest: () => digestPromise,
     onDiscard: lifetime.observe,
     borrow() {
       if (!lifetime.check()) throw Object.assign(new Error('Prepared export has expired.'), { kind: 'artifact-expired' });
+      if (leases >= MAX_ARTIFACT_LEASES) throw Object.assign(new Error('Prepared export consumer capacity reached.'), { kind: 'artifact-capacity' });
       leases++;
       let released = false, leasedBlob = blob;
       return Object.freeze({ get blob() { if (released) throw new Error('Export delivery lease was released.'); return leasedBlob; },
@@ -164,12 +166,13 @@ export function prepareReplayableExportArtifact({ openChunks, immutableSourceRef
   const metadata = () => { const retained = lifetime.check(); return Object.freeze({ artifactId, immutableSourceRef, formatVersion, mediaType,
     suggestedFilename, byteLength, streamingEstimate, maxDeliveryBytes,
     deliveryModes: Object.freeze(['file-handle']), digestState: 'omitted-streaming',
-    sha256: null, coverageLossReportRef, expiresAt: lifetime.expiresAt, retained, retirementReason: lifetime.reason(), activeLeases: leases,
+    sha256: null, coverageLossReportRef, expiresAt: lifetime.expiresAt, retained, retirementReason: lifetime.reason(), activeLeases: leases, maxConsumerLeases: MAX_ARTIFACT_LEASES,
     sourceRetirement: unknownSources ? 'failed-or-unknown' : !sourceOpener ? 'released' : retained ? 'retained' : 'waiting-for-source-leases' }); };
   return Object.freeze({ artifactId, metadata, digest: () => Promise.resolve(null),
     onDiscard: lifetime.observe,
     borrow() {
       if (!lifetime.check()) throw Object.assign(new Error('Prepared export has expired.'), { kind: 'artifact-expired' });
+      if (leases >= MAX_ARTIFACT_LEASES) throw Object.assign(new Error('Prepared export consumer capacity reached.'), { kind: 'artifact-capacity' });
       leases++;
       let released = false, opened = false, retired = false, source = null, iterator = null, pending = 0, ended = false, returnPromise = null, sourceError = null;
       let opener = sourceOpener;
@@ -210,19 +213,22 @@ export function prepareReplayableExportArtifact({ openChunks, immutableSourceRef
 
 export function deliverArtifactToAnchor(artifact, { document, windowRef = globalThis } = {}) {
   const deliveryId = nextId('delivery'), { suggestedFilename, artifactId } = artifact.metadata();
-  let lease;
+  let lease, urlOwnsSource = false, urlRetired = false;
   try {
     lease = artifact.borrow();
     if (!lease.blob) return Object.freeze({ deliveryId, artifactId, sinkKind: 'anchor', state: 'unsupported',
       bytesWritten: 0, errorKind: 'streaming-source-requires-file-handle', evidence: 'no-bounded-blob' });
     const requested = requestBrowserDownload({ document, windowRef, bytes: lease.blob,
-      filename: suggestedFilename, mediaType: artifact.metadata().mediaType });
+      filename: suggestedFilename, mediaType: artifact.metadata().mediaType,
+      onURLAcquired: () => { urlOwnsSource = true; },
+      onURLRetired: receipt => { urlRetired = receipt.state === 'revoked'; urlOwnsSource = !urlRetired; if (urlRetired) lease.release(); } });
+    urlOwnsSource = !urlRetired;
     return Object.freeze({ deliveryId, artifactId, sinkKind: 'anchor', state: requested.state,
       bytesWritten: 0, errorKind: null, evidence: requested.evidence });
   } catch (error) {
     return Object.freeze({ deliveryId, artifactId, sinkKind: 'anchor', state: 'failed', bytesWritten: 0,
       errorKind: error.kind || errorKind(error), evidence: 'anchor-request-failed' });
-  } finally { lease?.release(); }
+  } finally { if (!urlOwnsSource) lease?.release(); }
 }
 
 export async function requestExportFileHandle(artifact, { windowRef = globalThis } = {}) {

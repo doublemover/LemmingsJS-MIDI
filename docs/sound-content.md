@@ -177,3 +177,9 @@ storage remains accounted while native hashing or a borrowed reader is active.
 Replayable delivery leases retain accepted iterator reads and cancellation
 until their actual promises settle; an unknown source close remains explicit.
 Expiry and a failed clock are reported separately from user cancellation.
+
+Anchor delivery retains its source lease through actual object-URL revocation.
+The bounded native URL inventory counts pending sources and failed revocations;
+an unacknowledged revoke keeps ownership instead of freeing its budget early.
+The delivery receipt still records only an anchor request, independently of
+whether a browser ultimately saves the file.

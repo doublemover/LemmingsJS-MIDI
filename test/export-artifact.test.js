@@ -134,10 +134,17 @@ describe('prepared export artifacts and delivery receipts', () => {
     const second = anchor(), requested = deliverArtifactToAnchor(artifact, second);
     expect(requested).to.include({ artifactId: failed.artifactId, state: 'delivery-requested', evidence: 'anchor-click-returned' });
     expect([...new Uint8Array(await second.blobs[0].arrayBuffer())]).to.deep.equal([1, 2, 3]);
-    expect(artifact.metadata().activeLeases).to.equal(0);
+    expect(artifact.metadata().activeLeases).to.equal(1);
     expect(await artifact.digest()).to.match(/^[a-f0-9]{64}$/);
-    second.timers[0](); expect(second.calls.at(-1)).to.equal('revoke');
+    second.timers[0](); expect(second.calls.at(-1)).to.equal('revoke'); expect(artifact.metadata().activeLeases).to.equal(0);
     artifact.discard(); expect(deliverArtifactToAnchor(artifact, anchor()).errorKind).to.equal('artifact-expired');
+  });
+  it('keeps prepared storage borrowed through actual native object URL revocation', async () => {
+    const budget = createResourceBudget(), artifact = prepare(Uint8Array.of(1, 2), { budgetAdapter: budget }), delivery = anchor();
+    await artifact.digest(); deliverArtifactToAnchor(artifact, delivery); artifact.discard();
+    expect(artifact.metadata().activeLeases).to.equal(1); expect(budget.diagnostics().accountedBytes).to.be.greaterThan(0);
+    delivery.timers[0](); expect(artifact.metadata().activeLeases).to.equal(0); expect(budget.diagnostics().accountedBytes).to.equal(0);
+    delivery.timers[0](); expect(budget.diagnostics().accountedBytes).to.equal(0);
   });
 
   it('distinguishes a completed file close from failed writes and unknown close outcomes', async () => {
