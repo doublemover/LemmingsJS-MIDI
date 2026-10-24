@@ -3,6 +3,12 @@ const WIDTH = 18, CAPACITY = 512, VOICES = 64, VOICE_WIDTH = 28, RECEIPTS = 2048
 const QUEUE = 128, VOICE = QUEUE + CAPACITY * WIDTH * 8, ACTIVE = VOICE + VOICES * VOICE_WIDTH * 8;
 const COUNTERS = ACTIVE + VOICES, RECEIPT = COUNTERS + 8 * 4;
 export const SINE_STATE_BYTES = RECEIPT + RECEIPTS * RECEIPT_WIDTH * 8;
+const layoutFor = width => {
+  if (![18, 24, 26, 33, 73].includes(width)) throw new Error('Unknown owned kernel state width.');
+  const voice = QUEUE + CAPACITY * width * 8, active = voice + VOICES * VOICE_WIDTH * 8, counters = active + VOICES, receipt = counters + 8 * 4;
+  return { WIDTH: width, VOICE: voice, ACTIVE: active, COUNTERS: counters, RECEIPT: receipt, bytes: receipt + RECEIPTS * RECEIPT_WIDTH * 8 };
+};
+export const ownedKernelStateBytes = kernel => layoutFor(kernel.width).bytes;
 const fail = message => { throw Object.assign(new Error(message), { name: 'AudioRestoreError', code: 'incompatible-sine-state' }); };
 const natural = (value, max = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(value) && value >= 0 && value <= max;
 const bounded = (value, min, max) => Number.isFinite(value) && value >= min && value <= max;
@@ -12,12 +18,13 @@ const inspectIdentity = identity => {
       identityFields.some(key => typeof identity[key] !== 'string' || !/^[a-f0-9]{64}$/.test(identity[key])) || !natural(identity.graphRevision, 0xffffffff))
     fail('DSP state needs exact engine, patch and graph identities.');
 };
-const viewFor = bytes => {
-  if (!(bytes instanceof Uint8Array) || bytes.byteLength !== SINE_STATE_BYTES ||
+const viewFor = (bytes, length = SINE_STATE_BYTES) => {
+  if (!(bytes instanceof Uint8Array) || bytes.byteLength !== length ||
       typeof SharedArrayBuffer === 'function' && bytes.buffer instanceof SharedArrayBuffer) fail('DSP state requires one exclusively owned fixed-size byte buffer.');
   return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 };
 const inspectKernel = kernel => {
+  const { WIDTH } = layoutFor(kernel?.width);
   if (!kernel || !(kernel.queue instanceof Float64Array) || kernel.queue.length !== CAPACITY * WIDTH ||
       !(kernel.voice instanceof Float64Array) || kernel.voice.length !== VOICES * VOICE_WIDTH || !(kernel.active instanceof Uint8Array) || kernel.active.length !== VOICES ||
       !(kernel.receipts instanceof Float64Array) || kernel.receipts.length !== RECEIPTS * RECEIPT_WIDTH || !(kernel.counters instanceof Uint32Array) || kernel.counters.length !== 8 ||
@@ -25,11 +32,12 @@ const inspectKernel = kernel => {
       kernel.nonfinite !== 0 || typeof kernel.panicPending !== 'boolean')
     fail('DSP kernel storage differs from the snapshot ABI.');
 };
-const verify = (bytes, identity, { sampleRate, maxVoices }) => {
-  inspectIdentity(identity); const view = viewFor(bytes);
-  if (view.getUint32(0, true) !== 0x31534e4c || view.getUint32(4, true) !== 1 || view.getUint32(8, true) !== SINE_STATE_BYTES ||
+const verify = (bytes, identity, { sampleRate, maxVoices, width }) => {
+  const { WIDTH, VOICE, ACTIVE, RECEIPT, bytes: length } = layoutFor(width);
+  inspectIdentity(identity); const view = viewFor(bytes, length);
+  if (view.getUint32(0, true) !== 0x31534e4c || view.getUint32(4, true) !== (width === 18 ? 1 : 2) || view.getUint32(8, true) !== length ||
       view.getUint32(12, true) !== maxVoices || view.getFloat64(16, true) !== sampleRate || !natural(maxVoices, VOICES) || maxVoices < 1 ||
-      !bounded(sampleRate, 8000, 384000) || view.getUint32(120, true) !== identity.graphRevision || view.getUint32(124, true) !== 0)
+      !bounded(sampleRate, 8000, 384000) || view.getUint32(120, true) !== identity.graphRevision || view.getUint32(124, true) !== (width === 18 ? 0 : width))
     fail('DSP state ABI, rate, voice profile or graph identity is incompatible.');
   for (let field = 0; field < identityFields.length; field++) for (let index = 0; index < 32; index++)
     if (view.getUint8(56 + field * 32 + index) !== parseInt(identity[identityFields[field]].slice(index * 2, index * 2 + 2), 16)) fail('DSP state engine or patch hash is incompatible.');
@@ -71,28 +79,32 @@ const verify = (bytes, identity, { sampleRate, maxVoices }) => {
   for (let index = 0; index < received; index++) {
     const at = RECEIPT + index * RECEIPT_WIDTH * 8, get = field => view.getFloat64(at + field * 8, true);
     if (!natural(get(0), 6) || get(0) < 1 || !natural(get(1)) || !Number.isInteger(get(2)) || get(2) < -1 || get(2) >= maxVoices ||
-        !natural(get(3)) || !natural(get(4)) || !natural(get(5), 9)) fail('DSP receipt frontier is invalid.');
+        !natural(get(3)) || !natural(get(4)) || !natural(get(5), 10)) fail('DSP receipt frontier is invalid.');
   }
   return { view, frame, packet, queued, received };
 };
 
-export function writeOwnedSineState(kernel, destination, identity) {
-  inspectKernel(kernel); inspectIdentity(identity); const view = viewFor(destination); destination.fill(0);
-  view.setUint32(0, 0x31534e4c, true); view.setUint32(4, 1, true); view.setUint32(8, SINE_STATE_BYTES, true); view.setUint32(12, kernel.maxVoices, true);
+export function writeOwnedKernelState(kernel, destination, identity) {
+  const { WIDTH, VOICE, ACTIVE, COUNTERS, RECEIPT, bytes: length } = layoutFor(kernel.width);
+  inspectKernel(kernel); inspectIdentity(identity); const view = viewFor(destination, length);
+  if ([kernel.queue, kernel.voice, kernel.active, kernel.counters, kernel.receipts].some(array => array.buffer === destination.buffer)) fail('DSP transfer storage aliases active kernel state.');
+  destination.fill(0);
+  view.setUint32(0, 0x31534e4c, true); view.setUint32(4, kernel.width === 18 ? 1 : 2, true); view.setUint32(8, length, true); view.setUint32(12, kernel.maxVoices, true);
   view.setFloat64(16, kernel.sampleRate, true); view.setFloat64(24, kernel.lastFrame, true); view.setFloat64(32, kernel.lastPacket, true);
   view.setUint32(40, kernel.queueLength, true); view.setUint32(44, kernel.receiptCount, true); view.setUint32(48, kernel.nonfinite, true); view.setUint32(52, Number(kernel.panicPending), true);
   for (let field = 0; field < identityFields.length; field++) for (let index = 0; index < 32; index++) view.setUint8(56 + field * 32 + index, parseInt(identity[identityFields[field]].slice(index * 2, index * 2 + 2), 16));
-  view.setUint32(120, identity.graphRevision, true);
+  view.setUint32(120, identity.graphRevision, true); view.setUint32(124, kernel.width === 18 ? 0 : kernel.width, true);
   for (let index = 0; index < kernel.queueLength * WIDTH; index++) view.setFloat64(QUEUE + index * 8, kernel.queue[index], true);
   for (let index = 0; index < kernel.voice.length; index++) view.setFloat64(VOICE + index * 8, kernel.voice[index], true);
   destination.set(kernel.active, ACTIVE); for (let index = 0; index < 8; index++) view.setUint32(COUNTERS + index * 4, kernel.counters[index], true);
   for (let index = 0; index < kernel.receiptCount * RECEIPT_WIDTH; index++) view.setFloat64(RECEIPT + index * 8, kernel.receipts[index], true);
   const cut = verify(destination, identity, kernel);
-  return Object.freeze({ abi: SINE_STATE_ABI, frame: cut.frame, bytes: SINE_STATE_BYTES, sampleRate: kernel.sampleRate, maxVoices: kernel.maxVoices,
+  return Object.freeze({ abi: SINE_STATE_ABI, frame: cut.frame, bytes: length, sampleRate: kernel.sampleRate, maxVoices: kernel.maxVoices,
     futureCommands: cut.queued, pendingReceipts: cut.received, equivalence: 'same-artifact-rate-and-profile', ...identity });
 }
 
-export function restoreOwnedSineState(kernel, source, identity) {
+export function restoreOwnedKernelState(kernel, source, identity) {
+  const { VOICE, ACTIVE, COUNTERS, RECEIPT } = layoutFor(kernel.width);
   inspectKernel(kernel); const cut = verify(source, identity, kernel), { view } = cut;
   for (let index = 0; index < kernel.queue.length; index++) kernel.queue[index] = view.getFloat64(QUEUE + index * 8, true);
   for (let index = 0; index < kernel.voice.length; index++) kernel.voice[index] = view.getFloat64(VOICE + index * 8, true);
@@ -103,4 +115,13 @@ export function restoreOwnedSineState(kernel, source, identity) {
   kernel.displayTokens.fill(0); kernel.displayState.fill(0); kernel.displayData.fill(0); kernel.displayCount = 0;
   kernel.displayEnabled = kernel.displayReady = false; kernel.displayInterval = kernel.displayNext = kernel.displayRevision = kernel.displaySequence = kernel.displayDropped = 0;
   return Object.freeze({ abi: SINE_STATE_ABI, frame: cut.frame, futureCommands: cut.queued, pendingReceipts: cut.received, displaySubscriptions: 'new-observation-required' });
+}
+
+export function writeOwnedSineState(kernel, destination, identity) {
+  if (kernel.width !== WIDTH || kernel.source) fail('Sine state requires the exact sine source profile.');
+  return writeOwnedKernelState(kernel, destination, identity);
+}
+export function restoreOwnedSineState(kernel, source, identity) {
+  if (kernel.width !== WIDTH || kernel.source) fail('Sine state requires the exact sine source profile.');
+  return restoreOwnedKernelState(kernel, source, identity);
 }

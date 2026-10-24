@@ -516,3 +516,18 @@ of pre-silence and 256-frame region fades remain part of the authored source.
 Gain trims are authored; pitch/transient error, resampling aliases, combined
 resource behavior and listening remain unqualified. The three-root extension,
 loop crossfades and release-trigger sample content await their specific work.
+
+### Custom-source state cuts
+
+Owned pluck, choir, spectrum and granular kernels implement `stateByteLength()`,
+`snapshotInto(preallocatedBytes, identity)` and `restoreFrom(bytes, identity)`.
+The bounded `owned-source-state-le-v1` format includes source memory, future
+commands, interpolation and receipt frontiers. Source bank and PCM hashes bind
+immutable assets; the payload never duplicates their PCM or serializes native
+nodes. Independent restored mutable state cannot modify the original source.
+CRC32 detects accidental transfer corruption; an enclosing persisted artifact
+still needs the canonical journal's content hash and cursor custody. Engine,
+patch, graph, rate and slot compatibility are checked before committing a cut.
+Display observation is reset independently. Kernel adapters await the deferred
+PCM equivalence pass and live block-boundary/cursor integration; these methods
+do not yet enable an exact restore claim in the scrub interface.

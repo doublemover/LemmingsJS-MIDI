@@ -2494,6 +2494,22 @@ Source identities/recipes were authored; compiler, unit, browser, PCM, pitch,
 listening and memory qualification stay deferred. Three-root expansion, advanced
 loops, source traversal and exact DSP-state restoration remain work.
 
+The custom-source kernel state adapters now capture pluck delay/allpass/body
+memory, choir phase/noise/filter memory, spectrum partial/filter memory and
+complete granular cloud/grain/birth state. They include the committed future
+command heap, gate/envelope/interpolation state and receipt frontier at the
+kernel's declared output frame. Extended core widths use an explicit format
+version while the existing sine byte ABI remains unchanged. Source cuts bind
+exact engine, patch, graph, rate, slot profile and immutable fixed/PCM bank
+hashes. Little-endian transfer buffers are bounded, exclusive and preallocated;
+checksum/shape/state validation precedes destination mutation. Mutable DSP memory
+is copied independently and display subscriptions require new observation.
+These are concrete kernel adapters, not a qualified live scrub/restore claim:
+block-boundary transport, journal-cursor custody and staged sink replacement still
+need integration. Uninterrupted/chunked PCM, attack/held/release/future-control,
+asset mismatch, corrupt state and independent memory fixtures are authored for
+all source rates and remain unexecuted with runtime testing deferred.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical

@@ -1,6 +1,7 @@
 // Owned voice/command storage with a sine reference and fixed source adapters.
 // Storage is fixed at construction; process() inspects the supplied block size.
-import { writeOwnedSineState, restoreOwnedSineState } from './OwnedSineState.js';
+import { ownedSourceStateBytes, writeOwnedSourceState, restoreOwnedSourceState } from './OwnedSourceState.js';
+import { ownedKernelStateBytes, writeOwnedSineState, restoreOwnedSineState } from './OwnedSineState.js';
 import { SINE_LAYOUT } from '../OwnedSourceLayout.js';
 const PROTOCOL = 1, WIDTH = SINE_LAYOUT.width, CAPACITY = 512, MAX_VOICES = SINE_LAYOUT.voices, RECEIPT_WIDTH = 6;
 const BEGIN = 1, UPDATE = 2, END = 3, CANCEL = 4, PANIC = 5, LEASE = 6;
@@ -8,8 +9,9 @@ const SCHEDULED = 1, APPLIED = 2, REJECTED = 3, ENDED = 4, CANCELLED = 5, FAULTE
 const DISPLAY_PROTOCOL = 1, DISPLAY_WIDTH = 20, DISPLAY_VOICES = 32, DISPLAY_STATE_WIDTH = 16;
 
 class OwnedSineKernel {
-  snapshotInto(destination, identity) { if (this.source) throw new Error('This source requires its complete DSP state adapter.'); return writeOwnedSineState(this, destination, identity); }
-  restoreFrom(source, identity) { if (this.source) throw new Error('This source requires its complete DSP state adapter.'); return restoreOwnedSineState(this, source, identity); }
+  stateByteLength() { return this.source ? ownedSourceStateBytes(this) : ownedKernelStateBytes(this); }
+  snapshotInto(destination, identity) { return this.source ? writeOwnedSourceState(this, destination, identity) : writeOwnedSineState(this, destination, identity); }
+  restoreFrom(source, identity) { return this.source ? restoreOwnedSourceState(this, source, identity) : restoreOwnedSineState(this, source, identity); }
   constructor(sampleRate, maxVoices = MAX_VOICES, { source = null, width = WIDTH } = {}) {
     if (!Number.isFinite(sampleRate) || sampleRate < 8000 || sampleRate > 384000 ||
         !Number.isSafeInteger(maxVoices) || maxVoices < 1 || maxVoices > MAX_VOICES) throw new Error('Invalid sine kernel limits.');
