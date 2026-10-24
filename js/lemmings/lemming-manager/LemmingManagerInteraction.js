@@ -361,6 +361,9 @@ const lemmingManagerInteractionMethods = {
 
   removeOne(lem) {
     if (!lem || lem.removed) return;
+    // Final forward removal is the sole death-marker boundary, including
+    // explosion/frying and out-of-world deaths. Animation and replay draws
+    // never publish markers; history restores the recorded minimap delta.
     if (this.miniMap &&
               lem.action !== this.actions[LemmingStateType.EXITING]) {
       this.miniMap.addDeath(lem.x, lem.y);

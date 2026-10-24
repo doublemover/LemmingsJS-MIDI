@@ -37,6 +37,43 @@ describe('real bounded procgen survey coordination', function() {
     expect(resumed.results.map(result => result.finalStateHash)).to.deep.equal(report.results.map(result => result.finalStateHash));
     expect(resumed.admissions).to.deep.equal(report.admissions); expect(resumed.persistenceReceipts).to.deep.equal(report.persistenceReceipts);
   });
+  it('finalizes and resumes a holdout-only success without treating observed worlds as independent', async () => {
+    const source = declaration(), scenarios = source.scenarios.map(scenario => normalizeSurveyScenario({ ...scenario,
+      goal: { x: 0, y: 0, width: 2048, height: 6144 } }));
+    const manifest = createProcgenSurveyExperiment({ ...source, scenarios, budgetPolicy: { ...source.budgetPolicy,
+      maxTotalTicks: 50000, maxExemplarVerificationTrials: 18,
+      successQualification: { maxOriginals: 1, maxTrials: 12, maxPhysicalTrials: 24, policySeeds: [1, 2, 3], nearbyAdmissionOffsets: [] } } });
+    directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lemmings-survey-coordinator-'));
+    const store = await new SurveyEvidenceStore(directory).initialize(manifest); let dispatched = 0;
+    // Exercise the real coordinator, selector, evidence writer and replay checker
+    // with controlled worker delivery. Only the irrelevant skill metric is varied
+    // to make the holdout the sole selected success; physics and replay evidence
+    // come from actual bounded Node trials in this fixture.
+    const runJobs = async (jobs, { onResult }) => {
+      for (const job of jobs) {
+        dispatched++; const trial = await createNodeSurveyTrial(job);
+        let result; try { trial.step(job.scenario.horizonTicks); result = trial.result(); } finally { trial.dispose(); }
+        result = { ...result, metrics: { ...result.metrics, skillCount: job.scenario.id === 'holdout' && job.candidate.id === manifest.candidates[0].id ? 10 : 0 } };
+        await onResult(result, { id: job.attemptId }, { signal: new AbortController().signal });
+      }
+      return {};
+    };
+    const report = await runSurveyExperiment(manifest, store, { runJobs });
+    expect(report.status).to.equal('complete'); expect(report.incompleteTrials).to.deep.equal([]);
+    expect(report.results).to.have.length(18);
+    const successes = report.exemplars.selected.filter(item => item.kind === 'success'); expect(successes).to.have.length(1);
+    const qualification = report.successQualification[0]; expect(qualification.originalTrialId).to.equal(successes[0].trialId);
+    expect(qualification.plan.jobs.some(job => job.stage === 'independent-holdout')).to.equal(false);
+    expect(qualification.plan.deferred).to.deep.equal([{ stage: 'independent-holdout', reason: 'original-selected-from-holdout' }]);
+    expect(qualification.summary.interpretation).not.to.equal('tested-scope-improvement'); expect(qualification.summary.incomplete).to.equal(true);
+    const archived = await store.read('exemplars/' + successes[0].trialId + '.json'); expect(archived.original).to.deep.equal(await store.completed(successes[0].trialId));
+    await store.writeDerivative('report.json', report); const before = dispatched;
+    const resumed = await runSurveyExperiment(manifest, store, { runJobs });
+    expect(resumed.status).to.equal('complete'); expect(dispatched).to.equal(before);
+    expect(resumed.verification.every(receipt => receipt.matched)).to.equal(true);
+    expect(resumed.successQualification).to.deep.equal(report.successQualification);
+    expect(resumed.results.map(result => result.trialId)).to.deep.equal(report.results.map(result => result.trialId));
+  });
   it('rejects an execution manifest that differs from the evidence owner before worker admission', async () => {
     const manifest = declaration(); directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lemmings-survey-coordinator-'));
     const store = await new SurveyEvidenceStore(directory).initialize(manifest), bytes = store.snapshot().bytes;

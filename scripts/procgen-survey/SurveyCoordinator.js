@@ -11,7 +11,7 @@ class SurveyExperimentIdentityError extends Error {
   constructor(message) { super(message); this.name = 'SurveyExperimentIdentityError'; this.kind = 'experiment-identity'; }
 }
 
-const runSurveyExperiment = async (manifest, store, { signal, onTelemetry = () => {}, onResult = () => {}, onState = () => {}, onControlReady = () => {} } = {}) => {
+const runSurveyExperiment = async (manifest, store, { signal, onTelemetry = () => {}, onResult = () => {}, onState = () => {}, onControlReady = () => {}, runJobs = runSurveyJobs } = {}) => {
   const declared = await store.read('manifest.json');
   if (!declared || canonicalSurveyJson(declared) !== canonicalSurveyJson(manifest)) throw new SurveyExperimentIdentityError('Survey execution must use the evidence owner\'s original manifest');
   if (!Array.isArray(manifest.scenarios) || !manifest.sourceManifest || typeof manifest.sourceManifest !== 'object') throw new SurveyExperimentIdentityError('Survey execution requires a declared scenario set and source manifest');
@@ -51,7 +51,7 @@ const runSurveyExperiment = async (manifest, store, { signal, onTelemetry = () =
     const ticks = jobs.reduce((sum, job) => sum + job.scenario.horizonTicks, 0);
     if (executedTicks + ticks > manifest.budgetPolicy.maxTotalTicks) return { cancelled: true, reason: 'experiment-tick-budget' };
     executedTicks += ticks;
-    currentExecution = await runSurveyJobs(jobs, { ...manifest.budgetPolicy, maxTotalMs: remainingMs(), signal, paused,
+    currentExecution = await runJobs(jobs, { ...manifest.budgetPolicy, maxTotalMs: remainingMs(), signal, paused,
       onControlReady: controls => { activeControls = controls; if (pendingStep) { pendingStep = false; controls.step(); } },
       onControlState: state => {
         const receipt = state.stepReceipt && (state.stepReceipt.controlId === state.controlId || state.stepReceipt.status === 'timed-out') ? state.stepReceipt : null;
@@ -128,7 +128,13 @@ const runSurveyExperiment = async (manifest, store, { signal, onTelemetry = () =
     const competitors = [manifest.candidates.find(policy => ![candidate.id, baselineId].includes(policy.id))].filter(Boolean);
     const nearbyScenarios = scenario.mode === 'controlled' ? protocol.nearbyAdmissionOffsets.map(offset => normalizeSurveyScenario({ ...scenario, id: scenario.id + '-admission-' + offset,
       admissions: scenario.admissions.map(actor => ({ ...actor, x: Math.max(8, actor.x + offset) })) })) : [];
-    const plan = createProcgenSuccessQualification({ original, scenario, candidate, baseline, competitors, nearbyScenarios, holdoutScenarios: holdout,
+    // Selection from the observed holdout consumes its independence for this
+    // original. Retain its reproducibility/sensitivity evidence, but do not
+    // relabel observed worlds or start an undeclared replacement campaign.
+    const selectedFromHoldout = manifest.holdoutScenarioIds.includes(scenario.id);
+    const plan = createProcgenSuccessQualification({ original, scenario, candidate, baseline, competitors, nearbyScenarios,
+      holdoutScenarios: selectedFromHoldout ? [] : holdout,
+      holdoutUnavailableReason: selectedFromHoldout ? 'original-selected-from-holdout' : 'no-independent-holdout-declared',
       policySeeds: protocol.policySeeds, policyRandomnessRelevant: candidate.configuration.randomMode === 'semantic', maxTrials: protocol.maxTrials });
     await store.writeImmutable('verification/' + original.trialId + '-qualification-plan.json', plan);
     const records = [], pending = [];

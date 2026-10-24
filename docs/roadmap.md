@@ -2750,3 +2750,28 @@ physics. Full playback/render integration and acceptance qualification remain.
   exact revisions. Keep unsupported hardware/listening evidence explicit.
 - [ ] Reconcile every open issue against its complete acceptance requirements
   before closure. No issue is closed merely for adding a schema or fixture.
+
+### Continuation 141 — newest correctness reports (#1259–#1263)
+
+Finite gameplay entrance batches now recheck admission before opening an entrance,
+allocating an actor identity or publishing spawn effects. Final non-exit removal
+is the only minimap death-marker boundary: drowning, splatting, oh-no, frying,
+explosion, missing-action and off-world producers no longer publish duplicate
+markers. Explosion markers therefore appear on final removal after its particle
+animation; rendering and replay drawing are presentation only.
+
+Solver geometry retains each endpoint index, anchor, snap radius and unresolved
+binding. Named spawn/exit graph edges use those bindings exclusively, with an
+explicit weighted-distance and stable-ID tie policy; aggregate continuity remains
+an any-entrance diagnostic, and route skeletons remain unverified until replay.
+Passive WALK proofs debit one local ledger before every unique terrain read or
+shared action advance; every caller adds the returned action steps before an
+admission early return. Selected holdout successes retain reproducibility and
+sensitivity evidence, but explicitly defer independent qualification when no
+unseen corpus was declared. The final report and immutable exemplar archive can
+complete without relabelling observed worlds or declaring an improvement.
+
+Actual manager/MiniMap/history, solver-island, shared-action budget and survey
+coordinator/evidence-store regression fixtures are authored. Their execution and
+all runtime/PCM/browser qualification remain deferred until implementation of all
+open-issue code. These reports remain open pending complete acceptance evidence.
