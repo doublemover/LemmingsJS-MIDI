@@ -15,7 +15,7 @@ import { getOwnedSourceBankIdentity } from '../midi-ui/OwnedSourceBank.js';
 import { renderCausalOwnedTake } from '../midi-ui/CausalOwnedRender.js';
 
 export const BACKGROUND_JOB_PROTOCOL = 1;
-export const BACKGROUND_JOB_KINDS = Object.freeze(['analyze-native-impulse', 'encode-native-render', 'decode-wave-source', 'generate-procedural-sound', 'inspect-wave-asset', 'prepare-owned-source-bank', 'parse-json', 'verify-causal-source', 'snapshot-canonical-data', 'inspect-causal-archive-entry', 'render-sound-controls', 'render-causal-sine-take', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'asset-hash', 'asset-decode']);
+export const BACKGROUND_JOB_KINDS = Object.freeze(['analyze-native-impulse', 'encode-native-render', 'decode-wave-source', 'generate-procedural-sound', 'inspect-wave-asset', 'prepare-owned-source-bank', 'parse-json', 'verify-causal-source', 'snapshot-canonical-data', 'inspect-causal-archive-entry', 'render-sound-controls', 'render-causal-sine-take', 'render-causal-source-pcm', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'asset-hash', 'asset-decode']);
 const MAX_BYTES = 64 * 1048576, MAX_NODES = 4000000;
 const problem = (code, message) => Object.assign(new Error(message), { code, name: 'BackgroundJobError' });
 const shared = value => typeof globalThis.SharedArrayBuffer === 'function' && (value instanceof globalThis.SharedArrayBuffer || value?.buffer instanceof globalThis.SharedArrayBuffer);
@@ -240,7 +240,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     }
     return { value, inputBytes: metadata.bytes, nodes: metadata.nodes };
   }
-  const metadata = await inspectValue(input, options, { allowBinary: ['recovery-checksum', 'render-sound-controls', 'render-causal-sine-take', 'encode-native-render'].includes(kind) });
+  const metadata = await inspectValue(input, options, { allowBinary: ['recovery-checksum', 'render-sound-controls', 'render-causal-sine-take', 'render-causal-source-pcm', 'encode-native-render'].includes(kind) });
   if (kind === 'snapshot-canonical-data') {
     const encoded = canonicalDataText(input, { maxBytes, maxNodes }); guard(signal, current);
     if (encoded.bytes.byteLength * 8 + encoded.nodes * 192 > estimatedPeakBytes) throw problem('memory-capacity', 'Snapshot source exceeds its declared clone overlap.');
@@ -252,7 +252,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
         metadata.bytes * 4 + 16 * 1048576 > estimatedPeakBytes) throw problem('invalid-contract', 'Native encoding requires its admitted PCM and representation overlap.');
     const catalog = await getNativeInstrumentCatalog(), requirement = input.manifest?.engineRequirement;
     const descriptor = catalog.descriptors.find(engine => engine.engineId === requirement?.engineId); guard(signal, current);
-    if (catalog.state !== 'bound-application-engines' || !descriptor || !['native-oscillator', 'native-fm', 'native-modal', 'native-sample'].includes(descriptor.engineId) ||
+    if (catalog.state !== 'bound-application-engines' || !descriptor || !(['native-oscillator', 'native-fm', 'native-modal', 'native-sample'].includes(descriptor.engineId) || input.mode === 'causal-take' && ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(descriptor.engineId)) ||
         !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => requirement?.[key] === descriptor[key]) || input.manifest.applicationBuildId !== catalog.executionIdentity.buildId)
       throw problem('engine-identity-unbound', 'Native encoding requires the same immutable application and source artifact.');
     const value = await encodeNativeOfflineRender(input, { signal, yieldControl, onProgress, maxWorkingBytes: estimatedPeakBytes }); guard(signal, current);
@@ -272,7 +272,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Rendered control reference exceeds admitted output storage.');
     return { value, inputBytes: metadata.bytes, nodes: metadata.nodes, retainedBytes };
   }
-  if (kind === 'render-causal-sine-take') {
+  if (['render-causal-sine-take', 'render-causal-source-pcm'].includes(kind)) {
     if (!input || Object.keys(input).some(key => !['revoice', 'definition', 'engineRequirement', 'sampleRate', 'startSeconds', 'endSeconds', 'tail', 'stemLaneIds', 'pcm', 'restorationMode', 'effectGraph', 'effectReturnNodeIds'].includes(key)) || estimatedPeakBytes < 8 * 1048576)
       throw problem('invalid-contract', 'Causal audio rendering requires a bounded semantic-source request.');
     const catalog = await getNativeInstrumentCatalog(), descriptor = catalog.descriptors.find(engine => engine.engineId === input.engineRequirement?.engineId); guard(signal, current);
@@ -280,9 +280,9 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
       throw problem('engine-identity-unbound', 'Causal audio rendering requires its exact executing source artifact.');
     const sourceFootprint = (metadata.bytes - metadata.binaryBytes) * 12 + metadata.nodes * 192 + metadata.binaryBytes * 2;
     if (sourceFootprint + 8 * 1048576 > estimatedPeakBytes) throw problem('memory-capacity', 'Causal render source exceeds its admitted object and clone footprint.');
-    const value = await renderCausalOwnedTake({ ...input, descriptor, applicationBuildId: catalog.executionIdentity.buildId },
+    const value = await renderCausalOwnedTake({ ...input, ...(kind === 'render-causal-source-pcm' ? { outputMode: 'source-pcm' } : {}), descriptor, applicationBuildId: catalog.executionIdentity.buildId },
       { signal, yieldControl, onProgress, maxWorkingBytes: estimatedPeakBytes - sourceFootprint }); guard(signal, current);
-    const retainedBytes = value.files.reduce((sum, file) => sum + file.bytes.byteLength * 2 + 262144, 262144);
+    const retainedBytes = kind === 'render-causal-source-pcm' ? value.planes.reduce((sum, plane) => sum + plane.byteLength * 2, 262144) : value.files.reduce((sum, file) => sum + file.bytes.byteLength * 2 + 262144, 262144);
     if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Causal audio artifacts exceed admitted result storage.');
     return { value, inputBytes: metadata.bytes, nodes: metadata.nodes, retainedBytes };
   }

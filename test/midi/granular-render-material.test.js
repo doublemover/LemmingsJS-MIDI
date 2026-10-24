@@ -1,3 +1,4 @@
+import { createQuarryBody } from '../../js/midi/content/DubQuarryRack.js';
 import { expect } from 'chai';
 import fs from 'node:fs/promises';
 import { createHash } from 'node:crypto';
@@ -54,6 +55,12 @@ describe('owned granular render material handoff', () => {
       expect(Buffer.from(pcm(full.files[0]))).to.deep.equal(Buffer.from(pcm(full.files[1])));
       expect(Buffer.from(pcm(crop.files[0]))).to.deep.equal(Buffer.from(pcm(full.files[0]).subarray(9600 * 8)));
       expect(full.manifest.realization.sourceBank.bankHash).to.equal(material.descriptor.bankHash);
+      const bodyInput = await renderCausalOwnedTake({ ...input, startSeconds: 0.2, outputMode: 'source-pcm', effectGraph: createQuarryBody({ send01: 0.3 }), effectReturnNodeIds: ['return'] }, { yieldControl: async () => {} });
+      expect(bodyInput.channels).to.equal(4); expect(bodyInput.frames).to.equal(48000);
+      expect(bodyInput.manifest.realization.sourceBank.bankHash).to.equal(material.descriptor.bankHash);
+      const expected = new DataView(pcm(full.files[0]).buffer, pcm(full.files[0]).byteOffset, pcm(full.files[0]).byteLength); let mismatches = 0;
+      for (let frame = 0; frame < 48000; frame++) for (let channel = 0; channel < 2; channel++) if (bodyInput.planes[channel][frame] !== expected.getFloat32((frame * 2 + channel) * 4, true)) mismatches++;
+      expect(mismatches).to.equal(0); expect(bodyInput.manifest.timelineZeroSourceFrame).to.equal(9600);
       const altered = structuredClone(material.payload); altered.planes[0][100] += 0.1;
       let rejected; try { await verifyOwnedPcmPayload(altered, patch.definition.sampleRefs[0]); } catch (error) { rejected = error; }
       expect(rejected?.code).to.equal('pcm-identity-mismatch');

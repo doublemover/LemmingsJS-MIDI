@@ -1,4 +1,4 @@
-import { prepareEffectRenderPlan, validateNativeConvolutionRenderReceipt } from '../midi-ui/EffectRenderPlan.js';
+import { prepareEffectRenderPlan, validateNativeConvolutionRenderReceipt, validateOwnedConvolutionSourceReceipt } from '../midi-ui/EffectRenderPlan.js';
 import { canonicalDataText } from '../../core/CanonicalData.js';
 import { createOwnedEffectGraphKernel } from '../midi-ui/OwnedEffectGraphKernel.js';
 import { effectGraphHash } from '../../midi/content/EffectGraphRevision.js';
@@ -29,6 +29,10 @@ export async function encodeNativeOfflineRender({ mode, manifest, planes, firstF
   }
   const nativeEffects = !!effectPlan?.impulseCount;
   if (nativeEffects) validateNativeConvolutionRenderReceipt(effectPlan, manifest.nativeScheduling, requested.hash, returns);
+  if (['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(manifest?.engineRequirement?.engineId)) {
+    if (!nativeEffects) throw failure('Owned-source native encoding requires its exact convolution execution.');
+    validateOwnedConvolutionSourceReceipt(manifest);
+  }
   const nativeFrames = planes?.[0]?.length, frames = endFrame - firstFrame;
   if (!['controls', 'causal-take'].includes(mode) || !Array.isArray(stemLaneIds) || !Array.isArray(planes) || planes.length !== 2 + (stemLaneIds.length + (nativeEffects ? returns.length : 0)) * 2 || planes.length > 32 ||
       stemLaneIds.length > 15 || new Set(stemLaneIds).size !== stemLaneIds.length || stemLaneIds.some(id => typeof id !== 'string' || !id || id.length > 128) ||

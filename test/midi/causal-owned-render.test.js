@@ -1,3 +1,4 @@
+import { createQuarryBody } from '../../js/midi/content/DubQuarryRack.js';
 import { expect } from 'chai';
 import fs from 'node:fs/promises';
 import { compileSoundContent } from '../../js/midi/content/SoundContentCompiler.js';
@@ -24,6 +25,30 @@ const pcm = file => {
 };
 // Authored for the final runtime pass, with source ownership tested separately.
 describe('owned-source causal revoice rendering', () => {
+  it('exports complete dry PCM history for native bodies with the same source samples as a normal crop', async () => {
+    for (const engineId of ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum']) for (const sampleRate of [44100, 48000, 96000]) {
+      const definition = structuredClone(CAUSAL_RENDER_SOURCES.find(source => source.id === engineId).definition); definition.voicePolicy.maxVoices = 2;
+      const [descriptor] = await describeNativeInstrumentEngines([{ engineId, engineVersion: 1, artifactHash: 'a'.repeat(64) }]);
+      const input = { definition, descriptor, revoice: revoice(), sampleRate, startSeconds: 0.303, endSeconds: 0.7, stemLaneIds: ['0'] };
+      const dry = await renderCausalOwnedTake(input, { yieldControl: async () => {} });
+      const raw = await renderCausalOwnedTake({ ...input, outputMode: 'source-pcm', effectGraph: createQuarryBody({ send01: 0.3 }), effectReturnNodeIds: ['return'] }, { yieldControl: async () => {} });
+      expect(raw.schema).to.equal('lemmings-causal-source-pcm/v1'); expect(raw.files).to.equal(undefined);
+      expect(raw.frames).to.equal(Math.round(0.7 * sampleRate)); expect(raw.channels).to.equal(4);
+      expect(raw.manifest.timelineZeroSourceFrame).to.equal(Math.round(0.303 * sampleRate)); expect(raw.manifest.effectGraph.latencyFrames).to.equal(null);
+      expect(raw.planes.every(plane => plane.byteOffset === 0 && plane.buffer.byteLength === plane.byteLength)).to.equal(true);
+      const start = raw.manifest.timelineZeroSourceFrame;
+      for (let file = 0; file < dry.files.length; file++) {
+        const bytes = pcm(dry.files[file]), view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+        let mismatches = 0;
+        for (let frame = 0; frame < dry.manifest.frames; frame++) for (let channel = 0; channel < 2; channel++)
+          if (raw.planes[file * 2 + channel][start + frame] !== view.getFloat32((frame * 2 + channel) * 4, true)) mismatches++;
+        expect(mismatches, engineId + ' at ' + sampleRate + ', tap ' + file).to.equal(0);
+      }
+      const cut = await renderCausalOwnedTake({ ...input, outputMode: 'source-pcm', restorationMode: 'owned-state-cut', effectGraph: createQuarryBody({ send01: 0.3 }), effectReturnNodeIds: ['return'] }, { yieldControl: async () => {} });
+      expect(cut.planeByteHashes).to.deep.equal(raw.planeByteHashes);
+      expect(cut.manifest.restoration.stateCut.effects).to.equal('native-body-reconstructed-from-complete-source-history-not-an-effect-state-cut');
+    }
+  });
   it('admits non-PCM null descriptors in direct default control/state-cut renders independently of the content compiler', async () => {
     for (const engineId of ['worklet-pluck', 'worklet-choir', 'worklet-spectrum']) {
       const definition = structuredClone(CAUSAL_RENDER_SOURCES.find(source => source.id === engineId).definition); definition.voicePolicy.maxVoices = 2;

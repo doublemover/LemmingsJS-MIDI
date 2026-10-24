@@ -1,3 +1,7 @@
+import { prepareCausalOwnedConvolutionInput } from '../../js/app/midi-ui/CausalOwnedConvolutionRender.js';
+import { renderCausalOwnedTake } from '../../js/app/midi-ui/CausalOwnedRender.js';
+import { describeNativeInstrumentEngines } from '../../js/app/midi-ui/NativeInstrumentSchema.js';
+import { validateOwnedConvolutionSourceReceipt } from '../../js/app/midi-ui/EffectRenderPlan.js';
 import { expect } from 'chai';
 import { prepareEffectRenderPlan, validateNativeConvolutionRenderReceipt } from '../../js/app/midi-ui/EffectRenderPlan.js';
 import { effectGraphHash } from '../../js/midi/content/EffectGraphRevision.js';
@@ -46,6 +50,8 @@ const makeOwner = (channels, sampleRate) => {
   const node = () => ({ connect() {}, disconnect() { events.push('disconnect'); }, gain: param(), pan: param(), delayTime: param() });
   class OfflineDouble {
     constructor(options) { Object.assign(this, options); this.state = 'suspended'; this.currentTime = 0; this.destination = node(); }
+    createBuffer(channels, length, rate) { const planes = Array.from({ length: channels }, () => new Float32Array(length)); return { numberOfChannels: channels, length, sampleRate: rate, getChannelData: channel => planes[channel] }; }
+    createBufferSource() { return { ...node(), start() { events.push('source-start'); }, stop() { events.push('source-stop'); }, set buffer(value) { events.push(value ? 'source-buffer-set' : 'source-buffer-clear'); } }; }
     createGain() { return node(); } createStereoPanner() { return node(); } createDelay() { return node(); }
     createChannelMerger() { return node(); } createChannelSplitter() { return node(); }
     createConvolver() {
@@ -92,11 +98,31 @@ describe('native shared convolution rendering (API/codec fixtures, no acoustic q
       rendered.release(); expect(owner.budget.diagnostics().accountedBytes).to.equal(0); await owner.resources.dispose().completion; owner.admission.dispose();
     });
   }
+  it('carries an actual owned PCM worker stage through native body preparation and final codec binding', async () => {
+    const owner = makeOwner(4, 48000), definition = CAUSAL_RENDER_SOURCES.find(source => source.id === 'worklet-sine').definition;
+    const [descriptor] = await describeNativeInstrumentEngines([{ engineId: 'worklet-sine', engineVersion: 1, artifactHash: 'a'.repeat(64) }]);
+    const build = 'd'.repeat(64), sourceHash = 'b'.repeat(64), revoice = { operation: 'sound-only-revoice', version: 1,
+      takeId: 'take:raw-source', takeRevision: 1, sourceCanonicalHash: sourceHash, sourceState: 'finalized', sourceVersions: {},
+      coverage: { status: 'known-covered' }, boundary: { status: 'captured-initial-state', state: { sourceTimeMs: 0, voices: [] } },
+      finalBoundaryState: { sourceTimeMs: 1000 }, intents: [] };
+    const raw = await renderCausalOwnedTake({ definition, descriptor, revoice, applicationBuildId: build, sampleRate: 48000,
+      startSeconds: 28 / 48000, endSeconds: 128 / 48000, stemLaneIds: ['lane'], outputMode: 'source-pcm', effectGraph: owner.definition, effectReturnNodeIds: ['body'] }, { yieldControl: immediate });
+    const before = raw.planes.map(plane => plane.slice()), receipt = { method: 'dedicated-worker', kind: 'render-causal-source-pcm', sourceRevision: sourceHash, executionIdentity: { activeExecution: 'bound', buildId: build } };
+    const prepared = await prepareCausalOwnedConvolutionInput(raw, receipt, definition, { resources: owner.resources, resourceBudget: owner.budget,
+      getMaterialProvider: () => owner.provider, jobs: owner.jobs, admission: owner.admission, OfflineAudioContext: owner.OfflineDouble });
+    expect(raw.planes).to.deep.equal(before); expect(owner.events).to.include.members(['source-start', 'source-stop', 'source-buffer-clear']);
+    expect(validateOwnedConvolutionSourceReceipt(prepared.input.manifest).planeByteHashes).to.deep.equal(raw.planeByteHashes);
+    const encoded = await encodeNativeOfflineRender(prepared.input, { yieldControl: immediate }); expect(encoded.files).to.have.length(3);
+    expect(encoded.manifest.engineRequirement.engineId).to.equal('worklet-sine'); expect(encoded.manifest.frames).to.equal(100);
+    const wrong = structuredClone(prepared.input.manifest); wrong.sourcePcmProducer.planeByteHashes[0] = '0'.repeat(64);
+    expect(() => validateOwnedConvolutionSourceReceipt(wrong)).to.throw('input hashes');
+    prepared.release(); expect(owner.budget.diagnostics().accountedBytes).to.equal(0); await owner.resources.dispose().completion; owner.admission.dispose();
+  });
   it('admits authored native body recipes and refuses an owned source or unavailable mixed kernel profile explicitly', () => {
     for (const preset of ['quarry-hollow-spring', 'quarry-stone-courtyard', 'quarry-crossed-gallery']) {
       const selected = prepareCausalEffectSelection({ preset });
       expect(prepareEffectRenderPlan(selected.effectGraph, 48000, selected.effectReturnNodeIds, { nativeConvolution: true }).impulseCount).to.equal(1);
-      expect(() => prepareEffectRenderPlan(selected.effectGraph)).to.throw('native source');
+      expect(() => prepareEffectRenderPlan(selected.effectGraph)).to.throw('native convolution');
     }
     const mixed = body(1); mixed.nodes.push({ id: 'extra', kind: 'feedback-delay', parameters: {} });
     expect(() => prepareEffectRenderPlan(mixed, 48000, [], { nativeConvolution: true })).to.throw();

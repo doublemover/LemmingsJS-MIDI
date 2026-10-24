@@ -1,3 +1,4 @@
+import { prepareCausalOwnedConvolutionInput } from './CausalOwnedConvolutionRender.js';
 import { prepareCausalNativeRenderInput } from './CausalNativeRender.js';
 import { getNativeOfflineProfile, NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineProfile.js';
 import { prepareNativeRenderMaterial } from './NativeRenderMaterial.js';
@@ -42,7 +43,7 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
   let disposed = false, active = null, prepared = null, serial = 0, phase = 'idle', progress = null, lastError = null;
   const state = () => Object.freeze({ schema: 'lemmings-causal-render-state/v1', phase, disposed, active: !!active, progress,
     prepared: prepared?.metadata() || null, materialResources: materialResources.diagnostics(), unresolvedRetirement: unresolved.size, error: lastError,
-    capabilities: Object.freeze({ intentSine: true, intentOwnedSources: Object.freeze(['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular']), intentNativeSources: NATIVE_OFFLINE_SOURCE_IDS, nativeOfflineAvailable: typeof globalThis.OfflineAudioContext === 'function', ownedEffects: Object.freeze(['gain', 'feedback-delay', 'nonlinear-chain']), nativeEffects: true, nativeConvolution: true, nativeConvolutionSources: NATIVE_OFFLINE_SOURCE_IDS, nativeConvolutionTopology: 'native-gains-buses-and-bodies', maxSharedEffectTaps: 8, capturedPcm: false, admissionHistory: false, arbitraryOfflineEngines: false, maxSeconds: 120, maxOutputBytes: 64 * 1048576 }) });
+    capabilities: Object.freeze({ intentSine: true, intentOwnedSources: Object.freeze(['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular']), intentNativeSources: NATIVE_OFFLINE_SOURCE_IDS, nativeOfflineAvailable: typeof globalThis.OfflineAudioContext === 'function', ownedEffects: Object.freeze(['gain', 'feedback-delay', 'nonlinear-chain']), nativeEffects: true, nativeConvolution: true, nativeConvolutionSources: Object.freeze([...OWNED_SOURCE_IDS, ...NATIVE_OFFLINE_SOURCE_IDS]), nativeConvolutionTopology: 'native-gains-buses-and-bodies', maxSharedEffectTaps: 8, capturedPcm: false, admissionHistory: false, arbitraryOfflineEngines: false, maxSeconds: 120, maxOutputBytes: 64 * 1048576 }) });
   const report = () => { try { onState(state()); } catch { /* Rendering ownership does not depend on view callbacks. */ } };
   const makeBundle = (entries, manifest) => {
     const scope = createProcgenRetirementScope(); let discarded = false;
@@ -65,7 +66,7 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
         !Array.isArray(effectReturnNodeIds) || effectReturnNodeIds.length > 8 || new Set(effectReturnNodeIds).size !== effectReturnNodeIds.length || effectReturnNodeIds.some(id => typeof id !== 'string' || !id || id.length > 128) || !effectGraph && effectReturnNodeIds.length)
       return Promise.reject(failure('render-unavailable', 'Choose a bounded causal source, effect graph and tap inventory.'));
     const ordinal = ++serial, controller = new AbortController(), operation = { controller, source: null, job: null, sourceHanded: false, sourceSettled: null,
-      workspace: null, material: null, native: null, producerState: null, promise: null, retirement: null };
+      workspace: null, material: null, native: null, pcmJob: null, producerState: null, promise: null, retirement: null };
     let settleSource, rejectSource; operation.sourceSettled = new Promise((resolve, reject) => { settleSource = resolve; rejectSource = reject; }); operation.sourceSettled.catch(() => {});
     const cancel = () => { controller.abort(externalSignal.reason); phase = 'retiring'; report(); };
     externalSignal?.addEventListener('abort', cancel, { once: true }); if (externalSignal?.aborted) cancel();
@@ -86,8 +87,11 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
         if (catalog.state !== 'bound-application-engines' || !profile?.controlReferenceRender || !descriptor || !HASH.test(descriptor.artifactHash))
           throw failure('engine-identity-unbound', 'Prepare this render from an immutable application build with the selected owned source.');
         if (native && restorationMode !== 'forward-preroll') throw failure('restore-mode-unavailable', 'Native sources reconstruct from covered history; their hidden DSP state cannot use an owned state cut.');
-        const effectPlan = graph ? prepareEffectRenderPlan(graph, sampleRate, returns, { nativeConvolution: native }) : null, effectHash = effectPlan ? await effectGraphHash(effectPlan) : null;
+        const effectPlan = graph ? prepareEffectRenderPlan(graph, sampleRate, returns, { nativeConvolution: true }) : null, effectHash = effectPlan ? await effectGraphHash(effectPlan) : null;
         const effectDefinitionHash = effectPlan ? await hashData(effectPlan.definition) : null; check();
+        const ownedConvolution = !native && !!effectPlan?.impulseCount;
+        if (effectPlan?.impulseCount && (!getMaterialProvider || typeof globalThis.OfflineAudioContext !== 'function')) throw failure('native-body-unavailable', 'Native body rendering requires the shared material provider and OfflineAudioContext.');
+        if (effectPlan?.impulseCount && lanes.length + returns.length > 15) throw failure('native-convolution-tap-capacity', 'Choose at most fifteen combined dry lanes and shared body returns.');
         if (reference && (reference.definitionHash !== definitionHash || !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => reference.engineRequirement[key] === descriptor[key])))
           throw failure('engine-revision-mismatch', 'The selected immutable instrument definition or renderer differs from the saved reference.');
         if (profile.requiresPCM || profile.requiresNativeAssets) {
@@ -106,7 +110,7 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
           const timing = createCausalRenderTiming(revoice, sampleRate), cutoff = Math.round(endSeconds * sampleRate);
           lanes = Object.freeze([...new Set(revoice.intents.filter(intent => intent.kind === 'begin' && timing.frameFor(intent) < cutoff)
             .map(intent => String(intent.laneId ?? 'unassigned')))].sort());
-          if (lanes.length > (native ? 15 : 16)) throw failure('stem-capacity', 'This range exceeds the selected engine stem limit (' + (native ? 15 : 16) + '). Render the complete graph or select fewer lanes.');
+          if (lanes.length > (native ? 15 : 16) || effectPlan?.impulseCount && lanes.length + returns.length > 15) throw failure('stem-capacity', 'This range exceeds the selected engine stem limit (' + (native ? 15 : 16) + '). Render the complete graph or select fewer lanes.');
         }
         const frames = Math.round((endSeconds - startSeconds + (policy.mode === 'exact-crop' ? 0 : policy.maxSeconds ?? 4)) * sampleRate);
         const fileCount = lanes.length + returns.length + 1, pcmBytes = frames * 8 * fileCount, sourceFootprint = operation.source.receipt.retainedBytes;
@@ -125,12 +129,32 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
           estimatedPeakBytes = operation.native.estimatedPeakBytes; input = operation.native.input;
           phase = 'encoding-native'; report();
         }
-        const workerMaxBytes = native ? operation.native.bytes + 262144 : sourceMaxBytes + 262144 + (operation.material?.descriptor.bytes || 0);
-        operation.job = await jobs.compute({ kind: native ? 'encode-native-render' : 'render-causal-sine-take', ownerId, ownerEpoch: ordinal, sourceRevision: revoice.sourceCanonicalHash,
+        if (ownedConvolution) {
+          const historyBytes = Math.round((endSeconds + (policy.mode === 'exact-crop' ? 0 : policy.maxSeconds ?? 4)) * sampleRate) * (1 + lanes.length) * 8;
+          const stagePeak = Math.max(estimatedPeakBytes, historyBytes * 4 + (restorationMode === 'owned-state-cut' ? 2 * profile.sourceBytes({ sampleRate, pcm: operation.material?.descriptor, voices: patch.voicePolicy.maxVoices }) + 4 * 1048576 : 0) + sourceFootprint * 6 + revoice.intents.length * Math.max(1024, Object.keys(profile.fields).length * 256) + 32 * 1048576 + (operation.material?.descriptor.bytes || 0) * 6);
+          if (!Number.isSafeInteger(historyBytes) || historyBytes > 56 * 1048576 || !Number.isSafeInteger(stagePeak) || stagePeak > 512 * 1048576) throw failure('source-pcm-capacity', 'Complete source history exceeds the native body profile. Choose fewer taps or a shorter history.');
+          phase = 'rendering-source-pcm'; report();
+          operation.pcmJob = await jobs.compute({ kind: 'render-causal-source-pcm', ownerId, ownerEpoch: ordinal, sourceRevision: revoice.sourceCanonicalHash,
+            inputBytes: sourceMaxBytes + 262144 + (operation.material?.descriptor.bytes || 0), maxBytes: sourceMaxBytes + 262144 + (operation.material?.descriptor.bytes || 0), estimatedPeakBytes: stagePeak,
+            priority: 'background', budgetAdapter: resourceBudget, signal: controller.signal, isCurrent: () => !disposed && isCurrent(), deadlineMs: 180000,
+            prepareInput: () => { operation.sourceHanded = true; return input; },
+            releasePreparedInput: () => { try { if (operation.source) retireCausalRead(operation.source); operation.source = null; settleSource(); return true; } catch (error) { rejectSource(error); throw error; } },
+            onProgress: value => { if (!disposed && active === operation) { progress = Object.freeze(value); report(); } } }); check();
+          phase = 'rendering-native-body'; report();
+          operation.native = await prepareCausalOwnedConvolutionInput(operation.pcmJob.value, operation.pcmJob.receipt, patch,
+            { resources: materialResources, resourceBudget, getMaterialProvider, jobs, signal: controller.signal, isCurrent: () => !disposed && isCurrent(),
+              maxWorkingBytes: 512 * 1048576 - sourceFootprint * 6 - (operation.material?.descriptor.bytes || 0) - operation.pcmJob.receipt.retainedBytes,
+              onProgress: value => { if (!disposed && active === operation) { progress = Object.freeze(value); report(); } } }); check();
+          operation.pcmJob.release();
+          if (!['released', 'canceled'].includes(operation.pcmJob.retirementState().phase)) throw failure('source-pcm-retirement-unknown', 'Source PCM remains reserved after native body completion.');
+          operation.pcmJob = null; input = operation.native.input; estimatedPeakBytes = operation.native.estimatedPeakBytes; phase = 'encoding-native'; report();
+        }
+        const workerMaxBytes = native || ownedConvolution ? operation.native.bytes + 262144 : sourceMaxBytes + 262144 + (operation.material?.descriptor.bytes || 0);
+        operation.job = await jobs.compute({ kind: native || ownedConvolution ? 'encode-native-render' : 'render-causal-sine-take', ownerId, ownerEpoch: ordinal, sourceRevision: revoice.sourceCanonicalHash,
           inputBytes: workerMaxBytes, maxBytes: workerMaxBytes, estimatedPeakBytes, priority: 'background', budgetAdapter: resourceBudget,
           signal: controller.signal, isCurrent: () => !disposed && isCurrent(), deadlineMs: 180000,
           prepareInput: () => { operation.sourceHanded = true; return input; },
-          releasePreparedInput: () => { try { retireCausalRead(operation.source); operation.source = null; settleSource(); return true; }
+          releasePreparedInput: () => { try { if (operation.source) retireCausalRead(operation.source); operation.source = null; settleSource(); return true; }
           catch (error) { rejectSource(error); throw error; } },
           onProgress: value => { if (!disposed && active === operation) { progress = Object.freeze({ phase: value.phase, completedUnits: value.completedUnits, totalUnits: value.totalUnits }); report(); } }
         }); input = null; revoice = null; check();
@@ -173,6 +197,11 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
           { name: 'render-material', run: () => {
             if (operation.producerState && !['released', 'canceled'].includes(operation.producerState.phase)) throw failure('render-retirement-unknown', 'Render input is still owned by its producer.');
             return operation.material?.release();
+          } },
+          { name: 'source-pcm-producer', run: () => {
+            if (originalError?.retirement && originalError.retirement.outcome !== 'complete') throw failure('source-pcm-retirement-unknown', 'Native source PCM custody remains unresolved.');
+            operation.pcmJob?.release(); const state = operation.pcmJob?.retirementState?.();
+            if (state && !['released', 'canceled'].includes(state.phase)) throw failure('source-pcm-retirement-unknown', 'Source PCM producer did not acknowledge retirement.');
           } },
           { name: 'native-pcm', run: () => { if (operation.producerState && !['released', 'canceled'].includes(operation.producerState.phase)) throw failure('render-retirement-unknown', 'Native PCM is still owned by its consumer.'); return operation.native?.release(); } },
           { name: 'render-source', run: () => { if (operation.sourceHanded) return operation.sourceSettled;

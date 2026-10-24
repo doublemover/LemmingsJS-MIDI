@@ -2802,3 +2802,29 @@ API/codec and source-planning fixtures cover all supported IR layouts and sample
 rates, normalization ordering, receipt tampering, simultaneous tap channel order
 and material retirement. All execution, real-browser PCM/latency, listening and
 performance qualification remain deferred with the rest of the backlog.
+
+### Continuation 143 — owned-source convolution staging (#1012, #1015, #1046, #1155)
+
+All five owned source kernels can now supply complete dry master/lane PCM history
+through a separate admitted worker stage. Independent full-plane buffers carry
+source/artifact identity, sample rate, frame coverage and byte hashes. Their
+computed-result lease remains held while a native body graph verifies and copies
+the data. One bounded OfflineAudioContext plays that exact PCM at the same rate,
+applies the shared native body, and captures master/dry lanes/returns together.
+Hash validation precedes native copying; chunked copies yield to the UI. The
+requested crop is applied only after the complete source and body history has
+run. Owned source state cuts remain distinct from hidden native convolution state.
+
+The foreground owner now supports native body presets with every realized source,
+keeps source PCM and native output loans through their respective producer
+retirement, and retains unresolved custody on failure. Final encoding checks the
+owned-source worker receipt against the native input hashes and application
+revision. No temporary WAV, decode roundtrip, separate lane bounce or additional
+live AudioContext is introduced. Native input copies and complete preroll output
+are included in preflight alongside IR, source-material and encoding overlap.
+Mixed convolution/owned-processor graphs still require their separate adapter.
+
+Direct kernel full-history/crop/state-cut fixtures and staged native API/codec
+fixtures are authored. Their execution, real-browser PCM equivalence and all
+remaining acceptance qualification stay deferred until all open-issue code is
+implemented.

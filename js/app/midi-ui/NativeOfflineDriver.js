@@ -1,3 +1,4 @@
+import { OWNED_SOURCE_IDS } from './OwnedSourceProfiles.js';
 import { NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineProfile.js';
 export { NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineProfile.js';
 import { createSampleInstrumentBackend } from './sampleInstrumentBackend.js';
@@ -17,15 +18,26 @@ let nextOwner = 0;
 
 // The destination belongs exclusively to an OfflineAudioContext. Every lane tap
 // and the master are rendered together; no live output or solo bounce is used.
-export async function renderNativeOfflineGraph({ patch, events, frames, sampleRate, stemLaneIds = [], assets = [], effectGraph = null, effectReturnNodeIds = [] },
+export async function renderNativeOfflineGraph({ patch, events, frames, sampleRate, stemLaneIds = [], assets = [], effectGraph = null, effectReturnNodeIds = [], sourcePcm = null },
   { resources, signal: externalSignal, admission = backgroundWorkerAdmission, resourceBudget = null,
     OfflineAudioContext = globalThis.OfflineAudioContext, getMaterialProvider = null, jobs, onProgress = () => {}, isCurrent = () => true } = {}) {
   externalSignal?.throwIfAborted();
   if (!Array.isArray(effectReturnNodeIds)) throw failure('native-effect-profile', 'Native effect taps must be an explicit bounded array.');
   const effectPlan = effectGraph ? prepareEffectRenderPlan(effectGraph, sampleRate, effectReturnNodeIds, { nativeConvolution: true }) : null;
   if (effectPlan && !effectPlan.impulseCount || !effectPlan && effectReturnNodeIds.length) throw failure('native-effect-profile', 'This native source adapter expects an explicit convolution graph or no native effects.');
+  const sourceBytes = Array.isArray(sourcePcm?.planes) && sourcePcm.planes.length <= 32 ? sourcePcm.planes.reduce((sum, plane) => sum + (plane?.byteLength || 0), 0) : 0;
+  if (sourcePcm != null) {
+    if (!OWNED_SOURCE_IDS.includes(patch?.engineId) || !effectPlan?.impulseCount || !sourcePcm || Object.getPrototypeOf(sourcePcm) !== Object.prototype ||
+        Object.keys(sourcePcm).some(key => !['planes', 'frames', 'channels', 'sampleRate', 'planeByteHashes', 'planeHashByteOrder'].includes(key)) ||
+        sourcePcm.frames !== frames || sourcePcm.sampleRate !== sampleRate || sourcePcm.channels !== 2 + stemLaneIds.length * 2 ||
+        !Array.isArray(sourcePcm.planes) || sourcePcm.planes.length > 32 || sourcePcm.planes.length !== sourcePcm.channels || sourcePcm.planes.some(plane => !(plane instanceof Float32Array) || !(plane.buffer instanceof ArrayBuffer) || plane.length !== frames || plane.byteOffset || plane.buffer.byteLength !== plane.byteLength) ||
+        new Set(sourcePcm.planes.map(plane => plane.buffer)).size !== sourcePcm.channels || !natural(sourceBytes) || sourceBytes < 1 || sourceBytes > 56 * 1048576 ||
+        !Array.isArray(sourcePcm.planeByteHashes) || sourcePcm.planeByteHashes.length !== sourcePcm.channels || sourcePcm.planeByteHashes.some(hash => !/^[a-f0-9]{64}$/.test(hash)) ||
+        !['little-endian', 'big-endian'].includes(sourcePcm.planeHashByteOrder) || typeof globalThis.crypto?.subtle?.digest !== 'function' || events?.length || assets?.length)
+      throw failure('native-source-pcm-preflight', 'Native body input requires exclusive bounded complete dry source planes and coefficient hashes.');
+  }
   const channels = 2 + (stemLaneIds.length + effectReturnNodeIds.length) * 2, nativeBytes = frames * channels * 4;
-  if (!NATIVE_OFFLINE_SOURCE_IDS.includes(patch?.engineId) || ![44100, 48000, 96000].includes(sampleRate) ||
+  if (!(sourcePcm ? OWNED_SOURCE_IDS : NATIVE_OFFLINE_SOURCE_IDS).includes(patch?.engineId) || ![44100, 48000, 96000].includes(sampleRate) ||
       !natural(frames) || frames < 1 || frames > sampleRate * 150 || !natural(nativeBytes) || nativeBytes > 256 * 1048576 ||
       !Array.isArray(assets) || assets.length > 32 || patch.engineId !== 'native-sample' && assets.length || !Array.isArray(events) || events.length > 32768 || !Array.isArray(stemLaneIds) || stemLaneIds.length + effectReturnNodeIds.length > 15 ||
       new Set(stemLaneIds).size !== stemLaneIds.length || stemLaneIds.some(id => typeof id !== 'string' || !id || id.length > 128) ||
@@ -48,7 +60,7 @@ export async function renderNativeOfflineGraph({ patch, events, frames, sampleRa
   const forwardAbort = () => controller.abort(externalSignal.reason);
   externalSignal?.addEventListener('abort', forwardAbort, { once: true }); if (externalSignal?.aborted) forwardAbort();
   let context = null, host = null, backend = null, rendered = null, nativeWork = null, suspension = null;
-  let execution = null, effects = null, effectReceipt = null;
+  let execution = null, effects = null, effectReceipt = null, inputLease = null, sourceNode = null, sourceBuffer = null, sourceStarted = false;
   let nativeSettled = false, nativeFailed = false, originalError = null, cursor = 0, batches = 0, submitted = 0, pcmLease = null, graphLease = null;
   const guard = () => { signal.throwIfAborted(); if (!isCurrent()) throw failure('stale-native-render', 'The native offline render no longer belongs to the selected request.'); };
   const node = value => { nodes.push(value); return value; };
@@ -63,10 +75,19 @@ export async function renderNativeOfflineGraph({ patch, events, frames, sampleRa
       onCancel: reason => controller.abort(reason), deadlineMs: 180000 }); guard();
   };
   const cancel = () => {
-    try { backend?.dispose(); effects?.panic(); } catch (error) { originalError ||= error; }
+    try { backend?.dispose(); if (sourceStarted) sourceNode?.stop(); effects?.panic(); } catch (error) { originalError ||= error; }
   };
   try {
     if (!effectPlan) await acquireExecution();
+    if (sourcePcm) {
+      inputLease = resources.reserve({ kind: 'native-offline-source-copy', owner, bytes: sourceBytes, estimateBytes: sourceBytes + 65536, consumerOwned: true });
+      const endian = new Uint32Array([0x01020304]), byteOrder = new Uint8Array(endian.buffer)[0] === 4 ? 'little-endian' : 'big-endian';
+      if (sourcePcm.planeHashByteOrder !== byteOrder) throw failure('source-pcm-byte-order', 'Source PCM hash byte order differs from this native consumer.');
+      for (const [index, plane] of sourcePcm.planes.entries()) {
+        const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', plane.buffer))].map(byte => byte.toString(16).padStart(2, '0')).join(''); guard();
+        if (hash !== sourcePcm.planeByteHashes[index]) throw failure('source-pcm-hash-mismatch', 'Source PCM changed before native body preparation.');
+      }
+    }
     pcmLease = resources.reserve({ kind: 'native-offline-pcm', owner, bytes: nativeBytes, consumerOwned: true });
     graphLease = resources.reserve({ kind: 'native-offline-graph', owner, bytes: audioIntervalStorageBytes(513), estimateBytes: 16 * 1048576, consumerOwned: true });
     context = new OfflineAudioContext({ numberOfChannels: channels, length: frames, sampleRate });
@@ -96,27 +117,48 @@ export async function renderNativeOfflineGraph({ patch, events, frames, sampleRa
       const channel = { gain }; laneNodes.set(id, channel); return channel;
     };
     let currentLane = null;
-    host = { _context: context, _generation: 1, _sessions: new Map([[owner, { generation: 1 }]]), _voices: new Set(),
-      _semanticVoiceOwners: new Map(), _voicesByToken: new Map(), _retiredVoices: new Map(), _retirementFaults: new Set(),
-      _maxNoteSeconds: 150, _maxScheduledVoices: 512, _maxLiveScheduledVoices: 512, _maxVoices: 256, _voiceSequence: 0,
-      _audioResources: resources, _intervalAdmission: createAudioIntervalAdmission({ maxIntervals: 513 }),
-      _ownerReady: () => context.state !== 'closed' && !signal?.aborted, getAudioContext: () => context,
-      _channel: () => channelFor(currentLane), _workloadClass: () => 'live', _nowMs: () => context.currentTime * 1000,
-      _captureMetadata: fields => fields, _observe() {}, _emitPlayback() {}, _setStatus() {},
-      _voiceFinished: nativeVoiceFinished, _renderVoiceCount: nativeRenderVoiceCount, _release: releaseNativeVoice,
-      _destroyVoice: destroyNativeVoice, _workloadVoiceCount: workloadVoiceCount,
-      _inspectVoiceInterval: inspectVoiceInterval, _inspectVoiceExtensions: inspectVoiceExtensions };
-    backend = patch.engineId === 'native-sample' ? createSampleInstrumentBackend(host, owner, { gateMode: 'bounded', clockMode: 'offline', traceLimit: 0 }) :
-      createNativeOscillatorBackend(host, owner, { engineId: patch.engineId, gateMode: 'bounded', traceLimit: 0 });
-    const preparation = await backend.prepare({ status: 'ready', patch, receipt: { patchId: patch.id, revision: patch.revision } }, assets);
-    if (preparation.status !== 'ready') throw failure('native-patch-unavailable', 'The live native source backend rejected this exact offline definition.');
+    if (!sourcePcm) {
+      host = { _context: context, _generation: 1, _sessions: new Map([[owner, { generation: 1 }]]), _voices: new Set(),
+        _semanticVoiceOwners: new Map(), _voicesByToken: new Map(), _retiredVoices: new Map(), _retirementFaults: new Set(),
+        _maxNoteSeconds: 150, _maxScheduledVoices: 512, _maxLiveScheduledVoices: 512, _maxVoices: 256, _voiceSequence: 0,
+        _audioResources: resources, _intervalAdmission: createAudioIntervalAdmission({ maxIntervals: 513 }),
+        _ownerReady: () => context.state !== 'closed' && !signal?.aborted, getAudioContext: () => context,
+        _channel: () => channelFor(currentLane), _workloadClass: () => 'live', _nowMs: () => context.currentTime * 1000,
+        _captureMetadata: fields => fields, _observe() {}, _emitPlayback() {}, _setStatus() {},
+        _voiceFinished: nativeVoiceFinished, _renderVoiceCount: nativeRenderVoiceCount, _release: releaseNativeVoice,
+        _destroyVoice: destroyNativeVoice, _workloadVoiceCount: workloadVoiceCount,
+        _inspectVoiceInterval: inspectVoiceInterval, _inspectVoiceExtensions: inspectVoiceExtensions };
+      backend = patch.engineId === 'native-sample' ? createSampleInstrumentBackend(host, owner, { gateMode: 'bounded', clockMode: 'offline', traceLimit: 0 }) :
+        createNativeOscillatorBackend(host, owner, { engineId: patch.engineId, gateMode: 'bounded', traceLimit: 0 });
+      const preparation = await backend.prepare({ status: 'ready', patch, receipt: { patchId: patch.id, revision: patch.revision } }, assets);
+      if (preparation.status !== 'ready') throw failure('native-patch-unavailable', 'The live native source backend rejected this exact offline definition.');
+    } else {
+      if (typeof context.createBuffer !== 'function' || typeof context.createBufferSource !== 'function') throw failure('native-pcm-api-unavailable', 'Native body rendering requires an explicit owned PCM source buffer.');
+      sourceBuffer = context.createBuffer(sourcePcm.channels, frames, sampleRate);
+      const targets = sourcePcm.planes.map((_, channel) => sourceBuffer.getChannelData(channel));
+      for (let first = 0; first < frames; first += 16384) {
+        guard(); const end = Math.min(frames, first + 16384);
+        for (const [channel, plane] of sourcePcm.planes.entries()) {
+          for (let index = first; index < end; index++) if (!Number.isFinite(plane[index])) throw failure('source-pcm-nonfinite', 'Source PCM contains a nonfinite sample.');
+          targets[channel].set(plane.subarray(first, end), first);
+        }
+        try { onProgress({ phase: 'preparing-native-source-pcm', completedUnits: end, totalUnits: frames }); } catch {}
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+      sourceNode = node(context.createBufferSource()); sourceNode.buffer = sourceBuffer;
+      const split = node(context.createChannelSplitter(sourcePcm.channels)), stereo = node(context.createChannelMerger(2));
+      sourceNode.channelInterpretation = 'discrete'; split.channelInterpretation = 'discrete'; stereo.channelInterpretation = 'discrete';
+      sourceNode.connect(split); split.connect(stereo, 0, 0); split.connect(stereo, 1, 1); stereo.connect(master);
+      for (let tap = 0; tap < stemLaneIds.length; tap++) { split.connect(merger, 2 + tap * 2, 2 + tap * 2); split.connect(merger, 3 + tap * 2, 3 + tap * 2); }
+      sourceNode.start(0); sourceStarted = true;
+    }
     // IR analysis is a separate admitted worker operation. Acquire native
     // execution only after preparation so two native renders cannot occupy
     // every shared worker slot while waiting for their own analysis jobs.
     if (!execution) await acquireExecution();
     signal?.addEventListener('abort', cancel, { once: true }); guard();
     const schedule = until => {
-      for (const voice of host._voices) if (host._voiceFinished(voice)) host._destroyVoice(voice, 'offline-finished-voice');
+      for (const voice of host?._voices || []) if (host._voiceFinished(voice)) host._destroyVoice(voice, 'offline-finished-voice');
       while (cursor < events.length && events[cursor].frame < until) {
         guard(); const event = events[cursor++];
         if (event.kind === 'begin') {
@@ -128,7 +170,7 @@ export async function renderNativeOfflineGraph({ patch, events, frames, sampleRa
         } else if (event.kind === 'update' && Object.keys(event.expression || {}).length)
           accept(backend.update(event.voiceId, event.expression, event.frame, event.executionEpoch || 'offline-render'), event);
       }
-      if (host._retirementFaults.size) throw failure('native-voice-retirement', 'A native voice failed to retire completely.');
+      if (host?._retirementFaults?.size) throw failure('native-voice-retirement', 'A native voice failed to retire completely.');
     };
     let frontier = 0;
     while (frontier < frames) {
@@ -173,26 +215,30 @@ export async function renderNativeOfflineGraph({ patch, events, frames, sampleRa
       { name: 'native-producer', run: () => { if (originalError?.retirement && originalError.retirement.outcome !== 'complete') throw failure('native-preparation-retirement-unknown', 'Prepared IR producer custody remains unresolved.'); if (nativeWork && (!nativeSettled || nativeFailed && context.state !== 'closed')) throw failure('native-producer-unknown', 'Offline producer retirement could not be confirmed.'); } },
       { name: 'native-voices', run: () => backend?.dispose() },
       { name: 'native-effects', run: async () => { if (effects) { const retired = effects.dispose(); await retired.completion; if (retired.outcome !== 'complete') throw failure('native-effect-retirement-unknown', 'Native convolution and its IR pins remain owned.'); } } },
-      { name: 'native-graph', run: () => { for (const value of nodes) value.disconnect(); } }
+      { name: 'native-graph', run: () => { for (const value of nodes) value.disconnect(); } },
+      { name: 'native-source-buffer', run: () => { if (sourceStarted) sourceNode.stop(); if (sourceNode) sourceNode.buffer = null; sourceBuffer = null; } }
     ]); await receipt.completion;
     if (receipt.outcome !== 'complete') {
       const error = failure('native-retirement-unknown', 'Native offline resources remain reserved.', { cause: originalError, retirement: receipt });
-      error.retainedNative = { context, host, backend, effects, nodes: nodes.slice(), rendered, nativeWork };
-      pcmLease?.retainUnknown(error); graphLease?.retainUnknown(error); execution?.retainUnknown(error); originalError = error;
+      error.retainedNative = { context, host, backend, effects, sourceNode, sourceBuffer, sourcePcm, nodes: nodes.slice(), rendered, nativeWork };
+      pcmLease?.retainUnknown(error); graphLease?.retainUnknown(error); inputLease?.retainUnknown(error); execution?.retainUnknown(error); originalError = error;
     } else {
       const storage = createProcgenRetirementScope().retire([
         { name: 'native-graph-storage', run: () => graphLease?.release() },
+        { name: 'native-source-copy', run: () => inputLease?.release() },
         { name: 'failed-native-pcm', run: () => { if (originalError) pcmLease?.release(); } },
         { name: 'native-execution', run: () => { if (execution) { execution.confirmRetirement(); if (execution.getState().phase !== 'released') throw failure('native-admission-retirement', 'Native execution admission release is unresolved.'); } } }
       ]); await storage.completion;
       if (storage.outcome !== 'complete') { originalError = failure('native-retirement-unknown', 'Native resource bookkeeping remains unresolved.', { cause: originalError, retirement: storage }); pcmLease?.retainUnknown(originalError); }
     }
-    nodes.length = 0; context = host = backend = effects = nativeWork = suspension = null;
+    nodes.length = 0; context = host = backend = effects = sourceNode = sourceBuffer = nativeWork = suspension = null;
   }
   if (originalError) throw originalError;
+  const inputReceipt = sourcePcm ? Object.freeze({ frames, channels: sourcePcm.channels, bytes: sourceBytes, planeByteHashes: Object.freeze(sourcePcm.planeByteHashes.slice()), planeHashByteOrder: sourcePcm.planeHashByteOrder, scope: 'whole-dry-source-history-before-crop' }) : null;
+  sourcePcm = null;
   let released = false;
   return Object.freeze({ get buffer() { return rendered; }, frames, sampleRate, channels, stemLaneIds: Object.freeze(stemLaneIds.slice()),
-    receipt: Object.freeze({ method: 'native-offline-audio-context', nativeSourceBackend: patch.engineId, effectGraph: effectReceipt, batches, submitted, executionAdmission: execution.getState(),
+    receipt: Object.freeze({ method: 'native-offline-audio-context', nativeSourceBackend: patch.engineId, effectGraph: effectReceipt, sourcePcm: inputReceipt, batches, submitted, executionAdmission: execution.getState(),
       scheduling: 'explicit-native-frames-with-quantum-suspension', gates: 'bounded-offline-with-preflighted-terminal-intervals',
       renderTap: 'simultaneous-native-source-graph-before-live-master', crossBrowserBitIdentity: false,
       sourceSelections: Object.freeze(sourceSelections), sourceSelectionCoverage: Object.freeze({ selectedOnsets, retained: sourceSelections.length, limit: selectionLimit, omitted: selectedOnsets - sourceSelections.length, evidenceClass: 'native-source-selection-api', acousticReceipt: false }) }),
