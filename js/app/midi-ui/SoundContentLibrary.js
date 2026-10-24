@@ -3,6 +3,7 @@ import { createSoundContentArchiver } from './SoundContentArchive.js';
 import { createSoundContentReader } from './SoundContentReader.js';
 import { createSoundContentRegistry } from './SoundContentRegistry.js';
 import { createSoundContentInstallation } from './SoundContentInstallation.js';
+import { createSoundContentRenderReferences } from './SoundContentRenderReference.js';
 import { getNativeInstrumentCatalog } from './NativeInstrumentSchema.js';
 import { backgroundJobService } from '../resources/BackgroundJobService.js';
 import { readBrowserBuildResponse } from '../../runtime/BrowserGenerationService.js';
@@ -17,6 +18,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
   const reader = createSoundContentReader({ resourceBudget, jobs }), archiver = createSoundContentArchiver({ resourceBudget, jobs });
   const registry = createSoundContentRegistry({ indexedDB: window.indexedDB, keyRange: window.IDBKeyRange, resourceBudget });
   const installation = createSoundContentInstallation({ audio, registry });
+  const renderReferences = createSoundContentRenderReferences({ resourceBudget, jobs });
   const retirement = createProcgenRetirementScope(), listeners = [];
   let stage = null, current = null, disposed = false, selection = null, artifact = null, pageCursor = null, installed = false, sequence = 0;
   const node = (tag, text) => { const element = document.createElement(tag); if (text != null) element.textContent = text; return element; };
@@ -128,6 +130,16 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
   });
   const referenceExport = button('Prepare reference export', () => prepareExport('reference-only'));
   const portableExport = button('Prepare selected material', () => prepareExport('portable'));
+  const renderRate = node('select'); renderRate.setAttribute('aria-label', 'Rendered reference sample rate');
+  for (const rate of [44100, 48000, 96000]) { const option = node('option', rate + ' Hz'); option.value = String(rate); renderRate.append(option); }
+  renderRate.value = '48000'; controls.append(renderRate);
+  const renderAudio = button('Render controls WAV', () => run(async operation => {
+    const result = await renderReferences.prepare(stage, selection, { sampleRate: Number(renderRate.value), signal: operation.controller.signal,
+      isCurrent: () => current === operation && !disposed });
+    try { check(operation); artifact?.discard(); artifact = result.artifact;
+      setStatus('Control reference WAV prepared at ' + result.manifest.sampleRate + ' Hz. Source, engine and tails are embedded; this is not a physical-take or listening qualification.'); }
+    catch (error) { result.artifact.discard(); throw error; }
+  }));
   const download = button('Download prepared file', () => { try { const receipt = deliverArtifactToAnchor(artifact, { document, windowRef: window }); setStatus(receipt.state === 'delivery-requested' ? 'Download requested; completion is not acknowledged by this browser action.' : 'Download: ' + receipt.state); } catch (error) { setStatus(error.message); } });
   const save = button('Save prepared file…', () => {
     if (!artifact || current) return;
@@ -167,11 +179,15 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     if (plan?.unavailableEngines.length) summary.textContent += ' Required renderer: ' + plan.unavailableEngines.map(entry => entry.state).join(', ') + '.';
     if (plan?.missingReferences.length || plan?.missingAssetBytes.length) summary.textContent += ' Missing material: ' + (plan.missingReferences.length + plan.missingAssetBytes.length) + ' references.';
     const ready = !!plan, auditioned = ready && !!installation.getAudition(stage, selection);
+    let renderable = false;
+    if (ready) { const lease = stage.borrow(); try { const patch = lease.prepared.patches.find(entry => entry.identity === selection);
+      renderable = patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-sine'; } finally { lease.release(); } }
     for (const element of [factory, importInput, select, rights, browse, more, archivedToggle]) element.disabled = busy;
     audition.disabled = busy || !ready || !!plan?.missingReferences.length || !!plan?.unavailableEngines.length || !!plan?.missingAssetBytes.length;
     stop.disabled = !busy; install.disabled = busy || !auditioned; referenceInstall.disabled = busy || !ready;
     apply.disabled = busy || !installed || !auditioned; referenceExport.disabled = busy || !ready;
     portableExport.disabled = busy || !ready || plan.portability === 'reference-only' || !!plan.unavailableEngines.length;
+    renderAudio.disabled = busy || !renderable || !!plan?.missingReferences.length || !!plan?.missingAssetBytes.length; renderRate.disabled = busy || !renderable;
     download.disabled = busy || !artifact?.metadata().retained; save.disabled = download.disabled || typeof window.showSaveFilePicker !== 'function';
     more.hidden = !pageCursor; close.disabled = false; credits.replaceChildren();
     if (plan) for (const entry of plan.credits) credits.append(node('li', entry.subject + ' · ' + (entry.rights.creator || 'creator unknown') + ' · ' + entry.rights.licenseId + ' · redistribution ' + entry.redistribution));
@@ -181,6 +197,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     state: () => Object.freeze({ staged: stage?.metadata() || null, selection, busy: !!current, installed, artifact: artifact?.metadata() || null }),
     dispose() { if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; const pending = current?.promise; current?.controller.abort(failure('Sound library retired.'));
       return retirement.retire([{ name: 'audition', run: () => installation.dispose() }, { name: 'archive-owner', run: () => archiver.dispose() },
+        { name: 'render-reference-owner', run: () => renderReferences.dispose() },
         { name: 'reader-owner', run: () => reader.dispose() }, { name: 'stage', run: () => stage?.discard() }, { name: 'artifact', run: () => artifact?.discard() },
         { name: 'artifact-digest', run: () => artifact?.digest() },
         { name: 'current-source', run: async () => { await pending;

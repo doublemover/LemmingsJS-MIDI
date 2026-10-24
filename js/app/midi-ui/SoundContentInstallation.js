@@ -1,3 +1,4 @@
+import { SOUND_CONTENT_CONTROL_FIXTURE as fixture } from '../../midi/content/SoundContentControlFixture.js';
 import { freezeData, hashData } from '../../core/CanonicalData.js';
 import { createInstrumentPatchRegistry } from '../../midi/content/InstrumentPatchV2.js';
 import { planSoundContentSelection } from '../../midi/content/SoundContentPack.js';
@@ -7,13 +8,7 @@ import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 
 const failure = (code, message, cause) => Object.assign(new Error(message), { name: 'SoundContentError', code, cause });
 const completedAuditions = new WeakMap();
-const fixture = freezeData({ schema: 'lemmings-control-audition/v1', id: 'pressure-pan-pitch-v1', source: 'authored-control-fixture',
-  physicalTakeEvidence: false, events: [
-    { kind: 'begin', seconds: 0, pitchCents: 6000, velocity01: 0.6, expression: { pressure01: 0.3, pan01: 0 } },
-    { kind: 'update', seconds: 0.3, expression: { pressure01: 0.9, pan01: -0.5 } },
-    { kind: 'update', seconds: 0.7, expression: { pressure01: 0.5, pan01: 0.5, pitchOffsetCents: 100 } },
-    { kind: 'end', seconds: 1 }
-  ] });
+
 const interruptible = (work, signal) => new Promise((resolve, reject) => {
   const abort = () => reject(signal.reason || failure('cancelled', 'Sound audition canceled.'));
   signal.addEventListener('abort', abort, { once: true });
@@ -84,7 +79,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
         if (leaseReceipt.status !== 'accepted') throw failure('audition-admission', 'Audition voice lifetime could not be admitted.');
         for (const event of fixture.events) {
           check(); const frame = base + Math.round(event.seconds * rate); let outcome;
-          if (event.kind === 'begin') outcome = operation.backend.begin({ generation: number, voiceId: 'control-fixture', onsetId: 'control-fixture', actorId: null, laneId: 0,
+          if (event.kind === 'begin') outcome = operation.backend.begin({ version: 1, kind: 'begin', generation: number, voiceId: 'control-fixture', onsetId: 'control-fixture', actorId: null, laneId: 0,
             intentId: 'sound-audition:' + number, sourceEventIds: [], pitch: { cents: event.pitchCents, referenceHz: 440 }, velocity01: event.velocity01, expression: event.expression }, frame, operation.execution);
           else if (event.kind === 'update') outcome = operation.backend.update('control-fixture', event.expression, frame, operation.execution);
           else outcome = operation.backend.end('control-fixture', { seconds: releaseSeconds }, frame, operation.execution);

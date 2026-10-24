@@ -222,3 +222,18 @@ modulation graphs or causal bindings remain unavailable instead of silently
 losing those behaviors. Direct renderer preparation enforces the same boundary.
 The native foundation pack is now version 1.1.0 with patch revisions 2; its
 explicit rejection policy replaces the earlier unrealized stealing declaration.
+
+The sound library offers **Render controls WAV** for the pinned sine renderer
+at 44.1, 48 or 96 kHz. It runs the actual worklet kernel in an admitted fixed
+worker without opening audio or hardware output. The source is the same
+pressure/pan/pitch control fixture used for isolated audition. This is an audio
+reference, not an editable replacement or physical-take audition.
+
+The float32 stereo WAV includes a canonical `lmjs` RIFF chunk naming the exact
+pack/definition/engine/build, fixture, PCM hash, sample rate, signal statistics,
+finished release tail and render tap. The tap precedes the shared owner master
+and limiter; normalization and resampling are absent. The render grants no new
+redistribution rights. Source and output memory overlap are admitted before
+rendering; cancellation retires the worker and staged consumer, and the result
+uses the existing expiring artifact/delivery owners. Listening, device output
+and a real physical gesture remain separate qualifications.

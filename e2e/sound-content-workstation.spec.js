@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 import { buildBrowserRuntime } from '../scripts/BrowserRuntimeBuild.js';
+import { readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 
 test.use({ permissions: [] });
 test.setTimeout(120000);
@@ -80,4 +82,37 @@ test('a pinned worklet lane sends actual voice measurements through physical pla
   expect(receipt.source.tap).toBe('voice-pre-pan-pre-owner-bus'); expect(receipt.source.detectorDelayFrames).toBeGreaterThan(0);
   expect(receipt.visual.scale).toBeGreaterThan(1); expect(receipt.observationClosed).toBe(true);
   await testInfo.attach('real-worklet-actor-display.json', { body: JSON.stringify({ ...receipt, acousticReceipt: false }), contentType: 'application/json' });
+});
+
+test('selected control WAV rendering uses a real immutable worker without enabling local or hardware output', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.renderAudioOpens = 0; window.renderMidiRequests = 0; const NativeContext = window.AudioContext;
+    window.AudioContext = class extends NativeContext { constructor(options) { window.renderAudioOpens++; super(options); } };
+    Object.defineProperty(navigator, 'requestMIDIAccess', { configurable: true, value: async () => { window.renderMidiRequests++; throw new Error('Unexpected MIDI request'); } });
+  });
+  await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=911&lanes=1');
+  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__);
+  const before = await page.evaluate(() => {
+    window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause();
+    return { project: JSON.stringify(window.__PROCGEN_STUDIO__.getProject()), tick: window.__PROCGEN_LANES__.world.tickIndex };
+  });
+  await page.getByRole('button', { name: 'Sound library…', exact: true }).click(); const dialog = page.getByRole('dialog', { name: 'Sound library', exact: true });
+  await dialog.getByRole('button', { name: 'Prepare factory instruments', exact: true }).click();
+  const revisions = dialog.getByLabel('Saved instrument revision'); await expect(revisions.locator('option')).toHaveCount(4, { timeout: 30000 });
+  await revisions.selectOption('foundation.held-sine@2'); await dialog.getByLabel('Rendered reference sample rate').selectOption('44100');
+  await dialog.getByRole('button', { name: 'Render controls WAV', exact: true }).click();
+  await expect(dialog.getByRole('status')).toContainText('Control reference WAV prepared at 44100 Hz', { timeout: 30000 });
+  const pending = page.waitForEvent('download'); await dialog.getByRole('button', { name: 'Download prepared file', exact: true }).click();
+  const download = await pending, bytes = await readFile(await download.path()); let manifest = null, pcm = null;
+  for (let offset = 12; offset < bytes.length;) {
+    const id = bytes.toString('ascii', offset, offset + 4), length = bytes.readUInt32LE(offset + 4), body = bytes.subarray(offset + 8, offset + 8 + length);
+    if (id === 'lmjs') manifest = JSON.parse(body.toString('utf8')); if (id === 'data') pcm = body; offset += 8 + length + length % 2;
+  }
+  expect(manifest).toMatchObject({ schema: 'lemmings-rendered-audition/v1', sampleRate: 44100, physicalTakeEvidence: false, acousticReceipt: false,
+    source: { patchIdentity: 'foundation.held-sine@2' }, tail: { state: 'all-voices-ended' } });
+  expect(manifest.applicationBuildId).toMatch(/^[a-f0-9]{64}$/); expect(createHash('sha256').update(pcm).digest('hex')).toBe(manifest.pcmHash);
+  expect(manifest.statistics.peak).toBeGreaterThan(0);
+  const after = await page.evaluate(() => ({ project: JSON.stringify(window.__PROCGEN_STUDIO__.getProject()), tick: window.__PROCGEN_LANES__.world.tickIndex,
+    audioOpens: window.renderAudioOpens, hardwareRequests: window.renderMidiRequests }));
+  expect(after).toEqual({ ...before, audioOpens: 0, hardwareRequests: 0 });
 });

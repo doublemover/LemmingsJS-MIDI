@@ -29,7 +29,7 @@ describe('staged sound installation and isolated audition authority', () => {
     const reader = createSoundContentReader({ resourceBudget: budget, jobs }), stage = await reader.stageArchive(archive, { engineDescriptors: descriptors });
     let clock = 0, commits = 0; const calls = [], context = { state: 'running', sampleRate: 48000, get currentTime() { clock += 0.5; return clock; } };
     const backend = { prepare: async () => ({ status: 'ready' }), registerExecution: request => ({ status: 'accepted', execution: Object.freeze(request) }),
-      renewExecutionLease: () => ({ status: 'accepted' }), begin: () => { calls.push('begin'); return { status: 'accepted' }; },
+      renewExecutionLease: () => ({ status: 'accepted' }), begin: intent => { expect(intent).to.include({ version: 1, kind: 'begin' }); calls.push('begin'); return { status: 'accepted' }; },
       update: () => { calls.push('update'); return { status: 'accepted' }; }, end: () => { calls.push('end'); return { status: 'accepted' }; },
       retireExecution: () => { calls.push('execution-retired'); return { status: 'accepted' }; },
       dispose: () => createProcgenRetirementScope().retire([{ name: 'native', run: () => { calls.push('backend-retired'); if (cleanupFailure) throw new Error('unknown native stop'); } }]) };

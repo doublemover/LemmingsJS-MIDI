@@ -4,9 +4,10 @@ import { canonicalDataText } from '../../core/CanonicalData.js';
 import { compileSoundContent } from '../../midi/content/SoundContentCompiler.js';
 import { getNativeInstrumentCatalog } from '../midi-ui/NativeInstrumentSchema.js';
 import { inspectCausalArchiveEntry } from '../procgen/workstation/CausalArchiveEntry.js';
+import { renderOwnedSineControls } from '../midi-ui/OwnedSineOfflineRender.js';
 
 export const BACKGROUND_JOB_PROTOCOL = 1;
-export const BACKGROUND_JOB_KINDS = Object.freeze(['parse-json', 'inspect-causal-archive-entry', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'asset-hash', 'asset-decode']);
+export const BACKGROUND_JOB_KINDS = Object.freeze(['parse-json', 'inspect-causal-archive-entry', 'render-sound-controls', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'asset-hash', 'asset-decode']);
 const MAX_BYTES = 64 * 1048576, MAX_NODES = 4000000;
 const problem = (code, message) => Object.assign(new Error(message), { code, name: 'BackgroundJobError' });
 const shared = value => typeof globalThis.SharedArrayBuffer === 'function' && (value instanceof globalThis.SharedArrayBuffer || value?.buffer instanceof globalThis.SharedArrayBuffer);
@@ -143,6 +144,18 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     return { value, inputBytes: metadata.bytes, nodes: metadata.nodes };
   }
   const metadata = await inspectValue(input, options, { allowBinary: kind === 'recovery-checksum' });
+  if (kind === 'render-sound-controls') {
+    if (!input || Object.keys(input).some(key => !['definition', 'engineRequirement', 'sampleRate', 'source'].includes(key)) || estimatedPeakBytes < 32 * 1048576)
+      throw problem('invalid-contract', 'Sound control rendering requires its bounded fixed-job contract.');
+    const catalog = await getNativeInstrumentCatalog(), descriptor = catalog.descriptors.find(engine => engine.engineId === 'worklet-sine'); guard(signal, current);
+    if (catalog.state !== 'bound-application-engines' || !descriptor || !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => input.engineRequirement?.[key] === descriptor[key]))
+      throw problem('engine-identity-unbound', 'Sound control rendering requires its exact executing sine artifact.');
+    const value = await renderOwnedSineControls({ definition: input.definition, descriptor, sampleRate: input.sampleRate, source: input.source,
+      applicationBuildId: catalog.executionIdentity.buildId }, { signal, yieldControl, onProgress }); guard(signal, current);
+    const retainedBytes = value.bytes.byteLength * 2 + 65536;
+    if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Rendered control reference exceeds admitted output storage.');
+    return { value, inputBytes: metadata.bytes, nodes: metadata.nodes, retainedBytes };
+  }
   if (kind === 'compile-sound-content') {
     const catalog = await getNativeInstrumentCatalog(); guard(signal, current);
     if (catalog.state !== 'bound-application-engines' || !catalog.descriptors.length) throw problem('engine-identity-unbound', 'Sound compilation requires the executing immutable renderer catalog.');

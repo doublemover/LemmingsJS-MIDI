@@ -4,8 +4,8 @@ import { getActiveExecutionIdentity, compareActiveExecutionIdentity } from '../.
 let used = false;
 globalThis.addEventListener('message', async event => {
   const request = event.data;
-  const respond = payload => globalThis.postMessage({ protocol: BACKGROUND_JOB_PROTOCOL, jobId: request?.jobId,
-    ownerEpoch: request?.ownerEpoch, sourceRevision: request?.sourceRevision, ...payload });
+  const respond = (payload, transfers = []) => globalThis.postMessage({ protocol: BACKGROUND_JOB_PROTOCOL, jobId: request?.jobId,
+    ownerEpoch: request?.ownerEpoch, sourceRevision: request?.sourceRevision, ...payload }, transfers);
   try {
     if (used || request?.protocol !== BACKGROUND_JOB_PROTOCOL || !/^background-[0-9]+$/.test(request.jobId || '') ||
         !Number.isSafeInteger(request.ownerEpoch) || request.ownerEpoch < 0 || !['number', 'string'].includes(typeof request.sourceRevision) ||
@@ -15,7 +15,8 @@ globalThis.addEventListener('message', async event => {
       throw new Error('Background worker executes a different immutable build.');
     const result = await runBackgroundJobKernel(request.kind, request.input, { ...request.limits,
       onProgress: progress => respond({ type: 'progress', progress }) });
-    respond({ type: 'computed', result, executionIdentity: getActiveExecutionIdentity('browser-background-jobs') });
+    respond({ type: 'computed', result, executionIdentity: getActiveExecutionIdentity('browser-background-jobs') },
+      request.kind === 'render-sound-controls' && result.value?.bytes instanceof Uint8Array ? [result.value.bytes.buffer] : []);
   } catch (error) { respond({ type: 'failed', error: { code: String(error.code || error.name).slice(0, 64), message: String(error.message || error).slice(0, 512) } }); }
   finally { globalThis.close(); }
 });
