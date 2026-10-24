@@ -2510,6 +2510,21 @@ need integration. Uninterrupted/chunked PCM, attack/held/release/future-control,
 asset mismatch, corrupt state and independent memory fixtures are authored for
 all source rates and remain unexecuted with runtime testing deferred.
 
+Causal owned-source output can now stage a fresh kernel from a complete source
+cut at the chosen range boundary after covered silent preroll. The render loop
+splits exactly at that frame, keeps the immutable plan/cursor and slot-to-stem
+routes, and restores independent mutable memory before output continues. The
+transfer is preallocated and included with the temporary second kernel in the
+worker's admitted workspace. Fixed banks and PCM stay shared read-only; source
+state bytes receive a SHA-256 and an explicit planner frontier in the manifest.
+Cancellation checks bracket staging, restore and hashing, and successful staging
+clears the temporary transfer. The existing take-render dialog offers this as an
+experimental owned-source reconstruction choice. Native sources explicitly keep
+forward history. This is worker-local range reconstruction, not live-host queue
+capture, a persisted take checkpoint or a qualified exact scrub claim. Deferred
+PCM fixtures compare full graph and simultaneous stems across a cut inside a
+control ramp. Live block transport and canonical cursor/sink replacement remain.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical

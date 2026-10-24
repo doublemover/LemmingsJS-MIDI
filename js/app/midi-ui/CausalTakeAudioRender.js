@@ -54,9 +54,9 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
       }, retirementState: () => scope.getReceipt() }); bundles.add(bundle); return bundle;
   };
   const prepare = ({ takeId, takeRevision, definition = null, materialReference = null, sampleRate = 48000, startSeconds = 0, endSeconds,
-    tail = { mode: 'exact-crop' }, stemLaneIds = [], includeAllLaneStems = false, signal: externalSignal, isCurrent = () => true } = {}) => {
+    tail = { mode: 'exact-crop' }, stemLaneIds = [], includeAllLaneStems = false, restorationMode = 'forward-preroll', signal: externalSignal, isCurrent = () => true } = {}) => {
     externalSignal?.throwIfAborted();
-    if (disposed || active || unresolved.size || typeof takeId !== 'string' || !takeId || takeId.length > 256 || ![44100, 48000, 96000].includes(sampleRate) ||
+    if (!['forward-preroll', 'owned-state-cut'].includes(restorationMode) || disposed || active || unresolved.size || typeof takeId !== 'string' || !takeId || takeId.length > 256 || ![44100, 48000, 96000].includes(sampleRate) ||
         !Number.isFinite(startSeconds) || startSeconds < 0 || startSeconds >= 120 || !Number.isFinite(endSeconds) || endSeconds <= startSeconds || endSeconds > 120 ||
         !Array.isArray(stemLaneIds) || stemLaneIds.length > 16 || stemLaneIds.some(lane => typeof lane !== 'string' || !lane || lane.length > 128) ||
         new Set(stemLaneIds).size !== stemLaneIds.length || typeof includeAllLaneStems !== 'boolean' || typeof isCurrent !== 'function') return Promise.reject(failure('render-unavailable', 'Choose a bounded causal render range and available renderer owner.'));
@@ -78,6 +78,7 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
         const native = NATIVE_OFFLINE_SOURCE_IDS.includes(patch.engineId), profile = native ? getNativeOfflineProfile(patch.engineId) : OWNED_SOURCE_IDS.includes(patch.engineId) ? getOwnedSourceProfile(patch.engineId) : null;
         if (catalog.state !== 'bound-application-engines' || !profile?.controlReferenceRender || !descriptor || !HASH.test(descriptor.artifactHash))
           throw failure('engine-identity-unbound', 'Prepare this render from an immutable application build with the selected owned source.');
+        if (native && restorationMode !== 'forward-preroll') throw failure('restore-mode-unavailable', 'Native sources reconstruct from covered history; their hidden DSP state cannot use an owned state cut.');
         if (reference && (reference.definitionHash !== definitionHash || !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => reference.engineRequirement[key] === descriptor[key])))
           throw failure('engine-revision-mismatch', 'The selected immutable instrument definition or renderer differs from the saved reference.');
         if (profile.requiresPCM || profile.requiresNativeAssets) {
@@ -102,10 +103,10 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
         const pcmBytes = frames * 8 * (lanes.length + 1), sourceFootprint = operation.source.receipt.retainedBytes;
         operation.workspace.resize(2 * 1048576 + sourceFootprint + (native ? revoice.intents.length * Math.max(1024, Object.keys(profile.fields).length * 256) : 0));
         const binding = { takeRevision: revoice.takeRevision, sourceCanonicalHash: revoice.sourceCanonicalHash };
-        let estimatedPeakBytes = sourceFootprint * 6 + pcmBytes * 4 + revoice.intents.length * Math.max(1024, Object.keys(profile.fields).length * 256) + 32 * 1048576 + (operation.material?.descriptor.bytes || 0) * 6;
+        let estimatedPeakBytes = sourceFootprint * 6 + pcmBytes * 4 + revoice.intents.length * Math.max(1024, Object.keys(profile.fields).length * 256) + 32 * 1048576 + (operation.material?.descriptor.bytes || 0) * 6 + (restorationMode === 'owned-state-cut' ? 2 * profile.sourceBytes(sampleRate, operation.material?.descriptor) + 4 * 1048576 : 0);
         if (!Number.isSafeInteger(pcmBytes) || pcmBytes > 64 * 1048576 || !Number.isSafeInteger(estimatedPeakBytes) || estimatedPeakBytes > 512 * 1048576)
           throw failure('render-memory-capacity', 'Choose a shorter output range or fewer stems to fit source, PCM, encoding and transfer overlap.');
-        input = { revoice, definition: patch, engineRequirement, sampleRate, startSeconds, endSeconds, tail: policy, stemLaneIds: lanes, ...(operation.material && !native ? { pcm: operation.material.payload } : {}) };
+        input = { revoice, definition: patch, engineRequirement, sampleRate, startSeconds, endSeconds, tail: policy, stemLaneIds: lanes, restorationMode, ...(operation.material && !native ? { pcm: operation.material.payload } : {}) };
         phase = native ? 'rendering-native' : 'rendering'; report();
         if (native) {
           operation.native = await prepareCausalNativeRenderInput({ ...input, descriptor, applicationBuildId: catalog.executionIdentity.buildId, ...(profile.requiresNativeAssets ? { nativeAssets: operation.material.assets, materialDescriptor: operation.material.descriptor } : {}) },

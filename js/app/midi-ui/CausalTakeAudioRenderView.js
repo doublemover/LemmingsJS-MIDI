@@ -53,6 +53,7 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
   const rate = select('Render sample rate', [['44100', '44.1 kHz'], ['48000', '48 kHz'], ['96000', '96 kHz']]); rate.value = '48000';
   const tail = select('Render end policy', [['exact-crop', 'Exact crop'], ['bounded-natural', 'Captured releases with bounded tails'], ['boundary-release', 'Derive releases at the end boundary']]);
   const stems = node('input'); stems.type = 'checkbox'; stems.setAttribute('aria-label', 'Include all captured dry lane stems'); label('Include all captured dry lane stems (native: 15; owned: 16)', stems);
+  const restore = select('Range reconstruction', [['forward-preroll', 'Forward captured history'], ['owned-state-cut', 'Restore source state at range start (experimental)']]);
   const status = node('output', 'Idle'); status.setAttribute('role', 'status'); const details = node('p'), deliveryStatus = node('output'); deliveryStatus.setAttribute('aria-label', 'Rendered file delivery');
   const file = node('select'); file.setAttribute('aria-label', 'Prepared rendered file');
   const say = text => { if (!disposed) { deliveryStatus.textContent = text; try { onStatus(text); } catch { /* Status does not own a prepared render. */ } } };
@@ -64,7 +65,7 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
     const saved = sourceModel.value === 'saved-instrument', model = CAUSAL_RENDER_SOURCES.find(model => model.id === sourceModel.value);
     if (saved ? !instrumentReference || !instrumentSupported : !model) throw new Error('Choose an available render source.');
     await owner.prepare({ definition: saved ? instrumentReference.definition : model.definition, materialReference: saved ? instrumentReference : null, takeId: source.takeId, takeRevision: source.revision, sampleRate: Number(rate.value), startSeconds: Number(first.value), endSeconds: Number(last.value),
-      tail: { mode: tail.value, maxSeconds: Number(tailSeconds.value) }, includeAllLaneStems: stems.checked });
+      tail: { mode: tail.value, maxSeconds: Number(tailSeconds.value) }, includeAllLaneStems: stems.checked, restorationMode: restore.value });
     say('Rendered WAV files are prepared. Choose a file and a delivery action; the original take is unchanged.');
   }));
   const cancelRender = button('Cancel render', () => owner.cancel());
@@ -102,6 +103,9 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
       'Choose a range and prepare. Rendering does not enable live audio or audition the result.');
     renderButton.disabled = loading || busy || !source || !!source.unavailable || !!current.unresolvedRetirement || sourceModel.value === 'saved-instrument' && !instrumentSupported || picker || !!delivery;
     cancelRender.disabled = !busy; first.disabled = last.disabled = sourceModel.disabled = rate.disabled = tail.disabled = stems.disabled = busy || loading;
+    const selectedEngine = sourceModel.value === 'saved-instrument' ? instrumentReference?.engineRequirement.engineId : sourceModel.value;
+    const nativeRestore = NATIVE_OFFLINE_SOURCE_IDS.includes(selectedEngine);
+    restore.disabled = busy || loading || nativeRestore; if (nativeRestore) restore.value = 'forward-preroll';
     tailSeconds.disabled = busy || loading || tail.value === 'exact-crop'; file.disabled = busy || picker || !!delivery || !bundle;
     const ready = !!(artifact || chosen()?.metadata())?.retained;
     download.disabled = !ready || busy || picker || !!delivery; save.disabled = download.disabled || typeof window.showSaveFilePicker !== 'function';

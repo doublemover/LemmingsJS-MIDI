@@ -35,6 +35,12 @@ describe('owned-source causal revoice rendering', () => {
       expect(Buffer.from(pcm(cropped.files[0]))).to.deep.equal(Buffer.from(pcm(full.files[0]).subarray(9600 * 8)));
       expect(full.manifest.realization.sourceControls.observedKinds).to.deep.equal(['MotionCommitted']);
       expect(full.manifest.acousticReceipt).to.equal(false);
+      const cutFrame = Math.round(0.303 * 48000), restored = await renderCausalOwnedTake({ ...input, startSeconds: 0.303, restorationMode: 'owned-state-cut' }, { yieldControl: async () => {} });
+      expect(Buffer.from(pcm(restored.files[0]))).to.deep.equal(Buffer.from(pcm(full.files[0]).subarray(cutFrame * 8)));
+      expect(Buffer.from(pcm(restored.files[1]))).to.deep.equal(Buffer.from(pcm(full.files[1]).subarray(cutFrame * 8)));
+      expect(restored.manifest.restoration).to.include({ mode: 'forward-preroll-and-owned-state-cut', prerollFrames: cutFrame });
+      expect(restored.manifest.restoration.stateCut).to.include({ frame: cutFrame, mutableState: 'independent-staged-copy', plannerContinuation: 'same-admitted-immutable-intent-plan' });
+      expect(restored.manifest.restoration.stateCut.stateHash).to.match(/^[a-f0-9]{64}$/);
     });
   }
 });

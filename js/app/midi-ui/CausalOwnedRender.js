@@ -209,11 +209,17 @@ export async function planCausalOwnedRender(input = {}) {
 
 export async function renderCausalOwnedTake(input, { signal, yieldControl = () => new Promise(resolve => setTimeout(resolve, 0)), onProgress = () => {}, maxWorkingBytes = 512 * 1048576 } = {}) {
   signal?.throwIfAborted(); const plan = await planCausalOwnedRender({ ...input, maxPlanningBytes: maxWorkingBytes, signal, yieldControl }); signal?.throwIfAborted();
-  const requiredBytes = plan.pcmBytes * 4 + plan.planningBytes + 24 * 1048576;
+  const stateCut = input.restorationMode === 'owned-state-cut';
+  if (input.restorationMode != null && !['forward-preroll', 'owned-state-cut'].includes(input.restorationMode)) throw failure('restore-mode-unavailable', 'Choose a supported owned-source restoration mode.');
+  const cutWorkspace = stateCut ? 2 * plan.owned.sourceBytes(plan.sampleRate, plan.pcmDescriptor) + 4 * 1048576 : 0;
+  const requiredBytes = plan.pcmBytes * 4 + plan.planningBytes + 24 * 1048576 + cutWorkspace;
   if (!natural(maxWorkingBytes) || requiredBytes > maxWorkingBytes) throw failure('render-memory-capacity', 'PCM, encoding, command and transfer overlap exceed the admitted render workspace.');
   const { sampleRate, outputFrames, outputEnd, firstFrame, endFrame, events, stemLaneIds } = plan;
   const WIDTH = plan.owned.width;
-  const kernel = await createOwnedControlKernel(plan.owned, sampleRate, plan.patch.voicePolicy.maxVoices, { signal, yieldControl, pcm: plan.sourcePCM }), pcm = Array.from({ length: stemLaneIds.length + 1 }, () => new Uint8Array(outputFrames * 8));
+  let kernel = await createOwnedControlKernel(plan.owned, sampleRate, plan.patch.voicePolicy.maxVoices, { signal, yieldControl, pcm: plan.sourcePCM });
+  let transfer = stateCut ? new Uint8Array(kernel.stateByteLength()) : null, stateReceipt = null;
+  if (transfer && transfer.byteLength * 2 > cutWorkspace) throw failure('restore-memory-capacity', 'The exact source cut exceeds its admitted transfer and clone workspace.');
+  const pcm = Array.from({ length: stemLaneIds.length + 1 }, () => new Uint8Array(outputFrames * 8));
   const views = pcm.map(bytes => new DataView(bytes.buffer)), left = new Float32Array(128), right = new Float32Array(128);
   const stemChannels = stemLaneIds.map(() => [new Float32Array(128), new Float32Array(128)]), routes = new Int8Array(plan.owned.voices); routes.fill(-1);
   const statistics = pcm.map(() => ({ peak: 0, squares: 0, overFullScaleSamples: 0 }));
@@ -224,6 +230,16 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
   } kernel.receiptCount = 0; };
   for (let frame = 0; frame < outputEnd;) {
     signal?.throwIfAborted();
+    if (transfer && frame === firstFrame) {
+      const identity = { engineArtifactHash: plan.descriptor.artifactHash, patchDefinitionHash: plan.definitionHash, graphRevision: 0 };
+      const cut = kernel.snapshotInto(transfer, identity);
+      const staged = await createOwnedControlKernel(plan.owned, sampleRate, plan.patch.voicePolicy.maxVoices, { signal, yieldControl, pcm: plan.sourcePCM, sourceBank: kernel.source?.bank });
+      signal?.throwIfAborted(); staged.restoreFrom(transfer, identity);
+      stateReceipt = { abi: cut.abi, frame: cut.frame, bytes: transfer.byteLength, stateHash: await digest(transfer), consumedPlannedEvents: cursor,
+        sequence, packetSequence, nextEventFrame: events[cursor]?.frame ?? null, plannerContinuation: 'same-admitted-immutable-intent-plan',
+        immutableAssets: 'shared-read-only', mutableState: 'independent-staged-copy', qualification: 'implementation-awaiting-pcm-equivalence' };
+      signal?.throwIfAborted(); transfer.fill(0); transfer = null; kernel = staged;
+    }
     while (cursor < events.length && events[cursor].frame <= frame) {
       const event = events[cursor++], voice = event.voice;
       if (event.frame >= outputEnd) break;
@@ -234,7 +250,7 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
       if (event.kind === 'begin') packet[16] = Math.max(voice.end + 128, outputEnd + voice.releaseFrames + 128);
       kernel.accept(packet, 1, ++packetSequence); checkReceipts();
     }
-    const count = Math.min(128, outputEnd - frame, cursor < events.length ? events[cursor].frame - frame : Infinity);
+    const count = Math.min(128, outputEnd - frame, cursor < events.length ? events[cursor].frame - frame : Infinity, transfer && frame < firstFrame ? firstFrame - frame : Infinity);
     const a = count === 128 ? left : left.subarray(0, count), b = count === 128 ? right : right.subarray(0, count);
     const taps = stemChannels.length ? { routes, channels: count === 128 ? stemChannels : stemChannels.map(channels => channels.map(channel => channel.subarray(0, count))) } : null;
     kernel.render(a, b, frame, taps); checkReceipts();
@@ -253,7 +269,7 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
     sourceEvidence: 'provided-covered-semantic-snapshot', sourceOriginMs: plan.sourceOriginMs, timeDomain: 'captured-source-time', inputRange: { startSeconds: plan.startSeconds, endSeconds: plan.endSeconds },
     timing: plan.timing,
     sampleRate, channels: 2, sampleFormat: 'ieee-float32-le', frames: outputFrames, timelineZeroSourceFrame: firstFrame, exactEndSourceFrame: endFrame, renderedEndSourceFrame: outputEnd,
-    restoration: { mode: 'deterministic-preroll', fromSourceFrame: 0, prerollFrames: firstFrame, initialVoices: 0, maxHistorySeconds: MAX_SECONDS },
+    restoration: { mode: stateCut ? 'forward-preroll-and-owned-state-cut' : 'deterministic-preroll', stateCut: stateReceipt, fromSourceFrame: 0, prerollFrames: firstFrame, initialVoices: 0, maxHistorySeconds: MAX_SECONDS },
     tail: { mode: plan.tail.mode, maxSeconds: plan.tail.maxSeconds ?? 4, derivedBoundaryReleases: plan.derivedReleases, truncated: kernel.active.some(Boolean) },
     definitionHash: plan.definitionHash, patchId: plan.patch.id, patchRevision: plan.patch.revision, engineRequirement: { engineId: plan.descriptor.engineId,
       engineVersion: plan.descriptor.engineVersion, artifactHash: plan.descriptor.artifactHash, parameterSchemaHash: plan.descriptor.parameterSchemaHash }, applicationBuildId: plan.applicationBuildId,

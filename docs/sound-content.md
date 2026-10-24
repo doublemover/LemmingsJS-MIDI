@@ -531,3 +531,12 @@ patch, graph, rate and slot compatibility are checked before committing a cut.
 Display observation is reset independently. Kernel adapters await the deferred
 PCM equivalence pass and live block-boundary/cursor integration; these methods
 do not yet enable an exact restore claim in the scrub interface.
+
+The take-render dialog also offers experimental source-state reconstruction at
+the range start for owned kernels. It first reconstructs covered history, then
+stages a fresh kernel at the exact output frame and resumes the same immutable
+plan and simultaneous stem routes. The render manifest names the cut frame,
+ABI, state hash and planner cursor. Its transfer plus temporary second kernel
+are admitted before rendering. Native sources retain forward history. This
+worker-local path does not capture unsent live-host controls or publish a
+portable persisted checkpoint, and PCM equivalence remains unqualified.
