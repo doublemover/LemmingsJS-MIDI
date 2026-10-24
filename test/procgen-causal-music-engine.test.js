@@ -14,6 +14,22 @@ const batch = (tick, facts, generation = 1, completeness = { status: 'complete',
 });
 
 describe('causal musical intent engine', () => {
+  it('addresses held observations by actor without new onsets, restores that index and ends it on loss or update overflow', () => {
+    const current = graph([instrument('voice', 'ActionEntered', { action: 'walking' })]);
+    const create = extra => createCausalMusicEngine({ getGraph: () => current, getPhysicalControlKinds: () => ['MotionCommitted'], ...extra });
+    const engine = create(), starts = engine.processBatch(batch(1, [{ kind: 'ActionEntered', actorId: 7, laneId: 0, action: 'walking', actionInstanceId: 'walk:7' }]));
+    const restored = create(); restored.restore(engine.snapshot());
+    const movement = batch(2, [{ kind: 'MotionCommitted', actorId: 8, laneId: 0, physicalPayload: { displacementPixels: 3 } },
+      { kind: 'MotionCommitted', actorId: 7, laneId: 0, physicalPayload: { displacementPixels: 4 } }]);
+    const updates = engine.processBatch(movement); expect(restored.processBatch(movement)).to.deep.equal(updates);
+    expect(updates).to.have.length(1); expect(updates[0]).to.include({ kind: 'update', voiceId: starts[0].voiceId, actorId: 7 });
+    expect(updates[0].performanceCause.values.displacementPixels.value).to.equal(4); expect(updates[0].sourceEventIds).to.deep.equal([movement.facts[1].eventId]);
+    const nextMotion = { kind: 'MotionCommitted', actorId: 7, laneId: 0, physicalPayload: { displacementPixels: 4 } };
+    engine.processBatch(batch(3, [{ kind: 'ActorTerminated', actorId: 7, laneId: 0 }])); expect(engine.processBatch(batch(4, [nextMotion]))).to.have.length(0);
+    const limited = create({ maxPhysicalUpdatesPerBatch: 0 }); limited.restore(restored.snapshot());
+    const [end] = limited.processBatch(batch(3, [nextMotion])); expect(end).to.include({ kind: 'end', terminationReason: 'physical-control-budget' });
+    expect(limited.diagnostics().activeVoices).to.equal(0);
+  });
   it('captures copied performer controls and measured work inputs without changing onset truth', () => {
     const current = graph([instrument('brick', 'TerrainWorkCommitted')]), controls = { macros: { hardness: 0.7 }, variationSeed: 91 };
     const engine = createCausalMusicEngine({ getGraph: () => current, getOnsetControls: () => controls });

@@ -12,7 +12,7 @@ describe('original FM Forge source content', () => {
   });
   it('compiles four distinct inherited recipes without claiming render or redistribution qualification', async () => {
     const result = await compileSoundContent(source, { targets });
-    expect(result.compilerRevision).to.equal('typed-recipes-v7'); expect(result.prepared.patches).to.have.length(4);
+    expect(result.compilerRevision).to.equal('typed-recipes-v8'); expect(result.prepared.patches).to.have.length(4);
     expect(result.qualification).to.equal('compiled-data-not-render-qualified');
     expect(source.pack).to.include({ licenseId: 'NOASSERTION', redistributionPolicy: 'unknown' });
     const patches = new Map(result.prepared.patches.map(patch => [patch.definition.id, patch.definition]));

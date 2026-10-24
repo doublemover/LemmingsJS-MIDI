@@ -154,6 +154,22 @@
           "composition": "scale",
           "mode": "onset-only",
           "smoothingMs": 0
+        },
+        {
+          "id": "held-motion-damping",
+          "sourceKind": "MotionCommitted",
+          "payloadField": "displacementPixels",
+          "target": "damping01",
+          "unit": "world-pixel",
+          "inputMin": 0,
+          "inputMax": 8,
+          "outputUnit": "normalized",
+          "outputMin": 0.85,
+          "outputMax": 0,
+          "curve": "linear",
+          "composition": "replace",
+          "mode": "continuous",
+          "smoothingMs": 24
         }
       ]
     },

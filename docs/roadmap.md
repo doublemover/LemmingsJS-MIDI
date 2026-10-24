@@ -2194,7 +2194,18 @@ typed table bytes and the separate immutable JavaScript table heap estimate are
 admitted before construction. Artificial Choir now stages four original recipes
 through the existing compile/archive/audition/install/apply transaction, with
 executable onset macros and seeded variation. Runtime and listening fixtures
-remain unexecuted; causal continuous bindings and full scene integration remain.
+remain unexecuted; full scene integration remains.
+Continuous completed-fact bindings now recompute choir timbre and held-pluck
+damping from an immutable onset baseline, with source-specific safe targets,
+bounded audio-domain slew and no new notes or simulation RNG. Actor indexes
+avoid scanning unrelated held voices; missing measurements hold their previous
+qualified value. Captured source-kind subscriptions survive semantic checkpoints
+and old renderer ownership survives lane replacement. Update overflow releases
+affected owners rather than leaving stale sound. Contact-anchor metadata now
+uses articulationState, consistent with travel metadata. Compiler v8 retains
+the continuous declarations; replay capture of lane performance inputs is the
+next required integration before replay qualification. Runtime fixtures remain
+authored and unexecuted.
 
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail

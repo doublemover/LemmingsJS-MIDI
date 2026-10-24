@@ -35,7 +35,7 @@ const validateEngineDescriptor = input => {
         (parameter.capability != null && !id(parameter.capability))) throw new Error('Invalid instrument parameter descriptor.');
     ids.add(parameter.id);
     return { id: parameter.id, unit: parameter.unit, min: parameter.min, max: parameter.max, default: parameter.default,
-      interpolation: parameter.interpolation, discrete: parameter.discrete === true, liveSafe: parameter.liveSafe === true,
+      interpolation: parameter.interpolation, discrete: parameter.discrete === true, liveSafe: parameter.liveSafe === true, causalLiveSafe: parameter.causalLiveSafe === true,
       capability: parameter.capability == null ? null : String(parameter.capability) };
   });
   const capabilities = {};
@@ -105,6 +105,7 @@ const validateInstrumentPatchV2 = (input, descriptor) => {
   if (engine.capabilities.continuousMacroPerformance === false && macros.some(macro => macro.mode === 'continuous')) throw new Error('Continuous macros are unavailable on this engine.');
   if (macros.some(macro => macro.targets.some(target => schema.get(target.parameter).capability && !engine.capabilities[schema.get(target.parameter).capability]))) throw new Error('Unsupported macro target capability.');
   const causalBindings = validateInstrumentBindings(input.causalBindings, engine.parameters);
+  if (causalBindings.some(binding => binding.mode === 'continuous') && engine.capabilities.continuousPhysicalBindings !== true) throw new Error('Continuous physical bindings are unavailable on this engine.');
   if (causalBindings.some(binding => schema.get(binding.target).capability && !engine.capabilities[schema.get(binding.target).capability])) throw new Error('Unsupported physical target capability.');
   const variation = validateInstrumentVariation(input.variation, engine.parameters);
   if (variation && engine.capabilities.identityVariation !== true) throw new Error('Identity variation is not realized by this engine.');

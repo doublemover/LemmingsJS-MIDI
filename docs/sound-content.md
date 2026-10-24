@@ -320,8 +320,9 @@ reserved before construction. Exact pluck restore/offline output are unavailable
 
 For an already owned pluck, `damping01` updates string/body loss over the shared
 control ramp without a new note, new seed or reset delay line. The current sound
-macro panel still labels DAMP as a next-onset control; physical damping gestures
-need their separate causal mapping. Pitch, tail, spectral, dense-mix, CPU and
+macro panel still labels DAMP as a next-onset control. Held causal plucks can
+receive motion-derived damping through their existing voice identity; detached
+one-shot tails are outside the held-actor index. Pitch, tail, spectral, dense-mix, CPU and
 listening fixtures remain unexecuted with the consolidated validation pass.
 
 The registered `worklet-choir` source has eight logical slots and three charged
@@ -347,3 +348,17 @@ artifact; native DSP libraries and complete MIDI synthesizers are not imported.
 Pluck and choir display samples use their own source IDs, report unclipped RMS/
 peak and clamp only the normalized visual envelope. The sine oscillator phase
 quantity is omitted because these sources do not expose that kernel state.
+
+Continuous physical bindings declare a separate `causalLiveSafe` target contract.
+Choir vowel/breath/size/chorus/vibrato/bandwidth and pluck damping are realized;
+envelope and excitation edits remain onset-only. Completed measurements are
+held until another qualified observation and recomputed from the onset's
+macro/identity/onset-binding baseline in stable binding-ID order. Missing values
+hold the last qualified controls and report no output request. Live slew uses
+the shared audio-frame command queue and at least the source minimum smoothing.
+No future position is predicted. Held identities retain their captured source
+kinds across patch replacement and semantic checkpoints. The per-batch bound is
+2048 physical updates; overflow releases the affected held owner explicitly.
+Native renderers without continuous mappings record semantic observations only.
+Take capture/re-performance must retain the lane performance inputs before this
+new control path can claim deterministic replay acceptance.

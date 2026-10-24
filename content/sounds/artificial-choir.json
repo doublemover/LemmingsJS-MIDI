@@ -153,8 +153,24 @@
           "outputMax": 1.3,
           "curve": "linear",
           "composition": "scale",
-          "mode": "onset-only",
-          "smoothingMs": 0
+          "mode": "continuous",
+          "smoothingMs": 24
+        },
+        {
+          "id": "step-vowel",
+          "sourceKind": "ContactResolved",
+          "payloadField": "stepHeightPixels",
+          "target": "vowel01",
+          "unit": "world-pixel",
+          "inputMin": -8,
+          "inputMax": 8,
+          "outputUnit": "normalized",
+          "outputMin": -0.15,
+          "outputMax": 0.15,
+          "curve": "linear",
+          "composition": "add",
+          "mode": "continuous",
+          "smoothingMs": 32
         }
       ]
     },

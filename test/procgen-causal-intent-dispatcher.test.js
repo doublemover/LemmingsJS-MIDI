@@ -6,6 +6,15 @@ import { LemmingStateType as State } from '../js/lemmings/LemmingStateType.js';
 import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
 
 describe('causal intent sink dispatch', () => {
+  it('delivers physical updates through the owned execution and distinguishes unsupported semantic observations', () => {
+    const calls = [], cause = { sourceKind: 'MotionCommitted', eventId: 'fact', evidence: 'completed-world-fact', values: { displacementPixels: { value: 4, unit: 'world-pixel' } } };
+    const intent = { version: 1, kind: 'update', voiceId: 'v', intentId: 'physical', generation: 1, route: 'local', sourceEventIds: ['fact'], scoreTime: {}, expression: {}, performanceCause: cause };
+    const backend = { updatePhysical(...args) { calls.push(args); return { status: 'accepted', stage: 'queued' }; } };
+    const dispatcher = createCausalIntentDispatcher({ sinks: [{ id: 'a', route: 'local', backend }, { id: 'b', route: 'local', backend: {} }], toTargetFrame: () => 100 });
+    const receipts = dispatcher.dispatch([intent], { generation: 1, batchId: 'batch' });
+    expect(calls).to.have.length(1); expect(calls[0].slice(0, 3)).to.deep.equal(['v', cause, 100]);
+    expect(receipts[0]).to.include({ stage: 'queued', status: 'accepted' }); expect(receipts[1]).to.include({ stage: 'semantic-observation', outputRequested: false });
+  });
   it('retains travel-only observations without claiming or queueing a DSP application', () => {
     let calls = 0;
     const dispatcher = createCausalIntentDispatcher({ sinks: [{ id: 'local', route: 'local', backend: { update() { calls++; return { status: 'accepted', stage: 'queued' }; } } }],

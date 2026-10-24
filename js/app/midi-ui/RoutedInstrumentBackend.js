@@ -100,6 +100,7 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     if (!voice) return reject('voice-unavailable');
     if (method === 'end' && voice.articulation.releaseSeconds != null) value = { ...value, seconds: voice.articulation.releaseSeconds,
       ...(value?.mode === 'one-shot' && voice.articulation.oneShotTailSeconds != null ? { tailSeconds: voice.articulation.oneShotTailSeconds } : {}) };
+    if (method === 'updatePhysical' && typeof voice.child.backend.updatePhysical !== 'function') return Object.freeze({ status: 'accepted', stage: 'semantic-observation', outputRequested: false, reason: 'no-continuous-binding' });
     return voice.child.backend[method](voiceId, value, frame, voice.execution);
   };
   const cancelGenerationWithReceipt = (generation, epoch) => {
@@ -119,7 +120,7 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     const outcomes = [...execution.children].map(([child, handle]) => child.backend.renewExecutionLease(generation, handle, until));
     if (outcomes.some(outcome => outcome?.status !== 'accepted')) return reject('renderer-lease-rejected'); execution.leaseUntil = until; return Object.freeze({ status: 'accepted' });
   };
-  const backend = { begin, update: (...args) => voiceCall('update', ...args), end: (...args) => voiceCall('end', ...args), renewExecutionLease,
+  const backend = { begin, update: (...args) => voiceCall('update', ...args), updatePhysical: (...args) => voiceCall('updatePhysical', ...args), end: (...args) => voiceCall('end', ...args), renewExecutionLease,
     setDisplayContext(value) {
       if (!value || typeof value.worldId !== 'string' || !Number.isSafeInteger(value.graphRevision) || value.graphRevision < 0 ||
           !Number.isSafeInteger(value.routeRevision) || value.routeRevision < 0) throw new TypeError('Invalid routed display context.');

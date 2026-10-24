@@ -19,8 +19,8 @@ export class OwnedPluckSource {
     const seed = command[18], position = command[19], t60 = command[20], brightness = command[21], bodyMix = command[22], bodyT60 = command[23];
     if (!Number.isSafeInteger(frame) || frame < 0 || !Number.isInteger(slot) || slot < 0 || slot >= this.voices || !Number.isFinite(frequency) || frequency < PLUCK_MIN_HZ || frequency > PLUCK_MAX_HZ ||
         !Number.isInteger(seed) || seed < 0 || seed > 0xffffffff || !Number.isFinite(position) || position < 0.05 || position > 0.45 ||
-        !Number.isFinite(t60) || t60 < 0.1 || t60 > 4 || !Number.isFinite(brightness) || brightness < 0 || brightness > 1 ||
-        !Number.isFinite(bodyMix) || bodyMix < 0 || bodyMix > 0.3 || !Number.isFinite(bodyT60) || bodyT60 < 0.05 || bodyT60 > 2) return 0;
+        !Number.isFinite(t60) || t60 < 0.02 || t60 > 4 || !Number.isFinite(brightness) || brightness < 0 || brightness > 1 ||
+        !Number.isFinite(bodyMix) || bodyMix < 0 || bodyMix > 0.3 || !Number.isFinite(bodyT60) || bodyT60 < 0.02 || bodyT60 > 2) return 0;
     const length = Math.ceil(this.rate / (frequency / (PITCH_RANGE * PITCH_RANGE))) + 3, required = length * 3;
     if (length > this.stride) return 0;
     const bucket = Math.floor(frame / 128);

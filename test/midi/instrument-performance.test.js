@@ -9,6 +9,24 @@ const macro = (id, composition, minimum, maximum) => ({ id, name: id, default01:
   perceptualDirection: 'Change excitation spectrum.', targets: [{ parameter: 'frequency', unit: composition === 'scale' ? 'ratio' : 'Hz',
     minimum, maximum, composition, curve: 'linear', clamp: true }] });
 describe('typed effective onset controls', () => {
+  it('recomputes continuous observations from the onset baseline with stable cross-source composition and no cumulative drift', () => {
+    const parameters = [{ id: 'brightness', unit: 'normalized', min: 0, max: 1, default: 0.4, discrete: false, liveSafe: true, causalLiveSafe: true }];
+    const binding = (id, sourceKind, payloadField, unit, composition, outputMin, outputMax) => ({ id, sourceKind, payloadField, unit, composition, outputMin, outputMax,
+      target: 'brightness', inputMin: 0, inputMax: 8, outputUnit: composition === 'scale' ? 'ratio' : 'normalized', curve: 'linear', mode: 'continuous', smoothingMs: 24 });
+    const plan = compileInstrumentPerformance({ parameters: {}, causalBindings: [binding('a-motion', 'MotionCommitted', 'displacementPixels', 'world-pixel', 'scale', 0.5, 1.5),
+      binding('b-step', 'ContactResolved', 'stepHeightPixels', 'world-pixel', 'add', 0, 0.2)] }, parameters);
+    const onset = plan.resolve({}, 10), motion = { sourceKind: 'MotionCommitted', eventId: 'motion', evidence: 'completed-world-fact', values: { displacementPixels: { value: 8, unit: 'world-pixel' } } },
+      contact = { sourceKind: 'ContactResolved', eventId: 'step', evidence: 'completed-world-fact', values: { stepHeightPixels: { value: 4, unit: 'world-pixel' } } };
+    expect(onset.continuousBase.brightness).to.equal(0.4);
+    const a = plan.resolveContinuous(onset.continuousBase, [motion, contact], 20), b = plan.resolveContinuous(onset.continuousBase, [contact, motion], 20);
+    expect(a).to.deep.equal(b); expect(a.values.brightness).to.be.closeTo(0.7, 1e-12); expect(a.smoothingMs).to.equal(24);
+    expect(plan.resolveContinuous(onset.continuousBase, [motion, contact], 30).values).to.deep.equal(a.values);
+    expect(a.deltas.every(delta => delta.interpolation === 'bounded-causal-slew')).to.equal(true);
+    const absent = plan.resolveContinuous(onset.continuousBase, [{ ...motion, values: {} }], 40);
+    expect(absent.bindingOutcomes.every(outcome => outcome.state === 'no-qualified-source')).to.equal(true);
+    expect(absent.values.brightness).to.equal(0.4);
+    expect(() => plan.resolveContinuous(onset.continuousBase, [motion, motion], 50)).to.throw('invalid continuous');
+  });
   it('composes replacements then stable-ID deltas before the final clamp independently of traversal', () => {
     const macros = [macro('z-base', 'replace', 300, 500), macro('a-add', 'add', -10, 30), macro('b-scale', 'scale', 1, 3)];
     const patch = { parameters: {}, macros }, first = compileInstrumentPerformance(patch, schema).resolve({}, 42);
