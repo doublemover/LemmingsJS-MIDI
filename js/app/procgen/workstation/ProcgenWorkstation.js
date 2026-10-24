@@ -24,6 +24,7 @@ import { readBrowserBuildResponse } from '../../../runtime/BrowserGenerationServ
 import { validateSoundContentReference } from '../../../midi/content/SoundContentReference.js';
 import { createSoundContentLibrary } from '../../midi-ui/SoundContentLibrary.js';
 import { createMasterCaptureView } from '../../midi-ui/MasterCaptureView.js';
+import { createPrelistenMonitor } from '../../midi-ui/PrelistenMonitor.js';
 
 const STORAGE_KEY = 'lemmings.procgen.workstation.v1';
 const MAX_SESSION_FILE_BYTES = 64 * 1048576;
@@ -102,6 +103,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let physicalScoreProjection = null, physicalScore = null, physicalScoreQuery = null, physicalScoreAbort = null, physicalScoreSerial = 0, physicalScoreParent = null;
   let soundLibrary = null;
   let masterCapture = null;
+  let prelistenMonitor = null;
   let pendingHistory = null;
   const routerRestores = new Map();
   const undo = [], redo = [], listeners = [], noteEntries = new Map();
@@ -997,6 +999,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     return committed;
   };
   const handlers = {
+    openPrelistenMonitor() {
+      if (disposed || !legacy.local.audio) return;
+      prelistenMonitor ||= createPrelistenMonitor({ document, audio: legacy.local.audio, home: document.getElementById('procgenStudioFooter') || document.body, onStatus: status });
+      prelistenMonitor.mountHome(); return prelistenMonitor;
+    },
     openMasterCapture() {
       if (disposed || !resourceBudget || !legacy.local.audio) { status('Browser master capture is unavailable.'); return; }
       masterCapture ||= createMasterCaptureView({ document, window, preview: legacy.local.audio, resourceBudget, onStatus: status });
@@ -1005,7 +1012,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     openSoundLibrary() {
       if (disposed || !resourceBudget || !legacy.local.audio) { status('Sound library resource ownership is unavailable.'); return; }
       soundLibrary ||= createSoundContentLibrary({ document, window, audio: legacy.local.audio, resourceBudget, jobs: backgroundJobs,
-        onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onStatus: status });
+        onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onStatus: status, monitor: handlers.openPrelistenMonitor() });
       soundLibrary.open();
     },
     async applyInstalledInstrument(candidate, { signal } = {}) {
@@ -1340,6 +1347,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'causal-workbench', run: () => pendingWorkbenchStop },
         { name: 'sound-library', run: () => soundLibrary?.dispose() },
         { name: 'master-capture', run: () => masterCapture?.dispose() },
+        { name: 'prelisten-monitor', run: () => prelistenMonitor?.dispose() },
         { name: 'transport', run: () => transport.dispose()?.completion },
         { name: 'midi-ports', run: () => ports.dispose() },
         ...removeListeners.map((remove, index) => ({ name: `listener-${index}`, run: remove })),

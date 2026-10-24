@@ -173,3 +173,8 @@ body.procgen-workstation {
   .studio-footer button { padding: 3px 5px; min-height: 25px; }
 }
 @media (prefers-reduced-motion: reduce) { .procgen-workstation *, .procgen-workstation *::before, .procgen-workstation *::after { transition: none !important; animation: none !important; } }
+.studio-prelisten { display: grid; grid-template-columns: auto minmax(8rem, 1fr); gap: .25rem .6rem; padding: .4rem; border: 1px solid currentColor; border-radius: .35rem; min-width: 0; max-width: 100%; }
+.studio-footer > .studio-prelisten { flex-basis: 100%; }
+.studio-prelisten > output, .studio-prelisten > .studio-sound-actions { grid-column: 1 / -1; overflow-wrap: anywhere; }
+.studio-prelisten > input[type="range"] { width: min(100%, 12rem); }
+.studio-prelisten .studio-sound-actions { display: flex; flex-wrap: wrap; gap: .25rem; }

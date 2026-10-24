@@ -633,7 +633,25 @@ prepared instances still require shared memory admission. The quota is a declare
 resource policy; real-device CPU/concurrency qualification remains deferred.
 One cue session can own output at a time; global Panic reaches live and cue,
 whereas cue Stop preserves live owners. Routing and ownership fixtures are
-authored and unexecuted. Shared prelisten presentation and tool handoff follow.
+authored and unexecuted.
+
+The shared PRELISTEN rail shows the exact source/revision, preparation/playing/
+stopping state, route, gain, capture inclusion and declared live/cue quotas. The
+same rail moves into the sound library while that dialog is open, then returns
+to the workstation footer. Showing the source returns to its existing tool.
+Route selection, Start audition and Apply remain separate explicit actions.
+No meter is drawn without measured cue samples.
+
+`ForegroundAuditionOwner` admits one foreground source and at most one pending
+handoff. A successor cannot become ready until prior source retirement has
+completed; superseded preparation loses authority immediately. Stop callbacks
+request cancellation synchronously; the source separately closes its opaque
+lease with its actual retirement receipt. Failed/unknown ownership prevents new
+auditions. Sound-library control auditions use this owner and the cue workload.
+Global stop fences reentrant enable requests and requests source cancellation;
+source/backend ownership remains visible until actual retirement. Master capture
+excludes the separate cue bus and explicitly includes live-output rehearsal.
+The rail and handoff fixtures remain unexecuted with the deferred validation pass.
 
 The separate sink API and its permission/scope constraints follow
 [media-element setSinkId](https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/setSinkId)

@@ -63,7 +63,7 @@ export function createOwnedMasterCapture({ preview, resourceBudget, AudioWorklet
       !resourceBudget?.release || typeof onChange !== 'function') throw new TypeError('Master capture requires an owned browser master and shared storage admission.');
   const resources = createAudioResourceLeases({ resourceBudget, ownerPrefix: 'master-pcm', maxReservations: 8 });
   const retirement = createProcgenRetirementScope(), uncertain = new Set(); let current = null, disposed = false, ownershipFault = false;
-  const hasUnknownOwnership = () => ownershipFault || uncertain.size > 0;
+  const hasUnknownOwnership = () => ownershipFault || uncertain.size > 0 || resources.diagnostics().unreconciledReservations > 0;
   const state = () => Object.freeze({ state: current?.phase ?? (disposed ? 'disposed' : 'idle'), ownerId: current?.ownerId ?? null,
     sampleRate: current?.sampleRate ?? null, frames: current?.frames ?? 0, maxFrames: current?.maxFrames ?? 0,
     capturedFrames: current?.capturedFrames ?? 0, manifest: current?.manifest ?? null, artifact: current?.artifact ?? null,
@@ -144,7 +144,8 @@ export function createOwnedMasterCapture({ preview, resourceBudget, AudioWorklet
     operation.frames = timelineFrames;
     const complete = verified && !gaps.length && ['user-stop', 'capacity-reached'].includes(reason) && !operation.error;
     operation.manifest = freezeData({ schema: 'lemmings-master-pcm/v1', ownerId: operation.ownerId, contextEpoch: operation.contextEpoch,
-      tap: 'post-protection-shared-browser-master', includesCurrentMasterOwnersAndAuditions: true, excludesPrivateCue: false,
+      tap: 'post-protection-shared-browser-master', includesCurrentMasterOwnersAndAuditions: true, separateCueBusExcluded: true,
+      rehearsalOnMasterIncluded: true, monitorAtStart: operation.monitorAtStart,
       externalMidiAudio: false, microphone: false, acousticEvidence: false, sampleRate: operation.sampleRate, channels: CHANNELS, format: 'float32-le',
       intendedStartFrame: operation.targetStartFrame, sourceStartFrame: operation.sourceStartFrame, endFrameExclusive: end,
       timelineFrames, capturedFrames: operation.capturedFrames, state: complete ? 'Ready' : timelineFrames ? 'Partial' : 'Failed',
@@ -177,9 +178,9 @@ export function createOwnedMasterCapture({ preview, resourceBudget, AudioWorklet
     if (operation.context.state !== 'running') finish(operation, null, reason);
     report(); return operation.completion;
   };
-  const start = async ({ seconds = 60 } = {}) => {
+  const start = async ({ seconds = 60, includeCue = false } = {}) => {
     if (disposed || hasUnknownOwnership() || current && !current.finished || current?.artifact?.metadata().retained ||
-        typeof AudioWorkletNodeType !== 'function' || !Number.isFinite(seconds) || seconds <= 0 || seconds > 300) throw fail('Master capture is unavailable; finish and discard the previous capture first.');
+        includeCue !== false || typeof AudioWorkletNodeType !== 'function' || !Number.isFinite(seconds) || seconds <= 0 || seconds > 300) throw fail('Master capture is unavailable; finish and discard the previous capture first. Separate cue inclusion is unsupported.');
     const context = preview.getAudioContext(), source = preview.getState(), sampleRate = context?.sampleRate;
     if (!source.enabled || context?.state !== 'running' || !context.audioWorklet?.addModule || !integer(sampleRate) || sampleRate < 8000 || sampleRate > 192000) throw fail('Enable browser audio before starting capture.');
     const maxFrames = Math.ceil(seconds * sampleRate), ownerId = 'master-pcm-' + (++captureSequence), contextEpoch = source.contextEpoch;
@@ -190,7 +191,7 @@ export function createOwnedMasterCapture({ preview, resourceBudget, AudioWorklet
     catch (error) { try { nativeLease.release(); } catch { ownershipFault = true; } throw error; }
     const operation = { ownerId, context, contextEpoch, sampleRate, maxFrames, nativeLease, storageLease, storage: null, phase: 'preparing',
       frames: 0, capturedFrames: 0, sequence: 0, tokens: new Uint32Array(2), sourceStartFrame: null, lastFrame: null, packetGaps: [], finished: false,
-      complete: null, completion: null, targetStartFrame: 0, error: null };
+      complete: null, completion: null, targetStartFrame: 0, error: null, monitorAtStart: source.monitorRoute || null };
     operation.completion = new Promise(resolve => { operation.complete = resolve; }); current = operation; report();
     try {
       operation.storage = new Float32Array(maxFrames * CHANNELS);

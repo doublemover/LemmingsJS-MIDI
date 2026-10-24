@@ -25,7 +25,7 @@ export function inspectSoundContentAudition(receipt, { contentHash, patchIdentit
   return owned && owned.contentHash === contentHash && owned.patchIdentity === patchIdentity ? owned : null;
 }
 
-export function createSoundContentInstallation({ audio, registry, getCatalog = getNativeInstrumentCatalog, timeoutMs = 30000 } = {}) {
+export function createSoundContentInstallation({ audio, registry, getCatalog = getNativeInstrumentCatalog, timeoutMs = 30000, onReveal } = {}) {
   if (!audio?.createSession || !audio?.getAudioContext || !registry?.commitStage || typeof getCatalog !== 'function' ||
       !Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 120000) throw new TypeError('Invalid isolated sound installation owner.');
   let active = null, disposed = false, ordinal = 0;
@@ -51,14 +51,22 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
     const cancel = () => operation.controller.abort(externalSignal?.aborted ? externalSignal.reason : lease.signal.reason);
     externalSignal?.addEventListener('abort', cancel, { once: true }); lease.signal.addEventListener('abort', cancel, { once: true });
     signal.addEventListener('abort', stop, { once: true }); if (lease.signal.aborted || externalSignal?.aborted) cancel();
-    const check = () => { signal.throwIfAborted(); if (disposed) throw failure('owner-retired', 'Sound installation owner retired.'); };
+    const check = () => {
+      signal.throwIfAborted(); if (disposed) throw failure('owner-retired', 'Sound installation owner retired.');
+      if (operation.auditionLease && (!operation.auditionLease.isCurrent() || audio.getMonitorRouteState().revision !== operation.auditionLease.snapshot().routeRevision))
+        throw failure('audition-source-retired', 'Prelisten source or route changed.');
+    };
     let enabling;
-    try { check(); operation.session = audio.createSession('sound-content-audition', { workloadClass: 'cue' }); enabling = operation.session.enable(); }
-    catch (error) { enabling = Promise.reject(error); }
     const deadline = setTimeout(() => operation.controller.abort(failure('deadline', 'Sound audition deadline exceeded.')), timeoutMs);
     operation.promise = (async () => {
       let error = null, receipt = null;
       try {
+        if (audio.acquireAudition) operation.auditionLease = await audio.acquireAudition({
+          source: { name: patchIdentity, kind: 'authored-control-fixture', revision: patchIdentity, sourceRef: lease.metadata.contentHash },
+          routeRevision: audio.getMonitorRouteState().revision, signal, onReveal,
+          onStop: reason => operation.controller.abort(failure('prelisten-stopped', reason))
+        });
+        check(); operation.session = audio.createSession('sound-content-audition', { workloadClass: 'cue' }); enabling = operation.session.enable();
         if (!await interruptible(enabling, signal)) throw failure('audio-unavailable', 'Local audio could not be enabled for audition.'); check();
         const catalog = await interruptible(getCatalog(), signal); check();
         const descriptor = catalog.descriptors.find(entry => entry.engineId === patch.definition.engineId && entry.engineVersion === patch.definition.engineVersion);
@@ -77,6 +85,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
         const endFrame = base + Math.ceil((1 + releaseSeconds + 0.15) * rate), outcomes = [];
         const leaseReceipt = operation.backend.renewExecutionLease(number, operation.execution, endFrame + Math.ceil(rate));
         if (leaseReceipt.status !== 'accepted') throw failure('audition-admission', 'Audition voice lifetime could not be admitted.');
+        operation.auditionLease?.markReady();
         for (const event of fixture.events) {
           check(); const frame = base + Math.round(event.seconds * rate); let outcome;
           if (event.kind === 'begin') outcome = operation.backend.begin({ version: 1, kind: 'begin', generation: number, voiceId: 'control-fixture', onsetId: 'control-fixture', actorId: null, laneId: 0,
@@ -85,6 +94,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
           else outcome = operation.backend.end('control-fixture', { seconds: releaseSeconds }, frame, operation.execution);
           outcomes.push(outcome); if (outcome?.status !== 'accepted') throw failure('audition-command-rejected', 'Audition command was rejected: ' + outcome?.reason);
         }
+        operation.auditionLease?.markPlaying();
         while (Math.floor(context.currentTime * rate) < endFrame) {
           check(); if (context !== audio.getAudioContext() || context.state !== 'running') throw failure('audio-interrupted', 'Audition audio clock was interrupted.'); await delay(30, signal);
         }
@@ -93,7 +103,8 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
           definitionHash: patch.definitionHash, engineRequirement: patch.engineRequirement, fixtureHash, fixtureId: fixture.id,
           sampleRate: rate, targetFrame: base, endFrame, commandsAccepted: outcomes.length, source: fixture.source,
           status: 'control-fixture-completed', evidenceClass: 'backend-api-command-admission-and-running-clock', physicalTakeEvidence: false,
-          renderQualification: 'not-independently-qualified', acousticReceipt: false, monitorRoute: audio.getMonitorRouteState?.() || null });
+          renderQualification: 'not-independently-qualified', acousticReceipt: false, monitorRoute: audio.getMonitorRouteState?.() || null,
+          auditionLease: operation.auditionLease?.snapshot() || null });
       } catch (failure) { error = failure; operation.controller.abort(failure); }
       finally {
         clearTimeout(deadline); externalSignal?.removeEventListener('abort', cancel); lease.signal.removeEventListener('abort', cancel); signal.removeEventListener('abort', stop);
@@ -103,8 +114,14 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
           { name: 'backend', run: () => operation.backend?.dispose() }, { name: 'audio-session', run: () => operation.session?.dispose() }
         ]);
         await operation.retirement.completion;
-        if (operation.retirement.outcome === 'complete') { lease.release(); if (active === operation) active = null; }
-        else { unknown.add(operation); if (active === operation) active = null; error = Object.assign(failure('retirement-unknown', 'Audition stopped with unresolved native ownership.', error), { retirement: operation.retirement }); }
+        let finalReceipt = operation.retirement;
+        if (finalReceipt.outcome === 'complete') {
+          finalReceipt = createProcgenRetirementScope().retire([{ name: 'source-lease', run: () => lease.release() }]);
+        }
+        if (finalReceipt.outcome !== 'complete') {
+          unknown.add(operation); error = Object.assign(failure('retirement-unknown', 'Audition stopped with unresolved ownership.', error), { retirement: finalReceipt });
+        }
+        operation.auditionLease?.close(finalReceipt); if (active === operation) active = null;
       }
       if (error) throw error;
       const owned = Object.freeze({ contentHash: receipt.contentHash, patchIdentity, definitionHash: receipt.definitionHash, engineRequirement: receipt.engineRequirement });

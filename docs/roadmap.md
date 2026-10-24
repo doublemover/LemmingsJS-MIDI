@@ -2050,6 +2050,13 @@ retained for retry until discard/expiry; this does not provide browser-crash
 recovery, physical-take rendering, private cue exclusion or acoustic evidence.
 Capture ownership fixtures are authored and await the deferred validation pass.
 
+Cue routing now separates a deliberately selected media-element output from
+live-output rehearsal, with explicit quotas that cannot steal live voices. The
+single foreground audition owner and shared PRELISTEN rail connect sound-library
+auditions, route changes, capture inclusion and actual source retirement. Physical
+device separation, multichannel identification, latency and combined workload
+qualification remain deferred; the UI does not claim private headphone routing.
+
 - [ ] Finish shared background job execution for import, export encoding,
   recovery and asset preparation under the shared worker/memory admission owner.
   Registered import/export/checksum/hash jobs now share admission with exact

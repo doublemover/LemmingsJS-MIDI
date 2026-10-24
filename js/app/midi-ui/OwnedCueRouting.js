@@ -88,7 +88,7 @@ export function createOwnedCueRouting({ context, masterInput, resources, createE
           if (!selected || selected.kind !== 'audiooutput' || typeof selected.deviceId !== 'string' || !selected.deviceId ||
               ['default', 'communications'].includes(selected.deviceId)) throw failure('Select a concrete separate output; the default device is not a private cue route.');
           candidate.element = createElement('audio');
-          if (typeof candidate.element.setSinkId !== 'function') throw failure('This browser cannot route a media element to the selected cue device.');
+          if (typeof candidate.element?.setSinkId !== 'function') throw failure('This browser cannot route a media element to the selected cue device.');
           candidate.destination = context.createMediaStreamDestination(); candidate.element.srcObject = candidate.destination.stream;
           candidate.element.autoplay = false; candidate.element.muted = false; candidate.element.volume = 1;
           await candidate.element.setSinkId(selected.deviceId);

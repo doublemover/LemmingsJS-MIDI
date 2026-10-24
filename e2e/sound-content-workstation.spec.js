@@ -25,14 +25,16 @@ test('built sound library keeps world/project state unchanged through staging, a
   const revisions = dialog.getByLabel('Saved instrument revision');
   await expect(revisions.locator('option')).toHaveCount(4, { timeout: 30000 }); await revisions.selectOption('foundation.soft-triangle@2');
   await expect(dialog.getByRole('button', { name: 'Apply to selected lane', exact: true })).toBeDisabled();
+  await dialog.getByRole('button', { name: 'Rehearsal on live output', exact: true }).click();
+  await expect(dialog.getByLabel('Prelisten route')).toContainText('ready');
   await dialog.getByRole('button', { name: 'Audition controls', exact: true }).click();
-  await expect(dialog.getByRole('status')).toContainText('Control audition completed', { timeout: 15000 });
+  await expect(dialog.getByLabel('Sound library status')).toContainText('Control audition completed', { timeout: 15000 });
   await dialog.getByRole('button', { name: 'Install auditioned pack', exact: true }).click();
-  await expect(dialog.getByRole('status')).toContainText('Pack installed');
+  await expect(dialog.getByLabel('Sound library status')).toContainText('Pack installed');
   expect(await page.evaluate(() => ({ project: JSON.stringify(window.__PROCGEN_STUDIO__.getProject()), tick: window.__PROCGEN_LANES__.world.tickIndex }))).toEqual(before);
   await expect(dialog.getByRole('button', { name: 'Prepare selected material', exact: true })).toBeDisabled();
   await dialog.getByRole('button', { name: 'Apply to selected lane', exact: true }).click();
-  await expect(dialog.getByRole('status')).toContainText('Instrument applied');
+  await expect(dialog.getByLabel('Sound library status')).toContainText('Instrument applied');
   const applied = await page.evaluate(() => ({ reference: window.__PROCGEN_STUDIO__.getProject().procgen.lanes[0].instrumentRef,
     tick: window.__PROCGEN_LANES__.world.tickIndex, hardwareRequests: window.soundLibraryMidiRequests }));
   expect(applied.reference).toMatchObject({ schema: 'lemmings-sound-reference/v1', patchId: 'foundation.soft-triangle', revision: 2 });
@@ -41,7 +43,7 @@ test('built sound library keeps world/project state unchanged through staging, a
   await expect(dialog.getByRole('button', { name: 'Download prepared file', exact: true })).toBeEnabled();
   const download = page.waitForEvent('download'); await dialog.getByRole('button', { name: 'Download prepared file', exact: true }).click();
   expect((await download).suggestedFilename()).toMatch(/\.lemmings-sound$/);
-  await expect(dialog.getByRole('status')).toContainText('Download requested');
+  await expect(dialog.getByLabel('Sound library status')).toContainText('Download requested');
 });
 
 test('a pinned worklet lane sends actual voice measurements through physical playback to the actor view', async ({ page }, testInfo) => {
@@ -54,12 +56,14 @@ test('a pinned worklet lane sends actual voice measurements through physical pla
   await dialog.getByRole('button', { name: 'Prepare factory instruments', exact: true }).click();
   const revisions = dialog.getByLabel('Saved instrument revision');
   await expect(revisions.locator('option')).toHaveCount(4, { timeout: 30000 }); await revisions.selectOption('foundation.held-sine@2');
+  await dialog.getByRole('button', { name: 'Rehearsal on live output', exact: true }).click();
+  await expect(dialog.getByLabel('Prelisten route')).toContainText('ready');
   await dialog.getByRole('button', { name: 'Audition controls', exact: true }).click();
-  await expect(dialog.getByRole('status')).toContainText('Control audition completed', { timeout: 15000 });
+  await expect(dialog.getByLabel('Sound library status')).toContainText('Control audition completed', { timeout: 15000 });
   await dialog.getByRole('button', { name: 'Install auditioned pack', exact: true }).click();
-  await expect(dialog.getByRole('status')).toContainText('Pack installed');
+  await expect(dialog.getByLabel('Sound library status')).toContainText('Pack installed');
   await dialog.getByRole('button', { name: 'Apply to selected lane', exact: true }).click();
-  await expect(dialog.getByRole('status')).toContainText('Instrument applied'); await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(dialog.getByLabel('Sound library status')).toContainText('Instrument applied'); await dialog.getByRole('button', { name: 'Close', exact: true }).click();
   await page.locator('#procgenListen').click(); await page.evaluate(() => window.__PROCGEN_STUDIO__.play());
   await page.waitForFunction(() => {
     const renderer = window.__PROCGEN_LANES__.renderer, manager = renderer.actorEffects;
@@ -101,7 +105,7 @@ test('selected control WAV rendering uses a real immutable worker without enabli
   const revisions = dialog.getByLabel('Saved instrument revision'); await expect(revisions.locator('option')).toHaveCount(4, { timeout: 30000 });
   await revisions.selectOption('foundation.held-sine@2'); await dialog.getByLabel('Rendered reference sample rate').selectOption('44100');
   await dialog.getByRole('button', { name: 'Render controls WAV', exact: true }).click();
-  await expect(dialog.getByRole('status')).toContainText('Control reference WAV prepared at 44100 Hz', { timeout: 30000 });
+  await expect(dialog.getByLabel('Sound library status')).toContainText('Control reference WAV prepared at 44100 Hz', { timeout: 30000 });
   const pending = page.waitForEvent('download'); await dialog.getByRole('button', { name: 'Download prepared file', exact: true }).click();
   const download = await pending, bytes = await readFile(await download.path()); let manifest = null, pcm = null;
   for (let offset = 12; offset < bytes.length;) {

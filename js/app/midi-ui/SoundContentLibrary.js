@@ -13,11 +13,11 @@ import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 const FACTORY_SOURCE = new URL('../../../content/sounds/native.json', import.meta.url);
 const failure = message => Object.assign(new Error(message), { name: 'SoundContentError' });
 
-export function createSoundContentLibrary({ document, window, audio, resourceBudget, jobs = backgroundJobService, onApply, onStatus = () => {} } = {}) {
+export function createSoundContentLibrary({ document, window, audio, resourceBudget, jobs = backgroundJobService, onApply, onStatus = () => {}, monitor = null } = {}) {
   if (!document?.createElement || !resourceBudget || typeof onApply !== 'function') throw new TypeError('Invalid sound library surface.');
   const reader = createSoundContentReader({ resourceBudget, jobs }), archiver = createSoundContentArchiver({ resourceBudget, jobs });
   const registry = createSoundContentRegistry({ indexedDB: window.indexedDB, keyRange: window.IDBKeyRange, resourceBudget });
-  const installation = createSoundContentInstallation({ audio, registry });
+  const installation = createSoundContentInstallation({ audio, registry, onReveal: () => { if (!disposed && !dialog.open) { monitor?.mount(dialog); dialog.showModal(); } } });
   const renderReferences = createSoundContentRenderReferences({ resourceBudget, jobs });
   const retirement = createProcgenRetirementScope(), listeners = [];
   let stage = null, current = null, disposed = false, selection = null, artifact = null, pageCursor = null, installed = false, sequence = 0;
@@ -25,7 +25,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
   const on = (element, event, callback) => { element.addEventListener(event, callback); listeners.push(() => element.removeEventListener(event, callback)); };
   const dialog = node('dialog'); dialog.className = 'studio-sound-library'; dialog.setAttribute('aria-labelledby', 'soundLibraryTitle');
   const title = node('h2', 'Sound library'); title.id = 'soundLibraryTitle';
-  const status = node('p', 'Import an instrument or prepare the original oscillator recipes.'); status.setAttribute('role', 'status');
+  const status = node('p', 'Import an instrument or prepare the original oscillator recipes.'); status.setAttribute('role', 'status'); status.setAttribute('aria-label', 'Sound library status');
   const summary = node('p'), select = node('select'); select.setAttribute('aria-label', 'Saved instrument revision');
   const credits = node('ul'), rights = node('input'); rights.type = 'checkbox';
   const reviewLabel = node('label'); reviewLabel.append(rights, document.createTextNode(' I reviewed redistribution permission for these exact listed dependencies.'));
@@ -168,7 +168,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     }
   });
   const close = button('Close', () => dialog.close());
-  on(dialog, 'close', () => { current?.controller.abort(failure('Sound library closed.')); installation.stop(); });
+  on(dialog, 'close', () => { current?.controller.abort(failure('Sound library closed.')); installation.stop(); monitor?.mountHome(); });
   on(select, 'change', () => { selection = select.value; rights.checked = false; render(); }); on(rights, 'change', () => render());
   dialog.append(title, status, importInput, summary, select, reviewLabel, credits, controls, archivedLabel, list); document.body.append(dialog);
   function render() {
@@ -193,7 +193,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     if (plan) for (const entry of plan.credits) credits.append(node('li', entry.subject + ' · ' + (entry.rights.creator || 'creator unknown') + ' · ' + entry.rights.licenseId + ' · redistribution ' + entry.redistribution));
   }
   render();
-  return Object.freeze({ open() { if (!disposed && !dialog.open) { render(); dialog.showModal(); } },
+  return Object.freeze({ open() { if (!disposed && !dialog.open) { monitor?.mount(dialog); render(); dialog.showModal(); } },
     state: () => Object.freeze({ staged: stage?.metadata() || null, selection, busy: !!current, installed, artifact: artifact?.metadata() || null }),
     dispose() { if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; const pending = current?.promise; current?.controller.abort(failure('Sound library retired.'));
       return retirement.retire([{ name: 'audition', run: () => installation.dispose() }, { name: 'archive-owner', run: () => archiver.dispose() },
@@ -203,6 +203,6 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
         { name: 'current-source', run: async () => { await pending;
           if (reader.diagnostics().unknownRetirement || archiver.diagnostics().unknownRetirement || registry.diagnostics().unknownRetirement) throw failure('Sound library source ownership is still unresolved.'); } },
         { name: 'registry', run: () => registry.close() }, ...listeners.map((remove, index) => ({ name: 'listener-' + index, run: remove })),
-        { name: 'surface', run: () => dialog.remove() }]); }
+        { name: 'surface', run: () => { monitor?.mountHome(); dialog.remove(); } }]); }
   });
 }

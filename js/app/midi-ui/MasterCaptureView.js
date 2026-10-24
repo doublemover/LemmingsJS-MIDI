@@ -9,7 +9,7 @@ export function createMasterCaptureView({ document, window, preview, resourceBud
   const listen = (element, event, callback) => { element.addEventListener(event, callback); listeners.push(() => element.removeEventListener(event, callback)); };
   const dialog = node('dialog'); dialog.className = 'studio-dialog studio-master-capture'; dialog.setAttribute('aria-labelledby', 'masterCaptureTitle');
   const title = node('h2', 'Record browser master'); title.id = 'masterCaptureTitle';
-  const description = node('p', 'Records the shared browser master after its protection stage, including auditions. External MIDI audio, microphones and device acoustics are outside this recording.');
+  const description = node('p', 'Records the shared browser master after protection, including live-output rehearsal. The separate cue bus is excluded. External MIDI audio, microphones and device acoustics are outside this recording.');
   const memory = node('p', 'PCM is held in memory until saved or discarded. Closing the browser can lose it. Missing frames are marked in the WAV manifest and use zero placeholders.');
   const duration = node('select'); duration.setAttribute('aria-label', 'Maximum audio capture duration');
   for (const seconds of [30, 60, 120, 300]) { const option = node('option', `${seconds} seconds`); option.value = seconds; duration.append(option); }
