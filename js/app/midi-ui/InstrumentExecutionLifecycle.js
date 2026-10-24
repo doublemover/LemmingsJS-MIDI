@@ -15,14 +15,23 @@ export function createInstrumentExecutionLifecycle(backend, { isSettled, isVoice
   let context = getContext(), generation = getGeneration();
   const rejected = reason => Object.freeze({ status: 'rejected', stage: 'none', reason });
   const collect = () => {
-    for (const [epoch, entry] of live) if (entry.state === 'retiring' && isSettled(epoch)) {
+    for (const [epoch, entry] of live) if (entry.state === 'retiring' && (!entry.displayRetirement || entry.displayRetirement.getReceipt()?.outcome === 'complete') && isSettled(epoch)) {
       forget(epoch, entry.handle.generation); live.delete(epoch); entry.state = 'retired'; retired++;
     }
   };
   const close = entry => {
-    if (entry.state !== 'active') return;
+    if (entry.closeScope) return entry.closeScope.getReceipt();
+    if (entry.state !== 'active') return entry.displayRetirement?.getReceipt();
     entry.state = 'retiring';
-    backend.cancelGenerationWithReceipt(entry.handle.generation, entry.epoch);
+    entry.closeScope = createProcgenRetirementScope();
+    return entry.closeScope.retire([
+      { name: 'display-observers', run: () => retireDisplays(entry) },
+      { name: 'generation', run: () => { const outcome = backend.cancelGenerationWithReceipt(entry.handle.generation, entry.epoch); return outcome?.retirement || outcome; } }
+    ]);
+  };
+  const retireDisplays = entry => {
+    entry.displayRetirement ||= createProcgenRetirementScope();
+    return entry.displayRetirement.retire([...(entry.displays || [])].map((release, index) => ({ name: 'observer-' + index, run: release })));
   };
   const invalidate = () => {
     incarnation++;
@@ -69,8 +78,8 @@ export function createInstrumentExecutionLifecycle(backend, { isSettled, isVoice
     sync();
     const entry = execution && typeof execution === 'object' ? handles.get(execution) : null;
     if (!entry) return rejected('invalid-execution-handle');
-    close(entry); collect();
-    return Object.freeze({ status: 'accepted', state: entry.state, executionEpoch: execution.executionEpoch });
+    const retirement = close(entry); collect();
+    return Object.freeze({ status: 'accepted', state: entry.state, executionEpoch: execution.executionEpoch, retirement });
   };
   const cancelGenerationWithReceipt = (executionGeneration, execution = 'live') => {
     if (typeof execution === 'string') return call('cancelGenerationWithReceipt', [executionGeneration, execution], 1, executionGeneration);
@@ -79,7 +88,9 @@ export function createInstrumentExecutionLifecycle(backend, { isSettled, isVoice
     if (!entry || executionGeneration !== entry.handle.generation) return rejected('invalid-execution-handle');
     if (entry.state !== 'active') return Object.freeze({ status: 'accepted', count: 0, state: entry.state, reason: 'already-retired' });
     entry.state = 'retiring';
-    const receipt = backend.cancelGenerationWithReceipt(executionGeneration, entry.epoch); collect();
+    let receipt;
+    try { receipt = backend.cancelGenerationWithReceipt(executionGeneration, entry.epoch); } finally { retireDisplays(entry); }
+    collect();
     return Object.freeze({ ...receipt, executionEpoch: execution.executionEpoch, state: entry.state });
   };
   const diagnostics = () => {
@@ -89,6 +100,31 @@ export function createInstrumentExecutionLifecycle(backend, { isSettled, isVoice
       recovery: live.size >= capacity ? 'retire-executions-and-await-settlement' : null });
   };
   const api = Object.freeze({ ...backend, registerExecution, retireExecution,
+    ...(typeof backend.observeDisplaySamples === 'function' ? { observeDisplaySamples(listener, options = {}) {
+      const { execution, identity, ...selection } = options, resolved = resolve(execution);
+      if (resolved.error || !resolved.entry || typeof listener !== 'function' || identity?.executionEpoch !== execution.executionEpoch || identity?.generation !== execution.generation)
+        throw new TypeError('Display observation requires the active owned execution handle.');
+      const entry = resolved.entry, contextAtOpen = getContext(), generationAtOpen = getGeneration();
+      if ((entry.displays?.size || 0) >= 8) throw new RangeError('Execution display observation capacity reached.');
+      let active = true, subscribed = false, releaseAttempted = false, releaseError = null;
+      const releaseNative = backend.observeDisplaySamples(sample => {
+        if (!active || !subscribed || entry.state !== 'active' || getContext() !== contextAtOpen || getGeneration() !== generationAtOpen ||
+            sample?.executionEpoch !== entry.epoch || sample.generation !== execution.generation) return;
+        listener(Object.freeze({ ...sample, executionEpoch: execution.executionEpoch }));
+      }, { ...selection, identity: { ...identity, executionEpoch: entry.epoch } });
+      if (typeof releaseNative !== 'function') throw new TypeError('Display source did not return an observation lease.');
+      const release = () => {
+        if (releaseAttempted) { if (releaseError) throw releaseError; return; } releaseAttempted = true; active = false;
+        try {
+          const ack = releaseNative();
+          if (ack === false || ack && typeof ack.then === 'function') { if (ack?.then) Promise.resolve(ack).catch(() => {}); throw new Error('Display source retirement is unresolved.'); }
+          entry.displays.delete(release);
+        } catch (error) { releaseError = error; throw error; }
+      };
+      (entry.displays ||= new Set()).add(release); subscribed = true;
+      if (entry.state !== 'active' || getContext() !== contextAtOpen || getGeneration() !== generationAtOpen) { release(); throw new Error('Display execution changed during observation setup.'); }
+      return release;
+    } } : {}),
     inspectExecution(execution, voiceId = null) {
       sync(); const entry = execution && typeof execution === 'object' ? handles.get(execution) : null;
       if (!entry || voiceId != null && (typeof voiceId !== 'string' || !voiceId || voiceId.length > 512)) return rejected('invalid-execution-handle');

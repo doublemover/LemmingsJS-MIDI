@@ -6,9 +6,11 @@ import { createProcgenRetirementScope } from '../../js/app/procgen/ProcgenRetire
 describe('voice-owned lane instrument replacement', () => {
   const context = {};
   const renderer = () => {
-    const voices = new Map(), calls = []; let disposed = false;
+    const voices = new Map(), calls = [], observers = new Set(); let disposed = false;
     const key = (epoch, voiceId) => JSON.stringify([epoch, voiceId]);
     const backend = createInstrumentExecutionLifecycle({ capabilities: {},
+      setDisplayContext() {},
+      observeDisplaySamples(listener, options) { const observer = { listener, options }; observers.add(observer); return () => observers.delete(observer); },
       begin(intent, frame, epoch) { calls.push(['begin', intent.voiceId]); voices.set(key(epoch, intent.voiceId), { voiceId: intent.voiceId, epoch }); return { status: 'accepted' }; },
       update(voiceId) { calls.push(['update', voiceId]); return { status: 'accepted' }; },
       end(voiceId) { calls.push(['end', voiceId]); return { status: 'accepted' }; },
@@ -18,10 +20,20 @@ describe('voice-owned lane instrument replacement', () => {
       dispose() { return createProcgenRetirementScope().retire([{ name: 'native', run: () => { disposed = true; voices.clear(); } }]); }
     }, { getContext: () => context, getGeneration: () => 0, isSettled: epoch => ![...voices.values()].some(voice => voice.epoch === epoch),
       isVoiceSettled: (voiceId, epoch) => !voices.has(key(epoch, voiceId)), forget: () => {} }).api;
-    return { backend, calls, get disposed() { return disposed; }, finish(voiceId) { for (const [id, voice] of voices) if (voice.voiceId === voiceId) voices.delete(id); } };
+    return { backend, calls, get disposed() { return disposed; }, emitDisplay() { for (const observer of observers) observer.listener({ ...observer.options.identity, actorId: 7 }); },
+      finish(voiceId) { for (const [id, voice] of voices) if (voice.voiceId === voiceId) voices.delete(id); } };
   };
   const root = (backend, options = {}) => createRoutedInstrumentBackend({ defaultBackend: backend, getContext: () => context, getGeneration: () => 0, ...options });
   const onset = voiceId => ({ generation: 1, voiceId, laneId: 'lane-1' });
+  it('connects observers to later renderer children and translates both execution layers', () => {
+    const fallback = renderer(), child = renderer(), router = root(fallback.backend), received = [];
+    const execution = router.backend.registerExecution({ generation: 1, executionEpoch: 'public-route' }).execution;
+    router.backend.renewExecutionLease(1, execution, 1000);
+    const stop = router.backend.observeDisplaySamples(sample => received.push(sample), { execution, identity: { executionEpoch: 'public-route', generation: 1 } });
+    router.assign('lane-1', 'child', child.backend); router.backend.begin(onset('voice'), 100, execution); child.emitDisplay();
+    expect(received).to.have.length(1); expect(received[0]).to.include({ executionEpoch: 'public-route', actorId: 7 });
+    stop(); child.emitDisplay(); expect(received).to.have.length(1); router.dispose();
+  });
   it('keeps held updates, releases and actual tails on the old renderer while routing future attacks to the new one', () => {
     const fallback = renderer(), old = renderer(), next = renderer(), router = root(fallback.backend);
     const execution = router.backend.registerExecution({ generation: 1, executionEpoch: 'fixture' }).execution;

@@ -5,7 +5,7 @@ export function createAudioClockBridge({ getContext, nowMs, presentationDelayMs 
   if (typeof getContext !== 'function' || typeof nowMs !== 'function' ||
       !Number.isFinite(presentationDelayMs) || presentationDelayMs < 0 || presentationDelayMs > 1000 ||
       !Number.isFinite(maxHorizonMs) || maxHorizonMs < 1 || maxHorizonMs > 60000) throw new Error('Invalid audio clock bridge.');
-  let anchor = null, rebases = 0, rejected = 0;
+  let anchor = null, anchorContext = null, rebases = 0, rejected = 0, displayCorrelations = 0, displayRejected = 0;
   const currentFrame = () => {
     const context = getContext();
     return context?.state === 'running' && Number.isFinite(context.currentTime) && Number.isFinite(context.sampleRate)
@@ -25,6 +25,7 @@ export function createAudioClockBridge({ getContext, nowMs, presentationDelayMs 
     anchor = Object.freeze({ executionEpoch, scoreEpoch, beat, hostMs, bpm,
       contextSeconds, correlationHostMs: (before + after) / 2, sampleRate: context.sampleRate,
       uncertaintyMs: (after - before) / 2, reason });
+    anchorContext = context;
     rebases++;
     return anchor;
   };
@@ -32,7 +33,7 @@ export function createAudioClockBridge({ getContext, nowMs, presentationDelayMs 
     const context = getContext();
     if (!anchor || executionEpoch !== anchor.executionEpoch || scoreTime?.epoch !== anchor.scoreEpoch ||
         !Number.isFinite(scoreTime.beat) || scoreTime.beat < 0 || context?.state !== 'running' ||
-        context.sampleRate !== anchor.sampleRate) { rejected++; return null; }
+        context !== anchorContext || context.sampleRate !== anchor.sampleRate) { rejected++; return null; }
     const targetHostMs = anchor.hostMs + (scoreTime.beat - anchor.beat) * 60000 / anchor.bpm + presentationDelayMs;
     const currentHostMs = nowMs();
     if (!Number.isFinite(targetHostMs) || !Number.isFinite(currentHostMs) || targetHostMs - currentHostMs > maxHorizonMs) {
@@ -43,6 +44,29 @@ export function createAudioClockBridge({ getContext, nowMs, presentationDelayMs 
     if (!Number.isSafeInteger(frame) || frame < 0) { rejected++; return null; }
     return frame;
   };
+  const correlateDisplay = ({ executionEpoch, contextEpoch } = {}) => {
+    const context = getContext();
+    const fail = () => { displayRejected++; return null; };
+    if (!anchor || context !== anchorContext || context?.state !== 'running' || executionEpoch !== anchor.executionEpoch ||
+        !Number.isSafeInteger(contextEpoch) || contextEpoch < 0 || context.sampleRate !== anchor.sampleRate) return fail();
+    try {
+      const before = nowMs(), seconds = context.currentTime, stamp = context.getOutputTimestamp?.(), after = nowMs();
+      if (![before, after, seconds].every(Number.isFinite) || after < before || after - before > 50) return fail();
+      let audioFrame, presentationMs, outputLatencyMs, method;
+      if (Number.isFinite(stamp?.contextTime) && stamp.contextTime >= 0 && Number.isFinite(stamp?.performanceTime) && stamp.performanceTime >= 0 &&
+          Math.abs(after - stamp.performanceTime) <= 2000 && stamp.contextTime <= seconds + 0.1 && seconds - stamp.contextTime <= 2) {
+        audioFrame = Math.round(stamp.contextTime * context.sampleRate); presentationMs = stamp.performanceTime; outputLatencyMs = 0; method = 'output-timestamp';
+      } else {
+        if (!Number.isFinite(context.baseLatency) || context.baseLatency < 0 || context.baseLatency > 1 ||
+            !Number.isFinite(context.outputLatency) || context.outputLatency < 0 || context.outputLatency > 1) return fail();
+        audioFrame = Math.round(seconds * context.sampleRate); presentationMs = (before + after) / 2;
+        outputLatencyMs = (context.baseLatency + context.outputLatency) * 1000; method = 'context-correlation-with-reported-latency';
+      }
+      if (!Number.isSafeInteger(audioFrame) || audioFrame < 0) return fail(); displayCorrelations++;
+      return Object.freeze({ executionEpoch, contextEpoch, audioFrame, presentationMs, sampleRate: context.sampleRate,
+        outputLatencyMs, uncertaintyMs: (after - before) / 2 + 1000 / context.sampleRate, method, acousticReceipt: false });
+    } catch { return fail(); }
+  };
   const diagnostics = () => {
     const context = getContext();
     let outputCorrelation = null;
@@ -52,11 +76,11 @@ export function createAudioClockBridge({ getContext, nowMs, presentationDelayMs 
         outputCorrelation = Object.freeze({ contextSeconds: stamp.contextTime, hostMs: stamp.performanceTime });
       }
     } catch { /* An output timestamp is optional diagnostic data. */ }
-    return Object.freeze({ anchor, rebases, rejected, presentationDelayMs, maxHorizonMs,
+    return Object.freeze({ anchor, rebases, rejected, displayCorrelations, displayRejected, presentationDelayMs, maxHorizonMs,
       currentFrame: currentFrame(), baseLatencySeconds: Number.isFinite(context?.baseLatency) ? context.baseLatency : null,
       outputLatencySeconds: Number.isFinite(context?.outputLatency) ? context.outputLatency : null,
       outputCorrelation });
   };
-  const invalidate = () => { anchor = null; };
-  return { rebase, toTargetFrame, currentFrame, diagnostics, invalidate };
+  const invalidate = () => { anchor = null; anchorContext = null; };
+  return { rebase, toTargetFrame, currentFrame, correlateDisplay, diagnostics, invalidate };
 }

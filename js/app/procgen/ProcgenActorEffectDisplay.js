@@ -16,14 +16,15 @@ class ProcgenActorEffectDisplay {
     this.maxActors = Math.max(1, Math.min(MAX_ACTORS, Math.trunc(maxActors) || MAX_ACTORS)); this.budget = budget; this.onChange = onChange;
     this.mailboxes = new Map(); this.actorProfiles = new Map(); this.patchProfiles = new Map(); this.profile = normalizeActorEffectVisualProfile({ version: 1 });
     this.profileToken = {}; this.profileEstimatedBytes = 0;
-    this.epoch = null; this.revision = 0; this.skipped = 0; this.rejected = 0; this.retired = false; this.aggregateSamples = 0; this.visible = true; this.subscription = null;
+    this.epoch = null; this.revision = 0; this.skipped = 0; this.rejected = 0; this.retired = false; this.aggregateSamples = 0; this.visible = true; this.subscription = null; this.inspectedActorId = null;
   }
   setEpoch(epoch) {
     if (this.retired) return false;
     if (!epoch || !string(epoch.worldId) || !natural(epoch.generation) || !epochId(epoch.executionEpoch) || !natural(epoch.graphRevision) || !natural(epoch.routeRevision)) throw new TypeError('A complete display execution epoch is required.');
     const next = Object.freeze({ worldId: epoch.worldId, generation: epoch.generation, executionEpoch: epoch.executionEpoch, graphRevision: epoch.graphRevision, routeRevision: epoch.routeRevision, contextEpoch: epochId(epoch.contextEpoch) ? epoch.contextEpoch : null, owner: string(epoch.owner) ? epoch.owner : null });
     if (this.epoch && Object.keys(next).every(key => next[key] === this.epoch[key])) return;
-    this.subscription?.(); this.subscription = null; this.clear(); this.epoch = next; this._changed();
+    this.subscription?.(); this.subscription = null;
+    this.clear({ profiles: !this.epoch || this.epoch.worldId !== next.worldId || this.epoch.generation !== next.generation }); this.epoch = next; this._changed();
   }
   invalidateEpoch() { this.subscription?.(); this.subscription = null; this.clear(); this.epoch = null; this._changed(); }
   _changed() { this.revision++; try { this.onChange?.(); } catch { /* Display listeners cannot change audio admission. */ } }
@@ -38,6 +39,10 @@ class ProcgenActorEffectDisplay {
     if (!this.visible) { this.subscription?.(); this.subscription = null; this.clear({ profiles: false }); } this._changed();
   }
   _shrinkProfiles() { if (this.profileEstimatedBytes) { try { this._reserveProfiles(); } catch { /* A conservative older reservation still covers a smaller profile set. */ } } }
+  setInspectedActor(actorId) {
+    if (actorId != null && !natural(actorId)) throw new TypeError('Invalid inspected actor identity.');
+    if (this.retired || actorId === this.inspectedActorId) return; this.inspectedActorId = actorId; this._changed();
+  }
   _reserveProfiles(actorCount = this.actorProfiles.size, patchCount = this.patchProfiles.size) {
     const bytes = 4096 * (1 + actorCount + patchCount); this.budget?.retain(this.profileToken, bytes, 'effect-profile'); this.profileEstimatedBytes = bytes;
   }
@@ -75,7 +80,7 @@ class ProcgenActorEffectDisplay {
         window: { firstFrame: sample.windowStartFrame ?? sample.appliedFrame, lastFrame: sample.windowEndFrame ?? sample.appliedFrame }, validUntilMs,
         muted: typeof sample.routeState?.muted === 'boolean' ? sample.routeState.muted : null, bypassed: sample.processingState?.bypassed === true, tail: sample.processingState?.tail === true,
         pending: sample.processingState?.pending === true, rejected: sample.processingState?.faulted === true || sample.processingState?.unsupported === true,
-        tap: quantity.tap, detectorDelayFrames: quantity.detectorDelayFrames, tapId: quantity.tapId, sourcePosition: quantity.sourcePosition }, correlation) || accepted;
+        tap: quantity.tap ?? sample.detector?.tap, detectorDelayFrames: quantity.detectorDelayFrames ?? sample.detector?.detectorDelayFrames, tapId: quantity.tapId, sourcePosition: quantity.sourcePosition }, correlation) || accepted;
     }
     return accepted;
   }

@@ -3,6 +3,19 @@ import { createAudioClockBridge } from '../js/app/procgen/workstation/AudioClock
 import { createCausalIntentDispatcher, createStrictLiveFramePolicy } from '../js/app/procgen/workstation/CausalIntentDispatcher.js';
 
 describe('physical intent audio clock bridge', () => {
+  it('correlates display frames without double-counting output latency and rejects replacement contexts', () => {
+    let context = { state: 'running', currentTime: 2, sampleRate: 48000, baseLatency: 0.01, outputLatency: 0.02,
+      getOutputTimestamp: () => ({ contextTime: 1.98, performanceTime: 980 }) };
+    const bridge = createAudioClockBridge({ getContext: () => context, nowMs: () => 1000 });
+    bridge.rebase({ executionEpoch: 'display', scoreEpoch: 'score', beat: 0, hostMs: 1000, bpm: 120 });
+    expect(bridge.correlateDisplay({ executionEpoch: 'display', contextEpoch: 4 })).to.include({ audioFrame: 95040, presentationMs: 980,
+      outputLatencyMs: 0, method: 'output-timestamp', contextEpoch: 4, acousticReceipt: false });
+    delete context.getOutputTimestamp;
+    expect(bridge.correlateDisplay({ executionEpoch: 'display', contextEpoch: 4 })).to.include({ audioFrame: 96000, presentationMs: 1000, outputLatencyMs: 30 });
+    delete context.outputLatency; expect(bridge.correlateDisplay({ executionEpoch: 'display', contextEpoch: 4 })).to.equal(null);
+    context = { ...context }; expect(bridge.toTargetFrame({ epoch: 'score', beat: 0 }, 'display')).to.equal(null);
+    expect(bridge.correlateDisplay({ executionEpoch: 'display', contextEpoch: 5 })).to.equal(null);
+  });
   it('keeps target frames stable through a delayed wake and rejects retired epochs', () => {
     let hostMs = 1000;
     const context = { state: 'running', currentTime: 2, sampleRate: 48000 };

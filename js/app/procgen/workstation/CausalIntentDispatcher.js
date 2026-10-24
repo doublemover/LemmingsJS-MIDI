@@ -139,7 +139,13 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
       return current ? [{ name: sink.id + '-execution', run: () => retireCurrent(sink, current) }] : [];
     }).concat({ name: 'dispatch-state', run: () => { executions.clear(); history.length = 0; } }));
   };
-  return { dispatch, cancelGeneration, renewExecutionLease, diagnostics, dispose };
+  const observeDisplaySamples = (sinkId, listener, options = {}) => {
+    const sink = sinks.find(candidate => candidate.id === sinkId), current = executions.get(sinkId);
+    if (disposed || !current || current.closed || current.epoch !== options.identity?.executionEpoch || current.generation !== options.identity?.generation ||
+        typeof sink?.backend.observeDisplaySamples !== 'function') throw new Error('The display sink has no active owned execution.');
+    return sink.backend.observeDisplaySamples(listener, { ...options, execution: current.execution });
+  };
+  return { dispatch, cancelGeneration, renewExecutionLease, observeDisplaySamples, diagnostics, dispose };
 };
 
 export { createCausalIntentDispatcher, createStrictLiveFramePolicy };

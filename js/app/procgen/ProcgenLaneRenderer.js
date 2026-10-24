@@ -20,7 +20,7 @@ class ProcgenLaneRenderer {
     try {
       this.objectTileCache = new ProcgenObjectPlacementCache(world, this.resources);
       this.presentation = new ProcgenPresentationHost(this); this.selectedWorldEntityId = null; this.selectionRevision = 0;
-      this.actorEffects = new ProcgenActorEffectDisplay({ budget: this.resources }); this.actorEffectPass = new ProcgenActorEffectPass(this); this._effectActor = null; this.effectVisibleActors = new Set();
+      this.actorEffects = new ProcgenActorEffectDisplay({ budget: this.resources }); this.actorEffectPass = new ProcgenActorEffectPass(this); this._effectActor = null; this.effectVisibleActors = new Set(); this.effectTelemetryActors = new Set();
       this.presentedActorBounds = new Map(); this.presentationEntities = []; this._presentationActor = null;
       this.buffer = this.resources.canvas(); this.terrainBuffer = this.resources.canvas(); this.objectBuffer = this.resources.canvas();
       this.imageKey = {}; this.sceneryImageKey = {}; this.lifecycleState = 'recovering'; this.recoveryAttempts = 0; this.recoveryLimit = 3; this.nextRecoveryMs = 0; this.qualityDivisor = 1;
@@ -72,7 +72,7 @@ class ProcgenLaneRenderer {
   }
   _releasePresentation() {
     this.presentation?.invalidate('The world display is preparing a new projection.');
-    this.actorEffects?.clear({ profiles: false }); this.actorEffectPass?.reset(); this.effectVisibleActors?.clear();
+    this.actorEffects?.clear({ profiles: false }); this.actorEffectPass?.reset(); this.effectVisibleActors?.clear(); this.effectTelemetryActors?.clear();
     for (const release of [() => this.decorationLayer?.reset?.(), () => this.objectTileCache.clear(), () => this.cctv?.releaseViews()]) {
       try { release(); } catch { this.resources.retirementFailures++; }
     }
@@ -147,6 +147,7 @@ class ProcgenLaneRenderer {
     return bitmap;
   }
   beginActorAction(actor) {
+    if (this.effectTelemetryActors && this.effectTelemetryActors.size < 16) this.effectTelemetryActors.add(actor.id);
     const previous = this._effectActor;
     this._effectActor = this.actorEffects?.mailboxes.has(actor.id) && this.actorEffects.getProfile(actor.id, actor.patchId).enabled ? actor : null;
     if (this._effectActor) this.effectVisibleActors.add(actor.id);
@@ -458,7 +459,7 @@ class ProcgenLaneRenderer {
     this._drawScenery(key, width, height);
     this.decorationLayer?.draw(this, !!this.reducedMotion?.matches);
     this._drawObjects();
-    this.effectVisibleActors.clear(); this.renderedActors = 0; this.actorDots.clear(); this.presentedActorBounds.clear();
+    this.effectVisibleActors.clear(); this.effectTelemetryActors.clear(); this.renderedActors = 0; this.actorDots.clear(); this.presentedActorBounds.clear();
     const effectPadding = this.actorEffects.mailboxes.size ? 64 : 0;
     for (const actor of this.actorVisibility.query(this.originY - effectPadding, this.viewHeight + effectPadding * 2, force)) {
       if (actor.failureReason || actor.removed) continue;

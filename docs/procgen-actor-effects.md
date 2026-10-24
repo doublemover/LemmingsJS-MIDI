@@ -109,8 +109,25 @@ measure browser GPU, audio synchronization, heap retention or a release gate.
 The production Edge fixtures use explicit synthetic samples to qualify real
 source-art effect drawing at DPR 1/2 and reduced motion. They compare physical,
 event, document and transport receipts and unmodified picking bounds. They do
-not certify actual audio telemetry or acoustic/device timing. The audio owner
-separately implements #1081 kernel measurements; the default physical workstation
-backend and its owned clock still need to connect that observer through the
-session owner. Retired-graph tails, listening qualification, full browser/motion
-matrix and profile session persistence remain integration work.
+not certify actual audio telemetry or acoustic/device timing.
+
+The production physical playback owner now connects applied worklet measurements
+through the dispatcher, routed lane backend and renderer execution leases. Both
+execution layers translate their private identity; copied or retired handles
+cannot open observations. Selection and up to sixteen drawn actors determine
+the bounded observation set, independently of whether a visual profile has been
+enabled. New routed renderers can join an existing observation. Hidden views,
+stop, context replacement and disposal retire the subscriptions independently.
+Native oscillator lanes supply no invented measurements; a pinned worklet lane
+is required for these measured voice sources.
+
+The clock owner correlates frames through output timestamps or a bounded
+host/context sample with explicitly reported latency. Unavailable or uncertain
+correlation does not animate actors. Current owner/master mute state gates the
+presentation; this is application routing evidence at receipt, separate from
+the measured pre-pan, pre-owner-bus voice window. Device audibility remains
+unknown. Profiles survive observation-set, context and route changes within the
+same actor generation. These integration changes have authored regressions;
+runtime/browser verification is deferred with the rest of this branch.
+Retired-graph tails, listening qualification, the full browser/motion matrix and
+profile session persistence still need qualification and follow-up work.

@@ -12,7 +12,15 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
   if ([defaultReleaseSeconds, defaultOneShotTailSeconds].some(value => value != null && (!Number.isFinite(value) || value < 0 || value > 4))) throw new TypeError('Invalid default release policy.');
   const defaults = { key: 'default', backend: defaultBackend, retirement: null, releaseSeconds: defaultReleaseSeconds, oneShotTailSeconds: defaultOneShotTailSeconds },
     children = new Map([['default', defaults]]), assignments = new Map(), executions = new Map(), voices = new Map();
-  const retirement = createProcgenRetirementScope(); let disposed = false, voiceCursor = voices.entries(), collected = 0;
+  const retirement = createProcgenRetirementScope(), displayObservers = new Set();
+  let disposed = false, voiceCursor = voices.entries(), collected = 0, routeRevision = 0, displayContext = null;
+  const attachDisplay = (observer, child, handle) => {
+    if (!observer.active || observer.children.has(child) || typeof child.backend.observeDisplaySamples !== 'function') return;
+    try {
+      const release = child.backend.observeDisplaySamples(observer.listener, { ...observer.options, execution: handle });
+      if (typeof release !== 'function') throw new Error('Renderer display lease is unavailable.'); observer.children.set(child, release);
+    } catch { observer.failures++; }
+  };
   const stateFor = (child, execution, voiceId = null) => {
     try { const result = child.backend.inspectExecution(execution, voiceId); return result?.status === 'accepted' ? result : null; } catch { return null; }
   };
@@ -35,6 +43,9 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     child.retirementScope = createProcgenRetirementScope();
     const handles = [...executions.values()].filter(execution => execution.children.has(child));
     child.retirement = child.retirementScope.retire([
+      ...[...displayObservers].filter(observer => observer.children.has(child)).map((observer, index) => ({ name: 'display-' + index, run: () => {
+        const release = observer.children.get(child); release(); observer.children.delete(child);
+      } })),
       ...handles.map((execution, index) => ({ name: 'execution-' + index, run: () => child.backend.retireExecution(execution.children.get(child)) })),
       { name: 'renderer', run: () => child.backend.dispose() }
     ]);
@@ -53,6 +64,7 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     if (!execution.children.has(child)) {
       const registered = child.backend.registerExecution({ executionEpoch: epoch, generation }); if (registered?.status !== 'accepted') return null;
       execution.children.set(child, registered.execution);
+      for (const observer of displayObservers) if (observer.active && observer.epoch === epoch) attachDisplay(observer, child, registered.execution);
       if (execution.leaseUntil != null && child.backend.renewExecutionLease(generation, registered.execution, execution.leaseUntil)?.status !== 'accepted') return null;
     }
     return execution.children.get(child);
@@ -93,13 +105,36 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     if (outcomes.some(outcome => outcome?.status !== 'accepted')) return reject('renderer-lease-rejected'); execution.leaseUntil = until; return Object.freeze({ status: 'accepted' });
   };
   const backend = { begin, update: (...args) => voiceCall('update', ...args), end: (...args) => voiceCall('end', ...args), renewExecutionLease,
+    setDisplayContext(value) {
+      if (!value || typeof value.worldId !== 'string' || !Number.isSafeInteger(value.graphRevision) || value.graphRevision < 0 ||
+          !Number.isSafeInteger(value.routeRevision) || value.routeRevision < 0) throw new TypeError('Invalid routed display context.');
+      displayContext = Object.freeze({ worldId: value.worldId, graphRevision: value.graphRevision, routeRevision: value.routeRevision });
+      for (const child of children.values()) { try { child.backend.setDisplayContext?.(displayContext); } catch { /* Display admission cannot affect sound routing. */ } }
+    },
+    observeDisplaySamples(listener, options = {}) {
+      const epoch = options.identity?.executionEpoch, execution = executions.get(epoch);
+      if (disposed || !execution || typeof listener !== 'function' || displayObservers.size >= 4 || execution.generation !== options.identity?.generation) throw new TypeError('Routed display observation is unavailable.');
+      const observer = { epoch, listener, options, children: new Map(), active: true, failures: 0, retirement: createProcgenRetirementScope() };
+      const release = () => {
+        observer.active = false;
+        const receipt = observer.retirement.retire([...observer.children].map(([child, stop]) => ({ name: child.key, run: stop })));
+        if (receipt.outcome !== 'complete') throw Object.assign(new Error('Routed display retirement is incomplete.'), { retirement: receipt });
+        observer.children.clear(); displayObservers.delete(observer);
+      };
+      observer.release = release; displayObservers.add(observer);
+      for (const [child, handle] of execution.children) attachDisplay(observer, child, handle); return release;
+    },
     cancelGenerationWithReceipt, cancelGeneration: (...args) => cancelGenerationWithReceipt(...args).count,
     capabilities: Object.freeze({ routedInstruments: true, independentSamePitch: true, ownedGates: true, renderAcknowledgment: false }),
     renderDiagnostics: () => { collect(); return Object.freeze({ children: children.size, assignments: assignments.size, retainedVoices: voices.size,
-      collectedVoices: collected, unknownRetirement: [...children.values()].filter(child => child.retirement?.outcome === 'partial').length,
+      collectedVoices: collected, routeRevision, displayObservers: displayObservers.size, displayFailures: [...displayObservers].reduce((sum, observer) => sum + observer.failures, 0),
+      unknownRetirement: [...children.values()].filter(child => child.retirement?.outcome === 'partial').length,
       renderers: Object.freeze([...children.values()].map(child => Object.freeze({ key: child.key, retirement: child.retirement?.outcome || null,
         diagnostics: child.backend.renderDiagnostics() }))) }); },
-    dispose: () => { disposed = true; return retirement.retire([...children.values()].map(child => ({ name: child.key, run: () => retireChild(child) }))); }
+    dispose: () => { disposed = true; return retirement.retire([
+      ...[...displayObservers].map((observer, index) => ({ name: 'display-' + index, run: observer.release })),
+      ...[...children.values()].map(child => ({ name: child.key, run: () => retireChild(child) }))
+    ]); }
   };
   const lifecycle = createInstrumentExecutionLifecycle(backend, { getContext, getGeneration,
     isSettled: epoch => { const execution = executions.get(epoch); return !execution || [...execution.children].every(([child, handle]) => stateFor(child, handle)?.settled === true); },
@@ -121,14 +156,19 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
       if ([releaseSeconds, oneShotTailSeconds].some(value => value != null && (!Number.isFinite(value) || value < 0 || value > 4))) throw new TypeError('Invalid authored release policy.');
       collect(); if (!assignments.has(lane) && assignments.size >= 64) throw new Error('Routed lane capacity exceeded.'); let child = children.get(key);
       if (child && (child.backend !== renderer || child.retirementScope) || !child && children.size >= maxChildren) throw new Error('Lane instrument replacement exceeds retained renderer capacity.');
-      if (!child) { child = { key, backend: renderer, retirement: null, pins: 0, releaseSeconds, oneShotTailSeconds }; children.set(key, child); } assignments.set(lane, child);
+      if (!child) { child = { key, backend: renderer, retirement: null, pins: 0, releaseSeconds, oneShotTailSeconds }; children.set(key, child);
+        if (displayContext) { try { renderer.setDisplayContext?.(displayContext); } catch { /* Presentation cannot prevent prepared sound assignment. */ } }
+      }
+      if (assignments.get(lane) !== child) routeRevision++; assignments.set(lane, child);
     },
     find: key => children.get(key)?.retirementScope ? null : children.get(key)?.backend || null,
     retain(key) { const child = children.get(key); if (!child || child.retirementScope || disposed) return null; child.pins = (child.pins || 0) + 1; let released = false;
       return Object.freeze({ backend: child.backend, release() { if (!released) { released = true; child.pins--; collect(); } } }); },
     assignment: lane => assignments.get(lane)?.key || null,
-    unassign(lane) { assignments.delete(lane); collect(); },
-    block(lane, reason) { if (!validLane(lane) || typeof reason !== 'string' || !reason || reason.length > 128 || disposed || !assignments.has(lane) && assignments.size >= 64) throw new TypeError('Invalid lane requirement failure.'); assignments.set(lane, { blocked: true, reason }); collect(); },
+    unassign(lane) { if (assignments.delete(lane)) routeRevision++; collect(); },
+    block(lane, reason) { if (!validLane(lane) || typeof reason !== 'string' || !reason || reason.length > 128 || disposed || !assignments.has(lane) && assignments.size >= 64) throw new TypeError('Invalid lane requirement failure.');
+      if (!assignments.get(lane)?.blocked || assignments.get(lane).reason !== reason) routeRevision++; assignments.set(lane, { blocked: true, reason }); collect(); },
+    routeRevision: () => routeRevision,
     collect, dispose: lifecycle.api.dispose
   });
 }

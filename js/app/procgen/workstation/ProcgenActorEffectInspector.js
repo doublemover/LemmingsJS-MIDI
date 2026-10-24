@@ -36,6 +36,7 @@ export function createProcgenActorEffectInspector({ renderer, document, parent }
   on(reset, 'click', () => save(normalizeActorEffectVisualProfile({ version: 1 })));
   const refresh = selection => {
     if (disposed) return; selected = selection?.kind === 'actor' ? selection : null;
+    manager.setInspectedActor(selected?.actorId ?? null);
     const box = selected && manager.mailboxes.get(selected.actorId), records = box ? [...box.sources.values()] : [], identities = [...new Set(records.map(record => record.effectId))];
     const sourceKey = identities.join('|');
     if (sourceKey !== sourcesKey) { sourcesKey = sourceKey; while (source.firstChild) source.removeChild(source.firstChild); for (const id of identities) { const option = element('option', id); option.value = id; source.append(option); } }
@@ -50,14 +51,14 @@ export function createProcgenActorEffectInspector({ renderer, document, parent }
       evidenceKey = key; while (evidence.firstChild) evidence.removeChild(evidence.firstChild);
       for (const record of described) evidence.append(element('p', `${record.effectId} · ${record.quantity}: ${record.value} ${record.units} · ${record.evidenceClass} · ${record.state}`));
     }
-    status.textContent = !selected ? 'Select an actor to inspect effect evidence.' : !manager.epoch ? 'Live effect telemetry is unavailable. No actor motion is inferred.' : !records.length ? 'No actor-owned effect samples. Configured output does not prove an audible effect.' : `${records.length} actor-owned source samples · ${state?.state || 'unknown'} · no acoustic receipt`;
+    status.textContent = !selected ? 'Select an actor to inspect effect evidence.' : !manager.epoch || !manager.subscription ? 'Live effect telemetry is unavailable. No actor motion is inferred.' : !records.length ? 'No actor-owned effect samples. Configured output does not prove an audible effect.' : `${records.length} actor-owned source samples · ${state?.state || 'unknown'} · no acoustic receipt`;
     const nextBindingKey = profile.bindings.map(binding => `${binding.effectId}/${binding.quantity}:${binding.channel}`).join('|');
-    if (bindingKey !== nextBindingKey) { bindingKey = nextBindingKey; while (bindingIndex.firstChild) bindingIndex.removeChild(bindingIndex.firstChild); profile.bindings.forEach((binding, index) => { const option = element('option', `${binding.channel} � ${binding.quantity}`); option.value = String(index); bindingIndex.append(option); }); }
+    if (bindingKey !== nextBindingKey) { bindingKey = nextBindingKey; while (bindingIndex.firstChild) bindingIndex.removeChild(bindingIndex.firstChild); profile.bindings.forEach((binding, index) => { const option = element('option', `${binding.channel} · ${binding.quantity}`); option.value = String(index); bindingIndex.append(option); }); }
     const currentBinding = profile.bindings[Number(bindingIndex.value) || 0];
     for (const control of [bindingIndex, gain, cap, inputMin, inputMax, invert]) control.disabled = !selected || !currentBinding || !identities.length;
     if (currentBinding) { if (document.activeElement !== gain) gain.value = String(currentBinding.gain); if (document.activeElement !== cap) cap.value = String(currentBinding.cap); if (document.activeElement !== inputMin) inputMin.value = String(currentBinding.inputMin); if (document.activeElement !== inputMax) inputMax.value = String(currentBinding.inputMax); invert.checked = currentBinding.invert; cap.max = ['x', 'y'].includes(currentBinding.channel) ? '3' : '1'; }
     const x = profile.bindings.find(binding => binding.channel === 'x'); linked.disabled = !selected || !x || !records.some(record => record.effectId === x.effectId && record.quantity === 'y-modulation' && ['measured', 'kernel-state'].includes(record.evidenceClass)); linked.checked = !!x && profile.bindings.some(binding => binding.channel === 'y' && binding.effectId === x.effectId);
     bindings.textContent = profile.bindings.length ? profile.bindings.map(binding => `${binding.effectId}/${binding.quantity} → ${binding.channel} (gain ${binding.gain}${binding.invert ? ', inverted' : ''})`).join('; ') : 'No visual bindings. Global defaults, patch defaults and deliberate actor overrides are supported by the profile API.';
   };
-  return { refresh, dispose() { if (disposed) return; disposed = true; for (const stop of listeners) stop(); listeners.length = 0; section.remove?.(); if (section.parentNode) section.parentNode.removeChild(section); else section.parent?.removeChild(section); } };
+  return { refresh, dispose() { if (disposed) return; disposed = true; manager.setInspectedActor(null); for (const stop of listeners) stop(); listeners.length = 0; section.remove?.(); if (section.parentNode) section.parentNode.removeChild(section); else section.parent?.removeChild(section); } };
 }

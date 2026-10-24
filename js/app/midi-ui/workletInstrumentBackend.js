@@ -40,6 +40,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   const slots = new Array(MAX_VOICES).fill(null), slotTokens = new Uint32Array(MAX_VOICES);
   const counters = { queued: 0, applied: 0, late: 0, rejected: 0, faults: 0, ended: 0, producerCancelled: 0, kernelCancelled: 0, stopRequests: 0, stopQueued: 0 };
   const display = createAudioDisplayTelemetry({ owner, getContext: () => context || preview.getAudioContext(), getContextEpoch: () => preview._contextEpoch ?? 0,
+    getRouteState: () => ({ muted: !preview._ownerReady(owner) || preview.getState().masterVolume === 0, evidenceClass: 'owner-routing-state' }),
     getVoices: () => voices.values(), resources: preview._audioResources, send: message => { if (!node || disposed) return false; node.port.postMessage(message); return true; } });
   let queue = null;
   const epochSettled = epoch => {

@@ -2,6 +2,32 @@ import { expect } from 'chai';
 import { createInstrumentExecutionLifecycle } from '../../js/app/midi-ui/InstrumentExecutionLifecycle.js';
 
 describe('opaque instrument execution ownership', () => {
+  it('translates display identities only through an active owned handle and retires observers with that handle', () => {
+    const context = {}, requests = [], received = []; let receive, releases = 0;
+    const raw = { observeDisplaySamples(listener, options) { receive = listener; requests.push(options); return () => { releases++; }; },
+      cancelGenerationWithReceipt: () => ({ status: 'accepted' }), renderDiagnostics: () => ({}), dispose() {} };
+    const api = createInstrumentExecutionLifecycle(raw, { getContext: () => context, getGeneration: () => 0, isSettled: () => true, forget() {} }).api;
+    const execution = api.registerExecution({ executionEpoch: 'public-performance', generation: 7 }).execution;
+    const options = { execution, identity: { executionEpoch: 'public-performance', generation: 7 } };
+    expect(() => api.observeDisplaySamples(() => {}, { ...options, execution: { ...execution } })).to.throw('owned execution');
+    api.observeDisplaySamples(sample => received.push(sample), options);
+    expect(requests[0].identity.executionEpoch).not.to.equal('public-performance');
+    receive({ executionEpoch: requests[0].identity.executionEpoch, generation: 7, actorId: 4 });
+    expect(received[0]).to.include({ executionEpoch: 'public-performance', generation: 7, actorId: 4 });
+    api.retireExecution(execution); expect(releases).to.equal(1);
+    receive({ executionEpoch: requests[0].identity.executionEpoch, generation: 7 }); expect(received).to.have.length(1);
+    expect(() => api.observeDisplaySamples(() => {}, options)).to.throw('owned execution'); api.dispose();
+  });
+  it('keeps failed display retirement consuming execution capacity without retrying its native release', () => {
+    let releases = 0; const context = {};
+    const api = createInstrumentExecutionLifecycle({ observeDisplaySamples: () => () => { releases++; throw new Error('unknown display close'); },
+      cancelGenerationWithReceipt: () => ({ status: 'accepted' }), renderDiagnostics: () => ({}), dispose() {} },
+    { getContext: () => context, getGeneration: () => 0, isSettled: () => true, forget() {}, capacity: 1 }).api;
+    const execution = api.registerExecution({ executionEpoch: 'performance', generation: 1 }).execution;
+    const stop = api.observeDisplaySamples(() => {}, { execution, identity: { executionEpoch: 'performance', generation: 1 } });
+    expect(stop).to.throw('unknown display close'); api.retireExecution(execution);
+    expect(releases).to.equal(1); expect(api.registerExecution({ executionEpoch: 'next', generation: 1 }).reason).to.equal('execution-identity-capacity'); api.dispose();
+  });
   it('keeps delayed producers fenced across same-label renewal and context replacement', () => {
     let context = {}, generation = 0;
     const pending = new Set(), cancellations = [], forgotten = [];

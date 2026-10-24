@@ -4,6 +4,7 @@ import { createCausalIntentDispatcher, createStrictLiveFramePolicy } from './Cau
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 import { createRoutedInstrumentBackend } from '../../midi-ui/RoutedInstrumentBackend.js';
 import { createLaneInstrumentPreparation } from '../../midi-ui/LaneInstrumentPreparation.js';
+import { connectProcgenActorEffectSource } from '../ProcgenActorEffectSource.js';
 
 const nativeResolution = Object.freeze({
   status: 'ready',
@@ -16,7 +17,7 @@ const nativeResolution = Object.freeze({
 
 // Owns only the physical voice session. The ordinary game preview and MIDI
 // router keep their independent leases on the shared output graph.
-export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getLanes = () => [], isPlaybackEnabled = () => !!audio?.getState?.().enabled,
+export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, now, renderer = null, getLanes = () => [], isPlaybackEnabled = () => !!audio?.getState?.().enabled,
   onInstrumentState = () => {}, onReceipt = () => {} } = {}) {
   const permitted = () => { try { return isPlaybackEnabled() === true; } catch { return false; } };
   const session = audio?.createSession?.('procgen-physical') || null;
@@ -32,7 +33,16 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
   let anchoredEpoch = null, anchoredBpm = null, rejected = 0, accepted = 0, leaseFailures = 0;
   let leaseUntil = null, leaseEpoch = null, leaseContext = null;
   let lastAudioEnabled = false, lastAudioContext = null;
+  let displayKey = null, releaseDisplay = null, displayErrors = 0, displayBlocked = false;
   const retirement = createProcgenRetirementScope();
+  const stopDisplay = () => {
+    const release = releaseDisplay; releaseDisplay = null; displayKey = null;
+    const receipt = createProcgenRetirementScope().retire([
+      { name: 'display-source', run: () => release?.() },
+      { name: 'display-view', run: () => { const manager = renderer?.actorEffects; if (manager) { manager.subscription?.(); manager.subscription = null; manager.clear({ profiles: false }); } } }
+    ]);
+    if (receipt.outcome !== 'complete') { displayErrors++; displayBlocked = true; } return receipt;
+  };
   const arm = () => {
     if (disposed || !armEnabled || !prepared || !session || !permitted() || !audio?.getState?.().enabled || session.getState().enabled || enableLease) return;
     const lease = {}; enableLease = lease;
@@ -58,6 +68,26 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     onReceipt: receipt => { if (receipt.status === 'accepted') accepted++; else rejected++; onReceipt(receipt); }
   });
   const engine = createCausalMusicEngine({ getGraph, scoreTimeline, deliver: (intents, batch) => dispatcher.dispatch(intents, batch) });
+  const refreshDisplay = batch => {
+    const manager = renderer?.actorEffects, state = audio?.getState?.(), owner = session?.getState?.().ownerId;
+    if (!manager || manager.retired || !manager.visible || !permitted() || !state?.enabled || !session?.getState().enabled) { if (displayKey) stopDisplay(); return; }
+    if (displayBlocked) return;
+    const graphRevision = getGraph()?.revision, routeRevision = routed?.routeRevision() ?? 0, contextEpoch = state.contextEpoch;
+    if (!Number.isSafeInteger(contextEpoch) || !Number.isSafeInteger(graphRevision) || typeof owner !== 'string') return;
+    backend.setDisplayContext?.({ worldId: batch.worldId, graphRevision, routeRevision });
+    const actorIds = [];
+    if (Number.isSafeInteger(manager.inspectedActorId)) actorIds.push(manager.inspectedActorId);
+    for (const actorId of renderer.effectTelemetryActors || []) { if (actorIds.length >= 16) break; if (!actorIds.includes(actorId)) actorIds.push(actorId); }
+    if (!actorIds.length) { if (displayKey) stopDisplay(); return; }
+    const identity = { worldId: batch.worldId, generation: batch.generation, executionEpoch, contextEpoch, graphRevision, routeRevision };
+    const key = JSON.stringify([batch.worldId, batch.generation, executionEpoch, contextEpoch, graphRevision, routeRevision, actorIds]);
+    if (key === displayKey && manager.subscription) return;
+    if (releaseDisplay) { const receipt = stopDisplay(); if (receipt.outcome !== 'complete') return; }
+    const release = connectProcgenActorEffectSource({ renderer, owner, identity, actorIds,
+      backend: { observeDisplaySamples: (listener, options) => dispatcher.observeDisplaySamples('physical-browser-audio', listener, options) },
+      getCorrelation: sample => clock.correlateDisplay({ executionEpoch: sample.executionEpoch, contextEpoch: sample.contextEpoch }), maxVoices: 16, rateHz: 20 });
+    if (release) { releaseDisplay = release; displayKey = key; }
+  };
   const processBatch = (batch, { bpm, playing = true, position = null } = {}) => {
     if (disposed || !playing) return Object.freeze([]);
     if (!permitted() && session?.getState().enabled) stop();
@@ -87,6 +117,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
         else leaseFailures++;
       }
     }
+    try { refreshDisplay(batch); } catch { displayErrors++; }
     return engine.processBatch(batch);
   };
   const stop = () => {
@@ -95,6 +126,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     executionSerial++; previousGeneration = null; executionEpoch = null;
     leaseUntil = null; leaseEpoch = null; leaseContext = null;
     return createProcgenRetirementScope().retire([
+      { name: 'display-observation', run: stopDisplay },
       { name: 'dispatch-generation', run: () => { if (generation !== null) return dispatcher.cancelGeneration(generation, epoch); } },
       { name: 'audio-session', run: () => session?.stop?.() },
       { name: 'clock', run: () => { clock.invalidate(); anchoredEpoch = null; anchoredBpm = null; } }
@@ -115,6 +147,6 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     synchronizeLaneInstruments: lanes => laneInstruments?.synchronize(lanes) || Promise.resolve([]),
     retryLaneInstruments: () => laneInstruments?.retry(getLanes()) || Promise.resolve([]),
     diagnostics: () => Object.freeze({ prepared, enabled: !!session?.getState().enabled, accepted, rejected,
-      clock: clock.diagnostics(), causal: engine.diagnostics(), dispatch: dispatcher.diagnostics(), leaseFailures,
+      clock: clock.diagnostics(), causal: engine.diagnostics(), dispatch: dispatcher.diagnostics(), leaseFailures, display: Object.freeze({ connected: !!releaseDisplay, errors: displayErrors, retirementBlocked: displayBlocked }),
       instruments: laneInstruments?.diagnostics() || null, renderers: routed?.backend.renderDiagnostics() || null }) };
 }

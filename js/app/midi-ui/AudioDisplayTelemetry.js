@@ -9,7 +9,7 @@ const validIdentity = value => value && text(value.worldId) && natural(value.gen
 
 // The host allocates bounded presentation objects only for active observers.
 // Musical receipts and commands never wait for this latest-wins mailbox.
-export function createAudioDisplayTelemetry({ owner, getContext, getContextEpoch, getVoices, send, resources } = {}) {
+export function createAudioDisplayTelemetry({ owner, getContext, getContextEpoch, getVoices, getRouteState = null, send, resources } = {}) {
   const observers = new Set(), routes = new Map(), latest = new Map();
   let contextStamp = null, resourceLease = null, tokens = null, sentTokens = null, sentInterval = 0, revision = 0, selected = 0, eligible = 0, stopped = false;
   const stats = { packets: 0, samples: 0, rejected: 0, stale: 0, observerErrors: 0, transportErrors: 0, droppedWindows: 0, identityUnavailable: 0 };
@@ -78,6 +78,12 @@ export function createAudioDisplayTelemetry({ owner, getContext, getContextEpoch
           !(packet.data instanceof Float64Array) || packet.data.length !== DISPLAY_VOICES * DISPLAY_WIDTH || !natural(packet.droppedWindows)) { stats.rejected++; return; }
       stats.packets++; stats.droppedWindows = Math.max(stats.droppedWindows, packet.droppedWindows);
       const context = getContext(), now = Math.ceil(context.currentTime * context.sampleRate);
+      let routeState = Object.freeze({ muted: null, evidenceClass: 'unknown', scope: 'pre-owner-bus', outputAudibility: 'unknown' });
+      try {
+        const observed = getRouteState?.();
+        if (typeof observed?.muted === 'boolean' && observed.evidenceClass === 'owner-routing-state') routeState = Object.freeze({ muted: observed.muted,
+          evidenceClass: 'owner-routing-state', scope: 'current-owner-and-master-route', observedAtFrame: now, outputAudibility: 'unknown' });
+      } catch { /* Missing route evidence cannot become an unmuted assertion. */ }
       for (let index = 0; index < packet.count; index++) {
         const at = index * DISPLAY_WIDTH, data = packet.data, slot = data[at], token = data[at + 1], route = routes.get(keyFor(slot, token));
         if (!route || route.voice.epochToken !== data[at + 2] || route.identity.generation !== data[at + 3] || route.identity.contextEpoch !== getContextEpoch()) { stats.stale++; continue; }
@@ -98,7 +104,7 @@ export function createAudioDisplayTelemetry({ owner, getContext, getContextEpoch
         const sample = Object.freeze({ ...route.identity, scope: 'actorVoice', sequence: serial, appliedFrame: applied,
           effectiveFrame: last - 1, windowStartFrame: first, windowEndFrame: last, validUntilFrame: last + Math.ceil(context.sampleRate / 2),
           quantities: Object.freeze(quantities), processingState: Object.freeze({ bypassed: false, tail: !!(flags & 1), ended: !!(flags & 2), faulted: !!(flags & 4), pending: false, unsupported: false }),
-          routeState: Object.freeze({ muted: null, evidenceClass: 'unknown', scope: 'pre-owner-bus' }), coverage: 'complete',
+          routeState, coverage: 'complete',
           selectionCoverage: Object.freeze({ eligible, selected, omitted: Math.max(0, eligible - selected), droppedWindows: stats.droppedWindows }),
           detector: Object.freeze({ tap: 'voice-pre-pan-pre-owner-bus', channels: 1, sampledFrames: frames, window: 'half-open-output-frames',
             normalization: 'unity-full-scale', envelope: 'window-peak', responseDelayFrames: last - first, detectorDelayFrames: last - first }), acousticReceipt: false });

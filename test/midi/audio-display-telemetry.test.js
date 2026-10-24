@@ -22,15 +22,24 @@ const packet = (slot = 0, token = 1, generation = 1, serial = 1) => {
   return { type: 'display-samples', protocol: PROTOCOL, displayProtocol: DISPLAY_PROTOCOL, revision: 1,
     sequence: serial, count: 1, data, droppedWindows: 0 };
 };
-const host = ({ owner = 'owner', resources } = {}) => {
+const host = ({ owner = 'owner', resources, getRouteState } = {}) => {
   const voices = [voice()], context = { sampleRate: 48000, currentTime: 0.05 }, state = { epoch: 4 }, messages = [];
   const telemetry = createAudioDisplayTelemetry({ owner, resources, getContext: () => context, getContextEpoch: () => state.epoch,
-    getVoices: () => voices, send: value => { messages.push(value.type === 'display-config' ? { ...value, tokens: value.tokens.slice() } : value); } });
+    getVoices: () => voices, getRouteState, send: value => { messages.push(value.type === 'display-config' ? { ...value, tokens: value.tokens.slice() } : value); } });
   telemetry.setContext(identity); telemetry.admit(voices[0], { actorId: 3, onsetId: 'onset' });
   return { telemetry, voices, context, state, messages };
 };
 
 describe('Worklet-owned display reductions', () => {
+  it('keeps current owner mute evidence separate from measured voice energy and acoustic audibility', () => {
+    let muted = false; const owner = host({ getRouteState: () => ({ muted, evidenceClass: 'owner-routing-state' }) });
+    const stop = owner.telemetry.observe(() => {}, { identity }); owner.telemetry.consume(packet());
+    expect(owner.telemetry.inspect()[0].routeState).to.include({ muted: false, outputAudibility: 'unknown', observedAtFrame: 2400 });
+    muted = true; owner.telemetry.consume(packet(0, 1, 1, 2));
+    expect(owner.telemetry.inspect()[0].routeState.muted).to.equal(true);
+    expect(owner.telemetry.inspect()[0].quantities.find(quantity => quantity.name === 'rms').value).to.equal(0.35);
+    expect(owner.telemetry.inspect()[0].acousticReceipt).to.equal(false); stop(); owner.telemetry.dispose();
+  });
   it('keeps diagnostics off inert and retains fixed storage with observations enabled', () => {
     const a = new OwnedSineKernel(48000), b = new OwnedSineKernel(48000); a.accept(command(), 1); b.accept(command(), 1);
     b.configureDisplay(wanted(), 2400, 1); const state = b.displayState, data = b.displayData;
