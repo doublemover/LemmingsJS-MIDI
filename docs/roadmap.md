@@ -2066,8 +2066,10 @@ the deferred qualification pass.
 
 Journal verification now admits checkpoint/chunk loading, canonical validation
 and hashing through the shared worker owner, using exact new byte/object counts
-and explicit legacy bounds. Owned source readers are implemented; query and
-reperformance integration follows before their complete acceptance qualification.
+and explicit legacy bounds. Owned queries now select records in the worker and
+retain result/index reservations through reader retirement. Detached replay,
+score projection and revoice consumers are being migrated to those owned pages
+and checkpoints before complete acceptance qualification.
 
 - [ ] Finish shared background job execution for import, export encoding,
   recovery and asset preparation under the shared worker/memory admission owner.

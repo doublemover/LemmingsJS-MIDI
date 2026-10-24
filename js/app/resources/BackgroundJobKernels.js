@@ -127,11 +127,11 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
   }
   const options = { maxBytes, maxNodes, maxStringBytes, estimatedPeakBytes, signal, current, onProgress, yieldControl };
   if (kind === 'verify-causal-source') {
-    if (!input || Object.keys(input).some(key => !['kind', 'ref', 'canonical', 'metadataOnly', 'maxRecords'].includes(key)) ||
+    if (!input || Object.keys(input).some(key => !['kind', 'ref', 'canonical', 'metadataOnly', 'maxRecords', 'selection'].includes(key)) ||
         !['chunk', 'checkpoint'].includes(input.kind) || typeof input.metadataOnly !== 'boolean' || !input.ref ||
         typeof input.ref.id !== 'string' || input.ref.id.length > 256 || !/^[a-f0-9]{64}$/.test(input.ref.hash) ||
         !Number.isSafeInteger(input.maxRecords) || input.maxRecords < 1 || input.maxRecords > 1024) throw problem('invalid-contract', 'Invalid causal source verification request.');
-    canonicalDataText(input.ref, { maxBytes: 16384, maxNodes: 4096 });
+    const referenceInventory = canonicalDataText(input.ref, { maxBytes: 16384, maxNodes: 4096 });
     const metadata = await inspectText(input.canonical, options); guard(signal, current);
     if (input.ref.bytes != null && metadata.bytes !== input.ref.bytes || metadata.bytes * 12 + metadata.nodes * 96 + 65536 > estimatedPeakBytes)
       throw problem('memory-capacity', 'Causal source byte or structure inventory exceeds its admitted representation.');
@@ -143,9 +143,31 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     if (encoded.text !== input.canonical || input.ref.nodes != null && encoded.nodes !== input.ref.nodes) throw problem('content-mismatch', 'Causal source is not the declared canonical object inventory.');
     if (input.kind === 'chunk') validateCausalChunk(body, input.ref, input.maxRecords);
     else if (!body || typeof body !== 'object' || Array.isArray(body)) throw problem('invalid-data', 'Causal checkpoint is not a component snapshot.');
-    const value = input.metadataOnly ? { kind: input.kind, ref: input.ref, bytes: metadata.bytes, nodes: encoded.nodes,
+    let value = input.metadataOnly ? { kind: input.kind, ref: input.ref, bytes: metadata.bytes, nodes: encoded.nodes,
       ...(input.kind === 'chunk' ? { previousHash: body.previousHash, firstSequence: body.firstSequence, lastSequence: body.lastSequence } : {}) } : body;
-    const retainedBytes = input.metadataOnly ? 32768 : metadata.bytes * 2 + metadata.nodes * 64;
+    let retainedBytes = input.metadataOnly ? referenceInventory.bytes.byteLength * 2 + referenceInventory.nodes * 64 + 4096 : metadata.bytes * 2 + metadata.nodes * 64;
+    if (input.selection != null) {
+      const selected = input.selection, bounded = (number, minimum = 0) => Number.isSafeInteger(number) && number >= minimum;
+      if (input.kind !== 'chunk' || input.metadataOnly || typeof selected !== 'object' || Array.isArray(selected) ||
+          Object.keys(selected).some(key => !['firstSequence', 'lastSequence', 'firstTick', 'lastTick', 'generation', 'kinds', 'throughSequence', 'limit', 'maxBytes', 'maxRecordBytes'].includes(key)) ||
+          !bounded(selected.firstSequence, 1) || !bounded(selected.lastSequence, selected.firstSequence) || !bounded(selected.firstTick) || !bounded(selected.lastTick, selected.firstTick) ||
+          selected.generation != null && !bounded(selected.generation) || !bounded(selected.throughSequence) || !bounded(selected.limit, 1) || selected.limit > 65536 ||
+          !bounded(selected.maxBytes, 1) || selected.maxBytes > MAX_BYTES || !bounded(selected.maxRecordBytes, 1) || selected.maxRecordBytes > MAX_BYTES ||
+          selected.kinds != null && (!Array.isArray(selected.kinds) || selected.kinds.length > 8 || selected.kinds.some(kind => typeof kind !== 'string' || kind.length > 64)))
+        throw problem('invalid-contract', 'Invalid causal chunk query selection.');
+      const records = []; let selectedBytes = 0, selectedNodes = 0, nextSequence = null;
+      for (const record of body.records) {
+        if (record.sequence < selected.firstSequence || record.sequence > Math.min(selected.lastSequence, selected.throughSequence) ||
+            record.tick < selected.firstTick || record.tick > selected.lastTick || selected.generation != null && record.generation !== selected.generation ||
+            selected.kinds && !selected.kinds.includes(record.kind)) continue;
+        if (records.length === selected.limit) { nextSequence = record.sequence; break; }
+        const representation = canonicalDataText(record, { maxBytes: selected.maxRecordBytes, maxNodes });
+        if (selectedBytes + representation.bytes.byteLength > selected.maxBytes) { nextSequence = record.sequence; break; }
+        records.push(record); selectedBytes += representation.bytes.byteLength; selectedNodes += representation.nodes;
+      }
+      value = { records, bytes: selectedBytes, nodes: selectedNodes, nextSequence };
+      retainedBytes = selectedBytes * 2 + selectedNodes * 64 + records.length * 256 + 4096;
+    }
     if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Verified source exceeds its result reservation.');
     return { value, inputBytes: metadata.bytes, nodes: encoded.nodes, retainedBytes };
   }

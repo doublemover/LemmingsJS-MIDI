@@ -3,6 +3,8 @@ import { createProcgenCausalJournal, verifyManifestHashes } from '../js/app/proc
 import { canonicalJournalText } from '../js/app/procgen/workstation/CausalJournalCanonical.js';
 import { createMemoryCausalStore } from './helpers/causalJournalStore.js';
 import { createResourceBudget } from '../js/app/resources/ResourceBudget.js';
+import { createBackgroundJobService } from '../js/app/resources/BackgroundJobService.js';
+import { createBackgroundWorkerAdmission } from '../js/app/resources/BackgroundWorkerAdmission.js';
 
 const definition = takeId => ({ takeId, documentId: 'doc:test', sourceVersions: { generator: 'procgen-workstation-1', numeric: 'finite-f64-minus-zero-v1' },
   captureProfile: { version: 1, id: 'test', factKinds: ['MotionCommitted'], descriptorKinds: [], stateKinds: [] },
@@ -15,6 +17,21 @@ const setup = options => {
 
 describe('durable causal take journal', function() {
   this.timeout(15000);
+  it('retains sparse selected records through an owned query without retaining whole chunk inputs', async () => {
+    const budget = createResourceBudget(), admission = createBackgroundWorkerAdmission(), jobs = createBackgroundJobService({ admission, Worker: null });
+    const { journal } = setup({ resourceBudget: budget, jobs, maxChunkRecords: 2 }), writer = await journal.createTake(definition('take:owned-query'));
+    writer.appendMany([marker(1), marker(2), marker(3), marker(4), marker(5)]); await writer.stop();
+    await journal.openTake('take:owned-query'); const baseline = budget.diagnostics().accountedBytes;
+    const query = await journal.queryOwned({ takeId: 'take:owned-query', kinds: ['marker'], limit: 2 });
+    expect(query.value.records.map(record => record.tick)).to.deep.equal([1, 2]); expect(query.value.nextSequence).to.equal(3);
+    expect(budget.diagnostics().accountedBytes).to.be.greaterThan(baseline); expect(admission.diagnostics().activeWorkers).to.equal(0);
+    expect(admission.diagnostics().retainedResults).to.equal(1); query.value.records[0].payload.name = 'private-view-edit';
+    query.release(); expect(query.release()).to.equal(false); expect(() => query.value).to.throw('retired');
+    expect(admission.diagnostics().retainedResults).to.equal(0); expect(budget.diagnostics().accountedBytes).to.equal(baseline);
+    const second = await journal.queryOwned({ takeId: 'take:owned-query', firstSequence: 1, lastSequence: 1, limit: 1 });
+    expect(second.value.records[0].payload.name).to.equal('marker:1'); second.release();
+    await journal.releaseQualifications().completion; expect(budget.diagnostics().accountedBytes).to.equal(0); jobs.dispose(); admission.dispose();
+  });
   it('publishes one new index reference per append with bounded compact metadata', async () => {
     const { journal, control, storage } = setup({ maxChunkRecords: 1 });
     const commit = storage.commitCausalTake, sizes = [];

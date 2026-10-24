@@ -114,8 +114,10 @@ export function createBackgroundJobService({ admission = backgroundWorkerAdmissi
       ownedWork = null;
       if (!retainInput) { input = null; releaseInput(); }
       const objectResult = result.value != null && typeof result.value === 'object';
-      const retainedBytes = Math.min(estimatedPeakBytes, Math.max(4096, result.retainedBytes ?? 0, (typeof result.value === 'string' ? result.value.length * 2 : 0) +
-        (retainInput || objectResult ? result.inputBytes * 2 + result.nodes * 64 : 0)));
+      if (kind === 'verify-causal-source' && !Number.isSafeInteger(result.retainedBytes)) throw failure('invalid-result', 'Verified causal source omitted its result footprint.');
+      const inferredBytes = kind === 'verify-causal-source' && !retainInput ? 0 : (typeof result.value === 'string' ? result.value.length * 2 : 0) +
+        (retainInput || objectResult ? result.inputBytes * 2 + result.nodes * 64 : 0);
+      const retainedBytes = Math.min(estimatedPeakBytes, Math.max(4096, result.retainedBytes ?? 0, inferredBytes));
       if (!lease.computationFinished({ retainedBytes })) throw failure('ownership-retired', 'Background computation owner retired before publication.');
       const receipt = Object.freeze({ protocol: BACKGROUND_JOB_PROTOCOL, jobId: lease.jobId, kind, ownerId, ownerEpoch, sourceRevision,
         state: 'computed', publication: 'not-committed', method, elapsedMs: Math.max(0, now() - startedAt),

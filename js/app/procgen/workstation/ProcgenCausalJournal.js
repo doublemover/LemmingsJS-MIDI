@@ -3,6 +3,7 @@ import { validateCausalChunk } from './CausalArchiveEntry.js';
 import { canonicalJournalText, estimateJournalBytes, cloneJournalData, freezeJournalData, hashJournalText, hashJournalData, journalError } from './CausalJournalCanonical.js';
 import { compactCausalCommit, causalTakeHead } from './CausalJournalLayout.js';
 import { createCausalSourceJobs } from './CausalSourceJobs.js';
+import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 
 const id = value => typeof value === 'string' && value.length > 0 && value.length <= 256;
 const nameReason = value => typeof value === 'string' && value.length > 0 && value.length <= 128;
@@ -10,6 +11,17 @@ const RECORD_KINDS = new Set(['physical-batch', 'musical-intents', 'intervention
 const validRange = value => value && Number.isSafeInteger(value.firstSequence) && Number.isSafeInteger(value.lastSequence) &&
   value.firstSequence > 0 && value.lastSequence >= value.firstSequence;
 const makeChunkId = (takeId, ordinal) => JSON.stringify([takeId, 'chunk', ordinal]);
+const ownedQueryResult = (value, sources, releaseIndex) => {
+  const retirement = createProcgenRetirementScope(); let released = false, releaseError = null;
+  return Object.freeze({ get value() { if (released) throw journalError('query-retired', 'The causal query reader has retired.'); return value; },
+    release() {
+      if (released) { if (releaseError) throw releaseError; return false; } released = true; value = null;
+      const receipt = retirement.retire([...sources.map((source, index) => ({ name: 'chunk-source-' + index, run: () => source.release() })),
+        { name: 'query-index', run: releaseIndex }]);
+      if (receipt.outcome !== 'complete') { releaseError = journalError('query-retirement-unknown', 'Causal query resource retirement is unresolved.', { retirement: receipt }); throw releaseError; }
+      sources.length = 0; return true;
+    }, retirementState: () => retirement.getReceipt() });
+};
 
 const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChunkBytes = 4194304,
   maxChunkRecords = 64, maxPendingBytes = 8388608, maxChunks = 4096, resourceBudget = null, onState = () => {}, jobs } = {}) => {
@@ -19,8 +31,18 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
   const reserve = (bytes, generation = 0) => {
     const token = {}, owner = 'causal-journal';
     resourceBudget?.reserve({ token, owner, generation, kind: 'checkpoint', bytes: Math.ceil(bytes), pinned: true, reloadable: false });
-    let released = false;
-    return () => { if (!released) { released = true; resourceBudget?.release({ token, owner }); } };
+    let released = false, attempted = false, releaseError = null;
+    return () => {
+      if (released) return false; if (attempted) throw releaseError;
+      attempted = true; releaseError = new Error('Causal journal reservation retirement is unresolved.');
+      try {
+        const acknowledged = resourceBudget?.release({ token, owner });
+        if (acknowledged === false || acknowledged && typeof acknowledged.then === 'function') {
+          if (acknowledged?.then) Promise.resolve(acknowledged).catch(() => {}); throw releaseError;
+        }
+      } catch (error) { releaseError = error; throw error; }
+      released = true; releaseError = null; return true;
+    };
   };
   const publish = update => storage.commitCausalTake(storage.causalIndexVersion === 2 ? compactCausalCommit(update) : update);
   const sourceJobs = resourceBudget ? createCausalSourceJobs({ storage, resourceBudget, jobs, maxChunkBytes, maxChunkRecords }) : null;
@@ -28,7 +50,7 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
   let qualifiedBytes = 0;
   const forgetQualification = takeId => {
     const entry = qualified.get(takeId);
-    if (entry) { qualifiedBytes -= entry.bytes; qualified.delete(takeId); entry.release?.(); }
+    if (entry) { entry.retiring = true; entry.release?.(); qualifiedBytes -= entry.bytes; qualified.delete(takeId); }
   };
   const createTake = async ({ takeId, takeName = 'Untitled take', documentId, sourceVersions, captureProfile, boundaryState = {}, initialCheckpoint,
     mapping, assetRefs = [], prefix = null } = {}) => {
@@ -232,7 +254,7 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
     const head = storage.loadCausalTakeHead ? await storage.loadCausalTakeHead(takeId) : null;
     const fingerprint = head ? canonicalJournalText(head, { maxBytes: 8 * 1048576 }).text : null;
     const cached = qualified.get(takeId);
-    if (!force && fingerprint && cached?.fingerprint === fingerprint) {
+    if (!force && fingerprint && !cached?.retiring && cached?.fingerprint === fingerprint) {
       qualified.delete(takeId); qualified.set(takeId, cached); return cached;
     }
     forgetQualification(takeId);
@@ -334,7 +356,7 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
     if (!head || canonicalJournalText(head, { maxBytes: 8 * 1048576 }).text !== entry.fingerprint)
       throw journalError('stale-revision', 'Causal take changed while reading the requested range.');
   };
-  const query = async ({ takeId, takeRevision = null, firstSequence = 1, lastSequence = Number.MAX_SAFE_INTEGER, firstTick = 0,
+  const queryOwned = async ({ takeId, takeRevision = null, firstSequence = 1, lastSequence = Number.MAX_SAFE_INTEGER, firstTick = 0,
     lastTick = Number.MAX_SAFE_INTEGER, generation = null, kinds = null, signal, limit = 4096 } = {}) => {
     if (!id(takeId) || !Number.isSafeInteger(firstSequence) || firstSequence < 1 || !Number.isSafeInteger(lastSequence) || lastSequence < firstSequence ||
         !Number.isSafeInteger(firstTick) || firstTick < 0 || !Number.isSafeInteger(lastTick) || lastTick < firstTick ||
@@ -343,28 +365,51 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
         !Number.isSafeInteger(limit) || limit < 1 || limit > 65536) throw new Error('Invalid causal take query.');
     const qualifiedTake = await qualifyTake(takeId, { signal }), manifest = qualifiedTake.manifest;
     const refs = selectRefs(qualifiedTake, firstSequence, lastSequence, firstTick, lastTick, generation), records = [];
-    let resultBytes = 0;
     if (takeRevision != null && takeRevision !== manifest.revision) throw journalError('stale-revision', 'The requested take revision is no longer current.');
-    for (const ref of refs) {
-      if (signal?.aborted) throw journalError('cancelled', 'Causal take query canceled.');
-      if (ref.lastSequence < firstSequence || ref.firstSequence > lastSequence || ref.lastTick < firstTick || ref.firstTick > lastTick) continue;
-      if (generation != null && !ref.generations.includes(generation) || kinds && ref.kinds && !ref.kinds.some(kind => kinds.includes(kind))) continue;
-      const chunk = await readChunk(ref);
-      for (const record of chunk.records) {
-        if (manifest.prefix && ref.takeId !== takeId && record.sequence > Math.min(manifest.prefix.throughSequence, ref.throughSequence ?? ref.lastSequence)) continue;
-        if (record.sequence < firstSequence || record.sequence > lastSequence || record.tick < firstTick || record.tick > lastTick ||
-            generation != null && record.generation !== generation || kinds && !kinds.includes(record.kind)) continue;
-        const bytes = canonicalJournalText(record, { maxBytes: maxRecordBytes }).bytes.length;
-        if (records.length >= limit || resultBytes + bytes > maxPendingBytes) {
-          await checkQualifiedRevision(qualifiedTake, signal);
-          return freezeJournalData({ takeId, takeRevision: manifest.revision, records, nextSequence: record.sequence, coverage: manifest.coverage });
+    const sources = [], releaseIndex = reserve(1048576 + qualifiedTake.bytes + refs.length * 32 + limit * 32);
+    const result = { takeId, takeRevision: manifest.revision, records, nextSequence: null, coverage: null };
+    let resultBytes = 0, completed = false;
+    const finish = async nextSequence => {
+      await checkQualifiedRevision(qualifiedTake, signal); result.nextSequence = nextSequence;
+      result.coverage = cloneJournalData(manifest.coverage, { maxBytes: 65536, maxNodes: 8192 });
+      Object.freeze(records); Object.freeze(result); completed = true; return ownedQueryResult(result, sources, releaseIndex);
+    };
+    try {
+      for (const ref of refs) {
+        if (signal?.aborted) throw journalError('cancelled', 'Causal take query canceled.');
+        if (ref.lastSequence < firstSequence || ref.firstSequence > lastSequence || ref.lastTick < firstTick || ref.firstTick > lastTick) continue;
+        if (generation != null && !ref.generations.includes(generation) || kinds && ref.kinds && !ref.kinds.some(kind => kinds.includes(kind))) continue;
+        if (sourceJobs) {
+          const source = await readSourceOwned('chunk', ref, { signal, selection: { firstSequence, lastSequence, firstTick, lastTick, generation, kinds,
+            throughSequence: manifest.prefix && ref.takeId !== takeId ? Math.min(manifest.prefix.throughSequence, ref.throughSequence ?? ref.lastSequence) : ref.lastSequence,
+            limit: Math.max(1, limit - records.length), maxBytes: records.length >= limit ? 1 : Math.max(1, maxPendingBytes - resultBytes), maxRecordBytes } });
+          sources.push(source); const selected = source.value;
+          if (selected.records.length) { records.push(...selected.records); resultBytes += selected.bytes; }
+          else { source.release(); sources.pop(); }
+          if (selected.nextSequence != null) return await finish(selected.nextSequence);
+          continue;
         }
-        resultBytes += bytes;
-        records.push(record);
+        const source = await readSourceOwned('chunk', ref, { signal }); sources.push(source); const chunk = source.value;
+        for (const record of chunk.records) {
+          if (manifest.prefix && ref.takeId !== takeId && record.sequence > Math.min(manifest.prefix.throughSequence, ref.throughSequence ?? ref.lastSequence)) continue;
+          if (record.sequence < firstSequence || record.sequence > lastSequence || record.tick < firstTick || record.tick > lastTick ||
+            generation != null && record.generation !== generation || kinds && !kinds.includes(record.kind)) continue;
+          const bytes = canonicalJournalText(record, { maxBytes: maxRecordBytes }).bytes.length;
+          if (records.length >= limit || resultBytes + bytes > maxPendingBytes) {
+            return await finish(record.sequence);
+          }
+          resultBytes += bytes;
+          records.push(record);
+        }
       }
+      return await finish(null);
+    } finally {
+      if (!completed) ownedQueryResult(null, sources, releaseIndex).release();
     }
-    await checkQualifiedRevision(qualifiedTake, signal);
-    return freezeJournalData({ takeId, takeRevision: manifest.revision, records, nextSequence: null, coverage: manifest.coverage });
+  };
+  const query = async options => {
+    const source = await queryOwned(options);
+    try { return freezeJournalData(source.value); } finally { source.release(); }
   };
   const verify = async (takeId, { signal } = {}) => {
     const qualification = await qualifyTake(takeId, { force: true, signal }), manifest = qualification.manifest;
@@ -425,10 +470,10 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
       captureProfile: parent.captureProfile, boundaryState: parent.boundaryState, initialCheckpoint: JSON.parse(checkpoint.canonical),
       mapping: parent.mapping, assetRefs: parent.assetRefs, prefix });
   };
-  return { createTake, openTake, query, verify, branch, readChunk, readCheckpoint, seek,
+  return { createTake, openTake, query, queryOwned, verify, branch, readChunk, readCheckpoint, seek,
     readChunkOwned: (ref, options) => readSourceOwned('chunk', ref, options),
     readCheckpointOwned: (ref, options) => readSourceOwned('checkpoint', ref, options),
-    releaseQualifications: () => { for (const takeId of qualified.keys()) forgetQualification(takeId); },
+    releaseQualifications: () => createProcgenRetirementScope().retire([...qualified.keys()].map(takeId => ({ name: 'take-qualification-' + takeId, run: () => forgetQualification(takeId) }))),
     qualificationDiagnostics: () => Object.freeze({ retained: qualified.size, estimatedBytes: qualifiedBytes, maximumBytes: 16 * 1048576 }) };
 };
 

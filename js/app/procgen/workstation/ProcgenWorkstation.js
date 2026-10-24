@@ -1353,7 +1353,9 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         ...removeListeners.map((remove, index) => ({ name: `listener-${index}`, run: remove })),
         { name: 'view', run: () => view.dispose() },
         { name: 'storage', run: () => {
-          const close = () => { causalJournal?.releaseQualifications(); return storage.close?.(); };
+          const close = () => createProcgenRetirementScope().retire([
+            { name: 'journal-qualifications', run: () => causalJournal?.releaseQualifications() }, { name: 'database', run: () => storage.close?.() }
+          ]);
           return pendingCausalStop || pendingWorkbenchStop ? Promise.all([pendingCausalStop, pendingWorkbenchStop]).then(close) : close();
         } }
       ]);

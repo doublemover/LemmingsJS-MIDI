@@ -10,6 +10,14 @@ const source = async value => { const encoded = canonicalDataText(value); return
 const waitTurn = () => new Promise(resolve => setTimeout(resolve, 0));
 
 describe('admitted causal source verification', () => {
+  it('retains only compact verification metadata after a large string source has been inspected', async () => {
+    const record = await source({ value: 'a'.repeat(32768) }), budget = createResourceBudget(), admission = createBackgroundWorkerAdmission();
+    const jobs = createBackgroundJobService({ admission, Worker: null }), storage = { loadCausalChunk() {}, loadCausalCheckpoint: async () => record };
+    const reader = createCausalSourceJobs({ storage, resourceBudget: budget, jobs }), lease = await reader.read('checkpoint', record.ref, { metadataOnly: true });
+    expect(lease.value).to.include({ kind: 'checkpoint', bytes: record.ref.bytes, nodes: record.ref.nodes });
+    expect(lease.receipt.retainedBytes).to.be.lessThan(32768); lease.release(); expect(budget.diagnostics().accountedBytes).to.equal(0);
+    jobs.dispose(); admission.dispose();
+  });
   it('admits storage loading, verifies exact bytes/object inventory and retains the result until its reader closes', async () => {
     const record = await source({ version: 2, components: { playing: false }, values: [1, 2, 3] }), budget = createResourceBudget(); let admitted = false;
     const admission = createBackgroundWorkerAdmission(), jobs = createBackgroundJobService({ admission, Worker: null });

@@ -314,3 +314,14 @@ the next integration step. The stored source is immutable; the exclusive parsed
 copy does not grant authority to modify it. Storage-side native delivery overhead
 remains an estimate, and malformed oversized stored records are rejected. New
 admission, inventory and late-storage fixtures are authored and unexecuted.
+
+`queryOwned` selects matching records in the source-verification worker. It
+retains the selected result leases and a separate metadata/index reservation
+until the caller releases the page. Sparse queries no longer retain or re-encode
+every full chunk in the UI thread. A returned continuation names the first
+matching record outside the page's record/byte bound. Private parsed edits cannot
+change stored canonical bytes. Result retirement attempts every independent
+source; failed releases stay charged and are not retried blindly. Qualification
+cache retirement likewise attempts all entries and retains failed accounting.
+The legacy convenience query deep-freezes its return for compatibility; runtime
+consumers are being migrated to explicit owned pages and checkpoints.
