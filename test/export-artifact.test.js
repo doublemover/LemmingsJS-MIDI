@@ -15,6 +15,34 @@ const anchor = (failClick = false) => {
 };
 
 describe('prepared export artifacts and delivery receipts', () => {
+  it('expires without a consumer poll while preserving borrowed and native digest ownership', async () => {
+    const budget = createResourceBudget(), artifact = prepare(Uint8Array.of(1, 2), { budgetAdapter: budget, lifetimeMs: 5, clock: () => 0 });
+    const lease = artifact.borrow(); let notifications = 0; artifact.onDiscard(() => { notifications++; });
+    await artifact.digest(); await new Promise(resolve => setTimeout(resolve, 15));
+    expect(artifact.metadata()).to.include({ retained: false, retirementReason: 'expired', activeLeases: 1 }); expect(notifications).to.equal(1);
+    expect(budget.diagnostics().accountedBytes).to.be.greaterThan(0); expect(() => artifact.borrow()).to.throw('expired');
+    lease.release(); expect(() => lease.blob).to.throw('released'); artifact.discard(); expect(notifications).to.equal(1);
+    expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+  it('checks injected-clock expiry and rejects invalid clocks before any allocation admission', async () => {
+    let time = 0; const budget = createResourceBudget(), artifact = prepare(Uint8Array.of(1), { budgetAdapter: budget, lifetimeMs: 100, clock: () => time });
+    await artifact.digest(); time = 101; expect(artifact.metadata()).to.include({ retained: false, retirementReason: 'expired' });
+    expect(budget.diagnostics().accountedBytes).to.equal(0);
+    expect(() => prepare(Uint8Array.of(1), { budgetAdapter: budget, clock: () => NaN })).to.throw('clock reading');
+    expect(budget.diagnostics().accountedBytes).to.equal(0);
+    const empty = prepare(new Uint8Array(0), { budgetAdapter: budget }); await empty.digest(); empty.discard(); expect(empty.metadata().budgetState).to.equal('released');
+  });
+  it('retains a replayable source lease until an accepted read and queued return actually settle', async () => {
+    let finish; const gate = new Promise(resolve => { finish = resolve; });
+    const artifact = prepareReplayableExportArtifact({ immutableSourceRef: 'owned:pending:1', formatVersion: 'bytes/v1', suggestedFilename: 'owned.bin',
+      openChunks: async function* () { await gate; yield Uint8Array.of(1); } });
+    const lease = artifact.borrow(), iterator = lease.openChunks()[Symbol.asyncIterator](), reading = iterator.next();
+    await Promise.resolve(); artifact.discard(); lease.release();
+    expect(artifact.metadata()).to.include({ retained: false, activeLeases: 1, sourceRetirement: 'waiting-for-source-leases' });
+    finish(); await reading; await new Promise(resolve => setTimeout(resolve, 0));
+    expect(artifact.metadata()).to.include({ activeLeases: 0, sourceRetirement: 'released' });
+    expect(() => lease.openChunks()).to.throw('retired');
+  });
   it('checks the absolute deadline before each immediately resolved source or sink step', async () => {
     for (const expiresDuring of ['open', 'read', 'write', 'progress']) {
       let time = 0, reads = 0, writes = 0, closes = 0, aborts = 0;

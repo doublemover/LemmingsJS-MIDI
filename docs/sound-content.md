@@ -170,3 +170,10 @@ project material. Reopening an already-minimal complete pack preserves its
 immutable ID/hash, and subset exports preserve only selected compilation data.
 The v1 inventory rejects unrelated opaque fields instead of bundling private
 project state inside a nominal sound pack.
+
+Prepared delivery lifetimes retire automatically, including when no UI polls
+metadata. Expiry notifies active deliveries and blocks new borrowing. Blob
+storage remains accounted while native hashing or a borrowed reader is active.
+Replayable delivery leases retain accepted iterator reads and cancellation
+until their actual promises settle; an unknown source close remains explicit.
+Expiry and a failed clock are reported separately from user cancellation.

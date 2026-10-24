@@ -32,10 +32,33 @@ const bytesFor = (value, maxBytes, mediaType) => {
 const errorKind = error => error?.name === 'AbortError' ? 'cancelled' : error?.name === 'NotAllowedError' ? 'permission-denied' :
   error?.name === 'QuotaExceededError' ? 'storage-full' : error?.name === 'TimeoutError' ? 'timeout' : 'sink-error';
 const nextId = kind => `${kind}-${Date.now().toString(36)}-${kind === 'artifact' ? ++nextArtifact : ++nextDelivery}`;
+const artifactClock = clock => {
+  if (typeof clock !== 'function') throw new TypeError('Invalid prepared artifact clock.');
+  const value = clock(); if (!Number.isFinite(value) || Math.abs(value) > Number.MAX_SAFE_INTEGER - 86400000) throw new TypeError('Invalid prepared artifact clock reading.'); return value;
+};
+const createArtifactLifetime = ({ clock, createdAt, lifetimeMs, onRetire }) => {
+  const expiresAt = createdAt + lifetimeMs, listeners = new Set(); let retired = false, reason = null, observed = createdAt;
+  const retire = why => {
+    if (retired) return; retired = true; reason = why; clearTimeout(timer);
+    for (const callback of listeners) { try { callback(); } catch { /* One observer cannot prevent retirement. */ } } listeners.clear();
+    try { onRetire(); } catch { /* Source ownership exposes its retained failure separately. */ }
+  };
+  const timer = setTimeout(() => retire('expired'), lifetimeMs); timer.unref?.();
+  const check = () => {
+    if (!retired) { try { observed = Math.max(observed, artifactClock(clock)); if (observed >= expiresAt) retire('expired'); } catch { retire('clock-unavailable'); } }
+    return !retired;
+  };
+  return Object.freeze({ expiresAt, check, isRetired: () => retired, reason: () => reason, discard: () => retire('discarded'),
+    observe(callback) { if (typeof callback !== 'function') throw new TypeError('Artifact observer must be a function.');
+      check(); if (retired) { try { callback(); } catch { /* Already-retired observation remains harmless. */ } return () => {}; }
+      listeners.add(callback); return () => listeners.delete(callback);
+    }
+  });
+};
 const waitForSink = (work, signal, timeoutMs = 30000) => new Promise((resolve, reject) => {
   let settled = false;
   const finish = (callback, value) => { if (settled) return; settled = true; clearTimeout(timer); signal?.removeEventListener('abort', abort); callback(value); };
-  const abort = () => finish(reject, Object.assign(new Error('Export delivery canceled.'), { name: 'AbortError' }));
+  const abort = () => finish(reject, signal?.reason instanceof Error ? signal.reason : Object.assign(new Error('Export delivery canceled.'), { name: 'AbortError' }));
   const timer = setTimeout(() => finish(reject, Object.assign(new Error('Export sink deadline exceeded.'), { name: 'TimeoutError' })), timeoutMs);
   signal?.addEventListener('abort', abort, { once: true });
   if (signal?.aborted) { Promise.resolve(work).catch(() => {}); abort(); return; }
@@ -52,22 +75,28 @@ export function prepareExportArtifact({ bytes, immutableSourceRef, formatVersion
     throw new TypeError('Invalid export filename.');
   if (!Number.isFinite(lifetimeMs) || lifetimeMs <= 0 || lifetimeMs > 24 * 60 * 60 * 1000) throw new RangeError('Invalid artifact lifetime.');
   if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > MAX_BROWSER_DOWNLOAD_BYTES) throw new RangeError('Invalid export staging limit.');
+  const createdAt = artifactClock(clock);
   const budgetToken = {};
   const predictedBytes = Math.min(maxBytes, typeof bytes === 'string' ? bytes.length * 3 :
     bytes instanceof Blob ? bytes.size : bytes instanceof ArrayBuffer || ArrayBuffer.isView(bytes) ? bytes.byteLength : maxBytes);
   let blob, budgetHeld = false;
   try {
-    if (budgetAdapter) { budgetAdapter.reserve({ token: budgetToken, owner: 'export', kind: 'export', bytes: predictedBytes,
+    if (budgetAdapter && predictedBytes) { budgetAdapter.reserve({ token: budgetToken, owner: 'export', kind: 'export', bytes: predictedBytes,
       previousBytes: 0, pinned: true, reloadable: false }); budgetHeld = true; }
     blob = bytesFor(bytes, maxBytes, mediaType);
-    budgetAdapter?.reserve({ token: budgetToken, owner: 'export', kind: 'export', bytes: blob.size,
-      previousBytes: predictedBytes, pinned: true, reloadable: false });
-  } catch (error) { if (budgetHeld) budgetAdapter?.release({ token: budgetToken, owner: 'export' }); throw error; }
-  const artifactId = nextId('artifact'), expiresAt = clock() + lifetimeMs, byteLength = blob.size;
-  let discarded = false, leases = 0, digestState = blob.size <= MAX_DIGEST_BYTES ? 'pending' : 'omitted-over-budget', digest = null;
+    if (budgetAdapter && (budgetHeld || blob.size)) { budgetAdapter.reserve({ token: budgetToken, owner: 'export', kind: 'export', bytes: blob.size,
+      previousBytes: predictedBytes, pinned: true, reloadable: false }); budgetHeld = blob.size > 0; }
+  } catch (error) {
+    if (budgetHeld) { try { const ack = budgetAdapter.release({ token: budgetToken, owner: 'export' });
+      if (ack === false || ack && typeof ack.then === 'function') { if (ack?.then) Promise.resolve(ack).catch(() => {}); throw new Error('Export preparation reservation release was not acknowledged.'); }
+    } catch (retirementError) { throw Object.assign(new Error('Export preparation failed with unresolved reservation retirement.'), { cause: error, retirementError }); } }
+    throw error;
+  }
+  const artifactId = nextId('artifact'), byteLength = blob.size;
+  let lifetime = null, leases = 0, digestState = blob.size <= MAX_DIGEST_BYTES ? 'pending' : 'omitted-over-budget', digest = null;
   let digestPending = digestState === 'pending', releaseAttempted = false, releaseError = null;
   const retireBlob = () => {
-    if (!discarded || leases || digestPending) return;
+    if (!lifetime?.isRetired() || leases || digestPending) return;
     blob = null;
     if (budgetHeld) {
       if (releaseAttempted) throw releaseError;
@@ -82,7 +111,7 @@ export function prepareExportArtifact({ bytes, immutableSourceRef, formatVersion
       budgetHeld = false; releaseError = null;
     }
   };
-  const discardListeners = new Set();
+  lifetime = createArtifactLifetime({ clock, createdAt, lifetimeMs, onRetire: retireBlob });
   const digestPromise = digestState === 'pending' ? (async () => {
     try {
       const subtle = globalThis.crypto?.subtle;
@@ -93,23 +122,21 @@ export function prepareExportArtifact({ bytes, immutableSourceRef, formatVersion
     } catch { digestState = 'unavailable'; return null; }
     finally { digestPending = false; try { retireBlob(); } catch { /* The retained release failure is exposed in artifact metadata. */ } }
   })() : Promise.resolve(null);
-  const metadata = () => Object.freeze({ artifactId, immutableSourceRef, formatVersion, mediaType, suggestedFilename,
+  const metadata = () => { const retained = lifetime.check(); return Object.freeze({ artifactId, immutableSourceRef, formatVersion, mediaType, suggestedFilename,
     byteLength, deliveryModes: Object.freeze(['anchor', 'file-handle']), digestState, sha256: digest,
-    coverageLossReportRef, expiresAt, retained: !discarded, activeLeases: leases,
-    budgetState: releaseError ? 'failed-or-unknown' : budgetHeld ? discarded ? 'waiting-for-leases-or-digest' : 'retained' : budgetAdapter ? 'released' : 'unbudgeted' });
+    coverageLossReportRef, expiresAt: lifetime.expiresAt, retained, retirementReason: lifetime.reason(), activeLeases: leases,
+    budgetState: releaseError ? 'failed-or-unknown' : budgetHeld ? !retained ? 'waiting-for-leases-or-digest' : 'retained' : budgetAdapter ? 'released' : 'unbudgeted' }); };
   return Object.freeze({ artifactId, metadata, digest: () => digestPromise,
-    onDiscard(callback) {
-      if (discarded) { callback(); return () => {}; }
-      discardListeners.add(callback); return () => discardListeners.delete(callback);
-    },
+    onDiscard: lifetime.observe,
     borrow() {
-      if (discarded || clock() >= expiresAt) throw Object.assign(new Error('Prepared export has expired.'), { kind: 'artifact-expired' });
+      if (!lifetime.check()) throw Object.assign(new Error('Prepared export has expired.'), { kind: 'artifact-expired' });
       leases++;
-      let released = false;
-      return Object.freeze({ blob, release() { if (!released) { released = true; leases--; retireBlob(); } } });
+      let released = false, leasedBlob = blob;
+      return Object.freeze({ get blob() { if (released) throw new Error('Export delivery lease was released.'); return leasedBlob; },
+        release() { if (!released) { released = true; leasedBlob = null; leases--; retireBlob(); } } });
     },
     discard() {
-      if (!discarded) { discarded = true; for (const listener of discardListeners) { try { listener(); } catch { /* Retirement continues. */ } } discardListeners.clear(); }
+      lifetime.discard();
       retireBlob();
       return metadata();
     } });
@@ -130,32 +157,53 @@ export function prepareReplayableExportArtifact({ openChunks, immutableSourceRef
       byteLength != null && byteLength > maxDeliveryBytes ||
       !Number.isFinite(lifetimeMs) || lifetimeMs <= 0 || lifetimeMs > 24 * 60 * 60 * 1000 ||
       coverageLossReportRef != null && typeof coverageLossReportRef !== 'string') throw new TypeError('Invalid replayable export artifact.');
-  const artifactId = nextId('artifact'), expiresAt = clock() + lifetimeMs;
-  let discarded = false, leases = 0;
-  const discardListeners = new Set();
-  const metadata = () => Object.freeze({ artifactId, immutableSourceRef, formatVersion, mediaType,
+  const createdAt = artifactClock(clock), artifactId = nextId('artifact');
+  let leases = 0, sourceOpener = openChunks, unknownSources = 0, lifetime = null;
+  const retireSource = () => { if (lifetime?.isRetired() && !leases) sourceOpener = null; };
+  lifetime = createArtifactLifetime({ clock, createdAt, lifetimeMs, onRetire: retireSource });
+  const metadata = () => { const retained = lifetime.check(); return Object.freeze({ artifactId, immutableSourceRef, formatVersion, mediaType,
     suggestedFilename, byteLength, streamingEstimate, maxDeliveryBytes,
     deliveryModes: Object.freeze(['file-handle']), digestState: 'omitted-streaming',
-    sha256: null, coverageLossReportRef, expiresAt, retained: !discarded, activeLeases: leases });
+    sha256: null, coverageLossReportRef, expiresAt: lifetime.expiresAt, retained, retirementReason: lifetime.reason(), activeLeases: leases,
+    sourceRetirement: unknownSources ? 'failed-or-unknown' : !sourceOpener ? 'released' : retained ? 'retained' : 'waiting-for-source-leases' }); };
   return Object.freeze({ artifactId, metadata, digest: () => Promise.resolve(null),
-    onDiscard(callback) {
-      if (discarded) { callback(); return () => {}; }
-      discardListeners.add(callback); return () => discardListeners.delete(callback);
-    },
+    onDiscard: lifetime.observe,
     borrow() {
-      if (discarded || clock() >= expiresAt) throw Object.assign(new Error('Prepared export has expired.'), { kind: 'artifact-expired' });
+      if (!lifetime.check()) throw Object.assign(new Error('Prepared export has expired.'), { kind: 'artifact-expired' });
       leases++;
-      let released = false, opened = false;
+      let released = false, opened = false, retired = false, source = null, iterator = null, pending = 0, ended = false, returnPromise = null, sourceError = null;
+      let opener = sourceOpener;
+      const acknowledge = () => { if (!retired && released && !pending && (!opened || ended) && !sourceError) { retired = true; source = null; iterator = null; opener = null; leases--; retireSource(); } };
+      const invoke = (method, value) => {
+        pending++; const target = iterator;
+        const result = Promise.resolve().then(() => target[method](value));
+        return result.then(item => { if (!item || typeof item.done !== 'boolean') throw new Error('Replayable iterator returned invalid progress.');
+          if (item.done) { ended = true; if (sourceError) { sourceError = null; unknownSources--; } } return released ? { done: true, value: undefined } : item;
+        }).catch(error => { if (!ended && !sourceError) { sourceError = error; unknownSources++; } throw error; })
+          .finally(() => { pending--; acknowledge(); });
+      };
+      const closeSource = () => {
+        if (returnPromise) return returnPromise;
+        if (!opened || ended) { ended = true; acknowledge(); return Promise.resolve({ done: true }); }
+        if (typeof iterator?.return !== 'function') { if (!sourceError) { sourceError = new Error('Replayable source cannot acknowledge cancellation.'); unknownSources++; } return Promise.reject(sourceError); }
+        returnPromise = invoke('return'); returnPromise.catch(() => {}); return returnPromise;
+      };
       return Object.freeze({ openChunks() {
+        if (released || !lifetime.check()) throw Object.assign(new Error('Replayable delivery lease is retired.'), { kind: 'artifact-expired' });
         if (opened) throw new Error('A delivery lease opens its source only once.');
         opened = true;
-        const source = openChunks();
+        source = opener();
         if (!source || typeof source[Symbol.asyncIterator] !== 'function') throw Object.assign(new Error('Replayable source is not an async iterable.'), { kind: 'invalid-source' });
-        return source;
-      }, release() { if (!released) { released = true; leases--; } } });
+        iterator = source[Symbol.asyncIterator]();
+        if (!iterator || typeof iterator.next !== 'function') throw Object.assign(new Error('Replayable source has no iterator.'), { kind: 'invalid-source' });
+        return Object.freeze({ [Symbol.asyncIterator]() { return this; }, next(value) {
+          if (released || !lifetime.check()) return Promise.reject(Object.assign(new Error('Replayable delivery lease is retired.'), { kind: 'artifact-expired' }));
+          if (pending) return Promise.reject(new Error('Replayable delivery reads must be sequential.')); return invoke('next', value);
+        }, return: closeSource });
+      }, release() { if (!released) { released = true; if (opened && !ended) closeSource().catch(() => {}); acknowledge(); } } });
     },
     discard() {
-      if (!discarded) { discarded = true; for (const listener of discardListeners) { try { listener(); } catch { /* Retirement continues. */ } } discardListeners.clear(); }
+      lifetime.discard(); retireSource();
       return metadata();
     } });
 }
@@ -198,12 +246,16 @@ export async function deliverArtifactToFileHandle(artifact, handle, { signal, on
   if (!Number.isFinite(observedTime)) throw new TypeError('Invalid export delivery clock reading.');
   const startedAt = observedTime, deadline = startedAt + maxDeliveryMs;
   const ownerAbort = new AbortController();
-  const forwardAbort = () => ownerAbort.abort();
+  const forwardAbort = () => { const reason = artifact.metadata().retirementReason;
+    ownerAbort.abort(reason === 'expired' ? Object.assign(new Error('Prepared export expired during delivery.'), { kind: 'artifact-expired' }) :
+      reason === 'clock-unavailable' ? Object.assign(new Error('Prepared export clock became unavailable.'), { kind: 'artifact-clock-unavailable' }) : Object.assign(new Error('Export delivery canceled.'), { name: 'AbortError' }));
+  };
   signal?.addEventListener('abort', forwardAbort, { once: true });
   const unwatch = artifact.onDiscard(forwardAbort);
   if (signal?.aborted) ownerAbort.abort();
   const preflight = () => {
-    if (ownerAbort.signal.aborted) throw Object.assign(new Error('Export delivery canceled.'), { name: 'AbortError' });
+    if (!artifact.metadata().retained) forwardAbort();
+    if (ownerAbort.signal.aborted) throw ownerAbort.signal.reason || Object.assign(new Error('Export delivery canceled.'), { name: 'AbortError' });
     const reading = clock();
     if (!Number.isFinite(reading)) throw new TypeError('Invalid export delivery clock reading.');
     observedTime = Math.max(observedTime, reading);
@@ -231,11 +283,13 @@ export async function deliverArtifactToFileHandle(artifact, handle, { signal, on
     else iterator = lease.openChunks()[Symbol.asyncIterator]();
     phase = 'writing';
     while (true) {
+      phase = 'reading';
       const { done, value } = await wait(() => reader ? reader.read() : iterator.next());
       if (done) break;
       if (!(value instanceof Uint8Array)) throw Object.assign(new Error('Export source yielded invalid bytes.'), { kind: 'invalid-source' });
       if (bytesWritten + value.byteLength > (artifact.metadata().maxDeliveryBytes || MAX_BROWSER_DOWNLOAD_BYTES))
         throw Object.assign(new Error('Export stream exceeded its declared limit.'), { kind: 'artifact-limit' });
+      phase = 'writing';
       await wait(() => writable.write(value));
       bytesWritten += value.byteLength;
       try { onProgress(bytesWritten, artifact.metadata().byteLength ?? artifact.metadata().streamingEstimate); } catch { /* Presentation callbacks cannot fail delivery. */ }
