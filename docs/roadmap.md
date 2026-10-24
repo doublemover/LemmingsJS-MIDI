@@ -2057,6 +2057,13 @@ auditions, route changes, capture inclusion and actual source retirement. Physic
 device separation, multichannel identification, latency and combined workload
 qualification remain deferred; the UI does not claim private headphone routing.
 
+Committed interval admission now checks future overlaps and lease extensions
+across native, sample and worklet voices, with separate live/cue source and tail
+quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical
+admission and actual kernel application remain separate receipts. Measured cost
+profiles, request-set canonicalization and combined device stress still require
+the deferred qualification pass.
+
 - [ ] Finish shared background job execution for import, export encoding,
   recovery and asset preparation under the shared worker/memory admission owner.
   Registered import/export/checksum/hash jobs now share admission with exact

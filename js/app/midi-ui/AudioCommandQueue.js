@@ -27,13 +27,30 @@ export function createAudioCommandQueue({ capacity = 512, terminalReserve = 64, 
     while (count < commands.length && count < maximum && commands[count].frame <= frame) count++;
     return commands.splice(0, count);
   };
+  const enqueueMany = (batch, currentFrame) => {
+    if (!Array.isArray(batch) || !batch.length || batch.length > capacity || !Number.isSafeInteger(currentFrame) || currentFrame < 0 ||
+        batch.some(command => !command || !Number.isSafeInteger(command.frame) || command.frame < 0 || !Number.isSafeInteger(command.sequence) ||
+          command.sequence < 0 || command.frame - currentFrame > maxHorizonFrames)) {
+      counters.rejected++; return { status: 'rejected', reason: 'invalid-command-batch-or-horizon' };
+    }
+    const nonterminal = batch.filter(command => !terminal(command)).length;
+    if (commands.length + batch.length > capacity || nonterminal && commands.length + nonterminal > capacity - terminalReserve) {
+      counters.rejected++; return { status: 'rejected', reason: 'audio-batch-capacity' };
+    }
+    const staged = batch.map(command => Object.freeze({ ...command }));
+    for (const sealed of staged) {
+      let index = commands.length; while (index > 0 && before(sealed, commands[index - 1])) index--;
+      commands.splice(index, 0, sealed);
+    }
+    counters.accepted += batch.length; return { status: 'accepted', stage: 'queued', count: batch.length };
+  };
   const invalidate = predicate => {
     let removed = 0;
     for (let index = commands.length - 1; index >= 0; index--) if (predicate(commands[index])) { commands.splice(index, 1); removed++; }
     counters.invalidated += removed; return removed;
   };
   const clear = () => invalidate(() => true);
-  return { enqueue, drainThrough, invalidate, clear, some: predicate => commands.some(predicate),
+  return { enqueue, enqueueMany, drainThrough, invalidate, clear, some: predicate => commands.some(predicate),
     firstFrame: () => commands[0]?.frame ?? null,
     diagnostics: () => Object.freeze({ ...counters, queued: commands.length, capacity, terminalReserve, maxHorizonFrames }) };
 }

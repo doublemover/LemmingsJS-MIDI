@@ -657,3 +657,30 @@ The separate sink API and its permission/scope constraints follow
 [media-element setSinkId](https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/setSinkId)
 and [selectAudioOutput](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/selectAudioOutput).
 No multichannel socket mapping is claimed from channel-count capability alone.
+
+## Committed interval admission
+
+Onsets check the complete requested interval against already committed native,
+sample and worklet voice records. A future voice inside a newly submitted earlier
+note now participates in admission. The shared fixed-storage sweep groups equal
+time boundaries, charges actual sample-layer counts, and checks semantic patch
+limits independently. Its storage is reserved before allocation with the graph.
+Logical gates and rendered release tails have separate bounds. Live and cue each
+retain a source-reservation quota, so queued cue sources and tails cannot occupy
+the live owner's prepared-source headroom. Workstation defaults are 32 live
+gates/64 live source reservations and 4 cue gates/8 cue source reservations.
+
+Lease renewal preflights all affected intervals before changing deadlines or
+native automation. Worklet lease commands enter the host queue as a complete
+batch, preserving terminal capacity. Worklet End cannot silently extend its
+admitted lifetime; receipts report requested/effective release frames and any
+bounded deadline. Legacy fairness now scopes lane counts by owner. A permitted
+legacy steal must fit the remaining interval and tail bounds and stays inside
+its workload; it cannot revoke an incompatible backend's source implicitly.
+
+These are committed-submission admission rules, not a claim that every arbitrary
+ordering of online requests produces identical accepted musical material.
+Permutation fixtures qualify peak accounting separately. Exact request-set
+canonicalization, graph-specific measured cost profiles and device p95/p99
+qualification remain acceptance work. New interval, queue and reproduced
+future-overlap fixtures are authored and unexecuted.

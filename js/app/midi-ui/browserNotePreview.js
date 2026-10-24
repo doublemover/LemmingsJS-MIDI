@@ -6,6 +6,7 @@ import { createAudioResourceLeases, releaseAudioResourceAfterRetirement } from '
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 import { createOwnedCueRouting } from './OwnedCueRouting.js';
 import { createForegroundAuditionOwner } from './ForegroundAuditionOwner.js';
+import { createAudioIntervalAdmission, audioIntervalStorageBytes } from './AudioIntervalAdmission.js';
 const retirementState = receipt => receipt ? { state: receipt.state, outcome: receipt.outcome,
   failures: receipt.resources.filter(resource => ['failed', 'unknown'].includes(resource.status)).map(resource => ({ name: resource.name, status: resource.status, error: resource.error })) } : null;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -74,8 +75,11 @@ class BrowserNotePreview {
     this._maxVoices = clamp(Math.trunc(finite(maxVoices, 32)), 1, MAX_RENDER_VOICES);
     if (!Number.isSafeInteger(cueVoices) || cueVoices < 0 || cueVoices > 8 || this._maxVoices + cueVoices > MAX_RENDER_VOICES) throw new RangeError('Cue workload requires an explicit spare voice quota.');
     this._maxCueVoices = cueVoices;
-    this._maxScheduledVoices = Math.max(MAX_SCHEDULED_VOICES, this._maxVoices + cueVoices + MAX_RELEASE_TAILS);
+    this._maxLiveScheduledVoices = Math.max(MAX_SCHEDULED_VOICES, this._maxVoices + MAX_RELEASE_TAILS);
+    this._maxCueScheduledVoices = cueVoices * 2;
+    this._maxScheduledVoices = this._maxLiveScheduledVoices + this._maxCueScheduledVoices;
     this._cueRouting = null; this._createMediaElement = createMediaElement; this._mediaDevices = mediaDevices;
+    this._intervalAdmission = null;
     this._foregroundAuditions = createForegroundAuditionOwner({ onChange: () => this._setStatus(this._status, this._message) });
     this._voiceSteals = 0;
     this._voiceDrops = 0;
@@ -152,7 +156,8 @@ class BrowserNotePreview {
       name: 'Browser audio preview' + (owner == null ? '' : ' (' + owner + ')'),
       supportsPerNotePan: true, supportsPerNoteInstrument: true, supportsIndependentNoteGates: true,
       isVoiceActive: token => this._isVoiceActive(token, owner),
-      canAllocateVoice: () => this._renderVoiceCount() < this._maxScheduledVoices || [...this._voices].some(voice => this._voiceFinished(voice)),
+      canAllocateVoice: () => this._workloadVoiceCount(owner) < (this._workloadClass(owner) === 'cue' ? this._maxCueScheduledVoices : this._maxLiveScheduledVoices) ||
+        [...this._voices].some(voice => (voice.workloadClass || 'live') === this._workloadClass(owner) && this._voiceFinished(voice)),
       supportsPlaybackMetadata: true, channels: Object.freeze(channels),
       clear: () => this._clearVoices(null, owner)
     });
@@ -169,8 +174,39 @@ class BrowserNotePreview {
     return count;
   }
 
-  _hasWorkloadVoiceCapacity(owner, cost = 1, voices = this._voices) {
-    return this._workloadVoiceCount(owner, voices) + cost <= (this._workloadClass(owner) === 'cue' ? this._maxCueVoices : this._maxVoices);
+  _inspectVoiceInterval(owner, { start, end, releaseAt, cost = 1, overrides = null, patchVoices = null, patchLimit = null } = {}) {
+    if (!this._intervalAdmission) return Object.freeze({ accepted: false, reason: 'interval-owner-unavailable' });
+    const workload = this._workloadClass(owner), limit = workload === 'cue' ? this._maxCueVoices : this._maxVoices;
+    const sourceLimit = workload === 'cue' ? this._maxCueScheduledVoices : this._maxLiveScheduledVoices;
+    if (this._workloadVoiceCount(owner) + cost > sourceLimit) return Object.freeze({ accepted: false, reason: 'workload-source-reservations' });
+    const gate = this._intervalAdmission.inspect({ voices: this._voices, first: start, last: Math.max(start, releaseAt), cost, limit, mode: 'gate', workload, overrides });
+    if (!gate.accepted) return gate;
+    const sources = this._intervalAdmission.inspect({ voices: this._voices, first: start, last: end, cost, limit: this._maxScheduledVoices, overrides });
+    if (!sources.accepted) return sources;
+    if (patchVoices && patchLimit != null) return this._intervalAdmission.inspect({ voices: patchVoices, first: start, last: Math.max(start, releaseAt), cost: 1,
+      limit: patchLimit, mode: 'gate', semantic: true, overrides });
+    return gate;
+  }
+
+  _inspectVoiceExtensions(changes, { patchVoices = null, patchLimit = null } = {}) {
+    if (!this._intervalAdmission) return Object.freeze({ accepted: false, reason: 'interval-owner-unavailable' });
+    const first = this._context.currentTime, workloads = new Set(); let last = first;
+    for (const [voice, interval] of changes) {
+      if (!this._voices.has(voice) || !Number.isFinite(interval.end) || !Number.isFinite(interval.releaseAt) || interval.end < voice.start ||
+          interval.releaseAt < voice.start || interval.releaseAt > interval.end) return Object.freeze({ accepted: false, reason: 'invalid-extended-interval' });
+      last = Math.max(last, voice.end, interval.end); workloads.add(voice.workloadClass || 'live');
+    }
+    if (last === first) return Object.freeze({ accepted: true, reason: null });
+    for (const workload of workloads) {
+      const gate = this._intervalAdmission.inspect({ voices: this._voices, first, last, cost: 0, limit: workload === 'cue' ? this._maxCueVoices : this._maxVoices,
+        mode: 'gate', workload, overrides: changes });
+      if (!gate.accepted) return gate;
+    }
+    const sources = this._intervalAdmission.inspect({ voices: this._voices, first, last, cost: 0, limit: this._maxScheduledVoices, overrides: changes });
+    if (!sources.accepted) return sources;
+    if (patchVoices && patchLimit != null) return this._intervalAdmission.inspect({ voices: patchVoices, first, last, cost: 0, limit: patchLimit,
+      mode: 'gate', semantic: true, overrides: changes });
+    return sources;
   }
 
   getMonitorRouteState() { return this._cueRouting?.state() || Object.freeze({ state: 'muted', mode: 'muted', muted: true, revision: 0,
@@ -264,6 +300,7 @@ class BrowserNotePreview {
         if (session.enableOperation !== operation) { resolve(false); return; }
         const accepted = ready === true && !session.disposed && !this._disposed && operation.generation === session.generation;
         session.enabled = accepted; session.starting = false;
+        if (!accepted && workloadClass === 'cue') this._cueRouting?.stop();
         // Retain the operation through notification so reentrant callers share it.
         session.report();
         if (session.enableOperation === operation) { session.enableOperation = null; session.enablePromise = null; }
@@ -337,6 +374,7 @@ class BrowserNotePreview {
       activeVoices: this._voices.size, sharedMix: this._sessions.size > 0, sessionCount: this._sessions.size,
       maxVoices: this._maxVoices, maxScheduledVoices: this._maxScheduledVoices,
       workload: { liveVoices: this._maxVoices, cueVoices: this._maxCueVoices, aggregateVoices: this._maxVoices + this._maxCueVoices,
+        liveSourceReservations: this._maxLiveScheduledVoices, cueSourceReservations: this._maxCueScheduledVoices,
         cueCanStealLive: false }, monitorRoute: this.getMonitorRouteState(),
       audition: this.getAuditionState(),
       voiceSteals: this._voiceSteals, voiceDrops: this._voiceDrops,
@@ -441,7 +479,8 @@ class BrowserNotePreview {
         let resourceLease;
         try {
           resourceLease = this._audioResources.reserve({ kind: 'mix-graph', generation: this._generation,
-            bytes: 4097 * 4, estimateBytes: 65536 });
+            bytes: 4097 * 4 + audioIntervalStorageBytes(this._maxScheduledVoices + 1), estimateBytes: 65536 });
+          this._intervalAdmission = createAudioIntervalAdmission({ maxIntervals: this._maxScheduledVoices + 1 });
           context = this._createContext();
           master = context.createGain();
           master.gain.value = this._volume * this._masterVolume;
@@ -463,6 +502,7 @@ class BrowserNotePreview {
           this._compressorOutput = compressorOutput;
           this._graphResourceLease = resourceLease;
         } catch (error) {
+          this._intervalAdmission = null;
           resourceLease?.release();
           master?.disconnect();
           limiter?.disconnect();
@@ -525,7 +565,7 @@ class BrowserNotePreview {
       { name: 'closed-context-acknowledgment', run: () => { acknowledgment = this._reconcileClosedContext(context); return acknowledgment; } },
       { name: 'context-references', run: () => {
         this._channels.clear(); this._noiseBuffer = null; this._master = null; this._limiter = null; this._compressor = null; this._compressorOutput = null;
-        this._captureAnalyser = null; this._captureSamples = null; this._context = null; this._graphResourceLease = null; this._noiseResourceLease = null; this._cueRouting = null;
+        this._captureAnalyser = null; this._captureSamples = null; this._context = null; this._graphResourceLease = null; this._noiseResourceLease = null; this._cueRouting = null; this._intervalAdmission = null;
         if (acknowledgment?.outcome === 'complete') this._retirementFaults.clear();
       } }
     ]);
@@ -597,7 +637,7 @@ class BrowserNotePreview {
       { name: 'context-listener', run: () => context?.removeEventListener?.('statechange', this._onContextState) },
       ...[...this._channels].map(([key, channel]) => ({ name: `channel-${key}`, run: () => this._retireChannel(key, channel) })),
       ...['_master', '_limiter', '_compressor', '_compressorOutput', '_captureAnalyser'].map(field => ({ name: field, run: () => { this[field]?.disconnect(); this[field] = null; } })),
-      { name: 'buffers', run: () => { this._noiseBuffer = null; this._captureSamples = null; } },
+      { name: 'buffers', run: () => { this._noiseBuffer = null; this._captureSamples = null; this._intervalAdmission = null; } },
       { name: 'resource-reservations', run: () => this._audioResources.dispose() },
       { name: 'observers', run: () => this._observers.clear() },
       { name: 'context', run: () => {
@@ -865,7 +905,7 @@ class BrowserNotePreview {
     for (const voice of this._voices) {
       if (this._voiceFinished(voice)) this._destroyVoice(voice, 'inaudible-voice-reuse');
     }
-    const incoming = { priority: finite(options.priority, 1), laneIndex: options.laneIndex ?? options.playback?.laneIndex ?? 0 };
+    const incoming = { priority: finite(options.priority, 1), laneIndex: options.laneIndex ?? options.playback?.laneIndex ?? 0, owner: options.owner ?? null };
     const drop = reason => {
       this._voiceDrops += 1;
       this._observe('drop', { ...options.capture, type: 'noteOn', note, channel: number, owner: options.owner, ...incoming, reason });
@@ -875,12 +915,7 @@ class BrowserNotePreview {
     let resourceLease;
     try { resourceLease = this._audioResources.reserveNativeVoice(options.owner ?? null, this._generation); }
     catch { return drop('audio-resource-budget'); }
-    const simultaneous = [...this._voices].filter(voice => !voice.stolen && (voice.renderCost > 1 || voice.start <= start && voice.releaseAt > start));
     let victim = null;
-    if (!this._hasWorkloadVoiceCapacity(options.owner, 1, simultaneous)) {
-      victim = selectLocalAudioVoice(simultaneous.filter(voice => (voice.workloadClass || 'live') === this._workloadClass(options.owner)), incoming);
-      if (!victim) { resourceLease.release(); return drop('local-voice-priority'); }
-    }
     let voice;
     let oscillator;
     let gain;
@@ -895,11 +930,26 @@ class BrowserNotePreview {
       }
       const resumed = options.instrument?.resumed === true;
       if (resumed) { profile.attack = 0; profile.decay = 0; }
+      const end = start + Math.min(this._maxNoteSeconds, profile.seconds || this._maxNoteSeconds);
+      profile.release = Math.min(profile.release, end - start);
+      const reservation = { start, end, releaseAt: end - profile.release };
+      let admission = this._inspectVoiceInterval(options.owner, reservation);
+      if (!admission.accepted) {
+        victim = selectLocalAudioVoice([...this._voices].filter(value => !value.stolen && !value.requestRelease && !value.nativeNodesOwnedByBackend &&
+          value.semanticKey == null && value.semanticEpoch == null &&
+          value.oscillator && value.start <= start && value.releaseAt > start && (value.workloadClass || 'live') === this._workloadClass(options.owner)), incoming);
+        if (victim) {
+          const releaseAt = Math.max(victim.start, Math.min(Math.max(context.currentTime, start - RELEASE_SECONDS), victim.end - victim.release));
+          admission = this._inspectVoiceInterval(options.owner, { ...reservation,
+            overrides: new Map([[victim, { releaseAt, end: Math.min(victim.end, releaseAt + victim.release) }]]) });
+        }
+        if (!admission.accepted) { resourceLease.release(); return drop(admission.reason || 'local-voice-priority'); }
+      }
       const noise = profile.noise && this._percussionNoise();
       oscillator = noise ? context.createBufferSource() : context.createOscillator();
       if (noise) { oscillator.buffer = noise; oscillator.loop = true; }
       gain = context.createGain();
-      voice = { oscillator, gain, resourceLease, number, owner: options.owner ?? null, workloadClass: this._workloadClass(options.owner), note, start, id: ++this._voiceSequence, playback: options.playback, startMs: this._nowMs() + (start - context.currentTime) * 1000, end: start + Math.min(this._maxNoteSeconds, profile.seconds || this._maxNoteSeconds), released: false, captureMeta: this._captureMetadata(options.capture, options.owner ?? null),
+      voice = { oscillator, gain, resourceLease, number, owner: options.owner ?? null, workloadClass: this._workloadClass(options.owner), note, start, id: ++this._voiceSequence, playback: options.playback, startMs: this._nowMs() + (start - context.currentTime) * 1000, end, released: false, captureMeta: this._captureMetadata(options.capture, options.owner ?? null),
         ...incoming, startedAt: start,
         token: Number.isInteger(options.voiceToken) && options.voiceToken > 0 ? options.voiceToken : null,
         implicitProgram: options.instrument?.program == null, programAtStart: controlState.program, timbreAtStart: controlState.timbre,

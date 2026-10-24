@@ -269,12 +269,26 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (cancellationHistoryFull && !isManagedExecutionEpoch(executionEpoch)) return reject('execution-registration-required');
     const prior = leases.get(key); if (prior && validUntilFrame <= prior) return reject('stale-execution-lease');
     if (!prior && leases.size >= 64) return reject('execution-lease-budget');
-    leases.set(key, validUntilFrame);
+    if ([...voices.values()].some(voice => voice.semanticGeneration === generation && voice.semanticEpoch === executionEpoch &&
+        !voice.released && voice.releaseAt <= now / context.sampleRate)) return reject('execution-lease-too-late');
+    const changes = new Map(), commands = []; let serial = sequence;
     for (const voice of voices.values()) if (voice.semanticGeneration === generation && voice.semanticEpoch === executionEpoch && !voice.released) {
-      const result = command(LEASE, Math.max(now, Math.round(voice.start * context.sampleRate)), voice, { 16: validUntilFrame });
-      if (result.status === 'rejected') return result;
-      voice.end = validUntilFrame / context.sampleRate; voice.releaseAt = voice.end - voice.release;
+      if (++serial > Number.MAX_SAFE_INTEGER) return reject('command-sequence-exhausted');
+      const frame = Math.max(now, Math.round(voice.start * context.sampleRate)), data = new Array(WIDTH).fill(0);
+      data[0] = voice.epochToken; data[1] = frame; data[2] = serial; data[3] = LEASE; data[4] = voice.slot; data[5] = voice.slotToken;
+      data[16] = validUntilFrame; data[17] = voice.semanticGeneration;
+      commands.push({ opcode: LEASE, frame, sequence: serial, data: Object.freeze(data), epoch: voice.semanticEpoch,
+        generation: voice.semanticGeneration, voiceId: voice.voiceId, slotToken: voice.slotToken });
+      changes.set(voice, { end: validUntilFrame / context.sampleRate, releaseAt: validUntilFrame / context.sampleRate - voice.release });
     }
+    const admission = preview._inspectVoiceExtensions(changes, { patchVoices: voices.values(), patchLimit: patch?.maxVoices ?? MAX_VOICES });
+    if (!admission.accepted) return reject(admission.reason);
+    if (commands.length) {
+      const queued = queue.enqueueMany(commands, now); if (queued.status !== 'accepted') return reject(queued.reason);
+      sequence = serial; counters.queued += commands.length; schedulePump();
+    }
+    leases.set(key, validUntilFrame);
+    for (const [voice, interval] of changes) { voice.end = interval.end; voice.releaseAt = interval.releaseAt; }
     return Object.freeze({ status: 'accepted', generation, executionEpoch, validUntilFrame, stage: 'queued' });
   };
   const begin = (intent, targetFrame, executionEpoch = 'live') => {
@@ -297,12 +311,13 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (cancellationHistoryFull && !isManagedExecutionEpoch(executionEpoch)) return reject('execution-registration-required', intent.voiceId);
     if (voices.has(key) || preview._semanticVoiceOwners.has(JSON.stringify([owner, executionEpoch, intent.voiceId]))) return reject('duplicate-owner-voice', intent.voiceId);
     const slot = slots.findIndex(voice => voice == null);
-    if (slot < 0 || voices.size >= patch.maxVoices || preview._renderVoiceCount() >= preview._maxScheduledVoices ||
-        !preview._hasWorkloadVoiceCapacity(owner, 1, [...preview._voices].filter(voice => !voice.stolen && (voice.renderCost > 1 || voice.start <= targetFrame / context.sampleRate &&
-          voice.releaseAt > targetFrame / context.sampleRate)))) return reject('shared-voice-budget', intent.voiceId);
+    if (slot < 0 || voices.size >= patch.maxVoices || preview._renderVoiceCount() >= preview._maxScheduledVoices) return reject('shared-voice-budget', intent.voiceId);
     if (slotTokens[slot] === 0xffffffff) return reject('voice-slot-generation-exhausted', intent.voiceId);
     const parameters = patch.parameters, endFrame = leases.get(generationKey) ?? targetFrame + Math.ceil(preview._maxNoteSeconds * context.sampleRate);
     if (endFrame <= targetFrame + parameters.releaseSeconds * context.sampleRate) return reject('execution-lease-expired', intent.voiceId);
+    const admission = preview._inspectVoiceInterval(owner, { start: targetFrame / context.sampleRate, end: endFrame / context.sampleRate,
+      releaseAt: endFrame / context.sampleRate - parameters.releaseSeconds, patchVoices: voices.values(), patchLimit: patch.maxVoices });
+    if (!admission.accepted) return reject(admission.reason, intent.voiceId);
     let resourceLease = null;
     try { resourceLease = preview._audioResources?.reserveWorkletVoice(owner, intent.generation) || null; }
     catch { return reject('audio-resource-budget', intent.voiceId); }
@@ -374,9 +389,14 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       if (!finite(release.tailSeconds, 0, 4)) return reject('invalid-release', voiceId);
       frame = Math.max(frame, Math.round((voice.start + release.tailSeconds) * context.sampleRate));
     } else if (release?.mode != null) return reject('unsupported-release-mode', voiceId);
-    const result = command(END, frame, voice, { 13: Math.max(1, Math.round((release?.seconds ?? voice.release) * context.sampleRate)) });
-    if (result.status === 'accepted') { voice.released = true; voice.releaseAt = frame / context.sampleRate; voice.end = voice.releaseAt + (release?.seconds ?? voice.release); }
-    return result;
+    const requestedReleaseFrames = Math.max(1, Math.round((release?.seconds ?? voice.release) * context.sampleRate));
+    const deadline = Math.max(now + 1, Math.round(voice.end * context.sampleRate));
+    frame = Math.min(frame, deadline - 1);
+    const releaseFrames = Math.min(requestedReleaseFrames, Math.max(1, deadline - frame));
+    const result = command(END, frame, voice, { 13: releaseFrames });
+    if (result.status === 'accepted') { voice.released = true; voice.releaseAt = Math.min(voice.releaseAt, frame / context.sampleRate); voice.end = (frame + releaseFrames) / context.sampleRate; }
+    return Object.freeze({ ...result, releasePolicy: 'bounded-by-admitted-interval', requestedTargetFrame: targetFrame, effectiveTargetFrame: frame,
+      requestedReleaseFrames, effectiveReleaseFrames: releaseFrames, effectiveEndFrame: frame + releaseFrames });
   };
   const cancelGenerationWithReceipt = (generation, executionEpoch = 'live') => {
     const key = keyFor(executionEpoch, generation);

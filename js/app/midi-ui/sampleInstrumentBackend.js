@@ -192,6 +192,11 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     for (const [id, value] of leases) if (value.until <= now || value.context !== preview._context || value.ownerGeneration !== preview._sessions.get(owner)?.generation) leases.delete(id);
     if (leases.get(key)?.until >= until || !leases.has(key) && leases.size >= 64) return reject('stale-or-excessive-execution-lease');
     if ([...voices.values()].some(voice => voice.semanticGeneration === generation && voice.semanticEpoch === executionEpoch && !voice.released && voice.releaseAt <= now)) return reject('execution-lease-too-late');
+    const changes = new Map();
+    for (const voice of voices.values()) if (voice.semanticGeneration === generation && voice.semanticEpoch === executionEpoch && voice.ownedGate &&
+        (!voice.released || voice.stolen && voice.releaseAt > now)) changes.set(voice, { end: until, releaseAt: until - voice.release });
+    const admission = preview._inspectVoiceExtensions(changes, { patchVoices: voices.values(), patchLimit: prepared?.maxVoices ?? 64 });
+    if (!admission.accepted) return reject(admission.reason);
     leases.set(key, { until, context: preview._context, ownerGeneration: preview._sessions.get(owner)?.generation });
     const groups = new Map();
     for (const voice of voices.values()) if (voice.semanticGeneration === generation && voice.semanticEpoch === executionEpoch && voice.ownedGate &&
@@ -223,9 +228,13 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     const rate = rateFor(region, intent.pitch, expression.pitchOffsetCents ?? 0), childRate = region.releaseRegion ? rateFor(region.releaseRegion, intent.pitch, expression.pitchOffsetCents ?? 0) : null;
     if (rate == null || region.releaseRegion && childRate == null) return reject('sample-pitch-out-of-range', intent.voiceId);
     const renderCost = region.releaseRegion ? 2 : 1;
+    if (hardEnd - start <= prepared.parameters.releaseSeconds) return reject('bounded-envelope-out-of-range', intent.voiceId);
     for (const voice of preview._voices) if (preview._voiceFinished(voice)) preview._destroyVoice(voice, 'inaudible-voice-reuse');
-    if (voices.size >= prepared.maxVoices || !preview._hasWorkloadVoiceCapacity(owner, renderCost) ||
+    if (voices.size >= prepared.maxVoices ||
         preview._renderVoiceCount() + renderCost > preview._maxScheduledVoices) return reject('shared-sample-source-budget', intent.voiceId);
+    const admission = preview._inspectVoiceInterval(owner, { start, end: hardEnd, releaseAt: hardEnd - prepared.parameters.releaseSeconds,
+      cost: renderCost, patchVoices: voices.values(), patchLimit: prepared.maxVoices });
+    if (!admission.accepted) return reject(admission.reason, intent.voiceId);
     const allocations = [], components = []; let pressureGain, pan, voice;
     try {
       for (let n = 0; n < renderCost; n++) allocations.push(preview._audioResources.reserveNativeVoice(owner, intent.generation));

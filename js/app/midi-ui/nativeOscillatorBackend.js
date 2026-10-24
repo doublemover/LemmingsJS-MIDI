@@ -104,8 +104,14 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
     if (prior == null && leases.size >= 64) return failure('execution-lease-budget');
     if ([...voices.values()].some(voice => voice.semanticGeneration === generation && voice.semanticEpoch === executionEpoch &&
         voice.ownedGate && !voice.released && voice.releaseAt <= now)) return failure('execution-lease-too-late');
+    const changes = new Map();
+    for (const voice of voices.values()) if (voice.semanticGeneration === generation && voice.semanticEpoch === executionEpoch && voice.ownedGate && !voice.released)
+      changes.set(voice, { end: time, releaseAt: time - voice.release });
+    const admission = preview._inspectVoiceExtensions(changes, { patchVoices: voices.values(), patchLimit: prepared?.patch.voicePolicy.maxVoices ?? 64 });
+    if (!admission.accepted) return failure(admission.reason);
     leases.set(key, { until: time, context: preview._context, generation: preview._generation,
       ownerGeneration: preview._sessions.get(owner)?.generation });
+    for (const [voice, interval] of changes) { voice.end = interval.end; voice.releaseAt = interval.releaseAt; }
     for (const voice of voices.values()) if (voice.semanticGeneration === generation && voice.semanticEpoch === executionEpoch &&
         voice.ownedGate && !voice.released) {
       if (voice.end <= now) { preview._destroyVoice(voice, 'owner-lease-expired'); continue; }
@@ -151,16 +157,17 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
     if (voices.has(identity)) return failure('duplicate-voice', intent);
     const sharedIdentity = sharedKeyFor(executionEpoch, intent.voiceId);
     if (preview._semanticVoiceOwners.has(sharedIdentity)) return failure('duplicate-owner-voice', intent);
-    const activeForBackend = [...voices.values()].filter(voice => !voice.stolen && voice.start <= start && voice.releaseAt > start);
-    if (activeForBackend.length >= prepared.patch.voicePolicy.maxVoices) return failure('patch-voice-budget', intent);
     for (const voice of preview._voices) if (preview._voiceFinished(voice)) preview._destroyVoice(voice, 'inaudible-voice-reuse');
     if (preview._renderVoiceCount() >= preview._maxScheduledVoices) return failure('shared-scheduled-voice-budget', intent);
     let resourceLease;
     try { resourceLease = preview._audioResources.reserveNativeVoice(owner, intent.generation); }
     catch { return failure('audio-resource-budget', intent); }
-    const simultaneous = [...preview._voices].filter(voice => !voice.stolen && (voice.renderCost > 1 || voice.start <= start && voice.releaseAt > start));
-    if (!preview._hasWorkloadVoiceCapacity(owner, 1, simultaneous)) { resourceLease.release(); return failure('shared-voice-budget', intent); }
     const values = prepared.values;
+    const end = gateMode === 'owned' ? leaseEnd : start + preview._maxNoteSeconds;
+    if (end - start <= values.releaseSeconds) { resourceLease.release(); return failure('bounded-envelope-out-of-range', intent); }
+    const admission = preview._inspectVoiceInterval(owner, { start, end, releaseAt: end - values.releaseSeconds,
+      patchVoices: voices.values(), patchLimit: prepared.patch.voicePolicy.maxVoices });
+    if (!admission.accepted) { resourceLease.release(); return failure(admission.reason, intent); }
     let oscillator, gain, pressureGain, pan, voice;
     try {
       const frequency = frequencyFor(intent.pitch);
@@ -168,7 +175,6 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
       oscillator = context.createOscillator(); gain = context.createGain();
       pressureGain = context.createGain();
       pan = context.createStereoPanner?.() || null;
-      const end = gateMode === 'owned' ? leaseEnd : start + preview._maxNoteSeconds;
       const basePeak = intent.velocity01 * values.gain01 * prepared.patch.mix.gain01;
       voice = { oscillator, gain, pressureGain, pan, resourceLease, owner, workloadClass: preview._workloadClass(owner), number: 0, note: Math.round(intent.pitch.cents / 100),
         start, end, releaseAt: end - release, released: false, id: ++preview._voiceSequence,

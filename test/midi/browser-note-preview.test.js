@@ -24,6 +24,13 @@ const deferred = () => {
 };
 
 describe('separate cue workload and graph admission', () => {
+  it('rejects an earlier onset that would overlap a committed future note in a one-voice workload', async () => {
+    const context = new FakeContext(); context.currentTime = 0;
+    const preview = new BrowserNotePreview({ createAudioContext: () => context, nowMs: () => 0, maxVoices: 1 }); await preview.enable();
+    expect(preview.output.channels[1].sendNoteOn(60, { rawAttack: 100, time: 2000 })).to.equal(true);
+    expect(preview.output.channels[1].sendNoteOn(64, { rawAttack: 100, time: 1000 })).to.equal(false);
+    expect([...preview._voices].map(value => value.note)).to.deep.equal([60]); expect(preview.getState().voiceSteals).to.equal(0); await preview.dispose();
+  });
   it('cannot use a one-voice live workload for cue without an explicit additional quota', async () => {
     const context = new FakeContext(), preview = new BrowserNotePreview({ createAudioContext: () => context, maxVoices: 1 });
     await preview.enable(); preview.output.channels[1].sendNoteOn(60, { rawAttack: 100 });
