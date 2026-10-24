@@ -1,7 +1,8 @@
-// A first-party, sine-only reference kernel. All voice, command and receipt
-// storage is fixed at construction. process() inspects the supplied block size.
+// Owned voice/command storage with a sine reference and fixed source adapters.
+// Storage is fixed at construction; process() inspects the supplied block size.
 import { writeOwnedSineState, restoreOwnedSineState } from './OwnedSineState.js';
-const PROTOCOL = 1, WIDTH = 18, CAPACITY = 512, MAX_VOICES = 64, RECEIPT_WIDTH = 6;
+import { SINE_LAYOUT } from '../OwnedSourceLayout.js';
+const PROTOCOL = 1, WIDTH = SINE_LAYOUT.width, CAPACITY = 512, MAX_VOICES = SINE_LAYOUT.voices, RECEIPT_WIDTH = 6;
 const BEGIN = 1, UPDATE = 2, END = 3, CANCEL = 4, PANIC = 5, LEASE = 6;
 const SCHEDULED = 1, APPLIED = 2, REJECTED = 3, ENDED = 4, CANCELLED = 5, FAULTED = 6;
 const DISPLAY_PROTOCOL = 1, DISPLAY_WIDTH = 20, DISPLAY_VOICES = 32, DISPLAY_STATE_WIDTH = 16;

@@ -1,17 +1,15 @@
 import { OwnedSineKernel, OwnedSineProcessor } from './OwnedSineProcessor.js';
 import { SPECTRUM_TABLES, SPECTRUM_LEVELS, SPECTRUM_SINE, SPECTRUM_FRAME_GAINS } from './SpectrumSourceTables.js';
+import { SPECTRUM_LAYOUT, spectrumSourceBytes, SPECTRUM_SOURCE_HEAP_ESTIMATE } from '../OwnedSourceLayout.js';
 
-export const SPECTRUM_WIDTH = 73, SPECTRUM_VOICES = 8, SPECTRUM_MIN_HZ = 20, SPECTRUM_MAX_HZ = 2000, SPECTRUM_BEND_CENTS = 200;
-export const SPECTRUM_SOURCE_HEAP_ESTIMATE = (SPECTRUM_TABLES.length + SPECTRUM_SINE.length + SPECTRUM_FRAME_GAINS.length) * 16 + 16384;
-const STATE = 24, PARTIAL = 6, LENGTH = 2048, STRIDE = LENGTH + 1, LN1000 = Math.log(1000);
+export const SPECTRUM_WIDTH = SPECTRUM_LAYOUT.width, SPECTRUM_VOICES = SPECTRUM_LAYOUT.voices, SPECTRUM_MIN_HZ = 20, SPECTRUM_MAX_HZ = 2000, SPECTRUM_BEND_CENTS = 200;
+export { SPECTRUM_SOURCE_HEAP_ESTIMATE, spectrumSourceBytes };
+const STATE = SPECTRUM_LAYOUT.state, PARTIAL = SPECTRUM_LAYOUT.partialState, LENGTH = SPECTRUM_LAYOUT.tableLength, STRIDE = LENGTH + 1, LN1000 = Math.log(1000);
 const valid = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;
-export function spectrumSourceBytes(rate, voices = SPECTRUM_VOICES) {
-  if (!valid(rate, 8000, 384000) || !Number.isInteger(voices) || voices < 1 || voices > SPECTRUM_VOICES) throw new RangeError('Invalid spectrum source profile.');
-  return (SPECTRUM_TABLES.length + SPECTRUM_SINE.length + SPECTRUM_FRAME_GAINS.length) * 4 + voices * (STATE + 16 * PARTIAL) * 8;
-}
 export class OwnedSpectrumSource {
   constructor(rate, voices = SPECTRUM_VOICES) {
     spectrumSourceBytes(rate, voices); this.rate = rate; this.voices = voices; this.maxUpdateMask = 63;
+    if (SPECTRUM_TABLES.length !== SPECTRUM_LAYOUT.tableSamples || SPECTRUM_SINE.length !== SPECTRUM_LAYOUT.sineSamples || SPECTRUM_FRAME_GAINS.length !== SPECTRUM_LAYOUT.frameSamples) throw new Error('Spectrum bank storage differs from its source layout.');
     this.state = new Float64Array(voices * STATE); this.partials = new Float64Array(voices * 16 * PARTIAL);
     this.tables = new Float32Array(SPECTRUM_TABLES); this.sine = new Float32Array(SPECTRUM_SINE); this.frames = new Float32Array(SPECTRUM_FRAME_GAINS);
   }

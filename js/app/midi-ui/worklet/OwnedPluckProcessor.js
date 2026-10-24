@@ -1,15 +1,13 @@
 import { OwnedSineKernel, OwnedSineProcessor } from './OwnedSineProcessor.js';
+import { PLUCK_LAYOUT, pluckSourceBytes } from '../OwnedSourceLayout.js';
 
-export const PLUCK_WIDTH = 24, PLUCK_VOICES = 16, PLUCK_MIN_HZ = 50, PLUCK_MAX_HZ = 2000, PLUCK_BEND_CENTS = 200;
-const LN1000 = Math.log(1000), PITCH_RANGE = 2 ** (PLUCK_BEND_CENTS / 1200), STATE_WIDTH = 28;
-export const pluckSourceBytes = (rate, voices = PLUCK_VOICES) => {
-  if (!Number.isFinite(rate) || rate < 8000 || rate > 384000 || !Number.isInteger(voices) || voices < 1 || voices > PLUCK_VOICES) throw new RangeError('Invalid pluck storage profile.');
-  const stride = Math.ceil(rate / 32) + 4; return stride * voices * 4 + stride * 8 + voices * STATE_WIDTH * 8;
-};
+export const PLUCK_WIDTH = PLUCK_LAYOUT.width, PLUCK_VOICES = PLUCK_LAYOUT.voices, PLUCK_MIN_HZ = 50, PLUCK_MAX_HZ = 2000, PLUCK_BEND_CENTS = 200;
+const LN1000 = Math.log(1000), PITCH_RANGE = 2 ** (PLUCK_BEND_CENTS / 1200), STATE_WIDTH = PLUCK_LAYOUT.state;
+export { pluckSourceBytes };
 
 export class OwnedPluckSource {
   constructor(rate, voices = PLUCK_VOICES) {
-    pluckSourceBytes(rate, voices); this.rate = rate; this.voices = voices; this.stride = Math.ceil(rate / 32) + 4;
+    pluckSourceBytes(rate, voices); this.rate = rate; this.voices = voices; this.stride = Math.ceil(rate / PLUCK_LAYOUT.delayFloorHz) + PLUCK_LAYOUT.delayMargin;
     this.buffer = new Float32Array(this.stride * voices); this.scratch = new Float64Array(this.stride); this.state = new Float64Array(voices * STATE_WIDTH);
     this.initializationWrites = 0; this.initializationDenials = 0; this.maxInitializationWrites = 65536; this.initializationBucket = -1; this.maxUpdateMask = 15;
   }

@@ -1,8 +1,5 @@
-import { WIDTH, MAX_VOICES } from './worklet/OwnedSineProcessor.js';
-import { PLUCK_WIDTH, PLUCK_VOICES, pluckSourceBytes } from './worklet/OwnedPluckProcessor.js';
-import { CHOIR_WIDTH, CHOIR_VOICES, CHOIR_SOURCE_HEAP_ESTIMATE, choirSourceBytes } from './worklet/OwnedChoirProcessor.js';
-import { SPECTRUM_WIDTH, SPECTRUM_VOICES, SPECTRUM_SOURCE_HEAP_ESTIMATE, spectrumSourceBytes } from './worklet/OwnedSpectrumProcessor.js';
-import { GRANULAR_WIDTH, GRANULAR_VOICES, GRANULAR_SOURCE_HEAP_ESTIMATE, granularSourceBytes } from './worklet/OwnedGranularProcessor.js';
+import { SINE_LAYOUT, PLUCK_LAYOUT, CHOIR_LAYOUT, SPECTRUM_LAYOUT, GRANULAR_LAYOUT, pluckSourceBytes, choirSourceBytes, spectrumSourceBytes, granularSourceBytes,
+  CHOIR_SOURCE_HEAP_ESTIMATE, SPECTRUM_SOURCE_HEAP_ESTIMATE, GRANULAR_SOURCE_HEAP_ESTIMATE } from './OwnedSourceLayout.js';
 import { NATIVE_WORKLET_FIELDS, NATIVE_PLUCK_FIELDS, NATIVE_PLUCK_PARAMETERS, NATIVE_CHOIR_FIELDS, NATIVE_CHOIR_PARAMETERS,
   NATIVE_SPECTRUM_FIELDS, NATIVE_SPECTRUM_PARAMETERS, NATIVE_GRANULAR_FIELDS, NATIVE_GRANULAR_PARAMETERS } from './NativeInstrumentSchema.js';
 
@@ -14,11 +11,11 @@ const acceptsSpectrum = parameters => {
   for (const names of spectrumPartials) for (const name of names) if (parameters[name] !== NATIVE_SPECTRUM_FIELDS[name][2]) return false;
   return true;
 };
-const createProfile = ({ id, width, voices, fields, parameters = null, buildId, abi, file, rateLimit = false,
+const createProfile = ({ id, width, voices, fields, parameters = null, buildId, abi, workletUrl, rateLimit = false,
   seedDomain = null, minHz = 0.1, maxHz = null, bendCents = 24000, minimumControlSeconds = 0, heapEstimate = 0,
   sourceBytes = () => 0, cost = () => 1, acceptsParameters = () => true, acceptsOnset = () => true, beginFields = () => ({}), expressions = [], damping = false, requiresPCM = false }) => {
   const slots = Object.freeze(expressions.map(entry => Object.freeze([...entry]))), liveIds = Object.freeze([...slots.map(([name]) => name), ...(damping ? ['damping01'] : [])]);
-  const runtime = Object.freeze({ engineId: id, engineVersion: 1, buildId, runtimeABI: abi, workletUrl: new URL('./worklet/' + file, import.meta.url).href,
+  const runtime = Object.freeze({ engineId: id, engineVersion: 1, buildId, runtimeABI: abi, workletUrl,
     sharedMemory: false, transport: 'batched-transferable-message-port', minimumControlSeconds,
     ...(rateLimit ? { supportedSampleRates: Object.freeze([44100, 48000, 96000]) } : {}) });
   return Object.freeze({ id, width, voices, fields, parameters: parameters ? Object.freeze(Object.values(parameters)) : null, seedDomain, runtime,
@@ -41,8 +38,8 @@ const createProfile = ({ id, width, voices, fields, parameters = null, buildId, 
   });
 };
 const profiles = Object.freeze({
-  'worklet-granular': createProfile({ id: 'worklet-granular', width: GRANULAR_WIDTH, voices: GRANULAR_VOICES, fields: NATIVE_GRANULAR_FIELDS, parameters: NATIVE_GRANULAR_PARAMETERS,
-    buildId: 'owned-granular-v1', abi: 'owned-granular-f64-command-v1', file: 'OwnedGranularProcessor.js', rateLimit: true, seedDomain: 'grain-choices-v1', minHz: 20, maxHz: 2000, bendCents: 200,
+  'worklet-granular': createProfile({ id: 'worklet-granular', width: GRANULAR_LAYOUT.width, voices: GRANULAR_LAYOUT.voices, fields: NATIVE_GRANULAR_FIELDS, parameters: NATIVE_GRANULAR_PARAMETERS,
+    buildId: 'owned-granular-v1', abi: 'owned-granular-f64-command-v1', workletUrl: new URL('./worklet/OwnedGranularProcessor.js', import.meta.url).href, rateLimit: true, seedDomain: 'grain-choices-v1', minHz: 20, maxHz: 2000, bendCents: 200,
     sourceBytes: (rate, pcm) => granularSourceBytes(rate) + (pcm?.bytes || 0), heapEstimate: GRANULAR_SOURCE_HEAP_ESTIMATE, cost: () => 16, minimumControlSeconds: 0.008, requiresPCM: true,
     acceptsParameters: parameters => parameters.regionStart01 < parameters.regionEnd01,
     acceptsOnset: (parameters, frequency, pcm) => {
@@ -54,21 +51,21 @@ const profiles = Object.freeze({
     beginFields: (parameters, seed, pcm) => ({ 18: seed, 19: parameters.position01, 20: parameters.densityHz, 21: parameters.grainMilliseconds, 22: parameters.pitchRatio, 23: parameters.spread01,
       24: Math.floor(parameters.regionStart01 * pcm.sourceFrames), 25: Math.ceil(parameters.regionEnd01 * pcm.sourceFrames), 26: parameters.freezePosition, 27: parameters.motionRequired,
       28: parameters.activity01, 29: 0, 30: parameters.reverse, 31: parameters.rootHz, 32: parameters.tone01 }) }),
-  'worklet-sine': createProfile({ id: 'worklet-sine', width: WIDTH, voices: MAX_VOICES, fields: NATIVE_WORKLET_FIELDS,
-    buildId: 'owned-sine-v2-display', abi: 'owned-sine-f64-command-v1', file: 'OwnedSineProcessor.js' }),
-  'worklet-pluck': createProfile({ id: 'worklet-pluck', width: PLUCK_WIDTH, voices: PLUCK_VOICES, fields: NATIVE_PLUCK_FIELDS, parameters: NATIVE_PLUCK_PARAMETERS,
-    buildId: 'owned-pluck-v1', abi: 'owned-pluck-f64-command-v1', file: 'OwnedPluckProcessor.js', rateLimit: true, seedDomain: 'pluck-excitation-v1', minHz: 50, maxHz: 2000, bendCents: 200,
+  'worklet-sine': createProfile({ id: 'worklet-sine', width: SINE_LAYOUT.width, voices: SINE_LAYOUT.voices, fields: NATIVE_WORKLET_FIELDS,
+    buildId: 'owned-sine-v2-display', abi: 'owned-sine-f64-command-v1', workletUrl: new URL('./worklet/OwnedSineProcessor.js', import.meta.url).href }),
+  'worklet-pluck': createProfile({ id: 'worklet-pluck', width: PLUCK_LAYOUT.width, voices: PLUCK_LAYOUT.voices, fields: NATIVE_PLUCK_FIELDS, parameters: NATIVE_PLUCK_PARAMETERS,
+    buildId: 'owned-pluck-v1', abi: 'owned-pluck-f64-command-v1', workletUrl: new URL('./worklet/OwnedPluckProcessor.js', import.meta.url).href, rateLimit: true, seedDomain: 'pluck-excitation-v1', minHz: 50, maxHz: 2000, bendCents: 200,
     sourceBytes: pluckSourceBytes, cost: parameters => parameters.bodyMix01 > 0 ? 3 : 1, damping: true,
     beginFields: (parameters, seed) => ({ 18: seed, 19: parameters.pluckPosition01, 20: Math.max(0.02, parameters.stringT60Seconds * (1 - 0.95 * parameters.damping01)),
       21: parameters.excitationBrightness01, 22: parameters.bodyMix01, 23: Math.max(0.02, parameters.bodyT60Seconds * (1 - 0.95 * parameters.damping01)) }) }),
-  'worklet-choir': createProfile({ id: 'worklet-choir', width: CHOIR_WIDTH, voices: CHOIR_VOICES, fields: NATIVE_CHOIR_FIELDS, parameters: NATIVE_CHOIR_PARAMETERS,
-    buildId: 'owned-choir-v1', abi: 'owned-choir-f64-command-v1', file: 'OwnedChoirProcessor.js', rateLimit: true, seedDomain: 'choir-excitation-v1', minHz: 50, maxHz: 2000, bendCents: 200,
+  'worklet-choir': createProfile({ id: 'worklet-choir', width: CHOIR_LAYOUT.width, voices: CHOIR_LAYOUT.voices, fields: NATIVE_CHOIR_FIELDS, parameters: NATIVE_CHOIR_PARAMETERS,
+    buildId: 'owned-choir-v1', abi: 'owned-choir-f64-command-v1', workletUrl: new URL('./worklet/OwnedChoirProcessor.js', import.meta.url).href, rateLimit: true, seedDomain: 'choir-excitation-v1', minHz: 50, maxHz: 2000, bendCents: 200,
     sourceBytes: choirSourceBytes, heapEstimate: CHOIR_SOURCE_HEAP_ESTIMATE * 2, cost: () => 3, minimumControlSeconds: 0.008,
     expressions: [['vowel01', 8, 19], ['breath01', 16, 20], ['sizeRatio', 32, 21], ['chorusCents', 64, 22], ['vibratoCents', 128, 23], ['bandwidthScale', 256, 25]],
     beginFields: (parameters, seed) => ({ 18: seed, 19: parameters.vowel01, 20: parameters.breath01, 21: parameters.sizeRatio, 22: parameters.chorusCents,
       23: parameters.vibratoCents, 24: parameters.vowelStep, 25: parameters.bandwidthScale }) }),
-  'worklet-spectrum': createProfile({ id: 'worklet-spectrum', width: SPECTRUM_WIDTH, voices: SPECTRUM_VOICES, fields: NATIVE_SPECTRUM_FIELDS, parameters: NATIVE_SPECTRUM_PARAMETERS,
-    buildId: 'owned-spectrum-v1', abi: 'owned-spectrum-f64-command-v1', file: 'OwnedSpectrumProcessor.js', rateLimit: true, seedDomain: 'spectrum-phase-v1', minHz: 20, maxHz: 2000, bendCents: 200,
+  'worklet-spectrum': createProfile({ id: 'worklet-spectrum', width: SPECTRUM_LAYOUT.width, voices: SPECTRUM_LAYOUT.voices, fields: NATIVE_SPECTRUM_FIELDS, parameters: NATIVE_SPECTRUM_PARAMETERS,
+    buildId: 'owned-spectrum-v1', abi: 'owned-spectrum-f64-command-v1', workletUrl: new URL('./worklet/OwnedSpectrumProcessor.js', import.meta.url).href, rateLimit: true, seedDomain: 'spectrum-phase-v1', minHz: 20, maxHz: 2000, bendCents: 200,
     sourceBytes: spectrumSourceBytes, heapEstimate: SPECTRUM_SOURCE_HEAP_ESTIMATE, acceptsParameters: acceptsSpectrum,
     cost: parameters => parameters.sourceMode ? parameters.partialCount : 4, minimumControlSeconds: 0.008, expressions: [['scan01', 8, 21], ['body01', 16, 22], ['edge01', 32, 23]],
     beginFields: (parameters, seed) => {

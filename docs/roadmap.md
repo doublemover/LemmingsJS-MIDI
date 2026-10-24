@@ -2293,6 +2293,16 @@ failure fixtures remain unexecuted. Sound-archive asset materialization, shared
 WAV metadata inspection and granular family/library controls remain next; linear
 resampling, offline/exact-state and measured capacity/listening are unqualified.
 
+Source dimensions/storage formulas now live in a small shared layout module.
+The host no longer eagerly executes choir/spectrum/window data modules on the
+main page to read constants; explicit worklet URL literals preserve static
+artifact discovery. Module heap estimates are retained once per context until
+its actual closed state, including canceled or failed preparation, rather than
+being freed with the last node while the module remains resident. Native heap
+sizes remain estimates. Worklet table parsing itself still needs a prepared
+off-thread bank handoff before the final live source-loading qualification.
+Module-lifetime fixtures are authored and unexecuted.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical

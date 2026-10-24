@@ -1,5 +1,6 @@
 import { getOwnedSourceProfile } from './OwnedSourceProfiles.js';
 import { prepareOwnedPcmBank } from './OwnedPcmBank.js';
+import { loadOwnedWorkletModule, inspectOwnedWorkletModule } from './OwnedWorkletModuleCache.js';
 import { createAudioCommandQueue } from './AudioCommandQueue.js';
 import { createInstrumentExecutionLifecycle, isManagedExecutionEpoch } from './InstrumentExecutionLifecycle.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
@@ -11,7 +12,6 @@ import { resolveOwnedArticulationPolicy } from './OwnedArticulationPolicy.js';
 import { PROTOCOL, WIDTH as SINE_WIDTH, CAPACITY, MAX_VOICES as SINE_MAX_VOICES, RECEIPT_WIDTH, BEGIN, UPDATE, END, CANCEL, LEASE,
   SCHEDULED, APPLIED, REJECTED, ENDED, CANCELLED, FAULTED, DISPLAY_PROTOCOL, DISPLAY_WIDTH, DISPLAY_VOICES } from './worklet/OwnedSineProcessor.js';
 
-const modules = new WeakMap();
 const sineCapabilities = Object.freeze({ independentSamePitch: true, perVoicePitch: true, perVoicePressure: true, perVoicePan: true,
   perVoiceTimbre: false, offlineRender: true, ownedGates: true, renderAcknowledgment: true,
   maximumVoices: SINE_MAX_VOICES, latencyFrames: 0, sustainPedal: false, sostenuto: false, releaseVelocity: false, displayTelemetry: true,
@@ -209,6 +209,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (source.requiresPCM && (!preview._audioResources || !assets[0]?.isActive?.() || assets[0].ref?.contentHash !== next.sampleRef.sha256 || assets[0].ref?.bytes !== next.sampleRef.bytes)) return reject('required-pcm-source-unavailable');
     const candidateContext = preview.getAudioContext();
     if (!candidateContext?.audioWorklet?.addModule) return reject('audio-worklet-unavailable');
+    if (candidateContext.state === 'closed') return reject('audio-context-closed');
     if (runtime.supportedSampleRates && !runtime.supportedSampleRates.includes(candidateContext.sampleRate)) return reject('source-sample-rate-unavailable');
     if (context && context !== candidateContext) {
       if (context.state === 'closed') { node = null; ready = false; voices.clear(); slots.fill(null); runtimeResourceLease = null; pcmDescriptor = null; }
@@ -233,14 +234,8 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       assetController.signal.throwIfAborted(); if (!current()) return reject('preparation-cancelled');
       timer = setTimeout(() => abortPreparation(new Error('kernel-initialization-timeout')), initializationTimeoutMs);
       if (!ready) candidateResourceLease = preview._audioResources?.reserveWorkletRuntime(owner, preview._generation,
-        source.sourceBytes(candidateContext.sampleRate, candidatePcm) + CAPACITY * (WIDTH - SINE_WIDTH) * 8, source.heapEstimate, true) || null;
-      let contextModules = modules.get(candidateContext);
-      if (!contextModules) { contextModules = new Map(); modules.set(candidateContext, contextModules); }
-      if (!contextModules.has(runtime.workletUrl)) {
-        const loading = candidateContext.audioWorklet.addModule(runtime.workletUrl); contextModules.set(runtime.workletUrl, loading);
-        loading.catch(() => { if (contextModules.get(runtime.workletUrl) === loading) contextModules.delete(runtime.workletUrl); });
-      }
-      await Promise.race([contextModules.get(runtime.workletUrl), interrupted]);
+        source.sourceBytes(candidateContext.sampleRate, candidatePcm) + CAPACITY * (WIDTH - SINE_WIDTH) * 8, 0, true) || null;
+      await Promise.race([loadOwnedWorkletModule(candidateContext, source, preview._audioResources), interrupted]);
       if (!current()) return reject('preparation-cancelled');
       if (!ready) {
         const destination = preview._channel(0, owner).gain;
@@ -529,6 +524,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     ]);
   };
   const renderDiagnostics = ({ includeTraces = false } = {}) => Object.freeze({ engineId: runtime.engineId, runtime, capabilities,
+    module: inspectOwnedWorkletModule(context || preview.getAudioContext(), runtime.workletUrl),
     readiness: disposed ? 'disposed' : fault || !ready ? fault || 'runtime-unprepared' : ownerStopped ? 'kernel-stop-pending' : !preview._ownerReady(owner) ? 'audio-not-ready' : 'ready',
     activeVoices: voices.size, queued: queue?.diagnostics() || null, inFlight: inFlight.size, counters: Object.freeze({ ...counters }), pendingPreparations: pendingPreparations.size,
     ...(pcmDescriptor ? { sourceBank: pcmDescriptor } : {}),

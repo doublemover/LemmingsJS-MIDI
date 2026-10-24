@@ -1,19 +1,17 @@
 import { OwnedSineKernel, OwnedSineProcessor } from './OwnedSineProcessor.js';
 import { GRAIN_WINDOW } from './GrainWindow.js';
+import { GRANULAR_LAYOUT, granularSourceBytes, GRANULAR_SOURCE_HEAP_ESTIMATE } from '../OwnedSourceLayout.js';
 
-export const GRANULAR_WIDTH = 33, GRANULAR_VOICES = 8, GRAINS_PER_VOICE = 16, GRANULAR_BIRTHS_PER_BUCKET = 32;
-export const GRANULAR_SOURCE_HEAP_ESTIMATE = GRAIN_WINDOW.length * 16 + 8192;
-const CLOUD = 44, GRAIN = 14, FIELDS = Object.freeze([19, 20, 21, 23, 28, 32]), BITS = Object.freeze([8, 16, 32, 64, 256, 512]);
+export const GRANULAR_WIDTH = GRANULAR_LAYOUT.width, GRANULAR_VOICES = GRANULAR_LAYOUT.voices, GRAINS_PER_VOICE = GRANULAR_LAYOUT.grains, GRANULAR_BIRTHS_PER_BUCKET = GRANULAR_LAYOUT.birthsPerBucket;
+export { GRANULAR_SOURCE_HEAP_ESTIMATE, granularSourceBytes };
+const CLOUD = GRANULAR_LAYOUT.cloudState, GRAIN = GRANULAR_LAYOUT.grainState, FIELDS = Object.freeze([19, 20, 21, 23, 28, 32]), BITS = Object.freeze([8, 16, 32, 64, 256, 512]);
 const valid = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;
 const integer = (value, low, high) => Number.isSafeInteger(value) && valid(value, low, high);
 const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
-export function granularSourceBytes(rate, voices = GRANULAR_VOICES) {
-  if (!integer(rate, 8000, 192000) || !integer(voices, 1, GRANULAR_VOICES)) throw new RangeError('Invalid granular source profile.');
-  return GRAIN_WINDOW.length * 4 + voices * (CLOUD + GRAINS_PER_VOICE * GRAIN) * 8;
-}
 export class OwnedGranularSource {
   constructor(rate, pcm, voices = GRANULAR_VOICES) {
     granularSourceBytes(rate, voices); const descriptor = pcm?.descriptor;
+    if (GRAIN_WINDOW.length !== GRANULAR_LAYOUT.windowSamples) throw new Error('Grain window storage differs from its source layout.');
     if (descriptor?.schema !== 'lemmings-owned-pcm-bank/v1' || descriptor.format !== 'float32-planar-le' || !/^[a-f0-9]{64}$/.test(descriptor.bankHash) ||
         !/^[a-f0-9]{64}$/.test(descriptor.pcmHash) || !/^[a-f0-9]{64}$/.test(descriptor.assetHash) || !integer(descriptor.sampleRate, 8000, 192000) ||
         !integer(descriptor.channels, 1, 2) || !integer(descriptor.frames, 2, 4194304) || descriptor.bytes !== descriptor.frames * descriptor.channels * 4 || descriptor.bytes > 16 * 1048576 ||
