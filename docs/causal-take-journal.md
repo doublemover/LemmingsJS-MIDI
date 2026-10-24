@@ -325,3 +325,16 @@ source; failed releases stay charged and are not retried blindly. Qualification
 cache retirement likewise attempts all entries and retains failed accounting.
 The legacy convenience query deep-freezes its return for compatibility; runtime
 consumers are being migrated to explicit owned pages and checkpoints.
+
+Detached re-performance now uses owned checkpoint and page readers. Preflight
+and checkpoint comparisons close their temporary readers after use; a retained
+world keeps its initial checkpoint until native world retirement. Page readers
+close independently at every replay page boundary. An accepted checkpoint read
+that resolves after cancellation is still retired, and cannot start a late world.
+Workspace accounting waits for actual source/world settlement; a logical timeout
+does not release it early. Refused source retirement stays visible and is not
+reissued. Retired session graph/replay/configuration access is fenced immediately.
+Late-read, asynchronous-world and refused-release fixtures remain unexecuted.
+Cancellation also waits for the replay loop to quiesce before retiring its source
+and workspace. This covers a pending page, checkpoint comparison or native hash
+that still has access to those objects after the world has stopped.

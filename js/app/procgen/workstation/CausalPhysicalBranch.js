@@ -46,10 +46,15 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
     const boundaryMarker = recorder.mark({ type: 'physical-branch-boundary', qualification }, { tick: world.tickIndex, generation: world.generation });
     if (boundaryMarker.status !== 'accepted') throw journalError('branch-admission', 'The branch boundary marker was not admitted.');
     let phase = 'paused', failure = null, disposed = false, stopPromise = null, disposePromise = null, completedBatches = 0, lastIntents = [];
+    let lastReplayState = session.replayState();
+    const replayState = () => {
+      if (!['retiring', 'retirement-unknown', 'disposed'].includes(phase)) lastReplayState = session.replayState();
+      return lastReplayState;
+    };
     const sourceBoundary = () => ({ tick: world.tickIndex, generation: world.generation });
     const status = () => cloneJournalData({ schema: 'lemmings-physical-branch', version: 1, takeId, parentTakeId,
       executionEpoch, phase, tick: world.tickIndex, generation: world.generation, completedBatches, recording: recorder.status(),
-      qualification, failure, interpretationPlaying: session.replayState().playing ?? true, playbackAdmission: session.replayState().version === 2,
+      qualification, failure, interpretationPlaying: replayState().playing ?? true, playbackAdmission: replayState().version === 2,
       inspection: { paused: phase !== 'advancing', hardware: false, thru: false, physicalLayers: false } });
     const writable = () => {
       if (disposed || world._disposed || phase !== 'paused' || world._failedTick) throw journalError('branch-state', 'The physical branch is not at a writable paused boundary.');
@@ -135,7 +140,7 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
           await stop({ reason: 'physical-branch-discarded-tail' });
           if (!recorder.canReplaceDocument()) throw journalError('undurable-branch-finalization', 'The discarded branch prefix still needs a durable finalization receipt.');
         }
-        phase = 'retiring';
+        lastReplayState = session.replayState(); phase = 'retiring';
         const retirement = createProcgenRetirementScope().retire([
           { name: 'branch-listener', run: () => world.soundEvents.onBatch.off(onBatch) },
           { name: 'reperformance-world', run: () => session.dispose() }

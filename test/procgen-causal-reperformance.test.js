@@ -186,14 +186,46 @@ describe('isolated causal re-performance and checkpoint provenance', function() 
   });
 
   it('keeps replay workspace until an accepted asynchronous world disposer actually settles', async () => {
-    const { runtime, source } = await record({ ticks: 4 }), budget = createResourceBudget(); let acknowledge, disposed = 0;
+    const { runtime, source, journal } = await record({ ticks: 4 }), budget = createResourceBudget(); let acknowledge, disposed = 0, sources = 0;
+    const ownedJournal = { ...journal, async readCheckpointOwned(ref) {
+      const value = await journal.readCheckpoint(ref); sources++; let released = false;
+      return { get value() { if (released) throw new Error('checkpoint retired'); return value; }, release() { if (released) return false; released = true; sources--; return true; } };
+    } };
     const gate = new Promise(resolve => { acknowledge = resolve; });
-    const service = runtime({ resourceBudget: budget, createWorld: () => { const world = make(); return { world, dispose() { disposed++; world.dispose(); return gate; } }; } });
+    const service = runtime({ journal: ownedJournal, resourceBudget: budget, createWorld: () => { const world = make(); return { world, dispose() { disposed++; world.dispose(); return gate; } }; } });
     const result = await service.reperform({ takeId: source.takeId, executionEpoch: 'async-disposal', retainWorld: true });
     expect(result.receipt.compatibilityMatch).to.equal(true); const receipt = result.session.dispose();
-    expect(disposed).to.equal(1); expect(budget.diagnostics().accountedBytes).to.be.greaterThan(0); expect(receipt.state).to.equal('retiring');
-    acknowledge(); await receipt.completion; expect(receipt.outcome).to.equal('complete'); expect(budget.diagnostics().accountedBytes).to.equal(0);
+    expect(disposed).to.equal(1); expect(sources).to.equal(1); expect(budget.diagnostics().accountedBytes).to.be.greaterThan(0); expect(receipt.state).to.equal('retiring');
+    expect(() => result.session.replayState()).to.throw('retired');
+    acknowledge(); await receipt.completion; expect(receipt.outcome).to.equal('complete'); expect(sources).to.equal(0); expect(budget.diagnostics().accountedBytes).to.equal(0);
     await service.dispose().completion;
+  });
+
+  it('retires a checkpoint lease that arrives after cancellation before accepting any world', async () => {
+    const { runtime, source, journal } = await record({ ticks: 4 }), budget = createResourceBudget(); let provide, entered, reads = 0, worlds = 0, sources = 0;
+    const started = new Promise(resolve => { entered = resolve; }), gate = new Promise(resolve => { provide = resolve; });
+    const ownedJournal = { ...journal, async readCheckpointOwned(ref) {
+      if (++reads === 2) { entered(); await gate; }
+      const value = await journal.readCheckpoint(ref); sources++; let released = false;
+      return { value, release() { if (released) return false; released = true; sources--; return true; } };
+    } };
+    const service = runtime({ journal: ownedJournal, resourceBudget: budget, createWorld: () => { worlds++; return make(); } });
+    const running = service.reperform({ takeId: source.takeId, executionEpoch: 'late-checkpoint' }).catch(error => error);
+    await started; const stopped = service.dispose(); expect(budget.diagnostics().accountedBytes).to.be.greaterThan(0);
+    provide(); expect((await running).code).to.equal('cancelled'); await stopped.completion;
+    expect(worlds).to.equal(0); expect(sources).to.equal(0); expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+
+  it('retains source/workspace accounting after a refused checkpoint release without retrying it', async () => {
+    const { runtime, source, journal } = await record({ ticks: 4 }), budget = createResourceBudget(); let reads = 0, attempts = 0;
+    const ownedJournal = { ...journal, async readCheckpointOwned(ref) {
+      const retained = ++reads === 2, value = await journal.readCheckpoint(ref);
+      return { value, release() { if (retained) { attempts++; throw new Error('checkpoint retirement refused'); } return true; } };
+    } };
+    const service = runtime({ journal: ownedJournal, resourceBudget: budget }), result = await service.reperform({ takeId: source.takeId, executionEpoch: 'refused-checkpoint', retainWorld: true });
+    expect(result.receipt.compatibilityMatch).to.equal(true); const closed = result.session.dispose(); await closed.completion;
+    expect(closed.outcome).to.equal('partial'); expect(attempts).to.equal(1); expect(budget.diagnostics().accountedBytes).to.be.greaterThan(0);
+    const retired = service.dispose(); await retired.completion; expect(retired.outcome).to.equal('partial'); expect(attempts).to.equal(1);
   });
 
   it('retires a world that arrives after its replay owner was disposed without releasing the source early', async () => {
