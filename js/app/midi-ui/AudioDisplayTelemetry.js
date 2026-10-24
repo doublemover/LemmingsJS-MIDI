@@ -9,7 +9,9 @@ const validIdentity = value => value && text(value.worldId) && natural(value.gen
 
 // The host allocates bounded presentation objects only for active observers.
 // Musical receipts and commands never wait for this latest-wins mailbox.
-export function createAudioDisplayTelemetry({ owner, getContext, getContextEpoch, getVoices, getRouteState = null, send, resources } = {}) {
+export function createAudioDisplayTelemetry({ owner, engineId = 'worklet-sine', getContext, getContextEpoch, getVoices, getRouteState = null, send, resources } = {}) {
+  if (!['worklet-sine', 'worklet-pluck', 'worklet-choir'].includes(engineId)) throw new TypeError('Unknown audio display source.');
+  const sinePhase = engineId === 'worklet-sine';
   const observers = new Set(), routes = new Map(), latest = new Map();
   let contextStamp = null, resourceLease = null, tokens = null, sentTokens = null, sentInterval = 0, revision = 0, selected = 0, eligible = 0, stopped = false;
   const stats = { packets: 0, samples: 0, rejected: 0, stale: 0, observerErrors: 0, transportErrors: 0, droppedWindows: 0, identityUnavailable: 0 };
@@ -24,7 +26,7 @@ export function createAudioDisplayTelemetry({ owner, getContext, getContextEpoch
     if (!contextStamp || !natural(intent.actorId) || !text(intent.onsetId) || !text(voice.voiceId)) { stats.identityUnavailable++; return; }
     voice.displayIdentity = Object.freeze({ ...contextStamp, owner, generation: voice.semanticGeneration, executionEpoch: voice.semanticEpoch,
       contextEpoch: getContextEpoch(), actorId: intent.actorId, onsetId: intent.onsetId, voiceId: voice.voiceId,
-      nodeId: 'worklet-sine.voice-output', patchId: voice.patchId, patchRevision: voice.patchRevision });
+      nodeId: engineId + '.voice-output', patchId: voice.patchId, patchRevision: voice.patchRevision });
     if (observers.size) routes.set(keyFor(voice.slot, voice.slotToken), { voice, identity: voice.displayIdentity, active: true });
   };
   const configure = (force = false) => {
@@ -90,7 +92,7 @@ export function createAudioDisplayTelemetry({ owner, getContext, getContextEpoch
         let valid = true; for (let n = 0; n < DISPLAY_WIDTH; n++) if (!Number.isFinite(data[at + n])) valid = false;
         const first = data[at + 4], last = data[at + 5], frames = data[at + 6], applied = data[at + 7], flags = data[at + 15];
         if (!valid || !natural(first) || !natural(last) || last <= first || !natural(frames) || frames < 1 || frames > last - first ||
-            !natural(applied) || applied >= last || !natural(flags) || flags > 7 || data[at + 8] < 0 || data[at + 9] < 0 || data[at + 9] > 1 ||
+            !natural(applied) || applied >= last || !natural(flags) || flags > 7 || data[at + 8] < 0 || data[at + 9] < 0 || sinePhase && data[at + 9] > 1 ||
             data[at + 8] > data[at + 9] + 1e-12 || last - first > context.sampleRate / 4 + 1) { stats.rejected++; continue; }
         if (data[at + 11] <= 0 || data[at + 11] >= context.sampleRate / 2 || data[at + 12] < 0 || data[at + 12] > 1 || Math.abs(data[at + 13]) > 1 || data[at + 10] < 0 || data[at + 10] > Math.PI * 2) { stats.rejected++; continue; }
         if (last < now - context.sampleRate / 2 || last > now + context.sampleRate / 2) { stats.stale++; continue; }
@@ -98,16 +100,16 @@ export function createAudioDisplayTelemetry({ owner, getContext, getContextEpoch
         if (prior && serial <= prior.sequence) { stats.stale++; continue; }
         const quantity = (name, unit, value, evidenceClass) => Object.freeze({ name, unit, value, evidenceClass });
         const quantities = [quantity('rms', 'linear-amplitude', data[at + 8], 'measured'), quantity('peak', 'linear-amplitude', data[at + 9], 'measured'),
-          quantity('amplitude-envelope', 'normalized', data[at + 9], 'measured'), quantity('frequency', 'Hz', data[at + 11], 'applied-parameter'),
+          quantity('amplitude-envelope', 'normalized', Math.min(1, data[at + 9]), 'measured'), quantity('frequency', 'Hz', data[at + 11], 'applied-parameter'),
           quantity('pressure', 'normalized', data[at + 12], 'applied-parameter'), quantity('pan', 'normalized-signed', data[at + 13], 'applied-parameter')];
-        if (!(flags & 6)) quantities.push(quantity('oscillator-phase', 'radians', data[at + 10], 'kernel-state'));
+        if (sinePhase && !(flags & 6)) quantities.push(quantity('oscillator-phase', 'radians', data[at + 10], 'kernel-state'));
         const sample = Object.freeze({ ...route.identity, scope: 'actorVoice', sequence: serial, appliedFrame: applied,
           effectiveFrame: last - 1, windowStartFrame: first, windowEndFrame: last, validUntilFrame: last + Math.ceil(context.sampleRate / 2),
           quantities: Object.freeze(quantities), processingState: Object.freeze({ bypassed: false, tail: !!(flags & 1), ended: !!(flags & 2), faulted: !!(flags & 4), pending: false, unsupported: false }),
           routeState, coverage: 'complete',
           selectionCoverage: Object.freeze({ eligible, selected, omitted: Math.max(0, eligible - selected), droppedWindows: stats.droppedWindows }),
           detector: Object.freeze({ tap: 'voice-pre-pan-pre-owner-bus', channels: 1, sampledFrames: frames, window: 'half-open-output-frames',
-            normalization: 'unity-full-scale', envelope: 'window-peak', responseDelayFrames: last - first, detectorDelayFrames: last - first }), acousticReceipt: false });
+            normalization: 'unity-full-scale', envelope: sinePhase ? 'window-peak' : 'clamped-window-peak', responseDelayFrames: last - first, detectorDelayFrames: last - first }), acousticReceipt: false });
         latest.set(key, sample); while (latest.size > DISPLAY_VOICES) latest.delete(latest.keys().next().value); stats.samples++;
         for (const observer of observers) if (observers.has(observer) && matches(observer, route.identity) && last > observer.sinceFrame &&
             last - (observer.last.get(key) ?? -Infinity) >= context.sampleRate / observer.rateHz) {

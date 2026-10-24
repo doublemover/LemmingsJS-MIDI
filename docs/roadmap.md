@@ -2163,7 +2163,7 @@ Reference: https://www.dsprelated.com/freebooks/pasp/First_Order_Allpass_Interpo
 Plucked Garden now stages four original recipes through the same library flow,
 with BODY/PICK/DAMP/SPARK, deterministic siblings/strikes and typed work-strength
 inputs. A distinct held-voice damping control ramps string/body loss without
-retriggering excitation. Live contexts are explicitly limited to44.1/48/96kHz.
+retriggering excitation. Live contexts are explicitly limited to 44.1/48/96 kHz.
 The macro panel remains next-onset; physical continuous-damping mapping is still
 outstanding. Content, actual-kernel damping and immutable-browser fixtures are
 authored and unexecuted. No pitch/decay, listening or hardware result is claimed.
@@ -2175,6 +2175,20 @@ as a semantic observation without queueing a DSP command or claiming application
 The original completed-fact timestamps and interpolated-position evidence remain
 unchanged. Real strict-adapter and dispatcher regression fixtures are authored
 and await the consolidated validation pass.
+The new artificial choir kernel shares owned commands, leases, measured display
+and source retirement. Eight bounded voice slots each retain independent seeded
+breath, a three-harmonic voiced table/chorus and three double-precision trapezoidal
+SVF formants. Original vowel landmarks morph in log frequency; SIZE moves the
+formants without rewriting pitch. Live vowel/breath/size/chorus/vibrato/bandwidth
+controls use audio-domain ramps with an 8 ms minimum and bounded coefficient cadence.
+No recordings, anatomical model, words or person imitation are involved. Exact
+choir state cuts/offline output remain unavailable; held/ramp/determinism fixtures
+are authored and unexecuted. Mathematical reference: Andrew Simper's
+https://cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf ; no external DSP runtime
+or complete MIDI wrapper is imported. Source-specific telemetry now names pluck/
+choir correctly, preserves float headroom and omits their unsupported sine phase.
+The three-harmonic exciter table is authored offline as a pinned first-party
+source module; worklet construction copies it without table-generation trig.
 
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail

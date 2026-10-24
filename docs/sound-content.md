@@ -323,3 +323,23 @@ control ramp without a new note, new seed or reset delay line. The current sound
 macro panel still labels DAMP as a next-onset control; physical damping gestures
 need their separate causal mapping. Pitch, tail, spectral, dense-mix, CPU and
 listening fixtures remain unexecuted with the consolidated validation pass.
+
+The registered `worklet-choir` source has eight logical slots and three charged
+source layers per voice: voiced table, optional detuned sibling and seeded
+breath. Three formant filters use original landmarks [350,900,2200],
+[700,1200,2600], [300,2200,3000] Hz, logarithmic vowel interpolation and nominal
+bandwidths [70,110,160] Hz scaled by SIZE. These are musical choices. The voiced
+exciter contains three authored harmonics; no voice recordings are loaded.
+
+The filter equations follow the trapezoidal SVF derivation in
+[Andrew Simper's technical paper](https://cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf).
+Each voice owns its filter integrators and noise state. Filter controls retain
+that state, use at least 8 ms of smoothing and refresh coefficients at a bounded
+eight-frame cadence. Fundamental pitch stays separate from vowel/size settings.
+Rapid control, 60-second hold, spectral/pitch, density and listening qualification
+remain deferred. Source identity is pinned through the existing immutable engine
+artifact; native DSP libraries and complete MIDI synthesizers are not imported.
+
+Pluck and choir display samples use their own source IDs, report unclipped RMS/
+peak and clamp only the normalized visual envelope. The sine oscillator phase
+quantity is omitted because these sources do not expose that kernel state.
