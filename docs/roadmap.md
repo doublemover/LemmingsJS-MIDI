@@ -2116,6 +2116,14 @@ Selected ratios/index timing remain visible. The compiler distinguishes index
 from Hz and retains archived v1 explanations. Full physical/macro bindings,
 feedback/sends and spectral/listening gates remain; content, adapter and browser
 fixtures are authored and unexecuted with the consolidated validation pass.
+Typed macro curves now survive into executable patch data and native onset
+planning. A deterministic replace/add/scale order precedes the final domain
+clamp; receipts carry effective targets. FM Forge authors onset HARDNESS, RING
+and stepped ALLOY. Separate lane overrides use one committed control gesture,
+are captured on semantic onsets and do not mutate held voices or physical RNG.
+One-shot release policy follows the actual onset envelope. Continuous controls,
+identity/physical composition, momentary/controller pickup and audio/listening
+qualification remain; the new macro fixtures have not run.
 
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail

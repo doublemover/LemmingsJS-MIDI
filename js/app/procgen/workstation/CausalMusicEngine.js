@@ -1,3 +1,4 @@
+import { validateInstrumentControls } from '../../../midi/content/InstrumentPerformance.js';
 import { causalRandomDecision } from './CausalRandom.js';
 import { createTravelAccumulator, validateArticulationField } from './TravelAccumulator.js';
 
@@ -39,7 +40,7 @@ const validateCausalInstrumentGraph = value => {
 };
 
 const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline = null,
-  maxBeginsPerBatch = 512, maxVoices = 512, traceLimit = 1024 } = {}) => {
+  getOnsetControls = () => undefined, maxBeginsPerBatch = 512, maxVoices = 512, traceLimit = 1024 } = {}) => {
   if (typeof getGraph !== 'function' || (scoreTimeline && typeof scoreTimeline.map !== 'function')) throw new Error('A causal graph provider and valid score timeline are required.');
   const active = new Map(), seen = new Set(), seenOrder = [], trace = [];
   const travel = createTravelAccumulator({ maxEntries: Math.max(1, maxVoices) }), decisions = [];
@@ -59,7 +60,8 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
       precision: fact?.precision ?? 'tick' }), sourceTimeMs: batch.sourceTimeMs ?? null,
     sourceTickDurationMs: Number.isFinite(batch.tickDurationMs) && batch.tickDurationMs > 0 ? batch.tickDurationMs : null }),
     pitch: Object.freeze({ cents: instrument.pitchCents, referenceHz: 440 }), velocity01: instrument.velocity01,
-    expression: Object.freeze(expression), role: instrument.role, route: instrument.route, terminationReason: reason
+    expression: Object.freeze(expression), role: instrument.role, route: instrument.route, terminationReason: reason,
+    ...(kind === 'begin' ? { performanceControls: validateInstrumentControls(getOnsetControls(fact?.laneId)) } : {})
   });
   const publish = (batch, intents) => {
     const sealed = Object.freeze(intents);

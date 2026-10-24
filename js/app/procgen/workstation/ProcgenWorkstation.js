@@ -1067,7 +1067,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         if (disposed || playback !== physicalPlayback || generation !== documentGeneration || revision !== projectRevision || selected().id !== laneId || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop)
           throw new Error('Instrument Apply canceled because its lane or project changed.');
         prepared.commit();
-        try { dispatch({ type: 'procgen/lane', laneId, patch: { instrumentRef: reference } }); }
+        try { dispatch({ type: 'procgen/lane', laneId, patch: { instrumentRef: reference, instrumentControls: { macros: {} } } }); }
         catch (error) { void playback.synchronizeLaneInstruments(project.procgen.lanes); throw error; }
         status('Installed instrument applied to ' + selected().name + '. Held voices retain their prior renderer.'); return reference;
       } finally { prepared.release(); }

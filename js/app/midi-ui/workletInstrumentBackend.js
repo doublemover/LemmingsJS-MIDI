@@ -296,6 +296,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     return Object.freeze({ status: 'accepted', generation, executionEpoch, validUntilFrame, stage: 'queued' });
   };
   const begin = (intent, targetFrame, executionEpoch = 'live') => {
+    if (Object.keys(intent?.performanceControls?.macros || {}).length) return reject('performance-controls-unavailable', intent?.voiceId);
     if (!ready || !patch || !preview._ownerReady(owner) || context !== preview.getAudioContext()) return reject(fault || 'audio-not-ready', intent?.voiceId);
     if (ownerStopped) return reject('kernel-stop-pending', intent?.voiceId);
     const now = frameNow();

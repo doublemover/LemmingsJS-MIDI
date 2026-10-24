@@ -4,6 +4,8 @@ import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 import { releaseAudioResourceAfterRetirement } from './AudioResourceLeases.js';
 import { NATIVE_OSCILLATOR_PARAMETERS, NATIVE_FM_PARAMETERS } from './NativeInstrumentSchema.js';
 import { planNativeFmSource, createNativeFmSourceOwner } from './NativeFmSource.js';
+import { compileInstrumentPerformance } from '../../midi/content/InstrumentPerformance.js';
+import { resolveOwnedArticulationPolicy } from './OwnedArticulationPolicy.js';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const waveforms = Object.freeze(['sine', 'triangle', 'sawtooth', 'square']);
@@ -57,7 +59,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
   const validatePatch = resolution => {
     if (!resolution || !['ready', 'degraded'].includes(resolution.status) || !resolution.patch ||
         resolution.patch.engineId !== engineId || resolution.patch.engineVersion !== 1 ||
-        resolution.patch.sampleRefs?.length || resolution.patch.modulations?.length || resolution.patch.macros?.length || resolution.patch.causalBindings?.length || resolution.receipt?.patchId !== resolution.patch.id ||
+        resolution.patch.sampleRefs?.length || resolution.patch.modulations?.length || resolution.patch.causalBindings?.length || resolution.receipt?.patchId !== resolution.patch.id ||
         resolution.receipt?.revision !== resolution.patch.revision) return null;
     const values = Object.fromEntries(Object.entries(parameters).map(([id, spec]) => [id, spec.default]));
     for (const [name, value] of Object.entries(resolution.patch.parameters || {})) {
@@ -71,11 +73,13 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
         resolution.patch.voicePolicy.maxVoices > capabilities.maximumVoices || resolution.patch.voicePolicy.steal != null && resolution.patch.voicePolicy.steal !== 'reject') return null;
     if (typeof resolution.patch.id !== 'string' || !resolution.patch.id || resolution.patch.id.length > 128 ||
         !Number.isSafeInteger(resolution.patch.revision) || resolution.patch.revision < 1) return null;
+    let performance;
+    try { performance = compileInstrumentPerformance(resolution.patch, Object.values(parameters)); } catch { return null; }
     const patch = Object.freeze({ id: resolution.patch.id, revision: resolution.patch.revision,
       engineId: resolution.patch.engineId, engineVersion: resolution.patch.engineVersion,
       parameters: Object.freeze({ ...values }), sampleRefs: Object.freeze([]),
       mix: Object.freeze({ ...resolution.patch.mix }), voicePolicy: Object.freeze({ ...resolution.patch.voicePolicy }) });
-    return Object.freeze({ patch, receipt: Object.freeze({ ...resolution.receipt }), values: Object.freeze(values) });
+    return Object.freeze({ patch, receipt: Object.freeze({ ...resolution.receipt }), values: Object.freeze(values), performance });
   };
   const prepare = async (resolution, assets = []) => {
     if (disposed) return failure('disposed');
@@ -151,14 +155,17 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
         (intent.expression?.pan01 != null && (!Number.isFinite(intent.expression.pan01) || intent.expression.pan01 < -1 || intent.expression.pan01 > 1)) ||
         Object.keys(intent.expression || {}).some(name => !['pressure01', 'pan01', 'pitchOffsetCents'].includes(name))) return failure('unsupported-expression', intent);
     if (!validCents(offset)) return failure('invalid-expression', intent);
+    let controls;
+    try { controls = prepared.performance.resolve(intent.performanceControls, targetFrame); } catch { return failure('unsupported-performance-controls', intent); }
+    const values = controls.values;
     let fmPlan = null;
-    if (engineId === 'native-fm') { try { fmPlan = planNativeFmSource({ fundamentalHz: frequencyFor(intent.pitch), sampleRate: context.sampleRate, parameters: prepared.values, pitchOffsetCents: offset }); }
+    if (engineId === 'native-fm') { try { fmPlan = planNativeFmSource({ fundamentalHz: frequencyFor(intent.pitch), sampleRate: context.sampleRate, parameters: values, pitchOffsetCents: offset }); }
     catch { return failure('fm-register-or-bend-unavailable', intent); } }
     const sourceCost = fmPlan?.sourceCost ?? 1;
     const lease = leases.get(leaseKey(intent.generation, executionEpoch));
     const leaseEnd = lease?.context === context && lease?.generation === preview._generation &&
       lease?.ownerGeneration === preview._sessions.get(owner)?.generation ? lease?.until : null;
-    if (gateMode === 'owned' && (!Number.isFinite(leaseEnd) || leaseEnd <= start + prepared.values.releaseSeconds)) return failure('execution-lease-required', intent);
+    if (gateMode === 'owned' && (!Number.isFinite(leaseEnd) || leaseEnd <= start + values.releaseSeconds)) return failure('execution-lease-required', intent);
     const identity = keyFor(executionEpoch, intent.voiceId);
     if (voices.has(identity)) return failure('duplicate-voice', intent);
     const sharedIdentity = sharedKeyFor(executionEpoch, intent.voiceId);
@@ -168,7 +175,6 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
     let resourceLease;
     try { resourceLease = preview._audioResources.reserveNativeVoice(owner, intent.generation, sourceCost); }
     catch { return failure('audio-resource-budget', intent); }
-    const values = prepared.values;
     const end = gateMode === 'owned' ? leaseEnd : start + preview._maxNoteSeconds;
     if (end - start <= values.releaseSeconds) { resourceLease.release(); return failure('bounded-envelope-out-of-range', intent); }
     const admission = preview._inspectVoiceInterval(owner, { start, end, releaseAt: end - values.releaseSeconds, cost: sourceCost,
@@ -225,6 +231,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
       oscillator.start(start); oscillator.stop(end);
       const receipt = Object.freeze({ status: 'accepted', stage: 'scheduled', voiceId: intent.voiceId,
         generation: intent.generation, executionEpoch, targetFrame, patchId: prepared.patch.id, patchRevision: prepared.patch.revision,
+        performance: controls, articulation: resolveOwnedArticulationPolicy({ parameters: values }),
         ...(fmPlan ? { sourceCost, quality: fmPlan.quality, indexLimited: fmPlan.indexLimited, fmPlan } : {}) });
       trace({ ...receipt, sourceEventIds: Object.freeze(intent.sourceEventIds?.slice(0, 32) || []),
         omittedSourceEventIds: Math.max(0, (intent.sourceEventIds?.length || 0) - 32), intentId: intent.intentId ?? null,

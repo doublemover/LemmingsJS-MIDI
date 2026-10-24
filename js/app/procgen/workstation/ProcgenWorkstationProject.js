@@ -1,6 +1,7 @@
 import { PROCGEN_ROLES, PROCGEN_SOUND_COLLECTIONS, PROCGEN_DEFAULT_PAIRS, resolveProcgenSound } from './ProcgenSoundCollections.js';
 import { validateCausalInstrumentGraph } from './CausalMusicEngine.js';
 import { validateSoundContentReference } from '../../../midi/content/SoundContentReference.js';
+import { validateInstrumentControls } from '../../../midi/content/InstrumentPerformance.js';
 
 const number = (value, fallback, min, max) => Math.max(min, Math.min(max, Number.isFinite(Number(value)) ? Number(value) : fallback));
 const integer = (value, fallback, min, max) => Math.round(number(value, fallback, min, max));
@@ -66,6 +67,7 @@ const createProcgenLane = (index = 0, overrides = {}) => {
   const melodic = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16];
   return { id: string(overrides.id, `lane-${index + 1}`), name: string(overrides.name, `Lane ${index + 1}`), family, role, patch: sound.id,
     instrumentRef: validateSoundContentReference(overrides.instrumentRef),
+    instrumentControls: validateInstrumentControls(overrides.instrumentControls),
     mode, patternPurpose: mode === 'pattern' ? string(overrides.patternPurpose, '') : null,
     channel: role === 'drums' ? 10 : melodic.includes(overrides.channel) ? overrides.channel : melodic[index % melodic.length],
     outputId: overrides.outputId == null ? null : String(overrides.outputId),

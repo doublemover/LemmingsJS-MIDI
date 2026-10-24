@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { fmIndexToDeviation, planNativeFmSource, createNativeFmSourceOwner } from '../../js/app/midi-ui/NativeFmSource.js';
 import { NATIVE_FM_PARAMETERS } from '../../js/app/midi-ui/NativeInstrumentSchema.js';
+import { compileInstrumentPerformance } from '../../js/midi/content/InstrumentPerformance.js';
 
 const parameters = overrides => ({ ...Object.fromEntries(Object.entries(NATIVE_FM_PARAMETERS).map(([id, spec]) => [id, spec.default])), ...overrides });
 const contextFixture = () => {
@@ -15,6 +16,17 @@ const contextFixture = () => {
 };
 
 describe('owned native two/four-operator FM source', () => {
+  it('applies typed onset hardness to the actual child deviation AudioParam', () => {
+    const performance = compileInstrumentPerformance({ parameters: parameters(), macros: [{ id: 'hardness', name: 'Hardness', mode: 'onset-only', default01: 0.5,
+      smoothingMs: 0, perceptualDirection: 'Increase initial modulation depth.', targets: [{ parameter: 'indexStart', unit: 'dimensionless', minimum: 0, maximum: 4,
+        curve: 'linear', composition: 'replace', clamp: true }] }] }, Object.values(NATIVE_FM_PARAMETERS));
+    for (const amount of [0, 0.5, 1]) {
+      const effective = performance.resolve({ macros: { hardness: amount } }, 48000), f = contextFixture();
+      const plan = planNativeFmSource({ fundamentalHz: 440, sampleRate: 48000, parameters: effective.values });
+      const source = createNativeFmSourceOwner(f.context, plan, 1); source.prepare();
+      expect(f.gains[1].gain.events[0]).to.deep.equal(['set', amount * 4 * 880, 1]); source.disconnect();
+    }
+  });
   it('converts dimensionless index to Hz deviation and retains transposed index meaning', () => {
     expect(fmIndexToDeviation(3.5, 440 * 2.71)).to.be.closeTo(4173.4, 1e-9);
     const a = planNativeFmSource({ fundamentalHz: 440, sampleRate: 48000, parameters: parameters({ modulatorRatio: 2.71, indexStart: 3.5 }) });

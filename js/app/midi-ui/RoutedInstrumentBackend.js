@@ -92,14 +92,14 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     const execution = executionFor(child, epoch, intent.generation); if (!execution) return reject('renderer-execution-unavailable');
     try { reserveMetadata({ voices: 1 }); } catch { return reject('audio-resource-budget'); }
     const outcome = child.backend.begin(intent, targetFrame, execution);
-    if (outcome?.status === 'accepted') voices.set(keyFor(epoch, intent.voiceId), { child, execution, epoch, voiceId: intent.voiceId });
+    if (outcome?.status === 'accepted') voices.set(keyFor(epoch, intent.voiceId), { child, execution, epoch, voiceId: intent.voiceId, articulation: outcome.articulation || child });
     return outcome;
   };
   const voiceCall = (method, voiceId, value, frame, epoch) => {
     if (disposed) return reject('disposed'); const voice = voices.get(keyFor(epoch, voiceId));
     if (!voice) return reject('voice-unavailable');
-    if (method === 'end' && voice.child.releaseSeconds != null) value = { ...value, seconds: voice.child.releaseSeconds,
-      ...(value?.mode === 'one-shot' && voice.child.oneShotTailSeconds != null ? { tailSeconds: voice.child.oneShotTailSeconds } : {}) };
+    if (method === 'end' && voice.articulation.releaseSeconds != null) value = { ...value, seconds: voice.articulation.releaseSeconds,
+      ...(value?.mode === 'one-shot' && voice.articulation.oneShotTailSeconds != null ? { tailSeconds: voice.articulation.oneShotTailSeconds } : {}) };
     return voice.child.backend[method](voiceId, value, frame, voice.execution);
   };
   const cancelGenerationWithReceipt = (generation, epoch) => {

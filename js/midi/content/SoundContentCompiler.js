@@ -1,9 +1,10 @@
 import { cloneData, freezeData, hashData } from '../../core/CanonicalData.js';
 import { prepareSoundContentPack, planSoundContentSelection, SOUND_CONTENT_SCHEMA } from './SoundContentPack.js';
 import { validateEngineDescriptor, validateInstrumentPatchV2 } from './InstrumentPatchV2.js';
+import { validateInstrumentMacros } from './InstrumentPerformance.js';
 
 export const SOUND_RECIPE_SCHEMA = 'lemmings-sound-recipes/v1';
-export const SOUND_COMPILER_REVISION = 'typed-recipes-v2';
+export const SOUND_COMPILER_REVISION = 'typed-recipes-v3';
 const limits = { maxBytes: 8 * 1048576, maxNodes: 200000, domain: 'Sound recipes' };
 const units = new Set(['Hz', 'cents', 'ratio', 'dimensionless', 's', 'ms', 'amplitude-linear', 'dB', 'normalized', 'enum', 'world-pixel']);
 const id = value => typeof value === 'string' && /^[a-z][a-z0-9._:-]{0,127}$/i.test(value) && !['__proto__', 'constructor', 'prototype'].includes(value);
@@ -111,11 +112,14 @@ export async function compileSoundContent(raw, { targets = [], signal } = {}) {
       const mappings = macro.targets.map(mapping => {
         const spec = schema.get(mapping.parameter), field = path + '.macros.' + macro.id;
         requireValue(spec && (macro.mode !== 'continuous' || spec.liveSafe) && typeof mapping.clamp === 'boolean', field, 'unsupported target or unsafe continuous macro');
-        const low = convertSoundQuantity(mapping.minimum, spec.unit, field + '.minimum'), high = convertSoundQuantity(mapping.maximum, spec.unit, field + '.maximum');
-        requireValue(low >= spec.min && low <= spec.max && high >= spec.min && high <= spec.max && low !== high, field, 'macro range exceeds its effective parameter domain');
-        return { parameter: mapping.parameter, minimum: low, maximum: high, unit: spec.unit, conversion: { minimum: mapping.minimum.conversion || null, maximum: mapping.maximum.conversion || null }, clamp: mapping.clamp };
+        const unit = mapping.composition === 'scale' ? 'ratio' : spec.unit;
+        const low = convertSoundQuantity(mapping.minimum, unit, field + '.minimum'), high = convertSoundQuantity(mapping.maximum, unit, field + '.maximum');
+        requireValue(['replace', 'add', 'scale'].includes(mapping.composition) && ['linear', 'logarithmic', 'step'].includes(mapping.curve) && low !== high &&
+          (mapping.composition !== 'replace' || low >= spec.min && low <= spec.max && high >= spec.min && high <= spec.max), field, 'macro range exceeds its effective parameter domain');
+        return { parameter: mapping.parameter, minimum: low, maximum: high, unit, curve: mapping.curve, composition: mapping.composition,
+          conversion: { minimum: mapping.minimum.conversion || null, maximum: mapping.maximum.conversion || null }, clamp: mapping.clamp };
       });
-      explanations.push({ id: macro.id, name: macro.name, mode: macro.mode, perceptualDirection: macro.perceptualDirection, mappings });
+      explanations.push({ id: macro.id, name: macro.name, mode: macro.mode, default01: macro.default01, smoothingMs: macro.smoothingMs, perceptualDirection: macro.perceptualDirection, mappings });
     }
     const authoredModulations = recipe.modulations || [], causalBindings = recipe.causalBindings || [];
     requireValue(Array.isArray(authoredModulations) && authoredModulations.length <= 64 && (!authoredModulations.length || descriptor.capabilities.modulationGraph) && Array.isArray(causalBindings) &&
@@ -129,15 +133,18 @@ export async function compileSoundContent(raw, { targets = [], signal } = {}) {
     });
     requireValue(recipe.voicePolicy && (!descriptor.maximumVoices || recipe.voicePolicy.maxVoices <= descriptor.maximumVoices) &&
       (!descriptor.voicePolicies || descriptor.voicePolicies.includes(recipe.voicePolicy.steal)), path + '.voicePolicy', 'voice capacity or stealing policy is not realized by this engine');
+    let effectiveMacros;
+    try { effectiveMacros = validateInstrumentMacros(explanations.map(({ mappings, ...macro }) => ({ ...macro, targets: mappings.map(({ conversion, ...mapping }) => mapping) })), descriptor.parameters); }
+    catch (error) { fail(path + '.macros', error.message); }
     const definition = validateInstrumentPatchV2({ schemaVersion: 2, id: recipe.id, revision: recipe.revision, name: recipe.name, author: recipe.author, tags: recipe.tags || [],
       engineId: descriptor.engineId, engineVersion: descriptor.engineVersion, parameters, modulations, causalBindings,
-      macros: explanations.map(macro => ({ id: macro.id, name: macro.name, targets: macro.mappings.map(mapping => mapping.parameter) })),
+      macros: effectiveMacros,
       sampleRefs: recipe.sampleRefs || [], voicePolicy: recipe.voicePolicy, mix: recipe.mix, midiFallback: recipe.midiFallback }, descriptor);
     requireValue(!nativeComponents(descriptor) || definition.voicePolicy.maxVoices <= 64, path + '.voicePolicy', 'native renderer supports at most 64 owned voices');
     const engineRequirement = { engineId: descriptor.engineId, engineVersion: descriptor.engineVersion, artifactHash: descriptor.artifactHash, parameterSchemaHash: descriptor.parameterSchemaHash };
     const dependencies = recipe.dependencies || []; requireValue(Array.isArray(dependencies) && dependencies.length <= 512, path + '.dependencies', 'invalid asset dependency closure');
     const effective = { engineRequirement, parameters: definition.parameters, modulations, causalBindings, sampleRefs: definition.sampleRefs, dependencies: [...dependencies].sort(),
-      macros: explanations.map(({ id: macroId, mode, mappings }) => ({ id: macroId, mode, mappings })), voicePolicy: definition.voicePolicy, mix: definition.mix };
+      macros: definition.macros.map(({ name, perceptualDirection, ...macro }) => macro), voicePolicy: definition.voicePolicy, mix: definition.mix };
     const reachable = new Set(dependencies), fileMap = new Map(source.files.map(file => [file.sha256, file]));
     for (const dependency of reachable) { requireValue(reachable.size <= 512, path + '.dependencies', 'asset ancestry exceeds its bounds');
       for (const parent of fileMap.get(dependency)?.parents || []) reachable.add(parent); }

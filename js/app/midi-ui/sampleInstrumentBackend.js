@@ -208,6 +208,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     armExpiry(); return trace({ status: 'accepted', stage: 'scheduled', generation, executionEpoch, validUntilFrame });
   };
   const begin = (intent, targetFrame, executionEpoch = 'live') => {
+    if (Object.keys(intent?.performanceControls?.macros || {}).length) return reject('performance-controls-unavailable', intent?.voiceId);
     if (disposed || !prepared || !preview._ownerReady(owner)) return reject(disposed ? 'disposed' : !prepared ? 'patch-unprepared' : 'audio-not-ready', intent?.voiceId);
     const context = preview._context, start = timeFor(targetFrame), expression = intent?.expression ?? {};
     if (intent?.version !== 1 || intent.kind !== 'begin' || !text(intent.voiceId) || !text(executionEpoch) || !integer(intent.generation, 0, Number.MAX_SAFE_INTEGER) ||

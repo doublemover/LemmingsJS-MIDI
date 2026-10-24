@@ -13,7 +13,8 @@ const patch = () => ({ schemaVersion: 2, id: 'crystal-lead', revision: 7, name: 
   modulations: [{ id: 'motion-brightness', source: 'physical:displacementPixels', target: 'brightness', amount: 0.25, smoothingMs: 15, curve: 'linear' }],
   sampleRefs: [{ id: 'air', sha256: 'c'.repeat(64), bytes: 32000, required: false }],
   voicePolicy: { maxVoices: 16, steal: 'oldest' }, mix: { gain01: 0.8, pan01: -0.2 },
-  macros: [{ id: 'shimmer', name: 'Shimmer', targets: ['brightness'] }],
+  macros: [{ id: 'shimmer', name: 'Shimmer', mode: 'onset-only', default01: 0.5, smoothingMs: 0, perceptualDirection: 'Increase spectral brightness.',
+    targets: [{ parameter: 'brightness', unit: 'normalized', minimum: 0, maximum: 1, curve: 'linear', composition: 'replace', clamp: true }] }],
   causalBindings: [{ id: 'impact', sourceKind: 'TerrainWorkCommitted', payloadField: 'changedSolidCells', target: 'brightness',
     unit: 'cells', curve: 'linear', inputMin: 0, inputMax: 6, smoothingMs: 5 }],
   midiFallback: { bankMSB: 0, bankLSB: 0, program: 10, percussionMap: { 36: 38 } } });
@@ -104,7 +105,7 @@ describe('versioned causal instrument patches', () => {
     expect(result.patch).to.include({ id: old.id, revision: 8 });
     expect(result.patch.parameters).to.have.property('tone', 0.72);
     expect(result.patch.modulations[0].target).to.equal('tone');
-    expect(result.patch.macros[0].targets).to.deep.equal(['tone']);
+    expect(result.patch.macros[0].targets[0].parameter).to.equal('tone');
     expect(result.patch.causalBindings[0].target).to.equal('tone');
     expect(result.report.renamed).to.deep.equal([{ from: 'brightness', to: 'tone' }]);
     expect(old.parameters).to.have.property('brightness', 0.72);

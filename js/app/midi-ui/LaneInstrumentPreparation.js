@@ -56,7 +56,7 @@ export function createLaneInstrumentPreparation({ session, routed, getCatalog = 
       const resolution = await resolveSoundContentReference(reference, { engineDescriptors: catalog.descriptors, availableHashes: [], signal }); check();
       if (resolution.status !== 'ready') throw failure(resolution.status, 'Pinned lane instrument requirement is unavailable: ' + resolution.status);
       if (!['native-oscillator', 'native-fm', 'worklet-sine'].includes(resolution.patch.engineId) || resolution.patch.modulations.length || resolution.patch.causalBindings.length ||
-          resolution.patch.macros.length || reference.assetHashes.length) throw failure('instrument-adapter-unavailable', 'This lane instrument needs a realized material or gesture adapter.');
+          resolution.patch.engineId === 'worklet-sine' && resolution.patch.macros.length || reference.assetHashes.length) throw failure('instrument-adapter-unavailable', 'This lane instrument needs a realized material or gesture adapter.');
       if (!operation.pin) {
         operation.backend = resolution.patch.engineId === 'worklet-sine' ? await session.createWorkletInstrumentBackend() : session.createInstrumentBackend({ gateMode: 'owned', engineId: resolution.patch.engineId }); check();
       } else operation.backend = operation.pin.backend;

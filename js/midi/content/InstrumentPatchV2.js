@@ -1,3 +1,4 @@
+import { validateInstrumentMacros } from './InstrumentPerformance.js';
 import { canonicalDataText, cloneData } from '../../core/CanonicalData.js';
 
 const plain = value => value !== null && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
@@ -99,13 +100,9 @@ const validateInstrumentPatchV2 = (input, descriptor) => {
     sampleIds.add(sample.id);
     return { id: sample.id, sha256: sample.sha256.toLowerCase(), bytes: sample.bytes, required: sample.required !== false };
   });
-  const macroIds = new Set();
-  const macros = input.macros.map(macro => {
-    if (!plain(macro) || !id(macro.id) || macroIds.has(macro.id) || !text(macro.name, 80) || !Array.isArray(macro.targets) || macro.targets.length > 16 ||
-        macro.targets.some(target => !id(target) || !schema.has(target) || schema.get(target).capability && !engine.capabilities[schema.get(target).capability])) throw new Error('Invalid patch macro.');
-    macroIds.add(macro.id);
-    return { id: macro.id, name: macro.name, targets: macro.targets };
-  });
+  const macros = validateInstrumentMacros(input.macros, engine.parameters);
+  if (engine.capabilities.continuousMacroPerformance === false && macros.some(macro => macro.mode === 'continuous')) throw new Error('Continuous macros are unavailable on this engine.');
+  if (macros.some(macro => macro.targets.some(target => schema.get(target.parameter).capability && !engine.capabilities[schema.get(target.parameter).capability]))) throw new Error('Unsupported macro target capability.');
   const bindingIds = new Set();
   const causalBindings = input.causalBindings.map(binding => {
     if (!plain(binding) || !id(binding.id) || bindingIds.has(binding.id) || !id(binding.sourceKind) || !id(binding.payloadField) || !id(binding.target) ||
@@ -148,7 +145,7 @@ const migrateInstrumentPatchParameters = (source, descriptor, renames, nextRevis
     modulations: source.modulations.map(modulation => ({ ...modulation,
       source: modulation.source.startsWith('parameter:') ? `parameter:${rename(modulation.source.slice('parameter:'.length))}` : modulation.source,
       target: rename(modulation.target) })),
-    macros: source.macros.map(macro => ({ ...macro, targets: macro.targets.map(rename) })),
+    macros: source.macros.map(macro => ({ ...macro, targets: macro.targets.map(target => ({ ...target, parameter: rename(target.parameter) })) })),
     causalBindings: source.causalBindings.map(binding => ({ ...binding, target: rename(binding.target) })) }, descriptor);
   return Object.freeze({ patch: migrated, report: Object.freeze({ kind: 'parameter-rename', patchId: source.id,
     fromRevision: source.revision, toRevision: nextRevision,

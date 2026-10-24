@@ -35,11 +35,11 @@ const compilerArtifact = (artifact, patch) => {
     conversionRecord(parameter.authored.conversion, path + '.conversion');
   }
   for (const macro of artifact.macros) {
-    keysOnly(macro, ['id', 'name', 'mode', 'perceptualDirection', 'mappings'], path + '.macros');
+    keysOnly(macro, ['id', 'name', 'mode', 'default01', 'smoothingMs', 'perceptualDirection', 'mappings'], path + '.macros');
     assertContent(id(macro.id) && text(macro.name, 80) && ['onset-only', 'continuous'].includes(macro.mode) && text(macro.perceptualDirection, 256) &&
       Array.isArray(macro.mappings) && macro.mappings.length <= 16, path, 'invalid macro explanation');
     for (const mapping of macro.mappings) {
-      keysOnly(mapping, ['parameter', 'minimum', 'maximum', 'unit', 'conversion', 'clamp'], path + '.macroMappings');
+      keysOnly(mapping, ['parameter', 'minimum', 'maximum', 'unit', 'curve', 'composition', 'conversion', 'clamp'], path + '.macroMappings');
       keysOnly(mapping.conversion, ['minimum', 'maximum'], path + '.macroConversion');
       assertContent(id(mapping.parameter) && Number.isFinite(mapping.minimum) && Number.isFinite(mapping.maximum) && text(mapping.unit, 32) && typeof mapping.clamp === 'boolean', path, 'invalid macro mapping');
       conversionRecord(mapping.conversion.minimum, path + '.macroMinimum'); conversionRecord(mapping.conversion.maximum, path + '.macroMaximum');
@@ -147,7 +147,7 @@ export async function prepareSoundContentPack(raw, { engineDescriptors = [], sig
   }
   if (pack.compilation != null) {
     const compilation = pack.compilation; keysOnly(compilation, ['compilerRevision', 'sourceHash', 'schemaRevision', 'artifacts'], 'compilation');
-    assertContent(['typed-recipes-v1', 'typed-recipes-v2'].includes(compilation.compilerRevision) && compilation.schemaRevision === 'lemmings-sound-recipes/v1' && hash(compilation.sourceHash) &&
+    assertContent(['typed-recipes-v1', 'typed-recipes-v2', 'typed-recipes-v3'].includes(compilation.compilerRevision) && compilation.schemaRevision === 'lemmings-sound-recipes/v1' && hash(compilation.sourceHash) &&
       Array.isArray(compilation.artifacts) && compilation.artifacts.length === patches.length && compilation.artifacts.every(artifact => artifact && typeof artifact === 'object' && !Array.isArray(artifact)) &&
       new Set(compilation.artifacts.map(artifact => artifact.id + '@' + artifact.revision)).size === patches.length,
     'compilation', 'unsupported compilation inventory');

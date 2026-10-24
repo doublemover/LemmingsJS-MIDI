@@ -56,10 +56,11 @@ describe('typed declarative sound authoring', () => {
     const descriptor = targets.find(target => target.descriptor.engineId === 'native-oscillator').descriptor;
     expect(descriptor.maximumVoices).to.equal(64); expect(descriptor.voicePolicies).to.deep.equal(['reject']);
     for (const change of [patch => { patch.voicePolicy.steal = 'oldest'; }, patch => { patch.voicePolicy.maxVoices = 65; },
-      patch => { patch.macros = [{ id: 'ignored', name: 'Ignored', targets: ['gain01'] }]; },
       patch => { patch.causalBindings = [{}]; }, patch => { patch.modulations = [{}]; }, patch => { patch.sampleRefs = [{}]; }]) {
       const patch = structuredClone(entry.definition); change(patch);
       expect(() => validateInstrumentPatchV2(patch, descriptor)).to.throw(/not realized/);
     }
+    const invalid = structuredClone(entry.definition); invalid.macros = [{ id: 'ignored', name: 'Ignored', targets: ['gain01'] }];
+    expect(() => validateInstrumentPatchV2(invalid, descriptor)).to.throw('typed curves');
   });
 });

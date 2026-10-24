@@ -38,7 +38,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
     try { lease = borrowSoundContentStage(stage); } catch (error) { return Promise.reject(error); }
     const patch = lease.prepared.patches.find(entry => entry.identity === patchIdentity);
     if (!patch || patch.state !== 'definition-admitted' || !['native-oscillator', 'native-fm', 'worklet-sine'].includes(patch.definition.engineId) ||
-        patch.definition.sampleRefs.length || patch.definition.modulations.length || patch.definition.causalBindings.length || patch.definition.macros.length) {
+        patch.definition.sampleRefs.length || patch.definition.modulations.length || patch.definition.causalBindings.length || patch.definition.engineId === 'worklet-sine' && patch.definition.macros.length) {
       lease.release(); return Promise.reject(failure('audition-requirements-unmet', 'This instrument needs an available renderer and a realized gesture/material adapter.'));
     }
     const plan = planSoundContentSelection(lease.prepared, [patchIdentity], { availableHashes: lease.metadata.assetHashes });

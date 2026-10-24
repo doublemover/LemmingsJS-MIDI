@@ -217,7 +217,7 @@ the source-line reservation through conversion. An entry that exceeds available
 shared parsing capacity is explicitly rejected without changing stored work.
 
 Native oscillator/sample schemas bind their actual 64-voice capacity and supported
-`reject` policy. Definitions requesting unimplemented stealing, macros,
+`reject` policy. Definitions requesting unimplemented stealing, continuous macros,
 modulation graphs or causal bindings remain unavailable instead of silently
 losing those behaviors. Direct renderer preparation enforces the same boundary.
 The native foundation pack is now version 1.1.0 with patch revisions 2; its
@@ -250,3 +250,13 @@ These recipes remain unqualified. Register-dependent index reduction is a
 conservative sideband estimate, and feedback/effect sends are unavailable. This
 pass has not produced PCM, spectral, dense-mix or listening qualification. Source
 rights are `NOASSERTION` with redistribution unknown; a recipe is not a rights grant.
+
+Compiler `typed-recipes-v3` carries effective macro curves into the patch itself.
+Native oscillator/FM adapters support onset-sampled macros: replacements run
+first, then additions/scales ordered by stable macro ID, followed by one final
+engine-domain clamp. Units, default amounts, discrete steps and audible intent
+are validated. Duplicate replacement owners are rejected. Accepted native API
+receipts report effective values and their frame; this is not a PCM receipt.
+FM Forge revision 2 adds HARDNESS, RING and ALLOY. Saved lane overrides affect
+the next causal onset and enter captured intent data. Existing voices retain
+their authored excitation and envelope; continuous macros are unavailable.

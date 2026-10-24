@@ -73,7 +73,9 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     latePolicy: createStrictLiveFramePolicy({ nowFrame: () => clock.currentFrame() }),
     onReceipt: receipt => { if (receipt.status === 'accepted') accepted++; else rejected++; onReceipt(receipt); }
   });
-  const engine = createCausalMusicEngine({ getGraph, scoreTimeline, deliver: (intents, batch) => dispatcher.dispatch(intents, batch) });
+  const engine = createCausalMusicEngine({ getGraph, scoreTimeline,
+    getOnsetControls: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentControls,
+    deliver: (intents, batch) => dispatcher.dispatch(intents, batch) });
   const refreshDisplay = batch => {
     const manager = renderer?.actorEffects, state = audio?.getState?.(), owner = session?.getState?.().ownerId;
     if (!backend || !manager || manager.retired || !manager.visible || !permitted() || !state?.enabled || !session?.getState().enabled) { if (displayKey) stopDisplay(); return; }

@@ -177,6 +177,7 @@ export async function renderCausalSineTake(input, { signal, yieldControl = () =>
     commands: { capturedBegins: plan.capturedBegins, capturedUpdates: plan.capturedUpdates, capturedEnds: plan.capturedEnds, derivedReleases: plan.derivedReleases, submitted: sequence, applied, peakVoices: plan.peakVoices },
     realization: { scope: 'new-local-sine-realization-of-immutable-intents', liveAdmissionHistoryRecreated: false, historicalHardwareTimbreRecreated: false,
       smoothingSeconds: 0.008, articulationPolicy: plan.articulation.policy, oneShotHoldSeconds: plan.articulation.oneShotTailSeconds,
+      sourcePerformanceControls: 'retained-in-source-intents-replaced-by-explicit-new-sine-patch',
       normalization: 'none', integerClipping: 'not-applicable', dither: 'none-float-output', sharedMasterAndLimiter: 'excluded' },
     stems: { mode: 'simultaneous-dry-lane-taps', laneIds: stemLaneIds, allCapturedLanesIncluded: [...plan.lanes].every(lane => stemLaneIds.includes(lane)),
       sharedReturns: 'none-in-selected-graph', recombination: 'linear-dry-sum-with-float32-rounding', nonlinearMaster: 'excluded' },

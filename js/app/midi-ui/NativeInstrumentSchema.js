@@ -19,14 +19,14 @@ const schemas = freezeData({
   'native-sample': envelope(0.005, 0, 1, 0.7)
 });
 export const NATIVE_OSCILLATOR_PARAMETERS = freezeData(Object.fromEntries(schemas['native-oscillator'].map(spec =>
-  [spec.id, { min: spec.min, max: spec.max, integer: spec.discrete, default: spec.default }])));
+  [spec.id, { ...spec, integer: spec.discrete }])));
 export const NATIVE_WORKLET_FIELDS = freezeData(Object.fromEntries(schemas['worklet-sine'].map(spec => [spec.id, [spec.min, spec.max, spec.default]])));
-export const NATIVE_FM_PARAMETERS = freezeData(Object.fromEntries(schemas['native-fm'].map(spec => [spec.id, { min: spec.min, max: spec.max, integer: spec.discrete, default: spec.default }])));
+export const NATIVE_FM_PARAMETERS = freezeData(Object.fromEntries(schemas['native-fm'].map(spec => [spec.id, { ...spec, integer: spec.discrete }])));
 export const NATIVE_SAMPLE_FIELDS = freezeData(Object.fromEntries(schemas['native-sample'].map(spec => [spec.id, [spec.min, spec.max, spec.default]])));
 const capabilities = id => Object.freeze({ samples: id === 'native-sample', independentSamePitch: true, perVoicePitch: true,
   perVoicePressure: true, perVoicePan: true, perVoiceTimbre: false, ownedGates: true, releaseVelocity: id === 'native-sample',
   forwardLoops: id === 'native-sample', displayTelemetry: id === 'worklet-sine', renderAcknowledgment: id === 'worklet-sine', offlineRender: id === 'worklet-sine',
-  modulationGraph: false, macroPerformance: false, causalBindings: false });
+  modulationGraph: false, macroPerformance: ['native-oscillator', 'native-fm'].includes(id), continuousMacroPerformance: false, causalBindings: false });
 let catalogPromise = null;
 
 export async function describeNativeInstrumentEngines(artifacts) {
