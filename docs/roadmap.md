@@ -2143,6 +2143,23 @@ DAMPING/HOLLOW, identity variation and typed work-strength bindings. This is a
 musical impulse-response adapter, not a feedback resonator/FEM pickup or verified
 terrain-material resolver. Source/model/content/browser fixtures remain deferred
 with real PCM, spectral, listening and combined cost qualification.
+The new owned pluck source shares the existing command/receipt/lease lifecycle
+with sine and has a separate fixed 24-field ABI. Delay, excitation scratch and
+per-voice state are preallocated and admitted before worklet construction.
+Actor/event-seeded comb-shaped noise initializes a bounded fractional-delay
+feedback string; two optional damped body modes share the same logical voice.
+An absolute 128-frame excitation-write budget reports actual kernel rejection
+without shifting onsets. The host advertises the bounded pitch/bend profile and
+accounts optional body complexity. Exact pluck DSP restore and offline rendering
+are unavailable; pitch/decay/quality and workload fixtures are authored, unrun.
+Source design context: https://faustlibraries.grame.fr/libs/physmodels/ documents
+waveguide/termination/exciter building blocks. This first-party loop does not
+compile or wrap a Faust MIDI instrument and makes no library qualification claim.
+Pluck tuning uses a first-order allpass fractional delay, with the loop filter's
+phase delay removed at the fundamental and its attenuation included in the
+bounded target loss. This avoids treating a linear-interpolated delay's extra
+loss as the authored T60. These are model equations, not measured tuning/decay.
+Reference: https://www.dsprelated.com/freebooks/pasp/First_Order_Allpass_Interpolation.html
 
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail

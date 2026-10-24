@@ -4,7 +4,7 @@ import { validateEngineDescriptor, validateInstrumentPatchV2 } from './Instrumen
 import { validateInstrumentMacros } from './InstrumentPerformance.js';
 
 export const SOUND_RECIPE_SCHEMA = 'lemmings-sound-recipes/v1';
-export const SOUND_COMPILER_REVISION = 'typed-recipes-v5';
+export const SOUND_COMPILER_REVISION = 'typed-recipes-v6';
 const limits = { maxBytes: 8 * 1048576, maxNodes: 200000, domain: 'Sound recipes' };
 const units = new Set(['Hz', 'cents', 'ratio', 'dimensionless', 's', 'ms', 'amplitude-linear', 'dB', 'normalized', 'enum', 'world-pixel']);
 const id = value => typeof value === 'string' && /^[a-z][a-z0-9._:-]{0,127}$/i.test(value) && !['__proto__', 'constructor', 'prototype'].includes(value);
@@ -36,7 +36,10 @@ export function convertSoundQuantity(quantity, targetUnit, path = 'quantity') {
 }
 
 const nativeComponents = descriptor => {
-  const roles = descriptor.engineId === 'native-modal' ? {
+  const roles = descriptor.engineId === 'worklet-pluck' ? {
+    exciter: ['pluckPosition01', 'excitationBrightness01'], resonator: ['stringT60Seconds', 'bodyMix01', 'bodyT60Seconds'],
+    envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01']
+  } : descriptor.engineId === 'native-modal' ? {
     exciter: ['strikePosition01', 'maxBendCents'], resonator: descriptor.parameters.map(parameter => parameter.id).filter(name => /^mode\d|^modeCount$|^bodyT60Seconds$|^bodySizeRatio$/.test(name)),
     envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01']
   } : descriptor.engineId === 'native-fm' ? {
@@ -44,7 +47,7 @@ const nativeComponents = descriptor => {
     modulation: ['indexStart', 'indexEnd', 'indexSeconds', 'secondaryIndexStart', 'secondaryIndexEnd'],
     envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01', 'secondaryMix01']
   } : { exciter: ['waveform'], envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01'] };
-  if (!['native-oscillator', 'native-fm', 'native-modal', 'native-sample', 'worklet-sine'].includes(descriptor.engineId)) return null;
+  if (!['native-oscillator', 'native-fm', 'native-modal', 'native-sample', 'worklet-sine', 'worklet-pluck'].includes(descriptor.engineId)) return null;
   return Object.entries(roles).map(([role, parameters]) => ({ id: role, role, parameters: parameters.filter(name => descriptor.parameters.some(spec => spec.id === name)) }));
 };
 

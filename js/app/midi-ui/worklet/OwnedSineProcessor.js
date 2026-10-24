@@ -7,13 +7,15 @@ const SCHEDULED = 1, APPLIED = 2, REJECTED = 3, ENDED = 4, CANCELLED = 5, FAULTE
 const DISPLAY_PROTOCOL = 1, DISPLAY_WIDTH = 20, DISPLAY_VOICES = 32, DISPLAY_STATE_WIDTH = 16;
 
 class OwnedSineKernel {
-  snapshotInto(destination, identity) { return writeOwnedSineState(this, destination, identity); }
-  restoreFrom(source, identity) { return restoreOwnedSineState(this, source, identity); }
-  constructor(sampleRate, maxVoices = MAX_VOICES) {
+  snapshotInto(destination, identity) { if (this.source) throw new Error('This source requires its complete DSP state adapter.'); return writeOwnedSineState(this, destination, identity); }
+  restoreFrom(source, identity) { if (this.source) throw new Error('This source requires its complete DSP state adapter.'); return restoreOwnedSineState(this, source, identity); }
+  constructor(sampleRate, maxVoices = MAX_VOICES, { source = null, width = WIDTH } = {}) {
     if (!Number.isFinite(sampleRate) || sampleRate < 8000 || sampleRate > 384000 ||
         !Number.isSafeInteger(maxVoices) || maxVoices < 1 || maxVoices > MAX_VOICES) throw new Error('Invalid sine kernel limits.');
+    if (![18, 24].includes(width) || width === 24 && !source || source && (width !== 24 || typeof source.begin !== 'function' || typeof source.sample !== 'function' || typeof source.validFrequency !== 'function')) throw new Error('Invalid owned source profile.');
+    this.width = width; this.source = source;
     this.sampleRate = sampleRate; this.maxVoices = maxVoices;
-    this.queue = new Float64Array(CAPACITY * WIDTH); this.queueLength = 0;
+    this.queue = new Float64Array(CAPACITY * this.width); this.queueLength = 0;
     this.voice = new Float64Array(MAX_VOICES * 28); this.active = new Uint8Array(MAX_VOICES);
     this.receipts = new Float64Array(2048 * RECEIPT_WIDTH); this.receiptCount = 0;
     this.counters = new Uint32Array(8); this.panicPending = false;
@@ -73,13 +75,13 @@ class OwnedSineKernel {
   }
 
   less(left, right) {
-    const a = left * WIDTH, b = right * WIDTH;
+    const a = left * this.width, b = right * this.width;
     return this.queue[a + 1] < this.queue[b + 1] || this.queue[a + 1] === this.queue[b + 1] && this.queue[a + 2] < this.queue[b + 2];
   }
   swap(left, right) {
-    for (let field = 0; field < WIDTH; field++) {
-      const value = this.queue[left * WIDTH + field];
-      this.queue[left * WIDTH + field] = this.queue[right * WIDTH + field]; this.queue[right * WIDTH + field] = value;
+    for (let field = 0; field < this.width; field++) {
+      const value = this.queue[left * this.width + field];
+      this.queue[left * this.width + field] = this.queue[right * this.width + field]; this.queue[right * this.width + field] = value;
     }
   }
   siftDown(index) {
@@ -93,7 +95,7 @@ class OwnedSineKernel {
   pop() {
     this.queueLength--;
     if (!this.queueLength) return;
-    for (let field = 0; field < WIDTH; field++) this.queue[field] = this.queue[this.queueLength * WIDTH + field];
+    for (let field = 0; field < this.width; field++) this.queue[field] = this.queue[this.queueLength * this.width + field];
     this.siftDown(0);
   }
 
@@ -105,16 +107,16 @@ class OwnedSineKernel {
   }
 
   accept(packet, count, packetSequence = this.lastPacket + 1) {
-    if (!(packet instanceof Float64Array) || !Number.isInteger(count) || count < 0 || count > CAPACITY || packet.length !== count * WIDTH) {
+    if (!(packet instanceof Float64Array) || !Number.isInteger(count) || count < 0 || count > CAPACITY || packet.length !== count * this.width) {
       this.counters[0]++; return;
     }
     if (!Number.isSafeInteger(packetSequence) || packetSequence <= this.lastPacket) { this.counters[0]++; return; }
     this.lastPacket = packetSequence;
     for (let item = 0; item < count; item++) {
-      const source = item * WIDTH, frame = packet[source + 1], sequence = packet[source + 2], opcode = packet[source + 3];
+      const source = item * this.width, frame = packet[source + 1], sequence = packet[source + 2], opcode = packet[source + 3];
       let valid = Number.isSafeInteger(frame) && frame >= 0 && frame - this.lastFrame <= this.sampleRate * 10 &&
         Number.isSafeInteger(sequence) && sequence > 0 && Number.isInteger(opcode) && opcode >= BEGIN && opcode <= LEASE;
-      for (let field = 0; valid && field < WIDTH; field++) if (!Number.isFinite(packet[source + field])) valid = false;
+      for (let field = 0; valid && field < this.width; field++) if (!Number.isFinite(packet[source + field])) valid = false;
       if (!valid) { this.counters[0]++; this.receipt(REJECTED, sequence, packet[source + 4], packet[source + 5], this.lastFrame, 1); continue; }
       if (opcode === PANIC) { this.panicPending = true; this.receipt(SCHEDULED, sequence, -1, 0, frame); continue; }
       const isTerminal = opcode === END || opcode === CANCEL;
@@ -124,7 +126,7 @@ class OwnedSineKernel {
         this.receipt(REJECTED, sequence, packet[source + 4], packet[source + 5], this.lastFrame, 2); continue;
       }
       let at = this.queueLength;
-      for (let field = 0; field < WIDTH; field++) this.queue[at * WIDTH + field] = packet[source + field];
+      for (let field = 0; field < this.width; field++) this.queue[at * this.width + field] = packet[source + field];
       this.queueLength++;
       while (at > 0) { const parent = Math.floor((at - 1) / 2); if (!this.less(at, parent)) break; this.swap(at, parent); at = parent; }
       this.receipt(SCHEDULED, sequence, packet[source + 4], packet[source + 5], frame);
@@ -148,11 +150,11 @@ class OwnedSineKernel {
       // Keep the command being applied at index zero until the caller removes it.
       let kept = 1;
       for (let index = 1; index < this.queueLength; index++) {
-        const from = index * WIDTH;
+        const from = index * this.width;
         if (queue[from] === epoch && queue[from + 17] === queue[17]) {
           this.receipt(CANCELLED, queue[from + 2], queue[from + 4], queue[from + 5], frame, queue[from + 3] === BEGIN ? 9 : 3); continue;
         }
-        for (let field = 0; field < WIDTH; field++) queue[kept * WIDTH + field] = queue[from + field];
+        for (let field = 0; field < this.width; field++) queue[kept * this.width + field] = queue[from + field];
         kept++;
       }
       this.queueLength = kept;
@@ -169,6 +171,8 @@ class OwnedSineKernel {
           queue[12] < 0 || queue[12] > 1 || queue[13] < 1 || queue[16] <= frame) {
         this.receipt(REJECTED, sequence, slot, token, frame, 5); return;
       }
+      if (this.source) { const admission = this.source.begin(slot, queue[6], queue, frame);
+        if (admission !== 1) { this.receipt(REJECTED, sequence, slot, token, frame, admission === -1 ? 10 : 5); return; } }
       for (let field = 0; field < 28; field++) voices[at + field] = 0;
       voices[at] = epoch; voices[at + 1] = queue[17]; voices[at + 2] = token;
       voices[at + 3] = 0; voices[at + 4] = queue[10] === 0 ? 1 : 0;
@@ -183,7 +187,7 @@ class OwnedSineKernel {
       if (target < frame) { this.counters[2]++; this.receipt(REJECTED, sequence, slot, token, frame, 4); return; }
       const mask = queue[15];
       if (!Number.isInteger(mask) || mask < 0 || mask > 7 || queue[14] < 0 || queue[14] > this.sampleRate ||
-          (mask & 1) && (queue[6] <= 0 || queue[6] >= this.sampleRate / 2) ||
+          (mask & 1) && (queue[6] <= 0 || queue[6] >= this.sampleRate / 2 || this.source && !this.source.validFrequency(slot, queue[6])) ||
           (mask & 2) && (queue[8] < 0 || queue[8] > 1) || (mask & 4) && (queue[9] < -1 || queue[9] > 1)) {
         this.receipt(REJECTED, sequence, slot, token, frame, 1); return;
       }
@@ -205,7 +209,7 @@ class OwnedSineKernel {
     if (this.panicPending) {
       this.panicPending = false;
       for (let index = 0; index < this.queueLength; index++) {
-        const at = index * WIDTH;
+        const at = index * this.width;
         this.receipt(CANCELLED, this.queue[at + 2], this.queue[at + 4], this.queue[at + 5], frameStart, this.queue[at + 3] === BEGIN ? 9 : 2);
       }
       this.queueLength = 0; this.counters[4]++;
@@ -235,7 +239,7 @@ class OwnedSineKernel {
         if (voices[at + 23] > 0) { voices[at + 5] += (voices[at + 6] - voices[at + 5]) / voices[at + 23]; voices[at + 23]--; }
         if (voices[at + 24] > 0) { voices[at + 8] += (voices[at + 9] - voices[at + 8]) / voices[at + 24]; voices[at + 24]--; }
         if (voices[at + 25] > 0) { voices[at + 10] += (voices[at + 11] - voices[at + 10]) / voices[at + 25]; voices[at + 25]--; }
-        const phase = voices[at + 3], sample = Math.sin(phase) * voices[at + 4] * voices[at + 7] * voices[at + 8];
+        const phase = voices[at + 3], sample = (this.source ? this.source.sample(slot, voices[at + 5]) : Math.sin(phase)) * voices[at + 4] * voices[at + 7] * voices[at + 8];
         voices[at + 3] += 2 * Math.PI * voices[at + 5] / this.sampleRate;
         if (voices[at + 3] > 2 * Math.PI) voices[at + 3] -= 2 * Math.PI;
         if (!Number.isFinite(sample) || !Number.isFinite(voices[at + 3])) {
@@ -259,7 +263,7 @@ class OwnedSineKernel {
 const ProcessorBase = globalThis.AudioWorkletProcessor || class {};
 class OwnedSineProcessor extends ProcessorBase {
   constructor(options) {
-    super(); this.kernel = new OwnedSineKernel(globalThis.sampleRate, options?.processorOptions?.maxVoices || MAX_VOICES);
+    super(); this.kernel = this.createKernel(globalThis.sampleRate, options?.processorOptions?.maxVoices || MAX_VOICES);
     this.message = { type: 'receipts', protocol: PROTOCOL, count: 0, data: new Float64Array(64 * RECEIPT_WIDTH) };
     this.displayMessage = { type: 'display-samples', protocol: PROTOCOL, displayProtocol: DISPLAY_PROTOCOL, revision: 0,
       sequence: 0, droppedWindows: 0, count: 0, data: new Float64Array(DISPLAY_VOICES * DISPLAY_WIDTH) };
@@ -277,11 +281,12 @@ class OwnedSineProcessor extends ProcessorBase {
       else this.port.postMessage({ type: 'protocol-error', protocol: PROTOCOL });
       this.flushReceipts();
     };
-    this.port.postMessage({ type: 'ready', protocol: PROTOCOL, engineId: 'worklet-sine', engineVersion: 1,
-      runtimeABI: 'owned-sine-f64-command-v1', buildId: 'owned-sine-v2-display',
+    this.port.postMessage({ type: 'ready', protocol: PROTOCOL, ...this.runtimeIdentity(),
       displayProtocol: DISPLAY_PROTOCOL, displayWidth: DISPLAY_WIDTH, displayVoices: DISPLAY_VOICES,
-      sampleRate: globalThis.sampleRate, maxVoices: this.kernel.maxVoices, capacity: CAPACITY, width: WIDTH });
+      sampleRate: globalThis.sampleRate, maxVoices: this.kernel.maxVoices, capacity: CAPACITY, width: this.kernel.width });
   }
+  createKernel(rate, voices) { return new OwnedSineKernel(rate, voices); }
+  runtimeIdentity() { return { engineId: 'worklet-sine', engineVersion: 1, runtimeABI: 'owned-sine-f64-command-v1', buildId: 'owned-sine-v2-display' }; }
   flushDisplay() {
     if (this.displayAwaiting || !this.kernel.displayReady) return;
     const message = this.displayMessage; message.count = this.kernel.displayCount; message.sequence = this.kernel.displaySequence;

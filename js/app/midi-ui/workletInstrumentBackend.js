@@ -3,25 +3,35 @@ import { createInstrumentExecutionLifecycle, isManagedExecutionEpoch } from './I
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 import { releaseAudioResourceAfterRetirement } from './AudioResourceLeases.js';
 import { createAudioDisplayTelemetry } from './AudioDisplayTelemetry.js';
-import { NATIVE_WORKLET_FIELDS as fields } from './NativeInstrumentSchema.js';
-import { PROTOCOL, WIDTH, CAPACITY, MAX_VOICES, RECEIPT_WIDTH, BEGIN, UPDATE, END, CANCEL, LEASE,
+import { NATIVE_WORKLET_FIELDS, NATIVE_PLUCK_FIELDS, NATIVE_PLUCK_PARAMETERS } from './NativeInstrumentSchema.js';
+import { compileInstrumentPerformance } from '../../midi/content/InstrumentPerformance.js';
+import { instrumentVariationValue } from '../../midi/content/InstrumentIdentityVariation.js';
+import { resolveOwnedArticulationPolicy } from './OwnedArticulationPolicy.js';
+import { PLUCK_WIDTH, PLUCK_VOICES, PLUCK_MIN_HZ, PLUCK_MAX_HZ, PLUCK_BEND_CENTS, pluckSourceBytes } from './worklet/OwnedPluckProcessor.js';
+import { PROTOCOL, WIDTH as SINE_WIDTH, CAPACITY, MAX_VOICES as SINE_MAX_VOICES, RECEIPT_WIDTH, BEGIN, UPDATE, END, CANCEL, LEASE,
   SCHEDULED, APPLIED, REJECTED, ENDED, CANCELLED, FAULTED, DISPLAY_PROTOCOL, DISPLAY_WIDTH, DISPLAY_VOICES } from './worklet/OwnedSineProcessor.js';
 
-const runtime = Object.freeze({ buildId: 'owned-sine-v2-display', hostProtocolVersion: PROTOCOL, runtimeABI: 'owned-sine-f64-command-v1',
+const sineRuntime = Object.freeze({ buildId: 'owned-sine-v2-display', hostProtocolVersion: PROTOCOL, runtimeABI: 'owned-sine-f64-command-v1',
   engineId: 'worklet-sine', engineVersion: 1, workletUrl: new URL('./worklet/OwnedSineProcessor.js', import.meta.url).href,
   transport: 'batched-transferable-message-port', sharedMemory: false });
 const modules = new WeakMap();
-const capabilities = Object.freeze({ independentSamePitch: true, perVoicePitch: true, perVoicePressure: true, perVoicePan: true,
+const sineCapabilities = Object.freeze({ independentSamePitch: true, perVoicePitch: true, perVoicePressure: true, perVoicePan: true,
   perVoiceTimbre: false, offlineRender: true, ownedGates: true, renderAcknowledgment: true,
-  maximumVoices: MAX_VOICES, latencyFrames: 0, sustainPedal: false, sostenuto: false, releaseVelocity: false, displayTelemetry: true,
+  maximumVoices: SINE_MAX_VOICES, latencyFrames: 0, sustainPedal: false, sostenuto: false, releaseVelocity: false, displayTelemetry: true,
   supportedParameterIds: Object.freeze(['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds', 'gain01', 'pan01']) });
 const finite = (value, min, max) => Number.isFinite(value) && value >= min && value <= max;
 const keyFor = (epoch, id) => JSON.stringify([epoch, id]);
 const kernelReasons = Object.freeze({ 1: 'invalid-command', 2: 'kernel-queue-full', 3: 'generation-cancelled', 4: 'late-command',
-  5: 'kernel-voice-budget-or-range', 6: 'stale-voice-slot', 7: 'owner-lease-expired', 8: 'nonfinite-dsp', 9: 'pending-onset-cancelled' });
+  5: 'kernel-voice-budget-or-range', 6: 'stale-voice-slot', 7: 'owner-lease-expired', 8: 'nonfinite-dsp', 9: 'pending-onset-cancelled', 10: 'kernel-excitation-budget' });
 
 export function createWorkletInstrumentBackend(preview, owner = null, { leadSeconds = 0.25, smoothingSeconds = 0.008,
-  traceLimit = 128, createWorkletNode = null, initializationTimeoutMs = 5000 } = {}) {
+  traceLimit = 128, createWorkletNode = null, initializationTimeoutMs = 5000, engineId = 'worklet-sine' } = {}) {
+  if (!['worklet-sine', 'worklet-pluck'].includes(engineId)) throw new Error('Unsupported worklet source.');
+  const isPluck = engineId === 'worklet-pluck', WIDTH = isPluck ? PLUCK_WIDTH : SINE_WIDTH, MAX_VOICES = isPluck ? PLUCK_VOICES : SINE_MAX_VOICES;
+  const fields = isPluck ? NATIVE_PLUCK_FIELDS : NATIVE_WORKLET_FIELDS;
+  const runtime = isPluck ? Object.freeze({ ...sineRuntime, engineId, buildId: 'owned-pluck-v1', runtimeABI: 'owned-pluck-f64-command-v1',
+    workletUrl: new URL('./worklet/OwnedPluckProcessor.js', import.meta.url).href }) : sineRuntime;
+  const capabilities = Object.freeze({ ...sineCapabilities, maximumVoices: MAX_VOICES, offlineRender: !isPluck, supportedParameterIds: Object.freeze(Object.keys(fields)) });
   if (!finite(leadSeconds, 0.01, 2) || !finite(smoothingSeconds, 0, 1) || !Number.isSafeInteger(traceLimit) || traceLimit < 0 || traceLimit > 4096 ||
       !finite(initializationTimeoutMs, 1, 30000)) throw new Error('Invalid worklet backend options.');
   let node = null, context = null, ready = false, disposed = false, preparing = 0, patch = null, sequence = 0, packetSequence = 0;
@@ -177,7 +187,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     const input = resolution?.patch;
     if (!['ready', 'degraded'].includes(resolution?.status) || input?.engineId !== runtime.engineId || input.engineVersion !== 1 ||
         typeof input.id !== 'string' || !input.id || !Number.isSafeInteger(input.revision) || input.revision < 1 ||
-        resolution.receipt?.patchId !== input.id || resolution.receipt?.revision !== input.revision || input.sampleRefs?.length || input.modulations?.length || input.macros?.length || input.causalBindings?.length || input.variation ||
+        resolution.receipt?.patchId !== input.id || resolution.receipt?.revision !== input.revision || input.sampleRefs?.length || input.modulations?.length || !isPluck && (input.macros?.length || input.causalBindings?.length || input.variation) ||
         !Number.isSafeInteger(input.voicePolicy?.maxVoices) || input.voicePolicy.maxVoices < 1 || input.voicePolicy.maxVoices > MAX_VOICES ||
         input.voicePolicy.steal != null && input.voicePolicy.steal !== 'reject' ||
         !finite(input.mix?.gain01, 0, 1) || !finite(input.mix?.pan01, -1, 1)) return null;
@@ -185,7 +195,9 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     for (const [id, value] of Object.entries(input.parameters || {})) {
       if (!fields[id] || !finite(value, fields[id][0], fields[id][1])) return null; parameters[id] = value;
     }
-    return Object.freeze({ id: input.id, revision: input.revision, parameters: Object.freeze(parameters),
+    let performance = null;
+    if (isPluck) { try { performance = compileInstrumentPerformance(input, Object.values(NATIVE_PLUCK_PARAMETERS)); } catch { return null; } }
+    return Object.freeze({ id: input.id, revision: input.revision, parameters: Object.freeze(parameters), performance,
       maxVoices: input.voicePolicy.maxVoices, gain01: input.mix.gain01, pan01: input.mix.pan01 });
   };
   const prepare = async (resolution, assets = []) => {
@@ -206,17 +218,19 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     cancelInitialization = () => interrupt(new Error('preparation-cancelled')); pendingInitializations.add(cancelInitialization);
     try {
       timer = setTimeout(() => interrupt(new Error('kernel-initialization-timeout')), initializationTimeoutMs);
-      if (!ready) candidateResourceLease = preview._audioResources?.reserveWorkletRuntime(owner, preview._generation) || null;
-      if (!modules.has(candidateContext)) {
-        const loading = candidateContext.audioWorklet.addModule(runtime.workletUrl);
-        modules.set(candidateContext, loading); loading.catch(() => { if (modules.get(candidateContext) === loading) modules.delete(candidateContext); });
+      if (!ready) candidateResourceLease = preview._audioResources?.reserveWorkletRuntime(owner, preview._generation, isPluck ? pluckSourceBytes(candidateContext.sampleRate) + CAPACITY * (WIDTH - SINE_WIDTH) * 8 : 0) || null;
+      let contextModules = modules.get(candidateContext);
+      if (!contextModules) { contextModules = new Map(); modules.set(candidateContext, contextModules); }
+      if (!contextModules.has(runtime.workletUrl)) {
+        const loading = candidateContext.audioWorklet.addModule(runtime.workletUrl); contextModules.set(runtime.workletUrl, loading);
+        loading.catch(() => { if (contextModules.get(runtime.workletUrl) === loading) contextModules.delete(runtime.workletUrl); });
       }
-      await Promise.race([modules.get(candidateContext), interrupted]);
+      await Promise.race([contextModules.get(runtime.workletUrl), interrupted]);
       if (disposed || revision !== preparing || generation !== preview._generation || ownerGeneration !== preview._sessions.get(owner)?.generation) return reject('preparation-cancelled');
       if (!ready) {
         const destination = preview._channel(0, owner).gain;
         const create = createWorkletNode || ((audioContext, name, options) => new globalThis.AudioWorkletNode(audioContext, name, options));
-        candidate = create(candidateContext, 'lemmings-owned-sine-v1', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2], processorOptions: { maxVoices: MAX_VOICES } });
+        candidate = create(candidateContext, isPluck ? 'lemmings-owned-pluck-v1' : 'lemmings-owned-sine-v1', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2], processorOptions: { maxVoices: MAX_VOICES } });
         await Promise.race([new Promise((resolve, rejectReady) => {
           candidate.onprocessorerror = () => rejectReady(new Error('processor-error-during-prepare'));
           candidate.port.onmessage = event => {
@@ -233,7 +247,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
         }
         candidate.connect(destination);
         node = candidate; candidate = null; context = candidateContext;
-        queue = createAudioCommandQueue({ capacity: CAPACITY, terminalReserve: MAX_VOICES, maxHorizonFrames: Math.ceil(context.sampleRate * 10) });
+        queue = createAudioCommandQueue({ capacity: CAPACITY, terminalReserve: SINE_MAX_VOICES, maxHorizonFrames: Math.ceil(context.sampleRate * 10) });
         const connectedNode = node;
         node.port.onmessage = event => {
           if (disposed || !ready || node !== connectedNode) return;
@@ -296,7 +310,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     return Object.freeze({ status: 'accepted', generation, executionEpoch, validUntilFrame, stage: 'queued' });
   };
   const begin = (intent, targetFrame, executionEpoch = 'live') => {
-    if (Object.keys(intent?.performanceControls?.macros || {}).length || Object.keys(intent?.performanceControls || {}).some(key => key !== 'macros')) return reject('performance-controls-unavailable', intent?.voiceId);
+    if (!isPluck && (Object.keys(intent?.performanceControls?.macros || {}).length || Object.keys(intent?.performanceControls || {}).some(key => key !== 'macros'))) return reject('performance-controls-unavailable', intent?.voiceId);
     if (!ready || !patch || !preview._ownerReady(owner) || context !== preview.getAudioContext()) return reject(fault || 'audio-not-ready', intent?.voiceId);
     if (ownerStopped) return reject('kernel-stop-pending', intent?.voiceId);
     const now = frameNow();
@@ -304,31 +318,35 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
         !Number.isSafeInteger(intent.generation) || intent.generation < 0 || !finite(intent.velocity01, 0, 1) || !finite(intent.pitch?.cents, -24000, 24000) ||
         !finite(intent.pitch?.referenceHz ?? 440, 0.1, 20000) || typeof executionEpoch !== 'string' || !executionEpoch ||
         !Number.isSafeInteger(targetFrame) || targetFrame < now) return reject('invalid-or-late-intent', intent?.voiceId);
-    const expression = intent.expression || {}, pressure = expression.pressure01 ?? 1, pan = expression.pan01 ?? patch.parameters.pan01,
+    let performance = null;
+    if (isPluck) { try { performance = patch.performance.resolve(intent.performanceControls, targetFrame, intent); } catch { return reject('unsupported-performance-controls', intent.voiceId); } }
+    const parameters = performance?.values || patch.parameters;
+    const expression = intent.expression || {}, pressure = expression.pressure01 ?? 1, pan = expression.pan01 ?? parameters.pan01,
       offset = expression.pitchOffsetCents ?? 0;
     if (typeof expression !== 'object' || Array.isArray(expression) || Object.getPrototypeOf(expression) !== Object.prototype ||
         !finite(pressure, 0, 1) || !finite(pan, -1, 1) || !finite(offset, -24000, 24000) ||
         Object.keys(expression).some(id => !['pressure01', 'pan01', 'pitchOffsetCents'].includes(id))) return reject('unsupported-expression', intent.voiceId);
     const frequency = (intent.pitch.referenceHz ?? 440) * 2 ** ((intent.pitch.cents - 6900 + offset) / 1200);
-    if (!finite(frequency, 0.1, context.sampleRate / 2 - 1)) return reject('pitch-out-of-range', intent.voiceId);
+    if (!finite(frequency, 0.1, context.sampleRate / 2 - 1) || isPluck && (!finite(frequency, PLUCK_MIN_HZ, PLUCK_MAX_HZ) || Math.abs(offset) > PLUCK_BEND_CENTS)) return reject('pitch-out-of-range', intent.voiceId);
     const key = keyFor(executionEpoch, intent.voiceId), generationKey = keyFor(executionEpoch, intent.generation);
     if (cancelled.has(generationKey)) return reject('generation-cancelled', intent.voiceId);
     if (cancellationHistoryFull && !isManagedExecutionEpoch(executionEpoch)) return reject('execution-registration-required', intent.voiceId);
     if (voices.has(key) || preview._semanticVoiceOwners.has(JSON.stringify([owner, executionEpoch, intent.voiceId]))) return reject('duplicate-owner-voice', intent.voiceId);
     const slot = slots.findIndex(voice => voice == null);
-    if (slot < 0 || voices.size >= patch.maxVoices || preview._renderVoiceCount() >= preview._maxScheduledVoices) return reject('shared-voice-budget', intent.voiceId);
+    const renderCost = isPluck && parameters.bodyMix01 > 0 ? 3 : 1;
+    if (slot < 0 || voices.size >= patch.maxVoices || preview._renderVoiceCount() + renderCost > preview._maxScheduledVoices) return reject('shared-voice-budget', intent.voiceId);
     if (slotTokens[slot] === 0xffffffff) return reject('voice-slot-generation-exhausted', intent.voiceId);
-    const parameters = patch.parameters, endFrame = leases.get(generationKey) ?? targetFrame + Math.ceil(preview._maxNoteSeconds * context.sampleRate);
+    const endFrame = leases.get(generationKey) ?? targetFrame + Math.ceil(preview._maxNoteSeconds * context.sampleRate);
     if (endFrame <= targetFrame + parameters.releaseSeconds * context.sampleRate) return reject('execution-lease-expired', intent.voiceId);
     const admission = preview._inspectVoiceInterval(owner, { start: targetFrame / context.sampleRate, end: endFrame / context.sampleRate,
-      releaseAt: endFrame / context.sampleRate - parameters.releaseSeconds, patchVoices: voices.values(), patchLimit: patch.maxVoices });
+      releaseAt: endFrame / context.sampleRate - parameters.releaseSeconds, cost: renderCost, patchVoices: voices.values(), patchLimit: patch.maxVoices });
     if (!admission.accepted) return reject(admission.reason, intent.voiceId);
     let resourceLease = null;
     try { resourceLease = preview._audioResources?.reserveWorkletVoice(owner, intent.generation) || null; }
     catch { return reject('audio-resource-budget', intent.voiceId); }
     const token = epochToken(executionEpoch);
     if (token == null) { resourceLease?.release(); return reject('execution-identity-capacity', intent.voiceId); }
-    const voice = { owner, workloadClass: preview._workloadClass(owner), number: 0, voiceId: intent.voiceId, semanticGeneration: intent.generation, semanticEpoch: executionEpoch,
+    const voice = { owner, renderCost, workloadClass: preview._workloadClass(owner), number: 0, voiceId: intent.voiceId, semanticGeneration: intent.generation, semanticEpoch: executionEpoch,
       resourceLease,
       epochToken: token, slot, slotToken: ++slotTokens[slot], id: ++preview._voiceSequence, start: targetFrame / context.sampleRate,
       note: Math.round(intent.pitch.cents / 100), velocity: intent.velocity01 * 127,
@@ -357,7 +375,10 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       } };
     const result = command(BEGIN, targetFrame, voice, { 6: frequency, 7: voice.peak, 8: pressure, 9: Math.max(-1, Math.min(1, pan + patch.pan01)),
       10: Math.round(parameters.attackSeconds * context.sampleRate), 11: Math.round(parameters.decaySeconds * context.sampleRate),
-      12: parameters.sustain01, 13: Math.round(parameters.releaseSeconds * context.sampleRate), 16: endFrame });
+      12: parameters.sustain01, 13: Math.round(parameters.releaseSeconds * context.sampleRate), 16: endFrame,
+      ...(isPluck ? { 18: Math.floor((instrumentVariationValue(['pluck-excitation-v1', patch.id, patch.revision, intent.actorId == null ? ['event-only', intent.onsetId ?? intent.voiceId] : [intent.worldId, intent.generation, intent.actorId],
+        intent.onsetId ?? intent.voiceId, performance.variation?.seed ?? 0]) + 1) * 2147483648), 19: parameters.pluckPosition01, 20: parameters.stringT60Seconds,
+      21: parameters.excitationBrightness01, 22: parameters.bodyMix01, 23: parameters.bodyT60Seconds } : {}) });
     if (result.status === 'rejected') {
       resourceLease?.release();
       if (![...slots].some(existing => existing?.semanticEpoch === executionEpoch)) epochs.delete(executionEpoch);
@@ -366,7 +387,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     voices.set(key, voice); slots[slot] = voice; preview._voices.add(voice);
     display.admit(voice, intent); display.configure();
     preview._semanticVoiceOwners.set(JSON.stringify([owner, executionEpoch, intent.voiceId]), voice); voice.submitted = inFlight.has(result.sequence);
-    return result;
+    return isPluck ? Object.freeze({ ...result, performance, articulation: resolveOwnedArticulationPolicy({ engineId, parameters }) }) : result;
   };
   const update = (voiceId, expression, targetFrame, executionEpoch = 'live') => {
     const voice = voices.get(keyFor(executionEpoch, voiceId)), now = frameNow();
@@ -377,7 +398,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     let mask = 0; const values = { 14: Math.ceil(smoothingSeconds * context.sampleRate) };
     if (expression.pitchOffsetCents != null) {
       const frequency = voice.baseFrequency * 2 ** (expression.pitchOffsetCents / 1200);
-      if (!finite(expression.pitchOffsetCents, -24000, 24000) || !finite(frequency, 0.1, context.sampleRate / 2 - 1)) return reject('invalid-expression', voiceId);
+      if (!finite(expression.pitchOffsetCents, isPluck ? -PLUCK_BEND_CENTS : -24000, isPluck ? PLUCK_BEND_CENTS : 24000) || !finite(frequency, 0.1, context.sampleRate / 2 - 1)) return reject('invalid-expression', voiceId);
       mask |= 1; values[6] = frequency;
     }
     if (expression.pressure01 != null) { if (!finite(expression.pressure01, 0, 1)) return reject('invalid-expression', voiceId); mask |= 2; values[8] = expression.pressure01; }

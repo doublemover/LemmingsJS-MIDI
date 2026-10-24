@@ -55,10 +55,10 @@ export function createLaneInstrumentPreparation({ session, routed, getCatalog = 
       check(); const catalog = await getCatalog(); check();
       const resolution = await resolveSoundContentReference(reference, { engineDescriptors: catalog.descriptors, availableHashes: [], signal }); check();
       if (resolution.status !== 'ready') throw failure(resolution.status, 'Pinned lane instrument requirement is unavailable: ' + resolution.status);
-      if (!['native-oscillator', 'native-fm', 'native-modal', 'worklet-sine'].includes(resolution.patch.engineId) || resolution.patch.modulations.length ||
+      if (!['native-oscillator', 'native-fm', 'native-modal', 'worklet-sine', 'worklet-pluck'].includes(resolution.patch.engineId) || resolution.patch.modulations.length ||
           resolution.patch.engineId === 'worklet-sine' && (resolution.patch.macros.length || resolution.patch.causalBindings.length || resolution.patch.variation) || reference.assetHashes.length) throw failure('instrument-adapter-unavailable', 'This lane instrument needs a realized material or gesture adapter.');
       if (!operation.pin) {
-        operation.backend = resolution.patch.engineId === 'worklet-sine' ? await session.createWorkletInstrumentBackend() : session.createInstrumentBackend({ gateMode: 'owned', engineId: resolution.patch.engineId }); check();
+        operation.backend = ['worklet-sine', 'worklet-pluck'].includes(resolution.patch.engineId) ? await session.createWorkletInstrumentBackend({ engineId: resolution.patch.engineId }) : session.createInstrumentBackend({ gateMode: 'owned', engineId: resolution.patch.engineId }); check();
       } else operation.backend = operation.pin.backend;
       const ready = await operation.backend.prepare(resolution); check(); if (ready?.status !== 'ready') throw failure(ready?.reason || 'preparation-rejected', 'Lane renderer rejected the pinned patch.');
       check(); operation.preparing = false;

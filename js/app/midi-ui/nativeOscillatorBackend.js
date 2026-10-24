@@ -286,7 +286,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
     if (expression.pitchOffsetCents != null && !validCents(expression.pitchOffsetCents) ||
         expression.pressure01 != null && (!Number.isFinite(expression.pressure01) || expression.pressure01 < 0 || expression.pressure01 > 1) ||
         expression.pan01 != null && (!Number.isFinite(expression.pan01) || expression.pan01 < -1 || expression.pan01 > 1)) return failure('invalid-expression', { voiceId });
-    if (voice.sourcePlan && expression.pitchOffsetCents != null && Math.abs(expression.pitchOffsetCents) > voice.sourcePlan.maxBendCents) return failure('source-bend-profile-exceeded', { voiceId });
+    if (voice.sourcePlan && expression.pitchOffsetCents != null && Math.abs(expression.pitchOffsetCents) > voice.sourcePlan.maxBendCents) return failure(voice.fmPlan ? 'fm-bend-profile-exceeded' : 'modal-bend-profile-exceeded', { voiceId });
     const now = preview._context.currentTime, at = Math.max(time, now);
     const changes = [[voice.pitchAutomation, expression.pitchOffsetCents], [voice.pressureAutomation, expression.pressure01],
       [voice.panAutomation, expression.pan01 == null ? null : clamp(expression.pan01 + voice.mixPan, -1, 1)]];

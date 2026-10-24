@@ -37,7 +37,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
     let lease;
     try { lease = borrowSoundContentStage(stage); } catch (error) { return Promise.reject(error); }
     const patch = lease.prepared.patches.find(entry => entry.identity === patchIdentity);
-    if (!patch || patch.state !== 'definition-admitted' || !['native-oscillator', 'native-fm', 'native-modal', 'worklet-sine'].includes(patch.definition.engineId) ||
+    if (!patch || patch.state !== 'definition-admitted' || !['native-oscillator', 'native-fm', 'native-modal', 'worklet-sine', 'worklet-pluck'].includes(patch.definition.engineId) ||
         patch.definition.sampleRefs.length || patch.definition.modulations.length || patch.definition.engineId === 'worklet-sine' && (patch.definition.macros.length || patch.definition.causalBindings.length || patch.definition.variation)) {
       lease.release(); return Promise.reject(failure('audition-requirements-unmet', 'This instrument needs an available renderer and a realized gesture/material adapter.'));
     }
@@ -74,14 +74,14 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
             descriptor.parameterSchemaHash !== patch.engineRequirement.parameterSchemaHash) throw failure('engine-revision-mismatch', 'The executing renderer differs from the staged immutable requirement.');
         const definitions = createInstrumentPatchRegistry(); definitions.register(patch.definition, descriptor);
         const resolution = definitions.resolve(patch.definition.id, patch.definition.revision, { engineDescriptors: [descriptor], assetHashes: lease.metadata.assetHashes });
-        operation.backend = patch.definition.engineId === 'worklet-sine' ? await operation.session.createWorkletInstrumentBackend() : operation.session.createInstrumentBackend({ gateMode: 'owned', engineId: patch.definition.engineId }); check();
+        operation.backend = ['worklet-sine', 'worklet-pluck'].includes(patch.definition.engineId) ? await operation.session.createWorkletInstrumentBackend({ engineId: patch.definition.engineId }) : operation.session.createInstrumentBackend({ gateMode: 'owned', engineId: patch.definition.engineId }); check();
         const prepared = await interruptible(operation.backend.prepare(resolution), signal); check();
         if (prepared.status !== 'ready') throw failure('preparation-rejected', 'Audition renderer rejected the effective patch: ' + prepared.reason);
         const context = operation.context = audio.getAudioContext(), rate = context?.sampleRate;
         if (context?.state !== 'running' || !Number.isFinite(rate) || rate < 8000 || rate > 384000) throw failure('audio-unavailable', 'Audition audio clock is unavailable.');
         const registered = operation.backend.registerExecution({ executionEpoch: 'sound-audition:' + number, generation: number });
         if (registered.status !== 'accepted') throw failure('audition-admission', 'Audition execution could not be registered.'); operation.execution = registered.execution;
-        const requiresApplication = patch.definition.engineId === 'worklet-sine', applications = new Map(); let commandFailure = null;
+        const requiresApplication = ['worklet-sine', 'worklet-pluck'].includes(patch.definition.engineId), applications = new Map(); let commandFailure = null;
         if (requiresApplication) {
           if (typeof operation.backend.observeCommandOutcomes !== 'function') throw failure('application-evidence-unavailable', 'This renderer cannot provide owned command-application receipts.');
           operation.stopObservation = operation.backend.observeCommandOutcomes(value => {
