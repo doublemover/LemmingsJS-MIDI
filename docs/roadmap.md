@@ -2263,6 +2263,21 @@ deadlines are checked between cooperative chunks. This is source preparation,
 not an exposed granular instrument or runtime/audio qualification; adapter,
 asset-stage/library integration and granular rendering remain next.
 
+The bounded granular source kernel now has eight parent clouds with 16 fixed
+grain slots each, an absolute 128-frame birth budget, xorshift content RNG,
+20–140 ms precomputed Hann windows and coherent per-grain pitch/duration/position
+snapshots. Scan and pitch are separate; source-position hold is distinct from
+PCM/field freeze. A motion-gated mode stops replenishment at zero activity;
+held-action mode is explicit. Source edges fade and clip without invented wrap
+samples. Both native source rate and decoded rate enter cursor conversion.
+Linear-resampling quality is unqualified. The common owned kernel now preserves
+stereo source channels with a declared balance pan law, measures pre-pan stereo
+RMS/peak, and calls source release/retirement hooks so Panic cannot orphan grain
+children. Grain-state inspection is bounded and on request. Kernel/stereo/
+control/pool fixtures are authored and unexecuted. This source is not yet
+advertised in the catalog: PCM preparation, profile/host handoff, asset staging
+and the family UI must be connected next.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical

@@ -12,7 +12,7 @@ class OwnedSineKernel {
   constructor(sampleRate, maxVoices = MAX_VOICES, { source = null, width = WIDTH } = {}) {
     if (!Number.isFinite(sampleRate) || sampleRate < 8000 || sampleRate > 384000 ||
         !Number.isSafeInteger(maxVoices) || maxVoices < 1 || maxVoices > MAX_VOICES) throw new Error('Invalid sine kernel limits.');
-    if (![18, 24, 26, 73].includes(width) || width !== 18 && !source || source && (width === 18 || ['begin', 'sample', 'validFrequency', 'validUpdate', 'applyUpdate'].some(method => typeof source[method] !== 'function'))) throw new Error('Invalid owned source profile.');
+    if (![18, 24, 26, 33, 73].includes(width) || width !== 18 && !source || source && (width === 18 || ['begin', 'sample', 'validFrequency', 'validUpdate', 'applyUpdate'].some(method => typeof source[method] !== 'function'))) throw new Error('Invalid owned source profile.');
     this.width = width; this.source = source;
     this.sampleRate = sampleRate; this.maxVoices = maxVoices;
     this.queue = new Float64Array(CAPACITY * this.width); this.queueLength = 0;
@@ -39,7 +39,7 @@ class OwnedSineKernel {
     if (this.displayReady) this.displayDropped++; this.displayReady = false; return true;
   }
 
-  measureDisplay(slot, sample, frame, phase, flags = 0) {
+  measureDisplay(slot, sample, frame, phase, flags = 0, absolutePeak = Math.abs(sample)) {
     const voice = slot * 28, token = this.voice[voice + 2];
     if (!this.displayEnabled || this.displayTokens[slot] !== token) return;
     const at = slot * DISPLAY_STATE_WIDTH, state = this.displayState;
@@ -49,7 +49,7 @@ class OwnedSineKernel {
     }
     state[at + 1] = this.voice[voice]; state[at + 2] = this.voice[voice + 1];
     state[at + 4] = frame + 1; state[at + 5]++; state[at + 6] += sample * sample;
-    state[at + 7] = Math.max(state[at + 7], Math.abs(sample)); state[at + 8] = phase;
+    state[at + 7] = Math.max(state[at + 7], absolutePeak); state[at + 8] = phase;
     state[at + 9] = this.voice[voice + 5]; state[at + 10] = this.voice[voice + 8]; state[at + 11] = this.voice[voice + 10];
     state[at + 12] = flags & 6 ? 0 : this.voice[voice + 4]; state[at + 13] = flags;
     state[at + 14] = this.voice[voice + 26]; state[at + 15] = this.voice[voice + 27];
@@ -139,6 +139,7 @@ class OwnedSineKernel {
     voices[at + 18] = Math.max(1, frames); voices[at + 19] = voices[at + 4] / voices[at + 18];
     voices[at + 20] = reason; voices[at + 21] = frame;
     voices[at + 26] = frame;
+    this.source?.release?.(slot);
   }
 
   apply(frame) {
@@ -232,7 +233,7 @@ class OwnedSineKernel {
           voices[at + 4] = Math.max(0, voices[at + 4] - voices[at + 19]); voices[at + 18]--;
           if (voices[at + 18] === 0 || voices[at + 4] === 0) {
             if (this.displayEnabled) this.measureDisplay(slot, 0, frame, 0, 2);
-            this.active[slot] = 0; this.receipt(ENDED, voices[at + 22], slot, voices[at + 2], frame, voices[at + 20]); continue;
+            this.active[slot] = 0; this.source?.retire?.(slot); this.receipt(ENDED, voices[at + 22], slot, voices[at + 2], frame, voices[at + 20]); continue;
           }
         } else if (age < voices[at + 12]) voices[at + 4] = age / voices[at + 12];
         else if (age < voices[at + 12] + voices[at + 13]) voices[at + 4] = 1 - (1 - voices[at + 14]) * (age - voices[at + 12]) / voices[at + 13];
@@ -240,20 +241,30 @@ class OwnedSineKernel {
         if (voices[at + 23] > 0) { voices[at + 5] += (voices[at + 6] - voices[at + 5]) / voices[at + 23]; voices[at + 23]--; }
         if (voices[at + 24] > 0) { voices[at + 8] += (voices[at + 9] - voices[at + 8]) / voices[at + 24]; voices[at + 24]--; }
         if (voices[at + 25] > 0) { voices[at + 10] += (voices[at + 11] - voices[at + 10]) / voices[at + 25]; voices[at + 25]--; }
-        const phase = voices[at + 3], sample = (this.source ? this.source.sample(slot, voices[at + 5]) : Math.sin(phase)) * voices[at + 4] * voices[at + 7] * voices[at + 8];
+        const phase = voices[at + 3], sourceSample = this.source ? this.source.sample(slot, voices[at + 5], frame) : Math.sin(phase),
+          sample = sourceSample * voices[at + 4] * voices[at + 7] * voices[at + 8], stereo = this.source?.stereo === true;
+        let voiceLeft, voiceRight;
+        if (stereo) {
+          const leftSample = this.source.leftSample * voices[at + 4] * voices[at + 7] * voices[at + 8], rightSample = this.source.rightSample * voices[at + 4] * voices[at + 7] * voices[at + 8];
+          voiceLeft = leftSample * (voices[at + 10] > 0 ? Math.cos(voices[at + 10] * Math.PI / 2) : 1);
+          voiceRight = rightSample * (voices[at + 10] < 0 ? Math.cos(voices[at + 10] * Math.PI / 2) : 1);
+          if (this.displayEnabled) this.measureDisplay(slot, Math.sqrt((leftSample * leftSample + rightSample * rightSample) * 0.5), frame, phase, voices[at + 18] ? 1 : 0,
+            Math.max(Math.abs(leftSample), Math.abs(rightSample)));
+        } else {
+          const angle = (voices[at + 10] + 1) * Math.PI / 4;
+          if (this.displayEnabled) this.measureDisplay(slot, sample, frame, phase, voices[at + 18] ? 1 : 0);
+          voiceLeft = sample * Math.cos(angle); voiceRight = sample * Math.sin(angle);
+        }
         voices[at + 3] += 2 * Math.PI * voices[at + 5] / this.sampleRate;
         if (voices[at + 3] > 2 * Math.PI) voices[at + 3] -= 2 * Math.PI;
-        if (!Number.isFinite(sample) || !Number.isFinite(voices[at + 3])) {
+        if (!Number.isFinite(sample) || !Number.isFinite(voiceLeft) || !Number.isFinite(voiceRight) || !Number.isFinite(voices[at + 3])) {
           if (this.displayEnabled) this.measureDisplay(slot, 0, frame, 0, 4);
-          this.active[slot] = 0; this.nonfinite++; this.receipt(FAULTED, voices[at + 22], slot, voices[at + 2], frame, 8); continue;
+          this.active[slot] = 0; this.source?.retire?.(slot); this.nonfinite++; this.receipt(FAULTED, voices[at + 22], slot, voices[at + 2], frame, 8); continue;
         }
-        const angle = (voices[at + 10] + 1) * Math.PI / 4;
-        if (this.displayEnabled) this.measureDisplay(slot, sample, frame, phase, voices[at + 18] ? 1 : 0);
-        const voiceLeft = sample * Math.cos(angle), voiceRight = sample * Math.sin(angle);
         sumLeft += voiceLeft; sumRight += voiceRight;
         if (stems && stems.routes[slot] >= 0) { const stem = stems.routes[slot] * 2; this.stemSums[stem] += voiceLeft; this.stemSums[stem + 1] += voiceRight; }
       }
-      left[offset] = sumLeft; if (right) right[offset] = sumRight;
+      left[offset] = !right && this.source?.stereo === true ? (sumLeft + sumRight) * 0.5 : sumLeft; if (right) right[offset] = sumRight;
       if (stems) for (let stem = 0; stem < stems.channels.length; stem++) { stems.channels[stem][0][offset] = this.stemSums[stem * 2]; stems.channels[stem][1][offset] = this.stemSums[stem * 2 + 1]; }
       if (this.displayEnabled && frame + 1 >= this.displayNext) this.finishDisplay(frame + 1);
     }
@@ -264,7 +275,7 @@ class OwnedSineKernel {
 const ProcessorBase = globalThis.AudioWorkletProcessor || class {};
 class OwnedSineProcessor extends ProcessorBase {
   constructor(options) {
-    super(); this.kernel = this.createKernel(globalThis.sampleRate, options?.processorOptions?.maxVoices || MAX_VOICES);
+    super(); this.kernel = this.createKernel(globalThis.sampleRate, options?.processorOptions?.maxVoices || MAX_VOICES, options?.processorOptions);
     this.message = { type: 'receipts', protocol: PROTOCOL, count: 0, data: new Float64Array(64 * RECEIPT_WIDTH) };
     this.displayMessage = { type: 'display-samples', protocol: PROTOCOL, displayProtocol: DISPLAY_PROTOCOL, revision: 0,
       sequence: 0, droppedWindows: 0, count: 0, data: new Float64Array(DISPLAY_VOICES * DISPLAY_WIDTH) };
@@ -278,7 +289,8 @@ class OwnedSineProcessor extends ProcessorBase {
       else if (data?.type === 'display-config' && data.displayProtocol === DISPLAY_PROTOCOL) this.kernel.configureDisplay(data.tokens, data.intervalFrames, data.revision);
       else if (data?.type === 'display-ack' && data.sequence === this.displayAwaiting) { this.displayAwaiting = 0; this.flushDisplay(); }
       else if (data?.type === 'inspect') this.port.postMessage({ type: 'health', protocol: PROTOCOL,
-        counters: Array.from(this.kernel.counters), nonfinite: this.kernel.nonfinite, queued: this.kernel.queueLength, frame: this.kernel.lastFrame });
+        counters: Array.from(this.kernel.counters), nonfinite: this.kernel.nonfinite, queued: this.kernel.queueLength, frame: this.kernel.lastFrame,
+        ...(typeof this.kernel.source?.inspect === 'function' ? { source: this.kernel.source.inspect() } : {}) });
       else this.port.postMessage({ type: 'protocol-error', protocol: PROTOCOL });
       this.flushReceipts();
     };
