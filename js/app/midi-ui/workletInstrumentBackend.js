@@ -9,7 +9,7 @@ import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 import { releaseAudioResourceAfterRetirement } from './AudioResourceLeases.js';
 import { createAudioDisplayTelemetry } from './AudioDisplayTelemetry.js';
 import { compileInstrumentPerformance, retainInstrumentCause } from '../../midi/content/InstrumentPerformance.js';
-import { instrumentVariationValue } from '../../midi/content/InstrumentIdentityVariation.js';
+import { ownedSourceSeed } from './OwnedSourceSeed.js';
 import { resolveOwnedArticulationPolicy } from './OwnedArticulationPolicy.js';
 import { PROTOCOL, WIDTH as SINE_WIDTH, CAPACITY, MAX_VOICES as SINE_MAX_VOICES, RECEIPT_WIDTH, BEGIN, UPDATE, END, CANCEL, LEASE,
   SCHEDULED, APPLIED, REJECTED, ENDED, CANCELLED, FAULTED, DISPLAY_PROTOCOL, DISPLAY_WIDTH, DISPLAY_VOICES } from './worklet/OwnedSineProcessor.js';
@@ -416,9 +416,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
         record({ status: 'ended', stage: voice.kernelEnded ? 'render-kernel-ended' : 'stop-requested', voiceId: intent.voiceId, executionEpoch,
           generation: intent.generation, reason, appliedFrame: voice.kernelEnded ? voice.appliedFrame : null });
       } };
-    const excitationSeed = isExtended ? Math.min(0xffffffff, Math.floor((instrumentVariationValue([source.seedDomain, patch.id, patch.revision,
-      intent.actorId == null ? ['event-only', intent.onsetId ?? intent.voiceId] : [intent.worldId, intent.generation, intent.actorId],
-      intent.onsetId ?? intent.voiceId, performance.variation?.seed ?? 0]) + 1) * 2147483648)) : 0;
+    const excitationSeed = ownedSourceSeed(source, patch, intent, performance);
     const sourceFields = source.beginFields(parameters, excitationSeed, pcmDescriptor);
     const result = command(BEGIN, targetFrame, voice, { 6: frequency, 7: voice.peak, 8: pressure, 9: Math.max(-1, Math.min(1, pan + patch.pan01)),
       10: Math.round(parameters.attackSeconds * context.sampleRate), 11: Math.round(parameters.decaySeconds * context.sampleRate),

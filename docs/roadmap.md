@@ -2326,6 +2326,14 @@ limit preview to eight seconds, and have separate receipts that cannot authorize
 Apply or replace the actual instrument control audition. Multi-source/derived
 adapters remain implementation work. Runtime, cancellation and audible checks are deferred.
 
+Fixed control-reference WAV preparation now uses the actual sine, pluck, choir
+and spectrum kernels, including the shared seed derivation, default macro and
+variation composition, source-specific command width and fixed bank verification.
+Missing physical observations stay explicit in the manifest. Rendering begins
+from silence and records the output tap before the shared owner/master graph.
+This extends control references; causal-take/offline-state support for the newer
+sources remains separate work. All runtime renders and PCM comparisons are deferred.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical

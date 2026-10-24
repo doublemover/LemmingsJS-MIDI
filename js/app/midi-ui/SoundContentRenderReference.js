@@ -1,3 +1,4 @@
+import { getOwnedSourceProfile, OWNED_SOURCE_IDS } from './OwnedSourceProfiles.js';
 import { borrowSoundContentStage } from './SoundContentReader.js';
 import { planSoundContentSelection } from '../../midi/content/SoundContentPack.js';
 import { canonicalDataText, freezeData } from '../../core/CanonicalData.js';
@@ -21,8 +22,8 @@ export function createSoundContentRenderReferences({ resourceBudget, jobs = back
       let artifact = null;
       try {
         check(); const patch = source.prepared.patches.find(entry => entry.identity === patchIdentity);
-        if (!patch || patch.state !== 'definition-admitted' || patch.definition.engineId !== 'worklet-sine' || patch.definition.sampleRefs.length ||
-            patch.definition.modulations.length || patch.definition.macros.length || patch.definition.causalBindings.length) throw failure('This reference requires an available asset-free sine renderer.');
+        if (!patch || patch.state !== 'definition-admitted' || !OWNED_SOURCE_IDS.includes(patch.definition.engineId) || !getOwnedSourceProfile(patch.definition.engineId).controlReferenceRender || patch.definition.sampleRefs.length ||
+            patch.definition.modulations.length) throw failure('This reference requires an available asset-free owned renderer.');
         const plan = planSoundContentSelection(source.prepared, [patchIdentity], { availableHashes: source.metadata.assetHashes });
         if (plan.missingReferences.length || plan.missingAssetBytes.length) throw failure('Rendered reference material is incomplete.');
         const input = { definition: patch.archivedDefinition, engineRequirement: patch.engineRequirement, sampleRate,

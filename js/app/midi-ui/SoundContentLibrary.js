@@ -1,3 +1,4 @@
+import { getOwnedSourceProfile, OWNED_SOURCE_IDS } from './OwnedSourceProfiles.js';
 import { getProceduralBiomeMaterial } from '../../midi/content/ProceduralBiomeMaterial.js';
 import { prepareSoundContentPack, planSoundContentSelection } from '../../midi/content/SoundContentPack.js';
 import { createSoundContentArchiver } from './SoundContentArchive.js';
@@ -220,7 +221,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     if (ready) { const lease = stage.borrow(); try { const patch = lease.prepared.patches.find(entry => entry.identity === selection);
       sourceComparable = patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-granular' && patch.definition.sampleRefs.length === 1;
       localProceduralMaterial = !!patch?.definition?.sampleRefs?.length && patch.definition.sampleRefs.every(ref => lease.prepared.pack.files.some(file => file.sha256 === ref.sha256 && getProceduralBiomeMaterial(file)));
-      renderable = patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-sine';
+      renderable = patch?.state === 'definition-admitted' && OWNED_SOURCE_IDS.includes(patch.definition.engineId) && getOwnedSourceProfile(patch.definition.engineId).controlReferenceRender;
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'native-fm') {
         const parameters = Object.fromEntries(Object.entries(NATIVE_FM_PARAMETERS).map(([id, parameter]) => [id, parameter.default])); Object.assign(parameters, patch.definition.parameters);
         modelInfo.textContent = 'Patch model: ' + (parameters.dualPair ? 'four' : 'two') + ' operator sources · carrier/modulator ' + parameters.carrierRatio + ':' + parameters.modulatorRatio +
@@ -235,12 +236,12 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-pluck') {
         const parameters = patch.definition.parameters;
         modelInfo.textContent = 'Patch model: seeded fractional-delay string · pick ' + parameters.pluckPosition01 + ' · target string T60 ' + parameters.stringT60Seconds +
-          ' s · body mix ' + parameters.bodyMix01 + '. Live profile: 50–2000 Hz onset, ±200 cent bends, 44.1/48/96 kHz. Pitch/decay/listening qualification is pending; exact restore and offline pluck rendering are unavailable.';
+          ' s · body mix ' + parameters.bodyMix01 + '. Live profile: 50–2000 Hz onset, ±200 cent bends, 44.1/48/96 kHz. Pitch/decay/listening qualification is pending; exact restore and causal-take pluck rendering are unavailable. Fixed control WAVs use this same kernel.';
       }
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-choir') {
         const parameters = patch.definition.parameters;
         modelInfo.textContent = 'Patch model: artificial three-band formants · vowel ' + parameters.vowel01 + ' · size ' + parameters.sizeRatio +
-          ' · breath ' + parameters.breath01 + '. Actor-seeded breath and a phase-aligned harmonic bank share one owned gate. Live profile: eight voices, 50–2000 Hz onset, ±200 cent bends, 44.1/48/96 kHz. Spectral/listening qualification is pending; exact restore and offline choir rendering are unavailable.';
+          ' · breath ' + parameters.breath01 + '. Actor-seeded breath and a phase-aligned harmonic bank share one owned gate. Live profile: eight voices, 50–2000 Hz onset, ±200 cent bends, 44.1/48/96 kHz. Spectral/listening qualification is pending; exact restore and causal-take choir rendering are unavailable. Fixed control WAVs use this same kernel.';
       }
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-granular') {
         const parameters = patch.definition.parameters;
@@ -251,7 +252,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
         const parameters = patch.definition.parameters;
         modelInfo.textContent = 'Patch model: ' + (parameters.sourceMode ? parameters.partialCount + ' authored additive partials' : '16 phase-aligned spectral frames') +
           ' · FLOW ' + parameters.scan01 + ' · BODY ' + parameters.body01 + ' · EDGE ' + parameters.edge01 +
-          '. Live profile: eight slots, 20–2000 Hz onset, ±200 cent bends, 44.1/48/96 kHz; shared source quotas also apply. Completed world height offsets FLOW over the declared 0–512 pixel domain. Dry source only: shared SPACE sends, resonance/drive, PWM, exact restore and offline spectrum output are unavailable. Spectral/alias/listening qualification is pending.';
+          '. Live profile: eight slots, 20–2000 Hz onset, ±200 cent bends, 44.1/48/96 kHz; shared source quotas also apply. Completed world height offsets FLOW over the declared 0–512 pixel domain. Dry source only: shared SPACE sends, resonance/drive, PWM, exact restore and causal-take spectrum output are unavailable. Fixed control WAVs use this same kernel. Spectral/alias/listening qualification is pending.';
       } } finally { lease.release(); } }
     for (const element of [factory, fmFactory, materialFactory, pluckFactory, choirFactory, spectrumFactory, biomeFactory, importInput, select, rights, browse, more, archivedToggle]) element.disabled = busy;
     audition.disabled = busy || !ready || !!plan?.missingReferences.length || !!plan?.unavailableEngines.length || !!plan?.missingAssetBytes.length && !installed && !localProceduralMaterial;

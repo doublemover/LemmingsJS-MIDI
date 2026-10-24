@@ -1,13 +1,14 @@
+import { computeOwnedSourceBank } from './OwnedSourceBankComputation.js';
 import { checksumProcgenRecovery } from '../procgen/workstation/ProcgenRecoveryChecksum.js';
 import { decodeGroundAssetSnapshot } from './GroundAssetDecode.js';
 import { canonicalDataText } from '../../core/CanonicalData.js';
 import { compileSoundContent } from '../../midi/content/SoundContentCompiler.js';
 import { getNativeInstrumentCatalog } from '../midi-ui/NativeInstrumentSchema.js';
 import { inspectCausalArchiveEntry, validateCausalChunk } from '../procgen/workstation/CausalArchiveEntry.js';
-import { renderOwnedSineControls } from '../midi-ui/OwnedSineOfflineRender.js';
+import { renderOwnedSourceControls } from '../midi-ui/OwnedSourceControlRender.js';
 import { getProceduralBiomeById } from '../../midi/content/ProceduralBiomeMaterial.js';
 import { inspectWaveContainer } from '../midi-ui/AudioAssetRef.js';
-import { getOwnedSourceBankIdentity, OWNED_SOURCE_BANK_SCHEMA } from '../midi-ui/OwnedSourceBank.js';
+import { getOwnedSourceBankIdentity } from '../midi-ui/OwnedSourceBank.js';
 import { renderCausalSineTake } from '../midi-ui/CausalSineRender.js';
 
 export const BACKGROUND_JOB_PROTOCOL = 1;
@@ -152,17 +153,8 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     if (!input || Object.keys(input).length !== 1 || typeof input.id !== 'string') throw problem('invalid-contract', 'Invalid fixed source bank request.');
     const expected = getOwnedSourceBankIdentity(input.id);
     if (estimatedPeakBytes < 16 * 1048576 || maxBytes < expected.bytes) throw problem('memory-capacity', 'Fixed bank preparation needs its worker startup and copy reservation.');
-    const { createOwnedSourceBankPlanes } = await import('./OwnedSourceBankData.js'); guard(signal, current);
-    const planes = createOwnedSourceBankPlanes(input.id), encoded = new Uint8Array(expected.bytes), view = new DataView(encoded.buffer); let offset = 0;
-    for (const plane of planes) for (let index = 0; index < plane.length; index++) {
-      if (!Number.isFinite(plane[index]) || Math.abs(plane[index]) > 2) throw problem('invalid-data', 'Invalid fixed source bank value.');
-      view.setFloat32(offset, plane[index], true); offset += 4;
-      if ((index & 16383) === 16383) { guard(signal, current); await yieldControl(); }
-    }
-    const digest = await crypto.subtle.digest('SHA-256', encoded); guard(signal, current);
-    const hash = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
-    if (offset !== expected.bytes || hash !== expected.hash) throw problem('content-mismatch', 'Fixed source bank differs from its build identity.');
-    return { value: { schema: OWNED_SOURCE_BANK_SCHEMA, id: input.id, hash, bytes: expected.bytes, planes }, inputBytes: 128, nodes: 16, retainedBytes: expected.bytes + 16384 };
+    const value = await computeOwnedSourceBank(input.id, { signal, current, crypto, yieldControl });
+    return { value, inputBytes: 128, nodes: 16, retainedBytes: expected.bytes + 16384 };
   }
   if (kind === 'asset-decode') return decodeGroundAssetSnapshot(input, { signal, current, maxBytes, estimatedPeakBytes, maxDecodedBytes, crypto, onProgress, yieldControl });
   if (expectedInputHash != null || kind === 'asset-hash') {
@@ -249,10 +241,10 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
   if (kind === 'render-sound-controls') {
     if (!input || Object.keys(input).some(key => !['definition', 'engineRequirement', 'sampleRate', 'source'].includes(key)) || estimatedPeakBytes < 32 * 1048576)
       throw problem('invalid-contract', 'Sound control rendering requires its bounded fixed-job contract.');
-    const catalog = await getNativeInstrumentCatalog(), descriptor = catalog.descriptors.find(engine => engine.engineId === 'worklet-sine'); guard(signal, current);
+    const catalog = await getNativeInstrumentCatalog(), descriptor = catalog.descriptors.find(engine => engine.engineId === input.engineRequirement?.engineId); guard(signal, current);
     if (catalog.state !== 'bound-application-engines' || !descriptor || !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => input.engineRequirement?.[key] === descriptor[key]))
-      throw problem('engine-identity-unbound', 'Sound control rendering requires its exact executing sine artifact.');
-    const value = await renderOwnedSineControls({ definition: input.definition, descriptor, sampleRate: input.sampleRate, source: input.source,
+      throw problem('engine-identity-unbound', 'Sound control rendering requires its exact executing source artifact.');
+    const value = await renderOwnedSourceControls({ definition: input.definition, descriptor, sampleRate: input.sampleRate, source: input.source,
       applicationBuildId: catalog.executionIdentity.buildId }, { signal, yieldControl, onProgress }); guard(signal, current);
     const retainedBytes = value.bytes.byteLength * 2 + 65536;
     if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Rendered control reference exceeds admitted output storage.');
