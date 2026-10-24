@@ -19,7 +19,7 @@ export async function prepareCausalOwnedConvolutionInput(source, workerReceipt, 
       manifest.frames !== source.frames - manifest.timelineZeroSourceFrame || !Array.isArray(source.planes) || source.planes.length !== 2 + manifest.stems.laneIds.length * 2)
     fail('source-pcm-result-mismatch', 'Native body preparation requires the exact complete source history from the admitted owned-source worker.');
   if (await hashData(patch) !== manifest.definitionHash) fail('source-pcm-definition-mismatch', 'The source PCM stage belongs to a different immutable instrument definition.');
-  const plan = prepareEffectRenderPlan(manifest.effectGraph.definition, source.sampleRate, returns, { nativeConvolution: true }), hash = await effectGraphHash(plan);
+  const plan = prepareEffectRenderPlan(manifest.effectGraph.definition, source.sampleRate, returns, { nativeConvolution: true, nativeOwnedProcessors: true }), hash = await effectGraphHash(plan);
   if (!plan.impulseCount || hash !== manifest.effectGraph.hash || plan.latencyFrames !== manifest.effectGraph.latencyFrames || plan.maximumTailFrames !== manifest.effectGraph.maximumTailFrames ||
       canonicalDataText(plan.processingRevisions).text !== canonicalDataText(manifest.effectGraph.processingRevisions).text)
     fail('source-pcm-effect-mismatch', 'Owned source history selected a different native body graph.');

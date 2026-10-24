@@ -1,3 +1,4 @@
+import { OfflineEffectCompletion } from './OfflineEffectCompletion.js';
 import { NonlinearChainKernel } from './NonlinearChainKernel.js';
 import { NONLINEAR_KERNEL_REVISION } from '../../../midi/content/NonlinearChainProfile.js';
 
@@ -15,6 +16,8 @@ export class NonlinearChainProcessor extends ProcessorBase {
       else if (data?.type === 'panic') this.kernel.panic();
       else if (data?.type === 'inspect' && this.kernel.frame - this.lastInspect >= globalThis.sampleRate / 4) { this.lastInspect = this.kernel.frame; this.port.postMessage({ type: 'effect-health', ...this.kernel.diagnostics() }); }
     };
+    this.offlineCompletion = new OfflineEffectCompletion({ endFrame: options?.processorOptions?.offlineEndFrame ?? null,
+      sampleRate: globalThis.sampleRate, revision: NONLINEAR_KERNEL_REVISION, stateBytes: this.kernel.state.byteLength, configurationKey: this.kernel.identity, port: this.port });
     this.port.postMessage({ type: 'ready', revision: NONLINEAR_KERNEL_REVISION, sampleRate: globalThis.sampleRate, stateBytes: this.kernel.state.byteLength, configurationKey: this.kernel.identity });
   }
   process(inputs, outputs, parameters) {
@@ -26,6 +29,7 @@ export class NonlinearChainProcessor extends ProcessorBase {
       output[0][i] = this.kernel.leftSample; if (output[1]) output[1][i] = this.kernel.rightSample;
     }
     if (this.kernel.faults !== this.reportedFaults) { this.reportedFaults = this.kernel.faults; this.faultMessage.frame = globalThis.currentFrame + output[0].length; this.faultMessage.faults = this.kernel.faults; this.port.postMessage(this.faultMessage); }
+    this.offlineCompletion.observe(globalThis.currentFrame, output[0].length, this.kernel.faults, this.kernel.muted);
     return true;
   }
 }

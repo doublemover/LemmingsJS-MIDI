@@ -1,9 +1,18 @@
 import { expect } from 'chai';
-import { createQuarryEcho, validateOwnerEffectRack } from '../../js/midi/content/DubQuarryRack.js';
+import { createQuarryEcho, createQuarryTapeSpring, validateOwnerEffectRack } from '../../js/midi/content/DubQuarryRack.js';
 import { prepareEffectGraphRevision } from '../../js/midi/content/EffectGraphRevision.js';
 import { createProcgenWorkstationProject, reduceCanonicalProcgenProject, sanitizeProcgenWorkstation } from '../../js/app/procgen/workstation/ProcgenWorkstationProject.js';
 
 describe('original Quarry Echo defaults and project ownership (deferred)', () => {
+  it('authors a shared original Tape + Spring with one nonlinear preamp, one delay, one body and a combined return', () => {
+    const graph = createQuarryTapeSpring({ send01: 0.3, springBlend01: 0.15 });
+    expect(graph.id).to.equal('dub-quarry.tape-spring'); expect(graph.latencyPolicy).to.equal('uncompensated-native');
+    expect(graph.nodes.filter(node => node.kind === 'nonlinear-chain')).to.have.length(1);
+    expect(graph.nodes.filter(node => node.kind === 'feedback-delay')).to.have.length(1);
+    expect(graph.nodes.filter(node => node.kind === 'convolution-native')).to.have.length(1);
+    expect(graph.edges.filter(edge => edge.to.nodeId === 'wet-sum').map(edge => edge.gain01).sort()).to.deep.equal([0.15, 0.85]);
+    expect(() => createQuarryTapeSpring({ springBlend01: 0.31 })).to.throw('spring blend');
+  });
   it('keeps dry, source send and wet return independent within declared worst-case headroom', () => {
     const graph = createQuarryEcho(), plan = prepareEffectGraphRevision(graph), get = id => graph.nodes.find(node => node.id === id);
     expect(get('dry').parameters).to.include({ gain01: 1, gainMaximum01: 1 }); expect(get('send').parameters.gain01).to.equal(0);

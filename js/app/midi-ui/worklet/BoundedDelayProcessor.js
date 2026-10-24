@@ -1,3 +1,4 @@
+import { OfflineEffectCompletion } from './OfflineEffectCompletion.js';
 import './NonlinearChainProcessor.js';
 import './FixedFractionalDelayProcessor.js';
 import { createOwnedEffectState } from './OwnedEffectState.js';
@@ -104,6 +105,8 @@ export class BoundedDelayProcessor extends ProcessorBase {
         this.lastInspect = this.kernel.frame; this.port.postMessage({ type: 'delay-health', ...this.kernel.diagnostics() });
       }
     };
+    this.offlineCompletion = new OfflineEffectCompletion({ endFrame: options?.processorOptions?.offlineEndFrame ?? null,
+      sampleRate: globalThis.sampleRate, revision: DELAY_KERNEL_REVISION, stateBytes: this.kernel.buffer.byteLength + this.kernel.filter.byteLength, configurationKey: null, port: this.port });
     this.port.postMessage({ type: 'ready', revision: DELAY_KERNEL_REVISION, sampleRate: globalThis.sampleRate, stateBytes: this.kernel.buffer.byteLength + this.kernel.filter.byteLength });
   }
   process(inputs, outputs, parameters) {
@@ -118,6 +121,7 @@ export class BoundedDelayProcessor extends ProcessorBase {
       output[0][i] = kernel.leftSample; if (output[1]) output[1][i] = kernel.rightSample;
     }
     if (kernel.faults !== this.reportedFaults) { this.reportedFaults = kernel.faults; this.faultMessage.frame = globalThis.currentFrame + output[0].length; this.faultMessage.faults = kernel.faults; this.port.postMessage(this.faultMessage); }
+    this.offlineCompletion.observe(globalThis.currentFrame, output[0].length, this.kernel.faults, this.kernel.muted);
     return true;
   }
 }

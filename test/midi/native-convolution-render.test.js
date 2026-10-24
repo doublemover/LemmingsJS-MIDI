@@ -1,3 +1,8 @@
+import { BoundedDelayKernel, DELAY_KERNEL_REVISION } from '../../js/app/midi-ui/worklet/BoundedDelayProcessor.js';
+import { NonlinearChainKernel } from '../../js/app/midi-ui/worklet/NonlinearChainKernel.js';
+import { NONLINEAR_KERNEL_REVISION } from '../../js/midi/content/NonlinearChainProfile.js';
+import { OFFLINE_EFFECT_COMPLETION_REVISION } from '../../js/app/midi-ui/worklet/OfflineEffectCompletion.js';
+import { createQuarryTape } from '../../js/midi/content/DubQuarryRack.js';
 import { prepareCausalOwnedConvolutionInput } from '../../js/app/midi-ui/CausalOwnedConvolutionRender.js';
 import { renderCausalOwnedTake } from '../../js/app/midi-ui/CausalOwnedRender.js';
 import { describeNativeInstrumentEngines } from '../../js/app/midi-ui/NativeInstrumentSchema.js';
@@ -28,10 +33,17 @@ const body = channels => ({ schema: 'lemmings-effect-graph/v1', id: 'fixture.nat
   { id: 'output', kind: 'bus-out', parameters: {} }],
   edges: [{ from: { nodeId: 'source', port: 'audio' }, to: { nodeId: 'body', port: 'audio' }, gain01: 1 },
     { from: { nodeId: 'body', port: 'audio' }, to: { nodeId: 'output', port: 'audio' }, gain01: 1 }] });
-const makeOwner = (channels, sampleRate) => {
+const makeOwner = (channels, sampleRate, { mixed = false, processorMode = 'valid' } = {}) => {
   const budget = createResourceBudget(), resources = createAudioResourceLeases({ resourceBudget: budget }), admission = createBackgroundWorkerAdmission({ maxWorkers: 1 });
   const definition = body(channels), ref = definition.nodes[1].impulse.asset, frames = Math.round(ref.frames * sampleRate / ref.sourceSampleRate), events = [];
-  let pins = 0, convolver;
+  if (mixed) {
+    definition.maximumTailSeconds = 30;
+    const colour = structuredClone(createQuarryTape().nodes.find(node => node.kind === 'nonlinear-chain')); colour.id = 'colour';
+    definition.nodes.push(colour, { id: 'echo', kind: 'feedback-delay', parameters: {} });
+    const edge = (from, to) => ({ from: { nodeId: from, port: 'audio' }, to: { nodeId: to, port: 'audio' }, gain01: 1 });
+    definition.edges = [edge('source', 'colour'), edge('colour', 'echo'), edge('echo', 'body'), edge('body', 'output')];
+  }
+  let pins = 0, convolver; const processors = [];
   const pcm = Array.from({ length: channels }, (_, i) => new Float32Array(Array.from({ length: frames }, (__, f) => f ? 0 : i % 2 ? -1 : 1)));
   const buffer = { length: frames, sampleRate, numberOfChannels: channels, getChannelData: index => pcm[index] };
   const pin = () => { pins++; let active = true; return { ref, variant: { decoderVersion: DECODER_VERSION, targetSampleRate: sampleRate }, buffer,
@@ -49,7 +61,9 @@ const makeOwner = (channels, sampleRate) => {
   const param = () => ({ setValueAtTime() {}, linearRampToValueAtTime() {}, cancelScheduledValues() {} });
   const node = () => ({ connect() {}, disconnect() { events.push('disconnect'); }, gain: param(), pan: param(), delayTime: param() });
   class OfflineDouble {
-    constructor(options) { Object.assign(this, options); this.state = 'suspended'; this.currentTime = 0; this.destination = node(); }
+    constructor(options) { Object.assign(this, options); this.state = 'suspended'; this.currentTime = 0; this.destination = node(); this.listeners = new Set(); this.audioWorklet = { addModule: async () => { events.push('module-load'); } }; }
+    addEventListener(type, listener) { if (type === 'statechange') this.listeners.add(listener); }
+    removeEventListener(type, listener) { if (type === 'statechange') this.listeners.delete(listener); }
     createBuffer(channels, length, rate) { const planes = Array.from({ length: channels }, () => new Float32Array(length)); return { numberOfChannels: channels, length, sampleRate: rate, getChannelData: channel => planes[channel] }; }
     createBufferSource() { return { ...node(), start() { events.push('source-start'); }, stop() { events.push('source-stop'); }, set buffer(value) { events.push(value ? 'source-buffer-set' : 'source-buffer-clear'); } }; }
     createGain() { return node(); } createStereoPanner() { return node(); } createDelay() { return node(); }
@@ -60,12 +74,30 @@ const makeOwner = (channels, sampleRate) => {
     }
     suspend() { throw new Error('Fixture renders one quantum.'); } resume() { return Promise.resolve(); }
     async startRendering() {
-      expect(pins).to.equal(2); events.push('render'); this.state = 'closed'; this.currentTime = this.length / this.sampleRate;
+      expect(pins).to.equal(convolver ? 2 : 0); events.push('render');
+      for (const processor of processors) if (processorMode !== 'missing-ready') processor.emitReady();
+      await Promise.resolve();
+      for (const processor of processors) if (processorMode !== 'missing-complete') processor.emitComplete();
+      this.state = 'closed'; this.currentTime = this.length / this.sampleRate; for (const listener of [...this.listeners]) listener();
       return { length: this.length, sampleRate: this.sampleRate, numberOfChannels: this.numberOfChannels,
         getChannelData: index => new Float32Array(this.length).fill((index + 1) / 100) };
     }
   }
-  return { definition, resources, admission, budget, provider, jobs, OfflineDouble, events, pins: () => pins, convolver: () => convolver };
+  const createWorkletNode = (context, name, options) => {
+    events.push('processor-created'); const nonlinear = name === 'lemmings-nonlinear-chain-v1';
+    const kernel = nonlinear ? new NonlinearChainKernel({ parameters: options.processorOptions.parameters, sampleRate }) : new BoundedDelayKernel({ ...options.processorOptions, sampleRate });
+    const revision = nonlinear ? NONLINEAR_KERNEL_REVISION : DELAY_KERNEL_REVISION, stateBytes = nonlinear ? kernel.state.byteLength : kernel.buffer.byteLength + kernel.filter.byteLength;
+    const configurationKey = nonlinear ? kernel.identity : null;
+    const port = { onmessage: null, postMessage() {}, close() { events.push('processor-port-close'); } };
+    const value = { ...node(), port, parameters: new Map(Object.keys(options.parameterData).filter(key => processorMode !== 'bad-parameter' || key !== 'driveDb').map(key => [key, param()])) };
+    const emit = data => port.onmessage?.({ data });
+    processors.push({ emitReady() { events.push('processor-ready'); emit({ type: 'ready', revision: processorMode === 'bad-abi' ? 'wrong-revision' : revision, sampleRate, stateBytes, ...(configurationKey === null ? {} : { configurationKey }) }); },
+      emitComplete() { events.push('processor-complete'); emit({ type: 'offline-complete', protocol: OFFLINE_EFFECT_COMPLETION_REVISION, revision, sampleRate, stateBytes, configurationKey,
+        endFrame: options.processorOptions.offlineEndFrame, firstFrame: 0, processedThroughFrame: 128, quantumFrames: 128, contiguous: true,
+        faults: processorMode === 'late-fault' ? 1 : 0, faulted: processorMode === 'late-fault' }); } });
+    return value;
+  };
+  return { definition, resources, admission, budget, provider, jobs, OfflineDouble, events, createWorkletNode, pins: () => pins, convolver: () => convolver };
 };
 
 describe('native shared convolution rendering (API/codec fixtures, no acoustic qualification)', () => {
@@ -98,6 +130,27 @@ describe('native shared convolution rendering (API/codec fixtures, no acoustic q
       rendered.release(); expect(owner.budget.diagnostics().accountedBytes).to.equal(0); await owner.resources.dispose().completion; owner.admission.dispose();
     });
   }
+  for (const processorMode of ['valid', 'missing-ready', 'missing-complete', 'late-fault', 'bad-abi', 'bad-parameter']) {
+    it(`gates a complete mixed graph on render-thread readiness and terminal receipts: ${processorMode}`, async () => {
+      const owner = makeOwner(2, 48000, { mixed: true, processorMode }), patch = CAUSAL_RENDER_SOURCES.find(source => source.id === 'native-oscillator').definition;
+      let result, error;
+      try { result = await renderNativeOfflineGraph({ patch, events: [], frames: 128, sampleRate: 48000, effectGraph: owner.definition, effectReturnNodeIds: ['body'] },
+        { resources: owner.resources, resourceBudget: owner.budget, admission: owner.admission, getMaterialProvider: () => owner.provider, jobs: owner.jobs,
+          OfflineAudioContext: owner.OfflineDouble, createWorkletNode: owner.createWorkletNode, effectInitializationTimeoutMs: 20 }); }
+      catch (value) { error = value; }
+      if (processorMode === 'valid') {
+        expect(error).to.equal(undefined); expect(result.receipt.effectGraph.realization.initialization.completionConfirmed).to.equal(true);
+        expect(result.receipt.effectGraph.realization.processors).to.have.length(2);
+        expect(result.receipt.effectGraph.realization.processors.every(processor => processor.ready && processor.completion.faults === 0)).to.equal(true);
+        const plan = prepareEffectRenderPlan(owner.definition, 48000, ['body'], { nativeConvolution: true, nativeOwnedProcessors: true });
+        expect(validateNativeConvolutionRenderReceipt(plan, result.receipt, await effectGraphHash(plan), ['body'])).to.equal(result.receipt.effectGraph);
+        expect(owner.events.indexOf('processor-created')).to.be.lessThan(owner.events.indexOf('render'));
+        expect(owner.events.indexOf('render')).to.be.lessThan(owner.events.indexOf('processor-ready')); result.release();
+      } else { expect(result).to.equal(undefined); expect(error).to.be.instanceOf(Error); expect(owner.events).to.include('render'); }
+      expect(owner.pins()).to.equal(0); expect(owner.admission.diagnostics().activeWorkers).to.equal(0);
+      expect(owner.budget.diagnostics().accountedBytes).to.equal(0); await owner.resources.dispose().completion; owner.admission.dispose();
+    });
+  }
   it('carries an actual owned PCM worker stage through native body preparation and final codec binding', async () => {
     const owner = makeOwner(4, 48000), definition = CAUSAL_RENDER_SOURCES.find(source => source.id === 'worklet-sine').definition;
     const [descriptor] = await describeNativeInstrumentEngines([{ engineId: 'worklet-sine', engineVersion: 1, artifactHash: 'a'.repeat(64) }]);
@@ -118,7 +171,7 @@ describe('native shared convolution rendering (API/codec fixtures, no acoustic q
     expect(() => validateOwnedConvolutionSourceReceipt(wrong)).to.throw('input hashes');
     prepared.release(); expect(owner.budget.diagnostics().accountedBytes).to.equal(0); await owner.resources.dispose().completion; owner.admission.dispose();
   });
-  it('admits authored native body recipes and refuses an owned source or unavailable mixed kernel profile explicitly', () => {
+  it('admits authored body recipes and requires the explicit native render profile', () => {
     for (const preset of ['quarry-hollow-spring', 'quarry-stone-courtyard', 'quarry-crossed-gallery']) {
       const selected = prepareCausalEffectSelection({ preset });
       expect(prepareEffectRenderPlan(selected.effectGraph, 48000, selected.effectReturnNodeIds, { nativeConvolution: true }).impulseCount).to.equal(1);

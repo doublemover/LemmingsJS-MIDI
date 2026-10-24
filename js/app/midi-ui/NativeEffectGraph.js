@@ -1,8 +1,9 @@
+import { validateOfflineEffectCompletion, OFFLINE_EFFECT_COMPLETION_REVISION } from './worklet/OfflineEffectCompletion.js';
 import { prepareNativeImpulseMaterial } from './NativeImpulseMaterial.js';
 import { getActiveExecutionIdentity } from '../../runtime/ActiveExecutionIdentity.js';
 import { createSmoothedAudioParameter } from './SmoothedAudioParameter.js';
 import { prepareEffectGraphRevision, effectGraphHash } from '../../midi/content/EffectGraphRevision.js';
-import { loadOwnedWorkletModule } from './OwnedWorkletModuleCache.js';
+import { loadOwnedWorkletModule, retireClosedOwnedWorkletContext } from './OwnedWorkletModuleCache.js';
 import { DELAY_KERNEL_REVISION } from './worklet/BoundedDelayProcessor.js';
 import { ALIGNMENT_KERNEL_REVISION } from '../../midi/content/EffectRuntimeRevisions.js';
 import { fixedFractionalDelayIdentity } from './worklet/FixedFractionalDelayProcessor.js';
@@ -16,11 +17,14 @@ const failure = (code, message) => Object.assign(new Error(message), { name: 'Ef
 // A prepared graph has no connection to a live destination. The owner decides
 // when inputs/outputs become audible and owns all transition/tail overlap.
 export async function prepareNativeEffectGraph(definition, { context, resources, owner, generation = 0, signal, isCurrent = () => true,
-  getMaterialProvider = null, jobs, createWorkletNode = (ctx, name, options) => new globalThis.AudioWorkletNode(ctx, name, options), onFault = () => {}, initializationTimeoutMs = 5000 } = {}) {
+  getMaterialProvider = null, jobs, createWorkletNode = (ctx, name, options) => new globalThis.AudioWorkletNode(ctx, name, options), onFault = () => {}, initializationTimeoutMs = 5000, offlineEndFrame = null, offlineReturnNodeIds = [], retireOfflineContext = null } = {}) {
   const guard = () => { signal?.throwIfAborted(); if (!isCurrent() || context?.state === 'closed') throw failure('stale-effect-graph', 'The effect graph request no longer belongs to this context.'); };
   guard();
   if (!context?.createGain || !resources?.reserve || typeof createWorkletNode !== 'function' || typeof onFault !== 'function' ||
       !Number.isSafeInteger(initializationTimeoutMs) || initializationTimeoutMs < 1 || initializationTimeoutMs > 30000) throw new TypeError('Effect graphs need an owned native context and resource budget.');
+  const offline = offlineEndFrame !== null;
+  if (offline && (!Number.isSafeInteger(offlineEndFrame) || offlineEndFrame < 1 || offlineEndFrame > context.sampleRate * 150 || context.state !== 'suspended' ||
+      typeof context.startRendering !== 'function' || typeof retireOfflineContext !== 'function' || !Array.isArray(offlineReturnNodeIds) || offlineReturnNodeIds.length > 8)) throw new TypeError('Offline effect initialization requires a private bounded OfflineAudioContext and its retirement owner.');
   const workspace = resources.reserve({ kind: 'effect-graph-preparation', owner, generation, estimateBytes: 2 * 1048576, consumerOwned: true });
   let plan, hash, storage = null, preparationError = null;
   try {
@@ -32,13 +36,22 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     { name: 'unused-effect-graph-reservation', run: () => { if (preparationError || preparationScope.getReceipt().resources[0].status !== 'completed') return storage?.release(); } }]);
   if (prepared.outcome !== 'complete') throw Object.assign(failure('effect-preparation-retirement', 'Effect metadata preparation retirement is unresolved.'), { cause: preparationError, retirement: prepared });
   if (preparationError) throw preparationError;
-  const scope = createProcgenRetirementScope({ deadlineMs: initializationTimeoutMs + 1000 }), nodes = [], processors = [], impulses = [], instances = new Map(), nodeOutputs = new Map(), inputs = new Map(), outputs = new Map();
-  let disposed = false, fault = null, controlSequence = 0;
+  const scope = createProcgenRetirementScope({ deadlineMs: offline ? 180000 + initializationTimeoutMs : initializationTimeoutMs + 1000 }), nodes = [], processors = [], impulses = [], instances = new Map(), nodeOutputs = new Map(), inputs = new Map(), outputs = new Map();
+  let disposed = false, fault = null, controlSequence = 0, initializationConfirmed = false, offlineCompletionConfirmed = false;
+  const audible = new Set([...plan.outputs, ...offlineReturnNodeIds]);
+  for (let changed = true; changed;) { changed = false; for (const edge of plan.edges) if (audible.has(edge.to.nodeId) && !audible.has(edge.from.nodeId)) { audible.add(edge.from.nodeId); changed = true; } }
   const controls = new Map(), gainControls = new Map(), parameterControls = new Map(), execution = getActiveExecutionIdentity('browser-native-audio');
   const node = value => { nodes.push(value); return value; };
   const dispose = () => scope.retire([{ name: 'effect-native-retirement', run: async () => {
     disposed = true;
     try {
+      if (offline && context.state !== 'closed') {
+        for (const entry of processors) entry.node.port.postMessage({ type: 'panic' });
+        for (const entry of impulses) if (entry.convolver) entry.convolver.buffer = null;
+        for (const value of nodes) value.disconnect();
+        await retireOfflineContext();
+      }
+      if (offline) { const modules = retireClosedOwnedWorkletContext(context); if (modules) { await modules.completion; if (modules.outcome !== 'complete') throw failure('effect-module-retirement-unknown', 'Closed offline module ownership remains unresolved.'); } }
       const results = await Promise.allSettled(processors.map(async entry => {
         if (context.state === 'closed') return;
         entry.node.port.postMessage({ type: 'dispose' }); await entry.waitDisposed();
@@ -58,37 +71,57 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
 
   const prepareProcessor = async (entry, { processorName, parameterData = {}, processorOptions = {}, revision, configurationKey = null }) => {
     guard();
-    const value = node(createWorkletNode(context, processorName, { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: 'explicit', parameterData, processorOptions }));
-    let resolveReady, rejectReady, resolveDisposed, rejectDisposed, timer = null;
-    const ready = new Promise((resolve, reject) => { resolveReady = resolve; rejectReady = reject; });
+    const value = node(createWorkletNode(context, processorName, { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: 'explicit', parameterData,
+      processorOptions: { ...processorOptions, ...(offline ? { offlineEndFrame } : {}) } }));
+    let resolveReady, rejectReady, resolveDisposed, rejectDisposed, resolveComplete, rejectComplete;
+    let readyTimer = null, completeTimer = null, retireTimer = null, readySettled = false, completeSettled = false;
+    const ready = new Promise((resolve, reject) => { resolveReady = resolve; rejectReady = reject; }); ready.catch(() => {});
+    const terminal = new Promise((resolve, reject) => { resolveComplete = resolve; rejectComplete = reject; }); terminal.catch(() => {});
     const retired = new Promise((resolve, reject) => { resolveDisposed = resolve; rejectDisposed = reject; }); retired.catch(() => {});
+    const failReady = error => { if (readySettled) return; readySettled = true; clearTimeout(readyTimer); readyTimer = null; fault ||= error; rejectReady(error); };
+    const failComplete = error => { if (completeSettled) return; completeSettled = true; clearTimeout(completeTimer); completeTimer = null; fault ||= error; rejectComplete(error); };
+    const abort = () => { failReady(signal.reason); failComplete(signal.reason); };
     const closed = () => { if (context.state === 'closed') resolveDisposed(); };
-    const timeout = () => { const error = failure('effect-initialization-timeout', 'Effect initialization did not acknowledge its source profile.'); rejectReady(error); };
-    const abort = () => rejectReady(signal.reason);
-    const cleanup = () => { if (timer != null) clearTimeout(timer); context.removeEventListener?.('statechange', closed); signal?.removeEventListener('abort', abort); };
-    const delay = { node: value, nodeId: entry.id, kind: entry.kind, profile: entry.nonlinear || null, revision, cleanup, health: null, waitDisposed: () => {
-      if (timer != null) clearTimeout(timer);
-      return Promise.race([retired, new Promise((_, reject) => { timer = setTimeout(() => reject(failure('effect-retirement-timeout', 'The effect processor did not acknowledge retirement.')), initializationTimeoutMs); })]);
-    } }; processors.push(delay);
+    const cleanup = () => {
+      clearTimeout(readyTimer); clearTimeout(completeTimer); clearTimeout(retireTimer);
+      context.removeEventListener?.('statechange', closed); signal?.removeEventListener('abort', abort);
+      if (!readySettled) failReady(failure('effect-retired-before-ready', 'Effect initialization retired before its acknowledgment.'));
+      if (!completeSettled) { completeSettled = true; rejectComplete(failure('effect-retired-before-complete', 'Effect completion retired before publication.')); }
+    };
+    const processor = { node: value, nodeId: entry.id, kind: entry.kind, profile: entry.nonlinear || null, revision, configurationKey, stateBytes: entry.stateBytes,
+      ready: false, completion: null, offlineActive: entry.offlineActive ?? audible.has(entry.id), cleanup, health: null,
+      awaitReady: () => { if (!readySettled && readyTimer === null) readyTimer = setTimeout(() => failReady(failure('effect-initialization-timeout', 'Effect initialization did not acknowledge its source profile.')), initializationTimeoutMs); return ready; },
+      awaitComplete: () => { if (!completeSettled && completeTimer === null) completeTimer = setTimeout(() => failComplete(failure('effect-completion-timeout', 'Offline effect omitted its terminal frame and fault receipt.')), initializationTimeoutMs); return terminal; },
+      waitDisposed: () => Promise.race([retired, new Promise((_, reject) => { retireTimer = setTimeout(() => reject(failure('effect-retirement-timeout', 'The effect processor did not acknowledge retirement.')), initializationTimeoutMs); })])
+    }; processors.push(processor);
     context.addEventListener?.('statechange', closed); signal?.addEventListener('abort', abort, { once: true });
     value.port.onmessage = event => {
       const data = event.data;
       if (data?.type === 'disposed') { resolveDisposed(); return; }
       if (data?.type === 'ready') {
-        if (data.revision !== revision || data.sampleRate !== context.sampleRate || data.stateBytes !== entry.stateBytes || configurationKey != null && data.configurationKey !== configurationKey) rejectReady(failure('effect-abi-mismatch', 'The effect runtime differs from its admitted graph.'));
-        else resolveReady();
+        if (data.revision !== revision || data.sampleRate !== context.sampleRate || data.stateBytes !== entry.stateBytes || configurationKey != null && data.configurationKey !== configurationKey) failReady(failure('effect-abi-mismatch', 'The effect runtime differs from its admitted graph.'));
+        else if (!readySettled) { readySettled = true; processor.ready = true; clearTimeout(readyTimer); readyTimer = null; resolveReady(); }
+      } else if (data?.type === 'offline-complete' && offline) {
+        try { processor.completion = validateOfflineEffectCompletion(data, { revision, sampleRate: context.sampleRate, stateBytes: entry.stateBytes, configurationKey, endFrame: offlineEndFrame });
+          if (!completeSettled) { completeSettled = true; clearTimeout(completeTimer); completeTimer = null; resolveComplete(); }
+        } catch (error) { failComplete(error); }
       } else if (['delay-fault', 'effect-fault'].includes(data?.type) && data.revision === revision) { fault ||= failure('effect-state-containment', 'The ' + entry.kind + ' branch cleared excessive or nonfinite internal state.'); try { onFault(fault); } catch {}
-      } else if (['delay-health', 'effect-health'].includes(data?.type) && data.revision === revision) delay.health = Object.freeze({ ...data });
+      } else if (['delay-health', 'effect-health'].includes(data?.type) && data.revision === revision) processor.health = Object.freeze({ ...data });
     };
-    value.onprocessorerror = () => { const error = failure('effect-processor-fault', 'The owned effect processor failed.'); fault = error; rejectReady(error); rejectDisposed(error); try { onFault(error); } catch { /* UI cannot own graph retirement. */ } };
-    timer = setTimeout(timeout, initializationTimeoutMs); await ready; clearTimeout(timer); timer = null; signal?.removeEventListener('abort', abort); guard();
-    const adapters = new Map(), initial = parameterData;
-    for (const [name, initialValue] of Object.entries(initial)) {
+    value.onprocessorerror = () => { const error = failure('effect-processor-fault', 'The owned effect processor failed.'); fault = error; failReady(error); failComplete(error); rejectDisposed(error); try { onFault(error); } catch {} };
+    if (!offline) { await processor.awaitReady(); signal?.removeEventListener('abort', abort); guard(); }
+    const adapters = new Map();
+    for (const [name, initialValue] of Object.entries(parameterData)) {
       const param = value.parameters.get(name); if (!param?.setValueAtTime || !param.cancelScheduledValues) throw failure('effect-control-unavailable', 'Effect automation lacks bounded native queue replacement.');
       adapters.set(name, createSmoothedAudioParameter({ param, initialValue, startTime: context.currentTime, smoothingSeconds: 0, maxEvents: 128 }));
     } parameterControls.set(entry.id, adapters);
-
     return value;
+  };
+  const checkPublication = () => { signal?.throwIfAborted(); if (disposed || !isCurrent() || fault) throw fault || failure('stale-effect-publication', 'Prepared effect publication no longer belongs to its owner.'); };
+  const confirmReady = async () => { await Promise.all(processors.map(entry => entry.awaitReady())); checkPublication(); initializationConfirmed = true; };
+  const confirmOfflineCompletion = async () => {
+    if (!offline) throw failure('offline-completion-unavailable', 'This effect graph has no offline completion boundary.');
+    await confirmReady(); await Promise.all(processors.filter(entry => entry.offlineActive).map(entry => entry.awaitComplete())); checkPublication(); offlineCompletionConfirmed = true;
   };
 
   try {
@@ -123,7 +156,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
       const gain = node(context.createGain()); gain.gain.setValueAtTime(edge.gain01, context.currentTime);
       nodeOutputs.get(edge.from.nodeId).connect(gain);
       if (edge.alignmentFrames) {
-        const align = await prepareProcessor({ id: 'alignment-' + edgeIndex, kind: 'fixed-fractional-delay', stateBytes: (Math.ceil(edge.alignmentFrames) + 2) * 8 }, {
+        const align = await prepareProcessor({ id: '@alignment:' + edgeIndex, kind: 'fixed-fractional-delay', offlineActive: audible.has(edge.to.nodeId), stateBytes: (Math.ceil(edge.alignmentFrames) + 2) * 8 }, {
           processorName: 'lemmings-fixed-fractional-delay-v1', revision: ALIGNMENT_KERNEL_REVISION, processorOptions: { delayFrames: edge.alignmentFrames },
           configurationKey: fixedFractionalDelayIdentity(context.sampleRate, edge.alignmentFrames) });
         gain.connect(align); align.connect(instances.get(edge.to.nodeId));
@@ -160,12 +193,15 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     controls.set(nodeId, Object.freeze(next));
     return Object.freeze({ status: 'accepted', stage: 'native-control-submitted', nodeId, targetFrame, sequence: ++controlSequence, graphDefinitionHash: hash, appliedFrame: null, acousticReceipt: false });
   };
-  return Object.freeze({ plan, hash, update, getInput: id => disposed ? null : inputs.get(id) || null, getOutput: id => disposed ? null : outputs.get(id) || null,
+  return Object.freeze({ plan, hash, update, confirmReady, confirmOfflineCompletion, getInput: id => disposed ? null : inputs.get(id) || null, getOutput: id => disposed ? null : outputs.get(id) || null,
     getNodeOutput: id => disposed ? null : nodeOutputs.get(id) || null,
     panic() { for (const entry of processors) entry.node.port.postMessage({ type: 'panic' }); for (const entry of impulses) if (entry.convolver) entry.convolver.buffer = null; },
     diagnostics: () => Object.freeze({ hash, graphId: plan.definition.id, revision: plan.definition.revision, sampleRate: plan.sampleRate, disposed, fault: fault?.code || null,
-      runtime: { hostRevision: 'owned-native-effect-host-v1', alignmentRevision: plan.processingRevisions.alignment, delayRevision: processors.some(entry => entry.kind === 'feedback-delay') ? DELAY_KERNEL_REVISION : null, nonlinearRevision: processors.some(entry => entry.kind === 'nonlinear-chain') ? NONLINEAR_KERNEL_REVISION : null, convolution: impulses.length ? 'browser-native-unpinned-dsp' : null, applicationBuildId: execution.buildId || null, activeExecution: execution.activeExecution },
-      processors: processors.map(entry => ({ nodeId: entry.nodeId, kind: entry.kind, revision: entry.revision, nonlinearProfile: entry.profile, health: entry.health })),
+      runtime: { hostRevision: 'owned-native-effect-host-v2', alignmentRevision: plan.processingRevisions.alignment, delayRevision: processors.some(entry => entry.kind === 'feedback-delay') ? DELAY_KERNEL_REVISION : null, nonlinearRevision: processors.some(entry => entry.kind === 'nonlinear-chain') ? NONLINEAR_KERNEL_REVISION : null, convolution: impulses.length ? 'browser-native-unpinned-dsp' : null, applicationBuildId: execution.buildId || null, activeExecution: execution.activeExecution },
+      initialization: { mode: offline ? 'offline-before-publication' : 'live-before-route', confirmed: offline ? initializationConfirmed : processors.every(entry => entry.ready),
+        offlineEndFrame, completionConfirmed: offlineCompletionConfirmed, completionProtocol: offline ? OFFLINE_EFFECT_COMPLETION_REVISION : null },
+      processors: processors.map(entry => ({ nodeId: entry.nodeId, kind: entry.kind, revision: entry.revision, stateBytes: entry.stateBytes, configurationKey: entry.configurationKey, ready: entry.ready,
+        offlineActive: entry.offlineActive, completion: entry.completion, nonlinearProfile: entry.profile, health: entry.health })),
       impulses: impulses.map(entry => ({ nodeId: entry.nodeId, descriptor: entry.material.descriptor, analysis: entry.material.analysis })),
       controls: Object.fromEntries(controls), controlSequence, controlEvidence: 'native-control-submission-not-applied-acknowledgment',
       latencyFrames: plan.latencyFrames, maximumTailFrames: plan.maximumTailFrames, stateBytes: plan.stateBytes, protection: 'external-shared-master', qualification: 'implementation-awaiting-full-graph-qualification' }),

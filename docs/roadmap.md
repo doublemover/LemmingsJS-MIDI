@@ -2828,3 +2828,34 @@ Direct kernel full-history/crop/state-cut fixtures and staged native API/codec
 fixtures are authored. Their execution, real-browser PCM equivalence and all
 remaining acceptance qualification stay deferred until all open-issue code is
 implemented.
+
+### Continuation 144 — complete mixed native/worklet effect graphs (#1015, #1070, #1155, #1218)
+
+Convolution can now share the actual native graph and OfflineAudioContext with
+owned delay, nonlinear and fractional alignment processors. Preparation loads and
+connects trusted processors without waiting for an offline render thread that has
+not started. Private rendering then verifies each initialization ABI before
+publication. Every processor on an output/selected-return path emits a terminal
+receipt binding its configuration, contiguous frame-zero history, final padded
+quantum, state bytes and zero fault/Panic state. The encoder verifies the complete
+processor inventory and those terminal receipts with the IR analysis; a late fault,
+missing acknowledgment or mismatched ABI cannot become a published WAV.
+
+Preparation failure retires the private context through a bounded admitted drain,
+so module lifetime estimates and processor disposal do not depend on messages from
+an unstarted thread. Context closure is explicitly reconciled with the module
+cache before storage retirement. Unknown custody retains reservations. Internal
+alignment processor identities use a namespace unavailable to authored node IDs.
+Owned and native sources use the same complete graph, shared input sum and
+simultaneous dry/return taps. Native convolution latency stays unmeasured; no
+physical timestamps or scheduling horizons are moved to compensate for it.
+
+An original Tape + Spring rack now combines the existing preamp, dark echo and
+one shared Hollow Spring with a restrained fixed blend into the common return.
+The live controls and causal revoice selector expose the same authored topology.
+Live effect gesture journaling and source-bound throws remain outstanding.
+
+Deferred API fixtures cover readiness emitted only after render start, terminal
+receipt omission, late faults, bad ABI and preparation failure cleanup. Terminal
+protocol and combined-rack fixtures are authored. No runtime/browser/PCM/listening
+or performance qualification has been run during this continuation.

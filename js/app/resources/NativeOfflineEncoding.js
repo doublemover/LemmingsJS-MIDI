@@ -22,7 +22,7 @@ export async function encodeNativeOfflineRender({ mode, manifest, planes, firstF
   const requested = manifest?.effectGraph; let effectPlan = null, returns = [];
   if (requested != null) {
     if (!requested || Object.getPrototypeOf(requested) !== Object.prototype || !requested.definition || !requested.processingRevisions || !Array.isArray(manifest.stems?.sharedReturns)) throw failure('Native effect manifest omitted its graph and simultaneous return inventory.');
-    returns = [...manifest.stems.sharedReturns]; effectPlan = prepareEffectRenderPlan(requested.definition, manifest.sampleRate, returns, { nativeConvolution: true });
+    returns = [...manifest.stems.sharedReturns]; effectPlan = prepareEffectRenderPlan(requested.definition, manifest.sampleRate, returns, { nativeConvolution: true, nativeOwnedProcessors: true });
     if (requested.hash !== await effectGraphHash(effectPlan) || canonicalDataText(requested.processingRevisions).text !== canonicalDataText(effectPlan.processingRevisions).text ||
         requested.latencyFrames !== effectPlan.latencyFrames || requested.maximumTailFrames !== effectPlan.maximumTailFrames || requested.controls !== 'explicit-authored-defaults-not-replayed-live-gestures' || requested.scope !== 'one-full-shared-owner-sum')
       throw failure('Native effect manifest differs from the exact executing graph.');
@@ -41,6 +41,7 @@ export async function encodeNativeOfflineRender({ mode, manifest, planes, firstF
       nativeFrames * planes.length * 4 > 64 * 1048576 || ![44100, 48000, 96000].includes(manifest?.sampleRate) || manifest.frames !== frames || manifest.channels !== 2 ||
       manifest.sampleFormat !== 'ieee-float32-le' || manifest.schema !== (mode === 'controls' ? 'lemmings-rendered-audition/v1' : 'lemmings-causal-audio-render/v1') ||
       mode === 'controls' && (firstFrame !== 0 || endFrame !== nativeFrames || stemLaneIds.length || manifest.effectGraph != null)) throw failure('Native PCM, frame interval or stereo tap inventory differs from its admitted manifest.');
+  if (nativeEffects && manifest.nativeScheduling.frames !== nativeFrames) throw failure('Native effect completion covers a different complete PCM history.');
   canonicalDataText(manifest, { maxBytes: 262144, maxNodes: 32768 });
   const tapCount = stemLaneIds.length + returns.length + 1, outputBytes = frames * 8 * tapCount;
   const workingBytes = nativeFrames * planes.length * 16 + outputBytes * 4 + 16 * 1048576 + (effectPlan ? effectPlan.stateBytes + 4 * 1048576 : 0);

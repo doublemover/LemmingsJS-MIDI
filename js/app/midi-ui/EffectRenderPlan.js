@@ -1,18 +1,21 @@
+import { nonlinearChainIdentity } from '../../midi/content/NonlinearChainProfile.js';
+import { fixedFractionalDelayIdentity } from './worklet/FixedFractionalDelayProcessor.js';
+import { validateOfflineEffectCompletion, OFFLINE_EFFECT_COMPLETION_REVISION } from './worklet/OfflineEffectCompletion.js';
 import { prepareEffectGraphRevision } from '../../midi/content/EffectGraphRevision.js';
 import { canonicalDataText } from '../../core/CanonicalData.js';
 import { DECODER_VERSION } from './AudioAssetRef.js';
 
 const fail = (code, message) => { throw Object.assign(new Error(message), { name: 'EffectRenderError', code }); };
-export function prepareEffectRenderPlan(definition, sampleRate = 48000, returnNodeIds = [], { nativeConvolution = false } = {}) {
+export function prepareEffectRenderPlan(definition, sampleRate = 48000, returnNodeIds = [], { nativeConvolution = false, nativeOwnedProcessors = false } = {}) {
   const plan = prepareEffectGraphRevision(definition, { sampleRate });
   if (plan.inputs.length !== 1 || plan.outputs.length !== 1) fail('unsupported-effect-owner-buses', 'Rendering requires one complete stereo owner input and output.');
   if (!Array.isArray(returnNodeIds) || returnNodeIds.length > 8 || new Set(returnNodeIds).size !== returnNodeIds.length || returnNodeIds.some(id => !plan.nodes.some(node => node.id === id && !['bus-in', 'bus-out'].includes(node.kind))))
     fail('invalid-effect-taps', 'Choose at most eight unique actual effect node outputs.');
   if (plan.impulseCount) {
     if (!nativeConvolution) fail('native-impulse-render-required', 'This graph requires its exact native convolution render adapter.');
-    // No offline Worklet readiness is inferred before the render thread starts.
-    // This native profile contains actual native gains, buses and convolution.
-    if (plan.nodes.some(node => !['bus-in', 'bus-out', 'gain', 'convolution-native'].includes(node.kind)) || plan.edges.some(edge => edge.alignmentFrames))
+    // Mixed graphs require the explicit offline Worklet initialization and
+    // terminal-completion adapter, never a pre-render ready assumption.
+    if (!nativeOwnedProcessors && (plan.nodes.some(node => !['bus-in', 'bus-out', 'gain', 'convolution-native'].includes(node.kind)) || plan.edges.some(edge => edge.alignmentFrames)))
       fail('mixed-native-effect-render-unavailable', 'This convolution render profile supports native gain/bus/body graphs. Mixed owned processors need their explicit offline adapter.');
   }
   return plan;
@@ -27,8 +30,24 @@ export function validateNativeConvolutionRenderReceipt(plan, receipt, graphHash,
       canonicalDataText(body.returnNodeIds).text !== canonicalDataText(returnNodeIds).text ||
       actual?.hash !== graphHash || actual.sampleRate !== plan.sampleRate || actual.fault || actual.disposed !== false ||
       actual.stateBytes !== plan.stateBytes || actual.latencyFrames !== plan.latencyFrames || actual.maximumTailFrames !== plan.maximumTailFrames ||
+      actual.runtime?.delayRevision !== plan.processingRevisions.delay || actual.runtime?.nonlinearRevision !== plan.processingRevisions.nonlinear || actual.runtime?.alignmentRevision !== plan.processingRevisions.alignment || actual.runtime?.hostRevision !== 'owned-native-effect-host-v2' || actual.initialization?.mode !== 'offline-before-publication' || actual.initialization.confirmed !== true || actual.initialization.completionConfirmed !== true ||
+      actual.initialization.completionProtocol !== OFFLINE_EFFECT_COMPLETION_REVISION || !Number.isSafeInteger(receipt.frames) || receipt.frames < 1 || receipt.frames > plan.sampleRate * 150 || actual.initialization.offlineEndFrame !== receipt.frames ||
       actual.runtime?.convolution !== 'browser-native-unpinned-dsp' || !Array.isArray(actual.impulses) || actual.impulses.length !== plan.impulseCount)
     fail('native-convolution-receipt-mismatch', 'Native convolution output omitted its exact graph, tap or execution binding.');
+  const audible = new Set([...plan.outputs, ...returnNodeIds]);
+  for (let changed = true; changed;) { changed = false; for (const edge of plan.edges) if (audible.has(edge.to.nodeId) && !audible.has(edge.from.nodeId)) { audible.add(edge.from.nodeId); changed = true; } }
+  const expectedProcessors = plan.nodes.filter(node => ['feedback-delay', 'nonlinear-chain'].includes(node.kind)).map(node => ({ nodeId: node.id, kind: node.kind,
+    revision: node.kind === 'feedback-delay' ? plan.processingRevisions.delay : plan.processingRevisions.nonlinear, stateBytes: node.stateBytes,
+    configurationKey: node.kind === 'nonlinear-chain' ? nonlinearChainIdentity(node.nonlinear) : null, offlineActive: audible.has(node.id) }));
+  for (const [index, edge] of plan.edges.entries()) if (edge.alignmentFrames) expectedProcessors.push({ nodeId: '@alignment:' + index, kind: 'fixed-fractional-delay', revision: plan.processingRevisions.alignment,
+    stateBytes: (Math.ceil(edge.alignmentFrames) + 2) * 8, configurationKey: fixedFractionalDelayIdentity(plan.sampleRate, edge.alignmentFrames), offlineActive: audible.has(edge.to.nodeId) });
+  if (!Array.isArray(actual.processors) || actual.processors.length !== expectedProcessors.length || new Set(actual.processors.map(entry => entry.nodeId)).size !== actual.processors.length)
+    fail('native-convolution-processor-mismatch', 'Mixed native convolution omitted its exact owned processor inventory.');
+  for (const expected of expectedProcessors) {
+    const processor = actual.processors.find(entry => entry.nodeId === expected.nodeId);
+    if (!processor || processor.ready !== true || ['kind', 'revision', 'stateBytes', 'configurationKey', 'offlineActive'].some(key => processor[key] !== expected[key])) fail('native-convolution-processor-mismatch', 'Mixed effect processor initialization differs from its admitted profile.');
+    if (expected.offlineActive) validateOfflineEffectCompletion(processor.completion, { ...expected, sampleRate: plan.sampleRate, endFrame: actual.initialization.offlineEndFrame });
+  }
   const seen = new Set();
   for (const entry of actual.impulses) {
     const node = plan.nodes.find(node => node.id === entry.nodeId && node.kind === 'convolution-native'), analysis = entry.analysis, descriptor = node?.impulse;

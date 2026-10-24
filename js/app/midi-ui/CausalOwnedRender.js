@@ -47,7 +47,7 @@ const encodeWav = (pcm, frames, rate, manifest) => {
 };
 
 export async function planCausalSourceRender({ revoice, definition, descriptor, sampleRate = 48000, startSeconds = 0, endSeconds,
-  tail = { mode: 'exact-crop' }, stemLaneIds = [], effectGraph = null, effectReturnNodeIds = [], applicationBuildId = null, pcm = null, nativeAssets = null, signal = null, yieldControl, maxPlanningBytes = 128 * 1048576 } = {}, { nativeConvolution = false } = {}) {
+  tail = { mode: 'exact-crop' }, stemLaneIds = [], effectGraph = null, effectReturnNodeIds = [], applicationBuildId = null, pcm = null, nativeAssets = null, signal = null, yieldControl, maxPlanningBytes = 128 * 1048576 } = {}, { nativeConvolution = false, nativeOwnedProcessors = false } = {}) {
   if (effectGraph != null && (!effectGraph || Object.getPrototypeOf(effectGraph) !== Object.prototype)) throw failure('effect-render-preflight', 'Effect rendering requires an explicit declarative graph.');
   if (revoice?.operation !== 'sound-only-revoice' || revoice.version !== 1 || !text(revoice.takeId, 256) || !hash(revoice.sourceCanonicalHash) ||
       !natural(revoice.takeRevision) || revoice.takeRevision < 1 || !['finalized', 'partial'].includes(revoice.sourceState) || revoice.nextSequence != null ||
@@ -62,7 +62,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
     throw failure('render-preflight', 'Choose a bounded owned-source render, supported sample rate, range, tail policy and the source-specific captured lane stem limit.');
   const owned = NATIVE_OFFLINE_SOURCE_IDS.includes(descriptor.engineId) ? getNativeOfflineProfile(descriptor.engineId) : getOwnedSourceProfile(descriptor.engineId), patch = validateInstrumentPatchV2(definition, descriptor);
   if (!Array.isArray(effectReturnNodeIds) || !effectGraph && effectReturnNodeIds.length) throw failure('effect-render-preflight', 'Shared effect taps require an explicit graph realization.');
-  const effectPlan = effectGraph ? prepareEffectRenderPlan(effectGraph, sampleRate, effectReturnNodeIds, { nativeConvolution: nativeConvolution || NATIVE_OFFLINE_SOURCE_IDS.includes(descriptor.engineId) }) : null;
+  const effectPlan = effectGraph ? prepareEffectRenderPlan(effectGraph, sampleRate, effectReturnNodeIds, { nativeConvolution: nativeConvolution || NATIVE_OFFLINE_SOURCE_IDS.includes(descriptor.engineId), nativeOwnedProcessors: nativeOwnedProcessors || NATIVE_OFFLINE_SOURCE_IDS.includes(descriptor.engineId) }) : null;
   effectReturnNodeIds = Object.freeze([...effectReturnNodeIds]);
   if ((owned.requiresNativeAssets ? patch.sampleRefs.length < 1 || patch.sampleRefs.length > 32 : owned.requiresPCM ? patch.sampleRefs.length !== 1 : patch.sampleRefs.length !== 0) || patch.modulations.length || !owned.extended && (patch.macros.length || patch.causalBindings.length || patch.variation) || patch.voicePolicy.steal !== 'reject' || patch.voicePolicy.maxVoices > owned.voices)
     throw failure('unsupported-patch', 'This render requires a realized owned source with complete material and reject admission.');
@@ -211,15 +211,15 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
     definitionHash: await hashData(definition), intentHash: await hashData(revoice.intents, { maxBytes: 8 * 1048576, maxNodes: 1000000 }) };
 }
 
-export async function planCausalOwnedRender(input = {}, { nativeConvolution = false } = {}) {
+export async function planCausalOwnedRender(input = {}, { nativeConvolution = false, nativeOwnedProcessors = false } = {}) {
   if (!OWNED_SOURCE_IDS.includes(input.descriptor?.engineId)) throw failure('unsupported-owned-source', 'Choose a realized owned source for this kernel render.');
-  return planCausalSourceRender(input, { nativeConvolution });
+  return planCausalSourceRender(input, { nativeConvolution, nativeOwnedProcessors });
 }
 
 export async function renderCausalOwnedTake(input, { signal, yieldControl = () => new Promise(resolve => setTimeout(resolve, 0)), onProgress = () => {}, maxWorkingBytes = 512 * 1048576 } = {}) {
   const sourcePhase = input.outputMode === 'source-pcm';
   if (input.outputMode != null && !sourcePhase) throw failure('render-output-mode', 'Choose an explicit supported source output phase.');
-  signal?.throwIfAborted(); const plan = await planCausalOwnedRender({ ...input, maxPlanningBytes: maxWorkingBytes, signal, yieldControl }, { nativeConvolution: sourcePhase }); signal?.throwIfAborted();
+  signal?.throwIfAborted(); const plan = await planCausalOwnedRender({ ...input, maxPlanningBytes: maxWorkingBytes, signal, yieldControl }, { nativeConvolution: sourcePhase, nativeOwnedProcessors: sourcePhase }); signal?.throwIfAborted();
   if (sourcePhase && (!plan.effectPlan?.impulseCount || plan.stemLaneIds.length + plan.effectReturnNodeIds.length > 15)) throw failure('native-convolution-source-profile', 'A source PCM stage requires an actual native body and at most fifteen combined stereo taps.');
   const sourcePcmBytes = sourcePhase ? plan.outputEnd * (1 + plan.stemLaneIds.length) * 8 : 0;
   if (sourcePhase && (!natural(sourcePcmBytes) || sourcePcmBytes > 56 * 1048576)) throw failure('source-pcm-capacity', 'Complete source history exceeds the bounded native convolution PCM profile.');

@@ -22,6 +22,16 @@ export function createQuarryTape({ age01 = 0.35, ...options } = {}) {
       { from: { nodeId: 'send', port: 'audio' }, to: { nodeId: 'preamp', port: 'audio' }, gain01: 1 }, { from: { nodeId: 'preamp', port: 'audio' }, to: { nodeId: 'echo', port: 'audio' }, gain01: 1 }] }).definition;
 }
 
+export function createQuarryTapeSpring({ springBlend01 = 0.15, ...options } = {}) {
+  if (!Number.isFinite(springBlend01) || springBlend01 < 0 || springBlend01 > 0.3) throw new TypeError('The shared spring blend must remain between zero and 0.3.');
+  const tape = createQuarryTape(options), edge = (from, to, gain01 = 1) => ({ from: { nodeId: from, port: 'audio' }, to: { nodeId: to, port: 'audio' }, gain01 });
+  return prepareEffectGraphRevision({ ...tape, id: 'dub-quarry.tape-spring', latencyPolicy: 'uncompensated-native', maximumLatencyFrames: null,
+    nodes: [...tape.nodes, { id: 'spring', kind: 'convolution-native', parameters: {}, impulse: createOriginalImpulseDescriptor('quarry-hollow-spring') },
+      { id: 'wet-sum', kind: 'gain', parameters: { gain01: 1, gainMaximum01: 1 } }],
+    edges: [...tape.edges.filter(edge => !(edge.from.nodeId === 'echo' && edge.to.nodeId === 'return')),
+      edge('echo', 'spring'), edge('echo', 'wet-sum', 1 - springBlend01), edge('spring', 'wet-sum', springBlend01), edge('wet-sum', 'return')] }).definition;
+}
+
 export function createQuarryBody({ revision = 1, bodyId = 'quarry-hollow-spring', return01 = 0.15, send01 = 0 } = {}) {
   const impulse = createOriginalImpulseDescriptor(bodyId);
   const bus = (id, kind, parameters = {}) => ({ id, kind, parameters });

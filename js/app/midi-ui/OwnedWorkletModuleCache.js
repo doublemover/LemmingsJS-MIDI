@@ -8,7 +8,7 @@ export function loadOwnedWorkletModule(context, source, resources = null) {
     cache = { entries: new Map(), retirement: createProcgenRetirementScope(), close: null };
     cache.close = () => {
       if (context.state !== 'closed') return;
-      cache.retirement.retire([{ name: 'context-module-listener', run: () => context.removeEventListener?.('statechange', cache.close) },
+      return cache.retirement.retire([{ name: 'context-module-listener', run: () => context.removeEventListener?.('statechange', cache.close) },
         ...[...cache.entries.values()].map(entry => ({ name: entry.id, run: () => { entry.state = 'closed'; return entry.resource?.release(); } }))]);
     };
     context.addEventListener?.('statechange', cache.close); contexts.set(context, cache);
@@ -31,4 +31,9 @@ export function inspectOwnedWorkletModule(context, url) {
   const cache = contexts.get(context), entry = cache?.entries.get(url);
   return entry ? Object.freeze({ id: entry.id, state: entry.state, estimatedBytes: entry.estimatedBytes, ownership: 'context-lifetime-module-estimate',
     retirement: cache.retirement.getReceipt()?.outcome || null }) : null;
+}
+
+export function retireClosedOwnedWorkletContext(context) {
+  if (context?.state !== 'closed') throw new Error('Module retirement requires the native context closed proof.');
+  return contexts.get(context)?.close() || null;
 }
