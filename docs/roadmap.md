@@ -2894,3 +2894,19 @@ activation isolation fixtures are authored but unrun. Cross-lane bus realization
 true multiband vocoder, live gesture journaling and source-bound throws remain
 outstanding. All runtime/browser/PCM/listening/performance qualification remains
 deferred until implementation of all open issue code.
+
+
+### Continuation 146 — terrain undo transaction ordering (#1264)
+
+Terrain replay now applies previous values in exact reverse write order, including
+reverse span traversal and the matching reverse color/value offsets. Forward replay
+retains original write order. The existing append-only terrain log, cold codec and
+bounded scratch/storage policy stay compatible; undo adds no pixel-sized allocation
+or per-tick coalescing map. This restores pre-tick collision and RGB values after
+overlapping builders, same-value writes, interleaved edits and build-then-dig work.
+
+Authored regression fixtures use real Level, palette, builder and digger producers,
+recording and delta application. They compare complete mask/RGBA snapshots through
+warm spans, sentinel-backed cold decode, thaw and legacy index logs. Actual
+TimeTravelController fixtures rewind, replay and branch from restored ground.
+Execution remains deferred with all other acceptance tests as requested.
