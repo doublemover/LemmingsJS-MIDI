@@ -131,7 +131,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     const expected = getProceduralSoundById(input.id);
     if (estimatedPeakBytes < 16 * 1048576 || maxBytes < expected.bytes) throw problem('memory-capacity', 'Procedural source needs its worker startup and copy reservation.');
     const { generateProceduralSoundSource } = await import('../../midi/content/ProceduralSoundSources.js'); guard(signal, current);
-    const bytes = generateProceduralSoundSource(expected), format = inspectWaveContainer(bytes);
+    const bytes = generateProceduralSoundSource(expected), format = inspectWaveContainer(bytes, { maxChannels: expected.kind === 'impulse-response' ? 4 : 2 });
     const digest = await crypto.subtle.digest('SHA-256', bytes); guard(signal, current);
     const hash = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
     if (hash !== expected.sha256 || bytes.byteLength !== expected.bytes || format.frames !== expected.frames || format.channels !== expected.channels || format.sampleRate !== expected.sampleRate)

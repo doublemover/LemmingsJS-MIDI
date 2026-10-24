@@ -2596,6 +2596,19 @@ pin-lifetime fixtures are authored. Original procedural bodies, their focused UI
 convolution offline output, measured latency and all runtime qualification remain
 work; no tests, native renders or content builds ran in this implementation pass.
 
+Original convolution bodies now include reproducible mono Hollow Spring,
+stereo Stone Courtyard and four-channel Crossed Gallery source data. The shared
+material provider generates and verifies their encoded identities through its
+existing admitted worker, then uses the same native decode/cache/analysis path.
+The Quarry dialog selects these bodies, saves their exact graph/asset defaults,
+performs momentary source sends and SPACE return changes, and preserves prior
+tails across prepared replacements. Controls are locked during preparation.
+These are original synthetic bodies with explicit native RMS normalization and
+reference gain, not measured hardware/room responses or qualified level matches.
+Source-data authoring wrote identity metadata only; no binary is committed.
+Native latency, offline convolution, source-bound throws, listening and all
+remaining acceptance gates are still pending. No runtime tests ran.
+
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
 quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical

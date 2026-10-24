@@ -591,3 +591,23 @@ remains an estimate separate from decoded PCM, with at most four bodies and
 64 MiB decoded IR per graph before shared-budget admission. Replacement overlap
 uses the same two-revision owner. Convolution PCM/latency/listening acceptance,
 offline convolution output and authored original body selection remain pending.
+
+### Original reflection bodies
+
+`ProceduralImpulseSources.js` authors three bounded original PCM16 bodies at
+32 kHz: Hollow Spring (mono, 1.2 s), Stone Courtyard (stereo, 0.8 s) and Crossed
+Gallery (four-channel native true stereo, 1.6 s). `author-impulse-bodies.mjs`
+writes their immutable encoded-byte hashes and generator/source provenance;
+there are no recorded sources or binaries in Git. The existing procedural
+material worker generates these exact files on demand and verifies their
+complete WAV layout/hash before the shared native decoder can activate them.
+
+Quarry recipe selection prepares a replacement graph with explicit predelay,
+`native-rms` normalization and separate authored reference gain. Actual decoded
+L1/RMS analysis enforces the descriptor before activation. SPACE controls the
+shared wet return; THROW releases only new source input. The prior body retains
+its bounded tail. Native implementation latency is unknown and uncompensated;
+source bounds and authored gains are not listening or native-rate acceptance.
+The source metadata remains `NOASSERTION`; no clearance or publication claim
+is inferred. These fixed original assets do not yet constitute a separately
+compiled effect-content pack or implement causal gesture replay/offline effects.

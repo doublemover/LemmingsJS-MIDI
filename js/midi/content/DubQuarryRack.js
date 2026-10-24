@@ -1,5 +1,6 @@
 import { freezeData } from '../../core/CanonicalData.js';
 import { prepareEffectGraphRevision } from './EffectGraphRevision.js';
+import { createOriginalImpulseDescriptor } from './ProceduralImpulseMaterial.js';
 
 export function createQuarryEcho({ revision = 1, delaySeconds = 0.24, feedback = 0.3, return01 = 0.2, send01 = 0, mode = 'glide' } = {}) {
   const bus = (id, kind, parameters = {}) => ({ id, kind, parameters });
@@ -9,6 +10,16 @@ export function createQuarryEcho({ revision = 1, delaySeconds = 0.24, feedback =
       bus('echo', 'feedback-delay', { maxDelaySeconds: 1, delaySeconds, mode, feedback, feedbackMaximum: 0.7, feedbackLowpassHz: 6000, feedbackHighpassHz: 120, wet01: 1 }),
       bus('return', 'gain', { gain01: return01, gainMaximum01: 0.35 }), bus('output', 'bus-out')],
     edges: [edge('source', 'dry'), edge('dry', 'output'), edge('source', 'send'), edge('send', 'echo'), edge('echo', 'return'), edge('return', 'output')] }).definition;
+}
+
+export function createQuarryBody({ revision = 1, bodyId = 'quarry-hollow-spring', return01 = 0.15, send01 = 0 } = {}) {
+  const impulse = createOriginalImpulseDescriptor(bodyId);
+  const bus = (id, kind, parameters = {}) => ({ id, kind, parameters });
+  const edge = (from, to) => ({ from: { nodeId: from, port: 'audio' }, to: { nodeId: to, port: 'audio' }, gain01: 1 });
+  return prepareEffectGraphRevision({ schema: 'lemmings-effect-graph/v1', id: 'dub-quarry.body.' + bodyId, revision, latencyPolicy: 'uncompensated-native', maximumLatencyFrames: null, maximumTailSeconds: 3,
+    nodes: [bus('source', 'bus-in'), bus('dry', 'gain', { gain01: 1, gainMaximum01: 1 }), bus('send', 'gain', { gain01: send01, gainMaximum01: 0.65 }),
+      { ...bus('body', 'convolution-native'), impulse }, bus('return', 'gain', { gain01: return01, gainMaximum01: 0.3 }), bus('output', 'bus-out')],
+    edges: [edge('source', 'dry'), edge('dry', 'output'), edge('source', 'send'), edge('send', 'body'), edge('body', 'return'), edge('return', 'output')] }).definition;
 }
 
 export function validateOwnerEffectRack(value) {
