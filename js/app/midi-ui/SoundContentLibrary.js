@@ -116,11 +116,22 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     if (current || factoryFaults.size || !stage || !selection) return;
     const operation = { controller: new AbortController(), sequence: ++sequence }; current = operation; render();
     // Invoke before yielding so the explicit click reaches AudioContext creation/resume.
+    setStatus('Preparing the selected instrument and local source for control audition…');
     operation.promise = installation.audition(stage, selection, { signal: operation.controller.signal }).then(() =>
       setStatus('Control audition completed. Physical-take and listening qualification remain separate.')).catch(error => setStatus(error.message))
       .finally(() => { if (current === operation) current = null; render(); });
   });
-  const stop = button('Stop / cancel', () => { current?.controller.abort(failure('Sound operation canceled.')); installation.stop(); });
+  const compareSource = mode => {
+    if (current || factoryFaults.size || !stage || !selection) return;
+    const operation = { controller: new AbortController(), sequence: ++sequence }; current = operation; render();
+    setStatus('Preparing dry ' + mode + ' source comparison locally…');
+    operation.promise = installation.audition(stage, selection, { signal: operation.controller.signal, sourceMode: mode }).then(receipt =>
+      setStatus('Dry ' + mode + ' source comparison completed' + (receipt.sourceComparison.truncated ? ' (first 8 seconds)' : '') + '. Audition instrument controls before Apply.'))
+      .catch(error => setStatus(error.message)).finally(() => { if (current === operation) current = null; render(); });
+  };
+  const originalSource = button('Compare original source (up to 8s)', () => compareSource('original'));
+  const sourceRegion = button('Compare source region (up to 8s)', () => compareSource('region'));
+  const stop = button('Stop / cancel' , () => { current?.controller.abort(failure('Sound operation canceled.')); installation.stop(); });
   const install = button('Install auditioned pack', () => run(async operation => { await installation.install(stage, { signal: operation.controller.signal, isCurrent: () => current === operation && !disposed });
     check(operation); installed = true; setStatus('Pack installed. Apply remains a separate command.'); }));
   const referenceInstall = button('Keep as reference', () => run(async operation => { await installation.install(stage, { referenceOnly: true, signal: operation.controller.signal, isCurrent: () => current === operation && !disposed });
@@ -205,8 +216,9 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     if (plan?.unavailableEngines.length) summary.textContent += ' Required renderer: ' + plan.unavailableEngines.map(entry => entry.state).join(', ') + '.';
     if (plan?.missingReferences.length || plan?.missingAssetBytes.length) summary.textContent += ' Missing material: ' + (plan.missingReferences.length + plan.missingAssetBytes.length) + ' references.';
     const ready = !!plan, auditioned = ready && !!installation.getAudition(stage, selection);
-    let renderable = false, localProceduralMaterial = false; modelInfo.textContent = '';
+    let renderable = false, localProceduralMaterial = false, sourceComparable = false; modelInfo.textContent = '';
     if (ready) { const lease = stage.borrow(); try { const patch = lease.prepared.patches.find(entry => entry.identity === selection);
+      sourceComparable = patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-granular' && patch.definition.sampleRefs.length === 1;
       localProceduralMaterial = !!patch?.definition?.sampleRefs?.length && patch.definition.sampleRefs.every(ref => lease.prepared.pack.files.some(file => file.sha256 === ref.sha256 && getProceduralBiomeMaterial(file)));
       renderable = patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-sine';
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'native-fm') {
@@ -243,6 +255,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
       } } finally { lease.release(); } }
     for (const element of [factory, fmFactory, materialFactory, pluckFactory, choirFactory, spectrumFactory, biomeFactory, importInput, select, rights, browse, more, archivedToggle]) element.disabled = busy;
     audition.disabled = busy || !ready || !!plan?.missingReferences.length || !!plan?.unavailableEngines.length || !!plan?.missingAssetBytes.length && !installed && !localProceduralMaterial;
+    originalSource.disabled = sourceRegion.disabled = audition.disabled || !sourceComparable;
     stop.disabled = !current; install.disabled = busy || !auditioned; referenceInstall.disabled = busy || !ready;
     apply.disabled = busy || !installed || !auditioned; referenceExport.disabled = busy || !ready;
     portableExport.disabled = busy || !ready || plan.portability === 'reference-only' || !!plan.unavailableEngines.length;

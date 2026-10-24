@@ -1,3 +1,4 @@
+import { planSoundSourceComparison } from './SoundSourceComparison.js';
 import { SOUND_CONTENT_CONTROL_FIXTURE as fixture } from '../../midi/content/SoundContentControlFixture.js';
 import { freezeData, hashData } from '../../core/CanonicalData.js';
 import { createInstrumentPatchRegistry } from '../../midi/content/InstrumentPatchV2.js';
@@ -31,7 +32,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
   let active = null, disposed = false, ordinal = 0;
   const retirement = createProcgenRetirementScope();
   const stageReceipts = new WeakMap(), installed = new WeakMap(), unknown = new Set();
-  const audition = (stage, patchIdentity, { signal: externalSignal } = {}) => {
+  const audition = (stage, patchIdentity, { signal: externalSignal, sourceMode = null } = {}) => {
     externalSignal?.throwIfAborted();
     if (disposed || active || unknown.size) return Promise.reject(failure('audition-busy', 'Sound audition is unavailable or has unresolved retirement.'));
     let lease;
@@ -40,6 +41,9 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
     if (!patch || patch.state !== 'definition-admitted' || !['native-oscillator', 'native-fm', 'native-modal', 'worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(patch.definition.engineId) ||
         patch.definition.sampleRefs.length && patch.definition.engineId !== 'worklet-granular' || patch.definition.modulations.length || patch.definition.engineId === 'worklet-sine' && (patch.definition.macros.length || patch.definition.causalBindings.length || patch.definition.variation)) {
       lease.release(); return Promise.reject(failure('audition-requirements-unmet', 'This instrument needs an available renderer and a realized gesture/material adapter.'));
+    }
+    if (sourceMode !== null && (!['original', 'region'].includes(sourceMode) || patch.definition.engineId !== 'worklet-granular' || patch.definition.sampleRefs.length !== 1)) {
+      lease.release(); return Promise.reject(failure('source-comparison-unavailable', 'Select a granular instrument with one local source to compare.'));
     }
     const plan = planSoundContentSelection(lease.prepared, [patchIdentity], { availableHashes: lease.metadata.assetHashes });
     if (plan.missingReferences.length || plan.missingAssetBytes.length && !audio.getSoundMaterialProvider) { lease.release(); return Promise.reject(failure('audition-requirements-unmet', 'Sound material required for this audition is missing.')); }
@@ -59,10 +63,10 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
     let enabling;
     const deadline = setTimeout(() => operation.controller.abort(failure('deadline', 'Sound audition deadline exceeded.')), timeoutMs);
     operation.promise = (async () => {
-      let error = null, receipt = null;
+      let error = null, receipt = null, comparison = null, auditionFixture = fixture, comparisonEngineRequirement = null;
       try {
         if (audio.acquireAudition) operation.auditionLease = await audio.acquireAudition({
-          source: { name: patchIdentity, kind: 'authored-control-fixture', revision: patchIdentity, sourceRef: lease.metadata.contentHash },
+          source: { name: patchIdentity, kind: sourceMode ? 'authored-source-comparison' : 'authored-control-fixture', revision: patchIdentity, sourceRef: lease.metadata.contentHash },
           routeRevision: audio.getMonitorRouteState().revision, signal, onReveal,
           onStop: reason => operation.controller.abort(failure('prelisten-stopped', reason))
         });
@@ -77,9 +81,20 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
           operation.material = await audio.getSoundMaterialProvider().acquire({ stage, patchIdentity, engineDescriptors: catalog.descriptors,
             owner: 'sound-audition', generation: number, signal, isCurrent: () => !disposed && active === operation }); check();
         }
-        const definitions = createInstrumentPatchRegistry(); definitions.register(patch.definition, descriptor);
-        const resolution = definitions.resolve(patch.definition.id, patch.definition.revision, { engineDescriptors: [descriptor], assetHashes: operation.material?.availableHashes || lease.metadata.assetHashes });
-        operation.backend = ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(patch.definition.engineId) ? await operation.session.createWorkletInstrumentBackend({ engineId: patch.definition.engineId }) : operation.session.createInstrumentBackend({ gateMode: 'owned', engineId: patch.definition.engineId }); check();
+        let resolution;
+        if (sourceMode) {
+          const sampleEngine = catalog.descriptors.find(entry => entry.engineId === 'native-sample' && entry.engineVersion === 1);
+          if (!sampleEngine || !operation.session.createSampleInstrumentBackend) throw failure('source-comparison-unavailable', 'The original-source playback renderer is unavailable.');
+          comparison = planSoundSourceComparison(patch.definition, operation.material?.assets[0], sourceMode); auditionFixture = comparison.fixture;
+          comparisonEngineRequirement = { engineId: sampleEngine.engineId, engineVersion: sampleEngine.engineVersion, artifactHash: sampleEngine.artifactHash, parameterSchemaHash: sampleEngine.parameterSchemaHash };
+          resolution = comparison.resolution;
+          const region = comparison.region;
+          operation.backend = await operation.session.createSampleInstrumentBackend({ gateMode: 'owned', resolveRegion: () => region }); check();
+        } else {
+          const definitions = createInstrumentPatchRegistry(); definitions.register(patch.definition, descriptor);
+          resolution = definitions.resolve(patch.definition.id, patch.definition.revision, { engineDescriptors: [descriptor], assetHashes: operation.material?.availableHashes || lease.metadata.assetHashes });
+          operation.backend = ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(patch.definition.engineId) ? await operation.session.createWorkletInstrumentBackend({ engineId: patch.definition.engineId }) : operation.session.createInstrumentBackend({ gateMode: 'owned', engineId: patch.definition.engineId }); check();
+        }
         const prepared = await interruptible(operation.backend.prepare(resolution, operation.material?.assets || []), signal); check();
         if (prepared.status !== 'ready') throw failure('preparation-rejected', 'Audition renderer rejected the effective patch: ' + prepared.reason);
         if (operation.material) {
@@ -91,7 +106,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
         if (context?.state !== 'running' || !Number.isFinite(rate) || rate < 8000 || rate > 384000) throw failure('audio-unavailable', 'Audition audio clock is unavailable.');
         const registered = operation.backend.registerExecution({ executionEpoch: 'sound-audition:' + number, generation: number });
         if (registered.status !== 'accepted') throw failure('audition-admission', 'Audition execution could not be registered.'); operation.execution = registered.execution;
-        const requiresApplication = ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(patch.definition.engineId), applications = new Map(); let commandFailure = null;
+        const requiresApplication = !sourceMode && ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(patch.definition.engineId), applications = new Map(); let commandFailure = null;
         if (requiresApplication) {
           if (typeof operation.backend.observeCommandOutcomes !== 'function') throw failure('application-evidence-unavailable', 'This renderer cannot provide owned command-application receipts.');
           operation.stopObservation = operation.backend.observeCommandOutcomes(value => {
@@ -101,12 +116,12 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
               command.appliedFrame = value.appliedFrame;
           }, { execution: operation.execution });
         }
-        const base = Math.ceil(context.currentTime * rate) + Math.ceil(0.15 * rate), releaseSeconds = patch.definition.parameters.releaseSeconds ?? 0.04;
-        const endFrame = base + Math.ceil((1 + releaseSeconds + 0.15) * rate), outcomes = [];
+        const base = Math.ceil(context.currentTime * rate) + Math.ceil(0.15 * rate), releaseSeconds = comparison?.releaseSeconds ?? patch.definition.parameters.releaseSeconds ?? 0.04;
+        const endFrame = base + Math.ceil(((comparison?.seconds ?? 1) + releaseSeconds + 0.15) * rate), outcomes = [];
         const leaseReceipt = operation.backend.renewExecutionLease(number, operation.execution, endFrame + Math.ceil(rate));
         if (leaseReceipt.status !== 'accepted') throw failure('audition-admission', 'Audition voice lifetime could not be admitted.');
         operation.auditionLease?.markReady();
-        for (const event of fixture.events) {
+        for (const event of auditionFixture.events) {
           check(); const frame = base + Math.round(event.seconds * rate); let outcome;
           if (event.kind === 'begin') outcome = operation.backend.begin({ version: 1, kind: 'begin', generation: number, voiceId: 'control-fixture', onsetId: 'control-fixture', actorId: null, laneId: 0,
             intentId: 'sound-audition:' + number, sourceEventIds: [], pitch: { cents: event.pitchCents, referenceHz: 440 }, velocity01: event.velocity01, expression: event.expression }, frame, operation.execution);
@@ -129,12 +144,12 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
           if (now > endFrame + 2 * rate) throw failure('application-evidence-unavailable', 'Audition finished its clock range without complete command-application evidence.');
           await delay(30, signal);
         }
-        check(); const fixtureHash = await hashData(fixture); check();
-        receipt = freezeData({ schema: 'lemmings-isolated-sound-audition/v1', contentHash: lease.metadata.contentHash, patchIdentity,
-          definitionHash: patch.definitionHash, engineRequirement: patch.engineRequirement, fixtureHash, fixtureId: fixture.id,
-          sampleRate: rate, targetFrame: base, endFrame, commandsAccepted: outcomes.length, source: fixture.source,
+        check(); const fixtureHash = await hashData(auditionFixture); check();
+        receipt = freezeData({ schema: sourceMode ? 'lemmings-isolated-source-comparison/v1' : 'lemmings-isolated-sound-audition/v1', contentHash: lease.metadata.contentHash, patchIdentity,
+          definitionHash: patch.definitionHash, engineRequirement: patch.engineRequirement, fixtureHash, fixtureId: auditionFixture.id, ...(comparison ? { sourceComparison: comparison.source, sourceMode, comparisonEngineRequirement } : {}),
+          sampleRate: rate, targetFrame: base, endFrame, commandsAccepted: outcomes.length, source: auditionFixture.source,
           commandsApplied: requiresApplication ? applications.size : null, applications: [...applications.values()],
-          status: 'control-fixture-completed', evidenceClass: requiresApplication ? 'render-kernel-command-application-and-running-clock' : 'backend-api-command-admission-and-running-clock', physicalTakeEvidence: false,
+          status: sourceMode ? 'source-comparison-completed' : 'control-fixture-completed', evidenceClass: requiresApplication ? 'render-kernel-command-application-and-running-clock' : 'backend-api-command-admission-and-running-clock', physicalTakeEvidence: false,
           renderQualification: 'not-independently-qualified', acousticReceipt: false, monitorRoute: audio.getMonitorRouteState?.() || null,
           auditionLease: operation.auditionLease?.snapshot() || null });
       } catch (failure) { error = failure; operation.controller.abort(failure); }
@@ -157,6 +172,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
         operation.auditionLease?.close(finalReceipt); if (active === operation) active = null;
       }
       if (error) throw error;
+      if (sourceMode) return receipt;
       const owned = Object.freeze({ contentHash: receipt.contentHash, patchIdentity, definitionHash: receipt.definitionHash, engineRequirement: receipt.engineRequirement });
       completedAuditions.set(receipt, owned); let entries = stageReceipts.get(stage); if (!entries) { entries = new Map(); stageReceipts.set(stage, entries); } entries.set(patchIdentity, receipt);
       return receipt;

@@ -45,6 +45,13 @@ describe('staged sound installation and isolated audition authority', () => {
     const installation = createSoundContentInstallation({ audio, registry, getCatalog: async () => ({ state: 'bound-application-engines', descriptors }) });
     return { stage, installation, calls, budget, get commits() { return commits; }, async dispose() { installation.dispose(); stage.discard(); reader.dispose(); jobs.dispose(); admission.dispose(); } };
   };
+  it('refuses original-source comparison for asset-free definitions without issuing instrument audition authority', async () => {
+    const owner = await setup();
+    try {
+      await rejects(owner.installation.audition(owner.stage, identity, { sourceMode: 'original' }), 'source-comparison-unavailable');
+      expect(owner.installation.getAudition(owner.stage, identity)).to.equal(null); expect(owner.calls).to.deep.equal([]);
+    } finally { await owner.dispose(); }
+  });
   it('requires a locally owned audition before install and a separate exact-patch authorization before Apply', async () => {
     const owner = await setup();
     try {

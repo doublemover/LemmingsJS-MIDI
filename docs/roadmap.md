@@ -2319,8 +2319,12 @@ Water Lens and Rust Breath recipes. Their held-action gates own bounded clouds;
 completed motion/height controls density and scan. CROWD/SCALE/SCAN/WEATHER are
 explicit onset controls. Private local regeneration runs in an admitted worker
 and the final content publisher writes the same source bytes. These are synthetic
-textures, not field recordings. Multi-source/derived adapters and source-region
-comparison remain implementation work. Runtime, cancellation and audible checks are deferred.
+textures, not field recordings. Dry original-source and permitted-region
+comparisons now use the same pinned decoded source, foreground audition lease
+and native sample owner. They preserve source-frame identity and forward rate,
+limit preview to eight seconds, and have separate receipts that cannot authorize
+Apply or replace the actual instrument control audition. Multi-source/derived
+adapters remain implementation work. Runtime, cancellation and audible checks are deferred.
 
 Committed interval admission now checks future overlaps and lease extensions
 across native, sample and worklet voices, with separate live/cue source and tail
