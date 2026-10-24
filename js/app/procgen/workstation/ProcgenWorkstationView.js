@@ -559,7 +559,6 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       state.firstLane = projection.firstLane;
       layoutKey = JSON.stringify([width, height, dpr, laneCount, state.firstLane, state.layout, physicalHeight, state.minimumRow, state.inspectorWidth]);
       shell.dataset.layout = state.layout; shell.style.setProperty('--row-height', projection.rowHeight + 'px'); shell.style.setProperty('--inspector-width', state.inspectorWidth + 'px');
-      if (canvas.width !== Math.floor(width * dpr) || canvas.height !== Math.floor(height * dpr)) { canvas.width = Math.floor(width * dpr); canvas.height = Math.floor(height * dpr); }
       canvas.style.width = width + 'px'; canvas.style.height = height + 'px';
     }
     const renderer = getRuntime()?.lanes?.renderer || null;
@@ -573,7 +572,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
           baseFrame: previous ? previous.baseFrame : renderer.onWorkstationFrame, relinquish: () => { attachedRenderer = null; superseded = true; } });
         attachedRenderer = renderer;
       }
-      renderer.workstationLayout = projection; renderer.onWorkstationFrame = frame; if (changed || rendererChanged) renderer.resize();
+      renderer.workstationLayout = projection; renderer.onWorkstationFrame = frame; if (changed || rendererChanged) renderer.resize({ width: Math.max(1, Math.floor(width * dpr)), height: Math.max(1, Math.floor(height * dpr)) });
     }
     return changed || rendererChanged;
   }

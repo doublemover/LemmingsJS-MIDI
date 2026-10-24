@@ -107,7 +107,7 @@ class ProcgenCctv {
     const height = Math.max(32, Math.min(64, Math.round(width * imageHeight / imageWidth)));
     if (!view.image || view.buffer.width !== width || view.buffer.height !== height) {
       for (const canvas of [view.buffer, view.terrainBuffer, view.objectBuffer]) r.resources.resize(canvas, width, height);
-      view.image = r.resources.image(view.terrainContext, width, height, view.imageKey); view.pixels = new Uint32Array(view.image.data.buffer); view.lastTerrainKey = '';
+      r.resources.replaceImage(view.terrainContext, width, height, view.imageKey, ({ image, pixels, key }) => { view.image = image; view.pixels = pixels; view.imageKey = key; }); view.lastTerrainKey = '';
     }
     view.viewWidth = width; view.viewHeight = height;
     view.originX = Math.max(0, Math.floor((leader?.x ?? world.stall.lanes[lane].maxX ?? 36) - width * 0.55));

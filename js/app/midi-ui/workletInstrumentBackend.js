@@ -35,7 +35,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       !finite(initializationTimeoutMs, 1, 30000)) throw new Error('Invalid worklet backend options.');
   let node = null, context = null, ready = false, disposed = false, preparing = 0, patch = null, sequence = 0, packetSequence = 0;
   let pumpTimer = null, fault = null, truncated = 0, nextEpoch = 0, cancellationHistoryFull = false;
-  let ownerStopped = false;
+  let ownerStopped = false, ownerStopReceipt = null;
   let runtimeResourceLease = null, pcmDescriptor = null;
   let pumpQueued = false;
   let lifecycle = null;
@@ -44,6 +44,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   const nodeRetirements = new WeakMap();
   const retirement = createProcgenRetirementScope();
   const voices = new Map(), epochs = new Map(), leases = new Map(), cancelled = new Set(), inFlight = new Map(), traces = [];
+  const cancellationReceipts = new Map();
   const pendingInitializations = new Set(), pendingPreparations = new Set();
   const commandObservers = new Set(); let commandObservationFailures = 0, commandObserverSequence = 0;
   const kernelQueued = new Set();
@@ -124,9 +125,16 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     Promise.resolve().then(() => { pumpQueued = false; pump(); });
   };
   const command = (opcode, frame, voice = null, values = {}) => {
+    if (ownerStopped) return reject('kernel-stop-pending', voice?.voiceId);
     const now = frameNow();
     if (!Number.isSafeInteger(now)) return reject('context-replaced', voice?.voiceId);
-    if (inFlight.size >= CAPACITY && opcode !== END && opcode !== CANCEL) return reject('kernel-acknowledgment-pressure', voice?.voiceId);
+    const terminal = opcode === END || opcode === CANCEL || opcode === LEASE;
+    const outstanding = inFlight.size + queue.diagnostics().queued;
+    if (outstanding >= (terminal ? CAPACITY : CAPACITY - SINE_MAX_VOICES)) {
+      if (terminal) markFault('terminal-credit-exhausted');
+      return reject(terminal ? 'terminal-credit-exhausted' : 'kernel-acknowledgment-pressure', voice?.voiceId);
+    }
+    if (!Number.isSafeInteger(sequence + 1)) return reject('command-sequence-exhausted', voice?.voiceId);
     const data = new Array(WIDTH).fill(0), serial = ++sequence;
     data[0] = voice?.epochToken ?? values.epochToken ?? 0; data[1] = frame; data[2] = serial; data[3] = opcode;
     data[4] = voice?.slot ?? -1; data[5] = voice?.slotToken ?? 0; data[17] = voice?.semanticGeneration ?? values.generation ?? 0;
@@ -159,7 +167,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       }
       kernelQueued.delete(serial);
       if (code === APPLIED) {
-        if (reason === 2 && slot === -1) ownerStopped = false;
+        if (reason === 2 && slot === -1) { ownerStopped = false; ownerStopReceipt = null; }
         counters.applied++; inFlight.delete(serial);
         if (voice) { voice.appliedFrame = frame; voice.lastAppliedSequence = serial; }
       } else if (code === ENDED || code === FAULTED) {
@@ -336,6 +344,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     const admission = preview._inspectVoiceExtensions(changes, { patchVoices: voices.values(), patchLimit: patch?.maxVoices ?? MAX_VOICES });
     if (!admission.accepted) return reject(admission.reason);
     if (commands.length) {
+      if (inFlight.size + queue.diagnostics().queued + commands.length > CAPACITY) return reject('kernel-acknowledgment-pressure');
       const queued = queue.enqueueMany(commands, now); if (queued.status !== 'accepted') return reject(queued.reason);
       sequence = serial; counters.queued += commands.length; schedulePump();
     }
@@ -493,7 +502,12 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       requestedReleaseFrames, effectiveReleaseFrames: releaseFrames, effectiveEndFrame: frame + releaseFrames });
   };
   const cancelGenerationWithReceipt = (generation, executionEpoch = 'live') => {
-    const key = keyFor(executionEpoch, generation);
+    const key = keyFor(executionEpoch, generation), previous = cancellationReceipts.get(key);
+    if (previous) return Object.freeze({ ...previous, count: 0, repeated: true });
+    if (cancellationReceipts.size >= 1088) {
+      markFault('cancellation-receipt-capacity');
+      return Object.freeze({ generation, executionEpoch, count: 0, stage: 'not-submitted', reason: 'cancellation-receipt-capacity', renderedStatus: 'unknown' });
+    }
     if (!isManagedExecutionEpoch(executionEpoch) && !cancelled.has(key)) {
       if (cancelled.size < 1024) cancelled.add(key); else cancellationHistoryFull = true;
     }
@@ -507,12 +521,14 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       if (!voice.submitted) { voice.kernelEnded = true; preview._destroyVoice(voice, 'generation-cancel-before-submission'); slots[voice.slot] = null; count++; continue; }
       voice.released = true; voice.releaseAt = context.currentTime; voice.end = context.currentTime + 0.005; count++;
     }
-    return Object.freeze({ generation, executionEpoch, count, removedBeforeSubmission: removed, frontierFrame: frameNow(),
+    const receipt = Object.freeze({ generation, executionEpoch, count, removedBeforeSubmission: removed, frontierFrame: frameNow(),
       stage: outcome?.status === 'accepted' ? 'scheduled-cancellation-requested' : 'not-submitted', appliedFrame: null, renderedStatus: 'unknown' });
+    cancellationReceipts.set(key, receipt); return receipt;
   };
   const onOwnerStop = () => {
+    if (ownerStopped && ownerStopReceipt) return ownerStopReceipt;
     ownerStopped = true; preparing++;
-    return createProcgenRetirementScope().retire([
+    return ownerStopReceipt = createProcgenRetirementScope().retire([
       { name: 'timer', run: clearTimer },
       { name: 'commands', run: () => { counters.producerCancelled += queue?.clear() || 0; leases.clear(); inFlight.clear(); kernelQueued.clear(); } },
       ...[...voices.values()].filter(voice => !voice.submitted).map(voice => ({ name: 'unsent-voice-' + voice.id, run: () => {
@@ -528,7 +544,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   const renderDiagnostics = ({ includeTraces = false } = {}) => Object.freeze({ engineId: runtime.engineId, runtime, capabilities,
     module: inspectOwnedWorkletModule(context || preview.getAudioContext(), runtime.workletUrl),
     readiness: disposed ? 'disposed' : fault || !ready ? fault || 'runtime-unprepared' : ownerStopped ? 'kernel-stop-pending' : !preview._ownerReady(owner) ? 'audio-not-ready' : 'ready',
-    activeVoices: voices.size, queued: queue?.diagnostics() || null, inFlight: inFlight.size, counters: Object.freeze({ ...counters }), pendingPreparations: pendingPreparations.size,
+    activeVoices: voices.size, queued: queue?.diagnostics() || null, inFlight: inFlight.size, outstandingCommands: inFlight.size + (queue?.diagnostics().queued || 0), outstandingCapacity: CAPACITY, terminalReserve: SINE_MAX_VOICES, cancellationReceipts: cancellationReceipts.size, counters: Object.freeze({ ...counters }), pendingPreparations: pendingPreparations.size,
     ...(pcmDescriptor ? { sourceBank: pcmDescriptor } : {}),
     awaitingKernelAdmission: inFlight.size - kernelQueued.size,
     traceCount: traces.length, truncatedTraces: truncated, cancellationHistoryFull, display: display.diagnostics(),
@@ -566,7 +582,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     getContext: () => preview.getAudioContext(), getGeneration: () => preview._sessions.get(owner)?.generation ?? preview._generation,
     isSettled: epochSettled,
     isVoiceSettled: (voiceId, epoch) => faultRetirement?.outcome !== 'partial' && !voices.has(keyFor(epoch, voiceId)),
-    forget: (epoch, generation) => { epochs.delete(epoch); leases.delete(keyFor(epoch, generation)); }
+    forget: (epoch, generation) => { epochs.delete(epoch); leases.delete(keyFor(epoch, generation)); cancellationReceipts.delete(keyFor(epoch, generation)); }
   });
   return lifecycle.api;
 }

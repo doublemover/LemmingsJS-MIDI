@@ -8,6 +8,7 @@ const unprepared = state => state?.complete === false && state.active?.length ==
 // projects these entries; animation and trap owners are sampled during painting.
 class ProcgenObjectPlacementCache {
   constructor(world, resources, { maxTiles = 512, maxClipBytes = 2 * 1024 * 1024 } = {}) {
+    if (!Number.isSafeInteger(maxTiles) || maxTiles < 1 || !Number.isSafeInteger(maxClipBytes) || maxClipBytes < 0) throw new Error('Invalid placement cache limits.');
     this.world = world; this.resources = resources; this.tiles = new Map(); this.maxTiles = maxTiles; this.maxClipBytes = maxClipBytes;
     this.clipBytes = 0; this.stats = { hits: 0, misses: 0, placementRebuilds: 0, clipPixelsSampled: 0, evictions: 0 };
   }
@@ -60,22 +61,36 @@ class ProcgenObjectPlacementCache {
       }
       const placement = { image, x: object.x, y: top + object.y, lane, chunk, objectIndex, sourceObjectId: object.piece.id, role: object.role, assemblyId: object.assembly?.id || null,
         phase: object.phase, animation: object.animation, clip: null, clippedFrames: null };
-      if (object.clipToTerrain) {
-        if (image.width * image.height > this.maxClipBytes) throw new Error('Object terrain mask exceeds the display cache budget');
-        placement.clip = new Uint8Array(image.width * image.height); placement.clippedFrames = new Map();
-        let visible = false;
-        for (let dy = 0; dy < image.height; dy++) for (let dx = 0; dx < image.width; dx++) {
-          this.stats.clipPixelsSampled++;
-          if (matchesTerrain(object.x + dx, object.y + dy)) { placement.clip[dy * image.width + dx] = 1; visible = true; }
-        }
-        if (!visible) continue;
-        entry.clipBytes += placement.clip.byteLength;
+      placement.needsClip = object.clipToTerrain === true;
+      if (placement.needsClip) {
+        const bytes = image.width * image.height;
+        if (!Number.isSafeInteger(bytes) || bytes < 0 || entry.clipBytes + bytes > this.maxClipBytes) throw new Error('Aggregate object terrain masks exceed the display cache budget');
+        entry.clipBytes += bytes;
       }
       entry.placements.push(placement);
     }
-    this.stats.placementRebuilds++;
     while (this.tiles.size && (this.tiles.size >= this.maxTiles || this.clipBytes + entry.clipBytes > this.maxClipBytes)) { this._retire(this.tiles.keys().next().value); this.stats.evictions++; }
-    this.resources?.retain(entry, entry.clipBytes); this.clipBytes += entry.clipBytes; this.tiles.set(key, entry);
+    // Admit the complete candidate before allocating or sampling any clip mask.
+    this.resources?.retain(entry, entry.clipBytes);
+    try {
+      const visiblePlacements = []; let retainedBytes = 0;
+      for (const placement of entry.placements) {
+        if (placement.needsClip) {
+          const { image } = placement;
+          placement.clip = new Uint8Array(image.width * image.height); placement.clippedFrames = new Map();
+          let visible = false;
+          for (let dy = 0; dy < image.height; dy++) for (let dx = 0; dx < image.width; dx++) {
+            this.stats.clipPixelsSampled++;
+            if (matchesTerrain(placement.x + dx, placement.y - top + dy)) { placement.clip[dy * image.width + dx] = 1; visible = true; }
+          }
+          if (!visible) continue;
+          retainedBytes += placement.clip.byteLength;
+        }
+        delete placement.needsClip; visiblePlacements.push(placement);
+      }
+      entry.placements = visiblePlacements; this.resources?.retain(entry, retainedBytes); entry.clipBytes = retainedBytes;
+      this.stats.placementRebuilds++; this.clipBytes += entry.clipBytes; this.tiles.set(key, entry);
+    } catch (error) { this.resources?.release(entry); throw error; }
     return entry.placements;
   }
   _retire(key) {

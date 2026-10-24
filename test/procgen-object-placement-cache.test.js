@@ -15,6 +15,18 @@ const fixture = (options = {}) => {
 };
 
 describe('local ProcGen object placement geometry', () => {
+  it('rejects aggregate masks before any clip allocation sampling or reservation', () => {
+    const { cache, descriptor, object, samples, reservations } = fixture({ maxClipBytes: 12 });
+    descriptor.objects.push({ ...object, x: 140 });
+    expect(() => cache.get(0, 0, descriptor)).to.throw('Aggregate'); expect(samples).to.have.length(0); expect(reservations.size).to.equal(0);
+    expect(cache.getStats().clipBytes).to.equal(0); cache.dispose();
+  });
+  it('reserves the whole candidate before sampling and retires it after a sampling exception', () => {
+    const { cache, world, descriptor, reservations } = fixture(); let calls = 0;
+    world.terrain.solidSample = () => { calls++; expect([...reservations.values()]).to.deep.equal([8]); throw new Error('sample failure'); };
+    expect(() => cache.get(0, 0, descriptor)).to.throw('sample failure'); expect(calls).to.equal(1); expect(reservations.size).to.equal(0); cache.dispose();
+  });
+
   it('retains geometry and clips through distant edits, camera redraws and hazard phase changes', () => {
     const { cache, world, descriptor, samples, revisions } = fixture();
     const first = cache.get(0, 0, descriptor), sampled = samples.length;

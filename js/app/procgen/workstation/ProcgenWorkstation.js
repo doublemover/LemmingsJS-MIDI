@@ -1,3 +1,4 @@
+import { createProcgenPageLifecycle } from './ProcgenPageLifecycle.js';
 import { sanitizeMidiProject, reduceMidiProject, projectToMidiConfig, isCanonicalMidiProject, markCanonicalMidiProject, sameMidiRuntimeInputs } from '../../../midi/project/MidiProject.js';
 import { createProcgenWorkstationProject, createProcgenPattern, convertLegacyProcgenWorkstationProject } from './ProcgenWorkstationProject.js';
 import { createProcgenPatternEngine } from './ProcgenPatternEngine.js';
@@ -463,7 +464,9 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       status('Causal take control record failed: ' + error.message);
     }
   };
+  let pageLifecycle = null;
   const play = () => {
+    if (pageLifecycle && !pageLifecycle.resumeExplicitly()) { status('Page is suspended; return to the visible instrument before pressing Play.'); return; }
     const held = pendingResume ? engine.snapshot().active : null; pendingResume = false;
     transport.play(); if (held) engine.resume({ ...transport.getState(), timestamp: now(), activeNotes: held });
     if (causalTake) {
@@ -1372,7 +1375,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   }
   listen(document, 'keyup', syncLegacyControls);
   listen(document, 'keydown', event => { if (event.key === 'Escape' && inputLease) cancelInputEdits('canceled by user'); });
-  listen(window, 'pagehide', () => {
+  pageLifecycle = createProcgenPageLifecycle({ document, window, suspend: ({ reason }) => {
     quarryEchoView?.suspend();
     void masterCapture?.suspend();
     causalAudioRender?.suspend();
@@ -1380,14 +1383,14 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const workbench = causalWorkbench;
     if (workbench) void workbench.dispose().then(() => { if (causalWorkbench === workbench) causalWorkbench = null; }, error => status('Branch recovery: ' + error.message));
     beforeRestart(); persist({ immediate: true }); recover();
-    if (causalTake || causalTakeStart) void stopCausalTake({ reason: 'pagehide' }).catch(error => status('Causal take finalization: ' + error.message));
+    if (causalTake || causalTakeStart) void stopCausalTake({ reason }).catch(error => status('Causal take finalization: ' + error.message));
     status('Page suspended. Press Play after returning to resume.');
-  });
-  listen(window, 'pageshow', event => {
-    if (!event.persisted) return;
+  }, restore: ({ paused }) => {
+    if (!paused) return;
     transport.pause(); ports.flush(); view?.transport(transport.getState());
     status('Page restored paused. Press Play to resume.');
-  });
+  } });
+  listeners.push(() => pageLifecycle.dispose());
   listen(document.getElementById('procgenPanic'), 'click', () => { ports.panic(); status('All notes stopped.'); });
   const disconnected = () => { syncPorts(); view.renderInspector(); };
   const connected = () => { syncPorts(); view.renderInspector(); status('MIDI device connected. Press Play or send MIDI Start/Continue to resume.'); };

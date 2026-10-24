@@ -97,11 +97,16 @@ class ProcgenLaneRenderer {
     const ready = this._acquireContexts(); if (ready) this._displayState('ready'); return ready;
   }
   getDisplayState() { return { state: this.lifecycleState, reason: this.displayError, attempts: this.recoveryAttempts, qualityDivisor: this.qualityDivisor, ...this.resources.getStats() }; }
-  resize() {
+  resize(request = null) {
     if (this.lifecycleState === 'disposed') return false;
-    const key = `${this.canvas.width}:${this.canvas.height}:${this.window.devicePixelRatio}:${this.workstationLayout?.firstLane}:${this.workstationLayout?.count}:${this.workstationLayout?.rowHeight}:${this.workstationLayout?.stripHeight}`;
-    if (key === this.lastResizeKey) return false;
-    this.lastResizeKey = key; this.lastTerrainKey = ''; this.lastGeometryKey = ''; return this.render();
+    if (request) {
+      if (!Number.isSafeInteger(request.width) || request.width < 1 || !Number.isSafeInteger(request.height) || request.height < 1) throw new Error('Invalid requested display dimensions.');
+      this.surfaceWidth = request.width; this.surfaceHeight = request.height; this.requestedSurface = true;
+    }
+    const key = `${this.requestedSurface ? this.surfaceWidth : this.canvas.width}:${this.requestedSurface ? this.surfaceHeight : this.canvas.height}:${this.window.devicePixelRatio}:${this.workstationLayout?.firstLane}:${this.workstationLayout?.count}:${this.workstationLayout?.rowHeight}:${this.workstationLayout?.stripHeight}`;
+    if (key === this.lastResizeKey && this.canvas.width === this.managedWidth && this.canvas.height === this.managedHeight && this.lifecycleState === 'ready') return false;
+    this.lastTerrainKey = ''; this.lastGeometryKey = '';
+    const rendered = this.render(true); this.lastResizeKey = rendered ? key : null; return rendered;
   }
   _drawScenery(terrainKey, width, height) {
     const scenery = this.world.scenery; if (!scenery) return;
@@ -113,7 +118,7 @@ class ProcgenLaneRenderer {
     const key = `${terrainKey}:${scenery.revision}:${reducedMotion}`;
     if (!this.sceneryImage || this.sceneryBuffer.width !== width || this.sceneryBuffer.height !== height) {
       this.resources.resize(this.sceneryBuffer, width, height);
-      this.sceneryImage = this.resources.image(this.sceneryContext, width, height, this.sceneryImageKey); this.sceneryPixels = new Uint32Array(this.sceneryImage.data.buffer); this.lastSceneryKey = '';
+      this.resources.replaceImage(this.sceneryContext, width, height, this.sceneryImageKey, ({ image, pixels, key }) => { this.sceneryImage = image; this.sceneryPixels = pixels; this.sceneryImageKey = key; }); this.lastSceneryKey = '';
     }
     if (key !== this.lastSceneryKey) {
       this.sceneryPixels.fill(0);
@@ -412,7 +417,7 @@ class ProcgenLaneRenderer {
     this._effectPresentationMs = start;
     if (this.actorEffects.epoch && (this.actorEffects.epoch.generation !== this.world.generation || this.actorEffects.epoch.worldId !== this.world.worldId)) this.actorEffects.invalidateEpoch();
     for (const actorId of this.actorEffects.mailboxes.keys()) if (!this.actorVisibility.actorById(actorId)) this.actorEffects.removeActor(actorId, { profile: true });
-    if (this.canvas.width > 0 && this.canvas.height > 0 && (this.canvas.width !== this.managedWidth || this.canvas.height !== this.managedHeight)) { this.surfaceWidth = this.canvas.width; this.surfaceHeight = this.canvas.height; }
+    if (!this.requestedSurface && this.canvas.width > 0 && this.canvas.height > 0 && (this.canvas.width !== this.managedWidth || this.canvas.height !== this.managedHeight)) { this.surfaceWidth = this.canvas.width; this.surfaceHeight = this.canvas.height; }
     if (!this.surfaceWidth || !this.surfaceHeight) return false;
     const mainLimit = Math.min(MAX_RENDER_DIMENSION / this.surfaceWidth, MAX_RENDER_DIMENSION / this.surfaceHeight,
       Math.sqrt(this.resources.budgetBytes / 3 / (this.surfaceWidth * this.surfaceHeight * 4)), 1);
@@ -446,7 +451,7 @@ class ProcgenLaneRenderer {
     if (!this.image || this.buffer.width !== width || this.buffer.height !== height) {
       for (const canvas of [this.buffer, this.terrainBuffer, this.objectBuffer]) this.resources.resize(canvas, width, height);
       this.lastObjectKey = ''; this.lastPlacementKey = '';
-      this.image = this.resources.image(this.terrainContext, width, height, this.imageKey); this.pixels = new Uint32Array(this.image.data.buffer); this.lastTerrainKey = ''; this.lastGeometryKey = '';
+      this.resources.replaceImage(this.terrainContext, width, height, this.imageKey, ({ image, pixels, key }) => { this.image = image; this.pixels = pixels; this.imageKey = key; }); this.lastTerrainKey = ''; this.lastGeometryKey = '';
     }
     const key = `${geometryKey}:${this.world.terrainRevision}`;
     if (key !== this.lastTerrainKey) {

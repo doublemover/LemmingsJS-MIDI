@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Hold bounded worklet credits through terminal acknowledgment, admit renderer replacement peaks before allocation, preflight aggregate object masks, and keep hidden/BFCache worlds explicitly paused without overdue clock bursts.
+
 - Preserve independent physical mapping lifetimes and qualified contact travel; journal manual interventions before mutation, disarm incomplete-source music until explicit recovery, fence stale inspection/export publication, and enforce per-observer telemetry budgets. Runtime and acoustic qualification deferred.
 
 - Fence staged effect and cue-route failures, rearm physical audio correlations after interruptions, serialize offline pack ownership, and preserve cold-history retirement evidence.

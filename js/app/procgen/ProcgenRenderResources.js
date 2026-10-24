@@ -61,18 +61,36 @@ class ProcgenRenderResources {
   resize(canvas, width, height, { cache = false, retire, observeContext = true } = {}) {
     const bytes = this._size(width, height);
     const old = this.entries.get(canvas);
-    this._reserve(canvas, bytes, cache, retire || old?.retire);
+    this._reserve(canvas, Math.max(bytes, old?.bytes || 0), cache, retire || old?.retire);
     if (observeContext) this._listen(canvas);
     try {
-      if (canvas.width !== width) canvas.width = width;
-      if (canvas.height !== height) canvas.height = height;
+      // Shrink before grow: portrait-to-landscape must not temporarily allocate
+      // newWidth × oldHeight, larger than either admitted endpoint.
+      if (height < canvas.height && width > canvas.width) {
+        if (canvas.height !== height) canvas.height = height;
+        if (canvas.width !== width) canvas.width = width;
+      } else {
+        if (canvas.width !== width) canvas.width = width;
+        if (canvas.height !== height) canvas.height = height;
+      }
+      this._reserve(canvas, bytes, cache, retire || old?.retire);
     } catch (error) { this.release(canvas); this.failures++; throw error; }
     return canvas;
   }
   image(context, width, height, key) {
+    if (this.entries.has(key)) throw new ProcgenRenderAllocationError('Image replacement requires an owned transition.');
     this._reserve(key, this._size(width, height));
     try { const image = context.createImageData(width, height); this.allocations++; return image; }
     catch (error) { this.release(key); this.failures++; throw error; }
+  }
+  replaceImage(context, width, height, previousKey, adopt) {
+    const key = {}, image = this.image(context, width, height, key);
+    let pixels;
+    try { pixels = new Uint32Array(image.data.buffer, image.data.byteOffset, image.data.byteLength / 4); }
+    catch (error) { this.release(key); throw error; }
+    // The synchronous owner drops both old aliases before the old reservation
+    // retires. If adoption throws, retain both leases conservatively for cleanup.
+    adopt({ image, pixels, key }); this.release(previousKey); return image;
   }
   retain(key, bytes, kind = 'pixels') { this._reserve(key, bytes, false, null, kind); }
   touch(key) { const entry = this.entries.get(key); if (entry) { this.entries.delete(key); this.entries.set(key, entry); } }

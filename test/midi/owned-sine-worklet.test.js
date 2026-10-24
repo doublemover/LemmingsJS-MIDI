@@ -317,6 +317,21 @@ describe('Owned worklet host lifecycle', () => {
     context.state = 'closed'; preview._audioResources.confirmClosedContext(); expect(budget.diagnostics().accountedBytes).to.equal(0);
   });
 
+  it('holds one global command credit through withheld receipts and deduplicates repeated cancellation', async () => {
+    const { backend, nodes, patch, intent } = setupHost(); await backend.prepare(patch);
+    const sent = []; nodes[0].port.postMessage = value => sent.push(value);
+    expect(backend.begin(intent('bounded'), 100).status).to.equal('accepted'); await Promise.resolve();
+    for (let index = 0; index < 600; index++) {
+      backend.update('bounded', { pressure01: index % 2 ? 0.2 : 0.8 }, 101 + index); await Promise.resolve();
+      expect(backend.renderDiagnostics().outstandingCommands).to.be.at.most(backend.renderDiagnostics().outstandingCapacity);
+    }
+    const before = backend.renderDiagnostics(); expect(before.counters.rejected).to.be.greaterThan(0);
+    const first = backend.cancelGenerationWithReceipt(1, 'live'); await Promise.resolve(); const count = sent.length;
+    for (let index = 0; index < 10000; index++) expect(backend.cancelGenerationWithReceipt(1, 'live').stage).to.equal(first.stage);
+    await Promise.resolve(); expect(sent).to.have.length(count); expect(backend.renderDiagnostics().cancellationReceipts).to.equal(1);
+    backend.onOwnerStop(); const stopped = sent.length; backend.onOwnerStop(); expect(sent).to.have.length(stopped); backend.dispose();
+  });
+
   it('releases repeated Stop reservations, including admitted onsets still in host and kernel queues', async () => {
     const { backend, nodes, patch, intent, preview, context } = setupHost(); await backend.prepare(patch);
     for (let pass = 0; pass < 5; pass++) {

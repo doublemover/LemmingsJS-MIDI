@@ -29,7 +29,9 @@
       "regressions": [
         "test/midi/instrument-patch-v2.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "d7a2a95289548ff7097403178a5310fc72790e98"
+      ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity"
     },
@@ -94,11 +96,16 @@
       "requirementUpdatedAt": "2026-10-23T15:44:21Z",
       "requirementSha256": "f42b29b91183ff5f7ab94961653b55bbbfd492c1cdf426333d6b8ba47ea15d2a",
       "initialGap": "Fixed-size worklet kernel, bounded producer queue and recovery exist. Host terminal traffic still bypasses inFlight CAPACITY admission, pump frees producer slots before receipts, and repeated cancellation can submit further CANCEL commands; total outstanding terminal domain remains unbounded as reported.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "implemented-validation-deferred",
+      "source": [
+        "js/app/midi-ui/workletInstrumentBackend.js"
+      ],
+      "regressions": [
+        "test/midi/owned-sine-worklet.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "bounded-command-and-render-staging"
     },
     {
       "number": 975,
@@ -197,7 +204,9 @@
       "regressions": [
         "test/procgen-causal-music-engine.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "d7a2a95289548ff7097403178a5310fc72790e98"
+      ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity"
     },
@@ -226,7 +235,9 @@
       "regressions": [
         "test/procgen-intervention-commands.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "d7a2a95289548ff7097403178a5310fc72790e98"
+      ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity"
     },
@@ -243,7 +254,9 @@
       "regressions": [
         "test/procgen-checkpoint-validation.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "d7a2a95289548ff7097403178a5310fc72790e98"
+      ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity"
     },
@@ -258,7 +271,9 @@
         "js/app/procgen/workstation/ProcgenCheckpointProvenance.js"
       ],
       "regressions": [],
-      "commits": [],
+      "commits": [
+        "d7a2a95289548ff7097403178a5310fc72790e98"
+      ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
       "remaining": "Active-execution compatibility review still required."
@@ -485,11 +500,16 @@
       "requirementUpdatedAt": "2026-10-22T08:45:46Z",
       "requirementSha256": "4425f2305eadf2e4af6eb5437345cb6263e42ea7ebf3dfb198790ce77256ef79",
       "initialGap": "Destructive beforeunload teardown is removed, pagehide captures/pauses and BFCache pageshow stays paused. No single explicit hidden/suspended lifecycle policy is composed across clocks: RAF simulation checks document.hidden, but clock-driven pump continues regardless and visibility listener only resets presentation/preview clocks.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "implemented-validation-deferred",
+      "source": [
+        "js/app/procgen/workstation/ProcgenPageLifecycle.js"
+      ],
+      "regressions": [
+        "test/procgen-page-lifecycle.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "bounded-command-and-render-staging"
     },
     {
       "number": 1010,
@@ -885,7 +905,9 @@
       "regressions": [
         "test/midi/audio-display-telemetry.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "d7a2a95289548ff7097403178a5310fc72790e98"
+      ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity"
     },
@@ -962,7 +984,9 @@
       "regressions": [
         "test/midi/causal-sample-plan.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "d7a2a95289548ff7097403178a5310fc72790e98"
+      ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity"
     },
@@ -989,7 +1013,9 @@
         "js/app/procgen/workstation/ProcgenWorkstation.js"
       ],
       "regressions": [],
-      "commits": [],
+      "commits": [
+        "d7a2a95289548ff7097403178a5310fc72790e98"
+      ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
       "remaining": "World rollback now preserves concurrent physicalGraph; staged settings and history rollback remain."
@@ -1060,11 +1086,16 @@
       "requirementUpdatedAt": "2026-10-23T13:55:06Z",
       "requirementSha256": "900c4b9e6d38995c502063911e08866b3cbd1dc4126cb2e8fc7f5ee08ab489f4",
       "initialGap": "Tile-owned revision/source/dependency clip cache is implemented. Latest aggregate admission hole remains: each mask alone is checked, new tile sampled before shared reservation, and empty-map eviction permits total entry.clipBytes above maxClipBytes.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "implemented-validation-deferred",
+      "source": [
+        "js/app/procgen/ProcgenObjectPlacementCache.js"
+      ],
+      "regressions": [
+        "test/procgen-object-placement-cache.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "bounded-command-and-render-staging"
     },
     {
       "number": 1056,
@@ -1079,7 +1110,9 @@
       "regressions": [
         "test/procgen-intervention-commands.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "d7a2a95289548ff7097403178a5310fc72790e98"
+      ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
       "remaining": "Linear command ancestry and transactional nuke path added; full intervention contract review remains."
@@ -1090,11 +1123,16 @@
       "requirementUpdatedAt": "2026-10-23T13:57:10Z",
       "requirementSha256": "a514012bf3f0d761ac6224d1398c761a4c616d58ba721780474e7f3970827341",
       "initialGap": "Renderer recovery, lifecycle, resources and disposal implemented. Latest repeated resize bug remains: view writes canvas backing directly; renderer caches requested resize key and can return without painting after budget downscale/restoration to prior dimensions.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "implemented-validation-deferred",
+      "source": [
+        "js/app/procgen/ProcgenLaneRenderer.js"
+      ],
+      "regressions": [
+        "test/procgen-render-lifecycle.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "bounded-command-and-render-staging"
     },
     {
       "number": 1058,
@@ -1167,7 +1205,9 @@
         "js/app/procgen/workstation/ProcgenMidiPorts.js"
       ],
       "regressions": [],
-      "commits": [],
+      "commits": [
+        "d7a2a95289548ff7097403178a5310fc72790e98"
+      ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity"
     },
@@ -1518,7 +1558,9 @@
         "js/app/procgen/workstation/CausalTakeArchive.js"
       ],
       "regressions": [],
-      "commits": [],
+      "commits": [
+        "d7a2a95289548ff7097403178a5310fc72790e98"
+      ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity"
     },
@@ -1535,7 +1577,9 @@
       "regressions": [
         "test/procgen-workstation-midi.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "d7a2a95289548ff7097403178a5310fc72790e98"
+      ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
       "remaining": "SMF out-of-range tempo now rejects; native MIDI2 clip export remains."
@@ -1661,7 +1705,9 @@
       "regressions": [
         "test/procgen-intervention-commands.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "d7a2a95289548ff7097403178a5310fc72790e98"
+      ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
       "remaining": "Manual nuke is captured before mutation; broader replay boundary contract remains."
@@ -1715,7 +1761,9 @@
       "regressions": [
         "test/procgen-causal-music-engine.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "d7a2a95289548ff7097403178a5310fc72790e98"
+      ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity"
     },
@@ -1780,7 +1828,9 @@
       "regressions": [
         "test/procgen-causal-music-engine.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "d7a2a95289548ff7097403178a5310fc72790e98"
+      ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity"
     },
@@ -1797,7 +1847,9 @@
       "regressions": [
         "test/procgen-contact-spans.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "d7a2a95289548ff7097403178a5310fc72790e98"
+      ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity"
     },
@@ -2042,7 +2094,9 @@
       "regressions": [
         "test/procgen-intervention-commands.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "d7a2a95289548ff7097403178a5310fc72790e98"
+      ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
       "remaining": "Failure-gated advance and journal-first proposal commit added; paired cause-diff/audition remains."
@@ -2293,17 +2347,19 @@
       "requirementUpdatedAt": "2026-10-24T12:56:51Z",
       "requirementSha256": "8ad6dca392987504fcc2415b01c6d6a952eddb068dd25f3c7cb0bce14c588ac2",
       "initialGap": "Shared category/resource leases and many adapters implemented. Current source retains all-cache audio purge under tiny pressure, stale reserve preconditions after eviction callback, ImageData final-only replacement accounting and width-first intermediate canvas raster admission holes.",
-      "state": "in-progress",
+      "state": "implemented-validation-deferred",
       "source": [
         "js/app/resources/ResourceBudget.js",
-        "js/app/midi-ui/AudioAssetLoader.js"
+        "js/app/midi-ui/AudioAssetLoader.js",
+        "js/app/procgen/ProcgenRenderResources.js"
       ],
       "regressions": [
-        "test/resource-budget.test.js"
+        "test/resource-budget.test.js",
+        "test/procgen-render-lifecycle.test.js"
       ],
       "commits": [],
       "validation": "deferred-by-request",
-      "remaining": "ImageData replacement peaks and intermediate canvas raster admission remain."
+      "increment": "bounded-command-and-render-staging"
     },
     {
       "number": 1163,
@@ -2395,7 +2451,9 @@
         "js/app/procgen/ProcgenMidiSpanOverlay.js"
       ],
       "regressions": [],
-      "commits": [],
+      "commits": [
+        "d7a2a95289548ff7097403178a5310fc72790e98"
+      ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity"
     },
@@ -2796,7 +2854,9 @@
         "js/app/procgen/workstation/ProcgenWorkstation.js"
       ],
       "regressions": [],
-      "commits": [],
+      "commits": [
+        "d7a2a95289548ff7097403178a5310fc72790e98"
+      ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity"
     },
@@ -2938,7 +2998,9 @@
         "js/app/procgen/survey/ProcgenSurveyCore.js"
       ],
       "regressions": [],
-      "commits": [],
+      "commits": [
+        "d7a2a95289548ff7097403178a5310fc72790e98"
+      ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
       "remaining": "Physics-only state now includes behavior owners and excludes query caches; full projection audit remains."
@@ -2992,7 +3054,9 @@
       "regressions": [
         "test/procgen-actor-effects.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "d7a2a95289548ff7097403178a5310fc72790e98"
+      ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
       "remaining": "Independent voice mailboxes and explicit reduction added; mapping editor integration remains."
@@ -3044,7 +3108,9 @@
         "js/app/procgen/workstation/ProcgenWorkstation.js"
       ],
       "regressions": [],
-      "commits": [],
+      "commits": [
+        "d7a2a95289548ff7097403178a5310fc72790e98"
+      ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity"
     },
