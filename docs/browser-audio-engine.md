@@ -719,6 +719,15 @@ Output is capped at 120 seconds of history and 64 MiB across master/stems, with
 source/PCM/encoding/transfer overlap admitted first. Runtime, decoder and listening
 qualification remain deferred. These capabilities do not qualify other engines,
 general shared-effect stems or a real-time print path.
+
+The saved-take Physical inspector exposes **Render sine WAV…**. Its dialog reads
+owned metadata, shows exact capture duration and refuses missing clocks/held
+ancestry before enabling preparation. Range, rate, tail policy and all captured
+dry lanes are explicit controls. Progress uses the shared display scheduler.
+Download requests and acknowledged file-handle saves have distinct status; Close
+cancels active preparation/delivery while retaining valid prepared files. Reopen
+can retry a file without rendering again. Browser coverage for a real physical
+phrase through an immutable worker is authored and remains unexecuted.
 Global stop fences reentrant enable requests and requests source cancellation;
 source/backend ownership remains visible until actual retirement. Master capture
 excludes the separate cue bus and explicitly includes live-output rehearsal.

@@ -26,6 +26,7 @@ import { validateSoundContentReference } from '../../../midi/content/SoundConten
 import { createSoundContentLibrary } from '../../midi-ui/SoundContentLibrary.js';
 import { createMasterCaptureView } from '../../midi-ui/MasterCaptureView.js';
 import { createPrelistenMonitor } from '../../midi-ui/PrelistenMonitor.js';
+import { createCausalTakeAudioRenderView } from '../../midi-ui/CausalTakeAudioRenderView.js';
 
 const STORAGE_KEY = 'lemmings.procgen.workstation.v1';
 const MAX_SESSION_FILE_BYTES = 64 * 1048576;
@@ -106,6 +107,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let soundLibrary = null;
   let masterCapture = null;
   let prelistenMonitor = null;
+  let causalAudioRender = null;
   let pendingHistory = null;
   const routerRestores = new Map();
   const undo = [], redo = [], listeners = [], noteEntries = new Map();
@@ -1030,6 +1032,13 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     return committed;
   };
   const handlers = {
+    openCausalAudioRender: safe(async () => {
+      const takeId = selectedCausalTakeId || lastCausalTake?.takeId;
+      if (disposed || !resourceBudget || !takeId || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish and select a saved causal take before rendering its intent.');
+      const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs });
+      causalAudioRender ||= createCausalTakeAudioRenderView({ document, window, journal, resourceBudget, jobs: backgroundJobs,
+        displayScheduler: view?.displayScheduler, onStatus: status }); await causalAudioRender.open({ takeId });
+    }),
     openPrelistenMonitor() {
       if (disposed || !legacy.local.audio) return;
       prelistenMonitor ||= createPrelistenMonitor({ document, audio: legacy.local.audio, displayScheduler: view?.displayScheduler,
@@ -1324,6 +1333,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   listen(document, 'keydown', event => { if (event.key === 'Escape' && inputLease) cancelInputEdits('canceled by user'); });
   listen(window, 'pagehide', () => {
     void masterCapture?.suspend();
+    causalAudioRender?.suspend();
     causalWorkbenchSourceSerial++;
     const workbench = causalWorkbench;
     if (workbench) void workbench.dispose().then(() => { if (causalWorkbench === workbench) causalWorkbench = null; }, error => status('Branch recovery: ' + error.message));
@@ -1381,6 +1391,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'causal-workbench', run: () => pendingWorkbenchStop },
         { name: 'sound-library', run: () => soundLibrary?.dispose() },
         { name: 'master-capture', run: () => masterCapture?.dispose() },
+        { name: 'causal-audio-render', run: () => causalAudioRender?.dispose() },
         { name: 'prelisten-monitor', run: () => prelistenMonitor?.dispose() },
         { name: 'transport', run: () => transport.dispose()?.completion },
         { name: 'midi-ports', run: () => ports.dispose() },

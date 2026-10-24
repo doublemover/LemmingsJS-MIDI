@@ -330,6 +330,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         if ((take.selectedTakeId || take.last) && !take.recording) {
           controls.append(button('Inspect take', () => handlers.inspectLastCausalTake?.(), 'Verify the stored causal take and show its durable range'));
           controls.append(button('Prepare take archive', () => handlers.prepareCausalArchive?.(), 'Prepare a verified, replayable causal take file'));
+          controls.append(button('Render sine WAV…', () => handlers.openCausalAudioRender?.(), 'Render immutable captured intent through a selected sine realization with explicit range, tail and dry stems'));
         }
         controls.append(button('Browse saved takes', () => handlers.browseCausalTakes?.('first'), 'List saved causal takes from project storage'));
         if (take.takePage) {

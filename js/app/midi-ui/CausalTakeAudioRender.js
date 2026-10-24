@@ -37,12 +37,12 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
       }, retirementState: () => scope.getReceipt() }); bundles.add(bundle); return bundle;
   };
   const prepare = ({ takeId, takeRevision, definition = CAUSAL_RENDER_SINE, sampleRate = 48000, startSeconds = 0, endSeconds,
-    tail = { mode: 'exact-crop' }, stemLaneIds = [], signal: externalSignal, isCurrent = () => true } = {}) => {
+    tail = { mode: 'exact-crop' }, stemLaneIds = [], includeAllLaneStems = false, signal: externalSignal, isCurrent = () => true } = {}) => {
     externalSignal?.throwIfAborted();
     if (disposed || active || unresolved.size || typeof takeId !== 'string' || !takeId || takeId.length > 256 || ![44100, 48000, 96000].includes(sampleRate) ||
         !Number.isFinite(startSeconds) || startSeconds < 0 || startSeconds >= 120 || !Number.isFinite(endSeconds) || endSeconds <= startSeconds || endSeconds > 120 ||
         !Array.isArray(stemLaneIds) || stemLaneIds.length > 16 || stemLaneIds.some(lane => typeof lane !== 'string' || !lane || lane.length > 128) ||
-        new Set(stemLaneIds).size !== stemLaneIds.length || typeof isCurrent !== 'function') return Promise.reject(failure('render-unavailable', 'Choose a bounded causal render range and available renderer owner.'));
+        new Set(stemLaneIds).size !== stemLaneIds.length || typeof includeAllLaneStems !== 'boolean' || typeof isCurrent !== 'function') return Promise.reject(failure('render-unavailable', 'Choose a bounded causal render range and available renderer owner.'));
     const ordinal = ++serial, controller = new AbortController(), operation = { controller, source: null, job: null, sourceHanded: false, sourceSettled: null,
       workspace: null, promise: null, retirement: null };
     let settleSource, rejectSource; operation.sourceSettled = new Promise((resolve, reject) => { settleSource = resolve; rejectSource = reject; }); operation.sourceSettled.catch(() => {});
@@ -54,7 +54,7 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
       const candidates = []; let bundle = null, result = null, originalError = null, input = null, revoice = null;
       try {
         operation.workspace = createOwnedResourceReservation({ budget: resourceBudget, owner: ownerId + ':' + ordinal, kind: 'causal-render-input', bytes: 2 * 1048576 });
-        const patch = cloneData(definition, { maxBytes: 262144, maxNodes: 16384 }), policy = cloneData(tail, { maxBytes: 1024, maxNodes: 32 }), lanes = Object.freeze(stemLaneIds.slice());
+        const patch = cloneData(definition, { maxBytes: 262144, maxNodes: 16384 }), policy = cloneData(tail, { maxBytes: 1024, maxNodes: 32 }); let lanes = Object.freeze(stemLaneIds.slice());
         const definitionHash = await hashData(patch), catalog = await getCatalog(); check();
         const descriptor = catalog.descriptors.find(entry => entry.engineId === patch.engineId && entry.engineVersion === patch.engineVersion);
         if (catalog.state !== 'bound-application-engines' || patch.engineId !== 'worklet-sine' || !descriptor || !HASH.test(descriptor.artifactHash))
@@ -65,6 +65,12 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
           limit: 8192, maxIntents: 32768, maxBytes: sourceMaxBytes, signal: controller.signal }); check();
         revoice = operation.source.value;
         if (revoice.nextSequence != null) throw failure('render-source-capacity', 'This take exceeds the bounded source window. Prepare a shorter qualified take instead of silently dropping later intent pages.');
+        if (includeAllLaneStems) {
+          const origin = revoice.boundary.state?.sourceTimeMs, cutoff = Math.round(endSeconds * sampleRate);
+          lanes = Object.freeze([...new Set(revoice.intents.filter(intent => intent.kind === 'begin' && Math.round((intent.scoreTime.sourceTimeMs - origin) * sampleRate / 1000) < cutoff)
+            .map(intent => String(intent.laneId ?? 'unassigned')))].sort());
+          if (lanes.length > 16) throw failure('stem-capacity', 'This range contains more than sixteen captured lanes. Render the complete graph without all-lane stems or select fewer lanes.');
+        }
         const frames = Math.round((endSeconds - startSeconds + (policy.mode === 'exact-crop' ? 0 : policy.maxSeconds ?? 4)) * sampleRate);
         const pcmBytes = frames * 8 * (lanes.length + 1), sourceFootprint = operation.source.receipt.retainedBytes;
         operation.workspace.resize(2 * 1048576 + sourceFootprint);
