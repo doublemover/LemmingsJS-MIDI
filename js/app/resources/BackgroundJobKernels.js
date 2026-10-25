@@ -21,9 +21,10 @@ import { getProceduralSoundById } from '../../midi/content/ProceduralSoundMateri
 import { inspectWaveContainer } from '../midi-ui/AudioAssetRef.js';
 import { getOwnedSourceBankIdentity } from '../midi-ui/OwnedSourceBank.js';
 import { renderCausalOwnedTake } from '../midi-ui/CausalOwnedRender.js';
+import { renderPerformanceSceneRehearsal } from '../procgen/workstation/PerformanceSceneRehearsalRender.js';
 
-export const BACKGROUND_JOB_PROTOCOL = 3;
-export const BACKGROUND_JOB_KINDS = Object.freeze(['build-shape-body-content', 'solve-shape-body', 'render-shape-body-calibration', 'fit-sound-seed-modes', 'decompose-sound-seed', 'analyze-sound-seed-window', 'analyze-native-impulse', 'encode-native-render', 'decode-wave-source', 'generate-procedural-sound', 'inspect-wave-asset', 'prepare-owned-source-bank', 'parse-json', 'verify-causal-source', 'snapshot-canonical-data', 'inspect-causal-archive-entry', 'render-sound-controls', 'render-causal-sine-take', 'render-causal-source-pcm', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'encode-recovery-page', 'decode-recovery-page', 'asset-hash', 'asset-decode']);
+export { BACKGROUND_JOB_PROTOCOL, BACKGROUND_JOB_KINDS } from './BackgroundJobKinds.js';
+import { BACKGROUND_JOB_KINDS } from './BackgroundJobKinds.js';
 const MAX_BYTES = 64 * 1048576, MAX_NODES = 4000000;
 const problem = (code, message) => Object.assign(new Error(message), { code, name: 'BackgroundJobError' });
 const shared = value => typeof globalThis.SharedArrayBuffer === 'function' && (value instanceof globalThis.SharedArrayBuffer || value?.buffer instanceof globalThis.SharedArrayBuffer);
@@ -324,6 +325,16 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
       applicationBuildId: catalog.executionIdentity.buildId }, { signal, yieldControl, onProgress }); guard(signal, current);
     const retainedBytes = value.bytes.byteLength * 2 + 65536;
     if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Rendered control reference exceeds admitted output storage.');
+    return { value, inputBytes: metadata.bytes, nodes: metadata.nodes, retainedBytes };
+  }
+  if (kind === 'render-scene-rehearsal') {
+    const catalog = await getNativeInstrumentCatalog(); guard(signal, current);
+    if (catalog.state !== 'bound-application-engines') throw problem('engine-identity-unbound', 'Scene rehearsal requires the exact executing audio and world artifacts.');
+    const footprint = (metadata.bytes - metadata.binaryBytes) * 12 + metadata.nodes * 192 + metadata.binaryBytes * 2;
+    if (estimatedPeakBytes < footprint + 64 * 1048576) throw problem('memory-capacity', 'Scene rehearsal source exceeds its admitted representation.');
+    const value = await renderPerformanceSceneRehearsal(input, { descriptors: catalog.descriptors, buildId: catalog.executionIdentity.buildId, signal, isCurrent: current, yieldControl, maxWorkingBytes: estimatedPeakBytes - footprint }); guard(signal, current);
+    const retainedBytes = value.bytes.byteLength * 2 + 262144;
+    if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Scene rehearsal PCM exceeds its admitted result.');
     return { value, inputBytes: metadata.bytes, nodes: metadata.nodes, retainedBytes };
   }
   if (['render-causal-sine-take', 'render-causal-source-pcm'].includes(kind)) {

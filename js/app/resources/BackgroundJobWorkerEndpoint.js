@@ -37,8 +37,9 @@ export function createBackgroundJobWorkerEndpoint({ postMessage, close, kernel =
       input = null; if (phase !== 'computing') return;
       const transfers = ['prepare-owned-source-bank', 'decode-wave-source', 'render-causal-source-pcm'].includes(source.kind) && Array.isArray(result.value?.planes) ? result.value.planes.map(plane => plane.buffer) :
         ['encode-recovery-page', 'encode-native-render', 'render-sound-controls', 'generate-procedural-sound'].includes(source.kind) && result.value?.bytes instanceof Uint8Array ? [result.value.bytes.buffer] :
-          ['encode-native-render', 'render-causal-sine-take', 'render-shape-body-calibration'].includes(source.kind) && Array.isArray(result.value?.files) && result.value.files.length <= 25 ? result.value.files.map(file => file.bytes.buffer) :
-            source.kind === 'build-shape-body-content' && Array.isArray(result.value?.contents) && result.value.contents.length <= 8 ? result.value.contents.map(file => file.bytes.buffer) : [];
+          source.kind === 'render-scene-rehearsal' && result.value?.bytes instanceof Uint8Array ? [result.value.bytes.buffer] :
+            ['encode-native-render', 'render-causal-sine-take', 'render-shape-body-calibration'].includes(source.kind) && Array.isArray(result.value?.files) && result.value.files.length <= 25 ? result.value.files.map(file => file.bytes.buffer) :
+              source.kind === 'build-shape-body-content' && Array.isArray(result.value?.contents) && result.value.contents.length <= 8 ? result.value.contents.map(file => file.bytes.buffer) : [];
       const ownedTransferBuffers = new Set(transfers);
       if (ownedTransferBuffers.size !== transfers.length || ownedTransferBuffers.size > 32) ownedTransferBuffers.clear();
       const resultLimits = { maxBytes: Math.min(256 * 1048576, Math.floor(source.limits.estimatedPeakBytes / 2)), maxNodes: 4000000, estimatedPeakBytes: source.limits.estimatedPeakBytes };

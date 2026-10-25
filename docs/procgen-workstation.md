@@ -234,3 +234,19 @@ losses and does not interpret an exhausted search budget as proof of impossibili
 
 Implementation milestones and validation evidence live in
 [the roadmap](roadmap.md#procgen-performance-workstation-october-12-2026).
+
+
+Prepared physical scores support a local rehearsal before publication. First
+enable browser audio and choose a route in Prelisten. **Rehearse locally** copies
+the unadvanced candidate into an independently owned world, observes a short
+physical phrase and renders its pinned lane sounds and static mix. It does not
+advance CURRENT or NEXT. **Stop rehearsal**, source handoff, Stop and Panic retire
+its playback. Loading the scene still publishes the original candidate paused.
+
+The preview uses the selected monitor route: **Rehearsal on live output** is
+included in master capture, while **Separate device** is excluded. The source
+receipt identifies a new private-world rendering; it does not reconstruct a
+historical performance or certify acoustic output. Initial rehearsal admission
+supports up to eight local assetless lanes. Sampled and shared-body scenes need
+additional complete material adapters. Independent render, listening and device
+qualification remain pending.

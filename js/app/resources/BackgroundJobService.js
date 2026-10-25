@@ -1,3 +1,4 @@
+import { BACKGROUND_WORKER_ONLY_JOB_KINDS } from './BackgroundJobKinds.js';
 import { yieldBackgroundTask } from './BackgroundTaskYield.js';
 import { encodeBackgroundSnapshotPages, createBackgroundSnapshotReceiver, backgroundSnapshotTransfers, BACKGROUND_SNAPSHOT_PACKET_BYTES } from './BackgroundSnapshotPages.js';
 import { backgroundWorkerAdmission } from './BackgroundWorkerAdmission.js';
@@ -22,7 +23,7 @@ export function createBackgroundJobService({ admission = backgroundWorkerAdmissi
     if (disposed || !BACKGROUND_JOB_KINDS.includes(kind) || typeof prepareInput !== 'function' || typeof isCurrent !== 'function' || typeof onProgress !== 'function' ||
         !Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > 64 * 1048576 || releasePreparedInput != null && typeof releasePreparedInput !== 'function') throw failure('invalid-contract', 'Invalid background computation request.');
     if (!isCurrent()) throw failure('stale-owner', 'Background job source ownership changed.');
-    if (['encode-recovery-page', 'decode-recovery-page', 'analyze-native-impulse', 'encode-native-render', 'render-sound-controls', 'render-causal-sine-take', 'render-causal-source-pcm', 'prepare-owned-source-bank', 'inspect-wave-asset', 'generate-procedural-sound', 'decode-wave-source'].includes(kind) && typeof Worker !== 'function') throw failure('worker-required', 'This offline computation requires its admitted worker.');
+    if (BACKGROUND_WORKER_ONLY_JOB_KINDS.includes(kind) && typeof Worker !== 'function') throw failure('worker-required', 'This offline computation requires its admitted worker.');
     if (typeof Worker !== 'function' && !['asset-hash', 'recovery-checksum'].includes(kind) && inputBytes > 128 * 1024)
       throw failure('worker-required', 'This computation needs a worker; only small bounded fallback work is supported.');
     const transportStagingBytes = typeof Worker === 'function' ? BACKGROUND_SNAPSHOT_PACKET_BYTES * 2 : 0, admissionPeakBytes = estimatedPeakBytes + transportStagingBytes;

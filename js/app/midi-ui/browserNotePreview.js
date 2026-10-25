@@ -311,6 +311,12 @@ class BrowserNotePreview {
         if (session.disposed || this._disposed || generation !== session.generation) throw new Error('Audio backend selection was cancelled.');
         return this._registerInstrumentBackend(createSampleInstrumentBackend(this, id, options), id);
       },
+      preparePcmCue: async options => {
+        const generation = session.generation, context = this._context;
+        const { prepareOwnedPcmCue } = await import('./OwnedPcmCue.js');
+        if (workloadClass !== 'cue' || session.disposed || generation !== session.generation || context !== this._context) throw new Error('PCM cue preparation was canceled.');
+        return this._registerInstrumentBackend(await prepareOwnedPcmCue(this, id, options), id);
+      },
       configureLaneSources: laneIds => {
         if (!Array.isArray(laneIds) || laneIds.length > 1024 || laneIds.some(value => typeof value !== 'string' || !value || value.length > 160) || new Set(laneIds).size !== laneIds.length) throw new TypeError('Invalid lane source declaration.');
         if (session.disposed) throw new Error('The lane source session has retired.');

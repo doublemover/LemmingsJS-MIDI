@@ -1,6 +1,7 @@
 import { createPerformanceStageSession } from '../js/app/procgen/workstation/PerformanceStageSession.js';
 import { createInstalledPerformanceSceneCatalog } from '../js/app/procgen/workstation/PerformanceSceneInstalledCatalog.js';
 import { createPerformanceSceneWorldAdapter } from '../js/app/procgen/workstation/PerformanceSceneWorldAdapter.js';
+import { renderPerformanceSceneRehearsal } from '../js/app/procgen/workstation/PerformanceSceneRehearsalRender.js';
 import { verifyPerformanceSceneOrigin } from '../js/app/procgen/workstation/PerformanceSceneRecipe.js';
 import { createProcgenWorkstationProject } from '../js/app/procgen/workstation/ProcgenWorkstationProject.js';
 import { describeNativeInstrumentEngines } from '../js/app/midi-ui/NativeInstrumentSchema.js';
@@ -107,12 +108,26 @@ describe('installed crossing scores and the existing world candidate adapter', (
         return { world, isCurrent: () => !published && !retired, commit({ isCurrent }) { isCurrent(); published = true; }, retire() { retired = true; if (!published) world.dispose(); return { outcome: 'complete' }; } }; } });
     const proof = await checkPerformanceSceneRequirements(value, { resolveDependency: f.library.resolveDependency }), candidate = await adapter({ scene: value, preflight: proof, baseIdentity: 'doc:1', isCurrent: () => true });
     expect(world.tickIndex).to.equal(0); expect(published).to.equal(false); expect(candidate.admission.sourcePools['worklet-sine']).to.equal(value.cost.maximumVoices); expect(recipe.project.procgen.sceneOrigin.sceneHash).to.equal(proof.sceneHash);
+    const source = await candidate.borrowRehearsalCheckpoint(); expect(source.sourceTick).to.equal(0); expect(world.tickIndex).to.equal(0); expect(source.checkpoint.seed).to.equal(value.seed);
+    expect(() => candidate.commit({ policy: 'stopped-replacement', isCurrent: () => true })).to.throw('readers'); source.release(); expect(() => source.checkpoint).to.throw('retired');
     let fenced = false; const receipt = candidate.commit({ policy: 'stopped-replacement', isCurrent: () => { fenced = true; return true; } }); expect(fenced).to.equal(true); expect(published).to.equal(true); expect(receipt.transportPlaying).to.equal(false);
     const retirement = candidate.retire(); await retirement.completion; expect(retirement.outcome).to.equal('complete'); expect(budget.diagnostics().accountedBytes).to.equal(0); world.dispose();
   });
   it('keeps source-build mismatch unavailable instead of converting the score silently', async () => {
     const f = await installed(), value = f.library.registry.resolve(f.library.registry.page().rows[0]), origin = await f.library.origin(value); let error;
     try { await verifyPerformanceSceneOrigin(origin, { sourceHash: h('c') }); } catch (caught) { error = caught; } expect(error.code).to.equal('invalid-scene-score-recipe');
+  });
+  it('normalizes a frozen saved manifest without mutating the caller', async () => {
+    const value = await scene(), before = JSON.stringify(value), normalized = validatePerformanceScene(value);
+    expect(JSON.stringify(value)).to.equal(before); expect(normalized.initialTransport.clockSource).to.equal('internal'); expect(Object.isFrozen(normalized.causalMappings)).to.equal(true);
+  });
+  it('renders no onset from an empty private source and preserves the authored per-lane mix receipt', async () => {
+    const f = await installed(), value = f.library.registry.resolve(f.library.registry.page().rows[0]), catalog = await f.getCatalog(), sceneHash = await performanceSceneHash(value);
+    const source = { schema: 'lemmings-scene-rehearsal-source/v1', sceneHash, initialTick: 0, ticks: 1, sourceTimeMs: 0, durationSeconds: 0.08, worldId: 'private-scene-world', generation: 0, seed: value.seed, intents: [] };
+    const result = await renderPerformanceSceneRehearsal({ scene: value, sceneHash, source, sampleRate: 48000 }, { descriptors: catalog.descriptors, buildId: value.sourceVersion.hash, yieldControl: async () => {} });
+    expect(result.manifest.statistics.peak).to.equal(0); expect(result.manifest.lanes.every(lane => lane.begins === 0)).to.equal(true); expect(result.manifest.nextWorldAdvanced).to.equal(false); expect(result.manifest.historicalPerformanceEvidence).to.equal(false);
+    expect(result.manifest.lanes.map(lane => lane.mix.pan)).to.deep.equal(value.mix.map(lane => lane.pan / 127)); expect(result.manifest.sourceHash).to.equal(await hashData(source));
+    let error; try { await renderPerformanceSceneRehearsal({ scene: value, sceneHash, source, sampleRate: 48000 }, { descriptors: catalog.descriptors, buildId: h('d') }); } catch (caught) { error = caught; } expect(error.code).to.equal('scene-rehearsal-render-unavailable');
   });
 });
 

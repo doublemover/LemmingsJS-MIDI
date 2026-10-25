@@ -4558,3 +4558,48 @@ remain unrun; formatting/syntax/provenance and the critical typecheck are the on
 checks in this development pass. Named physical lessons, route-driven pickup
 weighting, measured spectral contrasts, listening and device qualification remain
 pending.
+
+
+### Continuation 190 — private physical scene rehearsal (#1151, #1187, #1175)
+
+The staged scene candidate lends one cooperatively captured, admitted checkpoint
+while remaining at tick zero. Commit declines while a reader is owned; candidate
+retirement cancels and joins capture before retiring world assets. A separate
+asset-backed inspection world restores that checkpoint, observes every actual
+physical batch for six source-clock seconds, and retains bounded causal intents.
+Incomplete observations, onset rejection, stale document/source/route identity,
+unsupported assets/shared bodies or capacity exhaustion decline the rehearsal.
+CURRENT and NEXT are never stepped by that simulation.
+
+One admitted worker renders the pinned lane definitions sequentially and mixes
+those actual source realizations with the scene's static gain, stereo pan,
+mute and solo values. Each lane retains its exact definition, source trace,
+intent and PCM hashes. The single cue WAV reports its new private source,
+bounded boundary release and pending independent render/listening qualification;
+it is not a historical take or an acoustic receipt. Source copying, the private
+world, interpretation, render result and native playback buffer have separate
+budget and retirement ownership.
+
+Rendered PCM now has an ordinary cue-session adapter: bounded complete Float32
+WAV parsing, PCM digest verification, cooperative native-buffer copying, one
+source-quota admission and short explicit edge fades. It participates in shared
+foreground audition, source handoff, Stop/Panic, session disposal and unknown
+native ownership retention. The chosen monitor route is preserved. Rehearsal on
+live output is truthfully included in master capture; a separate-device route
+is excluded. Explicit audio and Prelisten setup precede scene rehearsal.
+The browser exposes preparation, playback/source details and Stop rehearsal;
+normal paused scene publication still uses the existing candidate fence.
+
+The scene audit also fixes canonical normalization trying to mutate a frozen
+copy. A shared lightweight background-job contract replaces divergent kernel
+and admission lists: shape foundry, seed analysis/decomposition/modal fitting
+and scene rehearsal now have actual worker admission and require workers even
+when their request envelopes are small. Heavy work cannot silently use the
+bounded main-thread fallback.
+
+Ownership, malformed wave, cancellation/fence, private-reader, empty-source
+silence and worker-admission fixtures are authored but unrun. Development stays
+frontloaded; only formatting, syntax, provenance and limited critical typecheck
+checks are used here. Named authored layouts, thumbnails, sampled/shared-body
+scene materialization, full browser acceptance and listening/device evidence
+remain pending.

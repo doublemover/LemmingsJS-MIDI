@@ -5,17 +5,20 @@ import { resolveSoundContentReference } from '../../../midi/content/SoundContent
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 import { freezeData, canonicalDataText } from '../../../core/CanonicalData.js';
+import { captureProcgenCheckpointCooperative } from './ProcgenCheckpoint.js';
 
 const failure = (code, message) => Object.assign(new Error(message), { name: 'PerformanceSceneError', code });
 export function createPerformanceSceneWorldAdapter({ getCatalog, getOrigin, prepareWorld, resourceBudget } = {}) {
   if (typeof getCatalog !== 'function' || typeof getOrigin !== 'function' || typeof prepareWorld !== 'function' || !resourceBudget) throw new TypeError('Scene world preparation needs the installed score, catalog and existing world budget owners.');
   return async ({ scene, preflight, baseIdentity, signal, isCurrent, onPhase = () => {} }) => {
-    let world = null, workspace = null; const retirement = createProcgenRetirementScope();
+    let world = null, workspace = null; const retirement = createProcgenRetirementScope(), rehearsalReads = new Set(), rehearsalLoans = new Set();
     const check = () => { signal?.throwIfAborted(); if (!isCurrent()) throw failure('stale-scene-operation', 'The scene candidate or document changed.'); };
     const retire = () => {
-      let worldRetirement;
-      return retirement.retire([{ name: 'prepared-world', run: () => worldRetirement = world?.retire() },
-        { name: 'scene-plan', run: async () => { if (worldRetirement?.completion) await worldRetirement.completion; if (worldRetirement && worldRetirement.outcome !== 'complete') throw failure('scene-retirement-unknown', 'Prepared world retirement is unresolved.'); workspace?.release(); } }]);
+      if (retirement.getReceipt()) return retirement.getReceipt();
+      const reads = [...rehearsalReads]; for (const read of reads) read.controller.abort(failure('scene-retired', 'The prepared scene retired during rehearsal capture.'));
+      const worldRetirement = Promise.allSettled(reads.map(read => read.promise)).then(async () => { const receipt = world?.retire(); if (receipt?.completion) await receipt.completion; if (receipt && receipt.outcome !== 'complete') throw failure('scene-retirement-unknown', 'Prepared world retirement is unresolved.'); });
+      return retirement.retire([{ name: 'prepared-world', run: () => worldRetirement },
+        { name: 'scene-plan', run: async () => { await worldRetirement; if (rehearsalLoans.size) throw failure('scene-checkpoint-reader-unknown', 'A rehearsal checkpoint reader still owns its admitted snapshot.'); workspace?.release(); } }]);
     };
     try {
       check(); workspace = createOwnedResourceReservation({ budget: resourceBudget, owner: 'performance-scene:' + preflight.sceneHash, kind: 'scene-plan', bytes: 2 * 1048576 });
@@ -44,8 +47,22 @@ export function createPerformanceSceneWorldAdapter({ getCatalog, getOrigin, prep
       onPhase('world-geometry'); if (canonicalDataText(world.world.physicalAuthoring?.graph).text !== canonicalDataText(scene.causalMappings).text) throw failure('scene-mapping-unbound', 'The candidate recovery anchor must already own the exact prepared physical mapping.'); check(); onPhase('resource-admission');
       return Object.freeze({ sceneHash: preflight.sceneHash, variants: preflight.variants, baseIdentity,
         admission: freezeData({ status: 'admitted', world: true, sound: true, mapping: true, sourcePools: Object.fromEntries(pools), soundPreparation: 'pinned-definition-and-pool-preflight;audio-context-enable-remains-explicit' }),
+        async borrowRehearsalCheckpoint({ signal: readSignal, isCurrent: readCurrent = () => true } = {}) {
+          check(); readSignal?.throwIfAborted(); if (!world.isCurrent() || world.world.tickIndex !== 0 || rehearsalReads.size || rehearsalLoans.size || retirement.getReceipt()) throw failure('scene-preview-capacity', 'One unadvanced scene checkpoint reader may be owned at a time.');
+          const read = { controller: new AbortController(), promise: null }, reservation = createOwnedResourceReservation({ budget: resourceBudget, owner: 'scene-rehearsal:' + preflight.sceneHash, kind: 'cooperative-scene-checkpoint-copy-and-encoding-estimate', bytes: 64 * 1048576 });
+          const abort = () => read.controller.abort(readSignal.reason); readSignal?.addEventListener('abort', abort, { once: true }); if (readSignal?.aborted) abort(); rehearsalReads.add(read);
+          let released = false, checkpoint = null;
+          const lease = Object.freeze({ sceneHash: preflight.sceneHash, sourceTick: 0, get checkpoint() { if (released || !checkpoint) throw failure('scene-preview-source-retired', 'The rehearsal checkpoint loan has retired.'); return checkpoint; },
+            release() { if (released) return false; reservation.release(); released = true; checkpoint = null; rehearsalLoans.delete(lease); return true; } });
+          read.promise = (async () => {
+            try { checkpoint = await captureProcgenCheckpointCooperative(world.world, { signal: read.controller.signal, maxGraphBytes: 16 * 1048576, isCurrent: () => !retirement.getReceipt() && world.isCurrent() && world.world.tickIndex === 0 && readCurrent() });
+              check(); read.controller.signal.throwIfAborted(); if (!readCurrent()) throw failure('stale-scene-preview', 'The rehearsal target changed during snapshot capture.'); rehearsalLoans.add(lease); return lease;
+            } catch (error) { try { reservation.release(); released = true; checkpoint = null; } catch (releaseError) { rehearsalLoans.add({ reservation, checkpoint, error: releaseError }); error.retirementError = releaseError; } throw error; }
+            finally { readSignal?.removeEventListener('abort', abort); rehearsalReads.delete(read); }
+          })(); return read.promise;
+        },
         commit({ isCurrent: fence, policy }) {
-          check(); if (policy !== 'stopped-replacement' || !world.isCurrent()) throw failure('scene-transition-unavailable', 'Prepare a current stopped-replacement candidate.');
+          check(); if (policy !== 'stopped-replacement' || !world.isCurrent() || rehearsalReads.size || rehearsalLoans.size) throw failure('scene-transition-unavailable', 'Prepare a current stopped-replacement candidate and retire its rehearsal readers.');
           world.commit({ isCurrent: () => { check(); return fence(); } });
           return freezeData({ schema: 'lemmings-performance-scene-transition/v1', status: 'committed', sceneHash: preflight.sceneHash, baseIdentity, policy,
             transportPlaying: false, externalOutputEnabledByScene: false, recordingArmedByScene: false, localAudioEnabledByScene: false, sourcePools: Object.fromEntries(pools) });

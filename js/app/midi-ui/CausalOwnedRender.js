@@ -43,7 +43,7 @@ const frequencyFor = (pitch, offset, rate, sample = false) => {
 };
 const digest = async bytes => [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(byte => byte.toString(16).padStart(2, '0')).join('');
 const ascii = (view, at, value) => { for (let index = 0; index < value.length; index++) view.setUint8(at + index, value.charCodeAt(index)); };
-const encodeWav = (pcm, frames, rate, manifest) => {
+export const encodeCausalRenderWave = (pcm, frames, rate, manifest) => {
   const metadata = canonicalDataText(manifest, { maxBytes: 262144, maxNodes: 32768 }).bytes, padded = metadata.length + metadata.length % 2;
   const length = 64 + pcm.byteLength + padded;
   if (!natural(length) || length - 8 > 0xffffffff || pcm.byteLength !== frames * 8) throw failure('wav-capacity', 'This render exceeds the classic stereo RIFF limit.');
@@ -422,7 +422,7 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
     const lane = index > 0 && index <= stemLaneIds.length, returnNodeId = index > stemLaneIds.length ? plan.effectReturnNodeIds[index - 1 - stemLaneIds.length] : null;
     signal?.throwIfAborted(); const { squares, ...stats } = statistics[index], manifest = { ...common, tap: lane ? 'captured-lane-dry' : returnNodeId ? 'shared-effect-node-output' : effects ? 'complete-owned-effect-graph-pre-master' : plan.owned.id === 'worklet-sine' ? 'complete-sine-graph-pre-master' : 'complete-owned-source-graph-pre-master',
       laneId: lane ? stemLaneIds[index - 1] : null, returnNodeId, pcmHash: await digest(pcm[index]), statistics: { ...stats, rms: Math.sqrt(squares / (outputFrames * 2)) } };
-    signal?.throwIfAborted(); files.push({ name: lane ? 'lane-' + index : returnNodeId ? 'effect-' + returnNodeId : 'master', bytes: encodeWav(pcm[index], outputFrames, sampleRate, manifest), manifest });
+    signal?.throwIfAborted(); files.push({ name: lane ? 'lane-' + index : returnNodeId ? 'effect-' + returnNodeId : 'master', bytes: encodeCausalRenderWave(pcm[index], outputFrames, sampleRate, manifest), manifest });
   }
   return { manifest: common, files };
 }

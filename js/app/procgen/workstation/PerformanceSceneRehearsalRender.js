@@ -1,0 +1,55 @@
+import { canonicalDataText, hashData, freezeData, cloneData } from '../../../core/CanonicalData.js';
+import { validateSoundContentReference } from '../../../midi/content/SoundContentReference.js';
+import { renderCausalOwnedTake, encodeCausalRenderWave } from '../../midi-ui/CausalOwnedRender.js';
+import { createLaneMixState } from './LaneMixState.js';
+
+const failure = message => Object.assign(new Error(message), { name: 'PerformanceSceneError', code: 'scene-rehearsal-render-unavailable' });
+const digest = async bytes => [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(value => value.toString(16).padStart(2, '0')).join('');
+export async function renderPerformanceSceneRehearsal(input, { descriptors, buildId, signal, isCurrent = () => true, yieldControl = () => new Promise(resolve => setTimeout(resolve, 0)), maxWorkingBytes = 128 * 1048576 } = {}) {
+  const check = () => { signal?.throwIfAborted(); if (!isCurrent()) throw failure('The rehearsal execution changed.'); };
+  check(); const scene = cloneData(input?.scene, { maxBytes: 1048576, maxNodes: 65536 }), source = input?.source, rate = input?.sampleRate;
+  if (!scene || scene.schema !== 'lemmings-performance-scene/v1' || !Number.isSafeInteger(scene.cost?.lanes) || scene.cost.lanes < 1 || scene.cost.lanes > 8 || scene.cost.sharedBodies !== 0 ||
+      !Array.isArray(scene.patchRefs) || scene.patchRefs.length !== scene.cost.lanes || !Array.isArray(scene.mix) || scene.mix.length !== scene.cost.lanes || !Number.isSafeInteger(scene.cost.maximumVoices) || scene.cost.maximumVoices < 1 || scene.cost.maximumVoices > 64 ||
+      new Set(scene.patchRefs.map(row => row?.laneId)).size !== scene.cost.lanes || scene.patchRefs.some(row => typeof row?.laneId !== 'string' || !row.laneId.length || row.laneId.length > 128) ||
+      scene.mix.some(row => !scene.patchRefs.some(patch => patch.laneId === row?.laneId) || typeof row.mute !== 'boolean' || typeof row.solo !== 'boolean') ||
+      Object.keys(input).some(key => !['scene', 'sceneHash', 'source', 'sampleRate'].includes(key)) || ![44100, 48000, 96000].includes(rate) ||
+      scene.sourceVersion?.hash !== buildId || await hashData(scene, { maxBytes: 1048576, maxNodes: 65536 }) !== input.sceneHash || source?.schema !== 'lemmings-scene-rehearsal-source/v1' || source.sceneHash !== input.sceneHash || source.initialTick !== 0 ||
+      source.seed !== scene.seed || !Number.isFinite(source.sourceTimeMs) || source.sourceTimeMs < 0 || typeof source.worldId !== 'string' || !source.worldId.length || source.worldId.length > 256 || !Number.isSafeInteger(source.generation) || source.generation < 0 ||
+      !Array.isArray(source.intents) || source.intents.length > 8192 || !Number.isSafeInteger(source.ticks) || source.ticks < 1 || source.ticks > 512 || !Number.isFinite(source.durationSeconds) || source.durationSeconds <= 0 || source.durationSeconds > 6.1 ||
+      source.intents.some(intent => !Number.isSafeInteger(intent.laneId) || intent.laneId < 0 || intent.laneId >= scene.cost.lanes || intent.route !== 'local') ||
+      !Number.isSafeInteger(maxWorkingBytes) || maxWorkingBytes < 64 * 1048576) throw failure('This rehearsal needs an exact installed scene, a bounded complete private source and at most eight assetless lanes.');
+  const sourceHash = await hashData(source, { maxBytes: 8 * 1048576, maxNodes: 524288 }), mix = createLaneMixState(); check(); mix.synchronize(scene.mix.map(row => ({ ...row, id: row.laneId })));
+  const frames = Math.ceil((source.durationSeconds + 0.5) * rate), left = new Float64Array(frames), right = new Float64Array(frames), lanes = []; let outputFrames = 0;
+  for (let index = 0; index < scene.patchRefs.length; index++) {
+    check(); const row = scene.patchRefs[index], reference = validateSoundContentReference(row.reference), descriptor = descriptors.find(value => value.engineId === reference.engineRequirement.engineId), state = mix.mix(row.laneId);
+    if (!descriptor || !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => descriptor[key] === reference.engineRequirement[key]) || reference.assetHashes.length || await hashData(reference.definition) !== reference.definitionHash) throw failure('The rehearsal patch differs from its exact assetless executing definition.');
+    const intents = source.intents.filter(intent => intent.laneId === index), laneHash = await hashData({ sceneHash: input.sceneHash, sourceHash, laneId: row.laneId, intents }, { maxBytes: 8 * 1048576, maxNodes: 524288 }); check();
+    const revoice = { operation: 'sound-only-revoice', version: 1, takeId: 'scene-rehearsal:' + input.sceneHash + ':' + row.laneId, takeRevision: 1, sourceCanonicalHash: laneHash, sourceState: 'finalized', coverage: { status: 'known-covered' },
+      boundary: { status: 'captured-initial-state', state: { sourceTimeMs: source.sourceTimeMs, voices: [] } }, finalBoundaryState: { sourceTimeMs: source.sourceTimeMs + source.durationSeconds * 1000 },
+      sourceVersions: { applicationBuildId: buildId, sceneHash: input.sceneHash, rehearsalSourceHash: sourceHash }, intents };
+    const result = await renderCausalOwnedTake({ revoice, definition: reference.definition, descriptor, applicationBuildId: buildId, sampleRate: rate, startSeconds: 0, endSeconds: source.durationSeconds,
+      tail: { mode: 'boundary-release', maxSeconds: 0.5 }, stemLaneIds: [] }, { signal, yieldControl, maxWorkingBytes: maxWorkingBytes - frames * 16 - 4 * 1048576 }); check();
+    const file = result.files[0], count = file?.manifest.frames;
+    if (result.files.length !== 1 || !Number.isSafeInteger(count) || count < 1 || count > frames || file.manifest.sampleRate !== rate || file.bytes.byteLength < 64 + count * 8) throw failure('A lane render exceeded its declared cue layout.');
+    const view = new DataView(file.bytes.buffer, file.bytes.byteOffset, file.bytes.byteLength);
+    if (view.getUint32(52, true) !== count * 8) throw failure('The owned lane WAV layout changed.');
+    const pan = state.pan, angle = (pan <= 0 ? pan + 1 : pan) * Math.PI / 2, c = Math.cos(angle), s = Math.sin(angle);
+    for (let first = 0; first < count; first += 16384) {
+      check(); const end = Math.min(count, first + 16384);
+      for (let frame = first; frame < end; frame++) { const l = view.getFloat32(56 + frame * 8, true), r = view.getFloat32(60 + frame * 8, true);
+        left[frame] += state.gain * (pan <= 0 ? l + r * c : l * c); right[frame] += state.gain * (pan <= 0 ? r * s : r + l * s); }
+      await yieldControl();
+    }
+    outputFrames = Math.max(outputFrames, count); lanes.push({ laneId: row.laneId, sourceIndex: index, patchDefinitionHash: reference.definitionHash, sourceCanonicalHash: laneHash, intentHash: file.manifest.intentHash,
+      begins: intents.filter(intent => intent.kind === 'begin').length, mix: state, frames: count, sourcePcmHash: file.manifest.pcmHash, tail: file.manifest.tail });
+  }
+  const pcm = new Uint8Array(outputFrames * 8), view = new DataView(pcm.buffer); let peak = 0, squares = 0;
+  for (let first = 0; first < outputFrames; first += 16384) { check(); const end = Math.min(outputFrames, first + 16384);
+    for (let frame = first; frame < end; frame++) { const l = Math.fround(left[frame]), r = Math.fround(right[frame]); if (!Number.isFinite(l) || !Number.isFinite(r)) throw failure('Scene mix produced non-finite PCM.');
+      view.setFloat32(frame * 8, l, true); view.setFloat32(frame * 8 + 4, r, true); peak = Math.max(peak, Math.abs(l), Math.abs(r)); squares += l * l + r * r; } await yieldControl(); }
+  const manifest = freezeData({ schema: 'lemmings-scene-rehearsal-render/v1', sceneHash: input.sceneHash, sourceHash, applicationBuildId: buildId, initialTick: 0, ticks: source.ticks, sourceDurationSeconds: source.durationSeconds,
+    sampleRate: rate, frames: outputFrames, channels: 2, sampleFormat: 'ieee-float32-le', pcmHash: await digest(pcm), lanes, statistics: { peak, rms: Math.sqrt(squares / (outputFrames * 2)) },
+    scope: 'new-private-world-source-render;authored-static-lane-gain-and-stereo-pan;half-second-boundary-release', currentWorldAdvanced: false, nextWorldAdvanced: false, externalOutput: false,
+    historicalPerformanceEvidence: false, acousticReceipt: false, renderQualification: 'not-independently-qualified' }); check();
+  canonicalDataText(manifest, { maxBytes: 262144 }); return { bytes: encodeCausalRenderWave(pcm, outputFrames, rate, manifest), manifest };
+}

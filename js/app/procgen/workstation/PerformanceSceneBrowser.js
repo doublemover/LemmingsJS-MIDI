@@ -5,7 +5,7 @@ export function createPerformanceSceneBrowser({ document, window, registry, load
   const listeners = [], rowListeners = [], retirement = createProcgenRetirementScope(); let disposed = false, selection = null, selectedManifest = null, page = null, offset = 0, opener = null, busy = false;
   const node = (tag, text) => { const value = document.createElement(tag); if (text != null) value.textContent = text; return value; };
   const listen = (target, event, handler, rows = false) => { target.addEventListener(event, handler); (rows ? rowListeners : listeners).push(() => target.removeEventListener(event, handler)); };
-  const dialog = node('dialog'), title = node('h2', 'Playable physical scores'), live = node('p'), qualification = node('p', 'Select to inspect. Prepare builds a separate candidate; Load fresh replaces the world and sound and leaves transport paused. Audio enable and physical interventions remain deliberate actions. Starting-world thumbnails and isolated local rehearsal are not yet qualified for these scores.');
+  const dialog = node('dialog'), title = node('h2', 'Playable physical scores'), live = node('p'), qualification = node('p', 'Prepare builds a separate candidate; Load fresh replaces the world and sound and leaves transport paused. Rehearse renders six seconds of actual private-world traffic through the selected Prelisten route. CURRENT and NEXT stay unchanged. Rehearsal on live output is included in master capture; a separate-device cue is excluded. Render and listening qualification remain pending.');
   title.id = 'performanceSceneTitle'; dialog.className = 'studio-dialog studio-scene-browser'; dialog.setAttribute('aria-labelledby', title.id);
   const filters = node('div'), search = node('input'); search.type = 'search'; search.setAttribute('aria-label', 'Search physical scores'); filters.append(search);
   const select = (label, entries) => { const wrapper = node('label', label), input = node('select'); input.setAttribute('aria-label', label); for (const [value, text] of entries) { const option = node('option', text); option.value = value; input.append(option); } wrapper.append(input); filters.append(wrapper); return input; };
@@ -55,7 +55,8 @@ export function createPerformanceSceneBrowser({ document, window, registry, load
   const pageLabel = node('output'); paging.append(pageLabel); const next = button(paging, 'Next scores', () => { if (page.nextOffset !== null) { offset = page.nextOffset; renderPage(); } });
   const prepare = button(actions, 'Prepare fresh', run(async () => { if (!selectedManifest) return; loader.select(selectedManifest); const result = await loader.prepare(); say(result.status === 'ready' ? 'Candidate ready. Inspect the changed scope, then use Load fresh.' : 'Required source or capabilities are unavailable. The live world remains active.'); }));
   const load = button(actions, 'Load fresh · stopped replacement', run(async () => { const result = await loader.apply(); say(result.status === 'committed' ? 'Scene loaded paused. Enable local audio explicitly, then perform a real physical intervention.' : 'Scene replacement canceled.'); }));
-  const rehearse = button(actions, 'Rehearse locally', run(() => loader.rehearse())); rehearse.disabled = true; rehearse.title = 'An independently owned local scene audition adapter is not available yet.';
+  const rehearse = button(actions, 'Rehearse locally', run(() => loader.rehearse())); rehearse.disabled = true; rehearse.title = 'Enable browser audio and select a Prelisten route first. This creates a new private physical phrase, not a recording of CURRENT.';
+  const stopRehearsal = button(actions, 'Stop rehearsal', () => { void loader.stopPreview().catch(error => say(error.message)); });
   button(actions, 'Cancel preparation', () => { void loader.cancel().catch(error => say(error.message)); });
   button(actions, 'Open saved takes', run(async () => { await loader.cancel(); if (dialog.open) dialog.close(); await onSavedTakes(); }));
   const close = async () => { if (dialog.open) dialog.close(); if (keepPreparedOnClose() && loader.state().canApply) await loader.stopPreview(); else await loader.cancel(); opener?.focus?.(); };
@@ -65,9 +66,10 @@ export function createPerformanceSceneBrowser({ document, window, registry, load
   function refresh() {
     if (disposed) return; const state = loader.state(), active = getLiveScene(); live.textContent = 'LIVE · ' + (active?.title || 'Current physical world');
     prepare.disabled = busy || !selectedManifest || state.retirementUnknown || state.disposed; load.disabled = busy || !state.prepared || state.phase !== 'ready' || !state.canApply;
-    rehearse.disabled = busy || !state.previewAvailable || !state.canApply;
+    rehearse.disabled = busy || !state.previewAvailable || !state.canApply || !!state.preview; stopRehearsal.disabled = !state.preview;
     if (state.error) status.textContent = state.error.message;
     else if (state.pending || ['world-source', 'world-assets', 'world-geometry', 'sound-assets', 'sound-compile', 'resource-admission'].includes(state.phase)) status.textContent = 'Preparing: ' + state.phase + '. Live world retained.';
+    else if (state.preview) status.textContent = state.preview.state === 'preparing' ? 'Rehearsal: capturing a bounded checkpoint, simulating a private world and rendering its observed intents. CURRENT and NEXT stay unchanged.' : (state.preview.playing ? 'Playing private rehearsal' : 'Rehearsal ended') + ' · ' + state.preview.ticks + ' observed ticks · ' + (state.preview.cueIncludedInMasterCapture ? 'live output; included in master capture.' : 'separate-device cue; excluded from master capture.') + ' Stop rehearsal releases its prepared preview.';
     else if (state.prepared) status.textContent = 'Ready: replaces world, sound and physical mappings; transport will be paused. Local audio and recording are not enabled by the scene.';
     const proof = state.prepared?.preflight;
     if (proof?.missingOptional.length) status.textContent += ' Optional unavailable: ' + proof.missingOptional.map(entry => entry.dependency.description).join(', ');

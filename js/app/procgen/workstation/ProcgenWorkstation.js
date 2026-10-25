@@ -1153,14 +1153,15 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (disposed) return;
     if (!sceneBrowser) {
       sceneToolsPending ||= (async () => {
-        const [installed, loading, adapter, browsing, audio] = await Promise.all([
-          import('./PerformanceSceneInstalledCatalog.js'), import('./PerformanceSceneLoader.js'), import('./PerformanceSceneWorldAdapter.js'), import('./PerformanceSceneBrowser.js'), import('../../midi-ui/NativeInstrumentSchema.js')
+        const [installed, loading, adapter, browsing, audio, rehearsal] = await Promise.all([
+          import('./PerformanceSceneInstalledCatalog.js'), import('./PerformanceSceneLoader.js'), import('./PerformanceSceneWorldAdapter.js'), import('./PerformanceSceneBrowser.js'), import('../../midi-ui/NativeInstrumentSchema.js'), import('./PerformanceSceneRehearsal.js')
         ]);
         if (disposed) return;
         const getCatalog = getInstrumentCatalog || audio.getNativeInstrumentCatalog;
         sceneCatalog = await installed.createInstalledPerformanceSceneCatalog({ getCatalog }); if (disposed) return;
         sceneLoader = loading.createPerformanceSceneLoader({ getBaseIdentity: sceneBaseIdentity, resolveDependency: sceneCatalog.resolveDependency,
           prepareCandidate: typeof prepareSceneWorld === 'function' ? adapter.createPerformanceSceneWorldAdapter({ getCatalog, getOrigin: (scene, variants) => sceneCatalog.origin(scene, variants), prepareWorld: prepareSceneWorld, resourceBudget }) : async () => { throw new Error('This host does not provide staged world publication.'); },
+          preparePreview: typeof prepareInspectionWorld === 'function' && legacy.local.audio && resourceBudget ? rehearsal.createPerformanceSceneRehearsal({ audio: legacy.local.audio, prepareInspectionWorld, jobs: backgroundJobs, resourceBudget }) : null,
           beforeCommit: async ({ scene }) => editRevision === savedRevision || window.confirm?.('Replace this edited world with ' + scene.title + '? The prepared scene changes the world, sound and physical mappings, and starts paused. Save the current project first to keep it.' ) === true,
           onState: refreshSceneCue });
         sceneBrowser = browsing.createPerformanceSceneBrowser({ document, window, registry: sceneCatalog.registry, loader: sceneLoader,

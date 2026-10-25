@@ -1,4 +1,4 @@
-import { cloneData, freezeData, hashData } from '../../../core/CanonicalData.js';
+import { cloneData, freezeData, hashData, canonicalDataText } from '../../../core/CanonicalData.js';
 import { validateSoundContentReference } from '../../../midi/content/SoundContentReference.js';
 import { validateCausalInstrumentGraph } from './CausalMusicEngine.js';
 
@@ -17,7 +17,7 @@ const requirement = value => keys(value, ['id', 'kind', 'revision', 'hash', 'des
 export const sceneDependencyKey = value => [value.kind, value.id, value.revision, value.hash].join(':');
 
 export function validatePerformanceScene(raw) {
-  const scene = cloneData(raw, limits);
+  const scene = JSON.parse(canonicalDataText(raw, limits).text);
   if (!keys(scene, ['schema', 'id', 'version', 'title', 'description', 'sourceVersion', 'worldRecipeRef', 'seed', 'physicalControls', 'causalMappings', 'patchRefs', 'mix', 'initialTransport', 'tutorialRef', 'expectedLandmarks', 'requirements', 'credits', 'cost', 'mechanisms', 'lessonLevel', 'density', 'parent']) || scene.schema !== PERFORMANCE_SCENE_SCHEMA || !id(scene.id) || !integer(scene.version, 1, 2147483647) || !text(scene.title, 160) || !text(scene.description, 2048) || !reference(scene.sourceVersion) || !reference(scene.worldRecipeRef) || !integer(scene.seed, 0, 0xffffffff)) fail('Scene identity, source or physical score recipe is invalid.');
   if (!Array.isArray(scene.physicalControls) || scene.physicalControls.length > 4) fail('A scene exposes at most four authored controls.');
   const controls = new Set();

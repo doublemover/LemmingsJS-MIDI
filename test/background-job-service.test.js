@@ -9,6 +9,11 @@ const rejects = async (work, text) => { let error; try { await work; } catch (fa
 describe('owned pure background computations', () => {
   const specification = extra => ({ kind: 'parse-json', ownerId: 'import', ownerEpoch: 1, sourceRevision: 'doc:1', inputBytes: 100,
     estimatedPeakBytes: 1048576, prepareInput: () => '{"value":12}', ...extra });
+  for (const kind of ['solve-shape-body', 'build-shape-body-content', 'render-shape-body-calibration', 'fit-sound-seed-modes', 'decompose-sound-seed', 'analyze-sound-seed-window', 'render-scene-rehearsal']) it('requires an admitted worker for ' + kind + ' even with a small request envelope', async () => {
+    const jobs = createBackgroundJobService({ Worker: null }); let produced = false;
+    const error = await rejects(jobs.compute(specification({ kind, inputBytes: 1, prepareInput: () => { produced = true; return {}; } })), 'requires its admitted worker');
+    expect(error.code).to.equal('worker-required'); expect(produced).to.equal(false); jobs.dispose();
+  });
   it('exposes actual input-producer quiescence after cancellation, including a frozen cancellation reason', async () => {
     const admission = createBackgroundWorkerAdmission(), jobs = createBackgroundJobService({ admission, Worker: null });
     let accepted, releaseInput, retired = 0;

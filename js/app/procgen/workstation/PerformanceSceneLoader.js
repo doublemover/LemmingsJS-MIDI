@@ -15,7 +15,8 @@ export function createPerformanceSceneLoader({ getBaseIdentity, resolveDependenc
   let serial = 0, selected = null, pending = null, prepared = null, preview = null, retirement = Promise.resolve(), fault = null, disposed = false, phase = 'idle', lastError = null, current = null;
   const state = () => { let canApply = false; try { canApply = !!prepared && !pending && !disposed && !fault && selected?.serial === prepared.operation.serial && getBaseIdentity() === prepared.baseIdentity; } catch {} return freezeData({ schema: 'lemmings-performance-scene-loader/v1', phase, disposed, selection: selected ? { id: selected.scene.id, version: selected.scene.version, title: selected.scene.title, variants: selected.variants } : null,
     current, canApply, previewAvailable: preparePreview !== null, pending: !!pending, prepared: prepared ? { preflight: prepared.preflight, baseIdentity: prepared.baseIdentity, policy: 'stopped-replacement', changedScope: ['world', 'sound', 'physical-mappings', 'transport-paused'] } : null,
-    preview: preview ? { state: preview.ready ? 'isolated-local' : 'preparing', sceneHash: preview.sceneHash } : null, error: lastError, retirementUnknown: !!fault }); };
+    preview: preview ? { state: preview.ready ? 'isolated-local' : 'preparing', sceneHash: preview.sceneHash, playing: preview.ready ? preview.owner?.state?.().playing ?? true : false,
+      sourceHash: preview.owner?.manifest?.sourceHash || null, ticks: preview.owner?.manifest?.ticks || null, cueIncludedInMasterCapture: preview.owner?.monitorRoute?.cueIncludedInMasterCapture ?? null } : null, error: lastError, retirementUnknown: !!fault }); };
   const report = () => { try { onState(state()); } catch { /* Observers cannot own a candidate. */ } };
   const baseIdentity = () => { const value = getBaseIdentity(); if (typeof value !== 'string' || !value || value.length > 4096) throw failure('scene-base-unavailable', 'The active document and routing identity is unavailable.'); return value; };
   const check = operation => { operation.controller.signal.throwIfAborted(); if (disposed || fault || selected?.serial !== operation.serial || baseIdentity() !== operation.baseIdentity) throw failure('stale-scene-operation', 'The selected scene, live document or output routing changed. Prepare again.'); };
@@ -79,7 +80,9 @@ export function createPerformanceSceneLoader({ getBaseIdentity, resolveDependenc
       try { candidate = await preparePreview({ candidate: source.candidate, scene: source.operation.scene, preflight: source.preflight, signal: operation.controller.signal, isCurrent: () => preview === operation && prepared === source && !disposed && !operation.controller.signal.aborted && baseIdentity() === source.baseIdentity });
         check(source.operation); operation.controller.signal.throwIfAborted();
         if (preview !== operation || prepared !== source || candidate?.routing !== 'isolated-local' || candidate?.externalOutput !== false || typeof candidate?.retire !== 'function') throw failure('scene-preview-unbound', 'Preview requires an independent local owner and explicit external-output isolation.');
-        operation.owner = candidate; candidate = null; operation.ready = true; report(); return state();
+        operation.owner = candidate; candidate = null; operation.ready = true;
+        operation.owner.completion?.then(receipt => { if (receipt?.outcome !== 'complete') { unresolved.add(operation.owner); fault ||= failure('scene-retirement-unknown', 'Rehearsal retirement remains unresolved.'); } if (preview === operation) report(); });
+        report(); return state();
       } finally { await retire(candidate); }
     })(); operation.promise.catch(() => {});
     try { return await operation.promise; } catch (error) { if (preview === operation) preview = null; report(); throw error; }
