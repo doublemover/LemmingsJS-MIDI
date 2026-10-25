@@ -1,3 +1,4 @@
+import { NATIVE_SOUND_COLLECTIONS } from '../procgen/workstation/NativeSoundCollections.js';
 import { NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineDriver.js';
 import { getOwnedSourceProfile, OWNED_SOURCE_IDS } from './OwnedSourceProfiles.js';
 import { getProceduralSoundMaterial } from '../../midi/content/ProceduralSoundMaterial.js';
@@ -13,14 +14,14 @@ import { readBrowserBuildResponse } from '../../runtime/BrowserGenerationService
 import { deliverArtifactToAnchor, requestExportFileHandle, deliverArtifactToFileHandle } from '../export/ExportArtifact.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 
-const FACTORY_SOURCE = new URL('../../../content/sounds/native.json', import.meta.url);
-const FM_FORGE_SOURCE = new URL('../../../content/sounds/fm-forge.json', import.meta.url);
-const MATERIAL_SOURCE = new URL('../../../content/sounds/struck-materials.json', import.meta.url);
-const PLUCK_SOURCE = new URL('../../../content/sounds/plucked-garden.json', import.meta.url);
-const CHOIR_SOURCE = new URL('../../../content/sounds/artificial-choir.json', import.meta.url);
+const FACTORY_SOURCE = NATIVE_SOUND_COLLECTIONS.find(entry => entry.id === 'native').source;
+const FM_FORGE_SOURCE = NATIVE_SOUND_COLLECTIONS.find(entry => entry.id === 'fm-forge').source;
+const MATERIAL_SOURCE = NATIVE_SOUND_COLLECTIONS.find(entry => entry.id === 'struck-materials').source;
+const PLUCK_SOURCE = NATIVE_SOUND_COLLECTIONS.find(entry => entry.id === 'plucked-garden').source;
+const CHOIR_SOURCE = NATIVE_SOUND_COLLECTIONS.find(entry => entry.id === 'artificial-choir').source;
 const BIOME_SOURCE = new URL('../../../content/sounds/granular-biomes.json', import.meta.url);
 const TACTILE_SOURCE = new URL('../../../content/sounds/tactile-contacts.json', import.meta.url);
-const SPECTRUM_SOURCE = new URL('../../../content/sounds/liquid-drawbars.json', import.meta.url);
+const SPECTRUM_SOURCE = NATIVE_SOUND_COLLECTIONS.find(entry => entry.id === 'liquid-drawbars').source;
 const failure = message => Object.assign(new Error(message), { name: 'SoundContentError' });
 
 export function createSoundContentLibrary({ document, window, audio, resourceBudget, jobs = backgroundJobService, onApply, onStatus = () => {}, monitor = null } = {}) {
@@ -142,8 +143,37 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     check(operation); installed = true; setStatus('Pack installed. Apply remains a separate command.'); }));
   const referenceInstall = button('Keep as reference', () => run(async operation => { await installation.install(stage, { referenceOnly: true, signal: operation.controller.signal, isCurrent: () => current === operation && !disposed });
     check(operation); installed = true; setStatus('Reference pack installed. Missing engines and material remain explicit requirements.'); }));
-  const apply = button('Apply to selected lane', () => run(async operation => { const candidate = installation.applyCandidate(stage, selection); check(operation);
-    await onApply(candidate, { signal: operation.controller.signal }); check(operation); setStatus('Instrument applied to the selected lane.'); }));
+  const apply = button('Apply to selected lane', () => {
+    if (current?.previewLease) {
+      try { current.previewLease.commit(); setStatus('Preview committed as one musical edit.'); }
+      catch (error) { setStatus(error.message); }
+      finally { current?.controller.abort(failure('Preview gesture finished.')); }
+      return;
+    }
+    return run(async operation => { const candidate = installation.applyCandidate(stage, selection); check(operation);
+      await onApply(candidate, { signal: operation.controller.signal }); check(operation); setStatus('Instrument applied to the selected lane.'); });
+  });
+  const hold = button('Hold to preview incoming events', () => {});
+  hold.setAttribute('aria-label', 'Hold Space, Enter or pointer to preview this instrument on incoming physical events; release to restore');
+  const releasePreview = () => { if (current?.mode === 'lane-preview') current.controller.abort(failure('Sound preview released.')); };
+  const startPreview = () => {
+    if (disposed || current || factoryFaults.size || !installed || !stage || !selection) return;
+    let candidate; try { candidate = installation.applyCandidate(stage, selection); } catch (error) { setStatus(error.message); return; }
+    const operation = { mode: 'lane-preview', controller: new AbortController(), sequence: ++sequence, previewLease: null }; current = operation;
+    const released = new Promise(resolve => operation.controller.signal.addEventListener('abort', resolve, { once: true }));
+    hold.setAttribute('aria-pressed', 'true'); render();
+    operation.promise = Promise.resolve().then(() => onApply(candidate, { signal: operation.controller.signal, hold: true })).then(async lease => {
+      operation.previewLease = lease; check(operation); render(); setStatus('Previewing current incoming events. Release restores the prior sound. Apply commits once; held voices retain their onset renderer.'); await released;
+    }).catch(error => { if (!operation.controller.signal.aborted) setStatus(error.message); }).finally(async () => {
+      const receipt = operation.previewLease?.cancel(); if (receipt?.completion) await receipt.completion;
+      if (current === operation) current = null; hold.setAttribute('aria-pressed', 'false'); render();
+    });
+  };
+  on(hold, 'pointerdown', event => { if (event.button !== 0) return; event.preventDefault(); hold.focus(); hold.setPointerCapture?.(event.pointerId); startPreview(); });
+  for (const event of ['pointerup', 'pointercancel', 'lostpointercapture', 'blur']) on(hold, event, releasePreview);
+  on(hold, 'keydown', event => { if (![' ', 'Enter'].includes(event.key)) return; event.preventDefault(); if (!event.repeat) startPreview(); });
+  on(hold, 'keyup', event => { if ([' ', 'Enter'].includes(event.key)) { event.preventDefault(); releasePreview(); } });
+  on(window, 'blur', releasePreview);
   const assetResponse = async (file, { signal }) => {
     const source = stage.borrow(); let encoded = null, assetReader = null, finished = false;
     const release = () => { if (!finished) { finished = true;
@@ -276,7 +306,8 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     audition.disabled = busy || !ready || !!plan?.missingReferences.length || !!plan?.unavailableEngines.length || !!plan?.missingAssetBytes.length && !installed && !localProceduralMaterial;
     originalSource.disabled = sourceRegion.disabled = audition.disabled || !sourceComparable;
     stop.disabled = !current; install.disabled = busy || !auditioned; referenceInstall.disabled = busy || !ready;
-    apply.disabled = busy || !installed || !auditioned; referenceExport.disabled = busy || !ready;
+    hold.disabled = busy && current?.mode !== 'lane-preview' || !installed || !auditioned;
+    apply.disabled = busy && !current?.previewLease || !installed || !auditioned; referenceExport.disabled = busy || !ready;
     portableExport.disabled = busy || !ready || plan.portability === 'reference-only' || !!plan.unavailableEngines.length;
     renderAudio.disabled = busy || !renderable || !!plan?.missingReferences.length || !!plan?.missingAssetBytes.length && !localProceduralMaterial && !installed; renderRate.disabled = busy || !renderable;
     download.disabled = busy || !artifact?.metadata().retained; save.disabled = download.disabled || typeof window.showSaveFilePicker !== 'function';

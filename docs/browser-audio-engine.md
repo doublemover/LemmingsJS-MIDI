@@ -1412,7 +1412,33 @@ unacknowledged rollback keeps its old renderer pinned and blocks further
 preparation instead of pretending cleanup succeeded. Sound/control conflicts
 reject a stale prepare; unrelated mix/routing edits are preserved.
 
-The integrated hold-preview surface and independent native collection resolver
-are still development gaps in #970 at this increment. New model/controller/
-router regressions are authored but **not run**; no acoustic or runtime
-qualification is inferred from static checks.
+The existing sound library now owns **Hold to preview incoming events** for
+pointer/Space/Enter gestures. Release, cancel, lost capture, blur, window blur,
+close, history/world replacement and disposal retire the preview; **Apply**
+publishes one musical edit. Preview references are ephemeral lane overlays,
+never saved project fields. Accepted unrelated mix/routing changes survive;
+conflicting sound/control changes cancel. Old held voices retain their onset
+renderer under the declared new-notes policy, including after preview release.
+
+`NativeSoundCollections` is independent of terrain: six native collections and
+27 concrete recipe IDs retain all 160 legacy family/role/variant IDs as explicit
+aliases, not bit-identical GM emulation promises. The existing selectors compile
+immutable source recipes through bounded background owners, pin the exact
+engine/definition hashes, and publish only after renderer preparation. Source
+preview without a bound renderer artifact refuses preparation. Worklet sources
+need an available local AudioContext; failure preserves the previous selection
+and offers the named **Soft triangle** fallback as a separate explicit action.
+No automatic fallback rebuilds terrain or rewrites external program/channel
+mapping. Shared-channel program/bank/percussion conflicts are reported.
+
+Both native source preparation and the sound transaction cap concurrent owners
+at two, charge retained definitions and compilation representations, and keep
+charges on unknown worker/renderer retirement. Rights metadata is unchanged;
+local recipe selection grants no redistribution permission.
+
+Authored regressions include same-checkpoint physical hashes, six patches over
+1000 real-world ticks with the pattern path disabled, causal order equality,
+slow/fast/cancel/control/document races, rollback, one-edit Undo, imported legacy
+IDs, explicit matching-world action, hardware conflict warnings and a real
+immutable-browser keyboard-preview journey. They are **not run**. Neither the
+silent host fixture nor static checks claim PCM, browser or acoustic qualification.

@@ -1,3 +1,4 @@
+import { getNativeInstrumentCatalog } from '../../midi-ui/NativeInstrumentSchema.js';
 import { createLaneMixState } from './LaneMixState.js';
 import { createAudioClockBridge } from './AudioClockBridge.js';
 import { createCausalMusicEngine } from './CausalMusicEngine.js';
@@ -20,7 +21,7 @@ const nativeResolution = Object.freeze({
 // Owns only the physical voice session. The ordinary game preview and MIDI
 // router keep their independent leases on the shared output graph.
 export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, now, renderer = null, resourceBudget = null, getLanes = () => [], isPlaybackEnabled = () => !!audio?.getState?.().enabled,
-  onInstrumentState = () => {}, onReceipt = () => {} } = {}) {
+  onInstrumentState = () => {}, onReceipt = () => {}, getInstrumentCatalog = getNativeInstrumentCatalog } = {}) {
   const laneMix = createLaneMixState(); laneMix.synchronize(getLanes());
   const permitted = () => { try { return isPlaybackEnabled() === true; } catch { return false; } };
   const session = audio?.createSession?.('procgen-physical') || null;
@@ -35,7 +36,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
   catch { routingUnavailable = 'audio-routing-resource-unavailable'; try { onInstrumentState({ laneId: 'all', state: 'unavailable', code: routingUnavailable }); } catch { /* Audio admission cannot stop the world. */ } }
   const backend = routingUnavailable ? null : routed?.backend || nativeBackend;
   let laneInstruments = null;
-  try { if (routed) laneInstruments = createLaneInstrumentPreparation({ session, routed, onState: onInstrumentState, resourceBudget, getMaterialProvider: () => audio.getSoundMaterialProvider() }); }
+  try { if (routed) laneInstruments = createLaneInstrumentPreparation({ session, routed, getCatalog: getInstrumentCatalog, onState: onInstrumentState, resourceBudget, getMaterialProvider: () => audio.getSoundMaterialProvider() }); }
   catch { routingUnavailable = 'audio-preparation-resource-unavailable'; try { onInstrumentState({ laneId: 'all', state: 'unavailable', code: routingUnavailable }); } catch { /* Preparation cannot stop physics. */ } }
   const clock = createAudioClockBridge({ getContext: () => audio?.getAudioContext?.(), nowMs: now,
     presentationDelayMs: 24, maxHorizonMs: 5000 });

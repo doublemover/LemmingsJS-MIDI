@@ -159,12 +159,12 @@ describe('Procgen workstation musical domain', function() {
     expect(after.patch).to.equal('dirt-bass');
   });
 
-  it('sanitizes invalid data, protects drum channels and keeps lane identifiers unique', function() {
+  it('sanitizes invalid data, preserves explicit hardware channels and keeps lane identifiers unique', function() {
     const run = setup({ seed: -1, lanes: [{ id: 'x', role: 'drums', channel: 2 }, { id: 'x', role: 'lead', channel: 10, patterns: [{ length: 999, rate: 0, steps: [{ probability: 7, repeats: 99 }] }] }] });
     expect(run.project.procgen.seed).to.equal(0);
     expect(run.project.procgen.lanes.map(lane => lane.id)).to.deep.equal(['x', 'x-copy']);
-    expect(run.project.procgen.lanes[0].channel).to.equal(10);
-    expect(run.project.procgen.lanes[1].channel).to.equal(2);
+    expect(run.project.procgen.lanes[0].channel).to.equal(2);
+    expect(run.project.procgen.lanes[1].channel).to.equal(10);
     expect(run.project.procgen.lanes[1].patterns[0].length).to.equal(64);
     expect(run.project.procgen.lanes[1].patterns[0].steps[0].probability).to.equal(1);
   });

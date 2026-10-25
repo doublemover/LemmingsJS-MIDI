@@ -1,8 +1,11 @@
 import { expect, test } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
+import { buildBrowserRuntime } from '../scripts/BrowserRuntimeBuild.js';
 import { installWebMidiStub } from './helpers/webmidiStub.js';
 
+test.beforeAll(async () => { await buildBrowserRuntime({ rootDir: fileURLToPath(new URL('../', import.meta.url)) }); });
 const ready = async page => {
-  await page.goto('/procgen.html?e2e=1&seed=42&lanes=8');
+  await page.goto('/dist/browser/procgen.html?e2e=1&seed=42&lanes=8');
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, { timeout: 60000 });
   await page.evaluate(() => window.__PROCGEN_STUDIO__.transport.pause());
 };
@@ -34,7 +37,12 @@ test('live musical edits undo and survive save/load, reroll and same-seed replay
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   await ready(page);
   await page.getByLabel('Global key', { exact: true }).selectOption('9');
+  await page.locator('#procgenListen').click();
+  await page.evaluate(() => { window.soundSelectionWorld = window.__PROCGEN_LANES__.world; });
   await page.getByLabel('Sound collection', { exact: true }).selectOption('bubble');
+  await expect(page.locator('.studio-status')).toContainText('Sound committed', { timeout: 30000 });
+  expect(await page.evaluate(() => window.soundSelectionWorld === window.__PROCGEN_LANES__.world)).toBe(true);
+  await page.getByRole('button', { name: 'Apply matching world', exact: true }).click();
   await expect(page.locator('.studio-status')).toContainText('World rebuilt');
   await expect(page.getByLabel('Global key', { exact: true })).toHaveValue('9');
   expect(await page.evaluate(() => window.__PROCGEN_LANES__.world.terrain.laneThemes[0])).toMatch(/bubble/i);

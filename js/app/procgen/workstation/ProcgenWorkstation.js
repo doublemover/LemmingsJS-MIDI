@@ -39,7 +39,9 @@ import { resolveProcgenStartupIntent } from './ProcgenStartupIntent.js';
 import { deliverArtifactToAnchor, deliverArtifactToFileHandle, prepareExportArtifact, requestExportFileHandle } from '../../export/ExportArtifact.js';
 import { backgroundJobService } from '../../resources/BackgroundJobService.js';
 import { readBrowserBuildResponse } from '../../../runtime/BrowserGenerationService.js';
-import { validateSoundContentReference } from '../../../midi/content/SoundContentReference.js';
+import { createLaneSoundTransaction } from '../../midi-ui/LaneSoundTransaction.js';
+import { createNativeSoundSelection } from '../../midi-ui/NativeSoundSelection.js';
+import { resolveLegacySoundAlias } from './NativeSoundCollections.js';
 import { createSoundContentLibrary } from '../../midi-ui/SoundContentLibrary.js';
 import { createQuarryEchoView } from '../../midi-ui/QuarryEchoView.js';
 import { createMasterCaptureView } from '../../midi-ui/MasterCaptureView.js';
@@ -86,7 +88,7 @@ function rollbackWorldProject(previous, staged, current) {
 export function createProcgenWorkstation({ document, window, legacy, getRuntime, restart,
   createView = createProcgenWorkstationView, storage = createProcgenSessionStorage(window.indexedDB),
   captureCheckpoint = captureProcgenCheckpoint, transportOptions = {}, historyBytesLimit = 32 * 1024 * 1024,
-  resourceBudget = null, startupIntent, startupSource = null, backgroundJobs = backgroundJobService, prepareInspectionWorld = null }) {
+  resourceBudget = null, startupIntent, startupSource = null, backgroundJobs = backgroundJobService, prepareInspectionWorld = null, getInstrumentCatalog }) {
   if (!Number.isSafeInteger(historyBytesLimit) || historyBytesLimit < 1024) throw new Error('Invalid history byte limit.');
   const now = () => window.performance?.now?.() ?? performance.now();
   let saved = null;
@@ -126,7 +128,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let selectedCausalTakeId = null, causalTakePage = null, causalTakeCursor = null, causalTakeBack = [], causalTakeListSerial = 0;
   let physicalScoreProjection = null, physicalScore = null, physicalScoreQuery = null, physicalScoreAbort = null, physicalScoreSerial = 0, physicalScoreParent = null;
   let physicalScoreLease = null, physicalScoreParentLease = null, scoreViewRetirement = null;
-  let soundLibrary = null;
+  let soundLibrary = null, nativeSoundSelection = null;
   let masterCapture = null;
   let releaseGestureView = null, releaseGestureSerial = 0, physicalAuthoringView = null, quarryEchoView = null, physicalJunctionView = null, junctionRequestSerial = 0;
   let prelistenMonitor = null;
@@ -193,10 +195,25 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const renderer = () => runtime()?.lanes?.renderer;
   const router = () => runtime()?.view?.midiPreviewRouter;
   const selected = () => procgenLane(project.procgen.lanes, state.laneId) || project.procgen.lanes[0];
+  const soundTransactions = createLaneSoundTransaction({ resourceBudget,
+    getSource: laneId => ({ available: !disposed && !worldBusy && !pendingHistory && !physicalAuthoringAbort && !causalTake && !causalTakeStart && !causalTakeStop && !!physicalPlayback,
+      owner: physicalPlayback, documentGeneration, worldGeneration: runtime()?.world?.generation, selectedLaneId: selected().id,
+      lane: procgenLane(project.procgen.lanes, laneId || selected().id), reason: 'Finish the current world/history/take operation before selecting sound.' }),
+    prepare: (laneId, reference, options) => physicalPlayback.prepareLaneInstrument(laneId, reference, options),
+    publish: (laneId, reference, patch) => dispatch({ type: 'procgen/lane', laneId, patch: { ...patch, instrumentRef: reference, instrumentControls: { macros: {} } } }),
+    onState: event => { if (event.state === 'preview') status('Previewing incoming physical events. Release restores the prior sound; held voices keep their onset renderer.');
+    else if (event.state === 'committed') status('Sound committed as one musical edit. The physical world and hardware mapping are unchanged.');
+    else if (event.reason) status(event.reason); }
+  });
   const setLegacyProject = (next, options = { persist: false }) => { writingLegacy = true; try { legacy.setProject(next, options); } finally { writingLegacy = false; } };
   const budgetNotice = () => { if (now() - lastBudgetNotice > 1000) { lastBudgetNotice = now(); status('Output budget reached; some notes or CC were thinned. The musical clock continues.'); } };
   const reportRouting = () => {
-    const addresses = new Map();
+    const addresses = new Map(), hardware = new Map();
+    for (const lane of project.procgen.lanes) {
+      if (lane.mute) continue; const key = `${lane.outputId || 'default'}:${lane.channel}`, signature = JSON.stringify([lane.externalProgram, lane.bankMSB, lane.bankLSB, lane.externalPercussion]), prior = hardware.get(key);
+      if (prior && prior.signature !== signature) { status(`External program/bank/percussion mapping conflicts on channel ${lane.channel} between ${prior.name} and ${lane.name}. Select separate hardware channels; native sound selection does not change this mapping.`); return; }
+      hardware.set(key, { signature, name: lane.name });
+    }
     for (const lane of project.procgen.lanes) for (const curve of lane.ccAutomation || []) {
       if (!curve.enabled || lane.mute) continue;
       const key = `${lane.outputId || 'default'}:${lane.channel}:${curve.controller}`;
@@ -305,7 +322,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }
     lastHistoryGroup = history ? historyGroup : null;
     project = isCanonicalMidiProject(next) ? next : markCanonicalMidiProject(createProcgenWorkstationProject(sanitizeMidiProject(next)));
-    projectRevision++; physicalPlayback?.synchronizeLaneMix();
+    projectRevision++; soundTransactions.reconcile(); physicalPlayback?.synchronizeLaneMix();
     if (instrumentRefsChanged) void physicalPlayback?.synchronizeLaneInstruments(project.procgen.lanes).catch(error => status('Lane instrument requirements: ' + error.message));
     editRevision++; storageStatus();
     if (inputLease && !inputTarget(inputLease)) cancelInputEdits('target was removed');
@@ -319,7 +336,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (render) {
       if (change && view?.patchProject) view.patchProject(renderAction, change);
       else if (renderAction?.type === 'procgen/step' && view?.patchStep) view.patchStep(renderAction); else view?.render();
-      if (!change || change.structural || change.fields.some(key => ['ccAutomation', 'mute', 'channel', 'outputId'].includes(key))) reportRouting();
+      if (!change || change.structural || change.fields.some(key => ['ccAutomation', 'mute', 'channel', 'outputId', 'externalProgram', 'externalPercussion', 'bankMSB', 'bankLSB'].includes(key))) reportRouting();
     } return project;
   };
   const dispatch = (action, { historyGroup = null } = {}) => {
@@ -547,6 +564,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (held && previous.bpm !== next.bpm) { pendingResume = false; engine.resume({ ...next, timestamp: now(), activeNotes: held }); }
   };
   const beforeRestart = () => {
+    soundTransactions.cancel('The world or transport is being replaced.');
     physicalFeedback?.disarm();
     recoveryAbort?.abort();
     if (causalTake) {
@@ -824,7 +842,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (session) { sessionIdentity = sessionIdentities.get(session); if (!sessionIdentity) { sessionIdentity = Object.freeze({}); sessionIdentities.set(session, sessionIdentity); } }
     const next = runtime(); if (!next || (next === boundRuntime && sessionIdentity === boundSession)) return next;
     if (causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the causal take before replacing its world.');
-    recoveryAbort?.abort();
+    recoveryAbort?.abort(); soundTransactions.cancel('The physical playback owner changed.');
     unhookRouter?.(); unhookWorld?.(); physicalPlayback?.dispose(); physicalPlayback = null; boundRuntime = next; boundSession = sessionIdentity;
     const boundProject = session?.project || project; let bindingSession = !!session;
     const playbackProject = () => bindingSession ? boundProject : project;
@@ -835,8 +853,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const physicalBus = next.world?.soundEvents?.onBatch;
     physicalScoreClock = createProcgenPhysicalScoreClock(); physicalClockError = false;
     if (session?.physicalTimeline) physicalScoreClock.restore(session.physicalTimeline);
-    physicalPlayback = createProcgenPhysicalPlayback({ audio: legacy.local.audio, renderer: next.lanes?.renderer, resourceBudget,
-      getGraph: () => next.world.physicalAuthoring?.graph || project.procgen.physicalGraph, getLanes: () => playbackProject().procgen.lanes, isPlaybackEnabled: localEnabled, scoreTimeline: physicalScoreClock, now,
+    physicalPlayback = createProcgenPhysicalPlayback({ audio: legacy.local.audio, getInstrumentCatalog, renderer: next.lanes?.renderer, resourceBudget,
+      getGraph: () => next.world.physicalAuthoring?.graph || project.procgen.physicalGraph, getLanes: () => soundTransactions.lanes(playbackProject().procgen.lanes), isPlaybackEnabled: localEnabled, scoreTimeline: physicalScoreClock, now,
       onInstrumentState: event => { if (event.state === 'unavailable' || event.state === 'retirement-unknown') status('Lane ' + event.laneId + ' instrument: ' + event.code); },
       onReceipt: receipt => {
         if (physicalReceiptBuffer) physicalReceiptBuffer.push(receipt);
@@ -1339,26 +1357,20 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onStatus: status, monitor: handlers.openPrelistenMonitor() });
       soundLibrary.open();
     },
-    async applyInstalledInstrument(candidate, { signal } = {}) {
-      signal?.throwIfAborted();
-      if (disposed || worldBusy || pendingHistory || physicalAuthoringAbort || causalTake || causalTakeStart || causalTakeStop || !physicalPlayback) throw new Error('Finish the current world/history/take operation before applying an instrument.');
-      const laneId = selected().id, generation = documentGeneration, playback = physicalPlayback;
-      const soundFields = lane => JSON.stringify([lane?.family, lane?.role, lane?.patch, lane?.instrumentRef?.packHash, lane?.instrumentRef?.definitionHash, lane?.instrumentControls, lane?.soundChangePolicy]);
-      const baselineSound = soundFields(selected());
-      if (!playback.instrumentTransitionCapabilities().policies.includes(selected().soundChangePolicy)) throw new Error('Held crossfade is unsupported by the current adapter. Select the named new-notes-only policy; the world will not be changed.');
-      const reference = validateSoundContentReference({ ...candidate.reference, definition: candidate.definition });
-      const prepared = await playback.prepareLaneInstrument(laneId, reference, { signal, retainPrevious: true });
-      try {
-        signal?.throwIfAborted();
-        if (disposed || playback !== physicalPlayback || generation !== documentGeneration || soundFields(procgenLane(project.procgen.lanes, laneId)) !== baselineSound || selected().id !== laneId || worldBusy || pendingHistory || physicalAuthoringAbort || causalTake || causalTakeStart || causalTakeStop)
-          throw new Error('Instrument Apply conflicts with a newer sound/control selection or document operation. Accepted unrelated lane edits were preserved.');
-        prepared.commit();
-        try { const result = dispatch({ type: 'procgen/lane', laneId, patch: { instrumentRef: reference, instrumentControls: { macros: {} } } }); if (result === false) throw new Error('Instrument publication was not accepted.'); }
-        catch (error) { if (procgenLane(project.procgen.lanes, laneId)?.instrumentRef?.definitionHash === reference.definitionHash && procgenLane(project.procgen.lanes, laneId)?.instrumentRef?.packHash === reference.packHash) { prepared.accept(); status('Instrument committed; the display refresh failed: ' + error.message); return reference; } throw error; }
-        prepared.accept();
-        status('Installed instrument applied to ' + selected().name + '. Held voices retain their prior renderer.'); return reference;
-      } finally { const receipt = prepared.release(); if (receipt?.completion) { await receipt.completion; if (receipt.outcome !== 'complete') status('Instrument resource retirement is unresolved; further preparation is blocked.'); } }
+    applyInstalledInstrument(candidate, { signal, hold = false } = {}) { return soundTransactions.select(candidate, { signal, hold, laneId: selected().id }); },
+    selectNativeSound(laneId, patchId) {
+      if (!resourceBudget || !window.fetch) return Promise.reject(new Error('Native sound source ownership is unavailable. Keep the previous sound.'));
+      nativeSoundSelection ||= createNativeSoundSelection({ fetch: window.fetch.bind(window), jobs: backgroundJobs, resourceBudget, ...(getInstrumentCatalog ? { getCatalog: getInstrumentCatalog } : {}) });
+      return soundTransactions.select(signal => nativeSoundSelection.prepare(patchId, { signal }), { laneId });
     },
+    selectSoundAlias(laneId, patch) {
+      const lane = procgenLane(project.procgen.lanes, laneId); if (!lane || selected().id !== laneId) return Promise.reject(new Error('Select this lane before changing sound.'));
+      const alias = resolveLegacySoundAlias({ family: patch.family ?? lane.family, role: patch.role ?? lane.role, patch: patch.patch ?? null });
+      if (!resourceBudget || !window.fetch) return Promise.reject(new Error('Native sound source ownership is unavailable. The prior sound is unchanged.'));
+      nativeSoundSelection ||= createNativeSoundSelection({ fetch: window.fetch.bind(window), jobs: backgroundJobs, resourceBudget, ...(getInstrumentCatalog ? { getCatalog: getInstrumentCatalog } : {}) });
+      return soundTransactions.select(signal => nativeSoundSelection.prepare(alias.patchId, { signal }), { laneId, patch: alias.lanePatch });
+    },
+    reconcileSoundPreview: () => soundTransactions.reconcile(), cancelSoundPreview: () => soundTransactions.cancel(), soundSelectionState: () => soundTransactions.diagnostics(),
     status, preferences: persist, presentationGeneration: () => documentGeneration,
     laneMixView: laneId => physicalPlayback?.laneMixView(laneId),
     devices, engineState: () => engine.getState(), playhead: id => engine.getLanePosition?.(id),
@@ -1704,6 +1716,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'prepared-export', run: () => { activeExportAbort?.abort(); preparedExport?.discard(); } },
         { name: 'router-hook', run: () => unhookRouter?.() },
         { name: 'world-hook', run: () => unhookWorld?.() },
+        { name: 'sound-transactions', run: () => soundTransactions.dispose() },
+        { name: 'native-sound-selection', run: () => nativeSoundSelection?.dispose() },
         { name: 'physical-playback', run: () => physicalPlayback?.dispose() },
         { name: 'physical-score-views', run: () => retirePhysicalScoreViews() },
         { name: 'causal-workbench', run: () => pendingWorkbenchStop },

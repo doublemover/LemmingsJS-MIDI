@@ -41,24 +41,34 @@
       "requirementUpdatedAt": "2026-10-22T09:31:02Z",
       "requirementSha256": "9c5a0051eaebfe167e47b74a335e751bb5150b3859fa0606dd17d2c9fc8f261b",
       "initialGap": "Separate installed instrumentRef preparation exists, but primary Collection/tileset SOUND selection still dispatches palette family changes into a world rebuild; lane model retains coupled family and lacks the requested independent worldTheme/instrument identity and explicit Apply matching world interaction.",
-      "state": "in-progress",
+      "state": "implemented-validation-deferred",
       "source": [
         "js/app/procgen/workstation/ProcgenWorkstationProject.js",
         "js/app/procgen/workstation/ProcgenWorkstation.js",
         "js/app/procgen/workstation/ProcgenWorkstationView.js",
         "js/app/procgen/workstation/ProcgenPatternEngine.js",
         "js/app/midi-ui/LaneInstrumentPreparation.js",
-        "js/app/midi-ui/RoutedInstrumentBackend.js"
+        "js/app/midi-ui/RoutedInstrumentBackend.js",
+        "js/app/midi-ui/LaneSoundTransaction.js",
+        "js/app/midi-ui/NativeSoundSelection.js",
+        "js/app/midi-ui/SoundContentLibrary.js",
+        "js/app/procgen/workstation/NativeSoundCollections.js"
       ],
       "regressions": [
         "test/midi/procgen-workstation-music.test.js",
         "test/procgen-workstation-controller.test.js",
-        "test/midi/routed-instrument-backend.test.js"
+        "test/midi/routed-instrument-backend.test.js",
+        "test/midi/lane-sound-transaction.test.js",
+        "test/midi/native-sound-collections.test.js",
+        "test/helpers/native-sound-candidates.js",
+        "e2e/procgen-sound-world-isolation.spec.js"
       ],
-      "commits": [],
+      "commits": [
+        "91f570603dcacdebe9b5fec85ba8c1a3e386acb2"
+      ],
       "validation": "deferred-by-request",
-      "increment": "independent-world-sound-identities-and-renderer-rollback",
-      "remaining": "Native sound collection/legacy alias resolution and hold-to-preview integration, full slow/fast/cancel/load/scene lifecycle regressions and 1000-tick actual-runtime trace harness remain. Independent world/sound/recipe/external identities, explicit world action, sound-only Undo and synchronous assignment rollback are implemented; no full completion or runtime qualification claim."
+      "increment": "transactional-native-sound-audition-with-physical-isolation",
+      "remaining": ""
     },
     {
       "number": 971,

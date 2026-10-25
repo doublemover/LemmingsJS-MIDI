@@ -289,6 +289,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   };
   const showProjects = (entries, load) => showProjectPage({ items: entries, nextCursor: null }, load);
   const selected = () => { const project = getProject(), lane = project.procgen.lanes.find(item => item.id === state.laneId) || project.procgen.lanes[0]; state.laneId = lane.id; return lane; };
+  const selectSound = (laneId, patch) => { renderInspector(); handlers.status?.('Preparing native sound; the accepted sound and physical world are unchanged.'); Promise.resolve().then(() => handlers.selectSoundAlias(laneId, patch)).catch(error => { handlers.status?.(error.message + ' Keep the previous sound, enable local listening for worklet sources, or explicitly select the Soft triangle fallback.'); renderInspector(); }); };
   const changeLane = patch => dispatch({ type: 'procgen/lane', laneId: selected().id, patch });
   const changePattern = patch => { if (selected().mode === 'pattern') dispatch({ type: 'procgen/pattern', laneId: selected().id, slot: state.slot, patch }); };
   const changeStep = patch => { if (selected().mode === 'pattern') dispatch({ type: 'procgen/step', laneId: selected().id, slot: state.slot, index: state.step, patch }); };
@@ -311,11 +312,13 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     fields.replaceChildren(node('div', `${lane.family.toUpperCase()} / ${lane.role}`, 'studio-eyebrow'), node('h2', state.tab === 'Step' || state.tab === 'Chord' ? `Step ${state.step + 1} · Phrase ${state.slot + 1}` : lane.name));
     if (state.tab === 'Lane') {
       labeled('Name', input(lane.name, name => changeLane({ name }), { type: 'text' }), fields);
-      labeled('Sound collection (legacy aliases)', select(PROCGEN_SOUND_COLLECTIONS.map(c => [c.id, c.name]), lane.family, family => dispatch({ type: 'procgen/palette', laneId: lane.id, family }), 'Sound collection'), fields);
-      labeled('Role', select(PROCGEN_ROLES, lane.role, role => dispatch({ type: 'procgen/palette', laneId: lane.id, role }), 'Instrument role'), fields);
+      labeled('Sound collection (legacy aliases)', select(PROCGEN_SOUND_COLLECTIONS.map(c => [c.id, c.name]), lane.family, family => selectSound(lane.id, { family }), 'Sound collection'), fields);
+      labeled('Role', select(PROCGEN_ROLES, lane.role, role => selectSound(lane.id, { role }), 'Instrument role'), fields);
       const collection = PROCGEN_SOUND_COLLECTIONS.find(c => c.id === lane.family).roles.find(r => r.id === lane.role);
-      labeled('Patch', select(collection.patches.map(p => [p.id, p.name]), lane.patch, patch => dispatch({ type: 'procgen/palette', laneId: lane.id, patch }), 'Sound patch'), fields);
+      labeled('Patch', select(collection.patches.map(p => [p.id, p.name]), lane.patch, patch => selectSound(lane.id, { patch }), 'Sound patch'), fields);
       fields.append(node('p', `World: ${lane.worldThemeId} · sound: ${lane.instrumentPatchId} · ${lane.linkedThemePresetId === lane.worldThemeId ? 'matching theme suggestion' : 'independent world'} · ${lane.soundChangePolicy === 'new-notes-only' ? 'new notes only; held voices retain their renderer' : 'held crossfade requires adapter support'}`, 'studio-hint'));
+      labeled('Patch change policy', select([['new-notes-only', 'New notes only'], ...(lane.soundChangePolicy === 'crossfade-held' ? [['crossfade-held', 'Held crossfade — unsupported by this adapter']] : [])], lane.soundChangePolicy, soundChangePolicy => changeLane({ soundChangePolicy }), 'Patch change policy'), fields);
+      fields.append(button('Select Soft triangle fallback', () => { Promise.resolve().then(() => handlers.selectNativeSound(lane.id, 'foundation.soft-triangle')).catch(error => handlers.status?.(error.message)); }, 'Explicit native oscillator fallback; keeps the world, performance recipe and hardware mapping unchanged'));
       const matchingWorld = button('Apply matching world', () => handlers.applyMatchingWorld?.(lane.id), 'Explicitly stage a physical world rebuild; not a sound edit'); matchingWorld.disabled = !lane.linkedThemePresetId || lane.linkedThemePresetId === lane.worldThemeId; fields.append(matchingWorld);
       if (lane.instrumentRef) fields.append(node('p', `${lane.instrumentRef.definition.name || lane.instrumentRef.patchId} · saved revision ${lane.instrumentRef.revision}`, 'studio-hint'));
       for (const macro of lane.instrumentRef?.definition?.macros || []) {
@@ -702,7 +705,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       focus.value = active.value;
       try { focus.selectionStart = active.selectionStart; focus.selectionEnd = active.selectionEnd; } catch { /* Number inputs have no caret. */ }
     }
-    selected(); root.value = String(getProject().global.scale.root);
+    selected(); handlers.reconcileSoundPreview?.(); root.value = String(getProject().global.scale.root);
     const current = getProject().global.scale;
     const matched = Object.keys(SCALES).find(name => JSON.stringify(SCALES[name]) === JSON.stringify(current.degrees));
     if (!matched && ![...scale.options].some(option => option.value === current.name)) { const option = node('option', current.name); option.value = current.name; scale.append(option); }
