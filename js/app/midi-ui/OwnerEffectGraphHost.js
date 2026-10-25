@@ -40,14 +40,14 @@ export function createOwnerEffectGraphHost({ context, input, dry, destination, r
     for (const arm of arms) if (arm !== current && !arm.retirement && (context.state === 'closed' || arm.retireAt <= context.currentTime)) retireArm(arm);
     if (!disposed && [...arms].some(arm => arm !== current && !arm.retirement)) timer = setTimeout(poll, context.state === 'running' ? 50 : 250);
   };
-  const tail = arm => { if (!arm) return; arm.graph.deactivateSidechains?.(); arm.inAutomation.insert(0, context.currentTime, context.currentTime);
+  const tail = arm => { if (!arm) return; if (arm.graph.gateSidechains) arm.graph.gateSidechains(0, context.currentTime, transitionSeconds); else arm.graph.deactivateSidechains?.(); arm.inAutomation.insert(0, context.currentTime, context.currentTime);
     arm.retireAt = context.currentTime + transitionSeconds + arm.graph.plan.maximumTailFrames / context.sampleRate; };
   const prepare = async (definition, { signal, isCurrent: requestCurrent = () => true } = {}) => {
     guard(); signal?.throwIfAborted();
     if (pending.size || arms.size >= 2) throw failure('effect-transition-capacity', 'Two effect revisions already own their transition or tails. Clear tails or wait before preparing another.');
-    const controller = new AbortController(), request = ++serial, operation = { controller, promise: null };
-    const abort = () => controller.abort(signal.reason); signal?.addEventListener('abort', abort, { once: true }); if (signal?.aborted) abort();
-    let graph = null, ownedGraph = null, arm = null, lease = null;
+    const controller = new AbortController(), request = ++serial, operation = { controller, promise: null, published: false };
+    const abort = () => { if (!operation.published) controller.abort(signal.reason); }; signal?.addEventListener('abort', abort, { once: true }); if (signal?.aborted) abort();
+    let graph = null, ownedGraph = null, arm = null, lease = null, published = false;
     const check = () => { guard(); controller.signal.throwIfAborted(); if (request !== serial || !requestCurrent()) throw failure('stale-effect-graph', 'A later effect request superseded this preparation.'); };
     operation.promise = (async () => {
       try {
@@ -56,7 +56,7 @@ export function createOwnerEffectGraphHost({ context, input, dry, destination, r
           if (request.sourceBusId !== 'owner' || request.tap !== 'post-fader' || request.inputLayout !== 'audioStereo') return null;
           return { node: input, context, owner, generation, sourceBusId: 'owner', tap: 'post-fader', layout: 'audioStereo', stage: 'upstream-owner-effects',
             isActive: () => !disposed && context.state !== 'closed' && isCurrent(), release() {} };
-        }, context, resources, owner, generation, getMaterialProvider, signal: controller.signal, isCurrent: () => !disposed && isCurrent() && requestCurrent() && request === serial,
+        }, context, resources, owner, generation, getMaterialProvider, signal: controller.signal, isCurrent: () => !disposed && isCurrent() && (published || requestCurrent() && request === serial),
         onFault: caught => {
           error = caught.message;
           for (const member of arms) if (member.graph === ownedGraph) { if (current === member) { current = null; dryAutomation.insert(1, context.currentTime, context.currentTime); mode = 'neutral'; revision++; } retireArm(member); }
@@ -66,12 +66,13 @@ export function createOwnerEffectGraphHost({ context, input, dry, destination, r
         if (graph.plan.inputs.length !== 1 || graph.plan.outputs.length !== 1) throw failure('effect-route-boundary', 'This owner rack requires exactly one stereo source bus and one output bus.');
         lease = resources.reserve({ kind: 'effect-route-arm', owner, generation, estimateBytes: 16384, consumerOwned: true });
         arm = { graph, input: null, output: null, lease, retireAt: Infinity, retirement: null, connectedSource: false, inAutomation: null }; arms.add(arm);
-        arm.input = context.createGain(); arm.output = context.createGain(); arm.input.gain.setValueAtTime(0, context.currentTime); arm.output.gain.setValueAtTime(1, context.currentTime);
+        arm.input = context.createGain(); arm.output = context.createGain(); arm.input.gain.setValueAtTime(0, context.currentTime); arm.output.gain.setValueAtTime(0, context.currentTime);
         arm.inAutomation = createSmoothedAudioParameter({ param: arm.input.gain, initialValue: 0, startTime: context.currentTime, smoothingSeconds: transitionSeconds, maxEvents: 32 });
         input.connect(arm.input); arm.connectedSource = true; arm.input.connect(graph.getInput(graph.plan.inputs[0])); graph.getOutput(graph.plan.outputs[0]).connect(arm.output); arm.output.connect(destination); check();
-        await graph.activateSidechains?.(); check(); graph.checkPublication?.();
-        const previous = current; tail(previous); current = arm;
-        arm.inAutomation.insert(1, context.currentTime, context.currentTime); dryAutomation.insert(0, context.currentTime, context.currentTime);
+        await graph.activateSidechains?.({ silent: true }); check(); graph.checkPublication?.();
+        const previous = current;
+        arm.graph.gateSidechains?.(1, context.currentTime, transitionSeconds); arm.inAutomation.insert(1, context.currentTime, context.currentTime); arm.output.gain.setValueAtTime(1, context.currentTime); dryAutomation.insert(0, context.currentTime, context.currentTime);
+        tail(previous); current = arm; published = operation.published = true; pending.delete(operation);
         mode = 'active'; error = null; revision++; graph = null; arm = null; lease = null; poll(); report(); return state();
       } catch (caught) {
         if (arm) { if (current === arm) current = null; const receipt = retireArm(arm); await receipt.completion; if (receipt.outcome !== 'complete') caught.retirement = receipt; }
@@ -86,7 +87,7 @@ export function createOwnerEffectGraphHost({ context, input, dry, destination, r
     if (expected && (expected.ownerRouteRevision !== revision || expected.graphDefinitionHash !== current?.graph.hash)) throw failure('stale-effect-control', 'The effect bypass belongs to an earlier owner route.');
     if (!['neutral', 'tail', 'mute', 'panic'].includes(selected)) throw new TypeError('Unknown effect bypass mode.');
     if (disposed) throw failure('effect-owner-disposed', 'The effect owner is closed.');
-    serial++; for (const operation of pending) operation.controller.abort(failure('effect-preparation-canceled', 'Effect bypass canceled the pending preparation.'));
+    serial++; for (const operation of pending) if (!operation.published) operation.controller.abort(failure('effect-preparation-canceled', 'Effect bypass canceled the pending preparation.'));
     if (selected === 'mute') {
       dryAutomation.insert(0, context.currentTime, context.currentTime);
       for (const arm of arms) { arm.output.gain.cancelScheduledValues(context.currentTime); arm.output.gain.setValueAtTime(0, context.currentTime); }

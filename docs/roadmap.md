@@ -3244,3 +3244,30 @@ full-graph input, invalid coupling and 8/32/64-body construction/accounting fixt
 are authored and unrun. Those sizes are comparison fixtures, not measured deadline
 or memory acceptance. Device benchmarks, macro level matching and listening remain
 in the deferred qualification pass.
+
+
+### Continuation 156 — sidechain publication and bounded tail input gates (#1015, #1163)
+
+Live sidechain inputs now start at zero in the prepared graph, and the owner arm
+output stays zero throughout asynchronous source activation. The commit boundary
+opens sidechain and owner input ramps together. Donor audio cannot become audible
+merely because a staged lane pin connects before the route is published.
+
+A retiring graph ramps its sidechain input to zero along with owner input, rather
+than abruptly severing a donor during ring/vocoder processing. Pins remain owned
+until the admitted tail producer retires; Panic and disposal still detach them.
+Diagnostics label evaluated API gate values separately from rendered evidence.
+The standalone graph activation API retains explicit immediate activation, while
+the host selects silent staging. A deferred fixture holds activation across an
+asynchronous boundary and checks silent candidate output, exact gate ordering,
+old-tail ownership and complete resource release. Runtime validation remains
+postponed with the rest of the development backlog.
+
+The committed graph also receives a lifetime distinct from its preparation UI
+token. Finishing a dialog request or beginning a later revision no longer makes
+the active/retiring graph's native control predicate stale. Candidate validity
+still gates publication, and owner/context validity still gates the committed
+lifetime. Publication schedules the candidate gates before retiring the previous
+arm so a rejected candidate gate does not unnecessarily cut the working graph.
+A second deferred fixture covers completed UI tokens, later requests, live
+controls, retained old tails and final owner retirement.

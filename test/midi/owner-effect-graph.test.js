@@ -67,3 +67,41 @@ describe('effect candidate publication fence', () => {
     await host.dispose().completion; expect(resources.diagnostics().reservations).to.equal(0);
   });
 });
+
+
+describe('sidechain staging publication', () => {
+  it('keeps candidate output silent across asynchronous source activation and gates old donors into their tail', async () => {
+    const resources = createAudioResourceLeases(), gains = [], events = []; let resolveActivation;
+    const gainNode = () => { let value = 1; const output = { gain: { setValueAtTime(next) { value = next; }, linearRampToValueAtTime(next) { value = next; }, cancelScheduledValues() {}, get value() { return value; } }, connect() {}, disconnect() {} }; gains.push(output); return output; };
+    const context = { sampleRate: 48000, currentTime: 0, state: 'running', createGain: gainNode };
+    const host = createOwnerEffectGraphHost({ context, input: node(), dry: node(), destination: node(), resources, owner: 'staged-donor-owner', prepareGraph: async definition => ({
+      hash: definition.id, plan: { inputs: ['in'], outputs: ['out'], maximumTailFrames: 48000 }, diagnostics: () => ({ id: definition.id }), getInput: node, getOutput: node,
+      confirmReady: async () => {}, checkPublication() {}, panic() {},
+      activateSidechains(options) { events.push([definition.id, 'activate', options.silent]); if (definition.id === 'candidate') return new Promise(resolve => { resolveActivation = resolve; }); },
+      gateSidechains(value, time, duration) { events.push([definition.id, 'gate', value, time, duration]); }, deactivateSidechains() { events.push([definition.id, 'detach']); },
+      dispose: () => createProcgenRetirementScope().retire() }) });
+    await host.prepare({ id: 'old' }); const preparation = host.prepare({ id: 'candidate' }); await turn();
+    expect(host.state().activeGraph.id).to.equal('old'); expect(gains.at(-1).gain.value).to.equal(0); expect(events).to.deep.include(['candidate', 'activate', true]); expect(events.some(event => event[0] === 'candidate' && event[1] === 'gate' && event[2] === 1)).to.equal(false);
+    resolveActivation(); await preparation;
+    expect(gains.at(-1).gain.value).to.equal(1); expect(events).to.deep.include(['candidate', 'gate', 1, 0, 0.02]); expect(events).to.deep.include(['old', 'gate', 0, 0, 0.02]);
+    expect(events).not.to.deep.include(['old', 'detach']); await host.dispose().completion; expect(resources.diagnostics().reservations).to.equal(0); await resources.dispose().completion;
+  });
+});
+
+
+describe('published effect lifetime', () => {
+  it('survives completion of its preparation UI token and a later graph request', async () => {
+    const resources = createAudioResourceLeases(), context = { sampleRate: 48000, currentTime: 0, state: 'running', createGain: node }, predicates = new Map(); let selected = 'first';
+    const host = createOwnerEffectGraphHost({ context, input: node(), dry: node(), destination: node(), resources, owner: 'publication-lifetime', prepareGraph: async (definition, options) => {
+      predicates.set(definition.id, options.isCurrent);
+      const check = () => { if (!options.isCurrent()) throw new Error('stale graph lifetime'); };
+      return { hash: definition.id, plan: { inputs: ['in'], outputs: ['out'], maximumTailFrames: 100 }, getInput: node, getOutput: node, diagnostics: () => ({ id: definition.id }), confirmReady: async () => {}, checkPublication: check,
+        gateSidechains() { check(); }, activateSidechains: async () => {}, deactivateSidechains() {}, update() { check(); return { status: 'accepted' }; }, panic() {}, dispose: () => createProcgenRetirementScope().retire() };
+    } });
+    await host.prepare({ id: 'first' }, { isCurrent: () => selected === 'first' }); selected = null;
+    expect(host.update('send', { gain01: 0.2 }).status).to.equal('accepted'); expect(predicates.get('first')()).to.equal(true);
+    selected = 'second'; await host.prepare({ id: 'second' }, { isCurrent: () => selected === 'second' }); selected = null;
+    expect(predicates.get('first')()).to.equal(true); expect(host.update('send', { gain01: 0.3 }).status).to.equal('accepted');
+    await host.dispose().completion; expect(predicates.get('first')()).to.equal(false); await resources.dispose().completion;
+  });
+});

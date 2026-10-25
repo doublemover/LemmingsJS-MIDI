@@ -56,7 +56,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     binding.status = 'disconnected';
   };
   const deactivateSidechains = () => { for (const binding of sidechainBindings.values()) disconnectSidechain(binding); sidechainsActivated = false; refreshSourcePresence(); };
-  const controls = new Map(), gainControls = new Map(), parameterControls = new Map(), execution = getActiveExecutionIdentity('browser-native-audio');
+  const controls = new Map(), gainControls = new Map(), sidechainGates = new Map(), parameterControls = new Map(), execution = getActiveExecutionIdentity('browser-native-audio');
   const initialPresence = new Map();
   if (offline) for (const entry of plan.nodes) {
     const has = port => plan.edges.some(edge => edge.to.nodeId === entry.id && (!port || edge.to.port === port) && initialPresence.get(edge.from.nodeId));
@@ -209,7 +209,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
       } else { value = node(context.createGain()); value.gain.setValueAtTime(entry.kind === 'modulated-gain' ? 0 : entry.kind === 'polarity-invert' ? -1 : entry.kind === 'gain' ? entry.parameters.gain01 : 1, context.currentTime); }
       instances.set(entry.id, value); nodeOutputs.set(entry.id, outputValue || value); controls.set(entry.id, Object.freeze({ ...entry.parameters }));
       if (entry.kind === 'gain') gainControls.set(entry.id, createSmoothedAudioParameter({ param: value.gain, initialValue: entry.parameters.gain01, startTime: context.currentTime, smoothingSeconds: 0.008, maxEvents: 128 }));
-      if (entry.kind === 'sidechain-in') { value.channelCount = entry.parameters.inputLayout === 'audioMono' ? 1 : 2; value.channelCountMode = 'explicit'; value.channelInterpretation = 'discrete'; sidechainInputs.set(entry.id, value); }
+      if (entry.kind === 'sidechain-in') { sidechainGates.set(entry.id, createSmoothedAudioParameter({ param: value.gain, initialValue: offline ? 1 : 0, startTime: context.currentTime, smoothingSeconds: 0.02, maxEvents: 32 })); value.channelCount = entry.parameters.inputLayout === 'audioMono' ? 1 : 2; value.channelCountMode = 'explicit'; value.channelInterpretation = 'discrete'; sidechainInputs.set(entry.id, value); }
       if (entry.kind === 'bus-in') inputs.set(entry.id, value); if (entry.kind === 'bus-out') outputs.set(entry.id, value);
     }
     const entries = new Map(plan.nodes.map(entry => [entry.id, entry]));
@@ -280,7 +280,14 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     }
   };
   if (!offline) refreshSourcePresence();
-  const activateSidechains = async () => {
+  const gateSidechains = (gain01, time = context.currentTime, seconds = 0.02) => {
+    const now = context.currentTime; guard();
+    if (disposed || !Number.isFinite(gain01) || gain01 < 0 || gain01 > 1 || !Number.isFinite(time) || time < now || time > now + 1 || !Number.isFinite(seconds) || seconds < 0 || seconds > 0.2 || [...sidechainGates.values()].some(gate => !gate.canInsert(now))) throw failure('sidechain-gate-capacity', 'Sidechain publication requires bounded owned gain ramps.');
+    try { for (const gate of sidechainGates.values()) if (!gate.insert(gain01, time, now, seconds)) throw new Error('Sidechain gate queue rejected activation.'); }
+    catch (caught) { fault = caught; try { onFault(caught); } catch {} throw failure('sidechain-gate-failed', 'Sidechain gate scheduling failed.'); }
+  };
+  const activateSidechains = async ({ silent = false } = {}) => {
+    if (typeof silent !== 'boolean') throw new TypeError('Invalid sidechain staging mode.');
     guard(); if (disposed || sidechainsActivated) return;
     for (const binding of sidechainBindings.values()) {
       const parameters = plan.nodes.find(entry => entry.id === binding.id).parameters;
@@ -298,6 +305,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
       }) || null;
       if (!pin.isActive()) { disconnectSidechain(binding); binding.status = 'stale'; }
     }
+    if (!silent) gateSidechains(1, context.currentTime, 0);
     sidechainsActivated = true; refreshSourcePresence();
   };
   const requestInspection = () => {
@@ -307,7 +315,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     for (const entry of processors) entry.node.port.postMessage({ type: 'inspect' });
     return true;
   };
-  return Object.freeze({ plan, hash, update, checkPublication, confirmReady, confirmOfflineCompletion, activateSidechains, deactivateSidechains, requestInspection, getInput: id => disposed ? null : inputs.get(id) || null, getOutput: id => disposed ? null : outputs.get(id) || null,
+  return Object.freeze({ plan, hash, update, checkPublication, confirmReady, confirmOfflineCompletion, activateSidechains, deactivateSidechains, gateSidechains, requestInspection, getInput: id => disposed ? null : inputs.get(id) || null, getOutput: id => disposed ? null : outputs.get(id) || null,
     getNodeOutput: id => disposed ? null : nodeOutputs.get(id) || null, getSidechainInput: id => disposed ? null : sidechainInputs.get(id) || null,
     panic() { for (const entry of processors) entry.node.port.postMessage({ type: 'panic' }); for (const entry of impulses) if (entry.convolver) entry.convolver.buffer = null; },
     diagnostics: () => Object.freeze({ hash, graphId: plan.definition.id, revision: plan.definition.revision, sampleRate: plan.sampleRate, disposed, fault: fault?.code || null,
@@ -316,6 +324,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
         offlineEndFrame, completionConfirmed: offlineCompletionConfirmed, completionProtocol: offline ? OFFLINE_EFFECT_COMPLETION_REVISION : null },
       processors: processors.map(entry => ({ nodeId: entry.nodeId, kind: entry.kind, revision: entry.revision, stateBytes: entry.stateBytes, configurationKey: entry.configurationKey, ready: entry.ready,
         offlineActive: entry.offlineActive, completion: entry.completion, nonlinearProfile: entry.profile, vocoderProfile: entry.vocoderProfile, health: entry.health })),
+      sidechainGating: { source: 'owned-API-automation-not-a-render-receipt', gains: [...sidechainGates].map(([id, gate]) => ({ id, gain01: gate.valueAt(context.currentTime) })) },
       sidechains: plan.sidechainInputs.map(id => ({ id, ...plan.nodes.find(entry => entry.id === id).parameters, status: sidechainBindings.get(id).status, connected: sidechainBindings.get(id).connected, faderScope: sidechainBindings.get(id).pin?.faderScope || 'owner-channel', missingPolicy: 'zero-input-detector-release-to-neutral' })),
       impulses: impulses.map(entry => ({ nodeId: entry.nodeId, descriptor: entry.material.descriptor, analysis: entry.material.analysis })),
       controls: Object.fromEntries(controls), controlSequence, controlEvidence: 'native-control-submission-not-applied-acknowledgment',
