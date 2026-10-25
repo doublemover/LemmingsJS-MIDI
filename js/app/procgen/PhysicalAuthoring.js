@@ -1,3 +1,4 @@
+import { preparePhysicalGraphAdmission } from './PhysicalGraphAdmission.js';
 import { validateCausalInstrumentGraph } from './workstation/CausalMusicEngine.js';
 import { validateFragmentInstances } from './workstation/PhysicalScoreFragment.js';
 import { validateProjectJunctions } from './workstation/PhysicalJunctionProject.js';
@@ -13,9 +14,10 @@ const preparePhysicalAuthoringConfiguration = (world, graph, instances = []) => 
   if (JSON.stringify({ graph: nextGraph, instances: nextInstances }).length * 2 > 4 * 1048576) throw new Error('Physical authoring owner capacity exceeded.');
   const oldGraph = state.graph, oldInstances = state.instances, changed = JSON.stringify(oldGraph) !== JSON.stringify(nextGraph) || JSON.stringify(oldInstances) !== JSON.stringify(nextInstances);
   if (oldGraph && JSON.stringify(oldGraph) !== JSON.stringify(nextGraph) && nextGraph.revision <= oldGraph.revision) throw new Error('Changed physical authoring graph requires a newer revision.');
-  const topology = prepareTerrainTopologyConfiguration(world, nextGraph.topologyRegions || []); let committed = false;
-  return { commit() { if (committed) return changed; if (world._disposed || world._stepping || world.physicalAuthoring !== state || state.graph !== oldGraph || state.instances !== oldInstances) throw new Error('Physical authoring configuration is stale.');
-    topology.commit(); if (changed) { state.graph = nextGraph; state.instances = nextInstances; recordProcgenRecoveryAuthoring(world, { graph: nextGraph, instances: nextInstances }); } committed = true; return changed;
+  const topology = prepareTerrainTopologyConfiguration(world, nextGraph.topologyRegions || []); let committed = false, admission = null;
+  const admit = () => admission ||= preparePhysicalGraphAdmission(world, nextGraph);
+  return { admit, cancel: () => admission?.cancel(), commit() { if (committed) return changed; if (world._disposed || world._stepping || world.physicalAuthoring !== state || state.graph !== oldGraph || state.instances !== oldInstances) throw new Error('Physical authoring configuration is stale.');
+    admit().commit(); topology.commit(); if (changed) { state.graph = nextGraph; state.instances = nextInstances; recordProcgenRecoveryAuthoring(world, { graph: nextGraph, instances: nextInstances }); } committed = true; return changed;
   } };
 };
 const normalizePhysicalAuthoringCommand = (world, input) => {
@@ -45,7 +47,9 @@ const preparePhysicalAuthoringCommand = (world, input) => {
   return { status: 'prepared', command, terrain, commit() {
     if (!world._stepping || !world.soundEvents._tick || world.physicalAuthoring !== state || world.physicalJunctions !== junctionState || state.revision !== command.expectedRevision || junctionState.revision !== command.expectedJunctionRevision || digestPlan(state.graph) !== command.expectedGraphDigest) throw new Error('Physical authoring publication is stale.');
     const publication = prepareTerrainPublication(terrain, world); if (publication.status !== 'prepared') return publication;
-    // The topology proposal has no callback, and nothing yields between these owner publications.
+    // Admit all interpreter owners before the first authoritative terrain write.
+    const admission = preparePhysicalGraphAdmission(world, command.graph);
+    try { admission.commit(); } catch (error) { try { admission.cancel(); } catch (retirementError) { error.retirementError = retirementError; } throw error; }
     const result = publication.commit({ captureTopology: false }); topology.commit();
     if (junctionsChanged) { junctionState.definitions = command.junctions; junctionState.actual = nextActual; junctionState.revision++; }
     world.physicalAuthoring = next; world.captureTerrainTopology?.('postTransaction');

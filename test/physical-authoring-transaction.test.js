@@ -1,3 +1,4 @@
+import { registerPhysicalGraphAdmission } from '../js/app/procgen/PhysicalGraphAdmission.js';
 import { expect } from 'chai';
 import { ProcgenLaneWorld } from '../js/app/procgen/ProcgenLaneWorld.js';
 import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
@@ -31,6 +32,18 @@ describe('one-boundary physical authoring publication', () => {
     a.configurePhysicalAuthoring({ version: 1, revision: 2, instruments: [] }); a.enqueueIntervention(command(a)); a.step();
     await replayProcgenRecoveryJournal(b, JSON.parse(JSON.stringify(journal.snapshot()))); expect(captureProcgenCheckpoint(b)).to.deep.equal(captureProcgenCheckpoint(a));
     journal.dispose(); a.dispose(); b.dispose();
+  });
+  it('rejects interpreter resource pressure before either graph or terrain publication', () => {
+    const world = ready(), old = world.physicalAuthoring.graph, release = registerPhysicalGraphAdmission(world, () => { throw new Error('observer capacity'); });
+    world.enqueueIntervention(command(world)); world.step();
+    expect(world.physicalAuthoring.graph).to.equal(old); expect(world.hasGroundAt(100, 10)).to.equal(false);
+    expect(world.interventionState.receipts.at(-1).status).to.equal('rejected'); release(); world.dispose();
+  });
+  it('lets a canceled immediate configuration return staged observer capacity', () => {
+    const world = ready(), calls = [], release = registerPhysicalGraphAdmission(world, () => ({ commit: () => calls.push('commit'), cancel: () => calls.push('cancel') }));
+    const proposal = world.preparePhysicalAuthoring(graph(2)); proposal.admit(); proposal.cancel();
+    expect(calls).to.deep.equal(['cancel']); expect(world.physicalAuthoring.graph.revision).to.equal(1);
+    expect(() => proposal.commit()).to.throw('changed'); release(); world.dispose();
   });
   it('cancels an admitted placement without exposing its candidate graph or collision', () => {
     const world = ready(), before = world.physicalAuthoring; world.enqueueIntervention(command(world)); world.cancelIntervention('author:1'); world.step();

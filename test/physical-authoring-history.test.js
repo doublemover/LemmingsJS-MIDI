@@ -33,3 +33,12 @@ describe('physical authoring checkpoint history ownership', () => {
     expect(a.tickIndex).not.to.equal(b.tickIndex); expect(b.hasGroundAt(100, 10)).to.equal(false); await history.dispose(); a.dispose(); b.dispose();
   });
 });
+
+describe('physical history synchronous retirement receipts', () => {
+  for (const response of [false, Promise.resolve(true)]) it(`retains a capsule when release returns ${response === false ? 'false' : 'a promise'}`, async () => {
+    const history = createPhysicalAuthoringHistory({ resourceBudget: { reserve() {}, release: () => response }, captureCheckpoint: async () => ({}) }), key = {};
+    const capsule = await history.capture(world(), key, checkpoint => ({ world: checkpoint }), { isCurrent: () => true }); capsule.promote(key); history.prune(new Set());
+    expect(history.get(key)).not.to.equal(null); expect(history.diagnostics().retirementUnknown).to.equal(1);
+    try { await history.dispose(); expect.fail('unacknowledged release accepted'); } catch (error) { expect(error.message).to.include('unknown'); }
+  });
+});

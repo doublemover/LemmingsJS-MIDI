@@ -1581,3 +1581,24 @@ Broad combined-scene estimate qualification is deferred. Pre-admitting *all* obs
 profile growth as part of the upstream canonical authoring transaction, rather than
 at interpretation of the newly accepted graph, remains development work; the graph
 is not automatically rewritten or physics thinned when that admission is refused.
+
+### Prepublication graph resource transactions
+
+Physical graph admission now participates in canonical authoring rather than
+waiting for the first interpreted batch. A world-scoped, nonserialized owner
+registry stages every interpreter's capacity before an immediate mapping is
+journaled or its topology/graph is published. Atomic terrain+graph commands admit
+at their commit boundary before the first terrain write. Owner replacement,
+generation changes and disposal invalidate a prepared proposal. Another owner's
+refusal cancels earlier uncommitted growth; cancellation preserves independently
+committed high-water capacity. The proposal set is bounded and does not enter
+checkpoints as executable state.
+
+Live playback initially admits its complete graph and unregisters on disposal;
+isolated re-performance binds its own registry entry. Failed/canceled project edits
+cannot consume Undo history or advance the physical graph merely to discover
+insufficient interpreter capacity later. Physical history also treats a false or
+asynchronous release as unacknowledged, retaining the capsule and pressure instead
+of dropping its sole recoverable state. New real-world/controller and stale-owner
+regressions are authored but unrun. Shared profile estimates and combined allocation
+qualification remain explicitly separate from these source-level contracts.

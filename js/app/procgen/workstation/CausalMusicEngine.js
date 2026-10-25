@@ -1,3 +1,4 @@
+import { registerPhysicalGraphAdmission } from '../PhysicalGraphAdmission.js';
 import { createCausalObserverResources } from './CausalObserverResources.js';
 import { estimateJournalBytes } from './CausalJournalCanonical.js';
 import { validateSwarmReducer, createSwarmReducer } from './physical/SwarmReducer.js';
@@ -83,7 +84,7 @@ const validateCausalInstrumentGraph = value => {
 
 const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline = null,
   getLaneState = () => ({ available: true }), getActivityOutputState = () => ({ status: 'unobserved' }), getOnsetControls = () => undefined, getPhysicalControlKinds = () => [], getPerformanceState = () => null,
-  maxBeginsPerBatch = 512, maxVoices = 512, maxPhysicalUpdatesPerBatch = 2048, traceLimit = 1024, resourceBudget = null } = {}) => {
+  maxBeginsPerBatch = 512, maxVoices = 512, maxPhysicalUpdatesPerBatch = 2048, traceLimit = 1024, resourceBudget = null, world = null } = {}) => {
   if (typeof getGraph !== 'function' || (scoreTimeline && typeof scoreTimeline.map !== 'function')) throw new Error('A causal graph provider and valid score timeline are required.');
   if (!Number.isSafeInteger(traceLimit) || traceLimit < 0 || traceLimit > 8192 || !Number.isSafeInteger(maxBeginsPerBatch) || maxBeginsPerBatch < 0 || maxBeginsPerBatch > 4096 || !Number.isSafeInteger(maxVoices) || maxVoices < 0 || maxVoices > 4096) throw new Error('Invalid bounded causal engine owner capacity.');
   if (!Number.isSafeInteger(maxPhysicalUpdatesPerBatch) || maxPhysicalUpdatesPerBatch < 0 || maxPhysicalUpdatesPerBatch > 4096) throw new Error('Invalid physical control budget.');
@@ -528,13 +529,17 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
   const diagnostics = () => disposed ? Object.freeze({ disposed, resources: resourceOwner.diagnostics(), activeVoices: 0 }) : Object.freeze({ resources: resourceOwner.diagnostics(), traceBytes, traceOmitted, swarm: swarm.diagnostics(), cargo: cargo.diagnostics(), activity: activity.diagnostics(), motifs: motifs.diagnostics(), encounters: encounters.diagnostics(), tonal: tones.diagnostics(), actionAdmission: actionAdmission.diagnostics(), physical: physical.diagnostics(), rhythmic: rhythmic.diagnostics(), recoveryRequired, recoveryAction: recoveryRequired ? 'restore-complete-boundary-or-explicit-rearm' : null, activeVoices: active.size, suppressedVoices: suppressed.size, deliveryErrors: errors, rejectedBegins: rejected,
     accepted: Object.freeze(Object.fromEntries(accepted)), rejected: Object.freeze(Object.fromEntries(rejectedByInstrument)),
     trace: Object.freeze([...trace]), decisions: Object.freeze([...decisions]) });
+  const prepareGraph = source => { resourceOwner.check(); estimateJournalBytes(source, { maxBytes: 2 * 1048576, maxNodes: 131072 }); return resourceOwner.prepareGraph(validateCausalInstrumentGraph(source)); };
+  let releaseGraphAdmission = null;
+  try { if (world) releaseGraphAdmission = registerPhysicalGraphAdmission(world, prepareGraph); } catch (error) { resourceOwner.dispose(); throw error; }
   const dispose = () => { if (disposalError) throw disposalError; if (disposed) return false;
+    releaseGraphAdmission?.(); releaseGraphAdmission = null;
     for (const collection of [onsetPlans, instrumentEpochs, active, suppressed, byActor, seen, accepted, rejectedByInstrument, onsetDecisions]) collection.clear();
     seenOrder.length = trace.length = traceSizes.length = decisions.length = batchDecisions.length = 0; traceBytes = 0;
     graph = graphSource = graphFingerprint = liveIds = indexed = snapshotCache = latestPhysicalAnalysis = probabilityAnalysis = null;
     tones = swarm = cargo = activity = motifs = encounters = physical = rhythmic = actionAdmission = travel = null;
     disposed = true; try { resourceOwner.dispose(); } catch (error) { disposalError = error; throw error; } return true; };
-  return { processBatch, snapshot, restore, diagnostics, dispose, physicalAnalysis: () => latestPhysicalAnalysis, probabilityAnalysis: () => probabilityAnalysis, rearm({ discardUnknownHeldState = false } = {}) {
+  return { processBatch, snapshot, restore, diagnostics, dispose, prepareGraph, physicalAnalysis: () => latestPhysicalAnalysis, probabilityAnalysis: () => probabilityAnalysis, rearm({ discardUnknownHeldState = false } = {}) {
     resourceOwner.check(); snapshotCache = null;
     if (!discardUnknownHeldState || active.size || suppressed.size) throw new Error('Rearming requires explicit discard of unknown held state at an empty boundary.');
     recoveryRequired = false; return Object.freeze({ status: 'rearmed', resumesHeldVoices: false, sourceBoundary: Object.freeze({ ...cursor }) });

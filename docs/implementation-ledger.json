@@ -3400,7 +3400,10 @@
         "js/runtime/BrowserGenerationService.js",
         "js/app/procgen/workstation/CausalObserverResources.js",
         "js/app/procgen/workstation/ProcgenPhysicalPlayback.js",
-        "js/app/procgen/workstation/ProcgenWorkstation.js"
+        "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "js/app/procgen/PhysicalGraphAdmission.js",
+        "js/app/procgen/PhysicalAuthoring.js",
+        "js/app/procgen/workstation/PhysicalAuthoringHistory.js"
       ],
       "regressions": [
         "test/resource-budget.test.js",
@@ -3412,16 +3415,21 @@
         "test/physical-domain-editor.test.js",
         "scripts/bench-phrase-cargo.mjs",
         "test/procgen-survey-browser-assets.test.js",
-        "test/causal-observer-resources.test.js"
+        "test/causal-observer-resources.test.js",
+        "test/physical-graph-admission.test.js",
+        "test/physical-authoring-history.test.js",
+        "test/physical-authoring-transaction.test.js",
+        "test/procgen-physical-authoring-controller.test.js"
       ],
       "commits": [
         "90ff49f579c2f2bce24d006e51dc01c5f921dcab",
         "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1",
-        "03e36c9d2771537e523f4ec7ba1d86d8c38837ae"
+        "03e36c9d2771537e523f4ec7ba1d86d8c38837ae",
+        "87cd69c1"
       ],
       "validation": "deferred-by-request",
       "increment": "bounded-command-and-render-staging",
-      "remaining": "Shared live/re-performance interpreter and feedback owners now reserve state/staging, with estimates requiring deferred combined-scene qualification. Upstream canonical authoring must still pre-admit observer profile growth before graph publication; continued audit of auxiliary persistent owners remains development.",
+      "remaining": "Combined resource scenario harness and final auxiliary persistent-owner audit remain development; actual browser/native memory estimate qualification is deferred validation, not missing source implementation.",
       "increments": [
         {
           "id": "bounded-physical-feedback-and-layers",
@@ -3441,10 +3449,15 @@
         {
           "id": "shared-physical-observer-owners",
           "summary": "Shared live/re-performance causal interpreter state and old/new staging admission; feature high-water ownership, immutable boundary snapshot reuse, bounded trace bytes, failed-retirement blocking, constructor unwind, quiescent replay disposal and separately reserved feedback controller. Disabled swarm continuation ownership fixed. Regressions authored unrun; upstream authoring admission still incomplete.",
+          "commit": "87cd69c1"
+        },
+        {
+          "id": "prepublication-physical-graph-admission",
+          "summary": "World-scoped interpreter admission before mapping journaling and atomic terrain+graph writes; bounded cancelable resource proposals, concurrent committed high-water retention, owner/generation invalidation, constructor admission, and false/asynchronous history release preservation. Real controller/world regressions authored unrun. Combined resource scenario harness and auxiliary owner audit remain development.",
           "commit": null
         }
       ],
-      "remainingDevelopment": "Shared live/re-performance interpreter and feedback owners now reserve state/staging, with estimates requiring deferred combined-scene qualification. Upstream canonical authoring must still pre-admit observer profile growth before graph publication; continued audit of auxiliary persistent owners remains development."
+      "remainingDevelopment": "Combined resource scenario harness and final auxiliary persistent-owner audit remain development; actual browser/native memory estimate qualification is deferred validation, not missing source implementation."
     },
     {
       "number": 1163,

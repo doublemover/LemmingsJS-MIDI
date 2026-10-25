@@ -318,16 +318,19 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }
     const authoringChanged = graphChanged || project.procgen.fragmentInstances !== next.procgen.fragmentInstances && !equal(project.procgen.fragmentInstances || [], next.procgen.fragmentInstances || []);
     const authoringProposal = authoringChanged ? runtime()?.world?.preparePhysicalAuthoring?.(next.procgen.physicalGraph, next.procgen.fragmentInstances || []) : null;
-    if (!restoringWorld && graphChanged && !equal(project.procgen.physicalGraph.feedback, next.procgen.physicalGraph.feedback)) physicalFeedback?.disarm();
-    const mappingChanged = causalTake && graphChanged;
-    if (causalTake && (mappingChanged || performanceChange)) {
-      const world = runtime()?.world, boundary = { tick: world?.tickIndex ?? 0, generation: world?.generation ?? 0 };
-      const receipt = performanceChange ? causalTake.recordPerformance(performanceChange, boundary, mappingChanged ? next.procgen.physicalGraph : null)
-        : causalTake.recordMapping(next.procgen.physicalGraph, boundary);
-      if (receipt.status !== 'accepted') throw new Error(`Causal take could not admit the performance change: ${receipt.reason}. Stop the take before editing it.`);
-      if (performanceChange) sampledMacroPerformance = captureCausalPerformanceState(afterPerformanceLanes);
-    }
-    authoringProposal?.commit(); junctionProposal?.commit();
+    authoringProposal?.admit();
+    try {
+      if (!restoringWorld && graphChanged && !equal(project.procgen.physicalGraph.feedback, next.procgen.physicalGraph.feedback)) physicalFeedback?.disarm();
+      const mappingChanged = causalTake && graphChanged;
+      if (causalTake && (mappingChanged || performanceChange)) {
+        const world = runtime()?.world, boundary = { tick: world?.tickIndex ?? 0, generation: world?.generation ?? 0 };
+        const receipt = performanceChange ? causalTake.recordPerformance(performanceChange, boundary, mappingChanged ? next.procgen.physicalGraph : null)
+          : causalTake.recordMapping(next.procgen.physicalGraph, boundary);
+        if (receipt.status !== 'accepted') throw new Error(`Causal take could not admit the performance change: ${receipt.reason}. Stop the take before editing it.`);
+        if (performanceChange) sampledMacroPerformance = captureCausalPerformanceState(afterPerformanceLanes);
+      }
+      authoringProposal?.commit(); junctionProposal?.commit();
+    } catch (error) { try { authoringProposal?.cancel(); } catch (retirementError) { error.retirementError = retirementError; } throw error; }
     if (history) {
       if (historyGroup == null || historyGroup !== lastHistoryGroup) {
         if (historyCost != null) historySizes.set(project, historyCost);
@@ -872,7 +875,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const physicalBus = next.world?.soundEvents?.onBatch;
     physicalScoreClock = createProcgenPhysicalScoreClock(); physicalClockError = false;
     if (session?.physicalTimeline) physicalScoreClock.restore(session.physicalTimeline);
-    physicalPlayback = createProcgenPhysicalPlayback({ audio: legacy.local.audio, getInstrumentCatalog, renderer: next.lanes?.renderer, resourceBudget,
+    physicalPlayback = createProcgenPhysicalPlayback({ world: next.world, audio: legacy.local.audio, getInstrumentCatalog, renderer: next.lanes?.renderer, resourceBudget,
       getGraph: () => next.world.physicalAuthoring?.graph || project.procgen.physicalGraph, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes), isPlaybackEnabled: localEnabled, scoreTimeline: physicalScoreClock, now,
       onInstrumentState: event => { if (event.state === 'unavailable' || event.state === 'retirement-unknown') status('Lane ' + event.laneId + ' instrument: ' + event.code); },
       onReceipt: receipt => {

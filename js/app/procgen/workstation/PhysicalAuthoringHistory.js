@@ -5,7 +5,9 @@ export function createPhysicalAuthoringHistory({ resourceBudget = null, maxBytes
   const release = record => {
     if (!owned.has(record)) return true;
     if (record.pending) return false;
-    try { resourceBudget?.release({ token: record.token, owner: 'physical-authoring-history' }); }
+    try { const acknowledged = resourceBudget?.release({ token: record.token, owner: 'physical-authoring-history' });
+      if (acknowledged === false || acknowledged && typeof acknowledged.then === 'function') { if (acknowledged?.then) Promise.resolve(acknowledged).catch(() => {}); throw new Error('Physical history retirement did not acknowledge synchronously.'); }
+    }
     catch (error) { record.retirementError = error.message; return false; }
     owned.delete(record); bytes -= record.bytes; record.session = null; return true;
   };
