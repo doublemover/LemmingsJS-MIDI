@@ -3625,3 +3625,42 @@ Preparation does not copy PCM or advance selection. Native compatibility, gain-l
 identity, frame conversion, selected release rates, position policy and unsupported
 read-domain fixtures are authored and unrun. The actual sample Worklet, shared
 backend/offline integration and travel mapper remain in development.
+
+
+### Continuation 167 — pooled sample layers on the shared kernel (#1130, #1224, #1079)
+
+The owned sampler now has a real source and processor kernel on the existing
+command heap, voice identity, source-tap and display infrastructure. It reads
+shared private PCM through the prepared sinc bank, preserves fractional forward
+and reverse playheads, and uses fixed-period symmetric edge-held seam heads with
+an explicit gain law. Sustain-loop release waits for a seam-safe exit instead of
+changing an active crossfade abruptly. The conservative peak policy covers
+correlated seam heads and simultaneous attack/release layers; mono sources use
+equal-power pan and stereo/mixed sources use the existing stereo-balance policy.
+No resampling quality or native timbre equivalence is inferred from that bound.
+
+Position cursors use preallocated views into fixed queue/scalar planes. Segment
+admission has a pure preflight path and field-based application; reading a sample
+does not allocate a loop policy or a cursor command. Settled rests skip source
+reads and output zero. Seeks use one held old head alongside at most two current
+seam heads; a release child keeps the total at four. Continuous pitch changes
+preserve source phase. Position-driven pitch remains tied to committed source
+coordinate derivative.
+
+A release-trigger sample is a child of its original logical voice and selected
+map entry. Its own envelope survives the parent envelope reaching zero. Child
+velocity, region, source-rate conversion and frame deadline remain explicit;
+generation cancellation and Panic fade all layers without spawning another
+release. The common kernel now lets such sources own their envelope completion
+while retaining the existing gate, command and retirement evidence. Cancellation
+release lengths also normalize to integer output frames before state capture.
+
+Source cuts contain all pooled cursor planes, actual playheads, layer envelopes,
+future controls and the exact prepared map configuration. Verification checks
+configuration, source/PCM identities, cursor domains and shared gate ancestry
+before staging any mutation; immutable PCM and filter coefficients stay shared.
+Forward/reverse period, child lifetime, position reversal/rest, cancellation,
+same-pitch ownership and complete state-cut fixtures are authored and unrun.
+The processor is implemented, but engine catalog publication, live preparation,
+sample-map onset commands, offline fixtures and canonical travel integration are
+still pending. It is deliberately not yet advertised as an available sampler.

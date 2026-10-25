@@ -3,11 +3,14 @@ import { createOwnedEffectState } from './OwnedEffectState.js';
 const finite = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;
 const integer = (value, low = 0, high = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(value) && value >= low && value <= high;
 const kinds = Object.freeze({ continuous: 0, seek: 1, restore: 2, 'topology-rebind': 3 });
-const scalarNames = ['frame', 'head', 'length', 'lastSequence', 'lastEndFrame', 'lastEndPosition', 'position', 'previousPosition', 'crossfadeRemaining', 'gain', 'targetGain', 'gainRemaining', 'rejected', 'segmentsApplied', 'readDerivative', 'lastDiscontinuity', 'released', 'decodedPosition', 'previousDecodedPosition', 'seekMix01', 'lastSeekFrame'];
+export const OWNED_SAMPLE_CURSOR_SCALARS = Object.freeze(['frame', 'head', 'length', 'lastSequence', 'lastEndFrame', 'lastEndPosition', 'position', 'previousPosition', 'crossfadeRemaining', 'gain', 'targetGain', 'gainRemaining', 'rejected', 'segmentsApplied', 'readDerivative', 'lastDiscontinuity', 'released', 'decodedPosition', 'previousDecodedPosition', 'seekMix01', 'lastSeekFrame']);
+const scalarNames = OWNED_SAMPLE_CURSOR_SCALARS;
 export class OwnedSampleCursor {
-  constructor(parameters, { frameOrigin = 0, sourceFrame = parameters.regionStartFrame } = {}) {
+  constructor(parameters, { frameOrigin = 0, sourceFrame = parameters.regionStartFrame, queueStorage = null } = {}) {
     this.profile = prepareSampleCursorProfile(parameters); if (!integer(frameOrigin) || !finite(sourceFrame, this.profile.regionStartFrame, this.profile.regionEndFrame)) throw new TypeError('Sample cursor needs an exact start frame and source coordinate.');
-    const p = this.profile; this.queue = new Float64Array(p.capacity * p.queueWidth); this.frame = frameOrigin; this.head = 0; this.length = 0; this.lastSequence = 0; this.lastEndFrame = frameOrigin; this.lastEndPosition = sourceFrame;
+    const p = this.profile;
+    if (queueStorage !== null && (!(queueStorage instanceof Float64Array) || !(queueStorage.buffer instanceof ArrayBuffer) || queueStorage.length !== p.capacity * p.queueWidth)) throw new TypeError('Invalid prepared sample cursor queue storage.');
+    this.queue = queueStorage || new Float64Array(p.capacity * p.queueWidth); this.queue.fill(0); this.frame = frameOrigin; this.head = 0; this.length = 0; this.lastSequence = 0; this.lastEndFrame = frameOrigin; this.lastEndPosition = sourceFrame;
     this.position = sourceFrame; this.previousPosition = sourceFrame; this.crossfadeRemaining = 0; this.gain = this.targetGain = 0; this.gainRemaining = 0; this.rejected = 0; this.segmentsApplied = 0; this.readDerivative = 0; this.lastDiscontinuity = 0; this.released = 0;
     this.decodedPosition = this.map(sourceFrame); this.previousDecodedPosition = this.decodedPosition; this.seekMix01 = 1; this.lastSeekFrame = -p.slewFrames;
     this.transfer = createOwnedEffectState({ kernel: this, identity: sampleCursorIdentity(p), arrays: [this.queue], scalars: scalarNames.map(name => ({ name, type: 'number' })), validate: value => this.validateState(value) });
@@ -19,9 +22,16 @@ export class OwnedSampleCursor {
     this.position = this.previousPosition = sourceFrame; this.crossfadeRemaining = 0; this.gain = this.targetGain = this.gainRemaining = 0; this.rejected = this.segmentsApplied = this.readDerivative = this.lastDiscontinuity = this.released = 0;
     this.decodedPosition = this.previousDecodedPosition = this.map(sourceFrame); this.seekMix01 = 1; this.lastSeekFrame = -p.slewFrames;
   }
-  enqueue({ firstOutputFrame, endOutputFrame, firstSourceFrame, endSourceFrame, sequence, discontinuity = 'continuous' } = {}) {
+  canEnqueueFields(firstOutputFrame, endOutputFrame, firstSourceFrame, endSourceFrame, sequence, discontinuity = 'continuous') {
     const p = this.profile, maximum = p.maximumCoordinateSourceFrames, multiplier = p.interpolation === 'smoothstep' ? 1.5 : 1;
-    if (this.released || !integer(firstOutputFrame, this.frame) || !integer(endOutputFrame, firstOutputFrame + 1) || endOutputFrame - firstOutputFrame > p.sampleRate * 2 || !integer(sequence, this.lastSequence + 1) || !finite(firstSourceFrame, -maximum, maximum) || !finite(endSourceFrame, -maximum, maximum) || typeof discontinuity !== 'string' || !Object.hasOwn(kinds, discontinuity) || discontinuity !== 'continuous' && firstOutputFrame < this.lastSeekFrame + p.slewFrames || firstOutputFrame < this.lastEndFrame || discontinuity === 'continuous' && Math.abs(firstSourceFrame - this.lastEndPosition) > 1e-7 || Math.abs(endSourceFrame - firstSourceFrame) * p.sourceToDecoded / (endOutputFrame - firstOutputFrame) * multiplier > p.maximumReadDerivative || this.length === p.capacity) { this.rejected++; return false; }
+    return !(this.released || !integer(firstOutputFrame, this.frame) || !integer(endOutputFrame, firstOutputFrame + 1) || endOutputFrame - firstOutputFrame > p.sampleRate * 2 || !integer(sequence, this.lastSequence + 1) || !finite(firstSourceFrame, -maximum, maximum) || !finite(endSourceFrame, -maximum, maximum) || typeof discontinuity !== 'string' || !Object.hasOwn(kinds, discontinuity) || discontinuity !== 'continuous' && firstOutputFrame < this.lastSeekFrame + p.slewFrames || firstOutputFrame < this.lastEndFrame || discontinuity === 'continuous' && Math.abs(firstSourceFrame - this.lastEndPosition) > 1e-7 || Math.abs(endSourceFrame - firstSourceFrame) * p.sourceToDecoded / (endOutputFrame - firstOutputFrame) * multiplier > p.maximumReadDerivative || this.length === p.capacity);
+  }
+  enqueue({ firstOutputFrame, endOutputFrame, firstSourceFrame, endSourceFrame, sequence, discontinuity = 'continuous' } = {}) {
+    return this.enqueueFields(firstOutputFrame, endOutputFrame, firstSourceFrame, endSourceFrame, sequence, discontinuity);
+  }
+  enqueueFields(firstOutputFrame, endOutputFrame, firstSourceFrame, endSourceFrame, sequence, discontinuity = 'continuous') {
+    if (!this.canEnqueueFields(firstOutputFrame, endOutputFrame, firstSourceFrame, endSourceFrame, sequence, discontinuity)) { this.rejected++; return false; }
+    const p = this.profile;
     const at = (this.head + this.length) % p.capacity * p.queueWidth;
     this.queue[at] = firstOutputFrame; this.queue[at + 1] = endOutputFrame; this.queue[at + 2] = firstSourceFrame; this.queue[at + 3] = endSourceFrame; this.queue[at + 4] = kinds[discontinuity]; this.queue[at + 5] = sequence; this.queue[at + 6] = 0;
     if (discontinuity !== 'continuous') this.lastSeekFrame = firstOutputFrame;

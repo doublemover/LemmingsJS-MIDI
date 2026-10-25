@@ -1,3 +1,4 @@
+import { SAMPLE_READ_TABLE_SAMPLES } from '../../midi/content/SampleReadProfile.js';
 export const LIVE_LANE_TAP_LIMIT = 8;
 export const LIVE_LANE_TAP_PROTOCOL = 3;
 export const LIVE_LANE_ID_LIMIT = 4096;
@@ -6,9 +7,11 @@ export const PLUCK_LAYOUT = Object.freeze({ width: 24, voices: 16, state: 28, de
 export const CHOIR_LAYOUT = Object.freeze({ width: 26, voices: 8, state: 40, bands: 3, bandState: 8, tableLength: 2048, tableSamples: 8 * 2049 });
 export const SPECTRUM_LAYOUT = Object.freeze({ width: 73, voices: 8, state: 24, partialState: 6, partials: 16, tableLength: 2048, tableSamples: 16 * 5 * 2049, sineSamples: 2049, frameSamples: 256 });
 export const GRANULAR_LAYOUT = Object.freeze({ width: 33, voices: 8, cloudState: 44, grainState: 14, grains: 16, windowSamples: 2049, birthsPerBucket: 32 });
+export const SAMPLE_LAYOUT = Object.freeze({ width: 40, voices: 2, state: 48, zones: 128, cursorCapacity: 32, cursorWidth: 7, cursorScalars: 21 });
 export const CHOIR_SOURCE_HEAP_ESTIMATE = 65536;
 export const SPECTRUM_SOURCE_HEAP_ESTIMATE = 65536;
 export const GRANULAR_SOURCE_HEAP_ESTIMATE = 65536;
+export const SAMPLE_SOURCE_HEAP_ESTIMATE = 4 * 1048576;
 const check = (rate, voices, maximum, maxRate = 384000) => {
   if (!Number.isFinite(rate) || rate < 8000 || rate > maxRate || !Number.isInteger(voices) || voices < 1 || voices > maximum) throw new RangeError('Invalid owned source storage profile.');
 };
@@ -26,4 +29,9 @@ export function spectrumSourceBytes(rate, voices = SPECTRUM_LAYOUT.voices) {
 export function granularSourceBytes(rate, voices = GRANULAR_LAYOUT.voices) {
   check(rate, voices, GRANULAR_LAYOUT.voices, 192000); if (!Number.isInteger(rate)) throw new RangeError('Invalid granular source rate.');
   return GRANULAR_LAYOUT.windowSamples * 4 + voices * (GRANULAR_LAYOUT.cloudState + GRANULAR_LAYOUT.grains * GRANULAR_LAYOUT.grainState) * 8;
+}
+export function sampleSourceBytes(rate, voices = SAMPLE_LAYOUT.voices) {
+  check(rate, voices, SAMPLE_LAYOUT.voices, 96000);
+  if (![44100, 48000, 96000].includes(rate)) throw new RangeError('Invalid owned sample source rate.');
+  return SAMPLE_READ_TABLE_SAMPLES * 4 + voices * (SAMPLE_LAYOUT.state + SAMPLE_LAYOUT.zones * (SAMPLE_LAYOUT.cursorCapacity * SAMPLE_LAYOUT.cursorWidth + SAMPLE_LAYOUT.cursorScalars)) * 8;
 }

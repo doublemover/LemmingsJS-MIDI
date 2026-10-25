@@ -33,11 +33,11 @@ export function prepareOwnedSamplePlan(patch, descriptor, sampleRate) {
       sourceFrames: bank.sourceFrames, decodedFrames: bank.frames, regionStartFrame: region.onsetFrame, regionEndFrame: region.endFrame,
       bankHash: descriptor.bankHash, mapRevision: map.revision, capacity: OWNED_SAMPLE_CURSOR_CAPACITY, slewSeconds: policy.slewSeconds,
       maximumReadDerivative: policy.maximumReadDerivative, boundary: policy.boundary, interpolation: policy.interpolation }) : null;
-    const positionSeam = policy?.boundary === 'wrap' ? { crossfade: policy.crossfadeFrames * conversion, gainLaw: policy.gainLaw, seamPolicy: 'fixed-period-symmetric-edge-held-v1' } : null;
+    const positionSeam = policy?.boundary === 'wrap' ? { first, end, crossfade: policy.crossfadeFrames * conversion, gainLaw: policy.gainLaw, seamPolicy: 'fixed-period-symmetric-edge-held-v1' } : null;
     if (positionSeam && (positionSeam.crossfade < 2 || positionSeam.crossfade > (end - first) / 2)) fail('The position wrap seam is outside the decoded region bound.');
     return freezeData({ assetIndex, assetHash: region.assetHash, first, end, guardFirst: Math.floor(first), guardEnd: Math.ceil(end),
       sourceFirst: region.onsetFrame, sourceEnd: region.endFrame, sourceSampleRate: bank.sourceSampleRate, decodedSampleRate: bank.sampleRate,
-      rootCents: region.rootCents, tuningCents: region.tuningCents, pitchRange: region.pitchRange, gain01: region.gain01, mode, loop, cursorProfile,
+      rootCents: region.rootCents, tuningCents: region.tuningCents, rootFrequencyHz: 440 * 2 ** ((region.rootCents - region.tuningCents - 6900) / 1200), pitchRange: region.pitchRange, gain01: region.gain01, mode, loop, cursorProfile,
       positionSeam,
       filterGuard: 'clamp-actual-region-sample-indices', periodDomain: 'fractional-decoded-source-frames;crossfade-does-not-shorten-loop' });
   };

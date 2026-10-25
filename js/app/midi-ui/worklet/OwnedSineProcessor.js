@@ -15,7 +15,7 @@ class OwnedSineKernel {
   constructor(sampleRate, maxVoices = MAX_VOICES, { source = null, width = WIDTH } = {}) {
     if (!Number.isFinite(sampleRate) || sampleRate < 8000 || sampleRate > 384000 ||
         !Number.isSafeInteger(maxVoices) || maxVoices < 1 || maxVoices > MAX_VOICES) throw new Error('Invalid sine kernel limits.');
-    if (![18, 24, 26, 33, 73].includes(width) || width !== 18 && !source || source && (width === 18 || ['begin', 'sample', 'validFrequency', 'validUpdate', 'applyUpdate'].some(method => typeof source[method] !== 'function'))) throw new Error('Invalid owned source profile.');
+    if (![18, 24, 26, 33, 40, 73].includes(width) || width !== 18 && !source || source && (width === 18 || ['begin', 'sample', 'validFrequency', 'validUpdate', 'applyUpdate'].some(method => typeof source[method] !== 'function') || source.ownsEnvelope && typeof source.finished !== 'function')) throw new Error('Invalid owned source profile.');
     this.width = width; this.source = source;
     this.sampleRate = sampleRate; this.maxVoices = maxVoices;
     this.queue = new Float64Array(CAPACITY * this.width); this.queueLength = 0;
@@ -148,13 +148,14 @@ class OwnedSineKernel {
     }
   }
 
-  release(slot, frames, frame, reason) {
+  release(slot, frames, frame, reason, packet = null) {
     if (!this.active[slot]) return;
+    frames = Math.max(1, Math.round(frames));
     const at = slot * 28, voices = this.voice;
     voices[at + 18] = Math.max(1, frames); voices[at + 19] = voices[at + 4] / voices[at + 18];
     voices[at + 20] = reason; voices[at + 21] = frame;
     voices[at + 26] = frame;
-    this.source?.release?.(slot);
+    this.source?.release?.(slot, frames, frame, reason, packet, voices[at + 16]);
   }
 
   apply(frame) {
@@ -224,7 +225,10 @@ class OwnedSineKernel {
         this.laneRoutes[route + 2] = this.laneRoutes[route + 3] = Math.max(1, Math.round(queue[14])); this.laneRoutes[route + 4] = frame;
       }
       const mix = slot * 6; this.mix[mix + 1] = queue[7]; this.mix[mix + 4] = queue[9]; this.mix[mix + 2] = this.mix[mix + 5] = Math.max(1, Math.round(queue[14]));
-    } else if (opcode === END) this.release(slot, Math.max(1, queue[13]), frame, 1);
+    } else if (opcode === END) {
+      if (this.source?.validRelease && !this.source.validRelease(queue, frame)) { this.receipt(REJECTED, sequence, slot, token, frame, 1); return; }
+      this.release(slot, this.source?.ownsEnvelope ? Math.min(Math.max(1, queue[13]), Math.max(1, voices[at + 16] - frame)) : Math.max(1, queue[13]), frame, this.source?.ownsEnvelope && frame >= voices[at + 16] ? 7 : 1, queue);
+    }
     else if (opcode === LEASE) {
       // The render boundary, not producer time, owns the irreversible release cutoff.
       if (voices[at + 18] > 0 || frame >= voices[at + 16] - voices[at + 17]) {
@@ -274,13 +278,19 @@ class OwnedSineKernel {
       for (let slot = 0; slot < this.maxVoices; slot++) {
         if (!this.active[slot]) continue;
         const at = slot * 28, voices = this.voice, age = frame - voices[at + 15];
+        const sourceEnvelope = this.source?.ownsEnvelope === true;
+        if (sourceEnvelope && this.source.finished(slot)) {
+          if (this.displayEnabled) this.measureDisplay(slot, 0, frame, 0, 2);
+          this.active[slot] = 0; this.source.retire(slot); this.receipt(ENDED, voices[at + 22], slot, voices[at + 2], frame, voices[at + 20]); continue;
+        }
         if (!voices[at + 18] && frame >= voices[at + 16] - voices[at + 17]) this.release(slot, voices[at + 17], frame, 7);
         if (voices[at + 18]) {
           voices[at + 4] = Math.max(0, voices[at + 4] - voices[at + 19]); voices[at + 18]--;
-          if (voices[at + 18] === 0 || voices[at + 4] === 0) {
+          if (!sourceEnvelope && (voices[at + 18] === 0 || voices[at + 4] === 0)) {
             if (this.displayEnabled) this.measureDisplay(slot, 0, frame, 0, 2);
             this.active[slot] = 0; this.source?.retire?.(slot); this.receipt(ENDED, voices[at + 22], slot, voices[at + 2], frame, voices[at + 20]); continue;
           }
+          if (sourceEnvelope && voices[at + 18] === 0) { voices[at + 18] = 1; voices[at + 19] = 0; }
         } else if (age < voices[at + 12]) voices[at + 4] = age / voices[at + 12];
         else if (age < voices[at + 12] + voices[at + 13]) voices[at + 4] = 1 - (1 - voices[at + 14]) * (age - voices[at + 12]) / voices[at + 13];
         else voices[at + 4] = voices[at + 14];
@@ -289,11 +299,11 @@ class OwnedSineKernel {
         if (voices[at + 25] > 0) { voices[at + 10] += (voices[at + 11] - voices[at + 10]) / voices[at + 25]; voices[at + 25]--; }
         const mix = slot * 6;
         for (let offset = 0; offset <= 3; offset += 3) if (this.mix[mix + offset + 2] > 0) { this.mix[mix + offset] += (this.mix[mix + offset + 1] - this.mix[mix + offset]) / this.mix[mix + offset + 2]; this.mix[mix + offset + 2]--; }
-        const phase = voices[at + 3], sourceSample = this.source ? this.source.sample(slot, voices[at + 5], frame) : Math.sin(phase),
-          sample = sourceSample * voices[at + 4] * voices[at + 7] * voices[at + 8], stereo = this.source?.stereo === true;
+        const envelope = sourceEnvelope ? 1 : voices[at + 4], phase = voices[at + 3], sourceSample = this.source ? this.source.sample(slot, voices[at + 5], frame) : Math.sin(phase),
+          sample = sourceSample * envelope * voices[at + 7] * voices[at + 8], stereo = this.source?.stereo === true;
         let voiceLeft, voiceRight;
         if (stereo) {
-          const leftSample = this.source.leftSample * voices[at + 4] * voices[at + 7] * voices[at + 8], rightSample = this.source.rightSample * voices[at + 4] * voices[at + 7] * voices[at + 8];
+          const leftSample = this.source.leftSample * envelope * voices[at + 7] * voices[at + 8], rightSample = this.source.rightSample * envelope * voices[at + 7] * voices[at + 8];
           voiceLeft = leftSample * (voices[at + 10] > 0 ? Math.cos(voices[at + 10] * Math.PI / 2) : 1);
           voiceRight = rightSample * (voices[at + 10] < 0 ? Math.cos(voices[at + 10] * Math.PI / 2) : 1);
           if (this.displayEnabled) this.measureDisplay(slot, Math.sqrt((leftSample * leftSample + rightSample * rightSample) * 0.5), frame, phase, voices[at + 18] ? 1 : 0,
@@ -374,7 +384,7 @@ class OwnedSineProcessor extends ProcessorBase {
       sampleRate: globalThis.sampleRate, maxVoices: this.kernel.maxVoices, capacity: CAPACITY, width: this.kernel.width });
   }
   createKernel(rate, voices) { return new OwnedSineKernel(rate, voices); }
-  runtimeIdentity() { return { engineId: 'worklet-sine', engineVersion: 1, runtimeABI: 'owned-sine-f64-command-v1', buildId: 'owned-sine-v5-lane-transfer' }; }
+  runtimeIdentity() { return { engineId: 'worklet-sine', engineVersion: 1, runtimeABI: 'owned-sine-f64-command-v1', buildId: 'owned-sine-v6-layer-lifetime' }; }
   flushDisplay() {
     if (this.displayAwaiting || !this.kernel.displayReady) return;
     const message = this.displayMessage; message.count = this.kernel.displayCount; message.sequence = this.kernel.displaySequence;
