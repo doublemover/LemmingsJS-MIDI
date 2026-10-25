@@ -51,6 +51,7 @@ import { createNativeSoundSelection } from '../../midi-ui/NativeSoundSelection.j
 import { resolveLegacySoundAlias } from './NativeSoundCollections.js';
 import { createSoundContentLibrary } from '../../midi-ui/SoundContentLibrary.js';
 import { createQuarryEchoView } from '../../midi-ui/QuarryEchoView.js';
+import { createSoundSeedLabView } from '../../midi-ui/SoundSeedLabView.js';
 import { createMasterCaptureView } from '../../midi-ui/MasterCaptureView.js';
 import { createPrelistenMonitor } from '../../midi-ui/PrelistenMonitor.js';
 import { createCausalTakeAudioRenderView } from '../../midi-ui/CausalTakeAudioRenderView.js';
@@ -137,7 +138,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let physicalScoreProjection = null, physicalScore = null, physicalScoreQuery = null, physicalScoreAbort = null, physicalScoreSerial = 0, physicalScoreParent = null;
   let physicalScoreLease = null, physicalScoreParentLease = null, scoreViewRetirement = null;
   let soundLibrary = null, nativeSoundSelection = null;
-  let masterCapture = null;
+  let masterCapture = null, soundSeedLab = null;
   let releaseGestureView = null, releaseGestureSerial = 0, physicalAuthoringView = null, quarryEchoView = null, crossExcitationView = null, travelColorationView = null, spectralFreezeView = null, sympatheticMapView = null, physicalJunctionView = null, junctionRequestSerial = 0;
   let stageSession = null;
   let sceneCatalog = null, sceneLoader = null, sceneBrowser = null, sceneToolsPending = null;
@@ -1322,7 +1323,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       causalAudioRender ||= createCausalTakeAudioRenderView({ document, window, journal, resourceBudget, jobs: backgroundJobs,
         getMaterialProvider: () => legacy.local.audio?.getSoundMaterialProvider(),
         getSavedRack: () => project.procgen.effectRack || null,
-        displayScheduler: view?.displayScheduler, onStatus: status }); await causalAudioRender.open({ takeId, instrumentRef: selected().instrumentRef || null });
+        onHarvest: source => handlers.harvestSoundSeed(source), displayScheduler: view?.displayScheduler, onStatus: status }); await causalAudioRender.open({ takeId, instrumentRef: selected().instrumentRef || null });
     }),
     openPrelistenMonitor() {
       if (disposed || !legacy.local.audio) return;
@@ -1447,9 +1448,15 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         saveRack: rack => { if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the current world or take operation before saving effect defaults.'); dispatch({ type: 'procgen/effectRack', rack }); }, onStatus: status });
       quarryEchoView.open();
     },
+    harvestSoundSeed(source) {
+      if (disposed || !resourceBudget || !legacy.local.audio) throw new Error('Sound-seed ownership is unavailable.');
+      soundSeedLab ||= createSoundSeedLabView({ document, window, audio: legacy.local.audio, resourceBudget, jobs: backgroundJobs,
+        displayScheduler: view?.displayScheduler, onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onStatus: status });
+      return soundSeedLab.open(source);
+    },
     openMasterCapture() {
       if (disposed || !resourceBudget || !legacy.local.audio) { status('Browser master capture is unavailable.'); return; }
-      masterCapture ||= createMasterCaptureView({ document, window, preview: legacy.local.audio, resourceBudget, onStatus: status });
+      masterCapture ||= createMasterCaptureView({ document, window, preview: legacy.local.audio, resourceBudget, onHarvest: source => handlers.harvestSoundSeed(source), onStatus: status });
       masterCapture.open();
     },
     applyMatchingWorld(laneId = selected().id) { const lane = procgenLane(project.procgen.lanes, laneId); if (!lane?.linkedThemePresetId) throw new Error('This sound has no matching physical world suggestion.'); return dispatch({ type: 'procgen/worldTheme', laneId, worldThemeId: lane.linkedThemePresetId }); },
@@ -1507,7 +1514,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     historyState: () => Object.freeze({ undo: undo.length, redo: redo.length,
       retainedBytes: retainedHistoryBytes(), physical: physicalHistory.diagnostics(), byteLimit: historyBytesLimit, dropped: historyDropped }),
     stopOutput() {
-      physicalFeedback?.disarm();
+      soundSeedLab?.suspend(); physicalFeedback?.disarm();
       transport.stop(); pendingResume = false;
       recordCausalControl('input', { version: 1, kind: 'transport-state', playing: false });
       status('Transport stopped and output flushed.');
@@ -1521,7 +1528,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }),
     stageExit: safe(() => stageSession?.exit()), stageGo: safe(() => stageSession?.go()),
     stagePlay: () => play(), stagePause() { transport.pause(); recordCausalControl('input', { version: 1, kind: 'transport-state', playing: false }); },
-    panicOutput() { physicalFeedback?.disarm(); ports.panic(); physicalPlayback?.setEffectBypass?.('panic'); status('Owned output and effect memory cleared.'); },
+    panicOutput() { soundSeedLab?.suspend(); physicalFeedback?.disarm(); ports.panic(); physicalPlayback?.setEffectBypass?.('panic'); status('Owned output and effect memory cleared.'); },
     scenes: safe(openPerformanceScenes),
     transport(patch) { configureTransport(patch); if (patch.gameSpeed != null) legacy.setSpeed(patch.gameSpeed, { owned: true }); editRevision++; storageStatus(); persist(); if (!transport.getState().playing) scheduleRecovery(); },
     addLane: safe(async () => { if (!await rebuild({ projectNext: reduceMidiProject(project, { type: 'procgen/addLane' }) })) return false; state.laneId = project.procgen.lanes.at(-1).id; view.render(); return true; }),
@@ -1770,6 +1777,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   listen(document, 'keydown', event => { if (event.key === 'Escape' && inputLease) cancelInputEdits('canceled by user'); });
   pageLifecycle = createProcgenPageLifecycle({ document, window, suspend: ({ reason }) => {
     physicalAuthoringAbort?.abort(); physicalAuthoringView?.suspend(); quarryEchoView?.suspend(); crossExcitationView?.suspend(); travelColorationView?.suspend(); spectralFreezeView?.suspend(); sympatheticMapView?.suspend(); physicalJunctionView?.suspend();
+    soundSeedLab?.suspend();
     void masterCapture?.suspend();
     causalAudioRender?.suspend();
     causalWorkbenchSourceSerial++;
@@ -1863,8 +1871,9 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'travel-colour-view', run: () => travelColorationView?.dispose() },
         { name: 'cross-excitation-view', run: () => crossExcitationView?.dispose() },
         { name: 'quarry-echo-view', run: () => quarryEchoView?.dispose() },
-        { name: 'master-capture', run: () => masterCapture?.dispose() },
-        { name: 'causal-audio-render', run: () => causalAudioRender?.dispose() },
+        { name: 'sound-seed-lab', run: () => soundSeedLab?.dispose() },
+        { name: 'master-capture', run: async () => { const seed = soundSeedLab?.dispose(); if (seed) { await seed.completion; if (seed.outcome !== 'complete') throw new Error('Sound-seed readers still own the capture source.'); } return masterCapture?.dispose(); } },
+        { name: 'causal-audio-render', run: async () => { const seed = soundSeedLab?.dispose(); if (seed) { await seed.completion; if (seed.outcome !== 'complete') throw new Error('Sound-seed readers still own the render source.'); } return causalAudioRender?.dispose(); } },
         { name: 'prelisten-monitor', run: () => prelistenMonitor?.dispose() },
         { name: 'transport', run: () => transport.dispose()?.completion },
         { name: 'midi-ports', run: () => ports.dispose() },

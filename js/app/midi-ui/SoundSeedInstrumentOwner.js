@@ -1,0 +1,108 @@
+import { inspectOwnedSoundSeedHeader, inspectOwnedSoundSeedOrigin } from './OwnedSoundSeedSource.js';
+import { createSoundSeedRecipe } from '../../midi/content/SoundSeedRecipe.js';
+import { canonicalDataText, freezeData } from '../../core/CanonicalData.js';
+import { getNativeInstrumentCatalog } from './NativeInstrumentSchema.js';
+import { createSoundContentReader } from './SoundContentReader.js';
+import { createSoundContentRegistry } from './SoundContentRegistry.js';
+import { createSoundContentInstallation } from './SoundContentInstallation.js';
+import { SOUND_ARCHIVE_FORMAT, SOUND_ARCHIVE_MAGIC } from './SoundContentArchive.js';
+import { backgroundJobService } from '../resources/BackgroundJobService.js';
+import { createOwnedResourceReservation } from '../resources/OwnedResourceReservation.js';
+import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
+
+const fail = message => Object.assign(new Error(message), { name: 'SoundSeedInstrumentError', code: 'sound-seed-instrument-unavailable' });
+
+export function createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs = backgroundJobService, indexedDB, keyRange, onApply,
+  getCatalog = getNativeInstrumentCatalog, onState = () => {}, onReveal } = {}) {
+  if (typeof onApply !== 'function' || typeof onState !== 'function') throw new TypeError('A seed instrument needs an undoable lane application owner.');
+  const reader = createSoundContentReader({ resourceBudget, jobs, maxPending: 2, stageLifetimeMs: 3600000 });
+  const registry = createSoundContentRegistry({ indexedDB, keyRange, resourceBudget });
+  const installation = createSoundContentInstallation({ audio, registry, getCatalog, onReveal });
+  const retirement = createProcgenRetirementScope(), unknown = new Set();
+  let current = null, active = null, disposed = false, sequence = 0, error = null, phase = 'no-patch';
+  const state = () => Object.freeze({ phase, active: !!active, disposed, error, unknownRetirement: unknown.size,
+    compiledPatchReady: !!current?.stage.metadata().retained, audibleAuditionReady: !!current && !!installation.getAudition(current.stage, current.identity),
+    durable: !!current?.installed, assetHash: current?.assetHash || null, recipe: current?.contract || null, patchIdentity: current?.identity || null });
+  const report = () => { if (!disposed) { try { onState(state()); } catch {} } };
+  const discard = record => {
+    if (!record) return;
+    record.stage.discard(); const status = record.stage.metadata();
+    if (status.retirement !== 'released' || status.activeLeases) { unknown.add(record); throw fail('The prepared seed pack has unresolved readers.'); }
+  };
+  const run = (name, work) => {
+    if (disposed || active || unknown.size) return Promise.reject(fail('Finish the current seed instrument operation or resolve its ownership first.'));
+    const operation = { controller: new AbortController(), ordinal: ++sequence, promise: null }; active = operation; phase = name; error = null; report();
+    const check = () => { operation.controller.signal.throwIfAborted(); if (disposed || active !== operation) throw fail('The seed instrument owner changed.'); };
+    operation.promise = Promise.resolve().then(() => work(operation, check)).catch(failure => { error = String(failure.message).slice(0, 512); phase = unknown.size ? 'ownership-unknown' : current ? 'previous-patch-retained' : 'no-patch'; throw failure; })
+      .finally(() => { if (active === operation) active = null; report(); }); return operation.promise;
+  };
+  const prepare = (candidate, { transform, pitch, isCurrent = () => true } = {}) => run('compiling', async (operation, checkOwner) => {
+    const check = () => { checkOwner(); if (!isCurrent() || !candidate.metadata().assetReady) throw fail('The seed draft changed while preparing its instrument.'); };
+    let loan = null, job = null, workspace = null, next = null, prepared = null;
+    try {
+      check(); const metadata = candidate.metadata(), artifactMetadata = candidate.artifact.metadata();
+      workspace = createOwnedResourceReservation({ budget: resourceBudget, owner: 'sound-seed-instrument', generation: operation.ordinal, category: 'candidate', kind: 'seed-private-pack', bytes: artifactMetadata.byteLength + 8 * 1048576 });
+      loan = candidate.artifact.borrow(); if (!(loan.blob instanceof Blob)) throw fail('Frozen seed material must be an independently owned immutable Blob.');
+      const sourceHeader = inspectOwnedSoundSeedHeader(new Uint8Array(await loan.blob.slice(0, 56).arrayBuffer()), artifactMetadata.byteLength); check();
+      if (sourceHeader.frames !== candidate.manifest.frames || sourceHeader.sampleRate !== candidate.manifest.sampleRate) throw fail('Frozen seed frame inventory differs from its recipe.');
+      inspectOwnedSoundSeedOrigin(new Uint8Array(await loan.blob.slice(sourceHeader.metadataOffset).arrayBuffer()), candidate.manifest); check();
+      const recipe = await createSoundSeedRecipe({ manifest: candidate.manifest, assetHash: metadata.assetHash, byteLength: artifactMetadata.byteLength, transform, pitch }); check();
+      const inputBytes = canonicalDataText(recipe.source, { maxBytes: 1048576, maxNodes: 32768 }).bytes.length;
+      job = await jobs.compute({ kind: 'compile-sound-content', ownerId: 'sound-seed-instrument', ownerEpoch: operation.ordinal, sourceRevision: recipe.contractHash,
+        inputBytes, maxBytes: 4 * 1048576, estimatedPeakBytes: 64 * 1048576, budgetAdapter: resourceBudget, signal: operation.controller.signal,
+        isCurrent: () => !disposed && active === operation && isCurrent(), prepareInput: () => recipe.source }); check();
+      if (job.receipt.method !== 'dedicated-worker' || job.receipt.executionIdentity?.activeExecution !== 'bound') throw fail('Seed compilation needs its bound application worker.');
+      const catalog = await getCatalog(); check();
+      prepared = job.value;
+      const payloads = [{ sha256: metadata.assetHash, bytes: artifactMetadata.byteLength, blob: loan.blob },
+        { sha256: recipe.contractHash, bytes: new TextEncoder().encode(recipe.contractText).length, blob: new Blob([recipe.contractText], { type: 'application/json' }) }].sort((a, b) => a.sha256 < b.sha256 ? -1 : 1);
+      const header = canonicalDataText({ format: SOUND_ARCHIVE_FORMAT, mode: 'portable', contentHash: prepared.contentHash, pack: prepared.pack,
+        payloads: payloads.map(({ sha256, bytes }) => ({ sha256, bytes })), rightsReview: [], qualification: 'private-local-material;redistribution-not-asserted' }, { maxBytes: 4 * 1048576 }).bytes;
+      const prefix = new Uint8Array(12); prefix.set(new TextEncoder().encode(SOUND_ARCHIVE_MAGIC)); new DataView(prefix.buffer).setUint32(8, header.length, false);
+      phase = 'verifying-frozen-material'; report();
+      next = await reader.stageArchive(new Blob([prefix, header, ...payloads.map(entry => entry.blob)]), { engineDescriptors: catalog.descriptors,
+        signal: operation.controller.signal, isCurrent: () => !disposed && active === operation && isCurrent() }); check();
+      const identities = next.metadata().patches; if (identities.length !== 1) throw fail('Seed compilation did not produce one complete instrument.');
+      const record = { stage: next, identity: identities[0], contract: recipe.contract, assetHash: metadata.assetHash, installed: false };
+      // Publish after producer/input retirement, preserving the old patch on failure.
+      job.release(); if (!['released', 'canceled'].includes(job.retirementState().phase)) { unknown.add({ job, loan, workspace, stage: next }); job = loan = workspace = next = null; throw fail('Seed compiler retirement is unresolved.'); } job = null; prepared = null;
+      loan.release(); loan = null; workspace.release(); workspace = null; check(); discard(current); current = record; next = null; phase = 'compiled-patch-ready'; return state();
+    } catch (failure) {
+      if (failure.backgroundRetirementCompletion) failure.backgroundRetirement = await failure.backgroundRetirementCompletion;
+      if (failure.backgroundRetirement && !['released', 'canceled'].includes(failure.backgroundRetirement.phase)) { unknown.add({ failure, job, loan, workspace, stage: next }); job = loan = workspace = next = null; }
+      throw failure;
+    } finally {
+      if (job) { job.release(); if (!['released', 'canceled'].includes(job.retirementState().phase)) { unknown.add({ job, loan, workspace, stage: next }); loan = workspace = next = null; } }
+      if (next) discard({ stage: next }); loan?.release(); workspace?.release();
+    }
+  });
+  const audition = ({ repeatCount = 1 } = {}) => run('auditioning', async (operation, check) => {
+    if (!Number.isInteger(repeatCount) || repeatCount < 1 || repeatCount > 3) throw fail('Choose one audition or an explicit bounded three-pass loop.');
+    if (!current?.stage.metadata().retained) throw fail('Compile the current seed before auditioning.');
+    let receipt;
+    for (let pass = 0; pass < repeatCount; pass++) {
+      check(); receipt = await installation.audition(current.stage, current.identity, { signal: operation.controller.signal,
+        ...(current.contract.transform !== 'ice-dust' ? { sampleHoldSeconds: Math.max(0.2, Math.min(8, current.contract.frames / current.contract.sampleRate + 0.02)) } : {}) }); check();
+    }
+    phase = 'audition-complete'; return receipt;
+  });
+  const install = () => run('saving-immutable-material', async (operation, check) => {
+    if (!current) throw fail('Compile and audition this seed first.');
+    const receipt = await installation.install(current.stage, { signal: operation.controller.signal, isCurrent: () => !disposed && active === operation });
+    current.installed = true; check(); phase = 'durable'; return receipt;
+  });
+  const apply = () => run('applying-to-selected-lane', async (operation, check) => {
+    if (!current) throw fail('Prepare this seed first.'); const candidate = installation.applyCandidate(current.stage, current.identity); check();
+    await onApply(candidate, { signal: operation.controller.signal }); check(); phase = 'applied'; return freezeData({ state: 'applied', assetHash: current.assetHash, patchIdentity: current.identity });
+  });
+  const stop = () => { active?.controller.abort(fail('Sound seed operation canceled.')); installation.stop(); };
+  const clear = async () => { stop(); await active?.promise.catch(() => {}); if (unknown.size) throw fail('Seed instrument retirement remains unresolved.'); discard(current); current = null; phase = 'no-patch'; error = null; report(); };
+  return Object.freeze({ prepare, audition, install, apply, stop, clear, state,
+    dispose() {
+      if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; stop(); const stopped = Promise.resolve(active?.promise).catch(() => {});
+      const installationFinished = stopped.then(async () => { const receipt = installation.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw fail('Seed audition retirement remains unresolved.'); });
+      return retirement.retire([{ name: 'accepted-seed-instrument-operation', run: () => stopped }, { name: 'seed-installation', run: () => installationFinished },
+        { name: 'seed-material-stage', run: async () => { await installationFinished; if (unknown.size) throw fail('Seed instrument ownership remains unresolved.'); discard(current); current = null; reader.dispose(); registry.close(); } }]);
+    }
+  });
+}

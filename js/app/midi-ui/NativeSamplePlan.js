@@ -3,6 +3,7 @@ import { createSampleMapResolver, validateSampleMapAssets } from '../../midi/con
 export function sampleRegionRate(region, pitch, offset = 0) {
   const cents = pitch.cents + offset + 1200 * Math.log2((pitch.referenceHz ?? 440) / 440);
   if (!Number.isFinite(cents) || region.pitchRange && (cents < region.pitchRange.minCents || cents > region.pitchRange.maxCents)) return null;
+  if (region.pitchTracking === 'fixed') return 1;
   const ratio = 2 ** ((cents - region.rootCents + region.tuningCents) / 1200);
   return Number.isFinite(ratio) && ratio >= 1 / 16 && ratio <= 16 ? ratio : null;
 }
@@ -34,7 +35,7 @@ export function prepareNativeSamplePlan(patch, assets) {
 
 export function nativeSampleReleaseFrames(plan, releaseSeconds, sampleRate) {
   const child = plan.region.releaseRegion;
-  const childRate = child ? plan.minimumRateRatio * 2 ** ((plan.region.rootCents - child.rootCents + child.tuningCents - plan.region.tuningCents) / 1200) : 1;
+  const childRate = child?.pitchTracking === 'fixed' ? 1 : child ? plan.minimumRateRatio * 2 ** ((plan.region.rootCents - child.rootCents + child.tuningCents - plan.region.tuningCents) / 1200) : 1;
   const childSeconds = child ? Math.min(4, (child.endFrame - child.onsetFrame) / plan.childSourceRate / childRate) : 0;
   return Math.max(releaseSeconds, childSeconds) * sampleRate;
 }

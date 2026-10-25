@@ -34,7 +34,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
   let active = null, disposed = false, ordinal = 0;
   const retirement = createProcgenRetirementScope();
   const stageReceipts = new WeakMap(), installed = new WeakMap(), unknown = new Set();
-  const audition = (stage, patchIdentity, { signal: externalSignal, sourceMode = null, sampleGesture = null } = {}) => {
+  const audition = (stage, patchIdentity, { signal: externalSignal, sourceMode = null, sampleGesture = null, sampleHoldSeconds = 0.2 } = {}) => {
     externalSignal?.throwIfAborted();
     if (disposed || active || unknown.size) return Promise.reject(failure('audition-busy', 'Sound audition is unavailable or has unresolved retirement.'));
     let lease;
@@ -43,6 +43,9 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
     if (!patch || patch.state !== 'definition-admitted' || !['native-oscillator', 'native-fm', 'native-modal', 'native-sample', 'worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample'].includes(patch.definition.engineId) ||
         patch.definition.sampleRefs.length && !['worklet-granular', 'native-sample', 'worklet-sample'].includes(patch.definition.engineId) || patch.definition.modulations.length || patch.definition.engineId === 'worklet-sine' && (patch.definition.macros.length || patch.definition.causalBindings.length || patch.definition.variation)) {
       lease.release(); return Promise.reject(failure('audition-requirements-unmet', 'This instrument needs an available renderer and a realized gesture/material adapter.'));
+    }
+    if (!Number.isFinite(sampleHoldSeconds) || sampleHoldSeconds < 0.2 || sampleHoldSeconds > 8 || sampleHoldSeconds !== 0.2 && patch.definition.engineId !== 'worklet-sample') {
+      lease.release(); return Promise.reject(failure('sample-hold-unavailable', 'The owned sample audition hold must be 0.2–8 seconds.'));
     }
     if (sourceMode !== null && (!['original', 'region'].includes(sourceMode) || patch.definition.engineId !== 'worklet-granular' || patch.definition.sampleRefs.length !== 1)) {
       lease.release(); return Promise.reject(failure('source-comparison-unavailable', 'Select a granular instrument with one local source to compare.'));
@@ -113,7 +116,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
         }
         const context = operation.context = audio.getAudioContext(), rate = context?.sampleRate;
         if (context?.state !== 'running' || !Number.isFinite(rate) || rate < 8000 || rate > 384000) throw failure('audio-unavailable', 'Audition audio clock is unavailable.');
-        if (patch.definition.engineId === 'worklet-sample') auditionFixture = createOwnedSampleControlFixture(prepareOwnedSamplePlan(resolution.patch, prepared.sourceBank, rate), sampleGesture ?? patch.definition.sampleMap.neutralArticulationId).fixture;
+        if (patch.definition.engineId === 'worklet-sample') auditionFixture = createOwnedSampleControlFixture(prepareOwnedSamplePlan(resolution.patch, prepared.sourceBank, rate), sampleGesture ?? patch.definition.sampleMap.neutralArticulationId, { holdSeconds: sampleHoldSeconds }).fixture;
         const registered = operation.backend.registerExecution({ executionEpoch: 'sound-audition:' + number, generation: number });
         if (registered.status !== 'accepted') throw failure('audition-admission', 'Audition execution could not be registered.'); operation.execution = registered.execution;
         const requiresApplication = !sourceMode && ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample'].includes(patch.definition.engineId), applications = new Map(); let commandFailure = null, sourceEndedFrame = null;

@@ -17,11 +17,11 @@ export function retainOwnedSampleDiagnostics(data, plan) {
     slots.add(voice.slot);
     return { slot: voice.slot, token: voice.token, epoch: voice.epoch, generation: voice.generation, zoneId: entry.zoneId, assetHash: region.assetHash,
       sourceRegionFrames: [region.sourceFirst, region.sourceEnd], sourceSampleRate: region.sourceSampleRate, decodedSampleRate: region.decodedSampleRate,
-      decodedPosition: voice.decodedPosition, sourcePosition: voice.sourcePosition, rateRatio: voice.rateRatio, readDerivative: voice.readDerivative, mode: region.mode, readHeads: voice.readHeads,
+      decodedPosition: voice.decodedPosition, sourcePosition: voice.sourcePosition, rateRatio: voice.rateRatio, readDerivative: voice.readDerivative, pitchTracking: region.pitchTracking, mode: region.mode, readHeads: voice.readHeads,
       loop: region.loop ? { mode: region.loop.mode, startFrame: region.loop.startFrame, endFrame: region.loop.endFrame, crossfadeFrames: region.loop.crossfadeFrames, gainLaw: region.loop.gainLaw, active: voice.loopActive, turns: voice.loopTurns } : null,
       child: entry.release ? { active: voice.childActive, assetHash: entry.release.assetHash, sourceRegionFrames: [entry.release.sourceFirst, entry.release.sourceEnd], decodedPosition: voice.childDecodedPosition } : null };
   });
   return freezeData({ schema: 'lemmings-owned-sample-diagnostics/v1', frame: data.frame, mapId: plan.map.mapId, mapRevision: plan.map.revision, bankHash: source.bankHash,
-    voices, positionDomain: 'original-source-frames;unwrapped-for-position-driven', decodedDomain: 'private-PCM-frames', rateDomain: 'nominal-note-varispeed-ratio;position-mode-uses-observed-readDerivative',
+    voices, positionDomain: 'original-source-frames;unwrapped-for-position-driven', decodedDomain: 'private-PCM-frames', rateDomain: 'varispeed-note-ratio;fixed-unpitched-rate-one;position-mode-uses-observed-readDerivative',
     evidenceClass: 'processor-state-at-reported-completed-frame', acousticReceipt: false });
 }

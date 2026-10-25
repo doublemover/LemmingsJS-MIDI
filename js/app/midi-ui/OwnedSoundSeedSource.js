@@ -20,7 +20,7 @@ export function inspectOwnedSoundSeedHeader(bytes, byteLength) {
   return freezeData({ sampleRate: rate, channels: 2, frames, dataOffset: 56, dataBytes, metadataOffset: 56 + dataBytes, byteLength });
 }
 
-function inspectOrigin(bytes, expected) {
+export function inspectOwnedSoundSeedOrigin(bytes, expected) {
   if (!(bytes instanceof Uint8Array) || bytes.length < 8 || !ascii(bytes, 0, 'lmjs')) throw fail('The seed source omitted its original render/capture manifest.');
   const length = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(4, true);
   if (!integer(length, 1, SOUND_SEED_MAX_METADATA_BYTES) || bytes.length !== 8 + length + length % 2 || length % 2 && bytes[bytes.length - 1] !== 0) throw fail('The source origin annotation is truncated or oversized.');
@@ -92,7 +92,7 @@ export function createOwnedSoundSeedSource({ artifact, manifest, resourceBudget 
           }
           if (!header || offset !== metadata.byteLength || copied !== pcm.length) throw fail('The replayable source did not complete its exact original frame inventory.');
         }
-        let originBytes = inspectOrigin(suffix, expected); check();
+        let originBytes = inspectOwnedSoundSeedOrigin(suffix, expected); check();
         loan.release(); await loan.settlement; if (loan.releaseState && loan.releaseState() !== 'released') throw fail('The original source reader did not acknowledge retirement.'); loan = null; check();
         let value = Object.freeze({ pcm, originBytes, source, firstFrame, endFrame, sampleRate: header.sampleRate, generation: operation.generation }), finish;
         pcm = suffix = originBytes = null;

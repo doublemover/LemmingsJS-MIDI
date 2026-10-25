@@ -10,7 +10,7 @@ import { createInstrumentDisplayScheduler } from '../resources/InstrumentDisplay
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 import { prepareCausalEffectSelection } from './CausalEffectSelection.js';
 
-export function createCausalTakeAudioRenderView({ document, window, journal, resourceBudget, jobs, getMaterialProvider = null, getSavedRack = () => null, displayScheduler = null, onStatus = () => {} } = {}) {
+export function createCausalTakeAudioRenderView({ document, window, journal, resourceBudget, jobs, getMaterialProvider = null, getSavedRack = () => null, displayScheduler = null, onStatus = () => {}, onHarvest = null } = {}) {
   if (typeof getSavedRack !== 'function') throw new TypeError('Saved effect defaults need a project reader.');
   let instrumentWorkspace = null, effectWorkspace = null;
   const retirement = createProcgenRetirementScope(), listeners = [], reads = new Set(), readFaults = new Set();
@@ -76,6 +76,11 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
       tail: { mode: tail.value, maxSeconds: Number(tailSeconds.value) }, includeAllLaneStems: stems.checked, restorationMode: restore.value, ...effects });
     say('Rendered WAV files are prepared. Choose a file and a delivery action; the original take is unchanged.');
   }));
+  const harvest = button('Harvest selected file as seed', run(async () => {
+    const entry = owner?.getPrepared()?.files.find(entry => entry.id === file.value);
+    if (!entry?.artifact.metadata().retained || !onHarvest || picker || delivery) return;
+    dialog.close(); await onHarvest({ artifact: entry.artifact, manifest: entry.manifest });
+  }));
   const cancelRender = button('Cancel render', () => owner.cancel());
   const download = button('Download selected WAV', run(() => {
     const artifact = chosen(); if (!artifact || picker || delivery) return;
@@ -121,6 +126,7 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
     restore.disabled = busy || loading || nativeRestore; if (nativeRestore) restore.value = 'forward-preroll';
     tailSeconds.disabled = busy || loading || tail.value === 'exact-crop'; file.disabled = busy || picker || !!delivery || !bundle;
     const ready = !!(artifact || chosen()?.metadata())?.retained;
+    harvest.disabled = !ready || !onHarvest || busy || picker || !!delivery;
     download.disabled = !ready || busy || picker || !!delivery; save.disabled = download.disabled || typeof window.showSaveFilePicker !== 'function';
     cancelSave.disabled = !delivery; discard.disabled = !bundle || busy || picker;
   }

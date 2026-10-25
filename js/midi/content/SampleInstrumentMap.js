@@ -36,7 +36,7 @@ export function retainSampleSelectionReceipt(outcome) {
       zoneId: selection.zoneId, articulationId: selection.articulationId, requestedArticulationId: selection.requestedArticulationId, neutralFallback: selection.neutralFallback,
       roundRobinGroup: selection.roundRobinGroup, alternateIndex: selection.alternateIndex, alternates: selection.alternates, velocityMin01: selection.velocityMin01,
       velocityMax01: selection.velocityMax01, identityScope: selection.identityScope, algorithmVersion: SAMPLE_SELECTION_ALGORITHM,
-      ...(owned ? { playbackMode: region.playbackMode, readDerivative: outcome.readDerivative } : {}),
+      ...(owned ? { playbackMode: region.playbackMode, readDerivative: outcome.readDerivative, ...(region.pitchTracking ? { pitchTracking: region.pitchTracking } : {}) } : {}),
       evidenceClass: owned ? 'owned-source-selection-api' : 'native-source-selection-api', appliedFrame: null, acousticReceipt: false });
   } catch { return null; }
 }
@@ -62,14 +62,15 @@ export function validateSampleInstrumentMap(input, sampleRefs, { rendererProfile
   }).sort(before);
   if (!articulations.has(input.neutralArticulationId)) fail('missing neutral articulation');
   const region = (value, child = false) => {
-    keys(value, child ? ['assetHash', 'onsetFrame', 'endFrame', 'rootCents', 'gain01', 'tuningCents', 'pitchRange'] :
-      ['id', 'articulationId', 'roundRobinGroup', 'alternateIndex', 'velocityMin01', 'velocityMax01', 'assetHash', 'onsetFrame', 'endFrame', 'rootCents', 'gain01', 'tuningCents', 'pitchRange', 'loop', 'releaseRegion', 'chokeGroup', ...(advanced ? ['playbackMode', 'positionPolicy'] : [])]);
+    keys(value, child ? ['assetHash', 'onsetFrame', 'endFrame', 'rootCents', 'gain01', 'tuningCents', 'pitchRange', ...(advanced ? ['pitchTracking'] : [])] :
+      ['id', 'articulationId', 'roundRobinGroup', 'alternateIndex', 'velocityMin01', 'velocityMax01', 'assetHash', 'onsetFrame', 'endFrame', 'rootCents', 'gain01', 'tuningCents', 'pitchRange', 'loop', 'releaseRegion', 'chokeGroup', ...(advanced ? ['playbackMode', 'positionPolicy', 'pitchTracking'] : [])]);
     if (!assets.has(value.assetHash) || !integer(value.onsetFrame, 0, 7999999) || !integer(value.endFrame, value.onsetFrame + 1, 8000000) ||
         !finite(value.rootCents, -24000, 24000) || !finite(value.gain01, 0, 1) || !finite(value.tuningCents, -1200, 1200)) fail('invalid source frame region or authored trim');
     keys(value.pitchRange, ['minCents', 'maxCents', 'maxTransposeCents']);
-    const range = value.pitchRange;
+    const range = value.pitchRange, pitchTracking = advanced ? value.pitchTracking ?? 'varispeed' : 'varispeed';
+    if (!['fixed', 'varispeed'].includes(pitchTracking) || pitchTracking === 'fixed' && value.tuningCents !== 0) fail('fixed-rate material cannot hide pitch tuning');
     if (!finite(range.minCents, -24000, value.rootCents) || !finite(range.maxCents, value.rootCents, 24000) ||
-        !finite(range.maxTransposeCents, 0, 4800) || Math.max(value.rootCents - range.minCents, range.maxCents - value.rootCents) > range.maxTransposeCents)
+        !finite(range.maxTransposeCents, 0, 4800) || (pitchTracking === 'fixed' ? range.maxTransposeCents !== 0 : Math.max(value.rootCents - range.minCents, range.maxCents - value.rootCents) > range.maxTransposeCents))
       fail('pitch range exceeds its declared varispeed transposition');
     const playbackMode = advanced && !child ? value.playbackMode ?? 'forward' : 'forward';
     if (!['forward', 'reverse', 'positionDriven'].includes(playbackMode)) fail('unsupported owned sample playback mode');
@@ -92,7 +93,7 @@ export function validateSampleInstrumentMap(input, sampleRefs, { rendererProfile
         ...(advanced ? { gainLaw: value.loop.gainLaw ?? 'linear' } : {}) };
     }
     return { assetHash: value.assetHash, onsetFrame: value.onsetFrame, endFrame: value.endFrame, rootCents: value.rootCents,
-      gain01: value.gain01, tuningCents: value.tuningCents, pitchRange: { minCents: range.minCents, maxCents: range.maxCents, maxTransposeCents: range.maxTransposeCents },
+      ...(value.pitchTracking != null ? { pitchTracking } : {}), gain01: value.gain01, tuningCents: value.tuningCents, pitchRange: { minCents: range.minCents, maxCents: range.maxCents, maxTransposeCents: range.maxTransposeCents },
       ...(!child ? { ...(advanced ? { playbackMode, positionPolicy } : {}), loop, releaseRegion: value.releaseRegion == null ? null : region(value.releaseRegion, true), chokeGroup: value.chokeGroup ?? null } : {}) };
   };
   const ids = new Set(), groups = new Map();
@@ -173,7 +174,7 @@ export function createSampleMapResolver(input, sampleRefs, { patchId, patchRevis
       selected.alternates.map(zone => [zone.id, zone.assetHash])]) + 1) * 2147483648));
     const zone = selected.alternates[seed % selected.alternates.length];
     const toRegion = entry => ({ domain: 'source-frames', assetHash: entry.assetHash, onsetFrame: entry.onsetFrame, endFrame: entry.endFrame, rootCents: entry.rootCents,
-      gain01: entry.gain01, tuningCents: entry.tuningCents, pitchRange: { minCents: entry.pitchRange.minCents, maxCents: entry.pitchRange.maxCents }, playbackMode: entry.playbackMode ?? 'forward' });
+      ...(entry.pitchTracking ? { pitchTracking: entry.pitchTracking } : {}), gain01: entry.gain01, tuningCents: entry.tuningCents, pitchRange: { minCents: entry.pitchRange.minCents, maxCents: entry.pitchRange.maxCents }, playbackMode: entry.playbackMode ?? 'forward' });
     const scope = JSON.stringify([intent.worldId ?? null, intent.generation, intent.laneId ?? null, intent.sampleKitId ?? intent.mappingId ?? 'control', map.mapId, map.revision]);
     if (scope.length > 1024) fail('sample kit scope exceeds its bounded identity');
     return freezeData({ ...toRegion(zone), ...(advancedMap(map) ? { positionPolicy: zone.positionPolicy } : {}), loop: zone.loop, releaseRegion: zone.releaseRegion ? toRegion(zone.releaseRegion) : null,

@@ -99,4 +99,33 @@ describe('pooled owned sample source and logical release children (runtime quali
     const other = create(48000, { crossfade: 128 }); expect(() => other.restoreFrom(bytes, identity)).to.throw('prepared map'); expect(other.lastFrame).to.equal(0); expect(other.active.some(Boolean)).to.equal(false);
     const corrupt = bytes.slice(); corrupt[corrupt.length - 1] ^= 1; const staged = create(); expect(() => staged.restoreFrom(corrupt, identity)).to.throw('checksum'); expect(staged.lastFrame).to.equal(0);
   });
+  it('keeps unpitched attack and release PCM at the authored rate across different triggering pitches', () => {
+    const definition = patch();
+    for (const region of [definition.sampleMap.zones[0], definition.sampleMap.zones[0].releaseRegion]) {
+      region.pitchTracking = 'fixed'; region.pitchRange = { minCents: 0, maxCents: 12700, maxTransposeCents: 0 };
+    }
+    const make = frequency => {
+      const kernel = new OwnedSampleKernel(48000, pcm, definition, 2, sourceBank);
+      submit(kernel, [row(BEGIN, 0, 1, { 6: frequency }), row(END, 256, 2, { 13: 64 })]);
+      return { kernel, audio: render(kernel, 1024) };
+    };
+    const low = make(220), high = make(880);
+    expect(low.audio).to.deep.equal(high.audio);
+    expect(value(low.kernel, F.derivative)).to.equal(1);
+    expect(value(high.kernel, F.childDerivative)).to.equal(1);
+    expect(high.kernel.source.inspect().voices[0].rateRatio).to.equal(1);
+    expect(receipts(high.kernel).some(item => item[0] === REJECTED)).to.equal(false);
+  });
+
+  it('derives a bounded sampler tone from semantic velocity and keeps filter state private to the voice', () => {
+    const quiet = create(), loud = create();
+    submit(quiet, [row(BEGIN, 0, 1, { 31: 9000, 32: 0.8, 33: 0.1 })]);
+    submit(loud, [row(BEGIN, 0, 1, { 31: 9000, 32: 0.8, 33: 0.9 })]);
+    render(quiet, 1); render(loud, 1);
+    expect(value(quiet, F.filterHz)).to.be.closeTo(2520, 1e-9); expect(value(loud, F.filterHz)).to.be.closeTo(8280, 1e-9);
+    const [low] = render(quiet, 512), [high] = render(loud, 512); expect(low).not.to.deep.equal(high);
+    expect([...low, ...high].every(Number.isFinite)).to.equal(true);
+    expect(value(quiet, F.filterAlpha)).to.be.greaterThan(0).and.lessThan(1);
+  });
+
 });

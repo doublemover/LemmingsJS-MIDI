@@ -13,7 +13,7 @@ function sourceCoverage(origin, source, first, end) {
     if (!prior || !Array.isArray(prior.gaps) || prior.gaps.length > 256 || !['known-material', 'missing-source-region', 'partial-source;terminal-coverage-unverified'].includes(prior.status)) fail('The frozen source omitted its original material-coverage evidence.');
     const gaps = [];
     for (const gap of prior.gaps) {
-      if (!integer(gap.firstFrame, 0) || !integer(gap.endFrame, gap.firstFrame + 1, source.sourceFrames)) fail('The frozen source contains an invalid local missing-frame interval.');
+      if (!integer(gap.firstFrame, 0) || !integer(gap.endFrame, gap.firstFrame + 1, source.sourceFrames) || typeof gap.reason !== 'string' || !gap.reason || gap.reason.length > 128) fail('The frozen source contains an invalid local missing-frame interval.');
       const from = Math.max(first, gap.firstFrame), to = Math.min(end, gap.endFrame);
       if (to > from) gaps.push({ firstFrame: from - first, endFrame: to - first, reason: gap.reason });
     }
@@ -78,6 +78,16 @@ export async function analyzeSoundSeedWindow(input, { signal, current = () => tr
     }
     levels.push({ blockFrames: previous.blockFrames * 2, bins: count, minMax: values });
   }
+  const crossingSuggestion = (from, to) => {
+    let selected = null, energy = Infinity;
+    for (let frame = Math.max(1, from); frame < Math.min(frames, to); frame++) {
+      const l = inputView.getFloat32(frame * 8, true), r = inputView.getFloat32(frame * 8 + 4, true), oldL = inputView.getFloat32((frame - 1) * 8, true), oldR = inputView.getFloat32((frame - 1) * 8 + 4, true);
+      const crosses = (a, b) => a !== b && (a <= 0 && b >= 0 || a >= 0 && b <= 0);
+      if ((crosses(oldL, l) || crosses(oldR, r)) && Math.max(Math.abs(l), Math.abs(r)) < energy) { selected = frame; energy = Math.max(Math.abs(l), Math.abs(r)); }
+    }
+    return selected;
+  };
+  const zeroCrossings = { method: 'minimum-stereo-edge-amplitude-candidate-v1', inLocalFrame: crossingSuggestion(1, 129), outLocalFrame: crossingSuggestion(frames - 128, frames), suggestionOnly: true, searchedFramesPerEdge: Math.min(128, frames - 1) };
   check(); const rawPcmHash = await digest(pcm), pcmHash = await digest(output), parentManifestHash = await hashData(origin, { maxBytes: MAX_METADATA, maxNodes: 32768 }); check();
   const inherited = origin.schema === 'lemmings-sound-seed/v1' ? origin.ancestry : [];
   if (!Array.isArray(inherited) || inherited.length >= 16) fail('Nested sound-seed ancestry exceeds the admitted depth.');
@@ -94,6 +104,6 @@ export async function analyzeSoundSeedWindow(input, { signal, current = () => tr
     acousticReceipt: false, qualification: 'derived-PCM-and-source-annotation;not-a-listening-or-cause-separation-claim' });
   const bytes = encodeOwnedAudioWav(output, frames, sampleRate, manifest, { maxMetadataBytes: MAX_METADATA, maxMetadataNodes: 32768 }), assetHash = await digest(bytes); check();
   return { value: { bytes, manifest, assetHash, generation, waveform: { stage: 'raw-source-window-before-baked-fades', firstParentFrame: firstFrame, endParentFrame: endFrame, channels: 2, levels,
-    zeroCrossings: 'not-estimated;numeric-frame-trim-remains-authoritative' } }, inputBytes: pcm.byteLength + originBytes.byteLength, nodes: 2048,
+    zeroCrossings } }, inputBytes: pcm.byteLength + originBytes.byteLength, nodes: 2048,
   retainedBytes: bytes.byteLength + levels.reduce((sum, level) => sum + level.minMax.byteLength, 0) + 262144 };
 }

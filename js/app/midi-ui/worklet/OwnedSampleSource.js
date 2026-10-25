@@ -10,7 +10,7 @@ const discontinuities = Object.freeze(['continuous', 'seek', 'restore', 'topolog
 const S = Object.freeze({ zone: 0, active: 1, start: 2, frame: 3, position: 4, derivative: 5, released: 6, releaseFrame: 7, releaseFrames: 8, releaseGain: 9,
   attackGain: 10, attackDone: 11, childActive: 12, childPosition: 13, childStart: 14, childEnd: 15, childGain: 16, childDerivative: 17, forced: 18,
   frequency: 19, attack: 20, decay: 21, sustain: 22, turns: 23, looping: 24, token: 25, epoch: 26, generation: 27, heads: 28, seed: 29,
-  cycle: 30, childForceFrame: 31, childForceGain: 32, childForceFrames: 33, childVelocity: 34, loopExitPending: 35, childDeadline: 36 });
+  cycle: 30, childForceFrame: 31, childForceGain: 32, childForceFrames: 33, childVelocity: 34, loopExitPending: 35, childDeadline: 36, filterLeft: 37, filterRight: 38, filterAlpha: 39, filterHz: 40 });
 const finite = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;
 const integer = (value, low, high = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(value) && value >= low && value <= high;
 
@@ -42,7 +42,7 @@ export class OwnedSampleSource {
   finished(slot) { return this.state[slot * OWNED_SAMPLE_STATE_WIDTH + S.active] === 0; }
   frequencyValid(entry, frequency) {
     if (!finite(frequency, 0.1, this.rate / 2 - 1)) return false;
-    const cents = 6900 + 1200 * Math.log2(frequency / 440), ratio = frequency / entry.rootFrequencyHz, derivative = ratio * entry.decodedSampleRate / this.rate;
+    const cents = 6900 + 1200 * Math.log2(frequency / 440), ratio = entry.pitchTracking === 'fixed' ? 1 : frequency / entry.rootFrequencyHz, derivative = ratio * entry.decodedSampleRate / this.rate;
     return finite(cents, entry.pitchRange.minCents - 1e-9, entry.pitchRange.maxCents + 1e-9) && finite(ratio, 1 / 16, 16) && (entry.mode === 'positionDriven' || derivative <= 4);
   }
   validFrequency(slot, frequency) {
@@ -51,7 +51,7 @@ export class OwnedSampleSource {
   }
   begin(slot, frequency, packet, frame) {
     const zone = packet[18], entry = this.plan.entries[zone];
-    if (!integer(slot, 0, this.voices - 1) || !integer(frame, 0) || !integer(zone, 0, this.plan.entries.length - 1) || !entry || !this.frequencyValid(entry.attack, frequency) || entry.release && !this.frequencyValid(entry.release, frequency) || !integer(packet[19], 0, 0xffffffff)) return 0;
+    if (!integer(slot, 0, this.voices - 1) || !integer(frame, 0) || !integer(zone, 0, this.plan.entries.length - 1) || !entry || !this.frequencyValid(entry.attack, frequency) || entry.release && !this.frequencyValid(entry.release, frequency) || !integer(packet[19], 0, 0xffffffff) || packet[31] !== 0 && !finite(packet[31], 80, 20000) || !finite(packet[32], 0, 1) || !finite(packet[33], 0, 1)) return 0;
     const profile = entry.attack.cursorProfile, initial = packet[21] === 1 ? packet[20] : entry.attack.sourceFirst;
     if (![0, 1].includes(packet[21]) || ![0, 1].includes(packet[30]) || !profile && (packet[21] || packet[30]) || profile && !finite(initial, -profile.maximumCoordinateSourceFrames, profile.maximumCoordinateSourceFrames)) return 0;
     if (packet[30]) {
@@ -63,6 +63,8 @@ export class OwnedSampleSource {
     s[at + S.position] = entry.attack.mode === 'reverse' ? entry.attack.end - 1 : entry.attack.first; s[at + S.frequency] = frequency;
     s[at + S.attack] = Math.round(packet[10]); s[at + S.decay] = Math.round(packet[11]); s[at + S.sustain] = packet[12]; s[at + S.looping] = Number(!!entry.attack.loop);
     s[at + S.token] = packet[5]; s[at + S.epoch] = packet[0]; s[at + S.generation] = packet[17]; s[at + S.seed] = packet[19];
+    const cutoff = packet[31] ? Math.max(80, Math.min(this.rate * 0.4, packet[31] * (1 - packet[32] + packet[32] * packet[33]))) : 0;
+    s[at + S.filterHz] = cutoff; s[at + S.filterAlpha] = cutoff && (packet[31] < 20000 || packet[32] > 0) ? 1 - Math.exp(-2 * Math.PI * cutoff / this.rate) : 0;
     const cursor = this.cursor(slot); cursor?.reset(frame, initial);
     if (cursor) s[at + S.position] = cursor.decodedPosition;
     if (packet[30] && !cursor.enqueueFields(packet[24], packet[25], packet[26], packet[27], packet[28], 'continuous')) throw new Error('A preflighted initial travel segment changed during onset.');
@@ -129,7 +131,7 @@ export class OwnedSampleSource {
         position = cursor.advance(frame); derivative = cursor.readDerivative;
         const cycle = Math.floor((cursor.position - attack.sourceFirst) / (attack.sourceEnd - attack.sourceFirst));
         if (cycle !== s[at + S.cycle]) { s[at + S.turns]++; s[at + S.cycle] = cycle; }
-      } else derivative = frequency / attack.rootFrequencyHz * attack.decodedSampleRate / this.rate * (attack.mode === 'reverse' ? -1 : 1);
+      } else derivative = (attack.pitchTracking === 'fixed' ? 1 : frequency / attack.rootFrequencyHz) * attack.decodedSampleRate / this.rate * (attack.mode === 'reverse' ? -1 : 1);
       s[at + S.derivative] = derivative;
       if (s[at + S.loopExitPending]) {
         const loop = attack.loop, half = loop.crossfade * 0.5;
@@ -153,7 +155,7 @@ export class OwnedSampleSource {
       if (s[at + S.released] && (s[at + S.attackGain] === 0 || frame + 1 >= s[at + S.releaseFrame] + s[at + S.releaseFrames])) s[at + S.attackDone] = 1;
     }
     if (s[at + S.childActive]) {
-      const child = entry.release, position = s[at + S.childPosition], derivative = frequency / child.rootFrequencyHz * child.decodedSampleRate / this.rate, slew = Math.ceil(this.rate * 0.005);
+      const child = entry.release, position = s[at + S.childPosition], derivative = (child.pitchTracking === 'fixed' ? 1 : frequency / child.rootFrequencyHz) * child.decodedSampleRate / this.rate, slew = Math.ceil(this.rate * 0.005);
       if (frame === s[at + S.childStart]) s[at + S.childEnd] = Math.min(s[at + S.childDeadline], frame + Math.ceil((child.end - child.first) / derivative));
       const gain = s[at + S.forced] ? s[at + S.childForceGain] * Math.max(0, 1 - (frame - s[at + S.childForceFrame]) / s[at + S.childForceFrames]) :
         s[at + S.childVelocity] * Math.max(0, Math.min(1, (frame - s[at + S.childStart]) / slew, (s[at + S.childEnd] - frame) / slew));
@@ -162,6 +164,12 @@ export class OwnedSampleSource {
       if (s[at + S.childPosition] >= child.end || frame + 1 >= s[at + S.childEnd] || s[at + S.forced] && (gain === 0 || frame + 1 >= s[at + S.childForceFrame] + s[at + S.childForceFrames])) s[at + S.childActive] = 0;
     }
     if (s[at + S.released] && s[at + S.attackDone] && !s[at + S.childActive]) s[at + S.active] = 0;
+    if (s[at + S.filterAlpha]) {
+      s[at + S.filterLeft] += s[at + S.filterAlpha] * (l - s[at + S.filterLeft]); s[at + S.filterRight] += s[at + S.filterAlpha] * (r - s[at + S.filterRight]);
+      const end = s[at + S.released] ? Math.max(s[at + S.releaseFrame] + s[at + S.releaseFrames], s[at + S.childActive] ? s[at + S.childEnd] : 0) : Infinity;
+      const fade = Math.max(0, Math.min(1, (end - frame - 1) / Math.ceil(this.rate * 0.005)));
+      l = s[at + S.filterLeft] * fade; r = s[at + S.filterRight] * fade;
+    }
     s[at + S.frame] = frame + 1; this.leftSample = l * this.sourceGain; this.rightSample = r * this.sourceGain; return (this.leftSample + this.rightSample) * 0.5;
   }
   retire(slot) { this.cursor(slot)?.panic(); this.state[slot * OWNED_SAMPLE_STATE_WIDTH + S.active] = 0; }
@@ -188,7 +196,9 @@ export class OwnedSampleSource {
       if (get(S.loopExitPending) && (entry.attack.loop?.mode !== 'sustain' || !get(S.released))) throw new Error('Invalid pending sustain loop exit.');
       if (get(S.forced) && (!get(S.released) || !integer(get(S.childForceFrame), get(S.start), get(S.frame)) || !integer(get(S.childForceFrames), 1, this.rate * 4)) ||
           get(S.childActive) && !integer(get(S.childDeadline), get(S.childEnd), get(S.childStart) + this.rate * 4)) throw new Error('Invalid sample cancellation or child deadline.');
-      for (let field = S.childDeadline + 1; field < OWNED_SAMPLE_STATE_WIDTH; field++) if (get(field)) throw new Error('Reserved sample state is noncanonical.');
+      if (get(S.filterHz) !== 0 && get(S.filterHz) < 80 || get(S.filterAlpha) !== 0 && Math.abs(get(S.filterAlpha) - (1 - Math.exp(-2 * Math.PI * get(S.filterHz) / this.rate))) > 1e-12) throw new Error('Owned sample filter coefficient differs from its cutoff.');
+      if (!finite(get(S.filterLeft), -128, 128) || !finite(get(S.filterRight), -128, 128) || !finite(get(S.filterAlpha), 0, 1) || !finite(get(S.filterHz), 0, 20000)) throw new Error('Invalid owned sample filter state.');
+      for (let field = S.filterHz + 1; field < OWNED_SAMPLE_STATE_WIDTH; field++) if (get(field)) throw new Error('Reserved sample state is noncanonical.');
     }
     for (let index = 0; index < this.cursors.length; index++) {
       const cursor = this.cursors[index], q = offset => queue(index * QUEUE + offset), value = offset => scalar(index * SCALARS + offset);
@@ -201,7 +211,7 @@ export class OwnedSampleSource {
     for (let slot = 0; slot < this.voices; slot++) { const at = slot * OWNED_SAMPLE_STATE_WIDTH, s = this.state; if (!s[at + S.active]) continue;
       const entry = this.plan.entries[s[at + S.zone]]; voices.push({ slot, zoneId: entry.zoneId, token: s[at + S.token], epoch: s[at + S.epoch], generation: s[at + S.generation],
         frame: s[at + S.frame], assetHash: entry.attack.assetHash, sourcePosition: this.cursor(slot)?.position ?? s[at + S.position] * entry.attack.sourceSampleRate / entry.attack.decodedSampleRate,
-        rateRatio: s[at + S.frequency] / entry.attack.rootFrequencyHz, loopActive: !!s[at + S.looping], loopTurns: s[at + S.turns], decodedPosition: s[at + S.position], readDerivative: s[at + S.derivative], mode: entry.attack.mode, childActive: !!s[at + S.childActive], childDecodedPosition: s[at + S.childPosition], readHeads: s[at + S.heads] }); }
+        rateRatio: entry.attack.pitchTracking === 'fixed' ? 1 : s[at + S.frequency] / entry.attack.rootFrequencyHz, loopActive: !!s[at + S.looping], loopTurns: s[at + S.turns], decodedPosition: s[at + S.position], readDerivative: s[at + S.derivative], mode: entry.attack.mode, childActive: !!s[at + S.childActive], childDecodedPosition: s[at + S.childPosition], readHeads: s[at + S.heads] }); }
     return { kind: 'owned-sample-source', pcmHash: this.descriptor.pcmHash, bankHash: this.descriptor.bankHash, mapId: this.plan.map.mapId, mapRevision: this.plan.map.revision,
       sourceGain: this.sourceGain, voices, sourceFrames: 'authored-original-rate', decodedFrames: 'private-PCM-rate', panPolicy: 'mono-equal-power-or-stereo-balance', interpolation: this.reader.profile, realTimeCapacityQualified: false };
   }

@@ -3877,3 +3877,56 @@ nested-source and resource-retirement fixtures are authored and unrun. The compa
 editor, seed recipe compiler and project application integration are the next
 dependent work. Only formatting, syntax and provenance checks accompany this
 development batch.
+
+
+### Continuation 174 — harvest dock, seed recipes and fixed-rate playback (#1154, #1164, #1170)
+
+Completed captures and individual revoice files can open a compact dock beneath
+the world. The selected source identifies LIVE CAPTURE/OFFLINE REVOICE, exact tap,
+original frame count/rate and immutable source reference. Numeric trim/fade fields,
+separate touch/keyboard handles, single-frame nudges, cached stereo min/max plots,
+frame/time rulers and bounded zoom share the original frame domain. Optional
+low-amplitude edge-crossing suggestions show their displacement and require an
+explicit edit followed by a new freeze. Hollow ancestry marks distinguish old
+material from the next actor's semantic onset. Missing/unknown coverage, silence,
+clipping and stereo correlation stay separate from preparation failures.
+
+Hammer seed and explicitly named recorded Route relic compile to the existing
+owned sampler. Unpitched now means actual fixed source-rate playback in attack,
+release, live/offline selection and processor diagnostics, with no inferred root.
+Pitched zones retain explicit varispeed limits. A voice-owned one-pole tone filter
+uses semantic onset velocity, independently of output gain, with bounded cutoff
+and terminal fade. BODY, EDGE and DAMP are onset macros. Source state retains and
+validates filter histories. The sampler runtime advances to owned-sample-v4-fixed-rate;
+the command width and shared voice stride are unchanged.
+
+Ice dust uses the existing actor-owned granular source with declared 65 ms grains,
+16 Hz density, bounded 40–90 ms/8–24 Hz macros and observed horizontal world
+position controlling source position. Its current renderer requires a declared
+root; the UI precisely refuses Unpitched Ice dust while keeping sampler recipes
+available. Completed motion causes now retain measured positionXWorldPixels;
+instrumentPerformance identity advances to 4 and capture profile to
+physical-basic-v14. Old captures are not relabeled as containing this field.
+
+Each seed pack contains its verified WAV plus a deterministic, hashed recipe with
+pitch declaration, printed processing and bounded ancestry. Raw ancestors are
+regeneration evidence rather than required playback assets. Original WAV annotation
+and recipe/frame inventory are compared before staging. Compilation uses the
+shared bound worker; normal content verification, isolated foreground audition,
+IndexedDB commit and undoable lane selection are reused. Asset, patch, audition
+and durable readiness are independent. Failed storage preserves inspectable and
+exportable in-memory material; failed or canceled preparation preserves the old
+patch. The default recipe adds no creative effect graph and flags printed effects
+for destination-send review.
+
+Audition has an explicit one-pass or three-pass choice with an eight-second sample
+window per pass. Stop, Escape, dock close, Panic and page suspension cancel the
+owned preview. A trim/recipe revision fences stale results and prevents applying
+an older patch. Disposal retires previews before stages, seed readers before
+capture/render owners, and preserves accounting on unknown retirement.
+
+Recipe identity/closure, fixed-rate attack/release, sampler filter, stale compile,
+private pack verification and retirement fixtures are authored and unrun. No
+runtime suite, listening, browser layout, touch, storage reload or end-to-end
+onset-count qualification is claimed. BODY FIT/COMPONENTS, derived rebuilds and
+advanced warp remain subsequent dependent work.

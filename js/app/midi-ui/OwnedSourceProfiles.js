@@ -3,7 +3,7 @@ import { validOwnedPcmSetDescriptor } from '../../midi/content/OwnedPcmFormat.js
 import { SINE_LAYOUT, PLUCK_LAYOUT, CHOIR_LAYOUT, SPECTRUM_LAYOUT, GRANULAR_LAYOUT, SAMPLE_LAYOUT, sampleSourceBytes, pluckSourceBytes, choirSourceBytes, spectrumSourceBytes, granularSourceBytes,
   CHOIR_SOURCE_HEAP_ESTIMATE, SPECTRUM_SOURCE_HEAP_ESTIMATE, GRANULAR_SOURCE_HEAP_ESTIMATE, SAMPLE_SOURCE_HEAP_ESTIMATE } from './OwnedSourceLayout.js';
 import { NATIVE_WORKLET_FIELDS, NATIVE_PLUCK_FIELDS, NATIVE_PLUCK_PARAMETERS, NATIVE_CHOIR_FIELDS, NATIVE_CHOIR_PARAMETERS,
-  NATIVE_SPECTRUM_FIELDS, NATIVE_SPECTRUM_PARAMETERS, NATIVE_GRANULAR_FIELDS, NATIVE_GRANULAR_PARAMETERS, NATIVE_SAMPLE_FIELDS } from './NativeInstrumentSchema.js';
+  NATIVE_SPECTRUM_FIELDS, NATIVE_SPECTRUM_PARAMETERS, NATIVE_GRANULAR_FIELDS, NATIVE_GRANULAR_PARAMETERS, NATIVE_OWNED_SAMPLE_FIELDS, NATIVE_OWNED_SAMPLE_PARAMETERS } from './NativeInstrumentSchema.js';
 
 const finite = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;
 const spectrumPartials = Object.freeze(Array.from({ length: 16 }, (_, index) => Object.freeze(['Ratio', 'Gain', 'T60Scale'].map(suffix => 'partial' + index + suffix))));
@@ -52,13 +52,13 @@ const createProfile = ({ id, width, voices, fields, parameters = null, buildId, 
   });
 };
 const profiles = Object.freeze({
-  'worklet-sample': createProfile({ id: 'worklet-sample', controlReferenceRender: true, width: SAMPLE_LAYOUT.width, voices: SAMPLE_LAYOUT.voices, fields: NATIVE_SAMPLE_FIELDS,
-    buildId: 'owned-sample-v3-canonical-travel', abi: 'owned-sample-f64-command-v2', workletUrl: new URL('./worklet/OwnedSampleProcessor.js', import.meta.url).href,
+  'worklet-sample': createProfile({ id: 'worklet-sample', controlReferenceRender: true, width: SAMPLE_LAYOUT.width, voices: SAMPLE_LAYOUT.voices, fields: NATIVE_OWNED_SAMPLE_FIELDS, parameters: NATIVE_OWNED_SAMPLE_PARAMETERS,
+    buildId: 'owned-sample-v4-fixed-rate', abi: 'owned-sample-f64-command-v2', workletUrl: new URL('./worklet/OwnedSampleProcessor.js', import.meta.url).href,
     rateLimit: true, requiresPCM: true, requiresPCMSet: true, bankId: 'sample-read-v1', storageBytes: sampleSourceBytes, heapEstimate: SAMPLE_SOURCE_HEAP_ESTIMATE,
     cost: () => 32, minHz: 0.1, maxHz: 20000, bendCents: 4800, minimumControlSeconds: 0.008,
     acceptsOnset: (parameters, frequency, pcm) => validOwnedPcmSetDescriptor(pcm),
     beginFields: (parameters, seed, pcm, selected) => { if (!selected || !Number.isInteger(selected.zoneIndex)) throw new TypeError('An owned sample onset requires its prepared semantic selection.');
-      return { 18: selected.zoneIndex, 19: selected.region.selectionSeed }; } }),
+      return { 18: selected.zoneIndex, 19: selected.region.selectionSeed, 31: parameters.sampleLowpassHz, 32: parameters.sampleVelocityTone01, 33: selected.velocity01 }; } }),
   'worklet-granular': createProfile({ id: 'worklet-granular', controlReferenceRender: true, bankId: 'grain-window-v1', width: GRANULAR_LAYOUT.width, voices: GRANULAR_LAYOUT.voices, fields: NATIVE_GRANULAR_FIELDS, parameters: NATIVE_GRANULAR_PARAMETERS,
     buildId: 'owned-granular-v6-owned-retirement', abi: 'owned-granular-f64-command-v1', workletUrl: new URL('./worklet/OwnedGranularProcessor.js', import.meta.url).href, rateLimit: true, seedDomain: 'grain-choices-v1', minHz: 20, maxHz: 2000, bendCents: 200,
     storageBytes: granularSourceBytes, heapEstimate: GRANULAR_SOURCE_HEAP_ESTIMATE, cost: () => 16, minimumControlSeconds: 0.008, requiresPCM: true,

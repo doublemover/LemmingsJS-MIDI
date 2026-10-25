@@ -37,7 +37,7 @@ export function prepareOwnedSamplePlan(patch, descriptor, sampleRate) {
     if (positionSeam && (positionSeam.crossfade < 2 || positionSeam.crossfade > (end - first) / 2)) fail('The position wrap seam is outside the decoded region bound.');
     return freezeData({ assetIndex, assetHash: region.assetHash, first, end, guardFirst: Math.floor(first), guardEnd: Math.ceil(end),
       sourceFirst: region.onsetFrame, sourceEnd: region.endFrame, sourceSampleRate: bank.sourceSampleRate, decodedSampleRate: bank.sampleRate,
-      rootCents: region.rootCents, tuningCents: region.tuningCents, rootFrequencyHz: 440 * 2 ** ((region.rootCents - region.tuningCents - 6900) / 1200), pitchRange: region.pitchRange, gain01: region.gain01, mode, loop, cursorProfile,
+      rootCents: region.rootCents, tuningCents: region.tuningCents, rootFrequencyHz: 440 * 2 ** ((region.rootCents - region.tuningCents - 6900) / 1200), pitchRange: region.pitchRange, pitchTracking: region.pitchTracking ?? 'varispeed', gain01: region.gain01, mode, loop, cursorProfile,
       positionSeam, traversal: policy?.traversal ?? null,
       filterGuard: 'clamp-actual-region-sample-indices', periodDomain: 'fractional-decoded-source-frames;crossfade-does-not-shorten-loop' });
   };
@@ -62,10 +62,10 @@ export function prepareOwnedSamplePlan(patch, descriptor, sampleRate) {
       const attack = rateFor(entry.attack, intent.pitch, offset), release = entry.release ? rateFor(entry.release, intent.pitch, offset) : null;
       if (!attack || entry.release && !release) fail('Selected attack or release exceeds its authored pitch or four-decoded-frame/output-frame read bound.');
       if (entry.attack.mode === 'positionDriven' && offset !== 0) fail('Position-driven varispeed uses observed cursor derivative; an independent pitch offset is unavailable.');
-      return freezeData({ zoneIndex, region, rateRatio: attack.ratio, readDerivative: entry.attack.mode === 'reverse' ? -attack.derivative : entry.attack.mode === 'positionDriven' ? 0 : attack.derivative,
+      return freezeData({ zoneIndex, region, velocity01: intent.velocity01, rateRatio: attack.ratio, readDerivative: entry.attack.mode === 'reverse' ? -attack.derivative : entry.attack.mode === 'positionDriven' ? 0 : attack.derivative,
         releaseRateRatio: release?.ratio ?? null, releaseReadDerivative: release?.derivative ?? null,
         articulation: sampleRegionArticulation(region, entry.attack.sourceSampleRate, attack.ratio, patch.parameters?.releaseSeconds ?? 0.04),
-        pitchPolicy: entry.attack.mode === 'positionDriven' ? 'note-selects-zone;observed-position-derivative-owns-varispeed-pitch' : 'independent-varispeed-ratio',
+        pitchPolicy: entry.attack.mode === 'positionDriven' ? 'note-selects-zone;observed-position-derivative-owns-varispeed-pitch' : entry.attack.pitchTracking === 'fixed' ? 'unpitched-fixed-source-rate;note-selects-zone-only' : 'independent-varispeed-ratio',
         evidenceClass: 'prepared-source-region-selection', acousticReceipt: false });
     }, rateFor
   });

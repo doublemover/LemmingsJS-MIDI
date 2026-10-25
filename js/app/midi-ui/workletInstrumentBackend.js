@@ -40,7 +40,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   const performanceParameters = source.parameters, liveSourceIds = source.liveIds;
   const expressionIds = new Set(['pressure01', 'pan01', 'pitchOffsetCents', ...liveSourceIds]);
   const runtime = Object.freeze({ ...source.runtime, hostProtocolVersion: PROTOCOL, retirementProtocol: 1 });
-  const capabilities = Object.freeze({ ...sineCapabilities, maximumVoices: MAX_VOICES, sampleMaps: source.requiresPCMSet, positionDrivenSamples: source.requiresPCMSet, canonicalTravelSamples: source.requiresPCMSet, releaseVelocity: source.requiresPCMSet, offlineRender: source.offlineRender, continuousPhysicalBindings: isExtended,
+  const capabilities = Object.freeze({ ...sineCapabilities, maximumVoices: MAX_VOICES, sampleMaps: source.requiresPCMSet, positionDrivenSamples: source.requiresPCMSet, canonicalTravelSamples: source.requiresPCMSet, releaseVelocity: source.requiresPCMSet, offlineRender: source.offlineRender, continuousPhysicalBindings: isExtended && !source.requiresPCMSet,
     perVoiceDamping: source.damping, perVoiceTimbre: source.perVoiceTimbre, supportedParameterIds: Object.freeze(Object.keys(fields)) });
   if (!finite(leadSeconds, 0.01, 2) || !finite(smoothingSeconds, 0, 1) || !Number.isSafeInteger(traceLimit) || traceLimit < 0 || traceLimit > 4096 ||
       !finite(initializationTimeoutMs, 1, 30000)) throw new Error('Invalid worklet backend options.');

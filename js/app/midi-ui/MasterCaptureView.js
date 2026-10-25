@@ -2,7 +2,7 @@ import { createOwnedMasterCapture } from './OwnedMasterCapture.js';
 import { requestExportFileHandle, deliverArtifactToFileHandle } from '../export/ExportArtifact.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 
-export function createMasterCaptureView({ document, window, preview, resourceBudget, onStatus = () => {} } = {}) {
+export function createMasterCaptureView({ document, window, preview, resourceBudget, onHarvest = null, onStatus = () => {} } = {}) {
   const listeners = [], retirement = createProcgenRetirementScope();
   let disposed = false, delivery = null, picker = false, deliveryReceipt = null, owner;
   const node = (tag, text) => { const element = document.createElement(tag); if (text != null) element.textContent = text; return element; };
@@ -38,6 +38,10 @@ export function createMasterCaptureView({ document, window, preview, resourceBud
         `WAV delivery ${deliveryReceipt.state}: ${deliveryReceipt.errorKind}. Captured PCM remains available.`);
     } finally { if (delivery === controller) delivery = null; render(); }
   }));
+  const harvest = button('Harvest sound seed', run(async () => {
+    const snapshot = owner.state(); if (!snapshot.artifact?.metadata().retained || !onHarvest || delivery || picker) return;
+    dialog.close(); await onHarvest({ artifact: snapshot.artifact, manifest: snapshot.manifest });
+  }));
   const cancel = button('Cancel save', () => delivery?.abort());
   const discard = button('Discard captured PCM', run(() => { delivery?.abort(); owner.discard(); say('Captured PCM discarded.'); }));
   button('Close', () => { void owner.stop(); dialog.close(); });
@@ -45,6 +49,7 @@ export function createMasterCaptureView({ document, window, preview, resourceBud
     if (disposed || !owner) return;
     const snapshot = owner.state(), active = ['preparing', 'recording', 'stopping'].includes(snapshot.state), artifact = snapshot.artifact?.metadata();
     start.disabled = active || !!artifact?.retained || snapshot.unresolvedOwnership || !preview.getState().enabled;
+    harvest.disabled = active || !artifact?.retained || !onHarvest || picker || !!delivery;
     stop.disabled = !active; duration.disabled = active;
     save.disabled = !artifact?.retained || picker || !!delivery || typeof window.showSaveFilePicker !== 'function';
     discard.disabled = active || !artifact?.retained || picker; cancel.disabled = !delivery;

@@ -44,7 +44,8 @@ const schemas = freezeData({
     parameter('chorusCents', 0, 12, 3, 'cents'), parameter('vibratoCents', 0, 12, 2, 'cents'), parameter('vowelStep', 0, 1, 0, 'enum', true), parameter('bandwidthScale', 0.5, 2, 1, 'ratio')]
     .map(spec => Object.freeze({ ...spec, liveSafe: !spec.discrete, causalLiveSafe: !spec.discrete })).concat(envelope(0.025, 0.1, 0.8, 0.5)),
   'native-sample': envelope(0.005, 0, 1, 0.7),
-  'worklet-sample': envelope(0.005, 0, 1, 0.7)
+  'worklet-sample': [parameter('sampleLowpassHz', 80, 20000, 20000, 'Hz'), parameter('sampleVelocityTone01', 0, 1, 0, 'normalized')]
+    .map(spec => Object.freeze({ ...spec, liveSafe: false })).concat(envelope(0.005, 0, 1, 0.7))
 });
 export const NATIVE_OSCILLATOR_PARAMETERS = freezeData(Object.fromEntries(schemas['native-oscillator'].map(spec =>
   [spec.id, { ...spec, integer: spec.discrete }])));
@@ -59,14 +60,16 @@ export const NATIVE_GRANULAR_FIELDS = freezeData(Object.fromEntries(schemas['wor
 export const NATIVE_GRANULAR_PARAMETERS = freezeData(Object.fromEntries(schemas['worklet-granular'].map(spec => [spec.id, { ...spec, integer: spec.discrete }])));
 export const NATIVE_FM_PARAMETERS = freezeData(Object.fromEntries(schemas['native-fm'].map(spec => [spec.id, { ...spec, integer: spec.discrete }])));
 export const NATIVE_MODAL_PARAMETERS = freezeData(Object.fromEntries(schemas['native-modal'].map(spec => [spec.id, { ...spec, integer: spec.discrete }])));
+export const NATIVE_OWNED_SAMPLE_PARAMETERS = freezeData(Object.fromEntries(schemas['worklet-sample'].map(spec => [spec.id, spec])));
+export const NATIVE_OWNED_SAMPLE_FIELDS = freezeData(Object.fromEntries(schemas['worklet-sample'].map(spec => [spec.id, [spec.min, spec.max, spec.default]])));
 export const NATIVE_SAMPLE_FIELDS = freezeData(Object.fromEntries(schemas['native-sample'].map(spec => [spec.id, [spec.min, spec.max, spec.default]])));
 const capabilities = id => Object.freeze({ samples: ['native-sample', 'worklet-granular', 'worklet-sample'].includes(id), sampleMaps: ['native-sample', 'worklet-sample'].includes(id), advancedSampleMaps: id === 'worklet-sample', reverseSamples: id === 'worklet-sample', positionDrivenSamples: id === 'worklet-sample', canonicalTravelSamples: id === 'worklet-sample', independentSamePitch: true, perVoicePitch: true,
   perVoicePressure: true, perVoicePan: true, perVoiceTimbre: ['worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(id), perVoiceDamping: id === 'worklet-pluck', ownedGates: true, releaseVelocity: ['native-sample', 'worklet-sample'].includes(id),
   forwardLoops: ['native-sample', 'worklet-sample'].includes(id), displayTelemetry: ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample'].includes(id), renderAcknowledgment: ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample'].includes(id), offlineRender: ['native-oscillator', 'native-fm', 'native-modal', 'native-sample', 'worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample'].includes(id),
-  modulationGraph: false, macroPerformance: ['native-oscillator', 'native-fm', 'native-modal', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(id), continuousMacroPerformance: false,
+  modulationGraph: false, macroPerformance: ['native-oscillator', 'native-fm', 'native-modal', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample'].includes(id), continuousMacroPerformance: false,
   identityVariation: ['native-oscillator', 'native-fm', 'native-modal', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(id),
   continuousPhysicalBindings: ['worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(id),
-  causalBindings: ['native-oscillator', 'native-fm', 'native-modal', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(id) });
+  causalBindings: ['native-oscillator', 'native-fm', 'native-modal', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample'].includes(id) });
 let catalogPromise = null;
 
 export async function describeNativeInstrumentEngines(artifacts) {
