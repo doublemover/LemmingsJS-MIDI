@@ -4805,7 +4805,8 @@
         "js/app/resources/BackgroundJobService.js",
         "js/app/resources/BackgroundJobKernels.js",
         "js/app/resources/SharedContentJobs.js",
-        "js/app/resources/GroundAssetRegistry.js"
+        "js/app/resources/GroundAssetRegistry.js",
+        "js/app/midi-ui/SoundMaterialProvider.js"
       ],
       "regressions": [
         "test/background-snapshot-pages.test.js",
@@ -4813,11 +4814,13 @@
         "test/background-job-service.test.js",
         "test/ground-asset-jobs.test.js",
         "test/midi/impulse-response.test.js",
-        "test/shared-content-jobs.test.js"
+        "test/shared-content-jobs.test.js",
+        "test/midi/sound-material-provider.test.js"
       ],
       "commits": [
         "0b9dcd9d956caec2bb691503f33734d7504c1371",
-        "23cf47945edc65d175e30c20cc3118e728f4a24f"
+        "23cf47945edc65d175e30c20cc3118e728f4a24f",
+        "1514cfda9fbf6a347f304a47ca79e0e5a014f705"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -4834,10 +4837,15 @@
         {
           "id": "acknowledged-shared-content-retirement",
           "summary": "Expanded explicit pure-kernel coalescing registry; consumer leases now expose truthful retirement state, source cleanup acknowledges false/async outcomes, last-consumer cancellation retains the identity through backend quiescence, and unknown result/input retirement quarantines capacity rather than permitting duplicate work. Duplicate input cleanup failures remain independently visible without canceling a surviving consumer. Backend retirement propagates cancellation while delivered ownership remains held; retired source/result closures drop references. Ground hydration exposes the owner acknowledgment and clears its retained wrapper on release. Regressions authored unrun.",
+          "commit": "1514cfda9fbf6a347f304a47ca79e0e5a014f705"
+        },
+        {
+          "id": "shared-original-material-producer",
+          "summary": "Integrated admitted pure generation for original biome/tactile/impulse sources across material-provider instances sharing a job service and resource budget. Exact original byte hash plus generator/id version selects shared work; each provider owns its own encoded Blob loan and cancellation cannot revoke another consumer. Service-scoped weak registry supports injected services without conflating their ownership. Cross-provider cancellation/one-generation regression authored unrun.",
           "commit": null
         }
       ],
-      "remaining": "Broader producer integrations beyond shared ground assets and combined import/export/terrain concurrency harness coverage remain development. Additional pure kinds are admitted by the registry but not falsely reported as integrated consumers. Runtime no-worker/memory/cancellation qualification deferred."
+      "remaining": "Shared ground decode and original procedural material generation are integrated. Import/export/native compilation/verified source-PCM producer sharing and combined import/export/terrain concurrency harness coverage remain development; all runtime qualification deferred."
     },
     {
       "number": 1236,

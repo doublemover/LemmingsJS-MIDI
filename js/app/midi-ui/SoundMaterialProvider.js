@@ -1,3 +1,4 @@
+import { sharedContentJobsFor } from '../resources/SharedContentJobs.js';
 import { getProceduralSoundMaterial } from '../../midi/content/ProceduralSoundMaterial.js';
 import { createAudioAssetLoader } from './AudioAssetLoader.js';
 import { validateAudioAssetRef, DECODER_VERSION } from './AudioAssetRef.js';
@@ -10,8 +11,8 @@ import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 
 const failure = (code, message) => Object.assign(new Error(message), { name: 'SoundContentError', code });
 let nextProvider = 0;
-export function createSoundMaterialProvider({ getContext, resourceBudget = null, registry = null, jobs = backgroundJobService, maxEntries = 128 } = {}) {
-  if (typeof getContext !== 'function' || !Number.isInteger(maxEntries) || maxEntries < 1 || maxEntries > 128) throw new TypeError('Invalid sound material provider.');
+export function createSoundMaterialProvider({ getContext, resourceBudget = null, registry = null, jobs = backgroundJobService, contentJobs = sharedContentJobsFor(jobs), maxEntries = 128 } = {}) {
+  if (typeof contentJobs?.acquire !== 'function' || typeof getContext !== 'function' || !Number.isInteger(maxEntries) || maxEntries < 1 || maxEntries > 128) throw new TypeError('Invalid sound material provider.');
   const budget = resourceBudget || createResourceBudget(), ownRegistry = !registry;
   registry ||= createSoundContentRegistry({ resourceBudget: budget });
   const resources = createAudioResourceLeases({ resourceBudget: budget, ownerPrefix: 'sound-material-' + (++nextProvider) });
@@ -34,8 +35,7 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
       return receipt;
     };
     try {
-      result = await jobs.compute({ kind: 'generate-procedural-sound', ownerId: 'sound-original:' + original.id, ownerEpoch: 0,
-        sourceRevision: original.sha256, inputBytes: 128, maxBytes: 1048576, estimatedPeakBytes: 16 * 1048576, signal,
+      result = await contentJobs.acquire({ kind: 'generate-procedural-sound', contentHash: original.sha256, decoderVersion: 'procedural-v1.' + original.id, budgetAdapter: budget, inputBytes: 128, maxBytes: 1048576, estimatedPeakBytes: 16 * 1048576, signal,
         isCurrent: () => !disposed, deadlineMs: 60000, prepareInput: () => ({ id: original.id }) });
       signal?.throwIfAborted();
       if (!(result.value.bytes instanceof Uint8Array) || result.value.bytes.byteLength !== original.bytes || result.value.hash !== original.sha256 || result.value.id !== original.id)

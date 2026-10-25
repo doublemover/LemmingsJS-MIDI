@@ -115,3 +115,11 @@ export function createSharedContentJobs({ jobs = backgroundJobService, maxEntrie
 }
 
 export const sharedContentJobs = createSharedContentJobs();
+
+const serviceRegistries = new WeakMap([[backgroundJobService, sharedContentJobs]]);
+export function sharedContentJobsFor(jobs = backgroundJobService) {
+  if (!jobs || typeof jobs.compute !== 'function') throw new TypeError('Shared content requires a background computation service.');
+  let registry = serviceRegistries.get(jobs);
+  if (!registry) { registry = createSharedContentJobs({ jobs }); serviceRegistries.set(jobs, registry); }
+  return registry;
+}

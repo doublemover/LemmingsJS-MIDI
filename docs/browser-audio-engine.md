@@ -1792,3 +1792,12 @@ as read-only; membership in this registry alone is not a producer integration or
 publication authority. Ground decoding uses the acknowledged lease contract and
 clears its hydrated wrapper on release. Other producer integrations and the full
 concurrent import/export/terrain qualification workload remain development.
+
+Original procedural biome/tactile/impulse generation now uses the service-scoped
+shared registry in the real material provider. Its key pins the exact expected
+byte hash and original generator/id version; separate provider Blob loans remain
+independently owned. Canceling one provider does not cancel a surviving generation
+consumer. This adds a concrete producer integration beyond terrain decoding,
+without describing procedural assets as field recordings. The cross-provider
+cancellation fixture is authored and unrun; import/export and native PCM sharing
+still require their own source/result ownership integration.
