@@ -307,11 +307,26 @@
       "requirementUpdatedAt": "2026-10-22T11:34:52Z",
       "requirementSha256": "1ed1b135dd38c151203ecfae4e5c9b069005a3b6c9de9b38b0fca76357bb16c0",
       "initialGap": "Simple world-X directional MotionCommitted gates exist. Requested segment/polyline/band geometry, occupancy voices, indexed candidate plan, hysteresis and gate-local pitch mapping are absent from the validated instrument contract.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/procgen/workstation/physical/",
+        "js/app/procgen/workstation/CausalMusicEngine.js",
+        "js/app/procgen/ProcgenBirthCohorts.js",
+        "js/app/procgen/ProcgenLaneWorld.js"
+      ],
+      "regressions": [
+        "test/procgen-spatial-instruments.test.js",
+        "scripts/bench-physical-query-plan.mjs"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "indexed-physical-observation-domain",
+          "summary": "World-space indexed pickups and occupancy; stable birth/cohort/crew provenance; bounded completed-source ensembles; marker-qualified route atlas and portable engine/take state. Remaining authoring UI, route ratio presentation, transfer voice policy and complete edge qualification stay explicit.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 990,
@@ -331,11 +346,26 @@
       "requirementUpdatedAt": "2026-10-22T09:11:19Z",
       "requirementSha256": "df529e380601bd9417dea8c685337adf41990af9d1128aa3705f50cae2945043",
       "initialGap": "No RoutePhrase marker/lap recognizer, observed-period/ratio state or serialized route-loop contract exists in the causal graph/engine. Actual walking routes alone do not implement musical lap recognition.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/procgen/workstation/physical/",
+        "js/app/procgen/workstation/CausalMusicEngine.js",
+        "js/app/procgen/ProcgenBirthCohorts.js",
+        "js/app/procgen/ProcgenLaneWorld.js"
+      ],
+      "regressions": [
+        "test/procgen-spatial-instruments.test.js",
+        "scripts/bench-physical-query-plan.mjs"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "indexed-physical-observation-domain",
+          "summary": "World-space indexed pickups and occupancy; stable birth/cohort/crew provenance; bounded completed-source ensembles; marker-qualified route atlas and portable engine/take state. Remaining authoring UI, route ratio presentation, transfer voice policy and complete edge qualification stay explicit.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 992,
@@ -529,7 +559,9 @@
         "test/procgen-incremental-recovery.test.js",
         "test/procgen-recovery-page-store.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "1ecb548ccc70c8a4d0ed84cab7106bd261bf9c7e"
+      ],
       "validation": "deferred-by-request",
       "increment": "incremental-recovery-journal-and-pages"
     },
@@ -1218,11 +1250,26 @@
       "requirementUpdatedAt": "2026-10-22T08:50:52Z",
       "requirementSha256": "12b5d2c4626cb6f4c5103628926861ea28e08a1c207d1ab65b927a9f0cee05c5",
       "initialGap": "Physical membership/callback transfer foundation exists, but no canonical transfer fact, VoiceTransfer policy, held semantic ownership handoff or actor-versus-lane instrument state contract.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/procgen/workstation/physical/",
+        "js/app/procgen/workstation/CausalMusicEngine.js",
+        "js/app/procgen/ProcgenBirthCohorts.js",
+        "js/app/procgen/ProcgenLaneWorld.js"
+      ],
+      "regressions": [
+        "test/procgen-spatial-instruments.test.js",
+        "scripts/bench-physical-query-plan.mjs"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "indexed-physical-observation-domain",
+          "summary": "World-space indexed pickups and occupancy; stable birth/cohort/crew provenance; bounded completed-source ensembles; marker-qualified route atlas and portable engine/take state. Remaining authoring UI, route ratio presentation, transfer voice policy and complete edge qualification stay explicit.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1059,
@@ -2687,11 +2734,26 @@
       "requirementUpdatedAt": "2026-10-22T11:58:30Z",
       "requirementSha256": "4ff2a5d9cfe3da7849a8a7562863abd48c48ba9e44fecf08a8d0d943faf5ebca",
       "initialGap": "No RouteCoordinateAtlas route coordinate/branch travel mapping contract.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/procgen/workstation/physical/",
+        "js/app/procgen/workstation/CausalMusicEngine.js",
+        "js/app/procgen/ProcgenBirthCohorts.js",
+        "js/app/procgen/ProcgenLaneWorld.js"
+      ],
+      "regressions": [
+        "test/procgen-spatial-instruments.test.js",
+        "scripts/bench-physical-query-plan.mjs"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "indexed-physical-observation-domain",
+          "summary": "World-space indexed pickups and occupancy; stable birth/cohort/crew provenance; bounded completed-source ensembles; marker-qualified route atlas and portable engine/take state. Remaining authoring UI, route ratio presentation, transfer voice policy and complete edge qualification stay explicit.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1183,
@@ -2711,11 +2773,26 @@
       "requirementUpdatedAt": "2026-10-22T11:58:37Z",
       "requirementSha256": "21569de4638a7f26cb8c0ae6229698d0d0b4f63e81b7580e720243ce23e03b65",
       "initialGap": "No EnsembleDefinition/BirthCohortId provenance/membership feature.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/procgen/workstation/physical/",
+        "js/app/procgen/workstation/CausalMusicEngine.js",
+        "js/app/procgen/ProcgenBirthCohorts.js",
+        "js/app/procgen/ProcgenLaneWorld.js"
+      ],
+      "regressions": [
+        "test/procgen-spatial-instruments.test.js",
+        "scripts/bench-physical-query-plan.mjs"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "indexed-physical-observation-domain",
+          "summary": "World-space indexed pickups and occupancy; stable birth/cohort/crew provenance; bounded completed-source ensembles; marker-qualified route atlas and portable engine/take state. Remaining authoring UI, route ratio presentation, transfer voice policy and complete edge qualification stay explicit.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1185,

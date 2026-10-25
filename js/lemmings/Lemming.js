@@ -39,6 +39,7 @@ class Lemming extends BaseLogger {
     this.x = x;
     this.y = y;
     this.id = id;
+    this.birthCohortId = null; this.crewOriginIds = []; this.crewOriginComplete = true;
     this._physicalActionSerial = 0;
     this._physicalCommandSerial = 0;
     this._physicalInterventionId = null;

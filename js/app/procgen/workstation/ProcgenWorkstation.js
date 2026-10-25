@@ -522,6 +522,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     return { sourceTimeMs: runtime()?.world?.simulationTimeMs ?? null, voices: physical?.active || [], travel: physical?.travel || null,
       contactSpans: physical?.active?.filter(voice => voice.lifetimeScope === 'contactSpan') || [],
       ...(physical?.performanceInputs ? { 'instrument-performance': physical.performanceInputs } : {}),
+      ...(physical?.physicalDomain ? { 'physical-domain': physical.physicalDomain } : {}),
       timeline: physicalScoreClock.snapshot() };
   };
   const causalTakeState = () => Object.freeze({ recording: !!causalTake && !causalTake.status().captureStopped,

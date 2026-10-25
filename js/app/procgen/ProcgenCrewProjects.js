@@ -1,3 +1,4 @@
+import { attachCrewOrigin } from './ProcgenBirthCohorts.js';
 import { procgenTileRevision } from './ProcgenTerrainRetention.js';
 import { SoundEventTypes, SoundEffectIds } from '../../game/SoundEvents.js';
 import { LemmingStateType as State } from '../../lemmings/LemmingStateType.js';
@@ -67,7 +68,9 @@ class ProcgenCrewProjects {
       kind, ownerId: actor.id, startTick: this.world.tickIndex, startX: actor.x, startY: actor.y, direction: actor.lookRight !== false ? 1 : -1,
       bounds: task.footprint ? { ...task.footprint } : { x1: actor.x - 16, x2: actor.x + 16, y1: actor.y - 12, y2: actor.y + 12 },
       exitX: actor.lookRight !== false ? Math.max(actor.x, task.footprint?.x2 ?? task.targetX ?? actor.x) : Math.min(actor.x, task.footprint?.x1 ?? task.targetX ?? actor.x), phase: 'working', members, ordinaryCrossings: 0, passageRewarded: false, tiles: [] };
-    task.crewProjectId = project.id; state.projects.push(project); return project.id;
+    task.crewProjectId = project.id; state.projects.push(project);
+    for (const member of this.world.actors) if (members.has(member.id)) attachCrewOrigin(this.world, member, project.id);
+    return project.id;
   }
   connect(lane, id, x, y, tiles) {
     const project = this.lanes[lane]?.projects.find(entry => entry.id === id);
@@ -203,7 +206,7 @@ class ProcgenCrewProjects {
         if (project.members.size >= MAX_PROJECT_CREW) this._fail(project, 'containment-capacity');
         else project.members.set(actor.id, { id: actor.id, ordinary: this._ordinary(actor), crossed: false, blocker: true, lastSeenTick: this.world.tickIndex });
       }
-      if (project?.members.has(actor.id)) project.members.get(actor.id).blocker = true;
+      if (project?.members.has(actor.id)) { project.members.get(actor.id).blocker = true; attachCrewOrigin(this.world, actor, project.id); }
     }
     let observation = state.live.get(actor.id);
     if (!observation && state.live.size < MAX_PROJECT_CREW) { observation = { id: actor.id }; state.live.set(actor.id, observation); }
@@ -219,7 +222,7 @@ class ProcgenCrewProjects {
         if (project.members.size >= MAX_PROJECT_CREW) this._fail(project, 'admission-capacity');
         else project.members.set(actor.id, { id: actor.id, ordinary: true, crossed: false, blocker: false, lastSeenTick: this.world.tickIndex });
       }
-      const member = project.members.get(actor.id); if (member) member.lastSeenTick = this.world.tickIndex;
+      const member = project.members.get(actor.id); if (member) { member.lastSeenTick = this.world.tickIndex; attachCrewOrigin(this.world, actor, project.id); }
       if (member?.ordinary && !this._ordinary(actor)) { this._fail(project, 'crew-changed'); continue; }
       if (project.phase !== 'connected' || !this._valid(project)) continue;
       if (!member || member.crossed || actor.action !== this.world.actions[State.WALKING] ||

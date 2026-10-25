@@ -6,13 +6,14 @@ const recordPhysicalWork = (level, actor, { operationKind, phase, cycleOrdinal, 
   actor._physicalWorkSerial = (actor._physicalWorkSerial || 0) + 1;
   const facts = actor.runtime?.physicalFacts;
   if (!facts?.enabled?.(actor)) return;
+  const bounds = level._physicalWorkBounds ? { ...level._physicalWorkBounds } : null; level._physicalWorkBounds = null;
   facts.emit({ kind: 'TerrainWorkCommitted', actorId: actor.id, laneId: actor.laneIndex ?? null,
     parentCauseIds: actor._physicalInterventionId ? [actor._physicalInterventionId] : [],
     actionInstanceId: actor._physicalActionInstanceId, workOperationId: `${actor.id}:work:${actor._physicalWorkSerial}`,
     operationOrdinal: actor._physicalWorkSerial, operationKind, phase, cycleOrdinal,
     outcome: outcome || (changedSolidCells || changedAppearanceCells ? 'changed' : 'no-change'),
     positionBefore: { x: actor.x, y: actor.y },
-    physicalPayload: { attemptedCells, changedSolidCells, changedAppearanceCells, targetX, targetY,
+    physicalPayload: { bounds, attemptedCells, changedSolidCells, changedAppearanceCells, targetX, targetY,
       sourceEditRevisionBefore: revisionBefore, sourceEditRevisionAfter: Number.isFinite(level.terrainRevision) ? level.terrainRevision : null } });
 };
 

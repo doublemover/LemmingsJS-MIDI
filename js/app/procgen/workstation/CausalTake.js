@@ -12,10 +12,10 @@ const validateCaptureProfile = value => {
       !boundedKinds(value.stateKinds)) throw new Error('A bounded, explicit causal capture profile is required.');
   return cloneJournalData(value);
 };
-const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-basic-v2',
+const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-basic-v3',
   factKinds: ['MotionCommitted', 'DirectionChanged', 'ContactResolved', 'ActionEntered', 'ActionExited', 'AbilityChanged',
-    'ActorTerminated', 'TerrainWorkCommitted', 'CommandApplied', 'CommandRejected', 'ContactSpanBegan', 'ContactSpanUpdated', 'ContactSpanEnded'],
-  descriptorKinds: ['movement-path'], stateKinds: ['voices', 'travel', 'contactSpans', 'timeline', 'instrument-performance'] });
+    'ActorTerminated', 'ActorBorn', 'BirthAdmissionMissed', 'ActorLaneTransferred', 'TerrainWorkCommitted', 'CommandApplied', 'CommandRejected', 'ContactSpanBegan', 'ContactSpanUpdated', 'ContactSpanEnded'],
+  descriptorKinds: ['movement-path'], stateKinds: ['voices', 'travel', 'contactSpans', 'timeline', 'instrument-performance', 'physical-domain'] });
 
 const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId, sourceVersions, captureProfile = PHYSICAL_CAPTURE_PROFILE,
   boundaryState = {}, initialCheckpoint, mapping, assetRefs = [], existingWriter = null, prefixCoverage = null, sourceCursor = null } = {}) => {
@@ -135,8 +135,10 @@ const graphCaptureRequirements = graph => {
   const valid = validateCausalInstrumentGraph(graph), requirements = new Map();
   const add = (kind, owner, type) => requirements.set(`${type}:${kind}`, { kind, owner, type });
   for (const instrument of valid.instruments) {
-    add(instrument.sourceKind, instrument.id, 'fact');
-    if (instrument.sourceKind === 'ActionEntered' || instrument.sourceKind === 'ContactSpanBegan' || instrument.articulation?.sustain) add('voices', instrument.id, 'state');
+    if (['PickupCrossing', 'RouteLap'].includes(instrument.sourceKind)) { add('MotionCommitted', instrument.id, 'fact'); add('physical-domain', instrument.id, 'state'); }
+    else add(instrument.sourceKind, instrument.id, 'fact');
+    if (instrument.ensembleId) { add('physical-domain', instrument.id, 'state'); add('ActorBorn', instrument.id, 'fact'); }
+    if (instrument.sourceKind === 'ActionEntered' || instrument.sourceKind === 'ContactSpanBegan' || instrument.sourceKind === 'PickupCrossing' || instrument.articulation?.sustain) add('voices', instrument.id, 'state');
     if (instrument.articulation) {
       add('travel', instrument.id, 'state');
       if (instrument.articulation.metric === 'segment-path') add('movement-path', instrument.id, 'descriptor');

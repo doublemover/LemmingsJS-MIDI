@@ -1,3 +1,4 @@
+import { recordBirthCohortSlot, completedBirthCohorts } from './ProcgenBirthCohorts.js';
 import { recordProcgenRecoveryStep, getProcgenRecoveryJournal } from './workstation/ProcgenRecoveryJournal.js';
 import { physicalContactForMotion } from '../../actions/PhysicalMotionFacts.js';
 import { ProcgenTerrainEdits, ProcgenTerrainRevisions } from './ProcgenTerrainRetention.js';
@@ -165,7 +166,7 @@ class ProcgenLaneWorld {
     };
     for (const action of Object.values(this.actions)) { action.setRuntime(runtime); action.characterParticles = this.characterParticles; }
     this.basinRoutes = new ProcgenBasinCrewRoutes(this); this.tunnelRoutes = new ProcgenTunnelCrewRoutes(this);
-    this.actors = [];
+    this.actors = []; this.birthCohortRecords = []; this.birthCohortRevision = 0; this._physicalWorkBounds = null;
     this._musicActorPositions = new Map(); this._musicCompletedSlot = 0; this._musicCompletedTick = this.tickIndex;
     if (!cohorts) for (let lane = 0; lane < this.laneCount; lane++) this._spawn(lane, false);
     this._retainTerrainDescriptors();
@@ -182,6 +183,7 @@ class ProcgenLaneWorld {
     actor.laneIndex = lane; actor.spawnLaneIndex = lane;
     actor.spawnTick = this.tickIndex;
     actor.spawnOrdinal = this.stall.lanes[lane].spawned;
+    actor.birthCohortId = recordBirthCohortSlot(this, lane, actor); actor.crewOriginIds = []; actor.crewOriginComplete = true;
     actor.proceduralSeed = deriveSeed(this.laneSeeds[lane], `procgen:actor:${actor.spawnOrdinal}`);
     actor.scoutAbilities = this.population.scoutAbilities(this.laneSeeds[lane], actor.spawnOrdinal); actor.scout = !!actor.scoutAbilities;
     actor.spawnPhaseTicks = this._spawnPhaseForLane(lane);
@@ -189,6 +191,7 @@ class ProcgenLaneWorld {
     actor.furthestX = actor.x;
     actor.assists = 0;
     actor.failureReason = null;
+    actor._queuePhysicalTransition({ kind: 'ActorBorn', actorId: actor.id, laneId: lane, birthCohortId: actor.birthCohortId, spawnTick: actor.spawnTick, spawnOrdinal: actor.spawnOrdinal, positionAfter: { x: actor.x, y: actor.y } });
     actor.setAction(this.actions[State.FALLING]);
     this.actors.push(actor); this.activeCount++;
     this.stall.spawn(lane, this.tickIndex); this.spawnedTotal++;
@@ -232,7 +235,7 @@ class ProcgenLaneWorld {
       const state = this.stall.lanes[lane];
       const stalledLongEnough = this.tickIndex - state.lastProgressTick >= this.stall.settings.secondsWithoutProgress * this.stall.settings.ticksPerSecond;
       const reservedProbe = stalledLongEnough && state.spawnsSinceProgress < this.stall.allowance(state);
-      if (this.activeCount >= this.maxActors && !reservedProbe) { this.admissionPaused = true; continue; }
+      if (this.activeCount >= this.maxActors && !reservedProbe) { this.admissionPaused = true; recordBirthCohortSlot(this, lane, null, 'population-cap'); this.soundEvents.emitPhysicalFact({ kind: 'BirthAdmissionMissed', laneId: lane, cohortId: `${this.worldId}:${this.generation}:cohort:${this.population.cohortStartTick}`, reason: 'population-cap' }); continue; }
       this._spawn(lane); this._laneAdmissionCohorts[lane] = this.population.cohortStartTick;
     }
   }
@@ -250,7 +253,7 @@ class ProcgenLaneWorld {
     this._assistedColumn.valid = false; this.accessTasks.fill(null); this._edgeWallCache.fill(null); this._edgeWallRevisions.fill(0); this._edgeWallHazards.length = 0;
     this._musicActorPositions.clear(); this._musicCompletedSlot = 0; this._musicCompletedTick = this.tickIndex;
     for (const actor of this.actors) { this._clearConstructionCrew(actor); actor._laneRouteAttempt = null; actor._basinSceneId = null; }
-    this.actors.length = 0; this.activeCount = 0; this.admissionPaused = false; this._manualNukeLanes.fill(0); this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this.terrain?.reset?.();
+    this.actors.length = 0; this.birthCohortRecords = []; this.birthCohortRevision = (this.birthCohortRevision || 0) + 1; this.activeCount = 0; this.admissionPaused = false; this._manualNukeLanes.fill(0); this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this.terrain?.reset?.();
     this._laneChunk.fill(null); this._laneChunkIndex.fill(-1); this._collisionSlots.fill(null); this._collisionIndices.fill(-1); this._laneEdits.fill(null); this._laneEditIndex.fill(-1); this._editCache.fill(null); this._editIndices.fill(-1); this.frontiers.fill(36);
     this.generatedThrough.fill(this.terrain?.chunkWidth || CHUNK_WIDTH); this.terrainRevision++; this.frontierRevision++; this.generation++; this.generationStartTick = this.tickIndex;
     const terrainGeneration = this.workstationEnabled ? 1 : this.generation;
@@ -331,14 +334,16 @@ class ProcgenLaneWorld {
       actorId: actor.id, laneId: actor.laneIndex, x: actor.x, y: actor.y,
       action: actor.action?.getActionName?.() || actor.action?.actionName || null, actionInstanceId: actor._physicalActionInstanceId,
       terminalReason: actor.terminalReason ?? null, spawnTick: actor.spawnTick, spawnLaneIndex: actor.spawnLaneIndex,
-      direction: actor.lookRight ? 'right' : 'left'
+      direction: actor.lookRight ? 'right' : 'left', birthCohortId: actor.birthCohortId ?? null,
+      crewOriginIds: Object.freeze([...(actor.crewOriginIds || [])]), crewOriginComplete: actor.crewOriginComplete !== false,
+      abilities: Object.freeze({ climb: !!actor.canClimb, parachute: !!actor.hasParachute })
     })));
     const lanes = Object.freeze(this.stall.lanes.map((lane, index) => Object.freeze({ laneId: index,
       alive: lane.alive, buildingCount: lane.buildingCount, bashingCount: lane.bashingCount,
       diggingCount: lane.diggingCount, miningCount: lane.miningCount, blockingCount: lane.blockingCount,
       floatingCount: lane.floatingCount })));
     return Object.freeze({ revision: `${this.generation}:${this.tickIndex}`, generation: this.generation,
-      tick: this.tickIndex, terrainRevision: this.terrainRevision, actors, lanes });
+      tick: this.tickIndex, terrainRevision: this.terrainRevision, actors, lanes, cohorts: completedBirthCohorts(this) });
   }
   getLaneMusicActorPosition(id, lane) {
     const record = this._musicActorPositions.get(id);
@@ -510,6 +515,7 @@ class ProcgenLaneWorld {
     const index = (y % this.laneHeight) * EDIT_CHUNK_WIDTH + x % EDIT_CHUNK_WIDTH;
     if (chunk[index] !== color + 1) {
       chunk[index] = color + 1; this.terrainRevision++;
+      if (this.soundEvents._tick && this.soundEvents.onBatch.handlers.size) { const b = this._physicalWorkBounds; this._physicalWorkBounds = b ? { x1: Math.min(b.x1, x), y1: Math.min(b.y1, y), x2: Math.max(b.x2, x + 1), y2: Math.max(b.y2, y + 1) } : { x1: x, y1: y, x2: x + 1, y2: y + 1 }; }
       if (x >= this.leftEdgeX && x <= this.leftEdgeX + 12) this._edgeWallRevisions[Math.floor(y / this.laneHeight)]++;
       this.terrainActivityTicks[Math.floor(y / this.laneHeight)] = this.tickIndex;
       const width = this.terrain?.chunkWidth || CHUNK_WIDTH;
@@ -671,6 +677,7 @@ class ProcgenLaneWorld {
     const lane = Math.min(this.laneCount - 1, Math.floor(actor.y / this.laneHeight)), previous = actor.laneIndex;
     if (lane === previous) return;
     actor.laneIndex = lane; this._clearConstructionCrew(actor); this.stats.laneTransfers++;
+    this.soundEvents.emitPhysicalFact({ kind: 'ActorLaneTransferred', actorId: actor.id, laneId: lane, previousLaneId: previous, birthLaneId: actor.spawnLaneIndex, birthCohortId: actor.birthCohortId, positionAfter: { x: actor.x, y: actor.y } });
     const departed = this.stall.lanes[previous], arrived = this.stall.lanes[lane];
     departed.transferredOut = (departed.transferredOut || 0) + 1; arrived.transferredIn = (arrived.transferredIn || 0) + 1;
     departed.populationPeak = Math.max(0, (departed.populationPeak ?? departed.peakAlive) - 1);
@@ -935,7 +942,7 @@ class ProcgenLaneWorld {
         this.basinRoutes.observeApproach(actor);
         if (this.stall.phase === 'running') this._assist(actor);
         const previousX = actor.x, previousY = actor.y, previousAction = actor.action, motionActionInstanceId = actor._physicalActionInstanceId;
-        this._processingLane = actor.laneIndex; this._processingActorId = actor.id;
+        this._processingLane = actor.laneIndex; this._processingActorId = actor.id; this._physicalWorkBounds = null;
         const next = actor.process(this);
         this._synchronizeLane(actor);
         this.soundEvents.laneIndex = actor.laneIndex;

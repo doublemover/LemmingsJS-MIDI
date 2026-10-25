@@ -131,3 +131,36 @@ and an isolated replay physics step are non-preemptible boundaries.
 reuse, scheduling lateness, heap observations and long tasks for 8/128/1024 lanes.
 The new fault-injection and 1000-tick continuation fixtures are written but not
 executed; no latency or replay qualification is claimed.
+
+### Indexed physical instruments and completed ensemble evidence
+
+`physical/PickupGates.js` compiles authored world-space segments, polylines and
+rectangular bands into bounded 128-pixel cells. A sweep visits candidate cells,
+not the actor × gate Cartesian product. Shared vertices have one observation;
+arrival owns the boundary, departure and collinear/zero displacement are silent.
+A band can enter and exit during one tick. Crossing fractions are derived endpoint
+interpolation, never measured sub-tick physics. Occupancy owns an actor/gate voice
+until real exit, actor loss, source reset or geometry retirement. Mapping edits
+retire old ownership and default to silent membership; explicit edit retrigger
+has empty physical ancestry and a named edit cause. Hysteresis, alternating
+polarity, ordered crossings, local-coordinate tuning and revisions are portable.
+The query and state caps fail explicitly rather than dropping arbitrary actors.
+
+Birth cohort IDs include world, generation and the actual scheduled cohort.
+Successful births, missed admission slots and bounded recent cohort records are
+separate. Crew origins attach at the real admission boundary. Completed actor
+snapshots carry these scalar identities and abilities. Ensemble selectors are
+bounded data ASTs, not callbacks; fixed rosters retain missing historical members,
+dynamic membership follows completed source coverage, and overflow/exclusive
+conflict is not a first-N selection. Fixed roster restore never recaptures a new
+actor that happens to reuse a numeric ID. Unknown route predicates remain unknown.
+
+The route atlas requires observed ordered directional markers before using a
+segment coordinate. Authored/trace geometry is not itself traversal proof. Shared
+entry ambiguity, omitted markers, discontinuity and changed dependent terrain
+invalidate comparisons. Qualified route arc pixels, elapsed lap ticks and measured
+movement remain separate quantities. Coordinate and marker state is included in
+causal engine checkpoints; take preflight requests physical-domain boundary data.
+The implementation is bounded and source-reviewed, **not runtime-qualified**.
+`bench-physical-query-plan.mjs` implements an all-gates reference comparison and
+16/256/1024-gate candidate/tail profile; it has deliberately not been executed.

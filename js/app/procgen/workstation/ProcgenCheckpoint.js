@@ -14,7 +14,7 @@ const validateCheckpointCodecs = saved => {
   if (saved.componentCodecs != null && (Object.keys(saved.componentCodecs).length !== Object.keys(CHECKPOINT_COMPONENT_CODECS).length ||
       Object.entries(CHECKPOINT_COMPONENT_CODECS).some(([key, version]) => saved.componentCodecs[key] !== version))) throw new Error('Unsupported checkpoint component codec.');
 };
-const OMIT = new Set(['log', 'gameResources', 'render', 'characterParticles', '_collisionSlots', '_collisionIndices', '_laneChunk', '_laneChunkIndex', '_laneEdits', '_laneEditIndex', '_editCache', '_editIndices', '_edgeWallCache', 'challengeCache']);
+const OMIT = new Set(['_physicalWorkBounds', 'log', 'gameResources', 'render', 'characterParticles', '_collisionSlots', '_collisionIndices', '_laneChunk', '_laneChunkIndex', '_laneEdits', '_laneEditIndex', '_editCache', '_editIndices', '_edgeWallCache', 'challengeCache']);
 const TYPES = { Uint8Array, Uint8ClampedArray, Int8Array, Uint16Array, Int16Array, Uint32Array, Int32Array, Float32Array, Float64Array };
 const INTEGER_VIEW_RANGES = { Uint8Array: [0, 255], Uint8ClampedArray: [0, 255], Int8Array: [-128, 127],
   Uint16Array: [0, 65535], Int16Array: [-32768, 32767], Uint32Array: [0, 4294967295], Int32Array: [-2147483648, 2147483647] };

@@ -12,7 +12,7 @@ export class ProcgenActorProjection {
   }
   publish(world) {
     if (this.disposed) return null;
-    const bytes = 1024 + world.actors.length * 512 + world.laneCount * (256 + PROCGEN_ACTION_LABELS.length * 8), token = {};
+    const bytes = 1024 + world.actors.length * 1536 + world.laneCount * (256 + PROCGEN_ACTION_LABELS.length * 8), token = {};
     if (this.versions.size >= this.maxVersions || this.bytes + bytes > this.maxBytes) { this.dropped++; return null; }
     try { this.budget?.reserve({ token, owner: 'actor-projection', generation: world.generation, category: 'live', bytes, pinned: true, reloadable: false }); }
     catch { this.dropped++; return null; }
@@ -27,6 +27,9 @@ export class ProcgenActorProjection {
         const code = codes.get(source.action), raw = source.action?.spriteProvider?.getActorDrawBounds?.(source);
         const bounds = raw && ['x', 'y', 'width', 'height'].every(key => Number.isFinite(raw[key])) ? Object.freeze({ x: raw.x, y: raw.y, width: raw.width, height: raw.height }) : null;
         const actor = Object.freeze({ id: source.id, generation: world.generation, x: source.x, y: source.y, laneIndex: source.laneIndex,
+          birthCohortId: source.birthCohortId ?? null, spawnLaneIndex: source.spawnLaneIndex ?? null,
+          crewOriginIds: Object.freeze([...(source.crewOriginIds || [])]), crewOriginComplete: source.crewOriginComplete !== false,
+          abilities: Object.freeze({ climb: !!source.canClimb, parachute: !!source.hasParachute }),
           lookRight: source.lookRight !== false, frameIndex: source.frameIndex ?? 0, actionCode: code ?? -1,
           actionName: String(PROCGEN_ACTION_LABELS[code] || source.action?.actionName || '').slice(0, 64), hasAction: !!source.action, drawBounds: bounds });
         actors.push(actor);

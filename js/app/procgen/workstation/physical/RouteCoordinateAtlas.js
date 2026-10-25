@@ -1,0 +1,120 @@
+import { plain, identity, integer, finite, point, bounds, boundedList, freeze, copy } from './PhysicalSchema.js';
+
+export function validateRouteDefinition(input, pickups = []) {
+  if (!plain(input) || !identity(input.id) || !identity(input.branchId) || !integer(input.revision) || !['authored', 'measured-trace'].includes(input.geometrySource ?? 'authored')) throw new Error('Invalid route identity or geometry provenance.');
+  const gates = new Set(pickups.map(gate => gate.id));
+  const markers = boundedList(input.markers, 65, marker => { if (!plain(marker) || !gates.has(marker.gateId) || !['positive', 'negative', 'either'].includes(marker.direction ?? 'either')) throw new Error('Route markers must reference an existing directional pickup.'); return { gateId: marker.gateId, direction: marker.direction ?? 'either' }; }, 'route markers');
+  const segments = boundedList(input.segments, 64, (segment, index) => {
+    if (!plain(segment) || !identity(segment.id)) throw new Error('Invalid route segment identity.');
+    const path = boundedList(segment.path, 256, point, 'route trace');
+    if (path.length < 2 || path.some((p, i) => i && p.x === path[i - 1].x && p.y === path[i - 1].y)) throw new Error('Route segments require nondegenerate ordered paths.');
+    const lengthPixels = path.slice(1).reduce((sum, p, i) => sum + Math.hypot(p.x - path[i].x, p.y - path[i].y), 0);
+    if (!finite(lengthPixels, 65536) || lengthPixels <= 0) throw new Error('Route segment length exceeds its finite authoring region.');
+    const dependencies = boundedList(segment.dependencies ?? [], 64, dependency => { if (!plain(dependency) || !integer(dependency.terrainRevision)) throw new Error('Invalid route terrain dependency.'); return { bounds: bounds(dependency.bounds), terrainRevision: dependency.terrainRevision }; }, 'route terrain dependencies');
+    return { id: segment.id, index, path, lengthPixels, dependencies };
+  }, 'route segments');
+  if (!segments.length || markers.length !== segments.length + 1 || new Set(segments.map(segment => segment.id)).size !== segments.length || input.loop === true && markers[0].gateId !== markers.at(-1).gateId) throw new Error('Route markers must delimit every segment, including an explicit loop seam.');
+  if (input.entryAction != null && (typeof input.entryAction !== 'string' || input.entryAction.length > 64)) throw new Error('Invalid route action qualifier.');
+  let offset = 0; const segmentOffsets = segments.map(segment => { const start = offset; offset += segment.lengthPixels; return start; });
+  return freeze({ segmentOffsets, id: input.id, revision: input.revision, branchId: input.branchId, geometrySource: input.geometrySource ?? 'authored',
+    metric: 'qualified-route-arc-pixels', loop: input.loop === true, markers, segments, entryAction: input.entryAction ?? null,
+    tolerancePixels: Number.isFinite(input.tolerancePixels) && input.tolerancePixels >= 0 && input.tolerancePixels <= 16 ? input.tolerancePixels : 2,
+    lengthPixels: segments.reduce((sum, segment) => sum + segment.lengthPixels, 0) });
+}
+const intersects = (a, b) => a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
+const project = (segment, p, tolerance, previousS = null) => {
+  const candidates = []; let offset = 0;
+  for (let i = 1; i < segment.path.length; i++) {
+    const a = segment.path[i - 1], b = segment.path[i], dx = b.x - a.x, dy = b.y - a.y, length = Math.hypot(dx, dy), t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / (length * length);
+    if (t >= -1e-9 && t <= 1 + 1e-9) { const fraction = Math.max(0, Math.min(1, t)), distance = Math.hypot(p.x - a.x - fraction * dx, p.y - a.y - fraction * dy); if (distance <= tolerance) candidates.push(offset + fraction * length); }
+    offset += length;
+  }
+  const unique = candidates.filter((value, index) => !candidates.slice(0, index).some(other => Math.abs(value - other) < 1e-6));
+  if (unique.length === 1) return { status: 'qualified', s: unique[0] };
+  if (unique.length > 1 && previousS != null) { const nearby = unique.filter(value => Math.abs(value - previousS) <= tolerance + 8); if (nearby.length === 1) return { status: 'qualified', s: nearby[0] }; }
+  return { status: unique.length ? 'ambiguous' : 'off-route' };
+};
+export function createRouteCoordinateAtlas({ maxTrackers = 16384, maxRoutes = 128 } = {}) {
+  let definitions = [], byId = new Map(), signatures = new Map(), boundary = null, index = new Map(), lastObservations = [], currentTick = -1;
+  const trackers = new Map(), invalid = new Map();
+  const key = (id, actorId) => `${id}/${actorId}`;
+  const configure = routes => {
+    if (!Array.isArray(routes) || routes.length > maxRoutes || new Set(routes.map(route => route.id)).size !== routes.length) throw new Error('Route atlas capacity or duplicate identity.');
+    const next = new Map(routes.map(route => [route.id, JSON.stringify(route)]));
+    for (const [id, state] of trackers) if (signatures.get(state.routeId) !== next.get(state.routeId)) trackers.delete(id);
+    for (const id of invalid.keys()) if (signatures.get(id) !== next.get(id)) invalid.delete(id);
+    definitions = routes; byId = new Map(routes.map(route => [route.id, route])); signatures = next;
+    index = new Map(); for (const route of definitions) for (let markerIndex = 0; markerIndex < route.markers.length; markerIndex++) { const marker = route.markers[markerIndex]; if (!index.has(marker.gateId)) index.set(marker.gateId, []); index.get(marker.gateId).push({ route, markerIndex, marker }); }
+  };
+  const observe = (batch, crossings) => {
+    if (boundary !== `${batch.worldId}:${batch.generation}`) { trackers.clear(); invalid.clear(); boundary = `${batch.worldId}:${batch.generation}`; }
+    currentTick = batch.tick; const actors = new Map((batch.snapshot?.actors || []).map(actor => [actor.actorId, actor])), observations = [], motionDistances = new Map();
+    for (const fact of batch.facts) if (fact.kind === 'MotionCommitted') motionDistances.set(fact.actorId, (motionDistances.get(fact.actorId) || 0) + Math.hypot(fact.positionAfter.x - fact.positionBefore.x, fact.positionAfter.y - fact.positionBefore.y));
+    for (const [id, state] of trackers) if (batch.snapshot && !actors.has(state.actorId)) trackers.delete(id);
+    for (const fact of batch.facts) if (fact.kind === 'TerrainWorkCommitted' && (fact.physicalPayload?.changedSolidCells || fact.physicalPayload?.changedAppearanceCells)) {
+      const spans = fact.physicalPayload?.spans;
+      const region = fact.bounds || fact.physicalPayload?.bounds || (Array.isArray(spans) && spans.length ? { x1: Math.min(...spans.map(span => span.x1)), x2: Math.max(...spans.map(span => span.x2)), y1: Math.min(...spans.map(span => span.y)), y2: Math.max(...spans.map(span => span.y)) + 1 } : null);
+      for (const route of definitions) for (const segment of route.segments) if (segment.dependencies.some(dependency => !region || intersects(dependency.bounds, region))) { let ids = invalid.get(route.id); if (!ids) { ids = new Set(); invalid.set(route.id, ids); } ids.add(segment.id); }
+    }
+    for (const crossing of crossings) {
+      const candidates = (index.get(crossing.gateId) || []).filter(entry => entry.marker.direction === 'either' || entry.marker.direction === crossing.direction);
+      const entries = candidates.filter(entry => entry.markerIndex === 0 && (!entry.route.entryAction || actors.get(crossing.actorId)?.action === entry.route.entryAction));
+      const ambiguous = entries.length > 1;
+      const selected = new Map();
+      for (const candidate of candidates) { const state = trackers.get(key(candidate.route.id, crossing.actorId)), current = selected.get(candidate.route.id);
+        if (!current || candidate.markerIndex === (state ? state.segmentIndex + 1 : 0)) selected.set(candidate.route.id, candidate); }
+      for (const { route, markerIndex } of selected.values()) {
+        const id = key(route.id, crossing.actorId); let state = trackers.get(id);
+        if (invalid.get(route.id)?.has(route.segments[state?.segmentIndex ?? 0].id)) { if (state) { state.status = 'terrain-invalidated'; state.observationTick = batch.tick; } continue; }
+        if (!state) {
+          if (markerIndex !== 0 || trackers.size >= maxTrackers || route.entryAction && actors.get(crossing.actorId)?.action !== route.entryAction) continue;
+          state = { routeId: route.id, routeRevision: route.revision, branchId: route.branchId, actorId: crossing.actorId, segmentIndex: 0, segmentId: route.segments[0].id,
+            lapId: 0, sPixels: 0, segmentS: 0, direction: 1, observationTick: batch.tick, status: ambiguous ? 'ambiguous' : 'qualified',
+            entryTick: batch.tick + crossing.fraction, lastReturnTick: null, periodTicks: null, markerHistory: [crossing.observationId], sourceEventIds: crossing.sourceEventIds };
+          trackers.set(id, state); continue;
+        }
+        if (state.status !== 'qualified') { if (markerIndex === 0 && !ambiguous) { trackers.delete(id); state = { ...state, segmentIndex: 0, segmentId: route.segments[0].id, segmentS: 0, sPixels: 0, lapId: 0, status: 'qualified', entryTick: batch.tick + crossing.fraction, markerHistory: [crossing.observationId] }; trackers.set(id, state); } continue; }
+        if (markerIndex === state.segmentIndex + 1) {
+          state.markerHistory.push(crossing.observationId); if (state.markerHistory.length > 65) state.markerHistory.shift();
+          if (markerIndex === route.markers.length - 1) {
+            const returned = batch.tick + crossing.fraction, previous = state.lastReturnTick ?? state.entryTick;
+            state.periodTicks = returned - previous; state.lastReturnTick = returned; state.lapId++; state.segmentIndex = route.loop ? 0 : route.segments.length - 1;
+            state.status = route.loop ? 'qualified' : 'completed';
+            observations.push({ ...crossing, observationId: crossing.observationId + ':route:' + route.id, routeId: route.id, routeRevision: route.revision,
+              branchId: route.branchId, lapId: state.lapId, periodTicks: state.periodTicks, elapsedUnit: 'simulation-ticks', metric: route.metric, routeLengthPixels: route.lengthPixels, transition: 'lap' });
+          } else state.segmentIndex = markerIndex;
+          state.segmentS = 0; state.segmentId = route.segments[state.segmentIndex].id;
+        } else if (markerIndex === state.segmentIndex && state.direction < 0 && markerIndex > 0) { state.segmentIndex--; state.segmentId = route.segments[state.segmentIndex].id; state.segmentS = route.segments[state.segmentIndex].lengthPixels; }
+        else if (!(route.loop && markerIndex === 0 && state.segmentIndex === route.segments.length - 1)) { state.status = 'marker-order-mismatch'; }
+        state.observationTick = batch.tick; state.sourceEventIds = crossing.sourceEventIds;
+      }
+    }
+    for (const state of trackers.values()) {
+      const route = byId.get(state.routeId), actor = actors.get(state.actorId);
+      if (!actor || state.status !== 'qualified') continue;
+      if (invalid.get(route.id)?.has(state.segmentId)) { state.status = 'terrain-invalidated'; continue; }
+      const distance = motionDistances.get(state.actorId) || 0;
+      if (state.lastPosition && (batch.tick > state.observationTick + 1 || Math.hypot(actor.x - state.lastPosition.x, actor.y - state.lastPosition.y) > distance + 1e-6)) { state.status = 'discontinuous'; continue; }
+      const coordinate = project(route.segments[state.segmentIndex], actor, route.tolerancePixels, state.segmentS);
+      if (coordinate.status !== 'qualified') { state.status = coordinate.status; continue; }
+      const s = route.segmentOffsets[state.segmentIndex] + coordinate.s + state.lapId * route.lengthPixels;
+      if (s !== state.sPixels) state.direction = Math.sign(s - state.sPixels);
+      state.lastPosition = { x: actor.x, y: actor.y }; state.segmentS = coordinate.s; state.sPixels = s; state.observationTick = batch.tick;
+    }
+    lastObservations = observations.map(freeze); return Object.freeze(lastObservations);
+  };
+  const coordinate = (actorId, routeId) => { const state = trackers.get(key(routeId, actorId)); return state ? freeze({ ...copy(state), status: state.observationTick === currentTick ? state.status : 'stale', metric: 'qualified-route-arc-pixels' }) : null; };
+  const neighbors = routeId => {
+    const groups = new Map(); for (const state of trackers.values()) if (state.routeId === routeId && state.status === 'qualified' && state.observationTick === currentTick) {
+      const id = `${state.branchId}:${state.direction}`; if (!groups.has(id)) groups.set(id, []); groups.get(id).push(state); }
+    return Object.freeze([...groups].map(([group, members]) => { members.sort((a, b) => a.sPixels - b.sPixels || a.actorId - b.actorId); return freeze({ group, members: members.map((member, i) => ({ actorId: member.actorId, sPixels: member.sPixels,
+      previousActorId: members[i - 1]?.actorId ?? null, gapPixels: i ? member.sPixels - members[i - 1].sPixels : null, metric: 'qualified-route-arc-pixels' })) }); }));
+  };
+  return { configure, observe, coordinate, neighbors, reset() { trackers.clear(); invalid.clear(); boundary = null; },
+    snapshot: () => freeze({ version: 1, boundary, currentTick, signatures: [...signatures], trackers: [...trackers.values()].map(copy), invalid: [...invalid].map(([id, segments]) => [id, [...segments]]) }),
+    restore(value) { if (value?.version !== 1 || value.boundary != null && typeof value.boundary !== 'string' || !Number.isSafeInteger(value.currentTick) || value.currentTick < -1 || JSON.stringify(value.signatures) !== JSON.stringify([...signatures]) || !Array.isArray(value.trackers) || value.trackers.length > maxTrackers || !Array.isArray(value.invalid) || value.invalid.length > maxRoutes) throw new Error('Invalid route checkpoint.');
+      const next = new Map(); for (const state of value.trackers) { const route = byId.get(state.routeId); if (!route || !integer(state.actorId) || !integer(state.segmentIndex, route.segments.length - 1) || state.segmentId !== route.segments[state.segmentIndex].id || !integer(state.lapId) || !finite(state.sPixels, Number.MAX_SAFE_INTEGER) || !finite(state.segmentS, 65536) || !integer(state.observationTick) || !Array.isArray(state.markerHistory) || state.markerHistory.length > 65 || next.has(key(state.routeId, state.actorId))) throw new Error('Invalid observed route identity.'); next.set(key(state.routeId, state.actorId), copy(state)); }
+      const invalidNext = new Map(); for (const [id, segments] of value.invalid) { const route = definitions.find(entry => entry.id === id); if (!route || !Array.isArray(segments) || segments.some(segment => !route.segments.some(entry => entry.id === segment))) throw new Error('Invalid route dependency state.'); invalidNext.set(id, new Set(segments)); }
+      trackers.clear(); for (const [id, state] of next) trackers.set(id, state); invalid.clear(); for (const [id, segments] of invalidNext) invalid.set(id, segments); boundary = value.boundary; currentTick = value.currentTick; },
+    diagnostics: () => freeze({ routes: definitions.length, trackers: trackers.size, invalidated: [...invalid].map(([id, segments]) => ({ id, segments: [...segments] })), laps: lastObservations }) };
+}
