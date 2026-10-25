@@ -1389,11 +1389,29 @@
       "requirementUpdatedAt": "2026-10-22T08:50:42Z",
       "requirementSha256": "561a260b82b863ed343fe3b89a2373168296edf4bcea2620545930ddb535e9a4",
       "initialGap": "Existing immutable cohort timing/adaptive policy and finite hatch budget exist, but no versioned performer ReleaseGesture with lane-phase/finite spray controls and replay/request-versus-realized boundary receipts.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "implemented-validation-deferred",
+      "source": [
+        "js/app/procgen/ReleaseGesture.js",
+        "js/app/procgen/ProcgenPopulationPolicy.js",
+        "js/app/procgen/ProcgenLaneWorld.js",
+        "js/app/procgen/ProcgenInterventionCommands.js",
+        "js/app/procgen/workstation/ReleaseGestureView.js",
+        "js/app/procgen/workstation/ProcgenWorkstation.js"
+      ],
+      "regressions": [
+        "test/procgen-release-gesture.test.js",
+        "test/release-gesture-view.test.js",
+        "scripts/bench-release-gestures.mjs"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "physical-release-gestures",
+          "summary": "Versioned saved recipe versus explicitly performed canonical command; deterministic population-keyed phases, finite attempted-birth budget, frozen admitted cohorts, locked/adaptive clock, strict capacity/no catch-up, requested/scheduled/actual/missed facts, checkpoint and replay ownership, bounded document-fenced controls. Fixtures/profile unrun. Broader probability migration, feedback and semantic source closure remain tracked independently.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1053,
@@ -1424,11 +1442,29 @@
       "requirementUpdatedAt": "2026-10-22T09:00:57Z",
       "requirementSha256": "2f675d4fbe1a89e159d20c49496afe2800540d01f9b1852c6fa2dd4ce457e90a",
       "initialGap": "Keyed CausalRandom namespaces, bounded musical decisions and validated probability-driven physical intervention admission now exist. Per-actor/cohort/encounter identity/reseed policies and migration of terrain/population consumers to the shared versioned contract remain absent; population still uses its separate old mixer.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/procgen/ReleaseGesture.js",
+        "js/app/procgen/ProcgenPopulationPolicy.js",
+        "js/app/procgen/ProcgenLaneWorld.js",
+        "js/app/procgen/ProcgenInterventionCommands.js",
+        "js/app/procgen/workstation/ReleaseGestureView.js",
+        "js/app/procgen/workstation/ProcgenWorkstation.js"
+      ],
+      "regressions": [
+        "test/procgen-release-gesture.test.js",
+        "test/release-gesture-view.test.js",
+        "scripts/bench-release-gestures.mjs"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "physical-release-gestures",
+          "summary": "Versioned saved recipe versus explicitly performed canonical command; deterministic population-keyed phases, finite attempted-birth budget, frozen admitted cohorts, locked/adaptive clock, strict capacity/no catch-up, requested/scheduled/actual/missed facts, checkpoint and replay ownership, bounded document-fenced controls. Fixtures/profile unrun. Broader probability migration, feedback and semantic source closure remain tracked independently.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1055,
@@ -1457,17 +1493,32 @@
       "initialGap": "Typed intervention queue/receipts implemented. Latest source gaps remain: release adapter writes settings directly rather than rescheduling next cohort; manual nuke controls bypass recorded commands; seal joins all facts anew per command receipt.",
       "state": "in-progress",
       "source": [
-        "js/app/procgen/ProcgenInterventionCommands.js"
+        "js/app/procgen/ProcgenInterventionCommands.js",
+        "js/app/procgen/ReleaseGesture.js",
+        "js/app/procgen/ProcgenPopulationPolicy.js",
+        "js/app/procgen/ProcgenLaneWorld.js",
+        "js/app/procgen/workstation/ReleaseGestureView.js",
+        "js/app/procgen/workstation/ProcgenWorkstation.js"
       ],
       "regressions": [
-        "test/procgen-intervention-commands.test.js"
+        "test/procgen-intervention-commands.test.js",
+        "test/procgen-release-gesture.test.js",
+        "test/release-gesture-view.test.js",
+        "scripts/bench-release-gestures.mjs"
       ],
       "commits": [
         "d7a2a95289548ff7097403178a5310fc72790e98"
       ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
-      "remaining": "Linear command ancestry and transactional nuke path added; full intervention contract review remains."
+      "remaining": "Linear command ancestry and transactional nuke path added; full intervention contract review remains.",
+      "increments": [
+        {
+          "id": "physical-release-gestures",
+          "summary": "Versioned saved recipe versus explicitly performed canonical command; deterministic population-keyed phases, finite attempted-birth budget, frozen admitted cohorts, locked/adaptive clock, strict capacity/no catch-up, requested/scheduled/actual/missed facts, checkpoint and replay ownership, bounded document-fenced controls. Fixtures/profile unrun. Broader probability migration, feedback and semantic source closure remain tracked independently.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1057,
@@ -1570,13 +1621,15 @@
         "test/procgen-activity-windows.test.js",
         "scripts/bench-physical-activity.mjs"
       ],
-      "commits": [],
+      "commits": [
+        "8d9fd01f4472b2997edabd1e4c207698820a61d7"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "physical-activity-and-rooted-cadence",
           "summary": "Simulation-only activity/held/rest windows, complete-coverage absence, separate output diagnostics, exact canonical crew prerequisite roots and one-shot cadence ownership, checkpoint/fragment/capture v7 integration, physical-music identity v3, truthful refused fact/mix publication. Fixtures and profiles unrun.",
-          "commit": null
+          "commit": "8d9fd01f4472b2997edabd1e4c207698820a61d7"
         }
       ]
     },
@@ -1854,7 +1907,8 @@
         "scripts/bench-physical-activity.mjs"
       ],
       "commits": [
-        "149de9d92c387cfaea8b394024e3052f41d03c66"
+        "149de9d92c387cfaea8b394024e3052f41d03c66",
+        "8d9fd01f4472b2997edabd1e4c207698820a61d7"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -1866,7 +1920,7 @@
         {
           "id": "physical-activity-and-rooted-cadence",
           "summary": "Simulation-only activity/held/rest windows, complete-coverage absence, separate output diagnostics, exact canonical crew prerequisite roots and one-shot cadence ownership, checkpoint/fragment/capture v7 integration, physical-music identity v3, truthful refused fact/mix publication. Fixtures and profiles unrun.",
-          "commit": null
+          "commit": "8d9fd01f4472b2997edabd1e4c207698820a61d7"
         }
       ]
     },
@@ -2225,7 +2279,12 @@
         "js/app/procgen/PhysicalCrewEvidence.js",
         "js/app/procgen/ProcgenCrewProjects.js",
         "js/app/procgen/workstation/physical/ActivityWindows.js",
-        "js/app/procgen/workstation/ProcgenPhysicalPlayback.js"
+        "js/app/procgen/workstation/ProcgenPhysicalPlayback.js",
+        "js/app/procgen/ReleaseGesture.js",
+        "js/app/procgen/ProcgenPopulationPolicy.js",
+        "js/app/procgen/ProcgenLaneWorld.js",
+        "js/app/procgen/workstation/ReleaseGestureView.js",
+        "js/app/procgen/workstation/ProcgenWorkstation.js"
       ],
       "regressions": [
         "test/procgen-intervention-commands.test.js",
@@ -2234,12 +2293,16 @@
         "test/procgen-physical-motifs.test.js",
         "scripts/bench-physical-motifs.mjs",
         "test/procgen-activity-windows.test.js",
-        "scripts/bench-physical-activity.mjs"
+        "scripts/bench-physical-activity.mjs",
+        "test/procgen-release-gesture.test.js",
+        "test/release-gesture-view.test.js",
+        "scripts/bench-release-gestures.mjs"
       ],
       "commits": [
         "d7a2a95289548ff7097403178a5310fc72790e98",
         "30977bcb7a2d14739eb8ae76489eb47dbd0daf3e",
-        "a4636ff46efa676c3adb21f24b122be4c9e6bf8c"
+        "a4636ff46efa676c3adb21f24b122be4c9e6bf8c",
+        "8d9fd01f4472b2997edabd1e4c207698820a61d7"
       ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
@@ -2258,6 +2321,11 @@
         {
           "id": "physical-activity-and-rooted-cadence",
           "summary": "Simulation-only activity/held/rest windows, complete-coverage absence, separate output diagnostics, exact canonical crew prerequisite roots and one-shot cadence ownership, checkpoint/fragment/capture v7 integration, physical-music identity v3, truthful refused fact/mix publication. Fixtures and profiles unrun.",
+          "commit": "8d9fd01f4472b2997edabd1e4c207698820a61d7"
+        },
+        {
+          "id": "physical-release-gestures",
+          "summary": "Versioned saved recipe versus explicitly performed canonical command; deterministic population-keyed phases, finite attempted-birth budget, frozen admitted cohorts, locked/adaptive clock, strict capacity/no catch-up, requested/scheduled/actual/missed facts, checkpoint and replay ownership, bounded document-fenced controls. Fixtures/profile unrun. Broader probability migration, feedback and semantic source closure remain tracked independently.",
           "commit": null
         }
       ]
@@ -2324,7 +2392,11 @@
         "js/app/procgen/PhysicalCrewEvidence.js",
         "js/app/procgen/ProcgenCrewProjects.js",
         "js/app/procgen/workstation/physical/ActivityWindows.js",
-        "js/app/procgen/workstation/ProcgenPhysicalPlayback.js"
+        "js/app/procgen/workstation/ProcgenPhysicalPlayback.js",
+        "js/app/procgen/ReleaseGesture.js",
+        "js/app/procgen/ProcgenPopulationPolicy.js",
+        "js/app/procgen/ProcgenLaneWorld.js",
+        "js/app/procgen/workstation/ReleaseGestureView.js"
       ],
       "regressions": [
         "test/procgen-causal-music-engine.test.js",
@@ -2337,14 +2409,18 @@
         "test/procgen-physical-motifs.test.js",
         "scripts/bench-physical-motifs.mjs",
         "test/procgen-activity-windows.test.js",
-        "scripts/bench-physical-activity.mjs"
+        "scripts/bench-physical-activity.mjs",
+        "test/procgen-release-gesture.test.js",
+        "test/release-gesture-view.test.js",
+        "scripts/bench-release-gestures.mjs"
       ],
       "commits": [
         "d7a2a95289548ff7097403178a5310fc72790e98",
         "68b954ff3e7b84b1ecc109172d917e6a9449291a",
         "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e",
         "30977bcb7a2d14739eb8ae76489eb47dbd0daf3e",
-        "a4636ff46efa676c3adb21f24b122be4c9e6bf8c"
+        "a4636ff46efa676c3adb21f24b122be4c9e6bf8c",
+        "8d9fd01f4472b2997edabd1e4c207698820a61d7"
       ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
@@ -2372,6 +2448,11 @@
         {
           "id": "physical-activity-and-rooted-cadence",
           "summary": "Simulation-only activity/held/rest windows, complete-coverage absence, separate output diagnostics, exact canonical crew prerequisite roots and one-shot cadence ownership, checkpoint/fragment/capture v7 integration, physical-music identity v3, truthful refused fact/mix publication. Fixtures and profiles unrun.",
+          "commit": "8d9fd01f4472b2997edabd1e4c207698820a61d7"
+        },
+        {
+          "id": "physical-release-gestures",
+          "summary": "Versioned saved recipe versus explicitly performed canonical command; deterministic population-keyed phases, finite attempted-birth budget, frozen admitted cohorts, locked/adaptive clock, strict capacity/no catch-up, requested/scheduled/actual/missed facts, checkpoint and replay ownership, bounded document-fenced controls. Fixtures/profile unrun. Broader probability migration, feedback and semantic source closure remain tracked independently.",
           "commit": null
         }
       ]
@@ -2406,7 +2487,8 @@
       ],
       "commits": [
         "30977bcb7a2d14739eb8ae76489eb47dbd0daf3e",
-        "a4636ff46efa676c3adb21f24b122be4c9e6bf8c"
+        "a4636ff46efa676c3adb21f24b122be4c9e6bf8c",
+        "8d9fd01f4472b2997edabd1e4c207698820a61d7"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -2423,7 +2505,7 @@
         {
           "id": "physical-activity-and-rooted-cadence",
           "summary": "Simulation-only activity/held/rest windows, complete-coverage absence, separate output diagnostics, exact canonical crew prerequisite roots and one-shot cadence ownership, checkpoint/fragment/capture v7 integration, physical-music identity v3, truthful refused fact/mix publication. Fixtures and profiles unrun.",
-          "commit": null
+          "commit": "8d9fd01f4472b2997edabd1e4c207698820a61d7"
         }
       ]
     },
@@ -2795,7 +2877,8 @@
         "scripts/bench-physical-activity.mjs"
       ],
       "commits": [
-        "a4636ff46efa676c3adb21f24b122be4c9e6bf8c"
+        "a4636ff46efa676c3adb21f24b122be4c9e6bf8c",
+        "8d9fd01f4472b2997edabd1e4c207698820a61d7"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -2807,7 +2890,7 @@
         {
           "id": "physical-activity-and-rooted-cadence",
           "summary": "Simulation-only activity/held/rest windows, complete-coverage absence, separate output diagnostics, exact canonical crew prerequisite roots and one-shot cadence ownership, checkpoint/fragment/capture v7 integration, physical-music identity v3, truthful refused fact/mix publication. Fixtures and profiles unrun.",
-          "commit": null
+          "commit": "8d9fd01f4472b2997edabd1e4c207698820a61d7"
         }
       ]
     },
@@ -3470,7 +3553,8 @@
         "ca7a899ff9652ce7da596c549fdc0051118526b9",
         "148bf84c49957839c208a2269f17dbd2d2b11453",
         "30977bcb7a2d14739eb8ae76489eb47dbd0daf3e",
-        "a4636ff46efa676c3adb21f24b122be4c9e6bf8c"
+        "a4636ff46efa676c3adb21f24b122be4c9e6bf8c",
+        "8d9fd01f4472b2997edabd1e4c207698820a61d7"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -3512,7 +3596,7 @@
         {
           "id": "physical-activity-and-rooted-cadence",
           "summary": "Simulation-only activity/held/rest windows, complete-coverage absence, separate output diagnostics, exact canonical crew prerequisite roots and one-shot cadence ownership, checkpoint/fragment/capture v7 integration, physical-music identity v3, truthful refused fact/mix publication. Fixtures and profiles unrun.",
-          "commit": null
+          "commit": "8d9fd01f4472b2997edabd1e4c207698820a61d7"
         }
       ]
     },
@@ -4031,7 +4115,8 @@
         "scripts/bench-physical-activity.mjs"
       ],
       "commits": [
-        "d7a2a95289548ff7097403178a5310fc72790e98"
+        "d7a2a95289548ff7097403178a5310fc72790e98",
+        "8d9fd01f4472b2997edabd1e4c207698820a61d7"
       ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
@@ -4040,7 +4125,7 @@
         {
           "id": "physical-activity-and-rooted-cadence",
           "summary": "Simulation-only activity/held/rest windows, complete-coverage absence, separate output diagnostics, exact canonical crew prerequisite roots and one-shot cadence ownership, checkpoint/fragment/capture v7 integration, physical-music identity v3, truthful refused fact/mix publication. Fixtures and profiles unrun.",
-          "commit": null
+          "commit": "8d9fd01f4472b2997edabd1e4c207698820a61d7"
         }
       ]
     },

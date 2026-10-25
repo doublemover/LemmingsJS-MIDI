@@ -1,3 +1,5 @@
+import { createReleaseGestureView } from './ReleaseGestureView.js';
+import { validateReleaseGesture } from '../ReleaseGesture.js';
 import { createPhysicalAuthoringView } from './PhysicalAuthoringView.js';
 import { createPhysicalAuthoringHistory } from './PhysicalAuthoringHistory.js';
 import { capturePhysicalScoreFragment, selectSpatialFragmentGraph, planPhysicalScoreFragment, fragmentPlacementCommand } from './PhysicalScoreFragment.js';
@@ -43,7 +45,7 @@ import { createCausalTakeAudioRenderView } from '../../midi-ui/CausalTakeAudioRe
 
 const STORAGE_KEY = 'lemmings.procgen.workstation.v1';
 const MAX_SESSION_FILE_BYTES = 64 * 1048576;
-const FAST_PROCGEN_ACTIONS = new Set(['procgen/fragments', 'procgen/detachFragment', 'procgen/junctions', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
+const FAST_PROCGEN_ACTIONS = new Set(['procgen/releaseGesture', 'procgen/fragments', 'procgen/detachFragment', 'procgen/junctions', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
   'procgen/step', 'procgen/pattern', 'procgen/launch', 'procgen/launched', 'procgen/launchedBatch']);
 const clone = value => JSON.parse(JSON.stringify(value));
 const equal = (left, right) => JSON.stringify(left) === JSON.stringify(right);
@@ -123,7 +125,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let physicalScoreLease = null, physicalScoreParentLease = null, scoreViewRetirement = null;
   let soundLibrary = null;
   let masterCapture = null;
-  let physicalAuthoringView = null, quarryEchoView = null, physicalJunctionView = null, junctionRequestSerial = 0;
+  let releaseGestureView = null, releaseGestureSerial = 0, physicalAuthoringView = null, quarryEchoView = null, physicalJunctionView = null, junctionRequestSerial = 0;
   let prelistenMonitor = null;
   let causalAudioRender = null;
   let pendingHistory = null;
@@ -1224,6 +1226,18 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         home: document.getElementById('procgenStudioFooter') || document.body, onStatus: status });
       prelistenMonitor.mountHome(); return prelistenMonitor;
     },
+    openReleaseGestures() {
+      releaseGestureView ||= createReleaseGestureView({ document, getOwner: () => documentGeneration, displayScheduler: view?.displayScheduler, getProject: () => project, getState: () => ({ population: runtime()?.world?.population.snapshot(), pending: (runtime()?.world?.interventionState.pending || []).filter(command => command.kind === 'set-release-gesture').map(command => ({ id: command.id, applyAtTick: command.applyAtTick })) }), save: gesture => dispatch({ type: 'procgen/releaseGesture', gesture: { ...gesture, revision: Math.max(gesture.revision, project.procgen.releaseGesture?.id === gesture.id ? project.procgen.releaseGesture.revision : 0) + 1 } }), perform: gesture => handlers.performReleaseGesture(gesture), cancel: () => handlers.cancelReleaseGestures(), onStatus: status }); releaseGestureView.open();
+    },
+    performReleaseGesture(input) {
+      const world = runtime()?.world; if (!world || worldBusy || pendingHistory || physicalAuthoringAbort) throw new Error('Wait for an available physical command boundary.');
+      const current = world.population.pendingReleaseGesture || world.population.releaseGesture, revision = Math.max(input.revision, current?.id === input.id ? current.revision : 0) + 1, gesture = validateReleaseGesture({ ...input, revision }, world.laneCount);
+      if (!Number.isSafeInteger(++releaseGestureSerial)) throw new Error('Release gesture identity exhausted.');
+      const command = { id: `release:${world.generation}:${world.tickIndex}:${releaseGestureSerial}`, kind: 'set-release-gesture', origin: 'manual', target: { generation: world.generation }, parameters: { gesture } }, proposal = world.prepareIntervention(command);
+      if (causalTake && causalTake.recordIntervention(command, proposal.outcome, { tick: world.tickIndex, generation: world.generation }).status !== 'accepted') throw new Error('Take could not admit the release gesture.');
+      return proposal.commit();
+    },
+    cancelReleaseGestures() { const world = runtime()?.world; if (!world || worldBusy || pendingHistory || physicalAuthoringAbort) return { cancelled: 0 }; let cancelled = 0; for (const command of [...world.interventionState.pending]) if (command.kind === 'set-release-gesture') { if (causalTake && causalTake.recordInput({ version: 1, kind: 'intervention-cancel', commandId: command.id }, { tick: world.tickIndex, generation: world.generation }).status !== 'accepted') throw new Error('Take could not admit cancellation.'); if (world.cancelIntervention(command.id, 'release-user-cancelled')) cancelled++; } return { cancelled, alreadyAdmittedCohortsUnchanged: true }; },
     openPhysicalAuthoring() {
       physicalAuthoringView ||= createPhysicalAuthoringView({ document, resourceBudget, displayScheduler: view?.displayScheduler, getWorld: () => runtime()?.world, getProject: () => project, getAnalysis: () => physicalPlayback?.engine.physicalAnalysis(),
         previewTerrain: input => handlers.previewTerrainAuthoring(input), applyTerrain: input => handlers.applyTerrainAuthoring(input), captureFragment: input => handlers.capturePhysicalFragment(input),
@@ -1673,6 +1687,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'physical-score-views', run: () => retirePhysicalScoreViews() },
         { name: 'causal-workbench', run: () => pendingWorkbenchStop },
         { name: 'sound-library', run: () => soundLibrary?.dispose() },
+        { name: 'release-gesture-view', run: () => releaseGestureView?.dispose() },
         { name: 'physical-authoring-view', run: () => physicalAuthoringView?.dispose() },
         { name: 'physical-authoring-history', run: () => physicalHistory.dispose() },
         { name: 'physical-junction-view', run: () => physicalJunctionView?.dispose() },

@@ -1,3 +1,4 @@
+import { releaseLanePhases } from './ReleaseGesture.js';
 import { createPhysicalCrewEvidence } from './PhysicalCrewEvidence.js';
 import { createPhysicalAuthoringState, preparePhysicalAuthoringConfiguration } from './PhysicalAuthoring.js';
 import { createPhysicalJunctionState, queryPhysicalJunction } from './PhysicalJunctions.js';
@@ -194,6 +195,7 @@ class ProcgenLaneWorld {
     actor.spawnTick = this.tickIndex;
     actor.spawnOrdinal = this.stall.lanes[lane].spawned;
     actor.birthCohortId = recordBirthCohortSlot(this, lane, actor); actor.crewOriginIds = []; actor.crewOriginComplete = true;
+    const release = this.population.cohortReleaseGesture; actor.releaseGesture = release ? Object.freeze({ id: release.id, revision: release.revision, requestedTick: this.population.cohortStartTick + this._spawnPhaseForLane(lane), realizedTick: this.tickIndex, cohortOrdinal: this.population.gestureRun.cohortOrdinal, clockMode: release.clockMode, sourceCommandId: this.population.releaseGestureCommandId }) : null; if (actor.releaseGesture?.sourceCommandId) actor._physicalInterventionId = actor.releaseGesture.sourceCommandId;
     actor.proceduralSeed = deriveSeed(this.laneSeeds[lane], `procgen:actor:${actor.spawnOrdinal}`);
     actor.scoutAbilities = this.population.scoutAbilities(this.laneSeeds[lane], actor.spawnOrdinal); actor.scout = !!actor.scoutAbilities;
     actor.spawnPhaseTicks = this._spawnPhaseForLane(lane);
@@ -201,7 +203,7 @@ class ProcgenLaneWorld {
     actor.furthestX = actor.x;
     actor.assists = 0;
     actor.failureReason = null;
-    actor._queuePhysicalTransition({ kind: 'ActorBorn', actorId: actor.id, laneId: lane, birthCohortId: actor.birthCohortId, spawnTick: actor.spawnTick, spawnOrdinal: actor.spawnOrdinal, positionAfter: { x: actor.x, y: actor.y } });
+    actor._queuePhysicalTransition({ kind: 'ActorBorn', actorId: actor.id, laneId: lane, birthCohortId: actor.birthCohortId, spawnTick: actor.spawnTick, spawnOrdinal: actor.spawnOrdinal, ...(actor.releaseGesture ? { releaseGesture: actor.releaseGesture, parentCauseIds: actor.releaseGesture.sourceCommandId ? [actor.releaseGesture.sourceCommandId] : [] } : {}), positionAfter: { x: actor.x, y: actor.y } });
     actor.setAction(this.actions[State.FALLING]);
     this.actors.push(actor); this.activeCount++;
     this.stall.spawn(lane, this.tickIndex); this.spawnedTotal++;
@@ -215,10 +217,11 @@ class ProcgenLaneWorld {
     const order = Array.from({ length: this.laneCount }, (_, lane) => lane); let state = mix(this.seed ^ (this.workstationEnabled ? 1 : this.generation));
     for (let at = order.length - 1; at > 0; at--) { state = mix(state ^ at); const other = state % (at + 1); [order[at], order[other]] = [order[other], order[at]]; }
     for (let rank = 0; rank < order.length; rank++) this._spawnPhaseRanks[order[rank]] = rank;
-    this.population.cohortSpreadTicks = this.spawnSpreadTicks;
+    if (!this.population.cohortReleaseGesture) this.population.cohortSpreadTicks = this.spawnSpreadTicks;
     this._laneAdmissionCohorts.fill(-Infinity); this._spawnPhaseCohortTick = -Infinity; this._computeSpawnPhases();
   }
   _computeSpawnPhases() {
+    if (this.population.cohortReleaseGesture) { this._spawnPhases.set(releaseLanePhases(this.population.cohortReleaseGesture, { laneCount: this.laneCount, generation: this.generation, cohortOrdinal: this.population.gestureRun.cohortOrdinal, worldSeed: this.seed })); return; }
     const spread = Math.min(this.population.cohortSpreadTicks, this.population.intervalTicks - 1);
     const start = this.population.cohortStartTick, beatTicks = this.population.cohortBeatTicks;
     for (let lane = 0; lane < this.laneCount; lane++) {
@@ -234,19 +237,25 @@ class ProcgenLaneWorld {
     this.spawnSpreadTicks = settings.spawnSpreadTicks;
     return { ...settings };
   }
+  setReleaseGesture(value, commandId = null) {
+    if (!this.cohorts) throw new Error('Release gestures require physical cohort admission.');
+    const outcome = this.population.setReleaseGesture(value, commandId); this.soundEvents.emitPhysicalFact({ kind: 'ReleaseGestureRequested', gestureId: value.id, gestureRevision: value.revision, requestedAtTick: this.tickIndex, effectiveBoundary: outcome.effectiveBoundary, admissionPrecision: 'integer-simulation-ticks', sourceCommandId: commandId }); return outcome;
+  }
   _spawnCohort() {
     if (!this.cohorts || this.stall.phase !== 'running') return;
     const phase = this.population.phaseAt(this.tickIndex, this.activeCount);
     this.admissionPaused = this.activeCount >= this.maxActors;
     if (phase < 0) return;
-    if (this._spawnPhaseCohortTick !== this.population.cohortStartTick) { this._computeSpawnPhases(); this._spawnPhaseCohortTick = this.population.cohortStartTick; }
+    if (this._spawnPhaseCohortTick !== this.population.cohortStartTick) { this._computeSpawnPhases(); this._spawnPhaseCohortTick = this.population.cohortStartTick; const gesture = this.population.cohortReleaseGesture; if (gesture) this.soundEvents.emitPhysicalFact({ kind: 'ReleaseScheduleCommitted', gestureId: gesture.id, gestureRevision: gesture.revision, cohortStartTick: this.population.cohortStartTick, cohortOrdinal: this.population.gestureRun.cohortOrdinal, spreadTicks: gesture.spreadTicks, requestedGapTicks: gesture.nominalGapTicks, realizedGapTicks: this.population.cohortIntervalTicks, adaptiveIntervalTicks: this.population.intervalTicks, clockMode: gesture.clockMode, remainingAttempts: this.population.gestureRun.remaining, paused: gesture.paused, sourceCommandId: this.population.releaseGestureCommandId }); }
     for (let lane = 0; lane < this.laneCount; lane++) {
       if (this._spawnPhaseForLane(lane) !== phase || this._laneAdmissionCohorts[lane] === this.population.cohortStartTick) continue;
       const state = this.stall.lanes[lane];
       const stalledLongEnough = this.tickIndex - state.lastProgressTick >= this.stall.settings.secondsWithoutProgress * this.stall.settings.ticksPerSecond;
       const reservedProbe = stalledLongEnough && state.spawnsSinceProgress < this.stall.allowance(state);
-      if (this.activeCount >= this.maxActors && !reservedProbe) { this.admissionPaused = true; recordBirthCohortSlot(this, lane, null, 'population-cap'); this.soundEvents.emitPhysicalFact({ kind: 'BirthAdmissionMissed', laneId: lane, cohortId: `${this.worldId}:${this.generation}:cohort:${this.population.cohortStartTick}`, reason: 'population-cap' }); continue; }
-      this._spawn(lane); this._laneAdmissionCohorts[lane] = this.population.cohortStartTick;
+      const capacity = this.activeCount < this.maxActors || !this.population.cohortReleaseGesture && reservedProbe, admission = this.population.admitGestureSlot(capacity);
+      this._laneAdmissionCohorts[lane] = this.population.cohortStartTick;
+      if (admission.status !== 'admitted') { this.admissionPaused = admission.status === 'missed' || this.admissionPaused; recordBirthCohortSlot(this, lane, null, admission.reason); if (admission.status === 'missed') this.soundEvents.emitPhysicalFact({ kind: 'BirthAdmissionMissed', laneId: lane, cohortId: `${this.worldId}:${this.generation}:cohort:${this.population.cohortStartTick}`, reason: admission.reason, requestedTick: this.tickIndex, gestureId: admission.gestureId ?? null, gestureRevision: admission.gestureRevision ?? null, sourceCommandId: this.population.releaseGestureCommandId }); continue; }
+      this._spawn(lane);
     }
   }
   _restart(previousDistances) {

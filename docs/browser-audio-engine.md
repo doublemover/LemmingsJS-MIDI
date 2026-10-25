@@ -1204,3 +1204,24 @@ Written regressions cover empty/static/held worlds, exact gaps, pause-by-no-tick
 unknown-source cases, muted/rejected output, cadence deduplication and actual crew
 owner failure/success joins. Planning profiles and all tests remain **unrun**;
 no browser, PCM, real-time or acoustic acceptance is claimed.
+
+### Physical release gestures
+
+The Release surface edits a versioned recipe separately from performing it. Its
+canonical `set-release-gesture` intervention enters the existing population owner
+at the **next cohort**, never a second note scheduler. Integer tick gaps, explicit
+lane phases, deterministic cohort spray, phase shift and one-shot squeeze support
+finite attempted-birth budgets. Admitted cohort phases stay immutable. Locked
+clock timing ignores adaptive load; adaptive mode exposes the realized interval.
+Requests, committed schedules, actual `ActorBorn` facts and capacity misses are
+separate records. Missing capacity consumes the scheduled slot; no later catch-up
+birth or note is invented. Finite runs are discarded at generation change.
+
+Save/Undo changes the recipe only. Perform and Pause are future-boundary commands;
+cancel only removes queued commands. Loading never performs a saved recipe. The
+editor is document-generation fenced; lane deletion explicitly remaps saved phase
+indices and versions the recipe. Checkpoints retain the budget and admission
+frontier, and command-tape replay uses the same owner. The release profile and
+regressions cover real-world births, downstream moving-actor gate attacks,
+capacity misses, continuation and renderer-time independence; they are written
+but **not run**, and no audio/latency qualification is implied.

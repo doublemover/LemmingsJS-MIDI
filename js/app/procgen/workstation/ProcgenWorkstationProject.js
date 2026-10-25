@@ -1,3 +1,4 @@
+import { validateReleaseGesture } from '../ReleaseGesture.js';
 import { validateFragmentLibrary, validateFragmentInstances } from './PhysicalScoreFragment.js';
 import { validateProjectJunctions } from './PhysicalJunctionProject.js';
 import { procgenLaneIndex, inheritProcgenLaneIndex } from './ProcgenProjectIndex.js';
@@ -97,7 +98,7 @@ const sanitizeProcgenWorkstation = (value = {}) => {
   const physicalGraph = value.physicalGraph == null ? createDefaultPhysicalGraph(seed) : validateCausalInstrumentGraph(value.physicalGraph);
   if (value.version === PROCGEN_PROJECT_VERSION && value.physicalGraph == null) throw new Error('A physical project requires its instrument graph.');
   const junctions = validateProjectJunctions(value.junctions), fragments = validateFragmentLibrary(value.fragments), fragmentInstances = validateFragmentInstances(value.fragmentInstances);
-  return { version: PROCGEN_PROJECT_VERSION, ...(junctions.length ? { junctions } : {}), ...(fragments.length ? { fragments } : {}), ...(fragmentInstances.length ? { fragmentInstances } : {}), playModel: PROCGEN_PLAY_MODEL, revision: integer(value.revision, 0, 0, Number.MAX_SAFE_INTEGER), seed, physicalGraph, ...(value.effectRack == null ? {} : { effectRack: validateOwnerEffectRack(value.effectRack) }), lanes: lanes.map((lane, index) => {
+  return { version: PROCGEN_PROJECT_VERSION, ...(value.releaseGesture ? { releaseGesture: validateReleaseGesture(value.releaseGesture, lanes.length) } : {}), ...(junctions.length ? { junctions } : {}), ...(fragments.length ? { fragments } : {}), ...(fragmentInstances.length ? { fragmentInstances } : {}), playModel: PROCGEN_PLAY_MODEL, revision: integer(value.revision, 0, 0, Number.MAX_SAFE_INTEGER), seed, physicalGraph, ...(value.effectRack == null ? {} : { effectRack: validateOwnerEffectRack(value.effectRack) }), lanes: lanes.map((lane, index) => {
     const clean = createProcgenLane(index, lane || {});
     while (ids.has(clean.id)) clean.id += '-copy';
     ids.add(clean.id); return clean;
@@ -126,6 +127,7 @@ const convertLegacyProcgenWorkstationProject = (project, { strategy } = {}) => {
 const sameValue = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 const reduceCanonicalProcgenProjectValue = (project, action) => {
   const procgen = project.procgen, lanes = procgen.lanes;
+  if (action.type === 'procgen/releaseGesture') { const releaseGesture = validateReleaseGesture(action.gesture, procgen.lanes.length); if (sameValue(releaseGesture, procgen.releaseGesture)) return project; if (procgen.releaseGesture?.id === releaseGesture.id && releaseGesture.revision <= procgen.releaseGesture.revision) throw new Error('A saved release gesture change requires a newer revision.'); return { ...project, procgen: { ...procgen, releaseGesture } }; }
   if (action.type === 'procgen/fragments') {
     const fragments = validateFragmentLibrary(action.fragments);
     for (const fragment of fragments) { const prior = procgen.fragments?.find(value => value.id === fragment.id); if (prior && !sameValue(prior, fragment) && fragment.revision <= prior.revision) throw new Error('Fragment updates require an explicit newer source revision.'); }
@@ -180,7 +182,7 @@ const reduceCanonicalProcgenProjectValue = (project, action) => {
   const index = procgenLaneIndex(lanes).get(action.laneId);
   if (index == null) return project;
   if (action.type === 'procgen/removeLane') {
-    return lanes.length <= 1 ? project : { ...project, procgen: { ...procgen, lanes: lanes.filter((_, at) => at !== index) } };
+    return lanes.length <= 1 ? project : { ...project, procgen: { ...procgen, ...(procgen.releaseGesture ? { releaseGesture: releaseGestureAfterLaneRemoval(procgen.releaseGesture, index, lanes.length - 1) } : {}), lanes: lanes.filter((_, at) => at !== index) } };
   }
   const lane = lanes[index]; let next = lane;
   if (action.type === 'procgen/lane') {
@@ -222,6 +224,7 @@ const reduceCanonicalProcgenProjectValue = (project, action) => {
   const updated = lanes.slice(); updated[index] = next; inheritProcgenLaneIndex(lanes, updated);
   return { ...project, procgen: { ...procgen, lanes: updated } };
 };
+const releaseGestureAfterLaneRemoval = (gesture, index, laneCount) => gesture && validateReleaseGesture({ ...gesture, revision: gesture.revision + 1, lanePhase: gesture.lanePhase.filter(value => value.laneId !== index).map(value => ({ ...value, laneId: value.laneId > index ? value.laneId - 1 : value.laneId })) }, laneCount);
 const reduceCanonicalProcgenProject = (project, action) => {
   const next = reduceCanonicalProcgenProjectValue(project, action);
   if (next === project) return project;
@@ -230,7 +233,7 @@ const reduceCanonicalProcgenProject = (project, action) => {
 };
 const reduceProcgenWorkstationProject = (project, action = {}) => {
   const procgen = sanitizeProcgenWorkstation(project.procgen);
-  if (['procgen/physicalGraph', 'procgen/effectRack', 'procgen/junctions', 'procgen/fragments', 'procgen/detachFragment'].includes(action.type)) return reduceCanonicalProcgenProject({ ...project, procgen }, action);
+  if (['procgen/removeLane', 'procgen/releaseGesture', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/junctions', 'procgen/fragments', 'procgen/detachFragment'].includes(action.type)) return reduceCanonicalProcgenProject({ ...project, procgen }, action);
   let lanes = procgen.lanes;
   const target = lane => lane.id === action.laneId;
   if (action.type === 'procgen/lane') lanes = lanes.map(lane => target(lane) ? { ...lane, ...action.patch, id: lane.id } : lane);

@@ -1,3 +1,4 @@
+import { validatePopulationReleaseState } from '../ReleaseGesture.js';
 import { validatePhysicalCrewEvidence } from '../PhysicalCrewEvidence.js';
 import { Lemming } from '../../../lemmings/Lemming.js';
 import { Trigger } from '../../../level/Trigger.js';
@@ -296,6 +297,7 @@ function restoreProcgenCheckpoint(world, saved) {
     })), entries: entry.entries?.map(([k, v]) => [decode(k), decode(v)]) };
   });
   const preparedWorld = prepared.find(item => item.entry.name === 'world'); preparedWorld.props.physicalCrewEvidence = validatePhysicalCrewEvidence(preparedWorld.props.physicalCrewEvidence, preparedWorld.props.generation);
+  const preparedPopulation = prepared.find(item => item.entry.name === 'population'); if (preparedPopulation) validatePopulationReleaseState(preparedPopulation.props, saved.laneCount);
   const activityTicks = prepared.find(item => item.entry.name === 'world')?.props.terrainActivityTicks;
   const cascadeVersion = prepared.find(item => item.entry.name === 'stall')?.props.settings?.cascadeDecisionVersion ?? 1;
   if (![1, 2].includes(cascadeVersion) || cascadeVersion !== (saved.physicsAlgorithms?.stallCascade ?? 1))

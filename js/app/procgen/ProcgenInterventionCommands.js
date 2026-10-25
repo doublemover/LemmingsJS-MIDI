@@ -1,3 +1,4 @@
+import { validateReleaseGesture } from './ReleaseGesture.js';
 import { normalizePhysicalAuthoringCommand, preparePhysicalAuthoringCommand, applyPhysicalAuthoringCommand } from './PhysicalAuthoring.js';
 import { normalizeJunctionRequest, applyJunctionRequest, normalizeJunctionDefinitionCommand, applyJunctionDefinition } from './PhysicalJunctions.js';
 import { normalizeTerrainCommand, planTerrainCommand, applyTerrainPlan } from './TerrainAuthoringAdapter.js';
@@ -6,7 +7,7 @@ import { LemmingStateType as State } from '../../lemmings/LemmingStateType.js';
 import { causalRandomDecision } from './workstation/CausalRandom.js';
 
 const ORIGIN_PRIORITY = Object.freeze({ manual: 0, 'live-controller': 0, replay: 0, layer: 1, ensemble: 1, conductor: 2, 'auto-assist': 3 });
-const KINDS = new Set(['assign-worker', 'place-blocker', 'release-blocker', 'set-release-policy', 'nuke-lane', 'nuke-all', 'terrain-edit', 'junction-request', 'junction-define', 'physical-authoring']);
+const KINDS = new Set(['assign-worker', 'place-blocker', 'release-blocker', 'set-release-gesture', 'set-release-policy', 'nuke-lane', 'nuke-all', 'terrain-edit', 'junction-request', 'junction-define', 'physical-authoring']);
 const boundedId = value => typeof value === 'string' && value.length > 0 && value.length <= 128;
 const plain = value => value && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype;
 const createInterventionState = () => ({ version: 1, pending: [], pendingBytes: 0, receipts: [], recentIds: [], sequence: 0 });
@@ -31,6 +32,7 @@ const enqueueIntervention = (world, command) => {
     return Object.freeze({ status: 'rejected', commandId: command.id, reason: 'duplicate-command' });
   }
   const parameters = {};
+  if (command.kind === 'set-release-gesture') { if (!world.cohorts) throw new Error('Release gestures require physical cohort admission.'); parameters.gesture = validateReleaseGesture(command.parameters?.gesture, world.laneCount); }
   if (command.kind === 'physical-authoring') {
     parameters.authoring = normalizePhysicalAuthoringCommand(world, command.parameters?.authoring);
     if (parameters.authoring.transactionId !== command.transactionId) throw new Error('Physical authoring transaction identity mismatch.');
@@ -49,13 +51,13 @@ const enqueueIntervention = (world, command) => {
     parameters.terrain = preview.command;
     const freeze = value => { if (value && typeof value === 'object') { Object.values(value).forEach(freeze); Object.freeze(value); } }; freeze(parameters.terrain);
   }
-  for (const [key, value] of Object.entries(['terrain-edit', 'junction-request', 'junction-define', 'physical-authoring'].includes(command.kind) ? {} : command.parameters || {})) {
+  for (const [key, value] of Object.entries(['set-release-gesture', 'terrain-edit', 'junction-request', 'junction-define', 'physical-authoring'].includes(command.kind) ? {} : command.parameters || {})) {
     if (!['workerKind', 'targetX', 'spawnBeatTicks', 'spawnSpreadTicks'].includes(key) ||
         !(typeof value === 'string' && value.length <= 32 || Number.isFinite(value))) throw new Error('Unsupported intervention parameter.');
     parameters[key] = value;
   }
   const target = { generation: command.target.generation };
-  if (['set-release-policy', 'nuke-all', 'terrain-edit', 'junction-request', 'junction-define', 'physical-authoring'].includes(command.kind)) {
+  if (['set-release-gesture', 'set-release-policy', 'nuke-all', 'terrain-edit', 'junction-request', 'junction-define', 'physical-authoring'].includes(command.kind)) {
     if (command.target.laneId != null) throw new Error('Release policy currently targets the whole world.');
   } else if (command.kind === 'nuke-lane') {
     if (!Number.isSafeInteger(command.target.laneId) || command.target.laneId < 0 || command.target.laneId >= world.laneCount) throw new Error('Invalid nuke lane.');
@@ -96,7 +98,7 @@ const enqueueIntervention = (world, command) => {
       supersededBy: entry.id, errorBoundAtSimulationBoundaries: 0 });
   }
   if (state.pending.length >= 1024) return Object.freeze({ status: 'rejected', commandId: command.id, reason: 'command-capacity' });
-  state.sequence = entry.sequence; state.pending.push(entry); recordProcgenRecoveryCommand(world, entry);
+  state.sequence = entry.sequence; state.pending.push(entry); state.pendingBytes = nextBytes; recordProcgenRecoveryCommand(world, entry);
   return Object.freeze({ status: 'queued', commandId: entry.id, applyAtTick: entry.applyAtTick });
 };
 
@@ -133,7 +135,7 @@ const applyInterventions = world => {
     let status = 'rejected', reason = null, conflictCommandId = null, decision = null, terrainResult = null;
     if (command.target.generation !== world.generation) { status = 'stale'; reason = 'stale-generation'; }
     else if (command.expectedStateRevision && command.expectedStateRevision !== boundaryRevision) { status = 'stale'; reason = 'stale-state-revision'; }
-    else if (!['set-release-policy', 'nuke-lane', 'nuke-all', 'terrain-edit', 'junction-request', 'junction-define', 'physical-authoring'].includes(command.kind) && (!actor || actor.removed || actor.disabled || actor.failureReason || actor.terminalReason)) {
+    else if (!['set-release-gesture', 'set-release-policy', 'nuke-lane', 'nuke-all', 'terrain-edit', 'junction-request', 'junction-define', 'physical-authoring'].includes(command.kind) && (!actor || actor.removed || actor.disabled || actor.failureReason || actor.terminalReason)) {
       status = 'stale'; reason = 'stale-target';
     } else if (claimed.has(resource)) { reason = 'conflicting-command'; conflictCommandId = claimed.get(resource); }
     else {
@@ -142,6 +144,8 @@ const applyInterventions = world => {
       if (!decision.accepted) reason = 'policy-not-selected';
       else {
         const previousCommand = actor?._physicalInterventionId ?? null;
+        const populationBefore = command.kind.startsWith('set-release-') ? JSON.stringify(world.population) : null;
+        const populationMutated = () => populationBefore !== null && JSON.stringify(world.population) !== populationBefore;
         const ownerBefore = { terrainRevision: world.terrainRevision, authoring: world.physicalAuthoring, junctionRevision: world.physicalJunctions.revision };
         const before = actor && { action: actor.action, frameIndex: actor.frameIndex, state: actor.state,
           canClimb: actor.canClimb, hasParachute: actor.hasParachute };
@@ -150,7 +154,8 @@ const applyInterventions = world => {
         world.soundEvents._interventionCommandId = command.id;
         try {
           let accepted = false;
-          if (command.kind === 'physical-authoring') { terrainResult = applyPhysicalAuthoringCommand(world, command.parameters.authoring); accepted = terrainResult.status === 'accepted'; }
+          if (command.kind === 'set-release-gesture') { const outcome = world.setReleaseGesture(command.parameters.gesture, command.id); accepted = ['pending', 'unchanged'].includes(outcome.status); }
+          else if (command.kind === 'physical-authoring') { terrainResult = applyPhysicalAuthoringCommand(world, command.parameters.authoring); accepted = terrainResult.status === 'accepted'; }
           else if (command.kind === 'junction-request') { terrainResult = applyJunctionRequest(world, command.parameters.request, command); accepted = terrainResult.status === 'accepted'; }
           else if (command.kind === 'junction-define') { terrainResult = applyJunctionDefinition(world, command.parameters.definition); accepted = terrainResult.status === 'accepted'; }
           else if (command.kind === 'terrain-edit') { terrainResult = applyTerrainPlan(planTerrainCommand(command.parameters.terrain, world), world); accepted = terrainResult.status === 'accepted'; }
@@ -178,7 +183,7 @@ const applyInterventions = world => {
           }
           if (accepted) { status = 'accepted'; reason = 'applied'; claimed.set(resource, command.id); }
           else {
-            if (mutated()) throw new Error('Rejected intervention mutated actor state.');
+            if (mutated() || populationMutated()) throw new Error('Rejected intervention mutated physical owner state.');
             status = terrainResult?.status ?? status; reason = terrainResult?.reason ?? 'ineligible-command'; if (actor) actor._physicalInterventionId = previousCommand;
           }
         } catch (error) {
@@ -186,7 +191,7 @@ const applyInterventions = world => {
           if (actor) actor._physicalInterventionId = previousCommand;
           // This adapter contract allows exceptions before action mutation.
           // A mutated action must abort the tick; no snapshot rollback is claimed.
-          if (mutated() || world.terrainRevision !== ownerBefore.terrainRevision || world.physicalAuthoring !== ownerBefore.authoring || world.physicalJunctions.revision !== ownerBefore.junctionRevision) throw error;
+          if (mutated() || populationMutated() || world.terrainRevision !== ownerBefore.terrainRevision || world.physicalAuthoring !== ownerBefore.authoring || world.physicalJunctions.revision !== ownerBefore.junctionRevision) throw error;
         } finally { world.soundEvents._interventionCommandId = null; }
       }
     }
