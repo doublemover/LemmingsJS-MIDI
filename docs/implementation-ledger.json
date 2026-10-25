@@ -883,13 +883,15 @@
         "test/midi/smoothed-audio-parameter.test.js",
         "scripts/bench-tonal-interpretation.mjs"
       ],
-      "commits": [],
+      "commits": [
+        "d067da10e7e3210325542da460330d6d96123cde"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "physical-tonal-interpretation",
           "summary": "World-anchored hysteretic/morph tuning fields, exact ratio metadata, bounded ensemble formation descriptors and deterministic minimum-motion assignments; held-voice causal retune/rearticulation and checkpoint/capture integration; per-event native/sample/worklet slew. Material selector owner, hardware adapters and performer surfaces remain pending; runtime qualification deferred.",
-          "commit": null
+          "commit": "d067da10e7e3210325542da460330d6d96123cde"
         }
       ]
     },
@@ -937,13 +939,15 @@
         "test/midi/smoothed-audio-parameter.test.js",
         "scripts/bench-tonal-interpretation.mjs"
       ],
-      "commits": [],
+      "commits": [
+        "d067da10e7e3210325542da460330d6d96123cde"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "physical-tonal-interpretation",
           "summary": "World-anchored hysteretic/morph tuning fields, exact ratio metadata, bounded ensemble formation descriptors and deterministic minimum-motion assignments; held-voice causal retune/rearticulation and checkpoint/capture integration; per-event native/sample/worklet slew. Material selector owner, hardware adapters and performer surfaces remain pending; runtime qualification deferred.",
-          "commit": null
+          "commit": "d067da10e7e3210325542da460330d6d96123cde"
         }
       ]
     },
@@ -1376,12 +1380,19 @@
         "js/app/procgen/ProcgenBirthCohorts.js",
         "js/app/procgen/ProcgenLaneWorld.js",
         "js/app/procgen/workstation/physical/ActionVoicePolicy.js",
-        "js/app/midi-ui/VoiceTransition.js"
+        "js/app/midi-ui/VoiceTransition.js",
+        "js/app/midi-ui/VoiceLaneMix.js",
+        "js/app/midi-ui/RoutedInstrumentBackend.js",
+        "js/app/midi-ui/worklet/OwnedSineProcessor.js",
+        "js/app/procgen/workstation/LaneMixState.js",
+        "js/app/procgen/workstation/ProcgenWorkstationView.js"
       ],
       "regressions": [
         "test/procgen-spatial-instruments.test.js",
         "scripts/bench-physical-query-plan.mjs",
-        "test/procgen-action-voice-policy.test.js"
+        "test/procgen-action-voice-policy.test.js",
+        "test/midi/voice-lane-mix.test.js",
+        "test/midi/routed-instrument-backend.test.js"
       ],
       "commits": [
         "2705c467aa46b5fb99fb40d652a4638350f06ca2",
@@ -1398,6 +1409,11 @@
           "id": "action-admission-and-voice-transfers",
           "summary": "Typed action admission, legato/crossfade/hold policies, bounded continuous expression and explicit lane-transfer ownership; native/sample/worklet crossfade lowering; external endpoint capability and performer surfaces remain pending.",
           "commit": "3da493ac8ebc701acfae7388fe3bea65d5b99508"
+        },
+        {
+          "id": "owned-lane-mix-and-faders",
+          "summary": "Native/sample/worklet gain and balance independent from physical pressure, bounded mix commands and snapshot ABI, destination carry mix, sparse captured performance mix, shared transactional header faders and truthful unavailable-signal/event views. Actual lane-sum meters, historical offline mix lowering and interaction/runtime qualification remain pending.",
+          "commit": null
         }
       ]
     },
@@ -1678,11 +1694,27 @@
       "requirementUpdatedAt": "2026-10-23T10:53:56Z",
       "requirementSha256": "1187e67306a9ab66cbfae5ea680083fa52044f055f4ce48df7ae22751358ed27",
       "initialGap": "Lane M/S and inspector gain/pan remain native controls, no compact dB unity-detent fader, separate effective marker or per-lane measured peak/RMS/staleness/mute-reason view. Physical playback still does not lower ordinary lane gain/mute/pan into its semantic sink mix.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/midi-ui/VoiceLaneMix.js",
+        "js/app/midi-ui/RoutedInstrumentBackend.js",
+        "js/app/midi-ui/worklet/OwnedSineProcessor.js",
+        "js/app/procgen/workstation/LaneMixState.js",
+        "js/app/procgen/workstation/ProcgenWorkstationView.js"
+      ],
+      "regressions": [
+        "test/midi/voice-lane-mix.test.js",
+        "test/midi/routed-instrument-backend.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "owned-lane-mix-and-faders",
+          "summary": "Native/sample/worklet gain and balance independent from physical pressure, bounded mix commands and snapshot ABI, destination carry mix, sparse captured performance mix, shared transactional header faders and truthful unavailable-signal/event views. Actual lane-sum meters, historical offline mix lowering and interaction/runtime qualification remain pending.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1081,

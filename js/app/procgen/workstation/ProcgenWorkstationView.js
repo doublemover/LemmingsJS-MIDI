@@ -1,3 +1,4 @@
+import { formatLaneGain, parseLaneGain } from './LaneMixState.js';
 import { procgenLane } from './ProcgenProjectIndex.js';
 import { createProjectNameDialog } from '../../controls/ProjectNameDialog.js';
 import { createParameterKnob } from '../../controls/ParameterKnob.js';
@@ -16,8 +17,8 @@ const COLORS = ['#289fd1', '#6daa43', '#9362c9', '#ac855a', '#ef7440', '#dc639e'
 const rendererLeases = new WeakMap();
 
 function createProcgenWorkstationView({ document, window, resourceBudget = null, getProject, getRuntime, dispatch, handlers = {}, state = {} }) {
-  for (const [key, value] of Object.entries({ slot: 0, step: 0, tab: 'Lane', tool: 'select', layout: 'strip', firstLane: 0, minimumRow: 64, inspectorWidth: 304, hazardSpacing: 160 })) if (state[key] == null) state[key] = value;
-  const listeners = [], parameterControls = [];
+  for (const [key, value] of Object.entries({ slot: 0, step: 0, tab: 'Lane', tool: 'select', layout: 'strip', firstLane: 0, minimumRow: 96, inspectorWidth: 304, hazardSpacing: 160 })) if (state[key] == null) state[key] = value;
+  const listeners = [], parameterControls = [], laneMixControls = new Map();
   const pointerArbiter = getPointerGestureArbiter(document), nameDialog = createProjectNameDialog({ document, window });
   const retirement = createProcgenRetirementScope(), displayScheduler = createInstrumentDisplayScheduler({ document, window, resourceBudget });
   const on = (element, event, handler, options) => { element.addEventListener(event, handler, options); listeners.push(() => element.removeEventListener(event, handler, options)); };
@@ -184,7 +185,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const moveLanes = delta => { state.firstLane += delta; layout(); renderRows(); handlers.preferences?.(); };
   const previousLanes = button('↑', () => moveLanes(-projection.count), 'Show previous lanes');
   const nextLanes = button('↓', () => moveLanes(projection.count), 'Show next lanes');
-  const laneNavigation = node('span', null, 'studio-lane-navigation'); laneNavigation.append(previousLanes, laneRange, nextLanes); footer.append(laneNavigation);
+  const laneNavigation = node('span', null, 'studio-lane-navigation'); laneNavigation.append(previousLanes, laneRange, nextLanes); footer.append(laneNavigation, button('Clear all solos', () => handlers.clearSolos?.(), 'Clear solo on every lane; does not change self-mute or level'));
   footer.append(button('+ Lane', () => handlers.addLane?.()), button('− Lane', () => handlers.removeLane?.()), button('Duplicate', () => handlers.duplicate?.()), button('Clear', () => handlers.clear?.()), tool,
     button('Copy', () => handlers.copy?.()), button('Paste', () => handlers.paste?.()), button('Undo', () => handlers.undo?.()), button('Redo', () => handlers.redo?.()));
   const records = button('● Record', () => handlers.record?.(!state.recording), 'Record MIDI input into the selected phrase'); records.id = 'studioRecord';
@@ -579,7 +580,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     const key = JSON.stringify([width, height, dpr, laneCount, state.firstLane, state.layout, physicalHeight, state.minimumRow, state.inspectorWidth]);
     const changed = key !== layoutKey;
     if (changed) {
-      projection = createProcgenLaneProjection({ laneCount, height, firstLane: state.firstLane, mode: state.layout, physicalHeight, minimumRow: state.minimumRow });
+      projection = createProcgenLaneProjection({ laneCount, height, firstLane: state.firstLane, mode: state.layout, physicalHeight, minimumRow: Math.max(88, state.minimumRow) });
       state.firstLane = projection.firstLane;
       layoutKey = JSON.stringify([width, height, dpr, laneCount, state.firstLane, state.layout, physicalHeight, state.minimumRow, state.inspectorWidth]);
       shell.dataset.layout = state.layout; shell.style.setProperty('--row-height', projection.rowHeight + 'px'); shell.style.setProperty('--inspector-width', state.inspectorWidth + 'px');
@@ -603,7 +604,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   function renderRows({ laneIds = null } = {}) {
     if (!projection) return;
     queuedBeat = null; playheadSurface.invalidate();
-    if (!laneIds) { lanes.replaceChildren(); grid.replaceChildren(); }
+    if (!laneIds) { for (const control of laneMixControls.values()) control.dispose(); laneMixControls.clear(); lanes.replaceChildren(); grid.replaceChildren(); }
     const place = (parent, child) => { const previous = laneIds && [...parent.children].find(item => item.dataset.laneId === child.dataset.laneId); if (previous) previous.replaceWith(child); else parent.append(child); };
     const project = getProject();
     laneRange.textContent = `${projection.firstLane + 1}–${projection.firstLane + projection.count} of ${project.procgen.lanes.length}`;
@@ -611,6 +612,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     for (let row = 0; row < projection.count; row++) {
       const laneIndex = projection.firstLane + row, lane = project.procgen.lanes[laneIndex], displaySlot = state.laneId === lane.id ? state.slot : lane.activeSlot, pattern = lane.mode === 'pattern' ? lane.patterns[displaySlot] : null;
       if (laneIds && !laneIds.includes(lane.id)) continue;
+      laneMixControls.get(lane.id)?.dispose(); laneMixControls.delete(lane.id);
       const header = node('section', null, 'studio-lane-header'); header.dataset.laneId = lane.id; header.style.setProperty('--lane-color', COLORS[laneIndex % 8]); header.classList.toggle('selected', state.laneId === lane.id);
       const label = button(`${laneIndex + 1}  ${lane.family.toUpperCase()}`, () => { state.laneId = lane.id; state.slot = lane.activeSlot; state.tab = 'Lane'; render(); }); label.className = 'studio-lane-title';
       const role = node('span', lane.role, 'studio-role');
@@ -619,7 +621,14 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       const slots = node('div', null, 'studio-slots');
       if (pattern) for (let slot = 0; slot < 4; slot++) { const el = button(String(slot + 1), () => { state.laneId = lane.id; state.slot = slot; dispatch({ type: 'procgen/launch', laneId: lane.id, slot }); }, `Launch phrase ${slot + 1} on next bar`); el.setAttribute('aria-pressed', String(lane.activeSlot === slot)); el.classList.toggle('queued', lane.queuedSlot === slot); slots.append(el); }
       else slots.append(node('span', 'LIVE', 'studio-physical-badge'));
-      header.append(label, role, controls, slots); place(lanes, header);
+      const fader = createParameterKnob({ document, window, presentation: 'fader', value: lane.gain,
+        descriptor: { id: 'lane-fader:' + lane.id, name: 'Level', quantity: 'lane-gain', unit: 'dB', min: 0, max: 2, step: 0.01, fineStep: 0.001, defaultValue: 1, detents: [1],
+          format: formatLaneGain, formatInput: value => value === 0 ? '-inf' : (20 * Math.log10(value)).toFixed(2), parse: parseLaneGain },
+        getIdentity: () => procgenLane(getProject().procgen.lanes, lane.id), commit: gain => dispatch({ type: 'procgen/lane', laneId: lane.id, patch: { gain } }) });
+      fader.element.classList.add('studio-lane-fader'); laneMixControls.set(lane.id, fader);
+      const mixStatus = node('output', 'Signal unavailable', 'studio-lane-mix-status'); mixStatus.dataset.laneMixStatus = lane.id;
+      header.append(label, role, controls, slots, fader.element, mixStatus); place(lanes, header);
+      const mix = handlers.laneMixView?.(lane.id); if (mix) { fader.setState({ value: lane.gain, effectiveValue: mix.effectiveGain }); mixStatus.textContent = mix.outputState.replaceAll('-', ' '); mixStatus.title = 'Local signal unavailable · activity is semantic events, not dBFS'; }
       const sequence = node('div', null, 'studio-sequence'); sequence.dataset.laneId = lane.id; sequence.dataset.slot = displaySlot; sequence.style.setProperty('--lane-color', COLORS[laneIndex % 8]); sequence.style.gridTemplateColumns = `repeat(${pattern?.length || 1}, minmax(0, 1fr))`;
       sequence.style.top = (row * projection.rowHeight + projection.rowHeight - (state.layout === 'strip' ? 25 : Math.min(44, projection.rowHeight * 0.48))) + 'px';
       sequence.style.height = (state.layout === 'strip' ? 25 : Math.min(44, projection.rowHeight * 0.48)) + 'px';
@@ -650,7 +659,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   function frame(beat = state.beat || 0) {
     if (disposed || superseded) return;
     if (beat === queuedBeat) return; queuedBeat = beat;
-    playheadSurface.publish(Object.freeze({ beat }));
+    playheadSurface.publish(Object.freeze({ beat })); laneMixSurface.invalidate();
   }
   function paintPlayheads(_measured, packet) {
     if (disposed || superseded) return;
@@ -731,6 +740,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     else for (const id of change.laneIds) {
       const lane = procgenLane(getProject().procgen.lanes, id), header = [...lanes.children].find(item => item.dataset.laneId === id);
       if (!lane || !header) continue;
+      laneMixControls.get(id)?.setState({ value: lane.gain, effectiveValue: handlers.laneMixView?.(id)?.effectiveGain ?? null });
       for (const control of header.querySelectorAll('[data-lane-control]')) control.setAttribute('aria-pressed', String(lane[control.dataset.laneControl]));
       for (const [slot, control] of [...header.querySelector('.studio-slots').children].entries()) {
         control.setAttribute('aria-pressed', String(slot === lane.activeSlot)); control.classList.toggle('queued', slot === lane.queuedSlot);
@@ -738,8 +748,9 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     }
     if (!change.laneIds.length || change.laneIds.includes(state.laneId)) render({ partial: true });
   }
-  on(lanes, 'wheel', event => { if (getProject().procgen.lanes.length <= projection.count) return; event.preventDefault(); state.firstLane += Math.sign(event.deltaY); layout(); renderRows(); }, { passive: false });
+  on(lanes, 'wheel', event => { if (event.defaultPrevented) return; if (getProject().procgen.lanes.length <= projection.count) return; event.preventDefault(); state.firstLane += Math.sign(event.deltaY); layout(); renderRows(); }, { passive: false });
   on(lanes, 'keydown', event => {
+    if (event.defaultPrevented || event.target?.closest?.('.parameter-knob')) return;
     const offsets = { PageUp: -projection.count, PageDown: projection.count, ArrowUp: -1, ArrowDown: 1 };
     if (!(event.key in offsets)) return;
     event.preventDefault(); event.stopPropagation(); moveLanes(offsets[event.key]);
@@ -780,6 +791,14 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     read: () => ({ width: stage.clientWidth, height: stage.clientHeight }), write: measured => { if (layout(measured)) renderRows(); },
     onError: message => { displayStatus.textContent = message; } });
   const playheadSurface = displayScheduler.register({ id: 'workstation-playheads', element: grid, intervalMs: 32, write: paintPlayheads });
+  const laneMixSurface = displayScheduler.register({ id: 'workstation-lane-mix', element: lanes, intervalMs: 100, write: () => {
+    for (const [id, control] of laneMixControls) {
+      const mix = handlers.laneMixView?.(id), lane = procgenLane(getProject().procgen.lanes, id); if (!mix || !lane) continue;
+      if (control.inspect().gestureId == null) control.setState({ value: lane.gain, effectiveValue: mix.effectiveGain });
+      const row = [...lanes.children].find(value => value.dataset.laneId === id), status = row?.querySelector('[data-lane-mix-status]');
+      if (status) { status.textContent = mix.outputState.replaceAll('-', ' ') + (mix.eventRate ? ` · ${mix.eventRate.toFixed(0)} events/s` : ''); status.title = `Signal ${mix.signalStatus}; ${mix.meterSource}; gain ${mix.gainEvidence}`; }
+    }
+  } });
   const midiSurface = displayScheduler.register({ id: 'workstation-midi', element: fields, intervalMs: 50, write: () => {
     const monitor = fields.querySelector('.studio-midi-monitor'); if (monitor && monitor.textContent !== state.lastMidi) monitor.textContent = state.lastMidi;
   } });
@@ -866,6 +885,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         { name: 'project-picker', run: () => retirePicker(pickerOwner, { cancel: true, close: true }) }, { name: 'fullscreen', run: () => fullscreenSession.dispose() },
         { name: 'geometry-subscription', run: () => geometryUnsubscribe?.() }, { name: 'geometry-transition', run: () => { geometryRelease?.(); state.presentationTransition = false; } },
         { name: 'resize-observer', run: () => resizeObserver?.disconnect() }, { name: 'name-dialog', run: () => nameDialog.dispose() }, { name: 'parameter-gestures', run: () => { stroke?.lease.cancel('disposed'); resizeLease?.cancel('disposed'); for (const control of parameterControls.splice(0)) control.dispose(); } },
+        { name: 'lane-mix-controls', run: () => { for (const control of laneMixControls.values()) control.dispose(); laneMixControls.clear(); } },
         { name: 'display-scheduler', run: () => displayScheduler.dispose() },
         { name: 'renderer', run: detachRenderer }, ...listeners.map((unlisten, index) => ({ name: 'view-listener-' + index, run: unlisten })),
         { name: 'canvas', run: () => { if (canvasParent) canvasParent.insertBefore(canvas, canvasSibling?.parentNode === canvasParent ? canvasSibling : null); } },

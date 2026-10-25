@@ -198,6 +198,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
       if (initial.timeline) clock.restore(initial.timeline);
       performance = initial.engine.performanceInputs ? createCausalPerformanceState(initial.engine.performanceInputs) : null;
       engine = createCausalMusicEngine({ getGraph: () => current.graph, scoreTimeline: initial.replay.scoreTimeline ? clock : null, traceLimit: 0,
+        getLaneState: source => performance?.getLaneState(source) || { available: true },
         getPerformanceState: () => performance?.snapshot() || null, getOnsetControls: source => performance?.getControls(source), getPhysicalControlKinds: source => performance?.getPhysicalControlKinds(source) || [] });
       engine.restore(initial.engine);
       listener = batch => {

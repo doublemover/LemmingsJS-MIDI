@@ -13,6 +13,7 @@ describe('voice-owned lane instrument replacement', () => {
       setDisplayContext() {},
       observeDisplaySamples(listener, options) { const observer = { listener, options }; observers.add(observer); return () => observers.delete(observer); },
       begin(intent, frame, epoch) { calls.push(['begin', intent.voiceId]); voices.set(key(epoch, intent.voiceId), { voiceId: intent.voiceId, epoch }); return { status: 'accepted' }; },
+      updateLaneMix(voiceId, mix) { calls.push(['mix', voiceId, mix.gain, mix.pan]); return { status: 'accepted' }; },
       update(voiceId) { calls.push(['update', voiceId]); return { status: 'accepted' }; },
       end(voiceId) { calls.push(['end', voiceId]); return { status: 'accepted' }; },
       renewExecutionLease: () => ({ status: 'accepted' }),
@@ -26,6 +27,19 @@ describe('voice-owned lane instrument replacement', () => {
   };
   const root = (backend, options = {}) => createRoutedInstrumentBackend({ defaultBackend: backend, getContext: () => context, getGeneration: () => 0, ...options });
   const onset = voiceId => ({ generation: 1, voiceId, laneId: 'lane-1' });
+  it('routes carried voices through destination lane mix while retaining their original renderer', async () => {
+    const fallback = renderer(), child = renderer(); let muted = false;
+    const router = root(fallback.backend, { getLaneMix: lane => ({ gain: muted ? 0 : lane === 'lane-2' ? 0.25 : 1, pan: lane === 'lane-2' ? 1 : 0, muted }) });
+    router.assign('lane-1', 'source', child.backend);
+    const execution = router.backend.registerExecution({ generation: 1, executionEpoch: 'mix' }).execution;
+    router.backend.begin(onset('held'), 100, execution);
+    expect(router.backend.transferVoiceLane('held', 'lane-2', 200, execution).status).to.equal('accepted');
+    expect(child.calls.at(-1)).to.deep.equal(['mix', 'held', 0.25, 1]); expect(fallback.calls).to.have.length(0);
+    muted = true; expect(router.synchronizeLaneMix(300).status).to.equal('accepted'); expect(child.calls.at(-1)).to.deep.equal(['mix', 'held', 0, 1]);
+    expect(router.backend.begin({ ...onset('silent'), laneId: 'lane-2' }, 301, execution).reason).to.equal('lane-muted');
+    await router.dispose().completion;
+  });
+
   it('shares one prepared renderer across 1024 lane assignments while retaining an explicit route bound', async () => {
     const budget = createResourceBudget(), fallback = renderer(), child = renderer(), router = root(fallback.backend, { resourceBudget: budget });
     for (let lane = 0; lane < 1024; lane++) router.assign('lane-' + lane, 'shared', child.backend);

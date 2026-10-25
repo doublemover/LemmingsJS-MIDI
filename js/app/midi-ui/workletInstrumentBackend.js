@@ -1,3 +1,4 @@
+import { validVoiceLaneMix } from './VoiceLaneMix.js';
 import { validVoiceTransition, transitionAttackSeconds } from './VoiceTransition.js';
 import { getOwnedSourceProfile } from './OwnedSourceProfiles.js';
 import { prepareOwnedSourceBank } from './OwnedSourceBankPreparation.js';
@@ -12,7 +13,7 @@ import { createAudioDisplayTelemetry } from './AudioDisplayTelemetry.js';
 import { compileInstrumentPerformance, retainInstrumentCause } from '../../midi/content/InstrumentPerformance.js';
 import { ownedSourceSeed } from './OwnedSourceSeed.js';
 import { resolveOwnedArticulationPolicy } from './OwnedArticulationPolicy.js';
-import { PROTOCOL, WIDTH as SINE_WIDTH, CAPACITY, MAX_VOICES as SINE_MAX_VOICES, RECEIPT_WIDTH, BEGIN, UPDATE, END, CANCEL, LEASE,
+import { PROTOCOL, WIDTH as SINE_WIDTH, CAPACITY, MAX_VOICES as SINE_MAX_VOICES, RECEIPT_WIDTH, BEGIN, UPDATE, END, CANCEL, LEASE, MIX,
   SCHEDULED, APPLIED, REJECTED, ENDED, CANCELLED, FAULTED, DISPLAY_PROTOCOL, DISPLAY_WIDTH, DISPLAY_VOICES } from './worklet/OwnedSineProcessor.js';
 
 const sineCapabilities = Object.freeze({ independentSamePitch: true, perVoicePitch: true, perVoicePressure: true, perVoicePan: true,
@@ -376,6 +377,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
         requestedLeaseEndFrame: validUntilFrame, effectiveLeaseEndFrame: voices.get(keyFor(item.epoch, item.voiceId))?.effectiveLeaseEndFrame ?? null }))) });
   };
   const begin = (intent, targetFrame, executionEpoch = 'live') => {
+    if (!validVoiceLaneMix(intent?.laneMix)) return reject('invalid-lane-mix', intent?.voiceId);
     if (!validVoiceTransition(intent?.voiceTransition)) return reject('invalid-voice-transition', intent?.voiceId);
     if (!isExtended && (Object.keys(intent?.performanceControls?.macros || {}).length || Object.keys(intent?.performanceControls || {}).some(key => key !== 'macros'))) return reject('performance-controls-unavailable', intent?.voiceId);
     if (!ready || !patch || !preview._ownerReady(owner) || context !== preview.getAudioContext()) return reject(fault || 'audio-not-ready', intent?.voiceId);
@@ -454,7 +456,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     const sourceFields = source.beginFields(parameters, excitationSeed, pcmDescriptor);
     const result = command(BEGIN, targetFrame, voice, { 6: frequency, 7: voice.peak, 8: pressure, 9: Math.max(-1, Math.min(1, pan + patch.pan01)),
       10: Math.round(transitionAttackSeconds(intent, parameters.attackSeconds) * context.sampleRate), 11: Math.round(parameters.decaySeconds * context.sampleRate),
-      12: parameters.sustain01, 13: Math.round(parameters.releaseSeconds * context.sampleRate), 16: endFrame, ...sourceFields });
+      14: 1 + (intent.laneMix?.gain ?? 1), 15: intent.laneMix?.pan ?? 0, 12: parameters.sustain01, 13: Math.round(parameters.releaseSeconds * context.sampleRate), 16: endFrame, ...sourceFields });
     if (result.status === 'rejected') {
       resourceLease?.release();
       if (![...slots].some(existing => existing?.semanticEpoch === executionEpoch)) epochs.delete(executionEpoch);
@@ -506,6 +508,12 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     const result = update(voiceId, expression, targetFrame, executionEpoch, performance.smoothingMs / 1000);
     if (result.status === 'accepted') { voice.physicalCauses = causes; voice.physicalFrame = targetFrame; }
     return Object.freeze({ ...result, performance });
+  };
+  const updateLaneMix = (voiceId, mix, frame, epoch = 'live') => {
+    const voice = voices.get(keyFor(epoch, voiceId));
+    if (!ready || !voice || !mix || !validVoiceLaneMix(mix) || !Number.isSafeInteger(frame) || frame < 0) return reject('invalid-lane-mix', voiceId);
+    return command(MIX, Math.max(frameNow(), frame, Math.round(voice.start * context.sampleRate)), voice,
+      { 7: mix.gain, 9: mix.pan, 14: Math.ceil(0.008 * context.sampleRate) });
   };
   const end = (voiceId, release, targetFrame, executionEpoch = 'live') => {
     const voice = voices.get(keyFor(executionEpoch, voiceId)), now = frameNow();
@@ -598,7 +606,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     else { preview._retirementFaults?.add(owner); receipt.completion.then(value => { if (value.outcome === 'complete') node = null; }); }
     return receipt;
   };
-  lifecycle = createInstrumentExecutionLifecycle({ capabilities, runtime, prepare, begin, update, updatePhysical, end, renewExecutionLease, cancelGenerationWithReceipt,
+  lifecycle = createInstrumentExecutionLifecycle({ capabilities, runtime, prepare, begin, update, updateLaneMix, updatePhysical, end, renewExecutionLease, cancelGenerationWithReceipt,
     observeCommandOutcomes(listener) {
       if (disposed || typeof listener !== 'function' || commandObservers.size >= 8 || commandObserverSequence === Number.MAX_SAFE_INTEGER) throw new Error('Command observation is unavailable.');
       const observer = { id: ++commandObserverSequence, listener }; commandObservers.add(observer); let active = true;

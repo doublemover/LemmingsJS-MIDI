@@ -100,6 +100,7 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
           const identity = executionFor(sink, epoch, intent.generation);
           if (!identity.execution) outcome = identity;
           else if (intent.kind === 'begin') outcome = sink.backend.begin(intent, frame, identity.execution);
+          else if (intent.kind === 'update' && intent.articulationState?.transfer && typeof sink.backend.transferVoiceLane === 'function') outcome = sink.backend.transferVoiceLane(intent.voiceId, intent.laneId, frame, identity.execution);
           else if (intent.kind === 'update' && intent.performanceCause) outcome = typeof sink.backend.updatePhysical === 'function'
             ? sink.backend.updatePhysical(intent.voiceId, intent.performanceCause, frame, identity.execution)
             : { status: 'accepted', stage: 'semantic-observation', outputRequested: false, reason: 'no-continuous-binding' };

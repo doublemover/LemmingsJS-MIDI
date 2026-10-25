@@ -863,3 +863,35 @@ execution to native oscillator, sample and worklet automation, retaining indepen
 future event durations under reordered submission. Hardware rendering capability,
 performer overlays/editors, material coupling and all runtime qualification remain
 unqualified; this is not an acoustic or complete UI acceptance claim.
+
+### Live lane mix ownership
+
+Physical playback now lowers stable lane gain, stereo balance, mute and solo
+suppression independently of instrument pressure/expression. Native/sample parents
+own a separately reserved gain/balance pair, including their release children;
+owned worklets retain independent bounded mix state and ramp commands. Mix does
+not rewrite actor pitch, velocity, physical controls or onset identity. Carried
+voices keep their original renderer but adopt the actual destination lane mix.
+Muted/suppressed/zero-gain new onsets are explicitly rejected; existing held voices
+can become silent without ending their physical ownership. Failed mix delivery
+requests a controlled terminal release rather than leaving stale audible gain
+unreported. Mute failure is not a confirmed acoustic silence receipt.
+
+Worklet mix ramp state is included in the new incompatible DSP snapshot ABI and
+resource inventory. Earlier snapshots require the earlier artifact; they are not
+silently interpreted with new offsets. Lane mix changes join sparse causal
+performance observations, and re-performance uses captured destination eligibility.
+Sound-only offline rendering of historical lane-mix gestures remains separate
+integration work and must not claim exact historical gain reconstruction yet.
+
+Visible lane headers expose transactional vertical level controls with unity detent,
+finite gain/dB conversion, readable negative infinity, keyboard/numeric/click
+alternatives and a separate effective-request marker. Virtualization retires control
+owners; shared keyboard/wheel arbitration prevents parameter changes from scrolling
+the lane selection. Clear-all-solos has explicit scope and one history transaction.
+The bounded lane view distinguishes self-mute, solo suppression, zero gain,
+disconnection and source activity. **Activity is semantic events, not measured
+loudness**: local peak/RMS are unavailable until the lane-sum meter owner is attached.
+No signal, clipping or acoustic evidence is invented from note velocity or traffic.
+Interactive layout, measured meters, full offline mix reconstruction and all runtime
+regressions are still unvalidated or outstanding as recorded in the issue ledger.

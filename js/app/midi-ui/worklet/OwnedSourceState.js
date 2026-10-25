@@ -1,7 +1,7 @@
 import { ownedKernelStateBytes, writeOwnedKernelState, restoreOwnedKernelState } from './OwnedSineState.js';
 import { PLUCK_LAYOUT, CHOIR_LAYOUT, SPECTRUM_LAYOUT, GRANULAR_LAYOUT } from '../OwnedSourceLayout.js';
 
-export const OWNED_SOURCE_STATE_ABI = 'owned-source-state-le-v1';
+export const OWNED_SOURCE_STATE_ABI = 'owned-source-state-le-v2-lane-mix';
 const HEADER = 256, MAX_BYTES = 16 * 1048576;
 const profiles = Object.freeze({
   24: { id: 'worklet-pluck', kind: 1, layout: PLUCK_LAYOUT, arrays: ['state', 'buffer', 'scratch'], scalars: ['initializationWrites', 'initializationDenials', 'initializationBucket'] },
@@ -46,7 +46,7 @@ export function ownedSourceStateBytes(kernel) {
 const viewFor = (kernel, bytes, profile) => {
   if (!(bytes instanceof Uint8Array) || !(bytes.buffer instanceof ArrayBuffer) || bytes.length !== sizeFor(kernel, profile) || bytes.length > MAX_BYTES)
     fail('Owned state requires one exclusively owned exact-size transfer buffer.');
-  const arrays = [kernel.queue, kernel.voice, kernel.active, kernel.receipts, kernel.counters, ...profile.arrays.map(key => kernel.source[key]),
+  const arrays = [kernel.queue, kernel.voice, kernel.mix, kernel.active, kernel.receipts, kernel.counters, ...profile.arrays.map(key => kernel.source[key]),
     ...(kernel.source.bank?.planes || []), ...(kernel.source.pcm || [])];
   if (arrays.some(array => array.buffer === bytes.buffer)) fail('State transfer buffer aliases active DSP or immutable source storage.');
   return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);

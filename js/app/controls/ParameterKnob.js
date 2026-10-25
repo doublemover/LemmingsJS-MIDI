@@ -2,12 +2,14 @@ import { getPointerGestureArbiter } from './PointerGestureArbiter.js';
 import { normalizeParameterDescriptor, parameterUnitPosition, parameterValueAt, quantizeParameter, parseParameterValue, formatParameterValue } from './ParameterDescriptor.js';
 
 export function createParameterKnob({ document, window = document.defaultView, descriptor: input, value, getIdentity = () => input,
-  commit, preview = () => {}, onCancel = () => {}, readOnly = false, pending = false, momentary = false } = {}) {
+  commit, preview = () => {}, onCancel = () => {}, readOnly = false, pending = false, momentary = false, presentation = 'knob' } = {}) {
+  if (!['knob', 'fader'].includes(presentation)) throw new Error('Invalid parameter presentation.');
   const descriptor = normalizeParameterDescriptor(input), arbiter = getPointerGestureArbiter(document), listeners = [];
   const node = (tag, cls, text) => { const element = document.createElement(tag); element.className = cls; if (text != null) element.textContent = text; return element; };
   const root = node('div', 'parameter-knob'), cap = node('button', 'parameter-knob-cap'), indicator = node('span', 'parameter-knob-indicator');
   const label = node('span', 'parameter-knob-label', descriptor.name), output = node('output', 'parameter-knob-value'), entry = node('input', 'parameter-knob-number');
   const effective = node('span', 'parameter-knob-effective'), pickup = node('span', 'parameter-knob-pickup'), error = node('output', 'parameter-knob-error');
+  root.dataset.presentation = presentation;
   effective.hidden = pickup.hidden = true; cap.type = 'button'; cap.setAttribute('role', 'slider'); cap.setAttribute('aria-label', descriptor.name); cap.setAttribute('aria-orientation', 'vertical');
   cap.setAttribute('aria-valuemin', String(descriptor.min)); cap.setAttribute('aria-valuemax', String(descriptor.max));
   entry.type = 'text'; entry.inputMode = 'decimal'; entry.setAttribute('aria-label', descriptor.name + ' numeric value'); error.setAttribute('aria-live', 'polite');
@@ -17,8 +19,8 @@ export function createParameterKnob({ document, window = document.defaultView, d
   const paint = () => {
     const text = formatParameterValue(descriptor, draft); output.textContent = text; cap.setAttribute('aria-valuetext', text);
     if (draft == null) { cap.removeAttribute?.('aria-valuenow'); root.dataset.unknown = 'true'; }
-    else { cap.setAttribute('aria-valuenow', String(draft)); delete root.dataset.unknown; indicator.style.transform = `rotate(${-135 + parameterUnitPosition(descriptor, draft) * 270}deg)`; }
-    if (document.activeElement !== entry) entry.value = draft == null ? '' : String(draft);
+    else { cap.setAttribute('aria-valuenow', String(draft)); delete root.dataset.unknown; indicator.style.transform = presentation === 'fader' ? 'none' : `rotate(${-135 + parameterUnitPosition(descriptor, draft) * 270}deg)`; if (presentation === 'fader') indicator.style.top = `${(1 - parameterUnitPosition(descriptor, draft)) * 90}%`; }
+    if (document.activeElement !== entry) entry.value = draft == null ? '' : descriptor.formatInput ? descriptor.formatInput(draft) : String(draft);
     cap.disabled = entry.disabled = readOnly || pending; root.dataset.pending = String(pending);
   };
   const cancel = reason => {
@@ -74,7 +76,7 @@ export function createParameterKnob({ document, window = document.defaultView, d
   action('−', () => draft - descriptor.step); action('+', () => draft + descriptor.step); action('Reset', () => descriptor.defaultValue); root.append(error);
   on(entry, 'change', () => { try { const next = parseParameterValue(descriptor, entry.value); if (begin(null)) { change(next, { shiftKey: true }); finish(null); } error.textContent = ''; entry.removeAttribute?.('aria-invalid'); }
   catch (failure) { error.textContent = failure.message; entry.setAttribute('aria-invalid', 'true'); } });
-  on(entry, 'keydown', event => { if (event.key === 'Enter') entry.dispatchEvent?.(new window.Event('change')); if (event.key === 'Escape') { entry.value = authored == null ? '' : String(authored); error.textContent = ''; } });
+  on(entry, 'keydown', event => { if (event.key === 'Enter') entry.dispatchEvent?.(new window.Event('change')); if (event.key === 'Escape') { entry.value = authored == null ? '' : descriptor.formatInput ? descriptor.formatInput(authored) : String(authored); error.textContent = ''; } });
   on(cap, 'blur', () => gesture?.lease.cancel('blur')); on(window, 'blur', () => gesture?.lease.cancel('window-blur'));
   on(document, 'visibilitychange', () => { if (document.hidden) gesture?.lease.cancel('hidden'); });
   const observer = typeof window?.MutationObserver === 'function' ? new window.MutationObserver(() => { if (!root.isConnected) gesture?.lease.cancel('removed'); }) : null;
@@ -83,7 +85,7 @@ export function createParameterKnob({ document, window = document.defaultView, d
     setState({ value: next = authored, effectiveValue = null, pickupValue = null, isReadOnly = readOnly, isPending = pending } = {}) {
       if (gesture && (getIdentity() !== gesture.lease.identity || next !== authored)) gesture.lease.cancel('external-edit');
       readOnly = isReadOnly; pending = isPending; authored = draft = next == null ? null : quantizeParameter(descriptor, next, true);
-      for (const [mark, position] of [[effective, effectiveValue], [pickup, pickupValue]]) { mark.hidden = !Number.isFinite(position); if (!mark.hidden) mark.style.transform = `rotate(${-135 + parameterUnitPosition(descriptor, position) * 270}deg)`; }
+      for (const [mark, position] of [[effective, effectiveValue], [pickup, pickupValue]]) { mark.hidden = !Number.isFinite(position); if (!mark.hidden) { mark.style.transform = presentation === 'fader' ? 'none' : `rotate(${-135 + parameterUnitPosition(descriptor, position) * 270}deg)`; if (presentation === 'fader') mark.style.top = `${(1 - parameterUnitPosition(descriptor, position)) * 90}%`; } }
       paint();
     }, cancel: reason => gesture?.lease.cancel(reason), dispose() { if (disposed) return; gesture?.lease.cancel('disposed'); disposed = true; observer?.disconnect(); for (const remove of listeners) remove(); listeners.length = 0; } });
 }

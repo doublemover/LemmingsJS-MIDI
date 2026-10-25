@@ -1,3 +1,4 @@
+import { createLaneMixState } from './LaneMixState.js';
 import { createAudioClockBridge } from './AudioClockBridge.js';
 import { createCausalMusicEngine } from './CausalMusicEngine.js';
 import { captureCausalPerformanceState } from './CausalPerformanceState.js';
@@ -20,12 +21,14 @@ const nativeResolution = Object.freeze({
 // router keep their independent leases on the shared output graph.
 export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, now, renderer = null, resourceBudget = null, getLanes = () => [], isPlaybackEnabled = () => !!audio?.getState?.().enabled,
   onInstrumentState = () => {}, onReceipt = () => {} } = {}) {
+  const laneMix = createLaneMixState(); laneMix.synchronize(getLanes());
   const permitted = () => { try { return isPlaybackEnabled() === true; } catch { return false; } };
   const session = audio?.createSession?.('procgen-physical') || null;
   const nativeBackend = session?.createInstrumentBackend?.({ gateMode: 'owned' }) || null;
   let routed = null, routingUnavailable = null;
   try { if (nativeBackend?.inspectExecution) routed = createRoutedInstrumentBackend({ defaultBackend: nativeBackend, resourceBudget, getContext: () => audio.getAudioContext(),
     getGeneration: () => nativeBackend.executionIncarnation?.() ?? 0, defaultReleaseSeconds: nativeResolution.patch.parameters.releaseSeconds, defaultOneShotTailSeconds: 0.08,
+    getLaneMix: laneId => laneMix.mix(laneId),
     resolveLane: laneId => typeof laneId === 'number' ? getLanes()[laneId]?.id || String(laneId) : String(laneId),
     requiredInstrumentKey: (laneId, sourceId) => { const lane = typeof sourceId === 'number' ? getLanes()[sourceId] : getLanes().find(entry => entry.id === laneId), reference = lane?.instrumentRef;
       return reference ? reference.packHash + ':' + reference.definitionHash : null; } }); }
@@ -80,7 +83,8 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     getOnsetControls: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentControls,
     getPhysicalControlKinds: laneId => [...new Set(((typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentRef?.definition?.causalBindings || [])
       .filter(binding => binding.mode === 'continuous').map(binding => binding.sourceKind))],
-    deliver: (intents, batch) => dispatcher.dispatch(intents, batch) });
+    deliver: (intents, batch) => { const receipts = dispatcher.dispatch(intents, batch), admissions = new Map(receipts.map(receipt => [receipt.intentId, receipt.status]));
+      for (const intent of intents) if (intent.kind === 'begin') { const lane = typeof intent.laneId === 'number' ? getLanes()[intent.laneId] : getLanes().find(lane => lane.id === intent.laneId); if (lane) laneMix.record(lane.id, now(), admissions.get(intent.intentId) || 'unavailable'); } return receipts; } });
   const refreshDisplay = batch => {
     const manager = renderer?.actorEffects, state = audio?.getState?.(), owner = session?.getState?.().ownerId;
     if (!backend || !manager || manager.retired || !manager.visible || !permitted() || !state?.enabled || !session?.getState().enabled) { if (displayKey) stopDisplay(); return; }
@@ -100,6 +104,10 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
       backend: { observeDisplaySamples: (listener, options) => dispatcher.observeDisplaySamples('physical-browser-audio', listener, options) },
       getCorrelation: sample => clock.correlateDisplay({ executionEpoch: sample.executionEpoch, contextEpoch: sample.contextEpoch }), maxVoices: 16, rateHz: 20 });
     if (release) { releaseDisplay = release; displayKey = key; }
+  };
+  const synchronizeLaneMix = () => {
+    if (!laneMix.synchronize(getLanes())) return { status: 'accepted', stage: 'unchanged' };
+    return routed?.synchronizeLaneMix(clock.currentFrame()) || { status: 'rejected', reason: 'lane-mix-renderer-unavailable' };
   };
   const processBatch = (batch, { bpm, playing = true, position = null } = {}) => {
     if (disposed || !playing) return Object.freeze([]);
@@ -130,6 +138,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
         else leaseFailures++;
       }
     }
+    synchronizeLaneMix();
     try { refreshDisplay(batch); } catch { displayErrors++; }
     return engine.processBatch(batch);
   };
@@ -155,7 +164,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
       { name: 'instrument-backend', run: () => (backend || nativeBackend)?.dispose?.() }, { name: 'audio-session', run: () => session?.dispose?.() }
     ]);
   };
-  return { engine, processBatch, stop, dispose,
+  return { engine, processBatch, stop, dispose, synchronizeLaneMix, laneMixView: laneId => laneMix.view(laneId, { nowMs: now(), connected: permitted() && !!session?.getState().enabled }),
     prepareEffectGraph: (definition, options) => session?.prepareEffectGraph ? session.prepareEffectGraph(definition, options) : Promise.reject(new Error('Physical owner effect routing is unavailable.')),
     updateEffectGraph: (nodeId, values, frame, expected) => { if (!session?.updateEffectGraph) throw new Error('Physical effect controls are unavailable.'); return session.updateEffectGraph(nodeId, values, frame, expected); },
     setEffectBypass: mode => session?.setEffectBypass?.(mode), inspectEffectGraph: options => session?.inspectEffectGraph?.(options) || null, ready: () => preparedPromise,

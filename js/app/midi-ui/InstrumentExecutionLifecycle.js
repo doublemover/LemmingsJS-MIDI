@@ -156,6 +156,8 @@ export function createInstrumentExecutionLifecycle(backend, { isSettled, isVoice
     executionIncarnation: () => { sync(); return incarnation; },
     begin: (...args) => call('begin', args, 2, args[0]?.generation),
     update: (...args) => call('update', args, 3), end: (...args) => call('end', args, 3),
+    ...(typeof backend.updateLaneMix === 'function' ? { updateLaneMix: (...args) => call('updateLaneMix', args, 3) } : {}),
+    ...(typeof backend.transferVoiceLane === 'function' ? { transferVoiceLane: (...args) => call('transferVoiceLane', args, 3) } : {}),
     ...(typeof backend.updatePhysical === 'function' ? { updatePhysical: (...args) => call('updatePhysical', args, 3) } : {}),
     renewExecutionLease: (...args) => call('renewExecutionLease', args, 1, args[0]),
     cancelGenerationWithReceipt, cancelGeneration: (...args) => cancelGenerationWithReceipt(...args).count || 0,

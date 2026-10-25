@@ -245,7 +245,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if ((causalTake || causalTakeStart || causalTakeStop) && instrumentRefsChanged) throw new Error('Finish the causal take before changing its pinned lane instrument.');
     if ((causalTake || causalTakeStart || causalTakeStop) && !equal(project.procgen.effectRack ?? null, next.procgen.effectRack ?? null)) throw new Error('Finish the causal take before changing its saved effect defaults.');
     const performanceChange = causalTake || causalTakeStart || causalTakeStop ? change && !change.structural
-      ? diffCausalLanePerformance(project.procgen.lanes, next.procgen.lanes, change.fields.some(key => ['instrumentControls', 'instrumentRef'].includes(key)) ? change.laneIds : [])
+      ? diffCausalLanePerformance(project.procgen.lanes, next.procgen.lanes, change.fields.some(key => ['instrumentControls', 'instrumentRef', 'gain', 'pan', 'mute', 'solo'].includes(key)) ? change.laneIds : [])
       : diffCausalPerformanceState(captureCausalPerformanceState(project.procgen.lanes), captureCausalPerformanceState(next.procgen.lanes)) : null;
     if ((causalTakeStart || causalTakeStop) && performanceChange) throw new Error('Wait for causal take arming or saving before changing instrument controls.');
     if (project.procgen.physicalGraph !== next.procgen.physicalGraph && JSON.stringify(project.procgen.physicalGraph.harmonicFields || []) !== JSON.stringify(next.procgen.physicalGraph.harmonicFields || [])) {
@@ -273,7 +273,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }
     lastHistoryGroup = history ? historyGroup : null;
     project = isCanonicalMidiProject(next) ? next : markCanonicalMidiProject(createProcgenWorkstationProject(sanitizeMidiProject(next)));
-    projectRevision++;
+    projectRevision++; physicalPlayback?.synchronizeLaneMix();
     if (instrumentRefsChanged) void physicalPlayback?.synchronizeLaneInstruments(project.procgen.lanes).catch(error => status('Lane instrument requirements: ' + error.message));
     editRevision++; storageStatus();
     if (inputLease && !inputTarget(inputLease)) cancelInputEdits('target was removed');
@@ -1125,6 +1125,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     return committed;
   };
   const handlers = {
+    clearSolos: () => {
+      if (!project.procgen.lanes.some(lane => lane.solo)) return;
+      if (!Number.isSafeInteger(project.procgen.revision + 1)) throw new Error('Project revision exhausted.');
+      syncProject(markCanonicalMidiProject({ ...project, procgen: { ...project.procgen, revision: project.procgen.revision + 1, lanes: project.procgen.lanes.map(lane => lane.solo ? { ...lane, solo: false } : lane) } }));
+    },
     openCausalAudioRender: safe(async () => {
       const takeId = selectedCausalTakeId || lastCausalTake?.takeId;
       if (disposed || !resourceBudget || !takeId || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish and select a saved causal take before rendering its intent.');
@@ -1174,6 +1179,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       } finally { prepared.release(); }
     },
     status, preferences: persist, presentationGeneration: () => documentGeneration,
+    laneMixView: laneId => physicalPlayback?.laneMixView(laneId),
     devices, engineState: () => engine.getState(), playhead: id => engine.getLanePosition?.(id),
     rearmPhysicalMusic: safe(() => {
       if (disposed || worldBusy || causalTake || causalTakeStart) throw new Error('Stop recording and finish world operations before discarding unknown held state.');
@@ -1486,6 +1492,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     getRecoveryState: () => Object.freeze({ state: recoveryState, pendingRevision: editRevision, durableRevision: durableRecoveryRevision,
       durableTick: durableRecoveryTick, durableGeneration: durableRecoveryGeneration, error: recoveryError, journal: getProcgenRecoveryJournal(runtime()?.world)?.stats() || null, storage: storage.getState?.().recoveryPages || null }),
     getStartupPlan: () => ({ ...startupPlan, project: clone(startupPlan.project) }), getLaneAssignments: () => project.procgen.lanes.map(lane => lane.family),
+    laneMixView: laneId => physicalPlayback?.laneMixView(laneId),
     getPlaybackState: () => ({ ...legacy.local.getState(), activeNotes: router()?.scheduler?._activeNotes?.size || 0, pendingNotes: router()?.scheduler?._pendingNoteOns?.size || 0, pressure: router()?.scheduler?.getOutputPressure?.() || ports.getState().pressure }),
     prepareSettings, bindRuntime, beforeRestart, stopCausalTake, loadSession, capture, recover, dispatch, play, handlers, state, transport, ports, engine,
     getPhysicalScoreClock: () => physicalScoreClock, getWorldInspector: () => worldInspector,
