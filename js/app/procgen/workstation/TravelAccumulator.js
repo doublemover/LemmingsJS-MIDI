@@ -1,6 +1,6 @@
 const SCOPES = new Set(['actorJourney', 'actionInstance', 'contactSpan']);
-const METRICS = new Set(['segment-path', 'endpoint-chord', 'axis-projection']);
-const ORIENTATIONS = new Set(['unsigned', 'signedX', 'signedY']);
+const METRICS = new Set(['segment-path', 'endpoint-chord', 'axis-projection', 'qualified-route-arc-pixels']);
+const ORIENTATIONS = new Set(['unsigned', 'signedX', 'signedY', 'directed-route']);
 const PHASE_MODES = new Set(['cumulative', 'direction-reversing', 'contact-stroke']);
 const id = value => typeof value === 'string' && value.length > 0 && value.length <= 512;
 const point = value => value && Number.isFinite(value.x) && Number.isFinite(value.y);
@@ -12,11 +12,12 @@ const validateArticulationField = value => {
       !METRICS.has(value.metric ?? 'endpoint-chord') || !ORIENTATIONS.has(value.orientation ?? 'unsigned') ||
       !PHASE_MODES.has(value.phaseMode ?? 'cumulative') ||
       (value.metric === 'axis-projection' && !['signedX', 'signedY'].includes(value.orientation)) ||
-      (value.phaseMode === 'direction-reversing' && !['signedX', 'signedY'].includes(value.orientation)) ||
-      (value.phaseMode === 'contact-stroke' && value.lifetimeScope !== 'contactSpan')) throw new Error('Invalid travel articulation field.');
+      (value.phaseMode === 'direction-reversing' && !['signedX', 'signedY', 'directed-route'].includes(value.orientation)) ||
+      (value.phaseMode === 'contact-stroke' && value.lifetimeScope !== 'contactSpan') ||
+      (value.metric === 'qualified-route-arc-pixels' ? value.orientation !== 'directed-route' || value.lifetimeScope !== 'actorJourney' || value.sustain !== true || value.phaseMode !== 'direction-reversing' || !id(value.routeId) || value.routeId.length > 128 : value.orientation === 'directed-route' || value.routeId != null)) throw new Error('Invalid travel articulation field.');
   return Object.freeze({ spacingPixels: value.spacingPixels, lifetimeScope: value.lifetimeScope ?? 'actorJourney',
     metric: value.metric ?? 'endpoint-chord', orientation: value.orientation ?? 'unsigned',
-    phaseMode: value.phaseMode ?? 'cumulative', sustain: value.sustain === true });
+    phaseMode: value.phaseMode ?? 'cumulative', sustain: value.sustain === true, ...(value.metric === 'qualified-route-arc-pixels' ? { routeId: value.routeId, crossingPolicy: 'none;held-route-coordinate-only' } : {}) });
 };
 
 // This is the single physical travel clock. It consumes committed coordinates,
@@ -32,8 +33,39 @@ const createTravelAccumulator = ({ maxEntries = 16384, maxCrossingsPerFact = 128
         !id(instrumentId) || !id(scopeInstanceId)) throw new Error('Missing travel scope identity.');
     return { key: JSON.stringify([batch.worldId, batch.generation, fact.actorId, instrumentId, field.lifetimeScope, scopeInstanceId]), scopeInstanceId };
   };
-  const consume = (batch, fact, instrumentId, input, graphRevision = 0) => {
-    const field = validateArticulationField(input), { key, scopeInstanceId } = identity(batch, fact, instrumentId, field);
+  const consumeRoute = (batch, fact, instrumentId, field, graphRevision, route) => {
+    const { key, scopeInstanceId } = identity(batch, fact, instrumentId, field), prior = entries.get(key), empty = Object.freeze([]);
+    const unavailable = reason => { entries.delete(key); return Object.freeze({ status: 'unsupported', reason, crossings: empty }); };
+    if (!route || route.status !== 'qualified' || route.worldId !== batch.worldId || route.generation !== batch.generation || route.actorId !== fact.actorId || route.routeId !== field.routeId ||
+        !Number.isSafeInteger(route.routeRevision) || route.routeRevision < 0 || !id(route.branchId) || !id(route.entryObservationId) || route.coordinatePrecision !== 'completed-route-endpoint-projection' ||
+        !['authored', 'measured-trace'].includes(route.geometrySource) || route.observationTick !== batch.tick || route.motionSourceEventId !== fact.eventId || route.motionSourceSequence !== fact.causalSequence || route.motionSourceTick !== batch.tick ||
+        !Number.isFinite(route.sPixels) || Math.abs(route.sPixels) > 1e12 || !Number.isFinite(route.previousSPixels) || Math.abs(route.previousSPixels) > 1e12 ||
+        !Number.isSafeInteger(route.previousObservationTick) || route.previousObservationTick < -1 || !point(fact.positionAfter) || route.lastPosition?.x !== fact.positionAfter.x || route.lastPosition?.y !== fact.positionAfter.y || batch.completeness?.status !== 'complete') return unavailable('qualified-directed-route-endpoint-unavailable');
+    const routeIdentity = JSON.stringify([route.routeId, route.routeRevision, route.branchId, route.entryObservationId]);
+    if (prior && (JSON.stringify(prior.field) !== JSON.stringify(field) || prior.routeIdentity !== routeIdentity || prior.previousRouteCoordinate !== route.previousSPixels || route.previousObservationTick !== batch.tick - 1)) {
+      entries.delete(key); return Object.freeze({ status: 'discontinuity', reason: 'route-reentry-revision-or-unobserved-coordinate', crossings: empty });
+    }
+    if (!prior && entries.size >= maxEntries) return Object.freeze({ status: 'rejected', reason: 'travel-capacity', crossings: empty });
+    const state = prior ? { ...prior } : { worldId: batch.worldId, generation: batch.generation, actorId: fact.actorId, instrumentId, graphRevision,
+      lifetimeScope: field.lifetimeScope, scopeInstanceId, field, origin: { ...fact.positionAfter }, pathDistancePixels: 0, signedDistancePixels: 0, contactPathDistancePixels: 0,
+      directionEpoch: 0, directionSign: 0, discontinuityEpoch: 0, actionInstanceId: fact.actionInstanceId ?? null, ordinal: 0, routeIdentity, originRouteCoordinate: route.sPixels };
+    const delta = prior ? route.sPixels - prior.previousRouteCoordinate : 0, distance = Math.abs(delta), from = Object.freeze({ pathDistancePixels: state.pathDistancePixels, signedDistancePixels: state.signedDistancePixels, contactPathDistancePixels: 0 });
+    if (!Number.isFinite(state.pathDistancePixels + distance) || Math.abs(state.signedDistancePixels + delta) > 1e12) return unavailable('route-distance-overflow');
+    const sign = Math.sign(delta); if (sign && state.directionSign && sign !== state.directionSign) state.directionEpoch++; if (sign) state.directionSign = sign;
+    state.pathDistancePixels += distance; state.signedDistancePixels = route.sPixels - state.originRouteCoordinate; state.previousRouteCoordinate = route.sPixels; state.previousPosition = { ...fact.positionAfter }; state.observedTick = batch.tick; state.actionInstanceId = fact.actionInstanceId ?? null;
+    entries.set(key, state);
+    return Object.freeze({ status: 'accepted', state: freezeState(state), phase01: modulo(state.signedDistancePixels, field.spacingPixels) / field.spacingPixels, distancePixels: distance, crossings: empty,
+      observation: Object.freeze({ schema: 'lemmings-canonical-travel-observation/v1', worldId: batch.worldId, generation: batch.generation, actorId: fact.actorId, instrumentId,
+        lifetimeScope: field.lifetimeScope, scopeInstanceId, metric: field.metric, orientation: field.orientation, precision: 'completed-route-endpoint-projection',
+        routeId: route.routeId, routeRevision: route.routeRevision, branchId: route.branchId, entryObservationId: route.entryObservationId, routeIdentity, geometrySource: route.geometrySource,
+        originRouteCoordinate: state.originRouteCoordinate, fromRouteCoordinate: prior ? prior.previousRouteCoordinate : route.sPixels, toRouteCoordinate: route.sPixels,
+        originWorldCoordinate: Object.freeze({ ...state.origin }), discontinuityEpoch: state.discontinuityEpoch, directionEpoch: state.directionEpoch,
+        sourceEventId: fact.eventId, from, to: Object.freeze({ pathDistancePixels: state.pathDistancePixels, signedDistancePixels: state.signedDistancePixels, contactPathDistancePixels: 0 }) }) });
+  };
+  const consume = (batch, fact, instrumentId, input, graphRevision = 0, routeCoordinate = null) => {
+    const field = validateArticulationField(input);
+    if (field.metric === 'qualified-route-arc-pixels') return consumeRoute(batch, fact, instrumentId, field, graphRevision, routeCoordinate);
+    const { key, scopeInstanceId } = identity(batch, fact, instrumentId, field);
     if (!point(fact.positionBefore) || !point(fact.positionAfter) || !id(fact.eventId)) throw new Error('Invalid committed motion.');
     const prior = entries.get(key);
     if (prior && JSON.stringify(prior.field) !== JSON.stringify(field)) throw new Error('Travel mapping changed without resetting its scope.');
@@ -122,7 +154,7 @@ const createTravelAccumulator = ({ maxEntries = 16384, maxCrossingsPerFact = 128
           !Number.isFinite(input.contactPathDistancePixels) || input.contactPathDistancePixels < 0 ||
           ![input.directionEpoch, input.discontinuityEpoch, input.ordinal].every(number => Number.isSafeInteger(number) && number >= 0) ||
           !Number.isSafeInteger(input.graphRevision) || input.graphRevision < 0 ||
-          ![-1, 0, 1].includes(input.directionSign)) throw new Error('Invalid travel checkpoint entry.');
+          ![-1, 0, 1].includes(input.directionSign) || field.metric === 'qualified-route-arc-pixels' && (typeof input.routeIdentity !== 'string' || !input.routeIdentity || input.routeIdentity.length > 2048 || !Number.isFinite(input.originRouteCoordinate) || !Number.isFinite(input.previousRouteCoordinate) || Math.abs(input.previousRouteCoordinate) > 1e12 || Math.abs(input.originRouteCoordinate) > 1e12 || !Number.isSafeInteger(input.observedTick) || input.observedTick < 0)) throw new Error('Invalid travel checkpoint entry.');
       next.set(key, { ...input, field, origin: { ...input.origin }, previousPosition: { ...input.previousPosition } });
     }
     entries = next;

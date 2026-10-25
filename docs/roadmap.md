@@ -4285,3 +4285,53 @@ qualified rebind/both policies, irregular terrain geometry, the Three hands less
 spectral/listening/deadline and production-browser acceptance remain subsequent
 work. This batch establishes loss/pickup ownership on the fixed rectangle; it does
 not claim a qualified shared physical instrument or complete #1210/#1215 acceptance.
+
+
+### Continuation 183 — canonical directed-route circular spectra (#1226, #1182)
+
+The existing route atlas now retains a stable observed entry ID, previous completed
+coordinate/tick and actual last motion source event/sequence. Explicit teleports and
+coordinate jumps exceeding the observed movement plus declared projection tolerance
+invalidate the route. Qualified data is labeled completed-route-endpoint-projection;
+authored versus measured-trace geometry remains visible. Legacy state without a
+captured entry is not promoted to canonical directed-route evidence.
+
+The single TravelAccumulator now admits a qualified-route-arc-pixels variant with
+actorJourney lifetime, directed-route orientation and a held voice without distance
+crossing notes. It consumes the atlas after an actual entry, primes its reference
+at the first covered endpoint, and only the last motion fact for each completed
+actor tick projects that endpoint. A U path or ordered loop seam can advance route
+phase while signed world-X returns to zero. Actual backtracking within qualified
+route geometry reverses phase; stationary observed ticks add no distance. Unknown
+entry/order, stale/changed geometry, teleport or missing coverage ends the source
+instead of bridging a gap. Entry/revision identity and exact endpoint reference
+join canonical travel cuts. Route changes participate in mapping dependency fences.
+
+Circular control mode 2 consumes that canonical route evidence through the same
+owned partial pool, phase planner, live atomic commands, offline render and source
+state-cut path. It requires actorJourney and endpoint precision, retains its exact
+route/branch/entry and rejects a segment-precision claim or inconsistent distance
+origin. Compiled patches reject unsupported mode/scope/axis combinations before
+preview. The original Route staircase recipe joins the circular collection at
+version 0.3.0; a physical-graph staging action names the required route articulation.
+Source/library/render summaries distinguish route arcs, world axes and sampled
+contact coordinates without claiming perceptual endlessness.
+
+The source runtime becomes owned-spectrum-v9-route-coordinate; physicalMusic is 11
+and capture profile physical-basic-v17. Route revoice declines older capture
+versions. The physical observer memory estimate increases for the retained route
+metadata. Its numerical projection is authored route distance, not proof of an
+unobserved physical path between coordinate writes.
+
+Controlled atlas/accumulator fixtures cover U-route versus signed-X, a 1024-pixel
+ordered loop, observed rest, reversal, complete route-state restore, missing entry,
+teleport, foreign branch and segment-precision rejection. A short causal render/
+state-cut fixture and old-capture rejection are authored and unrun. Existing content
+fixtures now expect five circular recipes. Formatting/syntax/provenance only; no
+browser, spectral, listening or render-deadline qualification is claimed.
+
+The Impossible Staircase world, comparison oscillator and visual lesson remain
+pending. Reverse traversal through an ambiguous/unqualified loop seam still
+ends under the atlas policy; this batch does not infer route orientation there.
+Full multi-segment path qualification and broader route-atlas acceptance remain
+separate from this completed-endpoint adapter.

@@ -36,7 +36,7 @@ const schemas = freezeData({
     parameter('circularWidthOctaves', 0.25, 3, 1.2, 'octaves'), parameter('circularLowHz', 20, 10000, 80, 'Hz'), parameter('circularHighHz', 40, 20000, 8000, 'Hz'),
     parameter('circularPartialCap', 8, 10, 10, 'count', true), parameter('circularWeight01', 0, 1, 1, 'ratio'), parameter('circularPixelsPerCycle', 1, 1000000, 512, 'world-pixel'),
     parameter('circularOriginPixels', -1000000000, 1000000000, 0, 'world-pixel'), parameter('circularPhaseOrigin', -1000000, 1000000, 0, 'cycles'),
-    parameter('circularControlMode', 0, 1, 0, 'enum', true), parameter('circularScope', 0, 2, 0, 'enum', true), parameter('circularAxis', 0, 1, 0, 'enum', true), parameter('circularRequireSegments', 0, 1, 0, 'enum', true), parameter('partialCount', 1, 16, 16, 'enum', true), parameter('partialDecaySeconds', 0, 4, 0, 's'),
+    parameter('circularControlMode', 0, 2, 0, 'enum', true), parameter('circularScope', 0, 2, 0, 'enum', true), parameter('circularAxis', 0, 1, 0, 'enum', true), parameter('circularRequireSegments', 0, 1, 0, 'enum', true), parameter('partialCount', 1, 16, 16, 'enum', true), parameter('partialDecaySeconds', 0, 4, 0, 's'),
     ...Array.from({ length: 16 }, (_, index) => [parameter('partial' + index + 'Ratio', 0.125, 32, index + 1, 'ratio'), parameter('partial' + index + 'Gain', 0, 1, 1 / (index + 1), 'amplitude-linear'),
       parameter('partial' + index + 'T60Scale', 0.01, 1, 1, 'ratio')]).flat()].map(spec => Object.freeze({ ...spec, liveSafe: false })).concat(
     ['scan01', 'body01', 'edge01'].map(name => Object.freeze({ ...parameter(name, 0, 1, name === 'scan01' ? 0 : 0.5, 'normalized'), causalLiveSafe: true })), envelope(0.008, 0.1, 0.7, 0.5)),

@@ -69,6 +69,7 @@ const validateCausalInstrumentGraph = value => {
     if (input.sourceKind === 'ActionEntered' && !actionVoicePolicy && !nonempty(input.action)) throw new Error('Action instrument needs an action.');
     if (input.sourceKind === 'MotionCommitted' && !input.articulation && (!Number.isFinite(input.gateX) || Math.abs(input.gateX) > 1000000000 ||
         !['either', 'positive', 'negative'].includes(input.crossingDirection ?? 'either'))) throw new Error('Motion instrument needs a valid gate.');
+    if (input.articulation?.metric === 'qualified-route-arc-pixels' && !domain.routes.some(route => route.id === input.articulation.routeId)) throw new Error('Directed travel requires an existing qualified route atlas definition.');
     if (input.articulation && input.sourceKind !== 'MotionCommitted') throw new Error('Travel articulation requires committed motion.');
     if (input.sourceLanes !== undefined && (!Array.isArray(input.sourceLanes) || !input.sourceLanes.length || input.sourceLanes.length > 1024 || input.sourceLanes.some(lane => !Number.isInteger(lane) || lane < 0 || lane >= 1024) || new Set(input.sourceLanes).size !== input.sourceLanes.length)) throw new Error('Instrument source lanes must be unique physical source indices.');
     const probability = validateCausalProbabilityPolicy(input.probability);
@@ -196,7 +197,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
         group.push(instrument);
       }
       const previousById = new Map((graph?.instruments || []).map(instrument => [instrument.id, instrument]));
-      const dependencies = (source, instrument) => JSON.stringify([source?.activityWindows?.find(value => value.id === instrument?.activityWindowId), source?.motifs?.find(value => value.id === instrument?.motifId), source?.encounters?.find(value => value.id === instrument?.encounterId), source?.pickups?.find(value => value.id === (instrument?.pickupId || instrument?.response?.pickupId)), source?.routes?.find(value => value.id === (instrument?.routeId || instrument?.response?.routeId)), source?.ensembles?.find(value => value.id === (instrument?.ensembleId || instrument?.response?.ensembleId)), source?.ensembles?.find(value => value.id === source?.pickups?.find(pickup => pickup.id === (instrument?.pickupId || instrument?.response?.pickupId))?.ensembleId)]);
+      const dependencies = (source, instrument) => JSON.stringify([source?.activityWindows?.find(value => value.id === instrument?.activityWindowId), source?.motifs?.find(value => value.id === instrument?.motifId), source?.encounters?.find(value => value.id === instrument?.encounterId), source?.pickups?.find(value => value.id === (instrument?.pickupId || instrument?.response?.pickupId)), source?.routes?.find(value => value.id === (instrument?.articulation?.routeId || instrument?.routeId || instrument?.response?.routeId)), source?.ensembles?.find(value => value.id === (instrument?.ensembleId || instrument?.response?.ensembleId)), source?.ensembles?.find(value => value.id === source?.pickups?.find(pickup => pickup.id === (instrument?.pickupId || instrument?.response?.pickupId))?.ensembleId)]);
       const unchanged = new Set(next.instruments.filter(instrument => graph?.seed === next.seed && JSON.stringify(previousById.get(instrument.id)) === JSON.stringify(instrument) && dependencies(graph, previousById.get(instrument.id)) === dependencies(next, instrument)).map(instrument => instrument.id));
       for (const id of instrumentEpochs.keys()) if (!next.instruments.some(instrument => instrument.id === id)) instrumentEpochs.delete(id);
       for (const instrument of next.instruments) if (!unchanged.has(instrument.id) || !instrumentEpochs.has(instrument.id)) instrumentEpochs.set(instrument.id, next.revision);
@@ -261,6 +262,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     latestPhysicalAnalysis = freezePhysical({ batchId: batch.batchId, tick: batch.tick, generation: batch.generation, ensembles: observations.ensembles || [], facts: Object.freeze([...observations.facts, ...relationships.facts, ...cargoResult.facts, ...recognized.facts, ...activityResult.facts]), windows: activityResult.windows, completeness: { status: cargoResult.completeness.status === 'complete' && relationships.completeness.status === 'complete' && recognized.completeness.status === 'complete' && activityResult.completeness.status === 'complete' ? 'complete' : 'censored', cargo: cargoResult.completeness, encounters: relationships.completeness, motifs: recognized.completeness, activity: activityResult.completeness } });
     endMatching(batch, record => { if (!record.instrument.ensembleId) return false; const member = physical.membership(record.instrument.ensembleId, record.actorId); return member.status !== 'complete' || !member.includes; }, null, 'ensemble-membership-ended', output);
     endMatching(batch, record => record.instrument.actionVoicePolicy && batch.tick - record.startedTick >= record.instrument.actionVoicePolicy.maximumHoldTicks, null, 'maximum-hold', output);
+    endMatching(batch, record => record.instrument.articulation?.metric === 'qualified-route-arc-pixels' && physical.routeCoordinate(record.actorId, record.instrument.articulation.routeId)?.status !== 'qualified', null, 'route-coordinate-unavailable', output);
     let begins = 0, physicalUpdates = 0;
     for (const record of [...active.values()]) if (record.topologyBinding) {
       const region = current.topologyRegions?.find(r => r.id === record.instrument.topologyRegionId), result = batch.snapshot?.topology?.regions?.find(r => r.regionId === region?.id)?.current;
@@ -383,8 +385,10 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
         if (instrument.operationKind && fact.operationKind !== instrument.operationKind) continue;
         if (instrument.causeKind && fact.causeKind !== instrument.causeKind) continue;
         if (instrument.articulation) {
+          const routeTravel = instrument.articulation.metric === 'qualified-route-arc-pixels';
+          if (routeTravel && motionOrdinals.get(fact.actorId) !== motionCounts.get(fact.actorId)) continue;
           let result;
-          try { result = travel.consume(batch, fact, instrument.id, instrument.articulation, current.revision); }
+          try { result = travel.consume(batch, fact, instrument.id, instrument.articulation, current.revision, routeTravel ? physical.routeCoordinate(fact.actorId, instrument.articulation.routeId) : null); }
           catch { reject(instrument); continue; }
           if (result.status !== 'accepted') {
             reject(instrument);
@@ -394,7 +398,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
           const state = result.state;
           const articulationState = Object.freeze({ travelPhase01: result.phase01, pathDistancePixels: state.pathDistancePixels,
             signedDistancePixels: state.signedDistancePixels, contactPathDistancePixels: state.contactPathDistancePixels,
-            travel: Object.freeze({ ...result.observation, sourceSequence: fact.causalSequence + 1, segmentOrdinal: motionOrdinals.get(fact.actorId) - 1, segmentCount: motionCounts.get(fact.actorId),
+            travel: Object.freeze({ ...result.observation, sourceSequence: fact.causalSequence + (routeTravel ? 0 : 1), segmentOrdinal: routeTravel ? 0 : motionOrdinals.get(fact.actorId) - 1, segmentCount: routeTravel ? 1 : motionCounts.get(fact.actorId),
               completedTickDurationMs: Number.isFinite(batch.tickDurationMs) && batch.tickDurationMs > 0 ? batch.tickDurationMs : null, timing: 'completed-tick-equal-segments-v1' }) });
           if (instrument.articulation.sustain) {
             const voiceId = `${batch.worldId}:${batch.generation}:${instrument.id}:r${instrumentEpochs.get(instrument.id)}:travel:${state.scopeInstanceId}`;

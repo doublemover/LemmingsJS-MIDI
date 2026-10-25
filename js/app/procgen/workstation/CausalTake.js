@@ -15,7 +15,7 @@ const validateCaptureProfile = value => {
       !boundedKinds(value.stateKinds)) throw new Error('A bounded, explicit causal capture profile is required.');
   return cloneJournalData(value);
 };
-const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-basic-v16',
+const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-basic-v17',
   factKinds: ['ReleaseGestureRequested', 'ReleaseScheduleCommitted', 'CrewRouteOpened', 'CrewRouteConnected', 'CrewMemberArrived', 'RouteCompleted', 'RouteFailed', 'MotionCommitted', 'DirectionChanged', 'ContactResolved', 'ActionEntered', 'ActionExited', 'AbilityChanged',
     'ActionCycleCompleted', 'FlightArcStarted', 'FlightArcUpdated', 'FlightArcEnded', 'ActorTerminated', 'ActorBorn', 'BirthAdmissionMissed', 'ActorLaneTransferred', 'TerrainWorkCommitted', 'CommandApplied', 'CommandWaiting', 'CommandRejected', 'ContactSpanBegan', 'ContactSpanUpdated', 'ContactSpanEnded'],
   descriptorKinds: ['movement-path', 'work-phase-v2', 'topology-geometry-v1'], stateKinds: ['prepared-surfaces', 'effect-performance', 'voices', 'travel', 'contactSpans', 'timeline', 'instrument-performance', 'physical-domain', 'rhythmic-responses', 'action-admission', 'tonal-interpretation', 'encounters', 'motifs', 'activity', 'physical-feedback', 'cargo', 'swarm'] });
@@ -173,6 +173,7 @@ const graphCaptureRequirements = graph => {
     if (instrument.sourceKind === 'ActionEntered' || instrument.sourceKind === 'ContactSpanBegan' || instrument.sourceKind === 'PickupCrossing' || instrument.articulation?.sustain || instrument.response?.sustain || instrument.response?.mode === 'scrape') add('voices', instrument.id, 'state');
     if (instrument.articulation) {
       add('travel', instrument.id, 'state');
+      if (instrument.articulation.metric === 'qualified-route-arc-pixels') { add('physical-domain', instrument.id, 'state'); add('MotionCommitted', instrument.id, 'fact'); }
       if (instrument.articulation.metric === 'segment-path') add('movement-path', instrument.id, 'descriptor');
       if (instrument.articulation.lifetimeScope === 'contactSpan') add('contactSpans', instrument.id, 'state');
     }

@@ -48,8 +48,12 @@ export function createRouteCoordinateAtlas({ maxTrackers = 16384, maxRoutes = 12
   };
   const observe = (batch, crossings) => {
     if (boundary !== `${batch.worldId}:${batch.generation}`) { trackers.clear(); invalid.clear(); boundary = `${batch.worldId}:${batch.generation}`; }
-    currentTick = batch.tick; const actors = new Map((batch.snapshot?.actors || []).map(actor => [actor.actorId, actor])), observations = [], motionDistances = new Map();
-    for (const fact of batch.facts) if (fact.kind === 'MotionCommitted') motionDistances.set(fact.actorId, (motionDistances.get(fact.actorId) || 0) + Math.hypot(fact.positionAfter.x - fact.positionBefore.x, fact.positionAfter.y - fact.positionBefore.y));
+    currentTick = batch.tick; const actors = new Map((batch.snapshot?.actors || []).map(actor => [actor.actorId, actor])), observations = [], motionDistances = new Map(), motionSources = new Map(), motionDiscontinuities = new Set();
+    for (const state of trackers.values()) { state.previousSPixels = state.sPixels; state.previousObservationTick = state.observationTick; state.worldId = batch.worldId; state.generation = batch.generation; }
+    for (const fact of batch.facts) if (fact.kind === 'MotionCommitted') {
+      motionDistances.set(fact.actorId, (motionDistances.get(fact.actorId) || 0) + Math.hypot(fact.positionAfter.x - fact.positionBefore.x, fact.positionAfter.y - fact.positionBefore.y)); motionSources.set(fact.actorId, fact);
+      if (fact.discontinuity === true || fact.physicalPayload?.discontinuity === true) motionDiscontinuities.add(fact.actorId);
+    }
     for (const [id, state] of trackers) if (batch.snapshot && !actors.has(state.actorId)) trackers.delete(id);
     for (const fact of batch.facts) if (fact.kind === 'TerrainWorkCommitted' && fact.physicalPayload?.changedSolidCells > 0 || fact.kind === 'CommandApplied' && (fact.terrain?.counts?.solidAdded > 0 || fact.terrain?.counts?.solidRemoved > 0)) {
       const spans = fact.terrain?.edit?.spans || fact.physicalPayload?.terrainEdit?.spans || fact.physicalPayload?.spans;
@@ -68,12 +72,12 @@ export function createRouteCoordinateAtlas({ maxTrackers = 16384, maxRoutes = 12
         if (invalid.get(route.id)?.has(route.segments[state?.segmentIndex ?? 0].id)) { if (state) { state.status = 'terrain-invalidated'; state.observationTick = batch.tick; } continue; }
         if (!state) {
           if (markerIndex !== 0 || trackers.size >= maxTrackers || route.entryAction && actors.get(crossing.actorId)?.action !== route.entryAction) continue;
-          state = { routeId: route.id, routeRevision: route.revision, branchId: route.branchId, actorId: crossing.actorId, segmentIndex: 0, segmentId: route.segments[0].id,
+          state = { worldId: batch.worldId, generation: batch.generation, previousSPixels: 0, previousObservationTick: -1, entryObservationId: crossing.observationId, routeId: route.id, routeRevision: route.revision, branchId: route.branchId, actorId: crossing.actorId, segmentIndex: 0, segmentId: route.segments[0].id,
             lapId: 0, sPixels: 0, segmentS: 0, direction: 1, observationTick: batch.tick, status: ambiguous ? 'ambiguous' : 'qualified',
             entryTick: batch.tick + crossing.fraction, lastReturnTick: null, periodTicks: null, markerHistory: [crossing.observationId], sourceEventIds: crossing.sourceEventIds };
           trackers.set(id, state); continue;
         }
-        if (state.status !== 'qualified') { if (markerIndex === 0 && !ambiguous) { trackers.delete(id); state = { ...state, segmentIndex: 0, segmentId: route.segments[0].id, segmentS: 0, sPixels: 0, lapId: 0, status: 'qualified', entryTick: batch.tick + crossing.fraction, markerHistory: [crossing.observationId] }; trackers.set(id, state); } continue; }
+        if (state.status !== 'qualified') { if (markerIndex === 0 && !ambiguous) { trackers.delete(id); state = { ...state, previousSPixels: 0, previousObservationTick: -1, entryObservationId: crossing.observationId, segmentIndex: 0, segmentId: route.segments[0].id, segmentS: 0, sPixels: 0, lapId: 0, status: 'qualified', entryTick: batch.tick + crossing.fraction, markerHistory: [crossing.observationId] }; trackers.set(id, state); } continue; }
         if (markerIndex === state.segmentIndex + 1) {
           state.markerHistory.push(crossing.observationId); if (state.markerHistory.length > 65) state.markerHistory.shift();
           if (markerIndex === route.markers.length - 1) {
@@ -92,13 +96,17 @@ export function createRouteCoordinateAtlas({ maxTrackers = 16384, maxRoutes = 12
     for (const state of trackers.values()) {
       const route = byId.get(state.routeId), actor = actors.get(state.actorId);
       if (!actor || state.status !== 'qualified') continue;
+      if (motionDiscontinuities.has(state.actorId)) { state.status = 'discontinuous'; continue; }
       if (invalid.get(route.id)?.has(state.segmentId)) { state.status = 'terrain-invalidated'; continue; }
       const distance = motionDistances.get(state.actorId) || 0;
       if (state.lastPosition && (batch.tick > state.observationTick + 1 || Math.hypot(actor.x - state.lastPosition.x, actor.y - state.lastPosition.y) > distance + 1e-6)) { state.status = 'discontinuous'; continue; }
       const coordinate = project(route.segments[state.segmentIndex], actor, route.tolerancePixels, state.segmentS);
       if (coordinate.status !== 'qualified') { state.status = coordinate.status; continue; }
       const s = route.segmentOffsets[state.segmentIndex] + coordinate.s + state.lapId * route.lengthPixels;
+      if (state.previousObservationTick >= 0 && Math.abs(s - state.previousSPixels) > distance + route.tolerancePixels * 2 + 1e-6) { state.status = 'discontinuous'; continue; }
       if (s !== state.sPixels) state.direction = Math.sign(s - state.sPixels);
+      const motion = motionSources.get(state.actorId); state.motionSourceEventId = motion?.eventId ?? null; state.motionSourceSequence = motion?.causalSequence ?? null; state.motionSourceTick = motion ? batch.tick : null;
+      state.coordinatePrecision = typeof state.entryObservationId === 'string' && state.entryObservationId ? 'completed-route-endpoint-projection' : null; state.geometrySource = route.geometrySource;
       state.lastPosition = { x: actor.x, y: actor.y }; state.segmentS = coordinate.s; state.sPixels = s; state.observationTick = batch.tick;
     }
     lastObservations = observations.map(freeze); return Object.freeze(lastObservations);
@@ -113,7 +121,7 @@ export function createRouteCoordinateAtlas({ maxTrackers = 16384, maxRoutes = 12
   return { configure, observe, coordinate, neighbors, reset() { trackers.clear(); invalid.clear(); boundary = null; },
     snapshot: () => freeze({ version: 1, boundary, currentTick, signatures: [...signatures], trackers: [...trackers.values()].map(copy), invalid: [...invalid].map(([id, segments]) => [id, [...segments]]) }),
     restore(value) { if (value?.version !== 1 || value.boundary != null && typeof value.boundary !== 'string' || !Number.isSafeInteger(value.currentTick) || value.currentTick < -1 || JSON.stringify(value.signatures) !== JSON.stringify([...signatures]) || !Array.isArray(value.trackers) || value.trackers.length > maxTrackers || !Array.isArray(value.invalid) || value.invalid.length > maxRoutes) throw new Error('Invalid route checkpoint.');
-      const next = new Map(); for (const state of value.trackers) { const route = byId.get(state.routeId); if (!route || !integer(state.actorId) || !integer(state.segmentIndex, route.segments.length - 1) || state.segmentId !== route.segments[state.segmentIndex].id || !integer(state.lapId) || !finite(state.sPixels, Number.MAX_SAFE_INTEGER) || !finite(state.segmentS, 65536) || !integer(state.observationTick) || !Array.isArray(state.markerHistory) || state.markerHistory.length > 65 || next.has(key(state.routeId, state.actorId))) throw new Error('Invalid observed route identity.'); next.set(key(state.routeId, state.actorId), copy(state)); }
+      const next = new Map(); for (const state of value.trackers) { const route = byId.get(state.routeId); if (!route || !integer(state.actorId) || !integer(state.segmentIndex, route.segments.length - 1) || state.segmentId !== route.segments[state.segmentIndex].id || !integer(state.lapId) || !finite(state.sPixels, Number.MAX_SAFE_INTEGER) || !finite(state.segmentS, 65536) || !integer(state.observationTick) || !Array.isArray(state.markerHistory) || state.markerHistory.length > 65 || next.has(key(state.routeId, state.actorId))) throw new Error('Invalid observed route identity.'); if (state.coordinatePrecision != null && (state.coordinatePrecision !== 'completed-route-endpoint-projection' || typeof state.worldId !== 'string' || !state.worldId || !integer(state.generation) || typeof state.entryObservationId !== 'string' || !state.entryObservationId || state.entryObservationId.length > 512 || !finite(state.previousSPixels, 1e12) || !Number.isSafeInteger(state.previousObservationTick) || state.previousObservationTick < -1 || state.previousObservationTick > state.observationTick || state.motionSourceEventId !== null && (typeof state.motionSourceEventId !== 'string' || !state.motionSourceEventId || state.motionSourceEventId.length > 512 || !integer(state.motionSourceSequence) || state.motionSourceTick !== state.observationTick))) throw new Error('Invalid completed route endpoint evidence.'); next.set(key(state.routeId, state.actorId), copy(state)); }
       const invalidNext = new Map(); for (const [id, segments] of value.invalid) { const route = definitions.find(entry => entry.id === id); if (!route || !Array.isArray(segments) || segments.some(segment => !route.segments.some(entry => entry.id === segment))) throw new Error('Invalid route dependency state.'); invalidNext.set(id, new Set(segments)); }
       trackers.clear(); for (const [id, state] of next) trackers.set(id, state); invalid.clear(); for (const [id, segments] of invalidNext) invalid.set(id, segments); boundary = value.boundary; currentTick = value.currentTick; },
     diagnostics: () => freeze({ routes: definitions.length, trackers: trackers.size, invalidated: [...invalid].map(([id, segments]) => ({ id, segments: [...segments] })), laps: lastObservations }) };

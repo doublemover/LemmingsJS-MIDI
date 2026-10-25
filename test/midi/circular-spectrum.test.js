@@ -69,7 +69,7 @@ describe('travel-owned octave circular spectra (deferred runtime qualification)'
   it('compiles the original four-control recipes and renders the same canonical circular history through a state cut', async () => {
     const [descriptor] = await describeNativeInstrumentEngines([{ engineId: 'worklet-spectrum', engineVersion: 1, artifactHash: 'a'.repeat(64) }]);
     const raw = JSON.parse(await readFile(new URL('../../content/sounds/circular-travel.json', import.meta.url), 'utf8'));
-    const content = await compileSoundContent(raw, { targets: [{ descriptor }] }); expect(content.prepared.patches).to.have.length(4);
+    const content = await compileSoundContent(raw, { targets: [{ descriptor }] }); expect(content.prepared.patches).to.have.length(5);
     expect(content.prepared.patches[0].definition.macros.map(macro => macro.name)).to.have.members(['CLIMB', 'WINDOW', 'CENTER', 'WEIGHT']);
     expect(() => validateInstrumentPatchV2({ ...definition(), parameters: { sourceMode: 2, circularPeriodRatio: 3 } }, descriptor)).to.throw('only octave');
     const engine = createCausalMusicEngine({ getGraph: () => sampleTravelGraph() }), intents = [engine.processBatch(sampleMotionBatch(1, 0, 1))[0], engine.processBatch(sampleMotionBatch(2, 1, 1))[0], engine.processBatch(sampleMotionBatch(3, 1, 0))[0]];
@@ -94,7 +94,7 @@ describe('travel-owned octave circular spectra (deferred runtime qualification)'
     expect(plan.receipt).to.include({ schema: 'lemmings-circular-contact-receipt/v1', graphRevision: 3, coordinateMeaning: 'actor-position-at-resolved-contact', precision: 'completed-contact-coordinate' });
     expect(() => planCircularTravel(p, { ...intent, sourceEventIds: [] }, 100, 48000)).to.throw('matching completed contact');
     expect(() => planCircularTravel(p, { ...intent, articulationState: null }, 100, 48000)).to.throw('matching completed contact');
-    expect(() => planCircularTravel({ ...p, circularRequireSegments: 1 }, intent, 100, 48000)).to.throw('matching completed contact');
+    expect(() => planCircularTravel({ ...p, circularRequireSegments: 1 }, intent, 100, 48000)).to.throw('precision');
     expect(planCircularTravel(p, { controlFixture: true }, 100, 48000)).to.equal(null); engine.dispose();
   });
   it('revoices one contact as one onset with a constant coordinate-selected phase', async () => {

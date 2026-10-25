@@ -8,7 +8,7 @@ export function causalObserverResourceProfile(graph, { maxVoices = 512, maxBegin
   const features = {
     core: 8 * MiB + Math.max(4096, maxVoices) * 2048 + Math.min(8 * MiB, traceLimit * 32768),
     swarm: 16 * MiB,
-    physical: graph?.pickups?.length || graph?.ensembles?.length || graph?.routes?.length ? 24 * MiB : 0,
+    physical: graph?.pickups?.length || graph?.ensembles?.length || graph?.routes?.length ? 32 * MiB : 0,
     tonal: graph?.harmonicFields?.length || graph?.formations?.length ? 16 * MiB : 0,
     rhythmic: graph?.instruments?.some(value => value.response) ? 32 * MiB : 0,
     action: graph?.instruments?.some(value => value.actionVoicePolicy) ? 8 * MiB : 0,
