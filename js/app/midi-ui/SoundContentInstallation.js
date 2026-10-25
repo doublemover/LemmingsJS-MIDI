@@ -138,7 +138,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
           check(); const frame = base + Math.round(event.seconds * rate); let outcome;
           if (event.kind === 'begin') outcome = operation.backend.begin({ version: 1, kind: 'begin', generation: number, voiceId: 'control-fixture', onsetId: 'control-fixture', actorId: null, laneId: 0,
             intentId: 'sound-audition:' + number, sourceEventIds: [], pitch: { cents: event.pitchCents, referenceHz: 440 }, velocity01: event.velocity01, expression: event.expression,
-            ...(event.sampleGesture ? { sampleGesture: event.sampleGesture } : {}) }, frame, operation.execution);
+            ...(event.sampleGesture ? { sampleGesture: event.sampleGesture } : {}), ...(patch.definition.engineId === 'worklet-sample' ? { samplePositionMode: 'authored-control-fixture' } : {}) }, frame, operation.execution);
           else if (event.kind === 'position') outcome = operation.backend.updateSamplePosition('control-fixture', { ...event.segment, firstOutputFrame: base + event.segment.firstOutputFrame, endOutputFrame: base + event.segment.endOutputFrame }, frame, operation.execution);
           else if (event.kind === 'update') outcome = operation.backend.update('control-fixture', event.expression, frame, operation.execution);
           else outcome = operation.backend.end('control-fixture', { seconds: releaseSeconds }, frame, operation.execution);

@@ -1,3 +1,4 @@
+import { validateSampleTraversalBinding } from './SampleTraversal.js';
 import { canonicalDataText, freezeData } from '../../core/CanonicalData.js';
 import { instrumentVariationValue } from './InstrumentIdentityVariation.js';
 
@@ -74,12 +75,12 @@ export function validateSampleInstrumentMap(input, sampleRefs, { rendererProfile
     if (!['forward', 'reverse', 'positionDriven'].includes(playbackMode)) fail('unsupported owned sample playback mode');
     let positionPolicy = null;
     if (!child && playbackMode === 'positionDriven') {
-      keys(value.positionPolicy, ['boundary', 'interpolation', 'slewSeconds', 'maximumReadDerivative', 'crossfadeFrames', 'gainLaw']);
+      keys(value.positionPolicy, ['boundary', 'interpolation', 'slewSeconds', 'maximumReadDerivative', 'crossfadeFrames', 'gainLaw', 'traversal']);
       const p = value.positionPolicy;
       if (!['stop', 'wrap', 'reflect'].includes(p.boundary) || !['linear', 'smoothstep'].includes(p.interpolation) || !finite(p.slewSeconds, 0.005, 0.02) ||
           !finite(p.maximumReadDerivative, 0.25, 4) || !['linear', 'equal-power'].includes(p.gainLaw) ||
           (p.boundary === 'wrap' ? !integer(p.crossfadeFrames, 16, Math.floor((value.endFrame - value.onsetFrame) / 2)) : p.crossfadeFrames !== 0) || value.loop != null) fail('position-driven policy needs bounded cursor, seam and rest semantics');
-      positionPolicy = { ...p };
+      positionPolicy = { ...p, ...(p.traversal == null ? {} : { traversal: validateSampleTraversalBinding(p.traversal) }) };
     } else if (!child && value.positionPolicy != null) fail('position policy requires position-driven playback');
     let loop = null;
     if (!child && value.loop != null) {

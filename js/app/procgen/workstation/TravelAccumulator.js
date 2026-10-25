@@ -66,6 +66,7 @@ const createTravelAccumulator = ({ maxEntries = 16384, maxCrossingsPerFact = 128
     const sign = projection == null ? 0 : Math.sign(projection);
     if (sign && state.directionSign && state.directionSign !== sign) state.directionEpoch++;
     if (sign) state.directionSign = sign;
+    const fromCoordinates = Object.freeze({ pathDistancePixels: state.pathDistancePixels, signedDistancePixels: state.signedDistancePixels, contactPathDistancePixels: state.contactPathDistancePixels });
     const from = field.phaseMode === 'direction-reversing' ? state.signedDistancePixels : state.pathDistancePixels;
     const delta = field.phaseMode === 'direction-reversing' ? projection : distance;
     const to = from + delta, spacing = field.spacingPixels;
@@ -89,6 +90,11 @@ const createTravelAccumulator = ({ maxEntries = 16384, maxCrossingsPerFact = 128
     entries.set(key, state);
     const phaseDistance = field.phaseMode === 'direction-reversing' ? state.signedDistancePixels : state.pathDistancePixels;
     return Object.freeze({ status: 'accepted', state: freezeState(state), phase01: modulo(phaseDistance, spacing) / spacing,
+      observation: Object.freeze({ schema: 'lemmings-canonical-travel-observation/v1', worldId: batch.worldId, generation: batch.generation, actorId: fact.actorId, instrumentId,
+        lifetimeScope: state.lifetimeScope, scopeInstanceId: state.scopeInstanceId, metric: field.metric, orientation: field.orientation,
+        precision: fact.physicalPayload?.pathEvidence === 'committed-coordinate-write' ? 'committed-coordinate-write' : 'endpoint-chord',
+        originWorldCoordinate: Object.freeze({ ...state.origin }), discontinuityEpoch: state.discontinuityEpoch, directionEpoch: state.directionEpoch,
+        sourceEventId: fact.eventId, from: fromCoordinates, to: Object.freeze({ pathDistancePixels: state.pathDistancePixels, signedDistancePixels: state.signedDistancePixels, contactPathDistancePixels: state.contactPathDistancePixels }) }),
       distancePixels: distance, crossings: Object.freeze(crossings) });
   };
   const release = predicate => { for (const [key, state] of entries) if (predicate(state)) entries.delete(key); };

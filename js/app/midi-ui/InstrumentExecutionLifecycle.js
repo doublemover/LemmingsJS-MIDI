@@ -158,6 +158,7 @@ export function createInstrumentExecutionLifecycle(backend, { isSettled, isVoice
     update: (...args) => call('update', args, 3), end: (...args) => call('end', args, 3),
     ...(typeof backend.updateLaneMix === 'function' ? { updateLaneMix: (...args) => call('updateLaneMix', args, 3) } : {}),
     ...(typeof backend.transferVoiceLane === 'function' ? { transferVoiceLane: (...args) => call('transferVoiceLane', args, 3) } : {}),
+    ...(typeof backend.updateSampleTravel === 'function' ? { updateSampleTravel: (...args) => call('updateSampleTravel', args, 3) } : {}),
     ...(typeof backend.updateSamplePosition === 'function' ? { updateSamplePosition: (...args) => call('updateSamplePosition', args, 3) } : {}),
     ...(typeof backend.updatePhysical === 'function' ? { updatePhysical: (...args) => call('updatePhysical', args, 3) } : {}),
     renewExecutionLease: (...args) => call('renewExecutionLease', args, 1, args[0]),

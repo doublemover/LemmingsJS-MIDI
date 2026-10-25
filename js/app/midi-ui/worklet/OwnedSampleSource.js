@@ -1,3 +1,4 @@
+import { acceptsSampleCursorSegment } from '../../../midi/content/SampleCursorProfile.js';
 import { prepareOwnedSamplePlan, OWNED_SAMPLE_VOICES, OWNED_SAMPLE_CURSOR_CAPACITY } from '../OwnedSamplePlan.js';
 import { OwnedSampleCursor, OWNED_SAMPLE_CURSOR_SCALARS } from './OwnedSampleCursor.js';
 import { OwnedSampleReader } from './OwnedSampleReader.js';
@@ -25,7 +26,7 @@ export class OwnedSampleSource {
           bank.planes.some(plane => !(plane instanceof Float32Array) || !(plane.buffer instanceof ArrayBuffer) || plane.length !== expected.frames || buffers.has(plane.buffer))) throw new TypeError('Owned sample private PCM differs from the verified aggregate source.');
       for (const plane of bank.planes) buffers.add(plane.buffer); return Object.freeze([...bank.planes]);
     });
-    this.reader = new OwnedSampleReader(sourceBank); this.bank = this.reader.bank; this.stereo = this.descriptor.banks.some(bank => bank.channels === 2); this.ownsEnvelope = true; this.maxUpdateMask = 15;
+    this.reader = new OwnedSampleReader(sourceBank); this.bank = this.reader.bank; this.stereo = this.descriptor.banks.some(bank => bank.channels === 2); this.ownsEnvelope = true; this.cancelQueuedOnForcedEnd = true; this.maxUpdateMask = 15;
     this.sourceGain = 0.9 / (2 * Math.SQRT2 * this.reader.maximumL1 * Math.max(1, ...this.descriptor.banks.map(bank => bank.peak)));
     this.state = new Float64Array(voices * OWNED_SAMPLE_STATE_WIDTH); this.cursorQueues = new Float64Array(voices * ZONES * QUEUE); this.cursorScalars = new Float64Array(voices * ZONES * SCALARS);
     this.cursors = new Array(voices * ZONES).fill(null);
@@ -33,7 +34,8 @@ export class OwnedSampleSource {
       const index = zone * voices + slot, entry = this.plan.entries[zone].attack;
       this.cursors[index] = new OwnedSampleCursor(entry.cursorProfile.parameters, { sourceFrame: entry.sourceFirst, queueStorage: this.cursorQueues.subarray(index * QUEUE, (index + 1) * QUEUE) });
     }
-    this.configuration = canonicalDataText({ profile: 'owned-sample-source-v1', plan: this.plan.identity, voices }, { maxBytes: 524288, maxNodes: 32768 }).bytes;
+    this.configuration = canonicalDataText({ profile: 'owned-sample-source-v2-travel', plan: this.plan.identity, voices }, { maxBytes: 524288, maxNodes: 32768 }).bytes;
+    this.beginFrontier = { frame: 0, released: false, length: 0, lastSequence: 0, lastEndFrame: 0, lastEndPosition: 0, lastSeekFrame: 0 };
     this.leftSample = this.rightSample = this.readLeft = this.readRight = 0;
   }
   cursor(slot, zone = this.state[slot * OWNED_SAMPLE_STATE_WIDTH + S.zone]) { return this.cursors[zone * this.voices + slot]; }
@@ -50,12 +52,21 @@ export class OwnedSampleSource {
   begin(slot, frequency, packet, frame) {
     const zone = packet[18], entry = this.plan.entries[zone];
     if (!integer(slot, 0, this.voices - 1) || !integer(frame, 0) || !integer(zone, 0, this.plan.entries.length - 1) || !entry || !this.frequencyValid(entry.attack, frequency) || entry.release && !this.frequencyValid(entry.release, frequency) || !integer(packet[19], 0, 0xffffffff)) return 0;
+    const profile = entry.attack.cursorProfile, initial = packet[21] === 1 ? packet[20] : entry.attack.sourceFirst;
+    if (![0, 1].includes(packet[21]) || ![0, 1].includes(packet[30]) || !profile && (packet[21] || packet[30]) || profile && !finite(initial, -profile.maximumCoordinateSourceFrames, profile.maximumCoordinateSourceFrames)) return 0;
+    if (packet[30]) {
+      const f = this.beginFrontier; f.frame = f.lastEndFrame = frame; f.lastEndPosition = initial; f.lastSeekFrame = -profile.slewFrames;
+      if (packet[29] !== 0 || !acceptsSampleCursorSegment(profile, f, packet[24], packet[25], packet[26], packet[27], packet[28], 'continuous')) return 0;
+    }
     const at = slot * OWNED_SAMPLE_STATE_WIDTH, s = this.state; s.fill(0, at, at + OWNED_SAMPLE_STATE_WIDTH);
     s[at + S.zone] = zone; s[at + S.active] = 1; s[at + S.start] = s[at + S.frame] = frame;
     s[at + S.position] = entry.attack.mode === 'reverse' ? entry.attack.end - 1 : entry.attack.first; s[at + S.frequency] = frequency;
     s[at + S.attack] = Math.round(packet[10]); s[at + S.decay] = Math.round(packet[11]); s[at + S.sustain] = packet[12]; s[at + S.looping] = Number(!!entry.attack.loop);
     s[at + S.token] = packet[5]; s[at + S.epoch] = packet[0]; s[at + S.generation] = packet[17]; s[at + S.seed] = packet[19];
-    this.cursor(slot)?.reset(frame, entry.attack.sourceFirst); return 1;
+    const cursor = this.cursor(slot); cursor?.reset(frame, initial);
+    if (cursor) s[at + S.position] = cursor.decodedPosition;
+    if (packet[30] && !cursor.enqueueFields(packet[24], packet[25], packet[26], packet[27], packet[28], 'continuous')) throw new Error('A preflighted initial travel segment changed during onset.');
+    return 1;
   }
   validUpdate(slot, mask, packet) {
     if (!(mask & 8)) return true;

@@ -101,6 +101,7 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
           if (!identity.execution) outcome = identity;
           else if (intent.kind === 'begin') outcome = sink.backend.begin(intent, frame, identity.execution);
           else if (intent.kind === 'update' && intent.articulationState?.transfer && typeof sink.backend.transferVoiceLane === 'function') outcome = sink.backend.transferVoiceLane(intent.voiceId, intent.laneId, frame, identity.execution);
+          else if (intent.kind === 'update' && intent.articulationState?.travel && typeof sink.backend.updateSampleTravel === 'function') outcome = sink.backend.updateSampleTravel(intent.voiceId, intent, frame, identity.execution);
           else if (intent.kind === 'update' && intent.performanceCause) outcome = typeof sink.backend.updatePhysical === 'function'
             ? sink.backend.updatePhysical(intent.voiceId, intent.performanceCause, frame, identity.execution)
             : { status: 'accepted', stage: 'semantic-observation', outputRequested: false, reason: 'no-continuous-binding' };
@@ -116,7 +117,7 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
         const selectedSource = intent.kind === 'begin' && status === 'accepted' ? retainSampleSelectionReceipt(outcome) : null;
         receipts.push(record({ ...base, status, stage: status === 'rejected' ? 'none' : outcome.stage || 'accepted',
           reason: status === 'accepted' ? null : outcome?.reason || 'invalid-sink-receipt', targetFrame: frame,
-          sourceTargetFrame, repair, ...(durationLoss ? { losses: Object.freeze([durationLoss]) } : {}), ...(selectedSource ? { selectedSource } : {}), ...(outcome?.outputRequested === false ? { outputRequested: false } : {}) }));
+          sourceTargetFrame, repair, ...(durationLoss ? { losses: Object.freeze([durationLoss]) } : {}), ...(selectedSource ? { selectedSource } : {}), ...(outcome?.sampleTraversal ? { sampleTraversal: outcome.sampleTraversal } : {}), ...(outcome?.outputRequested === false ? { outputRequested: false } : {}) }));
       }
     }
     return Object.freeze(receipts);

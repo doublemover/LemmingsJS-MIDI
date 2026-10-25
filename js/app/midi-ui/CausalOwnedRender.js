@@ -1,3 +1,5 @@
+import { planSampleTraversal, sampleTraversalBeginFields } from '../../midi/content/SampleTraversal.js';
+import { acceptsSampleCursorSegment } from '../../midi/content/SampleCursorProfile.js';
 import { prepareOwnedSamplePlan } from './OwnedSamplePlan.js';
 import { verifyOwnedPcmSetPayload } from '../resources/OwnedPcmSetVerification.js';
 import { createCausalRenderLaneResolver } from '../procgen/workstation/CausalLaneRouting.js';
@@ -86,7 +88,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
   if (owned.requiresPCMSet) {
     sampleSourcePlan = prepareOwnedSamplePlan(patch, pcmDescriptor, sampleRate);
     selectSample = intent => { const selected = sampleSourcePlan.select(intent), entry = sampleSourcePlan.entries[selected.zoneIndex];
-      if (entry.attack.mode === 'positionDriven') throw failure('sample-position-render-unavailable', 'Position-driven causal rendering requires a complete recorded travel binding, not inferred cursor motion.');
+      if (entry.attack.mode === 'positionDriven' && !entry.attack.traversal) throw failure('sample-position-render-unavailable', 'Position-driven causal rendering requires a complete recorded travel binding, not inferred cursor motion.');
       return { ...selected, minimumRateRatio: selected.rateRatio, sourceSampleRate: entry.attack.sourceSampleRate, childSourceRate: entry.release?.sourceSampleRate ?? null }; };
   }
   if (!owned.extended && (Object.keys(admittedTargetControls.macros).length || admittedTargetControls.variationAmount01 != null || admittedTargetControls.variationSeed != null)) throw failure('unsupported-performance-controls', 'Unsupported performer controls for this source.');
@@ -127,15 +129,21 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
         throw failure('unsupported-pitch', 'Captured onset exceeds this source profile.', { intentId: intent.intentId, engineId: owned.id, minimumHz: owned.minHz, maximumHz: owned.maxHz });
       let samplePlan = null;
       if (selectSample) { try { samplePlan = selectSample(intent); } catch (error) { throw failure('sample-onset-preflight', error.message, { intentId: intent.intentId }); } }
+      let traversal = null;
+      if (sampleSourcePlan && samplePlan) { const entry = sampleSourcePlan.entries[samplePlan.zoneIndex].attack;
+        if (entry.mode === 'positionDriven') { try { traversal = planSampleTraversal(entry, intent, frame, sampleRate); } catch (error) { throw failure('sample-travel-preflight', error.message, { intentId: intent.intentId }); } }
+      }
       let nativeSourcePlan = null;
       if (owned.planOnset) {
         try { nativeSourcePlan = owned.planOnset({ fundamentalHz: frequency / 2 ** ((expression.pitchOffsetCents ?? 0) / 1200), sampleRate, parameters: values, pitchOffsetCents: expression.pitchOffsetCents ?? 0 }); }
         catch { throw failure('native-source-preflight', 'Captured onset exceeds the native source register or bend profile.', { intentId: intent.intentId }); }
       }
-      const seed = samplePlan?.region.selectionSeed ?? (owned.native ? null : ownedSourceSeed(owned, patch, intent, performance)), sourceFields = owned.beginFields(values, seed, pcmDescriptor, samplePlan);
+      const seed = samplePlan?.region.selectionSeed ?? (owned.native ? null : ownedSourceSeed(owned, patch, intent, performance)), sourceFields = { ...owned.beginFields(values, seed, pcmDescriptor, samplePlan), ...sampleTraversalBeginFields(traversal) };
       const ownReleaseFrames = Math.max(1, Math.round(values.releaseSeconds * sampleRate));
       voice = { key, laneId, routeLaneId: laneId, laneTransferUntil: 0, start: frame, order, releaseAt: null, end: null, slot: -1, token: 0, begin: { ...intent, performanceControls: admittedTargetControls }, baseFrequency: frequency / 2 ** ((expression.pitchOffsetCents ?? 0) / 1200), events: [],
-        parameters: values, nativeSourcePlan, samplePlan, releaseFrames: ownReleaseFrames, articulation: { ...resolveOwnedArticulationPolicy({ engineId: owned.id, parameters: values }), ...(nativeSourcePlan?.oneShotHoldSeconds != null ? { oneShotTailSeconds: nativeSourcePlan.oneShotHoldSeconds } : {}), ...(samplePlan?.articulation || {}) },
+        parameters: values, nativeSourcePlan, samplePlan, traversalIdentity: traversal?.ownerIdentity ?? null, sampleTravelEndFrame: traversal?.segment.endOutputFrame ?? 0,
+        positionFrontier: traversal ? { frame, released: false, length: 0, lastSequence: traversal.segment.sequence, lastEndFrame: traversal.segment.endOutputFrame, lastEndPosition: traversal.segment.endSourceFrame, lastSeekFrame: -sampleSourcePlan.entries[samplePlan.zoneIndex].attack.cursorProfile.slewFrames } : null,
+        sampleTraversalSegments: traversal ? 1 : 0, lastSampleTraversal: traversal?.receipt ?? null, releaseFrames: ownReleaseFrames, articulation: { ...resolveOwnedArticulationPolicy({ engineId: owned.id, parameters: values }), ...(nativeSourcePlan?.oneShotHoldSeconds != null ? { oneShotTailSeconds: nativeSourcePlan.oneShotHoldSeconds } : {}), ...(samplePlan?.articulation || {}) },
         continuousBase: performance?.continuousBase, physicalCauses: new Map(initialCause ? [[initialCause.sourceKind, initialCause]] : []), sourceValues: values,
         stringT60Seconds: values.stringT60Seconds, bodyT60Seconds: values.bodyT60Seconds };
       sourceControls.minimumHoldSeconds = Math.min(sourceControls.minimumHoldSeconds ?? 4, voice.articulation.oneShotTailSeconds);
@@ -149,7 +157,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
       if (!voice || voice.end != null) throw failure('missing-voice-history', 'A captured control or end has no still-owned original onset.', { intentId: intent.intentId });
       if (frame < voice.start) throw failure('invalid-voice-time', 'A captured control precedes its own original onset.', { intentId: intent.intentId });
       if (intent.kind === 'end') {
-        const at = intent.terminationReason === 'one-shot' ? Math.max(frame, voice.start + Math.round(voice.articulation.oneShotTailSeconds * sampleRate)) : frame;
+        const at = Math.max(voice.sampleTravelEndFrame, intent.terminationReason === 'one-shot' ? Math.max(frame, voice.start + Math.round(voice.articulation.oneShotTailSeconds * sampleRate)) : frame);
         voice.releaseAt = at; voice.end = at + (voice.samplePlan ? (owned.requiresPCMSet ? Math.ceil(nativeSampleReleaseFrames(voice.samplePlan, voice.parameters.releaseSeconds, sampleRate)) : nativeSampleReleaseFrames(voice.samplePlan, voice.parameters.releaseSeconds, sampleRate)) : owned.native ? voice.parameters.releaseSeconds * sampleRate : voice.releaseFrames); capturedEnds++;
         voice.events.push({ kind: 'end', frame: at, order, intentId: intent.intentId, values: { 13: voice.releaseFrames } });
       } else if (intent.articulationState?.transfer) {
@@ -160,7 +168,17 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
           voice.events.push({ kind: 'lane', laneId, frame, order, intentId: intent.intentId, values: { 7: 1, 9: 0, 14: Math.ceil(0.008 * sampleRate) } });
         }
       } else {
-        let mask = 0; const values = { 14: Math.ceil(0.008 * sampleRate) };
+        let mask = 0, controlFrame = frame; const values = { 14: Math.ceil(0.008 * sampleRate) };
+        if (voice.traversalIdentity && intent.articulationState?.travel) {
+          let planned; const entry = sampleSourcePlan.entries[voice.samplePlan.zoneIndex].attack;
+          try { planned = planSampleTraversal(entry, intent, frame, sampleRate); } catch (error) { throw failure('sample-travel-preflight', error.message, { intentId: intent.intentId }); }
+          const segment = planned.segment, frontier = voice.positionFrontier;
+          if (planned.ownerIdentity !== voice.traversalIdentity || !acceptsSampleCursorSegment(entry.cursorProfile, frontier, segment.firstOutputFrame, segment.endOutputFrame, segment.firstSourceFrame, segment.endSourceFrame, segment.sequence, segment.discontinuity)) throw failure('sample-travel-continuity', 'Canonical travel changes owner, epoch, observed coordinate or queued output coverage.');
+          frontier.lastSequence = segment.sequence; frontier.lastEndFrame = segment.endOutputFrame; frontier.lastEndPosition = segment.endSourceFrame;
+          voice.sampleTravelEndFrame = segment.endOutputFrame; voice.sampleTraversalSegments++; voice.lastSampleTraversal = planned.receipt;
+          mask = 8; controlFrame = segment.firstOutputFrame; Object.assign(values, { 18: segment.firstOutputFrame, 19: segment.endOutputFrame, 20: segment.firstSourceFrame, 21: segment.endSourceFrame, 22: segment.sequence, 23: 0 });
+        }
+
         if (expression.pitchOffsetCents != null) { const frequency = voice.baseFrequency * 2 ** (expression.pitchOffsetCents / 1200);
           if (voice.samplePlan) {
             const rate = sampleRegionRate(voice.samplePlan.region, voice.begin.pitch, expression.pitchOffsetCents);
@@ -185,7 +203,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
             voice.sourceValues = performance.values;
           }
         }
-        values[15] = mask; capturedUpdates++; voice.events.push({ kind: 'update', frame, order, intentId: intent.intentId, values });
+        values[15] = mask; capturedUpdates++; voice.events.push({ kind: 'update', frame: controlFrame, order, intentId: intent.intentId, values });
       }
     }
   }
@@ -193,8 +211,8 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
   for (const voice of voices.values()) {
     if (voice.end == null) {
       if (tail.mode === 'bounded-natural') throw failure('unknown-natural-release', 'A held voice has no captured release before this boundary. Choose exact crop or an explicit derived boundary release.');
-      if (tail.mode === 'boundary-release') { voice.releaseAt = endFrame; voice.end = endFrame + (voice.samplePlan ? (owned.requiresPCMSet ? Math.ceil(nativeSampleReleaseFrames(voice.samplePlan, voice.parameters.releaseSeconds, sampleRate)) : nativeSampleReleaseFrames(voice.samplePlan, voice.parameters.releaseSeconds, sampleRate)) : owned.native ? voice.parameters.releaseSeconds * sampleRate : voice.releaseFrames); derivedReleases++;
-        voice.events.push({ kind: 'end', frame: endFrame, order: ++ordinal, intentId: null, values: { 13: voice.releaseFrames } }); }
+      if (tail.mode === 'boundary-release') { voice.releaseAt = Math.max(endFrame, voice.sampleTravelEndFrame); voice.end = voice.releaseAt + (voice.samplePlan ? (owned.requiresPCMSet ? Math.ceil(nativeSampleReleaseFrames(voice.samplePlan, voice.parameters.releaseSeconds, sampleRate)) : nativeSampleReleaseFrames(voice.samplePlan, voice.parameters.releaseSeconds, sampleRate)) : owned.native ? voice.parameters.releaseSeconds * sampleRate : voice.releaseFrames); derivedReleases++;
+        voice.events.push({ kind: 'end', frame: voice.releaseAt, order: ++ordinal, intentId: null, values: { 13: voice.releaseFrames } }); }
       else voice.end = endFrame + voice.releaseFrames + 128;
     }
     voice.admissionEnd = voice.releaseAt ?? voice.end;
@@ -252,7 +270,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
   for (let index = events.length - 1; index >= 0; index--) if (events[index].voice?.silentChoke) events.splice(index, 1);
   events.sort((left, right) => left.frame - right.frame || left.order - right.order);
   return { owned, sourcePCM, pcmDescriptor, sampleSourcePlan, renderVoices: owned.requiresPCMSet ? owned.voices : patch.voicePolicy.maxVoices, planningBytes, sourceControls, patch, parameters, events, voices, source: revoice, descriptor, applicationBuildId, sampleRate, firstFrame, endFrame, outputEnd, outputFrames,
-    sourceOriginMs, startSeconds, endSeconds, tail, releaseFrames, articulation, derivedReleases, derivedLaneTransfers, capturedBegins, capturedUpdates, capturedEnds, peakVoices, stemLaneIds, lanes, sourceLaneTokens, pcmBytes,
+    sampleTraversal: { policy: 'canonical-completed-observations;no-private-distance-clock;no-extrapolation', voices: [...voices.values()].filter(voice => voice.traversalIdentity).length, segments: [...voices.values()].reduce((count, voice) => count + voice.sampleTraversalSegments, 0) }, sourceOriginMs, startSeconds, endSeconds, tail, releaseFrames, articulation, derivedReleases, derivedLaneTransfers, capturedBegins, capturedUpdates, capturedEnds, peakVoices, stemLaneIds, lanes, sourceLaneTokens, pcmBytes,
     laneRoutingReceipt: revoice.laneRouting ? { schema: revoice.laneRouting.schema, hash: await hashData(revoice.laneRouting, { maxBytes: 4194304, maxNodes: 524288 }), initialLanes: revoice.laneRouting.initial.length, changes: revoice.laneRouting.changes.length, policy: 'captured-index-to-stable-id-at-onset-and-explicit-transfer;eight-millisecond-nonoverlapping-route-fades;semantic-intents-unchanged' } : null,
     effectReplay, effectPlan, effectSourceBindings, captureLaneIds, effectReturnNodeIds, effectHash: effectPlan ? await effectGraphHash(effectPlan) : null, effectTailTruncated: !!effectPlan && tail.mode !== 'exact-crop' && naturalEnd > outputEnd,
     timing: { ...timing.receipt(), sourceTimelineHash: timing.sourceTimeline ? await hashData(timing.sourceTimeline, { maxBytes: 1048576, maxNodes: 65536 }) : null },
@@ -367,8 +385,8 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
       smoothingSeconds: 0.008, articulationPolicy: plan.articulation.policy, oneShotHoldSeconds: plan.owned.extended ? null : plan.articulation.oneShotTailSeconds, oneShotHoldPolicy: 'per-onset-effective-source-parameters',
       sourcePerformanceControls: plan.owned.id === 'worklet-sine' ? 'retained-in-source-intents-replaced-by-explicit-new-sine-patch' : 'captured-controls-retained-explicit-new-target-controls-and-recorded-physical-causes-applied',
       sourceControls: { ...plan.sourceControls, observedKinds: [...plan.sourceControls.observedKinds].sort(), missingPhysicalObservations: 'held-or-no-qualified-source-no-invented-facts' },
-      ...(plan.sampleSourcePlan ? { sampleMap: { id: plan.sampleSourcePlan.map.mapId, revision: plan.sampleSourcePlan.map.revision, profile: plan.sampleSourcePlan.map.rendererProfile ?? 'native-forward-v1', sourcePool: plan.renderVoices, maximumLogicalGates: plan.patch.voicePolicy.maxVoices, chokedVoices: [...plan.voices.values()].filter(voice => voice.chokeFrame != null).length, selection: 'one-deterministic-onset-selection;release-child-retains-original-map-entry' } } : {}),
-      sourceBank: plan.pcmDescriptor, sourceResampling: plan.owned.requiresPCMSet ? 'owned-sample-blackman-sinc128-phase128-rate8-v1;unqualified-spectral-and-listening-profile' : plan.owned.requiresPCM ? 'source-rate-pcm-linear-read-resampling' : 'none',
+      ...(plan.sampleSourcePlan ? { sampleTraversal: plan.sampleTraversal, sampleMap: { id: plan.sampleSourcePlan.map.mapId, revision: plan.sampleSourcePlan.map.revision, profile: plan.sampleSourcePlan.map.rendererProfile ?? 'native-forward-v1', sourcePool: plan.renderVoices, maximumLogicalGates: plan.patch.voicePolicy.maxVoices, chokedVoices: [...plan.voices.values()].filter(voice => voice.chokeFrame != null).length, selection: 'one-deterministic-onset-selection;release-child-retains-original-map-entry' } } : {}),
+      sourceBank: plan.pcmDescriptor, sourceResampling: plan.owned.requiresPCMSet ? 'owned-sample-sample-read-v1;128taps;phase128;rate19;unqualified-spectral-and-listening-profile' : plan.owned.requiresPCM ? 'source-rate-pcm-linear-read-resampling' : 'none',
       fixedBank: kernel.source?.bank ? { id: kernel.source.bank.id, hash: kernel.source.bank.hash, bytes: kernel.source.bank.bytes } : null,
       normalization: 'none', integerClipping: 'not-applicable', dither: 'none-float-output', sharedMasterAndLimiter: 'excluded' },
     stems: { mode: plan.effectPlan ? 'simultaneous-dry-lane-and-shared-effect-node-taps' : 'simultaneous-dry-lane-taps', laneIds: stemLaneIds, allCapturedLanesIncluded: [...plan.lanes].every(lane => stemLaneIds.includes(lane)),

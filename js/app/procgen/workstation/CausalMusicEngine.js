@@ -280,7 +280,10 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     const reject = instrument => { rejected++; rejectedByInstrument.set(instrument.id, (rejectedByInstrument.get(instrument.id) || 0) + 1); };
     const transitions = new Map();
     const actionEntries = new Map(); for (const entry of sourceFacts) if (entry.kind === 'ActionEntered') { if (!actionEntries.has(entry.actorId)) actionEntries.set(entry.actorId, []); actionEntries.get(entry.actorId).push(entry); }
+    const motionCounts = new Map(), motionOrdinals = new Map();
+    for (const fact of sourceFacts) if (fact.kind === 'MotionCommitted') motionCounts.set(fact.actorId, (motionCounts.get(fact.actorId) || 0) + 1);
     for (const originalFact of sourceFacts) {
+      if (originalFact.kind === 'MotionCommitted') motionOrdinals.set(originalFact.actorId, (motionOrdinals.get(originalFact.actorId) || 0) + 1);
       let fact = originalFact;
       if (fact.kind === 'PickupCrossing' && fact.transition === 'exit') endMatching(batch, record => record.lifetimeScope === 'pickupOccupancy' && record.scopeInstanceId === `${fact.gateId}:${fact.actorId}`, fact, fact.reason || 'pickup-exit', output);
       travel.observeLifecycle(batch, fact);
@@ -383,12 +386,14 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
           }
           const state = result.state;
           const articulationState = Object.freeze({ travelPhase01: result.phase01, pathDistancePixels: state.pathDistancePixels,
-            signedDistancePixels: state.signedDistancePixels, contactPathDistancePixels: state.contactPathDistancePixels });
-          if (instrument.articulation.sustain && result.distancePixels > 0) {
+            signedDistancePixels: state.signedDistancePixels, contactPathDistancePixels: state.contactPathDistancePixels,
+            travel: Object.freeze({ ...result.observation, sourceSequence: fact.causalSequence + 1, segmentOrdinal: motionOrdinals.get(fact.actorId) - 1, segmentCount: motionCounts.get(fact.actorId),
+              completedTickDurationMs: Number.isFinite(batch.tickDurationMs) && batch.tickDurationMs > 0 ? batch.tickDurationMs : null, timing: 'completed-tick-equal-segments-v1' }) });
+          if (instrument.articulation.sustain) {
             const voiceId = `${batch.worldId}:${batch.generation}:${instrument.id}:r${instrumentEpochs.get(instrument.id)}:travel:${state.scopeInstanceId}`;
             const existing = active.get(voiceId);
             if (existing) output.push(intentFor(batch, fact, instrument, 'update', voiceId, null, batch.generation, {}, articulationState));
-            else if (!suppressed.has(voiceId) && begins < sourceBeginLimit && active.size + suppressed.size < sourceVoiceLimit && responds(instrument, fact, `${fact.eventId}:sustain`)) {
+            else if (result.distancePixels > 0 && !suppressed.has(voiceId) && begins < sourceBeginLimit && active.size + suppressed.size < sourceVoiceLimit && responds(instrument, fact, `${fact.eventId}:sustain`)) {
               output.push(intentFor(batch, fact, instrument, 'begin', voiceId, null, batch.generation, {}, articulationState)); begins++;
               addVoice(voiceId, { voiceId, instrument, graphRevision: current.revision, generation: batch.generation,
                 actorId: fact.actorId, laneId: fact.laneId, actionInstanceId: fact.actionInstanceId,

@@ -50,7 +50,7 @@ const createProfile = ({ id, width, voices, fields, parameters = null, buildId, 
 };
 const profiles = Object.freeze({
   'worklet-sample': createProfile({ id: 'worklet-sample', controlReferenceRender: true, width: SAMPLE_LAYOUT.width, voices: SAMPLE_LAYOUT.voices, fields: NATIVE_SAMPLE_FIELDS,
-    buildId: 'owned-sample-v2-owned-retirement', abi: 'owned-sample-f64-command-v1', workletUrl: new URL('./worklet/OwnedSampleProcessor.js', import.meta.url).href,
+    buildId: 'owned-sample-v3-canonical-travel', abi: 'owned-sample-f64-command-v2', workletUrl: new URL('./worklet/OwnedSampleProcessor.js', import.meta.url).href,
     rateLimit: true, requiresPCM: true, requiresPCMSet: true, bankId: 'sample-read-v1', storageBytes: sampleSourceBytes, heapEstimate: SAMPLE_SOURCE_HEAP_ESTIMATE,
     cost: () => 32, minHz: 0.1, maxHz: 20000, bendCents: 4800, minimumControlSeconds: 0.008,
     acceptsOnset: (parameters, frequency, pcm) => validOwnedPcmSetDescriptor(pcm),

@@ -1,3 +1,5 @@
+import { createCausalMusicEngine } from '../../js/app/procgen/workstation/CausalMusicEngine.js';
+import { sampleTraversalBinding, sampleTravelGraph, sampleMotionBatch } from '../helpers/sampleTraversal.js';
 import { expect } from 'chai';
 import { createWorkletInstrumentBackend } from '../../js/app/midi-ui/workletInstrumentBackend.js';
 import { OwnedSampleProcessor } from '../../js/app/midi-ui/worklet/OwnedSampleProcessor.js';
@@ -92,4 +94,21 @@ describe('owned sample host preparation and command ownership (deferred integrat
     await turn(); f.nodes[0].render(1700); await turn(); expect(f.nodes[0].processor.kernel.source.cursor(0).position).to.equal(0); expect(f.backend.renderDiagnostics().counters.applied).to.equal(3);
     await f.backend.dispose().completion; expect(f.resources.diagnostics().reservations).to.equal(0); await f.resources.dispose().completion;
   });
+  it('admits canonical outbound/rest/return observations without retriggering and releases at the final observed endpoint', async () => {
+    const f = setup(bank), zone = f.patch.patch.sampleMap.zones[0]; zone.loop = null; zone.playbackMode = 'positionDriven'; zone.positionPolicy = {
+      boundary: 'wrap', interpolation: 'linear', slewSeconds: 0.01, maximumReadDerivative: 4, crossfadeFrames: 256, gainLaw: 'linear', traversal: sampleTraversalBinding() };
+    const engine = createCausalMusicEngine({ getGraph: () => sampleTravelGraph() });
+    const outbound = engine.processBatch(sampleMotionBatch(1, 0, 128))[0], rest = engine.processBatch(sampleMotionBatch(2, 128, 128))[0], returned = engine.processBatch(sampleMotionBatch(3, 128, 0))[0];
+    await f.backend.prepare(f.patch, f.assets); f.backend.renewExecutionLease(1, 'live', 48000);
+    const begin = f.backend.begin(outbound, 0); expect(begin.status).to.equal('accepted'); expect(begin.sampleTraversal).to.include({ endSourceFrame: 2560, lifetimeScope: 'actorJourney' });
+    expect(f.backend.updateSampleTravel(outbound.voiceId, rest, 2880).status).to.equal('accepted');
+    expect(f.backend.updateSampleTravel(outbound.voiceId, returned, 5760).status).to.equal('accepted');
+    expect(f.backend.updateSamplePosition(outbound.voiceId, { firstOutputFrame: 9000, endOutputFrame: 10000, firstSourceFrame: 0, endSourceFrame: 10, sequence: 40 }, 9000).status).to.equal('rejected');
+    const end = f.backend.end(outbound.voiceId, { seconds: 0.01, velocity01: 0 }, 6000); expect(end.effectiveTargetFrame).to.equal(8640);
+    await turn(); f.nodes[0].render(8641); await turn(); expect(f.nodes[0].processor.kernel.source.cursor(0).position).to.equal(0);
+    expect(f.backend.renderDiagnostics().counters.rejected).to.equal(1); expect(f.preview._voices.size).to.equal(1);
+    f.nodes[0].render(600); await turn(); expect(f.preview._voices.size).to.equal(0);
+    engine.dispose(); await f.backend.dispose().completion; expect(f.resources.diagnostics().reservations).to.equal(0); await f.resources.dispose().completion;
+  });
+
 });

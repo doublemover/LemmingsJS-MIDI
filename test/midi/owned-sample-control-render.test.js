@@ -1,3 +1,6 @@
+import { createCausalMusicEngine } from '../../js/app/procgen/workstation/CausalMusicEngine.js';
+import { renderCausalOwnedTake } from '../../js/app/midi-ui/CausalOwnedRender.js';
+import { sampleTraversalBinding, sampleTravelGraph, sampleMotionBatch } from '../helpers/sampleTraversal.js';
 import { expect } from 'chai';
 import { describeNativeInstrumentEngines } from '../../js/app/midi-ui/NativeInstrumentSchema.js';
 import { prepareOwnedPcmSet } from '../../js/app/midi-ui/OwnedPcmSet.js';
@@ -50,4 +53,22 @@ describe('owned multi-asset sample control references (deferred runtime fixtures
       }
     } finally { await copy.release().completion; await set.discard().completion; expect(resources.diagnostics().reservations).to.equal(0); await resources.dispose().completion; }
   });
+  it('replays the real canonical traversal history through identical forward and state-cut render paths', async () => {
+    const [descriptor] = await describeNativeInstrumentEngines([{ engineId: 'worklet-sample', engineVersion: 1, artifactHash: 'c'.repeat(64) }]);
+    const resources = createAudioResourceLeases(), set = await prepareOwnedPcmSet([pin(a), pin(b)], { resources, owner: 'traversal-fixture' }), copy = await set.copyForProcessor();
+    const engine = createCausalMusicEngine({ getGraph: () => sampleTravelGraph() });
+    try {
+      const patch = definition('positionDriven'); patch.sampleMap.zones[0].positionPolicy.traversal = sampleTraversalBinding();
+      const intents = [engine.processBatch(sampleMotionBatch(1, 0, 128))[0], engine.processBatch(sampleMotionBatch(2, 128, 128))[0], engine.processBatch(sampleMotionBatch(3, 128, 0))[0]];
+      intents.push({ ...intents[2], kind: 'end', intentId: 'fixture:end', articulationState: null, scoreTime: { ...intents[2].scoreTime, sourceTimeMs: 180 } });
+      const revoice = { operation: 'sound-only-revoice', version: 1, takeId: 'take:traversal', takeRevision: 1, sourceCanonicalHash: 'd'.repeat(64), sourceState: 'finalized', nextSequence: null,
+        sourceVersions: { physicalMusic: 8 }, coverage: { status: 'known-covered' }, boundary: { status: 'captured-initial-state', state: { voices: [], sourceTimeMs: 0 } }, finalBoundaryState: { sourceTimeMs: 600 }, intents };
+      const input = { definition: patch, descriptor, revoice, pcm: copy.payload, sampleRate: 48000, startSeconds: 0.08, endSeconds: 0.4, tail: { mode: 'bounded-natural', maxSeconds: 1 } };
+      const forward = await renderCausalOwnedTake(input, { yieldControl: async () => {} }), restored = await renderCausalOwnedTake({ ...input, restorationMode: 'owned-state-cut' }, { yieldControl: async () => {} });
+      expect(forward.manifest.realization.sampleTraversal).to.include({ voices: 1, segments: 3 }); expect(forward.manifest.commands).to.include({ capturedBegins: 1, capturedUpdates: 2, capturedEnds: 1 });
+      expect(restored.files.map(file => file.manifest.pcmHash)).to.deep.equal(forward.files.map(file => file.manifest.pcmHash));
+      expect(restored.manifest.restoration.stateCut.frame).to.equal(3840); expect(forward.manifest.tail.truncated).to.equal(false);
+    } finally { engine.dispose(); await copy.release().completion; await set.discard().completion; expect(resources.diagnostics().reservations).to.equal(0); await resources.dispose().completion; }
+  });
+
 });

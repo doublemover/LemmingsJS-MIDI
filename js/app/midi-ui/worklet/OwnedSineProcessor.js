@@ -228,6 +228,18 @@ class OwnedSineKernel {
     } else if (opcode === END) {
       if (this.source?.validRelease && !this.source.validRelease(queue, frame)) { this.receipt(REJECTED, sequence, slot, token, frame, 1); return; }
       this.release(slot, this.source?.ownsEnvelope ? Math.min(Math.max(1, queue[13]), Math.max(1, voices[at + 16] - frame)) : Math.max(1, queue[13]), frame, this.source?.ownsEnvelope ? frame >= voices[at + 16] ? 7 : queue[20] === 1 ? 13 : 1 : 1, queue);
+      if (this.source?.cancelQueuedOnForcedEnd && queue[20] === 1) {
+        let kept = 1;
+        for (let index = 1; index < this.queueLength; index++) {
+          const from = index * this.width;
+          if (queue[from] === epoch && queue[from + 4] === slot && queue[from + 5] === token && queue[from + 3] !== BEGIN) {
+            this.receipt(CANCELLED, queue[from + 2], slot, token, frame, 13); continue;
+          }
+          for (let field = 0; field < this.width; field++) queue[kept * this.width + field] = queue[from + field]; kept++;
+        }
+        this.queue.fill(0, kept * this.width, this.queueLength * this.width); this.queueLength = kept;
+        for (let index = Math.floor(kept / 2) - 1; index >= 0; index--) this.siftDown(index);
+      }
     }
     else if (opcode === LEASE) {
       // The render boundary, not producer time, owns the irreversible release cutoff.

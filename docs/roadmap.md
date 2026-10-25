@@ -3743,3 +3743,45 @@ original release ownership and exact frame reuse fixtures are authored and unrun
 Only formatting/lint and source provenance checks accompany this development
 batch. Listening, spectral/capacity qualification, the full suite and CI remain
 deferred until the remaining development backlog is implemented.
+
+
+### Continuation 170 — canonical physical source-position traversal (#1224, #1115, #1130)
+
+Travel intents retain immutable observations from the canonical accumulator:
+world/actor/generation, scope instance, metric/orientation, evidence precision,
+world origin, before/after coordinates and discontinuity/direction epochs. Held
+voices publish observed rests without beginning another note. Actor-journey
+identity continues across action changes; contact/action scopes retain their
+existing explicit lifecycle. Physical music interpretation advances to revision 8
+and the capture profile to physical-basic-v13 so old histories are not silently
+promoted into newly covered travel evidence.
+
+Position-driven sample regions may bind an authored traversal recipe to an exact
+physical mapping. Tape footpath consumes canonical signed-axis distance; one-way
+rubbing requires unsigned contact-path distance. Precision requirements, source
+frame/pixel units, origin offset, read-rate bound and end-at-discontinuity policy
+are explicit. Unsupported route coordinates and pitch-preserving glass traversal
+remain unavailable rather than borrowing another coordinate meaning or claiming
+stretch qualification. The existing sample-map owner retains asset selection.
+
+The shared planner maps only completed observations. Ordered writes in one tick
+occupy equal subspans of that observed tick duration beginning at its audio commit
+target; this is labeled interpolation, not measured intra-tick timing. There is
+no future-distance extrapolation or second cumulative distance clock. Real
+reversals remain separate segments. Scope/epoch/source-coordinate/output coverage
+checks prevent accidental jumps, overlap and unsupported read speeds.
+
+Live onset admission includes the initial cursor segment in the same processor
+command, and routed/execution-owned updates use the same planner as causal export.
+Normal release follows already admitted completed travel. A forced choke cancels
+future controls for that exact slot/token and ends every layer; it does not create
+a release articulation. Finishing a segment exactly at release retains its true
+endpoint. Position auditions remain an explicitly authored control program, with
+physical evidence reserved for the canonical adapter.
+
+Authored fixtures cover outbound/rest/return across walking/fall/landing, scope
+reset, absent contact/precision, ordered reversal within a tick, output-rate units,
+live owner continuity and identical forward/state-cut offline rendering. These
+fixtures are unrun. Only source formatting/lint, syntax and provenance checks have
+been performed; acoustic, listening, spectral and real-time qualification await
+the consolidated acceptance pass after the remaining development work.

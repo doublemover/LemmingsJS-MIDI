@@ -7,7 +7,7 @@ export const OWNED_SAMPLE_CURSOR_SCALARS = Object.freeze(['frame', 'head', 'leng
 const scalarNames = OWNED_SAMPLE_CURSOR_SCALARS;
 export class OwnedSampleCursor {
   constructor(parameters, { frameOrigin = 0, sourceFrame = parameters.regionStartFrame, queueStorage = null } = {}) {
-    this.profile = prepareSampleCursorProfile(parameters); if (!integer(frameOrigin) || !finite(sourceFrame, this.profile.regionStartFrame, this.profile.regionEndFrame)) throw new TypeError('Sample cursor needs an exact start frame and source coordinate.');
+    this.profile = prepareSampleCursorProfile(parameters); if (!integer(frameOrigin) || !finite(sourceFrame, -this.profile.maximumCoordinateSourceFrames, this.profile.maximumCoordinateSourceFrames)) throw new TypeError('Sample cursor needs an exact start frame and source coordinate.');
     const p = this.profile;
     if (queueStorage !== null && (!(queueStorage instanceof Float64Array) || !(queueStorage.buffer instanceof ArrayBuffer) || queueStorage.length !== p.capacity * p.queueWidth)) throw new TypeError('Invalid prepared sample cursor queue storage.');
     this.queue = queueStorage || new Float64Array(p.capacity * p.queueWidth); this.queue.fill(0); this.frame = frameOrigin; this.head = 0; this.length = 0; this.lastSequence = 0; this.lastEndFrame = frameOrigin; this.lastEndPosition = sourceFrame;
@@ -17,7 +17,7 @@ export class OwnedSampleCursor {
     if (this.transfer.byteLength !== p.transferBytes) throw new Error('Sample cursor storage differs from its prepared reservation.');
   }
   reset(frameOrigin, sourceFrame = this.profile.regionStartFrame) {
-    const p = this.profile; if (!integer(frameOrigin) || !finite(sourceFrame, p.regionStartFrame, p.regionEndFrame)) throw new TypeError('Sample cursor reset needs exact frame-domain coordinates.');
+    const p = this.profile; if (!integer(frameOrigin) || !finite(sourceFrame, -p.maximumCoordinateSourceFrames, p.maximumCoordinateSourceFrames)) throw new TypeError('Sample cursor reset needs exact frame-domain coordinates.');
     this.queue.fill(0); this.frame = frameOrigin; this.head = this.length = this.lastSequence = 0; this.lastEndFrame = frameOrigin; this.lastEndPosition = sourceFrame;
     this.position = this.previousPosition = sourceFrame; this.crossfadeRemaining = 0; this.gain = this.targetGain = this.gainRemaining = 0; this.rejected = this.segmentsApplied = this.readDerivative = this.lastDiscontinuity = this.released = 0;
     this.decodedPosition = this.previousDecodedPosition = this.map(sourceFrame); this.seekMix01 = 1; this.lastSeekFrame = -p.slewFrames;
@@ -65,7 +65,16 @@ export class OwnedSampleCursor {
     this.seekMix01 = this.crossfadeRemaining ? 1 - this.crossfadeRemaining / p.slewFrames : 1;
     if (this.crossfadeRemaining) this.crossfadeRemaining--; this.frame++; return this.decodedPosition;
   }
-  release() { if (this.released) return false; this.released = 1; this.queue.fill(0); this.head = this.length = 0; this.setGate(0); return true; }
+  release() {
+    if (this.released) return false;
+    const p = this.profile;
+    while (this.length) {
+      const at = this.head * p.queueWidth; if (this.queue[at + 1] > this.frame) break;
+      this.position = this.queue[at + 3]; this.head = (this.head + 1) % p.capacity; this.length--;
+    }
+    this.decodedPosition = this.map(this.position); this.previousDecodedPosition = this.map(this.previousPosition);
+    this.released = 1; this.queue.fill(0); this.head = this.length = 0; this.readDerivative = 0; this.setGate(0); return true;
+  }
   panic() { this.release(); this.gain = this.targetGain = this.gainRemaining = this.crossfadeRemaining = this.readDerivative = 0; this.seekMix01 = 1; }
   stateByteLength() { return this.transfer.byteLength; }
   snapshotInto(bytes) { return this.transfer.write(bytes); }
