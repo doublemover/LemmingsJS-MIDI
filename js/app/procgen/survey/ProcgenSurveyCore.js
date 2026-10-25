@@ -337,6 +337,14 @@ class ProcgenSurveyTrial {
         physicalBatchComplete: !this._physicalEvidenceIncomplete, terminalRecordSchema: 1, pendingLifecycles: this._openRecords.size,
         resumeMethod: 'deterministic-restart-replay' } });
   }
+  releaseStorage() {
+    if (!this._disposed) throw new Error('Survey storage remains pinned by a live trial.');
+    this.world = null; this._terrain = null;
+    for (const record of this._records) record.actor = null;
+    this._records.length = 0; this._activeRecords.clear(); this._byIdentity.clear(); this._openRecords.clear(); this._byActorIdentity.clear(); this._pendingFinalizations.length = 0;
+    this._pendingAdmission = null; this._eventListener = null; this._batchListener = null; this._events.length = 0; this._milestones.length = 0;
+    this._spawnOriginal = null; this._restartOriginal = null; this._setPixelOriginal = null;
+  }
   dispose() {
     if (this._disposed) return;
     this._disposed = true; this.world.soundEvents.onEvent.off(this._eventListener); this.world.soundEvents.onBatch.off(this._batchListener);

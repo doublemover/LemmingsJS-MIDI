@@ -1524,3 +1524,32 @@ asset adapter; otherwise the exact case is degraded, never replaced by silent or
 unrelated audio. Sensitivity-study/domain-map integration for physical or nonlinear
 controls is also unfinished. All newly authored qualification code and fixtures are
 unrun; no PCM, listening, corpus capture, benchmark or browser result is claimed.
+
+### Revision-safe pressure and overlapping survey preparation
+
+Resource replacement revalidates the exact target entry after **every** eviction
+callback, not just its owner or byte size: transfer-back, release/recreate and
+same-sized nested replacement cannot publish a stale admission. Generations move
+only through explicit transfer; optional revision-qualified release rejects an old
+lease. Evictors run by declared priority then least-recently-served order, retaining
+bounded per-owner failure/miss/reclaimed-byte telemetry. Category peaks and measured
+admission time are separate from synchronous queue wait (zero); clock failures do
+not change authority. Unknown native/GPU overhead remains an estimate.
+
+Verified survey loading now shares one aggregate 64 MiB stream admission across
+four readers, before each owned copy. Its preparation reservation covers raw storage,
+copy/digest overlap and reader slab headroom, then shrinks to verified retained raw
+bytes. Content-Length is only an early rejection hint. Aborting the caller does not
+release storage while a platform producer still owns a pending read: the retirement
+receipt remains pending/unknown until its actual settlement, and late bytes cannot
+publish into the canceled source map.
+
+Before classic decoding, bounded container metadata and ground dimensions admit
+mask/palette/fingerprint expansion separately from the candidate-world estimate.
+Temporary BinaryReaders and FileContainers retire explicitly. A live trial pins
+raw, decoded and candidate owners; browser disposal retires physics and drops the
+trial's world/actor/terrain references before returning capacity. The world exposed
+by a trial is borrowed only until disposal; results must be captured beforehand.
+Physical-observer shared-budget integration remains development, not a consequence
+of these local owner repairs. The added concurrency/lying-header/ABA/decoder tests
+have not been run; no peak-memory or combined-scene qualification is claimed.

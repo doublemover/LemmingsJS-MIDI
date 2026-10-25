@@ -12,8 +12,8 @@ export const awaitBrowserBuildOperation = async (start, signal) => {
   finally { signal.removeEventListener('abort', abort); }
 };
 const withSignal = awaitBrowserBuildOperation;
-export async function readBrowserBuildResponse(response, maximum, signal) {
-  if (!response?.ok || !Number.isSafeInteger(maximum) || maximum < 0) throw failure('response-unavailable', 'Browser generation response is unavailable.');
+export async function readBrowserBuildResponse(response, maximum, signal, { claimBytes = () => {}, observeProducer = () => {} } = {}) {
+  if (typeof claimBytes !== 'function' || typeof observeProducer !== 'function' || !response?.ok || !Number.isSafeInteger(maximum) || maximum < 0) throw failure('response-unavailable', 'Browser generation response is unavailable.');
   const declared = response.headers?.get('content-length');
   if (declared != null && /^\d+$/.test(declared) && Number(declared) > maximum) throw failure('response-capacity', 'Browser generation response exceeds its bound.');
   signal?.throwIfAborted();
@@ -34,6 +34,7 @@ export async function readBrowserBuildResponse(response, maximum, signal) {
         signal?.throwIfAborted(); if (done) break;
         if (++chunks > 262144) throw failure('response-work-capacity', 'Browser generation stream exceeds its chunk work bound.');
         if (!(value instanceof Uint8Array) || size + value.byteLength > maximum) throw failure('response-capacity', 'Browser generation stream exceeds its bound.');
+        claimBytes(value.byteLength);
         let offset = 0;
         while (offset < value.byteLength) {
           if (filled === 65536) { parts.push(new Uint8Array(Math.min(65536, maximum - size))); filled = 0; }
@@ -45,7 +46,10 @@ export async function readBrowserBuildResponse(response, maximum, signal) {
       for (const part of parts) { const count = Math.min(part.byteLength, size - cursor); bytes.set(part.subarray(0, count), cursor); cursor += count; }
       return bytes;
     };
-    return await Promise.race([consume(), interrupted]);
+    const producer = consume();
+    const settled = producer.then(() => undefined, () => undefined).finally(() => { try { reader.releaseLock(); } catch { /* Native stream may already have released. */ } });
+    observeProducer(settled);
+    return await Promise.race([producer, interrupted]);
   } catch (error) { cancel(error); throw error; }
   finally { signal?.removeEventListener('abort', abort); try { reader.releaseLock(); } catch { /* Cancellation can retain a pending platform read. */ } }
 }

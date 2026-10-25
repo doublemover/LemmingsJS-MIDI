@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import fs from 'node:fs/promises';
-import { createBrowserSurveyTrial, verifiedBrowserFiles, hexSha256 } from '../js/app/procgen/survey/ProcgenSurveyBrowserAssets.js';
+import { createBrowserSurveyTrial, verifiedBrowserFiles, hexSha256, surveyDecodeBytes, MAX_SOURCE_BYTES } from '../js/app/procgen/survey/ProcgenSurveyBrowserAssets.js';
 import { normalizeSurveyScenario } from '../js/app/procgen/survey/ProcgenSurveyCore.js';
 import { createSurveySourceManifest, createNodeSurveyTrial } from '../scripts/procgen-survey/SurveyNodeWorld.js';
 import { SURVEY_STATE_SCHEMA, SURVEY_CANONICAL_SCHEMA } from '../js/app/procgen/survey/ProcgenSurveyCanonical.js';
@@ -89,8 +89,9 @@ describe('verified selected browser survey asset contracts', function() {
     expect(requests).to.equal(0); expect(denied.diagnostics().accountedBytes).to.equal(0);
     const budget = createResourceBudget({ limitBytes: 256 * 1048576 });
     const trial = await createBrowserSurveyTrial({ scenario: controlled, sourceManifest, fetchFile: fileFetch, resourceBudget: budget });
-    expect(budget.diagnostics().categories.asset.pinned).to.equal(1);
-    trial.dispose(); trial.dispose(); expect(budget.diagnostics().accountedBytes).to.equal(0);
+    expect(budget.diagnostics().categories.asset.pinned).to.equal(2);
+    expect(budget.diagnostics().categories.candidate.pinned).to.equal(1);
+    trial.dispose(); trial.dispose(); expect(trial.world).to.equal(null); expect(budget.diagnostics().accountedBytes).to.equal(0);
   });
   it('rejects oversized declared source responses before reading or allocating them', async () => {
     const budget = createResourceBudget({ limitBytes: 256 * 1048576 }); let reads = 0;
@@ -122,4 +123,56 @@ describe('verified selected browser survey asset contracts', function() {
     expect(requests).to.equal(1);
   });
 
+});
+
+describe('stream aggregate and decoder expansion ownership', () => {
+  const manifest = async (assetHashes = {}) => {
+    const hash = await hexSha256(new Uint8Array()), codeHashes = Object.fromEntries(['js/app/procgen/survey/ProcgenSurveyBrowserAssets.js', 'js/app/procgen/survey/ProcgenSurveyCore.js', 'js/steelSpritesData.js'].map(path => [path, hash]));
+    return { schemaVersion: 2, engineCommit: 'a'.repeat(64), codeHashes, assetHashes, codeDigest: await hexSha256(new TextEncoder().encode(JSON.stringify(codeHashes))) };
+  };
+  it('retains source storage until late aborted stream producers actually settle', async () => {
+    const source = await manifest({ 'lemmings_ohNo/MAIN.DAT': 'a'.repeat(64) }), budget = createResourceBudget({ limitBytes: 256 * 1048576 }), abort = new AbortController(), pending = [];
+    let ready; const started = new Promise(resolve => { ready = resolve; });
+    const fetchFile = async () => ({ ok: true, headers: { get: () => null }, body: { getReader(options) {
+      if (options) throw new Error('No BYOB');
+      return { read: () => new Promise(resolve => { pending.push(resolve); if (pending.length === 4) ready(); }), cancel() {}, releaseLock() {} };
+    } } });
+    let failure; const reading = verifiedBrowserFiles(source, fetchFile, abort.signal, { resourceBudget: budget }).catch(error => { failure = error; });
+    await started; abort.abort(new Error('obsolete')); await reading;
+    expect(failure.message).to.equal('obsolete'); expect(failure.retirement.outcome).to.equal('pending');
+    expect(budget.diagnostics().accountedBytes).to.be.greaterThan(MAX_SOURCE_BYTES);
+    for (const resolve of pending) resolve({ done: true });
+    await failure.retirement.completion; expect(failure.retirement.outcome).to.equal('complete'); expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+  it('rejects aggregate bytes before a fifth legal-size file can materialize', async () => {
+    const data = new Uint8Array(16 * 1048576), hash = await hexSha256(data), hashes = Object.fromEntries(Array.from({ length: 5 }, (_, i) => [`pack/GROUND${i}O.DAT`, hash]));
+    const source = await manifest(hashes), budget = createResourceBudget({ limitBytes: 256 * 1048576 }); let requested = 0;
+    await rejects(() => verifiedBrowserFiles(source, async url => {
+      if (url.pathname.endsWith('.js')) return new globalThis.Response(new Uint8Array());
+      requested++; let at = 0;
+      return new globalThis.Response(new globalThis.ReadableStream({ pull(controller) {
+        if (at === data.length) controller.close(); else { controller.enqueue(data.subarray(at, at + 1048576)); at += 1048576; }
+      } }), { headers: { 'content-length': '1' } });
+    }, null, { resourceBudget: budget }), 'aggregate stream byte budget');
+    expect(requested).to.equal(5); expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+  it('rejects four oversized streams despite absent or lying Content-Length', async () => {
+    const source = await manifest({ 'pack/MAIN.DAT': 'a'.repeat(64) }), budget = createResourceBudget({ limitBytes: 256 * 1048576 }); let requested = 0;
+    await rejects(() => verifiedBrowserFiles(source, async () => {
+      requested++; return { ok: true, headers: { get: () => requested % 2 ? null : '1' }, body: { getReader(options) {
+        if (options) throw new Error('No BYOB');
+        return { read: async () => ({ done: false, value: new Uint8Array(17 * 1048576) }), cancel() {}, releaseLock() {} };
+      } } };
+    }, null, { resourceBudget: budget }), 'exceeds its bound');
+    expect(requested).to.equal(4); expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+  it('admits pixel and container expansion before invoking decoders', () => {
+    const files = new Map([['lemmings_ohNo/MAIN.DAT', new Uint8Array(0)], ['pack/VGAGR0.DAT', new Uint8Array(0)], ['pack/GROUND0O.DAT', new Uint8Array(1056)]]);
+    const scenario = { mode: 'generated', pack: 'pack', groundSet: 0 };
+    expect(surveyDecodeBytes(scenario, files)).to.equal(1048576);
+    const ground = files.get('pack/GROUND0O.DAT'); ground[3] = 255; ground[4] = 255; ground[5] = 255;
+    expect(() => surveyDecodeBytes(scenario, files)).to.throw('decoder expansion');
+    ground.fill(0); const tinyParts = new Uint8Array(651); for (let at = 0; at < 650; at += 10) tinyParts[at + 9] = 10; files.set('pack/VGAGR0.DAT', tinyParts);
+    expect(() => surveyDecodeBytes(scenario, files)).to.throw('part metadata');
+  });
 });

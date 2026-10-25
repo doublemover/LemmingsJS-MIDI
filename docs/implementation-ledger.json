@@ -3394,7 +3394,10 @@
         "js/app/procgen/workstation/CausalMusicEngine.js",
         "js/app/procgen/workstation/PhysicalDomainEditor.js",
         "js/app/procgen/workstation/PhysicalScoreFragment.js",
-        "js/app/procgen/workstation/CausalTake.js"
+        "js/app/procgen/workstation/CausalTake.js",
+        "js/app/procgen/survey/ProcgenSurveyBrowserAssets.js",
+        "js/app/procgen/survey/ProcgenSurveyCore.js",
+        "js/runtime/BrowserGenerationService.js"
       ],
       "regressions": [
         "test/resource-budget.test.js",
@@ -3404,7 +3407,8 @@
         "scripts/bench-physical-feedback.mjs",
         "test/procgen-phrase-cargo.test.js",
         "test/physical-domain-editor.test.js",
-        "scripts/bench-phrase-cargo.mjs"
+        "scripts/bench-phrase-cargo.mjs",
+        "test/procgen-survey-browser-assets.test.js"
       ],
       "commits": [
         "90ff49f579c2f2bce24d006e51dc01c5f921dcab",
@@ -3422,6 +3426,11 @@
         {
           "id": "actor-borne-phrase-cargo",
           "summary": "Typed actor-slot cargo with physical capture/transform/exchange/delivery, shared family copy and delivery fuel, rooted atomic ownership transfer, prepublication local byte caps, incomplete-history rejection, expiry/death/generation retirement, checkpoint/fragment/capture integration and scene authoring/inspection. Real-action regressions and profile written but unrun; shared global resource reservations and broader full UI remain separate development.",
+          "commit": null
+        },
+        {
+          "id": "revision-safe-admission-and-stream-expansion",
+          "summary": "Exact target-entry/revision revalidation after every eviction callback including ABA; explicit generation transfer, deterministic priority/fair eviction and category/admission diagnostics. Four source streams claim aggregate capacity before owned copies, retain reservation through late cancellation producers, separately preflight/reserve bounded classic decoder and candidate expansion, explicitly release binary readers, and retire trial references before release. Regression coverage authored but unrun. Global physical observer integrations still incomplete.",
           "commit": null
         }
       ],
