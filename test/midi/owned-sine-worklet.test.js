@@ -148,11 +148,11 @@ describe('Owned sine worklet kernel', () => {
 });
 
 const setupHost = (engineId = 'worklet-sine') => {
-  const source = { 'worklet-sine': [OwnedSineKernel, WIDTH, 64, 'owned-sine-v6-layer-lifetime', 'owned-sine-f64-command-v1'],
-    'worklet-choir': [OwnedChoirKernel, CHOIR_WIDTH, CHOIR_VOICES, 'owned-choir-v5-layer-lifetime', 'owned-choir-f64-command-v1'],
-    'worklet-pluck': [OwnedPluckKernel, PLUCK_WIDTH, PLUCK_VOICES, 'owned-pluck-v5-layer-lifetime', 'owned-pluck-f64-command-v1'],
-    'worklet-spectrum': [OwnedSpectrumKernel, SPECTRUM_WIDTH, SPECTRUM_VOICES, 'owned-spectrum-v5-layer-lifetime', 'owned-spectrum-f64-command-v1'] }[engineId];
-  const granular = engineId === 'worklet-granular', actualSource = granular ? [OwnedGranularKernel, GRANULAR_WIDTH, GRANULAR_VOICES, 'owned-granular-v5-layer-lifetime', 'owned-granular-f64-command-v1'] : source;
+  const source = { 'worklet-sine': [OwnedSineKernel, WIDTH, 64, 'owned-sine-v7-owned-retirement', 'owned-sine-f64-command-v1'],
+    'worklet-choir': [OwnedChoirKernel, CHOIR_WIDTH, CHOIR_VOICES, 'owned-choir-v6-owned-retirement', 'owned-choir-f64-command-v1'],
+    'worklet-pluck': [OwnedPluckKernel, PLUCK_WIDTH, PLUCK_VOICES, 'owned-pluck-v6-owned-retirement', 'owned-pluck-f64-command-v1'],
+    'worklet-spectrum': [OwnedSpectrumKernel, SPECTRUM_WIDTH, SPECTRUM_VOICES, 'owned-spectrum-v6-owned-retirement', 'owned-spectrum-f64-command-v1'] }[engineId];
+  const granular = engineId === 'worklet-granular', actualSource = granular ? [OwnedGranularKernel, GRANULAR_WIDTH, GRANULAR_VOICES, 'owned-granular-v6-owned-retirement', 'owned-granular-f64-command-v1'] : source;
   const nodes = [], contextListeners = new Set(); let contextState = 'running';
   const context = { get state() { return contextState; }, set state(value) { contextState = value; for (const listener of contextListeners) listener(); },
     addEventListener: (type, listener) => { if (type === 'statechange') contextListeners.add(listener); }, removeEventListener: (type, listener) => { if (type === 'statechange') contextListeners.delete(listener); },

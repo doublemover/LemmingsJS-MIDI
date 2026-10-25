@@ -103,6 +103,7 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     if (!voice) return reject('voice-unavailable');
     if (method === 'end' && value?.transitionPolicy !== 'crossfade' && voice.articulation.releaseSeconds != null) value = { ...value, seconds: voice.articulation.releaseSeconds,
       ...(value?.mode === 'one-shot' && value.durationSource !== 'physical-interval' && voice.articulation.oneShotTailSeconds != null ? { tailSeconds: voice.articulation.oneShotTailSeconds } : {}) };
+    if (method === 'updateSamplePosition' && typeof voice.child.backend.updateSamplePosition !== 'function') return reject('sample-position-unavailable');
     if (method === 'updatePhysical' && typeof voice.child.backend.updatePhysical !== 'function') return Object.freeze({ status: 'accepted', stage: 'semantic-observation', outputRequested: false, reason: 'no-continuous-binding' });
     return voice.child.backend[method](voiceId, value, frame, voice.execution, rampSeconds);
   };
@@ -115,7 +116,7 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     let outcome; try { outcome = mix && voice.child.backend.updateLaneMix?.(voice.voiceId, mix, frame, voice.execution, laneId); } catch { outcome = null; }
     if (outcome?.status === 'accepted') { voice.mix = mix; voice.laneId = laneId; voice.sourceLaneId = sourceLaneId; voice.mixFrame = outcome.targetFrame ?? frame; return outcome; }
     voice.mixFault = true;
-    const termination = voice.child.backend.end(voice.voiceId, { seconds: 0.005 }, frame, voice.execution);
+    const termination = voice.child.backend.end(voice.voiceId, { seconds: 0.005, force: true }, frame, voice.execution);
     return { status: 'degraded', reason: mix ? 'lane-mix-failed-owner-ended' : 'lane-removed-owner-ended', termination };
   };
   const synchronizeLaneMix = frame => {
@@ -145,7 +146,7 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     const outcomes = [...execution.children].map(([child, handle]) => child.backend.renewExecutionLease(generation, handle, until));
     if (outcomes.some(outcome => outcome?.status !== 'accepted')) return reject('renderer-lease-rejected'); execution.leaseUntil = until; return Object.freeze({ status: 'accepted' });
   };
-  const backend = { begin, transferVoiceLane, update: (...args) => voiceCall('update', ...args), updatePhysical: (...args) => voiceCall('updatePhysical', ...args), end: (...args) => voiceCall('end', ...args), renewExecutionLease,
+  const backend = { begin, transferVoiceLane, update: (...args) => voiceCall('update', ...args), updatePhysical: (...args) => voiceCall('updatePhysical', ...args), updateSamplePosition: (...args) => voiceCall('updateSamplePosition', ...args), end: (...args) => voiceCall('end', ...args), renewExecutionLease,
     setDisplayContext(value) {
       if (!value || typeof value.worldId !== 'string' || !Number.isSafeInteger(value.graphRevision) || value.graphRevision < 0 ||
           !Number.isSafeInteger(value.routeRevision) || value.routeRevision < 0) throw new TypeError('Invalid routed display context.');

@@ -227,7 +227,7 @@ class OwnedSineKernel {
       const mix = slot * 6; this.mix[mix + 1] = queue[7]; this.mix[mix + 4] = queue[9]; this.mix[mix + 2] = this.mix[mix + 5] = Math.max(1, Math.round(queue[14]));
     } else if (opcode === END) {
       if (this.source?.validRelease && !this.source.validRelease(queue, frame)) { this.receipt(REJECTED, sequence, slot, token, frame, 1); return; }
-      this.release(slot, this.source?.ownsEnvelope ? Math.min(Math.max(1, queue[13]), Math.max(1, voices[at + 16] - frame)) : Math.max(1, queue[13]), frame, this.source?.ownsEnvelope && frame >= voices[at + 16] ? 7 : 1, queue);
+      this.release(slot, this.source?.ownsEnvelope ? Math.min(Math.max(1, queue[13]), Math.max(1, voices[at + 16] - frame)) : Math.max(1, queue[13]), frame, this.source?.ownsEnvelope ? frame >= voices[at + 16] ? 7 : queue[20] === 1 ? 13 : 1 : 1, queue);
     }
     else if (opcode === LEASE) {
       // The render boundary, not producer time, owns the irreversible release cutoff.
@@ -346,6 +346,7 @@ const ProcessorBase = globalThis.AudioWorkletProcessor || class {};
 class OwnedSineProcessor extends ProcessorBase {
   constructor(options) {
     super(); this.kernel = this.createKernel(globalThis.sampleRate, options?.processorOptions?.maxVoices || MAX_VOICES, options?.processorOptions);
+    this.retired = false;
     this.laneRouteCount = 0; this.laneTapEnabled = new Uint8Array(LIVE_LANE_TAP_LIMIT); this.routeBarriers = new Float64Array(LIVE_LANE_TAP_LIMIT); this.routeBarrierCount = 0;
     this.laneTaps = options?.processorOptions?.laneTapProtocol === LIVE_LANE_TAP_PROTOCOL ? { routeMode: 'mask', routes: new Uint16Array(MAX_VOICES), tokens: new Uint32Array(MAX_VOICES), laneTokens: new Uint32Array(LIVE_LANE_TAP_LIMIT),
       channels: Array.from({ length: LIVE_LANE_TAP_LIMIT }, () => [null, null]), preChannels: Array.from({ length: LIVE_LANE_TAP_LIMIT }, () => [null, null]) } : null;
@@ -355,6 +356,10 @@ class OwnedSineProcessor extends ProcessorBase {
     this.displayAwaiting = 0;
     this.port.onmessage = event => {
       const data = event.data;
+      if (data?.type === 'retire-processor' && data.protocol === PROTOCOL && data.retirementProtocol === 1 && Number.isSafeInteger(data.retirementId) && data.retirementId > 0) {
+        const frame = this.kernel.lastFrame; this.retired = true; this.kernel = null; this.laneTaps = null; this.port.onmessage = null;
+        this.port.postMessage({ type: 'processor-retired', protocol: PROTOCOL, retirementProtocol: 1, retirementId: data.retirementId, stage: 'processor-state-released', frame, renderingContinues: false }); return;
+      }
       if (data?.type === 'commands' && data.protocol === PROTOCOL) this.kernel.accept(data.data, data.count, data.packetSequence);
       else if (data?.type === 'panic') {
         this.kernel.panicPending = true; this.kernel.receipt(SCHEDULED, 0, -1, 0, this.kernel.lastFrame, 2);
@@ -378,13 +383,13 @@ class OwnedSineProcessor extends ProcessorBase {
       else this.port.postMessage({ type: 'protocol-error', protocol: PROTOCOL });
       this.flushReceipts();
     };
-    this.port.postMessage({ type: 'ready', protocol: PROTOCOL, ...this.runtimeIdentity(),
+    this.port.postMessage({ type: 'ready', protocol: PROTOCOL, retirementProtocol: 1, ...this.runtimeIdentity(),
       laneTapProtocol: this.laneTaps ? LIVE_LANE_TAP_PROTOCOL : null, maxLaneTaps: this.laneTaps ? LIVE_LANE_TAP_LIMIT : 0,
       displayProtocol: DISPLAY_PROTOCOL, displayWidth: DISPLAY_WIDTH, displayVoices: DISPLAY_VOICES,
       sampleRate: globalThis.sampleRate, maxVoices: this.kernel.maxVoices, capacity: CAPACITY, width: this.kernel.width });
   }
   createKernel(rate, voices) { return new OwnedSineKernel(rate, voices); }
-  runtimeIdentity() { return { engineId: 'worklet-sine', engineVersion: 1, runtimeABI: 'owned-sine-f64-command-v1', buildId: 'owned-sine-v6-layer-lifetime' }; }
+  runtimeIdentity() { return { engineId: 'worklet-sine', engineVersion: 1, runtimeABI: 'owned-sine-f64-command-v1', buildId: 'owned-sine-v7-owned-retirement' }; }
   flushDisplay() {
     if (this.displayAwaiting || !this.kernel.displayReady) return;
     const message = this.displayMessage; message.count = this.kernel.displayCount; message.sequence = this.kernel.displaySequence;
@@ -406,6 +411,7 @@ class OwnedSineProcessor extends ProcessorBase {
     this.kernel.receiptCount = 0;
   }
   process(_inputs, outputs) {
+    if (this.retired) { for (const output of outputs) for (const channel of output) channel.fill(0); return false; }
     const output = outputs[0];
     if (!output?.[0]) return true;
     if (this.laneTaps && this.laneRouteCount) for (let index = 0; index < LIVE_LANE_TAP_LIMIT; index++) {

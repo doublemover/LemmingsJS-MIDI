@@ -3664,3 +3664,50 @@ same-pitch ownership and complete state-cut fixtures are authored and unrun.
 The processor is implemented, but engine catalog publication, live preparation,
 sample-map onset commands, offline fixtures and canonical travel integration are
 still pending. It is deliberately not yet advertised as an available sampler.
+
+
+### Continuation 168 — prepared sampler ownership and processor retirement (#1130, #1079, #1162)
+
+The shared Worklet backend can now prepare the pooled sampler from a complete
+multi-asset PCM set and the existing sample-map selector. A ready processor must
+report the exact map/PCM/filter identity and support explicit state retirement.
+Changing the prepared map or decoded material requires another renderer. Every
+required asset and both selected layer pitch domains are checked before onset
+publication. Per-onset selection, source-frame derivative and release ownership
+have an owned-source receipt rather than a native-API label. Runtime metadata and
+maximum configuration storage are charged before processor allocation; source
+heap estimates now participate in the shared runtime reservation.
+
+The same voice accepts bounded position segments through execution and routed
+backend handles. Host and processor share one pure segment admission rule, retain
+future coverage/reversal/seek frontiers and reject overlap or excessive derivative
+before enqueue. A later processor refusal faults the source owner instead of
+silently continuing an obsolete path. Four-second release-child admission is
+clipped by the existing voice interval. Same-kit choke controls use a forced
+all-layer fade and never trigger another release; same-frame losers are silent.
+Explicit semantic release remains distinct from preview cleanup and Panic.
+
+A shared ownership audit found that native node disconnect alone did not confirm
+private PCM retirement. Current processors now drop their DSP/source graph in a
+fenced control-port operation, acknowledge the completed state release and return
+false from subsequent processing. Runtime reservations wait for that receipt or
+confirmed AudioContext closure. Missing or malformed acknowledgement retains the
+concrete producer and unknown accounting. Pending retirement is distinct from a
+failed retirement, including fault/dispose bookkeeping. Existing native disconnect
+evidence is retained for legacy API doubles, not promoted into measured acoustic
+or browser-resident-memory evidence.
+
+Preparation, missing/changed material, release tails, exact kit choke, position
+control, processor reference release, closure and unknown-retirement fixtures are
+written and unrun. Formatting/lint and provenance are the only checks in this
+frontloaded pass. The sampler remains absent from the public engine catalog and
+fixed offline adapter until material/audition/render and canonical travel wiring
+are complete. No new real-time capacity, listening or clean-CI claim is made.
+
+
+Lane-mix failure cleanup now carries an explicit force flag through native and
+owned backend ends. It can shorten an existing release and stop every child
+without treating cleanup as another semantic release. Native choke rebuilding
+retains that force policy. Source-forced release has its own kernel reason code,
+so its receipt is not mislabeled as Panic. Matching active-child cleanup fixtures
+are authored for both renderers and remain unrun.

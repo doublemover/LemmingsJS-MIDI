@@ -92,7 +92,7 @@ const verify = (bytes, identity, { sampleRate, maxVoices, width }) => {
   for (let index = 0; index < received; index++) {
     const at = RECEIPT + index * RECEIPT_WIDTH * 8, get = field => view.getFloat64(at + field * 8, true);
     if (!natural(get(0), 6) || get(0) < 1 || !natural(get(1)) || !Number.isInteger(get(2)) || get(2) < -1 || get(2) >= maxVoices ||
-        !natural(get(3)) || !natural(get(4)) || !natural(get(5), 12)) fail('DSP receipt frontier is invalid.');
+        !natural(get(3)) || !natural(get(4)) || !natural(get(5), 13)) fail('DSP receipt frontier is invalid.');
   }
   return { view, frame, packet, queued, received };
 };

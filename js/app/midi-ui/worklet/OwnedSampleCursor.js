@@ -1,4 +1,4 @@
-import { prepareSampleCursorProfile, sampleCursorIdentity } from '../../../midi/content/SampleCursorProfile.js';
+import { prepareSampleCursorProfile, sampleCursorIdentity, acceptsSampleCursorSegment } from '../../../midi/content/SampleCursorProfile.js';
 import { createOwnedEffectState } from './OwnedEffectState.js';
 const finite = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;
 const integer = (value, low = 0, high = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(value) && value >= low && value <= high;
@@ -23,8 +23,7 @@ export class OwnedSampleCursor {
     this.decodedPosition = this.previousDecodedPosition = this.map(sourceFrame); this.seekMix01 = 1; this.lastSeekFrame = -p.slewFrames;
   }
   canEnqueueFields(firstOutputFrame, endOutputFrame, firstSourceFrame, endSourceFrame, sequence, discontinuity = 'continuous') {
-    const p = this.profile, maximum = p.maximumCoordinateSourceFrames, multiplier = p.interpolation === 'smoothstep' ? 1.5 : 1;
-    return !(this.released || !integer(firstOutputFrame, this.frame) || !integer(endOutputFrame, firstOutputFrame + 1) || endOutputFrame - firstOutputFrame > p.sampleRate * 2 || !integer(sequence, this.lastSequence + 1) || !finite(firstSourceFrame, -maximum, maximum) || !finite(endSourceFrame, -maximum, maximum) || typeof discontinuity !== 'string' || !Object.hasOwn(kinds, discontinuity) || discontinuity !== 'continuous' && firstOutputFrame < this.lastSeekFrame + p.slewFrames || firstOutputFrame < this.lastEndFrame || discontinuity === 'continuous' && Math.abs(firstSourceFrame - this.lastEndPosition) > 1e-7 || Math.abs(endSourceFrame - firstSourceFrame) * p.sourceToDecoded / (endOutputFrame - firstOutputFrame) * multiplier > p.maximumReadDerivative || this.length === p.capacity);
+    return acceptsSampleCursorSegment(this.profile, this, firstOutputFrame, endOutputFrame, firstSourceFrame, endSourceFrame, sequence, discontinuity);
   }
   enqueue({ firstOutputFrame, endOutputFrame, firstSourceFrame, endSourceFrame, sequence, discontinuity = 'continuous' } = {}) {
     return this.enqueueFields(firstOutputFrame, endOutputFrame, firstSourceFrame, endSourceFrame, sequence, discontinuity);

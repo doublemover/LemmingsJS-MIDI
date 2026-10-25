@@ -21,7 +21,7 @@ export const sampleMapRenderIdentity = map => map ? { schema: map.schema, mapId:
 
 export function retainSampleSelectionReceipt(outcome) {
   try {
-    const region = outcome?.region, selection = region?.selection;
+    const region = outcome?.region, selection = region?.selection, owned = outcome?.sourceRenderer === 'owned-sample';
     if (outcome?.status !== 'accepted' || !selection || region.domain !== 'source-frames' || !/^[a-f0-9]{64}$/.test(region.assetHash) ||
         !integer(region.onsetFrame, 0, 7999999) || !integer(region.endFrame, region.onsetFrame + 1, 8000000) || !finite(region.rootCents, -24000, 24000) ||
         !finite(outcome.rateRatio, 1 / 16, 16) || !integer(region.selectionSeed, 0, 0xffffffff) || !id(selection.mapId) || !integer(selection.mapRevision, 1, 2147483647) ||
@@ -29,12 +29,14 @@ export function retainSampleSelectionReceipt(outcome) {
         !integer(selection.alternates, 1, 32) || !integer(selection.alternateIndex, 0, selection.alternates - 1) ||
         !finite(selection.velocityMin01, 0, 1) || !finite(selection.velocityMax01, selection.velocityMin01, 1) || typeof selection.neutralFallback !== 'boolean' ||
         !['execution-birth', 'event-only-fallback'].includes(selection.identityScope) || selection.algorithmVersion !== SAMPLE_SELECTION_ALGORITHM) return null;
-    return freezeData({ schema: 'lemmings-native-sample-selection/v1', assetHash: region.assetHash, onsetFrame: region.onsetFrame, endFrame: region.endFrame,
+    if (owned && (!['forward', 'reverse', 'positionDriven'].includes(region.playbackMode) || !finite(outcome.readDerivative, -4, 4))) return null;
+    return freezeData({ schema: owned ? 'lemmings-owned-sample-selection/v1' : 'lemmings-native-sample-selection/v1', assetHash: region.assetHash, onsetFrame: region.onsetFrame, endFrame: region.endFrame,
       rootCents: region.rootCents, rateRatio: outcome.rateRatio, selectionSeed: region.selectionSeed, mapId: selection.mapId, mapRevision: selection.mapRevision,
       zoneId: selection.zoneId, articulationId: selection.articulationId, requestedArticulationId: selection.requestedArticulationId, neutralFallback: selection.neutralFallback,
       roundRobinGroup: selection.roundRobinGroup, alternateIndex: selection.alternateIndex, alternates: selection.alternates, velocityMin01: selection.velocityMin01,
       velocityMax01: selection.velocityMax01, identityScope: selection.identityScope, algorithmVersion: SAMPLE_SELECTION_ALGORITHM,
-      evidenceClass: 'native-source-selection-api', appliedFrame: null, acousticReceipt: false });
+      ...(owned ? { playbackMode: region.playbackMode, readDerivative: outcome.readDerivative } : {}),
+      evidenceClass: owned ? 'owned-source-selection-api' : 'native-source-selection-api', appliedFrame: null, acousticReceipt: false });
   } catch { return null; }
 }
 

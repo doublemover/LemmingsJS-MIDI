@@ -71,6 +71,14 @@ describe('Owned native sample regions', () => {
     const pressure = context.gains.flatMap(node => node.gain.events).filter(event => event.type === 'ramp' && event.value === 0.4);
     expect(pressure).not.to.have.length(0); Object.defineProperty(context, 'currentTime', { configurable: true, value: clock, writable: true });
   });
+  it('forces lane-owner cleanup through an active release child without selecting or starting another release', async () => {
+    const { backend, preview, context, selections } = await setup({}, region({ chokeGroup: 'hat', chokeScope: 'kit', releaseRegion: region() }));
+    backend.begin(intent(), 4800, 'take'); backend.end('A', { seconds: 0.04 }, 9600, 'take');
+    const voice = [...preview._voices][0], child = voice.child.source; expect(child.starts).to.have.length(1); context.currentTime = 0.25;
+    expect(backend.end('A', { seconds: 0.005, force: true }, 12000, 'take').status).to.equal('accepted');
+    expect(child.starts).to.have.length(1); expect(selections()).to.equal(1); expect(voice.stolen).to.equal(true); expect(voice.end).to.be.closeTo(0.255, 1e-12);
+    expect(voice.terminationCause).to.equal('owned-cleanup');
+  });
   it('prepares the immutable authored map directly and retains its actual region selection and one-shot duration', async () => {
     const fixture = await setup(), backend = await fixture.session.createSampleInstrumentBackend({ clockMode: 'offline' }), resolution = patch();
     resolution.patch.sampleMap = singleSampleMap(fixture.asset.pin.ref.contentHash, { frames: 44100 });

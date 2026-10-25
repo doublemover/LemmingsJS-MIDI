@@ -399,7 +399,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
         voice.released = false; voice.stolen = false; voice.releaseLevel = null;
         if (voice.child) voice.child.ended = !!voice.child.completed;
         if (!terminal || terminal.at >= now) scheduleHeldEnvelope(voice, voice.hardEnd);
-        if (terminal) { voice.release = terminal.seconds; releaseVoice(voice, terminal.at, false, 'semantic-end', terminal.velocity, true); }
+        if (terminal) { voice.release = terminal.seconds; releaseVoice(voice, terminal.at, terminal.force === true, terminal.force ? 'owned-cleanup' : 'semantic-end', terminal.velocity, true); }
         if (next && next.start < voice.end) releaseVoice(voice, next.start, true, 'sample-choke');
       }
     } finally { rebuildingChokes = false; armExpiry(); }
@@ -431,15 +431,15 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     const voice = voices.get(keyFor(executionEpoch, voiceId)), time = timeFor(targetFrame);
     if (!voice) return reject('voice-not-active', voiceId);
     if (time == null || release != null && (!plain(release) || !finite(release.seconds, 0, 4) ||
-        release.velocity01 != null && !finite(release.velocity01, 0, 1) || release.mode != null && release.mode !== 'one-shot' ||
+        release.velocity01 != null && !finite(release.velocity01, 0, 1) || release.force != null && typeof release.force !== 'boolean' || release.mode != null && release.mode !== 'one-shot' ||
         release.mode === 'one-shot' && !finite(release.tailSeconds, 0, 4))) return reject('invalid-release', voiceId);
-    if (voice.semanticRelease) return trace({ status: 'accepted', stage: 'scheduled', voiceId, reason: 'already-releasing' });
+    if (voice.semanticRelease && release?.force !== true) return trace({ status: 'accepted', stage: 'scheduled', voiceId, reason: 'already-releasing' });
     if (release) voice.release = release.seconds;
     const at = release?.mode === 'one-shot' ? Math.max(time, voice.start + release.tailSeconds) : time;
-    voice.semanticRelease = { at: Math.max(at, preview._context.currentTime), seconds: voice.release, velocity: release?.velocity01 ?? 1 };
+    voice.semanticRelease = { at: Math.max(at, preview._context.currentTime), seconds: voice.release, velocity: release?.velocity01 ?? 1, force: release?.force === true };
     try {
       if (voice.region.chokeGroup) rebuildChokes(voice.region.chokeGroup, voice.region.chokeScope);
-      else releaseVoice(voice, at, false, 'semantic-end', release?.velocity01 ?? 1);
+      else releaseVoice(voice, at, release?.force === true, release?.force ? 'owned-cleanup' : 'semantic-end', release?.velocity01 ?? 1);
     }
     catch { errors++; preview._destroyVoice(voice, 'sample-release-failure'); return reject('sample-release-failure', voiceId); }
     return trace({ status: 'accepted', stage: 'scheduled', voiceId, targetFrame, executionEpoch, endFrame: Math.ceil(voice.end * preview._context.sampleRate),

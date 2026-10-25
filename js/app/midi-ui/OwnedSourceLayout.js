@@ -33,5 +33,5 @@ export function granularSourceBytes(rate, voices = GRANULAR_LAYOUT.voices) {
 export function sampleSourceBytes(rate, voices = SAMPLE_LAYOUT.voices) {
   check(rate, voices, SAMPLE_LAYOUT.voices, 96000);
   if (![44100, 48000, 96000].includes(rate)) throw new RangeError('Invalid owned sample source rate.');
-  return SAMPLE_READ_TABLE_SAMPLES * 4 + voices * (SAMPLE_LAYOUT.state + SAMPLE_LAYOUT.zones * (SAMPLE_LAYOUT.cursorCapacity * SAMPLE_LAYOUT.cursorWidth + SAMPLE_LAYOUT.cursorScalars)) * 8;
+  return 524288 + SAMPLE_READ_TABLE_SAMPLES * 4 + voices * (SAMPLE_LAYOUT.state + SAMPLE_LAYOUT.zones * (SAMPLE_LAYOUT.cursorCapacity * SAMPLE_LAYOUT.cursorWidth + SAMPLE_LAYOUT.cursorScalars)) * 8;
 }

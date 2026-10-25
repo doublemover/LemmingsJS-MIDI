@@ -1,3 +1,8 @@
+import { acceptsSampleCursorSegment, SAMPLE_CURSOR_DISCONTINUITIES } from '../../midi/content/SampleCursorProfile.js';
+import { prepareOwnedPcmSet } from './OwnedPcmSet.js';
+import { retireOwnedProcessorState } from './OwnedProcessorRetirement.js';
+import { prepareOwnedSamplePlan } from './OwnedSamplePlan.js';
+import { validateSampleInstrumentMap, OWNED_SAMPLE_MAP_PROFILE } from '../../midi/content/SampleInstrumentMap.js';
 import { sourceVoiceMatches } from '../../midi/content/EffectVoiceSelection.js';
 import { LIVE_LANE_TAP_LIMIT, LIVE_LANE_TAP_PROTOCOL } from './OwnedSourceLayout.js';
 import { validVoiceLaneMix } from './VoiceLaneMix.js';
@@ -25,27 +30,28 @@ const sineCapabilities = Object.freeze({ independentSamePitch: true, perVoicePit
 const finite = (value, min, max) => Number.isFinite(value) && value >= min && value <= max;
 const keyFor = (epoch, id) => JSON.stringify([epoch, id]);
 const kernelReasons = Object.freeze({ 1: 'invalid-command', 2: 'kernel-queue-full', 3: 'generation-cancelled', 4: 'late-command',
-  5: 'kernel-voice-budget-or-range', 6: 'stale-voice-slot', 7: 'owner-lease-expired', 8: 'nonfinite-dsp', 9: 'pending-onset-cancelled', 10: 'kernel-excitation-budget', 11: 'execution-lease-too-late', 12: 'stale-execution-lease' });
+  5: 'kernel-voice-budget-or-range', 6: 'stale-voice-slot', 7: 'owner-lease-expired', 8: 'nonfinite-dsp', 9: 'pending-onset-cancelled', 10: 'kernel-excitation-budget', 11: 'execution-lease-too-late', 12: 'stale-execution-lease', 13: 'source-forced-release' });
 
 export function createWorkletInstrumentBackend(preview, owner = null, { leadSeconds = 0.25, smoothingSeconds = 0.008,
   traceLimit = 128, createWorkletNode = null, initializationTimeoutMs = 5000, engineId = 'worklet-sine', prepareSourceBank = prepareOwnedSourceBank } = {}) {
   const source = getOwnedSourceProfile(engineId), WIDTH = source.width, MAX_VOICES = source.voices, fields = source.fields, isExtended = source.extended;
   const performanceParameters = source.parameters, liveSourceIds = source.liveIds;
   const expressionIds = new Set(['pressure01', 'pan01', 'pitchOffsetCents', ...liveSourceIds]);
-  const runtime = Object.freeze({ ...source.runtime, hostProtocolVersion: PROTOCOL });
-  const capabilities = Object.freeze({ ...sineCapabilities, maximumVoices: MAX_VOICES, offlineRender: source.offlineRender, continuousPhysicalBindings: isExtended,
+  const runtime = Object.freeze({ ...source.runtime, hostProtocolVersion: PROTOCOL, retirementProtocol: 1 });
+  const capabilities = Object.freeze({ ...sineCapabilities, maximumVoices: MAX_VOICES, sampleMaps: source.requiresPCMSet, positionDrivenSamples: source.requiresPCMSet, releaseVelocity: source.requiresPCMSet, offlineRender: source.offlineRender, continuousPhysicalBindings: isExtended,
     perVoiceDamping: source.damping, perVoiceTimbre: source.perVoiceTimbre, supportedParameterIds: Object.freeze(Object.keys(fields)) });
   if (!finite(leadSeconds, 0.01, 2) || !finite(smoothingSeconds, 0, 1) || !Number.isSafeInteger(traceLimit) || traceLimit < 0 || traceLimit > 4096 ||
       !finite(initializationTimeoutMs, 1, 30000)) throw new Error('Invalid worklet backend options.');
   let node = null, context = null, ready = false, disposed = false, preparing = 0, patch = null, sequence = 0, packetSequence = 0;
   let pumpTimer = null, fault = null, truncated = 0, nextEpoch = 0, cancellationHistoryFull = false;
   let ownerStopped = false, ownerStopReceipt = null;
-  let runtimeResourceLease = null, pcmDescriptor = null;
+  let runtimeResourceLease = null, pcmDescriptor = null, samplePlan = null;
   let pumpQueued = false;
   let lifecycle = null;
   let faultRetirement = null;
   let retirementContext = null;
   const nodeRetirements = new WeakMap();
+  const retirementAware = new WeakSet(), nodeContexts = new WeakMap();
   const retirement = createProcgenRetirementScope();
   const voices = new Map(), epochs = new Map(), leases = new Map(), cancelled = new Set(), inFlight = new Map(), traces = [];
   const cancellationReceipts = new Map();
@@ -121,10 +127,11 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       { name: 'native-worklet', run: () => { nativeRetirement = createProcgenRetirementScope().retire([
         { name: 'source-route-barriers', run: () => { for (const [id, barrier] of routeBarriers) if (barrier.producer === retiringNode) { clearTimeout(barrier.timer); barrier.reject(new Error('Source producer retired during routing.')); routeBarriers.delete(id); } } },
         { name: 'lane-source-producer', run: () => { if (laneProducer === retiringNode) { releaseLaneProducer?.(); releaseLaneProducer = null; laneRegistry = laneProducer = null; } } },
+        { name: 'processor-state', run: () => retirementAware.has(retiringNode) ? retireOwnedProcessorState(retiringNode, nodeContexts.get(retiringNode)) : null },
         { name: 'processor-handler', run: () => { if (retiringNode) retiringNode.onprocessorerror = null; } },
-        { name: 'message-handler', run: () => { if (retiringNode) retiringNode.port.onmessage = null; } },
+        { name: 'message-handler', run: () => { if (retiringNode && !retirementAware.has(retiringNode)) retiringNode.port.onmessage = null; } },
         { name: 'disconnect', run: () => retiringNode?.disconnect() },
-        { name: 'message-port', run: () => retiringNode?.port.close() }
+        { name: 'message-port', run: () => { if (retiringNode && !retirementAware.has(retiringNode)) retiringNode.port.close(); } }
       ]); return nativeRetirement; } },
       { name: 'runtime-reservation', run: () => releaseAudioResourceAfterRetirement(resourceLease, nativeRetirement) }
     ]);
@@ -142,8 +149,11 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       { name: 'native-runtime', run: () => retireNode(node, runtimeResourceLease) },
       { name: 'executions', run: () => lifecycle?.invalidate() }
     ]);
-    if (faultRetirement.outcome === 'complete') { slots.fill(null); node = null; runtimeResourceLease = null; }
-    else preview._retirementFaults?.add(owner);
+    const failedNode = node, settled = receipt => {
+      if (receipt.outcome === 'complete') { if (node === failedNode) { slots.fill(null); node = null; runtimeResourceLease = null; } }
+      else preview._retirementFaults?.add(owner);
+    };
+    if (faultRetirement.state === 'retired') settled(faultRetirement); else faultRetirement.completion.then(settled);
     record({ status: 'faulted', reason, stage: 'runtime', appliedFrame: null });
     return faultRetirement;
   };
@@ -201,6 +211,13 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     const reserved = Math.max(voice.effectiveLeaseEndFrame ?? voice.initialLeaseEndFrame, ...voice.pendingLeases.values());
     voice.end = reserved / context.sampleRate; voice.releaseAt = voice.end - voice.release;
   };
+  const forceSampleEnd = (voice, frame, silentAtOnset = false) => {
+    frame = Math.max(frameNow(), frame, Math.round(voice.start * context.sampleRate));
+    const frames = Math.min(Math.ceil(context.sampleRate * 0.005), Math.max(1, Math.round(voice.end * context.sampleRate) - frame));
+    const outcome = command(END, frame, voice, { 13: frames, 16: frame + frames, 20: 1, 21: Number(silentAtOnset) });
+    if (outcome.status === 'accepted') { voice.released = true; voice.releaseAt = Math.min(voice.releaseAt, frame / context.sampleRate); voice.end = Math.min(voice.end, (frame + frames) / context.sampleRate); }
+    return outcome;
+  };
   const onReceipts = data => {
     if (data.protocol !== PROTOCOL || !(data.data instanceof Float64Array) || !Number.isInteger(data.count) || data.count < 0 ||
         data.count * RECEIPT_WIDTH > data.data.length || data.count > 64) { markFault('invalid-kernel-receipt'); return; }
@@ -215,7 +232,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
           executionEpoch: original.epoch, generation: original.generation, targetFrame: original.frame, appliedFrame: null });
         continue;
       }
-      kernelQueued.delete(serial);
+      kernelQueued.delete(serial); voice?.positionCommands?.delete(serial);
       if (code === APPLIED) {
         if (reason === 2 && slot === -1) { ownerStopped = false; ownerStopReceipt = null; }
         counters.applied++; inFlight.delete(serial);
@@ -242,6 +259,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
         }
         inFlight.delete(serial);
         if (code === REJECTED && original?.opcode === MIX && original.data[6]) markFault('source-lane-transfer-rejected');
+        if (code === REJECTED && source.requiresPCMSet && original?.opcode === UPDATE && original.data[15] & 8) markFault('source-position-control-rejected');
       }
       record({ status: code === REJECTED ? 'rejected' : code === FAULTED ? 'faulted' : code === CANCELLED ? 'cancelled' : 'accepted',
         stage: code === APPLIED ? 'render-kernel-applied' : code === ENDED ? 'render-kernel-ended' : 'render-kernel-outcome',
@@ -257,7 +275,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (!['ready', 'degraded'].includes(resolution?.status) || input?.engineId !== runtime.engineId || input.engineVersion !== 1 ||
         typeof input.id !== 'string' || !input.id || !Number.isSafeInteger(input.revision) || input.revision < 1 ||
         resolution.receipt?.patchId !== input.id || resolution.receipt?.revision !== input.revision || !Array.isArray(input.sampleRefs) ||
-        (source.requiresPCM ? input.sampleRefs.length !== 1 || !/^[a-f0-9]{64}$/.test(input.sampleRefs[0]?.sha256) || !Number.isSafeInteger(input.sampleRefs[0]?.bytes) || input.sampleRefs[0].bytes < 44 || input.sampleRefs[0].bytes > 16 * 1048576 : input.sampleRefs.length !== 0) ||
+        (source.requiresPCM ? input.sampleRefs.length < 1 || input.sampleRefs.length > (source.requiresPCMSet ? 32 : 1) || input.sampleRefs.some(ref => !/^[a-f0-9]{64}$/.test(ref?.sha256) || !Number.isSafeInteger(ref.bytes) || ref.bytes < 44 || ref.bytes > 16 * 1048576) : input.sampleRefs.length !== 0) ||
         input.modulations?.length || !isExtended && (input.macros?.length || input.causalBindings?.length || input.variation) ||
         !Number.isSafeInteger(input.voicePolicy?.maxVoices) || input.voicePolicy.maxVoices < 1 || input.voicePolicy.maxVoices > MAX_VOICES ||
         input.voicePolicy.steal != null && input.voicePolicy.steal !== 'reject' ||
@@ -269,28 +287,32 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (!source.acceptsParameters(parameters)) return null;
     let performance = null;
     if (isExtended) { try { performance = compileInstrumentPerformance(input, performanceParameters); } catch { return null; } }
-    return Object.freeze({ id: input.id, revision: input.revision, parameters: Object.freeze(parameters), performance,
+    let samplePatch = null;
+    if (source.requiresPCMSet) { try { samplePatch = Object.freeze({ id: input.id, revision: input.revision, parameters: Object.freeze({ ...parameters }),
+      voicePolicy: Object.freeze({ maxVoices: input.voicePolicy.maxVoices }), sampleRefs: Object.freeze(input.sampleRefs.map(ref => Object.freeze({ ...ref }))),
+      sampleMap: validateSampleInstrumentMap(input.sampleMap, input.sampleRefs, { rendererProfile: OWNED_SAMPLE_MAP_PROFILE }) }); } catch { return null; } }
+    return Object.freeze({ samplePatch, id: input.id, revision: input.revision, parameters: Object.freeze(parameters), performance,
       maxVoices: input.voicePolicy.maxVoices, gain01: input.mix.gain01, pan01: input.mix.pan01, sampleRef: source.requiresPCM ? Object.freeze({ ...input.sampleRefs[0] }) : null });
   };
   const prepareSource = async (resolution, assets = []) => {
     if (disposed) return reject('disposed');
-    if (faultRetirement?.outcome === 'partial' && (retirementContext || context)?.state !== 'closed') return reject('audio-retirement-unknown');
+    if (faultRetirement && faultRetirement.outcome !== 'complete' && (retirementContext || context)?.state !== 'closed') return reject(faultRetirement.state === 'retired' ? 'audio-retirement-unknown' : 'audio-retirement-pending');
     if (pendingInitializations.size >= 2) return reject('source-preparation-capacity');
-    if (!Array.isArray(assets) || assets.length !== (source.requiresPCM ? 1 : 0)) return reject('required-source-assets-unavailable');
     const next = validate(resolution); if (!next) return reject('unsupported-patch-or-engine');
-    if (source.requiresPCM && (!preview._audioResources || !assets[0]?.isActive?.() || assets[0].ref?.contentHash !== next.sampleRef.sha256 || assets[0].ref?.bytes !== next.sampleRef.bytes)) return reject('required-pcm-source-unavailable');
+    if (!Array.isArray(assets) || assets.length !== (source.requiresPCMSet ? new Set(next.samplePatch.sampleRefs.map(ref => ref.sha256)).size : source.requiresPCM ? 1 : 0)) return reject('required-source-assets-unavailable');
+    if (source.requiresPCM && (!preview._audioResources || assets.some(pin => { const ref = source.requiresPCMSet ? next.samplePatch.sampleRefs.find(ref => ref.sha256 === pin?.ref?.contentHash) : next.sampleRef; return !pin?.isActive?.() || !ref || pin.ref.contentHash !== ref.sha256 || pin.ref.bytes !== ref.bytes; }))) return reject('required-pcm-source-unavailable');
     const candidateContext = preview.getAudioContext();
     if (!candidateContext?.audioWorklet?.addModule) return reject('audio-worklet-unavailable');
     if (candidateContext.state === 'closed') return reject('audio-context-closed');
     if (runtime.supportedSampleRates && !runtime.supportedSampleRates.includes(candidateContext.sampleRate)) return reject('source-sample-rate-unavailable');
     if (context && context !== candidateContext) {
-      if (context.state === 'closed') { node = null; ready = false; voices.clear(); slots.fill(null); runtimeResourceLease = null; pcmDescriptor = null; }
+      if (context.state === 'closed') { node = null; ready = false; voices.clear(); slots.fill(null); runtimeResourceLease = null; pcmDescriptor = null; samplePlan = null; }
       else { markFault('context-replaced'); if (faultRetirement?.outcome !== 'complete') return reject('audio-retirement-unknown'); }
     }
-    if (ready && source.requiresPCM && pcmDescriptor?.assetHash !== next.sampleRef.sha256) return reject('source-requires-new-renderer');
+    if (ready && source.requiresPCM && (source.requiresPCMSet ? pcmDescriptor?.assetHashes?.length !== assets.length || assets.some(pin => { const bank = pcmDescriptor.banks.find(bank => bank.assetHash === pin.ref.contentHash); return !bank || bank.decoderVersion !== pin.variant?.decoderVersion || bank.sampleRate !== pin.buffer?.sampleRate || bank.frames !== pin.buffer?.length || bank.channels !== pin.buffer?.numberOfChannels; }) : pcmDescriptor?.assetHash !== next.sampleRef.sha256)) return reject('source-requires-new-renderer');
     for (const cancel of pendingInitializations) cancel();
     const revision = ++preparing, generation = preview._generation, ownerGeneration = preview._sessions.get(owner)?.generation;
-    let candidate = null, timer = null, cancelInitialization = null, candidateResourceLease = null, bank = null, inputCopy = null, candidatePcm = pcmDescriptor, sourceFailureRetirement = null, fixedBank = null;
+    let candidate = null, timer = null, cancelInitialization = null, candidateResourceLease = null, bank = null, inputCopy = null, candidatePcm = pcmDescriptor, sourceFailureRetirement = null, fixedBank = null, candidatePlan = null;
     const assetController = new AbortController(), current = () => !disposed && revision === preparing && generation === preview._generation && ownerGeneration === preview._sessions.get(owner)?.generation && preview.getAudioContext() === candidateContext;
     let interrupt;
     const interrupted = new Promise((_resolve, rejectInterrupted) => { interrupt = rejectInterrupted; });
@@ -300,29 +322,32 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     try {
       if (!ready && source.bankId) fixedBank = await prepareSourceBank(source.bankId, { resources: preview._audioResources, owner, generation, signal: assetController.signal, isCurrent: current });
       if (!ready && source.requiresPCM) {
-        bank = await prepareOwnedPcmBank(assets[0], { resources: preview._audioResources, owner: owner ?? 'unscoped-source', generation,
+        bank = await (source.requiresPCMSet ? prepareOwnedPcmSet : prepareOwnedPcmBank)(source.requiresPCMSet ? assets : assets[0], { resources: preview._audioResources, owner: owner ?? 'unscoped-source', generation,
           signal: assetController.signal, isCurrent: current });
         inputCopy = await bank.copyForProcessor({ signal: assetController.signal, isCurrent: current }); candidatePcm = bank.descriptor;
       }
+      if (source.requiresPCMSet) { candidatePlan = prepareOwnedSamplePlan(next.samplePatch, candidatePcm, candidateContext.sampleRate); if (ready && candidatePlan.identity !== samplePlan?.identity) return reject('source-requires-new-renderer'); }
       assetController.signal.throwIfAborted(); if (!current()) return reject('preparation-cancelled');
       timer = setTimeout(() => abortPreparation(new Error('kernel-initialization-timeout')), initializationTimeoutMs);
       if (!ready) candidateResourceLease = preview._audioResources?.reserveWorkletRuntime(owner, preview._generation,
-        source.sourceBytes({ sampleRate: candidateContext.sampleRate, pcm: candidatePcm, voices: MAX_VOICES }) + (laneTapsEnabled ? 65536 : 0) + CAPACITY * (WIDTH - SINE_WIDTH) * 8, 0, true) || null;
+        source.sourceBytes({ sampleRate: candidateContext.sampleRate, pcm: candidatePcm, voices: MAX_VOICES }) + (laneTapsEnabled ? 65536 : 0) + CAPACITY * (WIDTH - SINE_WIDTH) * 8, source.heapEstimate, true) || null;
       await Promise.race([loadOwnedWorkletModule(candidateContext, source, preview._audioResources), interrupted]);
       if (!current()) return reject('preparation-cancelled');
       if (!ready) {
         const channel = preview._channel(0, owner), destination = channel.sourceInput || channel.gain;
         const create = createWorkletNode || ((audioContext, name, options) => new globalThis.AudioWorkletNode(audioContext, name, options));
         candidate = create(candidateContext, 'lemmings-owned-' + engineId.slice('worklet-'.length) + '-v1', { numberOfInputs: 0, numberOfOutputs: laneTapsEnabled ? 1 + LIVE_LANE_TAP_LIMIT * 2 : 1, outputChannelCount: new Array(laneTapsEnabled ? 1 + LIVE_LANE_TAP_LIMIT * 2 : 1).fill(2),
-          processorOptions: { maxVoices: MAX_VOICES, ...(laneTapsEnabled ? { laneTapProtocol: LIVE_LANE_TAP_PROTOCOL } : {}), ...(fixedBank ? { sourceBank: fixedBank.payload } : {}), ...(inputCopy ? { pcm: inputCopy.payload } : {}) } });
+          processorOptions: { maxVoices: MAX_VOICES, ...(source.requiresPCMSet ? { samplePatch: next.samplePatch } : {}), ...(laneTapsEnabled ? { laneTapProtocol: LIVE_LANE_TAP_PROTOCOL } : {}), ...(fixedBank ? { sourceBank: fixedBank.payload } : {}), ...(inputCopy ? { pcm: inputCopy.payload } : {}) } });
+        nodeContexts.set(candidate, candidateContext); if (source.requiresPCMSet) retirementAware.add(candidate);
         await Promise.race([new Promise((resolve, rejectReady) => {
           candidate.onprocessorerror = () => rejectReady(new Error('processor-error-during-prepare'));
           candidate.port.onmessage = event => {
             const data = event.data;
+            if (data?.type === 'ready' && data.retirementProtocol === 1) retirementAware.add(candidate);
             if (data?.type !== 'ready' || data.protocol !== PROTOCOL || data.engineId !== runtime.engineId || data.engineVersion !== 1 ||
                 data.runtimeABI !== runtime.runtimeABI || data.buildId !== runtime.buildId || laneTapsEnabled && (data.laneTapProtocol !== LIVE_LANE_TAP_PROTOCOL || data.maxLaneTaps !== LIVE_LANE_TAP_LIMIT) || data.maxVoices !== MAX_VOICES ||
                 data.sampleRate !== candidateContext.sampleRate || data.width !== WIDTH || data.capacity !== CAPACITY ||
-                data.displayProtocol !== DISPLAY_PROTOCOL || data.displayWidth !== DISPLAY_WIDTH || data.displayVoices !== DISPLAY_VOICES ||
+                source.requiresPCMSet && (data.samplePlanIdentity !== candidatePlan.identity || data.retirementProtocol !== 1) || data.displayProtocol !== DISPLAY_PROTOCOL || data.displayWidth !== DISPLAY_WIDTH || data.displayVoices !== DISPLAY_VOICES ||
                 source.requiresPCM && data.pcmBankHash !== candidatePcm?.bankHash || source.bankId && data.sourceBankHash !== getOwnedSourceBankIdentity(source.bankId).hash) return rejectReady(new Error('kernel-abi-mismatch'));
             resolve();
           };
@@ -349,11 +374,11 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
           else if (event.data?.type === 'protocol-error') markFault('kernel-protocol-error');
         };
         node.onprocessorerror = () => { if (node === connectedNode) markFault('processor-error'); };
-        runtimeResourceLease = candidateResourceLease; candidateResourceLease = null; pcmDescriptor = candidatePcm;
+        runtimeResourceLease = candidateResourceLease; candidateResourceLease = null; pcmDescriptor = candidatePcm; samplePlan = candidatePlan;
         ready = true; fault = null; faultRetirement = null; retirementContext = null; ownerStopped = false; display.configure(true);
       }
       try { ensureLaneProducer(); } catch (error) { markFault('lane-source-admission-failed'); throw error; }
-      patch = next; return Object.freeze({ status: 'ready', patchId: next.id, revision: next.revision, capabilities, runtime, ...(pcmDescriptor ? { sourceBank: pcmDescriptor } : {}) });
+      patch = next; if (candidatePlan) samplePlan = candidatePlan; return Object.freeze({ status: 'ready', patchId: next.id, revision: next.revision, capabilities, runtime, ...(pcmDescriptor ? { sourceBank: pcmDescriptor } : {}) });
     } catch (error) {
       sourceFailureRetirement = error?.retirement || null;
       return reject(error?.name === 'ResourceBudgetError' ? 'audio-resource-budget' : String(error?.message || 'worklet-initialization-failed').slice(0, 160));
@@ -430,7 +455,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (ownerStopped) return reject('kernel-stop-pending', intent?.voiceId);
     try { ensureLaneProducer(); } catch { return reject('lane-source-admission-failed', intent?.voiceId); }
     const now = frameNow();
-    if (intent?.version !== 1 || intent.kind !== 'begin' || typeof intent.voiceId !== 'string' || !intent.voiceId || intent.voiceId.length > 256 ||
+    if (intent?.version !== 1 || intent.kind !== 'begin' || typeof intent.voiceId !== 'string' || !intent.voiceId || intent.voiceId.length > 512 ||
         !Number.isSafeInteger(intent.generation) || intent.generation < 0 || !finite(intent.velocity01, 0, 1) || !finite(intent.pitch?.cents, -24000, 24000) ||
         !finite(intent.pitch?.referenceHz ?? 440, 0.1, 20000) || typeof executionEpoch !== 'string' || !executionEpoch ||
         !Number.isSafeInteger(targetFrame) || targetFrame < now) return reject('invalid-or-late-intent', intent?.voiceId);
@@ -449,28 +474,39 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     const frequency = (intent.pitch.referenceHz ?? 440) * 2 ** ((intent.pitch.cents - 6900 + offset) / 1200);
     if (!finite(frequency, source.minHz, Math.min(source.maxHz ?? Infinity, context.sampleRate / 2 - 1)) || Math.abs(offset) > source.bendCents) return reject('pitch-out-of-range', intent.voiceId);
     if (!source.acceptsOnset(parameters, frequency, pcmDescriptor)) return reject('source-region-or-pitch-out-of-range', intent.voiceId);
+    let sampleSelection = null;
+    if (source.requiresPCMSet) { try { sampleSelection = samplePlan.select(intent); } catch (error) { return reject(error.message || 'sample-selection-unavailable', intent.voiceId); } }
     const key = keyFor(executionEpoch, intent.voiceId), generationKey = keyFor(executionEpoch, intent.generation);
     if (cancelled.has(generationKey)) return reject('generation-cancelled', intent.voiceId);
     if (cancellationHistoryFull && !isManagedExecutionEpoch(executionEpoch)) return reject('execution-registration-required', intent.voiceId);
     if (voices.has(key) || preview._semanticVoiceOwners.has(JSON.stringify([owner, executionEpoch, intent.voiceId]))) return reject('duplicate-owner-voice', intent.voiceId);
     const slot = slots.findIndex(voice => voice == null);
     const renderCost = source.cost(parameters);
-    if (slot < 0 || voices.size >= patch.maxVoices || preview._renderVoiceCount() + renderCost > preview._maxScheduledVoices) return reject('shared-voice-budget', intent.voiceId);
+    if (slot < 0 || !source.requiresPCMSet && voices.size >= patch.maxVoices || preview._renderVoiceCount() + renderCost > preview._maxScheduledVoices) return reject('shared-voice-budget', intent.voiceId);
     if (slotTokens[slot] === 0xffffffff) return reject('voice-slot-generation-exhausted', intent.voiceId);
     const endFrame = leases.get(generationKey) ?? targetFrame + Math.ceil(preview._maxNoteSeconds * context.sampleRate);
     if (endFrame <= targetFrame + parameters.releaseSeconds * context.sampleRate) return reject('execution-lease-expired', intent.voiceId);
-    const admission = preview._inspectVoiceInterval(owner, { start: targetFrame / context.sampleRate, end: endFrame / context.sampleRate,
-      releaseAt: endFrame / context.sampleRate - parameters.releaseSeconds, cost: renderCost, patchVoices: voices.values(), patchLimit: patch.maxVoices });
+    const chokeOverrides = sampleSelection ? new Map() : null, chokeVictims = sampleSelection ? [] : null; let nextChoke = Infinity;
+    if (sampleSelection?.region.chokeGroup) for (const member of voices.values()) {
+      const region = member.sampleSelection?.region;
+      if (member.semanticEpoch !== executionEpoch || region?.chokeGroup !== sampleSelection.region.chokeGroup || region.chokeScope !== sampleSelection.region.chokeScope || member.end * context.sampleRate <= targetFrame) continue;
+      const start = Math.round(member.start * context.sampleRate);
+      if (start > targetFrame || start === targetFrame && member.voiceId > intent.voiceId) nextChoke = Math.min(nextChoke, start);
+      else { chokeVictims.push(member); chokeOverrides.set(member, { releaseAt: Math.min(member.releaseAt, targetFrame / context.sampleRate), end: Math.min(member.end, targetFrame / context.sampleRate + 0.005) }); }
+    }
+    const admission = preview._inspectVoiceInterval(owner, { start: targetFrame / context.sampleRate, end: Math.min(endFrame / context.sampleRate, nextChoke / context.sampleRate + 0.005),
+      releaseAt: Math.min(endFrame / context.sampleRate - parameters.releaseSeconds, nextChoke / context.sampleRate), overrides: chokeOverrides,
+      cost: renderCost, patchVoices: voices.values(), patchLimit: patch.maxVoices });
     if (!admission.accepted) return reject(admission.reason, intent.voiceId);
     let onsetLaneToken = 0;
     try { if (laneTapsEnabled && intent.audioLaneId != null) onsetLaneToken = laneRegistry.laneToken(intent.audioLaneId); }
     catch { return reject('lane-source-identity-capacity', intent.voiceId); }
     let resourceLease = null;
-    try { resourceLease = preview._audioResources?.reserveWorkletVoice(owner, intent.generation, isExtended ? 8192 : 0) || null; }
+    try { resourceLease = preview._audioResources?.reserveWorkletVoice(owner, intent.generation, source.requiresPCMSet ? 16384 : isExtended ? 8192 : 0) || null; }
     catch { return reject('audio-resource-budget', intent.voiceId); }
     const token = epochToken(executionEpoch);
     if (token == null) { resourceLease?.release(); return reject('execution-identity-capacity', intent.voiceId); }
-    const voice = { owner, audioLaneId: intent.audioLaneId ?? null, onsetLaneToken, laneTransferUntil: 0, renderCost, workloadClass: preview._workloadClass(owner), number: 0, voiceId: intent.voiceId, semanticGeneration: intent.generation, semanticEpoch: executionEpoch,
+    const voice = { owner, sampleSelection, samplePitch: sampleSelection ? Object.freeze({ ...intent.pitch }) : null, positionFrontier: null, positionCommands: source.requiresPCMSet ? new Set() : null, audioLaneId: intent.audioLaneId ?? null, onsetLaneToken, laneTransferUntil: 0, renderCost, workloadClass: preview._workloadClass(owner), number: 0, voiceId: intent.voiceId, semanticGeneration: intent.generation, semanticEpoch: executionEpoch,
       resourceLease, initialLeaseEndFrame: endFrame, requestedLeaseEndFrame: endFrame, effectiveLeaseEndFrame: null,
       pendingLeases: new Map(), leaseFailure: null,
       epochToken: token, slot, slotToken: ++slotTokens[slot], id: ++preview._voiceSequence, start: targetFrame / context.sampleRate,
@@ -483,12 +519,12 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       peak: intent.velocity01 * parameters.gain01 * patch.gain01, priority: 1, laneIndex: intent.laneId ?? 0,
       baseFrequency: frequency / 2 ** (offset / 1200), mixPan: patch.pan01, patchRevision: patch.revision, patchId: patch.id,
       stringT60Seconds: parameters.stringT60Seconds, bodyT60Seconds: parameters.bodyT60Seconds, sourceParameters: parameters,
-      sourceChannels: pcmDescriptor?.channels || 1,
+      sourceChannels: source.requiresPCMSet ? pcmDescriptor.banks.some(bank => bank.channels === 2) ? 2 : 1 : pcmDescriptor?.channels || 1,
       performancePlan: patch.performance, continuousBase: performance?.continuousBase,
       physicalCauses: isExtended ? new Map(initialCause ? [[initialCause.sourceKind, initialCause]] : []) : null, physicalFrame: targetFrame,
       startedAt: targetFrame / context.sampleRate, requestRelease: (time, force, reason) => {
         if (voice.released) return; voice.released = true; voice.releaseAt = Math.max(voice.start, time); voice.terminationCause = reason;
-        command(END, Math.max(frameNow(), Math.round(time * context.sampleRate)), voice, { 13: Math.max(1, Math.round(voice.release * context.sampleRate)) });
+        command(END, Math.max(frameNow(), Math.round(time * context.sampleRate)), voice, { 13: Math.max(1, Math.round(voice.release * context.sampleRate)), ...(source.requiresPCMSet ? { 20: 1 } : {}) });
       },
       onDestroy: reason => {
         if (voices.get(key) === voice) voices.delete(key);
@@ -498,13 +534,14 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
         if (preview._semanticVoiceOwners.get(shared) === voice) preview._semanticVoiceOwners.delete(shared);
         const removed = queue?.invalidate(item => item.slotToken === voice.slotToken && item.voiceId === voice.voiceId && item.epoch === executionEpoch) || 0;
         counters.producerCancelled += removed;
-        if (!voice.kernelEnded && ready && !disposed && !fault && !ownerStopped) command(END, frameNow(), voice, { 13: Math.ceil(context.sampleRate * 0.005) });
+        if (!voice.kernelEnded && ready && !disposed && !fault && !ownerStopped) command(END, frameNow(), voice, { 13: Math.ceil(context.sampleRate * 0.005), ...(source.requiresPCMSet ? { 20: 1 } : {}) });
         if (voice.kernelEnded || removed && !voice.submitted) slots[slot] = null;
         record({ status: 'ended', stage: voice.kernelEnded ? 'render-kernel-ended' : 'stop-requested', voiceId: intent.voiceId, executionEpoch,
           generation: intent.generation, reason, appliedFrame: voice.kernelEnded ? voice.appliedFrame : null });
       } };
+    if (sampleSelection) { const profile = samplePlan.entries[sampleSelection.zoneIndex].attack.cursorProfile; if (profile) voice.positionFrontier = { frame: targetFrame, released: false, length: 0, lastSequence: 0, lastEndFrame: targetFrame, lastEndPosition: profile.regionStartFrame, lastSeekFrame: -profile.slewFrames }; }
     const excitationSeed = ownedSourceSeed(source, patch, intent, performance);
-    const sourceFields = source.beginFields(parameters, excitationSeed, pcmDescriptor);
+    const sourceFields = source.beginFields(parameters, excitationSeed, pcmDescriptor, sampleSelection);
     if (laneTapsEnabled) { try { sendLaneRoute(voice, voiceRouteMask(voice)); } catch { resourceLease?.release(); markFault('lane-route-port-failed'); return reject('lane-route-port-failed', intent.voiceId); } }
     const result = command(BEGIN, targetFrame, voice, { 6: frequency, 7: voice.peak, 8: pressure, 9: Math.max(-1, Math.min(1, pan + patch.pan01)),
       10: Math.round(transitionAttackSeconds(intent, parameters.attackSeconds) * context.sampleRate), 11: Math.round(parameters.decaySeconds * context.sampleRate),
@@ -518,6 +555,13 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     voices.set(key, voice); slots[slot] = voice; preview._voices.add(voice);
     display.admit(voice, intent); display.configure();
     preview._semanticVoiceOwners.set(JSON.stringify([owner, executionEpoch, intent.voiceId]), voice); voice.submitted = inFlight.has(result.sequence);
+    if (chokeVictims) for (const member of chokeVictims) if (forceSampleEnd(member, targetFrame, Math.round(member.start * context.sampleRate) === targetFrame).status !== 'accepted') {
+      markFault('sample-choke-control-failed'); return reject('sample-choke-control-failed', intent.voiceId);
+    }
+    if (Number.isFinite(nextChoke) && forceSampleEnd(voice, nextChoke, nextChoke === targetFrame).status !== 'accepted') {
+      markFault('sample-choke-control-failed'); return reject('sample-choke-control-failed', intent.voiceId);
+    }
+    if (sampleSelection) return Object.freeze({ ...result, region: sampleSelection.region, rateRatio: sampleSelection.rateRatio, readDerivative: sampleSelection.readDerivative, sourceRenderer: 'owned-sample', sourceBank: pcmDescriptor, articulation: sampleSelection.articulation });
     return isExtended ? Object.freeze({ ...result, performance, articulation: resolveOwnedArticulationPolicy({ engineId, parameters }), ...(pcmDescriptor ? { sourceBank: pcmDescriptor } : {}) }) : result;
   };
   const update = (voiceId, expression, targetFrame, executionEpoch = 'live', rampSeconds = smoothingSeconds) => {
@@ -531,12 +575,27 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (expression.pitchOffsetCents != null) {
       const frequency = voice.baseFrequency * 2 ** (expression.pitchOffsetCents / 1200);
       if (!finite(expression.pitchOffsetCents, -source.bendCents, source.bendCents) || !finite(frequency, 0.1, context.sampleRate / 2 - 1)) return reject('invalid-expression', voiceId);
+      if (source.requiresPCMSet) { const entry = samplePlan.entries[voice.sampleSelection.zoneIndex]; if (entry.attack.mode === 'positionDriven' && expression.pitchOffsetCents !== 0 || !samplePlan.rateFor(entry.attack, voice.samplePitch, expression.pitchOffsetCents) || entry.release && !samplePlan.rateFor(entry.release, voice.samplePitch, expression.pitchOffsetCents)) return reject('sample-pitch-out-of-range', voiceId); }
       mask |= 1; values[6] = frequency;
     }
     if (expression.pressure01 != null) { if (!finite(expression.pressure01, 0, 1)) return reject('invalid-expression', voiceId); mask |= 2; values[8] = expression.pressure01; }
     if (expression.pan01 != null) { if (!finite(expression.pan01, -1, 1)) return reject('invalid-expression', voiceId); mask |= 4; values[9] = Math.max(-1, Math.min(1, expression.pan01 + voice.mixPan)); }
     const sourceMask = source.writeUpdate(expression, voice, values); if (sourceMask == null) return reject('invalid-expression', voiceId); mask |= sourceMask;
     values[15] = mask; return command(UPDATE, targetFrame, voice, values);
+  };
+  const updateSamplePosition = (voiceId, segment, targetFrame, executionEpoch = 'live') => {
+    const voice = voices.get(keyFor(executionEpoch, voiceId)), now = frameNow();
+    if (!source.requiresPCMSet || !ready || !voice?.positionFrontier || !preview._ownerReady(owner) || !segment || Object.getPrototypeOf(segment) !== Object.prototype ||
+        Object.keys(segment).some(key => !['firstOutputFrame', 'endOutputFrame', 'firstSourceFrame', 'endSourceFrame', 'sequence', 'discontinuity'].includes(key)) ||
+        !Number.isSafeInteger(targetFrame) || targetFrame < now || targetFrame !== segment.firstOutputFrame || targetFrame >= voice.releaseAt * context.sampleRate) return reject('sample-position-admission', voiceId);
+    const p = samplePlan.entries[voice.sampleSelection.zoneIndex].attack.cursorProfile, frontier = voice.positionFrontier, discontinuity = segment.discontinuity ?? 'continuous';
+    frontier.frame = Math.max(now, Math.round(voice.start * context.sampleRate)); frontier.length = voice.positionCommands.size;
+    if (!acceptsSampleCursorSegment(p, frontier, segment.firstOutputFrame, segment.endOutputFrame, segment.firstSourceFrame, segment.endSourceFrame, segment.sequence, discontinuity)) return reject('sample-position-segment', voiceId);
+    const outcome = command(UPDATE, targetFrame, voice, { 15: 8, 18: segment.firstOutputFrame, 19: segment.endOutputFrame, 20: segment.firstSourceFrame,
+      21: segment.endSourceFrame, 22: segment.sequence, 23: SAMPLE_CURSOR_DISCONTINUITIES.indexOf(discontinuity) });
+    if (outcome.status === 'accepted') { frontier.lastSequence = segment.sequence; frontier.lastEndFrame = segment.endOutputFrame; frontier.lastEndPosition = segment.endSourceFrame;
+      if (discontinuity !== 'continuous') frontier.lastSeekFrame = targetFrame; voice.positionCommands.add(outcome.sequence); }
+    return outcome;
   };
   const updatePhysical = (voiceId, input, targetFrame, executionEpoch = 'live') => {
     const voice = voices.get(keyFor(executionEpoch, voiceId));
@@ -578,21 +637,22 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   const end = (voiceId, release, targetFrame, executionEpoch = 'live') => {
     const voice = voices.get(keyFor(executionEpoch, voiceId)), now = frameNow();
     if (!voice || !ready) return reject('voice-not-active', voiceId);
-    if (!Number.isSafeInteger(targetFrame) || targetFrame < 0 || !finite(release?.seconds ?? voice.release, 0, 4)) return reject('invalid-release', voiceId);
-    if (voice.released) return Object.freeze({ status: 'accepted', stage: 'queued', voiceId, reason: 'already-releasing' });
+    if (!Number.isSafeInteger(targetFrame) || targetFrame < 0 || !finite(release?.seconds ?? voice.release, 0, 4) || release?.velocity01 != null && (!source.requiresPCMSet || !finite(release.velocity01, 0, 1)) || release?.force != null && typeof release.force !== 'boolean') return reject('invalid-release', voiceId);
     let frame = Math.max(now, targetFrame);
     if (release?.mode === 'one-shot') {
       if (!finite(release.tailSeconds, 0, 4)) return reject('invalid-release', voiceId);
       frame = Math.max(frame, Math.round((voice.start + release.tailSeconds) * context.sampleRate));
     } else if (release?.mode != null) return reject('unsupported-release-mode', voiceId);
+    if (voice.released && release?.force !== true && (!source.requiresPCMSet || frame >= Math.round(voice.releaseAt * context.sampleRate))) return Object.freeze({ status: 'accepted', stage: 'queued', voiceId, reason: 'already-releasing' });
     const requestedReleaseFrames = Math.max(1, Math.round((release?.seconds ?? voice.release) * context.sampleRate));
     const deadline = Math.max(now + 1, Math.round(voice.end * context.sampleRate));
     frame = Math.min(frame, deadline - 1);
     const releaseFrames = Math.min(requestedReleaseFrames, Math.max(1, deadline - frame));
-    const result = command(END, frame, voice, { 13: releaseFrames });
-    if (result.status === 'accepted') { voice.released = true; voice.releaseAt = Math.min(voice.releaseAt, frame / context.sampleRate); voice.end = (frame + releaseFrames) / context.sampleRate; }
+    const layerTailFrames = source.requiresPCMSet && !release?.force && voice.sampleSelection.region.releaseRegion && release?.velocity01 !== 0 ? Math.min(Math.max(releaseFrames, Math.ceil(context.sampleRate * 4)), Math.max(1, deadline - frame)) : releaseFrames;
+    const result = command(END, frame, voice, { 13: releaseFrames, ...(source.requiresPCMSet ? { 16: frame + layerTailFrames, 7: release?.velocity01 ?? 1, 8: 1, 20: release?.force ? 1 : 0 } : {}) });
+    if (result.status === 'accepted') { voice.released = true; voice.releaseAt = Math.min(voice.releaseAt, frame / context.sampleRate); voice.end = (frame + layerTailFrames) / context.sampleRate; }
     return Object.freeze({ ...result, releasePolicy: 'bounded-by-admitted-interval', requestedTargetFrame: targetFrame, effectiveTargetFrame: frame,
-      requestedReleaseFrames, effectiveReleaseFrames: releaseFrames, effectiveEndFrame: frame + releaseFrames });
+      requestedReleaseFrames, effectiveReleaseFrames: releaseFrames, ...(source.requiresPCMSet ? { effectiveLayerTailFrames: layerTailFrames } : {}), effectiveEndFrame: frame + layerTailFrames });
   };
   const cancelGenerationWithReceipt = (generation, executionEpoch = 'live') => {
     const key = keyFor(executionEpoch, generation), previous = cancellationReceipts.get(key);
@@ -662,11 +722,11 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       { name: 'command-observers', run: () => commandObservers.clear() },
       { name: 'identities', run: () => { slots.fill(null); patch = null; } }
     ]);
-    if (receipt.outcome === 'complete') node = null;
-    else { preview._retirementFaults?.add(owner); receipt.completion.then(value => { if (value.outcome === 'complete') node = null; }); }
+    const settled = value => { if (value.outcome === 'complete') node = null; else preview._retirementFaults?.add(owner); };
+    if (receipt.state === 'retired') settled(receipt); else receipt.completion.then(settled);
     return receipt;
   };
-  lifecycle = createInstrumentExecutionLifecycle({ capabilities, runtime, prepare, begin, update, updateLaneMix, updatePhysical, end, renewExecutionLease, cancelGenerationWithReceipt,
+  lifecycle = createInstrumentExecutionLifecycle({ capabilities, runtime, prepare, begin, update, updateLaneMix, updatePhysical, updateSamplePosition, end, renewExecutionLease, cancelGenerationWithReceipt,
     observeCommandOutcomes(listener) {
       if (disposed || typeof listener !== 'function' || commandObservers.size >= 8 || commandObserverSequence === Number.MAX_SAFE_INTEGER) throw new Error('Command observation is unavailable.');
       const observer = { id: ++commandObserverSequence, listener }; commandObservers.add(observer); let active = true;

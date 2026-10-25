@@ -1,7 +1,15 @@
 import { canonicalDataText, freezeData } from '../../core/CanonicalData.js';
 export const SAMPLE_CURSOR_REVISION = 'owned-observed-sample-cursor-v1';
+export const SAMPLE_CURSOR_DISCONTINUITIES = Object.freeze(['continuous', 'seek', 'restore', 'topology-rebind']);
 const integer = (value, low, high) => Number.isSafeInteger(value) && value >= low && value <= high;
 const finite = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;
+export function acceptsSampleCursorSegment(p, frontier, first, end, from, to, sequence, discontinuity = 'continuous') {
+  const maximum = p.maximumCoordinateSourceFrames, multiplier = p.interpolation === 'smoothstep' ? 1.5 : 1;
+  return !frontier.released && integer(first, frontier.frame, Number.MAX_SAFE_INTEGER) && integer(end, first + 1, Number.MAX_SAFE_INTEGER) && end - first <= p.sampleRate * 2 &&
+    integer(sequence, frontier.lastSequence + 1, Number.MAX_SAFE_INTEGER) && finite(from, -maximum, maximum) && finite(to, -maximum, maximum) && SAMPLE_CURSOR_DISCONTINUITIES.includes(discontinuity) &&
+    (discontinuity === 'continuous' || first >= frontier.lastSeekFrame + p.slewFrames) && first >= frontier.lastEndFrame &&
+    (discontinuity !== 'continuous' || Math.abs(from - frontier.lastEndPosition) <= 1e-7) && Math.abs(to - from) * p.sourceToDecoded / (end - first) * multiplier <= p.maximumReadDerivative && frontier.length < p.capacity;
+}
 export function prepareSampleCursorProfile(raw) {
   if (!raw || Object.getPrototypeOf(raw) !== Object.prototype || Object.keys(raw).some(key => !['sampleRate', 'sourceSampleRate', 'decodedSampleRate', 'sourceFrames', 'decodedFrames', 'regionStartFrame', 'regionEndFrame', 'capacity', 'slewSeconds', 'maximumReadDerivative', 'boundary', 'interpolation', 'bankHash', 'mapRevision'].includes(key))) throw new TypeError('Invalid sample cursor profile.');
   const p = { capacity: 128, slewSeconds: 0.01, maximumReadDerivative: 4, boundary: 'stop', interpolation: 'smoothstep', ...raw };

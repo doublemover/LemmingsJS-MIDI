@@ -128,6 +128,6 @@ export class OwnedGranularKernel extends OwnedSineKernel {
 }
 export class OwnedGranularProcessor extends OwnedSineProcessor {
   createKernel(rate, voices, options) { return new OwnedGranularKernel(rate, options?.pcm, Math.min(voices, GRANULAR_VOICES), options?.sourceBank); }
-  runtimeIdentity() { return { engineId: 'worklet-granular', engineVersion: 1, runtimeABI: 'owned-granular-f64-command-v1', buildId: 'owned-granular-v5-layer-lifetime', sourceBankHash: this.kernel.source.bank.hash, pcmBankHash: this.kernel.source.descriptor.bankHash }; }
+  runtimeIdentity() { return { engineId: 'worklet-granular', engineVersion: 1, runtimeABI: 'owned-granular-f64-command-v1', buildId: 'owned-granular-v6-owned-retirement', sourceBankHash: this.kernel.source.bank.hash, pcmBankHash: this.kernel.source.descriptor.bankHash }; }
 }
 if (typeof globalThis.registerProcessor === 'function') globalThis.registerProcessor('lemmings-owned-granular-v1', OwnedGranularProcessor);
