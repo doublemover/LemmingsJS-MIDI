@@ -869,11 +869,29 @@
       "requirementUpdatedAt": "2026-10-22T11:34:39Z",
       "requirementSha256": "786f737dbf8c7121157a23c4253b2679c0028cc001b44b7a6fc85cb7262e40a8",
       "initialGap": "No FormationHarmony membership/formation descriptor/minimum-motion voicing assignment exists. Canonical causal graph still maps authored fixed pitchCents, not follower formation.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/procgen/workstation/physical/Tuning.js",
+        "js/app/procgen/workstation/physical/HarmonicFields.js",
+        "js/app/procgen/workstation/physical/FormationHarmony.js",
+        "js/app/procgen/workstation/physical/TonalInterpretation.js",
+        "js/app/procgen/workstation/CausalMusicEngine.js",
+        "js/app/midi-ui/SmoothedAudioParameter.js"
+      ],
+      "regressions": [
+        "test/procgen-tonal-interpretation.test.js",
+        "test/midi/smoothed-audio-parameter.test.js",
+        "scripts/bench-tonal-interpretation.mjs"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "physical-tonal-interpretation",
+          "summary": "World-anchored hysteretic/morph tuning fields, exact ratio metadata, bounded ensemble formation descriptors and deterministic minimum-motion assignments; held-voice causal retune/rearticulation and checkpoint/capture integration; per-event native/sample/worklet slew. Material selector owner, hardware adapters and performer surfaces remain pending; runtime qualification deferred.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1024,
@@ -905,11 +923,29 @@
       "requirementUpdatedAt": "2026-10-22T12:00:32Z",
       "requirementSha256": "60e9fa686daa6482e1c5aefe76926d9b466a3709113b9a3ee2cd522f8a1a50ad",
       "initialGap": "No HarmonicField geometry/tuning/overlap/hysteresis/retune policy exists in the causal schema; fixed pitchCents precision is implemented but not world-space field interpretation.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/procgen/workstation/physical/Tuning.js",
+        "js/app/procgen/workstation/physical/HarmonicFields.js",
+        "js/app/procgen/workstation/physical/FormationHarmony.js",
+        "js/app/procgen/workstation/physical/TonalInterpretation.js",
+        "js/app/procgen/workstation/CausalMusicEngine.js",
+        "js/app/midi-ui/SmoothedAudioParameter.js"
+      ],
+      "regressions": [
+        "test/procgen-tonal-interpretation.test.js",
+        "test/midi/smoothed-audio-parameter.test.js",
+        "scripts/bench-tonal-interpretation.mjs"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "physical-tonal-interpretation",
+          "summary": "World-anchored hysteretic/morph tuning fields, exact ratio metadata, bounded ensemble formation descriptors and deterministic minimum-motion assignments; held-voice causal retune/rearticulation and checkpoint/capture integration; per-event native/sample/worklet slew. Material selector owner, hardware adapters and performer surfaces remain pending; runtime qualification deferred.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1027,
@@ -1624,13 +1660,15 @@
       "regressions": [
         "test/midi/owned-sine-worklet.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "d81e13fea0905cae743e50bbfce1bd9ef274e8f0"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "render-lease-and-pcm-admission",
           "summary": "Authoritative irreversible kernel renewal cutoff with per-voice requested/queued/effective reconciliation; shared fail-closed all-channel numerical producer/metric/comparison admission. Full lifetime/journey acceptance and runtime qualification remain deferred; this increment addresses verified latest gaps, not every historical checklist.",
-          "commit": null
+          "commit": "d81e13fea0905cae743e50bbfce1bd9ef274e8f0"
         }
       ]
     },
@@ -1676,13 +1714,15 @@
       "regressions": [
         "test/midi/pcm-evidence.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "d81e13fea0905cae743e50bbfce1bd9ef274e8f0"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "render-lease-and-pcm-admission",
           "summary": "Authoritative irreversible kernel renewal cutoff with per-voice requested/queued/effective reconciliation; shared fail-closed all-channel numerical producer/metric/comparison admission. Full lifetime/journey acceptance and runtime qualification remain deferred; this increment addresses verified latest gaps, not every historical checklist.",
-          "commit": null
+          "commit": "d81e13fea0905cae743e50bbfce1bd9ef274e8f0"
         }
       ]
     },

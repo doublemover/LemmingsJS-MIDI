@@ -833,3 +833,33 @@ fixture rather than becoming JSON null. Evidence source hashes include the helpe
 These implementation changes and authored regression controls are not validation
 results: browser/PCM execution, realtime deadlines, acoustic listening, the complete
 product journey and performance qualification remain deferred.
+
+### World-anchored tonal interpretation
+
+Physical graphs may declare versioned `harmonicFields` and `formations` and opt
+in per instrument with `harmonicFields: true` or `formationId`. Tuning retains
+rational numerator/denominator declarations, reference identity and cents; it is
+not rounded through MIDI1. Bands use a bounded spatial index, stable priority/ID
+overlap ordering, hysteretic membership or a declared cents morph width. Coordinate
+maps distinguish degree quantization from continuous bending. Material selectors
+without authoritative material evidence are explicitly unknown, not inferred from
+artwork. The terrain-score material owner and graphical authoring remain separate
+integration work.
+
+Formation descriptors consume the shared complete ensemble/route owners. They
+include followers, centroid/dispersion and selected neighbor relations, with stable
+representatives and explicit aggregation above 32 voices. An exact bounded Hungarian
+assignment minimizes pitch motion; no cubic work runs over the full crowd. Freeze
+and follow modes are explicit. Unqualified route coordinates never fall back to
+straight-line proximity. Registers and non-octave tuning periods are validated.
+
+Neither descriptor recomputation nor field authoring attacks a silent actor.
+Retuning updates existing physically rooted voices; explicit rearticulation preserves
+the original physical cause plus applied field-edit identity/revision. Deletion has
+retain/release/rebind policy. Independent actor pitch state, hysteresis and assignments
+are checkpointed and captured as required interpretation state. Source gaps retire
+voices rather than asserting exact continuation. Per-event slew passes through routed
+execution to native oscillator, sample and worklet automation, retaining independent
+future event durations under reordered submission. Hardware rendering capability,
+performer overlays/editors, material coupling and all runtime qualification remain
+unqualified; this is not an acoustic or complete UI acceptance claim.

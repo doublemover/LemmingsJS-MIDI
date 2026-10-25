@@ -15,7 +15,7 @@ const validateCaptureProfile = value => {
 const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-basic-v3',
   factKinds: ['MotionCommitted', 'DirectionChanged', 'ContactResolved', 'ActionEntered', 'ActionExited', 'AbilityChanged',
     'ActionCycleCompleted', 'FlightArcStarted', 'FlightArcUpdated', 'FlightArcEnded', 'ActorTerminated', 'ActorBorn', 'BirthAdmissionMissed', 'ActorLaneTransferred', 'TerrainWorkCommitted', 'CommandApplied', 'CommandRejected', 'ContactSpanBegan', 'ContactSpanUpdated', 'ContactSpanEnded'],
-  descriptorKinds: ['movement-path', 'work-phase-v2'], stateKinds: ['voices', 'travel', 'contactSpans', 'timeline', 'instrument-performance', 'physical-domain', 'rhythmic-responses', 'action-admission'] });
+  descriptorKinds: ['movement-path', 'work-phase-v2'], stateKinds: ['voices', 'travel', 'contactSpans', 'timeline', 'instrument-performance', 'physical-domain', 'rhythmic-responses', 'action-admission', 'tonal-interpretation'] });
 
 const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId, sourceVersions, captureProfile = PHYSICAL_CAPTURE_PROFILE,
   boundaryState = {}, initialCheckpoint, mapping, assetRefs = [], existingWriter = null, prefixCoverage = null, sourceCursor = null } = {}) => {
@@ -137,6 +137,7 @@ const graphCaptureRequirements = graph => {
   const valid = validateCausalInstrumentGraph(graph), requirements = new Map();
   const add = (kind, owner, type) => requirements.set(`${type}:${kind}`, { kind, owner, type });
   for (const instrument of valid.instruments) {
+    if (instrument.harmonicFields || instrument.formationId) { add('tonal-interpretation', instrument.id, 'state'); add('MotionCommitted', instrument.id, 'fact'); if (valid.ensembles?.length) add('physical-domain', instrument.id, 'state'); }
     if (instrument.actionVoicePolicy) { add('action-admission', instrument.id, 'state'); add('ActionExited', instrument.id, 'fact'); add('MotionCommitted', instrument.id, 'fact'); if (instrument.actionVoicePolicy.beginCondition === 'contact') add('ContactResolved', instrument.id, 'fact'); }
     if (instrument.voiceTransfer) add('ActorLaneTransferred', instrument.id, 'fact');
     if (instrument.response) {
@@ -145,7 +146,7 @@ const graphCaptureRequirements = graph => {
       for (const source of sources) add(source, instrument.id, 'fact');
       if (instrument.response.type === 'crowdInterval') add('physical-domain', instrument.id, 'state');
       if (instrument.response.type === 'workCycle') add('work-phase-v2', instrument.id, 'descriptor');
-    } else if (['PickupCrossing', 'RouteLap'].includes(instrument.sourceKind)) { add('MotionCommitted', instrument.id, 'fact'); add('physical-domain', instrument.id, 'state'); }
+    } else if (['PickupCrossing', 'RouteLap'].includes(instrument.sourceKind)) { add('MotionCommitted', instrument.id, 'fact'); if (valid.ensembles?.length) add('physical-domain', instrument.id, 'state'); }
     else add(instrument.sourceKind, instrument.id, 'fact');
     if (instrument.ensembleId) { add('physical-domain', instrument.id, 'state'); add('ActorBorn', instrument.id, 'fact'); }
     if (instrument.sourceKind === 'ActionEntered' || instrument.sourceKind === 'ContactSpanBegan' || instrument.sourceKind === 'PickupCrossing' || instrument.articulation?.sustain || instrument.response?.sustain || instrument.response?.mode === 'scrape') add('voices', instrument.id, 'state');

@@ -401,9 +401,10 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
       }
     } finally { rebuildingChokes = false; armExpiry(); }
   };
-  const update = (voiceId, expression, targetFrame, executionEpoch = 'live') => {
+  const update = (voiceId, expression, targetFrame, executionEpoch = 'live', rampSeconds = smoothingSeconds) => {
     const voice = voices.get(keyFor(executionEpoch, voiceId)), time = timeFor(targetFrame), context = preview._context, now = context?.currentTime;
     if (!voice || voice.released && voice.releaseAt <= now || voice.semanticRelease?.at <= now || !preview._ownerReady(owner)) return reject('voice-not-active', voiceId);
+    if (!finite(rampSeconds, 0, 60)) return reject('invalid-control-ramp', voiceId);
     if (!validExpression(expression) || time == null || time < now - 1 / context.sampleRate || time < voice.start || time >= Math.min(voice.releaseAt, voice.semanticRelease?.at ?? Infinity)) return reject('invalid-or-stale-expression', voiceId);
     const ratio = expression.pitchOffsetCents == null ? null : rateFor(voice.region, voice.pitch, expression.pitchOffsetCents);
     if (expression.pitchOffsetCents != null && (ratio == null || voice.region.releaseRegion && rateFor(voice.region.releaseRegion, voice.pitch, expression.pitchOffsetCents) == null)) return reject('sample-pitch-out-of-range', voiceId);
@@ -412,12 +413,12 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
       [voice.panAutomation, expression.pan01 == null ? null : clamp(expression.pan01 + voice.mixPan, -1, 1)]];
     if (changes.some(([automation, value]) => value != null && !automation.canInsert(now))) return reject('expression-queue-full', voiceId);
     try {
-      for (const [automation, value] of changes) if (value != null && !automation.insert(value, Math.max(time, now), now)) throw new Error('Expression automation refused admission.');
+      for (const [automation, value] of changes) if (value != null && !automation.insert(value, Math.max(time, now), now, Math.max(smoothingSeconds, rampSeconds))) throw new Error('Expression automation refused admission.');
       if (voice.released && !voice.stolen && voice.child && voice.releaseAt > now) scheduleReleaseChild(voice, voice.releaseAt, voice.releaseVelocity);
       armExpiry();
     }
     catch { errors++; preview._destroyVoice(voice, 'sample-update-failure'); return reject('sample-update-failure', voiceId); }
-    return trace({ status: 'accepted', stage: 'scheduled', voiceId, executionEpoch, targetFrame, smoothingFrames: Math.ceil(smoothingSeconds * context.sampleRate) });
+    return trace({ status: 'accepted', stage: 'scheduled', voiceId, executionEpoch, targetFrame, smoothingFrames: Math.ceil(Math.max(smoothingSeconds, rampSeconds) * context.sampleRate) });
   };
   const end = (voiceId, release, targetFrame, executionEpoch = 'live') => {
     const voice = voices.get(keyFor(executionEpoch, voiceId)), time = timeFor(targetFrame);

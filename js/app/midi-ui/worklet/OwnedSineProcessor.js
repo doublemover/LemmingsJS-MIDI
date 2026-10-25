@@ -190,7 +190,7 @@ class OwnedSineKernel {
     } else if (opcode === UPDATE) {
       if (target < frame) { this.counters[2]++; this.receipt(REJECTED, sequence, slot, token, frame, 4); return; }
       const mask = queue[15];
-      if (!Number.isInteger(mask) || mask < 0 || mask > (this.source?.maxUpdateMask ?? 7) || queue[14] < 0 || queue[14] > this.sampleRate ||
+      if (!Number.isInteger(mask) || mask < 0 || mask > (this.source?.maxUpdateMask ?? 7) || queue[14] < 0 || queue[14] > this.sampleRate * 60 ||
           (mask & 1) && (queue[6] <= 0 || queue[6] >= this.sampleRate / 2 || this.source && !this.source.validFrequency(slot, queue[6])) ||
           (mask & 2) && (queue[8] < 0 || queue[8] > 1) || (mask & 4) && (queue[9] < -1 || queue[9] > 1) || this.source && !this.source.validUpdate(slot, mask, queue)) {
         this.receipt(REJECTED, sequence, slot, token, frame, 1); return;

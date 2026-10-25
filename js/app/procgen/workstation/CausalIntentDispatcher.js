@@ -105,7 +105,7 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
             : { status: 'accepted', stage: 'semantic-observation', outputRequested: false, reason: 'no-continuous-binding' };
           else if (intent.kind === 'update') outcome = intent.expression && Object.getPrototypeOf(intent.expression) === Object.prototype && Object.keys(intent.expression).length === 0 && intent.articulationState
             ? { status: 'accepted', stage: 'semantic-observation', outputRequested: false }
-            : sink.backend.update(intent.voiceId, intent.expression, frame, identity.execution);
+            : sink.backend.update(intent.voiceId, intent.expression, frame, identity.execution, intent.articulationState?.slewSeconds);
           else if (intent.kind === 'end') outcome = sink.backend.end(intent.voiceId, intent.terminationReason === 'one-shot'
             ? { mode: 'one-shot', tailSeconds: physicalDuration == null ? oneShotTailSeconds : Math.min(4, Math.max(0, physicalDuration)), seconds: releaseSeconds, ...(physicalDuration != null ? { durationSource: 'physical-interval' } : {}) }
             : { seconds: intent.voiceTransition?.kind === 'crossfade' ? intent.voiceTransition.seconds : releaseSeconds, ...(intent.voiceTransition ? { transitionPolicy: 'crossfade' } : {}) }, frame, identity.execution);

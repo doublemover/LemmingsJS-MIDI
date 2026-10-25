@@ -248,6 +248,9 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       ? diffCausalLanePerformance(project.procgen.lanes, next.procgen.lanes, change.fields.some(key => ['instrumentControls', 'instrumentRef'].includes(key)) ? change.laneIds : [])
       : diffCausalPerformanceState(captureCausalPerformanceState(project.procgen.lanes), captureCausalPerformanceState(next.procgen.lanes)) : null;
     if ((causalTakeStart || causalTakeStop) && performanceChange) throw new Error('Wait for causal take arming or saving before changing instrument controls.');
+    if (project.procgen.physicalGraph !== next.procgen.physicalGraph && JSON.stringify(project.procgen.physicalGraph.harmonicFields || []) !== JSON.stringify(next.procgen.physicalGraph.harmonicFields || [])) {
+      next = { ...next, procgen: { ...next.procgen, physicalGraph: { ...next.procgen.physicalGraph, editCommandId: `field-edit:${project.procgen.physicalGraph.revision + 1}` } } };
+    }
     const graphChanged = project.procgen.physicalGraph !== next.procgen.physicalGraph && !equal(project.procgen.physicalGraph, next.procgen.physicalGraph);
     if (graphChanged && next.procgen.physicalGraph.revision <= project.procgen.physicalGraph.revision) {
       if (!Number.isSafeInteger(project.procgen.physicalGraph.revision + 1)) throw new Error('Physical mapping revision exhausted.');
@@ -525,6 +528,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       ...(physical?.physicalDomain ? { 'physical-domain': physical.physicalDomain } : {}),
       ...(physical?.rhythmicResponses ? { 'rhythmic-responses': physical.rhythmicResponses } : {}),
       ...(physical?.actionAdmission ? { 'action-admission': physical.actionAdmission } : {}),
+      ...(physical?.tonalInterpretation ? { 'tonal-interpretation': physical.tonalInterpretation } : {}),
       timeline: physicalScoreClock.snapshot() };
   };
   const causalTakeState = () => Object.freeze({ recording: !!causalTake && !causalTake.status().captureStopped,

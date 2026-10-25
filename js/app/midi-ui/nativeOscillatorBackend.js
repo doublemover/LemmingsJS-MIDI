@@ -263,9 +263,10 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
       return failure(error?.name === 'ResourceBudgetError' ? 'audio-resource-budget' : 'backend-failure', intent);
     }
   };
-  const update = (voiceId, expression, targetFrame, executionEpoch = 'live') => {
+  const update = (voiceId, expression, targetFrame, executionEpoch = 'live', rampSeconds = smoothingSeconds) => {
     const voice = voices.get(keyFor(executionEpoch, voiceId));
     if (!voice || voice.stolen || voice.released && voice.releaseAt <= preview._context?.currentTime || !preview._ownerReady(owner)) return failure('voice-not-active', { voiceId });
+    if (!Number.isFinite(rampSeconds) || rampSeconds < 0 || rampSeconds > 60) return failure('invalid-control-ramp', { voiceId });
     const time = audioTime(targetFrame);
     if (time == null || !expression || typeof expression !== 'object' || Array.isArray(expression) ||
         Object.getPrototypeOf(expression) !== Object.prototype) return failure('invalid-expression', { voiceId });
@@ -286,13 +287,13 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
       [voice.panAutomation, expression.pan01 == null ? null : clamp(expression.pan01 + voice.mixPan, -1, 1)]];
     if (changes.some(([automation, value]) => value != null && !automation?.canInsert(now))) return failure('expression-queue-full', { voiceId });
     try {
-      for (const [automation, value] of changes) if (value != null) automation.insert(value, at, now);
+      for (const [automation, value] of changes) if (value != null) { if (!automation.insert(value, at, now, Math.max(smoothingSeconds, rampSeconds))) throw new Error('Expression automation refused admission.'); }
     } catch {
       deliveryErrors++; preview._destroyVoice(voice, 'backend-failure-after-acceptance');
       return failure('backend-failure-after-acceptance', { voiceId, generation: voice.semanticGeneration });
     }
     const receipt = Object.freeze({ status: 'accepted', stage: 'scheduled', voiceId, executionEpoch, targetFrame,
-      smoothingFrames: Math.ceil(smoothingSeconds * preview._context.sampleRate) });
+      smoothingFrames: Math.ceil(Math.max(smoothingSeconds, rampSeconds) * preview._context.sampleRate) });
     trace({ ...receipt, generation: voice.semanticGeneration, patchRevision: voice.patchRevision }); return receipt;
   };
   const end = (voiceId, release, targetFrame, executionEpoch = 'live') => {

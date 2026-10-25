@@ -95,13 +95,13 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     if (outcome?.status === 'accepted') voices.set(keyFor(epoch, intent.voiceId), { child, execution, epoch, voiceId: intent.voiceId, articulation: outcome.articulation || child });
     return outcome;
   };
-  const voiceCall = (method, voiceId, value, frame, epoch) => {
+  const voiceCall = (method, voiceId, value, frame, epoch, rampSeconds) => {
     if (disposed) return reject('disposed'); const voice = voices.get(keyFor(epoch, voiceId));
     if (!voice) return reject('voice-unavailable');
     if (method === 'end' && value?.transitionPolicy !== 'crossfade' && voice.articulation.releaseSeconds != null) value = { ...value, seconds: voice.articulation.releaseSeconds,
       ...(value?.mode === 'one-shot' && value.durationSource !== 'physical-interval' && voice.articulation.oneShotTailSeconds != null ? { tailSeconds: voice.articulation.oneShotTailSeconds } : {}) };
     if (method === 'updatePhysical' && typeof voice.child.backend.updatePhysical !== 'function') return Object.freeze({ status: 'accepted', stage: 'semantic-observation', outputRequested: false, reason: 'no-continuous-binding' });
-    return voice.child.backend[method](voiceId, value, frame, voice.execution);
+    return voice.child.backend[method](voiceId, value, frame, voice.execution, rampSeconds);
   };
   const cancelGenerationWithReceipt = (generation, epoch) => {
     const execution = executions.get(epoch), outcomes = [];
